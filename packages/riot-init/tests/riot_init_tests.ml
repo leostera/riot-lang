@@ -134,9 +134,8 @@ let test_init_scaffolds_library_workspace = fun _ctx ->
           / Path.v "tests"
           / Path.v test_file)
       in
-      let* () = assert_contains
-        Path.(workspace_root / Path.v "README.md")
-        ".github/workflows/ci.yml"
+      let* () =
+        assert_contains Path.(workspace_root / Path.v "README.md") ".github/workflows/ci.yml"
       in
       let* () =
         assert_contains
@@ -317,8 +316,7 @@ let test_init_dot_scaffolds_current_directory = fun _ctx ->
         |> Result.map_err ~fn:IO.error_message
       in
       let* events =
-        with_current_dir_result workspace_root (fun () ->
-          run_init_with_events [ "init"; "." ])
+        with_current_dir_result workspace_root (fun () -> run_init_with_events [ "init"; "." ])
       in
       let module_name =
         Riot_model.Module_name.(of_string "agents-ml"
@@ -339,8 +337,7 @@ let test_init_dot_scaffolds_current_directory = fun _ctx ->
       match completion_event events with
       | Some (Riot_init.WorkspaceInitializationCompleted { next_steps; package_hints }) ->
           let* () =
-            if List.any next_steps ~fn:(fun step ->
-              String.starts_with ~prefix:"cd " step) then
+            if List.any next_steps ~fn:(fun step -> String.starts_with ~prefix:"cd " step) then
               Error "expected init . completion to omit cd guidance"
             else
               Ok ()
@@ -374,8 +371,7 @@ let test_init_without_path_defaults_to_current_directory = fun _ctx ->
         |> Result.map_err ~fn:IO.error_message
       in
       let* events =
-        with_current_dir_result workspace_root (fun () ->
-          run_init_with_events [ "init" ])
+        with_current_dir_result workspace_root (fun () -> run_init_with_events [ "init" ])
       in
       let module_name =
         Riot_model.Module_name.(of_string "default-dot"
@@ -394,8 +390,7 @@ let test_init_without_path_defaults_to_current_directory = fun _ctx ->
       in
       match completion_event events with
       | Some (Riot_init.WorkspaceInitializationCompleted { next_steps; _ }) ->
-          if List.any next_steps ~fn:(fun step ->
-            String.starts_with ~prefix:"cd " step) then
+          if List.any next_steps ~fn:(fun step -> String.starts_with ~prefix:"cd " step) then
             Error "expected init without a path to stay in the current directory"
           else if next_steps = [ "riot build"; "riot test" ] then
             Ok ()
@@ -416,9 +411,8 @@ let test_init_preserves_dotted_workspace_names = fun _ctx ->
       in
       let test_file = String.lowercase_ascii module_name ^ "_tests.ml" in
       let* () = assert_exists Path.(workspace_root / Path.v "riot.toml") in
-      let* () = assert_contains
-        Path.(workspace_root / Path.v "riot.toml")
-        {|name = "arewedown.dev"|}
+      let* () =
+        assert_contains Path.(workspace_root / Path.v "riot.toml") {|name = "arewedown.dev"|}
       in
       let* () =
         assert_contains

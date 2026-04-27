@@ -81,7 +81,9 @@ let make_mixed_dashboard = fun () ->
   let body =
     "Unicode-heavy text: Hello 世界 👍🏽 cafe\u{301} metrics latency throughput clipping wrapping borders alignment"
   in
-  let cards = List.init ~count:10 ~fn:(fun index -> make_card ("card-" ^ Int.to_string index) body) in
+  let cards =
+    List.init ~count:10 ~fn:(fun index -> make_card ("card-" ^ Int.to_string index) body)
+  in
   let content =
     Element.column
       ~style:Style.(empty
@@ -177,7 +179,9 @@ let bench_layout_deep_tree = fun () ->
   ignore (List.length commands)
 
 let bench_layout_mixed_dashboard = fun () ->
-  let commands = layout ~config:(make_config ~width:120.0 ~height:40.0 ()) (make_mixed_dashboard ()) in
+  let commands =
+    layout ~config:(make_config ~width:120.0 ~height:40.0 ()) (make_mixed_dashboard ())
+  in
   ignore (List.length commands)
 
 let bench_layout_wrapped_unicode = fun () ->

@@ -73,7 +73,9 @@ let query_params = fun t ->
   match String.index_of uri_str ~char:'?' with
   | None -> []
   | Some idx ->
-      let query_string = String.sub uri_str ~offset:(idx + 1) ~len:(String.length uri_str - idx - 1) in
+      let query_string =
+        String.sub uri_str ~offset:(idx + 1) ~len:(String.length uri_str - idx - 1)
+      in
       (* Parse query string into key=value pairs *)
       let pairs = String.split_on_char '&' query_string in
       List.filter_map
@@ -120,7 +122,9 @@ let send = fun t -> { t with sent = true }
 let sent = fun t -> t.sent
 
 let render_component = fun ?(headers = []) status component t ->
-  let t = List.fold_left headers ~init:t ~fn:(fun acc ((name, value)) -> with_header name value acc) in
+  let t =
+    List.fold_left headers ~init:t ~fn:(fun acc ((name, value)) -> with_header name value acc)
+  in
   t
   |> with_status status
   |> with_header "Content-Type" "text/html; charset=utf-8"
@@ -128,7 +132,9 @@ let render_component = fun ?(headers = []) status component t ->
   |> send
 
 let render_json = fun ?(headers = []) status json t ->
-  let t = List.fold_left headers ~init:t ~fn:(fun acc ((name, value)) -> with_header name value acc) in
+  let t =
+    List.fold_left headers ~init:t ~fn:(fun acc ((name, value)) -> with_header name value acc)
+  in
   t
   |> with_status status
   |> with_header "Content-Type" "application/json"
@@ -136,7 +142,9 @@ let render_json = fun ?(headers = []) status json t ->
   |> send
 
 let render_text = fun ?(headers = []) status text t ->
-  let t = List.fold_left headers ~init:t ~fn:(fun acc ((name, value)) -> with_header name value acc) in
+  let t =
+    List.fold_left headers ~init:t ~fn:(fun acc ((name, value)) -> with_header name value acc)
+  in
   t
   |> with_status status
   |> with_header "Content-Type" "text/plain; charset=utf-8"
@@ -144,7 +152,9 @@ let render_text = fun ?(headers = []) status text t ->
   |> send
 
 let redirect = fun ?(headers = []) path t ->
-  let t = List.fold_left headers ~init:t ~fn:(fun acc ((name, value)) -> with_header name value acc) in
+  let t =
+    List.fold_left headers ~init:t ~fn:(fun acc ((name, value)) -> with_header name value acc)
+  in
   t
   |> with_status Found
   |> with_header "Location" path

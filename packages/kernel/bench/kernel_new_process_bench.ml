@@ -173,7 +173,9 @@ let bench_spawn_true = fun () ->
 let bench_spawn_echo_with_pipe = fun () ->
   with_poll
     (fun poll ->
-      let stdio = Kernel.Process.{ stdin = Stdin.Null; stdout = Stdout.Pipe; stderr = Stderr.Null } in
+      let stdio =
+        Kernel.Process.{ stdin = Stdin.Null; stdout = Stdout.Pipe; stderr = Stderr.Null }
+      in
       let process =
         lift_process
           (Kernel.Process.spawn ~program:"/bin/echo" ~args:[|"-n"; "kernel-new"|] ~stdio ())
@@ -256,7 +258,9 @@ let bench_many_process_exit_sources = fun () ->
 let bench_stdout_pipe_drain_small_output = fun () ->
   with_poll
     (fun poll ->
-      let stdio = Kernel.Process.{ stdin = Stdin.Null; stdout = Stdout.Pipe; stderr = Stderr.Null } in
+      let stdio =
+        Kernel.Process.{ stdin = Stdin.Null; stdout = Stdout.Pipe; stderr = Stderr.Null }
+      in
       let process =
         lift_process
           (Kernel.Process.spawn
@@ -277,7 +281,9 @@ let bench_stdout_pipe_drain_small_output = fun () ->
 let bench_stdout_pipe_drain_medium_output = fun () ->
   with_poll
     (fun poll ->
-      let stdio = Kernel.Process.{ stdin = Stdin.Null; stdout = Stdout.Pipe; stderr = Stderr.Null } in
+      let stdio =
+        Kernel.Process.{ stdin = Stdin.Null; stdout = Stdout.Pipe; stderr = Stderr.Null }
+      in
       let process =
         lift_process
           (Kernel.Process.spawn

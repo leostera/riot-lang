@@ -969,7 +969,7 @@ let entries_for_module_alias = fun env ~alias_name ~module_path ->
 
 let summary_cache: (summary, t) Collections.HashMap.t = Collections.HashMap.with_capacity 128
 
-let summary_relative_cache: ((summary * summary), t) Collections.HashMap.t =
+let summary_relative_cache: (summary * summary, t) Collections.HashMap.t =
   Collections.HashMap.with_capacity 128
 
 let cache_and_return cache key value =

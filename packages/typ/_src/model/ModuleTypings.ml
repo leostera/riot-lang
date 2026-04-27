@@ -308,7 +308,9 @@ let partial = fun
     | Some exports -> FileSummary.ErroredExport { exports }
     | None -> FileSummary.NoExport
   in
-  let (export_result, type_decls) = canonicalize_payload_for_persistence ~export_result ~type_decls in
+  let (export_result, type_decls) =
+    canonicalize_payload_for_persistence ~export_result ~type_decls
+  in
   {
     module_name;
     source_hash;
@@ -515,8 +517,7 @@ let rec type_to_json = fun ty ->
               Data.Json.Object [
                 ("name", Data.Json.String value.name);
                 ("scheme", Data.Json.Object [
-                  ("quantified", Data.Json.Array (List.map (fun id ->
-                    Data.Json.Int id) quantified));
+                  ("quantified", Data.Json.Array (List.map (fun id -> Data.Json.Int id) quantified));
                   ("body", type_to_json body);
                 ]);
               ])

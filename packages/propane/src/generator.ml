@@ -475,8 +475,7 @@ let deque = fun gen ->
   map
     (fun lst ->
       let d = Collections.Deque.create () in
-      List.for_each lst ~fn:(fun value ->
-        Collections.Deque.push_back d ~value);
+      List.for_each lst ~fn:(fun value -> Collections.Deque.push_back d ~value);
       d)
     (list gen)
 
@@ -484,8 +483,7 @@ let deque_size = fun size_gen gen ->
   map
     (fun lst ->
       let d = Collections.Deque.create () in
-      List.for_each lst ~fn:(fun value ->
-        Collections.Deque.push_back d ~value);
+      List.for_each lst ~fn:(fun value -> Collections.Deque.push_back d ~value);
       d)
     (list_size size_gen gen)
 
@@ -493,8 +491,7 @@ let heap = fun gen ->
   map
     (fun lst ->
       let h = Collections.Heap.create () in
-      List.for_each lst ~fn:(fun value ->
-        Collections.Heap.push h ~value);
+      List.for_each lst ~fn:(fun value -> Collections.Heap.push h ~value);
       h)
     (list gen)
 
@@ -502,8 +499,7 @@ let heap_size = fun size_gen gen ->
   map
     (fun lst ->
       let h = Collections.Heap.create () in
-      List.for_each lst ~fn:(fun value ->
-        Collections.Heap.push h ~value);
+      List.for_each lst ~fn:(fun value -> Collections.Heap.push h ~value);
       h)
     (list_size size_gen gen)
 

@@ -282,18 +282,14 @@ version = "0.1.0"
       in
       let expected_src =
         runtime_files
-        |> List.map ~fn:(fun (path, _) ->
-          path)
-        |> List.filter ~fn:(fun path ->
-          String.starts_with ~prefix:"src/" (Path.to_string path))
+        |> List.map ~fn:(fun (path, _) -> path)
+        |> List.filter ~fn:(fun path -> String.starts_with ~prefix:"src/" (Path.to_string path))
         |> sort_paths
       in
       let expected_native =
         runtime_files
-        |> List.map ~fn:(fun (path, _) ->
-          path)
-        |> List.filter ~fn:(fun path ->
-          String.starts_with ~prefix:"native/" (Path.to_string path))
+        |> List.map ~fn:(fun (path, _) -> path)
+        |> List.filter ~fn:(fun path -> String.starts_with ~prefix:"native/" (Path.to_string path))
         |> sort_paths
       in
       let rec run iteration =

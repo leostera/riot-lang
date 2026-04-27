@@ -4,9 +4,7 @@ let test_lazy_cell_starts_uninitialized =
   Test.case
     "sync lazy_cell starts uninitialized"
     (fun _ctx ->
-      let cell = Sync.LazyCell.create (fun () ->
-        1)
-      in
+      let cell = Sync.LazyCell.create (fun () -> 1) in
       if not (Sync.LazyCell.is_initialized cell) && Option.is_none (Sync.LazyCell.take cell) then
         Ok ()
       else
@@ -77,9 +75,7 @@ let test_lazy_cell_recomputes_after_take =
     "sync lazy_cell recomputes after take clears the cache"
     (fun _ctx ->
       let calls = Sync.Atomic.make 0 in
-      let cell = Sync.LazyCell.create (fun () ->
-        Int.succ (Sync.Atomic.fetch_and_add calls 1))
-      in
+      let cell = Sync.LazyCell.create (fun () -> Int.succ (Sync.Atomic.fetch_and_add calls 1)) in
       let first = Sync.LazyCell.force cell in
       let _ = Sync.LazyCell.take cell in
       let second = Sync.LazyCell.force cell in

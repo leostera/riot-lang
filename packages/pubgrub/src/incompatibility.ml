@@ -118,8 +118,7 @@ let normalize_terms = fun terms ->
     terms
     ~init:[]
     ~fn:(fun acc term ->
-      match List.find acc ~fn:(fun existing ->
-        Term.package existing = Term.package term) with
+      match List.find acc ~fn:(fun existing -> Term.package existing = Term.package term) with
       | None ->
           if Term.is_any term then
             acc
@@ -130,8 +129,7 @@ let normalize_terms = fun terms ->
           let acc_without_pkg =
             List.filter
               acc
-              ~fn:(fun existing ->
-                not (String.equal (Term.package existing) (Term.package term)))
+              ~fn:(fun existing -> not (String.equal (Term.package existing) (Term.package term)))
           in
           if Term.is_any merged then
             acc_without_pkg

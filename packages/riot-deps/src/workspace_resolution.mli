@@ -9,7 +9,7 @@ val ensure_lock:
   registry:Pkgs_ml.Registry.t ->
   workspace:Riot_model.Workspace_manifest.t ->
   unit ->
-  ((Riot_model.Lockfile.t * Riot_model.Package.resolved list), Error.t) result
+  (Riot_model.Lockfile.t * Riot_model.Package.resolved list, Error.t) result
 
 val ensure_workspace:
   ?emit:event_sink ->

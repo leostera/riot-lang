@@ -199,8 +199,7 @@ let test_execute_node_fails_when_declared_output_is_missing = fun _ctx ->
       match result.status with
       | Action_executor.Failed (OutputsNotCreated { missing }) ->
           let expected = Path.to_string Path.(sandbox / declared_output) in
-          if List.any missing ~fn:(fun path ->
-            String.equal (Path.to_string path) expected) then
+          if List.any missing ~fn:(fun path -> String.equal (Path.to_string path) expected) then
             Ok ()
           else
             Error "expected missing declared output to be reported"

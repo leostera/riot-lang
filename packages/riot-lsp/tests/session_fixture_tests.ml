@@ -78,8 +78,7 @@ let read_lines = fun path ->
       |> String.split_on_char '\n'
       |> List.map ~fn:String.trim
       |> List.map ~fn:substitute_fixture_tokens
-      |> List.filter ~fn:(fun line ->
-        not (String.equal line "")))
+      |> List.filter ~fn:(fun line -> not (String.equal line "")))
 
 let run_fixture = fun path ->
   let* lines = read_lines path in

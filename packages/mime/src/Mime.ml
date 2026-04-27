@@ -226,12 +226,9 @@ and combine_rfc2231_params = fun raw_params ->
     ~fn:(fun name parts_cell ->
       let parts =
         Cell.get parts_cell
-        |> List.sort ~compare:(fun ((a, _)) ((b, _)) ->
-          Int.compare a b)
+        |> List.sort ~compare:(fun ((a, _)) ((b, _)) -> Int.compare a b)
       in
-      let value = String.concat "" (List.map ~fn:(fun (_, value) ->
-        value) parts)
-      in
+      let value = String.concat "" (List.map ~fn:(fun (_, value) -> value) parts) in
       Cell.set combined ((name, value) :: Cell.get combined));
   Cell.get combined
 
@@ -241,7 +238,9 @@ let parse_content_type = fun value ->
   | None -> { media_type = main_type; subtype = ""; parameters = params }
   | Some slash ->
       let media = String.sub main_type ~offset:0 ~len:slash in
-      let sub = String.sub main_type ~offset:(slash + 1) ~len:(String.length main_type - slash - 1) in
+      let sub =
+        String.sub main_type ~offset:(slash + 1) ~len:(String.length main_type - slash - 1)
+      in
       { media_type = media; subtype = sub; parameters = params }
 
 let parse_content_disposition = fun value ->

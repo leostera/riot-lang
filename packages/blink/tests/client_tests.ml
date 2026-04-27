@@ -24,11 +24,10 @@ let test_retries_retryable_statuses = fun _ctx ->
     else
       Ok (H.Response.make ~status:200 ~body:"ok" ())
   in
-  let config =
-    H.Config.make
-      ~retry_policy:(H.RetryPolicy.make ~max_attempts:3 ())
-      ~transport
-      ()
+  let config = H.Config.make
+    ~retry_policy:(H.RetryPolicy.make ~max_attempts:3 ())
+    ~transport
+    ()
   in
   let client = H.make ~config () in
   match H.execute client (request ()) with

@@ -52,7 +52,7 @@ type load_error =
 
 type t = {
   workspace_roots: (string, Path.t option) HashMap.t;
-  scans: (string, ((Workspace_manifest.t * load_error list), scan_error) result) HashMap.t;
+  scans: (string, (Workspace_manifest.t * load_error list, scan_error) result) HashMap.t;
 }
 
 let create = fun () -> { workspace_roots = HashMap.create (); scans = HashMap.create () }
@@ -533,9 +533,7 @@ let build_single_package_workspace:
           )
     )
 
-let scan: t -> Path.t -> ((Workspace_manifest.t * load_error list), scan_error) result = fun
-  t
-  path ->
+let scan: t -> Path.t -> (Workspace_manifest.t * load_error list, scan_error) result = fun t path ->
   try
     let started_at = Time.Instant.now () in
     let find_roots_started_at = Time.Instant.now () in

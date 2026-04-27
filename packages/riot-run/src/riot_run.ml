@@ -88,12 +88,11 @@ let list_binaries = fun (workspace: Riot_model.Workspace.t) ?package_filter () -
       pkg.binaries
       |> List.filter ~fn:is_listed_runnable
       |> List.map
-        ~fn:(fun (bin: Riot_model.Package.binary) ->
-          {
-            package_name = pkg.name;
-            binary_name = bin.name;
-            source_path = Path.(pkg.path / bin.path);
-          }))
+        ~fn:(fun (bin: Riot_model.Package.binary) -> {
+          package_name = pkg.name;
+          binary_name = bin.name;
+          source_path = Path.(pkg.path / bin.path);
+        }))
   |> List.sort
     ~compare:(fun left right ->
       match Riot_model.Package_name.compare left.package_name right.package_name with

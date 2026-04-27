@@ -1030,10 +1030,8 @@ and decode_schema_element = fun input ->
               type_length := Some read;
               Ok ()
           | 3 ->
-              let* () = expect_field_type
-                field.field_type
-                Thrift.I32
-                "SchemaElement.repetition_type"
+              let* () =
+                expect_field_type field.field_type Thrift.I32 "SchemaElement.repetition_type"
               in
               let* read = Thrift.read_i32 input in
               repetition_type := Some (field_repetition_type_of_int read);

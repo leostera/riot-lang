@@ -439,7 +439,9 @@ let test_arrow_type_aliases_preserve_labels_during_lowering = fun ctx ->
         "";
       ]
   in
-  let report = check_source_text ~filename:(Path.v "packages/typ/tests/arrow_type_alias.ml") source in
+  let report =
+    check_source_text ~filename:(Path.v "packages/typ/tests/arrow_type_alias.ml") source
+  in
   Test.Snapshot.assert_inline_json
     ~ctx
     ~actual:(actual_type_item_lowering_json report)
@@ -496,7 +498,9 @@ let test_include_dotted_module_path_lowers_to_include_item = fun ctx ->
     ])
 
 let test_include_module_type_with_constraint_lowers_to_include_item = fun ctx ->
-  let source = String.concat "\n" [ "include module type of Kernel.Int64 with type t = int64"; "" ] in
+  let source =
+    String.concat "\n" [ "include module type of Kernel.Int64 with type t = int64"; "" ]
+  in
   let report =
     check_source_text
       ~filename:(Path.v "packages/typ/tests/include_module_type_with_constraint.mli")

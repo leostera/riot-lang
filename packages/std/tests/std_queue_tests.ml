@@ -439,7 +439,9 @@ let test_multiple_producers_preserve_every_value = fun _ctx ->
   let queue = Queue.create () in
   let batches = make_batches [ 25; 25; 25; 25; ] in
   let parent = self () in
-  let producer_pids = spawn_producers ~parent ~queue ~batches ~yield_every:5 ~on_done:(fun () -> ()) in
+  let producer_pids =
+    spawn_producers ~parent ~queue ~batches ~yield_every:5 ~on_done:(fun () -> ())
+  in
   List.for_each producer_pids ~fn:(fun pid -> send pid Queue_test_go);
   match wait_for_producers ~producer_count:(List.length batches) with
   | Error _ as error -> error

@@ -8,7 +8,9 @@ type mutation =
 
 let make_graph = fun ~apply_mutation tasks ->
   let graph = Graph_scheduler.Graph.create ~apply_mutation () in
-  let node_ids = List.map tasks ~fn:(fun task -> Graph_scheduler.Graph.add_node graph ~payload:task) in
+  let node_ids =
+    List.map tasks ~fn:(fun task -> Graph_scheduler.Graph.add_node graph ~payload:task)
+  in
   (graph, node_ids)
 
 let result_labels = fun results ->

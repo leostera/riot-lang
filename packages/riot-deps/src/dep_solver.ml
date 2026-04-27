@@ -1192,7 +1192,9 @@ let ranges_of_requirement = fun requirement ->
   | Std.Version.LessThanRequirement version -> Ok (Pubgrub.strictly_lower_than version)
   | Std.Version.LessThanOrEqualRequirement version -> Ok (Pubgrub.lower_than version)
   | Std.Version.TildeRequirement version ->
-      let upper_bound = Std.Version.make ~major:version.major ~minor:(version.minor + 1) ~patch:0 () in
+      let upper_bound =
+        Std.Version.make ~major:version.major ~minor:(version.minor + 1) ~patch:0 ()
+      in
       Ok (Pubgrub.Ranges.intersection
         ~compare_v:pubgrub_version_compare
         (Pubgrub.higher_than version)
@@ -1208,7 +1210,9 @@ let record_required_by = fun (catalog: catalog) ~package_name required_by ->
         match HashMap.get catalog.required_by ~key:package_name with
         | Some _ -> ()
         | None ->
-            let _ = HashMap.insert catalog.required_by ~key:package_name ~value:(Some required_by) in
+            let _ =
+              HashMap.insert catalog.required_by ~key:package_name ~value:(Some required_by)
+            in
             ()
 
 let required_by_for_package = fun (catalog: catalog) package_name ->
@@ -1229,7 +1233,9 @@ let record_requested_requirement = fun (catalog: catalog) ~package_name requirem
       in
       ()
   | None ->
-      let _ = HashMap.insert catalog.requested_requirements ~key:package_name ~value:[ requirement ] in
+      let _ =
+        HashMap.insert catalog.requested_requirements ~key:package_name ~value:[ requirement ]
+      in
       ()
 
 let requested_requirement_for_package = fun (catalog: catalog) package_name ->
@@ -1495,7 +1501,9 @@ let read_registry_document = fun (catalog: catalog) ~package_name ->
               });
             Error error
         | Ok document_opt ->
-            let _ = HashMap.insert catalog.registry_documents ~key:package_name ~value:document_opt in
+            let _ =
+              HashMap.insert catalog.registry_documents ~key:package_name ~value:document_opt
+            in
             (
               match document_opt with
               | Some document ->

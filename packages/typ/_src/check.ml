@@ -259,8 +259,8 @@ let scope_view_for_source = fun
               local_ids
               |> Array.to_list
               |> List.map
-                (fun module_id ->
-                  (SurfacePath.of_string (LocalModules.RequiredName.to_string required_name), PackageEnv.ModuleId.Local graph.groups.(module_id).internal_name))
+                (fun module_id -> (SurfacePath.of_string
+                  (LocalModules.RequiredName.to_string required_name), PackageEnv.ModuleId.Local graph.groups.(module_id).internal_name))
             )
             !implicit_open_modules_rev
       );
@@ -377,8 +377,7 @@ let analyze_group = fun ~(graph:package_graph) ~state ~config (group: graph_grou
               LocalModuleGraph.dependency_local_ids graph source.dependency_set_id
               |> Array.to_list
               |> List.filter
-                (fun module_id ->
-                  Option.is_none state.compiled_modules_by_id.(module_id))
+                (fun module_id -> Option.is_none state.compiled_modules_by_id.(module_id))
             in
             let missing_requirements =
               (
@@ -397,12 +396,11 @@ let analyze_group = fun ~(graph:package_graph) ~state ~config (group: graph_grou
               ) @ (
                 unavailable_local_ids
                 |> List.map
-                  (fun module_id ->
-                    MissingRequirements.MissingModuleSummary {
-                      module_name = LocalModules.InternalName.to_string
-                        graph.groups.(module_id).internal_name;
-                      requested_by = [ source.input.source_id ];
-                    })
+                  (fun module_id -> MissingRequirements.MissingModuleSummary {
+                    module_name = LocalModules.InternalName.to_string
+                      graph.groups.(module_id).internal_name;
+                    requested_by = [ source.input.source_id ];
+                  })
               )
             in
             (
@@ -442,8 +440,7 @@ let analyze_group = fun ~(graph:package_graph) ~state ~config (group: graph_grou
                   let () =
                     TypConfig.emit_event
                       source_config
-                      (fun () ->
-                        source_analysis_finished_event analysis)
+                      (fun () -> source_analysis_finished_event analysis)
                   in
                   Ok ((prepared, analysis, visible_type_decls) :: analyzed_sources)
             ))
@@ -504,14 +501,16 @@ let fold_package_sources = fun
                     let () =
                       TypConfig.emit_event
                         config
-                        (fun () ->
-                          Event.ModulePairingStarted { module_name; source_ids })
+                        (fun () -> Event.ModulePairingStarted { module_name; source_ids })
                     in
                     let pairing =
                       analyzed_sources
                       |> List.map
-                        (fun ((source: prepared_source), analysis, visible_type_decls) ->
-                          { ModulePairing.source = source.source; analysis; visible_type_decls })
+                        (fun ((source: prepared_source), analysis, visible_type_decls) -> {
+                          ModulePairing.source = source.source;
+                          analysis;
+                          visible_type_decls;
+                        })
                       |> ModulePairing.of_sources ~internal_name:group.internal_name
                     in
                     let () =
@@ -523,8 +522,10 @@ let fold_package_sources = fun
                     let checked_sources =
                       analyzed_sources
                       |> List.map
-                        (fun ((source: prepared_source), analysis, _visible_type_decls) ->
-                          { path = source.display_path; analysis })
+                        (fun ((source: prepared_source), analysis, _visible_type_decls) -> {
+                          path = source.display_path;
+                          analysis;
+                        })
                     in
                     let module_result = pairing.module_result in
                     let public_module_typings = rebind_public_module_views group module_result in

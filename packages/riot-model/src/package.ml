@@ -1273,7 +1273,8 @@ let parse_foreign_dependency:
                     | Error _ -> false
                     | Ok rel_path ->
                         let entry_name = Path.basename rel_path in
-                        let exclude_dirs = [ "target"; "_build"; "build"; "dist"; "node_modules"; ] in
+                        let exclude_dirs = [ "target"; "_build"; "build"; "dist"; "node_modules"; ]
+                        in
                         let should_skip =
                           String.starts_with ~prefix:"." entry_name
                           || List.contains exclude_dirs ~value:entry_name
@@ -1658,7 +1659,9 @@ let scan_sources_for_intent ~(intent:realization_intent) ~(package_path:Path.t) 
     empty_sources
   else
     let scan_roots = scan_roots_for_intent ~intent ~package_path in
-    let should_skip_source_entry filename = String.starts_with ~prefix:"." (Path.basename filename) in
+    let should_skip_source_entry filename =
+      String.starts_with ~prefix:"." (Path.basename filename)
+    in
     let should_skip_test_support_path rel_path =
       match path_components rel_path with
       | "tests" :: (

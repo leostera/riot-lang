@@ -565,7 +565,9 @@ let start_dispatcher = fun ~owner ~run_ref ~concurrency ~roots ~should_ignore ~c
     send owner (DispatchFileChecked { result_ref; result })
   in
   let _scanner = start_scanner ~owner:dispatcher_owner ~roots ~scanner_ref ~should_ignore in
-  let pool = WorkerPool.DynamicWorkerPool.start ~concurrency ~owner:dispatcher_owner ~worker_fn () in
+  let pool =
+    WorkerPool.DynamicWorkerPool.start ~concurrency ~owner:dispatcher_owner ~worker_fn ()
+  in
   let state = {
     owner;
     run_ref;

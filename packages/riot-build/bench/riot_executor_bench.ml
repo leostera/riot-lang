@@ -65,7 +65,9 @@ let make_node_in = fun graph ~package ?(deps = []) ~actions ~outs () ->
   Action_graph.add_node graph spec
 
 let make_execute_node_write_miss_bench = fun root ~size ->
-  let workspace = make_workspace Path.(root / Path.v ("execute-node-write-" ^ Int.to_string size)) in
+  let workspace =
+    make_workspace Path.(root / Path.v ("execute-node-write-" ^ Int.to_string size))
+  in
   let store = Riot_store.Store.create ~workspace in
   let package = make_package ~root:workspace.root ~name:"pkg" in
   let session_id = Riot_model.Session_id.make () in
@@ -110,7 +112,9 @@ let make_execute_node_write_miss_bench = fun root ~size ->
     | Action_executor.Skipped -> panic "execute_node write miss bench expected executed result"
 
 let make_execute_node_cache_hit_bench = fun root ~size ->
-  let workspace = make_workspace Path.(root / Path.v ("execute-node-cache-" ^ Int.to_string size)) in
+  let workspace =
+    make_workspace Path.(root / Path.v ("execute-node-cache-" ^ Int.to_string size))
+  in
   let store = Riot_store.Store.create ~workspace in
   let package = make_package ~root:workspace.root ~name:"pkg" in
   let session_id = Riot_model.Session_id.make () in
@@ -192,7 +196,9 @@ let make_execute_graph_nodes = fun graph ~package ~count ~seed ->
         ())
 
 let make_execute_graph_miss_bench = fun root ~count ~concurrency ->
-  let workspace = make_workspace Path.(root / Path.v ("execute-graph-miss-" ^ Int.to_string count)) in
+  let workspace =
+    make_workspace Path.(root / Path.v ("execute-graph-miss-" ^ Int.to_string count))
+  in
   let store = Riot_store.Store.create ~workspace in
   let package = make_package ~root:workspace.root ~name:"pkg" in
   let session_id = Riot_model.Session_id.make () in
@@ -219,7 +225,9 @@ let make_execute_graph_miss_bench = fun root ~count ~concurrency ->
       panic "execute graph miss bench expected all nodes to complete"
 
 let make_execute_graph_cache_hit_bench = fun root ~count ~concurrency ->
-  let workspace = make_workspace Path.(root / Path.v ("execute-graph-cache-" ^ Int.to_string count)) in
+  let workspace =
+    make_workspace Path.(root / Path.v ("execute-graph-cache-" ^ Int.to_string count))
+  in
   let store = Riot_store.Store.create ~workspace in
   let package = make_package ~root:workspace.root ~name:"pkg" in
   let session_id = Riot_model.Session_id.make () in

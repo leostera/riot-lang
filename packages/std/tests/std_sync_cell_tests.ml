@@ -27,8 +27,7 @@ let test_cell_update_rewrites_value =
     "sync cell update rewrites from the previous value"
     (fun _ctx ->
       let cell = Sync.Cell.create 5 in
-      Sync.Cell.update cell (fun value ->
-        value * 3);
+      Sync.Cell.update cell (fun value -> value * 3);
       if Sync.Cell.get cell = 15 then
         Ok ()
       else

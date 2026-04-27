@@ -324,8 +324,7 @@ let visible_record_decls = fun env ->
             (fun _ record_decls acc ->
               record_decls
               |> List.fold_left
-                (fun acc record_decl ->
-                  add_record_decl acc (qualify_record_decl root record_decl))
+                (fun acc record_decl -> add_record_decl acc (qualify_record_decl root record_decl))
                 acc)
             components.by_name
             acc

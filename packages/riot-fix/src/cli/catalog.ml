@@ -56,14 +56,12 @@ let rule_to_json = fun rule ->
     ("id", string (display_rule_id rule));
     ("local_id", string local_id);
     ("package", string package_name);
-    ("category", (
-      if String.equal package_name "riot" then
-        match Pipeline.builtin_rule_category (Rule.id rule) with
-        | Some category -> string category
-        | None -> Null
-      else
-        Null
-    ));
+    ("category", if String.equal package_name "riot" then
+      match Pipeline.builtin_rule_category (Rule.id rule) with
+      | Some category -> string category
+      | None -> Null
+    else
+      Null);
     ("description", string (Rule.description rule));
     ("enabled", bool (Rule.enabled rule));
   ]

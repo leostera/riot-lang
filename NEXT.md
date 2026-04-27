@@ -4,7 +4,7 @@
 
 # Before Announcing
 
-* suri still needs riot-model but its yanked!
+* `riot lock` to relock project deps
 
 * riot test print test time like ... ok (32µs)
 

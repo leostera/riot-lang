@@ -131,8 +131,7 @@ let tests = [
               };
           }
           in
-          match Riot_fix.fix ~on_event:(fun event ->
-            seen := event :: !seen) request with
+          match Riot_fix.fix ~on_event:(fun event -> seen := event :: !seen) request with
           | Ok _ -> Error "expected issues to remain"
           | Error err ->
               Test.assert_true

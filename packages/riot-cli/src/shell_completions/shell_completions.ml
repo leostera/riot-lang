@@ -103,8 +103,7 @@ let list_benchmarks = fun (workspace: Riot_model.Workspace_manifest.t) ->
         let has_benches =
           List.any
             pkg.binaries
-            ~fn:(fun (bin: Riot_model.Package.binary) ->
-              String.ends_with ~suffix:"_bench" bin.name)
+            ~fn:(fun (bin: Riot_model.Package.binary) -> String.ends_with ~suffix:"_bench" bin.name)
         in
         if has_benches then
           Some (Riot_model.Package_name.to_string pkg.name ^ ":...")

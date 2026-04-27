@@ -144,8 +144,7 @@ let run_package_scheduler = fun request ->
       let summary =
         Package_scheduler.run
           ~parallelism:1
-          ~on_event:(fun event ->
-            events := event :: !events)
+          ~on_event:(fun event -> events := event :: !events)
           lanes
       in
       (summary, List.reverse !events))
@@ -288,8 +287,7 @@ let test_package_scheduler_succeeds_for_dependency_chain = fun _ctx ->
         let result_keys =
           Lane_result.results lane_result
           |> List.map
-            ~fn:(fun (result: Package_builder.build_result) ->
-              package_key_string result.package_key)
+            ~fn:(fun (result: Package_builder.build_result) -> package_key_string result.package_key)
         in
         let expected_keys = [
           Package_graph.package_key ~package_name:"lib" Package_graph.Runtime
@@ -472,13 +470,11 @@ let test_package_scheduler_keeps_multi_lane_results_isolated = fun _ctx ->
         let all_result_counts_are_one =
           summary.Package_scheduler.completions
           |> List.all
-            ~fn:(fun (completion: Package_scheduler.completion) ->
-              completion.result_count = 1)
+            ~fn:(fun (completion: Package_scheduler.completion) -> completion.result_count = 1)
         in
         let all_lane_results_are_singletons =
           summary.Package_scheduler.lane_results
-          |> List.all ~fn:(fun lane_result ->
-            List.length (Lane_result.results lane_result) = 1)
+          |> List.all ~fn:(fun lane_result -> List.length (Lane_result.results lane_result) = 1)
         in
         let lane_count_events_ok =
           events
@@ -490,8 +486,7 @@ let test_package_scheduler_keeps_multi_lane_results_isolated = fun _ctx ->
               | Package_scheduler.ExecutionStarted { lane_count; _ }
               | Package_scheduler.ExecutionFinished { lane_count; _ } -> Some lane_count
             )
-          |> List.all ~fn:(fun lane_count ->
-            lane_count = 2)
+          |> List.all ~fn:(fun lane_count -> lane_count = 2)
         in
         if actual_targets != expected_targets then
           Error "expected multi-lane scheduler results to preserve requested targets"
@@ -624,8 +619,7 @@ let test_package_scheduler_cached_rerun_preserves_multi_lane_isolation = fun _ct
         let all_result_counts_are_one =
           second_summary.Package_scheduler.completions
           |> List.all
-            ~fn:(fun (completion: Package_scheduler.completion) ->
-              completion.result_count = 1)
+            ~fn:(fun (completion: Package_scheduler.completion) -> completion.result_count = 1)
         in
         if actual_targets != expected_targets then
           Error "expected cached multi-lane rerun to preserve requested targets"
@@ -676,8 +670,7 @@ let test_package_scheduler_reports_stalled_pending_work = fun _ctx ->
               let summary =
                 Package_scheduler.run
                   ~parallelism:1
-                  ~on_event:(fun event ->
-                    events := event :: !events)
+                  ~on_event:(fun event -> events := event :: !events)
                   lanes
               in
               let events = List.reverse !events in

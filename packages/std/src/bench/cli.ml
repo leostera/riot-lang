@@ -163,7 +163,9 @@ let main = fun ~name ~benchmarks ~args ->
           let pattern = get_one sub_matches "pattern" in
           let iterations_override = get_int sub_matches "iterations" in
           let warmup_override = get_int sub_matches "warmup" in
-          let benchmarks_to_list = apply_overrides ~iterations_override ~warmup_override benchmarks in
+          let benchmarks_to_list =
+            apply_overrides ~iterations_override ~warmup_override benchmarks
+          in
           let benchmarks_to_list =
             match pattern with
             | Some pattern -> List.filter benchmarks_to_list ~fn:(matches_pattern ~pattern)
@@ -182,7 +184,9 @@ let main = fun ~name ~benchmarks ~args ->
           let iterations_override = get_int sub_matches "iterations" in
           let warmup_override = get_int sub_matches "warmup" in
           (* Apply overrides if specified *)
-          let benchmarks_to_run = apply_overrides ~iterations_override ~warmup_override benchmarks in
+          let benchmarks_to_run =
+            apply_overrides ~iterations_override ~warmup_override benchmarks
+          in
           let benchmarks_to_run =
             match pattern with
             | Some pattern -> List.filter benchmarks_to_run ~fn:(matches_pattern ~pattern)

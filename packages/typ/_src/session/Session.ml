@@ -94,8 +94,7 @@ let local_source_ids_for_module_in_scope = fun session ~current_module_name modu
           ~current_module_name
           ~required_module_name
           ~candidate_module_name:(LocalModules.InternalName.of_string (Source.module_name source))
-        |> Option.map (fun depth ->
-          (source.source_id, depth)))
+        |> Option.map (fun depth -> (source.source_id, depth)))
   in
   let best_depth =
     matching_sources
@@ -162,7 +161,9 @@ let register_module_name = fun session ~module_name ~source_id ->
   session
 
 let add_source_indexes = fun session (source: Source.t) ->
-  let _ = Collections.HashMap.insert session.sources_by_id (SourceId.to_int source.source_id) source in
+  let _ =
+    Collections.HashMap.insert session.sources_by_id (SourceId.to_int source.source_id) source
+  in
   module_name_index_keys source
   |> List.fold_left
     (fun session module_name ->
@@ -173,7 +174,9 @@ let add_source_indexes = fun session (source: Source.t) ->
     session
 
 let update_source_indexes = fun session (source: Source.t) ->
-  let _ = Collections.HashMap.insert session.sources_by_id (SourceId.to_int source.source_id) source in
+  let _ =
+    Collections.HashMap.insert session.sources_by_id (SourceId.to_int source.source_id) source
+  in
   session
 
 let remove_source_indexes = fun session (source: Source.t) ->
@@ -188,8 +191,7 @@ let remove_source_indexes = fun session (source: Source.t) ->
       let remaining_source_ids =
         source_ids_of_module session module_name
         |> List.filter
-          (fun current_source_id ->
-            not (SourceId.equal current_source_id source.source_id))
+          (fun current_source_id -> not (SourceId.equal current_source_id source.source_id))
       in
       if List.is_empty remaining_source_ids then
         let _ = Collections.HashMap.remove session.source_ids_by_module_name module_name in
@@ -473,7 +475,9 @@ let top_level_include_module_paths = fun session (source: Source.t) ->
               )
       in
       let module_paths = List.sort_uniq String.compare module_paths in
-      let _ = Collections.HashMap.insert session.top_level_includes_by_source_hash key module_paths in
+      let _ =
+        Collections.HashMap.insert session.top_level_includes_by_source_hash key module_paths
+      in
       module_paths
 
 let module_dependencies = fun session ~deps_env_key ~deps_env (source: Source.t) ->
@@ -518,7 +522,9 @@ let local_required_names_of_source = fun session ~deps_env_key ~deps_env (source
   |> List.map LocalModules.RequiredName.of_string
 
 let local_module_graph = fun session ->
-  let (deps_env_key, deps_env) = deps_env_for_loaded_modules session session.config.loaded_modules in
+  let (deps_env_key, deps_env) =
+    deps_env_for_loaded_modules session session.config.loaded_modules
+  in
   LocalModuleGraph.create
     ~ordered_sources:(
       session.sources
@@ -535,7 +541,9 @@ let local_module_graph = fun session ->
     )
 
 let collect_missing_module_summaries = fun session ~closure_sources ->
-  let (deps_env_key, deps_env) = deps_env_for_loaded_modules session session.config.loaded_modules in
+  let (deps_env_key, deps_env) =
+    deps_env_for_loaded_modules session session.config.loaded_modules
+  in
   let loaded_module_names =
     session.config.loaded_modules
     |> LoadedModules.names

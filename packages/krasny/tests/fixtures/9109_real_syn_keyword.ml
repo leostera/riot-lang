@@ -6,7 +6,6 @@ type t =
   | Asr
   | Assert
   | Begin
-  | Class
   | Constraint
   | Do
   | Done
@@ -23,8 +22,6 @@ type t =
   | If
   | In
   | Include
-  | Inherit
-  | Initializer
   | Land
   | Lazy
   | Let
@@ -34,13 +31,10 @@ type t =
   | Lxor
   | Lnot
   | Match
-  | Method
   | Mod
   | Module
   | Mutable
-  | New
   | Nonrec
-  | Object
   | Of
   | Open
   | Or
@@ -54,7 +48,6 @@ type t =
   | Try
   | Type
   | Val
-  | Virtual
   | When
   | While
   | With
@@ -65,7 +58,6 @@ let of_string = function
   | "asr" -> Some Asr
   | "assert" -> Some Assert
   | "begin" -> Some Begin
-  | "class" -> Some Class
   | "constraint" -> Some Constraint
   | "do" -> Some Do
   | "done" -> Some Done
@@ -82,8 +74,6 @@ let of_string = function
   | "if" -> Some If
   | "in" -> Some In
   | "include" -> Some Include
-  | "inherit" -> Some Inherit
-  | "initializer" -> Some Initializer
   | "land" -> Some Land
   | "lazy" -> Some Lazy
   | "let" -> Some Let
@@ -93,13 +83,10 @@ let of_string = function
   | "lxor" -> Some Lxor
   | "lnot" -> Some Lnot
   | "match" -> Some Match
-  | "method" -> Some Method
   | "mod" -> Some Mod
   | "module" -> Some Module
   | "mutable" -> Some Mutable
-  | "new" -> Some New
   | "nonrec" -> Some Nonrec
-  | "object" -> Some Object
   | "of" -> Some Of
   | "open" -> Some Open
   | "or" -> Some Or
@@ -113,7 +100,6 @@ let of_string = function
   | "try" -> Some Try
   | "type" -> Some Type
   | "val" -> Some Val
-  | "virtual" -> Some Virtual
   | "when" -> Some When
   | "while" -> Some While
   | "with" -> Some With
@@ -125,7 +111,6 @@ let to_string = function
   | Asr -> "asr"
   | Assert -> "assert"
   | Begin -> "begin"
-  | Class -> "class"
   | Constraint -> "constraint"
   | Do -> "do"
   | Done -> "done"
@@ -142,8 +127,6 @@ let to_string = function
   | If -> "if"
   | In -> "in"
   | Include -> "include"
-  | Inherit -> "inherit"
-  | Initializer -> "initializer"
   | Land -> "land"
   | Lazy -> "lazy"
   | Let -> "let"
@@ -153,13 +136,10 @@ let to_string = function
   | Lxor -> "lxor"
   | Lnot -> "lnot"
   | Match -> "match"
-  | Method -> "method"
   | Mod -> "mod"
   | Module -> "module"
   | Mutable -> "mutable"
-  | New -> "new"
   | Nonrec -> "nonrec"
-  | Object -> "object"
   | Of -> "of"
   | Open -> "open"
   | Or -> "or"
@@ -173,10 +153,16 @@ let to_string = function
   | Try -> "try"
   | Type -> "type"
   | Val -> "val"
-  | Virtual -> "virtual"
   | When -> "when"
   | While -> "while"
   | With -> "with"
 
-let is_opening = function Begin | Struct | Sig | Object -> true | _ -> false
-let is_closing = function End -> true | _ -> false
+let is_opening = function
+  | Begin
+  | Struct
+  | Sig -> true
+  | _ -> false
+
+let is_closing = function
+  | End -> true
+  | _ -> false

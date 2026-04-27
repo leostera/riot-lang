@@ -239,19 +239,16 @@ let bench_tcp_loopback_roundtrip = fun () ->
         lift_tcp_listener (Kernel.Net.TcpListener.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0))
       in
       protect
-        ~finally:(fun () ->
-          close_listener listener)
+        ~finally:(fun () -> close_listener listener)
         (fun () ->
           let addr = lift_tcp_listener (Kernel.Net.TcpListener.local_addr listener) in
           let client = connect_stream poll addr in
           protect
-            ~finally:(fun () ->
-              close_stream client)
+            ~finally:(fun () -> close_stream client)
             (fun () ->
               let server = accept_stream poll listener in
               protect
-                ~finally:(fun () ->
-                  close_stream server)
+                ~finally:(fun () -> close_stream server)
                 (fun () ->
                   let payload = Kernel.Bytes.from_string "ping" in
                   let reply = Kernel.Bytes.from_string "pong" in
@@ -293,19 +290,16 @@ let bench_tcp_vectored_roundtrip = fun () ->
         lift_tcp_listener (Kernel.Net.TcpListener.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0))
       in
       protect
-        ~finally:(fun () ->
-          close_listener listener)
+        ~finally:(fun () -> close_listener listener)
         (fun () ->
           let addr = lift_tcp_listener (Kernel.Net.TcpListener.local_addr listener) in
           let client = connect_stream poll addr in
           protect
-            ~finally:(fun () ->
-              close_stream client)
+            ~finally:(fun () -> close_stream client)
             (fun () ->
               let server = accept_stream poll listener in
               protect
-                ~finally:(fun () ->
-                  close_stream server)
+                ~finally:(fun () -> close_stream server)
                 (fun () ->
                   let payload =
                     Kernel.IO.IoVec.from_string_array [|"pi"; "ng"|]
@@ -385,19 +379,15 @@ let bench_tcp_connect_accept_loopback = fun () ->
         lift_tcp_listener (Kernel.Net.TcpListener.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0))
       in
       protect
-        ~finally:(fun () ->
-          close_listener listener)
+        ~finally:(fun () -> close_listener listener)
         (fun () ->
           let addr = lift_tcp_listener (Kernel.Net.TcpListener.local_addr listener) in
           let client = connect_stream poll addr in
           protect
-            ~finally:(fun () ->
-              close_stream client)
+            ~finally:(fun () -> close_stream client)
             (fun () ->
               let server = accept_stream poll listener in
-              protect ~finally:(fun () ->
-                close_stream server) (fun () ->
-                ()))))
+              protect ~finally:(fun () -> close_stream server) (fun () -> ()))))
 
 let bench_tcp_accept_burst = fun () ->
   with_poll
@@ -406,8 +396,7 @@ let bench_tcp_accept_burst = fun () ->
         lift_tcp_listener (Kernel.Net.TcpListener.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0))
       in
       protect
-        ~finally:(fun () ->
-          close_listener listener)
+        ~finally:(fun () -> close_listener listener)
         (fun () ->
           let addr = lift_tcp_listener (Kernel.Net.TcpListener.local_addr listener) in
           let rec connect_many remaining acc =
@@ -419,8 +408,7 @@ let bench_tcp_accept_burst = fun () ->
           in
           let clients = connect_many 16 [] in
           protect
-            ~finally:(fun () ->
-              close_streams clients)
+            ~finally:(fun () -> close_streams clients)
             (fun () ->
               let rec accept_many remaining acc =
                 if remaining = 0 then
@@ -430,24 +418,22 @@ let bench_tcp_accept_burst = fun () ->
                   accept_many (remaining - 1) (server :: acc)
               in
               let servers = accept_many 16 [] in
-              protect ~finally:(fun () ->
-                close_streams servers) (fun () ->
-                ()))))
+              protect ~finally:(fun () -> close_streams servers) (fun () -> ()))))
 
 let bench_udp_loopback_datagram = fun () ->
   with_poll
     (fun poll ->
-      let server = lift_udp (Kernel.Net.UdpSocket.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0)) in
+      let server =
+        lift_udp (Kernel.Net.UdpSocket.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0))
+      in
       protect
-        ~finally:(fun () ->
-          close_udp server)
+        ~finally:(fun () -> close_udp server)
         (fun () ->
           let client =
             lift_udp (Kernel.Net.UdpSocket.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0))
           in
           protect
-            ~finally:(fun () ->
-              close_udp client)
+            ~finally:(fun () -> close_udp client)
             (fun () ->
               let server_addr = lift_udp (Kernel.Net.UdpSocket.local_addr server) in
               let _ =
@@ -461,26 +447,30 @@ let bench_udp_loopback_datagram = fun () ->
 let bench_udp_connected_roundtrip = fun () ->
   with_poll
     (fun poll ->
-      let server = lift_udp (Kernel.Net.UdpSocket.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0)) in
+      let server =
+        lift_udp (Kernel.Net.UdpSocket.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0))
+      in
       protect
-        ~finally:(fun () ->
-          close_udp server)
+        ~finally:(fun () -> close_udp server)
         (fun () ->
           let client =
             lift_udp (Kernel.Net.UdpSocket.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0))
           in
           protect
-            ~finally:(fun () ->
-              close_udp client)
+            ~finally:(fun () -> close_udp client)
             (fun () ->
               let server_addr = lift_udp (Kernel.Net.UdpSocket.local_addr server) in
               let client_addr = lift_udp (Kernel.Net.UdpSocket.local_addr client) in
               let _ = lift_udp (Kernel.Net.UdpSocket.connect server client_addr) in
               let _ = lift_udp (Kernel.Net.UdpSocket.connect client server_addr) in
-              let _ = lift_udp (Kernel.Net.UdpSocket.send client (Kernel.Bytes.from_string "ping")) in
+              let _ =
+                lift_udp (Kernel.Net.UdpSocket.send client (Kernel.Bytes.from_string "ping"))
+              in
               let server_buf = Kernel.Bytes.create ~size:32 in
               let _ = recv_udp poll ~token:(Kernel.Async.Token.make 408) server server_buf in
-              let _ = lift_udp (Kernel.Net.UdpSocket.send server (Kernel.Bytes.from_string "pong")) in
+              let _ =
+                lift_udp (Kernel.Net.UdpSocket.send server (Kernel.Bytes.from_string "pong"))
+              in
               let client_buf = Kernel.Bytes.create ~size:32 in
               let _ = recv_udp poll ~token:(Kernel.Async.Token.make 409) client client_buf in
               ())))
@@ -488,17 +478,17 @@ let bench_udp_connected_roundtrip = fun () ->
 let bench_udp_burst_datagrams = fun () ->
   with_poll
     (fun poll ->
-      let server = lift_udp (Kernel.Net.UdpSocket.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0)) in
+      let server =
+        lift_udp (Kernel.Net.UdpSocket.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0))
+      in
       protect
-        ~finally:(fun () ->
-          close_udp server)
+        ~finally:(fun () -> close_udp server)
         (fun () ->
           let client =
             lift_udp (Kernel.Net.UdpSocket.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0))
           in
           protect
-            ~finally:(fun () ->
-              close_udp client)
+            ~finally:(fun () -> close_udp client)
             (fun () ->
               let server_addr = lift_udp (Kernel.Net.UdpSocket.local_addr server) in
               let payload = Kernel.Bytes.from_string (String.make ~len:64 ~char:'x') in
@@ -539,19 +529,16 @@ let bench_tcp_bulk_roundtrip = fun () ->
         lift_tcp_listener (Kernel.Net.TcpListener.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0))
       in
       protect
-        ~finally:(fun () ->
-          close_listener listener)
+        ~finally:(fun () -> close_listener listener)
         (fun () ->
           let addr = lift_tcp_listener (Kernel.Net.TcpListener.local_addr listener) in
           let client = connect_stream poll addr in
           protect
-            ~finally:(fun () ->
-              close_stream client)
+            ~finally:(fun () -> close_stream client)
             (fun () ->
               let server = accept_stream poll listener in
               protect
-                ~finally:(fun () ->
-                  close_stream server)
+                ~finally:(fun () -> close_stream server)
                 (fun () ->
                   let server_buf = Kernel.Bytes.create ~size:bulk_len in
                   let client_buf = Kernel.Bytes.create ~size:bulk_len in
@@ -587,24 +574,23 @@ let bench_tcp_bulk_roundtrip = fun () ->
 let bench_udp_connected_peer_filtered_roundtrip = fun () ->
   with_poll
     (fun poll ->
-      let server = lift_udp (Kernel.Net.UdpSocket.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0)) in
+      let server =
+        lift_udp (Kernel.Net.UdpSocket.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0))
+      in
       protect
-        ~finally:(fun () ->
-          close_udp server)
+        ~finally:(fun () -> close_udp server)
         (fun () ->
           let client =
             lift_udp (Kernel.Net.UdpSocket.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0))
           in
           protect
-            ~finally:(fun () ->
-              close_udp client)
+            ~finally:(fun () -> close_udp client)
             (fun () ->
               let other =
                 lift_udp (Kernel.Net.UdpSocket.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0))
               in
               protect
-                ~finally:(fun () ->
-                  close_udp other)
+                ~finally:(fun () -> close_udp other)
                 (fun () ->
                   let server_addr = lift_udp (Kernel.Net.UdpSocket.local_addr server) in
                   let client_addr = lift_udp (Kernel.Net.UdpSocket.local_addr client) in
@@ -656,8 +642,7 @@ let bench_udp_many_source_readiness = fun () ->
       in
       let pairs = List.reverse (bind_many 16 []) in
       protect
-        ~finally:(fun () ->
-          close_udp_pairs pairs)
+        ~finally:(fun () -> close_udp_pairs pairs)
         (fun () ->
           let rec register index = function
             | [] -> ()
@@ -694,8 +679,7 @@ let bench_tcp_many_stream_readiness = fun () ->
         lift_tcp_listener (Kernel.Net.TcpListener.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0))
       in
       protect
-        ~finally:(fun () ->
-          close_listener listener)
+        ~finally:(fun () -> close_listener listener)
         (fun () ->
           let addr = lift_tcp_listener (Kernel.Net.TcpListener.local_addr listener) in
           let rec connect_many remaining clients servers =
@@ -740,7 +724,9 @@ let bench_tcp_many_stream_readiness = fun () ->
               in
               register 0 servers;
               send_all 0 clients;
-              let _ = lift_async (Kernel.Async.Poll.poll ~timeout:100_000_000L ~max_events:32 poll) in
+              let _ =
+                lift_async (Kernel.Async.Poll.poll ~timeout:100_000_000L ~max_events:32 poll)
+              in
               ())))
 
 let benchmarks =

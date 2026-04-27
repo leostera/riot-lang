@@ -663,8 +663,7 @@ let unit_roundtrip_prop =
     "serde-toml property empty record roundtrips"
     Arbitrary.bool
     (fun _ ->
-      roundtrip_in_memory empty_encode empty_decode (fun () () ->
-        true) ())
+      roundtrip_in_memory empty_encode empty_decode (fun () () -> true) ())
 
 let bool_roundtrip_prop =
   run_property

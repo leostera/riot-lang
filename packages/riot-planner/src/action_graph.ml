@@ -272,10 +272,8 @@ let module_to_actions ~package ~profile ~ctx ~dep_includes ~get_dep_outputs ~get
             let dep_outputs = get_dep_outputs dep_id in
             match get_dep_kind dep_id with
             | Some (Module_node.Native _) ->
-                List.filter dep_outputs ~fn:(fun output ->
-                  Path.extension output = Some ".o")
-            | _ -> List.filter dep_outputs ~fn:(fun output ->
-              Path.extension output = Some ".cmx"))
+                List.filter dep_outputs ~fn:(fun output -> Path.extension output = Some ".o")
+            | _ -> List.filter dep_outputs ~fn:(fun output -> Path.extension output = Some ".cmx"))
         |> List.concat
       in
       (* Deduplicate objects without reordering them: OCaml link order must stay
@@ -314,8 +312,7 @@ let module_to_actions ~package ~profile ~ctx ~dep_includes ~get_dep_outputs ~get
             let dep_outputs = get_dep_outputs dep_id in
             match get_dep_kind dep_id with
             | Some (Module_node.ML _) ->
-                List.filter dep_outputs ~fn:(fun output ->
-                  Path.extension output = Some ".cmx")
+                List.filter dep_outputs ~fn:(fun output -> Path.extension output = Some ".cmx")
             | _ -> [])
         |> List.concat
       in
@@ -337,8 +334,7 @@ let module_to_actions ~package ~profile ~ctx ~dep_includes ~get_dep_outputs ~get
             (* Make foreign outputs absolute by joining with foreign dep path and normalizing *)
             List.map
               fdep.outputs
-              ~fn:(fun out ->
-                Path.normalize (Path.join fdep.path out)))
+              ~fn:(fun out -> Path.normalize (Path.join fdep.path out)))
         |> List.concat
       in
       let binary_output = Path.v name in
@@ -359,8 +355,7 @@ let module_to_actions ~package ~profile ~ctx ~dep_includes ~get_dep_outputs ~get
           ~fn:(fun (dep: Dependency.t) ->
             match List.find
               dep.package.compiler.target_overrides
-              ~fn:(fun (platform, _) ->
-                String.equal platform target_platform) with
+              ~fn:(fun (platform, _) -> String.equal platform target_platform) with
             | Some (_, target_override) -> (
                 match target_override.profile_override with
                 | Some override -> (

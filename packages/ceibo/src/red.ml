@@ -55,8 +55,7 @@ module SyntaxNode = struct
                 + List.fold_left
                   (Green.leading_trivia token)
                   ~init:0
-                  ~fn:(fun acc trivia ->
-                    acc + Green.trivia_width trivia);
+                  ~fn:(fun acc trivia -> acc + Green.trivia_width trivia);
               }
           | Green.Node child_node ->
               Node { green_node = child_node; parent = Some node; offset = !running_offset }

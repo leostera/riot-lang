@@ -394,7 +394,9 @@ let parse_sandbox_path = fun path ->
       if after_sandbox >= String.length path then
         None
       else
-        let rest = String.sub path ~offset:after_sandbox ~len:(String.length path - after_sandbox) in
+        let rest =
+          String.sub path ~offset:after_sandbox ~len:(String.length path - after_sandbox)
+        in
         (* Find first slash to separate package-hash from path *)
         (
           match String.index_of rest ~char:'/' with

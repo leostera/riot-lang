@@ -85,8 +85,7 @@ let apply_patches (base_value: Spec.value) updates: Spec.value =
           ~init:kvs
           ~fn:(fun acc ((key, new_value)) ->
             (* Replace or add the key *)
-            List.filter acc ~fn:(fun ((k, _)) ->
-              not (String.equal k key)) @ [ (key, new_value); ])
+            List.filter acc ~fn:(fun ((k, _)) -> not (String.equal k key)) @ [ (key, new_value); ])
       in
       Map updated_kvs
   | _ -> panic "Can only patch Map values"

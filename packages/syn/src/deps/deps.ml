@@ -174,10 +174,9 @@ module Env = struct
         | Some (Node (free, children)) -> (
             match rest with
             | [] -> Some free
-            | _ when not (List.is_empty free) -> Some free
             | _ -> (
                 match lookup_free ~use_open_fallback rest children with
-                | Some free -> Some free
+                | Some child_free -> Some (Names.union free child_free)
                 | None -> Some free
               )
           )

@@ -298,11 +298,9 @@ let concurrent_producers_preserve_every_value =
       let batches = make_batches sizes in
       let parent = self () in
       let producer_pids =
-        spawn_producers ~parent ~queue ~batches ~yield_every:5 ~on_done:(fun () ->
-          ())
+        spawn_producers ~parent ~queue ~batches ~yield_every:5 ~on_done:(fun () -> ())
       in
-      List.for_each producer_pids ~fn:(fun pid ->
-        send pid Queue_property_go);
+      List.for_each producer_pids ~fn:(fun pid -> send pid Queue_property_go);
       match wait_for_producers ~producer_count:(List.length batches) with
       | Error error -> Property.fail ("producer coordination failed: " ^ error)
       | Ok () ->
@@ -353,8 +351,7 @@ let concurrent_consumers_drain_each_value_once =
           spawn_consumers (remaining - 1) (pid :: acc)
       in
       let consumer_pids = spawn_consumers consumer_count [] in
-      List.for_each consumer_pids ~fn:(fun pid ->
-        send pid Queue_property_go);
+      List.for_each consumer_pids ~fn:(fun pid -> send pid Queue_property_go);
       match collect_consumer_values ~consumer_count with
       | Error error -> Property.fail ("consumer coordination failed: " ^ error)
       | Ok consumed_lists ->
@@ -416,13 +413,10 @@ let concurrent_producers_and_consumers_preserve_every_value =
           ~queue
           ~batches
           ~yield_every:3
-          ~on_done:(fun () ->
-            ignore (Sync.Atomic.fetch_and_add done_producers 1))
+          ~on_done:(fun () -> ignore (Sync.Atomic.fetch_and_add done_producers 1))
       in
-      List.for_each consumer_pids ~fn:(fun pid ->
-        send pid Queue_property_go);
-      List.for_each producer_pids ~fn:(fun pid ->
-        send pid Queue_property_go);
+      List.for_each consumer_pids ~fn:(fun pid -> send pid Queue_property_go);
+      List.for_each producer_pids ~fn:(fun pid -> send pid Queue_property_go);
       match wait_for_producers ~producer_count with
       | Error error ->
           Property.fail ("mixed coordination failed while waiting for producers: " ^ error)
@@ -487,11 +481,7 @@ let tests = [
         concurrent_producers_and_consumers_preserve_every_value);
 ]
 
-let main ~args = Test.Cli.main
-  ~execution_mode:Test.Cli.Linear
-  ~name:"queue_property"
-  ~tests
-  ~args
-  ()
+let main ~args =
+  Test.Cli.main ~execution_mode:Test.Cli.Linear ~name:"queue_property" ~tests ~args ()
 
 let () = Runtime.run ~main ~args:Env.args ()

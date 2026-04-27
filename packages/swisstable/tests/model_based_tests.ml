@@ -47,8 +47,7 @@ let insert_equivalence_prop =
       if not (Swisstable.len swiss = Collections.HashMap.length hash) then
         fail "Lengths differ after inserts";
       List.for_all
-        (fun (k, _) ->
-          Swisstable.get swiss k = Collections.HashMap.get hash ~key:k)
+        (fun (k, _) -> Swisstable.get swiss k = Collections.HashMap.get hash ~key:k)
         pairs)
 
 (* Property 2: Get operations produce identical results *)
@@ -70,8 +69,7 @@ let get_equivalence_prop =
           let _ = Collections.HashMap.insert hash ~key:k ~value:v in
           ());
       (* Verify gets match *)
-      List.for_all (fun k ->
-        Swisstable.get swiss k = Collections.HashMap.get hash ~key:k) get_keys)
+      List.for_all (fun k -> Swisstable.get swiss k = Collections.HashMap.get hash ~key:k) get_keys)
 
 (* Property 3: Remove operations produce identical results *)
 
@@ -124,8 +122,7 @@ let contains_equivalence_prop =
           ());
       (* Verify contains_key matches *)
       List.for_all
-        (fun k ->
-          Swisstable.contains_key swiss k = Collections.HashMap.contains_key hash k)
+        (fun k -> Swisstable.contains_key swiss k = Collections.HashMap.contains_key hash k)
         check_keys)
 
 (* Property 5: Clear produces identical results *)
@@ -173,8 +170,7 @@ let to_list_equivalence_prop =
       (* Same length *)
       if not (Collections.List.length swiss_list = Collections.List.length hash_list) then
         fail "to_list lengths differ";
-      List.for_all (fun entry ->
-        List.contains hash_list ~value:entry) swiss_list)
+      List.for_all (fun entry -> List.contains hash_list ~value:entry) swiss_list)
 
 (* Property 7: keys produce same keys (modulo order) *)
 
@@ -197,8 +193,7 @@ let keys_equivalence_prop =
       (* Same length *)
       if not (Collections.List.length swiss_keys = Collections.List.length hash_keys) then
         fail "keys lengths differ";
-      List.for_all (fun k ->
-        List.contains hash_keys ~value:k) swiss_keys)
+      List.for_all (fun k -> List.contains hash_keys ~value:k) swiss_keys)
 
 (* Property 8: values produce same values (modulo order) *)
 
@@ -242,19 +237,13 @@ let fold_equivalence_prop =
           let _ = Collections.HashMap.insert hash ~key:k ~value:v in
           ());
       (* Count entries *)
-      let swiss_count = Swisstable.fold (fun _ _ acc ->
-        acc + 1) swiss 0
-      in
-      let hash_count = Collections.HashMap.fold_left hash ~init:0 ~fn:(fun acc _ _ ->
-        acc + 1)
-      in
+      let swiss_count = Swisstable.fold (fun _ _ acc -> acc + 1) swiss 0 in
+      let hash_count = Collections.HashMap.fold_left hash ~init:0 ~fn:(fun acc _ _ -> acc + 1) in
       if not (swiss_count = hash_count) then
         fail "fold counts differ";
-      let swiss_sum = Swisstable.fold (fun _ v acc ->
-        acc + v) swiss 0
-      in
-      let hash_sum = Collections.HashMap.fold_left hash ~init:0 ~fn:(fun acc _ value ->
-        acc + value)
+      let swiss_sum = Swisstable.fold (fun _ v acc -> acc + v) swiss 0 in
+      let hash_sum =
+        Collections.HashMap.fold_left hash ~init:0 ~fn:(fun acc _ value -> acc + value)
       in
       swiss_sum = hash_sum)
 
@@ -322,8 +311,7 @@ let many_ops_equivalence_prop =
       if not (Swisstable.len swiss = Collections.HashMap.length hash) then
         fail "Lengths differ after mixed operations";
       List.for_all
-        (fun (k, _) ->
-          Swisstable.get swiss k = Collections.HashMap.get hash ~key:k)
+        (fun (k, _) -> Swisstable.get swiss k = Collections.HashMap.get hash ~key:k)
         pairs)
 
 (* Property 12: Resize maintains equivalence *)
@@ -346,10 +334,8 @@ let resize_equivalence_prop =
       let all_match =
         List.init
           ~count:101
-          ~fn:(fun i ->
-            Swisstable.get swiss i = Collections.HashMap.get hash ~key:i)
-        |> List.for_all (fun x ->
-          x)
+          ~fn:(fun i -> Swisstable.get swiss i = Collections.HashMap.get hash ~key:i)
+        |> List.for_all (fun x -> x)
       in
       if not all_match then
         fail "Entries differ after resize";

@@ -379,7 +379,9 @@ let to_toml = fun (lockfile: t) ->
     ("dependency_hash", Toml.String lockfile.dependency_hash);
   ]
   in
-  let fields = ("packages", Toml.Array (List.map lockfile.packages ~fn:package_to_toml)) :: fields in
+  let fields =
+    ("packages", Toml.Array (List.map lockfile.packages ~fn:package_to_toml)) :: fields
+  in
   Toml.Table (List.reverse fields)
 
 let of_toml = fun value ->

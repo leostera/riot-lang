@@ -18,13 +18,13 @@ val new_package:
   path:Path.t ->
   name:string ->
   is_library:bool ->
-  ((string * string), string) result
+  (string * string, string) result
 
 val new_standalone_package:
   path:Path.t ->
   name:string ->
   is_library:bool ->
-  ((string * string), string) result
+  (string * string, string) result
 
 (** ArgParser command definition for `riot init`. *)
 val command: Std.ArgParser.command

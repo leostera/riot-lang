@@ -267,8 +267,7 @@ let best_matching_local_module_names = fun (snapshot: t) (slot: analysis_slot) ~
           ~current_module_name
           ~required_module_name:required_name
           ~candidate_module_name:(LocalModules.InternalName.of_string candidate_module_name)
-        |> Option.map (fun depth ->
-          (candidate_module_name, depth)))
+        |> Option.map (fun depth -> (candidate_module_name, depth)))
   in
   let best_depth =
     matching_candidates
@@ -603,8 +602,7 @@ and partial_module_result = fun (snapshot: t) module_name ->
     |> List.filter_map
       (fun (slot: analysis_slot) ->
         slot.analysis
-        |> Option.map (fun analysis ->
-          (slot.source, analysis)))
+        |> Option.map (fun analysis -> (slot.source, analysis)))
   in
   let preferred_source =
     match select_partial_source available_sources InterfaceSource with

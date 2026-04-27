@@ -125,8 +125,10 @@ module Fields = struct
           let next_entries =
             List.map
               group
-              ~fn:(fun entry ->
-                { suffix = drop_prefix entry.suffix prefix_length; tag = entry.tag })
+              ~fn:(fun entry -> {
+                suffix = drop_prefix entry.suffix prefix_length;
+                tag = entry.tag;
+              })
           in
           { first = String.get_unchecked label ~at:0; label; next = build_node next_entries })
     in

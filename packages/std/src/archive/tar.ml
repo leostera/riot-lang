@@ -212,8 +212,7 @@ let entries = fun reader ->
             | Ok (Engine.Entry header) ->
                 let* entry =
                   entry_of_header header
-                  |> Result.map_err ~fn:(fun err ->
-                    Entries_error err)
+                  |> Result.map_err ~fn:(fun err -> Entries_error err)
                 in
                 let* () = drain_entry_entries source tar_reader in
                 loop (entry :: acc)
@@ -312,13 +311,11 @@ let extract = fun reader ~into ->
             | Ok (Engine.Entry header) ->
                 let* entry =
                   entry_of_header header
-                  |> Result.map_err ~fn:(fun err ->
-                    Extract_error err)
+                  |> Result.map_err ~fn:(fun err -> Extract_error err)
                 in
                 let* relative_path =
                   safe_relative_path ~kind:entry.kind entry.path
-                  |> Result.map_err ~fn:(fun err ->
-                    Extract_error err)
+                  |> Result.map_err ~fn:(fun err -> Extract_error err)
                 in
                 let* () =
                   match (entry.kind, relative_path) with
@@ -329,43 +326,36 @@ let extract = fun reader ~into ->
                   | (Directory, None) ->
                       let* () =
                         Fs.create_dir_all into
-                        |> Result.map_err ~fn:(fun err ->
-                          Extract_fs_error err)
+                        |> Result.map_err ~fn:(fun err -> Extract_fs_error err)
                       in
                       let* () = drain_entry_extract source tar_reader in
                       set_permissions into entry.mode
-                      |> Result.map_err ~fn:(fun err ->
-                        Extract_fs_error err)
+                      |> Result.map_err ~fn:(fun err -> Extract_fs_error err)
                   | (Directory, Some relative_path) ->
                       let target = Path.join into relative_path in
                       let* () =
                         register_target seen target
-                        |> Result.map_err ~fn:(fun err ->
-                          Extract_error err)
+                        |> Result.map_err ~fn:(fun err -> Extract_error err)
                       in
                       let* () =
                         Fs.create_dir_all target
-                        |> Result.map_err ~fn:(fun err ->
-                          Extract_fs_error err)
+                        |> Result.map_err ~fn:(fun err -> Extract_fs_error err)
                       in
                       let* () = drain_entry_extract source tar_reader in
                       set_permissions target entry.mode
-                      |> Result.map_err ~fn:(fun err ->
-                        Extract_fs_error err)
+                      |> Result.map_err ~fn:(fun err -> Extract_fs_error err)
                   | (File, Some relative_path) ->
                       let target = Path.join into relative_path in
                       let* () =
                         register_target seen target
-                        |> Result.map_err ~fn:(fun err ->
-                          Extract_error err)
+                        |> Result.map_err ~fn:(fun err -> Extract_error err)
                       in
                       let* () =
                         match Path.parent target with
                         | None -> Ok ()
                         | Some parent ->
                             Fs.create_dir_all parent
-                            |> Result.map_err ~fn:(fun err ->
-                              Extract_fs_error err)
+                            |> Result.map_err ~fn:(fun err -> Extract_fs_error err)
                       in
                       begin
                         match Fs.File.create target with
@@ -378,8 +368,7 @@ let extract = fun reader ~into ->
                               (fun () ->
                                 let* () = write_entry_file source tar_reader file in
                                 set_permissions target entry.mode
-                                |> Result.map_err ~fn:(fun err ->
-                                  Extract_fs_error err))
+                                |> Result.map_err ~fn:(fun err -> Extract_fs_error err))
                       end
                   | (File, None)
                   | (Symlink, _)

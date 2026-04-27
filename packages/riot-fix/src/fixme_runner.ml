@@ -210,8 +210,7 @@ let dependency_entries = fun workspace_root providers ->
               pkg.name
               provider.package_name)
         |> Option.map
-          ~fn:(fun (pkg: Riot_model.Package_manifest.t) ->
-            (pkg.path, pkg.build_dependencies))
+          ~fn:(fun (pkg: Riot_model.Package_manifest.t) -> (pkg.path, pkg.build_dependencies))
         |> Option.unwrap_or ~default:(provider.package_path, [])
         |> fun (package_path, build_dependencies) ->
           build_dependencies
@@ -220,8 +219,7 @@ let dependency_entries = fun workspace_root providers ->
               match dep.source with
               | { workspace = true; _ } ->
                   workspace_package_path dep.name
-                  |> Option.map ~fn:(fun path ->
-                    (dep.name, path))
+                  |> Option.map ~fn:(fun path -> (dep.name, path))
               | { builtin = true; _ } -> None
               | { path = Some path; _ } ->
                   let path =

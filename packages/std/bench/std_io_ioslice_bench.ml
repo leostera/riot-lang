@@ -325,10 +325,8 @@ let bench_request_line_scan_current () =
 let bench_request_line_scan_optimized () =
   run_scan mixed_request_line_slices ' ' optimized_take_until_char
 
-let bench_header_line_scan_current () = run_scan
-  mixed_header_line_slices
-  ':'
-  current_take_until_char
+let bench_header_line_scan_current () =
+  run_scan mixed_header_line_slices ':' current_take_until_char
 
 let bench_header_line_scan_optimized () =
   run_scan mixed_header_line_slices ':' optimized_take_until_char

@@ -90,8 +90,7 @@ let test_save_large_object_roundtrip = fun _ctx ->
       let content =
         String.init
           ~len:1_000_000
-          ~fn:(fun index ->
-            Char.from_int_unchecked (Char.to_int 'a' + (index mod 26)))
+          ~fn:(fun index -> Char.from_int_unchecked (Char.to_int 'a' + (index mod 26)))
       in
       let _ =
         Contentstore.save_object store ~hash ~content

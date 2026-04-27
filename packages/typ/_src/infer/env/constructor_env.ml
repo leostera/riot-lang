@@ -395,7 +395,9 @@ let qualify_inline_record_labels = fun ~root type_decls labels ->
           { label with field_type = qualified_field_type })
 
 let qualify_entry = fun ~root ~type_decls entry ->
-  let qualified_scheme = qualify_scheme_with_local_types ~root type_decls entry.constructor.scheme in
+  let qualified_scheme =
+    qualify_scheme_with_local_types ~root type_decls entry.constructor.scheme
+  in
   let qualified_inline_record_labels =
     entry.constructor.inline_record_labels
     |> Option.map (qualify_inline_record_labels ~root type_decls)
@@ -420,12 +422,11 @@ let of_type_decls = fun type_decls ->
         in
         type_decl.declaration.constructors
         |> List.map
-          (fun constructor ->
-            {
-              owner_path;
-              owner_type_constructor_id = type_decl.declaration.type_constructor_id;
-              constructor;
-            }))
+          (fun constructor -> {
+            owner_path;
+            owner_type_constructor_id = type_decl.declaration.type_constructor_id;
+            constructor;
+          }))
   in
   {
     current = current_of_entries entries;

@@ -145,7 +145,9 @@ let plan_multiple_packages_includes_union_of_dependencies = fun _ctx ->
       Ok ()
 
 let plan_unknown_package_reports_available_packages = fun _ctx ->
-  let workspace = make_workspace [ make_package "std"; make_package ~dependencies:[ "std" ] "app" ] in
+  let workspace =
+    make_workspace [ make_package "std"; make_package ~dependencies:[ "std" ] "app" ]
+  in
   match plan_workspace workspace (Package (package_name "missing")) Runtime with
   | Ok _ -> Error "expected PackageNotFound"
   | Error (PackageNotFound { name; available }) ->
@@ -157,7 +159,9 @@ let plan_unknown_package_reports_available_packages = fun _ctx ->
   | Error _ -> Error "expected PackageNotFound"
 
 let plan_multiple_unknown_packages_reports_all_missing_names = fun _ctx ->
-  let workspace = make_workspace [ make_package "std"; make_package ~dependencies:[ "std" ] "app" ] in
+  let workspace =
+    make_workspace [ make_package "std"; make_package ~dependencies:[ "std" ] "app" ]
+  in
   match plan_workspace
     workspace
     (Packages (List.map [ "missing-a"; "app"; "missing-b" ] ~fn:package_name))

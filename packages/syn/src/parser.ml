@@ -554,8 +554,7 @@ let starts_structure_item = function
   | Syntax_kind.OPEN_KW
   | Syntax_kind.INCLUDE_KW
   | Syntax_kind.EXTERNAL_KW
-  | Syntax_kind.EXCEPTION_KW
-  | Syntax_kind.CLASS_KW -> true
+  | Syntax_kind.EXCEPTION_KW -> true
   | _ -> false
 
 let kind_at_position = fun p position -> (raw_at p (significant_raw_at p position)).Raw_token.kind
@@ -584,8 +583,7 @@ let starts_signature_item = function
   | Syntax_kind.OPEN_KW
   | Syntax_kind.INCLUDE_KW
   | Syntax_kind.EXTERNAL_KW
-  | Syntax_kind.EXCEPTION_KW
-  | Syntax_kind.CLASS_KW -> true
+  | Syntax_kind.EXCEPTION_KW -> true
   | _ -> false
 
 let starts_signature_item_at_position = fun p position ->
@@ -769,8 +767,6 @@ let can_start_atom = function
   | Syntax_kind.LAZY_KW
   | Syntax_kind.WHILE_KW
   | Syntax_kind.FOR_KW
-  | Syntax_kind.OBJECT_KW
-  | Syntax_kind.NEW_KW
   | Syntax_kind.BACKTICK
   | Syntax_kind.TILDE
   | Syntax_kind.QUESTION
@@ -790,7 +786,6 @@ let missing_binding_expr_boundary = fun p ~signature ~top_level ->
       | Syntax_kind.LBRACKET
       | Syntax_kind.LBRACKET_BAR
       | Syntax_kind.BEGIN_KW
-      | Syntax_kind.OBJECT_KW
       | Syntax_kind.STRUCT_KW
       | Syntax_kind.SIG_KW -> depth + 1
       | Syntax_kind.RPAREN
@@ -1131,7 +1126,6 @@ let rec consume_balanced_until = fun p ~closer depth ->
         | Syntax_kind.LBRACKET
         | Syntax_kind.LBRACKET_BAR
         | Syntax_kind.BEGIN_KW
-        | Syntax_kind.OBJECT_KW
         | Syntax_kind.STRUCT_KW
         | Syntax_kind.SIG_KW -> depth + 1
         | Syntax_kind.RPAREN
@@ -1155,7 +1149,6 @@ let rec consume_angle_balanced_until_gt = fun p depth ->
         | Syntax_kind.LBRACKET
         | Syntax_kind.LBRACKET_BAR
         | Syntax_kind.BEGIN_KW
-        | Syntax_kind.OBJECT_KW
         | Syntax_kind.STRUCT_KW
         | Syntax_kind.SIG_KW
         | Syntax_kind.LT -> Int.add depth 1
@@ -1405,14 +1398,7 @@ let rec parse_expression = fun
         | _ -> lhs
       )
     else if at p Syntax_kind.HASH then
-      if Syntax_kind.(peek_kind p 1 = IDENT) then
-        (
-          let marker = precede p lhs in
-          bump p;
-          expect p Syntax_kind.IDENT (invalid_expression p);
-          loop (complete p marker Syntax_kind.METHOD_CALL_EXPR)
-        )
-      else if min_bp <= 50 then
+      if min_bp <= 50 then
         (
           let marker = precede p lhs in
           consume_symbolic_operator p;
@@ -1495,7 +1481,9 @@ and parse_prefix_or_atom = fun p ~signature ~stop_at_item ~stop_at_semi ~stop_at
         (
           let marker = start_node p in
           bump p;
-          let _operand = parse_expression p ~signature ~stop_at_item ~stop_at_semi ~stop_at_comma 70 in
+          let _operand =
+            parse_expression p ~signature ~stop_at_item ~stop_at_semi ~stop_at_comma 70
+          in
           complete p marker Syntax_kind.PREFIX_EXPR
         )
   | Syntax_kind.LET_KW -> parse_let_expr p ~signature ~stop_at_item ~stop_at_semi ~stop_at_comma
@@ -1548,8 +1536,6 @@ and parse_prefix_or_atom = fun p ~signature ~stop_at_item ~stop_at_semi ~stop_at
         Syntax_kind.LAZY_EXPR
   | Syntax_kind.WHILE_KW -> parse_while_expr p ~signature ~stop_at_item ~stop_at_semi ~stop_at_comma
   | Syntax_kind.FOR_KW -> parse_for_expr p ~signature ~stop_at_item ~stop_at_semi ~stop_at_comma
-  | Syntax_kind.OBJECT_KW -> parse_object_expr p
-  | Syntax_kind.NEW_KW -> parse_new_expr p
   | Syntax_kind.IDENT -> parse_path_expr p
   | Syntax_kind.INT
   | Syntax_kind.FLOAT
@@ -1624,22 +1610,6 @@ and parse_unreachable_expr = fun p ->
   let marker = start_node p in
   bump p;
   complete p marker Syntax_kind.UNREACHABLE_EXPR
-
-and parse_object_expr = fun p ->
-  let marker = start_node p in
-  bump p;
-  consume_balanced_until p ~closer:Syntax_kind.END_KW 0;
-  expect p Syntax_kind.END_KW (invalid_expression p);
-  complete p marker Syntax_kind.OBJECT_EXPR
-
-and parse_new_expr = fun p ->
-  let marker = start_node p in
-  bump p;
-  if at p Syntax_kind.IDENT then
-    ignore (parse_path_expr p)
-  else
-    Event.Buffer.missing p.events ~kind:Syntax_kind.IDENT ~offset:(current_offset p);
-  complete p marker Syntax_kind.NEW_EXPR
 
 and parse_operator_value_expr = fun p ->
   let marker = start_node p in
@@ -1865,8 +1835,7 @@ and parse_record_expr = fun p ~signature ->
       | Syntax_kind.LBRACKET_BAR
       | Syntax_kind.BEGIN_KW
       | Syntax_kind.STRUCT_KW
-      | Syntax_kind.SIG_KW
-      | Syntax_kind.OBJECT_KW -> update_head_ahead Int.(depth + 1) (offset + 1)
+      | Syntax_kind.SIG_KW -> update_head_ahead Int.(depth + 1) (offset + 1)
       | Syntax_kind.RPAREN
       | Syntax_kind.RBRACKET
       | Syntax_kind.RBRACE
@@ -2681,7 +2650,6 @@ and parse_opaque_type_atom = fun p ~stop_at_arrow ->
         bump p;
         consume_angle_balanced_until_gt p 0;
         expect p Syntax_kind.GT (invalid_type_expression p)
-    | Syntax_kind.OBJECT_KW
     | Syntax_kind.SIG_KW ->
         bump p;
         consume_balanced_until p ~closer:Syntax_kind.END_KW 0;
@@ -2970,7 +2938,6 @@ and consume_until_item_boundary = fun p ~signature ->
     | Syntax_kind.LBRACKET
     | Syntax_kind.LBRACKET_BAR
     | Syntax_kind.BEGIN_KW
-    | Syntax_kind.OBJECT_KW
     | Syntax_kind.STRUCT_KW
     | Syntax_kind.SIG_KW -> depth + 1
     | Syntax_kind.RPAREN
@@ -3181,7 +3148,6 @@ and type_decl_body_contains_unsupported_type_syntax = fun p ~signature ->
     | Syntax_kind.LBRACKET
     | Syntax_kind.LBRACKET_BAR
     | Syntax_kind.BEGIN_KW
-    | Syntax_kind.OBJECT_KW
     | Syntax_kind.STRUCT_KW
     | Syntax_kind.SIG_KW -> depth + 1
     | Syntax_kind.RPAREN
@@ -3505,7 +3471,6 @@ and type_decl_tail_depth_after = fun depth kind ->
   | Syntax_kind.LBRACKET
   | Syntax_kind.LBRACKET_BAR
   | Syntax_kind.BEGIN_KW
-  | Syntax_kind.OBJECT_KW
   | Syntax_kind.STRUCT_KW
   | Syntax_kind.SIG_KW -> depth + 1
   | Syntax_kind.RPAREN
@@ -3621,7 +3586,6 @@ and consume_module_decl_head_tail = fun p ~signature ->
     | Syntax_kind.LBRACKET
     | Syntax_kind.LBRACKET_BAR
     | Syntax_kind.BEGIN_KW
-    | Syntax_kind.OBJECT_KW
     | Syntax_kind.STRUCT_KW
     | Syntax_kind.SIG_KW -> depth + 1
     | Syntax_kind.RPAREN
@@ -3650,7 +3614,6 @@ and consume_until_module_expr_boundary = fun p ~signature ->
     | Syntax_kind.LBRACKET
     | Syntax_kind.LBRACKET_BAR
     | Syntax_kind.BEGIN_KW
-    | Syntax_kind.OBJECT_KW
     | Syntax_kind.STRUCT_KW
     | Syntax_kind.SIG_KW -> depth + 1
     | Syntax_kind.RPAREN
@@ -3679,7 +3642,6 @@ and consume_until_module_type_boundary = fun p ~signature ->
     | Syntax_kind.LBRACKET
     | Syntax_kind.LBRACKET_BAR
     | Syntax_kind.BEGIN_KW
-    | Syntax_kind.OBJECT_KW
     | Syntax_kind.STRUCT_KW
     | Syntax_kind.SIG_KW -> depth + 1
     | Syntax_kind.RPAREN
@@ -4138,30 +4100,6 @@ and parse_opaque_decl = fun p ~signature kind diagnostic ->
     kind
     diagnostic
 
-and parse_class_type_decl = fun p ~signature ->
-  let marker = start_node p in
-  expect p Syntax_kind.CLASS_KW (invalid_expression p);
-  expect p Syntax_kind.TYPE_KW (invalid_type_expression p);
-  consume_shortcut_extension_modifier p;
-  consume_declaration_attributes p;
-  if at p Syntax_kind.IDENT then
-    bump p
-  else
-    Event.Buffer.error p.events (missing_type_name p);
-  if at p Syntax_kind.EQ then (
-    bump p;
-    if at p Syntax_kind.OBJECT_KW then (
-      bump p;
-      consume_balanced_until p ~closer:Syntax_kind.END_KW 0;
-      expect p Syntax_kind.END_KW (invalid_type_expression p)
-    ) else if is_eof p || at_item_boundary p ~signature then
-      Event.Buffer.error p.events (invalid_type_expression p)
-    else
-      consume_until_item_boundary p ~signature
-  ) else if not (is_eof p || at_item_boundary p ~signature) then
-    consume_until_item_boundary p ~signature;
-  ignore (complete p marker Syntax_kind.CLASS_DECL)
-
 and parse_expr_item = fun p ~signature ->
   let marker = start_node p in
   ignore (parse_expression p ~signature ~stop_at_item:true 0);
@@ -4206,11 +4144,6 @@ and parse_structure_item = fun p ->
     | Syntax_kind.INCLUDE_KW -> parse_include_decl p ~signature:false
     | Syntax_kind.EXTERNAL_KW -> parse_external_decl p ~signature:false
     | Syntax_kind.EXCEPTION_KW -> parse_exception_decl p ~signature:false
-    | Syntax_kind.CLASS_KW when Syntax_kind.(peek_kind p 1 = TYPE_KW) ->
-        parse_class_type_decl p ~signature:false
-    | Syntax_kind.CLASS_KW ->
-        parse_opaque_decl p ~signature:false Syntax_kind.CLASS_DECL (invalid_expression p)
-    | Syntax_kind.OBJECT_KW -> parse_expr_item p ~signature:false
     | _ -> parse_expr_item p ~signature:false
   );
   ignore (complete p marker Syntax_kind.STRUCTURE_ITEM)
@@ -4234,12 +4167,6 @@ and parse_signature_item = fun p ->
     | Syntax_kind.INCLUDE_KW -> parse_include_decl p ~signature:true
     | Syntax_kind.EXTERNAL_KW -> parse_external_decl p ~signature:true
     | Syntax_kind.EXCEPTION_KW -> parse_exception_decl p ~signature:true
-    | Syntax_kind.CLASS_KW when Syntax_kind.(peek_kind p 1 = TYPE_KW) ->
-        parse_class_type_decl p ~signature:true
-    | Syntax_kind.CLASS_KW ->
-        parse_opaque_decl p ~signature:true Syntax_kind.CLASS_DECL (invalid_expression p)
-    | Syntax_kind.OBJECT_KW ->
-        parse_opaque_decl p ~signature:true Syntax_kind.CLASS_DECL (invalid_expression p)
     | _ ->
         Event.Buffer.error p.events (invalid_expression p);
         parse_opaque_decl p ~signature:true Syntax_kind.ERROR (invalid_expression p)

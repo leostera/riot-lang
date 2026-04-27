@@ -317,7 +317,9 @@ let tests = [
     "no-prime-variables keeps non-prime values clean"
     (fun _ctx ->
       let source = "let current_user2 = 42\n" in
-      let pipeline = Riot_fix.Pipeline.make ~rules:[ Riot_fix.Rules.No_prime_variables.make () ] () in
+      let pipeline =
+        Riot_fix.Pipeline.make ~rules:[ Riot_fix.Rules.No_prime_variables.make () ] ()
+      in
       let result = Riot_fix.Pipeline.run pipeline source in
       Test.assert_equal ~expected:0 ~actual:(List.length result.diagnostics);
       Ok ());
@@ -325,13 +327,17 @@ let tests = [
     "no-prime-variables exposes an auto-fix"
     (fun _ctx ->
       let source = "let state'' = next_state\n" in
-      let pipeline = Riot_fix.Pipeline.make ~rules:[ Riot_fix.Rules.No_prime_variables.make () ] () in
+      let pipeline =
+        Riot_fix.Pipeline.make ~rules:[ Riot_fix.Rules.No_prime_variables.make () ] ()
+      in
       assert_single_fix_rewrite ~pipeline ~source ~expected:"let state3 = next_state\n");
   Test.case
     "no-prime-variables ignores prime-suffixed function bindings"
     (fun _ctx ->
       let source = "let current_user' x = x\n" in
-      let pipeline = Riot_fix.Pipeline.make ~rules:[ Riot_fix.Rules.No_prime_variables.make () ] () in
+      let pipeline =
+        Riot_fix.Pipeline.make ~rules:[ Riot_fix.Rules.No_prime_variables.make () ] ()
+      in
       let result = Riot_fix.Pipeline.run pipeline source in
       Test.assert_equal ~expected:0 ~actual:(List.length result.diagnostics);
       Ok ());
@@ -547,7 +553,9 @@ let tests = [
     "no-unnecessary-rec flags recursive bindings without self-reference"
     (fun _ctx ->
       let source = "let rec render x = x + 1\n" in
-      let pipeline = Riot_fix.Pipeline.make ~rules:[ Riot_fix.Rules.No_unnecessary_rec.make () ] () in
+      let pipeline =
+        Riot_fix.Pipeline.make ~rules:[ Riot_fix.Rules.No_unnecessary_rec.make () ] ()
+      in
       let result = Riot_fix.Pipeline.run pipeline source in
       let codes = diagnostic_rule_ids result.diagnostics in
       Test.assert_equal ~expected:[ "no-unnecessary-rec" ] ~actual:codes;
@@ -556,7 +564,9 @@ let tests = [
     "no-unnecessary-rec keeps real recursive bindings clean"
     (fun _ctx ->
       let source = "let rec loop x = loop x\n" in
-      let pipeline = Riot_fix.Pipeline.make ~rules:[ Riot_fix.Rules.No_unnecessary_rec.make () ] () in
+      let pipeline =
+        Riot_fix.Pipeline.make ~rules:[ Riot_fix.Rules.No_unnecessary_rec.make () ] ()
+      in
       let result = Riot_fix.Pipeline.run pipeline source in
       Test.assert_equal ~expected:0 ~actual:(List.length result.diagnostics);
       Ok ());
@@ -566,7 +576,9 @@ let tests = [
       let source =
         "let main ~args = Bench.Cli.main ~name:\"bench\" ~benchmarks:Bench.[] ~args) ~args:Env.args ()\n"
       in
-      let pipeline = Riot_fix.Pipeline.make ~rules:[ Riot_fix.Rules.No_unnecessary_rec.make () ] () in
+      let pipeline =
+        Riot_fix.Pipeline.make ~rules:[ Riot_fix.Rules.No_unnecessary_rec.make () ] ()
+      in
       let result = Riot_fix.Pipeline.run pipeline source in
       Test.assert_equal ~expected:[] ~actual:(diagnostic_rule_ids result.diagnostics);
       Ok ());
@@ -780,7 +792,9 @@ let solve total feedback_ref =
   Test.case
     "prefer-if-over-bool-match flags full boolean matches"
     (fun _ctx ->
-      let source = "let render ready = match ready with true -> render () | false -> fallback ()\n" in
+      let source =
+        "let render ready = match ready with true -> render () | false -> fallback ()\n"
+      in
       let pipeline =
         Riot_fix.Pipeline.make ~rules:[ Riot_fix.Rules.Prefer_if_over_bool_match.make () ] ()
       in
@@ -812,7 +826,9 @@ let solve total feedback_ref =
   Test.case
     "prefer-if-over-bool-match exposes an auto-fix"
     (fun _ctx ->
-      let source = "let render ready = match ready with true -> render () | false -> fallback ()\n" in
+      let source =
+        "let render ready = match ready with true -> render () | false -> fallback ()\n"
+      in
       let pipeline =
         Riot_fix.Pipeline.make ~rules:[ Riot_fix.Rules.Prefer_if_over_bool_match.make () ] ()
       in
@@ -1145,7 +1161,9 @@ let solve total feedback_ref =
     "no-custom-operators flags symbolic custom operators"
     (fun _ctx ->
       let source = "let composed = f %> g\n" in
-      let pipeline = Riot_fix.Pipeline.make ~rules:[ Riot_fix.Rules.No_custom_operators.make () ] () in
+      let pipeline =
+        Riot_fix.Pipeline.make ~rules:[ Riot_fix.Rules.No_custom_operators.make () ] ()
+      in
       let result = Riot_fix.Pipeline.run pipeline source in
       let codes = diagnostic_rule_ids result.diagnostics in
       Test.assert_equal ~expected:[ "no-custom-operators" ] ~actual:codes;
@@ -1154,7 +1172,9 @@ let solve total feedback_ref =
     "no-custom-operators allows builtin operators"
     (fun _ctx ->
       let source = "let sum = a + b\n" in
-      let pipeline = Riot_fix.Pipeline.make ~rules:[ Riot_fix.Rules.No_custom_operators.make () ] () in
+      let pipeline =
+        Riot_fix.Pipeline.make ~rules:[ Riot_fix.Rules.No_custom_operators.make () ] ()
+      in
       let result = Riot_fix.Pipeline.run pipeline source in
       Test.assert_equal ~expected:0 ~actual:(List.length result.diagnostics);
       Ok ());
@@ -1398,7 +1418,8 @@ let render x y z =
   Test.case
     "limit-nested-match-depth keeps shallower matches clean"
     (fun _ctx ->
-      let source = {|
+      let source =
+        {|
 let render x y =
   match x with
   | _ ->
@@ -2177,8 +2198,7 @@ let render x y z =
           let file = Path.(tmpdir / Path.v "sample.ml") in
           write_file file "type userProfile = int\n";
           let result =
-            with_cwd tmpdir (fun () ->
-              run_cli [ "--check"; "--limit"; "0"; Path.to_string file; ])
+            with_cwd tmpdir (fun () -> run_cli [ "--check"; "--limit"; "0"; Path.to_string file; ])
           in
           Test.assert_error result;
           Ok ()));
@@ -2482,9 +2502,7 @@ let render x y z =
         (fun tmpdir ->
           let file = Path.(tmpdir / Path.v "sample.ml") in
           write_file file "type userProfile = int\n";
-          let result = with_cwd tmpdir (fun () ->
-            run_cli [ Path.to_string file ])
-          in
+          let result = with_cwd tmpdir (fun () -> run_cli [ Path.to_string file ]) in
           Test.assert_error result;
           Test.assert_equal ~expected:"type userProfile = int\n" ~actual:(read_file file);
           Ok ()));
@@ -2496,9 +2514,7 @@ let render x y z =
         (fun tmpdir ->
           let file = Path.(tmpdir / Path.v "sample.ml") in
           write_file file "type userProfile = int\n";
-          let result = with_cwd tmpdir (fun () ->
-            run_cli [ "--apply"; Path.to_string file ])
-          in
+          let result = with_cwd tmpdir (fun () -> run_cli [ "--apply"; Path.to_string file ]) in
           Test.assert_ok result;
           Test.assert_equal ~expected:"type user_profile = int\n" ~actual:(read_file file);
           Ok ()));
@@ -2510,9 +2526,7 @@ let render x y z =
         (fun tmpdir ->
           let file = Path.(tmpdir / Path.v "sample.ml") in
           write_file file "type userProfile = int\n";
-          let result = with_cwd tmpdir (fun () ->
-            run_cli [ "--check"; Path.to_string file ])
-          in
+          let result = with_cwd tmpdir (fun () -> run_cli [ "--check"; Path.to_string file ]) in
           Test.assert_error result;
           Test.assert_equal ~expected:"type userProfile = int\n" ~actual:(read_file file);
           Ok ()));
@@ -2574,8 +2588,7 @@ let render x y z =
             Riot_fix.File_scanner.(scan
               (create
                 ~root:tmpdir
-                ~should_ignore:(fun path ->
-                  String.contains (Path.to_string path) "/ignored")
+                ~should_ignore:(fun path -> String.contains (Path.to_string path) "/ignored")
                 ()))
             |> List.map ~fn:Path.to_string
             |> List.sort ~compare:String.compare
@@ -2721,8 +2734,7 @@ let render x y z =
           in
           let dependency_names =
             plan.package.Riot_model.Package.dependencies
-            |> List.map ~fn:(fun (dep: Riot_model.Package.dependency) ->
-              dep.name)
+            |> List.map ~fn:(fun (dep: Riot_model.Package.dependency) -> dep.name)
           in
           Test.assert_true (List.contains dependency_names ~value:(package_name "helper"));
           Ok ()));
@@ -2773,7 +2785,9 @@ let render x y z =
               rules = [ "std:no-stdlib" ];
             }
           in
-          let plan = Riot_fix.Fixme_runner.materialize ~workspace_root ~target_dir_root [ provider ] in
+          let plan =
+            Riot_fix.Fixme_runner.materialize ~workspace_root ~target_dir_root [ provider ]
+          in
           let source = read_file plan.library_path in
           Test.assert_true (String.contains source "Riot_fix.fix_request_of_matches matches");
           Test.assert_true (String.contains source "Riot_fix.Cli.Execution.run_with_coordinator");
@@ -2801,7 +2815,9 @@ let render x y z =
               rules = [ "std:no-stdlib" ];
             }
           in
-          let plan = Riot_fix.Fixme_runner.materialize ~workspace_root ~target_dir_root [ provider ] in
+          let plan =
+            Riot_fix.Fixme_runner.materialize ~workspace_root ~target_dir_root [ provider ]
+          in
           let source = read_file plan.main_path in
           Test.assert_true (String.contains source "Runtime.run ~main:Fixme_runner.main");
           Ok ()));
@@ -2852,23 +2868,31 @@ let render x y z =
               rules = [ "std:no-stdlib" ];
             }
           in
-          let first_plan = Riot_fix.Fixme_runner.plan ~workspace_root ~target_dir_root [ provider ] in
+          let first_plan =
+            Riot_fix.Fixme_runner.plan ~workspace_root ~target_dir_root [ provider ]
+          in
           write_file support_source "let explanation = \"new\"\n";
-          let second_plan = Riot_fix.Fixme_runner.plan ~workspace_root ~target_dir_root [ provider ] in
+          let second_plan =
+            Riot_fix.Fixme_runner.plan ~workspace_root ~target_dir_root [ provider ]
+          in
           Test.assert_false (String.equal first_plan.provider_hash second_plan.provider_hash);
           Ok ()));
   Test.case
     "rule query collects expressions from the typed Ast"
     (fun _ctx ->
       let source = "let render x = let y = x + 1 in y; y\n" in
-      let expressions = Riot_fix.Rule_query.expressions (rule_context ~file_path:"sample.ml" source) in
+      let expressions =
+        Riot_fix.Rule_query.expressions (rule_context ~file_path:"sample.ml" source)
+      in
       Test.assert_true (List.length expressions >= 5);
       Ok ());
   Test.case
     "rule query collects let bindings from the typed Ast"
     (fun _ctx ->
       let source = "let render x = x\nlet other y = let z = y in z\n" in
-      let bindings = Riot_fix.Rule_query.let_bindings (rule_context ~file_path:"sample.ml" source) in
+      let bindings =
+        Riot_fix.Rule_query.let_bindings (rule_context ~file_path:"sample.ml" source)
+      in
       Test.assert_equal
         ~expected:[ "render"; "other"; "z" ]
         ~actual:(

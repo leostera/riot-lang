@@ -164,7 +164,9 @@ let output_to_temp_files = fun t ->
       | (Error err, _) -> fs_file_error "failed to create stdout capture file" err
       | (_, Error err) -> fs_file_error "failed to create stderr capture file" err
       | (Ok stdout_file, Ok stderr_file) -> (
-          let stdio = stdio_of_config Stdio.Null (Stdio.File stdout_file) (Stdio.File stderr_file) in
+          let stdio =
+            stdio_of_config Stdio.Null (Stdio.File stdout_file) (Stdio.File stderr_file)
+          in
           match cwd_path t.cwd with
           | Error _ as err ->
               let _ = Fs.File.close stdout_file in

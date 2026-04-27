@@ -133,7 +133,9 @@ let column_chunk = fun index row_group_index ->
   }: Parquet.column_chunk)
 
 let row_group = fun column_count row_group_index ->
-  let columns = List.init ~count:column_count ~fn:(fun index -> column_chunk index row_group_index) in
+  let columns =
+    List.init ~count:column_count ~fn:(fun index -> column_chunk index row_group_index)
+  in
   ({
     columns;
     total_byte_size = Int64.of_int (column_count * 4_096);

@@ -272,8 +272,7 @@ let entries_for_include = fun env module_path ->
   |> List.filter_map
     (fun (type_decl: FileSummary.type_decl) ->
       SurfacePath.strip_prefix ~prefix:module_path type_decl.scope_path
-      |> Option.map (fun scope_path ->
-        { type_decl with scope_path }))
+      |> Option.map (fun scope_path -> { type_decl with scope_path }))
   |> of_type_decls
 
 let entries_for_module_alias = fun env ~alias_name ~module_path ->

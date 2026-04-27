@@ -75,7 +75,9 @@ let bench_string_shrinker = fun len ->
 
 let bench_property_check = fun () ->
   let prop = Property.for_all Arbitrary.int (fun value -> value + 0 = value) in
-  let config = { Property.default_config with test_count = 100; max_size = 50; seed = Some 123 } in
+  let config =
+    { Property.default_config with test_count = 100; max_size = 50; seed = Some 123 }
+  in
   fun () ->
     let _ = Property.check ~config prop in
     ()

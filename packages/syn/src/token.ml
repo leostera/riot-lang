@@ -16,7 +16,6 @@ type delimiter =
   | BeginEnd
   | StructEnd
   | SigEnd
-  | ObjectEnd
 
 type trivia_kind =
   | CommentTrivia of { value: string; terminated: bool }
@@ -100,7 +99,6 @@ let delimiter_of_keyword: keyword -> delimiter option = function
   | Begin -> Some BeginEnd
   | Struct -> Some StructEnd
   | Sig -> Some SigEnd
-  | Object -> Some ObjectEnd
   | _ -> None
 
 let token_kind_of_trivia_kind = function
@@ -148,8 +146,6 @@ let show_kind = function
   | CloseDelim StructEnd -> "end"
   | OpenDelim SigEnd -> "sig"
   | CloseDelim SigEnd -> "end"
-  | OpenDelim ObjectEnd -> "object"
-  | CloseDelim ObjectEnd -> "end"
   | Comment _ -> "comment"
   | Docstring _ -> "docstring"
   | Plus -> "+"

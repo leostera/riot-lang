@@ -45,8 +45,6 @@ type external_declaration = node
 
 type exception_declaration = node
 
-type class_declaration = node
-
 type extension_item = node
 
 type attribute_item = node
@@ -106,8 +104,6 @@ let is_expr_kind = function
   | Syntax_kind.FIRST_CLASS_MODULE_EXPR
   | Syntax_kind.EXTENSION_EXPR
   | Syntax_kind.UNREACHABLE_EXPR
-  | Syntax_kind.OBJECT_EXPR
-  | Syntax_kind.NEW_EXPR
   | Syntax_kind.IF_EXPR
   | Syntax_kind.MATCH_EXPR
   | Syntax_kind.FUN_EXPR
@@ -124,7 +120,6 @@ let is_expr_kind = function
   | Syntax_kind.PREFIX_EXPR
   | Syntax_kind.ASSIGN_EXPR
   | Syntax_kind.FIELD_ACCESS_EXPR
-  | Syntax_kind.METHOD_CALL_EXPR
   | Syntax_kind.POLY_VARIANT_EXPR
   | Syntax_kind.LABELED_ARG
   | Syntax_kind.OPTIONAL_ARG
@@ -1365,10 +1360,6 @@ module Expr: sig
         target: t option;
         field: token option;
       }
-    | MethodCall of {
-        target: t option;
-        method_: token option;
-      }
     | PolyVariant of {
         tag: token option;
         payload: t option;
@@ -1477,10 +1468,6 @@ end = struct
     | FieldAccess of {
         target: t option;
         field: token option;
-      }
-    | MethodCall of {
-        target: t option;
-        method_: token option;
       }
     | PolyVariant of {
         tag: token option;
@@ -1633,9 +1620,7 @@ end = struct
         }
     | Syntax_kind.FIRST_CLASS_MODULE_EXPR
     | Syntax_kind.EXTENSION_EXPR
-    | Syntax_kind.UNREACHABLE_EXPR
-    | Syntax_kind.OBJECT_EXPR
-    | Syntax_kind.NEW_EXPR -> Unknown expr
+    | Syntax_kind.UNREACHABLE_EXPR -> Unknown expr
     | Syntax_kind.IF_EXPR ->
         If {
           condition = normalize_expr_option (nth_expr_child expr 0);
@@ -1706,11 +1691,6 @@ end = struct
         FieldAccess {
           target = normalize_expr_option (nth_expr_child expr 0);
           field = last_ident_token expr;
-        }
-    | Syntax_kind.METHOD_CALL_EXPR ->
-        MethodCall {
-          target = normalize_expr_option (nth_expr_child expr 0);
-          method_ = last_ident_token expr;
         }
     | Syntax_kind.POLY_VARIANT_EXPR ->
         PolyVariant {
@@ -4715,18 +4695,6 @@ module ExceptionDeclaration = struct
     | _ -> Bare
 end
 
-module ClassDeclaration = struct
-  type t = class_declaration
-
-  let cast = fun (node: node) ->
-    if node_kind_is node Syntax_kind.CLASS_DECL then
-      Some node
-    else
-      None
-
-  let name = first_ident_token
-end
-
 module ExtensionItem = struct
   type t = extension_item
 
@@ -4776,7 +4744,6 @@ module StructureItem = struct
     | Include of include_declaration
     | External of external_declaration
     | Exception of exception_declaration
-    | Class of class_declaration
     | Extension of extension_item
     | Attribute of attribute_item
     | Expr of expr_item
@@ -4807,7 +4774,6 @@ module StructureItem = struct
         | Syntax_kind.INCLUDE_DECL -> Include node
         | Syntax_kind.EXTERNAL_DECL -> External node
         | Syntax_kind.EXCEPTION_DECL -> Exception node
-        | Syntax_kind.CLASS_DECL -> Class node
         | Syntax_kind.EXTENSION_ITEM -> Extension node
         | Syntax_kind.ATTRIBUTE_ITEM -> Attribute node
         | Syntax_kind.EXPR_ITEM -> Expr node
@@ -4831,7 +4797,6 @@ module SignatureItem = struct
     | Include of include_declaration
     | External of external_declaration
     | Exception of exception_declaration
-    | Class of class_declaration
     | Extension of extension_item
     | Attribute of attribute_item
     | Error of Node.t
@@ -4861,7 +4826,6 @@ module SignatureItem = struct
         | Syntax_kind.INCLUDE_DECL -> Include node
         | Syntax_kind.EXTERNAL_DECL -> External node
         | Syntax_kind.EXCEPTION_DECL -> Exception node
-        | Syntax_kind.CLASS_DECL -> Class node
         | Syntax_kind.EXTENSION_ITEM -> Extension node
         | Syntax_kind.ATTRIBUTE_ITEM -> Attribute node
         | Syntax_kind.ERROR -> Error node

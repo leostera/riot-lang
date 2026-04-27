@@ -87,7 +87,8 @@ let test_multiple_attributes = fun _ctx ->
     Error "Multiple attributes not serialized"
 
 let test_mixed_children = fun _ctx ->
-  let children = [ Xml.text "before"; Xml.element "span" [ Xml.text "middle" ]; Xml.text "after" ] in
+  let children = [ Xml.text "before"; Xml.element "span" [ Xml.text "middle" ]; Xml.text "after" ]
+  in
   let elem = Xml.element "div" children in
   let str = Xml.to_string elem in
   if String.length str > 0 then

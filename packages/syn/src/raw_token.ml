@@ -86,7 +86,6 @@ let keyword_kind = function
   | Keyword.Asr -> Syntax_kind.OPERATOR_KW
   | Keyword.Assert -> Syntax_kind.ASSERT_KW
   | Keyword.Begin -> Syntax_kind.BEGIN_KW
-  | Keyword.Class -> Syntax_kind.CLASS_KW
   | Keyword.Constraint -> Syntax_kind.CONSTRAINT_KW
   | Keyword.Do -> Syntax_kind.DO_KW
   | Keyword.Done -> Syntax_kind.DONE_KW
@@ -103,8 +102,6 @@ let keyword_kind = function
   | Keyword.If -> Syntax_kind.IF_KW
   | Keyword.In -> Syntax_kind.IN_KW
   | Keyword.Include -> Syntax_kind.INCLUDE_KW
-  | Keyword.Inherit -> Syntax_kind.INHERIT_KW
-  | Keyword.Initializer -> Syntax_kind.INITIALIZER_KW
   | Keyword.Land -> Syntax_kind.OPERATOR_KW
   | Keyword.Lazy -> Syntax_kind.LAZY_KW
   | Keyword.Let -> Syntax_kind.LET_KW
@@ -114,13 +111,10 @@ let keyword_kind = function
   | Keyword.Lxor -> Syntax_kind.OPERATOR_KW
   | Keyword.Lnot -> Syntax_kind.OPERATOR_KW
   | Keyword.Match -> Syntax_kind.MATCH_KW
-  | Keyword.Method -> Syntax_kind.METHOD_KW
   | Keyword.Mod -> Syntax_kind.OPERATOR_KW
   | Keyword.Module -> Syntax_kind.MODULE_KW
   | Keyword.Mutable -> Syntax_kind.MUTABLE_KW
-  | Keyword.New -> Syntax_kind.NEW_KW
   | Keyword.Nonrec -> Syntax_kind.NONREC_KW
-  | Keyword.Object -> Syntax_kind.OBJECT_KW
   | Keyword.Of -> Syntax_kind.OF_KW
   | Keyword.Open -> Syntax_kind.OPEN_KW
   | Keyword.Or -> Syntax_kind.OPERATOR_KW
@@ -134,7 +128,6 @@ let keyword_kind = function
   | Keyword.Try -> Syntax_kind.TRY_KW
   | Keyword.Type -> Syntax_kind.TYPE_KW
   | Keyword.Val -> Syntax_kind.VAL_KW
-  | Keyword.Virtual -> Syntax_kind.VIRTUAL_KW
   | Keyword.When -> Syntax_kind.WHEN_KW
   | Keyword.While -> Syntax_kind.WHILE_KW
   | Keyword.With -> Syntax_kind.WITH_KW
@@ -147,7 +140,6 @@ let open_delim_kind = function
   | Token.BeginEnd -> Syntax_kind.BEGIN_KW
   | Token.StructEnd -> Syntax_kind.STRUCT_KW
   | Token.SigEnd -> Syntax_kind.SIG_KW
-  | Token.ObjectEnd -> Syntax_kind.OBJECT_KW
 
 let close_delim_kind = function
   | Token.Paren -> Syntax_kind.RPAREN
@@ -156,8 +148,7 @@ let close_delim_kind = function
   | Token.Array -> Syntax_kind.BAR_RBRACKET
   | Token.BeginEnd
   | Token.StructEnd
-  | Token.SigEnd
-  | Token.ObjectEnd -> Syntax_kind.END_KW
+  | Token.SigEnd -> Syntax_kind.END_KW
 
 let kind_of_token_kind = function
   | Token.Keyword keyword -> keyword_kind keyword
@@ -263,7 +254,6 @@ let of_lexer_tokens = fun ~source tokens ->
     ~fn:(fun token ->
       List.for_each
         token.Token.leading_trivia
-        ~fn:(fun trivia ->
-          ignore (push stream (raw_of_trivia trivia)));
+        ~fn:(fun trivia -> ignore (push stream (raw_of_trivia trivia)));
       ignore (push_significant stream (raw_of_token token)));
   stream

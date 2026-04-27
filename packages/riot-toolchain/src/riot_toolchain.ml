@@ -139,7 +139,8 @@ let parse_json_field_string = fun json fields ->
 let read_manifest_fingerprint = fun toolchain_path ->
   let manifest_path = Path.(toolchain_path / Path.v "manifest.json") in
   let parse_fingerprint json =
-    let open Data.Json in parse_json_field_string json [ "toolchain_fingerprint" ]
+    let open Data.Json in
+    parse_json_field_string json [ "toolchain_fingerprint" ]
     |> Option.or_ (parse_json_field_string json [ "fingerprint"; "value" ])
   in
   match Fs.exists manifest_path with
@@ -318,7 +319,9 @@ let download_and_install_toolchain = fun version ~host ~target ->
       (url, filename, "native")
     else
       (* Cross-compilation toolchain *)
-      let url = base_url ^ "/ocaml-" ^ version ^ "-" ^ host_name ^ "-x-" ^ target_name ^ ".tar.gz" in
+      let url =
+        base_url ^ "/ocaml-" ^ version ^ "-" ^ host_name ^ "-x-" ^ target_name ^ ".tar.gz"
+      in
       let filename = "ocaml-" ^ version ^ "-" ^ host_name ^ "-x-" ^ target_name ^ ".tar.gz" in
       (url, filename, "cross-compilation from " ^ host_name ^ " to " ^ target_name)
   in
@@ -337,7 +340,9 @@ let download_and_install_toolchain = fun version ~host ~target ->
   let _ = Fs.create_dir_all temp_dir in
   let tar_path = Path.(temp_dir / Path.v tar_filename) in
   (* Download using curl *)
-  let download_cmd = Command.make ~args:[ "-L"; "-o"; Path.to_string tar_path; binary_url; ] "curl" in
+  let download_cmd =
+    Command.make ~args:[ "-L"; "-o"; Path.to_string tar_path; binary_url; ] "curl"
+  in
   match Command.output download_cmd with
   | Error (Command.SystemError msg) -> Error ("Failed to download toolchain: " ^ msg)
   | Ok output when output.Command.status != 0 ->
@@ -488,7 +493,9 @@ let check_health = fun toolchain ->
 let hash = fun t ->
   let hasher = Crypto.Sha256.create () in
   let toolchain_path = get_toolchain_path_for_target t.version t.target in
-  let write_legacy_path_fingerprint paths = List.for_each paths ~fn:(write_path_fingerprint hasher) in
+  let write_legacy_path_fingerprint paths =
+    List.for_each paths ~fn:(write_path_fingerprint hasher)
+  in
   Crypto.Sha256.write hasher t.version;
   Crypto.Sha256.write hasher (target_to_string t.target);
   let () =

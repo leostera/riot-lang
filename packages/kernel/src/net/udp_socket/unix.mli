@@ -25,7 +25,7 @@ val local_addr: t -> (Socket_addr.t, error) Result.t
 
 val recv: t -> ?pos:int -> ?len:int -> bytes -> (int, error) Result.t
 
-val recv_from: t -> ?pos:int -> ?len:int -> bytes -> ((int * Socket_addr.t), error) Result.t
+val recv_from: t -> ?pos:int -> ?len:int -> bytes -> (int * Socket_addr.t, error) Result.t
 
 val send: t -> ?pos:int -> ?len:int -> bytes -> (int, error) Result.t
 

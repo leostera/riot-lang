@@ -55,7 +55,9 @@ let test_list_shrinker_uses_the_element_shrinker = fun _ctx ->
 
 let test_hashmap_shrinker_shrinks_keys_and_values = fun _ctx ->
   let original = Collections.HashMap.from_list [ (10, 20); ] in
-  let shrunk = Shrinker.shrink (Shrinker.hashmap (Shrinker.towards 0) (Shrinker.towards 0)) original in
+  let shrunk =
+    Shrinker.shrink (Shrinker.hashmap (Shrinker.towards 0) (Shrinker.towards 0)) original
+  in
   if
     List.any
       shrunk

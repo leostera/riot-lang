@@ -286,8 +286,6 @@ let assert_lower2_existing_fixture_subset = fun () ->
     Path.v "packages/krasny/tests/fixtures/0973_record_type_field_tight_colon.mli";
     Path.v "packages/krasny/tests/fixtures/0974_expression_ascription_parenthesized.ml";
     Path.v "packages/krasny/tests/fixtures/0975_typed_pattern_tight_colon.ml";
-    Path.v "packages/krasny/tests/fixtures/0976_object_type_field_tight_colon.mli";
-    Path.v "packages/krasny/tests/fixtures/0977_class_type_field_tight_colon.mli";
     Path.v "packages/krasny/tests/fixtures/0978_variant_result_tight_colon.mli";
     Path.v "packages/krasny/tests/fixtures/0979_nested_redundant_parens.ml";
     Path.v "packages/krasny/tests/fixtures/0980_fun_breaks_after_arrow.ml";

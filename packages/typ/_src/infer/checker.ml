@@ -992,8 +992,7 @@ let best_poly_variant_candidate_for_tags = fun (state: state) tags ->
   |> List.filter
     (fun candidate ->
       tags
-      |> List.for_all (fun tag ->
-        Label_name_map.mem tag candidate.payloads))
+      |> List.for_all (fun tag -> Label_name_map.mem tag candidate.payloads))
   |> List.sort compare_poly_variant_candidates
   |> function
     | candidate :: _ -> Some candidate
@@ -1285,7 +1284,9 @@ let instantiate_constructor_entry = fun
   (state: state)
   env
   constructor_entry ->
-  let scheme = canonicalize_scheme_in_env state env (Env.Constructor_env.scheme constructor_entry) in
+  let scheme =
+    canonicalize_scheme_in_env state env (Env.Constructor_env.scheme constructor_entry)
+  in
   let (quantified, body) = TypeScheme.to_explicit scheme in
   let mapping = Collections.HashMap.with_capacity (List.length quantified) in
   let () =
@@ -1344,8 +1345,7 @@ let missing_inline_record_fields = fun labels field_names ->
     (fun (label: TypeDecl.label) ->
       if
         List.exists
-          (fun requested_name ->
-            String.equal (Env.Label_env.lookup_name requested_name) label.name)
+          (fun requested_name -> String.equal (Env.Label_env.lookup_name requested_name) label.name)
           field_names
       then
         None
@@ -1377,8 +1377,7 @@ let rec coverage_product = function
       |> List.concat_map
         (fun pattern ->
           rest
-          |> List.map (fun suffix ->
-            pattern :: suffix))
+          |> List.map (fun suffix -> pattern :: suffix))
 
 let supported_coverage_constructors_for_named_type = fun (state: state) head arguments ->
   match visible_type_decl_by_id state head.TypeRepr.type_constructor_id with
@@ -2988,12 +2987,11 @@ and infer_expr = fun (state: state) env expr_id ->
                 start_ty
                 TypeRepr.int
             in
-            let () =
-              try_unify
-                state
-                ~origin:(origin_of_expr state end_id)
-                end_ty
-                TypeRepr.int
+            let () = try_unify
+              state
+              ~origin:(origin_of_expr state end_id)
+              end_ty
+              TypeRepr.int
             in
             let iterator_bindings = bind_pattern state env iterator_pattern_id TypeRepr.int in
             let body_env = env_with_pattern_bindings env iterator_bindings in
@@ -3278,12 +3276,11 @@ and infer_expr = fun (state: state) env expr_id ->
             in
             let then_ty = infer_expr state env then_id in
             let else_ty = infer_expr state env else_id in
-            let () =
-              try_unify
-                state
-                ~origin:(origin_of_expr state expr_id)
-                then_ty
-                else_ty
+            let () = try_unify
+              state
+              ~origin:(origin_of_expr state expr_id)
+              then_ty
+              else_ty
             in
             then_ty
         | BodyArena.EMatch (scrutinee_id, cases) ->
@@ -3306,12 +3303,11 @@ and infer_expr = fun (state: state) env expr_id ->
                 })
             in
             let result_ty = fresh_var state in
-            let () =
-              try_unify
-                state
-                ~origin:(origin_of_expr state body_id)
-                result_ty
-                body_ty
+            let () = try_unify
+              state
+              ~origin:(origin_of_expr state body_id)
+              result_ty
+              body_ty
             in
             let () = List.iter (infer_match_case state env exn_ty result_ty) cases in
             let () = analyze_match_coverage state ~expr_id exn_ty cases in
@@ -3319,7 +3315,9 @@ and infer_expr = fun (state: state) env expr_id ->
         | BodyArena.EPolyVariant { tag; payload } -> (
             match best_poly_variant_candidate_for_tags state [ tag ] with
             | Some candidate ->
-                let (candidate_ty, mapping) = instantiate_named_type_decl state candidate.type_decl in
+                let (candidate_ty, mapping) =
+                  instantiate_named_type_decl state candidate.type_decl
+                in
                 let payload_ty =
                   instantiate_poly_variant_payload
                     state
@@ -3573,7 +3571,9 @@ and infer_expr_against = fun (state: state) env expr_id expected_ty ->
               | Some { desc = BodyArena.EVar constructor; _ } -> (
                   match resolve_constructor_entry state env constructor ~expected_ty with
                   | Some constructor_entry ->
-                      let instantiated = instantiate_constructor_entry state env constructor_entry in
+                      let instantiated =
+                        instantiate_constructor_entry state env constructor_entry
+                      in
                       let callee_ty =
                         List.fold_right
                           (fun argument_ty result_ty ->
@@ -3913,7 +3913,9 @@ and infer_nonrecursive_group = fun (state: state) env bindings ->
   let generalized_bindings =
     List.map2
       (fun (binding, annotation_scheme, entries) schemes ->
-        let schemes = exported_schemes_for_binding annotation_scheme binding entries.entries schemes in
+        let schemes =
+          exported_schemes_for_binding annotation_scheme binding entries.entries schemes
+        in
         let generalized_entries =
           List.map2
             (fun entry scheme ->
@@ -3981,8 +3983,7 @@ and infer_recursive_group = fun (state: state) env bindings ->
           in
           let placeholders =
             placeholder_info
-            |> List.map (fun (_, _, _, _, entry) ->
-              entry)
+            |> List.map (fun (_, _, _, _, entry) -> entry)
           in
           let provisional_env = Env.extend env placeholders in
           let () =
@@ -3996,7 +3997,9 @@ and infer_recursive_group = fun (state: state) env bindings ->
                   _entry
                 ) ->
                 if has_annotation then
-                  let _ = infer_expr_against state provisional_env binding.value_id placeholder_ty in
+                  let _ =
+                    infer_expr_against state provisional_env binding.value_id placeholder_ty
+                  in
                   ()
                 else
                   let value_ty = infer_expr state provisional_env binding.value_id in
@@ -4029,7 +4032,9 @@ and infer_recursive_group = fun (state: state) env bindings ->
           (binding, annotation_scheme, _has_annotation, _placeholder_ty, entry) :: rest_bindings,
           schemes :: rest_groups
         ) ->
-            let schemes = exported_schemes_for_binding annotation_scheme binding [ entry ] schemes in
+            let schemes =
+              exported_schemes_for_binding annotation_scheme binding [ entry ] schemes
+            in
             let entry =
               match schemes with
               | [ scheme ] ->
@@ -4218,7 +4223,9 @@ let infer_file = fun ~imported_world ~config ~(source:Source.t) file ->
             in
             loop export_state type_decls scope rest
         | ItemTree.Value value_item ->
-            let item_env = Env.for_item_scope export_state scope ~scope_path:value_item.scope_path in
+            let item_env =
+              Env.for_item_scope export_state scope ~scope_path:value_item.scope_path
+            in
             let visible_exports_before =
               if state.config.capture_traces then
                 Some (Env.export config export_state)
@@ -4319,7 +4326,9 @@ let infer_file = fun ~imported_world ~config ~(source:Source.t) file ->
             in
             loop export_state type_decls scope rest
         | ItemTree.Include include_item ->
-            let item_env = Env.for_item_scope export_state scope ~scope_path:include_item.scope_path in
+            let item_env =
+              Env.for_item_scope export_state scope ~scope_path:include_item.scope_path
+            in
             let module_path =
               resolve_module_path_in_scope
                 state

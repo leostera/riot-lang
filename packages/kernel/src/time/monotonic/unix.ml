@@ -9,7 +9,7 @@ type error =
 type t = { secs: int; nanos: int }
 
 module FFI = struct
-  external now: unit -> ((int * int), int) Result.t = "kernel_new_time_monotonic_now"
+  external now: unit -> (int * int, int) Result.t = "kernel_new_time_monotonic_now"
 end
 
 let error_to_string error =

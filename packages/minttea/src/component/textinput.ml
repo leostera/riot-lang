@@ -115,7 +115,9 @@ let delete_char_backward = fun t ->
     t
   else
     let before = String.sub t.value ~offset:0 ~len:(t.cursor_pos - 1) in
-    let after = String.sub t.value ~offset:t.cursor_pos ~len:(String.length t.value - t.cursor_pos) in
+    let after =
+      String.sub t.value ~offset:t.cursor_pos ~len:(String.length t.value - t.cursor_pos)
+    in
     validate { t with value = before ^ after; cursor_pos = t.cursor_pos - 1 }
 
 (* Helper: delete character after cursor *)
@@ -159,7 +161,9 @@ let delete_word_backward = fun t ->
     in
     let word_start = find_word_start t.cursor_pos in
     let before = String.sub t.value ~offset:0 ~len:word_start in
-    let after = String.sub t.value ~offset:t.cursor_pos ~len:(String.length t.value - t.cursor_pos) in
+    let after =
+      String.sub t.value ~offset:t.cursor_pos ~len:(String.length t.value - t.cursor_pos)
+    in
     validate { t with value = before ^ after; cursor_pos = word_start }
 
 let handle_paste = fun t text ->

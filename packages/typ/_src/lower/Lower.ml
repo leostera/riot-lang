@@ -793,7 +793,9 @@ let add_item = fun (state: state) ~syntax_node item ->
   let () =
     state.next_item_id <- state.next_item_id + 1
   in
-  let origin_id = add_origin state ~semantic_id:(OriginMap.Item item_id) ~label:"item" syntax_node in
+  let origin_id =
+    add_origin state ~semantic_id:(OriginMap.Item item_id) ~label:"item" syntax_node
+  in
   let item =
     match item with
     | `Type declaration ->
@@ -1115,8 +1117,7 @@ let lowered_type_declaration = fun (state: state) (declaration: Cst.TypeDeclarat
       (fun () ->
         let lowered_manifest_alias =
           Cst.TypeDeclaration.manifest_alias declaration
-          |> Option.map (fun manifest ->
-            TypeDecl.Alias (lower_core_type state params manifest))
+          |> Option.map (fun manifest -> TypeDecl.Alias (lower_core_type state params manifest))
         in
         match Cst.TypeDeclaration.type_definition declaration with
         | Cst.TypeDefinition.Abstract ->
@@ -1207,8 +1208,7 @@ let lowered_type_declaration = fun (state: state) (declaration: Cst.TypeDeclarat
               labels = [];
               manifest = Option.or_else
                 lowered_manifest_alias
-                (fun () ->
-                  Some (lower_poly_variant_manifest state params poly_variant));
+                (fun () -> Some (lower_poly_variant_manifest state params poly_variant));
             }
         | Cst.TypeDefinition.Extensible _ ->
             Some {
@@ -1262,7 +1262,9 @@ let lower_exception_declaration = fun (state: state) (declaration: Cst.exception
         TypeScheme.of_type (TypeRepr.arrow ~label:TypeRepr.Nolabel ~lhs:payload_type ~rhs:exn_type)
     | None -> TypeScheme.of_type exn_type
   in
-  let _ = add_item state ~syntax_node:declaration.syntax_node (`Exception (exception_name, scheme)) in
+  let _ =
+    add_item state ~syntax_node:declaration.syntax_node (`Exception (exception_name, scheme))
+  in
   ()
 
 let extension_target_result_type = fun
@@ -3168,8 +3170,7 @@ and lower_module_signature_declaration = fun (state: state) (declaration: Cst.Mo
             lower_signature_items_of_module_type
               state
               module_type
-              ~on_unsupported:(fun () ->
-                add_unsupported_signature_item state syntax_node))
+              ~on_unsupported:(fun () -> add_unsupported_signature_item state syntax_node))
 
 let lower_source_file = fun ~source source_file ->
   let state = make_state source in

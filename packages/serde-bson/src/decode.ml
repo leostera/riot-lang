@@ -100,8 +100,7 @@ and record_backend:
     (expect_document state.current)
     ~fn:(fun (key, field_value) ->
       let tag = De.Fields.match_slice fields key ~offset:0 ~length:(String.length key) in
-      acc := with_current state field_value (fun () ->
-        step !acc tag));
+      acc := with_current state field_value (fun () -> step !acc tag));
   finish !acc
 
 and record_mut_backend:
@@ -116,8 +115,7 @@ and record_mut_backend:
     (expect_document state.current)
     ~fn:(fun (key, field_value) ->
       let tag = De.Fields.match_slice fields key ~offset:0 ~length:(String.length key) in
-      with_current state field_value (fun () ->
-        step builder tag));
+      with_current state field_value (fun () -> step builder tag));
   finish builder
 
 and variant_backend: 'value. state -> 'value De.compiled_variant_cases -> 'value = fun

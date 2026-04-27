@@ -394,8 +394,7 @@ let result_map_error_preserves_ok =
     "Result.map_err preserves the Ok branch"
     Arbitrary.int
     (fun value ->
-      match Kernel.Result.map_err (Kernel.Result.Ok value) ~fn:(fun _ ->
-        "mapped") with
+      match Kernel.Result.map_err (Kernel.Result.Ok value) ~fn:(fun _ -> "mapped") with
       | Kernel.Result.Ok mapped -> mapped = value
       | Kernel.Result.Error _ -> false)
 
@@ -626,9 +625,7 @@ let file_vectored_roundtrips =
     (bounded_string_array_arb ~min_count:1 ~max_count:4 ~min_len:1 ~max_len:32)
     (fun values ->
       let pieces = array_to_list values in
-      let total = List.fold_left pieces ~init:0 ~fn:(fun size part ->
-        size + String.length part)
-      in
+      let total = List.fold_left pieces ~init:0 ~fn:(fun size part -> size + String.length part) in
       with_temp_path
         "kernel_new_property"
         "vectored.bin"
@@ -868,8 +865,7 @@ let tcp_loopback_roundtrips_small_payload =
               fail (Kernel.Error.to_string (Kernel.Error.from_net_tcp_listener error))
           | Kernel.Result.Ok listener ->
               protect
-                ~finally:(fun () ->
-                  close_listener listener)
+                ~finally:(fun () -> close_listener listener)
                 (fun () ->
                   match Kernel.Net.TcpListener.local_addr listener with
                   | Kernel.Result.Error error ->
@@ -877,13 +873,11 @@ let tcp_loopback_roundtrips_small_payload =
                   | Kernel.Result.Ok addr ->
                       let client = connect_stream poll addr in
                       protect
-                        ~finally:(fun () ->
-                          close_stream client)
+                        ~finally:(fun () -> close_stream client)
                         (fun () ->
                           let server = accept_stream poll listener in
                           protect
-                            ~finally:(fun () ->
-                              close_stream server)
+                            ~finally:(fun () -> close_stream server)
                             (fun () ->
                               let bytes = Kernel.Bytes.from_string payload in
                               let buffer = Kernel.Bytes.create ~size:(String.length payload) in
@@ -915,8 +909,7 @@ let tcp_vectored_loopback_roundtrips_small_payload =
               fail (Kernel.Error.to_string (Kernel.Error.from_net_tcp_listener error))
           | Kernel.Result.Ok listener ->
               protect
-                ~finally:(fun () ->
-                  close_listener listener)
+                ~finally:(fun () -> close_listener listener)
                 (fun () ->
                   match Kernel.Net.TcpListener.local_addr listener with
                   | Kernel.Result.Error error ->
@@ -924,13 +917,11 @@ let tcp_vectored_loopback_roundtrips_small_payload =
                   | Kernel.Result.Ok addr ->
                       let client = connect_stream poll addr in
                       protect
-                        ~finally:(fun () ->
-                          close_stream client)
+                        ~finally:(fun () -> close_stream client)
                         (fun () ->
                           let server = accept_stream poll listener in
                           protect
-                            ~finally:(fun () ->
-                              close_stream server)
+                            ~finally:(fun () -> close_stream server)
                             (fun () ->
                               let count =
                                 if total < 4 then
@@ -975,8 +966,7 @@ let tcp_vectored_loopback_roundtrips_offset_receive_slices =
               fail (Kernel.Error.to_string (Kernel.Error.from_net_tcp_listener error))
           | Kernel.Result.Ok listener ->
               protect
-                ~finally:(fun () ->
-                  close_listener listener)
+                ~finally:(fun () -> close_listener listener)
                 (fun () ->
                   match Kernel.Net.TcpListener.local_addr listener with
                   | Kernel.Result.Error error ->
@@ -984,13 +974,11 @@ let tcp_vectored_loopback_roundtrips_offset_receive_slices =
                   | Kernel.Result.Ok addr ->
                       let client = connect_stream poll addr in
                       protect
-                        ~finally:(fun () ->
-                          close_stream client)
+                        ~finally:(fun () -> close_stream client)
                         (fun () ->
                           let server = accept_stream poll listener in
                           protect
-                            ~finally:(fun () ->
-                              close_stream server)
+                            ~finally:(fun () -> close_stream server)
                             (fun () ->
                               let outbound =
                                 Kernel.IO.IoVec.from_string_array values
@@ -1030,16 +1018,14 @@ let udp_loopback_roundtrips_small_payload =
               fail (Kernel.Error.to_string (Kernel.Error.from_net_udp_socket error))
           | Kernel.Result.Ok server ->
               protect
-                ~finally:(fun () ->
-                  close_udp server)
+                ~finally:(fun () -> close_udp server)
                 (fun () ->
                   match Kernel.Net.UdpSocket.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0) with
                   | Kernel.Result.Error error ->
                       fail (Kernel.Error.to_string (Kernel.Error.from_net_udp_socket error))
                   | Kernel.Result.Ok client ->
                       protect
-                        ~finally:(fun () ->
-                          close_udp client)
+                        ~finally:(fun () -> close_udp client)
                         (fun () ->
                           match Kernel.Net.UdpSocket.local_addr server with
                           | Kernel.Result.Error error ->

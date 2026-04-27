@@ -123,7 +123,9 @@ let test_int_range_rejects_invalid_bounds = fun _ctx ->
   | _ -> Error "expected Random.int_range to reject min > max"
 
 let test_int32_with_bound_one_is_zero = fun _ctx ->
-  let samples = sample_list ~rng:(seeded_rng "int32-bound-1") (Random.Distribution.int32 1l) ~len:12 in
+  let samples =
+    sample_list ~rng:(seeded_rng "int32-bound-1") (Random.Distribution.int32 1l) ~len:12
+  in
   if List.all samples ~fn:(Int32.equal 0l) then
     Ok ()
   else
@@ -135,7 +137,9 @@ let test_int32_rejects_zero_bound = fun _ctx ->
   | _ -> Error "expected Random.int32 0l to return InvalidInt32Bound"
 
 let test_int64_with_bound_one_is_zero = fun _ctx ->
-  let samples = sample_list ~rng:(seeded_rng "int64-bound-1") (Random.Distribution.int64 1L) ~len:12 in
+  let samples =
+    sample_list ~rng:(seeded_rng "int64-bound-1") (Random.Distribution.int64 1L) ~len:12
+  in
   if List.all samples ~fn:(Int64.equal 0L) then
     Ok ()
   else
@@ -147,7 +151,9 @@ let test_int64_rejects_zero_bound = fun _ctx ->
   | _ -> Error "expected Random.int64 0L to return InvalidInt64Bound"
 
 let test_float_with_zero_bound_returns_zero = fun _ctx ->
-  let samples = sample_list ~rng:(seeded_rng "float-zero") (Random.Distribution.float 0.0) ~len:12 in
+  let samples =
+    sample_list ~rng:(seeded_rng "float-zero") (Random.Distribution.float 0.0) ~len:12
+  in
   if List.all samples ~fn:(Float.equal 0.0) then
     Ok ()
   else

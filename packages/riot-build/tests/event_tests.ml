@@ -12,7 +12,9 @@ let test_building_target_event_to_json = fun _ctx ->
   let target =
     Result.expect (Riot_model.Target.from_string "aarch64-unknown-linux-gnu") ~msg:"target"
   in
-  let actual = Riot_build.Event.to_json (Riot_build.Event.BuildingTarget { target; host = false }) in
+  let actual =
+    Riot_build.Event.to_json (Riot_build.Event.BuildingTarget { target; host = false })
+  in
   Test.assert_equal
     ~expected:(Some (Data.Json.Object [
       ("type", Data.Json.String "BuildingTarget");

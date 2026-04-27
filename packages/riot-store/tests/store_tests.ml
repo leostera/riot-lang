@@ -192,8 +192,7 @@ let test_get_preserves_relative_paths = fun _ctx ->
       | None -> Error "expected cached artifact"
       | Some artifact ->
           if
-            List.any artifact.files ~fn:(fun path ->
-              Path.equal path (Path.v "deep/dir/x.cmxa"))
+            List.any artifact.files ~fn:(fun path -> Path.equal path (Path.v "deep/dir/x.cmxa"))
           then
             Ok ()
           else
@@ -324,8 +323,7 @@ let test_concurrent_same_hash_saves_share_cache_safely = fun _ctx ->
             let _ = receive ~selector () in
             let result =
               Riot_store.Store.save store ~package:"pkg" ~hash ~sandbox_dir:sandbox ~outs:[ output ]
-              |> Result.map ~fn:(fun _ ->
-                ())
+              |> Result.map ~fn:(fun _ -> ())
             in
             send parent (ConcurrentSaveComplete (name, result));
             Ok ())
@@ -769,7 +767,9 @@ let test_save_preserves_executable_permissions_in_cache = fun _ctx ->
         Riot_store.Store.save store ~package:"std" ~hash ~sandbox_dir:sandbox ~outs:[ output ]
         |> Result.expect ~msg:"save should succeed"
       in
-      let cached = Path.(Riot_store.Store.hash_dir_of store hash / Path.v "std_archive_tar_tests") in
+      let cached =
+        Path.(Riot_store.Store.hash_dir_of store hash / Path.v "std_archive_tar_tests")
+      in
       let source_mode =
         Fs.metadata output
         |> Result.expect ~msg:"read source metadata should succeed"

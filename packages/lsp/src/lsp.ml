@@ -951,8 +951,12 @@ module Text_document = struct
     let fields =
       Encode.field_opt "trimTrailingWhitespace" Json.bool options.trim_trailing_whitespace fields
     in
-    let fields = Encode.field_opt "insertFinalNewline" Json.bool options.insert_final_newline fields in
-    let fields = Encode.field_opt "trimFinalNewlines" Json.bool options.trim_final_newlines fields in
+    let fields =
+      Encode.field_opt "insertFinalNewline" Json.bool options.insert_final_newline fields
+    in
+    let fields =
+      Encode.field_opt "trimFinalNewlines" Json.bool options.trim_final_newlines fields
+    in
     Json.obj (List.rev fields)
 
   let formatting_options_of_json = fun value ->
@@ -1810,7 +1814,7 @@ let request_to_json:
 let request_of_json:
   type params res. (params, res) Method.request ->
   Json.t ->
-  ((Jsonrpc.id * params), string) result = fun method_ ->
+  (Jsonrpc.id * params, string) result = fun method_ ->
   fun json ->
     let* request = Jsonrpc.request_of_json json in
     if not (String.equal request.method_ method_.Method.name) then
@@ -1843,7 +1847,7 @@ let response_to_json:
 let response_of_json:
   type params res. (params, res) Method.request ->
   Json.t ->
-  ((Jsonrpc.id * res), string) result = fun method_ ->
+  (Jsonrpc.id * res, string) result = fun method_ ->
   fun json ->
     let* fields = Decode.object_fields "response" json in
     let* jsonrpc = Decode.required "response" "jsonrpc" Decode.string fields in

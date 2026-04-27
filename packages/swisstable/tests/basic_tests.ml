@@ -121,17 +121,14 @@ let tests = [
     (fun _ctx ->
       let map = Swisstable.of_list [ ("a", 1); ("b", 2); ("c", 3); ] in
       let sum = Sync.Cell.create 0 in
-      Swisstable.iter (fun _ v ->
-        Sync.Cell.set sum (Sync.Cell.get sum + v)) map;
+      Swisstable.iter (fun _ v -> Sync.Cell.set sum (Sync.Cell.get sum + v)) map;
       Test.assert_equal ~expected:6 ~actual:(Sync.Cell.get sum);
       Ok ());
   Test.case
     "fold"
     (fun _ctx ->
       let map = Swisstable.of_list [ ("a", 1); ("b", 2); ("c", 3); ] in
-      let sum = Swisstable.fold (fun _ v acc ->
-        acc + v) map 0
-      in
+      let sum = Swisstable.fold (fun _ v acc -> acc + v) map 0 in
       Test.assert_equal ~expected:6 ~actual:sum;
       Ok ());
   Test.case
@@ -174,11 +171,9 @@ let tests = [
     (fun _ctx ->
       let map = Swisstable.create () in
       let _ = Swisstable.insert map "count" 5 in
-      Swisstable.and_modify map "count" (fun x ->
-        x + 1);
+      Swisstable.and_modify map "count" (fun x -> x + 1);
       Test.assert_equal ~expected:(Some 6) ~actual:(Swisstable.get map "count");
-      Swisstable.and_modify map "missing" (fun x ->
-        x + 1);
+      Swisstable.and_modify map "missing" (fun x -> x + 1);
       Test.assert_equal ~expected:None ~actual:(Swisstable.get map "missing");
       Ok ());
   Test.case
@@ -194,9 +189,7 @@ let tests = [
     (fun _ctx ->
       let map = Swisstable.create () in
       (* Pre-create keys to ensure consistent hashing *)
-      let keys = Collections.Array.init ~count:100 ~fn:(fun i ->
-        "key" ^ string_of_int i)
-      in
+      let keys = Collections.Array.init ~count:100 ~fn:(fun i -> "key" ^ string_of_int i) in
       for i = 0 to 99 do
         let key = Collections.Array.get_unchecked keys ~at:i in
         let _ = Swisstable.insert map key i in

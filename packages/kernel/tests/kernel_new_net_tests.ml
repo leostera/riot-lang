@@ -253,19 +253,16 @@ let with_tcp_pair_at = fun listener_addr fn ->
     (fun poll ->
       let* listener = lift_tcp_listener (Kernel.Net.TcpListener.bind listener_addr) in
       protect
-        ~finally:(fun () ->
-          close_listener listener)
+        ~finally:(fun () -> close_listener listener)
         (fun () ->
           let* bound_addr = lift_tcp_listener (Kernel.Net.TcpListener.local_addr listener) in
           let* client = connect_stream poll bound_addr in
           protect
-            ~finally:(fun () ->
-              close_stream client)
+            ~finally:(fun () -> close_stream client)
             (fun () ->
               let* (server, peer) = accept_stream poll listener in
               protect
-                ~finally:(fun () ->
-                  close_stream server)
+                ~finally:(fun () -> close_stream server)
                 (fun () ->
                   fn ~poll ~listener ~listener_addr:bound_addr ~client ~server ~peer))))
 
@@ -308,13 +305,11 @@ let with_udp_pair_at = fun bind_addr fn ->
     (fun poll ->
       let* server = lift_udp (Kernel.Net.UdpSocket.bind bind_addr) in
       protect
-        ~finally:(fun () ->
-          close_udp server)
+        ~finally:(fun () -> close_udp server)
         (fun () ->
           let* client = lift_udp (Kernel.Net.UdpSocket.bind bind_addr) in
           protect
-            ~finally:(fun () ->
-              close_udp client)
+            ~finally:(fun () -> close_udp client)
             (fun () ->
               let* server_addr = lift_udp (Kernel.Net.UdpSocket.local_addr server) in
               let* client_addr = lift_udp (Kernel.Net.UdpSocket.local_addr client) in
@@ -475,8 +470,7 @@ let test_tcp_vectored_burst_roundtrip_preserves_order = fun _ctx ->
       in
       let* () = write_many 8 in
       let* actual = read_many 8 [] in
-      if actual = Kernel.String.concat "" (List.init ~count:8 ~fn:(fun _ ->
-        payload)) then
+      if actual = Kernel.String.concat "" (List.init ~count:8 ~fn:(fun _ -> payload)) then
         Ok ()
       else
         Error "expected repeated small vectored tcp writes to preserve segment order")
@@ -551,8 +545,8 @@ let test_tcp_stream_shutdown_read_preserves_write_half = fun _ctx ->
 let test_tcp_stream_shutdown_read_write_disables_both_halves = fun _ctx ->
   with_tcp_pair
     (fun ~poll ~listener:_ ~listener_addr:_ ~client ~server ~peer:_ ->
-      let* () = lift_tcp_stream
-        (Kernel.Net.TcpStream.shutdown client Kernel.Net.TcpStream.ReadWrite)
+      let* () =
+        lift_tcp_stream (Kernel.Net.TcpStream.shutdown client Kernel.Net.TcpStream.ReadWrite)
       in
       let* () =
         wait_readable
@@ -712,8 +706,7 @@ let test_tcp_listener_source_deregister_after_close_is_harmless = fun _ctx ->
         lift_tcp_listener (Kernel.Net.TcpListener.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0))
       in
       protect
-        ~finally:(fun () ->
-          close_listener listener)
+        ~finally:(fun () -> close_listener listener)
         (fun () ->
           let source = Kernel.Net.TcpListener.to_source listener in
           let* () =
@@ -736,8 +729,7 @@ let test_tcp_listener_accepts_many_clients_in_one_burst = fun _ctx ->
         lift_tcp_listener (Kernel.Net.TcpListener.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0))
       in
       protect
-        ~finally:(fun () ->
-          close_listener listener)
+        ~finally:(fun () -> close_listener listener)
         (fun () ->
           let* addr = lift_tcp_listener (Kernel.Net.TcpListener.local_addr listener) in
           let rec connect_many remaining acc =
@@ -749,8 +741,7 @@ let test_tcp_listener_accepts_many_clients_in_one_burst = fun _ctx ->
           in
           let* clients = connect_many 16 [] in
           protect
-            ~finally:(fun () ->
-              close_streams clients)
+            ~finally:(fun () -> close_streams clients)
             (fun () ->
               let rec accept_many remaining acc =
                 if remaining = 0 then
@@ -761,8 +752,7 @@ let test_tcp_listener_accepts_many_clients_in_one_burst = fun _ctx ->
               in
               let* servers = accept_many 16 [] in
               protect
-                ~finally:(fun () ->
-                  close_streams servers)
+                ~finally:(fun () -> close_streams servers)
                 (fun () ->
                   if List.length servers = 16 then
                     Ok ()
@@ -784,8 +774,7 @@ let test_tcp_stream_finish_connect_reports_connection_refused = fun _ctx ->
           Error "expected tcp connect to a closed port to fail"
       | Kernel.Net.TcpStream.InProgress stream ->
           protect
-            ~finally:(fun () ->
-              close_stream stream)
+            ~finally:(fun () -> close_stream stream)
             (fun () ->
               let token = Kernel.Async.Token.make 313 in
               let rec loop attempts =
@@ -845,8 +834,7 @@ let test_async_poll_handles_many_tcp_streams = fun _ctx ->
         lift_tcp_listener (Kernel.Net.TcpListener.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0))
       in
       protect
-        ~finally:(fun () ->
-          close_listener listener)
+        ~finally:(fun () -> close_listener listener)
         (fun () ->
           let* listener_addr = lift_tcp_listener (Kernel.Net.TcpListener.local_addr listener) in
           let rec connect_many remaining acc =
@@ -871,13 +859,11 @@ let test_async_poll_handles_many_tcp_streams = fun _ctx ->
           in
           let* clients = connect_many 12 [] in
           protect
-            ~finally:(fun () ->
-              close_streams clients)
+            ~finally:(fun () -> close_streams clients)
             (fun () ->
               let* servers = accept_many 12 [] in
               protect
-                ~finally:(fun () ->
-                  close_streams servers)
+                ~finally:(fun () -> close_streams servers)
                 (fun () ->
                   let clients = List.reverse clients in
                   let servers = List.reverse servers in
@@ -949,15 +935,13 @@ let test_udp_socket_send_to_and_recv_from = fun _ctx ->
     (fun poll ->
       let* server = lift_udp (Kernel.Net.UdpSocket.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0)) in
       protect
-        ~finally:(fun () ->
-          close_udp server)
+        ~finally:(fun () -> close_udp server)
         (fun () ->
           let* client =
             lift_udp (Kernel.Net.UdpSocket.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0))
           in
           protect
-            ~finally:(fun () ->
-              close_udp client)
+            ~finally:(fun () -> close_udp client)
             (fun () ->
               let* server_addr = lift_udp (Kernel.Net.UdpSocket.local_addr server) in
               let* client_addr = lift_udp (Kernel.Net.UdpSocket.local_addr client) in
@@ -1004,22 +988,19 @@ let test_udp_connected_socket_ignores_other_peers = fun _ctx ->
     (fun poll ->
       let* server = lift_udp (Kernel.Net.UdpSocket.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0)) in
       protect
-        ~finally:(fun () ->
-          close_udp server)
+        ~finally:(fun () -> close_udp server)
         (fun () ->
           let* client =
             lift_udp (Kernel.Net.UdpSocket.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0))
           in
           protect
-            ~finally:(fun () ->
-              close_udp client)
+            ~finally:(fun () -> close_udp client)
             (fun () ->
               let* other =
                 lift_udp (Kernel.Net.UdpSocket.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0))
               in
               protect
-                ~finally:(fun () ->
-                  close_udp other)
+                ~finally:(fun () -> close_udp other)
                 (fun () ->
                   let* server_addr = lift_udp (Kernel.Net.UdpSocket.local_addr server) in
                   let* client_addr = lift_udp (Kernel.Net.UdpSocket.local_addr client) in
@@ -1068,22 +1049,19 @@ let test_udp_connected_socket_delivers_connected_peer_after_filtering_foreign_da
     (fun poll ->
       let* server = lift_udp (Kernel.Net.UdpSocket.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0)) in
       protect
-        ~finally:(fun () ->
-          close_udp server)
+        ~finally:(fun () -> close_udp server)
         (fun () ->
           let* client =
             lift_udp (Kernel.Net.UdpSocket.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0))
           in
           protect
-            ~finally:(fun () ->
-              close_udp client)
+            ~finally:(fun () -> close_udp client)
             (fun () ->
               let* other =
                 lift_udp (Kernel.Net.UdpSocket.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0))
               in
               protect
-                ~finally:(fun () ->
-                  close_udp other)
+                ~finally:(fun () -> close_udp other)
                 (fun () ->
                   let* server_addr = lift_udp (Kernel.Net.UdpSocket.local_addr server) in
                   let* client_addr = lift_udp (Kernel.Net.UdpSocket.local_addr client) in
@@ -1185,8 +1163,7 @@ let test_async_poll_handles_many_udp_sockets = fun _ctx ->
       in
       let* pairs = bind_many 16 [] in
       protect
-        ~finally:(fun () ->
-          close_many pairs)
+        ~finally:(fun () -> close_many pairs)
         (fun () ->
           let pairs = List.reverse pairs in
           let rec register index = function
@@ -1274,8 +1251,7 @@ let test_async_poll_tolerates_closed_registered_udp_sockets = fun _ctx ->
       in
       let* pairs = bind_many 8 [] in
       protect
-        ~finally:(fun () ->
-          close_many pairs)
+        ~finally:(fun () -> close_many pairs)
         (fun () ->
           let pairs = List.reverse pairs in
           let rec register index = function
@@ -1360,8 +1336,7 @@ let test_udp_socket_source_deregister_after_close_is_harmless = fun _ctx ->
     (fun poll ->
       let* socket = lift_udp (Kernel.Net.UdpSocket.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0)) in
       protect
-        ~finally:(fun () ->
-          close_udp socket)
+        ~finally:(fun () -> close_udp socket)
         (fun () ->
           let source = Kernel.Net.UdpSocket.to_source socket in
           let* () =
@@ -1382,8 +1357,7 @@ let test_udp_socket_source_deregister_before_close_is_harmless = fun _ctx ->
     (fun poll ->
       let* socket = lift_udp (Kernel.Net.UdpSocket.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0)) in
       protect
-        ~finally:(fun () ->
-          close_udp socket)
+        ~finally:(fun () -> close_udp socket)
         (fun () ->
           let source = Kernel.Net.UdpSocket.to_source socket in
           let* () =
@@ -1406,8 +1380,7 @@ let test_async_poll_tolerates_closed_registered_tcp_streams = fun _ctx ->
         lift_tcp_listener (Kernel.Net.TcpListener.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0))
       in
       protect
-        ~finally:(fun () ->
-          close_listener listener)
+        ~finally:(fun () -> close_listener listener)
         (fun () ->
           let* listener_addr = lift_tcp_listener (Kernel.Net.TcpListener.local_addr listener) in
           let rec connect_many remaining acc =
@@ -1426,13 +1399,11 @@ let test_async_poll_tolerates_closed_registered_tcp_streams = fun _ctx ->
           in
           let* clients = connect_many 8 [] in
           protect
-            ~finally:(fun () ->
-              close_streams clients)
+            ~finally:(fun () -> close_streams clients)
             (fun () ->
               let* servers = accept_many 8 [] in
               protect
-                ~finally:(fun () ->
-                  close_streams servers)
+                ~finally:(fun () -> close_streams servers)
                 (fun () ->
                   let clients = List.reverse clients in
                   let servers = List.reverse servers in
@@ -1519,15 +1490,13 @@ let test_udp_socket_ipv6_send_to_and_recv_from = fun _ctx ->
     (fun poll ->
       let* server = lift_udp (Kernel.Net.UdpSocket.bind (Kernel.Net.SocketAddr.loopback_v6 ~port:0)) in
       protect
-        ~finally:(fun () ->
-          close_udp server)
+        ~finally:(fun () -> close_udp server)
         (fun () ->
           let* client =
             lift_udp (Kernel.Net.UdpSocket.bind (Kernel.Net.SocketAddr.loopback_v6 ~port:0))
           in
           protect
-            ~finally:(fun () ->
-              close_udp client)
+            ~finally:(fun () -> close_udp client)
             (fun () ->
               let* server_addr = lift_udp (Kernel.Net.UdpSocket.local_addr server) in
               let* sent =
@@ -1557,22 +1526,19 @@ let test_udp_connected_ipv6_socket_ignores_other_peers = fun _ctx ->
     (fun poll ->
       let* server = lift_udp (Kernel.Net.UdpSocket.bind (Kernel.Net.SocketAddr.loopback_v6 ~port:0)) in
       protect
-        ~finally:(fun () ->
-          close_udp server)
+        ~finally:(fun () -> close_udp server)
         (fun () ->
           let* client =
             lift_udp (Kernel.Net.UdpSocket.bind (Kernel.Net.SocketAddr.loopback_v6 ~port:0))
           in
           protect
-            ~finally:(fun () ->
-              close_udp client)
+            ~finally:(fun () -> close_udp client)
             (fun () ->
               let* other =
                 lift_udp (Kernel.Net.UdpSocket.bind (Kernel.Net.SocketAddr.loopback_v6 ~port:0))
               in
               protect
-                ~finally:(fun () ->
-                  close_udp other)
+                ~finally:(fun () -> close_udp other)
                 (fun () ->
                   let* server_addr = lift_udp (Kernel.Net.UdpSocket.local_addr server) in
                   let* client_addr = lift_udp (Kernel.Net.UdpSocket.local_addr client) in
@@ -1697,8 +1663,7 @@ let test_udp_send_and_recv_after_close_report_bad_file_descriptor = fun _ctx ->
     (fun () ->
       let* peer = lift_udp (Kernel.Net.UdpSocket.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0)) in
       protect
-        ~finally:(fun () ->
-          close_udp peer)
+        ~finally:(fun () -> close_udp peer)
         (fun () ->
           let* peer_addr = lift_udp (Kernel.Net.UdpSocket.local_addr peer) in
           let* () = lift_udp (Kernel.Net.UdpSocket.connect server peer_addr) in

@@ -1686,8 +1686,8 @@ let rec collect_references = fun references nodes ->
         | Markdown_syntax_kind.Paragraph -> (
             match parse_reference_definition (first_token_text node) with
             | Some (label, reference) when not
-              (List.any references ~fn:(fun (current_label, _) ->
-                String.equal current_label label)) -> (label, reference) :: references
+              (List.any references ~fn:(fun (current_label, _) -> String.equal current_label label)) ->
+                (label, reference) :: references
             | _ -> references
           )
         | _ -> references

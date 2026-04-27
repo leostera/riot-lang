@@ -40,6 +40,19 @@ let parse_ml = parse_root ~filename:(Path.v "sample.ml")
 
 let parse_mli = parse_root ~filename:(Path.v "sample.mli")
 
+let test_class_subset_words_are_not_keywords = fun _ctx ->
+  let words = [ "class"; "object"; "method"; "new"; "virtual"; "inherit"; "initializer" ] in
+  let rec loop = function
+    | [] ->
+        Ok ()
+    | word :: rest -> (
+        match Syn.Keyword.of_string word with
+        | None -> loop rest
+        | Some _ -> Error (word ^ " should lex as an identifier")
+      )
+  in
+  loop words
+
 let nth_structure_item = fun (root: Ast.source_file) target ->
   let found = ref None in
   let seen = ref 0 in
@@ -924,8 +937,7 @@ let test_type_declaration_member_views = fun _ctx ->
           let parameters = ref 0 in
           Ast.TypeDeclaration.Member.for_each_parameter
             member
-            ~fn:(fun _ ->
-              parameters := !parameters + 1);
+            ~fn:(fun _ -> parameters := !parameters + 1);
           let has_manifest =
             match Ast.TypeDeclaration.Member.manifest member with
             | Some _ -> true
@@ -3128,6 +3140,9 @@ let y = 3
     Ok ()
 
 let tests = [
+  Test.case
+    "ast leaves class subset words out of the keyword table"
+    test_class_subset_words_are_not_keywords;
   Test.case "ast exposes source file and let binding views" test_source_file_and_let_binding_views;
   Test.case "ast exposes separated docstring trivia parts" test_token_leading_docstring_trivia_parts;
   Test.case "ast node spans exclude leading trivia" test_node_span_excludes_leading_trivia;

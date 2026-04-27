@@ -185,11 +185,10 @@ let dependency_failed_state = function
   | AwaitingFinalization _ -> None
 
 let remember_package_state = fun package_states lane package_key state ->
-  let _ =
-    HashMap.insert
-      package_states
-      ~key:(package_state_key lane package_key)
-      ~value:state
+  let _ = HashMap.insert
+    package_states
+    ~key:(package_state_key lane package_key)
+    ~value:state
   in
   ()
 
@@ -561,8 +560,7 @@ let deferred_package_count = fun lanes ->
       count
       + (
         Build_lane.package_keys lane
-        |> List.filter ~fn:(fun package_key ->
-          dependency_keys lane package_key != [])
+        |> List.filter ~fn:(fun package_key -> dependency_keys lane package_key != [])
         |> List.length
       ))
 

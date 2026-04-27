@@ -212,9 +212,7 @@ let fold_count_prop =
     "fold counting equals len"
     populated_map
     (fun map ->
-      let count = Swisstable.fold (fun _ _ acc ->
-        acc + 1) map 0
-      in
+      let count = Swisstable.fold (fun _ _ acc -> acc + 1) map 0 in
       count = Swisstable.len map)
 
 (** {1 Entry API Properties} *)
@@ -257,8 +255,7 @@ let and_modify_existing_prop =
     (fun ((key, map)) ->
       (* Try to modify non-existent key *)
       let _ = Swisstable.remove map key in
-      Swisstable.and_modify map key (fun x ->
-        x + 1);
+      Swisstable.and_modify map key (fun x -> x + 1);
       Swisstable.get map key = None)
 
 (** {1 Clear Properties} *)
@@ -282,8 +279,7 @@ let clear_all_none_prop =
     (fun map ->
       let keys = Swisstable.keys map in
       Swisstable.clear map;
-      List.for_all (fun k ->
-        Swisstable.get map k = None) keys)
+      List.for_all (fun k -> Swisstable.get map k = None) keys)
 
 (** {1 Resize Properties} *)
 

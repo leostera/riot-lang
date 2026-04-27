@@ -1086,7 +1086,8 @@ let both =
   Test.case
     "write parenthesizes tuple function bodies"
     (fun ctx ->
-      let source = {ocaml|let pair=fun a b->(a,b)
+      let source =
+        {ocaml|let pair=fun a b->(a,b)
 let triple=map3(fun a b c->(a,b,c))x y z
 |ocaml}
       in
@@ -1863,6 +1864,56 @@ exception Property_failed of string
 exception Alias = Failure
 |ocaml});
   Test.case
+    "write preserves semantically meaningful type tuple parentheses"
+    (fun ctx ->
+      let source =
+        {ocaml|type 'value key=int*(unit->'value)
+type key_initializer=|KI:'value key*('value->'value)->key_initializer
+external recv_from:t->bytes->int->int->((int*(string*int)),int)Result.t="recv_from"
+external accept:t->((Tcp_stream.t*(string*int)),int)Result.t="accept"
+|ocaml}
+      in
+      let parsed = parse_ml source in
+      let actual = capture_write parsed in
+      Test.Snapshot.assert_inline_text
+        ~ctx
+        ~actual
+        ~expected:{ocaml|type 'value key = int * (unit -> 'value)
+
+type key_initializer =
+  | KI: 'value key * ('value -> 'value) -> key_initializer
+
+external recv_from: t -> bytes -> int -> int -> ((int * (string * int)), int) Result.t = "recv_from"
+
+external accept: t -> ((Tcp_stream.t * (string * int)), int) Result.t = "accept"
+|ocaml});
+  Test.case
+    "write preserves arrow tuple payloads in signatures"
+    (fun ctx ->
+      let source =
+        {ocaml|type 'payload t
+type 'value variant_case=|Unit:string*('value->bool)->'value variant_case|Newtype:string*'payload t*('payload->'value)->'value variant_case
+type 'value field=|Field:string*'field t*('value->'field)->'value field
+type 'msg attr=|Event of string*(string->'msg)
+val event_handlers:'msg attr list->(string*(string->'msg)) list
+|ocaml}
+      in
+      let parsed = parse_mli source in
+      let actual = capture_write parsed in
+      Test.Snapshot.assert_inline_text
+        ~ctx
+        ~actual
+        ~expected:{ocaml|type 'payload t
+type 'value variant_case =
+  | Unit: string * ('value -> bool) -> 'value variant_case
+  | Newtype: string * 'payload t * ('payload -> 'value) -> 'value variant_case
+type 'value field =
+  | Field: string * 'field t * ('value -> 'field) -> 'value field
+type 'msg attr =
+  | Event of string * (string -> 'msg)
+val event_handlers: 'msg attr list -> (string * (string -> 'msg)) list
+|ocaml});
+  Test.case
     "write renders item attributes attached to declarations"
     (fun ctx ->
       let source =
@@ -2035,7 +2086,8 @@ let is_layout = function
   Test.case
     "write formats polymorphic variants"
     (fun ctx ->
-      let source = {ocaml|let classify = function | `Alpha -> `Seen | `Beta value -> value
+      let source =
+        {ocaml|let classify = function | `Alpha -> `Seen | `Beta value -> value
 |ocaml}
       in
       let parsed = parse_ml source in
@@ -2312,7 +2364,8 @@ let bind =
   Test.case
     "write preserves nested tuple expression values"
     (fun ctx ->
-      let source = {ocaml|let value=((a,b),c)
+      let source =
+        {ocaml|let value=((a,b),c)
 let record={microseconds=(micros,6);other=x}
 |ocaml}
       in
@@ -2656,7 +2709,8 @@ let b arr = Ok arr.(0)
   Test.case
     "write keeps record field wildcard values closed"
     (fun ctx ->
-      let source = {ocaml|let show=function|Error {exception_=_;backtrace}->backtrace|_->""
+      let source =
+        {ocaml|let show=function|Error {exception_=_;backtrace}->backtrace|_->""
 |ocaml}
       in
       let parsed = parse_ml source in
@@ -2840,7 +2894,8 @@ let bind =
   Test.case
     "format keeps mixed trivia and unsupported items parseable"
     (fun _ctx ->
-      let source = {|open Std
+      let source =
+        {|open Std
 type t =
   | A
   | B
@@ -3508,53 +3563,6 @@ let packed = (module Protocol.Http1)
       in
       assert_idempotent ~source ~msg:"first-class module expressions should stay stable";
       Ok ());
-  Test.skip
-    "format class declaration items"
-    (fun _ctx ->
-      let source =
-        {|class ['a] service : object
-  val mutable state : int
-  method private run : int
-end =
-  object (self)
-    val mutable state = 0
-    method private run = self#state
-    (** keep body doc *)
-    [%%foo]
-  end
-|}
-      in
-      assert_format_ml_fails
-        ~msg:"class declaration items are outside parser2 formatter scope"
-        source);
-  Test.skip
-    "format class type declaration items"
-    (fun _ctx ->
-      let source =
-        {|class type ['a] service = object
-  inherit base
-  val mutable state : int
-  method private run : 'a
-  (** keep body doc *)
-  [%%foo]
-end
-
-class worker : int -> service
-|}
-      in
-      assert_format_mli_fails
-        ~msg:"class type declaration items are outside parser2 formatter scope"
-        source);
-  Test.skip
-    "format keeps shortcut class declaration modifiers idempotent"
-    (fun _ctx ->
-      let source = {|class%foo [@foo] x = x
-class type%foo [@foo] y = y
-|}
-      in
-      assert_format_ml_fails
-        ~msg:"shortcut class declaration modifiers are outside parser2 formatter scope"
-        source);
   Test.case
     "format keeps structural signature items idempotent"
     (fun _ctx ->
@@ -3764,6 +3772,11 @@ let typed =
         ~msg:"plain object expressions are not supported structurally yet"
         source);
   Test.case
+    "format currently fails for object core types"
+    (fun _ctx ->
+      let source = "type t = < run : int >\n" in
+      assert_format_mli_fails ~msg:"object core types are outside parser2 formatter scope" source);
+  Test.case
     "format object bodies preserve terminal trivia"
     (fun _ctx ->
       let source =
@@ -3895,14 +3908,13 @@ let guarded ready = assert ready
 let delayed compute = lazy (compute ())
 let loop cond body = while cond () do body () done
 let count () = for i = 10 downto 0 do print_int i done
-let call obj = obj#run
 let cast value = (value : source :> target)
 let widen value = (value :> target)
 |}
       in
       assert_idempotent
         ~source
-        ~msg:"module-pack, imperative, coercion, and object-override expressions should format structurally";
+        ~msg:"module-pack, imperative, and coercion expressions should format structurally";
       Ok ());
   Test.case
     "format object override expressions"
@@ -3944,7 +3956,8 @@ let nested = [%foo let x = 1]
   Test.case
     "format unreachable expressions structurally"
     (fun _ctx ->
-      let source = {|let absurd maybe =
+      let source =
+        {|let absurd maybe =
   match maybe with
   | Some value -> value
   | None -> .
@@ -3966,7 +3979,6 @@ let nested = [%foo let x = 1]
     (fun ctx ->
       let source =
         {|let typed value = (value : source)
-let shaped handler = (handler : < run : int >)
 let poly = ((fun x -> x) : 'a. 'a -> 'a)
 |}
       in
@@ -4166,8 +4178,7 @@ module M = struct end
           let files =
             Krasny.Runner.collect_ocaml_files
               ~roots:[ tmpdir ]
-              ~should_ignore:(fun path ->
-                String.contains (Path.to_string path) "fixtures")
+              ~should_ignore:(fun path -> String.contains (Path.to_string path) "fixtures")
               ()
             |> List.map ~fn:Path.to_string
           in
@@ -4350,10 +4361,8 @@ module M = struct end
             Krasny.Runner.run_checks_streaming
               ~concurrency:1
               ~roots:[ tmpdir ]
-              ~should_ignore:(fun path ->
-                String.contains (Path.to_string path) "fixtures")
-              ~on_result:(fun file_result ->
-                seen := Path.to_string file_result.file :: !seen)
+              ~should_ignore:(fun path -> String.contains (Path.to_string path) "fixtures")
+              ~on_result:(fun file_result -> seen := Path.to_string file_result.file :: !seen)
               ()
           in
           Test.assert_equal ~expected:[ Path.to_string keep ] ~actual:(List.reverse !seen);
@@ -4379,8 +4388,7 @@ module M = struct end
             Krasny.Runner.run_checks_streaming
               ~concurrency:1
               ~roots:[ tmpdir ]
-              ~on_result:(fun file_result ->
-                seen := Path.to_string file_result.file :: !seen)
+              ~on_result:(fun file_result -> seen := Path.to_string file_result.file :: !seen)
               ()
           in
           let actual = List.sort !seen ~compare:String.compare in

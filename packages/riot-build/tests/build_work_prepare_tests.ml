@@ -138,8 +138,7 @@ let test_initial_plan_packages_follow_topological_order = fun _ctx ->
               let host_target = Riot_model.Target.current in
               let all_targets_match =
                 initial_plan_targets lane
-                |> List.all ~fn:(fun target ->
-                  Riot_model.Target.equal host_target target)
+                |> List.all ~fn:(fun target -> Riot_model.Target.equal host_target target)
               in
               if not all_targets_match then
                 Error "expected initial planned package work to stay on the host target"

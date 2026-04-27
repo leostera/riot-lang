@@ -553,7 +553,6 @@ let rec module_of_signature_items = fun
         | Syn.Ast.SignatureItem.Open _
         | Syn.Ast.SignatureItem.Include _
         | Syn.Ast.SignatureItem.Exception _
-        | Syn.Ast.SignatureItem.Class _
         | Syn.Ast.SignatureItem.Extension _
         | Syn.Ast.SignatureItem.Attribute _
         | Syn.Ast.SignatureItem.Error _

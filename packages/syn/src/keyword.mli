@@ -1,5 +1,3 @@
-open Std
-
 (**
    OCaml Keywords
 
@@ -9,22 +7,14 @@ open Std
    Keywords are language-level identifiers with special meaning that cannot be
    used as variable names or other identifiers.
 *)
+open Std
 
 (**
    All OCaml keywords.
 
    This covers standard OCaml keywords from the language specification. Note
-   that some keywords like `begin`, `struct`, `sig`, and `object` also serve as
-   opening delimiters.
-*)
-
-(**
-   `of_string str` parses a keyword from a string.
-
-   Returns `Some keyword` if the string is a valid keyword, `None` otherwise.
-
-   Example: ```ocaml Keyword.of_string "let" = Some Let Keyword.of_string "foo"
-   = None Keyword.of_string "if" = Some If ```
+   that some keywords like `begin`, `struct`, and `sig` also serve as opening
+   delimiters.
 *)
 type t =
   | And
@@ -32,7 +22,6 @@ type t =
   | Asr
   | Assert
   | Begin
-  | Class
   | Constraint
   | Do
   | Done
@@ -49,8 +38,6 @@ type t =
   | If
   | In
   | Include
-  | Inherit
-  | Initializer
   | Land
   | Lazy
   | Let
@@ -60,13 +47,10 @@ type t =
   | Lxor
   | Lnot
   | Match
-  | Method
   | Mod
   | Module
   | Mutable
-  | New
   | Nonrec
-  | Object
   | Of
   | Open
   | Or
@@ -80,10 +64,18 @@ type t =
   | Try
   | Type
   | Val
-  | Virtual
   | When
   | While
   | With
+
+(**
+   `of_string str` parses a keyword from a string.
+
+   Returns `Some keyword` if the string is a valid keyword, `None` otherwise.
+
+   Example: ```ocaml Keyword.of_string "let" = Some Let Keyword.of_string "foo"
+   = None Keyword.of_string "if" = Some If ```
+*)
 val of_string: string -> t option
 
 (**
@@ -99,7 +91,7 @@ val to_string: t -> string
 (**
    `is_opening kw` checks if a keyword opens a block.
 
-   Opening keywords are: `begin`, `struct`, `sig`, `object`
+   Opening keywords are: `begin`, `struct`, and `sig`.
 
    These keywords must be matched with a corresponding `end` keyword.
 
@@ -111,8 +103,8 @@ val is_opening: t -> bool
 (**
    `is_closing kw` checks if a keyword closes a block.
 
-   The only closing keyword is `end`, which matches `begin`, `struct`, `sig`,
-   and `object`.
+   The only closing keyword is `end`, which matches `begin`, `struct`, and
+   `sig`.
 
    Example: ```ocaml Keyword.is_closing End = true Keyword.is_closing Done =
    false ```

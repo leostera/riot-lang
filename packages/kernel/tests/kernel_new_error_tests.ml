@@ -39,7 +39,9 @@ let test_error_envelope_reports_stable_module_tags = fun _ctx ->
   let socket_addr =
     Kernel.Error.from_net_socket_addr (Kernel.Net.SocketAddr.InvalidPort { port = (-1) })
   in
-  let timer = Kernel.Error.from_time_timer (Kernel.Time.Timer.InvalidTimeoutNs { timeout_ns = (-1L) }) in
+  let timer =
+    Kernel.Error.from_time_timer (Kernel.Time.Timer.InvalidTimeoutNs { timeout_ns = (-1L) })
+  in
   if
     Kernel.String.equal (Kernel.Error.module_name read_dir) "fs.read_dir"
     && Kernel.String.equal (Kernel.Error.module_name net_addr) "net.addr"
@@ -54,7 +56,9 @@ let test_error_envelope_system_is_none_for_non_system_errors = fun _ctx ->
   let ip_addr =
     Kernel.Error.from_net_ip_addr (Kernel.Net.IpAddr.InvalidText { value = "not-an-ip" })
   in
-  let timer = Kernel.Error.from_time_timer (Kernel.Time.Timer.InvalidTimeoutNs { timeout_ns = 0L }) in
+  let timer =
+    Kernel.Error.from_time_timer (Kernel.Time.Timer.InvalidTimeoutNs { timeout_ns = 0L })
+  in
   if Kernel.Error.system ip_addr = None && Kernel.Error.system timer = None then
     Ok ()
   else

@@ -175,8 +175,7 @@ let from_entries = fun
             let has_file =
               List.any
                 child_files
-                ~fn:(fun m ->
-                  Module_name.to_string (Module.module_name m) = module_name_str)
+                ~fn:(fun m -> Module_name.to_string (Module.module_name m) = module_name_str)
             in
             if has_file then
               None

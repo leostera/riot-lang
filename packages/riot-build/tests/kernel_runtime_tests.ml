@@ -162,7 +162,9 @@ let execute_kernel_runtime_graph = fun ~concurrency ->
           in
           let store = Riot_store.Store.create ~workspace in
           let session_id = Riot_model.Session_id.make () in
-          let build_ctx = Riot_model.Build_ctx.make ~session_id ~profile:Riot_model.Profile.debug () in
+          let build_ctx =
+            Riot_model.Build_ctx.make ~session_id ~profile:Riot_model.Profile.debug ()
+          in
           match plan_kernel_runtime_graphs ~workspace ~store ~build_ctx with
           | Error _ as err -> err
           | Ok (package, action_graph, depset) ->

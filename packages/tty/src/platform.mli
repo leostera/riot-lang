@@ -22,7 +22,7 @@ val close: fd -> (unit, IO.error) result
 
 val is_tty: fd -> bool
 
-val get_size: fd -> ((int * int), IO.error) result
+val get_size: fd -> (int * int, IO.error) result
 
 val get_attributes: fd -> (termios, IO.error) result
 

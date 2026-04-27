@@ -230,8 +230,7 @@ let test_json_snapshot_emits_json_progress =
                     make_progress_ctx
                       ~test_name:"json_progress"
                       workspace_root
-                      (fun progress ->
-                        events := progress :: !events)
+                      (fun progress -> events := progress :: !events)
                   in
                   match Test.Snapshot.assert_json
                     ~ctx
@@ -257,8 +256,7 @@ let test_inline_json_snapshot_emits_json_progress =
             make_progress_ctx
               ~test_name:"inline_json_progress"
               workspace_root
-              (fun progress ->
-                events := progress :: !events)
+              (fun progress -> events := progress :: !events)
           in
           match Test.Snapshot.assert_inline_json
             ~ctx
@@ -296,7 +294,9 @@ let test_fixture_snapshot_uses_explicit_snapshot_path =
                       snapshot_path = Some approved;
                     }
                   in
-                  let ctx = make_ctx ~fixture ~test_name:"fixture_explicit_snapshot" workspace_root in
+                  let ctx =
+                    make_ctx ~fixture ~test_name:"fixture_explicit_snapshot" workspace_root
+                  in
                   Test.Snapshot.assert_text ~ctx ~actual:"approved fixture snapshot\n"
             )))
 

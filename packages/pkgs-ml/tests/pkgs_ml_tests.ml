@@ -365,8 +365,7 @@ let test_filesystem_registry_fetches_config_on_cache_miss = fun _ctx ->
           | Ok (Some cached) ->
               let requested =
                 List.reverse !requests
-                |> List.map ~fn:(fun request ->
-                  request.url)
+                |> List.map ~fn:(fun request -> request.url)
               in
               if
                 String.equal config.kind "sparse"
@@ -417,8 +416,7 @@ let test_filesystem_registry_fetches_package_document_on_cache_miss = fun _ctx -
           | (Ok (Some _), Ok (Some cached)) ->
               let requested =
                 List.reverse !requests
-                |> List.map ~fn:(fun request ->
-                  request.url)
+                |> List.map ~fn:(fun request -> request.url)
               in
               if
                 String.equal document.name "kernel"
@@ -468,8 +466,7 @@ let test_filesystem_registry_returns_none_for_missing_package_document = fun _ct
           | Ok None ->
               let requested =
                 List.reverse !requests
-                |> List.map ~fn:(fun request ->
-                  request.url)
+                |> List.map ~fn:(fun request -> request.url)
               in
               if
                 requested
@@ -498,8 +495,7 @@ let test_filesystem_registry_reuses_fresh_cached_config_without_fetch = fun _ctx
       in
       let* () = Pkgs_ml.Sparse_index.write_cached_config cache ~source:sparse_index_config_json in
       let (fetch, requests) =
-        make_fetch_recorder (fun uri ->
-          Error ("unexpected fetch url " ^ Net.Uri.to_string uri))
+        make_fetch_recorder (fun uri -> Error ("unexpected fetch url " ^ Net.Uri.to_string uri))
       in
       let registry = Pkgs_ml.Registry.filesystem ~fetch cache in
       match Pkgs_ml.Registry.read_config registry with
@@ -522,9 +518,8 @@ let test_filesystem_registry_refetches_stale_cached_config = fun _ctx ->
           ()
         |> Result.expect ~msg:"expected registry cache to be created"
       in
-      let* () = Pkgs_ml.Sparse_index.write_cached_config
-        cache
-        ~source:sparse_index_config_json_stale
+      let* () =
+        Pkgs_ml.Sparse_index.write_cached_config cache ~source:sparse_index_config_json_stale
       in
       let* () = set_old_mtime (Pkgs_ml.Sparse_index.config_cache_path cache) in
       let (fetch, requests) =
@@ -538,8 +533,7 @@ let test_filesystem_registry_refetches_stale_cached_config = fun _ctx ->
       let registry = Pkgs_ml.Registry.filesystem ~fetch cache in
       match Pkgs_ml.Registry.read_config registry with
       | Ok (Some config) when String.equal config.index_base_url "https://cdn.pkgs.ml/index/v1"
-      && List.map (List.reverse !requests) ~fn:(fun request ->
-        request.url)
+      && List.map (List.reverse !requests) ~fn:(fun request -> request.url)
       = [ "https://cdn.pkgs.ml/index/v1/config.json" ] -> Ok ()
       | Ok (Some _) -> Error "expected stale cached config to be refreshed from the registry"
       | Ok None -> Error "expected refreshed config to be available"
@@ -586,8 +580,7 @@ let test_filesystem_registry_refetches_stale_cached_package_document = fun _ctx 
       let registry = Pkgs_ml.Registry.filesystem ~fetch cache in
       match Pkgs_ml.Registry.read_package_document registry ~package_name:"kernel" with
       | Ok (Some document) when String.equal document.latest "0.0.3"
-      && List.map (List.reverse !requests) ~fn:(fun request ->
-        request.url)
+      && List.map (List.reverse !requests) ~fn:(fun request -> request.url)
       = [ "https://cdn.pkgs.ml/index/v1/ke/rn/kernel.json" ] -> Ok ()
       | Ok (Some _) ->
           Error "expected stale cached package document to be refreshed from the registry"
@@ -621,8 +614,7 @@ let test_registry_search_packages = fun _ctx ->
       match Pkgs_ml.Registry.search_packages registry ~query:"ker" ~limit:3 () with
       | Ok [ { package_name = "kernel"; latest_version = "0.0.1"; description = Some "Core primitives" }; { package_name = "kernel-tools"; latest_version = "0.1.0"; description = None } ] when List.map
         (List.reverse !requests)
-        ~fn:(fun request ->
-          request.url)
+        ~fn:(fun request -> request.url)
       = [ "https://api.pkgs.ml/v1/search?q=ker&limit=3" ] -> Ok ()
       | Ok _ -> Error "expected search results to decode from the registry search api"
       | Error err -> Error err) with
@@ -673,13 +665,11 @@ let test_registry_materializes_in_memory_release = fun _ctx ->
       | Ok `Materialized ->
           let manifest_path =
             Pkgs_ml.Registry_cache.package_src_dir cache ~package_name:"std" ~version:"0.1.0"
-            |> fun root ->
-              Path.(root / Path.v "riot.toml")
+            |> fun root -> Path.(root / Path.v "riot.toml")
           in
           let source_path =
             Pkgs_ml.Registry_cache.package_src_dir cache ~package_name:"std" ~version:"0.1.0"
-            |> fun root ->
-              Path.(root / Path.v "src/std.ml")
+            |> fun root -> Path.(root / Path.v "src/std.ml")
           in
           match (Fs.read manifest_path, Fs.read source_path) with
           | (Ok manifest, Ok source) when String.equal manifest "[package]\nname = \"std\"\n"
@@ -879,13 +869,11 @@ let test_filesystem_registry_materializes_cached_release = fun _ctx ->
           | Ok `Materialized ->
               let manifest_path =
                 Pkgs_ml.Registry_cache.package_src_dir cache ~package_name:"std" ~version:"0.1.0"
-                |> fun root ->
-                  Path.(root / Path.v "riot.toml")
+                |> fun root -> Path.(root / Path.v "riot.toml")
               in
               let materialized_source =
                 Pkgs_ml.Registry_cache.package_src_dir cache ~package_name:"std" ~version:"0.1.0"
-                |> fun root ->
-                  Path.(root / Path.v "src/std.ml")
+                |> fun root -> Path.(root / Path.v "src/std.ml")
               in
               match (Fs.read manifest_path, Fs.read materialized_source) with
               | (Ok manifest, Ok source) when String.equal
@@ -944,16 +932,14 @@ let test_filesystem_registry_materializes_gzip_cached_release = fun _ctx ->
                       cache
                       ~package_name:"std"
                       ~version:"0.1.0"
-                    |> fun root ->
-                      Path.(root / Path.v "riot.toml")
+                    |> fun root -> Path.(root / Path.v "riot.toml")
                   in
                   let materialized_source =
                     Pkgs_ml.Registry_cache.package_src_dir
                       cache
                       ~package_name:"std"
                       ~version:"0.1.0"
-                    |> fun root ->
-                      Path.(root / Path.v "src/std.ml")
+                    |> fun root -> Path.(root / Path.v "src/std.ml")
                   in
                   match (Fs.read manifest_path, Fs.read materialized_source) with
                   | (Ok manifest, Ok source) when String.equal
@@ -1028,16 +1014,14 @@ let test_filesystem_registry_downloads_release_archive_on_cache_miss = fun _ctx 
                       cache
                       ~package_name:"std"
                       ~version:"0.1.0"
-                    |> fun root ->
-                      Path.(root / Path.v "riot.toml")
+                    |> fun root -> Path.(root / Path.v "riot.toml")
                   in
                   let materialized_source =
                     Pkgs_ml.Registry_cache.package_src_dir
                       cache
                       ~package_name:"std"
                       ~version:"0.1.0"
-                    |> fun root ->
-                      Path.(root / Path.v "src/std.ml")
+                    |> fun root -> Path.(root / Path.v "src/std.ml")
                   in
                   match (Fs.exists archive_path, Fs.read manifest_path, Fs.read materialized_source) with
                   | (Error err, _, _)
@@ -1047,8 +1031,7 @@ let test_filesystem_registry_downloads_release_archive_on_cache_miss = fun _ctx 
                   | (Ok true, Ok manifest, Ok source) ->
                       let requested =
                         List.reverse !requests
-                        |> List.map ~fn:(fun request ->
-                          request.url)
+                        |> List.map ~fn:(fun request -> request.url)
                       in
                       if
                         String.equal manifest "[package]\nname = \"std\"\nversion = \"0.1.0\"\n"
@@ -1131,16 +1114,14 @@ let test_filesystem_registry_refetches_corrupt_cached_archive = fun _ctx ->
                       cache
                       ~package_name:"std"
                       ~version:"0.1.0"
-                    |> fun root ->
-                      Path.(root / Path.v "riot.toml")
+                    |> fun root -> Path.(root / Path.v "riot.toml")
                   in
                   let materialized_source =
                     Pkgs_ml.Registry_cache.package_src_dir
                       cache
                       ~package_name:"std"
                       ~version:"0.1.0"
-                    |> fun root ->
-                      Path.(root / Path.v "src/std.ml")
+                    |> fun root -> Path.(root / Path.v "src/std.ml")
                   in
                   match (Fs.read manifest_path, Fs.read materialized_source) with
                   | (Ok manifest, Ok source) when String.equal
@@ -1149,8 +1130,7 @@ let test_filesystem_registry_refetches_corrupt_cached_archive = fun _ctx ->
                   && String.equal source "let answer = 42\n" ->
                       let requested =
                         List.reverse !requests
-                        |> List.map ~fn:(fun request ->
-                          request.url)
+                        |> List.map ~fn:(fun request -> request.url)
                       in
                       if
                         requested
@@ -1210,8 +1190,7 @@ let test_registry_publish_artifact_posts_tarball_to_artifact_publish_route = fun
   }
 }|};
             })
-          (fun uri ->
-            Error ("unexpected GET " ^ Net.Uri.to_string uri))
+          (fun uri -> Error ("unexpected GET " ^ Net.Uri.to_string uri))
       in
       let registry = Pkgs_ml.Registry.filesystem ~fetch cache in
       match Pkgs_ml.Registry.publish_artifact registry ~api_token:"root-secret" ~artifact with
@@ -1280,8 +1259,7 @@ let test_registry_yank_release_posts_to_yank_route = fun _ctx ->
   "yanked_by_github_login": "leostera"
 }|};
             })
-          (fun uri ->
-            Error ("unexpected GET " ^ Net.Uri.to_string uri))
+          (fun uri -> Error ("unexpected GET " ^ Net.Uri.to_string uri))
       in
       let registry = Pkgs_ml.Registry.filesystem ~fetch cache in
       match Pkgs_ml.Registry.yank_release
@@ -1363,8 +1341,7 @@ let test_registry_riot_agent_env_override_wins_over_default_agent = fun _ctx ->
   }
 }|};
                 })
-              (fun uri ->
-                Error ("unexpected GET " ^ Net.Uri.to_string uri))
+              (fun uri -> Error ("unexpected GET " ^ Net.Uri.to_string uri))
           in
           let registry = Pkgs_ml.Registry.filesystem ~fetch cache in
           match Pkgs_ml.Registry.publish_artifact registry ~api_token:"root-secret" ~artifact with
@@ -1375,8 +1352,7 @@ let test_registry_riot_agent_env_override_wins_over_default_agent = fun _ctx ->
                   let header =
                     List.find
                       request.headers
-                      ~fn:(fun (name, _value) ->
-                        String.equal name "X-Riot-Agent")
+                      ~fn:(fun (name, _value) -> String.equal name "X-Riot-Agent")
                   in
                   if header = Some ("X-Riot-Agent", "riot-docs-pipeline@1.0") then
                     Ok ()

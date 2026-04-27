@@ -34,7 +34,6 @@ type include_declaration = node
 type value_declaration = node
 type external_declaration = node
 type exception_declaration = node
-type class_declaration = node
 type extension_item = node
 type attribute_item = node
 type expr_item = node
@@ -539,10 +538,6 @@ module Expr: sig
         target: t option;
         field: Token.t option;
       }
-    | MethodCall of {
-        target: t option;
-        method_: Token.t option;
-      }
     | PolyVariant of {
         tag: Token.t option;
         payload: t option;
@@ -754,7 +749,6 @@ module StructureItem: sig
     | Include of include_declaration
     | External of external_declaration
     | Exception of exception_declaration
-    | Class of class_declaration
     | Extension of extension_item
     | Attribute of attribute_item
     | Expr of expr_item
@@ -779,7 +773,6 @@ module SignatureItem: sig
     | Include of include_declaration
     | External of external_declaration
     | Exception of exception_declaration
-    | Class of class_declaration
     | Extension of extension_item
     | Attribute of attribute_item
     | Error of Node.t
@@ -1111,13 +1104,6 @@ module ExceptionDeclaration: sig
   val name: t -> Token.t option
 
   val view: t -> view
-end
-
-module ClassDeclaration: sig
-  type t = class_declaration
-  val cast: Node.t -> t option
-
-  val name: t -> Token.t option
 end
 
 module ExtensionItem: sig

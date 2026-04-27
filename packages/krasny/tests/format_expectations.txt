@@ -160,8 +160,6 @@
 0973_record_type_field_tight_colon.mli
 0974_expression_ascription_parenthesized.ml
 0975_typed_pattern_tight_colon.ml
-0976_object_type_field_tight_colon.mli
-0977_class_type_field_tight_colon.mli
 0978_variant_result_tight_colon.mli
 0979_nested_redundant_parens.ml
 0980_fun_breaks_after_arrow.ml

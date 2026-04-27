@@ -109,8 +109,7 @@ let tests = [
       let _ = Swisstable.insert map 2 20 in
       let _ = Swisstable.insert map 3 30 in
       let sum = Sync.Cell.create 0 in
-      Swisstable.iter (fun _k v ->
-        Sync.Cell.set sum (Sync.Cell.get sum + v)) map;
+      Swisstable.iter (fun _k v -> Sync.Cell.set sum (Sync.Cell.get sum + v)) map;
       Test.assert_equal ~expected:60 ~actual:(Sync.Cell.get sum);
       Ok ());
   Test.case
@@ -233,15 +232,12 @@ let tests = [
     (fun _ctx ->
       let map = Swisstable.create () in
       let _ = Swisstable.insert map "counter" 0 in
-      Swisstable.and_modify map "counter" (fun x ->
-        x + 1);
+      Swisstable.and_modify map "counter" (fun x -> x + 1);
       Test.assert_equal ~expected:(Some 1) ~actual:(Swisstable.get map "counter");
-      Swisstable.and_modify map "counter" (fun x ->
-        x + 1);
+      Swisstable.and_modify map "counter" (fun x -> x + 1);
       Test.assert_equal ~expected:(Some 2) ~actual:(Swisstable.get map "counter");
       (* and_modify on non-existent key does nothing *)
-      Swisstable.and_modify map "missing" (fun x ->
-        x + 1);
+      Swisstable.and_modify map "missing" (fun x -> x + 1);
       Test.assert_equal ~expected:None ~actual:(Swisstable.get map "missing");
       Ok ());
   Test.case
@@ -265,13 +261,9 @@ let tests = [
       let _ = Swisstable.insert map 1 10 in
       let _ = Swisstable.insert map 2 20 in
       let _ = Swisstable.insert map 3 30 in
-      let sum = Swisstable.fold (fun _k v acc ->
-        acc + v) map 0
-      in
+      let sum = Swisstable.fold (fun _k v acc -> acc + v) map 0 in
       Test.assert_equal ~expected:60 ~actual:sum;
-      let count = Swisstable.fold (fun _k _v acc ->
-        acc + 1) map 0
-      in
+      let count = Swisstable.fold (fun _k _v acc -> acc + 1) map 0 in
       Test.assert_equal ~expected:3 ~actual:count;
       Ok ());
   Test.case
@@ -401,8 +393,7 @@ let tests = [
     (fun _ctx ->
       let map = Swisstable.create () in
       let count = Sync.Cell.create 0 in
-      Swisstable.iter (fun _k _v ->
-        Sync.Cell.set count (Sync.Cell.get count + 1)) map;
+      Swisstable.iter (fun _k _v -> Sync.Cell.set count (Sync.Cell.get count + 1)) map;
       Test.assert_equal ~expected:0 ~actual:(Sync.Cell.get count);
       Ok ());
 ]

@@ -375,7 +375,9 @@ let test_list_toolchains_returns_typed_targets = fun _ctx ->
   let rendered = target_strings targets in
   let expected = target_strings [ host; cross ] in
   let host_info = List.find toolchains ~fn:(fun info -> Riot_model.Target.equal info.target host) in
-  let cross_info = List.find toolchains ~fn:(fun info -> Riot_model.Target.equal info.target cross) in
+  let cross_info =
+    List.find toolchains ~fn:(fun info -> Riot_model.Target.equal info.target cross)
+  in
   if not (String.equal (String.concat "," rendered) (String.concat "," expected)) then
     Error "expected list_toolchains to preserve typed target triples"
   else

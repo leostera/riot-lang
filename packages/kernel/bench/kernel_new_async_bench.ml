@@ -102,8 +102,7 @@ let with_udp_pair = fun fn ->
                 ~finally:(fun () ->
                   let _ = Kernel.Net.UdpSocket.close client in
                   ())
-                (fun () ->
-                  fn server client))
+                (fun () -> fn server client))
 
 let bench_register_and_deregister = fun () ->
   with_pipe

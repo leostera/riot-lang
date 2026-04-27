@@ -187,8 +187,7 @@ let test_module_graph_prefers_implementation_when_interface_exists = fun _ctx ->
                     expected_name
               | _ -> false
             in
-            match List.find (G.map graph ~fn:(fun x ->
-              x)) ~fn:matches with
+            match List.find (G.map graph ~fn:(fun x -> x)) ~fn:matches with
             | Some (node_id, _) -> Ok node_id
             | None -> Error ("expected node not found: " ^ expected_name)
           in
@@ -299,8 +298,7 @@ let test_module_graph_resolves_nested_local_unix_backend = fun _ctx ->
                   String.equal (Riot_model.Module.namespaced_name mod_) qualified_name
               | _ -> false
             in
-            match List.find (G.map graph ~fn:(fun x ->
-              x)) ~fn:matches with
+            match List.find (G.map graph ~fn:(fun x -> x)) ~fn:matches with
             | Some (_node_id, node) -> Ok node
             | None -> Error ("expected module not found: " ^ qualified_name)
           in
@@ -388,8 +386,7 @@ let test_module_graph_uses_explicit_root_library_path = fun _ctx ->
               ^ String.concat " -> " (List.map cycle_ids ~fn:G.Node_id.to_string))
           | Ok _ ->
               let impl_nodes =
-                G.map graph ~fn:(fun x ->
-                  x)
+                G.map graph ~fn:(fun x -> x)
                 |> List.filter_map
                   ~fn:(fun (_id, (node: Riot_planner.Module_node.t G.node)) ->
                     match node.value.kind with
@@ -483,8 +480,7 @@ let test_module_graph_uses_explicit_root_library_path_case_insensitively = fun _
               ^ String.concat " -> " (List.map cycle_ids ~fn:G.Node_id.to_string))
           | Ok _ ->
               let impl_nodes =
-                G.map graph ~fn:(fun x ->
-                  x)
+                G.map graph ~fn:(fun x -> x)
                 |> List.filter_map
                   ~fn:(fun (_id, (node: Riot_planner.Module_node.t G.node)) ->
                     match node.value.kind with
@@ -579,8 +575,7 @@ let test_module_graph_root_library_alias_depends_on_child_module = fun _ctx ->
                   String.equal (Riot_model.Module.namespaced_name mod_) qualified_name
               | _ -> false
             in
-            match List.find (G.map graph ~fn:(fun x ->
-              x)) ~fn:matches with
+            match List.find (G.map graph ~fn:(fun x -> x)) ~fn:matches with
             | Some (_node_id, node) -> Ok node
             | None -> Error ("expected module not found: " ^ qualified_name)
           in
@@ -662,8 +657,7 @@ let test_module_graph_opened_public_root_resolves_children_to_public_module = fu
                   String.equal (Riot_model.Module.namespaced_name mod_) qualified_name
               | _ -> false
             in
-            match List.find (G.map graph ~fn:(fun x ->
-              x)) ~fn:matches with
+            match List.find (G.map graph ~fn:(fun x -> x)) ~fn:matches with
             | Some (_node_id, node) -> Ok node
             | None -> Error ("expected module not found: " ^ qualified_name)
           in
@@ -675,8 +669,7 @@ let test_module_graph_opened_public_root_resolves_children_to_public_module = fu
                 let display_path = Path.to_string analyzed.display_path in
                 String.equal display_path path
                 || String.ends_with ~suffix:expected_suffix display_path)
-            |> Option.map ~fn:(fun (_id, analyzed) ->
-              analyzed)
+            |> Option.map ~fn:(fun (_id, analyzed) -> analyzed)
           in
           match (
             find_ml "Syn",
@@ -808,8 +801,7 @@ let test_module_graph_implicit_alias_opens_resolve_nested_leaf_modules = fun _ct
                   String.equal (Riot_model.Module.namespaced_name mod_) qualified_name
               | _ -> false
             in
-            match List.find (G.map graph ~fn:(fun x ->
-              x)) ~fn:matches with
+            match List.find (G.map graph ~fn:(fun x -> x)) ~fn:matches with
             | Some (_node_id, node) -> Ok node
             | None -> Error ("expected module not found: " ^ qualified_name)
           in
@@ -820,8 +812,7 @@ let test_module_graph_implicit_alias_opens_resolve_nested_leaf_modules = fun _ct
                   String.equal (Riot_model.Module.namespaced_name mod_) qualified_name
               | _ -> false
             in
-            match List.find (G.map graph ~fn:(fun x ->
-              x)) ~fn:matches with
+            match List.find (G.map graph ~fn:(fun x -> x)) ~fn:matches with
             | Some (_node_id, node) -> Ok node
             | None -> Error ("expected module not found: " ^ qualified_name)
           in
@@ -833,8 +824,7 @@ let test_module_graph_implicit_alias_opens_resolve_nested_leaf_modules = fun _ct
                 let display_path = Path.to_string analyzed.display_path in
                 String.equal display_path path
                 || String.ends_with ~suffix:expected_suffix display_path)
-            |> Option.map ~fn:(fun (_id, analyzed) ->
-              analyzed)
+            |> Option.map ~fn:(fun (_id, analyzed) -> analyzed)
           in
           match (
             find_mli "Kernel__Net__Addr__Unix",
@@ -854,7 +844,9 @@ let test_module_graph_implicit_alias_opens_resolve_nested_leaf_modules = fun _ct
               | Error err -> Error ("dependency analysis failed: " ^ deps_error_to_string err)
               | Ok deps ->
                   let modules = Syn.Deps.modules deps in
-                  let depends_on_result = List.any unix_node.deps ~fn:(G.Node_id.eq result_node.id) in
+                  let depends_on_result =
+                    List.any unix_node.deps ~fn:(G.Node_id.eq result_node.id)
+                  in
                   let depends_on_system_error =
                     List.any unix_node.deps ~fn:(G.Node_id.eq system_error_node.id)
                   in
@@ -970,8 +962,7 @@ let test_module_graph_implicit_root_alias_resolves_public_child_root = fun _ctx 
                   String.equal (Riot_model.Module.namespaced_name mod_) qualified_name
               | _ -> false
             in
-            match List.find (G.map graph ~fn:(fun x ->
-              x)) ~fn:matches with
+            match List.find (G.map graph ~fn:(fun x -> x)) ~fn:matches with
             | Some (_node_id, node) -> Ok node
             | None -> Error ("expected module not found: " ^ qualified_name)
           in
@@ -982,8 +973,7 @@ let test_module_graph_implicit_root_alias_resolves_public_child_root = fun _ctx 
                   String.equal (Riot_model.Module.namespaced_name mod_) qualified_name
               | _ -> false
             in
-            match List.find (G.map graph ~fn:(fun x ->
-              x)) ~fn:matches with
+            match List.find (G.map graph ~fn:(fun x -> x)) ~fn:matches with
             | Some (_node_id, node) -> Ok node
             | None -> Error ("expected module not found: " ^ qualified_name)
           in
@@ -995,8 +985,7 @@ let test_module_graph_implicit_root_alias_resolves_public_child_root = fun _ctx 
                 let display_path = Path.to_string analyzed.display_path in
                 String.equal display_path path
                 || String.ends_with ~suffix:expected_suffix display_path)
-            |> Option.map ~fn:(fun (_id, analyzed) ->
-              analyzed)
+            |> Option.map ~fn:(fun (_id, analyzed) -> analyzed)
           in
           match (
             find_mli "Kernel__Process",
@@ -1124,8 +1113,7 @@ let test_module_graph_resolves_deeply_nested_modules_namespace_first = fun _ctx 
                   String.equal (Riot_model.Module.namespaced_name mod_) qualified_name
               | _ -> false
             in
-            match List.find (G.map graph ~fn:(fun x ->
-              x)) ~fn:matches with
+            match List.find (G.map graph ~fn:(fun x -> x)) ~fn:matches with
             | Some (_node_id, node) -> Ok node
             | None -> Error ("expected module not found: " ^ qualified_name)
           in
@@ -1287,7 +1275,9 @@ let test_module_graph_keeps_nested_sibling_dependency_across_allowed_source_orde
                 ~target_dir:"target"
                 ()
             in
-            let graph_builder = make_src_graph_builder ~package_root ~package ~toolchain ~workspace in
+            let graph_builder =
+              make_src_graph_builder ~package_root ~package ~toolchain ~workspace
+            in
             match Riot_planner.Module_graph.wire_dependencies graph_builder with
             | Error err ->
                 Error ("unexpected planner error for allowed source order ["
@@ -1303,8 +1293,7 @@ let test_module_graph_keeps_nested_sibling_dependency_across_allowed_source_orde
                         String.equal (Riot_model.Module.namespaced_name mod_) qualified_name
                     | _ -> false
                   in
-                  match List.find (G.map graph ~fn:(fun x ->
-                    x)) ~fn:matches with
+                  match List.find (G.map graph ~fn:(fun x -> x)) ~fn:matches with
                   | Some (_node_id, node) -> Ok node
                   | None -> Error ("expected module not found: " ^ qualified_name)
                 in
@@ -1316,14 +1305,11 @@ let test_module_graph_keeps_nested_sibling_dependency_across_allowed_source_orde
                         String.equal (Riot_model.Module.namespaced_name mod_) qualified_name
                     | _ -> false
                   in
-                  let matches = List.filter (G.map graph ~fn:(fun x ->
-                    x)) ~fn:matches
-                  in
+                  let matches = List.filter (G.map graph ~fn:(fun x -> x)) ~fn:matches in
                   if List.is_empty matches then
                     Error ("expected module not found: " ^ qualified_name)
                   else
-                    Ok (List.map matches ~fn:(fun (_node_id, node) ->
-                      node))
+                    Ok (List.map matches ~fn:(fun (_node_id, node) -> node))
                 in
                 let module_dependency_labels ((node: Riot_planner.Module_node.t G.node)) =
                   List.filter_map
@@ -1451,8 +1437,7 @@ let test_module_graph_resolves_ocaml_stdlib_modules_through_stdlib_root = fun _c
               let unresolved =
                 Riot_planner.Module_graph.analyzed_modules graph_builder
                 |> List.map
-                  ~fn:(fun (_node_id, module_) ->
-                    module_.Riot_planner.Module_graph.unresolved_deps)
+                  ~fn:(fun (_node_id, module_) -> module_.Riot_planner.Module_graph.unresolved_deps)
                 |> List.concat
               in
               if List.is_empty unresolved then
@@ -1480,8 +1465,12 @@ let test_module_graph_resolves_package_local_namespace_open_in_interface = fun _
         |> Result.expect ~msg:("expected file write to succeed: " ^ Path.to_string path)
       in
       let _ = create_dir iter_dir in
-      let _ = write Path.(src_dir / Path.v "std.ml") "module Iter = Iter\nmodule String = String\n" in
-      let _ = write Path.(iter_dir / Path.v "iter.mli") "module Iterator: sig type 'value t end\n" in
+      let _ =
+        write Path.(src_dir / Path.v "std.ml") "module Iter = Iter\nmodule String = String\n"
+      in
+      let _ =
+        write Path.(iter_dir / Path.v "iter.mli") "module Iterator: sig type 'value t end\n"
+      in
       let _ = write Path.(iter_dir / Path.v "iter.ml") "module Iterator = Iterator\n" in
       let _ = write Path.(iter_dir / Path.v "Iterator.ml") "type 'value t = unit\n" in
       let _ =
@@ -1651,8 +1640,7 @@ let test_module_graph_resolves_loose_source_local_open_exports = fun _ctx ->
               let graph = Riot_planner.Module_graph.graph graph_builder in
               let analyzed_modules = Riot_planner.Module_graph.analyzed_modules graph_builder in
               let find_ml name =
-                G.map graph ~fn:(fun x ->
-                  x)
+                G.map graph ~fn:(fun x -> x)
                 |> List.find
                   ~fn:(fun (_node_id, (node: Riot_planner.Module_node.t G.node)) ->
                     match node.value.kind with
@@ -1661,8 +1649,7 @@ let test_module_graph_resolves_loose_source_local_open_exports = fun _ctx ->
                     | _ -> false)
               in
               let find_analysis node_id =
-                List.find analyzed_modules ~fn:(fun (id, _module_) ->
-                  G.Node_id.eq id node_id)
+                List.find analyzed_modules ~fn:(fun (id, _module_) -> G.Node_id.eq id node_id)
               in
               match (find_ml "Action", find_ml "Dep_graph") with
               | (Some (action_id, action_node), Some (_dep_id, dep_node)) -> (
@@ -1755,8 +1742,7 @@ let test_module_graph_wires_direct_dependency_root_edge = fun _ctx ->
           let graph = Riot_planner.Module_graph.graph graph_builder in
           let analyzed_modules = Riot_planner.Module_graph.analyzed_modules graph_builder in
           let find_app_node () =
-            G.map graph ~fn:(fun x ->
-              x)
+            G.map graph ~fn:(fun x -> x)
             |> List.find
               ~fn:(fun (_node_id, (node: Riot_planner.Module_node.t G.node)) ->
                 match node.value.kind with
@@ -1765,8 +1751,7 @@ let test_module_graph_wires_direct_dependency_root_edge = fun _ctx ->
                 | _ -> false)
           in
           let find_std_node () =
-            G.map graph ~fn:(fun x ->
-              x)
+            G.map graph ~fn:(fun x -> x)
             |> List.find
               ~fn:(fun (_node_id, (node: Riot_planner.Module_node.t G.node)) ->
                 match node.value.kind with
@@ -1780,8 +1765,7 @@ let test_module_graph_wires_direct_dependency_root_edge = fun _ctx ->
               let analyzed_app =
                 List.find
                   analyzed_modules
-                  ~fn:(fun (node_id, _analyzed) ->
-                    G.Node_id.eq node_id app_node.id)
+                  ~fn:(fun (node_id, _analyzed) -> G.Node_id.eq node_id app_node.id)
               in
               (
                 match analyzed_app with
@@ -1902,8 +1886,7 @@ let test_module_graph_resolves_direct_dependency_nested_public_export = fun _ctx
               let graph = Riot_planner.Module_graph.graph graph_builder in
               let analyzed_modules = Riot_planner.Module_graph.analyzed_modules graph_builder in
               let find_app_node () =
-                G.map graph ~fn:(fun x ->
-                  x)
+                G.map graph ~fn:(fun x -> x)
                 |> List.find
                   ~fn:(fun (_node_id, (node: Riot_planner.Module_node.t G.node)) ->
                     match node.value.kind with
@@ -1912,8 +1895,7 @@ let test_module_graph_resolves_direct_dependency_nested_public_export = fun _ctx
                     | _ -> false)
               in
               let find_kernel_node () =
-                G.map graph ~fn:(fun x ->
-                  x)
+                G.map graph ~fn:(fun x -> x)
                 |> List.find
                   ~fn:(fun (_node_id, (node: Riot_planner.Module_node.t G.node)) ->
                     match node.value.kind with
@@ -1925,8 +1907,7 @@ let test_module_graph_resolves_direct_dependency_nested_public_export = fun _ctx
               | (Some (app_id, app_node), Some (_kernel_id, kernel_node)) -> (
                   match List.find
                     analyzed_modules
-                    ~fn:(fun (node_id, _analyzed) ->
-                      G.Node_id.eq node_id app_id) with
+                    ~fn:(fun (node_id, _analyzed) -> G.Node_id.eq node_id app_id) with
                   | None -> Error "expected analyzed App module"
                   | Some (_node_id, analyzed) ->
                       let requested_modules =

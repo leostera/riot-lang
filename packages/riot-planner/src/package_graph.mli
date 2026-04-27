@@ -90,7 +90,7 @@ val create_with_breakdown:
   scope:build_scope ->
   ?dev_artifacts:dev_artifacts ->
   Workspace.t ->
-  ((t * create_breakdown), create_error) result
+  (t * create_breakdown, create_error) result
 
 (** Extract the Package.t from a package_node *)
 val get_package: package_node -> Package.t

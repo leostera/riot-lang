@@ -180,10 +180,8 @@ let locked_dependency_versions = fun
                   | None ->
                       List.find
                         workspace_versions
-                        ~fn:(fun (name, _) ->
-                          Package_name.equal name dependency.name)
-                      |> Option.map ~fn:(fun (_, version) ->
-                        (dependency.name, version)))
+                        ~fn:(fun (name, _) -> Package_name.equal name dependency.name)
+                      |> Option.map ~fn:(fun (_, version) -> (dependency.name, version)))
             in
             let resolved =
               resolved
@@ -203,8 +201,7 @@ let locked_dependency_versions = fun
                 ~fn:(fun (dependency: Riot_model.Package.dependency) ->
                   match List.find
                     resolved
-                    ~fn:(fun (name, _) ->
-                      Package_name.equal name dependency.name) with
+                    ~fn:(fun (name, _) -> Package_name.equal name dependency.name) with
                   | Some _ -> None
                   | None -> Some dependency.name)
             in
@@ -478,7 +475,9 @@ let run_for_package = fun
       ~release:request.release
       ~output_root_opt:request.output_root
   in
-  let () = emit ~on_event (PackageGenerationStarted { package = package.name; version; output_dir }) in
+  let () =
+    emit ~on_event (PackageGenerationStarted { package = package.name; version; output_dir })
+  in
   let result =
     let* sources =
       Source.collect_interfaces ~workspace:request.workspace ~store ~release:request.release package

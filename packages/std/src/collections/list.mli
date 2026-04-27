@@ -64,4 +64,4 @@ val unique: 'value list -> compare:('value -> 'value -> Order.t) -> 'value list
 
 val zip: 'left list -> 'right list -> ('left * 'right) list
 
-val unzip: ('left * 'right) list -> ('left list) * ('right list)
+val unzip: ('left * 'right) list -> 'left list * 'right list

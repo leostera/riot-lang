@@ -161,7 +161,9 @@ let save_module_typings = fun store typings ->
         ~json with
       | Error _ as err -> err
       | Ok () ->
-          let _ = Collections.HashMap.insert store.module_typings_by_name module_name (Some typings) in
+          let _ =
+            Collections.HashMap.insert store.module_typings_by_name module_name (Some typings)
+          in
           let _ =
             Collections.HashMap.insert store.module_typings_by_hash source_hash_key (Some typings)
           in

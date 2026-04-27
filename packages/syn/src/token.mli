@@ -48,11 +48,6 @@ type delimiter =
   | StructEnd
   (** `struct` / `end` pair *)
   | SigEnd
-  (** `sig` / `end` pair *)
-  | ObjectEnd
-
-(** `object` / `end` pair *)
-
 (** A token with its kind and source location. *)
 type trivia_kind =
   | CommentTrivia of { value: string; terminated: bool }
@@ -74,7 +69,7 @@ type token_kind =
   (** Literal value: int, float, string, or char. *)
   (* Delimiters *)
   | OpenDelim of delimiter
-  (** Opening delimiter: `(`, `{`, `[`, `begin`, `struct`, `sig`, `object` *)
+  (** Opening delimiter: `(`, `{`, `[`, `begin`, `struct`, `sig` *)
   | CloseDelim of delimiter
   (** Closing delimiter: `)`, `}`, `]`, `end` *)
   (* Trivia *)

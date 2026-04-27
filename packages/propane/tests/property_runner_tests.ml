@@ -185,7 +185,9 @@ let test_small_influences_shrink_choice = fun _ctx ->
 
 let test_size_schedule_uses_the_configured_max_size = fun _ctx ->
   let seen = ref [] in
-  let arb = Arbitrary.make ~print:Printer.int (Generator.sized (fun size -> Generator.return size)) in
+  let arb =
+    Arbitrary.make ~print:Printer.int (Generator.sized (fun size -> Generator.return size))
+  in
   let prop =
     Property.for_all
       arb
@@ -206,12 +208,8 @@ let test_property_reads_PROPANE_TESTS = fun _ctx ->
   with_env_bindings
     [ ("PROPANE_TESTS", Some "17"); ]
     (fun () ->
-      let test_case = Property.property "env examples" Arbitrary.int (fun _ ->
-        true)
-      in
-      let expected = Test.property "expected examples" ~examples:17 (fun _ctx ->
-        Ok ())
-      in
+      let test_case = Property.property "env examples" Arbitrary.int (fun _ -> true) in
+      let expected = Test.property "expected examples" ~examples:17 (fun _ctx -> Ok ()) in
       if test_case.test_type = expected.test_type then
         Ok ()
       else
@@ -222,9 +220,7 @@ let test_property_reads_PROPANE_SEED = fun _ctx ->
     [ ("PROPANE_TESTS", Some "1"); ("PROPANE_SEED", Some "123"); ]
     (fun () ->
       let arb = Arbitrary.make ~print:Printer.int Generator.int in
-      let test_case = Property.property "env seed" arb (fun _ ->
-        false)
-      in
+      let test_case = Property.property "env seed" arb (fun _ -> false) in
       match (test_case.fn dummy_ctx, test_case.fn dummy_ctx) with
       | (Error left, Error right) ->
           if left = right then
@@ -239,8 +235,7 @@ let test_property_reads_PROPANE_MAX_SIZE = fun _ctx ->
     (fun () ->
       let seen = ref [] in
       let arb =
-        Arbitrary.make ~print:Printer.int (Generator.sized (fun size ->
-          Generator.return size))
+        Arbitrary.make ~print:Printer.int (Generator.sized (fun size -> Generator.return size))
       in
       let test_case =
         Property.property

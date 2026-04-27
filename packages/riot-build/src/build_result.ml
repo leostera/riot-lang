@@ -81,7 +81,9 @@ let status_priority = function
   | Built _ -> 3
 
 let should_prefer = fun current incoming ->
-  let scope_comparison = Int.compare (scope_priority incoming.scope) (scope_priority current.scope) in
+  let scope_comparison =
+    Int.compare (scope_priority incoming.scope) (scope_priority current.scope)
+  in
   if scope_comparison = Order.GT then
     true
   else if scope_comparison = Order.LT then
@@ -97,8 +99,7 @@ let merge_artifacts = fun current incoming ->
       if
         List.any
           acc
-          ~fn:(fun existing ->
-            Crypto.Hash.equal existing.Riot_store.Artifact.hash artifact.hash)
+          ~fn:(fun existing -> Crypto.Hash.equal existing.Riot_store.Artifact.hash artifact.hash)
       then
         acc
       else

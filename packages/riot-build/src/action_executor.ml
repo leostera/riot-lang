@@ -319,7 +319,9 @@ let run_action = fun ~session_id ~package ~node ?c_compiler ocamlc sandbox_dir a
       | [] -> ocamlc_failed "BuildForeignDependency: empty build_cmd"
       | cmd_name :: cmd_args ->
           let normalized_path = Path.normalize path in
-          let cmd = Command.make ~cwd:(Path.to_string normalized_path) ~env ~args:cmd_args cmd_name in
+          let cmd =
+            Command.make ~cwd:(Path.to_string normalized_path) ~env ~args:cmd_args cmd_name
+          in
           let cmd_str = Command.to_string cmd in
           emit_action_command ~session_id ~package ~node cmd_str;
           Log.debug ("Executing: " ^ cmd_str);

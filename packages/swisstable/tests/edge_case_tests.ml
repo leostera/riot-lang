@@ -206,13 +206,11 @@ let tests = [
       let v2 = Swisstable.or_insert map "counter" 99 in
       Test.assert_equal ~expected:0 ~actual:v2;
       (* and_modify existing *)
-      Swisstable.and_modify map "counter" (fun x ->
-        x + 1);
+      Swisstable.and_modify map "counter" (fun x -> x + 1);
       Test.assert_equal ~expected:(Some 1) ~actual:(Swisstable.get map "counter");
       (* and_modify with chain *)
       for _ = 0 to 9 do
-        Swisstable.and_modify map "counter" (fun x ->
-          x + 1)
+        Swisstable.and_modify map "counter" (fun x -> x + 1)
       done;
       Test.assert_equal ~expected:(Some 11) ~actual:(Swisstable.get map "counter");
       Ok ());
@@ -272,19 +270,13 @@ let tests = [
         ()
       done;
       (* Sum of keys *)
-      let sum_keys = Swisstable.fold (fun k _v acc ->
-        acc + k) map 0
-      in
+      let sum_keys = Swisstable.fold (fun k _v acc -> acc + k) map 0 in
       Test.assert_equal ~expected:55 ~actual:sum_keys;
       (* Sum of values *)
-      let sum_values = Swisstable.fold (fun _k v acc ->
-        acc + v) map 0
-      in
+      let sum_values = Swisstable.fold (fun _k v acc -> acc + v) map 0 in
       Test.assert_equal ~expected:385 ~actual:sum_values;
       (* Count *)
-      let count = Swisstable.fold (fun _k _v acc ->
-        acc + 1) map 0
-      in
+      let count = Swisstable.fold (fun _k _v acc -> acc + 1) map 0 in
       Test.assert_equal ~expected:10 ~actual:count;
       Ok ());
 ]

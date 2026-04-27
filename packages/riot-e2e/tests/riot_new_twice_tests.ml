@@ -16,8 +16,12 @@ let test_riot_new_twice_keeps_both_packages_usable =
         ctx
         workspace_name
         (fun workspace_root ->
-          let library_root = Path.(workspace_root / Path.v "packages" / Path.v library_package_name) in
-          let binary_root = Path.(workspace_root / Path.v "packages" / Path.v binary_package_name) in
+          let library_root =
+            Path.(workspace_root / Path.v "packages" / Path.v library_package_name)
+          in
+          let binary_root =
+            Path.(workspace_root / Path.v "packages" / Path.v binary_package_name)
+          in
           let* new_library_output =
             run_riot ctx ~cwd:workspace_root [ "new"; "--lib"; "./packages/extra-library" ]
           in

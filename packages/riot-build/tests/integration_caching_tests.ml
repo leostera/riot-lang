@@ -226,7 +226,9 @@ let test_execute_cache_misses_when_action_changes = fun _ctx ->
       let store = Riot_store.Store.create ~workspace in
       let package = make_package ~root:tmpdir ~name:"pkg" in
       let (graph1, node1) = make_graph_with_write ~package ~content:"v1" in
-      let (result1, exists1, _, _sandbox1) = execute_graph ~workspace ~store ~package ~graph:graph1 in
+      let (result1, exists1, _, _sandbox1) =
+        execute_graph ~workspace ~store ~package ~graph:graph1
+      in
       let (graph2, node2) = make_graph_with_write ~package ~content:"v2" in
       let (result2, exists2, content2, _sandbox2) =
         execute_graph ~workspace ~store ~package ~graph:graph2

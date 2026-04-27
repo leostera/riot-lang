@@ -123,8 +123,7 @@ let grouped_sources_by_internal_module = fun ordered_sources ->
   |> List.filter_map
     (fun module_name ->
       Collections.HashMap.get sources_by_module_name module_name
-      |> Option.map (fun sources_rev ->
-        (module_name, List.rev sources_rev)))
+      |> Option.map (fun sources_rev -> (module_name, List.rev sources_rev)))
 
 let visible_name_arrays_for_group = fun internal_name sources ->
   let visible_names =
@@ -208,7 +207,9 @@ let resolution_ids_by_required_name = fun graph (group: 'a group) required_names
   |> dedupe_by_key_preserving_order ~key:(fun required_name -> required_name)
   |> List.iter
     (fun required_name ->
-      let local_ids = best_matching_local_module_ids graph group ~required_module_name:required_name in
+      let local_ids =
+        best_matching_local_module_ids graph group ~required_module_name:required_name
+      in
       let _ = Collections.HashMap.insert by_name required_name local_ids in
       ());
   by_name
@@ -262,8 +263,7 @@ let create = fun ~ordered_sources ->
         let (_internal_name, sources) = grouped_sources_array.(module_id) in
         let source_requirements =
           sources
-          |> List.map (fun (source: 'a input_source) ->
-            (source, source.required_names))
+          |> List.map (fun (source: 'a input_source) -> (source, source.required_names))
         in
         let resolution_ids_by_required_name =
           source_requirements
@@ -321,8 +321,7 @@ let create = fun ~ordered_sources ->
         let dependency_ids =
           !dependency_ids_rev
           |> List.rev
-          |> List.filter (fun dependency_id ->
-            not (Int.equal dependency_id module_id))
+          |> List.filter (fun dependency_id -> not (Int.equal dependency_id module_id))
           |> dedupe_module_ids_preserving_order
           |> Array.of_list
         in
@@ -361,8 +360,7 @@ let cycle_of_module_ids = fun graph module_ids ->
     |> List.concat_map
       (fun module_id ->
         graph.groups.(module_id).sources
-        |> List.map (fun (source: 'a graph_source) ->
-          source.input.source_id))
+        |> List.map (fun (source: 'a graph_source) -> source.input.source_id))
     |> List.sort_uniq SourceId.compare
   in
   { module_ids; module_names; source_ids }
@@ -454,6 +452,5 @@ let closure_source_ids = fun graph ~roots ->
   |> List.concat_map
     (fun group_id ->
       graph.groups.(group_id).sources
-      |> List.map (fun (source: 'a graph_source) ->
-        source.input.source_id))
+      |> List.map (fun (source: 'a graph_source) -> source.input.source_id))
   |> List.sort_uniq SourceId.compare

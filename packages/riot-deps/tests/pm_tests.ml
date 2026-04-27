@@ -532,8 +532,7 @@ public = true
   }
 }|};
             })
-          (fun uri ->
-            Error ("unexpected GET " ^ Net.Uri.to_string uri))
+          (fun uri -> Error ("unexpected GET " ^ Net.Uri.to_string uri))
       in
       let registry = Pkgs_ml.Registry.filesystem ~fetch (make_registry_cache ()) in
       let plan: Riot_deps.Publisher.publish_plan = {
@@ -601,8 +600,7 @@ public = true
   "message": "package `demo` was not found in registry `pkgs.ml`"
 }|};
             })
-          (fun uri ->
-            Error ("unexpected GET " ^ Net.Uri.to_string uri))
+          (fun uri -> Error ("unexpected GET " ^ Net.Uri.to_string uri))
       in
       let registry = Pkgs_ml.Registry.filesystem ~fetch (make_registry_cache ()) in
       let plan: Riot_deps.Publisher.publish_plan = {
@@ -640,8 +638,7 @@ let test_publisher_reports_missing_prepared_artifact = fun _ctx ->
         make_fetch_recorder
           ~post_handler:(fun _uri ~headers:_ ~body:_ ->
             Error "publish should not be called when the artifact is missing")
-          (fun uri ->
-            Error ("unexpected GET " ^ Net.Uri.to_string uri))
+          (fun uri -> Error ("unexpected GET " ^ Net.Uri.to_string uri))
       in
       let registry = Pkgs_ml.Registry.filesystem ~fetch (make_registry_cache ()) in
       let prepared: Riot_deps.Publisher.prepared_publish = {
@@ -929,8 +926,7 @@ public = true
   }
 }|};
                     })
-                  (fun uri ->
-                    Error ("unexpected GET " ^ Net.Uri.to_string uri))
+                  (fun uri -> Error ("unexpected GET " ^ Net.Uri.to_string uri))
               in
               let registry = Pkgs_ml.Registry.filesystem ~fetch (make_registry_cache ()) in
               match Riot_deps.Publisher.publish
@@ -1074,14 +1070,12 @@ version = "1.2.3"
           let app_lock =
             List.find
               lockfile.packages
-              ~fn:(fun (pkg: Lockfile.package) ->
-                has_name "app" pkg.id.name)
+              ~fn:(fun (pkg: Lockfile.package) -> has_name "app" pkg.id.name)
           in
           let foo_lock =
             List.find
               lockfile.packages
-              ~fn:(fun (pkg: Lockfile.package) ->
-                has_name "foo" pkg.id.name)
+              ~fn:(fun (pkg: Lockfile.package) -> has_name "foo" pkg.id.name)
           in
           match (app_lock, foo_lock) with
           | (Some app_lock, Some foo_lock) ->
@@ -1136,14 +1130,12 @@ version = "2.0.0"
           let foo_lock =
             List.find
               lockfile.packages
-              ~fn:(fun (pkg: Lockfile.package) ->
-                has_name "foo" pkg.id.name)
+              ~fn:(fun (pkg: Lockfile.package) -> has_name "foo" pkg.id.name)
           in
           let bar_lock =
             List.find
               lockfile.packages
-              ~fn:(fun (pkg: Lockfile.package) ->
-                has_name "bar" pkg.id.name)
+              ~fn:(fun (pkg: Lockfile.package) -> has_name "bar" pkg.id.name)
           in
           match (foo_lock, bar_lock) with
           | (Some foo_lock, Some bar_lock) ->
@@ -1209,8 +1201,7 @@ version = "0.2.0"
           let app_lock =
             List.find
               lockfile.packages
-              ~fn:(fun (pkg: Lockfile.package) ->
-                has_name "app" pkg.id.name)
+              ~fn:(fun (pkg: Lockfile.package) -> has_name "app" pkg.id.name)
           in
           let registry_std =
             List.find
@@ -1338,8 +1329,7 @@ version = "1.0.0"
           let app_lock =
             List.find
               lockfile.packages
-              ~fn:(fun (pkg: Lockfile.package) ->
-                has_name "app" pkg.id.name)
+              ~fn:(fun (pkg: Lockfile.package) -> has_name "app" pkg.id.name)
           in
           let std_lock =
             List.find
@@ -1647,8 +1637,7 @@ std = "*"
           let model_lock =
             List.find
               lockfile.packages
-              ~fn:(fun (pkg: Lockfile.package) ->
-                has_name "model" pkg.id.name)
+              ~fn:(fun (pkg: Lockfile.package) -> has_name "model" pkg.id.name)
           in
           match (local_std, registry_std, model_lock) with
           | (Some local_std, None, Some model_lock) ->
@@ -1886,14 +1875,12 @@ std = { path = "../std" }
           let std_lock =
             List.find
               lockfile.packages
-              ~fn:(fun (pkg: Lockfile.package) ->
-                has_name "std" pkg.id.name)
+              ~fn:(fun (pkg: Lockfile.package) -> has_name "std" pkg.id.name)
           in
           let fixme_lock =
             List.find
               lockfile.packages
-              ~fn:(fun (pkg: Lockfile.package) ->
-                has_name "fixme" pkg.id.name)
+              ~fn:(fun (pkg: Lockfile.package) -> has_name "fixme" pkg.id.name)
           in
           match (std_lock, fixme_lock) with
           | (Some std_lock, Some fixme_lock) ->
@@ -2335,8 +2322,7 @@ version = "0.2.0"
               else
                 let events = ref [] in
                 Riot_deps.update
-                  ~on_event:(fun event ->
-                    events := event :: !events)
+                  ~on_event:(fun event -> events := event :: !events)
                   ~registry
                   ~workspace_manager
                   ~workspace
@@ -2355,14 +2341,12 @@ version = "0.2.0"
                             let std_lock =
                               List.find
                                 lockfile.packages
-                                ~fn:(fun (pkg: Lockfile.package) ->
-                                  has_name "std" pkg.id.name)
+                                ~fn:(fun (pkg: Lockfile.package) -> has_name "std" pkg.id.name)
                             in
                             let mime_lock =
                               List.find
                                 lockfile.packages
-                                ~fn:(fun (pkg: Lockfile.package) ->
-                                  has_name "mime" pkg.id.name)
+                                ~fn:(fun (pkg: Lockfile.package) -> has_name "mime" pkg.id.name)
                             in
                             let updated_std =
                               List.any
@@ -2801,16 +2785,14 @@ version = "0.0.1"
                             let app_lock =
                               List.find
                                 lockfile.packages
-                                ~fn:(fun (pkg: Lockfile.package) ->
-                                  has_name "app" pkg.id.name)
+                                ~fn:(fun (pkg: Lockfile.package) -> has_name "app" pkg.id.name)
                             in
                             if
                               String.contains manifest_source "widgets = { path = \"../lib\" }"
                               && Option.is_some app_lock
                               && List.any
                                 lockfile.packages
-                                ~fn:(fun (pkg: Lockfile.package) ->
-                                  has_name "widgets" pkg.id.name)
+                                ~fn:(fun (pkg: Lockfile.package) -> has_name "widgets" pkg.id.name)
                             then
                               Ok ()
                             else
@@ -2888,12 +2870,10 @@ version = "0.0.1"
                                 "gadgets = { path = \"../gadgets\" }"
                               && List.any
                                 lockfile.packages
-                                ~fn:(fun (pkg: Lockfile.package) ->
-                                  has_name "widgets" pkg.id.name)
+                                ~fn:(fun (pkg: Lockfile.package) -> has_name "widgets" pkg.id.name)
                               && List.any
                                 lockfile.packages
-                                ~fn:(fun (pkg: Lockfile.package) ->
-                                  has_name "gadgets" pkg.id.name)
+                                ~fn:(fun (pkg: Lockfile.package) -> has_name "gadgets" pkg.id.name)
                             then
                               Ok ()
                             else
@@ -3317,7 +3297,9 @@ let test_ensure_lock_refreshes_missing_lock_and_resolves_workspace = fun _ctx ->
       write_file
         Path.(workspace_root / Path.v "packages/app/riot.toml")
         "[package]\nname = \"app\"\n";
-      let std_pkg = make_package ~name:"std" ~path:Path.(workspace_root / Path.v "packages/std") () in
+      let std_pkg =
+        make_package ~name:"std" ~path:Path.(workspace_root / Path.v "packages/std") ()
+      in
       let app_pkg =
         make_package
           ~name:"app"
@@ -3362,7 +3344,9 @@ let test_ensure_lock_uses_existing_fresh_lock = fun _ctx ->
       write_file
         Path.(workspace_root / Path.v "packages/app/riot.toml")
         "[package]\nname = \"app\"\n";
-      let std_pkg = make_package ~name:"std" ~path:Path.(workspace_root / Path.v "packages/std") () in
+      let std_pkg =
+        make_package ~name:"std" ~path:Path.(workspace_root / Path.v "packages/std") ()
+      in
       let app_pkg =
         make_package
           ~name:"app"
@@ -3468,8 +3452,7 @@ let test_ensure_lock_materializes_registry_packages_during_projection = fun _ctx
               registry_cache
               ~package_name:"std"
               ~version:"0.2.0"
-            |> fun root ->
-              Path.(root / Path.v "riot.toml")
+            |> fun root -> Path.(root / Path.v "riot.toml")
           in
           if List.length resolved = 2
           && Result.unwrap_or ~default:false (Fs.exists manifest_path)
@@ -3667,8 +3650,7 @@ version = "0.2.0"
           let std_pkg =
             List.find
               resolved_workspace.packages
-              ~fn:(fun (pkg: Riot_model.Package_manifest.t) ->
-                has_name "std" pkg.name)
+              ~fn:(fun (pkg: Riot_model.Package_manifest.t) -> has_name "std" pkg.name)
           in
           let expected_std_root =
             Pkgs_ml.Registry_cache.package_src_dir
@@ -3679,8 +3661,7 @@ version = "0.2.0"
           match std_pkg with
           | Some std_pkg ->
               if
-                List.map resolved_workspace.packages ~fn:(fun (pkg: Package_manifest.t) ->
-                  pkg.name)
+                List.map resolved_workspace.packages ~fn:(fun (pkg: Package_manifest.t) -> pkg.name)
                 = [ package_name "app"; package_name "std" ]
                 && Path.equal std_pkg.path expected_std_root
               then
@@ -4009,14 +3990,12 @@ path = "tests/std_tests.ml"
       | Ok resolved_workspace -> (
           match List.find
             resolved_workspace.packages
-            ~fn:(fun (pkg: Riot_model.Package_manifest.t) ->
-              has_name "std" pkg.name) with
+            ~fn:(fun (pkg: Riot_model.Package_manifest.t) -> has_name "std" pkg.name) with
           | None -> Error "expected ensure_workspace to project std into the workspace"
           | Some std_pkg ->
               let binary_names =
                 std_pkg.declared_binaries
-                |> List.map ~fn:(fun (bin: Riot_model.Package.binary) ->
-                  bin.name)
+                |> List.map ~fn:(fun (bin: Riot_model.Package.binary) -> bin.name)
                 |> List.sort ~compare:String.compare
               in
               if binary_names = [ "std-example"; "std-tests" ] then
@@ -4529,7 +4508,9 @@ kernel = 123
 
 let test_projection_fails_when_lockfile_is_missing_package = fun _ctx ->
   let app_pkg = make_package ~name:"app" ~path:(Path.v "/workspace/packages/app") () in
-  let lockfile = Riot_model.Lockfile.{ format_version = 1; dependency_hash = "test"; packages = [] } in
+  let lockfile =
+    Riot_model.Lockfile.{ format_version = 1; dependency_hash = "test"; packages = [] }
+  in
   match Riot_deps.Projection.resolve_packages
     ~registry:(make_registry [])
     ~workspace_root:(Path.v "/workspace")

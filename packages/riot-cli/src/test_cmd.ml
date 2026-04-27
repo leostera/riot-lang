@@ -312,7 +312,9 @@ let json_int_field = fun name fields ->
   | _ -> None
 
 let upsert_int_field = fun name value fields ->
-  let filtered = List.filter fields ~fn:(fun (field_name, _) -> not (String.equal field_name name)) in
+  let filtered =
+    List.filter fields ~fn:(fun (field_name, _) -> not (String.equal field_name name))
+  in
   filtered @ [ (name, Data.Json.Int value); ]
 
 let stamp_json_event = fun

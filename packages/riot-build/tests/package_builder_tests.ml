@@ -66,18 +66,10 @@ let test_collect_source_files = fun _ctx ->
           ()
       in
       let files = Package_builder.collect_source_files package in
-      let has_ml = List.any files ~fn:(fun p ->
-        Path.to_string p = Path.to_string ml_file)
-      in
-      let has_mli = List.any files ~fn:(fun p ->
-        Path.to_string p = Path.to_string mli_file)
-      in
-      let has_c = List.any files ~fn:(fun p ->
-        Path.to_string p = Path.to_string c_file)
-      in
-      let has_txt = List.any files ~fn:(fun p ->
-        Path.to_string p = Path.to_string txt_file)
-      in
+      let has_ml = List.any files ~fn:(fun p -> Path.to_string p = Path.to_string ml_file) in
+      let has_mli = List.any files ~fn:(fun p -> Path.to_string p = Path.to_string mli_file) in
+      let has_c = List.any files ~fn:(fun p -> Path.to_string p = Path.to_string c_file) in
+      let has_txt = List.any files ~fn:(fun p -> Path.to_string p = Path.to_string txt_file) in
       let count = List.length files in
       if has_ml && has_mli && has_c && (not has_txt) && count = 3 then
         Ok ()
@@ -93,8 +85,7 @@ let test_collect_source_files = fun _ctx ->
         ^ " has_txt="
         ^ Bool.to_string has_txt
         ^ ". Files: "
-        ^ String.concat ", " (List.map files ~fn:(fun p ->
-          Path.basename p)))) with
+        ^ String.concat ", " (List.map files ~fn:(fun p -> Path.basename p)))) with
   | Ok r -> r
   | Error _ -> Error "Tempdir creation failed"
 

@@ -60,7 +60,8 @@ let write_file = fun path contents ->
 let dependency_line = fun name -> name ^ " = \"*\""
 
 let package_manifest = fun ~name ~dependencies ->
-  let header = [ "[package]"; "name = \"" ^ name ^ "\""; "version = \"" ^ registry_version ^ "\"" ] in
+  let header = [ "[package]"; "name = \"" ^ name ^ "\""; "version = \"" ^ registry_version ^ "\"" ]
+  in
   let body =
     match dependencies with
     | [] -> []

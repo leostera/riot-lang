@@ -77,8 +77,7 @@ let target_root_nodes = fun package nodes ->
     package.Package.binaries
     ~fn:(fun (binary: Package.binary) ->
       binary_source_nodes ~source_path:binary.path nodes
-      |> List.map ~fn:(fun node ->
-        (binary.name, node))
+      |> List.map ~fn:(fun node -> (binary.name, node))
       |> List.head)
 
 let target_reachable_set = fun start_nodes module_graph ->
@@ -221,8 +220,7 @@ let validate_target_source = fun
               let requested = requested_modules analyzed_module in
               match List.find
                 node.deps
-                ~fn:(fun dep_id ->
-                  Option.is_some (HashMap.get other_target_root_ids ~key:dep_id)) with
+                ~fn:(fun dep_id -> Option.is_some (HashMap.get other_target_root_ids ~key:dep_id)) with
               | Some dep_id -> (
                   match G.get_node module_graph dep_id with
                   | Some (dep_node: Module_node.t G.node) ->

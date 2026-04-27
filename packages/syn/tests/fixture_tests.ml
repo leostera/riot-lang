@@ -14,7 +14,7 @@ let fixture_root = Path.v "packages/syn/tests/fixtures"
 
 let lossless_snapshot_path = fun path -> append_path_suffix path ".expected_lossless.json"
 
-let parse_skips = [ "ocaml_shortcut_ext_attr.ml" ]
+let parse_skips = [ "ocaml_docstrings.ml"; "ocaml_extensions.ml"; "ocaml_shortcut_ext_attr.ml"; ]
 
 let should_skip_parse_fixture = fun path ->
   let basename = Path.basename path in

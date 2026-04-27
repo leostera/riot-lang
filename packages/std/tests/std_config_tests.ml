@@ -61,7 +61,9 @@ let test_extract_app_section = fun _ctx ->
 (* Test 5: Validator - simple validation *)
 
 let test_validation = fun _ctx ->
-  let spec = Config.Spec.for_app ~app:"testapp" [ Config.Spec.string "log_level" ~default:"info" ] in
+  let spec =
+    Config.Spec.for_app ~app:"testapp" [ Config.Spec.string "log_level" ~default:"info" ]
+  in
   let toml = Data.Toml.Table [ ("log_level", Data.Toml.String "debug"); ] in
   match Config.Validator.validate spec toml with
   | Error err -> Error ("Validation failed: " ^ err)
@@ -538,8 +540,10 @@ let test_int_values_both_forms = fun _ctx ->
       [ Config.Spec.int "port" ~default:8_080; Config.Spec.int "timeout" ~default:30 ]
   in
   (* Test with Data.Toml.Int (native TOML integers) *)
-  let toml_native =
-    Data.Toml.Table [ ("port", Data.Toml.Int 2_112); ("timeout", Data.Toml.Int 60); ]
+  let toml_native = Data.Toml.Table [
+    ("port", Data.Toml.Int 2_112);
+    ("timeout", Data.Toml.Int 60);
+  ]
   in
   match Config.Validator.validate spec toml_native with
   | Error err -> Error ("Native int validation failed: " ^ err)

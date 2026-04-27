@@ -71,7 +71,9 @@ let make_raw = fun () ->
     )
 
 let restore = fun terminal ->
-  let _ = Platform.set_attributes terminal.Terminal.fd Platform.Now terminal.Terminal.original_attrs in
+  let _ =
+    Platform.set_attributes terminal.Terminal.fd Platform.Now terminal.Terminal.original_attrs
+  in
   if terminal.Terminal.owns_fd then
     let _ = Platform.close terminal.Terminal.fd in
     ()

@@ -42,8 +42,7 @@ let test_simple_worker_pool_empty_returns_immediately =
   Test.case
     "simple worker pool run on an empty task list returns []"
     (fun _ctx ->
-      match WorkerPool.SimpleWorkerPool.run ~tasks:[] ~fn:(fun x ->
-        x) () with
+      match WorkerPool.SimpleWorkerPool.run ~tasks:[] ~fn:(fun x -> x) () with
       | [] -> Ok ()
       | _ -> Error "expected SimpleWorkerPool.run [] to return []")
 
@@ -82,8 +81,7 @@ let test_simple_worker_pool_concurrency_one_is_sequential =
       match WorkerPool.SimpleWorkerPool.run
         ~concurrency:1
         ~tasks:[ 1; 2; 3 ]
-        ~fn:(fun value ->
-          value * 10)
+        ~fn:(fun value -> value * 10)
         () with
       | [ (0, 10); (1, 20); (2, 30) ] -> Ok ()
       | _ -> Error "expected concurrency 1 to preserve sequential indexed results")
@@ -96,8 +94,7 @@ let test_simple_worker_pool_handles_concurrency_greater_than_task_count =
         WorkerPool.SimpleWorkerPool.run
           ~concurrency:8
           ~tasks:[ 3; 1 ]
-          ~fn:(fun value ->
-            value + 1)
+          ~fn:(fun value -> value + 1)
           ()
       in
       match results with
@@ -132,8 +129,7 @@ let test_dynamic_worker_pool_sends_worker_ready_messages =
         WorkerPool.DynamicWorkerPool.start
           ~concurrency:2
           ~owner:(self ())
-          ~worker_fn:(fun ~owner:_ ~task:_ ->
-            ())
+          ~worker_fn:(fun ~owner:_ ~task:_ -> ())
           ()
       in
       let rec collect ready_count =

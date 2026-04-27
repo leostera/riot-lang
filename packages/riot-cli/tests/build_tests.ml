@@ -661,9 +661,8 @@ let test_build_tests_compile_only_test_binaries = fun _ctx ->
         | Ok () -> Ok ()
         | Error err -> Error ("expected test-scoped build success: " ^ Exception.to_string err)
       in
-      let* () = assert_path_exists
-        test_binary
-        ~message:"expected --tests to materialize test binary"
+      let* () =
+        assert_path_exists test_binary ~message:"expected --tests to materialize test binary"
       in
       let* () =
         assert_path_missing

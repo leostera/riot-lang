@@ -436,8 +436,7 @@ let deque = fun elem_shrinker ->
       (list elem_shrinker lst)
       ~fn:(fun lst ->
         let d' = Deque.create () in
-        List.for_each lst ~fn:(fun value ->
-          Deque.push_back d' ~value);
+        List.for_each lst ~fn:(fun value -> Deque.push_back d' ~value);
         d')
 
 let heap = fun elem_shrinker ->
@@ -450,8 +449,7 @@ let heap = fun elem_shrinker ->
       (list elem_shrinker lst)
       ~fn:(fun lst ->
         let h' = Heap.create () in
-        List.for_each lst ~fn:(fun value ->
-          Heap.push h' ~value);
+        List.for_each lst ~fn:(fun value -> Heap.push h' ~value);
         h')
 
 (* === TUPLE SHRINKERS === *)

@@ -527,7 +527,9 @@ let read_field_tag_reader = fun state reader fields ->
   let rec fast start =
     match reader_scan_while reader ~continue:string_fast_continue with
     | `Stop (stop, '"') ->
-        let tag = Input.reader_match_field_range fields reader ~offset:start ~length:(stop - start) in
+        let tag =
+          Input.reader_match_field_range fields reader ~offset:start ~length:(stop - start)
+        in
         reader.Input.pos <- stop;
         reader_advance reader;
         tag
@@ -877,7 +879,9 @@ let parse_number_text_reader = fun state reader ->
       else
         None
     in
-    let need_more () = !pos >= IO.Buffer.readable_bytes reader.Input.buffer && not reader.Input.eof in
+    let need_more () =
+      !pos >= IO.Buffer.readable_bytes reader.Input.buffer && not reader.Input.eof
+    in
     let advance () =
       pos := !pos + 1
     in
@@ -1221,7 +1225,9 @@ let parse_int_reader = fun state reader ->
       else
         None
     in
-    let need_more () = !pos >= IO.Buffer.readable_bytes reader.Input.buffer && not reader.Input.eof in
+    let need_more () =
+      !pos >= IO.Buffer.readable_bytes reader.Input.buffer && not reader.Input.eof
+    in
     let advance () =
       pos := !pos + 1
     in

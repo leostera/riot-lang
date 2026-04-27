@@ -585,7 +585,9 @@ let test_spawn_applies_current_dir = fun _ctx ->
   with_tempdir
     "kernel_new_process"
     (fun tempdir ->
-      let stdio = Kernel.Process.{ stdin = Stdin.Null; stdout = Stdout.Pipe; stderr = Stderr.Null } in
+      let stdio =
+        Kernel.Process.{ stdin = Stdin.Null; stdout = Stdout.Pipe; stderr = Stderr.Null }
+      in
       let* process =
         lift_process
           (Kernel.Process.spawn ~program:"/bin/pwd" ~args:[||] ~current_dir:tempdir ~stdio ())
@@ -1459,10 +1461,11 @@ let test_spawn_regular_file_current_dir_reports_not_directory = fun _ctx ->
       let* _ =
         with_file
           file
-          (fun () ->
-            lift_file (Kernel.Fs.File.write file (Kernel.Bytes.from_string "riot")))
+          (fun () -> lift_file (Kernel.Fs.File.write file (Kernel.Bytes.from_string "riot")))
       in
-      let stdio = Kernel.Process.{ stdin = Stdin.Null; stdout = Stdout.Null; stderr = Stderr.Null } in
+      let stdio =
+        Kernel.Process.{ stdin = Stdin.Null; stdout = Stdout.Null; stderr = Stderr.Null }
+      in
       match Kernel.Process.spawn
         ~program:"/usr/bin/true"
         ~args:[||]

@@ -21,7 +21,7 @@ val to_string: 'value Serde.Ser.t -> 'value -> (string, Serde.error) result
 
 val to_writer: 'value Serde.Ser.t -> IO.Writer.t -> 'value -> (unit, Serde.error) result
 
-val decode_prefix: 'value Serde.De.t -> string -> (('value * int), Serde.error) result
+val decode_prefix: 'value Serde.De.t -> string -> ('value * int, Serde.error) result
 
 val of_string: 'value Serde.De.t -> string -> ('value, Serde.error) result
 

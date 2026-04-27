@@ -226,8 +226,7 @@ let test_new_outside_workspace_creates_standalone_package = fun _ctx ->
       let package_root = Path.(tempdir / Path.v "hello-world") in
       let* matches = parse_new [ "new"; "hello-world" ] in
       let* () =
-        with_current_dir_exn_result tempdir (fun () ->
-          Riot_cli.New.run matches)
+        with_current_dir_exn_result tempdir (fun () -> Riot_cli.New.run matches)
         |> Result.map_err ~fn:Exception.to_string
       in
       let* package_exists =

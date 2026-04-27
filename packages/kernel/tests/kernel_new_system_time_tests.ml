@@ -377,8 +377,7 @@ let test_timer_source_can_be_reused_after_deregister = fun _ctx ->
           ~finally:(fun () ->
             let _ = Kernel.Async.Poll.deregister poll source in
             ())
-          (fun () ->
-            wait_for_readable_token poll ~token:second_token))
+          (fun () -> wait_for_readable_token poll ~token:second_token))
 
 let test_timer_deregister_after_after_ns_fire_is_harmless = fun _ctx ->
   with_poll

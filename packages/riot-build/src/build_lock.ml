@@ -76,8 +76,7 @@ let existing_lanes = fun ~target_dir_root ->
             None
           else
             Riot_model.Target.from_string (Path.basename target_dir)
-            |> Result.map ~fn:(fun target ->
-              { profile; target })
+            |> Result.map ~fn:(fun target -> { profile; target })
             |> Result.to_option))
   |> List.sort ~compare:compare_lane
 

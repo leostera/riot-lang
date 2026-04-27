@@ -32,7 +32,9 @@ let pending_paths = fun workspace_root ->
   let workspace_pending =
     Path.(workspace_root / Path.v ".riot/snapshots/std/suite/case.expected.new")
   in
-  let workspace_approved = Path.(workspace_root / Path.v ".riot/snapshots/std/suite/case.expected") in
+  let workspace_approved =
+    Path.(workspace_root / Path.v ".riot/snapshots/std/suite/case.expected")
+  in
   let build_pending = Path.(workspace_root / Path.v "_build/debug/std/ignored.expected.new") in
   (
     fixture_pending,

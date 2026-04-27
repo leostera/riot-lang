@@ -63,7 +63,9 @@ let test_dotted_edge_renders_dotted_arrow = fun _ctx ->
 
 let test_thick_edge_renders_thick_arrow = fun _ctx ->
   let graph = Graph.Mermaid.create () in
-  let graph = Graph.Mermaid.add_edge graph ~from_node:"A" ~to_node:"B" ~style:Graph.Mermaid.Thick () in
+  let graph =
+    Graph.Mermaid.add_edge graph ~from_node:"A" ~to_node:"B" ~style:Graph.Mermaid.Thick ()
+  in
   let rendered = Graph.Mermaid.to_string graph in
   if String.contains rendered "A ==> B" then
     Ok ()

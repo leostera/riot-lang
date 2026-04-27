@@ -56,7 +56,8 @@ let is_http2 = fun data ->
 (** Detect HTTP/1.1 by checking for HTTP method *)
 
 let is_http1 = fun data ->
-  let methods = [ "GET"; "POST"; "PUT"; "DELETE"; "HEAD"; "OPTIONS"; "PATCH"; "CONNECT"; "TRACE"; ] in
+  let methods = [ "GET"; "POST"; "PUT"; "DELETE"; "HEAD"; "OPTIONS"; "PATCH"; "CONNECT"; "TRACE"; ]
+  in
   List.exists (fun method_ -> String.starts_with ~prefix:method_ data) methods
 
 let handle_connection = fun _conn state -> Socket_pool.Handler.Continue state

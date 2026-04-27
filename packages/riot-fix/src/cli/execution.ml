@@ -267,7 +267,9 @@ let run_generated_runner = fun
       trace_fix ("building generated runner failed: " ^ Exception.to_string err);
       Error err
   | Ok () ->
-      let command = Command.make (Path.to_string plan.binary_path) ~cwd:(Path.to_string cwd) ~args in
+      let command =
+        Command.make (Path.to_string plan.binary_path) ~cwd:(Path.to_string cwd) ~args
+      in
       trace_fix ("running generated runner " ^ Path.to_string plan.binary_path);
       if report_output then
         match Command.status command with

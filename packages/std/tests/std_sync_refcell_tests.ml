@@ -115,9 +115,7 @@ let test_refcell_with_borrow_auto_releases =
     "sync refcell with_borrow acquires and releases automatically"
     (fun _ctx ->
       let cell = Sync.RefCell.create 21 in
-      let observed = Sync.RefCell.with_borrow cell (fun value ->
-        value)
-      in
+      let observed = Sync.RefCell.with_borrow cell (fun value -> value) in
       if
         observed = 21 && not (Sync.RefCell.is_borrowed cell) && Sync.RefCell.borrow_count cell = 0
       then
@@ -155,9 +153,7 @@ let test_refcell_with_borrow_releases_on_exception =
       let cell = Sync.RefCell.create 7 in
       let outcome =
         try
-          let _ = Sync.RefCell.with_borrow cell (fun _ ->
-            raise (Failure "boom"))
-          in
+          let _ = Sync.RefCell.with_borrow cell (fun _ -> raise (Failure "boom")) in
           Error "expected with_borrow callback to raise"
         with
         | exn when is_failure exn ~message:"boom" -> Ok ()
@@ -178,9 +174,7 @@ let test_refcell_with_borrow_mut_releases_on_exception =
       let cell = Sync.RefCell.create 7 in
       let outcome =
         try
-          let _ = Sync.RefCell.with_borrow_mut cell (fun _get _set ->
-            raise (Failure "boom"))
-          in
+          let _ = Sync.RefCell.with_borrow_mut cell (fun _get _set -> raise (Failure "boom")) in
           Error "expected with_borrow_mut callback to raise"
         with
         | exn when is_failure exn ~message:"boom" -> Ok ()

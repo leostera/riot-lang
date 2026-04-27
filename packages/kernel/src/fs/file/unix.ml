@@ -163,7 +163,7 @@ module FFI = struct
 
   external writev: t -> IO.IoVec.t -> (int, int) Result.t = "kernel_new_fs_file_writev"
 
-  external pipe: unit -> ((t * t), int) Result.t = "kernel_new_fs_file_pipe"
+  external pipe: unit -> (t * t, int) Result.t = "kernel_new_fs_file_pipe"
 
   external mkdir: string -> int -> (unit, int) Result.t = "kernel_new_fs_file_mkdir"
 
@@ -185,20 +185,17 @@ module FFI = struct
 
   external stat:
     string ->
-    ((int * int * int64 * int * int * int * int * int * int * int64 * int64 * int64), int) Result.t
-    =
+    (int * int * int64 * int * int * int * int * int * int * int64 * int64 * int64, int) Result.t =
     "kernel_new_fs_file_stat"
 
   external lstat:
     string ->
-    ((int * int * int64 * int * int * int * int * int * int * int64 * int64 * int64), int) Result.t
-    =
+    (int * int * int64 * int * int * int * int * int * int * int64 * int64 * int64, int) Result.t =
     "kernel_new_fs_file_lstat"
 
   external fstat:
     t ->
-    ((int * int * int64 * int * int * int * int * int * int * int64 * int64 * int64), int) Result.t
-    =
+    (int * int * int64 * int * int * int * int * int * int * int64 * int64 * int64, int) Result.t =
     "kernel_new_fs_file_fstat"
 
   external readdir: string -> (string array, int) Result.t = "kernel_new_fs_file_readdir"

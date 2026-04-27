@@ -385,8 +385,7 @@ module For_test = struct
         | Error err -> Error (Failure (Riot_model.Pm_error.message err))
         | Ok workspace ->
             Riot_build.build
-              ~on_event:(fun event ->
-                emit (Build event))
+              ~on_event:(fun event -> emit (Build event))
               (Riot_build.Request.make
                 ~workspace:(transform_workspace workspace)
                 ~packages:[ package_name ]
@@ -394,10 +393,8 @@ module For_test = struct
                 ~scope:Riot_build.Request.Runtime
                 ~profile:(profile_of_name profile)
                 ())
-            |> Result.map ~fn:(fun _ ->
-              ())
-            |> Result.map_err ~fn:(fun err ->
-              Failure (Riot_build.error_message err)))
+            |> Result.map ~fn:(fun _ -> ())
+            |> Result.map_err ~fn:(fun err -> Failure (Riot_build.error_message err)))
       fix_request
     |> Result.map ~fn:(fun _ -> ())
     |> Result.map_err ~fn:(fun error -> FixCheckFailed { package = package.name; error })

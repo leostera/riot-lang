@@ -54,7 +54,9 @@ let main ~args:_ =
   println "";
   (* Example 5: Code with identifiers *)
   println "5. Wrapping code (width 50):";
-  let text5 = "let my_function_name = calculate_something(foo_bar_baz, another_parameter) in result" in
+  let text5 =
+    "let my_function_name = calculate_something(foo_bar_baz, another_parameter) in result"
+  in
   let wrapped5 = Unicode.Segmentation.wrap_lines ~width:50 text5 in
   print_numbered_lines wrapped5 ~show_width:false;
   println "";

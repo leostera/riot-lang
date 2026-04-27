@@ -287,8 +287,7 @@ let test_action_hash_tracks_package_relative_source_contents = fun _ctx ->
           ~srcs:[ Path.v "src/demo.ml" ]
           ~package
           ~toolchain:test_toolchain
-          ~dependency_hashes:(fun _ ->
-            Crypto.hash_string "")
+          ~dependency_hashes:(fun _ -> Crypto.hash_string "")
           ~deps:[]
       in
       write "let value = 2\n";
@@ -299,8 +298,7 @@ let test_action_hash_tracks_package_relative_source_contents = fun _ctx ->
           ~srcs:[ Path.v "src/demo.ml" ]
           ~package
           ~toolchain:test_toolchain
-          ~dependency_hashes:(fun _ ->
-            Crypto.hash_string "")
+          ~dependency_hashes:(fun _ -> Crypto.hash_string "")
           ~deps:[]
       in
       if Crypto.Hash.equal first.hash second.hash then
@@ -538,9 +536,7 @@ let test_release_profile_flags_flow_into_compile_actions = fun _ctx ->
           | _ -> false
         ) with
       | Some (Riot_planner.Action.CompileImplementation { flags; _ }) ->
-          let has_flag expected = List.any flags ~fn:(fun flag ->
-            flag = expected)
-          in
+          let has_flag expected = List.any flags ~fn:(fun flag -> flag = expected) in
           if not (has_flag (Riot_toolchain.Ocamlc.Inline 100)) then
             Error "expected release compile action to include inline threshold"
           else if not (has_flag Riot_toolchain.Ocamlc.NoAssert) then
@@ -772,7 +768,9 @@ let test_library_actions_exclude_unreachable_modules = fun _ctx ->
           in
           match create_library with
           | Some (Riot_planner.Action.CreateLibrary { objects; _ }) ->
-              let has_a = List.any objects ~fn:(Path.equal (Path.v "Lib_with_unreachable__A.cmx")) in
+              let has_a =
+                List.any objects ~fn:(Path.equal (Path.v "Lib_with_unreachable__A.cmx"))
+              in
               let has_orphan =
                 List.any objects ~fn:(Path.equal (Path.v "Lib_with_unreachable__Orphan.cmx"))
               in
@@ -1182,8 +1180,7 @@ let test_generated_library_interface_with_multiple_children_depends_on_child_mod
               if
                 List.all
                   expected_outputs
-                  ~fn:(fun output ->
-                    List.any dep_outputs ~fn:(String.equal output))
+                  ~fn:(fun output -> List.any dep_outputs ~fn:(String.equal output))
               then
                 Ok ()
               else

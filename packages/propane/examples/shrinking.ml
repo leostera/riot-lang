@@ -9,9 +9,7 @@ let failing_list_prop =
     "DEMO: list sum is always positive (FALSE - will find counter-example)"
     Arbitrary.(list int)
     (fun lst ->
-      let sum = List.fold_left lst ~init:0 ~fn:(fun acc value ->
-        acc + value)
-      in
+      let sum = List.fold_left lst ~init:0 ~fn:(fun acc value -> acc + value) in
       sum >= 0)
 
 (* This is false when list contains negative numbers *)
@@ -42,9 +40,7 @@ let failing_nested_prop =
     "DEMO: nested lists never contain empty sublist (FALSE)"
     Arbitrary.(list (list int))
     (fun nested ->
-      let has_empty = List.any nested ~fn:(fun sublist ->
-        List.length sublist = 0)
-      in
+      let has_empty = List.any nested ~fn:(fun sublist -> List.length sublist = 0) in
       not has_empty)
 
 (* Example showing minimal shrinking *)

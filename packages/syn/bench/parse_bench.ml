@@ -50,6 +50,16 @@ let has_lossless_snapshot = fun path ->
   Fs.exists snapshot_path
   |> Result.unwrap_or ~default:false
 
+let valid_fixture_skips = [
+  "ocaml_docstrings.ml";
+  "ocaml_extensions.ml";
+  "ocaml_shortcut_ext_attr.ml";
+]
+
+let is_valid_fixture = fun path ->
+  let basename = Path.basename path in
+  not (List.any valid_fixture_skips ~fn:(fun name -> String.equal basename name))
+
 let load_valid_fixture_corpus = fun () ->
   let fixtures = Vector.with_capacity ~size:1_100 in
   Fs.Walker.walk
@@ -58,7 +68,7 @@ let load_valid_fixture_corpus = fun () ->
     ~f:(fun item ->
       let path = Fs.Walker.FileItem.path item in
       (
-        if is_source_file path && has_lossless_snapshot path then
+        if is_source_file path && is_valid_fixture path && has_lossless_snapshot path then
           let name = Fs.Walker.FileItem.name item in
           Vector.push fixtures ~value:(load_fixture name path)
       );
@@ -103,7 +113,9 @@ let selected_benchmarks = fun () -> [
       (Path.v "packages/syn/tests/fixtures/ocaml_quotedextensions.ml"));
   fixture_benchmark
     ~config:medium_config
-    (load_fixture "docstrings" (Path.v "packages/syn/tests/fixtures/ocaml_docstrings.ml"));
+    (load_fixture
+      "docstrings"
+      (Path.v "packages/syn/tests/fixtures/9104_print_ceibo_comments_docstrings_bridge.ml"));
   fixture_benchmark
     ~config:large_config
     (load_fixture

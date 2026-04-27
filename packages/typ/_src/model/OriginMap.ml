@@ -48,7 +48,9 @@ let of_list = fun origins ->
     origins
     |> List.iter
       (fun (origin: origin) ->
-        let _ = Collections.HashMap.insert origins_by_id (OriginId.to_int origin.origin_id) origin in
+        let _ =
+          Collections.HashMap.insert origins_by_id (OriginId.to_int origin.origin_id) origin
+        in
         let _ =
           Collections.HashMap.insert
             origins_by_semantic_id

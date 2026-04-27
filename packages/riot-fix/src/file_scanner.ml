@@ -82,8 +82,7 @@ let scan = fun scanner ->
     Std.Fs.Walker.walk
       ~roots:scanner.roots
       ~f:(fun entry ->
-        handle_entry state entry (fun path ->
-          files := path :: !files))
+        handle_entry state entry (fun path -> files := path :: !files))
       ()
   in
   List.reverse !files
@@ -99,8 +98,7 @@ let start = fun ~owner scanner ->
             handle_entry
               state
               entry
-              (fun path ->
-                send owner (Messages.ScannerDiscovered path)))
+              (fun path -> send owner (Messages.ScannerDiscovered path)))
           ()
       in
       send owner Messages.ScannerComplete;

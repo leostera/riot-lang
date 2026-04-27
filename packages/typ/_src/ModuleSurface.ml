@@ -22,7 +22,9 @@ let local_type_decl_index = fun type_decls ->
   List.iter
     (fun (type_decl: FileSummary.type_decl) ->
       let _ = Collections.HashMap.insert by_path (type_decl_key type_decl) type_decl in
-      let _ = Collections.HashMap.insert by_id type_decl.declaration.type_constructor_id type_decl in
+      let _ =
+        Collections.HashMap.insert by_id type_decl.declaration.type_constructor_id type_decl
+      in
       ())
     type_decls;
   { by_path; by_id }

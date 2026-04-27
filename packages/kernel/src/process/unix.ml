@@ -88,10 +88,10 @@ module FFI = struct
     (string * string) array ->
     string option ->
     raw_stdio ->
-    ((int * Fs.File.t option * Fs.File.t option * Fs.File.t option), int) Result.t =
+    (int * Fs.File.t option * Fs.File.t option * Fs.File.t option, int) Result.t =
     "kernel_new_process_spawn"
 
-  external try_wait: int -> (((int * int) option), int) Result.t = "kernel_new_process_try_wait"
+  external try_wait: int -> ((int * int) option, int) Result.t = "kernel_new_process_try_wait"
 
   external kill: int -> int -> (unit, int) Result.t = "kernel_new_process_kill"
 

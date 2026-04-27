@@ -133,8 +133,8 @@ let export_definitions_of_bindings = fun ~(source:Source.t) ~semantic_tree expor
     (fun (binding_ref: Check_result.binding_ref) ->
       definition_target_of_binding_ref_in_tree ~source ~semantic_tree binding_ref
       |> Option.map
-        (fun target ->
-          ({ export_name = binding_ref.surface_path; target }: ModuleTypings.value_definition)))
+        (fun target -> ({ export_name = binding_ref.surface_path; target }:
+          ModuleTypings.value_definition)))
 
 let export_definitions = fun analysis -> analysis.value_definitions
 

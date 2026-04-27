@@ -273,17 +273,15 @@ let rec to_json = function
         ("package", Json.String package);
         ("registry", Json.String registry);
         ("version", Json.String version);
-        ("required_by", (
-          match required_by with
-          | None -> Json.Null
-          | Some { package; path } ->
-              Json.Object [
-                ("package", Json.String package);
-                ("path", match path with
-                | Some path -> json_of_path path
-                | None -> Json.Null);
-              ]
-        ));
+        ("required_by", match required_by with
+        | None -> Json.Null
+        | Some { package; path } ->
+            Json.Object [
+              ("package", Json.String package);
+              ("path", match path with
+              | Some path -> json_of_path path
+              | None -> Json.Null);
+            ]);
       ]
   | PackageMetadataReadFailed { package; registry; error } ->
       Json.Object [
@@ -297,19 +295,15 @@ let rec to_json = function
         ("kind", Json.String "PackageNotFound");
         ("package", Json.String package);
         ("registry", Json.String registry);
-        ("required_by", (
-          match required_by with
-          | None -> Json.Null
-          | Some { package; path } ->
-              Json.Object [
-                ("package", Json.String package);
-                ("path", (
-                  match path with
-                  | Some path -> json_of_path path
-                  | None -> Json.Null
-                ));
-              ]
-        ));
+        ("required_by", match required_by with
+        | None -> Json.Null
+        | Some { package; path } ->
+            Json.Object [
+              ("package", Json.String package);
+              ("path", match path with
+              | Some path -> json_of_path path
+              | None -> Json.Null);
+            ]);
       ]
   | RegistryVersionNotFound {
     package;
@@ -327,17 +321,15 @@ let rec to_json = function
           "available_versions",
           Json.Array (List.map available_versions ~fn:(fun version -> Json.String version))
         );
-        ("required_by", (
-          match required_by with
-          | None -> Json.Null
-          | Some { package; path } ->
-              Json.Object [
-                ("package", Json.String package);
-                ("path", match path with
-                | Some path -> json_of_path path
-                | None -> Json.Null);
-              ]
-        ));
+        ("required_by", match required_by with
+        | None -> Json.Null
+        | Some { package; path } ->
+            Json.Object [
+              ("package", Json.String package);
+              ("path", match path with
+              | Some path -> json_of_path path
+              | None -> Json.Null);
+            ]);
       ]
   | LockfileReadFailed { path; error } ->
       Json.Object [

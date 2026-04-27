@@ -155,8 +155,10 @@ let implicit_local_targets = fun ?package_filter (workspace: Riot_model.Workspac
     ~fn:(fun (pkg: Riot_model.Package.t) ->
       Riot_model.Package.binaries_for_scope Riot_model.Package.Normal pkg
       |> List.map
-        ~fn:(fun (bin: Riot_model.Package.binary) ->
-          { package_name = pkg.name; binary_name = bin.name }))
+        ~fn:(fun (bin: Riot_model.Package.binary) -> {
+          package_name = pkg.name;
+          binary_name = bin.name;
+        }))
 
 let resolve_implicit_local_target = fun ?package_filter (workspace: Riot_model.Workspace.t) ->
   match implicit_local_targets ?package_filter workspace with

@@ -190,10 +190,7 @@ let tests = [
     (fun _ctx -> assert_property "named writes survive reopen" named_writes_survive_reopen);
 ]
 
-let main ~args = Test.Cli.main
-  ~name:"contentstore_store_named_object_property_tests"
-  ~tests
-  ~args
-  ()
+let main ~args =
+  Test.Cli.main ~name:"contentstore_store_named_object_property_tests" ~tests ~args ()
 
 let () = Runtime.run ~main ~args:Env.args ()

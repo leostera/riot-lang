@@ -108,7 +108,9 @@ let test_sandbox_uses_workspace_target_dir_root = fun _ctx ->
   match Fs.with_tempdir
     ~prefix:"sandbox_custom_target"
     (fun tmpdir ->
-      let workspace = Riot_model.Workspace.make ~root:tmpdir ~target_dir:"build-out" ~packages:[] () in
+      let workspace =
+        Riot_model.Workspace.make ~root:tmpdir ~target_dir:"build-out" ~packages:[] ()
+      in
       let sandbox = Sandbox.create ~workspace () ~package_name:(package_name "pkg") in
       let dir =
         Sandbox.get_dir sandbox

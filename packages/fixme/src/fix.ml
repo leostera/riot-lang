@@ -215,7 +215,9 @@ let apply_fix = fun ~source fix ->
   match lower_fix ~source fix with
   | Error _ as err -> err
   | Ok edits ->
-      let edits_desc = List.sort edits ~compare:(fun a b -> Int.compare b.span.start a.span.start) in
+      let edits_desc =
+        List.sort edits ~compare:(fun a b -> Int.compare b.span.start a.span.start)
+      in
       Ok (List.fold_left
         edits_desc
         ~init:source
@@ -225,7 +227,9 @@ let apply_fixes = fun ~source fixes ->
   match lower_fixes ~source fixes with
   | Error _ as err -> err
   | Ok edits ->
-      let edits_desc = List.sort edits ~compare:(fun a b -> Int.compare b.span.start a.span.start) in
+      let edits_desc =
+        List.sort edits ~compare:(fun a b -> Int.compare b.span.start a.span.start)
+      in
       Ok (List.fold_left
         edits_desc
         ~init:source

@@ -26,7 +26,7 @@ val bind:
 
    It reports `WouldBlock` instead of waiting when no peer is ready.
 *)
-val accept: t -> ((Tcp_stream.t * Socket_addr.t), error) Result.t
+val accept: t -> (Tcp_stream.t * Socket_addr.t, error) Result.t
 
 val close: t -> (unit, error) Result.t
 

@@ -160,8 +160,7 @@ let collect_file_paths_parallel = fun walker ->
     ~f:(fun entry ->
       match Fs.Walker.FileItem.kind entry with
       | Fs.Walker.File ->
-          with_lock lock (fun () ->
-            seen := Fs.Walker.FileItem.path_string entry :: !seen);
+          with_lock lock (fun () -> seen := Fs.Walker.FileItem.path_string entry :: !seen);
           Fs.Walker.Continue
       | Fs.Walker.Directory
       | Fs.Walker.Symlink
@@ -201,8 +200,7 @@ let tests = [
           let* () = write hidden_file "secret" in
           let* walker =
             Ignore.Walker.create ~roots:[ root ] ()
-            |> Result.map_err ~fn:(fun _ ->
-              "walker create failed")
+            |> Result.map_err ~fn:(fun _ -> "walker create failed")
           in
           let* paths = collect_paths walker in
           Test.assert_true (contains_path paths "visible.txt");
@@ -233,8 +231,7 @@ let tests = [
           let* () = write src_file "let main = 1\n" in
           let* walker =
             Ignore.Walker.create ~roots:[ root ] ~hidden:false ()
-            |> Result.map_err ~fn:(fun _ ->
-              "walker create failed")
+            |> Result.map_err ~fn:(fun _ -> "walker create failed")
           in
           let* paths = collect_paths walker in
           Test.assert_true (contains_path paths "src/main.ml");
@@ -259,8 +256,7 @@ let tests = [
               ~hidden:false
               ~custom_ignore_filenames:[ ".dockerignore" ]
               ()
-            |> Result.map_err ~fn:(fun _ ->
-              "walker create failed")
+            |> Result.map_err ~fn:(fun _ -> "walker create failed")
           in
           let* paths = collect_paths walker in
           Test.assert_true (contains_path paths "keep.txt");
@@ -282,8 +278,7 @@ let tests = [
           let* () = write file_txt "notes\n" in
           let* walker =
             Ignore.Walker.create ~roots:[ root ] ~hidden:false ~overrides:[ "*.ml" ] ()
-            |> Result.map_err ~fn:(fun _ ->
-              "walker create failed")
+            |> Result.map_err ~fn:(fun _ -> "walker create failed")
           in
           let* paths = collect_paths walker in
           Test.assert_true (contains_path paths "src");
@@ -342,8 +337,7 @@ let tests = [
                   ~sort:false
                   ~hidden:false
                   ()
-                |> Result.map_err ~fn:(fun _ ->
-                  "walker create failed")
+                |> Result.map_err ~fn:(fun _ -> "walker create failed")
               in
               let* actual = collect_file_paths_parallel walker in
               if actual = expected then

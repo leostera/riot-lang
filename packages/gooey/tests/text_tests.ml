@@ -180,11 +180,10 @@ let test_layout_uses_the_configured_text_measurer = fun _ctx ->
     lines = [ "left"; "right" ];
   }
   in
-  let config =
-    Config.make
-      ~viewport:(Viewport.make ~width:80.0 ~height:24.0)
-      ~text_measurer
-      ()
+  let config = Config.make
+    ~viewport:(Viewport.make ~width:80.0 ~height:24.0)
+    ~text_measurer
+    ()
   in
   let contents =
     List.map

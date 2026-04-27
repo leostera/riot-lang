@@ -28,8 +28,7 @@ let test_reentrant_acquire_in_same_process = fun _ctx ->
       let workspace = make_workspace tmpdir in
       let host_target = target "aarch64-apple-darwin" in
       BuildLock.acquire
-        ~on_waiting:(fun _ ->
-          ())
+        ~on_waiting:(fun _ -> ())
         ~target_dir_root:(target_dir_root workspace)
         ~profile:"debug"
         ~target:host_target
@@ -40,8 +39,7 @@ let test_reentrant_acquire_in_same_process = fun _ctx ->
               (fun () ->
                 let start = Time.Instant.now () in
                 match BuildLock.acquire
-                  ~on_waiting:(fun _ ->
-                    ())
+                  ~on_waiting:(fun _ -> ())
                   ~target_dir_root:(target_dir_root workspace)
                   ~profile:"debug"
                   ~target:host_target
@@ -83,25 +81,21 @@ let test_releases_lock_on_exception = fun _ctx ->
       try
         let _ =
           BuildLock.acquire
-            ~on_waiting:(fun _ ->
-              ())
+            ~on_waiting:(fun _ -> ())
             ~target_dir_root:(target_dir_root workspace)
             ~profile:"debug"
             ~target:host_target
-            (fun () ->
-              raise Synthetic_failure)
+            (fun () -> raise Synthetic_failure)
         in
         Error "Expected build lock callback to raise"
       with
       | Synthetic_failure -> (
           match BuildLock.acquire
-            ~on_waiting:(fun _ ->
-              ())
+            ~on_waiting:(fun _ -> ())
             ~target_dir_root:(target_dir_root workspace)
             ~profile:"debug"
             ~target:host_target
-            (fun () ->
-              Ok ()) with
+            (fun () -> Ok ()) with
           | Ok () -> Ok ()
           | Error _ -> Error "Build lock was not released after exception"
         ))
@@ -114,8 +108,7 @@ let test_different_targets_do_not_block_each_other = fun _ctx ->
       let host_target = target "aarch64-apple-darwin" in
       let linux_target = target "aarch64-unknown-linux-gnu" in
       BuildLock.acquire
-        ~on_waiting:(fun _ ->
-          ())
+        ~on_waiting:(fun _ -> ())
         ~target_dir_root:(target_dir_root workspace)
         ~profile:"debug"
         ~target:host_target
@@ -126,8 +119,7 @@ let test_different_targets_do_not_block_each_other = fun _ctx ->
               (fun () ->
                 let start = Time.Instant.now () in
                 match BuildLock.acquire
-                  ~on_waiting:(fun _ ->
-                    ())
+                  ~on_waiting:(fun _ -> ())
                   ~target_dir_root:(target_dir_root workspace)
                   ~profile:"debug"
                   ~target:linux_target
@@ -166,23 +158,19 @@ let test_existing_lanes_lists_sorted_targets = fun _ctx ->
       let open ResultSyntax in
       let* () =
         BuildLock.acquire
-          ~on_waiting:(fun _ ->
-            ())
+          ~on_waiting:(fun _ -> ())
           ~target_dir_root:(target_dir_root workspace)
           ~profile:"release"
           ~target:linux_target
-          (fun () ->
-            Ok ())
+          (fun () -> Ok ())
       in
       let* () =
         BuildLock.acquire
-          ~on_waiting:(fun _ ->
-            ())
+          ~on_waiting:(fun _ -> ())
           ~target_dir_root:(target_dir_root workspace)
           ~profile:"debug"
           ~target:host_target
-          (fun () ->
-            Ok ())
+          (fun () -> Ok ())
       in
       let cache_dir = Path.(target_dir_root workspace / Path.v "cache") in
       let junk_dir = Path.(target_dir_root workspace / Path.v "debug" / Path.v "not-a-target") in
@@ -207,11 +195,9 @@ let test_acquire_existing_lanes_succeeds_when_no_lanes_exist = fun _ctx ->
     (fun tmpdir ->
       let workspace = make_workspace tmpdir in
       BuildLock.acquire_existing_lanes
-        ~on_waiting:(fun _ ->
-          ())
+        ~on_waiting:(fun _ -> ())
         ~target_dir_root:(target_dir_root workspace)
-        (fun () ->
-          Ok ()))
+        (fun () -> Ok ()))
 
 let tests =
   Test.[

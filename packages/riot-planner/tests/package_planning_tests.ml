@@ -1484,8 +1484,7 @@ let test_plan_bundle_cache_hit_restores_module_and_action_graphs = fun _ctx ->
             ~srcs:[]
             ~package
             ~toolchain:test_toolchain
-            ~dependency_hashes:(fun _ ->
-              Crypto.hash_string "")
+            ~dependency_hashes:(fun _ -> Crypto.hash_string "")
             ~deps:[]
         in
         let _ = Riot_planner.Action_graph.add_node ag spec in
@@ -1710,8 +1709,7 @@ let test_stale_plan_bundle_version_rebuilds_plan_graphs = fun _ctx ->
             ~srcs:[]
             ~package
             ~toolchain:test_toolchain
-            ~dependency_hashes:(fun _ ->
-              Crypto.hash_string "")
+            ~dependency_hashes:(fun _ -> Crypto.hash_string "")
             ~deps:[]
         in
         let _ = Riot_planner.Action_graph.add_node ag spec in
@@ -1928,8 +1926,7 @@ let test_plan_bundle_cache_hit_preserves_module_dependency_order = fun _ctx ->
             ~srcs:[]
             ~package
             ~toolchain:test_toolchain
-            ~dependency_hashes:(fun _ ->
-              Crypto.hash_string "")
+            ~dependency_hashes:(fun _ -> Crypto.hash_string "")
             ~deps:[]
         in
         let _ = Riot_planner.Action_graph.add_node graph spec in
@@ -2501,8 +2498,7 @@ let test_legacy_nested_sibling_plan_bundle_is_ignored_after_version_bump = fun _
             ~srcs:[]
             ~package
             ~toolchain:test_toolchain
-            ~dependency_hashes:(fun _ ->
-              Crypto.hash_string "")
+            ~dependency_hashes:(fun _ -> Crypto.hash_string "")
             ~deps:[]
         in
         let _ = Riot_planner.Action_graph.add_node ag spec in

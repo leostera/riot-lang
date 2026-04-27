@@ -73,8 +73,7 @@ let rec exports = fun scope ->
     |> List.concat_map
       (fun { name; scope } ->
         exports scope
-        |> List.map (fun (path, scheme) ->
-          (SurfacePath.prepend_name name path, scheme)))
+        |> List.map (fun (path, scheme) -> (SurfacePath.prepend_name name path, scheme)))
   in
   local_exports @ nested_exports
 
@@ -85,8 +84,10 @@ let rec type_decls = fun scope ->
       (fun { name; scope } ->
         type_decls scope
         |> List.map
-          (fun (type_decl: FileSummary.type_decl) ->
-            { type_decl with scope_path = SurfacePath.prepend_name name type_decl.scope_path }))
+          (fun (type_decl: FileSummary.type_decl) -> {
+            type_decl with
+            scope_path = SurfacePath.prepend_name name type_decl.scope_path;
+          }))
   in
   scope.type_decls @ nested_type_decls
 
@@ -135,15 +136,16 @@ let local_constructor_entries = fun scope ->
   scope.type_decls
   |> List.concat_map
     (fun (type_decl: FileSummary.type_decl) ->
-      let owner_path = SurfacePath.append_name type_decl.scope_path type_decl.declaration.type_name in
+      let owner_path =
+        SurfacePath.append_name type_decl.scope_path type_decl.declaration.type_name
+      in
       type_decl.declaration.constructors
       |> List.map
-        (fun (constructor: TypeDecl.constructor) ->
-          {
-            owner_path;
-            owner_type_constructor_id = type_decl.declaration.type_constructor_id;
-            constructor;
-          }))
+        (fun (constructor: TypeDecl.constructor) -> {
+          owner_path;
+          owner_type_constructor_id = type_decl.declaration.type_constructor_id;
+          constructor;
+        }))
 
 let qualify_constructor_entry = fun ~root (entry: constructor_entry) ->
   if SurfacePath.is_empty root then
@@ -165,8 +167,7 @@ let lookup_constructors = fun scope path ->
       |> Option.map
         (fun module_scope ->
           local_constructor_entries module_scope
-          |> List.filter (fun entry ->
-            String.equal entry.constructor.name name)
+          |> List.filter (fun entry -> String.equal entry.constructor.name name)
           |> List.map (qualify_constructor_entry ~root:module_path))
       |> Option.unwrap_or ~default:[]
 
@@ -202,8 +203,7 @@ let lookup_record_decls = fun scope label_name ->
     (fun (record_decl: record_decl) ->
       record_decl.labels
       |> List.exists
-        (fun (label: TypeDecl.label) ->
-          String.equal (lookup_label_name label.name) lookup_name))
+        (fun (label: TypeDecl.label) -> String.equal (lookup_label_name label.name) lookup_name))
 
 let lookup_record_decl_by_owner = fun scope owner_type_constructor_id ->
   local_record_decls scope

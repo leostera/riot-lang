@@ -254,7 +254,9 @@ let rec conflict_resolution = fun ~stats ~emit root_package root_version state i
     if Incompatibility.is_terminal current_incompat root_package root_version then
       Error current_incompat
     else
-      let (pkg, search_result) = Partial_solution.satisfier_search state.solution current_incompat in
+      let (pkg, search_result) =
+        Partial_solution.satisfier_search state.solution current_incompat
+      in
       match search_result with
       | `DifferentDecisionLevels previous_level ->
           stats.backtracks <- stats.backtracks + 1;
@@ -303,7 +305,9 @@ let rec conflict_resolution = fun ~stats ~emit root_package root_version state i
                terminal";
             Error current_incompat
           ) else
-            let prior = Incompatibility.prior_cause ?extra_term current_incompat satisfier_cause pkg in
+            let prior =
+              Incompatibility.prior_cause ?extra_term current_incompat satisfier_cause pkg
+            in
             emit
               (
                 Trace.ConflictResolvedSame {
@@ -556,7 +560,9 @@ let choose_version = fun stats provider state pkg ranges ->
               match constraint_status with
               | `Undecided -> all_other_satisfied := false
               | `Decided ver ->
-                  let in_range = Ranges.contains ~compare_v:version_compare (Term.ranges term) ver in
+                  let in_range =
+                    Ranges.contains ~compare_v:version_compare (Term.ranges term) ver
+                  in
                   let term_satisfied =
                     (Term.is_positive term && in_range) || ((not (Term.is_positive term))
                     && not in_range)
@@ -582,9 +588,7 @@ let choose_version = fun stats provider state pkg ranges ->
       (* If all other terms satisfied, constrain by this incompatibility *)
       if !all_other_satisfied then (
         Log.info ("    ✨ All other terms satisfied for " ^ pkg ^ "!");
-        let pkg_terms = List.filter terms ~fn:(fun term ->
-          String.equal (Term.package term) pkg)
-        in
+        let pkg_terms = List.filter terms ~fn:(fun term -> String.equal (Term.package term) pkg) in
         match pkg_terms with
         | [] -> ()
         | term :: rest ->
@@ -765,7 +769,9 @@ let solve_with_stats = fun
                         prioritizer with
                       | None ->
                           Log.debug "No more pending packages, solution found";
-                          let solution = Partial_solution.extract_solution propagated_state.solution in
+                          let solution =
+                            Partial_solution.extract_solution propagated_state.solution
+                          in
                           emit (Trace.Solved { solution });
                           finish (Ok (Success solution))
                       | Some (pkg, ranges) -> (
@@ -895,7 +901,9 @@ let solve_with_stats = fun
                                             ("📦 Added dependency incompatibility for " ^ dep_pkg);
                                           add_incompatibility new_state dep_pkg dep_incompat;
                                           affected_packages := dep_pkg :: !affected_packages);
-                                      let affected_packages = normalize_packages !affected_packages in
+                                      let affected_packages =
+                                        normalize_packages !affected_packages
+                                      in
                                       Log.info
                                         ("🔄 Added "
                                         ^ (Int.to_string (List.length affected_packages))

@@ -62,13 +62,17 @@ let decode_one = fun framed ->
         |> List.filter ~fn:(fun line -> not (String.equal line ""))
       in
       let payload_start = header_end + separator_len in
-      let body = String.sub framed ~offset:payload_start ~len:(String.length framed - payload_start) in
+      let body =
+        String.sub framed ~offset:payload_start ~len:(String.length framed - payload_start)
+      in
       let* content_length = parse_content_length headers in
       if String.length body < content_length then
         Error "payload shorter than Content-Length"
       else
         let payload = String.sub body ~offset:0 ~len:content_length in
-        let rest = String.sub body ~offset:content_length ~len:(String.length body - content_length) in
+        let rest =
+          String.sub body ~offset:content_length ~len:(String.length body - content_length)
+        in
         Ok (payload, rest)
 
 let read = fun input ->

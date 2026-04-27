@@ -274,7 +274,9 @@ let parse_requirement = fun req_string ->
     if version_start > len then
       Error (Invalid_format s)
     else
-      let version_str = String.trim (String.sub s ~offset:version_start ~len:(len - version_start)) in
+      let version_str =
+        String.trim (String.sub s ~offset:version_start ~len:(len - version_start))
+      in
       match op with
       | Some op -> (
           match parse version_str with

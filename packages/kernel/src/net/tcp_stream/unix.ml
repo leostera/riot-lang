@@ -38,8 +38,7 @@ let shutdown_write = 1
 let shutdown_read_write = 2
 
 module FFI = struct
-  external connect: string -> int -> ((int * int), int) Result.t =
-    "kernel_new_net_tcp_stream_connect"
+  external connect: string -> int -> (int * int, int) Result.t = "kernel_new_net_tcp_stream_connect"
 
   external close: int -> (unit, int) Result.t = "kernel_new_net_socket_close"
 
@@ -57,9 +56,9 @@ module FFI = struct
 
   external writev: int -> IO.IoVec.t -> (int, int) Result.t = "kernel_new_net_tcp_stream_writev"
 
-  external local_addr: int -> ((string * int), int) Result.t = "kernel_new_net_socket_local_addr"
+  external local_addr: int -> (string * int, int) Result.t = "kernel_new_net_socket_local_addr"
 
-  external peer_addr: int -> ((string * int), int) Result.t = "kernel_new_net_tcp_stream_peer_addr"
+  external peer_addr: int -> (string * int, int) Result.t = "kernel_new_net_tcp_stream_peer_addr"
 end
 
 let validate_slice = fun buf ~pos ~len ->

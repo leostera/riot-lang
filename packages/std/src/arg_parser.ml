@@ -402,7 +402,9 @@ and print_help = fun cmd ->
   if List.length cmd.subcommands > 0 then (
     println "\nCommands:";
     (* Sort subcommands alphabetically *)
-    let sorted_subs = List.sort cmd.subcommands ~compare:(fun a b -> String.compare a.name b.name) in
+    let sorted_subs =
+      List.sort cmd.subcommands ~compare:(fun a b -> String.compare a.name b.name)
+    in
     let max_name_len =
       List.fold_left sorted_subs ~init:0 ~fn:(fun acc sub -> max acc (String.length sub.name))
     in

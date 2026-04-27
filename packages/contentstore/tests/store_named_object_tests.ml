@@ -172,9 +172,7 @@ let test_named_long_key_roundtrip = fun _ctx ->
     "contentstore-save-named-long-key"
     [ "plans" ]
     (fun ~tmpdir:_ ~store ->
-      let key = String.init ~len:2_048 ~fn:(fun _ ->
-        'k')
-      in
+      let key = String.init ~len:2_048 ~fn:(fun _ -> 'k') in
       let _ =
         Contentstore.save_named_object store ~key ~content:"payload"
         |> Result.expect ~msg:"save_named_object should succeed"
@@ -226,9 +224,7 @@ let test_named_overwrite_with_larger_content = fun _ctx ->
         Contentstore.save_named_object store ~key:"current" ~content:"small"
         |> Result.expect ~msg:"first save_named_object should succeed"
       in
-      let larger = String.init ~len:8_192 ~fn:(fun _ ->
-        'x')
-      in
+      let larger = String.init ~len:8_192 ~fn:(fun _ -> 'x') in
       let _ =
         Contentstore.save_named_object store ~key:"current" ~content:larger
         |> Result.expect ~msg:"second save_named_object should succeed"
@@ -243,9 +239,7 @@ let test_named_overwrite_with_smaller_content = fun _ctx ->
     "contentstore-save-named-smaller-content"
     [ "plans" ]
     (fun ~tmpdir:_ ~store ->
-      let larger = String.init ~len:8_192 ~fn:(fun _ ->
-        'x')
-      in
+      let larger = String.init ~len:8_192 ~fn:(fun _ -> 'x') in
       let _ =
         Contentstore.save_named_object store ~key:"current" ~content:larger
         |> Result.expect ~msg:"first save_named_object should succeed"

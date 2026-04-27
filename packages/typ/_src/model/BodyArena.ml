@@ -205,7 +205,9 @@ let of_lists = fun ~patterns ~expressions ~bindings ->
   bindings
   |> List.iter
     (fun (node: binding) ->
-      let _ = Collections.HashMap.insert bindings_by_id (BindingArenaId.to_int node.binding_id) node in
+      let _ =
+        Collections.HashMap.insert bindings_by_id (BindingArenaId.to_int node.binding_id) node
+      in
       ());
   {
     patterns;

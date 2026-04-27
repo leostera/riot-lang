@@ -709,7 +709,9 @@ let run_gc = fun ~(workspace:Workspace.t) ~policy ~generation_hashes ->
   let* entries = collect_cache_entries ~workspace in
   let size_before_bytes = total_size entries in
   let (kept_receipts, live, size_after_bytes) = evaluate_retention ~policy receipts entries in
-  let kept_hashes = List.map kept_receipts ~fn:(fun (receipt: receipt_file) -> receipt.receipt.hash) in
+  let kept_hashes =
+    List.map kept_receipts ~fn:(fun (receipt: receipt_file) -> receipt.receipt.hash)
+  in
   let kept_paths = HashSet.create () in
   List.for_each
     kept_hashes

@@ -274,7 +274,9 @@ let parse_slice = fun
       | Slice_error error -> Common.Error error
       | Slice_done (headers_list, remaining) ->
           let body = SliceCursor.remaining remaining in
-          let request = request_of_parts parsed_method parsed_uri parsed_version headers_list body in
+          let request =
+            request_of_parts parsed_method parsed_uri parsed_version headers_list body
+          in
           Common.Done { value = request; remaining = "" }
     )
 

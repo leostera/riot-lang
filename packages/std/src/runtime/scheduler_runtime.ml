@@ -24,8 +24,7 @@ let run = fun deps ~config ~main ->
       ~count:(Kernel.Int.sub (Array.length t.workers) 1)
       ~fn:(fun idx ->
         let worker = Array.get_unchecked t.workers ~at:(Kernel.Int.add idx 1) in
-        Kernel.Thread.spawn (fun () ->
-          deps.worker_loop t worker))
+        Kernel.Thread.spawn (fun () -> deps.worker_loop t worker))
   in
   deps.worker_loop t (Array.get_unchecked t.workers ~at:0);
   Array.for_each worker_domains ~fn:Kernel.Thread.join;

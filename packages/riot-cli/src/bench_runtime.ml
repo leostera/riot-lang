@@ -114,7 +114,9 @@ let no_listed_suite: listed_bench_suite -> unit = fun _ -> ()
 let no_list_error: suite_binary -> bench_error -> unit = fun _ _ -> ()
 
 let upsert_json_field = fun name value fields ->
-  let filtered = List.filter fields ~fn:(fun (field_name, _) -> not (String.equal field_name name)) in
+  let filtered =
+    List.filter fields ~fn:(fun (field_name, _) -> not (String.equal field_name name))
+  in
   filtered @ [ (name, value); ]
 
 let json_event_type = fun json ->
@@ -801,8 +803,7 @@ let run_suite = fun ~on_event ~suite ~extra_args binary_path ->
           |> Result.iter
             ~fn:(fun current_case ->
               current_case
-              |> Option.for_each ~fn:(fun current_case ->
-                active_case := Some current_case));
+              |> Option.for_each ~fn:(fun current_case -> active_case := Some current_case));
           on_event (SuiteProgress { suite; event }))) with
   | Error (Command.SystemError reason) -> Error (SuiteExecutionError { suite; reason })
   | Ok output -> Ok output
@@ -991,10 +992,8 @@ let list_benchmarks = fun
           |> Result.map
             ~fn:(fun collected ->
               collected
-              |> List.sort ~compare:(fun (left, _) (right, _) ->
-                compare_suite_binary left right)
-              |> List.map ~fn:(fun (_, value) ->
-                value))
+              |> List.sort ~compare:(fun (left, _) (right, _) -> compare_suite_binary left right)
+              |> List.map ~fn:(fun (_, value) -> value))
 
 let bench = fun ?(on_event = no_event) (request: bench_request) ->
   let suites =

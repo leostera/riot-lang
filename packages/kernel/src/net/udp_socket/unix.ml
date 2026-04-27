@@ -27,7 +27,7 @@ module FFI = struct
 
   external close: t -> (unit, int) Result.t = "kernel_new_net_socket_close"
 
-  external local_addr: t -> ((string * int), int) Result.t = "kernel_new_net_socket_local_addr"
+  external local_addr: t -> (string * int, int) Result.t = "kernel_new_net_socket_local_addr"
 
   external recv: t -> bytes -> int -> int -> (int, int) Result.t = "kernel_new_net_udp_socket_recv"
 

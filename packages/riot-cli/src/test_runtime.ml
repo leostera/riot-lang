@@ -161,7 +161,9 @@ let no_list_error: suite_binary -> test_error -> unit = fun _ _ -> ()
 let ctx_json_arg = "--ctx"
 
 let upsert_json_field = fun name value fields ->
-  let filtered = List.filter fields ~fn:(fun (field_name, _) -> not (String.equal field_name name)) in
+  let filtered =
+    List.filter fields ~fn:(fun (field_name, _) -> not (String.equal field_name name))
+  in
   filtered @ [ (name, value); ]
 
 let json_event_type = fun json ->
@@ -993,8 +995,7 @@ let run_suite = fun
         (SuiteHeartbeat { suite; binary_path; elapsed_us = Time.Duration.to_micros elapsed }))
     ~on_stdout_line:(fun line ->
       suite_progress_event_of_line line
-      |> Option.for_each ~fn:(fun event ->
-        on_event (SuiteProgress { suite; event }))) with
+      |> Option.for_each ~fn:(fun event -> on_event (SuiteProgress { suite; event }))) with
   | Error (Command.SystemError reason) -> Error (SuiteExecutionError { suite; reason })
   | Ok output -> (
       on_event
@@ -1193,10 +1194,8 @@ let list_tests = fun
           |> Result.map
             ~fn:(fun collected ->
               collected
-              |> List.sort ~compare:(fun (left, _) (right, _) ->
-                compare_suite_binary left right)
-              |> List.map ~fn:(fun (_, value) ->
-                value))
+              |> List.sort ~compare:(fun (left, _) (right, _) -> compare_suite_binary left right)
+              |> List.map ~fn:(fun (_, value) -> value))
 
 let test = fun ?(on_event = no_event) (request: test_request) ->
   let suites =

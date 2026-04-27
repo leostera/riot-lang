@@ -252,13 +252,11 @@ let test_release_build_uses_release_lane = fun _ctx ->
       let host_target = Riot_model.Riot_dirs.host_target () in
       let release_package_dir =
         Riot_model.Riot_dirs.out_dir_in_workspace ~workspace ~profile:"release" ~target:host_target
-        |> fun out_dir ->
-          Path.(out_dir / Path.v "demo")
+        |> fun out_dir -> Path.(out_dir / Path.v "demo")
       in
       let debug_package_dir =
         Riot_model.Riot_dirs.out_dir_in_workspace ~workspace ~profile:"debug" ~target:host_target
-        |> fun out_dir ->
-          Path.(out_dir / Path.v "demo")
+        |> fun out_dir -> Path.(out_dir / Path.v "demo")
       in
       match build_request (make_request ~workspace ~profile:Riot_model.Profile.release ()) with
       | Error err ->
@@ -286,16 +284,14 @@ let test_build_respects_custom_target_dir = fun _ctx ->
       let host_target = Riot_model.Riot_dirs.host_target () in
       let release_package_dir =
         Riot_model.Riot_dirs.out_dir_in_workspace ~workspace ~profile:"release" ~target:host_target
-        |> fun out_dir ->
-          Path.(out_dir / Path.v "demo")
+        |> fun out_dir -> Path.(out_dir / Path.v "demo")
       in
       let default_release_dir =
         Riot_model.Riot_dirs.out_dir_with_target
           ~workspace_root:workspace.root
           ~profile:"release"
           ~target:host_target
-        |> fun out_dir ->
-          Path.(out_dir / Path.v "demo")
+        |> fun out_dir -> Path.(out_dir / Path.v "demo")
       in
       match build_request (make_request ~workspace ~profile:Riot_model.Profile.release ()) with
       | Error err ->
@@ -648,8 +644,7 @@ let test_execute_allows_partial_failures = fun _ctx ->
           ~package_names:[ good; bad ]
           ~targets:(Riot_model.Target.make_set [ Riot_model.Target.current ])
           ~requested_parallelism:(Some 1)
-          ~on_event:(fun _ ->
-            ())
+          ~on_event:(fun _ -> ())
           ()
       in
       let result =
@@ -744,12 +739,10 @@ let test_execute_allows_multi_target_partial_failures = fun _ctx ->
             Error ("expected " ^ Int.to_string expected_target_count ^ " target builds finished")
           else if not (Int.equal (List.length !finished_counts) expected_target_count) then
             Error ("expected " ^ Int.to_string expected_target_count ^ " target result_count events")
-          else if not (List.all !finished_counts ~fn:(fun count ->
-            count = 2)) then
+          else if not (List.all !finished_counts ~fn:(fun count -> count = 2)) then
             Error ("expected each lane to report two package results, got "
             ^ String.concat ", " (List.map !finished_counts ~fn:Int.to_string))
-          else if not (List.all !partial_flags ~fn:(fun partial ->
-            partial)) then
+          else if not (List.all !partial_flags ~fn:(fun partial -> partial)) then
             Error "expected each lane to report partial failures"
           else
             let sort_target_names = List.sort ~compare:String.compare in
@@ -868,7 +861,9 @@ let test_execute_multi_target_all_success_reports_aggregated_results = fun _ctx 
           target "x86_64-unknown-linux-gnu"
       in
       let requested_targets = Riot_model.Target.Set.of_list [ host_target; secondary_target ] in
-      let expected_return_count = (List.length (Riot_model.Target.Set.to_list requested_targets)) * 2 in
+      let expected_return_count =
+        (List.length (Riot_model.Target.Set.to_list requested_targets)) * 2
+      in
       let returning_event = ref None in
       let workspace =
         make_workspace_with_sources

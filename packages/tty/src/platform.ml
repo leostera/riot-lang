@@ -25,7 +25,7 @@ external close_raw: fd -> (unit, int) result = "tty_close"
 
 external is_tty: fd -> bool = "tty_is_tty"
 
-external get_size_raw: fd -> ((int * int), int) result = "tty_get_size"
+external get_size_raw: fd -> (int * int, int) result = "tty_get_size"
 
 external get_attributes_raw: fd -> (termios, int) result = "tty_get_attributes"
 

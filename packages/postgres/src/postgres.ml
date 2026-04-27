@@ -776,7 +776,9 @@ module Driver = struct
                   match read_message stream with
                   | Error e -> Error e
                   | Ok (msg_type, length, body) -> (
-                      let backend_msg = Protocol.Reader.parse_backend_message msg_type length body in
+                      let backend_msg =
+                        Protocol.Reader.parse_backend_message msg_type length body
+                      in
                       match backend_msg with
                       | Protocol.ParseComplete -> read_extended_results ()
                       | Protocol.BindComplete -> read_extended_results ()
@@ -843,7 +845,9 @@ module Driver = struct
                   match read_message stream with
                   | Error e -> Error e
                   | Ok (msg_type, length, body) -> (
-                      let backend_msg = Protocol.Reader.parse_backend_message msg_type length body in
+                      let backend_msg =
+                        Protocol.Reader.parse_backend_message msg_type length body
+                      in
                       match backend_msg with
                       | Protocol.RowDescription row_desc ->
                           column_info := row_desc;

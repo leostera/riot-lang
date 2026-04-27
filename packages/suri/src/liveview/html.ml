@@ -116,8 +116,7 @@ let rec map_action = fun fn t ->
         List.map
           ~fn:(fun attr ->
             match attr with
-            | `event (name, handler) -> `event (name, fun ev ->
-              fn (handler ev))
+            | `event (name, handler) -> `event (name, fun ev -> fn (handler ev))
             | `attr (k, v) -> `attr (k, v))
           attrs
       in

@@ -639,7 +639,6 @@ let lower_structure_item = fun state item ->
         ~span:(span_of_node declaration)
         ~kind:SyntaxKind.TYPE_DECL
         "type extension"
-  | Ast.StructureItem.Class declaration -> push_unsupported state declaration "class declaration"
   | Ast.StructureItem.Extension item -> push_unsupported state item "extension"
   | Ast.StructureItem.Attribute item -> push_unsupported state item "attribute"
   | Ast.StructureItem.Error node -> push_unsupported state node "error"
@@ -661,7 +660,6 @@ let lower_signature_item = fun state item ->
         ~span:(span_of_node declaration)
         ~kind:SyntaxKind.TYPE_DECL
         "type extension"
-  | Ast.SignatureItem.Class declaration -> push_unsupported state declaration "class declaration"
   | Ast.SignatureItem.Extension item -> push_unsupported state item "extension"
   | Ast.SignatureItem.Attribute item -> push_unsupported state item "attribute"
   | Ast.SignatureItem.Error node -> push_unsupported state node "error"

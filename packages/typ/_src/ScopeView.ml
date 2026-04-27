@@ -64,9 +64,7 @@ let create = fun ~visible_modules ~implicit_open_modules ->
     visible_modules_by_head
     |> Collections.HashMap.iter
       (fun head candidates ->
-        let sorted = List.sort (fun left right ->
-          Int.compare right.depth left.depth) candidates
-        in
+        let sorted = List.sort (fun left right -> Int.compare right.depth left.depth) candidates in
         let _ = Collections.HashMap.insert visible_modules_by_head head sorted in
         ())
   in

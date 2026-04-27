@@ -1345,12 +1345,18 @@ let collect_fun_parameters = fun (node: Ast.Node.t) ->
 
 let rec collect_child_type_exprs = fun (type_expr: Ast.TypeExpr.t) ->
   let items = Vector.with_capacity ~size:(Ast.Node.child_count type_expr) in
-  Ast.TypeExpr.for_each_child_type type_expr ~fn:(fun item -> Vector.push items ~value:item);
+  Ast.Node.for_each_child_node
+    type_expr
+    ~fn:(fun child ->
+      match Ast.TypeExpr.cast child with
+      | Some item -> Vector.push items ~value:item
+      | None -> ());
   if Int.equal (Vector.length items) 1 && node_kind_is type_expr Kind.TYPE_EXPR then
     let only_child = Vector.get_unchecked items ~at:0 in
-    match Ast.TypeExpr.view only_child with
-    | Ast.TypeExpr.Tuple _ -> collect_child_type_exprs only_child
-    | _ -> items
+    if node_kind_is only_child Kind.TUPLE_TYPE then
+      collect_child_type_exprs only_child
+    else
+      items
   else
     items
 
@@ -1547,8 +1553,6 @@ let is_expr_node_kind = function
   | Kind.FIRST_CLASS_MODULE_EXPR
   | Kind.EXTENSION_EXPR
   | Kind.UNREACHABLE_EXPR
-  | Kind.OBJECT_EXPR
-  | Kind.NEW_EXPR
   | Kind.IF_EXPR
   | Kind.MATCH_EXPR
   | Kind.FUN_EXPR
@@ -1565,7 +1569,6 @@ let is_expr_node_kind = function
   | Kind.PREFIX_EXPR
   | Kind.ASSIGN_EXPR
   | Kind.FIELD_ACCESS_EXPR
-  | Kind.METHOD_CALL_EXPR
   | Kind.POLY_VARIANT_EXPR
   | Kind.LABELED_ARG
   | Kind.OPTIONAL_ARG
@@ -1874,10 +1877,6 @@ module ExprView = struct
         target: Ast.Expr.t option;
         field: Ast.Token.t option;
       }
-    | MethodCall of {
-        target: Ast.Expr.t option;
-        method_: Ast.Token.t option;
-      }
     | Assign of {
         target: Ast.Expr.t option;
         operator: Ast.Token.t option;
@@ -1986,8 +1985,6 @@ module ExprView = struct
         body: Ast.Expr.t option;
       }
     | Unreachable
-    | Object
-    | New
     | Error of Ast.Node.t
     | Unknown of Ast.Node.t
 
@@ -2013,8 +2010,6 @@ module ExprView = struct
     | Kind.LITERAL_EXPR -> Literal { token = Ast.Expr.literal_token expr }
     | Kind.FIELD_ACCESS_EXPR ->
         FieldAccess { target = nth_child_expr expr 0; field = first_ident_token expr }
-    | Kind.METHOD_CALL_EXPR ->
-        MethodCall { target = nth_child_expr expr 0; method_ = first_ident_token expr }
     | Kind.ASSIGN_EXPR ->
         Assign {
           target = nth_child_expr expr 0;
@@ -2082,8 +2077,6 @@ module ExprView = struct
           body = nth_child_expr expr 2;
         }
     | Kind.UNREACHABLE_EXPR -> Unreachable
-    | Kind.OBJECT_EXPR -> Object
-    | Kind.NEW_EXPR -> New
     | Kind.ERROR -> Error expr
     | _ -> Unknown expr
 end
@@ -2460,292 +2453,6 @@ let emit_joined_vector = fun state values ~sep ~fn ->
   in
   loop 0
 
-let token_kind_opens_nested_group = function
-  | Kind.LPAREN
-  | Kind.LBRACE
-  | Kind.LBRACKET
-  | Kind.LBRACKET_BAR
-  | Kind.LT -> true
-  | _ -> false
-
-let token_kind_closes_nested_group = function
-  | Kind.RPAREN
-  | Kind.RBRACE
-  | Kind.RBRACKET
-  | Kind.BAR_RBRACKET
-  | Kind.GT -> true
-  | _ -> false
-
-let render_object_type_arrow_range = fun state tokens ~start ~stop ->
-  let rec loop segment_start index =
-    if Int.(index >= stop) then
-      emit_token_vector_range_stream state tokens ~start:segment_start ~stop
-    else
-      let token = Vector.get_unchecked tokens ~at:index in
-      if token_kind_is token Kind.ARROW then (
-        emit_token_vector_range_stream state tokens ~start:segment_start ~stop:index;
-        emit_space state;
-        emit_token state token;
-        emit_line state;
-        loop (Int.add index 1) (Int.add index 1)
-      ) else
-        loop segment_start (Int.add index 1)
-  in
-  loop start start
-
-let token_range_contains_kind = fun tokens ~start ~stop kind ->
-  let found = ref false in
-  let index = ref start in
-  while Int.((!index) < stop) && not !found do
-    if token_kind_is (Vector.get_unchecked tokens ~at:!index) kind then
-      found := true;
-    index := Int.add !index 1
-  done;
-  !found
-
-let object_type_inline_token_wants_space_before = fun previous token ->
-  let current_kind = Ast.Token.kind token in
-  let previous_kind = Ast.Token.kind previous in
-  if Kind.(current_kind = COLON || previous_kind = COLON) then
-    false
-  else
-    token_wants_space_before previous token
-
-let token_vector_range_object_type_inline_width = fun tokens ~start ~stop ->
-  let rec loop index previous total =
-    if Int.(index >= stop) then
-      Some total
-    else
-      let token = Vector.get_unchecked tokens ~at:index in
-      let extra_space =
-        match previous with
-        | Some previous when object_type_inline_token_wants_space_before previous token -> 1
-        | _ -> 0
-      in
-      loop
-        (Int.add index 1)
-        (Some token)
-        (Int.add total (Int.add extra_space (token_flat_width token)))
-  in
-  loop start None 0
-
-let emit_token_vector_range_object_type_inline = fun state tokens ~start ~stop ->
-  let previous = ref None in
-  let rec loop index =
-    if Int.(index < stop) then
-      (
-        let token = Vector.get_unchecked tokens ~at:index in
-        (
-          match !previous with
-          | Some previous when object_type_inline_token_wants_space_before previous token ->
-              emit_space state
-          | Some _
-          | None -> ()
-        );
-        emit_token state token;
-        previous := Some token;
-        loop (Int.add index 1)
-      )
-  in
-  loop start
-
-let render_object_type_field_type = fun state tokens ~start ~stop ->
-  let width =
-    match token_vector_range_spaced_flat_width tokens ~start ~stop with
-    | Some width -> width
-    | None -> state.width
-  in
-  let should_break =
-    token_range_contains_kind tokens ~start ~stop Kind.ARROW
-    || Int.(width + 1 > state.width - state.column)
-  in
-  if should_break then (
-    emit_line state;
-    with_indent state 2 (fun () -> render_object_type_arrow_range state tokens ~start ~stop)
-  ) else (
-    emit_space state;
-    emit_token_vector_range_stream state tokens ~start ~stop
-  )
-
-let render_object_type_field = fun state tokens ~start ~stop ->
-  if Int.(start < stop) then
-    let rec find_colon index =
-      if Int.(index >= stop) then
-        None
-      else if token_kind_is (Vector.get_unchecked tokens ~at:index) Kind.COLON then
-        Some index
-      else
-        find_colon (Int.add index 1)
-    in
-    match find_colon start with
-    | Some colon ->
-        emit_token_vector_range_stream state tokens ~start ~stop:colon;
-        emit_token state (Vector.get_unchecked tokens ~at:colon);
-        render_object_type_field_type
-          state
-          tokens
-          ~start:(Int.add colon 1)
-          ~stop
-    | None -> emit_token_vector_range_stream state tokens ~start ~stop
-
-let render_object_type_fields = fun state tokens ~start ~stop ->
-  let rec loop field_start index depth =
-    if Int.(index >= stop) then
-      render_object_type_field state tokens ~start:field_start ~stop
-    else
-      let token = Vector.get_unchecked tokens ~at:index in
-      let kind = Ast.Token.kind token in
-      if token_kind_is token Kind.SEMI && Int.equal depth 0 then (
-        render_object_type_field state tokens ~start:field_start ~stop:index;
-        emit_token state token;
-        emit_line state;
-        loop
-          (Int.add index 1)
-          (Int.add index 1)
-          depth
-      ) else
-        let depth =
-          if token_kind_opens_nested_group kind then
-            Int.add depth 1
-          else if token_kind_closes_nested_group kind && Int.(depth > 0) then
-            Int.sub depth 1
-          else
-            depth
-        in
-        loop
-          field_start
-          (Int.add index 1)
-          depth
-  in
-  loop start start 0
-
-let object_type_can_render_inline = fun state tokens ->
-  let length = Vector.length tokens in
-  Int.(length > 2)
-  && (not (token_range_contains_kind
-    tokens
-    ~start:1
-    ~stop:(Int.sub length 1)
-    Kind.SEMI))
-  && (not (token_range_contains_kind
-    tokens
-    ~start:1
-    ~stop:(Int.sub length 1)
-    Kind.ARROW)) && match token_vector_range_object_type_inline_width
-    tokens
-    ~start:1
-    ~stop:(Int.sub length 1) with
-  | Some content_width -> Int.(state.column + content_width + 4 <= state.width)
-  | None -> false
-
-let render_object_type_inline = fun state tokens ->
-  let length = Vector.length tokens in
-  emit_token state (Vector.get_unchecked tokens ~at:0);
-  emit_space state;
-  emit_token_vector_range_object_type_inline
-    state
-    tokens
-    ~start:1
-    ~stop:(Int.sub length 1);
-  emit_space state;
-  emit_token state (Vector.get_unchecked tokens ~at:(Int.sub length 1))
-
-let render_object_opaque_type = fun state node ->
-  let tokens = collect_child_tokens node in
-  let length = Vector.length tokens in
-  if Int.(length >= 2) then
-    let first = Vector.get_unchecked tokens ~at:0 in
-    let last = Vector.get_unchecked tokens ~at:(Int.sub length 1) in
-    if token_kind_is first Kind.LT && token_kind_is last Kind.GT then (
-      if object_type_can_render_inline state tokens then
-        render_object_type_inline state tokens
-      else (
-        emit_token state first;
-        if Int.(length > 2) then (
-          emit_line state;
-          with_indent
-            state
-            2
-            (fun () ->
-              render_object_type_fields
-                state
-                tokens
-                ~start:1
-                ~stop:(Int.sub length 1));
-          emit_line state
-        );
-        emit_token state last
-      );
-      true
-    ) else
-      false
-  else
-    false
-
-let class_object_field_start = fun token ->
-  let kind = Ast.Token.kind token in
-  Kind.(kind = METHOD_KW || kind = VAL_KW || kind = INHERIT_KW || kind = INITIALIZER_KW)
-
-let render_class_object_field = fun state tokens ~start ~stop ~class_type ->
-  if class_type then
-    render_object_type_field state tokens ~start ~stop
-  else
-    emit_token_vector_range_stream state tokens ~start ~stop
-
-let render_class_object_fields = fun state tokens ~start ~stop ~class_type ->
-  let rec loop field_start index =
-    if Int.(index >= stop) then
-      render_class_object_field state tokens ~start:field_start ~stop ~class_type
-    else
-      let token = Vector.get_unchecked tokens ~at:index in
-      if Int.(index > field_start) && class_object_field_start token then (
-        render_class_object_field state tokens ~start:field_start ~stop:index ~class_type;
-        emit_line state;
-        loop index (Int.add index 1)
-      ) else
-        loop field_start (Int.add index 1)
-  in
-  if Int.(start < stop) then
-    loop start (Int.add start 1)
-
-let class_declaration_is_class_type = fun tokens object_index ->
-  let rec loop index =
-    if Int.(index >= object_index) then
-      false
-    else if token_kind_is (Vector.get_unchecked tokens ~at:index) Kind.TYPE_KW then
-      true
-    else
-      loop (Int.add index 1)
-  in
-  loop 0
-
-let render_class_declaration = fun state decl ->
-  let tokens = collect_child_tokens decl in
-  match (
-    token_vector_find_kind tokens Kind.OBJECT_KW,
-    token_vector_find_last_kind tokens Kind.END_KW
-  ) with
-  | (Some object_index, Some end_index) when Int.(object_index < end_index) ->
-      emit_token_vector_range_stream
-        state
-        tokens
-        ~start:0
-        ~stop:(Int.add object_index 1);
-      emit_line state;
-      with_indent
-        state
-        2
-        (fun () ->
-          render_class_object_fields
-            state
-            tokens
-            ~start:(Int.add object_index 1)
-            ~stop:end_index
-            ~class_type:(class_declaration_is_class_type tokens object_index));
-      emit_line state;
-      emit_token state (Vector.get_unchecked tokens ~at:end_index)
-  | _ -> emit_token_vector_stream state tokens
-
 let render_first_class_module_type = fun state node ->
   let tokens = collect_child_tokens node in
   let length = Vector.length tokens in
@@ -2917,9 +2624,7 @@ let render_gt_opaque_type = fun state node ->
     false
 
 let render_opaque_type = fun state node ->
-  if render_object_opaque_type state node then
-    true
-  else if render_first_class_module_type state node then
+  if render_first_class_module_type state node then
     true
   else if render_extension_opaque_type state node then
     true
@@ -4485,7 +4190,6 @@ and expr_can_render_atom_without_parens = fun expr ->
   | Path _
   | Literal _
   | FieldAccess _
-  | MethodCall _
   | Prefix _
   | Parenthesized _
   | Array
@@ -4623,12 +4327,6 @@ and expr_flat_width_with_budget = fun budget expr ->
         | None -> None
       )
     | FieldAccess _ -> None
-    | MethodCall { target = Some target; method_ = Some method_ } -> (
-        match expr_postfix_target_flat_width next_budget target with
-        | Some target_width -> Some Int.(target_width + 1 + token_flat_width method_)
-        | None -> None
-      )
-    | MethodCall _ -> None
     | Prefix { operator = Some operator; operand = Some operand } -> (
         let operator_tokens = collect_prefix_operator_tokens expr in
         let operator_width =
@@ -5002,7 +4700,6 @@ and expr_is_inline_with_budget = fun budget expr ->
   | Path _
   | Literal _
   | FieldAccess _
-  | MethodCall _
   | Prefix _
   | LabeledArg _
   | OptionalArg _ -> true
@@ -5337,9 +5034,6 @@ let rec render_expr = fun ?(role = Layout.Top_expr) state expr ->
       emit_text state ".";
       emit_token state field
   | FieldAccess _ -> unsupported_node "incomplete field access" expr
-  | MethodCall { target = Some target; method_ = Some method_ } ->
-      render_method_call_expr state expr target method_
-  | MethodCall _ -> unsupported_node "incomplete method call" expr
   | Assign { target = Some target; operator = Some operator; value = Some value } ->
       render_expr_atom state target;
       emit_space state;
@@ -5513,25 +5207,8 @@ let rec render_expr = fun ?(role = Layout.Top_expr) state expr ->
   } -> render_for_expr state expr pattern start_ stop body
   | For _ -> unsupported_node "incomplete for expression" expr
   | Unreachable -> render_unreachable_expr state expr
-  | Object
-  | New
   | Error _
   | Unknown _ -> unsupported_node "unsupported expression" expr
-
-and render_method_call_expr = fun state expr target method_ ->
-  render_expr_postfix_target state target;
-  (
-    let hash_token = ref None in
-    Ast.Node.for_each_child_token
-      expr
-      ~fn:(fun token ->
-        if Option.is_none !hash_token && token_kind_is token Kind.HASH then
-          hash_token := Some token);
-    match !hash_token with
-    | Some token -> emit_token state token
-    | None -> emit_text state "#"
-  );
-  emit_token state method_
 
 and tuple_expr_should_break = fun state expr ->
   if tuple_expr_has_nonfinal_fun_item expr then
@@ -5629,7 +5306,6 @@ and render_expr_atom = fun ?(role = Layout.Top_expr) state expr ->
   | Path _
   | Literal _
   | FieldAccess _
-  | MethodCall _
   | Prefix _
   | Parenthesized _
   | Array
@@ -9612,7 +9288,6 @@ and render_signature_item = fun
     | External decl -> render_external_declaration state decl
     | Exception decl -> render_exception_declaration state decl
     | Attribute item -> render_attribute_item state item
-    | Class decl -> render_class_declaration state decl
     | Extension item -> render_extension_item state item
     | Error _
     | Unknown _ -> unsupported_node "unsupported signature item" item
@@ -9639,7 +9314,6 @@ and render_structure_item = fun state item ->
     | TypeExtension decl -> render_type_extension_declaration state decl
     | Attribute item -> render_attribute_item state item
     | Expr expr_item -> render_expr_item state expr_item
-    | Class decl -> render_class_declaration state decl
     | Extension item -> render_extension_item state item
     | Error _
     | Unknown _ -> unsupported_node "unsupported structure item" item

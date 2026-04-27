@@ -1276,8 +1276,7 @@ let wire_dependencies = fun t ->
         let matches_allowed =
           List.any
             group.allowed_source_files
-            ~fn:(fun allowed ->
-              Path.equal (Path.normalize allowed) normalized_path)
+            ~fn:(fun allowed -> Path.equal (Path.normalize allowed) normalized_path)
         in
         let prefix = Path.to_string group.source_dir in
         let path_str = Path.to_string normalized_path in

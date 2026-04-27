@@ -430,7 +430,9 @@ let annotate_type_decl_variances = fun ?cached_by_id type_decls ->
   |> List.iter
     (fun (type_decl: FileSummary.type_decl) ->
       let _ = Collections.HashMap.insert by_path (type_decl_key type_decl) type_decl in
-      let _ = Collections.HashMap.insert by_id type_decl.declaration.type_constructor_id type_decl in
+      let _ =
+        Collections.HashMap.insert by_id type_decl.declaration.type_constructor_id type_decl
+      in
       ());
   let default_resolve_named_type_head = resolve_named_type_head_in_index by_path in
   let canonicalize_type_decl (type_decl: FileSummary.type_decl) =

@@ -162,8 +162,7 @@ let test_workspace_selection_orders_public_packages_only = fun _ctx ->
   let deps =
     make_deps
       ~workspace_publish_order:(fun ~packages ->
-        ordered := List.map packages ~fn:(fun (pkg: Riot_model.Package.t) ->
-          pkg.name);
+        ordered := List.map packages ~fn:(fun (pkg: Riot_model.Package.t) -> pkg.name);
         Ok (List.reverse packages))
       ~published_version_exists:(fun ~registry:_ ~package_name:_ ~version:_ -> Ok true)
       ()

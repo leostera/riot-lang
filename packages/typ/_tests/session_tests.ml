@@ -1361,7 +1361,9 @@ let test_prepare_snapshot_nested_unix_submodule_sees_sibling_ip_addr_exports = f
         let render addr = Ip_addr.to_string addr
       |ocaml}
   in
-  let session = register_local_aliases session tcp_listener_impl_source_id "Net.Tcp_listener.Unix" in
+  let session =
+    register_local_aliases session tcp_listener_impl_source_id "Net.Tcp_listener.Unix"
+  in
   let (session, tcp_listener_intf_source_id) =
     create_named_source
       session
@@ -1373,7 +1375,9 @@ let test_prepare_snapshot_nested_unix_submodule_sees_sibling_ip_addr_exports = f
         val render : Ip_addr.t -> string
       |ocaml}
   in
-  let session = register_local_aliases session tcp_listener_intf_source_id "Net.Tcp_listener.Unix" in
+  let session =
+    register_local_aliases session tcp_listener_intf_source_id "Net.Tcp_listener.Unix"
+  in
   match prepare_snapshot_or_error session ~roots:[ tcp_listener_impl_source_id ] with
   | Error _ as err -> err
   | Ok snapshot ->
@@ -2254,8 +2258,12 @@ let test_prepare_snapshot_multiple_wrapper_aliases_preserve_nested_error_types =
         Error (String.concat "\n" diagnostics)
       else
         let of_fs_read_dir_type = export_scheme snapshot error_source_id "of_fs_read_dir" in
-        let of_net_tcp_listener_type = export_scheme snapshot error_source_id "of_net_tcp_listener" in
-        let of_time_system_time_type = export_scheme snapshot error_source_id "of_time_system_time" in
+        let of_net_tcp_listener_type =
+          export_scheme snapshot error_source_id "of_net_tcp_listener"
+        in
+        let of_time_system_time_type =
+          export_scheme snapshot error_source_id "of_time_system_time"
+        in
         if
           of_fs_read_dir_type = Some "Fs.ReadDir.error -> t"
           && of_net_tcp_listener_type = Some "Net.TcpListener.error -> t"
@@ -2410,7 +2418,9 @@ let test_prepare_snapshot_nested_include_wrapper_alias_preserves_error_types = f
       if not (List.is_empty diagnostics) then
         Error (String.concat "\n" diagnostics)
       else
-        let of_net_tcp_listener_type = export_scheme snapshot error_source_id "of_net_tcp_listener" in
+        let of_net_tcp_listener_type =
+          export_scheme snapshot error_source_id "of_net_tcp_listener"
+        in
         if of_net_tcp_listener_type = Some "Net.TcpListener.error -> t" then
           Ok ()
         else
@@ -4731,8 +4741,7 @@ let test_fold_package_sources_persists_module_typings_from_authoritative_engine 
         ~config
         ~ordered_sources:[ source_b; source_a ]
         ~init:[]
-        ~f:(fun groups (group: Check.finished_group) ->
-          group :: groups)
+        ~f:(fun groups (group: Check.finished_group) -> group :: groups)
         () with
       | Error Check.MissingRequirements { module_name; requirements } ->
           Error (format
@@ -5225,7 +5234,9 @@ let from_alias_type (value : Alias.record) = project value
         let () = Test.assert_equal ~expected:(Some "int") ~actual:(export_scheme "from_ctor") in
         let () = Test.assert_equal ~expected:(Some "int") ~actual:(export_scheme "from_record") in
         let () = Test.assert_equal ~expected:(Some "int") ~actual:(export_scheme "from_include") in
-        let () = Test.assert_equal ~expected:(Some "int") ~actual:(export_scheme "via_local_open") in
+        let () =
+          Test.assert_equal ~expected:(Some "int") ~actual:(export_scheme "via_local_open")
+        in
         Ok ()
 
 let test_prepare_snapshot_shares_imported_world_semantics_for_open_alias_include = fun _ctx ->
@@ -5329,8 +5340,7 @@ let test_fold_package_sources_persists_package_bundle = fun _ctx ->
         ~config
         ~ordered_sources:[ source ]
         ~init:[]
-        ~f:(fun groups (group: Check.finished_group) ->
-          group :: groups)
+        ~f:(fun groups (group: Check.finished_group) -> group :: groups)
         () with
       | Error Check.MissingRequirements { module_name; requirements } ->
           Error (format
@@ -6301,8 +6311,7 @@ let test_prepare_snapshot_store_hydration_emits_structured_events = fun _ctx ->
       let config =
         Config.default
         |> Config.with_store ~store:(Some store)
-        |> Config.with_on_event ~on_event:(fun event ->
-          events := !events @ [ event ])
+        |> Config.with_on_event ~on_event:(fun event -> events := !events @ [ event ])
       in
       let session = Session.empty ~config in
       let (session, demo_source_id) =
@@ -6670,7 +6679,8 @@ let test_prepare_snapshot_reports_local_module_cycles_before_typing = fun _ctx -
           !events
           |> List.map typ_event_name
         in
-        let expected_event_names = [ "typ_prepare_snapshot_start"; "typ_prepare_snapshot_failed" ] in
+        let expected_event_names = [ "typ_prepare_snapshot_start"; "typ_prepare_snapshot_failed" ]
+        in
         if List.equal String.equal expected_event_names event_names then
           Ok ()
         else
@@ -8747,7 +8757,9 @@ let test_prepare_snapshot_is_rooted = fun _ctx ->
   | Ok snapshot ->
       let root_ids = Snapshot.roots snapshot in
       let demo_has_unbound_name = has_unbound_name snapshot demo_source_id in
-      let demo_analysis_exists = Option.is_some (Query.analysis_of_source snapshot demo_source_id) in
+      let demo_analysis_exists =
+        Option.is_some (Query.analysis_of_source snapshot demo_source_id)
+      in
       let colors_analysis_exists =
         Option.is_some (Query.analysis_of_source snapshot colors_source_id)
       in

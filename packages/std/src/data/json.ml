@@ -566,7 +566,9 @@ let rec diff = fun a b ->
   and diff_arrays path xs ys =
     let max_len = max (List.length xs) (List.length ys) in
     let diffs_acc = Vector.with_capacity ~size:max_len in
-    let push_diffs diffs = List.for_each diffs ~fn:(fun diff -> Vector.push diffs_acc ~value:diff) in
+    let push_diffs diffs =
+      List.for_each diffs ~fn:(fun diff -> Vector.push diffs_acc ~value:diff)
+    in
     let rec loop idx =
       if idx >= max_len then
         Array.to_list (Vector.to_array diffs_acc)
@@ -597,7 +599,9 @@ let rec diff = fun a b ->
       List.unique ~compare:String.compare (List.sort (xs_keys @ ys_keys) ~compare:String.compare)
     in
     let diffs_acc = Vector.with_capacity ~size:(List.length all_keys) in
-    let push_diffs diffs = List.for_each diffs ~fn:(fun diff -> Vector.push diffs_acc ~value:diff) in
+    let push_diffs diffs =
+      List.for_each diffs ~fn:(fun diff -> Vector.push diffs_acc ~value:diff)
+    in
     let rec loop keys =
       match keys with
       | [] -> Array.to_list (Vector.to_array diffs_acc)

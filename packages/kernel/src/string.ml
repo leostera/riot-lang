@@ -393,7 +393,8 @@ let get_utf_8_rune =
   let not_in_x90_to_xBF value = value < 0x90 || value > 0xbf in
   let not_in_x80_to_x8F value = value lsr 4 != 0x8 in
   let utf_8_rune_2 b0 b1 = ((b0 land 0x1f) lsl 6) lor (b1 land 0x3f) in
-  let utf_8_rune_3 b0 b1 b2 = ((b0 land 0x0f) lsl 12) lor ((b1 land 0x3f) lsl 6) lor (b2 land 0x3f) in
+  let utf_8_rune_3 b0 b1 b2 = ((b0 land 0x0f) lsl 12) lor ((b1 land 0x3f) lsl 6) lor (b2 land 0x3f)
+  in
   let utf_8_rune_4 b0 b1 b2 b3 =
     ((b0 land 0x07) lsl 18) lor ((b1 land 0x3f) lsl 12) lor ((b2 land 0x3f) lsl 6) lor (b3 land 0x3f)
   in

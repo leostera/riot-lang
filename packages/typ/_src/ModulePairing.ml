@@ -323,8 +323,7 @@ let package_signature_equal = fun
   List.length left.values = List.length right.values && List.for_all
     (fun (left_value: TypeRepr.package_value) ->
       match List.find_opt
-        (fun (right_value: TypeRepr.package_value) ->
-          String.equal left_value.name right_value.name)
+        (fun (right_value: TypeRepr.package_value) -> String.equal left_value.name right_value.name)
         right.values with
       | Some right_value ->
           equal_type (TypeScheme.body left_value.scheme) (TypeScheme.body right_value.scheme)

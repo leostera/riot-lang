@@ -91,8 +91,7 @@ let default_text_measurer = fun ~constraints text style ->
       ~init:[]
       ~fn:(fun acc paragraph ->
         let wrapped = wrap_paragraph style width_hint paragraph in
-        List.fold_left wrapped ~init:acc ~fn:(fun acc line ->
-          line :: acc))
+        List.fold_left wrapped ~init:acc ~fn:(fun acc line -> line :: acc))
   in
   let lines =
     match List.rev lines_rev with

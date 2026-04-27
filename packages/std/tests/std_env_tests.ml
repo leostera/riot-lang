@@ -208,14 +208,12 @@ let test_vars_contains_inserted_pairs = fun _ctx ->
           let has_one =
             List.any
               vars
-              ~fn:(fun (name, value) ->
-                String.equal name name_one && String.equal value "alpha")
+              ~fn:(fun (name, value) -> String.equal name name_one && String.equal value "alpha")
           in
           let has_two =
             List.any
               vars
-              ~fn:(fun (name, value) ->
-                String.equal name name_two && String.equal value "beta")
+              ~fn:(fun (name, value) -> String.equal name name_two && String.equal value "beta")
           in
           if has_one && has_two then
             Ok ()

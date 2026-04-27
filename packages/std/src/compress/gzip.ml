@@ -344,8 +344,7 @@ let compress = fun src dst ->
                     |> Buffer.from_bytes
                   in
                   IO.write_all dst ~from:buf
-                  |> Result.map_err ~fn:(fun err ->
-                    Stream_destination_error err)
+                  |> Result.map_err ~fn:(fun err -> Stream_destination_error err)
               in
               let next_chunk_count =
                 if step.produced > 0 then
@@ -360,8 +359,7 @@ let compress = fun src dst ->
               match step.status with
               | Engine.Finished ->
                   IO.flush dst
-                  |> Result.map_err ~fn:(fun err ->
-                    Stream_destination_error err)
+                  |> Result.map_err ~fn:(fun err -> Stream_destination_error err)
               | Engine.Need_output ->
                   encode_loop
                     ~source_eof

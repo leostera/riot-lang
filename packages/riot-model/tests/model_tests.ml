@@ -246,8 +246,7 @@ path = "examples/test_https_httpbin.ml"
       in
       let binary_names =
         pkg.binaries
-        |> List.map ~fn:(fun (bin: Riot_model.Package.binary) ->
-          bin.name)
+        |> List.map ~fn:(fun (bin: Riot_model.Package.binary) -> bin.name)
         |> List.sort ~compare:String.compare
       in
       match binary_names with
@@ -294,8 +293,7 @@ path = "src/custom.ml"
       in
       let binary_names =
         pkg.binaries
-        |> List.map ~fn:(fun (bin: Riot_model.Package.binary) ->
-          bin.name)
+        |> List.map ~fn:(fun (bin: Riot_model.Package.binary) -> bin.name)
         |> List.sort ~compare:String.compare
       in
       match binary_names with
@@ -1045,8 +1043,7 @@ version = "0.1.0"
           else
             let names =
               workspace.Riot_model.Workspace_manifest.packages
-              |> List.map ~fn:(fun (p: Riot_model.Package_manifest.t) ->
-                p.name)
+              |> List.map ~fn:(fun (p: Riot_model.Package_manifest.t) -> p.name)
               |> List.sort ~compare:Riot_model.Package_name.compare
               |> List.map ~fn:Riot_model.Package_name.to_string
             in
@@ -1209,8 +1206,7 @@ std = { path = "../std", version = "*" }
           else
             let names =
               workspace.Riot_model.Workspace_manifest.packages
-              |> List.map ~fn:(fun (p: Riot_model.Package_manifest.t) ->
-                p.name)
+              |> List.map ~fn:(fun (p: Riot_model.Package_manifest.t) -> p.name)
               |> List.sort ~compare:Riot_model.Package_name.compare
               |> List.map ~fn:Riot_model.Package_name.to_string
             in

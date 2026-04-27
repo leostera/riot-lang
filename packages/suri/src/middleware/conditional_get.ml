@@ -68,7 +68,8 @@ let parse_http_date = fun date_str ->
           in
           days_from_years + days_from_months + day - 1
         in
-        let total_seconds = (days_since_epoch * 86_400) + (hours * 3_600) + (minutes * 60) + seconds in
+        let total_seconds = (days_since_epoch * 86_400) + (hours * 3_600) + (minutes * 60) + seconds
+        in
         Some (Float.of_int total_seconds)
     | _ -> None
   with

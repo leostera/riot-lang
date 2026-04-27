@@ -730,8 +730,10 @@ let test_solver_randomized_small_graphs_match_bruteforce =
                           (v 1 0 0)
                           (List.map
                             graph.root_deps
-                            ~fn:(fun dep ->
-                              (dep.package, fuzz_ranges_of_versions dep.allowed_versions)));
+                            ~fn:(fun dep -> (
+                              dep.package,
+                              fuzz_ranges_of_versions dep.allowed_versions
+                            )));
                         let add_version (package: fuzz_package_spec) (
                           version_spec: fuzz_version_spec
                         ) =
@@ -741,8 +743,10 @@ let test_solver_randomized_small_graphs_match_bruteforce =
                             (fuzz_pub_version version_spec.version)
                             (List.map
                               version_spec.deps
-                              ~fn:(fun dep ->
-                                (dep.package, fuzz_ranges_of_versions dep.allowed_versions)))
+                              ~fn:(fun dep -> (
+                                dep.package,
+                                fuzz_ranges_of_versions dep.allowed_versions
+                              )))
                         in
                         let add_package (package: fuzz_package_spec) =
                           List.for_each package.versions ~fn:(add_version package)
@@ -768,8 +772,7 @@ let test_solver_randomized_small_graphs_match_bruteforce =
                       ", "
                       (List.map
                         (fuzz_solution_entries witness)
-                        ~fn:(fun (pkg, version) ->
-                          pkg ^ "@" ^ Pubgrub.version_to_string version))
+                        ~fn:(fun (pkg, version) -> pkg ^ "@" ^ Pubgrub.version_to_string version))
                     ^ ". Conflict: "
                     ^ Pubgrub.explain_conflict incompat)
               | (None, Ok (Pubgrub.Solver.Success solution)) ->
@@ -779,8 +782,7 @@ let test_solver_randomized_small_graphs_match_bruteforce =
                       ", "
                       (List.map
                         solution
-                        ~fn:(fun (pkg, version) ->
-                          pkg ^ "@" ^ Pubgrub.version_to_string version)))
+                        ~fn:(fun (pkg, version) -> pkg ^ "@" ^ Pubgrub.version_to_string version)))
               | (_, Error err) -> Property.fail ("Solver returned internal error: " ^ err))
         ))
 
@@ -807,8 +809,7 @@ let test_solver_randomized_insertion_order_is_deterministic =
           (v 1 0 0)
           (List.map
             root_deps
-            ~fn:(fun dep ->
-              (dep.package, fuzz_ranges_of_versions dep.allowed_versions)));
+            ~fn:(fun dep -> (dep.package, fuzz_ranges_of_versions dep.allowed_versions)));
         let add_version (package: fuzz_package_spec) (version_spec: fuzz_version_spec) =
           let deps = maybe_reverse_list version_spec.deps in
           Pubgrub.add_package
@@ -817,8 +818,7 @@ let test_solver_randomized_insertion_order_is_deterministic =
             (fuzz_pub_version version_spec.version)
             (List.map
               deps
-              ~fn:(fun dep ->
-                (dep.package, fuzz_ranges_of_versions dep.allowed_versions)))
+              ~fn:(fun dep -> (dep.package, fuzz_ranges_of_versions dep.allowed_versions)))
         in
         let add_package (package: fuzz_package_spec) =
           List.for_each (maybe_reverse_list package.versions) ~fn:(add_version package)
@@ -1335,7 +1335,9 @@ let test_ranges_is_disjoint_matches_empty_intersection =
     (fun _ctx ->
       let left = Pubgrub.between (v 1 0 0) (v 2 0 0) in
       let right = Pubgrub.between (v 2 0 0) (v 3 0 0) in
-      let intersection = Pubgrub.Ranges.intersection ~compare_v:Pubgrub.version_compare left right in
+      let intersection =
+        Pubgrub.Ranges.intersection ~compare_v:Pubgrub.version_compare left right
+      in
       if
         Bool.equal
           (Pubgrub.Ranges.is_disjoint ~compare_v:Pubgrub.version_compare left right)
@@ -1821,11 +1823,10 @@ let test_incompatibility_from_dependency_nonempty =
     "Incompatibility: from_dependency encodes parent and dependency terms"
     (fun _ctx ->
       let dep_ranges = Pubgrub.between (v 1 0 0) (v 3 0 0) in
-      let incompat =
-        Pubgrub.Incompatibility.from_dependency
-          "root"
-          (v 1 0 0)
-          ("dep", dep_ranges)
+      let incompat = Pubgrub.Incompatibility.from_dependency
+        "root"
+        (v 1 0 0)
+        ("dep", dep_ranges)
       in
       let terms = Pubgrub.Incompatibility.terms incompat in
       if not (Int.equal (List.length terms) 2) then
@@ -1899,17 +1900,15 @@ let test_incompatibility_merge_dependents_matching =
     "Incompatibility: merge_dependents merges matching dependency causes"
     (fun _ctx ->
       let dep_ranges = Pubgrub.between (v 1 0 0) (v 3 0 0) in
-      let left =
-        Pubgrub.Incompatibility.from_dependency
-          "root"
-          (v 1 0 0)
-          ("dep", dep_ranges)
+      let left = Pubgrub.Incompatibility.from_dependency
+        "root"
+        (v 1 0 0)
+        ("dep", dep_ranges)
       in
-      let right =
-        Pubgrub.Incompatibility.from_dependency
-          "root"
-          (v 2 0 0)
-          ("dep", dep_ranges)
+      let right = Pubgrub.Incompatibility.from_dependency
+        "root"
+        (v 2 0 0)
+        ("dep", dep_ranges)
       in
       match Pubgrub.Incompatibility.merge_dependents left right with
       | Some merged -> (
@@ -2038,11 +2037,10 @@ let test_relation_satisfied_when_all_terms_met =
             solution
             "foo"
             (v 1 0 0)
-          |> fun solution ->
-            Pubgrub.Partial_solution.add_decision
-              solution
-              "bar"
-              (v 2 0 0)
+          |> fun solution -> Pubgrub.Partial_solution.add_decision
+            solution
+            "bar"
+            (v 2 0 0)
       in
       let incompat =
         custom_incompat
@@ -2059,11 +2057,10 @@ let test_relation_almost_satisfied_with_one_undecided =
     (fun _ctx ->
       let solution =
         Pubgrub.Partial_solution.empty ()
-        |> fun solution ->
-          Pubgrub.Partial_solution.add_decision
-            solution
-            "foo"
-            (v 1 0 0)
+        |> fun solution -> Pubgrub.Partial_solution.add_decision
+          solution
+          "foo"
+          (v 1 0 0)
       in
       let incompat =
         custom_incompat
@@ -2080,13 +2077,14 @@ let test_relation_contradicted_by_decision =
     (fun _ctx ->
       let solution =
         Pubgrub.Partial_solution.empty ()
-        |> fun solution ->
-          Pubgrub.Partial_solution.add_decision
-            solution
-            "foo"
-            (v 1 0 0)
+        |> fun solution -> Pubgrub.Partial_solution.add_decision
+          solution
+          "foo"
+          (v 1 0 0)
       in
-      let incompat = custom_incompat [ Pubgrub.Term.positive "foo" (Pubgrub.singleton (v 2 0 0)) ] in
+      let incompat =
+        custom_incompat [ Pubgrub.Term.positive "foo" (Pubgrub.singleton (v 2 0 0)) ]
+      in
       assert_relation (`Contradicted "foo") (Pubgrub.Partial_solution.relation solution incompat))
 
 let test_relation_constrained_positive_subset_is_satisfied =
@@ -2183,8 +2181,7 @@ let test_partial_solution_cached_constraints_intersect_derivations =
         Pubgrub.Partial_solution.empty ()
         |> fun solution ->
           Pubgrub.Partial_solution.add_derivation solution "foo" left
-          |> fun solution ->
-            Pubgrub.Partial_solution.add_derivation solution "foo" right
+          |> fun solution -> Pubgrub.Partial_solution.add_derivation solution "foo" right
       in
       assert_constraint
         ~expected:(`Constrained (Pubgrub.between (v 2 0 0) (v 4 0 0)))
@@ -2201,11 +2198,10 @@ let test_partial_solution_backtrack_restores_cached_derivation =
         Pubgrub.Partial_solution.empty ()
         |> fun solution ->
           Pubgrub.Partial_solution.add_derivation solution "foo" constraint_incompat
-          |> fun solution ->
-            Pubgrub.Partial_solution.add_decision
-              solution
-              "foo"
-              (v 2 1 0)
+          |> fun solution -> Pubgrub.Partial_solution.add_decision
+            solution
+            "foo"
+            (v 2 1 0)
       in
       let backtracked = Pubgrub.Partial_solution.backtrack solution 0 in
       assert_constraint
@@ -2254,7 +2250,9 @@ let test_report_no_versions_includes_requested_range =
   Test.case
     "Report: no_versions explanation includes requested range"
     (fun ctx ->
-      let incompat = Pubgrub.Incompatibility.no_versions "foo" (Pubgrub.between (v 1 0 0) (v 2 0 0)) in
+      let incompat =
+        Pubgrub.Incompatibility.no_versions "foo" (Pubgrub.between (v 1 0 0) (v 2 0 0))
+      in
       assert_inline_text
         ~ctx
         ~expected:"Conflict:\nno versions of foo match [1.0.0, 2.0.0).\n\nTherefore, version solving failed."
@@ -2315,11 +2313,10 @@ let test_solver_stats_expose_structured_counters =
         "foo"
         (v 1 0 0)
         [];
-      let outcome =
-        Pubgrub.solve_with_stats
-          (Pubgrub.to_provider provider)
-          "root"
-          (v 1 0 0)
+      let outcome = Pubgrub.solve_with_stats
+        (Pubgrub.to_provider provider)
+        "root"
+        (v 1 0 0)
       in
       match outcome.result with
       | Ok (Pubgrub.Solver.Success solution) -> (
@@ -4256,17 +4253,15 @@ let test_ref_same_result_on_repeated_runs =
         "a"
         (v 0 0 0)
         [ ("b", Pubgrub.full); ("c", Pubgrub.full); ];
-      let result1 =
-        Pubgrub.solve
-          (Pubgrub.to_provider provider)
-          "a"
-          (v 0 0 0)
+      let result1 = Pubgrub.solve
+        (Pubgrub.to_provider provider)
+        "a"
+        (v 0 0 0)
       in
-      let result2 =
-        Pubgrub.solve
-          (Pubgrub.to_provider provider)
-          "a"
-          (v 0 0 0)
+      let result2 = Pubgrub.solve
+        (Pubgrub.to_provider provider)
+        "a"
+        (v 0 0 0)
       in
       match (result1, result2) with
       | (Ok (Pubgrub.Solver.Success s1), Ok (Pubgrub.Solver.Success s2)) ->
@@ -4351,9 +4346,7 @@ let test_ref_depend_on_self_impossible =
         (v 66 0 0) with
       | Ok (Pubgrub.Solver.Failure _) -> Ok ()
       | Ok (Pubgrub.Solver.Success sol) ->
-          let packages = List.map sol ~fn:(fun (name, _) ->
-            name)
-          in
+          let packages = List.map sol ~fn:(fun (name, _) -> name) in
           Error ("Expected failure but got success: " ^ (String.concat ", " packages))
       | Error err -> Error ("Unexpected error: " ^ err))
 
@@ -4542,8 +4535,7 @@ let test_conflict_partial_satisfier_variant =
         (v 1 0 0) with
       | Ok (Pubgrub.Solver.Success solution) ->
           let packages =
-            List.map solution ~fn:(fun (name, ver) ->
-              name ^ "@" ^ (Pubgrub.version_to_string ver))
+            List.map solution ~fn:(fun (name, ver) -> name ^ "@" ^ (Pubgrub.version_to_string ver))
           in
           if List.length solution = 3 then
             Ok ()
@@ -4567,8 +4559,7 @@ let test_ref_conflict_partial_satisfier =
         (v 1 0 0) with
       | Ok (Pubgrub.Solver.Success solution) ->
           let packages =
-            List.map solution ~fn:(fun (name, ver) ->
-              name ^ "@" ^ (Pubgrub.version_to_string ver))
+            List.map solution ~fn:(fun (name, ver) -> name ^ "@" ^ (Pubgrub.version_to_string ver))
           in
           if List.length solution = 3 then
             Ok ()
@@ -4639,8 +4630,7 @@ let test_ref_double_choices =
         (v 0 0 0) with
       | Ok (Pubgrub.Solver.Success solution) ->
           let packages =
-            List.map solution ~fn:(fun (name, ver) ->
-              name ^ "@" ^ (Pubgrub.version_to_string ver))
+            List.map solution ~fn:(fun (name, ver) -> name ^ "@" ^ (Pubgrub.version_to_string ver))
           in
           if List.length solution = 4 then
             Ok ()

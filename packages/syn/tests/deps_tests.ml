@@ -20,6 +20,10 @@ let alias_exports = fun names ->
     ~fn:(fun exports name ->
       Syn.Deps.Env.add_path exports ~path:[ name ] ~free_names:[ name ])
 
+let alias_exports_with_super = fun ~alias_module names ->
+  let exports = alias_exports names in
+  Syn.Deps.Env.add_scoped_binding exports ~path:[ "Super" ] ~free_names:[ alias_module ] ~exports
+
 let open_paths = fun paths env ->
   List.fold_left
     paths
@@ -172,6 +176,29 @@ let test_deps_collect_opened_module_root_for_exported_child = fun _ctx ->
     "open Iter\nval into_iter: string -> char Iterator.t\nval into_mut_iter: string -> char MutIterator.t\n" with
   | Ok modules when modules = [ "Iter" ] -> Ok ()
   | Ok modules -> Error ("expected deps [Iter], got [" ^ String.concat ", " modules ^ "]")
+  | Error err -> Error err
+
+let test_deps_collect_super_alias_child_module = fun _ctx ->
+  let env =
+    Syn.Deps.Env.empty
+    |> Syn.Deps.Env.add_scoped_binding
+      ~path:[ "Gooey"; "Aliases" ]
+      ~free_names:[ "Gooey__Aliases" ]
+      ~exports:(alias_exports_with_super ~alias_module:"Gooey__Aliases" [ "Config"; "Viewport" ])
+    |> open_paths [ [ "Gooey"; "Aliases" ] ]
+  in
+  let source =
+    {ocaml|type t = {
+  measure: (constraints:Super.Config.constraints -> Viewport.t);
+}
+|ocaml}
+  in
+  match parse_modules ~env ~filename:"element.mli" source with
+  | Ok modules when modules = [ "Config"; "Gooey__Aliases"; "Viewport" ] -> Ok ()
+  | Ok modules ->
+      Error ("expected deps [Config, Gooey__Aliases, Viewport], got ["
+      ^ String.concat ", " modules
+      ^ "]")
   | Error err -> Error err
 
 let test_deps_ignore_lowercase_field_access_roots = fun _ctx ->
@@ -385,6 +412,7 @@ let tests =
     case
       "deps collect opened module root for exported child"
       test_deps_collect_opened_module_root_for_exported_child;
+    case "deps collect Super alias child module" test_deps_collect_super_alias_child_module;
     case "deps ignore lowercase field access roots" test_deps_ignore_lowercase_field_access_roots;
     case
       "deps collect variant payload modules from implicit alias opens"

@@ -78,8 +78,7 @@ let write_outbound = fun output messages ->
     ~fn:(fun acc json ->
       let* () = acc in
       Framing.write output (Std.Data.Json.to_string json)
-      |> Result.map_err ~fn:(fun message ->
-        Failure message))
+      |> Result.map_err ~fn:(fun message -> Failure message))
 
 let rec loop = fun logger ->
   fun input ->

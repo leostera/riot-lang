@@ -14,7 +14,7 @@ val shift: t -> int -> (t, error) Result.t
 
 val shift_unchecked: t -> int -> t
 
-val split_at: t -> int -> ((t * t), error) Result.t
+val split_at: t -> int -> (t * t, error) Result.t
 
 val split_at_unchecked: t -> int -> (t * t)
 

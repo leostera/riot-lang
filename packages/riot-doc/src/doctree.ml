@@ -86,8 +86,7 @@ let rec flatten_items = fun (modules: module_doc list) ->
     ~fn:(fun acc (module_doc: module_doc) ->
       let own_items =
         module_doc.items
-        |> List.map ~fn:(fun item ->
-          (module_doc, item))
+        |> List.map ~fn:(fun item -> (module_doc, item))
       in
       (acc @ own_items) @ flatten_items module_doc.modules)
 

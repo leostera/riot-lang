@@ -632,15 +632,13 @@ let test_poll_handles_mixed_source_types = fun _ctx ->
                 lift_udp (Kernel.Net.UdpSocket.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0))
               in
               protect
-                ~finally:(fun () ->
-                  close_udp server)
+                ~finally:(fun () -> close_udp server)
                 (fun () ->
                   let* client =
                     lift_udp (Kernel.Net.UdpSocket.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0))
                   in
                   protect
-                    ~finally:(fun () ->
-                      close_udp client)
+                    ~finally:(fun () -> close_udp client)
                     (fun () ->
                       let timer_source = Kernel.Time.Timer.to_source timer in
                       let process_source = Kernel.Process.to_source process in
@@ -832,7 +830,9 @@ let test_poll_tolerates_closed_registered_pipe_sources = fun _ctx ->
           poll_until 8))
 
 let test_interest_add_and_remove_roundtrip = fun _ctx ->
-  let both = Kernel.Async.Interest.add Kernel.Async.Interest.readable Kernel.Async.Interest.writable in
+  let both =
+    Kernel.Async.Interest.add Kernel.Async.Interest.readable Kernel.Async.Interest.writable
+  in
   match Kernel.Async.Interest.remove both Kernel.Async.Interest.writable with
   | Some interest ->
       if
@@ -845,7 +845,9 @@ let test_interest_add_and_remove_roundtrip = fun _ctx ->
   | None -> Error "expected removing one bit from a combined interest to keep the other bit"
 
 let test_interest_remove_all_bits_returns_none = fun _ctx ->
-  let both = Kernel.Async.Interest.add Kernel.Async.Interest.readable Kernel.Async.Interest.writable in
+  let both =
+    Kernel.Async.Interest.add Kernel.Async.Interest.readable Kernel.Async.Interest.writable
+  in
   match Kernel.Async.Interest.remove both both with
   | None -> Ok ()
   | Some _ -> Error "expected removing all interest bits to return None"

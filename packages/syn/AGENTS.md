@@ -23,9 +23,12 @@ and Ast typed-view layer.
 7. Prefer explicit `SyntaxKind` facts and spans over inferred syntax shape.
 8. When syntax support grows, add parser/Ast coverage before relying on that
    syntax from downstream packages.
-9. Keep `Syn.Deps` on the Ast path and differential against `ocamldep`-style
+9. Keep the OCaml class/object subset unsupported. Do not add keyword, parser,
+   Ast, or fixture support for `class`, `object`, `method`, `new`, `virtual`,
+   `inherit`, `initializer`, object types, or object method calls.
+10. Keep `Syn.Deps` on the Ast path and differential against `ocamldep`-style
    expectations for dependency behavior.
-10. Prefer `Std.Test.FixtureRunner` plus `Std.Test.Snapshot` for fixture-backed
+11. Prefer `Std.Test.FixtureRunner` plus `Std.Test.Snapshot` for fixture-backed
     parser and diagnostic suites.
 
 ## Validate

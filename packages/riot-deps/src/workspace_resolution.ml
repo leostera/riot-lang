@@ -88,8 +88,7 @@ let emit_locked_packages = fun
             Option.is_none
               (List.find
                 previous_versions
-                ~fn:(fun (existing_key, _) ->
-                  lock_package_key_equal existing_key key))
+                ~fn:(fun (existing_key, _) -> lock_package_key_equal existing_key key))
           then
             emit (Riot_model.Event.PackageVersionLocked { package = event_package_name; version })
       | _ -> ())

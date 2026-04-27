@@ -256,8 +256,7 @@ let check_source_text = fun ~filename text ->
             type_index = analysis.type_index;
             exports =
               SourceAnalysis.exports analysis
-              |> List.map (fun (name, scheme) ->
-                (SurfacePath.to_string name, scheme));
+              |> List.map (fun (name, scheme) -> (SurfacePath.to_string name, scheme));
             item_traces = analysis.item_traces;
             expr_traces = analysis.expr_traces;
           })
@@ -550,7 +549,9 @@ let trim_prefix_opt = fun ~prefix text ->
     None
 
 let rec type_declaration_parts = fun ~prefix ~source_text declaration ->
-  let type_name = qualify_name prefix (Cst.Token.text (Cst.TypeDeclaration.name_token declaration)) in
+  let type_name =
+    qualify_name prefix (Cst.Token.text (Cst.TypeDeclaration.name_token declaration))
+  in
   let type_aliases =
     let manifest =
       match Cst.TypeDeclaration.manifest_alias declaration with
@@ -920,8 +921,7 @@ let package_constraint_entries = fun text ->
           | None -> String.trim entry
         in
         split_once entry '='
-        |> Option.map (fun (name, replacement) ->
-          (String.trim name, String.trim replacement)))
+        |> Option.map (fun (name, replacement) -> (String.trim name, String.trim replacement)))
 
 let replace_standalone_package_occurrences = fun ~needle ~replacement haystack ->
   let is_type_path_char = function
@@ -1163,15 +1163,16 @@ let package_rewrite = fun (interface: oracle_interface) segment ->
           let rewritten_exports =
             parts.value_exports
             |> List.map
-              (fun ({ name; scheme }: oracle_value_export) ->
-                { name; scheme = apply_package_constraints constraints scheme })
+              (fun ({ name; scheme }: oracle_value_export) -> {
+                name;
+                scheme = apply_package_constraints constraints scheme;
+              })
           in
           let rewritten_segment =
             let values_text =
               rewritten_exports
               |> List.map
-                (fun ({ name; scheme }: oracle_value_export) ->
-                  "val " ^ name ^ " : " ^ scheme)
+                (fun ({ name; scheme }: oracle_value_export) -> "val " ^ name ^ " : " ^ scheme)
               |> String.concat "; "
             in
             let text = "module sig " ^ values_text ^ " end" in
@@ -1185,8 +1186,7 @@ let package_rewrite = fun (interface: oracle_interface) segment ->
             | Some binder_name ->
                 constraints
                 |> List.map
-                  (fun (type_name, replacement) ->
-                    (binder_name ^ "." ^ type_name, replacement))
+                  (fun (type_name, replacement) -> (binder_name ^ "." ^ type_name, replacement))
             | None -> []
           in
           (rewritten_segment, propagated_constraints))
@@ -1790,12 +1790,10 @@ let test_fixture = fun ~(ctx:Test.FixtureRunner.ctx) ->
       assert_json_equal
         ~label:"oracle type names mismatch"
         ~expected:(Data.Json.Array (List.map
-          (fun name ->
-            Data.Json.String name)
+          (fun name -> Data.Json.String name)
           interface.type_names))
         ~actual:(Data.Json.Array (List.map
-          (fun name ->
-            Data.Json.String name)
+          (fun name -> Data.Json.String name)
           (typ_type_names report))));
   if skip_snapshot_assertion () then
     Ok ()

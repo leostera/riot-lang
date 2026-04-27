@@ -164,7 +164,9 @@ let test_execute_node_cache_hit_materializes_outputs = fun _ctx ->
       let completed = HashMap.create () in
       let session_id = Riot_model.Session_id.make () in
       let toolchain = test_toolchain () in
-      let first = Action_executor.execute_node ~completed ~store ~session_id toolchain sandbox node in
+      let first =
+        Action_executor.execute_node ~completed ~store ~session_id toolchain sandbox node
+      in
       match first.status with
       | Action_executor.Executed ->
           let output = Path.(sandbox / Path.v "out.txt") in

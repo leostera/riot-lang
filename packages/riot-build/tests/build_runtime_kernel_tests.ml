@@ -143,8 +143,7 @@ let test_build_runtime_builds_repo_kernel = fun _ctx ->
           in
           let events = ref [] in
           match Riot_build.build
-            ~on_event:(fun event ->
-              events := event :: !events)
+            ~on_event:(fun event -> events := event :: !events)
             (Riot_build.Request.make
               ~workspace
               ~packages:[ package_name "kernel" ]
@@ -162,8 +161,7 @@ let test_build_runtime_builds_repo_kernel = fun _ctx ->
                   | Riot_build.Build_result.Cached _ ->
                       Result.map_err
                         (expect_public_phase_subsequence !events)
-                        ~fn:(fun err ->
-                          err ^ "\nrecent events: " ^ summarize_recent_events !events)
+                        ~fn:(fun err -> err ^ "\nrecent events: " ^ summarize_recent_events !events)
                   | Riot_build.Build_result.Skipped reason ->
                       Error ("expected kernel build to run, got skipped: " ^ reason)
                   | Riot_build.Build_result.Failed message ->

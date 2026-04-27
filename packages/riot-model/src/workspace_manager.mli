@@ -70,7 +70,7 @@ val find_workspace_root: t -> Path.t -> Path.t option
    Returns the populated workspace and any package load errors encountered
    while loading external path dependencies.
 *)
-val scan: t -> Path.t -> ((Workspace_manifest.t * load_error list), scan_error) result
+val scan: t -> Path.t -> (Workspace_manifest.t * load_error list, scan_error) result
 
 (** Alias for scan *)
-val load: t -> root:Path.t -> ((Workspace_manifest.t * load_error list), scan_error) result
+val load: t -> root:Path.t -> (Workspace_manifest.t * load_error list, scan_error) result

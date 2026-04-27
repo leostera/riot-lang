@@ -48,8 +48,7 @@ let test_store_roundtrips_current_namespace = fun _ctx ->
               | (Some loaded_module, Some loaded_package) ->
                   let loaded_exports =
                     ModuleTypings.exports loaded_module
-                    |> List.map (fun (name, _scheme) ->
-                      SurfacePath.to_string name)
+                    |> List.map (fun (name, _scheme) -> SurfacePath.to_string name)
                   in
                   let package_modules =
                     loaded_package.typings

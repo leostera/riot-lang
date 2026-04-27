@@ -300,8 +300,7 @@ end = struct
           "Package %s: %d outputs\n"
           (Module_name.to_string mod_name)
           (List.length entry.outputs);
-        List.iter (fun out ->
-          printf "  - %s\n" (Filename.basename out)) entry.outputs)
+        List.iter (fun out -> printf "  - %s\n" (Filename.basename out)) entry.outputs)
       t.packages
 end
 
@@ -499,7 +498,9 @@ module Alias_module = struct
               |> Module_name.to_string, Module.namespaced_name mod_))
       |> List.sort_uniq (fun ((n1, _)) ((n2, _)) -> String.compare n1 n2)
     in
-    let body = List.map (fun ((name, ns)) -> Format.sprintf "module %s = %s" name ns) unique_modules in
+    let body =
+      List.map (fun ((name, ns)) -> Format.sprintf "module %s = %s" name ns) unique_modules
+    in
     let super_body =
       if unique_modules = [] then
         []
@@ -897,7 +898,9 @@ and handle_library = fun ~t ~ctx { path; name; children } ->
         matches)
       (Package.binaries t.package)
   in
-  let library_modules = List.filter (fun m -> not (is_binary_module m)) (file_modules @ dir_modules) in
+  let library_modules =
+    List.filter (fun m -> not (is_binary_module m)) (file_modules @ dir_modules)
+  in
   Printf.printf
     "[DEBUG] After filtering: %d modules (was %d)\n"
     (List.length library_modules)
@@ -1135,9 +1138,13 @@ let handle_dep = fun t (node: dep Graph.node) ->
                     (* Check if this is an aliases module *)
                     let alias_name = Module.namespaced_name alias_mod in
                     if String.ends_with ~suffix:"__Aliases" alias_name then
-                      let namespace_prefix = String.sub alias_name 0 (String.length alias_name - 9) in
+                      let namespace_prefix =
+                        String.sub alias_name 0 (String.length alias_name - 9)
+                      in
                       (* Remove "__Aliases" *)
-                      let candidate_name = namespace_prefix ^ "__" ^ Module_name.to_string dep_name in
+                      let candidate_name =
+                        namespace_prefix ^ "__" ^ Module_name.to_string dep_name
+                      in
                       let is_debug =
                         Module_name.to_string dep_name = "Event"
                         || Module_name.to_string dep_name = "IO"

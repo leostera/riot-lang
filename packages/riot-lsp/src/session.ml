@@ -570,8 +570,7 @@ let let_declaration_symbols = fun text declaration ->
     declaration
     ~fn:(fun binding ->
       let_binding_symbol text ~range_node:declaration binding
-      |> List.for_each ~fn:(fun symbol ->
-        Vector.push symbols ~value:symbol));
+      |> List.for_each ~fn:(fun symbol -> Vector.push symbols ~value:symbol));
   vector_to_list symbols
 
 let type_declaration_symbols = fun text declaration ->
@@ -674,20 +673,6 @@ and module_type_declaration_symbols = fun text declaration ->
           ();
       ]
 
-and class_symbols = fun text declaration ->
-  match Syn.Ast.ClassDeclaration.name declaration with
-  | None -> []
-  | Some name ->
-      [
-        document_symbol_of_named_item
-          ~text
-          ~name:(Syn.Ast.Token.text name)
-          ~kind:Lsp.Symbol_kind.Class
-          ~syntax_node:declaration
-          ~selection_range:(range_of_token text name)
-          ();
-      ]
-
 and exception_symbols = fun text declaration ->
   match Syn.Ast.ExceptionDeclaration.name declaration with
   | None -> []
@@ -754,7 +739,6 @@ and structure_item_symbols = fun text items ->
           module_type_declaration_symbols text declaration
       | Syn.Ast.StructureItem.External declaration -> external_declaration_symbols text declaration
       | Syn.Ast.StructureItem.Exception declaration -> exception_symbols text declaration
-      | Syn.Ast.StructureItem.Class declaration -> class_symbols text declaration
       | Syn.Ast.StructureItem.Open _
       | Syn.Ast.StructureItem.Include _
       | Syn.Ast.StructureItem.Extension _
@@ -777,7 +761,6 @@ and signature_item_symbols = fun text items ->
           module_type_declaration_symbols text declaration
       | Syn.Ast.SignatureItem.External declaration -> external_declaration_symbols text declaration
       | Syn.Ast.SignatureItem.Exception declaration -> exception_symbols text declaration
-      | Syn.Ast.SignatureItem.Class declaration -> class_symbols text declaration
       | Syn.Ast.SignatureItem.Open _
       | Syn.Ast.SignatureItem.Include _
       | Syn.Ast.SignatureItem.Extension _

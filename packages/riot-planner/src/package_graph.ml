@@ -210,7 +210,7 @@ let empty_breakdown = {
 
 let create_with_breakdown ~scope ?(dev_artifacts = {tests = true; examples = true; benches = true}) (
   workspace: Workspace.t
-): ((t * create_breakdown), create_error) result =
+): (t * create_breakdown, create_error) result =
   let started_at = Time.Instant.now () in
   let graph = G.make () in
   let name_to_node = HashMap.create () in
@@ -374,23 +374,20 @@ let create_with_breakdown ~scope ?(dev_artifacts = {tests = true; examples = tru
         | Build ->
             List.for_each
               pkg.build_dependencies
-              ~fn:(fun (dep: Package.dependency) ->
-                add_dep_edge ~from_scope:Build dep.name)
+              ~fn:(fun (dep: Package.dependency) -> add_dep_edge ~from_scope:Build dep.name)
         | Runtime
         | Dev -> ()
       );
       List.for_each
         pkg.dependencies
-        ~fn:(fun (dep: Package.dependency) ->
-          add_dep_edge ~from_scope:Runtime dep.name);
+        ~fn:(fun (dep: Package.dependency) -> add_dep_edge ~from_scope:Runtime dep.name);
       match scope with
       | Build
       | Runtime -> ()
       | Dev ->
           List.for_each
             pkg.dev_dependencies
-            ~fn:(fun (dep: Package.dependency) ->
-              add_dep_edge ~from_scope:Dev dep.name));
+            ~fn:(fun (dep: Package.dependency) -> add_dep_edge ~from_scope:Dev dep.name));
   let edge_wiring_duration =
     Time.Instant.duration_since ~earlier:edge_wiring_started_at (Time.Instant.now ())
   in
@@ -492,7 +489,9 @@ let filter_for_packages = fun pg pkg_names ->
         ~fn:(fun id node ->
           if HashSet.contains reachable_set ~value:id then
             let new_node = G.add_node filtered_graph node.value in
-            let _ = HashMap.insert filtered_name_to_node ~key:(get_key node.value) ~value:new_node in
+            let _ =
+              HashMap.insert filtered_name_to_node ~key:(get_key node.value) ~value:new_node
+            in
             ());
       G.iter
         pg.graph

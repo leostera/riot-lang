@@ -100,8 +100,7 @@ let bench_timer_many_same_tick_wakeups = fun () ->
             deregister_all rest
       in
       protect
-        ~finally:(fun () ->
-          deregister_all sources)
+        ~finally:(fun () -> deregister_all sources)
         (fun () ->
           let rec register index = function
             | [] -> ()

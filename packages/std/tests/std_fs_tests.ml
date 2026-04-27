@@ -18,8 +18,7 @@ let test_fs_write_roundtrips_large_binary_payload = fun _ctx ->
     (fun tempdir ->
       let path = Path.(tempdir / Path.v "payload.bin") in
       let payload =
-        String.init ~len:(1_024 * 1_024) ~fn:(fun idx ->
-          Char.from_int_unchecked (idx mod 256))
+        String.init ~len:(1_024 * 1_024) ~fn:(fun idx -> Char.from_int_unchecked (idx mod 256))
       in
       let* () =
         Fs.write payload path

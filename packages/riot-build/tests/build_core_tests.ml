@@ -661,8 +661,7 @@ let test_build_preserves_exact_target_subset = fun _ctx ->
         make_valid_workspace
           ~toolchain_targets:(
             expected_targets
-            |> List.map ~fn:(fun target ->
-              Riot_model.Target.to_string target)
+            |> List.map ~fn:(fun target -> Riot_model.Target.to_string target)
             |> List.sort ~compare:String.compare
           )
           tmpdir
@@ -726,12 +725,13 @@ let test_build_multi_target_outputs_and_events = fun _ctx ->
       let expected_targets = Riot_model.Target.Set.to_list requested_targets in
       let expected_target_count = List.length expected_targets in
       let expected_target_names =
-        List.map expected_targets ~fn:(fun target ->
-          Riot_model.Target.to_string target)
+        List.map expected_targets ~fn:(fun target -> Riot_model.Target.to_string target)
         |> List.sort ~compare:String.compare
       in
       let expected_profile = Riot_model.Profile.debug in
-      let prepared_workspace = make_valid_workspace ~toolchain_targets:expected_target_names tmpdir in
+      let prepared_workspace =
+        make_valid_workspace ~toolchain_targets:expected_target_names tmpdir
+      in
       let seen_target_count = ref None in
       let started_targets = ref [] in
       let finished_targets = ref [] in
@@ -798,8 +798,7 @@ let test_build_multi_target_outputs_and_events = fun _ctx ->
               in
               Test.assert_false !any_partial_failure;
               let build_result_status =
-                if not (List.all !finished_counts ~fn:(fun result_count ->
-                  result_count = 1)) then
+                if not (List.all !finished_counts ~fn:(fun result_count -> result_count = 1)) then
                   Error ("expected each target lane to report one package result, got "
                   ^ String.concat ", " (List.map !finished_counts ~fn:Int.to_string))
                 else
@@ -828,8 +827,7 @@ let test_build_multi_target_outputs_and_events = fun _ctx ->
                           ~workspace:prepared_workspace
                           ~profile:expected_profile.name
                           ~target
-                        |> fun out_dir ->
-                          Path.(out_dir / Path.v "demo"))
+                        |> fun out_dir -> Path.(out_dir / Path.v "demo"))
                   in
                   let missing_dirs =
                     List.filter
@@ -857,8 +855,7 @@ let test_build_multi_target_partial_failures_fail_by_default = fun _ctx ->
       let expected_target_count = Riot_model.Target.Set.length requested_targets in
       let expected_targets =
         Riot_model.Target.Set.to_list requested_targets
-        |> List.map ~fn:(fun target ->
-          Riot_model.Target.to_string target)
+        |> List.map ~fn:(fun target -> Riot_model.Target.to_string target)
         |> List.sort ~compare:String.compare
       in
       let prepared_workspace =
@@ -924,8 +921,7 @@ let test_build_multi_target_partial_failures_fail_by_default = fun _ctx ->
                   ~expected:expected_target_count
                   ~actual:(List.length !partial_failure_flags)
               in
-              if not (List.all !partial_failure_flags ~fn:(fun partial ->
-                partial)) then
+              if not (List.all !partial_failure_flags ~fn:(fun partial -> partial)) then
                 Error "expected each target build to report partial failures"
               else if !saw_returning_results then
                 Error "expected no returning_results event when default multi-target build fails"

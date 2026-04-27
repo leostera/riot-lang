@@ -38,7 +38,7 @@ val recv: t -> ?pos:int -> ?len:int -> bytes -> (int, error) Result.t
    On a connected socket, `recv_from` observes only traffic from the connected peer and still
    reports that peer's address.
 *)
-val recv_from: t -> ?pos:int -> ?len:int -> bytes -> ((int * Socket_addr.t), error) Result.t
+val recv_from: t -> ?pos:int -> ?len:int -> bytes -> (int * Socket_addr.t, error) Result.t
 
 (**
    Use `send socket buf` only after a peer is connected.

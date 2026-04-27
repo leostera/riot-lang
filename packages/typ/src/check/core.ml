@@ -693,8 +693,7 @@ and lower_tuple_type_elements = fun state ~level vars type_expr ->
         parts
         ~fn:(fun part ->
           lower_tuple_type_elements state ~level vars part
-          |> List.for_each ~fn:(fun item ->
-            Vector.push items ~value:item));
+          |> List.for_each ~fn:(fun item -> Vector.push items ~value:item));
       Vector.to_array items
       |> Array.to_list
   | _ -> [ lower_core_type state ~level vars type_expr ]
@@ -952,9 +951,6 @@ let rec infer_expression = fun state env ~level expression ->
   | Ast.Expr.For _ ->
       add_diagnostic state (unsupported_syntax expression "for expression");
       fresh_tyvar state ~level
-  | Ast.Expr.MethodCall _ ->
-      add_diagnostic state (unsupported_syntax expression "method call");
-      fresh_tyvar state ~level
   | Ast.Expr.FieldAccess _ ->
       add_diagnostic state (unsupported_syntax expression "field access");
       fresh_tyvar state ~level
@@ -1138,8 +1134,7 @@ let check_let_declaration = fun state env ~level declaration ->
         infer_let_binding_like state !env_ref ~level ~syntax_node:binding binding
       in
       env_ref := next_env;
-      List.for_each bindings ~fn:(fun binding ->
-        Vector.push public_bindings ~value:binding));
+      List.for_each bindings ~fn:(fun binding -> Vector.push public_bindings ~value:binding));
   (!env_ref, Vector.to_array public_bindings
   |> Array.to_list)
 
@@ -1186,9 +1181,6 @@ let infer_structure_item = fun state env ~level item ->
   | Ast.StructureItem.Extension declaration ->
       add_diagnostic state (unsupported_syntax declaration "extension");
       (env, [])
-  | Ast.StructureItem.Class declaration ->
-      add_diagnostic state (unsupported_syntax declaration "class declaration");
-      (env, [])
   | Ast.StructureItem.Module _
   | Ast.StructureItem.ModuleType _
   | Ast.StructureItem.Open _
@@ -1210,8 +1202,7 @@ let check_implementation = fun ~typing_context implementation ->
     ~fn:(fun item ->
       let (next_env, item_bindings) = infer_structure_item state !env_ref ~level:0 item in
       env_ref := next_env;
-      List.for_each item_bindings ~fn:(fun binding ->
-        Vector.push bindings ~value:binding));
+      List.for_each item_bindings ~fn:(fun binding -> Vector.push bindings ~value:binding));
   let bindings =
     Vector.to_array bindings
     |> Array.to_list
@@ -1273,9 +1264,6 @@ let check_signature_item = fun state env ~level item ->
   | Ast.SignatureItem.Extension declaration ->
       add_diagnostic state (unsupported_syntax declaration "extension");
       (env, [])
-  | Ast.SignatureItem.Class declaration ->
-      add_diagnostic state (unsupported_syntax declaration "class declaration");
-      (env, [])
   | Ast.SignatureItem.Module _
   | Ast.SignatureItem.ModuleType _
   | Ast.SignatureItem.Open _
@@ -1297,8 +1285,7 @@ let check_interface = fun ~typing_context interface ->
     ~fn:(fun item ->
       let (next_env, item_bindings) = check_signature_item state !env_ref ~level:0 item in
       env_ref := next_env;
-      List.for_each item_bindings ~fn:(fun binding ->
-        Vector.push bindings ~value:binding));
+      List.for_each item_bindings ~fn:(fun binding -> Vector.push bindings ~value:binding));
   let bindings =
     Vector.to_array bindings
     |> Array.to_list

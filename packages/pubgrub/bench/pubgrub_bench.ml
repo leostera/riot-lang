@@ -58,20 +58,18 @@ let holey_range =
     (between (v 1 0 10) (v 1 0 15))
 
 let bench_ranges_contains_singleton = fun () ->
-  let _ =
-    Ranges.contains
-      ~compare_v:version_compare
-      singleton_range
-      (v 1 0 5)
+  let _ = Ranges.contains
+    ~compare_v:version_compare
+    singleton_range
+    (v 1 0 5)
   in
   ()
 
 let bench_ranges_contains_holey = fun () ->
-  let _ =
-    Ranges.contains
-      ~compare_v:version_compare
-      holey_range
-      (v 1 0 12)
+  let _ = Ranges.contains
+    ~compare_v:version_compare
+    holey_range
+    (v 1 0 12)
   in
   ()
 
@@ -96,11 +94,10 @@ let bench_partial_solution_constraint_100 = fun () ->
 let chain_provider_25 = build_chain_provider 25
 
 let bench_solve_deep_chain = fun () ->
-  let _ =
-    solve
-      chain_provider_25
-      "pkg-0"
-      (v 1 0 0)
+  let _ = solve
+    chain_provider_25
+    "pkg-0"
+    (v 1 0 0)
   in
   ()
 

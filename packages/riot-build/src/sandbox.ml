@@ -55,8 +55,7 @@ let copy_object_files = fun ~store ~sandbox ~package ~depset ->
       | Ok reader ->
           let entries = Std.Iter.MutIterator.to_list reader in
           entries
-          |> List.filter ~fn:(fun path ->
-            String.ends_with ~suffix:".o" (Path.to_string path))
+          |> List.filter ~fn:(fun path -> String.ends_with ~suffix:".o" (Path.to_string path))
           |> List.for_each
             ~fn:(fun entry ->
               let src =
@@ -75,7 +74,9 @@ let copy_inputs = fun ~sandbox ~package ~inputs ->
   List.for_each
     inputs
     ~fn:(fun rel_path ->
-      let src = Path.(sandbox.workspace.Workspace.root / package.Package.relative_path / rel_path) in
+      let src =
+        Path.(sandbox.workspace.Workspace.root / package.Package.relative_path / rel_path)
+      in
       let dest = Path.(sandbox.dir / rel_path) in
       let dest_parent = Path.dirname dest in
       Fs.create_dir_all dest_parent

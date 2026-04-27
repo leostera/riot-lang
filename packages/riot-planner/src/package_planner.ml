@@ -482,8 +482,7 @@ let compute_input_hash = fun
       | { Package.workspace = true; _ } -> (
           match List.find
             workspace.Workspace.packages
-            ~fn:(fun (p: Package_manifest.t) ->
-              Package_name.equal p.name dep.name) with
+            ~fn:(fun (p: Package_manifest.t) -> Package_name.equal p.name dep.name) with
           | Some dep_pkg -> (
               H.write state (Path.to_string dep_pkg.path);
               match dep_pkg.library with
@@ -828,8 +827,7 @@ let plan_package = fun
                                   ~srcs:[]
                                   ~package
                                   ~toolchain
-                                  ~dependency_hashes:(fun _ ->
-                                    Crypto.hash_string "")
+                                  ~dependency_hashes:(fun _ -> Crypto.hash_string "")
                                   ~deps:[]
                               in
                               Action_graph.add_node action_graph foreign_node)
@@ -852,7 +850,9 @@ let plan_package = fun
                             List.for_each
                               all_nodes
                               ~fn:(fun (node: Action_node.t) ->
-                                let is_foreign_node = List.contains foreign_node_ids ~value:node.id in
+                                let is_foreign_node =
+                                  List.contains foreign_node_ids ~value:node.id
+                                in
                                 if not is_foreign_node then
                                   List.for_each
                                     foreign_nodes
@@ -958,8 +958,7 @@ let plan_package = fun
                             ~srcs:[]
                             ~package
                             ~toolchain
-                            ~dependency_hashes:(fun _ ->
-                              Crypto.hash_string "")
+                            ~dependency_hashes:(fun _ -> Crypto.hash_string "")
                             ~deps:[]
                         in
                         Action_graph.add_node action_graph foreign_node)

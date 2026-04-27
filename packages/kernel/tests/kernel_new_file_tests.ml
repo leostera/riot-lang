@@ -183,15 +183,13 @@ let test_create_dir_and_read_dir_names = fun _ctx ->
         Kernel.Array.fold_left
           names
           ~acc:false
-          ~fn:(fun found name ->
-            found || Kernel.String.equal name "child")
+          ~fn:(fun found name -> found || Kernel.String.equal name "child")
       in
       let has_file =
         Kernel.Array.fold_left
           names
           ~acc:false
-          ~fn:(fun found name ->
-            found || Kernel.String.equal name "alpha.txt")
+          ~fn:(fun found name -> found || Kernel.String.equal name "alpha.txt")
       in
       let* metadata = lift (Kernel.Fs.File.metadata child_dir) in
       if has_child && has_file && Kernel.Fs.File.Metadata.is_dir metadata then
@@ -529,7 +527,9 @@ let test_read_vectored_roundtrips = fun _ctx ->
             Ok (read, Kernel.IO.IoVec.to_string iov))
       in
       let (read, contents) = actual in
-      let prefix = Kernel.Bytes.sub_string (Kernel.Bytes.from_string contents) ~offset:0 ~len:read in
+      let prefix =
+        Kernel.Bytes.sub_string (Kernel.Bytes.from_string contents) ~offset:0 ~len:read
+      in
       if
         read = Kernel.Bytes.length payload && Kernel.String.equal prefix "hello vectored read"
       then
@@ -543,9 +543,7 @@ let test_is_tty_is_false_for_files_and_pipes = fun _ctx ->
     "tty.bin"
     (fun path ->
       let* file = lift (Kernel.Fs.File.open_write path) in
-      let file_is_tty = with_file file (fun () ->
-        Ok (Kernel.Fs.File.is_tty file))
-      in
+      let file_is_tty = with_file file (fun () -> Ok (Kernel.Fs.File.is_tty file)) in
       let* file_is_tty = file_is_tty in
       let* pipe = lift (Kernel.Fs.File.pipe ()) in
       protect
@@ -1215,9 +1213,7 @@ let test_write_len_zero_is_a_no_op = fun _ctx ->
       else
         let* file = lift (Kernel.Fs.File.open_read path) in
         let buffer = Kernel.Bytes.create ~size:8 in
-        let* read = with_file file (fun () ->
-          lift (Kernel.Fs.File.read file buffer))
-        in
+        let* read = with_file file (fun () -> lift (Kernel.Fs.File.read file buffer)) in
         if read = 0 then
           Ok ()
         else
@@ -1232,8 +1228,7 @@ let test_read_rejects_negative_pos = fun _ctx ->
       let* _ =
         with_file
           file
-          (fun () ->
-            lift (Kernel.Fs.File.write file (Kernel.Bytes.from_string "riot")))
+          (fun () -> lift (Kernel.Fs.File.write file (Kernel.Bytes.from_string "riot")))
       in
       let* file = lift (Kernel.Fs.File.open_read path) in
       let buffer = Kernel.Bytes.create ~size:4 in
@@ -1272,8 +1267,7 @@ let test_read_rejects_slices_past_the_buffer_end = fun _ctx ->
       let* _ =
         with_file
           file
-          (fun () ->
-            lift (Kernel.Fs.File.write file (Kernel.Bytes.from_string "riot")))
+          (fun () -> lift (Kernel.Fs.File.write file (Kernel.Bytes.from_string "riot")))
       in
       let* file = lift (Kernel.Fs.File.open_read path) in
       let buffer = Kernel.Bytes.create ~size:4 in
@@ -1356,17 +1350,13 @@ let test_write_vectored_zero_total_length_is_a_no_op = fun _ctx ->
         |> Result.unwrap
       in
       let* file = lift (Kernel.Fs.File.open_write path) in
-      let* written = with_file file (fun () ->
-        lift (Kernel.Fs.File.write_vectored file iov))
-      in
+      let* written = with_file file (fun () -> lift (Kernel.Fs.File.write_vectored file iov)) in
       if written != 0 then
         Error "expected write_vectored with zero total length to report zero bytes written"
       else
         let* file = lift (Kernel.Fs.File.open_read path) in
         let buffer = Kernel.Bytes.create ~size:8 in
-        let* read = with_file file (fun () ->
-          lift (Kernel.Fs.File.read file buffer))
-        in
+        let* read = with_file file (fun () -> lift (Kernel.Fs.File.read file buffer)) in
         if read = 0 then
           Ok ()
         else
@@ -1392,8 +1382,7 @@ let test_remove_dir_on_regular_file_reports_not_directory = fun _ctx ->
       let* _ =
         with_file
           file
-          (fun () ->
-            lift (Kernel.Fs.File.write file (Kernel.Bytes.from_string "riot")))
+          (fun () -> lift (Kernel.Fs.File.write file (Kernel.Bytes.from_string "riot")))
       in
       match Kernel.Fs.File.remove_dir path with
       | Kernel.Result.Error (Kernel.Fs.File.System Kernel.SystemError.NotDirectory) -> Ok ()
@@ -1422,8 +1411,7 @@ let test_read_link_on_non_symlink_reports_invalid_argument = fun _ctx ->
       let* _ =
         with_file
           file
-          (fun () ->
-            lift (Kernel.Fs.File.write file (Kernel.Bytes.from_string "riot")))
+          (fun () -> lift (Kernel.Fs.File.write file (Kernel.Bytes.from_string "riot")))
       in
       match Kernel.Fs.File.read_link path with
       | Kernel.Result.Error (Kernel.Fs.File.System Kernel.SystemError.InvalidArgument) -> Ok ()

@@ -54,8 +54,7 @@ let queue_fifo_prop =
     Arbitrary.(list int)
     (fun items ->
       let q = Std.Collections.Queue.create () in
-      List.for_each items ~fn:(fun item ->
-        Std.Collections.Queue.push q ~value:item);
+      List.for_each items ~fn:(fun item -> Std.Collections.Queue.push q ~value:item);
       (* Pop all and check order *)
       let rec pop_all acc =
         match Std.Collections.Queue.pop q with
@@ -73,8 +72,7 @@ let deque_lifo_prop =
     Arbitrary.(list int)
     (fun items ->
       let d = Std.Collections.Deque.create () in
-      List.for_each items ~fn:(fun item ->
-        Std.Collections.Deque.push_back d ~value:item);
+      List.for_each items ~fn:(fun item -> Std.Collections.Deque.push_back d ~value:item);
       let rec pop_all acc =
         match Std.Collections.Deque.pop_back d with
         | Some x -> pop_all (x :: acc)

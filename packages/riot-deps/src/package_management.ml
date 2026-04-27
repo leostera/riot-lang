@@ -1284,10 +1284,8 @@ let emit_updated_packages = fun
       | (Some key, Some to_version) -> (
           match List.find
             previous_versions
-            ~fn:(fun (existing_key, _) ->
-              lock_package_key_equal existing_key key)
-          |> Option.map ~fn:(fun (_, version) ->
-            version) with
+            ~fn:(fun (existing_key, _) -> lock_package_key_equal existing_key key)
+          |> Option.map ~fn:(fun (_, version) -> version) with
           | Some from_version when not (String.equal from_version to_version) ->
               emit
                 (Riot_model.Event.PackageVersionUpdated {

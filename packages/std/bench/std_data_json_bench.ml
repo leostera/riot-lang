@@ -64,14 +64,11 @@ let benchmarks =
         ~config:(config_for fixture)
         ("json parse: " ^ fixture.name)
         [
-          Bench.make_case "Json.of_string" (fun () ->
-            bench_json fixture.payload);
+          Bench.make_case "Json.of_string" (fun () -> bench_json fixture.payload);
           Bench.make_case
             "JsonStream.from_string"
-            (fun () ->
-              bench_json_stream_string fixture.payload);
-          Bench.make_case "JsonStream.from_slice" (fun () ->
-            bench_json_stream_slice fixture.slice);
+            (fun () -> bench_json_stream_string fixture.payload);
+          Bench.make_case "JsonStream.from_slice" (fun () -> bench_json_stream_slice fixture.slice);
         ])
 
 let main ~args = Bench.Cli.main ~name:"std_data_json_bench" ~benchmarks ~args
