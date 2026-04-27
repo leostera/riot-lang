@@ -221,7 +221,7 @@ let test_csrf_plain_apis_return_structured_errors = fun _ctx ->
   );
   let session_check =
     match Session.create ~cookie_name:"_test" ~secret:"0123456789abcdef0123456789abcdef" () with
-    | Error error -> Error (Session.secret_error_to_string error)
+    | Error error -> Error (Session.setup_error_to_string error)
     | Ok session -> (
         match Csrf.get_or_create_token session with
         | Ok token ->

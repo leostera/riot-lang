@@ -20,6 +20,16 @@ type secret_error =
   | Missing
   | TooShort of int
 
+type cookie_name_error =
+  | EmptyCookieName
+  | InvalidCookieNameChar of { char: char; index: int }
+
+type setup_error =
+  | InvalidSecret of secret_error
+  | InvalidCookieName of cookie_name_error
+  | InvalidMaxAge of int
+  | SameSiteNoneRequiresSecure
+
 type decode_error =
   | InvalidCookieFormat of { parts: int }
   | InvalidSignature
@@ -30,6 +40,20 @@ type decode_error =
 let secret_error_to_string = function
   | Missing -> "session secret must not be empty"
   | TooShort len -> "session secret must be at least 32 characters long, got " ^ Int.to_string len
+
+let cookie_name_error_to_string = function
+  | EmptyCookieName -> "session cookie name must not be empty"
+  | InvalidCookieNameChar { char; index } ->
+      "session cookie name contains invalid character code "
+      ^ Int.to_string (Char.code char)
+      ^ " at index "
+      ^ Int.to_string index
+
+let setup_error_to_string = function
+  | InvalidSecret error -> secret_error_to_string error
+  | InvalidCookieName error -> cookie_name_error_to_string error
+  | InvalidMaxAge value -> "session max_age must be greater than 0, got " ^ Int.to_string value
+  | SameSiteNoneRequiresSecure -> "session cookies with SameSite=None must also set Secure"
 
 let decode_error_to_string = function
   | InvalidCookieFormat { parts } ->
@@ -50,6 +74,48 @@ let validate_secret = fun secret ->
   else
     Ok ()
 
+let is_cookie_name_char = function
+  | 'a' .. 'z'
+  | 'A' .. 'Z'
+  | '0' .. '9'
+  | '_'
+  | '-' -> true
+  | _ -> false
+
+let validate_cookie_name = fun cookie_name ->
+  let len = String.length cookie_name in
+  if len = 0 then
+    Error EmptyCookieName
+  else
+    let rec go index =
+      if index >= len then
+        Ok ()
+      else
+        let char = String.get_unchecked cookie_name ~at:index in
+        if is_cookie_name_char char then
+          go (index + 1)
+        else
+          Error (InvalidCookieNameChar { char; index })
+    in
+    go 0
+
+let validate_setup = fun ~secret ~cookie_name ~max_age ~secure ~same_site ->
+  match validate_secret secret with
+  | Error error -> Error (InvalidSecret error)
+  | Ok () -> (
+      match validate_cookie_name cookie_name with
+      | Error error -> Error (InvalidCookieName error)
+      | Ok () ->
+          if max_age <= 0 then
+            Error (InvalidMaxAge max_age)
+          else
+            match (same_site, secure) with
+            | (Http.Http1.Cookie.None, false) -> Error SameSiteNoneRequiresSecure
+            | (Http.Http1.Cookie.Strict, _)
+            | (Http.Http1.Cookie.Lax, _)
+            | (Http.Http1.Cookie.None, true) -> Ok ()
+    )
+
 let session_key: t Conn.assign_key = Conn.assign_key ()
 
 (** Create empty session *)
@@ -68,8 +134,12 @@ let create_validated = fun ~cookie_name ~secret () ->
 
 let create = fun ~cookie_name ~secret () ->
   match validate_secret secret with
-  | Error error -> Error error
-  | Ok () -> Ok (create_validated ~cookie_name ~secret ())
+  | Error error -> Error (InvalidSecret error)
+  | Ok () -> (
+      match validate_cookie_name cookie_name with
+      | Error error -> Error (InvalidCookieName error)
+      | Ok () -> Ok (create_validated ~cookie_name ~secret ())
+    )
 
 (** Get value from session *)
 let get_value = fun key session -> HashMap.get session.data.values ~key
@@ -257,7 +327,7 @@ let middleware = fun
   ?(secure = false)
   ?(same_site = Http.Http1.Cookie.Lax)
   () ->
-  match validate_secret secret with
+  match validate_setup ~secret ~cookie_name ~max_age ~secure ~same_site with
   | Error error -> Error error
   | Ok () ->
       Ok (fun ~conn ~next ->

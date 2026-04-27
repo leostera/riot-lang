@@ -481,7 +481,7 @@ module Session = Session
    {[
      (* Minimal setup *)
      match session ~secret:"0123456789abcdef0123456789abcdef" () with
-     | Error error -> Error (Session.secret_error_to_string error)
+     | Error error -> Error (Session.setup_error_to_string error)
      | Ok session_middleware ->
          Ok Middleware.[ session_middleware; router routes ]
 
@@ -520,7 +520,7 @@ module Session = Session
      in
 
      match session ~secret ~secure:true () with
-     | Error error -> Error (Session.secret_error_to_string error)
+     | Error error -> Error (Session.setup_error_to_string error)
      | Ok session_middleware ->
          Ok Middleware.[ request_id; logger; session_middleware; router routes ]
    ]}
@@ -559,7 +559,7 @@ val session:
   ?secure:bool ->
   ?same_site:Http.Http1.Cookie.same_site ->
   unit ->
-  (Pipeline.middleware, Session.secret_error) result
+  (Pipeline.middleware, Session.setup_error) result
 
 module Csrf = Csrf
 
@@ -574,7 +574,7 @@ module Csrf = Csrf
    {b Quick Start:}
    {[
      match session ~secret:"0123456789abcdef0123456789abcdef" () with
-     | Error error -> Error (Session.secret_error_to_string error)
+     | Error error -> Error (Session.setup_error_to_string error)
      | Ok session_middleware ->
          Ok Middleware.[ session_middleware; csrf (); router routes ]
 

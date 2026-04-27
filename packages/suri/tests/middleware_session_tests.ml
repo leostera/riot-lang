@@ -120,7 +120,7 @@ let test_session_middleware_installs_session = fun _ctx ->
   let conn = Suri.Testing.Conn.make () in
   let found_session = ref false in
   match Session.middleware ~secret:"0123456789abcdef0123456789abcdef" () with
-  | Error error -> Error (Session.secret_error_to_string error)
+  | Error error -> Error (Session.setup_error_to_string error)
   | Ok middleware ->
       let _conn' =
         middleware
@@ -144,6 +144,29 @@ let test_session_rejects_short_secret = fun _ctx ->
   | Ok () -> Error "expected short session secret to fail"
   | Error error -> Error (Session.secret_error_to_string error)
 
+let test_session_rejects_invalid_cookie_name = fun _ctx ->
+  match Session.middleware ~cookie_name:"bad name" ~secret:"0123456789abcdef0123456789abcdef" () with
+  | Error (Session.InvalidCookieName (Session.InvalidCookieNameChar { char = ' '; index = 3 })) ->
+      Ok ()
+  | Ok _ -> Error "expected invalid session cookie name to fail"
+  | Error error -> Error (Session.setup_error_to_string error)
+
+let test_session_rejects_invalid_max_age = fun _ctx ->
+  match Session.middleware ~max_age:0 ~secret:"0123456789abcdef0123456789abcdef" () with
+  | Error (Session.InvalidMaxAge 0) -> Ok ()
+  | Ok _ -> Error "expected invalid session max_age to fail"
+  | Error error -> Error (Session.setup_error_to_string error)
+
+let test_session_rejects_samesite_none_without_secure = fun _ctx ->
+  match Session.middleware
+    ~same_site:Http.Http1.Cookie.None
+    ~secure:false
+    ~secret:"0123456789abcdef0123456789abcdef"
+    () with
+  | Error Session.SameSiteNoneRequiresSecure -> Ok ()
+  | Ok _ -> Error "expected SameSite=None without Secure to fail"
+  | Error error -> Error (Session.setup_error_to_string error)
+
 let test_session_signing_uses_hmac = fun _ctx ->
   let secret = "0123456789abcdef0123456789abcdef" in
   let signature = Session.sign ~secret "payload" in
@@ -155,7 +178,7 @@ let test_session_signing_uses_hmac = fun _ctx ->
 let test_session_cookie_roundtrips_and_rejects_tampering = fun _ctx ->
   let secret = "0123456789abcdef0123456789abcdef" in
   match Session.create ~cookie_name:"_test" ~secret () with
-  | Error error -> Error (Session.secret_error_to_string error)
+  | Error error -> Error (Session.setup_error_to_string error)
   | Ok session ->
       Session.put "user_id" "123" session;
       let cookie = Session.to_cookie_value session in
@@ -171,7 +194,7 @@ let test_session_cookie_roundtrips_and_rejects_tampering = fun _ctx ->
 let test_session_cookie_payload_is_signed_plaintext_json = fun _ctx ->
   let secret = "0123456789abcdef0123456789abcdef" in
   match Session.create ~cookie_name:"_test" ~secret () with
-  | Error error -> Error (Session.secret_error_to_string error)
+  | Error error -> Error (Session.setup_error_to_string error)
   | Ok session ->
       Session.put "user_id" "123" session;
       let cookie = Session.to_cookie_value session in
@@ -245,6 +268,11 @@ let tests =
     case "session middleware installs session" test_session_middleware_installs_session;
     case "session rejects missing secret" test_session_rejects_missing_secret;
     case "session rejects short secret" test_session_rejects_short_secret;
+    case "session rejects invalid cookie name" test_session_rejects_invalid_cookie_name;
+    case "session rejects invalid max age" test_session_rejects_invalid_max_age;
+    case
+      "session rejects SameSite None without Secure"
+      test_session_rejects_samesite_none_without_secure;
     case "session signing uses hmac" test_session_signing_uses_hmac;
     case
       "session cookie roundtrips and rejects tampering"

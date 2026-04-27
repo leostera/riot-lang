@@ -15,7 +15,7 @@
    {3 Basic Setup}
    {[
      match session ~secret:"0123456789abcdef0123456789abcdef" () with
-     | Error error -> Error (Session.secret_error_to_string error)
+     | Error error -> Error (Session.setup_error_to_string error)
      | Ok session_middleware ->
          let app = Middleware.[ session_middleware; router routes ] in
          Ok app
@@ -91,10 +91,17 @@ open Std
 
 (** Abstract session type. *)
 type t
-
 type secret_error =
   | Missing
   | TooShort of int
+type cookie_name_error =
+  | EmptyCookieName
+  | InvalidCookieNameChar of { char: char; index: int }
+type setup_error =
+  | InvalidSecret of secret_error
+  | InvalidCookieName of cookie_name_error
+  | InvalidMaxAge of int
+  | SameSiteNoneRequiresSecure
 type decode_error =
   | InvalidCookieFormat of { parts: int }
   | InvalidSignature
@@ -111,7 +118,7 @@ type decode_error =
    @param secure Require HTTPS (default: false, {b set true in production!})
    @param same_site CSRF protection (default: [Lax])
 
-   Returns [Error] when the provided secret is missing or too short.
+   Returns [Error] when the provided secret or cookie options are invalid.
 
    Example:
    {[
@@ -121,7 +128,7 @@ type decode_error =
      in
 
      match session ~secret ~secure:true () with
-     | Error error -> Error (Session.secret_error_to_string error)
+     | Error error -> Error (Session.setup_error_to_string error)
      | Ok session_middleware ->
          Ok Middleware.[ session_middleware; router routes ]
    ]}
@@ -133,7 +140,7 @@ val middleware:
   ?secure:bool ->
   ?same_site:Http.Http1.Cookie.same_site ->
   unit ->
-  ((conn:Conn.t -> next:(Conn.t -> Conn.t) -> Conn.t), secret_error) result
+  ((conn:Conn.t -> next:(Conn.t -> Conn.t) -> Conn.t), setup_error) result
 
 (**
    Get session from connection.
@@ -222,11 +229,17 @@ val is_expired: t -> bool
 val is_modified: t -> bool
 
 (** Create an empty session after validating the signing secret. *)
-val create: cookie_name:string -> secret:string -> unit -> (t, secret_error) result
+val create: cookie_name:string -> secret:string -> unit -> (t, setup_error) result
 
 val validate_secret: string -> (unit, secret_error) result
 
+val validate_cookie_name: string -> (unit, cookie_name_error) result
+
 val secret_error_to_string: secret_error -> string
+
+val cookie_name_error_to_string: cookie_name_error -> string
+
+val setup_error_to_string: setup_error -> string
 
 val decode_error_to_string: decode_error -> string
 

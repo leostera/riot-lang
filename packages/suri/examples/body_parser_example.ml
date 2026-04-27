@@ -12,8 +12,8 @@ let home = fun conn _req ->
       |> Conn.with_body (Middleware.Csrf.error_to_string error)
       |> Conn.send
   | Ok csrf_field ->
-  let html =
-    {|<!DOCTYPE html>
+      let html =
+        {|<!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
@@ -36,8 +36,8 @@ let home = fun conn _req ->
   <h2>HTML Form (urlencoded)</h2>
   <form method="POST" action="/submit">
     |}
-    ^ Component.to_html csrf_field
-    ^ {|
+        ^ Component.to_html csrf_field
+        ^ {|
     <label for="name">Name:</label>
     <input type="text" id="name" name="name" value="Alice" required>
     
@@ -67,11 +67,11 @@ let home = fun conn _req ->
   </ul>
 </body>
 </html>|}
-  in
-  conn
-  |> Conn.with_status Net.Http.Status.Ok
-  |> Conn.with_body html
-  |> Conn.send
+      in
+      conn
+      |> Conn.with_status Net.Http.Status.Ok
+      |> Conn.with_body html
+      |> Conn.send
 
 (** Handle form submission *)
 let submit_form = fun conn _req ->
@@ -166,7 +166,7 @@ let routes =
 (** Application with body_parser + CSRF *)
 let make_app = fun () ->
   match Middleware.session ~secret:"development-secret-key-change-in-production" () with
-  | Error error -> Error (Middleware.Session.secret_error_to_string error)
+  | Error error -> Error (Middleware.Session.setup_error_to_string error)
   | Ok session_middleware ->
       Ok Middleware.[
         logger;
@@ -192,15 +192,15 @@ let main ~args:_ =
   | Error error -> Error (Failure error)
   | Ok app -> (
       match Suri.start_link ~config app with
-  | Ok _supervisor ->
-      let rec loop () =
-        sleep (Time.Duration.from_secs 100);
-        loop ()
-      in
-      loop ()
-  | Error _ ->
-      Log.error "Failed to bind to port 8080";
-      Error (Failure "Failed to start server")
+      | Ok _supervisor ->
+          let rec loop () =
+            sleep (Time.Duration.from_secs 100);
+            loop ()
+          in
+          loop ()
+      | Error _ ->
+          Log.error "Failed to bind to port 8080";
+          Error (Failure "Failed to start server")
     )
 
 let () = Runtime.run ~main ~args:Env.args ()

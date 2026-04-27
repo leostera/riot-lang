@@ -12,7 +12,7 @@
    {3 Basic Protection}
    {[
      match session ~secret:"0123456789abcdef0123456789abcdef" () with
-     | Error error -> Error (Session.secret_error_to_string error)
+     | Error error -> Error (Session.setup_error_to_string error)
      | Ok session_middleware ->
          let app = Middleware.[ session_middleware; csrf (); router routes ] in
          Ok app
@@ -164,7 +164,7 @@ val missing_session_body: string
    Example:
    {[
      match session ~secret:"0123456789abcdef0123456789abcdef" () with
-     | Error error -> Error (Session.secret_error_to_string error)
+     | Error error -> Error (Session.setup_error_to_string error)
      | Ok session_middleware ->
          Ok Middleware.[ session_middleware; csrf (); router routes ]
    ]}
