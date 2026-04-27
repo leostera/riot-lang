@@ -2,7 +2,6 @@ open Std
 open Std.Collections
 
 module Ast = Syn.Ast
-module Facts = Layout_facts
 module Kind = Syn.SyntaxKind
 module Layout = Layout_policy
 module Slice = IO.IoVec.IoSlice
@@ -3204,11 +3203,11 @@ and type_expr_after_colon_decision = fun state ~suffix_width type_expr ->
     { Layout.mode = Layout.Inline; reasons = [] }
   else
     let flat_width = type_expr_flat_width type_expr in
-    let facts = Facts.type_after_separator ?flat_width ~suffix_width () in
-    Layout.decide
-      (Layout.After_separator Layout.Colon)
+    Layout.decide_type_after_separator
+      Layout.Colon
       (layout_context ~role:Layout.Type_after_colon state)
-      facts
+      ~flat_width
+      ~suffix_width
 
 and type_expr_should_break_after_colon = fun state ~suffix_width type_expr ->
   match type_expr_after_colon_decision state ~suffix_width type_expr with
@@ -4066,11 +4065,11 @@ and infix_operator_class = fun operator_text -> {
 and decide_structural_infix_chain = fun expr left operator right ->
   let operator_text = infix_operator_text_from_expr expr left operator right in
   let item_count = same_operator_infix_count expr_classification_budget expr operator_text in
-  let facts = Facts.infix_chain ~flat_width:0 ~item_count () in
-  Layout.decide
-    (Layout.Infix_chain (infix_operator_class operator_text))
+  Layout.decide_infix_chain
     (Layout.make_context ~width:Int.max_int ~column:0 ~indent:0 ())
-    facts
+    (infix_operator_class operator_text)
+    ~flat_width:(Some 0)
+    ~item_count
 
 and expr_is_long_breaking_infix_chain = fun expr ->
   match ExprView.view expr with
@@ -4850,10 +4849,11 @@ and record_expr_should_inline = fun expr ->
 and record_expr_decision = fun state ~force_multiline expr fields ->
   let inline_shape = (not force_multiline) && record_expr_should_inline expr in
   let flat_width = record_expr_flat_width expr_classification_budget expr in
-  let facts =
-    Facts.record_expr ?flat_width ~allow_inline:inline_shape ~item_count:(Vector.length fields) ()
-  in
-  Layout.decide (Layout.Separated Layout.Record_fields) (layout_context state) facts
+  Layout.decide_record_expr
+    (layout_context state)
+    ~flat_width
+    ~allow_inline:inline_shape
+    ~item_count:(Vector.length fields)
 
 let expr_can_follow_pipe_bare = fun expr ->
   match ExprView.view expr with
@@ -5351,14 +5351,11 @@ and parenthesized_expr_decision = fun state expr ->
         type_expr_should_break_after_colon state ~suffix_width:1 annotation
     | _ -> false
   in
-  let facts =
-    Facts.parenthesized_expr
-      ~has_leading_comment:(expr_has_leading_comment expr)
-      ~is_multiline:(expr_is_multiline expr)
-      ~break_after_separator
-      ()
-  in
-  Layout.decide (Layout.Delimited Layout.Parens) (layout_context state) facts
+  Layout.decide_parenthesized_expr
+    (layout_context state)
+    ~has_leading_comment:(expr_has_leading_comment expr)
+    ~is_multiline:(expr_is_multiline expr)
+    ~break_after_separator
 
 and parenthesized_expr_should_multiline = fun state expr ->
   match parenthesized_expr_decision state expr with
@@ -5418,11 +5415,11 @@ and infix_expr_decision = fun state expr left operator right ->
     else
       0
   in
-  let facts = Facts.infix_chain ?flat_width ~item_count () in
-  Layout.decide
-    (Layout.Infix_chain (infix_operator_class operator_text))
+  Layout.decide_infix_chain
     (layout_context state)
-    facts
+    (infix_operator_class operator_text)
+    ~flat_width
+    ~item_count
 
 and infix_expr_should_break = fun state expr left operator right ->
   match infix_expr_decision state expr left operator right with
@@ -7081,24 +7078,18 @@ and let_binding_rhs_decision = fun
       )
     | _ -> expr_flat_width body
   in
-  let facts =
-    Facts.binding_rhs
-      ?flat_width
-      ~suffix_width:body_suffix_width
-      ~force_body_break
-      ~has_leading_comment:(expr_has_leading_comment body)
-      ~is_pipeline:(expr_is_pipeline body)
-      ~is_assignment
-      ~inline_body
-      ~single_constructor_payload
-      ~known_width_overflow
-      ~is_multiline:(expr_is_multiline body)
-      ()
-  in
-  Layout.decide
-    (Layout.Binding_rhs Layout.Let_binding)
+  Layout.decide_let_binding_rhs
     (layout_context ~role:Layout.Let_rhs state)
-    facts
+    ~flat_width
+    ~suffix_width:body_suffix_width
+    ~force_body_break
+    ~has_leading_comment:(expr_has_leading_comment body)
+    ~is_pipeline:(expr_is_pipeline body)
+    ~is_assignment
+    ~inline_body
+    ~single_constructor_payload
+    ~known_width_overflow
+    ~is_multiline:(expr_is_multiline body)
 
 and let_binding_tail_should_render_multiline = fun binding ->
   match (Ast.LetBinding.view binding).pattern with
@@ -7756,16 +7747,13 @@ and record_type_should_inline = fun state ~allow_inline record_type fields ->
     && record_type_fields_are_light_inline fields
   in
   let flat_width = record_type_flat_width fields in
-  let facts =
-    Facts.record_type
-      ?flat_width
-      ~allow_inline:inline_shape
-      ~has_leading_comment
-      ~has_trailing_comment
-      ~item_count:(Vector.length fields)
-      ()
-  in
-  match Layout.decide (Layout.Separated Layout.Record_fields) (layout_context state) facts with
+  match Layout.decide_record_type
+    (layout_context state)
+    ~flat_width
+    ~allow_inline:inline_shape
+    ~has_leading_comment
+    ~has_trailing_comment
+    ~item_count:(Vector.length fields) with
   | { Layout.mode = Inline; _ } -> true
   | _ -> false
 

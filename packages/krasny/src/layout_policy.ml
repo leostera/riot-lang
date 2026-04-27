@@ -17,12 +17,6 @@ type reason =
   | Parent_requires_block
   | Opaque_payload
 
-type pressure =
-  | Flat
-  | Soft of reason list
-  | Strong of reason list
-  | Hard of reason list
-
 type role =
   | Top_expr
   | Let_rhs
@@ -102,26 +96,6 @@ type callee_class =
   | Operator_like
   | Unknown_callee
 
-type syntax_family =
-  | Expr
-  | Type_expr
-  | Pattern
-  | Declaration
-  | Trivia
-  | Unknown_syntax
-
-type facts = {
-  flat_width: int option;
-  pressure: pressure;
-  has_leading_comment: bool;
-  has_trailing_comment: bool;
-  contains_hardline: bool;
-  item_count: int;
-  suffix_width: int;
-  syntax_family: syntax_family;
-  callee_class: callee_class option;
-}
-
 type style = {
   continuation_indent: int;
   block_indent: int;
@@ -143,29 +117,6 @@ let default_style = {
   heavy_apply_arg_threshold = 2;
 }
 
-let make_facts = fun
-  ?flat_width
-  ?(pressure = Flat)
-  ?(has_leading_comment = false)
-  ?(has_trailing_comment = false)
-  ?(contains_hardline = false)
-  ?(item_count = 0)
-  ?(suffix_width = 0)
-  ?(syntax_family = Unknown_syntax)
-  ?callee_class
-  () ->
-  {
-    flat_width;
-    pressure;
-    has_leading_comment;
-    has_trailing_comment;
-    contains_hardline;
-    item_count;
-    suffix_width;
-    syntax_family;
-    callee_class;
-  }
-
 let make_context = fun ?(role = Top_expr) ?(style = default_style) ~width ~column ~indent () ->
   {
     width;
@@ -174,12 +125,6 @@ let make_context = fun ?(role = Top_expr) ?(style = default_style) ~width ~colum
     role;
     style;
   }
-
-let pressure_reasons = function
-  | Flat -> []
-  | Soft reasons
-  | Strong reasons
-  | Hard reasons -> reasons
 
 let has_reason = fun expected reasons ->
   List.exists
@@ -210,157 +155,12 @@ let fits_flat = fun ctx ?(prefix = 0) ?(suffix_width = 0) flat_width ->
   | None -> false
   | Some width -> Int.(ctx.column + prefix + width + suffix_width <= ctx.width)
 
-let fits = fun ctx ?(prefix = 0) ?(suffix = 0) facts ->
-  match facts.flat_width with
-  | None -> false
-  | Some width -> Int.(ctx.column + prefix + width + facts.suffix_width + suffix <= ctx.width)
-
 let width_overflow_reason_from_flat = fun ctx flat_width ->
   match flat_width with
   | Some flat_width -> Width_overflow { flat_width; remaining = remaining_width ctx }
   | None -> Width_overflow { flat_width = 0; remaining = remaining_width ctx }
 
-let width_overflow_reason = fun ctx facts ->
-  match facts.flat_width with
-  | Some flat_width -> Width_overflow { flat_width; remaining = remaining_width ctx }
-  | None -> Width_overflow { flat_width = 0; remaining = remaining_width ctx }
-
 let inline = { mode = Inline; reasons = [] }
-
-let is_single_constructor_payload = fun facts ->
-  match (facts.callee_class, facts.item_count) with
-  | (Some Constructor_like, 1) -> true
-  | _ -> false
-
-let decide_application_facts = fun ctx facts ->
-  if facts.contains_hardline then
-    { mode = Vertical; reasons = [ Contains_hardline ] }
-  else if is_single_constructor_payload facts then
-    { mode = Inline; reasons = [ Single_constructor_payload ] }
-  else
-    match facts.pressure with
-    | Hard reasons -> { mode = Vertical; reasons }
-    | Strong reasons ->
-        if has_reason Heavy_nested_apply reasons then
-          { mode = Vertical; reasons }
-        else if has_reason Parent_requires_block reasons then
-          { mode = Vertical; reasons }
-        else if has_reason Child_is_block reasons then
-          { mode = Vertical; reasons }
-        else
-          { mode = Vertical; reasons }
-    | Soft reasons ->
-        if has_reason Child_is_block reasons then
-          { mode = Isolate_child_blocks; reasons }
-        else if fits ctx facts then
-          inline
-        else
-          {
-            mode = Hang ctx.style.continuation_indent;
-            reasons = [ width_overflow_reason ctx facts ];
-          }
-    | Flat ->
-        if fits ctx facts then
-          inline
-        else
-          {
-            mode = Hang ctx.style.continuation_indent;
-            reasons = [ width_overflow_reason ctx facts ];
-          }
-
-let decide_binding_rhs = fun ctx facts ->
-  let reasons = pressure_reasons facts.pressure in
-  if has_reason Inline_rhs_body reasons then
-    { mode = Inline; reasons = [ Inline_rhs_body ] }
-  else if has_reason Single_constructor_payload reasons then
-    { mode = Inline; reasons = [ Single_constructor_payload ] }
-  else
-    match facts.pressure with
-    | Hard reasons
-    | Strong reasons -> { mode = Block; reasons }
-    | Soft _
-    | Flat -> (
-        match facts.flat_width with
-        | None -> inline
-        | Some _ ->
-            if fits ctx ~prefix:1 facts then
-              inline
-            else
-              { mode = Block; reasons = [ width_overflow_reason ctx facts ] }
-      )
-
-let decide_raw = fun family ctx facts ->
-  if facts.contains_hardline then
-    { mode = Block; reasons = [ Contains_hardline ] }
-  else if facts.has_leading_comment then
-    { mode = Block; reasons = [ Has_leading_comment ] }
-  else if facts.has_trailing_comment then
-    { mode = Block; reasons = [ Has_trailing_comment ] }
-  else
-    match family with
-    | Application -> decide_application_facts ctx facts
-    | After_separator _ -> (
-        match facts.flat_width with
-        | None -> inline
-        | Some _ ->
-            if fits ctx ~prefix:1 facts then
-              inline
-            else
-              { mode = Break_after_separator; reasons = [ width_overflow_reason ctx facts ] }
-      )
-    | Binding_rhs _ -> decide_binding_rhs ctx facts
-    | Keyword_clause If_condition -> (
-        match facts.flat_width with
-        | None -> inline
-        | Some _ ->
-            if fits ctx ~prefix:1 facts then
-              inline
-            else
-              { mode = Block; reasons = [ width_overflow_reason ctx facts ] }
-      )
-    | Infix_chain operator ->
-        if operator.always_breaks_pipeline then
-          { mode = Vertical; reasons = [] }
-        else if
-          operator.breaks_when_long && Int.(facts.item_count >= ctx.style.long_infix_chain_terms)
-        then
-          {
-            mode = Vertical;
-            reasons = [ Long_infix_chain { operator = operator.text; terms = facts.item_count } ];
-          }
-        else
-          (
-            match facts.pressure with
-            | Hard reasons
-            | Strong reasons -> { mode = Vertical; reasons }
-            | Soft reasons when has_reason
-              (Long_infix_chain { operator = operator.text; terms = 0 })
-              reasons -> { mode = Vertical; reasons }
-            | Soft _
-            | Flat -> (
-                match facts.flat_width with
-                | None -> inline
-                | Some _ ->
-                    if fits ctx facts then
-                      inline
-                    else
-                      { mode = Vertical; reasons = [ width_overflow_reason ctx facts ] }
-              )
-          )
-    | Delimited _
-    | Separated _
-    | Keyword_clause _
-    | Top_level_join -> (
-        match facts.pressure with
-        | Hard reasons
-        | Strong reasons -> { mode = Block; reasons }
-        | Soft _
-        | Flat ->
-            if fits ctx facts then
-              inline
-            else
-              { mode = Block; reasons = [ width_overflow_reason ctx facts ] }
-      )
 
 let trace_enabled =
   match Env.get Env.Bool ~var:"KRASNY_LAYOUT_TRACE" with
@@ -450,20 +250,9 @@ let trace_line_from_width = fun family ctx ~flat_width decision ->
     | None -> "unknown"
   ) ^ " -> " ^ mode_to_string decision.mode ^ " " ^ reasons_to_string decision.reasons
 
-let trace_line = fun family ctx facts decision ->
-  trace_line_from_width
-    family
-    ctx
-    ~flat_width:facts.flat_width
-    decision
-
 let trace_decision_from_width = fun family ctx ~flat_width decision ->
   if trace_enabled then
     eprintln (trace_line_from_width family ctx ~flat_width decision)
-
-let trace_decision = fun family ctx facts decision ->
-  if trace_enabled then
-    eprintln (trace_line family ctx facts decision)
 
 let decide_application = fun
   ctx
@@ -497,6 +286,23 @@ let decide_application = fun
   trace_decision_from_width Application ctx ~flat_width decision;
   decision
 
+let decide_type_after_separator = fun separator ctx ~flat_width ~suffix_width ->
+  let family = After_separator separator in
+  let decision =
+    match flat_width with
+    | None -> inline
+    | Some _ ->
+        if fits_flat ctx ~prefix:1 ~suffix_width flat_width then
+          inline
+        else
+          {
+            mode = Break_after_separator;
+            reasons = [ width_overflow_reason_from_flat ctx flat_width ];
+          }
+  in
+  trace_decision_from_width family ctx ~flat_width decision;
+  decision
+
 let decide_separated = fun kind ctx ~flat_width ~allow_inline ->
   let family = Separated kind in
   let decision =
@@ -507,6 +313,36 @@ let decide_separated = fun kind ctx ~flat_width ~allow_inline ->
         { mode = Block; reasons = [ width_overflow_reason_from_flat ctx flat_width ] }
     else
       { mode = Block; reasons = [ Child_is_block ] }
+  in
+  trace_decision_from_width family ctx ~flat_width decision;
+  decision
+
+let decide_record_expr = fun ctx ~flat_width ~allow_inline ~item_count:_ ->
+  decide_separated
+    Record_fields
+    ctx
+    ~flat_width
+    ~allow_inline
+
+let decide_record_type = fun
+  ctx
+  ~flat_width
+  ~allow_inline
+  ~has_leading_comment
+  ~has_trailing_comment
+  ~item_count:_ ->
+  let family = Separated Record_fields in
+  let decision =
+    if has_leading_comment then
+      { mode = Block; reasons = [ Has_leading_comment ] }
+    else if has_trailing_comment then
+      { mode = Block; reasons = [ Has_trailing_comment ] }
+    else if not allow_inline then
+      { mode = Block; reasons = [ Child_is_block ] }
+    else if fits_flat ctx flat_width then
+      inline
+    else
+      { mode = Block; reasons = [ width_overflow_reason_from_flat ctx flat_width ] }
   in
   trace_decision_from_width family ctx ~flat_width decision;
   decision
@@ -528,6 +364,84 @@ let decide_tuple = fun ctx ~flat_width ~has_nonfinal_fun_item ->
   trace_decision_from_width family ctx ~flat_width decision;
   decision
 
+let decide_parenthesized_expr = fun ctx ~has_leading_comment ~is_multiline ~break_after_separator ->
+  let flat_width = Some 0 in
+  let decision =
+    if has_leading_comment then
+      { mode = Block; reasons = [ Has_leading_comment ] }
+    else if is_multiline then
+      { mode = Block; reasons = [ Child_is_block ] }
+    else if break_after_separator then
+      { mode = Block; reasons = [ Parent_requires_block ] }
+    else
+      inline
+  in
+  trace_decision_from_width (Delimited Parens) ctx ~flat_width decision;
+  decision
+
+let decide_infix_chain = fun ctx operator ~flat_width ~item_count ->
+  let family = Infix_chain operator in
+  let decision =
+    if operator.always_breaks_pipeline then
+      { mode = Vertical; reasons = [] }
+    else if operator.breaks_when_long && Int.(item_count >= ctx.style.long_infix_chain_terms) then
+      {
+        mode = Vertical;
+        reasons = [ Long_infix_chain { operator = operator.text; terms = item_count } ];
+      }
+    else
+      match flat_width with
+      | None -> inline
+      | Some _ ->
+          if fits_flat ctx flat_width then
+            inline
+          else
+            { mode = Vertical; reasons = [ width_overflow_reason_from_flat ctx flat_width ] }
+  in
+  trace_decision_from_width family ctx ~flat_width decision;
+  decision
+
+let decide_let_binding_rhs = fun
+  ctx
+  ~flat_width
+  ~suffix_width
+  ~force_body_break
+  ~has_leading_comment
+  ~is_pipeline
+  ~is_assignment
+  ~inline_body
+  ~single_constructor_payload
+  ~known_width_overflow
+  ~is_multiline ->
+  let decision =
+    if has_leading_comment then
+      { mode = Block; reasons = [ Has_leading_comment ] }
+    else if force_body_break then
+      { mode = Block; reasons = [ Parent_requires_block ] }
+    else if is_pipeline then
+      { mode = Block; reasons = [ Pipeline_body ] }
+    else if is_assignment then
+      { mode = Block; reasons = [ Assignment_body ] }
+    else if inline_body then
+      { mode = Inline; reasons = [ Inline_rhs_body ] }
+    else if single_constructor_payload then
+      { mode = Inline; reasons = [ Single_constructor_payload ] }
+    else if known_width_overflow then
+      { mode = Block; reasons = [ Known_width_overflow ] }
+    else if is_multiline then
+      { mode = Block; reasons = [ Child_is_block ] }
+    else
+      match flat_width with
+      | None -> inline
+      | Some _ ->
+          if fits_flat ctx ~prefix:1 ~suffix_width flat_width then
+            inline
+          else
+            { mode = Block; reasons = [ width_overflow_reason_from_flat ctx flat_width ] }
+  in
+  trace_decision_from_width (Binding_rhs Let_binding) ctx ~flat_width decision;
+  decision
+
 let decide_if_condition = fun ctx ~flat_width ~suffix_width ->
   let family = Keyword_clause If_condition in
   let decision =
@@ -540,9 +454,4 @@ let decide_if_condition = fun ctx ~flat_width ~suffix_width ->
           { mode = Block; reasons = [ width_overflow_reason_from_flat ctx flat_width ] }
   in
   trace_decision_from_width family ctx ~flat_width decision;
-  decision
-
-let decide = fun family ctx facts ->
-  let decision = decide_raw family ctx facts in
-  trace_decision family ctx facts decision;
   decision

@@ -2,10 +2,6 @@ open Std
 
 module Layout = Krasny.Layout_policy
 
-let trace_decision = fun family ctx facts ->
-  let decision = Layout.decide family ctx facts in
-  Layout.trace_line family ctx facts decision
-
 let trace_direct = fun family ctx ~flat_width decision ->
   Layout.trace_line_from_width
     family
@@ -36,8 +32,9 @@ let test_layout_trace_snapshots_application_width_overflow = fun ctx ->
 let test_layout_trace_snapshots_long_infix_reasons = fun ctx ->
   let render_ctx = Layout.make_context ~width:100 ~column:0 ~indent:0 () in
   let operator = { Layout.text = "&&"; always_breaks_pipeline = false; breaks_when_long = true } in
-  let facts = Layout.make_facts ~flat_width:30 ~item_count:8 ~syntax_family:Layout.Expr () in
-  let actual = trace_decision (Layout.Infix_chain operator) render_ctx facts in
+  let flat_width = Some 30 in
+  let decision = Layout.decide_infix_chain render_ctx operator ~flat_width ~item_count:8 in
+  let actual = trace_direct (Layout.Infix_chain operator) render_ctx ~flat_width decision in
   Test.Snapshot.assert_inline_text
     ~ctx
     ~actual
@@ -45,8 +42,24 @@ let test_layout_trace_snapshots_long_infix_reasons = fun ctx ->
 
 let test_layout_trace_snapshots_unknown_widths_and_comments = fun ctx ->
   let render_ctx = Layout.make_context ~width:80 ~column:12 ~indent:2 () in
-  let facts = Layout.make_facts ~has_leading_comment:true ~syntax_family:Layout.Expr () in
-  let actual = trace_decision (Layout.Binding_rhs Layout.Let_binding) render_ctx facts in
+  let flat_width = None in
+  let decision =
+    Layout.decide_let_binding_rhs
+      render_ctx
+      ~flat_width
+      ~suffix_width:0
+      ~force_body_break:false
+      ~has_leading_comment:true
+      ~is_pipeline:false
+      ~is_assignment:false
+      ~inline_body:false
+      ~single_constructor_payload:false
+      ~known_width_overflow:false
+      ~is_multiline:false
+  in
+  let actual =
+    trace_direct (Layout.Binding_rhs Layout.Let_binding) render_ctx ~flat_width decision
+  in
   Test.Snapshot.assert_inline_text
     ~ctx
     ~actual
@@ -126,6 +139,79 @@ let test_layout_trace_snapshots_if_condition_unknown_width_stays_inline = fun ct
     ~actual
     ~expected:{|krasny layout: Keyword_clause(If_condition) column=3 width=40 flat=unknown -> Inline []|}
 
+let test_layout_trace_snapshots_type_separator_width_overflow = fun ctx ->
+  let render_ctx = Layout.make_context ~width:40 ~column:10 ~indent:2 () in
+  let flat_width = Some 35 in
+  let decision =
+    Layout.decide_type_after_separator Layout.Colon render_ctx ~flat_width ~suffix_width:2
+  in
+  let actual = trace_direct (Layout.After_separator Layout.Colon) render_ctx ~flat_width decision in
+  Test.Snapshot.assert_inline_text
+    ~ctx
+    ~actual
+    ~expected:{|krasny layout: After_separator(Colon) column=10 width=40 flat=35 -> Break_after_separator [Width_overflow(flat=35, remaining=30)]|}
+
+let test_layout_trace_snapshots_parenthesized_separator_break = fun ctx ->
+  let render_ctx = Layout.make_context ~width:100 ~column:0 ~indent:0 () in
+  let flat_width = Some 0 in
+  let decision =
+    Layout.decide_parenthesized_expr
+      render_ctx
+      ~has_leading_comment:false
+      ~is_multiline:false
+      ~break_after_separator:true
+  in
+  let actual = trace_direct (Layout.Delimited Layout.Parens) render_ctx ~flat_width decision in
+  Test.Snapshot.assert_inline_text
+    ~ctx
+    ~actual
+    ~expected:{|krasny layout: Delimited(Parens) column=0 width=100 flat=0 -> Block [Parent_requires_block]|}
+
+let test_layout_trace_snapshots_record_type_leading_comment = fun ctx ->
+  let render_ctx = Layout.make_context ~width:100 ~column:0 ~indent:0 () in
+  let flat_width = Some 20 in
+  let decision =
+    Layout.decide_record_type
+      render_ctx
+      ~flat_width
+      ~allow_inline:true
+      ~has_leading_comment:true
+      ~has_trailing_comment:false
+      ~item_count:1
+  in
+  let actual =
+    trace_direct (Layout.Separated Layout.Record_fields) render_ctx ~flat_width decision
+  in
+  Test.Snapshot.assert_inline_text
+    ~ctx
+    ~actual
+    ~expected:{|krasny layout: Separated(Record_fields) column=0 width=100 flat=20 -> Block [Has_leading_comment]|}
+
+let test_layout_trace_snapshots_let_binding_pipeline_body = fun ctx ->
+  let render_ctx = Layout.make_context ~role:Layout.Let_rhs ~width:100 ~column:4 ~indent:2 () in
+  let flat_width = Some 20 in
+  let decision =
+    Layout.decide_let_binding_rhs
+      render_ctx
+      ~flat_width
+      ~suffix_width:0
+      ~force_body_break:false
+      ~has_leading_comment:false
+      ~is_pipeline:true
+      ~is_assignment:false
+      ~inline_body:false
+      ~single_constructor_payload:false
+      ~known_width_overflow:false
+      ~is_multiline:false
+  in
+  let actual =
+    trace_direct (Layout.Binding_rhs Layout.Let_binding) render_ctx ~flat_width decision
+  in
+  Test.Snapshot.assert_inline_text
+    ~ctx
+    ~actual
+    ~expected:{|krasny layout: Binding_rhs(Let_binding) column=4 width=100 flat=20 -> Block [Pipeline_body]|}
+
 let tests =
   Test.[
     case
@@ -156,6 +242,18 @@ let tests =
     case
       "layout trace snapshots if condition unknown width stays inline"
       test_layout_trace_snapshots_if_condition_unknown_width_stays_inline;
+    case
+      "layout trace snapshots type separator width overflow"
+      test_layout_trace_snapshots_type_separator_width_overflow;
+    case
+      "layout trace snapshots parenthesized separator break"
+      test_layout_trace_snapshots_parenthesized_separator_break;
+    case
+      "layout trace snapshots record type leading comment"
+      test_layout_trace_snapshots_record_type_leading_comment;
+    case
+      "layout trace snapshots let binding pipeline body"
+      test_layout_trace_snapshots_let_binding_pipeline_body;
   ]
 
 let main ~args:_ = Test.Cli.main ~name:"krasny:layout_policy" ~tests ~args:Env.args ()
