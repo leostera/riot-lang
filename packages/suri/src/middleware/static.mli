@@ -48,7 +48,7 @@ open Std
      let config = Static.{
        default_config with
        show_directory = true;
-       dotfiles = `Allow;
+       dotfiles = AllowDotfiles;
        cache_control = Some "public, max-age=31536000, immutable";
        headers = [
          ("x-content-type-options", "nosniff");
@@ -75,15 +75,22 @@ open Std
 
 (** {1 Configuration} *)
 
+type dotfiles =
+  | AllowDotfiles
+  | DenyDotfiles
+  | IgnoreDotfiles
+type symlinks =
+  | FollowSymlinks
+  | DenySymlinks
 type config = {
   show_directory: bool;
   (** Enable directory browsing with HTML listings. Default: [false] *)
   index_files: string list;
   (** Index files to try for directories. Default: [["index.html"; "index.htm"]] *)
-  dotfiles: [`Allow | `Deny | `Ignore];
-  (** How to handle dotfiles (.env, .git, etc). Default: [`Deny] *)
-  symlinks: [`Follow | `Deny];
-  (** How to handle symbolic links. Default: [`Follow] *)
+  dotfiles: dotfiles;
+  (** How to handle dotfiles (.env, .git, etc). Default: [DenyDotfiles] *)
+  symlinks: symlinks;
+  (** How to handle symbolic links. Default: [FollowSymlinks] *)
   headers: (string * string) list;
   (** Additional headers to add to all responses. Default: [[]] *)
   cache_control: string option;
@@ -102,13 +109,13 @@ type config = {
      until one is found.
 
    - [dotfiles]: Controls access to files starting with [.]:
-     - [`Allow] - Serve dotfiles normally
-     - [`Deny] - Return 403 Forbidden for dotfiles
-     - [`Ignore] - Return 404 Not Found for dotfiles
+     - [AllowDotfiles] - Serve dotfiles normally
+     - [DenyDotfiles] - Return 403 Forbidden for dotfiles
+     - [IgnoreDotfiles] - Return 404 Not Found for dotfiles
 
    - [symlinks]: Controls symlink handling:
-     - [`Follow] - Follow symlinks (after security checks)
-     - [`Deny] - Return 403 Forbidden for symlinks
+     - [FollowSymlinks] - Follow symlinks (after security checks)
+     - [DenySymlinks] - Return 403 Forbidden for symlinks
 
    - [headers]: Additional headers added to all file responses. Useful for
      security headers like [x-content-type-options].
@@ -123,8 +130,8 @@ val default_config: config
    Default configuration:
    - [show_directory = false] - No directory browsing
    - [index_files = ["index.html"; "index.htm"]]
-   - [dotfiles = `Deny] - Block dotfiles
-   - [symlinks = `Follow] - Follow symlinks
+   - [dotfiles = DenyDotfiles] - Block dotfiles
+   - [symlinks = FollowSymlinks] - Follow symlinks
    - [headers = []] - No additional headers
    - [cache_control = Some "public, max-age=3600"] - 1 hour cache
 *)

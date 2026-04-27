@@ -51,8 +51,8 @@
         <pre><code>let config = Static.{
   show_directory = true;
   index_files = ["index.html"; "index.htm"];
-  dotfiles = `Deny;
-  symlinks = `Follow;
+  dotfiles = DenyDotfiles;
+  symlinks = FollowSymlinks;
   headers = [
     ("x-content-type-options", "nosniff");
   ];

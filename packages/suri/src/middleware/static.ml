@@ -1,10 +1,19 @@
 open Std
 
+type dotfiles =
+  | AllowDotfiles
+  | DenyDotfiles
+  | IgnoreDotfiles
+
+type symlinks =
+  | FollowSymlinks
+  | DenySymlinks
+
 type config = {
   show_directory: bool;
   index_files: string list;
-  dotfiles: [`Allow | `Deny | `Ignore];
-  symlinks: [`Follow | `Deny];
+  dotfiles: dotfiles;
+  symlinks: symlinks;
   headers: (string * string) list;
   cache_control: string option;
 }
@@ -18,8 +27,8 @@ type path_error =
 let default_config = {
   show_directory = false;
   index_files = [ "index.html"; "index.htm" ];
-  dotfiles = `Deny;
-  symlinks = `Follow;
+  dotfiles = DenyDotfiles;
+  symlinks = FollowSymlinks;
   headers = [];
   cache_control = Some "public, max-age=3600";
 }
@@ -118,9 +127,9 @@ module Security = struct
       true
     else
       match config.dotfiles with
-      | `Allow -> true
-      | `Deny -> false
-      | `Ignore -> false
+      | AllowDotfiles -> true
+      | DenyDotfiles -> false
+      | IgnoreDotfiles -> false
 
   let path_is_within_root = fun ~root path ->
     let root = Path.normalize root in
@@ -160,7 +169,7 @@ module Security = struct
         in
         if not (path_is_within_root ~root:root_canonical candidate) then
           Error PathTraversal
-        else if config.symlinks = `Deny && path_contains_symlink root requested_path then
+        else if config.symlinks = DenySymlinks && path_contains_symlink root requested_path then
           Error SymlinkDenied
         else
           match Fs.canonicalize candidate with
@@ -421,9 +430,9 @@ module Directory = struct
             let include_entry =
               if String.length name > 0 && String.get_unchecked name ~at:0 = '.' then
                 match config.dotfiles with
-                | `Allow -> true
-                | `Deny -> false
-                | `Ignore -> false
+                | AllowDotfiles -> true
+                | DenyDotfiles -> false
+                | IgnoreDotfiles -> false
               else
                 true
             in
@@ -575,9 +584,9 @@ let path_error_status_and_body = fun error ->
 
 let dotfile_status_and_body = fun config ->
   match config.dotfiles with
-  | `Ignore -> (Net.Http.Status.NotFound, "404 Not Found")
-  | `Allow -> (Net.Http.Status.Ok, "")
-  | `Deny -> (Net.Http.Status.Forbidden, "access to dotfiles denied")
+  | IgnoreDotfiles -> (Net.Http.Status.NotFound, "404 Not Found")
+  | AllowDotfiles -> (Net.Http.Status.Ok, "")
+  | DenyDotfiles -> (Net.Http.Status.Forbidden, "access to dotfiles denied")
 
 let rec serve_file = fun config root requested_path conn ->
   if not (Security.check_dotfile config requested_path) then
