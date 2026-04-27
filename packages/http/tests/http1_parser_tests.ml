@@ -329,6 +329,22 @@ let test_request_rejects_unsupported_transfer_encoding = fun _ctx ->
   | Need_more -> Result.Error "Expected unsupported Transfer-Encoding error, got Need_more"
   | Done _ -> Result.Error "Expected unsupported Transfer-Encoding error"
 
+let test_request_line_limit_applies_before_crlf = fun _ctx ->
+  let req = "GET /very-long-path" in
+  match Http1.Request.parse ~max_request_line:8 req with
+  | Error "Request line too long" -> Result.Ok ()
+  | Error error -> Result.Error ("Expected request line too long error, got " ^ error)
+  | Need_more -> Result.Error "Expected request line too long error, got Need_more"
+  | Done _ -> Result.Error "Expected request line too long error"
+
+let test_header_line_limit_applies_before_crlf = fun _ctx ->
+  let req = "GET / HTTP/1.1\r\nX-Long: abcdefghijklmnop" in
+  match Http1.Request.parse ~max_header_length:8 req with
+  | Error "Header too long" -> Result.Ok ()
+  | Error error -> Result.Error ("Expected header too long error, got " ^ error)
+  | Need_more -> Result.Error "Expected header too long error, got Need_more"
+  | Done _ -> Result.Error "Expected header too long error"
+
 let test_request_parse_slice = fun _ctx ->
   let req = "GET /view HTTP/1.1\r\nHost: example.com\r\n\r\n" in
   match expect_request_parse_slice req with
@@ -540,6 +556,8 @@ let tests =
     case
       "request rejects unsupported transfer encoding"
       test_request_rejects_unsupported_transfer_encoding;
+    case "request line limit applies before crlf" test_request_line_limit_applies_before_crlf;
+    case "header line limit applies before crlf" test_header_line_limit_applies_before_crlf;
     case "request_parse_slice" test_request_parse_slice;
     case
       "request rejects missing lf after request line"

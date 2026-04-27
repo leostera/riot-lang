@@ -199,7 +199,11 @@ let take_header_block_terminator = fun cursor ->
 let parse_request_line_owned = fun ?(max_length = 8_192) input ->
   let cursor = SliceCursor.create input in
   match SliceCursor.take_until_char cursor '\r' with
-  | None -> Slice_need_more
+  | None ->
+      if Slice.length input > max_length then
+        Slice_error "Request line too long"
+      else
+        Slice_need_more
   | Some (line, cursor) ->
       if Slice.length line > max_length then
         Slice_error "Request line too long"
@@ -278,7 +282,11 @@ let rec parse_headers_owned = fun
     | Some cursor -> Slice_done (List.reverse acc, cursor)
     | None ->
         match parse_header_line_owned cursor with
-        | Slice_need_more -> Slice_need_more
+        | Slice_need_more ->
+            if Slice.length (SliceCursor.remaining cursor) > max_length then
+              Slice_error "Header too long"
+            else
+              Slice_need_more
         | Slice_error error -> Slice_error error
         | Slice_done { header_name; header_value; next_cursor } ->
             if String.length header_name + String.length header_value > max_length then
