@@ -33,6 +33,10 @@ name = "middleware_conn_tests"
 path = "tests/middleware_conn_tests.ml"
 
 [[bin]]
+name = "middleware_method_override_tests"
+path = "tests/middleware_method_override_tests.ml"
+
+[[bin]]
 name = "middleware_remote_ip_tests"
 path = "tests/middleware_remote_ip_tests.ml"
 

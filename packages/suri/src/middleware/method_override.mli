@@ -107,6 +107,19 @@ open Std
    v}
 *)
 
+(** A method override request was present but could not be applied. *)
+type override_error =
+  | MissingOverrideMethod
+  | MethodNotAllowed of {
+      method_: Net.Http.Method.t;
+      allowed: Net.Http.Method.t list;
+    }
+val override_error_to_string: override_error -> string
+
+val allowed_override_methods: Net.Http.Method.t list
+
+val parse_override_method: string -> (Net.Http.Method.t, override_error) result
+
 (** {1 Middleware} *)
 
 (**
