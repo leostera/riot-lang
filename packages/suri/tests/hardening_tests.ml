@@ -18,6 +18,7 @@ module Response = Suri.Response
 module Connection = Suri.For_testing.Connection
 module Handler = Suri.For_testing.Handler
 module LiveViewSession = Suri.For_testing.LiveViewSession
+module LiveViewProtocol = Suri.For_testing.LiveViewProtocol
 module Channel = Suri.For_testing.Channel
 module Http1 = Suri.For_testing.Http1
 
@@ -643,6 +644,35 @@ let test_liveview_session_token_returns_structured_errors = fun _ctx ->
   | Ok _ -> Error "expected invalid LiveView token format to fail"
   | Error error -> Error (LiveViewSession.decode_error_to_string error)
 
+let test_liveview_protocol_decodes_event_messages = fun _ctx ->
+  let payload =
+    Data.Json.obj
+      [ ("Event", Data.Json.array [ Data.Json.string "handler-1"; Data.Json.string "clicked"; ]); ]
+    |> Data.Json.to_string
+  in
+  match LiveViewProtocol.deserialize_client_msg payload with
+  | Ok (LiveViewProtocol.Event { handler_id; event_data }) ->
+      Test.assert_equal ~expected:"handler-1" ~actual:handler_id;
+      Test.assert_equal ~expected:"clicked" ~actual:event_data;
+      Ok ()
+  | Ok LiveViewProtocol.Mount -> Error "expected LiveView event message"
+  | Error error -> Error (LiveViewProtocol.client_msg_error_to_string error)
+
+let test_liveview_protocol_returns_structured_json_errors = fun _ctx ->
+  match LiveViewProtocol.deserialize_client_msg "{" with
+  | Error (LiveViewProtocol.InvalidJson _) -> Ok ()
+  | Ok _ -> Error "expected invalid LiveView JSON to fail"
+  | Error error -> Error (LiveViewProtocol.client_msg_error_to_string error)
+
+let test_liveview_protocol_returns_structured_message_errors = fun _ctx ->
+  let payload = Data.Json.obj [ ("Unknown", Data.Json.string "message"); ] in
+  match LiveViewProtocol.deserialize_client_msg (Data.Json.to_string payload) with
+  | Error (LiveViewProtocol.UnknownMessageFormat json) ->
+      Test.assert_equal ~expected:(Data.Json.to_string payload) ~actual:(Data.Json.to_string json);
+      Ok ()
+  | Ok _ -> Error "expected unknown LiveView message format to fail"
+  | Error error -> Error (LiveViewProtocol.client_msg_error_to_string error)
+
 module TestLiveViewComponent = struct
   let id = "test-liveview"
 
@@ -1144,6 +1174,13 @@ let tests =
     case
       "liveview session token returns structured errors"
       test_liveview_session_token_returns_structured_errors;
+    case "liveview protocol decodes event messages" test_liveview_protocol_decodes_event_messages;
+    case
+      "liveview protocol returns structured json errors"
+      test_liveview_protocol_returns_structured_json_errors;
+    case
+      "liveview protocol returns structured message errors"
+      test_liveview_protocol_returns_structured_message_errors;
     case "liveview rejects invalid session tokens" test_liveview_rejects_invalid_session_tokens;
     case "csrf requires session middleware" test_csrf_requires_session_middleware;
     case

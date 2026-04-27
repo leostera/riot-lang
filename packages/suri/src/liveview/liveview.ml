@@ -254,7 +254,7 @@ module MountHandler (C: Component) = struct
             send state.component (ComponentEvent { handler_id; event_data });
             Channel.Handler.Continue state
         | Error err ->
-            Log.error ("Failed to deserialize: " ^ err);
+            Log.error ("Failed to deserialize: " ^ Protocol.client_msg_error_to_string err);
             Channel.Handler.Continue state
       )
     | Http.Ws.Frame.Ping -> Channel.Handler.Push ([ Http.Ws.Frame.pong () ], state)

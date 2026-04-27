@@ -93,6 +93,21 @@ module For_testing = struct
     let decode_error_to_string = Suri__Liveview__Session.decode_error_to_string
   end
 
+  module LiveViewProtocol = struct
+    type client_msg = Suri__Liveview__Protocol.client_msg =
+      | Mount
+      | Event of { handler_id: string; event_data: string }
+
+    type client_msg_error = Suri__Liveview__Protocol.client_msg_error =
+      | InvalidJson of Std.Data.Json.error
+      | UnknownMessageFormat of Std.Data.Json.t
+      | UnexpectedDecodeException of exn
+
+    let deserialize_client_msg = Suri__Liveview__Protocol.deserialize_client_msg
+
+    let client_msg_error_to_string = Suri__Liveview__Protocol.client_msg_error_to_string
+  end
+
   module Channel = struct
     type initialization_error = Suri__Channel.Handler.initialization_error = ..
 

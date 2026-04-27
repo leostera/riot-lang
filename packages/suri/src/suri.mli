@@ -535,6 +535,19 @@ module For_testing: sig
     val decode_error_to_string: decode_error -> string
   end
 
+  module LiveViewProtocol: sig
+    type client_msg =
+      | Mount
+      | Event of { handler_id: string; event_data: string }
+    type client_msg_error =
+      | InvalidJson of Data.Json.error
+      | UnknownMessageFormat of Data.Json.t
+      | UnexpectedDecodeException of exn
+    val deserialize_client_msg: string -> (client_msg, client_msg_error) result
+
+    val client_msg_error_to_string: client_msg_error -> string
+  end
+
   module Channel: sig
     type initialization_error = ..
     type error =
