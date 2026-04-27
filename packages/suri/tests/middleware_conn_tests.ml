@@ -103,23 +103,23 @@ let tamper_last_char = fun value ->
 let test_conn_query_params_handle_missing_and_blank_values = fun _ctx ->
   Test.assert_equal
     ~expected:[ ("flag", ""); ("empty", ""); ("name", "John Doe"); ]
-    ~actual:(Conn.For_testing.parse_query_params "flag&empty=&name=John+Doe");
+    ~actual:(Conn.parse_query_params "flag&empty=&name=John+Doe");
   Ok ()
 
 let test_conn_query_params_preserve_repeated_keys = fun _ctx ->
   Test.assert_equal
     ~expected:[ ("tag", "one"); ("tag", "two"); ("tag", "three"); ]
-    ~actual:(Conn.For_testing.parse_query_params "tag=one&tag=two&tag=three");
+    ~actual:(Conn.parse_query_params "tag=one&tag=two&tag=three");
   Ok ()
 
 let test_conn_query_params_decode_percent_and_skip_empty_pairs = fun _ctx ->
   Test.assert_equal
     ~expected:[ ("encoded", "&="); ("bad", "%ZZ"); ("incomplete", "%2"); ]
-    ~actual:(Conn.For_testing.parse_query_params "encoded=%26%3D&&bad=%ZZ&incomplete=%2&");
+    ~actual:(Conn.parse_query_params "encoded=%26%3D&&bad=%ZZ&incomplete=%2&");
   Ok ()
 
 let test_conn_to_response_returns_not_found_when_unsent = fun _ctx ->
-  let response = Conn.to_response (Conn.For_testing.make ()) in
+  let response = Conn.to_response (Suri.Testing.Conn.make ()) in
   Test.assert_equal ~expected:Net.Http.Status.NotFound ~actual:response.status;
   Test.assert_equal ~expected:"Not Found" ~actual:response.body;
   Ok ()

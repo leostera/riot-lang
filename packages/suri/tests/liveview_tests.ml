@@ -184,7 +184,7 @@ module TestLiveViewComponent = struct
 end
 
 let test_liveview_rejects_invalid_session_tokens = fun _ctx ->
-  let conn = Conn.For_testing.make ~uri:"/?session=not-a-token" () in
+  let conn = Suri.Testing.Conn.make ~uri:"/?session=not-a-token" () in
   let (_opts, handler) = Suri.LiveView.mount (module TestLiveViewComponent) conn in
   match Channel.initialize handler with
   | Channel.Error reported -> (

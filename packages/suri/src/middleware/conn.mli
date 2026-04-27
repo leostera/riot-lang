@@ -22,6 +22,18 @@ type t
 val make: Socket_pool.Connection.t -> Web_server.Request.t -> t
 
 (** Create a new connection from a socket connection and parsed request *)
+val of_request:
+  ?peer:peer ->
+  ?params:(string * string) list ->
+  ?body_params:(string * string) list ->
+  Web_server.Request.t ->
+  t
+
+(**
+   Create a connection from an already parsed request without a live socket.
+   This is useful for adapters and test harnesses that execute middleware
+   directly. Calling [socket_conn] on the returned connection remains an error.
+*)
 (** ## Request Access *)
 
 val request: t -> Web_server.Request.t
@@ -41,6 +53,9 @@ val uri: t -> string
 val path: t -> string
 
 (** Get the request path (without query string) *)
+val parse_query_params: string -> (string * string) list
+
+(** Parse an application/x-www-form-urlencoded query string. *)
 val headers: t -> Net.Http.Header.t
 
 (** Get request headers *)
@@ -362,17 +377,3 @@ val assign: string -> assign_value -> t -> unit
 val get_assign: string -> t -> assign_value option
 
 (** Retrieve data stored by [assign]. *)
-module For_testing: sig
-  val parse_query_params: string -> (string * string) list
-
-  val make:
-    ?method_:Net.Http.Method.t ->
-    ?uri:string ->
-    ?headers:(string * string) list ->
-    ?body:string ->
-    ?peer:peer ->
-    ?params:(string * string) list ->
-    ?body_params:(string * string) list ->
-    unit ->
-    t
-end

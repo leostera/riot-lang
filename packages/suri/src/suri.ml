@@ -2,6 +2,7 @@ module Config = Config
 module Middleware = Middleware
 module Component = Component
 module LiveView = Liveview
+module Testing = Testing
 
 (* User-facing modules *)
 

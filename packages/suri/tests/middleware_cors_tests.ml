@@ -145,7 +145,7 @@ let test_cors_preflight_allows_configured_headers = fun _ctx ->
 
 let test_cors_preflight_returns_no_content = fun _ctx ->
   let conn =
-    Conn.For_testing.make
+    Suri.Testing.Conn.make
       ~method_:Net.Http.Method.Options
       ~headers:[
         ("origin", "https://example.com");

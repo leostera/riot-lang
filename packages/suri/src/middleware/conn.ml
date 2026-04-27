@@ -28,16 +28,14 @@ type t = {
   assigns: (string, assign_value) HashMap.t;
 }
 
-let make = fun socket_conn req ->
-  let peer_addr = Socket_pool.Connection.peer socket_conn in
-  let peer = { ip = Net.Addr.ip peer_addr; port = Net.Addr.port peer_addr } in
+let make_from_request = fun ?socket_conn ~req ~peer ?(params = []) ?(body_params = []) () ->
   {
-    socket_conn = Some socket_conn;
+    socket_conn;
     req;
     peer;
     method_override = None;
-    params = [];
-    body_params = [];
+    params;
+    body_params;
     resp_status = Ok;
     resp_headers = [];
     resp_body = "";
@@ -46,6 +44,18 @@ let make = fun socket_conn req ->
     upgrade = None;
     assigns = HashMap.create ();
   }
+
+let make = fun socket_conn req ->
+  let peer_addr = Socket_pool.Connection.peer socket_conn in
+  let peer = { ip = Net.Addr.ip peer_addr; port = Net.Addr.port peer_addr } in
+  make_from_request ~socket_conn ~req ~peer ()
+
+let of_request = fun
+  ?(peer = {ip = "127.0.0.1"; port = 0})
+  ?(params = [])
+  ?(body_params = [])
+  req ->
+  make_from_request ~req ~peer ~params ~body_params ()
 
 let request = fun t -> t.req
 
@@ -190,50 +200,3 @@ let assign = fun key value t ->
   ()
 
 let get_assign = fun key t -> HashMap.get t.assigns ~key
-
-module For_testing = struct
-  let parse_query_params = parse_query_params
-
-  let make = fun
-    ?(method_ = Net.Http.Method.Get)
-    ?(uri = "/")
-    ?(headers = [])
-    ?(body = "")
-    ?(peer = {ip = "127.0.0.1"; port = 0})
-    ?(params = [])
-    ?(body_params = [])
-    () ->
-    let uri =
-      Net.Uri.of_string uri
-      |> Result.expect ~msg:("invalid testing URI: " ^ uri)
-    in
-    let http_request =
-      Net.Http.Request.create method_ uri
-      |> fun request ->
-        List.fold_left
-          headers
-          ~init:request
-          ~fn:(fun request ((name, value)) ->
-            Net.Http.Request.with_header request name value)
-        |> fun request ->
-          if String.equal body "" then
-            request
-          else
-            Net.Http.Request.with_body request body
-    in
-    {
-      socket_conn = None;
-      req = Web_server.Request.of_http ~body http_request;
-      peer;
-      method_override = None;
-      params;
-      body_params;
-      resp_status = Ok;
-      resp_headers = [];
-      resp_body = "";
-      halted = false;
-      sent = false;
-      upgrade = None;
-      assigns = HashMap.create ();
-    }
-end

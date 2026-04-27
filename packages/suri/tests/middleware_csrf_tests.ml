@@ -139,7 +139,7 @@ let test_csrf_secure_equal_checks_full_token = fun _ctx ->
 
 let test_csrf_requires_session_middleware = fun _ctx ->
   let conn =
-    Conn.For_testing.make
+    Suri.Testing.Conn.make
       ~method_:Net.Http.Method.Post
       ~body_params:[ ("_csrf_token", Csrf.For_testing.generate_token ()); ]
       ()
@@ -170,7 +170,7 @@ let test_csrf_result_apis_return_structured_errors = fun _ctx ->
     | Ok token -> Test.assert_equal ~expected:"not-a-raw-token" ~actual:token
     | Error error -> Test.assert_false (String.equal "" (Csrf.For_testing.error_to_string error))
   );
-  let conn = Conn.For_testing.make () in
+  let conn = Suri.Testing.Conn.make () in
   (
     match Csrf.For_testing.get_token_result conn with
     | Error Csrf.For_testing.MissingSession -> ()

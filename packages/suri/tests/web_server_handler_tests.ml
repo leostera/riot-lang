@@ -105,7 +105,7 @@ let test_handler_recovers_from_middleware_exceptions = fun _ctx ->
     fun ~conn:_ ~next:_ -> raise (Failure "boom");
   ]
   in
-  match Handler.run_pipeline_response app (Conn.For_testing.make ()) with
+  match Handler.run_pipeline_response app (Suri.Testing.Conn.make ()) with
   | Some response ->
       Test.assert_equal ~expected:Net.Http.Status.InternalServerError ~actual:response.status;
       Test.assert_equal ~expected:"Internal Server Error" ~actual:response.body;
@@ -117,7 +117,7 @@ let test_handler_returns_not_found_when_pipeline_does_not_send = fun _ctx ->
     fun ~conn ~next -> next conn;
   ]
   in
-  match Handler.run_pipeline_response app (Conn.For_testing.make ()) with
+  match Handler.run_pipeline_response app (Suri.Testing.Conn.make ()) with
   | Some response ->
       Test.assert_equal ~expected:Net.Http.Status.NotFound ~actual:response.status;
       Test.assert_equal ~expected:"Not Found" ~actual:response.body;

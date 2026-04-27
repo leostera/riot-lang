@@ -101,7 +101,7 @@ let tamper_last_char = fun value ->
   prefix ^ replacement
 
 let test_session_middleware_installs_session = fun _ctx ->
-  let conn = Conn.For_testing.make () in
+  let conn = Suri.Testing.Conn.make () in
   let found_session = ref false in
   let middleware = Session.middleware ~secret:"0123456789abcdef0123456789abcdef" () in
   let _conn' =

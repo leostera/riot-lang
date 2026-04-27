@@ -504,6 +504,14 @@ module LiveView = Liveview
 
    See {!LiveView} for complete documentation.
 *)
+module Testing = Testing
+
+(**
+   Helpers for exercising real Suri applications and middleware in tests.
+
+   See {!Testing} for request builders, app runners, middleware helpers, and
+   response expectations.
+*)
 module For_testing: sig
   module Connection: sig
     type send_file_range_error = { off: int; len: int; size: int }
