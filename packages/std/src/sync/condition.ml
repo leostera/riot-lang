@@ -1,7 +1,7 @@
 open Kernel.Prelude
 
 module Runtime_pid = Runtime.Pid
-module Waiters = Collections.Queue
+module Waiters = Kernel.Queue
 
 type t = {
   pid: Runtime_pid.t;

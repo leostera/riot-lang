@@ -3,7 +3,7 @@ open Kernel
 module Runtime_atomic = Kernel.Atomic
 module Runtime_actor = Runtime.Actor
 module Runtime_pid = Runtime.Pid
-module Waiters = Collections.Queue
+module Waiters = Kernel.Queue
 
 type t = {
   pid: Runtime_pid.t;

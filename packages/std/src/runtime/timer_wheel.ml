@@ -1,5 +1,4 @@
 open Kernel
-open Collections
 
 module Cell = struct
   type 'a t = { mutable value: 'a }
@@ -34,7 +33,7 @@ type t = {
   slot_duration: int64;
   mutable current_time: int64;
   mutable current_slot: int;
-  timers_by_id: (Timer_id.t, Timer.t) HashMap.t;
+  timers_by_id: (Timer_id.t, Timer.t) Runtime_hashmap.t;
 }
 
 let get_slot = fun wheel ~at -> Array.get_unchecked wheel.slots ~at
@@ -60,7 +59,7 @@ let create = fun ~config ->
     slot_duration;
     current_time = now;
     current_slot = 0;
-    timers_by_id = HashMap.create ();
+    timers_by_id = Runtime_hashmap.create ();
   }
 
 let calculate_slot = fun t expires_at ->
@@ -82,7 +81,7 @@ let calculate_slot = fun t expires_at ->
     None
 
 let schedule_timer = fun t timer ->
-  let _ = HashMap.insert t.timers_by_id ~key:timer.Timer.id ~value:timer in
+  let _ = Runtime_hashmap.insert t.timers_by_id ~key:timer.Timer.id ~value:timer in
   match calculate_slot t timer.Timer.expires_at with
   | Some slot -> set_slot t ~at:slot ~value:(timer :: get_slot t ~at:slot)
   | None -> t.overflow := timer :: !(t.overflow)
@@ -97,10 +96,10 @@ let reschedule_timer = fun t ~now timer ->
   schedule_timer t timer
 
 let cancel_timer = fun t timer_id ->
-  match HashMap.get t.timers_by_id ~key:timer_id with
+  match Runtime_hashmap.get t.timers_by_id ~key:timer_id with
   | Some timer ->
       Timer.cancel timer;
-      let _ = HashMap.remove t.timers_by_id ~key:timer_id in
+      let _ = Runtime_hashmap.remove t.timers_by_id ~key:timer_id in
       ()
   | None -> ()
 
@@ -127,11 +126,11 @@ let tick = fun t ~now ->
         timers
         ~fn:(fun timer ->
           if Timer.is_cancelled timer then
-            let _ = HashMap.remove t.timers_by_id ~key:timer.Timer.id in
+            let _ = Runtime_hashmap.remove t.timers_by_id ~key:timer.Timer.id in
             ()
           else if Timer.should_fire timer ~now then (
             expired := timer :: !expired;
-            let _ = HashMap.remove t.timers_by_id ~key:timer.Timer.id in
+            let _ = Runtime_hashmap.remove t.timers_by_id ~key:timer.Timer.id in
             ()
           ) else
             (* Timer not yet expired - re-insert *)
@@ -145,11 +144,11 @@ let tick = fun t ~now ->
     !(t.overflow)
     ~fn:(fun timer ->
       if Timer.is_cancelled timer then
-        let _ = HashMap.remove t.timers_by_id ~key:timer.Timer.id in
+        let _ = Runtime_hashmap.remove t.timers_by_id ~key:timer.Timer.id in
         ()
       else if Timer.should_fire timer ~now then (
         expired := timer :: !expired;
-        let _ = HashMap.remove t.timers_by_id ~key:timer.Timer.id in
+        let _ = Runtime_hashmap.remove t.timers_by_id ~key:timer.Timer.id in
         ()
       ) else
         match calculate_slot t timer.Timer.expires_at with
@@ -163,7 +162,7 @@ let tick = fun t ~now ->
 let next_expiration = fun t ~now ->
   let _unused = now in
   let min_expiration = Cell.create None in
-  HashMap.for_each
+  Runtime_hashmap.for_each
     t.timers_by_id
     ~fn:(fun _id timer ->
       if not (Timer.is_cancelled timer) then
@@ -179,4 +178,4 @@ let next_expiration = fun t ~now ->
               min_expiration := Some timer.Timer.expires_at);
   !min_expiration
 
-let size = fun t -> HashMap.length t.timers_by_id
+let size = fun t -> Runtime_hashmap.length t.timers_by_id

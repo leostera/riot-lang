@@ -1,9 +1,8 @@
-open Collections
-
 module Runtime_pid = Pid
 module Runtime_process = Process
 module Runtime_scheduler_id = Scheduler_id
 module Runtime_timer = Timer
+module Runtime_queue = Kernel.Queue
 module Runtime_mutex = Kernel.Sync.Mutex
 module Runtime_condition = Kernel.Sync.Condition
 module Runtime_atomic = Kernel.Sync.Atomic
@@ -44,7 +43,7 @@ type process_slot = {
 
 type worker = {
   id: Runtime_scheduler_id.t;
-  queue: process_slot Queue.t;
+  queue: process_slot Runtime_queue.t;
   lock: Runtime_mutex.t;
   cond: Runtime_condition.t;
 }
@@ -74,7 +73,7 @@ type reactor_command =
 
 type process_shard = {
   lock: Runtime_mutex.t;
-  processes: (Runtime_pid.t, process_slot) HashMap.t;
+  processes: (Runtime_pid.t, process_slot) Runtime_hashmap.t;
 }
 
 type process_registry = {
@@ -96,7 +95,7 @@ type t = {
   processes: process_registry;
   counters: runtime_counters;
   relations_lock: Runtime_mutex.t;
-  reactor_commands: reactor_command Queue.t;
+  reactor_commands: reactor_command Runtime_queue.t;
   reactor_lock: Runtime_mutex.t;
   io_poll: Kernel.Async.Poll.t;
   timer_wheel: Timer_wheel.t;

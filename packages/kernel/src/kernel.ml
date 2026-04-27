@@ -30,6 +30,7 @@ module Order = Order
 module Path = Path
 module Process = Process
 module Ptr = Ptr
+module Queue = Queue
 module Random = Random
 module Regex = Regex
 module Result = Result

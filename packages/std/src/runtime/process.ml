@@ -1,5 +1,4 @@
 open Kernel
-open Collections
 
 module Runtime_mutex = Kernel.Sync.Mutex
 module Runtime_atomic = Kernel.Sync.Atomic
@@ -432,4 +431,4 @@ let is_linked = fun proc pid -> with_lock proc (fun () -> List.contains proc.lin
 let is_monitoring = fun proc pid ->
   with_lock
     proc
-    (fun () -> List.any proc.monitors ~fn:(fun (_, monitored_pid) -> Pid.equal pid monitored_pid))
+    (fun () -> List.exists proc.monitors ~fn:(fun (_, monitored_pid) -> Pid.equal pid monitored_pid))

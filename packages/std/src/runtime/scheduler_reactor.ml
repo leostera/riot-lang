@@ -1,5 +1,4 @@
 open Kernel
-open Collections
 open Scheduler_types
 
 module Runtime_atomic = Kernel.Sync.Atomic

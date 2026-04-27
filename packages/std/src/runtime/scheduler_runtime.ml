@@ -1,4 +1,3 @@
-open Collections
 open Scheduler_types
 
 type deps = {
@@ -20,14 +19,15 @@ let run = fun deps ~config ~main ->
   let _ = deps.spawn_on_worker t ~worker_id:Scheduler_id.zero main in
   let reactor_domain = Kernel.Thread.spawn (fun () -> deps.reactor_loop t) in
   let worker_domains =
-    Array.init
-      ~count:(Kernel.Int.sub (Array.length t.workers) 1)
+    Kernel.Array.init
+      ~count:(Kernel.Int.sub (Kernel.Array.length t.workers) 1)
       ~fn:(fun idx ->
-        let worker = Array.get_unchecked t.workers ~at:(Kernel.Int.add idx 1) in
-        Kernel.Thread.spawn (fun () -> deps.worker_loop t worker))
+        let worker = Kernel.Array.get_unchecked t.workers ~at:(Kernel.Int.add idx 1) in
+        Kernel.Thread.spawn (fun () ->
+          deps.worker_loop t worker))
   in
-  deps.worker_loop t (Array.get_unchecked t.workers ~at:0);
-  Array.for_each worker_domains ~fn:Kernel.Thread.join;
+  deps.worker_loop t (Kernel.Array.get_unchecked t.workers ~at:0);
+  Kernel.Array.for_each worker_domains ~fn:Kernel.Thread.join;
   Kernel.Thread.join reactor_domain;
   deps.join_blocking_lanes t;
   Kernel.Sync.Atomic.get t.status

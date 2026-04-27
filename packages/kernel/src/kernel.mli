@@ -43,6 +43,8 @@ module Bytes = Bytes
 
 module Ptr = Ptr
 
+module Queue = Queue
+
 module Random = Random
 
 module Array = Array

@@ -7,7 +7,6 @@ module Runtime_mutex = Sync.Mutex
 module Runtime_condition = Sync.Condition
 
 open Kernel
-open Collections
 open Sync
 open Scheduler_types
 
@@ -180,7 +179,7 @@ let create_process_registry = fun worker_count ->
       ~count:shard_count
       ~fn:(fun _ -> {
         lock = Runtime_mutex.create ();
-        processes = HashMap.with_capacity ~size:64;
+        processes = Runtime_hashmap.with_capacity ~size:64;
       })
   in
   { shards; size = Atomic.make 0 }
@@ -431,7 +430,7 @@ let get_process_slot = fun t pid ->
   with_process_shard
     t.processes
     pid
-    (fun shard -> HashMap.get shard.processes ~key:pid)
+    (fun shard -> Runtime_hashmap.get shard.processes ~key:pid)
 
 let get_process = fun t pid ->
   match get_process_slot t pid with
@@ -444,7 +443,7 @@ let add_process_slot = fun t slot ->
     t.processes
     pid
     (fun shard ->
-      let replaced = HashMap.insert shard.processes ~key:pid ~value:slot in
+      let replaced = Runtime_hashmap.insert shard.processes ~key:pid ~value:slot in
       if Option.is_none replaced then
         (
           let _ = Atomic.fetch_and_add t.processes.size 1 in
@@ -456,7 +455,7 @@ let remove_process_slot = fun t pid ->
     t.processes
     pid
     (fun shard ->
-      let removed = HashMap.remove shard.processes ~key:pid in
+      let removed = Runtime_hashmap.remove shard.processes ~key:pid in
       if Option.is_some removed then
         (
           let _ = Atomic.fetch_and_add t.processes.size (-1) in

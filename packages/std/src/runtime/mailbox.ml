@@ -1,5 +1,4 @@
 open Kernel
-open Collections
 
 module Runtime_mutex = Kernel.Sync.Mutex
 module Runtime_atomic = Kernel.Sync.Atomic

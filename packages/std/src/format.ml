@@ -23,9 +23,4 @@ let to_string = fun value ->
   | Int value -> Kernel.Int.to_string value
   | Bytes value -> Kernel.Bytes.to_string value
 
-let format = fun values ->
-  let parts = Collections.Vector.with_capacity ~size:(Kernel.List.length values) in
-  Kernel.List.for_each
-    values
-    ~fn:(fun value -> Collections.Vector.push parts ~value:(to_string value));
-  Kernel.String.concat "" (Collections.Array.to_list (Collections.Vector.to_array parts))
+let format = fun values -> Kernel.String.concat "" (Kernel.List.map values ~fn:to_string)
