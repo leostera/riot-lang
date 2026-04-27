@@ -1130,13 +1130,14 @@ module ExceptionDeclaration: sig
   type view =
     | Bare
     | Alias of {
-        equals_token: Token.t option;
-        path: path option;
+        equals_token: Token.t;
+        path: path;
       }
     | Payload of {
-        of_token: Token.t option;
-        payload: payload option;
+        of_token: Token.t;
+        payload: payload;
       }
+    | Unknown of Node.t
   val cast: Node.t -> t option
 
   val keyword_token: t -> Token.t option

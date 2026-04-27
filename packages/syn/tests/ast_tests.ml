@@ -1322,9 +1322,10 @@ let test_type_extension_and_exception_views = fun _ctx ->
         Test.assert_equal ~expected:"Parse_error" ~actual:(Ast.Token.text name);
         (
           match Ast.ExceptionDeclaration.view decl with
-          | Ast.ExceptionDeclaration.Payload { of_token = Some of_token; payload = Some (
-            TypeExpr payload
-          ) } ->
+          | Ast.ExceptionDeclaration.Payload {
+            of_token;
+            payload = Ast.ExceptionDeclaration.TypeExpr payload;
+          } ->
               Test.assert_equal ~expected:"of" ~actual:(Ast.Token.text of_token);
               assert_type_path_last_ident payload "string";
               Ok ()
@@ -1346,7 +1347,7 @@ let test_type_extension_and_exception_views = fun _ctx ->
       Test.assert_equal ~expected:"Nested" ~actual:(Ast.Token.text name);
       (
         match Ast.ExceptionDeclaration.view decl with
-        | Ast.ExceptionDeclaration.Alias { equals_token = Some equals_token; path = Some path } ->
+        | Ast.ExceptionDeclaration.Alias { equals_token; path } ->
             Test.assert_equal ~expected:"=" ~actual:(Ast.Token.text equals_token);
             assert_last_ident_text path "Error";
             Ok ()
@@ -1376,9 +1377,10 @@ let test_exception_after_function_binding_views = fun _ctx ->
         Test.assert_equal ~expected:"Parse_exception" ~actual:(Ast.Token.text name);
         (
           match Ast.ExceptionDeclaration.view decl with
-          | Ast.ExceptionDeclaration.Payload { of_token = Some of_token; payload = Some (
-            TypeExpr payload
-          ) } ->
+          | Ast.ExceptionDeclaration.Payload {
+            of_token;
+            payload = Ast.ExceptionDeclaration.TypeExpr payload;
+          } ->
               Test.assert_equal ~expected:"of" ~actual:(Ast.Token.text of_token);
               assert_type_path_last_ident payload "string";
               Ok ()

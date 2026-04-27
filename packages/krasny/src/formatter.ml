@@ -7961,30 +7961,17 @@ and render_exception_payload = fun state payload ->
 and render_exception_rhs = fun state rhs ->
   match rhs with
   | Ast.ExceptionDeclaration.Bare -> ()
-  | Ast.ExceptionDeclaration.Alias { equals_token = Some equals_token; path = Some path } ->
+  | Ast.ExceptionDeclaration.Alias { equals_token; path } ->
       emit_space state;
       emit_token state equals_token;
       emit_space state;
       render_path state path
-  | Ast.ExceptionDeclaration.Alias { equals_token = None; path = Some path } ->
-      emit_space state;
-      render_path state path
-  | Ast.ExceptionDeclaration.Alias { equals_token = Some equals_token; path = None } ->
-      emit_space state;
-      emit_token state equals_token
-  | Ast.ExceptionDeclaration.Alias { equals_token = None; path = None } -> ()
-  | Ast.ExceptionDeclaration.Payload { of_token = Some of_token; payload = Some payload } ->
+  | Ast.ExceptionDeclaration.Payload { of_token; payload } ->
       emit_space state;
       emit_token state of_token;
       emit_space state;
       render_exception_payload state payload
-  | Ast.ExceptionDeclaration.Payload { of_token = None; payload = Some payload } ->
-      emit_space state;
-      render_exception_payload state payload
-  | Ast.ExceptionDeclaration.Payload { of_token = Some of_token; payload = None } ->
-      emit_space state;
-      emit_token state of_token
-  | Ast.ExceptionDeclaration.Payload { of_token = None; payload = None } -> ()
+  | Ast.ExceptionDeclaration.Unknown node -> unsupported_node "unsupported exception declaration" node
 
 and render_exception_declaration = fun state decl ->
   (

@@ -547,16 +547,14 @@ let lower_exception_declaration = fun state declaration ->
       let rhs =
         match Ast.ExceptionDeclaration.view declaration with
         | Ast.ExceptionDeclaration.Bare -> None
-        | Ast.ExceptionDeclaration.Alias { path = Some path; _ } ->
+        | Ast.ExceptionDeclaration.Alias { path; _ } ->
             Some (Semantic_tree.ExceptionAlias (path_of_path path))
-        | Ast.ExceptionDeclaration.Alias _ -> None
-        | Ast.ExceptionDeclaration.Payload { payload = Some (
-          Ast.ExceptionDeclaration.TypeExpr type_expr
-        ); _ } -> Some (Semantic_tree.ExceptionPayload (lower_type_expr state type_expr))
-        | Ast.ExceptionDeclaration.Payload { payload = Some (Ast.ExceptionDeclaration.Record record); _ } ->
+        | Ast.ExceptionDeclaration.Payload { payload = Ast.ExceptionDeclaration.TypeExpr type_expr; _ } ->
+            Some (Semantic_tree.ExceptionPayload (lower_type_expr state type_expr))
+        | Ast.ExceptionDeclaration.Payload { payload = Ast.ExceptionDeclaration.Record record; _ } ->
             push_unsupported_type state record "record";
             Some (Semantic_tree.ExceptionPayload (Semantic_tree.TypeUnsupported "record"))
-        | Ast.ExceptionDeclaration.Payload { payload = None; _ } -> None
+        | Ast.ExceptionDeclaration.Unknown _ -> None
       in
       push_item
         state

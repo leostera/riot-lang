@@ -4915,13 +4915,14 @@ module ExceptionDeclaration = struct
   type view =
     | Bare
     | Alias of {
-        equals_token: token option;
-        path: path option;
+        equals_token: token;
+        path: path;
       }
     | Payload of {
-        of_token: token option;
-        payload: payload option;
+        of_token: token;
+        payload: payload;
       }
+    | Unknown of node
 
   let cast = fun (node: node) ->
     if node_kind_is node Syntax_kind.EXCEPTION_DECL then
@@ -4954,7 +4955,11 @@ module ExceptionDeclaration = struct
           | Some path -> Path.cast path
           | None -> None
         in
-        Alias { equals_token = Node.first_child_token rhs ~kind:Syntax_kind.EQ; path }
+        (
+          match (Node.first_child_token rhs ~kind:Syntax_kind.EQ, path) with
+          | (Some equals_token, Some path) -> Alias { equals_token; path }
+          | _ -> Unknown rhs
+        )
     | Some rhs when node_kind_is rhs Syntax_kind.EXCEPTION_PAYLOAD ->
         let payload =
           match first_child_node_matching rhs ~matches:is_record_type_kind with
@@ -4965,7 +4970,11 @@ module ExceptionDeclaration = struct
               | None -> None
             )
         in
-        Payload { of_token = Node.first_child_token rhs ~kind:Syntax_kind.OF_KW; payload }
+        (
+          match (Node.first_child_token rhs ~kind:Syntax_kind.OF_KW, payload) with
+          | (Some of_token, Some payload) -> Payload { of_token; payload }
+          | _ -> Unknown rhs
+        )
     | _ -> Bare
 end
 
