@@ -29,6 +29,7 @@ type role =
   | Match_case_body
   | If_condition
   | If_branch
+  | Function_body of { force_apply_break: bool }
   | Apply_callee
   | Apply_arg of { index: int; broken_parent: bool }
   | Record_field_value

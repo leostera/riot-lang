@@ -47,7 +47,6 @@ type state = {
   mutable suppress_leading_token: int option;
   mutable last_leading_comment_kind: leading_comment_kind option;
   mutable suppress_list_item_leading_comments: bool;
-  mutable force_apply_break: bool;
   mutable delimited_expr_depth: int;
 }
 
@@ -885,12 +884,6 @@ let with_suppressed_list_item_leading_comments = fun state fn ->
   state.suppress_list_item_leading_comments <- true;
   fn ();
   state.suppress_list_item_leading_comments <- previous
-
-let with_forced_apply_break = fun state fn ->
-  let previous = state.force_apply_break in
-  state.force_apply_break <- true;
-  fn ();
-  state.force_apply_break <- previous
 
 let emit_token_leading_comments_as_lines = fun state token ->
   match state.suppress_leading_token with
@@ -5699,7 +5692,7 @@ let rec render_expr = fun ?(role = Layout.Top_expr) state expr ->
       if prefix_operator_is_negative last_operator && expr_is_literal operand then
         emit_text state ")"
   | Prefix _ -> unsupported_node "incomplete prefix expression" expr
-  | Apply _ -> render_apply_expr state expr
+  | Apply _ -> render_apply_expr ~role state expr
   | LabeledArg { label = Some label; value = Some value } ->
       emit_text state "~";
       emit_token state label;
@@ -6409,8 +6402,11 @@ and apply_expr_should_break_from_column = fun ?(suffix_width = 0) state expr arg
     | None -> false
 
 and apply_expr_should_break = fun state expr args ->
-  state.force_apply_break
-  || apply_expr_should_break_from_column state expr args ~column:state.column
+  apply_expr_should_break_from_column
+    state
+    expr
+    args
+    ~column:state.column
 
 and application_layout_facts = fun ~force_parent_break expr callee args ->
   let arg_count = Vector.length args in
@@ -6435,10 +6431,12 @@ and application_layout_facts = fun ~force_parent_break expr callee args ->
     ~has_heavy_nested_apply:(apply_args_have_heavy_nested_apply args)
     ()
 
-and render_apply_expr = fun state expr ->
-  let force_current_apply_break = state.force_apply_break in
-  if force_current_apply_break then
-    state.force_apply_break <- false;
+and render_apply_expr = fun ?(role = Layout.Top_expr) state expr ->
+  let force_current_apply_break =
+    match role with
+    | Layout.Function_body { force_apply_break = true } -> true
+    | _ -> false
+  in
   let (callee, args) = collect_apply expr in
   let arg_count = Vector.length args in
   if same_ast_node expr callee then
@@ -6588,15 +6586,18 @@ and render_fun_expr = fun ?(role = Layout.Top_expr) state expr body ->
     | _ -> false
   in
   let render_body ?(force_apply_break = false) () =
+    let body_role =
+      if force_apply_break then
+        Layout.Function_body { force_apply_break = true }
+      else
+        Layout.Top_expr
+    in
     let render () =
       match ExprView.view body with
-      | Tuple -> render_expr_atom state body
-      | _ -> render_expr state body
+      | Tuple -> render_expr_atom ~role:body_role state body
+      | _ -> render_expr ~role:body_role state body
     in
-    if force_apply_break then
-      with_forced_apply_break state render
-    else
-      render ()
+    render ()
   in
   emit_text state "fun";
   if break_params then (
@@ -10007,7 +10008,6 @@ let write = fun ~writer ?(width = 100) ?(buffer_size = 4_096) source_file ->
     suppress_leading_token = None;
     last_leading_comment_kind = None;
     suppress_list_item_leading_comments = false;
-    force_apply_break = false;
     delimited_expr_depth = 0;
   }
   in
