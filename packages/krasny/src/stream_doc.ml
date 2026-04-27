@@ -7,6 +7,8 @@ type mode =
   | Flat
   | Break
 
+type flat_measure = { flat_width: int; stops_at_line: bool }
+
 type writer = {
   buffer: IO.Buffer.t;
   sink: sink option;
@@ -46,7 +48,7 @@ and slice = {
 }
 
 and node = {
-  flat_measure: Doc.flat_measure option;
+  flat_measure: flat_measure option;
   multiline: bool;
   shape: shape;
   emit: writer -> unit;
@@ -283,34 +285,34 @@ let flat_measure_of_text = fun value ->
   if String.contains value "\n" then
     None
   else
-    Some { Doc.flat_width = String.length value; stops_at_line = false }
+    Some { flat_width = String.length value; stops_at_line = false }
 
 let flat_measure_of_slice = fun ~has_newline value ->
   if has_newline then
     None
   else
-    Some { Doc.flat_width = Slice.length value; stops_at_line = false }
+    Some { flat_width = Slice.length value; stops_at_line = false }
 
 let add_flat_measure = fun left right -> {
-  Doc.flat_width = Int.add left.Doc.flat_width right.Doc.flat_width;
-  stops_at_line = right.Doc.stops_at_line;
+  flat_width = Int.add left.flat_width right.flat_width;
+  stops_at_line = right.stops_at_line;
 }
 
 let flat_measure = function
-  | Empty -> Some { Doc.flat_width = 0; stops_at_line = false }
+  | Empty -> Some { flat_width = 0; stops_at_line = false }
   | Node node -> node.flat_measure
 
 let flat_measure_vector = fun docs ->
   let length = Vector.length docs in
   let rec loop index measure =
-    if measure.Doc.stops_at_line || Int.(index >= length) then
+    if measure.stops_at_line || Int.(index >= length) then
       Some measure
     else
       match flat_measure (Vector.get_unchecked docs ~at:index) with
       | None -> None
       | Some next -> loop (Int.add index 1) (add_flat_measure measure next)
   in
-  loop 0 { Doc.flat_width = 0; stops_at_line = false }
+  loop 0 { flat_width = 0; stops_at_line = false }
 
 let is_multiline = function
   | Empty -> false
@@ -369,7 +371,7 @@ let slice = fun ~has_newline value ->
 
 let space =
   node
-    ~flat_measure:(Some { Doc.flat_width = 1; stops_at_line = false })
+    ~flat_measure:(Some { flat_width = 1; stops_at_line = false })
     ~multiline:false
     ~shape:(Space_shape 1)
     ~emit:(fun writer ->
@@ -387,7 +389,7 @@ let spaces = fun count ->
     space
   else
     node
-      ~flat_measure:(Some { Doc.flat_width = count; stops_at_line = false })
+      ~flat_measure:(Some { flat_width = count; stops_at_line = false })
       ~multiline:false
       ~shape:(Space_shape count)
       ~emit:(fun writer ->
@@ -400,14 +402,14 @@ let spaces = fun count ->
 
 let line =
   node
-    ~flat_measure:(Some { Doc.flat_width = 0; stops_at_line = true })
+    ~flat_measure:(Some { flat_width = 0; stops_at_line = true })
     ~multiline:true
     ~shape:Line_shape
     ~emit:emit_line
 
 let break = fun ?(flat = " ") () ->
   node
-    ~flat_measure:(Some { Doc.flat_width = String.length flat; stops_at_line = false })
+    ~flat_measure:(Some { flat_width = String.length flat; stops_at_line = false })
     ~multiline:false
     ~shape:(Break_shape flat)
     ~emit:(fun writer ->
@@ -595,7 +597,7 @@ let rec fits = fun ~width remaining ->
 
 let group_mode = fun writer doc flat_measure ->
   match flat_measure with
-  | Some measure when Int.(measure.Doc.flat_width <= writer.width - writer.column) -> Flat
+  | Some measure when Int.(measure.flat_width <= writer.width - writer.column) -> Flat
   | _ when fits ~width:writer.width (writer.width - writer.column) [ (writer.indent, Flat, doc); ] ->
       Flat
   | _ -> Break
