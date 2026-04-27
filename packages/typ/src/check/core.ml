@@ -881,9 +881,9 @@ let rec infer_expression = fun state env ~level expression ->
       in
       unify state ~at:expression then_ty else_ty;
       then_ty
-  | Ast.Expr.Fun { body = Some body } ->
+  | Ast.Expr.Fun { body = Ast.Expr.Body_expr body } ->
       infer_lambda state env ~level (fun_parameters expression) body
-  | Ast.Expr.Fun { body = None } ->
+  | Ast.Expr.Fun { body = Ast.Expr.Body_cases _ } ->
       add_diagnostic state (unsupported_syntax expression "function expression");
       fresh_tyvar state ~level
   | Ast.Expr.Apply { callee; argument } -> (

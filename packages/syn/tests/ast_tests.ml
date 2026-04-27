@@ -444,7 +444,7 @@ let test_poly_variant_tuple_pattern_boundary = fun _ctx ->
   in
   let match_body =
     match Ast.Expr.view body with
-    | Ast.Expr.Fun { body = Some body } -> body
+    | Ast.Expr.Fun { body = Ast.Expr.Body_expr body } -> body
     | _ -> panic "expected function body"
   in
   match Ast.Expr.view match_body with
@@ -785,7 +785,7 @@ let test_poly_labeled_and_signed_views = fun _ctx ->
     |> Result.expect ~msg:"expected function body"
   in
   match Ast.Expr.view function_body with
-  | Ast.Expr.Fun { first_case = Some first_case; _ } -> (
+  | Ast.Expr.Fun { body = Ast.Expr.Body_cases { first_case } } -> (
       let case = Ast.MatchCase.view first_case in
       let pattern =
         case.Ast.MatchCase.pattern
@@ -1879,7 +1879,7 @@ let render = function | (((Some (((item)))))) -> item
     |> Result.expect ~msg:"expected render body"
   in
   match Ast.Expr.view render_body with
-  | Ast.Expr.Fun { first_case = Some first_case; _ } -> (
+  | Ast.Expr.Fun { body = Ast.Expr.Body_cases { first_case } } -> (
       match (Ast.MatchCase.view first_case).pattern with
       | Some pattern -> (
           match Ast.Pattern.view pattern with

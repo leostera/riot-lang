@@ -487,6 +487,12 @@ end
 
 module Expr: sig
   type t = expr
+  type fun_body =
+    | Body_expr of t
+    | Body_cases of {
+        first_case: match_case;
+      }
+
   type view =
     | Unit
     | Let of {
@@ -512,8 +518,7 @@ module Expr: sig
         first_case: match_case;
       }
     | Fun of {
-        body: t option;
-        first_case: match_case option;
+        body: fun_body;
       }
     | Try of {
         body: t;

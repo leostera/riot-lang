@@ -1489,6 +1489,12 @@ end
 
 module Expr: sig
   type t = expr
+  type fun_body =
+    | Body_expr of t
+    | Body_cases of {
+        first_case: match_case;
+      }
+
   type view =
     | Unit
     | Let of {
@@ -1514,8 +1520,7 @@ module Expr: sig
         first_case: match_case;
       }
     | Fun of {
-        body: t option;
-        first_case: match_case option;
+        body: fun_body;
       }
     | Try of {
         body: t;
@@ -1598,6 +1603,12 @@ module Expr: sig
 end = struct
   type t = expr
 
+  type fun_body =
+    | Body_expr of t
+    | Body_cases of {
+        first_case: match_case;
+      }
+
   type view =
     | Unit
     | Let of {
@@ -1623,8 +1634,7 @@ end = struct
         first_case: match_case;
       }
     | Fun of {
-        body: t option;
-        first_case: match_case option;
+        body: fun_body;
       }
     | Try of {
         body: t;
@@ -1855,8 +1865,17 @@ end = struct
           | _ -> Unknown expr
         )
     | Syntax_kind.FUN_EXPR ->
-        Fun { body = normalize_expr_option (nth_expr_child expr 0); first_case = None }
-    | Syntax_kind.FUNCTION_EXPR -> Fun { body = None; first_case = first_match_case_child expr }
+        (
+          match normalize_expr_option (nth_expr_child expr 0) with
+          | Some body -> Fun { body = Body_expr body }
+          | None -> Unknown expr
+        )
+    | Syntax_kind.FUNCTION_EXPR ->
+        (
+          match first_match_case_child expr with
+          | Some first_case -> Fun { body = Body_cases { first_case } }
+          | None -> Unknown expr
+        )
     | Syntax_kind.TRY_EXPR ->
         (
           match (normalize_expr_option (nth_expr_child expr 0), first_match_case_child expr) with
