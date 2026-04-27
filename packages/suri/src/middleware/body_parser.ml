@@ -156,7 +156,3 @@ let make = fun ?(config = default_config ()) () ->
   fun ~conn ~next ->
     let conn = handle config conn in
     next conn
-
-module For_testing = struct
-  let parse_body = parse_body
-end

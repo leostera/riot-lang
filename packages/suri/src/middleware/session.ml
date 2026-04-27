@@ -297,37 +297,6 @@ let from_cookie_value = fun ~cookie_name ~secret cookie_value ->
         )
   | _ -> Error (InvalidCookieFormat { parts = List.length parts })
 
-module For_testing = struct
-  type nonrec secret_error = secret_error =
-    | Missing
-    | TooShort of int
-
-  type nonrec decode_error = decode_error =
-    | InvalidCookieFormat of { parts: int }
-    | InvalidSignature
-    | InvalidPayloadBase64
-    | InvalidJson of Data.Json.error
-    | InvalidSessionData of Data.Json.t
-
-  let create = create
-
-  let validate_secret = validate_secret
-
-  let secret_error_to_string = secret_error_to_string
-
-  let decode_error_to_string = decode_error_to_string
-
-  let sign = sign
-
-  let verify = verify
-
-  let to_cookie_value = to_cookie_value
-
-  let cookie_value_for_plaintext = cookie_value_for_plaintext
-
-  let from_cookie_value = from_cookie_value
-end
-
 (** {1 Middleware} *)
 
 (** Storage key for session in connection *)

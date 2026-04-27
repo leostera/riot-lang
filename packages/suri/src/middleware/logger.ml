@@ -59,7 +59,3 @@ let logger = fun ~conn ~next ->
   else
     Log.info msg;
   conn'
-
-module For_testing = struct
-  let sanitize_path = sanitize_path
-end

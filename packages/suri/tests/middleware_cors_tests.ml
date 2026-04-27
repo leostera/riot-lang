@@ -109,7 +109,7 @@ let test_cors_rejects_wildcard_origin_with_credentials = fun _ctx ->
   | _ -> Error "unexpected CORS config exception"
 
 let test_cors_preflight_rejects_disallowed_method = fun _ctx ->
-  match Cors.For_testing.validate_preflight
+  match Cors.validate_preflight
     ~methods:[ Net.Http.Method.Put; ]
     ~headers:[]
     ~request_method:"delete"
@@ -121,7 +121,7 @@ let test_cors_preflight_rejects_disallowed_method = fun _ctx ->
   | Error error -> Error (Cors.preflight_error_to_string error)
 
 let test_cors_preflight_rejects_disallowed_headers = fun _ctx ->
-  match Cors.For_testing.validate_preflight
+  match Cors.validate_preflight
     ~methods:[ Net.Http.Method.Put; ]
     ~headers:[ "authorization"; ]
     ~request_method:"PUT"
@@ -135,7 +135,7 @@ let test_cors_preflight_rejects_disallowed_headers = fun _ctx ->
   | Error error -> Error (Cors.preflight_error_to_string error)
 
 let test_cors_preflight_allows_configured_headers = fun _ctx ->
-  match Cors.For_testing.validate_preflight
+  match Cors.validate_preflight
     ~methods:[ Net.Http.Method.Put; ]
     ~headers:[ "authorization"; "x-client"; ]
     ~request_method:"put"

@@ -103,17 +103,17 @@ let tamper_last_char = fun value ->
 let test_router_matcher_ignores_empty_path_segments = fun _ctx ->
   Test.assert_equal
     ~expected:(Some [ ("id", "123"); ])
-    ~actual:(Router.For_testing.match_path "/users/:id" "//users/123/");
+    ~actual:(Router.match_path "/users/:id" "//users/123/");
   Ok ()
 
 let test_router_matcher_keeps_root_exact = fun _ctx ->
-  Test.assert_equal ~expected:(Some []) ~actual:(Router.For_testing.match_path "/" "/");
-  Test.assert_equal ~expected:None ~actual:(Router.For_testing.match_path "/" "/assets");
+  Test.assert_equal ~expected:(Some []) ~actual:(Router.match_path "/" "/");
+  Test.assert_equal ~expected:None ~actual:(Router.match_path "/" "/assets");
   Ok ()
 
 let test_router_matcher_rejects_partial_literal_segments = fun _ctx ->
-  Test.assert_equal ~expected:None ~actual:(Router.For_testing.match_path "/assets" "/assets2");
-  Test.assert_equal ~expected:(Some []) ~actual:(Router.For_testing.match_path "/assets" "/assets/");
+  Test.assert_equal ~expected:None ~actual:(Router.match_path "/assets" "/assets2");
+  Test.assert_equal ~expected:(Some []) ~actual:(Router.match_path "/assets" "/assets/");
   Ok ()
 
 let tests =

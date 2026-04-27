@@ -104,36 +104,30 @@ let test_basic_auth_accepts_case_insensitive_scheme = fun _ctx ->
   let encoded = Encoding.Base64.encode "alice:s3cret" in
   Test.assert_equal
     ~expected:(Some ("alice", "s3cret"))
-    ~actual:(Basic_auth.For_testing.decode_credentials ("bAsIc " ^ encoded));
+    ~actual:(Basic_auth.decode_credentials ("bAsIc " ^ encoded));
   Ok ()
 
 let test_basic_auth_ignores_extra_spaces = fun _ctx ->
   let encoded = Encoding.Base64.encode "alice:s3cret" in
   Test.assert_equal
     ~expected:(Some ("alice", "s3cret"))
-    ~actual:(Basic_auth.For_testing.decode_credentials ("  Basic   " ^ encoded ^ "  "));
+    ~actual:(Basic_auth.decode_credentials ("  Basic   " ^ encoded ^ "  "));
   Ok ()
 
 let test_basic_auth_preserves_colons_in_password = fun _ctx ->
   let encoded = Encoding.Base64.encode "alice:s3:cr:et" in
   Test.assert_equal
     ~expected:(Some ("alice", "s3:cr:et"))
-    ~actual:(Basic_auth.For_testing.decode_credentials ("Basic " ^ encoded));
+    ~actual:(Basic_auth.decode_credentials ("Basic " ^ encoded));
   Ok ()
 
 let test_basic_auth_rejects_invalid_credentials = fun _ctx ->
-  Test.assert_equal
-    ~expected:None
-    ~actual:(Basic_auth.For_testing.decode_credentials "Bearer token");
-  Test.assert_equal
-    ~expected:None
-    ~actual:(Basic_auth.For_testing.decode_credentials "Basic not-base64");
+  Test.assert_equal ~expected:None ~actual:(Basic_auth.decode_credentials "Bearer token");
+  Test.assert_equal ~expected:None ~actual:(Basic_auth.decode_credentials "Basic not-base64");
   Ok ()
 
 let test_basic_auth_sanitizes_realm_header_value = fun _ctx ->
-  Test.assert_equal
-    ~expected:"AdminPanel"
-    ~actual:(Basic_auth.For_testing.sanitize_realm "Admin\r\n\"Panel");
+  Test.assert_equal ~expected:"AdminPanel" ~actual:(Basic_auth.sanitize_realm "Admin\r\n\"Panel");
   Ok ()
 
 let tests =

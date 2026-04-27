@@ -113,6 +113,15 @@ open Std
    ]}
 *)
 type t
+type secret_error =
+  | Missing
+  | TooShort of int
+type decode_error =
+  | InvalidCookieFormat of { parts: int }
+  | InvalidSignature
+  | InvalidPayloadBase64
+  | InvalidJson of Data.Json.error
+  | InvalidSessionData of Data.Json.t
 
 (**
    Get session from connection.
@@ -216,31 +225,20 @@ val is_expired: t -> bool
 *)
 val is_modified: t -> bool
 
-module For_testing: sig
-  type secret_error =
-    | Missing
-    | TooShort of int
-  type decode_error =
-    | InvalidCookieFormat of { parts: int }
-    | InvalidSignature
-    | InvalidPayloadBase64
-    | InvalidJson of Data.Json.error
-    | InvalidSessionData of Data.Json.t
-  val create: cookie_name:string -> secret:string -> unit -> t
+val create: cookie_name:string -> secret:string -> unit -> t
 
-  val validate_secret: string -> (unit, secret_error) result
+val validate_secret: string -> (unit, secret_error) result
 
-  val secret_error_to_string: secret_error -> string
+val secret_error_to_string: secret_error -> string
 
-  val decode_error_to_string: decode_error -> string
+val decode_error_to_string: decode_error -> string
 
-  val sign: secret:string -> string -> string
+val sign: secret:string -> string -> string
 
-  val verify: secret:string -> string -> string -> bool
+val verify: secret:string -> string -> string -> bool
 
-  val to_cookie_value: t -> string
+val to_cookie_value: t -> string
 
-  val cookie_value_for_plaintext: secret:string -> string -> string
+val cookie_value_for_plaintext: secret:string -> string -> string
 
-  val from_cookie_value: cookie_name:string -> secret:string -> string -> (t, decode_error) result
-end
+val from_cookie_value: cookie_name:string -> secret:string -> string -> (t, decode_error) result

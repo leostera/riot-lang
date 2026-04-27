@@ -107,34 +107,30 @@ let test_accepts_rejects_invalid_quality = fun _ctx ->
   | Error _ -> Error "unexpected Accept parse error"
 
 let test_accepts_rejects_q_zero_matches = fun _ctx ->
-  match Accepts.For_testing.accept_header_matches
-    ~types:[ "application/json"; ]
-    "application/json;q=0" with
+  match Accepts.accept_header_matches ~types:[ "application/json"; ] "application/json;q=0" with
   | Ok false -> Ok ()
   | Ok true -> Error "expected q=0 Accept entry to be unacceptable"
   | Error _ -> Error "unexpected Accept parse error"
 
 let test_accepts_matches_client_wildcards = fun _ctx ->
-  match Accepts.For_testing.accept_header_matches ~types:[ "application/json"; ] "*/*;q=0.5" with
+  match Accepts.accept_header_matches ~types:[ "application/json"; ] "*/*;q=0.5" with
   | Ok true -> Ok ()
   | Ok false -> Error "expected */* Accept entry to match supported JSON"
   | Error _ -> Error "unexpected Accept parse error"
 
 let test_accepts_only_requires_content_type_for_declared_body = fun _ctx ->
   Test.assert_false
-    (Accepts.For_testing.request_declares_body
-      ~method_:Net.Http.Method.Post
-      ~headers:Net.Http.Header.empty);
+    (Accepts.request_declares_body ~method_:Net.Http.Method.Post ~headers:Net.Http.Header.empty);
   Test.assert_false
-    (Accepts.For_testing.request_declares_body
+    (Accepts.request_declares_body
       ~method_:Net.Http.Method.Post
       ~headers:(Net.Http.Header.of_list [ ("content-length", "0"); ]));
   Test.assert_true
-    (Accepts.For_testing.request_declares_body
+    (Accepts.request_declares_body
       ~method_:Net.Http.Method.Post
       ~headers:(Net.Http.Header.of_list [ ("content-length", "12"); ]));
   Test.assert_true
-    (Accepts.For_testing.request_declares_body
+    (Accepts.request_declares_body
       ~method_:Net.Http.Method.Patch
       ~headers:(Net.Http.Header.of_list [ ("transfer-encoding", "chunked"); ]));
   Ok ()

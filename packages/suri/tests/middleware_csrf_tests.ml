@@ -101,29 +101,27 @@ let tamper_last_char = fun value ->
   prefix ^ replacement
 
 let test_csrf_generates_raw_hex_tokens = fun _ctx ->
-  let token = Csrf.For_testing.generate_token () in
+  let token = Csrf.generate_token () in
   Test.assert_equal ~expected:64 ~actual:(String.length token);
-  Test.assert_true (Csrf.For_testing.is_raw_token token);
+  Test.assert_true (Csrf.is_raw_token token);
   Ok ()
 
 let test_csrf_masking_roundtrips_and_uses_unique_masks = fun _ctx ->
-  let token = Csrf.For_testing.generate_token () in
-  let masked1 = Csrf.For_testing.mask_token token in
-  let masked2 = Csrf.For_testing.mask_token token in
+  let token = Csrf.generate_token () in
+  let masked1 = Csrf.mask_token token in
+  let masked2 = Csrf.mask_token token in
   Test.assert_false (String.equal masked1 masked2);
-  Test.assert_equal ~expected:(Some token) ~actual:(Csrf.For_testing.unmask_token masked1);
-  Test.assert_equal ~expected:(Some token) ~actual:(Csrf.For_testing.unmask_token masked2);
+  Test.assert_equal ~expected:(Some token) ~actual:(Csrf.unmask_token masked1);
+  Test.assert_equal ~expected:(Some token) ~actual:(Csrf.unmask_token masked2);
   Ok ()
 
 let test_csrf_rejects_malformed_masked_tokens = fun _ctx ->
-  Test.assert_equal ~expected:None ~actual:(Csrf.For_testing.unmask_token "not-base64");
-  Test.assert_equal
-    ~expected:None
-    ~actual:(Csrf.For_testing.unmask_token (Encoding.Base64.encode "too-short"));
+  Test.assert_equal ~expected:None ~actual:(Csrf.unmask_token "not-base64");
+  Test.assert_equal ~expected:None ~actual:(Csrf.unmask_token (Encoding.Base64.encode "too-short"));
   Ok ()
 
 let test_csrf_secure_equal_checks_full_token = fun _ctx ->
-  let token = Csrf.For_testing.generate_token () in
+  let token = Csrf.generate_token () in
   let last = String.get_unchecked token ~at:(String.length token - 1) in
   let replacement =
     if last = '0' then
@@ -131,17 +129,16 @@ let test_csrf_secure_equal_checks_full_token = fun _ctx ->
     else
       "0"
   in
-  Test.assert_true (Csrf.For_testing.secure_equal token token);
-  Test.assert_false (Csrf.For_testing.secure_equal token (String.sub token ~offset:0 ~len:63));
-  Test.assert_false
-    (Csrf.For_testing.secure_equal token (String.sub token ~offset:0 ~len:63 ^ replacement));
+  Test.assert_true (Csrf.secure_equal token token);
+  Test.assert_false (Csrf.secure_equal token (String.sub token ~offset:0 ~len:63));
+  Test.assert_false (Csrf.secure_equal token (String.sub token ~offset:0 ~len:63 ^ replacement));
   Ok ()
 
 let test_csrf_requires_session_middleware = fun _ctx ->
   let conn =
     Suri.Testing.Conn.make
       ~method_:Net.Http.Method.Post
-      ~body_params:[ ("_csrf_token", Csrf.For_testing.generate_token ()); ]
+      ~body_params:[ ("_csrf_token", Csrf.generate_token ()); ]
       ()
   in
   let continued = ref false in
@@ -156,26 +153,26 @@ let test_csrf_requires_session_middleware = fun _ctx ->
   let response = Conn.to_response conn' in
   Test.assert_false !continued;
   Test.assert_equal ~expected:Net.Http.Status.InternalServerError ~actual:response.status;
-  Test.assert_equal ~expected:Csrf.For_testing.missing_session_body ~actual:response.body;
+  Test.assert_equal ~expected:Csrf.missing_session_body ~actual:response.body;
   Ok ()
 
 let test_csrf_result_apis_return_structured_errors = fun _ctx ->
   (
-    match Csrf.For_testing.generate_token_result () with
-    | Ok token -> Test.assert_true (Csrf.For_testing.is_raw_token token)
-    | Error error -> Test.assert_false (String.equal "" (Csrf.For_testing.error_to_string error))
+    match Csrf.generate_token_result () with
+    | Ok token -> Test.assert_true (Csrf.is_raw_token token)
+    | Error error -> Test.assert_false (String.equal "" (Csrf.error_to_string error))
   );
   (
-    match Csrf.For_testing.mask_token_result "not-a-raw-token" with
+    match Csrf.mask_token_result "not-a-raw-token" with
     | Ok token -> Test.assert_equal ~expected:"not-a-raw-token" ~actual:token
-    | Error error -> Test.assert_false (String.equal "" (Csrf.For_testing.error_to_string error))
+    | Error error -> Test.assert_false (String.equal "" (Csrf.error_to_string error))
   );
   let conn = Suri.Testing.Conn.make () in
   (
-    match Csrf.For_testing.get_token_result conn with
-    | Error Csrf.For_testing.MissingSession -> ()
+    match Csrf.get_token_result conn with
+    | Error Csrf.MissingSession -> ()
     | Ok _ -> Test.assert_true false
-    | Error error -> Test.assert_false (String.equal "" (Csrf.For_testing.error_to_string error))
+    | Error error -> Test.assert_false (String.equal "" (Csrf.error_to_string error))
   );
   (
     match Csrf.hidden_field_result conn with
@@ -183,19 +180,17 @@ let test_csrf_result_apis_return_structured_errors = fun _ctx ->
     | Ok _ -> Test.assert_true false
     | Error error -> Test.assert_false (String.equal "" (Csrf.error_to_string error))
   );
-  let session =
-    Session.For_testing.create ~cookie_name:"_test" ~secret:"0123456789abcdef0123456789abcdef" ()
-  in
+  let session = Session.create ~cookie_name:"_test" ~secret:"0123456789abcdef0123456789abcdef" () in
   (
-    match Csrf.For_testing.get_or_create_token_result session with
+    match Csrf.get_or_create_token_result session with
     | Ok token ->
-        Test.assert_true (Csrf.For_testing.is_raw_token token);
+        Test.assert_true (Csrf.is_raw_token token);
         Test.assert_equal ~expected:(Some token) ~actual:(Session.get_value "_csrf_token" session)
-    | Error error -> Test.assert_false (String.equal "" (Csrf.For_testing.error_to_string error))
+    | Error error -> Test.assert_false (String.equal "" (Csrf.error_to_string error))
   );
   let rendered =
-    Csrf.For_testing.error_to_string
-      (Csrf.For_testing.TokenGenerationFailed (Csrf.For_testing.RandomByteFailed {
+    Csrf.error_to_string
+      (Csrf.TokenGenerationFailed (Csrf.RandomByteFailed {
         index = 7;
         error = Random.InvalidIntBound { bound = 0 };
       }))

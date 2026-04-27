@@ -44,6 +44,4 @@ open Std
 *)
 val logger: Pipeline.middleware
 
-module For_testing: sig
-  val sanitize_path: string -> string
-end
+val sanitize_path: string -> string

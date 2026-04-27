@@ -255,11 +255,3 @@ let middleware = fun
             in
             conn'
           end
-
-module For_testing = struct
-  let validate_config = validate_config
-
-  let validate_preflight = validate_preflight
-
-  let requested_headers = requested_headers
-end

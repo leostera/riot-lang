@@ -101,30 +101,28 @@ let tamper_last_char = fun value ->
   prefix ^ replacement
 
 let test_request_id_accepts_valid_client_id = fun _ctx ->
-  Test.assert_true (Request_id.For_testing.is_valid_request_id "trace-123_ABC.~");
+  Test.assert_true (Request_id.is_valid_request_id "trace-123_ABC.~");
   Test.assert_equal
     ~expected:"trace-123_ABC.~"
-    ~actual:(Request_id.For_testing.choose_request_id
-      ~generate:(fun () -> "generated")
-      (Some "trace-123_ABC.~"));
+    ~actual:(Request_id.choose_request_id ~generate:(fun () -> "generated") (Some "trace-123_ABC.~"));
   Ok ()
 
 let test_request_id_rejects_control_characters = fun _ctx ->
-  Test.assert_false (Request_id.For_testing.is_valid_request_id "trace\r\nx-evil: yes");
+  Test.assert_false (Request_id.is_valid_request_id "trace\r\nx-evil: yes");
   Test.assert_equal
     ~expected:"generated"
-    ~actual:(Request_id.For_testing.choose_request_id
+    ~actual:(Request_id.choose_request_id
       ~generate:(fun () -> "generated")
       (Some "trace\r\nx-evil: yes"));
   Ok ()
 
 let test_request_id_rejects_empty_and_overlong_values = fun _ctx ->
-  let too_long = String.make ~len:(Request_id.For_testing.max_request_id_length + 1) ~char:'a' in
-  Test.assert_false (Request_id.For_testing.is_valid_request_id "");
-  Test.assert_false (Request_id.For_testing.is_valid_request_id too_long);
+  let too_long = String.make ~len:(Request_id.max_request_id_length + 1) ~char:'a' in
+  Test.assert_false (Request_id.is_valid_request_id "");
+  Test.assert_false (Request_id.is_valid_request_id too_long);
   Test.assert_equal
     ~expected:"generated"
-    ~actual:(Request_id.For_testing.choose_request_id ~generate:(fun () -> "generated") None);
+    ~actual:(Request_id.choose_request_id ~generate:(fun () -> "generated") None);
   Ok ()
 
 let tests =

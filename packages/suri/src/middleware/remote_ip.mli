@@ -172,12 +172,10 @@ val middleware:
   next:(Conn.t -> Conn.t) ->
   Conn.t
 
-module For_testing: sig
-  val is_trusted_proxy: string list -> string -> bool
+val is_trusted_proxy: string list -> string -> bool
 
-  val parse_forwarded_for: string -> string list
+val parse_forwarded_for: string -> string list
 
-  val find_real_ip: string list -> string list -> string option
+val find_real_ip: string list -> string list -> string option
 
-  val resolve_real_ip: proxies:string list -> peer_ip:string -> header_value:string -> string option
-end
+val resolve_real_ip: proxies:string list -> peer_ip:string -> header_value:string -> string option

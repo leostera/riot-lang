@@ -277,13 +277,11 @@ val parse_accept: string -> accept_entry list
 *)
 val get_base_content_type: string -> string option
 
-module For_testing: sig
-  val accept_header_matches: types:string list -> string -> (bool, accept_parse_error) result
+val accept_header_matches: types:string list -> string -> (bool, accept_parse_error) result
 
-  val request_declares_body: method_:Net.Http.Method.t -> headers:Net.Http.Header.t -> bool
+val request_declares_body: method_:Net.Http.Method.t -> headers:Net.Http.Header.t -> bool
 
-  val has_declared_request_body: Conn.t -> bool
-end
+val has_declared_request_body: Conn.t -> bool
 
 (**
    Extract base content type from Content-Type header.

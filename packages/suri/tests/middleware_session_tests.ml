@@ -115,79 +115,73 @@ let test_session_middleware_installs_session = fun _ctx ->
   Ok ()
 
 let test_session_rejects_missing_secret = fun _ctx ->
-  match Session.For_testing.validate_secret "   " with
-  | Error Session.For_testing.Missing -> Ok ()
+  match Session.validate_secret "   " with
+  | Error Session.Missing -> Ok ()
   | Ok () -> Error "expected missing session secret to fail"
-  | Error error -> Error (Session.For_testing.secret_error_to_string error)
+  | Error error -> Error (Session.secret_error_to_string error)
 
 let test_session_rejects_short_secret = fun _ctx ->
-  match Session.For_testing.validate_secret "short-secret" with
-  | Error (Session.For_testing.TooShort 12) -> Ok ()
+  match Session.validate_secret "short-secret" with
+  | Error (Session.TooShort 12) -> Ok ()
   | Ok () -> Error "expected short session secret to fail"
-  | Error error -> Error (Session.For_testing.secret_error_to_string error)
+  | Error error -> Error (Session.secret_error_to_string error)
 
 let test_session_signing_uses_hmac = fun _ctx ->
   let secret = "0123456789abcdef0123456789abcdef" in
-  let signature = Session.For_testing.sign ~secret "payload" in
+  let signature = Session.sign ~secret "payload" in
   Test.assert_false (String.starts_with ~prefix:"0x" signature);
-  Test.assert_true (Session.For_testing.verify ~secret "payload" signature);
-  Test.assert_false (Session.For_testing.verify ~secret "tampered" signature);
+  Test.assert_true (Session.verify ~secret "payload" signature);
+  Test.assert_false (Session.verify ~secret "tampered" signature);
   Ok ()
 
 let test_session_cookie_roundtrips_and_rejects_tampering = fun _ctx ->
   let secret = "0123456789abcdef0123456789abcdef" in
-  let session = Session.For_testing.create ~cookie_name:"_test" ~secret () in
+  let session = Session.create ~cookie_name:"_test" ~secret () in
   Session.put "user_id" "123" session;
-  let cookie = Session.For_testing.to_cookie_value session in
-  match Session.For_testing.from_cookie_value ~cookie_name:"_test" ~secret cookie with
-  | Error err -> Error (Session.For_testing.decode_error_to_string err)
+  let cookie = Session.to_cookie_value session in
+  match Session.from_cookie_value ~cookie_name:"_test" ~secret cookie with
+  | Error err -> Error (Session.decode_error_to_string err)
   | Ok decoded ->
       Test.assert_equal ~expected:(Some "123") ~actual:(Session.get_value "user_id" decoded);
-      match Session.For_testing.from_cookie_value
-        ~cookie_name:"_test"
-        ~secret
-        (tamper_last_char cookie) with
-      | Error Session.For_testing.InvalidSignature -> Ok ()
-      | Error err -> Error (Session.For_testing.decode_error_to_string err)
+      match Session.from_cookie_value ~cookie_name:"_test" ~secret (tamper_last_char cookie) with
+      | Error Session.InvalidSignature -> Ok ()
+      | Error err -> Error (Session.decode_error_to_string err)
       | Ok _ -> Error "expected tampered session cookie to fail verification"
 
 let test_session_cookie_decode_errors_are_structured = fun _ctx ->
   let secret = "0123456789abcdef0123456789abcdef" in
   let invalid_b64 = "not-base64!" in
-  let invalid_b64_cookie = invalid_b64 ^ "." ^ Session.For_testing.sign ~secret invalid_b64 in
-  let invalid_json_cookie = Session.For_testing.cookie_value_for_plaintext ~secret "{" in
-  let invalid_session_data_cookie = Session.For_testing.cookie_value_for_plaintext ~secret "[]" in
+  let invalid_b64_cookie = invalid_b64 ^ "." ^ Session.sign ~secret invalid_b64 in
+  let invalid_json_cookie = Session.cookie_value_for_plaintext ~secret "{" in
+  let invalid_session_data_cookie = Session.cookie_value_for_plaintext ~secret "[]" in
   let checks = [
     (
       fun () ->
-        match Session.For_testing.from_cookie_value ~cookie_name:"_test" ~secret "only-one-part" with
-        | Error (Session.For_testing.InvalidCookieFormat { parts = 1 }) -> Ok ()
+        match Session.from_cookie_value ~cookie_name:"_test" ~secret "only-one-part" with
+        | Error (Session.InvalidCookieFormat { parts = 1 }) -> Ok ()
         | Ok _ -> Error "expected cookie format error"
-        | Error err -> Error (Session.For_testing.decode_error_to_string err)
+        | Error err -> Error (Session.decode_error_to_string err)
     );
     (
       fun () ->
-        match Session.For_testing.from_cookie_value ~cookie_name:"_test" ~secret invalid_b64_cookie with
-        | Error Session.For_testing.InvalidPayloadBase64 -> Ok ()
+        match Session.from_cookie_value ~cookie_name:"_test" ~secret invalid_b64_cookie with
+        | Error Session.InvalidPayloadBase64 -> Ok ()
         | Ok _ -> Error "expected invalid base64 error"
-        | Error err -> Error (Session.For_testing.decode_error_to_string err)
+        | Error err -> Error (Session.decode_error_to_string err)
     );
     (
       fun () ->
-        match Session.For_testing.from_cookie_value ~cookie_name:"_test" ~secret invalid_json_cookie with
-        | Error (Session.For_testing.InvalidJson _) -> Ok ()
+        match Session.from_cookie_value ~cookie_name:"_test" ~secret invalid_json_cookie with
+        | Error (Session.InvalidJson _) -> Ok ()
         | Ok _ -> Error "expected invalid JSON error"
-        | Error err -> Error (Session.For_testing.decode_error_to_string err)
+        | Error err -> Error (Session.decode_error_to_string err)
     );
     (
       fun () ->
-        match Session.For_testing.from_cookie_value
-          ~cookie_name:"_test"
-          ~secret
-          invalid_session_data_cookie with
-        | Error (Session.For_testing.InvalidSessionData (Data.Json.Array [])) -> Ok ()
+        match Session.from_cookie_value ~cookie_name:"_test" ~secret invalid_session_data_cookie with
+        | Error (Session.InvalidSessionData (Data.Json.Array [])) -> Ok ()
         | Ok _ -> Error "expected invalid session data error"
-        | Error err -> Error (Session.For_testing.decode_error_to_string err)
+        | Error err -> Error (Session.decode_error_to_string err)
     );
   ]
   in

@@ -102,7 +102,7 @@ let tamper_last_char = fun value ->
 
 let test_body_parser_rejects_oversized_bodies = fun _ctx ->
   let config = { Body_parser.parsers = [ Body_parser.Json ]; max_body_size = 2 } in
-  match Body_parser.For_testing.parse_body config ~content_type:"application/json" ~body:"{} " with
+  match Body_parser.parse_body config ~content_type:"application/json" ~body:"{} " with
   | Error (Body_parser.BodyTooLarge { size; max_size }) ->
       Test.assert_equal ~expected:3 ~actual:size;
       Test.assert_equal ~expected:2 ~actual:max_size;
@@ -111,7 +111,7 @@ let test_body_parser_rejects_oversized_bodies = fun _ctx ->
   | Error error -> Error (Body_parser.parse_error_to_string error)
 
 let test_body_parser_rejects_invalid_json = fun _ctx ->
-  match Body_parser.For_testing.parse_body
+  match Body_parser.parse_body
     (Body_parser.default_config ())
     ~content_type:"application/json"
     ~body:{|{"name":|} with
@@ -120,7 +120,7 @@ let test_body_parser_rejects_invalid_json = fun _ctx ->
   | Error error -> Error (Body_parser.parse_error_to_string error)
 
 let test_body_parser_rejects_json_root_arrays = fun _ctx ->
-  match Body_parser.For_testing.parse_body
+  match Body_parser.parse_body
     (Body_parser.default_config ())
     ~content_type:"application/json"
     ~body:{|["alice"]|} with
@@ -132,7 +132,7 @@ let test_body_parser_accepts_case_insensitive_json_content_type = fun _ctx ->
   Test.assert_equal
     ~expected:[ ("name", "Alice"); ("active", "true"); ]
     ~actual:(
-      Body_parser.For_testing.parse_body
+      Body_parser.parse_body
         (Body_parser.default_config ())
         ~content_type:"Application/JSON; Charset=utf-8"
         ~body:{|{"name":"Alice","active":true}|}
@@ -142,10 +142,7 @@ let test_body_parser_accepts_case_insensitive_json_content_type = fun _ctx ->
 
 let test_body_parser_rejects_multipart_without_boundary = fun _ctx ->
   let config = { Body_parser.parsers = [ Body_parser.Multipart ]; max_body_size = 1_024 } in
-  match Body_parser.For_testing.parse_body
-    config
-    ~content_type:"multipart/form-data"
-    ~body:"field=value" with
+  match Body_parser.parse_body config ~content_type:"multipart/form-data" ~body:"field=value" with
   | Error Body_parser.MissingMultipartBoundary -> Ok ()
   | Ok _ -> Error "expected missing multipart boundary to fail"
   | Error error -> Error (Body_parser.parse_error_to_string error)

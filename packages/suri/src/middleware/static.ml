@@ -609,6 +609,28 @@ module Directory = struct
       ]
 end
 
+let path_has_dot_segment = Security.path_has_dot_segment
+
+let path_is_within_root = Security.path_is_within_root
+
+let normalize_path = Security.normalize_path
+
+let matches_mount = Security.matches_mount
+
+let directory_listing_html = fun ~request_path ~path ~entries ->
+  let entries =
+    List.map
+      ~fn:(fun ((name, is_dir, size, modified)) ->
+        Directory.{
+          name;
+          is_dir;
+          size;
+          modified;
+        })
+      entries
+  in
+  Directory.generate_html request_path path entries
+
 (** Core file serving logic *)
 let find_index_file = fun config path ->
   config.index_files
@@ -774,52 +796,3 @@ let middleware = fun ?(config = default_config) ~at root () ->
           Path.v relative
       in
       serve_file config root requested_path conn
-
-module For_testing = struct
-  type nonrec path_error = path_error =
-    | InvalidRoot of {
-        root: Path.t;
-        error: Fs.error;
-      }
-    | MissingPath of {
-        path: Path.t;
-      }
-    | PathTraversal of {
-        root: Path.t;
-        requested: Path.t;
-        candidate: Path.t;
-        resolved: Path.t option;
-      }
-    | SymlinkDenied of {
-        root: Path.t;
-        requested: Path.t;
-        symlink: Path.t;
-      }
-    | InvalidPath of {
-        path: Path.t;
-        canonicalize_error: Fs.error;
-        exists_error: Fs.error option;
-      }
-
-  let path_has_dot_segment = Security.path_has_dot_segment
-
-  let path_is_within_root = Security.path_is_within_root
-
-  let normalize_path = Security.normalize_path
-
-  let matches_mount = Security.matches_mount
-
-  let directory_listing_html = fun ~request_path ~path ~entries ->
-    let entries =
-      List.map
-        ~fn:(fun ((name, is_dir, size, modified)) ->
-          Directory.{
-            name;
-            is_dir;
-            size;
-            modified;
-          })
-        entries
-    in
-    Directory.generate_html request_path path entries
-end

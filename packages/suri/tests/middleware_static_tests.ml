@@ -101,34 +101,29 @@ let tamper_last_char = fun value ->
   prefix ^ replacement
 
 let test_static_mount_matching_respects_segment_boundaries = fun _ctx ->
-  Test.assert_true (Static.For_testing.matches_mount ~at:"/assets" ~request_path:"/assets");
-  Test.assert_true (Static.For_testing.matches_mount ~at:"/assets" ~request_path:"/assets/app.css");
-  Test.assert_false
-    (Static.For_testing.matches_mount ~at:"/assets" ~request_path:"/assets2/app.css");
-  Test.assert_false (Static.For_testing.matches_mount ~at:"/assets" ~request_path:"/asset");
+  Test.assert_true (Static.matches_mount ~at:"/assets" ~request_path:"/assets");
+  Test.assert_true (Static.matches_mount ~at:"/assets" ~request_path:"/assets/app.css");
+  Test.assert_false (Static.matches_mount ~at:"/assets" ~request_path:"/assets2/app.css");
+  Test.assert_false (Static.matches_mount ~at:"/assets" ~request_path:"/asset");
   Ok ()
 
 let test_static_root_boundary_is_component_based = fun _ctx ->
   Test.assert_true
-    (Static.For_testing.path_is_within_root
-      ~root:(Path.v "/var/www")
-      (Path.v "/var/www/images/logo.png"));
-  Test.assert_true
-    (Static.For_testing.path_is_within_root ~root:(Path.v "/var/www") (Path.v "/var/www"));
-  Test.assert_false
-    (Static.For_testing.path_is_within_root ~root:(Path.v "/var/www") (Path.v "/var/www2/file"));
+    (Static.path_is_within_root ~root:(Path.v "/var/www") (Path.v "/var/www/images/logo.png"));
+  Test.assert_true (Static.path_is_within_root ~root:(Path.v "/var/www") (Path.v "/var/www"));
+  Test.assert_false (Static.path_is_within_root ~root:(Path.v "/var/www") (Path.v "/var/www2/file"));
   Ok ()
 
 let test_static_dotfile_detection_checks_all_segments = fun _ctx ->
-  Test.assert_true (Static.For_testing.path_has_dot_segment (Path.v ".env"));
-  Test.assert_true (Static.For_testing.path_has_dot_segment (Path.v "public/.git/config"));
-  Test.assert_true (Static.For_testing.path_has_dot_segment (Path.v "nested/.well-known/token"));
-  Test.assert_false (Static.For_testing.path_has_dot_segment (Path.v "public/assets/app.css"));
+  Test.assert_true (Static.path_has_dot_segment (Path.v ".env"));
+  Test.assert_true (Static.path_has_dot_segment (Path.v "public/.git/config"));
+  Test.assert_true (Static.path_has_dot_segment (Path.v "nested/.well-known/token"));
+  Test.assert_false (Static.path_has_dot_segment (Path.v "public/assets/app.css"));
   Ok ()
 
 let test_static_directory_listing_escapes_displayed_values = fun _ctx ->
   let html =
-    Static.For_testing.directory_listing_html
+    Static.directory_listing_html
       ~request_path:"/files/<root>"
       ~path:(Path.v "/tmp/<root>")
       ~entries:[ ("<script>alert(1)</script>", false, 12, 0.0); ]
@@ -173,8 +168,8 @@ let test_static_normalize_path_returns_structured_errors = fun _ctx ->
                   let checks = [
                     (
                       fun () ->
-                        match Static.For_testing.normalize_path config missing_root (Path.v ".") with
-                        | Error (Static.For_testing.InvalidRoot { root; _ }) ->
+                        match Static.normalize_path config missing_root (Path.v ".") with
+                        | Error (Static.InvalidRoot { root; _ }) ->
                             Test.assert_true (Path.equal root missing_root);
                             Ok ()
                         | Ok _ -> Error "expected invalid root error"
@@ -182,8 +177,8 @@ let test_static_normalize_path_returns_structured_errors = fun _ctx ->
                     );
                     (
                       fun () ->
-                        match Static.For_testing.normalize_path config root missing_file with
-                        | Error (Static.For_testing.MissingPath { path }) ->
+                        match Static.normalize_path config root missing_file with
+                        | Error (Static.MissingPath { path }) ->
                             Test.assert_true (Path.equal path expected_missing);
                             Ok ()
                         | Ok _ -> Error "expected missing path error"
@@ -191,8 +186,8 @@ let test_static_normalize_path_returns_structured_errors = fun _ctx ->
                     );
                     (
                       fun () ->
-                        match Static.For_testing.normalize_path config root traversal with
-                        | Error (Static.For_testing.PathTraversal { requested; resolved = None; _ }) ->
+                        match Static.normalize_path config root traversal with
+                        | Error (Static.PathTraversal { requested; resolved = None; _ }) ->
                             Test.assert_true (Path.equal requested traversal);
                             Ok ()
                         | Ok _ -> Error "expected traversal error"
@@ -201,8 +196,8 @@ let test_static_normalize_path_returns_structured_errors = fun _ctx ->
                     (
                       fun () ->
                         let deny_config = Static.{ default_config with symlinks = DenySymlinks } in
-                        match Static.For_testing.normalize_path deny_config root (Path.v "link.txt") with
-                        | Error (Static.For_testing.SymlinkDenied { symlink; requested; _ }) ->
+                        match Static.normalize_path deny_config root (Path.v "link.txt") with
+                        | Error (Static.SymlinkDenied { symlink; requested; _ }) ->
                             Test.assert_true (Path.equal symlink expected_link);
                             Test.assert_true (Path.equal requested (Path.v "link.txt"));
                             Ok ()

@@ -191,15 +191,13 @@ val middleware:
   unit ->
   Pipeline.middleware
 
-module For_testing: sig
-  val validate_config: origins:string list -> credentials:bool -> (unit, config_error) result
+val validate_config: origins:string list -> credentials:bool -> (unit, config_error) result
 
-  val validate_preflight:
-    methods:Net.Http.Method.t list ->
-    headers:string list ->
-    request_method:string ->
-    request_headers:string option ->
-    (unit, preflight_error) result
+val validate_preflight:
+  methods:Net.Http.Method.t list ->
+  headers:string list ->
+  request_method:string ->
+  request_headers:string option ->
+  (unit, preflight_error) result
 
-  val requested_headers: string option -> string list
-end
+val requested_headers: string option -> string list

@@ -103,7 +103,7 @@ let tamper_last_char = fun value ->
 let test_remote_ip_ignores_forwarded_header_from_untrusted_peer = fun _ctx ->
   Test.assert_equal
     ~expected:None
-    ~actual:(Remote_ip.For_testing.resolve_real_ip
+    ~actual:(Remote_ip.resolve_real_ip
       ~proxies:[ "10.0.1.50"; ]
       ~peer_ip:"203.0.113.10"
       ~header_value:"127.0.0.1");
@@ -112,7 +112,7 @@ let test_remote_ip_ignores_forwarded_header_from_untrusted_peer = fun _ctx ->
 let test_remote_ip_resolves_forwarded_header_from_trusted_peer = fun _ctx ->
   Test.assert_equal
     ~expected:(Some "1.2.3.4")
-    ~actual:(Remote_ip.For_testing.resolve_real_ip
+    ~actual:(Remote_ip.resolve_real_ip
       ~proxies:[ "10.0.1.50"; ]
       ~peer_ip:"10.0.1.50"
       ~header_value:"1.2.3.4, 10.0.1.50");
@@ -121,7 +121,7 @@ let test_remote_ip_resolves_forwarded_header_from_trusted_peer = fun _ctx ->
 let test_remote_ip_walks_trusted_proxy_chain = fun _ctx ->
   Test.assert_equal
     ~expected:(Some "5.6.7.8")
-    ~actual:(Remote_ip.For_testing.resolve_real_ip
+    ~actual:(Remote_ip.resolve_real_ip
       ~proxies:[ "10.0.1.50"; ]
       ~peer_ip:"10.0.1.50"
       ~header_value:"1.2.3.4, 5.6.7.8, 10.0.1.50");

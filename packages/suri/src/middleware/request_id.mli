@@ -26,10 +26,8 @@ val request_id: Pipeline.middleware
    Middleware that ensures an [x-request-id] header is present in both
    the request and response.
 *)
-module For_testing: sig
-  val max_request_id_length: int
+val max_request_id_length: int
 
-  val is_valid_request_id: string -> bool
+val is_valid_request_id: string -> bool
 
-  val choose_request_id: ?generate:(unit -> string) -> string option -> string
-end
+val choose_request_id: ?generate:(unit -> string) -> string option -> string

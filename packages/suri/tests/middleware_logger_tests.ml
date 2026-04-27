@@ -103,7 +103,7 @@ let tamper_last_char = fun value ->
 let test_logger_sanitizes_control_characters_in_paths = fun _ctx ->
   Test.assert_equal
     ~expected:"/login%0D%0Ax-evil: yes/%7F"
-    ~actual:(Logger.For_testing.sanitize_path "/login\r\nx-evil: yes/\x7F");
+    ~actual:(Logger.sanitize_path "/login\r\nx-evil: yes/\x7F");
   Ok ()
 
 let tests =

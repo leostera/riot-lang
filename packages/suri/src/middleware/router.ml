@@ -95,9 +95,7 @@ module Matcher = struct
     match_segments pattern_segs path_parts
 end
 
-module For_testing = struct
-  let match_path = Matcher.match_path
-end
+let match_path = Matcher.match_path
 
 let rec flatten_routes = fun prefix routes ->
   List.flat_map

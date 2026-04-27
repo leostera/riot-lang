@@ -34,11 +34,3 @@ let request_id = fun ~conn ~next ->
   (* Ensure x-request-id is in the response headers too *)
   conn'
   |> Conn.with_header x_request_id request_id
-
-module For_testing = struct
-  let max_request_id_length = max_request_id_length
-
-  let is_valid_request_id = is_valid_request_id
-
-  let choose_request_id = choose_request_id
-end

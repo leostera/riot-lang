@@ -96,6 +96,30 @@ type config = {
   cache_control: string option;
   (** Cache-Control header value. Default: [Some "public, max-age=3600"] *)
 }
+type path_error =
+  | InvalidRoot of {
+      root: Path.t;
+      error: Fs.error;
+    }
+  | MissingPath of {
+      path: Path.t;
+    }
+  | PathTraversal of {
+      root: Path.t;
+      requested: Path.t;
+      candidate: Path.t;
+      resolved: Path.t option;
+    }
+  | SymlinkDenied of {
+      root: Path.t;
+      requested: Path.t;
+      symlink: Path.t;
+    }
+  | InvalidPath of {
+      path: Path.t;
+      canonicalize_error: Fs.error;
+      exists_error: Fs.error option;
+    }
 
 (**
    Static file serving configuration.
@@ -139,6 +163,20 @@ val default_config: config
 
 val middleware: ?config:config -> at:string -> Path.t -> unit -> Pipeline.middleware
 
+val path_has_dot_segment: Path.t -> bool
+
+val path_is_within_root: root:Path.t -> Path.t -> bool
+
+val normalize_path: config -> Path.t -> Path.t -> (Path.t, path_error) result
+
+val matches_mount: at:string -> request_path:string -> bool
+
+val directory_listing_html:
+  request_path:string ->
+  path:Path.t ->
+  entries:(string * bool * int * float) list ->
+  string
+
 (**
    Create static file serving middleware.
 
@@ -179,42 +217,3 @@ val middleware: ?config:config -> at:string -> Path.t -> unit -> Pipeline.middle
      Static.middleware ~at:"/files" ~config (Path.v "./files") ()
    ]}
 *)
-module For_testing: sig
-  type path_error =
-    | InvalidRoot of {
-        root: Path.t;
-        error: Fs.error;
-      }
-    | MissingPath of {
-        path: Path.t;
-      }
-    | PathTraversal of {
-        root: Path.t;
-        requested: Path.t;
-        candidate: Path.t;
-        resolved: Path.t option;
-      }
-    | SymlinkDenied of {
-        root: Path.t;
-        requested: Path.t;
-        symlink: Path.t;
-      }
-    | InvalidPath of {
-        path: Path.t;
-        canonicalize_error: Fs.error;
-        exists_error: Fs.error option;
-      }
-  val path_has_dot_segment: Path.t -> bool
-
-  val path_is_within_root: root:Path.t -> Path.t -> bool
-
-  val normalize_path: config -> Path.t -> Path.t -> (Path.t, path_error) result
-
-  val matches_mount: at:string -> request_path:string -> bool
-
-  val directory_listing_html:
-    request_path:string ->
-    path:Path.t ->
-    entries:(string * bool * int * float) list ->
-    string
-end

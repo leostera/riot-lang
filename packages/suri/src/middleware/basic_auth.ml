@@ -190,11 +190,3 @@ let middleware_with_validation = fun ?(realm = "Restricted Area") ?skip ~validat
           | Option.None -> unauthorized conn realm
         )
       | Option.None -> unauthorized conn realm
-
-module For_testing = struct
-  let decode_credentials = decode_credentials
-
-  let sanitize_realm = sanitize_realm
-
-  let secure_equal = secure_equal
-end

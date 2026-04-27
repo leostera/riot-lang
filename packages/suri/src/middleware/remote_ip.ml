@@ -58,13 +58,3 @@ let middleware = fun ?(header = "x-forwarded-for") () ~proxies ~conn ~next ->
               (* Couldn't determine real IP, use existing peer *)
               next conn
         )
-
-module For_testing = struct
-  let is_trusted_proxy = is_trusted_proxy
-
-  let parse_forwarded_for = parse_forwarded_for
-
-  let find_real_ip = find_real_ip
-
-  let resolve_real_ip = resolve_real_ip
-end

@@ -266,13 +266,3 @@ let middleware = fun ?config:(cfg = default_config) types ->
       { cfg with types }
   in
   make cfg'
-
-module For_testing = struct
-  let parse_accept_result = parse_accept_result
-
-  let accept_header_matches = accept_header_matches
-
-  let request_declares_body = request_declares_body
-
-  let has_declared_request_body = has_declared_request_body
-end

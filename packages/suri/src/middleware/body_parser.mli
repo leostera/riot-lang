@@ -111,10 +111,3 @@ val make: ?config:config -> unit -> conn:Conn.t -> next:(Conn.t -> Conn.t) -> Co
    JSON or multipart metadata returns [400 Bad Request] with a plain-text
    description.
 *)
-module For_testing: sig
-  val parse_body:
-    config ->
-    content_type:string ->
-    body:string ->
-    ((string * string) list, parse_error) Std.result
-end
