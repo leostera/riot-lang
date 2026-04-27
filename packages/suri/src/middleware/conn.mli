@@ -329,6 +329,7 @@ val with_peer: peer -> t -> t
 
    {b Note}: This is primarily for internal middleware use.
 *)
+
 (** Get the underlying socket connection *)
 val socket_conn: t -> Socket_pool.Connection.t option
 
@@ -380,7 +381,7 @@ val assign_key: unit -> 'a assign_key
 (**
    Create a fresh typed assignment key.
 *)
-val assign: 'a assign_key -> 'a -> t -> unit
+val assign: 'a assign_key -> 'a -> t -> t
 
 (**
    Store middleware-specific data in the connection.

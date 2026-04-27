@@ -41,16 +41,13 @@ let websocket_request = fun
         List.fold_left
           headers
           ~init:req
-          ~fn:(fun req ((name, value)) ->
+          ~fn:(fun req (name, value) ->
             Net.Http.Request.with_header req name value)
   in
   Suri.Request.of_http ~body:"" http_req
 
 let http_request = fun
-  ?(method_ = Net.Http.Method.Get)
-  ?(version = Net.Http.Version.Http11)
-  ?(headers = [])
-  () ->
+  ?(method_ = Net.Http.Method.Get) ?(version = Net.Http.Version.Http11) ?(headers = []) () ->
   let uri =
     Net.Uri.of_string "/"
     |> Result.unwrap
@@ -62,7 +59,7 @@ let http_request = fun
       List.fold_left
         headers
         ~init:req
-        ~fn:(fun req ((name, value)) ->
+        ~fn:(fun req (name, value) ->
           Net.Http.Request.add_header req name value)
 
 let config_for_test = fun
@@ -154,6 +151,14 @@ let test_conn_set_header_replaces_case_insensitively = fun _ctx ->
     ~actual:(Net.Http.Header.get_all response.headers "vary");
   Ok ()
 
+let test_conn_assign_returns_updated_connection = fun _ctx ->
+  let key: string Conn.assign_key = Conn.assign_key () in
+  let conn = Suri.Testing.Conn.make () in
+  let conn' = Conn.assign key "alice" conn in
+  Test.assert_equal ~expected:None ~actual:(Conn.get_assign key conn);
+  Test.assert_equal ~expected:(Some "alice") ~actual:(Conn.get_assign key conn');
+  Ok ()
+
 let tests =
   Test.[
     case
@@ -169,6 +174,7 @@ let tests =
     case
       "conn set header replaces case insensitively"
       test_conn_set_header_replaces_case_insensitively;
+    case "conn assign returns updated connection" test_conn_assign_returns_updated_connection;
   ]
 
 let main ~args = Test.Cli.main ~name:"suri:middleware-conn" ~tests ~args ()

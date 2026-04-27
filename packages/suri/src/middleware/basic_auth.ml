@@ -117,9 +117,7 @@ type 'a key = 'a Conn.assign_key
 
 let key = Conn.assign_key
 
-let assign = fun key value conn ->
-  Conn.assign key value conn;
-  conn
+let assign = fun key value conn -> Conn.assign key value conn
 
 let get = fun key conn -> Conn.get_assign key conn
 

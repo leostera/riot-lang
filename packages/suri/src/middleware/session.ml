@@ -356,7 +356,7 @@ let middleware = fun
               )
         in
         (* Store session in connection *)
-        Conn.assign session_key session conn;
+        let conn = Conn.assign session_key session conn in
         (* Call next handler *)
         let conn' = next conn in
         (* If session was modified, set cookie in response *)

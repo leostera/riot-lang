@@ -50,11 +50,13 @@ let make = fun socket_conn req ->
   make_from_request ~socket_conn ~req ~peer ()
 
 let of_request = fun
-  ?(peer = {ip = "127.0.0.1"; port = 0})
-  ?(params = [])
-  ?(body_params = [])
-  req ->
-  make_from_request ~req ~peer ~params ~body_params ()
+  ?(peer = {ip = "127.0.0.1"; port = 0}) ?(params = []) ?(body_params = []) req ->
+  make_from_request
+    ~req
+    ~peer
+    ~params
+    ~body_params
+    ()
 
 let request = fun t -> t.req
 
@@ -126,7 +128,7 @@ let set_header = fun name value t ->
     resp_headers = (name, value)
     :: List.filter
       t.resp_headers
-      ~fn:(fun ((existing, _value)) -> not (header_name_equal existing name));
+      ~fn:(fun (existing, _value) -> not (header_name_equal existing name));
   }
 
 let with_method = fun method_ t -> { t with method_override = Some method_ }
@@ -213,7 +215,8 @@ let to_response = fun t ->
 let assign_key = fun () -> TypeMap.key ()
 
 let assign = fun key value t ->
-  let _ = TypeMap.insert t.assigns ~key ~value in
-  ()
+  let assigns = TypeMap.from_list (TypeMap.values t.assigns) in
+  let _ = TypeMap.insert assigns ~key ~value in
+  { t with assigns }
 
 let get_assign = fun key t -> TypeMap.get t.assigns ~key

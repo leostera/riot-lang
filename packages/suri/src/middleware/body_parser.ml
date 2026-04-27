@@ -82,7 +82,7 @@ let parse_json = fun body ->
       let json = Std.Data.Json.Object fields in
       let body_params =
         List.filter_map
-          ~fn:(fun ((k, v)) ->
+          ~fn:(fun (k, v) ->
             match v with
             | Std.Data.Json.String s -> Some (k, s)
             | Std.Data.Json.Int i -> Some (k, Int.to_string i)
@@ -175,11 +175,11 @@ let handle = fun config conn ->
   | Some content_type -> (
       match parse_body_full config ~content_type ~body:(Conn.body conn) with
       | Ok parsed ->
-          (
+          let conn =
             match parsed.json with
             | Some json -> Conn.assign parsed_json_key json conn
-            | None -> ()
-          );
+            | None -> conn
+          in
           Conn.set_body_params parsed.body_params conn
       | Error error -> respond_with_error error conn
     )
