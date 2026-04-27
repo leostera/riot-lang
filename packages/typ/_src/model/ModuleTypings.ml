@@ -1275,7 +1275,7 @@ let value_definitions_of_json = fun value ->
 let hash_of_hex = fun hex ->
   match Encoding.Hex.decode_bytes hex with
   | Ok bytes -> Ok (Crypto.Hash.of_bytes bytes)
-  | Error `Invalid_base16 ->
+  | Error Encoding.Hex.InvalidBase16 ->
       Error (format Format.[ str "invalid source_hash hex digest "; str hex ])
 
 module Json = struct

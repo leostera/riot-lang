@@ -114,7 +114,8 @@ let strip_quotes = fun value ->
 
 let parse_content_type = fun content_type ->
   match Net.Http.Header.Value.parse_content_type content_type with
-  | Error `InvalidContentType -> Error (InvalidContentType { value = content_type })
+  | Error Net.Http.Header.Value.InvalidContentType ->
+      Error (InvalidContentType { value = content_type })
   | Ok parsed -> Ok parsed
 
 let parse_body_full = fun config ~content_type ~body ->

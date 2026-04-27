@@ -6,6 +6,9 @@ open IO
 
 type t = bytes
 
+type error =
+  | InvalidUuid of string
+
 external v4_native: unit -> bytes = "std_uuid_v4"
 
 external v7_native: unit -> bytes = "std_uuid_v7"
@@ -68,13 +71,13 @@ let ns_x500 = Bytes.from_string "\x6b\xa7\xb8\x14\x9d\xad\x11\xd1\x80\xb4\x00\xc
 
 let of_string = fun value ->
   try Ok (of_string_native value) with
-  | Invalid_argument msg -> Error (`Invalid_uuid msg)
+  | Invalid_argument msg -> Error (InvalidUuid msg)
 
 let of_bytes = fun value ->
   if Bytes.length value = 16 then
     Ok (Bytes.sub_unchecked value ~offset:0 ~len:16)
   else
-    Error (`Invalid_uuid "UUID must be exactly 16 bytes")
+    Error (InvalidUuid "UUID must be exactly 16 bytes")
 
 (** {1 Serialization} *)
 

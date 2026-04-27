@@ -1,6 +1,9 @@
 open Global
 open IO
 
+type decode_error =
+  | InvalidBase64
+
 let table = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
 
 let encode_bytes = fun bytes ->
@@ -56,7 +59,7 @@ let decode_char = fun c ->
 let decode = fun str ->
   let len = String.length str in
   if len mod 4 != 0 then
-    Error `Invalid_base64
+    Error InvalidBase64
   else
     let result = Buffer.create ~size:(len / 4 * 3) in
     let rec decode_block i =
@@ -79,6 +82,6 @@ let decode = fun str ->
             if String.get_unchecked str ~at:(i + 3) != '=' then
               Buffer.add_char result (Char.from_int_unchecked b3);
             decode_block (i + 4)
-        | _ -> Error `Invalid_base64
+        | _ -> Error InvalidBase64
     in
     decode_block 0

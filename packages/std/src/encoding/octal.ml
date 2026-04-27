@@ -1,6 +1,7 @@
 open Global
 
-type decode_error = [`Invalid_octal]
+type decode_error =
+  | InvalidOctal
 
 let digit_char = fun digit -> Char.from_int_unchecked (Char.to_int '0' + digit)
 
@@ -41,7 +42,7 @@ let encode_signed_int64 = fun value ->
 
 let classify = fun s ->
   if String.equal s "" then
-    Error `Invalid_octal
+    Error InvalidOctal
   else
     let len = String.length s in
     let (sign, start) =
@@ -51,7 +52,7 @@ let classify = fun s ->
         ("", 0)
     in
     if start >= len then
-      Error `Invalid_octal
+      Error InvalidOctal
     else
       let has_octal_prefix =
         if start + 1 < len then
@@ -67,7 +68,7 @@ let classify = fun s ->
           String.sub s ~offset:start ~len:(len - start)
       in
       if String.equal digits "" then
-        Error `Invalid_octal
+        Error InvalidOctal
       else if String.for_all
         digits
         ~fn:(
@@ -77,7 +78,7 @@ let classify = fun s ->
         ) then
         Ok (sign ^ "0o" ^ digits)
       else
-        Error `Invalid_octal
+        Error InvalidOctal
 
 let encode_int = fun value -> encode_signed_int64 (Int64.from_int value)
 
@@ -91,7 +92,7 @@ let decode_int = fun s ->
   | Ok normalized -> (
       match Int.parse normalized with
       | Some value -> Ok value
-      | None -> Error `Invalid_octal
+      | None -> Error InvalidOctal
     )
 
 let decode_int32 = fun s ->
@@ -100,7 +101,7 @@ let decode_int32 = fun s ->
   | Ok normalized -> (
       match Int32.parse normalized with
       | Some value -> Ok value
-      | None -> Error `Invalid_octal
+      | None -> Error InvalidOctal
     )
 
 let decode_int64 = fun s ->
@@ -109,5 +110,5 @@ let decode_int64 = fun s ->
   | Ok normalized -> (
       match Int64.parse normalized with
       | Some value -> Ok value
-      | None -> Error `Invalid_octal
+      | None -> Error InvalidOctal
     )

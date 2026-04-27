@@ -2,6 +2,9 @@ open Global
 open IO
 open Sync
 
+type decode_error =
+  | InvalidBase32
+
 let table = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567"
 
 let encode_bytes = fun bytes ->
@@ -83,10 +86,10 @@ let set_result = fun result ->
   let _ = Result.unwrap result in
   ()
 
-let decode_bytes: string -> (bytes, [`Invalid_base32]) Global.result = fun str ->
+let decode_bytes: string -> (bytes, decode_error) Global.result = fun str ->
   let len = String.length str in
   if len mod 8 != 0 then
-    Error `Invalid_base32
+    Error InvalidBase32
   else
     let output_len = len / 8 * 5 in
     let result = Bytes.create ~size:output_len in
@@ -96,7 +99,7 @@ let decode_bytes: string -> (bytes, [`Invalid_base32]) Global.result = fun str -
         (
           match Bytes.sub result ~offset:0 ~len:!output_pos with
           | Ok bytes -> Ok bytes
-          | Error _ -> Error `Invalid_base32
+          | Error _ -> Error InvalidBase32
         )
       else
         match (
@@ -138,7 +141,7 @@ let decode_bytes: string -> (bytes, [`Invalid_base32]) Global.result = fun str -
                 Cell.incr output_pos
               );
             decode_block (i + 8)
-        | _ -> Error `Invalid_base32
+        | _ -> Error InvalidBase32
     in
     decode_block 0
 

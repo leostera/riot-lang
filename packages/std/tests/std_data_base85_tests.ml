@@ -47,7 +47,7 @@ let test_decode_zeros = fun _ctx ->
 
 let test_decode_invalid_char = fun _ctx ->
   match Base85.decode "bad~{" with
-  | Error `Invalid_base85 -> Ok ()
+  | Error Base85.InvalidBase85 -> Ok ()
   | Ok _ -> Error "Should reject invalid Base85 character"
 
 let test_roundtrip = fun _ctx ->

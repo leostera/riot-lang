@@ -325,7 +325,7 @@ let compute_websocket_accept = fun key ->
 let decode_websocket_key = fun key ->
   match Encoding.Base64.decode key with
   | Ok decoded -> Ok decoded
-  | Error `Invalid_base64 -> Error InvalidBase64
+  | Error Encoding.Base64.InvalidBase64 -> Error InvalidBase64
 
 let validate_websocket_key = fun key ->
   match decode_websocket_key key with

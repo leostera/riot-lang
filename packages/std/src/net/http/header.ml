@@ -138,11 +138,17 @@ module Name = struct
 end
 
 module Value = struct
+  type content_type_error =
+    | InvalidContentType
+
+  type authorization_error =
+    | InvalidAuthorization
+
   let parse_content_type = fun value ->
     try
       let parts = String.split ~by:";" value in
       match parts with
-      | [] -> Error `InvalidContentType
+      | [] -> Error InvalidContentType
       | media_type :: param_parts ->
           let media_type = String.trim media_type in
           let params =
@@ -163,12 +169,12 @@ module Value = struct
           in
           Ok (media_type, List.reverse params)
     with
-    | _ -> Error `InvalidContentType
+    | _ -> Error InvalidContentType
 
   let parse_authorization = fun value ->
     try
       match String.index_of value ~char:' ' with
-      | None -> Error `InvalidAuthorization
+      | None -> Error InvalidAuthorization
       | Some idx ->
           let scheme = String.sub value ~offset:0 ~len:idx in
           let credentials =
@@ -176,7 +182,7 @@ module Value = struct
           in
           Ok (scheme, credentials)
     with
-    | _ -> Error `InvalidAuthorization
+    | _ -> Error InvalidAuthorization
 
   let parse_cache_control = fun value ->
     let directives = String.split ~by:"," value in

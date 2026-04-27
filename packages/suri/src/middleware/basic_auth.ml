@@ -72,7 +72,7 @@ let credential_decode_error_to_string = function
 let decode_basic_payload = fun encoded ->
   match Encoding.Base64.decode encoded with
   | Result.Ok decoded -> Ok decoded
-  | Result.Error `Invalid_base64 -> Error InvalidBase64Credentials
+  | Result.Error Encoding.Base64.InvalidBase64 -> Error InvalidBase64Credentials
 
 (**
    Extract and decode credentials from Authorization header.

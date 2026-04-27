@@ -53,7 +53,7 @@ let encode = fun ~secret ~json ->
 let decode_payload = fun payload ->
   match Encoding.Base64.decode payload with
   | Ok decoded -> Ok decoded
-  | Error `Invalid_base64 -> Error InvalidPayloadBase64
+  | Error Encoding.Base64.InvalidBase64 -> Error InvalidPayloadBase64
 
 (* Decode and verify signed session token *)
 

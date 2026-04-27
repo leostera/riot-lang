@@ -3,6 +3,9 @@ open Sync
 open IO
 open Collections
 
+type decode_error =
+  | InvalidBase85
+
 let encode_bytes = fun bytes ->
   let len = Bytes.length bytes in
   let result = Buffer.create ~size:(((len * 5) + 3) / 4) in
@@ -138,7 +141,7 @@ let decode_bytes = fun str ->
         |> Bytes.from_string
       )
     else if !count = 1 then
-      Error `Invalid_base85
+      Error InvalidBase85
     else
       let chars = List.reverse !chars in
       let values =
@@ -175,7 +178,7 @@ let decode_bytes = fun str ->
     decode_group ()
   in
   try decode_group () with
-  | Invalid_base85_character -> Error `Invalid_base85
+  | Invalid_base85_character -> Error InvalidBase85
 
 let decode = fun str ->
   match decode_bytes str with

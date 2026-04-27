@@ -32,7 +32,7 @@ let test_decode_simple = fun _ctx ->
 
 let test_decode_invalid_char = fun _ctx ->
   match Base64.decode "SGVsbG8!" with
-  | Error `Invalid_base64 -> Ok ()
+  | Error Base64.InvalidBase64 -> Ok ()
   | Ok _ -> Error "Should reject invalid Base64 character"
 
 let test_roundtrip = fun _ctx ->

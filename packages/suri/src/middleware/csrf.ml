@@ -176,7 +176,7 @@ let mask_token = fun raw_token_hex ->
 let decode_masked_token = fun masked_b64 ->
   match Encoding.Base64.decode masked_b64 with
   | Result.Ok decoded -> Ok decoded
-  | Result.Error `Invalid_base64 -> Error InvalidMaskedTokenEncoding
+  | Result.Error Encoding.Base64.InvalidBase64 -> Error InvalidMaskedTokenEncoding
 
 let unmask_token = fun masked_b64 ->
   match decode_masked_token masked_b64 with

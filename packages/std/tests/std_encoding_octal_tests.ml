@@ -40,7 +40,7 @@ let test_decode_signed = fun _ctx ->
 
 let test_decode_invalid = fun _ctx ->
   match Encoding.Octal.decode_int "8" with
-  | Error `Invalid_octal -> Ok ()
+  | Error Encoding.Octal.InvalidOctal -> Ok ()
   | Ok _ -> Error "expected invalid octal digit to be rejected"
 
 let tests =

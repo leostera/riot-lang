@@ -28,7 +28,7 @@
    | Ok uuid ->
        UUID.version uuid  (* Some 4 *)
        UUID.is_nil uuid   (* false *)
-   | Error (`Invalid_uuid msg) ->
+   | Error (InvalidUuid msg) ->
        Log.error "Invalid UUID: %s" msg
    ```
 
@@ -70,6 +70,10 @@ open Global
 
 (** The type for UUIDs (128 bits / 16 bytes). *)
 type t
+
+type error =
+  | InvalidUuid of string
+
 (** {1 Creation} *)
 (**
    Generates a random UUID v4.
@@ -264,10 +268,10 @@ val ns_x500: t
    (* Ok uuid - uppercase works *)
 
    UUID.of_string "not-a-uuid"
-   (* Error (`Invalid_uuid "...") *)
+   (* Error (InvalidUuid "...") *)
    ```
 *)
-val of_string: string -> (t, [ | `Invalid_uuid of string]) result
+val of_string: string -> (t, error) result
 
 (**
    Creates a UUID from 16-byte binary representation.
@@ -281,7 +285,7 @@ val of_string: string -> (t, [ | `Invalid_uuid of string]) result
    | Error _ -> ()
    ```
 *)
-val of_bytes: bytes -> (t, [ | `Invalid_uuid of string]) result
+val of_bytes: bytes -> (t, error) result
 
 (** {1 Serialization} *)
 

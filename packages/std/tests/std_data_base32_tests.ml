@@ -33,7 +33,7 @@ let test_decode_simple = fun _ctx ->
 
 let test_decode_invalid_char = fun _ctx ->
   match Base32.decode "INVALID!" with
-  | Error `Invalid_base32 -> Ok ()
+  | Error Base32.InvalidBase32 -> Ok ()
   | Ok _ -> Error "Should reject invalid Base32 character"
 
 let test_roundtrip = fun _ctx ->

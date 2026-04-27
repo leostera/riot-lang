@@ -56,12 +56,12 @@ let test_decode_mixed_case = fun _ctx ->
 
 let test_decode_invalid_char = fun _ctx ->
   match Base16.decode "4G" with
-  | Error `Invalid_base16 -> Ok ()
+  | Error Base16.InvalidBase16 -> Ok ()
   | Ok _ -> Error "Should reject invalid hex character"
 
 let test_decode_odd_length = fun _ctx ->
   match Base16.decode "486" with
-  | Error `Invalid_base16 -> Ok ()
+  | Error Base16.InvalidBase16 -> Ok ()
   | Ok _ -> Error "Should reject odd length string"
 
 let test_roundtrip = fun _ctx ->

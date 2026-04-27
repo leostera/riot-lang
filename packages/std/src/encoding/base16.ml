@@ -1,6 +1,9 @@
 open Global
 open IO
 
+type decode_error =
+  | InvalidBase16
+
 let hex_upper = "0123456789ABCDEF"
 
 let hex_lower = "0123456789abcdef"
@@ -33,7 +36,7 @@ let decode_char = fun c ->
 let decode_bytes = fun str ->
   let len = String.length str in
   if len mod 2 != 0 then
-    Error `Invalid_base16
+    Error InvalidBase16
   else
     let result = Bytes.create ~size:(len / 2) in
     let rec decode_pair i =
@@ -47,7 +50,7 @@ let decode_bytes = fun str ->
         | (Some hi, Some lo) ->
             Bytes.set_unchecked result ~at:(i / 2) ~char:(Char.from_int_unchecked ((hi lsl 4) lor lo));
             decode_pair (i + 2)
-        | _ -> Error `Invalid_base16
+        | _ -> Error InvalidBase16
     in
     decode_pair 0
 

@@ -44,7 +44,7 @@
    ```ocaml let ct = "application/json; charset=utf-8" in match
    Header.Value.parse_content_type ct with | Ok (media_type, params) -> (*
    media_type = "application/json" *) (* params = [("charset", "utf-8")] *) |
-   Error `InvalidContentType -> () ```
+   Error InvalidContentType -> () ```
 *)
 
 open Kernel
@@ -301,18 +301,11 @@ end
 (** {1 Header Value Parsing} *)
 
 module Value: sig
-  (**
-     Utilities for parsing structured header values following HTTP
-     specifications.
+  type content_type_error =
+    | InvalidContentType
 
-     ## Examples
-
-     ```ocaml let ct = "application/json; charset=utf-8" in match
-     Header.Value.parse_content_type ct with | Ok (media_type, params) -> (*
-     media_type = "application/json" *) (* params = [("charset", "utf-8")] *) |
-     Error _ -> () ```
-  *)
-  val parse_content_type: value -> (string * (string * string) list, [`InvalidContentType]) result
+  type authorization_error =
+    | InvalidAuthorization
 
   (**
      Parses Content-Type header into media type and parameters.
@@ -325,7 +318,7 @@ module Value: sig
      Header.Value.parse_content_type "application/json" (* Ok
      ("application/json", []) *) ```
   *)
-  val parse_authorization: value -> (string * string, [`InvalidAuthorization]) result
+  val parse_content_type: value -> (string * (string * string) list, content_type_error) result
 
   (**
      Parses Authorization header into scheme and credentials.
@@ -338,6 +331,8 @@ module Value: sig
      Header.Value.parse_authorization "Basic dXNlcjpwYXNz" (* Ok ("Basic",
      "dXNlcjpwYXNz") *) ```
   *)
+  val parse_authorization: value -> (string * string, authorization_error) result
+
   val parse_cache_control: value -> (string * string option) list
 
   (**

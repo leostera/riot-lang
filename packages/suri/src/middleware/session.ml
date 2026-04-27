@@ -209,7 +209,7 @@ let cookie_value_for_plaintext = fun ~secret plaintext ->
 let decode_payload = fun payload ->
   match Encoding.Base64.decode payload with
   | Result.Ok decoded -> Ok decoded
-  | Result.Error `Invalid_base64 -> Error InvalidPayloadBase64
+  | Result.Error Encoding.Base64.InvalidBase64 -> Error InvalidPayloadBase64
 
 (** Deserialize session from cookie value *)
 let from_cookie_value = fun ~cookie_name ~secret cookie_value ->
