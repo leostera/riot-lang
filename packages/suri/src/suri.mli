@@ -418,6 +418,7 @@ type middleware = Middleware.Pipeline.middleware
 type handler = Middleware.Pipeline.t
 (** A handler is just a list of middleware functions *)
 type start_error =
+  | InvalidConfig of Config.error list
   | InvalidAddress of Std.Net.Addr.error
   | BindFailed of Std.Net.TcpListener.error
   | InvalidAcceptors of int

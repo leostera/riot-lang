@@ -188,6 +188,15 @@ let test_config_rejects_invalid_limits = fun _ctx ->
       Ok ()
   | Ok _ -> Error "expected invalid config limits to be rejected"
 
+let test_start_link_returns_invalid_config = fun _ctx ->
+  let config = config_for_test ~port:0 () in
+  match Suri.start_link ~config [] with
+  | Error (Suri.InvalidConfig errors) ->
+      Test.assert_true (List.contains errors ~value:(Config.InvalidPort 0));
+      Ok ()
+  | Error _ -> Error "expected Suri.start_link to return InvalidConfig"
+  | Ok _ -> Error "expected Suri.start_link with invalid config to fail"
+
 let tests =
   Test.[
     case "config validates default development" test_config_validates_default_development;
@@ -199,6 +208,7 @@ let tests =
       "config rejects production placeholder secret"
       test_config_rejects_production_placeholder_secret;
     case "config rejects invalid limits" test_config_rejects_invalid_limits;
+    case "start link returns invalid config" test_start_link_returns_invalid_config;
   ]
 
 let main ~args = Test.Cli.main ~name:"suri:config" ~tests ~args ()

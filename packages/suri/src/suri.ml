@@ -16,11 +16,18 @@ type middleware = Middleware.Pipeline.middleware
 
 type handler = Middleware.Pipeline.t
 
-type start_error = Web_server.start_error =
+type start_error =
+  | InvalidConfig of Config.error list
   | InvalidAddress of Std.Net.Addr.error
   | BindFailed of Std.Net.TcpListener.error
   | InvalidAcceptors of int
   | InvalidBufferSize of int
+
+let start_error_of_web_server_error = function
+  | Web_server.InvalidAddress error -> InvalidAddress error
+  | Web_server.BindFailed error -> BindFailed error
+  | Web_server.InvalidAcceptors acceptors -> InvalidAcceptors acceptors
+  | Web_server.InvalidBufferSize buffer_size -> InvalidBufferSize buffer_size
 
 (* Low-level modules (not exposed in .mli) *)
 
@@ -107,40 +114,39 @@ let config = fun
    WebServer API.
 *)
 let start_link = fun ?(config = Config.default) (app: Middleware.Pipeline.t) ->
-  let config =
-    match Config.validate config with
-    | Ok config -> config
-    | Error errors ->
-        Std.panic
-          (Std.String.concat "" [ "Invalid Suri config:\n"; Config.errors_to_string errors; ])
-  in
-  (* Internal adapter: converts middleware pipeline to low-level handler *)
-  let handler socket_conn req =
-    let conn = Middleware.Conn.make socket_conn req in
-    run_app_on_conn app conn
-  in
-  (* Convert to internal WebServer config *)
-  let web_config =
-    WebServer.Config.make
-      ~max_request_line_length:config.max_request_line_length
-      ~max_header_count:config.max_header_count
-      ~max_header_length:config.max_header_length
-      ~max_body_size:config.max_body_size
-      ~max_keep_alive_requests:config.max_keep_alive_requests
-      ~max_websocket_frame_size:config.max_websocket_frame_size
-      ~max_websocket_message_size:config.max_websocket_message_size
-      ~read_header_timeout_ms:config.read_header_timeout_ms
-      ~read_body_timeout_ms:config.read_body_timeout_ms
-      ~idle_timeout_ms:config.idle_timeout_ms
-      ~write_timeout_ms:config.write_timeout_ms
-      ~buffer_size:config.buffer_size
-      ()
-  in
-  (* Start the web server with our adapted handler *)
-  WebServer.start_link
-    ~host:config.host
-    ~port:config.port
-    ~acceptors:config.acceptors
-    ~config:web_config
-    ~handler
-    ()
+  match Config.validate config with
+  | Error errors -> Std.Result.err (InvalidConfig errors)
+  | Ok config -> (
+      (* Internal adapter: converts middleware pipeline to low-level handler *)
+      let handler socket_conn req =
+        let conn = Middleware.Conn.make socket_conn req in
+        run_app_on_conn app conn
+      in
+      (* Convert to internal WebServer config *)
+      let web_config =
+        WebServer.Config.make
+          ~max_request_line_length:config.max_request_line_length
+          ~max_header_count:config.max_header_count
+          ~max_header_length:config.max_header_length
+          ~max_body_size:config.max_body_size
+          ~max_keep_alive_requests:config.max_keep_alive_requests
+          ~max_websocket_frame_size:config.max_websocket_frame_size
+          ~max_websocket_message_size:config.max_websocket_message_size
+          ~read_header_timeout_ms:config.read_header_timeout_ms
+          ~read_body_timeout_ms:config.read_body_timeout_ms
+          ~idle_timeout_ms:config.idle_timeout_ms
+          ~write_timeout_ms:config.write_timeout_ms
+          ~buffer_size:config.buffer_size
+          ()
+      in
+      (* Start the web server with our adapted handler *)
+      match WebServer.start_link
+        ~host:config.host
+        ~port:config.port
+        ~acceptors:config.acceptors
+        ~config:web_config
+        ~handler
+        () with
+      | Ok supervisor -> Std.Result.ok supervisor
+      | Error error -> Std.Result.err (start_error_of_web_server_error error)
+    )
