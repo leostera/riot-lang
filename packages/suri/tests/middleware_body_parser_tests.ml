@@ -147,6 +147,26 @@ let test_body_parser_rejects_multipart_without_boundary = fun _ctx ->
   | Ok _ -> Error "expected missing multipart boundary to fail"
   | Error error -> Error (Body_parser.parse_error_to_string error)
 
+let test_body_parser_stores_raw_json = fun _ctx ->
+  let conn =
+    Suri.Testing.Conn.make
+      ~headers:[ ("content-type", "application/json"); ]
+      ~body:{|{"name":"Alice","nested":{"role":"admin"}}|}
+      ()
+  in
+  let conn = Body_parser.make () ~conn ~next:(fun conn -> conn) in
+  Test.assert_equal ~expected:[ ("name", "Alice"); ] ~actual:(Conn.body_params conn);
+  match Body_parser.parsed_json conn with
+  | Some json ->
+      let nested =
+        Data.Json.get_field "nested" json
+        |> Option.and_then ~fn:(Data.Json.get_field "role")
+        |> Option.and_then ~fn:Data.Json.get_string
+      in
+      Test.assert_equal ~expected:(Some "admin") ~actual:nested;
+      Ok ()
+  | None -> Error "expected body parser to store parsed JSON"
+
 let tests =
   Test.[
     case "body parser rejects oversized bodies" test_body_parser_rejects_oversized_bodies;
@@ -158,6 +178,7 @@ let tests =
     case
       "body parser rejects multipart without boundary"
       test_body_parser_rejects_multipart_without_boundary;
+    case "body parser stores raw json" test_body_parser_stores_raw_json;
   ]
 
 let main ~args = Test.Cli.main ~name:"suri:middleware-body-parser" ~tests ~args ()

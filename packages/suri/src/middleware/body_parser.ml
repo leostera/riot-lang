@@ -26,6 +26,15 @@ type parse_error =
   | JsonRootNotObject of json_root_kind
   | MissingMultipartBoundary
 
+type parsed_body = {
+  body_params: (string * string) list;
+  json: Std.Data.Json.t option;
+}
+
+let parsed_json_key: Std.Data.Json.t Conn.assign_key = Conn.assign_key ()
+
+let parsed_json = fun conn -> Conn.get_assign parsed_json_key conn
+
 let default_config = fun () -> {
   parsers = [ Urlencoded; Json ];
   max_body_size = 10 * 1_024 * 1_024;
@@ -70,7 +79,8 @@ let parse_json_result = fun body ->
   match Std.Data.Json.of_string body with
   | Error error -> Error (InvalidJson error)
   | Ok (Std.Data.Json.Object fields) ->
-      Ok (
+      let json = Std.Data.Json.Object fields in
+      let body_params =
         List.filter_map
           ~fn:(fun ((k, v)) ->
             match v with
@@ -81,7 +91,8 @@ let parse_json_result = fun body ->
             | Std.Data.Json.Null -> Some (k, "")
             | _ -> None)
           fields
-      )
+      in
+      Ok { body_params; json = Some json }
   | Ok json -> Error (JsonRootNotObject (json_root_kind json))
 
 (** Parse multipart/form-data - TODO: use Mime library *)
@@ -101,7 +112,7 @@ let strip_quotes = fun value ->
   else
     value
 
-let parse_body = fun config ~content_type ~body ->
+let parse_body_result = fun config ~content_type ~body ->
   if String.length body > config.max_body_size then
     Error (BodyTooLarge { size = String.length body; max_size = config.max_body_size })
   else
@@ -113,7 +124,7 @@ let parse_body = fun config ~content_type ~body ->
           String.equal media_type "application/x-www-form-urlencoded"
           && List.contains config.parsers ~value:Urlencoded
         then
-          Ok (parse_urlencoded body)
+          Ok { body_params = parse_urlencoded body; json = None }
         else if
           String.equal media_type "application/json" && List.contains config.parsers ~value:Json
         then
@@ -123,10 +134,19 @@ let parse_body = fun config ~content_type ~body ->
           && List.contains config.parsers ~value:Multipart
         then
           match Std.Collections.Proplist.get params ~key:"boundary" with
-          | Some boundary -> Ok (parse_multipart ~boundary:(strip_quotes boundary) body)
+          | Some boundary ->
+              Ok {
+                body_params = parse_multipart ~boundary:(strip_quotes boundary) body;
+                json = None;
+              }
           | None -> Error MissingMultipartBoundary
         else
-          Ok []
+          Ok { body_params = []; json = None }
+
+let parse_body = fun config ~content_type ~body ->
+  match parse_body_result config ~content_type ~body with
+  | Ok parsed -> Ok parsed.body_params
+  | Error error -> Error error
 
 let respond_with_error = fun error conn ->
   let status =
@@ -147,8 +167,14 @@ let handle = fun config conn ->
   match Net.Http.Header.get (Conn.headers conn) "content-type" with
   | None -> conn
   | Some content_type -> (
-      match parse_body config ~content_type ~body:(Conn.body conn) with
-      | Ok body_params -> Conn.set_body_params body_params conn
+      match parse_body_result config ~content_type ~body:(Conn.body conn) with
+      | Ok parsed ->
+          (
+            match parsed.json with
+            | Some json -> Conn.assign parsed_json_key json conn
+            | None -> ()
+          );
+          Conn.set_body_params parsed.body_params conn
       | Error error -> respond_with_error error conn
     )
 

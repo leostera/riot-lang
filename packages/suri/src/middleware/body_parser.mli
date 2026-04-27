@@ -93,6 +93,13 @@ val parse_body:
    Parse a body for a known Content-Type. Unsupported enabled parsers return an
    empty parameter list; malformed known bodies return a structured error.
 *)
+val parsed_json: Conn.t -> Std.Data.Json.t option
+
+(**
+   Return the original parsed JSON value stored by this middleware, if the
+   request body was parsed as JSON. This preserves nested/object values that
+   cannot be represented in [Conn.body_params].
+*)
 val make: ?config:config -> unit -> conn:Conn.t -> next:(Conn.t -> Conn.t) -> Conn.t
 
 (**
