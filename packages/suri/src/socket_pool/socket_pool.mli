@@ -32,13 +32,14 @@ open Std
      include SocketPool.Handler.Default
 
      type state = unit
-     type error = string
+     type error =
+       | SendFailed of SocketPool.Connection.error
 
      let handle_data data conn () =
        match SocketPool.Connection.send conn data with
        | Ok () -> Continue ()
        | Error SocketPool.Connection.Closed -> Close ()
-       | Error _ -> Close ()
+       | Error error -> Error ((), SendFailed error)
    end
 
    let () =
@@ -58,7 +59,9 @@ open Std
      include SocketPool.Handler.Default
 
      type state = { requests : int }
-     type error = Parse_error of string
+     type error =
+       | MalformedRequest
+       | SendFailed of SocketPool.Connection.error
 
      let handle_connection _conn state =
        Continue { requests = 0 }
@@ -69,7 +72,7 @@ open Std
        match SocketPool.Connection.send conn response with
        | Ok () -> Continue { requests = state.requests + 1 }
        | Error SocketPool.Connection.Closed -> Close state
-       | Error _ -> Close state
+       | Error error -> Error (state, SendFailed error)
    end
 
    let () =
