@@ -9,6 +9,12 @@ type config = {
   cache_control: string option;
 }
 
+type path_error =
+  | InvalidPath
+  | MissingPath
+  | PathTraversal
+  | SymlinkDenied
+
 let default_config = {
   show_directory = false;
   index_files = [ "index.html"; "index.htm" ];
@@ -76,12 +82,39 @@ end
 
 (** Security checks for path traversal and dotfiles *)
 module Security = struct
-  let is_dotfile = fun path ->
-    let filename = Path.basename path in
-    String.length filename > 0 && String.get_unchecked filename ~at:0 = '.'
+  let normalize_mount = fun at ->
+    let at =
+      if at = "" then
+        "/"
+      else if String.starts_with ~prefix:"/" at then
+        at
+      else
+        "/" ^ at
+    in
+    if String.length at > 1 && String.ends_with ~suffix:"/" at then
+      String.sub at ~offset:0 ~len:(String.length at - 1)
+    else
+      at
+
+  let matches_mount = fun ~at ~request_path ->
+    let at = normalize_mount at in
+    let request_path =
+      if String.starts_with ~prefix:"/" request_path then
+        request_path
+      else
+        "/" ^ request_path
+    in
+    at = "/" || request_path = at || String.starts_with ~prefix:(at ^ "/") request_path
+
+  let path_has_dot_segment = fun path ->
+    Path.components path
+    |> List.exists
+      (fun segment ->
+        let segment = Path.to_string segment in
+        not (segment = "/") && String.length segment > 0 && String.get_unchecked segment ~at:0 = '.')
 
   let check_dotfile = fun config path ->
-    if not (is_dotfile path) then
+    if not (path_has_dot_segment path) then
       true
     else
       match config.dotfiles with
@@ -89,29 +122,63 @@ module Security = struct
       | `Deny -> false
       | `Ignore -> false
 
-  let normalize_path = fun root requested_path ->
-    (* Join root with requested path *)
-    let full_path = Path.join root requested_path in
-    (* Canonicalize to resolve .. and symlinks *)
-    match Fs.canonicalize full_path with
-    | Ok canonical ->
-        (* CRITICAL: Ensure canonical path is under root *)
-        let root_canonical =
-          Fs.canonicalize root
-          |> Result.unwrap_or ~default:root
-        in
-        let root_str = Path.to_string root_canonical in
-        let canonical_str = Path.to_string canonical in
-        if String.starts_with ~prefix:root_str canonical_str then
-          Ok canonical
+  let path_is_within_root = fun ~root path ->
+    let root = Path.normalize root in
+    let path = Path.normalize path in
+    Path.equal path root || (
+      match Path.strip_prefix path ~prefix:root with
+      | Ok _ -> true
+      | Error _ -> false
+    )
+
+  let rec path_contains_symlink_between = fun ~root path ->
+    match Fs.symlink_metadata path with
+    | Ok meta when Fs.Metadata.is_symlink meta -> true
+    | _ ->
+        if Path.equal path root then
+          false
         else
-          Error "path traversal blocked"
-    | Error _ -> Error "invalid path"
+          match Path.parent path with
+          | Some parent -> path_contains_symlink_between ~root parent
+          | None -> false
+
+  let path_contains_symlink = fun root requested_path ->
+    let root = Path.normalize root in
+    let path =
+      Path.join root requested_path
+      |> Path.normalize
+    in
+    path_contains_symlink_between ~root path
+
+  let normalize_path = fun config root requested_path ->
+    match Fs.canonicalize root with
+    | Error _ -> Error InvalidPath
+    | Ok root_canonical ->
+        let candidate =
+          Path.join root_canonical requested_path
+          |> Path.normalize
+        in
+        if not (path_is_within_root ~root:root_canonical candidate) then
+          Error PathTraversal
+        else if config.symlinks = `Deny && path_contains_symlink root requested_path then
+          Error SymlinkDenied
+        else
+          match Fs.canonicalize candidate with
+          | Ok canonical ->
+              if path_is_within_root ~root:root_canonical canonical then
+                Ok canonical
+              else
+                Error PathTraversal
+          | Error _ -> (
+              match Fs.exists candidate with
+              | Ok false -> Error MissingPath
+              | _ -> Error InvalidPath
+            )
 
   let is_safe_path = fun config root path ->
-    match normalize_path root path with
+    check_dotfile config path && match normalize_path config root path with
+    | Ok _ -> true
     | Error _ -> false
-    | Ok normalized -> check_dotfile config normalized
 end
 
 (** HTTP caching helpers *)
@@ -279,6 +346,21 @@ end
 module Directory = struct
   type entry = { name: string; is_dir: bool; size: int; modified: float }
 
+  let html_escape = fun str ->
+    let buf = IO.Buffer.create ~size:(String.length str) in
+    String.iter
+      (
+        function
+        | '&' -> IO.Buffer.add_string buf "&amp;"
+        | '<' -> IO.Buffer.add_string buf "&lt;"
+        | '>' -> IO.Buffer.add_string buf "&gt;"
+        | '"' -> IO.Buffer.add_string buf "&quot;"
+        | '\'' -> IO.Buffer.add_string buf "&#39;"
+        | c -> IO.Buffer.add_char buf c
+      )
+      str;
+    IO.Buffer.contents buf
+
   let format_float_1dp = fun f ->
     let whole = int_of_float f in
     let frac = int_of_float ((f -. float whole) *. 10.0) in
@@ -381,6 +463,8 @@ module Directory = struct
         format_size entry.size
     in
     let date_str = format_date entry.modified in
+    let href = html_escape href in
+    let display_name = html_escape display_name in
     String.concat
       ""
       [
@@ -400,7 +484,10 @@ module Directory = struct
       ]
 
   let generate_html = fun request_path path entries ->
-    let path_str = Path.to_string path in
+    let path_str =
+      Path.to_string path
+      |> html_escape
+    in
     (* Build parent path by removing last segment *)
     let parent_href =
       if String.ends_with ~suffix:"/" request_path then
@@ -413,6 +500,7 @@ module Directory = struct
       | Some idx -> String.sub parent_href ~offset:0 ~len:(idx + 1)
       | None -> "/"
     in
+    let parent_href = html_escape parent_href in
     let entries_html = String.concat "\n" (List.map ~fn:(entry_row request_path) entries) in
     String.concat
       ""
@@ -478,20 +566,34 @@ let find_index_file = fun config path ->
       | _ -> None)
   |> List.head
 
+let path_error_status_and_body = fun error ->
+  match error with
+  | MissingPath -> (Net.Http.Status.NotFound, "404 Not Found")
+  | InvalidPath -> (Net.Http.Status.Forbidden, "invalid path")
+  | PathTraversal -> (Net.Http.Status.Forbidden, "path traversal blocked")
+  | SymlinkDenied -> (Net.Http.Status.Forbidden, "symlinks are not allowed")
+
+let dotfile_status_and_body = fun config ->
+  match config.dotfiles with
+  | `Ignore -> (Net.Http.Status.NotFound, "404 Not Found")
+  | `Allow -> (Net.Http.Status.Ok, "")
+  | `Deny -> (Net.Http.Status.Forbidden, "access to dotfiles denied")
+
 let rec serve_file = fun config root requested_path conn ->
-  (* Normalize and validate path *)
-  match Security.normalize_path root requested_path with
-  | Error msg ->
-      conn
-      |> Conn.respond ~status:Net.Http.Status.Forbidden ~body:msg
-      |> Conn.halt
-  | Ok full_path -> (
-      (* Check dotfile policy *)
-      if not (Security.check_dotfile config full_path) then
+  if not (Security.check_dotfile config requested_path) then
+    let (status, body) = dotfile_status_and_body config in
+    conn
+    |> Conn.respond ~status ~body
+    |> Conn.halt
+  else
+    (* Normalize and validate path *)
+    match Security.normalize_path config root requested_path with
+    | Error error ->
+        let (status, body) = path_error_status_and_body error in
         conn
-        |> Conn.respond ~status:Net.Http.Status.Forbidden ~body:"access to dotfiles denied"
+        |> Conn.respond ~status ~body
         |> Conn.halt
-      else
+    | Ok full_path -> (
         (* Get file metadata *)
         match Fs.metadata full_path with
         | Error _ ->
@@ -504,7 +606,7 @@ let rec serve_file = fun config root requested_path conn ->
             conn
             |> Conn.respond ~status:Net.Http.Status.Forbidden ~body:"cannot serve special files"
             |> Conn.halt
-    )
+      )
 
 and serve_directory = fun config root path conn ->
   (* Try index files first *)
@@ -582,10 +684,11 @@ and serve_regular_file = fun config path meta conn ->
 
 (** Middleware function *)
 let middleware = fun ?(config = default_config) ~at root () ->
+  let at = Security.normalize_mount at in
   fun ~conn ~next ->
     let request_path = Conn.path conn in
     (* Check if path matches our prefix *)
-    if not (String.starts_with ~prefix:at request_path) then
+    if not (Security.matches_mount ~at ~request_path) then
       next conn
     else
       (* Remove prefix to get relative path *)
@@ -612,3 +715,31 @@ let middleware = fun ?(config = default_config) ~at root () ->
           Path.v relative
       in
       serve_file config root requested_path conn
+
+module For_testing = struct
+  type nonrec path_error = path_error =
+    | InvalidPath
+    | MissingPath
+    | PathTraversal
+    | SymlinkDenied
+
+  let path_has_dot_segment = Security.path_has_dot_segment
+
+  let path_is_within_root = Security.path_is_within_root
+
+  let matches_mount = Security.matches_mount
+
+  let directory_listing_html = fun ~request_path ~path ~entries ->
+    let entries =
+      List.map
+        ~fn:(fun ((name, is_dir, size, modified)) ->
+          Directory.{
+            name;
+            is_dir;
+            size;
+            modified;
+          })
+        entries
+    in
+    Directory.generate_html request_path path entries
+end

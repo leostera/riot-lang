@@ -172,3 +172,21 @@ val middleware: ?config:config -> at:string -> Path.t -> unit -> Pipeline.middle
      Static.middleware ~at:"/files" ~config (Path.v "./files") ()
    ]}
 *)
+module For_testing: sig
+  type path_error =
+    | InvalidPath
+    | MissingPath
+    | PathTraversal
+    | SymlinkDenied
+  val path_has_dot_segment: Path.t -> bool
+
+  val path_is_within_root: root:Path.t -> Path.t -> bool
+
+  val matches_mount: at:string -> request_path:string -> bool
+
+  val directory_listing_html:
+    request_path:string ->
+    path:Path.t ->
+    entries:(string * bool * int * float) list ->
+    string
+end
