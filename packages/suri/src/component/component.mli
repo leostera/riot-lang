@@ -678,6 +678,8 @@ val text: string -> 'msg t
 (**
    Create a text node.
 
+   Text nodes are HTML-escaped when rendered with [to_html].
+
    Example: [text "Hello, world!"]
 *)
 val int: int -> 'msg t
@@ -770,7 +772,9 @@ val to_html: 'msg t -> string
 
    - Event handlers are ignored (LiveView only)
    - Self-closing tags are properly formatted
-   - Attributes are HTML-escaped
+   - Text and attributes are HTML-escaped
+   - Invalid dynamic tag names and attribute names are omitted from output
+   - [script] and [style] contents render as trusted raw-text content
 
    Example:
    {[

@@ -215,6 +215,8 @@ val string: string -> 'msg t
 (**
    Create a text node from a string.
 
+   Text nodes are HTML-escaped when rendered with [to_string].
+
    Example:
    ```ocaml
    h1 [ string "Hello, world!" ] ()
@@ -236,6 +238,9 @@ val to_string: 'msg t -> string
    Render an HTML tree to a string.
 
    This converts your HTML tree into an HTML string that can be sent to the client.
+   Text and attribute values are escaped, while invalid dynamic tag and
+   attribute names are omitted from output. [script] contents are trusted
+   raw-text content.
 
    Example:
    ```ocaml

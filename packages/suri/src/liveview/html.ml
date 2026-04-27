@@ -70,33 +70,131 @@ let string = fun (str: string) -> Text str
 
 let int = fun (x: int) -> Text (Int.to_string x)
 
+let is_valid_tag_name = fun tag ->
+  let is_first_char = function
+    | 'a' .. 'z'
+    | 'A' .. 'Z' -> true
+    | _ -> false
+  in
+  let is_name_char = function
+    | 'a' .. 'z'
+    | 'A' .. 'Z'
+    | '0' .. '9'
+    | '-'
+    | ':' -> true
+    | _ -> false
+  in
+  let rec go index =
+    if index >= String.length tag then
+      true
+    else if is_name_char (String.get_unchecked tag ~at:index) then
+      go (index + 1)
+    else
+      false
+  in
+  String.length tag > 0 && is_first_char (String.get_unchecked tag ~at:0) && go 1
+
+let is_valid_attr_name = fun name ->
+  let is_name_char = function
+    | 'a' .. 'z'
+    | 'A' .. 'Z'
+    | '0' .. '9'
+    | '-'
+    | '_'
+    | ':'
+    | '.' -> true
+    | _ -> false
+  in
+  let rec go index =
+    if index >= String.length name then
+      true
+    else if is_name_char (String.get_unchecked name ~at:index) then
+      go (index + 1)
+    else
+      false
+  in
+  String.length name > 0 && go 0
+
+let is_raw_text_tag = fun tag -> tag = "script" || tag = "style"
+
 let rec to_string = fun (t: 'msg t) ->
   match t with
-  | Text str -> str
+  | Text str -> escape_text str
   | Splat els -> String.concat "\n" (List.map ~fn:to_string els)
   | El { tag; children; attrs } ->
-      "<"
-      ^ tag
-      ^ " "
-      ^ attrs_to_string attrs
-      ^ ">"
-      ^ (
+      if not (is_valid_tag_name tag) then
         List.map ~fn:to_string children
         |> String.concat "\n"
-      )
-      ^ "</"
-      ^ tag
-      ^ ">"
+      else
+        let attrs_string = attrs_to_string attrs in
+        let attrs_part =
+          if attrs_string = "" then
+            ""
+          else
+            " " ^ attrs_string
+        in
+        let children_html =
+          let render_child =
+            if is_raw_text_tag tag then
+              to_raw_text_string
+            else
+              to_string
+          in
+          List.map ~fn:render_child children
+          |> String.concat "\n"
+        in
+        "<" ^ tag ^ attrs_part ^ ">" ^ children_html ^ "</" ^ tag ^ ">"
+
+and to_raw_text_string = fun (t: 'msg t) ->
+  match t with
+  | Text str -> str
+  | Splat els -> String.concat "\n" (List.map ~fn:to_raw_text_string els)
+  | El _ -> to_string t
 
 and attrs_to_string = fun attrs ->
   List.map
     ~fn:(
       function
-      | `attr (k, v) -> k ^ "=" ^ "\"" ^ v ^ "\""
+      | `attr (k, v) ->
+          if is_valid_attr_name k then
+            k ^ "=" ^ "\"" ^ escape_attr v ^ "\""
+          else
+            ""
       | _ -> ""
     )
     attrs
+  |> List.filter ~fn:(fun attr -> attr != "")
   |> String.concat " "
+
+and escape_text = fun str ->
+  let buf = IO.Buffer.create ~size:(String.length str) in
+  String.iter
+    (
+      function
+      | '&' -> IO.Buffer.add_string buf "&amp;"
+      | '<' -> IO.Buffer.add_string buf "&lt;"
+      | '>' -> IO.Buffer.add_string buf "&gt;"
+      | '"' -> IO.Buffer.add_string buf "&quot;"
+      | '\'' -> IO.Buffer.add_string buf "&#39;"
+      | c -> IO.Buffer.add_char buf c
+    )
+    str;
+  IO.Buffer.contents buf
+
+and escape_attr = fun str ->
+  let buf = IO.Buffer.create ~size:(String.length str) in
+  String.iter
+    (
+      function
+      | '&' -> IO.Buffer.add_string buf "&amp;"
+      | '<' -> IO.Buffer.add_string buf "&lt;"
+      | '>' -> IO.Buffer.add_string buf "&gt;"
+      | '"' -> IO.Buffer.add_string buf "&quot;"
+      | '\'' -> IO.Buffer.add_string buf "&#39;"
+      | c -> IO.Buffer.add_char buf c
+    )
+    str;
+  IO.Buffer.contents buf
 
 let event_handlers = fun attrs ->
   List.filter_map

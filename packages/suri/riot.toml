@@ -8,6 +8,10 @@ public = true
 [lib]
 path = "src/suri.ml"
 
+[[bin]]
+name = "suri_hardening_tests"
+path = "tests/hardening_tests.ml"
+
 [dependencies]
 std = { path = "../std", version = "*" }
 http = { path = "../http", version = "*" }

@@ -339,7 +339,12 @@ val get_upgrade: t -> upgrade_info option
 
 val to_response: t -> Web_server.Response.t
 
-(** Convert connection to HTTP response *)
+(**
+   Convert connection to HTTP response.
+
+   If the middleware pipeline finishes without sending or halting, this produces
+   a default [404 Not Found] response instead of an empty [200 OK].
+*)
 (** ## Private Data Storage *)
 
 type assign_value = ..

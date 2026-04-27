@@ -406,33 +406,113 @@ let self_closing_tags = [
 
 let is_self_closing = fun tag -> List.contains self_closing_tags ~value:tag
 
+let is_valid_tag_name = fun tag ->
+  let is_first_char = function
+    | 'a' .. 'z'
+    | 'A' .. 'Z' -> true
+    | _ -> false
+  in
+  let is_name_char = function
+    | 'a' .. 'z'
+    | 'A' .. 'Z'
+    | '0' .. '9'
+    | '-'
+    | ':' -> true
+    | _ -> false
+  in
+  let rec go index =
+    if index >= String.length tag then
+      true
+    else if is_name_char (String.get_unchecked tag ~at:index) then
+      go (index + 1)
+    else
+      false
+  in
+  String.length tag > 0 && is_first_char (String.get_unchecked tag ~at:0) && go 1
+
+let is_valid_attr_name = fun name ->
+  let is_name_char = function
+    | 'a' .. 'z'
+    | 'A' .. 'Z'
+    | '0' .. '9'
+    | '-'
+    | '_'
+    | ':'
+    | '.' -> true
+    | _ -> false
+  in
+  let rec go index =
+    if index >= String.length name then
+      true
+    else if is_name_char (String.get_unchecked name ~at:index) then
+      go (index + 1)
+    else
+      false
+  in
+  String.length name > 0 && go 0
+
+let is_raw_text_tag = fun tag -> tag = "script" || tag = "style"
+
 let rec to_html = fun t ->
   match t with
-  | Text str -> str
+  | Text str -> escape_text str
   | Fragment children -> String.concat "" (List.map ~fn:to_html children)
   | El { tag; attrs; children } ->
-      let attrs_str = attrs_to_string attrs in
-      let attrs_part =
-        if attrs_str = "" then
-          ""
-        else
-          " " ^ attrs_str
-      in
-      if is_self_closing tag then
-        "<" ^ tag ^ attrs_part ^ " />"
+      if not (is_valid_tag_name tag) then
+        String.concat "" (List.map ~fn:to_html children)
       else
-        let children_html = String.concat "" (List.map ~fn:to_html children) in
-        "<" ^ tag ^ attrs_part ^ ">" ^ children_html ^ "</" ^ tag ^ ">"
+        let attrs_str = attrs_to_string attrs in
+        let attrs_part =
+          if attrs_str = "" then
+            ""
+          else
+            " " ^ attrs_str
+        in
+        if is_self_closing tag then
+          "<" ^ tag ^ attrs_part ^ " />"
+        else
+          let children_html =
+            if is_raw_text_tag tag then
+              String.concat "" (List.map ~fn:to_raw_text_html children)
+            else
+              String.concat "" (List.map ~fn:to_html children)
+          in
+          "<" ^ tag ^ attrs_part ^ ">" ^ children_html ^ "</" ^ tag ^ ">"
+
+and to_raw_text_html = fun t ->
+  match t with
+  | Text str -> str
+  | Fragment children -> String.concat "" (List.map ~fn:to_raw_text_html children)
+  | El _ -> to_html t
 
 and attrs_to_string = fun attrs ->
   attrs
   |> List.filter_map
     ~fn:(
       function
-      | Attr (k, v) -> Some (k ^ "=\"" ^ escape_attr v ^ "\"")
+      | Attr (k, v) ->
+          if is_valid_attr_name k then
+            Some (k ^ "=\"" ^ escape_attr v ^ "\"")
+          else
+            None
       | Event _ -> None
     )
   |> String.concat " "
+
+and escape_text = fun str ->
+  let buf = IO.Buffer.create ~size:(String.length str) in
+  String.iter
+    (
+      function
+      | '&' -> IO.Buffer.add_string buf "&amp;"
+      | '<' -> IO.Buffer.add_string buf "&lt;"
+      | '>' -> IO.Buffer.add_string buf "&gt;"
+      | '"' -> IO.Buffer.add_string buf "&quot;"
+      | '\'' -> IO.Buffer.add_string buf "&#39;"
+      | c -> IO.Buffer.add_char buf c
+    )
+    str;
+  IO.Buffer.contents buf
 
 and escape_attr = fun str ->
   (* HTML attribute escaping *)
@@ -444,6 +524,7 @@ and escape_attr = fun str ->
       | '&' -> IO.Buffer.add_string buf "&amp;"
       | '<' -> IO.Buffer.add_string buf "&lt;"
       | '>' -> IO.Buffer.add_string buf "&gt;"
+      | '\'' -> IO.Buffer.add_string buf "&#39;"
       | c -> IO.Buffer.add_char buf c
     )
     str;
