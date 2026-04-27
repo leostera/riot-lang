@@ -2521,7 +2521,7 @@ let test_let_module_expression_views = fun _ctx ->
     |> require_some ~msg:"expected empty let module view"
   in
   Test.assert_equal
-    ~expected:Ast.LetModuleExpr.EmptyStruct
+    ~expected:Ast.LetModuleExpr.Struct
     ~actual:(Ast.LetModuleExpr.module_body empty_module);
   let nested_expr =
     nth_structure_item root 2

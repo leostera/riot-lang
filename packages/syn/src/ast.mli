@@ -718,7 +718,7 @@ module LetModuleExpr: sig
   type t = expr
   type module_body =
     | Path
-    | EmptyStruct
+    | Struct
     | Unsupported
   val cast: expr -> t option
 

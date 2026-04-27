@@ -6851,7 +6851,7 @@ and render_let_module_body = fun state module_expr ->
           render_module_body_path
             state
             (Ast.LetModuleExpr.for_each_module_body_path_ident module_expr)
-      | EmptyStruct ->
+      | Struct ->
           emit_text state "struct";
           emit_space state;
           emit_text state "end"

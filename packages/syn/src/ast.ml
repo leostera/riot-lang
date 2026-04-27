@@ -2351,7 +2351,7 @@ module LetModuleExpr: sig
   type t = expr
   type module_body =
     | Path
-    | EmptyStruct
+    | Struct
     | Unsupported
   val cast: expr -> t option
 
@@ -2377,7 +2377,7 @@ end = struct
 
   type module_body =
     | Path
-    | EmptyStruct
+    | Struct
     | Unsupported
 
   let cast = fun (expr: expr) ->
@@ -2475,22 +2475,9 @@ end = struct
     | None -> None
 
   let module_body = fun expr ->
-    let has_child_node_kind node expected =
-      let found = ref false in
-      Node.for_each_child_node
-        node
-        ~fn:(fun child ->
-          if node_kind_is child expected then
-            found := true);
-      !found
-    in
     match module_body_node expr with
     | Some node when node_kind_is node Syntax_kind.PATH_MODULE_EXPR -> Path
-    | Some node when node_kind_is node Syntax_kind.STRUCT_MODULE_EXPR ->
-        if has_child_node_kind node Syntax_kind.STRUCTURE_ITEM then
-          Unsupported
-        else
-          EmptyStruct
+    | Some node when node_kind_is node Syntax_kind.STRUCT_MODULE_EXPR -> Struct
     | _ -> Unsupported
 
   let body = first_expr_child
