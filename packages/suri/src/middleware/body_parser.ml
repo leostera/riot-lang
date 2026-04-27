@@ -10,11 +10,20 @@ type config = {
   max_body_size: int;
 }
 
+type json_root_kind =
+  | JsonNull
+  | JsonBool
+  | JsonInt
+  | JsonFloat
+  | JsonString
+  | JsonArray
+  | JsonObject
+
 type parse_error =
   | BodyTooLarge of { size: int; max_size: int }
-  | InvalidContentType of string
+  | InvalidContentType of { value: string }
   | InvalidJson of Std.Data.Json.error
-  | JsonRootNotObject of string
+  | JsonRootNotObject of json_root_kind
   | MissingMultipartBoundary
 
 let default_config = fun () -> {
@@ -22,15 +31,24 @@ let default_config = fun () -> {
   max_body_size = 10 * 1_024 * 1_024;
 }
 
-let rec json_kind = function
-  | Std.Data.Json.Null -> "null"
-  | Bool _ -> "bool"
-  | Int _ -> "int"
-  | Float _ -> "float"
-  | String _ -> "string"
-  | Array _ -> "array"
-  | Object _ -> "object"
-  | Embed json -> json_kind json
+let rec json_root_kind = function
+  | Std.Data.Json.Null -> JsonNull
+  | Bool _ -> JsonBool
+  | Int _ -> JsonInt
+  | Float _ -> JsonFloat
+  | String _ -> JsonString
+  | Array _ -> JsonArray
+  | Object _ -> JsonObject
+  | Embed json -> json_root_kind json
+
+let json_root_kind_to_string = function
+  | JsonNull -> "null"
+  | JsonBool -> "bool"
+  | JsonInt -> "int"
+  | JsonFloat -> "float"
+  | JsonString -> "string"
+  | JsonArray -> "array"
+  | JsonObject -> "object"
 
 let parse_error_to_string = function
   | BodyTooLarge { size; max_size } ->
@@ -39,9 +57,10 @@ let parse_error_to_string = function
       ^ " bytes, maximum is "
       ^ Int.to_string max_size
       ^ " bytes)"
-  | InvalidContentType content_type -> "Invalid Content-Type header: " ^ content_type
+  | InvalidContentType { value } -> "Invalid Content-Type header: " ^ value
   | InvalidJson error -> "Invalid JSON request body: " ^ Std.Data.Json.error_to_string error
-  | JsonRootNotObject kind -> "Expected JSON request body to be an object, got " ^ kind
+  | JsonRootNotObject kind ->
+      "Expected JSON request body to be an object, got " ^ json_root_kind_to_string kind
   | MissingMultipartBoundary -> "multipart/form-data request is missing a boundary parameter"
 
 (** Parse application/x-www-form-urlencoded body using Net.Uri.Query.parse *)
@@ -63,7 +82,7 @@ let parse_json_result = fun body ->
             | _ -> None)
           fields
       )
-  | Ok json -> Error (JsonRootNotObject (json_kind json))
+  | Ok json -> Error (JsonRootNotObject (json_root_kind json))
 
 (** Parse multipart/form-data - TODO: use Mime library *)
 let parse_multipart = fun ~boundary:_ _body ->
@@ -87,7 +106,7 @@ let parse_body = fun config ~content_type ~body ->
     Error (BodyTooLarge { size = String.length body; max_size = config.max_body_size })
   else
     match Net.Http.Header.Value.parse_content_type content_type with
-    | Error `InvalidContentType -> Error (InvalidContentType content_type)
+    | Error `InvalidContentType -> Error (InvalidContentType { value = content_type })
     | Ok (media_type, params) ->
         let media_type = String.lowercase_ascii media_type in
         if

@@ -124,7 +124,7 @@ let test_body_parser_rejects_json_root_arrays = fun _ctx ->
     (Body_parser.default_config ())
     ~content_type:"application/json"
     ~body:{|["alice"]|} with
-  | Error (Body_parser.JsonRootNotObject "array") -> Ok ()
+  | Error (Body_parser.JsonRootNotObject Body_parser.JsonArray) -> Ok ()
   | Ok _ -> Error "expected JSON array body to fail"
   | Error error -> Error (Body_parser.parse_error_to_string error)
 

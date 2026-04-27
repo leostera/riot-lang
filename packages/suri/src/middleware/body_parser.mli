@@ -57,14 +57,22 @@ type config = {
      not parsed.
   *)
 }
+type json_root_kind =
+  | JsonNull
+  | JsonBool
+  | JsonInt
+  | JsonFloat
+  | JsonString
+  | JsonArray
+  | JsonObject
 type parse_error =
   | BodyTooLarge of { size: int; max_size: int }
   (** Request body exceeded the configured limit. *)
-  | InvalidContentType of string
+  | InvalidContentType of { value: string }
   (** Content-Type header could not be parsed. *)
   | InvalidJson of Std.Data.Json.error
   (** JSON parser returned a structured syntax error. *)
-  | JsonRootNotObject of string
+  | JsonRootNotObject of json_root_kind
   (** JSON parsed successfully, but the root value cannot populate body params. *)
   | MissingMultipartBoundary
 
