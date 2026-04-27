@@ -43,6 +43,25 @@ let websocket_request = fun
   in
   Suri.Request.of_http ~body:"" http_req
 
+let http_request = fun
+  ?(method_ = Net.Http.Method.Get)
+  ?(version = Net.Http.Version.Http11)
+  ?(headers = [])
+  () ->
+  let uri =
+    Net.Uri.of_string "/"
+    |> Result.unwrap
+  in
+  Net.Http.Request.create method_ uri
+  |> fun req ->
+    Net.Http.Request.with_version req version
+    |> fun req ->
+      List.fold_left
+        headers
+        ~init:req
+        ~fn:(fun req ((name, value)) ->
+          Net.Http.Request.add_header req name value)
+
 let config_for_test = fun
   ?(env = Config.default.env)
   ?(host = Config.default.host)
@@ -622,6 +641,67 @@ let test_http1_websocket_upgrade_rejects_invalid_key = fun _ctx ->
   | Ok _ -> Error "expected WebSocket upgrade to reject invalid Sec-WebSocket-Key"
   | Error error -> Error (Http1.websocket_upgrade_error_to_string error)
 
+let test_http1_body_headers_accept_valid_content_length = fun _ctx ->
+  let req = http_request ~headers:[ ("content-length", " 12 "); ] () in
+  Test.assert_equal ~expected:(Ok 12) ~actual:(Http1.validate_request_body_headers req);
+  Ok ()
+
+let test_http1_body_headers_reject_invalid_content_length = fun _ctx ->
+  let req = http_request ~headers:[ ("content-length", "abc"); ] () in
+  match Http1.validate_request_body_headers req with
+  | Error (Http1.InvalidContentLength "abc") -> Ok ()
+  | Ok _ -> Error "expected invalid content-length to fail"
+  | Error error -> Error (Http1.request_body_header_error_to_string error)
+
+let test_http1_body_headers_reject_negative_content_length = fun _ctx ->
+  let req = http_request ~headers:[ ("content-length", "-1"); ] () in
+  match Http1.validate_request_body_headers req with
+  | Error (Http1.InvalidContentLength "-1") -> Ok ()
+  | Ok _ -> Error "expected negative content-length to fail"
+  | Error error -> Error (Http1.request_body_header_error_to_string error)
+
+let test_http1_body_headers_reject_conflicting_content_length = fun _ctx ->
+  let req = http_request ~headers:[ ("content-length", "3"); ("content-length", "4"); ] () in
+  match Http1.validate_request_body_headers req with
+  | Error (Http1.ConflictingContentLength values) ->
+      Test.assert_equal ~expected:2 ~actual:(List.length values);
+      Test.assert_true (List.contains values ~value:"3");
+      Test.assert_true (List.contains values ~value:"4");
+      Ok ()
+  | Ok _ -> Error "expected conflicting content-length headers to fail"
+  | Error error -> Error (Http1.request_body_header_error_to_string error)
+
+let test_http1_body_headers_allow_duplicate_matching_content_length = fun _ctx ->
+  let req = http_request ~headers:[ ("content-length", "3"); ("content-length", "3"); ] () in
+  Test.assert_equal ~expected:(Ok 3) ~actual:(Http1.validate_request_body_headers req);
+  Ok ()
+
+let test_http1_body_headers_reject_transfer_encoding_with_content_length = fun _ctx ->
+  let req = http_request ~headers:[ ("content-length", "3"); ("transfer-encoding", "chunked"); ] () in
+  match Http1.validate_request_body_headers req with
+  | Error Http1.TransferEncodingWithContentLength -> Ok ()
+  | Ok _ -> Error "expected transfer-encoding with content-length to fail"
+  | Error error -> Error (Http1.request_body_header_error_to_string error)
+
+let test_http1_body_headers_reject_chunked_transfer_encoding = fun _ctx ->
+  let req = http_request ~headers:[ ("transfer-encoding", "chunked"); ] () in
+  match Http1.validate_request_body_headers req with
+  | Error (Http1.UnsupportedTransferEncoding "chunked") -> Ok ()
+  | Ok _ -> Error "expected unsupported transfer-encoding to fail"
+  | Error error -> Error (Http1.request_body_header_error_to_string error)
+
+let test_http1_body_split_preserves_pipelined_bytes = fun _ctx ->
+  let (body, remaining) = Http1.split_request_body "abcGET /next HTTP/1.1\r\n\r\n" 3 in
+  Test.assert_equal ~expected:"abc" ~actual:body;
+  Test.assert_equal ~expected:"GET /next HTTP/1.1\r\n\r\n" ~actual:remaining;
+  Ok ()
+
+let test_http1_body_split_keeps_zero_length_body_empty = fun _ctx ->
+  let (body, remaining) = Http1.split_request_body "GET /next HTTP/1.1\r\n\r\n" 0 in
+  Test.assert_equal ~expected:"" ~actual:body;
+  Test.assert_equal ~expected:"GET /next HTTP/1.1\r\n\r\n" ~actual:remaining;
+  Ok ()
+
 let test_connection_write_all_retries_short_writes = fun _ctx ->
   let calls = ref [] in
   let write _buf ~pos ~len =
@@ -884,6 +964,33 @@ let tests =
     case
       "http1 websocket upgrade rejects invalid key"
       test_http1_websocket_upgrade_rejects_invalid_key;
+    case
+      "http1 body headers accept valid content length"
+      test_http1_body_headers_accept_valid_content_length;
+    case
+      "http1 body headers reject invalid content length"
+      test_http1_body_headers_reject_invalid_content_length;
+    case
+      "http1 body headers reject negative content length"
+      test_http1_body_headers_reject_negative_content_length;
+    case
+      "http1 body headers reject conflicting content length"
+      test_http1_body_headers_reject_conflicting_content_length;
+    case
+      "http1 body headers allow duplicate matching content length"
+      test_http1_body_headers_allow_duplicate_matching_content_length;
+    case
+      "http1 body headers reject transfer encoding with content length"
+      test_http1_body_headers_reject_transfer_encoding_with_content_length;
+    case
+      "http1 body headers reject chunked transfer encoding"
+      test_http1_body_headers_reject_chunked_transfer_encoding;
+    case
+      "http1 body split preserves pipelined bytes"
+      test_http1_body_split_preserves_pipelined_bytes;
+    case
+      "http1 body split keeps zero length body empty"
+      test_http1_body_split_keeps_zero_length_body_empty;
     case "connection write all retries short writes" test_connection_write_all_retries_short_writes;
     case
       "connection write all treats zero write as closed"

@@ -36,6 +36,12 @@ type websocket_upgrade_error =
   | MissingWebSocketKey
   | InvalidWebSocketKey of string
 
+type request_body_header_error =
+  | InvalidContentLength of string
+  | ConflictingContentLength of string list
+  | TransferEncodingWithContentLength
+  | UnsupportedTransferEncoding of string
+
 let to_string_error = function
   | `ParseError msg -> "Parse error: " ^ msg
   | `ExcessBodyRead -> "Excess body read"
@@ -59,6 +65,13 @@ let websocket_upgrade_error_to_string = function
       "Unsupported WebSocket version: " ^ version ^ "; expected 13"
   | MissingWebSocketKey -> "Missing Sec-WebSocket-Key header"
   | InvalidWebSocketKey _ -> "Invalid Sec-WebSocket-Key header; expected base64 for exactly 16 bytes"
+
+let request_body_header_error_to_string = function
+  | InvalidContentLength value -> "Invalid Content-Length header: " ^ value
+  | ConflictingContentLength values ->
+      "Conflicting Content-Length headers: " ^ String.concat ", " values
+  | TransferEncodingWithContentLength -> "Request must not include both Transfer-Encoding and Content-Length"
+  | UnsupportedTransferEncoding value -> "Unsupported Transfer-Encoding header: " ^ value
 
 let make_handler = fun ~config ~handler ?(sniffed_data = "") () ->
   {
@@ -248,6 +261,41 @@ let validate_websocket_upgrade = fun req ->
         | _ -> Error MissingWebSocketConnectionUpgrade
       )
 
+let all_equal = function
+  | []
+  | [ _ ] -> true
+  | first :: rest -> List.all rest ~fn:(String.equal first)
+
+let validate_request_body_headers = fun http_req ->
+  let headers = Net.Http.Request.headers http_req in
+  let content_lengths = Net.Http.Header.get_all headers "content-length" in
+  match Net.Http.Header.get headers "transfer-encoding" with
+  | Some transfer_encoding ->
+      if not (List.is_empty content_lengths) then
+        Error TransferEncodingWithContentLength
+      else
+        Error (UnsupportedTransferEncoding transfer_encoding)
+  | None -> (
+      match content_lengths with
+      | [] -> Ok 0
+      | value :: _ when not (all_equal content_lengths) ->
+          Error (ConflictingContentLength content_lengths)
+      | value :: _ -> (
+          match Int.of_string_opt (String.trim value) with
+          | Some len when len >= 0 -> Ok len
+          | _ -> Error (InvalidContentLength value)
+        )
+    )
+
+let split_request_body = fun data expected_length ->
+  let body_length = String.length data in
+  if body_length <= expected_length then
+    (data, "")
+  else
+    let body = String.sub data ~offset:0 ~len:expected_length in
+    let remaining = String.sub data ~offset:expected_length ~len:(body_length - expected_length) in
+    (body, remaining)
+
 module For_testing = struct
   type nonrec serialization_error = serialization_error =
     | InvalidHeaderName of string
@@ -264,6 +312,12 @@ module For_testing = struct
     | MissingWebSocketKey
     | InvalidWebSocketKey of string
 
+  type nonrec request_body_header_error = request_body_header_error =
+    | InvalidContentLength of string
+    | ConflictingContentLength of string list
+    | TransferEncodingWithContentLength
+    | UnsupportedTransferEncoding of string
+
   let serialize_response = serialize_response
 
   let compute_websocket_accept = compute_websocket_accept
@@ -271,6 +325,12 @@ module For_testing = struct
   let validate_websocket_upgrade = validate_websocket_upgrade
 
   let websocket_upgrade_error_to_string = websocket_upgrade_error_to_string
+
+  let validate_request_body_headers = validate_request_body_headers
+
+  let request_body_header_error_to_string = request_body_header_error_to_string
+
+  let split_request_body = split_request_body
 end
 
 (* Bridge Channel.Handler.t to Socket_pool.Handler.t for WebSocket connections *)
@@ -403,34 +463,43 @@ let handle_request = fun state socket_conn (req: Request.t) ->
         "Http1_handler.handle_request: Matched WebSocket upgrade, calling handle_websocket_upgrade";
       handle_websocket_upgrade state socket_conn req ws_handler
 
-let get_content_length = fun http_req ->
-  match Net.Http.Request.get_header http_req "content-length" with
-  | Some len_str -> (
-      match Int.of_string_opt len_str with
-      | Some len when len >= 0 -> len
-      | _ -> 0
-    )
-  | None -> 0
-
 let handle_data_waiting_headers = fun full_data conn state ->
   match Http.Http1.Request.parse
     ~max_request_line:state.config.max_request_line_length
     ~max_headers:state.config.max_header_count
     ~max_header_length:state.config.max_header_length
     full_data with
-  | Done { value = http_req; remaining } ->
-      let expected_length = get_content_length http_req in
-      let body_received = String.length remaining in
-      if body_received >= expected_length then
-        let req = Request.of_http ~body:remaining http_req in
-        handle_request { state with parse_state = WaitingForHeaders; sniffed_data = "" } conn req
-      else
-        (* Need to read more body data - transition to WaitingForBody state *)
-        Socket_pool.Handler.Continue {
-          state with
-          sniffed_data = "";
-          parse_state = WaitingForBody { http_req; expected_length; accumulated_body = remaining };
-        }
+  | Done { value = http_req; remaining } -> (
+      match validate_request_body_headers http_req with
+      | Error error ->
+          let res = Response.bad_request ~body:(request_body_header_error_to_string error) () in
+          let _ = send_response conn res in
+          Socket_pool.Handler.Close state
+      | Ok expected_length ->
+          let body_received = String.length remaining in
+          if body_received >= expected_length then
+            let (body, remaining_data) = split_request_body remaining expected_length in
+            let req = Request.of_http ~body http_req in
+            handle_request
+              {
+                state with
+                parse_state = WaitingForHeaders;
+                sniffed_data = remaining_data;
+              }
+              conn
+              req
+          else
+            (* Need to read more body data - transition to WaitingForBody state *)
+            Socket_pool.Handler.Continue {
+              state with
+              sniffed_data = "";
+              parse_state = WaitingForBody {
+                http_req;
+                expected_length;
+                accumulated_body = remaining;
+              };
+            }
+    )
   | Need_more -> Socket_pool.Handler.Continue { state with sniffed_data = full_data }
   | Error msg ->
       let res = Response.bad_request ~body:msg () in
@@ -441,13 +510,7 @@ let handle_data_waiting_body = fun data conn state http_req expected_length accu
   let new_body = accumulated_body ^ data in
   let body_length = String.length new_body in
   if body_length >= expected_length then
-    let complete_body = String.sub new_body ~offset:0 ~len:expected_length in
-    let remaining_data =
-      if body_length > expected_length then
-        String.sub new_body ~offset:expected_length ~len:(body_length - expected_length)
-      else
-        ""
-    in
+    let (complete_body, remaining_data) = split_request_body new_body expected_length in
     (* Process the request with complete body *)
     let req = Request.of_http ~body:complete_body http_req in
     let result =

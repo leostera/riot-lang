@@ -36,6 +36,11 @@ module For_testing: sig
     | UnsupportedWebSocketVersion of string
     | MissingWebSocketKey
     | InvalidWebSocketKey of string
+  type request_body_header_error =
+    | InvalidContentLength of string
+    | ConflictingContentLength of string list
+    | TransferEncodingWithContentLength
+    | UnsupportedTransferEncoding of string
   val serialize_response: Response.t -> (string, serialization_error) Std.result
 
   val compute_websocket_accept: string -> string
@@ -43,6 +48,14 @@ module For_testing: sig
   val validate_websocket_upgrade: Request.t -> (string, websocket_upgrade_error) Std.result
 
   val websocket_upgrade_error_to_string: websocket_upgrade_error -> string
+
+  val validate_request_body_headers:
+    Std.Net.Http.Request.t ->
+    (int, request_body_header_error) Std.result
+
+  val request_body_header_error_to_string: request_body_header_error -> string
+
+  val split_request_body: string -> int -> string * string
 end
 
 (** Create a handler that supports WebSocket upgrades via {!Http_handler.response}. *)

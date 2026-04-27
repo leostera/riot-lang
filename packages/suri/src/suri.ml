@@ -82,6 +82,12 @@ module For_testing = struct
       | MissingWebSocketKey
       | InvalidWebSocketKey of string
 
+    type request_body_header_error = Web_server.Http1.For_testing.request_body_header_error =
+      | InvalidContentLength of string
+      | ConflictingContentLength of string list
+      | TransferEncodingWithContentLength
+      | UnsupportedTransferEncoding of string
+
     let serialize_response = fun response ->
       Std.Result.map_err
         (Web_server.Http1.For_testing.serialize_response response)
@@ -98,6 +104,13 @@ module For_testing = struct
 
     let websocket_upgrade_error_to_string =
       Web_server.Http1.For_testing.websocket_upgrade_error_to_string
+
+    let validate_request_body_headers = Web_server.Http1.For_testing.validate_request_body_headers
+
+    let request_body_header_error_to_string =
+      Web_server.Http1.For_testing.request_body_header_error_to_string
+
+    let split_request_body = Web_server.Http1.For_testing.split_request_body
   end
 end
 
