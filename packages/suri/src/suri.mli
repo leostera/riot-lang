@@ -513,6 +513,10 @@ module For_testing: sig
       (string, [> | `Invalid_range of send_file_range_error]) Std.result
   end
 
+  module Handler: sig
+    val run_pipeline_response: Middleware.Pipeline.t -> Middleware.Conn.t -> Response.t option
+  end
+
   module Http1: sig
     type serialization_error =
       | InvalidHeaderName of string

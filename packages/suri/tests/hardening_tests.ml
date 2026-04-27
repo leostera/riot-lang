@@ -16,6 +16,7 @@ module Session = Suri.Middleware.Session
 module Static = Suri.Middleware.Static
 module Response = Suri.Response
 module Connection = Suri.For_testing.Connection
+module Handler = Suri.For_testing.Handler
 module Http1 = Suri.For_testing.Http1
 
 let valid_websocket_key = "dGhlIHNhbXBsZSBub25jZQ=="
@@ -683,6 +684,18 @@ let test_connection_send_file_slice_rejects_invalid_range = fun _ctx ->
       Ok ()
   | Ok _ -> Error "expected send_file range beyond file size to fail"
 
+let test_handler_recovers_from_middleware_exceptions = fun _ctx ->
+  let app = [
+    fun ~conn:_ ~next:_ -> raise (Failure "boom");
+  ]
+  in
+  match Handler.run_pipeline_response app (Conn.For_testing.make ()) with
+  | Some response ->
+      Test.assert_equal ~expected:Net.Http.Status.InternalServerError ~actual:response.status;
+      Test.assert_equal ~expected:"Internal Server Error" ~actual:response.body;
+      Ok ()
+  | None -> Error "expected exception recovery to return an HTTP response"
+
 let test_http1_response_rejects_invalid_header_name = fun _ctx ->
   let res = Response.ok ~headers:[ ("bad name", "value"); ] ~body:"ok" () in
   match Http1.serialize_response res with
@@ -883,6 +896,9 @@ let tests =
     case
       "connection send file slice rejects invalid range"
       test_connection_send_file_slice_rejects_invalid_range;
+    case
+      "handler recovers from middleware exceptions"
+      test_handler_recovers_from_middleware_exceptions;
     case
       "http1 response rejects invalid header name"
       test_http1_response_rejects_invalid_header_name;

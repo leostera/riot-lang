@@ -23,6 +23,29 @@ module Channel = Channel
 module Connection = Socket_pool.Connection
 module Handler = Web_server.Handler
 
+let internal_server_error_response = fun () ->
+  Web_server.Response.internal_server_error
+    ~headers:[ ("content-type", "text/plain; charset=utf-8"); ]
+    ~body:"Internal Server Error"
+    ()
+
+let conn_to_handler_response = fun conn ->
+  match Middleware.Conn.get_upgrade conn with
+  | Some upgrade_info -> WebServer.Handler.upgrade upgrade_info.opts upgrade_info.handler
+  | None -> WebServer.Handler.respond (Middleware.Conn.to_response conn)
+
+let run_app_on_conn = fun app conn ->
+  try
+    let conn = Middleware.Pipeline.run conn app in
+    conn_to_handler_response conn
+  with
+  | exn ->
+      Std.Log.error
+        (Std.String.concat
+          ""
+          [ "Unhandled exception while handling Suri request: "; Std.Exception.to_string exn; ]);
+      WebServer.Handler.respond (internal_server_error_response ())
+
 module For_testing = struct
   module Connection = struct
     type send_file_range_error = Socket_pool.Connection.send_file_range_error = {
@@ -34,6 +57,13 @@ module For_testing = struct
     let write_all_with = Socket_pool.Connection.For_testing.write_all_with
 
     let send_file_slice = Socket_pool.Connection.For_testing.send_file_slice
+  end
+
+  module Handler = struct
+    let run_pipeline_response = fun app conn ->
+      match run_app_on_conn app conn with
+      | WebServer.Handler.Response response -> Some response
+      | WebServer.Handler.Upgrade _ -> None
   end
 
   module Http1 = struct
@@ -119,17 +149,7 @@ let start_link = fun ?(config = Config.default) (app: Middleware.Pipeline.t) ->
   (* Internal adapter: converts middleware pipeline to low-level handler *)
   let handler socket_conn req =
     let conn = Middleware.Conn.make socket_conn req in
-    (* Run the middleware pipeline *)
-    let conn = Middleware.Pipeline.run conn app in
-    (* Check if this is a WebSocket upgrade *)
-    match Middleware.Conn.get_upgrade conn with
-    | Some upgrade_info ->
-        (* WebSocket upgrade requested *)
-        WebServer.Handler.upgrade upgrade_info.opts upgrade_info.handler
-    | None ->
-        (* Normal HTTP response *)
-        let response = Middleware.Conn.to_response conn in
-        WebServer.Handler.respond response
+    run_app_on_conn app conn
   in
   (* Convert to internal WebServer config *)
   let web_config =
