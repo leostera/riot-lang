@@ -499,6 +499,13 @@ module LiveView = Liveview
    See {!LiveView} for complete documentation.
 *)
 module For_testing: sig
+  module Connection: sig
+    val write_all_with:
+      write:(bytes -> pos:int -> len:int -> (int, 'error) Std.result) ->
+      string ->
+      (unit, [> | `Closed]) Std.result
+  end
+
   module Http1: sig
     type serialization_error =
       | InvalidHeaderName of string

@@ -24,6 +24,10 @@ module Connection = Socket_pool.Connection
 module Handler = Web_server.Handler
 
 module For_testing = struct
+  module Connection = struct
+    let write_all_with = Socket_pool.Connection.For_testing.write_all_with
+  end
+
   module Http1 = struct
     type serialization_error =
       | InvalidHeaderName of string

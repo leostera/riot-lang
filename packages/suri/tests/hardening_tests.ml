@@ -15,6 +15,7 @@ module Router = Suri.Middleware.Router
 module Session = Suri.Middleware.Session
 module Static = Suri.Middleware.Static
 module Response = Suri.Response
+module Connection = Suri.For_testing.Connection
 module Http1 = Suri.For_testing.Http1
 
 let valid_websocket_key = "dGhlIHNhbXBsZSBub25jZQ=="
@@ -620,6 +621,45 @@ let test_http1_websocket_upgrade_rejects_invalid_key = fun _ctx ->
   | Ok _ -> Error "expected WebSocket upgrade to reject invalid Sec-WebSocket-Key"
   | Error error -> Error (Http1.websocket_upgrade_error_to_string error)
 
+let test_connection_write_all_retries_short_writes = fun _ctx ->
+  let calls = ref [] in
+  let write _buf ~pos ~len =
+    calls := (pos, len) :: !calls;
+    if len > 3 then
+      Ok 3
+    else
+      Ok len
+  in
+  match Connection.write_all_with ~write "abcdefgh" with
+  | Ok () ->
+      Test.assert_equal ~expected:[ (6, 2); (3, 5); (0, 8); ] ~actual:!calls;
+      Ok ()
+  | Error `Closed -> Error "expected short writes to complete"
+
+let test_connection_write_all_treats_zero_write_as_closed = fun _ctx ->
+  let calls = ref 0 in
+  let write _buf ~pos:_ ~len:_ =
+    calls := !calls + 1;
+    Ok 0
+  in
+  match Connection.write_all_with ~write "abc" with
+  | Error `Closed ->
+      Test.assert_equal ~expected:1 ~actual:!calls;
+      Ok ()
+  | Ok () -> Error "expected zero-byte write to close connection"
+
+let test_connection_write_all_skips_empty_payload = fun _ctx ->
+  let calls = ref 0 in
+  let write _buf ~pos:_ ~len:_ =
+    calls := !calls + 1;
+    Ok 1
+  in
+  match Connection.write_all_with ~write "" with
+  | Ok () ->
+      Test.assert_equal ~expected:0 ~actual:!calls;
+      Ok ()
+  | Error `Closed -> Error "expected empty payload to complete without writes"
+
 let test_http1_response_rejects_invalid_header_name = fun _ctx ->
   let res = Response.ok ~headers:[ ("bad name", "value"); ] ~body:"ok" () in
   match Http1.serialize_response res with
@@ -808,6 +848,11 @@ let tests =
     case
       "http1 websocket upgrade rejects invalid key"
       test_http1_websocket_upgrade_rejects_invalid_key;
+    case "connection write all retries short writes" test_connection_write_all_retries_short_writes;
+    case
+      "connection write all treats zero write as closed"
+      test_connection_write_all_treats_zero_write_as_closed;
+    case "connection write all skips empty payload" test_connection_write_all_skips_empty_payload;
     case
       "http1 response rejects invalid header name"
       test_http1_response_rejects_invalid_header_name;

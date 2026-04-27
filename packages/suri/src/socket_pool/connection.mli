@@ -72,3 +72,10 @@ val stream: t -> Std.Net.TcpStream.t
    TODO: Not yet implemented - will use sendfile optimization when available
 *)
 val send_file: t -> ?off:int -> len:int -> string -> (unit, [> | `Closed]) result
+
+module For_testing: sig
+  val write_all_with:
+    write:(bytes -> pos:int -> len:int -> (int, 'error) result) ->
+    string ->
+    (unit, [> | `Closed]) result
+end

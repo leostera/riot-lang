@@ -42,6 +42,20 @@ let receive = fun ?(limit = 1_024) ?read_size ?timeout (Conn { default_read_size
       )
   | Error _ -> Error `Closed
 
+let write_all_with = fun ~write data ->
+  let buf = Bytes.from_string data in
+  let total = String.length data in
+  let rec loop pos =
+    if pos >= total then
+      Ok ()
+    else
+      match write buf ~pos ~len:(total - pos) with
+      | Ok n when n > 0 -> loop (pos + n)
+      | Ok _ -> Error `Closed
+      | Error _ -> Error `Closed
+  in
+  loop 0
+
 let rec send = fun conn data ->
   Log.trace ("will send " ^ string_of_int (String.length data) ^ " bytes");
   match do_send conn data with
@@ -51,10 +65,10 @@ let rec send = fun conn data ->
   | Error e -> Error e
 
 and do_send = fun (Conn { stream; _ }) data ->
-  let buf = Bytes.from_string data in
-  match Net.TcpStream.write stream buf () with
-  | Ok _n -> Ok ()
-  | Error _ -> Error `Closed
+  write_all_with
+    data
+    ~write:(fun buf ~pos ~len ->
+      Net.TcpStream.write stream buf ~pos ~len ())
 
 let peer = fun (Conn { peer; _ }) -> peer
 
@@ -69,3 +83,7 @@ let close = fun (Conn { stream; _ }) -> Net.TcpStream.close stream
 let send_file = fun (Conn _) ?off:_ ~len:_ _path ->
   (* TODO: implement sendfile optimization *)
   Ok ()
+
+module For_testing = struct
+  let write_all_with = write_all_with
+end
