@@ -75,7 +75,7 @@ let parse_error_to_string = function
 (** Parse application/x-www-form-urlencoded body using Net.Uri.Query.parse *)
 let parse_urlencoded = fun body -> Net.Uri.Query.parse body
 
-let parse_json_result = fun body ->
+let parse_json = fun body ->
   match Std.Data.Json.of_string body with
   | Error error -> Error (InvalidJson error)
   | Ok (Std.Data.Json.Object fields) ->
@@ -112,7 +112,7 @@ let strip_quotes = fun value ->
   else
     value
 
-let parse_body_result = fun config ~content_type ~body ->
+let parse_body_full = fun config ~content_type ~body ->
   if String.length body > config.max_body_size then
     Error (BodyTooLarge { size = String.length body; max_size = config.max_body_size })
   else
@@ -128,7 +128,7 @@ let parse_body_result = fun config ~content_type ~body ->
         else if
           String.equal media_type "application/json" && List.contains config.parsers ~value:Json
         then
-          parse_json_result body
+          parse_json body
         else if
           String.equal media_type "multipart/form-data"
           && List.contains config.parsers ~value:Multipart
@@ -144,7 +144,7 @@ let parse_body_result = fun config ~content_type ~body ->
           Ok { body_params = []; json = None }
 
 let parse_body = fun config ~content_type ~body ->
-  match parse_body_result config ~content_type ~body with
+  match parse_body_full config ~content_type ~body with
   | Ok parsed -> Ok parsed.body_params
   | Error error -> Error error
 
@@ -167,7 +167,7 @@ let handle = fun config conn ->
   match Net.Http.Header.get (Conn.headers conn) "content-type" with
   | None -> conn
   | Some content_type -> (
-      match parse_body_result config ~content_type ~body:(Conn.body conn) with
+      match parse_body_full config ~content_type ~body:(Conn.body conn) with
       | Ok parsed ->
           (
             match parsed.json with

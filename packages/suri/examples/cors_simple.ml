@@ -30,9 +30,12 @@ let routes =
 
 let main ~args:_ =
   (* Development mode - allow all origins *)
-  let app = Middleware.[ request_id; logger; cors ~origins:[ "*" ] (); router routes; ] in
-  let config = Suri.config ~port:4_000 () in
-  match Suri.start_link ~config app with
+  match Middleware.cors ~origins:[ "*" ] () with
+  | Error error -> Error (Failure (Middleware.Cors.config_error_to_string error))
+  | Ok cors_middleware -> (
+      let app = Middleware.[ request_id; logger; cors_middleware; router routes; ] in
+      let config = Suri.config ~port:4_000 () in
+      match Suri.start_link ~config app with
   | Ok _supervisor ->
       Log.info "===========================================";
       Log.info "CORS Example Server Running";
@@ -61,5 +64,6 @@ let main ~args:_ =
   | Error _ ->
       Log.error "Failed to bind to port 4000";
       Error (Failure "Failed to start server")
+    )
 
 let () = Runtime.run ~main ~args:Env.args ()

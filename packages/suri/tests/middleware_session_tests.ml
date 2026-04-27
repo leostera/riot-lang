@@ -103,16 +103,18 @@ let tamper_last_char = fun value ->
 let test_session_middleware_installs_session = fun _ctx ->
   let conn = Suri.Testing.Conn.make () in
   let found_session = ref false in
-  let middleware = Session.middleware ~secret:"0123456789abcdef0123456789abcdef" () in
-  let _conn' =
-    middleware
-      ~conn
-      ~next:(fun conn ->
-        found_session := Option.is_some (Session.find conn);
-        conn)
-  in
-  Test.assert_true !found_session;
-  Ok ()
+  match Session.middleware ~secret:"0123456789abcdef0123456789abcdef" () with
+  | Error error -> Error (Session.secret_error_to_string error)
+  | Ok middleware ->
+      let _conn' =
+        middleware
+          ~conn
+          ~next:(fun conn ->
+            found_session := Option.is_some (Session.find conn);
+            conn)
+      in
+      Test.assert_true !found_session;
+      Ok ()
 
 let test_session_rejects_missing_secret = fun _ctx ->
   match Session.validate_secret "   " with
@@ -136,42 +138,46 @@ let test_session_signing_uses_hmac = fun _ctx ->
 
 let test_session_cookie_roundtrips_and_rejects_tampering = fun _ctx ->
   let secret = "0123456789abcdef0123456789abcdef" in
-  let session = Session.create ~cookie_name:"_test" ~secret () in
-  Session.put "user_id" "123" session;
-  let cookie = Session.to_cookie_value session in
-  match Session.from_cookie_value ~cookie_name:"_test" ~secret cookie with
-  | Error err -> Error (Session.decode_error_to_string err)
-  | Ok decoded ->
-      Test.assert_equal ~expected:(Some "123") ~actual:(Session.get_value "user_id" decoded);
-      match Session.from_cookie_value ~cookie_name:"_test" ~secret (tamper_last_char cookie) with
-      | Error Session.InvalidSignature -> Ok ()
+  match Session.create ~cookie_name:"_test" ~secret () with
+  | Error error -> Error (Session.secret_error_to_string error)
+  | Ok session ->
+      Session.put "user_id" "123" session;
+      let cookie = Session.to_cookie_value session in
+      match Session.from_cookie_value ~cookie_name:"_test" ~secret cookie with
       | Error err -> Error (Session.decode_error_to_string err)
-      | Ok _ -> Error "expected tampered session cookie to fail verification"
+      | Ok decoded ->
+          Test.assert_equal ~expected:(Some "123") ~actual:(Session.get_value "user_id" decoded);
+          match Session.from_cookie_value ~cookie_name:"_test" ~secret (tamper_last_char cookie) with
+          | Error Session.InvalidSignature -> Ok ()
+          | Error err -> Error (Session.decode_error_to_string err)
+          | Ok _ -> Error "expected tampered session cookie to fail verification"
 
 let test_session_cookie_payload_is_signed_plaintext_json = fun _ctx ->
   let secret = "0123456789abcdef0123456789abcdef" in
-  let session = Session.create ~cookie_name:"_test" ~secret () in
-  Session.put "user_id" "123" session;
-  let cookie = Session.to_cookie_value session in
-  match String.split_on_char '.' cookie with
-  | [ payload; signature ] -> (
-      Test.assert_true (Session.verify ~secret payload signature);
-      match Encoding.Base64.decode payload with
-      | Ok json ->
-          Test.assert_true (String.starts_with ~prefix:"{" json);
-          Test.assert_true (String.contains json "\"values\"");
-          Test.assert_true (String.contains json "\"user_id\"");
-          let tampered_cookie = Encoding.Base64.encode "{}" ^ "." ^ signature in
-          (
-            match Session.from_cookie_value ~cookie_name:"_test" ~secret tampered_cookie with
-            | Error Session.InvalidSignature -> Ok ()
-            | Error err -> Error (Session.decode_error_to_string err)
-            | Ok _ -> Error "expected tampered session payload to fail verification"
-          )
-      | Error _ -> Error "expected session cookie payload to be valid base64"
-    )
-  | parts ->
-      Error ("expected cookie payload and signature, got " ^ Int.to_string (List.length parts))
+  match Session.create ~cookie_name:"_test" ~secret () with
+  | Error error -> Error (Session.secret_error_to_string error)
+  | Ok session ->
+      Session.put "user_id" "123" session;
+      let cookie = Session.to_cookie_value session in
+      match String.split_on_char '.' cookie with
+      | [ payload; signature ] -> (
+          Test.assert_true (Session.verify ~secret payload signature);
+          match Encoding.Base64.decode payload with
+          | Ok json ->
+              Test.assert_true (String.starts_with ~prefix:"{" json);
+              Test.assert_true (String.contains json "\"values\"");
+              Test.assert_true (String.contains json "\"user_id\"");
+              let tampered_cookie = Encoding.Base64.encode "{}" ^ "." ^ signature in
+              (
+                match Session.from_cookie_value ~cookie_name:"_test" ~secret tampered_cookie with
+                | Error Session.InvalidSignature -> Ok ()
+                | Error err -> Error (Session.decode_error_to_string err)
+                | Ok _ -> Error "expected tampered session payload to fail verification"
+              )
+          | Error _ -> Error "expected session cookie payload to be valid base64"
+        )
+      | parts ->
+          Error ("expected cookie payload and signature, got " ^ Int.to_string (List.length parts))
 
 let test_session_cookie_decode_errors_are_structured = fun _ctx ->
   let secret = "0123456789abcdef0123456789abcdef" in

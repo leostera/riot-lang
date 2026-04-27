@@ -101,7 +101,7 @@ let tamper_last_char = fun value ->
   prefix ^ replacement
 
 let test_accepts_rejects_invalid_quality = fun _ctx ->
-  match Accepts.parse_accept_result "application/json;q=wat" with
+  match Accepts.parse_accept "application/json;q=wat" with
   | Error (Accepts.InvalidQuality (Accepts.InvalidQualityValue { value = "wat" })) -> Ok ()
   | Ok _ -> Error "expected invalid Accept quality to fail parsing"
   | Error _ -> Error "unexpected Accept parse error"

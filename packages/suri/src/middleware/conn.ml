@@ -191,10 +191,7 @@ let set_params = fun params t -> { t with params }
 
 let set_body_params = fun body_params t -> { t with body_params }
 
-let socket_conn = fun t ->
-  match t.socket_conn with
-  | Some socket_conn -> socket_conn
-  | None -> panic "Conn.socket_conn is unavailable for a testing connection"
+let socket_conn = fun t -> t.socket_conn
 
 let upgrade_websocket = fun opts handler t -> {
   t with

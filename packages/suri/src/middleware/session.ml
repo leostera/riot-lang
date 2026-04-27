@@ -50,16 +50,10 @@ let validate_secret = fun secret ->
   else
     Ok ()
 
-let require_valid_secret = fun secret ->
-  match validate_secret secret with
-  | Ok () -> ()
-  | Error error -> panic (secret_error_to_string error)
-
 let session_key: t Conn.assign_key = Conn.assign_key ()
 
 (** Create empty session *)
-let create = fun ~cookie_name ~secret () ->
-  require_valid_secret secret;
+let create_validated = fun ~cookie_name ~secret () ->
   let now =
     Time.SystemTime.secs (Time.SystemTime.now ())
     |> Int64.of_int
@@ -71,6 +65,11 @@ let create = fun ~cookie_name ~secret () ->
     secret;
     modified = false;
   }
+
+let create = fun ~cookie_name ~secret () ->
+  match validate_secret secret with
+  | Error error -> Error error
+  | Ok () -> Ok (create_validated ~cookie_name ~secret ())
 
 (** Get value from session *)
 let get_value = fun key session -> HashMap.get session.data.values ~key
@@ -242,12 +241,8 @@ let from_cookie_value = fun ~cookie_name ~secret cookie_value ->
 (** Find session from connection *)
 let find = fun conn -> Conn.get_assign session_key conn
 
-(** Get session from connection - creates new if not present *)
-let get = fun conn ->
-  match find conn with
-  | Option.Some session -> session
-  | Option.None ->
-      panic "Suri.Middleware.Session.get called before Session.middleware installed a session"
+(** Get session from connection. *)
+let get = find
 
 (** Session middleware *)
 let middleware = fun
@@ -257,53 +252,55 @@ let middleware = fun
   ?(secure = false)
   ?(same_site = Http.Http1.Cookie.Lax)
   () ->
-  require_valid_secret secret;
-  fun ~conn ~next ->
-    (* Try to load session from cookie *)
-    let headers = Conn.headers conn in
-    let cookie_header = Net.Http.Header.get headers "cookie" in
-    let session =
-      match cookie_header with
-      | Option.None -> create ~cookie_name ~secret ()
-      | Option.Some header ->
-          let cookies = Http.Http1.Cookie.parse header in
-          (
-            match Std.Collections.Proplist.get cookies ~key:cookie_name with
-            | Option.None -> create ~cookie_name ~secret ()
-            | Option.Some cookie_value -> (
-                match from_cookie_value ~cookie_name ~secret cookie_value with
-                | Result.Ok sess ->
-                    if is_expired sess then
-                      create ~cookie_name ~secret ()
-                    else
-                      sess
-                | Result.Error _err ->
-                    (* Invalid cookie - create new session *)
-                    create ~cookie_name ~secret ()
+  match validate_secret secret with
+  | Error error -> Error error
+  | Ok () ->
+      Ok (fun ~conn ~next ->
+        (* Try to load session from cookie *)
+        let headers = Conn.headers conn in
+        let cookie_header = Net.Http.Header.get headers "cookie" in
+        let session =
+          match cookie_header with
+          | Option.None -> create_validated ~cookie_name ~secret ()
+          | Option.Some header ->
+              let cookies = Http.Http1.Cookie.parse header in
+              (
+                match Std.Collections.Proplist.get cookies ~key:cookie_name with
+                | Option.None -> create_validated ~cookie_name ~secret ()
+                | Option.Some cookie_value -> (
+                    match from_cookie_value ~cookie_name ~secret cookie_value with
+                    | Result.Ok sess ->
+                        if is_expired sess then
+                          create_validated ~cookie_name ~secret ()
+                        else
+                          sess
+                    | Result.Error _err ->
+                        (* Invalid cookie - create new session *)
+                        create_validated ~cookie_name ~secret ()
+                  )
               )
-          )
-    in
-    (* Store session in connection *)
-    Conn.assign session_key session conn;
-    (* Call next handler *)
-    let conn' = next conn in
-    (* If session was modified, set cookie in response *)
-    if is_modified session then
-      begin
-        let cookie_value = to_cookie_value session in
-        let cookie =
-          Http.Http1.Cookie.make
-            ~name:cookie_name
-            ~value:cookie_value
-            ~max_age
-            ~path:"/"
-            ~secure
-            ~http_only:true
-            ~same_site
-            ()
         in
-        let set_cookie_header = Http.Http1.Cookie.to_set_cookie cookie in
-        Conn.with_header "set-cookie" set_cookie_header conn'
-      end
-    else
-      conn'
+        (* Store session in connection *)
+        Conn.assign session_key session conn;
+        (* Call next handler *)
+        let conn' = next conn in
+        (* If session was modified, set cookie in response *)
+        if is_modified session then
+          begin
+            let cookie_value = to_cookie_value session in
+            let cookie =
+              Http.Http1.Cookie.make
+                ~name:cookie_name
+                ~value:cookie_value
+                ~max_age
+                ~path:"/"
+                ~secure
+                ~http_only:true
+                ~same_site
+                ()
+            in
+            let set_cookie_header = Http.Http1.Cookie.to_set_cookie cookie in
+            Conn.with_header "set-cookie" set_cookie_header conn'
+          end
+        else
+          conn')

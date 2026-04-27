@@ -10,55 +10,56 @@
 
    {3 Allow specific origins}
    {[
-     let app = Middleware.[
-       cors ~origins:["https://example.com"] ();
-       router routes;
-     ]
+     match cors ~origins:["https://example.com"] () with
+     | Error error -> Error (Cors.config_error_to_string error)
+     | Ok cors_middleware ->
+         Ok Middleware.[ cors_middleware; router routes ]
    ]}
 
    {3 Development (allow all)}
    {[
-     let app = Middleware.[
-       cors ~origins:["*"] ();
-       router routes;
-     ]
+     match cors ~origins:["*"] () with
+     | Error error -> Error (Cors.config_error_to_string error)
+     | Ok cors_middleware ->
+         Ok Middleware.[ cors_middleware; router routes ]
    ]}
 
    {3 With credentials}
    {[
-     let app = Middleware.[
-       cors
+     match cors
          ~origins:["https://app.example.com"]
          ~credentials:true
-         ();
-       router routes;
-     ]
+         () with
+     | Error error -> Error (Cors.config_error_to_string error)
+     | Ok cors_middleware ->
+         Ok Middleware.[ cors_middleware; router routes ]
    ]}
 
    {3 With custom headers and methods}
    {[
-     let app = Middleware.[
-       cors
+     match cors
          ~origins:["https://api.example.com"]
          ~methods:[GET; POST; PUT; DELETE]
          ~headers:["authorization"; "content-type"]
          ~credentials:true
          ~max_age:86400
-         ();
-       router routes;
-     ]
+         () with
+     | Error error -> Error (Cors.config_error_to_string error)
+     | Ok cors_middleware ->
+         Ok Middleware.[ cors_middleware; router routes ]
    ]}
 
    {3 Multiple specific origins}
    {[
-     let app = Middleware.[
-       cors ~origins:[
+     match cors ~origins:[
          "https://example.com";
          "https://app.example.com";
          "https://mobile.example.com";
        ] ();
-       router routes;
-     ]
+     with
+     | Error error -> Error (Cors.config_error_to_string error)
+     | Ok cors_middleware ->
+         Ok Middleware.[ cors_middleware; router routes ]
    ]}
 
    {2 Security Notes}
@@ -116,8 +117,6 @@ open Std
 type config_error =
   | WildcardOriginWithCredentials
 
-exception Invalid_config of config_error
-
 val config_error_to_string: config_error -> string
 
 type preflight_error =
@@ -138,8 +137,7 @@ val preflight_error_to_string: preflight_error -> string
    @param expose Headers exposed to client JavaScript (default: [])
    @param max_age Preflight cache duration in seconds (default: none)
 
-   @raise Invalid_config when wildcard ["*"] is combined with
-   [~credentials:true].
+   Returns [Error] when wildcard ["*"] is combined with [~credentials:true].
 
    {b Important}: Wildcard ["*"] with [~credentials:true] is rejected because
    browsers disallow it and it is unsafe for credentialed requests.
@@ -153,13 +151,7 @@ val preflight_error_to_string: preflight_error -> string
      let app = Middleware.[
        request_id;
        logger;
-       cors
-         ~origins:["https://app.production.com"]
-         ~methods:[POST; PUT; PATCH; DELETE]
-         ~headers:["authorization"; "content-type"]
-         ~credentials:true
-         ~max_age:86400  (* Cache for 24 hours *)
-         ();
+       cors_middleware;
        router api_routes;
      ]
    ]}
@@ -173,12 +165,10 @@ val preflight_error_to_string: preflight_error -> string
          cors ~origins:["https://app.production.com"] ~credentials:true ()
      in
 
-     let app = Middleware.[
-       request_id;
-       logger;
-       cors_config;
-       router routes;
-     ]
+     match cors_config with
+     | Error error -> Error (Cors.config_error_to_string error)
+     | Ok cors_middleware ->
+         Ok Middleware.[ request_id; logger; cors_middleware; router routes ]
    ]}
 *)
 val middleware:
@@ -189,7 +179,7 @@ val middleware:
   ?expose:string list ->
   ?max_age:int ->
   unit ->
-  Pipeline.middleware
+  (Pipeline.middleware, config_error) result
 
 val validate_config: origins:string list -> credentials:bool -> (unit, config_error) result
 

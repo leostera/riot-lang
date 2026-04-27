@@ -4,10 +4,14 @@ open Suri
 (** Simple CSRF protection demo with form submission *)
 let form_page = fun conn ->
   let open Component in
+  match (Middleware.Csrf.meta_tag conn, Middleware.Csrf.hidden_field conn) with
+  | (Error error, _)
+  | (_, Error error) -> Error error
+  | (Ok csrf_meta, Ok csrf_field) ->
   let page =
     html
       [
-        head [ title [ text "CSRF Protection Demo" ]; Middleware.Csrf.meta_tag conn ];
+        head [ title [ text "CSRF Protection Demo" ]; csrf_meta ];
         body
           [
             h1 [ text "CSRF Protection Demo" ];
@@ -15,7 +19,7 @@ let form_page = fun conn ->
             form
               ~attrs:[ method_ "POST"; action "/submit" ]
               [
-                Middleware.Csrf.hidden_field conn;
+                csrf_field;
                 p [ label [ text "Name: " ]; input ~attrs:[ type_ "text"; name "name" ] () ];
                 button ~attrs:[ type_ "submit" ] [ text "Submit Form" ];
               ];
@@ -53,7 +57,7 @@ document.getElementById('ajax-submit').addEventListener('click', function() {
           ];
       ]
   in
-  Component.to_html page
+  Ok (Component.to_html page)
 
 let submit_handler = fun conn req ->
   (* Get form data from body_params (parsed by body_parser middleware) *)
@@ -98,22 +102,33 @@ let routes =
     get
       "/"
       (fun conn req ->
-        let html = form_page conn in
-        conn
-        |> Conn.respond ~status:Ok ~body:html
-        |> Conn.with_header "content-type" "text/html"
-        |> Conn.send);
+        match form_page conn with
+        | Ok html ->
+            conn
+            |> Conn.respond ~status:Ok ~body:html
+            |> Conn.with_header "content-type" "text/html"
+            |> Conn.send
+        | Error error ->
+            conn
+            |> Conn.respond
+              ~status:Net.Http.Status.InternalServerError
+              ~body:(Middleware.Csrf.error_to_string error)
+            |> Conn.send);
     post "/submit" submit_handler;
     post "/submit-ajax" submit_ajax_handler;
   ]
 
 let main ~args:_ =
   let secret = "dev-secret-not-for-production-use-32bit" in
-  let app =
-    Middleware.[ request_id; logger; session ~secret (); body_parser (); csrf (); router routes; ]
-  in
-  let config = Suri.config ~port:4_000 () in
-  match Suri.start_link ~config app with
+  match Middleware.session ~secret () with
+  | Error error ->
+      Error (Failure (Middleware.Session.secret_error_to_string error))
+  | Ok session_middleware -> (
+      let app =
+        Middleware.[ request_id; logger; session_middleware; body_parser (); csrf (); router routes; ]
+      in
+      let config = Suri.config ~port:4_000 () in
+      match Suri.start_link ~config app with
   | Ok _supervisor ->
       Log.info "===========================================";
       Log.info "CSRF Protection Demo Running";
@@ -137,5 +152,6 @@ let main ~args:_ =
   | Error _ ->
       Log.error "Failed to bind to port 4000";
       Error (Failure "Failed to start server")
+    )
 
 let () = Runtime.run ~main ~args:Env.args ()

@@ -14,33 +14,37 @@
 
    {3 Basic Setup}
    {[
-     let app = Middleware.[
-       session ~secret:"0123456789abcdef0123456789abcdef" ();
-       router routes;
-     ]
+     match session ~secret:"0123456789abcdef0123456789abcdef" () with
+     | Error error -> Error (Session.secret_error_to_string error)
+     | Ok session_middleware ->
+         let app = Middleware.[ session_middleware; router routes ] in
+         Ok app
    ]}
 
    {3 Reading Session}
    {[
      let handler ~conn ~next:_ =
-       let session = Session.get conn in
-       match Session.get_value "user_id" session with
-       | Some user_id -> (* Logged in user *)
+       match Session.get conn with
+       | Some session when Option.is_some (Session.get_value "user_id" session) ->
            conn |> Conn.respond ~status:Ok ~body:"Welcome back!" |> Conn.send
-       | None -> (* Anonymous user *)
+       | Some _
+       | None ->
            conn |> Conn.respond ~status:Ok ~body:"Please login" |> Conn.send
    ]}
 
    {3 Writing Session}
    {[
      let login_handler ~conn ~next:_ =
-       let session = Session.get conn in
-       Session.put "user_id" "123" session;
-       Session.put "username" "alice" session;
+       match Session.get conn with
+       | None ->
+           conn |> Conn.respond ~status:InternalServerError ~body:"Session missing" |> Conn.send
+       | Some session ->
+           Session.put "user_id" "123" session;
+           Session.put "username" "alice" session;
 
-       conn
-       |> Conn.respond ~status:Ok ~body:"Logged in!"
-       |> Conn.send
+           conn
+           |> Conn.respond ~status:Ok ~body:"Logged in!"
+           |> Conn.send
    ]}
 
    {2 Security Status}
@@ -85,33 +89,9 @@
 
 open Std
 
-(** Abstract session type *)
-
-(**
-   Session middleware with experimental cookie storage.
-
-   @param secret Signing key (required, at least 32 characters)
-   @param cookie_name Cookie name (default: "_suri_session")
-   @param max_age Session lifetime in seconds (default: 86400 = 24h)
-   @param secure Require HTTPS (default: false, {b set true in production!})
-   @param same_site CSRF protection (default: [Lax])
-
-   {b Security Warning}: Always use a strong random secret in production!
-
-   Example:
-   {[
-     let secret = match Env.get "SESSION_SECRET" with
-       | Some s -> s
-       | None -> failwith "SESSION_SECRET required"
-     in
-
-     Middleware.[
-       session ~secret ~secure:true ();
-       router routes;
-     ]
-   ]}
-*)
+(** Abstract session type. *)
 type t
+
 type secret_error =
   | Missing
   | TooShort of int
@@ -123,18 +103,27 @@ type decode_error =
   | InvalidSessionData of Data.Json.t
 
 (**
-   Get session from connection.
+   Session middleware with experimental cookie storage.
 
-   Raises if [Session.middleware] has not installed a session on the
-   connection. Use [find] when middleware ordering is uncertain.
+   @param secret Signing key (required, at least 32 characters)
+   @param cookie_name Cookie name (default: "_suri_session")
+   @param max_age Session lifetime in seconds (default: 86400 = 24h)
+   @param secure Require HTTPS (default: false, {b set true in production!})
+   @param same_site CSRF protection (default: [Lax])
+
+   Returns [Error] when the provided secret is missing or too short.
 
    Example:
    {[
-     let handler ~conn ~next:_ =
-       let session = Session.get conn in
-       match Session.get_value "user_id" session with
-       | Some id -> Printf.printf "User: %s\n" id
-       | None -> Printf.printf "Anonymous\n"
+     let secret = match Env.get "SESSION_SECRET" with
+       | Some s -> s
+       | None -> failwith "SESSION_SECRET required"
+     in
+
+     match session ~secret ~secure:true () with
+     | Error error -> Error (Session.secret_error_to_string error)
+     | Ok session_middleware ->
+         Ok Middleware.[ session_middleware; router routes ]
    ]}
 *)
 val middleware:
@@ -144,9 +133,14 @@ val middleware:
   ?secure:bool ->
   ?same_site:Http.Http1.Cookie.same_site ->
   unit ->
-  (conn:Conn.t -> next:(Conn.t -> Conn.t) -> Conn.t)
+  ((conn:Conn.t -> next:(Conn.t -> Conn.t) -> Conn.t), secret_error) result
 
-val get: Conn.t -> t
+(**
+   Get session from connection.
+
+   Returns [None] when [Session.middleware] has not run yet.
+*)
+val get: Conn.t -> t option
 
 (**
    Find session from connection.
@@ -202,9 +196,12 @@ val delete: string -> t -> unit
    Example:
    {[
      let logout_handler ~conn ~next:_ =
-       let session = Session.get conn in
-       Session.clear session;
-       conn |> Conn.respond ~status:Ok ~body:"Logged out" |> Conn.send
+       match Session.get conn with
+       | None ->
+           conn |> Conn.respond ~status:InternalServerError ~body:"Session missing" |> Conn.send
+       | Some session ->
+           Session.clear session;
+           conn |> Conn.respond ~status:Ok ~body:"Logged out" |> Conn.send
    ]}
 *)
 val clear: t -> unit
@@ -224,7 +221,8 @@ val is_expired: t -> bool
 *)
 val is_modified: t -> bool
 
-val create: cookie_name:string -> secret:string -> unit -> t
+(** Create an empty session after validating the signing secret. *)
+val create: cookie_name:string -> secret:string -> unit -> (t, secret_error) result
 
 val validate_secret: string -> (unit, secret_error) result
 

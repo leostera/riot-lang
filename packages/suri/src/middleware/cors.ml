@@ -3,8 +3,6 @@ open Std
 type config_error =
   | WildcardOriginWithCredentials
 
-exception Invalid_config of config_error
-
 let config_error_to_string = function
   | WildcardOriginWithCredentials -> "CORS wildcard origins cannot be combined with credentials"
 
@@ -149,144 +147,142 @@ let middleware = fun
   ?(expose = [])
   ?max_age
   () ->
-  (
-    match validate_config ~origins ~credentials with
-    | Ok () -> ()
-    | Error error -> raise (Invalid_config error)
-  );
-  fun ~conn ~next ->
+  match validate_config ~origins ~credentials with
+  | Error error -> Error error
+  | Ok () ->
+      Ok (fun ~conn ~next ->
     (* Extract origin from request *)
-    let req_headers = Conn.headers conn in
-    match Net.Http.Header.get req_headers "origin" with
-    | None ->
-        (* No CORS request - pass through *)
-        next conn
-    | Some req_origin ->
-        (* Check if origin is allowed *)
-        if not (is_origin_allowed origins req_origin) then (
-          Log.debug
-            (String.concat
-              ""
-              [
-                "[CORS] Rejected origin: ";
-                req_origin;
-                " for ";
-                Net.Http.Method.to_string (Conn.method_ conn);
-                " ";
-                Conn.path conn;
-              ]);
-          conn
-          |> Conn.respond ~status:Net.Http.Status.Forbidden ~body:"Origin not allowed"
-          |> Conn.halt
-        )
-          (* Check if this is a preflight request *)
-        else if Conn.method_ conn = Net.Http.Method.Options
-        && (
-          Net.Http.Header.get req_headers "access-control-request-method"
-          |> Option.is_some
-        ) then
-          begin
-            match validate_preflight
-              ~methods
-              ~headers
-              ~request_method:(
-                Net.Http.Header.get req_headers "access-control-request-method"
-                |> Option.unwrap_or ~default:""
-              )
-              ~request_headers:(Net.Http.Header.get req_headers "access-control-request-headers") with
-            | Error error ->
-                Log.debug (preflight_error_to_string error);
-                conn
-                |> Conn.respond
-                  ~status:Net.Http.Status.Forbidden
-                  ~body:(preflight_error_to_string error)
-                |> Conn.halt
-            | Ok () ->
-                (* Preflight request - respond immediately *)
+        let req_headers = Conn.headers conn in
+        match Net.Http.Header.get req_headers "origin" with
+        | None ->
+            (* No CORS request - pass through *)
+            next conn
+        | Some req_origin ->
+            (* Check if origin is allowed *)
+            if not (is_origin_allowed origins req_origin) then (
+              Log.debug
+                (String.concat
+                  ""
+                  [
+                    "[CORS] Rejected origin: ";
+                    req_origin;
+                    " for ";
+                    Net.Http.Method.to_string (Conn.method_ conn);
+                    " ";
+                    Conn.path conn;
+                  ]);
+              conn
+              |> Conn.respond ~status:Net.Http.Status.Forbidden ~body:"Origin not allowed"
+              |> Conn.halt
+            )
+              (* Check if this is a preflight request *)
+            else if Conn.method_ conn = Net.Http.Method.Options
+            && (
+              Net.Http.Header.get req_headers "access-control-request-method"
+              |> Option.is_some
+            ) then
+              begin
+                match validate_preflight
+                  ~methods
+                  ~headers
+                  ~request_method:(
+                    Net.Http.Header.get req_headers "access-control-request-method"
+                    |> Option.unwrap_or ~default:""
+                  )
+                  ~request_headers:(Net.Http.Header.get req_headers "access-control-request-headers") with
+                | Error error ->
+                    Log.debug (preflight_error_to_string error);
+                    conn
+                    |> Conn.respond
+                      ~status:Net.Http.Status.Forbidden
+                      ~body:(preflight_error_to_string error)
+                    |> Conn.halt
+                | Ok () ->
+                    (* Preflight request - respond immediately *)
+                    let origin_val = get_response_origin origins req_origin credentials in
+                    (* Build allowed methods list *)
+                    let all_methods =
+                      method_names methods
+                      |> String.concat ", "
+                    in
+                    Log.debug
+                      (String.concat
+                        ""
+                        [ "[CORS] Preflight from origin: "; req_origin; " -> "; origin_val; ]);
+                    let conn =
+                      conn
+                      |> Conn.respond ~status:Net.Http.Status.NoContent
+                      |> Conn.with_header "access-control-allow-origin" origin_val
+                      |> Conn.with_header "access-control-allow-methods" all_methods
+                    in
+                    (* Add allowed headers if specified *)
+                    let conn =
+                      match headers with
+                      | [] -> conn
+                      | _ ->
+                          Conn.with_header
+                            "access-control-allow-headers"
+                            (String.concat ", " headers)
+                            conn
+                    in
+                    (* Add credentials if enabled *)
+                    let conn =
+                      if credentials then
+                        Conn.with_header "access-control-allow-credentials" "true" conn
+                      else
+                        conn
+                    in
+                    (* Add max-age if specified *)
+                    let conn =
+                      match max_age with
+                      | Some age -> Conn.with_header "access-control-max-age" (string_of_int age) conn
+                      | None -> conn
+                    in
+                    (* Add Vary header *)
+                    let conn =
+                      match origin_val with
+                      | "*" -> conn
+                      | _ -> add_vary "Origin" conn
+                    in
+                    Conn.halt conn
+              end
+            (* Simple CORS request - add headers to response *)
+            else
+              begin
                 let origin_val = get_response_origin origins req_origin credentials in
-                (* Build allowed methods list *)
-                let all_methods =
-                  method_names methods
-                  |> String.concat ", "
-                in
                 Log.debug
                   (String.concat
                     ""
-                    [ "[CORS] Preflight from origin: "; req_origin; " -> "; origin_val; ]);
-                let conn =
-                  conn
-                  |> Conn.respond ~status:Net.Http.Status.NoContent
+                    [ "[CORS] Simple request from origin: "; req_origin; " -> "; origin_val; ]);
+                (* Call next handler *)
+                let conn' = next conn in
+                (* Add CORS headers to response *)
+                let conn' =
+                  conn'
                   |> Conn.with_header "access-control-allow-origin" origin_val
-                  |> Conn.with_header "access-control-allow-methods" all_methods
-                in
-                (* Add allowed headers if specified *)
-                let conn =
-                  match headers with
-                  | [] -> conn
-                  | _ ->
-                      Conn.with_header
-                        "access-control-allow-headers"
-                        (String.concat ", " headers)
-                        conn
                 in
                 (* Add credentials if enabled *)
-                let conn =
+                let conn' =
                   if credentials then
-                    Conn.with_header "access-control-allow-credentials" "true" conn
+                    Conn.with_header "access-control-allow-credentials" "true" conn'
                   else
-                    conn
+                    conn'
                 in
-                (* Add max-age if specified *)
-                let conn =
-                  match max_age with
-                  | Some age -> Conn.with_header "access-control-max-age" (string_of_int age) conn
-                  | None -> conn
+                (* Add exposed headers if specified *)
+                let conn' =
+                  match expose with
+                  | [] -> conn'
+                  | _ ->
+                      Conn.with_header
+                        "access-control-expose-headers"
+                        (String.concat ", " expose)
+                        conn'
                 in
                 (* Add Vary header *)
-                let conn =
+                let conn' =
                   match origin_val with
-                  | "*" -> conn
-                  | _ -> add_vary "Origin" conn
+                  | "*" -> conn'
+                  | _ -> add_vary "Origin" conn'
                 in
-                Conn.halt conn
-          end
-        (* Simple CORS request - add headers to response *)
-        else
-          begin
-            let origin_val = get_response_origin origins req_origin credentials in
-            Log.debug
-              (String.concat
-                ""
-                [ "[CORS] Simple request from origin: "; req_origin; " -> "; origin_val; ]);
-            (* Call next handler *)
-            let conn' = next conn in
-            (* Add CORS headers to response *)
-            let conn' =
-              conn'
-              |> Conn.with_header "access-control-allow-origin" origin_val
-            in
-            (* Add credentials if enabled *)
-            let conn' =
-              if credentials then
-                Conn.with_header "access-control-allow-credentials" "true" conn'
-              else
                 conn'
-            in
-            (* Add exposed headers if specified *)
-            let conn' =
-              match expose with
-              | [] -> conn'
-              | _ ->
-                  Conn.with_header
-                    "access-control-expose-headers"
-                    (String.concat ", " expose)
-                    conn'
-            in
-            (* Add Vary header *)
-            let conn' =
-              match origin_val with
-              | "*" -> conn'
-              | _ -> add_vary "Origin" conn'
-            in
-            conn'
-          end
+              end)

@@ -32,7 +32,7 @@ val of_request:
 (**
    Create a connection from an already parsed request without a live socket.
    This is useful for adapters and test harnesses that execute middleware
-   directly. Calling [socket_conn] on the returned connection remains an error.
+   directly.
 *)
 (** ## Request Access *)
 
@@ -329,9 +329,9 @@ val with_peer: peer -> t -> t
 
    {b Note}: This is primarily for internal middleware use.
 *)
-val socket_conn: t -> Socket_pool.Connection.t
-
 (** Get the underlying socket connection *)
+val socket_conn: t -> Socket_pool.Connection.t option
+
 (** ## WebSocket Upgrade *)
 
 val upgrade_websocket: Channel.Handler.upgrade_opts -> Channel.Handler.t -> t -> t

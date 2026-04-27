@@ -89,7 +89,7 @@ let parse_accept_entry = fun entry ->
 
    Returns list sorted by quality (highest first).
 *)
-let parse_accept_result = fun header ->
+let parse_accept = fun header ->
   let entries =
     String.split_on_char ',' header
     |> List.map ~fn:String.trim
@@ -106,13 +106,13 @@ let parse_accept_result = fun header ->
   in
   parse_entries [] entries
 
-let parse_accept = fun header ->
-  match parse_accept_result header with
+let parse_accept_or_empty = fun header ->
+  match parse_accept header with
   | Ok entries -> entries
   | Error _ -> []
 
 let accept_header_matches = fun ~types accept ->
-  match parse_accept_result accept with
+  match parse_accept accept with
   | Error error -> Error error
   | Ok entries ->
       Ok (List.exists

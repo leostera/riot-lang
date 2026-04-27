@@ -437,12 +437,10 @@ module Cors = Cors
    CORS middleware - simple and direct.
 
    {[
-     let app = Middleware.[
-       request_id;
-       logger;
-       cors ~origins:["https://example.com"] ();
-       router routes;
-     ]
+     match cors ~origins:["https://example.com"] () with
+     | Error error -> Error (Cors.config_error_to_string error)
+     | Ok cors_middleware ->
+         Ok Middleware.[ request_id; logger; cors_middleware; router routes ]
    ]}
 
    {b Parameters:}
@@ -467,7 +465,7 @@ val cors:
   ?expose:string list ->
   ?max_age:int ->
   unit ->
-  Pipeline.middleware
+  (Pipeline.middleware, Cors.config_error) result
 
 module Session = Session
 
@@ -482,17 +480,20 @@ module Session = Session
    {b Quick Start:}
    {[
      (* Minimal setup *)
-     let app = Middleware.[
-       session ~secret:"0123456789abcdef0123456789abcdef" ();
-       router routes;
-     ]
+     match session ~secret:"0123456789abcdef0123456789abcdef" () with
+     | Error error -> Error (Session.secret_error_to_string error)
+     | Ok session_middleware ->
+         Ok Middleware.[ session_middleware; router routes ]
 
      (* In handlers *)
      let handler ~conn ~next:_ =
-       let session = Session.get conn in
-       match Session.get_value "user_id" session with
+       match Session.get conn with
+       | Some session -> (
+         match Session.get_value "user_id" session with
        | Some id -> (* User logged in *)
-       | None -> (* Anonymous *)
+         | None -> (* Anonymous *)
+       )
+       | None -> (* Session middleware missing *)
    ]}
 
    {b Security:}
@@ -518,12 +519,10 @@ module Session = Session
        | None -> failwith "SESSION_SECRET required"
      in
 
-     let app = Middleware.[
-       request_id;
-       logger;
-       session ~secret ~secure:true ();
-       router routes;
-     ]
+     match session ~secret ~secure:true () with
+     | Error error -> Error (Session.secret_error_to_string error)
+     | Ok session_middleware ->
+         Ok Middleware.[ request_id; logger; session_middleware; router routes ]
    ]}
 
    {b Parameters:}
@@ -536,17 +535,19 @@ module Session = Session
    {b Usage in handlers:}
    {[
      (* Read session *)
-     let session = Session.get conn in
-     match Session.get_value "user_id" session with
-     | Some id -> Printf.printf "User: %s\n" id
-     | None -> Printf.printf "Anonymous\n"
+     match Session.get conn with
+     | None -> ()
+     | Some session ->
+         match Session.get_value "user_id" session with
+         | Some id -> Printf.printf "User: %s\n" id
+         | None -> Printf.printf "Anonymous\n";
 
-     (* Write session *)
-     Session.put "user_id" "123" session;
-     Session.put "username" "alice" session;
+         (* Write session *)
+         Session.put "user_id" "123" session;
+         Session.put "username" "alice" session;
 
-     (* Logout *)
-     Session.clear session
+         (* Logout *)
+         Session.clear session
    ]}
 
    See {!Session.middleware} for full documentation.
@@ -558,7 +559,7 @@ val session:
   ?secure:bool ->
   ?same_site:Http.Http1.Cookie.same_site ->
   unit ->
-  Pipeline.middleware
+  (Pipeline.middleware, Session.secret_error) result
 
 module Csrf = Csrf
 
@@ -572,18 +573,12 @@ module Csrf = Csrf
 
    {b Quick Start:}
    {[
-     let app = Middleware.[
-       session ~secret:"0123456789abcdef0123456789abcdef" ();
-       csrf ();
-       router routes;
-     ]
+     match session ~secret:"0123456789abcdef0123456789abcdef" () with
+     | Error error -> Error (Session.secret_error_to_string error)
+     | Ok session_middleware ->
+         Ok Middleware.[ session_middleware; csrf (); router routes ]
 
-     (* In forms *)
-     let form conn =
-       "<form method='POST'>" ^
-       Csrf.hidden_field conn ^
-       "<input name='data'>" ^
-       "</form>"
+     (* In forms, render [Csrf.hidden_field conn] after matching [Ok field]. *)
    ]}
 
    {b Security:}
@@ -602,7 +597,7 @@ module Csrf = Csrf
      let app = Middleware.[
        request_id;
        logger;
-       session ~secret:"0123456789abcdef0123456789abcdef" ();
+       session_middleware;
        body_parser ();  (* Parse form data before CSRF! *)
        csrf ();  (* Protects POST, PUT, DELETE, etc. *)
        router routes;
@@ -618,13 +613,13 @@ module Csrf = Csrf
    {b Usage in views:}
    {[
      (* HTML forms *)
-     Csrf.hidden_field conn  (* Generates <input type="hidden" ...> *)
+     Csrf.hidden_field conn  (* Returns Ok <input type="hidden" ...> *)
 
      (* AJAX requests *)
-     Csrf.meta_tag conn      (* Generates <meta name="csrf-token" ...> *)
+     Csrf.meta_tag conn      (* Returns Ok <meta name="csrf-token" ...> *)
 
      (* Raw token *)
-     Csrf.get_token conn     (* Returns token string *)
+     Csrf.get_token conn     (* Returns Ok token string *)
    ]}
 
    See {!Csrf.middleware} for full documentation.

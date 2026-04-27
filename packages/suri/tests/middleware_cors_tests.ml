@@ -101,12 +101,9 @@ let tamper_last_char = fun value ->
   prefix ^ replacement
 
 let test_cors_rejects_wildcard_origin_with_credentials = fun _ctx ->
-  try
-    let _middleware = Cors.middleware ~origins:[ "*" ] ~credentials:true () in
-    Error "expected wildcard credentials CORS config to be rejected"
-  with
-  | Cors.Invalid_config Cors.WildcardOriginWithCredentials -> Ok ()
-  | _ -> Error "unexpected CORS config exception"
+  match Cors.middleware ~origins:[ "*" ] ~credentials:true () with
+  | Error Cors.WildcardOriginWithCredentials -> Ok ()
+  | Ok _ -> Error "expected wildcard credentials CORS config to be rejected"
 
 let test_cors_preflight_rejects_disallowed_method = fun _ctx ->
   match Cors.validate_preflight
@@ -155,42 +152,44 @@ let test_cors_preflight_returns_no_content = fun _ctx ->
       ()
   in
   let continued = ref false in
-  let middleware =
-    Cors.middleware
+  match Cors.middleware
       ~origins:[ "https://example.com"; ]
       ~methods:[ Net.Http.Method.Put; ]
       ~headers:[ "authorization"; ]
-      ()
-  in
-  let conn' =
-    middleware
-      ~conn
-      ~next:(fun conn ->
-        continued := true;
-        conn)
-  in
-  let response = Conn.to_response conn' in
-  Test.assert_false !continued;
-  Test.assert_equal ~expected:Net.Http.Status.NoContent ~actual:response.status;
-  Ok ()
+      () with
+  | Error error -> Error (Cors.config_error_to_string error)
+  | Ok middleware ->
+      let conn' =
+        middleware
+          ~conn
+          ~next:(fun conn ->
+            continued := true;
+            conn)
+      in
+      let response = Conn.to_response conn' in
+      Test.assert_false !continued;
+      Test.assert_equal ~expected:Net.Http.Status.NoContent ~actual:response.status;
+      Ok ()
 
 let test_cors_simple_request_merges_vary_origin = fun _ctx ->
   let conn = Suri.Testing.Conn.make ~headers:[ ("origin", "https://example.com"); ] () in
-  let middleware = Cors.middleware ~origins:[ "https://example.com"; ] () in
-  let response =
-    middleware
-      ~conn
-      ~next:(fun conn ->
-        conn
-        |> Conn.with_header "vary" "Accept-Encoding"
-        |> Conn.respond ~status:Net.Http.Status.Ok ~body:"ok"
-        |> Conn.send)
-    |> Conn.to_response
-  in
-  Test.assert_equal
-    ~expected:[ "Accept-Encoding, Origin"; ]
-    ~actual:(Net.Http.Header.get_all response.headers "vary");
-  Ok ()
+  match Cors.middleware ~origins:[ "https://example.com"; ] () with
+  | Error error -> Error (Cors.config_error_to_string error)
+  | Ok middleware ->
+      let response =
+        middleware
+          ~conn
+          ~next:(fun conn ->
+            conn
+            |> Conn.with_header "vary" "Accept-Encoding"
+            |> Conn.respond ~status:Net.Http.Status.Ok ~body:"ok"
+            |> Conn.send)
+        |> Conn.to_response
+      in
+      Test.assert_equal
+        ~expected:[ "Accept-Encoding, Origin"; ]
+        ~actual:(Net.Http.Header.get_all response.headers "vary");
+      Ok ()
 
 let test_cors_preflight_merges_vary_origin = fun _ctx ->
   let conn =
@@ -200,22 +199,22 @@ let test_cors_preflight_merges_vary_origin = fun _ctx ->
       ()
     |> Conn.with_header "vary" "Accept-Encoding"
   in
-  let middleware =
-    Cors.middleware ~origins:[ "https://example.com"; ] ~methods:[ Net.Http.Method.Put; ] ()
-  in
-  let response =
-    middleware
-      ~conn
-      ~next:(fun conn ->
-        conn
-        |> Conn.respond ~status:Net.Http.Status.Ok ~body:"next"
-        |> Conn.send)
-    |> Conn.to_response
-  in
-  Test.assert_equal
-    ~expected:[ "Accept-Encoding, Origin"; ]
-    ~actual:(Net.Http.Header.get_all response.headers "vary");
-  Ok ()
+  match Cors.middleware ~origins:[ "https://example.com"; ] ~methods:[ Net.Http.Method.Put; ] () with
+  | Error error -> Error (Cors.config_error_to_string error)
+  | Ok middleware ->
+      let response =
+        middleware
+          ~conn
+          ~next:(fun conn ->
+            conn
+            |> Conn.respond ~status:Net.Http.Status.Ok ~body:"next"
+            |> Conn.send)
+        |> Conn.to_response
+      in
+      Test.assert_equal
+        ~expected:[ "Accept-Encoding, Origin"; ]
+        ~actual:(Net.Http.Header.get_all response.headers "vary");
+      Ok ()
 
 let tests =
   Test.[

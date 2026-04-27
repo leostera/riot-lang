@@ -242,38 +242,38 @@ type accept_parse_error =
   | QualityOutOfRange of float
 
 (**
-   Entry in parsed Accept header.
-   - media_type: MIME type (e.g., "application/json")
-   - quality: Quality value from 0.0 to 1.0 (default: 1.0)
-*)
-val parse_accept_result: string -> (accept_entry list, accept_parse_error) result
-
-(**
    Parse Accept header with quality values and structured errors.
 
    Returns list sorted by quality (highest first). Malformed or out-of-range
    [q] parameters return a typed error instead of being treated as [1.0].
 *)
-val parse_accept: string -> accept_entry list
+val parse_accept: string -> (accept_entry list, accept_parse_error) result
 
 (**
-   Parse Accept header with quality values.
+   Parse Accept header with quality values, returning an empty list on errors.
 
    Returns list sorted by quality (highest first). Malformed quality values
-   return an empty list from this compatibility helper; use
-   {!parse_accept_result} when callers need structured parse errors.
+   return an empty list from this compatibility helper; use {!parse_accept}
+   when callers need structured parse errors.
 
    {[
-     parse_accept "application/json"
+     parse_accept_or_empty "application/json"
      (* [{ media_type = "application/json"; quality = 1.0 }] *)
 
-     parse_accept "text/html, application/json;q=0.8, */*;q=0.1"
+     parse_accept_or_empty "text/html, application/json;q=0.8, */*;q=0.1"
      (* [
        { media_type = "text/html"; quality = 1.0 };
        { media_type = "application/json"; quality = 0.8 };
        { media_type = "*/*"; quality = 0.1 };
      ] *)
    ]}
+*)
+val parse_accept_or_empty: string -> accept_entry list
+
+(**
+   Extract base content type from Content-Type header.
+
+   Strips parameters like charset, boundary, etc.
 *)
 val get_base_content_type: string -> string option
 
@@ -282,23 +282,3 @@ val accept_header_matches: types:string list -> string -> (bool, accept_parse_er
 val request_declares_body: method_:Net.Http.Method.t -> headers:Net.Http.Header.t -> bool
 
 val has_declared_request_body: Conn.t -> bool
-
-(**
-   Extract base content type from Content-Type header.
-
-   Strips parameters like charset, boundary, etc.
-
-   {[
-     get_base_content_type "application/json"
-     (* Some "application/json" *)
-
-     get_base_content_type "application/json; charset=utf-8"
-     (* Some "application/json" *)
-
-     get_base_content_type "multipart/form-data; boundary=----WebKit..."
-     (* Some "multipart/form-data" *)
-
-     get_base_content_type ""
-     (* None *)
-   ]}
-*)

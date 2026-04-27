@@ -11,40 +11,49 @@
 
    {3 Basic Protection}
    {[
-     let app = Middleware.[
-       session ~secret:"0123456789abcdef0123456789abcdef" ();
-       csrf ();
-       router routes;
-     ]
+     match session ~secret:"0123456789abcdef0123456789abcdef" () with
+     | Error error -> Error (Session.secret_error_to_string error)
+     | Ok session_middleware ->
+         let app = Middleware.[ session_middleware; csrf (); router routes ] in
+         Ok app
    ]}
 
    {3 In HTML Forms}
    {[
      let form_handler ~conn ~next:_ =
-       let html = String.concat "" [
-         "<form method=\"POST\" action=\"/submit\">";
-         Csrf.hidden_field conn;
-         "<input name=\"data\" />";
-         "<button>Submit</button>";
-         "</form>"
-       ] in
-       conn
-       |> Conn.respond ~status:Ok ~body:html
-       |> Conn.with_header "content-type" "text/html"
-       |> Conn.send
+       match Csrf.hidden_field conn with
+       | Error error ->
+           conn
+           |> Conn.respond ~status:InternalServerError ~body:(Csrf.error_to_string error)
+           |> Conn.send
+       | Ok field ->
+           let html = String.concat "" [
+             "<form method=\"POST\" action=\"/submit\">";
+             Component.to_html field;
+             "<input name=\"data\" />";
+             "<button>Submit</button>";
+             "</form>"
+           ] in
+           conn
+           |> Conn.respond ~status:Ok ~body:html
+           |> Conn.with_header "content-type" "text/html"
+           |> Conn.send
    ]}
 
    {3 In AJAX Requests}
    {[
      (* In your HTML layout *)
      let layout conn content =
-       String.concat "" [
-         "<html><head>";
-         Csrf.meta_tag conn;
-         "</head><body>";
-         content;
-         "</body></html>"
-       ]
+       match Csrf.meta_tag conn with
+       | Error error -> Error error
+       | Ok tag ->
+           Ok (String.concat "" [
+             "<html><head>";
+             Component.to_html tag;
+             "</head><body>";
+             content;
+             "</body></html>"
+           ])
 
      (* In JavaScript *)
      (* <script>
@@ -122,35 +131,21 @@ val unmask_error_to_string: unmask_error -> string
 
 val random_bytes_with_rng: Random.Rng.t -> int -> (string, random_error) result
 
-val random_bytes_result: int -> (string, random_error) result
+val random_bytes: int -> (string, random_error) result
 
-val generate_token_result: unit -> (string, error) result
+val generate_token: unit -> (string, error) result
 
-val generate_token: unit -> string
+val mask_token: string -> (string, error) result
 
-val mask_token_result: string -> (string, error) result
+val unmask_token: string -> (string, unmask_error) result
 
-val mask_token: string -> string
-
-val unmask_token_result: string -> (string, unmask_error) result
-
-val unmask_token: string -> string option
-
-val get_or_create_token_result: Session.t -> (string, error) result
+val get_or_create_token: Session.t -> (string, error) result
 
 val is_raw_token: string -> bool
 
 val secure_equal: string -> string -> bool
 
 val missing_session_body: string
-
-val middleware:
-  ?param_name:string ->
-  ?header_name:string ->
-  ?skip_safe_methods:bool ->
-  ?skip:(Conn.t -> bool) ->
-  unit ->
-  (conn:Conn.t -> next:(Conn.t -> Conn.t) -> Conn.t)
 
 (**
    CSRF protection middleware.
@@ -168,16 +163,19 @@ val middleware:
 
    Example:
    {[
-     let app = Middleware.[
-       session ~secret:"0123456789abcdef0123456789abcdef" ();
-       csrf ();
-       router routes;
-     ]
+     match session ~secret:"0123456789abcdef0123456789abcdef" () with
+     | Error error -> Error (Session.secret_error_to_string error)
+     | Ok session_middleware ->
+         Ok Middleware.[ session_middleware; csrf (); router routes ]
    ]}
 *)
-val get_token_result: Conn.t -> (string, error) result
-
-val get_token: Conn.t -> string
+val middleware:
+  ?param_name:string ->
+  ?header_name:string ->
+  ?skip_safe_methods:bool ->
+  ?skip:(Conn.t -> bool) ->
+  unit ->
+  (conn:Conn.t -> next:(Conn.t -> Conn.t) -> Conn.t)
 
 (**
    Get current CSRF token for this request.
@@ -187,13 +185,12 @@ val get_token: Conn.t -> string
 
    Example:
    {[
-     let token = Csrf.get_token conn in
-     (* Use token in custom HTML *)
+     match Csrf.get_token conn with
+     | Ok token -> (* Use token in custom HTML *)
+     | Error error -> (* Render or log Csrf.error_to_string error *)
    ]}
 *)
-val hidden_field_result: Conn.t -> ('msg Component.t, error) result
-
-val hidden_field: Conn.t -> 'msg Component.t
+val get_token: Conn.t -> (string, error) result
 
 (**
    Generate HTML hidden input field with CSRF token.
@@ -205,16 +202,17 @@ val hidden_field: Conn.t -> 'msg Component.t
    Example:
    {[
      let form conn =
-       Component.form_ ~attrs:[Component.method_ "POST"] [
-         Csrf.hidden_field conn;
-         Component.input ~attrs:[Component.name "data"] ();
-         Component.button [Component.text "Submit"];
-       ]
+       match Csrf.hidden_field conn with
+       | Error error -> Error error
+       | Ok field ->
+           Ok (Component.form_ ~attrs:[Component.method_ "POST"] [
+             field;
+             Component.input ~attrs:[Component.name "data"] ();
+             Component.button [Component.text "Submit"];
+           ])
    ]}
 *)
-val meta_tag_result: Conn.t -> ('msg Component.t, error) result
-
-val meta_tag: Conn.t -> 'msg Component.t
+val hidden_field: Conn.t -> ('msg Component.t, error) result
 
 (**
    Generate HTML meta tag for AJAX requests.
@@ -227,13 +225,13 @@ val meta_tag: Conn.t -> 'msg Component.t
    Example:
    {[
      let layout conn content =
-       Component.html [
-         Component.head [
-           Csrf.meta_tag conn;
-         ];
-         Component.body [
-           content
-         ];
-       ]
+       match Csrf.meta_tag conn with
+       | Error error -> Error error
+       | Ok tag ->
+           Ok (Component.html [
+             Component.head [ tag ];
+             Component.body [ content ];
+           ])
    ]}
 *)
+val meta_tag: Conn.t -> ('msg Component.t, error) result

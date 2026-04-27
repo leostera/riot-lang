@@ -5,6 +5,13 @@ open Suri
 
 (** Home page with form *)
 let home = fun conn _req ->
+  match Middleware.Csrf.hidden_field conn with
+  | Error error ->
+      conn
+      |> Conn.with_status Net.Http.Status.InternalServerError
+      |> Conn.with_body (Middleware.Csrf.error_to_string error)
+      |> Conn.send
+  | Ok csrf_field ->
   let html =
     {|<!DOCTYPE html>
 <html>
@@ -29,7 +36,7 @@ let home = fun conn _req ->
   <h2>HTML Form (urlencoded)</h2>
   <form method="POST" action="/submit">
     |}
-    ^ Component.to_html (Middleware.Csrf.hidden_field conn)
+    ^ Component.to_html csrf_field
     ^ {|
     <label for="name">Name:</label>
     <input type="text" id="name" name="name" value="Alice" required>
@@ -157,14 +164,17 @@ let routes =
   Middleware.Router.[ get "/" home; post "/submit" submit_form; post "/api/data" api_handler ]
 
 (** Application with body_parser + CSRF *)
-let app =
-  Middleware.[
-    logger;
-    session ~secret:"development-secret-key-change-in-production" ();
-    body_parser ();
-    csrf ~skip:(fun conn -> String.starts_with ~prefix:"/api/" (Conn.path conn)) ();
-    router routes;
-  ]
+let make_app = fun () ->
+  match Middleware.session ~secret:"development-secret-key-change-in-production" () with
+  | Error error -> Error (Middleware.Session.secret_error_to_string error)
+  | Ok session_middleware ->
+      Ok Middleware.[
+        logger;
+        session_middleware;
+        body_parser ();
+        csrf ~skip:(fun conn -> String.starts_with ~prefix:"/api/" (Conn.path conn)) ();
+        router routes;
+      ]
 
 let main ~args:_ =
   let port = 8_080 in
@@ -178,7 +188,10 @@ let main ~args:_ =
   Log.info "  - JSON API endpoint (/api/data)";
   Log.info "  - Automatic body parsing (urlencoded & JSON)";
   Log.info "===========================================";
-  match Suri.start_link ~config app with
+  match make_app () with
+  | Error error -> Error (Failure error)
+  | Ok app -> (
+      match Suri.start_link ~config app with
   | Ok _supervisor ->
       let rec loop () =
         sleep (Time.Duration.from_secs 100);
@@ -188,5 +201,6 @@ let main ~args:_ =
   | Error _ ->
       Log.error "Failed to bind to port 8080";
       Error (Failure "Failed to start server")
+    )
 
 let () = Runtime.run ~main ~args:Env.args ()

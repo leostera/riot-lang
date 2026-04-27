@@ -71,15 +71,10 @@ let secure_equal = fun s1 s2 ->
   result := !result lor (len1 lxor len2);
   !result = 0
 
-let fresh_rng_result = fun () ->
+let fresh_rng = fun () ->
   match Random.Rng.standard () with
   | Ok rng -> Ok rng
   | Error error -> Error (RngInitializationFailed error)
-
-let fresh_rng = fun () ->
-  match fresh_rng_result () with
-  | Ok rng -> rng
-  | Error error -> panic (random_error_to_string error)
 
 let random_bytes_with_rng = fun rng length ->
   let bytes = IO.Bytes.create ~size:length in
@@ -96,15 +91,10 @@ let random_bytes_with_rng = fun rng length ->
   fill 0
 
 (** Generate random bytes *)
-let random_bytes_result = fun length ->
-  match fresh_rng_result () with
+let random_bytes = fun length ->
+  match fresh_rng () with
   | Error error -> Error error
   | Ok rng -> random_bytes_with_rng rng length
-
-let random_bytes = fun length ->
-  match random_bytes_result length with
-  | Ok bytes -> bytes
-  | Error error -> panic (random_error_to_string error)
 
 (** Convert bytes to hex string *)
 let bytes_to_hex = fun bytes ->
@@ -155,25 +145,20 @@ let hex_to_bytes = fun hex ->
     Option.none
 
 (** Generate a cryptographically random CSRF token (32 bytes as 64 hex chars) *)
-let generate_token_result = fun () ->
-  match random_bytes_result 32 with
+let generate_token = fun () ->
+  match random_bytes 32 with
   | Ok bytes -> Ok (bytes_to_hex bytes)
   | Error error -> Error (TokenGenerationFailed error)
-
-let generate_token = fun () ->
-  match generate_token_result () with
-  | Ok token -> token
-  | Error error -> panic (error_to_string error)
 
 (** {1 Token Masking (BREACH Attack Protection)} *)
 
 (** Mask token to prevent BREACH attacks *)
-let mask_token_result = fun raw_token_hex ->
+let mask_token = fun raw_token_hex ->
   match hex_to_bytes raw_token_hex with
   | Option.None -> Ok raw_token_hex
   | Option.Some raw_bytes ->
       (* Generate 32-byte one-time pad *)
-      match random_bytes_result 32 with
+      match random_bytes 32 with
       | Error error -> Error (TokenGenerationFailed error)
       | Ok pad ->
           (* XOR pad with raw token bytes *)
@@ -187,13 +172,8 @@ let mask_token_result = fun raw_token_hex ->
           let combined = pad ^ IO.Bytes.to_string masked in
           Ok (Encoding.Base64.encode combined)
 
-let mask_token = fun raw_token_hex ->
-  match mask_token_result raw_token_hex with
-  | Ok masked -> masked
-  | Error error -> panic (error_to_string error)
-
 (** Unmask token received from client *)
-let unmask_token_result = fun masked_b64 ->
+let unmask_token = fun masked_b64 ->
   match Encoding.Base64.decode masked_b64 with
   | Result.Error `Invalid_base64 -> Error InvalidMaskedTokenEncoding
   | Result.Ok decoded ->
@@ -217,11 +197,6 @@ let unmask_token_result = fun masked_b64 ->
       let unmasked_hex = bytes_to_hex (IO.Bytes.to_string raw_bytes) in
       Ok unmasked_hex
 
-let unmask_token = fun masked_b64 ->
-  match unmask_token_result masked_b64 with
-  | Ok token -> Option.some token
-  | Error _ -> Option.none
-
 let is_hex_char = function
   | '0' .. '9'
   | 'a' .. 'f'
@@ -241,20 +216,15 @@ let halt_with_error = fun conn error ->
   |> Conn.halt
 
 (** Get or create token from session *)
-let get_or_create_token_result = fun session ->
+let get_or_create_token = fun session ->
   match Session.get_value csrf_token_key session with
   | Option.Some token -> Ok token
   | Option.None ->
-      match generate_token_result () with
+      match generate_token () with
       | Error error -> Error error
       | Ok token ->
           Session.put csrf_token_key token session;
           Ok token
-
-let get_or_create_token = fun session ->
-  match get_or_create_token_result session with
-  | Ok token -> token
-  | Error error -> panic (error_to_string error)
 
 (** Verify token from request matches session *)
 let verify_token = fun session request_token ->
@@ -262,8 +232,8 @@ let verify_token = fun session request_token ->
   | Option.None -> false
   | Option.Some stored_token ->
       is_raw_token stored_token && match unmask_token request_token with
-      | Option.Some unmasked -> is_raw_token unmasked && secure_equal unmasked stored_token
-      | Option.None -> is_raw_token request_token && secure_equal request_token stored_token
+      | Ok unmasked -> is_raw_token unmasked && secure_equal unmasked stored_token
+      | Error _ -> is_raw_token request_token && secure_equal request_token stored_token
 
 (** {1 HTTP Method Classification} *)
 
@@ -339,22 +309,17 @@ let middleware = fun
 (** {1 View Helpers} *)
 
 (** Get current CSRF token for use in views *)
-let get_token_result = fun conn ->
+let get_token = fun conn ->
   match Session.find conn with
   | Option.None -> Error MissingSession
-  | Option.Some session -> get_or_create_token_result session
-
-let get_token = fun conn ->
-  match get_token_result conn with
-  | Ok token -> token
-  | Error error -> panic (error_to_string error)
+  | Option.Some session -> get_or_create_token session
 
 (** Generate HTML hidden field for forms *)
-let hidden_field_result = fun conn ->
-  match get_token_result conn with
+let hidden_field = fun conn ->
+  match get_token conn with
   | Error error -> Error error
   | Ok token -> (
-      match mask_token_result token with
+      match mask_token token with
       | Error error -> Error error
       | Ok masked ->
           Ok (Component.input
@@ -366,25 +331,15 @@ let hidden_field_result = fun conn ->
             ())
     )
 
-let hidden_field = fun conn ->
-  match hidden_field_result conn with
-  | Ok field -> field
-  | Error error -> panic (error_to_string error)
-
 (** Generate HTML meta tag for AJAX *)
-let meta_tag_result = fun conn ->
-  match get_token_result conn with
+let meta_tag = fun conn ->
+  match get_token conn with
   | Error error -> Error error
   | Ok token -> (
-      match mask_token_result token with
+      match mask_token token with
       | Error error -> Error error
       | Ok masked ->
           Ok (Component.meta
             ~attrs:[ Component.name "csrf-token"; Component.attr "content" masked ]
             ())
     )
-
-let meta_tag = fun conn ->
-  match meta_tag_result conn with
-  | Ok tag -> tag
-  | Error error -> panic (error_to_string error)
