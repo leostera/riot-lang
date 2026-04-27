@@ -16,6 +16,15 @@ open Std
 
 (** A header field is a name-value pair *)
 type header = { name: string; value: string }
+type decode_error =
+  | IncompleteIntegerEncoding
+  | IncompleteStringEncoding
+  | StringDataTruncated of { length: int; available: int }
+  | UnsupportedHuffmanStringEncoding
+  | InvalidHeaderIndex of int
+  | InvalidNameIndex of int
+val decode_error_to_string: decode_error -> string
+
 (** Encoding representation for a header field *)
 type encoding_type =
   | Indexed
@@ -76,9 +85,9 @@ val create_decoder: ?max_dynamic_table_size:int -> unit -> decoder
 
    @param decoder The decoder context
    @param data The HPACK-encoded bytes to decode
-   @return Either the decoded headers or an error message
+   @return Either the decoded headers or a structured decode error
 *)
-val decode: decoder -> bytes -> (header list, string) Result.t
+val decode: decoder -> bytes -> (header list, decode_error) Result.t
 
 (**
    Update the dynamic table size limit.

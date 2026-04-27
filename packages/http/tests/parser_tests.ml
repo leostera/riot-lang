@@ -16,10 +16,10 @@ let settings_frame_with_payload = fun payload -> "\x00\x00\x06\x04\x00\x00\x00\x
 
 let expect_parse_error = fun bytes expected ->
   match Parser.parse_frame bytes with
-  | Parser.Error err when String.equal err expected -> Result.Ok ()
-  | Parser.Error err -> Result.Error ("Wrong parse error: " ^ err)
-  | Parser.Need_more -> Result.Error ("Expected parse error: " ^ expected)
-  | Parser.Done _ -> Result.Error ("Expected parse error, but frame parsed: " ^ expected)
+  | Parser.Error err when err = expected -> Result.Ok ()
+  | Parser.Error err -> Result.Error ("Wrong parse error: " ^ Parser.error_to_string err)
+  | Parser.Need_more -> Result.Error "Expected parse error"
+  | Parser.Done _ -> Result.Error "Expected parse error, but frame parsed"
 
 let test_serialize_settings_frame = fun _ctx ->
   let frame = {
@@ -160,7 +160,7 @@ let test_process_data_buffers_split_frame_header = fun _ctx ->
   let first = String.sub bytes ~offset:0 ~len:4 in
   let rest = String.sub bytes ~offset:4 ~len:(String.length bytes - 4) in
   match Connection.process_data conn (Std.IO.Bytes.from_string first) with
-  | Error err -> Result.Error err
+  | Error err -> Result.Error (Connection.error_to_string err)
   | Ok events when List.length events != 0 ->
       Result.Error "split frame header should not emit events before the frame is complete"
   | Ok _ -> (
@@ -168,7 +168,7 @@ let test_process_data_buffers_split_frame_header = fun _ctx ->
       | Ok [ Connection.SettingsReceived [ Frame.HeaderTableSize size ] ] when Int.equal size 1_024 ->
           Result.Ok ()
       | Ok _ -> Result.Error "split frame header did not emit the expected settings event"
-      | Error err -> Result.Error err
+      | Error err -> Result.Error (Connection.error_to_string err)
     )
 
 let test_process_data_buffers_split_frame_payload = fun _ctx ->
@@ -178,7 +178,7 @@ let test_process_data_buffers_split_frame_payload = fun _ctx ->
   let first = String.sub bytes ~offset:0 ~len:12 in
   let rest = String.sub bytes ~offset:12 ~len:(String.length bytes - 12) in
   match Connection.process_data conn (Std.IO.Bytes.from_string first) with
-  | Error err -> Result.Error err
+  | Error err -> Result.Error (Connection.error_to_string err)
   | Ok events when List.length events != 0 ->
       Result.Error "split frame payload should not emit events before the frame is complete"
   | Ok _ -> (
@@ -188,7 +188,7 @@ let test_process_data_buffers_split_frame_payload = fun _ctx ->
         1_024
       && Int.equal frame_size 16_384 -> Result.Ok ()
       | Ok _ -> Result.Error "split frame payload did not emit the expected settings event"
-      | Error err -> Result.Error err
+      | Error err -> Result.Error (Connection.error_to_string err)
     )
 
 let test_frame_types = fun _ctx ->
@@ -201,59 +201,80 @@ let test_frame_types = fun _ctx ->
 let test_parse_settings_rejects_invalid_enable_push = fun _ctx ->
   let bytes = settings_frame_with_payload "\x00\x02\x00\x00\x00\x02" in
   match Parser.parse_frame bytes with
-  | Parser.Error "SETTINGS_ENABLE_PUSH must be 0 or 1" -> Result.Ok ()
-  | Parser.Error err -> Result.Error ("Wrong parse error: " ^ err)
+  | Parser.Error (Parser.InvalidSettingValue { setting = Parser.EnablePush; value = 2 }) ->
+      Result.Ok ()
+  | Parser.Error err -> Result.Error ("Wrong parse error: " ^ Parser.error_to_string err)
   | Parser.Need_more -> Result.Error "Expected invalid SETTINGS_ENABLE_PUSH to fail"
   | Parser.Done _ -> Result.Error "Invalid SETTINGS_ENABLE_PUSH was accepted"
 
 let test_parse_settings_rejects_initial_window_overflow = fun _ctx ->
   let bytes = settings_frame_with_payload "\x00\x04\x80\x00\x00\x00" in
   match Parser.parse_frame bytes with
-  | Parser.Error "SETTINGS_INITIAL_WINDOW_SIZE must be at most 2147483647" -> Result.Ok ()
-  | Parser.Error err -> Result.Error ("Wrong parse error: " ^ err)
+  | Parser.Error (
+    Parser.InvalidSettingValue { setting = Parser.InitialWindowSize; value = 2_147_483_648 }
+  ) -> Result.Ok ()
+  | Parser.Error err -> Result.Error ("Wrong parse error: " ^ Parser.error_to_string err)
   | Parser.Need_more -> Result.Error "Expected oversized SETTINGS_INITIAL_WINDOW_SIZE to fail"
   | Parser.Done _ -> Result.Error "Oversized SETTINGS_INITIAL_WINDOW_SIZE was accepted"
 
 let test_parse_settings_rejects_small_max_frame_size = fun _ctx ->
   let bytes = settings_frame_with_payload "\x00\x05\x00\x00\x3f\xff" in
   match Parser.parse_frame bytes with
-  | Parser.Error "SETTINGS_MAX_FRAME_SIZE must be between 16384 and 16777215" -> Result.Ok ()
-  | Parser.Error err -> Result.Error ("Wrong parse error: " ^ err)
+  | Parser.Error (Parser.InvalidSettingValue { setting = Parser.MaxFrameSize; value = 16_383 }) ->
+      Result.Ok ()
+  | Parser.Error err -> Result.Error ("Wrong parse error: " ^ Parser.error_to_string err)
   | Parser.Need_more -> Result.Error "Expected small SETTINGS_MAX_FRAME_SIZE to fail"
   | Parser.Done _ -> Result.Error "Small SETTINGS_MAX_FRAME_SIZE was accepted"
 
 let test_parse_settings_rejects_large_max_frame_size = fun _ctx ->
   let bytes = settings_frame_with_payload "\x00\x05\x01\x00\x00\x00" in
   match Parser.parse_frame bytes with
-  | Parser.Error "SETTINGS_MAX_FRAME_SIZE must be between 16384 and 16777215" -> Result.Ok ()
-  | Parser.Error err -> Result.Error ("Wrong parse error: " ^ err)
+  | Parser.Error (Parser.InvalidSettingValue { setting = Parser.MaxFrameSize; value = 16_777_216 }) ->
+      Result.Ok ()
+  | Parser.Error err -> Result.Error ("Wrong parse error: " ^ Parser.error_to_string err)
   | Parser.Need_more -> Result.Error "Expected large SETTINGS_MAX_FRAME_SIZE to fail"
   | Parser.Done _ -> Result.Error "Large SETTINGS_MAX_FRAME_SIZE was accepted"
 
 let test_parse_data_rejects_stream_zero = fun _ctx ->
   expect_parse_error
     "\x00\x00\x00\x00\x00\x00\x00\x00\x00"
-    "DATA frame must use a non-zero stream ID"
+    (Parser.InvalidStreamId {
+      frame_type = Frame.Data;
+      stream_id = 0;
+      expected = Parser.MustBeNonZero;
+    })
 
 let test_parse_headers_rejects_stream_zero = fun _ctx ->
   expect_parse_error
     "\x00\x00\x00\x01\x00\x00\x00\x00\x00"
-    "HEADERS frame must use a non-zero stream ID"
+    (Parser.InvalidStreamId {
+      frame_type = Frame.Headers;
+      stream_id = 0;
+      expected = Parser.MustBeNonZero;
+    })
 
 let test_parse_settings_rejects_nonzero_stream = fun _ctx ->
   expect_parse_error
     "\x00\x00\x00\x04\x00\x00\x00\x00\x01"
-    "SETTINGS frame must use stream ID 0"
+    (Parser.InvalidStreamId {
+      frame_type = Frame.Settings;
+      stream_id = 1;
+      expected = Parser.MustBeZero;
+    })
 
 let test_parse_ping_rejects_nonzero_stream = fun _ctx ->
   expect_parse_error
     "\x00\x00\x08\x06\x00\x00\x00\x00\x01abcdefgh"
-    "PING frame must use stream ID 0"
+    (Parser.InvalidStreamId { frame_type = Frame.Ping; stream_id = 1; expected = Parser.MustBeZero })
 
 let test_parse_goaway_rejects_nonzero_stream = fun _ctx ->
   expect_parse_error
     "\x00\x00\x08\x07\x00\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00\x00\x00"
-    "GOAWAY frame must use stream ID 0"
+    (Parser.InvalidStreamId {
+      frame_type = Frame.Goaway;
+      stream_id = 1;
+      expected = Parser.MustBeZero;
+    })
 
 let test_parse_window_update_allows_stream_zero = fun _ctx ->
   match Parser.parse_frame "\x00\x00\x04\x08\x00\x00\x00\x00\x00\x00\x00\x00\x01" with
@@ -261,7 +282,8 @@ let test_parse_window_update_allows_stream_zero = fun _ctx ->
       Result.Ok ()
   | Parser.Done _ -> Result.Error "WINDOW_UPDATE stream 0 parsed as the wrong frame"
   | Parser.Need_more -> Result.Error "WINDOW_UPDATE stream 0 unexpectedly needed more data"
-  | Parser.Error err -> Result.Error ("WINDOW_UPDATE stream 0 was rejected: " ^ err)
+  | Parser.Error err ->
+      Result.Error ("WINDOW_UPDATE stream 0 was rejected: " ^ Parser.error_to_string err)
 
 let test_parse_unknown_frame_preserves_payload = fun _ctx ->
   match Parser.parse_frame "\x00\x00\x03\x0b\x00\x00\x00\x00\x00abc" with
@@ -269,7 +291,7 @@ let test_parse_unknown_frame_preserves_payload = fun _ctx ->
       Result.Ok ()
   | Parser.Done _ -> Result.Error "Unknown frame parsed with the wrong payload"
   | Parser.Need_more -> Result.Error "Unknown frame unexpectedly needed more data"
-  | Parser.Error err -> Result.Error ("Unknown frame was rejected: " ^ err)
+  | Parser.Error err -> Result.Error ("Unknown frame was rejected: " ^ Parser.error_to_string err)
 
 let test_process_data_ignores_unknown_frame = fun _ctx ->
   let conn = Connection.create ~role:Connection.Server () in
@@ -278,7 +300,8 @@ let test_process_data_ignores_unknown_frame = fun _ctx ->
     (Std.IO.Bytes.from_string "\x00\x00\x03\x0b\x00\x00\x00\x00\x00abc") with
   | Ok [] -> Result.Ok ()
   | Ok _ -> Result.Error "Unknown frame emitted connection events"
-  | Error err -> Result.Error ("Unknown frame failed connection processing: " ^ err)
+  | Error err ->
+      Result.Error ("Unknown frame failed connection processing: " ^ Connection.error_to_string err)
 
 let tests =
   Test.[

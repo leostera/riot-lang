@@ -13,6 +13,26 @@ module Cell = Sync.Cell
 (** HPACK: Header Compression for HTTP/2 (RFC 7541) *)
 type header = { name: string; value: string }
 
+type decode_error =
+  | IncompleteIntegerEncoding
+  | IncompleteStringEncoding
+  | StringDataTruncated of { length: int; available: int }
+  | UnsupportedHuffmanStringEncoding
+  | InvalidHeaderIndex of int
+  | InvalidNameIndex of int
+
+let decode_error_to_string = function
+  | IncompleteIntegerEncoding -> "Incomplete HPACK integer encoding"
+  | IncompleteStringEncoding -> "Incomplete HPACK string encoding"
+  | StringDataTruncated { length; available } ->
+      "HPACK string data truncated: expected "
+      ^ Int.to_string length
+      ^ " bytes, got "
+      ^ Int.to_string available
+  | UnsupportedHuffmanStringEncoding -> "Unsupported HPACK Huffman string encoding"
+  | InvalidHeaderIndex index -> "Invalid HPACK header index: " ^ Int.to_string index
+  | InvalidNameIndex index -> "Invalid HPACK name index: " ^ Int.to_string index
+
 type encoding_type =
   | Indexed
   | LiteralWithIndexing
@@ -261,7 +281,7 @@ module Integer = struct
       (* Need to read continuation bytes *)
       let rec read_continuation acc multiplier pos =
         if pos >= Bytes.length data then
-          Error "Incomplete integer encoding"
+          Error IncompleteIntegerEncoding
         else
           let byte =
             Bytes.get_unchecked data ~at:pos
@@ -306,7 +326,7 @@ module String_ = struct
 
   let decode = fun data offset ->
     if offset >= Bytes.length data then
-      Error "Incomplete string encoding"
+      Error IncompleteStringEncoding
     else
       let first_byte = Bytes.get_unchecked data ~at:offset in
       let is_huffman = Char.to_int first_byte land 0x80 != 0 in
@@ -314,9 +334,9 @@ module String_ = struct
       | Error e -> Error e
       | Ok (length, new_offset) ->
           if new_offset + length > Bytes.length data then
-            Error "String data truncated"
+            Error (StringDataTruncated { length; available = Bytes.length data - new_offset })
           else if is_huffman then
-            Error "Unsupported HPACK Huffman string encoding"
+            Error UnsupportedHuffmanStringEncoding
           else
             let str_data = Bytes.sub_unchecked data ~offset:new_offset ~len:length in
             Ok (Bytes.to_string str_data, new_offset + length)
@@ -511,7 +531,7 @@ let decode_header_block = fun decoder data offset ->
       | Error e -> Error e
       | Ok (index, new_offset) -> (
           match lookup_header decoder index with
-          | None -> Error ("Invalid header index: " ^ Int.to_string index)
+          | None -> Error (InvalidHeaderIndex index)
           | Some header -> Ok ([ header ], new_offset)
         )
     else if first_code land 0x40 != 0 then
@@ -523,7 +543,7 @@ let decode_header_block = fun decoder data offset ->
               String_.decode data pos1
             else
               match lookup_header decoder name_index with
-              | None -> Error ("Invalid name index: " ^ Int.to_string name_index)
+              | None -> Error (InvalidNameIndex name_index)
               | Some h -> Ok (h.name, pos1)
           ) with
           | Error e -> Error e
@@ -550,7 +570,7 @@ let decode_header_block = fun decoder data offset ->
               String_.decode data pos1
             else
               match lookup_header decoder name_index with
-              | None -> Error ("Invalid name index: " ^ Int.to_string name_index)
+              | None -> Error (InvalidNameIndex name_index)
               | Some h -> Ok (h.name, pos1)
           ) with
           | Error e -> Error e
@@ -569,7 +589,7 @@ let decode_header_block = fun decoder data offset ->
               String_.decode data pos1
             else
               match lookup_header decoder name_index with
-              | None -> Error ("Invalid name index: " ^ Int.to_string name_index)
+              | None -> Error (InvalidNameIndex name_index)
               | Some h -> Ok (h.name, pos1)
           ) with
           | Error e -> Error e

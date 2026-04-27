@@ -5,7 +5,60 @@ type config = { max_frame_size: int }
 type 'a parse_result =
   | Done of { value: 'a; remaining: string }
   | Need_more
-  | Error of string
+  | Error of error
+
+and error =
+  | FailedToRead of read_field
+  | FrameSizeExceedsMaximum of { size: int; max_size: int }
+  | InvalidStreamId of {
+      frame_type: Frame.frame_type;
+      stream_id: int;
+      expected: stream_id_rule;
+    }
+  | InvalidPaddingLength of { length: int; pad_length: int }
+  | InvalidHeadersFrameLength of { length: int; offset: int; pad_length: int }
+  | InvalidPushPromiseFrameLength of { length: int; offset: int; pad_length: int }
+  | InvalidPayloadLength of {
+      frame_type: Frame.frame_type;
+      expected: payload_length_rule;
+      actual: int;
+    }
+  | MalformedPriorityPayload
+  | SettingsAckWithPayload of { length: int }
+  | SettingsLengthNotMultipleOfSix of { length: int }
+  | InvalidSettingValue of { setting: setting_id; value: int }
+  | WindowUpdateIncrementZero
+
+and read_field =
+  | FrameLength
+  | FrameType
+  | Flags
+  | StreamId
+  | Priority
+  | ErrorCode
+  | SettingId
+  | SettingValue
+  | PromisedStreamId
+  | LastStreamId
+  | WindowSizeIncrement
+
+and stream_id_rule =
+  | MustBeZero
+  | MustBeNonZero
+
+and payload_length_rule =
+  | Exactly of int
+  | AtLeast of int
+  | MultipleOf of int
+
+and setting_id =
+  | EnablePush
+  | InitialWindowSize
+  | MaxFrameSize
+val error_to_string: error -> string
+
+val frame_type_name: Frame.frame_type -> string
+
 val parse_frame: string -> Frame.t parse_result
 
 val parse_frame_header:

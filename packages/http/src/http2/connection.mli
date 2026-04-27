@@ -93,7 +93,24 @@ type t
 type role =
   | Client
   | Server
+type window_scope =
+  | StreamWindow of { stream_id: int }
+  | ConnectionWindow
+type payload_error = {
+  frame_type: Frame.frame_type;
+  payload: Frame.payload;
+}
+type error =
+  | ConnectionNotActive
+  | StreamNotFound of { stream_id: int }
+  | FlowControlWindowExceeded of { scope: window_scope; data_size: int; window_size: int }
+  | HpackDecodeFailed of Hpack.decode_error
+  | InvalidPayloadForFrame of payload_error
+  | ParserError of Parser.error
+val error_to_string: error -> string
+
 (** {1 Connection Lifecycle} *)
+
 (**
    Create a new HTTP/2 connection.
 
@@ -127,7 +144,7 @@ val send_preface: t -> string
    @param data The received bytes
    @return Result with list of events or error
 *)
-val process_data: t -> bytes -> (event list, string) Result.t
+val process_data: t -> bytes -> (event list, error) Result.t
 
 (** {1 Stream Management} *)
 
@@ -137,7 +154,7 @@ val process_data: t -> bytes -> (event list, string) Result.t
    @param conn The connection
    @return Result with new stream ID or error
 *)
-val create_stream: t -> (int, string) Result.t
+val create_stream: t -> (int, error) Result.t
 
 (**
    Send headers on a stream.
@@ -153,7 +170,7 @@ val send_headers:
   stream_id:int ->
   headers:Hpack.header list ->
   end_stream:bool ->
-  (string, string) Result.t
+  (string, error) Result.t
 
 (**
    Send data on a stream.
@@ -164,7 +181,7 @@ val send_headers:
    @param end_stream Whether this is the last data frame
    @return Result with bytes to send or error
 *)
-val send_data: t -> stream_id:int -> data:bytes -> end_stream:bool -> (string, string) Result.t
+val send_data: t -> stream_id:int -> data:bytes -> end_stream:bool -> (string, error) Result.t
 
 (**
    Close a stream with error code.

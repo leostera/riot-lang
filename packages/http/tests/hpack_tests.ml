@@ -21,7 +21,7 @@ let test_encoder_decoder_roundtrip = fun _ctx ->
         ^ Int.to_string (List.length headers)
         ^ ", got "
         ^ Int.to_string (List.length decoded_headers))
-  | Error err -> Result.Error ("Decode failed: " ^ err)
+  | Error err -> Result.Error ("Decode failed: " ^ Hpack.decode_error_to_string err)
 
 let test_static_table_lookup = fun _ctx ->
   match Hpack.static_table_lookup 2 with
@@ -49,7 +49,7 @@ let test_custom_header_name_roundtrip = fun _ctx ->
   match Hpack.decode decoder encoded with
   | Ok [ { Hpack.name = "x-request-id"; value = "req-123" } ] -> Result.Ok ()
   | Ok _ -> Result.Error "Custom header name did not roundtrip"
-  | Error err -> Result.Error ("Decode failed: " ^ err)
+  | Error err -> Result.Error ("Decode failed: " ^ Hpack.decode_error_to_string err)
 
 let test_sensitive_custom_header_name_roundtrip = fun _ctx ->
   let encoder = Hpack.create_encoder () in
@@ -59,7 +59,7 @@ let test_sensitive_custom_header_name_roundtrip = fun _ctx ->
   match Hpack.decode decoder encoded with
   | Ok [ { Hpack.name = "x-secret"; value = "token" } ] -> Result.Ok ()
   | Ok _ -> Result.Error "Sensitive custom header name did not roundtrip"
-  | Error err -> Result.Error ("Decode failed: " ^ err)
+  | Error err -> Result.Error ("Decode failed: " ^ Hpack.decode_error_to_string err)
 
 let test_literal_with_indexing_updates_decoder_table = fun _ctx ->
   let encoder = Hpack.create_encoder () in
@@ -74,15 +74,15 @@ let test_literal_with_indexing_updates_decoder_table = fun _ctx ->
   | Ok [ { Hpack.name = "x-request-id"; value = "req-123" }; { Hpack.name = "x-request-id"; value = "req-123" } ] ->
       Result.Ok ()
   | Ok _ -> Result.Error "Decoder dynamic table did not preserve repeated indexed header"
-  | Error err -> Result.Error ("Decode failed: " ^ err)
+  | Error err -> Result.Error ("Decode failed: " ^ Hpack.decode_error_to_string err)
 
 let test_huffman_header_name_is_rejected = fun _ctx ->
   let decoder = Hpack.create_decoder () in
   (* Literal with indexing, literal name length=1 with Huffman bit set, value "b". *)
   let encoded = IO.Bytes.from_string "\x40\x81a\x01b" in
   match Hpack.decode decoder encoded with
-  | Error "Unsupported HPACK Huffman string encoding" -> Result.Ok ()
-  | Error err -> Result.Error ("Wrong decode error: " ^ err)
+  | Error Hpack.UnsupportedHuffmanStringEncoding -> Result.Ok ()
+  | Error err -> Result.Error ("Wrong decode error: " ^ Hpack.decode_error_to_string err)
   | Ok _ -> Result.Error "Huffman-encoded header name decoded as plain text"
 
 let test_huffman_header_value_is_rejected = fun _ctx ->
@@ -90,8 +90,8 @@ let test_huffman_header_value_is_rejected = fun _ctx ->
   (* Literal with indexing, name "a", literal value length=1 with Huffman bit set. *)
   let encoded = IO.Bytes.from_string "\x40\x01a\x81b" in
   match Hpack.decode decoder encoded with
-  | Error "Unsupported HPACK Huffman string encoding" -> Result.Ok ()
-  | Error err -> Result.Error ("Wrong decode error: " ^ err)
+  | Error Hpack.UnsupportedHuffmanStringEncoding -> Result.Ok ()
+  | Error err -> Result.Error ("Wrong decode error: " ^ Hpack.decode_error_to_string err)
   | Ok _ -> Result.Error "Huffman-encoded header value decoded as plain text"
 
 let tests = [

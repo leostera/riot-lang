@@ -94,6 +94,42 @@ type event =
   | WindowUpdateReceived of { stream_id: int; increment: int }
   | PriorityReceived of { stream_id: int; stream_dependency: int; weight: int; exclusive: bool }
 
+type window_scope =
+  | StreamWindow of { stream_id: int }
+  | ConnectionWindow
+
+type payload_error = {
+  frame_type: Frame.frame_type;
+  payload: Frame.payload;
+}
+
+type error =
+  | ConnectionNotActive
+  | StreamNotFound of { stream_id: int }
+  | FlowControlWindowExceeded of { scope: window_scope; data_size: int; window_size: int }
+  | HpackDecodeFailed of Hpack.decode_error
+  | InvalidPayloadForFrame of payload_error
+  | ParserError of Parser.error
+
+let window_scope_to_string = function
+  | StreamWindow { stream_id } -> "stream " ^ Int.to_string stream_id
+  | ConnectionWindow -> "connection"
+
+let error_to_string = function
+  | ConnectionNotActive -> "HTTP/2 connection is not active"
+  | StreamNotFound { stream_id } -> "HTTP/2 stream not found: " ^ Int.to_string stream_id
+  | FlowControlWindowExceeded { scope; data_size; window_size } ->
+      "HTTP/2 DATA size "
+      ^ Int.to_string data_size
+      ^ " exceeds "
+      ^ window_scope_to_string scope
+      ^ " flow-control window "
+      ^ Int.to_string window_size
+  | HpackDecodeFailed error -> "HPACK decode failed: " ^ Hpack.decode_error_to_string error
+  | InvalidPayloadForFrame { frame_type; _ } ->
+      "Invalid payload for HTTP/2 " ^ Parser.frame_type_name frame_type ^ " frame"
+  | ParserError error -> Parser.error_to_string error
+
 (** {1 Constants} *)
 
 (** RFC 9113: Connection preface for clients *)
@@ -176,7 +212,7 @@ let is_valid_stream_id = fun ~role stream_id ->
 
 let create_stream = fun conn ->
   if Cell.get conn.state != Active then
-    Error "Connection not active"
+    Error ConnectionNotActive
   else
     let stream_id = Cell.get conn.next_stream_id in
     Cell.set conn.next_stream_id (stream_id + 2);
@@ -197,7 +233,7 @@ let get_stream = fun conn stream_id -> HashMap.get conn.streams ~key:stream_id
 
 let send_headers = fun conn ~stream_id ~headers ~end_stream ->
   match get_stream conn stream_id with
-  | None -> Error ("Stream " ^ Int.to_string stream_id ^ " not found")
+  | None -> Error (StreamNotFound { stream_id })
   | Some stream -> (
       (* Encode headers using HPACK *)
       let encoded_headers = Hpack.encode conn.hpack_encoder ~sensitive_headers:[] () ~headers in
@@ -232,22 +268,24 @@ let send_headers = fun conn ~stream_id ~headers ~end_stream ->
 
 let send_data = fun conn ~stream_id ~data ~end_stream ->
   match get_stream conn stream_id with
-  | None -> Error ("Stream " ^ Int.to_string stream_id ^ " not found")
+  | None -> Error (StreamNotFound { stream_id })
   | Some stream -> (
       let data_len = Bytes.length data in
       (* Check flow control window *)
       let stream_window = Cell.get stream.window_size in
       let conn_window = Cell.get conn.connection_window_size in
       if data_len > stream_window then
-        Error ("Data size "
-        ^ Int.to_string data_len
-        ^ " exceeds stream window "
-        ^ Int.to_string stream_window)
+        Error (FlowControlWindowExceeded {
+          scope = StreamWindow { stream_id };
+          data_size = data_len;
+          window_size = stream_window;
+        })
       else if data_len > conn_window then
-        Error ("Data size "
-        ^ Int.to_string data_len
-        ^ " exceeds connection window "
-        ^ Int.to_string conn_window)
+        Error (FlowControlWindowExceeded {
+          scope = ConnectionWindow;
+          data_size = data_len;
+          window_size = conn_window;
+        })
       else
         (* Create DATA frame *)
         let frame = {
@@ -483,7 +521,7 @@ let process_headers_frame = fun conn stream_id payload flags ->
       (* Decode HPACK-encoded headers *)
       let header_bytes = Bytes.from_string header_block_fragment in
       match Hpack.decode conn.hpack_decoder header_bytes with
-      | Error e -> Error ("HPACK decode error: " ^ e)
+      | Error e -> Error (HpackDecodeFailed e)
       | Ok headers ->
           let end_stream = flags.Frame.end_stream in
           (* Create or update stream *)
@@ -507,7 +545,7 @@ let process_headers_frame = fun conn stream_id payload flags ->
             Cell.set stream.state StreamHalfClosedRemote;
           Ok [ HeadersReceived { stream_id; headers; end_stream } ]
     )
-  | _ -> Error "Invalid HEADERS payload"
+  | _ -> Error (InvalidPayloadForFrame { frame_type = Frame.Headers; payload })
 
 let process_data_frame = fun conn stream_id payload flags ->
   match payload with
@@ -524,14 +562,14 @@ let process_data_frame = fun conn stream_id payload flags ->
         | None -> ()
       );
       Ok [ DataReceived { stream_id; data = data_bytes; end_stream } ]
-  | _ -> Error "Invalid DATA payload"
+  | _ -> Error (InvalidPayloadForFrame { frame_type = Frame.Data; payload })
 
 let process_frame = fun conn frame ->
   match frame.Frame.frame_type with
   | Frame.Settings -> (
       match frame.payload with
       | Frame.SettingsPayload settings -> process_settings_frame conn settings frame.flags
-      | _ -> Error "Invalid SETTINGS payload"
+      | _ -> Error (InvalidPayloadForFrame { frame_type = Frame.Settings; payload = frame.payload })
     )
   | Frame.Headers -> process_headers_frame conn frame.stream_id frame.payload frame.flags
   | Frame.Data -> process_data_frame conn frame.stream_id frame.payload frame.flags
@@ -548,7 +586,8 @@ let process_frame = fun conn frame ->
               | None -> ()
             );
           Ok [ WindowUpdateReceived { stream_id = frame.stream_id; increment } ]
-      | _ -> Error "Invalid WINDOW_UPDATE payload"
+      | _ ->
+          Error (InvalidPayloadForFrame { frame_type = Frame.WindowUpdate; payload = frame.payload })
     )
   | Frame.Ping -> (
       match frame.payload with
@@ -557,14 +596,14 @@ let process_frame = fun conn frame ->
             Ok [ PingAckReceived { data } ]
           else
             Ok [ PingReceived { data } ]
-      | _ -> Error "Invalid PING payload"
+      | _ -> Error (InvalidPayloadForFrame { frame_type = Frame.Ping; payload = frame.payload })
     )
   | Frame.Goaway -> (
       match frame.payload with
       | Frame.GoawayPayload { last_stream_id; error_code; debug_data } ->
           Cell.set conn.state GoingAway;
           Ok [ GoawayReceived { last_stream_id; error_code; debug_data } ]
-      | _ -> Error "Invalid GOAWAY payload"
+      | _ -> Error (InvalidPayloadForFrame { frame_type = Frame.Goaway; payload = frame.payload })
     )
   | Frame.RstStream -> (
       match frame.payload with
@@ -575,7 +614,8 @@ let process_frame = fun conn frame ->
             | None -> ()
           );
           Ok [ RstStreamReceived { stream_id = frame.stream_id; error_code } ]
-      | _ -> Error "Invalid RST_STREAM payload"
+      | _ ->
+          Error (InvalidPayloadForFrame { frame_type = Frame.RstStream; payload = frame.payload })
     )
   | Frame.Priority -> (
       match frame.payload with
@@ -588,7 +628,7 @@ let process_frame = fun conn frame ->
               exclusive;
             };
           ]
-      | _ -> Error "Invalid PRIORITY payload"
+      | _ -> Error (InvalidPayloadForFrame { frame_type = Frame.Priority; payload = frame.payload })
     )
   | Frame.PushPromise
   | Frame.Continuation ->
@@ -614,6 +654,6 @@ let process_data = fun conn data ->
         Ok events
     | Parser.Error e ->
         Cell.set conn.pending_input "";
-        Error e
+        Error (ParserError e)
   in
   process_all [] (Cell.get conn.pending_input ^ Bytes.to_string data)

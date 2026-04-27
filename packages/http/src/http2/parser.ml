@@ -5,7 +5,56 @@ let ( let* ) = Result.and_then
 type 'a parse_result =
   | Done of { value: 'a; remaining: string }
   | Need_more
-  | Error of string
+  | Error of error
+
+and error =
+  | FailedToRead of read_field
+  | FrameSizeExceedsMaximum of { size: int; max_size: int }
+  | InvalidStreamId of {
+      frame_type: Frame.frame_type;
+      stream_id: int;
+      expected: stream_id_rule;
+    }
+  | InvalidPaddingLength of { length: int; pad_length: int }
+  | InvalidHeadersFrameLength of { length: int; offset: int; pad_length: int }
+  | InvalidPushPromiseFrameLength of { length: int; offset: int; pad_length: int }
+  | InvalidPayloadLength of {
+      frame_type: Frame.frame_type;
+      expected: payload_length_rule;
+      actual: int;
+    }
+  | MalformedPriorityPayload
+  | SettingsAckWithPayload of { length: int }
+  | SettingsLengthNotMultipleOfSix of { length: int }
+  | InvalidSettingValue of { setting: setting_id; value: int }
+  | WindowUpdateIncrementZero
+
+and read_field =
+  | FrameLength
+  | FrameType
+  | Flags
+  | StreamId
+  | Priority
+  | ErrorCode
+  | SettingId
+  | SettingValue
+  | PromisedStreamId
+  | LastStreamId
+  | WindowSizeIncrement
+
+and stream_id_rule =
+  | MustBeZero
+  | MustBeNonZero
+
+and payload_length_rule =
+  | Exactly of int
+  | AtLeast of int
+  | MultipleOf of int
+
+and setting_id =
+  | EnablePush
+  | InitialWindowSize
+  | MaxFrameSize
 
 (* RFC 9113: SETTINGS_MAX_FRAME_SIZE default is 16384, max is 16777215 *)
 
@@ -22,6 +71,93 @@ let absolute_max_frame_size = 16_777_215
 type config = { max_frame_size: int }
 
 let default_config = { max_frame_size = default_max_frame_size }
+
+let setting_id_to_string = function
+  | EnablePush -> "SETTINGS_ENABLE_PUSH"
+  | InitialWindowSize -> "SETTINGS_INITIAL_WINDOW_SIZE"
+  | MaxFrameSize -> "SETTINGS_MAX_FRAME_SIZE"
+
+let frame_type_name = function
+  | Frame.Data -> "DATA"
+  | Frame.Headers -> "HEADERS"
+  | Frame.Priority -> "PRIORITY"
+  | Frame.RstStream -> "RST_STREAM"
+  | Frame.Settings -> "SETTINGS"
+  | Frame.PushPromise -> "PUSH_PROMISE"
+  | Frame.Ping -> "PING"
+  | Frame.Goaway -> "GOAWAY"
+  | Frame.WindowUpdate -> "WINDOW_UPDATE"
+  | Frame.Continuation -> "CONTINUATION"
+  | Frame.Unknown code -> "UNKNOWN(" ^ Int.to_string code ^ ")"
+
+let read_field_to_string = function
+  | FrameLength -> "frame length"
+  | FrameType -> "frame type"
+  | Flags -> "flags"
+  | StreamId -> "stream ID"
+  | Priority -> "priority fields"
+  | ErrorCode -> "error code"
+  | SettingId -> "setting ID"
+  | SettingValue -> "setting value"
+  | PromisedStreamId -> "promised stream ID"
+  | LastStreamId -> "last stream ID"
+  | WindowSizeIncrement -> "window size increment"
+
+let payload_length_rule_to_string = function
+  | Exactly size -> "exactly " ^ Int.to_string size ^ " bytes"
+  | AtLeast size -> "at least " ^ Int.to_string size ^ " bytes"
+  | MultipleOf size -> "a multiple of " ^ Int.to_string size ^ " bytes"
+
+let stream_id_rule_to_string = function
+  | MustBeZero -> "stream ID 0"
+  | MustBeNonZero -> "a non-zero stream ID"
+
+let error_to_string = function
+  | FailedToRead field -> "Failed to read HTTP/2 " ^ read_field_to_string field
+  | FrameSizeExceedsMaximum { size; max_size } ->
+      "HTTP/2 frame size "
+      ^ Int.to_string size
+      ^ " exceeds maximum allowed "
+      ^ Int.to_string max_size
+  | InvalidStreamId { frame_type; stream_id; expected } ->
+      frame_type_name frame_type
+      ^ " frame used stream ID "
+      ^ Int.to_string stream_id
+      ^ ", expected "
+      ^ stream_id_rule_to_string expected
+  | InvalidPaddingLength { length; pad_length } ->
+      "HTTP/2 padding length "
+      ^ Int.to_string pad_length
+      ^ " exceeds frame payload length "
+      ^ Int.to_string length
+  | InvalidHeadersFrameLength { length; offset; pad_length } ->
+      "Invalid HEADERS frame length "
+      ^ Int.to_string length
+      ^ " for offset "
+      ^ Int.to_string offset
+      ^ " and padding "
+      ^ Int.to_string pad_length
+  | InvalidPushPromiseFrameLength { length; offset; pad_length } ->
+      "Invalid PUSH_PROMISE frame length "
+      ^ Int.to_string length
+      ^ " for offset "
+      ^ Int.to_string offset
+      ^ " and padding "
+      ^ Int.to_string pad_length
+  | InvalidPayloadLength { frame_type; expected; actual } ->
+      frame_type_name frame_type
+      ^ " frame payload length must be "
+      ^ payload_length_rule_to_string expected
+      ^ ", got "
+      ^ Int.to_string actual
+  | MalformedPriorityPayload -> "Malformed PRIORITY payload"
+  | SettingsAckWithPayload { length } ->
+      "SETTINGS ACK must have zero length, got " ^ Int.to_string length
+  | SettingsLengthNotMultipleOfSix { length } ->
+      "SETTINGS frame length must be a multiple of 6, got " ^ Int.to_string length
+  | InvalidSettingValue { setting; value } ->
+      setting_id_to_string setting ^ " has invalid value " ^ Int.to_string value
+  | WindowUpdateIncrementZero -> "WINDOW_UPDATE increment must be non-zero"
 
 let byte_at = fun data offset ->
   data
@@ -62,17 +198,17 @@ let read_uint8 = fun data offset ->
     Some (byte_at data offset)
 
 let int_to_frame_type = function
-  | 0x0 -> Some Frame.Data
-  | 0x1 -> Some Frame.Headers
-  | 0x2 -> Some Frame.Priority
-  | 0x3 -> Some Frame.RstStream
-  | 0x4 -> Some Frame.Settings
-  | 0x5 -> Some Frame.PushPromise
-  | 0x6 -> Some Frame.Ping
-  | 0x7 -> Some Frame.Goaway
-  | 0x8 -> Some Frame.WindowUpdate
-  | 0x9 -> Some Frame.Continuation
-  | code -> Some (Frame.Unknown code)
+  | 0x0 -> Frame.Data
+  | 0x1 -> Frame.Headers
+  | 0x2 -> Frame.Priority
+  | 0x3 -> Frame.RstStream
+  | 0x4 -> Frame.Settings
+  | 0x5 -> Frame.PushPromise
+  | 0x6 -> Frame.Ping
+  | 0x7 -> Frame.Goaway
+  | 0x8 -> Frame.WindowUpdate
+  | 0x9 -> Frame.Continuation
+  | code -> Frame.Unknown code
 
 let parse_flags = fun frame_type flags_byte ->
   let end_headers = flags_byte land 0x04 != 0 in
@@ -95,19 +231,6 @@ let parse_flags = fun frame_type flags_byte ->
     ack;
   }
 
-let frame_type_name = function
-  | Frame.Data -> "DATA"
-  | Frame.Headers -> "HEADERS"
-  | Frame.Priority -> "PRIORITY"
-  | Frame.RstStream -> "RST_STREAM"
-  | Frame.Settings -> "SETTINGS"
-  | Frame.PushPromise -> "PUSH_PROMISE"
-  | Frame.Ping -> "PING"
-  | Frame.Goaway -> "GOAWAY"
-  | Frame.WindowUpdate -> "WINDOW_UPDATE"
-  | Frame.Continuation -> "CONTINUATION"
-  | Frame.Unknown code -> "UNKNOWN(" ^ Int.to_string code ^ ")"
-
 let validate_stream_id = fun frame_type stream_id ->
   match frame_type with
   | Frame.Data
@@ -116,11 +239,11 @@ let validate_stream_id = fun frame_type stream_id ->
   | Frame.RstStream
   | Frame.PushPromise
   | Frame.Continuation when stream_id = 0 ->
-      Result.Error (frame_type_name frame_type ^ " frame must use a non-zero stream ID")
+      Result.Error (InvalidStreamId { frame_type; stream_id; expected = MustBeNonZero })
   | Frame.Settings
   | Frame.Ping
   | Frame.Goaway when stream_id != 0 ->
-      Result.Error (frame_type_name frame_type ^ " frame must use stream ID 0")
+      Result.Error (InvalidStreamId { frame_type; stream_id; expected = MustBeZero })
   | _ -> Result.Ok ()
 
 let parse_frame_header = fun ?(config = default_config) data ->
@@ -128,45 +251,40 @@ let parse_frame_header = fun ?(config = default_config) data ->
     Need_more
   else
     match read_uint24_be data 0 with
-    | None -> Error "Failed to read length"
+    | None -> Error (FailedToRead FrameLength)
     | Some length -> (
         (* Security fix: Validate frame size to prevent memory exhaustion DoS *)
         if length > config.max_frame_size then
-          Error ("Frame size "
-          ^ Int.to_string length
-          ^ " exceeds maximum allowed "
-          ^ Int.to_string config.max_frame_size)
+          Error (FrameSizeExceedsMaximum { size = length; max_size = config.max_frame_size })
         else
           (
             match read_uint8 data 3 with
-            | None -> Error "Failed to read frame type"
-            | Some type_byte -> (
-                match int_to_frame_type type_byte with
-                | None -> Error ("Unknown frame type: 0x" ^ Int.to_string type_byte)
-                | Some frame_type -> (
-                    match read_uint8 data 4 with
-                    | None -> Error "Failed to read flags"
-                    | Some flags_byte -> (
-                        let flags = parse_flags frame_type flags_byte in
-                        match read_uint32_be data 5 with
-                        | None -> Error "Failed to read stream ID"
-                        | Some stream_id_raw ->
-                            let stream_id = stream_id_raw land 0x7fff_ffff in
-                            (
-                              match validate_stream_id frame_type stream_id with
-                              | Result.Error msg -> Error msg
-                              | Result.Ok () ->
-                                  Done {
-                                    value = (length, frame_type, flags, stream_id);
-                                    remaining = String.sub
-                                      data
-                                      ~offset:9
-                                      ~len:(String.length data - 9);
-                                  }
-                            )
-                      )
-                  )
-              )
+            | None -> Error (FailedToRead FrameType)
+            | Some type_byte ->
+                let frame_type = int_to_frame_type type_byte in
+                (
+                  match read_uint8 data 4 with
+                  | None -> Error (FailedToRead Flags)
+                  | Some flags_byte -> (
+                      let flags = parse_flags frame_type flags_byte in
+                      match read_uint32_be data 5 with
+                      | None -> Error (FailedToRead StreamId)
+                      | Some stream_id_raw ->
+                          let stream_id = stream_id_raw land 0x7fff_ffff in
+                          (
+                            match validate_stream_id frame_type stream_id with
+                            | Result.Error error -> Error error
+                            | Result.Ok () ->
+                                Done {
+                                  value = (length, frame_type, flags, stream_id);
+                                  remaining = String.sub
+                                    data
+                                    ~offset:9
+                                    ~len:(String.length data - 9);
+                                }
+                          )
+                    )
+                )
           )
       )
 
@@ -177,7 +295,7 @@ let parse_data_payload = fun length flags data ->
     | None -> Need_more
     | Some pad_length ->
         if length < 1 + pad_length then
-          Error "Invalid padding length"
+          Error (InvalidPaddingLength { length; pad_length })
         else if String.length data < length then
           Need_more
         else
@@ -232,7 +350,7 @@ let parse_headers_payload = fun length flags data ->
   in
   let header_fragment_length = length - offset - pad_length in
   if header_fragment_length < 0 then
-    Error "Invalid HEADERS frame length"
+    Error (InvalidHeadersFrameLength { length; offset; pad_length })
   else if String.length data < length then
     Need_more
   else
@@ -257,24 +375,32 @@ let parse_headers_payload = fun length flags data ->
 
 let parse_priority_payload = fun length data ->
   if length != 5 then
-    Error "PRIORITY frame must be 5 bytes"
+    Error (InvalidPayloadLength {
+      frame_type = Frame.Priority;
+      expected = Exactly 5;
+      actual = length;
+    })
   else if String.length data < 5 then
     Need_more
   else
     match parse_priority_fields data 0 with
-    | None -> Error "Failed to parse PRIORITY payload"
+    | None -> Error MalformedPriorityPayload
     | Some (stream_dependency, exclusive, weight) ->
         let remaining = String.sub data ~offset:5 ~len:(String.length data - 5) in
         Done { value = Frame.PriorityPayload { stream_dependency; exclusive; weight }; remaining }
 
 let parse_rst_stream_payload = fun length data ->
   if length != 4 then
-    Error "RST_STREAM frame must be 4 bytes"
+    Error (InvalidPayloadLength {
+      frame_type = Frame.RstStream;
+      expected = Exactly 4;
+      actual = length;
+    })
   else if String.length data < 4 then
     Need_more
   else
     match read_uint32_be data 0 with
-    | None -> Error "Failed to read error code"
+    | None -> Error (FailedToRead ErrorCode)
     | Some error_code_int ->
         let error_code =
           match Frame.int_to_error_code error_code_int with
@@ -286,9 +412,9 @@ let parse_rst_stream_payload = fun length data ->
 
 let parse_settings_payload = fun length flags data ->
   if flags.Frame.ack && length != 0 then
-    Error "SETTINGS ACK must have zero length"
+    Error (SettingsAckWithPayload { length })
   else if length mod 6 != 0 then
-    Error "SETTINGS frame length must be multiple of 6"
+    Error (SettingsLengthNotMultipleOfSix { length })
   else if String.length data < length then
     Need_more
   else
@@ -297,10 +423,10 @@ let parse_settings_payload = fun length flags data ->
         Ok (List.reverse acc)
       else
         match read_uint16_be data offset with
-        | None -> Result.Error "Failed to read setting ID"
+        | None -> Result.Error (FailedToRead SettingId)
         | Some id -> (
             match read_uint32_be data (offset + 2) with
-            | None -> Result.Error "Failed to read setting value"
+            | None -> Result.Error (FailedToRead SettingValue)
             | Some value -> (
                 let setting =
                   match id with
@@ -328,10 +454,10 @@ let parse_settings_payload = fun length flags data ->
                 | Some s -> parse_settings (offset + 6) (s :: acc)
                 | None -> (
                     match id with
-                    | 0x2 -> Result.Error "SETTINGS_ENABLE_PUSH must be 0 or 1"
-                    | 0x4 -> Result.Error "SETTINGS_INITIAL_WINDOW_SIZE must be at most 2147483647"
-                    | 0x5 ->
-                        Result.Error "SETTINGS_MAX_FRAME_SIZE must be between 16384 and 16777215"
+                    | 0x2 -> Result.Error (InvalidSettingValue { setting = EnablePush; value })
+                    | 0x4 ->
+                        Result.Error (InvalidSettingValue { setting = InitialWindowSize; value })
+                    | 0x5 -> Result.Error (InvalidSettingValue { setting = MaxFrameSize; value })
                     | _ -> parse_settings (offset + 6) acc
                   )
               )
@@ -341,7 +467,7 @@ let parse_settings_payload = fun length flags data ->
     | Ok settings ->
         let remaining = String.sub data ~offset:length ~len:(String.length data - length) in
         Done { value = Frame.SettingsPayload settings; remaining }
-    | Result.Error msg -> Error msg
+    | Result.Error error -> Error error
 
 let parse_push_promise_payload = fun length flags data ->
   let has_padding = flags.Frame.padded in
@@ -357,7 +483,7 @@ let parse_push_promise_payload = fun length flags data ->
     Need_more
   else
     match read_uint32_be data offset with
-    | None -> Error "Failed to read promised stream ID"
+    | None -> Error (FailedToRead PromisedStreamId)
     | Some promised_stream_id_raw ->
         let promised_stream_id = promised_stream_id_raw land 0x7fff_ffff in
         let offset = offset + 4 in
@@ -368,7 +494,7 @@ let parse_push_promise_payload = fun length flags data ->
         in
         let header_fragment_length = length - offset - pad_length in
         if header_fragment_length < 0 then
-          Error "Invalid PUSH_PROMISE frame length"
+          Error (InvalidPushPromiseFrameLength { length; offset; pad_length })
         else if String.length data < length then
           Need_more
         else
@@ -385,7 +511,7 @@ let parse_push_promise_payload = fun length flags data ->
 
 let parse_ping_payload = fun length data ->
   if length != 8 then
-    Error "PING frame must be 8 bytes"
+    Error (InvalidPayloadLength { frame_type = Frame.Ping; expected = Exactly 8; actual = length })
   else if String.length data < 8 then
     Need_more
   else
@@ -395,16 +521,20 @@ let parse_ping_payload = fun length data ->
 
 let parse_goaway_payload = fun length data ->
   if length < 8 then
-    Error "GOAWAY frame must be at least 8 bytes"
+    Error (InvalidPayloadLength {
+      frame_type = Frame.Goaway;
+      expected = AtLeast 8;
+      actual = length;
+    })
   else if String.length data < length then
     Need_more
   else
     match read_uint32_be data 0 with
-    | None -> Error "Failed to read last stream ID"
+    | None -> Error (FailedToRead LastStreamId)
     | Some last_stream_id_raw -> (
         let last_stream_id = last_stream_id_raw land 0x7fff_ffff in
         match read_uint32_be data 4 with
-        | None -> Error "Failed to read error code"
+        | None -> Error (FailedToRead ErrorCode)
         | Some error_code_int ->
             let error_code =
               match Frame.int_to_error_code error_code_int with
@@ -421,16 +551,20 @@ let parse_goaway_payload = fun length data ->
 
 let parse_window_update_payload = fun length data ->
   if length != 4 then
-    Error "WINDOW_UPDATE frame must be 4 bytes"
+    Error (InvalidPayloadLength {
+      frame_type = Frame.WindowUpdate;
+      expected = Exactly 4;
+      actual = length;
+    })
   else if String.length data < 4 then
     Need_more
   else
     match read_uint32_be data 0 with
-    | None -> Error "Failed to read window size increment"
+    | None -> Error (FailedToRead WindowSizeIncrement)
     | Some increment_raw ->
         let increment = increment_raw land 0x7fff_ffff in
         if increment = 0 then
-          Error "WINDOW_UPDATE increment must be non-zero"
+          Error WindowUpdateIncrementZero
         else
           let remaining = String.sub data ~offset:4 ~len:(String.length data - 4) in
           Done { value = Frame.WindowUpdatePayload increment; remaining }
