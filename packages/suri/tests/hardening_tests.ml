@@ -17,6 +17,7 @@ module Static = Suri.Middleware.Static
 module Response = Suri.Response
 module Connection = Suri.For_testing.Connection
 module Handler = Suri.For_testing.Handler
+module LiveViewSession = Suri.For_testing.LiveViewSession
 module Http1 = Suri.For_testing.Http1
 
 let valid_websocket_key = "dGhlIHNhbXBsZSBub25jZQ=="
@@ -578,6 +579,31 @@ let test_session_cookie_roundtrips_and_rejects_tampering = fun _ctx ->
       | Error _ -> Ok ()
       | Ok _ -> Error "expected tampered session cookie to fail verification"
 
+let test_liveview_session_signing_uses_hmac = fun _ctx ->
+  let secret = "0123456789abcdef0123456789abcdef" in
+  let signature = LiveViewSession.sign ~secret ~data:"payload" in
+  Test.assert_true (LiveViewSession.verify ~secret ~data:"payload" ~signature);
+  Test.assert_false (LiveViewSession.verify ~secret ~data:"tampered" ~signature);
+  Ok ()
+
+let test_liveview_session_token_rejects_tampering = fun _ctx ->
+  let secret = "0123456789abcdef0123456789abcdef" in
+  let token =
+    LiveViewSession.encode ~secret ~json:(Data.Json.obj [ ("id", Data.Json.string "counter"); ])
+  in
+  match LiveViewSession.decode ~secret ~token with
+  | Error err -> Error err
+  | Ok json ->
+      let actual =
+        match Data.Json.get_field "id" json with
+        | Some value -> Data.Json.get_string value
+        | None -> None
+      in
+      Test.assert_equal ~expected:(Some "counter") ~actual;
+      match LiveViewSession.decode ~secret ~token:(tamper_last_char token) with
+      | Error _ -> Ok ()
+      | Ok _ -> Error "expected tampered liveview token to fail verification"
+
 let test_csrf_requires_session_middleware = fun _ctx ->
   let conn =
     Conn.For_testing.make
@@ -1028,6 +1054,8 @@ let tests =
     case
       "session cookie roundtrips and rejects tampering"
       test_session_cookie_roundtrips_and_rejects_tampering;
+    case "liveview session signing uses hmac" test_liveview_session_signing_uses_hmac;
+    case "liveview session token rejects tampering" test_liveview_session_token_rejects_tampering;
     case "csrf requires session middleware" test_csrf_requires_session_middleware;
     case
       "http1 websocket accept matches rfc example"

@@ -517,6 +517,16 @@ module For_testing: sig
     val run_pipeline_response: Middleware.Pipeline.t -> Middleware.Conn.t -> Response.t option
   end
 
+  module LiveViewSession: sig
+    val sign: secret:string -> data:string -> string
+
+    val verify: secret:string -> data:string -> signature:string -> bool
+
+    val encode: secret:string -> json:Data.Json.t -> string
+
+    val decode: secret:string -> token:string -> (Data.Json.t, string) result
+  end
+
   module Http1: sig
     type serialization_error =
       | InvalidHeaderName of string

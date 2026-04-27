@@ -66,6 +66,16 @@ module For_testing = struct
       | WebServer.Handler.Upgrade _ -> None
   end
 
+  module LiveViewSession = struct
+    let sign = Suri__Liveview__Session.sign
+
+    let verify = Suri__Liveview__Session.verify
+
+    let encode = Suri__Liveview__Session.encode
+
+    let decode = Suri__Liveview__Session.decode
+  end
+
   module Http1 = struct
     type serialization_error =
       | InvalidHeaderName of string

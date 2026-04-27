@@ -1,13 +1,5 @@
 open Std
 
-(* Sign data with HMAC-SHA256 and return base64-encoded signature *)
-
-let sign = fun ~secret ~data ->
-  let payload = secret ^ "\x00" ^ data in
-  let mac_bytes = Crypto.Digest.bytes (Crypto.hash_string payload) in
-  let mac_string = IO.Bytes.to_string mac_bytes in
-  Encoding.Base64.encode mac_string
-
 (* Constant-time string comparison to prevent timing attacks *)
 
 let secure_compare = fun s1 s2 ->
@@ -21,6 +13,48 @@ let secure_compare = fun s1 s2 ->
       mismatch := !mismatch lor (c1 lxor c2)
     done;
   !mismatch = 0
+
+let digest_to_string = fun digest ->
+  digest
+  |> Crypto.Digest.bytes
+  |> IO.Bytes.to_string
+
+let normalize_hmac_key = fun secret ->
+  let key =
+    if String.length secret > 64 then
+      Crypto.Sha256.hash_string secret
+      |> digest_to_string
+    else
+      secret
+  in
+  if String.length key < 64 then
+    key ^ String.make ~len:(64 - String.length key) ~char:'\000'
+  else
+    key
+
+let xor_with_byte = fun data byte ->
+  String.init
+    ~len:(String.length data)
+    ~fn:(fun index ->
+      let value = Char.code (String.get_unchecked data ~at:index) lxor byte in
+      Char.chr value)
+
+let hmac_sha256 = fun ~secret data ->
+  let key = normalize_hmac_key secret in
+  let inner_key = xor_with_byte key 0x36 in
+  let outer_key = xor_with_byte key 0x5c in
+  let inner_hash =
+    Crypto.Sha256.hash_string (inner_key ^ data)
+    |> digest_to_string
+  in
+  Crypto.Sha256.hash_string (outer_key ^ inner_hash)
+  |> digest_to_string
+
+(* Sign data with HMAC-SHA256 and return base64-encoded signature *)
+
+let sign = fun ~secret ~data ->
+  hmac_sha256 ~secret data
+  |> Encoding.Base64.encode
 
 (* Verify HMAC signature using constant-time comparison *)
 
