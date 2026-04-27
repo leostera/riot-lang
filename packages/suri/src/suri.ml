@@ -19,6 +19,8 @@ type handler = Middleware.Pipeline.t
 type start_error = Web_server.start_error =
   | InvalidAddress of Std.Net.Addr.error
   | BindFailed of Std.Net.TcpListener.error
+  | InvalidAcceptors of int
+  | InvalidBufferSize of int
 
 (* Low-level modules (not exposed in .mli) *)
 

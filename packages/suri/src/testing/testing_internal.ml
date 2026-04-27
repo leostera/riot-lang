@@ -15,6 +15,16 @@ module Connection = struct
   let send_file_slice = Socket_pool.Connection.send_file_slice
 end
 
+module SocketPool = struct
+  type error = Socket_pool.error =
+    | InvalidAddress of Std.Net.Addr.error
+    | BindFailed of Std.Net.TcpListener.error
+    | InvalidAcceptors of int
+    | InvalidBufferSize of int
+
+  let validate_start_options = Socket_pool.validate_start_options
+end
+
 module Handler = struct
   let run_pipeline_response = fun app conn ->
     match Testing_app.run_pipeline_response app conn with

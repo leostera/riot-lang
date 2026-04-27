@@ -93,6 +93,10 @@ module Transport: module type of Transport
 type error =
   | InvalidAddress of Net.Addr.error
   | BindFailed of Net.TcpListener.error
+  | InvalidAcceptors of int
+  | InvalidBufferSize of int
+val validate_start_options: acceptors:int -> buffer_size:int -> (unit, error) result
+
 val start_link:
   host:string ->
   port:int ->

@@ -9,6 +9,8 @@ module ProtocolDetector = Protocol_detector
 type start_error = Socket_pool.error =
   | InvalidAddress of Std.Net.Addr.error
   | BindFailed of Std.Net.TcpListener.error
+  | InvalidAcceptors of int
+  | InvalidBufferSize of int
 
 (**
    Start an HTTP/1.1 server with supervision.

@@ -268,6 +268,8 @@ module ProtocolDetector = Protocol_detector
 type start_error =
   | InvalidAddress of Std.Net.Addr.error
   | BindFailed of Std.Net.TcpListener.error
+  | InvalidAcceptors of int
+  | InvalidBufferSize of int
 val start_link:
   ?host:string ->
   port:int ->

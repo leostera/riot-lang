@@ -420,6 +420,8 @@ type handler = Middleware.Pipeline.t
 type start_error =
   | InvalidAddress of Std.Net.Addr.error
   | BindFailed of Std.Net.TcpListener.error
+  | InvalidAcceptors of int
+  | InvalidBufferSize of int
 (** {2 Starting the Server} *)
 val start_link: ?config:Config.t -> handler -> (Supervisor.Dynamic.t, start_error) result
 

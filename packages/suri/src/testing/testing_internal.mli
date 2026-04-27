@@ -19,6 +19,15 @@ module Connection: sig
   val send_file_slice: ?off:int -> len:int -> string -> (string, error) Std.result
 end
 
+module SocketPool: sig
+  type error =
+    | InvalidAddress of Std.Net.Addr.error
+    | BindFailed of Std.Net.TcpListener.error
+    | InvalidAcceptors of int
+    | InvalidBufferSize of int
+  val validate_start_options: acceptors:int -> buffer_size:int -> (unit, error) Std.result
+end
+
 module Handler: sig
   val run_pipeline_response:
     Middleware.Pipeline.t ->

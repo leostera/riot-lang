@@ -15,6 +15,7 @@ module Router = Suri.Middleware.Router
 module Session = Suri.Middleware.Session
 module Static = Suri.Middleware.Static
 module Response = Suri.Response
+module SocketPool = Suri.Testing.Internal.SocketPool
 module Connection = Suri.Testing.Internal.Connection
 module Handler = Suri.Testing.Internal.Handler
 module LiveViewSession = Suri.Testing.Internal.LiveViewSession
@@ -184,6 +185,18 @@ let test_connection_send_file_slice_rejects_invalid_range = fun _ctx ->
   | Ok _ -> Error "expected send_file range beyond file size to fail"
   | Error _ -> Error "unexpected send_file error"
 
+let test_socket_pool_rejects_invalid_acceptors = fun _ctx ->
+  match SocketPool.validate_start_options ~acceptors:0 ~buffer_size:4_096 with
+  | Error (SocketPool.InvalidAcceptors 0) -> Ok ()
+  | Ok () -> Error "expected invalid acceptor count"
+  | Error _ -> Error "expected invalid acceptor count"
+
+let test_socket_pool_rejects_invalid_buffer_size = fun _ctx ->
+  match SocketPool.validate_start_options ~acceptors:1 ~buffer_size:0 with
+  | Error (SocketPool.InvalidBufferSize 0) -> Ok ()
+  | Ok () -> Error "expected invalid buffer size"
+  | Error _ -> Error "expected invalid buffer size"
+
 let tests =
   Test.[
     case "connection write all retries short writes" test_connection_write_all_retries_short_writes;
@@ -198,6 +211,8 @@ let tests =
     case
       "connection send file slice rejects invalid range"
       test_connection_send_file_slice_rejects_invalid_range;
+    case "socket pool rejects invalid acceptors" test_socket_pool_rejects_invalid_acceptors;
+    case "socket pool rejects invalid buffer size" test_socket_pool_rejects_invalid_buffer_size;
   ]
 
 let main ~args = Test.Cli.main ~name:"suri:socket-pool" ~tests ~args ()
