@@ -159,6 +159,8 @@ let test_static_dotfile_detection_checks_all_segments = fun _ctx ->
   Test.assert_true (Static.path_has_dot_segment (Path.v "public/.git/config"));
   Test.assert_true (Static.path_has_dot_segment (Path.v "nested/.well-known/token"));
   Test.assert_false (Static.path_has_dot_segment (Path.v "public/assets/app.css"));
+  Test.assert_false (Static.path_has_dot_segment (Path.v "."));
+  Test.assert_false (Static.path_has_dot_segment (Path.v ".."));
   Ok ()
 
 let test_static_middleware_enforces_nested_dotfile_policy = fun _ctx ->
@@ -207,6 +209,38 @@ let test_static_directory_listing_escapes_displayed_values = fun _ctx ->
   Test.assert_true (String.contains html "&lt;script&gt;alert(1)&lt;/script&gt;");
   Test.assert_false (String.contains html "<script>alert(1)</script>");
   Ok ()
+
+let test_static_middleware_escapes_directory_listing_entries = fun _ctx ->
+  Fs.with_tempdir
+    (fun root ->
+      let unsafe_name = "<img src=x onerror=alert(1)>.txt" in
+      let unsafe_path = Path.join root (Path.v unsafe_name) in
+      match Fs.write "xss" unsafe_path with
+      | Error _ -> Error "failed to write unsafe directory listing fixture"
+      | Ok () ->
+          let config = Static.{ default_config with show_directory = true } in
+          let middleware = Static.middleware ~at:"/files" ~config root () in
+          let conn = Suri.Testing.Conn.make ~uri:"/files/" () in
+          let response =
+            middleware
+              ~conn
+              ~next:(fun conn ->
+                conn
+                |> Conn.respond ~status:Net.Http.Status.Ok ~body:"next"
+                |> Conn.send)
+            |> Conn.to_response
+          in
+          if not (Net.Http.Status.equal response.status Net.Http.Status.Ok) then
+            Error ("directory listing returned non-OK response: " ^ response.body)
+          else
+            let escaped = "&lt;img src=x onerror=alert(1)&gt;.txt" in
+            if not (String.contains response.body escaped) then
+              Error ("directory listing did not include escaped entry: " ^ response.body)
+            else if String.contains response.body unsafe_name then
+              Error ("directory listing included raw entry: " ^ response.body)
+            else
+              Ok ())
+  |> expect_tempdir
 
 let test_static_normalize_path_returns_structured_errors = fun _ctx ->
   Fs.with_tempdir
@@ -303,6 +337,9 @@ let tests =
     case
       "static directory listing escapes displayed values"
       test_static_directory_listing_escapes_displayed_values;
+    case
+      "static middleware escapes directory listing entries"
+      test_static_middleware_escapes_directory_listing_entries;
     case
       "static normalize path returns structured errors"
       test_static_normalize_path_returns_structured_errors;

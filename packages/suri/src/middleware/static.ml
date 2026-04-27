@@ -139,7 +139,9 @@ module Security = struct
     |> List.exists
       (fun segment ->
         let segment = Path.to_string segment in
-        not (segment = "/") && String.length segment > 0 && String.get_unchecked segment ~at:0 = '.')
+        not (segment = "/" || segment = "." || segment = "..")
+        && String.length segment > 0
+        && String.get_unchecked segment ~at:0 = '.')
 
   let check_dotfile = fun config path ->
     if not (path_has_dot_segment path) then
