@@ -37,7 +37,8 @@ open Std
      let handle_data data conn () =
        match SocketPool.Connection.send conn data with
        | Ok () -> Continue ()
-       | Error `Closed -> Close ()
+       | Error SocketPool.Connection.Closed -> Close ()
+       | Error _ -> Close ()
    end
 
    let () =
@@ -57,7 +58,7 @@ open Std
      include SocketPool.Handler.Default
 
      type state = { requests : int }
-     type error = [ `Parse_error of string ]
+     type error = Parse_error of string
 
      let handle_connection _conn state =
        Continue { requests = 0 }
@@ -67,7 +68,8 @@ open Std
        let response = "HTTP/1.1 200 OK\r\n\r\nHello World!" in
        match SocketPool.Connection.send conn response with
        | Ok () -> Continue { requests = state.requests + 1 }
-       | Error `Closed -> Close state
+       | Error SocketPool.Connection.Closed -> Close state
+       | Error _ -> Close state
    end
 
    let () =

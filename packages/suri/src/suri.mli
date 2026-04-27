@@ -501,16 +501,16 @@ module LiveView = Liveview
 module For_testing: sig
   module Connection: sig
     type send_file_range_error = { off: int; len: int; size: int }
+    type error =
+      | Closed
+      | FileError of Std.Fs.error
+      | InvalidRange of send_file_range_error
     val write_all_with:
       write:(bytes -> pos:int -> len:int -> (int, 'error) Std.result) ->
       string ->
-      (unit, [> | `Closed]) Std.result
+      (unit, error) Std.result
 
-    val send_file_slice:
-      ?off:int ->
-      len:int ->
-      string ->
-      (string, [> | `Invalid_range of send_file_range_error]) Std.result
+    val send_file_slice: ?off:int -> len:int -> string -> (string, error) Std.result
   end
 
   module Handler: sig

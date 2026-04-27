@@ -54,6 +54,11 @@ module For_testing = struct
       size: int;
     }
 
+    type error = Socket_pool.Connection.error =
+      | Closed
+      | FileError of Std.Fs.error
+      | InvalidRange of send_file_range_error
+
     let write_all_with = Socket_pool.Connection.For_testing.write_all_with
 
     let send_file_slice = Socket_pool.Connection.For_testing.send_file_slice

@@ -25,4 +25,4 @@ val handshake:
   stream:Std.Net.TcpStream.t ->
   peer:Std.Net.Addr.stream_addr ->
   buffer_size:int ->
-  (Connection.t, [> | `Closed]) result
+  (Connection.t, Connection.error) result

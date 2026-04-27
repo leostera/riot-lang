@@ -883,7 +883,8 @@ let test_connection_write_all_retries_short_writes = fun _ctx ->
   | Ok () ->
       Test.assert_equal ~expected:[ (6, 2); (3, 5); (0, 8); ] ~actual:!calls;
       Ok ()
-  | Error `Closed -> Error "expected short writes to complete"
+  | Error Connection.Closed -> Error "expected short writes to complete"
+  | Error _ -> Error "unexpected connection write error"
 
 let test_connection_write_all_treats_zero_write_as_closed = fun _ctx ->
   let calls = ref 0 in
@@ -892,10 +893,11 @@ let test_connection_write_all_treats_zero_write_as_closed = fun _ctx ->
     Ok 0
   in
   match Connection.write_all_with ~write "abc" with
-  | Error `Closed ->
+  | Error Connection.Closed ->
       Test.assert_equal ~expected:1 ~actual:!calls;
       Ok ()
   | Ok () -> Error "expected zero-byte write to close connection"
+  | Error _ -> Error "unexpected connection write error"
 
 let test_connection_write_all_skips_empty_payload = fun _ctx ->
   let calls = ref 0 in
@@ -907,30 +909,34 @@ let test_connection_write_all_skips_empty_payload = fun _ctx ->
   | Ok () ->
       Test.assert_equal ~expected:0 ~actual:!calls;
       Ok ()
-  | Error `Closed -> Error "expected empty payload to complete without writes"
+  | Error Connection.Closed -> Error "expected empty payload to complete without writes"
+  | Error _ -> Error "unexpected connection write error"
 
 let test_connection_send_file_slice_extracts_range = fun _ctx ->
   match Connection.send_file_slice ~off:2 ~len:4 "abcdefgh" with
   | Ok chunk ->
       Test.assert_equal ~expected:"cdef" ~actual:chunk;
       Ok ()
-  | Error (`Invalid_range _) -> Error "expected valid send_file range"
+  | Error (Connection.InvalidRange _) -> Error "expected valid send_file range"
+  | Error _ -> Error "unexpected send_file error"
 
 let test_connection_send_file_slice_allows_zero_length = fun _ctx ->
   match Connection.send_file_slice ~off:8 ~len:0 "abcdefgh" with
   | Ok chunk ->
       Test.assert_equal ~expected:"" ~actual:chunk;
       Ok ()
-  | Error (`Invalid_range _) -> Error "expected zero-length send_file range"
+  | Error (Connection.InvalidRange _) -> Error "expected zero-length send_file range"
+  | Error _ -> Error "unexpected send_file error"
 
 let test_connection_send_file_slice_rejects_invalid_range = fun _ctx ->
   match Connection.send_file_slice ~off:6 ~len:3 "abcdefgh" with
-  | Error (`Invalid_range { off; len; size }) ->
+  | Error (Connection.InvalidRange { off; len; size }) ->
       Test.assert_equal ~expected:6 ~actual:off;
       Test.assert_equal ~expected:3 ~actual:len;
       Test.assert_equal ~expected:8 ~actual:size;
       Ok ()
   | Ok _ -> Error "expected send_file range beyond file size to fail"
+  | Error _ -> Error "unexpected send_file error"
 
 let test_handler_recovers_from_middleware_exceptions = fun _ctx ->
   let app = [

@@ -85,7 +85,10 @@ let send_settings = fun conn ->
   let encoded = Http.Http2.Serializer.serialize_frame settings_frame in
   match Socket_pool.Connection.send conn encoded with
   | Ok () -> Ok ()
-  | Error `Closed -> Error (`Io_error "Connection closed while sending SETTINGS")
+  | Error Socket_pool.Connection.Closed ->
+      Error (`Io_error "Connection closed while sending SETTINGS")
+  | Error (Socket_pool.Connection.FileError _ | Socket_pool.Connection.InvalidRange _) ->
+      Error (`Io_error "Connection failed while sending SETTINGS")
 
 (** Send SETTINGS ACK *)
 let send_settings_ack = fun conn ->
@@ -93,7 +96,10 @@ let send_settings_ack = fun conn ->
   let encoded = Http.Http2.Serializer.serialize_frame ack_frame in
   match Socket_pool.Connection.send conn encoded with
   | Ok () -> Ok ()
-  | Error `Closed -> Error (`Io_error "Connection closed while sending SETTINGS ACK")
+  | Error Socket_pool.Connection.Closed ->
+      Error (`Io_error "Connection closed while sending SETTINGS ACK")
+  | Error (Socket_pool.Connection.FileError _ | Socket_pool.Connection.InvalidRange _) ->
+      Error (`Io_error "Connection failed while sending SETTINGS ACK")
 
 (** Send HTTP/2 HEADERS frame *)
 let send_headers = fun conn hpack_encoder stream_id headers end_stream ->
@@ -108,7 +114,10 @@ let send_headers = fun conn hpack_encoder stream_id headers end_stream ->
   let encoded = Http.Http2.Serializer.serialize_frame frame in
   match Socket_pool.Connection.send conn encoded with
   | Ok () -> Ok ()
-  | Error `Closed -> Error (`Io_error "Connection closed while sending HEADERS")
+  | Error Socket_pool.Connection.Closed ->
+      Error (`Io_error "Connection closed while sending HEADERS")
+  | Error (Socket_pool.Connection.FileError _ | Socket_pool.Connection.InvalidRange _) ->
+      Error (`Io_error "Connection failed while sending HEADERS")
 
 (** Send HTTP/2 DATA frame *)
 let send_data = fun conn stream_id data end_stream ->
@@ -116,7 +125,9 @@ let send_data = fun conn stream_id data end_stream ->
   let encoded = Http.Http2.Serializer.serialize_frame frame in
   match Socket_pool.Connection.send conn encoded with
   | Ok () -> Ok ()
-  | Error `Closed -> Error (`Io_error "Connection closed while sending DATA")
+  | Error Socket_pool.Connection.Closed -> Error (`Io_error "Connection closed while sending DATA")
+  | Error (Socket_pool.Connection.FileError _ | Socket_pool.Connection.InvalidRange _) ->
+      Error (`Io_error "Connection failed while sending DATA")
 
 (** Convert HTTP/2 headers to Request.t *)
 let headers_to_request = fun conn headers body ->
@@ -243,7 +254,10 @@ let process_frame = fun conn state frame ->
         (
           match Socket_pool.Connection.send conn encoded with
           | Ok () -> Ok ()
-          | Error `Closed -> Error (`Io_error "Connection closed while sending PING")
+          | Error Socket_pool.Connection.Closed ->
+              Error (`Io_error "Connection closed while sending PING")
+          | Error (Socket_pool.Connection.FileError _ | Socket_pool.Connection.InvalidRange _) ->
+              Error (`Io_error "Connection failed while sending PING")
         )
       else
         Ok ()

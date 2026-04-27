@@ -79,6 +79,17 @@ let request_body_header_error_to_string = function
 let request_header_error_to_string = function
   | MissingHostHeader -> "HTTP/1.1 requests must include a Host header"
 
+let connection_error_to_string = function
+  | Socket_pool.Connection.Closed -> "Connection closed"
+  | Socket_pool.Connection.FileError _ -> "Connection file operation failed"
+  | Socket_pool.Connection.InvalidRange { off; len; size } ->
+      "Invalid connection file range: off="
+      ^ Int.to_string off
+      ^ ", len="
+      ^ Int.to_string len
+      ^ ", size="
+      ^ Int.to_string size
+
 let make_handler = fun ~config ~handler ?(sniffed_data = "") () ->
   {
     config;
@@ -207,7 +218,7 @@ let send_response = fun conn res ->
   | Ok response_bytes -> (
       match Socket_pool.Connection.send conn response_bytes with
       | Ok () -> Ok ()
-      | Error `Closed -> Error (`IoError "Connection closed")
+      | Error error -> Error (`IoError (connection_error_to_string error))
     )
 
 let compute_websocket_accept = fun key ->
@@ -383,7 +394,9 @@ let websocket_to_socket_pool_handler: Channel.Handler.t -> Socket_pool.Handler.t
               | Ok () ->
                   Log.info "WebSocket bridge: Channel handler initialized successfully";
                   Socket_pool.Handler.Continue new_handler
-              | Error `Closed -> Socket_pool.Handler.Close new_handler
+              | Error Socket_pool.Connection.Closed -> Socket_pool.Handler.Close new_handler
+              | Error (Socket_pool.Connection.FileError _ | Socket_pool.Connection.InvalidRange _) ->
+                  Socket_pool.Handler.Close new_handler
             )
         | Channel.Handler.Error err ->
             Log.error "WebSocket bridge: Channel handler initialization failed";
@@ -406,7 +419,11 @@ let websocket_to_socket_pool_handler: Channel.Handler.t -> Socket_pool.Handler.t
                 (
                   match Socket_pool.Connection.send conn frame_data with
                   | Ok () -> Socket_pool.Handler.Continue new_handler
-                  | Error `Closed -> Socket_pool.Handler.Close new_handler
+                  | Error Socket_pool.Connection.Closed -> Socket_pool.Handler.Close new_handler
+                  | Error (
+                    Socket_pool.Connection.FileError _
+                    | Socket_pool.Connection.InvalidRange _
+                  ) -> Socket_pool.Handler.Close new_handler
                 )
             | Channel.Handler.Error err -> Socket_pool.Handler.Error (ws_handler, err)
           )
@@ -434,7 +451,9 @@ let websocket_to_socket_pool_handler: Channel.Handler.t -> Socket_pool.Handler.t
             (
               match Socket_pool.Connection.send conn frame_data with
               | Ok () -> Socket_pool.Handler.Continue new_handler
-              | Error `Closed -> Socket_pool.Handler.Close new_handler
+              | Error Socket_pool.Connection.Closed -> Socket_pool.Handler.Close new_handler
+              | Error (Socket_pool.Connection.FileError _ | Socket_pool.Connection.InvalidRange _) ->
+                  Socket_pool.Handler.Close new_handler
             )
         | Channel.Handler.Error err -> Socket_pool.Handler.Error (ws_handler, err));
   }
@@ -474,8 +493,11 @@ let handle_websocket_upgrade = fun state socket_conn req ws_handler ->
           (* Switch to WebSocket handler *)
           let socket_pool_handler = websocket_to_socket_pool_handler ws_handler in
           Socket_pool.Handler.Switch socket_pool_handler
-      | Error `Closed ->
+      | Error Socket_pool.Connection.Closed ->
           Log.error "Failed to send WebSocket upgrade response - connection closed";
+          Socket_pool.Handler.Close state
+      | Error (Socket_pool.Connection.FileError _ | Socket_pool.Connection.InvalidRange _) ->
+          Log.error "Failed to send WebSocket upgrade response";
           Socket_pool.Handler.Close state
 
 let handle_request = fun state socket_conn (req: Request.t) ->

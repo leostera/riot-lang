@@ -48,7 +48,8 @@ and try_receive: type s e. Connection.t -> (s, e) Handler.handler -> s -> unit =
     match Connection.receive conn ~timeout with
     | Ok "" -> handler.handle_close conn ctx
     | Ok data -> handle_data data conn handler ctx
-    | Error `Closed -> handler.handle_close conn ctx
+    | Error Connection.Closed -> handler.handle_close conn ctx
+    | Error (Connection.FileError _ | Connection.InvalidRange _) -> handler.handle_close conn ctx
   with
   | Syscall_timeout ->
       (* Timeout = no data available within 1ms, loop to check mailbox again *)

@@ -16,11 +16,11 @@ open Std
 *)
 type t
 type send_file_range_error = { off: int; len: int; size: int }
-type send_file_error = [
-  | `Closed
-  | `File_error of Std.Fs.error
-  | `Invalid_range of send_file_range_error
-]
+type error =
+  | Closed
+  | FileError of Std.Fs.error
+  | InvalidRange of send_file_range_error
+type send_file_error = error
 val make:
   ?protocol:string option ->
   accepted_at:Std.Time.Instant.t ->
@@ -36,9 +36,9 @@ val negotiated_protocol: t -> string option
 (**
    [send conn data] sends [data] through the connection.
 
-   Returns [Ok ()] on success or [Error `Closed] if connection closed.
+   Returns [Ok ()] on success or [Error Closed] if connection closed.
 *)
-val send: t -> string -> (unit, [> | `Closed]) result
+val send: t -> string -> (unit, error) result
 
 (**
    [receive ?limit ?read_size ?timeout conn] reads data from the connection.
@@ -47,7 +47,7 @@ val send: t -> string -> (unit, [> | `Closed]) result
    - [read_size] overrides the default buffer read size
    - [timeout] optional timeout duration for the read operation
 
-   Returns [Ok data] with received data, or [Error `Closed] if closed.
+   Returns [Ok data] with received data, or [Error Closed] if closed.
    Raises [Syscall_timeout] if timeout is specified and expires.
 *)
 val receive:
@@ -55,7 +55,7 @@ val receive:
   ?read_size:int ->
   ?timeout:Std.Time.Duration.t ->
   t ->
-  (string, [> | `Closed]) result
+  (string, error) result
 
 (** [peer conn] returns the remote peer's address *)
 val peer: t -> Std.Net.Addr.stream_addr
@@ -83,11 +83,7 @@ module For_testing: sig
   val write_all_with:
     write:(bytes -> pos:int -> len:int -> (int, 'error) result) ->
     string ->
-    (unit, [> | `Closed]) result
+    (unit, error) result
 
-  val send_file_slice:
-    ?off:int ->
-    len:int ->
-    string ->
-    (string, [> | `Invalid_range of send_file_range_error]) result
+  val send_file_slice: ?off:int -> len:int -> string -> (string, error) result
 end

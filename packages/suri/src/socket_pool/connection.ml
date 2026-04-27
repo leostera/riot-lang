@@ -13,11 +13,12 @@ type t =
 
 type send_file_range_error = { off: int; len: int; size: int }
 
-type send_file_error = [
-  | `Closed
-  | `File_error of Fs.error
-  | `Invalid_range of send_file_range_error
-]
+type error =
+  | Closed
+  | FileError of Fs.error
+  | InvalidRange of send_file_range_error
+
+type send_file_error = error
 
 let make = fun ?(protocol = None) ~accepted_at ~stream ~buffer_size ~peer () ->
   Conn {
@@ -42,13 +43,13 @@ let receive = fun ?(limit = 1_024) ?read_size ?timeout (Conn { default_read_size
   let capacity = Int.min limit read_size in
   let buf = Bytes.create ~size:capacity in
   match Net.TcpStream.read stream buf ?timeout () with
-  | Ok 0 -> Error `Closed
+  | Ok 0 -> Error Closed
   | Ok n ->
       Ok (
         Bytes.sub_unchecked buf ~offset:0 ~len:n
         |> Bytes.to_string
       )
-  | Error _ -> Error `Closed
+  | Error _ -> Error Closed
 
 let write_all_with = fun ~write data ->
   let buf = Bytes.from_string data in
@@ -59,8 +60,8 @@ let write_all_with = fun ~write data ->
     else
       match write buf ~pos ~len:(total - pos) with
       | Ok n when n > 0 -> loop (pos + n)
-      | Ok _ -> Error `Closed
-      | Error _ -> Error `Closed
+      | Ok _ -> Error Closed
+      | Error _ -> Error Closed
   in
   loop 0
 
@@ -91,13 +92,13 @@ let close = fun (Conn { stream; _ }) -> Net.TcpStream.close stream
 let send_file_slice = fun ?(off = 0) ~len content ->
   let size = String.length content in
   if off < 0 || len < 0 || off > size || len > size - off then
-    Error (`Invalid_range { off; len; size })
+    Error (InvalidRange { off; len; size })
   else
     Ok (String.sub content ~offset:off ~len)
 
 let send_file = fun conn ?(off = 0) ~len path ->
   match Fs.read (Path.v path) with
-  | Error error -> Error (`File_error error)
+  | Error error -> Error (FileError error)
   | Ok content -> (
       match send_file_slice ~off ~len content with
       | Error error -> Error error
