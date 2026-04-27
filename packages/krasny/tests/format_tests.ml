@@ -3044,6 +3044,26 @@ let pipeline =
   |> h
 |ocaml});
   Test.case
+    "format breaks local let rhs when trailing in would exceed width"
+    (fun ctx ->
+      let source =
+        {ocaml|let add_value t ~name ~scheme=let scopes=map_current t.scopes ~fn:(fun scope->IdentMap.insert scope ~key:name ~value:scheme) in {scopes}
+|ocaml}
+      in
+      let actual =
+        parse_ml source
+        |> Krasny.format
+        |> Result.expect ~msg:"local let rhs plus in suffix should respect formatter width"
+      in
+      Test.Snapshot.assert_inline_text
+        ~ctx
+        ~actual
+        ~expected:{ocaml|let add_value t ~name ~scheme =
+  let scopes = map_current t.scopes ~fn:(fun scope -> IdentMap.insert scope ~key:name ~value:scheme)
+  in
+  { scopes }
+|ocaml});
+  Test.case
     "format parenthesized pipeline arguments vertically"
     (fun ctx ->
       let source =

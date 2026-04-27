@@ -830,6 +830,9 @@ let emit_spaces = fun state count ->
   in
   loop count
 
+let current_line_fits_space_and_text = fun state text ->
+  Int.(state.column + 1 + String.length text <= state.width)
+
 let emit_inline_leading_trivia_from_token = fun state token ~leading_spaces ~trailing_space ->
   match token_single_inline_leading_delimited_trivia token with
   | None -> false
@@ -6966,13 +6969,14 @@ and let_binding_body_renders_inline = fun body ->
     | _ -> not (expr_is_multiline body)
 
 and let_binding_body_exceeds_width = fun state body ->
+  let body_column = Int.add state.column 1 in
   match Ast.Expr.view body with
   | Apply _ ->
       let (_, args) = collect_apply body in
-      apply_expr_should_break state body args
+      apply_expr_should_break_from_column state body args ~column:body_column
   | _ -> (
       match expr_flat_width body with
-      | Some width -> Int.(state.column + 1 + width > state.width)
+      | Some width -> Int.(body_column + width > state.width)
       | None -> false
     )
 
@@ -7057,7 +7061,8 @@ and render_let_expr = fun state expr body ->
           emit_line state;
           render_in_body_expr state body
       | Some binding_body when (not binding_rendered_multiline)
-      && let_binding_body_renders_inline binding_body ->
+      && let_binding_body_renders_inline binding_body
+      && current_line_fits_space_and_text state "in" ->
           emit_space state;
           emit_text state "in";
           emit_line state;
@@ -7083,6 +7088,7 @@ and render_let_expr = fun state expr body ->
         (not and_tokens_have_leading_comment)
         && let_binding_tail_renders_inline_before_in
           (Vector.get_unchecked bindings ~at:(Int.sub length 1))
+        && current_line_fits_space_and_text state "in"
       then
         emit_space state
       else
