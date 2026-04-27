@@ -3381,7 +3381,12 @@ let record_pattern_fields_have_leading_comment = fun (fields: Ast.record_pattern
   Vector.for_each
     fields
     ~fn:(fun field ->
-      if node_has_leading_comment field.node then
+      let node =
+        match field with
+        | Ast.RecordPatternField { node; _ }
+        | Ast.UnknownRecordPatternField { node } -> node
+      in
+      if node_has_leading_comment node then
         found := true);
   !found
 
@@ -3808,10 +3813,10 @@ and render_record_pattern = fun state pattern ->
   let fields = collect_record_pattern_fields pattern in
   let length = Vector.length fields in
   let render_field (field: Ast.record_pattern_field_view) =
-    match field.path with
-    | Some path -> (
+    match field with
+    | Ast.RecordPatternField { path; pattern; _ } -> (
         render_path state path;
-        match field.pattern with
+        match pattern with
         | Some pattern ->
             emit_space state;
             emit_text state "=";
@@ -3819,7 +3824,7 @@ and render_record_pattern = fun state pattern ->
             render_pattern state pattern
         | None -> ()
       )
-    | None -> render_pattern state field.node
+    | Ast.UnknownRecordPatternField { node } -> render_pattern state node
   in
   emit_text state "{";
   if record_pattern_should_multiline pattern fields then (
@@ -4580,8 +4585,8 @@ and list_expr_flat_width = fun budget expr ->
     loop 0 2
 
 and record_expr_field_flat_width = fun budget (field: Ast.record_expr_field_view) ->
-  match (field.Ast.path, field.Ast.value) with
-  | (Some path, Some value) -> (
+  match field with
+  | Ast.RecordExprField { path; value = Some value; _ } -> (
       match expr_flat_width_with_budget budget value with
       | None -> None
       | Some value_width -> (
@@ -4597,8 +4602,8 @@ and record_expr_field_flat_width = fun budget (field: Ast.record_expr_field_view
           | None -> None
         )
     )
-  | (Some path, None) -> node_token_flat_width path
-  | (None, _) -> None
+  | Ast.RecordExprField { path; value = None; _ } -> node_token_flat_width path
+  | Ast.UnknownRecordExprField _ -> None
 
 and record_expr_flat_width = fun budget expr ->
   let fields = collect_record_fields expr in
@@ -4850,13 +4855,14 @@ and record_expr_should_inline = fun expr ->
         true
       else
         let field = Vector.get_unchecked fields ~at:index in
-        match field.Ast.value with
-        | None -> loop (Int.add index 1)
-        | Some value ->
+        match field with
+        | Ast.RecordExprField { value = None; _ } -> loop (Int.add index 1)
+        | Ast.RecordExprField { value = Some value; _ } ->
             if expr_is_inline value then
               loop (Int.add index 1)
             else
               false
+        | Ast.UnknownRecordExprField _ -> false
     in
     loop 0
 
@@ -7451,10 +7457,13 @@ and render_record_expr = fun ?(force_multiline = false) state ~inline expr ->
                   let field = Vector.get_unchecked fields ~at:index in
                   render_record_field state ~inline:false field;
                   (
-                    match field.Ast.value with
-                    | Some value when expr_has_terminal_trailing_sequence value -> ()
-                    | Some _
-                    | None -> emit_text state ";"
+                    match field with
+                    | Ast.RecordExprField {
+                        value = Some value;
+                        _;
+                      } when expr_has_terminal_trailing_sequence value -> ()
+                    | Ast.RecordExprField _
+                    | Ast.UnknownRecordExprField _ -> emit_text state ";"
                   );
                   if Int.(index < Int.sub length 1) then
                     emit_line state;
@@ -7467,39 +7476,39 @@ and render_record_expr = fun ?(force_multiline = false) state ~inline expr ->
       )
 
 and render_record_field = fun state ~inline (field: Ast.record_expr_field_view) ->
-  (
-    match field.Ast.path with
-    | Some path -> render_path state path
-    | None -> unsupported_node "record field without path" field.node
-  );
-  match field.Ast.value with
-  | None -> ()
-  | Some value ->
-      emit_space state;
-      emit_text state "=";
-      let multiline_value =
-        if inline then
-          false
-        else
-          expr_is_multiline value
-      in
-      if multiline_value then (
-        emit_line state;
-        with_indent
-          state
-          2
-          (fun () ->
+  match field with
+  | Ast.UnknownRecordExprField { node } -> unsupported_node "record field without path" node
+  | Ast.RecordExprField { path; value; _ } -> (
+      render_path state path;
+      match value with
+      | None -> ()
+      | Some value ->
+          emit_space state;
+          emit_text state "=";
+          let multiline_value =
+            if inline then
+              false
+            else
+              expr_is_multiline value
+          in
+          if multiline_value then (
+            emit_line state;
+            with_indent
+              state
+              2
+              (fun () ->
+                if expr_is_tuple value || expr_is_fun_or_parenthesized_fun value then
+                  render_expr_atom state value
+                else
+                  render_expr state value)
+          ) else (
+            emit_space state;
             if expr_is_tuple value || expr_is_fun_or_parenthesized_fun value then
               render_expr_atom state value
             else
-              render_expr state value)
-      ) else (
-        emit_space state;
-        if expr_is_tuple value || expr_is_fun_or_parenthesized_fun value then
-          render_expr_atom state value
-        else
-          render_expr state value
-      )
+              render_expr state value
+          )
+    )
 
 and render_array_expr = fun state expr ->
   let items = collect_array_items expr in

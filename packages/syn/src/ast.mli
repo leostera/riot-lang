@@ -48,16 +48,24 @@ type record_expr_field = node
 type variant_type = node
 type variant_constructor = node
 type path = node
-type record_expr_field_view = {
-  path: path option;
-  value: expr option;
-  node: record_expr_field;
-}
-type record_pattern_field_view = {
-  path: path option;
-  pattern: pattern option;
-  node: pattern;
-}
+type record_expr_field_view =
+  | RecordExprField of {
+      path: path;
+      value: expr option;
+      node: record_expr_field;
+    }
+  | UnknownRecordExprField of {
+      node: record_expr_field;
+    }
+type record_pattern_field_view =
+  | RecordPatternField of {
+      path: path;
+      pattern: pattern option;
+      node: pattern;
+    }
+  | UnknownRecordPatternField of {
+      node: pattern;
+    }
 type first_class_module_pattern_ascription =
   | NoAscription
   | PathAscription

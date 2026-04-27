@@ -1887,7 +1887,11 @@ let last_path_text = fun path ->
 
 let test_record_views = fun _ctx ->
   let source =
-    "let record = { x = 1; y }\nlet updated = { base with x = 2; y }\nlet scoped = Lockfile.{ name = package.name; version = None }\nlet { x; y = z; _ } = record\n"
+    {ocaml|let record = { x = 1; y }
+let updated = { base with x = 2; y }
+let scoped = Lockfile.{ name = package.name; version = None }
+let { x; y = z; _ } = record
+|ocaml}
   in
   let root =
     parse_ml source
@@ -1905,17 +1909,15 @@ let test_record_views = fun _ctx ->
     Ast.RecordExpr.cast record_expr
     |> require_some ~msg:"expected record expression view"
   in
-  let record_fields = ref [] in
+  let record_fields = Vector.with_capacity ~size:(Ast.Node.child_count record_view) in
   Ast.RecordExpr.for_each_field
     record_view
     ~fn:(fun field ->
-      let name =
-        field.path
-        |> require_some ~msg:"expected record field path"
-        |> last_path_text
-      in
-      record_fields := (name, Option.is_some field.value) :: !record_fields);
-  Test.assert_equal ~expected:[ ("x", true); ("y", false); ] ~actual:(List.reverse !record_fields);
+      match field with
+      | Ast.RecordExprField { path; value; _ } ->
+          Vector.push record_fields ~value:(last_path_text path, Option.is_some value)
+      | Ast.UnknownRecordExprField _ -> panic "expected record expr field");
+  Test.assert_equal ~expected:[ ("x", true); ("y", false); ] ~actual:(vector_to_list record_fields);
   let update_expr =
     nth_structure_item root 1
     |> require_some ~msg:"expected update item"
@@ -1938,17 +1940,15 @@ let test_record_views = fun _ctx ->
       )
     | None -> panic "expected record update base"
   );
-  let update_fields = ref [] in
+  let update_fields = Vector.with_capacity ~size:(Ast.Node.child_count update_view) in
   Ast.RecordExpr.for_each_field
     update_view
     ~fn:(fun field ->
-      let name =
-        field.path
-        |> require_some ~msg:"expected update field path"
-        |> last_path_text
-      in
-      update_fields := (name, Option.is_some field.value) :: !update_fields);
-  Test.assert_equal ~expected:[ ("x", true); ("y", false); ] ~actual:(List.reverse !update_fields);
+      match field with
+      | Ast.RecordExprField { path; value; _ } ->
+          Vector.push update_fields ~value:(last_path_text path, Option.is_some value)
+      | Ast.UnknownRecordExprField _ -> panic "expected update field");
+  Test.assert_equal ~expected:[ ("x", true); ("y", false); ] ~actual:(vector_to_list update_fields);
   let scoped_expr =
     nth_structure_item root 2
     |> require_some ~msg:"expected scoped record item"
@@ -1969,19 +1969,17 @@ let test_record_views = fun _ctx ->
           Ast.RecordExpr.cast body
           |> require_some ~msg:"expected scoped record body"
         in
-        let scoped_fields = ref [] in
+        let scoped_fields = Vector.with_capacity ~size:(Ast.Node.child_count scoped_record) in
         Ast.RecordExpr.for_each_field
           scoped_record
           ~fn:(fun field ->
-            let name =
-              field.path
-              |> require_some ~msg:"expected scoped field path"
-              |> last_path_text
-            in
-            scoped_fields := (name, Option.is_some field.value) :: !scoped_fields);
+            match field with
+            | Ast.RecordExprField { path; value; _ } ->
+                Vector.push scoped_fields ~value:(last_path_text path, Option.is_some value)
+            | Ast.UnknownRecordExprField _ -> panic "expected scoped field");
         Test.assert_equal
           ~expected:[ ("name", true); ("version", true); ]
-          ~actual:(List.reverse !scoped_fields)
+          ~actual:(vector_to_list scoped_fields)
     | _ -> panic "expected delimited local open record expression"
   );
   let record_pattern =
@@ -1996,17 +1994,15 @@ let test_record_views = fun _ctx ->
     Ast.RecordPattern.cast record_pattern
     |> require_some ~msg:"expected record pattern view"
   in
-  let pattern_fields = ref [] in
+  let pattern_fields = Vector.with_capacity ~size:(Ast.Node.child_count pattern_view) in
   Ast.RecordPattern.for_each_field
     pattern_view
     ~fn:(fun field ->
-      let name =
-        field.path
-        |> require_some ~msg:"expected pattern field path"
-        |> last_path_text
-      in
-      pattern_fields := (name, Option.is_some field.pattern) :: !pattern_fields);
-  Test.assert_equal ~expected:[ ("x", false); ("y", true); ] ~actual:(List.reverse !pattern_fields);
+      match field with
+      | Ast.RecordPatternField { path; pattern; _ } ->
+          Vector.push pattern_fields ~value:(last_path_text path, Option.is_some pattern)
+      | Ast.UnknownRecordPatternField _ -> panic "expected record pattern field");
+  Test.assert_equal ~expected:[ ("x", false); ("y", true); ] ~actual:(vector_to_list pattern_fields);
   let wildcard =
     Ast.RecordPattern.open_wildcard pattern_view
     |> require_some ~msg:"expected open record wildcard"
@@ -2255,11 +2251,11 @@ let test_local_open_views = fun _ctx ->
           Test.assert_equal ~expected:false ~actual:(Option.is_some open_wildcard);
           let field = vector_first fields ~msg:"expected record pattern field" in
           (
-            match field.path with
-            | Some path ->
+            match field with
+            | Ast.RecordPatternField { path; _ } ->
                 Test.assert_equal ~expected:"payload" ~actual:(last_path_text path);
                 Ok ()
-            | None -> Error "expected record pattern field path"
+            | Ast.UnknownRecordPatternField _ -> Error "expected record pattern field path"
           )
       | _ -> Error "expected local open record inner pattern"
     )

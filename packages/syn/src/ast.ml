@@ -73,17 +73,25 @@ type variant_constructor = node
 
 type path = node
 
-type record_expr_field_view = {
-  path: path option;
-  value: expr option;
-  node: record_expr_field;
-}
+type record_expr_field_view =
+  | RecordExprField of {
+      path: path;
+      value: expr option;
+      node: record_expr_field;
+    }
+  | UnknownRecordExprField of {
+      node: record_expr_field;
+    }
 
-type record_pattern_field_view = {
-  path: path option;
-  pattern: pattern option;
-  node: pattern;
-}
+type record_pattern_field_view =
+  | RecordPatternField of {
+      path: path;
+      pattern: pattern option;
+      node: pattern;
+    }
+  | UnknownRecordPatternField of {
+      node: pattern;
+    }
 
 type first_class_module_pattern_ascription =
   | NoAscription
@@ -922,19 +930,16 @@ let collect_record_pattern_fields = fun (record: pattern) ->
           in
           Vector.push
             fields
-            ~value:{
-              path =
-                if node_matches child is_path_kind then
-                  Some child
-                else
-                  None;
-              pattern;
-              node = child;
-            };
+            ~value:(
+              if node_matches child is_path_kind then
+                RecordPatternField { path = child; pattern; node = child }
+              else
+                UnknownRecordPatternField { node = child }
+            );
           loop next
       | Some child when node_kind_is child Syntax_kind.WILDCARD_PATTERN -> loop (index + 1)
       | Some child when node_matches child is_pattern_kind ->
-          Vector.push fields ~value:{ path = None; pattern = None; node = child };
+          Vector.push fields ~value:(UnknownRecordPatternField { node = child });
           loop (index + 1)
       | Some _
       | None -> loop (index + 1)
@@ -1754,24 +1759,33 @@ end = struct
 
   let record_expr_field_of_node = fun (field: record_expr_field) ->
     let normalize_value = normalize_expr_option in
+    let field_view = fun path value -> RecordExprField { path; value; node = field } in
+    let unknown () = UnknownRecordExprField { node = field } in
     match (nth_expr_child field 0, nth_expr_child field 1) with
     | (Some expr, value) when node_kind_is expr Syntax_kind.PATH_EXPR ->
-        { path = Path.cast expr; value = normalize_value value; node = field }
+        (
+          match Path.cast expr with
+          | Some path -> field_view path (normalize_value value)
+          | None -> unknown ()
+        )
     | (Some expr, _) when node_kind_is expr Syntax_kind.INFIX_EXPR -> (
         match (nth_expr_child expr 0, nth_expr_child expr 1) with
         | (Some left, Some right) ->
-            let path =
-              if node_kind_is left Syntax_kind.PATH_EXPR then
-                Path.cast left
-              else
-                None
-            in
-            { path; value = Some (normalize_expr_node right); node = field }
-        | _ -> { path = None; value = None; node = field }
+            if node_kind_is left Syntax_kind.PATH_EXPR then
+              match Path.cast left with
+              | Some path -> field_view path (Some (normalize_expr_node right))
+              | None -> unknown ()
+            else
+              unknown ()
+        | _ -> unknown ()
       )
     | (Some expr, value) ->
-        { path = Path.cast expr; value = normalize_value value; node = field }
-    | (None, _) -> { path = None; value = None; node = field }
+        (
+          match Path.cast expr with
+          | Some path -> field_view path (normalize_value value)
+          | None -> unknown ()
+        )
+    | (None, _) -> unknown ()
 
   let record_expr_fields = fun record ->
     let fields = Vector.with_capacity ~size:(Node.child_count record) in
@@ -2079,23 +2093,32 @@ end = struct
       None
 
   let field_of_node = fun (field: record_expr_field) ->
+    let field_view = fun path value -> RecordExprField { path; value; node = field } in
+    let unknown () = UnknownRecordExprField { node = field } in
     match (nth_expr_child field 0, nth_expr_child field 1) with
     | (Some expr, value) when node_kind_is expr Syntax_kind.PATH_EXPR ->
-        { path = Path.cast expr; value; node = field }
+        (
+          match Path.cast expr with
+          | Some path -> field_view path value
+          | None -> unknown ()
+        )
     | (Some expr, _) when node_kind_is expr Syntax_kind.INFIX_EXPR -> (
         match (nth_expr_child expr 0, nth_expr_child expr 1) with
         | (Some left, Some right) ->
-            let path =
-              if node_kind_is left Syntax_kind.PATH_EXPR then
-                Path.cast left
-              else
-                None
-            in
-            { path; value = Some right; node = field }
-        | _ -> { path = None; value = None; node = field }
+            if node_kind_is left Syntax_kind.PATH_EXPR then
+              match Path.cast left with
+              | Some path -> field_view path (Some right)
+              | None -> unknown ()
+            else
+              unknown ()
+        | _ -> unknown ()
       )
-    | (Some expr, value) -> { path = Path.cast expr; value; node = field }
-    | (None, _) -> { path = None; value = None; node = field }
+    | (Some expr, value) -> (
+        match Path.cast expr with
+        | Some path -> field_view path value
+        | None -> unknown ()
+      )
+    | (None, _) -> unknown ()
 
   let for_each_field = fun (record: t) ~fn ->
     Syntax_tree.for_each_child

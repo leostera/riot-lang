@@ -106,10 +106,13 @@ let record_expr_repeats_qualifier = fun ctx record ->
   Ast.RecordExpr.for_each_field
     record
     ~fn:(fun field ->
-      match field.path
-      |> Option.and_then ~fn:(module_qualifier_of_path ctx) with
-      | Some qualifier -> Vector.push qualifiers ~value:qualifier
-      | None -> ());
+      match field with
+      | Ast.RecordExprField { path; _ } -> (
+          match module_qualifier_of_path ctx path with
+          | Some qualifier -> Vector.push qualifiers ~value:qualifier
+          | None -> ()
+        )
+      | Ast.UnknownRecordExprField _ -> ());
   let repeated = ref false in
   Vector.for_each
     qualifiers
