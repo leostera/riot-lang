@@ -21,10 +21,18 @@ type state = {
 
 type error = [`ParseError of string | `ExcessBodyRead | `IoError of string]
 
+type serialization_error =
+  | InvalidHeaderName of string
+  | InvalidHeaderValue of { name: string; value: string }
+
 let to_string_error = function
   | `ParseError msg -> "Parse error: " ^ msg
   | `ExcessBodyRead -> "Excess body read"
   | `IoError msg -> "I/O error: " ^ msg
+
+let serialization_error_to_string = function
+  | InvalidHeaderName name -> "Invalid response header name: " ^ name
+  | InvalidHeaderValue { name; value = _ } -> "Invalid response header value for: " ^ name
 
 let make_handler = fun ~config ~handler ?(sniffed_data = "") () ->
   {
@@ -47,37 +55,123 @@ let should_keep_alive = fun (req: Request.t) ->
   | (Http11, _) -> true
   | (_, _) -> false
 
-let send_response = fun conn (res: Response.t) ->
-  let headers = Net.Http.Header.add res.headers "vary" "accept-encoding" in
-  let body_len =
-    String.length res.body
-    |> Int.to_string
+let is_header_name_char = function
+  | 'a' .. 'z'
+  | 'A' .. 'Z'
+  | '0' .. '9'
+  | '!'
+  | '#'
+  | '$'
+  | '%'
+  | '&'
+  | '\''
+  | '*'
+  | '+'
+  | '-'
+  | '.'
+  | '^'
+  | '_'
+  | '`'
+  | '|'
+  | '~' -> true
+  | _ -> false
+
+let is_valid_header_name = fun name ->
+  let rec go index =
+    if index >= String.length name then
+      true
+    else if is_header_name_char (String.get_unchecked name ~at:index) then
+      go (index + 1)
+    else
+      false
+  in
+  String.length name > 0 && go 0
+
+let is_valid_header_value = fun value ->
+  let rec go index =
+    if index >= String.length value then
+      true
+    else
+      match String.get_unchecked value ~at:index with
+      | '\r'
+      | '\n' -> false
+      | _ -> go (index + 1)
+  in
+  go 0
+
+let validate_response_headers = fun headers ->
+  let rec go = function
+    | [] -> Ok ()
+    | (name, value) :: rest ->
+        if not (is_valid_header_name name) then
+          Error (InvalidHeaderName name)
+        else if not (is_valid_header_value value) then
+          Error (InvalidHeaderValue { name; value })
+        else
+          go rest
+  in
+  go (Net.Http.Header.to_list headers)
+
+let response_allows_body = fun status ->
+  let code = Net.Http.Status.to_int status in
+  not ((code >= 100 && code < 200) || code = 204 || code = 304)
+
+let serialize_response = fun (res: Response.t) ->
+  let body =
+    if response_allows_body res.status then
+      res.body
+    else
+      ""
   in
   let headers =
-    match res.status with
-    | NoContent
-    | NotModified -> Net.Http.Header.remove headers "content-length"
-    | _ when not (Net.Http.Header.has headers "content-length") ->
-        Net.Http.Header.set headers "content-length" body_len
-    | _ -> headers
+    if response_allows_body res.status then
+      if Net.Http.Header.has res.headers "content-length" then
+        res.headers
+      else
+        Net.Http.Header.set
+          res.headers
+          "content-length"
+          (
+            String.length body
+            |> Int.to_string
+          )
+    else
+      Net.Http.Header.remove res.headers "content-length"
   in
-  let status_line =
-    (Net.Http.Version.to_string res.version)
-    ^ " "
-    ^ (Int.to_string (Net.Http.Status.to_int res.status))
-    ^ " "
-    ^ (Net.Http.Status.to_string res.status)
-    ^ "\r\n"
-  in
-  let header_lines =
-    Net.Http.Header.to_list headers
-    |> List.map ~fn:(fun (k, v) -> k ^ ": " ^ v ^ "\r\n")
-    |> String.concat ""
-  in
-  let response_bytes = status_line ^ header_lines ^ "\r\n" ^ res.body in
-  match Socket_pool.Connection.send conn response_bytes with
-  | Ok () -> Ok ()
-  | Error `Closed -> Error (`IoError "Connection closed")
+  match validate_response_headers headers with
+  | Error err -> Error err
+  | Ok () ->
+      let status_line =
+        (Net.Http.Version.to_string res.version)
+        ^ " "
+        ^ (Int.to_string (Net.Http.Status.to_int res.status))
+        ^ " "
+        ^ (Net.Http.Status.to_string res.status)
+        ^ "\r\n"
+      in
+      let header_lines =
+        Net.Http.Header.to_list headers
+        |> List.map ~fn:(fun ((k, v)) -> k ^ ": " ^ v ^ "\r\n")
+        |> String.concat ""
+      in
+      Ok (status_line ^ header_lines ^ "\r\n" ^ body)
+
+let send_response = fun conn res ->
+  match serialize_response res with
+  | Error err -> Error (`IoError (serialization_error_to_string err))
+  | Ok response_bytes -> (
+      match Socket_pool.Connection.send conn response_bytes with
+      | Ok () -> Ok ()
+      | Error `Closed -> Error (`IoError "Connection closed")
+    )
+
+module For_testing = struct
+  type nonrec serialization_error = serialization_error =
+    | InvalidHeaderName of string
+    | InvalidHeaderValue of { name: string; value: string }
+
+  let serialize_response = serialize_response
+end
 
 let compute_websocket_accept = fun key ->
   let magic = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11" in

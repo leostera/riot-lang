@@ -23,6 +23,24 @@ module Channel = Channel
 module Connection = Socket_pool.Connection
 module Handler = Web_server.Handler
 
+module For_testing = struct
+  module Http1 = struct
+    type serialization_error =
+      | InvalidHeaderName of string
+      | InvalidHeaderValue of { name: string; value: string }
+
+    let serialize_response = fun response ->
+      Std.Result.map_err
+        (Web_server.Http1.For_testing.serialize_response response)
+        ~fn:(
+          function
+          | Web_server.Http1.For_testing.InvalidHeaderName name -> InvalidHeaderName name
+          | Web_server.Http1.For_testing.InvalidHeaderValue { name; value } ->
+              InvalidHeaderValue { name; value }
+        )
+  end
+end
+
 (** Suri.config () -> creates configuration with optional parameters *)
 let config = fun
   ?(host = "0.0.0.0")

@@ -22,6 +22,13 @@ type state
 type error = [ | `ParseError of string | `ExcessBodyRead | `IoError of string]
 val to_string_error: error -> string
 
+module For_testing: sig
+  type serialization_error =
+    | InvalidHeaderName of string
+    | InvalidHeaderValue of { name: string; value: string }
+  val serialize_response: Response.t -> (string, serialization_error) Std.result
+end
+
 (** Create a handler that supports WebSocket upgrades via {!Http_handler.response}. *)
 val make_handler:
   config:Super.Config.t ->

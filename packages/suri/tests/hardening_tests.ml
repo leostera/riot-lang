@@ -3,6 +3,8 @@ open Std
 module Component = Suri.Component
 module Basic_auth = Suri.Middleware.Basic_auth
 module Static = Suri.Middleware.Static
+module Response = Suri.Response
+module Http1 = Suri.For_testing.Http1
 
 let test_component_text_is_escaped = fun _ctx ->
   let html =
@@ -132,6 +134,81 @@ let test_basic_auth_sanitizes_realm_header_value = fun _ctx ->
     ~actual:(Basic_auth.For_testing.sanitize_realm "Admin\r\n\"Panel");
   Ok ()
 
+let test_http1_response_rejects_invalid_header_name = fun _ctx ->
+  let res = Response.ok ~headers:[ ("bad name", "value"); ] ~body:"ok" () in
+  match Http1.serialize_response res with
+  | Error (Http1.InvalidHeaderName name) ->
+      Test.assert_equal ~expected:"bad name" ~actual:name;
+      Ok ()
+  | _ ->
+      Test.assert_true false;
+      Ok ()
+
+let test_http1_response_rejects_header_injection = fun _ctx ->
+  let res = Response.ok ~headers:[ ("x-test", "ok\r\nx-evil: yes"); ] ~body:"ok" () in
+  match Http1.serialize_response res with
+  | Error (Http1.InvalidHeaderValue { name; value = _ }) ->
+      Test.assert_equal ~expected:"x-test" ~actual:name;
+      Ok ()
+  | _ ->
+      Test.assert_true false;
+      Ok ()
+
+let test_http1_response_omits_body_for_no_content = fun _ctx ->
+  let res = Response.no_content ~headers:[ ("content-length", "7"); ] ~body:"ignored" () in
+  match Http1.serialize_response res with
+  | Ok bytes ->
+      Test.assert_false (String.contains bytes "content-length");
+      Test.assert_false (String.contains bytes "ignored");
+      Ok ()
+  | Error _ ->
+      Test.assert_true false;
+      Ok ()
+
+let test_http1_response_omits_body_for_not_modified = fun _ctx ->
+  let res = Response.not_modified ~headers:[ ("content-length", "7"); ] ~body:"ignored" () in
+  match Http1.serialize_response res with
+  | Ok bytes ->
+      Test.assert_false (String.contains bytes "content-length");
+      Test.assert_false (String.contains bytes "ignored");
+      Ok ()
+  | Error _ ->
+      Test.assert_true false;
+      Ok ()
+
+let test_http1_response_omits_body_for_informational_status = fun _ctx ->
+  let res = Response.continue ~headers:[ ("content-length", "7"); ] ~body:"ignored" () in
+  match Http1.serialize_response res with
+  | Ok bytes ->
+      Test.assert_false (String.contains bytes "content-length");
+      Test.assert_false (String.contains bytes "ignored");
+      Ok ()
+  | Error _ ->
+      Test.assert_true false;
+      Ok ()
+
+let test_http1_response_sets_content_length_for_body = fun _ctx ->
+  let res = Response.ok ~body:"hello" () in
+  match Http1.serialize_response res with
+  | Ok bytes ->
+      Test.assert_true (String.contains bytes "content-length: 5");
+      Test.assert_true (String.contains bytes "\r\n\r\nhello");
+      Ok ()
+  | Error _ ->
+      Test.assert_true false;
+      Ok ()
+
+let test_http1_response_does_not_add_vary_without_compression = fun _ctx ->
+  let res = Response.ok ~body:"hello" () in
+  match Http1.serialize_response res with
+  | Ok bytes ->
+      Test.assert_false (String.contains bytes "vary: accept-encoding");
+      Test.assert_false (String.contains bytes "Vary: accept-encoding");
+      Ok ()
+  | Error _ ->
+      Test.assert_true false;
+      Ok ()
+
 let tests =
   Test.[
     case "component text is escaped" test_component_text_is_escaped;
@@ -158,6 +235,23 @@ let tests =
     case "basic auth preserves colons in password" test_basic_auth_preserves_colons_in_password;
     case "basic auth rejects invalid credentials" test_basic_auth_rejects_invalid_credentials;
     case "basic auth sanitizes realm header value" test_basic_auth_sanitizes_realm_header_value;
+    case
+      "http1 response rejects invalid header name"
+      test_http1_response_rejects_invalid_header_name;
+    case "http1 response rejects header injection" test_http1_response_rejects_header_injection;
+    case "http1 response omits body for no content" test_http1_response_omits_body_for_no_content;
+    case
+      "http1 response omits body for not modified"
+      test_http1_response_omits_body_for_not_modified;
+    case
+      "http1 response omits body for informational status"
+      test_http1_response_omits_body_for_informational_status;
+    case
+      "http1 response sets content length for body"
+      test_http1_response_sets_content_length_for_body;
+    case
+      "http1 response does not add vary without compression"
+      test_http1_response_does_not_add_vary_without_compression;
   ]
 
 let main ~args = Test.Cli.main ~name:"suri_hardening_tests" ~tests ~args ()

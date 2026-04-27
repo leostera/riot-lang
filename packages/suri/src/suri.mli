@@ -469,3 +469,11 @@ module LiveView = Liveview
 
    See {!LiveView} for complete documentation.
 *)
+module For_testing: sig
+  module Http1: sig
+    type serialization_error =
+      | InvalidHeaderName of string
+      | InvalidHeaderValue of { name: string; value: string }
+    val serialize_response: Response.t -> (string, serialization_error) Std.result
+  end
+end
