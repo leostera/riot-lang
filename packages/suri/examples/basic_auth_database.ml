@@ -56,6 +56,8 @@ let validate = fun ~username ~password ->
       Log.warn (String.concat "" [ "Failed auth attempt for unknown user: "; username ]);
       None
 
+let user_key: DB.user Middleware.Basic_auth.key = Middleware.Basic_auth.key ()
+
 (** Route handlers *)
 let home_handler = fun conn _req ->
   let html =
@@ -94,7 +96,7 @@ let home_handler = fun conn _req ->
 
 let dashboard_handler = fun conn _req ->
   (* Get authenticated user from connection *)
-  match Middleware.Basic_auth.get "basic_auth_user" conn with
+  match Middleware.Basic_auth.get user_key conn with
   | Some user ->
       let html =
         String.concat
@@ -133,7 +135,7 @@ let dashboard_handler = fun conn _req ->
       |> Conn.send
 
 let admin_handler = fun conn _req ->
-  match Middleware.Basic_auth.get "basic_auth_user" conn with
+  match Middleware.Basic_auth.get user_key conn with
   | Some user ->
       (* Check if user is admin *)
       if String.equal user.DB.role "admin" then
@@ -182,7 +184,7 @@ let admin_handler = fun conn _req ->
       |> Conn.send
 
 let profile_handler = fun conn _req ->
-  match Middleware.Basic_auth.get "basic_auth_user" conn with
+  match Middleware.Basic_auth.get user_key conn with
   | Some user ->
       let json =
         String.concat
@@ -226,6 +228,7 @@ let main ~args:_ =
     logger;
     basic_auth_with_validation
       ~validate
+      ~assign_to:user_key
       ~realm:"Member Area"
       ~skip:(fun conn ->
         let path = Conn.path conn in

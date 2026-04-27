@@ -6,6 +6,7 @@ module Vector = Vector
 module Map = Map
 module HashMap = Hashmap
 module HashSet = Hashset
+module TypeMap = TypeMap
 module Queue = Queue
 module Deque = Deque
 module Heap = Heap

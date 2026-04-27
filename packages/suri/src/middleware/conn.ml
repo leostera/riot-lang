@@ -8,8 +8,7 @@ type upgrade_info = {
   handler: Channel.Handler.t;
 }
 
-(** Extensible type for storing arbitrary data in connection *)
-type assign_value = ..
+type 'a assign_key = 'a TypeMap.key
 
 type t = {
   socket_conn: Socket_pool.Connection.t option;
@@ -25,7 +24,7 @@ type t = {
   halted: bool;
   sent: bool;
   upgrade: upgrade_info option;
-  assigns: (string, assign_value) HashMap.t;
+  assigns: TypeMap.t;
 }
 
 let make_from_request = fun ?socket_conn ~req ~peer ?(params = []) ?(body_params = []) () ->
@@ -42,7 +41,7 @@ let make_from_request = fun ?socket_conn ~req ~peer ?(params = []) ?(body_params
     halted = false;
     sent = false;
     upgrade = None;
-    assigns = HashMap.create ();
+    assigns = TypeMap.create ();
   }
 
 let make = fun socket_conn req ->
@@ -195,8 +194,10 @@ let to_response = fun t ->
   else
     Web_server.Response.make t.resp_status ~headers:t.resp_headers ~body:t.resp_body ()
 
+let assign_key = fun () -> TypeMap.key ()
+
 let assign = fun key value t ->
-  let _ = HashMap.insert t.assigns ~key ~value in
+  let _ = TypeMap.insert t.assigns ~key ~value in
   ()
 
-let get_assign = fun key t -> HashMap.get t.assigns ~key
+let get_assign = fun key t -> TypeMap.get t.assigns ~key

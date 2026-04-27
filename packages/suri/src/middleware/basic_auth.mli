@@ -65,10 +65,18 @@ open Std
      ]
    ]}
 
-   Access authenticated user in handlers:
+   Access authenticated user in handlers by creating a typed key and passing it
+   to [middleware_with_validation]:
    {[
+     let user_key = Basic_auth.key ()
+
+     let app = Middleware.[
+       basic_auth_with_validation ~assign_to:user_key ~validate ();
+       router routes;
+     ]
+
      let handler ~conn ~next:_ =
-       match Basic_auth.get "user" conn with
+       match Basic_auth.get user_key conn with
        | Some user ->
            Printf.sprintf "Welcome, %s!" user.username
            |> Conn.respond conn ~status:Ok ~body:_
@@ -133,6 +141,7 @@ open Std
    ]}
 *)
 type 'a validation_fn = username:string -> password:string -> 'a option
+type 'a key = 'a Conn.assign_key
 (** {1 Middleware} *)
 (**
    Create Basic Auth middleware with static credentials.
@@ -191,6 +200,8 @@ val middleware:
 
    Example:
    {[
+     let user_key = Basic_auth.key ()
+
      let validate ~username ~password =
        match Database.find_user username with
        | Some user when verify_password user password -> Some user
@@ -199,15 +210,16 @@ val middleware:
 
      let app = Middleware.[
        logger;
-       basic_auth_with_validation ~validate ~realm:"Member Area" ();
+       basic_auth_with_validation ~assign_to:user_key ~validate ~realm:"Member Area" ();
        router routes;
      ]
    ]}
 
-   The validated user data is stored in the connection:
+   When [~assign_to] is provided, the validated user data is stored in the
+   connection under that typed key:
    {[
      let handler ~conn ~next:_ =
-       match Basic_auth.get "user" conn with
+       match Basic_auth.get user_key conn with
        | Some user -> (* user is what validate returned *)
        | None -> (* should never happen if middleware passed *)
    ]}
@@ -215,6 +227,7 @@ val middleware:
 val middleware_with_validation:
   ?realm:string ->
   ?skip:(Conn.t -> bool) ->
+  ?assign_to:'a key ->
   validate:'a validation_fn ->
   unit ->
   Pipeline.middleware
@@ -242,21 +255,28 @@ val middleware_with_validation:
 val get_credentials: Conn.t -> (string * string) option
 
 (**
+   Create a typed key for storing authenticated user data in connection.
+*)
+val key: unit -> 'a key
+
+(**
    Store authenticated user data in connection.
 
-   This is called automatically by {!middleware_with_validation}.
+   This is called automatically by {!middleware_with_validation} when
+   [~assign_to] is provided.
    Use this if you need to store additional authentication data.
 
    Example:
    {[
-     let conn = Basic_auth.assign "user_role" "admin" conn in
+     let user_role = Basic_auth.key () in
+     let conn = Basic_auth.assign user_role "admin" conn in
      (* Later... *)
-     match Basic_auth.get "user_role" conn with
+     match Basic_auth.get user_role conn with
      | Some role -> Printf.printf "Role: %s\n" role
      | None -> ()
    ]}
 *)
-val assign: string -> 'a -> Conn.t -> Conn.t
+val assign: 'a key -> 'a -> Conn.t -> Conn.t
 
 (**
    Get authenticated user data from connection.
@@ -265,15 +285,12 @@ val assign: string -> 'a -> Conn.t -> Conn.t
 
    Example:
    {[
-     match Basic_auth.get "basic_auth_user" conn with
+     match Basic_auth.get user_key conn with
      | Some user -> Printf.printf "Welcome, %s!\n" user.username
      | None -> print_endline "Not authenticated"
    ]}
-
-   {b Note}: The default key used by {!middleware_with_validation} is
-   ["basic_auth_user"].
 *)
-val get: string -> Conn.t -> 'a option
+val get: 'a key -> Conn.t -> 'a option
 
 val decode_credentials: string -> (string * string) option
 

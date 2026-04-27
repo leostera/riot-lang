@@ -55,9 +55,7 @@ let require_valid_secret = fun secret ->
   | Ok () -> ()
   | Error error -> panic (secret_error_to_string error)
 
-(** Extend Conn.assign_value to store sessions *)
-type Conn.assign_value +=
-  | Session_data of t
+let session_key: t Conn.assign_key = Conn.assign_key ()
 
 (** Create empty session *)
 let create = fun ~cookie_name ~secret () ->
@@ -299,14 +297,8 @@ let from_cookie_value = fun ~cookie_name ~secret cookie_value ->
 
 (** {1 Middleware} *)
 
-(** Storage key for session in connection *)
-let session_key = "suri.session"
-
 (** Find session from connection *)
-let find = fun conn ->
-  match Conn.get_assign session_key conn with
-  | Option.Some (Session_data session) -> Option.some session
-  | _ -> Option.none
+let find = fun conn -> Conn.get_assign session_key conn
 
 (** Get session from connection - creates new if not present *)
 let get = fun conn ->
@@ -350,7 +342,7 @@ let middleware = fun
           )
     in
     (* Store session in connection *)
-    Conn.assign session_key (Session_data session) conn;
+    Conn.assign session_key session conn;
     (* Call next handler *)
     let conn' = next conn in
     (* If session was modified, set cookie in response *)

@@ -808,6 +808,7 @@ module Basic_auth = Basic_auth
      ]
 
      (* Custom validation *)
+     let user_key = Basic_auth.key () in
      let validate ~username ~password =
        match Database.find_user username with
        | Some user when verify_password user password -> Some user
@@ -815,7 +816,7 @@ module Basic_auth = Basic_auth
      in
      let app = Middleware.[
        logger;
-       basic_auth_with_validation ~validate ~realm:"Member Area" ();
+       basic_auth_with_validation ~assign_to:user_key ~validate ~realm:"Member Area" ();
        router routes;
      ]
    ]}
@@ -879,6 +880,8 @@ val basic_auth:
    Use for database lookups, LDAP, or any custom auth logic.
 
    {[
+     let user_key = Basic_auth.key () in
+
      let validate ~username ~password =
        match Database.find_user username with
        | Some user when verify_password user password -> Some user
@@ -887,7 +890,7 @@ val basic_auth:
 
      let app = Middleware.[
        logger;
-       basic_auth_with_validation ~validate ~realm:"Member Area" ();
+       basic_auth_with_validation ~assign_to:user_key ~validate ~realm:"Member Area" ();
        router routes;
      ]
    ]}
@@ -897,10 +900,18 @@ val basic_auth:
    - [realm] - Realm name shown in browser prompt (default: "Restricted Area")
    - [skip] - Function to skip authentication for specific requests
 
-   Access authenticated user in handlers:
+   Access authenticated user in handlers by creating a typed key and passing it
+   to the middleware:
    {[
+     let user_key = Basic_auth.key ()
+
+     let app = Middleware.[
+       basic_auth_with_validation ~assign_to:user_key ~validate ~realm:"Member Area" ();
+       router routes;
+     ]
+
      let handler ~conn ~next:_ =
-       match Basic_auth.get "basic_auth_user" conn with
+       match Basic_auth.get user_key conn with
        | Some user -> (* user is what validate returned *)
        | None -> (* should never happen if middleware passed *)
    ]}
@@ -910,6 +921,7 @@ val basic_auth:
 val basic_auth_with_validation:
   ?realm:string ->
   ?skip:(Conn.t -> bool) ->
+  ?assign_to:'a Basic_auth.key ->
   validate:'a Basic_auth.validation_fn ->
   unit ->
   Pipeline.middleware

@@ -98,37 +98,15 @@ let get_credentials = fun conn ->
   | Option.Some auth -> decode_credentials auth
   | Option.None -> Option.none
 
-(** {1 Connection State} *)
+type 'a key = 'a Conn.assign_key
 
-(* Unfortunately, the extensible variant system makes this difficult.
-   For now, we'll use a workaround: store as a ref and use physical equality.
-   This is safe because we control the lifecycle.
-*)
-
-type 'a value_box = {
-  mutable data: 'a option;
-}
-
-let make_box = fun value -> { data = Some value }
-
-external unsafe_coerce: 'a -> 'b = "%identity"
-
-type Conn.assign_value +=
-  | Basic_auth_value: 'a value_box -> Conn.assign_value
+let key = Conn.assign_key
 
 let assign = fun key value conn ->
-  let box = make_box value in
-  Conn.assign key (Basic_auth_value box) conn;
+  Conn.assign key value conn;
   conn
 
-let get = fun key conn ->
-  match Conn.get_assign key conn with
-  | Some (Basic_auth_value box) -> (
-      match box.data with
-      | Some value -> Some (unsafe_coerce value)
-      | None -> None
-    )
-  | _ -> None
+let get = fun key conn -> Conn.get_assign key conn
 
 (** {1 HTTP Responses} *)
 
@@ -170,7 +148,7 @@ let middleware = fun ?(realm = "Restricted Area") ?skip ~username ~password () -
           (* No credentials provided - return 401 *)
           unauthorized conn realm
 
-let middleware_with_validation = fun ?(realm = "Restricted Area") ?skip ~validate () ->
+let middleware_with_validation = fun ?(realm = "Restricted Area") ?skip ?assign_to ~validate () ->
   fun ~conn ~next ->
     let should_skip =
       match skip with
@@ -184,8 +162,11 @@ let middleware_with_validation = fun ?(realm = "Restricted Area") ?skip ~validat
       | Option.Some (username, password) -> (
           match validate ~username ~password with
           | Option.Some user_data ->
-              (* Store authenticated user in connection *)
-              let conn' = assign "basic_auth_user" user_data conn in
+              let conn' =
+                match assign_to with
+                | Some key -> assign key user_data conn
+                | None -> conn
+              in
               next conn'
           | Option.None -> unauthorized conn realm
         )

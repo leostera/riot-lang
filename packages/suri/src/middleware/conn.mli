@@ -362,18 +362,24 @@ val to_response: t -> Web_server.Response.t
 *)
 (** ## Private Data Storage *)
 
-type assign_value = ..
+type 'a assign_key = 'a Collections.TypeMap.key
 
 (**
-   Extensible type for storing arbitrary data in connection.
-   Middleware can extend this type to store their own data.
+   Typed key for storing middleware-specific data in a connection.
+   Each key carries a runtime type witness, so values can be recovered without
+   unsafe casts.
 *)
-val assign: string -> assign_value -> t -> unit
+val assign_key: unit -> 'a assign_key
 
 (**
-   Store arbitrary data in the connection.
+   Create a fresh typed assignment key.
+*)
+val assign: 'a assign_key -> 'a -> t -> unit
+
+(**
+   Store middleware-specific data in the connection.
    Used by middleware to pass data down the pipeline.
 *)
-val get_assign: string -> t -> assign_value option
+val get_assign: 'a assign_key -> t -> 'a option
 
-(** Retrieve data stored by [assign]. *)
+(** Retrieve typed data stored by [assign]. *)
