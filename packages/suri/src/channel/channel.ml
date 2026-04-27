@@ -192,12 +192,4 @@ module Handler = struct
       | InitializationFailed _ -> "WebSocket handler initialization failed"
       | UnknownOpcode code -> "Unknown WebSocket opcode: " ^ Int.to_string code
   end
-
-  module For_testing = struct
-    let initialize = initialize
-
-    let reported_error = reported_error
-
-    let reported_error_to_string = reported_error_to_string
-  end
 end

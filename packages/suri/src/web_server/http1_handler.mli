@@ -32,71 +32,59 @@ type io_error =
   | ConnectionFailed of Socket_pool.Connection.error
 type parse_error =
   | UpstreamParseError of { message: string }
+type websocket_key_error =
+  | InvalidBase64
+  | InvalidLength of { actual: int; expected: int }
+type websocket_upgrade_error =
+  | InvalidWebSocketMethod of Std.Net.Http.Method.t
+  | InvalidWebSocketVersion of Std.Net.Http.Version.t
+  | MissingWebSocketUpgrade
+  | InvalidWebSocketUpgrade of { value: string }
+  | MissingWebSocketConnectionUpgrade
+  | MissingWebSocketVersion
+  | UnsupportedWebSocketVersion of { value: string; expected: string }
+  | MissingWebSocketKey
+  | InvalidWebSocketKey of { value: string; reason: websocket_key_error }
+type content_length_error =
+  | InvalidInteger
+  | NegativeLength of int
+type request_body_header_error =
+  | InvalidContentLength of { value: string; reason: content_length_error }
+  | ConflictingContentLength of {
+      values: string list;
+    }
+  | TransferEncodingWithContentLength of {
+      transfer_encoding: string;
+      content_lengths: string list;
+    }
+  | UnsupportedTransferEncoding of { value: string }
+type request_header_error =
+  | MissingHostHeader
 type error =
   | ParseError of parse_error
   | ExcessBodyRead
   | IoError of io_error
 val to_string_error: error -> string
 
-module For_testing: sig
-  type nonrec header_name_error = header_name_error =
-    | EmptyHeaderName
-    | InvalidHeaderNameChar of { char: char; index: int }
-  type nonrec header_value_error = header_value_error =
-    | InvalidHeaderValueChar of { char: char; index: int }
-  type nonrec serialization_error = serialization_error =
-    | InvalidHeaderName of { name: string; reason: header_name_error }
-    | InvalidHeaderValue of { name: string; value: string; reason: header_value_error }
-  type parse_error =
-    | UpstreamParseError of { message: string }
-  type websocket_key_error =
-    | InvalidBase64
-    | InvalidLength of { actual: int; expected: int }
-  type websocket_upgrade_error =
-    | InvalidWebSocketMethod of Std.Net.Http.Method.t
-    | InvalidWebSocketVersion of Std.Net.Http.Version.t
-    | MissingWebSocketUpgrade
-    | InvalidWebSocketUpgrade of { value: string }
-    | MissingWebSocketConnectionUpgrade
-    | MissingWebSocketVersion
-    | UnsupportedWebSocketVersion of { value: string; expected: string }
-    | MissingWebSocketKey
-    | InvalidWebSocketKey of { value: string; reason: websocket_key_error }
-  type content_length_error =
-    | InvalidInteger
-    | NegativeLength of int
-  type request_body_header_error =
-    | InvalidContentLength of { value: string; reason: content_length_error }
-    | ConflictingContentLength of {
-        values: string list;
-      }
-    | TransferEncodingWithContentLength of {
-        transfer_encoding: string;
-        content_lengths: string list;
-      }
-    | UnsupportedTransferEncoding of { value: string }
-  type request_header_error =
-    | MissingHostHeader
-  val serialize_response: Response.t -> (string, serialization_error) Std.result
+val serialize_response: Response.t -> (string, serialization_error) Std.result
 
-  val compute_websocket_accept: string -> string
+val compute_websocket_accept: string -> string
 
-  val validate_websocket_upgrade: Request.t -> (string, websocket_upgrade_error) Std.result
+val validate_websocket_upgrade: Request.t -> (string, websocket_upgrade_error) Std.result
 
-  val websocket_upgrade_error_to_string: websocket_upgrade_error -> string
+val websocket_upgrade_error_to_string: websocket_upgrade_error -> string
 
-  val validate_request_body_headers:
-    Std.Net.Http.Request.t ->
-    (int, request_body_header_error) Std.result
+val validate_request_body_headers:
+  Std.Net.Http.Request.t ->
+  (int, request_body_header_error) Std.result
 
-  val request_body_header_error_to_string: request_body_header_error -> string
+val request_body_header_error_to_string: request_body_header_error -> string
 
-  val split_request_body: string -> int -> string * string
+val split_request_body: string -> int -> string * string
 
-  val validate_request_headers: Std.Net.Http.Request.t -> (unit, request_header_error) Std.result
+val validate_request_headers: Std.Net.Http.Request.t -> (unit, request_header_error) Std.result
 
-  val request_header_error_to_string: request_header_error -> string
-end
+val request_header_error_to_string: request_header_error -> string
 
 (** Create a handler that supports WebSocket upgrades via {!Http_handler.response}. *)
 val make_handler:

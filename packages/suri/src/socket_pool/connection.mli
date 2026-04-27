@@ -79,11 +79,11 @@ val stream: t -> Std.Net.TcpStream.t
 *)
 val send_file: t -> ?off:int -> len:int -> string -> (unit, send_file_error) result
 
-module For_testing: sig
-  val write_all_with:
-    write:(bytes -> pos:int -> len:int -> (int, 'error) result) ->
-    string ->
-    (unit, error) result
+(** [write_all_with ~write data] writes all bytes in [data] through [write]. *)
+val write_all_with:
+  write:(bytes -> pos:int -> len:int -> (int, 'error) result) ->
+  string ->
+  (unit, error) result
 
-  val send_file_slice: ?off:int -> len:int -> string -> (string, error) result
-end
+(** [send_file_slice ?off ~len content] validates and extracts a file payload slice. *)
+val send_file_slice: ?off:int -> len:int -> string -> (string, error) result

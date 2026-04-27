@@ -104,9 +104,3 @@ let send_file = fun conn ?(off = 0) ~len path ->
       | Error error -> Error error
       | Ok chunk -> send conn chunk
     )
-
-module For_testing = struct
-  let write_all_with = write_all_with
-
-  let send_file_slice = send_file_slice
-end

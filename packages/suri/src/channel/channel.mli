@@ -172,6 +172,9 @@ module Handler: sig
   val init: t -> Net.TcpStream.t -> (t, reported_error) result
 
   (** Initialize the handler with a TCP stream *)
+  val initialize: t -> (t, reported_error) result
+
+  (** Initialize the handler without a TCP stream. *)
   val handle_frame: t -> Http.Ws.Frame.t -> Net.TcpStream.t -> (t, reported_error) result
 
   (** Handle an incoming frame *)
@@ -213,13 +216,5 @@ module Handler: sig
 
     (** Default message handler: ignores all messages *)
     val error_to_string: error -> string
-  end
-
-  module For_testing: sig
-    val initialize: t -> (t, reported_error) result
-
-    val reported_error: reported_error -> error
-
-    val reported_error_to_string: reported_error -> string
   end
 end

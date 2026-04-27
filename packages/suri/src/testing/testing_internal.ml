@@ -10,9 +10,9 @@ module Connection = struct
     | FileError of Std.Fs.error
     | InvalidRange of send_file_range_error
 
-  let write_all_with = Socket_pool.Connection.For_testing.write_all_with
+  let write_all_with = Socket_pool.Connection.write_all_with
 
-  let send_file_slice = Socket_pool.Connection.For_testing.send_file_slice
+  let send_file_slice = Socket_pool.Connection.send_file_slice
 end
 
 module Handler = struct
@@ -40,30 +40,30 @@ module Channel = struct
     | Push of Http.Ws.Frame.t list * 'state
     | Error of 'error
 
-  let initialize = ChannelHandler.For_testing.initialize
+  let initialize = ChannelHandler.initialize
 
-  let reported_error = ChannelHandler.For_testing.reported_error
+  let reported_error = ChannelHandler.reported_error
 
-  let reported_error_to_string = ChannelHandler.For_testing.reported_error_to_string
+  let reported_error_to_string = ChannelHandler.reported_error_to_string
 end
 
 module Http1 = struct
-  type header_name_error = Web_server.Http1.For_testing.header_name_error =
+  type header_name_error = Web_server.Http1.header_name_error =
     | EmptyHeaderName
     | InvalidHeaderNameChar of { char: char; index: int }
 
-  type header_value_error = Web_server.Http1.For_testing.header_value_error =
+  type header_value_error = Web_server.Http1.header_value_error =
     | InvalidHeaderValueChar of { char: char; index: int }
 
-  type serialization_error = Web_server.Http1.For_testing.serialization_error =
+  type serialization_error = Web_server.Http1.serialization_error =
     | InvalidHeaderName of { name: string; reason: header_name_error }
     | InvalidHeaderValue of { name: string; value: string; reason: header_value_error }
 
-  type websocket_key_error = Web_server.Http1.For_testing.websocket_key_error =
+  type websocket_key_error = Web_server.Http1.websocket_key_error =
     | InvalidBase64
     | InvalidLength of { actual: int; expected: int }
 
-  type websocket_upgrade_error = Web_server.Http1.For_testing.websocket_upgrade_error =
+  type websocket_upgrade_error = Web_server.Http1.websocket_upgrade_error =
     | InvalidWebSocketMethod of Std.Net.Http.Method.t
     | InvalidWebSocketVersion of Std.Net.Http.Version.t
     | MissingWebSocketUpgrade
@@ -74,11 +74,11 @@ module Http1 = struct
     | MissingWebSocketKey
     | InvalidWebSocketKey of { value: string; reason: websocket_key_error }
 
-  type content_length_error = Web_server.Http1.For_testing.content_length_error =
+  type content_length_error = Web_server.Http1.content_length_error =
     | InvalidInteger
     | NegativeLength of int
 
-  type request_body_header_error = Web_server.Http1.For_testing.request_body_header_error =
+  type request_body_header_error = Web_server.Http1.request_body_header_error =
     | InvalidContentLength of { value: string; reason: content_length_error }
     | ConflictingContentLength of {
         values: string list;
@@ -89,26 +89,24 @@ module Http1 = struct
       }
     | UnsupportedTransferEncoding of { value: string }
 
-  type request_header_error = Web_server.Http1.For_testing.request_header_error =
+  type request_header_error = Web_server.Http1.request_header_error =
     | MissingHostHeader
 
-  let serialize_response = Web_server.Http1.For_testing.serialize_response
+  let serialize_response = Web_server.Http1.serialize_response
 
-  let compute_websocket_accept = Web_server.Http1.For_testing.compute_websocket_accept
+  let compute_websocket_accept = Web_server.Http1.compute_websocket_accept
 
-  let validate_websocket_upgrade = Web_server.Http1.For_testing.validate_websocket_upgrade
+  let validate_websocket_upgrade = Web_server.Http1.validate_websocket_upgrade
 
-  let websocket_upgrade_error_to_string =
-    Web_server.Http1.For_testing.websocket_upgrade_error_to_string
+  let websocket_upgrade_error_to_string = Web_server.Http1.websocket_upgrade_error_to_string
 
-  let validate_request_body_headers = Web_server.Http1.For_testing.validate_request_body_headers
+  let validate_request_body_headers = Web_server.Http1.validate_request_body_headers
 
-  let request_body_header_error_to_string =
-    Web_server.Http1.For_testing.request_body_header_error_to_string
+  let request_body_header_error_to_string = Web_server.Http1.request_body_header_error_to_string
 
-  let split_request_body = Web_server.Http1.For_testing.split_request_body
+  let split_request_body = Web_server.Http1.split_request_body
 
-  let validate_request_headers = Web_server.Http1.For_testing.validate_request_headers
+  let validate_request_headers = Web_server.Http1.validate_request_headers
 
-  let request_header_error_to_string = Web_server.Http1.For_testing.request_header_error_to_string
+  let request_header_error_to_string = Web_server.Http1.request_header_error_to_string
 end
