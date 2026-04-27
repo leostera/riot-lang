@@ -214,12 +214,21 @@ let test_request_parse_slice = fun _ctx ->
       else
         Result.Ok ()
 
-let test_request_missing_lf_after_request_line_current_behavior = fun _ctx ->
+let test_request_rejects_missing_lf_after_request_line = fun _ctx ->
   let req = "GET /path HTTP/1.1\rHost: example.com\r\n\r\n" in
   match Http1.Request.parse req with
-  | Done _ -> Result.Ok ()
-  | Error error -> Result.Error ("Expected current Done behavior, got error " ^ error)
-  | Need_more -> Result.Error "Expected current Done behavior, got Need_more"
+  | Error "Invalid CRLF" -> Result.Ok ()
+  | Error error -> Result.Error ("Expected invalid CRLF error, got " ^ error)
+  | Need_more -> Result.Error "Expected invalid CRLF error, got Need_more"
+  | Done _ -> Result.Error "Expected invalid CRLF error"
+
+let test_request_rejects_missing_lf_after_header_line = fun _ctx ->
+  let req = "GET /path HTTP/1.1\r\nHost: example.com\r\r\n" in
+  match Http1.Request.parse req with
+  | Error "Invalid CRLF" -> Result.Ok ()
+  | Error error -> Result.Error ("Expected invalid CRLF error, got " ^ error)
+  | Need_more -> Result.Error "Expected invalid CRLF error, got Need_more"
+  | Done _ -> Result.Error "Expected invalid CRLF error"
 
 let test_request_rejects_too_many_headers = fun _ctx ->
   let headers =
@@ -354,8 +363,11 @@ let tests =
     case "request_with_1m_body" test_request_with_1m_body;
     case "request_parse_slice" test_request_parse_slice;
     case
-      "request_missing_lf_after_request_line_current_behavior"
-      test_request_missing_lf_after_request_line_current_behavior;
+      "request rejects missing lf after request line"
+      test_request_rejects_missing_lf_after_request_line;
+    case
+      "request rejects missing lf after header line"
+      test_request_rejects_missing_lf_after_header_line;
     case "request_rejects_too_many_headers" test_request_rejects_too_many_headers;
     case "response_200_ok" test_response_200_ok;
     case "response_404" test_response_404;

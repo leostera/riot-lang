@@ -122,10 +122,11 @@ type 'a slice_parse_result =
   | Slice_need_more
   | Slice_error of string
 
-let skip_line_ending = fun cursor ->
-  match SliceCursor.advance_by cursor 2 with
-  | None -> Slice_error "Invalid line ending"
-  | Some cursor -> Slice_done cursor
+let skip_crlf = fun cursor ->
+  match SliceCursor.take_n cursor 2 with
+  | None -> Slice_need_more
+  | Some (ending, cursor) when Slice.equal_string ending "\r\n" -> Slice_done cursor
+  | Some _ -> Slice_error "Invalid CRLF"
 
 let take_header_block_terminator = fun cursor ->
   match SliceCursor.take_n cursor 2 with
@@ -140,7 +141,7 @@ let parse_request_line_owned = fun ?(max_length = 8_192) input ->
       if Slice.length line > max_length then
         Slice_error "Request line too long"
       else
-        match skip_line_ending cursor with
+        match skip_crlf cursor with
         | Slice_need_more
         | Slice_error _ as result -> result
         | Slice_done cursor -> (
@@ -180,7 +181,7 @@ let parse_header_line_owned = fun cursor ->
   match SliceCursor.take_until_char cursor '\r' with
   | None -> Slice_need_more
   | Some (line, cursor) -> (
-      match skip_line_ending cursor with
+      match skip_crlf cursor with
       | Slice_need_more
       | Slice_error _ as result -> result
       | Slice_done cursor -> (
@@ -267,9 +268,7 @@ let parse_slice = fun
       | Slice_error error -> Common.Error error
       | Slice_done (headers_list, remaining) ->
           let body = SliceCursor.remaining remaining in
-          let request =
-            request_of_parts parsed_method parsed_uri parsed_version headers_list body
-          in
+          let request = request_of_parts parsed_method parsed_uri parsed_version headers_list body in
           Common.Done { value = request; remaining = "" }
     )
 
