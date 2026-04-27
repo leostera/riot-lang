@@ -161,6 +161,39 @@ let test_liveview_protocol_returns_structured_message_errors = fun _ctx ->
   | Ok _ -> Error "expected unknown LiveView message format to fail"
   | Error error -> Error (LiveViewProtocol.client_msg_error_to_string error)
 
+let test_liveview_protocol_serializes_server_errors_structurally = fun _ctx ->
+  let message =
+    LiveViewProtocol.Error (LiveViewProtocol.ClientMessageDecodeFailed (LiveViewProtocol.InvalidJson (Data.Json.Unexpected_end_of_input {
+      expected = "value";
+    })))
+    |> LiveViewProtocol.serialize_server_msg
+  in
+  match Data.Json.of_string message with
+  | Error error -> Error (Data.Json.error_to_string error)
+  | Ok json ->
+      let error_type =
+        Data.Json.get_field "Error" json
+        |> Option.and_then ~fn:(Data.Json.get_field "type")
+        |> Option.and_then ~fn:Data.Json.get_string
+      in
+      let client_error_type =
+        Data.Json.get_field "Error" json
+        |> Option.and_then ~fn:(Data.Json.get_field "error")
+        |> Option.and_then ~fn:(Data.Json.get_field "type")
+        |> Option.and_then ~fn:Data.Json.get_string
+      in
+      let json_error_type =
+        Data.Json.get_field "Error" json
+        |> Option.and_then ~fn:(Data.Json.get_field "error")
+        |> Option.and_then ~fn:(Data.Json.get_field "error")
+        |> Option.and_then ~fn:(Data.Json.get_field "type")
+        |> Option.and_then ~fn:Data.Json.get_string
+      in
+      Test.assert_equal ~expected:(Some "ClientMessageDecodeFailed") ~actual:error_type;
+      Test.assert_equal ~expected:(Some "InvalidJson") ~actual:client_error_type;
+      Test.assert_equal ~expected:(Some "UnexpectedEndOfInput") ~actual:json_error_type;
+      Ok ()
+
 module TestLiveViewComponent = struct
   let id = "test-liveview"
 
@@ -214,6 +247,9 @@ let tests =
     case
       "liveview protocol returns structured message errors"
       test_liveview_protocol_returns_structured_message_errors;
+    case
+      "liveview protocol serializes server errors structurally"
+      test_liveview_protocol_serializes_server_errors_structurally;
     case "liveview rejects invalid session tokens" test_liveview_rejects_invalid_session_tokens;
   ]
 
