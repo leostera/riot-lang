@@ -47,7 +47,6 @@ type state = {
   mutable suppress_leading_token: int option;
   mutable last_leading_comment_kind: leading_comment_kind option;
   mutable suppress_list_item_leading_comments: bool;
-  mutable force_fun_body_break: bool;
   mutable force_apply_break: bool;
   mutable delimited_expr_depth: int;
 }
@@ -886,12 +885,6 @@ let with_suppressed_list_item_leading_comments = fun state fn ->
   state.suppress_list_item_leading_comments <- true;
   fn ();
   state.suppress_list_item_leading_comments <- previous
-
-let with_forced_fun_body_break = fun state fn ->
-  let previous = state.force_fun_body_break in
-  state.force_fun_body_break <- true;
-  fn ();
-  state.force_fun_body_break <- previous
 
 let with_forced_apply_break = fun state fn ->
   let previous = state.force_apply_break in
@@ -5640,7 +5633,7 @@ let infix_right_operand_can_be_bare = fun ~parent_operator right ->
       else
         false
 
-let rec render_expr = fun state expr ->
+let rec render_expr = fun ?(role = Layout.Top_expr) state expr ->
   emit_node_leading_trivia state expr;
   match ExprView.view expr with
   | Path { path } -> render_expr_path state path
@@ -5686,7 +5679,7 @@ let rec render_expr = fun state expr ->
       emit_text state "~";
       emit_token state label;
       emit_text state ":";
-      render_expr_atom state value
+      render_expr_atom ~role state value
   | LabeledArg { label = Some label; value = None } ->
       emit_text state "~";
       emit_token state label
@@ -5695,7 +5688,7 @@ let rec render_expr = fun state expr ->
       emit_text state "?";
       emit_token state label;
       emit_text state ":";
-      render_expr_atom state value
+      render_expr_atom ~role state value
   | OptionalArg { label = Some label; value = None } ->
       emit_text state "?";
       emit_token state label
@@ -5716,10 +5709,10 @@ let rec render_expr = fun state expr ->
   | Parenthesized { inner = Some inner } when not (same_ast_node expr inner)
   && expr_is_multiline inner -> render_parenthesized_expr state inner
   | Parenthesized { inner = Some inner } when not (same_ast_node expr inner) ->
-      render_expr state inner
+      render_expr ~role state inner
   | Parenthesized { inner = Some inner } ->
       emit_text state "(";
-      with_delimited_expr state (fun () -> render_expr state inner);
+      with_delimited_expr state (fun () -> render_expr ~role state inner);
       emit_text state ")"
   | Parenthesized { inner = None } -> emit_text state "()"
   | If { condition = Some condition; then_branch = Some then_branch; else_branch } ->
@@ -5727,7 +5720,7 @@ let rec render_expr = fun state expr ->
   | If _ -> unsupported_node "incomplete if expression" expr
   | Let { body = Some body; _ } -> render_let_expr state expr body
   | Let _ -> unsupported_node "let expression without body" expr
-  | Fun { body = Some body } -> render_fun_expr state expr body
+  | Fun { body = Some body } -> render_fun_expr ~role state expr body
   | Fun { body = None } -> unsupported_node "fun expression without body" expr
   | Function { first_case = Some _ } -> render_function_expr state expr
   | Function { first_case = None } -> unsupported_node "function expression without cases" expr
@@ -5923,19 +5916,19 @@ and render_tuple_expr_contents = fun state items ~render_item ->
   in
   loop 0
 
-and render_expr_atom = fun state expr ->
+and render_expr_atom = fun ?(role = Layout.Top_expr) state expr ->
   match ExprView.view expr with
   | Parenthesized { inner = Some inner } when expr_first_token_text_is expr "begin" ->
       render_expr state expr
   | Parenthesized { inner = Some inner } when not (same_ast_node expr inner) && expr_is_fun inner ->
       emit_text state "(";
-      render_expr state inner;
+      render_expr ~role state inner;
       emit_text state ")"
   | Parenthesized { inner = Some inner } when not (same_ast_node expr inner)
   && expr_has_leading_comment inner -> render_parenthesized_expr state inner
   | Parenthesized { inner = Some inner } when not (same_ast_node expr inner) ->
       if expr_can_render_atom_without_parens inner then
-        render_expr_atom state inner
+        render_expr_atom ~role state inner
       else
         render_parenthesized_expr state inner
   | Tuple -> render_expr state expr
@@ -5956,10 +5949,10 @@ and render_expr_atom = fun state expr ->
   | Extension
   | LabeledArg _
   | PolyVariant { payload = None }
-  | OptionalArg _ -> render_expr state expr
+  | OptionalArg _ -> render_expr ~role state expr
   | Fun _ ->
       emit_text state "(";
-      render_expr state expr;
+      render_expr ~role state expr;
       emit_text state ")"
   | _ -> render_parenthesized_expr state expr
 
@@ -6224,7 +6217,7 @@ and render_poly_variant_tag = fun state expr ->
       emit_token state tag
   | None -> unsupported_node "polymorphic variant expression without tag" expr
 
-and render_apply_argument = fun state arg ->
+and render_apply_argument = fun ?(role = Layout.Top_expr) state arg ->
   let rec render_split_arg arg =
     match ExprView.view arg with
     | PolyVariant { payload = Some payload } ->
@@ -6240,7 +6233,7 @@ and render_apply_argument = fun state arg ->
             render_poly_variant_tag state value;
             emit_space state;
             render_split_arg payload
-        | _ -> render_expr_atom state arg
+        | _ -> render_expr_atom ~role state arg
       )
     | OptionalArg { label = Some label; value = Some value } -> (
         match ExprView.view value with
@@ -6251,13 +6244,13 @@ and render_apply_argument = fun state arg ->
             render_poly_variant_tag state value;
             emit_space state;
             render_split_arg payload
-        | _ -> render_expr_atom state arg
+        | _ -> render_expr_atom ~role state arg
       )
     | _ ->
         if expr_is_nonliteral_negative_prefix arg then
           render_parenthesized_expr state arg
         else
-          render_expr_atom state arg
+          render_expr_atom ~role state arg
   in
   render_split_arg arg
 
@@ -6286,7 +6279,7 @@ and fun_expr_should_force_body_break_in_broken_arg = fun expr ->
       fun_expr_should_force_body_break_in_broken_arg inner
   | _ -> false
 
-and render_broken_apply_argument = fun state arg ->
+and render_broken_apply_argument = fun state ~index arg ->
   let force =
     match ExprView.view arg with
     | Fun _
@@ -6300,7 +6293,7 @@ and render_broken_apply_argument = fun state arg ->
   | RecordUpdate -> render_record_expr ~force_multiline:true state ~inline:false arg
   | _ ->
       if force then
-        with_forced_fun_body_break state (fun () -> render_apply_argument state arg)
+        render_apply_argument ~role:(Layout.Apply_arg { index; broken_parent = true }) state arg
       else
         render_apply_argument state arg
 
@@ -6442,7 +6435,7 @@ and render_apply_expr = fun state expr ->
             in
             if should_break then (
               emit_line state;
-              with_indent state 2 (fun () -> render_broken_apply_argument state arg);
+              with_indent state 2 (fun () -> render_broken_apply_argument state ~index arg);
               loop (Int.add index 1) true
             ) else (
               emit_space state;
@@ -6545,10 +6538,15 @@ and fun_params_exceed_width = fun state params ->
   in
   loop 0 3
 
-and render_fun_expr = fun state expr body ->
+and render_fun_expr = fun ?(role = Layout.Top_expr) state expr body ->
   let params = collect_fun_parameters expr in
   let param_count = Vector.length params in
   let break_params = Int.(param_count > 0) && fun_params_exceed_width state params in
+  let role_forces_body_break =
+    match role with
+    | Layout.Apply_arg { broken_parent = true; _ } -> true
+    | _ -> false
+  in
   let render_body ?(force_apply_break = false) () =
     let render () =
       match ExprView.view body with
@@ -6603,7 +6601,7 @@ and render_fun_expr = fun state expr body ->
   in
   if
     break_params
-    || state.force_fun_body_break
+    || role_forces_body_break
     || expr_has_leading_comment body
     || expr_is_multiline body
     || body_exceeds_width
@@ -9958,7 +9956,6 @@ let write = fun ~writer ?(width = 100) ?(buffer_size = 4_096) source_file ->
     suppress_leading_token = None;
     last_leading_comment_kind = None;
     suppress_list_item_leading_comments = false;
-    force_fun_body_break = false;
     force_apply_break = false;
     delimited_expr_depth = 0;
   }
