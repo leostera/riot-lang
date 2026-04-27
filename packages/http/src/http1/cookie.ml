@@ -17,6 +17,38 @@ type t = {
   same_site: same_site option;
 }
 
+type value_character_error =
+  | ControlCharacter
+  | Semicolon
+  | Comma
+
+type validation_error =
+  | EmptyName
+  | InvalidNameCharacter of { index: int; character: char }
+  | InvalidValueCharacter of { index: int; character: char; reason: value_character_error }
+
+let character_code = fun character -> Int.to_string (Char.to_int character)
+
+let value_character_error_to_string = function
+  | ControlCharacter -> "control character"
+  | Semicolon -> "semicolon"
+  | Comma -> "comma"
+
+let validation_error_to_string = function
+  | EmptyName -> "Cookie name is empty"
+  | InvalidNameCharacter { index; character } ->
+      "Cookie name contains invalid character code "
+      ^ character_code character
+      ^ " at index "
+      ^ Int.to_string index
+  | InvalidValueCharacter { index; character; reason } ->
+      "Cookie value contains "
+      ^ value_character_error_to_string reason
+      ^ " character code "
+      ^ character_code character
+      ^ " at index "
+      ^ Int.to_string index
+
 (** Parse Cookie header: "name1=value1; name2=value2" *)
 let parse = fun header ->
   String.split ~by:";" header
@@ -176,14 +208,14 @@ let make = fun
   }
 
 (** Validate cookie name (no special characters) *)
-let is_valid_name = fun name ->
+let validate_name = fun name ->
   let len = String.length name in
   if len = 0 then
-    false
+    Option.some EmptyName
   else
     let rec check i =
       if i >= len then
-        true
+        Option.none
       else
         let c = String.get_unchecked name ~at:i in
         match c with
@@ -192,31 +224,47 @@ let is_valid_name = fun name ->
         | '0' .. '9'
         | '_'
         | '-' -> check (i + 1)
-        | _ -> false
+        | _ -> Option.some (InvalidNameCharacter { index = i; character = c })
     in
     check 0
 
+let is_valid_name = fun name ->
+  match validate_name name with
+  | Option.None -> true
+  | Some _ -> false
+
 (** Validate cookie value (basic check for control characters) *)
-let is_valid_value = fun value ->
+let validate_value = fun value ->
   let len = String.length value in
   let rec check i =
     if i >= len then
-      true
+      Option.none
     else
       let c = String.get_unchecked value ~at:i in
-      if Char.to_int c < 32 || c = ';' || c = ',' then
-        false
+      if Char.to_int c < 32 then
+        Option.some (InvalidValueCharacter { index = i; character = c; reason = ControlCharacter })
+      else if c = ';' then
+        Option.some (InvalidValueCharacter { index = i; character = c; reason = Semicolon })
+      else if c = ',' then
+        Option.some (InvalidValueCharacter { index = i; character = c; reason = Comma })
       else
         check (i + 1)
   in
   check 0
 
+let is_valid_value = fun value ->
+  match validate_value value with
+  | Option.None -> true
+  | Some _ -> false
+
 (** Create validated cookie *)
 let make_validated = fun
   ~name ~value ?max_age ?expires ?path ?domain ?secure ?http_only ?same_site () ->
-  if not (is_valid_name name) then
-    Error (String.concat "" [ "Invalid cookie name: "; name ])
-  else if not (is_valid_value value) then
-    Error "Invalid cookie value (contains control characters)"
-  else
-    Ok (make ~name ~value ?max_age ?expires ?path ?domain ?secure ?http_only ?same_site ())
+  match validate_name name with
+  | Some error -> Error error
+  | Option.None -> (
+      match validate_value value with
+      | Some error -> Error error
+      | Option.None ->
+          Ok (make ~name ~value ?max_age ?expires ?path ?domain ?secure ?http_only ?same_site ())
+    )

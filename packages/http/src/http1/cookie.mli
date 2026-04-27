@@ -90,7 +90,18 @@ type t = {
   same_site: same_site option;
   (** CSRF protection *)
 }
+type value_character_error =
+  | ControlCharacter
+  | Semicolon
+  | Comma
+type validation_error =
+  | EmptyName
+  | InvalidNameCharacter of { index: int; character: char }
+  | InvalidValueCharacter of { index: int; character: char; reason: value_character_error }
+val validation_error_to_string: validation_error -> string
+
 (** {2 Parsing} *)
+
 (**
    Parse Cookie header into name-value pairs.
 
@@ -171,7 +182,7 @@ val make:
    - Name contains only alphanumeric, underscore, hyphen
    - Value contains no control characters or semicolons
 
-   Returns [Error msg] if validation fails.
+   Returns [Error error] if validation fails.
 *)
 val make_validated:
   name:string ->
@@ -184,7 +195,7 @@ val make_validated:
   ?http_only:bool ->
   ?same_site:same_site ->
   unit ->
-  (t, string) result
+  (t, validation_error) result
 
 (** {2 Validation} *)
 
