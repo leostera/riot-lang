@@ -38,15 +38,11 @@ let websocket = fun
   path
   (module H : Channel.Handler.Intf with type args = a and type state = s)
   (args: a) ->
-  (* This creates a route that's meant to be used with a Handler.t-based server *)
-  (* It won't work correctly with the middleware-only routing we currently have *)
-  (* TODO: This needs to be integrated properly with the handler-based approach *)
   get
     path
-    (fun conn req ->
-      conn
-      |> Conn.with_status Net.Http.Status.SwitchingProtocols
-      |> Conn.send)
+    (fun conn _req ->
+      let handler = Channel.Handler.make (module H) args in
+      Conn.upgrade_websocket Channel.Handler.{ do_upgrade = true } handler conn)
 
 let normalize_path = fun path ->
   let path =
@@ -94,9 +90,13 @@ module Matcher = struct
     let pattern_segs = parse_path pattern in
     let path_parts =
       String.split_on_char '/' path
-      |> List.filter ~fn:(fun s -> s != "")
+      |> List.filter ~fn:(fun s -> not (s = ""))
     in
     match_segments pattern_segs path_parts
+end
+
+module For_testing = struct
+  let match_path = Matcher.match_path
 end
 
 let rec flatten_routes = fun prefix routes ->

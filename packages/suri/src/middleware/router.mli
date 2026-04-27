@@ -269,6 +269,10 @@ val websocket:
   'a ->
   route
 
+module For_testing: sig
+  val match_path: string -> string -> (string * string) list option
+end
+
 (**
    Convert a list of routes into middleware.
 

@@ -2,6 +2,7 @@ open Std
 
 module Component = Suri.Component
 module Basic_auth = Suri.Middleware.Basic_auth
+module Router = Suri.Middleware.Router
 module Static = Suri.Middleware.Static
 module Response = Suri.Response
 module Http1 = Suri.For_testing.Http1
@@ -96,6 +97,22 @@ let test_static_directory_listing_escapes_displayed_values = fun _ctx ->
   Test.assert_true (String.contains html "Index of /tmp/&lt;root&gt;");
   Test.assert_true (String.contains html "&lt;script&gt;alert(1)&lt;/script&gt;");
   Test.assert_false (String.contains html "<script>alert(1)</script>");
+  Ok ()
+
+let test_router_matcher_ignores_empty_path_segments = fun _ctx ->
+  Test.assert_equal
+    ~expected:(Some [ ("id", "123"); ])
+    ~actual:(Router.For_testing.match_path "/users/:id" "//users/123/");
+  Ok ()
+
+let test_router_matcher_keeps_root_exact = fun _ctx ->
+  Test.assert_equal ~expected:(Some []) ~actual:(Router.For_testing.match_path "/" "/");
+  Test.assert_equal ~expected:None ~actual:(Router.For_testing.match_path "/" "/assets");
+  Ok ()
+
+let test_router_matcher_rejects_partial_literal_segments = fun _ctx ->
+  Test.assert_equal ~expected:None ~actual:(Router.For_testing.match_path "/assets" "/assets2");
+  Test.assert_equal ~expected:(Some []) ~actual:(Router.For_testing.match_path "/assets" "/assets/");
   Ok ()
 
 let test_basic_auth_accepts_case_insensitive_scheme = fun _ctx ->
@@ -228,6 +245,13 @@ let tests =
     case
       "static directory listing escapes displayed values"
       test_static_directory_listing_escapes_displayed_values;
+    case
+      "router matcher ignores empty path segments"
+      test_router_matcher_ignores_empty_path_segments;
+    case "router matcher keeps root exact" test_router_matcher_keeps_root_exact;
+    case
+      "router matcher rejects partial literal segments"
+      test_router_matcher_rejects_partial_literal_segments;
     case
       "basic auth accepts case insensitive scheme"
       test_basic_auth_accepts_case_insensitive_scheme;
