@@ -5,6 +5,10 @@ type t = {
   mutable next_frame: Time.Instant.t;
 }
 
+type tick_result =
+  | Frame
+  | Skip
+
 let add_duration = fun time rate -> Time.Instant.add time (Time.Duration.from_secs_float rate)
 
 let make = fun frame_rate ->
@@ -20,6 +24,6 @@ let tick = fun ?(now = Time.Instant.now ()) t ->
   if Time.Instant.compare now t.next_frame != Order.LT then (
     (* Add frame_rate to next_frame, not to now, to maintain consistent intervals *)
     t.next_frame <- add_duration t.next_frame t.frame_rate;
-    `frame
+    Frame
   ) else
-    `skip
+    Skip

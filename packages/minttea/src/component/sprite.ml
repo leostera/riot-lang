@@ -25,7 +25,7 @@ let advance_frame = fun m ->
     min last_frame next_frame
 
 let update = fun ?now m ->
-  if Fps.tick ?now m.fps = `frame then
+  if Fps.tick ?now m.fps = Fps.Frame then
     let current_frame = advance_frame m in
     { m with current_frame }
   else

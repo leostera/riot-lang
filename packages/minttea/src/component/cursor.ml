@@ -31,7 +31,7 @@ let make = fun ?(style = default_style) ?(blink = true) ?(fps = default_fps) () 
 let update = fun t (e: Event.t) ->
   match e with
   | Frame now when t.blink ->
-      if Fps.tick ~now t.fps = `frame then
+      if Fps.tick ~now t.fps = Fps.Frame then
         let show = not t.show in
         { t with show }
       else
