@@ -294,25 +294,15 @@ let test_expression_views = fun _ctx ->
   match Ast.Expr.view match_body with
   | Ast.Expr.Match { scrutinee; first_case } ->
       ignore scrutinee;
-      let case = Ast.MatchCase.view first_case in
       (
-        match case.Ast.MatchCase.guard with
-        | None -> ()
-        | Some _ -> panic "expected first match case without guard"
-      );
-      ignore
-        (
-          case.Ast.MatchCase.pattern
-          |> expect_some ~msg:"expected case pattern"
-          |> Result.expect ~msg:"case pattern"
-        );
-      ignore
-        (
-          case.Ast.MatchCase.body
-          |> expect_some ~msg:"expected case body"
-          |> Result.expect ~msg:"case body"
-        );
-      Ok ()
+        match Ast.MatchCase.view first_case with
+        | Ast.MatchCase.Case { pattern; guard = None; body } ->
+            ignore pattern;
+            ignore body;
+            Ok ()
+        | Ast.MatchCase.Case { guard = Some _; _ } -> Error "expected first match case without guard"
+        | Ast.MatchCase.Unknown _ -> Error "expected complete first match case"
+      )
   | _ -> Error "expected match expression"
 
 let test_assignment_operator_views = fun _ctx ->
@@ -449,10 +439,10 @@ let test_poly_variant_tuple_pattern_boundary = fun _ctx ->
   in
   match Ast.Expr.view match_body with
   | Ast.Expr.Match { first_case; _ } ->
-      let case = Ast.MatchCase.view first_case in
       let pattern =
-        case.Ast.MatchCase.pattern
-        |> require_some ~msg:"expected first match case pattern"
+        match Ast.MatchCase.view first_case with
+        | Ast.MatchCase.Case { pattern; _ } -> pattern
+        | Ast.MatchCase.Unknown _ -> panic "expected first match case pattern"
       in
       (
         match Ast.Pattern.view pattern with
@@ -786,10 +776,10 @@ let test_poly_labeled_and_signed_views = fun _ctx ->
   in
   match Ast.Expr.view function_body with
   | Ast.Expr.Fun { body = Ast.Expr.Body_cases { first_case } } -> (
-      let case = Ast.MatchCase.view first_case in
       let pattern =
-        case.Ast.MatchCase.pattern
-        |> require_some ~msg:"expected first function case pattern"
+        match Ast.MatchCase.view first_case with
+        | Ast.MatchCase.Case { pattern; _ } -> pattern
+        | Ast.MatchCase.Unknown _ -> panic "expected first function case pattern"
       in
       match Ast.Pattern.view pattern with
       | Ast.Pattern.Literal { token } ->
@@ -1880,15 +1870,15 @@ let render = function | (((Some (((item)))))) -> item
   in
   match Ast.Expr.view render_body with
   | Ast.Expr.Fun { body = Ast.Expr.Body_cases { first_case } } -> (
-      match (Ast.MatchCase.view first_case).pattern with
-      | Some pattern -> (
+      match Ast.MatchCase.view first_case with
+      | Ast.MatchCase.Case { pattern; _ } -> (
           match Ast.Pattern.view pattern with
           | Ast.Pattern.Construct { payload = Some payload; _ } ->
               Test.assert_equal ~expected:SyntaxKind.PATH_PATTERN ~actual:(Ast.Node.kind payload);
               Ok ()
           | _ -> Error "expected constructor pattern"
         )
-      | None -> Error "expected function case pattern"
+      | Ast.MatchCase.Unknown _ -> Error "expected function case pattern"
     )
   | _ -> Error "expected function expression"
 
@@ -2645,14 +2635,13 @@ let test_unreachable_expression_views = fun _ctx ->
   Ast.Expr.for_each_match_case
     match_expr
     ~fn:(fun match_case ->
-      let view = Ast.MatchCase.view match_case in
-      match view.body with
-      | Some body -> (
+      match Ast.MatchCase.view match_case with
+      | Ast.MatchCase.Case { body; _ } -> (
           match Ast.UnreachableExpr.cast body with
           | Some _ -> unreachable := Some body
           | None -> ()
         )
-      | None -> ());
+      | Ast.MatchCase.Unknown _ -> ());
   let unreachable =
     !unreachable
     |> require_some ~msg:"expected unreachable expression"
@@ -3120,12 +3109,12 @@ let test_if_then_match_case_sequence_boundaries = fun _ctx ->
       match Ast.Expr.view then_branch with
       | Ast.Expr.Match { first_case; _ } -> (
           match Ast.MatchCase.view first_case with
-          | { Ast.MatchCase.body = Some case_body; _ } -> (
+          | Ast.MatchCase.Case { body = case_body; _ } -> (
               match Ast.Expr.view case_body with
               | Ast.Expr.Sequence { left = _; right = Some _ } -> Ok ()
               | _ -> Error "expected first match case body sequence to stay inside the case"
             )
-          | _ -> Error "expected first match case body"
+          | Ast.MatchCase.Unknown _ -> Error "expected first match case body"
         )
       | _ -> Error "expected if then branch to remain a match expression"
     )

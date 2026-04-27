@@ -3311,22 +3311,32 @@ end
 
 module MatchCase: sig
   type t = match_case
-  type view = {
-    pattern: pattern option;
-    guard: expr option;
-    body: expr option;
-  }
+  type view =
+    | Case of {
+        pattern: pattern;
+        guard: expr option;
+        body: expr;
+      }
+    | Unknown of Node.t
   val cast: Node.t -> t option
 
   val view: t -> view
+
+  val pattern: t -> pattern option
+
+  val guard: t -> expr option
+
+  val body: t -> expr option
 end = struct
   type t = match_case
 
-  type view = {
-    pattern: pattern option;
-    guard: expr option;
-    body: expr option;
-  }
+  type view =
+    | Case of {
+        pattern: pattern;
+        guard: expr option;
+        body: expr;
+      }
+    | Unknown of Node.t
 
   let cast = fun (node: node) ->
     if node_matches node is_match_case_kind then
@@ -3334,22 +3344,39 @@ end = struct
     else
       None
 
-  let view = fun (match_case: match_case) ->
+  let pattern = first_pattern_child
+
+  let guard_and_body = fun (match_case: match_case) ->
     let (guard, body) =
       if has_child_token_kind match_case Syntax_kind.WHEN_KW then
         (nth_expr_child match_case 0, nth_expr_child match_case 1)
       else
         (None, nth_expr_child match_case 0)
     in
-    { pattern = first_pattern_child match_case; guard; body }
+    (guard, body)
+
+  let guard = fun match_case ->
+    let (guard, _) = guard_and_body match_case in
+    guard
+
+  let body = fun match_case ->
+    let (_, body) = guard_and_body match_case in
+    body
+
+  let view = fun (match_case: match_case) ->
+    match (pattern match_case, guard_and_body match_case) with
+    | (Some pattern, (guard, Some body)) -> Case { pattern; guard; body }
+    | _ -> Unknown match_case
 end
 
 module LetBinding: sig
   type t = let_binding
-  type view = {
-    pattern: pattern option;
-    body: expr option;
-  }
+  type view =
+    | Binding of {
+        pattern: pattern;
+        body: expr;
+      }
+    | Unknown of Node.t
   val cast: Node.t -> t option
 
   val view: t -> view
@@ -3364,10 +3391,12 @@ module LetBinding: sig
 end = struct
   type t = let_binding
 
-  type view = {
-    pattern: pattern option;
-    body: expr option;
-  }
+  type view =
+    | Binding of {
+        pattern: pattern;
+        body: expr;
+      }
+    | Unknown of Node.t
 
   let cast = fun (node: node) ->
     if node_matches node is_let_binding_kind then
@@ -3379,7 +3408,10 @@ end = struct
 
   let body = first_expr_child
 
-  let view = fun (binding: let_binding) -> { pattern = pattern binding; body = body binding }
+  let view = fun (binding: let_binding) ->
+    match (pattern binding, body binding) with
+    | (Some pattern, Some body) -> Binding { pattern; body }
+    | _ -> Unknown binding
 
   let rec for_each_parameter_node = fun node ~fn ->
     match Node.kind node with

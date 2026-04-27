@@ -765,26 +765,18 @@ module Ast_deps = struct
     match A.MatchCase.cast node with
     | None -> collect_child_nodes collect_node env deps node
     | Some match_case ->
-        let view = A.MatchCase.view match_case in
-        let* deps =
-          match view.pattern with
-          | Some pattern -> collect_node env deps pattern
-          | None -> Ok deps
-        in
-        let env =
-          match view.pattern with
-          | Some pattern -> bind_pattern_modules env pattern
-          | None -> env
-        in
-        let* deps =
-          match view.guard with
-          | Some guard -> collect_node env deps guard
-          | None -> Ok deps
-        in
         (
-          match view.body with
-          | Some body -> collect_node env deps body
-          | None -> Ok deps
+          match A.MatchCase.view match_case with
+          | A.MatchCase.Case { pattern; guard; body } ->
+              let* deps = collect_node env deps pattern in
+              let env = bind_pattern_modules env pattern in
+              let* deps =
+                match guard with
+                | Some guard -> collect_node env deps guard
+                | None -> Ok deps
+              in
+              collect_node env deps body
+          | A.MatchCase.Unknown node -> collect_child_nodes collect_node env deps node
         )
 
   and collect_let_module_expr env deps node =

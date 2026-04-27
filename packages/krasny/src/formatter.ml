@@ -4125,7 +4125,7 @@ and expr_has_terminal_trailing_sequence_with_budget = fun budget expr ->
         false
       else
         (
-          match (Ast.MatchCase.view (Vector.get_unchecked cases ~at:(Int.sub length 1))).body with
+          match Ast.MatchCase.body (Vector.get_unchecked cases ~at:(Int.sub length 1)) with
           | Some body when not (same_ast_node expr body) ->
               expr_has_terminal_trailing_sequence_with_budget next_budget body
           | Some _
@@ -6239,7 +6239,7 @@ and match_cases_have_multiline_body = fun cases ->
     if Int.(index >= length) then
       false
     else
-      match (Ast.MatchCase.view (Vector.get_unchecked cases ~at:index)).body with
+      match Ast.MatchCase.body (Vector.get_unchecked cases ~at:index) with
       | Some body when expr_is_multiline body -> true
       | Some _
       | None -> loop (Int.add index 1)
@@ -6252,7 +6252,7 @@ and match_cases_have_parenthesized_multiline_body = fun cases ->
     if Int.(index >= length) then
       false
     else
-      match (Ast.MatchCase.view (Vector.get_unchecked cases ~at:index)).body with
+      match Ast.MatchCase.body (Vector.get_unchecked cases ~at:index) with
       | Some body when expr_is_parenthesized_multiline body -> true
       | Some _
       | None -> loop (Int.add index 1)
@@ -6278,43 +6278,41 @@ and render_parenthesized_match_case_body = fun state expr ->
 and render_match_case = fun state case -> render_match_case_with_body_break state case false
 
 and render_match_case_with_body_break = fun state case force_body_break ->
-  let view = Ast.MatchCase.view case in
-  emit_text state "|";
-  emit_space state;
-  (
-    match view.pattern with
-    | Some pattern -> render_pattern state pattern
-    | None -> unsupported_node "match case without pattern" case
-  );
-  (
-    match view.guard with
-    | Some guard ->
-        emit_space state;
-        emit_text state "when";
-        emit_space state;
-        render_expr state guard
-    | None -> ()
-  );
-  emit_space state;
-  emit_text state "->";
-  (
-    match view.body with
-    | Some body when expr_is_parenthesized_apply body && force_body_break ->
+  match Ast.MatchCase.view case with
+  | Ast.MatchCase.Unknown _ -> unsupported_node "match case without pattern or body" case
+  | Ast.MatchCase.Case { pattern; guard; body } ->
+      emit_text state "|";
+      emit_space state;
+      render_pattern state pattern;
+      (
+        match guard with
+        | Some guard ->
+            emit_space state;
+            emit_text state "when";
+            emit_space state;
+            render_expr state guard
+        | None -> ()
+      );
+      emit_space state;
+      emit_text state "->";
+      (
+    match body with
+    | body when expr_is_parenthesized_apply body && force_body_break ->
         emit_line state;
         with_indent state 4 (fun () -> render_expr_atom state body)
-    | Some body when expr_is_parenthesized_apply body ->
+    | body when expr_is_parenthesized_apply body ->
         emit_space state;
         render_expr_atom state body
-    | Some body when expr_is_parenthesized_multiline body ->
+    | body when expr_is_parenthesized_multiline body ->
         emit_space state;
         render_parenthesized_match_case_body state body
-    | Some body when force_body_break && expr_is_unit body ->
+    | body when force_body_break && expr_is_unit body ->
         emit_space state;
         render_expr state body
-    | Some body when force_body_break ->
+    | body when force_body_break ->
         emit_line state;
         with_indent state 4 (fun () -> render_expr state body)
-    | Some body when expr_is_tuple body
+    | body when expr_is_tuple body
     && Int.(state.delimited_expr_depth > 0)
     && expr_has_leading_comment body ->
         emit_line state;
@@ -6324,10 +6322,10 @@ and render_match_case_with_body_break = fun state case force_body_break ->
           (fun () ->
             emit_node_leading_comments_as_lines state body;
             render_expr_atom state body)
-    | Some body when expr_is_tuple body && Int.(state.delimited_expr_depth > 0) ->
+    | body when expr_is_tuple body && Int.(state.delimited_expr_depth > 0) ->
         emit_space state;
         render_expr_atom state body
-    | Some body when expr_is_tuple body && expr_has_leading_comment body ->
+    | body when expr_is_tuple body && expr_has_leading_comment body ->
         emit_line state;
         with_indent
           state
@@ -6335,10 +6333,10 @@ and render_match_case_with_body_break = fun state case force_body_break ->
           (fun () ->
             emit_node_leading_comments_as_lines state body;
             render_expr_atom state body)
-    | Some body when expr_is_tuple body ->
+    | body when expr_is_tuple body ->
         emit_space state;
         render_expr_atom state body
-    | Some body when expr_has_leading_comment body ->
+    | body when expr_has_leading_comment body ->
         emit_line state;
         with_indent
           state
@@ -6346,18 +6344,17 @@ and render_match_case_with_body_break = fun state case force_body_break ->
           (fun () ->
             emit_node_leading_comments_as_lines state body;
             render_expr state body)
-    | Some body when expr_is_multiline body ->
+    | body when expr_is_multiline body ->
         emit_line state;
         with_indent state 4 (fun () -> render_expr state body)
-    | Some body when (not (expr_is_single_line_literal body))
+    | body when (not (expr_is_single_line_literal body))
     && match_case_body_exceeds_width state body ->
         emit_line state;
         with_indent state 4 (fun () -> render_expr state body)
-    | Some body ->
+    | body ->
         emit_space state;
         render_expr state body
-    | None -> unsupported_node "match case without body" case
-  )
+      )
 
 and local_open_body_should_inline = fun state body ->
   let is_nested_let_open =
@@ -7106,7 +7103,7 @@ and let_binding_rhs_decision = fun
     ~is_multiline:(expr_is_multiline body)
 
 and let_binding_tail_should_render_multiline = fun binding ->
-  match (Ast.LetBinding.view binding).pattern with
+  match Ast.LetBinding.pattern binding with
   | Some pattern -> pattern_should_render_multiline pattern
   | None -> false
 
@@ -7234,7 +7231,8 @@ and render_let_binding_tail_with_body_break = fun
   state
   binding
   force_body_break ->
-  let view = Ast.LetBinding.view binding in
+  let binding_pattern = Ast.LetBinding.pattern binding in
+  let binding_body = Ast.LetBinding.body binding in
   let annotation = Ast.LetBinding.type_annotation binding in
   let parameters = Vector.with_capacity ~size:(Ast.Node.child_count binding) in
   Ast.LetBinding.for_each_parameter binding ~fn:(fun param -> Vector.push parameters ~value:param);
@@ -7242,14 +7240,14 @@ and render_let_binding_tail_with_body_break = fun
   let return_annotation_wants_leading_space =
     if Int.equal parameter_count 0 then
       (
-        match view.pattern with
+        match binding_pattern with
         | Some pattern -> pattern_ends_with_named_parameter pattern
         | None -> false
       )
     else
       let last = Vector.get_unchecked parameters ~at:(Int.sub parameter_count 1) in
       pattern_is_named_parameter last || (
-        match view.pattern with
+        match binding_pattern with
         | Some pattern -> pattern_ends_with_named_parameter pattern
         | None -> false
       )
@@ -7274,17 +7272,17 @@ and render_let_binding_tail_with_body_break = fun
       None
   in
   let pattern_contains_annotation annotation =
-    match view.pattern with
+    match binding_pattern with
     | Some pattern -> pattern_contains_type_annotation pattern annotation
     | None -> false
   in
   let binding_pattern_is_unit =
-    match view.pattern with
+    match binding_pattern with
     | Some pattern -> pattern_is_unit pattern
     | None -> false
   in
   let render_binding_pattern () =
-    match (view.pattern, annotation) with
+    match (binding_pattern, annotation) with
     | (Some constrained_pattern, Some annotation) -> (
         match PatternView.view constrained_pattern with
         | Constraint { pattern = Some pattern; annotation = Some existing } when same_ast_node
@@ -7354,7 +7352,7 @@ and render_let_binding_tail_with_body_break = fun
   );
   emit_space state;
   emit_text state "=";
-  match view.body with
+  match binding_body with
   | Some body -> (
       match (let_binding_rhs_decision
         ~body_suffix_width

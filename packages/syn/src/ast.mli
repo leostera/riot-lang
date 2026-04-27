@@ -456,22 +456,32 @@ end
 
 module MatchCase: sig
   type t = match_case
-  type view = {
-    pattern: pattern option;
-    guard: expr option;
-    body: expr option;
-  }
+  type view =
+    | Case of {
+        pattern: pattern;
+        guard: expr option;
+        body: expr;
+      }
+    | Unknown of Node.t
   val cast: Node.t -> t option
 
   val view: t -> view
+
+  val pattern: t -> pattern option
+
+  val guard: t -> expr option
+
+  val body: t -> expr option
 end
 
 module LetBinding: sig
   type t = let_binding
-  type view = {
-    pattern: pattern option;
-    body: expr option;
-  }
+  type view =
+    | Binding of {
+        pattern: pattern;
+        body: expr;
+      }
+    | Unknown of Node.t
   val cast: Node.t -> t option
 
   val view: t -> view

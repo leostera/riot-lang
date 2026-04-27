@@ -50,9 +50,8 @@ let diagnostic_for_expr = fun expr ->
   | Ast.Expr.Try { body; _ } -> (
       match single_match_case expr with
       | Some match_case -> (
-          let { Ast.MatchCase.pattern; body = handler_body; _ } = Ast.MatchCase.view match_case in
-          match (pattern, handler_body) with
-          | (Some pattern, Some handler_body) -> (
+          match Ast.MatchCase.view match_case with
+          | Ast.MatchCase.Case { pattern; body = handler_body; _ } -> (
               match H.pattern_name_token pattern with
               | Some token when is_reraise_body (Ast.Token.text token) handler_body ->
                   Some (H.diagnostic
@@ -66,7 +65,7 @@ let diagnostic_for_expr = fun expr ->
                     ())
               | _ -> None
             )
-          | _ -> None
+          | Ast.MatchCase.Unknown _ -> None
         )
       | None -> None
     )

@@ -37,9 +37,11 @@ let for_each_case_expr = fun expr ~fn ->
   Ast.Expr.for_each_match_case
     expr
     ~fn:(fun match_case ->
-      let { Ast.MatchCase.guard; body; _ } = Ast.MatchCase.view match_case in
-      Option.for_each guard ~fn;
-      Option.for_each body ~fn)
+      match Ast.MatchCase.view match_case with
+      | Ast.MatchCase.Case { guard; body; _ } ->
+          Option.for_each guard ~fn;
+          fn body
+      | Ast.MatchCase.Unknown _ -> ())
 
 let for_each_nested_expr = fun expr ~fn ->
   Ast.Expr.for_each_child_expr expr ~fn;

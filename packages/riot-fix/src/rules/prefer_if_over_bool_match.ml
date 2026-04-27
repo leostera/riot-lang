@@ -48,10 +48,10 @@ let rec pattern_kind = fun pattern ->
   | _ -> Unsupported
 
 let case_of_match_case = fun match_case ->
-  let { Ast.MatchCase.pattern; guard; body } = Ast.MatchCase.view match_case in
-  match (pattern, guard, body) with
-  | (Some pattern, None, Some body) -> Some { kind = pattern_kind pattern; body }
-  | _ -> None
+  match Ast.MatchCase.view match_case with
+  | Ast.MatchCase.Case { pattern; guard = None; body } -> Some { kind = pattern_kind pattern; body }
+  | Ast.MatchCase.Case { guard = Some _; _ }
+  | Ast.MatchCase.Unknown _ -> None
 
 let collect_cases = fun expr ->
   let cases = Vector.with_capacity ~size:2 in

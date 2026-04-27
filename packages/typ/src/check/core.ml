@@ -1090,20 +1090,22 @@ and infer_let_binding_like = fun state env ~level ~syntax_node binding ->
   let return_annotations = let_binding_return_annotations binding in
   let binding_view = Ast.LetBinding.view binding in
   let value_ty =
-    match binding_view.body with
-    | Some bound_value when List.is_empty parameters ->
+    match binding_view with
+    | Ast.LetBinding.Binding { body = bound_value; _ } when List.is_empty parameters ->
         infer_expression
           state
           env
           ~level:(Int.add level 1)
           bound_value
-    | Some bound_value -> infer_lambda
+    | Ast.LetBinding.Binding { body = bound_value; _ } -> infer_lambda
       state
       env
       ~level:(Int.add level 1)
       parameters
       bound_value
-    | None -> fresh_tyvar state ~level:(Int.add level 1)
+    | Ast.LetBinding.Unknown _ ->
+        add_diagnostic state (unsupported_syntax binding "let binding");
+        fresh_tyvar state ~level:(Int.add level 1)
   in
   List.for_each
     return_annotations
@@ -1111,9 +1113,9 @@ and infer_let_binding_like = fun state env ~level ~syntax_node binding ->
       let _ = lower_core_type state ~level [] annotation in
       ());
   let (pattern_ty, bindings) =
-    match binding_view.pattern with
-    | Some pattern -> infer_pattern state env ~level pattern
-    | None -> (fresh_tyvar state ~level, [])
+    match binding_view with
+    | Ast.LetBinding.Binding { pattern; _ } -> infer_pattern state env ~level pattern
+    | Ast.LetBinding.Unknown _ -> (fresh_tyvar state ~level, [])
   in
   unify state ~at:syntax_node pattern_ty value_ty;
   let public_bindings = List.map bindings ~fn:public_binding_of_binding in
