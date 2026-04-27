@@ -788,7 +788,6 @@ let document_symbols_for_document = fun document ->
           let items = Vector.with_capacity ~size:16 in
           Syn.Ast.Interface.for_each_item interface ~fn:(fun item -> Vector.push items ~value:item);
           signature_item_symbols document.text (vector_to_list items)
-      | Syn.Ast.SourceFile.Empty -> []
     in
     Some symbols
 

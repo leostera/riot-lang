@@ -5374,7 +5374,6 @@ module SourceFile = struct
   type view =
     | Implementation of implementation
     | Interface of interface
-    | Empty
 
   let make = root
 
@@ -5394,26 +5393,21 @@ module SourceFile = struct
     | None -> (
         match interface source_file with
         | Some interface -> Interface interface
-        | None -> Empty
+        | None -> panic "Ast.SourceFile.view expected implementation or interface"
       )
 
   let for_each_item = fun (source_file: source_file) ~fn ->
-    (
-      match implementation source_file with
-      | Some impl -> Implementation.for_each_item impl ~fn:(fun item -> fn item)
-      | None -> ()
-    );
-    match interface source_file with
-    | Some interface -> Interface.for_each_item interface ~fn:(fun item -> fn item)
-    | None -> ()
+    match view source_file with
+    | Implementation impl -> Implementation.for_each_item impl ~fn:(fun item -> fn item)
+    | Interface interface -> Interface.for_each_item interface ~fn:(fun item -> fn item)
 
   let for_each_structure_item = fun (source_file: source_file) ~fn ->
-    match implementation source_file with
-    | Some impl -> Implementation.for_each_item impl ~fn
-    | None -> ()
+    match view source_file with
+    | Implementation impl -> Implementation.for_each_item impl ~fn
+    | Interface _ -> ()
 
   let for_each_signature_item = fun (source_file: source_file) ~fn ->
-    match interface source_file with
-    | Some interface -> Interface.for_each_item interface ~fn
-    | None -> ()
+    match view source_file with
+    | Implementation _ -> ()
+    | Interface interface -> Interface.for_each_item interface ~fn
 end

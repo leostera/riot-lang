@@ -670,7 +670,6 @@ let lower_source_file = fun ~source:_ (parse_result: Syn.Parser.parse_result) ->
         Ast.Implementation.for_each_item implementation ~fn:(lower_structure_item state)
     | Ast.SourceFile.Interface interface ->
         Ast.Interface.for_each_item interface ~fn:(lower_signature_item state)
-    | Ast.SourceFile.Empty -> ()
   );
   {
     Semantic_tree.kind = state.kind;

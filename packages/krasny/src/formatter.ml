@@ -9370,7 +9370,6 @@ let render_implementation = fun state implementation ->
 
 let render_source_file = fun state source_file ->
   match Ast.SourceFile.view source_file with
-  | Empty -> ()
   | Implementation implementation -> render_implementation state implementation
   | Interface interface -> render_interface state interface
 

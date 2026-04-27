@@ -1254,7 +1254,6 @@ module SourceFile: sig
   type view =
     | Implementation of implementation
     | Interface of interface
-    | Empty
   val make: Syntax_tree.t -> t
 
   val view: t -> view

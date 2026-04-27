@@ -42,7 +42,6 @@ let top_level_open_declarations = fun source_file ->
             match Ast.SignatureItem.view item with
             | Ast.SignatureItem.Open open_declaration -> Vector.push opens ~value:open_declaration
             | _ -> ())
-    | Ast.SourceFile.Empty -> ()
   );
   opens
 

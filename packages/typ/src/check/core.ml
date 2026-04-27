@@ -1305,7 +1305,6 @@ let check_source_file = fun ~typing_context (parse_result: Syn.Parser.parse_resu
   | Ast.SourceFile.Implementation implementation ->
       check_implementation ~typing_context implementation
   | Ast.SourceFile.Interface interface -> check_interface ~typing_context interface
-  | Ast.SourceFile.Empty -> { File.empty with typing_context }
 
 let check_expression = fun expression ->
   let state = make_state ~next_binding_stamp:0 in

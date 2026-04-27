@@ -53,6 +53,22 @@ let test_class_subset_words_are_not_keywords = fun _ctx ->
   in
   loop words
 
+let test_empty_source_files_have_file_kind = fun _ctx ->
+  let* implementation =
+    parse_ml ""
+  in
+  let* interface =
+    parse_mli ""
+  in
+  (
+    match Ast.SourceFile.view implementation with
+    | Ast.SourceFile.Implementation _ -> ()
+    | Ast.SourceFile.Interface _ -> panic "expected empty implementation source"
+  );
+  match Ast.SourceFile.view interface with
+  | Ast.SourceFile.Interface _ -> Ok ()
+  | Ast.SourceFile.Implementation _ -> Error "expected empty interface source"
+
 let nth_structure_item = fun (root: Ast.source_file) target ->
   let found = ref None in
   let seen = ref 0 in
@@ -3209,6 +3225,7 @@ let tests =
     case
       "ast leaves class subset words out of the keyword table"
       test_class_subset_words_are_not_keywords;
+    case "ast keeps empty source files typed by file kind" test_empty_source_files_have_file_kind;
     case "ast exposes source file and let binding views" test_source_file_and_let_binding_views;
     case "ast exposes separated docstring trivia parts" test_token_leading_docstring_trivia_parts;
     case "ast node spans exclude leading trivia" test_node_span_excludes_leading_trivia;

@@ -1197,7 +1197,6 @@ module Ast_deps = struct
     match A.SourceFile.view (A.SourceFile.make result.Parser.tree) with
     | A.SourceFile.Implementation impl -> finalize_impl env impl
     | A.SourceFile.Interface intf -> finalize_intf env intf
-    | A.SourceFile.Empty -> Ok (DepSet.empty (), env, Env.empty)
 end
 
 let finalize = fun deps env exports -> { modules = DepSet.elements deps; env; exports }
