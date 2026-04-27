@@ -146,7 +146,7 @@ let test_http1_websocket_upgrade_rejects_invalid_upgrade_header = fun _ctx ->
   ]
   in
   match Http1.validate_websocket_upgrade (websocket_request ~headers ()) with
-  | Error (Http1.InvalidWebSocketUpgrade "h2c") -> Ok ()
+  | Error (Http1.InvalidWebSocketUpgrade { value = "h2c" }) -> Ok ()
   | Ok _ -> Error "expected WebSocket upgrade to reject non-websocket Upgrade header"
   | Error error -> Error (Http1.websocket_upgrade_error_to_string error)
 
@@ -172,7 +172,7 @@ let test_http1_websocket_upgrade_requires_version_13 = fun _ctx ->
   ]
   in
   match Http1.validate_websocket_upgrade (websocket_request ~headers ()) with
-  | Error (Http1.UnsupportedWebSocketVersion "12") -> Ok ()
+  | Error (Http1.UnsupportedWebSocketVersion { value = "12"; expected = "13" }) -> Ok ()
   | Ok _ -> Error "expected WebSocket upgrade to require Sec-WebSocket-Version: 13"
   | Error error -> Error (Http1.websocket_upgrade_error_to_string error)
 
@@ -185,7 +185,8 @@ let test_http1_websocket_upgrade_rejects_invalid_key = fun _ctx ->
   ]
   in
   match Http1.validate_websocket_upgrade (websocket_request ~headers ()) with
-  | Error (Http1.InvalidWebSocketKey _) -> Ok ()
+  | Error (Http1.InvalidWebSocketKey { reason = Http1.InvalidLength { actual = 9; expected = 16 }; _ }) ->
+      Ok ()
   | Ok _ -> Error "expected WebSocket upgrade to reject invalid Sec-WebSocket-Key"
   | Error error -> Error (Http1.websocket_upgrade_error_to_string error)
 
@@ -197,21 +198,21 @@ let test_http1_body_headers_accept_valid_content_length = fun _ctx ->
 let test_http1_body_headers_reject_invalid_content_length = fun _ctx ->
   let req = http_request ~headers:[ ("content-length", "abc"); ] () in
   match Http1.validate_request_body_headers req with
-  | Error (Http1.InvalidContentLength "abc") -> Ok ()
+  | Error (Http1.InvalidContentLength { value = "abc"; reason = Http1.InvalidInteger }) -> Ok ()
   | Ok _ -> Error "expected invalid content-length to fail"
   | Error error -> Error (Http1.request_body_header_error_to_string error)
 
 let test_http1_body_headers_reject_negative_content_length = fun _ctx ->
   let req = http_request ~headers:[ ("content-length", "-1"); ] () in
   match Http1.validate_request_body_headers req with
-  | Error (Http1.InvalidContentLength "-1") -> Ok ()
+  | Error (Http1.InvalidContentLength { value = "-1"; reason = Http1.NegativeLength (-1) }) -> Ok ()
   | Ok _ -> Error "expected negative content-length to fail"
   | Error error -> Error (Http1.request_body_header_error_to_string error)
 
 let test_http1_body_headers_reject_conflicting_content_length = fun _ctx ->
   let req = http_request ~headers:[ ("content-length", "3"); ("content-length", "4"); ] () in
   match Http1.validate_request_body_headers req with
-  | Error (Http1.ConflictingContentLength values) ->
+  | Error (Http1.ConflictingContentLength { values }) ->
       Test.assert_equal ~expected:2 ~actual:(List.length values);
       Test.assert_true (List.contains values ~value:"3");
       Test.assert_true (List.contains values ~value:"4");
@@ -227,14 +228,17 @@ let test_http1_body_headers_allow_duplicate_matching_content_length = fun _ctx -
 let test_http1_body_headers_reject_transfer_encoding_with_content_length = fun _ctx ->
   let req = http_request ~headers:[ ("content-length", "3"); ("transfer-encoding", "chunked"); ] () in
   match Http1.validate_request_body_headers req with
-  | Error Http1.TransferEncodingWithContentLength -> Ok ()
+  | Error (Http1.TransferEncodingWithContentLength { transfer_encoding; content_lengths }) ->
+      Test.assert_equal ~expected:"chunked" ~actual:transfer_encoding;
+      Test.assert_equal ~expected:[ "3"; ] ~actual:content_lengths;
+      Ok ()
   | Ok _ -> Error "expected transfer-encoding with content-length to fail"
   | Error error -> Error (Http1.request_body_header_error_to_string error)
 
 let test_http1_body_headers_reject_chunked_transfer_encoding = fun _ctx ->
   let req = http_request ~headers:[ ("transfer-encoding", "chunked"); ] () in
   match Http1.validate_request_body_headers req with
-  | Error (Http1.UnsupportedTransferEncoding "chunked") -> Ok ()
+  | Error (Http1.UnsupportedTransferEncoding { value = "chunked" }) -> Ok ()
   | Ok _ -> Error "expected unsupported transfer-encoding to fail"
   | Error error -> Error (Http1.request_body_header_error_to_string error)
 

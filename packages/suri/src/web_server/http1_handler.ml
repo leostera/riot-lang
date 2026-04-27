@@ -27,27 +27,43 @@ type io_error =
   | ResponseSerializationFailed of serialization_error
   | ConnectionFailed of Socket_pool.Connection.error
 
+type parse_error =
+  | UpstreamParseError of { message: string }
+
 type error =
-  | ParseError of string
+  | ParseError of parse_error
   | ExcessBodyRead
   | IoError of io_error
+
+type websocket_key_error =
+  | InvalidBase64
+  | InvalidLength of { actual: int; expected: int }
 
 type websocket_upgrade_error =
   | InvalidWebSocketMethod of Net.Http.Method.t
   | InvalidWebSocketVersion of Net.Http.Version.t
   | MissingWebSocketUpgrade
-  | InvalidWebSocketUpgrade of string
+  | InvalidWebSocketUpgrade of { value: string }
   | MissingWebSocketConnectionUpgrade
   | MissingWebSocketVersion
-  | UnsupportedWebSocketVersion of string
+  | UnsupportedWebSocketVersion of { value: string; expected: string }
   | MissingWebSocketKey
-  | InvalidWebSocketKey of string
+  | InvalidWebSocketKey of { value: string; reason: websocket_key_error }
+
+type content_length_error =
+  | InvalidInteger
+  | NegativeLength of int
 
 type request_body_header_error =
-  | InvalidContentLength of string
-  | ConflictingContentLength of string list
-  | TransferEncodingWithContentLength
-  | UnsupportedTransferEncoding of string
+  | InvalidContentLength of { value: string; reason: content_length_error }
+  | ConflictingContentLength of {
+      values: string list;
+    }
+  | TransferEncodingWithContentLength of {
+      transfer_encoding: string;
+      content_lengths: string list;
+    }
+  | UnsupportedTransferEncoding of { value: string }
 
 type request_header_error =
   | MissingHostHeader
@@ -56,6 +72,9 @@ let serialization_error_to_string = function
   | InvalidHeaderName name -> "Invalid response header name: " ^ name
   | InvalidHeaderValue { name; value = _ } -> "Invalid response header value for: " ^ name
 
+let parse_error_to_string = function
+  | UpstreamParseError { message } -> message
+
 let websocket_upgrade_error_to_string = function
   | InvalidWebSocketMethod method_ ->
       "WebSocket upgrade requests must use GET, got " ^ Net.Http.Method.to_string method_
@@ -63,20 +82,36 @@ let websocket_upgrade_error_to_string = function
       "WebSocket upgrade requests require HTTP/1.1 or newer, got "
       ^ Net.Http.Version.to_string version
   | MissingWebSocketUpgrade -> "Missing Upgrade: websocket header"
-  | InvalidWebSocketUpgrade value -> "Invalid Upgrade header for WebSocket request: " ^ value
+  | InvalidWebSocketUpgrade { value } -> "Invalid Upgrade header for WebSocket request: " ^ value
   | MissingWebSocketConnectionUpgrade -> "Missing Connection: Upgrade token for WebSocket request"
   | MissingWebSocketVersion -> "Missing Sec-WebSocket-Version header"
-  | UnsupportedWebSocketVersion version ->
-      "Unsupported WebSocket version: " ^ version ^ "; expected 13"
+  | UnsupportedWebSocketVersion { value; expected } ->
+      "Unsupported WebSocket version: " ^ value ^ "; expected " ^ expected
   | MissingWebSocketKey -> "Missing Sec-WebSocket-Key header"
-  | InvalidWebSocketKey _ -> "Invalid Sec-WebSocket-Key header; expected base64 for exactly 16 bytes"
+  | InvalidWebSocketKey { reason = InvalidBase64; _ } -> "Invalid Sec-WebSocket-Key header; expected base64 for exactly 16 bytes"
+  | InvalidWebSocketKey { reason = InvalidLength { actual; expected }; _ } ->
+      "Invalid Sec-WebSocket-Key header; expected "
+      ^ Int.to_string expected
+      ^ " bytes, got "
+      ^ Int.to_string actual
 
 let request_body_header_error_to_string = function
-  | InvalidContentLength value -> "Invalid Content-Length header: " ^ value
-  | ConflictingContentLength values ->
+  | InvalidContentLength { value; reason = InvalidInteger } ->
+      "Invalid Content-Length header: " ^ value
+  | InvalidContentLength { value; reason = NegativeLength length } ->
+      "Invalid Content-Length header: "
+      ^ value
+      ^ "; length must be non-negative, got "
+      ^ Int.to_string length
+  | ConflictingContentLength { values } ->
       "Conflicting Content-Length headers: " ^ String.concat ", " values
-  | TransferEncodingWithContentLength -> "Request must not include both Transfer-Encoding and Content-Length"
-  | UnsupportedTransferEncoding value -> "Unsupported Transfer-Encoding header: " ^ value
+  | TransferEncodingWithContentLength { transfer_encoding; content_lengths } ->
+      "Request must not include both Transfer-Encoding ("
+      ^ transfer_encoding
+      ^ ") and Content-Length ("
+      ^ String.concat ", " content_lengths
+      ^ ")"
+  | UnsupportedTransferEncoding { value } -> "Unsupported Transfer-Encoding header: " ^ value
 
 let request_header_error_to_string = function
   | MissingHostHeader -> "HTTP/1.1 requests must include a Host header"
@@ -97,7 +132,7 @@ let io_error_to_string = function
   | ConnectionFailed error -> connection_error_to_string error
 
 let to_string_error = function
-  | ParseError msg -> "Parse error: " ^ msg
+  | ParseError error -> "Parse error: " ^ parse_error_to_string error
   | ExcessBodyRead -> "Excess body read"
   | IoError error -> "I/O error: " ^ io_error_to_string error
 
@@ -248,8 +283,13 @@ let header_has_token = fun value ~token ->
 
 let validate_websocket_key = fun key ->
   match Encoding.Base64.decode key with
-  | Ok decoded -> String.length decoded = 16
-  | Error `Invalid_base64 -> false
+  | Ok decoded ->
+      let actual = String.length decoded in
+      if actual = 16 then
+        Ok ()
+      else
+        Error (InvalidLength { actual; expected = 16 })
+  | Error `Invalid_base64 -> Error InvalidBase64
 
 let version_supports_websocket_upgrade = function
   | Net.Http.Version.Http09
@@ -271,19 +311,22 @@ let validate_websocket_upgrade = fun req ->
     | None -> Error MissingWebSocketUpgrade
     | Some upgrade when not
       (String.equal (String.lowercase_ascii (String.trim upgrade)) "websocket") ->
-        Error (InvalidWebSocketUpgrade upgrade)
+        Error (InvalidWebSocketUpgrade { value = upgrade })
     | Some _ -> (
         match Net.Http.Header.get headers "connection" with
         | Some connection when header_has_token connection ~token:"upgrade" -> (
             match Net.Http.Header.get headers "sec-websocket-version" with
             | None -> Error MissingWebSocketVersion
             | Some ws_version when not (String.equal (String.trim ws_version) "13") ->
-                Error (UnsupportedWebSocketVersion ws_version)
+                Error (UnsupportedWebSocketVersion { value = ws_version; expected = "13" })
             | Some _ -> (
                 match Net.Http.Header.get headers "sec-websocket-key" with
                 | None -> Error MissingWebSocketKey
-                | Some key when validate_websocket_key key -> Ok key
-                | Some key -> Error (InvalidWebSocketKey key)
+                | Some key -> (
+                    match validate_websocket_key key with
+                    | Ok () -> Ok key
+                    | Error reason -> Error (InvalidWebSocketKey { value = key; reason })
+                  )
               )
           )
         | _ -> Error MissingWebSocketConnectionUpgrade
@@ -300,18 +343,19 @@ let validate_request_body_headers = fun http_req ->
   match Net.Http.Header.get headers "transfer-encoding" with
   | Some transfer_encoding ->
       if not (List.is_empty content_lengths) then
-        Error TransferEncodingWithContentLength
+        Error (TransferEncodingWithContentLength { transfer_encoding; content_lengths })
       else
-        Error (UnsupportedTransferEncoding transfer_encoding)
+        Error (UnsupportedTransferEncoding { value = transfer_encoding })
   | None -> (
       match content_lengths with
       | [] -> Ok 0
       | value :: _ when not (all_equal content_lengths) ->
-          Error (ConflictingContentLength content_lengths)
+          Error (ConflictingContentLength { values = content_lengths })
       | value :: _ -> (
           match Int.of_string_opt (String.trim value) with
           | Some len when len >= 0 -> Ok len
-          | _ -> Error (InvalidContentLength value)
+          | Some len -> Error (InvalidContentLength { value; reason = NegativeLength len })
+          | None -> Error (InvalidContentLength { value; reason = InvalidInteger })
         )
     )
 
@@ -341,22 +385,38 @@ module For_testing = struct
     | InvalidHeaderName of string
     | InvalidHeaderValue of { name: string; value: string }
 
+  type nonrec parse_error = parse_error =
+    | UpstreamParseError of { message: string }
+
+  type nonrec websocket_key_error = websocket_key_error =
+    | InvalidBase64
+    | InvalidLength of { actual: int; expected: int }
+
   type nonrec websocket_upgrade_error = websocket_upgrade_error =
     | InvalidWebSocketMethod of Net.Http.Method.t
     | InvalidWebSocketVersion of Net.Http.Version.t
     | MissingWebSocketUpgrade
-    | InvalidWebSocketUpgrade of string
+    | InvalidWebSocketUpgrade of { value: string }
     | MissingWebSocketConnectionUpgrade
     | MissingWebSocketVersion
-    | UnsupportedWebSocketVersion of string
+    | UnsupportedWebSocketVersion of { value: string; expected: string }
     | MissingWebSocketKey
-    | InvalidWebSocketKey of string
+    | InvalidWebSocketKey of { value: string; reason: websocket_key_error }
+
+  type nonrec content_length_error = content_length_error =
+    | InvalidInteger
+    | NegativeLength of int
 
   type nonrec request_body_header_error = request_body_header_error =
-    | InvalidContentLength of string
-    | ConflictingContentLength of string list
-    | TransferEncodingWithContentLength
-    | UnsupportedTransferEncoding of string
+    | InvalidContentLength of { value: string; reason: content_length_error }
+    | ConflictingContentLength of {
+        values: string list;
+      }
+    | TransferEncodingWithContentLength of {
+        transfer_encoding: string;
+        content_lengths: string list;
+      }
+    | UnsupportedTransferEncoding of { value: string }
 
   type nonrec request_header_error = request_header_error =
     | MissingHostHeader
@@ -579,7 +639,8 @@ let handle_data_waiting_headers = fun full_data conn state ->
     )
   | Need_more -> Socket_pool.Handler.Continue { state with sniffed_data = full_data }
   | Error msg ->
-      let res = Response.bad_request ~body:msg () in
+      let error = UpstreamParseError { message = msg } in
+      let res = Response.bad_request ~body:(parse_error_to_string error) () in
       let _ = send_response conn res in
       Socket_pool.Handler.Close state
 

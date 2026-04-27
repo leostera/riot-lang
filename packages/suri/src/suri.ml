@@ -134,22 +134,35 @@ module For_testing = struct
       | InvalidHeaderName of string
       | InvalidHeaderValue of { name: string; value: string }
 
+    type websocket_key_error = Web_server.Http1.For_testing.websocket_key_error =
+      | InvalidBase64
+      | InvalidLength of { actual: int; expected: int }
+
     type websocket_upgrade_error = Web_server.Http1.For_testing.websocket_upgrade_error =
       | InvalidWebSocketMethod of Std.Net.Http.Method.t
       | InvalidWebSocketVersion of Std.Net.Http.Version.t
       | MissingWebSocketUpgrade
-      | InvalidWebSocketUpgrade of string
+      | InvalidWebSocketUpgrade of { value: string }
       | MissingWebSocketConnectionUpgrade
       | MissingWebSocketVersion
-      | UnsupportedWebSocketVersion of string
+      | UnsupportedWebSocketVersion of { value: string; expected: string }
       | MissingWebSocketKey
-      | InvalidWebSocketKey of string
+      | InvalidWebSocketKey of { value: string; reason: websocket_key_error }
+
+    type content_length_error = Web_server.Http1.For_testing.content_length_error =
+      | InvalidInteger
+      | NegativeLength of int
 
     type request_body_header_error = Web_server.Http1.For_testing.request_body_header_error =
-      | InvalidContentLength of string
-      | ConflictingContentLength of string list
-      | TransferEncodingWithContentLength
-      | UnsupportedTransferEncoding of string
+      | InvalidContentLength of { value: string; reason: content_length_error }
+      | ConflictingContentLength of {
+          values: string list;
+        }
+      | TransferEncodingWithContentLength of {
+          transfer_encoding: string;
+          content_lengths: string list;
+        }
+      | UnsupportedTransferEncoding of { value: string }
 
     type request_header_error = Web_server.Http1.For_testing.request_header_error =
       | MissingHostHeader
