@@ -170,22 +170,6 @@ let from_json = fun json ->
 
 (** {1 Cookie Protection} *)
 
-(** Simple XOR encryption - placeholder for real AES-GCM *)
-let encrypt = fun ~secret data ->
-  let secret_len = String.length secret in
-  let data_len = String.length data in
-  let bytes = IO.Bytes.create ~size:data_len in
-  for i = data_len - 1 downto 0 do
-    let secret_byte = String.get_unchecked secret ~at:(i mod secret_len) in
-    let data_byte = String.get_unchecked data ~at:i in
-    let encrypted_byte = Char.chr (Char.code secret_byte lxor Char.code data_byte) in
-    IO.Bytes.set_unchecked bytes ~at:i ~char:encrypted_byte
-  done;
-  String.from_bytes bytes
-
-(** Simple XOR decryption - same as encryption for XOR *)
-let decrypt = fun ~secret encrypted -> encrypt ~secret encrypted
-
 let secure_equal = fun s1 s2 ->
   if not (String.length s1 = String.length s2) then
     false
@@ -214,47 +198,41 @@ let verify = fun ~secret data signature ->
 let to_cookie_value = fun session ->
   let json = to_json session.data in
   let json_str = Data.Json.to_string json in
-  let encrypted = encrypt ~secret:session.secret json_str in
-  let encrypted_b64 = Encoding.Base64.encode encrypted in
-  let signature = sign ~secret:session.secret encrypted_b64 in
-  String.concat "." [ encrypted_b64; signature ]
+  let payload = Encoding.Base64.encode json_str in
+  let signature = sign ~secret:session.secret payload in
+  String.concat "." [ payload; signature ]
 
 let cookie_value_for_plaintext = fun ~secret plaintext ->
-  let encrypted = encrypt ~secret plaintext in
-  let encrypted_b64 = Encoding.Base64.encode encrypted in
-  let signature = sign ~secret encrypted_b64 in
-  String.concat "." [ encrypted_b64; signature ]
+  let payload = Encoding.Base64.encode plaintext in
+  let signature = sign ~secret payload in
+  String.concat "." [ payload; signature ]
 
 (** Deserialize session from cookie value *)
 let from_cookie_value = fun ~cookie_name ~secret cookie_value ->
   let parts = String.split_on_char '.' cookie_value in
   match parts with
-  | [ encrypted_b64; signature ] ->
+  | [ payload; signature ] ->
       (* Verify signature *)
-      if not (verify ~secret encrypted_b64 signature) then
+      if not (verify ~secret payload signature) then
         Error InvalidSignature
       else
-        (* Decrypt *)
         (
-          match Encoding.Base64.decode encrypted_b64 with
-          | Result.Ok encrypted ->
-              let json_str = decrypt ~secret encrypted in
-              (* Parse JSON *)
-              (
-                match Data.Json.of_string json_str with
-                | Result.Ok json -> (
-                    match from_json json with
-                    | Option.Some data ->
-                        Ok {
-                          data;
-                          cookie_name;
-                          secret;
-                          modified = false;
-                        }
-                    | Option.None -> Error (InvalidSessionData json)
-                  )
-                | Result.Error err -> Error (InvalidJson err)
-              )
+          match Encoding.Base64.decode payload with
+          | Result.Ok json_str -> (
+              match Data.Json.of_string json_str with
+              | Result.Ok json -> (
+                  match from_json json with
+                  | Option.Some data ->
+                      Ok {
+                        data;
+                        cookie_name;
+                        secret;
+                        modified = false;
+                      }
+                  | Option.None -> Error (InvalidSessionData json)
+                )
+              | Result.Error err -> Error (InvalidJson err)
+            )
           | Result.Error _ -> Error InvalidPayloadBase64
         )
   | _ -> Error (InvalidCookieFormat { parts = List.length parts })

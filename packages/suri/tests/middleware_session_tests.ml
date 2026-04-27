@@ -148,6 +148,31 @@ let test_session_cookie_roundtrips_and_rejects_tampering = fun _ctx ->
       | Error err -> Error (Session.decode_error_to_string err)
       | Ok _ -> Error "expected tampered session cookie to fail verification"
 
+let test_session_cookie_payload_is_signed_plaintext_json = fun _ctx ->
+  let secret = "0123456789abcdef0123456789abcdef" in
+  let session = Session.create ~cookie_name:"_test" ~secret () in
+  Session.put "user_id" "123" session;
+  let cookie = Session.to_cookie_value session in
+  match String.split_on_char '.' cookie with
+  | [ payload; signature ] -> (
+      Test.assert_true (Session.verify ~secret payload signature);
+      match Encoding.Base64.decode payload with
+      | Ok json ->
+          Test.assert_true (String.starts_with ~prefix:"{" json);
+          Test.assert_true (String.contains json "\"values\"");
+          Test.assert_true (String.contains json "\"user_id\"");
+          let tampered_cookie = Encoding.Base64.encode "{}" ^ "." ^ signature in
+          (
+            match Session.from_cookie_value ~cookie_name:"_test" ~secret tampered_cookie with
+            | Error Session.InvalidSignature -> Ok ()
+            | Error err -> Error (Session.decode_error_to_string err)
+            | Ok _ -> Error "expected tampered session payload to fail verification"
+          )
+      | Error _ -> Error "expected session cookie payload to be valid base64"
+    )
+  | parts ->
+      Error ("expected cookie payload and signature, got " ^ Int.to_string (List.length parts))
+
 let test_session_cookie_decode_errors_are_structured = fun _ctx ->
   let secret = "0123456789abcdef0123456789abcdef" in
   let invalid_b64 = "not-base64!" in
@@ -202,6 +227,9 @@ let tests =
     case
       "session cookie roundtrips and rejects tampering"
       test_session_cookie_roundtrips_and_rejects_tampering;
+    case
+      "session cookie payload is signed plaintext JSON"
+      test_session_cookie_payload_is_signed_plaintext_json;
     case
       "session cookie decode errors are structured"
       test_session_cookie_decode_errors_are_structured;

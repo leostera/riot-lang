@@ -7,9 +7,8 @@
    storage is required.
 
    This middleware is not production-ready yet. Cookies are integrity-protected
-   with HMAC-SHA256, but the confidentiality layer still uses placeholder XOR
-   encryption and must be replaced with authenticated encryption before handling
-   sensitive data.
+   with HMAC-SHA256, but payloads are signed plaintext and must not contain
+   secrets or sensitive values.
 
    {2 Quick Start}
 
@@ -51,10 +50,10 @@
    - {b SameSite}: Default [Lax] helps reduce CSRF exposure
    - {b HttpOnly}: Always enabled, prevents XSS access
    - {b Integrity}: Cookie payloads are signed with HMAC-SHA256
-   - {b Not production safe}: Cookie encryption is still placeholder-only today
+   - {b Confidentiality}: Payloads are not encrypted; do not store secrets
 
-   {b Warning}: Replace the placeholder encryption with authenticated
-   encryption before production use.
+   {b Warning}: Add authenticated encryption before storing confidential
+   session data in cookies.
 
    {2 Configuration}
 
@@ -91,7 +90,7 @@ open Std
 (**
    Session middleware with experimental cookie storage.
 
-   @param secret Encryption/signing key (required, at least 32 characters)
+   @param secret Signing key (required, at least 32 characters)
    @param cookie_name Cookie name (default: "_suri_session")
    @param max_age Session lifetime in seconds (default: 86400 = 24h)
    @param secure Require HTTPS (default: false, {b set true in production!})
