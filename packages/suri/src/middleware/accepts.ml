@@ -35,6 +35,19 @@ type accept_parse_error =
   | InvalidQuality of quality_parse_error
   | QualityOutOfRange of float
 
+type accept_rejection =
+  | MalformedAcceptHeader of { value: string; error: accept_parse_error }
+  | UnsupportedAcceptHeader of { value: string }
+
+type content_type_rejection =
+  | MissingContentType
+  | InvalidContentType of { value: string }
+  | UnsupportedContentType of { value: string }
+
+type validation_error =
+  | AcceptRejected of accept_rejection
+  | ContentTypeRejected of content_type_rejection
+
 (**
    Parse quality value from parameter string.
 
@@ -123,6 +136,30 @@ let accept_header_matches = fun ~types accept ->
             types)
         entries)
 
+let quality_parse_error_to_string = function
+  | MissingQualityValue -> "missing q value"
+  | InvalidQualityValue { value } -> "invalid q value: " ^ value
+  | MalformedQualityParameter { parameter } -> "malformed q parameter: " ^ parameter
+
+let accept_parse_error_to_string = function
+  | EmptyMediaType -> "empty media type"
+  | InvalidQuality error -> quality_parse_error_to_string error
+  | QualityOutOfRange quality -> "q value is outside 0.0..1.0: " ^ Float.to_string quality
+
+let accept_rejection_to_string = function
+  | MalformedAcceptHeader { value; error } ->
+      "Malformed Accept header: " ^ value ^ " (" ^ accept_parse_error_to_string error ^ ")"
+  | UnsupportedAcceptHeader { value } -> "No supported response media type matches Accept: " ^ value
+
+let content_type_rejection_to_string = function
+  | MissingContentType -> "Request body is missing a Content-Type header"
+  | InvalidContentType { value } -> "Invalid Content-Type header: " ^ value
+  | UnsupportedContentType { value } -> "Unsupported request Content-Type: " ^ value
+
+let validation_error_to_string = function
+  | AcceptRejected rejection -> accept_rejection_to_string rejection
+  | ContentTypeRejected rejection -> content_type_rejection_to_string rejection
+
 (** {1 Content-Type Parsing} *)
 
 (**
@@ -162,47 +199,70 @@ let default_config = {
 (** {1 HTTP Responses} *)
 
 (** Send 406 Not Acceptable response *)
-let reject_not_acceptable = fun conn config received ->
+let reject_not_acceptable = fun conn config rejection ->
+  let received =
+    match rejection with
+    | MalformedAcceptHeader { value; _ }
+    | UnsupportedAcceptHeader { value } -> Some value
+  in
   match config.on_reject with
   | Some handler -> handler conn received
   | None ->
-      Conn.respond conn ~status:NotAcceptable ~body:"Not Acceptable"
+      Conn.respond conn ~status:NotAcceptable ~body:(accept_rejection_to_string rejection)
       |> Conn.halt
 
 (** Send 415 Unsupported Media Type response *)
-let reject_unsupported_media_type = fun conn config received ->
+let reject_unsupported_media_type = fun conn config rejection ->
+  let received =
+    match rejection with
+    | MissingContentType -> None
+    | InvalidContentType { value }
+    | UnsupportedContentType { value } -> Some value
+  in
   match config.on_reject with
   | Some handler -> handler conn received
   | None ->
-      Conn.respond conn ~status:UnsupportedMediaType ~body:"Unsupported Media Type"
+      Conn.respond
+        conn
+        ~status:UnsupportedMediaType
+        ~body:(content_type_rejection_to_string rejection)
       |> Conn.halt
 
 (** {1 Validation Logic} *)
 
 (** Check if Accept header matches any accepted types *)
-let check_accept_header = fun conn config ->
+let check_accept_header_result = fun conn config ->
   let headers = Conn.headers conn in
   match Net.Http.Header.get headers "accept" with
-  | None -> (true, None)
+  | None -> Ok ()
   | Some accept -> (
       match accept_header_matches ~types:config.types accept with
-      | Error _ -> (false, Some accept)
-      | Ok matches -> (matches, Some accept)
+      | Error error -> Error (MalformedAcceptHeader { value = accept; error })
+      | Ok true -> Ok ()
+      | Ok false -> Error (UnsupportedAcceptHeader { value = accept })
     )
 
+let check_accept_header = fun conn config ->
+  match check_accept_header_result conn config with
+  | Ok () -> (true, None)
+  | Error (MalformedAcceptHeader { value; _ })
+  | Error (UnsupportedAcceptHeader { value }) -> (false, Some value)
+
 (** Check if Content-Type header matches any accepted types *)
-let check_content_type_header = fun conn config ->
+let check_content_type_header_result = fun conn config ->
   let headers = Conn.headers conn in
   match Net.Http.Header.get headers "content-type" with
-  | None -> (false, None)
+  | None -> Error MissingContentType
   | Some ct -> (
       match get_base_content_type ct with
       | Some base ->
-          let matches =
+          if
             List.exists (fun pattern -> matches_pattern ~pattern ~content_type:base) config.types
-          in
-          (matches, Some ct)
-      | None -> (false, Some ct)
+          then
+            Ok ()
+          else
+            Error (UnsupportedContentType { value = ct })
+      | None -> Error (InvalidContentType { value = ct })
     )
 
 (** Check if request declares a body. *)
@@ -230,32 +290,33 @@ let has_declared_request_body = fun conn ->
     ~method_:(Conn.method_ conn)
     ~headers:(Conn.headers conn)
 
+let validate = fun conn config ->
+  let has_body = has_declared_request_body conn in
+  if config.check_accept then
+    match check_accept_header_result conn config with
+    | Error rejection -> Error (AcceptRejected rejection)
+    | Ok () ->
+        if config.check_content_type && has_body then
+          match check_content_type_header_result conn config with
+          | Error rejection -> Error (ContentTypeRejected rejection)
+          | Ok () -> Ok ()
+        else
+          Ok ()
+  else if config.check_content_type && has_body then
+    match check_content_type_header_result conn config with
+    | Error rejection -> Error (ContentTypeRejected rejection)
+    | Ok () -> Ok ()
+  else
+    Ok ()
+
 (** {1 Middleware} *)
 
 let make = fun config ->
   fun ~conn ~next ->
-    let has_body = has_declared_request_body conn in
-    (* Check Accept header *)
-    let (accept_ok, accept_value) =
-      if config.check_accept then
-        check_accept_header conn config
-      else
-        (true, None)
-    in
-    (* Check Content-Type (only for requests with body) *)
-    let (content_type_ok, content_type_value) =
-      if config.check_content_type && has_body then
-        check_content_type_header conn config
-      else
-        (true, None)
-    in
-    (* Both must pass *)
-    if accept_ok && content_type_ok then
-      next conn
-    else if not accept_ok then
-      reject_not_acceptable conn config accept_value
-    else
-      reject_unsupported_media_type conn config content_type_value
+    match validate conn config with
+    | Ok () -> next conn
+    | Error (AcceptRejected rejection) -> reject_not_acceptable conn config rejection
+    | Error (ContentTypeRejected rejection) -> reject_unsupported_media_type conn config rejection
 
 let middleware = fun ?config:(cfg = default_config) types ->
   (* If types list is provided, override config.types *)

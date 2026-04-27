@@ -14,6 +14,7 @@ module Request_id = Suri.Middleware.Request_id
 module Router = Suri.Middleware.Router
 module Session = Suri.Middleware.Session
 module Static = Suri.Middleware.Static
+module Testing = Suri.Testing
 module Response = Suri.Response
 module Connection = Suri.Testing.Internal.Connection
 module Handler = Suri.Testing.Internal.Handler
@@ -151,6 +152,65 @@ let test_accepts_only_requires_content_type_for_declared_body = fun _ctx ->
       ~headers:(Net.Http.Header.of_list [ ("transfer-encoding", "chunked"); ]));
   Ok ()
 
+let test_accepts_validate_reports_malformed_accept = fun _ctx ->
+  let config = Accepts.{ default_config with types = [ "application/json"; ] } in
+  let conn = Testing.Conn.make ~headers:[ ("accept", "application/json;q=wat"); ] () in
+  Test.assert_equal
+    ~expected:(Error (Accepts.AcceptRejected (Accepts.MalformedAcceptHeader {
+      value = "application/json;q=wat";
+      error = InvalidQuality (InvalidQualityValue { value = "wat" });
+    })))
+    ~actual:(Accepts.validate conn config);
+  Ok ()
+
+let test_accepts_validate_reports_missing_content_type = fun _ctx ->
+  let config = Accepts.{ default_config with types = [ "application/json"; ] } in
+  let conn =
+    Testing.Conn.make
+      ~method_:Net.Http.Method.Post
+      ~headers:[ ("content-length", "2"); ]
+      ~body:"{}"
+      ()
+  in
+  Test.assert_equal
+    ~expected:(Error (Accepts.ContentTypeRejected Accepts.MissingContentType))
+    ~actual:(Accepts.validate conn config);
+  Ok ()
+
+let test_accepts_validate_reports_unsupported_content_type = fun _ctx ->
+  let config = Accepts.{ default_config with types = [ "application/json"; ] } in
+  let conn =
+    Testing.Conn.make
+      ~method_:Net.Http.Method.Post
+      ~headers:[ ("content-length", "5"); ("content-type", "text/plain"); ]
+      ~body:"hello"
+      ()
+  in
+  Test.assert_equal
+    ~expected:(Error (Accepts.ContentTypeRejected (Accepts.UnsupportedContentType {
+      value = "text/plain";
+    })))
+    ~actual:(Accepts.validate conn config);
+  Ok ()
+
+let test_accepts_middleware_renders_structured_accept_error = fun _ctx ->
+  let conn = Testing.Conn.make ~headers:[ ("accept", "application/json;q=wat"); ] () in
+  let response =
+    Accepts.middleware [ "application/json"; ]
+    |> fun middleware ->
+      Testing.Middleware.run middleware conn
+      |> Conn.to_response
+  in
+  match Testing.Expect.status Net.Http.Status.NotAcceptable response with
+  | Error error -> Error (Testing.Expect.error_to_string error)
+  | Ok () -> (
+      match Testing.Expect.body
+        "Malformed Accept header: application/json;q=wat (invalid q value: wat)"
+        response with
+      | Ok () -> Ok ()
+      | Error error -> Error (Testing.Expect.error_to_string error)
+    )
+
 let tests =
   Test.[
     case "accepts rejects invalid quality" test_accepts_rejects_invalid_quality;
@@ -159,6 +219,16 @@ let tests =
     case
       "accepts only requires content type for declared body"
       test_accepts_only_requires_content_type_for_declared_body;
+    case "accepts validate reports malformed accept" test_accepts_validate_reports_malformed_accept;
+    case
+      "accepts validate reports missing content type"
+      test_accepts_validate_reports_missing_content_type;
+    case
+      "accepts validate reports unsupported content type"
+      test_accepts_validate_reports_unsupported_content_type;
+    case
+      "accepts middleware renders structured accept error"
+      test_accepts_middleware_renders_structured_accept_error;
   ]
 
 let main ~args = Test.Cli.main ~name:"suri:middleware-accepts" ~tests ~args ()

@@ -240,6 +240,25 @@ type accept_parse_error =
   | EmptyMediaType
   | InvalidQuality of quality_parse_error
   | QualityOutOfRange of float
+type accept_rejection =
+  | MalformedAcceptHeader of { value: string; error: accept_parse_error }
+  | UnsupportedAcceptHeader of { value: string }
+type content_type_rejection =
+  | MissingContentType
+  | InvalidContentType of { value: string }
+  | UnsupportedContentType of { value: string }
+type validation_error =
+  | AcceptRejected of accept_rejection
+  | ContentTypeRejected of content_type_rejection
+val quality_parse_error_to_string: quality_parse_error -> string
+
+val accept_parse_error_to_string: accept_parse_error -> string
+
+val accept_rejection_to_string: accept_rejection -> string
+
+val content_type_rejection_to_string: content_type_rejection -> string
+
+val validation_error_to_string: validation_error -> string
 
 (**
    Parse Accept header with quality values and structured errors.
@@ -279,6 +298,12 @@ val get_base_content_type: string -> string option
 
 val accept_header_matches: types:string list -> string -> (bool, accept_parse_error) result
 
+val check_accept_header_result: Conn.t -> config -> (unit, accept_rejection) Std.result
+
+val check_content_type_header_result: Conn.t -> config -> (unit, content_type_rejection) Std.result
+
 val request_declares_body: method_:Net.Http.Method.t -> headers:Net.Http.Header.t -> bool
 
 val has_declared_request_body: Conn.t -> bool
+
+val validate: Conn.t -> config -> (unit, validation_error) Std.result
