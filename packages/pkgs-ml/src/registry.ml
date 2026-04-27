@@ -69,7 +69,9 @@ type release_source = {
   files: release_file list;
 }
 
-type materialize_result = [`Materialized | `Already_present]
+type materialize_result =
+  | Materialized
+  | Already_present
 
 type source =
   | Filesystem
@@ -1087,11 +1089,11 @@ let materialize_release = fun registry ~package_name ~version ->
         ^ Path.to_string manifest_path
         ^ "': "
         ^ IO.error_message err)
-    | Ok true -> Ok `Materialized
+    | Ok true -> Ok Materialized
     | Ok false ->
         let* release = find_release registry ~package_name ~version in
         normalize_legacy_package_root ~root ~release
-        |> Result.map ~fn:(fun () -> `Materialized)
+        |> Result.map ~fn:(fun () -> Materialized)
   in
   let ensure_cached_archive () =
     match Fs.exists archive_path with
@@ -1123,7 +1125,7 @@ let materialize_release = fun registry ~package_name ~version ->
       ^ Path.to_string manifest_path
       ^ "': "
       ^ IO.error_message err)
-  | Ok true -> Ok `Already_present
+  | Ok true -> Ok Already_present
   | Ok false -> (
       match registry.source with
       | Filesystem -> (
@@ -1141,7 +1143,7 @@ let materialize_release = fun registry ~package_name ~version ->
               ^ "'")
           | Some release ->
               match write_release_files ~root release with
-              | Ok () -> Ok `Materialized
+              | Ok () -> Ok Materialized
               | Error _ as err -> err
         )
     )

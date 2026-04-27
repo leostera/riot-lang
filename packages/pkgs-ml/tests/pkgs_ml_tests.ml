@@ -660,9 +660,9 @@ let test_registry_materializes_in_memory_release = fun _ctx ->
       in
       match Pkgs_ml.Registry.materialize_release registry ~package_name:"std" ~version:"0.1.0" with
       | Error err -> Error err
-      | Ok `Already_present ->
+      | Ok Pkgs_ml.Registry.Already_present ->
           Error "expected in-memory release to be materialized on first attempt"
-      | Ok `Materialized ->
+      | Ok Pkgs_ml.Registry.Materialized ->
           let manifest_path =
             Pkgs_ml.Registry_cache.package_src_dir cache ~package_name:"std" ~version:"0.1.0"
             |> fun root -> Path.(root / Path.v "riot.toml")
@@ -710,8 +710,8 @@ let test_registry_materialize_skips_existing_release = fun _ctx ->
       | Error err -> Error err
       | Ok _ -> (
           match Pkgs_ml.Registry.materialize_release registry ~package_name:"std" ~version:"0.1.0" with
-          | Ok `Already_present -> Ok ()
-          | Ok `Materialized ->
+          | Ok Pkgs_ml.Registry.Already_present -> Ok ()
+          | Ok Pkgs_ml.Registry.Materialized ->
               Error "expected second materialization to detect existing package sources"
           | Error err -> Error err
         )) with
@@ -865,8 +865,8 @@ let test_filesystem_registry_materializes_cached_release = fun _ctx ->
           let registry = Pkgs_ml.Registry.filesystem cache in
           match Pkgs_ml.Registry.materialize_release registry ~package_name:"std" ~version:"0.1.0" with
           | Error err -> Error err
-          | Ok `Already_present -> Error "expected cached archive to materialize on first attempt"
-          | Ok `Materialized ->
+          | Ok Pkgs_ml.Registry.Already_present -> Error "expected cached archive to materialize on first attempt"
+          | Ok Pkgs_ml.Registry.Materialized ->
               let manifest_path =
                 Pkgs_ml.Registry_cache.package_src_dir cache ~package_name:"std" ~version:"0.1.0"
                 |> fun root -> Path.(root / Path.v "riot.toml")
@@ -924,9 +924,9 @@ let test_filesystem_registry_materializes_gzip_cached_release = fun _ctx ->
                 ~package_name:"std"
                 ~version:"0.1.0" with
               | Error err -> Error err
-              | Ok `Already_present ->
+              | Ok Pkgs_ml.Registry.Already_present ->
                   Error "expected gzipped cached archive to materialize on first attempt"
-              | Ok `Materialized ->
+              | Ok Pkgs_ml.Registry.Materialized ->
                   let manifest_path =
                     Pkgs_ml.Registry_cache.package_src_dir
                       cache
@@ -1003,9 +1003,9 @@ let test_filesystem_registry_downloads_release_archive_on_cache_miss = fun _ctx 
                 ~package_name:"std"
                 ~version:"0.1.0" with
               | Error err -> Error err
-              | Ok `Already_present ->
+              | Ok Pkgs_ml.Registry.Already_present ->
                   Error "expected uncached release to download and materialize on first attempt"
-              | Ok `Materialized ->
+              | Ok Pkgs_ml.Registry.Materialized ->
                   let archive_path =
                     Pkgs_ml.Registry_cache.archive_path cache ~package_name:"std" ~version:"0.1.0"
                   in
@@ -1106,9 +1106,9 @@ let test_filesystem_registry_refetches_corrupt_cached_archive = fun _ctx ->
                 ~package_name:"std"
                 ~version:"0.1.0" with
               | Error err -> Error err
-              | Ok `Already_present ->
+              | Ok Pkgs_ml.Registry.Already_present ->
                   Error "expected corrupt cached archive to be replaced and materialized"
-              | Ok `Materialized ->
+              | Ok Pkgs_ml.Registry.Materialized ->
                   let manifest_path =
                     Pkgs_ml.Registry_cache.package_src_dir
                       cache

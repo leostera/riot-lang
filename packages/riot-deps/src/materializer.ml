@@ -104,7 +104,7 @@ let ensure_registry_package = fun
             emit
               (Riot_model.Event.PackageDownloadStarted { package = event_package; version; path });
           match Pkgs_ml.Registry.materialize_release registry ~package_name:package ~version with
-          | Ok `Materialized ->
+          | Ok Pkgs_ml.Registry.Materialized ->
               emit
                 (
                   Riot_model.Event.PackageMaterializationFinished {
@@ -115,7 +115,7 @@ let ensure_registry_package = fun
                   }
                 );
               Ok root
-          | Ok `Already_present ->
+          | Ok Pkgs_ml.Registry.Already_present ->
               emit
                 (
                   Riot_model.Event.PackageDownloadSkipped {

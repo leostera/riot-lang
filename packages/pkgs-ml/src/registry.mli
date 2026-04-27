@@ -50,7 +50,9 @@ type release_source = {
   files: release_file list;
 }
 (** Result of attempting to materialize a release into the cache. *)
-type materialize_result = [`Materialized | `Already_present]
+type materialize_result =
+  | Materialized
+  | Already_present
 
 (**
    Build a fetch implementation from HTTP callbacks.
