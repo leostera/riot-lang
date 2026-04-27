@@ -19,11 +19,20 @@
 *)
 
 type state
-type error = [ | `ParseError of string | `ExcessBodyRead | `IoError of string]
+type serialization_error =
+  | InvalidHeaderName of string
+  | InvalidHeaderValue of { name: string; value: string }
+type io_error =
+  | ResponseSerializationFailed of serialization_error
+  | ConnectionFailed of Socket_pool.Connection.error
+type error =
+  | ParseError of string
+  | ExcessBodyRead
+  | IoError of io_error
 val to_string_error: error -> string
 
 module For_testing: sig
-  type serialization_error =
+  type nonrec serialization_error = serialization_error =
     | InvalidHeaderName of string
     | InvalidHeaderValue of { name: string; value: string }
   type websocket_upgrade_error =

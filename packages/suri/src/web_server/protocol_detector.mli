@@ -15,7 +15,10 @@ open Std
 *)
 
 type state
-type error = [ | `Detection_error of string]
+type error =
+  | HandlerCalledAfterDetection
+  | UnknownProtocol
+  | DetectionLimitExceeded of { limit: int }
 val to_string_error: error -> string
 
 (**

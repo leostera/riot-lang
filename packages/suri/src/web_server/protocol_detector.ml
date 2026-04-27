@@ -2,10 +2,16 @@ open Std
 
 module Cell = Sync.Cell
 
-type error = [`Detection_error of string]
+type error =
+  | HandlerCalledAfterDetection
+  | UnknownProtocol
+  | DetectionLimitExceeded of { limit: int }
 
 let to_string_error = function
-  | `Detection_error msg -> "Protocol detection error: " ^ msg
+  | HandlerCalledAfterDetection -> "Protocol detection error: handler called after protocol detection"
+  | UnknownProtocol -> "Protocol detection error: unknown protocol"
+  | DetectionLimitExceeded { limit } ->
+      "Protocol detection error: could not detect protocol after " ^ Int.to_string limit ^ " bytes"
 
 type state = {
   config: Super.Config.t;
@@ -64,7 +70,7 @@ let handle_connection = fun _conn state -> Socket_pool.Handler.Continue state
 
 let handle_data = fun data conn state ->
   if Cell.get state.detected then
-    Socket_pool.Handler.Error (state, `Detection_error "Handler called after protocol detection")
+    Socket_pool.Handler.Error (state, HandlerCalledAfterDetection)
   else
     begin
       (* Accumulate data *)
@@ -103,11 +109,12 @@ let handle_data = fun data conn state ->
               state = http1_state;
             })
           ) else
-            Socket_pool.Handler.Error (state, `Detection_error "Unknown protocol")
+            Socket_pool.Handler.Error (state, UnknownProtocol)
       | None ->
           (* Need more data - wait for more bytes *)
-          if String.length buffer_data > 100 then
-            Socket_pool.Handler.Error (state, `Detection_error "Could not detect protocol after 100 bytes")
+          let limit = 100 in
+          if String.length buffer_data > limit then
+            Socket_pool.Handler.Error (state, DetectionLimitExceeded { limit })
           else
             Socket_pool.Handler.Continue state
     end

@@ -29,11 +29,24 @@ open Std
 *)
 
 type state
-type error = [
-  | `Parse_error of Http.Http2.Parser_reader.parse_error
-  | `Protocol_error of string
-  | `Io_error of string
-]
+type protocol_error =
+  | UpgradeNotSupported
+  | HpackDecodeFailed
+  | UnknownDataStream of int
+  | InvalidPreface
+type io_operation =
+  | SendSettings
+  | SendSettingsAck
+  | SendHeaders
+  | SendData
+  | SendPing
+type error =
+  | ParseError of Http.Http2.Parser_reader.parse_error
+  | ProtocolError of protocol_error
+  | IoError of {
+      operation: io_operation;
+      error: Socket_pool.Connection.error;
+    }
 val to_string_error: error -> string
 
 (**

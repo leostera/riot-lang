@@ -19,11 +19,18 @@ type state = {
   parse_state: parse_state;
 }
 
-type error = [`ParseError of string | `ExcessBodyRead | `IoError of string]
-
 type serialization_error =
   | InvalidHeaderName of string
   | InvalidHeaderValue of { name: string; value: string }
+
+type io_error =
+  | ResponseSerializationFailed of serialization_error
+  | ConnectionFailed of Socket_pool.Connection.error
+
+type error =
+  | ParseError of string
+  | ExcessBodyRead
+  | IoError of io_error
 
 type websocket_upgrade_error =
   | InvalidWebSocketMethod of Net.Http.Method.t
@@ -44,11 +51,6 @@ type request_body_header_error =
 
 type request_header_error =
   | MissingHostHeader
-
-let to_string_error = function
-  | `ParseError msg -> "Parse error: " ^ msg
-  | `ExcessBodyRead -> "Excess body read"
-  | `IoError msg -> "I/O error: " ^ msg
 
 let serialization_error_to_string = function
   | InvalidHeaderName name -> "Invalid response header name: " ^ name
@@ -89,6 +91,15 @@ let connection_error_to_string = function
       ^ Int.to_string len
       ^ ", size="
       ^ Int.to_string size
+
+let io_error_to_string = function
+  | ResponseSerializationFailed error -> serialization_error_to_string error
+  | ConnectionFailed error -> connection_error_to_string error
+
+let to_string_error = function
+  | ParseError msg -> "Parse error: " ^ msg
+  | ExcessBodyRead -> "Excess body read"
+  | IoError error -> "I/O error: " ^ io_error_to_string error
 
 let make_handler = fun ~config ~handler ?(sniffed_data = "") () ->
   {
@@ -214,11 +225,11 @@ let serialize_response = fun (res: Response.t) ->
 
 let send_response = fun conn res ->
   match serialize_response res with
-  | Error err -> Error (`IoError (serialization_error_to_string err))
+  | Error err -> Error (IoError (ResponseSerializationFailed err))
   | Ok response_bytes -> (
       match Socket_pool.Connection.send conn response_bytes with
       | Ok () -> Ok ()
-      | Error error -> Error (`IoError (connection_error_to_string error))
+      | Error error -> Error (IoError (ConnectionFailed error))
     )
 
 let compute_websocket_accept = fun key ->

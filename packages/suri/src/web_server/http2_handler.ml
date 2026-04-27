@@ -4,11 +4,26 @@ module Cell = Sync.Cell
 module HashMap = Collections.HashMap
 module Bytes = IO.Bytes
 
-type error = [
-  | `Parse_error of Http.Http2.Parser_reader.parse_error
-  | `Protocol_error of string
-  | `Io_error of string
-]
+type protocol_error =
+  | UpgradeNotSupported
+  | HpackDecodeFailed
+  | UnknownDataStream of int
+  | InvalidPreface
+
+type io_operation =
+  | SendSettings
+  | SendSettingsAck
+  | SendHeaders
+  | SendData
+  | SendPing
+
+type error =
+  | ParseError of Http.Http2.Parser_reader.parse_error
+  | ProtocolError of protocol_error
+  | IoError of {
+      operation: io_operation;
+      error: Socket_pool.Connection.error;
+    }
 
 let parse_error_to_string = function
   | Http.Http2.Parser_reader.Incomplete_frame_header -> "incomplete frame header"
@@ -25,10 +40,40 @@ let parse_error_to_string = function
       ^ Int.to_string actual
   | Http.Http2.Parser_reader.Incomplete_settings_payload -> "incomplete settings payload"
 
+let protocol_error_to_string = function
+  | UpgradeNotSupported -> "HTTP/2 upgrades are not supported"
+  | HpackDecodeFailed -> "HPACK decode error"
+  | UnknownDataStream stream_id -> "DATA for unknown stream " ^ Int.to_string stream_id
+  | InvalidPreface -> "Invalid HTTP/2 preface"
+
+let io_operation_to_string = function
+  | SendSettings -> "sending SETTINGS"
+  | SendSettingsAck -> "sending SETTINGS ACK"
+  | SendHeaders -> "sending HEADERS"
+  | SendData -> "sending DATA"
+  | SendPing -> "sending PING"
+
+let connection_error_to_string = function
+  | Socket_pool.Connection.Closed -> "connection closed"
+  | Socket_pool.Connection.FileError _ -> "file operation failed"
+  | Socket_pool.Connection.InvalidRange { off; len; size } ->
+      "invalid file range off="
+      ^ Int.to_string off
+      ^ ", len="
+      ^ Int.to_string len
+      ^ ", size="
+      ^ Int.to_string size
+
 let to_string_error = function
-  | `Parse_error err -> "HTTP/2 parse error: " ^ parse_error_to_string err
-  | `Protocol_error msg -> "HTTP/2 protocol error: " ^ msg
-  | `Io_error msg -> "IO error: " ^ msg
+  | ParseError err -> "HTTP/2 parse error: " ^ parse_error_to_string err
+  | ProtocolError err -> "HTTP/2 protocol error: " ^ protocol_error_to_string err
+  | IoError { operation; error } ->
+      "HTTP/2 I/O error while "
+      ^ io_operation_to_string operation
+      ^ ": "
+      ^ connection_error_to_string error
+
+let io_error = fun operation error -> IoError { operation; error }
 
 (** Stream state for multiplexed requests *)
 type stream_state = {
@@ -85,10 +130,7 @@ let send_settings = fun conn ->
   let encoded = Http.Http2.Serializer.serialize_frame settings_frame in
   match Socket_pool.Connection.send conn encoded with
   | Ok () -> Ok ()
-  | Error Socket_pool.Connection.Closed ->
-      Error (`Io_error "Connection closed while sending SETTINGS")
-  | Error (Socket_pool.Connection.FileError _ | Socket_pool.Connection.InvalidRange _) ->
-      Error (`Io_error "Connection failed while sending SETTINGS")
+  | Error error -> Error (io_error SendSettings error)
 
 (** Send SETTINGS ACK *)
 let send_settings_ack = fun conn ->
@@ -96,10 +138,7 @@ let send_settings_ack = fun conn ->
   let encoded = Http.Http2.Serializer.serialize_frame ack_frame in
   match Socket_pool.Connection.send conn encoded with
   | Ok () -> Ok ()
-  | Error Socket_pool.Connection.Closed ->
-      Error (`Io_error "Connection closed while sending SETTINGS ACK")
-  | Error (Socket_pool.Connection.FileError _ | Socket_pool.Connection.InvalidRange _) ->
-      Error (`Io_error "Connection failed while sending SETTINGS ACK")
+  | Error error -> Error (io_error SendSettingsAck error)
 
 (** Send HTTP/2 HEADERS frame *)
 let send_headers = fun conn hpack_encoder stream_id headers end_stream ->
@@ -114,10 +153,7 @@ let send_headers = fun conn hpack_encoder stream_id headers end_stream ->
   let encoded = Http.Http2.Serializer.serialize_frame frame in
   match Socket_pool.Connection.send conn encoded with
   | Ok () -> Ok ()
-  | Error Socket_pool.Connection.Closed ->
-      Error (`Io_error "Connection closed while sending HEADERS")
-  | Error (Socket_pool.Connection.FileError _ | Socket_pool.Connection.InvalidRange _) ->
-      Error (`Io_error "Connection failed while sending HEADERS")
+  | Error error -> Error (io_error SendHeaders error)
 
 (** Send HTTP/2 DATA frame *)
 let send_data = fun conn stream_id data end_stream ->
@@ -125,9 +161,7 @@ let send_data = fun conn stream_id data end_stream ->
   let encoded = Http.Http2.Serializer.serialize_frame frame in
   match Socket_pool.Connection.send conn encoded with
   | Ok () -> Ok ()
-  | Error Socket_pool.Connection.Closed -> Error (`Io_error "Connection closed while sending DATA")
-  | Error (Socket_pool.Connection.FileError _ | Socket_pool.Connection.InvalidRange _) ->
-      Error (`Io_error "Connection failed while sending DATA")
+  | Error error -> Error (io_error SendData error)
 
 (** Convert HTTP/2 headers to Request.t *)
 let headers_to_request = fun conn headers body ->
@@ -183,7 +217,7 @@ let handle_stream = fun conn state stream_id stream ->
                   let _ = HashMap.remove state.streams ~key:stream_id in
                   Ok ()
         )
-    | Http_handler.Upgrade _ -> Error (`Protocol_error "HTTP/2 upgrades are not supported")
+    | Http_handler.Upgrade _ -> Error (ProtocolError UpgradeNotSupported)
 
 (** Process a single HTTP/2 frame *)
 let process_frame = fun conn state frame ->
@@ -228,7 +262,7 @@ let process_frame = fun conn state frame ->
               handle_stream conn state stream_id stream
             ) else
               Ok ()
-        | Error _ -> Error (`Protocol_error "HPACK decode error")
+        | Error _ -> Error (ProtocolError HpackDecodeFailed)
       )
   | (Http.Http2.Frame.Data, Http.Http2.Frame.DataPayload { data; _ }) ->
       let stream_id = frame.Http.Http2.Frame.stream_id in
@@ -236,7 +270,7 @@ let process_frame = fun conn state frame ->
       (* Find stream *)
       (
         match HashMap.get state.streams ~key:stream_id with
-        | None -> Error (`Protocol_error ("DATA for unknown stream " ^ Int.to_string stream_id))
+        | None -> Error (ProtocolError (UnknownDataStream stream_id))
         | Some stream ->
             (* Add data *)
             Cell.set stream.data_chunks (data :: Cell.get stream.data_chunks);
@@ -254,10 +288,7 @@ let process_frame = fun conn state frame ->
         (
           match Socket_pool.Connection.send conn encoded with
           | Ok () -> Ok ()
-          | Error Socket_pool.Connection.Closed ->
-              Error (`Io_error "Connection closed while sending PING")
-          | Error (Socket_pool.Connection.FileError _ | Socket_pool.Connection.InvalidRange _) ->
-              Error (`Io_error "Connection failed while sending PING")
+          | Error error -> Error (io_error SendPing error)
         )
       else
         Ok ()
@@ -287,7 +318,7 @@ let handle_data = fun data conn state ->
                 Cell.set state.settings_sent true;
                 Socket_pool.Handler.Continue state
           ) else
-            Socket_pool.Handler.Error (state, `Protocol_error "Invalid HTTP/2 preface")
+            Socket_pool.Handler.Error (state, ProtocolError InvalidPreface)
         end
       else
         (* Need more data for preface *)
@@ -308,7 +339,7 @@ let handle_data = fun data conn state ->
             (* Partial frame state is stored in frame_parser; wait for more bytes *)
             Cell.set state.buffer "";
             Socket_pool.Handler.Continue state
-        | Http.Http2.Parser_reader.Error err -> Socket_pool.Handler.Error (state, `Parse_error err)
+        | Http.Http2.Parser_reader.Error err -> Socket_pool.Handler.Error (state, ParseError err)
       in
       parse_frames ()
     end
