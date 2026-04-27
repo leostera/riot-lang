@@ -118,6 +118,19 @@ let test_csrf_masking_roundtrips_and_uses_unique_masks = fun _ctx ->
 let test_csrf_rejects_malformed_masked_tokens = fun _ctx ->
   Test.assert_equal ~expected:None ~actual:(Csrf.unmask_token "not-base64");
   Test.assert_equal ~expected:None ~actual:(Csrf.unmask_token (Encoding.Base64.encode "too-short"));
+  (
+    match Csrf.unmask_token_result "not-base64" with
+    | Error Csrf.InvalidMaskedTokenEncoding -> ()
+    | Ok _ -> Test.assert_true false
+    | Error _ -> Test.assert_true false
+  );
+  (
+    match Csrf.unmask_token_result (Encoding.Base64.encode "too-short") with
+    | Error Csrf.InvalidMaskedTokenLength { expected = 64; actual } ->
+        Test.assert_equal ~expected:(String.length "too-short") ~actual
+    | Ok _ -> Test.assert_true false
+    | Error _ -> Test.assert_true false
+  );
   Ok ()
 
 let test_csrf_secure_equal_checks_full_token = fun _ctx ->

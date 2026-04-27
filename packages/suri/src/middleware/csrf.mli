@@ -111,9 +111,14 @@ type random_error =
 type error =
   | MissingSession
   | TokenGenerationFailed of random_error
+type unmask_error =
+  | InvalidMaskedTokenEncoding
+  | InvalidMaskedTokenLength of { expected: int; actual: int }
 val random_error_to_string: random_error -> string
 
 val error_to_string: error -> string
+
+val unmask_error_to_string: unmask_error -> string
 
 val random_bytes_with_rng: Random.Rng.t -> int -> (string, random_error) result
 
@@ -126,6 +131,8 @@ val generate_token: unit -> string
 val mask_token_result: string -> (string, error) result
 
 val mask_token: string -> string
+
+val unmask_token_result: string -> (string, unmask_error) result
 
 val unmask_token: string -> string option
 

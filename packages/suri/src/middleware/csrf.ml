@@ -13,6 +13,10 @@ type error =
   | MissingSession
   | TokenGenerationFailed of random_error
 
+type unmask_error =
+  | InvalidMaskedTokenEncoding
+  | InvalidMaskedTokenLength of { expected: int; actual: int }
+
 let missing_session_body =
   "CSRF middleware requires Suri.Middleware.Session.middleware to run before it"
 
@@ -32,6 +36,18 @@ let random_error_to_string = function
 let error_to_string = function
   | MissingSession -> missing_session_body
   | TokenGenerationFailed error -> random_error_to_string error
+
+let unmask_error_to_string = function
+  | InvalidMaskedTokenEncoding -> "invalid CSRF masked token encoding"
+  | InvalidMaskedTokenLength { expected; actual } ->
+      String.concat
+        ""
+        [
+          "invalid CSRF masked token length: expected ";
+          Int.to_string expected;
+          " bytes, got ";
+          Int.to_string actual;
+        ]
 
 let secure_equal = fun s1 s2 ->
   let len1 = String.length s1 in
@@ -177,14 +193,14 @@ let mask_token = fun raw_token_hex ->
   | Error error -> panic (error_to_string error)
 
 (** Unmask token received from client *)
-let unmask_token = fun masked_b64 ->
+let unmask_token_result = fun masked_b64 ->
   match Encoding.Base64.decode masked_b64 with
-  | Result.Error `Invalid_base64 -> Option.none
+  | Result.Error `Invalid_base64 -> Error InvalidMaskedTokenEncoding
   | Result.Ok decoded ->
       let len = String.length decoded in
       if not (len = 64) then
         begin
-          Option.none
+          Error (InvalidMaskedTokenLength { expected = 64; actual = len })
         end
       else
         (* Split into pad and masked parts (32 bytes each) *)
@@ -199,7 +215,12 @@ let unmask_token = fun masked_b64 ->
         done;
       (* Convert back to hex *)
       let unmasked_hex = bytes_to_hex (IO.Bytes.to_string raw_bytes) in
-      Option.some unmasked_hex
+      Ok unmasked_hex
+
+let unmask_token = fun masked_b64 ->
+  match unmask_token_result masked_b64 with
+  | Ok token -> Option.some token
+  | Error _ -> Option.none
 
 let is_hex_char = function
   | '0' .. '9'
