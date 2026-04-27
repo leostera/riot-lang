@@ -3,6 +3,7 @@ open Std
 module Component = Suri.Component
 module Accepts = Suri.Middleware.Accepts
 module Basic_auth = Suri.Middleware.Basic_auth
+module Body_parser = Suri.Middleware.Body_parser
 module Conn = Suri.Middleware.Conn
 module Cors = Suri.Middleware.Cors
 module Logger = Suri.Middleware.Logger
@@ -313,6 +314,56 @@ let test_basic_auth_sanitizes_realm_header_value = fun _ctx ->
     ~actual:(Basic_auth.For_testing.sanitize_realm "Admin\r\n\"Panel");
   Ok ()
 
+let test_body_parser_rejects_oversized_bodies = fun _ctx ->
+  let config = { Body_parser.parsers = [ Body_parser.Json ]; max_body_size = 2 } in
+  match Body_parser.For_testing.parse_body config ~content_type:"application/json" ~body:"{} " with
+  | Error (Body_parser.BodyTooLarge { size; max_size }) ->
+      Test.assert_equal ~expected:3 ~actual:size;
+      Test.assert_equal ~expected:2 ~actual:max_size;
+      Ok ()
+  | Ok _ -> Error "expected oversized body to fail"
+  | Error error -> Error (Body_parser.parse_error_to_string error)
+
+let test_body_parser_rejects_invalid_json = fun _ctx ->
+  match Body_parser.For_testing.parse_body
+    (Body_parser.default_config ())
+    ~content_type:"application/json"
+    ~body:{|{"name":|} with
+  | Error (Body_parser.InvalidJson _) -> Ok ()
+  | Ok _ -> Error "expected invalid JSON to fail"
+  | Error error -> Error (Body_parser.parse_error_to_string error)
+
+let test_body_parser_rejects_json_root_arrays = fun _ctx ->
+  match Body_parser.For_testing.parse_body
+    (Body_parser.default_config ())
+    ~content_type:"application/json"
+    ~body:{|["alice"]|} with
+  | Error (Body_parser.JsonRootNotObject "array") -> Ok ()
+  | Ok _ -> Error "expected JSON array body to fail"
+  | Error error -> Error (Body_parser.parse_error_to_string error)
+
+let test_body_parser_accepts_case_insensitive_json_content_type = fun _ctx ->
+  Test.assert_equal
+    ~expected:[ ("name", "Alice"); ("active", "true"); ]
+    ~actual:(
+      Body_parser.For_testing.parse_body
+        (Body_parser.default_config ())
+        ~content_type:"Application/JSON; Charset=utf-8"
+        ~body:{|{"name":"Alice","active":true}|}
+      |> Result.unwrap
+    );
+  Ok ()
+
+let test_body_parser_rejects_multipart_without_boundary = fun _ctx ->
+  let config = { Body_parser.parsers = [ Body_parser.Multipart ]; max_body_size = 1_024 } in
+  match Body_parser.For_testing.parse_body
+    config
+    ~content_type:"multipart/form-data"
+    ~body:"field=value" with
+  | Error Body_parser.MissingMultipartBoundary -> Ok ()
+  | Ok _ -> Error "expected missing multipart boundary to fail"
+  | Error error -> Error (Body_parser.parse_error_to_string error)
+
 let test_http1_response_rejects_invalid_header_name = fun _ctx ->
   let res = Response.ok ~headers:[ ("bad name", "value"); ] ~body:"ok" () in
   match Http1.serialize_response res with
@@ -455,6 +506,15 @@ let tests =
     case "basic auth preserves colons in password" test_basic_auth_preserves_colons_in_password;
     case "basic auth rejects invalid credentials" test_basic_auth_rejects_invalid_credentials;
     case "basic auth sanitizes realm header value" test_basic_auth_sanitizes_realm_header_value;
+    case "body parser rejects oversized bodies" test_body_parser_rejects_oversized_bodies;
+    case "body parser rejects invalid json" test_body_parser_rejects_invalid_json;
+    case "body parser rejects json root arrays" test_body_parser_rejects_json_root_arrays;
+    case
+      "body parser accepts case insensitive json content type"
+      test_body_parser_accepts_case_insensitive_json_content_type;
+    case
+      "body parser rejects multipart without boundary"
+      test_body_parser_rejects_multipart_without_boundary;
     case
       "http1 response rejects invalid header name"
       test_http1_response_rejects_invalid_header_name;

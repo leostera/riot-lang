@@ -659,8 +659,8 @@ module Body_parser = Body_parser
 
      (* In handlers *)
      let create_user ~conn ~next:_ =
-       let name = List.assoc_opt "name" (Conn.body_params conn) in
-       let email = List.assoc_opt "email" (Conn.body_params conn) in
+       let name = Std.Collections.Proplist.get (Conn.body_params conn) ~key:"name" in
+       let email = Std.Collections.Proplist.get (Conn.body_params conn) ~key:"email" in
        (* ... *)
    ]}
 
@@ -694,7 +694,9 @@ module Body_parser = Body_parser
    {b Important:} Place this middleware {b before} CSRF middleware so
    CSRF tokens in form bodies are accessible.
 
-   Bodies exceeding [max_body_size] are not parsed (left empty).
+   Bodies exceeding [max_body_size] return [413 Payload Too Large]. Malformed
+   JSON or multipart metadata returns [400 Bad Request] with a plain-text
+   description.
 
    See {!Body_parser.make} for full documentation.
 *)

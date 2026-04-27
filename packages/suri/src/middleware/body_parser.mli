@@ -57,9 +57,34 @@ type config = {
      not parsed.
   *)
 }
+type parse_error =
+  | BodyTooLarge of { size: int; max_size: int }
+  (** Request body exceeded the configured limit. *)
+  | InvalidContentType of string
+  (** Content-Type header could not be parsed. *)
+  | InvalidJson of Std.Data.Json.error
+  (** JSON parser returned a structured syntax error. *)
+  | JsonRootNotObject of string
+  (** JSON parsed successfully, but the root value cannot populate body params. *)
+  | MissingMultipartBoundary
+
+(** Multipart request did not provide a boundary parameter. *)
 val default_config: unit -> config
 
 (** Default configuration: urlencoded and JSON parsing, 10MB limit *)
+val parse_error_to_string: parse_error -> string
+
+(** Render a parse error for logs or plain-text client responses. *)
+val parse_body:
+  config ->
+  content_type:string ->
+  body:string ->
+  ((string * string) list, parse_error) Std.result
+
+(**
+   Parse a body for a known Content-Type. Unsupported enabled parsers return an
+   empty parameter list; malformed known bodies return a structured error.
+*)
 val make: ?config:config -> unit -> conn:Conn.t -> next:(Conn.t -> Conn.t) -> Conn.t
 
 (**
@@ -74,5 +99,14 @@ val make: ?config:config -> unit -> conn:Conn.t -> next:(Conn.t -> Conn.t) -> Co
    Parsed data is stored in [Conn.body_params] for access by handlers and
    downstream middleware (e.g., CSRF protection).
 
-   Bodies larger than [max_body_size] are skipped without parsing.
+   Bodies larger than [max_body_size] return [413 Payload Too Large]. Malformed
+   JSON or multipart metadata returns [400 Bad Request] with a plain-text
+   description.
 *)
+module For_testing: sig
+  val parse_body:
+    config ->
+    content_type:string ->
+    body:string ->
+    ((string * string) list, parse_error) Std.result
+end
