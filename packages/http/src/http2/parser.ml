@@ -95,6 +95,33 @@ let parse_flags = fun frame_type flags_byte ->
     ack;
   }
 
+let frame_type_name = function
+  | Frame.Data -> "DATA"
+  | Frame.Headers -> "HEADERS"
+  | Frame.Priority -> "PRIORITY"
+  | Frame.RstStream -> "RST_STREAM"
+  | Frame.Settings -> "SETTINGS"
+  | Frame.PushPromise -> "PUSH_PROMISE"
+  | Frame.Ping -> "PING"
+  | Frame.Goaway -> "GOAWAY"
+  | Frame.WindowUpdate -> "WINDOW_UPDATE"
+  | Frame.Continuation -> "CONTINUATION"
+
+let validate_stream_id = fun frame_type stream_id ->
+  match frame_type with
+  | Frame.Data
+  | Frame.Headers
+  | Frame.Priority
+  | Frame.RstStream
+  | Frame.PushPromise
+  | Frame.Continuation when stream_id = 0 ->
+      Result.Error (frame_type_name frame_type ^ " frame must use a non-zero stream ID")
+  | Frame.Settings
+  | Frame.Ping
+  | Frame.Goaway when stream_id != 0 ->
+      Result.Error (frame_type_name frame_type ^ " frame must use stream ID 0")
+  | _ -> Result.Ok ()
+
 let parse_frame_header = fun ?(config = default_config) data ->
   if String.length data < 9 then
     Need_more
@@ -124,10 +151,18 @@ let parse_frame_header = fun ?(config = default_config) data ->
                         | None -> Error "Failed to read stream ID"
                         | Some stream_id_raw ->
                             let stream_id = stream_id_raw land 0x7fff_ffff in
-                            Done {
-                              value = (length, frame_type, flags, stream_id);
-                              remaining = String.sub data ~offset:9 ~len:(String.length data - 9);
-                            }
+                            (
+                              match validate_stream_id frame_type stream_id with
+                              | Result.Error msg -> Error msg
+                              | Result.Ok () ->
+                                  Done {
+                                    value = (length, frame_type, flags, stream_id);
+                                    remaining = String.sub
+                                      data
+                                      ~offset:9
+                                      ~len:(String.length data - 9);
+                                  }
+                            )
                       )
                   )
               )

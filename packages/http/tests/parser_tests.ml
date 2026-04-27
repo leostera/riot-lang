@@ -14,6 +14,13 @@ let frame_payload_length = fun serialized -> frame_payload_length_at serialized 
 
 let settings_frame_with_payload = fun payload -> "\x00\x00\x06\x04\x00\x00\x00\x00\x00" ^ payload
 
+let expect_parse_error = fun bytes expected ->
+  match Parser.parse_frame bytes with
+  | Parser.Error err when String.equal err expected -> Result.Ok ()
+  | Parser.Error err -> Result.Error ("Wrong parse error: " ^ err)
+  | Parser.Need_more -> Result.Error ("Expected parse error: " ^ expected)
+  | Parser.Done _ -> Result.Error ("Expected parse error, but frame parsed: " ^ expected)
+
 let test_serialize_settings_frame = fun _ctx ->
   let frame = {
     Frame.length = 0;
@@ -223,6 +230,39 @@ let test_parse_settings_rejects_large_max_frame_size = fun _ctx ->
   | Parser.Need_more -> Result.Error "Expected large SETTINGS_MAX_FRAME_SIZE to fail"
   | Parser.Done _ -> Result.Error "Large SETTINGS_MAX_FRAME_SIZE was accepted"
 
+let test_parse_data_rejects_stream_zero = fun _ctx ->
+  expect_parse_error
+    "\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+    "DATA frame must use a non-zero stream ID"
+
+let test_parse_headers_rejects_stream_zero = fun _ctx ->
+  expect_parse_error
+    "\x00\x00\x00\x01\x00\x00\x00\x00\x00"
+    "HEADERS frame must use a non-zero stream ID"
+
+let test_parse_settings_rejects_nonzero_stream = fun _ctx ->
+  expect_parse_error
+    "\x00\x00\x00\x04\x00\x00\x00\x00\x01"
+    "SETTINGS frame must use stream ID 0"
+
+let test_parse_ping_rejects_nonzero_stream = fun _ctx ->
+  expect_parse_error
+    "\x00\x00\x08\x06\x00\x00\x00\x00\x01abcdefgh"
+    "PING frame must use stream ID 0"
+
+let test_parse_goaway_rejects_nonzero_stream = fun _ctx ->
+  expect_parse_error
+    "\x00\x00\x08\x07\x00\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00\x00\x00"
+    "GOAWAY frame must use stream ID 0"
+
+let test_parse_window_update_allows_stream_zero = fun _ctx ->
+  match Parser.parse_frame "\x00\x00\x04\x08\x00\x00\x00\x00\x00\x00\x00\x00\x01" with
+  | Parser.Done { value = { Frame.frame_type = Frame.WindowUpdate; stream_id = 0; _ }; _ } ->
+      Result.Ok ()
+  | Parser.Done _ -> Result.Error "WINDOW_UPDATE stream 0 parsed as the wrong frame"
+  | Parser.Need_more -> Result.Error "WINDOW_UPDATE stream 0 unexpectedly needed more data"
+  | Parser.Error err -> Result.Error ("WINDOW_UPDATE stream 0 was rejected: " ^ err)
+
 let tests =
   Test.[
     case "serialize_settings_frame" test_serialize_settings_frame;
@@ -247,6 +287,12 @@ let tests =
     case
       "parse_settings_rejects_large_max_frame_size"
       test_parse_settings_rejects_large_max_frame_size;
+    case "parse_data_rejects_stream_zero" test_parse_data_rejects_stream_zero;
+    case "parse_headers_rejects_stream_zero" test_parse_headers_rejects_stream_zero;
+    case "parse_settings_rejects_nonzero_stream" test_parse_settings_rejects_nonzero_stream;
+    case "parse_ping_rejects_nonzero_stream" test_parse_ping_rejects_nonzero_stream;
+    case "parse_goaway_rejects_nonzero_stream" test_parse_goaway_rejects_nonzero_stream;
+    case "parse_window_update_allows_stream_zero" test_parse_window_update_allows_stream_zero;
   ]
 
 let main ~args:_ = Test.Cli.main ~name:"http:http2_parser" ~tests ~args:Env.args ()
