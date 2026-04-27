@@ -28,6 +28,14 @@ val request_id: Pipeline.middleware
 *)
 val max_request_id_length: int
 
+type validation_error =
+  | EmptyRequestId
+  | RequestIdTooLong of { length: int; max_length: int }
+  | InvalidRequestIdCharacter of { char: char; index: int }
+val validation_error_to_string: validation_error -> string
+
+val validate_request_id: string -> (unit, validation_error) Std.result
+
 val is_valid_request_id: string -> bool
 
 val choose_request_id: ?generate:(unit -> string) -> string option -> string

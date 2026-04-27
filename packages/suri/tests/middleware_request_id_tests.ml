@@ -118,6 +118,7 @@ let tamper_last_char = fun value ->
   prefix ^ replacement
 
 let test_request_id_accepts_valid_client_id = fun _ctx ->
+  Test.assert_equal ~expected:(Ok ()) ~actual:(Request_id.validate_request_id "trace-123_ABC.~");
   Test.assert_true (Request_id.is_valid_request_id "trace-123_ABC.~");
   Test.assert_equal
     ~expected:"trace-123_ABC.~"
@@ -125,21 +126,45 @@ let test_request_id_accepts_valid_client_id = fun _ctx ->
   Ok ()
 
 let test_request_id_rejects_control_characters = fun _ctx ->
+  match Request_id.validate_request_id "trace\r\nx-evil: yes" with
+  | Error (Request_id.InvalidRequestIdCharacter { char = '\r'; index = 5 }) ->
+      Test.assert_false (Request_id.is_valid_request_id "trace\r\nx-evil: yes");
+      Test.assert_equal
+        ~expected:"generated"
+        ~actual:(Request_id.choose_request_id
+          ~generate:(fun () -> "generated")
+          (Some "trace\r\nx-evil: yes"));
+      Ok ()
+  | Ok () -> Error "expected control character to fail request id validation"
+  | Error error -> Error (Request_id.validation_error_to_string error)
+
+let test_request_id_rejects_whitespace = fun _ctx ->
+  match Request_id.validate_request_id "trace id" with
+  | Error (Request_id.InvalidRequestIdCharacter { char = ' '; index = 5 }) -> Ok ()
+  | Ok () -> Error "expected whitespace to fail request id validation"
+  | Error error -> Error (Request_id.validation_error_to_string error)
+
+let test_request_id_rejects_empty_and_overlong_values = fun _ctx ->
+  let too_long = String.make ~len:(Request_id.max_request_id_length + 1) ~char:'a' in
+  match (Request_id.validate_request_id "", Request_id.validate_request_id too_long) with
+  | (Error Request_id.EmptyRequestId, Error (Request_id.RequestIdTooLong { length; max_length })) ->
+      Test.assert_equal ~expected:(Request_id.max_request_id_length + 1) ~actual:length;
+      Test.assert_equal ~expected:Request_id.max_request_id_length ~actual:max_length;
+      Test.assert_false (Request_id.is_valid_request_id "");
+      Test.assert_false (Request_id.is_valid_request_id too_long);
+      Test.assert_equal
+        ~expected:"generated"
+        ~actual:(Request_id.choose_request_id ~generate:(fun () -> "generated") None);
+      Ok ()
+  | _ -> Error "expected typed request id validation errors"
+
+let test_request_id_regenerates_control_characters = fun _ctx ->
   Test.assert_false (Request_id.is_valid_request_id "trace\r\nx-evil: yes");
   Test.assert_equal
     ~expected:"generated"
     ~actual:(Request_id.choose_request_id
       ~generate:(fun () -> "generated")
       (Some "trace\r\nx-evil: yes"));
-  Ok ()
-
-let test_request_id_rejects_empty_and_overlong_values = fun _ctx ->
-  let too_long = String.make ~len:(Request_id.max_request_id_length + 1) ~char:'a' in
-  Test.assert_false (Request_id.is_valid_request_id "");
-  Test.assert_false (Request_id.is_valid_request_id too_long);
-  Test.assert_equal
-    ~expected:"generated"
-    ~actual:(Request_id.choose_request_id ~generate:(fun () -> "generated") None);
   Ok ()
 
 let request_id_app = [
@@ -194,9 +219,11 @@ let tests =
   Test.[
     case "request id accepts valid client id" test_request_id_accepts_valid_client_id;
     case "request id rejects control characters" test_request_id_rejects_control_characters;
+    case "request id rejects whitespace" test_request_id_rejects_whitespace;
     case
       "request id rejects empty and overlong values"
       test_request_id_rejects_empty_and_overlong_values;
+    case "request id regenerates control characters" test_request_id_regenerates_control_characters;
     case
       "request id middleware preserves valid client id"
       test_request_id_middleware_preserves_valid_client_id;
