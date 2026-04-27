@@ -178,12 +178,25 @@ let handle_close = fun _conn _state -> ()
 
 let handle_connection = fun _conn state -> Socket_pool.Handler.Continue state
 
+let header_value_has_token = fun value ~token ->
+  let expected = String.lowercase_ascii token in
+  value
+  |> String.split_on_char ','
+  |> List.exists
+    (fun candidate -> String.equal (String.lowercase_ascii (String.trim candidate)) expected)
+
+let headers_have_token = fun headers name ~token ->
+  List.exists
+    (header_value_has_token ~token)
+    (Net.Http.Header.get_all headers name)
+
 let should_keep_alive = fun (req: Request.t) ->
-  match (Request.version req, Net.Http.Header.get (Request.headers req) "connection") with
-  | (_, Some "close") -> false
-  | (_, Some "keep-alive") -> true
-  | (Http11, _) -> true
-  | (_, _) -> false
+  let headers = Request.headers req in
+  match Request.version req with
+  | _ when headers_have_token headers "connection" ~token:"close" -> false
+  | _ when headers_have_token headers "connection" ~token:"keep-alive" -> true
+  | Net.Http.Version.Http11 -> true
+  | _ -> false
 
 let is_header_name_char = function
   | 'a' .. 'z'
@@ -309,13 +322,6 @@ let compute_websocket_accept = fun key ->
   let hash_bytes = Crypto.Hash.to_bytes hash in
   Encoding.Base64.encode_bytes hash_bytes
 
-let header_has_token = fun value ~token ->
-  let expected = String.lowercase_ascii token in
-  value
-  |> String.split_on_char ','
-  |> List.exists
-    (fun candidate -> String.equal (String.lowercase_ascii (String.trim candidate)) expected)
-
 let validate_websocket_key = fun key ->
   match Encoding.Base64.decode key with
   | Ok decoded ->
@@ -348,8 +354,8 @@ let validate_websocket_upgrade = fun req ->
       (String.equal (String.lowercase_ascii (String.trim upgrade)) "websocket") ->
         Error (InvalidWebSocketUpgrade { value = upgrade })
     | Some _ -> (
-        match Net.Http.Header.get headers "connection" with
-        | Some connection when header_has_token connection ~token:"upgrade" -> (
+        match headers_have_token headers "connection" ~token:"upgrade" with
+        | true -> (
             match Net.Http.Header.get headers "sec-websocket-version" with
             | None -> Error MissingWebSocketVersion
             | Some ws_version when not (String.equal (String.trim ws_version) "13") ->
@@ -364,7 +370,7 @@ let validate_websocket_upgrade = fun req ->
                   )
               )
           )
-        | _ -> Error MissingWebSocketConnectionUpgrade
+        | false -> Error MissingWebSocketConnectionUpgrade
       )
 
 let all_equal = function

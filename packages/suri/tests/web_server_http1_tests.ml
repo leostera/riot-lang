@@ -270,6 +270,36 @@ let test_http1_request_headers_allow_http10_without_host = fun _ctx ->
   Test.assert_equal ~expected:(Ok ()) ~actual:(Http1.validate_request_headers req);
   Ok ()
 
+let test_http1_keep_alive_defaults_for_http11 = fun _ctx ->
+  let req =
+    http_request ~version:Net.Http.Version.Http11 ()
+    |> Suri.Request.of_http ~body:""
+  in
+  Test.assert_true (Http1.should_keep_alive req);
+  Ok ()
+
+let test_http1_keep_alive_parses_close_token_case_insensitively = fun _ctx ->
+  let req =
+    http_request
+      ~version:Net.Http.Version.Http11
+      ~headers:[ ("connection", "keep-alive, CLOSE"); ]
+      ()
+    |> Suri.Request.of_http ~body:""
+  in
+  Test.assert_false (Http1.should_keep_alive req);
+  Ok ()
+
+let test_http1_keep_alive_parses_http10_keep_alive_token = fun _ctx ->
+  let req =
+    http_request
+      ~version:Net.Http.Version.Http10
+      ~headers:[ ("connection", "Upgrade, Keep-Alive"); ]
+      ()
+    |> Suri.Request.of_http ~body:""
+  in
+  Test.assert_true (Http1.should_keep_alive req);
+  Ok ()
+
 let test_http1_response_rejects_invalid_header_name = fun _ctx ->
   let res = Response.ok ~headers:[ ("bad name", "value"); ] ~body:"ok" () in
   match Http1.serialize_response res with
@@ -432,6 +462,13 @@ let tests =
     case
       "http1 request headers allow http10 without host"
       test_http1_request_headers_allow_http10_without_host;
+    case "http1 keep alive defaults for http11" test_http1_keep_alive_defaults_for_http11;
+    case
+      "http1 keep alive parses close token case insensitively"
+      test_http1_keep_alive_parses_close_token_case_insensitively;
+    case
+      "http1 keep alive parses http10 keep alive token"
+      test_http1_keep_alive_parses_http10_keep_alive_token;
     case
       "http1 response rejects invalid header name"
       test_http1_response_rejects_invalid_header_name;

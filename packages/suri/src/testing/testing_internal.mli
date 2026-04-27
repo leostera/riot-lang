@@ -105,4 +105,6 @@ module Http1: sig
   val validate_request_headers: Std.Net.Http.Request.t -> (unit, request_header_error) Std.result
 
   val request_header_error_to_string: request_header_error -> string
+
+  val should_keep_alive: Web_server.Request.t -> bool
 end

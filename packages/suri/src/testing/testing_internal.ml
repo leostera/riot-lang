@@ -109,4 +109,6 @@ module Http1 = struct
   let validate_request_headers = Web_server.Http1.validate_request_headers
 
   let request_header_error_to_string = Web_server.Http1.request_header_error_to_string
+
+  let should_keep_alive = Web_server.Http1.should_keep_alive
 end
