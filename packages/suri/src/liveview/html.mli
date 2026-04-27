@@ -47,11 +47,10 @@
    ```
 *)
 
-type 'msg attr = [
-  | `attr of string * string
+type 'msg attr =
+  | Attr of string * string
   (** Static HTML attribute like id, class, etc. *)
-  | `event of string * (string -> 'msg)
-]
+  | Event of string * (string -> 'msg)
 
 (** Event handler that produces a message *)
 
@@ -66,7 +65,7 @@ val attr: string -> string -> 'msg attr
    attr "class" "btn btn-primary"
    ```
 *)
-val attr_id: string -> [> `attr of string * string]
+val attr_id: string -> 'msg attr
 
 (**
    Create an id attribute.
@@ -76,7 +75,7 @@ val attr_id: string -> [> `attr of string * string]
    attr_id "main-content"
    ```
 *)
-val attr_type: string -> [> `attr of string * string]
+val attr_type: string -> 'msg attr
 
 (**
    Create a type attribute for inputs/buttons.
@@ -86,7 +85,7 @@ val attr_type: string -> [> `attr of string * string]
    attr_type "submit"
    ```
 *)
-val attr_src: string -> [> `attr of string * string]
+val attr_src: string -> 'msg attr
 
 (**
    Create a src attribute for images/scripts.
@@ -203,7 +202,7 @@ val on_click: (string -> 'msg) -> 'msg attr
 (**
    Create a click event handler.
 
-   Shorthand for `event "click" handler`.
+   Shorthand for [event "click" handler].
 
    Example:
    ```ocaml

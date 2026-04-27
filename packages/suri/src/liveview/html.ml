@@ -1,12 +1,14 @@
 open Std
 
-type 'msg attr = [`event of string * (string -> 'msg) | `attr of string * string]
+type 'msg attr =
+  | Event of string * (string -> 'msg)
+  | Attr of string * string
 
-let event = fun name fn -> `event (name, fn)
+let event = fun name fn -> Event (name, fn)
 
 let on_click = fun fn -> event "click" fn
 
-let attr = fun name value -> `attr (name, value)
+let attr = fun name value -> Attr (name, value)
 
 let attr_id = fun v -> attr "id" v
 
@@ -37,11 +39,12 @@ let html = fun ?(children = []) () -> El { tag = "html"; attrs = []; children }
 
 let body = fun ?(children = []) () -> El { tag = "body"; attrs = []; children }
 
-let div = fun ?(attrs = []) ?id ?(children = []) () -> El {
-  tag = "div";
-  attrs = optional_attr id attr_id @ List.map ~fn:(fun (k, v) -> `attr (k, v)) attrs;
-  children;
-}
+let div = fun ?(attrs = []) ?id ?(children = []) () ->
+  El {
+    tag = "div";
+    attrs = optional_attr id attr_id @ List.map ~fn:(fun ((k, v)) -> Attr (k, v)) attrs;
+    children;
+  }
 
 let h1 = fun ?(children = []) () -> El { tag = "h1"; attrs = []; children }
 
@@ -155,7 +158,7 @@ and attrs_to_string = fun attrs ->
   List.map
     ~fn:(
       function
-      | `attr (k, v) ->
+      | Attr (k, v) ->
           if is_valid_attr_name k then
             k ^ "=" ^ "\"" ^ escape_attr v ^ "\""
           else
@@ -200,7 +203,7 @@ let event_handlers = fun attrs ->
   List.filter_map
     ~fn:(fun attr ->
       match attr with
-      | `event (name, fn) -> Some (name, fn)
+      | Event (name, fn) -> Some (name, fn)
       | _ -> None)
     attrs
 
@@ -214,8 +217,9 @@ let rec map_action = fun fn t ->
         List.map
           ~fn:(fun attr ->
             match attr with
-            | `event (name, handler) -> `event (name, fun ev -> fn (handler ev))
-            | `attr (k, v) -> `attr (k, v))
+            | Event (name, handler) -> Event (name, fun ev ->
+              fn (handler ev))
+            | Attr (k, v) -> Attr (k, v))
           attrs
       in
       El { tag; children; attrs }
