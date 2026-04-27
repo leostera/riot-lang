@@ -35,7 +35,16 @@ type io_error =
   | ConnectionFailed of Socket_pool.Connection.error
 
 type parse_error =
-  | UpstreamParseError of { message: string }
+  | RequestLineTooLong
+  | MissingMethod
+  | MissingPath
+  | InvalidHttpVersion
+  | InvalidLineEnding
+  | InvalidHeaderFormatMissingColon
+  | InvalidHeaderFormat
+  | TooManyHeaders
+  | HeaderTooLong
+  | UnknownUpstreamParseError of string
 
 type error =
   | ParseError of parse_error
@@ -105,8 +114,29 @@ let serialization_error_to_string = function
       ^ header_value_error_to_string reason
       ^ ")"
 
+let parse_error_of_upstream_message = function
+  | "Request line too long" -> RequestLineTooLong
+  | "Missing method" -> MissingMethod
+  | "Missing path" -> MissingPath
+  | "Invalid HTTP version" -> InvalidHttpVersion
+  | "Invalid line ending" -> InvalidLineEnding
+  | "Invalid header format (missing colon)" -> InvalidHeaderFormatMissingColon
+  | "Invalid header format" -> InvalidHeaderFormat
+  | "Too many headers" -> TooManyHeaders
+  | "Header too long" -> HeaderTooLong
+  | message -> UnknownUpstreamParseError message
+
 let parse_error_to_string = function
-  | UpstreamParseError { message } -> message
+  | RequestLineTooLong -> "Request line is too long"
+  | MissingMethod -> "Request line is missing an HTTP method"
+  | MissingPath -> "Request line is missing a request target"
+  | InvalidHttpVersion -> "Request line has an invalid HTTP version"
+  | InvalidLineEnding -> "HTTP/1.1 requests must use CRLF line endings"
+  | InvalidHeaderFormatMissingColon -> "Request header is missing a colon"
+  | InvalidHeaderFormat -> "Request header has an invalid format"
+  | TooManyHeaders -> "Request has too many headers"
+  | HeaderTooLong -> "Request header is too long"
+  | UnknownUpstreamParseError message -> message
 
 let websocket_upgrade_error_to_string = function
   | InvalidWebSocketMethod method_ ->
@@ -703,7 +733,7 @@ let handle_data_waiting_headers = fun full_data conn state ->
     )
   | Need_more -> Socket_pool.Handler.Continue { state with sniffed_data = full_data }
   | Error msg ->
-      let error = UpstreamParseError { message = msg } in
+      let error = parse_error_of_upstream_message msg in
       let res = Response.bad_request ~body:(parse_error_to_string error) () in
       let _ = send_response conn res in
       Socket_pool.Handler.Close state

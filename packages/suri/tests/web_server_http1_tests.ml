@@ -298,6 +298,23 @@ let test_http1_body_split_keeps_zero_length_body_empty = fun _ctx ->
   Test.assert_equal ~expected:"GET /next HTTP/1.1\r\n\r\n" ~actual:remaining;
   Ok ()
 
+let test_http1_classifies_known_upstream_parse_errors = fun _ctx ->
+  Test.assert_equal
+    ~expected:Http1.RequestLineTooLong
+    ~actual:(Http1.parse_error_of_upstream_message "Request line too long");
+  Test.assert_equal
+    ~expected:Http1.InvalidHeaderFormatMissingColon
+    ~actual:(Http1.parse_error_of_upstream_message "Invalid header format (missing colon)");
+  Test.assert_equal
+    ~expected:Http1.HeaderTooLong
+    ~actual:(Http1.parse_error_of_upstream_message "Header too long");
+  Ok ()
+
+let test_http1_preserves_unknown_upstream_parse_errors = fun _ctx ->
+  match Http1.parse_error_of_upstream_message "new parser failure" with
+  | Http1.UnknownUpstreamParseError "new parser failure" -> Ok ()
+  | _ -> Error "expected unknown upstream parser message to be preserved"
+
 let test_http1_request_headers_reject_missing_host = fun _ctx ->
   let req = http_request () in
   match Http1.validate_request_headers req with
@@ -531,6 +548,12 @@ let tests =
     case
       "http1 body split keeps zero length body empty"
       test_http1_body_split_keeps_zero_length_body_empty;
+    case
+      "http1 classifies known upstream parse errors"
+      test_http1_classifies_known_upstream_parse_errors;
+    case
+      "http1 preserves unknown upstream parse errors"
+      test_http1_preserves_unknown_upstream_parse_errors;
     case "http1 request headers reject missing host" test_http1_request_headers_reject_missing_host;
     case "http1 request headers accept host" test_http1_request_headers_accept_host;
     case
