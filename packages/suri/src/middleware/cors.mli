@@ -121,8 +121,11 @@ exception Invalid_config of config_error
 val config_error_to_string: config_error -> string
 
 type preflight_error =
-  | MethodNotAllowed of string
-  | HeadersNotAllowed of string list
+  | MethodNotAllowed of Net.Http.Method.t
+  | HeadersNotAllowed of {
+      requested: string list;
+      allowed: string list;
+    }
 val preflight_error_to_string: preflight_error -> string
 
 (**

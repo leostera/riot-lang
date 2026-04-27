@@ -254,7 +254,9 @@ let test_cors_preflight_rejects_disallowed_method = fun _ctx ->
     ~headers:[]
     ~request_method:"delete"
     ~request_headers:None with
-  | Error (Cors.MethodNotAllowed "DELETE") -> Ok ()
+  | Error (Cors.MethodNotAllowed method_) ->
+      Test.assert_equal ~expected:"DELETE" ~actual:(Net.Http.Method.to_string method_);
+      Ok ()
   | Ok () -> Error "expected disallowed CORS preflight method"
   | Error error -> Error (Cors.preflight_error_to_string error)
 
@@ -264,8 +266,10 @@ let test_cors_preflight_rejects_disallowed_headers = fun _ctx ->
     ~headers:[ "authorization"; ]
     ~request_method:"PUT"
     ~request_headers:(Some "Authorization, X-Evil") with
-  | Error (Cors.HeadersNotAllowed headers) ->
-      Test.assert_equal ~expected:[ "x-evil"; ] ~actual:headers;
+  | Error (Cors.HeadersNotAllowed { requested; allowed }) ->
+      Test.assert_equal ~expected:[ "x-evil"; ] ~actual:requested;
+      Test.assert_true (List.contains allowed ~value:"authorization");
+      Test.assert_true (List.contains allowed ~value:"content-type");
       Ok ()
   | Ok () -> Error "expected disallowed CORS preflight headers"
   | Error error -> Error (Cors.preflight_error_to_string error)

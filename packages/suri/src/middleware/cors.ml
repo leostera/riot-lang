@@ -9,13 +9,20 @@ let config_error_to_string = function
   | WildcardOriginWithCredentials -> "CORS wildcard origins cannot be combined with credentials"
 
 type preflight_error =
-  | MethodNotAllowed of string
-  | HeadersNotAllowed of string list
+  | MethodNotAllowed of Net.Http.Method.t
+  | HeadersNotAllowed of {
+      requested: string list;
+      allowed: string list;
+    }
 
 let preflight_error_to_string = function
-  | MethodNotAllowed method_ -> "CORS preflight method is not allowed: " ^ method_
-  | HeadersNotAllowed headers ->
-      "CORS preflight headers are not allowed: " ^ String.concat ", " headers
+  | MethodNotAllowed method_ ->
+      "CORS preflight method is not allowed: " ^ Net.Http.Method.to_string method_
+  | HeadersNotAllowed { requested; allowed } ->
+      "CORS preflight headers are not allowed: "
+      ^ String.concat ", " requested
+      ^ "; allowed headers: "
+      ^ String.concat ", " allowed
 
 let validate_config = fun ~origins ~credentials ->
   if List.contains origins ~value:"*" && credentials then
@@ -77,8 +84,15 @@ let allowed_header_names = fun headers ->
   |> List.unique ~compare:String.compare
 
 let validate_preflight = fun ~methods ~headers ~request_method ~request_headers ->
-  let method_ = normalize_method_name request_method in
-  let allowed_methods = method_names methods in
+  let method_ =
+    request_method
+    |> normalize_method_name
+    |> Net.Http.Method.of_string
+  in
+  let allowed_methods =
+    simple_methods @ methods
+    |> List.unique ~compare:Net.Http.Method.compare
+  in
   if not (List.contains allowed_methods ~value:method_) then
     Error (MethodNotAllowed method_)
   else
@@ -89,7 +103,7 @@ let validate_preflight = fun ~methods ~headers ~request_method ~request_headers 
     in
     match forbidden_headers with
     | [] -> Ok ()
-    | _ -> Error (HeadersNotAllowed forbidden_headers)
+    | _ -> Error (HeadersNotAllowed { requested = forbidden_headers; allowed = allowed_headers })
 
 (** CORS middleware with simple configuration *)
 let middleware = fun
