@@ -69,6 +69,10 @@ name = "middleware_etag_tests"
 path = "tests/middleware_etag_tests.ml"
 
 [[bin]]
+name = "middleware_head_tests"
+path = "tests/middleware_head_tests.ml"
+
+[[bin]]
 name = "middleware_csrf_tests"
 path = "tests/middleware_csrf_tests.ml"
 
