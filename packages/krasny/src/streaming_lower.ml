@@ -5478,6 +5478,14 @@ and record_expr_should_inline = fun expr ->
     in
     loop 0
 
+and record_expr_decision = fun state ~force_multiline expr fields ->
+  let inline_shape = (not force_multiline) && record_expr_should_inline expr in
+  let flat_width = record_expr_flat_width expr_classification_budget expr in
+  let facts =
+    Facts.record_expr ?flat_width ~allow_inline:inline_shape ~item_count:(Vector.length fields) ()
+  in
+  Layout.decide (Layout.Separated Layout.Record_fields) (layout_context state) facts
+
 let expr_can_follow_pipe_bare = fun expr ->
   match ExprView.view expr with
   | Apply _
@@ -8011,49 +8019,51 @@ and render_record_expr = fun ?(force_multiline = false) state ~inline expr ->
   else if inline then
     render_inline ()
   else
-    let fits_inline_width =
-      match record_expr_flat_width expr_classification_budget expr with
-      | Some width -> Int.(state.column + width <= state.width)
-      | None -> false
-    in
-    if (not force_multiline) && record_expr_should_inline expr && fits_inline_width then
-      render_inline ()
-    else (
-      emit_text state "{";
-      emit_line state;
-      with_indent
-        state
-        2
-        (fun () ->
-          (
-            match base with
-            | Some base ->
-                render_record_update_base state base;
-                emit_space state;
-                emit_text state "with";
-                emit_line state
-            | None -> ()
-          );
-          let rec loop index =
-            if Int.(index < length) then
-              (
-                let field = Vector.get_unchecked fields ~at:index in
-                render_record_field state ~inline:false field;
+    match record_expr_decision state ~force_multiline expr fields with
+    | { Layout.mode = Inline; _ } -> render_inline ()
+    | { Layout.mode = Block; _ }
+    | { Layout.mode = Vertical; _ }
+    | { Layout.mode = Hang _; _ }
+    | { Layout.mode = Isolate_child_blocks; _ }
+    | { Layout.mode = Break_after_separator; _ }
+    | { Layout.mode = Flow; _ }
+    | { Layout.mode = Tight; _ }
+    | { Layout.mode = Blank_line; _ } -> (
+        emit_text state "{";
+        emit_line state;
+        with_indent
+          state
+          2
+          (fun () ->
+            (
+              match base with
+              | Some base ->
+                  render_record_update_base state base;
+                  emit_space state;
+                  emit_text state "with";
+                  emit_line state
+              | None -> ()
+            );
+            let rec loop index =
+              if Int.(index < length) then
                 (
-                  match field.Ast.value with
-                  | Some value when expr_has_terminal_trailing_sequence value -> ()
-                  | Some _
-                  | None -> emit_text state ";"
-                );
-                if Int.(index < Int.sub length 1) then
-                  emit_line state;
-                loop (Int.add index 1)
-              )
-          in
-          loop 0);
-      emit_line state;
-      emit_text state "}"
-    )
+                  let field = Vector.get_unchecked fields ~at:index in
+                  render_record_field state ~inline:false field;
+                  (
+                    match field.Ast.value with
+                    | Some value when expr_has_terminal_trailing_sequence value -> ()
+                    | Some _
+                    | None -> emit_text state ";"
+                  );
+                  if Int.(index < Int.sub length 1) then
+                    emit_line state;
+                  loop (Int.add index 1)
+                )
+            in
+            loop 0);
+        emit_line state;
+        emit_text state "}"
+      )
 
 and render_record_field = fun state ~inline field ->
   (
@@ -8332,18 +8342,28 @@ and record_type_fields_have_multi_field_mutable = fun fields ->
     loop 0
 
 and record_type_should_inline = fun state ~allow_inline record_type fields ->
-  if
-    (not allow_inline)
-    || record_type_has_terminal_trivia record_type
-    || record_type_fields_have_leading_comment fields
-    || record_type_fields_have_multi_field_mutable fields
-    || not (record_type_fields_are_light_inline fields)
-  then
-    false
-  else
-    match record_type_flat_width fields with
-    | Some width -> Int.(width <= state.width - state.column)
-    | None -> false
+  let has_leading_comment = record_type_fields_have_leading_comment fields in
+  let has_trailing_comment = record_type_has_terminal_trivia record_type in
+  let inline_shape =
+    allow_inline
+    && not has_trailing_comment
+    && not has_leading_comment
+    && not (record_type_fields_have_multi_field_mutable fields)
+    && record_type_fields_are_light_inline fields
+  in
+  let flat_width = record_type_flat_width fields in
+  let facts =
+    Facts.record_type
+      ?flat_width
+      ~allow_inline:inline_shape
+      ~has_leading_comment
+      ~has_trailing_comment
+      ~item_count:(Vector.length fields)
+      ()
+  in
+  match Layout.decide (Layout.Separated Layout.Record_fields) (layout_context state) facts with
+  | { Layout.mode = Inline; _ } -> true
+  | _ -> false
 
 and render_record_type_closing = fun state ~leading_trivia_indent record_type ->
   match Ast.RecordType.closing_token record_type with

@@ -98,6 +98,30 @@ let infix_chain = fun ?flat_width ~item_count () ->
     ~item_count
     ()
 
+let record_expr = fun ?flat_width ~allow_inline ~item_count () ->
+  let pressure =
+    if allow_inline then
+      Layout.Flat
+    else
+      Layout.Strong [ Layout.Child_is_block ]
+  in
+  expr ?flat_width ~pressure ~item_count ()
+
+let record_type = fun
+  ?flat_width
+  ~allow_inline
+  ~has_leading_comment
+  ~has_trailing_comment
+  ~item_count
+  () ->
+  let pressure =
+    if allow_inline then
+      Layout.Flat
+    else
+      Layout.Strong [ Layout.Child_is_block ]
+  in
+  type_expr ?flat_width ~pressure ~has_leading_comment ~has_trailing_comment ~item_count ()
+
 let binding_rhs = fun
   ?flat_width
   ?(suffix_width = 0)
