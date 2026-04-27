@@ -511,6 +511,23 @@ let decide_separated = fun kind ctx ~flat_width ~allow_inline ->
   trace_decision_from_width family ctx ~flat_width decision;
   decision
 
+let decide_tuple = fun ctx ~flat_width ~has_nonfinal_fun_item ->
+  let family = Separated Tuple in
+  let decision =
+    if has_nonfinal_fun_item then
+      { mode = Block; reasons = [ Child_is_block ] }
+    else
+      match flat_width with
+      | None -> inline
+      | Some _ ->
+          if fits_flat ctx flat_width then
+            inline
+          else
+            { mode = Block; reasons = [ width_overflow_reason_from_flat ctx flat_width ] }
+  in
+  trace_decision_from_width family ctx ~flat_width decision;
+  decision
+
 let decide_if_condition = fun ctx ~flat_width ~suffix_width ->
   let family = Keyword_clause If_condition in
   let decision =

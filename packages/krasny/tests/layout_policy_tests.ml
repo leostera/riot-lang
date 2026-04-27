@@ -84,6 +84,39 @@ let tests = [
         ~actual
         ~expected:{|krasny layout: Separated(Array) column=0 width=100 flat=18 -> Block [Child_is_block]|});
   Test.case
+    "layout trace snapshots tuple width overflow"
+    (fun ctx ->
+      let render_ctx = Layout.make_context ~width:20 ~column:8 ~indent:2 () in
+      let flat_width = Some 18 in
+      let decision = Layout.decide_tuple render_ctx ~flat_width ~has_nonfinal_fun_item:false in
+      let actual = trace_direct (Layout.Separated Layout.Tuple) render_ctx ~flat_width decision in
+      Test.Snapshot.assert_inline_text
+        ~ctx
+        ~actual
+        ~expected:{|krasny layout: Separated(Tuple) column=8 width=20 flat=18 -> Block [Width_overflow(flat=18, remaining=12)]|});
+  Test.case
+    "layout trace snapshots tuple unknown width stays inline"
+    (fun ctx ->
+      let render_ctx = Layout.make_context ~width:20 ~column:8 ~indent:2 () in
+      let flat_width = None in
+      let decision = Layout.decide_tuple render_ctx ~flat_width ~has_nonfinal_fun_item:false in
+      let actual = trace_direct (Layout.Separated Layout.Tuple) render_ctx ~flat_width decision in
+      Test.Snapshot.assert_inline_text
+        ~ctx
+        ~actual
+        ~expected:{|krasny layout: Separated(Tuple) column=8 width=20 flat=unknown -> Inline []|});
+  Test.case
+    "layout trace snapshots tuple nonfinal function item"
+    (fun ctx ->
+      let render_ctx = Layout.make_context ~width:100 ~column:0 ~indent:0 () in
+      let flat_width = Some 30 in
+      let decision = Layout.decide_tuple render_ctx ~flat_width ~has_nonfinal_fun_item:true in
+      let actual = trace_direct (Layout.Separated Layout.Tuple) render_ctx ~flat_width decision in
+      Test.Snapshot.assert_inline_text
+        ~ctx
+        ~actual
+        ~expected:{|krasny layout: Separated(Tuple) column=0 width=100 flat=30 -> Block [Child_is_block]|});
+  Test.case
     "layout trace snapshots if condition overflow"
     (fun ctx ->
       let render_ctx = Layout.make_context ~width:40 ~column:3 ~indent:0 () in

@@ -5214,14 +5214,6 @@ let rec render_expr = fun ?(role = Layout.Top_expr) state expr ->
   | Error _
   | Unknown _ -> unsupported_node "unsupported expression" expr
 
-and tuple_expr_should_break = fun state expr ->
-  if tuple_expr_has_nonfinal_fun_item expr then
-    true
-  else
-    match expr_flat_width expr with
-    | Some width -> Int.(state.column + width > state.width)
-    | None -> false
-
 and tuple_expr_has_nonfinal_fun_item = fun expr ->
   let items = collect_tuple_expr_items expr in
   let length = Vector.length items in
@@ -5234,6 +5226,16 @@ and tuple_expr_has_nonfinal_fun_item = fun expr ->
       loop (Int.add index 1)
   in
   loop 0
+
+and tuple_expr_decision = fun state expr ->
+  Layout.decide_tuple
+    (layout_context state)
+    ~flat_width:(expr_flat_width expr)
+    ~has_nonfinal_fun_item:(tuple_expr_has_nonfinal_fun_item expr)
+
+and tuple_expr_should_break = fun state expr ->
+  not
+    (layout_decision_is_inline (tuple_expr_decision state expr))
 
 and render_tuple_expr_item = fun state ~length ~index item ->
   if
