@@ -288,11 +288,15 @@ let decide = fun family ctx facts ->
   else
     match family with
     | Application -> decide_application ctx facts
-    | After_separator _ ->
-        if fits ctx ~prefix:1 facts then
-          inline
-        else
-          { mode = Break_after_separator; reasons = [ width_overflow_reason ctx facts ] }
+    | After_separator _ -> (
+        match facts.flat_width with
+        | None -> inline
+        | Some _ ->
+            if fits ctx ~prefix:1 facts then
+              inline
+            else
+              { mode = Break_after_separator; reasons = [ width_overflow_reason ctx facts ] }
+      )
     | Binding_rhs _ -> decide_binding_rhs ctx facts
     | Infix_chain operator ->
         if operator.always_breaks_pipeline then

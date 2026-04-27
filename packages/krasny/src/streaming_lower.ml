@@ -3823,13 +3823,22 @@ and render_multiline_type_arrow = fun state type_expr ->
       | _ -> render_type_expr state type_expr
     )
 
-and type_expr_should_break_after_colon = fun state ~suffix_width type_expr ->
+and type_expr_after_colon_decision = fun state ~suffix_width type_expr ->
   if type_expr_starts_with_gt type_expr then
-    false
+    { Layout.mode = Layout.Inline; reasons = [] }
   else
-    match type_expr_flat_width type_expr with
-    | Some width -> Int.(width + 1 + suffix_width > state.width - state.column)
-    | None -> false
+    let flat_width = type_expr_flat_width type_expr in
+    let facts = Facts.type_after_separator ?flat_width ~suffix_width () in
+    Layout.decide
+      (Layout.After_separator Layout.Colon)
+      (layout_context ~role:Layout.Type_after_colon state)
+      facts
+
+and type_expr_should_break_after_colon = fun state ~suffix_width type_expr ->
+  match type_expr_after_colon_decision state ~suffix_width type_expr with
+  | { Layout.mode = Break_after_separator; _ }
+  | { Layout.mode = Block; _ } -> true
+  | _ -> false
 
 and render_type_expr_after_tight_colon = fun state ~suffix_width type_expr ->
   if type_expr_should_break_after_colon state ~suffix_width type_expr then (

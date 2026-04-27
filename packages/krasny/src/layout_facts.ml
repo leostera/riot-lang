@@ -134,6 +134,12 @@ let parenthesized_expr = fun ~has_leading_comment ~is_multiline ~break_after_sep
   in
   expr ~flat_width:0 ~pressure ~has_leading_comment ()
 
+let type_after_separator = fun ?flat_width ~suffix_width () ->
+  type_expr
+    ?flat_width
+    ~suffix_width
+    ()
+
 let binding_rhs = fun
   ?flat_width
   ?(suffix_width = 0)
