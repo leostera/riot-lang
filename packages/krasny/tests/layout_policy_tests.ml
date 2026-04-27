@@ -66,6 +66,26 @@ let tests = [
         ~ctx
         ~actual
         ~expected:{|krasny layout: Separated(Array) column=0 width=100 flat=18 -> Block [Child_is_block]|});
+  Test.case
+    "layout trace snapshots if condition overflow"
+    (fun ctx ->
+      let render_ctx = Layout.make_context ~width:40 ~column:3 ~indent:0 () in
+      let facts = Layout.make_facts ~flat_width:34 ~suffix_width:6 ~syntax_family:Layout.Expr () in
+      let actual = trace_decision (Layout.Keyword_clause Layout.If_condition) render_ctx facts in
+      Test.Snapshot.assert_inline_text
+        ~ctx
+        ~actual
+        ~expected:{|krasny layout: Keyword_clause(If_condition) column=3 width=40 flat=34 -> Block [Width_overflow(flat=34, remaining=37)]|});
+  Test.case
+    "layout trace snapshots if condition unknown width stays inline"
+    (fun ctx ->
+      let render_ctx = Layout.make_context ~width:40 ~column:3 ~indent:0 () in
+      let facts = Layout.make_facts ~suffix_width:6 ~syntax_family:Layout.Expr () in
+      let actual = trace_decision (Layout.Keyword_clause Layout.If_condition) render_ctx facts in
+      Test.Snapshot.assert_inline_text
+        ~ctx
+        ~actual
+        ~expected:{|krasny layout: Keyword_clause(If_condition) column=3 width=40 flat=unknown -> Inline []|});
 ]
 
 let main ~args:_ = Test.Cli.main ~name:"krasny:layout_policy" ~tests ~args:Env.args ()

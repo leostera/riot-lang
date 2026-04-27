@@ -61,6 +61,7 @@ type binding_kind =
   | Method_definition
 
 type keyword_kind =
+  | If_condition
   | If_then
   | If_else
   | Match_case
@@ -298,6 +299,15 @@ let decide_raw = fun family ctx facts ->
               { mode = Break_after_separator; reasons = [ width_overflow_reason ctx facts ] }
       )
     | Binding_rhs _ -> decide_binding_rhs ctx facts
+    | Keyword_clause If_condition -> (
+        match facts.flat_width with
+        | None -> inline
+        | Some _ ->
+            if fits ctx ~prefix:1 facts then
+              inline
+            else
+              { mode = Block; reasons = [ width_overflow_reason ctx facts ] }
+      )
     | Infix_chain operator ->
         if operator.always_breaks_pipeline then
           { mode = Vertical; reasons = [] }
@@ -376,6 +386,7 @@ let family_to_string = function
   | Binding_rhs Let_binding -> "Binding_rhs(Let_binding)"
   | Binding_rhs Record_field -> "Binding_rhs(Record_field)"
   | Binding_rhs Method_definition -> "Binding_rhs(Method_definition)"
+  | Keyword_clause If_condition -> "Keyword_clause(If_condition)"
   | Keyword_clause If_then -> "Keyword_clause(If_then)"
   | Keyword_clause If_else -> "Keyword_clause(If_else)"
   | Keyword_clause Match_case -> "Keyword_clause(Match_case)"

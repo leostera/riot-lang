@@ -5572,13 +5572,19 @@ and render_keyword_body_expr = fun state expr ->
   | Tuple -> render_expr_atom state expr
   | _ -> render_expr state expr
 
+and if_condition_decision = fun state condition ->
+  let flat_width =
+    if expr_has_leading_comment condition || expr_is_multiline condition then
+      None
+    else
+      expr_flat_width condition
+  in
+  let facts = Facts.expr ?flat_width ~suffix_width:6 () in
+  Layout.decide (Layout.Keyword_clause Layout.If_condition) (layout_context state) facts
+
 and if_condition_should_break_after_keyword = fun state condition ->
-  if expr_has_leading_comment condition || expr_is_multiline condition then
-    false
-  else
-    match expr_flat_width condition with
-    | Some width -> Int.(state.column + 1 + width + 6 > state.width)
-    | None -> false
+  not
+    (layout_decision_is_inline (if_condition_decision state condition))
 
 and render_parenthesized_sequence_keyword_body = fun state body ->
   emit_text state "(";
