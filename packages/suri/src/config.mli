@@ -26,7 +26,12 @@
 *)
 open Std
 
+type env =
+  | Development
+  | Test
+  | Production
 type t = {
+  env: env;
   host: string;
   port: int;
   acceptors: int;
@@ -49,6 +54,29 @@ val default: t
 val spec: Std.Config.Spec.t
 
 (** Configuration spec for Std.Config - automatically registered on module load *)
+type liveview_secret_error =
+  | Missing
+  | TooShort of int
+  | Placeholder
+type error =
+  | InvalidEnv of string
+  | InvalidPort of int
+  | InvalidAcceptors of int
+  | InvalidMaxRequestLineLength of int
+  | InvalidMaxHeaderCount of int
+  | InvalidMaxHeaderLength of int
+  | InvalidBufferSize of int
+  | InvalidLiveViewSecret of liveview_secret_error
+val env_to_string: env -> string
+
+val env_from_string: string -> (env, error) result
+
+val error_to_string: error -> string
+
+val errors_to_string: error list -> string
+
+val validate: t -> (t, error list) result
+
 val get: Std.Config.Spec.value -> (t, Std.Config.error) result
 
 (** Extract typed config from validated spec values *)

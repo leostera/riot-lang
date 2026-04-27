@@ -4,6 +4,7 @@ module Component = Suri.Component
 module Accepts = Suri.Middleware.Accepts
 module Basic_auth = Suri.Middleware.Basic_auth
 module Body_parser = Suri.Middleware.Body_parser
+module Config = Suri.Config
 module Conn = Suri.Middleware.Conn
 module Cors = Suri.Middleware.Cors
 module Csrf = Suri.Middleware.Csrf
@@ -15,6 +16,73 @@ module Session = Suri.Middleware.Session
 module Static = Suri.Middleware.Static
 module Response = Suri.Response
 module Http1 = Suri.For_testing.Http1
+
+let config_for_test = fun
+  ?(env = Config.default.env)
+  ?(host = Config.default.host)
+  ?(port = Config.default.port)
+  ?(acceptors = Config.default.acceptors)
+  ?(max_request_line_length = Config.default.max_request_line_length)
+  ?(max_header_count = Config.default.max_header_count)
+  ?(max_header_length = Config.default.max_header_length)
+  ?(buffer_size = Config.default.buffer_size)
+  ?(liveview_secret = Config.default.liveview_secret)
+  () ->
+  Config.{
+    env;
+    host;
+    port;
+    acceptors;
+    max_request_line_length;
+    max_header_count;
+    max_header_length;
+    buffer_size;
+    liveview_secret;
+  }
+
+let test_config_validates_default_development = fun _ctx ->
+  match Config.validate Config.default with
+  | Ok _ -> Ok ()
+  | Error errors -> Error (Config.errors_to_string errors)
+
+let test_config_parses_env_aliases = fun _ctx ->
+  Test.assert_equal ~expected:(Ok Config.Development) ~actual:(Config.env_from_string "dev");
+  Test.assert_equal ~expected:(Ok Config.Production) ~actual:(Config.env_from_string "prod");
+  Test.assert_equal ~expected:(Ok Config.Test) ~actual:(Config.env_from_string "TEST");
+  Ok ()
+
+let test_config_rejects_production_placeholder_secret = fun _ctx ->
+  match Config.validate (config_for_test ~env:Config.Production ()) with
+  | Error errors ->
+      Test.assert_true
+        (List.contains errors ~value:(Config.InvalidLiveViewSecret Config.Placeholder));
+      Ok ()
+  | Ok _ -> Error "expected production placeholder liveview secret to be rejected"
+
+let test_config_rejects_invalid_limits = fun _ctx ->
+  let config =
+    config_for_test
+      ~port:0
+      ~acceptors:0
+      ~max_request_line_length:0
+      ~max_header_count:0
+      ~max_header_length:0
+      ~buffer_size:0
+      ~liveview_secret:"short"
+      ()
+  in
+  match Config.validate config with
+  | Error errors ->
+      Test.assert_true (List.contains errors ~value:(Config.InvalidPort 0));
+      Test.assert_true (List.contains errors ~value:(Config.InvalidAcceptors 0));
+      Test.assert_true (List.contains errors ~value:(Config.InvalidMaxRequestLineLength 0));
+      Test.assert_true (List.contains errors ~value:(Config.InvalidMaxHeaderCount 0));
+      Test.assert_true (List.contains errors ~value:(Config.InvalidMaxHeaderLength 0));
+      Test.assert_true (List.contains errors ~value:(Config.InvalidBufferSize 0));
+      Test.assert_true
+        (List.contains errors ~value:(Config.InvalidLiveViewSecret (Config.TooShort 5)));
+      Ok ()
+  | Ok _ -> Error "expected invalid config limits to be rejected"
 
 let test_component_text_is_escaped = fun _ctx ->
   let html =
@@ -516,6 +584,12 @@ let test_http1_response_does_not_add_vary_without_compression = fun _ctx ->
 
 let tests =
   Test.[
+    case "config validates default development" test_config_validates_default_development;
+    case "config parses env aliases" test_config_parses_env_aliases;
+    case
+      "config rejects production placeholder secret"
+      test_config_rejects_production_placeholder_secret;
+    case "config rejects invalid limits" test_config_rejects_invalid_limits;
     case "component text is escaped" test_component_text_is_escaped;
     case "component attributes are escaped" test_component_attrs_are_escaped;
     case "component invalid attributes are omitted" test_component_invalid_attr_name_is_omitted;

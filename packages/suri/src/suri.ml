@@ -43,6 +43,7 @@ end
 
 (** Suri.config () -> creates configuration with optional parameters *)
 let config = fun
+  ?(env = Config.Development)
   ?(host = "0.0.0.0")
   ?(port = 4_000)
   ?(acceptors = Std.Thread.available_parallelism)
@@ -52,16 +53,23 @@ let config = fun
   ?(buffer_size = 4_096)
   ?(liveview_secret = "INSECURE-CHANGE-ME-TO-AT-LEAST-32-CHARS")
   () ->
-  Config.{
-    host;
-    port;
-    acceptors;
-    max_request_line_length;
-    max_header_count;
-    max_header_length;
-    buffer_size;
-    liveview_secret;
-  }
+  let config =
+    Config.{
+      env;
+      host;
+      port;
+      acceptors;
+      max_request_line_length;
+      max_header_count;
+      max_header_length;
+      buffer_size;
+      liveview_secret;
+    }
+  in
+  match Config.validate config with
+  | Ok config -> config
+  | Error errors ->
+      Std.panic (Std.String.concat "" [ "Invalid Suri config:\n"; Config.errors_to_string errors; ])
 
 (**
    Suri.start_link app -> starts the web server
@@ -71,6 +79,13 @@ let config = fun
    WebServer API.
 *)
 let start_link = fun ?(config = Config.default) (app: Middleware.Pipeline.t) ->
+  let config =
+    match Config.validate config with
+    | Ok config -> config
+    | Error errors ->
+        Std.panic
+          (Std.String.concat "" [ "Invalid Suri config:\n"; Config.errors_to_string errors; ])
+  in
   (* Internal adapter: converts middleware pipeline to low-level handler *)
   let handler socket_conn req =
     let conn = Middleware.Conn.make socket_conn req in
