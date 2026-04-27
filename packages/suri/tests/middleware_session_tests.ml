@@ -140,15 +140,64 @@ let test_session_cookie_roundtrips_and_rejects_tampering = fun _ctx ->
   Session.put "user_id" "123" session;
   let cookie = Session.For_testing.to_cookie_value session in
   match Session.For_testing.from_cookie_value ~cookie_name:"_test" ~secret cookie with
-  | Error err -> Error err
+  | Error err -> Error (Session.For_testing.decode_error_to_string err)
   | Ok decoded ->
       Test.assert_equal ~expected:(Some "123") ~actual:(Session.get_value "user_id" decoded);
       match Session.For_testing.from_cookie_value
         ~cookie_name:"_test"
         ~secret
         (tamper_last_char cookie) with
-      | Error _ -> Ok ()
+      | Error Session.For_testing.InvalidSignature -> Ok ()
+      | Error err -> Error (Session.For_testing.decode_error_to_string err)
       | Ok _ -> Error "expected tampered session cookie to fail verification"
+
+let test_session_cookie_decode_errors_are_structured = fun _ctx ->
+  let secret = "0123456789abcdef0123456789abcdef" in
+  let invalid_b64 = "not-base64!" in
+  let invalid_b64_cookie = invalid_b64 ^ "." ^ Session.For_testing.sign ~secret invalid_b64 in
+  let invalid_json_cookie = Session.For_testing.cookie_value_for_plaintext ~secret "{" in
+  let invalid_session_data_cookie = Session.For_testing.cookie_value_for_plaintext ~secret "[]" in
+  let checks = [
+    (
+      fun () ->
+        match Session.For_testing.from_cookie_value ~cookie_name:"_test" ~secret "only-one-part" with
+        | Error (Session.For_testing.InvalidCookieFormat { parts = 1 }) -> Ok ()
+        | Ok _ -> Error "expected cookie format error"
+        | Error err -> Error (Session.For_testing.decode_error_to_string err)
+    );
+    (
+      fun () ->
+        match Session.For_testing.from_cookie_value ~cookie_name:"_test" ~secret invalid_b64_cookie with
+        | Error Session.For_testing.InvalidPayloadBase64 -> Ok ()
+        | Ok _ -> Error "expected invalid base64 error"
+        | Error err -> Error (Session.For_testing.decode_error_to_string err)
+    );
+    (
+      fun () ->
+        match Session.For_testing.from_cookie_value ~cookie_name:"_test" ~secret invalid_json_cookie with
+        | Error (Session.For_testing.InvalidJson _) -> Ok ()
+        | Ok _ -> Error "expected invalid JSON error"
+        | Error err -> Error (Session.For_testing.decode_error_to_string err)
+    );
+    (
+      fun () ->
+        match Session.For_testing.from_cookie_value
+          ~cookie_name:"_test"
+          ~secret
+          invalid_session_data_cookie with
+        | Error (Session.For_testing.InvalidSessionData (Data.Json.Array [])) -> Ok ()
+        | Ok _ -> Error "expected invalid session data error"
+        | Error err -> Error (Session.For_testing.decode_error_to_string err)
+    );
+  ]
+  in
+  List.fold_left
+    checks
+    ~init:(Ok ())
+    ~fn:(fun result check ->
+      match result with
+      | Error _ -> result
+      | Ok () -> check ())
 
 let tests =
   Test.[
@@ -159,6 +208,9 @@ let tests =
     case
       "session cookie roundtrips and rejects tampering"
       test_session_cookie_roundtrips_and_rejects_tampering;
+    case
+      "session cookie decode errors are structured"
+      test_session_cookie_decode_errors_are_structured;
   ]
 
 let main ~args = Test.Cli.main ~name:"suri:middleware-session" ~tests ~args ()

@@ -220,11 +220,19 @@ module For_testing: sig
   type secret_error =
     | Missing
     | TooShort of int
+  type decode_error =
+    | InvalidCookieFormat of { parts: int }
+    | InvalidSignature
+    | InvalidPayloadBase64
+    | InvalidJson of Data.Json.error
+    | InvalidSessionData of Data.Json.t
   val create: cookie_name:string -> secret:string -> unit -> t
 
   val validate_secret: string -> (unit, secret_error) result
 
   val secret_error_to_string: secret_error -> string
+
+  val decode_error_to_string: decode_error -> string
 
   val sign: secret:string -> string -> string
 
@@ -232,5 +240,7 @@ module For_testing: sig
 
   val to_cookie_value: t -> string
 
-  val from_cookie_value: cookie_name:string -> secret:string -> string -> (t, string) result
+  val cookie_value_for_plaintext: secret:string -> string -> string
+
+  val from_cookie_value: cookie_name:string -> secret:string -> string -> (t, decode_error) result
 end

@@ -20,9 +20,26 @@ type secret_error =
   | Missing
   | TooShort of int
 
+type decode_error =
+  | InvalidCookieFormat of { parts: int }
+  | InvalidSignature
+  | InvalidPayloadBase64
+  | InvalidJson of Data.Json.error
+  | InvalidSessionData of Data.Json.t
+
 let secret_error_to_string = function
   | Missing -> "session secret must not be empty"
   | TooShort len -> "session secret must be at least 32 characters long, got " ^ Int.to_string len
+
+let decode_error_to_string = function
+  | InvalidCookieFormat { parts } ->
+      "invalid cookie format; expected '<payload>.<signature>', got "
+      ^ Int.to_string parts
+      ^ " parts"
+  | InvalidSignature -> "invalid signature"
+  | InvalidPayloadBase64 -> "invalid base64 encoding in payload"
+  | InvalidJson error -> "invalid JSON in session: " ^ Data.Json.error_to_string error
+  | InvalidSessionData json -> "invalid session data: " ^ Data.Json.to_string json
 
 let validate_secret = fun secret ->
   let trimmed = String.trim secret in
@@ -235,21 +252,25 @@ let verify = fun ~secret data signature ->
 let to_cookie_value = fun session ->
   let json = to_json session.data in
   let json_str = Data.Json.to_string json in
-  (* Encrypt *)
   let encrypted = encrypt ~secret:session.secret json_str in
   let encrypted_b64 = Encoding.Base64.encode encrypted in
-  (* Sign *)
   let signature = sign ~secret:session.secret encrypted_b64 in
-  (* Return: encrypted.signature *)
+  String.concat "." [ encrypted_b64; signature ]
+
+let cookie_value_for_plaintext = fun ~secret plaintext ->
+  let encrypted = encrypt ~secret plaintext in
+  let encrypted_b64 = Encoding.Base64.encode encrypted in
+  let signature = sign ~secret encrypted_b64 in
   String.concat "." [ encrypted_b64; signature ]
 
 (** Deserialize session from cookie value *)
 let from_cookie_value = fun ~cookie_name ~secret cookie_value ->
-  match String.split_on_char '.' cookie_value with
+  let parts = String.split_on_char '.' cookie_value in
+  match parts with
   | [ encrypted_b64; signature ] ->
       (* Verify signature *)
       if not (verify ~secret encrypted_b64 signature) then
-        Result.err "Invalid signature"
+        Error InvalidSignature
       else
         (* Decrypt *)
         (
@@ -262,25 +283,31 @@ let from_cookie_value = fun ~cookie_name ~secret cookie_value ->
                 | Result.Ok json -> (
                     match from_json json with
                     | Option.Some data ->
-                        Result.ok
-                          {
-                            data;
-                            cookie_name;
-                            secret;
-                            modified = false;
-                          }
-                    | Option.None -> Result.err "Invalid session data"
+                        Ok {
+                          data;
+                          cookie_name;
+                          secret;
+                          modified = false;
+                        }
+                    | Option.None -> Error (InvalidSessionData json)
                   )
-                | Result.Error _err -> Result.err "Invalid JSON in session"
+                | Result.Error err -> Error (InvalidJson err)
               )
-          | Result.Error _ -> Result.err "Invalid base64 encoding"
+          | Result.Error _ -> Error InvalidPayloadBase64
         )
-  | _ -> Result.err "Invalid cookie format"
+  | _ -> Error (InvalidCookieFormat { parts = List.length parts })
 
 module For_testing = struct
   type nonrec secret_error = secret_error =
     | Missing
     | TooShort of int
+
+  type nonrec decode_error = decode_error =
+    | InvalidCookieFormat of { parts: int }
+    | InvalidSignature
+    | InvalidPayloadBase64
+    | InvalidJson of Data.Json.error
+    | InvalidSessionData of Data.Json.t
 
   let create = create
 
@@ -288,11 +315,15 @@ module For_testing = struct
 
   let secret_error_to_string = secret_error_to_string
 
+  let decode_error_to_string = decode_error_to_string
+
   let sign = sign
 
   let verify = verify
 
   let to_cookie_value = to_cookie_value
+
+  let cookie_value_for_plaintext = cookie_value_for_plaintext
 
   let from_cookie_value = from_cookie_value
 end
