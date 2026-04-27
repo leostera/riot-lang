@@ -9,6 +9,10 @@ type reason =
   | Width_overflow of { flat_width: int; remaining: int }
   | Long_infix_chain of { operator: string; terms: int }
   | Heavy_nested_apply
+  | Pipeline_body
+  | Assignment_body
+  | Inline_rhs_body
+  | Known_width_overflow
   | Single_constructor_payload
   | Parent_requires_block
   | Opaque_payload
@@ -111,6 +115,7 @@ type facts = {
   has_trailing_comment: bool;
   contains_hardline: bool;
   item_count: int;
+  suffix_width: int;
   syntax_family: syntax_family;
   callee_class: callee_class option;
 }
@@ -143,6 +148,7 @@ let make_facts = fun
   ?(has_trailing_comment = false)
   ?(contains_hardline = false)
   ?(item_count = 0)
+  ?(suffix_width = 0)
   ?(syntax_family = Unknown_syntax)
   ?callee_class
   () ->
@@ -153,6 +159,7 @@ let make_facts = fun
     has_trailing_comment;
     contains_hardline;
     item_count;
+    suffix_width;
     syntax_family;
     callee_class;
   }
@@ -182,6 +189,10 @@ let has_reason = fun expected reasons ->
       | (Contains_section_doc, Contains_section_doc)
       | (Child_is_block, Child_is_block)
       | (Heavy_nested_apply, Heavy_nested_apply)
+      | (Pipeline_body, Pipeline_body)
+      | (Assignment_body, Assignment_body)
+      | (Inline_rhs_body, Inline_rhs_body)
+      | (Known_width_overflow, Known_width_overflow)
       | (Single_constructor_payload, Single_constructor_payload)
       | (Parent_requires_block, Parent_requires_block)
       | (Opaque_payload, Opaque_payload) -> true
@@ -195,7 +206,7 @@ let remaining_width = fun ctx -> Int.max 0 (Int.sub ctx.width ctx.column)
 let fits = fun ctx ?(prefix = 0) ?(suffix = 0) facts ->
   match facts.flat_width with
   | None -> false
-  | Some width -> Int.(ctx.column + prefix + width + suffix <= ctx.width)
+  | Some width -> Int.(ctx.column + prefix + width + facts.suffix_width + suffix <= ctx.width)
 
 let width_overflow_reason = fun ctx facts ->
   match facts.flat_width with
@@ -245,6 +256,27 @@ let decide_application = fun ctx facts ->
             reasons = [ width_overflow_reason ctx facts ];
           }
 
+let decide_binding_rhs = fun ctx facts ->
+  let reasons = pressure_reasons facts.pressure in
+  if has_reason Inline_rhs_body reasons then
+    { mode = Inline; reasons = [ Inline_rhs_body ] }
+  else if has_reason Single_constructor_payload reasons then
+    { mode = Inline; reasons = [ Single_constructor_payload ] }
+  else
+    match facts.pressure with
+    | Hard reasons
+    | Strong reasons -> { mode = Block; reasons }
+    | Soft _
+    | Flat -> (
+        match facts.flat_width with
+        | None -> inline
+        | Some _ ->
+            if fits ctx ~prefix:1 facts then
+              inline
+            else
+              { mode = Block; reasons = [ width_overflow_reason ctx facts ] }
+      )
+
 let decide = fun family ctx facts ->
   if facts.contains_hardline then
     { mode = Block; reasons = [ Contains_hardline ] }
@@ -260,17 +292,7 @@ let decide = fun family ctx facts ->
           inline
         else
           { mode = Break_after_separator; reasons = [ width_overflow_reason ctx facts ] }
-    | Binding_rhs _ -> (
-        match facts.pressure with
-        | Hard reasons
-        | Strong reasons -> { mode = Block; reasons }
-        | Soft _
-        | Flat ->
-            if fits ctx ~prefix:1 facts then
-              inline
-            else
-              { mode = Block; reasons = [ width_overflow_reason ctx facts ] }
-      )
+    | Binding_rhs _ -> decide_binding_rhs ctx facts
     | Infix_chain operator ->
         if operator.always_breaks_pipeline then
           { mode = Vertical; reasons = [] }

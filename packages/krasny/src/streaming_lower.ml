@@ -7607,6 +7607,70 @@ and let_binding_apply_body_exceeds_inline_equals_width = fun ?(suffix_width = 0)
         ~column:(Int.add state.column 1)
   | _ -> false
 
+and let_binding_rhs_decision = fun
+  ?(body_suffix_width = 0)
+  state
+  body
+  ~force_body_break
+  ~binding_pattern_is_unit
+  ~parameter_count ->
+  let inline_body =
+    match ExprView.view body with
+    | Array
+    | List
+    | Record
+    | Fun _
+    | Function _ -> true
+    | _ -> false
+  in
+  let is_assignment =
+    match ExprView.view body with
+    | Assign _ -> true
+    | _ -> false
+  in
+  let single_constructor_payload =
+    (not binding_pattern_is_unit)
+    && (expr_is_single_constructor_multiline_apply body
+    || (expr_is_single_constructor_apply body
+    && let_binding_body_exceeds_width ~suffix_width:body_suffix_width state body))
+  in
+  let known_width_overflow =
+    (Int.equal parameter_count 0
+    && (not binding_pattern_is_unit)
+    && let_binding_apply_body_exceeds_inline_equals_width ~suffix_width:body_suffix_width state body)
+    || ((not binding_pattern_is_unit)
+    && expr_is_apply body
+    && let_binding_body_exceeds_width ~suffix_width:body_suffix_width state body)
+    || let_binding_body_exceeds_width ~suffix_width:body_suffix_width state body
+  in
+  let flat_width =
+    match ExprView.view body with
+    | Apply _ -> (
+        match expr_flat_width body with
+        | Some _ as width -> width
+        | None -> node_token_flat_width body
+      )
+    | _ -> expr_flat_width body
+  in
+  let facts =
+    Facts.binding_rhs
+      ?flat_width
+      ~suffix_width:body_suffix_width
+      ~force_body_break
+      ~has_leading_comment:(expr_has_leading_comment body)
+      ~is_pipeline:(expr_is_pipeline body)
+      ~is_assignment
+      ~inline_body
+      ~single_constructor_payload
+      ~known_width_overflow
+      ~is_multiline:(expr_is_multiline body)
+      ()
+  in
+  Layout.decide
+    (Layout.Binding_rhs Layout.Let_binding)
+    (layout_context ~role:Layout.Let_rhs state)
+    facts
+
 and let_binding_tail_should_render_multiline = fun binding ->
   match (Ast.LetBinding.view binding).pattern with
   | Some pattern -> pattern_should_render_multiline pattern
@@ -7857,63 +7921,38 @@ and render_let_binding_tail_with_body_break = fun
   emit_space state;
   emit_text state "=";
   match view.body with
-  | Some body when force_body_break ->
-      emit_line state;
-      with_indent state 2 (fun () -> render_expr state body)
-  | Some body when expr_has_leading_comment body ->
-      emit_line state;
-      with_indent state 2 (fun () -> render_let_body_with_leading_comment state body)
-  | Some body when expr_is_pipeline body ->
-      emit_line state;
-      with_indent state 2 (fun () -> render_expr state body)
-  | Some body when (
-    match ExprView.view body with
-    | Assign _ -> true
-    | _ -> false
-  ) ->
-      emit_line state;
-      with_indent state 2 (fun () -> render_expr state body)
-  | Some ({ Ast.id = _; _ } as body) when (
-    match ExprView.view body with
-    | Array
-    | List
-    | Record
-    | Fun _
-    | Function _ -> true
-    | _ -> false
-  ) ->
-      emit_space state;
-      render_expr state body
-  | Some body when (not binding_pattern_is_unit) && expr_is_single_constructor_multiline_apply body ->
-      emit_space state;
-      render_expr state body
-  | Some body when (not binding_pattern_is_unit)
-  && expr_is_single_constructor_apply body
-  && let_binding_body_exceeds_width ~suffix_width:body_suffix_width state body ->
-      emit_space state;
-      render_expr state body
-  | Some body when Int.equal parameter_count 0
-  && (not binding_pattern_is_unit)
-  && let_binding_apply_body_exceeds_inline_equals_width ~suffix_width:body_suffix_width state body ->
-      emit_line state;
-      with_indent state 2 (fun () -> render_expr state body)
-  | Some body when (not binding_pattern_is_unit)
-  && expr_is_apply body
-  && let_binding_body_exceeds_width ~suffix_width:body_suffix_width state body ->
-      emit_line state;
-      with_indent state 2 (fun () -> render_expr state body)
-  | Some body when expr_is_multiline body ->
-      emit_line state;
-      with_indent state 2 (fun () -> render_expr state body)
-  | Some body when let_binding_body_exceeds_width ~suffix_width:body_suffix_width state body ->
-      emit_line state;
-      with_indent state 2 (fun () -> render_expr state body)
-  | Some body when expr_is_tuple body ->
-      emit_space state;
-      render_expr_atom state body
-  | Some body ->
-      emit_space state;
-      render_expr state body
+  | Some body -> (
+      match (let_binding_rhs_decision
+        ~body_suffix_width
+        state
+        body
+        ~force_body_break
+        ~binding_pattern_is_unit
+        ~parameter_count).Layout.mode with
+      | Layout.Inline ->
+          emit_space state;
+          if expr_is_tuple body then
+            render_expr_atom state body
+          else
+            render_expr state body
+      | Layout.Block
+      | Layout.Vertical
+      | Layout.Hang _
+      | Layout.Isolate_child_blocks
+      | Layout.Break_after_separator
+      | Layout.Flow
+      | Layout.Tight
+      | Layout.Blank_line ->
+          emit_line state;
+          with_indent
+            state
+            2
+            (fun () ->
+              if expr_has_leading_comment body then
+                render_let_body_with_leading_comment state body
+              else
+                render_expr state body)
+    )
   | None -> unsupported_node "let binding without body" binding
 
 and render_record_update_base = fun state base ->

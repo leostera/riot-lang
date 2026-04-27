@@ -9,6 +9,7 @@ let expr = fun
   ?(has_trailing_comment = false)
   ?(contains_hardline = false)
   ?(item_count = 0)
+  ?(suffix_width = 0)
   ?callee_class
   () ->
   Layout.make_facts
@@ -18,6 +19,7 @@ let expr = fun
     ~has_trailing_comment
     ~contains_hardline
     ~item_count
+    ~suffix_width
     ~syntax_family:Layout.Expr
     ?callee_class
     ()
@@ -29,6 +31,7 @@ let type_expr = fun
   ?(has_trailing_comment = false)
   ?(contains_hardline = false)
   ?(item_count = 0)
+  ?(suffix_width = 0)
   () ->
   Layout.make_facts
     ?flat_width
@@ -37,6 +40,7 @@ let type_expr = fun
     ~has_trailing_comment
     ~contains_hardline
     ~item_count
+    ~suffix_width
     ~syntax_family:Layout.Type_expr
     ()
 
@@ -47,6 +51,7 @@ let pattern = fun
   ?(has_trailing_comment = false)
   ?(contains_hardline = false)
   ?(item_count = 0)
+  ?(suffix_width = 0)
   () ->
   Layout.make_facts
     ?flat_width
@@ -55,6 +60,7 @@ let pattern = fun
     ~has_trailing_comment
     ~contains_hardline
     ~item_count
+    ~suffix_width
     ~syntax_family:Layout.Pattern
     ()
 
@@ -84,3 +90,35 @@ let application = fun
       Layout.Flat
   in
   expr ?flat_width ~pressure ~item_count:arg_count ~callee_class ()
+
+let binding_rhs = fun
+  ?flat_width
+  ?(suffix_width = 0)
+  ~force_body_break
+  ~has_leading_comment
+  ~is_pipeline
+  ~is_assignment
+  ~inline_body
+  ~single_constructor_payload
+  ~known_width_overflow
+  ~is_multiline
+  () ->
+  let pressure =
+    if force_body_break then
+      Layout.Strong [ Layout.Parent_requires_block ]
+    else if is_pipeline then
+      Layout.Strong [ Layout.Pipeline_body ]
+    else if is_assignment then
+      Layout.Strong [ Layout.Assignment_body ]
+    else if inline_body then
+      Layout.Soft [ Layout.Inline_rhs_body ]
+    else if single_constructor_payload then
+      Layout.Soft [ Layout.Single_constructor_payload ]
+    else if known_width_overflow then
+      Layout.Strong [ Layout.Known_width_overflow ]
+    else if is_multiline then
+      Layout.Strong [ Layout.Child_is_block ]
+    else
+      Layout.Flat
+  in
+  expr ?flat_width ~pressure ~has_leading_comment ~suffix_width ()
