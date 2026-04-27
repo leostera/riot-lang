@@ -1,6 +1,7 @@
 open Std
 
 module Component = Suri.Component
+module Accepts = Suri.Middleware.Accepts
 module Basic_auth = Suri.Middleware.Basic_auth
 module Conn = Suri.Middleware.Conn
 module Cors = Suri.Middleware.Cors
@@ -230,6 +231,45 @@ let test_request_id_rejects_empty_and_overlong_values = fun _ctx ->
     ~actual:(Request_id.For_testing.choose_request_id ~generate:(fun () -> "generated") None);
   Ok ()
 
+let test_accepts_rejects_invalid_quality = fun _ctx ->
+  match Accepts.parse_accept_result "application/json;q=wat" with
+  | Error (Accepts.InvalidQuality "wat") -> Ok ()
+  | Ok _ -> Error "expected invalid Accept quality to fail parsing"
+  | Error _ -> Error "unexpected Accept parse error"
+
+let test_accepts_rejects_q_zero_matches = fun _ctx ->
+  match Accepts.For_testing.accept_header_matches
+    ~types:[ "application/json"; ]
+    "application/json;q=0" with
+  | Ok false -> Ok ()
+  | Ok true -> Error "expected q=0 Accept entry to be unacceptable"
+  | Error _ -> Error "unexpected Accept parse error"
+
+let test_accepts_matches_client_wildcards = fun _ctx ->
+  match Accepts.For_testing.accept_header_matches ~types:[ "application/json"; ] "*/*;q=0.5" with
+  | Ok true -> Ok ()
+  | Ok false -> Error "expected */* Accept entry to match supported JSON"
+  | Error _ -> Error "unexpected Accept parse error"
+
+let test_accepts_only_requires_content_type_for_declared_body = fun _ctx ->
+  Test.assert_false
+    (Accepts.For_testing.request_declares_body
+      ~method_:Net.Http.Method.Post
+      ~headers:Net.Http.Header.empty);
+  Test.assert_false
+    (Accepts.For_testing.request_declares_body
+      ~method_:Net.Http.Method.Post
+      ~headers:(Net.Http.Header.of_list [ ("content-length", "0"); ]));
+  Test.assert_true
+    (Accepts.For_testing.request_declares_body
+      ~method_:Net.Http.Method.Post
+      ~headers:(Net.Http.Header.of_list [ ("content-length", "12"); ]));
+  Test.assert_true
+    (Accepts.For_testing.request_declares_body
+      ~method_:Net.Http.Method.Patch
+      ~headers:(Net.Http.Header.of_list [ ("transfer-encoding", "chunked"); ]));
+  Ok ()
+
 let test_basic_auth_accepts_case_insensitive_scheme = fun _ctx ->
   let encoded = Encoding.Base64.encode "alice:s3cret" in
   Test.assert_equal
@@ -392,6 +432,12 @@ let tests =
     case
       "request id rejects empty and overlong values"
       test_request_id_rejects_empty_and_overlong_values;
+    case "accepts rejects invalid quality" test_accepts_rejects_invalid_quality;
+    case "accepts rejects q zero matches" test_accepts_rejects_q_zero_matches;
+    case "accepts matches client wildcards" test_accepts_matches_client_wildcards;
+    case
+      "accepts only requires content type for declared body"
+      test_accepts_only_requires_content_type_for_declared_body;
     case
       "basic auth accepts case insensitive scheme"
       test_basic_auth_accepts_case_insensitive_scheme;

@@ -232,18 +232,32 @@ val matches_pattern: pattern:string -> content_type:string -> bool
    ]}
 *)
 type accept_entry = { media_type: string; quality: float }
+type accept_parse_error =
+  | EmptyMediaType
+  | InvalidQuality of string
+  | QualityOutOfRange of float
 
 (**
    Entry in parsed Accept header.
    - media_type: MIME type (e.g., "application/json")
    - quality: Quality value from 0.0 to 1.0 (default: 1.0)
 *)
+val parse_accept_result: string -> (accept_entry list, accept_parse_error) result
+
+(**
+   Parse Accept header with quality values and structured errors.
+
+   Returns list sorted by quality (highest first). Malformed or out-of-range
+   [q] parameters return a typed error instead of being treated as [1.0].
+*)
 val parse_accept: string -> accept_entry list
 
 (**
    Parse Accept header with quality values.
 
-   Returns list sorted by quality (highest first).
+   Returns list sorted by quality (highest first). Malformed quality values
+   return an empty list from this compatibility helper; use
+   {!parse_accept_result} when callers need structured parse errors.
 
    {[
      parse_accept "application/json"
@@ -258,6 +272,14 @@ val parse_accept: string -> accept_entry list
    ]}
 *)
 val get_base_content_type: string -> string option
+
+module For_testing: sig
+  val accept_header_matches: types:string list -> string -> (bool, accept_parse_error) result
+
+  val request_declares_body: method_:Net.Http.Method.t -> headers:Net.Http.Header.t -> bool
+
+  val has_declared_request_body: Conn.t -> bool
+end
 
 (**
    Extract base content type from Content-Type header.

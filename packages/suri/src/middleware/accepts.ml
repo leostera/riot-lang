@@ -25,15 +25,32 @@ let matches_pattern = fun ~pattern ~content_type ->
 
 type accept_entry = { media_type: string; quality: float }
 
+type accept_parse_error =
+  | EmptyMediaType
+  | InvalidQuality of string
+  | QualityOutOfRange of float
+
 (**
    Parse quality value from parameter string.
 
    Example: "q=0.8" -> Some 0.8
 *)
 let parse_quality = fun param ->
-  match String.split_on_char '=' (String.trim param) with
-  | [ "q"; value ] -> Float.parse (String.trim value)
-  | _ -> None
+  let trimmed = String.trim param in
+  match String.split_on_char '=' trimmed with
+  | [ key; value ] when String.equal (String.lowercase_ascii (String.trim key)) "q" -> (
+      let value = String.trim value in
+      match Float.parse value with
+      | None -> Error (InvalidQuality value)
+      | Some quality when Order.is_lt (Float.compare quality 0.0)
+      || Order.is_gt (Float.compare quality 1.0) -> Error (QualityOutOfRange quality)
+      | Some quality -> Ok (Some quality)
+    )
+  | [ key ] when String.equal (String.lowercase_ascii (String.trim key)) "q" ->
+      Error (InvalidQuality "")
+  | key :: _ when String.equal (String.lowercase_ascii (String.trim key)) "q" ->
+      Error (InvalidQuality trimmed)
+  | _ -> Ok None
 
 (**
    Parse single Accept header entry with quality value.
@@ -44,26 +61,62 @@ let parse_quality = fun param ->
 *)
 let parse_accept_entry = fun entry ->
   match String.split_on_char ';' entry with
-  | [] -> { media_type = "*/*"; quality = 1.0 }
+  | [] -> Ok { media_type = "*/*"; quality = 1.0 }
   | media_type :: params ->
-      let quality =
-        List.filter_map ~fn:parse_quality params
-        |> List.head
-        |> Option.unwrap_or ~default:1.0
-      in
-      { media_type = String.trim media_type; quality }
+      let media_type = String.trim media_type in
+      if String.length media_type = 0 then
+        Error EmptyMediaType
+      else
+        let rec parse_params = fun quality params ->
+          match params with
+          | [] -> Ok { media_type; quality }
+          | param :: rest -> (
+              match parse_quality param with
+              | Error error -> Error error
+              | Ok None -> parse_params quality rest
+              | Ok (Some quality) -> parse_params quality rest
+            )
+        in
+        parse_params 1.0 params
 
 (**
    Parse full Accept header.
 
    Returns list sorted by quality (highest first).
 *)
+let parse_accept_result = fun header ->
+  let entries =
+    String.split_on_char ',' header
+    |> List.map ~fn:String.trim
+    |> List.filter ~fn:(fun s -> String.length s > 0)
+  in
+  let rec parse_entries = fun acc entries ->
+    match entries with
+    | [] -> Ok (List.sort acc ~compare:(fun a b -> Float.compare b.quality a.quality))
+    | entry :: rest -> (
+        match parse_accept_entry entry with
+        | Ok parsed -> parse_entries (parsed :: acc) rest
+        | Error error -> Error error
+      )
+  in
+  parse_entries [] entries
+
 let parse_accept = fun header ->
-  String.split_on_char ',' header
-  |> List.map ~fn:String.trim
-  |> List.filter ~fn:(fun s -> String.length s > 0)
-  |> List.map ~fn:parse_accept_entry
-  |> List.sort ~compare:(fun a b -> Float.compare b.quality a.quality)
+  match parse_accept_result header with
+  | Ok entries -> entries
+  | Error _ -> []
+
+let accept_header_matches = fun ~types accept ->
+  match parse_accept_result accept with
+  | Error error -> Error error
+  | Ok entries ->
+      Ok (List.exists
+        (fun entry ->
+          Order.is_gt (Float.compare entry.quality 0.0)
+          && List.exists
+            (fun content_type -> matches_pattern ~pattern:entry.media_type ~content_type)
+            types)
+        entries)
 
 (** {1 Content-Type Parsing} *)
 
@@ -126,17 +179,11 @@ let check_accept_header = fun conn config ->
   let headers = Conn.headers conn in
   match Net.Http.Header.get headers "accept" with
   | None -> (true, None)
-  | Some accept ->
-      let entries = parse_accept accept in
-      let matches =
-        List.exists
-          (fun entry ->
-            List.exists
-              (fun pattern -> matches_pattern ~pattern ~content_type:entry.media_type)
-              config.types)
-          entries
-      in
-      (matches, Some accept)
+  | Some accept -> (
+      match accept_header_matches ~types:config.types accept with
+      | Error _ -> (false, Some accept)
+      | Ok matches -> (matches, Some accept)
+    )
 
 (** Check if Content-Type header matches any accepted types *)
 let check_content_type_header = fun conn config ->
@@ -153,20 +200,36 @@ let check_content_type_header = fun conn config ->
       | None -> (false, Some ct)
     )
 
-(** Check if request method has a body *)
-let has_request_body = fun method_ ->
+(** Check if request declares a body. *)
+let request_declares_body = fun ~method_ ~headers ->
   match method_ with
   | Net.Http.Method.Post
   | Put
-  | Patch -> true
+  | Patch ->
+      if Net.Http.Header.has headers "transfer-encoding" then
+        true
+      else
+        (
+          match Net.Http.Header.get headers "content-length" with
+          | Some value -> (
+              match Int.parse (String.trim value) with
+              | Some len -> len > 0
+              | None -> true
+            )
+          | None -> false
+        )
   | _ -> false
+
+let has_declared_request_body = fun conn ->
+  request_declares_body
+    ~method_:(Conn.method_ conn)
+    ~headers:(Conn.headers conn)
 
 (** {1 Middleware} *)
 
 let make = fun config ->
   fun ~conn ~next ->
-    let method_ = Conn.method_ conn in
-    let has_body = has_request_body method_ in
+    let has_body = has_declared_request_body conn in
     (* Check Accept header *)
     let (accept_ok, accept_value) =
       if config.check_accept then
@@ -198,3 +261,13 @@ let middleware = fun ?config:(cfg = default_config) types ->
       { cfg with types }
   in
   make cfg'
+
+module For_testing = struct
+  let parse_accept_result = parse_accept_result
+
+  let accept_header_matches = accept_header_matches
+
+  let request_declares_body = request_declares_body
+
+  let has_declared_request_body = has_declared_request_body
+end
