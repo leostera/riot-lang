@@ -174,6 +174,49 @@ let test_cors_preflight_returns_no_content = fun _ctx ->
   Test.assert_equal ~expected:Net.Http.Status.NoContent ~actual:response.status;
   Ok ()
 
+let test_cors_simple_request_merges_vary_origin = fun _ctx ->
+  let conn = Suri.Testing.Conn.make ~headers:[ ("origin", "https://example.com"); ] () in
+  let middleware = Cors.middleware ~origins:[ "https://example.com"; ] () in
+  let response =
+    middleware
+      ~conn
+      ~next:(fun conn ->
+        conn
+        |> Conn.with_header "vary" "Accept-Encoding"
+        |> Conn.respond ~status:Net.Http.Status.Ok ~body:"ok"
+        |> Conn.send)
+    |> Conn.to_response
+  in
+  Test.assert_equal
+    ~expected:[ "Accept-Encoding, Origin"; ]
+    ~actual:(Net.Http.Header.get_all response.headers "vary");
+  Ok ()
+
+let test_cors_preflight_merges_vary_origin = fun _ctx ->
+  let conn =
+    Suri.Testing.Conn.make
+      ~method_:Net.Http.Method.Options
+      ~headers:[ ("origin", "https://example.com"); ("access-control-request-method", "PUT"); ]
+      ()
+    |> Conn.with_header "vary" "Accept-Encoding"
+  in
+  let middleware =
+    Cors.middleware ~origins:[ "https://example.com"; ] ~methods:[ Net.Http.Method.Put; ] ()
+  in
+  let response =
+    middleware
+      ~conn
+      ~next:(fun conn ->
+        conn
+        |> Conn.respond ~status:Net.Http.Status.Ok ~body:"next"
+        |> Conn.send)
+    |> Conn.to_response
+  in
+  Test.assert_equal
+    ~expected:[ "Accept-Encoding, Origin"; ]
+    ~actual:(Net.Http.Header.get_all response.headers "vary");
+  Ok ()
+
 let tests =
   Test.[
     case
@@ -183,6 +226,8 @@ let tests =
     case "cors preflight rejects disallowed headers" test_cors_preflight_rejects_disallowed_headers;
     case "cors preflight allows configured headers" test_cors_preflight_allows_configured_headers;
     case "cors preflight returns no content" test_cors_preflight_returns_no_content;
+    case "cors simple request merges vary origin" test_cors_simple_request_merges_vary_origin;
+    case "cors preflight merges vary origin" test_cors_preflight_merges_vary_origin;
   ]
 
 let main ~args = Test.Cli.main ~name:"suri:middleware-cors" ~tests ~args ()

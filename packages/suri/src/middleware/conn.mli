@@ -104,6 +104,9 @@ val with_body: string -> t -> t
 val with_header: string -> string -> t -> t
 
 (** Add a response header *)
+val set_header: string -> string -> t -> t
+
+(** Set a response header, replacing any previous values with the same case-insensitive name. *)
 val respond: status:Net.Http.Status.t -> ?body:string -> t -> t
 
 (** Set status and optionally body *)

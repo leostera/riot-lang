@@ -83,6 +83,41 @@ let allowed_header_names = fun headers ->
   simple_headers @ List.map ~fn:normalize_header_name headers
   |> List.unique ~compare:String.compare
 
+let token_equal = fun left right ->
+  String.equal
+    (String.lowercase_ascii left)
+    (String.lowercase_ascii right)
+
+let header_name_equal = fun left right ->
+  String.equal
+    (String.lowercase_ascii left)
+    (String.lowercase_ascii right)
+
+let split_header_tokens = fun value ->
+  value
+  |> String.split_on_char ','
+  |> List.map ~fn:String.trim
+  |> List.filter ~fn:(fun token -> not (String.equal token ""))
+
+let append_header_token = fun value token ->
+  let tokens = split_header_tokens value in
+  if List.exists (fun existing -> token_equal existing token) tokens then
+    value
+  else if List.is_empty tokens then
+    token
+  else
+    value ^ ", " ^ token
+
+let add_vary = fun token conn ->
+  match List.find
+    (Conn.resp_headers conn)
+    ~fn:(fun ((name, _value)) -> header_name_equal name "vary") with
+  | None -> Conn.with_header "vary" token conn
+  | Some (_, value) -> Conn.set_header
+    "vary"
+    (append_header_token value token)
+    conn
+
 let validate_preflight = fun ~methods ~headers ~request_method ~request_headers ->
   let method_ =
     request_method
@@ -211,7 +246,7 @@ let middleware = fun
                 let conn =
                   match origin_val with
                   | "*" -> conn
-                  | _ -> Conn.with_header "vary" "Origin" conn
+                  | _ -> add_vary "Origin" conn
                 in
                 Conn.halt conn
           end
@@ -251,7 +286,7 @@ let middleware = fun
             let conn' =
               match origin_val with
               | "*" -> conn'
-              | _ -> Conn.with_header "vary" "Origin" conn'
+              | _ -> add_vary "Origin" conn'
             in
             conn'
           end

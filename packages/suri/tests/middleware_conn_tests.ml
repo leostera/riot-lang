@@ -124,6 +124,20 @@ let test_conn_to_response_returns_not_found_when_unsent = fun _ctx ->
   Test.assert_equal ~expected:"Not Found" ~actual:response.body;
   Ok ()
 
+let test_conn_set_header_replaces_case_insensitively = fun _ctx ->
+  let response =
+    Suri.Testing.Conn.make ()
+    |> Conn.with_header "Vary" "Accept-Encoding"
+    |> Conn.with_header "vary" "Origin"
+    |> Conn.set_header "VARY" "Accept-Encoding, Origin"
+    |> Conn.send
+    |> Conn.to_response
+  in
+  Test.assert_equal
+    ~expected:[ "Accept-Encoding, Origin"; ]
+    ~actual:(Net.Http.Header.get_all response.headers "vary");
+  Ok ()
+
 let tests =
   Test.[
     case
@@ -136,6 +150,9 @@ let tests =
     case
       "conn to response returns not found when unsent"
       test_conn_to_response_returns_not_found_when_unsent;
+    case
+      "conn set header replaces case insensitively"
+      test_conn_set_header_replaces_case_insensitively;
   ]
 
 let main ~args = Test.Cli.main ~name:"suri:middleware-conn" ~tests ~args ()

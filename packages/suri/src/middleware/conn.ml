@@ -110,6 +110,20 @@ let with_header = fun name value t ->
     resp_headers = (name, value) :: t.resp_headers;
   }
 
+let header_name_equal = fun left right ->
+  String.equal
+    (String.lowercase_ascii left)
+    (String.lowercase_ascii right)
+
+let set_header = fun name value t ->
+  {
+    t with
+    resp_headers = (name, value)
+    :: List.filter
+      t.resp_headers
+      ~fn:(fun ((existing, _value)) -> not (header_name_equal existing name));
+  }
+
 let with_method = fun method_ t -> { t with method_override = Some method_ }
 
 let with_peer = fun peer t -> { t with peer }
