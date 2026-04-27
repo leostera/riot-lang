@@ -113,6 +113,18 @@
 
 open Std
 
+type config_error =
+  | WildcardOriginWithCredentials
+
+exception Invalid_config of config_error
+
+val config_error_to_string: config_error -> string
+
+type preflight_error =
+  | MethodNotAllowed of string
+  | HeadersNotAllowed of string list
+val preflight_error_to_string: preflight_error -> string
+
 (**
    CORS middleware with simple configuration.
 
@@ -123,8 +135,11 @@ open Std
    @param expose Headers exposed to client JavaScript (default: [])
    @param max_age Preflight cache duration in seconds (default: none)
 
-   {b Important}: Wildcard ["*"] with [~credentials:true] will log a warning
-   as this is a security risk.
+   @raise Invalid_config when wildcard ["*"] is combined with
+   [~credentials:true].
+
+   {b Important}: Wildcard ["*"] with [~credentials:true] is rejected because
+   browsers disallow it and it is unsafe for credentialed requests.
 
    {b Allowed by default}:
    - Methods: GET, HEAD, POST (always allowed for simple requests)
@@ -172,3 +187,16 @@ val middleware:
   ?max_age:int ->
   unit ->
   Pipeline.middleware
+
+module For_testing: sig
+  val validate_config: origins:string list -> credentials:bool -> (unit, config_error) result
+
+  val validate_preflight:
+    methods:Net.Http.Method.t list ->
+    headers:string list ->
+    request_method:string ->
+    request_headers:string option ->
+    (unit, preflight_error) result
+
+  val requested_headers: string option -> string list
+end

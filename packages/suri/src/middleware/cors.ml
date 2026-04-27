@@ -1,5 +1,34 @@
 open Std
 
+type config_error =
+  | WildcardOriginWithCredentials
+
+exception Invalid_config of config_error
+
+let config_error_to_string = function
+  | WildcardOriginWithCredentials -> "CORS wildcard origins cannot be combined with credentials"
+
+type preflight_error =
+  | MethodNotAllowed of string
+  | HeadersNotAllowed of string list
+
+let preflight_error_to_string = function
+  | MethodNotAllowed method_ -> "CORS preflight method is not allowed: " ^ method_
+  | HeadersNotAllowed headers ->
+      "CORS preflight headers are not allowed: " ^ String.concat ", " headers
+
+let validate_config = fun ~origins ~credentials ->
+  if List.contains origins ~value:"*" && credentials then
+    Error WildcardOriginWithCredentials
+  else
+    Ok ()
+
+let default_methods = [ Net.Http.Method.Put; Patch; Delete ]
+
+let simple_methods = [ Net.Http.Method.Get; Head; Post ]
+
+let simple_headers = [ "accept"; "accept-language"; "content-language"; "content-type" ]
+
 (** Check if origin matches a pattern *)
 let origin_matches = fun pattern origin ->
   match pattern with
@@ -19,20 +48,63 @@ let get_response_origin = fun origins origin credentials ->
   else
     origin
 
+let normalize_method_name = fun method_ ->
+  method_
+  |> String.trim
+  |> String.uppercase_ascii
+
+let method_names = fun methods ->
+  simple_methods @ methods
+  |> List.unique ~compare:Net.Http.Method.compare
+  |> List.map ~fn:Net.Http.Method.to_string
+
+let normalize_header_name = fun header ->
+  header
+  |> String.trim
+  |> String.lowercase_ascii
+
+let requested_headers = fun request_headers ->
+  match request_headers with
+  | None -> []
+  | Some value ->
+      value
+      |> String.split_on_char ','
+      |> List.map ~fn:normalize_header_name
+      |> List.filter ~fn:(fun header -> not (String.equal header ""))
+
+let allowed_header_names = fun headers ->
+  simple_headers @ List.map ~fn:normalize_header_name headers
+  |> List.unique ~compare:String.compare
+
+let validate_preflight = fun ~methods ~headers ~request_method ~request_headers ->
+  let method_ = normalize_method_name request_method in
+  let allowed_methods = method_names methods in
+  if not (List.contains allowed_methods ~value:method_) then
+    Error (MethodNotAllowed method_)
+  else
+    let allowed_headers = allowed_header_names headers in
+    let forbidden_headers =
+      requested_headers request_headers
+      |> List.filter ~fn:(fun header -> not (List.contains allowed_headers ~value:header))
+    in
+    match forbidden_headers with
+    | [] -> Ok ()
+    | _ -> Error (HeadersNotAllowed forbidden_headers)
+
 (** CORS middleware with simple configuration *)
 let middleware = fun
   ~origins
-  ?(methods = [Net.Http.Method.Put; Patch; Delete])
+  ?(methods = default_methods)
   ?(headers = [])
   ?(credentials = false)
   ?(expose = [])
   ?max_age
   () ->
-  (* Validate configuration *)
-  let () =
-    if List.contains origins ~value:"*" && credentials then
-      Log.warn "[CORS] Warning: Wildcard origin with credentials is a security risk!"
-  in
+  (
+    match validate_config ~origins ~credentials with
+    | Ok () -> ()
+    | Error error -> raise (Invalid_config error)
+  );
   fun ~conn ~next ->
     (* Extract origin from request *)
     let req_headers = Conn.headers conn in
@@ -65,55 +137,69 @@ let middleware = fun
           |> Option.is_some
         ) then
           begin
-            (* Preflight request - respond immediately *)
-            let origin_val = get_response_origin origins req_origin credentials in
-            (* Build allowed methods list *)
-            let all_methods =
-              [ Net.Http.Method.Get; Head; Post ] @ methods
-              |> List.unique ~compare
-              |> List.map ~fn:Net.Http.Method.to_string
-              |> String.concat ", "
-            in
-            Log.debug
-              (String.concat
-                ""
-                [ "[CORS] Preflight from origin: "; req_origin; " -> "; origin_val; ]);
-            let conn =
-              conn
-              |> Conn.respond ~status:Net.Http.Status.Ok
-              |> Conn.with_header "access-control-allow-origin" origin_val
-              |> Conn.with_header "access-control-allow-methods" all_methods
-            in
-            (* Add allowed headers if specified *)
-            let conn =
-              match headers with
-              | [] -> conn
-              | _ ->
-                  Conn.with_header
-                    "access-control-allow-headers"
-                    (String.concat ", " headers)
-                    conn
-            in
-            (* Add credentials if enabled *)
-            let conn =
-              if credentials then
-                Conn.with_header "access-control-allow-credentials" "true" conn
-              else
+            match validate_preflight
+              ~methods
+              ~headers
+              ~request_method:(
+                Net.Http.Header.get req_headers "access-control-request-method"
+                |> Option.unwrap_or ~default:""
+              )
+              ~request_headers:(Net.Http.Header.get req_headers "access-control-request-headers") with
+            | Error error ->
+                Log.debug (preflight_error_to_string error);
                 conn
-            in
-            (* Add max-age if specified *)
-            let conn =
-              match max_age with
-              | Some age -> Conn.with_header "access-control-max-age" (string_of_int age) conn
-              | None -> conn
-            in
-            (* Add Vary header *)
-            let conn =
-              match origin_val with
-              | "*" -> conn
-              | _ -> Conn.with_header "vary" "Origin" conn
-            in
-            Conn.halt conn
+                |> Conn.respond
+                  ~status:Net.Http.Status.Forbidden
+                  ~body:(preflight_error_to_string error)
+                |> Conn.halt
+            | Ok () ->
+                (* Preflight request - respond immediately *)
+                let origin_val = get_response_origin origins req_origin credentials in
+                (* Build allowed methods list *)
+                let all_methods =
+                  method_names methods
+                  |> String.concat ", "
+                in
+                Log.debug
+                  (String.concat
+                    ""
+                    [ "[CORS] Preflight from origin: "; req_origin; " -> "; origin_val; ]);
+                let conn =
+                  conn
+                  |> Conn.respond ~status:Net.Http.Status.Ok
+                  |> Conn.with_header "access-control-allow-origin" origin_val
+                  |> Conn.with_header "access-control-allow-methods" all_methods
+                in
+                (* Add allowed headers if specified *)
+                let conn =
+                  match headers with
+                  | [] -> conn
+                  | _ ->
+                      Conn.with_header
+                        "access-control-allow-headers"
+                        (String.concat ", " headers)
+                        conn
+                in
+                (* Add credentials if enabled *)
+                let conn =
+                  if credentials then
+                    Conn.with_header "access-control-allow-credentials" "true" conn
+                  else
+                    conn
+                in
+                (* Add max-age if specified *)
+                let conn =
+                  match max_age with
+                  | Some age -> Conn.with_header "access-control-max-age" (string_of_int age) conn
+                  | None -> conn
+                in
+                (* Add Vary header *)
+                let conn =
+                  match origin_val with
+                  | "*" -> conn
+                  | _ -> Conn.with_header "vary" "Origin" conn
+                in
+                Conn.halt conn
           end
         (* Simple CORS request - add headers to response *)
         else
@@ -155,3 +241,11 @@ let middleware = fun
             in
             conn'
           end
+
+module For_testing = struct
+  let validate_config = validate_config
+
+  let validate_preflight = validate_preflight
+
+  let requested_headers = requested_headers
+end

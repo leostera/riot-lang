@@ -2,6 +2,7 @@ open Std
 
 module Component = Suri.Component
 module Basic_auth = Suri.Middleware.Basic_auth
+module Cors = Suri.Middleware.Cors
 module Router = Suri.Middleware.Router
 module Static = Suri.Middleware.Static
 module Response = Suri.Response
@@ -114,6 +115,45 @@ let test_router_matcher_rejects_partial_literal_segments = fun _ctx ->
   Test.assert_equal ~expected:None ~actual:(Router.For_testing.match_path "/assets" "/assets2");
   Test.assert_equal ~expected:(Some []) ~actual:(Router.For_testing.match_path "/assets" "/assets/");
   Ok ()
+
+let test_cors_rejects_wildcard_origin_with_credentials = fun _ctx ->
+  try
+    let _middleware = Cors.middleware ~origins:[ "*" ] ~credentials:true () in
+    Error "expected wildcard credentials CORS config to be rejected"
+  with
+  | Cors.Invalid_config Cors.WildcardOriginWithCredentials -> Ok ()
+  | _ -> Error "unexpected CORS config exception"
+
+let test_cors_preflight_rejects_disallowed_method = fun _ctx ->
+  match Cors.For_testing.validate_preflight
+    ~methods:[ Net.Http.Method.Put; ]
+    ~headers:[]
+    ~request_method:"delete"
+    ~request_headers:None with
+  | Error (Cors.MethodNotAllowed "DELETE") -> Ok ()
+  | Ok () -> Error "expected disallowed CORS preflight method"
+  | Error error -> Error (Cors.preflight_error_to_string error)
+
+let test_cors_preflight_rejects_disallowed_headers = fun _ctx ->
+  match Cors.For_testing.validate_preflight
+    ~methods:[ Net.Http.Method.Put; ]
+    ~headers:[ "authorization"; ]
+    ~request_method:"PUT"
+    ~request_headers:(Some "Authorization, X-Evil") with
+  | Error (Cors.HeadersNotAllowed headers) ->
+      Test.assert_equal ~expected:[ "x-evil"; ] ~actual:headers;
+      Ok ()
+  | Ok () -> Error "expected disallowed CORS preflight headers"
+  | Error error -> Error (Cors.preflight_error_to_string error)
+
+let test_cors_preflight_allows_configured_headers = fun _ctx ->
+  match Cors.For_testing.validate_preflight
+    ~methods:[ Net.Http.Method.Put; ]
+    ~headers:[ "authorization"; "x-client"; ]
+    ~request_method:"put"
+    ~request_headers:(Some "Authorization, X-Client, Content-Type") with
+  | Ok () -> Ok ()
+  | Error error -> Error (Cors.preflight_error_to_string error)
 
 let test_basic_auth_accepts_case_insensitive_scheme = fun _ctx ->
   let encoded = Encoding.Base64.encode "alice:s3cret" in
@@ -252,6 +292,12 @@ let tests =
     case
       "router matcher rejects partial literal segments"
       test_router_matcher_rejects_partial_literal_segments;
+    case
+      "cors rejects wildcard origin with credentials"
+      test_cors_rejects_wildcard_origin_with_credentials;
+    case "cors preflight rejects disallowed method" test_cors_preflight_rejects_disallowed_method;
+    case "cors preflight rejects disallowed headers" test_cors_preflight_rejects_disallowed_headers;
+    case "cors preflight allows configured headers" test_cors_preflight_allows_configured_headers;
     case
       "basic auth accepts case insensitive scheme"
       test_basic_auth_accepts_case_insensitive_scheme;
