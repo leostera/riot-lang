@@ -619,8 +619,6 @@ and module_declaration_children = fun text declaration ->
   | Syn.Ast.ModuleDeclaration.Sig ->
       collect_signature_symbols text (Syn.Ast.ModuleDeclaration.for_each_signature_item declaration)
   | Syn.Ast.ModuleDeclaration.Path
-  | Syn.Ast.ModuleDeclaration.EmptyStruct
-  | Syn.Ast.ModuleDeclaration.EmptySig
   | Syn.Ast.ModuleDeclaration.Unsupported -> []
 
 and module_declaration_symbols = fun text declaration ->
@@ -655,7 +653,6 @@ and module_type_declaration_symbols = fun text declaration ->
               (Syn.Ast.ModuleTypeDeclaration.for_each_signature_item declaration)
         | Syn.Ast.ModuleTypeDeclaration.Abstract
         | Syn.Ast.ModuleTypeDeclaration.Path
-        | Syn.Ast.ModuleTypeDeclaration.EmptySig
         | Syn.Ast.ModuleTypeDeclaration.With
         | Syn.Ast.ModuleTypeDeclaration.Unsupported -> []
       in

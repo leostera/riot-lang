@@ -1470,7 +1470,7 @@ let test_module_declaration_tokens = fun _ctx ->
         Test.assert_equal ~expected:"rec" ~actual:(Ast.Token.text rec_token);
         Test.assert_equal ~expected:"M" ~actual:(Ast.Token.text name);
         Test.assert_equal
-          ~expected:Ast.ModuleDeclaration.EmptyStruct
+          ~expected:Ast.ModuleDeclaration.Struct
           ~actual:(Ast.ModuleDeclaration.body decl)
     | _ -> panic "expected first module declaration"
   );
@@ -1686,7 +1686,7 @@ let test_module_type_declaration_tokens = fun _ctx ->
     match Ast.SignatureItem.view second_item with
     | Ast.SignatureItem.ModuleType decl ->
         Test.assert_equal
-          ~expected:Ast.ModuleTypeDeclaration.EmptySig
+          ~expected:Ast.ModuleTypeDeclaration.Sig
           ~actual:(Ast.ModuleTypeDeclaration.body decl)
     | _ -> panic "expected second module type declaration"
   );

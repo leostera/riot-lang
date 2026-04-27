@@ -8737,6 +8737,10 @@ and module_declaration_has_head_parameter = fun decl ->
       loop 0);
   !found
 
+and module_declaration_has_empty_struct_body = fun decl ->
+  Ast.ModuleDeclaration.body decl = Struct
+  && Vector.is_empty (collect_structure_items_from_module_decl decl)
+
 and render_module_declaration = fun state decl ->
   if module_declaration_has_ascribed_body decl || module_declaration_has_head_parameter decl then
     render_module_declaration_members state decl
@@ -8765,43 +8769,38 @@ and render_module_declaration = fun state decl ->
               render_module_declaration_separator state decl ~default:"=";
               render_module_body_path state (Ast.ModuleDeclaration.for_each_body_path_ident decl);
               render_wrapped_module_body_attribute_suffix state decl
-          | EmptyStruct ->
-              emit_space state;
-              emit_text state "=";
-              emit_space state;
-              emit_text state "struct";
-              emit_space state;
-              emit_text state "end";
-              render_wrapped_module_body_attribute_suffix state decl
           | Struct ->
-              let end_token = Ast.ModuleDeclaration.end_token decl in
-              let has_terminal_trivia = token_has_leading_comment end_token in
-              emit_space state;
-              emit_text state "=";
-              emit_space state;
-              emit_text state "struct";
-              emit_line state;
-              with_indent
-                state
-                2
-                (fun () ->
-                  render_structure_items state (collect_structure_items_from_module_decl decl);
-                  match end_token with
-                  | Some token when has_terminal_trivia ->
-                      emit_line state;
-                      emit_line state;
-                      emit_token_leading_comments_as_lines state token
-                  | _ -> ());
-              if not has_terminal_trivia then
+              let items = collect_structure_items_from_module_decl decl in
+              if Vector.is_empty items then (
+                emit_space state;
+                emit_text state "=";
+                emit_space state;
+                emit_text state "struct";
+                emit_space state;
+                emit_text state "end"
+              ) else (
+                let end_token = Ast.ModuleDeclaration.end_token decl in
+                let has_terminal_trivia = token_has_leading_comment end_token in
+                emit_space state;
+                emit_text state "=";
+                emit_space state;
+                emit_text state "struct";
                 emit_line state;
-              emit_text state "end";
-              render_wrapped_module_body_attribute_suffix state decl
-          | EmptySig ->
-              render_module_declaration_separator state decl ~default:":";
-              render_signature_body
-                state
-                (Vector.with_capacity ~size:0)
-                ~end_token:(Ast.ModuleDeclaration.end_token decl);
+                with_indent
+                  state
+                  2
+                  (fun () ->
+                    render_structure_items state items;
+                    match end_token with
+                    | Some token when has_terminal_trivia ->
+                        emit_line state;
+                        emit_line state;
+                        emit_token_leading_comments_as_lines state token
+                    | _ -> ());
+                if not has_terminal_trivia then
+                  emit_line state;
+                emit_text state "end"
+              );
               render_wrapped_module_body_attribute_suffix state decl
           | Sig ->
               render_module_declaration_separator state decl ~default:":";
@@ -8859,13 +8858,6 @@ and render_module_type_declaration = fun state decl ->
     | Path ->
         render_module_type_declaration_equals state decl;
         render_module_body_path state (Ast.ModuleTypeDeclaration.for_each_body_path_ident decl);
-        render_wrapped_module_body_attribute_suffix state decl
-    | EmptySig ->
-        render_module_type_declaration_equals state decl;
-        render_signature_body
-          state
-          (Vector.with_capacity ~size:0)
-          ~end_token:(Ast.ModuleTypeDeclaration.end_token decl);
         render_wrapped_module_body_attribute_suffix state decl
     | Sig ->
         render_module_type_declaration_equals state decl;
@@ -9028,7 +9020,7 @@ and render_structure_item_with_trailing_tokens = fun state item trailing_tokens 
   else
     match Ast.StructureItem.view item with
     | Let decl -> render_let_declaration_with_body_break state decl true
-    | Module decl when Ast.ModuleDeclaration.body decl = EmptyStruct ->
+    | Module decl when module_declaration_has_empty_struct_body decl ->
         render_empty_struct_module_declaration_multiline state decl
     | _ -> render_structure_item state item
 

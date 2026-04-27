@@ -4289,8 +4289,6 @@ module ModuleDeclaration = struct
   type body =
     | Path
     | Struct
-    | EmptyStruct
-    | EmptySig
     | Sig
     | Unsupported
 
@@ -4529,29 +4527,12 @@ module ModuleDeclaration = struct
     | Some node -> first_specific_module_body node
     | None -> None
 
-  let has_child_node_kind = fun node expected ->
-    let found = ref false in
-    Node.for_each_child_node
-      node
-      ~fn:(fun child ->
-        if node_kind_is child expected then
-          found := true);
-    !found
-
   let body = fun decl ->
     match body_specific_node decl with
     | Some node when node_kind_is node Syntax_kind.PATH_MODULE_EXPR
     || node_kind_is node Syntax_kind.PATH_MODULE_TYPE -> Path
-    | Some node when node_kind_is node Syntax_kind.STRUCT_MODULE_EXPR ->
-        if has_child_node_kind node Syntax_kind.STRUCTURE_ITEM then
-          Struct
-        else
-          EmptyStruct
-    | Some node when node_kind_is node Syntax_kind.SIGNATURE_MODULE_TYPE ->
-        if has_child_node_kind node Syntax_kind.SIGNATURE_ITEM then
-          Sig
-        else
-          EmptySig
+    | Some node when node_kind_is node Syntax_kind.STRUCT_MODULE_EXPR -> Struct
+    | Some node when node_kind_is node Syntax_kind.SIGNATURE_MODULE_TYPE -> Sig
     | _ -> Unsupported
 
   let structure_body_node = fun decl ->
@@ -4662,7 +4643,6 @@ module ModuleTypeDeclaration = struct
   type body =
     | Abstract
     | Path
-    | EmptySig
     | Sig
     | With
     | Unsupported
@@ -4715,24 +4695,11 @@ module ModuleTypeDeclaration = struct
     | Some node -> first_specific_module_type node
     | None -> None
 
-  let has_child_node_kind = fun node expected ->
-    let found = ref false in
-    Node.for_each_child_node
-      node
-      ~fn:(fun child ->
-        if node_kind_is child expected then
-          found := true);
-    !found
-
   let body = fun decl ->
     match (body_group decl, body_specific_node decl) with
     | (None, _) -> Abstract
     | (Some _, Some node) when node_kind_is node Syntax_kind.PATH_MODULE_TYPE -> Path
-    | (Some _, Some node) when node_kind_is node Syntax_kind.SIGNATURE_MODULE_TYPE ->
-        if has_child_node_kind node Syntax_kind.SIGNATURE_ITEM then
-          Sig
-        else
-          EmptySig
+    | (Some _, Some node) when node_kind_is node Syntax_kind.SIGNATURE_MODULE_TYPE -> Sig
     | (Some _, Some node) when node_kind_is node Syntax_kind.WITH_MODULE_TYPE -> With
     | (Some _, _) -> Unsupported
 

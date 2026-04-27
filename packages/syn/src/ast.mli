@@ -1016,8 +1016,6 @@ module ModuleDeclaration: sig
   type body =
     | Path
     | Struct
-    | EmptyStruct
-    | EmptySig
     | Sig
     | Unsupported
   val cast: Node.t -> t option
@@ -1060,7 +1058,6 @@ module ModuleTypeDeclaration: sig
   type body =
     | Abstract
     | Path
-    | EmptySig
     | Sig
     | With
     | Unsupported
