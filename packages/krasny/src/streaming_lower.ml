@@ -5994,14 +5994,26 @@ and render_expr_postfix_target = fun state target ->
   else
     render_parenthesized_expr state target
 
-and parenthesized_expr_should_multiline = fun state expr ->
-  if expr_has_leading_comment expr || expr_is_multiline expr then
-    true
-  else
+and parenthesized_expr_decision = fun state expr ->
+  let break_after_separator =
     match ExprView.view expr with
     | Typed { annotation = Some annotation; _ } ->
         type_expr_should_break_after_colon state ~suffix_width:1 annotation
     | _ -> false
+  in
+  let facts =
+    Facts.parenthesized_expr
+      ~has_leading_comment:(expr_has_leading_comment expr)
+      ~is_multiline:(expr_is_multiline expr)
+      ~break_after_separator
+      ()
+  in
+  Layout.decide (Layout.Delimited Layout.Parens) (layout_context state) facts
+
+and parenthesized_expr_should_multiline = fun state expr ->
+  match parenthesized_expr_decision state expr with
+  | { Layout.mode = Inline; _ } -> false
+  | _ -> true
 
 and render_parenthesized_expr_with_multiline_indent = fun state expr ~body_indent ~closing_indent ->
   let expr = expr_unwrap_redundant_parentheses_for_delimited_render expr in

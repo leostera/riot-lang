@@ -122,6 +122,17 @@ let record_type = fun
   in
   type_expr ?flat_width ~pressure ~has_leading_comment ~has_trailing_comment ~item_count ()
 
+let parenthesized_expr = fun ~has_leading_comment ~is_multiline ~break_after_separator () ->
+  let pressure =
+    if is_multiline then
+      Layout.Strong [ Layout.Child_is_block ]
+    else if break_after_separator then
+      Layout.Strong [ Layout.Parent_requires_block ]
+    else
+      Layout.Flat
+  in
+  expr ~flat_width:0 ~pressure ~has_leading_comment ()
+
 let binding_rhs = fun
   ?flat_width
   ?(suffix_width = 0)
