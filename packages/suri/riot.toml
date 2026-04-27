@@ -57,6 +57,10 @@ name = "middleware_body_parser_tests"
 path = "tests/middleware_body_parser_tests.ml"
 
 [[bin]]
+name = "middleware_conditional_get_tests"
+path = "tests/middleware_conditional_get_tests.ml"
+
+[[bin]]
 name = "middleware_csrf_tests"
 path = "tests/middleware_csrf_tests.ml"
 

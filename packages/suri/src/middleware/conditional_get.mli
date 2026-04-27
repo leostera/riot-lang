@@ -72,6 +72,30 @@
    - Standard HTTP caching behavior
    - Works with both ETag and Last-Modified headers
 *)
+open Std
+
+type date_parse_error =
+  | InvalidDateFormat of { value: string }
+  | InvalidDay of { value: string }
+  | InvalidMonth of { value: string }
+  | InvalidYear of { value: string }
+  | InvalidTimeFormat of { value: string }
+  | InvalidHour of { value: string }
+  | InvalidMinute of { value: string }
+  | InvalidSecond of { value: string }
+type modified_since_error =
+  | InvalidRequestDate of date_parse_error
+  | InvalidResponseDate of date_parse_error
+val date_parse_error_to_string: date_parse_error -> string
+
+val modified_since_error_to_string: modified_since_error -> string
+
+val parse_http_date: string -> (float, date_parse_error) result
+
+val check_etag_match: Conn.t -> Std.Net.Http.Header.t -> bool
+
+val check_modified_since: Conn.t -> Std.Net.Http.Header.t -> (bool, modified_since_error) result
+
 val middleware: conn:Conn.t -> next:(Conn.t -> Conn.t) -> Conn.t
 
 (**
