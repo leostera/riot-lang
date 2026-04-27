@@ -52,7 +52,8 @@ open Std
    X-Forwarded-For: 127.0.0.1
    v}
 
-   This middleware only trusts IPs from your known proxies.
+   This middleware only trusts forwarded headers when the immediate socket peer
+   is one of your known proxies.
 
    {[
      (* SAFE - only trust your known proxies *)
@@ -66,10 +67,11 @@ open Std
 
    Given header: [X-Forwarded-For: client, proxy1, proxy2]
 
-   1. Walk the chain from right to left
-   2. Skip trusted proxy IPs
-   3. First untrusted IP = real client
-   4. Update [Conn.peer] with real IP
+   1. Check that the immediate socket peer is trusted
+   2. Walk the forwarded chain from right to left
+   3. Skip trusted proxy IPs
+   4. First untrusted IP = real client
+   5. Update [Conn.peer] with real IP
 
    {2 Multiple Proxies}
 
@@ -169,3 +171,13 @@ val middleware:
   conn:Conn.t ->
   next:(Conn.t -> Conn.t) ->
   Conn.t
+
+module For_testing: sig
+  val is_trusted_proxy: string list -> string -> bool
+
+  val parse_forwarded_for: string -> string list
+
+  val find_real_ip: string list -> string list -> string option
+
+  val resolve_real_ip: proxies:string list -> peer_ip:string -> header_value:string -> string option
+end

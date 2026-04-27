@@ -4,6 +4,7 @@ module Component = Suri.Component
 module Basic_auth = Suri.Middleware.Basic_auth
 module Conn = Suri.Middleware.Conn
 module Cors = Suri.Middleware.Cors
+module Remote_ip = Suri.Middleware.Remote_ip
 module Router = Suri.Middleware.Router
 module Static = Suri.Middleware.Static
 module Response = Suri.Response
@@ -174,6 +175,33 @@ let test_conn_query_params_decode_percent_and_skip_empty_pairs = fun _ctx ->
     ~actual:(Conn.For_testing.parse_query_params "encoded=%26%3D&&bad=%ZZ&incomplete=%2&");
   Ok ()
 
+let test_remote_ip_ignores_forwarded_header_from_untrusted_peer = fun _ctx ->
+  Test.assert_equal
+    ~expected:None
+    ~actual:(Remote_ip.For_testing.resolve_real_ip
+      ~proxies:[ "10.0.1.50"; ]
+      ~peer_ip:"203.0.113.10"
+      ~header_value:"127.0.0.1");
+  Ok ()
+
+let test_remote_ip_resolves_forwarded_header_from_trusted_peer = fun _ctx ->
+  Test.assert_equal
+    ~expected:(Some "1.2.3.4")
+    ~actual:(Remote_ip.For_testing.resolve_real_ip
+      ~proxies:[ "10.0.1.50"; ]
+      ~peer_ip:"10.0.1.50"
+      ~header_value:"1.2.3.4, 10.0.1.50");
+  Ok ()
+
+let test_remote_ip_walks_trusted_proxy_chain = fun _ctx ->
+  Test.assert_equal
+    ~expected:(Some "5.6.7.8")
+    ~actual:(Remote_ip.For_testing.resolve_real_ip
+      ~proxies:[ "10.0.1.50"; ]
+      ~peer_ip:"10.0.1.50"
+      ~header_value:"1.2.3.4, 5.6.7.8, 10.0.1.50");
+  Ok ()
+
 let test_basic_auth_accepts_case_insensitive_scheme = fun _ctx ->
   let encoded = Encoding.Base64.encode "alice:s3cret" in
   Test.assert_equal
@@ -324,6 +352,13 @@ let tests =
     case
       "conn query params decode percent and skip empty pairs"
       test_conn_query_params_decode_percent_and_skip_empty_pairs;
+    case
+      "remote ip ignores forwarded header from untrusted peer"
+      test_remote_ip_ignores_forwarded_header_from_untrusted_peer;
+    case
+      "remote ip resolves forwarded header from trusted peer"
+      test_remote_ip_resolves_forwarded_header_from_trusted_peer;
+    case "remote ip walks trusted proxy chain" test_remote_ip_walks_trusted_proxy_chain;
     case
       "basic auth accepts case insensitive scheme"
       test_basic_auth_accepts_case_insensitive_scheme;

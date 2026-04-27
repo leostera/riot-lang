@@ -24,29 +24,47 @@ let find_real_ip = fun proxies forwarded_ips ->
   in
   walk_chain (List.rev forwarded_ips)
 
+let resolve_real_ip = fun ~proxies ~peer_ip ~header_value ->
+  if not (is_trusted_proxy proxies peer_ip) then
+    None
+  else
+    header_value
+    |> parse_forwarded_for
+    |> find_real_ip proxies
+
 (** Remote IP middleware *)
 let middleware = fun ?(header = "x-forwarded-for") () ~proxies ~conn ~next ->
   (* If no proxies configured, pass through unchanged (safe default) *)
   if List.length proxies = 0 then
     next conn
   else
-    (* Get the header value *)
-    let headers = Conn.headers conn in
-    match Net.Http.Header.get headers header with
-    | None ->
-        (* No header present, use existing peer *)
-        next conn
-    | Some header_value -> (
-        (* Parse IPs from header *)
-        let forwarded_ips = parse_forwarded_for header_value in
-        match find_real_ip proxies forwarded_ips with
-        | Some real_ip_str ->
-            (* Update peer with real client IP (tcp_addr is just a string) *)
-            let current_peer = Conn.peer conn in
-            let new_peer = { current_peer with ip = real_ip_str } in
-            let conn' = Conn.with_peer new_peer conn in
-            next conn'
-        | None ->
-            (* Couldn't determine real IP, use existing peer *)
-            next conn
-      )
+    let current_peer = Conn.peer conn in
+    if not (is_trusted_proxy proxies current_peer.ip) then
+      next conn
+    else
+      (* Get the header value *)
+      let headers = Conn.headers conn in
+      match Net.Http.Header.get headers header with
+      | None ->
+          (* No header present, use existing peer *)
+          next conn
+      | Some header_value -> (
+          match resolve_real_ip ~proxies ~peer_ip:current_peer.ip ~header_value with
+          | Some real_ip_str ->
+              let new_peer = { current_peer with ip = real_ip_str } in
+              let conn' = Conn.with_peer new_peer conn in
+              next conn'
+          | None ->
+              (* Couldn't determine real IP, use existing peer *)
+              next conn
+        )
+
+module For_testing = struct
+  let is_trusted_proxy = is_trusted_proxy
+
+  let parse_forwarded_for = parse_forwarded_for
+
+  let find_real_ip = find_real_ip
+
+  let resolve_real_ip = resolve_real_ip
+end
