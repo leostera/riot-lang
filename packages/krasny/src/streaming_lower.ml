@@ -3,6 +3,7 @@ open Std.Collections
 
 module Ast = Syn.Ast
 module Kind = Syn.SyntaxKind
+module Layout = Layout_policy
 module Slice = IO.IoVec.IoSlice
 
 type error = { message: string }
@@ -49,6 +50,14 @@ type state = {
   mutable force_apply_break: bool;
   mutable delimited_expr_depth: int;
 }
+
+let layout_context = fun ?(role = Layout.Top_expr) state ->
+  Layout.make_context
+    ~role
+    ~width:state.width
+    ~column:state.column
+    ~indent:state.indent
+    ()
 
 let append_subslice_unchecked = fun buffer slice ~off ~len ->
   match IO.Buffer.append_subslice buffer slice ~off ~len with
@@ -6369,36 +6378,69 @@ and apply_expr_should_break = fun state expr args ->
   state.force_apply_break
   || apply_expr_should_break_from_column state expr args ~column:state.column
 
+and application_layout_facts = fun ~force_parent_break expr callee args ->
+  let arg_count = Vector.length args in
+  let single_constructor_payload =
+    Int.equal arg_count 1 && expr_is_constructor_like_callee callee
+  in
+  let has_multiline_args = vector_exists_expr_is_multiline_except expr args in
+  let pressure =
+    if force_parent_break then
+      Layout.Strong [ Layout.Parent_requires_block ]
+    else if apply_args_have_heavy_nested_apply args then
+      Layout.Strong [ Layout.Heavy_nested_apply ]
+    else if has_multiline_args && single_constructor_payload then
+      Layout.Soft [ Layout.Child_is_block ]
+    else if has_multiline_args && Int.(arg_count > 1) then
+      Layout.Strong [ Layout.Child_is_block ]
+    else if has_multiline_args then
+      Layout.Soft [ Layout.Child_is_block ]
+    else
+      Layout.Flat
+  in
+  let flat_width =
+    match expr_flat_width expr with
+    | Some _ as width -> width
+    | None -> node_token_flat_width expr
+  in
+  let callee_class =
+    if expr_is_constructor_like_callee callee then
+      Layout.Constructor_like
+    else
+      Layout.Ordinary
+  in
+  Layout.make_facts
+    ?flat_width
+    ~pressure
+    ~item_count:arg_count
+    ~syntax_family:Layout.Expr
+    ~callee_class
+    ()
+
 and render_apply_expr = fun state expr ->
   let force_current_apply_break = state.force_apply_break in
   if force_current_apply_break then
     state.force_apply_break <- false;
   let (callee, args) = collect_apply expr in
   let arg_count = Vector.length args in
-  let single_constructor_payload =
-    Int.equal arg_count 1 && expr_is_constructor_like_callee callee
-  in
-  let has_multiline_args = vector_exists_expr_is_multiline_except expr args in
-  let break_all_args =
-    if single_constructor_payload then
-      false
-    else if has_multiline_args && Int.(arg_count > 1) then
-      true
-    else if has_multiline_args then
-      false
-    else if force_current_apply_break then
-      true
-    else
-      apply_expr_should_break state expr args
-  in
-  let break_before_multiline_args =
-    if has_multiline_args then
-      not (Int.equal arg_count 1 && expr_is_constructor_like_callee callee)
-    else
-      false
-  in
   if same_ast_node expr callee then
     unsupported_node "apply expression resolved to itself" expr;
+  let facts =
+    application_layout_facts ~force_parent_break:force_current_apply_break expr callee args
+  in
+  let decision = Layout.decide Layout.Application (layout_context state) facts in
+  let break_all_args =
+    match decision.Layout.mode with
+    | Layout.Hang _
+    | Layout.Vertical
+    | Layout.Block -> true
+    | _ -> false
+  in
+  let break_before_multiline_args =
+    match decision.Layout.mode with
+    | Layout.Isolate_child_blocks -> true
+    | _ -> false
+  in
   match ExprView.view callee with
   | Infix { left = Some left; operator = Some operator; right = Some right } ->
       render_infix_expr_with_right_apply state callee left operator right args

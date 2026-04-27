@@ -1,0 +1,305 @@
+open Std
+
+type reason =
+  | Has_leading_comment
+  | Has_trailing_comment
+  | Contains_hardline
+  | Contains_section_doc
+  | Child_is_block
+  | Width_overflow of { flat_width: int; remaining: int }
+  | Long_infix_chain of { operator: string; terms: int }
+  | Heavy_nested_apply
+  | Single_constructor_payload
+  | Parent_requires_block
+  | Opaque_payload
+
+type pressure =
+  | Flat
+  | Soft of reason list
+  | Strong of reason list
+  | Hard of reason list
+
+type role =
+  | Top_expr
+  | Let_rhs
+  | Match_case_body
+  | If_condition
+  | If_branch
+  | Apply_callee
+  | Apply_arg of { index: int; broken_parent: bool }
+  | Record_field_value
+  | Type_after_colon
+  | Type_after_equals
+  | Pattern_atom
+  | Delimited_body
+
+type delimited_kind =
+  | Parens
+  | Brackets
+  | Braces
+  | Begin_end
+  | Sig_end
+  | Struct_end
+
+type separated_kind =
+  | Tuple
+  | List
+  | Array
+  | Record_fields
+  | Variant_rows
+
+type operator_class = { text: string; always_breaks_pipeline: bool; breaks_when_long: bool }
+
+type binding_kind =
+  | Let_binding
+  | Record_field
+  | Method_definition
+
+type keyword_kind =
+  | If_then
+  | If_else
+  | Match_case
+  | Try_case
+  | Fun_body
+
+type separator_kind =
+  | Colon
+  | Coerce
+  | Equals
+  | Arrow
+  | With
+
+type family =
+  | Delimited of delimited_kind
+  | Separated of separated_kind
+  | Application
+  | Infix_chain of operator_class
+  | Binding_rhs of binding_kind
+  | Keyword_clause of keyword_kind
+  | After_separator of separator_kind
+  | Top_level_join
+
+type mode =
+  | Inline
+  | Flow
+  | Hang of int
+  | Vertical
+  | Block
+  | Isolate_child_blocks
+  | Break_after_separator
+  | Tight
+  | Blank_line
+
+type callee_class =
+  | Constructor_like
+  | Ordinary
+  | Operator_like
+  | Unknown_callee
+
+type syntax_family =
+  | Expr
+  | Type_expr
+  | Pattern
+  | Declaration
+  | Trivia
+  | Unknown_syntax
+
+type facts = {
+  flat_width: int option;
+  pressure: pressure;
+  has_leading_comment: bool;
+  has_trailing_comment: bool;
+  contains_hardline: bool;
+  item_count: int;
+  syntax_family: syntax_family;
+  callee_class: callee_class option;
+}
+
+type style = {
+  continuation_indent: int;
+  block_indent: int;
+  long_infix_chain_terms: int;
+  heavy_apply_arg_threshold: int;
+}
+
+type context = { width: int; column: int; indent: int; role: role; style: style }
+
+type decision = {
+  mode: mode;
+  reasons: reason list;
+}
+
+let default_style = {
+  continuation_indent = 2;
+  block_indent = 2;
+  long_infix_chain_terms = 8;
+  heavy_apply_arg_threshold = 2;
+}
+
+let make_facts = fun
+  ?flat_width
+  ?(pressure = Flat)
+  ?(has_leading_comment = false)
+  ?(has_trailing_comment = false)
+  ?(contains_hardline = false)
+  ?(item_count = 0)
+  ?(syntax_family = Unknown_syntax)
+  ?callee_class
+  () ->
+  {
+    flat_width;
+    pressure;
+    has_leading_comment;
+    has_trailing_comment;
+    contains_hardline;
+    item_count;
+    syntax_family;
+    callee_class;
+  }
+
+let make_context = fun ?(role = Top_expr) ?(style = default_style) ~width ~column ~indent () ->
+  {
+    width;
+    column;
+    indent;
+    role;
+    style;
+  }
+
+let pressure_reasons = function
+  | Flat -> []
+  | Soft reasons
+  | Strong reasons
+  | Hard reasons -> reasons
+
+let has_reason = fun expected reasons ->
+  List.exists
+    (fun reason ->
+      match (expected, reason) with
+      | (Has_leading_comment, Has_leading_comment)
+      | (Has_trailing_comment, Has_trailing_comment)
+      | (Contains_hardline, Contains_hardline)
+      | (Contains_section_doc, Contains_section_doc)
+      | (Child_is_block, Child_is_block)
+      | (Heavy_nested_apply, Heavy_nested_apply)
+      | (Single_constructor_payload, Single_constructor_payload)
+      | (Parent_requires_block, Parent_requires_block)
+      | (Opaque_payload, Opaque_payload) -> true
+      | (Width_overflow _, Width_overflow _)
+      | (Long_infix_chain _, Long_infix_chain _) -> true
+      | _ -> false)
+    reasons
+
+let remaining_width = fun ctx -> Int.max 0 (Int.sub ctx.width ctx.column)
+
+let fits = fun ctx ?(prefix = 0) ?(suffix = 0) facts ->
+  match facts.flat_width with
+  | None -> false
+  | Some width -> Int.(ctx.column + prefix + width + suffix <= ctx.width)
+
+let width_overflow_reason = fun ctx facts ->
+  match facts.flat_width with
+  | Some flat_width -> Width_overflow { flat_width; remaining = remaining_width ctx }
+  | None -> Width_overflow { flat_width = 0; remaining = remaining_width ctx }
+
+let inline = { mode = Inline; reasons = [] }
+
+let is_single_constructor_payload = fun facts ->
+  match (facts.callee_class, facts.item_count) with
+  | (Some Constructor_like, 1) -> true
+  | _ -> false
+
+let decide_application = fun ctx facts ->
+  if facts.contains_hardline then
+    { mode = Vertical; reasons = [ Contains_hardline ] }
+  else if is_single_constructor_payload facts then
+    { mode = Inline; reasons = [ Single_constructor_payload ] }
+  else
+    match facts.pressure with
+    | Hard reasons -> { mode = Vertical; reasons }
+    | Strong reasons ->
+        if has_reason Heavy_nested_apply reasons then
+          { mode = Vertical; reasons }
+        else if has_reason Parent_requires_block reasons then
+          { mode = Vertical; reasons }
+        else if has_reason Child_is_block reasons then
+          { mode = Vertical; reasons }
+        else
+          { mode = Vertical; reasons }
+    | Soft reasons ->
+        if has_reason Child_is_block reasons then
+          { mode = Isolate_child_blocks; reasons }
+        else if fits ctx facts then
+          inline
+        else
+          {
+            mode = Hang ctx.style.continuation_indent;
+            reasons = [ width_overflow_reason ctx facts ];
+          }
+    | Flat ->
+        if fits ctx facts then
+          inline
+        else
+          {
+            mode = Hang ctx.style.continuation_indent;
+            reasons = [ width_overflow_reason ctx facts ];
+          }
+
+let decide = fun family ctx facts ->
+  if facts.contains_hardline then
+    { mode = Block; reasons = [ Contains_hardline ] }
+  else if facts.has_leading_comment then
+    { mode = Block; reasons = [ Has_leading_comment ] }
+  else if facts.has_trailing_comment then
+    { mode = Block; reasons = [ Has_trailing_comment ] }
+  else
+    match family with
+    | Application -> decide_application ctx facts
+    | After_separator _ ->
+        if fits ctx ~prefix:1 facts then
+          inline
+        else
+          { mode = Break_after_separator; reasons = [ width_overflow_reason ctx facts ] }
+    | Binding_rhs _ -> (
+        match facts.pressure with
+        | Hard reasons
+        | Strong reasons -> { mode = Block; reasons }
+        | Soft _
+        | Flat ->
+            if fits ctx ~prefix:1 facts then
+              inline
+            else
+              { mode = Block; reasons = [ width_overflow_reason ctx facts ] }
+      )
+    | Infix_chain operator ->
+        if operator.always_breaks_pipeline then
+          { mode = Vertical; reasons = [] }
+        else
+          (
+            match facts.pressure with
+            | Hard reasons
+            | Strong reasons -> { mode = Vertical; reasons }
+            | Soft reasons when has_reason
+              (Long_infix_chain { operator = operator.text; terms = 0 })
+              reasons -> { mode = Vertical; reasons }
+            | Soft _
+            | Flat ->
+                if fits ctx facts then
+                  inline
+                else
+                  { mode = Vertical; reasons = [ width_overflow_reason ctx facts ] }
+          )
+    | Delimited _
+    | Separated _
+    | Keyword_clause _
+    | Top_level_join -> (
+        match facts.pressure with
+        | Hard reasons
+        | Strong reasons -> { mode = Block; reasons }
+        | Soft _
+        | Flat ->
+            if fits ctx facts then
+              inline
+            else
+              { mode = Block; reasons = [ width_overflow_reason ctx facts ] }
+      )
