@@ -2,6 +2,7 @@ open Std
 
 module Component = Suri.Component
 module Basic_auth = Suri.Middleware.Basic_auth
+module Conn = Suri.Middleware.Conn
 module Cors = Suri.Middleware.Cors
 module Router = Suri.Middleware.Router
 module Static = Suri.Middleware.Static
@@ -155,6 +156,24 @@ let test_cors_preflight_allows_configured_headers = fun _ctx ->
   | Ok () -> Ok ()
   | Error error -> Error (Cors.preflight_error_to_string error)
 
+let test_conn_query_params_handle_missing_and_blank_values = fun _ctx ->
+  Test.assert_equal
+    ~expected:[ ("flag", ""); ("empty", ""); ("name", "John Doe"); ]
+    ~actual:(Conn.For_testing.parse_query_params "flag&empty=&name=John+Doe");
+  Ok ()
+
+let test_conn_query_params_preserve_repeated_keys = fun _ctx ->
+  Test.assert_equal
+    ~expected:[ ("tag", "one"); ("tag", "two"); ("tag", "three"); ]
+    ~actual:(Conn.For_testing.parse_query_params "tag=one&tag=two&tag=three");
+  Ok ()
+
+let test_conn_query_params_decode_percent_and_skip_empty_pairs = fun _ctx ->
+  Test.assert_equal
+    ~expected:[ ("encoded", "&="); ("bad", "%ZZ"); ("incomplete", "%2"); ]
+    ~actual:(Conn.For_testing.parse_query_params "encoded=%26%3D&&bad=%ZZ&incomplete=%2&");
+  Ok ()
+
 let test_basic_auth_accepts_case_insensitive_scheme = fun _ctx ->
   let encoded = Encoding.Base64.encode "alice:s3cret" in
   Test.assert_equal
@@ -298,6 +317,13 @@ let tests =
     case "cors preflight rejects disallowed method" test_cors_preflight_rejects_disallowed_method;
     case "cors preflight rejects disallowed headers" test_cors_preflight_rejects_disallowed_headers;
     case "cors preflight allows configured headers" test_cors_preflight_allows_configured_headers;
+    case
+      "conn query params handle missing and blank values"
+      test_conn_query_params_handle_missing_and_blank_values;
+    case "conn query params preserve repeated keys" test_conn_query_params_preserve_repeated_keys;
+    case
+      "conn query params decode percent and skip empty pairs"
+      test_conn_query_params_decode_percent_and_skip_empty_pairs;
     case
       "basic auth accepts case insensitive scheme"
       test_basic_auth_accepts_case_insensitive_scheme;

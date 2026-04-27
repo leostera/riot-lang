@@ -68,6 +68,13 @@ let body = fun t -> Web_server.Request.body t.req
 
 let params = fun t -> t.params
 
+let parse_query_params = fun query_string ->
+  query_string
+  |> String.split_on_char '&'
+  |> List.filter ~fn:(fun part -> not (String.equal part ""))
+  |> String.concat "&"
+  |> Net.Uri.Query.parse
+
 let query_params = fun t ->
   let uri_str = Web_server.Request.uri t.req in
   match String.index_of uri_str ~char:'?' with
@@ -76,20 +83,7 @@ let query_params = fun t ->
       let query_string =
         String.sub uri_str ~offset:(idx + 1) ~len:(String.length uri_str - idx - 1)
       in
-      (* Parse query string into key=value pairs *)
-      let pairs = String.split_on_char '&' query_string in
-      List.filter_map
-        ~fn:(fun pair ->
-          match String.index_of pair ~char:'=' with
-          | None -> None
-          | Some eq_idx ->
-              let key = String.sub pair ~offset:0 ~len:eq_idx in
-              let value =
-                String.sub pair ~offset:(eq_idx + 1) ~len:(String.length pair - eq_idx - 1)
-              in
-              (* URL decode the key and value *)
-              Some (Net.Uri.percent_decode key, Net.Uri.percent_decode value))
-        pairs
+      parse_query_params query_string
 
 let body_params = fun t -> t.body_params
 
@@ -193,3 +187,7 @@ let assign = fun key value t ->
   ()
 
 let get_assign = fun key t -> HashMap.get t.assigns ~key
+
+module For_testing = struct
+  let parse_query_params = parse_query_params
+end

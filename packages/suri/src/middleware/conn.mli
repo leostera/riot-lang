@@ -362,3 +362,6 @@ val assign: string -> assign_value -> t -> unit
 val get_assign: string -> t -> assign_value option
 
 (** Retrieve data stored by [assign]. *)
+module For_testing: sig
+  val parse_query_params: string -> (string * string) list
+end
