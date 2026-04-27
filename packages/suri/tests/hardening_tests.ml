@@ -660,6 +660,29 @@ let test_connection_write_all_skips_empty_payload = fun _ctx ->
       Ok ()
   | Error `Closed -> Error "expected empty payload to complete without writes"
 
+let test_connection_send_file_slice_extracts_range = fun _ctx ->
+  match Connection.send_file_slice ~off:2 ~len:4 "abcdefgh" with
+  | Ok chunk ->
+      Test.assert_equal ~expected:"cdef" ~actual:chunk;
+      Ok ()
+  | Error (`Invalid_range _) -> Error "expected valid send_file range"
+
+let test_connection_send_file_slice_allows_zero_length = fun _ctx ->
+  match Connection.send_file_slice ~off:8 ~len:0 "abcdefgh" with
+  | Ok chunk ->
+      Test.assert_equal ~expected:"" ~actual:chunk;
+      Ok ()
+  | Error (`Invalid_range _) -> Error "expected zero-length send_file range"
+
+let test_connection_send_file_slice_rejects_invalid_range = fun _ctx ->
+  match Connection.send_file_slice ~off:6 ~len:3 "abcdefgh" with
+  | Error (`Invalid_range { off; len; size }) ->
+      Test.assert_equal ~expected:6 ~actual:off;
+      Test.assert_equal ~expected:3 ~actual:len;
+      Test.assert_equal ~expected:8 ~actual:size;
+      Ok ()
+  | Ok _ -> Error "expected send_file range beyond file size to fail"
+
 let test_http1_response_rejects_invalid_header_name = fun _ctx ->
   let res = Response.ok ~headers:[ ("bad name", "value"); ] ~body:"ok" () in
   match Http1.serialize_response res with
@@ -853,6 +876,13 @@ let tests =
       "connection write all treats zero write as closed"
       test_connection_write_all_treats_zero_write_as_closed;
     case "connection write all skips empty payload" test_connection_write_all_skips_empty_payload;
+    case "connection send file slice extracts range" test_connection_send_file_slice_extracts_range;
+    case
+      "connection send file slice allows zero length"
+      test_connection_send_file_slice_allows_zero_length;
+    case
+      "connection send file slice rejects invalid range"
+      test_connection_send_file_slice_rejects_invalid_range;
     case
       "http1 response rejects invalid header name"
       test_http1_response_rejects_invalid_header_name;

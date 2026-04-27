@@ -25,7 +25,15 @@ module Handler = Web_server.Handler
 
 module For_testing = struct
   module Connection = struct
+    type send_file_range_error = Socket_pool.Connection.send_file_range_error = {
+      off: int;
+      len: int;
+      size: int;
+    }
+
     let write_all_with = Socket_pool.Connection.For_testing.write_all_with
+
+    let send_file_slice = Socket_pool.Connection.For_testing.send_file_slice
   end
 
   module Http1 = struct

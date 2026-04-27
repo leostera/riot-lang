@@ -500,10 +500,17 @@ module LiveView = Liveview
 *)
 module For_testing: sig
   module Connection: sig
+    type send_file_range_error = { off: int; len: int; size: int }
     val write_all_with:
       write:(bytes -> pos:int -> len:int -> (int, 'error) Std.result) ->
       string ->
       (unit, [> | `Closed]) Std.result
+
+    val send_file_slice:
+      ?off:int ->
+      len:int ->
+      string ->
+      (string, [> | `Invalid_range of send_file_range_error]) Std.result
   end
 
   module Http1: sig

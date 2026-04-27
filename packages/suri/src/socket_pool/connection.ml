@@ -11,6 +11,14 @@ type t =
       connected_at: Time.Instant.t;
     } -> t
 
+type send_file_range_error = { off: int; len: int; size: int }
+
+type send_file_error = [
+  | `Closed
+  | `File_error of Fs.error
+  | `Invalid_range of send_file_range_error
+]
+
 let make = fun ?(protocol = None) ~accepted_at ~stream ~buffer_size ~peer () ->
   Conn {
     stream;
@@ -80,10 +88,24 @@ let stream = fun (Conn { stream; _ }) -> stream
 
 let close = fun (Conn { stream; _ }) -> Net.TcpStream.close stream
 
-let send_file = fun (Conn _) ?off:_ ~len:_ _path ->
-  (* TODO: implement sendfile optimization *)
-  Ok ()
+let send_file_slice = fun ?(off = 0) ~len content ->
+  let size = String.length content in
+  if off < 0 || len < 0 || off > size || len > size - off then
+    Error (`Invalid_range { off; len; size })
+  else
+    Ok (String.sub content ~offset:off ~len)
+
+let send_file = fun conn ?(off = 0) ~len path ->
+  match Fs.read (Path.v path) with
+  | Error error -> Error (`File_error error)
+  | Ok content -> (
+      match send_file_slice ~off ~len content with
+      | Error error -> Error error
+      | Ok chunk -> send conn chunk
+    )
 
 module For_testing = struct
   let write_all_with = write_all_with
+
+  let send_file_slice = send_file_slice
 end

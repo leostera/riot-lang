@@ -15,6 +15,12 @@ open Std
    [protocol] is the negotiated protocol (e.g., "h2" for HTTP/2)
 *)
 type t
+type send_file_range_error = { off: int; len: int; size: int }
+type send_file_error = [
+  | `Closed
+  | `File_error of Std.Fs.error
+  | `Invalid_range of send_file_range_error
+]
 val make:
   ?protocol:string option ->
   accepted_at:Std.Time.Instant.t ->
@@ -71,11 +77,17 @@ val stream: t -> Std.Net.TcpStream.t
 
    TODO: Not yet implemented - will use sendfile optimization when available
 *)
-val send_file: t -> ?off:int -> len:int -> string -> (unit, [> | `Closed]) result
+val send_file: t -> ?off:int -> len:int -> string -> (unit, send_file_error) result
 
 module For_testing: sig
   val write_all_with:
     write:(bytes -> pos:int -> len:int -> (int, 'error) result) ->
     string ->
     (unit, [> | `Closed]) result
+
+  val send_file_slice:
+    ?off:int ->
+    len:int ->
+    string ->
+    (string, [> | `Invalid_range of send_file_range_error]) result
 end
