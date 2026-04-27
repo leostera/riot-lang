@@ -13,6 +13,7 @@ type frame_type =
   | Goaway
   | WindowUpdate
   | Continuation
+  | Unknown of int
 type flags = {
   end_stream: bool;
   (** Bit 0 *)
@@ -82,6 +83,7 @@ type payload =
   | WindowUpdatePayload of int
   (** Window size increment *)
   | ContinuationPayload of string
+  | UnknownPayload of string
 (** Header block fragment *)
 type t = {
   length: int;

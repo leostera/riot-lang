@@ -34,6 +34,7 @@ let frame_type_to_int = function
   | Frame.Goaway -> 0x7
   | Frame.WindowUpdate -> 0x8
   | Frame.Continuation -> 0x9
+  | Frame.Unknown code -> code land 0xff
 
 let flags_to_byte = fun frame_type flags ->
   let open Frame in
@@ -184,6 +185,11 @@ let serialize_continuation_payload = fun payload ->
   | Frame.ContinuationPayload header_block_fragment -> header_block_fragment
   | _ -> panic "serialize_continuation_payload: expected ContinuationPayload"
 
+let serialize_unknown_payload = fun payload ->
+  match payload with
+  | Frame.UnknownPayload data -> data
+  | _ -> panic "serialize_unknown_payload: expected UnknownPayload"
+
 let serialize_payload = fun frame_type payload ->
   match frame_type with
   | Frame.Data -> serialize_data_payload payload
@@ -196,6 +202,7 @@ let serialize_payload = fun frame_type payload ->
   | Frame.Goaway -> serialize_goaway_payload payload
   | Frame.WindowUpdate -> serialize_window_update_payload payload
   | Frame.Continuation -> serialize_continuation_payload payload
+  | Frame.Unknown _ -> serialize_unknown_payload payload
 
 let serialize_frame = fun frame ->
   let open Frame in

@@ -72,7 +72,7 @@ let int_to_frame_type = function
   | 0x7 -> Some Frame.Goaway
   | 0x8 -> Some Frame.WindowUpdate
   | 0x9 -> Some Frame.Continuation
-  | _ -> None
+  | code -> Some (Frame.Unknown code)
 
 let parse_flags = fun frame_type flags_byte ->
   let end_headers = flags_byte land 0x04 != 0 in
@@ -106,6 +106,7 @@ let frame_type_name = function
   | Frame.Goaway -> "GOAWAY"
   | Frame.WindowUpdate -> "WINDOW_UPDATE"
   | Frame.Continuation -> "CONTINUATION"
+  | Frame.Unknown code -> "UNKNOWN(" ^ Int.to_string code ^ ")"
 
 let validate_stream_id = fun frame_type stream_id ->
   match frame_type with
@@ -454,6 +455,14 @@ let parse_payload = fun length frame_type flags data ->
   | Frame.Goaway -> parse_goaway_payload length data
   | Frame.WindowUpdate -> parse_window_update_payload length data
   | Frame.Continuation -> parse_continuation_payload length data
+  | Frame.Unknown _ ->
+      if String.length data < length then
+        Need_more
+      else
+        Done {
+          value = Frame.UnknownPayload (String.sub data ~offset:0 ~len:length);
+          remaining = String.sub data ~offset:length ~len:(String.length data - length);
+        }
 
 let parse_frame = fun data ->
   match parse_frame_header data with

@@ -594,6 +594,7 @@ let process_frame = fun conn frame ->
   | Frame.Continuation ->
       (* TODO: Implement these *)
       Ok []
+  | Frame.Unknown _ -> Ok []
 
 let process_data = fun conn data ->
   let rec process_all events remaining =

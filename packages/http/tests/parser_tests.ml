@@ -263,6 +263,23 @@ let test_parse_window_update_allows_stream_zero = fun _ctx ->
   | Parser.Need_more -> Result.Error "WINDOW_UPDATE stream 0 unexpectedly needed more data"
   | Parser.Error err -> Result.Error ("WINDOW_UPDATE stream 0 was rejected: " ^ err)
 
+let test_parse_unknown_frame_preserves_payload = fun _ctx ->
+  match Parser.parse_frame "\x00\x00\x03\x0b\x00\x00\x00\x00\x00abc" with
+  | Parser.Done { value = { Frame.frame_type = Frame.Unknown 0x0b; stream_id = 0; payload = Frame.UnknownPayload "abc"; _ }; remaining = "" } ->
+      Result.Ok ()
+  | Parser.Done _ -> Result.Error "Unknown frame parsed with the wrong payload"
+  | Parser.Need_more -> Result.Error "Unknown frame unexpectedly needed more data"
+  | Parser.Error err -> Result.Error ("Unknown frame was rejected: " ^ err)
+
+let test_process_data_ignores_unknown_frame = fun _ctx ->
+  let conn = Connection.create ~role:Connection.Server () in
+  match Connection.process_data
+    conn
+    (Std.IO.Bytes.from_string "\x00\x00\x03\x0b\x00\x00\x00\x00\x00abc") with
+  | Ok [] -> Result.Ok ()
+  | Ok _ -> Result.Error "Unknown frame emitted connection events"
+  | Error err -> Result.Error ("Unknown frame failed connection processing: " ^ err)
+
 let tests =
   Test.[
     case "serialize_settings_frame" test_serialize_settings_frame;
@@ -293,6 +310,8 @@ let tests =
     case "parse_ping_rejects_nonzero_stream" test_parse_ping_rejects_nonzero_stream;
     case "parse_goaway_rejects_nonzero_stream" test_parse_goaway_rejects_nonzero_stream;
     case "parse_window_update_allows_stream_zero" test_parse_window_update_allows_stream_zero;
+    case "parse_unknown_frame_preserves_payload" test_parse_unknown_frame_preserves_payload;
+    case "process_data_ignores_unknown_frame" test_process_data_ignores_unknown_frame;
   ]
 
 let main ~args:_ = Test.Cli.main ~name:"http:http2_parser" ~tests ~args:Env.args ()

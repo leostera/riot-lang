@@ -103,7 +103,7 @@ let parse_frame_header_bytes = fun config data ->
         | 0x7 -> Some Frame.Goaway
         | 0x8 -> Some Frame.WindowUpdate
         | 0x9 -> Some Frame.Continuation
-        | _ -> None
+        | code -> Some (Frame.Unknown code)
       in
       match frame_type_opt with
       | None -> Error (Unknown_frame_type type_byte)
@@ -294,6 +294,7 @@ let parse_payload = fun frame payload_data ->
   | Frame.Continuation ->
       (* Simplified: return placeholder *)
       Ok { frame with payload = Frame.DataPayload { data = payload_data; pad_length = None } }
+  | Frame.Unknown _ -> Ok { frame with payload = Frame.UnknownPayload payload_data }
 
 let rec parse = fun state reader ->
   match Cell.get state.phase with

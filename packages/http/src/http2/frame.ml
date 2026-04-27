@@ -11,6 +11,7 @@ type frame_type =
   | Goaway
   | WindowUpdate
   | Continuation
+  | Unknown of int
 
 type flags = { end_stream: bool; end_headers: bool; padded: bool; priority: bool; ack: bool }
 
@@ -64,6 +65,7 @@ type payload =
   | GoawayPayload of { last_stream_id: int; error_code: error_code; debug_data: string }
   | WindowUpdatePayload of int
   | ContinuationPayload of string
+  | UnknownPayload of string
 
 type t = {
   length: int;
