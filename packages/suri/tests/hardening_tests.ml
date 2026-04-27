@@ -5,6 +5,7 @@ module Accepts = Suri.Middleware.Accepts
 module Basic_auth = Suri.Middleware.Basic_auth
 module Conn = Suri.Middleware.Conn
 module Cors = Suri.Middleware.Cors
+module Logger = Suri.Middleware.Logger
 module Remote_ip = Suri.Middleware.Remote_ip
 module Request_id = Suri.Middleware.Request_id
 module Router = Suri.Middleware.Router
@@ -270,6 +271,12 @@ let test_accepts_only_requires_content_type_for_declared_body = fun _ctx ->
       ~headers:(Net.Http.Header.of_list [ ("transfer-encoding", "chunked"); ]));
   Ok ()
 
+let test_logger_sanitizes_control_characters_in_paths = fun _ctx ->
+  Test.assert_equal
+    ~expected:"/login%0D%0Ax-evil: yes/%7F"
+    ~actual:(Logger.For_testing.sanitize_path "/login\r\nx-evil: yes/\x7F");
+  Ok ()
+
 let test_basic_auth_accepts_case_insensitive_scheme = fun _ctx ->
   let encoded = Encoding.Base64.encode "alice:s3cret" in
   Test.assert_equal
@@ -438,6 +445,9 @@ let tests =
     case
       "accepts only requires content type for declared body"
       test_accepts_only_requires_content_type_for_declared_body;
+    case
+      "logger sanitizes control characters in paths"
+      test_logger_sanitizes_control_characters_in_paths;
     case
       "basic auth accepts case insensitive scheme"
       test_basic_auth_accepts_case_insensitive_scheme;

@@ -1,12 +1,34 @@
 open Std
 
+let hex_digit = fun value -> String.get_unchecked "0123456789ABCDEF" ~at:value
+
+let percent_encode_byte = fun code ->
+  "%"
+  ^ String.make ~len:1 ~char:(hex_digit ((code lsr 4) land 0xf))
+  ^ String.make ~len:1 ~char:(hex_digit (code land 0xf))
+
+let sanitize_path = fun path ->
+  let buf = IO.Buffer.create ~size:(String.length path) in
+  String.iter
+    (fun char ->
+      let code = Char.to_int char in
+      if code < 0x20 || code = 0x7f then
+        IO.Buffer.add_string buf (percent_encode_byte code)
+      else
+        IO.Buffer.add_char buf char)
+    path;
+  IO.Buffer.contents buf
+
 let logger = fun ~conn ~next ->
   let start = Time.Instant.now () in
   let method_str =
     Conn.method_ conn
     |> Net.Http.Method.to_string
   in
-  let path = Conn.path conn in
+  let path =
+    Conn.path conn
+    |> sanitize_path
+  in
   (* Call next middleware/handler *)
   let conn' = next conn in
   (* Calculate duration and get response info *)
@@ -37,3 +59,7 @@ let logger = fun ~conn ~next ->
   else
     Log.info msg;
   conn'
+
+module For_testing = struct
+  let sanitize_path = sanitize_path
+end
