@@ -16,7 +16,7 @@
    {3 Basic Setup}
    {[
      let app = Middleware.[
-       session ~secret:"your-secret-key-256-bits" ();
+       session ~secret:"0123456789abcdef0123456789abcdef" ();
        router routes;
      ]
    ]}
@@ -91,7 +91,7 @@ open Std
 (**
    Session middleware with experimental cookie storage.
 
-   @param secret Encryption/signing key (required, use 256-bit random value)
+   @param secret Encryption/signing key (required, at least 32 characters)
    @param cookie_name Cookie name (default: "_suri_session")
    @param max_age Session lifetime in seconds (default: 86400 = 24h)
    @param secure Require HTTPS (default: false, {b set true in production!})
@@ -217,7 +217,14 @@ val is_expired: t -> bool
 val is_modified: t -> bool
 
 module For_testing: sig
+  type secret_error =
+    | Missing
+    | TooShort of int
   val create: cookie_name:string -> secret:string -> unit -> t
+
+  val validate_secret: string -> (unit, secret_error) result
+
+  val secret_error_to_string: secret_error -> string
 
   val sign: secret:string -> string -> string
 

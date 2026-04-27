@@ -16,12 +16,35 @@ type t = {
   mutable modified: bool;
 }
 
+type secret_error =
+  | Missing
+  | TooShort of int
+
+let secret_error_to_string = function
+  | Missing -> "session secret must not be empty"
+  | TooShort len -> "session secret must be at least 32 characters long, got " ^ Int.to_string len
+
+let validate_secret = fun secret ->
+  let trimmed = String.trim secret in
+  if String.equal trimmed "" then
+    Error Missing
+  else if String.length secret < 32 then
+    Error (TooShort (String.length secret))
+  else
+    Ok ()
+
+let require_valid_secret = fun secret ->
+  match validate_secret secret with
+  | Ok () -> ()
+  | Error error -> panic (secret_error_to_string error)
+
 (** Extend Conn.assign_value to store sessions *)
 type Conn.assign_value +=
   | Session_data of t
 
 (** Create empty session *)
 let create = fun ~cookie_name ~secret () ->
+  require_valid_secret secret;
   let now =
     Time.SystemTime.secs (Time.SystemTime.now ())
     |> Int64.of_int
@@ -255,7 +278,15 @@ let from_cookie_value = fun ~cookie_name ~secret cookie_value ->
   | _ -> Result.err "Invalid cookie format"
 
 module For_testing = struct
+  type nonrec secret_error = secret_error =
+    | Missing
+    | TooShort of int
+
   let create = create
+
+  let validate_secret = validate_secret
+
+  let secret_error_to_string = secret_error_to_string
 
   let sign = sign
 
@@ -292,6 +323,7 @@ let middleware = fun
   ?(secure = false)
   ?(same_site = Http.Http1.Cookie.Lax)
   () ->
+  require_valid_secret secret;
   fun ~conn ~next ->
     (* Try to load session from cookie *)
     let headers = Conn.headers conn in

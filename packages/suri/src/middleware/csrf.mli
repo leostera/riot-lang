@@ -12,7 +12,7 @@
    {3 Basic Protection}
    {[
      let app = Middleware.[
-       session ~secret:"your-secret-key" ();
+       session ~secret:"0123456789abcdef0123456789abcdef" ();
        csrf ();
        router routes;
      ]
@@ -127,7 +127,7 @@ val middleware:
    Example:
    {[
      let app = Middleware.[
-       session ~secret:"secret" ();
+       session ~secret:"0123456789abcdef0123456789abcdef" ();
        csrf ();
        router routes;
      ]

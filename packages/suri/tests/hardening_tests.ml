@@ -519,7 +519,7 @@ let test_csrf_secure_equal_checks_full_token = fun _ctx ->
 let test_session_middleware_installs_session = fun _ctx ->
   let conn = Conn.For_testing.make () in
   let found_session = ref false in
-  let middleware = Session.middleware ~secret:"testing-session-secret" () in
+  let middleware = Session.middleware ~secret:"0123456789abcdef0123456789abcdef" () in
   let _conn' =
     middleware
       ~conn
@@ -529,6 +529,18 @@ let test_session_middleware_installs_session = fun _ctx ->
   in
   Test.assert_true !found_session;
   Ok ()
+
+let test_session_rejects_missing_secret = fun _ctx ->
+  match Session.For_testing.validate_secret "   " with
+  | Error Session.For_testing.Missing -> Ok ()
+  | Ok () -> Error "expected missing session secret to fail"
+  | Error error -> Error (Session.For_testing.secret_error_to_string error)
+
+let test_session_rejects_short_secret = fun _ctx ->
+  match Session.For_testing.validate_secret "short-secret" with
+  | Error (Session.For_testing.TooShort 12) -> Ok ()
+  | Ok () -> Error "expected short session secret to fail"
+  | Error error -> Error (Session.For_testing.secret_error_to_string error)
 
 let test_session_signing_uses_hmac = fun _ctx ->
   let secret = "0123456789abcdef0123456789abcdef" in
@@ -1010,6 +1022,8 @@ let tests =
     case "csrf rejects malformed masked tokens" test_csrf_rejects_malformed_masked_tokens;
     case "csrf secure equal checks full token" test_csrf_secure_equal_checks_full_token;
     case "session middleware installs session" test_session_middleware_installs_session;
+    case "session rejects missing secret" test_session_rejects_missing_secret;
+    case "session rejects short secret" test_session_rejects_short_secret;
     case "session signing uses hmac" test_session_signing_uses_hmac;
     case
       "session cookie roundtrips and rejects tampering"

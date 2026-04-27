@@ -483,7 +483,7 @@ module Session = Session
    {[
      (* Minimal setup *)
      let app = Middleware.[
-       session ~secret:"my-secret-key-256-bits" ();
+       session ~secret:"0123456789abcdef0123456789abcdef" ();
        router routes;
      ]
 
@@ -499,10 +499,11 @@ module Session = Session
    - Always use a strong random secret (256 bits)
    - Set [~secure:true] in production (HTTPS only)
    - Default [SameSite=Lax] helps reduce CSRF exposure
-   - Current signing/encryption is placeholder-only
+   - Cookie payloads are signed with HMAC-SHA256
+   - Cookie encryption is still placeholder-only
 
    {b Warning:} Do not use this middleware for sensitive production sessions
-   until the placeholder crypto has been replaced with authenticated
+   until the placeholder encryption has been replaced with authenticated
    encryption.
 
    See {!Session} for full documentation.
@@ -526,7 +527,7 @@ module Session = Session
    ]}
 
    {b Parameters:}
-   - [secret] - Encryption/signing key (required, use 256-bit random value)
+   - [secret] - Encryption/signing key (required, at least 32 characters)
    - [cookie_name] - Cookie name (default: "_suri_session")
    - [max_age] - Session lifetime in seconds (default: 86400 = 24h)
    - [secure] - Require HTTPS (default: false, {b set true in production!})
@@ -572,7 +573,7 @@ module Csrf = Csrf
    {b Quick Start:}
    {[
      let app = Middleware.[
-       session ~secret:"secret" ();
+       session ~secret:"0123456789abcdef0123456789abcdef" ();
        csrf ();
        router routes;
      ]
@@ -601,7 +602,7 @@ module Csrf = Csrf
      let app = Middleware.[
        request_id;
        logger;
-       session ~secret:"secret" ();
+       session ~secret:"0123456789abcdef0123456789abcdef" ();
        body_parser ();  (* Parse form data before CSRF! *)
        csrf ();  (* Protects POST, PUT, DELETE, etc. *)
        router routes;
@@ -651,7 +652,7 @@ module Body_parser = Body_parser
    {b Quick Start:}
    {[
      let app = Middleware.[
-       session ~secret:"secret" ();
+       session ~secret:"0123456789abcdef0123456789abcdef" ();
        body_parser ();  (* Parse before CSRF! *)
        csrf ();
        router routes;
