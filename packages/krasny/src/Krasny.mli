@@ -72,8 +72,6 @@ val syntax_hash_source: filename:Path.t -> string -> string
 (** `write ~writer result` renders a parse result into the provided writer. *)
 val write: writer:IO.Writer.t -> Syn.Parser.parse_result -> (unit, write_error) result
 
-module Stream_doc: module type of Stream_doc
-
 (** Formatter layout policy internals used by tracing and focused tests. *)
 module Layout_policy: module type of Layout_policy
 

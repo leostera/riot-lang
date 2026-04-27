@@ -9,7 +9,6 @@ type write_error = Format_core.write_error =
   | Format_failed of format_error
   | Write_failed of IO.error
 
-module Stream_doc = Stream_doc
 module Layout_policy = Layout_policy
 module Formatter = Formatter
 module Runner = Runner
