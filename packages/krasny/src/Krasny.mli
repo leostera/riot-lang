@@ -74,6 +74,9 @@ val write: writer:IO.Writer.t -> Syn.Parser.parse_result -> (unit, write_error) 
 
 module Stream_doc: module type of Stream_doc
 
+(** Formatter layout policy internals used by tracing and focused tests. *)
+module Layout_policy: module type of Layout_policy
+
 module Streaming_lower: module type of Streaming_lower
 
 module Runner: module type of Runner

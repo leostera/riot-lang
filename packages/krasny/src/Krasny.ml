@@ -10,6 +10,7 @@ type write_error = Format_core.write_error =
   | Write_failed of IO.error
 
 module Stream_doc = Stream_doc
+module Layout_policy = Layout_policy
 module Streaming_lower = Streaming_lower
 module Runner = Runner
 module Report = Report

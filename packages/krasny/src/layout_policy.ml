@@ -416,22 +416,22 @@ let reasons_to_string = fun reasons ->
   | [] -> "[]"
   | _ -> "[" ^ String.concat ", " (List.map reasons ~fn:reason_to_string) ^ "]"
 
+let trace_line = fun family ctx facts decision ->
+  "krasny layout: "
+  ^ family_to_string family
+  ^ " column="
+  ^ Int.to_string ctx.column
+  ^ " width="
+  ^ Int.to_string ctx.width
+  ^ " flat=" ^ (
+    match facts.flat_width with
+    | Some width -> Int.to_string width
+    | None -> "unknown"
+  ) ^ " -> " ^ mode_to_string decision.mode ^ " " ^ reasons_to_string decision.reasons
+
 let trace_decision = fun family ctx facts decision ->
   if trace_enabled then
-    eprintln
-      (
-        "krasny layout: "
-        ^ family_to_string family
-        ^ " column="
-        ^ Int.to_string ctx.column
-        ^ " width="
-        ^ Int.to_string ctx.width
-        ^ " flat=" ^ (
-          match facts.flat_width with
-          | Some width -> Int.to_string width
-          | None -> "unknown"
-        ) ^ " -> " ^ mode_to_string decision.mode ^ " " ^ reasons_to_string decision.reasons
-      )
+    eprintln (trace_line family ctx facts decision)
 
 let decide = fun family ctx facts ->
   let decision = decide_raw family ctx facts in
