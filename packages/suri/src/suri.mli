@@ -571,9 +571,14 @@ module For_testing: sig
   end
 
   module Http1: sig
+    type header_name_error =
+      | EmptyHeaderName
+      | InvalidHeaderNameChar of { char: char; index: int }
+    type header_value_error =
+      | InvalidHeaderValueChar of { char: char; index: int }
     type serialization_error =
-      | InvalidHeaderName of string
-      | InvalidHeaderValue of { name: string; value: string }
+      | InvalidHeaderName of { name: string; reason: header_name_error }
+      | InvalidHeaderValue of { name: string; value: string; reason: header_value_error }
     type websocket_key_error =
       | InvalidBase64
       | InvalidLength of { actual: int; expected: int }

@@ -130,9 +130,16 @@ module For_testing = struct
   end
 
   module Http1 = struct
+    type header_name_error = Web_server.Http1.For_testing.header_name_error =
+      | EmptyHeaderName
+      | InvalidHeaderNameChar of { char: char; index: int }
+
+    type header_value_error = Web_server.Http1.For_testing.header_value_error =
+      | InvalidHeaderValueChar of { char: char; index: int }
+
     type serialization_error =
-      | InvalidHeaderName of string
-      | InvalidHeaderValue of { name: string; value: string }
+      | InvalidHeaderName of { name: string; reason: header_name_error }
+      | InvalidHeaderValue of { name: string; value: string; reason: header_value_error }
 
     type websocket_key_error = Web_server.Http1.For_testing.websocket_key_error =
       | InvalidBase64
@@ -172,9 +179,10 @@ module For_testing = struct
         (Web_server.Http1.For_testing.serialize_response response)
         ~fn:(
           function
-          | Web_server.Http1.For_testing.InvalidHeaderName name -> InvalidHeaderName name
-          | Web_server.Http1.For_testing.InvalidHeaderValue { name; value } ->
-              InvalidHeaderValue { name; value }
+          | Web_server.Http1.For_testing.InvalidHeaderName { name; reason } ->
+              InvalidHeaderName { name; reason }
+          | Web_server.Http1.For_testing.InvalidHeaderValue { name; value; reason } ->
+              InvalidHeaderValue { name; value; reason }
         )
 
     let compute_websocket_accept = Web_server.Http1.For_testing.compute_websocket_accept

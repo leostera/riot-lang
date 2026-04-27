@@ -273,8 +273,20 @@ let test_http1_request_headers_allow_http10_without_host = fun _ctx ->
 let test_http1_response_rejects_invalid_header_name = fun _ctx ->
   let res = Response.ok ~headers:[ ("bad name", "value"); ] ~body:"ok" () in
   match Http1.serialize_response res with
-  | Error (Http1.InvalidHeaderName name) ->
+  | Error (Http1.InvalidHeaderName { name; reason = Http1.InvalidHeaderNameChar { char; index } }) ->
       Test.assert_equal ~expected:"bad name" ~actual:name;
+      Test.assert_equal ~expected:' ' ~actual:char;
+      Test.assert_equal ~expected:3 ~actual:index;
+      Ok ()
+  | _ ->
+      Test.assert_true false;
+      Ok ()
+
+let test_http1_response_rejects_empty_header_name = fun _ctx ->
+  let res = Response.ok ~headers:[ ("", "value"); ] ~body:"ok" () in
+  match Http1.serialize_response res with
+  | Error (Http1.InvalidHeaderName { name; reason = Http1.EmptyHeaderName }) ->
+      Test.assert_equal ~expected:"" ~actual:name;
       Ok ()
   | _ ->
       Test.assert_true false;
@@ -283,8 +295,26 @@ let test_http1_response_rejects_invalid_header_name = fun _ctx ->
 let test_http1_response_rejects_header_injection = fun _ctx ->
   let res = Response.ok ~headers:[ ("x-test", "ok\r\nx-evil: yes"); ] ~body:"ok" () in
   match Http1.serialize_response res with
-  | Error (Http1.InvalidHeaderValue { name; value = _ }) ->
+  | Error (
+    Http1.InvalidHeaderValue { name; value = _; reason = Http1.InvalidHeaderValueChar { char; index } }
+  ) ->
       Test.assert_equal ~expected:"x-test" ~actual:name;
+      Test.assert_equal ~expected:'\r' ~actual:char;
+      Test.assert_equal ~expected:2 ~actual:index;
+      Ok ()
+  | _ ->
+      Test.assert_true false;
+      Ok ()
+
+let test_http1_response_rejects_header_control_values = fun _ctx ->
+  let res = Response.ok ~headers:[ ("x-test", "bad\001value"); ] ~body:"ok" () in
+  match Http1.serialize_response res with
+  | Error (
+    Http1.InvalidHeaderValue { name; value = _; reason = Http1.InvalidHeaderValueChar { char; index } }
+  ) ->
+      Test.assert_equal ~expected:"x-test" ~actual:name;
+      Test.assert_equal ~expected:'\001' ~actual:char;
+      Test.assert_equal ~expected:3 ~actual:index;
       Ok ()
   | _ ->
       Test.assert_true false;
@@ -405,7 +435,11 @@ let tests =
     case
       "http1 response rejects invalid header name"
       test_http1_response_rejects_invalid_header_name;
+    case "http1 response rejects empty header name" test_http1_response_rejects_empty_header_name;
     case "http1 response rejects header injection" test_http1_response_rejects_header_injection;
+    case
+      "http1 response rejects header control values"
+      test_http1_response_rejects_header_control_values;
     case "http1 response omits body for no content" test_http1_response_omits_body_for_no_content;
     case
       "http1 response omits body for not modified"

@@ -19,9 +19,14 @@
 *)
 
 type state
+type header_name_error =
+  | EmptyHeaderName
+  | InvalidHeaderNameChar of { char: char; index: int }
+type header_value_error =
+  | InvalidHeaderValueChar of { char: char; index: int }
 type serialization_error =
-  | InvalidHeaderName of string
-  | InvalidHeaderValue of { name: string; value: string }
+  | InvalidHeaderName of { name: string; reason: header_name_error }
+  | InvalidHeaderValue of { name: string; value: string; reason: header_value_error }
 type io_error =
   | ResponseSerializationFailed of serialization_error
   | ConnectionFailed of Socket_pool.Connection.error
@@ -34,9 +39,14 @@ type error =
 val to_string_error: error -> string
 
 module For_testing: sig
+  type nonrec header_name_error = header_name_error =
+    | EmptyHeaderName
+    | InvalidHeaderNameChar of { char: char; index: int }
+  type nonrec header_value_error = header_value_error =
+    | InvalidHeaderValueChar of { char: char; index: int }
   type nonrec serialization_error = serialization_error =
-    | InvalidHeaderName of string
-    | InvalidHeaderValue of { name: string; value: string }
+    | InvalidHeaderName of { name: string; reason: header_name_error }
+    | InvalidHeaderValue of { name: string; value: string; reason: header_value_error }
   type parse_error =
     | UpstreamParseError of { message: string }
   type websocket_key_error =

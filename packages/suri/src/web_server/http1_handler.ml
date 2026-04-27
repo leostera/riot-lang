@@ -19,9 +19,16 @@ type state = {
   parse_state: parse_state;
 }
 
+type header_name_error =
+  | EmptyHeaderName
+  | InvalidHeaderNameChar of { char: char; index: int }
+
+type header_value_error =
+  | InvalidHeaderValueChar of { char: char; index: int }
+
 type serialization_error =
-  | InvalidHeaderName of string
-  | InvalidHeaderValue of { name: string; value: string }
+  | InvalidHeaderName of { name: string; reason: header_name_error }
+  | InvalidHeaderValue of { name: string; value: string; reason: header_value_error }
 
 type io_error =
   | ResponseSerializationFailed of serialization_error
@@ -68,9 +75,30 @@ type request_body_header_error =
 type request_header_error =
   | MissingHostHeader
 
+let header_name_error_to_string = function
+  | EmptyHeaderName -> "header name must not be empty"
+  | InvalidHeaderNameChar { char; index } ->
+      "invalid header name character code "
+      ^ Int.to_string (Char.code char)
+      ^ " at index "
+      ^ Int.to_string index
+
+let header_value_error_to_string = function
+  | InvalidHeaderValueChar { char; index } ->
+      "invalid header value character code "
+      ^ Int.to_string (Char.code char)
+      ^ " at index "
+      ^ Int.to_string index
+
 let serialization_error_to_string = function
-  | InvalidHeaderName name -> "Invalid response header name: " ^ name
-  | InvalidHeaderValue { name; value = _ } -> "Invalid response header value for: " ^ name
+  | InvalidHeaderName { name; reason } ->
+      "Invalid response header name: " ^ name ^ " (" ^ header_name_error_to_string reason ^ ")"
+  | InvalidHeaderValue { name; value = _; reason } ->
+      "Invalid response header value for: "
+      ^ name
+      ^ " ("
+      ^ header_value_error_to_string reason
+      ^ ")"
 
 let parse_error_to_string = function
   | UpstreamParseError { message } -> message
@@ -178,25 +206,31 @@ let is_header_name_char = function
   | '~' -> true
   | _ -> false
 
-let is_valid_header_name = fun name ->
+let validate_header_name = fun name ->
   let rec go index =
     if index >= String.length name then
-      true
-    else if is_header_name_char (String.get_unchecked name ~at:index) then
-      go (index + 1)
+      Ok ()
     else
-      false
+      let char = String.get_unchecked name ~at:index in
+      if is_header_name_char char then
+        go (index + 1)
+      else
+        Error (InvalidHeaderNameChar { char; index })
   in
-  String.length name > 0 && go 0
+  if String.length name = 0 then
+    Error EmptyHeaderName
+  else
+    go 0
 
-let is_valid_header_value = fun value ->
+let validate_header_value = fun value ->
   let rec go index =
     if index >= String.length value then
-      true
+      Ok ()
     else
       match String.get_unchecked value ~at:index with
-      | '\r'
-      | '\n' -> false
+      | ('\r' | '\n') as char -> Error (InvalidHeaderValueChar { char; index })
+      | char when Char.code char < 32 && not (char = '\t') ->
+          Error (InvalidHeaderValueChar { char; index })
       | _ -> go (index + 1)
   in
   go 0
@@ -205,12 +239,13 @@ let validate_response_headers = fun headers ->
   let rec go = function
     | [] -> Ok ()
     | (name, value) :: rest ->
-        if not (is_valid_header_name name) then
-          Error (InvalidHeaderName name)
-        else if not (is_valid_header_value value) then
-          Error (InvalidHeaderValue { name; value })
-        else
-          go rest
+        match validate_header_name name with
+        | Error reason -> Error (InvalidHeaderName { name; reason })
+        | Ok () -> (
+            match validate_header_value value with
+            | Error reason -> Error (InvalidHeaderValue { name; value; reason })
+            | Ok () -> go rest
+          )
   in
   go (Net.Http.Header.to_list headers)
 
@@ -381,9 +416,16 @@ let validate_request_headers = fun http_req ->
   | Net.Http.Version.Http3 -> Ok ()
 
 module For_testing = struct
+  type nonrec header_name_error = header_name_error =
+    | EmptyHeaderName
+    | InvalidHeaderNameChar of { char: char; index: int }
+
+  type nonrec header_value_error = header_value_error =
+    | InvalidHeaderValueChar of { char: char; index: int }
+
   type nonrec serialization_error = serialization_error =
-    | InvalidHeaderName of string
-    | InvalidHeaderValue of { name: string; value: string }
+    | InvalidHeaderName of { name: string; reason: header_name_error }
+    | InvalidHeaderValue of { name: string; value: string; reason: header_value_error }
 
   type nonrec parse_error = parse_error =
     | UpstreamParseError of { message: string }
