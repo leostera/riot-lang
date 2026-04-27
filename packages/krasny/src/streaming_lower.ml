@@ -4811,17 +4811,15 @@ and list_expr_should_inline = fun expr ->
   in
   loop 0
 
-and array_expr_decision = fun state expr items ->
+and array_expr_decision = fun state expr ->
   let allow_inline = array_expr_should_inline expr in
   let flat_width = array_expr_flat_width expr_classification_budget expr in
-  let facts = Facts.array_expr ?flat_width ~allow_inline ~item_count:(Vector.length items) () in
-  Layout.decide (Layout.Separated Layout.Array) (layout_context state) facts
+  Layout.decide_separated Layout.Array (layout_context state) ~flat_width ~allow_inline
 
-and list_expr_decision = fun state expr items ->
+and list_expr_decision = fun state expr ->
   let allow_inline = list_expr_should_inline expr in
   let flat_width = list_expr_flat_width expr_classification_budget expr in
-  let facts = Facts.list_expr ?flat_width ~allow_inline ~item_count:(Vector.length items) () in
-  Layout.decide (Layout.Separated Layout.List) (layout_context state) facts
+  Layout.decide_separated Layout.List (layout_context state) ~flat_width ~allow_inline
 
 and record_expr_should_inline = fun expr ->
   let fields = collect_record_fields expr in
@@ -5579,8 +5577,7 @@ and if_condition_decision = fun state condition ->
     else
       expr_flat_width condition
   in
-  let facts = Facts.expr ?flat_width ~suffix_width:6 () in
-  Layout.decide (Layout.Keyword_clause Layout.If_condition) (layout_context state) facts
+  Layout.decide_if_condition (layout_context state) ~flat_width ~suffix_width:6
 
 and if_condition_should_break_after_keyword = fun state condition ->
   not
@@ -5749,23 +5746,57 @@ and apply_args_have_heavy_nested_apply = fun args ->
     in
     loop 0
 
+and application_flat_width = fun expr ->
+  match expr_flat_width expr with
+  | Some _ as width -> width
+  | None -> node_token_flat_width expr
+
+and application_callee_class = fun callee ->
+  if expr_is_constructor_like_callee callee then
+    Layout.Constructor_like
+  else
+    Layout.Ordinary
+
+and application_layout_decision_from_column = fun
+  ?(suffix_width = 0)
+  ~force_parent_break
+  state
+  expr
+  callee
+  args
+  ~column ->
+  Layout.decide_application
+    (layout_context ~column state)
+    ~flat_width:(application_flat_width expr)
+    ~suffix_width
+    ~arg_count:(Vector.length args)
+    ~callee_class:(application_callee_class callee)
+    ~force_parent_break
+    ~has_multiline_args:(vector_exists_expr_is_multiline_except expr args)
+    ~has_heavy_nested_apply:(apply_args_have_heavy_nested_apply args)
+
 and apply_expr_decision_from_column = fun ?(suffix_width = 0) state expr args ~column ->
   let (callee, _) = collect_apply expr in
-  let facts = application_layout_facts ~force_parent_break:false ~suffix_width expr callee args in
-  Layout.decide
-    Layout.Application
-    (layout_context ~column state)
-    facts
+  application_layout_decision_from_column
+    ~force_parent_break:false
+    ~suffix_width
+    state
+    expr
+    callee
+    args
+    ~column
 
 and apply_expr_exceeds_width_from_column = fun ?(suffix_width = 0) state expr args ~column ->
   if Int.equal (Vector.length args) 0 then
     false
   else
-    let (callee, _) = collect_apply expr in
-    let facts = application_layout_facts ~force_parent_break:false ~suffix_width expr callee args in
-    match facts.Layout.flat_width with
+    match application_flat_width expr with
     | None -> false
-    | Some _ -> not (Layout.fits (layout_context ~column state) facts)
+    | Some _ as flat_width ->
+        not (Layout.fits_flat
+          (layout_context ~column state)
+          ~suffix_width
+          flat_width)
 
 and apply_expr_should_break_from_column = fun ?(suffix_width = 0) state expr args ~column ->
   if Int.equal (Vector.length args) 0 then
@@ -5784,30 +5815,6 @@ and apply_expr_should_break = fun state expr args ->
     args
     ~column:state.column
 
-and application_layout_facts = fun ?(suffix_width = 0) ~force_parent_break expr callee args ->
-  let arg_count = Vector.length args in
-  let has_multiline_args = vector_exists_expr_is_multiline_except expr args in
-  let flat_width =
-    match expr_flat_width expr with
-    | Some _ as width -> width
-    | None -> node_token_flat_width expr
-  in
-  let callee_class =
-    if expr_is_constructor_like_callee callee then
-      Layout.Constructor_like
-    else
-      Layout.Ordinary
-  in
-  Facts.application
-    ~force_parent_break
-    ~arg_count
-    ~callee_class
-    ~flat_width
-    ~suffix_width
-    ~has_multiline_args
-    ~has_heavy_nested_apply:(apply_args_have_heavy_nested_apply args)
-    ()
-
 and render_apply_expr = fun ?(role = Layout.Top_expr) state expr ->
   let force_current_apply_break =
     match role with
@@ -5818,10 +5825,15 @@ and render_apply_expr = fun ?(role = Layout.Top_expr) state expr ->
   let arg_count = Vector.length args in
   if same_ast_node expr callee then
     unsupported_node "apply expression resolved to itself" expr;
-  let facts =
-    application_layout_facts ~force_parent_break:force_current_apply_break expr callee args
+  let decision =
+    application_layout_decision_from_column
+      ~force_parent_break:force_current_apply_break
+      state
+      expr
+      callee
+      args
+      ~column:state.column
   in
-  let decision = Layout.decide Layout.Application (layout_context state) facts in
   let break_all_args =
     match decision.Layout.mode with
     | Layout.Hang _
@@ -7495,7 +7507,7 @@ and render_array_expr = fun state expr ->
   let length = Vector.length items in
   if Int.equal length 0 then
     emit_text state "[||]"
-  else if layout_decision_is_inline (array_expr_decision state expr items) then (
+  else if layout_decision_is_inline (array_expr_decision state expr) then (
     emit_text state "[|";
     emit_joined_vector
       state
@@ -7540,7 +7552,7 @@ and render_list_expr = fun state expr ->
   let length = Vector.length items in
   if Int.equal length 0 then
     emit_text state "[]"
-  else if layout_decision_is_inline (list_expr_decision state expr items) then (
+  else if layout_decision_is_inline (list_expr_decision state expr) then (
     emit_text state "[ ";
     emit_joined_vector
       state

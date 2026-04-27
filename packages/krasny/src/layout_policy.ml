@@ -205,10 +205,20 @@ let has_reason = fun expected reasons ->
 
 let remaining_width = fun ctx -> Int.max 0 (Int.sub ctx.width ctx.column)
 
+let fits_flat = fun ctx ?(prefix = 0) ?(suffix_width = 0) flat_width ->
+  match flat_width with
+  | None -> false
+  | Some width -> Int.(ctx.column + prefix + width + suffix_width <= ctx.width)
+
 let fits = fun ctx ?(prefix = 0) ?(suffix = 0) facts ->
   match facts.flat_width with
   | None -> false
   | Some width -> Int.(ctx.column + prefix + width + facts.suffix_width + suffix <= ctx.width)
+
+let width_overflow_reason_from_flat = fun ctx flat_width ->
+  match flat_width with
+  | Some flat_width -> Width_overflow { flat_width; remaining = remaining_width ctx }
+  | None -> Width_overflow { flat_width = 0; remaining = remaining_width ctx }
 
 let width_overflow_reason = fun ctx facts ->
   match facts.flat_width with
@@ -222,7 +232,7 @@ let is_single_constructor_payload = fun facts ->
   | (Some Constructor_like, 1) -> true
   | _ -> false
 
-let decide_application = fun ctx facts ->
+let decide_application_facts = fun ctx facts ->
   if facts.contains_hardline then
     { mode = Vertical; reasons = [ Contains_hardline ] }
   else if is_single_constructor_payload facts then
@@ -288,7 +298,7 @@ let decide_raw = fun family ctx facts ->
     { mode = Block; reasons = [ Has_trailing_comment ] }
   else
     match family with
-    | Application -> decide_application ctx facts
+    | Application -> decide_application_facts ctx facts
     | After_separator _ -> (
         match facts.flat_width with
         | None -> inline
@@ -427,7 +437,7 @@ let reasons_to_string = fun reasons ->
   | [] -> "[]"
   | _ -> "[" ^ String.concat ", " (List.map reasons ~fn:reason_to_string) ^ "]"
 
-let trace_line = fun family ctx facts decision ->
+let trace_line_from_width = fun family ctx ~flat_width decision ->
   "krasny layout: "
   ^ family_to_string family
   ^ " column="
@@ -435,14 +445,85 @@ let trace_line = fun family ctx facts decision ->
   ^ " width="
   ^ Int.to_string ctx.width
   ^ " flat=" ^ (
-    match facts.flat_width with
+    match flat_width with
     | Some width -> Int.to_string width
     | None -> "unknown"
   ) ^ " -> " ^ mode_to_string decision.mode ^ " " ^ reasons_to_string decision.reasons
 
+let trace_line = fun family ctx facts decision ->
+  trace_line_from_width
+    family
+    ctx
+    ~flat_width:facts.flat_width
+    decision
+
+let trace_decision_from_width = fun family ctx ~flat_width decision ->
+  if trace_enabled then
+    eprintln (trace_line_from_width family ctx ~flat_width decision)
+
 let trace_decision = fun family ctx facts decision ->
   if trace_enabled then
     eprintln (trace_line family ctx facts decision)
+
+let decide_application = fun
+  ctx
+  ~flat_width
+  ~suffix_width
+  ~arg_count
+  ~callee_class
+  ~force_parent_break
+  ~has_multiline_args
+  ~has_heavy_nested_apply ->
+  let single_constructor_payload = Int.equal arg_count 1 && callee_class = Constructor_like in
+  let decision =
+    if single_constructor_payload then
+      { mode = Inline; reasons = [ Single_constructor_payload ] }
+    else if force_parent_break then
+      { mode = Vertical; reasons = [ Parent_requires_block ] }
+    else if has_heavy_nested_apply then
+      { mode = Vertical; reasons = [ Heavy_nested_apply ] }
+    else if has_multiline_args && Int.(arg_count > 1) then
+      { mode = Vertical; reasons = [ Child_is_block ] }
+    else if has_multiline_args then
+      { mode = Isolate_child_blocks; reasons = [ Child_is_block ] }
+    else if fits_flat ctx ~suffix_width flat_width then
+      inline
+    else
+      {
+        mode = Hang ctx.style.continuation_indent;
+        reasons = [ width_overflow_reason_from_flat ctx flat_width ];
+      }
+  in
+  trace_decision_from_width Application ctx ~flat_width decision;
+  decision
+
+let decide_separated = fun kind ctx ~flat_width ~allow_inline ->
+  let family = Separated kind in
+  let decision =
+    if allow_inline then
+      if fits_flat ctx flat_width then
+        inline
+      else
+        { mode = Block; reasons = [ width_overflow_reason_from_flat ctx flat_width ] }
+    else
+      { mode = Block; reasons = [ Child_is_block ] }
+  in
+  trace_decision_from_width family ctx ~flat_width decision;
+  decision
+
+let decide_if_condition = fun ctx ~flat_width ~suffix_width ->
+  let family = Keyword_clause If_condition in
+  let decision =
+    match flat_width with
+    | None -> inline
+    | Some _ ->
+        if fits_flat ctx ~prefix:1 ~suffix_width flat_width then
+          inline
+        else
+          { mode = Block; reasons = [ width_overflow_reason_from_flat ctx flat_width ] }
+  in
+  trace_decision_from_width family ctx ~flat_width decision;
+  decision
 
 let decide = fun family ctx facts ->
   let decision = decide_raw family ctx facts in
