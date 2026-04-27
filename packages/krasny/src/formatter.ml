@@ -7614,48 +7614,43 @@ and render_include_declaration = fun state decl ->
 
 and render_record_type_field = fun state ~last field ->
   emit_node_leading_comments_as_lines state field;
-  (
-    match Ast.RecordField.mutable_token field with
-    | Some token ->
-        emit_token state token;
-        emit_space state
-    | None -> ()
-  );
-  (
-    match Ast.RecordField.name field with
-    | Some name -> emit_token state name
-    | None -> unsupported_node "record type field without name" field
-  );
-  emit_text state ":";
-  (
-    match Ast.RecordField.type_annotation field with
-    | Some annotation ->
-        let suffix_width =
-          if last then
-            0
-          else
-            1
-        in
-        render_type_expr_after_tight_colon state ~suffix_width annotation
-    | None -> unsupported_node "record type field without annotation" field
-  );
-  if not last then
-    emit_text state ";"
+  match Ast.RecordField.view field with
+  | Ast.RecordField.Field { mutable_token; name; colon_token; annotation } ->
+      (
+        match mutable_token with
+        | Some token ->
+            emit_token state token;
+            emit_space state
+        | None -> ()
+      );
+      emit_token state name;
+      emit_token state colon_token;
+      let suffix_width =
+        if last then
+          0
+        else
+          1
+      in
+      render_type_expr_after_tight_colon state ~suffix_width annotation;
+      if not last then
+        emit_text state ";"
+  | Ast.RecordField.Unknown node ->
+      unsupported_node "unsupported record type field" node
 
 and record_type_field_flat_width = fun field ->
-  match (Ast.RecordField.name field, Ast.RecordField.type_annotation field) with
-  | (Some name, Some annotation) -> (
+  match Ast.RecordField.view field with
+  | Ast.RecordField.Field { mutable_token; name; annotation; _ } -> (
       match type_expr_flat_width annotation with
       | Some annotation_width ->
           let mutable_width =
-            match Ast.RecordField.mutable_token field with
+            match mutable_token with
             | Some token -> Int.add (Slice.length (Ast.Token.slice token)) 1
             | None -> 0
           in
           Some Int.(mutable_width + Slice.length (Ast.Token.slice name) + 2 + annotation_width)
       | None -> None
     )
-  | _ -> None
+  | Ast.RecordField.Unknown _ -> None
 
 and record_type_flat_width = fun fields ->
   let length = Vector.length fields in
@@ -7712,10 +7707,13 @@ and record_type_fields_are_light_inline = fun fields ->
       true
     else
       let field = Vector.get_unchecked fields ~at:index in
-      match Ast.RecordField.type_annotation field with
-      | Some annotation when type_expr_is_light_record_field_annotation annotation ->
-          loop (Int.add index 1)
-      | _ -> false
+      match Ast.RecordField.view field with
+      | Ast.RecordField.Field { annotation; _ } ->
+          if type_expr_is_light_record_field_annotation annotation then
+            loop (Int.add index 1)
+          else
+            false
+      | Ast.RecordField.Unknown _ -> false
   in
   loop 0
 
@@ -7728,7 +7726,10 @@ and record_type_fields_have_multi_field_mutable = fun fields ->
       if Int.(index >= length) then
         false
       else if
-        Option.is_some (Ast.RecordField.mutable_token (Vector.get_unchecked fields ~at:index))
+        match Ast.RecordField.view (Vector.get_unchecked fields ~at:index) with
+        | Ast.RecordField.Field { mutable_token = Some _; _ } -> true
+        | Ast.RecordField.Field { mutable_token = None; _ }
+        | Ast.RecordField.Unknown _ -> false
       then
         true
       else

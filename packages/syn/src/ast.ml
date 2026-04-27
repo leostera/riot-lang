@@ -1383,6 +1383,15 @@ end
 module RecordField = struct
   type t = record_field
 
+  type view =
+    | Field of {
+        mutable_token: Token.t option;
+        name: Token.t;
+        colon_token: Token.t;
+        annotation: type_expr;
+      }
+    | Unknown of node
+
   let cast = fun (node: node) ->
     if node_matches node is_record_field_kind then
       Some node
@@ -1396,6 +1405,17 @@ module RecordField = struct
   let colon_token = fun field -> Node.first_child_token field ~kind:Syntax_kind.COLON
 
   let type_annotation = fun field -> first_child_node_matching field ~matches:is_type_expr_kind
+
+  let view = fun field ->
+    match (name field, colon_token field, type_annotation field) with
+    | (Some name, Some colon_token, Some annotation) ->
+        Field {
+          mutable_token = mutable_token field;
+          name;
+          colon_token;
+          annotation;
+        }
+    | _ -> Unknown field
 end
 
 module RecordType = struct

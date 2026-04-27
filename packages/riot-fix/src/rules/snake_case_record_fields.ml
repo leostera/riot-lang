@@ -37,8 +37,8 @@ let check_record_type = fun record diagnostics ->
   Ast.RecordType.for_each_field
     record
     ~fn:(fun field ->
-      match Ast.RecordField.name field with
-      | Some token when H.should_be_snake_case (Ast.Token.text token) ->
+      match Ast.RecordField.view field with
+      | Ast.RecordField.Field { name = token; _ } when H.should_be_snake_case (Ast.Token.text token) ->
           H.push_diagnostic diagnostics (make_diagnostic token)
       | _ -> ());
   ()

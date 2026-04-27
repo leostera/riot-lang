@@ -34,9 +34,11 @@ let record_type_diagnostics = fun diagnostics record_type ->
   Ast.RecordType.for_each_field
     record_type
     ~fn:(fun field ->
-      match Ast.RecordField.mutable_token field with
-      | Some token -> H.push_diagnostic diagnostics (diagnostic_for_mutable_token token)
-      | None -> ())
+      match Ast.RecordField.view field with
+      | Ast.RecordField.Field { mutable_token = Some token; _ } ->
+          H.push_diagnostic diagnostics (diagnostic_for_mutable_token token)
+      | Ast.RecordField.Field { mutable_token = None; _ }
+      | Ast.RecordField.Unknown _ -> ())
 
 let check_tree = fun ctx root ->
   let diagnostics = H.diagnostics_for_root root in

@@ -233,7 +233,17 @@ end
 
 module RecordField: sig
   type t = record_field
+  type view =
+    | Field of {
+        mutable_token: Token.t option;
+        name: Token.t;
+        colon_token: Token.t;
+        annotation: type_expr;
+      }
+    | Unknown of Node.t
   val cast: Node.t -> t option
+
+  val view: t -> view
 
   val mutable_token: t -> Token.t option
 

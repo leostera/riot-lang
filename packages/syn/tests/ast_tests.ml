@@ -1050,35 +1050,31 @@ let test_type_declaration_body_group_views = fun _ctx ->
         |> require_some ~msg:"expected record type body"
       in
       Test.assert_true (Option.is_some (Ast.RecordType.private_token record));
-      let names = ref [] in
-      let mutable_flags = ref [] in
-      let field_types = ref [] in
+      let names = Vector.with_capacity ~size:2 in
+      let mutable_flags = Vector.with_capacity ~size:2 in
+      let field_types = Vector.with_capacity ~size:2 in
       Ast.RecordType.for_each_field
         record
         ~fn:(fun field ->
-          let name =
-            Ast.RecordField.name field
-            |> require_some ~msg:"expected record field name"
-          in
-          names := Ast.Token.text name :: !names;
-          mutable_flags := Option.is_some (Ast.RecordField.mutable_token field) :: !mutable_flags;
-          let annotation =
-            Ast.RecordField.type_annotation field
-            |> require_some ~msg:"expected record field type"
-          in
-          (
-            match Ast.TypeExpr.view annotation with
-            | Ast.TypeExpr.Ident { path } ->
-                let last =
-                  Ast.Path.last_ident path
-                  |> require_some ~msg:"expected field type path"
-                in
-                field_types := Ast.Token.text last :: !field_types
-            | _ -> panic "expected field type path"
-          ));
-      Test.assert_equal ~expected:[ "x"; "y" ] ~actual:(List.reverse !names);
-      Test.assert_equal ~expected:[ true; false ] ~actual:(List.reverse !mutable_flags);
-      Test.assert_equal ~expected:[ "int"; "string" ] ~actual:(List.reverse !field_types);
+          match Ast.RecordField.view field with
+          | Ast.RecordField.Field { mutable_token; name; colon_token; annotation } ->
+              Test.assert_equal ~expected:":" ~actual:(Ast.Token.text colon_token);
+              Vector.push names ~value:(Ast.Token.text name);
+              Vector.push mutable_flags ~value:(Option.is_some mutable_token);
+              (
+                match Ast.TypeExpr.view annotation with
+                | Ast.TypeExpr.Ident { path } ->
+                    let last =
+                      Ast.Path.last_ident path
+                      |> require_some ~msg:"expected field type path"
+                    in
+                    Vector.push field_types ~value:(Ast.Token.text last)
+                | _ -> panic "expected field type path"
+              )
+          | Ast.RecordField.Unknown _ -> panic "expected record field view");
+      Test.assert_equal ~expected:[ "x"; "y" ] ~actual:(vector_to_list names);
+      Test.assert_equal ~expected:[ true; false ] ~actual:(vector_to_list mutable_flags);
+      Test.assert_equal ~expected:[ "int"; "string" ] ~actual:(vector_to_list field_types);
       Ok ()
   | _ -> Error "expected point type declaration"
 
@@ -1117,11 +1113,10 @@ let test_type_alias_record_representation_views = fun _ctx ->
       Ast.RecordType.for_each_field
         record
         ~fn:(fun field ->
-          let name =
-            Ast.RecordField.name field
-            |> require_some ~msg:"expected field name"
-          in
-          Vector.push field_names ~value:(Ast.Token.text name));
+          match Ast.RecordField.view field with
+          | Ast.RecordField.Field { name; _ } ->
+              Vector.push field_names ~value:(Ast.Token.text name)
+          | Ast.RecordField.Unknown _ -> panic "expected field view");
       Test.assert_equal ~expected:2 ~actual:(Vector.length field_names);
       Test.assert_equal ~expected:"x" ~actual:(Vector.get_unchecked field_names ~at:0);
       Test.assert_equal ~expected:"y" ~actual:(Vector.get_unchecked field_names ~at:1);

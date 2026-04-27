@@ -88,9 +88,10 @@ let collect_record = fun records member record_type ->
       Ast.RecordType.for_each_field
         record_type
         ~fn:(fun field ->
-          match Ast.RecordField.name field with
-          | Some field_name -> Vector.push fields ~value:(Ast.Token.text field_name)
-          | None -> ());
+          match Ast.RecordField.view field with
+          | Ast.RecordField.Field { name = field_name; _ } ->
+              Vector.push fields ~value:(Ast.Token.text field_name)
+          | Ast.RecordField.Unknown _ -> ());
       if not (Vector.is_empty fields) then
         Vector.push
           records
