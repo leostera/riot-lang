@@ -199,7 +199,11 @@ let serialize_payload = fun frame_type payload ->
 
 let serialize_frame = fun frame ->
   let open Frame in
-  let payload_bytes = serialize_payload frame.frame_type frame.payload in
+  let payload_bytes =
+    match (frame.frame_type, frame.flags.ack) with
+    | (Settings, true) -> ""
+    | _ -> serialize_payload frame.frame_type frame.payload
+  in
   let length_bytes = write_uint24_be (String.length payload_bytes) in
   let type_byte = write_uint8 (frame_type_to_int frame.frame_type) in
   let flags_byte = write_uint8 (flags_to_byte frame.frame_type frame.flags) in

@@ -101,6 +101,30 @@ let test_serialize_settings_payload_length = fun _ctx ->
   else
     Result.Error ("Serialized settings length should be 6, got " ^ Int.to_string length)
 
+let test_serialize_settings_ack_has_empty_payload = fun _ctx ->
+  let frame = {
+    Frame.length = 0;
+    frame_type = Frame.Settings;
+    flags =
+      {
+        Frame.end_stream = false;
+        end_headers = false;
+        padded = false;
+        priority = false;
+        ack = true;
+      };
+    stream_id = 0;
+    payload = Frame.SettingsPayload [ Frame.HeaderTableSize 4_096; ];
+  }
+  in
+  let serialized = Serializer.serialize_frame frame in
+  let length = frame_payload_length serialized in
+  if Int.equal length 0 && Int.equal (String.length serialized) 9 then
+    Result.Ok ()
+  else
+    Result.Error ("Serialized settings ack should have empty payload, got length "
+    ^ Int.to_string length)
+
 let test_client_preface_settings_payload_length = fun _ctx ->
   let conn = Connection.create ~role:Connection.Client () in
   let preface = Connection.send_preface conn in
@@ -132,6 +156,7 @@ let tests =
     case "serialize_data_frame" test_serialize_data_frame;
     case "serialize_recomputes_payload_length" test_serialize_recomputes_payload_length;
     case "serialize_settings_payload_length" test_serialize_settings_payload_length;
+    case "serialize_settings_ack_has_empty_payload" test_serialize_settings_ack_has_empty_payload;
     case "client_preface_settings_payload_length" test_client_preface_settings_payload_length;
     case "server_preface_settings_payload_length" test_server_preface_settings_payload_length;
     case "frame_types" test_frame_types;
