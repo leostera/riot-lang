@@ -227,6 +227,7 @@ let meta_tests = [
     "command output returns after child exit even when another process inherited stdout"
     test_command_output_returns_when_child_exits_with_inherited_writer;
   Test.case
+    ~size:Large
     "command output handles parallel shell commands"
     test_command_output_handles_parallel_shell_commands;
   Test.case

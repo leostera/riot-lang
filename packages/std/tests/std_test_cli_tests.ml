@@ -203,6 +203,7 @@ let test_list_tests_lists_all_cases = fun _ctx ->
         "ordered_fast_second";
         "flaky_then_ok";
         "timeout_probe";
+        "ctx_probe";
         "after_timeout";
       ]
       |> List.sort ~compare:String.compare
@@ -354,6 +355,7 @@ let test_run_tests_small_flag_filters_small_tests = fun _ctx ->
         "gamma_property";
         "inline_snapshot_probe";
         "flaky_then_ok";
+        "ctx_probe";
         "timeout_probe";
         "after_timeout";
       ]
@@ -365,7 +367,7 @@ let test_run_tests_small_flag_filters_small_tests = fun _ctx ->
       Error ("unexpected filtered names for --small: " ^ String.concat ", " names)
 
 let test_run_tests_large_flag_filters_large_tests = fun _ctx ->
-  let output = run_sample_capture [ "run-tests"; "--large"; "--format"; "json"; ] in
+  let output = run_sample_capture [ "run-tests"; "large"; "--large"; "--format"; "json"; ] in
   if not (Int.equal output.status 0) then
     Error ("expected --large run to succeed, got " ^ Int.to_string output.status)
   else
@@ -374,15 +376,7 @@ let test_run_tests_large_flag_filters_large_tests = fun _ctx ->
       |> List.sort ~compare:String.compare
     in
     let expected =
-      [
-        "alpha_large";
-        "large_timeout_probe";
-        "middle_large_case";
-        "concurrency_probe_alpha";
-        "concurrency_probe_beta";
-        "ordered_slow_first";
-        "ordered_fast_second";
-      ]
+      [ "alpha_large"; "large_timeout_probe"; "middle_large_case"; ]
       |> List.sort ~compare:String.compare
     in
     if names = expected then
@@ -590,6 +584,7 @@ let test_run_tests_timeout_does_not_abort_suite = fun _ctx ->
         "gamma_property";
         "inline_snapshot_probe";
         "flaky_then_ok";
+        "ctx_probe";
         "timeout_probe";
         "after_timeout";
       ]

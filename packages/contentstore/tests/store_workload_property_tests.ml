@@ -265,6 +265,7 @@ let reopen_preserves_reachable_workload =
 
 let tests = [
   Test.case
+    ~size:Large
     "commit order preserves observable objects"
     test_commit_order_preserves_observable_objects;
   Test.property
