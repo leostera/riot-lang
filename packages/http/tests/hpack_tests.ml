@@ -76,6 +76,24 @@ let test_literal_with_indexing_updates_decoder_table = fun _ctx ->
   | Ok _ -> Result.Error "Decoder dynamic table did not preserve repeated indexed header"
   | Error err -> Result.Error ("Decode failed: " ^ err)
 
+let test_huffman_header_name_is_rejected = fun _ctx ->
+  let decoder = Hpack.create_decoder () in
+  (* Literal with indexing, literal name length=1 with Huffman bit set, value "b". *)
+  let encoded = IO.Bytes.from_string "\x40\x81a\x01b" in
+  match Hpack.decode decoder encoded with
+  | Error "Unsupported HPACK Huffman string encoding" -> Result.Ok ()
+  | Error err -> Result.Error ("Wrong decode error: " ^ err)
+  | Ok _ -> Result.Error "Huffman-encoded header name decoded as plain text"
+
+let test_huffman_header_value_is_rejected = fun _ctx ->
+  let decoder = Hpack.create_decoder () in
+  (* Literal with indexing, name "a", literal value length=1 with Huffman bit set. *)
+  let encoded = IO.Bytes.from_string "\x40\x01a\x81b" in
+  match Hpack.decode decoder encoded with
+  | Error "Unsupported HPACK Huffman string encoding" -> Result.Ok ()
+  | Error err -> Result.Error ("Wrong decode error: " ^ err)
+  | Ok _ -> Result.Error "Huffman-encoded header value decoded as plain text"
+
 let tests = [
   Test.case "encoder_decoder_roundtrip" test_encoder_decoder_roundtrip;
   Test.case "static_table_lookup" test_static_table_lookup;
@@ -85,6 +103,8 @@ let tests = [
   Test.case
     "literal_with_indexing_updates_decoder_table"
     test_literal_with_indexing_updates_decoder_table;
+  Test.case "huffman_header_name_is_rejected" test_huffman_header_name_is_rejected;
+  Test.case "huffman_header_value_is_rejected" test_huffman_header_value_is_rejected;
 ]
 
 let main ~args:_ = Test.Cli.main ~name:"http:hpack" ~tests ~args:Env.args ()

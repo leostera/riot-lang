@@ -9,7 +9,8 @@ open Std
    HPACK uses:
    - A static table of common header fields (defined in RFC 7541 Appendix A)
    - A dynamic table that evolves based on headers seen in the connection
-   - Huffman encoding for string values (defined in RFC 7541 Appendix B)
+   - Plain HPACK string literals. Huffman-encoded strings are rejected until
+     the RFC 7541 Appendix B decoder is implemented.
 *)
 (** {1 Types} *)
 

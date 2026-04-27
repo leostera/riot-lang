@@ -315,15 +315,11 @@ module String_ = struct
       | Ok (length, new_offset) ->
           if new_offset + length > Bytes.length data then
             Error "String data truncated"
+          else if is_huffman then
+            Error "Unsupported HPACK Huffman string encoding"
           else
             let str_data = Bytes.sub_unchecked data ~offset:new_offset ~len:length in
-            let str =
-              if is_huffman then
-                Bytes.to_string str_data
-              else
-                Bytes.to_string str_data
-            in
-            Ok (str, new_offset + length)
+            Ok (Bytes.to_string str_data, new_offset + length)
 end
 
 (** {1 Encoder} *)
