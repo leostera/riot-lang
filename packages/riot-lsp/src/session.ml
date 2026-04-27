@@ -464,17 +464,11 @@ let collect_tokens = fun ~size collect ->
 
 let rec binding_name_tokens_of_parameter = fun parameter ->
   match Syn.Ast.Parameter.view parameter with
-  | Syn.Ast.Parameter.Positional { pattern } -> binding_name_tokens_of_pattern pattern
-  | Syn.Ast.Parameter.Labeled { pattern = Some pattern; _ }
-  | Syn.Ast.Parameter.Optional { pattern = Some pattern; _ }
-  | Syn.Ast.Parameter.OptionalDefault { pattern = Some pattern; _ } ->
+  | Syn.Ast.Parameter.Param { pattern = Some pattern; _ } ->
       binding_name_tokens_of_pattern pattern
-  | Syn.Ast.Parameter.Labeled { label = Some label; _ }
-  | Syn.Ast.Parameter.Optional { label = Some label; _ }
-  | Syn.Ast.Parameter.OptionalDefault { label = Some label; _ } -> Some [ label ]
-  | Syn.Ast.Parameter.Labeled _
-  | Syn.Ast.Parameter.Optional _
-  | Syn.Ast.Parameter.OptionalDefault _
+  | Syn.Ast.Parameter.Param { label = Syn.Ast.Parameter.Labeled { name = Some label }; _ }
+  | Syn.Ast.Parameter.Param { label = Syn.Ast.Parameter.Optional { name = Some label; _ }; _ } -> Some [ label ]
+  | Syn.Ast.Parameter.Param _
   | Syn.Ast.Parameter.Unknown _ -> None
 
 and binding_name_tokens_of_pattern = fun pattern ->

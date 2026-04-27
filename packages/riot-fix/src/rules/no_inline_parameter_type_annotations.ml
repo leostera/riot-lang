@@ -36,10 +36,7 @@ let rec pattern_has_inline_type = fun pattern ->
 
 and parameter_has_inline_type = fun parameter ->
   match Ast.Parameter.view parameter with
-  | Ast.Parameter.Positional { pattern } -> pattern_has_inline_type pattern
-  | Ast.Parameter.Labeled { pattern = Some pattern; _ }
-  | Ast.Parameter.Optional { pattern = Some pattern; _ }
-  | Ast.Parameter.OptionalDefault { pattern = Some pattern; _ } -> pattern_has_inline_type pattern
+  | Ast.Parameter.Param { pattern = Some pattern; _ } -> pattern_has_inline_type pattern
   | _ -> false
 
 let make_diagnostic = fun parameter ->

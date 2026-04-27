@@ -3396,48 +3396,51 @@ end
 
 module Parameter: sig
   type t = parameter
-  type view =
-    | Positional of {
-        pattern: pattern;
-      }
+  type label =
+    | NoLabel
     | Labeled of {
-        label: token option;
-        pattern: pattern option;
+        name: token option;
       }
     | Optional of {
-        label: token option;
-        pattern: pattern option;
-      }
-    | OptionalDefault of {
-        label: token option;
-        pattern: pattern option;
+        name: token option;
         default: expr option;
+      }
+  type view =
+    | Param of {
+        label: label;
+        pattern: pattern option;
       }
     | Unknown of Node.t
   val cast: Node.t -> t option
 
   val view: t -> view
 
+  val label: t -> label
+
+  val label_token: t -> token option
+
+  val pattern: t -> pattern option
+
+  val default: t -> expr option
+
   val has_explicit_pattern_parens: t -> bool
 end = struct
   type t = parameter
 
-  type view =
-    | Positional of {
-        pattern: pattern;
-      }
+  type label =
+    | NoLabel
     | Labeled of {
-        label: token option;
-        pattern: pattern option;
+        name: token option;
       }
     | Optional of {
-        label: token option;
-        pattern: pattern option;
-      }
-    | OptionalDefault of {
-        label: token option;
-        pattern: pattern option;
+        name: token option;
         default: expr option;
+      }
+
+  type view =
+    | Param of {
+        label: label;
+        pattern: pattern option;
       }
     | Unknown of Node.t
 
@@ -3455,24 +3458,55 @@ end = struct
 
   let view = fun (parameter: parameter) ->
     match Node.kind parameter with
-    | kind when is_pattern_kind kind -> Positional { pattern = normalize_pattern_node parameter }
+    | kind when is_pattern_kind kind ->
+        Param {
+          label = NoLabel;
+          pattern = Some (normalize_pattern_node parameter);
+        }
     | Syntax_kind.LABELED_PARAM ->
-        Labeled {
-          label = parameter_label_token parameter;
+        Param {
+          label = Labeled { name = parameter_label_token parameter };
           pattern = normalize_pattern_option (first_pattern_child parameter);
         }
     | Syntax_kind.OPTIONAL_PARAM ->
-        Optional {
-          label = parameter_label_token parameter;
+        Param {
+          label = Optional {
+            name = parameter_label_token parameter;
+            default = None;
+          };
           pattern = normalize_pattern_option (first_pattern_child parameter);
         }
     | Syntax_kind.OPTIONAL_PARAM_DEFAULT ->
-        OptionalDefault {
-          label = parameter_label_token parameter;
+        Param {
+          label = Optional {
+            name = parameter_label_token parameter;
+            default = normalize_expr_option (first_expr_child parameter);
+          };
           pattern = normalize_pattern_option (first_pattern_child parameter);
-          default = normalize_expr_option (first_expr_child parameter);
         }
     | _ -> Unknown parameter
+
+  let label = fun parameter ->
+    match view parameter with
+    | Param { label; _ } -> label
+    | Unknown _ -> NoLabel
+
+  let label_token = fun parameter ->
+    match label parameter with
+    | NoLabel -> None
+    | Labeled { name }
+    | Optional { name; _ } -> name
+
+  let pattern = fun parameter ->
+    match view parameter with
+    | Param { pattern; _ } -> pattern
+    | Unknown _ -> None
+
+  let default = fun parameter ->
+    match label parameter with
+    | Optional { default; _ } -> default
+    | NoLabel
+    | Labeled _ -> None
 
   let has_explicit_pattern_parens = fun parameter ->
     Option.is_some

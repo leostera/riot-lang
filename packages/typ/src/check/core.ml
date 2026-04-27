@@ -1021,21 +1021,23 @@ and infer_parameter = fun state env ~level parameter ->
   match Ast.Parameter.cast parameter with
   | Some parameter_node -> (
       match Ast.Parameter.view parameter_node with
-      | Ast.Parameter.Positional { pattern } ->
+      | Ast.Parameter.Param { label = Ast.Parameter.NoLabel; pattern = Some pattern } ->
           if Option.is_some (Ast.LocallyAbstractTypePattern.cast pattern) then (
             add_diagnostic state (unsupported_syntax pattern "locally abstract parameter");
             (fresh_tyvar state ~level, [])
           ) else
             infer_pattern state env ~level pattern
-      | Ast.Parameter.Labeled _ ->
+      | Ast.Parameter.Param { label = Ast.Parameter.Labeled _; _ } ->
           add_diagnostic state (unsupported_syntax parameter "labeled parameter");
           infer_labeled_parameter state env ~level parameter_node
-      | Ast.Parameter.Optional _ ->
+      | Ast.Parameter.Param { label = Ast.Parameter.Optional { default = None; _ }; _ } ->
           add_diagnostic state (unsupported_syntax parameter "optional parameter");
           infer_labeled_parameter state env ~level parameter_node
-      | Ast.Parameter.OptionalDefault _ ->
+      | Ast.Parameter.Param { label = Ast.Parameter.Optional { default = Some _; _ }; _ } ->
           add_diagnostic state (unsupported_syntax parameter "optional parameter");
           infer_optional_default_parameter state env ~level parameter_node
+      | Ast.Parameter.Param { label = Ast.Parameter.NoLabel; pattern = None } ->
+          (fresh_tyvar state ~level, [])
       | Ast.Parameter.Unknown _ -> (fresh_tyvar state ~level, [])
     )
   | None ->
@@ -1047,18 +1049,31 @@ and infer_parameter = fun state env ~level parameter ->
 
 and infer_labeled_parameter = fun state env ~level parameter ->
   match Ast.Parameter.view parameter with
-  | Ast.Parameter.Labeled { label = Some label; pattern = None }
-  | Ast.Parameter.Optional { label = Some label; pattern = None } ->
+  | Ast.Parameter.Param { label = Ast.Parameter.Labeled { name = Some label }; pattern = None }
+  | Ast.Parameter.Param {
+      label = Ast.Parameter.Optional {
+        name = Some label;
+        default = None;
+      };
+      pattern = None;
+    } ->
       let ty = fresh_tyvar state ~level in
       let binding = make_binding state ~name:(token_text_surface_path label) ~ty in
       (ty, [ binding ])
-  | Ast.Parameter.Labeled { pattern = Some pattern; _ }
-  | Ast.Parameter.Optional { pattern = Some pattern; _ } -> infer_pattern state env ~level pattern
+  | Ast.Parameter.Param { label = Ast.Parameter.Labeled _; pattern = Some pattern }
+  | Ast.Parameter.Param { label = Ast.Parameter.Optional { default = None; _ }; pattern = Some pattern } ->
+      infer_pattern state env ~level pattern
   | _ -> (fresh_tyvar state ~level, [])
 
 and infer_optional_default_parameter = fun state env ~level parameter ->
   match Ast.Parameter.view parameter with
-  | Ast.Parameter.OptionalDefault { label = Some label; pattern = None; default } ->
+  | Ast.Parameter.Param {
+      label = Ast.Parameter.Optional {
+        name = Some label;
+        default;
+      };
+      pattern = None;
+    } ->
       let ty = fresh_tyvar state ~level in
       let binding = make_binding state ~name:(token_text_surface_path label) ~ty in
       (
@@ -1069,7 +1084,7 @@ and infer_optional_default_parameter = fun state env ~level parameter ->
         | None -> ()
       );
       (ty, [ binding ])
-  | Ast.Parameter.OptionalDefault { pattern = Some pattern; default; _ } ->
+  | Ast.Parameter.Param { label = Ast.Parameter.Optional { default; _ }; pattern = Some pattern } ->
       let (ty, bindings) = infer_pattern state env ~level pattern in
       (
         match default with

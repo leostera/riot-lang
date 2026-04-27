@@ -224,10 +224,12 @@ let rec executable_pattern_to_string = fun pattern ->
 let executable_parameter_to_string = fun parameter ->
   let module Ast = Syn.Ast in
   match Ast.Parameter.view parameter with
-  | Ast.Parameter.Positional { pattern } -> executable_pattern_to_string pattern
-  | Ast.Parameter.Labeled { label = Some label; _ } -> "~" ^ Ast.Token.text label
-  | Ast.Parameter.Optional { label = Some label; _ }
-  | Ast.Parameter.OptionalDefault { label = Some label; _ } -> "?" ^ Ast.Token.text label
+  | Ast.Parameter.Param { label = Ast.Parameter.NoLabel; pattern = Some pattern } ->
+      executable_pattern_to_string pattern
+  | Ast.Parameter.Param { label = Ast.Parameter.Labeled { name = Some label }; _ } ->
+      "~" ^ Ast.Token.text label
+  | Ast.Parameter.Param { label = Ast.Parameter.Optional { name = Some label; _ }; _ } ->
+      "?" ^ Ast.Token.text label
   | _ -> "<unknown>"
 
 let rec is_labeled_args_parameter = fun parameter ->
@@ -235,8 +237,7 @@ let rec is_labeled_args_parameter = fun parameter ->
   match Ast.Parameter.cast parameter with
   | Some param -> (
       match Ast.Parameter.view param with
-      | Ast.Parameter.Positional _ -> false
-      | Ast.Parameter.Labeled { label = Some label; _ } ->
+      | Ast.Parameter.Param { label = Ast.Parameter.Labeled { name = Some label }; _ } ->
           String.equal (Ast.Token.text label) "args"
       | _ -> false
     )

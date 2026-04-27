@@ -187,10 +187,9 @@ let parameter_kind = fun pattern ->
         |> Option.expect ~msg:"expected syntactic parameter view"
       in
       match Ast.Parameter.view parameter with
-      | Ast.Parameter.Positional _ -> None
-      | Ast.Parameter.Labeled _ -> Some LabeledParameter
-      | Ast.Parameter.Optional _
-      | Ast.Parameter.OptionalDefault _ -> Some OptionalParameter
+      | Ast.Parameter.Param { label = Ast.Parameter.NoLabel; _ } -> None
+      | Ast.Parameter.Param { label = Ast.Parameter.Labeled _; _ } -> Some LabeledParameter
+      | Ast.Parameter.Param { label = Ast.Parameter.Optional _; _ } -> Some OptionalParameter
       | Ast.Parameter.Unknown _ -> None
     )
   | _ -> None
@@ -235,13 +234,11 @@ let rec parameter_name_token = fun pattern ->
         |> Option.expect ~msg:"expected syntactic parameter view"
       in
       match Ast.Parameter.view parameter with
-      | Ast.Parameter.Positional { pattern } -> parameter_name_token pattern
-      | Ast.Parameter.Labeled { label = Some label; _ }
-      | Ast.Parameter.Optional { label = Some label; _ }
-      | Ast.Parameter.OptionalDefault { label = Some label; _ } -> Some label
-      | Ast.Parameter.Labeled { pattern = Some pattern; _ }
-      | Ast.Parameter.Optional { pattern = Some pattern; _ }
-      | Ast.Parameter.OptionalDefault { pattern = Some pattern; _ } -> pattern_name_token pattern
+      | Ast.Parameter.Param { label = Ast.Parameter.NoLabel; pattern = Some pattern } ->
+          parameter_name_token pattern
+      | Ast.Parameter.Param { label = Ast.Parameter.Labeled { name = Some label }; _ }
+      | Ast.Parameter.Param { label = Ast.Parameter.Optional { name = Some label; _ }; _ } -> Some label
+      | Ast.Parameter.Param { pattern = Some pattern; _ } -> pattern_name_token pattern
       | _ -> None
     )
   | _ -> (

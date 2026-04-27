@@ -1329,13 +1329,10 @@ let collect_fun_parameters = fun (node: Ast.Node.t) ->
   let parameters = Vector.with_capacity ~size:(Ast.Node.child_count node) in
   let rec push_parameter parameter =
     match Ast.Parameter.view parameter with
-    | Positional _ when node_kind_is parameter Kind.CONSTRUCT_PATTERN ->
+    | Ast.Parameter.Param { label = Ast.Parameter.NoLabel; _ } when node_kind_is parameter Kind.CONSTRUCT_PATTERN ->
         push_positional_construct parameter
-    | Positional _
-    | Labeled _
-    | Optional _
-    | OptionalDefault _
-    | Unknown _ -> Vector.push parameters ~value:parameter
+    | Ast.Parameter.Param _
+    | Ast.Parameter.Unknown _ -> Vector.push parameters ~value:parameter
   and push_positional_construct pattern =
     match node_kind pattern with
     | Kind.CONSTRUCT_PATTERN ->
@@ -3676,34 +3673,48 @@ and render_named_parameter = fun state ~sigil parameter label pattern ->
 
 and render_parameter = fun state parameter ->
   match Ast.Parameter.view parameter with
-  | Positional { pattern } -> render_pattern state pattern
-  | Labeled { label = Some label; pattern = None } ->
+  | Ast.Parameter.Param { label = Ast.Parameter.NoLabel; pattern = Some pattern } -> render_pattern state pattern
+  | Ast.Parameter.Param { label = Ast.Parameter.NoLabel; pattern = None } ->
+      unsupported_node "positional parameter without pattern" parameter
+  | Ast.Parameter.Param { label = Ast.Parameter.Labeled { name = Some label }; pattern = None } ->
       emit_text state "~";
       emit_token state label
-  | Labeled { label = Some label; pattern = Some pattern } ->
+  | Ast.Parameter.Param { label = Ast.Parameter.Labeled { name = Some label }; pattern = Some pattern } ->
       render_named_parameter state ~sigil:"~" parameter label pattern
-  | Labeled _ -> unsupported_node "labeled parameter without label" parameter
-  | Optional { label = Some label; pattern = None } ->
+  | Ast.Parameter.Param { label = Ast.Parameter.Labeled _; _ } ->
+      unsupported_node "labeled parameter without label" parameter
+  | Ast.Parameter.Param { label = Ast.Parameter.Optional { name = Some label; default = None }; pattern = None } ->
       emit_text state "?";
       emit_token state label
-  | Optional { label = Some label; pattern = Some pattern } ->
+  | Ast.Parameter.Param {
+      label = Ast.Parameter.Optional {
+        name = Some label;
+        default = None;
+      };
+      pattern = Some pattern;
+    } ->
       render_named_parameter state ~sigil:"?" parameter label pattern
-  | Optional _ -> unsupported_node "optional parameter without label" parameter
-  | OptionalDefault _ -> emit_parameter_token_stream state parameter
-  | Unknown _ -> unsupported_node "unsupported parameter" parameter
+  | Ast.Parameter.Param { label = Ast.Parameter.Optional { default = Some _; _ }; _ } ->
+      emit_parameter_token_stream state parameter
+  | Ast.Parameter.Param { label = Ast.Parameter.Optional _; _ } ->
+      unsupported_node "optional parameter without label" parameter
+  | Ast.Parameter.Unknown _ -> unsupported_node "unsupported parameter" parameter
 
 and loose_parameter_binding_annotation = fun parameter ->
   match PatternView.view parameter with
   | LabeledParam parameter -> (
       match Ast.Parameter.view parameter with
-      | Labeled { pattern = Some annotation; _ } when (not
+      | Ast.Parameter.Param { label = Ast.Parameter.Labeled _; pattern = Some annotation } when (not
         (Ast.Parameter.has_explicit_pattern_parens parameter))
       && parameter_colon_has_leading_space parameter -> Some annotation
       | _ -> None
     )
   | OptionalParam parameter -> (
       match Ast.Parameter.view parameter with
-      | Optional { pattern = Some annotation; _ } when (not
+      | Ast.Parameter.Param {
+          label = Ast.Parameter.Optional { default = None; _ };
+          pattern = Some annotation;
+        } when (not
         (Ast.Parameter.has_explicit_pattern_parens parameter))
       && parameter_colon_has_leading_space parameter -> Some annotation
       | _ -> None
@@ -3714,14 +3725,14 @@ and render_parameter_label_only = fun state parameter ->
   match PatternView.view parameter with
   | LabeledParam parameter -> (
       match Ast.Parameter.view parameter with
-      | Labeled { label = Some label; _ } ->
+      | Ast.Parameter.Param { label = Ast.Parameter.Labeled { name = Some label }; _ } ->
           emit_text state "~";
           emit_token state label
       | _ -> emit_parameter_token_stream state parameter
     )
   | OptionalParam parameter -> (
       match Ast.Parameter.view parameter with
-      | Optional { label = Some label; _ } ->
+      | Ast.Parameter.Param { label = Ast.Parameter.Optional { name = Some label; _ }; _ } ->
           emit_text state "?";
           emit_token state label
       | _ -> emit_parameter_token_stream state parameter

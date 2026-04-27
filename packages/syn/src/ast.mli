@@ -483,27 +483,32 @@ end
 
 module Parameter: sig
   type t = parameter
-  type view =
-    | Positional of {
-        pattern: pattern;
-      }
+  type label =
+    | NoLabel
     | Labeled of {
-        label: Token.t option;
-        pattern: pattern option;
+        name: Token.t option;
       }
     | Optional of {
-        label: Token.t option;
-        pattern: pattern option;
-      }
-    | OptionalDefault of {
-        label: Token.t option;
-        pattern: pattern option;
+        name: Token.t option;
         default: expr option;
+      }
+  type view =
+    | Param of {
+        label: label;
+        pattern: pattern option;
       }
     | Unknown of Node.t
   val cast: Node.t -> t option
 
   val view: t -> view
+
+  val label: t -> label
+
+  val label_token: t -> Token.t option
+
+  val pattern: t -> pattern option
+
+  val default: t -> expr option
 
   val has_explicit_pattern_parens: t -> bool
 end

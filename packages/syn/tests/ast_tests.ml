@@ -2920,7 +2920,10 @@ let test_typed_labeled_parameter_view = fun _ctx ->
       match Ast.Parameter.cast labeled with
       | Some parameter -> (
           match Ast.Parameter.view parameter with
-          | Ast.Parameter.Labeled { label = Some label; pattern = Some pattern } ->
+          | Ast.Parameter.Param {
+              label = Ast.Parameter.Labeled { name = Some label };
+              pattern = Some pattern;
+            } ->
               Test.assert_equal ~expected:"fn" ~actual:(Ast.Token.text label);
               (
                 match Ast.Pattern.view pattern with
@@ -2964,7 +2967,13 @@ let test_optional_default_labeled_parameter_view = fun _ctx ->
       match Ast.Parameter.cast optional with
       | Some parameter -> (
           match Ast.Parameter.view parameter with
-          | Ast.Parameter.OptionalDefault { label = Some label; pattern = Some pattern; default = Some default } ->
+          | Ast.Parameter.Param {
+              label = Ast.Parameter.Optional {
+                name = Some label;
+                default = Some default;
+              };
+              pattern = Some pattern;
+            } ->
               Test.assert_equal ~expected:"config" ~actual:(Ast.Token.text label);
               (
                 match Ast.Pattern.view pattern with
@@ -3004,7 +3013,7 @@ let test_let_binding_parameters_are_parameter_views = fun _ctx ->
   Test.assert_equal ~expected:3 ~actual:(Vector.length parameters);
   (
     match Ast.Parameter.view (Vector.get_unchecked parameters ~at:0) with
-    | Ast.Parameter.Positional { pattern } -> (
+    | Ast.Parameter.Param { label = Ast.Parameter.NoLabel; pattern = Some pattern } -> (
         match Ast.Pattern.view pattern with
         | Ast.Pattern.Ident { path } -> assert_last_ident_text path "name"
         | _ -> panic "expected positional parameter path"
@@ -3013,7 +3022,10 @@ let test_let_binding_parameters_are_parameter_views = fun _ctx ->
   );
   (
     match Ast.Parameter.view (Vector.get_unchecked parameters ~at:1) with
-    | Ast.Parameter.Labeled { label = Some label; pattern = Some pattern } ->
+    | Ast.Parameter.Param {
+        label = Ast.Parameter.Labeled { name = Some label };
+        pattern = Some pattern;
+      } ->
         Test.assert_equal ~expected:"mode" ~actual:(Ast.Token.text label);
         (
           match Ast.Pattern.view pattern with
@@ -3024,7 +3036,13 @@ let test_let_binding_parameters_are_parameter_views = fun _ctx ->
     | _ -> panic "expected labeled parameter view"
   );
   match Ast.Parameter.view (Vector.get_unchecked parameters ~at:2) with
-  | Ast.Parameter.OptionalDefault { label = Some label; pattern = Some pattern; default = Some default } ->
+  | Ast.Parameter.Param {
+      label = Ast.Parameter.Optional {
+        name = Some label;
+        default = Some default;
+      };
+      pattern = Some pattern;
+    } ->
       Test.assert_equal ~expected:"config" ~actual:(Ast.Token.text label);
       (
         match Ast.Pattern.view pattern with
