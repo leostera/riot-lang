@@ -159,6 +159,51 @@ let test_csrf_requires_session_middleware = fun _ctx ->
   Test.assert_equal ~expected:Csrf.For_testing.missing_session_body ~actual:response.body;
   Ok ()
 
+let test_csrf_result_apis_return_structured_errors = fun _ctx ->
+  (
+    match Csrf.For_testing.generate_token_result () with
+    | Ok token -> Test.assert_true (Csrf.For_testing.is_raw_token token)
+    | Error error -> Test.assert_false (String.equal "" (Csrf.For_testing.error_to_string error))
+  );
+  (
+    match Csrf.For_testing.mask_token_result "not-a-raw-token" with
+    | Ok token -> Test.assert_equal ~expected:"not-a-raw-token" ~actual:token
+    | Error error -> Test.assert_false (String.equal "" (Csrf.For_testing.error_to_string error))
+  );
+  let conn = Conn.For_testing.make () in
+  (
+    match Csrf.For_testing.get_token_result conn with
+    | Error Csrf.For_testing.MissingSession -> ()
+    | Ok _ -> Test.assert_true false
+    | Error error -> Test.assert_false (String.equal "" (Csrf.For_testing.error_to_string error))
+  );
+  (
+    match Csrf.hidden_field_result conn with
+    | Error Csrf.MissingSession -> ()
+    | Ok _ -> Test.assert_true false
+    | Error error -> Test.assert_false (String.equal "" (Csrf.error_to_string error))
+  );
+  let session =
+    Session.For_testing.create ~cookie_name:"_test" ~secret:"0123456789abcdef0123456789abcdef" ()
+  in
+  (
+    match Csrf.For_testing.get_or_create_token_result session with
+    | Ok token ->
+        Test.assert_true (Csrf.For_testing.is_raw_token token);
+        Test.assert_equal ~expected:(Some token) ~actual:(Session.get_value "_csrf_token" session)
+    | Error error -> Test.assert_false (String.equal "" (Csrf.For_testing.error_to_string error))
+  );
+  let rendered =
+    Csrf.For_testing.error_to_string
+      (Csrf.For_testing.TokenGenerationFailed (Csrf.For_testing.RandomByteFailed {
+        index = 7;
+        error = Random.InvalidIntBound { bound = 0 };
+      }))
+  in
+  Test.assert_true (String.contains rendered "index 7");
+  Test.assert_true (String.contains rendered "invalid int bound: 0");
+  Ok ()
+
 let tests =
   Test.[
     case "csrf generates raw hex tokens" test_csrf_generates_raw_hex_tokens;
@@ -168,6 +213,7 @@ let tests =
     case "csrf rejects malformed masked tokens" test_csrf_rejects_malformed_masked_tokens;
     case "csrf secure equal checks full token" test_csrf_secure_equal_checks_full_token;
     case "csrf requires session middleware" test_csrf_requires_session_middleware;
+    case "csrf result apis return structured errors" test_csrf_result_apis_return_structured_errors;
   ]
 
 let main ~args = Test.Cli.main ~name:"suri:middleware-csrf" ~tests ~args ()

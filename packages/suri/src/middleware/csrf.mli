@@ -102,6 +102,17 @@
 
 open Std
 
+type random_error =
+  | RngInitializationFailed of Random.error
+  | RandomByteFailed of {
+      index: int;
+      error: Random.error;
+    }
+type error =
+  | MissingSession
+  | TokenGenerationFailed of random_error
+val error_to_string: error -> string
+
 val middleware:
   ?param_name:string ->
   ?header_name:string ->
@@ -133,6 +144,8 @@ val middleware:
      ]
    ]}
 *)
+val get_token_result: Conn.t -> (string, error) result
+
 val get_token: Conn.t -> string
 
 (**
@@ -147,6 +160,8 @@ val get_token: Conn.t -> string
      (* Use token in custom HTML *)
    ]}
 *)
+val hidden_field_result: Conn.t -> ('msg Component.t, error) result
+
 val hidden_field: Conn.t -> 'msg Component.t
 
 (**
@@ -166,6 +181,8 @@ val hidden_field: Conn.t -> 'msg Component.t
        ]
    ]}
 *)
+val meta_tag_result: Conn.t -> ('msg Component.t, error) result
+
 val meta_tag: Conn.t -> 'msg Component.t
 
 (**
@@ -190,11 +207,36 @@ val meta_tag: Conn.t -> 'msg Component.t
    ]}
 *)
 module For_testing: sig
+  type nonrec random_error = random_error =
+    | RngInitializationFailed of Random.error
+    | RandomByteFailed of {
+        index: int;
+        error: Random.error;
+      }
+  type nonrec error = error =
+    | MissingSession
+    | TokenGenerationFailed of random_error
+  val random_error_to_string: random_error -> string
+
+  val error_to_string: error -> string
+
+  val random_bytes_with_rng: Random.Rng.t -> int -> (string, random_error) result
+
+  val random_bytes_result: int -> (string, random_error) result
+
+  val generate_token_result: unit -> (string, error) result
+
   val generate_token: unit -> string
+
+  val mask_token_result: string -> (string, error) result
 
   val mask_token: string -> string
 
   val unmask_token: string -> string option
+
+  val get_or_create_token_result: Session.t -> (string, error) result
+
+  val get_token_result: Conn.t -> (string, error) result
 
   val is_raw_token: string -> bool
 
