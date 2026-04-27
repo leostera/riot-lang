@@ -68,6 +68,7 @@ type t = {
   (** Last stream ID we initiated *)
   peer_last_stream_id: int Cell.t;
   (** Last stream ID peer initiated *)
+  pending_input: string Cell.t;
 }
 
 type event =
@@ -137,6 +138,7 @@ let create = fun ~role ?(config = default_config) () ->
     hpack_decoder = Hpack.create_decoder ~max_dynamic_table_size:4_096 ();
     last_stream_id = Cell.create 0;
     peer_last_stream_id = Cell.create 0;
+    pending_input = Cell.create "";
   }
 
 let send_preface = fun conn ->
@@ -595,18 +597,22 @@ let process_frame = fun conn frame ->
 
 let process_data = fun conn data ->
   let rec process_all events remaining =
-    match Parser.parse_frame (Bytes.to_string remaining) with
+    match Parser.parse_frame remaining with
     | Parser.Done { value = frame; remaining = rest } -> (
+        Cell.set conn.pending_input "";
         match process_frame conn frame with
         | Error e -> Error e
         | Ok new_events ->
-            let rest_bytes = Bytes.from_string rest in
-            if Bytes.length rest_bytes > 0 then
-              process_all (events @ new_events) rest_bytes
+            if String.length rest > 0 then
+              process_all (events @ new_events) rest
             else
               Ok (events @ new_events)
       )
-    | Parser.Need_more -> Ok events
-    | Parser.Error e -> Error e
+    | Parser.Need_more ->
+        Cell.set conn.pending_input remaining;
+        Ok events
+    | Parser.Error e ->
+        Cell.set conn.pending_input "";
+        Error e
   in
-  process_all [] data
+  process_all [] (Cell.get conn.pending_input ^ Bytes.to_string data)

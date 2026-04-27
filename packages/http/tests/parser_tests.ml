@@ -143,6 +143,44 @@ let test_server_preface_settings_payload_length = fun _ctx ->
   else
     Result.Error ("Server preface settings length should be 30, got " ^ Int.to_string length)
 
+let test_process_data_buffers_split_frame_header = fun _ctx ->
+  let conn = Connection.create ~role:Connection.Server () in
+  let frame = Frame.settings [ Frame.HeaderTableSize 1_024; ] in
+  let bytes = Serializer.serialize_frame frame in
+  let first = String.sub bytes ~offset:0 ~len:4 in
+  let rest = String.sub bytes ~offset:4 ~len:(String.length bytes - 4) in
+  match Connection.process_data conn (Std.IO.Bytes.from_string first) with
+  | Error err -> Result.Error err
+  | Ok events when List.length events != 0 ->
+      Result.Error "split frame header should not emit events before the frame is complete"
+  | Ok _ -> (
+      match Connection.process_data conn (Std.IO.Bytes.from_string rest) with
+      | Ok [ Connection.SettingsReceived [ Frame.HeaderTableSize size ] ] when Int.equal size 1_024 ->
+          Result.Ok ()
+      | Ok _ -> Result.Error "split frame header did not emit the expected settings event"
+      | Error err -> Result.Error err
+    )
+
+let test_process_data_buffers_split_frame_payload = fun _ctx ->
+  let conn = Connection.create ~role:Connection.Server () in
+  let frame = Frame.settings [ Frame.HeaderTableSize 1_024; Frame.MaxFrameSize 16_384; ] in
+  let bytes = Serializer.serialize_frame frame in
+  let first = String.sub bytes ~offset:0 ~len:12 in
+  let rest = String.sub bytes ~offset:12 ~len:(String.length bytes - 12) in
+  match Connection.process_data conn (Std.IO.Bytes.from_string first) with
+  | Error err -> Result.Error err
+  | Ok events when List.length events != 0 ->
+      Result.Error "split frame payload should not emit events before the frame is complete"
+  | Ok _ -> (
+      match Connection.process_data conn (Std.IO.Bytes.from_string rest) with
+      | Ok [ Connection.SettingsReceived [ Frame.HeaderTableSize table_size; Frame.MaxFrameSize frame_size ] ] when Int.equal
+        table_size
+        1_024
+      && Int.equal frame_size 16_384 -> Result.Ok ()
+      | Ok _ -> Result.Error "split frame payload did not emit the expected settings event"
+      | Error err -> Result.Error err
+    )
+
 let test_frame_types = fun _ctx ->
   let types = [ Frame.Data; Frame.Headers; Frame.Settings; Frame.Ping; Frame.Goaway; ] in
   if List.length types = 5 then
@@ -159,6 +197,8 @@ let tests =
     case "serialize_settings_ack_has_empty_payload" test_serialize_settings_ack_has_empty_payload;
     case "client_preface_settings_payload_length" test_client_preface_settings_payload_length;
     case "server_preface_settings_payload_length" test_server_preface_settings_payload_length;
+    case "process_data_buffers_split_frame_header" test_process_data_buffers_split_frame_header;
+    case "process_data_buffers_split_frame_payload" test_process_data_buffers_split_frame_payload;
     case "frame_types" test_frame_types;
   ]
 
