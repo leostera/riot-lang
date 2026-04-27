@@ -2,28 +2,28 @@
   "diagnostics": [
     {
       "severity": "warning",
-      "message": "Effectful let-unit bindings should be written as `;` sequences",
+      "message": "Use sequences instead of `let () = ... in ...`",
       "span": {
-        "start": 15,
+        "start": 16,
         "end": 43
       },
       "rule_id": "prefer-sequences-over-let-unit",
-      "suggestion": "Replace this let-unit binding with a `;` sequence.",
+      "suggestion": "Rewrite the unit binding as a sequence.",
       "fix": {
-        "title": "Replace let-unit binding with a sequence",
+        "title": "Rewrite unit let-binding as a sequence",
         "operations": [
           {
             "kind": "replace",
             "target": {
               "kind": "node",
               "span": {
-                "start": 15,
+                "start": 16,
                 "end": 43
               }
             },
             "replacement": {
               "kind": "text",
-              "text": " (log ()); flush ()"
+              "text": "(log ()); flush ()"
             }
           }
         ]
@@ -33,20 +33,20 @@
   "fixed_source": "let render () = (log ()); flush ()\n",
   "applied_fixes": [
     {
-      "title": "Replace let-unit binding with a sequence",
+      "title": "Rewrite unit let-binding as a sequence",
       "operations": [
         {
           "kind": "replace",
           "target": {
             "kind": "node",
             "span": {
-              "start": 15,
+              "start": 16,
               "end": 43
             }
           },
           "replacement": {
             "kind": "text",
-            "text": " (log ()); flush ()"
+            "text": "(log ()); flush ()"
           }
         }
       ]

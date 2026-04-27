@@ -2,28 +2,28 @@
   "diagnostics": [
     {
       "severity": "warning",
-      "message": "Boolean conditions should not be compared explicitly to true or false",
+      "message": "Boolean conditions should not compare directly with true or false",
       "span": {
-        "start": 21,
-        "end": 53
+        "start": 25,
+        "end": 41
       },
       "rule_id": "no-boolean-comparisons-in-conditionals",
-      "suggestion": "Use not <condition> instead.",
+      "suggestion": "Use the boolean expression directly in the conditional.",
       "fix": {
-        "title": "Simplify boolean comparison in condition",
+        "title": "Remove boolean comparison",
         "operations": [
           {
             "kind": "replace",
             "target": {
               "kind": "node",
               "span": {
-                "start": 24,
+                "start": 25,
                 "end": 41
               }
             },
             "replacement": {
               "kind": "text",
-              "text": " not (is_ready)"
+              "text": "not (is_ready)"
             }
           }
         ]
@@ -33,20 +33,20 @@
   "fixed_source": "let render is_ready = if not (is_ready) then log ()\n",
   "applied_fixes": [
     {
-      "title": "Simplify boolean comparison in condition",
+      "title": "Remove boolean comparison",
       "operations": [
         {
           "kind": "replace",
           "target": {
             "kind": "node",
             "span": {
-              "start": 24,
+              "start": 25,
               "end": 41
             }
           },
           "replacement": {
             "kind": "text",
-            "text": " not (is_ready)"
+            "text": "not (is_ready)"
           }
         }
       ]

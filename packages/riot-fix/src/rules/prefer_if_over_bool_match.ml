@@ -1,17 +1,163 @@
 open Std
+open Std.Collections
+
+module H = Rule_helpers
+module Ast = Syn.Ast
 
 let rule_id = Rule_id.of_string "prefer-if-over-bool-match"
 
-let rule_description = "Rule disabled while Syn Ast migration is in progress"
+let rule_description = "Boolean matches should be written as if expressions"
 
 let rule_explain =
   {|
-This rule is temporarily disabled while riot-fix migrates from the removed Syn CST
-API to Syn Ast views. The rule id remains loadable so catalogs and provider wiring
-continue to work during the parser cleanup.
+Matching on `true` and `false` is a long spelling of an `if`.
+
+Prefer `if is_ready then render () else fallback ()` over
+`match is_ready with true -> render () | false -> fallback ()`.
 |}
 
-let check_tree = fun _ctx _root -> []
+type case_kind =
+  | Bool of bool
+  | Wildcard
+  | Unsupported
+
+type bool_case = {
+  kind: case_kind;
+  body: Ast.Expr.t;
+}
+
+let expr_source = fun ctx expr ->
+  H.node_source ctx (expr: Ast.Node.t)
+  |> String.trim
+
+let rec pattern_kind = fun pattern ->
+  match Ast.Pattern.view pattern with
+  | Ast.Pattern.Wildcard -> Wildcard
+  | Ast.Pattern.Literal { token = Some token } -> (
+      match Ast.Token.text token with
+      | "true" -> Bool true
+      | "false" -> Bool false
+      | _ -> Unsupported
+    )
+  | Ast.Pattern.Path { path } -> (
+      match Ast.Path.text path with
+      | "true" -> Bool true
+      | "false" -> Bool false
+      | _ -> Unsupported
+    )
+  | Ast.Pattern.Parenthesized { inner = Some inner }
+  | Ast.Pattern.Attribute { inner = Some inner } -> pattern_kind inner
+  | _ -> Unsupported
+
+let case_of_match_case = fun match_case ->
+  let { Ast.MatchCase.pattern; guard; body } = Ast.MatchCase.view match_case in
+  match (pattern, guard, body) with
+  | (Some pattern, None, Some body) -> Some { kind = pattern_kind pattern; body }
+  | _ -> None
+
+let collect_cases = fun expr ->
+  let cases = Vector.with_capacity ~size:2 in
+  Ast.Expr.for_each_match_case
+    expr
+    ~fn:(fun match_case ->
+      match case_of_match_case match_case with
+      | Some case -> Vector.push cases ~value:case
+      | None -> ());
+  cases
+
+let is_unit_body = fun ctx expr -> String.equal (expr_source ctx expr) "()"
+
+let if_text = fun ctx ~condition ~then_branch ?else_branch () ->
+  let text = "if " ^ condition ^ " then " ^ expr_source ctx then_branch in
+  match else_branch with
+  | Some else_branch when not (is_unit_body ctx else_branch) ->
+      text ^ " else " ^ expr_source ctx else_branch
+  | Some _
+  | None -> text
+
+let negated = fun source -> "not (" ^ source ^ ")"
+
+let replacement_for_cases = fun ctx scrutinee first second ->
+  let scrutinee_text = expr_source ctx scrutinee in
+  match (first.kind, second.kind) with
+  | (Bool true, Bool false)
+  | (Bool true, Wildcard) ->
+      Some (if_text
+        ctx
+        ~condition:scrutinee_text
+        ~then_branch:first.body
+        ~else_branch:second.body
+        ())
+  | (Bool false, Bool true)
+  | (Wildcard, Bool true) ->
+      Some (if_text
+        ctx
+        ~condition:scrutinee_text
+        ~then_branch:second.body
+        ~else_branch:first.body
+        ())
+  | (Bool false, Wildcard) ->
+      Some (if_text
+        ctx
+        ~condition:(negated scrutinee_text)
+        ~then_branch:first.body
+        ~else_branch:second.body
+        ())
+  | (Wildcard, Bool false) ->
+      Some (if_text
+        ctx
+        ~condition:(negated scrutinee_text)
+        ~then_branch:second.body
+        ~else_branch:first.body
+        ())
+  | _ -> None
+
+let make_diagnostic = fun ctx expr replacement ->
+  H.diagnostic
+    ~rule_id
+    ~message:rule_description
+    ~span:(H.span_of_node expr)
+    ~suggestion:"Rewrite the boolean match as an if expression."
+    ~fix:(Fix.make
+      ~title:"Rewrite boolean match as if"
+      ~operations:[ Fix.replace_node_with_text ~target:expr ~text:replacement; ])
+    ()
+
+let diagnostic_for_expr = fun ctx expr ->
+  match Ast.Expr.view expr with
+  | Ast.Expr.Match { scrutinee = Some scrutinee; _ } ->
+      let cases = collect_cases expr in
+      if Int.equal (Vector.length cases) 2 then
+        match replacement_for_cases
+          ctx
+          scrutinee
+          (Vector.get_unchecked cases ~at:0)
+          (Vector.get_unchecked cases ~at:1) with
+        | Some replacement -> Some (make_diagnostic ctx expr replacement)
+        | None -> None
+      else
+        None
+  | _ -> None
+
+let check_tree = fun ctx root ->
+  let diagnostics = H.diagnostics_for_root root in
+  let hooks =
+    {
+      Syn.Visitor.empty_hooks with
+      enter_expr =
+        Some (fun visitor expr ->
+          (
+            match diagnostic_for_expr ctx expr with
+            | Some diagnostic -> H.push_diagnostic diagnostics diagnostic
+            | None -> ()
+          );
+          (visitor, Syn.Visitor.Continue));
+    }
+  in
+  Syn.Visitor.make ~ctx:() ~hooks
+  |> fun visitor ->
+    ignore (Syn.Visitor.visit_node visitor root);
+    H.vector_to_list diagnostics
 
 let make = fun () ->
   Rule.make

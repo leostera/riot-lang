@@ -1,17 +1,54 @@
 open Std
 
+module H = Rule_helpers
+module Ast = Syn.Ast
+
 let rule_id = Rule_id.of_string "snake-case-type-names"
 
-let rule_description = "Rule disabled while Syn Ast migration is in progress"
+let rule_description = "Type names should use snake_case instead of camelCase"
 
 let rule_explain =
   {|
-This rule is temporarily disabled while riot-fix migrates from the removed Syn CST
-API to Syn Ast views. The rule id remains loadable so catalogs and provider wiring
-continue to work during the parser cleanup.
+Type aliases and declarations should use predictable `snake_case` names. Keeping
+type names in the same naming family as values and record fields makes signatures
+easier to scan and avoids adding a second lower-case naming convention.
+
+Use names such as `user_profile` instead of `userProfile`. Short conventional
+names such as `t` are handled by the single-letter-name rule.
 |}
 
-let check_tree = fun _ctx _root -> []
+let make_fix = fun token replacement ->
+  H.replace_token_fix
+    ~title:("Rename type " ^ Ast.Token.text token ^ " to " ^ replacement)
+    ~token
+    ~text:replacement
+
+let make_diagnostic = fun token ->
+  let original = Ast.Token.text token in
+  let replacement = H.to_snake_case original in
+  H.diagnostic_for_token
+    ~rule_id
+    ~message:rule_description
+    ~token
+    ~suggestion:("Rename " ^ original ^ " to " ^ replacement)
+    ~fix:(make_fix token replacement)
+    ()
+
+let check_member = fun member diagnostics ->
+  match Ast.TypeDeclaration.Member.name member with
+  | Some token when H.should_be_snake_case (Ast.Token.text token) ->
+      H.push_diagnostic diagnostics (make_diagnostic token)
+  | _ -> ()
+
+let check_tree = fun _ctx root ->
+  let diagnostics = H.diagnostics_for_root root in
+  H.for_each_type_declaration
+    root
+    ~fn:(fun declaration ->
+      Ast.TypeDeclaration.for_each_member
+        declaration
+        ~fn:(fun member -> check_member member diagnostics));
+  H.vector_to_list diagnostics
 
 let make = fun () ->
   Rule.make

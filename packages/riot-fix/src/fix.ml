@@ -69,12 +69,14 @@ let apply_fixes = Fixme.Fix.apply_fixes
 let validate_fix = Fixme.Fix.validate_fix
 
 let span_of_node = fun node ->
-  let (start, end_) = Syn.Ast.Node.raw_range node in
-  Syn.Ceibo.Span.make ~start ~end_
+  Syn.Ceibo.Span.make
+    ~start:(Syn.Ast.Node.span_start node)
+    ~end_:(Syn.Ast.Node.span_end node)
 
 let span_of_token = fun token ->
-  let (start, end_) = Syn.Ast.Token.raw_range token in
-  Syn.Ceibo.Span.make ~start ~end_
+  Syn.Ceibo.Span.make
+    ~start:(Syn.Ast.Token.span_start token)
+    ~end_:(Syn.Ast.Token.span_end token)
 
 let target_to_json target =
   match target with

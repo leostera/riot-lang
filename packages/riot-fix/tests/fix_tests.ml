@@ -11,8 +11,9 @@ let parse_source_file = fun source ->
   Syn.Ast.SourceFile.make parsed.Syn.Parser.tree
 
 let span_of_token = fun token ->
-  let (start, end_) = Syn.Ast.Token.raw_range token in
-  Syn.Ceibo.Span.make ~start ~end_
+  Syn.Ceibo.Span.make
+    ~start:(Syn.Ast.Token.span_start token)
+    ~end_:(Syn.Ast.Token.span_end token)
 
 let find_token_by_text = fun root text ->
   let found = ref None in
@@ -29,7 +30,7 @@ let token_by_text_at = fun source text ~start ->
   Syn.Ast.Node.for_each_token
     root
     ~fn:(fun token ->
-      let (token_start, _) = Syn.Ast.Token.raw_range token in
+      let token_start = Syn.Ast.Token.span_start token in
       if
         Option.is_none !found && token_start = start && String.equal (Syn.Ast.Token.text token) text
       then
@@ -161,17 +162,20 @@ let tests = [
       Test.assert_equal ~expected:0 ~actual:(List.length result.diagnostics);
       Ok ());
   Test.case
-    "rule-test applies snake-case type fixes and reruns cleanly"
+    "rule-test applies token fixes and reruns cleanly"
     (fun _ctx ->
-      let source = "type userProfile = { name : string }\n" in
+      let source = "let old_value = 1\n" in
       let result =
-        Riot_fix.Rule_test.run_rule ~rule:(Riot_fix.Rules.Snake_case_type_names.make ()) source
-        |> Result.expect ~msg:"expected snake-case type rule to apply"
+        Riot_fix.Rule_test.run_rule
+          ~rule:(replace_token_rule
+            ~rule_id:"test:rename-binding"
+            ~needle:"old_value"
+            ~replacement:"current_value")
+          source
+        |> Result.expect ~msg:"expected token replacement rule to apply"
       in
       Test.assert_equal ~expected:1 ~actual:(List.length result.applied_fixes);
-      Test.assert_equal
-        ~expected:(Some "type user_profile = { name : string }\n")
-        ~actual:result.fixed_source;
+      Test.assert_equal ~expected:(Some "let current_value = 1\n") ~actual:result.fixed_source;
       let remaining =
         match result.after with
         | Some after -> after.diagnostics
@@ -182,15 +186,18 @@ let tests = [
   Test.case
     "rule-test applies multiple non-overlapping fixes"
     (fun _ctx ->
-      let source = "type userProfile = int\nlet old_value = userProfile\n" in
+      let source = "let old_value = 1\nlet other_value = 2\n" in
       let result =
         Riot_fix.Rule_test.run
           ~rules:[
-            Riot_fix.Rules.Snake_case_type_names.make ();
             replace_token_rule
-              ~rule_id:"test:rename-binding"
+              ~rule_id:"test:rename-old-binding"
               ~needle:"old_value"
               ~replacement:"current_value";
+            replace_token_rule
+              ~rule_id:"test:rename-other-binding"
+              ~needle:"other_value"
+              ~replacement:"next_value";
           ]
           source
         |> Result.expect ~msg:"expected multiple safe fixes to apply"
@@ -198,7 +205,7 @@ let tests = [
       Test.assert_equal ~expected:2 ~actual:(List.length result.initial.diagnostics);
       Test.assert_equal ~expected:2 ~actual:(List.length result.applied_fixes);
       Test.assert_equal
-        ~expected:(Some "type user_profile = int\nlet current_value = userProfile\n")
+        ~expected:(Some "let current_value = 1\nlet next_value = 2\n")
         ~actual:result.fixed_source;
       let remaining =
         match result.after with

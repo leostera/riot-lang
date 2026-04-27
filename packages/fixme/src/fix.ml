@@ -65,14 +65,20 @@ let title = fun fix -> fix.title
 
 let operations = fun fix -> fix.operations
 
+let span_of_node = fun node ->
+  Syn.Ceibo.Span.make
+    ~start:(Syn.Ast.Node.span_start node)
+    ~end_:(Syn.Ast.Node.span_end node)
+
+let span_of_token = fun token ->
+  Syn.Ceibo.Span.make
+    ~start:(Syn.Ast.Token.span_start token)
+    ~end_:(Syn.Ast.Token.span_end token)
+
 let target_span = fun target ->
   match target with
-  | Node node ->
-      let (start, end_) = Syn.Ast.Node.raw_range node in
-      Syn.Ceibo.Span.make ~start ~end_
-  | Token token ->
-      let (start, end_) = Syn.Ast.Token.raw_range token in
-      Syn.Ceibo.Span.make ~start ~end_
+  | Node node -> span_of_node node
+  | Token token -> span_of_token token
 
 let source_slice = fun ~source span ->
   let len = Syn.Ceibo.Span.(span.end_ - span.start) in
@@ -80,12 +86,8 @@ let source_slice = fun ~source span ->
 
 let replacement_text = fun ~source ->
   function
-  | SourceOfNode node ->
-      let (start, end_) = Syn.Ast.Node.raw_range node in
-      source_slice ~source (Syn.Ceibo.Span.make ~start ~end_)
-  | SourceOfToken token ->
-      let (start, end_) = Syn.Ast.Token.raw_range token in
-      source_slice ~source (Syn.Ceibo.Span.make ~start ~end_)
+  | SourceOfNode node -> source_slice ~source (span_of_node node)
+  | SourceOfToken token -> source_slice ~source (span_of_token token)
   | Text text -> text
 
 let make_insert_at = fun pos ~new_text ->

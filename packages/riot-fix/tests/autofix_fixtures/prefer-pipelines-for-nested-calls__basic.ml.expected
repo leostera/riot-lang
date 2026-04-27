@@ -4,7 +4,7 @@
       "severity": "warning",
       "message": "Deeply nested function calls should usually be written as pipelines",
       "span": {
-        "start": 14,
+        "start": 15,
         "end": 38
       },
       "rule_id": "prefer-pipelines-for-nested-calls",
@@ -17,7 +17,7 @@
             "target": {
               "kind": "node",
               "span": {
-                "start": 14,
+                "start": 15,
                 "end": 38
               }
             },
@@ -30,7 +30,7 @@
       }
     }
   ],
-  "fixed_source": "let rendered =1 |> hex |> baz |> bar |> foo\n",
+  "fixed_source": "let rendered = 1 |> hex |> baz |> bar |> foo\n",
   "applied_fixes": [
     {
       "title": "Rewrite nested calls as a pipeline",
@@ -40,7 +40,7 @@
           "target": {
             "kind": "node",
             "span": {
-              "start": 14,
+              "start": 15,
               "end": 38
             }
           },

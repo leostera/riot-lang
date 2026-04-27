@@ -1,17 +1,100 @@
 open Std
+open Std.Collections
+
+module H = Rule_helpers
+module Ast = Syn.Ast
 
 let rule_id = Rule_id.of_string "no-redundant-reraise"
 
-let rule_description = "Rule disabled while Syn Ast migration is in progress"
+let rule_description = "Exception handlers that only re-raise should be removed"
 
 let rule_explain =
   {|
-This rule is temporarily disabled while riot-fix migrates from the removed Syn CST
-API to Syn Ast views. The rule id remains loadable so catalogs and provider wiring
-continue to work during the parser cleanup.
+A handler like `with exn -> raise exn` does not handle the exception. It only
+adds another frame for the reader to inspect.
+
+Prefer the protected expression directly unless the handler adds context, cleanup,
+or recovery behavior.
 |}
 
-let check_tree = fun _ctx _root -> []
+let rec unwrap_expr = fun expr ->
+  match Ast.Expr.view expr with
+  | Ast.Expr.Parenthesized { inner = Some inner }
+  | Ast.Expr.Attribute { inner = Some inner } -> unwrap_expr inner
+  | _ -> expr
+
+let expr_path_name = fun expr ->
+  match Ast.Expr.view (unwrap_expr expr) with
+  | Ast.Expr.Path { path } -> (
+      match Ast.Path.last_ident path with
+      | Some token -> Some (Ast.Token.text token)
+      | None -> None
+    )
+  | _ -> None
+
+let is_reraise_body = fun name expr ->
+  match Ast.Expr.view (unwrap_expr expr) with
+  | Ast.Expr.Apply { callee = Some callee; argument = Some argument } -> (
+      match (expr_path_name callee, expr_path_name argument) with
+      | (Some "raise", Some argument_name) -> String.equal name argument_name
+      | _ -> false
+    )
+  | _ -> false
+
+let single_match_case = fun expr ->
+  let cases = Vector.with_capacity ~size:1 in
+  Ast.Expr.for_each_match_case expr ~fn:(fun match_case -> Vector.push cases ~value:match_case);
+  if Int.equal (Vector.length cases) 1 then
+    Vector.get cases ~at:0
+  else
+    None
+
+let diagnostic_for_expr = fun expr ->
+  match Ast.Expr.view expr with
+  | Ast.Expr.Try { body = Some body; _ } -> (
+      match single_match_case expr with
+      | Some match_case -> (
+          let { Ast.MatchCase.pattern; body = handler_body; _ } = Ast.MatchCase.view match_case in
+          match (pattern, handler_body) with
+          | (Some pattern, Some handler_body) -> (
+              match H.pattern_name_token pattern with
+              | Some token when is_reraise_body (Ast.Token.text token) handler_body ->
+                  Some (H.diagnostic
+                    ~rule_id
+                    ~message:rule_description
+                    ~span:(H.span_of_node expr)
+                    ~suggestion:"Remove the handler and keep the protected expression."
+                    ~fix:(Fix.make
+                      ~title:"Remove redundant reraise handler"
+                      ~operations:[ Fix.replace_node ~target:expr ~replacement:body; ])
+                    ())
+              | _ -> None
+            )
+          | _ -> None
+        )
+      | None -> None
+    )
+  | _ -> None
+
+let check_tree = fun _ctx root ->
+  let diagnostics = H.diagnostics_for_root root in
+  let hooks =
+    {
+      Syn.Visitor.empty_hooks with
+      enter_expr =
+        Some (fun visitor expr ->
+          (
+            match diagnostic_for_expr expr with
+            | Some diagnostic -> H.push_diagnostic diagnostics diagnostic
+            | None -> ()
+          );
+          (visitor, Syn.Visitor.Continue));
+    }
+  in
+  Syn.Visitor.make ~ctx:() ~hooks
+  |> fun visitor ->
+    ignore (Syn.Visitor.visit_node visitor root);
+    H.vector_to_list diagnostics
 
 let make = fun () ->
   Rule.make

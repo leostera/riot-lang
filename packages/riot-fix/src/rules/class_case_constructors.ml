@@ -1,17 +1,62 @@
 open Std
 
+module H = Rule_helpers
+module Ast = Syn.Ast
+
 let rule_id = Rule_id.of_string "class-case-constructors"
 
-let rule_description = "Rule disabled while Syn Ast migration is in progress"
+let rule_description = "Variant constructors should use ClassCase instead of underscores"
 
 let rule_explain =
   {|
-This rule is temporarily disabled while riot-fix migrates from the removed Syn CST
-API to Syn Ast views. The rule id remains loadable so catalogs and provider wiring
-continue to work during the parser cleanup.
+Variant constructors stand out as constructors in OCaml, so they should use
+`ClassCase` names. Keeping underscores out of constructor names makes variants
+visually distinct from values and fields while still staying predictable.
+
+Use `GuestUser` instead of `Guest_user`.
 |}
 
-let check_tree = fun _ctx _root -> []
+let make_fix = fun token replacement ->
+  H.replace_token_fix
+    ~title:("Rename constructor " ^ Ast.Token.text token ^ " to " ^ replacement)
+    ~token
+    ~text:replacement
+
+let make_diagnostic = fun token ->
+  let original = Ast.Token.text token in
+  let replacement = H.to_class_case original in
+  H.diagnostic_for_token
+    ~rule_id
+    ~message:rule_description
+    ~token
+    ~suggestion:("Rename " ^ original ^ " to " ^ replacement)
+    ~fix:(make_fix token replacement)
+    ()
+
+let check_variant = fun variant diagnostics ->
+  Ast.VariantType.for_each_constructor
+    variant
+    ~fn:(fun constructor ->
+      match Ast.VariantConstructor.name constructor with
+      | Some token when H.should_be_class_case (Ast.Token.text token) ->
+          H.push_diagnostic diagnostics (make_diagnostic token)
+      | _ -> ());
+  ()
+
+let check_member = fun member diagnostics ->
+  match Ast.TypeDeclaration.Member.variant_type member with
+  | Some variant -> check_variant variant diagnostics
+  | None -> ()
+
+let check_tree = fun _ctx root ->
+  let diagnostics = H.diagnostics_for_root root in
+  H.for_each_type_declaration
+    root
+    ~fn:(fun declaration ->
+      Ast.TypeDeclaration.for_each_member
+        declaration
+        ~fn:(fun member -> check_member member diagnostics));
+  H.vector_to_list diagnostics
 
 let make = fun () ->
   Rule.make

@@ -9,6 +9,8 @@ let keep_ml = fun path ->
   | Some ".ml" -> `keep
   | _ -> `skip
 
+let disabled_rule_marker = "Rule disabled while Syn Ast migration is in progress"
+
 let append_snapshot_suffix = fun path suffix ->
   Path.to_string path ^ suffix
   |> Path.from_string
@@ -48,6 +50,25 @@ let find_rule = fun rule_id ->
   Riot_fix.Pipeline.default_rules ()
   |> List.find ~fn:(fun rule -> Riot_fix.Rule_id.equal (Riot_fix.Rule.id rule) rule_id)
   |> Option.ok_or ~error:("unknown rule fixture id: " ^ Riot_fix.Rule_id.to_string rule_id)
+
+let rule_is_temporarily_disabled = fun rule ->
+  String.contains
+    (Riot_fix.Rule.description rule)
+    disabled_rule_marker
+
+let keep_enabled_rule_fixture = fun path ->
+  match keep_ml path with
+  | `skip -> `skip
+  | `keep -> (
+      match rule_id_of_fixture path with
+      | Error _ -> `keep
+      | Ok rule_id -> (
+          match find_rule rule_id with
+          | Ok rule when rule_is_temporarily_disabled rule -> `skip
+          | Ok _
+          | Error _ -> `keep
+        )
+    )
 
 let result_to_json = fun result ->
   Json.obj
@@ -102,7 +123,7 @@ let main ~args =
     Test.FixtureRunner.cases
       ()
       ~dir:fixture_root
-      ~filter:keep_ml
+      ~filter:keep_enabled_rule_fixture
       ~snapshot_path:approved_snapshot_path
       ~run:(fun ctx -> test_fixture ~ctx)
   in

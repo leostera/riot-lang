@@ -1,17 +1,68 @@
 open Std
 
+module H = Rule_helpers
+module Ast = Syn.Ast
+
 let rule_id = Rule_id.of_string "limit-parenthesis-depth"
 
-let rule_description = "Rule disabled while Syn Ast migration is in progress"
+let rule_description = "Deep chains of parenthesized expressions should be avoided"
 
 let rule_explain =
   {|
-This rule is temporarily disabled while riot-fix migrates from the removed Syn CST
-API to Syn Ast views. The rule id remains loadable so catalogs and provider wiring
-continue to work during the parser cleanup.
+Heavy parenthesization is usually a sign that the code wants to be flatter.
+When readers have to count closing delimiters to understand an expression, the shape
+of the program is doing more work than the names inside it.
+
+Sometimes the right fix is simply to remove redundant grouping. Other times the
+expression wants an intermediate name, a helper function, or a pipeline that makes
+evaluation order obvious without so much punctuation.
+
+If a line keeps growing more parentheses just to stay understandable, it is already
+telling you that the current shape is too dense.
 |}
 
-let check_tree = fun _ctx _root -> []
+let max_parenthesis_depth = 5
+
+let make_diagnostic = fun expr depth ->
+  H.diagnostic
+    ~rule_id
+    ~message:rule_description
+    ~span:(H.span_of_node expr)
+    ~suggestion:("Reduce parenthesis depth from "
+    ^ Int.to_string depth
+    ^ " by removing redundant grouping or extracting a named value")
+    ()
+
+let rec parenthesis_chain_depth = fun expr ->
+  match Ast.Expr.view expr with
+  | Ast.Expr.Parenthesized { inner = Some inner } -> 1 + parenthesis_chain_depth inner
+  | _ -> 0
+
+let rec diagnostics_for_expression = fun diagnostics expr ->
+  match Ast.Expr.view expr with
+  | Ast.Expr.Parenthesized { inner = Some inner } ->
+      let depth = parenthesis_chain_depth expr in
+      let inner_depth = parenthesis_chain_depth inner in
+      if depth >= max_parenthesis_depth && inner_depth < max_parenthesis_depth then
+        H.push_diagnostic diagnostics (make_diagnostic expr depth);
+      diagnostics_for_expression diagnostics inner
+  | _ -> Ast.Expr.for_each_child_expr expr ~fn:(diagnostics_for_expression diagnostics)
+
+let check_tree = fun _ctx root ->
+  let diagnostics = H.diagnostics_for_root root in
+  let hooks =
+    {
+      Syn.Visitor.empty_hooks with
+      enter_expr =
+        Some (fun visitor expr ->
+          diagnostics_for_expression diagnostics expr;
+          (visitor, Syn.Visitor.Skip_subtree));
+    }
+  in
+  Syn.Visitor.make ~ctx:() ~hooks
+  |> fun visitor ->
+    ignore (Syn.Visitor.visit_node visitor root);
+    H.vector_to_list diagnostics
 
 let make = fun () ->
   Rule.make

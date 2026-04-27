@@ -2,28 +2,28 @@
   "diagnostics": [
     {
       "severity": "warning",
-      "message": "Effectful let-unit bindings should be written as `;` sequences",
+      "message": "Use sequences instead of `let () = ... in ...`",
       "span": {
-        "start": 30,
+        "start": 33,
         "end": 280
       },
       "rule_id": "prefer-sequences-over-let-unit",
-      "suggestion": "Replace this let-unit binding with a `;` sequence.",
+      "suggestion": "Rewrite the unit binding as a sequence.",
       "fix": {
-        "title": "Replace let-unit binding with a sequence",
+        "title": "Rewrite unit let-binding as a sequence",
         "operations": [
           {
             "kind": "replace",
             "target": {
               "kind": "node",
               "span": {
-                "start": 30,
+                "start": 33,
                 "end": 280
               }
             },
             "replacement": {
               "kind": "text",
-              "text": "\n  (Period_cell.set_ref feedback_ref total);\n  let solved = Eval.one (Eval.PeriodCell total) in\n  println \"Solving x = 100 + 0.1x with the fixed-point evaluator\";\n  println (String.concat \"\" [ \"  x = \"; Float.to_string ~precision:6 solved ])"
+              "text": "(Period_cell.set_ref feedback_ref total);\n  let solved = Eval.one (Eval.PeriodCell total) in\n  println \"Solving x = 100 + 0.1x with the fixed-point evaluator\";\n  println (String.concat \"\" [ \"  x = \"; Float.to_string ~precision:6 solved ])"
             }
           }
         ]
@@ -33,20 +33,20 @@
   "fixed_source": "let solve total feedback_ref =\n  (Period_cell.set_ref feedback_ref total);\n  let solved = Eval.one (Eval.PeriodCell total) in\n  println \"Solving x = 100 + 0.1x with the fixed-point evaluator\";\n  println (String.concat \"\" [ \"  x = \"; Float.to_string ~precision:6 solved ])\n",
   "applied_fixes": [
     {
-      "title": "Replace let-unit binding with a sequence",
+      "title": "Rewrite unit let-binding as a sequence",
       "operations": [
         {
           "kind": "replace",
           "target": {
             "kind": "node",
             "span": {
-              "start": 30,
+              "start": 33,
               "end": 280
             }
           },
           "replacement": {
             "kind": "text",
-            "text": "\n  (Period_cell.set_ref feedback_ref total);\n  let solved = Eval.one (Eval.PeriodCell total) in\n  println \"Solving x = 100 + 0.1x with the fixed-point evaluator\";\n  println (String.concat \"\" [ \"  x = \"; Float.to_string ~precision:6 solved ])"
+            "text": "(Period_cell.set_ref feedback_ref total);\n  let solved = Eval.one (Eval.PeriodCell total) in\n  println \"Solving x = 100 + 0.1x with the fixed-point evaluator\";\n  println (String.concat \"\" [ \"  x = \"; Float.to_string ~precision:6 solved ])"
           }
         }
       ]

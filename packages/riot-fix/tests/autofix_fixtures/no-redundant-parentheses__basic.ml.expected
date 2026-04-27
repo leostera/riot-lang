@@ -4,7 +4,7 @@
       "severity": "warning",
       "message": "Obvious grouping parentheses should be removed",
       "span": {
-        "start": 18,
+        "start": 19,
         "end": 26
       },
       "rule_id": "no-redundant-parentheses",
@@ -17,7 +17,7 @@
             "target": {
               "kind": "node",
               "span": {
-                "start": 18,
+                "start": 19,
                 "end": 26
               }
             },
@@ -33,7 +33,7 @@
       }
     }
   ],
-  "fixed_source": "let render value =value\n",
+  "fixed_source": "let render value = value\n",
   "applied_fixes": [
     {
       "title": "Remove redundant parentheses",
@@ -43,7 +43,7 @@
           "target": {
             "kind": "node",
             "span": {
-              "start": 18,
+              "start": 19,
               "end": 26
             }
           },

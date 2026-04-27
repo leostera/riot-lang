@@ -2,22 +2,22 @@
   "diagnostics": [
     {
       "severity": "warning",
-      "message": "Else branches that only return unit should be omitted",
+      "message": "Else branches that only return unit should be removed",
       "span": {
-        "start": 15,
+        "start": 16,
         "end": 41
       },
       "rule_id": "no-redundant-else-unit",
-      "suggestion": "Remove else () from this if expression.",
+      "suggestion": "Drop the `else ()` branch.",
       "fix": {
-        "title": "Remove redundant else () branch",
+        "title": "Remove redundant else unit branch",
         "operations": [
           {
             "kind": "replace",
             "target": {
               "kind": "node",
               "span": {
-                "start": 15,
+                "start": 16,
                 "end": 41
               }
             },
@@ -30,17 +30,17 @@
       }
     }
   ],
-  "fixed_source": "let render ok =if ok then log ()\n",
+  "fixed_source": "let render ok = if ok then log ()\n",
   "applied_fixes": [
     {
-      "title": "Remove redundant else () branch",
+      "title": "Remove redundant else unit branch",
       "operations": [
         {
           "kind": "replace",
           "target": {
             "kind": "node",
             "span": {
-              "start": 15,
+              "start": 16,
               "end": 41
             }
           },

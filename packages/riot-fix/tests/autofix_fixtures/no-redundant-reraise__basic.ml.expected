@@ -2,29 +2,29 @@
   "diagnostics": [
     {
       "severity": "warning",
-      "message": "try handlers that only re-raise the same exception should be removed",
+      "message": "Exception handlers that only re-raise should be removed",
       "span": {
-        "start": 18,
+        "start": 19,
         "end": 63
       },
       "rule_id": "no-redundant-reraise",
-      "suggestion": "Remove this try/with and use the body directly.",
+      "suggestion": "Remove the handler and keep the protected expression.",
       "fix": {
-        "title": "Remove redundant try/with reraise",
+        "title": "Remove redundant reraise handler",
         "operations": [
           {
             "kind": "replace",
             "target": {
               "kind": "node",
               "span": {
-                "start": 18,
+                "start": 19,
                 "end": 63
               }
             },
             "replacement": {
               "kind": "source_of_node",
               "span": {
-                "start": 22,
+                "start": 23,
                 "end": 41
               }
             }
@@ -36,21 +36,21 @@
   "fixed_source": "let render value = render_inner value\n",
   "applied_fixes": [
     {
-      "title": "Remove redundant try/with reraise",
+      "title": "Remove redundant reraise handler",
       "operations": [
         {
           "kind": "replace",
           "target": {
             "kind": "node",
             "span": {
-              "start": 18,
+              "start": 19,
               "end": 63
             }
           },
           "replacement": {
             "kind": "source_of_node",
             "span": {
-              "start": 22,
+              "start": 23,
               "end": 41
             }
           }

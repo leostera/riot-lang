@@ -102,11 +102,12 @@ Replace direct `Pervasives` references with `Std`.
       |> Option.map ~fn:(make_fix token)
     in
     let kind = Api.Diagnostic.Known { rule_id = package_rule_id; message = make_message text } in
-    let (start, end_) = Syn.Ast.Token.raw_range token in
     Api.Diagnostic.make
       ~severity:Warning
       ~kind
-      ~span:(Syn.Ceibo.Span.make ~start ~end_)
+      ~span:(Syn.Ceibo.Span.make
+        ~start:(Syn.Ast.Token.span_start token)
+        ~end_:(Syn.Ast.Token.span_end token))
       ?suggestion
       ?fix
       ()

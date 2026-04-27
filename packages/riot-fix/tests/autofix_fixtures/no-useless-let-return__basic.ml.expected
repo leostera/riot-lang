@@ -4,7 +4,7 @@
       "severity": "warning",
       "message": "Bindings that immediately return the bound name should be collapsed",
       "span": {
-        "start": 14,
+        "start": 15,
         "end": 43
       },
       "rule_id": "no-useless-let-return",
@@ -17,14 +17,14 @@
             "target": {
               "kind": "node",
               "span": {
-                "start": 14,
+                "start": 15,
                 "end": 43
               }
             },
             "replacement": {
               "kind": "source_of_node",
               "span": {
-                "start": 26,
+                "start": 27,
                 "end": 34
               }
             }
@@ -43,14 +43,14 @@
           "target": {
             "kind": "node",
             "span": {
-              "start": 14,
+              "start": 15,
               "end": 43
             }
           },
           "replacement": {
             "kind": "source_of_node",
             "span": {
-              "start": 26,
+              "start": 27,
               "end": 34
             }
           }

@@ -1,17 +1,62 @@
 open Std
 
+module H = Rule_helpers
+module Ast = Syn.Ast
+
 let rule_id = Rule_id.of_string "snake-case-record-fields"
 
-let rule_description = "Rule disabled while Syn Ast migration is in progress"
+let rule_description = "Record field names should use snake_case instead of camelCase"
 
 let rule_explain =
   {|
-This rule is temporarily disabled while riot-fix migrates from the removed Syn CST
-API to Syn Ast views. The rule id remains loadable so catalogs and provider wiring
-continue to work during the parser cleanup.
+Record fields are usually read in dense groups, so their naming needs to be calm
+and regular. `snake_case` makes record types, record expressions, and field
+accesses line up with ordinary value names.
+
+Use `display_name` instead of `displayName`.
 |}
 
-let check_tree = fun _ctx _root -> []
+let make_fix = fun token replacement ->
+  H.replace_token_fix
+    ~title:("Rename record field " ^ Ast.Token.text token ^ " to " ^ replacement)
+    ~token
+    ~text:replacement
+
+let make_diagnostic = fun token ->
+  let original = Ast.Token.text token in
+  let replacement = H.to_snake_case original in
+  H.diagnostic_for_token
+    ~rule_id
+    ~message:rule_description
+    ~token
+    ~suggestion:("Rename " ^ original ^ " to " ^ replacement)
+    ~fix:(make_fix token replacement)
+    ()
+
+let check_record_type = fun record diagnostics ->
+  Ast.RecordType.for_each_field
+    record
+    ~fn:(fun field ->
+      match Ast.RecordField.name field with
+      | Some token when H.should_be_snake_case (Ast.Token.text token) ->
+          H.push_diagnostic diagnostics (make_diagnostic token)
+      | _ -> ());
+  ()
+
+let check_member = fun member diagnostics ->
+  match Ast.TypeDeclaration.Member.record_type member with
+  | Some record -> check_record_type record diagnostics
+  | None -> ()
+
+let check_tree = fun _ctx root ->
+  let diagnostics = H.diagnostics_for_root root in
+  H.for_each_type_declaration
+    root
+    ~fn:(fun declaration ->
+      Ast.TypeDeclaration.for_each_member
+        declaration
+        ~fn:(fun member -> check_member member diagnostics));
+  H.vector_to_list diagnostics
 
 let make = fun () ->
   Rule.make

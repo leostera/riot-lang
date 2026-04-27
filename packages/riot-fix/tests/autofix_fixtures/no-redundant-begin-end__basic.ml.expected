@@ -4,7 +4,7 @@
       "severity": "warning",
       "message": "begin/end blocks should be replaced by ordinary grouping or removed",
       "span": {
-        "start": 18,
+        "start": 19,
         "end": 34
       },
       "rule_id": "no-redundant-begin-end",
@@ -17,14 +17,14 @@
             "target": {
               "kind": "node",
               "span": {
-                "start": 18,
+                "start": 19,
                 "end": 34
               }
             },
             "replacement": {
               "kind": "source_of_node",
               "span": {
-                "start": 24,
+                "start": 25,
                 "end": 30
               }
             }
@@ -43,14 +43,14 @@
           "target": {
             "kind": "node",
             "span": {
-              "start": 18,
+              "start": 19,
               "end": 34
             }
           },
           "replacement": {
             "kind": "source_of_node",
             "span": {
-              "start": 24,
+              "start": 25,
               "end": 30
             }
           }

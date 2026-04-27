@@ -4,7 +4,7 @@
       "severity": "warning",
       "message": "Module-qualified field access should use scoped qualification syntax",
       "span": {
-        "start": 19,
+        "start": 20,
         "end": 39
       },
       "rule_id": "prefer-scoped-field-access",
@@ -17,7 +17,7 @@
             "target": {
               "kind": "node",
               "span": {
-                "start": 19,
+                "start": 20,
                 "end": 39
               }
             },
@@ -30,7 +30,7 @@
       }
     }
   ],
-  "fixed_source": "let render record =Module.(record.field)\n",
+  "fixed_source": "let render record = Module.(record.field)\n",
   "applied_fixes": [
     {
       "title": "Rewrite field access to scoped module qualification",
@@ -40,7 +40,7 @@
           "target": {
             "kind": "node",
             "span": {
-              "start": 19,
+              "start": 20,
               "end": 39
             }
           },
