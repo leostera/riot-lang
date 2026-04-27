@@ -81,18 +81,18 @@ module BaselineParser = struct
     | None -> Need_more
     | Some (line, cursor) ->
         if String.length line > max_length then
-          Error "Request line too long"
+          Error (RequestLineTooLong { max_length })
         else
           match StringCursor.advance_by cursor 2 with
-          | None -> Error "Invalid line ending"
+          | None -> Error InvalidCrlf
           | Some cursor -> (
               let line_cursor = StringCursor.create line in
               match StringCursor.take_until line_cursor (fun c -> c = ' ') with
-              | None -> Error "Missing method"
+              | None -> Error MissingMethod
               | Some (method_, line_cursor) ->
                   let line_cursor = StringCursor.skip_while line_cursor (fun c -> c = ' ') in
                   match StringCursor.take_until line_cursor (fun c -> c = ' ') with
-                  | None -> Error "Missing path"
+                  | None -> Error MissingPath
                   | Some (path, line_cursor) ->
                       let version =
                         StringCursor.skip_while line_cursor (fun c -> c = ' ')
@@ -104,7 +104,7 @@ module BaselineParser = struct
                           remaining = StringCursor.remaining cursor;
                         }
                       else
-                        Error "Invalid HTTP version"
+                        Error InvalidHttpVersion
             )
 
   let parse_header_line = fun cursor ->
@@ -112,14 +112,14 @@ module BaselineParser = struct
     | None -> Need_more
     | Some (line, cursor) -> (
         match StringCursor.advance_by cursor 2 with
-        | None -> Error "Invalid line ending"
+        | None -> Error InvalidCrlf
         | Some cursor -> (
             let line_cursor = StringCursor.create line in
             match StringCursor.take_until line_cursor (fun c -> c = ':') with
-            | None -> Error "Invalid header format (missing colon)"
+            | None -> Error (InvalidHeaderFormat MissingColon)
             | Some (name, line_cursor) -> (
                 match StringCursor.advance line_cursor with
-                | None -> Error "Invalid header format"
+                | None -> Error (InvalidHeaderFormat MissingValueSeparator)
                 | Some line_cursor ->
                     let value =
                       StringCursor.skip_while line_cursor (fun c -> c = ' ' || c = '\t')
@@ -148,14 +148,14 @@ module BaselineParser = struct
         }
     | _ ->
         if List.length acc >= max_count then
-          Error "Too many headers"
+          Error (TooManyHeaders { max_count })
         else
           match parse_header_line cursor with
           | Need_more -> Need_more
           | Error error -> Error error
           | Done { value = (name, value); remaining } ->
               if String.length name + String.length value > max_length then
-                Error "Header too long"
+                Error (HeaderTooLong { max_length })
               else
                 parse_headers
                   ~max_count
@@ -204,6 +204,8 @@ module BaselineParser = struct
 end
 
 module BorrowedParser = struct
+  open Http1.Common
+
   module Cursor = Std.Iter.Cursor
   module Slice = IO.IoVec.IoSlice
 
@@ -221,7 +223,7 @@ module BorrowedParser = struct
         remaining: Slice.t;
       }
     | Need_more
-    | Error of string
+    | Error of Http1.Common.error
 
   type request_line = {
     method_: Slice.t;
@@ -246,7 +248,7 @@ module BorrowedParser = struct
 
   let skip_line_ending = fun cursor ->
     match Cursor.advance_by cursor 2 with
-    | None -> Error "Invalid line ending"
+    | None -> Error InvalidCrlf
     | Some cursor -> Done { value = cursor; remaining = Cursor.remaining cursor }
 
   let take_header_block_terminator = fun cursor ->
@@ -260,7 +262,7 @@ module BorrowedParser = struct
     | None -> Need_more
     | Some (line, cursor) ->
         if Slice.length line > max_length then
-          Error "Request line too long"
+          Error (RequestLineTooLong { max_length })
         else
           match skip_line_ending cursor with
           | Need_more
@@ -268,11 +270,11 @@ module BorrowedParser = struct
           | Done { value = cursor; _ } -> (
               let line_cursor = Cursor.from_slice line in
               match Cursor.take_until_char line_cursor ' ' with
-              | None -> Error "Missing method"
+              | None -> Error MissingMethod
               | Some (method_, line_cursor) ->
                   let line_cursor = Cursor.skip_while line_cursor is_space in
                   match Cursor.take_until_char line_cursor ' ' with
-                  | None -> Error "Missing path"
+                  | None -> Error MissingPath
                   | Some (path, line_cursor) ->
                       let version =
                         Cursor.skip_while line_cursor is_space
@@ -290,7 +292,7 @@ module BorrowedParser = struct
                           remaining = Cursor.remaining cursor;
                         }
                       else
-                        Error "Invalid HTTP version"
+                        Error InvalidHttpVersion
             )
 
   let parse_header_line = fun cursor ->
@@ -303,10 +305,10 @@ module BorrowedParser = struct
         | Done { value = cursor; _ } -> (
             let line_cursor = Cursor.from_slice line in
             match Cursor.take_until_char line_cursor ':' with
-            | None -> Error "Invalid header format (missing colon)"
+            | None -> Error (InvalidHeaderFormat MissingColon)
             | Some (name, line_cursor) -> (
                 match Cursor.advance line_cursor with
-                | None -> Error "Invalid header format"
+                | None -> Error (InvalidHeaderFormat MissingValueSeparator)
                 | Some line_cursor ->
                     let value =
                       Cursor.skip_while line_cursor is_optional_whitespace
@@ -324,7 +326,7 @@ module BorrowedParser = struct
   let rec parse_headers = fun
     ?(max_count = 100) ?(max_length = 8_192) ?(acc = []) ?(count = 0) cursor ->
     if count >= max_count then
-      Error "Too many headers"
+      Error (TooManyHeaders { max_count })
     else
       match take_header_block_terminator cursor with
       | Some cursor ->
@@ -338,7 +340,7 @@ module BorrowedParser = struct
           | Error error -> Error error
           | Done { value = { name; value; remaining = next_cursor }; _ } ->
               if Slice.length name + Slice.length value > max_length then
-                Error "Header too long"
+                Error (HeaderTooLong { max_length })
               else
                 parse_headers
                   ~max_count
@@ -561,25 +563,28 @@ let bench_parse = fun payload () ->
   match Http1.Request.parse payload with
   | Done { value; remaining } -> consume_result value remaining
   | Need_more -> panic "http1 parser bench expected complete payload"
-  | Error error -> panic ("http1 parser bench parse error: " ^ error)
+  | Error error -> panic ("http1 parser bench parse error: " ^ Http1.Common.error_to_string error)
 
 let bench_parse_baseline = fun payload () ->
   match BaselineParser.parse payload with
   | Done { value; remaining } -> consume_result value remaining
   | Need_more -> panic "http1 baseline parser bench expected complete payload"
-  | Error error -> panic ("http1 baseline parser bench parse error: " ^ error)
+  | Error error ->
+      panic ("http1 baseline parser bench parse error: " ^ Http1.Common.error_to_string error)
 
 let bench_parse_slice = fun payload () ->
   match Http1.Request.parse_slice payload with
   | Done { value; remaining } -> consume_result value remaining
   | Need_more -> panic "http1 slice parser bench expected complete payload"
-  | Error error -> panic ("http1 slice parser bench parse error: " ^ error)
+  | Error error ->
+      panic ("http1 slice parser bench parse error: " ^ Http1.Common.error_to_string error)
 
 let bench_parse_borrowed = fun payload () ->
   match BorrowedParser.parse payload with
   | BorrowedParser.Done { value; remaining } -> consume_borrowed_result value remaining
   | BorrowedParser.Need_more -> panic "http1 borrowed slice parser bench expected complete payload"
-  | BorrowedParser.Error error -> panic ("http1 borrowed slice parser bench parse error: " ^ error)
+  | BorrowedParser.Error error ->
+      panic ("http1 borrowed slice parser bench parse error: " ^ Http1.Common.error_to_string error)
 
 let benchmarks =
   Bench.[

@@ -20,7 +20,7 @@ type 'a cursor_parse_result =
       remaining: Cursor.t;
     }
   | Cursor_need_more
-  | Cursor_error of string
+  | Cursor_error of Common.error
 
 let slice_of_string = fun value ->
   match Slice.from_string value with
@@ -33,15 +33,15 @@ let parse_status_line_slice = fun input ->
   | None -> Cursor_need_more
   | Some (line, cursor) -> (
       match Cursor.advance_by cursor 2 with
-      | None -> Cursor_error "Invalid line ending"
+      | None -> Cursor_error Common.InvalidCrlf
       | Some cursor -> (
           let line_cursor = Cursor.from_slice line in
           match Cursor.take_until_char line_cursor ' ' with
-          | None -> Cursor_error "Missing version"
+          | None -> Cursor_error Common.MissingVersion
           | Some (version, line_cursor) -> (
               let line_cursor = Cursor.skip_while line_cursor (fun c -> c = ' ') in
               match Cursor.take_until_char line_cursor ' ' with
-              | None -> Cursor_error "Missing status code"
+              | None -> Cursor_error Common.MissingStatusCode
               | Some (code_str, line_cursor) -> (
                   let line_cursor = Cursor.skip_while line_cursor (fun c -> c = ' ') in
                   let reason = Cursor.remaining line_cursor in
@@ -49,7 +49,7 @@ let parse_status_line_slice = fun input ->
                   match Cursor.take_n version_cursor 5 with
                   | Some (prefix, _) when Slice.equal_string prefix "HTTP/" -> (
                       match Int.parse (Slice.to_string code_str) with
-                      | None -> Cursor_error "Invalid status code"
+                      | None -> Cursor_error Common.InvalidStatusCode
                       | Some status_code ->
                           Cursor_done {
                             value =
@@ -62,7 +62,7 @@ let parse_status_line_slice = fun input ->
                             remaining = cursor;
                           }
                     )
-                  | _ -> Cursor_error "Invalid HTTP version"
+                  | _ -> Cursor_error Common.InvalidHttpVersion
                 )
             )
         )

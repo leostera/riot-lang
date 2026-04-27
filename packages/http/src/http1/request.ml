@@ -100,19 +100,10 @@ let trim_leading_ows = fun slice ->
   SliceCursor.skip_while (SliceCursor.create slice) is_optional_whitespace
   |> SliceCursor.remaining
 
-let uri_error_message = function
-  | Std.Net.Uri.InvalidScheme -> "invalid scheme"
-  | Std.Net.Uri.InvalidAuthority -> "invalid authority"
-  | Std.Net.Uri.InvalidPath -> "invalid path"
-  | Std.Net.Uri.InvalidQuery -> "invalid query"
-  | Std.Net.Uri.InvalidFragment -> "invalid fragment"
-  | Std.Net.Uri.InvalidFormat -> "invalid format"
-  | Std.Net.Uri.TooLong -> "too long"
-
 type 'a slice_parse_result =
   | Slice_done of 'a
   | Slice_need_more
-  | Slice_error of string
+  | Slice_error of Common.error
 
 let header_name_equal = fun left right ->
   match String.compare (String.lowercase_ascii left) (String.lowercase_ascii right) with
@@ -133,8 +124,8 @@ let header_values = fun headers name ->
 
 let parse_content_length_value = fun value ->
   match Int.parse (String.trim value) with
-  | None -> Slice_error "Invalid Content-Length"
-  | Some length when length < 0 -> Slice_error "Invalid Content-Length"
+  | None -> Slice_error Common.InvalidContentLength
+  | Some length when length < 0 -> Slice_error Common.InvalidContentLength
   | Some length -> Slice_done length
 
 let parse_content_length_values = fun values ->
@@ -149,7 +140,7 @@ let parse_content_length_values = fun values ->
             match expected with
             | None -> loop (Some length) rest
             | Some previous when previous = length -> loop expected rest
-            | Some _ -> Slice_error "Conflicting Content-Length"
+            | Some _ -> Slice_error Common.ConflictingContentLength
           )
       )
   in
@@ -160,8 +151,8 @@ let parse_content_length = fun headers ->
   let content_lengths = header_values headers "Content-Length" in
   match (transfer_encoding, content_lengths) with
   | ([], values) -> parse_content_length_values values
-  | (_ :: _, []) -> Slice_error "Unsupported Transfer-Encoding"
-  | (_ :: _, _ :: _) -> Slice_error "Invalid body framing: Transfer-Encoding with Content-Length"
+  | (_ :: _, []) -> Slice_error Common.UnsupportedTransferEncoding
+  | (_ :: _, _ :: _) -> Slice_error Common.TransferEncodingWithContentLength
 
 let split_fixed_body = fun input length ->
   let available = Slice.length input in
@@ -189,7 +180,7 @@ let skip_crlf = fun cursor ->
   match SliceCursor.take_n cursor 2 with
   | None -> Slice_need_more
   | Some (ending, cursor) when Slice.equal_string ending "\r\n" -> Slice_done cursor
-  | Some _ -> Slice_error "Invalid CRLF"
+  | Some _ -> Slice_error Common.InvalidCrlf
 
 let take_header_block_terminator = fun cursor ->
   match SliceCursor.take_n cursor 2 with
@@ -201,12 +192,12 @@ let parse_request_line_owned = fun ?(max_length = 8_192) input ->
   match SliceCursor.take_until_char cursor '\r' with
   | None ->
       if Slice.length input > max_length then
-        Slice_error "Request line too long"
+        Slice_error (Common.RequestLineTooLong { max_length })
       else
         Slice_need_more
   | Some (line, cursor) ->
       if Slice.length line > max_length then
-        Slice_error "Request line too long"
+        Slice_error (Common.RequestLineTooLong { max_length })
       else
         match skip_crlf cursor with
         | Slice_need_more
@@ -214,26 +205,25 @@ let parse_request_line_owned = fun ?(max_length = 8_192) input ->
         | Slice_done cursor -> (
             let line_cursor = SliceCursor.create line in
             match SliceCursor.take_until_char line_cursor ' ' with
-            | None -> Slice_error "Missing method"
+            | None -> Slice_error Common.MissingMethod
             | Some (method_, line_cursor) ->
                 let line_cursor = SliceCursor.skip_while line_cursor is_space in
                 match SliceCursor.take_until_char line_cursor ' ' with
-                | None -> Slice_error "Missing path"
+                | None -> Slice_error Common.MissingPath
                 | Some (path, line_cursor) ->
                     let version =
                       SliceCursor.skip_while line_cursor is_space
                       |> SliceCursor.remaining
                     in
                     if not (Slice.starts_with version ~prefix:"HTTP/") then
-                      Slice_error "Invalid HTTP version"
+                      Slice_error Common.InvalidHttpVersion
                     else
                       let method_ = Std.Net.Http.Method.from_slice method_ in
                       match Std.Net.Uri.from_slice path with
-                      | Error error ->
-                          Slice_error ("Invalid request target: " ^ uri_error_message error)
+                      | Error error -> Slice_error (Common.InvalidRequestTarget error)
                       | Ok uri -> (
                           match Std.Net.Http.Version.from_slice version with
-                          | Error `InvalidVersion -> Slice_error "Invalid HTTP version"
+                          | Error `InvalidVersion -> Slice_error Common.InvalidHttpVersion
                           | Ok version ->
                               Slice_done {
                                 parsed_method = method_;
@@ -254,10 +244,10 @@ let parse_header_line_owned = fun cursor ->
       | Slice_done cursor -> (
           let line_cursor = SliceCursor.create line in
           match SliceCursor.take_until_char line_cursor ':' with
-          | None -> Slice_error "Invalid header format (missing colon)"
+          | None -> Slice_error (Common.InvalidHeaderFormat Common.MissingColon)
           | Some (name, line_cursor) -> (
               match SliceCursor.advance line_cursor with
-              | None -> Slice_error "Invalid header format"
+              | None -> Slice_error (Common.InvalidHeaderFormat Common.MissingValueSeparator)
               | Some line_cursor ->
                   let value =
                     SliceCursor.skip_while line_cursor is_optional_whitespace
@@ -276,7 +266,7 @@ let parse_header_line_owned = fun cursor ->
 let rec parse_headers_owned = fun
   ?(max_count = 100) ?(max_length = 8_192) ?(acc = []) ?(count = 0) cursor ->
   if count >= max_count then
-    Slice_error "Too many headers"
+    Slice_error (Common.TooManyHeaders { max_count })
   else
     match take_header_block_terminator cursor with
     | Some cursor -> Slice_done (List.reverse acc, cursor)
@@ -284,13 +274,13 @@ let rec parse_headers_owned = fun
         match parse_header_line_owned cursor with
         | Slice_need_more ->
             if Slice.length (SliceCursor.remaining cursor) > max_length then
-              Slice_error "Header too long"
+              Slice_error (Common.HeaderTooLong { max_length })
             else
               Slice_need_more
         | Slice_error error -> Slice_error error
         | Slice_done { header_name; header_value; next_cursor } ->
             if String.length header_name + String.length header_value > max_length then
-              Slice_error "Header too long"
+              Slice_error (Common.HeaderTooLong { max_length })
             else
               parse_headers_owned
                 ~max_count

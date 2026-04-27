@@ -13,7 +13,7 @@ type 'a cursor_parse_result =
       remaining: Cursor.t;
     }
   | Cursor_need_more
-  | Cursor_error of string
+  | Cursor_error of Common.error
 
 let slice_of_string = fun value ->
   match Slice.from_string value with
@@ -25,11 +25,11 @@ let parse_size = fun cursor ->
   | None -> Cursor_need_more
   | Some (size_hex, cursor) -> (
       match Cursor.advance_by cursor 2 with
-      | None -> Cursor_error "Invalid chunk size line ending"
+      | None -> Cursor_error Common.InvalidChunkSizeLineEnding
       | Some cursor -> (
           match Int.parse ("0x" ^ Slice.to_string size_hex) with
           | Some size -> Cursor_done { value = size; remaining = cursor }
-          | None -> Cursor_error "Invalid chunk size"
+          | None -> Cursor_error Common.InvalidChunkSize
         )
     )
 

@@ -11,7 +11,7 @@ open Common
    @param max_header_length Maximum length of header name+value (default: 8192)
 
    Returns [Done request] on success, [Need_more] if more data needed, or
-   [Error msg] if parsing fails.
+   [Error error] if parsing fails.
 *)
 val parse_slice:
   ?max_request_line:int ->

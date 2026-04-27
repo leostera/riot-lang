@@ -30,7 +30,7 @@ let expect_request_parse = fun input ->
   match Http1.Request.parse input with
   | Done { value; remaining } -> Result.Ok (value, remaining)
   | Need_more -> Result.Error "Unexpected Need_more"
-  | Error error -> Result.Error ("Parse error: " ^ error)
+  | Error error -> Result.Error ("Parse error: " ^ error_to_string error)
 
 let expect_request_parse_slice = fun input ->
   match Http1.Request.parse_slice
@@ -40,7 +40,7 @@ let expect_request_parse_slice = fun input ->
     ) with
   | Done { value; remaining } -> Result.Ok (value, remaining)
   | Need_more -> Result.Error "Unexpected Need_more"
-  | Error error -> Result.Error ("Parse error: " ^ error)
+  | Error error -> Result.Error ("Parse error: " ^ error_to_string error)
 
 (* HTTP/1 Request Tests *)
 
@@ -68,7 +68,7 @@ let test_request_simple_get = fun _ctx ->
         | None -> Result.Error "Expected Host header"
     )
   | Need_more -> Result.Error "Unexpected Need_more"
-  | Error e -> Result.Error ("Parse error: " ^ e)
+  | Error e -> Result.Error ("Parse error: " ^ error_to_string e)
 
 let test_request_post_with_body = fun _ctx ->
   let req =
@@ -102,14 +102,14 @@ let test_request_post_with_body = fun _ctx ->
       else
         Result.Ok ()
   | Need_more -> Result.Error "Unexpected Need_more"
-  | Error e -> Result.Error ("Parse error: " ^ e)
+  | Error e -> Result.Error ("Parse error: " ^ error_to_string e)
 
 let test_request_incomplete = fun _ctx ->
   let req = "GET /path HTTP/1.1\r\nHost: exa" in
   match Http1.Request.parse req with
   | Need_more -> Result.Ok ()
   | Done _ -> Result.Error "Should have returned Need_more"
-  | Error e -> Error ("Unexpected error: " ^ e)
+  | Error e -> Error ("Unexpected error: " ^ error_to_string e)
 
 let test_request_with_1k_body = fun _ctx ->
   let body = String.make ~len:1_024 ~char:'x' in
@@ -203,7 +203,7 @@ let test_request_incomplete_fixed_body = fun _ctx ->
   in
   match Http1.Request.parse req with
   | Need_more -> Result.Ok ()
-  | Error error -> Result.Error ("Expected Need_more, got error " ^ error)
+  | Error error -> Result.Error ("Expected Need_more, got error " ^ error_to_string error)
   | Done _ -> Result.Error "Expected Need_more for incomplete fixed body"
 
 let test_request_preserves_pipelined_bytes_after_fixed_body = fun _ctx ->
@@ -278,8 +278,9 @@ let test_request_rejects_conflicting_content_length = fun _ctx ->
       ~body:"Hello"
   in
   match Http1.Request.parse req with
-  | Error "Conflicting Content-Length" -> Result.Ok ()
-  | Error error -> Result.Error ("Expected conflicting Content-Length error, got " ^ error)
+  | Error ConflictingContentLength -> Result.Ok ()
+  | Error error ->
+      Result.Error ("Expected conflicting Content-Length error, got " ^ error_to_string error)
   | Need_more -> Result.Error "Expected conflicting Content-Length error, got Need_more"
   | Done _ -> Result.Error "Expected conflicting Content-Length error"
 
@@ -292,8 +293,9 @@ let test_request_rejects_invalid_content_length = fun _ctx ->
       ~body:"Hello"
   in
   match Http1.Request.parse req with
-  | Error "Invalid Content-Length" -> Result.Ok ()
-  | Error error -> Result.Error ("Expected invalid Content-Length error, got " ^ error)
+  | Error InvalidContentLength -> Result.Ok ()
+  | Error error ->
+      Result.Error ("Expected invalid Content-Length error, got " ^ error_to_string error)
   | Need_more -> Result.Error "Expected invalid Content-Length error, got Need_more"
   | Done _ -> Result.Error "Expected invalid Content-Length error"
 
@@ -310,8 +312,8 @@ let test_request_rejects_transfer_encoding_with_content_length = fun _ctx ->
       ~body:"Hello"
   in
   match Http1.Request.parse req with
-  | Error "Invalid body framing: Transfer-Encoding with Content-Length" -> Result.Ok ()
-  | Error error -> Result.Error ("Expected TE+CL framing error, got " ^ error)
+  | Error TransferEncodingWithContentLength -> Result.Ok ()
+  | Error error -> Result.Error ("Expected TE+CL framing error, got " ^ error_to_string error)
   | Need_more -> Result.Error "Expected TE+CL framing error, got Need_more"
   | Done _ -> Result.Error "Expected TE+CL framing error"
 
@@ -324,24 +326,26 @@ let test_request_rejects_unsupported_transfer_encoding = fun _ctx ->
       ~body:"5\r\nHello\r\n0\r\n\r\n"
   in
   match Http1.Request.parse req with
-  | Error "Unsupported Transfer-Encoding" -> Result.Ok ()
-  | Error error -> Result.Error ("Expected unsupported Transfer-Encoding error, got " ^ error)
+  | Error UnsupportedTransferEncoding -> Result.Ok ()
+  | Error error ->
+      Result.Error ("Expected unsupported Transfer-Encoding error, got " ^ error_to_string error)
   | Need_more -> Result.Error "Expected unsupported Transfer-Encoding error, got Need_more"
   | Done _ -> Result.Error "Expected unsupported Transfer-Encoding error"
 
 let test_request_line_limit_applies_before_crlf = fun _ctx ->
   let req = "GET /very-long-path" in
   match Http1.Request.parse ~max_request_line:8 req with
-  | Error "Request line too long" -> Result.Ok ()
-  | Error error -> Result.Error ("Expected request line too long error, got " ^ error)
+  | Error (RequestLineTooLong { max_length = 8 }) -> Result.Ok ()
+  | Error error ->
+      Result.Error ("Expected request line too long error, got " ^ error_to_string error)
   | Need_more -> Result.Error "Expected request line too long error, got Need_more"
   | Done _ -> Result.Error "Expected request line too long error"
 
 let test_header_line_limit_applies_before_crlf = fun _ctx ->
   let req = "GET / HTTP/1.1\r\nX-Long: abcdefghijklmnop" in
   match Http1.Request.parse ~max_header_length:8 req with
-  | Error "Header too long" -> Result.Ok ()
-  | Error error -> Result.Error ("Expected header too long error, got " ^ error)
+  | Error (HeaderTooLong { max_length = 8 }) -> Result.Ok ()
+  | Error error -> Result.Error ("Expected header too long error, got " ^ error_to_string error)
   | Need_more -> Result.Error "Expected header too long error, got Need_more"
   | Done _ -> Result.Error "Expected header too long error"
 
@@ -370,24 +374,25 @@ let test_request_parse_slice = fun _ctx ->
 let test_request_rejects_missing_lf_after_request_line = fun _ctx ->
   let req = "GET /path HTTP/1.1\rHost: example.com\r\n\r\n" in
   match Http1.Request.parse req with
-  | Error "Invalid CRLF" -> Result.Ok ()
-  | Error error -> Result.Error ("Expected invalid CRLF error, got " ^ error)
+  | Error InvalidCrlf -> Result.Ok ()
+  | Error error -> Result.Error ("Expected invalid CRLF error, got " ^ error_to_string error)
   | Need_more -> Result.Error "Expected invalid CRLF error, got Need_more"
   | Done _ -> Result.Error "Expected invalid CRLF error"
 
 let test_request_rejects_missing_lf_after_header_line = fun _ctx ->
   let req = "GET /path HTTP/1.1\r\nHost: example.com\r\r\n" in
   match Http1.Request.parse req with
-  | Error "Invalid CRLF" -> Result.Ok ()
-  | Error error -> Result.Error ("Expected invalid CRLF error, got " ^ error)
+  | Error InvalidCrlf -> Result.Ok ()
+  | Error error -> Result.Error ("Expected invalid CRLF error, got " ^ error_to_string error)
   | Need_more -> Result.Error "Expected invalid CRLF error, got Need_more"
   | Done _ -> Result.Error "Expected invalid CRLF error"
 
 let test_request_rejects_invalid_http_version = fun _ctx ->
   let req = "GET /path HTTP/9.9\r\nHost: example.com\r\n\r\n" in
   match Http1.Request.parse req with
-  | Error "Invalid HTTP version" -> Result.Ok ()
-  | Error error -> Result.Error ("Expected invalid HTTP version error, got " ^ error)
+  | Error InvalidHttpVersion -> Result.Ok ()
+  | Error error ->
+      Result.Error ("Expected invalid HTTP version error, got " ^ error_to_string error)
   | Need_more -> Result.Error "Expected invalid HTTP version error, got Need_more"
   | Done { value; _ } ->
       let version =
@@ -400,8 +405,9 @@ let test_request_rejects_invalid_request_target = fun _ctx ->
   let target = "/" ^ String.make ~len:65_535 ~char:'a' in
   let req = "GET " ^ target ^ " HTTP/1.1\r\nHost: example.com\r\n\r\n" in
   match Http1.Request.parse ~max_request_line:70_000 req with
-  | Error "Invalid request target: too long" -> Result.Ok ()
-  | Error error -> Result.Error ("Expected invalid request target error, got " ^ error)
+  | Error (InvalidRequestTarget Std.Net.Uri.TooLong) -> Result.Ok ()
+  | Error error ->
+      Result.Error ("Expected invalid request target error, got " ^ error_to_string error)
   | Need_more -> Result.Error "Expected invalid request target error, got Need_more"
   | Done _ -> Result.Error "Expected invalid request target error"
 
@@ -417,8 +423,8 @@ let test_request_rejects_too_many_headers = fun _ctx ->
   in
   let req = build_request ~method_:"GET" ~path:"/" ~headers ~body:"" in
   match Http1.Request.parse req with
-  | Error "Too many headers" -> Result.Ok ()
-  | Error error -> Result.Error ("Expected too many headers error, got " ^ error)
+  | Error (TooManyHeaders { max_count = 100 }) -> Result.Ok ()
+  | Error error -> Result.Error ("Expected too many headers error, got " ^ error_to_string error)
   | Need_more -> Result.Error "Expected too many headers error"
   | Done _ -> Result.Error "Expected too many headers error"
 
@@ -442,7 +448,7 @@ let test_response_200_ok = fun _ctx ->
       else
         Result.Ok ()
   | Need_more -> Result.Error "Unexpected Need_more"
-  | Error e -> Result.Error ("Parse error: " ^ e)
+  | Error e -> Result.Error ("Parse error: " ^ error_to_string e)
 
 let test_response_404 = fun _ctx ->
   let resp = "HTTP/1.1 404 Not Found\r\nContent-Type: text/plain\r\n\r\n" in
@@ -457,7 +463,7 @@ let test_response_404 = fun _ctx ->
       else
         Result.Ok ()
   | Need_more -> Result.Error "Unexpected Need_more"
-  | Error e -> Result.Error ("Parse error: " ^ e)
+  | Error e -> Result.Error ("Parse error: " ^ error_to_string e)
 
 (* Chunked Encoding Tests *)
 
@@ -472,7 +478,7 @@ let test_chunk_single = fun _ctx ->
       else
         Result.Ok ()
   | Need_more -> Result.Error "Unexpected Need_more"
-  | Error e -> Result.Error ("Parse error: " ^ e)
+  | Error e -> Result.Error ("Parse error: " ^ error_to_string e)
 
 let test_chunk_last = fun _ctx ->
   let chunk = "0\r\n\r\n" in
@@ -483,7 +489,7 @@ let test_chunk_last = fun _ctx ->
       else
         Result.Ok ()
   | Need_more -> Result.Error "Unexpected Need_more"
-  | Error e -> Result.Error ("Parse error: " ^ e)
+  | Error e -> Result.Error ("Parse error: " ^ error_to_string e)
 
 let test_chunk_hex_size = fun _ctx ->
   let chunk = "1a\r\nabcdefghijklmnopqrstuvwxyz\r\n" in
@@ -494,7 +500,7 @@ let test_chunk_hex_size = fun _ctx ->
       else
         Result.Ok ()
   | Need_more -> Result.Error "Unexpected Need_more"
-  | Error e -> Result.Error ("Parse error: " ^ e)
+  | Error e -> Result.Error ("Parse error: " ^ error_to_string e)
 
 (* SSE Tests *)
 
