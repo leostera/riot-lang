@@ -8,7 +8,9 @@ type ctx = {
   fixture_name: string;
 }
 
-type filter_result = [`keep | `skip]
+type filter_result =
+  | Keep
+  | Skip
 
 let is_snapshot_artifact = fun path ->
   let basename = Path.basename path in
@@ -42,10 +44,10 @@ let fixture_name = fun relpath ->
 
 let keep_path = fun filter path ->
   match filter path with
-  | `keep -> true
-  | `skip -> false
+  | Keep -> true
+  | Skip -> false
 
-let cases = fun ?(filter = fun _ -> `keep) ?(snapshot_path = fun _ -> None) () ~dir ~run ->
+let cases = fun ?(filter = fun _ -> Keep) ?(snapshot_path = fun _ -> None) () ~dir ~run ->
   let root =
     if Path.is_relative dir then
       match Env.current_dir () with

@@ -17,8 +17,8 @@ let approved_snapshot_path = fun path -> append_snapshot_suffix path ".expected"
 let fixture_filter = fun path ->
   match Path.extension path with
   | Some ".ml"
-  | Some ".mli" -> `keep
-  | _ -> `skip
+  | Some ".mli" -> Test.FixtureRunner.Keep
+  | _ -> Test.FixtureRunner.Skip
 
 let stable_fixture_filename = fun (ctx: Test.FixtureRunner.ctx) ->
   Path.join

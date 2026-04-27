@@ -6,8 +6,8 @@ let fixture_root = Path.v "packages/riot-lsp/tests/session_fixtures"
 
 let keep_jsonl = fun path ->
   match Path.extension path with
-  | Some ".jsonl" -> `keep
-  | _ -> `skip
+  | Some ".jsonl" -> Test.FixtureRunner.Keep
+  | _ -> Test.FixtureRunner.Skip
 
 let replace_all = fun text ->
   fun ~pattern ->

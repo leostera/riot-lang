@@ -22,10 +22,10 @@ let filter_diagnostic_fixture = fun path ->
         |> Result.unwrap_or ~default:false
       in
       if exists then
-        `keep
+        Test.FixtureRunner.Keep
       else
-        `skip
-  | _ -> `skip
+        Test.FixtureRunner.Skip
+  | _ -> Test.FixtureRunner.Skip
 
 let diagnostics_to_json = fun (report: Check_result.t) ->
   Std.Data.Json.Object [

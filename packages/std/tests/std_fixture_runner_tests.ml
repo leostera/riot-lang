@@ -6,9 +6,9 @@ let tests =
     ~dir:(Path.v "packages/std/tests/fixtures/snapshot_fixture_runner")
     ~filter:(fun path ->
       if String.ends_with ~suffix:".txt" (Path.basename path) then
-        `keep
+        Test.FixtureRunner.Keep
       else
-        `skip)
+        Test.FixtureRunner.Skip)
     ~run:(fun ctx ->
       let actual =
         Fs.read ctx.fixture_path

@@ -19,8 +19,8 @@ open Global
          if Std.String.ends_with ~suffix:".ml" name
             && Std.String.length name >= 4
             && Std.Char.is_digit name.[0]
-         then `keep
-         else `skip)
+         then Keep
+         else Skip)
        ~run
    ```
 
@@ -52,7 +52,10 @@ type ctx = {
   fixture_relpath: Path.t;
   fixture_name: string;
 }
-type filter_result = [`keep | `skip]
+type filter_result =
+  | Keep
+  | Skip
+
 val cases:
   ?filter:(Path.t -> filter_result) ->
   ?snapshot_path:(Path.t -> Path.t option) ->

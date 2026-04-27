@@ -76,8 +76,8 @@ let fixture_filter = fun path ->
   match Path.extension path with
   | Some ".ml" when oracle_range_filter basename
   && oracle_name_filter basename
-  && not (skipped_fixture_basename basename) -> `keep
-  | _ -> `skip
+  && not (skipped_fixture_basename basename) -> Test.FixtureRunner.Keep
+  | _ -> Test.FixtureRunner.Skip
 
 let skip_snapshot_assertion = fun () ->
   match Env.var Env.String ~name:"TYP_ORACLE_SKIP_SNAPSHOT" with

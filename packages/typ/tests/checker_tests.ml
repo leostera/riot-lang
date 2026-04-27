@@ -9,8 +9,8 @@ let fixtures_dir = Path.v "packages/typ/tests/fixtures/corpus"
 let fixture_filter = fun path ->
   match Path.extension path with
   | Some ".ml"
-  | Some ".mli" -> `keep
-  | _ -> `skip
+  | Some ".mli" -> Test.FixtureRunner.Keep
+  | _ -> Test.FixtureRunner.Skip
 
 let source_slice = fun source ->
   IO.IoVec.IoSlice.from_string source
