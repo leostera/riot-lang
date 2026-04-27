@@ -108,6 +108,19 @@ let record_expr = fun ?flat_width ~allow_inline ~item_count () ->
   in
   expr ?flat_width ~pressure ~item_count ()
 
+let separated_expr = fun ?flat_width ~allow_inline ~item_count () ->
+  let pressure =
+    if allow_inline then
+      Layout.Flat
+    else
+      Layout.Strong [ Layout.Child_is_block ]
+  in
+  expr ?flat_width ~pressure ~item_count ()
+
+let list_expr = separated_expr
+
+let array_expr = separated_expr
+
 let record_type = fun
   ?flat_width
   ~allow_inline

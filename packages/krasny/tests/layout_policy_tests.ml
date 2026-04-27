@@ -39,6 +39,33 @@ let tests = [
         ~ctx
         ~actual
         ~expected:{|krasny layout: Binding_rhs(Let_binding) column=12 width=80 flat=unknown -> Block [Has_leading_comment]|});
+  Test.case
+    "layout trace snapshots separated list width overflow"
+    (fun ctx ->
+      let render_ctx = Layout.make_context ~width:20 ~column:8 ~indent:2 () in
+      let facts = Layout.make_facts ~flat_width:18 ~item_count:3 ~syntax_family:Layout.Expr () in
+      let actual = trace_decision (Layout.Separated Layout.List) render_ctx facts in
+      Test.Snapshot.assert_inline_text
+        ~ctx
+        ~actual
+        ~expected:{|krasny layout: Separated(List) column=8 width=20 flat=18 -> Block [Width_overflow(flat=18, remaining=12)]|});
+  Test.case
+    "layout trace snapshots separated array child pressure"
+    (fun ctx ->
+      let render_ctx = Layout.make_context ~width:100 ~column:0 ~indent:0 () in
+      let facts =
+        Layout.make_facts
+          ~flat_width:18
+          ~pressure:(Layout.Strong [ Layout.Child_is_block ])
+          ~item_count:2
+          ~syntax_family:Layout.Expr
+          ()
+      in
+      let actual = trace_decision (Layout.Separated Layout.Array) render_ctx facts in
+      Test.Snapshot.assert_inline_text
+        ~ctx
+        ~actual
+        ~expected:{|krasny layout: Separated(Array) column=0 width=100 flat=18 -> Block [Child_is_block]|});
 ]
 
 let main ~args:_ = Test.Cli.main ~name:"krasny:layout_policy" ~tests ~args:Env.args ()

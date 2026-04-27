@@ -59,6 +59,10 @@ let layout_context = fun ?(role = Layout.Top_expr) ?column state ->
   in
   Layout.make_context ~role ~width:state.width ~column ~indent:state.indent ()
 
+let layout_decision_is_inline = function
+  | { Layout.mode = Inline; _ } -> true
+  | _ -> false
+
 let append_subslice_unchecked = fun buffer slice ~off ~len ->
   match IO.Buffer.append_subslice buffer slice ~off ~len with
   | Ok () -> ()
@@ -4807,15 +4811,17 @@ and list_expr_should_inline = fun expr ->
   in
   loop 0
 
-and list_expr_fits_inline = fun state expr ->
-  match list_expr_flat_width expr_classification_budget expr with
-  | Some width -> Int.(state.column + width <= state.width)
-  | None -> false
+and array_expr_decision = fun state expr items ->
+  let allow_inline = array_expr_should_inline expr in
+  let flat_width = array_expr_flat_width expr_classification_budget expr in
+  let facts = Facts.array_expr ?flat_width ~allow_inline ~item_count:(Vector.length items) () in
+  Layout.decide (Layout.Separated Layout.Array) (layout_context state) facts
 
-and array_expr_fits_inline = fun state expr ->
-  match array_expr_flat_width expr_classification_budget expr with
-  | Some width -> Int.(state.column + width <= state.width)
-  | None -> false
+and list_expr_decision = fun state expr items ->
+  let allow_inline = list_expr_should_inline expr in
+  let flat_width = list_expr_flat_width expr_classification_budget expr in
+  let facts = Facts.list_expr ?flat_width ~allow_inline ~item_count:(Vector.length items) () in
+  Layout.decide (Layout.Separated Layout.List) (layout_context state) facts
 
 and record_expr_should_inline = fun expr ->
   let fields = collect_record_fields expr in
@@ -7483,7 +7489,7 @@ and render_array_expr = fun state expr ->
   let length = Vector.length items in
   if Int.equal length 0 then
     emit_text state "[||]"
-  else if array_expr_should_inline expr && array_expr_fits_inline state expr then (
+  else if layout_decision_is_inline (array_expr_decision state expr items) then (
     emit_text state "[|";
     emit_joined_vector
       state
@@ -7528,7 +7534,7 @@ and render_list_expr = fun state expr ->
   let length = Vector.length items in
   if Int.equal length 0 then
     emit_text state "[]"
-  else if list_expr_should_inline expr && list_expr_fits_inline state expr then (
+  else if layout_decision_is_inline (list_expr_decision state expr items) then (
     emit_text state "[ ";
     emit_joined_vector
       state
