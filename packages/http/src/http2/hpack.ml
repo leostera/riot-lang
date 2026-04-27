@@ -366,7 +366,7 @@ let encode_indexed_header = fun index ->
     ~len:(Bytes.length index_bytes - 1);
   result
 
-let encode_literal_with_indexing = fun ~name_index ~value ->
+let encode_literal_with_indexing = fun ~name_index ~name ~value ->
   (* Literal Header Field with Incremental Indexing: 01xxxxxx *)
   let buf = Buffer.create ~size:64 in
   match name_index with
@@ -387,10 +387,11 @@ let encode_literal_with_indexing = fun ~name_index ~value ->
       (* Name is not indexed *)
       Buffer.add_char buf '\x40';
       (* Index 0 means literal name *)
+      Buffer.add_bytes buf (String_.encode name);
       Buffer.add_bytes buf (String_.encode value);
       Bytes.from_string (Buffer.contents buf)
 
-let encode_literal_without_indexing = fun ~name_index ~value ->
+let encode_literal_without_indexing = fun ~name_index ~name ~value ->
   (* Literal Header Field without Indexing: 0000xxxx *)
   let buf = Buffer.create ~size:64 in
   match name_index with
@@ -401,10 +402,11 @@ let encode_literal_without_indexing = fun ~name_index ~value ->
       Bytes.from_string (Buffer.contents buf)
   | None ->
       Buffer.add_char buf '\x00';
+      Buffer.add_bytes buf (String_.encode name);
       Buffer.add_bytes buf (String_.encode value);
       Bytes.from_string (Buffer.contents buf)
 
-let encode_literal_never_indexed = fun ~name_index ~value ->
+let encode_literal_never_indexed = fun ~name_index ~name ~value ->
   (* Literal Header Field Never Indexed: 0001xxxx *)
   let buf = Buffer.create ~size:64 in
   let prefix_byte = 0x10 in
@@ -422,6 +424,7 @@ let encode_literal_never_indexed = fun ~name_index ~value ->
       Bytes.from_string (Buffer.contents buf)
   | None ->
       Buffer.add_char buf (Char.from_int_unchecked prefix_byte);
+      Buffer.add_bytes buf (String_.encode name);
       Buffer.add_bytes buf (String_.encode value);
       Bytes.from_string (Buffer.contents buf)
 
@@ -453,15 +456,15 @@ let encode_header = fun encoder header ~encoding_type ->
       match encoding_type with
       | Indexed ->
           (* Shouldn't happen - fall back to literal with indexing *)
-          let result = encode_literal_with_indexing ~name_index ~value in
+          let result = encode_literal_with_indexing ~name_index ~name ~value in
           DynamicTable.add encoder.dynamic_table header;
           result
       | LiteralWithIndexing ->
-          let result = encode_literal_with_indexing ~name_index ~value in
+          let result = encode_literal_with_indexing ~name_index ~name ~value in
           DynamicTable.add encoder.dynamic_table header;
           result
-      | LiteralWithoutIndexing -> encode_literal_without_indexing ~name_index ~value
-      | LiteralNeverIndexed -> encode_literal_never_indexed ~name_index ~value
+      | LiteralWithoutIndexing -> encode_literal_without_indexing ~name_index ~name ~value
+      | LiteralNeverIndexed -> encode_literal_never_indexed ~name_index ~name ~value
 
 let encode = fun encoder ?(sensitive_headers = []) () ~headers ->
   let buf = Buffer.create ~size:256 in

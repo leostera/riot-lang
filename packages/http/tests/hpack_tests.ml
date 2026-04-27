@@ -41,10 +41,32 @@ let test_encode_simple_header = fun _ctx ->
   else
     Result.Error "Encoding produced empty output"
 
+let test_custom_header_name_roundtrip = fun _ctx ->
+  let encoder = Hpack.create_encoder () in
+  let decoder = Hpack.create_decoder () in
+  let headers = [ { Hpack.name = "x-request-id"; value = "req-123" } ] in
+  let encoded = Hpack.encode encoder ~sensitive_headers:[] () ~headers in
+  match Hpack.decode decoder encoded with
+  | Ok [ { Hpack.name = "x-request-id"; value = "req-123" } ] -> Result.Ok ()
+  | Ok _ -> Result.Error "Custom header name did not roundtrip"
+  | Error err -> Result.Error ("Decode failed: " ^ err)
+
+let test_sensitive_custom_header_name_roundtrip = fun _ctx ->
+  let encoder = Hpack.create_encoder () in
+  let decoder = Hpack.create_decoder () in
+  let headers = [ { Hpack.name = "x-secret"; value = "token" } ] in
+  let encoded = Hpack.encode encoder ~sensitive_headers:[ "x-secret"; ] () ~headers in
+  match Hpack.decode decoder encoded with
+  | Ok [ { Hpack.name = "x-secret"; value = "token" } ] -> Result.Ok ()
+  | Ok _ -> Result.Error "Sensitive custom header name did not roundtrip"
+  | Error err -> Result.Error ("Decode failed: " ^ err)
+
 let tests = [
   Test.case "encoder_decoder_roundtrip" test_encoder_decoder_roundtrip;
   Test.case "static_table_lookup" test_static_table_lookup;
   Test.case "encode_simple_header" test_encode_simple_header;
+  Test.case "custom_header_name_roundtrip" test_custom_header_name_roundtrip;
+  Test.case "sensitive_custom_header_name_roundtrip" test_sensitive_custom_header_name_roundtrip;
 ]
 
 let main ~args:_ = Test.Cli.main ~name:"http:hpack" ~tests ~args:Env.args ()
