@@ -15,6 +15,14 @@ type t = {
   max_request_line_length: int;
   max_header_count: int;
   max_header_length: int;
+  max_body_size: int;
+  max_keep_alive_requests: int;
+  max_websocket_frame_size: int;
+  max_websocket_message_size: int;
+  read_header_timeout_ms: int;
+  read_body_timeout_ms: int;
+  idle_timeout_ms: int;
+  write_timeout_ms: int;
   buffer_size: int;
   liveview_secret: string;
 }
@@ -29,6 +37,14 @@ let default = {
   max_request_line_length = 8_192;
   max_header_count = 100;
   max_header_length = 8_192;
+  max_body_size = 10 * 1_024 * 1_024;
+  max_keep_alive_requests = 100;
+  max_websocket_frame_size = 1 * 1_024 * 1_024;
+  max_websocket_message_size = 16 * 1_024 * 1_024;
+  read_header_timeout_ms = 5_000;
+  read_body_timeout_ms = 30_000;
+  idle_timeout_ms = 60_000;
+  write_timeout_ms = 30_000;
   buffer_size = 4_096;
   liveview_secret = placeholder_liveview_secret;
 }
@@ -51,6 +67,14 @@ type error =
   | InvalidMaxRequestLineLength of int
   | InvalidMaxHeaderCount of int
   | InvalidMaxHeaderLength of int
+  | InvalidMaxBodySize of int
+  | InvalidMaxKeepAliveRequests of int
+  | InvalidMaxWebSocketFrameSize of int
+  | InvalidMaxWebSocketMessageSize of int
+  | InvalidReadHeaderTimeoutMs of int
+  | InvalidReadBodyTimeoutMs of int
+  | InvalidIdleTimeoutMs of int
+  | InvalidWriteTimeoutMs of int
   | InvalidBufferSize of int
   | InvalidLiveViewSecret of liveview_secret_error
 
@@ -95,6 +119,21 @@ let error_to_string = function
       "max_header_count must be greater than 0, got " ^ Int.to_string value
   | InvalidMaxHeaderLength value ->
       "max_header_length must be greater than 0, got " ^ Int.to_string value
+  | InvalidMaxBodySize value -> "max_body_size must be greater than 0, got " ^ Int.to_string value
+  | InvalidMaxKeepAliveRequests value ->
+      "max_keep_alive_requests must be greater than 0, got " ^ Int.to_string value
+  | InvalidMaxWebSocketFrameSize value ->
+      "max_websocket_frame_size must be greater than 0, got " ^ Int.to_string value
+  | InvalidMaxWebSocketMessageSize value ->
+      "max_websocket_message_size must be greater than 0, got " ^ Int.to_string value
+  | InvalidReadHeaderTimeoutMs value ->
+      "read_header_timeout_ms must be greater than 0, got " ^ Int.to_string value
+  | InvalidReadBodyTimeoutMs value ->
+      "read_body_timeout_ms must be greater than 0, got " ^ Int.to_string value
+  | InvalidIdleTimeoutMs value ->
+      "idle_timeout_ms must be greater than 0, got " ^ Int.to_string value
+  | InvalidWriteTimeoutMs value ->
+      "write_timeout_ms must be greater than 0, got " ^ Int.to_string value
   | InvalidBufferSize value -> "buffer_size must be greater than 0, got " ^ Int.to_string value
   | InvalidLiveViewSecret error -> liveview_secret_error_to_string error
 
@@ -128,6 +167,22 @@ let validate = fun config ->
     add (InvalidMaxHeaderCount config.max_header_count);
   if config.max_header_length <= 0 then
     add (InvalidMaxHeaderLength config.max_header_length);
+  if config.max_body_size <= 0 then
+    add (InvalidMaxBodySize config.max_body_size);
+  if config.max_keep_alive_requests <= 0 then
+    add (InvalidMaxKeepAliveRequests config.max_keep_alive_requests);
+  if config.max_websocket_frame_size <= 0 then
+    add (InvalidMaxWebSocketFrameSize config.max_websocket_frame_size);
+  if config.max_websocket_message_size <= 0 then
+    add (InvalidMaxWebSocketMessageSize config.max_websocket_message_size);
+  if config.read_header_timeout_ms <= 0 then
+    add (InvalidReadHeaderTimeoutMs config.read_header_timeout_ms);
+  if config.read_body_timeout_ms <= 0 then
+    add (InvalidReadBodyTimeoutMs config.read_body_timeout_ms);
+  if config.idle_timeout_ms <= 0 then
+    add (InvalidIdleTimeoutMs config.idle_timeout_ms);
+  if config.write_timeout_ms <= 0 then
+    add (InvalidWriteTimeoutMs config.write_timeout_ms);
   if config.buffer_size <= 0 then
     add (InvalidBufferSize config.buffer_size);
   List.for_each (validate_liveview_secret config.env config.liveview_secret) ~fn:add;
@@ -159,6 +214,38 @@ let spec =
         "max_header_length"
         ~default:8_192
         ~help:"Maximum HTTP header length in bytes";
+      StdConfig.Spec.int
+        "max_body_size"
+        ~default:(10 * 1_024 * 1_024)
+        ~help:"Maximum HTTP request body size in bytes";
+      StdConfig.Spec.int
+        "max_keep_alive_requests"
+        ~default:100
+        ~help:"Maximum requests allowed per keep-alive connection";
+      StdConfig.Spec.int
+        "max_websocket_frame_size"
+        ~default:(1 * 1_024 * 1_024)
+        ~help:"Maximum WebSocket frame payload size in bytes";
+      StdConfig.Spec.int
+        "max_websocket_message_size"
+        ~default:(16 * 1_024 * 1_024)
+        ~help:"Maximum reassembled WebSocket message size in bytes";
+      StdConfig.Spec.int
+        "read_header_timeout_ms"
+        ~default:5_000
+        ~help:"Maximum time to wait for HTTP request headers in milliseconds";
+      StdConfig.Spec.int
+        "read_body_timeout_ms"
+        ~default:30_000
+        ~help:"Maximum time to wait for HTTP request bodies in milliseconds";
+      StdConfig.Spec.int
+        "idle_timeout_ms"
+        ~default:60_000
+        ~help:"Maximum idle keep-alive time in milliseconds";
+      StdConfig.Spec.int
+        "write_timeout_ms"
+        ~default:30_000
+        ~help:"Maximum time to wait for response writes in milliseconds";
       StdConfig.Spec.int "buffer_size" ~default:4_096 ~help:"Network buffer size in bytes";
       StdConfig.Spec.string
         "liveview_secret"
@@ -175,6 +262,14 @@ let get = fun conf ->
   let max_request_line_length = StdConfig.get_int conf "max_request_line_length" in
   let max_header_count = StdConfig.get_int conf "max_header_count" in
   let max_header_length = StdConfig.get_int conf "max_header_length" in
+  let max_body_size = StdConfig.get_int conf "max_body_size" in
+  let max_keep_alive_requests = StdConfig.get_int conf "max_keep_alive_requests" in
+  let max_websocket_frame_size = StdConfig.get_int conf "max_websocket_frame_size" in
+  let max_websocket_message_size = StdConfig.get_int conf "max_websocket_message_size" in
+  let read_header_timeout_ms = StdConfig.get_int conf "read_header_timeout_ms" in
+  let read_body_timeout_ms = StdConfig.get_int conf "read_body_timeout_ms" in
+  let idle_timeout_ms = StdConfig.get_int conf "idle_timeout_ms" in
+  let write_timeout_ms = StdConfig.get_int conf "write_timeout_ms" in
   let buffer_size = StdConfig.get_int conf "buffer_size" in
   let liveview_secret = StdConfig.get_string conf "liveview_secret" in
   match env_from_string env_raw with
@@ -189,6 +284,14 @@ let get = fun conf ->
         max_request_line_length;
         max_header_count;
         max_header_length;
+        max_body_size;
+        max_keep_alive_requests;
+        max_websocket_frame_size;
+        max_websocket_message_size;
+        read_header_timeout_ms;
+        read_body_timeout_ms;
+        idle_timeout_ms;
+        write_timeout_ms;
         buffer_size;
         liveview_secret;
       }

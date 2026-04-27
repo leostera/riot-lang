@@ -74,6 +74,14 @@ let config_for_test = fun
   ?(max_request_line_length = Config.default.max_request_line_length)
   ?(max_header_count = Config.default.max_header_count)
   ?(max_header_length = Config.default.max_header_length)
+  ?(max_body_size = Config.default.max_body_size)
+  ?(max_keep_alive_requests = Config.default.max_keep_alive_requests)
+  ?(max_websocket_frame_size = Config.default.max_websocket_frame_size)
+  ?(max_websocket_message_size = Config.default.max_websocket_message_size)
+  ?(read_header_timeout_ms = Config.default.read_header_timeout_ms)
+  ?(read_body_timeout_ms = Config.default.read_body_timeout_ms)
+  ?(idle_timeout_ms = Config.default.idle_timeout_ms)
+  ?(write_timeout_ms = Config.default.write_timeout_ms)
   ?(buffer_size = Config.default.buffer_size)
   ?(liveview_secret = Config.default.liveview_secret)
   () ->
@@ -85,6 +93,14 @@ let config_for_test = fun
     max_request_line_length;
     max_header_count;
     max_header_length;
+    max_body_size;
+    max_keep_alive_requests;
+    max_websocket_frame_size;
+    max_websocket_message_size;
+    read_header_timeout_ms;
+    read_body_timeout_ms;
+    idle_timeout_ms;
+    write_timeout_ms;
     buffer_size;
     liveview_secret;
   }

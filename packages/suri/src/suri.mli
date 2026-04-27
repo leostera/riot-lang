@@ -313,6 +313,14 @@ module Config: sig
     max_request_line_length: int;
     max_header_count: int;
     max_header_length: int;
+    max_body_size: int;
+    max_keep_alive_requests: int;
+    max_websocket_frame_size: int;
+    max_websocket_message_size: int;
+    read_header_timeout_ms: int;
+    read_body_timeout_ms: int;
+    idle_timeout_ms: int;
+    write_timeout_ms: int;
     buffer_size: int;
     liveview_secret: string;
     (** Secret key for signing LiveView session tokens (min 32 characters) *)
@@ -327,6 +335,14 @@ module Config: sig
      - max_request_line_length: 8192
      - max_header_count: 100
      - max_header_length: 8192
+     - max_body_size: 10485760
+     - max_keep_alive_requests: 100
+     - max_websocket_frame_size: 1048576
+     - max_websocket_message_size: 16777216
+     - read_header_timeout_ms: 5000
+     - read_body_timeout_ms: 30000
+     - idle_timeout_ms: 60000
+     - write_timeout_ms: 30000
      - buffer_size: 4096
      - liveview_secret: "INSECURE-CHANGE-ME-TO-AT-LEAST-32-CHARS" (MUST change in production!)
   *)
@@ -350,6 +366,14 @@ module Config: sig
     | InvalidMaxRequestLineLength of int
     | InvalidMaxHeaderCount of int
     | InvalidMaxHeaderLength of int
+    | InvalidMaxBodySize of int
+    | InvalidMaxKeepAliveRequests of int
+    | InvalidMaxWebSocketFrameSize of int
+    | InvalidMaxWebSocketMessageSize of int
+    | InvalidReadHeaderTimeoutMs of int
+    | InvalidReadBodyTimeoutMs of int
+    | InvalidIdleTimeoutMs of int
+    | InvalidWriteTimeoutMs of int
     | InvalidBufferSize of int
     | InvalidLiveViewSecret of liveview_secret_error
   val env_to_string: env -> string
@@ -373,6 +397,14 @@ val config:
   ?max_request_line_length:int ->
   ?max_header_count:int ->
   ?max_header_length:int ->
+  ?max_body_size:int ->
+  ?max_keep_alive_requests:int ->
+  ?max_websocket_frame_size:int ->
+  ?max_websocket_message_size:int ->
+  ?read_header_timeout_ms:int ->
+  ?read_body_timeout_ms:int ->
+  ?idle_timeout_ms:int ->
+  ?write_timeout_ms:int ->
   ?buffer_size:int ->
   ?liveview_secret:string ->
   unit ->

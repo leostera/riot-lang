@@ -7,6 +7,7 @@
    ## Features
 
    - HTTP/1.1 request parsing with configurable limits
+   - Request body and WebSocket frame limits from {!Config.t}
    - Keep-alive connection management
 
    ## Example

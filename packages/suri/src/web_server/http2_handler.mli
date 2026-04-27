@@ -4,7 +4,7 @@ open Std
    # HTTP/2 Protocol Handler (Experimental)
 
    Prototype HTTP/2 request parsing, response sending, and stream
-   multiplexing support.
+   multiplexing support. Connection-level limits are provided by {!Config.t}.
 
    This handler is not wired into {!Web_server.start_link} by default and is
    not yet a production-compliant HTTP/2 implementation.

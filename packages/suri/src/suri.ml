@@ -60,6 +60,14 @@ let config = fun
   ?(max_request_line_length = 8_192)
   ?(max_header_count = 100)
   ?(max_header_length = 8_192)
+  ?(max_body_size = 10_485_760)
+  ?(max_keep_alive_requests = 100)
+  ?(max_websocket_frame_size = 1_048_576)
+  ?(max_websocket_message_size = 16_777_216)
+  ?(read_header_timeout_ms = 5_000)
+  ?(read_body_timeout_ms = 30_000)
+  ?(idle_timeout_ms = 60_000)
+  ?(write_timeout_ms = 30_000)
   ?(buffer_size = 4_096)
   ?(liveview_secret = "INSECURE-CHANGE-ME-TO-AT-LEAST-32-CHARS")
   () ->
@@ -72,6 +80,14 @@ let config = fun
       max_request_line_length;
       max_header_count;
       max_header_length;
+      max_body_size;
+      max_keep_alive_requests;
+      max_websocket_frame_size;
+      max_websocket_message_size;
+      read_header_timeout_ms;
+      read_body_timeout_ms;
+      idle_timeout_ms;
+      write_timeout_ms;
       buffer_size;
       liveview_secret;
     }
@@ -107,6 +123,14 @@ let start_link = fun ?(config = Config.default) (app: Middleware.Pipeline.t) ->
       ~max_request_line_length:config.max_request_line_length
       ~max_header_count:config.max_header_count
       ~max_header_length:config.max_header_length
+      ~max_body_size:config.max_body_size
+      ~max_keep_alive_requests:config.max_keep_alive_requests
+      ~max_websocket_frame_size:config.max_websocket_frame_size
+      ~max_websocket_message_size:config.max_websocket_message_size
+      ~read_header_timeout_ms:config.read_header_timeout_ms
+      ~read_body_timeout_ms:config.read_body_timeout_ms
+      ~idle_timeout_ms:config.idle_timeout_ms
+      ~write_timeout_ms:config.write_timeout_ms
       ~buffer_size:config.buffer_size
       ()
   in

@@ -38,6 +38,14 @@ type t = {
   max_request_line_length: int;
   max_header_count: int;
   max_header_length: int;
+  max_body_size: int;
+  max_keep_alive_requests: int;
+  max_websocket_frame_size: int;
+  max_websocket_message_size: int;
+  read_header_timeout_ms: int;
+  read_body_timeout_ms: int;
+  idle_timeout_ms: int;
+  write_timeout_ms: int;
   buffer_size: int;
   liveview_secret: string;
   (**
@@ -70,6 +78,14 @@ type error =
   | InvalidMaxRequestLineLength of int
   | InvalidMaxHeaderCount of int
   | InvalidMaxHeaderLength of int
+  | InvalidMaxBodySize of int
+  | InvalidMaxKeepAliveRequests of int
+  | InvalidMaxWebSocketFrameSize of int
+  | InvalidMaxWebSocketMessageSize of int
+  | InvalidReadHeaderTimeoutMs of int
+  | InvalidReadBodyTimeoutMs of int
+  | InvalidIdleTimeoutMs of int
+  | InvalidWriteTimeoutMs of int
   | InvalidBufferSize of int
   | InvalidLiveViewSecret of liveview_secret_error
 val env_to_string: env -> string

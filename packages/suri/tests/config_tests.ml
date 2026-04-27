@@ -73,6 +73,14 @@ let config_for_test = fun
   ?(max_request_line_length = Config.default.max_request_line_length)
   ?(max_header_count = Config.default.max_header_count)
   ?(max_header_length = Config.default.max_header_length)
+  ?(max_body_size = Config.default.max_body_size)
+  ?(max_keep_alive_requests = Config.default.max_keep_alive_requests)
+  ?(max_websocket_frame_size = Config.default.max_websocket_frame_size)
+  ?(max_websocket_message_size = Config.default.max_websocket_message_size)
+  ?(read_header_timeout_ms = Config.default.read_header_timeout_ms)
+  ?(read_body_timeout_ms = Config.default.read_body_timeout_ms)
+  ?(idle_timeout_ms = Config.default.idle_timeout_ms)
+  ?(write_timeout_ms = Config.default.write_timeout_ms)
   ?(buffer_size = Config.default.buffer_size)
   ?(liveview_secret = Config.default.liveview_secret)
   () ->
@@ -84,6 +92,14 @@ let config_for_test = fun
     max_request_line_length;
     max_header_count;
     max_header_length;
+    max_body_size;
+    max_keep_alive_requests;
+    max_websocket_frame_size;
+    max_websocket_message_size;
+    read_header_timeout_ms;
+    read_body_timeout_ms;
+    idle_timeout_ms;
+    write_timeout_ms;
     buffer_size;
     liveview_secret;
   }
@@ -139,6 +155,14 @@ let test_config_rejects_invalid_limits = fun _ctx ->
       ~max_request_line_length:0
       ~max_header_count:0
       ~max_header_length:0
+      ~max_body_size:0
+      ~max_keep_alive_requests:0
+      ~max_websocket_frame_size:0
+      ~max_websocket_message_size:0
+      ~read_header_timeout_ms:0
+      ~read_body_timeout_ms:0
+      ~idle_timeout_ms:0
+      ~write_timeout_ms:0
       ~buffer_size:0
       ~liveview_secret:"short"
       ()
@@ -150,6 +174,14 @@ let test_config_rejects_invalid_limits = fun _ctx ->
       Test.assert_true (List.contains errors ~value:(Config.InvalidMaxRequestLineLength 0));
       Test.assert_true (List.contains errors ~value:(Config.InvalidMaxHeaderCount 0));
       Test.assert_true (List.contains errors ~value:(Config.InvalidMaxHeaderLength 0));
+      Test.assert_true (List.contains errors ~value:(Config.InvalidMaxBodySize 0));
+      Test.assert_true (List.contains errors ~value:(Config.InvalidMaxKeepAliveRequests 0));
+      Test.assert_true (List.contains errors ~value:(Config.InvalidMaxWebSocketFrameSize 0));
+      Test.assert_true (List.contains errors ~value:(Config.InvalidMaxWebSocketMessageSize 0));
+      Test.assert_true (List.contains errors ~value:(Config.InvalidReadHeaderTimeoutMs 0));
+      Test.assert_true (List.contains errors ~value:(Config.InvalidReadBodyTimeoutMs 0));
+      Test.assert_true (List.contains errors ~value:(Config.InvalidIdleTimeoutMs 0));
+      Test.assert_true (List.contains errors ~value:(Config.InvalidWriteTimeoutMs 0));
       Test.assert_true (List.contains errors ~value:(Config.InvalidBufferSize 0));
       Test.assert_true
         (List.contains errors ~value:(Config.InvalidLiveViewSecret (Config.TooShort 5)));

@@ -11,7 +11,8 @@ open Std
    - HTTP/1.1: Starts with HTTP method (GET, POST, etc.)
 
    This handler reads the first few bytes, detects the protocol, and uses
-   Socket_pool.Handler.Switch to delegate to the appropriate handler.
+   Socket_pool.Handler.Switch to delegate to the appropriate handler with
+   the configured server limits.
 *)
 
 type state
