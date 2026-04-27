@@ -3756,31 +3756,32 @@ and pattern_ends_with_named_parameter = fun pattern ->
   loop pattern
 
 and render_local_open_pattern = fun state pattern ->
-  let path_tokens = Vector.with_capacity ~size:(Ast.Node.child_count pattern) in
-  Ast.LocalOpenPattern.for_each_module_path_ident
-    pattern
-    ~fn:(fun token -> Vector.push path_tokens ~value:token);
-  if Vector.length path_tokens = 0 then
-    unsupported_node "local-open pattern without module path" pattern
-  else
-    emit_joined_vector state path_tokens ~sep:(fun () -> emit_text state ".") ~fn:(emit_token state);
-  emit_text state ".";
-  match (
-    Ast.LocalOpenPattern.opening_token pattern,
-    Ast.LocalOpenPattern.closing_token pattern,
-    Ast.LocalOpenPattern.pattern pattern
-  ) with
-  | (Some opening, Some closing, Some body) when token_kind_is opening Kind.LPAREN ->
-      emit_token state opening;
-      (
-        if pattern_is_tuple body then
-          render_tuple_pattern_contents state body
-        else
-          render_pattern state body
-      );
-      emit_token state closing
-  | (_, _, Some body) -> render_pattern state body
-  | _ -> unsupported_node "local-open pattern without body" pattern
+  match Ast.LocalOpenPattern.view pattern with
+  | Delimited {
+    module_path;
+    dot_token;
+    opening_token = opening;
+    pattern = body;
+    closing_token = closing;
+  } ->
+      emit_joined_vector
+        state
+        module_path
+        ~sep:(fun () -> emit_text state ".")
+        ~fn:(emit_token state);
+      emit_token state dot_token;
+      if token_kind_is opening Kind.LPAREN then (
+        emit_token state opening;
+        (
+          if pattern_is_tuple body then
+            render_tuple_pattern_contents state body
+          else
+            render_pattern state body
+        );
+        emit_token state closing
+      ) else
+        render_pattern state body
+  | Unknown node -> unsupported_node "unsupported local-open pattern" node
 
 and render_poly_variant_pattern = fun state pattern ->
   if node_has_token_kind pattern Kind.HASH then
@@ -3935,9 +3936,9 @@ let rec pattern_should_render_multiline = fun pattern ->
       let fields = collect_record_pattern_fields pattern in
       record_pattern_should_multiline pattern fields
   | LocalOpen -> (
-      match Ast.LocalOpenPattern.pattern pattern with
-      | Some body -> pattern_should_render_multiline body
-      | None -> false
+      match Ast.LocalOpenPattern.view pattern with
+      | Delimited { pattern = body; _ } -> pattern_should_render_multiline body
+      | Unknown _ -> false
     )
   | Parenthesized { inner = Some inner }
   | Constraint { pattern = Some inner; _ }
@@ -4004,17 +4005,18 @@ and expr_is_multiline_with_budget = fun budget expr ->
   | BindingOperator -> binding_operator_expr_is_multiline_with_budget next_budget expr
   | LocalOpen _ -> (
       match Ast.LocalOpenExpr.view expr with
-      | LetOpen { body = Some body; _ } when (
+      | LetOpen { body; _ } when (
         match ExprView.view body with
         | LocalOpen _ -> true
         | _ -> false
       ) -> true
-      | LetOpen { body = Some body; _ } when not (same_ast_node expr body) ->
+      | LetOpen { body; _ } when not (same_ast_node expr body) ->
           expr_is_multiline_with_budget next_budget body
       | LetOpen _ -> true
-      | Delimited { body = Some body; _ } when not (same_ast_node expr body) ->
+      | Delimited { body; _ } when not (same_ast_node expr body) ->
           expr_is_multiline_with_budget next_budget body
-      | Delimited _ -> false
+      | Delimited _
+      | Unknown _ -> false
     )
   | Fun { body = Some body } -> expr_is_multiline_with_budget next_budget body
   | Fun { body = None } -> true
@@ -4199,9 +4201,9 @@ and expr_is_typed = fun expr ->
 
 and local_open_expr_can_render_atom_without_parens = fun expr ->
   match Ast.LocalOpenExpr.view expr with
-  | Delimited { module_path = Some _; _ } -> true
+  | Delimited _ -> true
   | LetOpen _
-  | Delimited _ -> false
+  | Unknown _ -> false
 
 and expr_can_render_atom_without_parens = fun expr ->
   match ExprView.view expr with
@@ -4653,64 +4655,74 @@ and record_expr_flat_width = fun budget expr ->
     )
 
 and local_open_expr_flat_width = fun budget expr ->
+  let delimited_width dot_token opening_token body closing_token ~prefix_width =
+    match expr_flat_width_with_budget budget body with
+    | Some body_width ->
+        let delimiter_width =
+          if token_kind_is opening_token Kind.LPAREN then
+            Int.add (token_flat_width opening_token) (token_flat_width closing_token)
+          else
+            0
+        in
+        let body_width =
+          if token_kind_is opening_token Kind.LPAREN && expr_is_tuple body then
+            Int.sub body_width 2
+          else
+            body_width
+        in
+        Some Int.(prefix_width + token_flat_width dot_token + delimiter_width + body_width)
+    | None -> None
+  in
   match Ast.LocalOpenExpr.view expr with
   | LetOpen _ -> None
   | Delimited {
-    module_path = Some module_path;
-    dot_token = Some dot_token;
+    module_path;
+    dot_token;
     opening_token;
-    body = Some body;
+    body;
     closing_token
   } -> (
       match (node_token_flat_width module_path, expr_flat_width_with_budget budget body) with
-      | (Some module_width, Some body_width) ->
-          let delimiter_width =
-            match (opening_token, closing_token) with
-            | (Some opening, Some closing) when token_kind_is opening Kind.LPAREN ->
-                Int.add (token_flat_width opening) (token_flat_width closing)
-            | _ -> 0
-          in
-          let body_width =
-            match opening_token with
-            | Some opening when token_kind_is opening Kind.LPAREN && expr_is_tuple body ->
-                Int.sub body_width 2
-            | _ -> body_width
-          in
-          Some Int.(module_width + token_flat_width dot_token + delimiter_width + body_width)
+      | (Some module_width, Some _) ->
+          delimited_width dot_token opening_token body closing_token ~prefix_width:module_width
       | _ -> None
     )
-  | Delimited {
-    module_path = None;
-    dot_token = Some dot_token;
-    opening_token;
-    body = Some body;
-    closing_token
-  } -> (
+  | Unknown _ -> (
       let exprs = collect_child_exprs expr in
       if Int.equal (Vector.length exprs) 2 then
+        let body = Vector.get_unchecked exprs ~at:1 in
+        let opening_token =
+          match first_child_token_matching expr ~matches:(fun kind ->
+            Kind.(kind = LPAREN || kind = LBRACKET || kind = LBRACKET_BAR || kind = LBRACE)
+          ) with
+          | Some token -> Some token
+          | None ->
+              first_child_token_matching body ~matches:(fun kind ->
+                Kind.(kind = LBRACKET || kind = LBRACKET_BAR || kind = LBRACE)
+              )
+        in
+        let closing_token =
+          match first_child_token_matching expr ~matches:(fun kind ->
+            Kind.(kind = RPAREN || kind = RBRACKET || kind = BAR_RBRACKET || kind = RBRACE)
+          ) with
+          | Some token -> Some token
+          | None ->
+              first_child_token_matching body ~matches:(fun kind ->
+                Kind.(kind = RBRACKET || kind = BAR_RBRACKET || kind = RBRACE)
+              )
+        in
         match (
-          expr_flat_width_with_budget budget (Vector.get_unchecked exprs ~at:0),
-          expr_flat_width_with_budget budget body
+          Ast.Node.first_child_token expr ~kind:Kind.DOT,
+          opening_token,
+          closing_token,
+          expr_flat_width_with_budget budget (Vector.get_unchecked exprs ~at:0)
         ) with
-        | (Some target_width, Some body_width) ->
-            let delimiter_width =
-              match (opening_token, closing_token) with
-              | (Some opening, Some closing) when token_kind_is opening Kind.LPAREN ->
-                  Int.add (token_flat_width opening) (token_flat_width closing)
-              | _ -> 0
-            in
-            let body_width =
-              match opening_token with
-              | Some opening when token_kind_is opening Kind.LPAREN && expr_is_tuple body ->
-                  Int.sub body_width 2
-              | _ -> body_width
-            in
-            Some Int.(target_width + token_flat_width dot_token + delimiter_width + body_width)
+        | (Some dot_token, Some opening_token, Some closing_token, Some prefix_width) ->
+            delimited_width dot_token opening_token body closing_token ~prefix_width
         | _ -> None
       else
         None
     )
-  | Delimited _ -> None
 
 and expr_is_inline = fun expr -> expr_is_inline_with_budget expr_classification_budget expr
 
@@ -6368,7 +6380,8 @@ and local_open_body_should_inline = fun state body ->
     | LocalOpen _ -> (
         match Ast.LocalOpenExpr.view body with
         | LetOpen _ -> true
-        | Delimited _ -> false
+        | Delimited _
+        | Unknown _ -> false
       )
     | _ -> false
   in
@@ -6420,7 +6433,7 @@ and render_local_open_expr = fun state expr ->
       render_expr state body
   in
   match Ast.LocalOpenExpr.view expr with
-  | LetOpen { module_path = Some module_path; body = Some body; _ } ->
+  | LetOpen { module_path; body; _ } ->
       emit_text state "let";
       emit_space state;
       emit_text state "open";
@@ -6438,13 +6451,12 @@ and render_local_open_expr = fun state expr ->
         emit_line state;
         render_expr state body
       )
-  | LetOpen _ -> unsupported_node "incomplete let-open expression" expr
   | Delimited {
-    module_path = Some module_path;
-    dot_token = Some dot_token;
-    opening_token = Some opening;
-    body = Some body;
-    closing_token = Some closing
+    module_path;
+    dot_token;
+    opening_token = opening;
+    body;
+    closing_token = closing
   } ->
       render_path state module_path;
       emit_token state dot_token;
@@ -6455,28 +6467,45 @@ and render_local_open_expr = fun state expr ->
             render_delimited_body opening body closing)
       else
         render_delimited_body opening body closing
-  | Delimited {
-    module_path = None;
-    dot_token = Some dot_token;
-    opening_token = Some opening;
-    body = Some body;
-    closing_token = Some closing
-  } -> (
+  | Unknown node -> (
       let exprs = collect_child_exprs expr in
-      if Int.equal (Vector.length exprs) 2 then (
-        render_expr state (Vector.get_unchecked exprs ~at:0);
-        emit_token state dot_token;
-        if token_kind_is opening Kind.LBRACKET then
-          with_suppressed_list_item_leading_comments
-            state
-            (fun () ->
-              render_delimited_body opening body closing)
-        else
-          render_delimited_body opening body closing
-      ) else
-        unsupported_node "incomplete delimited local-open expression" expr
+      if Int.equal (Vector.length exprs) 2 then
+        let body = Vector.get_unchecked exprs ~at:1 in
+        let opening =
+          match first_child_token_matching expr ~matches:(fun kind ->
+            Kind.(kind = LPAREN || kind = LBRACKET || kind = LBRACKET_BAR || kind = LBRACE)
+          ) with
+          | Some token -> Some token
+          | None ->
+              first_child_token_matching body ~matches:(fun kind ->
+                Kind.(kind = LBRACKET || kind = LBRACKET_BAR || kind = LBRACE)
+              )
+        in
+        let closing =
+          match first_child_token_matching expr ~matches:(fun kind ->
+            Kind.(kind = RPAREN || kind = RBRACKET || kind = BAR_RBRACKET || kind = RBRACE)
+          ) with
+          | Some token -> Some token
+          | None ->
+              first_child_token_matching body ~matches:(fun kind ->
+                Kind.(kind = RBRACKET || kind = BAR_RBRACKET || kind = RBRACE)
+              )
+        in
+        match (Ast.Node.first_child_token expr ~kind:Kind.DOT, opening, closing) with
+        | (Some dot_token, Some opening, Some closing) ->
+            render_expr state (Vector.get_unchecked exprs ~at:0);
+            emit_token state dot_token;
+            if token_kind_is opening Kind.LBRACKET then
+              with_suppressed_list_item_leading_comments
+                state
+                (fun () ->
+                  render_delimited_body opening body closing)
+            else
+              render_delimited_body opening body closing
+        | _ -> unsupported_node "unsupported local-open expression" node
+      else
+        unsupported_node "unsupported local-open expression" node
     )
-  | Delimited _ -> unsupported_node "incomplete delimited local-open expression" expr
 
 and token_vector_range_is_path = fun tokens ~start ~stop ->
   let rec loop index saw_ident expect_ident =

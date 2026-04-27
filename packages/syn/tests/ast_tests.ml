@@ -1962,7 +1962,7 @@ let { x; y = z; _ } = record
   in
   (
     match Ast.LocalOpenExpr.view scoped_local_open with
-    | Ast.LocalOpenExpr.Delimited { module_path = Some module_path; body = Some body; _ } ->
+    | Ast.LocalOpenExpr.Delimited { module_path; body; _ } ->
         Test.assert_equal ~expected:"Lockfile" ~actual:(last_path_text module_path);
         let scoped_record =
           Ast.RecordExpr.cast body
@@ -2100,12 +2100,12 @@ let test_binding_operator_views = fun _ctx ->
   )
 
 let local_open_pattern_path_text = fun pattern ->
-  let segments = ref [] in
-  Ast.LocalOpenPattern.for_each_module_path_ident
-    pattern
-    ~fn:(fun token -> segments := Ast.Token.text token :: !segments);
-  List.reverse !segments
-  |> String.concat "."
+  match Ast.LocalOpenPattern.view pattern with
+  | Ast.LocalOpenPattern.Delimited { module_path; _ } ->
+      vector_to_list module_path
+      |> List.map ~fn:Ast.Token.text
+      |> String.concat "."
+  | Ast.LocalOpenPattern.Unknown _ -> panic "expected local-open pattern view"
 
 let first_class_module_path_text = fun expr ->
   let segments = ref [] in
@@ -2169,11 +2169,11 @@ let test_local_open_views = fun _ctx ->
   (
     match Ast.LocalOpenExpr.view local_open with
     | Ast.LocalOpenExpr.LetOpen {
-      let_token = Some let_token;
-      open_token = Some open_token;
-      module_path = Some module_path;
-      in_token = Some in_token;
-      body = Some body;
+      let_token;
+      open_token;
+      module_path;
+      in_token;
+      body;
       _
     } ->
         Test.assert_equal ~expected:"let" ~actual:(Ast.Token.text let_token);
@@ -2200,22 +2200,19 @@ let test_local_open_views = fun _ctx ->
     Ast.LocalOpenPattern.cast local_open_pattern
     |> require_some ~msg:"expected local open pattern view"
   in
-  Test.assert_equal ~expected:"Foo.Bar" ~actual:(local_open_pattern_path_text local_open_pattern);
-  let dot_token =
-    Ast.LocalOpenPattern.dot_token local_open_pattern
-    |> require_some ~msg:"expected local open dot"
-  in
-  let inner =
-    Ast.LocalOpenPattern.pattern local_open_pattern
-    |> require_some ~msg:"expected inner local open pattern"
-  in
-  Test.assert_equal ~expected:"." ~actual:(Ast.Token.text dot_token);
   let* () =
-    match Ast.Pattern.view inner with
-    | Ast.Pattern.Ident { path } ->
-        Test.assert_equal ~expected:"x" ~actual:(last_path_text path);
-        Ok ()
-    | _ -> Error "expected local open inner path pattern"
+    match Ast.LocalOpenPattern.view local_open_pattern with
+    | Ast.LocalOpenPattern.Delimited { dot_token; pattern; _ } ->
+        Test.assert_equal ~expected:"Foo.Bar" ~actual:(local_open_pattern_path_text local_open_pattern);
+        Test.assert_equal ~expected:"." ~actual:(Ast.Token.text dot_token);
+        (
+          match Ast.Pattern.view pattern with
+          | Ast.Pattern.Ident { path } ->
+              Test.assert_equal ~expected:"x" ~actual:(last_path_text path);
+              Ok ()
+          | _ -> Error "expected local open inner path pattern"
+        )
+    | Ast.LocalOpenPattern.Unknown _ -> Error "expected local-open pattern view"
   in
   let local_open_record_pattern =
     nth_structure_item root 2
@@ -2232,18 +2229,10 @@ let test_local_open_views = fun _ctx ->
   Test.assert_equal
     ~expected:"Frame"
     ~actual:(local_open_pattern_path_text local_open_record_pattern);
-  let opening =
-    Ast.LocalOpenPattern.opening_token local_open_record_pattern
-    |> require_some ~msg:"expected local open record opening"
-  in
-  let closing =
-    Ast.LocalOpenPattern.closing_token local_open_record_pattern
-    |> require_some ~msg:"expected local open record closing"
-  in
-  Test.assert_equal ~expected:"{" ~actual:(Ast.Token.text opening);
-  Test.assert_equal ~expected:"}" ~actual:(Ast.Token.text closing);
-  match Ast.LocalOpenPattern.pattern local_open_record_pattern with
-  | Some pattern -> (
+  match Ast.LocalOpenPattern.view local_open_record_pattern with
+  | Ast.LocalOpenPattern.Delimited { opening_token; closing_token; pattern; _ } -> (
+      Test.assert_equal ~expected:"{" ~actual:(Ast.Token.text opening_token);
+      Test.assert_equal ~expected:"}" ~actual:(Ast.Token.text closing_token);
       match Ast.Pattern.view pattern with
       | Ast.Pattern.Record { fields; open_wildcard } ->
           Test.assert_equal ~expected:1 ~actual:(Vector.length fields);
@@ -2258,7 +2247,7 @@ let test_local_open_views = fun _ctx ->
           )
       | _ -> Error "expected local open record inner pattern"
     )
-  | None -> Error "expected local open record inner pattern"
+  | Ast.LocalOpenPattern.Unknown _ -> Error "expected local open record inner pattern"
 
 let test_local_open_argument_views = fun _ctx ->
   let source =
@@ -2302,10 +2291,10 @@ let test_local_open_argument_views = fun _ctx ->
       (
         match Ast.LocalOpenExpr.view local_open with
         | Ast.LocalOpenExpr.Delimited {
-          module_path = Some module_path;
-          opening_token = Some opening_token;
-          body = Some inner_body;
-          closing_token = Some closing_token;
+          module_path;
+          opening_token;
+          body = inner_body;
+          closing_token;
           _
         } ->
             Test.assert_equal ~expected:"Server" ~actual:(last_path_text module_path);
@@ -2359,7 +2348,7 @@ let test_local_open_labeled_argument_views = fun _ctx ->
             in
             (
               match Ast.LocalOpenExpr.view local_open with
-              | Ast.LocalOpenExpr.Delimited { module_path = Some module_path; body = Some inner_body; _ } ->
+              | Ast.LocalOpenExpr.Delimited { module_path; body = inner_body; _ } ->
                   Test.assert_equal ~expected:"Path" ~actual:(last_path_text module_path);
                   (
                     match Ast.Expr.view inner_body with

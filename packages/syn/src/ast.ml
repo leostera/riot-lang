@@ -2227,20 +2227,21 @@ module LocalOpenExpr: sig
   type t = expr
   type view =
     | LetOpen of {
-        let_token: token option;
-        open_token: token option;
+        let_token: token;
+        open_token: token;
         bang_token: token option;
-        module_path: path option;
-        in_token: token option;
-        body: expr option;
+        module_path: path;
+        in_token: token;
+        body: expr;
       }
     | Delimited of {
-        module_path: path option;
-        dot_token: token option;
-        opening_token: token option;
-        body: expr option;
-        closing_token: token option;
+        module_path: path;
+        dot_token: token;
+        opening_token: token;
+        body: expr;
+        closing_token: token;
       }
+    | Unknown of node
   val cast: expr -> t option
 
   val view: t -> view
@@ -2249,20 +2250,21 @@ end = struct
 
   type view =
     | LetOpen of {
-        let_token: token option;
-        open_token: token option;
+        let_token: token;
+        open_token: token;
         bang_token: token option;
-        module_path: path option;
-        in_token: token option;
-        body: expr option;
+        module_path: path;
+        in_token: token;
+        body: expr;
       }
     | Delimited of {
-        module_path: path option;
-        dot_token: token option;
-        opening_token: token option;
-        body: expr option;
-        closing_token: token option;
+        module_path: path;
+        dot_token: token;
+        opening_token: token;
+        body: expr;
+        closing_token: token;
       }
+    | Unknown of node
 
   let cast = fun (expr: expr) ->
     if node_kind_is expr Syntax_kind.LOCAL_OPEN_EXPR then
@@ -2309,22 +2311,40 @@ end = struct
 
   let view = fun expr ->
     if has_child_token_kind expr Syntax_kind.LET_KW then
-      LetOpen {
-        let_token = Node.first_child_token expr ~kind:Syntax_kind.LET_KW;
-        open_token = Node.first_child_token expr ~kind:Syntax_kind.OPEN_KW;
-        bang_token = Node.first_child_token expr ~kind:Syntax_kind.BANG;
-        module_path = path_expr_child expr 0;
-        in_token = Node.first_child_token expr ~kind:Syntax_kind.IN_KW;
-        body = nth_expr_child expr 1;
-      }
+      match (
+        Node.first_child_token expr ~kind:Syntax_kind.LET_KW,
+        Node.first_child_token expr ~kind:Syntax_kind.OPEN_KW,
+        path_expr_child expr 0,
+        Node.first_child_token expr ~kind:Syntax_kind.IN_KW,
+        nth_expr_child expr 1
+      ) with
+      | (Some let_token, Some open_token, Some module_path, Some in_token, Some body) ->
+          LetOpen {
+            let_token;
+            open_token;
+            bang_token = Node.first_child_token expr ~kind:Syntax_kind.BANG;
+            module_path;
+            in_token;
+            body;
+          }
+      | _ -> Unknown expr
     else
-      Delimited {
-        module_path = path_expr_child expr 0;
-        dot_token = Node.first_child_token expr ~kind:Syntax_kind.DOT;
-        opening_token = opening_token expr;
-        body = nth_expr_child expr 1;
-        closing_token = closing_token expr;
-      }
+      match (
+        path_expr_child expr 0,
+        Node.first_child_token expr ~kind:Syntax_kind.DOT,
+        opening_token expr,
+        nth_expr_child expr 1,
+        closing_token expr
+      ) with
+      | (Some module_path, Some dot_token, Some opening_token, Some body, Some closing_token) ->
+          Delimited {
+            module_path;
+            dot_token;
+            opening_token;
+            body;
+            closing_token;
+          }
+      | _ -> Unknown expr
 end
 
 module LetModuleExpr: sig
@@ -3276,7 +3296,18 @@ end
 
 module LocalOpenPattern: sig
   type t = pattern
+  type view =
+    | Delimited of {
+        module_path: token Vector.t;
+        dot_token: token;
+        opening_token: token;
+        pattern: pattern;
+        closing_token: token;
+      }
+    | Unknown of node
   val cast: pattern -> t option
+
+  val view: t -> view
 
   val dot_token: t -> token option
 
@@ -3289,6 +3320,15 @@ module LocalOpenPattern: sig
   val for_each_module_path_ident: t -> fn:(token -> unit) -> unit
 end = struct
   type t = pattern
+  type view =
+    | Delimited of {
+        module_path: token Vector.t;
+        dot_token: token;
+        opening_token: token;
+        pattern: pattern;
+        closing_token: token;
+      }
+    | Unknown of node
 
   let cast = fun (pattern: pattern) ->
     if node_kind_is pattern Syntax_kind.LOCAL_OPEN_PATTERN then
@@ -3326,21 +3366,45 @@ end = struct
 
   let pattern = first_pattern_child
 
-  let for_each_module_path_ident = fun pattern ~fn ->
+  let module_path = fun pattern ->
+    let path = Vector.with_capacity ~size:(Node.child_count pattern) in
     let child_count = Node.child_count pattern in
     let rec loop index =
       if index >= child_count then
         ()
       else
         match child_token_at pattern index with
-        | Some token when token_kind_is token Syntax_kind.LPAREN -> ()
+        | Some token when token_kind_is token Syntax_kind.LPAREN
+        || token_kind_is token Syntax_kind.LBRACE
+        || token_kind_is token Syntax_kind.LBRACKET
+        || token_kind_is token Syntax_kind.LBRACKET_BAR -> ()
         | Some token ->
             if token_kind_is token Syntax_kind.IDENT then
-              fn token;
+              Vector.push path ~value:token;
             loop (index + 1)
         | None -> loop (index + 1)
     in
-    loop 0
+    loop 0;
+    path
+
+  let view = fun pattern ->
+    match (dot_token pattern, opening_token pattern, first_pattern_child pattern, closing_token pattern) with
+    | (Some dot_token, Some opening_token, Some body, Some closing_token) ->
+        let module_path = module_path pattern in
+        if Vector.is_empty module_path then
+          Unknown pattern
+        else
+          Delimited {
+            module_path;
+            dot_token;
+            opening_token;
+            pattern = body;
+            closing_token;
+          }
+    | _ -> Unknown pattern
+
+  let for_each_module_path_ident = fun pattern ~fn ->
+    Vector.for_each (module_path pattern) ~fn
 end
 
 module Parameter: sig

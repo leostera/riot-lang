@@ -690,25 +690,18 @@ module Ast_deps = struct
     | Some expr -> (
         match A.LocalOpenExpr.cast expr with
         | Some local_open ->
-            let (module_path, body) =
+            (
               match A.LocalOpenExpr.view local_open with
               | A.LocalOpenExpr.LetOpen { module_path; body; _ }
-              | A.LocalOpenExpr.Delimited { module_path; body; _ } -> (module_path, body)
-            in
-            let (deps, env) =
-              match module_path with
-              | Some path -> (
-                  match ast_path_segments path with
-                  | head :: _ as segments when is_module_head head ->
-                      open_alias ~fallback:true env deps segments
-                  | _ -> (deps, env)
-                )
-              | None -> (deps, env)
-            in
-            (
-              match body with
-              | Some body -> collect_node env deps body
-              | None -> Ok deps
+              | A.LocalOpenExpr.Delimited { module_path; body; _ } ->
+                  let (deps, env) =
+                    match ast_path_segments module_path with
+                    | head :: _ as segments when is_module_head head ->
+                        open_alias ~fallback:true env deps segments
+                    | _ -> (deps, env)
+                  in
+                  collect_node env deps body
+              | A.LocalOpenExpr.Unknown _ -> collect_local_open_fallback env deps node
             )
         | None -> collect_local_open_fallback env deps node
       )

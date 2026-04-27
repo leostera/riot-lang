@@ -457,7 +457,18 @@ end
 
 module LocalOpenPattern: sig
   type t = pattern
+  type view =
+    | Delimited of {
+        module_path: Token.t Vector.t;
+        dot_token: Token.t;
+        opening_token: Token.t;
+        pattern: pattern;
+        closing_token: Token.t;
+      }
+    | Unknown of Node.t
   val cast: pattern -> t option
+
+  val view: t -> view
 
   val dot_token: t -> Token.t option
 
@@ -683,20 +694,21 @@ module LocalOpenExpr: sig
   type t = expr
   type view =
     | LetOpen of {
-        let_token: Token.t option;
-        open_token: Token.t option;
+        let_token: Token.t;
+        open_token: Token.t;
         bang_token: Token.t option;
-        module_path: path option;
-        in_token: Token.t option;
-        body: expr option;
+        module_path: path;
+        in_token: Token.t;
+        body: expr;
       }
     | Delimited of {
-        module_path: path option;
-        dot_token: Token.t option;
-        opening_token: Token.t option;
-        body: expr option;
-        closing_token: Token.t option;
+        module_path: path;
+        dot_token: Token.t;
+        opening_token: Token.t;
+        body: expr;
+        closing_token: Token.t;
       }
+    | Unknown of Node.t
   val cast: expr -> t option
 
   val view: t -> view
