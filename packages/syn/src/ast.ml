@@ -1724,7 +1724,24 @@ end = struct
     else
       None
 
-  let field_of_node = record_expr_field_of_node
+  let field_of_node = fun (field: record_expr_field) ->
+    match (nth_expr_child field 0, nth_expr_child field 1) with
+    | (Some expr, value) when node_kind_is expr Syntax_kind.PATH_EXPR ->
+        { path = Path.cast expr; value; node = field }
+    | (Some expr, _) when node_kind_is expr Syntax_kind.INFIX_EXPR -> (
+        match (nth_expr_child expr 0, nth_expr_child expr 1) with
+        | (Some left, Some right) ->
+            let path =
+              if node_kind_is left Syntax_kind.PATH_EXPR then
+                Path.cast left
+              else
+                None
+            in
+            { path; value = Some right; node = field }
+        | _ -> { path = None; value = None; node = field }
+      )
+    | (Some expr, value) -> { path = Path.cast expr; value; node = field }
+    | (None, _) -> { path = None; value = None; node = field }
 
   let for_each_field = fun (record: t) ~fn ->
     Syntax_tree.for_each_child
@@ -2465,23 +2482,66 @@ end = struct
       ~matches:(fun kind ->
         Syntax_kind.(kind = PLUS || kind = MINUS || kind = PLUSDOT || kind = MINUSDOT))
 
-  let view = fun (pattern: pattern) ->
+  let child_patterns = fun pattern ->
+    let items = Vector.with_capacity ~size:(Node.child_count pattern) in
+    for_each_child_node_matching
+      pattern
+      ~matches:is_pattern_kind
+      ~fn:(fun child -> Vector.push items ~value:child);
+    items
+
+  let path_is_constructor = fun path ->
+    match last_ident_token path with
+    | None -> false
+    | Some ident ->
+        let text = Token.text ident in
+        if Int.equal (String.length text) 0 then
+          false
+        else
+          match String.get_unchecked text ~at:0 with
+          | 'A' .. 'Z' -> true
+          | _ -> false
+
+  let rec view = fun (pattern: pattern) ->
     match Node.kind pattern with
+    | Syntax_kind.PAREN_PATTERN -> (
+        match first_pattern_child pattern with
+        | Some inner -> view inner
+        | None -> Unit
+      )
+    | Syntax_kind.ATTRIBUTE_PATTERN -> (
+        match first_pattern_child pattern with
+        | Some inner -> view inner
+        | None -> Unknown pattern
+      )
     | Syntax_kind.WILDCARD_PATTERN -> Wildcard
-    | Syntax_kind.PATH_PATTERN -> Path { path = pattern }
-    | Syntax_kind.APPLY_PATTERN ->
-        Apply { callee = nth_pattern_child pattern 0; argument = nth_pattern_child pattern 1 }
+    | Syntax_kind.PATH_PATTERN ->
+        if path_is_constructor pattern then
+          Construct { constructor = Some pattern; payload = None }
+        else
+          Ident { path = pattern }
+    | Syntax_kind.APPLY_PATTERN -> (
+        let callee = nth_pattern_child pattern 0 in
+        let payload = nth_pattern_child pattern 1 in
+        match callee with
+        | Some callee -> (
+            match view callee with
+            | Construct { constructor; payload = None } -> Construct { constructor; payload }
+            | Ident { path } -> Construct { constructor = Some path; payload }
+            | _ -> Unknown pattern
+          )
+        | None -> Construct { constructor = None; payload }
+      )
     | Syntax_kind.LITERAL_PATTERN -> Literal { token = literal_token pattern }
-    | Syntax_kind.PAREN_PATTERN -> Parenthesized { inner = first_pattern_child pattern }
-    | Syntax_kind.TUPLE_PATTERN -> Tuple
-    | Syntax_kind.LIST_PATTERN -> List
-    | Syntax_kind.ARRAY_PATTERN -> Array
+    | Syntax_kind.TUPLE_PATTERN -> Tuple { parts = child_patterns pattern }
+    | Syntax_kind.LIST_PATTERN -> List { items = child_patterns pattern }
+    | Syntax_kind.ARRAY_PATTERN -> Array { items = child_patterns pattern }
     | Syntax_kind.RECORD_PATTERN -> Record
-    | Syntax_kind.POLY_VARIANT_PATTERN -> PolyVariant
-    | Syntax_kind.EXTENSION_PATTERN -> Extension
-    | Syntax_kind.ATTRIBUTE_PATTERN -> Attribute { inner = first_pattern_child pattern }
-    | Syntax_kind.LOCAL_OPEN_PATTERN -> LocalOpen
-    | Syntax_kind.LOCALLY_ABSTRACT_TYPE_PATTERN -> LocallyAbstractType
+    | Syntax_kind.POLY_VARIANT_PATTERN ->
+        PolyVariant { tag = first_ident_token pattern; payload = first_pattern_child pattern }
+    | Syntax_kind.EXTENSION_PATTERN
+    | Syntax_kind.LOCAL_OPEN_PATTERN
+    | Syntax_kind.LOCALLY_ABSTRACT_TYPE_PATTERN -> Unknown pattern
     | Syntax_kind.FIRST_CLASS_MODULE_PATTERN -> FirstClassModule
     | Syntax_kind.INTERVAL_PATTERN ->
         Interval { left = nth_pattern_child pattern 0; right = nth_pattern_child pattern 1 }
@@ -2498,9 +2558,9 @@ end = struct
         Cons { head = nth_pattern_child pattern 0; tail = nth_pattern_child pattern 1 }
     | Syntax_kind.LAZY_PATTERN -> Lazy { pattern = first_pattern_child pattern }
     | Syntax_kind.EXCEPTION_PATTERN -> Exception { pattern = first_pattern_child pattern }
-    | Syntax_kind.LABELED_PARAM -> LabeledParam pattern
-    | Syntax_kind.OPTIONAL_PARAM -> OptionalParam pattern
-    | Syntax_kind.OPTIONAL_PARAM_DEFAULT -> OptionalParamDefault pattern
+    | Syntax_kind.LABELED_PARAM
+    | Syntax_kind.OPTIONAL_PARAM
+    | Syntax_kind.OPTIONAL_PARAM_DEFAULT -> Unknown pattern
     | Syntax_kind.ERROR -> Error pattern
     | _ -> Unknown pattern
 
@@ -3014,12 +3074,16 @@ end = struct
   let view = fun (binding: let_binding) -> { pattern = pattern binding; body = body binding }
 
   let rec for_each_parameter_pattern = fun pattern ~fn ->
-    match Pattern.view pattern with
-    | Constraint { pattern = Some pattern; _ } -> for_each_parameter_pattern pattern ~fn
-    | Apply { callee = Some callee; argument = Some argument } ->
-        for_each_parameter_pattern callee ~fn;
-        for_each_parameter_pattern argument ~fn
-    | _ -> fn pattern
+    if node_kind_is pattern Syntax_kind.APPLY_PATTERN then
+      match (nth_pattern_child pattern 0, nth_pattern_child pattern 1) with
+      | (Some callee, Some argument) ->
+          for_each_parameter_pattern callee ~fn;
+          for_each_parameter_pattern argument ~fn
+      | _ -> fn pattern
+    else
+      match Pattern.view pattern with
+      | Constraint { pattern = Some pattern; _ } -> for_each_parameter_pattern pattern ~fn
+      | _ -> fn pattern
 
   let for_each_parameter = fun (binding: let_binding) ~fn ->
     let seen_first = ref false in
