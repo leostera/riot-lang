@@ -241,6 +241,13 @@ let test_http1_body_headers_allow_duplicate_matching_content_length = fun _ctx -
   Test.assert_equal ~expected:(Ok 3) ~actual:(Http1.validate_request_body_headers req);
   Ok ()
 
+let test_http1_body_headers_reject_content_length_above_limit = fun _ctx ->
+  let req = http_request ~headers:[ ("content-length", "1025"); ] () in
+  match Http1.validate_request_body_headers ~max_body_size:1_024 req with
+  | Error (Http1.ContentLengthExceedsLimit { length = 1_025; limit = 1_024 }) -> Ok ()
+  | Ok _ -> Error "expected content-length above max body size to fail"
+  | Error error -> Error (Http1.request_body_header_error_to_string error)
+
 let test_http1_body_headers_reject_transfer_encoding_with_content_length = fun _ctx ->
   let req = http_request ~headers:[ ("content-length", "3"); ("transfer-encoding", "chunked"); ] () in
   match Http1.validate_request_body_headers req with
@@ -461,6 +468,9 @@ let tests =
     case
       "http1 body headers allow duplicate matching content length"
       test_http1_body_headers_allow_duplicate_matching_content_length;
+    case
+      "http1 body headers reject content length above limit"
+      test_http1_body_headers_reject_content_length_above_limit;
     case
       "http1 body headers reject transfer encoding with content length"
       test_http1_body_headers_reject_transfer_encoding_with_content_length;

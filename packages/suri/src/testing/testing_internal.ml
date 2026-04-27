@@ -83,6 +83,7 @@ module Http1 = struct
     | ConflictingContentLength of {
         values: string list;
       }
+    | ContentLengthExceedsLimit of { length: int; limit: int }
     | TransferEncodingWithContentLength of {
         transfer_encoding: string;
         content_lengths: string list;

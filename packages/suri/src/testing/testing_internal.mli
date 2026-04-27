@@ -77,6 +77,7 @@ module Http1: sig
     | ConflictingContentLength of {
         values: string list;
       }
+    | ContentLengthExceedsLimit of { length: int; limit: int }
     | TransferEncodingWithContentLength of {
         transfer_encoding: string;
         content_lengths: string list;
@@ -95,6 +96,7 @@ module Http1: sig
   val websocket_upgrade_error_to_string: websocket_upgrade_error -> string
 
   val validate_request_body_headers:
+    ?max_body_size:int ->
     Std.Net.Http.Request.t ->
     (int, request_body_header_error) Std.result
 

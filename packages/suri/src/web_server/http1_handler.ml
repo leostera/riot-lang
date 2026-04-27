@@ -66,6 +66,7 @@ type request_body_header_error =
   | ConflictingContentLength of {
       values: string list;
     }
+  | ContentLengthExceedsLimit of { length: int; limit: int }
   | TransferEncodingWithContentLength of {
       transfer_encoding: string;
       content_lengths: string list;
@@ -133,6 +134,12 @@ let request_body_header_error_to_string = function
       ^ Int.to_string length
   | ConflictingContentLength { values } ->
       "Conflicting Content-Length headers: " ^ String.concat ", " values
+  | ContentLengthExceedsLimit { length; limit } ->
+      "Request body is too large: content-length is "
+      ^ Int.to_string length
+      ^ " bytes, maximum is "
+      ^ Int.to_string limit
+      ^ " bytes"
   | TransferEncodingWithContentLength { transfer_encoding; content_lengths } ->
       "Request must not include both Transfer-Encoding ("
       ^ transfer_encoding
@@ -140,6 +147,16 @@ let request_body_header_error_to_string = function
       ^ String.concat ", " content_lengths
       ^ ")"
   | UnsupportedTransferEncoding { value } -> "Unsupported Transfer-Encoding header: " ^ value
+
+let request_body_header_error_response = fun error ->
+  match error with
+  | ContentLengthExceedsLimit _ ->
+      Response.request_entity_too_large ~body:(request_body_header_error_to_string error) ()
+  | InvalidContentLength _
+  | ConflictingContentLength _
+  | TransferEncodingWithContentLength _
+  | UnsupportedTransferEncoding _ ->
+      Response.bad_request ~body:(request_body_header_error_to_string error) ()
 
 let request_header_error_to_string = function
   | MissingHostHeader -> "HTTP/1.1 requests must include a Host header"
@@ -383,9 +400,15 @@ let all_equal = function
   | [ _ ] -> true
   | first :: rest -> List.all rest ~fn:(String.equal first)
 
-let validate_request_body_headers = fun http_req ->
+let validate_request_body_headers = fun ?max_body_size http_req ->
   let headers = Net.Http.Request.headers http_req in
   let content_lengths = Net.Http.Header.get_all headers "content-length" in
+  let check_limit = fun length ->
+    match max_body_size with
+    | Some limit when length > limit -> Error (ContentLengthExceedsLimit { length; limit })
+    | Some _
+    | None -> Ok length
+  in
   match Net.Http.Header.get headers "transfer-encoding" with
   | Some transfer_encoding ->
       if not (List.is_empty content_lengths) then
@@ -399,7 +422,7 @@ let validate_request_body_headers = fun http_req ->
           Error (ConflictingContentLength { values = content_lengths })
       | value :: _ -> (
           match Int.of_string_opt (String.trim value) with
-          | Some len when len >= 0 -> Ok len
+          | Some len when len >= 0 -> check_limit len
           | Some len -> Error (InvalidContentLength { value; reason = NegativeLength len })
           | None -> Error (InvalidContentLength { value; reason = InvalidInteger })
         )
@@ -592,9 +615,9 @@ let handle_data_waiting_headers = fun full_data conn state ->
           let _ = send_response conn res in
           Socket_pool.Handler.Close state
       | Ok () -> (
-          match validate_request_body_headers http_req with
+          match validate_request_body_headers ~max_body_size:state.config.max_body_size http_req with
           | Error error ->
-              let res = Response.bad_request ~body:(request_body_header_error_to_string error) () in
+              let res = request_body_header_error_response error in
               let _ = send_response conn res in
               Socket_pool.Handler.Close state
           | Ok expected_length ->
