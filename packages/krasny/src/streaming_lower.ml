@@ -4680,12 +4680,29 @@ and infix_operator_breaks_long_chain = fun operator_text ->
   || String.equal operator_text "||"
   || String.equal operator_text "or"
 
+and infix_operator_class = fun operator_text -> {
+  Layout.text = operator_text;
+  always_breaks_pipeline = String.equal operator_text "|>";
+  breaks_when_long = infix_operator_breaks_long_chain operator_text;
+}
+
+and decide_structural_infix_chain = fun expr left operator right ->
+  let operator_text = infix_operator_text_from_expr expr left operator right in
+  let item_count = same_operator_infix_count expr_classification_budget expr operator_text in
+  let facts = Facts.infix_chain ~flat_width:0 ~item_count () in
+  Layout.decide
+    (Layout.Infix_chain (infix_operator_class operator_text))
+    (Layout.make_context ~width:Int.max_int ~column:0 ~indent:0 ())
+    facts
+
 and expr_is_long_breaking_infix_chain = fun expr ->
   match ExprView.view expr with
-  | Infix { left = Some left; operator = Some operator; right = Some right } ->
-      let operator_text = infix_operator_text_from_expr expr left operator right in
-      infix_operator_breaks_long_chain operator_text
-      && Int.(same_operator_infix_count expr_classification_budget expr operator_text >= 8)
+  | Infix { left = Some left; operator = Some operator; right = Some right } -> (
+      match decide_structural_infix_chain expr left operator right with
+      | { Layout.mode = Vertical; reasons } ->
+          Layout.has_reason (Layout.Long_infix_chain { operator = ""; terms = 0 }) reasons
+      | _ -> false
+    )
   | _ -> false
 
 and expr_is_tuple = fun expr ->
@@ -6022,23 +6039,26 @@ and render_index_expr = fun state expr target index ~fallback_open ~fallback_clo
   else
     emit_token_vector_compact state closing_tokens
 
-and infix_expr_should_break = fun state expr left operator right ->
+and infix_expr_decision = fun state expr left operator right ->
   let operator_text = infix_operator_text_from_expr expr left operator right in
-  if
-    infix_operator_breaks_long_chain operator_text
-    && Int.(same_operator_infix_count expr_classification_budget left operator_text + 1 >= 8)
-  then
-    true
-  else
-    match (expr_flat_width left, expr_flat_width right) with
-    | (Some left_width, Some right_width) ->
-        Int.(state.column
-        + left_width
-        + 2
-        + infix_operator_flat_width_from_expr expr left operator right
-        + right_width
-        > state.width)
-    | _ -> false
+  let flat_width = expr_flat_width expr in
+  let item_count =
+    if infix_operator_breaks_long_chain operator_text then
+      Int.add (same_operator_infix_count expr_classification_budget left operator_text) 1
+    else
+      0
+  in
+  let facts = Facts.infix_chain ?flat_width ~item_count () in
+  Layout.decide
+    (Layout.Infix_chain (infix_operator_class operator_text))
+    (layout_context state)
+    facts
+
+and infix_expr_should_break = fun state expr left operator right ->
+  match infix_expr_decision state expr left operator right with
+  | { Layout.mode = Vertical; _ }
+  | { Layout.mode = Block; _ } -> true
+  | _ -> false
 
 and collect_infix_chain = fun ~operator_text left operator right ->
   let parts = Vector.with_capacity ~size:8 in
@@ -6940,8 +6960,7 @@ and local_open_body_keeps_first_infix_operand_after_in = fun state body ->
     match ExprView.view body with
     | Infix { left = Some left; operator = Some operator; right = Some right } ->
         let operator_text = infix_operator_text_from_expr body left operator right in
-        (String.equal operator_text "^" || String.equal operator_text "|>")
-        && infix_expr_should_break state body left operator right
+        String.equal operator_text "^" && infix_expr_should_break state body left operator right
     | _ -> false
 
 and render_local_open_expr = fun state expr ->

@@ -91,6 +91,13 @@ let application = fun
   in
   expr ?flat_width ~pressure ~item_count:arg_count ~callee_class ()
 
+let infix_chain = fun ?flat_width ~item_count () ->
+  expr
+    ?flat_width
+    ~pressure:Layout.Flat
+    ~item_count
+    ()
+
 let binding_rhs = fun
   ?flat_width
   ?(suffix_width = 0)

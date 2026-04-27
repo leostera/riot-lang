@@ -296,6 +296,13 @@ let decide = fun family ctx facts ->
     | Infix_chain operator ->
         if operator.always_breaks_pipeline then
           { mode = Vertical; reasons = [] }
+        else if
+          operator.breaks_when_long && Int.(facts.item_count >= ctx.style.long_infix_chain_terms)
+        then
+          {
+            mode = Vertical;
+            reasons = [ Long_infix_chain { operator = operator.text; terms = facts.item_count } ];
+          }
         else
           (
             match facts.pressure with
@@ -305,11 +312,15 @@ let decide = fun family ctx facts ->
               (Long_infix_chain { operator = operator.text; terms = 0 })
               reasons -> { mode = Vertical; reasons }
             | Soft _
-            | Flat ->
-                if fits ctx facts then
-                  inline
-                else
-                  { mode = Vertical; reasons = [ width_overflow_reason ctx facts ] }
+            | Flat -> (
+                match facts.flat_width with
+                | None -> inline
+                | Some _ ->
+                    if fits ctx facts then
+                      inline
+                    else
+                      { mode = Vertical; reasons = [ width_overflow_reason ctx facts ] }
+              )
           )
     | Delimited _
     | Separated _
