@@ -30,7 +30,7 @@
 
    {3 Custom Status}
    {[
-     Response.make `IM_A_TEAPOT
+     Response.make Net.Http.Status.ImATeapot
        ~body:"I'm a teapot"
        ()
    ]}
@@ -93,14 +93,14 @@ open Std
    Use this for non-standard status codes or when you need full control.
    For standard responses, use the convenience functions below.
 
-   @param status HTTP status code (e.g., [`OK], [`Not_found])
+   @param status HTTP status code (e.g., [Ok], [NotFound])
    @param headers Optional list of (name, value) header pairs
    @param version HTTP version (default: [Http11])
    @param body Response body (default: empty string)
 
    Example:
    {[
-     make `OK
+     make Net.Http.Status.Ok
        ~headers:[("Content-Type", "text/plain")]
        ~body:"Hello"
        ()

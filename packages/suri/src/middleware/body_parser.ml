@@ -112,12 +112,17 @@ let strip_quotes = fun value ->
   else
     value
 
+let parse_content_type = fun content_type ->
+  match Net.Http.Header.Value.parse_content_type content_type with
+  | Error `InvalidContentType -> Error (InvalidContentType { value = content_type })
+  | Ok parsed -> Ok parsed
+
 let parse_body_full = fun config ~content_type ~body ->
   if String.length body > config.max_body_size then
     Error (BodyTooLarge { size = String.length body; max_size = config.max_body_size })
   else
-    match Net.Http.Header.Value.parse_content_type content_type with
-    | Error `InvalidContentType -> Error (InvalidContentType { value = content_type })
+    match parse_content_type content_type with
+    | Error error -> Error error
     | Ok (media_type, params) ->
         let media_type = String.lowercase_ascii media_type in
         if

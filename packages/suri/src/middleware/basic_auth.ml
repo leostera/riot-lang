@@ -59,6 +59,21 @@ let sanitize_realm = fun realm ->
 
 (** {1 Credential Parsing} *)
 
+type credential_decode_error =
+  | InvalidAuthorizationFormat
+  | InvalidBase64Credentials
+  | MissingCredentialSeparator
+
+let credential_decode_error_to_string = function
+  | InvalidAuthorizationFormat -> "invalid Basic authorization header format"
+  | InvalidBase64Credentials -> "invalid Basic authorization credentials encoding"
+  | MissingCredentialSeparator -> "Basic authorization credentials must contain ':'"
+
+let decode_basic_payload = fun encoded ->
+  match Encoding.Base64.decode encoded with
+  | Result.Ok decoded -> Ok decoded
+  | Result.Error `Invalid_base64 -> Error InvalidBase64Credentials
+
 (**
    Extract and decode credentials from Authorization header.
 
@@ -76,7 +91,7 @@ let decode_credentials = fun auth_header ->
   in
   match parts with
   | [ scheme; encoded ] when String.lowercase_ascii scheme = "basic" -> (
-      match Encoding.Base64.decode encoded with
+      match decode_basic_payload encoded with
       | Result.Ok decoded -> (
           (* Split on first colon only - password can contain colons *)
           match String.index_of decoded ~char:':' with
@@ -85,18 +100,18 @@ let decode_credentials = fun auth_header ->
               let password =
                 String.sub decoded ~offset:(idx + 1) ~len:(String.length decoded - idx - 1)
               in
-              Option.some (username, password)
-          | Option.None -> Option.none
+              Ok (username, password)
+          | Option.None -> Error MissingCredentialSeparator
         )
-      | Result.Error _ -> Option.none
+      | Result.Error error -> Error error
     )
-  | _ -> Option.none
+  | _ -> Error InvalidAuthorizationFormat
 
 let get_credentials = fun conn ->
   let headers = Conn.headers conn in
   match Net.Http.Header.get headers "authorization" with
   | Option.Some auth -> decode_credentials auth
-  | Option.None -> Option.none
+  | Option.None -> Error InvalidAuthorizationFormat
 
 type 'a key = 'a Conn.assign_key
 
@@ -135,7 +150,7 @@ let middleware = fun ?(realm = "Restricted Area") ?skip ~username ~password () -
     else
       (* Extract credentials from Authorization header *)
       match get_credentials conn with
-      | Option.Some (req_user, req_pass) ->
+      | Ok (req_user, req_pass) ->
           (* Constant-time comparison for both username and password *)
           let user_match = secure_equal req_user username in
           let pass_match = secure_equal req_pass password in
@@ -144,7 +159,7 @@ let middleware = fun ?(realm = "Restricted Area") ?skip ~username ~password () -
           else
             (* Invalid credentials - return 401 *)
             unauthorized conn realm
-      | Option.None ->
+      | Error _ ->
           (* No credentials provided - return 401 *)
           unauthorized conn realm
 
@@ -159,7 +174,7 @@ let middleware_with_validation = fun ?(realm = "Restricted Area") ?skip ?assign_
       next conn
     else
       match get_credentials conn with
-      | Option.Some (username, password) -> (
+      | Ok (username, password) -> (
           match validate ~username ~password with
           | Option.Some user_data ->
               let conn' =
@@ -170,4 +185,4 @@ let middleware_with_validation = fun ?(realm = "Restricted Area") ?skip ?assign_
               next conn'
           | Option.None -> unauthorized conn realm
         )
-      | Option.None -> unauthorized conn realm
+      | Error _ -> unauthorized conn realm

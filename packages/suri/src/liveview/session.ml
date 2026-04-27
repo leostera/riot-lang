@@ -50,6 +50,11 @@ let encode = fun ~secret ~json ->
   (* 4. Return "<payload>.<signature>" *)
   payload ^ "." ^ signature
 
+let decode_payload = fun payload ->
+  match Encoding.Base64.decode payload with
+  | Ok decoded -> Ok decoded
+  | Error `Invalid_base64 -> Error InvalidPayloadBase64
+
 (* Decode and verify signed session token *)
 
 let decode = fun ~secret ~token ->
@@ -62,8 +67,8 @@ let decode = fun ~secret ~token ->
       else
         (* 3. Base64-decode the payload *)
         (
-          match Encoding.Base64.decode payload with
-          | Error _ -> Error InvalidPayloadBase64
+          match decode_payload payload with
+          | Error error -> Error error
           | Ok json_str ->
               (* 4. Parse JSON *)
               match Data.Json.of_string json_str with

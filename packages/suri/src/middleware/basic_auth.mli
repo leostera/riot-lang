@@ -142,6 +142,10 @@ open Std
 *)
 type 'a validation_fn = username:string -> password:string -> 'a option
 type 'a key = 'a Conn.assign_key
+type credential_decode_error =
+  | InvalidAuthorizationFormat
+  | InvalidBase64Credentials
+  | MissingCredentialSeparator
 (** {1 Middleware} *)
 (**
    Create Basic Auth middleware with static credentials.
@@ -237,22 +241,22 @@ val middleware_with_validation:
 (**
    Extract username and password from Authorization header.
 
-   Returns [Some (username, password)] if Authorization header is present
-   and valid, [None] otherwise.
+   Returns [Ok (username, password)] if Authorization header is present
+   and valid, or a structured error otherwise.
 
    Example:
    {[
      match Basic_auth.get_credentials conn with
-     | Some (username, password) ->
+     | Ok (username, password) ->
          Printf.printf "User: %s\n" username
-     | None ->
-         print_endline "No credentials provided"
+     | Error error ->
+         Log.debug (Basic_auth.credential_decode_error_to_string error)
    ]}
 
    This is exposed for advanced use cases. Most applications should use
    {!middleware} or {!middleware_with_validation} instead.
 *)
-val get_credentials: Conn.t -> (string * string) option
+val get_credentials: Conn.t -> (string * string, credential_decode_error) result
 
 (**
    Create a typed key for storing authenticated user data in connection.
@@ -292,7 +296,9 @@ val assign: 'a key -> 'a -> Conn.t -> Conn.t
 *)
 val get: 'a key -> Conn.t -> 'a option
 
-val decode_credentials: string -> (string * string) option
+val decode_credentials: string -> (string * string, credential_decode_error) result
+
+val credential_decode_error_to_string: credential_decode_error -> string
 
 val sanitize_realm: string -> string
 

@@ -322,15 +322,20 @@ let compute_websocket_accept = fun key ->
   let hash_bytes = Crypto.Hash.to_bytes hash in
   Encoding.Base64.encode_bytes hash_bytes
 
-let validate_websocket_key = fun key ->
+let decode_websocket_key = fun key ->
   match Encoding.Base64.decode key with
+  | Ok decoded -> Ok decoded
+  | Error `Invalid_base64 -> Error InvalidBase64
+
+let validate_websocket_key = fun key ->
+  match decode_websocket_key key with
   | Ok decoded ->
       let actual = String.length decoded in
       if actual = 16 then
         Ok ()
       else
         Error (InvalidLength { actual; expected = 16 })
-  | Error `Invalid_base64 -> Error InvalidBase64
+  | Error error -> Error error
 
 let version_supports_websocket_upgrade = function
   | Net.Http.Version.Http09

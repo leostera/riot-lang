@@ -206,6 +206,11 @@ let cookie_value_for_plaintext = fun ~secret plaintext ->
   let signature = sign ~secret payload in
   String.concat "." [ payload; signature ]
 
+let decode_payload = fun payload ->
+  match Encoding.Base64.decode payload with
+  | Result.Ok decoded -> Ok decoded
+  | Result.Error `Invalid_base64 -> Error InvalidPayloadBase64
+
 (** Deserialize session from cookie value *)
 let from_cookie_value = fun ~cookie_name ~secret cookie_value ->
   let parts = String.split_on_char '.' cookie_value in
@@ -216,7 +221,7 @@ let from_cookie_value = fun ~cookie_name ~secret cookie_value ->
         Error InvalidSignature
       else
         (
-          match Encoding.Base64.decode payload with
+          match decode_payload payload with
           | Result.Ok json_str -> (
               match Data.Json.of_string json_str with
               | Result.Ok json -> (
@@ -232,7 +237,7 @@ let from_cookie_value = fun ~cookie_name ~secret cookie_value ->
                 )
               | Result.Error err -> Error (InvalidJson err)
             )
-          | Result.Error _ -> Error InvalidPayloadBase64
+          | Result.Error error -> Error error
         )
   | _ -> Error (InvalidCookieFormat { parts = List.length parts })
 

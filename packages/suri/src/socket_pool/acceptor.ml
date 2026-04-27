@@ -14,13 +14,21 @@ type internal_msg =
 type Message.t +=
   | AcceptorMsg of internal_msg
 
+type selected_message =
+  | Select of internal_msg
+  | Skip
+
+let select_message = function
+  | AcceptorMsg msg -> Select msg
+  | _ -> Skip
+
+let receive_selector = fun msg ->
+  match select_message msg with
+  | Select msg -> `select msg
+  | Skip -> `skip
+
 let rec loop = fun state ->
-  let selector msg =
-    match msg with
-    | AcceptorMsg msg -> `select msg
-    | _ -> `skip
-  in
-  match receive ~selector ~timeout:(Time.Duration.from_millis 5) () with
+  match receive ~selector:receive_selector ~timeout:(Time.Duration.from_millis 5) () with
   | Shutdown -> ()
   | exception Receive_timeout ->
       accept_connection state;
