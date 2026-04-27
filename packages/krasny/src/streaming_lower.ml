@@ -830,8 +830,8 @@ let emit_spaces = fun state count ->
   in
   loop count
 
-let current_line_fits_space_and_text = fun state text ->
-  Int.(state.column + 1 + String.length text <= state.width)
+let current_line_fits_text = fun state text ->
+  Int.(state.column + String.length text <= state.width)
 
 let emit_inline_leading_trivia_from_token = fun state token ~leading_spaces ~trailing_space ->
   match token_single_inline_leading_delimited_trivia token with
@@ -5764,7 +5764,7 @@ and apply_args_have_heavy_nested_apply = fun args ->
     in
     loop 0
 
-and apply_expr_should_break_from_column = fun state expr args ~column ->
+and apply_expr_should_break_from_column = fun ?(suffix_width = 0) state expr args ~column ->
   if Int.equal (Vector.length args) 0 then
     false
   else if apply_args_have_heavy_nested_apply args then
@@ -5776,7 +5776,7 @@ and apply_expr_should_break_from_column = fun state expr args ~column ->
       | None -> node_token_flat_width expr
     in
     match width with
-    | Some width -> Int.(column + width > state.width)
+    | Some width -> Int.(column + width + suffix_width > state.width)
     | None -> false
 
 and apply_expr_should_break = fun state expr args ->
@@ -6968,23 +6968,24 @@ and let_binding_body_renders_inline = fun body ->
     | Assign _ -> false
     | _ -> not (expr_is_multiline body)
 
-and let_binding_body_exceeds_width = fun state body ->
+and let_binding_body_exceeds_width = fun ?(suffix_width = 0) state body ->
   let body_column = Int.add state.column 1 in
   match Ast.Expr.view body with
   | Apply _ ->
       let (_, args) = collect_apply body in
-      apply_expr_should_break_from_column state body args ~column:body_column
+      apply_expr_should_break_from_column ~suffix_width state body args ~column:body_column
   | _ -> (
       match expr_flat_width body with
-      | Some width -> Int.(body_column + width > state.width)
+      | Some width -> Int.(body_column + width + suffix_width > state.width)
       | None -> false
     )
 
-and let_binding_apply_body_exceeds_inline_equals_width = fun state body ->
+and let_binding_apply_body_exceeds_inline_equals_width = fun ?(suffix_width = 0) state body ->
   match Ast.Expr.view body with
   | Apply _ ->
       let (_, args) = collect_apply body in
       apply_expr_should_break_from_column
+        ~suffix_width
         state
         body
         args
@@ -7020,7 +7021,8 @@ and render_let_expr = fun state expr body ->
     loop 0
   in
   let length = Vector.length bindings in
-  let render_binding_head index binding =
+  let let_in_inline_suffix = " in" in
+  let render_binding_head ?(body_suffix_width = 0) index binding =
     (
       if Int.equal index 0 then
         emit_text state "let"
@@ -7045,14 +7047,14 @@ and render_let_expr = fun state expr body ->
         | None -> ()
       );
     emit_space state;
-    render_let_binding_tail state binding
+    render_let_binding_tail_with_body_break ~body_suffix_width state binding false
   in
   if Int.equal length 1 then
     (
       let binding = Vector.get_unchecked bindings ~at:0 in
       let binding_head_multiline = let_binding_tail_should_render_multiline binding in
       let before_binding_lines = state.line_count in
-      render_binding_head 0 binding;
+      render_binding_head ~body_suffix_width:(String.length let_in_inline_suffix) 0 binding;
       let binding_rendered_multiline = Int.(state.line_count > before_binding_lines) in
       match Ast.LetBinding.body binding with
       | Some _ when binding_head_multiline ->
@@ -7062,7 +7064,7 @@ and render_let_expr = fun state expr body ->
           render_in_body_expr state body
       | Some binding_body when (not binding_rendered_multiline)
       && let_binding_body_renders_inline binding_body
-      && current_line_fits_space_and_text state "in" ->
+      && current_line_fits_text state let_in_inline_suffix ->
           emit_space state;
           emit_text state "in";
           emit_line state;
@@ -7076,19 +7078,29 @@ and render_let_expr = fun state expr body ->
   else
     (
       let rec loop index =
-        if Int.(index < length) then (
-          render_binding_head index (Vector.get_unchecked bindings ~at:index);
-          if Int.(index < Int.sub length 1) then
-            emit_line state;
-          loop (Int.add index 1)
-        )
+        if Int.(index < length) then
+          (
+            let body_suffix_width =
+              if Int.equal index (Int.sub length 1) then
+                String.length let_in_inline_suffix
+              else
+                0
+            in
+            render_binding_head
+              ~body_suffix_width
+              index
+              (Vector.get_unchecked bindings ~at:index);
+            if Int.(index < Int.sub length 1) then
+              emit_line state;
+            loop (Int.add index 1)
+          )
       in
       loop 0;
       if
         (not and_tokens_have_leading_comment)
         && let_binding_tail_renders_inline_before_in
           (Vector.get_unchecked bindings ~at:(Int.sub length 1))
-        && current_line_fits_space_and_text state "in"
+        && current_line_fits_text state let_in_inline_suffix
       then
         emit_space state
       else
@@ -7104,7 +7116,11 @@ and render_let_binding_tail = fun state binding ->
     binding
     false
 
-and render_let_binding_tail_with_body_break = fun state binding force_body_break ->
+and render_let_binding_tail_with_body_break = fun
+  ?(body_suffix_width = 0)
+  state
+  binding
+  force_body_break ->
   let view = Ast.LetBinding.view binding in
   let annotation = Ast.LetBinding.type_annotation binding in
   let parameters = Vector.with_capacity ~size:(Ast.Node.child_count binding) in
@@ -7258,23 +7274,23 @@ and render_let_binding_tail_with_body_break = fun state binding force_body_break
       render_expr state body
   | Some body when (not binding_pattern_is_unit)
   && expr_is_single_constructor_apply body
-  && let_binding_body_exceeds_width state body ->
+  && let_binding_body_exceeds_width ~suffix_width:body_suffix_width state body ->
       emit_space state;
       render_expr state body
   | Some body when Int.equal parameter_count 0
   && (not binding_pattern_is_unit)
-  && let_binding_apply_body_exceeds_inline_equals_width state body ->
+  && let_binding_apply_body_exceeds_inline_equals_width ~suffix_width:body_suffix_width state body ->
       emit_line state;
       with_indent state 2 (fun () -> render_expr state body)
   | Some body when (not binding_pattern_is_unit)
   && expr_is_apply body
-  && let_binding_body_exceeds_width state body ->
+  && let_binding_body_exceeds_width ~suffix_width:body_suffix_width state body ->
       emit_line state;
       with_indent state 2 (fun () -> render_expr state body)
   | Some body when expr_is_multiline body ->
       emit_line state;
       with_indent state 2 (fun () -> render_expr state body)
-  | Some body when let_binding_body_exceeds_width state body ->
+  | Some body when let_binding_body_exceeds_width ~suffix_width:body_suffix_width state body ->
       emit_line state;
       with_indent state 2 (fun () -> render_expr state body)
   | Some body when expr_is_tuple body ->

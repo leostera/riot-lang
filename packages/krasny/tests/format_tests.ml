@@ -3059,7 +3059,8 @@ let pipeline =
         ~ctx
         ~actual
         ~expected:{ocaml|let add_value t ~name ~scheme =
-  let scopes = map_current t.scopes ~fn:(fun scope -> IdentMap.insert scope ~key:name ~value:scheme)
+  let scopes =
+    map_current t.scopes ~fn:(fun scope -> IdentMap.insert scope ~key:name ~value:scheme)
   in
   { scopes }
 |ocaml});
