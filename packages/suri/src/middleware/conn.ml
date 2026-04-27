@@ -73,6 +73,11 @@ let path = fun t ->
 
 let headers = fun t -> Web_server.Request.headers t.req
 
+let with_request_header = fun name value t -> {
+  t with
+  req = Web_server.Request.with_header name value t.req;
+}
+
 let body = fun t -> Web_server.Request.body t.req
 
 let params = fun t -> t.params

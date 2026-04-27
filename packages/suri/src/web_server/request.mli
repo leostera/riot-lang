@@ -24,6 +24,9 @@ val version: t -> Net.Http.Version.t
 (** Returns the request headers *)
 val headers: t -> Net.Http.Header.t
 
+(** Returns a request with the header set, replacing existing values. *)
+val with_header: string -> string -> t -> t
+
 (** Returns the request body (may be partial) *)
 val body: t -> string
 

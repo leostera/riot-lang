@@ -22,15 +22,11 @@ let choose_request_id = fun ?(generate = generate_request_id) header_value ->
   | _ -> generate ()
 
 let request_id = fun ~conn ~next ->
-  (* Check if x-request-id already exists in the request *)
   let request_id =
     let headers = Conn.headers conn in
     choose_request_id (Net.Http.Header.get headers x_request_id)
   in
-  (* Add x-request-id to the request for downstream handlers *)
-  let conn = Conn.with_header x_request_id request_id conn in
-  (* Call next middleware/handler *)
+  let conn = Conn.with_request_header x_request_id request_id conn in
   let conn' = next conn in
-  (* Ensure x-request-id is in the response headers too *)
   conn'
-  |> Conn.with_header x_request_id request_id
+  |> Conn.set_header x_request_id request_id

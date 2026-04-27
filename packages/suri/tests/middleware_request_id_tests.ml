@@ -21,6 +21,7 @@ module LiveViewSession = Suri.Testing.Internal.LiveViewSession
 module LiveViewProtocol = Suri.Testing.Internal.LiveViewProtocol
 module Channel = Suri.Testing.Internal.Channel
 module Http1 = Suri.Testing.Internal.Http1
+module Testing = Suri.Testing
 
 let valid_websocket_key = "dGhlIHNhbXBsZSBub25jZQ=="
 
@@ -125,6 +126,54 @@ let test_request_id_rejects_empty_and_overlong_values = fun _ctx ->
     ~actual:(Request_id.choose_request_id ~generate:(fun () -> "generated") None);
   Ok ()
 
+let request_id_app = [
+  Request_id.request_id;
+  (
+    fun ~conn ~next:_ ->
+      let request_id =
+        Conn.headers conn
+        |> fun headers ->
+          Net.Http.Header.get headers "x-request-id"
+          |> Option.unwrap_or ~default:"missing"
+      in
+      conn
+      |> Conn.respond ~status:Net.Http.Status.Ok ~body:request_id
+      |> Conn.with_header "x-request-id" "handler-value"
+      |> Conn.send
+  );
+]
+
+let test_request_id_middleware_preserves_valid_client_id = fun _ctx ->
+  match Testing.App.get request_id_app ~headers:[ ("x-request-id", "client-request-1"); ] "/" with
+  | Error error -> Error (Testing.response_error_to_string error)
+  | Ok response ->
+      Test.assert_equal ~expected:"client-request-1" ~actual:response.body;
+      Test.assert_equal
+        ~expected:[ "client-request-1"; ]
+        ~actual:(Net.Http.Header.get_all response.headers "x-request-id");
+      Ok ()
+
+let test_request_id_middleware_replaces_invalid_client_id_downstream = fun _ctx ->
+  match Testing.App.get request_id_app ~headers:[ ("x-request-id", "bad\r\nx: yes"); ] "/" with
+  | Error error -> Error (Testing.response_error_to_string error)
+  | Ok response ->
+      Test.assert_true (Request_id.is_valid_request_id response.body);
+      Test.assert_false (String.equal response.body "bad\r\nx: yes");
+      Test.assert_equal
+        ~expected:[ response.body; ]
+        ~actual:(Net.Http.Header.get_all response.headers "x-request-id");
+      Ok ()
+
+let test_request_id_middleware_generates_missing_id_downstream = fun _ctx ->
+  match Testing.App.get request_id_app "/" with
+  | Error error -> Error (Testing.response_error_to_string error)
+  | Ok response ->
+      Test.assert_true (Request_id.is_valid_request_id response.body);
+      Test.assert_equal
+        ~expected:[ response.body; ]
+        ~actual:(Net.Http.Header.get_all response.headers "x-request-id");
+      Ok ()
+
 let tests =
   Test.[
     case "request id accepts valid client id" test_request_id_accepts_valid_client_id;
@@ -132,6 +181,15 @@ let tests =
     case
       "request id rejects empty and overlong values"
       test_request_id_rejects_empty_and_overlong_values;
+    case
+      "request id middleware preserves valid client id"
+      test_request_id_middleware_preserves_valid_client_id;
+    case
+      "request id middleware replaces invalid client id downstream"
+      test_request_id_middleware_replaces_invalid_client_id_downstream;
+    case
+      "request id middleware generates missing id downstream"
+      test_request_id_middleware_generates_missing_id_downstream;
   ]
 
 let main ~args = Test.Cli.main ~name:"suri:middleware-request-id" ~tests ~args ()

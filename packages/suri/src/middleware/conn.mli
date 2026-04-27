@@ -59,6 +59,9 @@ val parse_query_params: string -> (string * string) list
 val headers: t -> Net.Http.Header.t
 
 (** Get request headers *)
+val with_request_header: string -> string -> t -> t
+
+(** Set a request header for downstream middleware and handlers. *)
 val body: t -> string
 
 (** Get request body *)

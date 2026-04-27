@@ -28,6 +28,11 @@ let version = fun t -> Net.Http.Request.version t.http_request
 
 let headers = fun t -> Net.Http.Request.headers t.http_request
 
+let with_header = fun name value t -> {
+  t with
+  http_request = Net.Http.Request.with_header t.http_request name value;
+}
+
 let body = fun t -> t.body
 
 let remaining = fun t -> t.remaining
