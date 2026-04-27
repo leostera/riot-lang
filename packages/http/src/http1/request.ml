@@ -92,10 +92,6 @@ let slice_of_string = fun value ->
 
 let string_of_slice = Slice.to_string
 
-let default_root_uri =
-  Std.Net.Uri.of_string "/"
-  |> Result.unwrap
-
 let is_space = fun c -> c = ' '
 
 let is_optional_whitespace = fun c -> c = ' ' || c = '\t'
@@ -103,6 +99,15 @@ let is_optional_whitespace = fun c -> c = ' ' || c = '\t'
 let trim_leading_ows = fun slice ->
   SliceCursor.skip_while (SliceCursor.create slice) is_optional_whitespace
   |> SliceCursor.remaining
+
+let uri_error_message = function
+  | Std.Net.Uri.InvalidScheme -> "invalid scheme"
+  | Std.Net.Uri.InvalidAuthority -> "invalid authority"
+  | Std.Net.Uri.InvalidPath -> "invalid path"
+  | Std.Net.Uri.InvalidQuery -> "invalid query"
+  | Std.Net.Uri.InvalidFragment -> "invalid fragment"
+  | Std.Net.Uri.InvalidFormat -> "invalid format"
+  | Std.Net.Uri.TooLong -> "too long"
 
 type request_line_owned = {
   parsed_method: Std.Net.Http.Method.t;
@@ -161,20 +166,20 @@ let parse_request_line_owned = fun ?(max_length = 8_192) input ->
                       Slice_error "Invalid HTTP version"
                     else
                       let method_ = Std.Net.Http.Method.from_slice method_ in
-                      let uri =
-                        Std.Net.Uri.from_slice path
-                        |> Result.unwrap_or ~default:default_root_uri
-                      in
-                      let version =
-                        Std.Net.Http.Version.from_slice version
-                        |> Result.unwrap_or ~default:Std.Net.Http.Version.Http11
-                      in
-                      Slice_done {
-                        parsed_method = method_;
-                        parsed_uri = uri;
-                        parsed_version = version;
-                        next_cursor = cursor;
-                      }
+                      match Std.Net.Uri.from_slice path with
+                      | Error error ->
+                          Slice_error ("Invalid request target: " ^ uri_error_message error)
+                      | Ok uri -> (
+                          match Std.Net.Http.Version.from_slice version with
+                          | Error `InvalidVersion -> Slice_error "Invalid HTTP version"
+                          | Ok version ->
+                              Slice_done {
+                                parsed_method = method_;
+                                parsed_uri = uri;
+                                parsed_version = version;
+                                next_cursor = cursor;
+                              }
+                        )
           )
 
 let parse_header_line_owned = fun cursor ->

@@ -230,6 +230,28 @@ let test_request_rejects_missing_lf_after_header_line = fun _ctx ->
   | Need_more -> Result.Error "Expected invalid CRLF error, got Need_more"
   | Done _ -> Result.Error "Expected invalid CRLF error"
 
+let test_request_rejects_invalid_http_version = fun _ctx ->
+  let req = "GET /path HTTP/9.9\r\nHost: example.com\r\n\r\n" in
+  match Http1.Request.parse req with
+  | Error "Invalid HTTP version" -> Result.Ok ()
+  | Error error -> Result.Error ("Expected invalid HTTP version error, got " ^ error)
+  | Need_more -> Result.Error "Expected invalid HTTP version error, got Need_more"
+  | Done { value; _ } ->
+      let version =
+        NetRequest.version value
+        |> NetVersion.to_string
+      in
+      Result.Error ("Expected invalid HTTP version error, got parsed " ^ version)
+
+let test_request_rejects_invalid_request_target = fun _ctx ->
+  let target = "/" ^ String.make ~len:65_535 ~char:'a' in
+  let req = "GET " ^ target ^ " HTTP/1.1\r\nHost: example.com\r\n\r\n" in
+  match Http1.Request.parse ~max_request_line:70_000 req with
+  | Error "Invalid request target: too long" -> Result.Ok ()
+  | Error error -> Result.Error ("Expected invalid request target error, got " ^ error)
+  | Need_more -> Result.Error "Expected invalid request target error, got Need_more"
+  | Done _ -> Result.Error "Expected invalid request target error"
+
 let test_request_rejects_too_many_headers = fun _ctx ->
   let headers =
     let rec loop index acc =
@@ -368,6 +390,8 @@ let tests =
     case
       "request rejects missing lf after header line"
       test_request_rejects_missing_lf_after_header_line;
+    case "request rejects invalid http version" test_request_rejects_invalid_http_version;
+    case "request rejects invalid request target" test_request_rejects_invalid_request_target;
     case "request_rejects_too_many_headers" test_request_rejects_too_many_headers;
     case "response_200_ok" test_response_200_ok;
     case "response_404" test_response_404;
