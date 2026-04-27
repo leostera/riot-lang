@@ -27,17 +27,24 @@ val create: ?config:config -> unit -> state
 
 (** Parse errors *)
 type parse_error =
+  | Read_failed of IO.error
+  (** Reader returned an IO error while reading frame bytes *)
   | Incomplete_frame_header
   (** Frame header has fewer than 9 bytes *)
   | Frame_size_exceeds_maximum of { size: int; max_size: int }
   (** Frame payload size exceeds configured maximum *)
   | Unknown_frame_type of int
   (** Unknown HTTP/2 frame type byte *)
-  | Invalid_payload_length of { frame_type: string; expected: int; actual: int }
+  | Invalid_payload_length of {
+      frame_type: Frame.frame_type;
+      expected: int;
+      actual: int;
+    }
   (** Payload length doesn't match frame type requirements *)
   | Incomplete_settings_payload
 
 (** SETTINGS payload is not multiple of 6 bytes *)
+val parse_error_to_string: parse_error -> string
 
 (** Parse result *)
 type parse_result =
