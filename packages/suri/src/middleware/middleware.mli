@@ -474,9 +474,9 @@ module Session = Session
 (**
    {b Session Middleware}
 
-   Secure cookie-based session management.
+   Experimental cookie-based session management.
 
-   Stores encrypted session data in HTTP-only cookies.
+   Stores session data in HTTP-only cookies.
    No server-side storage required (stateless sessions).
 
    {b Quick Start:}
@@ -498,17 +498,18 @@ module Session = Session
    {b Security:}
    - Always use a strong random secret (256 bits)
    - Set [~secure:true] in production (HTTPS only)
-   - Default [SameSite=Lax] prevents CSRF
-   - Session data encrypted and signed
+   - Default [SameSite=Lax] helps reduce CSRF exposure
+   - Current signing/encryption is placeholder-only
 
-   {b Warning:} Current crypto is a placeholder. Replace with
-   AES-256-GCM for production.
+   {b Warning:} Do not use this middleware for sensitive production sessions
+   until the placeholder crypto has been replaced with authenticated
+   encryption.
 
    See {!Session} for full documentation.
 *)
 
 (**
-   Session middleware - secure cookie-based sessions.
+   Session middleware - experimental cookie-based sessions.
 
    {[
      let secret = match Env.get "SESSION_SECRET" with

@@ -1,9 +1,13 @@
 open Std
 
 (**
-   # HTTP/2 Protocol Handler
+   # HTTP/2 Protocol Handler (Experimental)
 
-   Implements HTTP/2 request parsing, response sending, and stream multiplexing.
+   Prototype HTTP/2 request parsing, response sending, and stream
+   multiplexing support.
+
+   This handler is not wired into {!Web_server.start_link} by default and is
+   not yet a production-compliant HTTP/2 implementation.
 
    ## Features
 

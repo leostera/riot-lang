@@ -1,10 +1,14 @@
 (**
    {1 Session Middleware}
 
-   Secure cookie-based session management for Suri.
+   Experimental cookie-based session management for Suri.
 
-   Sessions store small amounts of data (< 4KB) in encrypted,
-   signed cookies. No server-side storage required.
+   Sessions store small amounts of data (< 4KB) in cookies. No server-side
+   storage is required.
+
+   This middleware is not production-ready yet. It still uses placeholder
+   signing/encryption internally and must be replaced with authenticated
+   encryption before handling sensitive data.
 
    {2 Quick Start}
 
@@ -39,17 +43,16 @@
        |> Conn.send
    ]}
 
-   {2 Security}
+   {2 Security Status}
 
    - {b Secret Key}: Use 256-bit random secret in production
    - {b HTTPS Only}: Set [~secure:true] in production
-   - {b SameSite}: Default [Lax] prevents CSRF
+   - {b SameSite}: Default [Lax] helps reduce CSRF exposure
    - {b HttpOnly}: Always enabled, prevents XSS access
-   - {b Encryption}: All session data encrypted (XOR placeholder for now)
-   - {b Signing}: Simple signature prevents tampering
+   - {b Not production safe}: Signing and encryption are placeholders today
 
-   {b Warning}: Current crypto is a placeholder (XOR). Replace with
-   AES-256-GCM for production use.
+   {b Warning}: Current crypto is placeholder-only. Replace it with
+   authenticated encryption before production use.
 
    {2 Configuration}
 
@@ -84,7 +87,7 @@ open Std
 (** Abstract session type *)
 
 (**
-   Session middleware with encrypted cookie storage.
+   Session middleware with experimental cookie storage.
 
    @param secret Encryption/signing key (required, use 256-bit random value)
    @param cookie_name Cookie name (default: "_suri_session")

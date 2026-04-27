@@ -1,6 +1,8 @@
 # Suri - Web Framework for OCaml
 
-Suri is a high-performance, supervised web framework built on Std and Actors for building HTTP servers, WebSocket servers, and real-time web applications.
+Suri is an experimental, supervised web framework built on Std and Actors for building HTTP servers, WebSocket servers, and real-time web applications.
+
+Suri is not production-ready yet. The core framework shape is usable for experiments, examples, and hardening work, but protocol correctness, cryptography, operational limits, and production guidance are still under active development.
 
 ## Quick Start
 
@@ -41,8 +43,8 @@ Composable middleware framework with routing support for building HTTP request p
 ### Channel
 WebSocket handler abstraction for real-time bidirectional communication. Provides Frame types and Handler interface for building WebSocket servers.
 
-### LiveView (Coming Soon)
-Server-rendered components with live DOM updates over WebSocket. Build interactive UIs with server-side state management and automatic client updates.
+### LiveView (Experimental)
+Server-rendered components with live DOM updates over WebSocket. LiveView exists, but its token handling, lifecycle cleanup, reconnect behavior, and event authorization are still being hardened.
 
 ## Architecture
 
@@ -64,46 +66,46 @@ Your Application Logic
 
 - **Fault Tolerance**: If an acceptor crashes, it's automatically restarted
 - **Resource Management**: Bounded number of acceptors with configurable limits
-- **Graceful Shutdown**: Proper cleanup of resources on termination
+- **Lifecycle Hooks**: Handler callbacks for connection close, errors, and shutdown
 - **Monitoring**: Track acceptor health and restart patterns
 
 ## Components
 
 1. **SocketPool** - Supervised TCP connection management
-2. **WebServer** - HTTP protocol handling (HTTP/1.1, HTTP/2 planned)
+2. **WebServer** - HTTP protocol handling (HTTP/1.1 foundation; HTTP/2 prototype)
 3. **Middleware** - Request processing pipeline
 4. **Channel** - WebSocket communication layer
-5. **LiveView** - Real-time UI components (coming soon)
+5. **LiveView** - Experimental real-time UI components
 
 This design allows you to use just the components you need, from low-level socket handling to high-level web frameworks.
 
 ## Features
 
 ### Current
-- ✅ HTTP/1.1 server with keep-alive support
-- ✅ OTP-style supervision with `Std.Supervisor`
-- ✅ Concurrent connection acceptance (configurable pool size)
-- ✅ WebSocket support via Channel
-- ✅ Composable middleware framework
-- ✅ Request routing
+- HTTP/1.1 server foundation with keep-alive support
+- OTP-style supervision with `Std.Supervisor`
+- Concurrent connection acceptance with configurable acceptor count
+- WebSocket upgrade and Channel primitives
+- Composable middleware framework
+- Request routing
+- Component rendering with escaped text and attributes
 
-### Planned
-- 🚧 LiveView with server-side rendering
-- 🚧 HTTP/2 support
-- 🚧 Session management
-- 🚧 CSRF protection
-- 🚧 Authentication/authorization middleware
-- 🚧 Static file serving
-- 🚧 Database integration helpers
+### Experimental / Hardening In Progress
+- LiveView server-side rendering and WebSocket updates
+- HTTP/2 protocol handling
+- Session and CSRF middleware
+- Static file serving
+- Request body parsing and upload handling
+- Operational limits, timeouts, graceful shutdown, and production presets
 
 ## Examples
 
-See [EXAMPLES.md](./EXAMPLES.md) for comprehensive examples including:
+See [packages/suri/examples](./examples) for examples including:
 - Simple HTTP server
 - JSON API server
 - WebSocket echo server
 - Middleware and routing
-- LiveView components (coming soon)
+- LiveView components
 
 ## Performance
 

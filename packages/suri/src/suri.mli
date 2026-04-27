@@ -3,9 +3,9 @@ open Std
 (**
    {1 Suri - High-Performance Web Framework for OCaml}
 
-   Suri is a modern, actor-based web framework built on {!Std} and {!Runtime}.
-   It provides everything you need to build fast, fault-tolerant web applications
-   with type safety and elegant concurrency.
+   Suri is an experimental, actor-based web framework built on {!Std} and
+   {!Runtime}. It provides the framework pieces for building typed HTTP
+   applications while protocol, security, and operational hardening continue.
 
    {2 Table of Contents}
 
@@ -24,7 +24,7 @@ open Std
 
    {b ✅ Type-Safe Components}
    - React-style component system for building UIs
-   - Write once, render as static HTML or interactive LiveView
+   - Static HTML rendering with experimental LiveView integration
    - No inline JavaScript required
 
    {b ✅ Composable Middleware}
@@ -32,10 +32,11 @@ open Std
    - Pipeline-based request processing
    - Easy to write custom middleware
 
-   {b ✅ Production Ready}
-   - HTTP/1.1 with keep-alive support
-   - WebSocket support via Channel API
-   - Fault tolerance through supervision trees
+   {b Current Status}
+   - HTTP/1.1 server foundation with keep-alive support
+   - WebSocket support via Channel API is experimental
+   - LiveView, sessions, CSRF, and HTTP/2 are still being hardened
+   - Do not treat Suri as production-ready yet
 
    {2:quickstart Quick Start}
 
@@ -207,8 +208,7 @@ open Std
 
    {2:examples Examples}
 
-   All examples are available in [packages/suri/examples/] and documented in
-   [packages/suri/EXAMPLES.md].
+   All examples are available in [packages/suri/examples/].
 
    {3 Available Examples}
 
@@ -281,7 +281,7 @@ open Std
 
    {2 Next Steps}
 
-   - Read the full examples in [EXAMPLES.md]
+   - Read the examples in [packages/suri/examples/]
    - Explore the {!Component} module for UI building
    - Check out {!Middleware.Router} for routing patterns
    - See {!WebServer.Response} for response helpers

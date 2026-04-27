@@ -1,8 +1,8 @@
 (**
    {1 WebServer - HTTP/1.1 Server}
 
-   Production-ready HTTP/1.1 server with connection pooling, keep-alive support,
-   and automatic error recovery through supervision.
+   Experimental HTTP/1.1 server foundation with connection pooling, keep-alive
+   support, and automatic error recovery through supervision.
 
    {2 Table of Contents}
 
@@ -14,11 +14,11 @@
 
    {2:why Why WebServer?}
 
-   {b ✅ Production Ready}
-   - HTTP/1.1 with keep-alive connections
-   - Supervised connection pool (automatic restart)
-   - Handles thousands of concurrent connections
-   - Graceful shutdown support
+   {b Current Status}
+   - HTTP/1.1 foundation with keep-alive connections
+   - Supervised connection pool for acceptors
+   - Request timeouts, connection limits, graceful shutdown, and full protocol
+     hardening are still in progress
 
    {b ✅ Simple API}
    - Handler function: [Request.t -> Response.t]
