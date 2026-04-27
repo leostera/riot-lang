@@ -112,4 +112,6 @@ module Http1 = struct
   let request_header_error_to_string = Web_server.Http1.request_header_error_to_string
 
   let should_keep_alive = Web_server.Http1.should_keep_alive
+
+  let should_continue_keep_alive = Web_server.Http1.should_continue_keep_alive
 end

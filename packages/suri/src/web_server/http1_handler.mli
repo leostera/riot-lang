@@ -91,6 +91,12 @@ val request_header_error_to_string: request_header_error -> string
 
 val should_keep_alive: Request.t -> bool
 
+val should_continue_keep_alive:
+  max_keep_alive_requests:int ->
+  requests_processed:int ->
+  Request.t ->
+  bool
+
 (** Create a handler that supports WebSocket upgrades via {!Http_handler.response}. *)
 val make_handler:
   config:Super.Config.t ->

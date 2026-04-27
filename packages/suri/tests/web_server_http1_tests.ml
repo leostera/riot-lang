@@ -323,6 +323,24 @@ let test_http1_keep_alive_parses_http10_keep_alive_token = fun _ctx ->
   Test.assert_true (Http1.should_keep_alive req);
   Ok ()
 
+let test_http1_keep_alive_limit_allows_before_final_request = fun _ctx ->
+  let req =
+    http_request ~version:Net.Http.Version.Http11 ()
+    |> Suri.Request.of_http ~body:""
+  in
+  Test.assert_true
+    (Http1.should_continue_keep_alive ~max_keep_alive_requests:2 ~requests_processed:1 req);
+  Ok ()
+
+let test_http1_keep_alive_limit_closes_after_final_request = fun _ctx ->
+  let req =
+    http_request ~version:Net.Http.Version.Http11 ()
+    |> Suri.Request.of_http ~body:""
+  in
+  Test.assert_false
+    (Http1.should_continue_keep_alive ~max_keep_alive_requests:2 ~requests_processed:2 req);
+  Ok ()
+
 let test_http1_response_rejects_invalid_header_name = fun _ctx ->
   let res = Response.ok ~headers:[ ("bad name", "value"); ] ~body:"ok" () in
   match Http1.serialize_response res with
@@ -495,6 +513,12 @@ let tests =
     case
       "http1 keep alive parses http10 keep alive token"
       test_http1_keep_alive_parses_http10_keep_alive_token;
+    case
+      "http1 keep alive limit allows before final request"
+      test_http1_keep_alive_limit_allows_before_final_request;
+    case
+      "http1 keep alive limit closes after final request"
+      test_http1_keep_alive_limit_closes_after_final_request;
     case
       "http1 response rejects invalid header name"
       test_http1_response_rejects_invalid_header_name;

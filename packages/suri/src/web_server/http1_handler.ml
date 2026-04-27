@@ -215,6 +215,9 @@ let should_keep_alive = fun (req: Request.t) ->
   | Net.Http.Version.Http11 -> true
   | _ -> false
 
+let should_continue_keep_alive = fun ~max_keep_alive_requests ~requests_processed req ->
+  should_keep_alive req && requests_processed < max_keep_alive_requests
+
 let is_header_name_char = function
   | 'a' .. 'z'
   | 'A' .. 'Z'
@@ -590,7 +593,12 @@ let handle_request = fun state socket_conn (req: Request.t) ->
           let new_state =
             { state with is_keep_alive; requests_processed; parse_state = WaitingForHeaders }
           in
-          if is_keep_alive then
+          if
+            should_continue_keep_alive
+              ~max_keep_alive_requests:state.config.max_keep_alive_requests
+              ~requests_processed
+              req
+          then
             Socket_pool.Handler.Continue new_state
           else
             Socket_pool.Handler.Close new_state
