@@ -218,6 +218,15 @@ val of_string: string -> (t, [`InvalidStatus]) Kernel.result
 val to_string: t -> string
 
 (**
+   Returns [true] when two statuses represent the same numeric HTTP status
+   code.
+
+   Extension statuses compare by their integer code, so [Status.Extension 599]
+   is equal to any other status value that renders as [599].
+*)
+val equal: t -> t -> bool
+
+(**
    Returns the standard reason phrase for a status code.
 
    ## Examples

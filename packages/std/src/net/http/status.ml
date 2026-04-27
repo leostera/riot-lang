@@ -209,6 +209,8 @@ let of_string: string -> (t, [`InvalidStatus]) Kernel.result = fun s ->
 
 let to_string = fun status -> Int.to_string (to_int status)
 
+let equal = fun a b -> to_int a = to_int b
+
 let reason_phrase = function
   | Continue -> "Continue"
   | SwitchingProtocols -> "Switching Protocols"
