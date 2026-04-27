@@ -80,8 +80,13 @@ open Std
    - Hashes response body
    - Adds ETag header
    - Skips if body is empty
+   - Skips informational, 204, 205, and 304 responses
    - Skips if ETag already set
 
    {b Note}: Use with conditional_get middleware for automatic 304 responses.
 *)
+val status_allows_generated_etag: Net.Http.Status.t -> bool
+
+val generate_etag: ?weak:bool -> string -> string option
+
 val middleware: ?weak:bool -> unit -> conn:Conn.t -> next:(Conn.t -> Conn.t) -> Conn.t

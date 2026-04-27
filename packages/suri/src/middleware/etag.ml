@@ -1,5 +1,12 @@
 open Std
 
+let status_allows_generated_etag = fun status ->
+  not
+    (Net.Http.Status.is_informational status
+    || Net.Http.Status.equal status Net.Http.Status.NoContent
+    || Net.Http.Status.equal status Net.Http.Status.ResetContent
+    || Net.Http.Status.equal status Net.Http.Status.NotModified)
+
 (** Generate ETag from response body *)
 let generate_etag = fun ?(weak = false) body ->
   if String.length body = 0 then
@@ -9,10 +16,11 @@ let generate_etag = fun ?(weak = false) body ->
     let hash = Crypto.Sha256.hash_string body in
     let hash_hex = Crypto.Digest.hex hash in
     (* Take first 16 chars of hex for reasonable ETag length *)
-    let etag_value = String.sub
-      hash_hex
-      ~offset:0
-      ~len:(min 16 (String.length hash_hex))
+    let etag_value =
+      String.sub
+        hash_hex
+        ~offset:0
+        ~len:(min 16 (String.length hash_hex))
     in
     (* Format as ETag *)
     let etag =
@@ -36,10 +44,13 @@ let middleware = fun ?(weak = false) () ~conn ~next ->
   else
     (* Generate ETag from response body *)
     let resp = Conn.to_response conn' in
-    match generate_etag ~weak resp.Web_server.Response.body with
-    | Some etag ->
-        (* Add ETag header *)
-        Conn.with_header "etag" etag conn'
-    | None ->
-        (* Empty body, no ETag *)
-        conn'
+    if not (status_allows_generated_etag resp.Web_server.Response.status) then
+      conn'
+    else
+      match generate_etag ~weak resp.Web_server.Response.body with
+      | Some etag ->
+          (* Add ETag header *)
+          Conn.with_header "etag" etag conn'
+      | None ->
+          (* Empty body, no ETag *)
+          conn'
