@@ -25,9 +25,14 @@ let matches_pattern = fun ~pattern ~content_type ->
 
 type accept_entry = { media_type: string; quality: float }
 
+type quality_parse_error =
+  | MissingQualityValue
+  | InvalidQualityValue of { value: string }
+  | MalformedQualityParameter of { parameter: string }
+
 type accept_parse_error =
   | EmptyMediaType
-  | InvalidQuality of string
+  | InvalidQuality of quality_parse_error
   | QualityOutOfRange of float
 
 (**
@@ -41,15 +46,15 @@ let parse_quality = fun param ->
   | [ key; value ] when String.equal (String.lowercase_ascii (String.trim key)) "q" -> (
       let value = String.trim value in
       match Float.parse value with
-      | None -> Error (InvalidQuality value)
+      | None -> Error (InvalidQuality (InvalidQualityValue { value }))
       | Some quality when Order.is_lt (Float.compare quality 0.0)
       || Order.is_gt (Float.compare quality 1.0) -> Error (QualityOutOfRange quality)
       | Some quality -> Ok (Some quality)
     )
   | [ key ] when String.equal (String.lowercase_ascii (String.trim key)) "q" ->
-      Error (InvalidQuality "")
+      Error (InvalidQuality MissingQualityValue)
   | key :: _ when String.equal (String.lowercase_ascii (String.trim key)) "q" ->
-      Error (InvalidQuality trimmed)
+      Error (InvalidQuality (MalformedQualityParameter { parameter = trimmed }))
   | _ -> Ok None
 
 (**

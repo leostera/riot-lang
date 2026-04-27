@@ -232,9 +232,13 @@ val matches_pattern: pattern:string -> content_type:string -> bool
    ]}
 *)
 type accept_entry = { media_type: string; quality: float }
+type quality_parse_error =
+  | MissingQualityValue
+  | InvalidQualityValue of { value: string }
+  | MalformedQualityParameter of { parameter: string }
 type accept_parse_error =
   | EmptyMediaType
-  | InvalidQuality of string
+  | InvalidQuality of quality_parse_error
   | QualityOutOfRange of float
 
 (**

@@ -388,7 +388,7 @@ let test_request_id_rejects_empty_and_overlong_values = fun _ctx ->
 
 let test_accepts_rejects_invalid_quality = fun _ctx ->
   match Accepts.parse_accept_result "application/json;q=wat" with
-  | Error (Accepts.InvalidQuality "wat") -> Ok ()
+  | Error (Accepts.InvalidQuality (Accepts.InvalidQualityValue { value = "wat" })) -> Ok ()
   | Ok _ -> Error "expected invalid Accept quality to fail parsing"
   | Error _ -> Error "unexpected Accept parse error"
 
