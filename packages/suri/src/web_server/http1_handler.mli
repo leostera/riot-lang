@@ -41,6 +41,8 @@ module For_testing: sig
     | ConflictingContentLength of string list
     | TransferEncodingWithContentLength
     | UnsupportedTransferEncoding of string
+  type request_header_error =
+    | MissingHostHeader
   val serialize_response: Response.t -> (string, serialization_error) Std.result
 
   val compute_websocket_accept: string -> string
@@ -56,6 +58,10 @@ module For_testing: sig
   val request_body_header_error_to_string: request_body_header_error -> string
 
   val split_request_body: string -> int -> string * string
+
+  val validate_request_headers: Std.Net.Http.Request.t -> (unit, request_header_error) Std.result
+
+  val request_header_error_to_string: request_header_error -> string
 end
 
 (** Create a handler that supports WebSocket upgrades via {!Http_handler.response}. *)

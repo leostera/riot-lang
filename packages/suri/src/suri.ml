@@ -88,6 +88,9 @@ module For_testing = struct
       | TransferEncodingWithContentLength
       | UnsupportedTransferEncoding of string
 
+    type request_header_error = Web_server.Http1.For_testing.request_header_error =
+      | MissingHostHeader
+
     let serialize_response = fun response ->
       Std.Result.map_err
         (Web_server.Http1.For_testing.serialize_response response)
@@ -111,6 +114,10 @@ module For_testing = struct
       Web_server.Http1.For_testing.request_body_header_error_to_string
 
     let split_request_body = Web_server.Http1.For_testing.split_request_body
+
+    let validate_request_headers = Web_server.Http1.For_testing.validate_request_headers
+
+    let request_header_error_to_string = Web_server.Http1.For_testing.request_header_error_to_string
   end
 end
 

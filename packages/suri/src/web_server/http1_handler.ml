@@ -42,6 +42,9 @@ type request_body_header_error =
   | TransferEncodingWithContentLength
   | UnsupportedTransferEncoding of string
 
+type request_header_error =
+  | MissingHostHeader
+
 let to_string_error = function
   | `ParseError msg -> "Parse error: " ^ msg
   | `ExcessBodyRead -> "Excess body read"
@@ -72,6 +75,9 @@ let request_body_header_error_to_string = function
       "Conflicting Content-Length headers: " ^ String.concat ", " values
   | TransferEncodingWithContentLength -> "Request must not include both Transfer-Encoding and Content-Length"
   | UnsupportedTransferEncoding value -> "Unsupported Transfer-Encoding header: " ^ value
+
+let request_header_error_to_string = function
+  | MissingHostHeader -> "HTTP/1.1 requests must include a Host header"
 
 let make_handler = fun ~config ~handler ?(sniffed_data = "") () ->
   {
@@ -296,6 +302,18 @@ let split_request_body = fun data expected_length ->
     let remaining = String.sub data ~offset:expected_length ~len:(body_length - expected_length) in
     (body, remaining)
 
+let validate_request_headers = fun http_req ->
+  match Net.Http.Request.version http_req with
+  | Net.Http.Version.Http11 ->
+      if Net.Http.Request.has_header http_req "host" then
+        Ok ()
+      else
+        Error MissingHostHeader
+  | Net.Http.Version.Http09
+  | Net.Http.Version.Http10
+  | Net.Http.Version.Http2
+  | Net.Http.Version.Http3 -> Ok ()
+
 module For_testing = struct
   type nonrec serialization_error = serialization_error =
     | InvalidHeaderName of string
@@ -318,6 +336,9 @@ module For_testing = struct
     | TransferEncodingWithContentLength
     | UnsupportedTransferEncoding of string
 
+  type nonrec request_header_error = request_header_error =
+    | MissingHostHeader
+
   let serialize_response = serialize_response
 
   let compute_websocket_accept = compute_websocket_accept
@@ -331,6 +352,10 @@ module For_testing = struct
   let request_body_header_error_to_string = request_body_header_error_to_string
 
   let split_request_body = split_request_body
+
+  let validate_request_headers = validate_request_headers
+
+  let request_header_error_to_string = request_header_error_to_string
 end
 
 (* Bridge Channel.Handler.t to Socket_pool.Handler.t for WebSocket connections *)
@@ -470,35 +495,42 @@ let handle_data_waiting_headers = fun full_data conn state ->
     ~max_header_length:state.config.max_header_length
     full_data with
   | Done { value = http_req; remaining } -> (
-      match validate_request_body_headers http_req with
+      match validate_request_headers http_req with
       | Error error ->
-          let res = Response.bad_request ~body:(request_body_header_error_to_string error) () in
+          let res = Response.bad_request ~body:(request_header_error_to_string error) () in
           let _ = send_response conn res in
           Socket_pool.Handler.Close state
-      | Ok expected_length ->
-          let body_received = String.length remaining in
-          if body_received >= expected_length then
-            let (body, remaining_data) = split_request_body remaining expected_length in
-            let req = Request.of_http ~body http_req in
-            handle_request
-              {
-                state with
-                parse_state = WaitingForHeaders;
-                sniffed_data = remaining_data;
-              }
-              conn
-              req
-          else
-            (* Need to read more body data - transition to WaitingForBody state *)
-            Socket_pool.Handler.Continue {
-              state with
-              sniffed_data = "";
-              parse_state = WaitingForBody {
-                http_req;
-                expected_length;
-                accumulated_body = remaining;
-              };
-            }
+      | Ok () -> (
+          match validate_request_body_headers http_req with
+          | Error error ->
+              let res = Response.bad_request ~body:(request_body_header_error_to_string error) () in
+              let _ = send_response conn res in
+              Socket_pool.Handler.Close state
+          | Ok expected_length ->
+              let body_received = String.length remaining in
+              if body_received >= expected_length then
+                let (body, remaining_data) = split_request_body remaining expected_length in
+                let req = Request.of_http ~body http_req in
+                handle_request
+                  {
+                    state with
+                    parse_state = WaitingForHeaders;
+                    sniffed_data = remaining_data;
+                  }
+                  conn
+                  req
+              else
+                (* Need to read more body data - transition to WaitingForBody state *)
+                Socket_pool.Handler.Continue {
+                  state with
+                  sniffed_data = "";
+                  parse_state = WaitingForBody {
+                    http_req;
+                    expected_length;
+                    accumulated_body = remaining;
+                  };
+                }
+        )
     )
   | Need_more -> Socket_pool.Handler.Continue { state with sniffed_data = full_data }
   | Error msg ->

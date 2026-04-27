@@ -702,6 +702,22 @@ let test_http1_body_split_keeps_zero_length_body_empty = fun _ctx ->
   Test.assert_equal ~expected:"GET /next HTTP/1.1\r\n\r\n" ~actual:remaining;
   Ok ()
 
+let test_http1_request_headers_reject_missing_host = fun _ctx ->
+  let req = http_request () in
+  match Http1.validate_request_headers req with
+  | Error Http1.MissingHostHeader -> Ok ()
+  | Ok () -> Error "expected HTTP/1.1 request without Host to fail"
+
+let test_http1_request_headers_accept_host = fun _ctx ->
+  let req = http_request ~headers:[ ("host", "example.com"); ] () in
+  Test.assert_equal ~expected:(Ok ()) ~actual:(Http1.validate_request_headers req);
+  Ok ()
+
+let test_http1_request_headers_allow_http10_without_host = fun _ctx ->
+  let req = http_request ~version:Net.Http.Version.Http10 () in
+  Test.assert_equal ~expected:(Ok ()) ~actual:(Http1.validate_request_headers req);
+  Ok ()
+
 let test_connection_write_all_retries_short_writes = fun _ctx ->
   let calls = ref [] in
   let write _buf ~pos ~len =
@@ -991,6 +1007,11 @@ let tests =
     case
       "http1 body split keeps zero length body empty"
       test_http1_body_split_keeps_zero_length_body_empty;
+    case "http1 request headers reject missing host" test_http1_request_headers_reject_missing_host;
+    case "http1 request headers accept host" test_http1_request_headers_accept_host;
+    case
+      "http1 request headers allow http10 without host"
+      test_http1_request_headers_allow_http10_without_host;
     case "connection write all retries short writes" test_connection_write_all_retries_short_writes;
     case
       "connection write all treats zero write as closed"
