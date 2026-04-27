@@ -4,12 +4,15 @@ open Std
 module Frame = Http.Http2.Frame
 module Serializer = Http.Http2.Serializer
 module Connection = Http.Http2.Connection
+module Parser = Http.Http2.Parser
 
 let frame_payload_length_at = fun serialized ~offset ->
   let byte index = Char.code (String.get_unchecked serialized ~at:(offset + index)) in
   (byte 0 lsl 16) lor (byte 1 lsl 8) lor byte 2
 
 let frame_payload_length = fun serialized -> frame_payload_length_at serialized ~offset:0
+
+let settings_frame_with_payload = fun payload -> "\x00\x00\x06\x04\x00\x00\x00\x00\x00" ^ payload
 
 let test_serialize_settings_frame = fun _ctx ->
   let frame = {
@@ -188,6 +191,38 @@ let test_frame_types = fun _ctx ->
   else
     Result.Error "Frame types count mismatch"
 
+let test_parse_settings_rejects_invalid_enable_push = fun _ctx ->
+  let bytes = settings_frame_with_payload "\x00\x02\x00\x00\x00\x02" in
+  match Parser.parse_frame bytes with
+  | Parser.Error "SETTINGS_ENABLE_PUSH must be 0 or 1" -> Result.Ok ()
+  | Parser.Error err -> Result.Error ("Wrong parse error: " ^ err)
+  | Parser.Need_more -> Result.Error "Expected invalid SETTINGS_ENABLE_PUSH to fail"
+  | Parser.Done _ -> Result.Error "Invalid SETTINGS_ENABLE_PUSH was accepted"
+
+let test_parse_settings_rejects_initial_window_overflow = fun _ctx ->
+  let bytes = settings_frame_with_payload "\x00\x04\x80\x00\x00\x00" in
+  match Parser.parse_frame bytes with
+  | Parser.Error "SETTINGS_INITIAL_WINDOW_SIZE must be at most 2147483647" -> Result.Ok ()
+  | Parser.Error err -> Result.Error ("Wrong parse error: " ^ err)
+  | Parser.Need_more -> Result.Error "Expected oversized SETTINGS_INITIAL_WINDOW_SIZE to fail"
+  | Parser.Done _ -> Result.Error "Oversized SETTINGS_INITIAL_WINDOW_SIZE was accepted"
+
+let test_parse_settings_rejects_small_max_frame_size = fun _ctx ->
+  let bytes = settings_frame_with_payload "\x00\x05\x00\x00\x3f\xff" in
+  match Parser.parse_frame bytes with
+  | Parser.Error "SETTINGS_MAX_FRAME_SIZE must be between 16384 and 16777215" -> Result.Ok ()
+  | Parser.Error err -> Result.Error ("Wrong parse error: " ^ err)
+  | Parser.Need_more -> Result.Error "Expected small SETTINGS_MAX_FRAME_SIZE to fail"
+  | Parser.Done _ -> Result.Error "Small SETTINGS_MAX_FRAME_SIZE was accepted"
+
+let test_parse_settings_rejects_large_max_frame_size = fun _ctx ->
+  let bytes = settings_frame_with_payload "\x00\x05\x01\x00\x00\x00" in
+  match Parser.parse_frame bytes with
+  | Parser.Error "SETTINGS_MAX_FRAME_SIZE must be between 16384 and 16777215" -> Result.Ok ()
+  | Parser.Error err -> Result.Error ("Wrong parse error: " ^ err)
+  | Parser.Need_more -> Result.Error "Expected large SETTINGS_MAX_FRAME_SIZE to fail"
+  | Parser.Done _ -> Result.Error "Large SETTINGS_MAX_FRAME_SIZE was accepted"
+
 let tests =
   Test.[
     case "serialize_settings_frame" test_serialize_settings_frame;
@@ -200,6 +235,18 @@ let tests =
     case "process_data_buffers_split_frame_header" test_process_data_buffers_split_frame_header;
     case "process_data_buffers_split_frame_payload" test_process_data_buffers_split_frame_payload;
     case "frame_types" test_frame_types;
+    case
+      "parse_settings_rejects_invalid_enable_push"
+      test_parse_settings_rejects_invalid_enable_push;
+    case
+      "parse_settings_rejects_initial_window_overflow"
+      test_parse_settings_rejects_initial_window_overflow;
+    case
+      "parse_settings_rejects_small_max_frame_size"
+      test_parse_settings_rejects_small_max_frame_size;
+    case
+      "parse_settings_rejects_large_max_frame_size"
+      test_parse_settings_rejects_large_max_frame_size;
   ]
 
 let main ~args:_ = Test.Cli.main ~name:"http:http2_parser" ~tests ~args:Env.args ()

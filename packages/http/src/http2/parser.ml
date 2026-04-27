@@ -269,16 +269,35 @@ let parse_settings_payload = fun length flags data ->
                 let setting =
                   match id with
                   | 0x1 -> Some (Frame.HeaderTableSize value)
-                  | 0x2 -> Some (Frame.EnablePush (value != 0))
+                  | 0x2 ->
+                      if value = 0 || value = 1 then
+                        Some (Frame.EnablePush (value = 1))
+                      else
+                        None
                   | 0x3 -> Some (Frame.MaxConcurrentStreams value)
-                  | 0x4 -> Some (Frame.InitialWindowSize value)
-                  | 0x5 -> Some (Frame.MaxFrameSize value)
+                  | 0x4 ->
+                      if value <= 2_147_483_647 then
+                        Some (Frame.InitialWindowSize value)
+                      else
+                        None
+                  | 0x5 ->
+                      if value >= default_max_frame_size && value <= absolute_max_frame_size then
+                        Some (Frame.MaxFrameSize value)
+                      else
+                        None
                   | 0x6 -> Some (Frame.MaxHeaderListSize value)
                   | _ -> None
                 in
                 match setting with
                 | Some s -> parse_settings (offset + 6) (s :: acc)
-                | None -> parse_settings (offset + 6) acc
+                | None -> (
+                    match id with
+                    | 0x2 -> Result.Error "SETTINGS_ENABLE_PUSH must be 0 or 1"
+                    | 0x4 -> Result.Error "SETTINGS_INITIAL_WINDOW_SIZE must be at most 2147483647"
+                    | 0x5 ->
+                        Result.Error "SETTINGS_MAX_FRAME_SIZE must be between 16384 and 16777215"
+                    | _ -> parse_settings (offset + 6) acc
+                  )
               )
           )
     in
