@@ -576,9 +576,9 @@ let lower_exception_declaration = fun state declaration ->
   | None -> push_unsupported state declaration "exception declaration"
 
 let lower_external_declaration = fun state declaration ->
-  let name = name_of_tokens (Ast.ExternalDeclaration.for_each_name_token declaration) in
-  match Ast.ExternalDeclaration.type_annotation declaration with
-  | Some annotation ->
+  match Ast.ExternalDeclaration.view declaration with
+  | Ast.ExternalDeclaration.External { name = name_tokens; annotation; _ } ->
+      let name = name_of_token_vector name_tokens in
       push_item
         state
         (
@@ -589,7 +589,7 @@ let lower_external_declaration = fun state declaration ->
             annotation = lower_type_expr state annotation;
           }
         )
-  | None -> push_unsupported state declaration "external declaration"
+  | Ast.ExternalDeclaration.Unknown _ -> push_unsupported state declaration "external declaration"
 
 let lower_value_declaration = fun state declaration ->
   match Ast.ValueDeclaration.view declaration with

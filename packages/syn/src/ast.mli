@@ -1116,7 +1116,19 @@ end
 
 module ExternalDeclaration: sig
   type t = external_declaration
+  type view =
+    | External of {
+        name: Token.t Vector.t;
+        colon_token: Token.t;
+        annotation: type_expr;
+        equals_token: Token.t;
+        primitives: Token.t Vector.t;
+        attributes: Token.t Vector.t;
+      }
+    | Unknown of Node.t
   val cast: Node.t -> t option
+
+  val view: t -> view
 
   val name: t -> Token.t option
 

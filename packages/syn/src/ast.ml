@@ -4887,6 +4887,17 @@ end
 module ExternalDeclaration = struct
   type t = external_declaration
 
+  type view =
+    | External of {
+        name: Token.t Vector.t;
+        colon_token: Token.t;
+        annotation: type_expr;
+        equals_token: Token.t;
+        primitives: Token.t Vector.t;
+        attributes: Token.t Vector.t;
+      }
+    | Unknown of node
+
   let cast = fun (node: node) ->
     if node_kind_is node Syntax_kind.EXTERNAL_DECL then
       Some node
@@ -4897,6 +4908,8 @@ module ExternalDeclaration = struct
 
   let colon_token = fun decl -> Node.first_child_token decl ~kind:Syntax_kind.COLON
 
+  let equals_token = fun decl -> Node.first_child_token decl ~kind:Syntax_kind.EQ
+
   let type_annotation = first_type_expr_child
 
   let for_each_name_token = fun decl ~fn ->
@@ -4905,12 +4918,22 @@ module ExternalDeclaration = struct
       ~keyword:Syntax_kind.EXTERNAL_KW
       ~fn
 
+  let name_tokens = fun decl ->
+    let tokens = Vector.with_capacity ~size:(Node.child_count decl) in
+    for_each_name_token decl ~fn:(fun token -> Vector.push tokens ~value:token);
+    tokens
+
   let for_each_primitive_string = fun decl ~fn ->
     Node.for_each_child_token
       decl
       ~fn:(fun token ->
         if token_kind_is token Syntax_kind.STRING then
           fn token)
+
+  let primitive_strings = fun decl ->
+    let tokens = Vector.with_capacity ~size:(Node.child_count decl) in
+    for_each_primitive_string decl ~fn:(fun token -> Vector.push tokens ~value:token);
+    tokens
 
   let for_each_attribute_token = fun decl ~fn ->
     let seen_primitive = ref false in
@@ -4926,6 +4949,29 @@ module ExternalDeclaration = struct
           after_primitives := true;
           fn token
         ))
+
+  let attribute_tokens = fun decl ->
+    let tokens = Vector.with_capacity ~size:(Node.child_count decl) in
+    for_each_attribute_token decl ~fn:(fun token -> Vector.push tokens ~value:token);
+    tokens
+
+  let view = fun decl ->
+    match (colon_token decl, type_annotation decl, equals_token decl) with
+    | (Some colon_token, Some annotation, Some equals_token) ->
+        let name = name_tokens decl in
+        let primitives = primitive_strings decl in
+        if Int.equal (Vector.length name) 0 || Int.equal (Vector.length primitives) 0 then
+          Unknown decl
+        else
+          External {
+            name;
+            colon_token;
+            annotation;
+            equals_token;
+            primitives;
+            attributes = attribute_tokens decl;
+          }
+    | _ -> Unknown decl
 end
 
 module ExceptionDeclaration = struct

@@ -1206,18 +1206,30 @@ let test_simple_declaration_token_views = fun _ctx ->
   (
     match Ast.StructureItem.view external_item with
     | Ast.StructureItem.External decl ->
-        let name =
-          Ast.ExternalDeclaration.name decl
-          |> require_some ~msg:"expected external name"
+        let (name, primitives) =
+          match Ast.ExternalDeclaration.view decl with
+          | Ast.ExternalDeclaration.External {
+              name;
+              colon_token;
+              equals_token;
+              primitives;
+              _;
+            } ->
+              Test.assert_equal ~expected:":" ~actual:(Ast.Token.text colon_token);
+              Test.assert_equal ~expected:"=" ~actual:(Ast.Token.text equals_token);
+              (vector_first name ~msg:"expected external name token", primitives)
+          | Ast.ExternalDeclaration.Unknown _ -> panic "expected external declaration view"
         in
         Test.assert_equal ~expected:"id" ~actual:(Ast.Token.text name);
-        let primitives = ref [] in
-        Ast.ExternalDeclaration.for_each_primitive_string
-          decl
-          ~fn:(fun token -> primitives := Ast.Token.text token :: !primitives);
         Test.assert_equal
           ~expected:[ "\"%identity\""; "\"caml_id\"" ]
-          ~actual:(List.reverse !primitives)
+          ~actual:
+            (
+              primitives
+              |> Vector.to_array
+              |> Array.map ~fn:Ast.Token.text
+              |> Array.to_list
+            )
     | _ -> panic "expected external declaration"
   );
   let exception_item =

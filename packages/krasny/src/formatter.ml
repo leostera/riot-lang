@@ -7857,20 +7857,15 @@ and external_declaration_suffix_width = fun primitive_strings attribute_tokens -
   in
   Int.(3 + primitive_width + attribute_width)
 
-and render_external_declaration_equals = fun state decl ->
-  match Ast.Node.first_child_token decl ~kind:Kind.EQ with
-  | Some equals_token -> emit_token state equals_token
-  | None -> unsupported_node "external declaration without primitive separator" decl
+and render_external_declaration_equals = fun state equals_token ->
+  emit_token state equals_token
 
-and render_external_primitive_body = fun state decl primitive_strings attribute_tokens ->
-  if Vector.length primitive_strings = 0 then
-    unsupported_node "external declaration without primitive strings" decl
-  else
-    emit_joined_vector
-      state
-      primitive_strings
-      ~sep:(fun () -> emit_space state)
-      ~fn:(emit_token state);
+and render_external_primitive_body = fun state primitive_strings attribute_tokens ->
+  emit_joined_vector
+    state
+    primitive_strings
+    ~sep:(fun () -> emit_space state)
+    ~fn:(emit_token state);
   if Vector.length attribute_tokens > 0 then (
     emit_space state;
     emit_attribute_token_vector_stream state attribute_tokens
@@ -7878,28 +7873,28 @@ and render_external_primitive_body = fun state decl primitive_strings attribute_
 
 and render_external_primitive_suffix = fun
   state
-  decl
+  equals_token
   primitive_strings
   attribute_tokens
   ~leading_space ->
   if leading_space then
     emit_space state;
-  render_external_declaration_equals state decl;
+  render_external_declaration_equals state equals_token;
   emit_space state;
-  render_external_primitive_body state decl primitive_strings attribute_tokens
+  render_external_primitive_body state primitive_strings attribute_tokens
 
 and render_external_primitive_body_after_equals = fun
   state
-  decl
+  equals_token
   primitive_strings
   attribute_tokens ->
   (
     if Int.(state.column + 2 <= state.width) then (
       emit_space state;
-      render_external_declaration_equals state decl
+      render_external_declaration_equals state equals_token
     ) else (
       emit_line state;
-      with_indent state 2 (fun () -> render_external_declaration_equals state decl)
+      with_indent state 2 (fun () -> render_external_declaration_equals state equals_token)
     )
   );
   emit_line state;
@@ -7907,21 +7902,22 @@ and render_external_primitive_body_after_equals = fun
     state
     2
     (fun () ->
-      render_external_primitive_body state decl primitive_strings attribute_tokens)
+      render_external_primitive_body state primitive_strings attribute_tokens)
 
 and render_external_declaration = fun state decl ->
-  let name_tokens = collect_external_name_tokens decl in
-  let primitive_strings = collect_external_primitive_strings decl in
-  let attribute_tokens = collect_external_attribute_tokens decl in
-  emit_text state "external";
-  emit_space state;
-  if Vector.length name_tokens = 0 then
-    unsupported_node "external declaration without name" decl
-  else
-    emit_token_vector_stream state name_tokens;
-  (
-    match (Ast.ExternalDeclaration.colon_token decl, Ast.ExternalDeclaration.type_annotation decl) with
-    | (Some colon_token, Some annotation) ->
+  match Ast.ExternalDeclaration.view decl with
+  | Ast.ExternalDeclaration.External {
+      name = name_tokens;
+      colon_token;
+      annotation;
+      equals_token;
+      primitives = primitive_strings;
+      attributes = attribute_tokens;
+    } ->
+      emit_text state "external";
+      emit_space state;
+      emit_token_vector_stream state name_tokens;
+      (
         emit_token state colon_token;
         let suffix_width = external_declaration_suffix_width primitive_strings attribute_tokens in
         if type_expr_should_break_after_colon state ~suffix_width annotation then
@@ -7929,14 +7925,14 @@ and render_external_declaration = fun state decl ->
             render_type_expr_after_tight_colon state ~suffix_width:2 annotation;
             render_external_primitive_body_after_equals
               state
-              decl
+              equals_token
               primitive_strings
               attribute_tokens
           ) else (
             render_type_expr_after_colon state annotation;
             render_external_primitive_body_after_equals
               state
-              decl
+              equals_token
               primitive_strings
               attribute_tokens
           )
@@ -7944,13 +7940,14 @@ and render_external_declaration = fun state decl ->
           render_type_expr_after_colon state annotation;
           render_external_primitive_suffix
             state
-            decl
+            equals_token
             primitive_strings
             attribute_tokens
             ~leading_space:true
         )
-    | _ -> unsupported_node "incomplete external declaration" decl
-  )
+      )
+  | Ast.ExternalDeclaration.Unknown node ->
+      unsupported_node "unsupported external declaration" node
 
 and render_exception_payload = fun state payload ->
   match payload with
