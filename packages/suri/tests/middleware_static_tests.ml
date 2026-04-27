@@ -138,6 +138,89 @@ let test_static_directory_listing_escapes_displayed_values = fun _ctx ->
   Test.assert_false (String.contains html "<script>alert(1)</script>");
   Ok ()
 
+let expect_tempdir = fun result ->
+  match result with
+  | Ok result -> result
+  | Error error ->
+      Error ("failed to create temporary static test directory: " ^ IO.error_message error)
+
+let test_static_normalize_path_returns_structured_errors = fun _ctx ->
+  Fs.with_tempdir
+    (fun root ->
+      let config = Static.default_config in
+      match Fs.canonicalize root with
+      | Error _ -> Error "failed to canonicalize static test root"
+      | Ok canonical_root ->
+          let missing_root = Path.join root (Path.v "missing-root") in
+          let missing_file = Path.v "missing.txt" in
+          let expected_missing =
+            Path.join canonical_root missing_file
+            |> Path.normalize
+          in
+          let traversal = Path.v "../outside.txt" in
+          let link_path = Path.join root (Path.v "link.txt") in
+          let expected_link =
+            Path.join canonical_root (Path.v "link.txt")
+            |> Path.normalize
+          in
+          let target_path = Path.join root (Path.v "target.txt") in
+          match Fs.write "ok" target_path with
+          | Error _ -> Error "failed to create static symlink target"
+          | Ok () -> (
+              match Fs.symlink ~src:(Path.v "target.txt") ~dst:link_path with
+              | Error _ -> Error "failed to create static symlink"
+              | Ok () ->
+                  let checks = [
+                    (
+                      fun () ->
+                        match Static.For_testing.normalize_path config missing_root (Path.v ".") with
+                        | Error (Static.For_testing.InvalidRoot { root; _ }) ->
+                            Test.assert_true (Path.equal root missing_root);
+                            Ok ()
+                        | Ok _ -> Error "expected invalid root error"
+                        | Error _ -> Error "expected invalid root error"
+                    );
+                    (
+                      fun () ->
+                        match Static.For_testing.normalize_path config root missing_file with
+                        | Error (Static.For_testing.MissingPath { path }) ->
+                            Test.assert_true (Path.equal path expected_missing);
+                            Ok ()
+                        | Ok _ -> Error "expected missing path error"
+                        | Error _ -> Error "expected missing path error"
+                    );
+                    (
+                      fun () ->
+                        match Static.For_testing.normalize_path config root traversal with
+                        | Error (Static.For_testing.PathTraversal { requested; resolved = None; _ }) ->
+                            Test.assert_true (Path.equal requested traversal);
+                            Ok ()
+                        | Ok _ -> Error "expected traversal error"
+                        | Error _ -> Error "expected traversal error"
+                    );
+                    (
+                      fun () ->
+                        let deny_config = Static.{ default_config with symlinks = DenySymlinks } in
+                        match Static.For_testing.normalize_path deny_config root (Path.v "link.txt") with
+                        | Error (Static.For_testing.SymlinkDenied { symlink; requested; _ }) ->
+                            Test.assert_true (Path.equal symlink expected_link);
+                            Test.assert_true (Path.equal requested (Path.v "link.txt"));
+                            Ok ()
+                        | Ok _ -> Error "expected symlink denied error"
+                        | Error _ -> Error "expected symlink denied error"
+                    );
+                  ]
+                  in
+                  List.fold_left
+                    checks
+                    ~init:(Ok ())
+                    ~fn:(fun result check ->
+                      match result with
+                      | Error _ -> result
+                      | Ok () -> check ())
+            ))
+  |> expect_tempdir
+
 let tests =
   Test.[
     case
@@ -150,6 +233,9 @@ let tests =
     case
       "static directory listing escapes displayed values"
       test_static_directory_listing_escapes_displayed_values;
+    case
+      "static normalize path returns structured errors"
+      test_static_normalize_path_returns_structured_errors;
   ]
 
 let main ~args = Test.Cli.main ~name:"suri:middleware-static" ~tests ~args ()

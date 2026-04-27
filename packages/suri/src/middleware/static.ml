@@ -19,10 +19,29 @@ type config = {
 }
 
 type path_error =
-  | InvalidPath
-  | MissingPath
-  | PathTraversal
-  | SymlinkDenied
+  | InvalidRoot of {
+      root: Path.t;
+      error: Fs.error;
+    }
+  | MissingPath of {
+      path: Path.t;
+    }
+  | PathTraversal of {
+      root: Path.t;
+      requested: Path.t;
+      candidate: Path.t;
+      resolved: Path.t option;
+    }
+  | SymlinkDenied of {
+      root: Path.t;
+      requested: Path.t;
+      symlink: Path.t;
+    }
+  | InvalidPath of {
+      path: Path.t;
+      canonicalize_error: Fs.error;
+      exists_error: Fs.error option;
+    }
 
 let default_config = {
   show_directory = false;
@@ -140,49 +159,79 @@ module Security = struct
       | Error _ -> false
     )
 
-  let rec path_contains_symlink_between = fun ~root path ->
+  let rec first_symlink_between = fun ~root path ->
     match Fs.symlink_metadata path with
-    | Ok meta when Fs.Metadata.is_symlink meta -> true
+    | Ok meta when Fs.Metadata.is_symlink meta -> Some path
     | _ ->
         if Path.equal path root then
-          false
+          None
         else
           match Path.parent path with
-          | Some parent -> path_contains_symlink_between ~root parent
-          | None -> false
+          | Some parent -> first_symlink_between ~root parent
+          | None -> None
 
-  let path_contains_symlink = fun root requested_path ->
+  let first_symlink = fun root requested_path ->
     let root = Path.normalize root in
     let path =
       Path.join root requested_path
       |> Path.normalize
     in
-    path_contains_symlink_between ~root path
+    first_symlink_between ~root path
+
+  let canonicalize_candidate = fun ~root ~requested ~candidate ->
+    match Fs.canonicalize candidate with
+    | Ok canonical ->
+        if path_is_within_root ~root canonical then
+          Ok canonical
+        else
+          Error (
+            PathTraversal {
+              root;
+              requested;
+              candidate;
+              resolved = Some canonical;
+            }
+          )
+    | Error canonicalize_error -> (
+        match Fs.exists candidate with
+        | Ok false -> Error (MissingPath { path = candidate })
+        | Ok true ->
+            Error (InvalidPath { path = candidate; canonicalize_error; exists_error = None })
+        | Error exists_error ->
+            Error (InvalidPath {
+              path = candidate;
+              canonicalize_error;
+              exists_error = Some exists_error;
+            })
+      )
 
   let normalize_path = fun config root requested_path ->
     match Fs.canonicalize root with
-    | Error _ -> Error InvalidPath
+    | Error error -> Error (InvalidRoot { root; error })
     | Ok root_canonical ->
         let candidate =
           Path.join root_canonical requested_path
           |> Path.normalize
         in
         if not (path_is_within_root ~root:root_canonical candidate) then
-          Error PathTraversal
-        else if config.symlinks = DenySymlinks && path_contains_symlink root requested_path then
-          Error SymlinkDenied
+          Error (
+            PathTraversal {
+              root = root_canonical;
+              requested = requested_path;
+              candidate;
+              resolved = None;
+            }
+          )
+        else if config.symlinks = DenySymlinks then
+          (
+            match first_symlink root_canonical requested_path with
+            | Some symlink ->
+                Error (SymlinkDenied { root = root_canonical; requested = requested_path; symlink })
+            | None ->
+                canonicalize_candidate ~root:root_canonical ~requested:requested_path ~candidate
+          )
         else
-          match Fs.canonicalize candidate with
-          | Ok canonical ->
-              if path_is_within_root ~root:root_canonical canonical then
-                Ok canonical
-              else
-                Error PathTraversal
-          | Error _ -> (
-              match Fs.exists candidate with
-              | Ok false -> Error MissingPath
-              | _ -> Error InvalidPath
-            )
+          canonicalize_candidate ~root:root_canonical ~requested:requested_path ~candidate
 
   let is_safe_path = fun config root path ->
     check_dotfile config path && match normalize_path config root path with
@@ -577,10 +626,11 @@ let find_index_file = fun config path ->
 
 let path_error_status_and_body = fun error ->
   match error with
-  | MissingPath -> (Net.Http.Status.NotFound, "404 Not Found")
-  | InvalidPath -> (Net.Http.Status.Forbidden, "invalid path")
-  | PathTraversal -> (Net.Http.Status.Forbidden, "path traversal blocked")
-  | SymlinkDenied -> (Net.Http.Status.Forbidden, "symlinks are not allowed")
+  | MissingPath _ -> (Net.Http.Status.NotFound, "404 Not Found")
+  | InvalidRoot _ -> (Net.Http.Status.Forbidden, "invalid static root")
+  | InvalidPath _ -> (Net.Http.Status.Forbidden, "invalid path")
+  | PathTraversal _ -> (Net.Http.Status.Forbidden, "path traversal blocked")
+  | SymlinkDenied _ -> (Net.Http.Status.Forbidden, "symlinks are not allowed")
 
 let dotfile_status_and_body = fun config ->
   match config.dotfiles with
@@ -727,14 +777,35 @@ let middleware = fun ?(config = default_config) ~at root () ->
 
 module For_testing = struct
   type nonrec path_error = path_error =
-    | InvalidPath
-    | MissingPath
-    | PathTraversal
-    | SymlinkDenied
+    | InvalidRoot of {
+        root: Path.t;
+        error: Fs.error;
+      }
+    | MissingPath of {
+        path: Path.t;
+      }
+    | PathTraversal of {
+        root: Path.t;
+        requested: Path.t;
+        candidate: Path.t;
+        resolved: Path.t option;
+      }
+    | SymlinkDenied of {
+        root: Path.t;
+        requested: Path.t;
+        symlink: Path.t;
+      }
+    | InvalidPath of {
+        path: Path.t;
+        canonicalize_error: Fs.error;
+        exists_error: Fs.error option;
+      }
 
   let path_has_dot_segment = Security.path_has_dot_segment
 
   let path_is_within_root = Security.path_is_within_root
+
+  let normalize_path = Security.normalize_path
 
   let matches_mount = Security.matches_mount
 

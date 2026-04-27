@@ -181,13 +181,34 @@ val middleware: ?config:config -> at:string -> Path.t -> unit -> Pipeline.middle
 *)
 module For_testing: sig
   type path_error =
-    | InvalidPath
-    | MissingPath
-    | PathTraversal
-    | SymlinkDenied
+    | InvalidRoot of {
+        root: Path.t;
+        error: Fs.error;
+      }
+    | MissingPath of {
+        path: Path.t;
+      }
+    | PathTraversal of {
+        root: Path.t;
+        requested: Path.t;
+        candidate: Path.t;
+        resolved: Path.t option;
+      }
+    | SymlinkDenied of {
+        root: Path.t;
+        requested: Path.t;
+        symlink: Path.t;
+      }
+    | InvalidPath of {
+        path: Path.t;
+        canonicalize_error: Fs.error;
+        exists_error: Fs.error option;
+      }
   val path_has_dot_segment: Path.t -> bool
 
   val path_is_within_root: root:Path.t -> Path.t -> bool
+
+  val normalize_path: config -> Path.t -> Path.t -> (Path.t, path_error) result
 
   val matches_mount: at:string -> request_path:string -> bool
 
