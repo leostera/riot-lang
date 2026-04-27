@@ -65,7 +65,7 @@ let layout_decision_is_inline = function
 let append_subslice_unchecked = fun buffer slice ~off ~len ->
   match IO.Buffer.append_subslice buffer slice ~off ~len with
   | Ok () -> ()
-  | Error error -> panic ("Streaming_lower.append_subslice: " ^ IO.IoVec.error_message error)
+  | Error error -> panic ("Formatter.append_subslice: " ^ IO.IoVec.error_message error)
 
 let flush = fun state ->
   match state.sink.error with

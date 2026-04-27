@@ -77,7 +77,7 @@ module Stream_doc: module type of Stream_doc
 (** Formatter layout policy internals used by tracing and focused tests. *)
 module Layout_policy: module type of Layout_policy
 
-module Streaming_lower: module type of Streaming_lower
+module Formatter: module type of Formatter
 
 module Runner: module type of Runner
 

@@ -63,11 +63,11 @@ let bench_ast_view = fun fixture ->
   let source_file = Syn.Ast.SourceFile.make parsed.Syn.Parser.tree in
   touch_int (Syn.Ast.Node.full_width source_file)
 
-let bench_stream_lower = fun fixture ->
+let bench_stream_format = fun fixture ->
   let parsed = parse fixture in
   let (sink, writer) = counting_writer () in
   Krasny.stream_format parsed ~writer ~width:100
-  |> Result.expect ~msg:("streaming lower benchmark failed for " ^ Path.to_string fixture.path);
+  |> Result.expect ~msg:("stream format benchmark failed for " ^ Path.to_string fixture.path);
   touch_int sink.bytes
 
 let tiny_config: Bench.bench_config = { iterations = 2_000; warmup = 100 }
@@ -81,7 +81,7 @@ let benchmark_fixture = fun ~config fixture ->
     ("krasny lower: " ^ fixture.name)
     [
       Bench.make_case_with_config ~config "ast view" (fun () -> bench_ast_view fixture);
-      Bench.make_case_with_config ~config "stream format" (fun () -> bench_stream_lower fixture);
+      Bench.make_case_with_config ~config "stream format" (fun () -> bench_stream_format fixture);
     ]
 
 let source_fixtures = [
@@ -126,7 +126,7 @@ let benchmarks = fun () ->
     ~fn:(fun (config, fixture) -> benchmark_fixture ~config fixture)
 
 let main ~args =
-  let result = Bench.Cli.main ~name:"krasny streaming lower" ~benchmarks:(benchmarks ()) ~args in
+  let result = Bench.Cli.main ~name:"krasny stream format" ~benchmarks:(benchmarks ()) ~args in
   if !checksum = Int.min_int then
     panic "unreachable lower benchmark checksum";
   result

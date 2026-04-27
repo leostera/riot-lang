@@ -77,10 +77,10 @@ let stream_format = fun (result: Syn.Parser.parse_result) ~writer ~width ->
     Error (Format_failed (Cannot_parse diagnostics))
   else
     let source_file = Syn.Ast.SourceFile.make result.Syn.Parser.tree in
-    match Streaming_lower.write ~writer ~width source_file with
-    | Error (Streaming_lower.Cannot_format err) ->
-        Error (Format_failed (Cannot_lower (Streaming_lower.error_to_string err)))
-    | Error (Streaming_lower.Cannot_write err) -> Error (Write_failed err)
+    match Formatter.write ~writer ~width source_file with
+    | Error (Formatter.Cannot_format err) ->
+        Error (Format_failed (Cannot_lower (Formatter.error_to_string err)))
+    | Error (Formatter.Cannot_write err) -> Error (Write_failed err)
     | Ok () ->
         yield ();
         Ok ()

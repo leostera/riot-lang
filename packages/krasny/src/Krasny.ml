@@ -11,7 +11,7 @@ type write_error = Format_core.write_error =
 
 module Stream_doc = Stream_doc
 module Layout_policy = Layout_policy
-module Streaming_lower = Streaming_lower
+module Formatter = Formatter
 module Runner = Runner
 module Report = Report
 
