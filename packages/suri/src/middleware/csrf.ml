@@ -2,13 +2,42 @@ open Std
 
 (** {1 Token Generation} *)
 
+let secure_equal = fun s1 s2 ->
+  let len1 = String.length s1 in
+  let len2 = String.length s2 in
+  let result = ref 0 in
+  for i = 0 to max len1 len2 - 1 do
+    let c1 =
+      if i < len1 then
+        Char.code (String.get_unchecked s1 ~at:i)
+      else
+        0
+    in
+    let c2 =
+      if i < len2 then
+        Char.code (String.get_unchecked s2 ~at:i)
+      else
+        0
+    in
+    result := !result lor (c1 lxor c2)
+  done;
+  result := !result lor (len1 lxor len2);
+  !result = 0
+
+let fresh_rng = fun () ->
+  match Random.Rng.standard () with
+  | Ok rng -> rng
+  | Error error ->
+      panic ("Failed to initialize CSRF random generator: " ^ Random.error_to_string error)
+
 (** Generate random bytes *)
 let random_bytes = fun length ->
+  let rng = fresh_rng () in
   let bytes = IO.Bytes.create ~size:length in
   for i = 0 to length - 1 do
     let byte =
-      Random.int 256
-      |> Result.expect ~msg:"Failed to generate random byte"
+      Random.int ~rng 256
+      |> Result.expect ~msg:"Failed to generate CSRF random byte"
     in
     IO.Bytes.set_unchecked bytes ~at:i ~char:(Char.chr byte)
   done;
@@ -110,6 +139,14 @@ let unmask_token = fun masked_b64 ->
       let unmasked_hex = bytes_to_hex (IO.Bytes.to_string raw_bytes) in
       Option.some unmasked_hex
 
+let is_hex_char = function
+  | '0' .. '9'
+  | 'a' .. 'f'
+  | 'A' .. 'F' -> true
+  | _ -> false
+
+let is_raw_token = fun token -> String.length token = 64 && String.for_all token ~fn:is_hex_char
+
 (** {1 Token Storage and Verification} *)
 
 (** Session key for CSRF token *)
@@ -129,16 +166,9 @@ let verify_token = fun session request_token ->
   match Session.get_value csrf_token_key session with
   | Option.None -> false
   | Option.Some stored_token ->
-      (* Try unmasking first, fallback to direct comparison *)
-      match unmask_token request_token with
-      | Option.Some unmasked ->
-          let matches = String.equal unmasked stored_token in
-          if not matches then
-            ()
-          else
-            ();
-          matches
-      | Option.None -> String.equal request_token stored_token
+      is_raw_token stored_token && match unmask_token request_token with
+      | Option.Some unmasked -> is_raw_token unmasked && secure_equal unmasked stored_token
+      | Option.None -> is_raw_token request_token && secure_equal request_token stored_token
 
 (** {1 HTTP Method Classification} *)
 
@@ -230,3 +260,15 @@ let meta_tag = fun conn ->
   let token = get_token conn in
   let masked = mask_token token in
   Component.meta ~attrs:[ Component.name "csrf-token"; Component.attr "content" masked ] ()
+
+module For_testing = struct
+  let generate_token = generate_token
+
+  let mask_token = mask_token
+
+  let unmask_token = unmask_token
+
+  let is_raw_token = is_raw_token
+
+  let secure_equal = secure_equal
+end

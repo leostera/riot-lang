@@ -6,6 +6,7 @@ module Basic_auth = Suri.Middleware.Basic_auth
 module Body_parser = Suri.Middleware.Body_parser
 module Conn = Suri.Middleware.Conn
 module Cors = Suri.Middleware.Cors
+module Csrf = Suri.Middleware.Csrf
 module Logger = Suri.Middleware.Logger
 module Remote_ip = Suri.Middleware.Remote_ip
 module Request_id = Suri.Middleware.Request_id
@@ -364,6 +365,43 @@ let test_body_parser_rejects_multipart_without_boundary = fun _ctx ->
   | Ok _ -> Error "expected missing multipart boundary to fail"
   | Error error -> Error (Body_parser.parse_error_to_string error)
 
+let test_csrf_generates_raw_hex_tokens = fun _ctx ->
+  let token = Csrf.For_testing.generate_token () in
+  Test.assert_equal ~expected:64 ~actual:(String.length token);
+  Test.assert_true (Csrf.For_testing.is_raw_token token);
+  Ok ()
+
+let test_csrf_masking_roundtrips_and_uses_unique_masks = fun _ctx ->
+  let token = Csrf.For_testing.generate_token () in
+  let masked1 = Csrf.For_testing.mask_token token in
+  let masked2 = Csrf.For_testing.mask_token token in
+  Test.assert_false (String.equal masked1 masked2);
+  Test.assert_equal ~expected:(Some token) ~actual:(Csrf.For_testing.unmask_token masked1);
+  Test.assert_equal ~expected:(Some token) ~actual:(Csrf.For_testing.unmask_token masked2);
+  Ok ()
+
+let test_csrf_rejects_malformed_masked_tokens = fun _ctx ->
+  Test.assert_equal ~expected:None ~actual:(Csrf.For_testing.unmask_token "not-base64");
+  Test.assert_equal
+    ~expected:None
+    ~actual:(Csrf.For_testing.unmask_token (Encoding.Base64.encode "too-short"));
+  Ok ()
+
+let test_csrf_secure_equal_checks_full_token = fun _ctx ->
+  let token = Csrf.For_testing.generate_token () in
+  let last = String.get_unchecked token ~at:(String.length token - 1) in
+  let replacement =
+    if last = '0' then
+      "1"
+    else
+      "0"
+  in
+  Test.assert_true (Csrf.For_testing.secure_equal token token);
+  Test.assert_false (Csrf.For_testing.secure_equal token (String.sub token ~offset:0 ~len:63));
+  Test.assert_false
+    (Csrf.For_testing.secure_equal token (String.sub token ~offset:0 ~len:63 ^ replacement));
+  Ok ()
+
 let test_http1_response_rejects_invalid_header_name = fun _ctx ->
   let res = Response.ok ~headers:[ ("bad name", "value"); ] ~body:"ok" () in
   match Http1.serialize_response res with
@@ -515,6 +553,12 @@ let tests =
     case
       "body parser rejects multipart without boundary"
       test_body_parser_rejects_multipart_without_boundary;
+    case "csrf generates raw hex tokens" test_csrf_generates_raw_hex_tokens;
+    case
+      "csrf masking roundtrips and uses unique masks"
+      test_csrf_masking_roundtrips_and_uses_unique_masks;
+    case "csrf rejects malformed masked tokens" test_csrf_rejects_malformed_masked_tokens;
+    case "csrf secure equal checks full token" test_csrf_secure_equal_checks_full_token;
     case
       "http1 response rejects invalid header name"
       test_http1_response_rejects_invalid_header_name;

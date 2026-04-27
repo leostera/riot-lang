@@ -63,11 +63,13 @@
 
    {2 How It Works}
 
-   1. On first request, generates random token and stores in session
+   1. On first request, generates an OS-seeded random token and stores it in
+      session
    2. For unsafe methods (POST, PUT, DELETE), requires token in request
    3. Token can be in parameter ({i _csrf_token}) or header ({i x-csrf-token})
    4. Tokens are masked using XOR to prevent BREACH attacks
-   5. Failed verification returns 403 Forbidden
+   5. Token verification uses constant-time comparison
+   6. Failed verification returns 403 Forbidden
 
    {2 Security Notes}
 
@@ -186,3 +188,14 @@ val meta_tag: Conn.t -> 'msg Component.t
        ]
    ]}
 *)
+module For_testing: sig
+  val generate_token: unit -> string
+
+  val mask_token: string -> string
+
+  val unmask_token: string -> string option
+
+  val is_raw_token: string -> bool
+
+  val secure_equal: string -> string -> bool
+end
