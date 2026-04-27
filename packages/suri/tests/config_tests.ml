@@ -111,6 +111,18 @@ let test_config_parses_env_aliases = fun _ctx ->
   Test.assert_equal ~expected:(Ok Config.Test) ~actual:(Config.env_from_string "TEST");
   Ok ()
 
+let test_config_rejects_invalid_env_with_allowed_values = fun _ctx ->
+  match Config.env_from_string " staging " with
+  | Error (Config.InvalidEnv { value; normalized; allowed }) ->
+      Test.assert_equal ~expected:" staging " ~actual:value;
+      Test.assert_equal ~expected:"staging" ~actual:normalized;
+      Test.assert_equal
+        ~expected:[ Config.Development; Config.Test; Config.Production; ]
+        ~actual:allowed;
+      Ok ()
+  | Ok _ -> Error "expected invalid config env to fail"
+  | Error error -> Error (Config.error_to_string error)
+
 let test_config_rejects_production_placeholder_secret = fun _ctx ->
   match Config.validate (config_for_test ~env:Config.Production ()) with
   | Error errors ->
@@ -148,6 +160,9 @@ let tests =
   Test.[
     case "config validates default development" test_config_validates_default_development;
     case "config parses env aliases" test_config_parses_env_aliases;
+    case
+      "config rejects invalid env with allowed values"
+      test_config_rejects_invalid_env_with_allowed_values;
     case
       "config rejects production placeholder secret"
       test_config_rejects_production_placeholder_secret;

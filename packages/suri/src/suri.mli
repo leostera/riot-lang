@@ -338,8 +338,13 @@ module Config: sig
     | Missing
     | TooShort of int
     | Placeholder
+  type invalid_env = {
+    value: string;
+    normalized: string;
+    allowed: env list;
+  }
   type error =
-    | InvalidEnv of string
+    | InvalidEnv of invalid_env
     | InvalidPort of int
     | InvalidAcceptors of int
     | InvalidMaxRequestLineLength of int

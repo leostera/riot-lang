@@ -38,8 +38,14 @@ type liveview_secret_error =
   | TooShort of int
   | Placeholder
 
+type invalid_env = {
+  value: string;
+  normalized: string;
+  allowed: env list;
+}
+
 type error =
-  | InvalidEnv of string
+  | InvalidEnv of invalid_env
   | InvalidPort of int
   | InvalidAcceptors of int
   | InvalidMaxRequestLineLength of int
@@ -53,14 +59,17 @@ let env_to_string = function
   | Test -> "test"
   | Production -> "production"
 
+let allowed_envs = [ Development; Test; Production ]
+
 let env_from_string = fun raw ->
-  match String.lowercase_ascii (String.trim raw) with
+  let normalized = String.lowercase_ascii (String.trim raw) in
+  match normalized with
   | "development"
   | "dev" -> Ok Development
   | "test" -> Ok Test
   | "production"
   | "prod" -> Ok Production
-  | env -> Error (InvalidEnv env)
+  | _ -> Error (InvalidEnv { value = raw; normalized; allowed = allowed_envs })
 
 let liveview_secret_error_to_string = function
   | Missing -> "liveview_secret must not be empty"
@@ -68,7 +77,16 @@ let liveview_secret_error_to_string = function
   | Placeholder -> "liveview_secret must not use the default placeholder in production"
 
 let error_to_string = function
-  | InvalidEnv env -> "env must be one of development, test, or production, got '" ^ env ^ "'"
+  | InvalidEnv { value; allowed; _ } ->
+      "env must be one of "
+      ^ (
+        allowed
+        |> List.map ~fn:env_to_string
+        |> String.concat ", "
+      )
+      ^ ", got '"
+      ^ value
+      ^ "'"
   | InvalidPort port -> "port must be between 1 and 65535, got " ^ Int.to_string port
   | InvalidAcceptors acceptors -> "acceptors must be greater than 0, got " ^ Int.to_string acceptors
   | InvalidMaxRequestLineLength value ->
