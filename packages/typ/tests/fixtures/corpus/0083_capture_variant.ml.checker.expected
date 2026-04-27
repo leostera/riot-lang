@@ -120,7 +120,7 @@
     },
     {
       "UnsupportedSyntax": {
-        "kind": "IDENT_EXPR",
+        "kind": "PATH_EXPR",
         "span": {
           "end": 193,
           "start": 190

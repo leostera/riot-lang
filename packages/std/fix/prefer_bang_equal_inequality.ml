@@ -34,6 +34,11 @@ let make_fix = fun token ->
     ~title:"Replace <> with !="
     ~operations:[ Api.Fix.replace_token_with_text ~target:token ~text:"!=" ]
 
+let span_of_ast_token = fun token ->
+  Syn.Ceibo.Span.make
+    ~start:(Syn.Ast.Token.span_start token)
+    ~end_:(Syn.Ast.Token.span_end token)
+
 let make_diagnostic = fun token ->
   Api.Diagnostic.make
     ~severity:Warning
@@ -41,7 +46,7 @@ let make_diagnostic = fun token ->
       rule_id = explanation.Api.Explanation.rule_id;
       message = explanation.Api.Explanation.message;
     })
-    ~span:(Syn.Ceibo.Red.SyntaxToken.span token)
+    ~span:(span_of_ast_token token)
     ~suggestion:"Replace <> with !=."
     ~fix:(make_fix token)
     ()

@@ -36,7 +36,7 @@
           "end": 237,
           "start": 228
         },
-        "summary": "local open expression"
+        "summary": "local module binding"
       }
     }
   ],

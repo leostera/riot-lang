@@ -76,12 +76,12 @@
     },
     {
       "UnsupportedSyntax": {
-        "kind": "CONSTRUCTOR_PATTERN",
+        "kind": "APPLY_PATTERN",
         "span": {
           "end": 287,
           "start": 249
         },
-        "summary": "unsupported constructor pattern Closure"
+        "summary": "operator pattern"
       }
     },
     {

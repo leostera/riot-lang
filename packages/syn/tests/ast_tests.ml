@@ -179,6 +179,28 @@ val x:int
       Ok ()
   | None -> Error "expected leading docstring trivia"
 
+let test_node_span_excludes_leading_trivia = fun _ctx ->
+  let source = {ocaml|
+
+let x = 1
+  type t = int
+|ocaml}
+  in
+  let root =
+    parse_ml source
+    |> Result.expect ~msg:"expected parse source file"
+  in
+  let item =
+    nth_structure_item root 1
+    |> require_some ~msg:"expected second structure item"
+  in
+  let span = Ast.Node.span item in
+  let start = span.start in
+  let end_ = span.end_ in
+  let text = String.sub source ~offset:start ~len:(end_ - start) in
+  Test.assert_equal ~expected:"type t = int" ~actual:text;
+  Ok ()
+
 let test_expression_views = fun _ctx ->
   let source = "let x = if ready then 1 else 2\nlet y = match x with | 0 -> 1 | _ -> 2\n" in
   let root =
@@ -1703,6 +1725,28 @@ let test_binding_type_annotation_view = fun _ctx ->
       Ok ()
   | _ -> Error "expected binding path type annotation"
 
+let test_function_binding_return_annotation_view = fun _ctx ->
+  let root =
+    parse_ml "let map (type a b) (iter: a t) ~(fn:a -> b) : b t = failwith \"todo\"\n"
+    |> Result.expect ~msg:"expected parse source file"
+  in
+  let binding =
+    nth_structure_item root 0
+    |> require_some ~msg:"expected first structure item"
+    |> binding_of_structure_item
+    |> Result.expect ~msg:"expected let binding"
+  in
+  let annotation =
+    Ast.LetBinding.type_annotation binding
+    |> require_some ~msg:"expected function binding return annotation"
+  in
+  match Ast.TypeExpr.view annotation with
+  | Ast.TypeExpr.Apply { argument = Some argument; constructor = Some constructor } ->
+      assert_type_path_last_ident argument "b";
+      assert_type_path_last_ident constructor "t";
+      Ok ()
+  | _ -> Error "expected binding return apply type annotation"
+
 let last_path_text = fun path ->
   let token =
     Ast.Path.last_ident path
@@ -2991,6 +3035,7 @@ let y = 3
 let tests = [
   Test.case "ast exposes source file and let binding views" test_source_file_and_let_binding_views;
   Test.case "ast exposes separated docstring trivia parts" test_token_leading_docstring_trivia_parts;
+  Test.case "ast node spans exclude leading trivia" test_node_span_excludes_leading_trivia;
   Test.case "ast exposes if and match expression views" test_expression_views;
   Test.case "ast exposes assignment operator tokens" test_assignment_operator_views;
   Test.case
@@ -3042,6 +3087,9 @@ let tests = [
   Test.case "ast exposes module type declaration tokens" test_module_type_declaration_tokens;
   Test.case "ast exposes module type with-constraint views" test_module_type_with_constraint_views;
   Test.case "ast exposes let binding type annotation views" test_binding_type_annotation_view;
+  Test.case
+    "ast exposes function binding return annotation views"
+    test_function_binding_return_annotation_view;
   Test.case "ast exposes record expression and pattern views" test_record_views;
   Test.case
     "ast keeps record field special-form bodies within the field boundary"

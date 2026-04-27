@@ -96,6 +96,16 @@ let test_riot_init_scaffolds_operational_defaults =
           in
           let* () =
             assert_contains
+              Path.(workspace_root / Path.v "config" / Path.v "dev.toml")
+              "[[log.handler]]"
+          in
+          let* () =
+            assert_contains
+              Path.(workspace_root / Path.v "config" / Path.v "dev.toml")
+              {|type = "stdout"|}
+          in
+          let* () =
+            assert_contains
               Path.(workspace_root / Path.v ".riot" / Path.v "config.toml")
               "[riot.cache]"
           in

@@ -94,7 +94,7 @@
     },
     {
       "UnsupportedSyntax": {
-        "kind": "IDENT_EXPR",
+        "kind": "PATH_EXPR",
         "span": {
           "end": 340,
           "start": 333

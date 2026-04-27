@@ -207,6 +207,10 @@ let binary_for_path = fun config path ->
 let rec executable_parameter_to_string = fun parameter ->
   let module Ast = Syn.Ast in
   match Ast.Pattern.view parameter with
+  | Ast.Pattern.Path { path } ->
+      Ast.Path.last_ident path
+      |> Option.map ~fn:Ast.Token.text
+      |> Option.unwrap_or ~default:(String.trim (Ast.Node.text parameter))
   | Ast.Pattern.LabeledParam param -> (
       match Ast.Parameter.view param with
       | Ast.Parameter.Labeled { label = Some label; _ } -> "~" ^ Ast.Token.text label
@@ -220,8 +224,16 @@ let rec executable_parameter_to_string = fun parameter ->
       | _ -> "?<unknown>"
     )
   | Ast.Pattern.LocallyAbstractType -> "(type ...)"
+  | Ast.Pattern.Parenthesized { inner = None } -> "<positional>"
   | Ast.Pattern.Parenthesized { inner = Some inner } -> executable_parameter_to_string inner
-  | _ -> Ast.Node.text parameter
+  | Ast.Pattern.Constraint { pattern = Some pattern; _ }
+  | Ast.Pattern.Alias { pattern = Some pattern; _ } -> executable_parameter_to_string pattern
+  | _ ->
+      let text = String.trim (Ast.Node.text parameter) in
+      if String.is_empty text then
+        "<positional>"
+      else
+        text
 
 let rec is_labeled_args_parameter = fun parameter ->
   let module Ast = Syn.Ast in

@@ -10,6 +10,7 @@ path = "src/typ.ml"
 
 [dependencies]
 std = { path = "../std", version = "*" }
+ceibo = { path = "../ceibo", version = "*" }
 syn = { path = "../syn", version = "*" }
 contentstore = { path = "../contentstore", version = "*" }
 serde = { path = "../serde", version = "*" }

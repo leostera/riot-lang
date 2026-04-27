@@ -87,26 +87,25 @@ let make_suggestion = fun text ->
   | Some replacement -> Some ("Replace " ^ text ^ " with " ^ replacement)
   | None -> None
 
+let span_of_ast_token = fun token ->
+  Syn.Ceibo.Span.make
+    ~start:(Syn.Ast.Token.span_start token)
+    ~end_:(Syn.Ast.Token.span_end token)
+
 let make_fix = fun token replacement ->
   Api.Fix.make
-    ~title:("Replace " ^ Syn.Ceibo.Red.SyntaxToken.text token ^ " with " ^ replacement)
+    ~title:("Replace " ^ Syn.Ast.Token.text token ^ " with " ^ replacement)
     ~operations:[ Api.Fix.replace_token_with_text ~target:token ~text:replacement ]
 
 let make_diagnostic = fun token ->
-  let text = Syn.Ceibo.Red.SyntaxToken.text token in
+  let text = Syn.Ast.Token.text token in
   let suggestion = make_suggestion text in
   let fix =
     replacement_for text
     |> Option.map (make_fix token)
   in
   let kind = Api.Diagnostic.Known { rule_id = package_rule_id; message = make_message text } in
-  Api.Diagnostic.make
-    ~severity:Warning
-    ~kind
-    ~span:(Syn.Ceibo.Red.SyntaxToken.span token)
-    ?suggestion
-    ?fix
-    ()
+  Api.Diagnostic.make ~severity:Warning ~kind ~span:(span_of_ast_token token) ?suggestion ?fix ()
 
 let dedupe_diagnostics = fun diagnostics ->
   let seen = HashMap.create () in
@@ -128,7 +127,7 @@ let dedupe_diagnostics = fun diagnostics ->
     diagnostics
 
 let check_tree = fun (_ctx: Api.Rule.context) red_root ->
-  let open Syn.Ceibo.Red in
+  let module Ast = Syn.Ast in
   let open Syn.SyntaxKind in
   let open_stmts = Api.Traversal.find_by_kind OPEN_STMT red_root in
   let path_exprs = Api.Traversal.find_by_kind PATH_EXPR red_root in
@@ -139,27 +138,36 @@ let check_tree = fun (_ctx: Api.Rule.context) red_root ->
   let diagnostic_for_first_token node =
     match Api.Traversal.first_non_trivia_token node with
     | Some token ->
-        let text = SyntaxToken.text token in
+        let text = Ast.Token.text token in
         if List.mem text forbidden_modules then
           Some (make_diagnostic token)
         else
           None
     | None -> None
   in
+  let non_trivia_children node =
+    let children = Vector.with_capacity ~size:(Ast.Node.child_count node) in
+    Ast.Node.for_each_child
+      node
+      ~fn:(fun child ->
+        match child with
+        | Syn.SyntaxTree.Node id ->
+            let child_node = ({ tree = node.Ast.tree; id }: Ast.Node.t) in
+            if not (Api.Traversal.is_trivia (Ast.Node.kind child_node)) then
+              Vector.push children ~value:(Api.Traversal.Node child_node)
+        | Syn.SyntaxTree.Token id ->
+            let token = ({ tree = node.Ast.tree; id }: Ast.Token.t) in
+            if not (Api.Traversal.is_trivia (Ast.Token.kind token)) then
+              Vector.push children ~value:(Api.Traversal.Token token)
+        | Syn.SyntaxTree.Missing _ -> ());
+    Vector.to_array children
+    |> Array.to_list
+  in
   let diagnostic_for_open_stmt node =
-    let non_trivia_children =
-      SyntaxNode.children node
-      |> List.filter
-        (
-          function
-          | Token token -> not (Api.Traversal.is_trivia (SyntaxToken.kind token))
-          | Node _ -> true
-        )
-    in
-    match non_trivia_children with
-    | _open_kw :: (Node module_path) :: _ -> diagnostic_for_first_token module_path
-    | _open_kw :: (Token token) :: _ ->
-        let text = SyntaxToken.text token in
+    match non_trivia_children node with
+    | _open_kw :: (Api.Traversal.Node module_path) :: _ -> diagnostic_for_first_token module_path
+    | _open_kw :: (Api.Traversal.Token token) :: _ ->
+        let text = Ast.Token.text token in
         if List.mem text forbidden_modules then
           Some (make_diagnostic token)
         else
@@ -168,9 +176,9 @@ let check_tree = fun (_ctx: Api.Rule.context) red_root ->
   in
   let diagnostic_for_field_access node =
     match Api.Traversal.first_non_trivia_child node with
-    | Some (Node receiver) -> diagnostic_for_first_token receiver
-    | Some (Token token) ->
-        let text = SyntaxToken.text token in
+    | Some (Api.Traversal.Node receiver) -> diagnostic_for_first_token receiver
+    | Some (Api.Traversal.Token token) ->
+        let text = Ast.Token.text token in
         if List.mem text forbidden_modules then
           Some (make_diagnostic token)
         else

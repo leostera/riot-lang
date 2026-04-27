@@ -31,7 +31,7 @@
   "diagnostics": [
     {
       "UnsupportedSyntax": {
-        "kind": "TYPE_MUTUAL_DECL",
+        "kind": "TYPE_DECL",
         "span": {
           "end": 211,
           "start": 158
@@ -41,7 +41,7 @@
     },
     {
       "UnsupportedSyntax": {
-        "kind": "IDENT_EXPR",
+        "kind": "PATH_EXPR",
         "span": {
           "end": 238,
           "start": 234

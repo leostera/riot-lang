@@ -66,7 +66,7 @@
   "diagnostics": [
     {
       "UnsupportedSyntax": {
-        "kind": "LET_BINDING",
+        "kind": "LET_DECL",
         "span": {
           "end": 292,
           "start": 171

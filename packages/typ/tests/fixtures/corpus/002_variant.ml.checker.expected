@@ -46,7 +46,7 @@
     },
     {
       "UnsupportedSyntax": {
-        "kind": "IDENT_EXPR",
+        "kind": "PATH_EXPR",
         "span": {
           "end": 69,
           "start": 66
@@ -56,7 +56,7 @@
     },
     {
       "UnsupportedSyntax": {
-        "kind": "IDENT_EXPR",
+        "kind": "PATH_EXPR",
         "span": {
           "end": 85,
           "start": 81

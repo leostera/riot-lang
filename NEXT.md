@@ -4,6 +4,8 @@
 
 # Before Announcing
 
+* suri still needs riot-model but its yanked!
+
 * riot test print test time like ... ok (32µs)
 
 * riot test should build one test binary per package to maximize throughput

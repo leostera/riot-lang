@@ -68,7 +68,7 @@
     },
     {
       "UnsupportedSyntax": {
-        "kind": "LET_BINDING",
+        "kind": "LET_DECL",
         "span": {
           "end": 384,
           "start": 258

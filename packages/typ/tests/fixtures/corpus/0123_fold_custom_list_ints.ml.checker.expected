@@ -135,7 +135,7 @@
     },
     {
       "UnsupportedSyntax": {
-        "kind": "LET_BINDING",
+        "kind": "LET_DECL",
         "span": {
           "end": 329,
           "start": 221
@@ -165,7 +165,7 @@
     },
     {
       "UnsupportedSyntax": {
-        "kind": "IDENT_EXPR",
+        "kind": "PATH_EXPR",
         "span": {
           "end": 394,
           "start": 391

@@ -79,7 +79,7 @@
     },
     {
       "UnsupportedSyntax": {
-        "kind": "CONSTRUCTOR_PATTERN",
+        "kind": "PATH_PATTERN",
         "span": {
           "end": 234,
           "start": 230
@@ -98,7 +98,7 @@
     },
     {
       "UnsupportedSyntax": {
-        "kind": "IDENT_EXPR",
+        "kind": "PATH_EXPR",
         "span": {
           "end": 265,
           "start": 261

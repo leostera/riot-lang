@@ -994,8 +994,14 @@ allowed to use.
 
 let dev_config_toml = fun ~workspace_name ->
   {|[app]
-name = "|} ^ workspace_name ^ {|"
+name = "|}
+  ^ workspace_name
+  ^ {|"
 log_level = "info"
+
+[[log.handler]]
+type = "stdout"
+format = "full"
 |}
 
 let workspace_riot_config_toml = {|

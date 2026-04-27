@@ -8,24 +8,39 @@ let sample_list = fun ~rng distribution ~len ->
   Random.sample ~rng (Random.Distribution.list ~len distribution)
   |> Result.unwrap
 
+let default_rng_lock = Kernel.Sync.Mutex.create ()
+
+let with_default_rng_lock = fun fn ->
+  Kernel.Sync.Mutex.lock default_rng_lock;
+  try
+    let result = fn () in
+    Kernel.Sync.Mutex.unlock default_rng_lock;
+    result
+  with
+  | exn ->
+      Kernel.Sync.Mutex.unlock default_rng_lock;
+      raise exn
+
 let test_init_with_same_seed_repeats_default_sequence = fun _ctx ->
-  let distribution = Random.Distribution.int 10_000 in
-  Random.init ~seed:"abc" ()
-  |> Result.unwrap;
-  let first =
-    Random.sample (Random.Distribution.list ~len:8 distribution)
-    |> Result.unwrap
-  in
-  Random.init ~seed:"abc" ()
-  |> Result.unwrap;
-  let second =
-    Random.sample (Random.Distribution.list ~len:8 distribution)
-    |> Result.unwrap
-  in
-  if first = second then
-    Ok ()
-  else
-    Error "expected Random.init with the same seed to reproduce the same default sequence"
+  with_default_rng_lock
+    (fun () ->
+      let distribution = Random.Distribution.int 10_000 in
+      Random.init ~seed:"abc" ()
+      |> Result.unwrap;
+      let first =
+        Random.sample (Random.Distribution.list ~len:8 distribution)
+        |> Result.unwrap
+      in
+      Random.init ~seed:"abc" ()
+      |> Result.unwrap;
+      let second =
+        Random.sample (Random.Distribution.list ~len:8 distribution)
+        |> Result.unwrap
+      in
+      if first = second then
+        Ok ()
+      else
+        Error "expected Random.init with the same seed to reproduce the same default sequence")
 
 let test_seeded_standard_rngs_are_deterministic = fun _ctx ->
   let left = sample_list ~rng:(seeded_rng "same-seed") (Random.Distribution.int 10_000) ~len:8 in
@@ -36,23 +51,25 @@ let test_seeded_standard_rngs_are_deterministic = fun _ctx ->
     Error "expected Random.Rng.standard ~seed to be deterministic"
 
 let test_explicit_rng_is_independent_from_default_rng = fun _ctx ->
-  let distribution = Random.Distribution.list ~len:6 (Random.Distribution.int 10_000) in
-  Random.init ~seed:"default-a" ()
-  |> Result.unwrap;
-  let first =
-    Random.sample ~rng:(seeded_rng "explicit") distribution
-    |> Result.unwrap
-  in
-  Random.init ~seed:"default-b" ()
-  |> Result.unwrap;
-  let second =
-    Random.sample ~rng:(seeded_rng "explicit") distribution
-    |> Result.unwrap
-  in
-  if first = second then
-    Ok ()
-  else
-    Error "expected explicit RNG sampling to be independent from the default RNG"
+  with_default_rng_lock
+    (fun () ->
+      let distribution = Random.Distribution.list ~len:6 (Random.Distribution.int 10_000) in
+      Random.init ~seed:"default-a" ()
+      |> Result.unwrap;
+      let first =
+        Random.sample ~rng:(seeded_rng "explicit") distribution
+        |> Result.unwrap
+      in
+      Random.init ~seed:"default-b" ()
+      |> Result.unwrap;
+      let second =
+        Random.sample ~rng:(seeded_rng "explicit") distribution
+        |> Result.unwrap
+      in
+      if first = second then
+        Ok ()
+      else
+        Error "expected explicit RNG sampling to be independent from the default RNG")
 
 let test_bits_are_non_negative = fun _ctx ->
   match Random.bits ~rng:(seeded_rng "bits") () with

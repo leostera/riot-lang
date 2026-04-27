@@ -53,7 +53,7 @@
                 "end": 6
               },
               "rule_id": "avoid-single-letter-type-names",
-              "suggestion": "Rename x to a descriptive type name",
+              "suggestion": "Use a descriptive type name, or `t` for the module primary type",
               "fix": null
             }
           }

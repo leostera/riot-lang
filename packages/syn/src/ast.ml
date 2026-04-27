@@ -486,6 +486,14 @@ let first_let_binding_child = fun (node: node) ->
     node
     ~matches:is_let_binding_kind
 
+let span_of_raw_range = fun tree ~raw_lo ~raw_hi ->
+  if Int.(raw_hi <= raw_lo) then
+    Ceibo.Span.make ~start:0 ~end_:0
+  else
+    let first = Vector.get_unchecked tree.Syntax_tree.raw_tokens ~at:raw_lo in
+    let last = Vector.get_unchecked tree.Syntax_tree.raw_tokens ~at:(Int.sub raw_hi 1) in
+    Ceibo.Span.make ~start:first.Raw_token.span.start ~end_:last.Raw_token.span.end_
+
 let rec for_each_token_in_node = fun (node: node) ~fn ->
   Syntax_tree.for_each_child
     node.tree
@@ -590,6 +598,14 @@ module Token = struct
       (syntax_token token)
 
   let text = fun (token: token) -> Syntax_tree.token_text token.tree (syntax_token token)
+
+  let span = fun (token: token) ->
+    let leaf = syntax_token token in
+    (Vector.get_unchecked token.tree.Syntax_tree.raw_tokens ~at:leaf.Syntax_tree.body_raw).Raw_token.span
+
+  let span_start = fun token -> (span token).Ceibo.Span.start
+
+  let span_end = fun token -> (span token).Ceibo.Span.end_
 
   let leading_text = fun (token: token) ->
     let syntax_token = syntax_token token in
@@ -701,6 +717,27 @@ module Node = struct
   let kind = fun (node: node) -> (syntax_node node).Syntax_tree.kind
 
   let text = fun (node: node) -> Syntax_tree.node_text node.tree (syntax_node node)
+
+  let span = fun (node: node) ->
+    let first = ref None in
+    let last = ref None in
+    for_each_token_in_node
+      node
+      ~fn:(fun token ->
+        let span = Token.span token in
+        (
+          match !first with
+          | Some _ -> ()
+          | None -> first := Some span.Ceibo.Span.start
+        );
+        last := Some span.Ceibo.Span.end_);
+    match (!first, !last) with
+    | (Some start, Some end_) -> Ceibo.Span.make ~start ~end_
+    | _ -> Ceibo.Span.make ~start:0 ~end_:0
+
+  let span_start = fun node -> (span node).Ceibo.Span.start
+
+  let span_end = fun node -> (span node).Ceibo.Span.end_
 
   let raw_range = fun (node: node) ->
     let node = syntax_node node in
@@ -2922,6 +2959,7 @@ end = struct
 
   let rec for_each_parameter_pattern = fun pattern ~fn ->
     match Pattern.view pattern with
+    | Constraint { pattern = Some pattern; _ } -> for_each_parameter_pattern pattern ~fn
     | Apply { callee = Some callee; argument = Some argument } ->
         for_each_parameter_pattern callee ~fn;
         for_each_parameter_pattern argument ~fn
@@ -2938,13 +2976,35 @@ end = struct
         else
           seen_first := true)
 
+  let direct_binding_return_annotation = fun (binding: let_binding) ->
+    let found = ref None in
+    let seen_binding_pattern = ref false in
+    for_each_child_node_matching
+      binding
+      ~matches:is_pattern_kind
+      ~fn:(fun pattern ->
+        match !found with
+        | Some _ -> ()
+        | None ->
+            if !seen_binding_pattern then
+              match Pattern.view pattern with
+              | Constraint { annotation = Some annotation; _ } -> found := Some annotation
+              | _ -> ()
+            else
+              seen_binding_pattern := true);
+    !found
+
   let type_annotation = fun (binding: let_binding) ->
-    match first_type_expr_child binding with
-    | Some type_expr -> Some type_expr
+    match direct_binding_return_annotation binding with
+    | Some annotation -> Some annotation
     | None -> (
-        match pattern binding with
-        | Some pattern -> first_type_expr_descendant_of_pattern pattern
-        | None -> None
+        match first_type_expr_child binding with
+        | Some type_expr -> Some type_expr
+        | None -> (
+            match pattern binding with
+            | Some pattern -> first_type_expr_descendant_of_pattern pattern
+            | None -> None
+          )
       )
 end
 

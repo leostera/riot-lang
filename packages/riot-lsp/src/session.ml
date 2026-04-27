@@ -428,20 +428,24 @@ let range_of_span = fun text (span: Syn.Ceibo.Span.t) ->
     ~end_offset:span.end_
 
 let range_of_node = fun text node ->
-  let (start, end_) = Syn.Ast.Node.raw_range node in
-  range_of_span text (Syn.Ceibo.Span.make ~start ~end_)
+  range_of_span
+    text
+    (Syn.Ceibo.Span.make ~start:(Syn.Ast.Node.span_start node) ~end_:(Syn.Ast.Node.span_end node))
 
 let range_of_token = fun text token ->
-  let (start, end_) = Syn.Ast.Token.raw_range token in
-  range_of_span text (Syn.Ceibo.Span.make ~start ~end_)
+  range_of_span
+    text
+    (Syn.Ceibo.Span.make
+      ~start:(Syn.Ast.Token.span_start token)
+      ~end_:(Syn.Ast.Token.span_end token))
 
 let range_of_tokens = fun text tokens ->
   match tokens with
   | [] -> Lsp.Utf16.range_of_offsets text ~start_offset:0 ~end_offset:0
   | first :: rest ->
       let last = List.fold_left rest ~init:first ~fn:(fun _ token -> token) in
-      let (start, _) = Syn.Ast.Token.raw_range first in
-      let (_, end_) = Syn.Ast.Token.raw_range last in
+      let start = Syn.Ast.Token.span_start first in
+      let end_ = Syn.Ast.Token.span_end last in
       Lsp.Utf16.range_of_offsets text ~start_offset:start ~end_offset:end_
 
 let text_of_name_tokens = fun tokens ->
@@ -547,7 +551,7 @@ let document_symbol_of_named_item = fun
     children;
   }
 
-let let_binding_symbol = fun text binding ->
+let let_binding_symbol = fun text ~range_node binding ->
   match Syn.Ast.LetBinding.pattern binding
   |> Option.and_then ~fn:binding_name_tokens_of_pattern with
   | None -> []
@@ -565,7 +569,7 @@ let let_binding_symbol = fun text binding ->
           ~text
           ~name:(text_of_name_tokens name_tokens)
           ~kind
-          ~syntax_node:binding
+          ~syntax_node:range_node
           ~selection_range:(range_of_tokens text name_tokens)
           ();
       ]
@@ -575,7 +579,7 @@ let let_declaration_symbols = fun text declaration ->
   Syn.Ast.LetDeclaration.for_each_binding
     declaration
     ~fn:(fun binding ->
-      let_binding_symbol text binding
+      let_binding_symbol text ~range_node:declaration binding
       |> List.for_each ~fn:(fun symbol ->
         Vector.push symbols ~value:symbol));
   vector_to_list symbols

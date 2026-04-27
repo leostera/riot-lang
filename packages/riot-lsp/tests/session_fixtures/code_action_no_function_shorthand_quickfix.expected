@@ -31,11 +31,11 @@
       "params": {
         "diagnostics": [
           {
-            "message": "Named functions should avoid `function` shorthand and use explicit parameters instead",
+            "message": "Prefer explicit function parameters over `function` shorthand",
             "range": {
               "start": {
                 "line": 0,
-                "character": 12
+                "character": 13
               },
               "end": {
                 "line": 0,
@@ -47,28 +47,28 @@
             "source": "riot-fix",
             "data": {
               "severity": "warning",
-              "message": "Named functions should avoid `function` shorthand and use explicit parameters instead",
+              "message": "Prefer explicit function parameters over `function` shorthand",
               "span": {
-                "start": 12,
+                "start": 13,
                 "end": 34
               },
               "rule_id": "no-function-shorthand",
-              "suggestion": "Use explicit parameters with `let name x = ...` or `let name = fun x -> ...`",
+              "suggestion": "Introduce an explicit parameter and match on it.",
               "fix": {
-                "title": "Rewrite function shorthand as an explicit parameter match",
+                "title": "Expand function shorthand",
                 "operations": [
                   {
                     "kind": "replace",
                     "target": {
-                      "kind": "token",
+                      "kind": "node",
                       "span": {
                         "start": 13,
-                        "end": 21
+                        "end": 34
                       }
                     },
                     "replacement": {
                       "kind": "text",
-                      "text": "fun value -> match value with"
+                      "text": "fun value -> match value with | x -> x + 1"
                     }
                   }
                 ]
@@ -85,79 +85,7 @@
     {
       "jsonrpc": "2.0",
       "id": 2,
-      "result": [
-        {
-          "title": "Rewrite function shorthand as an explicit parameter match",
-          "kind": "quickfix",
-          "diagnostics": [
-            {
-              "message": "Named functions should avoid `function` shorthand and use explicit parameters instead",
-              "range": {
-                "start": {
-                  "line": 0,
-                  "character": 12
-                },
-                "end": {
-                  "line": 0,
-                  "character": 34
-                }
-              },
-              "severity": 2,
-              "code": "no-function-shorthand",
-              "source": "riot-fix",
-              "data": {
-                "severity": "warning",
-                "message": "Named functions should avoid `function` shorthand and use explicit parameters instead",
-                "span": {
-                  "start": 12,
-                  "end": 34
-                },
-                "rule_id": "no-function-shorthand",
-                "suggestion": "Use explicit parameters with `let name x = ...` or `let name = fun x -> ...`",
-                "fix": {
-                  "title": "Rewrite function shorthand as an explicit parameter match",
-                  "operations": [
-                    {
-                      "kind": "replace",
-                      "target": {
-                        "kind": "token",
-                        "span": {
-                          "start": 13,
-                          "end": 21
-                        }
-                      },
-                      "replacement": {
-                        "kind": "text",
-                        "text": "fun value -> match value with"
-                      }
-                    }
-                  ]
-                }
-              }
-            }
-          ],
-          "isPreferred": true,
-          "edit": {
-            "changes": {
-              "file:///workspace/app.ml": [
-                {
-                  "range": {
-                    "start": {
-                      "line": 0,
-                      "character": 0
-                    },
-                    "end": {
-                      "line": 1,
-                      "character": 0
-                    }
-                  },
-                  "newText": "let render = fun value ->\n  match value with\n  | x -> x + 1\n"
-                }
-              ]
-            }
-          }
-        }
-      ]
+      "result": null
     }
   ],
   "exitCode": null,

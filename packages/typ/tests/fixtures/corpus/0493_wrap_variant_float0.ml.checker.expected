@@ -76,7 +76,7 @@
     },
     {
       "UnsupportedSyntax": {
-        "kind": "CONSTRUCTOR_PATTERN",
+        "kind": "APPLY_PATTERN",
         "span": {
           "end": 208,
           "start": 198

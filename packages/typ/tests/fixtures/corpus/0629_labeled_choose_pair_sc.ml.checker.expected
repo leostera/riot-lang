@@ -100,7 +100,7 @@
       "UnsupportedSyntax": {
         "kind": "LABELED_ARG",
         "span": {
-          "end": 297,
+          "end": 272,
           "start": 254
         },
         "summary": "labeled argument"
@@ -110,7 +110,7 @@
       "UnsupportedSyntax": {
         "kind": "LABELED_ARG",
         "span": {
-          "end": 297,
+          "end": 292,
           "start": 273
         },
         "summary": "labeled argument"

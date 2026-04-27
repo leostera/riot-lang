@@ -127,7 +127,7 @@
     },
     {
       "UnsupportedSyntax": {
-        "kind": "LOCALLY_ABSTRACT_TYPE_PARAM",
+        "kind": "LOCALLY_ABSTRACT_TYPE_PATTERN",
         "span": {
           "end": 412,
           "start": 404

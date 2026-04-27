@@ -68,7 +68,7 @@
     },
     {
       "UnsupportedSyntax": {
-        "kind": "TYPE_DECL",
+        "kind": "TYPE_EXTENSION_DECL",
         "span": {
           "end": 227,
           "start": 193

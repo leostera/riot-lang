@@ -86,6 +86,13 @@ module Token: sig
 
   val text: t -> string
 
+  (** Source span of the token body, excluding leading trivia. *)
+  val span: t -> Ceibo.Span.t
+
+  val span_start: t -> int
+
+  val span_end: t -> int
+
   (** Materialize all leading trivia attached to this token. *)
   val leading_text: t -> string
 
@@ -115,6 +122,13 @@ module Node: sig
   val kind: t -> Syntax_kind.t
 
   val text: t -> string
+
+  (** Source span covered by this node's syntactic tokens, excluding leading trivia. *)
+  val span: t -> Ceibo.Span.t
+
+  val span_start: t -> int
+
+  val span_end: t -> int
 
   val raw_range: t -> int * int
 
