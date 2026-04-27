@@ -185,7 +185,7 @@ let main ~args:_ =
         loop ()
       in
       loop ()
-  | Error `Bind_error ->
+  | Error _ ->
       Log.error "Failed to bind to port 8080";
       Error (Failure "Failed to start server")
 

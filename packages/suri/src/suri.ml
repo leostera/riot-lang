@@ -15,6 +15,10 @@ type middleware = Middleware.Pipeline.middleware
 
 type handler = Middleware.Pipeline.t
 
+type start_error = Web_server.start_error =
+  | InvalidAddress of Std.Net.Addr.error
+  | BindFailed of Std.Net.TcpListener.error
+
 (* Low-level modules (not exposed in .mli) *)
 
 module SocketPool = Socket_pool

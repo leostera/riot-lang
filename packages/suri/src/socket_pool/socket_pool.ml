@@ -15,6 +15,10 @@ type ('s, 'e) pool_state = {
   acceptor_supervisor: Supervisor.Dynamic.t;
 }
 
+type error =
+  | InvalidAddress of Net.Addr.error
+  | BindFailed of Net.TcpListener.error
+
 (** Start a supervised pool of acceptors *)
 let start_link = fun
   ~host
@@ -26,10 +30,10 @@ let start_link = fun
   (handler: (s, e) Handler.handler)
   (initial_ctx: s) ->
   match Net.Addr.of_host_and_port ~host ~port with
-  | Error _ -> Error `Bind_error
+  | Error error -> Error (InvalidAddress error)
   | Ok addr -> (
       match Net.TcpListener.bind ~reuse_addr:true ~reuse_port:false addr with
-      | Error _ -> Error `Bind_error
+      | Error error -> Error (BindFailed error)
       | Ok listener ->
           Log.info ("Listening on " ^ host ^ ":" ^ (Int.to_string port));
           (* Start a dynamic supervisor for acceptors *)

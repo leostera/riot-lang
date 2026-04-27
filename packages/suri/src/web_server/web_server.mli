@@ -48,7 +48,7 @@
        | Ok _supervisor ->
            Log.info "Server running on http://0.0.0.0:8080";
            receive_any ()
-       | Error `Bind_error ->
+       | Error _ ->
            Error (Failure "Failed to bind")
    ]}
 
@@ -155,7 +155,7 @@
          let count = Supervisor.Dynamic.count_children supervisor in
          Log.info "Active acceptors: %d" count.active;
          receive_any ()
-     | Error `Bind_error ->
+     | Error _ ->
          Error (Failure "Failed to bind")
    ]}
 
@@ -265,6 +265,9 @@ module Http2 = Http2_handler
 module ProtocolDetector = Protocol_detector
 
 (** Auto-detect HTTP/1.1 vs HTTP/2 and switch handlers *)
+type start_error =
+  | InvalidAddress of Std.Net.Addr.error
+  | BindFailed of Std.Net.TcpListener.error
 val start_link:
   ?host:string ->
   port:int ->
@@ -272,7 +275,7 @@ val start_link:
   config:Config.t ->
   handler:Handler.t ->
   unit ->
-  (Std.Supervisor.Dynamic.t, [> `Bind_error]) Std.result
+  (Std.Supervisor.Dynamic.t, start_error) Std.result
 
 (**
    Start a supervised HTTP/1.1 server.
@@ -286,7 +289,7 @@ val start_link:
    @param acceptors Number of concurrent acceptor processes (default: 100)
    @param config Server configuration (see {!Config})
    @param handler Your HTTP request handler function
-   @return [Ok supervisor] with the supervisor PID, or [Error `Bind_error]
+   @return [Ok supervisor] with the supervisor PID, or [Error _] if startup fails
 
    The handler function receives a connection and request, and should return
    either a normal HTTP response or a protocol upgrade (WebSocket). Example:

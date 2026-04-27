@@ -58,7 +58,7 @@ open Std
            Log.info "Server running on http://0.0.0.0:4000";
            let rec loop () = sleep (Time.Duration.from_secs 100); loop () in
            loop ()
-       | Error `Bind_error ->
+       | Error _ ->
            Error (Failure "Failed to bind")
 
      let () = Runtime.run ~main ~args:Env.args ()
@@ -106,7 +106,7 @@ open Std
            Log.info "Server running";
            let rec loop () = sleep (Time.Duration.from_secs 100); loop () in
            loop ()
-       | Error `Bind_error ->
+       | Error _ ->
            Error (Failure "Failed to bind")
 
      let () = Runtime.run ~main ~args:Env.args ()
@@ -157,7 +157,7 @@ open Std
            Log.info "Server with routing on http://0.0.0.0:4000";
            let rec loop () = sleep (Time.Duration.from_secs 100); loop () in
            loop ()
-       | Error `Bind_error ->
+       | Error _ ->
            Error (Failure "Failed to bind")
 
      let () = Runtime.run ~main ~args:Env.args ()
@@ -379,11 +379,12 @@ val config:
 type middleware = Middleware.Pipeline.middleware
 (** A middleware function: [Conn.t -> Conn.t] *)
 type handler = Middleware.Pipeline.t
-
 (** A handler is just a list of middleware functions *)
+type start_error =
+  | InvalidAddress of Std.Net.Addr.error
+  | BindFailed of Std.Net.TcpListener.error
 (** {2 Starting the Server} *)
-
-val start_link: ?config:Config.t -> handler -> (Supervisor.Dynamic.t, [> `Bind_error]) result
+val start_link: ?config:Config.t -> handler -> (Supervisor.Dynamic.t, start_error) result
 
 (**
    Start a Suri web server with a middleware pipeline.
@@ -416,7 +417,7 @@ val start_link: ?config:Config.t -> handler -> (Supervisor.Dynamic.t, [> `Bind_e
 
    @param config Server configuration (defaults to Suri.config())
    @param handler Middleware pipeline (list of Conn.t -> Conn.t)
-   @return Ok supervisor_pid if successful, Error `Bind_error if port binding fails
+   @return Ok supervisor_pid if successful, Error _ if startup fails
 *)
 (** {2 User-Facing Modules} *)
 

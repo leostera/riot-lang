@@ -424,7 +424,7 @@ let main ~args:_ =
         loop ()
       in
       loop ()
-  | Error `Bind_error ->
+  | Error _ ->
       Log.error "Failed to bind to port 9998";
       Error (Failure "Failed to start server")
 

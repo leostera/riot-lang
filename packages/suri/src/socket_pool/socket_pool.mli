@@ -87,6 +87,9 @@ module Handler: module type of Handler
 module Transport: module type of Transport
 
 (** Transport layer - see {!Transport} *)
+type error =
+  | InvalidAddress of Net.Addr.error
+  | BindFailed of Net.TcpListener.error
 val start_link:
   host:string ->
   port:int ->
@@ -95,7 +98,7 @@ val start_link:
   ?transport:Transport.t ->
   ('state, 'err) Handler.handler ->
   'state ->
-  (Supervisor.Dynamic.t, [> `Bind_error]) result
+  (Supervisor.Dynamic.t, error) result
 
 (**
    [start_link ~host ~port handler initial_state] starts a supervised TCP server.
@@ -109,7 +112,7 @@ val start_link:
    - [initial_state] - Initial state for new connections
 
    Returns [Ok supervisor_pid] with a dynamic supervisor managing acceptors,
-   or [Error `Bind_error] if port binding failed.
+   or [Error _] if address resolution or port binding failed.
 
    The server uses a {!Std.Supervisor.Dynamic} to manage [acceptors] processes
    that concurrently accept connections. Each accepted connection spawns a new
@@ -130,7 +133,7 @@ val start_link:
        Log.info "Server started with supervisor";
        (* Keep process alive or link supervisor to your app supervisor *)
        ()
-   | Error `Bind_error ->
+   | Error _ ->
        Log.error "Failed to bind to port"
    ```
 *)
