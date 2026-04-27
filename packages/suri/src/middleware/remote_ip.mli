@@ -176,6 +176,8 @@ val is_trusted_proxy: string list -> string -> bool
 
 val parse_forwarded_for: string -> string list
 
+val is_valid_ip_literal: string -> bool
+
 val find_real_ip: string list -> string list -> string option
 
 val resolve_real_ip: proxies:string list -> peer_ip:string -> header_value:string -> string option

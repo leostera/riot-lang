@@ -21,6 +21,7 @@ module LiveViewSession = Suri.Testing.Internal.LiveViewSession
 module LiveViewProtocol = Suri.Testing.Internal.LiveViewProtocol
 module Channel = Suri.Testing.Internal.Channel
 module Http1 = Suri.Testing.Internal.Http1
+module Testing = Suri.Testing
 
 let valid_websocket_key = "dGhlIHNhbXBsZSBub25jZQ=="
 
@@ -127,6 +128,40 @@ let test_remote_ip_walks_trusted_proxy_chain = fun _ctx ->
       ~header_value:"1.2.3.4, 5.6.7.8, 10.0.1.50");
   Ok ()
 
+let test_remote_ip_rejects_invalid_forwarded_tokens = fun _ctx ->
+  Test.assert_false (Remote_ip.is_valid_ip_literal "example.com");
+  Test.assert_false (Remote_ip.is_valid_ip_literal "999.1.2.3");
+  Test.assert_true (Remote_ip.is_valid_ip_literal "127.0.0.1");
+  Test.assert_true (Remote_ip.is_valid_ip_literal "2001:db8::1");
+  Test.assert_equal
+    ~expected:None
+    ~actual:(Remote_ip.resolve_real_ip
+      ~proxies:[ "10.0.1.50"; ]
+      ~peer_ip:"10.0.1.50"
+      ~header_value:"example.com, 10.0.1.50");
+  Ok ()
+
+let test_remote_ip_middleware_ignores_spoofed_header = fun _ctx ->
+  let peer = Conn.{ ip = "203.0.113.10"; port = 1_234 } in
+  let conn = Testing.Conn.make ~peer ~headers:[ ("x-forwarded-for", "127.0.0.1"); ] () in
+  let conn = Remote_ip.middleware () ~proxies:[ "10.0.1.50"; ] ~conn ~next:(fun conn -> conn) in
+  Test.assert_equal ~expected:"203.0.113.10" ~actual:(Conn.peer conn).ip;
+  Ok ()
+
+let test_remote_ip_middleware_rewrites_trusted_proxy_peer = fun _ctx ->
+  let peer = Conn.{ ip = "10.0.1.50"; port = 1_234 } in
+  let conn = Testing.Conn.make ~peer ~headers:[ ("x-forwarded-for", "1.2.3.4, 10.0.1.50"); ] () in
+  let conn = Remote_ip.middleware () ~proxies:[ "10.0.1.50"; ] ~conn ~next:(fun conn -> conn) in
+  Test.assert_equal ~expected:"1.2.3.4" ~actual:(Conn.peer conn).ip;
+  Ok ()
+
+let test_remote_ip_middleware_ignores_invalid_forwarded_chain = fun _ctx ->
+  let peer = Conn.{ ip = "10.0.1.50"; port = 1_234 } in
+  let conn = Testing.Conn.make ~peer ~headers:[ ("x-forwarded-for", "example.com, 10.0.1.50"); ] () in
+  let conn = Remote_ip.middleware () ~proxies:[ "10.0.1.50"; ] ~conn ~next:(fun conn -> conn) in
+  Test.assert_equal ~expected:"10.0.1.50" ~actual:(Conn.peer conn).ip;
+  Ok ()
+
 let tests =
   Test.[
     case
@@ -136,6 +171,18 @@ let tests =
       "remote ip resolves forwarded header from trusted peer"
       test_remote_ip_resolves_forwarded_header_from_trusted_peer;
     case "remote ip walks trusted proxy chain" test_remote_ip_walks_trusted_proxy_chain;
+    case
+      "remote ip rejects invalid forwarded tokens"
+      test_remote_ip_rejects_invalid_forwarded_tokens;
+    case
+      "remote ip middleware ignores spoofed header"
+      test_remote_ip_middleware_ignores_spoofed_header;
+    case
+      "remote ip middleware rewrites trusted proxy peer"
+      test_remote_ip_middleware_rewrites_trusted_proxy_peer;
+    case
+      "remote ip middleware ignores invalid forwarded chain"
+      test_remote_ip_middleware_ignores_invalid_forwarded_chain;
   ]
 
 let main ~args = Test.Cli.main ~name:"suri:middleware-remote-ip" ~tests ~args ()
