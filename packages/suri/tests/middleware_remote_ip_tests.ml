@@ -119,6 +119,12 @@ let tamper_last_char = fun value ->
 
 let test_remote_ip_ignores_forwarded_header_from_untrusted_peer = fun _ctx ->
   Test.assert_equal
+    ~expected:(Error (Remote_ip.UntrustedPeer { peer_ip = "203.0.113.10" }))
+    ~actual:(Remote_ip.resolve_real_ip_result
+      ~proxies:[ "10.0.1.50"; ]
+      ~peer_ip:"203.0.113.10"
+      ~header_value:"127.0.0.1");
+  Test.assert_equal
     ~expected:None
     ~actual:(Remote_ip.resolve_real_ip
       ~proxies:[ "10.0.1.50"; ]
@@ -127,6 +133,12 @@ let test_remote_ip_ignores_forwarded_header_from_untrusted_peer = fun _ctx ->
   Ok ()
 
 let test_remote_ip_resolves_forwarded_header_from_trusted_peer = fun _ctx ->
+  Test.assert_equal
+    ~expected:(Ok "1.2.3.4")
+    ~actual:(Remote_ip.resolve_real_ip_result
+      ~proxies:[ "10.0.1.50"; ]
+      ~peer_ip:"10.0.1.50"
+      ~header_value:"1.2.3.4, 10.0.1.50");
   Test.assert_equal
     ~expected:(Some "1.2.3.4")
     ~actual:(Remote_ip.resolve_real_ip
@@ -150,11 +162,35 @@ let test_remote_ip_rejects_invalid_forwarded_tokens = fun _ctx ->
   Test.assert_true (Remote_ip.is_valid_ip_literal "127.0.0.1");
   Test.assert_true (Remote_ip.is_valid_ip_literal "2001:db8::1");
   Test.assert_equal
+    ~expected:(Error (Remote_ip.InvalidForwardedIp { value = "example.com" }))
+    ~actual:(Remote_ip.resolve_real_ip_result
+      ~proxies:[ "10.0.1.50"; ]
+      ~peer_ip:"10.0.1.50"
+      ~header_value:"example.com, 10.0.1.50");
+  Test.assert_equal
     ~expected:None
     ~actual:(Remote_ip.resolve_real_ip
       ~proxies:[ "10.0.1.50"; ]
       ~peer_ip:"10.0.1.50"
       ~header_value:"example.com, 10.0.1.50");
+  Ok ()
+
+let test_remote_ip_reports_empty_forwarded_chain = fun _ctx ->
+  Test.assert_equal
+    ~expected:(Error Remote_ip.EmptyForwardedFor)
+    ~actual:(Remote_ip.resolve_real_ip_result
+      ~proxies:[ "10.0.1.50"; ]
+      ~peer_ip:"10.0.1.50"
+      ~header_value:" , ");
+  Ok ()
+
+let test_remote_ip_reports_all_trusted_chain = fun _ctx ->
+  Test.assert_equal
+    ~expected:(Error Remote_ip.NoClientIpInForwardedChain)
+    ~actual:(Remote_ip.resolve_real_ip_result
+      ~proxies:[ "10.0.1.50"; "10.0.1.51"; ]
+      ~peer_ip:"10.0.1.50"
+      ~header_value:"10.0.1.51, 10.0.1.50");
   Ok ()
 
 let test_remote_ip_middleware_ignores_spoofed_header = fun _ctx ->
@@ -190,6 +226,8 @@ let tests =
     case
       "remote ip rejects invalid forwarded tokens"
       test_remote_ip_rejects_invalid_forwarded_tokens;
+    case "remote ip reports empty forwarded chain" test_remote_ip_reports_empty_forwarded_chain;
+    case "remote ip reports all trusted chain" test_remote_ip_reports_all_trusted_chain;
     case
       "remote ip middleware ignores spoofed header"
       test_remote_ip_middleware_ignores_spoofed_header;

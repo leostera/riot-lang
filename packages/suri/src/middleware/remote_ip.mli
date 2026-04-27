@@ -174,10 +174,25 @@ val middleware:
 
 val is_trusted_proxy: string list -> string -> bool
 
+type resolve_error =
+  | UntrustedPeer of { peer_ip: string }
+  | EmptyForwardedFor
+  | InvalidForwardedIp of { value: string }
+  | NoClientIpInForwardedChain
+val resolve_error_to_string: resolve_error -> string
+
 val parse_forwarded_for: string -> string list
 
 val is_valid_ip_literal: string -> bool
 
+val find_real_ip_result: string list -> string list -> (string, resolve_error) Std.result
+
 val find_real_ip: string list -> string list -> string option
+
+val resolve_real_ip_result:
+  proxies:string list ->
+  peer_ip:string ->
+  header_value:string ->
+  (string, resolve_error) Std.result
 
 val resolve_real_ip: proxies:string list -> peer_ip:string -> header_value:string -> string option
