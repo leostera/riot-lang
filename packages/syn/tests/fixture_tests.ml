@@ -129,6 +129,8 @@ let test_tagged_quoted_string_token = fun _ctx ->
       Ok ()
   | None -> Error "expected tagged quoted string token"
 
+let run_fixture = fun ctx -> test_fixture ~ctx
+
 let main ~args =
   let modified_fixture_paths = load_modified_fixture_paths () in
   let fixture_tests =
@@ -137,11 +139,12 @@ let main ~args =
       ~dir:fixture_root
       ~filter:(has_lossless_snapshot modified_fixture_paths)
       ~snapshot_path:(fun path -> Some (lossless_snapshot_path path))
-      ~run:(fun ctx -> test_fixture ~ctx)
+      ~run:run_fixture
   in
-  let tests =
-    Test.case "tagged_quoted_string_token" test_tagged_quoted_string_token :: fixture_tests
+  let tagged_quoted_string_tests =
+    Test.[ case "tagged_quoted_string_token" test_tagged_quoted_string_token ]
   in
+  let tests = tagged_quoted_string_tests @ fixture_tests in
   Test.Cli.main ~name:"syn-fixtures" ~tests ~args ()
 
 let () = Runtime.run ~main ~args:Env.args ()

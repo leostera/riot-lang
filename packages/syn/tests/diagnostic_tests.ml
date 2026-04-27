@@ -59,13 +59,15 @@ let filter_diagnostic_fixture = fun path ->
         `skip
   | _ -> `skip
 
+let run_diagnostic = fun ctx -> test_diagnostic ~ctx
+
 let main ~args =
   let tests =
     Test.FixtureRunner.cases
       ()
       ~dir:(Path.v "packages/syn/tests/diagnostics")
       ~filter:filter_diagnostic_fixture
-      ~run:(fun ctx -> test_diagnostic ~ctx)
+      ~run:run_diagnostic
   in
   Test.Cli.main ~name:"syn-diagnostics" ~tests ~args ()
 

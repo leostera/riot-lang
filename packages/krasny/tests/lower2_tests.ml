@@ -332,123 +332,111 @@ let assert_lower2_manifest_fixtures = fun () ->
       |> List.filter ~fn:parser2_formatter_fixture_supported
     )
 
-let tests = [
-  Test.case
-    "lower2 keeps empty implementations empty"
-    (fun _ctx -> assert_format2_ml ~expected:"" "");
-  Test.case
-    "lower2 formats simple let bindings"
-    (fun _ctx -> assert_format2_ml ~expected:"let x = 1 + 2\n" "let x = 1 + 2\n");
-  Test.case
-    "lower2 formats parameterized let bindings"
-    (fun _ctx -> assert_format2_ml ~expected:"let id x = x\n" "let id x = x\n");
-  Test.case
-    "lower2 formats typed let binding heads"
-    (fun _ctx ->
-      assert_format2_ml
-        ~expected:(top_level
-          [ "let value: int = 1"; "let id x: int = x"; "let keep_pattern (x: int) = x" ])
-        "let value : int = 1\nlet id x : int = x\nlet keep_pattern (x : int) = x\n");
-  Test.case
-    "lower2 formats quoted poly let annotations"
-    (fun _ctx ->
-      assert_format2_ml
-        ~expected:{ocaml|let id: 'a 'b. 'a -> 'b -> 'a = fun x _ -> x
+let test_lower2_keeps_empty_implementations_empty = fun _ctx -> assert_format2_ml ~expected:"" ""
+
+let test_lower2_formats_simple_let_bindings = fun _ctx ->
+  assert_format2_ml
+    ~expected:"let x = 1 + 2\n"
+    "let x = 1 + 2\n"
+
+let test_lower2_formats_parameterized_let_bindings = fun _ctx ->
+  assert_format2_ml
+    ~expected:"let id x = x\n"
+    "let id x = x\n"
+
+let test_lower2_formats_typed_let_binding_heads = fun _ctx ->
+  assert_format2_ml
+    ~expected:(top_level
+      [ "let value: int = 1"; "let id x: int = x"; "let keep_pattern (x: int) = x" ])
+    "let value : int = 1\nlet id x : int = x\nlet keep_pattern (x : int) = x\n"
+
+let test_lower2_formats_quoted_poly_let_annotations = fun _ctx ->
+  assert_format2_ml
+    ~expected:{ocaml|let id: 'a 'b. 'a -> 'b -> 'a = fun x _ -> x
 |ocaml}
-        "let id : 'a 'b. 'a -> 'b -> 'a = fun x _ -> x\n");
-  Test.case
-    "lower2 keeps locally abstract type binding prefixes"
-    (fun _ctx ->
-      assert_format2_ml
-        ~expected:"let make:\n  type socket err. reader:(socket, err) reader ->\n  writer:(socket, err) writer ->\n  of_io_error:(err -> error) ->\n  uri:uri ->\n  t = fun ~reader ~writer ~of_io_error ~uri -> make_conn reader writer of_io_error uri\n"
-        "let make : type socket err. reader:(socket, err) reader -> writer:(socket, err) writer -> of_io_error:(err -> error) -> uri:uri -> t = fun ~reader ~writer ~of_io_error ~uri -> make_conn reader writer of_io_error uri\n");
-  Test.case
-    "lower2 breaks non-polymorphic typed let annotations vertically after the colon"
-    (fun _ctx ->
-      assert_format2_ml
-        ~expected:{ocaml|let make:
+    "let id : 'a 'b. 'a -> 'b -> 'a = fun x _ -> x\n"
+
+let test_lower2_keeps_locally_abstract_type_binding_prefixes = fun _ctx ->
+  assert_format2_ml
+    ~expected:"let make:\n  type socket err. reader:(socket, err) reader ->\n  writer:(socket, err) writer ->\n  of_io_error:(err -> error) ->\n  uri:uri ->\n  t = fun ~reader ~writer ~of_io_error ~uri -> make_conn reader writer of_io_error uri\n"
+    "let make : type socket err. reader:(socket, err) reader -> writer:(socket, err) writer -> of_io_error:(err -> error) -> uri:uri -> t = fun ~reader ~writer ~of_io_error ~uri -> make_conn reader writer of_io_error uri\n"
+
+let test_lower2_breaks_non_polymorphic_typed_let_annotations_vertically_after_the_colon = fun
+  _ctx ->
+  assert_format2_ml
+    ~expected:{ocaml|let make:
   reader:IO.Reader.t ->
   writer:IO.Writer.t ->
   of_io_error:(IO.error -> Error.t) ->
   uri:Net.Uri.t ->
   t = fun ~reader ~writer ~of_io_error ~uri -> body
 |ocaml}
-        {ocaml|let make : reader:IO.Reader.t -> writer:IO.Writer.t -> of_io_error:(IO.error -> Error.t) -> uri:Net.Uri.t -> t = fun ~reader ~writer ~of_io_error ~uri -> body
-|ocaml});
-  Test.case
-    "lower2 formats mutual recursive let bindings"
-    (fun _ctx ->
-      assert_format2_ml
-        ~expected:"let rec f = g\n\nand g = f\n"
-        "let rec f = g\nand g = f\n");
-  Test.case
-    "lower2 formats local let expressions"
-    (fun _ctx ->
-      assert_format2_ml
-        ~expected:"let x =\n  let y = 1 in\n  y\n"
-        "let x = let y = 1 in y\n");
-  Test.case
-    "lower2 formats function expressions"
-    (fun _ctx -> assert_format2_ml ~expected:"let id = fun x -> x\n" "let id = fun x -> x\n");
-  Test.case
-    "lower2 formats function expressions with return annotations"
-    (fun _ctx ->
-      assert_format2_ml
-        ~expected:"let boxed = fun (value: int): int -> value\n"
-        "let boxed = fun (value: int) : int -> value\n");
-  Test.case
-    "lower2 formats match expressions"
-    (fun _ctx ->
-      assert_format2_ml
-        ~expected:"let value =\n  match x with\n  | 0 -> 1\n  | _ -> 2\n"
-        "let value = match x with | 0 -> 1 | _ -> 2\n");
-  Test.case
-    "lower2 formats sequence expressions"
-    (fun _ctx ->
-      assert_format2_ml
-        ~expected:"let run =\n  first;\n  second\n"
-        "let run = first; second\n");
-  Test.case
-    "lower2 does not duplicate sequence-leading comments"
-    (fun _ctx ->
-      assert_format2_ml
-        ~expected:"let run = fun () ->\n  (* first *)\n  first;\n  (* second *)\n  second\n"
-        "let run = fun () -> (* first *) first; (* second *) second\n");
-  Test.case
-    "lower2 preserves trailing sequence bodies in and-bindings"
-    (fun _ctx ->
-      assert_format2_ml
-        ~expected:"let rec f () =\n  log \"f\";\n\nand g () =\n  log \"g\";\n"
-        "let rec f () = log \"f\";\nand g () = log \"g\";\n");
-  Test.case
-    "lower2 formats list and array expressions"
-    (fun _ctx ->
-      assert_format2_ml
-        ~expected:(top_level [ "let values = [ 1; 2 ]"; "let array = [|1; 2|]" ])
-        "let values = [1; 2]\nlet array = [|1; 2|]\n");
-  Test.case
-    "lower2 preserves parens around function application arguments"
-    (fun _ctx ->
-      assert_format2_ml
-        ~expected:"let folded = List.fold_left (fun acc doc -> (indent, doc) :: acc) rest\n"
-        "let folded = List.fold_left (fun acc doc -> (indent, doc) :: acc) rest\n");
-  Test.case
-    "lower2 keeps parenthesized multiline infix arguments with callee"
-    (fun _ctx ->
-      assert_format2_ml
-        ~expected:"let result = Error (\"Response body truncated! Length: \"\n^ string_of_int body_len\n^ \", Content-Length: \"\n^ (Option.unwrap_or ~default:\"missing\" content_length_hdr))\n"
-        "let result = Error (\"Response body truncated! Length: \" ^ string_of_int body_len ^ \", Content-Length: \" ^ (Option.unwrap_or ~default:\"missing\" content_length_hdr))\n");
-  Test.case
-    "lower2 keeps if-branch multiline infix arguments with callee"
-    (fun _ctx ->
-      assert_format2_ml
-        ~expected:"let f body body_len content_length_hdr =\n  if not (String.ends_with ~suffix:\"}\" body) then\n    Error (\"Response body truncated! Length: \"\n    ^ string_of_int body_len\n    ^ \", Content-Length: \"\n    ^ (Option.unwrap_or ~default:\"missing\" content_length_hdr))\n  else\n    Ok ()\n"
-        "let f body body_len content_length_hdr = if not (String.ends_with ~suffix:\"}\" body) then Error (\"Response body truncated! Length: \" ^ string_of_int body_len ^ \", Content-Length: \" ^ (Option.unwrap_or ~default:\"missing\" content_length_hdr)) else Ok ()\n");
-  Test.case
-    "lower2 breaks ordinary calls before multiline infix arguments"
-    (fun _ctx ->
-      assert_format2_ml
-        ~expected:{ocaml|let log chunk chunk_count =
+    {ocaml|let make : reader:IO.Reader.t -> writer:IO.Writer.t -> of_io_error:(IO.error -> Error.t) -> uri:Net.Uri.t -> t = fun ~reader ~writer ~of_io_error ~uri -> body
+|ocaml}
+
+let test_lower2_formats_mutual_recursive_let_bindings = fun _ctx ->
+  assert_format2_ml
+    ~expected:"let rec f = g\n\nand g = f\n"
+    "let rec f = g\nand g = f\n"
+
+let test_lower2_formats_local_let_expressions = fun _ctx ->
+  assert_format2_ml
+    ~expected:"let x =\n  let y = 1 in\n  y\n"
+    "let x = let y = 1 in y\n"
+
+let test_lower2_formats_function_expressions = fun _ctx ->
+  assert_format2_ml
+    ~expected:"let id = fun x -> x\n"
+    "let id = fun x -> x\n"
+
+let test_lower2_formats_function_expressions_with_return_annotations = fun _ctx ->
+  assert_format2_ml
+    ~expected:"let boxed = fun (value: int): int -> value\n"
+    "let boxed = fun (value: int) : int -> value\n"
+
+let test_lower2_formats_match_expressions = fun _ctx ->
+  assert_format2_ml
+    ~expected:"let value =\n  match x with\n  | 0 -> 1\n  | _ -> 2\n"
+    "let value = match x with | 0 -> 1 | _ -> 2\n"
+
+let test_lower2_formats_sequence_expressions = fun _ctx ->
+  assert_format2_ml
+    ~expected:"let run =\n  first;\n  second\n"
+    "let run = first; second\n"
+
+let test_lower2_does_not_duplicate_sequence_leading_comments = fun _ctx ->
+  assert_format2_ml
+    ~expected:"let run = fun () ->\n  (* first *)\n  first;\n  (* second *)\n  second\n"
+    "let run = fun () -> (* first *) first; (* second *) second\n"
+
+let test_lower2_preserves_trailing_sequence_bodies_in_and_bindings = fun _ctx ->
+  assert_format2_ml
+    ~expected:"let rec f () =\n  log \"f\";\n\nand g () =\n  log \"g\";\n"
+    "let rec f () = log \"f\";\nand g () = log \"g\";\n"
+
+let test_lower2_formats_list_and_array_expressions = fun _ctx ->
+  assert_format2_ml
+    ~expected:(top_level [ "let values = [ 1; 2 ]"; "let array = [|1; 2|]" ])
+    "let values = [1; 2]\nlet array = [|1; 2|]\n"
+
+let test_lower2_preserves_parens_around_function_application_arguments = fun _ctx ->
+  assert_format2_ml
+    ~expected:"let folded = List.fold_left (fun acc doc -> (indent, doc) :: acc) rest\n"
+    "let folded = List.fold_left (fun acc doc -> (indent, doc) :: acc) rest\n"
+
+let test_lower2_keeps_parenthesized_multiline_infix_arguments_with_callee = fun _ctx ->
+  assert_format2_ml
+    ~expected:"let result = Error (\"Response body truncated! Length: \"\n^ string_of_int body_len\n^ \", Content-Length: \"\n^ (Option.unwrap_or ~default:\"missing\" content_length_hdr))\n"
+    "let result = Error (\"Response body truncated! Length: \" ^ string_of_int body_len ^ \", Content-Length: \" ^ (Option.unwrap_or ~default:\"missing\" content_length_hdr))\n"
+
+let test_lower2_keeps_if_branch_multiline_infix_arguments_with_callee = fun _ctx ->
+  assert_format2_ml
+    ~expected:"let f body body_len content_length_hdr =\n  if not (String.ends_with ~suffix:\"}\" body) then\n    Error (\"Response body truncated! Length: \"\n    ^ string_of_int body_len\n    ^ \", Content-Length: \"\n    ^ (Option.unwrap_or ~default:\"missing\" content_length_hdr))\n  else\n    Ok ()\n"
+    "let f body body_len content_length_hdr = if not (String.ends_with ~suffix:\"}\" body) then Error (\"Response body truncated! Length: \" ^ string_of_int body_len ^ \", Content-Length: \" ^ (Option.unwrap_or ~default:\"missing\" content_length_hdr)) else Ok ()\n"
+
+let test_lower2_breaks_ordinary_calls_before_multiline_infix_arguments = fun _ctx ->
+  assert_format2_ml
+    ~expected:{ocaml|let log chunk chunk_count =
   Log.info
     ("Chunk "
     ^ string_of_int !chunk_count
@@ -457,19 +445,17 @@ let tests = [
     ^ " bytes): "
     ^ chunk)
 |ocaml}
-        {ocaml|let log chunk chunk_count = Log.info ("Chunk " ^ string_of_int !chunk_count ^ " (" ^ string_of_int (String.length chunk) ^ " bytes): " ^ chunk)
-|ocaml});
-  Test.case
-    "lower2 breaks long qualified match pattern application bodies"
-    (fun _ctx ->
-      assert_format2_ml
-        ~expected:"let run event =\n  match event with\n  | Blink.Connection.Status status ->\n      Log.info (\"Status: \" ^ string_of_int (Net.Http.Status.to_int status))\n  | _ -> ()\n"
-        "let run event = match event with | Blink.Connection.Status status -> Log.info (\"Status: \" ^ string_of_int (Net.Http.Status.to_int status)) | _ -> ()\n");
-  Test.case
-    "lower2 keeps parenthesized match bodies on long qualified cases"
-    (fun _ctx ->
-      assert_format2_ml
-        ~expected:{ocaml|let run json =
+    {ocaml|let log chunk chunk_count = Log.info ("Chunk " ^ string_of_int !chunk_count ^ " (" ^ string_of_int (String.length chunk) ^ " bytes): " ^ chunk)
+|ocaml}
+
+let test_lower2_breaks_long_qualified_match_pattern_application_bodies = fun _ctx ->
+  assert_format2_ml
+    ~expected:"let run event =\n  match event with\n  | Blink.Connection.Status status ->\n      Log.info (\"Status: \" ^ string_of_int (Net.Http.Status.to_int status))\n  | _ -> ()\n"
+    "let run event = match event with | Blink.Connection.Status status -> Log.info (\"Status: \" ^ string_of_int (Net.Http.Status.to_int status)) | _ -> ()\n"
+
+let test_lower2_keeps_parenthesized_match_bodies_on_long_qualified_cases = fun _ctx ->
+  assert_format2_ml
+    ~expected:{ocaml|let run json =
   match json with
   | Data.Json.Object fields -> (
       match List.assoc_opt "choices" fields with
@@ -479,12 +465,11 @@ let tests = [
     )
   | _ -> Error "Response is not a JSON object"
 |ocaml}
-        "let run json = match json with | Data.Json.Object fields -> (match List.assoc_opt \"choices\" fields with | Some (Data.Json.Array _choices) -> Ok () | Some _ -> Error \"bad\" | None -> Ok ()) | _ -> Error \"Response is not a JSON object\"\n");
-  Test.case
-    "lower2 keeps parenthesized sequence bodies on long qualified cases"
-    (fun _ctx ->
-      assert_format2_ml
-        ~expected:{ocaml|let receive parsed =
+    "let run json = match json with | Data.Json.Object fields -> (match List.assoc_opt \"choices\" fields with | Some (Data.Json.Array _choices) -> Ok () | Some _ -> Error \"bad\" | None -> Ok ()) | _ -> Error \"Response is not a JSON object\"\n"
+
+let test_lower2_keeps_parenthesized_sequence_bodies_on_long_qualified_cases = fun _ctx ->
+  assert_format2_ml
+    ~expected:{ocaml|let receive parsed =
   match parsed with
   | Http.Ws.Parser.Done frame -> (
       Buffer.clear buffer;
@@ -495,13 +480,12 @@ let tests = [
       receive parsed
     )
 |ocaml}
-        {ocaml|let receive parsed = match parsed with | Http.Ws.Parser.Done frame -> (Buffer.clear buffer; Ok frame) | Http.Ws.Parser.Need_more -> (read_more (); receive parsed)
-|ocaml});
-  Test.case
-    "lower2 keeps parenthesized let bodies on long qualified cases"
-    (fun _ctx ->
-      assert_format2_ml
-        ~expected:{ocaml|let receive parsed =
+    {ocaml|let receive parsed = match parsed with | Http.Ws.Parser.Done frame -> (Buffer.clear buffer; Ok frame) | Http.Ws.Parser.Need_more -> (read_more (); receive parsed)
+|ocaml}
+
+let test_lower2_keeps_parenthesized_let_bodies_on_long_qualified_cases = fun _ctx ->
+  assert_format2_ml
+    ~expected:{ocaml|let receive parsed =
   match parsed with
   | Http.Ws.Parser.Need_more -> (
       let reader = to_reader stream in
@@ -512,13 +496,12 @@ let tests = [
     )
   | Http.Ws.Parser.Done frame -> frame
 |ocaml}
-        {ocaml|let receive parsed = match parsed with | Http.Ws.Parser.Need_more -> (let reader = to_reader stream in let chunk = read reader in match chunk with | Ok data -> data | Error error -> error) | Http.Ws.Parser.Done frame -> frame
-|ocaml});
-  Test.case
-    "lower2 indents commented parenthesized match bodies in cases"
-    (fun _ctx ->
-      assert_format2_ml
-        ~expected:{ocaml|let next state =
+    {ocaml|let receive parsed = match parsed with | Http.Ws.Parser.Need_more -> (let reader = to_reader stream in let chunk = read reader in match chunk with | Ok data -> data | Error error -> error) | Http.Ws.Parser.Done frame -> frame
+|ocaml}
+
+let test_lower2_indents_commented_parenthesized_match_bodies_in_cases = fun _ctx ->
+  assert_format2_ml
+    ~expected:{ocaml|let next state =
   match parse_event state.buffer with
   | Some event -> Some event
   | None -> (
@@ -528,13 +511,12 @@ let tests = [
       | Ok _messages -> next state
     )
 |ocaml}
-        {ocaml|let next state = match parse_event state.buffer with | Some event -> Some event | None -> ((* Need more data from connection *) match stream state.conn with | Error _error -> None | Ok _messages -> next state)
-|ocaml});
-  Test.case
-    "lower2 breaks parenthesized match after else"
-    (fun _ctx ->
-      assert_format2_ml
-        ~expected:{ocaml|let pick header =
+    {ocaml|let next state = match parse_event state.buffer with | Some event -> Some event | None -> ((* Need more data from connection *) match stream state.conn with | Error _error -> None | Ok _messages -> next state)
+|ocaml}
+
+let test_lower2_breaks_parenthesized_match_after_else = fun _ctx ->
+  assert_format2_ml
+    ~expected:{ocaml|let pick header =
   if ready then
     Ok ()
   else
@@ -545,13 +527,12 @@ let tests = [
       | None -> Error "missing"
     )
 |ocaml}
-        {ocaml|let pick header = if ready then Ok () else (match header with | Some "chunked" -> Ok () | Some other -> Error other | None -> Error "missing")
-|ocaml});
-  Test.case
-    "lower2 keeps comments before else branch bodies"
-    (fun _ctx ->
-      assert_format2_ml
-        ~expected:{ocaml|let next state =
+    {ocaml|let pick header = if ready then Ok () else (match header with | Some "chunked" -> Ok () | Some other -> Error other | None -> Error "missing")
+|ocaml}
+
+let test_lower2_keeps_comments_before_else_branch_bodies = fun _ctx ->
+  assert_format2_ml
+    ~expected:{ocaml|let next state =
   if state.done_ then
     None
   else
@@ -562,13 +543,12 @@ let tests = [
         (* Try parsing again with new data *)
         next state
 |ocaml}
-        {ocaml|let next state = if state.done_ then None else (* Try to parse an event from current buffer *) match parse_event state.buffer with | Some event -> Some event | None -> (* Try parsing again with new data *) next state
-|ocaml});
-  Test.case
-    "lower2 wraps parenthesized infix arguments containing match"
-    (fun _ctx ->
-      assert_format2_ml
-        ~expected:{ocaml|let log first_event =
+    {ocaml|let next state = if state.done_ then None else (* Try to parse an event from current buffer *) match parse_event state.buffer with | Some event -> Some event | None -> (* Try parsing again with new data *) next state
+|ocaml}
+
+let test_lower2_wraps_parenthesized_infix_arguments_containing_match = fun _ctx ->
+  assert_format2_ml
+    ~expected:{ocaml|let log first_event =
   Log.info
     (
       "First event: " ^ (
@@ -578,179 +558,162 @@ let tests = [
       )
     )
 |ocaml}
-        {ocaml|let log first_event = Log.info ("First event: " ^ (match first_event with | Some _ -> "got one" | None -> "none"))
-|ocaml});
-  Test.case
-    "lower2 formats labels and optional labels"
-    (fun _ctx -> assert_format2_ml ~expected:"let f ~x ?y = g ~x ?y\n" "let f ~x ?y = g ~x ?y\n");
-  Test.case
-    "lower2 formats polymorphic variants"
-    (fun _ctx ->
-      assert_format2_ml
-        ~expected:(top_level
-          [ "let ok = `Ok 1"; "let classify = function\n  | `Ok value -> value\n  | `Error -> 0" ])
-        "let ok = `Ok 1\nlet classify = function | `Ok value -> value | `Error -> 0\n");
-  Test.case
-    "lower2 preserves parens around polymorphic variant payload apply arguments"
-    (fun _ctx ->
-      assert_format2_ml
-        ~expected:"let wrapped = Some (`Tag { value = 1 })\n"
-        "let wrapped = Some (`Tag { value = 1 })\n");
-  Test.case
-    "lower2 keeps simple polymorphic variant payload args bare"
-    (fun _ctx ->
-      assert_format2_ml
-        ~expected:"let color_escape color = Color.to_escape_seq ~mode:`fg color\n"
-        "let color_escape color = Color.to_escape_seq ~mode:`fg color\n");
-  Test.case
-    "lower2 formats expression and pattern attributes"
-    (fun _ctx ->
-      assert_format2_ml
-        ~expected:(top_level [ "let value = target [@inline always]"; "let (x [@foo]) = value" ])
-        "let value = target [@inline always]\nlet (x [@foo]) = value\n");
-  Test.case
-    "lower2 formats expression pattern and item extensions"
-    (fun _ctx ->
-      assert_format2_ml
-        ~expected:(top_level
-          [
-            "let value = [%expr payload]";
-            "let [%pat payload] = value";
-            "[%%item payload]";
-            "[@@@warning \"-32\"]";
-          ])
-        "let value = [%expr payload]\nlet [%pat payload] = value\n[%%item payload]\n[@@@warning \"-32\"]\n");
-  Test.case
-    "lower2 formats signature extension and attribute items"
-    (fun _ctx ->
-      assert_format2_mli
-        ~expected:(top_level [ "[%%foo payload]"; "[@@@warning \"-32\"]"; "val id: int" ])
-        "[%%foo payload]\n[@@@warning \"-32\"]\nval id : int\n");
-  Test.case
-    "lower2 formats selectors and index expressions"
-    (fun _ctx ->
-      assert_format2_ml
-        ~expected:(top_level
-          [ "let field = value.name"; "let item = values.(index)"; "let char = text.[index]" ])
-        "let field = value.name\nlet item = values.(index)\nlet char = text.[index]\n");
-  Test.case
-    "lower2 keeps index expressions bare in apply arguments"
-    (fun _ctx ->
-      assert_format2_ml
-        ~expected:(top_level
-          [
-            "let char_ok = identifier_character source.[index - 1]";
-            "let item_ok = consume values.(index)";
-          ])
-        "let char_ok = identifier_character source.[index - 1]\nlet item_ok = consume values.(index)\n");
-  Test.case
-    "lower2 keeps deref prefix expressions bare in apply arguments"
-    (fun _ctx ->
-      assert_format2_ml
-        ~expected:"let count_text = string_of_int !chunk_count\n"
-        "let count_text = string_of_int !chunk_count\n");
-  Test.case
-    "lower2 formats record expressions and patterns"
-    (fun _ctx ->
-      assert_format2_ml
-        ~expected:(top_level
-          [
-            "let record = { x = 1; y }";
-            "let updated = { base with x = 2; y }";
-            "let qualified = { History.name = name; statistics = stats }";
-            "let scoped = Lockfile.{ name = package.name; version = None }";
-            "let { x; y = z; _ } = record";
-          ])
-        "let record = { x = 1; y }\nlet updated = { base with x = 2; y }\nlet qualified = { History.name = name; statistics = stats }\nlet scoped = Lockfile.{ name = package.name; version = None }\nlet { x; y = z; _ } = record\n");
-  Test.case
-    "lower2 formats binding operator expressions"
-    (fun _ctx ->
-      assert_format2_ml
-        ~expected:(top_level
-          [
-            "let value =\n  let* x = fetch in\n  let+ y = decode in\n  pair x y";
-            "let both =\n  let+ x = a\n  and+ y = b\n  in\n  pair x y";
-          ])
-        "let value = let* x = fetch in let+ y = decode in pair x y\nlet both = let+ x = a and+ y = b in pair x y\n");
-  Test.case
-    "lower2 formats local open expressions and patterns"
-    (fun _ctx ->
-      assert_format2_ml
-        ~expected:(top_level
-          [
-            "let value = let open Foo.Bar in result";
-            "let scoped = send pid Server.(Telemetry (Stop { reply_to = self (); request_id }))";
-            "let store = Contentstore.create ~root:Path.(tmpdir / Path.v \"cache\") ~ns:(namespace parts)";
-            "let Foo.Bar.(x) = value";
-          ])
-        "let value = let open Foo.Bar in result\nlet scoped = send pid Server.(Telemetry (Stop { reply_to = self (); request_id }))\nlet store = Contentstore.create ~root:Path.(tmpdir / Path.v \"cache\") ~ns:(namespace parts)\nlet Foo.Bar.(x) = value\n");
-  Test.case
-    "lower2 keeps delimited local opens bare in infix operands"
-    (fun _ctx ->
-      assert_format2_ml
-        ~expected:"let preview = \"SSE Event: \" ^ Blink.SSE.(String.sub data ~offset:0 ~len:size)\n"
-        "let preview = \"SSE Event: \" ^ Blink.SSE.(String.sub data ~offset:0 ~len:size)\n");
-  Test.case
-    "lower2 formats first-class module expressions"
-    (fun _ctx ->
-      assert_format2_ml
-        ~expected:(top_level
-          [
-            "let packed = (module Foo.Bar)";
-            "let typed = (module Foo : S.T)";
-            "let advanced = (module Foo : S with type t = item and type state = state)";
-          ])
-        "let packed = (module Foo.Bar)\nlet typed = (module Foo : S.T)\nlet advanced = (module Foo : S with type t = item and type state = state)\n");
-  Test.case
-    "lower2 formats locally abstract and first-class module patterns"
-    (fun _ctx ->
-      assert_format2_ml
-        ~expected:(top_level
-          [
-            "let f (type a b) (module M : S.T) = value";
-            "let g (module _) = value";
-            "let h (module N : S with type t = item) = value";
-          ])
-        "let f (type a b) (module M : S.T) = value\nlet g (module _) = value\nlet h (module N : S with type t = item) = value\n");
-  Test.case
-    "lower2 formats package type value declarations"
-    (fun _ctx ->
-      assert_format2_mli
-        ~expected:"val get: (module ConfigSpec with type t = 'a) -> ('a, error) result\n"
-        "val get: (module ConfigSpec with type t = 'a) -> ('a, error) result\n");
-  Test.case
-    "lower2 formats let module expressions"
-    (fun _ctx ->
-      assert_format2_ml
-        ~expected:(top_level
-          [
-            "let value =\n  let module M = Foo.Bar in\n  result";
-            "let empty =\n  let module Empty = struct end in\n  done_";
-            "let packed =\n  let module D = (val driver : Driver with type t = _) in\n  body";
-            "let nested =\n\
+    {ocaml|let log first_event = Log.info ("First event: " ^ (match first_event with | Some _ -> "got one" | None -> "none"))
+|ocaml}
+
+let test_lower2_formats_labels_and_optional_labels = fun _ctx ->
+  assert_format2_ml
+    ~expected:"let f ~x ?y = g ~x ?y\n"
+    "let f ~x ?y = g ~x ?y\n"
+
+let test_lower2_formats_polymorphic_variants = fun _ctx ->
+  assert_format2_ml
+    ~expected:(top_level
+      [ "let ok = `Ok 1"; "let classify = function\n  | `Ok value -> value\n  | `Error -> 0" ])
+    "let ok = `Ok 1\nlet classify = function | `Ok value -> value | `Error -> 0\n"
+
+let test_lower2_preserves_parens_around_polymorphic_variant_payload_apply_arguments = fun _ctx ->
+  assert_format2_ml
+    ~expected:"let wrapped = Some (`Tag { value = 1 })\n"
+    "let wrapped = Some (`Tag { value = 1 })\n"
+
+let test_lower2_keeps_simple_polymorphic_variant_payload_args_bare = fun _ctx ->
+  assert_format2_ml
+    ~expected:"let color_escape color = Color.to_escape_seq ~mode:`fg color\n"
+    "let color_escape color = Color.to_escape_seq ~mode:`fg color\n"
+
+let test_lower2_formats_expression_and_pattern_attributes = fun _ctx ->
+  assert_format2_ml
+    ~expected:(top_level [ "let value = target [@inline always]"; "let (x [@foo]) = value" ])
+    "let value = target [@inline always]\nlet (x [@foo]) = value\n"
+
+let test_lower2_formats_expression_pattern_and_item_extensions = fun _ctx ->
+  assert_format2_ml
+    ~expected:(top_level
+      [
+        "let value = [%expr payload]";
+        "let [%pat payload] = value";
+        "[%%item payload]";
+        "[@@@warning \"-32\"]";
+      ])
+    "let value = [%expr payload]\nlet [%pat payload] = value\n[%%item payload]\n[@@@warning \"-32\"]\n"
+
+let test_lower2_formats_signature_extension_and_attribute_items = fun _ctx ->
+  assert_format2_mli
+    ~expected:(top_level [ "[%%foo payload]"; "[@@@warning \"-32\"]"; "val id: int" ])
+    "[%%foo payload]\n[@@@warning \"-32\"]\nval id : int\n"
+
+let test_lower2_formats_selectors_and_index_expressions = fun _ctx ->
+  assert_format2_ml
+    ~expected:(top_level
+      [ "let field = value.name"; "let item = values.(index)"; "let char = text.[index]" ])
+    "let field = value.name\nlet item = values.(index)\nlet char = text.[index]\n"
+
+let test_lower2_keeps_index_expressions_bare_in_apply_arguments = fun _ctx ->
+  assert_format2_ml
+    ~expected:(top_level
+      [
+        "let char_ok = identifier_character source.[index - 1]";
+        "let item_ok = consume values.(index)";
+      ])
+    "let char_ok = identifier_character source.[index - 1]\nlet item_ok = consume values.(index)\n"
+
+let test_lower2_keeps_deref_prefix_expressions_bare_in_apply_arguments = fun _ctx ->
+  assert_format2_ml
+    ~expected:"let count_text = string_of_int !chunk_count\n"
+    "let count_text = string_of_int !chunk_count\n"
+
+let test_lower2_formats_record_expressions_and_patterns = fun _ctx ->
+  assert_format2_ml
+    ~expected:(top_level
+      [
+        "let record = { x = 1; y }";
+        "let updated = { base with x = 2; y }";
+        "let qualified = { History.name = name; statistics = stats }";
+        "let scoped = Lockfile.{ name = package.name; version = None }";
+        "let { x; y = z; _ } = record";
+      ])
+    "let record = { x = 1; y }\nlet updated = { base with x = 2; y }\nlet qualified = { History.name = name; statistics = stats }\nlet scoped = Lockfile.{ name = package.name; version = None }\nlet { x; y = z; _ } = record\n"
+
+let test_lower2_formats_binding_operator_expressions = fun _ctx ->
+  assert_format2_ml
+    ~expected:(top_level
+      [
+        "let value =\n  let* x = fetch in\n  let+ y = decode in\n  pair x y";
+        "let both =\n  let+ x = a\n  and+ y = b\n  in\n  pair x y";
+      ])
+    "let value = let* x = fetch in let+ y = decode in pair x y\nlet both = let+ x = a and+ y = b in pair x y\n"
+
+let test_lower2_formats_local_open_expressions_and_patterns = fun _ctx ->
+  assert_format2_ml
+    ~expected:(top_level
+      [
+        "let value = let open Foo.Bar in result";
+        "let scoped = send pid Server.(Telemetry (Stop { reply_to = self (); request_id }))";
+        "let store = Contentstore.create ~root:Path.(tmpdir / Path.v \"cache\") ~ns:(namespace parts)";
+        "let Foo.Bar.(x) = value";
+      ])
+    "let value = let open Foo.Bar in result\nlet scoped = send pid Server.(Telemetry (Stop { reply_to = self (); request_id }))\nlet store = Contentstore.create ~root:Path.(tmpdir / Path.v \"cache\") ~ns:(namespace parts)\nlet Foo.Bar.(x) = value\n"
+
+let test_lower2_keeps_delimited_local_opens_bare_in_infix_operands = fun _ctx ->
+  assert_format2_ml
+    ~expected:"let preview = \"SSE Event: \" ^ Blink.SSE.(String.sub data ~offset:0 ~len:size)\n"
+    "let preview = \"SSE Event: \" ^ Blink.SSE.(String.sub data ~offset:0 ~len:size)\n"
+
+let test_lower2_formats_first_class_module_expressions = fun _ctx ->
+  assert_format2_ml
+    ~expected:(top_level
+      [
+        "let packed = (module Foo.Bar)";
+        "let typed = (module Foo : S.T)";
+        "let advanced = (module Foo : S with type t = item and type state = state)";
+      ])
+    "let packed = (module Foo.Bar)\nlet typed = (module Foo : S.T)\nlet advanced = (module Foo : S with type t = item and type state = state)\n"
+
+let test_lower2_formats_locally_abstract_and_first_class_module_patterns = fun _ctx ->
+  assert_format2_ml
+    ~expected:(top_level
+      [
+        "let f (type a b) (module M : S.T) = value";
+        "let g (module _) = value";
+        "let h (module N : S with type t = item) = value";
+      ])
+    "let f (type a b) (module M : S.T) = value\nlet g (module _) = value\nlet h (module N : S with type t = item) = value\n"
+
+let test_lower2_formats_package_type_value_declarations = fun _ctx ->
+  assert_format2_mli
+    ~expected:"val get: (module ConfigSpec with type t = 'a) -> ('a, error) result\n"
+    "val get: (module ConfigSpec with type t = 'a) -> ('a, error) result\n"
+
+let test_lower2_formats_let_module_expressions = fun _ctx ->
+  assert_format2_ml
+    ~expected:(top_level
+      [
+        "let value =\n  let module M = Foo.Bar in\n  result";
+        "let empty =\n  let module Empty = struct end in\n  done_";
+        "let packed =\n  let module D = (val driver : Driver with type t = _) in\n  body";
+        "let nested =\n\
              \  let module ByteIter = struct\n\
              \    let next = fun state ->\n\
              \      let scratch = state in\n\
              \      scratch\n\
              \  end in\n\
              \  consume";
-          ])
-        "let value = let module M = Foo.Bar in result\nlet empty = let module Empty = struct end in done_\nlet packed = let module D = (val driver : Driver with type t = _) in body\nlet nested = let module ByteIter = struct let next = fun state -> let scratch = state in scratch end in consume\n");
-  Test.case
-    "lower2 breaks let module before multiline bodies"
-    (fun _ctx ->
-      assert_format2_ml
-        ~expected:{ocaml|let await = fun conn ->
+      ])
+    "let value = let module M = Foo.Bar in result\nlet empty = let module Empty = struct end in done_\nlet packed = let module D = (val driver : Driver with type t = _) in body\nlet nested = let module ByteIter = struct let next = fun state -> let scratch = state in scratch end in consume\n"
+
+let test_lower2_breaks_let_module_before_multiline_bodies = fun _ctx ->
+  assert_format2_ml
+    ~expected:{ocaml|let await = fun conn ->
   let module I = SSEIterator in
   Iter.MutIterator.make (module I) { I.conn; buffer = ""; done_ = false }
 |ocaml}
-        {ocaml|let await = fun conn -> let module I = SSEIterator in Iter.MutIterator.make (module I) { I.conn; buffer = ""; done_ = false }
-|ocaml});
-  Test.case
-    "lower2 formats let exception expressions"
-    (fun _ctx ->
-      assert_format2_ml
-        ~expected:{ocaml|let value =
+    {ocaml|let await = fun conn -> let module I = SSEIterator in Iter.MutIterator.make (module I) { I.conn; buffer = ""; done_ = false }
+|ocaml}
+
+let test_lower2_formats_let_exception_expressions = fun _ctx ->
+  assert_format2_ml
+    ~expected:{ocaml|let value =
   let exception Local of int * Foo.t in
   result
 
@@ -758,30 +721,26 @@ let bare =
   let exception Done in
   done_
 |ocaml}
-        "let value = let exception Local of int * Foo.t in result\nlet bare = let exception Done in done_\n");
-  Test.case
-    "lower2 formats unreachable expressions"
-    (fun _ctx ->
-      assert_format2_ml
-        ~expected:"let value =\n  match maybe with\n  | Some value -> value\n  | None -> .\n"
-        "let value = match maybe with | Some value -> value | None -> .\n");
-  Test.case
-    "lower2 formats assertion and lazy expressions"
-    (fun _ctx ->
-      assert_format2_ml
-        ~expected:(top_level [ "let _ = assert ready"; "let later = lazy compute" ])
-        "let _ = assert ready\nlet later = lazy compute\n");
-  Test.case
-    "lower2 formats try expressions"
-    (fun _ctx ->
-      assert_format2_ml
-        ~expected:"let value =\n  try read () with\n  | Failure -> 0\n"
-        "let value = try read () with | Failure -> 0\n");
-  Test.case
-    "lower2 formats while and for loops"
-    (fun _ctx ->
-      assert_format2_ml
-        ~expected:{ocaml|let poll =
+    "let value = let exception Local of int * Foo.t in result\nlet bare = let exception Done in done_\n"
+
+let test_lower2_formats_unreachable_expressions = fun _ctx ->
+  assert_format2_ml
+    ~expected:"let value =\n  match maybe with\n  | Some value -> value\n  | None -> .\n"
+    "let value = match maybe with | Some value -> value | None -> .\n"
+
+let test_lower2_formats_assertion_and_lazy_expressions = fun _ctx ->
+  assert_format2_ml
+    ~expected:(top_level [ "let _ = assert ready"; "let later = lazy compute" ])
+    "let _ = assert ready\nlet later = lazy compute\n"
+
+let test_lower2_formats_try_expressions = fun _ctx ->
+  assert_format2_ml
+    ~expected:"let value =\n  try read () with\n  | Failure -> 0\n"
+    "let value = try read () with | Failure -> 0\n"
+
+let test_lower2_formats_while_and_for_loops = fun _ctx ->
+  assert_format2_ml
+    ~expected:{ocaml|let poll =
   while ready do
     step ()
   done
@@ -796,12 +755,11 @@ let down =
     step i
   done
 |ocaml}
-        "let poll = while ready do step () done\nlet up = for i = 0 to n do step i done\nlet down = for i = n downto 0 do step i done\n");
-  Test.case
-    "lower2 keeps while and for body sequences inside done boundaries"
-    (fun _ctx ->
-      assert_format2_ml
-        ~expected:{ocaml|let poll ready =
+    "let poll = while ready do step () done\nlet up = for i = 0 to n do step i done\nlet down = for i = n downto 0 do step i done\n"
+
+let test_lower2_keeps_while_and_for_body_sequences_inside_done_boundaries = fun _ctx ->
+  assert_format2_ml
+    ~expected:{ocaml|let poll ready =
   while ready do
     step ();
     next ()
@@ -813,114 +771,104 @@ let count n =
     total := !total + i
   done
 |ocaml}
-        "let poll ready = while ready do step (); next () done\nlet count n = for i = 0 to n do tick i; total := !total + i done\n");
-  Test.case
-    "lower2 formats lazy exception and interval patterns"
-    (fun _ctx ->
-      assert_format2_ml
-        ~expected:(top_level
-          [
-            "let force = function\n  | lazy value -> value";
-            "let recovered =\n  match read () with\n  | exception Failure -> 0\n  | value -> value";
-            "let classify = function\n  | 'a' .. 'z' -> 1\n  | _ -> 0";
-          ])
-        "let force = function | lazy value -> value\nlet recovered = match read () with | exception Failure -> 0 | value -> value\nlet classify = function | 'a' .. 'z' -> 1 | _ -> 0\n");
-  Test.case
-    "lower2 adds a final newline"
-    (fun _ctx -> assert_format2_ml ~expected:"let x = 1\n" "let x = 1");
-  Test.case
-    "lower2 formats open declarations"
-    (fun _ctx -> assert_format2_ml ~expected:"open Foo.Bar\n" "open Foo.Bar\n");
-  Test.case
-    "lower2 formats simple include external and exception declarations"
-    (fun _ctx ->
-      assert_format2_ml
-        ~expected:(top_level
-          [
-            "include Foo.Bar";
-            "external id: 'a -> 'a = \"%identity\" \"caml_id\"";
-            "exception Boom";
-          ])
-        "include Foo.Bar\nexternal id : 'a -> 'a = \"%identity\" \"caml_id\"\nexception Boom\n");
-  Test.case
-    "lower2 formats type extensions and structured exception rhs"
-    (fun _ctx ->
-      assert_format2_mli
-        ~expected:(top_level
-          [
-            "type 'a box +=\n  | More of 'a";
-            "exception Parse_error of string";
-            "exception Nested = Std.Result.Error";
-          ])
-        "type 'a box += | More of 'a\nexception Parse_error of string\nexception Nested = Std.Result.Error\n");
-  Test.case
-    "lower2 formats top-level exceptions after function bindings"
-    (fun _ctx ->
-      assert_format2_ml
-        ~expected:(top_level
-          [
-            "let error_to_string = function\n  | Error message -> message";
-            "exception Parse_exception of string";
-          ])
-        "let error_to_string = function\n  | Error message -> message\n\nexception Parse_exception of string\n");
-  Test.case
-    "lower2 formats simple module and module type declarations"
-    (fun _ctx ->
-      assert_format2_ml
-        ~expected:(top_level
-          [
-            "module Alias = Foo.Bar";
-            "module Empty = struct end";
-            "module type S = Foo.S";
-            "module type Empty = sig end";
-          ])
-        "module Alias = Foo.Bar\nmodule Empty = struct end\nmodule type S = Foo.S\nmodule type Empty = sig end\n");
-  Test.case
-    "lower2 formats constrained module type declarations"
-    (fun _ctx ->
-      assert_format2_ml
-        ~expected:(top_level
-          [ "module type S = Driver with type config = int and module Nested = Impl" ])
-        "module type S = Driver with type config = int and module Nested = Impl\n");
-  Test.case
-    "lower2 formats simple signature module declarations"
-    (fun _ctx ->
-      assert_format2_mli
-        ~expected:(top_level
-          [
-            "module Alias: Foo.S";
-            "module Http1: module type of Foo.Bar";
-            "module Empty: sig end";
-            "module type S = Foo.S";
-            "module type Abstract";
-          ])
-        "module Alias : Foo.S\nmodule Http1 : module type of Foo.Bar\nmodule Empty : sig end\nmodule type S = Foo.S\nmodule type Abstract\n");
-  Test.case
-    "lower2 keeps include constraints in one signature item"
-    (fun _ctx ->
-      assert_format2_mli
-        ~expected:"module type McpApplicationProtocol = sig\n\
+    "let poll ready = while ready do step (); next () done\nlet count n = for i = 0 to n do tick i; total := !total + i done\n"
+
+let test_lower2_formats_lazy_exception_and_interval_patterns = fun _ctx ->
+  assert_format2_ml
+    ~expected:(top_level
+      [
+        "let force = function\n  | lazy value -> value";
+        "let recovered =\n  match read () with\n  | exception Failure -> 0\n  | value -> value";
+        "let classify = function\n  | 'a' .. 'z' -> 1\n  | _ -> 0";
+      ])
+    "let force = function | lazy value -> value\nlet recovered = match read () with | exception Failure -> 0 | value -> value\nlet classify = function | 'a' .. 'z' -> 1 | _ -> 0\n"
+
+let test_lower2_adds_a_final_newline = fun _ctx ->
+  assert_format2_ml
+    ~expected:"let x = 1\n"
+    "let x = 1"
+
+let test_lower2_formats_open_declarations = fun _ctx ->
+  assert_format2_ml
+    ~expected:"open Foo.Bar\n"
+    "open Foo.Bar\n"
+
+let test_lower2_formats_simple_include_external_and_exception_declarations = fun _ctx ->
+  assert_format2_ml
+    ~expected:(top_level
+      [ "include Foo.Bar"; "external id: 'a -> 'a = \"%identity\" \"caml_id\""; "exception Boom"; ])
+    "include Foo.Bar\nexternal id : 'a -> 'a = \"%identity\" \"caml_id\"\nexception Boom\n"
+
+let test_lower2_formats_type_extensions_and_structured_exception_rhs = fun _ctx ->
+  assert_format2_mli
+    ~expected:(top_level
+      [
+        "type 'a box +=\n  | More of 'a";
+        "exception Parse_error of string";
+        "exception Nested = Std.Result.Error";
+      ])
+    "type 'a box += | More of 'a\nexception Parse_error of string\nexception Nested = Std.Result.Error\n"
+
+let test_lower2_formats_top_level_exceptions_after_function_bindings = fun _ctx ->
+  assert_format2_ml
+    ~expected:(top_level
+      [
+        "let error_to_string = function\n  | Error message -> message";
+        "exception Parse_exception of string";
+      ])
+    "let error_to_string = function\n  | Error message -> message\n\nexception Parse_exception of string\n"
+
+let test_lower2_formats_simple_module_and_module_type_declarations = fun _ctx ->
+  assert_format2_ml
+    ~expected:(top_level
+      [
+        "module Alias = Foo.Bar";
+        "module Empty = struct end";
+        "module type S = Foo.S";
+        "module type Empty = sig end";
+      ])
+    "module Alias = Foo.Bar\nmodule Empty = struct end\nmodule type S = Foo.S\nmodule type Empty = sig end\n"
+
+let test_lower2_formats_constrained_module_type_declarations = fun _ctx ->
+  assert_format2_ml
+    ~expected:(top_level
+      [ "module type S = Driver with type config = int and module Nested = Impl" ])
+    "module type S = Driver with type config = int and module Nested = Impl\n"
+
+let test_lower2_formats_simple_signature_module_declarations = fun _ctx ->
+  assert_format2_mli
+    ~expected:(top_level
+      [
+        "module Alias: Foo.S";
+        "module Http1: module type of Foo.Bar";
+        "module Empty: sig end";
+        "module type S = Foo.S";
+        "module type Abstract";
+      ])
+    "module Alias : Foo.S\nmodule Http1 : module type of Foo.Bar\nmodule Empty : sig end\nmodule type S = Foo.S\nmodule type Abstract\n"
+
+let test_lower2_keeps_include_constraints_in_one_signature_item = fun _ctx ->
+  assert_format2_mli
+    ~expected:"module type McpApplicationProtocol = sig\n\
           \  include Jsonrpc.ApplicationProtocol with type request := request and type response := response\n\
           end\n"
-        "module type McpApplicationProtocol = sig\n\
+    "module type McpApplicationProtocol = sig\n\
         \  include Jsonrpc.ApplicationProtocol with type request := request and type response := response\n\
-        end\n");
-  Test.case
-    "lower2 keeps then-branch sequences inside if expressions with else"
-    (fun _ctx ->
-      assert_format2_ml
-        ~expected:"let render ok =\n\
+        end\n"
+
+let test_lower2_keeps_then_branch_sequences_inside_if_expressions_with_else = fun _ctx ->
+  assert_format2_ml
+    ~expected:"let render ok =\n\
           \  if ok then\n\
           \    log ();\n\
           \    next ()\n\
           \  else\n\
           \    done_ ()\n"
-        "let render ok = if ok then log (); next () else done_ ()\n");
-  Test.case
-    "lower2 keeps else-if chains after else-boundary comments"
-    (fun _ctx ->
-      assert_format2_ml
-        ~expected:"let classify flag other =\n\
+    "let render ok = if ok then log (); next () else done_ ()\n"
+
+let test_lower2_keeps_else_if_chains_after_else_boundary_comments = fun _ctx ->
+  assert_format2_ml
+    ~expected:"let classify flag other =\n\
           \  if flag then\n\
           \    one\n\
           \    (* before next branch *)\n\
@@ -928,12 +876,11 @@ let count n =
           \    two\n\
           \  else\n\
           \    three\n"
-        "let classify flag other = if flag then one (* before next branch *) else if other then two else three\n");
-  Test.case
-    "lower2 keeps match-case sequences inside if then branches"
-    (fun _ctx ->
-      assert_format2_ml
-        ~expected:{ocaml|let classify ready input =
+    "let classify flag other = if flag then one (* before next branch *) else if other then two else three\n"
+
+let test_lower2_keeps_match_case_sequences_inside_if_then_branches = fun _ctx ->
+  assert_format2_ml
+    ~expected:{ocaml|let classify ready input =
   if ready then
     match input with
     | '!'
@@ -944,64 +891,60 @@ let count n =
   else
     false
 |ocaml}
-        {ocaml|let classify ready input = if ready then match input with | '!' | '^' -> bump (); true | _ -> false else false
-|ocaml});
-  Test.case
-    "lower2 breaks multiline labeled applications after equals"
-    (fun _ctx ->
-      assert_format2_ml
-        ~expected:{ocaml|let () =
+    {ocaml|let classify ready input = if ready then match input with | '!' | '^' -> bump (); true | _ -> false else false
+|ocaml}
+
+let test_lower2_breaks_multiline_labeled_applications_after_equals = fun _ctx ->
+  assert_format2_ml
+    ~expected:{ocaml|let () =
   Runtime.run
     ~main:(fun ~args ->
       Bench.Cli.main ~name:"Vector Benchmarks" ~benchmarks ~args)
     ~args:Env.args
     ()
 |ocaml}
-        "let () = Runtime.run ~main:(fun ~args -> Bench.Cli.main ~name:\"Vector Benchmarks\" ~benchmarks ~args) ~args:Env.args ()\n");
-  Test.case
-    "lower2 breaks medium pipelines vertically in arrow bodies"
-    (fun _ctx ->
-      assert_format2_ml
-        ~expected:{ocaml|let about_handler = fun conn req ->
+    "let () = Runtime.run ~main:(fun ~args -> Bench.Cli.main ~name:\"Vector Benchmarks\" ~benchmarks ~args) ~args:Env.args ()\n"
+
+let test_lower2_breaks_medium_pipelines_vertically_in_arrow_bodies = fun _ctx ->
+  assert_format2_ml
+    ~expected:{ocaml|let about_handler = fun conn req ->
   conn
   |> Conn.respond ~status:Ok ~body:"Suri - High-performance web framework"
   |> Conn.send
 |ocaml}
-        "let about_handler = fun conn req -> conn |> Conn.respond ~status:Ok ~body:\"Suri - High-performance web framework\" |> Conn.send\n");
-  Test.case
-    "lower2 keeps multiline parenthesized tuple args with callee"
-    (fun _ctx ->
-      assert_format2_ml
-        ~expected:"let next = Some (\n\
+    "let about_handler = fun conn req -> conn |> Conn.respond ~status:Ok ~body:\"Suri - High-performance web framework\" |> Conn.send\n"
+
+let test_lower2_keeps_multiline_parenthesized_tuple_args_with_callee = fun _ctx ->
+  assert_format2_ml
+    ~expected:"let next = Some (\n\
           \  Slice.sub_unchecked cursor.source ~off:start ~len:(stop - start),\n\
           \  { cursor with pos = stop }\n\
 )\n"
-        "let next = Some (Slice.sub_unchecked cursor.source ~off:start ~len:(stop - start), { cursor with pos = stop })\n");
-  Test.case
-    "lower2 keeps @@ fun applications bare"
-    (fun _ctx ->
-      assert_format2_ml
-        ~expected:"let () = start ~apps:[] @@ fun () -> main ()\n"
-        "let () = start ~apps:[] @@ fun () -> main ()\n");
-  Test.case
-    "lower2 breaks long pipelines after arrow bodies"
-    (fun _ctx ->
-      assert_format2_ml
-        ~expected:"let home_handler = fun conn req ->\n\
+    "let next = Some (Slice.sub_unchecked cursor.source ~off:start ~len:(stop - start), { cursor with pos = stop })\n"
+
+let test_lower2_keeps_fun_applications_bare = fun _ctx ->
+  assert_format2_ml
+    ~expected:"let () = start ~apps:[] @@ fun () -> main ()\n"
+    "let () = start ~apps:[] @@ fun () -> main ()\n"
+
+let test_lower2_breaks_long_pipelines_after_arrow_bodies = fun _ctx ->
+  assert_format2_ml
+    ~expected:"let home_handler = fun conn req ->\n\
           \  conn\n\
           \  |> Conn.with_status Ok\n\
           \  |> Conn.with_header \"Content-Type\" \"text/html\"\n\
           \  |> Conn.with_body html\n\
           \  |> Conn.send\n"
-        "let home_handler = fun conn req -> conn |> Conn.with_status Ok |> Conn.with_header \"Content-Type\" \"text/html\" |> Conn.with_body html |> Conn.send\n");
-  Test.case
-    "lower2 formats type aliases with parameters"
-    (fun _ctx -> assert_format2_mli ~expected:"type 'a t = 'a list\n" "type 'a t = 'a list\n");
-  Test.case
-    "lower2 breaks function arrows before multiline record bodies"
-    (fun _ctx ->
-      assert_format2_ml
-        ~expected:"let create = fun method_ uri ->\n\
+    "let home_handler = fun conn req -> conn |> Conn.with_status Ok |> Conn.with_header \"Content-Type\" \"text/html\" |> Conn.with_body html |> Conn.send\n"
+
+let test_lower2_formats_type_aliases_with_parameters = fun _ctx ->
+  assert_format2_mli
+    ~expected:"type 'a t = 'a list\n"
+    "type 'a t = 'a list\n"
+
+let test_lower2_breaks_function_arrows_before_multiline_record_bodies = fun _ctx ->
+  assert_format2_ml
+    ~expected:"let create = fun method_ uri ->\n\
           \  {\n\
           \    method_;\n\
           \    uri;\n\
@@ -1009,72 +952,67 @@ let count n =
           \    headers = Header.empty;\n\
           \    body = None;\n\
           \  }\n"
-        "let create = fun method_ uri -> { method_; uri; version = Version.Http11; headers = Header.empty; body = None }\n");
-  Test.case
-    "lower2 formats tuple type separators structurally"
-    (fun _ctx ->
-      assert_format2_mli
-        ~expected:"type ('a, 'e) result_like = ('a, 'e) result\ntype pair = int * string\n"
-        "type ('a, 'e) result_like = ('a, 'e) result\ntype pair = int * string\n");
-  Test.case
-    "lower2 keeps qualified variant payload declarations multiline"
-    (fun _ctx ->
-      assert_format2_mli
-        ~expected:{ocaml|type source =
+    "let create = fun method_ uri -> { method_; uri; version = Version.Http11; headers = Header.empty; body = None }\n"
+
+let test_lower2_formats_tuple_type_separators_structurally = fun _ctx ->
+  assert_format2_mli
+    ~expected:"type ('a, 'e) result_like = ('a, 'e) result\ntype pair = int * string\n"
+    "type ('a, 'e) result_like = ('a, 'e) result\ntype pair = int * string\n"
+
+let test_lower2_keeps_qualified_variant_payload_declarations_multiline = fun _ctx ->
+  assert_format2_mli
+    ~expected:{ocaml|type source =
   | Version of string
   | Path of Path.t
   | Url of Net.Uri.t
 |ocaml}
-        "type source = Version of string | Path of Path.t | Url of Net.Uri.t\n");
-  Test.case
-    "lower2 formats simple value declarations"
-    (fun _ctx -> assert_format2_mli ~expected:"val id: 'a -> 'a\n" "val id : 'a -> 'a\n");
-  Test.case
-    "lower2 breaks long value declarations after the colon"
-    (fun _ctx ->
-      assert_format2_mli
-        ~expected:{ocaml|val resolve_module_path:
+    "type source = Version of string | Path of Path.t | Url of Net.Uri.t\n"
+
+let test_lower2_formats_simple_value_declarations = fun _ctx ->
+  assert_format2_mli
+    ~expected:"val id: 'a -> 'a\n"
+    "val id : 'a -> 'a\n"
+
+let test_lower2_breaks_long_value_declarations_after_the_colon = fun _ctx ->
+  assert_format2_mli
+    ~expected:{ocaml|val resolve_module_path:
   lookup ->
   current_path:string list ->
   target_path:string list ->
   interface_source option
 |ocaml}
-        {ocaml|val resolve_module_path: lookup -> current_path:string list -> target_path:string list -> interface_source option
-|ocaml});
-  Test.case
-    "lower2 breaks medium value declarations after the colon"
-    (fun _ctx ->
-      assert_format2_mli
-        ~expected:{ocaml|val materialize_package_exports:
+    {ocaml|val resolve_module_path: lookup -> current_path:string list -> target_path:string list -> interface_source option
+|ocaml}
+
+let test_lower2_breaks_medium_value_declarations_after_the_colon = fun _ctx ->
+  assert_format2_mli
+    ~expected:{ocaml|val materialize_package_exports:
   t ->
   exports:export_entry list ->
   target_dir:Std.Path.t ->
   (unit, error) result
 |ocaml}
-        {ocaml|val materialize_package_exports: t -> exports:export_entry list -> target_dir:Std.Path.t -> (unit, error) result
-|ocaml});
-  Test.case
-    "lower2 keeps fitting labeled value declarations inline"
-    (fun _ctx ->
-      assert_format2_mli
-        ~expected:"val request: t -> Net.Http.Request.t -> ?body:string -> unit -> (unit, Error.t) result\n"
-        "val request: t -> Net.Http.Request.t -> ?body:string -> unit -> (unit, Error.t) result\n");
-  Test.case
-    "lower2 fully breaks wider labeled value declarations after the colon"
-    (fun _ctx ->
-      assert_format2_mli
-        ~expected:"val parse:\n\
+    {ocaml|val materialize_package_exports: t -> exports:export_entry list -> target_dir:Std.Path.t -> (unit, error) result
+|ocaml}
+
+let test_lower2_keeps_fitting_labeled_value_declarations_inline = fun _ctx ->
+  assert_format2_mli
+    ~expected:"val request: t -> Net.Http.Request.t -> ?body:string -> unit -> (unit, Error.t) result\n"
+    "val request: t -> Net.Http.Request.t -> ?body:string -> unit -> (unit, Error.t) result\n"
+
+let test_lower2_fully_breaks_wider_labeled_value_declarations_after_the_colon = fun _ctx ->
+  assert_format2_mli
+    ~expected:"val parse:\n\
           \  ?max_request_line:int ->\n\
           \  ?max_headers:int ->\n\
           \  ?max_header_length:int ->\n\
           \  string ->\n\
           \  Std.Net.Http.Request.t parse_result\n"
-        "val parse: ?max_request_line:int -> ?max_headers:int -> ?max_header_length:int -> string -> Std.Net.Http.Request.t parse_result\n");
-  Test.case
-    "lower2 fully breaks named parameter declarations after the colon"
-    (fun _ctx ->
-      assert_format2_mli
-        ~expected:"val make:\n\
+    "val parse: ?max_request_line:int -> ?max_headers:int -> ?max_header_length:int -> string -> Std.Net.Http.Request.t parse_result\n"
+
+let test_lower2_fully_breaks_named_parameter_declarations_after_the_colon = fun _ctx ->
+  assert_format2_mli
+    ~expected:"val make:\n\
           \  name:string ->\n\
           \  value:string ->\n\
           \  ?max_age:int ->\n\
@@ -1086,68 +1024,62 @@ let count n =
           \  ?same_site:same_site ->\n\
           \  unit ->\n\
           \  t\n"
-        "val make: name:string -> value:string -> ?max_age:int -> ?expires:string -> ?path:string -> ?domain:string -> ?secure:bool -> ?http_only:bool -> ?same_site:same_site -> unit -> t\n");
-  Test.case
-    "lower2 keeps adjacent type and module declarations compact"
-    (fun _ctx ->
-      assert_format2_mli
-        ~expected:{ocaml|type source =
+    "val make: name:string -> value:string -> ?max_age:int -> ?expires:string -> ?path:string -> ?domain:string -> ?secure:bool -> ?http_only:bool -> ?same_site:same_site -> unit -> t\n"
+
+let test_lower2_keeps_adjacent_type_and_module_declarations_compact = fun _ctx ->
+  assert_format2_mli
+    ~expected:{ocaml|type source =
   | Version of string
   | Path of Path.t
   | Url of Net.Uri.t
 
 module Ocamldep = Ocamldep
 |ocaml}
-        "type source = Version of string | Path of Path.t | Url of Net.Uri.t\nmodule Ocamldep = Ocamldep\n");
-  Test.case
-    "lower2 preserves consecutive docstring paragraphs"
-    (fun _ctx ->
-      assert_format2_mli
-        ~expected:"val hash: t -> Crypto.hash\n\n\
+    "type source = Version of string | Path of Path.t | Url of Net.Uri.t\nmodule Ocamldep = Ocamldep\n"
+
+let test_lower2_preserves_consecutive_docstring_paragraphs = fun _ctx ->
+  assert_format2_mli
+    ~expected:"val hash: t -> Crypto.hash\n\n\
           (** Compute a hash of the toolchain for cache invalidation *)\n\n\
           (** Multi-target toolchain support *)\n\
           val get_host_triple: unit -> Riot_model.Target.t\n"
-        "val hash: t -> Crypto.hash\n\n(** Compute a hash of the toolchain for cache invalidation *)\n\n(** Multi-target toolchain support *)\nval get_host_triple: unit -> Riot_model.Target.t\n");
-  Test.case
-    "lower2 keeps adjacent leading docstrings visually separated"
-    (fun _ctx ->
-      assert_format2_mli
-        ~expected:{ocaml|(** Module overview. *)
+    "val hash: t -> Crypto.hash\n\n(** Compute a hash of the toolchain for cache invalidation *)\n\n(** Multi-target toolchain support *)\nval get_host_triple: unit -> Riot_model.Target.t\n"
+
+let test_lower2_keeps_adjacent_leading_docstrings_visually_separated = fun _ctx ->
+  assert_format2_mli
+    ~expected:{ocaml|(** Module overview. *)
 
 (** Item doc. *)
 type t
 |ocaml}
-        {ocaml|(** Module overview. *)
+    {ocaml|(** Module overview. *)
 (** Item doc. *)
 type t
-|ocaml});
-  Test.case
-    "lower2 keeps section headings tight to following signature docs"
-    (fun _ctx ->
-      assert_format2_mli
-        ~expected:{ocaml|type t = { value: int }
+|ocaml}
+
+let test_lower2_keeps_section_headings_tight_to_following_signature_docs = fun _ctx ->
+  assert_format2_mli
+    ~expected:{ocaml|type t = { value: int }
 (** {2 Parsing} *)
 (** Parse Cookie header into name-value pairs. *)
 val parse: string -> t
 |ocaml}
-        {ocaml|type t = {
+    {ocaml|type t = {
   value: int;
 }
 (** {2 Parsing} *)
 (** Parse Cookie header into name-value pairs. *)
 val parse: string -> t
-|ocaml});
-  Test.case
-    "lower2 keeps adjacent signature values separated"
-    (fun _ctx ->
-      assert_format2_mli
-        ~expected:"module type Intf = sig\n  val name: string\n\n  val connect: Net.Addr.stream_addr -> Net.Uri.t -> (Connection.t, Error.t) result\nend\n"
-        "module type Intf = sig\nval name:string\nval connect: Net.Addr.stream_addr -> Net.Uri.t -> (Connection.t, Error.t) result\nend\n");
-  Test.case
-    "lower2 formats module struct bodies from nested items"
-    (fun _ctx ->
-      assert_format2_ml
-        ~expected:{ocaml|module Tcp: Intf = struct
+|ocaml}
+
+let test_lower2_keeps_adjacent_signature_values_separated = fun _ctx ->
+  assert_format2_mli
+    ~expected:"module type Intf = sig\n  val name: string\n\n  val connect: Net.Addr.stream_addr -> Net.Uri.t -> (Connection.t, Error.t) result\nend\n"
+    "module type Intf = sig\nval name:string\nval connect: Net.Addr.stream_addr -> Net.Uri.t -> (Connection.t, Error.t) result\nend\n"
+
+let test_lower2_formats_module_struct_bodies_from_nested_items = fun _ctx ->
+  assert_format2_ml
+    ~expected:{ocaml|module Tcp: Intf = struct
   let name = "tcp"
 
   let connect = fun addr uri ->
@@ -1159,16 +1091,15 @@ val parse: string -> t
     | Error _ -> Error value
 end
 |ocaml}
-        {ocaml|module Tcp: Intf = struct
+    {ocaml|module Tcp: Intf = struct
 let name = "tcp"
 let connect = fun addr uri -> match Net.TcpStream.connect addr with | Ok sock -> let reader = Net.TcpStream.to_reader sock in let writer = Net.TcpStream.to_writer sock in Ok (Connection.make ~reader ~writer ~of_io_error:Error.of_io_error ~uri) | Error _ -> Error value
 end
-|ocaml});
-  Test.case
-    "lower2 keeps adjacent module structures separated"
-    (fun _ctx ->
-      assert_format2_ml
-        ~expected:{ocaml|module Tcp: Intf = struct
+|ocaml}
+
+let test_lower2_keeps_adjacent_module_structures_separated = fun _ctx ->
+  assert_format2_ml
+    ~expected:{ocaml|module Tcp: Intf = struct
   let name = "tcp"
 end
 
@@ -1176,21 +1107,256 @@ module Tls: Intf = struct
   let name = "tls"
 end
 |ocaml}
-        {ocaml|module Tcp: Intf = struct
+    {ocaml|module Tcp: Intf = struct
 let name = "tcp"
 end
 module Tls: Intf = struct
 let name = "tls"
 end
-|ocaml});
-  Test.case
-    "lower2 rejects unsupported shapes instead of replaying source"
-    (fun _ctx -> assert_format2_ml_fails "let object_value = object end\n");
-  Test.case
-    ~size:Large
-    "lower2 formats the existing fixture corpus idempotently"
-    (fun _ctx -> assert_lower2_manifest_fixtures ());
-]
+|ocaml}
+
+let test_lower2_rejects_unsupported_shapes_instead_of_replaying_source = fun _ctx ->
+  assert_format2_ml_fails
+    "let object_value = object end\n"
+
+let test_lower2_formats_the_existing_fixture_corpus_idempotently = fun _ctx ->
+  assert_lower2_manifest_fixtures
+    ()
+
+let tests =
+  Test.[
+    case "lower2 keeps empty implementations empty" test_lower2_keeps_empty_implementations_empty;
+    case "lower2 formats simple let bindings" test_lower2_formats_simple_let_bindings;
+    case "lower2 formats parameterized let bindings" test_lower2_formats_parameterized_let_bindings;
+    case "lower2 formats typed let binding heads" test_lower2_formats_typed_let_binding_heads;
+    case
+      "lower2 formats quoted poly let annotations"
+      test_lower2_formats_quoted_poly_let_annotations;
+    case
+      "lower2 keeps locally abstract type binding prefixes"
+      test_lower2_keeps_locally_abstract_type_binding_prefixes;
+    case
+      "lower2 breaks non-polymorphic typed let annotations vertically after the colon"
+      test_lower2_breaks_non_polymorphic_typed_let_annotations_vertically_after_the_colon;
+    case
+      "lower2 formats mutual recursive let bindings"
+      test_lower2_formats_mutual_recursive_let_bindings;
+    case "lower2 formats local let expressions" test_lower2_formats_local_let_expressions;
+    case "lower2 formats function expressions" test_lower2_formats_function_expressions;
+    case
+      "lower2 formats function expressions with return annotations"
+      test_lower2_formats_function_expressions_with_return_annotations;
+    case "lower2 formats match expressions" test_lower2_formats_match_expressions;
+    case "lower2 formats sequence expressions" test_lower2_formats_sequence_expressions;
+    case
+      "lower2 does not duplicate sequence-leading comments"
+      test_lower2_does_not_duplicate_sequence_leading_comments;
+    case
+      "lower2 preserves trailing sequence bodies in and-bindings"
+      test_lower2_preserves_trailing_sequence_bodies_in_and_bindings;
+    case "lower2 formats list and array expressions" test_lower2_formats_list_and_array_expressions;
+    case
+      "lower2 preserves parens around function application arguments"
+      test_lower2_preserves_parens_around_function_application_arguments;
+    case
+      "lower2 keeps parenthesized multiline infix arguments with callee"
+      test_lower2_keeps_parenthesized_multiline_infix_arguments_with_callee;
+    case
+      "lower2 keeps if-branch multiline infix arguments with callee"
+      test_lower2_keeps_if_branch_multiline_infix_arguments_with_callee;
+    case
+      "lower2 breaks ordinary calls before multiline infix arguments"
+      test_lower2_breaks_ordinary_calls_before_multiline_infix_arguments;
+    case
+      "lower2 breaks long qualified match pattern application bodies"
+      test_lower2_breaks_long_qualified_match_pattern_application_bodies;
+    case
+      "lower2 keeps parenthesized match bodies on long qualified cases"
+      test_lower2_keeps_parenthesized_match_bodies_on_long_qualified_cases;
+    case
+      "lower2 keeps parenthesized sequence bodies on long qualified cases"
+      test_lower2_keeps_parenthesized_sequence_bodies_on_long_qualified_cases;
+    case
+      "lower2 keeps parenthesized let bodies on long qualified cases"
+      test_lower2_keeps_parenthesized_let_bodies_on_long_qualified_cases;
+    case
+      "lower2 indents commented parenthesized match bodies in cases"
+      test_lower2_indents_commented_parenthesized_match_bodies_in_cases;
+    case
+      "lower2 breaks parenthesized match after else"
+      test_lower2_breaks_parenthesized_match_after_else;
+    case
+      "lower2 keeps comments before else branch bodies"
+      test_lower2_keeps_comments_before_else_branch_bodies;
+    case
+      "lower2 wraps parenthesized infix arguments containing match"
+      test_lower2_wraps_parenthesized_infix_arguments_containing_match;
+    case "lower2 formats labels and optional labels" test_lower2_formats_labels_and_optional_labels;
+    case "lower2 formats polymorphic variants" test_lower2_formats_polymorphic_variants;
+    case
+      "lower2 preserves parens around polymorphic variant payload apply arguments"
+      test_lower2_preserves_parens_around_polymorphic_variant_payload_apply_arguments;
+    case
+      "lower2 keeps simple polymorphic variant payload args bare"
+      test_lower2_keeps_simple_polymorphic_variant_payload_args_bare;
+    case
+      "lower2 formats expression and pattern attributes"
+      test_lower2_formats_expression_and_pattern_attributes;
+    case
+      "lower2 formats expression pattern and item extensions"
+      test_lower2_formats_expression_pattern_and_item_extensions;
+    case
+      "lower2 formats signature extension and attribute items"
+      test_lower2_formats_signature_extension_and_attribute_items;
+    case
+      "lower2 formats selectors and index expressions"
+      test_lower2_formats_selectors_and_index_expressions;
+    case
+      "lower2 keeps index expressions bare in apply arguments"
+      test_lower2_keeps_index_expressions_bare_in_apply_arguments;
+    case
+      "lower2 keeps deref prefix expressions bare in apply arguments"
+      test_lower2_keeps_deref_prefix_expressions_bare_in_apply_arguments;
+    case
+      "lower2 formats record expressions and patterns"
+      test_lower2_formats_record_expressions_and_patterns;
+    case
+      "lower2 formats binding operator expressions"
+      test_lower2_formats_binding_operator_expressions;
+    case
+      "lower2 formats local open expressions and patterns"
+      test_lower2_formats_local_open_expressions_and_patterns;
+    case
+      "lower2 keeps delimited local opens bare in infix operands"
+      test_lower2_keeps_delimited_local_opens_bare_in_infix_operands;
+    case
+      "lower2 formats first-class module expressions"
+      test_lower2_formats_first_class_module_expressions;
+    case
+      "lower2 formats locally abstract and first-class module patterns"
+      test_lower2_formats_locally_abstract_and_first_class_module_patterns;
+    case
+      "lower2 formats package type value declarations"
+      test_lower2_formats_package_type_value_declarations;
+    case "lower2 formats let module expressions" test_lower2_formats_let_module_expressions;
+    case
+      "lower2 breaks let module before multiline bodies"
+      test_lower2_breaks_let_module_before_multiline_bodies;
+    case "lower2 formats let exception expressions" test_lower2_formats_let_exception_expressions;
+    case "lower2 formats unreachable expressions" test_lower2_formats_unreachable_expressions;
+    case
+      "lower2 formats assertion and lazy expressions"
+      test_lower2_formats_assertion_and_lazy_expressions;
+    case "lower2 formats try expressions" test_lower2_formats_try_expressions;
+    case "lower2 formats while and for loops" test_lower2_formats_while_and_for_loops;
+    case
+      "lower2 keeps while and for body sequences inside done boundaries"
+      test_lower2_keeps_while_and_for_body_sequences_inside_done_boundaries;
+    case
+      "lower2 formats lazy exception and interval patterns"
+      test_lower2_formats_lazy_exception_and_interval_patterns;
+    case "lower2 adds a final newline" test_lower2_adds_a_final_newline;
+    case "lower2 formats open declarations" test_lower2_formats_open_declarations;
+    case
+      "lower2 formats simple include external and exception declarations"
+      test_lower2_formats_simple_include_external_and_exception_declarations;
+    case
+      "lower2 formats type extensions and structured exception rhs"
+      test_lower2_formats_type_extensions_and_structured_exception_rhs;
+    case
+      "lower2 formats top-level exceptions after function bindings"
+      test_lower2_formats_top_level_exceptions_after_function_bindings;
+    case
+      "lower2 formats simple module and module type declarations"
+      test_lower2_formats_simple_module_and_module_type_declarations;
+    case
+      "lower2 formats constrained module type declarations"
+      test_lower2_formats_constrained_module_type_declarations;
+    case
+      "lower2 formats simple signature module declarations"
+      test_lower2_formats_simple_signature_module_declarations;
+    case
+      "lower2 keeps include constraints in one signature item"
+      test_lower2_keeps_include_constraints_in_one_signature_item;
+    case
+      "lower2 keeps then-branch sequences inside if expressions with else"
+      test_lower2_keeps_then_branch_sequences_inside_if_expressions_with_else;
+    case
+      "lower2 keeps else-if chains after else-boundary comments"
+      test_lower2_keeps_else_if_chains_after_else_boundary_comments;
+    case
+      "lower2 keeps match-case sequences inside if then branches"
+      test_lower2_keeps_match_case_sequences_inside_if_then_branches;
+    case
+      "lower2 breaks multiline labeled applications after equals"
+      test_lower2_breaks_multiline_labeled_applications_after_equals;
+    case
+      "lower2 breaks medium pipelines vertically in arrow bodies"
+      test_lower2_breaks_medium_pipelines_vertically_in_arrow_bodies;
+    case
+      "lower2 keeps multiline parenthesized tuple args with callee"
+      test_lower2_keeps_multiline_parenthesized_tuple_args_with_callee;
+    case "lower2 keeps @@ fun applications bare" test_lower2_keeps_fun_applications_bare;
+    case
+      "lower2 breaks long pipelines after arrow bodies"
+      test_lower2_breaks_long_pipelines_after_arrow_bodies;
+    case
+      "lower2 formats type aliases with parameters"
+      test_lower2_formats_type_aliases_with_parameters;
+    case
+      "lower2 breaks function arrows before multiline record bodies"
+      test_lower2_breaks_function_arrows_before_multiline_record_bodies;
+    case
+      "lower2 formats tuple type separators structurally"
+      test_lower2_formats_tuple_type_separators_structurally;
+    case
+      "lower2 keeps qualified variant payload declarations multiline"
+      test_lower2_keeps_qualified_variant_payload_declarations_multiline;
+    case "lower2 formats simple value declarations" test_lower2_formats_simple_value_declarations;
+    case
+      "lower2 breaks long value declarations after the colon"
+      test_lower2_breaks_long_value_declarations_after_the_colon;
+    case
+      "lower2 breaks medium value declarations after the colon"
+      test_lower2_breaks_medium_value_declarations_after_the_colon;
+    case
+      "lower2 keeps fitting labeled value declarations inline"
+      test_lower2_keeps_fitting_labeled_value_declarations_inline;
+    case
+      "lower2 fully breaks wider labeled value declarations after the colon"
+      test_lower2_fully_breaks_wider_labeled_value_declarations_after_the_colon;
+    case
+      "lower2 fully breaks named parameter declarations after the colon"
+      test_lower2_fully_breaks_named_parameter_declarations_after_the_colon;
+    case
+      "lower2 keeps adjacent type and module declarations compact"
+      test_lower2_keeps_adjacent_type_and_module_declarations_compact;
+    case
+      "lower2 preserves consecutive docstring paragraphs"
+      test_lower2_preserves_consecutive_docstring_paragraphs;
+    case
+      "lower2 keeps adjacent leading docstrings visually separated"
+      test_lower2_keeps_adjacent_leading_docstrings_visually_separated;
+    case
+      "lower2 keeps section headings tight to following signature docs"
+      test_lower2_keeps_section_headings_tight_to_following_signature_docs;
+    case
+      "lower2 keeps adjacent signature values separated"
+      test_lower2_keeps_adjacent_signature_values_separated;
+    case
+      "lower2 formats module struct bodies from nested items"
+      test_lower2_formats_module_struct_bodies_from_nested_items;
+    case
+      "lower2 keeps adjacent module structures separated"
+      test_lower2_keeps_adjacent_module_structures_separated;
+    case
+      "lower2 rejects unsupported shapes instead of replaying source"
+      test_lower2_rejects_unsupported_shapes_instead_of_replaying_source;
+    case
+      ~size:Large
+      "lower2 formats the existing fixture corpus idempotently"
+      test_lower2_formats_the_existing_fixture_corpus_idempotently;
+  ]
 
 let main ~args = Test.Cli.main ~name:"krasny:lower2" ~tests ~args ()
 

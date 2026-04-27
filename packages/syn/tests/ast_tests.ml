@@ -3139,114 +3139,111 @@ let y = 3
   else
     Ok ()
 
-let tests = [
-  Test.case
-    "ast leaves class subset words out of the keyword table"
-    test_class_subset_words_are_not_keywords;
-  Test.case "ast exposes source file and let binding views" test_source_file_and_let_binding_views;
-  Test.case "ast exposes separated docstring trivia parts" test_token_leading_docstring_trivia_parts;
-  Test.case "ast node spans exclude leading trivia" test_node_span_excludes_leading_trivia;
-  Test.case "ast exposes if and match expression views" test_expression_views;
-  Test.case "ast exposes assignment operator tokens" test_assignment_operator_views;
-  Test.case
-    "ast preserves trailing sequence bodies before and-bindings"
-    test_trailing_sequence_before_and_views;
-  Test.case
-    "ast keeps labels after polymorphic variant arguments as application arguments"
-    test_labeled_application_after_poly_variant_argument;
-  Test.case "ast exposes tuple and cons pattern views" test_pattern_views;
-  Test.case
-    "ast keeps comma outside polymorphic variant pattern payloads"
-    test_poly_variant_tuple_pattern_boundary;
-  Test.case "ast exposes signature declaration views" test_signature_and_type_views;
-  Test.case "ast parses package type value annotations" test_package_type_value_annotation_views;
-  Test.case "ast exposes type expression views" test_type_expression_views;
-  Test.case "ast exposes type tuple separators" test_type_tuple_separator_views;
-  Test.case
-    "ast exposes poly labeled types and signed literal patterns"
-    test_poly_labeled_and_signed_views;
-  Test.case "ast exposes quoted poly let annotations" test_quoted_poly_let_annotation_views;
-  Test.case
-    "ast keeps non-manifest type bodies out of manifest views"
-    test_non_manifest_type_declaration_bodies;
-  Test.case "ast exposes type declaration parameters" test_type_declaration_parameters;
-  Test.case "ast exposes type declaration member views" test_type_declaration_member_views;
-  Test.case "ast exposes type declaration body group views" test_type_declaration_body_group_views;
-  Test.case
-    "ast exposes type alias record representations"
-    test_type_alias_record_representation_views;
-  Test.case
-    "ast preserves abstract type attributes before later structure items"
-    test_abstract_type_attribute_boundary_views;
-  Test.case
-    "ast exposes type extensions and structured exception views"
-    test_type_extension_and_exception_views;
-  Test.case
-    "ast preserves exception declarations after function bindings"
-    test_exception_after_function_binding_views;
-  Test.case
-    "ast keeps nested match guards from stealing outer case arrows"
-    test_nested_match_guard_case_boundaries;
-  Test.case "ast exposes open declaration path tokens" test_open_declaration_path_tokens;
-  Test.case "ast exposes simple declaration token views" test_simple_declaration_token_views;
-  Test.case "ast exposes module declaration tokens" test_module_declaration_tokens;
-  Test.case "ast exposes module declaration member views" test_module_declaration_member_views;
-  Test.case
-    "ast preserves signature module declarations with module type of bodies"
-    test_signature_module_typeof_declaration;
-  Test.case "ast exposes module type declaration tokens" test_module_type_declaration_tokens;
-  Test.case "ast exposes module type with-constraint views" test_module_type_with_constraint_views;
-  Test.case "ast exposes let binding type annotation views" test_binding_type_annotation_view;
-  Test.case
-    "ast exposes function binding return annotation views"
-    test_function_binding_return_annotation_view;
-  Test.case
-    "ast keeps parenthesized parameter annotations out of return annotations"
-    test_parenthesized_parameter_annotation_is_not_return_annotation;
-  Test.case
-    "ast views normalize redundant parentheses"
-    test_ast_views_normalize_redundant_parentheses;
-  Test.case "ast exposes record expression and pattern views" test_record_views;
-  Test.case
-    "ast keeps record field special-form bodies within the field boundary"
-    test_record_field_special_form_boundaries;
-  Test.case "ast exposes binding operator expression views" test_binding_operator_views;
-  Test.case "ast exposes local open expression and pattern views" test_local_open_views;
-  Test.case
-    "ast preserves local open expressions as application arguments"
-    test_local_open_argument_views;
-  Test.case
-    "ast preserves local open expressions inside labeled arguments"
-    test_local_open_labeled_argument_views;
-  Test.case "ast exposes first-class module expression views" test_first_class_module_views;
-  Test.case "ast exposes let module expression views" test_let_module_expression_views;
-  Test.case "ast exposes let exception expression views" test_let_exception_expression_views;
-  Test.case "ast exposes unreachable expression views" test_unreachable_expression_views;
-  Test.case "ast exposes attribute expression and pattern views" test_attribute_views;
-  Test.case "ast exposes extension expression pattern and item views" test_extension_views;
-  Test.case
-    "ast exposes locally abstract and first-class module pattern views"
-    test_special_pattern_views;
-  Test.case
-    "ast marks constrained first-class module pattern ascriptions unsupported"
-    test_first_class_module_pattern_with_constraints_view;
-  Test.case "ast exposes typed labeled parameter views" test_typed_labeled_parameter_view;
-  Test.case
-    "ast exposes renamed optional parameters with defaults"
-    test_optional_default_labeled_parameter_view;
-  Test.case
-    "ast keeps if then-branch sequences inside explicit else branches"
-    test_if_then_branch_sequence_boundaries;
-  Test.case
-    "ast keeps match-case sequences inside if then-branch matches"
-    test_if_then_match_case_sequence_boundaries;
-  Test.case
-    "ast keeps while and for body sequences inside done boundaries"
-    test_loop_body_sequence_boundaries;
-  Test.case
-    "ast visitor threads state and skips subtrees"
-    test_ast_visitor_threads_state_and_skips_subtrees;
-]
+let tests =
+  Test.[
+    case
+      "ast leaves class subset words out of the keyword table"
+      test_class_subset_words_are_not_keywords;
+    case "ast exposes source file and let binding views" test_source_file_and_let_binding_views;
+    case "ast exposes separated docstring trivia parts" test_token_leading_docstring_trivia_parts;
+    case "ast node spans exclude leading trivia" test_node_span_excludes_leading_trivia;
+    case "ast exposes if and match expression views" test_expression_views;
+    case "ast exposes assignment operator tokens" test_assignment_operator_views;
+    case
+      "ast preserves trailing sequence bodies before and-bindings"
+      test_trailing_sequence_before_and_views;
+    case
+      "ast keeps labels after polymorphic variant arguments as application arguments"
+      test_labeled_application_after_poly_variant_argument;
+    case "ast exposes tuple and cons pattern views" test_pattern_views;
+    case
+      "ast keeps comma outside polymorphic variant pattern payloads"
+      test_poly_variant_tuple_pattern_boundary;
+    case "ast exposes signature declaration views" test_signature_and_type_views;
+    case "ast parses package type value annotations" test_package_type_value_annotation_views;
+    case "ast exposes type expression views" test_type_expression_views;
+    case "ast exposes type tuple separators" test_type_tuple_separator_views;
+    case
+      "ast exposes poly labeled types and signed literal patterns"
+      test_poly_labeled_and_signed_views;
+    case "ast exposes quoted poly let annotations" test_quoted_poly_let_annotation_views;
+    case
+      "ast keeps non-manifest type bodies out of manifest views"
+      test_non_manifest_type_declaration_bodies;
+    case "ast exposes type declaration parameters" test_type_declaration_parameters;
+    case "ast exposes type declaration member views" test_type_declaration_member_views;
+    case "ast exposes type declaration body group views" test_type_declaration_body_group_views;
+    case "ast exposes type alias record representations" test_type_alias_record_representation_views;
+    case
+      "ast preserves abstract type attributes before later structure items"
+      test_abstract_type_attribute_boundary_views;
+    case
+      "ast exposes type extensions and structured exception views"
+      test_type_extension_and_exception_views;
+    case
+      "ast preserves exception declarations after function bindings"
+      test_exception_after_function_binding_views;
+    case
+      "ast keeps nested match guards from stealing outer case arrows"
+      test_nested_match_guard_case_boundaries;
+    case "ast exposes open declaration path tokens" test_open_declaration_path_tokens;
+    case "ast exposes simple declaration token views" test_simple_declaration_token_views;
+    case "ast exposes module declaration tokens" test_module_declaration_tokens;
+    case "ast exposes module declaration member views" test_module_declaration_member_views;
+    case
+      "ast preserves signature module declarations with module type of bodies"
+      test_signature_module_typeof_declaration;
+    case "ast exposes module type declaration tokens" test_module_type_declaration_tokens;
+    case "ast exposes module type with-constraint views" test_module_type_with_constraint_views;
+    case "ast exposes let binding type annotation views" test_binding_type_annotation_view;
+    case
+      "ast exposes function binding return annotation views"
+      test_function_binding_return_annotation_view;
+    case
+      "ast keeps parenthesized parameter annotations out of return annotations"
+      test_parenthesized_parameter_annotation_is_not_return_annotation;
+    case "ast views normalize redundant parentheses" test_ast_views_normalize_redundant_parentheses;
+    case "ast exposes record expression and pattern views" test_record_views;
+    case
+      "ast keeps record field special-form bodies within the field boundary"
+      test_record_field_special_form_boundaries;
+    case "ast exposes binding operator expression views" test_binding_operator_views;
+    case "ast exposes local open expression and pattern views" test_local_open_views;
+    case
+      "ast preserves local open expressions as application arguments"
+      test_local_open_argument_views;
+    case
+      "ast preserves local open expressions inside labeled arguments"
+      test_local_open_labeled_argument_views;
+    case "ast exposes first-class module expression views" test_first_class_module_views;
+    case "ast exposes let module expression views" test_let_module_expression_views;
+    case "ast exposes let exception expression views" test_let_exception_expression_views;
+    case "ast exposes unreachable expression views" test_unreachable_expression_views;
+    case "ast exposes attribute expression and pattern views" test_attribute_views;
+    case "ast exposes extension expression pattern and item views" test_extension_views;
+    case
+      "ast exposes locally abstract and first-class module pattern views"
+      test_special_pattern_views;
+    case
+      "ast marks constrained first-class module pattern ascriptions unsupported"
+      test_first_class_module_pattern_with_constraints_view;
+    case "ast exposes typed labeled parameter views" test_typed_labeled_parameter_view;
+    case
+      "ast exposes renamed optional parameters with defaults"
+      test_optional_default_labeled_parameter_view;
+    case
+      "ast keeps if then-branch sequences inside explicit else branches"
+      test_if_then_branch_sequence_boundaries;
+    case
+      "ast keeps match-case sequences inside if then-branch matches"
+      test_if_then_match_case_sequence_boundaries;
+    case
+      "ast keeps while and for body sequences inside done boundaries"
+      test_loop_body_sequence_boundaries;
+    case
+      "ast visitor threads state and skips subtrees"
+      test_ast_visitor_threads_state_and_skips_subtrees;
+  ]
 
 let main ~args = Test.Cli.main ~name:"syn-ast" ~tests ~args ()
 

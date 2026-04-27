@@ -89,6 +89,8 @@ let size_fixture = fun (test: Test.test_case) ->
   | "9110_real_syn_error.ml" -> { test with size = Large }
   | _ -> test
 
+let run_fixture = fun ctx -> test_fixture ~ctx
+
 let main ~args =
   let tracked = tracked_fixtures () in
   let tests =
@@ -97,7 +99,7 @@ let main ~args =
       ~dir:fixtures_dir
       ~filter:(fixture_filter tracked)
       ~snapshot_path:(fun path -> Some (approved_snapshot_path path))
-      ~run:(fun ctx -> test_fixture ~ctx)
+      ~run:run_fixture
     |> List.map ~fn:size_fixture
   in
   Test.Cli.main ~name:"krasny:fixtures" ~tests ~args ()
