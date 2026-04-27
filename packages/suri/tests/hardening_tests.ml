@@ -277,6 +277,37 @@ let test_cors_preflight_allows_configured_headers = fun _ctx ->
   | Ok () -> Ok ()
   | Error error -> Error (Cors.preflight_error_to_string error)
 
+let test_cors_preflight_returns_no_content = fun _ctx ->
+  let conn =
+    Conn.For_testing.make
+      ~method_:Net.Http.Method.Options
+      ~headers:[
+        ("origin", "https://example.com");
+        ("access-control-request-method", "PUT");
+        ("access-control-request-headers", "Authorization");
+      ]
+      ()
+  in
+  let continued = ref false in
+  let middleware =
+    Cors.middleware
+      ~origins:[ "https://example.com"; ]
+      ~methods:[ Net.Http.Method.Put; ]
+      ~headers:[ "authorization"; ]
+      ()
+  in
+  let conn' =
+    middleware
+      ~conn
+      ~next:(fun conn ->
+        continued := true;
+        conn)
+  in
+  let response = Conn.to_response conn' in
+  Test.assert_false !continued;
+  Test.assert_equal ~expected:Net.Http.Status.NoContent ~actual:response.status;
+  Ok ()
+
 let test_conn_query_params_handle_missing_and_blank_values = fun _ctx ->
   Test.assert_equal
     ~expected:[ ("flag", ""); ("empty", ""); ("name", "John Doe"); ]
@@ -997,6 +1028,7 @@ let tests =
     case "cors preflight rejects disallowed method" test_cors_preflight_rejects_disallowed_method;
     case "cors preflight rejects disallowed headers" test_cors_preflight_rejects_disallowed_headers;
     case "cors preflight allows configured headers" test_cors_preflight_allows_configured_headers;
+    case "cors preflight returns no content" test_cors_preflight_returns_no_content;
     case
       "conn query params handle missing and blank values"
       test_conn_query_params_handle_missing_and_blank_values;

@@ -166,7 +166,7 @@ let middleware = fun
                     [ "[CORS] Preflight from origin: "; req_origin; " -> "; origin_val; ]);
                 let conn =
                   conn
-                  |> Conn.respond ~status:Net.Http.Status.Ok
+                  |> Conn.respond ~status:Net.Http.Status.NoContent
                   |> Conn.with_header "access-control-allow-origin" origin_val
                   |> Conn.with_header "access-control-allow-methods" all_methods
                 in
