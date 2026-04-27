@@ -79,6 +79,21 @@ type record_expr_field_view = {
   node: record_expr_field;
 }
 
+type record_pattern_field_view = {
+  path: path option;
+  pattern: pattern option;
+  node: pattern;
+}
+
+type first_class_module_pattern_ascription =
+  | NoAscription
+  | PathAscription
+  | UnsupportedAscription
+
+type type_item =
+  | TypeDeclarationItem of type_declaration
+  | TypeExtensionItem of type_extension_declaration
+
 let root = fun tree -> ({ tree; id = tree.Syntax_tree.root }: node)
 
 let wrap_node = fun tree id -> ({ tree; id }: node)
@@ -359,6 +374,13 @@ let child_token_at = fun (node: node) index ->
   | Some (Syntax_tree.Missing _)
   | None -> None
 
+let child_node_at = fun (node: node) index ->
+  match Syntax_tree.child_at node.tree (syntax_node node) index with
+  | Some (Syntax_tree.Node id) -> Some (wrap_node node.tree id)
+  | Some (Syntax_tree.Token _)
+  | Some (Syntax_tree.Missing _)
+  | None -> None
+
 let has_child_token_kind = fun (node: node) expected_kind ->
   let found = ref false in
   Syntax_tree.for_each_child
@@ -429,6 +451,25 @@ let last_ident_token = fun (node: node) ->
       | Syntax_tree.Missing _ -> ()
     );
   !found
+
+let node_is_single_ident_text = fun (node: node) expected ->
+  let ident_count = ref 0 in
+  let matched = ref false in
+  Syntax_tree.for_each_child
+    node.tree
+    (syntax_node node)
+    ~fn:(
+      function
+      | Syntax_tree.Token id ->
+          let token = wrap_token node.tree id in
+          if token_kind_is token Syntax_kind.IDENT then (
+            ident_count := Int.add !ident_count 1;
+            matched := String.equal (Syntax_tree.token_text token.tree (syntax_token token)) expected
+          )
+      | Syntax_tree.Node _
+      | Syntax_tree.Missing _ -> ()
+    );
+  Int.equal !ident_count 1 && !matched
 
 let first_expr_child = fun (node: node) -> first_child_node_matching node ~matches:is_expr_kind
 
@@ -840,6 +881,152 @@ module Node = struct
       ~matches:(fun _ -> true)
 end
 
+let record_pattern_open_wildcard = fun (record: pattern) ->
+  let rec loop index previous_token_kind =
+    if index >= Node.child_count record then
+      None
+    else
+      match Node.child_at record index with
+      | Some (Syntax_tree.Token id) ->
+          let token = wrap_token record.tree id in
+          loop (index + 1) (Some (Token.kind token))
+      | Some (Syntax_tree.Node id) ->
+          let child = wrap_node record.tree id in
+          if node_kind_is child Syntax_kind.WILDCARD_PATTERN then
+            match previous_token_kind with
+            | Some kind when Syntax_kind.(kind = EQ) -> loop (index + 1) previous_token_kind
+            | _ -> Node.first_child_token child ~kind:Syntax_kind.UNDERSCORE
+          else
+            loop (index + 1) previous_token_kind
+      | Some (Syntax_tree.Missing _)
+      | None -> loop (index + 1) previous_token_kind
+  in
+  loop 0 None
+
+let collect_record_pattern_fields = fun (record: pattern) ->
+  let fields = Vector.with_capacity ~size:(Node.child_count record) in
+  let child_count = Node.child_count record in
+  let rec loop index =
+    if index >= child_count then
+      ()
+    else
+      match child_node_at record index with
+      | Some child when node_kind_is child Syntax_kind.PATH_PATTERN ->
+          let (pattern, next) =
+            match child_token_kind_at record (index + 1) with
+            | Some kind when Syntax_kind.(kind = EQ) -> (
+                match child_node_at record (index + 2) with
+                | Some value when node_matches value is_pattern_kind -> (Some value, index + 3)
+                | _ -> (None, index + 2)
+              )
+            | _ -> (None, index + 1)
+          in
+          Vector.push
+            fields
+            ~value:{
+              path =
+                if node_matches child is_path_kind then
+                  Some child
+                else
+                  None;
+              pattern;
+              node = child;
+            };
+          loop next
+      | Some child when node_kind_is child Syntax_kind.WILDCARD_PATTERN -> loop (index + 1)
+      | Some child when node_matches child is_pattern_kind ->
+          Vector.push fields ~value:{ path = None; pattern = None; node = child };
+          loop (index + 1)
+      | Some _
+      | None -> loop (index + 1)
+  in
+  loop 0;
+  fields
+
+let first_class_module_pattern_token_index = fun pattern ~from ~matches ->
+  let count = Node.child_count pattern in
+  let rec loop index =
+    if index >= count then
+      None
+    else
+      match child_token_at pattern index with
+      | Some token when matches (Token.kind token) -> Some index
+      | _ -> loop (index + 1)
+  in
+  loop from
+
+let first_class_module_pattern_module_index = fun pattern ->
+  first_class_module_pattern_token_index
+    pattern
+    ~from:0
+    ~matches:(fun kind -> Syntax_kind.(kind = MODULE_KW))
+
+let first_class_module_pattern_binder = fun pattern ->
+  match first_class_module_pattern_module_index pattern with
+  | Some module_index -> (
+      match child_token_at pattern (module_index + 1) with
+      | Some token when token_kind_is token Syntax_kind.IDENT
+      || token_kind_is token Syntax_kind.UNDERSCORE -> Some token
+      | _ -> None
+    )
+  | None -> None
+
+let first_class_module_pattern_range_is_path = fun pattern start stop ->
+  let rec loop index saw_ident expect_ident =
+    if index >= stop then
+      saw_ident && not expect_ident
+    else
+      match child_token_at pattern index with
+      | Some token when token_kind_is token Syntax_kind.IDENT && expect_ident ->
+          loop (index + 1) true false
+      | Some token when token_kind_is token Syntax_kind.DOT && saw_ident && not expect_ident ->
+          loop (index + 1) saw_ident true
+      | _ -> false
+  in
+  loop start false true
+
+let first_class_module_pattern_ascription_bounds = fun pattern ->
+  match first_class_module_pattern_token_index ~from:0 pattern ~matches:(fun kind ->
+    Syntax_kind.(kind = COLON)
+  ) with
+  | None -> None
+  | Some colon_index ->
+      let start = colon_index + 1 in
+      first_class_module_pattern_token_index
+        pattern
+        ~from:start
+        ~matches:(fun kind -> Syntax_kind.(kind = RPAREN))
+      |> Option.map ~fn:(fun stop -> (start, stop))
+
+let first_class_module_pattern_ascription = fun pattern ->
+  match (
+    Node.first_child_token pattern ~kind:Syntax_kind.COLON,
+    first_class_module_pattern_ascription_bounds pattern
+  ) with
+  | (None, _) -> NoAscription
+  | (Some _, Some (start, stop)) when first_class_module_pattern_range_is_path pattern start stop ->
+      PathAscription
+  | (Some _, _) -> UnsupportedAscription
+
+let first_class_module_pattern_ascription_path = fun pattern ->
+  let path = Vector.with_capacity ~size:(Node.child_count pattern) in
+  let rec loop index stop =
+    if index < stop then (
+      match child_token_at pattern index with
+      | Some token when token_kind_is token Syntax_kind.IDENT ->
+          Vector.push path ~value:token;
+          loop (index + 1) stop
+      | _ -> loop (index + 1) stop
+    )
+  in
+  (
+    match first_class_module_pattern_ascription_bounds pattern with
+    | Some (start, stop) when first_class_module_pattern_range_is_path pattern start stop ->
+        loop start stop
+    | _ -> ()
+  );
+  path
+
 module TypeExpr = struct
   type t = type_expr
 
@@ -854,7 +1041,6 @@ module TypeExpr = struct
   }
 
   type view =
-    | Unit
     | Ident of { path: path }
     | Var of {
         name: Token.t option;
@@ -872,7 +1058,7 @@ module TypeExpr = struct
         parts: t Vector.t;
       }
     | Apply of {
-        ident: path option;
+        ident: path;
         args: t Vector.t;
       }
     | Error of Node.t
@@ -1008,7 +1194,11 @@ module TypeExpr = struct
           )
         | _ -> Unknown type_expr
       )
-    | Syntax_kind.PATH_TYPE -> Ident { path = type_expr }
+    | Syntax_kind.PATH_TYPE ->
+        if node_is_single_ident_text type_expr "unit" then
+          Apply { ident = type_expr; args = Vector.with_capacity ~size:0 }
+        else
+          Ident { path = type_expr }
     | Syntax_kind.VAR_TYPE -> Var { name = last_ident_token type_expr }
     | Syntax_kind.WILDCARD_TYPE -> Wildcard
     | Syntax_kind.ARROW_TYPE -> (
@@ -1038,7 +1228,11 @@ module TypeExpr = struct
     | Syntax_kind.TUPLE_TYPE -> Tuple { parts = tuple_parts type_expr }
     | Syntax_kind.APPLY_TYPE ->
         let (ident, args) = apply_parts type_expr in
-        Apply { ident; args }
+        (
+          match ident with
+          | Some ident -> Apply { ident; args }
+          | None -> Unknown type_expr
+        )
     | Syntax_kind.PAREN_TYPE -> (
         match first_child_node_matching type_expr ~matches:is_type_expr_kind with
         | Some inner -> view inner
@@ -2439,12 +2633,19 @@ module Pattern: sig
     | Array of {
         items: t Vector.t;
       }
-    | Record
+    | Record of {
+        fields: record_pattern_field_view Vector.t;
+        open_wildcard: token option;
+      }
     | PolyVariant of {
         tag: token option;
         payload: t option;
       }
-    | FirstClassModule
+    | FirstClassModule of {
+        binder: token option;
+        ascription: first_class_module_pattern_ascription;
+        ascription_path: token Vector.t;
+      }
     | Interval of {
         left: t option;
         right: t option;
@@ -2454,8 +2655,8 @@ module Pattern: sig
         annotation: type_expr option;
       }
     | Alias of {
-        pattern: t option;
-        alias: t option;
+        pattern: t;
+        alias: t;
       }
     | Or of {
         left: t option;
@@ -2505,12 +2706,19 @@ end = struct
     | Array of {
         items: t Vector.t;
       }
-    | Record
+    | Record of {
+        fields: record_pattern_field_view Vector.t;
+        open_wildcard: token option;
+      }
     | PolyVariant of {
         tag: token option;
         payload: t option;
       }
-    | FirstClassModule
+    | FirstClassModule of {
+        binder: token option;
+        ascription: first_class_module_pattern_ascription;
+        ascription_path: token Vector.t;
+      }
     | Interval of {
         left: t option;
         right: t option;
@@ -2520,8 +2728,8 @@ end = struct
         annotation: type_expr option;
       }
     | Alias of {
-        pattern: t option;
-        alias: t option;
+        pattern: t;
+        alias: t;
       }
     | Or of {
         left: t option;
@@ -2617,7 +2825,11 @@ end = struct
     | Syntax_kind.TUPLE_PATTERN -> Tuple { parts = child_patterns pattern }
     | Syntax_kind.LIST_PATTERN -> List { items = child_patterns pattern }
     | Syntax_kind.ARRAY_PATTERN -> Array { items = child_patterns pattern }
-    | Syntax_kind.RECORD_PATTERN -> Record
+    | Syntax_kind.RECORD_PATTERN ->
+        Record {
+          fields = collect_record_pattern_fields pattern;
+          open_wildcard = record_pattern_open_wildcard pattern;
+        }
     | Syntax_kind.POLY_VARIANT_PATTERN ->
         PolyVariant {
           tag = first_ident_token pattern;
@@ -2626,7 +2838,12 @@ end = struct
     | Syntax_kind.EXTENSION_PATTERN
     | Syntax_kind.LOCAL_OPEN_PATTERN
     | Syntax_kind.LOCALLY_ABSTRACT_TYPE_PATTERN -> Unknown pattern
-    | Syntax_kind.FIRST_CLASS_MODULE_PATTERN -> FirstClassModule
+    | Syntax_kind.FIRST_CLASS_MODULE_PATTERN ->
+        FirstClassModule {
+          binder = first_class_module_pattern_binder pattern;
+          ascription = first_class_module_pattern_ascription pattern;
+          ascription_path = first_class_module_pattern_ascription_path pattern;
+        }
     | Syntax_kind.INTERVAL_PATTERN ->
         Interval {
           left = normalize_pattern_option (nth_pattern_child pattern 0);
@@ -2637,11 +2854,14 @@ end = struct
           pattern = normalize_pattern_option (first_pattern_child pattern);
           annotation = normalize_type_expr_option (first_type_expr_child pattern);
         }
-    | Syntax_kind.ALIAS_PATTERN ->
-        Alias {
-          pattern = normalize_pattern_option (nth_pattern_child pattern 0);
-          alias = normalize_pattern_option (nth_pattern_child pattern 1);
-        }
+    | Syntax_kind.ALIAS_PATTERN -> (
+        match (
+          normalize_pattern_option (nth_pattern_child pattern 0),
+          normalize_pattern_option (nth_pattern_child pattern 1)
+        ) with
+        | (Some pattern, Some alias) -> Alias { pattern; alias }
+        | _ -> Unknown pattern
+      )
     | Syntax_kind.OR_PATTERN ->
         Or {
           left = normalize_pattern_option (nth_pattern_child pattern 0);
@@ -2743,7 +2963,7 @@ end
 
 module FirstClassModulePattern: sig
   type t = pattern
-  type ascription =
+  type ascription = first_class_module_pattern_ascription =
     | NoAscription
     | PathAscription
     | UnsupportedAscription
@@ -2765,7 +2985,7 @@ module FirstClassModulePattern: sig
 end = struct
   type t = pattern
 
-  type ascription =
+  type ascription = first_class_module_pattern_ascription =
     | NoAscription
     | PathAscription
     | UnsupportedAscription
@@ -2784,61 +3004,9 @@ end = struct
 
   let closing_token = fun pattern -> Node.first_child_token pattern ~kind:Syntax_kind.RPAREN
 
-  let token_index = fun pattern ~from ~matches ->
-    let count = Node.child_count pattern in
-    let rec loop index =
-      if index >= count then
-        None
-      else
-        match child_token_at pattern index with
-        | Some token when matches (Token.kind token) -> Some index
-        | _ -> loop (index + 1)
-    in
-    loop from
+  let binder = first_class_module_pattern_binder
 
-  let module_index = fun pattern ->
-    token_index
-      pattern
-      ~from:0
-      ~matches:(fun kind -> Syntax_kind.(kind = MODULE_KW))
-
-  let binder = fun pattern ->
-    match module_index pattern with
-    | Some module_index -> (
-        match child_token_at pattern (module_index + 1) with
-        | Some token when token_kind_is token Syntax_kind.IDENT
-        || token_kind_is token Syntax_kind.UNDERSCORE -> Some token
-        | _ -> None
-      )
-    | None -> None
-
-  let range_is_path = fun pattern start stop ->
-    let rec loop index saw_ident expect_ident =
-      if index >= stop then
-        saw_ident && not expect_ident
-      else
-        match child_token_at pattern index with
-        | Some token when token_kind_is token Syntax_kind.IDENT && expect_ident ->
-            loop (index + 1) true false
-        | Some token when token_kind_is token Syntax_kind.DOT && saw_ident && not expect_ident ->
-            loop (index + 1) saw_ident true
-        | _ -> false
-    in
-    loop start false true
-
-  let ascription_bounds = fun pattern ->
-    match token_index pattern ~from:0 ~matches:(fun kind -> Syntax_kind.(kind = COLON)) with
-    | None -> None
-    | Some colon_index ->
-        let start = colon_index + 1 in
-        token_index pattern ~from:start ~matches:(fun kind -> Syntax_kind.(kind = RPAREN))
-        |> Option.map ~fn:(fun stop -> (start, stop))
-
-  let ascription = fun pattern ->
-    match (colon_token pattern, ascription_bounds pattern) with
-    | (None, _) -> NoAscription
-    | (Some _, Some (start, stop)) when range_is_path pattern start stop -> PathAscription
-    | (Some _, _) -> UnsupportedAscription
+  let ascription = first_class_module_pattern_ascription
 
   let for_each_ident_in_range = fun pattern start stop ~fn ->
     let rec loop index =
@@ -2854,19 +3022,15 @@ end = struct
     loop start
 
   let for_each_ascription_path_ident = fun pattern ~fn ->
-    match ascription_bounds pattern with
-    | Some (start, stop) when range_is_path pattern start stop ->
+    match first_class_module_pattern_ascription_bounds pattern with
+    | Some (start, stop) when first_class_module_pattern_range_is_path pattern start stop ->
         for_each_ident_in_range pattern start stop ~fn
     | _ -> ()
 end
 
 module RecordPattern: sig
   type t = pattern
-  type field = {
-    path: path option;
-    pattern: pattern option;
-    node: pattern;
-  }
+  type field = record_pattern_field_view
   val cast: pattern -> t option
 
   val open_wildcard: t -> Token.t option
@@ -2875,11 +3039,7 @@ module RecordPattern: sig
 end = struct
   type t = pattern
 
-  type field = {
-    path: path option;
-    pattern: pattern option;
-    node: pattern;
-  }
+  type field = record_pattern_field_view
 
   let cast = fun (pattern: pattern) ->
     if node_kind_is pattern Syntax_kind.RECORD_PATTERN then
@@ -2887,69 +3047,11 @@ end = struct
     else
       None
 
-  let open_wildcard = fun (record: t) ->
-    let rec loop index previous_token_kind =
-      if index >= Node.child_count record then
-        None
-      else
-        match Node.child_at record index with
-        | Some (Syntax_tree.Token id) ->
-            let token = wrap_token record.tree id in
-            loop (index + 1) (Some (Token.kind token))
-        | Some (Syntax_tree.Node id) ->
-            let child = wrap_node record.tree id in
-            if node_kind_is child Syntax_kind.WILDCARD_PATTERN then
-              match previous_token_kind with
-              | Some kind when Syntax_kind.(kind = EQ) -> loop (index + 1) previous_token_kind
-              | _ -> Node.first_child_token child ~kind:Syntax_kind.UNDERSCORE
-            else
-              loop (index + 1) previous_token_kind
-        | Some (Syntax_tree.Missing _)
-        | None -> loop (index + 1) previous_token_kind
-    in
-    loop 0 None
-
-  let child_node_at = fun (record: t) index ->
-    match Node.child_at record index with
-    | Some (Syntax_tree.Node id) -> Some (wrap_node record.tree id)
-    | Some (Syntax_tree.Token _)
-    | Some (Syntax_tree.Missing _)
-    | None -> None
-
-  let child_token_kind_at = fun (record: t) index ->
-    match Node.child_at record index with
-    | Some (Syntax_tree.Token id) -> Some (Token.kind (wrap_token record.tree id))
-    | Some (Syntax_tree.Node _)
-    | Some (Syntax_tree.Missing _)
-    | None -> None
+  let open_wildcard = record_pattern_open_wildcard
 
   let for_each_field = fun (record: t) ~fn ->
-    let child_count = Node.child_count record in
-    let rec loop index =
-      if index >= child_count then
-        ()
-      else
-        match child_node_at record index with
-        | Some child when node_kind_is child Syntax_kind.PATH_PATTERN ->
-            let (pattern, next) =
-              match child_token_kind_at record (index + 1) with
-              | Some kind when Syntax_kind.(kind = EQ) -> (
-                  match child_node_at record (index + 2) with
-                  | Some value when node_matches value is_pattern_kind -> (Some value, index + 3)
-                  | _ -> (None, index + 2)
-                )
-              | _ -> (None, index + 1)
-            in
-            fn { path = Path.cast child; pattern; node = child };
-            loop next
-        | Some child when node_kind_is child Syntax_kind.WILDCARD_PATTERN -> loop (index + 1)
-        | Some child when node_matches child is_pattern_kind ->
-            fn { path = None; pattern = None; node = child };
-            loop (index + 1)
-        | Some _
-        | None -> loop (index + 1)
-    in
-    loop 0
+    collect_record_pattern_fields record
+    |> Vector.for_each ~fn
 end
 
 module LocalOpenPattern: sig
@@ -4736,8 +4838,7 @@ module StructureItem = struct
 
   type view =
     | Let of let_declaration
-    | Type of type_declaration
-    | TypeExtension of type_extension_declaration
+    | Type of type_item
     | Module of module_declaration
     | ModuleType of module_type_declaration
     | Open of open_declaration
@@ -4766,8 +4867,8 @@ module StructureItem = struct
     | Some node -> (
         match Node.kind node with
         | Syntax_kind.LET_DECL -> Let node
-        | Syntax_kind.TYPE_DECL -> Type node
-        | Syntax_kind.TYPE_EXTENSION_DECL -> TypeExtension node
+        | Syntax_kind.TYPE_DECL -> Type (TypeDeclarationItem node)
+        | Syntax_kind.TYPE_EXTENSION_DECL -> Type (TypeExtensionItem node)
         | Syntax_kind.MODULE_DECL -> Module node
         | Syntax_kind.MODULE_TYPE_DECL -> ModuleType node
         | Syntax_kind.OPEN_DECL -> Open node
@@ -4789,8 +4890,7 @@ module SignatureItem = struct
 
   type view =
     | Value of value_declaration
-    | Type of type_declaration
-    | TypeExtension of type_extension_declaration
+    | Type of type_item
     | Module of module_declaration
     | ModuleType of module_type_declaration
     | Open of open_declaration
@@ -4818,8 +4918,8 @@ module SignatureItem = struct
     | Some node -> (
         match Node.kind node with
         | Syntax_kind.VAL_DECL -> Value node
-        | Syntax_kind.TYPE_DECL -> Type node
-        | Syntax_kind.TYPE_EXTENSION_DECL -> TypeExtension node
+        | Syntax_kind.TYPE_DECL -> Type (TypeDeclarationItem node)
+        | Syntax_kind.TYPE_EXTENSION_DECL -> Type (TypeExtensionItem node)
         | Syntax_kind.MODULE_DECL -> Module node
         | Syntax_kind.MODULE_TYPE_DECL -> ModuleType node
         | Syntax_kind.OPEN_DECL -> Open node

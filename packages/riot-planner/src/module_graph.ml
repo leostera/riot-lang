@@ -221,8 +221,8 @@ let rec executable_parameter_to_string = fun parameter ->
           Ast.Path.last_ident path
           |> Option.map ~fn:Ast.Token.text
           |> Option.unwrap_or ~default:(String.trim (Ast.Node.text parameter))
-      | Ast.Pattern.Constraint { pattern = Some pattern; _ }
-      | Ast.Pattern.Alias { pattern = Some pattern; _ } -> executable_parameter_to_string pattern
+      | Ast.Pattern.Constraint { pattern = Some pattern; _ } -> executable_parameter_to_string pattern
+      | Ast.Pattern.Alias { pattern; _ } -> executable_parameter_to_string pattern
       | _ ->
           let text = String.trim (Ast.Node.text parameter) in
           if String.is_empty text then
@@ -248,8 +248,8 @@ let rec pattern_binding_name = fun pattern ->
   | Ast.Pattern.Ident { path } ->
       Ast.Path.last_ident path
       |> Option.map ~fn:Ast.Token.text
-  | Ast.Pattern.Constraint { pattern = Some inner; _ }
-  | Ast.Pattern.Alias { pattern = Some inner; _ } -> pattern_binding_name inner
+  | Ast.Pattern.Constraint { pattern = Some inner; _ } -> pattern_binding_name inner
+  | Ast.Pattern.Alias { pattern = inner; _ } -> pattern_binding_name inner
   | _ -> None
 
 let let_binding_name = fun binding ->

@@ -537,7 +537,7 @@ let rec module_of_signature_items = fun
                   ~name
                   (snippet_of_node source decl));
             loop rest
-        | Syn.Ast.SignatureItem.Type decl ->
+        | Syn.Ast.SignatureItem.Type (Syn.Ast.TypeDeclarationItem decl) ->
             items_of_type_declaration ?docstring:attached_doc source decl
             |> List.for_each ~fn:(fun item -> Vector.push acc_items ~value:item);
             loop rest
@@ -549,7 +549,7 @@ let rec module_of_signature_items = fun
             external_item_of_declaration ?docstring:attached_doc source decl
             |> List.for_each ~fn:(fun item -> Vector.push acc_items ~value:item);
             loop rest
-        | Syn.Ast.SignatureItem.TypeExtension _
+        | Syn.Ast.SignatureItem.Type (Syn.Ast.TypeExtensionItem _)
         | Syn.Ast.SignatureItem.Open _
         | Syn.Ast.SignatureItem.Include _
         | Syn.Ast.SignatureItem.Exception _

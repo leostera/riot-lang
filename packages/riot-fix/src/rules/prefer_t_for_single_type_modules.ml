@@ -27,12 +27,12 @@ let push_type_name = fun names declaration ->
 
 let type_names_in_structure_item = fun names item ->
   match Ast.StructureItem.view item with
-  | Ast.StructureItem.Type declaration -> push_type_name names declaration
+  | Ast.StructureItem.Type (Ast.TypeDeclarationItem declaration) -> push_type_name names declaration
   | _ -> ()
 
 let type_names_in_signature_item = fun names item ->
   match Ast.SignatureItem.view item with
-  | Ast.SignatureItem.Type declaration -> push_type_name names declaration
+  | Ast.SignatureItem.Type (Ast.TypeDeclarationItem declaration) -> push_type_name names declaration
   | _ -> ()
 
 let diagnostic_for_name = fun token ->

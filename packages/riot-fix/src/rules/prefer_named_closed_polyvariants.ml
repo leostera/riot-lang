@@ -62,7 +62,6 @@ let rec check_type_expr = fun ctx diagnostics ~allow_named_alias_root type_expr 
             | Some type_expr ->
                 check_type_expr ctx diagnostics ~allow_named_alias_root:false type_expr
             | None -> ())
-    | Ast.TypeExpr.Unit
     | Ast.TypeExpr.Ident _
     | Ast.TypeExpr.Var _
     | Ast.TypeExpr.Wildcard -> ()

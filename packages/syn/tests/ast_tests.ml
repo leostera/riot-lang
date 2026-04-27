@@ -546,7 +546,7 @@ let test_signature_and_type_views = fun _ctx ->
   in
   (
     match Ast.SignatureItem.view type_item with
-    | Ast.SignatureItem.Type decl ->
+    | Ast.SignatureItem.Type (Ast.TypeDeclarationItem decl) ->
         let name =
           Ast.TypeDeclaration.name decl
           |> require_some ~msg:"expected type name"
@@ -601,7 +601,12 @@ let test_package_type_value_annotation_views = fun _ctx ->
 
 let test_type_expression_views = fun _ctx ->
   let root =
-    parse_mli "val xs : int list\nexternal id : 'a -> 'a = \"%identity\"\n"
+    parse_mli
+      {ocaml|val xs : int list
+external id : 'a -> 'a = "%identity"
+val done_: unit
+val scoped_unit: M.unit
+|ocaml}
     |> Result.expect ~msg:"expected parse interface"
   in
   let value_item =
@@ -617,7 +622,7 @@ let test_type_expression_views = fun _ctx ->
         in
         (
           match Ast.TypeExpr.view annotation with
-          | Ast.TypeExpr.Apply { ident = Some ident; args } ->
+          | Ast.TypeExpr.Apply { ident; args } ->
               assert_last_ident_text ident "list";
               let argument = vector_first args ~msg:"expected list type argument" in
               assert_type_path_last_ident argument "int";
@@ -631,8 +636,9 @@ let test_type_expression_views = fun _ctx ->
     nth_signature_item root 1
     |> require_some ~msg:"expected external signature item"
   in
-  match Ast.SignatureItem.view external_item with
-  | Ast.SignatureItem.External decl ->
+  (
+    match Ast.SignatureItem.view external_item with
+    | Ast.SignatureItem.External decl ->
       let annotation =
         Ast.ExternalDeclaration.type_annotation decl
         |> require_some ~msg:"expected external type annotation"
@@ -649,7 +655,58 @@ let test_type_expression_views = fun _ctx ->
           )
         | _ -> Error "expected external arrow type"
       )
-  | _ -> Error "expected external declaration"
+    | _ -> Error "expected external declaration"
+  )
+  |> Result.expect ~msg:"expected external declaration";
+  let unit_item =
+    nth_signature_item root 2
+    |> require_some ~msg:"expected unit value signature item"
+  in
+  (
+    match Ast.SignatureItem.view unit_item with
+    | Ast.SignatureItem.Value decl ->
+        let annotation =
+          Ast.ValueDeclaration.type_annotation decl
+          |> require_some ~msg:"expected unit value type annotation"
+        in
+        (
+          match Ast.TypeExpr.view annotation with
+          | Ast.TypeExpr.Apply { ident; args } ->
+              assert_last_ident_text ident "unit";
+              Test.assert_equal ~expected:0 ~actual:(Vector.length args);
+              Ok ()
+          | _ -> Error "expected unit to be an empty type application"
+        )
+    | _ -> Error "expected unit value declaration"
+  )
+  |> Result.expect ~msg:"expected builtin unit type application";
+  let scoped_unit_item =
+    nth_signature_item root 3
+    |> require_some ~msg:"expected scoped unit value signature item"
+  in
+  match Ast.SignatureItem.view scoped_unit_item with
+  | Ast.SignatureItem.Value decl ->
+      let annotation =
+        Ast.ValueDeclaration.type_annotation decl
+        |> require_some ~msg:"expected scoped unit value type annotation"
+      in
+      (
+        match Ast.TypeExpr.view annotation with
+        | Ast.TypeExpr.Ident { path } ->
+            let first =
+              Ast.Path.first_ident path
+              |> require_some ~msg:"expected first scoped unit path ident"
+            in
+            let last =
+              Ast.Path.last_ident path
+              |> require_some ~msg:"expected last scoped unit path ident"
+            in
+            Test.assert_equal ~expected:"M" ~actual:(Ast.Token.text first);
+            Test.assert_equal ~expected:"unit" ~actual:(Ast.Token.text last);
+            Ok ()
+        | _ -> Error "expected scoped unit to remain a path type"
+      )
+  | _ -> Error "expected scoped unit value declaration"
 
 let test_type_tuple_separator_views = fun _ctx ->
   let root =
@@ -662,14 +719,14 @@ let test_type_tuple_separator_views = fun _ctx ->
   in
   (
     match Ast.SignatureItem.view result_item with
-    | Ast.SignatureItem.Type decl ->
+    | Ast.SignatureItem.Type (Ast.TypeDeclarationItem decl) ->
         let manifest =
           Ast.TypeDeclaration.manifest decl
           |> require_some ~msg:"expected result-like manifest"
         in
         (
           match Ast.TypeExpr.view manifest with
-          | Ast.TypeExpr.Apply { ident = Some ident; args } ->
+          | Ast.TypeExpr.Apply { ident; args } ->
               assert_last_ident_text ident "result";
               Test.assert_equal ~expected:2 ~actual:(Vector.length args);
               let arg = vector_first args ~msg:"expected first result argument" in
@@ -695,7 +752,7 @@ let test_type_tuple_separator_views = fun _ctx ->
     |> require_some ~msg:"expected pair type item"
   in
   match Ast.SignatureItem.view pair_item with
-  | Ast.SignatureItem.Type decl ->
+  | Ast.SignatureItem.Type (Ast.TypeDeclarationItem decl) ->
       let manifest =
         Ast.TypeDeclaration.manifest decl
         |> require_some ~msg:"expected pair manifest"
@@ -822,7 +879,7 @@ let test_quoted_poly_let_annotation_views = fun _ctx ->
                     Test.assert_equal ~expected:"fields" ~actual:(Ast.Token.text label);
                     (
                       match Ast.TypeExpr.view labeled_annotation with
-                      | Ast.TypeExpr.Apply { ident = Some ident; _ } ->
+                      | Ast.TypeExpr.Apply { ident; _ } ->
                           assert_last_ident_text ident "t";
                           Ok ()
                       | _ -> Error "expected labeled fields apply type"
@@ -844,7 +901,7 @@ let assert_type_manifest_is_none = fun source ->
     |> require_some ~msg:"expected type signature item"
   in
   match Ast.SignatureItem.view type_item with
-  | Ast.SignatureItem.Type decl -> (
+  | Ast.SignatureItem.Type (Ast.TypeDeclarationItem decl) -> (
       match Ast.TypeDeclaration.manifest decl with
       | None -> Ok ()
       | Some _ -> Error "expected type declaration without manifest view"
@@ -866,7 +923,7 @@ let test_type_declaration_parameters = fun _ctx ->
     |> require_some ~msg:"expected type signature item"
   in
   match Ast.SignatureItem.view type_item with
-  | Ast.SignatureItem.Type decl ->
+  | Ast.SignatureItem.Type (Ast.TypeDeclarationItem decl) ->
       let name =
         Ast.TypeDeclaration.name decl
         |> require_some ~msg:"expected type name"
@@ -905,7 +962,7 @@ let test_type_declaration_member_views = fun _ctx ->
     |> require_some ~msg:"expected type signature item"
   in
   match Ast.SignatureItem.view type_item with
-  | Ast.SignatureItem.Type decl ->
+  | Ast.SignatureItem.Type (Ast.TypeDeclarationItem decl) ->
       let child_kinds = ref [] in
       Ast.Node.for_each_child_node
         decl
@@ -968,7 +1025,7 @@ let test_type_declaration_body_group_views = fun _ctx ->
   in
   (
     match Ast.SignatureItem.view color_item with
-    | Ast.SignatureItem.Type decl ->
+    | Ast.SignatureItem.Type (Ast.TypeDeclarationItem decl) ->
         let member =
           Ast.TypeDeclaration.fold_members
             decl
@@ -1021,7 +1078,7 @@ let test_type_declaration_body_group_views = fun _ctx ->
     |> require_some ~msg:"expected point type item"
   in
   match Ast.SignatureItem.view point_item with
-  | Ast.SignatureItem.Type decl ->
+  | Ast.SignatureItem.Type (Ast.TypeDeclarationItem decl) ->
       let member =
         Ast.TypeDeclaration.fold_members
           decl
@@ -1079,7 +1136,7 @@ let test_type_alias_record_representation_views = fun _ctx ->
     |> require_some ~msg:"expected type item"
   in
   match Ast.SignatureItem.view type_item with
-  | Ast.SignatureItem.Type decl ->
+  | Ast.SignatureItem.Type (Ast.TypeDeclarationItem decl) ->
       let member =
         Ast.TypeDeclaration.fold_members
           decl
@@ -1242,7 +1299,7 @@ let test_type_extension_and_exception_views = fun _ctx ->
   in
   (
     match Ast.SignatureItem.view type_extension_item with
-    | Ast.SignatureItem.TypeExtension decl ->
+    | Ast.SignatureItem.Type (Ast.TypeExtensionItem decl) ->
         let child_kinds = ref [] in
         Ast.Node.for_each_child_node
           decl
@@ -1773,7 +1830,7 @@ let test_function_binding_return_annotation_view = fun _ctx ->
     |> require_some ~msg:"expected function binding return annotation"
   in
   match Ast.TypeExpr.view annotation with
-  | Ast.TypeExpr.Apply { ident = Some ident; args } ->
+  | Ast.TypeExpr.Apply { ident; args } ->
       let argument = vector_first args ~msg:"expected function return type argument" in
       assert_type_path_last_ident argument "b";
       assert_last_ident_text ident "t";
@@ -1987,11 +2044,11 @@ let test_record_views = fun _ctx ->
     pattern_view
     ~fn:(fun field ->
       let name =
-        field.Ast.RecordPattern.path
+        field.path
         |> require_some ~msg:"expected pattern field path"
         |> last_path_text
       in
-      pattern_fields := (name, Option.is_some field.Ast.RecordPattern.pattern) :: !pattern_fields);
+      pattern_fields := (name, Option.is_some field.pattern) :: !pattern_fields);
   Test.assert_equal ~expected:[ ("x", false); ("y", true); ] ~actual:(List.reverse !pattern_fields);
   let wildcard =
     Ast.RecordPattern.open_wildcard pattern_view
@@ -2236,7 +2293,17 @@ let test_local_open_views = fun _ctx ->
   match Ast.LocalOpenPattern.pattern local_open_record_pattern with
   | Some pattern -> (
       match Ast.Pattern.view pattern with
-      | Ast.Pattern.Record -> Ok ()
+      | Ast.Pattern.Record { fields; open_wildcard } ->
+          Test.assert_equal ~expected:1 ~actual:(Vector.length fields);
+          Test.assert_equal ~expected:false ~actual:(Option.is_some open_wildcard);
+          let field = vector_first fields ~msg:"expected record pattern field" in
+          (
+            match field.path with
+            | Some path ->
+                Test.assert_equal ~expected:"payload" ~actual:(last_path_text path);
+                Ok ()
+            | None -> Error "expected record pattern field path"
+          )
       | _ -> Error "expected local open record inner pattern"
     )
   | None -> Error "expected local open record inner pattern"
@@ -2815,7 +2882,10 @@ let test_special_pattern_views = fun _ctx ->
       Test.assert_equal ~expected:[ "a"; "b" ] ~actual:(List.reverse !type_names);
       (
         match Ast.Pattern.view first_class_module with
-        | Ast.Pattern.FirstClassModule -> ()
+        | Ast.Pattern.FirstClassModule { binder = Some binder; ascription; ascription_path } ->
+            Test.assert_equal ~expected:"M" ~actual:(Ast.Token.text binder);
+            Test.assert_equal ~expected:Ast.PathAscription ~actual:ascription;
+            Test.assert_equal ~expected:2 ~actual:(Vector.length ascription_path)
         | _ -> panic "expected first-class module pattern"
       );
       let first_class_module =
@@ -2859,11 +2929,12 @@ let test_first_class_module_pattern_with_constraints_view = fun _ctx ->
   match List.reverse !parameters with
   | [ first_class_module ] -> (
       match Ast.Pattern.view first_class_module with
-      | Ast.Pattern.FirstClassModule ->
+      | Ast.Pattern.FirstClassModule { ascription; _ } ->
           let first_class_module =
             Ast.FirstClassModulePattern.cast first_class_module
             |> require_some ~msg:"expected constrained first-class module pattern view"
           in
+          Test.assert_equal ~expected:Ast.UnsupportedAscription ~actual:ascription;
           Test.assert_equal
             ~expected:Ast.FirstClassModulePattern.UnsupportedAscription
             ~actual:(Ast.FirstClassModulePattern.ascription first_class_module);

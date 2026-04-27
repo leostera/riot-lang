@@ -1364,7 +1364,9 @@ let rec collect_child_type_exprs = fun (type_expr: Ast.TypeExpr.t) ->
     items
 
 let collect_record_fields = fun record ->
-  let fields = Vector.with_capacity ~size:(Ast.Node.child_count record) in
+  let fields: Ast.record_expr_field_view Vector.t =
+    Vector.with_capacity ~size:(Ast.Node.child_count record)
+  in
   Ast.RecordExpr.for_each_field record ~fn:(fun field -> Vector.push fields ~value:field);
   fields
 
@@ -2359,7 +2361,9 @@ let collect_variant_constructors = fun variant_type ->
   constructors
 
 let collect_record_pattern_fields = fun record ->
-  let fields = Vector.with_capacity ~size:(Ast.Node.child_count record) in
+  let fields: Ast.record_pattern_field_view Vector.t =
+    Vector.with_capacity ~size:(Ast.Node.child_count record)
+  in
   Ast.RecordPattern.for_each_field record ~fn:(fun field -> Vector.push fields ~value:field);
   fields
 
@@ -3363,12 +3367,12 @@ let parameter_pattern_requires_parens = fun pattern ->
   | Alias _ -> true
   | _ -> false
 
-let record_pattern_fields_have_leading_comment = fun fields ->
+let record_pattern_fields_have_leading_comment = fun (fields: Ast.record_pattern_field_view Vector.t) ->
   let found = ref false in
   Vector.for_each
     fields
     ~fn:(fun field ->
-      if node_has_leading_comment field.Ast.RecordPattern.node then
+      if node_has_leading_comment field.node then
         found := true);
   !found
 
@@ -3793,11 +3797,11 @@ and render_poly_variant_pattern = fun state pattern ->
 and render_record_pattern = fun state pattern ->
   let fields = collect_record_pattern_fields pattern in
   let length = Vector.length fields in
-  let render_field field =
-    match field.Ast.RecordPattern.path with
+  let render_field (field: Ast.record_pattern_field_view) =
+    match field.path with
     | Some path -> (
         render_path state path;
-        match field.Ast.RecordPattern.pattern with
+        match field.pattern with
         | Some pattern ->
             emit_space state;
             emit_text state "=";
@@ -3805,7 +3809,7 @@ and render_record_pattern = fun state pattern ->
             render_pattern state pattern
         | None -> ()
       )
-    | None -> render_pattern state field.Ast.RecordPattern.node
+    | None -> render_pattern state field.node
   in
   emit_text state "{";
   if record_pattern_should_multiline pattern fields then (
@@ -4565,7 +4569,7 @@ and list_expr_flat_width = fun budget expr ->
     in
     loop 0 2
 
-and record_expr_field_flat_width = fun budget field ->
+and record_expr_field_flat_width = fun budget (field: Ast.record_expr_field_view) ->
   match (field.Ast.path, field.Ast.value) with
   | (Some path, Some value) -> (
       match expr_flat_width_with_budget budget value with
@@ -7454,7 +7458,7 @@ and render_record_expr = fun ?(force_multiline = false) state ~inline expr ->
         emit_text state "}"
       )
 
-and render_record_field = fun state ~inline field ->
+and render_record_field = fun state ~inline (field: Ast.record_expr_field_view) ->
   (
     match field.Ast.path with
     | Some path -> render_path state path
@@ -9147,7 +9151,7 @@ and signature_item_is_value = fun item ->
 
 and signature_item_is_variant_type = fun item ->
   match Ast.SignatureItem.view item with
-  | Type decl ->
+  | Type (Ast.TypeDeclarationItem decl) ->
       let members = collect_type_members decl in
       let length = Vector.length members in
       let rec loop index =
@@ -9287,8 +9291,8 @@ and render_signature_item = fun
   (
     match Ast.SignatureItem.view item with
     | Value decl -> render_value_declaration state decl
-    | Type decl -> render_type_declaration state decl
-    | TypeExtension decl -> render_type_extension_declaration state decl
+    | Type (Ast.TypeDeclarationItem decl) -> render_type_declaration state decl
+    | Type (Ast.TypeExtensionItem decl) -> render_type_extension_declaration state decl
     | Module decl -> render_module_declaration state decl
     | ModuleType decl -> render_module_type_declaration state decl
     | Open decl -> render_open_declaration state decl
@@ -9312,14 +9316,14 @@ and render_structure_item = fun state item ->
   (
     match Ast.StructureItem.view item with
     | Open decl -> render_open_declaration state decl
-    | Type decl -> render_type_declaration state decl
+    | Type (Ast.TypeDeclarationItem decl) -> render_type_declaration state decl
     | Let decl -> render_let_declaration state decl
     | Module decl -> render_module_declaration state decl
     | ModuleType decl -> render_module_type_declaration state decl
     | Include decl -> render_include_declaration state decl
     | External decl -> render_external_declaration state decl
     | Exception decl -> render_exception_declaration state decl
-    | TypeExtension decl -> render_type_extension_declaration state decl
+    | Type (Ast.TypeExtensionItem decl) -> render_type_extension_declaration state decl
     | Attribute item -> render_attribute_item state item
     | Expr expr_item -> render_expr_item state expr_item
     | Extension item -> render_extension_item state item

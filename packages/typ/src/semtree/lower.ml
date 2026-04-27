@@ -200,7 +200,6 @@ let collect_type_tuple = fun lower_type_expr state type_expr ->
 
 let rec lower_type_expr = fun state type_expr ->
   match Ast.TypeExpr.view type_expr with
-  | Ast.TypeExpr.Unit -> Semantic_tree.TypeConstr { path = [ "unit" ]; arguments = [] }
   | Ast.TypeExpr.Wildcard -> Semantic_tree.AnyType
   | Ast.TypeExpr.Var { name = Some name } -> Semantic_tree.TypeVar (Ast.Token.text name)
   | Ast.TypeExpr.Var { name = None } ->
@@ -208,16 +207,13 @@ let rec lower_type_expr = fun state type_expr ->
       Semantic_tree.TypeUnsupported "type variable"
   | Ast.TypeExpr.Ident { path } ->
       Semantic_tree.TypeConstr { path = path_of_path path; arguments = [] }
-  | Ast.TypeExpr.Apply { ident = Some ident; args } ->
+  | Ast.TypeExpr.Apply { ident; args } ->
       let arguments = Vector.with_capacity ~size:(Vector.length args) in
       Vector.for_each args ~fn:(fun arg -> Vector.push arguments ~value:(lower_type_expr state arg));
       Semantic_tree.TypeConstr {
         path = path_of_path ident;
         arguments = vector_to_list arguments;
       }
-  | Ast.TypeExpr.Apply { ident = None; _ } ->
-      push_unsupported_type state type_expr "type application";
-      Semantic_tree.TypeUnsupported "type application"
   | Ast.TypeExpr.Arrow { label; arg = Some arg; ret = Some ret } ->
       let label =
         Option.map
@@ -275,7 +271,7 @@ let binding_name_token = fun binding ->
     match Ast.Pattern.view pattern with
     | Ast.Pattern.Ident { path } -> Ast.Path.last_ident path
     | Ast.Pattern.Constraint { pattern = Some inner; _ } -> of_pattern inner
-    | Ast.Pattern.Alias { alias = Some alias; _ } -> of_pattern alias
+    | Ast.Pattern.Alias { alias; _ } -> of_pattern alias
     | _ -> None
   in
   match Ast.LetBinding.pattern binding with
@@ -625,7 +621,8 @@ let lower_expr_item = fun state item ->
 let lower_structure_item = fun state item ->
   match Ast.StructureItem.view item with
   | Ast.StructureItem.Let declaration -> lower_let_declaration state declaration
-  | Ast.StructureItem.Type declaration -> lower_type_declaration state declaration
+  | Ast.StructureItem.Type (Ast.TypeDeclarationItem declaration) ->
+      lower_type_declaration state declaration
   | Ast.StructureItem.Module declaration -> lower_module_declaration state declaration
   | Ast.StructureItem.ModuleType declaration -> lower_module_type_declaration state declaration
   | Ast.StructureItem.Open declaration -> lower_open_declaration state declaration
@@ -633,7 +630,7 @@ let lower_structure_item = fun state item ->
   | Ast.StructureItem.External declaration -> lower_external_declaration state declaration
   | Ast.StructureItem.Exception declaration -> lower_exception_declaration state declaration
   | Ast.StructureItem.Expr item -> lower_expr_item state item
-  | Ast.StructureItem.TypeExtension declaration ->
+  | Ast.StructureItem.Type (Ast.TypeExtensionItem declaration) ->
       push_unsupported_with_span
         state
         ~span:(span_of_node declaration)
@@ -647,14 +644,15 @@ let lower_structure_item = fun state item ->
 let lower_signature_item = fun state item ->
   match Ast.SignatureItem.view item with
   | Ast.SignatureItem.Value declaration -> lower_value_declaration state declaration
-  | Ast.SignatureItem.Type declaration -> lower_type_declaration state declaration
+  | Ast.SignatureItem.Type (Ast.TypeDeclarationItem declaration) ->
+      lower_type_declaration state declaration
   | Ast.SignatureItem.Module declaration -> lower_module_declaration state declaration
   | Ast.SignatureItem.ModuleType declaration -> lower_module_type_declaration state declaration
   | Ast.SignatureItem.Open declaration -> lower_open_declaration state declaration
   | Ast.SignatureItem.Include declaration -> lower_include_declaration state declaration
   | Ast.SignatureItem.External declaration -> lower_external_declaration state declaration
   | Ast.SignatureItem.Exception declaration -> lower_exception_declaration state declaration
-  | Ast.SignatureItem.TypeExtension declaration ->
+  | Ast.SignatureItem.Type (Ast.TypeExtensionItem declaration) ->
       push_unsupported_with_span
         state
         ~span:(span_of_node declaration)

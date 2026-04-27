@@ -53,6 +53,18 @@ type record_expr_field_view = {
   value: expr option;
   node: record_expr_field;
 }
+type record_pattern_field_view = {
+  path: path option;
+  pattern: pattern option;
+  node: pattern;
+}
+type first_class_module_pattern_ascription =
+  | NoAscription
+  | PathAscription
+  | UnsupportedAscription
+type type_item =
+  | TypeDeclarationItem of type_declaration
+  | TypeExtensionItem of type_extension_declaration
 
 (** Root view for a parsed syntax tree. *)
 val root: Syntax_tree.t -> node
@@ -173,7 +185,6 @@ module TypeExpr: sig
     optional_: bool;
   }
   type view =
-    | Unit
     | Ident of { path: path }
     | Var of {
         name: Token.t option;
@@ -191,7 +202,7 @@ module TypeExpr: sig
         parts: t Vector.t;
       }
     | Apply of {
-        ident: path option;
+        ident: path;
         args: t Vector.t;
       }
     | Error of Node.t
@@ -287,12 +298,19 @@ module Pattern: sig
     | Array of {
         items: t Vector.t;
       }
-    | Record
+    | Record of {
+        fields: record_pattern_field_view Vector.t;
+        open_wildcard: Token.t option;
+      }
     | PolyVariant of {
         tag: Token.t option;
         payload: t option;
       }
-    | FirstClassModule
+    | FirstClassModule of {
+        binder: Token.t option;
+        ascription: first_class_module_pattern_ascription;
+        ascription_path: Token.t Vector.t;
+      }
     | Interval of {
         left: t option;
         right: t option;
@@ -302,8 +320,8 @@ module Pattern: sig
         annotation: type_expr option;
       }
     | Alias of {
-        pattern: t option;
-        alias: t option;
+        pattern: t;
+        alias: t;
       }
     | Or of {
         left: t option;
@@ -363,7 +381,7 @@ end
 
 module FirstClassModulePattern: sig
   type t = pattern
-  type ascription =
+  type ascription = first_class_module_pattern_ascription =
     | NoAscription
     | PathAscription
     | UnsupportedAscription
@@ -386,11 +404,7 @@ end
 
 module RecordPattern: sig
   type t = pattern
-  type field = {
-    path: path option;
-    pattern: pattern option;
-    node: pattern;
-  }
+  type field = record_pattern_field_view
   val cast: pattern -> t option
 
   val open_wildcard: t -> Token.t option
@@ -741,8 +755,7 @@ module StructureItem: sig
   type t = structure_item
   type view =
     | Let of let_declaration
-    | Type of type_declaration
-    | TypeExtension of type_extension_declaration
+    | Type of type_item
     | Module of module_declaration
     | ModuleType of module_type_declaration
     | Open of open_declaration
@@ -765,8 +778,7 @@ module SignatureItem: sig
   type t = signature_item
   type view =
     | Value of value_declaration
-    | Type of type_declaration
-    | TypeExtension of type_extension_declaration
+    | Type of type_item
     | Module of module_declaration
     | ModuleType of module_type_declaration
     | Open of open_declaration

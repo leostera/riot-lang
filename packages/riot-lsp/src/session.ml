@@ -483,7 +483,7 @@ and binding_name_tokens_of_pattern = fun pattern ->
       | Some token -> Some [ token ]
       | None -> None
     )
-  | Syn.Ast.Pattern.Alias { alias = Some alias; _ }
+  | Syn.Ast.Pattern.Alias { alias; _ }
   | Syn.Ast.Pattern.Constraint { pattern = Some alias; _ }
   | Syn.Ast.Pattern.Lazy { pattern = Some alias }
   | Syn.Ast.Pattern.Exception { pattern = Some alias } -> binding_name_tokens_of_pattern alias
@@ -494,12 +494,11 @@ and binding_name_tokens_of_pattern = fun pattern ->
   | Syn.Ast.Pattern.Tuple _
   | Syn.Ast.Pattern.List _
   | Syn.Ast.Pattern.Array _
-  | Syn.Ast.Pattern.Record
+  | Syn.Ast.Pattern.Record _
   | Syn.Ast.Pattern.PolyVariant _
-  | Syn.Ast.Pattern.FirstClassModule
+  | Syn.Ast.Pattern.FirstClassModule _
   | Syn.Ast.Pattern.Interval _
   | Syn.Ast.Pattern.Constraint _
-  | Syn.Ast.Pattern.Alias _
   | Syn.Ast.Pattern.Or _
   | Syn.Ast.Pattern.Cons _
   | Syn.Ast.Pattern.Lazy _
@@ -732,8 +731,10 @@ and structure_item_symbols = fun text items ->
     ~fn:(fun item ->
       match Syn.Ast.StructureItem.view item with
       | Syn.Ast.StructureItem.Let declaration -> let_declaration_symbols text declaration
-      | Syn.Ast.StructureItem.Type declaration -> type_declaration_symbols text declaration
-      | Syn.Ast.StructureItem.TypeExtension declaration -> type_extension_symbols text declaration
+      | Syn.Ast.StructureItem.Type (Syn.Ast.TypeDeclarationItem declaration) ->
+          type_declaration_symbols text declaration
+      | Syn.Ast.StructureItem.Type (Syn.Ast.TypeExtensionItem declaration) ->
+          type_extension_symbols text declaration
       | Syn.Ast.StructureItem.Module declaration -> module_declaration_symbols text declaration
       | Syn.Ast.StructureItem.ModuleType declaration ->
           module_type_declaration_symbols text declaration
@@ -754,8 +755,10 @@ and signature_item_symbols = fun text items ->
     ~fn:(fun item ->
       match Syn.Ast.SignatureItem.view item with
       | Syn.Ast.SignatureItem.Value declaration -> value_declaration_symbols text declaration
-      | Syn.Ast.SignatureItem.Type declaration -> type_declaration_symbols text declaration
-      | Syn.Ast.SignatureItem.TypeExtension declaration -> type_extension_symbols text declaration
+      | Syn.Ast.SignatureItem.Type (Syn.Ast.TypeDeclarationItem declaration) ->
+          type_declaration_symbols text declaration
+      | Syn.Ast.SignatureItem.Type (Syn.Ast.TypeExtensionItem declaration) ->
+          type_extension_symbols text declaration
       | Syn.Ast.SignatureItem.Module declaration -> module_declaration_symbols text declaration
       | Syn.Ast.SignatureItem.ModuleType declaration ->
           module_type_declaration_symbols text declaration

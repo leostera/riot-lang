@@ -610,7 +610,6 @@ let type_expr_is_coercion_marker = fun type_expr ->
 
 let rec lower_core_type = fun state ~level vars type_expr ->
   match Ast.TypeExpr.view type_expr with
-  | Ast.TypeExpr.Unit -> TUnit
   | Ast.TypeExpr.Wildcard -> fresh_tyvar state ~level
   | Ast.TypeExpr.Var { name = Some name } -> (
       let name = token_text_surface_path name in
@@ -636,11 +635,14 @@ let rec lower_core_type = fun state ~level vars type_expr ->
               ("unsupported type constructor " ^ SurfacePath.to_string path));
           fresh_tyvar state ~level
     )
-  | Ast.TypeExpr.Apply { ident = Some ident; args } -> (
-      match Vector.first args with
-      | Some argument ->
+  | Ast.TypeExpr.Apply { ident; args } -> (
+      let path = surface_path_of_path ident in
+      if Int.equal (Vector.length args) 0 && SurfacePath.equal path path_unit then
+        TUnit
+      else
+        match Vector.first args with
+        | Some argument ->
           let lowered_argument = lower_core_type state ~level vars argument in
-          let path = surface_path_of_path ident in
           if SurfacePath.equal path path_list then
             TList lowered_argument
           else if SurfacePath.equal path path_option then
@@ -653,13 +655,10 @@ let rec lower_core_type = fun state ~level vars type_expr ->
                 ("unsupported type constructor " ^ SurfacePath.to_string path));
             fresh_tyvar state ~level
           )
-      | None ->
+        | None ->
           add_diagnostic state (unsupported_type type_expr "unsupported type application");
           fresh_tyvar state ~level
     )
-  | Ast.TypeExpr.Apply _ ->
-      add_diagnostic state (unsupported_type type_expr "unsupported type application");
-      fresh_tyvar state ~level
   | Ast.TypeExpr.Arrow { arg = Some parameter_type; ret = Some result_type; _ } ->
       TArrow (
         lower_core_type state ~level vars parameter_type,
@@ -748,7 +747,7 @@ let rec infer_pattern = fun state env ~level pattern ->
   | Ast.Pattern.Constraint { pattern = Some inner; annotation = None } ->
       infer_pattern state env ~level inner
   | Ast.Pattern.Constraint _ -> (fresh_tyvar state ~level, [])
-  | Ast.Pattern.Alias { pattern = Some inner; alias = Some alias } ->
+  | Ast.Pattern.Alias { pattern = inner; alias } ->
       let (pattern_ty, bindings) = infer_pattern state env ~level inner in
       let alias_name =
         match Ast.Pattern.view alias with
@@ -757,8 +756,6 @@ let rec infer_pattern = fun state env ~level pattern ->
       in
       let alias_binding = make_binding state ~name:alias_name ~ty:pattern_ty in
       (pattern_ty, alias_binding :: bindings)
-  | Ast.Pattern.Alias { pattern = Some inner; alias = None } -> infer_pattern state env ~level inner
-  | Ast.Pattern.Alias _ -> (fresh_tyvar state ~level, [])
   | Ast.Pattern.List { items } ->
       let element_ty = fresh_tyvar state ~level in
       let bindings =
@@ -802,13 +799,13 @@ let rec infer_pattern = fun state env ~level pattern ->
   | Ast.Pattern.Array _ ->
       add_diagnostic state (unsupported_syntax pattern "array pattern");
       (fresh_tyvar state ~level, [])
-  | Ast.Pattern.Record ->
+  | Ast.Pattern.Record _ ->
       add_diagnostic state (unsupported_syntax pattern "record pattern");
       (fresh_tyvar state ~level, [])
   | Ast.Pattern.PolyVariant _ ->
       add_diagnostic state (unsupported_syntax pattern "polymorphic variant pattern");
       (fresh_tyvar state ~level, [])
-  | Ast.Pattern.FirstClassModule ->
+  | Ast.Pattern.FirstClassModule _ ->
       add_diagnostic state (unsupported_syntax pattern "first-class module pattern");
       (fresh_tyvar state ~level, [])
   | Ast.Pattern.Error node ->
@@ -1148,7 +1145,7 @@ let infer_structure_item = fun state env ~level item ->
           (env, [])
       | None -> (env, [])
     )
-  | Ast.StructureItem.Type declaration ->
+  | Ast.StructureItem.Type (Ast.TypeDeclarationItem declaration) ->
       add_diagnostic
         state
         (unsupported_syntax_with_span
@@ -1156,7 +1153,7 @@ let infer_structure_item = fun state env ~level item ->
           ~kind:(Ast.Node.kind declaration)
           "type declaration");
       (env, [])
-  | Ast.StructureItem.TypeExtension declaration ->
+  | Ast.StructureItem.Type (Ast.TypeExtensionItem declaration) ->
       add_diagnostic state (unsupported_syntax declaration "type extension");
       (env, [])
   | Ast.StructureItem.External declaration -> (
@@ -1244,7 +1241,7 @@ let check_signature_item = fun state env ~level item ->
           (extended_env, [ public_binding ])
       | None -> (env, [])
     )
-  | Ast.SignatureItem.Type declaration ->
+  | Ast.SignatureItem.Type (Ast.TypeDeclarationItem declaration) ->
       add_diagnostic
         state
         (unsupported_syntax_with_span
@@ -1252,7 +1249,7 @@ let check_signature_item = fun state env ~level item ->
           ~kind:(Ast.Node.kind declaration)
           "type declaration");
       (env, [])
-  | Ast.SignatureItem.TypeExtension declaration ->
+  | Ast.SignatureItem.Type (Ast.TypeExtensionItem declaration) ->
       add_diagnostic state (unsupported_syntax declaration "type extension");
       (env, [])
   | Ast.SignatureItem.Exception declaration ->
