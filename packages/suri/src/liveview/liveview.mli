@@ -81,6 +81,7 @@ type 'msg event =
 
 (** Component-specific messages from UI events *)
 type Channel.Handler.initialization_error +=
+  | MissingSessionToken
   | InvalidSessionToken of Session.decode_error
   | InvalidSessionArgs of Data.Json.t
   | MissingSessionArgs of Data.Json.t

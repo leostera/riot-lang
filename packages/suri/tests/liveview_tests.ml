@@ -216,6 +216,37 @@ module TestLiveViewComponent = struct
   let render ~state () = Component.text "ok"
 end
 
+let liveview_session_uri = fun json ->
+  let token = LiveViewSession.encode ~secret:Config.default.liveview_secret ~json in
+  "/?session=" ^ Net.Uri.form_encode token
+
+let test_liveview_initializes_with_valid_session_token = fun _ctx ->
+  let conn = Suri.Testing.Conn.make ~uri:(liveview_session_uri Data.Json.Null) () in
+  let (_opts, handler) = Suri.LiveView.mount (module TestLiveViewComponent) conn in
+  match Channel.initialize handler with
+  | Channel.Continue _ -> Ok ()
+  | Channel.Error reported -> Error (Channel.reported_error_to_string reported)
+  | Channel.Push _ -> Error "expected LiveView valid session token to initialize"
+
+let test_liveview_rejects_missing_session_tokens = fun _ctx ->
+  let conn = Suri.Testing.Conn.make ~uri:"/" () in
+  let (_opts, handler) = Suri.LiveView.mount (module TestLiveViewComponent) conn in
+  match Channel.initialize handler with
+  | Channel.Error reported -> (
+      match Channel.reported_error reported with
+      | Channel.InitializationFailed _ ->
+          Test.assert_true
+            (String.contains
+              (Channel.reported_error_to_string reported)
+              "LiveView session token is required");
+          Ok ()
+      | Channel.UnknownOpcode _ -> Error "expected LiveView initialization failure"
+    )
+  | Channel.Continue _ ->
+      Error "expected missing LiveView session token to reject handler initialization"
+  | Channel.Push _ ->
+      Error "expected missing LiveView session token to reject handler initialization"
+
 let test_liveview_rejects_invalid_session_tokens = fun _ctx ->
   let conn = Suri.Testing.Conn.make ~uri:"/?session=not-a-token" () in
   let (_opts, handler) = Suri.LiveView.mount (module TestLiveViewComponent) conn in
@@ -250,6 +281,10 @@ let tests =
     case
       "liveview protocol serializes server errors structurally"
       test_liveview_protocol_serializes_server_errors_structurally;
+    case
+      "liveview initializes with valid session token"
+      test_liveview_initializes_with_valid_session_token;
+    case "liveview rejects missing session tokens" test_liveview_rejects_missing_session_tokens;
     case "liveview rejects invalid session tokens" test_liveview_rejects_invalid_session_tokens;
   ]
 

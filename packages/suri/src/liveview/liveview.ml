@@ -46,11 +46,13 @@ type Message.t +=
   | ComponentEvent of { handler_id: string; event_data: string }
 
 type Channel.Handler.initialization_error +=
+  | MissingSessionToken
   | InvalidSessionToken of Session.decode_error
   | InvalidSessionArgs of Data.Json.t
   | MissingSessionArgs of Data.Json.t
 
 let initialization_error_to_string = function
+  | MissingSessionToken -> "LiveView session token is required"
   | InvalidSessionToken error ->
       "Invalid LiveView session token: " ^ Session.decode_error_to_string error
   | InvalidSessionArgs json ->
@@ -218,14 +220,7 @@ module MountHandler (C: Component) = struct
     (* Extract and verify session token, then deserialize args *)
     let component_args =
       match extract_session_token conn with
-      | None ->
-          (* No session token - try deserializing null for backward compatibility *)
-          Log.warn "No session token found, using default args";
-          (
-            match C.deserialize_args Data.Json.Null with
-            | Ok args -> Ok args
-            | Error err -> Error (MissingSessionArgs err)
-          )
+      | None -> Error MissingSessionToken
       | Some token ->
           (* Verify and deserialize session token *)
           let secret = get_secret () in
