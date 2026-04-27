@@ -50,13 +50,13 @@ type state = {
   mutable delimited_expr_depth: int;
 }
 
-let layout_context = fun ?(role = Layout.Top_expr) state ->
-  Layout.make_context
-    ~role
-    ~width:state.width
-    ~column:state.column
-    ~indent:state.indent
-    ()
+let layout_context = fun ?(role = Layout.Top_expr) ?column state ->
+  let column =
+    match column with
+    | Some column -> column
+    | None -> state.column
+  in
+  Layout.make_context ~role ~width:state.width ~column ~indent:state.indent ()
 
 let append_subslice_unchecked = fun buffer slice ~off ~len ->
   match IO.Buffer.append_subslice buffer slice ~off ~len with
@@ -344,11 +344,10 @@ let format_int_literal_text = fun text ->
     let core_length = String.length core in
     if Int.(core_length >= 2) then
       let prefix = String.sub core ~offset:0 ~len:2 in
-      let digits =
-        String.sub
-          core
-          ~offset:2
-          ~len:(Int.sub core_length 2)
+      let digits = String.sub
+        core
+        ~offset:2
+        ~len:(Int.sub core_length 2)
       in
       if String.equal prefix "0x" || String.equal prefix "0X" then
         "0x" ^ grouped_from_right (String.lowercase_ascii digits) ~group:4 ^ suffix
@@ -6386,20 +6385,33 @@ and apply_args_have_heavy_nested_apply = fun args ->
     in
     loop 0
 
+and apply_expr_decision_from_column = fun ?(suffix_width = 0) state expr args ~column ->
+  let (callee, _) = collect_apply expr in
+  let facts = application_layout_facts ~force_parent_break:false ~suffix_width expr callee args in
+  Layout.decide
+    Layout.Application
+    (layout_context ~column state)
+    facts
+
+and apply_expr_exceeds_width_from_column = fun ?(suffix_width = 0) state expr args ~column ->
+  if Int.equal (Vector.length args) 0 then
+    false
+  else
+    let (callee, _) = collect_apply expr in
+    let facts = application_layout_facts ~force_parent_break:false ~suffix_width expr callee args in
+    match facts.Layout.flat_width with
+    | None -> false
+    | Some _ -> not (Layout.fits (layout_context ~column state) facts)
+
 and apply_expr_should_break_from_column = fun ?(suffix_width = 0) state expr args ~column ->
   if Int.equal (Vector.length args) 0 then
     false
-  else if apply_args_have_heavy_nested_apply args then
-    true
   else
-    let width =
-      match expr_flat_width expr with
-      | Some width -> Some width
-      | None -> node_token_flat_width expr
-    in
-    match width with
-    | Some width -> Int.(column + width + suffix_width > state.width)
-    | None -> false
+    match apply_expr_decision_from_column ~suffix_width state expr args ~column with
+    | { Layout.mode = Hang _; _ }
+    | { Layout.mode = Vertical; _ }
+    | { Layout.mode = Block; _ } -> true
+    | _ -> false
 
 and apply_expr_should_break = fun state expr args ->
   apply_expr_should_break_from_column
@@ -6408,7 +6420,7 @@ and apply_expr_should_break = fun state expr args ->
     args
     ~column:state.column
 
-and application_layout_facts = fun ~force_parent_break expr callee args ->
+and application_layout_facts = fun ?(suffix_width = 0) ~force_parent_break expr callee args ->
   let arg_count = Vector.length args in
   let has_multiline_args = vector_exists_expr_is_multiline_except expr args in
   let flat_width =
@@ -6427,6 +6439,7 @@ and application_layout_facts = fun ~force_parent_break expr callee args ->
     ~arg_count
     ~callee_class
     ~flat_width
+    ~suffix_width
     ~has_multiline_args
     ~has_heavy_nested_apply:(apply_args_have_heavy_nested_apply args)
     ()
@@ -7626,7 +7639,7 @@ and let_binding_body_exceeds_width = fun ?(suffix_width = 0) state body ->
   match ExprView.view body with
   | Apply _ ->
       let (_, args) = collect_apply body in
-      apply_expr_should_break_from_column ~suffix_width state body args ~column:body_column
+      apply_expr_exceeds_width_from_column ~suffix_width state body args ~column:body_column
   | _ -> (
       match expr_flat_width body with
       | Some width -> Int.(body_column + width + suffix_width > state.width)
@@ -7637,7 +7650,7 @@ and let_binding_apply_body_exceeds_inline_equals_width = fun ?(suffix_width = 0)
   match ExprView.view body with
   | Apply _ ->
       let (_, args) = collect_apply body in
-      apply_expr_should_break_from_column
+      apply_expr_exceeds_width_from_column
         ~suffix_width
         state
         body

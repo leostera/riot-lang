@@ -69,6 +69,7 @@ let application = fun
   ~arg_count
   ~callee_class
   ~flat_width
+  ?(suffix_width = 0)
   ~has_multiline_args
   ~has_heavy_nested_apply
   () ->
@@ -89,7 +90,7 @@ let application = fun
     else
       Layout.Flat
   in
-  expr ?flat_width ~pressure ~item_count:arg_count ~callee_class ()
+  expr ?flat_width ~pressure ~item_count:arg_count ~suffix_width ~callee_class ()
 
 let infix_chain = fun ?flat_width ~item_count () ->
   expr
