@@ -146,6 +146,9 @@ type credential_decode_error =
   | InvalidAuthorizationFormat
   | InvalidBase64Credentials
   | MissingCredentialSeparator
+type credentials_error =
+  | MissingAuthorizationHeader
+  | InvalidAuthorizationHeader of credential_decode_error
 (** {1 Middleware} *)
 (**
    Create Basic Auth middleware with static credentials.
@@ -258,6 +261,8 @@ val middleware_with_validation:
 *)
 val get_credentials: Conn.t -> (string * string, credential_decode_error) result
 
+val get_credentials_result: Conn.t -> (string * string, credentials_error) Std.result
+
 (**
    Create a typed key for storing authenticated user data in connection.
 *)
@@ -299,6 +304,8 @@ val get: 'a key -> Conn.t -> 'a option
 val decode_credentials: string -> (string * string, credential_decode_error) result
 
 val credential_decode_error_to_string: credential_decode_error -> string
+
+val credentials_error_to_string: credentials_error -> string
 
 val sanitize_realm: string -> string
 

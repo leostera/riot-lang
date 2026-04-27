@@ -147,6 +147,23 @@ let test_basic_auth_rejects_invalid_credentials = fun _ctx ->
     ~actual:(Basic_auth.decode_credentials "Basic not-base64");
   Ok ()
 
+let test_basic_auth_reports_missing_authorization_header = fun _ctx ->
+  let conn = Testing.Conn.make () in
+  Test.assert_equal
+    ~expected:(Error Basic_auth.MissingAuthorizationHeader)
+    ~actual:(Basic_auth.get_credentials_result conn);
+  Test.assert_equal
+    ~expected:(Error Basic_auth.InvalidAuthorizationFormat)
+    ~actual:(Basic_auth.get_credentials conn);
+  Ok ()
+
+let test_basic_auth_reports_malformed_authorization_header = fun _ctx ->
+  let conn = Testing.Conn.make ~headers:[ ("authorization", "Bearer token"); ] () in
+  Test.assert_equal
+    ~expected:(Error (Basic_auth.InvalidAuthorizationHeader Basic_auth.InvalidAuthorizationFormat))
+    ~actual:(Basic_auth.get_credentials_result conn);
+  Ok ()
+
 let test_basic_auth_sanitizes_realm_header_value = fun _ctx ->
   Test.assert_equal ~expected:"AdminPanel" ~actual:(Basic_auth.sanitize_realm "Admin\r\n\"Panel");
   Ok ()
@@ -249,6 +266,12 @@ let tests =
     case "basic auth ignores extra spaces" test_basic_auth_ignores_extra_spaces;
     case "basic auth preserves colons in password" test_basic_auth_preserves_colons_in_password;
     case "basic auth rejects invalid credentials" test_basic_auth_rejects_invalid_credentials;
+    case
+      "basic auth reports missing authorization header"
+      test_basic_auth_reports_missing_authorization_header;
+    case
+      "basic auth reports malformed authorization header"
+      test_basic_auth_reports_malformed_authorization_header;
     case "basic auth sanitizes realm header value" test_basic_auth_sanitizes_realm_header_value;
     case
       "basic auth middleware rejects missing credentials"

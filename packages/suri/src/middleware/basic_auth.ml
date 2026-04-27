@@ -64,10 +64,18 @@ type credential_decode_error =
   | InvalidBase64Credentials
   | MissingCredentialSeparator
 
+type credentials_error =
+  | MissingAuthorizationHeader
+  | InvalidAuthorizationHeader of credential_decode_error
+
 let credential_decode_error_to_string = function
   | InvalidAuthorizationFormat -> "invalid Basic authorization header format"
   | InvalidBase64Credentials -> "invalid Basic authorization credentials encoding"
   | MissingCredentialSeparator -> "Basic authorization credentials must contain ':'"
+
+let credentials_error_to_string = function
+  | MissingAuthorizationHeader -> "missing Authorization header"
+  | InvalidAuthorizationHeader error -> credential_decode_error_to_string error
 
 let decode_basic_payload = fun encoded ->
   match Encoding.Base64.decode encoded with
@@ -107,11 +115,21 @@ let decode_credentials = fun auth_header ->
     )
   | _ -> Error InvalidAuthorizationFormat
 
-let get_credentials = fun conn ->
+let get_credentials_result = fun conn ->
   let headers = Conn.headers conn in
   match Net.Http.Header.get headers "authorization" with
-  | Option.Some auth -> decode_credentials auth
-  | Option.None -> Error InvalidAuthorizationFormat
+  | Option.Some auth -> (
+      match decode_credentials auth with
+      | Ok credentials -> Ok credentials
+      | Error error -> Error (InvalidAuthorizationHeader error)
+    )
+  | Option.None -> Error MissingAuthorizationHeader
+
+let get_credentials = fun conn ->
+  match get_credentials_result conn with
+  | Ok credentials -> Ok credentials
+  | Error MissingAuthorizationHeader -> Error InvalidAuthorizationFormat
+  | Error (InvalidAuthorizationHeader error) -> Error error
 
 type 'a key = 'a Conn.assign_key
 
@@ -147,7 +165,7 @@ let middleware = fun ?(realm = "Restricted Area") ?skip ~username ~password () -
       next conn
     else
       (* Extract credentials from Authorization header *)
-      match get_credentials conn with
+      match get_credentials_result conn with
       | Ok (req_user, req_pass) ->
           (* Constant-time comparison for both username and password *)
           let user_match = secure_equal req_user username in
@@ -171,7 +189,7 @@ let middleware_with_validation = fun ?(realm = "Restricted Area") ?skip ?assign_
     if should_skip then
       next conn
     else
-      match get_credentials conn with
+      match get_credentials_result conn with
       | Ok (username, password) -> (
           match validate ~username ~password with
           | Option.Some user_data ->
