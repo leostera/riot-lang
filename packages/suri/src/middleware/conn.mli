@@ -364,4 +364,15 @@ val get_assign: string -> t -> assign_value option
 (** Retrieve data stored by [assign]. *)
 module For_testing: sig
   val parse_query_params: string -> (string * string) list
+
+  val make:
+    ?method_:Net.Http.Method.t ->
+    ?uri:string ->
+    ?headers:(string * string) list ->
+    ?body:string ->
+    ?peer:peer ->
+    ?params:(string * string) list ->
+    ?body_params:(string * string) list ->
+    unit ->
+    t
 end

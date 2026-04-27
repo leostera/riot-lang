@@ -152,6 +152,14 @@ let is_raw_token = fun token -> String.length token = 64 && String.for_all token
 (** Session key for CSRF token *)
 let csrf_token_key = "_csrf_token"
 
+let missing_session_body =
+  "CSRF middleware requires Suri.Middleware.Session.middleware to run before it"
+
+let missing_session = fun conn ->
+  conn
+  |> Conn.respond ~status:Net.Http.Status.InternalServerError ~body:missing_session_body
+  |> Conn.halt
+
 (** Get or create token from session *)
 let get_or_create_token = fun session ->
   match Session.get_value csrf_token_key session with
@@ -202,43 +210,44 @@ let middleware = fun
     else if skip_safe_methods && is_safe_method (Conn.method_ conn) then
       next conn
     else
-      (* Get session *)
-      let session = Session.get conn in
-      (* Get token from request (body_params, params, or header) *)
-      let req_headers = Conn.headers conn in
-      let request_token =
-        (* Try body_params first (parsed by body_parser middleware) *)
-        match Std.Collections.Proplist.get (Conn.body_params conn) ~key:param_name with
-        | Option.Some token -> Option.some token
-        | Option.None -> (
-            match Std.Collections.Proplist.get (Conn.params conn) ~key:param_name with
+      match Session.find conn with
+      | Option.None -> missing_session conn
+      | Option.Some session ->
+          (* Get token from request (body_params, params, or header) *)
+          let req_headers = Conn.headers conn in
+          let request_token =
+            (* Try body_params first (parsed by body_parser middleware) *)
+            match Std.Collections.Proplist.get (Conn.body_params conn) ~key:param_name with
             | Option.Some token -> Option.some token
-            | Option.None ->
-                (* Try header as last resort *)
-                Net.Http.Header.get req_headers header_name
-          )
-      in
-      match request_token with
-      | Option.None -> (
-          (* No token provided *)
-          conn
-          |> Conn.respond ~status:Net.Http.Status.Forbidden ~body:"CSRF token missing"
-          |> Conn.halt
-        )
-      | Option.Some token ->
-          (* Verify token *)
-          if verify_token session token then
-            begin
-              (* Valid token - continue *)
-              next conn
-            end
-          else
-            begin
-              (* Invalid token *)
+            | Option.None -> (
+                match Std.Collections.Proplist.get (Conn.params conn) ~key:param_name with
+                | Option.Some token -> Option.some token
+                | Option.None ->
+                    (* Try header as last resort *)
+                    Net.Http.Header.get req_headers header_name
+              )
+          in
+          match request_token with
+          | Option.None -> (
+              (* No token provided *)
               conn
-              |> Conn.respond ~status:Net.Http.Status.Forbidden ~body:"CSRF token invalid"
+              |> Conn.respond ~status:Net.Http.Status.Forbidden ~body:"CSRF token missing"
               |> Conn.halt
-            end
+            )
+          | Option.Some token ->
+              (* Verify token *)
+              if verify_token session token then
+                begin
+                  (* Valid token - continue *)
+                  next conn
+                end
+              else
+                begin
+                  (* Invalid token *)
+                  conn
+                  |> Conn.respond ~status:Net.Http.Status.Forbidden ~body:"CSRF token invalid"
+                  |> Conn.halt
+                end
 
 (** {1 View Helpers} *)
 
@@ -271,4 +280,6 @@ module For_testing = struct
   let is_raw_token = is_raw_token
 
   let secure_equal = secure_equal
+
+  let missing_session_body = missing_session_body
 end

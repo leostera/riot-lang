@@ -63,13 +63,14 @@
 
    {2 How It Works}
 
-   1. On first request, generates an OS-seeded random token and stores it in
+   1. Requires [Session.middleware] to have run earlier in the pipeline
+   2. On first request, generates an OS-seeded random token and stores it in
       session
-   2. For unsafe methods (POST, PUT, DELETE), requires token in request
-   3. Token can be in parameter ({i _csrf_token}) or header ({i x-csrf-token})
-   4. Tokens are masked using XOR to prevent BREACH attacks
-   5. Token verification uses constant-time comparison
-   6. Failed verification returns 403 Forbidden
+   3. For unsafe methods (POST, PUT, DELETE), requires token in request
+   4. Token can be in parameter ({i _csrf_token}) or header ({i x-csrf-token})
+   5. Tokens are masked using XOR to prevent BREACH attacks
+   6. Token verification uses constant-time comparison
+   7. Failed verification returns 403 Forbidden
 
    {2 Security Notes}
 
@@ -198,4 +199,6 @@ module For_testing: sig
   val is_raw_token: string -> bool
 
   val secure_equal: string -> string -> bool
+
+  val missing_session_body: string
 end

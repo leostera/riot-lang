@@ -217,13 +217,18 @@ let from_cookie_value = fun ~cookie_name ~secret cookie_value ->
 (** Storage key for session in connection *)
 let session_key = "suri.session"
 
+(** Find session from connection *)
+let find = fun conn ->
+  match Conn.get_assign session_key conn with
+  | Option.Some (Session_data session) -> Option.some session
+  | _ -> Option.none
+
 (** Get session from connection - creates new if not present *)
 let get = fun conn ->
-  match Conn.get_assign session_key conn with
-  | Option.Some (Session_data session) -> session
-  | _ ->
-      (* This shouldn't happen if middleware is installed *)
-      create ~cookie_name:"_suri_session" ~secret:"" ()
+  match find conn with
+  | Option.Some session -> session
+  | Option.None ->
+      panic "Suri.Middleware.Session.get called before Session.middleware installed a session"
 
 (** Session middleware *)
 let middleware = fun

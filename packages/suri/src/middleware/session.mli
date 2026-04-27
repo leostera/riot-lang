@@ -115,7 +115,8 @@ type t
 (**
    Get session from connection.
 
-   Creates new session if none exists or cookie invalid.
+   Raises if [Session.middleware] has not installed a session on the
+   connection. Use [find] when middleware ordering is uncertain.
 
    Example:
    {[
@@ -136,6 +137,13 @@ val middleware:
   (conn:Conn.t -> next:(Conn.t -> Conn.t) -> Conn.t)
 
 val get: Conn.t -> t
+
+(**
+   Find session from connection.
+
+   Returns [None] when [Session.middleware] has not run yet.
+*)
+val find: Conn.t -> t option
 
 (**
    Get value from session by key.

@@ -11,6 +11,7 @@ module Logger = Suri.Middleware.Logger
 module Remote_ip = Suri.Middleware.Remote_ip
 module Request_id = Suri.Middleware.Request_id
 module Router = Suri.Middleware.Router
+module Session = Suri.Middleware.Session
 module Static = Suri.Middleware.Static
 module Response = Suri.Response
 module Http1 = Suri.For_testing.Http1
@@ -402,6 +403,42 @@ let test_csrf_secure_equal_checks_full_token = fun _ctx ->
     (Csrf.For_testing.secure_equal token (String.sub token ~offset:0 ~len:63 ^ replacement));
   Ok ()
 
+let test_session_middleware_installs_session = fun _ctx ->
+  let conn = Conn.For_testing.make () in
+  let found_session = ref false in
+  let middleware = Session.middleware ~secret:"testing-session-secret" () in
+  let _conn' =
+    middleware
+      ~conn
+      ~next:(fun conn ->
+        found_session := Option.is_some (Session.find conn);
+        conn)
+  in
+  Test.assert_true !found_session;
+  Ok ()
+
+let test_csrf_requires_session_middleware = fun _ctx ->
+  let conn =
+    Conn.For_testing.make
+      ~method_:Net.Http.Method.Post
+      ~body_params:[ ("_csrf_token", Csrf.For_testing.generate_token ()); ]
+      ()
+  in
+  let continued = ref false in
+  let middleware = Csrf.middleware () in
+  let conn' =
+    middleware
+      ~conn
+      ~next:(fun conn ->
+        continued := true;
+        conn)
+  in
+  let response = Conn.to_response conn' in
+  Test.assert_false !continued;
+  Test.assert_equal ~expected:Net.Http.Status.InternalServerError ~actual:response.status;
+  Test.assert_equal ~expected:Csrf.For_testing.missing_session_body ~actual:response.body;
+  Ok ()
+
 let test_http1_response_rejects_invalid_header_name = fun _ctx ->
   let res = Response.ok ~headers:[ ("bad name", "value"); ] ~body:"ok" () in
   match Http1.serialize_response res with
@@ -559,6 +596,8 @@ let tests =
       test_csrf_masking_roundtrips_and_uses_unique_masks;
     case "csrf rejects malformed masked tokens" test_csrf_rejects_malformed_masked_tokens;
     case "csrf secure equal checks full token" test_csrf_secure_equal_checks_full_token;
+    case "session middleware installs session" test_session_middleware_installs_session;
+    case "csrf requires session middleware" test_csrf_requires_session_middleware;
     case
       "http1 response rejects invalid header name"
       test_http1_response_rejects_invalid_header_name;
