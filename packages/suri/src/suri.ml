@@ -29,6 +29,17 @@ module For_testing = struct
       | InvalidHeaderName of string
       | InvalidHeaderValue of { name: string; value: string }
 
+    type websocket_upgrade_error = Web_server.Http1.For_testing.websocket_upgrade_error =
+      | InvalidWebSocketMethod of Std.Net.Http.Method.t
+      | InvalidWebSocketVersion of Std.Net.Http.Version.t
+      | MissingWebSocketUpgrade
+      | InvalidWebSocketUpgrade of string
+      | MissingWebSocketConnectionUpgrade
+      | MissingWebSocketVersion
+      | UnsupportedWebSocketVersion of string
+      | MissingWebSocketKey
+      | InvalidWebSocketKey of string
+
     let serialize_response = fun response ->
       Std.Result.map_err
         (Web_server.Http1.For_testing.serialize_response response)
@@ -38,6 +49,13 @@ module For_testing = struct
           | Web_server.Http1.For_testing.InvalidHeaderValue { name; value } ->
               InvalidHeaderValue { name; value }
         )
+
+    let compute_websocket_accept = Web_server.Http1.For_testing.compute_websocket_accept
+
+    let validate_websocket_upgrade = Web_server.Http1.For_testing.validate_websocket_upgrade
+
+    let websocket_upgrade_error_to_string =
+      Web_server.Http1.For_testing.websocket_upgrade_error_to_string
   end
 end
 

@@ -17,6 +17,30 @@ module Static = Suri.Middleware.Static
 module Response = Suri.Response
 module Http1 = Suri.For_testing.Http1
 
+let valid_websocket_key = "dGhlIHNhbXBsZSBub25jZQ=="
+
+let websocket_request = fun
+  ?(method_ = Net.Http.Method.Get)
+  ?(version = Net.Http.Version.Http11)
+  ?(headers = [("upgrade", "websocket"); ("connection", "keep-alive, Upgrade"); ("sec-websocket-version", "13"); ("sec-websocket-key", valid_websocket_key);])
+  () ->
+  let uri =
+    Net.Uri.of_string "/"
+    |> Result.unwrap
+  in
+  let http_req =
+    Net.Http.Request.create method_ uri
+    |> fun req ->
+      Net.Http.Request.with_version req version
+      |> fun req ->
+        List.fold_left
+          headers
+          ~init:req
+          ~fn:(fun req ((name, value)) ->
+            Net.Http.Request.with_header req name value)
+  in
+  Suri.Request.of_http ~body:"" http_req
+
 let config_for_test = fun
   ?(env = Config.default.env)
   ?(host = Config.default.host)
@@ -507,6 +531,95 @@ let test_csrf_requires_session_middleware = fun _ctx ->
   Test.assert_equal ~expected:Csrf.For_testing.missing_session_body ~actual:response.body;
   Ok ()
 
+let test_http1_websocket_accept_matches_rfc_example = fun _ctx ->
+  Test.assert_equal
+    ~expected:"s3pPLMBiTxaQ9kYGzzhZRbK+xOo="
+    ~actual:(Http1.compute_websocket_accept valid_websocket_key);
+  Ok ()
+
+let test_http1_websocket_upgrade_accepts_valid_request = fun _ctx ->
+  match Http1.validate_websocket_upgrade (websocket_request ()) with
+  | Ok key ->
+      Test.assert_equal ~expected:valid_websocket_key ~actual:key;
+      Ok ()
+  | Error error -> Error (Http1.websocket_upgrade_error_to_string error)
+
+let test_http1_websocket_upgrade_rejects_non_get = fun _ctx ->
+  match Http1.validate_websocket_upgrade (websocket_request ~method_:Net.Http.Method.Post ()) with
+  | Error (Http1.InvalidWebSocketMethod Net.Http.Method.Post) -> Ok ()
+  | Ok _ -> Error "expected WebSocket upgrade to reject non-GET request"
+  | Error error -> Error (Http1.websocket_upgrade_error_to_string error)
+
+let test_http1_websocket_upgrade_rejects_http10 = fun _ctx ->
+  match Http1.validate_websocket_upgrade (websocket_request ~version:Net.Http.Version.Http10 ()) with
+  | Error (Http1.InvalidWebSocketVersion Net.Http.Version.Http10) -> Ok ()
+  | Ok _ -> Error "expected WebSocket upgrade to reject HTTP/1.0 request"
+  | Error error -> Error (Http1.websocket_upgrade_error_to_string error)
+
+let test_http1_websocket_upgrade_requires_upgrade_header = fun _ctx ->
+  let headers = [
+    ("connection", "keep-alive, Upgrade");
+    ("sec-websocket-version", "13");
+    ("sec-websocket-key", valid_websocket_key);
+  ]
+  in
+  match Http1.validate_websocket_upgrade (websocket_request ~headers ()) with
+  | Error Http1.MissingWebSocketUpgrade -> Ok ()
+  | Ok _ -> Error "expected WebSocket upgrade to require Upgrade header"
+  | Error error -> Error (Http1.websocket_upgrade_error_to_string error)
+
+let test_http1_websocket_upgrade_rejects_invalid_upgrade_header = fun _ctx ->
+  let headers = [
+    ("upgrade", "h2c");
+    ("connection", "Upgrade");
+    ("sec-websocket-version", "13");
+    ("sec-websocket-key", valid_websocket_key);
+  ]
+  in
+  match Http1.validate_websocket_upgrade (websocket_request ~headers ()) with
+  | Error (Http1.InvalidWebSocketUpgrade "h2c") -> Ok ()
+  | Ok _ -> Error "expected WebSocket upgrade to reject non-websocket Upgrade header"
+  | Error error -> Error (Http1.websocket_upgrade_error_to_string error)
+
+let test_http1_websocket_upgrade_requires_connection_token = fun _ctx ->
+  let headers = [
+    ("upgrade", "websocket");
+    ("connection", "keep-alive");
+    ("sec-websocket-version", "13");
+    ("sec-websocket-key", valid_websocket_key);
+  ]
+  in
+  match Http1.validate_websocket_upgrade (websocket_request ~headers ()) with
+  | Error Http1.MissingWebSocketConnectionUpgrade -> Ok ()
+  | Ok _ -> Error "expected WebSocket upgrade to require Connection upgrade token"
+  | Error error -> Error (Http1.websocket_upgrade_error_to_string error)
+
+let test_http1_websocket_upgrade_requires_version_13 = fun _ctx ->
+  let headers = [
+    ("upgrade", "websocket");
+    ("connection", "Upgrade");
+    ("sec-websocket-version", "12");
+    ("sec-websocket-key", valid_websocket_key);
+  ]
+  in
+  match Http1.validate_websocket_upgrade (websocket_request ~headers ()) with
+  | Error (Http1.UnsupportedWebSocketVersion "12") -> Ok ()
+  | Ok _ -> Error "expected WebSocket upgrade to require Sec-WebSocket-Version: 13"
+  | Error error -> Error (Http1.websocket_upgrade_error_to_string error)
+
+let test_http1_websocket_upgrade_rejects_invalid_key = fun _ctx ->
+  let headers = [
+    ("upgrade", "websocket");
+    ("connection", "Upgrade");
+    ("sec-websocket-version", "13");
+    ("sec-websocket-key", Encoding.Base64.encode "too-short");
+  ]
+  in
+  match Http1.validate_websocket_upgrade (websocket_request ~headers ()) with
+  | Error (Http1.InvalidWebSocketKey _) -> Ok ()
+  | Ok _ -> Error "expected WebSocket upgrade to reject invalid Sec-WebSocket-Key"
+  | Error error -> Error (Http1.websocket_upgrade_error_to_string error)
+
 let test_http1_response_rejects_invalid_header_name = fun _ctx ->
   let res = Response.ok ~headers:[ ("bad name", "value"); ] ~body:"ok" () in
   match Http1.serialize_response res with
@@ -672,6 +785,29 @@ let tests =
     case "csrf secure equal checks full token" test_csrf_secure_equal_checks_full_token;
     case "session middleware installs session" test_session_middleware_installs_session;
     case "csrf requires session middleware" test_csrf_requires_session_middleware;
+    case
+      "http1 websocket accept matches rfc example"
+      test_http1_websocket_accept_matches_rfc_example;
+    case
+      "http1 websocket upgrade accepts valid request"
+      test_http1_websocket_upgrade_accepts_valid_request;
+    case "http1 websocket upgrade rejects non get" test_http1_websocket_upgrade_rejects_non_get;
+    case "http1 websocket upgrade rejects http10" test_http1_websocket_upgrade_rejects_http10;
+    case
+      "http1 websocket upgrade requires upgrade header"
+      test_http1_websocket_upgrade_requires_upgrade_header;
+    case
+      "http1 websocket upgrade rejects invalid upgrade header"
+      test_http1_websocket_upgrade_rejects_invalid_upgrade_header;
+    case
+      "http1 websocket upgrade requires connection token"
+      test_http1_websocket_upgrade_requires_connection_token;
+    case
+      "http1 websocket upgrade requires version 13"
+      test_http1_websocket_upgrade_requires_version_13;
+    case
+      "http1 websocket upgrade rejects invalid key"
+      test_http1_websocket_upgrade_rejects_invalid_key;
     case
       "http1 response rejects invalid header name"
       test_http1_response_rejects_invalid_header_name;

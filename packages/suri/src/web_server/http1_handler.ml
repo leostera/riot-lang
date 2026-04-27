@@ -25,6 +25,17 @@ type serialization_error =
   | InvalidHeaderName of string
   | InvalidHeaderValue of { name: string; value: string }
 
+type websocket_upgrade_error =
+  | InvalidWebSocketMethod of Net.Http.Method.t
+  | InvalidWebSocketVersion of Net.Http.Version.t
+  | MissingWebSocketUpgrade
+  | InvalidWebSocketUpgrade of string
+  | MissingWebSocketConnectionUpgrade
+  | MissingWebSocketVersion
+  | UnsupportedWebSocketVersion of string
+  | MissingWebSocketKey
+  | InvalidWebSocketKey of string
+
 let to_string_error = function
   | `ParseError msg -> "Parse error: " ^ msg
   | `ExcessBodyRead -> "Excess body read"
@@ -33,6 +44,21 @@ let to_string_error = function
 let serialization_error_to_string = function
   | InvalidHeaderName name -> "Invalid response header name: " ^ name
   | InvalidHeaderValue { name; value = _ } -> "Invalid response header value for: " ^ name
+
+let websocket_upgrade_error_to_string = function
+  | InvalidWebSocketMethod method_ ->
+      "WebSocket upgrade requests must use GET, got " ^ Net.Http.Method.to_string method_
+  | InvalidWebSocketVersion version ->
+      "WebSocket upgrade requests require HTTP/1.1 or newer, got "
+      ^ Net.Http.Version.to_string version
+  | MissingWebSocketUpgrade -> "Missing Upgrade: websocket header"
+  | InvalidWebSocketUpgrade value -> "Invalid Upgrade header for WebSocket request: " ^ value
+  | MissingWebSocketConnectionUpgrade -> "Missing Connection: Upgrade token for WebSocket request"
+  | MissingWebSocketVersion -> "Missing Sec-WebSocket-Version header"
+  | UnsupportedWebSocketVersion version ->
+      "Unsupported WebSocket version: " ^ version ^ "; expected 13"
+  | MissingWebSocketKey -> "Missing Sec-WebSocket-Key header"
+  | InvalidWebSocketKey _ -> "Invalid Sec-WebSocket-Key header; expected base64 for exactly 16 bytes"
 
 let make_handler = fun ~config ~handler ?(sniffed_data = "") () ->
   {
@@ -165,20 +191,87 @@ let send_response = fun conn res ->
       | Error `Closed -> Error (`IoError "Connection closed")
     )
 
-module For_testing = struct
-  type nonrec serialization_error = serialization_error =
-    | InvalidHeaderName of string
-    | InvalidHeaderValue of { name: string; value: string }
-
-  let serialize_response = serialize_response
-end
-
 let compute_websocket_accept = fun key ->
   let magic = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11" in
   let concat = key ^ magic in
   let hash = Crypto.Sha1.hash_string concat in
   let hash_bytes = Crypto.Hash.to_bytes hash in
   Encoding.Base64.encode_bytes hash_bytes
+
+let header_has_token = fun value ~token ->
+  let expected = String.lowercase_ascii token in
+  value
+  |> String.split_on_char ','
+  |> List.exists
+    (fun candidate -> String.equal (String.lowercase_ascii (String.trim candidate)) expected)
+
+let validate_websocket_key = fun key ->
+  match Encoding.Base64.decode key with
+  | Ok decoded -> String.length decoded = 16
+  | Error `Invalid_base64 -> false
+
+let version_supports_websocket_upgrade = function
+  | Net.Http.Version.Http09
+  | Net.Http.Version.Http10 -> false
+  | Net.Http.Version.Http11
+  | Net.Http.Version.Http2
+  | Net.Http.Version.Http3 -> true
+
+let validate_websocket_upgrade = fun req ->
+  let headers = Request.headers req in
+  let method_ = Request.method_ req in
+  let version = Request.version req in
+  if not (Net.Http.Method.equal method_ Net.Http.Method.Get) then
+    Error (InvalidWebSocketMethod method_)
+  else if not (version_supports_websocket_upgrade version) then
+    Error (InvalidWebSocketVersion version)
+  else
+    match Net.Http.Header.get headers "upgrade" with
+    | None -> Error MissingWebSocketUpgrade
+    | Some upgrade when not
+      (String.equal (String.lowercase_ascii (String.trim upgrade)) "websocket") ->
+        Error (InvalidWebSocketUpgrade upgrade)
+    | Some _ -> (
+        match Net.Http.Header.get headers "connection" with
+        | Some connection when header_has_token connection ~token:"upgrade" -> (
+            match Net.Http.Header.get headers "sec-websocket-version" with
+            | None -> Error MissingWebSocketVersion
+            | Some ws_version when not (String.equal (String.trim ws_version) "13") ->
+                Error (UnsupportedWebSocketVersion ws_version)
+            | Some _ -> (
+                match Net.Http.Header.get headers "sec-websocket-key" with
+                | None -> Error MissingWebSocketKey
+                | Some key when validate_websocket_key key -> Ok key
+                | Some key -> Error (InvalidWebSocketKey key)
+              )
+          )
+        | _ -> Error MissingWebSocketConnectionUpgrade
+      )
+
+module For_testing = struct
+  type nonrec serialization_error = serialization_error =
+    | InvalidHeaderName of string
+    | InvalidHeaderValue of { name: string; value: string }
+
+  type nonrec websocket_upgrade_error = websocket_upgrade_error =
+    | InvalidWebSocketMethod of Net.Http.Method.t
+    | InvalidWebSocketVersion of Net.Http.Version.t
+    | MissingWebSocketUpgrade
+    | InvalidWebSocketUpgrade of string
+    | MissingWebSocketConnectionUpgrade
+    | MissingWebSocketVersion
+    | UnsupportedWebSocketVersion of string
+    | MissingWebSocketKey
+    | InvalidWebSocketKey of string
+
+  let serialize_response = serialize_response
+
+  let compute_websocket_accept = compute_websocket_accept
+
+  let validate_websocket_upgrade = validate_websocket_upgrade
+
+  let websocket_upgrade_error_to_string = websocket_upgrade_error_to_string
+end
 
 (* Bridge Channel.Handler.t to Socket_pool.Handler.t for WebSocket connections *)
 
@@ -252,14 +345,12 @@ let websocket_to_socket_pool_handler: Channel.Handler.t -> Socket_pool.Handler.t
   Socket_pool.Handler.H { handler; state = ws_handler }
 
 let handle_websocket_upgrade = fun state socket_conn req ws_handler ->
-  (* Check for required WebSocket headers *)
-  let headers = Request.headers req in
-  match Net.Http.Header.get headers "sec-websocket-key" with
-  | None ->
-      let res = Response.bad_request ~body:"Missing Sec-WebSocket-Key header" () in
+  match validate_websocket_upgrade req with
+  | Error error ->
+      let res = Response.bad_request ~body:(websocket_upgrade_error_to_string error) () in
       let _ = send_response socket_conn res in
       Socket_pool.Handler.Close state
-  | Some key ->
+  | Ok key ->
       (* Compute accept key *)
       let accept_key = compute_websocket_accept key in
       (* Send 101 Switching Protocols response *)

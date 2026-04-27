@@ -503,6 +503,22 @@ module For_testing: sig
     type serialization_error =
       | InvalidHeaderName of string
       | InvalidHeaderValue of { name: string; value: string }
+    type websocket_upgrade_error =
+      | InvalidWebSocketMethod of Std.Net.Http.Method.t
+      | InvalidWebSocketVersion of Std.Net.Http.Version.t
+      | MissingWebSocketUpgrade
+      | InvalidWebSocketUpgrade of string
+      | MissingWebSocketConnectionUpgrade
+      | MissingWebSocketVersion
+      | UnsupportedWebSocketVersion of string
+      | MissingWebSocketKey
+      | InvalidWebSocketKey of string
     val serialize_response: Response.t -> (string, serialization_error) Std.result
+
+    val compute_websocket_accept: string -> string
+
+    val validate_websocket_upgrade: Request.t -> (string, websocket_upgrade_error) Std.result
+
+    val websocket_upgrade_error_to_string: websocket_upgrade_error -> string
   end
 end
