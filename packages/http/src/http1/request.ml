@@ -109,6 +109,47 @@ let uri_error_message = function
   | Std.Net.Uri.InvalidFormat -> "invalid format"
   | Std.Net.Uri.TooLong -> "too long"
 
+type 'a slice_parse_result =
+  | Slice_done of 'a
+  | Slice_need_more
+  | Slice_error of string
+
+let header_name_equal = fun left right ->
+  match String.compare (String.lowercase_ascii left) (String.lowercase_ascii right) with
+  | Order.EQ -> true
+  | Order.LT
+  | Order.GT -> false
+
+let first_header_value = fun headers name ->
+  let rec loop = function
+    | [] -> None
+    | (header_name, value) :: rest ->
+        if header_name_equal header_name name then
+          Some value
+        else
+          loop rest
+  in
+  loop headers
+
+let parse_content_length = fun headers ->
+  match first_header_value headers "Content-Length" with
+  | None -> Slice_done None
+  | Some value -> (
+      match Int.parse (String.trim value) with
+      | None -> Slice_error "Invalid Content-Length"
+      | Some length when length < 0 -> Slice_error "Invalid Content-Length"
+      | Some length -> Slice_done (Some length)
+    )
+
+let split_fixed_body = fun input length ->
+  let available = Slice.length input in
+  if available < length then
+    Slice_need_more
+  else
+    let body = Slice.sub_unchecked input ~off:0 ~len:length in
+    let remaining = Slice.sub_unchecked input ~off:length ~len:(available - length) in
+    Slice_done (body, string_of_slice remaining)
+
 type request_line_owned = {
   parsed_method: Std.Net.Http.Method.t;
   parsed_uri: Std.Net.Uri.t;
@@ -121,11 +162,6 @@ type header_line_owned = {
   header_value: string;
   next_cursor: SliceCursor.t;
 }
-
-type 'a slice_parse_result =
-  | Slice_done of 'a
-  | Slice_need_more
-  | Slice_error of string
 
 let skip_crlf = fun cursor ->
   match SliceCursor.take_n cursor 2 with
@@ -272,9 +308,25 @@ let parse_slice = fun
       | Slice_need_more -> Common.Need_more
       | Slice_error error -> Common.Error error
       | Slice_done (headers_list, remaining) ->
-          let body = SliceCursor.remaining remaining in
-          let request = request_of_parts parsed_method parsed_uri parsed_version headers_list body in
-          Common.Done { value = request; remaining = "" }
+          let body_bytes = SliceCursor.remaining remaining in
+          match parse_content_length headers_list with
+          | Slice_need_more -> Common.Need_more
+          | Slice_error error -> Common.Error error
+          | Slice_done None ->
+              let request =
+                request_of_parts parsed_method parsed_uri parsed_version headers_list Slice.empty
+              in
+              Common.Done { value = request; remaining = string_of_slice body_bytes }
+          | Slice_done (Some content_length) -> (
+              match split_fixed_body body_bytes content_length with
+              | Slice_need_more -> Common.Need_more
+              | Slice_error error -> Common.Error error
+              | Slice_done (body, remaining) ->
+                  let request =
+                    request_of_parts parsed_method parsed_uri parsed_version headers_list body
+                  in
+                  Common.Done { value = request; remaining }
+            )
     )
 
 let parse = fun

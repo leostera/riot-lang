@@ -75,6 +75,7 @@ let test_request_post_with_body = fun _ctx ->
     "POST /api/data HTTP/1.1\r\n\
      Host: api.example.com\r\n\
      Content-Type: application/json\r\n\
+     Content-Length: 15\r\n\
      \r\n\
      {\"key\":\"value\"}"
   in
@@ -189,6 +190,60 @@ let test_request_with_1m_body = fun _ctx ->
         Result.Error ("Expected empty remaining body, got " ^ remaining)
       else if body_length != 1_000_000 then
         Result.Error ("Expected 1000000-byte request body, got " ^ Int.to_string body_length)
+      else
+        Result.Ok ()
+
+let test_request_incomplete_fixed_body = fun _ctx ->
+  let req =
+    build_request
+      ~method_:"POST"
+      ~path:"/upload"
+      ~headers:[ ("Host", "example.com"); ("Content-Length", "5"); ]
+      ~body:"Hi"
+  in
+  match Http1.Request.parse req with
+  | Need_more -> Result.Ok ()
+  | Error error -> Result.Error ("Expected Need_more, got error " ^ error)
+  | Done _ -> Result.Error "Expected Need_more for incomplete fixed body"
+
+let test_request_preserves_pipelined_bytes_after_fixed_body = fun _ctx ->
+  let req =
+    build_request
+      ~method_:"POST"
+      ~path:"/upload"
+      ~headers:[ ("Host", "example.com"); ("Content-Length", "5"); ]
+      ~body:"HelloGET /next HTTP/1.1\r\nHost: example.com\r\n\r\n"
+  in
+  match expect_request_parse req with
+  | Error error -> Result.Error error
+  | Ok (parsed, remaining) ->
+      let body =
+        NetRequest.body parsed
+        |> Option.map ~fn:NetBody.to_string
+      in
+      if body != Some "Hello" then
+        Result.Error "Expected body Hello on parsed request"
+      else if remaining != "GET /next HTTP/1.1\r\nHost: example.com\r\n\r\n" then
+        Result.Error ("Expected pipelined request in remaining, got " ^ remaining)
+      else
+        Result.Ok ()
+
+let test_request_without_content_length_preserves_remaining = fun _ctx ->
+  let req =
+    build_request
+      ~method_:"POST"
+      ~path:"/upload"
+      ~headers:[ ("Host", "example.com"); ]
+      ~body:"GET /next HTTP/1.1\r\nHost: example.com\r\n\r\n"
+  in
+  match expect_request_parse req with
+  | Error error -> Result.Error error
+  | Ok (parsed, remaining) ->
+      let body = NetRequest.body parsed in
+      if body != None then
+        Result.Error "Expected request without Content-Length to have no body"
+      else if remaining != "GET /next HTTP/1.1\r\nHost: example.com\r\n\r\n" then
+        Result.Error ("Expected remaining bytes to be preserved, got " ^ remaining)
       else
         Result.Ok ()
 
@@ -383,6 +438,13 @@ let tests =
     case "request_with_1k_body" test_request_with_1k_body;
     case "request_with_100k_body" test_request_with_100k_body;
     case "request_with_1m_body" test_request_with_1m_body;
+    case "request incomplete fixed body" test_request_incomplete_fixed_body;
+    case
+      "request preserves pipelined bytes after fixed body"
+      test_request_preserves_pipelined_bytes_after_fixed_body;
+    case
+      "request without content length preserves remaining"
+      test_request_without_content_length_preserves_remaining;
     case "request_parse_slice" test_request_parse_slice;
     case
       "request rejects missing lf after request line"
