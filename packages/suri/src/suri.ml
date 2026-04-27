@@ -67,6 +67,12 @@ module For_testing = struct
   end
 
   module LiveViewSession = struct
+    type decode_error = Suri__Liveview__Session.decode_error =
+      | InvalidTokenFormat
+      | InvalidSignature
+      | InvalidPayloadBase64
+      | InvalidJson of Std.Data.Json.error
+
     let sign = Suri__Liveview__Session.sign
 
     let verify = Suri__Liveview__Session.verify
@@ -74,6 +80,29 @@ module For_testing = struct
     let encode = Suri__Liveview__Session.encode
 
     let decode = Suri__Liveview__Session.decode
+
+    let decode_error_to_string = Suri__Liveview__Session.decode_error_to_string
+  end
+
+  module Channel = struct
+    type initialization_error = Suri__Channel.Handler.initialization_error = ..
+
+    type error = Suri__Channel.Handler.error =
+      | InitializationFailed of initialization_error
+      | UnknownOpcode of int
+
+    type reported_error = Suri__Channel.Handler.reported_error
+
+    type ('state, 'error) result = ('state, 'error) Suri__Channel.Handler.result =
+      | Continue of 'state
+      | Push of Http.Ws.Frame.t list * 'state
+      | Error of 'error
+
+    let initialize = Suri__Channel.Handler.For_testing.initialize
+
+    let reported_error = Suri__Channel.Handler.For_testing.reported_error
+
+    let reported_error_to_string = Suri__Channel.Handler.For_testing.reported_error_to_string
   end
 
   module Http1 = struct

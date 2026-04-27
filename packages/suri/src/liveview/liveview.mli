@@ -76,6 +76,12 @@ type 'msg event =
   | App of 'msg
 
 (** Component-specific messages from UI events *)
+type Channel.Handler.initialization_error +=
+  | InvalidSessionToken of Session.decode_error
+  | InvalidSessionArgs of Data.Json.t
+  | MissingSessionArgs of Data.Json.t
+
+val initialization_error_to_string: Channel.Handler.initialization_error -> string
 
 (**
    Event wrapper for component messages.

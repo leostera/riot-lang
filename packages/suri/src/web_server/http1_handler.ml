@@ -362,18 +362,30 @@ end
 
 let websocket_to_socket_pool_handler: Channel.Handler.t -> Socket_pool.Handler.t = fun ws_handler ->
   let handler = {
-    Socket_pool.Handler.to_string_error = (fun (`Unknown_opcode code) ->
-      "Unknown WebSocket opcode: " ^ string_of_int code);
+    Socket_pool.Handler.to_string_error = Channel.Handler.reported_error_to_string;
     handle_close = (fun _conn _state -> ());
     handle_connection =
       (fun conn ws_handler ->
         (* Initialize the WebSocket handler *)
         Log.info "WebSocket bridge: handle_connection called, initializing Channel handler";
         match Channel.Handler.init ws_handler (Socket_pool.Connection.stream conn) with
-        | `continue (_stream, new_handler) ->
+        | Channel.Handler.Continue new_handler ->
             Log.info "WebSocket bridge: Channel handler initialized successfully";
             Socket_pool.Handler.Continue new_handler
-        | `error (_stream, err) ->
+        | Channel.Handler.Push (out_frames, new_handler) ->
+            let frame_data =
+              out_frames
+              |> List.map ~fn:Http.Ws.Serializer.serialize
+              |> String.concat ""
+            in
+            (
+              match Socket_pool.Connection.send conn frame_data with
+              | Ok () ->
+                  Log.info "WebSocket bridge: Channel handler initialized successfully";
+                  Socket_pool.Handler.Continue new_handler
+              | Error `Closed -> Socket_pool.Handler.Close new_handler
+            )
+        | Channel.Handler.Error err ->
             Log.error "WebSocket bridge: Channel handler initialization failed";
             Socket_pool.Handler.Error (ws_handler, err));
     handle_data =
@@ -383,8 +395,8 @@ let websocket_to_socket_pool_handler: Channel.Handler.t -> Socket_pool.Handler.t
         match Http.Ws.Parser.parse data with
         | Done { value = frame; remaining = _ } -> (
             match Channel.Handler.handle_frame ws_handler frame stream with
-            | `continue (_stream, new_handler) -> Socket_pool.Handler.Continue new_handler
-            | `push (out_frames, new_handler) ->
+            | Channel.Handler.Continue new_handler -> Socket_pool.Handler.Continue new_handler
+            | Channel.Handler.Push (out_frames, new_handler) ->
                 (* Serialize and send response frames *)
                 let frame_data =
                   out_frames
@@ -396,7 +408,7 @@ let websocket_to_socket_pool_handler: Channel.Handler.t -> Socket_pool.Handler.t
                   | Ok () -> Socket_pool.Handler.Continue new_handler
                   | Error `Closed -> Socket_pool.Handler.Close new_handler
                 )
-            | `error (_stream, err) -> Socket_pool.Handler.Error (ws_handler, err)
+            | Channel.Handler.Error err -> Socket_pool.Handler.Error (ws_handler, err)
           )
         | Need_more ->
             (* Need more data - keep waiting *)
@@ -411,8 +423,8 @@ let websocket_to_socket_pool_handler: Channel.Handler.t -> Socket_pool.Handler.t
       (fun msg conn ws_handler ->
         let stream = Socket_pool.Connection.stream conn in
         match Channel.Handler.handle_message ws_handler msg stream with
-        | `continue (_stream, new_handler) -> Socket_pool.Handler.Continue new_handler
-        | `push (frames, new_handler) ->
+        | Channel.Handler.Continue new_handler -> Socket_pool.Handler.Continue new_handler
+        | Channel.Handler.Push (frames, new_handler) ->
             (* Serialize and send frames *)
             let frame_data =
               frames
@@ -424,7 +436,7 @@ let websocket_to_socket_pool_handler: Channel.Handler.t -> Socket_pool.Handler.t
               | Ok () -> Socket_pool.Handler.Continue new_handler
               | Error `Closed -> Socket_pool.Handler.Close new_handler
             )
-        | `error (_stream, err) -> Socket_pool.Handler.Error (ws_handler, err));
+        | Channel.Handler.Error err -> Socket_pool.Handler.Error (ws_handler, err));
   }
   in
   Socket_pool.Handler.H { handler; state = ws_handler }

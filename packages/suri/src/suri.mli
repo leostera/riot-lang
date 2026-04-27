@@ -518,13 +518,37 @@ module For_testing: sig
   end
 
   module LiveViewSession: sig
+    type decode_error =
+      | InvalidTokenFormat
+      | InvalidSignature
+      | InvalidPayloadBase64
+      | InvalidJson of Data.Json.error
     val sign: secret:string -> data:string -> string
 
     val verify: secret:string -> data:string -> signature:string -> bool
 
     val encode: secret:string -> json:Data.Json.t -> string
 
-    val decode: secret:string -> token:string -> (Data.Json.t, string) result
+    val decode: secret:string -> token:string -> (Data.Json.t, decode_error) result
+
+    val decode_error_to_string: decode_error -> string
+  end
+
+  module Channel: sig
+    type initialization_error = ..
+    type error =
+      | InitializationFailed of initialization_error
+      | UnknownOpcode of int
+    type reported_error
+    type ('state, 'error) result =
+      | Continue of 'state
+      | Push of Http.Ws.Frame.t list * 'state
+      | Error of 'error
+    val initialize: Channel.Handler.t -> (Channel.Handler.t, reported_error) result
+
+    val reported_error: reported_error -> error
+
+    val reported_error_to_string: reported_error -> string
   end
 
   module Http1: sig

@@ -44,6 +44,20 @@ type Message.t +=
   | ComponentMount
   | ComponentEvent of { handler_id: string; event_data: string }
 
+type Channel.Handler.initialization_error +=
+  | InvalidSessionToken of Session.decode_error
+  | InvalidSessionArgs of Data.Json.t
+  | MissingSessionArgs of Data.Json.t
+
+let initialization_error_to_string = function
+  | InvalidSessionToken error ->
+      "Invalid LiveView session token: " ^ Session.decode_error_to_string error
+  | InvalidSessionArgs json ->
+      "LiveView session args could not be decoded from: " ^ Data.Json.to_string json
+  | MissingSessionArgs json ->
+      "LiveView component requires valid default args, got: " ^ Data.Json.to_string json
+  | _ -> "LiveView handler initialization failed"
+
 (** Attach handler IDs to component tree and register handlers *)
 let rec attach_handler_ids registry (component: 'msg Component.t) =
   match component with
@@ -181,10 +195,21 @@ module MountHandler (C: Component) = struct
   (** Get secret from Suri config *)
   let get_secret = fun () ->
     (* Try to get from Std.Config, fall back to default *)
-    match Std.Config.get (module SuriConfig) with
-    | Ok c -> c.liveview_secret
-    | Error _ ->
-        Log.warn "Could not load Suri config from Std.Config, using default";
+    try
+      match Std.Config.get (module SuriConfig) with
+      | Ok c -> c.liveview_secret
+      | Error _ ->
+          Log.warn "Could not load Suri config from Std.Config, using default";
+          SuriConfig.default.liveview_secret
+    with
+    | exn ->
+        Log.warn
+          (Std.String.concat
+            ""
+            [
+              "Could not load Suri config from Std.Config, using default: ";
+              Std.Exception.to_string exn;
+            ]);
         SuriConfig.default.liveview_secret
 
   let init = fun conn ->
@@ -197,32 +222,24 @@ module MountHandler (C: Component) = struct
           Log.warn "No session token found, using default args";
           (
             match C.deserialize_args Data.Json.Null with
-            | Ok args -> args
-            | Error err ->
-                Log.error ("Failed to create default args: " ^ Data.Json.to_string err);
-                panic "LiveView component requires valid args"
+            | Ok args -> Ok args
+            | Error err -> Error (MissingSessionArgs err)
           )
       | Some token ->
           (* Verify and deserialize session token *)
           let secret = get_secret () in
           match Session.decode ~secret ~token with
-          | Error err ->
-              Log.error ("Invalid session token: " ^ err);
-              (* Fall back to default args *)
-              (
-                match C.deserialize_args Data.Json.Null with
-                | Ok args -> args
-                | Error _ -> panic "LiveView session token invalid and no default args available"
-              )
+          | Error err -> Error (InvalidSessionToken err)
           | Ok json ->
               match C.deserialize_args json with
-              | Ok args -> args
-              | Error err ->
-                  Log.error ("Failed to deserialize args: " ^ Data.Json.to_string err);
-                  panic "LiveView args deserialization failed"
+              | Ok args -> Ok args
+              | Error err -> Error (InvalidSessionArgs err)
     in
-    let component = ComponentProcess.start_link this (module C) conn component_args in
-    `ok { component }
+    match component_args with
+    | Error err -> Channel.Handler.Error (Channel.Handler.InitializationFailed err)
+    | Ok component_args ->
+        let component = ComponentProcess.start_link this (module C) conn component_args in
+        Channel.Handler.Continue { component }
 
   let handle_frame = fun (frame: Http.Ws.Frame.t) _conn state ->
     match frame.opcode with
@@ -231,25 +248,29 @@ module MountHandler (C: Component) = struct
         | Ok Protocol.Mount ->
             Log.info "Received Mount event";
             send state.component ComponentMount;
-            `ok state
+            Channel.Handler.Continue state
         | Ok Protocol.Event { handler_id; event_data } ->
             Log.debug ("Received Event: " ^ handler_id);
             send state.component (ComponentEvent { handler_id; event_data });
-            `ok state
+            Channel.Handler.Continue state
         | Error err ->
             Log.error ("Failed to deserialize: " ^ err);
-            `ok state
+            Channel.Handler.Continue state
       )
-    | Http.Ws.Frame.Ping -> `push ([ Http.Ws.Frame.pong () ], state)
-    | _ -> `ok state
+    | Http.Ws.Frame.Ping -> Channel.Handler.Push ([ Http.Ws.Frame.pong () ], state)
+    | _ -> Channel.Handler.Continue state
 
   let handle_message = fun msg state ->
     match msg with
     | RenderPatch patch ->
         Log.debug ("Sending patch to client (" ^ string_of_int (String.length patch) ^ " bytes)");
         let frame = Http.Ws.Frame.text patch in
-        `push ([ frame ], state)
-    | _ -> `ok state
+        Channel.Handler.Push ([ frame ], state)
+    | _ -> Channel.Handler.Continue state
+
+  let error_to_string = function
+    | Channel.Handler.InitializationFailed error -> initialization_error_to_string error
+    | error -> Channel.Handler.Default.error_to_string error
 end
 
 (** JavaScript runtime string - included inline *)
@@ -517,7 +538,9 @@ let serve_runtime ?(prefix = "/assets/liveview.js") () = fun ~conn ~next ->
 (** Create a LiveView mount handler *)
 
 let mount = fun
-  (type s m) (module C : Component with type state = s and type msg = m) (conn: Middleware.Conn.t) ->
+  (type s m)
+  (module C : Component with type state = s and type msg = m)
+  (conn: Middleware.Conn.t) ->
   let module M = MountHandler (C) in
   let opts = Channel.Handler.{ do_upgrade = true } in
   (opts, Channel.Handler.make (module M) conn)

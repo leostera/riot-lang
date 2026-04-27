@@ -6,6 +6,13 @@ open Std
    Provides cryptographically signed session tokens to securely pass
    initialization arguments from HTTP embed to WebSocket mount.
 *)
+type decode_error =
+  | InvalidTokenFormat
+  | InvalidSignature
+  | InvalidPayloadBase64
+  | InvalidJson of Data.Json.error
+val decode_error_to_string: decode_error -> string
+
 val encode: secret:string -> json:Data.Json.t -> string
 
 (**
@@ -24,7 +31,7 @@ val encode: secret:string -> json:Data.Json.t -> string
    (* Returns: "eyJpZCI6ImFiYy0xMjMifQ.a1b2c3..." *)
    ```
 *)
-val decode: secret:string -> token:string -> (Data.Json.t, string) result
+val decode: secret:string -> token:string -> (Data.Json.t, decode_error) result
 
 (**
    Decode and verify a signed session token.
@@ -45,7 +52,7 @@ val decode: secret:string -> token:string -> (Data.Json.t, string) result
    ```ocaml
    match Session.decode ~secret:"my-secret" ~token with
    | Ok json -> (* Use deserialized JSON *)
-   | Error err -> Log.error ("Invalid session: " ^ err)
+   | Error err -> Log.error ("Invalid session: " ^ Session.decode_error_to_string err)
    ```
 *)
 val sign: secret:string -> data:string -> string

@@ -244,16 +244,16 @@ val scope: string -> route list -> route
        type args = unit
        type state = unit
 
-       let init () = `ok ()
+       let init () = Channel.Handler.Continue ()
 
        let handle_frame frame _conn state =
          match frame with
          | { Http.Ws.Frame.opcode = Text; payload; _ } ->
              let response = Http.Ws.Frame.text payload in
-             `push ([response], state)
-         | _ -> `ok state
+             Channel.Handler.Push ([response], state)
+         | _ -> Channel.Handler.Continue state
 
-       let handle_message _msg state = `ok state
+       let handle_message _msg state = Channel.Handler.Continue state
      end
 
      let routes = [

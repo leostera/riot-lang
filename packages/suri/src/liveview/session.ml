@@ -1,5 +1,17 @@
 open Std
 
+type decode_error =
+  | InvalidTokenFormat
+  | InvalidSignature
+  | InvalidPayloadBase64
+  | InvalidJson of Data.Json.error
+
+let decode_error_to_string = function
+  | InvalidTokenFormat -> "invalid token format; expected '<payload>.<signature>'"
+  | InvalidSignature -> "invalid signature"
+  | InvalidPayloadBase64 -> "invalid base64 encoding in payload"
+  | InvalidJson error -> "invalid JSON payload: " ^ Data.Json.error_to_string error
+
 (* Constant-time string comparison to prevent timing attacks *)
 
 let secure_compare = fun s1 s2 ->
@@ -82,16 +94,16 @@ let decode = fun ~secret ~token ->
   | [ payload; signature ] ->
       (* 2. Verify signature *)
       if not (verify ~secret ~data:payload ~signature) then
-        Error "Invalid signature (token may have been tampered with)"
+        Error InvalidSignature
       else
         (* 3. Base64-decode the payload *)
         (
           match Encoding.Base64.decode payload with
-          | Error _ -> Error "Invalid base64 encoding in payload"
+          | Error _ -> Error InvalidPayloadBase64
           | Ok json_str ->
               (* 4. Parse JSON *)
               match Data.Json.of_string json_str with
-              | Error err -> Error ("Failed to parse JSON: " ^ Data.Json.error_to_string err)
+              | Error err -> Error (InvalidJson err)
               | Ok json -> Ok json
         )
-  | _ -> Error "Invalid token format (expected '<payload>.<signature>')"
+  | _ -> Error InvalidTokenFormat

@@ -18,6 +18,7 @@ module Response = Suri.Response
 module Connection = Suri.For_testing.Connection
 module Handler = Suri.For_testing.Handler
 module LiveViewSession = Suri.For_testing.LiveViewSession
+module Channel = Suri.For_testing.Channel
 module Http1 = Suri.For_testing.Http1
 
 let valid_websocket_key = "dGhlIHNhbXBsZSBub25jZQ=="
@@ -623,7 +624,7 @@ let test_liveview_session_token_rejects_tampering = fun _ctx ->
     LiveViewSession.encode ~secret ~json:(Data.Json.obj [ ("id", Data.Json.string "counter"); ])
   in
   match LiveViewSession.decode ~secret ~token with
-  | Error err -> Error err
+  | Error err -> Error (LiveViewSession.decode_error_to_string err)
   | Ok json ->
       let actual =
         match Data.Json.get_field "id" json with
@@ -634,6 +635,52 @@ let test_liveview_session_token_rejects_tampering = fun _ctx ->
       match LiveViewSession.decode ~secret ~token:(tamper_last_char token) with
       | Error _ -> Ok ()
       | Ok _ -> Error "expected tampered liveview token to fail verification"
+
+let test_liveview_session_token_returns_structured_errors = fun _ctx ->
+  let secret = "0123456789abcdef0123456789abcdef" in
+  match LiveViewSession.decode ~secret ~token:"not-a-token" with
+  | Error LiveViewSession.InvalidTokenFormat -> Ok ()
+  | Ok _ -> Error "expected invalid LiveView token format to fail"
+  | Error error -> Error (LiveViewSession.decode_error_to_string error)
+
+module TestLiveViewComponent = struct
+  let id = "test-liveview"
+
+  type state = unit
+
+  type msg = unit
+
+  type args = unit
+
+  let serialize_args () = Data.Json.Null
+
+  let deserialize_args = function
+    | Data.Json.Null -> Ok ()
+    | json -> Error json
+
+  let init _conn () = ()
+
+  let update _msg state = state
+
+  let render ~state () = Component.text "ok"
+end
+
+let test_liveview_rejects_invalid_session_tokens = fun _ctx ->
+  let conn = Conn.For_testing.make ~uri:"/?session=not-a-token" () in
+  let (_opts, handler) = Suri.LiveView.mount (module TestLiveViewComponent) conn in
+  match Channel.initialize handler with
+  | Channel.Error reported -> (
+      match Channel.reported_error reported with
+      | Channel.InitializationFailed _ ->
+          Test.assert_true
+            (String.contains
+              (Channel.reported_error_to_string reported)
+              "Invalid LiveView session token");
+          Ok ()
+      | Channel.UnknownOpcode _ -> Error "expected LiveView initialization failure"
+    )
+  | Channel.Continue _ -> Error "expected invalid LiveView token to reject handler initialization"
+  | Channel.Push _ -> Error "expected invalid LiveView token to reject handler initialization"
 
 let test_csrf_requires_session_middleware = fun _ctx ->
   let conn =
@@ -1088,6 +1135,10 @@ let tests =
       test_session_cookie_roundtrips_and_rejects_tampering;
     case "liveview session signing uses hmac" test_liveview_session_signing_uses_hmac;
     case "liveview session token rejects tampering" test_liveview_session_token_rejects_tampering;
+    case
+      "liveview session token returns structured errors"
+      test_liveview_session_token_returns_structured_errors;
+    case "liveview rejects invalid session tokens" test_liveview_rejects_invalid_session_tokens;
     case "csrf requires session middleware" test_csrf_requires_session_middleware;
     case
       "http1 websocket accept matches rfc example"
