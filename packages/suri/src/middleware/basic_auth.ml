@@ -44,7 +44,7 @@ let sanitize_realm = fun realm ->
   let chars = ref [] in
   String.iter
     (fun c ->
-      if c != '\r' && c != '\n' && c != '"' then
+      if not (c = '\r' || c = '\n' || c = '"') then
         chars := c :: !chars)
     realm;
   let chars = List.rev !chars in
@@ -70,8 +70,12 @@ let sanitize_realm = fun realm ->
 *)
 let decode_credentials = fun auth_header ->
   (* Split "Basic <encoded>" *)
-  match String.split_on_char ' ' auth_header with
-  | [ "Basic"; encoded ] -> (
+  let parts =
+    String.split_on_char ' ' auth_header
+    |> List.filter ~fn:(fun part -> not (part = ""))
+  in
+  match parts with
+  | [ scheme; encoded ] when String.lowercase_ascii scheme = "basic" -> (
       match Encoding.Base64.decode encoded with
       | Result.Ok decoded -> (
           (* Split on first colon only - password can contain colons *)
@@ -186,3 +190,11 @@ let middleware_with_validation = fun ?(realm = "Restricted Area") ?skip ~validat
           | Option.None -> unauthorized conn realm
         )
       | Option.None -> unauthorized conn realm
+
+module For_testing = struct
+  let decode_credentials = decode_credentials
+
+  let sanitize_realm = sanitize_realm
+
+  let secure_equal = secure_equal
+end

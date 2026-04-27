@@ -1,6 +1,7 @@
 open Std
 
 module Component = Suri.Component
+module Basic_auth = Suri.Middleware.Basic_auth
 module Static = Suri.Middleware.Static
 
 let test_component_text_is_escaped = fun _ctx ->
@@ -95,6 +96,42 @@ let test_static_directory_listing_escapes_displayed_values = fun _ctx ->
   Test.assert_false (String.contains html "<script>alert(1)</script>");
   Ok ()
 
+let test_basic_auth_accepts_case_insensitive_scheme = fun _ctx ->
+  let encoded = Encoding.Base64.encode "alice:s3cret" in
+  Test.assert_equal
+    ~expected:(Some ("alice", "s3cret"))
+    ~actual:(Basic_auth.For_testing.decode_credentials ("bAsIc " ^ encoded));
+  Ok ()
+
+let test_basic_auth_ignores_extra_spaces = fun _ctx ->
+  let encoded = Encoding.Base64.encode "alice:s3cret" in
+  Test.assert_equal
+    ~expected:(Some ("alice", "s3cret"))
+    ~actual:(Basic_auth.For_testing.decode_credentials ("  Basic   " ^ encoded ^ "  "));
+  Ok ()
+
+let test_basic_auth_preserves_colons_in_password = fun _ctx ->
+  let encoded = Encoding.Base64.encode "alice:s3:cr:et" in
+  Test.assert_equal
+    ~expected:(Some ("alice", "s3:cr:et"))
+    ~actual:(Basic_auth.For_testing.decode_credentials ("Basic " ^ encoded));
+  Ok ()
+
+let test_basic_auth_rejects_invalid_credentials = fun _ctx ->
+  Test.assert_equal
+    ~expected:None
+    ~actual:(Basic_auth.For_testing.decode_credentials "Bearer token");
+  Test.assert_equal
+    ~expected:None
+    ~actual:(Basic_auth.For_testing.decode_credentials "Basic not-base64");
+  Ok ()
+
+let test_basic_auth_sanitizes_realm_header_value = fun _ctx ->
+  Test.assert_equal
+    ~expected:"AdminPanel"
+    ~actual:(Basic_auth.For_testing.sanitize_realm "Admin\r\n\"Panel");
+  Ok ()
+
 let tests =
   Test.[
     case "component text is escaped" test_component_text_is_escaped;
@@ -114,6 +151,13 @@ let tests =
     case
       "static directory listing escapes displayed values"
       test_static_directory_listing_escapes_displayed_values;
+    case
+      "basic auth accepts case insensitive scheme"
+      test_basic_auth_accepts_case_insensitive_scheme;
+    case "basic auth ignores extra spaces" test_basic_auth_ignores_extra_spaces;
+    case "basic auth preserves colons in password" test_basic_auth_preserves_colons_in_password;
+    case "basic auth rejects invalid credentials" test_basic_auth_rejects_invalid_credentials;
+    case "basic auth sanitizes realm header value" test_basic_auth_sanitizes_realm_header_value;
   ]
 
 let main ~args = Test.Cli.main ~name:"suri_hardening_tests" ~tests ~args ()

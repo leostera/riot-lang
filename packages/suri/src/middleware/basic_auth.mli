@@ -274,3 +274,11 @@ val assign: string -> 'a -> Conn.t -> Conn.t
    ["basic_auth_user"].
 *)
 val get: string -> Conn.t -> 'a option
+
+module For_testing: sig
+  val decode_credentials: string -> (string * string) option
+
+  val sanitize_realm: string -> string
+
+  val secure_equal: string -> string -> bool
+end
