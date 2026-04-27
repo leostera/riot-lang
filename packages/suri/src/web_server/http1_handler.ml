@@ -57,6 +57,10 @@ type websocket_upgrade_error =
   | MissingWebSocketKey
   | InvalidWebSocketKey of { value: string; reason: websocket_key_error }
 
+type websocket_frame_limit_error =
+  | WebSocketFrameTooLarge of { size: int; limit: int }
+  | WebSocketMessageTooLarge of { size: int; limit: int }
+
 type content_length_error =
   | InvalidInteger
   | NegativeLength of int
@@ -123,6 +127,20 @@ let websocket_upgrade_error_to_string = function
       ^ Int.to_string expected
       ^ " bytes, got "
       ^ Int.to_string actual
+
+let websocket_frame_limit_error_to_string = function
+  | WebSocketFrameTooLarge { size; limit } ->
+      "WebSocket frame payload is too large: "
+      ^ Int.to_string size
+      ^ " bytes, maximum is "
+      ^ Int.to_string limit
+      ^ " bytes"
+  | WebSocketMessageTooLarge { size; limit } ->
+      "WebSocket message payload is too large: "
+      ^ Int.to_string size
+      ^ " bytes, maximum is "
+      ^ Int.to_string limit
+      ^ " bytes"
 
 let request_body_header_error_to_string = function
   | InvalidContentLength { value; reason = InvalidInteger } ->
@@ -452,9 +470,29 @@ let validate_request_headers = fun http_req ->
   | Net.Http.Version.Http2
   | Net.Http.Version.Http3 -> Ok ()
 
+let validate_websocket_frame_limits = fun ~max_frame_size ~max_message_size frame ->
+  let size = String.length frame.Http.Ws.Frame.payload in
+  if size > max_frame_size then
+    Error (WebSocketFrameTooLarge { size; limit = max_frame_size })
+  else
+    match frame.opcode with
+    | Http.Ws.Frame.Text
+    | Http.Ws.Frame.Binary
+    | Http.Ws.Frame.Continuation when size > max_message_size ->
+        Error (WebSocketMessageTooLarge { size; limit = max_message_size })
+    | Http.Ws.Frame.Text
+    | Http.Ws.Frame.Binary
+    | Http.Ws.Frame.Continuation
+    | Http.Ws.Frame.Close
+    | Http.Ws.Frame.Ping
+    | Http.Ws.Frame.Pong -> Ok ()
+
 (* Bridge Channel.Handler.t to Socket_pool.Handler.t for WebSocket connections *)
 
-let websocket_to_socket_pool_handler: Channel.Handler.t -> Socket_pool.Handler.t = fun ws_handler ->
+let websocket_to_socket_pool_handler:
+  config:Web_config.t ->
+  Channel.Handler.t ->
+  Socket_pool.Handler.t = fun ~config ws_handler ->
   let handler = {
     Socket_pool.Handler.to_string_error = Channel.Handler.reported_error_to_string;
     handle_close = (fun _conn _state -> ());
@@ -490,25 +528,34 @@ let websocket_to_socket_pool_handler: Channel.Handler.t -> Socket_pool.Handler.t
         let stream = Socket_pool.Connection.stream conn in
         match Http.Ws.Parser.parse data with
         | Done { value = frame; remaining = _ } -> (
-            match Channel.Handler.handle_frame ws_handler frame stream with
-            | Channel.Handler.Continue new_handler -> Socket_pool.Handler.Continue new_handler
-            | Channel.Handler.Push (out_frames, new_handler) ->
-                (* Serialize and send response frames *)
-                let frame_data =
-                  out_frames
-                  |> List.map ~fn:Http.Ws.Serializer.serialize
-                  |> String.concat ""
-                in
-                (
-                  match Socket_pool.Connection.send conn frame_data with
-                  | Ok () -> Socket_pool.Handler.Continue new_handler
-                  | Error Socket_pool.Connection.Closed -> Socket_pool.Handler.Close new_handler
-                  | Error (
-                    Socket_pool.Connection.FileError _
-                    | Socket_pool.Connection.InvalidRange _
-                  ) -> Socket_pool.Handler.Close new_handler
-                )
-            | Channel.Handler.Error err -> Socket_pool.Handler.Error (ws_handler, err)
+            match validate_websocket_frame_limits
+              ~max_frame_size:config.max_websocket_frame_size
+              ~max_message_size:config.max_websocket_message_size
+              frame with
+            | Error error ->
+                Log.error ("WebSocket limit error: " ^ websocket_frame_limit_error_to_string error);
+                Socket_pool.Handler.Close ws_handler
+            | Ok () -> (
+                match Channel.Handler.handle_frame ws_handler frame stream with
+                | Channel.Handler.Continue new_handler -> Socket_pool.Handler.Continue new_handler
+                | Channel.Handler.Push (out_frames, new_handler) ->
+                    (* Serialize and send response frames *)
+                    let frame_data =
+                      out_frames
+                      |> List.map ~fn:Http.Ws.Serializer.serialize
+                      |> String.concat ""
+                    in
+                    (
+                      match Socket_pool.Connection.send conn frame_data with
+                      | Ok () -> Socket_pool.Handler.Continue new_handler
+                      | Error Socket_pool.Connection.Closed -> Socket_pool.Handler.Close new_handler
+                      | Error (
+                        Socket_pool.Connection.FileError _
+                        | Socket_pool.Connection.InvalidRange _
+                      ) -> Socket_pool.Handler.Close new_handler
+                    )
+                | Channel.Handler.Error err -> Socket_pool.Handler.Error (ws_handler, err)
+              )
           )
         | Need_more ->
             (* Need more data - keep waiting *)
@@ -574,7 +621,7 @@ let handle_websocket_upgrade = fun state socket_conn req ws_handler ->
       | Ok () ->
           Log.info "WebSocket upgrade response sent successfully, switching protocols";
           (* Switch to WebSocket handler *)
-          let socket_pool_handler = websocket_to_socket_pool_handler ws_handler in
+          let socket_pool_handler = websocket_to_socket_pool_handler ~config:state.config ws_handler in
           Socket_pool.Handler.Switch socket_pool_handler
       | Error Socket_pool.Connection.Closed ->
           Log.error "Failed to send WebSocket upgrade response - connection closed";

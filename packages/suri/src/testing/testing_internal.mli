@@ -69,6 +69,9 @@ module Http1: sig
     | UnsupportedWebSocketVersion of { value: string; expected: string }
     | MissingWebSocketKey
     | InvalidWebSocketKey of { value: string; reason: websocket_key_error }
+  type websocket_frame_limit_error =
+    | WebSocketFrameTooLarge of { size: int; limit: int }
+    | WebSocketMessageTooLarge of { size: int; limit: int }
   type content_length_error =
     | InvalidInteger
     | NegativeLength of int
@@ -94,6 +97,14 @@ module Http1: sig
     (string, websocket_upgrade_error) Std.result
 
   val websocket_upgrade_error_to_string: websocket_upgrade_error -> string
+
+  val validate_websocket_frame_limits:
+    max_frame_size:int ->
+    max_message_size:int ->
+    Http.Ws.Frame.t ->
+    (unit, websocket_frame_limit_error) Std.result
+
+  val websocket_frame_limit_error_to_string: websocket_frame_limit_error -> string
 
   val validate_request_body_headers:
     ?max_body_size:int ->

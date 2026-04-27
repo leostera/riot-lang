@@ -74,6 +74,10 @@ module Http1 = struct
     | MissingWebSocketKey
     | InvalidWebSocketKey of { value: string; reason: websocket_key_error }
 
+  type websocket_frame_limit_error = Web_server.Http1.websocket_frame_limit_error =
+    | WebSocketFrameTooLarge of { size: int; limit: int }
+    | WebSocketMessageTooLarge of { size: int; limit: int }
+
   type content_length_error = Web_server.Http1.content_length_error =
     | InvalidInteger
     | NegativeLength of int
@@ -100,6 +104,10 @@ module Http1 = struct
   let validate_websocket_upgrade = Web_server.Http1.validate_websocket_upgrade
 
   let websocket_upgrade_error_to_string = Web_server.Http1.websocket_upgrade_error_to_string
+
+  let validate_websocket_frame_limits = Web_server.Http1.validate_websocket_frame_limits
+
+  let websocket_frame_limit_error_to_string = Web_server.Http1.websocket_frame_limit_error_to_string
 
   let validate_request_body_headers = Web_server.Http1.validate_request_body_headers
 

@@ -206,6 +206,27 @@ let test_http1_websocket_upgrade_rejects_invalid_key = fun _ctx ->
   | Ok _ -> Error "expected WebSocket upgrade to reject invalid Sec-WebSocket-Key"
   | Error error -> Error (Http1.websocket_upgrade_error_to_string error)
 
+let test_http1_websocket_frame_limits_accept_small_frame = fun _ctx ->
+  let frame = Http.Ws.Frame.text "abc" in
+  Test.assert_equal
+    ~expected:(Ok ())
+    ~actual:(Http1.validate_websocket_frame_limits ~max_frame_size:3 ~max_message_size:3 frame);
+  Ok ()
+
+let test_http1_websocket_frame_limits_reject_oversized_frame = fun _ctx ->
+  let frame = Http.Ws.Frame.text "abcd" in
+  match Http1.validate_websocket_frame_limits ~max_frame_size:3 ~max_message_size:10 frame with
+  | Error (Http1.WebSocketFrameTooLarge { size = 4; limit = 3 }) -> Ok ()
+  | Ok () -> Error "expected oversized WebSocket frame to fail"
+  | Error error -> Error (Http1.websocket_frame_limit_error_to_string error)
+
+let test_http1_websocket_frame_limits_reject_oversized_message = fun _ctx ->
+  let frame = Http.Ws.Frame.text "abcd" in
+  match Http1.validate_websocket_frame_limits ~max_frame_size:10 ~max_message_size:3 frame with
+  | Error (Http1.WebSocketMessageTooLarge { size = 4; limit = 3 }) -> Ok ()
+  | Ok () -> Error "expected oversized WebSocket message to fail"
+  | Error error -> Error (Http1.websocket_frame_limit_error_to_string error)
+
 let test_http1_body_headers_accept_valid_content_length = fun _ctx ->
   let req = http_request ~headers:[ ("content-length", " 12 "); ] () in
   Test.assert_equal ~expected:(Ok 12) ~actual:(Http1.validate_request_body_headers req);
@@ -471,6 +492,15 @@ let tests =
     case
       "http1 websocket upgrade rejects invalid key"
       test_http1_websocket_upgrade_rejects_invalid_key;
+    case
+      "http1 websocket frame limits accept small frame"
+      test_http1_websocket_frame_limits_accept_small_frame;
+    case
+      "http1 websocket frame limits reject oversized frame"
+      test_http1_websocket_frame_limits_reject_oversized_frame;
+    case
+      "http1 websocket frame limits reject oversized message"
+      test_http1_websocket_frame_limits_reject_oversized_message;
     case
       "http1 body headers accept valid content length"
       test_http1_body_headers_accept_valid_content_length;
