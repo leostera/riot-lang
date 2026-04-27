@@ -81,14 +81,11 @@ type family =
 
 type mode =
   | Inline
-  | Flow
   | Hang of int
   | Vertical
   | Block
   | Isolate_child_blocks
   | Break_after_separator
-  | Tight
-  | Blank_line
 
 type callee_class =
   | Constructor_like
@@ -98,9 +95,7 @@ type callee_class =
 
 type style = {
   continuation_indent: int;
-  block_indent: int;
   long_infix_chain_terms: int;
-  heavy_apply_arg_threshold: int;
 }
 
 type context = { width: int; column: int; indent: int; role: role; style: style }
@@ -112,9 +107,7 @@ type decision = {
 
 let default_style = {
   continuation_indent = 2;
-  block_indent = 2;
   long_infix_chain_terms = 8;
-  heavy_apply_arg_threshold = 2;
 }
 
 let make_context = fun ?(role = Top_expr) ?(style = default_style) ~width ~column ~indent () ->
@@ -170,14 +163,11 @@ let trace_enabled =
 
 let mode_to_string = function
   | Inline -> "Inline"
-  | Flow -> "Flow"
   | Hang indent -> "Hang(" ^ Int.to_string indent ^ ")"
   | Vertical -> "Vertical"
   | Block -> "Block"
   | Isolate_child_blocks -> "Isolate_child_blocks"
   | Break_after_separator -> "Break_after_separator"
-  | Tight -> "Tight"
-  | Blank_line -> "Blank_line"
 
 let family_to_string = function
   | Delimited Parens -> "Delimited(Parens)"

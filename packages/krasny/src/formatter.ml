@@ -7359,10 +7359,7 @@ and render_let_binding_tail_with_body_break = fun
       | Layout.Vertical
       | Layout.Hang _
       | Layout.Isolate_child_blocks
-      | Layout.Break_after_separator
-      | Layout.Flow
-      | Layout.Tight
-      | Layout.Blank_line ->
+      | Layout.Break_after_separator ->
           emit_line state;
           with_indent
             state
@@ -7420,10 +7417,7 @@ and render_record_expr = fun ?(force_multiline = false) state ~inline expr ->
     | { Layout.mode = Vertical; _ }
     | { Layout.mode = Hang _; _ }
     | { Layout.mode = Isolate_child_blocks; _ }
-    | { Layout.mode = Break_after_separator; _ }
-    | { Layout.mode = Flow; _ }
-    | { Layout.mode = Tight; _ }
-    | { Layout.mode = Blank_line; _ } -> (
+    | { Layout.mode = Break_after_separator; _ } -> (
         emit_text state "{";
         emit_line state;
         with_indent
