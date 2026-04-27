@@ -536,6 +536,7 @@ let decode_header_block = fun decoder data offset ->
               | Error e -> Error e
               | Ok (value, new_offset) ->
                   let header = { name; value } in
+                  DynamicTable.add decoder.dynamic_table header;
                   Ok ([ header ], new_offset)
         )
     else if first_code land 0x20 != 0 then
