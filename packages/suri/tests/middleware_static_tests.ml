@@ -114,6 +114,46 @@ let test_static_root_boundary_is_component_based = fun _ctx ->
   Test.assert_false (Static.path_is_within_root ~root:(Path.v "/var/www") (Path.v "/var/www2/file"));
   Ok ()
 
+let expect_tempdir = fun result ->
+  match result with
+  | Ok result -> result
+  | Error error ->
+      Error ("failed to create temporary static test directory: " ^ IO.error_message error)
+
+let test_static_middleware_respects_mount_segment_boundaries = fun _ctx ->
+  Fs.with_tempdir
+    (fun root ->
+      let asset_path = Path.join root (Path.v "app.css") in
+      match Fs.write "body { color: red; }" asset_path with
+      | Error _ -> Error "failed to write static asset fixture"
+      | Ok () ->
+          let middleware = Static.middleware ~at:"/assets" root () in
+          let next_called = ref false in
+          let next = fun conn ->
+            next_called := true;
+            conn
+            |> Conn.respond ~status:Net.Http.Status.Ok ~body:"next"
+            |> Conn.send
+          in
+          let sibling_conn = Suri.Testing.Conn.make ~uri:"/assets2/app.css" () in
+          let sibling_response =
+            middleware ~conn:sibling_conn ~next
+            |> Conn.to_response
+          in
+          Test.assert_true !next_called;
+          Test.assert_equal ~expected:"next" ~actual:sibling_response.body;
+          next_called := false;
+          let mounted_conn = Suri.Testing.Conn.make ~uri:"/assets/app.css" () in
+          let mounted_response =
+            middleware ~conn:mounted_conn ~next
+            |> Conn.to_response
+          in
+          Test.assert_false !next_called;
+          Test.assert_equal ~expected:Net.Http.Status.Ok ~actual:mounted_response.status;
+          Test.assert_equal ~expected:"body { color: red; }" ~actual:mounted_response.body;
+          Ok ())
+  |> expect_tempdir
+
 let test_static_dotfile_detection_checks_all_segments = fun _ctx ->
   Test.assert_true (Static.path_has_dot_segment (Path.v ".env"));
   Test.assert_true (Static.path_has_dot_segment (Path.v "public/.git/config"));
@@ -132,12 +172,6 @@ let test_static_directory_listing_escapes_displayed_values = fun _ctx ->
   Test.assert_true (String.contains html "&lt;script&gt;alert(1)&lt;/script&gt;");
   Test.assert_false (String.contains html "<script>alert(1)</script>");
   Ok ()
-
-let expect_tempdir = fun result ->
-  match result with
-  | Ok result -> result
-  | Error error ->
-      Error ("failed to create temporary static test directory: " ^ IO.error_message error)
 
 let test_static_normalize_path_returns_structured_errors = fun _ctx ->
   Fs.with_tempdir
@@ -222,6 +256,9 @@ let tests =
       "static mount matching respects segment boundaries"
       test_static_mount_matching_respects_segment_boundaries;
     case "static root boundary is component based" test_static_root_boundary_is_component_based;
+    case
+      "static middleware respects mount segment boundaries"
+      test_static_middleware_respects_mount_segment_boundaries;
     case
       "static dotfile detection checks all segments"
       test_static_dotfile_detection_checks_all_segments;
