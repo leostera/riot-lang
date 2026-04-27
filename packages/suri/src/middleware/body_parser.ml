@@ -25,6 +25,7 @@ type parse_error =
   | InvalidJson of Std.Data.Json.error
   | JsonRootNotObject of json_root_kind
   | MissingMultipartBoundary
+  | UnsupportedMultipart of { boundary: string }
 
 type parsed_body = {
   body_params: (string * string) list;
@@ -71,8 +72,9 @@ let parse_error_to_string = function
   | JsonRootNotObject kind ->
       "Expected JSON request body to be an object, got " ^ json_root_kind_to_string kind
   | MissingMultipartBoundary -> "multipart/form-data request is missing a boundary parameter"
+  | UnsupportedMultipart { boundary } ->
+      "multipart/form-data request parsing is not supported yet (boundary: " ^ boundary ^ ")"
 
-(** Parse application/x-www-form-urlencoded body using Net.Uri.Query.parse *)
 let parse_urlencoded = fun body -> Net.Uri.Query.parse body
 
 let parse_json = fun body ->
@@ -94,12 +96,6 @@ let parse_json = fun body ->
       in
       Ok { body_params; json = Some json }
   | Ok json -> Error (JsonRootNotObject (json_root_kind json))
-
-(** Parse multipart/form-data - TODO: use Mime library *)
-let parse_multipart = fun ~boundary:_ _body ->
-  (* TODO: Implement proper multipart parsing with Mime library *)
-  (* For now, return empty list *)
-  []
 
 let strip_quotes = fun value ->
   let len = String.length value in
@@ -140,11 +136,7 @@ let parse_body_full = fun config ~content_type ~body ->
           && List.contains config.parsers ~value:Multipart
         then
           match Std.Collections.Proplist.get params ~key:"boundary" with
-          | Some boundary ->
-              Ok {
-                body_params = parse_multipart ~boundary:(strip_quotes boundary) body;
-                json = None;
-              }
+          | Some boundary -> Error (UnsupportedMultipart { boundary = strip_quotes boundary })
           | None -> Error MissingMultipartBoundary
         else
           Ok { body_params = []; json = None }
@@ -162,6 +154,7 @@ let respond_with_error = fun error conn ->
     | InvalidJson _
     | JsonRootNotObject _
     | MissingMultipartBoundary -> Net.Http.Status.BadRequest
+    | UnsupportedMultipart _ -> Net.Http.Status.UnsupportedMediaType
   in
   conn
   |> Conn.with_status status

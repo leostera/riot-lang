@@ -8,7 +8,7 @@
 
    - [application/x-www-form-urlencoded] - HTML forms
    - [application/json] - JSON payloads
-   - [multipart/form-data] - File uploads (TODO: Phase 2)
+   - [multipart/form-data] - recognized but rejected until multipart parsing lands
 
    ## Example
 
@@ -75,8 +75,9 @@ type parse_error =
   | JsonRootNotObject of json_root_kind
   (** JSON parsed successfully, but the root value cannot populate body params. *)
   | MissingMultipartBoundary
+  (** Multipart request did not provide a boundary parameter. *)
+  | UnsupportedMultipart of { boundary: string }
 
-(** Multipart request did not provide a boundary parameter. *)
 val default_config: unit -> config
 
 (** Default configuration: urlencoded and JSON parsing, 10MB limit *)
@@ -109,12 +110,12 @@ val make: ?config:config -> unit -> conn:Conn.t -> next:(Conn.t -> Conn.t) -> Co
 
    - URL-encoded bodies are parsed using {!Net.Uri.Query.parse}
    - JSON bodies with object root are converted to string pairs
-   - Multipart bodies are reserved for future implementation
+   - Multipart bodies return [UnsupportedMultipart] until multipart parsing lands
 
    Parsed data is stored in [Conn.body_params] for access by handlers and
    downstream middleware (e.g., CSRF protection).
 
    Bodies larger than [max_body_size] return [413 Payload Too Large]. Malformed
-   JSON or multipart metadata returns [400 Bad Request] with a plain-text
-   description.
+   JSON or malformed multipart metadata returns [400 Bad Request]. Multipart
+   bodies with a boundary return [415 Unsupported Media Type] until supported.
 *)

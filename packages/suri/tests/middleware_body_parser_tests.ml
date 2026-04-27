@@ -163,6 +163,30 @@ let test_body_parser_rejects_multipart_without_boundary = fun _ctx ->
   | Ok _ -> Error "expected missing multipart boundary to fail"
   | Error error -> Error (Body_parser.parse_error_to_string error)
 
+let test_body_parser_rejects_unsupported_multipart = fun _ctx ->
+  let config = { Body_parser.parsers = [ Body_parser.Multipart ]; max_body_size = 1_024 } in
+  match Body_parser.parse_body
+    config
+    ~content_type:"multipart/form-data; boundary=\"abc123\""
+    ~body:"--abc123\r\n" with
+  | Error (Body_parser.UnsupportedMultipart { boundary = "abc123" }) -> Ok ()
+  | Ok _ -> Error "expected multipart body to be unsupported"
+  | Error error -> Error (Body_parser.parse_error_to_string error)
+
+let test_body_parser_responds_unsupported_media_type_for_multipart = fun _ctx ->
+  let config = { Body_parser.parsers = [ Body_parser.Multipart ]; max_body_size = 1_024 } in
+  let conn =
+    Suri.Testing.Conn.make
+      ~headers:[ ("content-type", "multipart/form-data; boundary=abc123"); ]
+      ~body:"--abc123\r\n"
+      ()
+  in
+  let conn = Body_parser.make ~config () ~conn ~next:(fun conn -> conn) in
+  Test.assert_equal
+    ~expected:Net.Http.Status.UnsupportedMediaType
+    ~actual:(Conn.to_response conn).status;
+  Ok ()
+
 let test_body_parser_stores_raw_json = fun _ctx ->
   let conn =
     Suri.Testing.Conn.make
@@ -194,6 +218,10 @@ let tests =
     case
       "body parser rejects multipart without boundary"
       test_body_parser_rejects_multipart_without_boundary;
+    case "body parser rejects unsupported multipart" test_body_parser_rejects_unsupported_multipart;
+    case
+      "body parser responds unsupported media type for multipart"
+      test_body_parser_responds_unsupported_media_type_for_multipart;
     case "body parser stores raw json" test_body_parser_stores_raw_json;
   ]
 
