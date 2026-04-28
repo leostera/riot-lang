@@ -47,3 +47,6 @@ __pycache__
 /states/
 /specs/**/states/
 /specs/**/*.old
+
+# Add this to avoid accidentally committing .new files snapshot files
+*.expected.new
