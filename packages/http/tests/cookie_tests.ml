@@ -81,6 +81,35 @@ let test_make_rejects_path_semicolon = fun _ctx ->
       Result.Error ("wrong validation error: " ^ Cookie.validation_error_to_string error)
   | Ok _ -> Result.Error "cookie path with semicolon was accepted"
 
+let test_parse_set_cookie_accepts_safe_cookie = fun _ctx ->
+  match Cookie.parse_set_cookie "session=abc123; Max-Age=3600; Path=/app; Secure; SameSite=None" with
+  | Some cookie ->
+      if cookie.name != "session" then
+        Result.Error "parsed cookie had wrong name"
+      else if cookie.value != "abc123" then
+        Result.Error "parsed cookie had wrong value"
+      else if cookie.max_age != Some 3_600 then
+        Result.Error "parsed cookie had wrong Max-Age"
+      else if cookie.path != "/app" then
+        Result.Error "parsed cookie had wrong Path"
+      else if not cookie.secure then
+        Result.Error "parsed cookie did not set Secure"
+      else if cookie.same_site != Some Cookie.None then
+        Result.Error "parsed cookie had wrong SameSite"
+      else
+        Result.Ok ()
+  | Option.None -> Result.Error "safe Set-Cookie header was rejected"
+
+let test_parse_set_cookie_rejects_header_injection_value = fun _ctx ->
+  match Cookie.parse_set_cookie "session=abc\r\nSet-Cookie: evil=1; Path=/" with
+  | Option.None -> Result.Ok ()
+  | Some _ -> Result.Error "Set-Cookie value with CRLF was accepted"
+
+let test_parse_set_cookie_rejects_same_site_none_without_secure = fun _ctx ->
+  match Cookie.parse_set_cookie "session=abc; SameSite=None" with
+  | Option.None -> Result.Ok ()
+  | Some _ -> Result.Error "SameSite=None without Secure was accepted"
+
 let tests =
   Test.[
     case "make accepts safe cookie" test_make_accepts_safe_cookie;
@@ -93,6 +122,13 @@ let tests =
     case "make rejects Host prefix with Domain" test_make_rejects_host_prefix_with_domain;
     case "make rejects Host prefix non-root Path" test_make_rejects_host_prefix_non_root_path;
     case "make rejects Path semicolon" test_make_rejects_path_semicolon;
+    case "parse Set-Cookie accepts safe cookie" test_parse_set_cookie_accepts_safe_cookie;
+    case
+      "parse Set-Cookie rejects header injection value"
+      test_parse_set_cookie_rejects_header_injection_value;
+    case
+      "parse Set-Cookie rejects SameSite None without Secure"
+      test_parse_set_cookie_rejects_same_site_none_without_secure;
   ]
 
 let main ~args:_ = Test.Cli.main ~name:"http:cookie" ~tests ~args:Env.args ()
