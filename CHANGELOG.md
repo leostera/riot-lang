@@ -11,10 +11,12 @@
 - Human test output now shows per-test timings. Normal timings are subdued, slow small tests are highlighted, and failures render in bold red while JSON output remains machine-readable.
 - Snapshot commands start reporting work as pending snapshots are found instead of waiting for a full repository scan. `snapshot accept`, `snapshot reject`, and `snapshot review` only scan supported snapshot locations, so large workspaces get interactive feedback much sooner.
 - `snapshot review` now exits cleanly without printing action prompts when there are no pending snapshots.
+- `riot publish` now emits an availability check event before querying the registry for an already-published version. Long registry lookups no longer leave human or JSON output completely silent before format/build checks begin.
 - Obsolete checked-in Riot binary artifacts were removed from the repository so releases are built from the current release pipeline instead of stale local binaries.
 
 ### blink
 - Blink now follows the stricter HTTP and WebSocket validation introduced in `http`. Client, transport, websocket, and error paths surface protocol errors more consistently instead of accepting malformed frames or request/response metadata.
+- Fixed fixed-length HTTP responses on keep-alive connections. Blink now parses response headers separately from response bodies, so a response with `Content-Length` is not consumed and then waited for a second time.
 - Managed HTTP, SSE, and websocket flows continue to work with the hardened protocol layer, including retry, budget, circuit-breaker, request rendering, and SSE parsing behavior.
 
 ### colors

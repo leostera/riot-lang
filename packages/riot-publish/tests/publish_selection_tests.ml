@@ -83,6 +83,7 @@ let event_name = fun event ->
   | Riot_publish.CheckStarted { package; stage; _ } ->
       "started:" ^ Riot_model.Package_name.to_string package ^ ":" ^ (
         match stage with
+        | `availability -> "availability"
         | `fmt -> "fmt"
         | `fix -> "fix"
         | `build -> "build"
@@ -91,6 +92,7 @@ let event_name = fun event ->
   | Riot_publish.CheckFinished { package; stage; _ } ->
       "finished:" ^ Riot_model.Package_name.to_string package ^ ":" ^ (
         match stage with
+        | `availability -> "availability"
         | `fmt -> "fmt"
         | `fix -> "fix"
         | `build -> "build"
@@ -196,6 +198,43 @@ let test_workspace_selection_orders_public_packages_only = fun _ctx ->
       else
         Ok ()
 
+let test_publish_selection_emits_availability_before_registry_lookup = fun _ctx ->
+  let workspace_root = Path.v "/workspace" in
+  let package = make_package ~workspace_root "demo" in
+  let events = ref [] in
+  let saw_started_before_lookup = ref false in
+  let deps =
+    make_deps
+      ~published_version_exists:(fun ~registry:_ ~package_name:_ ~version:_ ->
+        saw_started_before_lookup := List.contains !events ~value:"started:demo:availability";
+        Ok true)
+      ()
+  in
+  let workspace = make_workspace [ package ] in
+  match Riot_publish.For_test.publish_with
+    ~on_event:(fun event -> events := event_name event :: !events)
+    ~deps
+    ~workspace
+    ~request:Riot_publish.{ selection = Package (package_name "demo"); skip_check = true }
+    ~mode:DryRun
+    () with
+  | Error err ->
+      Error ("expected publish selection to succeed, got error: "
+      ^ Riot_publish.publish_error_message err)
+  | Ok _ ->
+      let expected = [
+        "started:demo:availability";
+        "finished:demo:availability";
+        "skipped-already-published:demo";
+      ]
+      in
+      if not !saw_started_before_lookup then
+        Error "expected availability event before registry lookup"
+      else if not (List.reverse !events = expected) then
+        Error ("unexpected events: " ^ String.concat ", " (List.reverse !events))
+      else
+        Ok ()
+
 let test_publish_error_message_renders_typed_registry_initialization_error = fun _ctx ->
   let message =
     Riot_publish.publish_error_message
@@ -298,6 +337,9 @@ let tests =
     case
       "publish selection: workspace orders public packages only"
       test_workspace_selection_orders_public_packages_only;
+    case
+      "publish selection: emits availability before registry lookup"
+      test_publish_selection_emits_availability_before_registry_lookup;
     case
       "publish selection: renders typed registry initialization errors"
       test_publish_error_message_renders_typed_registry_initialization_error;

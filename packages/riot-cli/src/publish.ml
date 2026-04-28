@@ -150,6 +150,9 @@ let render_formatting = fun ~package ~version ->
 let render_checking = fun ~package ~version ->
   "    \027[1;32mChecking\027[0m " ^ package ^ " " ^ version
 
+let render_resolving = fun ~package ~version ->
+  "   \027[1;32mResolving\027[0m " ^ package ^ " " ^ version
+
 let render_compiling = fun ~package ~version ->
   "   \027[1;32mCompiling\027[0m " ^ package ^ " " ^ version
 
@@ -182,6 +185,9 @@ let write_publish_event = fun
   | Riot_publish.Fix (Riot_fix.Event.Summary _) -> ()
   | Riot_publish.Build build_event ->
       Build.write_build_event ~mode:Build.Human ~seen_registry_updates build_event
+  | Riot_publish.CheckStarted { package; version; stage = `availability } ->
+      out
+        (render_resolving ~package:(Package_name.to_string package) ~version:(version_label version))
   | Riot_publish.CheckStarted { package; version; stage = `fmt } ->
       out
         (render_formatting
@@ -224,6 +230,7 @@ let json_version_or_null = function
   | None -> Data.Json.Null
 
 let publish_stage_json = function
+  | `availability -> Data.Json.String "availability"
   | `fmt -> Data.Json.String "fmt"
   | `fix -> Data.Json.String "fix"
   | `build -> Data.Json.String "build"

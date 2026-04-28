@@ -7,7 +7,7 @@ type publish_request = { selection: publish_selection; skip_check: bool }
 type publish_mode =
   | DryRun
   | Publish
-type publish_check_stage = [ | `fmt | `fix | `build | `metadata]
+type publish_check_stage = [ | `availability | `fmt | `fix | `build | `metadata]
 type publish_event =
   | Fmt of Riot_fmt.event
   | Fix of Riot_fix.Event.t

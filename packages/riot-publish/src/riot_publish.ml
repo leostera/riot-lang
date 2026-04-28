@@ -12,7 +12,7 @@ type publish_mode =
   | DryRun
   | Publish
 
-type publish_check_stage = [ | `fmt | `fix | `build | `metadata]
+type publish_check_stage = [ | `availability | `fmt | `fix | `build | `metadata]
 
 type publish_event =
   | Fmt of Riot_fmt.event
@@ -500,7 +500,15 @@ module For_test = struct
         let* already_published =
           match package.publish.version with
           | Some version ->
-              deps.published_version_exists ~registry ~package_name:package.name ~version
+              run_check
+                ~emit
+                ~package_name:package.name
+                ~version:package.publish.version
+                ~stage:`availability (fun () ->
+                  deps.published_version_exists
+                    ~registry
+                    ~package_name:package.name
+                    ~version)
           | None -> Ok false
         in
         if already_published then

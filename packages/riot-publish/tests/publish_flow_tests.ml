@@ -87,6 +87,7 @@ let make_published_release = fun package_name ->
 
 let stage_name = fun stage ->
   match stage with
+  | `availability -> "availability"
   | `fmt -> "fmt"
   | `fix -> "fix"
   | `build -> "build"
@@ -168,6 +169,8 @@ let test_dry_run_emits_preflight_events_in_order = fun _ctx ->
       let actual_events = List.reverse !events in
       let actual_calls = List.reverse !call_log in
       let expected_events = [
+        "started:demo:availability";
+        "finished:demo:availability";
         "started:demo:fmt";
         "finished:demo:fmt";
         "started:demo:fix";
@@ -275,7 +278,15 @@ let test_already_published_package_is_skipped_before_checks = fun _ctx ->
       let actual_events = List.reverse !events in
       if not (actual_calls = []) then
         Error ("expected no preflight calls, got: " ^ String.concat ", " actual_calls)
-      else if not (actual_events = [ "skipped-already-published:demo" ]) then
+      else if
+        not
+          (actual_events
+          = [
+            "started:demo:availability";
+            "finished:demo:availability";
+            "skipped-already-published:demo";
+          ])
+      then
         Error ("unexpected events: " ^ String.concat ", " actual_events)
       else
         match outcomes with
