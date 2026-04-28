@@ -30,6 +30,7 @@ type stream = {
   id: int;
   state: stream_state Cell.t;
   window_size: int Cell.t;
+  receive_window_size: int Cell.t;
   headers: Hpack.header list Cell.t;
   data_chunks: bytes list Cell.t;
 }
@@ -65,7 +66,8 @@ type t = {
   state: state Cell.t;
   streams: (int, stream) HashMap.t;
   next_stream_id: int Cell.t;
-  connection_window_size: int Cell.t;
+  send_connection_window_size: int Cell.t;
+  receive_connection_window_size: int Cell.t;
   local_settings: settings;
   remote_settings: settings;
   hpack_encoder: Hpack.encoder;
@@ -233,7 +235,8 @@ let create = fun ~role ?(config = default_config) () ->
           | Client -> 1
           | Server -> 2
         );
-    connection_window_size = Cell.create 65_535;
+    send_connection_window_size = Cell.create 65_535;
+    receive_connection_window_size = Cell.create 65_535;
     local_settings = create_settings config;
     remote_settings = create_settings config;
     hpack_encoder = Hpack.create_encoder ~max_dynamic_table_size:4_096 ();
@@ -292,6 +295,7 @@ let create_stream = fun conn ->
     id = stream_id;
     state = Cell.create StreamIdle;
     window_size = Cell.create (Cell.get conn.local_settings.initial_window_size);
+    receive_window_size = Cell.create (Cell.get conn.local_settings.initial_window_size);
     headers = Cell.create [];
     data_chunks = Cell.create [];
   }
@@ -345,7 +349,7 @@ let send_data = fun conn ~stream_id ~data ~end_stream ->
       let data_len = Bytes.length data in
       (* Check flow control window *)
       let stream_window = Cell.get stream.window_size in
-      let conn_window = Cell.get conn.connection_window_size in
+      let conn_window = Cell.get conn.send_connection_window_size in
       if data_len > stream_window then
         Error (FlowControlWindowExceeded {
           scope = StreamWindow { stream_id };
@@ -377,7 +381,7 @@ let send_data = fun conn ~stream_id ~data ~end_stream ->
         in
         (* Update flow control windows *)
         Cell.set stream.window_size (stream_window - data_len);
-      Cell.set conn.connection_window_size (conn_window - data_len);
+      Cell.set conn.send_connection_window_size (conn_window - data_len);
       (* Update stream state *)
       if end_stream then
         Cell.set stream.state StreamHalfClosedLocal;
@@ -413,7 +417,9 @@ let send_window_update_connection = fun conn ~increment ->
   match Frame.window_update ~stream_id:0 increment with
   | Error error -> Error (frame_constructor_error error)
   | Ok frame ->
-      Cell.set conn.connection_window_size (Cell.get conn.connection_window_size + increment);
+      Cell.set
+        conn.receive_connection_window_size
+        (Cell.get conn.receive_connection_window_size + increment);
       serialize_frame frame
 
 let send_window_update_stream = fun conn ~stream_id ~increment ->
@@ -422,16 +428,24 @@ let send_window_update_stream = fun conn ~stream_id ~increment ->
   | Ok frame ->
       (
         match get_stream conn stream_id with
-        | Some stream -> Cell.set stream.window_size (Cell.get stream.window_size + increment)
+        | Some stream ->
+            Cell.set stream.receive_window_size (Cell.get stream.receive_window_size + increment)
         | None -> ()
       );
       serialize_frame frame
 
-let connection_window_size = fun conn -> Cell.get conn.connection_window_size
+let connection_window_size = fun conn -> Cell.get conn.send_connection_window_size
+
+let receive_connection_window_size = fun conn -> Cell.get conn.receive_connection_window_size
 
 let stream_window_size = fun conn ~stream_id ->
   match get_stream conn stream_id with
   | Some stream -> Some (Cell.get stream.window_size)
+  | None -> None
+
+let receive_stream_window_size = fun conn ~stream_id ->
+  match get_stream conn stream_id with
+  | Some stream -> Some (Cell.get stream.receive_window_size)
   | None -> None
 
 (** {1 Settings} *)
@@ -563,6 +577,7 @@ let decode_header_block = fun conn ~stream_id ~fragment ~end_stream ->
               id = stream_id;
               state = Cell.create StreamOpen;
               window_size = Cell.create (Cell.get conn.remote_settings.initial_window_size);
+              receive_window_size = Cell.create (Cell.get conn.local_settings.initial_window_size);
               headers = Cell.create [];
               data_chunks = Cell.create [];
             }
@@ -629,11 +644,30 @@ let process_data_frame = fun conn stream_id payload flags ->
               | StreamReservedLocal
               | StreamReservedRemote
               | StreamHalfClosedLocal ->
-                  let chunks = Cell.get stream.data_chunks in
-                  Cell.set stream.data_chunks (chunks @ [ data_bytes ]);
-                  if end_stream then
-                    Cell.set stream.state StreamHalfClosedRemote;
-                  Ok [ DataReceived { stream_id; data = data_bytes; end_stream } ]
+                  let data_len = Bytes.length data_bytes in
+                  let connection_window = Cell.get conn.receive_connection_window_size in
+                  let stream_window = Cell.get stream.receive_window_size in
+                  if data_len > connection_window then
+                    Error (FlowControlWindowExceeded {
+                      scope = ConnectionWindow;
+                      data_size = data_len;
+                      window_size = connection_window;
+                    })
+                  else if data_len > stream_window then
+                    Error (FlowControlWindowExceeded {
+                      scope = StreamWindow { stream_id };
+                      data_size = data_len;
+                      window_size = stream_window;
+                    })
+                  else (
+                    Cell.set conn.receive_connection_window_size (connection_window - data_len);
+                    Cell.set stream.receive_window_size (stream_window - data_len);
+                    let chunks = Cell.get stream.data_chunks in
+                    Cell.set stream.data_chunks (chunks @ [ data_bytes ]);
+                    if end_stream then
+                      Cell.set stream.state StreamHalfClosedRemote;
+                    Ok [ DataReceived { stream_id; data = data_bytes; end_stream } ]
+                  )
             )
       )
   | _ -> Error (InvalidPayloadForFrame { frame_type = Frame.Data; payload })
@@ -669,8 +703,8 @@ let process_frame = fun conn frame ->
           | Frame.WindowUpdatePayload increment ->
               if frame.stream_id = 0 then
                 Cell.set
-                  conn.connection_window_size
-                  (Cell.get conn.connection_window_size + increment)
+                  conn.send_connection_window_size
+                  (Cell.get conn.send_connection_window_size + increment)
               else
                 (* Stream-level window update *)
                 (

@@ -58,6 +58,8 @@ type stream = {
   state: stream_state Cell.t;
   (** Flow control window *)
   window_size: int Cell.t;
+  (** Local receive flow-control window *)
+  receive_window_size: int Cell.t;
   headers: Hpack.header list Cell.t;
   data_chunks: bytes list Cell.t;
 }
@@ -235,8 +237,14 @@ val send_window_update_stream: t -> stream_id:int -> increment:int -> (string, e
 (** Get current connection flow control window size. *)
 val connection_window_size: t -> int
 
+(** Get current receive-side connection flow control window size. *)
+val receive_connection_window_size: t -> int
+
 (** Get current stream flow control window size. *)
 val stream_window_size: t -> stream_id:int -> int option
+
+(** Get current receive-side stream flow control window size. *)
+val receive_stream_window_size: t -> stream_id:int -> int option
 
 (** {1 Settings} *)
 

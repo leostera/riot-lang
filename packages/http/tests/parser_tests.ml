@@ -209,6 +209,22 @@ let test_connection_window_update_invalid_increment_preserves_state = fun _ctx -
   | Error error -> Result.Error ("Wrong connection error: " ^ Connection.error_to_string error)
   | Ok _ -> Result.Error "connection accepted invalid WINDOW_UPDATE increment"
 
+let test_connection_window_update_increases_receive_window_only = fun _ctx ->
+  let conn = Connection.create ~role:Connection.Server () in
+  let send_before = Connection.connection_window_size conn in
+  let receive_before = Connection.receive_connection_window_size conn in
+  match Connection.send_window_update_connection conn ~increment:10 with
+  | Error error -> Result.Error ("WINDOW_UPDATE failed: " ^ Connection.error_to_string error)
+  | Ok _ ->
+      let send_after = Connection.connection_window_size conn in
+      let receive_after = Connection.receive_connection_window_size conn in
+      if not (Int.equal send_after send_before) then
+        Result.Error "sending WINDOW_UPDATE changed the outbound send window"
+      else if not (Int.equal receive_after (receive_before + 10)) then
+        Result.Error "sending WINDOW_UPDATE did not increase the receive window"
+      else
+        Result.Ok ()
+
 let test_client_preface_settings_payload_length = fun _ctx ->
   let conn = Connection.create ~role:Connection.Client () in
   let preface = send_preface conn in
@@ -517,6 +533,68 @@ let test_process_data_accepts_data_after_headers = fun _ctx ->
   | Ok _ -> Result.Error "DATA after HEADERS did not emit the expected events"
   | Error err -> Result.Error ("DATA after HEADERS failed: " ^ Connection.error_to_string err)
 
+let test_process_data_decrements_receive_windows = fun _ctx ->
+  let config = { Connection.default_config with initial_window_size = 8 } in
+  let conn = Connection.create ~role:Connection.Server ~config () in
+  let header_block = encode_header_block [ { Hpack.name = ":method"; value = "GET" }; ] in
+  let headers = Frame.headers ~stream_id:1 ~end_headers:true header_block in
+  let data = Frame.data ~stream_id:1 "abc" in
+  match Connection.process_data
+    conn
+    (Std.IO.Bytes.from_string (serialize_frame headers ^ serialize_frame data)) with
+  | Error err -> Result.Error ("DATA failed: " ^ Connection.error_to_string err)
+  | Ok _ -> (
+      match Connection.receive_stream_window_size conn ~stream_id:1 with
+      | None -> Result.Error "stream receive window was not created"
+      | Some stream_window ->
+          let connection_window = Connection.receive_connection_window_size conn in
+          if not (Int.equal stream_window 5) then
+            Result.Error ("stream receive window should be 5, got " ^ Int.to_string stream_window)
+          else if not (Int.equal connection_window 65_532) then
+            Result.Error ("connection receive window should be 65532, got "
+            ^ Int.to_string connection_window)
+          else
+            Result.Ok ()
+    )
+
+let test_process_data_rejects_stream_flow_control_excess = fun _ctx ->
+  let config = { Connection.default_config with initial_window_size = 3 } in
+  let conn = Connection.create ~role:Connection.Server ~config () in
+  let header_block = encode_header_block [ { Hpack.name = ":method"; value = "GET" }; ] in
+  let headers = Frame.headers ~stream_id:1 ~end_headers:true header_block in
+  let data = Frame.data ~stream_id:1 "abcd" in
+  match Connection.process_data
+    conn
+    (Std.IO.Bytes.from_string (serialize_frame headers ^ serialize_frame data)) with
+  | Error (
+    Connection.FlowControlWindowExceeded { scope = Connection.StreamWindow { stream_id = 1 }; data_size = 4; window_size = 3 }
+  ) -> Result.Ok ()
+  | Error err -> Result.Error ("Wrong connection error: " ^ Connection.error_to_string err)
+  | Ok _ -> Result.Error "DATA beyond the stream receive window was accepted"
+
+let test_process_window_update_increases_send_window_only = fun _ctx ->
+  let conn = Connection.create ~role:Connection.Server () in
+  let send_before = Connection.connection_window_size conn in
+  let receive_before = Connection.receive_connection_window_size conn in
+  let frame = Frame.window_update ~stream_id:0 10 in
+  match frame with
+  | Error error ->
+      Result.Error ("WINDOW_UPDATE construction failed: " ^ Frame.constructor_error_to_string error)
+  | Ok frame -> (
+      match Connection.process_data conn (Std.IO.Bytes.from_string (serialize_frame frame)) with
+      | Error err -> Result.Error ("WINDOW_UPDATE failed: " ^ Connection.error_to_string err)
+      | Ok [ Connection.WindowUpdateReceived { stream_id = 0; increment = 10 } ] ->
+          let send_after = Connection.connection_window_size conn in
+          let receive_after = Connection.receive_connection_window_size conn in
+          if not (Int.equal send_after (send_before + 10)) then
+            Result.Error "received WINDOW_UPDATE did not increase the outbound send window"
+          else if not (Int.equal receive_after receive_before) then
+            Result.Error "received WINDOW_UPDATE changed the receive window"
+          else
+            Result.Ok ()
+      | Ok _ -> Result.Error "WINDOW_UPDATE produced unexpected events"
+    )
+
 let test_process_data_rejects_data_after_headers_end_stream = fun _ctx ->
   let conn = Connection.create ~role:Connection.Server () in
   let header_block = encode_header_block [ { Hpack.name = ":method"; value = "GET" }; ] in
@@ -560,6 +638,9 @@ let tests =
     case
       "connection_window_update_invalid_increment_preserves_state"
       test_connection_window_update_invalid_increment_preserves_state;
+    case
+      "connection_window_update_increases_receive_window_only"
+      test_connection_window_update_increases_receive_window_only;
     case "client_preface_settings_payload_length" test_client_preface_settings_payload_length;
     case "server_preface_settings_payload_length" test_server_preface_settings_payload_length;
     case "process_data_buffers_split_frame_header" test_process_data_buffers_split_frame_header;
@@ -612,6 +693,13 @@ let tests =
     case "process_data_accepts_split_header_block" test_process_data_accepts_split_header_block;
     case "process_data_rejects_data_before_headers" test_process_data_rejects_data_before_headers;
     case "process_data_accepts_data_after_headers" test_process_data_accepts_data_after_headers;
+    case "process_data_decrements_receive_windows" test_process_data_decrements_receive_windows;
+    case
+      "process_data_rejects_stream_flow_control_excess"
+      test_process_data_rejects_stream_flow_control_excess;
+    case
+      "process_window_update_increases_send_window_only"
+      test_process_window_update_increases_send_window_only;
     case
       "process_data_rejects_data_after_headers_end_stream"
       test_process_data_rejects_data_after_headers_end_stream;
