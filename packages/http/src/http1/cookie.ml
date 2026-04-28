@@ -22,10 +22,30 @@ type value_character_error =
   | Semicolon
   | Comma
 
+type attribute =
+  | Expires
+  | Domain
+  | Path
+
+type attribute_character_error =
+  | AttributeControlCharacter
+  | AttributeSemicolon
+
 type validation_error =
   | EmptyName
   | InvalidNameCharacter of { index: int; character: char }
   | InvalidValueCharacter of { index: int; character: char; reason: value_character_error }
+  | InvalidAttributeCharacter of {
+      attribute: attribute;
+      index: int;
+      character: char;
+      reason: attribute_character_error;
+    }
+  | SameSiteNoneRequiresSecure
+  | SecurePrefixRequiresSecure
+  | HostPrefixRequiresSecure
+  | HostPrefixRequiresNoDomain
+  | HostPrefixRequiresRootPath
 
 let character_code = fun character -> Int.to_string (Char.to_int character)
 
@@ -33,6 +53,15 @@ let value_character_error_to_string = function
   | ControlCharacter -> "control character"
   | Semicolon -> "semicolon"
   | Comma -> "comma"
+
+let attribute_to_string = function
+  | Expires -> "Expires"
+  | Domain -> "Domain"
+  | Path -> "Path"
+
+let attribute_character_error_to_string = function
+  | AttributeControlCharacter -> "control character"
+  | AttributeSemicolon -> "semicolon"
 
 let validation_error_to_string = function
   | EmptyName -> "Cookie name is empty"
@@ -48,6 +77,25 @@ let validation_error_to_string = function
       ^ character_code character
       ^ " at index "
       ^ Int.to_string index
+  | InvalidAttributeCharacter {
+    attribute;
+    index;
+    character;
+    reason
+  } ->
+      "Cookie "
+      ^ attribute_to_string attribute
+      ^ " contains "
+      ^ attribute_character_error_to_string reason
+      ^ " character code "
+      ^ character_code character
+      ^ " at index "
+      ^ Int.to_string index
+  | SameSiteNoneRequiresSecure -> "Cookie SameSite=None requires Secure"
+  | SecurePrefixRequiresSecure -> "Cookie __Secure- prefix requires Secure"
+  | HostPrefixRequiresSecure -> "Cookie __Host- prefix requires Secure"
+  | HostPrefixRequiresNoDomain -> "Cookie __Host- prefix must not set Domain"
+  | HostPrefixRequiresRootPath -> "Cookie __Host- prefix requires Path=/"
 
 (** Parse Cookie header: "name1=value1; name2=value2" *)
 let parse = fun header ->
@@ -147,13 +195,8 @@ let to_set_cookie = fun t ->
     | Some date -> (String.concat "=" [ "Expires"; date ]) :: parts
     | Option.None -> parts
   in
-  (* Add Path (only if not default) *)
-  let parts =
-    if t.path = "/" then
-      parts
-    else
-      (String.concat "=" [ "Path"; t.path ]) :: parts
-  in
+  (* Add Path *)
+  let parts = (String.concat "=" [ "Path"; t.path ]) :: parts in
   (* Add Domain *)
   let parts =
     match t.domain with
@@ -182,30 +225,6 @@ let to_set_cookie = fun t ->
   in
   (* Join with "; " *)
   String.concat "; " (List.reverse parts)
-
-(** Create a cookie with defaults *)
-let make = fun
-  ~name
-  ~value
-  ?max_age
-  ?expires
-  ?(path = "/")
-  ?domain
-  ?(secure = false)
-  ?(http_only = true)
-  ?(same_site = Lax)
-  () ->
-  {
-    name;
-    value;
-    max_age;
-    expires;
-    path;
-    domain;
-    secure;
-    http_only;
-    same_site = Some same_site;
-  }
 
 (** Validate cookie name (no special characters) *)
 let validate_name = fun name ->
@@ -257,14 +276,95 @@ let is_valid_value = fun value ->
   | Option.None -> true
   | Some _ -> false
 
-(** Create validated cookie *)
-let make_validated = fun
-  ~name ~value ?max_age ?expires ?path ?domain ?secure ?http_only ?same_site () ->
-  match validate_name name with
+let validate_attribute_value = fun attribute value ->
+  let len = String.length value in
+  let rec check i =
+    if i >= len then
+      Option.none
+    else
+      let character = String.get_unchecked value ~at:i in
+      let code = Char.to_int character in
+      if code < 32 || code = 127 then
+        Option.some
+          (
+            InvalidAttributeCharacter {
+              attribute;
+              index = i;
+              character;
+              reason = AttributeControlCharacter;
+            }
+          )
+      else if character = ';' then
+        Option.some
+          (
+            InvalidAttributeCharacter {
+              attribute;
+              index = i;
+              character;
+              reason = AttributeSemicolon;
+            }
+          )
+      else
+        check (i + 1)
+  in
+  check 0
+
+let validate_optional_attribute = fun attribute value ->
+  match value with
+  | Option.None -> Option.none
+  | Some value -> validate_attribute_value attribute value
+
+let validate_security = fun ~name ~domain ~path ~secure ~same_site ->
+  match (same_site, secure) with
+  | (None, false) -> Some SameSiteNoneRequiresSecure
+  | (Strict, _)
+  | (Lax, _)
+  | (None, true) ->
+      if String.starts_with ~prefix:"__Secure-" name && not secure then
+        Some SecurePrefixRequiresSecure
+      else if String.starts_with ~prefix:"__Host-" name && not secure then
+        Some HostPrefixRequiresSecure
+      else if String.starts_with ~prefix:"__Host-" name && Option.is_some domain then
+        Some HostPrefixRequiresNoDomain
+      else if String.starts_with ~prefix:"__Host-" name && path != "/" then
+        Some HostPrefixRequiresRootPath
+      else
+        Option.none
+
+(** Create a cookie with validated defaults *)
+let make = fun
+  ~name
+  ~value
+  ?max_age
+  ?expires
+  ?(path = "/")
+  ?domain
+  ?(secure = false)
+  ?(http_only = true)
+  ?(same_site = Lax)
+  () ->
+  let validation_error =
+    validate_name name
+    |> Option.or_else ~fn:(fun () -> validate_value value)
+    |> Option.or_else ~fn:(fun () -> validate_optional_attribute Expires expires)
+    |> Option.or_else ~fn:(fun () -> validate_optional_attribute Domain domain)
+    |> Option.or_else ~fn:(fun () -> validate_attribute_value Path path)
+    |> Option.or_else ~fn:(fun () -> validate_security ~name ~domain ~path ~secure ~same_site)
+  in
+  match validation_error with
   | Some error -> Error error
-  | Option.None -> (
-      match validate_value value with
-      | Some error -> Error error
-      | Option.None ->
-          Ok (make ~name ~value ?max_age ?expires ?path ?domain ?secure ?http_only ?same_site ())
-    )
+  | Option.None ->
+      Ok {
+        name;
+        value;
+        max_age;
+        expires;
+        path;
+        domain;
+        secure;
+        http_only;
+        same_site = Some same_site;
+      }
+
+(** Create validated cookie *)
+let make_validated = make

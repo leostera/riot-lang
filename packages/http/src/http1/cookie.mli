@@ -18,18 +18,19 @@
 
    {3 Creating Set-Cookie Header}
    {[
-     let cookie = Cookie.make
+     match Cookie.make
        ~name:"session_id"
        ~value:"abc123"
        ~max_age:3600
        ~http_only:true
        ~secure:true
        ~same_site:Lax
-       ()
-     in
-
-     let header = Cookie.to_set_cookie cookie in
-     (* "session_id=abc123; Max-Age=3600; HttpOnly; Secure; SameSite=Lax" *)
+       () with
+     | Ok cookie ->
+         let header = Cookie.to_set_cookie cookie in
+         (* "session_id=abc123; Max-Age=3600; Path=/; HttpOnly; Secure; SameSite=Lax" *)
+         header
+     | Error error -> Cookie.validation_error_to_string error
    ]}
 
    {3 Parsing Set-Cookie Header}
@@ -94,10 +95,28 @@ type value_character_error =
   | ControlCharacter
   | Semicolon
   | Comma
+type attribute =
+  | Expires
+  | Domain
+  | Path
+type attribute_character_error =
+  | AttributeControlCharacter
+  | AttributeSemicolon
 type validation_error =
   | EmptyName
   | InvalidNameCharacter of { index: int; character: char }
   | InvalidValueCharacter of { index: int; character: char; reason: value_character_error }
+  | InvalidAttributeCharacter of {
+      attribute: attribute;
+      index: int;
+      character: char;
+      reason: attribute_character_error;
+    }
+  | SameSiteNoneRequiresSecure
+  | SecurePrefixRequiresSecure
+  | HostPrefixRequiresSecure
+  | HostPrefixRequiresNoDomain
+  | HostPrefixRequiresRootPath
 val validation_error_to_string: validation_error -> string
 
 (** {2 Parsing} *)
@@ -148,7 +167,7 @@ val to_set_cookie: t -> string
 (** {2 Construction} *)
 
 (**
-   Create a cookie with sensible defaults.
+   Create a cookie with sensible defaults and validation.
 
    {b Defaults}:
    - [path]: "/"
@@ -158,9 +177,13 @@ val to_set_cookie: t -> string
 
    {b Example}:
    {[
-     make ~name:"session" ~value:"abc123"
-          ~max_age:3600 ~secure:true ()
+     match make ~name:"session" ~value:"abc123"
+             ~max_age:3600 ~secure:true () with
+     | Ok cookie -> to_set_cookie cookie
+     | Error error -> validation_error_to_string error
    ]}
+
+   Returns [Error error] if validation fails.
 *)
 val make:
   name:string ->
@@ -173,16 +196,16 @@ val make:
   ?http_only:bool ->
   ?same_site:same_site ->
   unit ->
-  t
+  (t, validation_error) result
 
 (**
-   Create a cookie with validation.
+   Compatibility alias for [make].
 
    Validates:
    - Name contains only alphanumeric, underscore, hyphen
-   - Value contains no control characters or semicolons
-
-   Returns [Error error] if validation fails.
+   - Value contains no control characters, semicolons, or commas
+   - Path, Domain, and Expires contain no control characters or semicolons
+   - SameSite=None and cookie prefixes satisfy modern secure-cookie invariants
 *)
 val make_validated:
   name:string ->
