@@ -32,6 +32,16 @@ let expect_parse_error = fun bytes expected ->
   | Parser.Need_more -> Result.Error "Expected parse error"
   | Parser.Done _ -> Result.Error "Expected parse error, but frame parsed"
 
+let expect_reader_parse_error = fun bytes expected ->
+  let parser = ParserReader.create () in
+  let reader = Std.IO.Reader.from_string bytes in
+  match ParserReader.parse parser reader with
+  | ParserReader.Error (ParserReader.FrameParseFailed err) when err = expected -> Result.Ok ()
+  | ParserReader.Error error ->
+      Result.Error ("Wrong reader parse error: " ^ ParserReader.parse_error_to_string error)
+  | ParserReader.Need_more -> Result.Error "Expected reader parse error"
+  | ParserReader.Frame _ -> Result.Error "Expected reader parse error, but frame parsed"
+
 let test_serialize_settings_frame = fun _ctx ->
   let frame = {
     Frame.length = 0;
@@ -290,6 +300,34 @@ let test_reader_parser_uses_canonical_header_errors = fun _ctx ->
   | ParserReader.Need_more -> Result.Error "expected canonical frame size error"
   | ParserReader.Frame _ -> Result.Error "oversized frame was accepted"
 
+let test_reader_parser_rejects_data_stream_zero = fun _ctx ->
+  expect_reader_parse_error
+    "\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+    (Parser.InvalidStreamId {
+      frame_type = Frame.Data;
+      stream_id = 0;
+      expected = Parser.MustBeNonZero;
+    })
+
+let test_reader_parser_rejects_settings_nonzero_stream = fun _ctx ->
+  expect_reader_parse_error
+    "\x00\x00\x00\x04\x00\x00\x00\x00\x01"
+    (Parser.InvalidStreamId {
+      frame_type = Frame.Settings;
+      stream_id = 1;
+      expected = Parser.MustBeZero;
+    })
+
+let test_reader_parser_rejects_invalid_enable_push = fun _ctx ->
+  expect_reader_parse_error
+    (settings_frame_with_payload "\x00\x02\x00\x00\x00\x02")
+    (Parser.InvalidSettingValue { setting = Parser.EnablePush; value = 2 })
+
+let test_reader_parser_rejects_zero_window_update_increment = fun _ctx ->
+  expect_reader_parse_error
+    "\x00\x00\x04\x08\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+    Parser.WindowUpdateIncrementZero
+
 let test_frame_types = fun _ctx ->
   let types = [ Frame.Data; Frame.Headers; Frame.Settings; Frame.Ping; Frame.Goaway; ] in
   if List.length types = 5 then
@@ -426,6 +464,14 @@ let tests =
     case
       "reader_parser_uses_canonical_header_errors"
       test_reader_parser_uses_canonical_header_errors;
+    case "reader_parser_rejects_data_stream_zero" test_reader_parser_rejects_data_stream_zero;
+    case
+      "reader_parser_rejects_settings_nonzero_stream"
+      test_reader_parser_rejects_settings_nonzero_stream;
+    case "reader_parser_rejects_invalid_enable_push" test_reader_parser_rejects_invalid_enable_push;
+    case
+      "reader_parser_rejects_zero_window_update_increment"
+      test_reader_parser_rejects_zero_window_update_increment;
     case "frame_types" test_frame_types;
     case
       "parse_settings_rejects_invalid_enable_push"
