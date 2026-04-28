@@ -171,11 +171,18 @@ let response_of_parts = fun status_code version headers_list body ->
   else
     response
 
-let parse_slice = fun
+type response_head_owned = {
+  head_status_code: int;
+  head_version: Std.Net.Http.Version.t;
+  head_headers: (string * string) list;
+  body_start: string;
+}
+
+let parse_head_owned = fun
   ?(max_headers = 100) ?(max_header_length = 8_192) ?(max_header_block_length = 65_536) input ->
   match parse_status_line_slice input with
-  | Cursor_need_more -> Need_more
-  | Cursor_error error -> Error error
+  | Cursor_need_more -> Cursor_need_more
+  | Cursor_error error -> Cursor_error error
   | Cursor_done { value = {
     version;
     status_code;
@@ -187,42 +194,88 @@ let parse_slice = fun
         ~max_length:max_header_length
         ~max_total_length:max_header_block_length
         remaining with
-      | Need_more -> Need_more
-      | Error error -> Error error
+      | Need_more -> Cursor_need_more
+      | Error error -> Cursor_error error
       | Done { value = (headers_list, body_start); _ } -> (
           match Std.Net.Http.Version.from_slice version with
-          | Error _ -> Error Common.InvalidHttpVersion
+          | Error _ -> Cursor_error Common.InvalidHttpVersion
           | Ok version ->
-              if status_has_no_body status_code then
-                let response = response_of_parts status_code version headers_list "" in
-                Done { value = response; remaining = body_start }
-              else
-                match parse_body_framing headers_list with
-                | Body_need_more -> Need_more
-                | Body_error error -> Error error
-                | Body_done CloseDelimitedBody ->
-                    let response = response_of_parts status_code version headers_list body_start in
-                    Done { value = response; remaining = "" }
-                | Body_done (FixedBody content_length) -> (
-                    match split_fixed_body body_start content_length with
-                    | Body_need_more -> Need_more
-                    | Body_error error -> Error error
-                    | Body_done (body, remaining) ->
-                        let response = response_of_parts status_code version headers_list body in
-                        Done { value = response; remaining }
-                  )
-                | Body_done ChunkedBody -> (
-                    match Chunk.decode body_start with
-                    | Need_more -> Need_more
-                    | Error error -> Error error
-                    | Done { value = decoded; _ } ->
-                        let response =
-                          response_of_parts status_code version headers_list decoded.body
-                        in
-                        Done { value = response; remaining = decoded.remaining }
-                  )
+              Cursor_done {
+                value =
+                  {
+                    head_status_code = status_code;
+                    head_version = version;
+                    head_headers = headers_list;
+                    body_start;
+                  };
+                remaining;
+              }
         )
     )
+
+let parse_head_slice = fun
+  ?(max_headers = 100) ?(max_header_length = 8_192) ?(max_header_block_length = 65_536) input ->
+  match parse_head_owned ~max_headers ~max_header_length ~max_header_block_length input with
+  | Cursor_need_more -> Need_more
+  | Cursor_error error -> Error error
+  | Cursor_done { value = {
+    head_status_code;
+    head_version;
+    head_headers;
+    body_start
+  }; _ } ->
+      let response = response_of_parts head_status_code head_version head_headers "" in
+      Done { value = response; remaining = body_start }
+
+let parse_head = fun
+  ?(max_headers = 100) ?(max_header_length = 8_192) ?(max_header_block_length = 65_536) input ->
+  parse_head_slice
+    ~max_headers
+    ~max_header_length
+    ~max_header_block_length
+    (slice_of_string input)
+
+let parse_slice = fun
+  ?(max_headers = 100) ?(max_header_length = 8_192) ?(max_header_block_length = 65_536) input ->
+  match parse_head_owned ~max_headers ~max_header_length ~max_header_block_length input with
+  | Cursor_need_more -> Need_more
+  | Cursor_error error -> Error error
+  | Cursor_done { value = {
+    head_status_code;
+    head_version;
+    head_headers;
+    body_start
+  }; _ } ->
+      if status_has_no_body head_status_code then
+        let response = response_of_parts head_status_code head_version head_headers "" in
+        Done { value = response; remaining = body_start }
+      else
+        match parse_body_framing head_headers with
+        | Body_need_more -> Need_more
+        | Body_error error -> Error error
+        | Body_done CloseDelimitedBody ->
+            let response =
+              response_of_parts head_status_code head_version head_headers body_start
+            in
+            Done { value = response; remaining = "" }
+        | Body_done (FixedBody content_length) -> (
+            match split_fixed_body body_start content_length with
+            | Body_need_more -> Need_more
+            | Body_error error -> Error error
+            | Body_done (body, remaining) ->
+                let response = response_of_parts head_status_code head_version head_headers body in
+                Done { value = response; remaining }
+          )
+        | Body_done ChunkedBody -> (
+            match Chunk.decode body_start with
+            | Need_more -> Need_more
+            | Error error -> Error error
+            | Done { value = decoded; _ } ->
+                let response =
+                  response_of_parts head_status_code head_version head_headers decoded.body
+                in
+                Done { value = response; remaining = decoded.remaining }
+          )
 
 let parse = fun
   ?(max_headers = 100) ?(max_header_length = 8_192) ?(max_header_block_length = 65_536) input ->

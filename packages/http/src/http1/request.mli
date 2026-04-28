@@ -30,6 +30,29 @@ val parse:
   string ->
   Std.Net.Http.Request.t parse_result
 
+(**
+   Parses only the request line and headers.
+
+   The returned request never contains a body. Bytes after the header
+   terminator are returned as [remaining] for callers that want to decide body
+   framing separately.
+*)
+val parse_head_slice:
+  ?max_request_line:int ->
+  ?max_headers:int ->
+  ?max_header_length:int ->
+  ?max_header_block_length:int ->
+  IO.IoVec.IoSlice.t ->
+  Std.Net.Http.Request.t parse_result
+
+val parse_head:
+  ?max_request_line:int ->
+  ?max_headers:int ->
+  ?max_header_length:int ->
+  ?max_header_block_length:int ->
+  string ->
+  Std.Net.Http.Request.t parse_result
+
 (** Parses HTTP headers. Internal function exposed for testing. *)
 val parse_headers:
   ?max_count:int ->

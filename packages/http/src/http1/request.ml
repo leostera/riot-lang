@@ -188,6 +188,14 @@ type request_line_owned = {
   next_cursor: SliceCursor.t;
 }
 
+type request_head_owned = {
+  head_method: Std.Net.Http.Method.t;
+  head_uri: Std.Net.Uri.t;
+  head_version: Std.Net.Http.Version.t;
+  head_headers: (string * string) list;
+  body_cursor: SliceCursor.t;
+}
+
 type header_line_owned = {
   header_name: string;
   header_value: string;
@@ -425,15 +433,15 @@ let request_of_parts = fun method_ uri version headers_list body ->
   in
   request
 
-let parse_slice = fun
+let parse_head_owned = fun
   ?(max_request_line = 8_192)
   ?(max_headers = 100)
   ?(max_header_length = 8_192)
   ?(max_header_block_length = 65_536)
   input ->
   match parse_request_line_owned ~max_length:max_request_line input with
-  | Slice_need_more -> Common.Need_more
-  | Slice_error error -> Common.Error error
+  | Slice_need_more -> Slice_need_more
+  | Slice_error error -> Slice_error error
   | Slice_done {
     parsed_method;
     parsed_uri;
@@ -445,43 +453,111 @@ let parse_slice = fun
         ~max_length:max_header_length
         ~max_total_length:max_header_block_length
         next_cursor with
+      | Slice_need_more -> Slice_need_more
+      | Slice_error error -> Slice_error error
+      | Slice_done (headers_list, body_cursor) ->
+          Slice_done {
+            head_method = parsed_method;
+            head_uri = parsed_uri;
+            head_version = parsed_version;
+            head_headers = headers_list;
+            body_cursor;
+          }
+    )
+
+let parse_head_slice = fun
+  ?(max_request_line = 8_192)
+  ?(max_headers = 100)
+  ?(max_header_length = 8_192)
+  ?(max_header_block_length = 65_536)
+  input ->
+  match parse_head_owned
+    ~max_request_line
+    ~max_headers
+    ~max_header_length
+    ~max_header_block_length
+    input with
+  | Slice_need_more -> Common.Need_more
+  | Slice_error error -> Common.Error error
+  | Slice_done {
+    head_method;
+    head_uri;
+    head_version;
+    head_headers;
+    body_cursor
+  } ->
+      let request = request_of_parts head_method head_uri head_version head_headers Slice.empty in
+      Common.Done {
+        value = request;
+        remaining = string_of_slice (SliceCursor.remaining body_cursor);
+      }
+
+let parse_head = fun
+  ?(max_request_line = 8_192)
+  ?(max_headers = 100)
+  ?(max_header_length = 8_192)
+  ?(max_header_block_length = 65_536)
+  input ->
+  parse_head_slice
+    ~max_request_line
+    ~max_headers
+    ~max_header_length
+    ~max_header_block_length
+    (slice_of_string input)
+
+let parse_slice = fun
+  ?(max_request_line = 8_192)
+  ?(max_headers = 100)
+  ?(max_header_length = 8_192)
+  ?(max_header_block_length = 65_536)
+  input ->
+  match parse_head_owned
+    ~max_request_line
+    ~max_headers
+    ~max_header_length
+    ~max_header_block_length
+    input with
+  | Slice_need_more -> Common.Need_more
+  | Slice_error error -> Common.Error error
+  | Slice_done {
+    head_method;
+    head_uri;
+    head_version;
+    head_headers;
+    body_cursor
+  } -> (
+      let body_bytes = SliceCursor.remaining body_cursor in
+      match parse_body_framing head_headers with
       | Slice_need_more -> Common.Need_more
       | Slice_error error -> Common.Error error
-      | Slice_done (headers_list, remaining) ->
-          let body_bytes = SliceCursor.remaining remaining in
-          match parse_body_framing headers_list with
+      | Slice_done NoBody ->
+          let request =
+            request_of_parts head_method head_uri head_version head_headers Slice.empty
+          in
+          Common.Done { value = request; remaining = string_of_slice body_bytes }
+      | Slice_done (FixedBody content_length) -> (
+          match split_fixed_body body_bytes content_length with
           | Slice_need_more -> Common.Need_more
           | Slice_error error -> Common.Error error
-          | Slice_done NoBody ->
+          | Slice_done (body, remaining) ->
+              let request = request_of_parts head_method head_uri head_version head_headers body in
+              Common.Done { value = request; remaining }
+        )
+      | Slice_done ChunkedBody -> (
+          match Chunk.decode_slice body_bytes with
+          | Common.Need_more -> Common.Need_more
+          | Common.Error error -> Common.Error error
+          | Common.Done { value = decoded; _ } ->
               let request =
-                request_of_parts parsed_method parsed_uri parsed_version headers_list Slice.empty
+                request_of_parts
+                  head_method
+                  head_uri
+                  head_version
+                  head_headers
+                  (slice_of_string decoded.body)
               in
-              Common.Done { value = request; remaining = string_of_slice body_bytes }
-          | Slice_done (FixedBody content_length) -> (
-              match split_fixed_body body_bytes content_length with
-              | Slice_need_more -> Common.Need_more
-              | Slice_error error -> Common.Error error
-              | Slice_done (body, remaining) ->
-                  let request =
-                    request_of_parts parsed_method parsed_uri parsed_version headers_list body
-                  in
-                  Common.Done { value = request; remaining }
-            )
-          | Slice_done ChunkedBody -> (
-              match Chunk.decode_slice body_bytes with
-              | Common.Need_more -> Common.Need_more
-              | Common.Error error -> Common.Error error
-              | Common.Done { value = decoded; _ } ->
-                  let request =
-                    request_of_parts
-                      parsed_method
-                      parsed_uri
-                      parsed_version
-                      headers_list
-                      (slice_of_string decoded.body)
-                  in
-                  Common.Done { value = request; remaining = decoded.remaining }
-            )
+              Common.Done { value = request; remaining = decoded.remaining }
+        )
     )
 
 let parse = fun

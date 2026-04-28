@@ -447,6 +447,26 @@ let test_request_parse_slice = fun _ctx ->
       else
         Result.Ok ()
 
+let test_request_parse_head_preserves_body_bytes = fun _ctx ->
+  let req = "POST /upload HTTP/1.1\r\nHost: example.com\r\nContent-Length: 5\r\n\r\nHi" in
+  match Http1.Request.parse_head req with
+  | Done { value = parsed; remaining } ->
+      let body = NetRequest.body parsed in
+      let path =
+        NetRequest.uri parsed
+        |> Uri.path
+      in
+      if path != "/upload" then
+        Result.Error ("Expected /upload path, got " ^ path)
+      else if body != None then
+        Result.Error "Expected head parser to leave request body unset"
+      else if remaining != "Hi" then
+        Result.Error ("Expected partial body in remaining, got " ^ remaining)
+      else
+        Result.Ok ()
+  | Need_more -> Result.Error "Unexpected Need_more"
+  | Error error -> Result.Error ("Parse error: " ^ error_to_string error)
+
 let test_request_rejects_missing_lf_after_request_line = fun _ctx ->
   let req = "GET /path HTTP/1.1\rHost: example.com\r\n\r\n" in
   match Http1.Request.parse req with
@@ -598,6 +618,26 @@ let test_response_incomplete_fixed_body = fun _ctx ->
   | Need_more -> Result.Ok ()
   | Error error -> Result.Error ("Expected Need_more, got error " ^ error_to_string error)
   | Done _ -> Result.Error "Expected Need_more for incomplete fixed body"
+
+let test_response_parse_head_preserves_body_bytes = fun _ctx ->
+  let resp = "HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\nHi" in
+  match Http1.Response.parse_head resp with
+  | Done { value = parsed; remaining } ->
+      let body = NetResponse.body parsed in
+      let status =
+        NetResponse.status parsed
+        |> NetStatus.to_int
+      in
+      if status != 200 then
+        Result.Error ("Expected status 200, got " ^ Int.to_string status)
+      else if body != None then
+        Result.Error "Expected head parser to leave response body unset"
+      else if remaining != "Hi" then
+        Result.Error ("Expected partial body in remaining, got " ^ remaining)
+      else
+        Result.Ok ()
+  | Need_more -> Result.Error "Unexpected Need_more"
+  | Error error -> Result.Error ("Parse error: " ^ error_to_string error)
 
 let test_response_preserves_pipelined_bytes_after_fixed_body = fun _ctx ->
   let resp = "HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\nHelloHTTP/1.1 204 No Content\r\n\r\n" in
@@ -987,6 +1027,7 @@ let tests =
       "request header block limit applies before crlf"
       test_request_header_block_limit_applies_before_crlf;
     case "request_parse_slice" test_request_parse_slice;
+    case "request parse head preserves body bytes" test_request_parse_head_preserves_body_bytes;
     case
       "request rejects missing lf after request line"
       test_request_rejects_missing_lf_after_request_line;
@@ -1008,6 +1049,7 @@ let tests =
     case "response_200_ok" test_response_200_ok;
     case "response_404" test_response_404;
     case "response incomplete fixed body" test_response_incomplete_fixed_body;
+    case "response parse head preserves body bytes" test_response_parse_head_preserves_body_bytes;
     case
       "response preserves pipelined bytes after fixed body"
       test_response_preserves_pipelined_bytes_after_fixed_body;
