@@ -881,6 +881,21 @@ let test_chunk_rejects_invalid_size_line_crlf = fun _ctx ->
   | Need_more -> Result.Error "Expected invalid chunk size line ending, got Need_more"
   | Done _ -> Result.Error "Expected invalid chunk size line ending"
 
+let test_chunk_rejects_overlong_size_line = fun _ctx ->
+  let chunk = "12345\r\nHello\r\n" in
+  match Http1.Chunk.parse ~max_chunk_size_line:4 chunk with
+  | Error (ChunkSizeLineTooLong { max_length = 4 }) -> Result.Ok ()
+  | Error error -> Result.Error ("Expected chunk size line too long, got " ^ error_to_string error)
+  | Need_more -> Result.Error "Expected chunk size line too long, got Need_more"
+  | Done _ -> Result.Error "Expected chunk size line too long"
+
+let test_chunk_size_line_limit_applies_before_crlf = fun _ctx ->
+  match Http1.Chunk.parse ~max_chunk_size_line:4 "12345" with
+  | Error (ChunkSizeLineTooLong { max_length = 4 }) -> Result.Ok ()
+  | Error error -> Result.Error ("Expected chunk size line too long, got " ^ error_to_string error)
+  | Need_more -> Result.Error "Expected chunk size line too long, got Need_more"
+  | Done _ -> Result.Error "Expected chunk size line too long"
+
 let test_chunk_rejects_invalid_data_crlf = fun _ctx ->
   let chunk = "5\r\nHello\rX" in
   match Http1.Chunk.parse chunk with
@@ -1148,6 +1163,8 @@ let tests =
     case "chunk_hex_size" test_chunk_hex_size;
     case "chunk preserves remaining after data crlf" test_chunk_preserves_remaining_after_data_crlf;
     case "chunk rejects invalid size line crlf" test_chunk_rejects_invalid_size_line_crlf;
+    case "chunk rejects overlong size line" test_chunk_rejects_overlong_size_line;
+    case "chunk size line limit applies before crlf" test_chunk_size_line_limit_applies_before_crlf;
     case "chunk rejects invalid data crlf" test_chunk_rejects_invalid_data_crlf;
     case "chunk incomplete data crlf needs more" test_chunk_incomplete_data_crlf_needs_more;
     case "chunk accepts extensions" test_chunk_accepts_extensions;

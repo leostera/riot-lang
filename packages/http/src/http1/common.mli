@@ -29,6 +29,7 @@ and error =
   | TransferEncodingWithContentLength
   | InvalidChunkSizeLineEnding
   | InvalidChunkDataLineEnding
+  | ChunkSizeLineTooLong of { max_length: int }
   | InvalidChunkSize
   | InvalidChunkExtensionCharacter of { code: int; index: int }
   | ChunkTooLarge of { size: int; max_size: int }

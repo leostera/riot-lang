@@ -7,9 +7,9 @@ open Common
    input
 *)
 type chunk_result = { data: string; remaining: string }
-val parse_slice: IO.IoVec.IoSlice.t -> chunk_result parse_result
+val parse_slice: ?max_chunk_size_line:int -> IO.IoVec.IoSlice.t -> chunk_result parse_result
 
-val parse: string -> chunk_result parse_result
+val parse: ?max_chunk_size_line:int -> string -> chunk_result parse_result
 
 (** Fully decode a chunked body, including the final zero-size chunk and trailers. *)
 type body_result = {
@@ -19,6 +19,7 @@ type body_result = {
 }
 val decode_slice:
   ?max_chunk_size:int ->
+  ?max_chunk_size_line:int ->
   ?max_body_size:int ->
   ?max_trailers:int ->
   ?max_trailer_length:int ->
@@ -27,6 +28,7 @@ val decode_slice:
 
 val decode:
   ?max_chunk_size:int ->
+  ?max_chunk_size_line:int ->
   ?max_body_size:int ->
   ?max_trailers:int ->
   ?max_trailer_length:int ->

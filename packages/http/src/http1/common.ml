@@ -27,6 +27,7 @@ and error =
   | TransferEncodingWithContentLength
   | InvalidChunkSizeLineEnding
   | InvalidChunkDataLineEnding
+  | ChunkSizeLineTooLong of { max_length: int }
   | InvalidChunkSize
   | InvalidChunkExtensionCharacter of { code: int; index: int }
   | ChunkTooLarge of { size: int; max_size: int }
@@ -92,6 +93,8 @@ let error_to_string = function
   | TransferEncodingWithContentLength -> "Invalid body framing: Transfer-Encoding with Content-Length"
   | InvalidChunkSizeLineEnding -> "Invalid chunk size line ending"
   | InvalidChunkDataLineEnding -> "Invalid chunk data line ending"
+  | ChunkSizeLineTooLong { max_length } ->
+      "Chunk size line too long (max " ^ Int.to_string max_length ^ " bytes)"
   | InvalidChunkSize -> "Invalid chunk size"
   | InvalidChunkExtensionCharacter { code; index } ->
       "Invalid chunk extension character code "

@@ -62,29 +62,36 @@ let split_chunk_size_line = fun line ->
           )
     )
 
-let parse_size = fun cursor ->
+let parse_size = fun ?(max_line_length = 8_192) cursor ->
   match Cursor.take_until_char cursor '\r' with
-  | None -> Cursor_need_more
+  | None ->
+      if Slice.length (Cursor.remaining cursor) > max_line_length then
+        Cursor_error (Common.ChunkSizeLineTooLong { max_length = max_line_length })
+      else
+        Cursor_need_more
   | Some (size_hex, cursor) -> (
-      match take_crlf Common.InvalidChunkSizeLineEnding cursor with
-      | Cursor_need_more -> Cursor_need_more
-      | Cursor_error error -> Cursor_error error
-      | Cursor_done { remaining = cursor; _ } -> (
-          let size_line = Slice.to_string size_hex in
-          match split_chunk_size_line size_line with
-          | Error error -> Cursor_error error
-          | Ok "" -> Cursor_error Common.InvalidChunkSize
-          | Ok size_hex -> (
-              match Int.parse ("0x" ^ size_hex) with
-              | Some size -> Cursor_done { value = size; remaining = cursor }
-              | None -> Cursor_error Common.InvalidChunkSize
-            )
-        )
+      if Slice.length size_hex > max_line_length then
+        Cursor_error (Common.ChunkSizeLineTooLong { max_length = max_line_length })
+      else
+        match take_crlf Common.InvalidChunkSizeLineEnding cursor with
+        | Cursor_need_more -> Cursor_need_more
+        | Cursor_error error -> Cursor_error error
+        | Cursor_done { remaining = cursor; _ } -> (
+            let size_line = Slice.to_string size_hex in
+            match split_chunk_size_line size_line with
+            | Error error -> Cursor_error error
+            | Ok "" -> Cursor_error Common.InvalidChunkSize
+            | Ok size_hex -> (
+                match Int.parse ("0x" ^ size_hex) with
+                | Some size -> Cursor_done { value = size; remaining = cursor }
+                | None -> Cursor_error Common.InvalidChunkSize
+              )
+          )
     )
 
-let parse_slice = fun input ->
+let parse_slice = fun ?(max_chunk_size_line = 8_192) input ->
   let cursor = Cursor.from_slice input in
-  match parse_size cursor with
+  match parse_size ~max_line_length:max_chunk_size_line cursor with
   | Cursor_need_more -> Need_more
   | Cursor_error error -> Error error
   | Cursor_done { value = 0; remaining } ->
@@ -110,7 +117,10 @@ let parse_slice = fun input ->
         )
     )
 
-let parse = fun input -> parse_slice (slice_of_string input)
+let parse = fun ?(max_chunk_size_line = 8_192) input ->
+  parse_slice
+    ~max_chunk_size_line
+    (slice_of_string input)
 
 type trailer_line = {
   trailer_name: string;
@@ -196,12 +206,13 @@ let rec parse_trailers = fun
 
 let decode_slice = fun
   ?(max_chunk_size = Int.max_int)
+  ?(max_chunk_size_line = 8_192)
   ?(max_body_size = Int.max_int)
   ?(max_trailers = 100)
   ?(max_trailer_length = 8_192)
   input ->
   let rec loop chunks body_size cursor =
-    match parse_size cursor with
+    match parse_size ~max_line_length:max_chunk_size_line cursor with
     | Cursor_need_more -> Need_more
     | Cursor_error error -> Error error
     | Cursor_done { value = 0; remaining } -> (
@@ -238,12 +249,14 @@ let decode_slice = fun
 
 let decode = fun
   ?(max_chunk_size = Int.max_int)
+  ?(max_chunk_size_line = 8_192)
   ?(max_body_size = Int.max_int)
   ?(max_trailers = 100)
   ?(max_trailer_length = 8_192)
   input ->
   decode_slice
     ~max_chunk_size
+    ~max_chunk_size_line
     ~max_body_size
     ~max_trailers
     ~max_trailer_length
