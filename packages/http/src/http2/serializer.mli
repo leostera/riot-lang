@@ -7,6 +7,9 @@ type payload_error = {
 }
 type error =
   | PayloadMismatch of payload_error
+  | SettingsAckWithPayload of { setting_count: int }
+  | InvalidPingPayloadLength of { length: int }
+  | InvalidWindowUpdateIncrement of { increment: int }
 val error_to_string: error -> string
 
 val serialize_frame: Frame.t -> (string, error) Result.t

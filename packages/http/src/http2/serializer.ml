@@ -7,6 +7,9 @@ type payload_error = {
 
 type error =
   | PayloadMismatch of payload_error
+  | SettingsAckWithPayload of { setting_count: int }
+  | InvalidPingPayloadLength of { length: int }
+  | InvalidWindowUpdateIncrement of { increment: int }
 
 let frame_type_to_string = function
   | Frame.Data -> "DATA"
@@ -24,6 +27,12 @@ let frame_type_to_string = function
 let error_to_string = function
   | PayloadMismatch { frame_type; _ } ->
       "Payload does not match HTTP/2 " ^ frame_type_to_string frame_type ^ " frame"
+  | SettingsAckWithPayload { setting_count } ->
+      "SETTINGS ACK must not carry settings, got " ^ Int.to_string setting_count ^ " setting(s)"
+  | InvalidPingPayloadLength { length } ->
+      "PING opaque data must be exactly 8 bytes, got " ^ Int.to_string length
+  | InvalidWindowUpdateIncrement { increment } ->
+      "WINDOW_UPDATE increment must be between 1 and 2^31-1, got " ^ Int.to_string increment
 
 let write_uint24_be = fun value ->
   let b0 = Char.from_int_unchecked ((value lsr 16) land 0xff) in
@@ -190,7 +199,12 @@ let serialize_push_promise_payload = fun payload ->
 
 let serialize_ping_payload = fun payload ->
   match payload with
-  | Frame.PingPayload opaque_data -> Ok opaque_data
+  | Frame.PingPayload opaque_data ->
+      let length = String.length opaque_data in
+      if length != 8 then
+        Error (InvalidPingPayloadLength { length })
+      else
+        Ok opaque_data
   | payload -> Error (PayloadMismatch { frame_type = Frame.Ping; payload })
 
 let serialize_goaway_payload = fun payload ->
@@ -203,7 +217,11 @@ let serialize_goaway_payload = fun payload ->
 
 let serialize_window_update_payload = fun payload ->
   match payload with
-  | Frame.WindowUpdatePayload increment -> Ok (write_uint32_be (increment land 0x7fff_ffff))
+  | Frame.WindowUpdatePayload increment ->
+      if increment <= 0 || increment > 0x7fff_ffff then
+        Error (InvalidWindowUpdateIncrement { increment })
+      else
+        Ok (write_uint32_be increment)
   | payload -> Error (PayloadMismatch { frame_type = Frame.WindowUpdate; payload })
 
 let serialize_continuation_payload = fun payload ->
@@ -234,7 +252,13 @@ let serialize_frame = fun frame ->
   let open Frame in
   let payload_bytes =
     match (frame.frame_type, frame.flags.ack) with
-    | (Settings, true) -> Ok ""
+    | (Settings, true) -> (
+        match frame.payload with
+        | SettingsPayload [] -> Ok ""
+        | SettingsPayload settings ->
+            Error (SettingsAckWithPayload { setting_count = List.length settings })
+        | payload -> Error (PayloadMismatch { frame_type = Settings; payload })
+      )
     | _ -> serialize_payload frame.frame_type frame.payload
   in
   match payload_bytes with

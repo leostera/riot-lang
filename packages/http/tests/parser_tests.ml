@@ -152,7 +152,7 @@ let test_serialize_settings_ack_has_empty_payload = fun _ctx ->
         ack = true;
       };
     stream_id = 0;
-    payload = Frame.SettingsPayload [ Frame.HeaderTableSize 4_096; ];
+    payload = Frame.SettingsPayload [];
   }
   in
   let serialized = serialize_frame frame in
@@ -162,6 +162,27 @@ let test_serialize_settings_ack_has_empty_payload = fun _ctx ->
   else
     Result.Error ("Serialized settings ack should have empty payload, got length "
     ^ Int.to_string length)
+
+let test_serialize_settings_ack_rejects_payload = fun _ctx ->
+  let frame = {
+    Frame.length = 0;
+    frame_type = Frame.Settings;
+    flags =
+      {
+        Frame.end_stream = false;
+        end_headers = false;
+        padded = false;
+        priority = false;
+        ack = true;
+      };
+    stream_id = 0;
+    payload = Frame.SettingsPayload [ Frame.HeaderTableSize 4_096; ];
+  }
+  in
+  match Serializer.serialize_frame frame with
+  | Error (Serializer.SettingsAckWithPayload { setting_count = 1 }) -> Result.Ok ()
+  | Error error -> Result.Error ("Wrong serializer error: " ^ Serializer.error_to_string error)
+  | Ok _ -> Result.Error "serializer accepted SETTINGS ACK with payload"
 
 let test_serialize_rejects_payload_mismatch = fun _ctx ->
   let frame = {
@@ -183,6 +204,34 @@ let test_serialize_rejects_payload_mismatch = fun _ctx ->
   | Error (Serializer.PayloadMismatch { frame_type = Frame.Ping; _ }) -> Result.Ok ()
   | Error error -> Result.Error ("Wrong serializer error: " ^ Serializer.error_to_string error)
   | Ok _ -> Result.Error "serializer accepted mismatched PING payload"
+
+let test_serialize_rejects_invalid_ping_payload_length = fun _ctx ->
+  let frame = {
+    Frame.length = 5;
+    frame_type = Frame.Ping;
+    flags = Frame.default_flags;
+    stream_id = 0;
+    payload = Frame.PingPayload "short";
+  }
+  in
+  match Serializer.serialize_frame frame with
+  | Error (Serializer.InvalidPingPayloadLength { length = 5 }) -> Result.Ok ()
+  | Error error -> Result.Error ("Wrong serializer error: " ^ Serializer.error_to_string error)
+  | Ok _ -> Result.Error "serializer accepted invalid PING payload length"
+
+let test_serialize_rejects_invalid_window_update_increment = fun _ctx ->
+  let frame = {
+    Frame.length = 4;
+    frame_type = Frame.WindowUpdate;
+    flags = Frame.default_flags;
+    stream_id = 0;
+    payload = Frame.WindowUpdatePayload 0;
+  }
+  in
+  match Serializer.serialize_frame frame with
+  | Error (Serializer.InvalidWindowUpdateIncrement { increment = 0 }) -> Result.Ok ()
+  | Error error -> Result.Error ("Wrong serializer error: " ^ Serializer.error_to_string error)
+  | Ok _ -> Result.Error "serializer accepted invalid WINDOW_UPDATE increment"
 
 let test_ping_rejects_invalid_payload_length = fun _ctx ->
   match Frame.ping "short" with
@@ -914,7 +963,14 @@ let tests =
     case "serialize_recomputes_payload_length" test_serialize_recomputes_payload_length;
     case "serialize_settings_payload_length" test_serialize_settings_payload_length;
     case "serialize_settings_ack_has_empty_payload" test_serialize_settings_ack_has_empty_payload;
+    case "serialize_settings_ack_rejects_payload" test_serialize_settings_ack_rejects_payload;
     case "serialize_rejects_payload_mismatch" test_serialize_rejects_payload_mismatch;
+    case
+      "serialize_rejects_invalid_ping_payload_length"
+      test_serialize_rejects_invalid_ping_payload_length;
+    case
+      "serialize_rejects_invalid_window_update_increment"
+      test_serialize_rejects_invalid_window_update_increment;
     case "ping_rejects_invalid_payload_length" test_ping_rejects_invalid_payload_length;
     case "window_update_rejects_invalid_increment" test_window_update_rejects_invalid_increment;
     case
