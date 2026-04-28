@@ -706,6 +706,42 @@ let test_parse_goaway_rejects_nonzero_stream = fun _ctx ->
       expected = Parser.MustBeZero;
     })
 
+let test_parse_data_rejects_padded_zero_length = fun _ctx ->
+  expect_parse_error
+    "\x00\x00\x00\x00\x08\x00\x00\x00\x01"
+    (Parser.InvalidPayloadLength {
+      frame_type = Frame.Data;
+      expected = Parser.AtLeast 1;
+      actual = 0;
+    })
+
+let test_parse_headers_rejects_padded_zero_length = fun _ctx ->
+  expect_parse_error
+    "\x00\x00\x00\x01\x08\x00\x00\x00\x01"
+    (Parser.InvalidPayloadLength {
+      frame_type = Frame.Headers;
+      expected = Parser.AtLeast 1;
+      actual = 0;
+    })
+
+let test_parse_headers_rejects_short_priority_payload = fun _ctx ->
+  expect_parse_error
+    "\x00\x00\x04\x01\x20\x00\x00\x00\x01abcd"
+    (Parser.InvalidPayloadLength {
+      frame_type = Frame.Headers;
+      expected = Parser.AtLeast 5;
+      actual = 4;
+    })
+
+let test_parse_push_promise_rejects_short_promised_stream = fun _ctx ->
+  expect_parse_error
+    "\x00\x00\x03\x05\x00\x00\x00\x00\x01abc"
+    (Parser.InvalidPayloadLength {
+      frame_type = Frame.PushPromise;
+      expected = Parser.AtLeast 4;
+      actual = 3;
+    })
+
 let test_parse_window_update_allows_stream_zero = fun _ctx ->
   match Parser.parse_frame "\x00\x00\x04\x08\x00\x00\x00\x00\x00\x00\x00\x00\x01" with
   | Parser.Done { value = { Frame.frame_type = Frame.WindowUpdate; stream_id = 0; _ }; _ } ->
@@ -1289,6 +1325,14 @@ let tests =
     case "parse_settings_rejects_nonzero_stream" test_parse_settings_rejects_nonzero_stream;
     case "parse_ping_rejects_nonzero_stream" test_parse_ping_rejects_nonzero_stream;
     case "parse_goaway_rejects_nonzero_stream" test_parse_goaway_rejects_nonzero_stream;
+    case "parse_data_rejects_padded_zero_length" test_parse_data_rejects_padded_zero_length;
+    case "parse_headers_rejects_padded_zero_length" test_parse_headers_rejects_padded_zero_length;
+    case
+      "parse_headers_rejects_short_priority_payload"
+      test_parse_headers_rejects_short_priority_payload;
+    case
+      "parse_push_promise_rejects_short_promised_stream"
+      test_parse_push_promise_rejects_short_promised_stream;
     case "parse_window_update_allows_stream_zero" test_parse_window_update_allows_stream_zero;
     case "parse_unknown_frame_preserves_payload" test_parse_unknown_frame_preserves_payload;
     case "process_data_ignores_unknown_frame" test_process_data_ignores_unknown_frame;

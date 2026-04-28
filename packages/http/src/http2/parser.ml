@@ -291,21 +291,28 @@ let parse_frame_header = fun ?(config = default_config) data ->
 let parse_data_payload = fun length flags data ->
   let has_padding = flags.Frame.padded in
   if has_padding then
-    match read_uint8 data 0 with
-    | None -> Need_more
-    | Some pad_length ->
-        if length < 1 + pad_length then
-          Error (InvalidPaddingLength { length; pad_length })
-        else if String.length data < length then
-          Need_more
-        else
-          let data_length = length - pad_length - 1 in
-          let payload_data = String.sub data ~offset:1 ~len:data_length in
-          let remaining = String.sub data ~offset:length ~len:(String.length data - length) in
-          Done {
-            value = Frame.DataPayload { data = payload_data; pad_length = Some pad_length };
-            remaining;
-          }
+    if length < 1 then
+      Error (InvalidPayloadLength {
+        frame_type = Frame.Data;
+        expected = AtLeast 1;
+        actual = length;
+      })
+    else
+      match read_uint8 data 0 with
+      | None -> Need_more
+      | Some pad_length ->
+          if length < 1 + pad_length then
+            Error (InvalidPaddingLength { length; pad_length })
+          else if String.length data < length then
+            Need_more
+          else
+            let data_length = length - pad_length - 1 in
+            let payload_data = String.sub data ~offset:1 ~len:data_length in
+            let remaining = String.sub data ~offset:length ~len:(String.length data - length) in
+            Done {
+              value = Frame.DataPayload { data = payload_data; pad_length = Some pad_length };
+              remaining;
+            }
   else if String.length data < length then
     Need_more
   else
@@ -327,51 +334,73 @@ let parse_priority_fields = fun data offset ->
 let parse_headers_payload = fun length flags data ->
   let has_padding = flags.Frame.padded in
   let has_priority = flags.Frame.priority in
-  let (pad_length_opt, offset) =
-    if has_padding then
-      match read_uint8 data 0 with
-      | None -> (None, 0)
-      | Some pl -> (Some pl, 1)
-    else
-      (None, 0)
+  let min_length =
+    (
+      if has_padding then
+        1
+      else
+        0
+    ) + (
+      if has_priority then
+        5
+      else
+        0
+    )
   in
-  let (priority_info, offset) =
-    if has_priority then
-      match parse_priority_fields data offset with
-      | None -> (None, offset)
-      | Some (dep, excl, w) -> (Some (dep, excl, w), offset + 5)
-    else
-      (None, offset)
-  in
-  let pad_length =
-    match pad_length_opt with
-    | Some p -> p
-    | None -> 0
-  in
-  let header_fragment_length = length - offset - pad_length in
-  if header_fragment_length < 0 then
-    Error (InvalidHeadersFrameLength { length; offset; pad_length })
-  else if String.length data < length then
+  if length < min_length then
+    Error (InvalidPayloadLength {
+      frame_type = Frame.Headers;
+      expected = AtLeast min_length;
+      actual = length;
+    })
+  else if String.length data < min_length then
     Need_more
   else
-    let header_block_fragment = String.sub data ~offset ~len:header_fragment_length in
-    let remaining = String.sub data ~offset:length ~len:(String.length data - length) in
-    let (stream_dependency, weight, exclusive) =
-      match priority_info with
-      | Some (dep, excl, w) -> (Some dep, Some w, excl)
-      | None -> (None, None, false)
+    let (pad_length_opt, offset) =
+      if has_padding then
+        match read_uint8 data 0 with
+        | None -> (None, 0)
+        | Some pl -> (Some pl, 1)
+      else
+        (None, 0)
     in
-    Done {
-      value =
-        Frame.HeadersPayload {
-          pad_length = pad_length_opt;
-          stream_dependency;
-          weight;
-          exclusive;
-          header_block_fragment;
-        };
-      remaining;
-    }
+    let (priority_info, offset) =
+      if has_priority then
+        match parse_priority_fields data offset with
+        | None -> (None, offset)
+        | Some (dep, excl, w) -> (Some (dep, excl, w), offset + 5)
+      else
+        (None, offset)
+    in
+    let pad_length =
+      match pad_length_opt with
+      | Some p -> p
+      | None -> 0
+    in
+    let header_fragment_length = length - offset - pad_length in
+    if header_fragment_length < 0 then
+      Error (InvalidHeadersFrameLength { length; offset; pad_length })
+    else if String.length data < length then
+      Need_more
+    else
+      let header_block_fragment = String.sub data ~offset ~len:header_fragment_length in
+      let remaining = String.sub data ~offset:length ~len:(String.length data - length) in
+      let (stream_dependency, weight, exclusive) =
+        match priority_info with
+        | Some (dep, excl, w) -> (Some dep, Some w, excl)
+        | None -> (None, None, false)
+      in
+      Done {
+        value =
+          Frame.HeadersPayload {
+            pad_length = pad_length_opt;
+            stream_dependency;
+            weight;
+            exclusive;
+            header_block_fragment;
+          };
+        remaining;
+      }
 
 let parse_priority_payload = fun length data ->
   if length != 5 then
@@ -471,43 +500,58 @@ let parse_settings_payload = fun length flags data ->
 
 let parse_push_promise_payload = fun length flags data ->
   let has_padding = flags.Frame.padded in
-  let (pad_length_opt, offset) =
-    if has_padding then
-      match read_uint8 data 0 with
-      | None -> (None, 0)
-      | Some pl -> (Some pl, 1)
+  let min_length =
+    4 + if has_padding then
+      1
     else
-      (None, 0)
+      0
   in
-  if String.length data < offset + 4 then
+  if length < min_length then
+    Error (InvalidPayloadLength {
+      frame_type = Frame.PushPromise;
+      expected = AtLeast min_length;
+      actual = length;
+    })
+  else if String.length data < min_length then
     Need_more
   else
-    match read_uint32_be data offset with
-    | None -> Error (FailedToRead PromisedStreamId)
-    | Some promised_stream_id_raw ->
-        let promised_stream_id = promised_stream_id_raw land 0x7fff_ffff in
-        let offset = offset + 4 in
-        let pad_length =
-          match pad_length_opt with
-          | Some p -> p
-          | None -> 0
-        in
-        let header_fragment_length = length - offset - pad_length in
-        if header_fragment_length < 0 then
-          Error (InvalidPushPromiseFrameLength { length; offset; pad_length })
-        else if String.length data < length then
-          Need_more
-        else
-          let header_block_fragment = String.sub data ~offset ~len:header_fragment_length in
-          let remaining = String.sub data ~offset:length ~len:(String.length data - length) in
-          Done {
-            value = Frame.PushPromisePayload {
-              pad_length = pad_length_opt;
-              promised_stream_id;
-              header_block_fragment;
-            };
-            remaining;
-          }
+    let (pad_length_opt, offset) =
+      if has_padding then
+        match read_uint8 data 0 with
+        | None -> (None, 0)
+        | Some pl -> (Some pl, 1)
+      else
+        (None, 0)
+    in
+    if String.length data < offset + 4 then
+      Need_more
+    else
+      match read_uint32_be data offset with
+      | None -> Error (FailedToRead PromisedStreamId)
+      | Some promised_stream_id_raw ->
+          let promised_stream_id = promised_stream_id_raw land 0x7fff_ffff in
+          let offset = offset + 4 in
+          let pad_length =
+            match pad_length_opt with
+            | Some p -> p
+            | None -> 0
+          in
+          let header_fragment_length = length - offset - pad_length in
+          if header_fragment_length < 0 then
+            Error (InvalidPushPromiseFrameLength { length; offset; pad_length })
+          else if String.length data < length then
+            Need_more
+          else
+            let header_block_fragment = String.sub data ~offset ~len:header_fragment_length in
+            let remaining = String.sub data ~offset:length ~len:(String.length data - length) in
+            Done {
+              value = Frame.PushPromisePayload {
+                pad_length = pad_length_opt;
+                promised_stream_id;
+                header_block_fragment;
+              };
+              remaining;
+            }
 
 let parse_ping_payload = fun length data ->
   if length != 8 then
