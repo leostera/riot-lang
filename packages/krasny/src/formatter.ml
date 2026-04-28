@@ -906,6 +906,16 @@ let nth_child_node_matching = fun node index ~matches ->
           ));
   !found
 
+let last_child_node_matching = fun node ~matches ->
+  let found = ref None in
+  iter_fold
+    Ast.Node.fold_child_node
+    node
+    ~fn:(fun child ->
+      if matches (node_kind child) then
+        found := Some child);
+  !found
+
 let first_child_token_matching = fun node ~matches ->
   let found = ref None in
   iter_fold
@@ -939,7 +949,7 @@ let first_descendant_node_matching = fun (node: Ast.Node.t) ~matches ->
 
 let node_child_token_kind_is = fun (node: Ast.Node.t) index kind ->
   match Ast.Node.child_at node index with
-  | Some (Syn.SyntaxTree.Token id) -> token_kind_is (({ tree = node.Ast.tree; id }: Ast.Token.t)) kind
+  | Some (Syn.SyntaxTree.Token id) -> token_kind_is ({ tree = node.Ast.tree; id }: Ast.Token.t) kind
   | Some (Syn.SyntaxTree.Node _)
   | Some (Syn.SyntaxTree.Missing _)
   | None -> false
@@ -978,11 +988,11 @@ let collect_node_attribute_suffix_tokens_after_child = fun (node: Ast.Node.t) (c
             (
               match Ast.Node.child_at node index with
               | Some (Syn.SyntaxTree.Token id) ->
-                  Vector.push tokens ~value:(({ tree = node.Ast.tree; id }: Ast.Token.t))
+                  Vector.push tokens ~value:({ tree = node.Ast.tree; id }: Ast.Token.t)
               | Some (Syn.SyntaxTree.Node id) ->
                   iter_fold
                     Ast.Node.fold_token
-                    (({ tree = node.Ast.tree; id }: Ast.Node.t))
+                    ({ tree = node.Ast.tree; id }: Ast.Node.t)
                     ~fn:(fun token -> Vector.push tokens ~value:token)
               | Some (Syn.SyntaxTree.Missing _)
               | None -> ()
@@ -1687,6 +1697,10 @@ let nth_child_expr = fun node index ->
   nth_child_node_matching node index ~matches:is_expr_node_kind
   |> Option.and_then ~fn:(fun node -> Ast.cast_result_to_option (Ast.Expr.cast node))
 
+let last_child_expr = fun node ->
+  last_child_node_matching node ~matches:is_expr_node_kind
+  |> Option.and_then ~fn:(fun node -> Ast.cast_result_to_option (Ast.Expr.cast node))
+
 let first_child_pattern = fun node ->
   first_child_node_matching node ~matches:is_pattern_node_kind
   |> Option.and_then ~fn:(fun node -> Ast.cast_result_to_option (Ast.Pattern.cast node))
@@ -2141,11 +2155,7 @@ module ExprView = struct
         }
     | Kind.LET_EXPR ->
         Let { first_binding = first_let_binding_child node; body = nth_child_expr node 0 }
-    | Kind.FUN_EXPR -> (
-        match Ast.Expr.view expr with
-        | Ast.Expr.Fun { body = Ast.Expr.Body_expr body; _ } -> Fun { body = Some body }
-        | _ -> Fun { body = None }
-      )
+    | Kind.FUN_EXPR -> Fun { body = last_child_expr node }
     | Kind.FUNCTION_EXPR -> Function { first_case = first_match_case_child node }
     | Kind.MATCH_EXPR ->
         Match { scrutinee = nth_child_expr node 0; first_case = first_match_case_child node }
@@ -2211,7 +2221,7 @@ let collect_node_tokens_after_direct_token = fun node kind ->
           if !after then
             iter_fold
               Ast.Node.fold_token
-              (({ tree = node.Ast.tree; id }: Ast.Node.t))
+              ({ tree = node.Ast.tree; id }: Ast.Node.t)
               ~fn:(fun token -> Vector.push tokens ~value:token)
       | Syn.SyntaxTree.Missing _ -> ()
     );
@@ -2224,7 +2234,7 @@ let collect_prefix_operator_tokens = fun (expr: Ast.Expr.t) ->
     if Int.(index < Ast.Node.child_count node) then
       match Ast.Node.child_at node index with
       | Some (Syn.SyntaxTree.Token id) ->
-          Vector.push tokens ~value:(({ tree = node.Ast.tree; id }: Ast.Token.t));
+          Vector.push tokens ~value:({ tree = node.Ast.tree; id }: Ast.Token.t);
           loop (Int.add index 1)
       | Some (Syn.SyntaxTree.Node _)
       | Some (Syn.SyntaxTree.Missing _)
@@ -2242,7 +2252,7 @@ let collect_direct_tokens_between_children = fun node left right ->
           (
             match Ast.Node.child_at node index with
             | Some (Syn.SyntaxTree.Token id) ->
-                Vector.push tokens ~value:(({ tree = node.Ast.tree; id }: Ast.Token.t))
+                Vector.push tokens ~value:({ tree = node.Ast.tree; id }: Ast.Token.t)
             | Some (Syn.SyntaxTree.Node _)
             | Some (Syn.SyntaxTree.Missing _)
             | None -> ()
@@ -2264,7 +2274,7 @@ let collect_direct_tokens_after_child = fun node child ->
           (
             match Ast.Node.child_at node index with
             | Some (Syn.SyntaxTree.Token id) ->
-                Vector.push tokens ~value:(({ tree = node.Ast.tree; id }: Ast.Token.t))
+                Vector.push tokens ~value:({ tree = node.Ast.tree; id }: Ast.Token.t)
             | Some (Syn.SyntaxTree.Node _)
             | Some (Syn.SyntaxTree.Missing _)
             | None -> ()
@@ -2534,7 +2544,7 @@ let collect_structure_item_entries_from_node = fun node ->
           else
             collect_trailing_tokens (Int.add index 1) tokens
       | Some (Syn.SyntaxTree.Token id) ->
-          Vector.push tokens ~value:(({ tree = node.Ast.tree; id }: Ast.Token.t));
+          Vector.push tokens ~value:({ tree = node.Ast.tree; id }: Ast.Token.t);
           collect_trailing_tokens (Int.add index 1) tokens
       | Some (Syn.SyntaxTree.Missing _)
       | None -> collect_trailing_tokens (Int.add index 1) tokens
@@ -4418,11 +4428,25 @@ and expr_can_render_atom_without_parens = fun expr ->
   | PolyVariant { payload = None } -> true
   | _ -> false
 
-and typed_expr_inner_needs_parens = fun expr ->
+and coercion_expr_inner_needs_parens = fun expr ->
   match ExprView.view expr with
+  | Parenthesized { inner = Some inner } when not (same_expr_node expr inner) ->
+      coercion_expr_inner_needs_parens inner
   | Tuple
   | Record
-  | RecordUpdate -> true
+  | RecordUpdate
+  | If _
+  | Let _
+  | Fun _
+  | Function _
+  | Match _
+  | Try _
+  | Sequence _
+  | BindingOperator
+  | LetModule _
+  | LetException _
+  | While _
+  | For _ -> true
   | _ -> false
 
 and expr_can_render_record_update_base_without_parens = fun expr ->
@@ -5384,19 +5408,11 @@ let rec render_expr = fun ?(role = Layout.Top_expr) state (expr: Ast.Expr.t) ->
   | Record -> render_record_expr state ~inline:false expr
   | RecordUpdate -> render_record_expr state ~inline:false expr
   | Typed { expr = Some inner; annotation = Some annotation } ->
-      if type_expr_is_coercion_annotation annotation then (
-        if typed_expr_inner_needs_parens inner then
-          render_parenthesized_expr state inner
-        else
-          render_expr state inner;
-        render_typed_expr_annotation state annotation
-      ) else (
+      if type_expr_is_coercion_annotation annotation then
+        render_typed_expr_contents state inner annotation
+      else (
         emit_text state "(";
-        with_delimited_expr
-          state
-          (fun () ->
-            render_expr state inner;
-            render_typed_expr_annotation state annotation);
+        with_delimited_expr state (fun () -> render_typed_expr_contents state inner annotation);
         emit_text state ")"
       )
   | Typed _ -> unsupported_node "incomplete typed expression" node
@@ -5483,6 +5499,18 @@ let rec render_expr = fun ?(role = Layout.Top_expr) state (expr: Ast.Expr.t) ->
   | Unreachable -> render_unreachable_expr state expr
   | Error _
   | Unknown _ -> unsupported_node "unsupported expression" node
+
+and render_typed_expr_contents = fun state inner annotation ->
+  if type_expr_is_coercion_annotation annotation then
+    (
+      if coercion_expr_inner_needs_parens inner then
+        render_expr_atom state inner
+      else
+        render_expr state inner
+    )
+  else
+    render_expr_atom state inner;
+  render_typed_expr_annotation state annotation
 
 and tuple_expr_has_nonfinal_fun_item = fun expr ->
   let items = collect_tuple_expr_items expr in
@@ -5638,7 +5666,13 @@ and render_parenthesized_expr_with_multiline_indent = fun state expr ~body_inden
     render_expr state expr
   else
     (
-      let render_inner () = with_delimited_expr state (fun () -> render_expr state expr) in
+      let render_expr_without_outer_parens () =
+        match ExprView.view expr with
+        | Typed { expr = Some inner; annotation = Some annotation } ->
+            render_typed_expr_contents state inner annotation
+        | _ -> render_expr state expr
+      in
+      let render_inner () = with_delimited_expr state render_expr_without_outer_parens in
       if parenthesized_expr_should_multiline state expr then (
         emit_text state "(";
         emit_line state;
