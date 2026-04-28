@@ -1,6 +1,7 @@
 open Std
 
 module Hpack = Http.Http2.Hpack
+module HpackReader = Http.Http2.Hpack_reader
 
 let encode_or_error = fun encoder ~sensitive_headers ~headers ->
   match Hpack.encode encoder ~sensitive_headers () ~headers with
@@ -139,6 +140,65 @@ let test_header_block_table_size_update = fun _ctx ->
   | Ok _ -> Result.Error "Dynamic table size update produced headers"
   | Error err -> Result.Error ("Decode failed: " ^ Hpack.decode_error_to_string err)
 
+let test_reader_decodes_static_indexed_header = fun _ctx ->
+  let decoder = HpackReader.create () in
+  match HpackReader.decode decoder (IO.Reader.from_string "\x82") with
+  | HpackReader.Headers [ { Hpack.name = ":method"; value = "GET" } ] -> Result.Ok ()
+  | HpackReader.Headers _ -> Result.Error "Reader decoded the wrong static header"
+  | HpackReader.Need_more -> Result.Error "Reader unexpectedly needed more data"
+  | HpackReader.Error err ->
+      Result.Error ("Reader failed: " ^ HpackReader.decode_error_to_string err)
+
+let test_reader_preserves_partial_literal = fun _ctx ->
+  let decoder = HpackReader.create () in
+  match HpackReader.decode decoder (IO.Reader.from_string "\x40\x01x") with
+  | HpackReader.Need_more -> (
+      match HpackReader.decode decoder (IO.Reader.from_string "\x03one") with
+      | HpackReader.Headers [ { Hpack.name = "x"; value = "one" } ] -> Result.Ok ()
+      | HpackReader.Headers _ -> Result.Error "Reader decoded the wrong resumed literal"
+      | HpackReader.Need_more -> Result.Error "Reader still needed more data after literal completion"
+      | HpackReader.Error err ->
+          Result.Error ("Reader failed after resume: " ^ HpackReader.decode_error_to_string err)
+    )
+  | HpackReader.Headers _ -> Result.Error "Partial literal decoded before value bytes arrived"
+  | HpackReader.Error err ->
+      Result.Error ("Partial literal failed: " ^ HpackReader.decode_error_to_string err)
+
+let test_reader_decodes_literal_without_indexing = fun _ctx ->
+  let decoder = HpackReader.create () in
+  match HpackReader.decode decoder (IO.Reader.from_string "\x00\x01x\x01y") with
+  | HpackReader.Headers [ { Hpack.name = "x"; value = "y" } ] -> Result.Ok ()
+  | HpackReader.Headers _ -> Result.Error "Reader decoded the wrong literal without indexing"
+  | HpackReader.Need_more -> Result.Error "Reader unexpectedly needed more data"
+  | HpackReader.Error err ->
+      Result.Error ("Reader failed: " ^ HpackReader.decode_error_to_string err)
+
+let test_reader_reuses_dynamic_table = fun _ctx ->
+  let decoder = HpackReader.create () in
+  match HpackReader.decode decoder (IO.Reader.from_string "\x40\x01x\x01y") with
+  | HpackReader.Headers [ { Hpack.name = "x"; value = "y" } ] -> (
+      match HpackReader.decode decoder (IO.Reader.from_string "\xbe") with
+      | HpackReader.Headers [ { Hpack.name = "x"; value = "y" } ] -> Result.Ok ()
+      | HpackReader.Headers _ -> Result.Error "Reader decoded the wrong dynamic-table header"
+      | HpackReader.Need_more -> Result.Error "Reader unexpectedly needed more dynamic index data"
+      | HpackReader.Error err ->
+          Result.Error ("Reader dynamic-table decode failed: " ^ HpackReader.decode_error_to_string err)
+    )
+  | HpackReader.Headers _ -> Result.Error "Reader decoded the wrong indexed literal"
+  | HpackReader.Need_more -> Result.Error "Reader unexpectedly needed more indexed literal data"
+  | HpackReader.Error err ->
+      Result.Error ("Reader indexed literal failed: " ^ HpackReader.decode_error_to_string err)
+
+let test_reader_rejects_huffman_with_typed_error = fun _ctx ->
+  let decoder = HpackReader.create () in
+  match HpackReader.decode decoder (IO.Reader.from_string "\x40\x81a\x01b") with
+  | HpackReader.Error (HpackReader.HpackDecodeFailed Hpack.UnsupportedHuffmanStringEncoding) ->
+      Result.Ok ()
+  | HpackReader.Error err ->
+      Result.Error ("Wrong reader error: " ^ HpackReader.decode_error_to_string err)
+  | HpackReader.Need_more -> Result.Error "Reader treated Huffman input as incomplete"
+  | HpackReader.Headers _ -> Result.Error "Reader decoded unsupported Huffman input"
+
 let tests = [
   Test.case "encoder_decoder_roundtrip" test_encoder_decoder_roundtrip;
   Test.case "static_table_lookup" test_static_table_lookup;
@@ -160,6 +220,11 @@ let tests = [
     "decoder_table_size_rejects_negative_update"
     test_decoder_table_size_rejects_negative_update;
   Test.case "header_block_table_size_update" test_header_block_table_size_update;
+  Test.case "reader_decodes_static_indexed_header" test_reader_decodes_static_indexed_header;
+  Test.case "reader_preserves_partial_literal" test_reader_preserves_partial_literal;
+  Test.case "reader_decodes_literal_without_indexing" test_reader_decodes_literal_without_indexing;
+  Test.case "reader_reuses_dynamic_table" test_reader_reuses_dynamic_table;
+  Test.case "reader_rejects_huffman_with_typed_error" test_reader_rejects_huffman_with_typed_error;
 ]
 
 let main ~args:_ = Test.Cli.main ~name:"http:hpack" ~tests ~args:Env.args ()

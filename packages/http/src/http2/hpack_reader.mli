@@ -18,17 +18,12 @@ val create: ?max_dynamic_table_size:int -> unit -> decoder
 
 (** Decode errors *)
 type decode_error =
-  | Invalid_header_index of int
-  (** Header index not found in static/dynamic table *)
-  | Invalid_name_index of int
-  (** Name index not found in static/dynamic table *)
-  | Unsupported_encoding
-  (** HPACK encoding type not supported *)
-  | Invalid_decoder_state
-  (** Decoder in invalid/unexpected state *)
-  | Need_more_data
+  | ReadFailed of IO.error
+  (** Reader returned an IO error before a header block could be decoded. *)
+  | HpackDecodeFailed of Hpack.decode_error
+  (** Canonical HPACK decoder rejected the buffered header block. *)
 
-(** Not enough data available to complete decoding *)
+val decode_error_to_string: decode_error -> string
 
 (** Decode result *)
 type decode_result =
