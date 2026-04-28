@@ -330,6 +330,88 @@ let test_process_data_buffers_split_frame_payload = fun _ctx ->
       | Error err -> Result.Error (Connection.error_to_string err)
     )
 
+let test_process_data_buffers_frame_one_byte_at_a_time = fun _ctx ->
+  let conn = Connection.create ~role:Connection.Server () in
+  let frame = Frame.settings [ Frame.HeaderTableSize 2_048; ] in
+  let bytes = serialize_frame frame in
+  let rec loop index =
+    if index >= String.length bytes then
+      Result.Error "one-byte frame delivery finished without emitting settings"
+    else
+      let byte = String.sub bytes ~offset:index ~len:1 in
+      match Connection.process_data conn (Std.IO.Bytes.from_string byte) with
+      | Error err -> Result.Error (Connection.error_to_string err)
+      | Ok [] -> loop (index + 1)
+      | Ok [ Connection.SettingsReceived [ Frame.HeaderTableSize size ] ] when Int.equal size 2_048 ->
+          if index = String.length bytes - 1 then
+            Result.Ok ()
+          else
+            Result.Error "settings emitted before the full frame arrived"
+      | Ok _ -> Result.Error "one-byte delivery emitted unexpected events"
+  in
+  loop 0
+
+let test_process_data_buffers_split_continuation_payload = fun _ctx ->
+  let conn = Connection.create ~role:Connection.Server () in
+  let header_block =
+    encode_header_block [ { Hpack.name = "x-split-continuation"; value = "payload" } ]
+  in
+  let headers = Frame.headers ~stream_id:1 ~end_headers:false "" in
+  let continuation =
+    serialize_frame (Frame.continuation ~stream_id:1 ~end_headers:true header_block)
+  in
+  let first = String.sub continuation ~offset:0 ~len:10 in
+  let rest = String.sub continuation ~offset:10 ~len:(String.length continuation - 10) in
+  match Connection.process_data conn (Std.IO.Bytes.from_string (serialize_frame headers)) with
+  | Error err -> Result.Error ("HEADERS failed: " ^ Connection.error_to_string err)
+  | Ok events when List.length events != 0 ->
+      Result.Error "incomplete header block should not emit events"
+  | Ok _ -> (
+      match Connection.process_data conn (Std.IO.Bytes.from_string first) with
+      | Error err -> Result.Error ("partial CONTINUATION failed: " ^ Connection.error_to_string err)
+      | Ok events when List.length events != 0 ->
+          Result.Error "partial CONTINUATION should not emit events"
+      | Ok _ -> (
+          match Connection.process_data conn (Std.IO.Bytes.from_string rest) with
+          | Ok [ Connection.HeadersReceived { stream_id = 1; headers = [ { Hpack.name = "x-split-continuation"; value = "payload" } ]; end_stream = false } ] ->
+              Result.Ok ()
+          | Ok _ -> Result.Error "split CONTINUATION did not emit expected headers"
+          | Error err ->
+              Result.Error ("split CONTINUATION failed: " ^ Connection.error_to_string err)
+        )
+    )
+
+let test_process_data_clears_pending_input_after_parse_error = fun _ctx ->
+  let conn = Connection.create ~role:Connection.Server () in
+  let invalid_ping = "\x00\x00\x07\x06\x00\x00\x00\x00\x00" ^ "1234567" in
+  let valid_settings = serialize_frame (Frame.settings [ Frame.HeaderTableSize 1_024; ]) in
+  let first = String.sub invalid_ping ~offset:0 ~len:4 in
+  let rest = String.sub invalid_ping ~offset:4 ~len:(String.length invalid_ping - 4) in
+  match Connection.process_data conn (Std.IO.Bytes.from_string first) with
+  | Error err ->
+      Result.Error ("partial invalid frame failed early: " ^ Connection.error_to_string err)
+  | Ok events when List.length events != 0 ->
+      Result.Error "partial invalid frame should not emit events"
+  | Ok _ -> (
+      match Connection.process_data conn (Std.IO.Bytes.from_string rest) with
+      | Error (
+        Connection.ParserError (
+          Parser.InvalidPayloadLength { frame_type = Frame.Ping; expected = Parser.Exactly 8; actual = 7 }
+        )
+      ) -> (
+          match Connection.process_data conn (Std.IO.Bytes.from_string valid_settings) with
+          | Ok [ Connection.SettingsReceived [ Frame.HeaderTableSize size ] ] when Int.equal
+            size
+            1_024 -> Result.Ok ()
+          | Ok _ -> Result.Error "valid frame after parse error emitted unexpected events"
+          | Error err ->
+              Result.Error ("pending input was not cleared after parse error: "
+              ^ Connection.error_to_string err)
+        )
+      | Error err -> Result.Error ("wrong parse error: " ^ Connection.error_to_string err)
+      | Ok _ -> Result.Error "invalid frame was accepted"
+    )
+
 let test_reader_parser_parses_full_data_frame = fun _ctx ->
   let frame = Frame.data ~stream_id:1 "hello" in
   let bytes = serialize_frame frame in
@@ -983,6 +1065,15 @@ let tests =
     case "server_preface_settings_payload_length" test_server_preface_settings_payload_length;
     case "process_data_buffers_split_frame_header" test_process_data_buffers_split_frame_header;
     case "process_data_buffers_split_frame_payload" test_process_data_buffers_split_frame_payload;
+    case
+      "process_data_buffers_frame_one_byte_at_a_time"
+      test_process_data_buffers_frame_one_byte_at_a_time;
+    case
+      "process_data_buffers_split_continuation_payload"
+      test_process_data_buffers_split_continuation_payload;
+    case
+      "process_data_clears_pending_input_after_parse_error"
+      test_process_data_clears_pending_input_after_parse_error;
     case "reader_parser_parses_full_data_frame" test_reader_parser_parses_full_data_frame;
     case
       "reader_parser_uses_canonical_payload_errors"
