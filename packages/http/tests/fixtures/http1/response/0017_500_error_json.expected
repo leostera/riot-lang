@@ -4,7 +4,7 @@
   "reason": "Internal Server Error",
   "headers": {
     "Content-Type": "application/json",
-    "Content-Length": "89",
+    "Content-Length": "90",
     "X-Request-ID": "err-789"
   },
   "body": "{\"error\":\"Internal Server Error\",\"message\":\"Database connection failed\",\"code\":\"DB_ERROR\"}"

@@ -439,12 +439,18 @@ let test_response_200_ok = fun _ctx ->
         |> NetStatus.to_int
       in
       let version = NetResponse.version parsed in
+      let body =
+        NetResponse.body parsed
+        |> Option.map ~fn:NetBody.to_string
+      in
       if status != 200 then
         Result.Error ("Expected status 200, got " ^ Int.to_string status)
       else if version != NetVersion.Http11 then
         Result.Error "Expected version HTTP/1.1"
-      else if remaining != "Hello" then
-        Result.Error ("Expected body Hello in remaining, got " ^ remaining)
+      else if body != Some "Hello" then
+        Result.Error "Expected response body on parsed response"
+      else if remaining != "" then
+        Result.Error ("Expected empty remaining, got " ^ remaining)
       else
         Result.Ok ()
   | Need_more -> Result.Error "Unexpected Need_more"
@@ -464,6 +470,81 @@ let test_response_404 = fun _ctx ->
         Result.Ok ()
   | Need_more -> Result.Error "Unexpected Need_more"
   | Error e -> Result.Error ("Parse error: " ^ error_to_string e)
+
+let test_response_incomplete_fixed_body = fun _ctx ->
+  let resp = "HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\nHi" in
+  match Http1.Response.parse resp with
+  | Need_more -> Result.Ok ()
+  | Error error -> Result.Error ("Expected Need_more, got error " ^ error_to_string error)
+  | Done _ -> Result.Error "Expected Need_more for incomplete fixed body"
+
+let test_response_preserves_pipelined_bytes_after_fixed_body = fun _ctx ->
+  let resp = "HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\nHelloHTTP/1.1 204 No Content\r\n\r\n" in
+  match Http1.Response.parse resp with
+  | Done { value = parsed; remaining } ->
+      let body =
+        NetResponse.body parsed
+        |> Option.map ~fn:NetBody.to_string
+      in
+      if body != Some "Hello" then
+        Result.Error "Expected body Hello on parsed response"
+      else if remaining != "HTTP/1.1 204 No Content\r\n\r\n" then
+        Result.Error ("Expected pipelined response in remaining, got " ^ remaining)
+      else
+        Result.Ok ()
+  | Need_more -> Result.Error "Unexpected Need_more"
+  | Error error -> Result.Error ("Parse error: " ^ error_to_string error)
+
+let test_response_no_body_status_preserves_following_bytes = fun _ctx ->
+  let resp =
+    "HTTP/1.1 204 No Content\r\nContent-Length: 5\r\n\r\nHTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n"
+  in
+  match Http1.Response.parse resp with
+  | Done { value = parsed; remaining } ->
+      let body = NetResponse.body parsed in
+      if body != None then
+        Result.Error "Expected 204 response to have no body"
+      else if remaining != "HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n" then
+        Result.Error ("Expected following response in remaining, got " ^ remaining)
+      else
+        Result.Ok ()
+  | Need_more -> Result.Error "Unexpected Need_more"
+  | Error error -> Result.Error ("Parse error: " ^ error_to_string error)
+
+let test_response_without_content_length_uses_close_delimited_body = fun _ctx ->
+  let resp = "HTTP/1.1 200 OK\r\nConnection: close\r\n\r\nHello" in
+  match Http1.Response.parse resp with
+  | Done { value = parsed; remaining } ->
+      let body =
+        NetResponse.body parsed
+        |> Option.map ~fn:NetBody.to_string
+      in
+      if body != Some "Hello" then
+        Result.Error "Expected close-delimited response body"
+      else if remaining != "" then
+        Result.Error ("Expected empty remaining, got " ^ remaining)
+      else
+        Result.Ok ()
+  | Need_more -> Result.Error "Unexpected Need_more"
+  | Error error -> Result.Error ("Parse error: " ^ error_to_string error)
+
+let test_response_rejects_conflicting_content_length = fun _ctx ->
+  let resp = "HTTP/1.1 200 OK\r\nContent-Length: 5\r\nContent-Length: 7\r\n\r\nHello" in
+  match Http1.Response.parse resp with
+  | Error ConflictingContentLength -> Result.Ok ()
+  | Error error ->
+      Result.Error ("Expected conflicting Content-Length error, got " ^ error_to_string error)
+  | Need_more -> Result.Error "Expected conflicting Content-Length error, got Need_more"
+  | Done _ -> Result.Error "Expected conflicting Content-Length error"
+
+let test_response_rejects_invalid_content_length = fun _ctx ->
+  let resp = "HTTP/1.1 200 OK\r\nContent-Length: nope\r\n\r\nHello" in
+  match Http1.Response.parse resp with
+  | Error InvalidContentLength -> Result.Ok ()
+  | Error error ->
+      Result.Error ("Expected invalid Content-Length error, got " ^ error_to_string error)
+  | Need_more -> Result.Error "Expected invalid Content-Length error, got Need_more"
+  | Done _ -> Result.Error "Expected invalid Content-Length error"
 
 let test_response_rejects_invalid_http_version = fun _ctx ->
   let resp = "HTTP/9.9 200 OK\r\nContent-Length: 0\r\n\r\n" in
@@ -590,6 +671,20 @@ let tests =
     case "request_rejects_too_many_headers" test_request_rejects_too_many_headers;
     case "response_200_ok" test_response_200_ok;
     case "response_404" test_response_404;
+    case "response incomplete fixed body" test_response_incomplete_fixed_body;
+    case
+      "response preserves pipelined bytes after fixed body"
+      test_response_preserves_pipelined_bytes_after_fixed_body;
+    case
+      "response no-body status preserves following bytes"
+      test_response_no_body_status_preserves_following_bytes;
+    case
+      "response without content length uses close-delimited body"
+      test_response_without_content_length_uses_close_delimited_body;
+    case
+      "response rejects conflicting content length"
+      test_response_rejects_conflicting_content_length;
+    case "response rejects invalid content length" test_response_rejects_invalid_content_length;
     case "response rejects invalid http version" test_response_rejects_invalid_http_version;
     case "chunk_single" test_chunk_single;
     case "chunk_last" test_chunk_last;

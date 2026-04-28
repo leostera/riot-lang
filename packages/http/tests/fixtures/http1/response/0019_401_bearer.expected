@@ -5,7 +5,7 @@
   "headers": {
     "WWW-Authenticate": "Bearer realm=\"api\", charset=\"UTF-8\"",
     "Content-Type": "application/json",
-    "Content-Length": "39"
+    "Content-Length": "37"
   },
   "body": "{\"error\":\"Unauthorized\",\"code\":\"401\"}"
 }
