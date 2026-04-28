@@ -57,7 +57,7 @@ let create = fun ?(max_dynamic_table_size = 4_096) () -> {
 }
 
 let update_max_table_size = fun decoder size ->
-  Hpack.update_max_table_size
+  Hpack.update_decoder_max_table_size
     decoder.hpack_decoder
     size
 

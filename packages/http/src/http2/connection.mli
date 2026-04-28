@@ -106,6 +106,7 @@ type error =
   | FlowControlWindowExceeded of { scope: window_scope; data_size: int; window_size: int }
   | HpackEncodeFailed of Hpack.encode_error
   | HpackDecodeFailed of Hpack.decode_error
+  | HpackTableSizeUpdateFailed of Hpack.table_size_error
   | InvalidPayloadForFrame of payload_error
   | ParserError of Parser.error
   | FrameConstructorError of Frame.constructor_error

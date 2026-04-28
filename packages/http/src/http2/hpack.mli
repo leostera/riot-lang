@@ -16,6 +16,10 @@ open Std
 
 (** A header field is a name-value pair *)
 type header = { name: string; value: string }
+type table_size_error =
+  | InvalidTableSize of { size: int }
+val table_size_error_to_string: table_size_error -> string
+
 type decode_error =
   | IncompleteIntegerEncoding
   | IncompleteStringEncoding
@@ -23,6 +27,7 @@ type decode_error =
   | UnsupportedHuffmanStringEncoding
   | InvalidHeaderIndex of int
   | InvalidNameIndex of int
+  | DynamicTableSizeUpdateFailed of table_size_error
 val decode_error_to_string: decode_error -> string
 
 type encode_error =
@@ -83,7 +88,7 @@ val encode_header:
    Update the dynamic table size limit.
    This is used when receiving SETTINGS_HEADER_TABLE_SIZE from the peer.
 *)
-val update_max_table_size: encoder -> int -> unit
+val update_encoder_max_table_size: encoder -> int -> (unit, table_size_error) Result.t
 
 (** {1 Decoder} *)
 
@@ -106,7 +111,9 @@ val decode: decoder -> bytes -> (header list, decode_error) Result.t
    Update the dynamic table size limit.
    This is used when receiving SETTINGS_HEADER_TABLE_SIZE from the peer.
 *)
-val update_max_table_size: decoder -> int -> unit
+val update_decoder_max_table_size: decoder -> int -> (unit, table_size_error) Result.t
+
+val update_max_table_size: decoder -> int -> (unit, table_size_error) Result.t
 
 (** {1 Static Table} *)
 

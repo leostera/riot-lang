@@ -13,6 +13,9 @@ module Cell = Sync.Cell
 (** HPACK: Header Compression for HTTP/2 (RFC 7541) *)
 type header = { name: string; value: string }
 
+type table_size_error =
+  | InvalidTableSize of { size: int }
+
 type decode_error =
   | IncompleteIntegerEncoding
   | IncompleteStringEncoding
@@ -20,9 +23,13 @@ type decode_error =
   | UnsupportedHuffmanStringEncoding
   | InvalidHeaderIndex of int
   | InvalidNameIndex of int
+  | DynamicTableSizeUpdateFailed of table_size_error
 
 type encode_error =
   | HeaderNotIndexed of header
+
+let table_size_error_to_string = function
+  | InvalidTableSize { size } -> "Invalid HPACK dynamic table size: " ^ Int.to_string size
 
 let decode_error_to_string = function
   | IncompleteIntegerEncoding -> "Incomplete HPACK integer encoding"
@@ -35,6 +42,7 @@ let decode_error_to_string = function
   | UnsupportedHuffmanStringEncoding -> "Unsupported HPACK Huffman string encoding"
   | InvalidHeaderIndex index -> "Invalid HPACK header index: " ^ Int.to_string index
   | InvalidNameIndex index -> "Invalid HPACK name index: " ^ Int.to_string index
+  | DynamicTableSizeUpdateFailed error -> table_size_error_to_string error
 
 let encode_error_to_string = function
   | HeaderNotIndexed header ->
@@ -364,10 +372,13 @@ let create_encoder = fun ?(max_dynamic_table_size = 4_096) () -> {
   sensitive_headers = Cell.create [ "authorization"; "cookie"; "set-cookie" ];
 }
 
-let update_max_table_size = fun encoder new_size ->
-  DynamicTable.update_max_size
-    encoder.dynamic_table
-    new_size
+let update_encoder_max_table_size = fun encoder new_size ->
+  if new_size < 0 then
+    Error (InvalidTableSize { size = new_size })
+  else (
+    DynamicTable.update_max_size encoder.dynamic_table new_size;
+    Ok ()
+  )
 
 let is_sensitive_header = fun name ->
   List.contains
@@ -519,10 +530,15 @@ let create_decoder = fun ?(max_dynamic_table_size = 4_096) () -> {
   dynamic_table = DynamicTable.create max_dynamic_table_size;
 }
 
-let update_max_table_size = fun decoder new_size ->
-  DynamicTable.update_max_size
-    decoder.dynamic_table
-    new_size
+let update_decoder_max_table_size = fun decoder new_size ->
+  if new_size < 0 then
+    Error (InvalidTableSize { size = new_size })
+  else (
+    DynamicTable.update_max_size decoder.dynamic_table new_size;
+    Ok ()
+  )
+
+let update_max_table_size = update_decoder_max_table_size
 
 let lookup_header = fun decoder index ->
   if index <= static_table_size then
@@ -569,8 +585,9 @@ let decode_header_block = fun decoder data offset ->
       match Integer.decode 5 first_byte data (offset + 1) with
       | Error e -> Error e
       | Ok (new_size, new_offset) ->
-          DynamicTable.update_max_size decoder.dynamic_table new_size;
-          Ok ([], new_offset)
+          update_decoder_max_table_size decoder new_size
+          |> Result.map_err ~fn:(fun error -> DynamicTableSizeUpdateFailed error)
+          |> Result.map ~fn:(fun () -> ([], new_offset))
     else if first_code land 0x10 != 0 then
       match Integer.decode 4 first_byte data (offset + 1) with
       | Error e -> Error e

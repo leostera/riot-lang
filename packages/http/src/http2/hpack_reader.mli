@@ -67,7 +67,7 @@ type decode_result =
 val decode: decoder -> IO.Reader.t -> decode_result
 
 (** Update maximum dynamic table size (from SETTINGS frame) *)
-val update_max_table_size: decoder -> int -> unit
+val update_max_table_size: decoder -> int -> (unit, Hpack.table_size_error) Result.t
 
 (** Reset decoder state for new connection *)
 val reset: decoder -> unit

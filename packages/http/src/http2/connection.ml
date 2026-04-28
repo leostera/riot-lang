@@ -109,6 +109,7 @@ type error =
   | FlowControlWindowExceeded of { scope: window_scope; data_size: int; window_size: int }
   | HpackEncodeFailed of Hpack.encode_error
   | HpackDecodeFailed of Hpack.decode_error
+  | HpackTableSizeUpdateFailed of Hpack.table_size_error
   | InvalidPayloadForFrame of payload_error
   | ParserError of Parser.error
   | FrameConstructorError of Frame.constructor_error
@@ -130,6 +131,8 @@ let error_to_string = function
       ^ Int.to_string window_size
   | HpackEncodeFailed error -> "HPACK encode failed: " ^ Hpack.encode_error_to_string error
   | HpackDecodeFailed error -> "HPACK decode failed: " ^ Hpack.decode_error_to_string error
+  | HpackTableSizeUpdateFailed error ->
+      "HPACK table size update failed: " ^ Hpack.table_size_error_to_string error
   | InvalidPayloadForFrame { frame_type; _ } ->
       "Invalid payload for HTTP/2 " ^ Parser.frame_type_name frame_type ^ " frame"
   | ParserError error -> Parser.error_to_string error
@@ -463,24 +466,37 @@ let close = fun conn ->
 let process_settings_frame = fun conn settings_list flags ->
   if flags.Frame.ack then
     Ok [ SettingsAckReceived ]
-  else (
-    List.for_each
-      settings_list
-      ~fn:(
-        function
-        | Frame.HeaderTableSize size ->
-            Cell.set conn.remote_settings.header_table_size size;
-            Hpack.update_max_table_size conn.hpack_decoder size
-        | Frame.EnablePush enabled -> Cell.set conn.remote_settings.enable_push enabled
-        | Frame.MaxConcurrentStreams max ->
-            Cell.set conn.remote_settings.max_concurrent_streams (Some max)
-        | Frame.InitialWindowSize size -> Cell.set conn.remote_settings.initial_window_size size
-        | Frame.MaxFrameSize size -> Cell.set conn.remote_settings.max_frame_size size
-        | Frame.MaxHeaderListSize size ->
-            Cell.set conn.remote_settings.max_header_list_size (Some size)
-      );
-    Ok [ SettingsReceived settings_list ]
-  )
+  else
+    let rec apply_settings = function
+      | [] ->
+          Ok [ SettingsReceived settings_list ]
+      | setting :: rest -> (
+          match setting with
+          | Frame.HeaderTableSize size -> (
+              match Hpack.update_encoder_max_table_size conn.hpack_encoder size with
+              | Error error -> Error (HpackTableSizeUpdateFailed error)
+              | Ok () ->
+                  Cell.set conn.remote_settings.header_table_size size;
+                  apply_settings rest
+            )
+          | Frame.EnablePush enabled ->
+              Cell.set conn.remote_settings.enable_push enabled;
+              apply_settings rest
+          | Frame.MaxConcurrentStreams max ->
+              Cell.set conn.remote_settings.max_concurrent_streams (Some max);
+              apply_settings rest
+          | Frame.InitialWindowSize size ->
+              Cell.set conn.remote_settings.initial_window_size size;
+              apply_settings rest
+          | Frame.MaxFrameSize size ->
+              Cell.set conn.remote_settings.max_frame_size size;
+              apply_settings rest
+          | Frame.MaxHeaderListSize size ->
+              Cell.set conn.remote_settings.max_header_list_size (Some size);
+              apply_settings rest
+        )
+    in
+    apply_settings settings_list
 
 let process_headers_frame = fun conn stream_id payload flags ->
   match payload with

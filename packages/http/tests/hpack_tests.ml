@@ -117,6 +117,28 @@ let test_indexed_missing_header_returns_typed_error = fun _ctx ->
   | Error err -> Result.Error ("Wrong encode error: " ^ Hpack.encode_error_to_string err)
   | Ok _ -> Result.Error "Missing indexed header encoded as a literal"
 
+let test_encoder_table_size_rejects_negative_update = fun _ctx ->
+  let encoder = Hpack.create_encoder () in
+  match Hpack.update_encoder_max_table_size encoder (-1) with
+  | Error (Hpack.InvalidTableSize { size }) when Int.equal size (-1) -> Result.Ok ()
+  | Error err -> Result.Error ("Wrong table size error: " ^ Hpack.table_size_error_to_string err)
+  | Ok () -> Result.Error "Negative encoder table size update was accepted"
+
+let test_decoder_table_size_rejects_negative_update = fun _ctx ->
+  let decoder = Hpack.create_decoder () in
+  match Hpack.update_decoder_max_table_size decoder (-1) with
+  | Error (Hpack.InvalidTableSize { size }) when Int.equal size (-1) -> Result.Ok ()
+  | Error err -> Result.Error ("Wrong table size error: " ^ Hpack.table_size_error_to_string err)
+  | Ok () -> Result.Error "Negative decoder table size update was accepted"
+
+let test_header_block_table_size_update = fun _ctx ->
+  let decoder = Hpack.create_decoder () in
+  let encoded = IO.Bytes.from_string "\x3f\xe1\x1f" in
+  match Hpack.decode decoder encoded with
+  | Ok [] -> Result.Ok ()
+  | Ok _ -> Result.Error "Dynamic table size update produced headers"
+  | Error err -> Result.Error ("Decode failed: " ^ Hpack.decode_error_to_string err)
+
 let tests = [
   Test.case "encoder_decoder_roundtrip" test_encoder_decoder_roundtrip;
   Test.case "static_table_lookup" test_static_table_lookup;
@@ -131,6 +153,13 @@ let tests = [
   Test.case
     "indexed_missing_header_returns_typed_error"
     test_indexed_missing_header_returns_typed_error;
+  Test.case
+    "encoder_table_size_rejects_negative_update"
+    test_encoder_table_size_rejects_negative_update;
+  Test.case
+    "decoder_table_size_rejects_negative_update"
+    test_decoder_table_size_rejects_negative_update;
+  Test.case "header_block_table_size_update" test_header_block_table_size_update;
 ]
 
 let main ~args:_ = Test.Cli.main ~name:"http:hpack" ~tests ~args:Env.args ()
