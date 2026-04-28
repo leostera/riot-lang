@@ -11,10 +11,88 @@ type event = {
   retry: int option;
 }
 
+type partial_event = {
+  data_lines: string list;
+  event_type: string option;
+  id: string option;
+  retry: int option;
+}
+
+type field = { name: string; value: string }
+
+let empty_partial = {
+  data_lines = [];
+  event_type = None;
+  id = None;
+  retry = None;
+}
+
 let slice_of_string = fun value ->
   match Slice.from_string value with
   | Ok slice -> slice
   | Error error -> panic ("Http1.Sse.slice_of_string: " ^ Slice.error_message error)
+
+let trim_trailing_cr = fun line ->
+  let len = String.length line in
+  if len = 0 then
+    line
+  else if String.get_unchecked line ~at:(len - 1) = '\r' then
+    String.sub line ~offset:0 ~len:(len - 1)
+  else
+    line
+
+let split_field = fun line ->
+  let line = trim_trailing_cr line in
+  if String.length line = 0 then
+    None
+  else if String.get_unchecked line ~at:0 = ':' then
+    None
+  else
+    match String.index_of line ~char:':' with
+    | None -> Some { name = line; value = "" }
+    | Some colon_index ->
+        let name = String.sub line ~offset:0 ~len:colon_index in
+        let value_start =
+          if
+            colon_index + 1 < String.length line
+            && String.get_unchecked line ~at:(colon_index + 1) = ' '
+          then
+            colon_index + 2
+          else
+            colon_index + 1
+        in
+        let value = String.sub line ~offset:value_start ~len:(String.length line - value_start) in
+        Some { name; value }
+
+let partial_has_fields = fun partial ->
+  partial.data_lines != []
+  || Option.is_some partial.event_type
+  || Option.is_some partial.id
+  || Option.is_some partial.retry
+
+let finalize_partial = fun partial ->
+  if partial_has_fields partial then
+    Some {
+      data = String.concat "\n" partial.data_lines;
+      event_type = partial.event_type;
+      id = partial.id;
+      retry = partial.retry;
+    }
+  else
+    None
+
+let apply_field = fun partial field ->
+  match field.name with
+  | "data" -> { partial with data_lines = partial.data_lines @ [ field.value ] }
+  | "event" -> { partial with event_type = Some field.value }
+  | "id" -> { partial with id = Some field.value }
+  | "retry" -> (
+      match Int.parse field.value with
+      | Some retry when retry >= 0 -> { partial with retry = Some retry }
+      | Some _
+      | None -> partial
+    )
+  | _ -> partial
 
 let parse_line_slice = fun line ->
   let line_cursor = Cursor.from_slice line in
@@ -74,3 +152,27 @@ let parse_line_slice = fun line ->
       )
 
 let parse_line = fun line -> parse_line_slice (slice_of_string line)
+
+let parse = fun input ->
+  let lines = String.split ~by:"\n" input in
+  let rec loop events partial = function
+    | [] -> (
+        match finalize_partial partial with
+        | Some event -> List.reverse (event :: events)
+        | None -> List.reverse events
+      )
+    | line :: rest ->
+        let line = trim_trailing_cr line in
+        if String.length line = 0 then
+          match finalize_partial partial with
+          | Some event -> loop (event :: events) empty_partial rest
+          | None -> loop events empty_partial rest
+        else
+          match split_field line with
+          | None -> loop events partial rest
+          | Some field -> loop
+            events
+            (apply_field partial field)
+            rest
+  in
+  loop [] empty_partial lines

@@ -985,6 +985,38 @@ let test_sse_comment = fun _ctx ->
   | None -> Result.Ok ()
   | Some _ -> Result.Error "Should have ignored comment"
 
+let test_sse_parse_multiline_event = fun _ctx ->
+  let input = "event: message\r\ndata: hello\r\ndata: world\r\nid: 42\r\nretry: 1000\r\n\r\n" in
+  match Http1.Sse.parse input with
+  | [ {
+    data = "hello\nworld";
+    event_type = Some "message";
+    id = Some "42";
+    retry = Some 1_000
+  } ] -> Result.Ok ()
+  | _ -> Result.Error "SSE parser did not accumulate a multiline event"
+
+let test_sse_parse_ignores_comments_and_invalid_retry = fun _ctx ->
+  let input = ": ignored\r\nretry: nope\r\ndata: ok\r\n\r\n" in
+  match Http1.Sse.parse input with
+  | [ {
+    data = "ok";
+    event_type = None;
+    id = None;
+    retry = None
+  } ] -> Result.Ok ()
+  | _ -> Result.Error "SSE parser did not ignore comments or invalid retry"
+
+let test_sse_parse_dispatches_trailing_event = fun _ctx ->
+  match Http1.Sse.parse "data: final" with
+  | [ {
+    data = "final";
+    event_type = None;
+    id = None;
+    retry = None
+  } ] -> Result.Ok ()
+  | _ -> Result.Error "SSE parser did not dispatch the trailing event"
+
 let tests =
   Test.[
     case "request_simple_get" test_request_simple_get;
@@ -1099,6 +1131,11 @@ let tests =
     case "sse_event_type" test_sse_event_type;
     case "sse_empty_line" test_sse_empty_line;
     case "sse_comment" test_sse_comment;
+    case "sse parse multiline event" test_sse_parse_multiline_event;
+    case
+      "sse parse ignores comments and invalid retry"
+      test_sse_parse_ignores_comments_and_invalid_retry;
+    case "sse parse dispatches trailing event" test_sse_parse_dispatches_trailing_event;
   ]
 
 let main ~args:_ = Test.Cli.main ~name:"http:http1_parser" ~tests ~args:Env.args ()

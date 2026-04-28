@@ -8,6 +8,10 @@ type event = {
   id: string option;
   retry: int option;
 }
+
+(** Parse a complete SSE event stream into dispatched events. *)
+val parse: string -> event list
+
 val parse_line_slice: IO.IoVec.IoSlice.t -> event option
 
 val parse_line: string -> event option
