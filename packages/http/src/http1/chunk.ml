@@ -175,12 +175,12 @@ let rec parse_trailers = fun
   ?(acc = [])
   ?(count = 0)
   cursor ->
-  if count >= max_count then
-    Cursor_error (Common.TooManyHeaders { max_count })
-  else
-    match take_trailer_block_terminator cursor with
-    | Some cursor -> Cursor_done { value = List.reverse acc; remaining = cursor }
-    | None ->
+  match take_trailer_block_terminator cursor with
+  | Some cursor -> Cursor_done { value = List.reverse acc; remaining = cursor }
+  | None ->
+      if count >= max_count then
+        Cursor_error (Common.TooManyHeaders { max_count })
+      else
         match parse_trailer_line cursor with
         | Cursor_need_more ->
             if Slice.length (Cursor.remaining cursor) > max_length then

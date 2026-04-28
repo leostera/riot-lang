@@ -1101,6 +1101,50 @@ let test_chunk_decode_incomplete_trailer_needs_more = fun _ctx ->
   | Error error -> Result.Error ("Expected Need_more, got " ^ error_to_string error)
   | Done _ -> Result.Error "Expected Need_more for incomplete trailers"
 
+let test_chunk_decode_allows_empty_trailers_at_zero_limit = fun _ctx ->
+  match Http1.Chunk.decode ~max_trailers:0 "0\r\n\r\nnext" with
+  | Done { value = decoded; _ } ->
+      if decoded.body != "" then
+        Result.Error "Expected empty decoded body"
+      else if decoded.trailers != [] then
+        Result.Error "Expected no trailers"
+      else if decoded.remaining != "next" then
+        Result.Error ("Expected remaining next, got " ^ decoded.remaining)
+      else
+        Result.Ok ()
+  | Need_more -> Result.Error "Unexpected Need_more"
+  | Error error -> Result.Error ("Parse error: " ^ error_to_string error)
+
+let test_chunk_decode_rejects_too_many_trailers = fun _ctx ->
+  match Http1.Chunk.decode ~max_trailers:1 "0\r\nETag: abc\r\nX-Trace: 42\r\n\r\n" with
+  | Error (TooManyHeaders { max_count = 1 }) -> Result.Ok ()
+  | Error error -> Result.Error ("Expected too many trailers error, got " ^ error_to_string error)
+  | Need_more -> Result.Error "Expected too many trailers error, got Need_more"
+  | Done _ -> Result.Error "Expected too many trailers error"
+
+let test_chunk_decode_trailer_length_limit_applies_before_crlf = fun _ctx ->
+  match Http1.Chunk.decode ~max_trailer_length:4 "0\r\nX-Long" with
+  | Error (HeaderTooLong { max_length = 4 }) -> Result.Ok ()
+  | Error error -> Result.Error ("Expected trailer too long error, got " ^ error_to_string error)
+  | Need_more -> Result.Error "Expected trailer too long error, got Need_more"
+  | Done _ -> Result.Error "Expected trailer too long error"
+
+let test_chunk_decode_rejects_invalid_trailer_value = fun _ctx ->
+  match Http1.Chunk.decode "0\r\nX-Test: \001\r\n\r\n" with
+  | Error (InvalidHeaderFormat (InvalidValueCharacter { code = 1; index = 0 })) -> Result.Ok ()
+  | Error error ->
+      Result.Error ("Expected invalid trailer value error, got " ^ error_to_string error)
+  | Need_more -> Result.Error "Expected invalid trailer value error, got Need_more"
+  | Done _ -> Result.Error "Expected invalid trailer value error"
+
+let test_chunk_decode_rejects_obsolete_trailer_folding = fun _ctx ->
+  match Http1.Chunk.decode "0\r\n Folded: nope\r\n\r\n" with
+  | Error (InvalidHeaderFormat ObsoleteLineFolding) -> Result.Ok ()
+  | Error error ->
+      Result.Error ("Expected obsolete trailer folding error, got " ^ error_to_string error)
+  | Need_more -> Result.Error "Expected obsolete trailer folding error, got Need_more"
+  | Done _ -> Result.Error "Expected obsolete trailer folding error"
+
 (* SSE Tests *)
 
 let test_sse_data_line = fun _ctx ->
@@ -1301,6 +1345,19 @@ let tests =
     case
       "chunk decode incomplete trailer needs more"
       test_chunk_decode_incomplete_trailer_needs_more;
+    case
+      "chunk decode allows empty trailers at zero limit"
+      test_chunk_decode_allows_empty_trailers_at_zero_limit;
+    case "chunk decode rejects too many trailers" test_chunk_decode_rejects_too_many_trailers;
+    case
+      "chunk decode trailer length limit applies before crlf"
+      test_chunk_decode_trailer_length_limit_applies_before_crlf;
+    case
+      "chunk decode rejects invalid trailer value"
+      test_chunk_decode_rejects_invalid_trailer_value;
+    case
+      "chunk decode rejects obsolete trailer folding"
+      test_chunk_decode_rejects_obsolete_trailer_folding;
     case "sse_data_line" test_sse_data_line;
     case "sse_event_type" test_sse_event_type;
     case "sse_empty_line" test_sse_empty_line;
