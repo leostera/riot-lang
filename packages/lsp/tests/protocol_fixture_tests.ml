@@ -6,8 +6,8 @@ let fixture_root = Path.v "packages/lsp/tests/protocol_fixtures"
 
 let keep_json = fun path ->
   match Path.extension path with
-  | Some ".json" -> Test.FixtureRunner.Keep
-  | _ -> Test.FixtureRunner.Skip
+  | Some ".json" -> `keep
+  | _ -> `skip
 
 let decode_fixture_json = fun path ->
   let* source =

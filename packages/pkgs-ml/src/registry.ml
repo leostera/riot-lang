@@ -93,7 +93,8 @@ let io_error_message = fun error ->
   | IO.Closed -> "connection closed"
   | _ -> IO.error_message error
 
-let blink_error_message = function
+let blink_error_message = fun err ->
+  match err with
   | Blink.Error.NetError Net.Connection_refused -> "connection refused"
   | Blink.Error.NetError Net.Closed -> "connection closed"
   | Blink.Error.NetError (Net.System_error io_err) -> IO.error_message io_err
@@ -106,7 +107,9 @@ let blink_error_message = function
       "tls write failed: " ^ io_error_message tcp_err
   | Blink.Error.TlsError Net.TlsStream.Tls_not_available -> "tls not available"
   | Blink.Error.TlsError Net.TlsStream.Unsupported_vectored_operation -> "unsupported vectored tls operation"
-  | Blink.Error.ParseError msg -> "parse error: " ^ msg
+  | Blink.Error.ParseError _
+  | Blink.Error.WebSocketParseError _
+  | Blink.Error.WebSocketSerializeError _ -> Blink.Error.to_string err
   | Blink.Error.ProtocolError msg -> "protocol error: " ^ msg
   | Blink.Error.HandshakeFailed msg -> "handshake failed: " ^ msg
   | Blink.Error.InvalidFrame -> "invalid frame"

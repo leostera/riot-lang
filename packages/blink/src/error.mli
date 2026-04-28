@@ -4,7 +4,9 @@ open Std
 type t =
   | NetError of Net.error
   | TlsError of Net.TlsStream.error
-  | ParseError of string
+  | ParseError of Http.Http1.Common.error
+  | WebSocketParseError of Http.Ws.Parser.error
+  | WebSocketSerializeError of Http.Ws.Serializer.error
   | ProtocolError of string
   | HandshakeFailed of string
   | InvalidFrame
@@ -19,3 +21,6 @@ val of_io_error: IO.error -> t
 
 (** Lift a TLS stream error into a Blink error. *)
 val of_tls_error: Net.TlsStream.error -> t
+
+(** Render a Blink transport/protocol error for diagnostics. *)
+val to_string: t -> string

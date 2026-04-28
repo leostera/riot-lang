@@ -59,16 +59,7 @@ end
 
 module Http1 = struct
   type parse_error = Web_server.Http1.parse_error =
-    | RequestLineTooLong
-    | MissingMethod
-    | MissingPath
-    | InvalidHttpVersion
-    | InvalidLineEnding
-    | InvalidHeaderFormatMissingColon
-    | InvalidHeaderFormat
-    | TooManyHeaders
-    | HeaderTooLong
-    | UnknownUpstreamParseError of string
+    | UpstreamParseError of Http.Http1.Common.error
 
   type header_name_error = Web_server.Http1.header_name_error =
     | EmptyHeaderName
@@ -121,7 +112,7 @@ module Http1 = struct
 
   let serialize_response = Web_server.Http1.serialize_response
 
-  let parse_error_of_upstream_message = Web_server.Http1.parse_error_of_upstream_message
+  let parse_error_of_upstream_error = Web_server.Http1.parse_error_of_upstream_error
 
   let compute_websocket_accept = Web_server.Http1.compute_websocket_accept
 

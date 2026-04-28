@@ -31,7 +31,6 @@ open Std
 type state
 type protocol_error =
   | UpgradeNotSupported
-  | HpackDecodeFailed
   | UnknownDataStream of int
   | InvalidPreface
 type io_operation =
@@ -42,6 +41,10 @@ type io_operation =
   | SendPing
 type error =
   | ParseError of Http.Http2.Parser_reader.parse_error
+  | SerializerError of Http.Http2.Serializer.error
+  | FrameConstructorError of Http.Http2.Frame.constructor_error
+  | HpackEncodeError of Http.Http2.Hpack.encode_error
+  | HpackDecodeError of Http.Http2.Hpack.decode_error
   | ProtocolError of protocol_error
   | IoError of {
       operation: io_operation;

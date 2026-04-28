@@ -35,16 +35,7 @@ type io_error =
   | ConnectionFailed of Socket_pool.Connection.error
 
 type parse_error =
-  | RequestLineTooLong
-  | MissingMethod
-  | MissingPath
-  | InvalidHttpVersion
-  | InvalidLineEnding
-  | InvalidHeaderFormatMissingColon
-  | InvalidHeaderFormat
-  | TooManyHeaders
-  | HeaderTooLong
-  | UnknownUpstreamParseError of string
+  | UpstreamParseError of Http.Http1.Common.error
 
 type error =
   | ParseError of parse_error
@@ -69,6 +60,12 @@ type websocket_upgrade_error =
 type websocket_frame_limit_error =
   | WebSocketFrameTooLarge of { size: int; limit: int }
   | WebSocketMessageTooLarge of { size: int; limit: int }
+
+type websocket_bridge_error =
+  | WebSocketChannelError of Channel.Handler.reported_error
+  | WebSocketParseFailed of Http.Ws.Parser.error
+  | WebSocketSerializeFailed of Http.Ws.Serializer.error
+  | WebSocketFrameLimitFailed of websocket_frame_limit_error
 
 type content_length_error =
   | InvalidInteger
@@ -114,29 +111,10 @@ let serialization_error_to_string = function
       ^ header_value_error_to_string reason
       ^ ")"
 
-let parse_error_of_upstream_message = function
-  | "Request line too long" -> RequestLineTooLong
-  | "Missing method" -> MissingMethod
-  | "Missing path" -> MissingPath
-  | "Invalid HTTP version" -> InvalidHttpVersion
-  | "Invalid line ending" -> InvalidLineEnding
-  | "Invalid header format (missing colon)" -> InvalidHeaderFormatMissingColon
-  | "Invalid header format" -> InvalidHeaderFormat
-  | "Too many headers" -> TooManyHeaders
-  | "Header too long" -> HeaderTooLong
-  | message -> UnknownUpstreamParseError message
+let parse_error_of_upstream_error = fun error -> UpstreamParseError error
 
 let parse_error_to_string = function
-  | RequestLineTooLong -> "Request line is too long"
-  | MissingMethod -> "Request line is missing an HTTP method"
-  | MissingPath -> "Request line is missing a request target"
-  | InvalidHttpVersion -> "Request line has an invalid HTTP version"
-  | InvalidLineEnding -> "HTTP/1.1 requests must use CRLF line endings"
-  | InvalidHeaderFormatMissingColon -> "Request header is missing a colon"
-  | InvalidHeaderFormat -> "Request header has an invalid format"
-  | TooManyHeaders -> "Request has too many headers"
-  | HeaderTooLong -> "Request header is too long"
-  | UnknownUpstreamParseError message -> message
+  | UpstreamParseError error -> Http.Http1.Common.error_to_string error
 
 let websocket_upgrade_error_to_string = function
   | InvalidWebSocketMethod method_ ->
@@ -171,6 +149,14 @@ let websocket_frame_limit_error_to_string = function
       ^ " bytes, maximum is "
       ^ Int.to_string limit
       ^ " bytes"
+
+let websocket_bridge_error_to_string = function
+  | WebSocketChannelError error -> Channel.Handler.reported_error_to_string error
+  | WebSocketParseFailed error ->
+      "WebSocket frame parse error: " ^ Http.Ws.Parser.error_to_string error
+  | WebSocketSerializeFailed error ->
+      "WebSocket frame serialize error: " ^ Http.Ws.Serializer.error_to_string error
+  | WebSocketFrameLimitFailed error -> websocket_frame_limit_error_to_string error
 
 let request_body_header_error_to_string = function
   | InvalidContentLength { value; reason = InvalidInteger } ->
@@ -369,7 +355,7 @@ let serialize_response = fun (res: Response.t) ->
       in
       let header_lines =
         Net.Http.Header.to_list headers
-        |> List.map ~fn:(fun ((k, v)) -> k ^ ": " ^ v ^ "\r\n")
+        |> List.map ~fn:(fun (k, v) -> k ^ ": " ^ v ^ "\r\n")
         |> String.concat ""
       in
       Ok (status_line ^ header_lines ^ "\r\n" ^ body)
@@ -519,12 +505,35 @@ let validate_websocket_frame_limits = fun ~max_frame_size ~max_message_size fram
 
 (* Bridge Channel.Handler.t to Socket_pool.Handler.t for WebSocket connections *)
 
+let serialize_websocket_frames = fun frames ->
+  let rec loop frames acc =
+    match frames with
+    | [] -> Ok (String.concat "" (List.rev acc))
+    | frame :: rest -> (
+        match Http.Ws.Serializer.serialize frame with
+        | Ok bytes -> loop rest (bytes :: acc)
+        | Error error -> Error error
+      )
+  in
+  loop frames []
+
+let send_websocket_frames = fun conn frames handler ->
+  match serialize_websocket_frames frames with
+  | Error error -> Socket_pool.Handler.Error (handler, WebSocketSerializeFailed error)
+  | Ok frame_data -> (
+      match Socket_pool.Connection.send conn frame_data with
+      | Ok () -> Socket_pool.Handler.Continue handler
+      | Error Socket_pool.Connection.Closed -> Socket_pool.Handler.Close handler
+      | Error (Socket_pool.Connection.FileError _
+      | Socket_pool.Connection.InvalidRange _) -> Socket_pool.Handler.Close handler
+    )
+
 let websocket_to_socket_pool_handler:
   config:Web_config.t ->
   Channel.Handler.t ->
   Socket_pool.Handler.t = fun ~config ws_handler ->
   let handler = {
-    Socket_pool.Handler.to_string_error = Channel.Handler.reported_error_to_string;
+    Socket_pool.Handler.to_string_error = websocket_bridge_error_to_string;
     handle_close = (fun _conn _state -> ());
     handle_connection =
       (fun conn ws_handler ->
@@ -535,65 +544,44 @@ let websocket_to_socket_pool_handler:
             Log.info "WebSocket bridge: Channel handler initialized successfully";
             Socket_pool.Handler.Continue new_handler
         | Channel.Handler.Push (out_frames, new_handler) ->
-            let frame_data =
-              out_frames
-              |> List.map ~fn:Http.Ws.Serializer.serialize
-              |> String.concat ""
-            in
+            let result = send_websocket_frames conn out_frames new_handler in
             (
-              match Socket_pool.Connection.send conn frame_data with
-              | Ok () ->
-                  Log.info "WebSocket bridge: Channel handler initialized successfully";
-                  Socket_pool.Handler.Continue new_handler
-              | Error Socket_pool.Connection.Closed -> Socket_pool.Handler.Close new_handler
-              | Error (Socket_pool.Connection.FileError _ | Socket_pool.Connection.InvalidRange _) ->
-                  Socket_pool.Handler.Close new_handler
-            )
+              match result with
+              | Socket_pool.Handler.Continue _ ->
+                  Log.info "WebSocket bridge: Channel handler initialized successfully"
+              | _ -> ()
+            );
+            result
         | Channel.Handler.Error err ->
             Log.error "WebSocket bridge: Channel handler initialization failed";
-            Socket_pool.Handler.Error (ws_handler, err));
+            Socket_pool.Handler.Error (ws_handler, WebSocketChannelError err));
     handle_data =
       (fun data conn ws_handler ->
         (* Parse WebSocket frames from incoming data *)
         let stream = Socket_pool.Connection.stream conn in
-        match Http.Ws.Parser.parse data with
+        match Http.Ws.Parser.parse
+          ~max_payload_length:config.max_websocket_frame_size
+          ~role:Http.Ws.Parser.Server
+          data with
         | Done { value = frame; remaining = _ } -> (
             match validate_websocket_frame_limits
               ~max_frame_size:config.max_websocket_frame_size
               ~max_message_size:config.max_websocket_message_size
               frame with
-            | Error error ->
-                Log.error ("WebSocket limit error: " ^ websocket_frame_limit_error_to_string error);
-                Socket_pool.Handler.Close ws_handler
+            | Error error -> Socket_pool.Handler.Error (ws_handler, WebSocketFrameLimitFailed error)
             | Ok () -> (
                 match Channel.Handler.handle_frame ws_handler frame stream with
                 | Channel.Handler.Continue new_handler -> Socket_pool.Handler.Continue new_handler
                 | Channel.Handler.Push (out_frames, new_handler) ->
-                    (* Serialize and send response frames *)
-                    let frame_data =
-                      out_frames
-                      |> List.map ~fn:Http.Ws.Serializer.serialize
-                      |> String.concat ""
-                    in
-                    (
-                      match Socket_pool.Connection.send conn frame_data with
-                      | Ok () -> Socket_pool.Handler.Continue new_handler
-                      | Error Socket_pool.Connection.Closed -> Socket_pool.Handler.Close new_handler
-                      | Error (
-                        Socket_pool.Connection.FileError _
-                        | Socket_pool.Connection.InvalidRange _
-                      ) -> Socket_pool.Handler.Close new_handler
-                    )
-                | Channel.Handler.Error err -> Socket_pool.Handler.Error (ws_handler, err)
+                    send_websocket_frames conn out_frames new_handler
+                | Channel.Handler.Error err ->
+                    Socket_pool.Handler.Error (ws_handler, WebSocketChannelError err)
               )
           )
         | Need_more ->
             (* Need more data - keep waiting *)
             Socket_pool.Handler.Continue ws_handler
-        | Error msg ->
-            (* Frame parse error - close connection *)
-            Log.error ("WebSocket frame parse error: " ^ msg);
-            Socket_pool.Handler.Close ws_handler);
+        | Error error -> Socket_pool.Handler.Error (ws_handler, WebSocketParseFailed error));
     handle_error = (fun err _conn state -> Socket_pool.Handler.Error (state, err));
     handle_shutdown = (fun _conn state -> Socket_pool.Handler.Close state);
     handle_message =
@@ -602,20 +590,9 @@ let websocket_to_socket_pool_handler:
         match Channel.Handler.handle_message ws_handler msg stream with
         | Channel.Handler.Continue new_handler -> Socket_pool.Handler.Continue new_handler
         | Channel.Handler.Push (frames, new_handler) ->
-            (* Serialize and send frames *)
-            let frame_data =
-              frames
-              |> List.map ~fn:Http.Ws.Serializer.serialize
-              |> String.concat ""
-            in
-            (
-              match Socket_pool.Connection.send conn frame_data with
-              | Ok () -> Socket_pool.Handler.Continue new_handler
-              | Error Socket_pool.Connection.Closed -> Socket_pool.Handler.Close new_handler
-              | Error (Socket_pool.Connection.FileError _ | Socket_pool.Connection.InvalidRange _) ->
-                  Socket_pool.Handler.Close new_handler
-            )
-        | Channel.Handler.Error err -> Socket_pool.Handler.Error (ws_handler, err));
+            send_websocket_frames conn frames new_handler
+        | Channel.Handler.Error err ->
+            Socket_pool.Handler.Error (ws_handler, WebSocketChannelError err));
   }
   in
   Socket_pool.Handler.H { handler; state = ws_handler }
@@ -651,12 +628,15 @@ let handle_websocket_upgrade = fun state socket_conn req ws_handler ->
       | Ok () ->
           Log.info "WebSocket upgrade response sent successfully, switching protocols";
           (* Switch to WebSocket handler *)
-          let socket_pool_handler = websocket_to_socket_pool_handler ~config:state.config ws_handler in
+          let socket_pool_handler =
+            websocket_to_socket_pool_handler ~config:state.config ws_handler
+          in
           Socket_pool.Handler.Switch socket_pool_handler
       | Error Socket_pool.Connection.Closed ->
           Log.error "Failed to send WebSocket upgrade response - connection closed";
           Socket_pool.Handler.Close state
-      | Error (Socket_pool.Connection.FileError _ | Socket_pool.Connection.InvalidRange _) ->
+      | Error (Socket_pool.Connection.FileError _
+      | Socket_pool.Connection.InvalidRange _) ->
           Log.error "Failed to send WebSocket upgrade response";
           Socket_pool.Handler.Close state
 
@@ -732,8 +712,8 @@ let handle_data_waiting_headers = fun full_data conn state ->
         )
     )
   | Need_more -> Socket_pool.Handler.Continue { state with sniffed_data = full_data }
-  | Error msg ->
-      let error = parse_error_of_upstream_message msg in
+  | Error upstream_error ->
+      let error = parse_error_of_upstream_error upstream_error in
       let res = Response.bad_request ~body:(parse_error_to_string error) () in
       let _ = send_response conn res in
       Socket_pool.Handler.Close state

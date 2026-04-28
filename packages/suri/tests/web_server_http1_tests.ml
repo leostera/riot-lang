@@ -41,16 +41,13 @@ let websocket_request = fun
         List.fold_left
           headers
           ~init:req
-          ~fn:(fun req ((name, value)) ->
+          ~fn:(fun req (name, value) ->
             Net.Http.Request.with_header req name value)
   in
   Suri.Request.of_http ~body:"" http_req
 
 let http_request = fun
-  ?(method_ = Net.Http.Method.Get)
-  ?(version = Net.Http.Version.Http11)
-  ?(headers = [])
-  () ->
+  ?(method_ = Net.Http.Method.Get) ?(version = Net.Http.Version.Http11) ?(headers = []) () ->
   let uri =
     Net.Uri.of_string "/"
     |> Result.unwrap
@@ -62,7 +59,7 @@ let http_request = fun
       List.fold_left
         headers
         ~init:req
-        ~fn:(fun req ((name, value)) ->
+        ~fn:(fun req (name, value) ->
           Net.Http.Request.add_header req name value)
 
 let config_for_test = fun
@@ -242,7 +239,7 @@ let test_http1_body_headers_reject_invalid_content_length = fun _ctx ->
 let test_http1_body_headers_reject_negative_content_length = fun _ctx ->
   let req = http_request ~headers:[ ("content-length", "-1"); ] () in
   match Http1.validate_request_body_headers req with
-  | Error (Http1.InvalidContentLength { value = "-1"; reason = Http1.NegativeLength (-1) }) -> Ok ()
+  | Error (Http1.InvalidContentLength { value = "-1"; reason = Http1.NegativeLength -1 }) -> Ok ()
   | Ok _ -> Error "expected negative content-length to fail"
   | Error error -> Error (Http1.request_body_header_error_to_string error)
 
@@ -270,7 +267,9 @@ let test_http1_body_headers_reject_content_length_above_limit = fun _ctx ->
   | Error error -> Error (Http1.request_body_header_error_to_string error)
 
 let test_http1_body_headers_reject_transfer_encoding_with_content_length = fun _ctx ->
-  let req = http_request ~headers:[ ("content-length", "3"); ("transfer-encoding", "chunked"); ] () in
+  let req =
+    http_request ~headers:[ ("content-length", "3"); ("transfer-encoding", "chunked"); ] ()
+  in
   match Http1.validate_request_body_headers req with
   | Error (Http1.TransferEncodingWithContentLength { transfer_encoding; content_lengths }) ->
       Test.assert_equal ~expected:"chunked" ~actual:transfer_encoding;
@@ -298,22 +297,25 @@ let test_http1_body_split_keeps_zero_length_body_empty = fun _ctx ->
   Test.assert_equal ~expected:"GET /next HTTP/1.1\r\n\r\n" ~actual:remaining;
   Ok ()
 
-let test_http1_classifies_known_upstream_parse_errors = fun _ctx ->
+let test_http1_wraps_known_upstream_parse_errors = fun _ctx ->
   Test.assert_equal
-    ~expected:Http1.RequestLineTooLong
-    ~actual:(Http1.parse_error_of_upstream_message "Request line too long");
+    ~expected:(Http1.UpstreamParseError (Http.Http1.Common.RequestLineTooLong { max_length = 8_192 }))
+    ~actual:(Http1.parse_error_of_upstream_error
+      (Http.Http1.Common.RequestLineTooLong { max_length = 8_192 }));
   Test.assert_equal
-    ~expected:Http1.InvalidHeaderFormatMissingColon
-    ~actual:(Http1.parse_error_of_upstream_message "Invalid header format (missing colon)");
+    ~expected:(Http1.UpstreamParseError (Http.Http1.Common.InvalidHeaderFormat Http.Http1.Common.MissingColon))
+    ~actual:(Http1.parse_error_of_upstream_error
+      (Http.Http1.Common.InvalidHeaderFormat Http.Http1.Common.MissingColon));
   Test.assert_equal
-    ~expected:Http1.HeaderTooLong
-    ~actual:(Http1.parse_error_of_upstream_message "Header too long");
+    ~expected:(Http1.UpstreamParseError (Http.Http1.Common.HeaderTooLong { max_length = 8_192 }))
+    ~actual:(Http1.parse_error_of_upstream_error
+      (Http.Http1.Common.HeaderTooLong { max_length = 8_192 }));
   Ok ()
 
-let test_http1_preserves_unknown_upstream_parse_errors = fun _ctx ->
-  match Http1.parse_error_of_upstream_message "new parser failure" with
-  | Http1.UnknownUpstreamParseError "new parser failure" -> Ok ()
-  | _ -> Error "expected unknown upstream parser message to be preserved"
+let test_http1_preserves_upstream_parse_error_payload = fun _ctx ->
+  match Http1.parse_error_of_upstream_error Http.Http1.Common.InvalidHttpVersion with
+  | Http1.UpstreamParseError Http.Http1.Common.InvalidHttpVersion -> Ok ()
+  | _ -> Error "expected upstream parser error payload to be preserved"
 
 let test_http1_request_headers_reject_missing_host = fun _ctx ->
   let req = http_request () in
@@ -404,9 +406,7 @@ let test_http1_response_rejects_empty_header_name = fun _ctx ->
 let test_http1_response_rejects_header_injection = fun _ctx ->
   let res = Response.ok ~headers:[ ("x-test", "ok\r\nx-evil: yes"); ] ~body:"ok" () in
   match Http1.serialize_response res with
-  | Error (
-    Http1.InvalidHeaderValue { name; value = _; reason = Http1.InvalidHeaderValueChar { char; index } }
-  ) ->
+  | Error (Http1.InvalidHeaderValue { name; value = _; reason = Http1.InvalidHeaderValueChar { char; index } }) ->
       Test.assert_equal ~expected:"x-test" ~actual:name;
       Test.assert_equal ~expected:'\r' ~actual:char;
       Test.assert_equal ~expected:2 ~actual:index;
@@ -418,9 +418,7 @@ let test_http1_response_rejects_header_injection = fun _ctx ->
 let test_http1_response_rejects_header_control_values = fun _ctx ->
   let res = Response.ok ~headers:[ ("x-test", "bad\001value"); ] ~body:"ok" () in
   match Http1.serialize_response res with
-  | Error (
-    Http1.InvalidHeaderValue { name; value = _; reason = Http1.InvalidHeaderValueChar { char; index } }
-  ) ->
+  | Error (Http1.InvalidHeaderValue { name; value = _; reason = Http1.InvalidHeaderValueChar { char; index } }) ->
       Test.assert_equal ~expected:"x-test" ~actual:name;
       Test.assert_equal ~expected:'\001' ~actual:char;
       Test.assert_equal ~expected:3 ~actual:index;
@@ -548,12 +546,10 @@ let tests =
     case
       "http1 body split keeps zero length body empty"
       test_http1_body_split_keeps_zero_length_body_empty;
+    case "http1 wraps known upstream parse errors" test_http1_wraps_known_upstream_parse_errors;
     case
-      "http1 classifies known upstream parse errors"
-      test_http1_classifies_known_upstream_parse_errors;
-    case
-      "http1 preserves unknown upstream parse errors"
-      test_http1_preserves_unknown_upstream_parse_errors;
+      "http1 preserves upstream parse error payload"
+      test_http1_preserves_upstream_parse_error_payload;
     case "http1 request headers reject missing host" test_http1_request_headers_reject_missing_host;
     case "http1 request headers accept host" test_http1_request_headers_accept_host;
     case

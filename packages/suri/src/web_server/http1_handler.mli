@@ -32,16 +32,7 @@ type io_error =
   | ResponseSerializationFailed of serialization_error
   | ConnectionFailed of Socket_pool.Connection.error
 type parse_error =
-  | RequestLineTooLong
-  | MissingMethod
-  | MissingPath
-  | InvalidHttpVersion
-  | InvalidLineEnding
-  | InvalidHeaderFormatMissingColon
-  | InvalidHeaderFormat
-  | TooManyHeaders
-  | HeaderTooLong
-  | UnknownUpstreamParseError of string
+  | UpstreamParseError of Http.Http1.Common.error
 type websocket_key_error =
   | InvalidBase64
   | InvalidLength of { actual: int; expected: int }
@@ -80,7 +71,7 @@ type error =
   | IoError of io_error
 val to_string_error: error -> string
 
-val parse_error_of_upstream_message: string -> parse_error
+val parse_error_of_upstream_error: Http.Http1.Common.error -> parse_error
 
 val serialize_response: Response.t -> (string, serialization_error) Std.result
 

@@ -37,7 +37,12 @@ let () =
         | Error (Blink.Error.TlsError Net.TlsStream.Tls_not_available) -> panic "TLS not available"
         | Error (Blink.Error.TlsError Net.TlsStream.Unsupported_vectored_operation) ->
             panic "Unsupported vectored operation"
-        | Error (Blink.Error.ParseError msg) -> panic ("Parse error: " ^ msg)
+        | Error (Blink.Error.ParseError error) ->
+            panic ("Parse error: " ^ Http.Http1.Common.error_to_string error)
+        | Error (Blink.Error.WebSocketParseError error) ->
+            panic ("WebSocket parse error: " ^ Http.Ws.Parser.error_to_string error)
+        | Error (Blink.Error.WebSocketSerializeError error) ->
+            panic ("WebSocket serialize error: " ^ Http.Ws.Serializer.error_to_string error)
         | Error (Blink.Error.ProtocolError msg) -> panic ("Protocol error: " ^ msg)
         | Error (Blink.Error.HandshakeFailed msg) -> panic ("Handshake failed: " ^ msg)
         | Error Blink.Error.InvalidFrame -> panic "Invalid frame"

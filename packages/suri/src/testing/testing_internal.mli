@@ -58,16 +58,7 @@ end
 
 module Http1: sig
   type parse_error =
-    | RequestLineTooLong
-    | MissingMethod
-    | MissingPath
-    | InvalidHttpVersion
-    | InvalidLineEnding
-    | InvalidHeaderFormatMissingColon
-    | InvalidHeaderFormat
-    | TooManyHeaders
-    | HeaderTooLong
-    | UnknownUpstreamParseError of string
+    | UpstreamParseError of Http.Http1.Common.error
   type header_name_error =
     | EmptyHeaderName
     | InvalidHeaderNameChar of { char: char; index: int }
@@ -110,7 +101,7 @@ module Http1: sig
     | MissingHostHeader
   val serialize_response: Web_server.Response.t -> (string, serialization_error) Std.result
 
-  val parse_error_of_upstream_message: string -> parse_error
+  val parse_error_of_upstream_error: Http.Http1.Common.error -> parse_error
 
   val compute_websocket_accept: string -> string
 

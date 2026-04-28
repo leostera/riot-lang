@@ -374,8 +374,16 @@ let middleware = fun
                 ~same_site
                 ()
             in
-            let set_cookie_header = Http.Http1.Cookie.to_set_cookie cookie in
-            Conn.with_header "set-cookie" set_cookie_header conn'
+            match cookie with
+            | Ok cookie ->
+                let set_cookie_header = Http.Http1.Cookie.to_set_cookie cookie in
+                Conn.with_header "set-cookie" set_cookie_header conn'
+            | Error error ->
+                conn'
+                |> Conn.respond
+                  ~status:Net.Http.Status.InternalServerError
+                  ~body:(Http.Http1.Cookie.validation_error_to_string error)
+                |> Conn.send
           end
         else
           conn')

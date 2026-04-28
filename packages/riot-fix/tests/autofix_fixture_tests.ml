@@ -6,8 +6,8 @@ let fixture_root = Path.v "packages/riot-fix/tests/autofix_fixtures"
 
 let keep_ml = fun path ->
   match Path.extension path with
-  | Some ".ml" -> Test.FixtureRunner.Keep
-  | _ -> Test.FixtureRunner.Skip
+  | Some ".ml" -> `keep
+  | _ -> `skip
 
 let disabled_rule_marker = "Rule disabled while Syn Ast migration is in progress"
 
@@ -58,15 +58,15 @@ let rule_is_temporarily_disabled = fun rule ->
 
 let keep_enabled_rule_fixture = fun path ->
   match keep_ml path with
-  | Test.FixtureRunner.Skip -> Test.FixtureRunner.Skip
-  | Test.FixtureRunner.Keep -> (
+  | `skip -> `skip
+  | `keep -> (
       match rule_id_of_fixture path with
-      | Error _ -> Test.FixtureRunner.Keep
+      | Error _ -> `keep
       | Ok rule_id -> (
           match find_rule rule_id with
-          | Ok rule when rule_is_temporarily_disabled rule -> Test.FixtureRunner.Skip
+          | Ok rule when rule_is_temporarily_disabled rule -> `skip
           | Ok _
-          | Error _ -> Test.FixtureRunner.Keep
+          | Error _ -> `keep
         )
     )
 

@@ -6,7 +6,6 @@ module Bytes = IO.Bytes
 
 type protocol_error =
   | UpgradeNotSupported
-  | HpackDecodeFailed
   | UnknownDataStream of int
   | InvalidPreface
 
@@ -19,30 +18,20 @@ type io_operation =
 
 type error =
   | ParseError of Http.Http2.Parser_reader.parse_error
+  | SerializerError of Http.Http2.Serializer.error
+  | FrameConstructorError of Http.Http2.Frame.constructor_error
+  | HpackEncodeError of Http.Http2.Hpack.encode_error
+  | HpackDecodeError of Http.Http2.Hpack.decode_error
   | ProtocolError of protocol_error
   | IoError of {
       operation: io_operation;
       error: Socket_pool.Connection.error;
     }
 
-let parse_error_to_string = function
-  | Http.Http2.Parser_reader.Incomplete_frame_header -> "incomplete frame header"
-  | Http.Http2.Parser_reader.Frame_size_exceeds_maximum { size; max_size } ->
-      "frame size " ^ Int.to_string size ^ " exceeds maximum " ^ Int.to_string max_size
-  | Http.Http2.Parser_reader.Unknown_frame_type frame_type ->
-      "unknown frame type " ^ Int.to_string frame_type
-  | Http.Http2.Parser_reader.Invalid_payload_length { frame_type; expected; actual } ->
-      "invalid "
-      ^ frame_type
-      ^ " payload length: expected "
-      ^ Int.to_string expected
-      ^ ", got "
-      ^ Int.to_string actual
-  | Http.Http2.Parser_reader.Incomplete_settings_payload -> "incomplete settings payload"
+let parse_error_to_string = Http.Http2.Parser_reader.parse_error_to_string
 
 let protocol_error_to_string = function
   | UpgradeNotSupported -> "HTTP/2 upgrades are not supported"
-  | HpackDecodeFailed -> "HPACK decode error"
   | UnknownDataStream stream_id -> "DATA for unknown stream " ^ Int.to_string stream_id
   | InvalidPreface -> "Invalid HTTP/2 preface"
 
@@ -66,6 +55,13 @@ let connection_error_to_string = function
 
 let to_string_error = function
   | ParseError err -> "HTTP/2 parse error: " ^ parse_error_to_string err
+  | SerializerError err -> "HTTP/2 serializer error: " ^ Http.Http2.Serializer.error_to_string err
+  | FrameConstructorError err ->
+      "HTTP/2 frame constructor error: " ^ Http.Http2.Frame.constructor_error_to_string err
+  | HpackEncodeError err ->
+      "HTTP/2 HPACK encode error: " ^ Http.Http2.Hpack.encode_error_to_string err
+  | HpackDecodeError err ->
+      "HTTP/2 HPACK decode error: " ^ Http.Http2.Hpack.decode_error_to_string err
   | ProtocolError err -> "HTTP/2 protocol error: " ^ protocol_error_to_string err
   | IoError { operation; error } ->
       "HTTP/2 I/O error while "
@@ -74,6 +70,15 @@ let to_string_error = function
       ^ connection_error_to_string error
 
 let io_error = fun operation error -> IoError { operation; error }
+
+let send_frame = fun conn operation frame ->
+  match Http.Http2.Serializer.serialize_frame frame with
+  | Error error -> Error (SerializerError error)
+  | Ok encoded -> (
+      match Socket_pool.Connection.send conn encoded with
+      | Ok () -> Ok ()
+      | Error error -> Error (io_error operation error)
+    )
 
 (** Stream state for multiplexed requests *)
 type stream_state = {
@@ -127,41 +132,29 @@ let send_settings = fun conn ->
         Http.Http2.Frame.InitialWindowSize 65_535;
       ]
   in
-  let encoded = Http.Http2.Serializer.serialize_frame settings_frame in
-  match Socket_pool.Connection.send conn encoded with
-  | Ok () -> Ok ()
-  | Error error -> Error (io_error SendSettings error)
+  send_frame conn SendSettings settings_frame
 
 (** Send SETTINGS ACK *)
 let send_settings_ack = fun conn ->
   let ack_frame = Http.Http2.Frame.settings ~ack:true [] in
-  let encoded = Http.Http2.Serializer.serialize_frame ack_frame in
-  match Socket_pool.Connection.send conn encoded with
-  | Ok () -> Ok ()
-  | Error error -> Error (io_error SendSettingsAck error)
+  send_frame conn SendSettingsAck ack_frame
 
 (** Send HTTP/2 HEADERS frame *)
 let send_headers = fun conn hpack_encoder stream_id headers end_stream ->
   let headers =
     List.map ~fn:(fun (name, value) -> { Http.Http2.Hpack.name = name; value }) headers
   in
-  let header_block =
-    Http.Http2.Hpack.encode hpack_encoder ~sensitive_headers:[] () ~headers
-    |> Bytes.to_string
-  in
-  let frame = Http.Http2.Frame.headers ~stream_id ~end_stream ~end_headers:true header_block in
-  let encoded = Http.Http2.Serializer.serialize_frame frame in
-  match Socket_pool.Connection.send conn encoded with
-  | Ok () -> Ok ()
-  | Error error -> Error (io_error SendHeaders error)
+  match Http.Http2.Hpack.encode hpack_encoder ~sensitive_headers:[] () ~headers with
+  | Error error -> Error (HpackEncodeError error)
+  | Ok encoded_headers ->
+      let header_block = Bytes.to_string encoded_headers in
+      let frame = Http.Http2.Frame.headers ~stream_id ~end_stream ~end_headers:true header_block in
+      send_frame conn SendHeaders frame
 
 (** Send HTTP/2 DATA frame *)
 let send_data = fun conn stream_id data end_stream ->
   let frame = Http.Http2.Frame.data ~stream_id ~end_stream data in
-  let encoded = Http.Http2.Serializer.serialize_frame frame in
-  match Socket_pool.Connection.send conn encoded with
-  | Ok () -> Ok ()
-  | Error error -> Error (io_error SendData error)
+  send_frame conn SendData frame
 
 (** Convert HTTP/2 headers to Request.t *)
 let headers_to_request = fun conn headers body ->
@@ -262,7 +255,7 @@ let process_frame = fun conn state frame ->
               handle_stream conn state stream_id stream
             ) else
               Ok ()
-        | Error _ -> Error (ProtocolError HpackDecodeFailed)
+        | Error error -> Error (HpackDecodeError error)
       )
   | (Http.Http2.Frame.Data, Http.Http2.Frame.DataPayload { data; _ }) ->
       let stream_id = frame.Http.Http2.Frame.stream_id in
@@ -283,13 +276,9 @@ let process_frame = fun conn state frame ->
       )
   | (Http.Http2.Frame.Ping, Http.Http2.Frame.PingPayload opaque_data) ->
       if not frame.Http.Http2.Frame.flags.ack then
-        let pong_frame = Http.Http2.Frame.ping ~ack:true opaque_data in
-        let encoded = Http.Http2.Serializer.serialize_frame pong_frame in
-        (
-          match Socket_pool.Connection.send conn encoded with
-          | Ok () -> Ok ()
-          | Error error -> Error (io_error SendPing error)
-        )
+        match Http.Http2.Frame.ping ~ack:true opaque_data with
+        | Error error -> Error (FrameConstructorError error)
+        | Ok pong_frame -> send_frame conn SendPing pong_frame
       else
         Ok ()
   | (_, _) -> Ok ()

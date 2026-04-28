@@ -43,25 +43,7 @@ type send_result = {
   reusable: bool;
 }
 
-let blink_error_to_string = fun value ->
-  match value with
-  | Error.NetError Net.Connection_refused -> "connection refused"
-  | Error.NetError Net.Closed -> "connection closed"
-  | Error.NetError (Net.System_error error) -> "network system error: " ^ IO.error_message error
-  | Error.TlsError Net.TlsStream.Closed -> "tls closed"
-  | Error.TlsError (Net.TlsStream.Handshake_failed message) -> "tls handshake failed: " ^ message
-  | Error.TlsError (Net.TlsStream.System_error error) ->
-      "tls system error: " ^ IO.error_message error
-  | Error.TlsError (Net.TlsStream.Network_read_failed _) -> "tls network read failed"
-  | Error.TlsError (Net.TlsStream.Network_write_failed _) -> "tls network write failed"
-  | Error.TlsError Net.TlsStream.Tls_not_available -> "tls not available"
-  | Error.TlsError Net.TlsStream.Unsupported_vectored_operation -> "unsupported tls vectored operation"
-  | Error.ParseError message -> "parse error: " ^ message
-  | Error.ProtocolError message -> "protocol error: " ^ message
-  | Error.HandshakeFailed message -> "handshake failed: " ^ message
-  | Error.InvalidFrame -> "invalid frame"
-  | Error.Eof -> "eof"
-  | Error.Closed -> "closed"
+let blink_error_to_string = Error.to_string
 
 let method_to_net = fun value ->
   match value with
@@ -429,7 +411,9 @@ let error_class_of_blink_error = fun ~default value ->
   match value with
   | Error.NetError _
   | Error.TlsError _ -> default
-  | Error.ParseError _ -> Response.ResponseFailed
+  | Error.ParseError _
+  | Error.WebSocketParseError _
+  | Error.WebSocketSerializeError _ -> Response.ResponseFailed
   | Error.ProtocolError _ -> Response.InvalidRequest
   | Error.HandshakeFailed _ -> default
   | Error.InvalidFrame -> Response.ResponseFailed

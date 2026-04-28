@@ -182,10 +182,10 @@ let fixture_filter = fun path ->
         String.get name ~at:3
         |> Option.is_some_and ~fn:is_digit
       ) then
-        Test.FixtureRunner.Keep
+        `keep
       else
-        Test.FixtureRunner.Skip
-  | _ -> Test.FixtureRunner.Skip
+        `skip
+  | _ -> `skip
 
 let append_snapshot_suffix = fun path suffix ->
   Path.to_string path ^ suffix

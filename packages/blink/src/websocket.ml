@@ -216,8 +216,9 @@ let send_frame = fun conn frame ->
     Error Error.Closed
   else
     let frame = Http.Ws.Frame.{ frame with masked = true } in
-    let serialized = Http.Ws.Serializer.serialize frame in
-    write_all conn serialized
+    match Http.Ws.Serializer.serialize frame with
+    | Ok serialized -> write_all conn serialized
+    | Error error -> Error (Error.WebSocketSerializeError error)
 
 let send_text = fun conn text ->
   let frame = Http.Ws.Frame.text text in
@@ -253,7 +254,7 @@ let receive = fun conn ->
   else
     let rec try_parse () =
       let data = Buffer.contents conn.buffer in
-      match Http.Ws.Parser.parse data with
+      match Http.Ws.Parser.parse ~role:Http.Ws.Parser.Client data with
       | Http.Ws.Parser.Done { value = frame; remaining } -> (
           Buffer.clear conn.buffer;
           Buffer.add_string conn.buffer remaining;
@@ -295,7 +296,7 @@ let receive = fun conn ->
               in
               try_parse ()
         )
-      | Http.Ws.Parser.Error msg -> Error (Error.HandshakeFailed msg)
+      | Http.Ws.Parser.Error error -> Error (Error.WebSocketParseError error)
     in
     try_parse ()
 
