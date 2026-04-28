@@ -610,6 +610,70 @@ let test_process_data_accepts_response_on_existing_client_stream = fun _ctx ->
       )
   | Ok stream_id -> Result.Error ("Expected stream 1, got " ^ Int.to_string stream_id)
 
+let test_process_data_rejects_peer_stream_over_max_concurrent = fun _ctx ->
+  let config = { Connection.default_config with max_concurrent_streams = 1 } in
+  let conn = Connection.create ~role:Connection.Server ~config () in
+  let header_block = encode_header_block [ { Hpack.name = ":method"; value = "GET" }; ] in
+  let first_headers = Frame.headers ~stream_id:1 ~end_headers:true header_block in
+  let second_headers = Frame.headers ~stream_id:3 ~end_headers:true header_block in
+  match Connection.process_data conn (Std.IO.Bytes.from_string (serialize_frame first_headers)) with
+  | Error err -> Result.Error ("First peer stream failed: " ^ Connection.error_to_string err)
+  | Ok _ -> (
+      match Connection.process_data conn (Std.IO.Bytes.from_string (serialize_frame second_headers)) with
+      | Error (
+        Connection.MaxConcurrentStreamsExceeded {
+          initiator = Connection.PeerInitiated;
+          stream_id = 3;
+          current = 1;
+          limit = 1
+        }
+      ) -> Result.Ok ()
+      | Error err -> Result.Error ("Wrong connection error: " ^ Connection.error_to_string err)
+      | Ok _ -> Result.Error "Peer stream over max concurrent streams was accepted"
+    )
+
+let test_process_data_frees_peer_capacity_after_rst_stream = fun _ctx ->
+  let config = { Connection.default_config with max_concurrent_streams = 1 } in
+  let conn = Connection.create ~role:Connection.Server ~config () in
+  let header_block = encode_header_block [ { Hpack.name = ":method"; value = "GET" }; ] in
+  let first_headers = Frame.headers ~stream_id:1 ~end_headers:true header_block in
+  let rst_stream = Frame.rst_stream ~stream_id:1 Frame.Cancel in
+  let second_headers = Frame.headers ~stream_id:3 ~end_headers:true header_block in
+  match Connection.process_data
+    conn
+    (Std.IO.Bytes.from_string
+      (serialize_frame first_headers ^ serialize_frame rst_stream ^ serialize_frame second_headers)) with
+  | Ok [ Connection.HeadersReceived { stream_id = 1; _ }; Connection.RstStreamReceived { stream_id = 1; error_code = Frame.Cancel }; Connection.HeadersReceived { stream_id = 3; _ } ] ->
+      Result.Ok ()
+  | Ok _ -> Result.Error "RST_STREAM did not free peer stream capacity as expected"
+  | Error err ->
+      Result.Error ("Peer stream after RST_STREAM failed: " ^ Connection.error_to_string err)
+
+let test_create_stream_obeys_remote_max_concurrent = fun _ctx ->
+  let conn = Connection.create ~role:Connection.Client () in
+  let _ = send_preface conn in
+  let remote_settings = Frame.settings [ Frame.MaxConcurrentStreams 1; ] in
+  match Connection.process_data conn (Std.IO.Bytes.from_string (serialize_frame remote_settings)) with
+  | Error err -> Result.Error ("Remote settings failed: " ^ Connection.error_to_string err)
+  | Ok _ -> (
+      match Connection.create_stream conn with
+      | Error err -> Result.Error ("First local stream failed: " ^ Connection.error_to_string err)
+      | Ok 1 -> (
+          match Connection.create_stream conn with
+          | Error (
+            Connection.MaxConcurrentStreamsExceeded {
+              initiator = Connection.LocalInitiated;
+              stream_id = 3;
+              current = 1;
+              limit = 1
+            }
+          ) -> Result.Ok ()
+          | Error err -> Result.Error ("Wrong connection error: " ^ Connection.error_to_string err)
+          | Ok _ -> Result.Error "Local stream over remote max concurrent streams was accepted"
+        )
+      | Ok stream_id -> Result.Error ("Expected first stream 1, got " ^ Int.to_string stream_id)
+    )
+
 let test_process_window_update_increases_send_window_only = fun _ctx ->
   let conn = Connection.create ~role:Connection.Server () in
   let send_before = Connection.connection_window_size conn in
@@ -744,6 +808,13 @@ let tests =
     case
       "process_data_accepts_response_on_existing_client_stream"
       test_process_data_accepts_response_on_existing_client_stream;
+    case
+      "process_data_rejects_peer_stream_over_max_concurrent"
+      test_process_data_rejects_peer_stream_over_max_concurrent;
+    case
+      "process_data_frees_peer_capacity_after_rst_stream"
+      test_process_data_frees_peer_capacity_after_rst_stream;
+    case "create_stream_obeys_remote_max_concurrent" test_create_stream_obeys_remote_max_concurrent;
     case
       "process_window_update_increases_send_window_only"
       test_process_window_update_increases_send_window_only;

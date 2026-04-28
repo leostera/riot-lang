@@ -107,6 +107,10 @@ type window_scope =
   | StreamWindow of { stream_id: int }
   | ConnectionWindow
 
+type stream_initiator =
+  | LocalInitiated
+  | PeerInitiated
+
 type payload_error = {
   frame_type: Frame.frame_type;
   payload: Frame.payload;
@@ -116,6 +120,12 @@ type error =
   | ConnectionNotActive
   | StreamNotFound of { stream_id: int }
   | FlowControlWindowExceeded of { scope: window_scope; data_size: int; window_size: int }
+  | MaxConcurrentStreamsExceeded of {
+      initiator: stream_initiator;
+      stream_id: int;
+      current: int;
+      limit: int;
+    }
   | HpackEncodeFailed of Hpack.encode_error
   | HpackDecodeFailed of Hpack.decode_error
   | HpackTableSizeUpdateFailed of Hpack.table_size_error
@@ -145,6 +155,10 @@ let role_to_string = function
   | Client -> "client"
   | Server -> "server"
 
+let stream_initiator_to_string = function
+  | LocalInitiated -> "local"
+  | PeerInitiated -> "peer"
+
 let stream_state_to_string = function
   | StreamIdle -> "idle"
   | StreamOpen -> "open"
@@ -164,6 +178,21 @@ let error_to_string = function
       ^ window_scope_to_string scope
       ^ " flow-control window "
       ^ Int.to_string window_size
+  | MaxConcurrentStreamsExceeded {
+    initiator;
+    stream_id;
+    current;
+    limit
+  } ->
+      "HTTP/2 "
+      ^ stream_initiator_to_string initiator
+      ^ " stream "
+      ^ Int.to_string stream_id
+      ^ " exceeds max concurrent streams "
+      ^ Int.to_string limit
+      ^ " with "
+      ^ Int.to_string current
+      ^ " stream(s) already active"
   | HpackEncodeFailed error -> "HPACK encode failed: " ^ Hpack.encode_error_to_string error
   | HpackDecodeFailed error -> "HPACK decode failed: " ^ Hpack.decode_error_to_string error
   | HpackTableSizeUpdateFailed error ->
@@ -293,32 +322,74 @@ let is_valid_stream_id = fun ~role stream_id ->
 
 (* Server streams are even *)
 
+let is_valid_peer_initiated_stream_id = fun ~role stream_id ->
+  match role with
+  | Server -> stream_id mod 2 = 1
+  | Client -> stream_id mod 2 = 0
+
+let stream_matches_initiator = fun ~role initiator stream_id ->
+  match initiator with
+  | LocalInitiated -> is_valid_stream_id ~role stream_id
+  | PeerInitiated -> is_valid_peer_initiated_stream_id ~role stream_id
+
+let count_active_streams = fun conn ~initiator ->
+  HashMap.fold_left
+    conn.streams
+    ~init:0
+    ~fn:(fun count stream_id stream ->
+      if
+        stream_matches_initiator ~role:conn.role initiator stream_id
+        && Cell.get stream.state != StreamClosed
+      then
+        count + 1
+      else
+        count)
+
+let ensure_stream_capacity = fun conn ~initiator ~stream_id ~limit ->
+  match limit with
+  | None -> Ok ()
+  | Some limit ->
+      let current = count_active_streams conn ~initiator in
+      if current >= limit then
+        Error (
+          MaxConcurrentStreamsExceeded {
+            initiator;
+            stream_id;
+            current;
+            limit;
+          }
+        )
+      else
+        Ok ()
+
 let create_stream = fun conn ->
   if Cell.get conn.state != Active then
     Error ConnectionNotActive
   else
     let stream_id = Cell.get conn.next_stream_id in
-    Cell.set conn.next_stream_id (stream_id + 2);
-  (* Skip to next valid ID *)
-  Cell.set conn.last_stream_id stream_id;
-  let stream = {
-    id = stream_id;
-    state = Cell.create StreamIdle;
-    window_size = Cell.create (Cell.get conn.local_settings.initial_window_size);
-    receive_window_size = Cell.create (Cell.get conn.local_settings.initial_window_size);
-    headers = Cell.create [];
-    data_chunks = Cell.create [];
-  }
-  in
-  let _ = HashMap.insert conn.streams ~key:stream_id ~value:stream in
-  Ok stream_id
+    match ensure_stream_capacity
+      conn
+      ~initiator:LocalInitiated
+      ~stream_id
+      ~limit:(Cell.get conn.remote_settings.max_concurrent_streams) with
+    | Error error -> Error error
+    | Ok () ->
+        Cell.set conn.next_stream_id (stream_id + 2);
+        (* Skip to next valid ID *)
+        Cell.set conn.last_stream_id stream_id;
+        let stream = {
+          id = stream_id;
+          state = Cell.create StreamIdle;
+          window_size = Cell.create (Cell.get conn.local_settings.initial_window_size);
+          receive_window_size = Cell.create (Cell.get conn.local_settings.initial_window_size);
+          headers = Cell.create [];
+          data_chunks = Cell.create [];
+        }
+        in
+        let _ = HashMap.insert conn.streams ~key:stream_id ~value:stream in
+        Ok stream_id
 
 let get_stream = fun conn stream_id -> HashMap.get conn.streams ~key:stream_id
-
-let is_valid_peer_initiated_stream_id = fun ~role stream_id ->
-  match role with
-  | Server -> stream_id mod 2 = 1
-  | Client -> stream_id mod 2 = 0
 
 let send_headers = fun conn ~stream_id ~headers ~end_stream ->
   match get_stream conn stream_id with
@@ -591,17 +662,27 @@ let decode_header_block = fun conn ~stream_id ~fragment ~end_stream ->
             if not (is_valid_peer_initiated_stream_id ~role:conn.role stream_id) then
               Error (InvalidPeerStreamId { role = conn.role; stream_id })
             else
-              let s = {
-                id = stream_id;
-                state = Cell.create StreamOpen;
-                window_size = Cell.create (Cell.get conn.remote_settings.initial_window_size);
-                receive_window_size = Cell.create (Cell.get conn.local_settings.initial_window_size);
-                headers = Cell.create [];
-                data_chunks = Cell.create [];
-              }
-              in
-              let _ = HashMap.insert conn.streams ~key:stream_id ~value:s in
-              Ok s
+              (
+                match ensure_stream_capacity
+                  conn
+                  ~initiator:PeerInitiated
+                  ~stream_id
+                  ~limit:(Cell.get conn.local_settings.max_concurrent_streams) with
+                | Error error -> Error error
+                | Ok () ->
+                    let s = {
+                      id = stream_id;
+                      state = Cell.create StreamOpen;
+                      window_size = Cell.create (Cell.get conn.remote_settings.initial_window_size);
+                      receive_window_size = Cell.create
+                        (Cell.get conn.local_settings.initial_window_size);
+                      headers = Cell.create [];
+                      data_chunks = Cell.create [];
+                    }
+                    in
+                    let _ = HashMap.insert conn.streams ~key:stream_id ~value:s in
+                    Ok s
+              )
       in
       match stream with
       | Error error -> Error error

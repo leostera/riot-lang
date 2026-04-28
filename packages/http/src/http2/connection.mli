@@ -98,6 +98,9 @@ type role =
 type window_scope =
   | StreamWindow of { stream_id: int }
   | ConnectionWindow
+type stream_initiator =
+  | LocalInitiated
+  | PeerInitiated
 type payload_error = {
   frame_type: Frame.frame_type;
   payload: Frame.payload;
@@ -106,6 +109,12 @@ type error =
   | ConnectionNotActive
   | StreamNotFound of { stream_id: int }
   | FlowControlWindowExceeded of { scope: window_scope; data_size: int; window_size: int }
+  | MaxConcurrentStreamsExceeded of {
+      initiator: stream_initiator;
+      stream_id: int;
+      current: int;
+      limit: int;
+    }
   | HpackEncodeFailed of Hpack.encode_error
   | HpackDecodeFailed of Hpack.decode_error
   | HpackTableSizeUpdateFailed of Hpack.table_size_error
