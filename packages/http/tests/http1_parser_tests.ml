@@ -597,6 +597,44 @@ let test_chunk_hex_size = fun _ctx ->
   | Need_more -> Result.Error "Unexpected Need_more"
   | Error e -> Result.Error ("Parse error: " ^ error_to_string e)
 
+let test_chunk_preserves_remaining_after_data_crlf = fun _ctx ->
+  let chunk = "5\r\nHello\r\nnext" in
+  match Http1.Chunk.parse chunk with
+  | Done { value = chunk_result; _ } ->
+      if chunk_result.data != "Hello" then
+        Result.Error "Expected data Hello"
+      else if chunk_result.remaining != "next" then
+        Result.Error ("Expected remaining next, got " ^ chunk_result.remaining)
+      else
+        Result.Ok ()
+  | Need_more -> Result.Error "Unexpected Need_more"
+  | Error error -> Result.Error ("Parse error: " ^ error_to_string error)
+
+let test_chunk_rejects_invalid_size_line_crlf = fun _ctx ->
+  let chunk = "5\rHello\r\n" in
+  match Http1.Chunk.parse chunk with
+  | Error InvalidChunkSizeLineEnding -> Result.Ok ()
+  | Error error ->
+      Result.Error ("Expected invalid chunk size line ending, got " ^ error_to_string error)
+  | Need_more -> Result.Error "Expected invalid chunk size line ending, got Need_more"
+  | Done _ -> Result.Error "Expected invalid chunk size line ending"
+
+let test_chunk_rejects_invalid_data_crlf = fun _ctx ->
+  let chunk = "5\r\nHello\rX" in
+  match Http1.Chunk.parse chunk with
+  | Error InvalidChunkDataLineEnding -> Result.Ok ()
+  | Error error ->
+      Result.Error ("Expected invalid chunk data line ending, got " ^ error_to_string error)
+  | Need_more -> Result.Error "Expected invalid chunk data line ending, got Need_more"
+  | Done _ -> Result.Error "Expected invalid chunk data line ending"
+
+let test_chunk_incomplete_data_crlf_needs_more = fun _ctx ->
+  let chunk = "5\r\nHello\r" in
+  match Http1.Chunk.parse chunk with
+  | Need_more -> Result.Ok ()
+  | Error error -> Result.Error ("Expected Need_more, got " ^ error_to_string error)
+  | Done _ -> Result.Error "Expected Need_more for partial chunk data CRLF"
+
 (* SSE Tests *)
 
 let test_sse_data_line = fun _ctx ->
@@ -689,6 +727,10 @@ let tests =
     case "chunk_single" test_chunk_single;
     case "chunk_last" test_chunk_last;
     case "chunk_hex_size" test_chunk_hex_size;
+    case "chunk preserves remaining after data crlf" test_chunk_preserves_remaining_after_data_crlf;
+    case "chunk rejects invalid size line crlf" test_chunk_rejects_invalid_size_line_crlf;
+    case "chunk rejects invalid data crlf" test_chunk_rejects_invalid_data_crlf;
+    case "chunk incomplete data crlf needs more" test_chunk_incomplete_data_crlf_needs_more;
     case "sse_data_line" test_sse_data_line;
     case "sse_event_type" test_sse_event_type;
     case "sse_empty_line" test_sse_empty_line;

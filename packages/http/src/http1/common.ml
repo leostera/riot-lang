@@ -24,6 +24,7 @@ and error =
   | UnsupportedTransferEncoding
   | TransferEncodingWithContentLength
   | InvalidChunkSizeLineEnding
+  | InvalidChunkDataLineEnding
   | InvalidChunkSize
 
 and header_format_error =
@@ -63,6 +64,7 @@ let error_to_string = function
   | UnsupportedTransferEncoding -> "Unsupported Transfer-Encoding"
   | TransferEncodingWithContentLength -> "Invalid body framing: Transfer-Encoding with Content-Length"
   | InvalidChunkSizeLineEnding -> "Invalid chunk size line ending"
+  | InvalidChunkDataLineEnding -> "Invalid chunk data line ending"
   | InvalidChunkSize -> "Invalid chunk size"
 
 (** Helper: Find substring in string *)

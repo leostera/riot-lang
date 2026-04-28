@@ -26,6 +26,7 @@ and error =
   | UnsupportedTransferEncoding
   | TransferEncodingWithContentLength
   | InvalidChunkSizeLineEnding
+  | InvalidChunkDataLineEnding
   | InvalidChunkSize
 
 and header_format_error =
