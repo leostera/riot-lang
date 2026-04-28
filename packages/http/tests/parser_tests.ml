@@ -6,6 +6,7 @@ module Serializer = Http.Http2.Serializer
 module Connection = Http.Http2.Connection
 module Parser = Http.Http2.Parser
 module ParserReader = Http.Http2.Parser_reader
+module Hpack = Http.Http2.Hpack
 
 let serialize_frame = fun frame ->
   match Serializer.serialize_frame frame with
@@ -24,6 +25,12 @@ let frame_payload_length_at = fun serialized ~offset ->
 let frame_payload_length = fun serialized -> frame_payload_length_at serialized ~offset:0
 
 let settings_frame_with_payload = fun payload -> "\x00\x00\x06\x04\x00\x00\x00\x00\x00" ^ payload
+
+let encode_header_block = fun headers ->
+  let encoder = Hpack.create_encoder () in
+  match Hpack.encode encoder ~sensitive_headers:[] () ~headers with
+  | Ok bytes -> Std.IO.Bytes.to_string bytes
+  | Error error -> panic ("hpack encode failed: " ^ Hpack.encode_error_to_string error)
 
 let expect_parse_error = fun bytes expected ->
   match Parser.parse_frame bytes with
@@ -440,6 +447,54 @@ let test_process_data_ignores_unknown_frame = fun _ctx ->
   | Error err ->
       Result.Error ("Unknown frame failed connection processing: " ^ Connection.error_to_string err)
 
+let test_process_data_rejects_unexpected_continuation = fun _ctx ->
+  let conn = Connection.create ~role:Connection.Server () in
+  let frame = Frame.continuation ~stream_id:1 ~end_headers:true "" in
+  match Connection.process_data conn (Std.IO.Bytes.from_string (serialize_frame frame)) with
+  | Error (Connection.UnexpectedContinuation { stream_id = 1 }) -> Result.Ok ()
+  | Error err -> Result.Error ("Wrong connection error: " ^ Connection.error_to_string err)
+  | Ok _ -> Result.Error "Unexpected CONTINUATION was accepted"
+
+let test_process_data_requires_continuation_after_headers = fun _ctx ->
+  let conn = Connection.create ~role:Connection.Server () in
+  let headers = Frame.headers ~stream_id:1 ~end_headers:false "" in
+  let data = Frame.data ~stream_id:1 "hello" in
+  match Connection.process_data
+    conn
+    (Std.IO.Bytes.from_string (serialize_frame headers ^ serialize_frame data)) with
+  | Error (Connection.ExpectedContinuation { stream_id = 1; frame_type = Frame.Data }) ->
+      Result.Ok ()
+  | Error err -> Result.Error ("Wrong connection error: " ^ Connection.error_to_string err)
+  | Ok _ -> Result.Error "DATA frame was accepted before CONTINUATION completed the header block"
+
+let test_process_data_rejects_continuation_stream_mismatch = fun _ctx ->
+  let conn = Connection.create ~role:Connection.Server () in
+  let headers = Frame.headers ~stream_id:1 ~end_headers:false "" in
+  let continuation = Frame.continuation ~stream_id:3 ~end_headers:true "" in
+  match Connection.process_data
+    conn
+    (Std.IO.Bytes.from_string (serialize_frame headers ^ serialize_frame continuation)) with
+  | Error (Connection.ContinuationStreamMismatch { expected_stream_id = 1; actual_stream_id = 3 }) ->
+      Result.Ok ()
+  | Error err -> Result.Error ("Wrong connection error: " ^ Connection.error_to_string err)
+  | Ok _ -> Result.Error "CONTINUATION on the wrong stream was accepted"
+
+let test_process_data_accepts_split_header_block = fun _ctx ->
+  let conn = Connection.create ~role:Connection.Server () in
+  let header_block = encode_header_block [ { Hpack.name = ":method"; value = "GET" }; ] in
+  let headers = Frame.headers ~stream_id:1 ~end_headers:false "" in
+  let continuation = Frame.continuation ~stream_id:1 ~end_headers:true header_block in
+  let data = Frame.data ~stream_id:1 "ok" in
+  match Connection.process_data
+    conn
+    (Std.IO.Bytes.from_string
+      (serialize_frame headers ^ serialize_frame continuation ^ serialize_frame data)) with
+  | Ok [ Connection.HeadersReceived { stream_id = 1; headers = [ { Hpack.name = ":method"; value = "GET" } ]; end_stream = false }; Connection.DataReceived { stream_id = 1; data; end_stream = false } ] when Std.IO.Bytes.to_string
+    data
+  = "ok" -> Result.Ok ()
+  | Ok _ -> Result.Error "Split header block did not emit the expected headers and data events"
+  | Error err -> Result.Error ("Split header block failed: " ^ Connection.error_to_string err)
+
 let tests =
   Test.[
     case "serialize_settings_frame" test_serialize_settings_frame;
@@ -493,6 +548,16 @@ let tests =
     case "parse_window_update_allows_stream_zero" test_parse_window_update_allows_stream_zero;
     case "parse_unknown_frame_preserves_payload" test_parse_unknown_frame_preserves_payload;
     case "process_data_ignores_unknown_frame" test_process_data_ignores_unknown_frame;
+    case
+      "process_data_rejects_unexpected_continuation"
+      test_process_data_rejects_unexpected_continuation;
+    case
+      "process_data_requires_continuation_after_headers"
+      test_process_data_requires_continuation_after_headers;
+    case
+      "process_data_rejects_continuation_stream_mismatch"
+      test_process_data_rejects_continuation_stream_mismatch;
+    case "process_data_accepts_split_header_block" test_process_data_accepts_split_header_block;
   ]
 
 let main ~args:_ = Test.Cli.main ~name:"http:http2_parser" ~tests ~args:Env.args ()
