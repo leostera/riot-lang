@@ -690,7 +690,17 @@ let decode_header_block = fun conn ~stream_id ~fragment ~end_stream ->
   | Ok headers ->
       let stream =
         match get_stream conn stream_id with
-        | Some s -> Ok s
+        | Some stream -> (
+            match Cell.get stream.state with
+            | StreamHalfClosedRemote
+            | StreamClosed as state ->
+                Error (FrameAfterStreamEnd { stream_id; frame_type = Frame.Headers; state })
+            | StreamIdle
+            | StreamOpen
+            | StreamReservedLocal
+            | StreamReservedRemote
+            | StreamHalfClosedLocal -> Ok stream
+          )
         | None ->
             if not (is_valid_peer_initiated_stream_id ~role:conn.role stream_id) then
               Error (InvalidPeerStreamId { role = conn.role; stream_id })

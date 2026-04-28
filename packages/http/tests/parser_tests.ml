@@ -803,6 +803,36 @@ let test_process_data_rejects_data_after_data_end_stream = fun _ctx ->
   | Error err -> Result.Error ("Wrong connection error: " ^ Connection.error_to_string err)
   | Ok _ -> Result.Error "DATA after end-stream DATA was accepted"
 
+let test_process_data_rejects_headers_after_rst_stream = fun _ctx ->
+  let conn = Connection.create ~role:Connection.Server () in
+  let header_block = encode_header_block [ { Hpack.name = ":method"; value = "GET" }; ] in
+  let headers = Frame.headers ~stream_id:1 ~end_headers:true header_block in
+  let rst_stream = Frame.rst_stream ~stream_id:1 Frame.Cancel in
+  let late_headers = Frame.headers ~stream_id:1 ~end_headers:true header_block in
+  match Connection.process_data
+    conn
+    (Std.IO.Bytes.from_string
+      (serialize_frame headers ^ serialize_frame rst_stream ^ serialize_frame late_headers)) with
+  | Error (
+    Connection.FrameAfterStreamEnd { stream_id = 1; frame_type = Frame.Headers; state = Connection.StreamClosed }
+  ) -> Result.Ok ()
+  | Error err -> Result.Error ("Wrong connection error: " ^ Connection.error_to_string err)
+  | Ok _ -> Result.Error "HEADERS after RST_STREAM was accepted"
+
+let test_process_data_rejects_headers_after_headers_end_stream = fun _ctx ->
+  let conn = Connection.create ~role:Connection.Server () in
+  let header_block = encode_header_block [ { Hpack.name = ":method"; value = "GET" }; ] in
+  let headers = Frame.headers ~stream_id:1 ~end_headers:true ~end_stream:true header_block in
+  let late_headers = Frame.headers ~stream_id:1 ~end_headers:true header_block in
+  match Connection.process_data
+    conn
+    (Std.IO.Bytes.from_string (serialize_frame headers ^ serialize_frame late_headers)) with
+  | Error (
+    Connection.FrameAfterStreamEnd { stream_id = 1; frame_type = Frame.Headers; state = Connection.StreamHalfClosedRemote }
+  ) -> Result.Ok ()
+  | Error err -> Result.Error ("Wrong connection error: " ^ Connection.error_to_string err)
+  | Ok _ -> Result.Error "HEADERS after end-stream HEADERS was accepted"
+
 let tests =
   Test.[
     case "serialize_settings_frame" test_serialize_settings_frame;
@@ -910,6 +940,12 @@ let tests =
     case
       "process_data_rejects_data_after_data_end_stream"
       test_process_data_rejects_data_after_data_end_stream;
+    case
+      "process_data_rejects_headers_after_rst_stream"
+      test_process_data_rejects_headers_after_rst_stream;
+    case
+      "process_data_rejects_headers_after_headers_end_stream"
+      test_process_data_rejects_headers_after_headers_end_stream;
   ]
 
 let main ~args:_ = Test.Cli.main ~name:"http:http2_parser" ~tests ~args:Env.args ()
