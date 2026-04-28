@@ -5,7 +5,7 @@
   "headers": {
     "Host": "api.example.com",
     "Content-Type": "application/json-patch+json",
-    "Content-Length": "53"
+    "Content-Length": "60"
   },
   "body": "[{\"op\":\"replace\",\"path\":\"/email\",\"value\":\"new@example.com\"}]"
 }

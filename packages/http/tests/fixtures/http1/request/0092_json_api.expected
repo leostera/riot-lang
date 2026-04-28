@@ -6,7 +6,7 @@
     "Host": "api.example.com",
     "Content-Type": "application/vnd.api+json",
     "Accept": "application/vnd.api+json",
-    "Content-Length": "62"
+    "Content-Length": "65"
   },
   "body": "{\"data\":{\"type\":\"articles\",\"attributes\":{\"title\":\"New Article\"}}}"
 }
