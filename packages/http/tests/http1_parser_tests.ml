@@ -631,6 +631,62 @@ let test_response_without_content_length_uses_close_delimited_body = fun _ctx ->
   | Need_more -> Result.Error "Unexpected Need_more"
   | Error error -> Result.Error ("Parse error: " ^ error_to_string error)
 
+let test_response_parses_chunked_body = fun _ctx ->
+  let resp =
+    "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n5\r\nHello\r\n6\r\n world\r\n0\r\n\r\n"
+  in
+  match Http1.Response.parse resp with
+  | Done { value = parsed; remaining } ->
+      let body =
+        NetResponse.body parsed
+        |> Option.map ~fn:NetBody.to_string
+      in
+      if body != Some "Hello world" then
+        Result.Error "Expected decoded chunked response body"
+      else if remaining != "" then
+        Result.Error ("Expected empty remaining, got " ^ remaining)
+      else
+        Result.Ok ()
+  | Need_more -> Result.Error "Unexpected Need_more"
+  | Error error -> Result.Error ("Parse error: " ^ error_to_string error)
+
+let test_response_parses_chunked_body_with_trailers_and_remaining = fun _ctx ->
+  let next = "HTTP/1.1 204 No Content\r\n\r\n" in
+  let resp =
+    "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n5\r\nHello\r\n0\r\nETag: abc\r\n\r\n"
+    ^ next
+  in
+  match Http1.Response.parse resp with
+  | Done { value = parsed; remaining } ->
+      let body =
+        NetResponse.body parsed
+        |> Option.map ~fn:NetBody.to_string
+      in
+      if body != Some "Hello" then
+        Result.Error "Expected decoded chunked response body"
+      else if remaining != next then
+        Result.Error ("Expected pipelined response in remaining, got " ^ remaining)
+      else
+        Result.Ok ()
+  | Need_more -> Result.Error "Unexpected Need_more"
+  | Error error -> Result.Error ("Parse error: " ^ error_to_string error)
+
+let test_response_incomplete_chunked_body_needs_more = fun _ctx ->
+  let resp = "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n5\r\nHello\r\n0\r\n" in
+  match Http1.Response.parse resp with
+  | Need_more -> Result.Ok ()
+  | Error error -> Result.Error ("Expected Need_more, got " ^ error_to_string error)
+  | Done _ -> Result.Error "Expected Need_more for incomplete chunked response body"
+
+let test_response_rejects_unsupported_transfer_encoding = fun _ctx ->
+  let resp = "HTTP/1.1 200 OK\r\nTransfer-Encoding: gzip\r\n\r\nHello" in
+  match Http1.Response.parse resp with
+  | Error UnsupportedTransferEncoding -> Result.Ok ()
+  | Error error ->
+      Result.Error ("Expected unsupported Transfer-Encoding error, got " ^ error_to_string error)
+  | Need_more -> Result.Error "Expected unsupported Transfer-Encoding error, got Need_more"
+  | Done _ -> Result.Error "Expected unsupported Transfer-Encoding error"
+
 let test_response_rejects_conflicting_content_length = fun _ctx ->
   let resp = "HTTP/1.1 200 OK\r\nContent-Length: 5\r\nContent-Length: 7\r\n\r\nHello" in
   match Http1.Response.parse resp with
@@ -930,6 +986,16 @@ let tests =
     case
       "response without content length uses close-delimited body"
       test_response_without_content_length_uses_close_delimited_body;
+    case "response parses chunked body" test_response_parses_chunked_body;
+    case
+      "response parses chunked body with trailers and remaining"
+      test_response_parses_chunked_body_with_trailers_and_remaining;
+    case
+      "response incomplete chunked body needs more"
+      test_response_incomplete_chunked_body_needs_more;
+    case
+      "response rejects unsupported transfer encoding"
+      test_response_rejects_unsupported_transfer_encoding;
     case
       "response rejects conflicting content length"
       test_response_rejects_conflicting_content_length;

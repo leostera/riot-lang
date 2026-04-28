@@ -27,6 +27,11 @@ type 'a body_parse_result =
   | Body_need_more
   | Body_error of Common.error
 
+type body_framing =
+  | CloseDelimitedBody
+  | FixedBody of int
+  | ChunkedBody
+
 let slice_of_string = fun value ->
   match Slice.from_string value with
   | Ok slice -> slice
@@ -115,12 +120,30 @@ let parse_content_length_values = fun values ->
   in
   loop None values
 
-let parse_content_length = fun headers ->
+let transfer_encoding_is_chunked = fun values ->
+  match values with
+  | [ value ] -> (
+      match String.compare (String.lowercase_ascii (String.trim value)) "chunked" with
+      | Order.EQ -> true
+      | Order.LT
+      | Order.GT -> false
+    )
+  | _ -> false
+
+let parse_body_framing = fun headers ->
   let transfer_encoding = header_values headers "Transfer-Encoding" in
   let content_lengths = header_values headers "Content-Length" in
   match (transfer_encoding, content_lengths) with
   | (_ :: _, _ :: _) -> Body_error Common.TransferEncodingWithContentLength
-  | (_, values) -> parse_content_length_values values
+  | (values, []) when transfer_encoding_is_chunked values -> Body_done ChunkedBody
+  | (_ :: _, []) -> Body_error Common.UnsupportedTransferEncoding
+  | ([], values) -> (
+      match parse_content_length_values values with
+      | Body_need_more -> Body_need_more
+      | Body_error error -> Body_error error
+      | Body_done None -> Body_done CloseDelimitedBody
+      | Body_done (Some length) -> Body_done (FixedBody length)
+    )
 
 let split_fixed_body = fun input length ->
   let available = String.length input in
@@ -169,19 +192,29 @@ let parse_slice = fun input ->
                 let response = response_of_parts status_code version headers_list "" in
                 Done { value = response; remaining = body_start }
               else
-                match parse_content_length headers_list with
+                match parse_body_framing headers_list with
                 | Body_need_more -> Need_more
                 | Body_error error -> Error error
-                | Body_done None ->
+                | Body_done CloseDelimitedBody ->
                     let response = response_of_parts status_code version headers_list body_start in
                     Done { value = response; remaining = "" }
-                | Body_done (Some content_length) -> (
+                | Body_done (FixedBody content_length) -> (
                     match split_fixed_body body_start content_length with
                     | Body_need_more -> Need_more
                     | Body_error error -> Error error
                     | Body_done (body, remaining) ->
                         let response = response_of_parts status_code version headers_list body in
                         Done { value = response; remaining }
+                  )
+                | Body_done ChunkedBody -> (
+                    match Chunk.decode body_start with
+                    | Need_more -> Need_more
+                    | Error error -> Error error
+                    | Done { value = decoded; _ } ->
+                        let response =
+                          response_of_parts status_code version headers_list decoded.body
+                        in
+                        Done { value = response; remaining = decoded.remaining }
                   )
         )
     )
