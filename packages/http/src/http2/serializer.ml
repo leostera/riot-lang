@@ -42,6 +42,7 @@ type error =
     }
   | InvalidPriorityWeight of { weight: int }
   | InvalidStreamDependency of { stream_dependency: int }
+  | InvalidPriorityDependency of { stream_id: int; stream_dependency: int }
   | InvalidStreamIdRange of { stream_id: int }
   | InvalidPromisedStreamId of { promised_stream_id: int }
   | InvalidLastStreamId of { last_stream_id: int }
@@ -109,6 +110,11 @@ let error_to_string = function
       "HTTP/2 priority weight must be between 1 and 256, got " ^ Int.to_string weight
   | InvalidStreamDependency { stream_dependency } ->
       "HTTP/2 stream dependency must be between 0 and 2^31-1, got "
+      ^ Int.to_string stream_dependency
+  | InvalidPriorityDependency { stream_id; stream_dependency } ->
+      "HTTP/2 stream "
+      ^ Int.to_string stream_id
+      ^ " cannot depend on itself as priority dependency "
       ^ Int.to_string stream_dependency
   | InvalidStreamIdRange { stream_id } ->
       "HTTP/2 stream ID must be between 0 and 2^31-1, got " ^ Int.to_string stream_id
@@ -206,6 +212,12 @@ let validate_priority_weight = fun weight ->
   else
     Error (InvalidPriorityWeight { weight })
 
+let validate_priority_dependency = fun ~stream_id ~stream_dependency ->
+  if stream_dependency = stream_id then
+    Error (InvalidPriorityDependency { stream_id; stream_dependency })
+  else
+    Ok ()
+
 let validate_promised_stream_id = fun promised_stream_id ->
   if promised_stream_id >= 1 && promised_stream_id <= 0x7fff_ffff then
     Ok ()
@@ -279,20 +291,24 @@ let flags_to_byte = fun frame_type flags ->
   in
   byte
 
-let serialize_priority = fun stream_dependency exclusive weight ->
+let serialize_priority = fun ~stream_id stream_dependency exclusive weight ->
   match validate_stream_dependency stream_dependency with
   | Error error -> Error error
   | Ok () -> (
-      match validate_priority_weight weight with
+      match validate_priority_dependency ~stream_id ~stream_dependency with
       | Error error -> Error error
-      | Ok () ->
-          let dep_with_exclusive =
-            if exclusive then
-              stream_dependency lor 0x8000_0000
-            else
-              stream_dependency
-          in
-          Ok (write_uint32_be dep_with_exclusive ^ write_uint8 (weight - 1))
+      | Ok () -> (
+          match validate_priority_weight weight with
+          | Error error -> Error error
+          | Ok () ->
+              let dep_with_exclusive =
+                if exclusive then
+                  stream_dependency lor 0x8000_0000
+                else
+                  stream_dependency
+              in
+              Ok (write_uint32_be dep_with_exclusive ^ write_uint8 (weight - 1))
+        )
     )
 
 let serialize_data_payload = fun payload ->
@@ -309,7 +325,7 @@ let serialize_data_payload = fun payload ->
     )
   | payload -> Error (PayloadMismatch { frame_type = Frame.Data; payload })
 
-let serialize_headers_payload = fun payload ->
+let serialize_headers_payload = fun ~stream_id payload ->
   match payload with
   | Frame.HeadersPayload {
     pad_length;
@@ -328,7 +344,7 @@ let serialize_headers_payload = fun payload ->
           in
           let priority_bytes =
             match (stream_dependency, weight) with
-            | (Some dep, Some w) -> serialize_priority dep exclusive w
+            | (Some dep, Some w) -> serialize_priority ~stream_id dep exclusive w
             | (None, None) -> Ok ""
             | _ -> Error (MissingPriorityFields { frame_type = Frame.Headers })
           in
@@ -345,10 +361,10 @@ let serialize_headers_payload = fun payload ->
     )
   | payload -> Error (PayloadMismatch { frame_type = Frame.Headers; payload })
 
-let serialize_priority_payload = fun payload ->
+let serialize_priority_payload = fun ~stream_id payload ->
   match payload with
   | Frame.PriorityPayload { stream_dependency; exclusive; weight } ->
-      serialize_priority stream_dependency exclusive weight
+      serialize_priority ~stream_id stream_dependency exclusive weight
   | payload -> Error (PayloadMismatch { frame_type = Frame.Priority; payload })
 
 let serialize_rst_stream_payload = fun payload ->
@@ -459,11 +475,11 @@ let serialize_unknown_payload = fun frame_type payload ->
   | Frame.UnknownPayload data -> Ok data
   | payload -> Error (PayloadMismatch { frame_type; payload })
 
-let serialize_payload = fun frame_type payload ->
+let serialize_payload = fun ~stream_id frame_type payload ->
   match frame_type with
   | Frame.Data -> serialize_data_payload payload
-  | Frame.Headers -> serialize_headers_payload payload
-  | Frame.Priority -> serialize_priority_payload payload
+  | Frame.Headers -> serialize_headers_payload ~stream_id payload
+  | Frame.Priority -> serialize_priority_payload ~stream_id payload
   | Frame.RstStream -> serialize_rst_stream_payload payload
   | Frame.Settings -> serialize_settings_payload payload
   | Frame.PushPromise -> serialize_push_promise_payload payload
@@ -487,7 +503,7 @@ let serialize_frame = fun frame ->
                 Error (SettingsAckWithPayload { setting_count = List.length settings })
             | payload -> Error (PayloadMismatch { frame_type = Settings; payload })
           )
-        | _ -> serialize_payload frame.frame_type frame.payload
+        | _ -> serialize_payload ~stream_id:frame.stream_id frame.frame_type frame.payload
       )
   in
   match payload_bytes with

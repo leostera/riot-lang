@@ -330,6 +330,22 @@ let test_serialize_rejects_invalid_stream_dependency = fun _ctx ->
   | Error error -> Result.Error ("Wrong serializer error: " ^ Serializer.error_to_string error)
   | Ok _ -> Result.Error "serializer accepted invalid stream dependency"
 
+let test_serialize_rejects_self_priority_dependency = fun _ctx ->
+  let frame = Frame.priority ~stream_id:3 ~stream_dependency:3 ~exclusive:false ~weight:1 in
+  match Serializer.serialize_frame frame with
+  | Error (Serializer.InvalidPriorityDependency { stream_id = 3; stream_dependency = 3 }) ->
+      Result.Ok ()
+  | Error error -> Result.Error ("Wrong serializer error: " ^ Serializer.error_to_string error)
+  | Ok _ -> Result.Error "serializer accepted a self-dependent PRIORITY frame"
+
+let test_serialize_rejects_self_headers_priority_dependency = fun _ctx ->
+  let frame = Frame.headers ~stream_id:3 ~priority:(3, false, 1) "" in
+  match Serializer.serialize_frame frame with
+  | Error (Serializer.InvalidPriorityDependency { stream_id = 3; stream_dependency = 3 }) ->
+      Result.Ok ()
+  | Error error -> Result.Error ("Wrong serializer error: " ^ Serializer.error_to_string error)
+  | Ok _ -> Result.Error "serializer accepted a self-dependent HEADERS priority"
+
 let test_serialize_rejects_incomplete_headers_priority = fun _ctx ->
   let frame = {
     Frame.length = 0;
@@ -741,6 +757,16 @@ let test_parse_push_promise_rejects_short_promised_stream = fun _ctx ->
       expected = Parser.AtLeast 4;
       actual = 3;
     })
+
+let test_parse_priority_rejects_self_dependency = fun _ctx ->
+  expect_parse_error
+    "\x00\x00\x05\x02\x00\x00\x00\x00\x03\x00\x00\x00\x03\x00"
+    (Parser.InvalidPriorityDependency { stream_id = 3; stream_dependency = 3 })
+
+let test_parse_headers_rejects_self_priority_dependency = fun _ctx ->
+  expect_parse_error
+    "\x00\x00\x05\x01\x20\x00\x00\x00\x03\x00\x00\x00\x03\x00"
+    (Parser.InvalidPriorityDependency { stream_id = 3; stream_dependency = 3 })
 
 let test_parse_window_update_allows_stream_zero = fun _ctx ->
   match Parser.parse_frame "\x00\x00\x04\x08\x00\x00\x00\x00\x00\x00\x00\x00\x01" with
@@ -1264,6 +1290,12 @@ let tests =
       "serialize_rejects_invalid_stream_dependency"
       test_serialize_rejects_invalid_stream_dependency;
     case
+      "serialize_rejects_self_priority_dependency"
+      test_serialize_rejects_self_priority_dependency;
+    case
+      "serialize_rejects_self_headers_priority_dependency"
+      test_serialize_rejects_self_headers_priority_dependency;
+    case
       "serialize_rejects_incomplete_headers_priority"
       test_serialize_rejects_incomplete_headers_priority;
     case "serialize_rejects_negative_stream_id" test_serialize_rejects_negative_stream_id;
@@ -1333,6 +1365,10 @@ let tests =
     case
       "parse_push_promise_rejects_short_promised_stream"
       test_parse_push_promise_rejects_short_promised_stream;
+    case "parse_priority_rejects_self_dependency" test_parse_priority_rejects_self_dependency;
+    case
+      "parse_headers_rejects_self_priority_dependency"
+      test_parse_headers_rejects_self_priority_dependency;
     case "parse_window_update_allows_stream_zero" test_parse_window_update_allows_stream_zero;
     case "parse_unknown_frame_preserves_payload" test_parse_unknown_frame_preserves_payload;
     case "process_data_ignores_unknown_frame" test_process_data_ignores_unknown_frame;

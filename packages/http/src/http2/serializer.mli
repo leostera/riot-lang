@@ -39,6 +39,7 @@ type error =
     }
   | InvalidPriorityWeight of { weight: int }
   | InvalidStreamDependency of { stream_dependency: int }
+  | InvalidPriorityDependency of { stream_id: int; stream_dependency: int }
   | InvalidStreamIdRange of { stream_id: int }
   | InvalidPromisedStreamId of { promised_stream_id: int }
   | InvalidLastStreamId of { last_stream_id: int }

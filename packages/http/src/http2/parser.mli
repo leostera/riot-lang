@@ -28,6 +28,7 @@ and error =
   | SettingsLengthNotMultipleOfSix of { length: int }
   | InvalidSettingValue of { setting: setting_id; value: int }
   | WindowUpdateIncrementZero
+  | InvalidPriorityDependency of { stream_id: int; stream_dependency: int }
 
 and read_field =
   | FrameLength

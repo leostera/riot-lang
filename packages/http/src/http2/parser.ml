@@ -28,6 +28,7 @@ and error =
   | SettingsLengthNotMultipleOfSix of { length: int }
   | InvalidSettingValue of { setting: setting_id; value: int }
   | WindowUpdateIncrementZero
+  | InvalidPriorityDependency of { stream_id: int; stream_dependency: int }
 
 and read_field =
   | FrameLength
@@ -158,6 +159,11 @@ let error_to_string = function
   | InvalidSettingValue { setting; value } ->
       setting_id_to_string setting ^ " has invalid value " ^ Int.to_string value
   | WindowUpdateIncrementZero -> "WINDOW_UPDATE increment must be non-zero"
+  | InvalidPriorityDependency { stream_id; stream_dependency } ->
+      "HTTP/2 stream "
+      ^ Int.to_string stream_id
+      ^ " cannot depend on itself as priority dependency "
+      ^ Int.to_string stream_dependency
 
 let byte_at = fun data offset ->
   data
@@ -642,6 +648,20 @@ let parse_payload = fun length frame_type flags data ->
           remaining = String.sub data ~offset:length ~len:(String.length data - length);
         }
 
+let validate_priority_dependency = fun stream_id payload ->
+  let stream_dependency =
+    match payload with
+    | Frame.PriorityPayload { stream_dependency; _ } -> Some stream_dependency
+    | Frame.HeadersPayload { stream_dependency = Some stream_dependency; _ } ->
+        Some stream_dependency
+    | _ -> None
+  in
+  match stream_dependency with
+  | Some stream_dependency when stream_dependency = stream_id ->
+      Result.Error (InvalidPriorityDependency { stream_id; stream_dependency })
+  | Some _
+  | None -> Result.Ok ()
+
 let parse_frame = fun data ->
   match parse_frame_header data with
   | Error msg -> Error msg
@@ -650,16 +670,20 @@ let parse_frame = fun data ->
       match parse_payload length frame_type flags remaining with
       | Error msg -> Error msg
       | Need_more -> Need_more
-      | Done { value = payload; remaining } ->
-          Done {
-            value =
-              {
-                Frame.length;
-                frame_type;
-                flags;
-                stream_id;
-                payload;
-              };
-            remaining;
-          }
+      | Done { value = payload; remaining } -> (
+          match validate_priority_dependency stream_id payload with
+          | Result.Error error -> Error error
+          | Result.Ok () ->
+              Done {
+                value =
+                  {
+                    Frame.length;
+                    frame_type;
+                    flags;
+                    stream_id;
+                    payload;
+                  };
+                remaining;
+              }
+        )
     )
