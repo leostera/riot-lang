@@ -1154,6 +1154,50 @@ module Node = struct
       ~matches:(fun _ -> true)
 end
 
+let node_colon_has_leading_whitespace = fun node ->
+  match Node.first_child_token node ~kind:Syntax_kind.COLON with
+  | Some colon -> Token.has_leading_whitespace colon
+  | None -> false
+
+let rec fold_parameter_spine_node = fun node ~acc ~fn ->
+  match Node.kind node with
+  | kind when is_parameter_kind kind -> (
+      match fn node acc with
+      | Return value -> Return value
+      | Continue acc -> (
+          if node_colon_has_leading_whitespace node then
+            Continue acc
+          else
+            match first_pattern_child node with
+            | Some pattern when node_kind_is pattern Syntax_kind.CONSTRUCT_PATTERN -> (
+                match nth_child_node_matching pattern 1 ~matches:is_parameter_node_kind with
+                | Some rest -> fold_parameter_spine_node rest ~acc ~fn
+                | None -> Continue acc
+              )
+            | Some _
+            | None -> Continue acc
+        )
+    )
+  | Syntax_kind.CONSTRUCT_PATTERN ->
+      fold_child_node_matching
+        node
+        ~matches:is_parameter_node_kind
+        ~init:(Continue acc)
+        ~fn:(fun child state ->
+          match state with
+          | Return _ -> Return state
+          | Continue acc -> (
+              match fold_parameter_spine_node child ~acc ~fn with
+              | Continue next -> Continue (Continue next)
+              | Return value -> Return (Return value)
+            ))
+  | Syntax_kind.CONSTRAINT_PATTERN -> (
+      match first_pattern_child node with
+      | Some pattern -> fold_parameter_spine_node pattern ~acc ~fn
+      | None -> fn node acc
+    )
+  | _ -> fn node acc
+
 let record_pattern_open_wildcard = fun (record: pattern) ->
   let rec loop index previous_token_kind =
     if index >= Node.child_count record then
@@ -2812,7 +2856,7 @@ end = struct
       expr
       ~matches:is_parameter_node_kind
       ~init
-      ~fn:(fun parameter acc -> fn parameter acc)
+      ~fn:(fun parameter acc -> fold_parameter_spine_node parameter ~acc ~fn)
 end
 
 module AttributeExpr: sig
@@ -4409,6 +4453,13 @@ end = struct
     | None ->
         first_descendant_token_matching parameter ~matches:(fun kind -> Syntax_kind.(kind = IDENT))
 
+  let parameter_payload_pattern = fun parameter ->
+    match first_pattern_child parameter with
+    | Some pattern when node_kind_is pattern Syntax_kind.CONSTRUCT_PATTERN
+    && not (node_colon_has_leading_whitespace parameter) ->
+        normalize_pattern_option (nth_pattern_child pattern 0)
+    | pattern -> normalize_pattern_option pattern
+
   let view = fun (parameter: parameter) ->
     match Node.kind parameter with
     | kind when is_pattern_kind kind ->
@@ -4419,7 +4470,7 @@ end = struct
     | Syntax_kind.LABELED_PARAM ->
         Param {
           label = Labeled { name = parameter_label_token parameter };
-          pattern = normalize_pattern_option (first_pattern_child parameter);
+          pattern = parameter_payload_pattern parameter;
         }
     | Syntax_kind.OPTIONAL_PARAM ->
         Param {
@@ -4427,7 +4478,7 @@ end = struct
             name = parameter_label_token parameter;
             default = None;
           };
-          pattern = normalize_pattern_option (first_pattern_child parameter);
+          pattern = parameter_payload_pattern parameter;
         }
     | Syntax_kind.OPTIONAL_PARAM_DEFAULT ->
         Param {
@@ -4435,7 +4486,7 @@ end = struct
             name = parameter_label_token parameter;
             default = normalize_expr_option (first_expr_child parameter);
           };
-          pattern = normalize_pattern_option (first_pattern_child parameter);
+          pattern = parameter_payload_pattern parameter;
         }
     | _ -> Unknown parameter
 
@@ -4596,6 +4647,23 @@ end = struct
 
   let rec fold_parameter_node = fun node ~acc ~fn ->
     match Node.kind node with
+    | kind when is_parameter_kind kind -> (
+        match fn node acc with
+        | Return value -> Return value
+        | Continue acc -> (
+            if node_colon_has_leading_whitespace node then
+              Continue acc
+            else
+              match first_pattern_child node with
+              | Some pattern when node_kind_is pattern Syntax_kind.CONSTRUCT_PATTERN -> (
+                  match nth_child_node_matching pattern 1 ~matches:is_parameter_node_kind with
+                  | Some rest -> fold_parameter_node rest ~acc ~fn
+                  | None -> Continue acc
+                )
+              | Some _
+              | None -> Continue acc
+              )
+      )
     | Syntax_kind.CONSTRUCT_PATTERN ->
         fold_child_node_matching
           node

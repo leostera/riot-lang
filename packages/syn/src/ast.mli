@@ -56,18 +56,14 @@ type record_expr_field_view =
       value: expr option;
       node: record_expr_field;
     }
-  | UnknownRecordExprField of {
-      node: record_expr_field;
-    }
+  | UnknownRecordExprField of { node: record_expr_field }
 type record_pattern_field_view =
   | RecordPatternField of {
       ident: ident;
       pattern: pattern option;
       node: pattern;
     }
-  | UnknownRecordPatternField of {
-      node: pattern;
-    }
+  | UnknownRecordPatternField of { node: pattern }
 type first_class_module_pattern_ascription =
   | NoAscription
   | IdentAscription
@@ -75,7 +71,6 @@ type first_class_module_pattern_ascription =
 type type_item =
   | TypeDeclarationItem of type_declaration
   | TypeExtensionItem of type_extension_declaration
-
 type cast_error = {
   expected: Syntax_kind.t list;
   actual: Syntax_kind.t;
@@ -85,11 +80,9 @@ type 'value cast_result =
   | Node of 'value
   | Unknown of node
   | Error of cast_error
-
 type 'value control =
   | Continue of 'value
   | Return of 'value
-
 val cast_result_to_option: 'value cast_result -> 'value option
 
 (** Root view for a parsed syntax tree. *)
@@ -195,11 +188,7 @@ module Node: sig
   *)
   val child_at: t -> int -> Syntax_tree.child option
 
-  val fold_child:
-    t ->
-    init:'acc ->
-    fn:(Syntax_tree.child -> 'acc -> 'acc control) ->
-    'acc
+  val fold_child: t -> init:'acc -> fn:(Syntax_tree.child -> 'acc -> 'acc control) -> 'acc
 
   val fold_child_node: t -> init:'acc -> fn:(t -> 'acc -> 'acc control) -> 'acc
 
@@ -270,11 +259,7 @@ module TypeExpr: sig
 
   val inner_without_attribute_suffix: t -> t option
 
-  val fold_attribute_suffix_token:
-    t ->
-    init:'acc ->
-    fn:(Token.t -> 'acc -> 'acc control) ->
-    'acc
+  val fold_attribute_suffix_token: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
 
   val attribute_suffix_token_count: t -> int
 end
@@ -321,7 +306,6 @@ module RecordType: sig
   val fold_field: t -> init:'acc -> fn:(record_field -> 'acc -> 'acc control) -> 'acc
 
   val field_count: t -> int
-
 end
 
 module RecordExprField: sig
@@ -387,7 +371,6 @@ module VariantType: sig
   val fold_constructor: t -> init:'acc -> fn:(variant_constructor -> 'acc -> 'acc control) -> 'acc
 
   val constructor_count: t -> int
-
 end
 
 module Pattern: sig
@@ -425,32 +408,13 @@ module Pattern: sig
         ascription: first_class_module_pattern_ascription;
         ascription_ident: Token.t Vector.t;
       }
-    | Interval of {
-        left: t;
-        right: t;
-      }
-    | Constraint of {
-        pattern: t;
-        annotation: type_expr;
-      }
-    | Alias of {
-        pattern: t;
-        alias: t;
-      }
-    | Or of {
-        left: t;
-        right: t;
-      }
-    | Cons of {
-        head: t;
-        tail: t;
-      }
-    | Lazy of {
-        pattern: t;
-      }
-    | Exception of {
-        pattern: t;
-      }
+    | Interval of { left: t; right: t }
+    | Constraint of { pattern: t; annotation: type_expr }
+    | Alias of { pattern: t; alias: t }
+    | Or of { left: t; right: t }
+    | Cons of { head: t; tail: t }
+    | Lazy of { pattern: t }
+    | Exception of { pattern: t }
     | Error of Node.t
     | Unknown of Node.t
   val cast: Node.t -> t cast_result
@@ -472,7 +436,6 @@ module Pattern: sig
   val fold_child_pattern: t -> init:'acc -> fn:(t -> 'acc -> 'acc control) -> 'acc
 
   val child_pattern_count: t -> int
-
 end
 
 module AttributePattern: sig
@@ -532,11 +495,7 @@ module FirstClassModulePattern: sig
 
   val ascription: t -> ascription
 
-  val fold_ascription_ident_segment:
-    t ->
-    init:'acc ->
-    fn:(Token.t -> 'acc -> 'acc control) ->
-    'acc
+  val fold_ascription_ident_segment: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
 end
 
 module RecordPattern: sig
@@ -582,11 +541,7 @@ module LocalOpenPattern: sig
 
   val pattern: t -> pattern option
 
-  val fold_module_ident_segment:
-    t ->
-    init:'acc ->
-    fn:(Token.t -> 'acc -> 'acc control) ->
-    'acc
+  val fold_module_ident_segment: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
 end
 
 module Parameter: sig
@@ -656,10 +611,7 @@ end
 module LetBinding: sig
   type t = let_binding
   type view =
-    | Binding of {
-        pattern: pattern;
-        body: expr;
-      }
+    | Binding of { pattern: pattern; body: expr }
     | Unknown of Node.t
   val cast: Node.t -> t cast_result
 
@@ -688,59 +640,28 @@ module Expr: sig
   type t = expr
   type fun_body =
     | Body_expr of t
-    | Body_cases of {
-        first_case: match_case;
-      }
-
+    | Body_cases of { first_case: match_case }
   type view =
     | Unit
-    | Let of {
-        first_binding: let_binding;
-        body: t;
-      }
-    | LocalOpen of {
-        body: t;
-      }
-    | LetModule of {
-        body: t;
-      }
-    | LetException of {
-        body: t;
-      }
+    | Let of { first_binding: let_binding; body: t }
+    | LocalOpen of { body: t }
+    | LetModule of { body: t }
+    | LetException of { body: t }
     | If of {
         condition: t;
         then_branch: t;
         else_branch: t option;
       }
-    | Match of {
-        scrutinee: t;
-        first_case: match_case;
-      }
-    | Fun of {
-        body: fun_body;
-      }
-    | Try of {
-        body: t;
-        first_case: match_case;
-      }
-    | While of {
-        condition: t;
-        body: t;
-      }
-    | For of {
-        pattern: pattern;
-        start_: t;
-        stop: t;
-        body: t;
-      }
+    | Match of { scrutinee: t; first_case: match_case }
+    | Fun of { body: fun_body }
+    | Try of { body: t; first_case: match_case }
+    | While of { condition: t; body: t }
+    | For of { pattern: pattern; start_: t; stop: t; body: t }
     | Sequence of {
         left: t;
         right: t option;
       }
-    | Apply of {
-        callee: t;
-        argument: t;
-      }
+    | Apply of { callee: t; argument: t }
     | Infix of {
         left: t;
         operator: Token.t;
@@ -780,10 +701,7 @@ module Expr: sig
         base: t option;
         fields: record_expr_field_view Vector.t;
       }
-    | Annotated of {
-        expr: t;
-        annotation: type_expr;
-      }
+    | Annotated of { expr: t; annotation: type_expr }
     | Error of Node.t
     | Unknown of Node.t
   val cast: Node.t -> t cast_result
@@ -897,11 +815,7 @@ module LetModuleExpr: sig
 
   val body: t -> expr option
 
-  val fold_module_body_ident_segment:
-    t ->
-    init:'acc ->
-    fn:(Token.t -> 'acc -> 'acc control) ->
-    'acc
+  val fold_module_body_ident_segment: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
 end
 
 module LetExceptionExpr: sig
@@ -961,19 +875,11 @@ module FirstClassModuleExpr: sig
 
   val ascription: t -> ascription
 
-  val fold_module_ident_segment:
-    t ->
-    init:'acc ->
-    fn:(Token.t -> 'acc -> 'acc control) ->
-    'acc
+  val fold_module_ident_segment: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
 
   val module_ident_segment_count: t -> int
 
-  val fold_ascription_ident_segment:
-    t ->
-    init:'acc ->
-    fn:(Token.t -> 'acc -> 'acc control) ->
-    'acc
+  val fold_ascription_ident_segment: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
 
   val ascription_ident_segment_count: t -> int
 end
@@ -1020,9 +926,7 @@ end
 module ModuleTypeExpr: sig
   type t = module_type_expr
   type view =
-    | Ident of {
-        ident: ident;
-      }
+    | Ident of { ident: ident }
     | Signature of {
         body: Node.t;
       }
@@ -1059,9 +963,7 @@ end
 module ModuleExpr: sig
   type t = module_expr
   type view =
-    | Ident of {
-        ident: ident;
-      }
+    | Ident of { ident: ident }
     | Structure of {
         body: Node.t;
       }
@@ -1170,7 +1072,6 @@ module LetDeclaration: sig
   val fold_binding: t -> init:'acc -> fn:(let_binding -> 'acc -> 'acc control) -> 'acc
 
   val binding_count: t -> int
-
 end
 
 module TypeDeclaration: sig
@@ -1209,11 +1110,7 @@ module TypeDeclaration: sig
 
     val child_token_kind_is: t -> int -> Syntax_kind.t -> bool
 
-    val fold_child:
-      t ->
-      init:'acc ->
-      fn:(Syntax_tree.child -> 'acc -> 'acc control) ->
-      'acc
+    val fold_child: t -> init:'acc -> fn:(Syntax_tree.child -> 'acc -> 'acc control) -> 'acc
 
     val fold_child_token: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
 
@@ -1315,11 +1212,7 @@ module ModuleDeclaration: sig
 
     val child_token_kind_is: t -> int -> Syntax_kind.t -> bool
 
-    val fold_child:
-      t ->
-      init:'acc ->
-      fn:(Syntax_tree.child -> 'acc -> 'acc control) ->
-      'acc
+    val fold_child: t -> init:'acc -> fn:(Syntax_tree.child -> 'acc -> 'acc control) -> 'acc
 
     val fold_child_token: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
 
@@ -1337,12 +1230,8 @@ module ModuleDeclaration: sig
   end
 
   type body =
-    | Expr of {
-        body: module_expr;
-      }
-    | Type of {
-        body: module_type_expr;
-      }
+    | Expr of { body: module_expr }
+    | Type of { body: module_type_expr }
     | Unsupported of {
         body: Node.t option;
       }
@@ -1376,11 +1265,7 @@ module ModuleDeclaration: sig
 
   val has_typeof_body: t -> bool
 
-  val fold_typeof_body_ident_segment:
-    t ->
-    init:'acc ->
-    fn:(Token.t -> 'acc -> 'acc control) ->
-    'acc
+  val fold_typeof_body_ident_segment: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
 
   val fold_structure_item: t -> init:'acc -> fn:(structure_item -> 'acc -> 'acc control) -> 'acc
 
@@ -1397,9 +1282,7 @@ module ModuleTypeDeclaration: sig
   type t = module_type_declaration
   type body =
     | Abstract
-    | Manifest of {
-        body: module_type_expr;
-      }
+    | Manifest of { body: module_type_expr }
     | Unsupported of {
         body: Node.t option;
       }
@@ -1429,11 +1312,7 @@ module ModuleTypeDeclaration: sig
 
   val base_module_type: t -> Node.t option
 
-  val fold_constraint:
-    t ->
-    init:'acc ->
-    fn:(module_type_constraint -> 'acc -> 'acc control) ->
-    'acc
+  val fold_constraint: t -> init:'acc -> fn:(module_type_constraint -> 'acc -> 'acc control) -> 'acc
 
   val constraint_count: t -> int
 end
@@ -1631,7 +1510,6 @@ module Implementation: sig
   val fold_item: t -> init:'acc -> fn:(structure_item -> 'acc -> 'acc control) -> 'acc
 
   val item_count: t -> int
-
 end
 
 module Interface: sig
@@ -1643,7 +1521,6 @@ module Interface: sig
   val fold_item: t -> init:'acc -> fn:(signature_item -> 'acc -> 'acc control) -> 'acc
 
   val item_count: t -> int
-
 end
 
 module SourceFile: sig

@@ -1345,23 +1345,45 @@ let collect_child_patterns = fun (node: Ast.Node.t) ->
 
 let collect_fun_parameters = fun (node: Ast.Node.t) ->
   let parameters = Vector.with_capacity ~size:(Ast.Node.child_count node) in
+  let parameter_colon_has_leading_space = fun parameter ->
+    match Ast.Node.first_child_token (Ast.Parameter.as_node parameter) ~kind:Kind.COLON with
+    | Some colon -> Ast.Token.has_leading_whitespace colon
+    | None -> false
+  in
   let rec push_parameter parameter =
     match Ast.Parameter.view parameter with
-    | Ast.Parameter.Param { label = Ast.Parameter.NoLabel; _ } when node_kind_is (Ast.Parameter.as_node parameter) Kind.CONSTRUCT_PATTERN ->
-        push_positional_construct parameter
-    | Ast.Parameter.Param _
-    | Ast.Parameter.Unknown _ -> Vector.push parameters ~value:parameter
-  and push_positional_construct parameter =
-    let node = (Ast.Parameter.as_node parameter) in
-    match node_kind node with
-    | Kind.CONSTRUCT_PATTERN ->
-        iter_fold Ast.Node.fold_child_node
-          node
-          ~fn:(fun child ->
-            match Ast.cast_result_to_option (Ast.Parameter.cast child) with
-            | Some child -> push_parameter child
-            | None -> ())
-    | _ -> Vector.push parameters ~value:parameter
+    | Ast.Parameter.Param { label = Ast.Parameter.NoLabel; _ } when node_kind_is
+      (Ast.Parameter.as_node parameter)
+      Kind.CONSTRUCT_PATTERN -> push_construct_parameters (Ast.Parameter.as_node parameter)
+    | Ast.Parameter.Param { label = Ast.Parameter.NoLabel; _ }
+    | Ast.Parameter.Unknown _ ->
+        Vector.push parameters ~value:parameter
+    | Ast.Parameter.Param _ ->
+        Vector.push parameters ~value:parameter;
+        push_labeled_parameter_tail parameter
+  and push_construct_parameters node =
+    iter_fold Ast.Node.fold_child_node
+      node
+      ~fn:(fun child ->
+        match Ast.cast_result_to_option (Ast.Parameter.cast child) with
+        | Some parameter -> push_parameter parameter
+        | None -> ())
+  and push_labeled_parameter_tail parameter =
+    if not (parameter_colon_has_leading_space parameter) then
+      match Ast.Node.first_child_node (Ast.Parameter.as_node parameter) ~kind:Kind.CONSTRUCT_PATTERN with
+      | Some construct ->
+          let seen_first = ref false in
+          iter_fold Ast.Node.fold_child_node
+            construct
+            ~fn:(fun child ->
+              match Ast.cast_result_to_option (Ast.Parameter.cast child) with
+              | Some parameter ->
+                  if !seen_first then
+                    push_parameter parameter
+                  else
+                    seen_first := true
+              | None -> ())
+      | None -> ()
   in
   iter_fold Ast.Node.fold_child_node
     node
@@ -3454,6 +3476,18 @@ let parameter_pattern_requires_parens = fun pattern ->
   | Alias _ -> true
   | _ -> false
 
+let parameter_pattern_renders_delimited = fun pattern ->
+  match PatternView.view pattern with
+  | Parenthesized _
+  | Tuple
+  | List
+  | Array
+  | Record
+  | FirstClassModule
+  | LocalOpen
+  | LocallyAbstractType -> true
+  | _ -> false
+
 let record_pattern_fields_have_leading_comment = fun (fields: Ast.record_pattern_field_view Vector.t) ->
   let found = ref false in
   Vector.for_each
@@ -3726,7 +3760,11 @@ and render_tuple_pattern_contents = fun state pattern ->
 
 and render_parameter_pattern = fun state parameter pattern ->
   let needs_parens =
-    Ast.Parameter.has_explicit_pattern_parens parameter || parameter_pattern_requires_parens pattern
+    parameter_pattern_requires_parens pattern
+    || (
+      Ast.Parameter.has_explicit_pattern_parens parameter
+      && not (parameter_pattern_renders_delimited pattern)
+    )
   in
   if needs_parens then (
     emit_text state "(";
@@ -3756,7 +3794,8 @@ and render_named_parameter = fun state ~sigil parameter label pattern ->
 and render_parameter = fun state (parameter: Ast.Parameter.t) ->
   let node = (Ast.Parameter.as_node parameter) in
   match Ast.Parameter.view parameter with
-  | Ast.Parameter.Param { label = Ast.Parameter.NoLabel; pattern = Some pattern } -> render_pattern state pattern
+  | Ast.Parameter.Param { label = Ast.Parameter.NoLabel; pattern = Some pattern } ->
+      render_parameter_pattern state parameter pattern
   | Ast.Parameter.Param { label = Ast.Parameter.NoLabel; pattern = None } ->
       unsupported_node "positional parameter without pattern" node
   | Ast.Parameter.Param { label = Ast.Parameter.Labeled { name = Some label }; pattern = None } ->
@@ -7368,7 +7407,7 @@ and render_let_binding_tail_with_body_break = fun
   force_body_break ->
   let binding_pattern = Ast.LetBinding.pattern binding in
   let binding_body = Ast.LetBinding.body binding in
-  let annotation = Ast.LetBinding.type_annotation binding in
+  let annotation = Ast.LetBinding.return_type_annotation binding in
   let parameters = Vector.with_capacity ~size:(Ast.LetBinding.parameter_count binding) in
   iter_fold Ast.LetBinding.fold_parameter binding ~fn:(fun param -> Vector.push parameters ~value:param);
   let parameter_count = Vector.length parameters in
