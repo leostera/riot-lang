@@ -29,10 +29,15 @@ and error =
   | InvalidChunkSizeLineEnding
   | InvalidChunkDataLineEnding
   | ChunkSizeLineTooLong of { max_length: int }
-  | InvalidChunkSize
+  | InvalidChunkSize of chunk_size_error
   | InvalidChunkExtensionCharacter of { code: int; index: int }
   | ChunkTooLarge of { size: int; max_size: int }
   | ChunkedBodyTooLarge of { size: int; max_size: int }
+
+and chunk_size_error =
+  | EmptyChunkSize
+  | ChunkSizeOverflow
+  | InvalidChunkSizeCharacter of { code: int; index: int }
 
 and content_length_error =
   | EmptyContentLength
@@ -82,6 +87,12 @@ let content_length_error_to_string = function
   | InvalidContentLengthCharacter { code; index } ->
       "invalid character code " ^ Int.to_string code ^ " at index " ^ Int.to_string index
 
+let chunk_size_error_to_string = function
+  | EmptyChunkSize -> "empty value"
+  | ChunkSizeOverflow -> "value exceeds the maximum integer"
+  | InvalidChunkSizeCharacter { code; index } ->
+      "invalid hex character code " ^ Int.to_string code ^ " at index " ^ Int.to_string index
+
 let error_to_string = function
   | InvalidCrlf -> "Invalid CRLF"
   | RequestLineTooLong { max_length } ->
@@ -115,7 +126,7 @@ let error_to_string = function
   | InvalidChunkDataLineEnding -> "Invalid chunk data line ending"
   | ChunkSizeLineTooLong { max_length } ->
       "Chunk size line too long (max " ^ Int.to_string max_length ^ " bytes)"
-  | InvalidChunkSize -> "Invalid chunk size"
+  | InvalidChunkSize error -> "Invalid chunk size: " ^ chunk_size_error_to_string error
   | InvalidChunkExtensionCharacter { code; index } ->
       "Invalid chunk extension character code "
       ^ Int.to_string code

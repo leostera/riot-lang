@@ -161,6 +161,18 @@ let http1_content_length_error_json = fun error ->
           ("index", Json.int index);
         ]
 
+let http1_chunk_size_error_json = fun error ->
+  match error with
+  | Http1.Common.EmptyChunkSize -> Json.obj [ ("type", Json.string "EmptyChunkSize") ]
+  | Http1.Common.ChunkSizeOverflow -> Json.obj [ ("type", Json.string "ChunkSizeOverflow") ]
+  | Http1.Common.InvalidChunkSizeCharacter { code; index } ->
+      Json.obj
+        [
+          ("type", Json.string "InvalidChunkSizeCharacter");
+          ("code", Json.int code);
+          ("index", Json.int index);
+        ]
+
 let http1_error_json = fun error ->
   match error with
   | Http1.Common.InvalidCrlf -> Json.obj [ ("type", Json.string "InvalidCrlf") ]
@@ -213,7 +225,12 @@ let http1_error_json = fun error ->
   | Http1.Common.ChunkSizeLineTooLong { max_length } ->
       Json.obj
         [ ("type", Json.string "ChunkSizeLineTooLong"); ("max_length", Json.int max_length); ]
-  | Http1.Common.InvalidChunkSize -> Json.obj [ ("type", Json.string "InvalidChunkSize") ]
+  | Http1.Common.InvalidChunkSize reason ->
+      Json.obj
+        [
+          ("type", Json.string "InvalidChunkSize");
+          ("reason", http1_chunk_size_error_json reason);
+        ]
   | Http1.Common.InvalidChunkExtensionCharacter { code; index } ->
       Json.obj
         [

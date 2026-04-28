@@ -31,10 +31,15 @@ and error =
   | InvalidChunkSizeLineEnding
   | InvalidChunkDataLineEnding
   | ChunkSizeLineTooLong of { max_length: int }
-  | InvalidChunkSize
+  | InvalidChunkSize of chunk_size_error
   | InvalidChunkExtensionCharacter of { code: int; index: int }
   | ChunkTooLarge of { size: int; max_size: int }
   | ChunkedBodyTooLarge of { size: int; max_size: int }
+
+and chunk_size_error =
+  | EmptyChunkSize
+  | ChunkSizeOverflow
+  | InvalidChunkSizeCharacter of { code: int; index: int }
 
 and content_length_error =
   | EmptyContentLength

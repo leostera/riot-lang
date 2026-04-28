@@ -1014,6 +1014,30 @@ let test_chunk_hex_size = fun _ctx ->
   | Need_more -> Result.Error "Unexpected Need_more"
   | Error e -> Result.Error ("Parse error: " ^ error_to_string e)
 
+let test_chunk_rejects_empty_size = fun _ctx ->
+  match Http1.Chunk.parse "\r\n" with
+  | Error (InvalidChunkSize EmptyChunkSize) -> Result.Ok ()
+  | Error error -> Result.Error ("Expected empty chunk size error, got " ^ error_to_string error)
+  | Need_more -> Result.Error "Expected empty chunk size error, got Need_more"
+  | Done _ -> Result.Error "Expected empty chunk size error"
+
+let test_chunk_rejects_invalid_size_character = fun _ctx ->
+  match Http1.Chunk.parse "1z\r\nhello\r\n" with
+  | Error (InvalidChunkSize (InvalidChunkSizeCharacter { code; index = 1 })) when code
+  = Char.to_int 'z' -> Result.Ok ()
+  | Error error ->
+      Result.Error ("Expected invalid chunk size character, got " ^ error_to_string error)
+  | Need_more -> Result.Error "Expected invalid chunk size character, got Need_more"
+  | Done _ -> Result.Error "Expected invalid chunk size character"
+
+let test_chunk_rejects_size_overflow = fun _ctx ->
+  let chunk = String.make ~len:32 ~char:'f' ^ "\r\nhello\r\n" in
+  match Http1.Chunk.parse chunk with
+  | Error (InvalidChunkSize ChunkSizeOverflow) -> Result.Ok ()
+  | Error error -> Result.Error ("Expected chunk size overflow, got " ^ error_to_string error)
+  | Need_more -> Result.Error "Expected chunk size overflow, got Need_more"
+  | Done _ -> Result.Error "Expected chunk size overflow"
+
 let test_chunk_preserves_remaining_after_data_crlf = fun _ctx ->
   let chunk = "5\r\nHello\r\nnext" in
   match Http1.Chunk.parse chunk with
@@ -1377,6 +1401,9 @@ let tests =
     case "chunk_single" test_chunk_single;
     case "chunk_last" test_chunk_last;
     case "chunk_hex_size" test_chunk_hex_size;
+    case "chunk rejects empty size" test_chunk_rejects_empty_size;
+    case "chunk rejects invalid size character" test_chunk_rejects_invalid_size_character;
+    case "chunk rejects size overflow" test_chunk_rejects_size_overflow;
     case "chunk preserves remaining after data crlf" test_chunk_preserves_remaining_after_data_crlf;
     case "chunk rejects invalid size line crlf" test_chunk_rejects_invalid_size_line_crlf;
     case "chunk rejects overlong size line" test_chunk_rejects_overlong_size_line;

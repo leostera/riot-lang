@@ -57,6 +57,38 @@ let split_chunk_size_line = fun line ->
           )
     )
 
+let hex_digit = fun c ->
+  let code = Char.to_int c in
+  if code >= Char.to_int '0' && code <= Char.to_int '9' then
+    Some (code - Char.to_int '0')
+  else if code >= Char.to_int 'a' && code <= Char.to_int 'f' then
+    Some (code - Char.to_int 'a' + 10)
+  else if code >= Char.to_int 'A' && code <= Char.to_int 'F' then
+    Some (code - Char.to_int 'A' + 10)
+  else
+    None
+
+let parse_chunk_size = fun size_hex ->
+  let length = String.length size_hex in
+  if length = 0 then
+    Result.Error Common.EmptyChunkSize
+  else
+    let rec loop index acc =
+      if index >= length then
+        Result.Ok acc
+      else
+        let char = String.get_unchecked size_hex ~at:index in
+        match hex_digit char with
+        | None ->
+            Result.Error (Common.InvalidChunkSizeCharacter { code = Char.to_int char; index })
+        | Some digit ->
+            if acc > (Int.max_int - digit) / 16 then
+              Result.Error Common.ChunkSizeOverflow
+            else
+              loop (index + 1) ((acc * 16) + digit)
+    in
+    loop 0 0
+
 let parse_size = fun ?(max_line_length = 8_192) cursor ->
   match Cursor.take_until_char cursor '\r' with
   | None ->
@@ -75,11 +107,10 @@ let parse_size = fun ?(max_line_length = 8_192) cursor ->
             let size_line = Slice.to_string size_hex in
             match split_chunk_size_line size_line with
             | Error error -> Cursor_error error
-            | Ok "" -> Cursor_error Common.InvalidChunkSize
             | Ok size_hex -> (
-                match Int.parse ("0x" ^ size_hex) with
-                | Some size -> Cursor_done { value = size; remaining = cursor }
-                | None -> Cursor_error Common.InvalidChunkSize
+                match parse_chunk_size size_hex with
+                | Ok size -> Cursor_done { value = size; remaining = cursor }
+                | Error error -> Cursor_error (Common.InvalidChunkSize error)
               )
           )
     )
