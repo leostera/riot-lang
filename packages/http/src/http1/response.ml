@@ -171,7 +171,8 @@ let response_of_parts = fun status_code version headers_list body ->
   else
     response
 
-let parse_slice = fun input ->
+let parse_slice = fun
+  ?(max_headers = 100) ?(max_header_length = 8_192) ?(max_header_block_length = 65_536) input ->
   match parse_status_line_slice input with
   | Cursor_need_more -> Need_more
   | Cursor_error error -> Error error
@@ -181,7 +182,11 @@ let parse_slice = fun input ->
     reason = _;
     remaining
   }; _ } -> (
-      match Request.parse_headers remaining with
+      match Request.parse_headers
+        ~max_count:max_headers
+        ~max_length:max_header_length
+        ~max_total_length:max_header_block_length
+        remaining with
       | Need_more -> Need_more
       | Error error -> Error error
       | Done { value = (headers_list, body_start); _ } -> (
@@ -219,4 +224,10 @@ let parse_slice = fun input ->
         )
     )
 
-let parse = fun input -> parse_slice (slice_of_string input)
+let parse = fun
+  ?(max_headers = 100) ?(max_header_length = 8_192) ?(max_header_block_length = 65_536) input ->
+  parse_slice
+    ~max_headers
+    ~max_header_length
+    ~max_header_block_length
+    (slice_of_string input)

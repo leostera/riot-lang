@@ -18,6 +18,7 @@ and error =
   | InvalidStatusCode
   | InvalidHeaderFormat of header_format_error
   | HeaderTooLong of { max_length: int }
+  | HeaderBlockTooLong of { max_length: int }
   | TooManyHeaders of { max_count: int }
   | InvalidContentLength
   | ConflictingContentLength
@@ -79,6 +80,8 @@ let error_to_string = function
   | InvalidHeaderFormat error ->
       "Invalid header format (" ^ header_format_error_to_string error ^ ")"
   | HeaderTooLong { max_length } -> "Header too long (max " ^ Int.to_string max_length ^ " bytes)"
+  | HeaderBlockTooLong { max_length } ->
+      "Header block too long (max " ^ Int.to_string max_length ^ " bytes)"
   | TooManyHeaders { max_count } -> "Too many headers (max " ^ Int.to_string max_count ^ ")"
   | InvalidContentLength -> "Invalid Content-Length"
   | ConflictingContentLength -> "Conflicting Content-Length"

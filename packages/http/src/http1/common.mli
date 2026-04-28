@@ -20,6 +20,7 @@ and error =
   | InvalidStatusCode
   | InvalidHeaderFormat of header_format_error
   | HeaderTooLong of { max_length: int }
+  | HeaderBlockTooLong of { max_length: int }
   | TooManyHeaders of { max_count: int }
   | InvalidContentLength
   | ConflictingContentLength

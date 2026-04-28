@@ -349,17 +349,31 @@ let parse_header_line_owned = fun cursor ->
     )
 
 let rec parse_headers_owned = fun
-  ?(max_count = 100) ?(max_length = 8_192) ?(acc = []) ?(count = 0) cursor ->
+  ?(max_count = 100)
+  ?(max_length = 8_192)
+  ?(max_total_length = 65_536)
+  ?(acc = [])
+  ?(count = 0)
+  ?(total_length = 0)
+  cursor ->
   if count >= max_count then
     Slice_error (Common.TooManyHeaders { max_count })
   else
     match take_header_block_terminator cursor with
-    | Some cursor -> Slice_done (List.reverse acc, cursor)
+    | Some next_cursor ->
+        let total_length = total_length + (next_cursor.pos - cursor.pos) in
+        if total_length > max_total_length then
+          Slice_error (Common.HeaderBlockTooLong { max_length = max_total_length })
+        else
+          Slice_done (List.reverse acc, next_cursor)
     | None ->
         match parse_header_line_owned cursor with
         | Slice_need_more ->
-            if Slice.length (SliceCursor.remaining cursor) > max_length then
+            let pending = Slice.length (SliceCursor.remaining cursor) in
+            if pending > max_length then
               Slice_error (Common.HeaderTooLong { max_length })
+            else if total_length + pending > max_total_length then
+              Slice_error (Common.HeaderBlockTooLong { max_length = max_total_length })
             else
               Slice_need_more
         | Slice_error error -> Slice_error error
@@ -367,16 +381,29 @@ let rec parse_headers_owned = fun
             if String.length header_name + String.length header_value > max_length then
               Slice_error (Common.HeaderTooLong { max_length })
             else
-              parse_headers_owned
-                ~max_count
-                ~max_length
-                ~acc:((header_name, header_value) :: acc)
-                ~count:(count + 1)
-                next_cursor
+              let total_length = total_length + (next_cursor.pos - cursor.pos) in
+              if total_length > max_total_length then
+                Slice_error (Common.HeaderBlockTooLong { max_length = max_total_length })
+              else
+                parse_headers_owned
+                  ~max_count
+                  ~max_length
+                  ~max_total_length
+                  ~acc:((header_name, header_value) :: acc)
+                  ~count:(count + 1)
+                  ~total_length
+                  next_cursor
 
-let parse_headers = fun ?(max_count = 100) ?(max_length = 8_192) ?(acc = []) cursor ->
+let parse_headers = fun
+  ?(max_count = 100) ?(max_length = 8_192) ?(max_total_length = 65_536) ?(acc = []) cursor ->
   let cursor = SliceCursor.of_cursor cursor in
-  match parse_headers_owned ~max_count ~max_length ~acc ~count:(List.length acc) cursor with
+  match parse_headers_owned
+    ~max_count
+    ~max_length
+    ~max_total_length
+    ~acc
+    ~count:(List.length acc)
+    cursor with
   | Slice_need_more -> Common.Need_more
   | Slice_error error -> Common.Error error
   | Slice_done (headers, remaining) ->
@@ -399,7 +426,11 @@ let request_of_parts = fun method_ uri version headers_list body ->
   request
 
 let parse_slice = fun
-  ?(max_request_line = 8_192) ?(max_headers = 100) ?(max_header_length = 8_192) input ->
+  ?(max_request_line = 8_192)
+  ?(max_headers = 100)
+  ?(max_header_length = 8_192)
+  ?(max_header_block_length = 65_536)
+  input ->
   match parse_request_line_owned ~max_length:max_request_line input with
   | Slice_need_more -> Common.Need_more
   | Slice_error error -> Common.Error error
@@ -409,7 +440,11 @@ let parse_slice = fun
     parsed_version;
     next_cursor
   } -> (
-      match parse_headers_owned ~max_count:max_headers ~max_length:max_header_length next_cursor with
+      match parse_headers_owned
+        ~max_count:max_headers
+        ~max_length:max_header_length
+        ~max_total_length:max_header_block_length
+        next_cursor with
       | Slice_need_more -> Common.Need_more
       | Slice_error error -> Common.Error error
       | Slice_done (headers_list, remaining) ->
@@ -450,9 +485,14 @@ let parse_slice = fun
     )
 
 let parse = fun
-  ?(max_request_line = 8_192) ?(max_headers = 100) ?(max_header_length = 8_192) input ->
+  ?(max_request_line = 8_192)
+  ?(max_headers = 100)
+  ?(max_header_length = 8_192)
+  ?(max_header_block_length = 65_536)
+  input ->
   parse_slice
     ~max_request_line
     ~max_headers
     ~max_header_length
+    ~max_header_block_length
     (slice_of_string input)

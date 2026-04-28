@@ -407,6 +407,24 @@ let test_header_line_limit_applies_before_crlf = fun _ctx ->
   | Need_more -> Result.Error "Expected header too long error, got Need_more"
   | Done _ -> Result.Error "Expected header too long error"
 
+let test_request_header_block_limit = fun _ctx ->
+  let req = "GET / HTTP/1.1\r\nA: 123\r\nB: 456\r\n\r\n" in
+  match Http1.Request.parse ~max_header_block_length:12 req with
+  | Error (HeaderBlockTooLong { max_length = 12 }) -> Result.Ok ()
+  | Error error ->
+      Result.Error ("Expected header block too long error, got " ^ error_to_string error)
+  | Need_more -> Result.Error "Expected header block too long error, got Need_more"
+  | Done _ -> Result.Error "Expected header block too long error"
+
+let test_request_header_block_limit_applies_before_crlf = fun _ctx ->
+  let req = "GET / HTTP/1.1\r\nA: 123\r\nB: 456" in
+  match Http1.Request.parse ~max_header_block_length:12 req with
+  | Error (HeaderBlockTooLong { max_length = 12 }) -> Result.Ok ()
+  | Error error ->
+      Result.Error ("Expected header block too long error, got " ^ error_to_string error)
+  | Need_more -> Result.Error "Expected header block too long error, got Need_more"
+  | Done _ -> Result.Error "Expected header block too long error"
+
 let test_request_parse_slice = fun _ctx ->
   let req = "GET /view HTTP/1.1\r\nHost: example.com\r\n\r\n" in
   match expect_request_parse_slice req with
@@ -729,6 +747,15 @@ let test_response_rejects_invalid_header_name_character = fun _ctx ->
   | Need_more -> Result.Error "Expected invalid header name character error, got Need_more"
   | Done _ -> Result.Error "Expected invalid header name character error"
 
+let test_response_header_block_limit = fun _ctx ->
+  let resp = "HTTP/1.1 200 OK\r\nA: 123\r\nB: 456\r\n\r\n" in
+  match Http1.Response.parse ~max_header_block_length:12 resp with
+  | Error (HeaderBlockTooLong { max_length = 12 }) -> Result.Ok ()
+  | Error error ->
+      Result.Error ("Expected header block too long error, got " ^ error_to_string error)
+  | Need_more -> Result.Error "Expected header block too long error, got Need_more"
+  | Done _ -> Result.Error "Expected header block too long error"
+
 (* Chunked Encoding Tests *)
 
 let test_chunk_single = fun _ctx ->
@@ -955,6 +982,10 @@ let tests =
       test_request_incomplete_chunked_body_needs_more;
     case "request line limit applies before crlf" test_request_line_limit_applies_before_crlf;
     case "header line limit applies before crlf" test_header_line_limit_applies_before_crlf;
+    case "request header block limit" test_request_header_block_limit;
+    case
+      "request header block limit applies before crlf"
+      test_request_header_block_limit_applies_before_crlf;
     case "request_parse_slice" test_request_parse_slice;
     case
       "request rejects missing lf after request line"
@@ -1004,6 +1035,7 @@ let tests =
     case
       "response rejects invalid header name character"
       test_response_rejects_invalid_header_name_character;
+    case "response header block limit" test_response_header_block_limit;
     case "chunk_single" test_chunk_single;
     case "chunk_last" test_chunk_last;
     case "chunk_hex_size" test_chunk_hex_size;
