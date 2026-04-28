@@ -53,6 +53,6 @@ The package is intentionally small:
 
 ## Related packages
 
-- `syn` provides the lossless lexer/parser and typed CST that `krasny` lowers.
+- `syn` provides the lossless lexer/parser and typed CST that `krasny` renders.
 - `riot fmt` is the normal end-user entry point if you just want to format a
   project.

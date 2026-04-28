@@ -3,7 +3,7 @@ open Std.Collections
 
 type format_error = Format_core.format_error =
   | Cannot_parse of Syn.Diagnostic.t Vector.t
-  | Cannot_lower of string
+  | Cannot_render of string
 
 type write_error = Format_core.write_error =
   | Format_failed of format_error

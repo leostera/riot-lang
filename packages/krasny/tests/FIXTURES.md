@@ -28,7 +28,7 @@ The active manifest now follows two rules:
   Examples: top-level lets, `let ... in`, `if`, `seq`, `begin`, assignment in sequences.
 
 - `04xx`: functions, match, and patterns
-  Examples: `fun`, `function`, match lowering, constructor/list/tuple/or/guard patterns.
+  Examples: `fun`, `function`, match rendering, constructor/list/tuple/or/guard patterns.
 
 - `05xx`: labeled and optional arguments
   Examples: labeled arguments, labeled parameters, optional arguments, defaulted optional parameters.

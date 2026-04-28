@@ -3,16 +3,16 @@ open Std.Collections
 
 type format_error =
   | Cannot_parse of Syn.Diagnostic.t Vector.t
-  | Cannot_lower of string
+  | Cannot_render of string
 
 type write_error =
   | Format_failed of format_error
   | Write_failed of IO.error
 
-let parse2_diagnostics_to_string = fun diagnostics ->
+let parser_diagnostics_to_string = fun diagnostics ->
   let count = Vector.length diagnostics in
   if count = 0 then
-    "parse2 diagnostics prevented formatting"
+    "parser diagnostics prevented formatting"
   else
     let first =
       Vector.get_unchecked diagnostics ~at:0
@@ -24,8 +24,8 @@ let parse2_diagnostics_to_string = fun diagnostics ->
       first ^ " (+" ^ Int.to_string (count - 1) ^ " more)"
 
 let format_error_to_string = function
-  | Cannot_parse diagnostics -> parse2_diagnostics_to_string diagnostics
-  | Cannot_lower err -> err
+  | Cannot_parse diagnostics -> parser_diagnostics_to_string diagnostics
+  | Cannot_render err -> err
 
 let output_size_hint = fun (result: Syn.Parser.parse_result) ->
   IO.IoVec.IoSlice.length result.source + 1
@@ -79,7 +79,7 @@ let stream_format = fun (result: Syn.Parser.parse_result) ~writer ~width ->
     let source_file = Syn.Ast.SourceFile.make result.Syn.Parser.tree in
     match Formatter.write ~writer ~width source_file with
     | Error (Formatter.Cannot_format err) ->
-        Error (Format_failed (Cannot_lower (Formatter.error_to_string err)))
+        Error (Format_failed (Cannot_render (Formatter.error_to_string err)))
     | Error (Formatter.Cannot_write err) -> Error (Write_failed err)
     | Ok () ->
         yield ();
@@ -92,7 +92,7 @@ let stream_format_to_string = fun (result: Syn.Parser.parse_result) ~width ->
   | Ok () -> Ok (IO.Buffer.contents buffer)
   | Error (Format_failed err) -> Error err
   | Error (Write_failed err) ->
-      Error (Cannot_lower ("buffer write failed: " ^ IO.error_message err))
+      Error (Cannot_render ("buffer write failed: " ^ IO.error_message err))
 
 let write = fun ~writer result -> stream_format result ~writer ~width:100
 

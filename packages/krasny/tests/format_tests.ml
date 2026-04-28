@@ -3016,7 +3016,7 @@ let test_format_rewrites_parameterized_let_bindings_between_formatted_lets = fun
   let source = "(* intro *)\nlet x = 1 + 2\nlet f x = x + 1\nlet y = 3 + 4\n" in
   assert_formatted_ml_snapshot
     ~ctx
-    ~msg:"parameterized let bindings should lower through explicit fun syntax"
+    ~msg:"parameterized let bindings should render through explicit fun syntax"
     source
 
 let test_format_keeps_mixed_trivia_and_unsupported_items_parseable = fun _ctx ->
@@ -3520,7 +3520,7 @@ end
   Test.assert_equal ~expected:(Krasny.syntax_hash shallow) ~actual:(Krasny.syntax_hash indented);
   Ok ()
 
-let test_format_keeps_function_and_match_lowering_idempotent = fun _ctx ->
+let test_format_keeps_function_and_match_rendering_idempotent = fun _ctx ->
   let source =
     {|let f = function x, y -> x + y
 let g = function 0 -> "zero" | _ -> "other"
@@ -3622,7 +3622,7 @@ let test_format_keeps_typed_first_class_module_patterns_idempotent = fun _ctx ->
   let source = {|let run_comparison index (module R : Reporter.Intf.Intf) comp = (index, comp)
 |}
   in
-  assert_idempotent ~source ~msg:"typed first-class module patterns should lower structurally";
+  assert_idempotent ~source ~msg:"typed first-class module patterns should render structurally";
   Ok ()
 
 let test_format_keeps_first_class_module_expressions_idempotent = fun _ctx ->
@@ -4022,7 +4022,7 @@ let poly : 'a. 'a -> 'a = fun x -> x
   in
   assert_formatted_ml_snapshot
     ~ctx
-    ~msg:"typed and polymorphic expressions should lower through structural core-type rendering"
+    ~msg:"typed and polymorphic expressions should render through structural core-type rendering"
     source
 
 let test_format_keeps_nested_module_bodies_structural = fun _ctx ->
@@ -4039,7 +4039,7 @@ end
   in
   assert_idempotent
     ~source
-    ~msg:"nested signature and structure bodies should lower from structural item streams";
+    ~msg:"nested signature and structure bodies should render from structural item streams";
   Ok ()
 
 let test_format_keeps_grouped_gadt_type_declarations_structural = fun _ctx ->
@@ -4051,7 +4051,7 @@ and packed =
   in
   assert_idempotent
     ~source
-    ~msg:"grouped GADT type declarations should lower structurally instead of preserving source";
+    ~msg:"grouped GADT type declarations should render structurally instead of preserving source";
   Ok ()
 
 let test_format_inline_record_constructors_from_structure_not_source_newlines = fun _ctx ->
@@ -4122,7 +4122,7 @@ let test_format_keeps_simple_nested_match_case_bodies_idempotent = fun ctx ->
   }
 |ocaml}
 
-let test_format_keeps_top_level_lowered_fun_phrases_separated = fun _ctx ->
+let test_format_keeps_top_level_fun_phrases_separated = fun _ctx ->
   let source = {|open Std
 
 let ( .??[] ) () () = ();;
@@ -4132,9 +4132,7 @@ let ( .??[] ) () () = ();;
 ;;
 |}
   in
-  assert_idempotent
-    ~source
-    ~msg:"top-level expression phrases should stay outside lowered fun bindings";
+  assert_idempotent ~source ~msg:"top-level expression phrases should stay outside fun bindings";
   Ok ()
 
 let test_format_keeps_top_level_phrase_separators_structural = fun ctx ->
@@ -4935,8 +4933,8 @@ let tests =
       "syntax hash normalizes trivia line indentation"
       test_syntax_hash_normalizes_trivia_line_indentation;
     case
-      "format keeps function and match lowering idempotent"
-      test_format_keeps_function_and_match_lowering_idempotent;
+      "format keeps function and match rendering idempotent"
+      test_format_keeps_function_and_match_rendering_idempotent;
     case
       "format keeps let/if/sequence layouts idempotent"
       test_format_keeps_let_if_sequence_layouts_idempotent;
@@ -5060,8 +5058,8 @@ let tests =
       "format keeps simple nested match case bodies idempotent"
       test_format_keeps_simple_nested_match_case_bodies_idempotent;
     case
-      "format keeps top-level lowered fun phrases separated"
-      test_format_keeps_top_level_lowered_fun_phrases_separated;
+      "format keeps top-level fun phrases separated"
+      test_format_keeps_top_level_fun_phrases_separated;
     case
       "format keeps top-level phrase separators structural"
       test_format_keeps_top_level_phrase_separators_structural;

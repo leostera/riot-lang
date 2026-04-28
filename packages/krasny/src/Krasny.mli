@@ -10,7 +10,7 @@ open Std
 *)
 type format_error = Format_core.format_error =
   | Cannot_parse of Syn.Diagnostic.t Std.Collections.Vector.t
-  | Cannot_lower of string
+  | Cannot_render of string
 val format_error_to_string: format_error -> string
 
 (**

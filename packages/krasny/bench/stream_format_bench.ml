@@ -14,7 +14,7 @@ let touch_int = fun value -> checksum := !checksum lxor value
 
 let source_slice = fun source ->
   IO.IoVec.IoSlice.from_string source
-  |> Result.expect ~msg:"failed to create lower benchmark source slice"
+  |> Result.expect ~msg:"failed to create stream format benchmark source slice"
 
 let make_fixture = fun ~name ~path source ->
   {
@@ -27,7 +27,7 @@ let make_fixture = fun ~name ~path source ->
 let load_fixture = fun ~name path ->
   let source =
     Fs.read path
-    |> Result.expect ~msg:("failed to read lower benchmark fixture: " ^ Path.to_string path)
+    |> Result.expect ~msg:("failed to read stream format benchmark fixture: " ^ Path.to_string path)
   in
   make_fixture ~name ~path source
 
@@ -59,7 +59,7 @@ let parse = fun fixture -> Syn.parse ~filename:fixture.path fixture.slice
 let bench_ast_view = fun fixture ->
   let parsed = parse fixture in
   if Vector.length parsed.Syn.Parser.diagnostics > 0 then
-    panic ("lower benchmark parse failed for " ^ Path.to_string fixture.path);
+    panic ("stream format benchmark parse failed for " ^ Path.to_string fixture.path);
   let source_file = Syn.Ast.SourceFile.make parsed.Syn.Parser.tree in
   touch_int (Syn.Ast.SourceFile.full_width source_file)
 
@@ -78,7 +78,7 @@ let medium_config: Bench.bench_config = { iterations = 100; warmup = 10 }
 
 let benchmark_fixture = fun ~config fixture ->
   Bench.compare
-    ("krasny lower: " ^ fixture.name)
+    ("krasny stream format: " ^ fixture.name)
     [
       Bench.make_case_with_config ~config "ast view" (fun () -> bench_ast_view fixture);
       Bench.make_case_with_config ~config "stream format" (fun () -> bench_stream_format fixture);
@@ -128,7 +128,7 @@ let benchmarks = fun () ->
 let main ~args =
   let result = Bench.Cli.main ~name:"krasny stream format" ~benchmarks:(benchmarks ()) ~args in
   if !checksum = Int.min_int then
-    panic "unreachable lower benchmark checksum";
+    panic "unreachable stream format benchmark checksum";
   result
 
 let () = Runtime.run ~main ~args:Env.args ()
