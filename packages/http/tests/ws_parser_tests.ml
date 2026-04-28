@@ -184,6 +184,38 @@ let test_serialize_masked_frame_uses_rng = fun _ctx ->
   | Error error ->
       Result.Error ("masked frame serialization failed: " ^ Serializer.error_to_string error)
 
+let expect_serialize_error = fun frame expected ->
+  match Serializer.serialize frame with
+  | Error error when error = expected -> Result.Ok ()
+  | Error error -> Result.Error ("Wrong serializer error: " ^ Serializer.error_to_string error)
+  | Ok _ -> Result.Error "Expected serializer error"
+
+let test_serialize_rejects_rsv_bits = fun _ctx ->
+  expect_serialize_error
+    Frame.{ (text "x") with rsv1 = true }
+    Serializer.ReservedBitsSet
+
+let test_serialize_rejects_fragmented_control_frame = fun _ctx ->
+  expect_serialize_error
+    Frame.{ (ping ()) with fin = false }
+    (Serializer.FragmentedControlFrame { opcode = Frame.Ping })
+
+let test_serialize_rejects_oversized_control_frame = fun _ctx ->
+  let payload = String.make ~len:126 ~char:'x' in
+  expect_serialize_error
+    (Frame.ping ~payload ())
+    (Serializer.ControlFramePayloadTooLarge { opcode = Frame.Ping; payload_length = 126 })
+
+let test_serialize_rejects_invalid_close_payload = fun _ctx ->
+  expect_serialize_error
+    (Frame.close ~payload:"\x03\xed" ())
+    (Serializer.InvalidClosePayload (Frame.InvalidCloseCode { code = 1_005 }))
+
+let test_serialize_rejects_invalid_text_utf8 = fun _ctx ->
+  expect_serialize_error
+    (Frame.text "\xc0\x80")
+    (Serializer.InvalidTextPayloadUtf8 { payload_length = 2 })
+
 let tests =
   Test.[
     case "parse_valid_ping" test_parse_valid_ping;
@@ -208,6 +240,13 @@ let tests =
     case "parse_rejects_invalid_text_utf8" test_parse_rejects_invalid_text_utf8;
     case "serialize_unmasked_frame" test_serialize_unmasked_frame;
     case "serialize_masked_frame_uses_rng" test_serialize_masked_frame_uses_rng;
+    case "serialize_rejects_rsv_bits" test_serialize_rejects_rsv_bits;
+    case
+      "serialize_rejects_fragmented_control_frame"
+      test_serialize_rejects_fragmented_control_frame;
+    case "serialize_rejects_oversized_control_frame" test_serialize_rejects_oversized_control_frame;
+    case "serialize_rejects_invalid_close_payload" test_serialize_rejects_invalid_close_payload;
+    case "serialize_rejects_invalid_text_utf8" test_serialize_rejects_invalid_text_utf8;
   ]
 
 let main ~args:_ = Test.Cli.main ~name:"http:ws_parser" ~tests ~args:Env.args ()
