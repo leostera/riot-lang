@@ -1254,6 +1254,27 @@ let record_output_progress = fun progress output ->
       | Riot_build.Build_result.Skipped _ -> progress.skipped_count <- progress.skipped_count + 1
       | Riot_build.Build_result.Failed _ -> progress.failed_count <- progress.failed_count + 1)
 
+let should_build_fix_provider_runner = fun (request: request) ->
+  match request.scope with
+  | Runtime -> false
+  | Dev ->
+      request.dev_artifacts.tests && request.dev_artifacts.examples && request.dev_artifacts.benches
+
+let selected_fix_providers = fun (request: request) ->
+  let providers = Riot_model.Workspace.discover_fix_providers request.workspace in
+  match request.packages with
+  | [] -> providers
+  | selected ->
+      providers
+      |> List.filter
+        ~fn:(fun (provider: Riot_model.Fix_provider.t) ->
+          List.any
+            selected
+            ~fn:(fun package_name ->
+              Riot_model.Package_name.equal
+                provider.package_name
+                package_name))
+
 let run_request = fun (request: request) ->
   trace_build
     (
@@ -1290,22 +1311,58 @@ let run_request = fun (request: request) ->
         attempted_build := true;
         write_build_event ~render_state ~mode:request.output_mode ~seen_registry_updates event
   in
-  let result =
+  let build_request = fun ~workspace ~packages ~targets ~scope ~dev_artifacts ~profile () ->
     Riot_build.build
       ~on_event:on_build_event
       (Riot_build.Request.make
-        ~workspace:request.workspace
-        ~packages:request.packages
-        ~targets:request.targets
-        ~scope:request.scope
-        ~dev_artifacts:request.dev_artifacts
-        ~profile:request.profile
+        ~workspace
+        ~packages
+        ~targets
+        ~scope
+        ~dev_artifacts
+        ~profile
         ~requested_parallelism:request.requested_parallelism
         ())
     |> Result.map
       ~fn:(fun output ->
         record_output_progress progress output;
         ())
+  in
+  let build_fix_provider_runner = fun () ->
+    let providers = selected_fix_providers request in
+    if List.is_empty providers then
+      Ok ()
+    else
+      let plan =
+        Riot_fix.Fixme_runner.materialize
+          ~workspace_root:request.workspace.root
+          ~target_dir_root:request.workspace.target_dir_root
+          providers
+      in
+      build_request
+        ~workspace:(Riot_fix.Fixme_runner.attach_to_workspace request.workspace plan)
+        ~packages:[ plan.package_name ]
+        ~targets:Riot_model.Target.Host
+        ~scope:Runtime
+        ~dev_artifacts:request.dev_artifacts
+        ~profile:request.profile
+        ()
+  in
+  let result =
+    build_request
+      ~workspace:request.workspace
+      ~packages:request.packages
+      ~targets:request.targets
+      ~scope:request.scope
+      ~dev_artifacts:request.dev_artifacts
+      ~profile:request.profile
+      ()
+    |> Result.and_then
+      ~fn:(fun () ->
+        if should_build_fix_provider_runner request then
+          build_fix_provider_runner ()
+        else
+          Ok ())
     |> Result.map_err
       ~fn:(fun err ->
         write_build_error ~mode:request.output_mode err;
