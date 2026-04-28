@@ -125,6 +125,11 @@ type error =
   | UnexpectedContinuation of { stream_id: int }
   | ContinuationStreamMismatch of { expected_stream_id: int; actual_stream_id: int }
   | DataBeforeHeaders of { stream_id: int }
+  | FrameAfterStreamEnd of {
+      stream_id: int;
+      frame_type: Frame.frame_type;
+      state: stream_state;
+    }
   | ParserError of Parser.error
   | FrameConstructorError of Frame.constructor_error
   | SerializerError of Serializer.error
@@ -132,6 +137,15 @@ type error =
 let window_scope_to_string = function
   | StreamWindow { stream_id } -> "stream " ^ Int.to_string stream_id
   | ConnectionWindow -> "connection"
+
+let stream_state_to_string = function
+  | StreamIdle -> "idle"
+  | StreamOpen -> "open"
+  | StreamReservedLocal -> "reserved local"
+  | StreamReservedRemote -> "reserved remote"
+  | StreamHalfClosedLocal -> "half-closed local"
+  | StreamHalfClosedRemote -> "half-closed remote"
+  | StreamClosed -> "closed"
 
 let error_to_string = function
   | ConnectionNotActive -> "HTTP/2 connection is not active"
@@ -165,6 +179,13 @@ let error_to_string = function
       ^ Int.to_string actual_stream_id
   | DataBeforeHeaders { stream_id } ->
       "HTTP/2 received DATA before headers on stream " ^ Int.to_string stream_id
+  | FrameAfterStreamEnd { stream_id; frame_type; state } ->
+      "HTTP/2 received "
+      ^ Parser.frame_type_name frame_type
+      ^ " after stream "
+      ^ Int.to_string stream_id
+      ^ " reached "
+      ^ stream_state_to_string state
   | ParserError error -> Parser.error_to_string error
   | FrameConstructorError error -> Frame.constructor_error_to_string error
   | SerializerError error -> Serializer.error_to_string error
@@ -597,11 +618,23 @@ let process_data_frame = fun conn stream_id payload flags ->
         match get_stream conn stream_id with
         | None -> Error (DataBeforeHeaders { stream_id })
         | Some stream ->
-            let chunks = Cell.get stream.data_chunks in
-            Cell.set stream.data_chunks (chunks @ [ data_bytes ]);
-            if end_stream then
-              Cell.set stream.state StreamHalfClosedRemote;
-            Ok [ DataReceived { stream_id; data = data_bytes; end_stream } ]
+            let state = Cell.get stream.state in
+            (
+              match state with
+              | StreamHalfClosedRemote
+              | StreamClosed ->
+                  Error (FrameAfterStreamEnd { stream_id; frame_type = Frame.Data; state })
+              | StreamIdle
+              | StreamOpen
+              | StreamReservedLocal
+              | StreamReservedRemote
+              | StreamHalfClosedLocal ->
+                  let chunks = Cell.get stream.data_chunks in
+                  Cell.set stream.data_chunks (chunks @ [ data_bytes ]);
+                  if end_stream then
+                    Cell.set stream.state StreamHalfClosedRemote;
+                  Ok [ DataReceived { stream_id; data = data_bytes; end_stream } ]
+            )
       )
   | _ -> Error (InvalidPayloadForFrame { frame_type = Frame.Data; payload })
 

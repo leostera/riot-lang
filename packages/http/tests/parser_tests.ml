@@ -517,6 +517,36 @@ let test_process_data_accepts_data_after_headers = fun _ctx ->
   | Ok _ -> Result.Error "DATA after HEADERS did not emit the expected events"
   | Error err -> Result.Error ("DATA after HEADERS failed: " ^ Connection.error_to_string err)
 
+let test_process_data_rejects_data_after_headers_end_stream = fun _ctx ->
+  let conn = Connection.create ~role:Connection.Server () in
+  let header_block = encode_header_block [ { Hpack.name = ":method"; value = "GET" }; ] in
+  let headers = Frame.headers ~stream_id:1 ~end_headers:true ~end_stream:true header_block in
+  let data = Frame.data ~stream_id:1 "late" in
+  match Connection.process_data
+    conn
+    (Std.IO.Bytes.from_string (serialize_frame headers ^ serialize_frame data)) with
+  | Error (
+    Connection.FrameAfterStreamEnd { stream_id = 1; frame_type = Frame.Data; state = Connection.StreamHalfClosedRemote }
+  ) -> Result.Ok ()
+  | Error err -> Result.Error ("Wrong connection error: " ^ Connection.error_to_string err)
+  | Ok _ -> Result.Error "DATA after end-stream HEADERS was accepted"
+
+let test_process_data_rejects_data_after_data_end_stream = fun _ctx ->
+  let conn = Connection.create ~role:Connection.Server () in
+  let header_block = encode_header_block [ { Hpack.name = ":method"; value = "GET" }; ] in
+  let headers = Frame.headers ~stream_id:1 ~end_headers:true header_block in
+  let end_data = Frame.data ~stream_id:1 ~end_stream:true "done" in
+  let late_data = Frame.data ~stream_id:1 "late" in
+  match Connection.process_data
+    conn
+    (Std.IO.Bytes.from_string
+      (serialize_frame headers ^ serialize_frame end_data ^ serialize_frame late_data)) with
+  | Error (
+    Connection.FrameAfterStreamEnd { stream_id = 1; frame_type = Frame.Data; state = Connection.StreamHalfClosedRemote }
+  ) -> Result.Ok ()
+  | Error err -> Result.Error ("Wrong connection error: " ^ Connection.error_to_string err)
+  | Ok _ -> Result.Error "DATA after end-stream DATA was accepted"
+
 let tests =
   Test.[
     case "serialize_settings_frame" test_serialize_settings_frame;
@@ -582,6 +612,12 @@ let tests =
     case "process_data_accepts_split_header_block" test_process_data_accepts_split_header_block;
     case "process_data_rejects_data_before_headers" test_process_data_rejects_data_before_headers;
     case "process_data_accepts_data_after_headers" test_process_data_accepts_data_after_headers;
+    case
+      "process_data_rejects_data_after_headers_end_stream"
+      test_process_data_rejects_data_after_headers_end_stream;
+    case
+      "process_data_rejects_data_after_data_end_stream"
+      test_process_data_rejects_data_after_data_end_stream;
   ]
 
 let main ~args:_ = Test.Cli.main ~name:"http:http2_parser" ~tests ~args:Env.args ()
