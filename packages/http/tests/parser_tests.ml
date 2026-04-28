@@ -388,6 +388,22 @@ let test_serialize_rejects_invalid_last_stream_id = fun _ctx ->
   | Error error -> Result.Error ("Wrong serializer error: " ^ Serializer.error_to_string error)
   | Ok _ -> Result.Error "serializer accepted invalid GOAWAY last stream ID"
 
+let test_serialize_preserves_unknown_error_code = fun _ctx ->
+  let frame = Frame.rst_stream ~stream_id:1 (Frame.UnknownErrorCode 0xfeed_beef) in
+  let serialized = serialize_frame frame in
+  let error_code = String.sub serialized ~offset:9 ~len:4 in
+  if error_code = "\xfe\xed\xbe\xef" then
+    Result.Ok ()
+  else
+    Result.Error "serializer did not preserve unknown HTTP/2 error code"
+
+let test_serialize_rejects_invalid_unknown_error_code = fun _ctx ->
+  let frame = Frame.rst_stream ~stream_id:1 (Frame.UnknownErrorCode (-1)) in
+  match Serializer.serialize_frame frame with
+  | Error (Serializer.InvalidErrorCode { code = -1 }) -> Result.Ok ()
+  | Error error -> Result.Error ("Wrong serializer error: " ^ Serializer.error_to_string error)
+  | Ok _ -> Result.Error "serializer accepted invalid unknown HTTP/2 error code"
+
 let test_ping_rejects_invalid_payload_length = fun _ctx ->
   match Frame.ping "short" with
   | Error (Frame.InvalidPingPayloadLength { length = 5 }) -> Result.Ok ()
@@ -774,6 +790,24 @@ let test_parse_headers_rejects_self_priority_dependency = fun _ctx ->
   expect_parse_error
     "\x00\x00\x05\x01\x20\x00\x00\x00\x03\x00\x00\x00\x03\x00"
     (Parser.InvalidPriorityDependency { stream_id = 3; stream_dependency = 3 })
+
+let test_parse_rst_stream_preserves_unknown_error_code = fun _ctx ->
+  match Parser.parse_frame "\x00\x00\x04\x03\x00\x00\x00\x00\x01\xfe\xed\xbe\xef" with
+  | Parser.Done { value = { Frame.payload = Frame.RstStreamPayload (Frame.UnknownErrorCode code); _ }; remaining = "" } when Int.equal
+    code
+    0xfeed_beef -> Result.Ok ()
+  | Parser.Done _ -> Result.Error "RST_STREAM unknown error code was not preserved"
+  | Parser.Need_more -> Result.Error "RST_STREAM unexpectedly needed more data"
+  | Parser.Error err -> Result.Error ("RST_STREAM parse failed: " ^ Parser.error_to_string err)
+
+let test_parse_goaway_preserves_unknown_error_code = fun _ctx ->
+  match Parser.parse_frame "\x00\x00\x08\x07\x00\x00\x00\x00\x00\x00\x00\x00\x00\xfe\xed\xbe\xef" with
+  | Parser.Done { value = { Frame.payload = Frame.GoawayPayload { error_code = Frame.UnknownErrorCode code; _ }; _ }; remaining = "" } when Int.equal
+    code
+    0xfeed_beef -> Result.Ok ()
+  | Parser.Done _ -> Result.Error "GOAWAY unknown error code was not preserved"
+  | Parser.Need_more -> Result.Error "GOAWAY unexpectedly needed more data"
+  | Parser.Error err -> Result.Error ("GOAWAY parse failed: " ^ Parser.error_to_string err)
 
 let test_parse_window_update_allows_stream_zero = fun _ctx ->
   match Parser.parse_frame "\x00\x00\x04\x08\x00\x00\x00\x00\x00\x00\x00\x00\x01" with
@@ -1310,6 +1344,10 @@ let tests =
       "serialize_rejects_invalid_promised_stream_id"
       test_serialize_rejects_invalid_promised_stream_id;
     case "serialize_rejects_invalid_last_stream_id" test_serialize_rejects_invalid_last_stream_id;
+    case "serialize_preserves_unknown_error_code" test_serialize_preserves_unknown_error_code;
+    case
+      "serialize_rejects_invalid_unknown_error_code"
+      test_serialize_rejects_invalid_unknown_error_code;
     case "ping_rejects_invalid_payload_length" test_ping_rejects_invalid_payload_length;
     case "window_update_rejects_invalid_increment" test_window_update_rejects_invalid_increment;
     case
@@ -1376,6 +1414,10 @@ let tests =
     case
       "parse_headers_rejects_self_priority_dependency"
       test_parse_headers_rejects_self_priority_dependency;
+    case
+      "parse_rst_stream_preserves_unknown_error_code"
+      test_parse_rst_stream_preserves_unknown_error_code;
+    case "parse_goaway_preserves_unknown_error_code" test_parse_goaway_preserves_unknown_error_code;
     case "parse_window_update_allows_stream_zero" test_parse_window_update_allows_stream_zero;
     case "parse_unknown_frame_preserves_payload" test_parse_unknown_frame_preserves_payload;
     case "process_data_ignores_unknown_frame" test_process_data_ignores_unknown_frame;

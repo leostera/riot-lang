@@ -47,6 +47,7 @@ type error_code =
   | EnhanceYourCalm
   | InadequateSecurity
   | Http11Required
+  | UnknownErrorCode of int
 (** SETTINGS parameters *)
 type setting =
   | HeaderTableSize of int

@@ -47,6 +47,7 @@ type error =
   | InvalidPromisedStreamId of { promised_stream_id: int }
   | InvalidLastStreamId of { last_stream_id: int }
   | InvalidSettingValue of { setting: setting_id; value: int; expected: setting_value_rule }
+  | InvalidErrorCode of { code: int }
 
 let frame_type_to_string = function
   | Frame.Data -> "DATA"
@@ -129,6 +130,8 @@ let error_to_string = function
       ^ setting_value_rule_to_string expected
       ^ ", got "
       ^ Int.to_string value
+  | InvalidErrorCode { code } ->
+      "HTTP/2 error code must be between 0 and 2^32-1, got " ^ Int.to_string code
 
 let write_uint24_be = fun value ->
   let b0 = Char.from_int_unchecked ((value lsr 16) land 0b1111_1111) in
@@ -229,6 +232,13 @@ let validate_last_stream_id = fun last_stream_id ->
     Ok ()
   else
     Error (InvalidLastStreamId { last_stream_id })
+
+let validate_error_code = fun error_code ->
+  let code = Frame.error_code_to_int error_code in
+  if code >= 0 && code <= 0xffff_ffff then
+    Ok code
+  else
+    Error (InvalidErrorCode { code })
 
 let validate_uint32_setting = fun setting value ->
   if value >= 0 && value <= 0xffff_ffff then
@@ -369,7 +379,11 @@ let serialize_priority_payload = fun ~stream_id payload ->
 
 let serialize_rst_stream_payload = fun payload ->
   match payload with
-  | Frame.RstStreamPayload error_code -> Ok (write_uint32_be (Frame.error_code_to_int error_code))
+  | Frame.RstStreamPayload error_code -> (
+      match validate_error_code error_code with
+      | Error error -> Error error
+      | Ok code -> Ok (write_uint32_be code)
+    )
   | payload -> Error (PayloadMismatch { frame_type = Frame.RstStream; payload })
 
 let serialize_setting = function
@@ -449,10 +463,11 @@ let serialize_goaway_payload = fun payload ->
   | Frame.GoawayPayload { last_stream_id; error_code; debug_data } -> (
       match validate_last_stream_id last_stream_id with
       | Error error -> Error error
-      | Ok () ->
-          Ok (write_uint32_be last_stream_id
-          ^ write_uint32_be (Frame.error_code_to_int error_code)
-          ^ debug_data)
+      | Ok () -> (
+          match validate_error_code error_code with
+          | Error error -> Error error
+          | Ok code -> Ok (write_uint32_be last_stream_id ^ write_uint32_be code ^ debug_data)
+        )
     )
   | payload -> Error (PayloadMismatch { frame_type = Frame.Goaway; payload })
 

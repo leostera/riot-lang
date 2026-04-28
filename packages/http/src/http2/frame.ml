@@ -32,6 +32,7 @@ type error_code =
   | EnhanceYourCalm
   | InadequateSecurity
   | Http11Required
+  | UnknownErrorCode of int
 
 type setting =
   | HeaderTableSize of int
@@ -264,6 +265,7 @@ let error_code_to_int = function
   | EnhanceYourCalm -> 0xb
   | InadequateSecurity -> 0xc
   | Http11Required -> 0xd
+  | UnknownErrorCode code -> code
 
 let int_to_error_code = function
   | 0x0 -> Some NoError
@@ -280,4 +282,5 @@ let int_to_error_code = function
   | 0xb -> Some EnhanceYourCalm
   | 0xc -> Some InadequateSecurity
   | 0xd -> Some Http11Required
+  | code when code >= 0 && code <= 0xffff_ffff -> Some (UnknownErrorCode code)
   | _ -> None

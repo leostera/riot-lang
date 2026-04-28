@@ -339,6 +339,7 @@ let error_code_string = function
   | Http2.Frame.EnhanceYourCalm -> "ENHANCE_YOUR_CALM"
   | Http2.Frame.InadequateSecurity -> "INADEQUATE_SECURITY"
   | Http2.Frame.Http11Required -> "HTTP_1_1_REQUIRED"
+  | Http2.Frame.UnknownErrorCode code -> "UNKNOWN(" ^ Int.to_string code ^ ")"
 
 let setting_json = function
   | Http2.Frame.HeaderTableSize value ->
