@@ -104,6 +104,7 @@ type error =
   | ConnectionNotActive
   | StreamNotFound of { stream_id: int }
   | FlowControlWindowExceeded of { scope: window_scope; data_size: int; window_size: int }
+  | HpackEncodeFailed of Hpack.encode_error
   | HpackDecodeFailed of Hpack.decode_error
   | InvalidPayloadForFrame of payload_error
   | ParserError of Parser.error

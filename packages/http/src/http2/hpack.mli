@@ -25,6 +25,10 @@ type decode_error =
   | InvalidNameIndex of int
 val decode_error_to_string: decode_error -> string
 
+type encode_error =
+  | HeaderNotIndexed of header
+val encode_error_to_string: encode_error -> string
+
 (** Encoding representation for a header field *)
 type encoding_type =
   | Indexed
@@ -59,12 +63,21 @@ val create_encoder: ?max_dynamic_table_size:int -> unit -> encoder
    @param encoder The encoder context
    @param headers List of headers to encode
    @param sensitive_headers Optional set of header names that should never be indexed
-   @return Encoded bytes
+   @return Encoded bytes or a structured encoder error
 *)
-val encode: encoder -> ?sensitive_headers:string list -> unit -> headers:header list -> bytes
+val encode:
+  encoder ->
+  ?sensitive_headers:string list ->
+  unit ->
+  headers:header list ->
+  (bytes, encode_error) Result.t
 
 (** Encode a single header field *)
-val encode_header: encoder -> header -> encoding_type:encoding_type -> bytes
+val encode_header:
+  encoder ->
+  header ->
+  encoding_type:encoding_type ->
+  (bytes, encode_error) Result.t
 
 (**
    Update the dynamic table size limit.

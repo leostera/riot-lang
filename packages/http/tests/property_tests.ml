@@ -33,8 +33,9 @@ let hpack_encode_prop =
     Arbitrary.(make (Generator.non_empty_list header_gen))
     (fun headers ->
       let encoder = Http2.Hpack.create_encoder () in
-      let encoded = Http2.Hpack.encode encoder ~sensitive_headers:[] () ~headers in
-      IO.Bytes.length encoded > 0)
+      match Http2.Hpack.encode encoder ~sensitive_headers:[] () ~headers with
+      | Ok encoded -> IO.Bytes.length encoded > 0
+      | Error _ -> false)
 
 (* Property: HPACK encoding is deterministic *)
 
@@ -45,9 +46,13 @@ let hpack_deterministic_prop =
     (fun headers ->
       let encoder1 = Http2.Hpack.create_encoder () in
       let encoder2 = Http2.Hpack.create_encoder () in
-      let encoded1 = Http2.Hpack.encode encoder1 ~sensitive_headers:[] () ~headers in
-      let encoded2 = Http2.Hpack.encode encoder2 ~sensitive_headers:[] () ~headers in
-      String.equal (IO.Bytes.to_string encoded1) (IO.Bytes.to_string encoded2))
+      match (
+        Http2.Hpack.encode encoder1 ~sensitive_headers:[] () ~headers,
+        Http2.Hpack.encode encoder2 ~sensitive_headers:[] () ~headers
+      ) with
+      | (Ok encoded1, Ok encoded2) ->
+          String.equal (IO.Bytes.to_string encoded1) (IO.Bytes.to_string encoded2)
+      | _ -> false)
 
 (* ===== HTTP/2 Frame Property Tests ===== *)
 

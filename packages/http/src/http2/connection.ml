@@ -107,6 +107,7 @@ type error =
   | ConnectionNotActive
   | StreamNotFound of { stream_id: int }
   | FlowControlWindowExceeded of { scope: window_scope; data_size: int; window_size: int }
+  | HpackEncodeFailed of Hpack.encode_error
   | HpackDecodeFailed of Hpack.decode_error
   | InvalidPayloadForFrame of payload_error
   | ParserError of Parser.error
@@ -127,6 +128,7 @@ let error_to_string = function
       ^ window_scope_to_string scope
       ^ " flow-control window "
       ^ Int.to_string window_size
+  | HpackEncodeFailed error -> "HPACK encode failed: " ^ Hpack.encode_error_to_string error
   | HpackDecodeFailed error -> "HPACK decode failed: " ^ Hpack.decode_error_to_string error
   | InvalidPayloadForFrame { frame_type; _ } ->
       "Invalid payload for HTTP/2 " ^ Parser.frame_type_name frame_type ^ " frame"
@@ -249,34 +251,36 @@ let send_headers = fun conn ~stream_id ~headers ~end_stream ->
   | None -> Error (StreamNotFound { stream_id })
   | Some stream -> (
       (* Encode headers using HPACK *)
-      let encoded_headers = Hpack.encode conn.hpack_encoder ~sensitive_headers:[] () ~headers in
-      (* Create HEADERS frame *)
-      let frame = {
-        Frame.length = Bytes.length encoded_headers;
-        frame_type = Frame.Headers;
-        flags =
-          {
-            Frame.end_stream;
-            end_headers = true;
-            padded = false;
-            priority = false;
-            ack = false;
-          };
-        stream_id;
-        payload =
-          Frame.HeadersPayload {
-            pad_length = None;
-            stream_dependency = None;
-            weight = None;
-            exclusive = false;
-            header_block_fragment = Bytes.to_string encoded_headers;
-          };
-      }
-      in
-      (* Update stream state *)
-      if end_stream then
-        Cell.set stream.state StreamHalfClosedLocal;
-      serialize_frame frame
+      match Hpack.encode conn.hpack_encoder ~sensitive_headers:[] () ~headers with
+      | Error error -> Error (HpackEncodeFailed error)
+      | Ok encoded_headers ->
+          (* Create HEADERS frame *)
+          let frame = {
+            Frame.length = Bytes.length encoded_headers;
+            frame_type = Frame.Headers;
+            flags =
+              {
+                Frame.end_stream;
+                end_headers = true;
+                padded = false;
+                priority = false;
+                ack = false;
+              };
+            stream_id;
+            payload =
+              Frame.HeadersPayload {
+                pad_length = None;
+                stream_dependency = None;
+                weight = None;
+                exclusive = false;
+                header_block_fragment = Bytes.to_string encoded_headers;
+              };
+          }
+          in
+          (* Update stream state *)
+          if end_stream then
+            Cell.set stream.state StreamHalfClosedLocal;
+          serialize_frame frame
     )
 
 let send_data = fun conn ~stream_id ~data ~end_stream ->

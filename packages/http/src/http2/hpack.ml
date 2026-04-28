@@ -21,6 +21,9 @@ type decode_error =
   | InvalidHeaderIndex of int
   | InvalidNameIndex of int
 
+type encode_error =
+  | HeaderNotIndexed of header
+
 let decode_error_to_string = function
   | IncompleteIntegerEncoding -> "Incomplete HPACK integer encoding"
   | IncompleteStringEncoding -> "Incomplete HPACK string encoding"
@@ -32,6 +35,13 @@ let decode_error_to_string = function
   | UnsupportedHuffmanStringEncoding -> "Unsupported HPACK Huffman string encoding"
   | InvalidHeaderIndex index -> "Invalid HPACK header index: " ^ Int.to_string index
   | InvalidNameIndex index -> "Invalid HPACK name index: " ^ Int.to_string index
+
+let encode_error_to_string = function
+  | HeaderNotIndexed header ->
+      "HPACK header is not present in the static or dynamic table: "
+      ^ header.name
+      ^ ": "
+      ^ header.value
 
 type encoding_type =
   | Indexed
@@ -458,7 +468,7 @@ let encode_header = fun encoder header ~encoding_type ->
         | Some i -> i
         | None -> static_table_size + Option.unwrap dynamic_match
       in
-      encode_indexed_header actual_index
+      Ok (encode_indexed_header actual_index)
   | (None, None) ->
       (* No full match - check for name match *)
       let static_name_match = static_table_find_name name in
@@ -470,34 +480,34 @@ let encode_header = fun encoder header ~encoding_type ->
         | (None, None) -> None
       in
       match encoding_type with
-      | Indexed ->
-          (* Shouldn't happen - fall back to literal with indexing *)
-          let result = encode_literal_with_indexing ~name_index ~name ~value in
-          DynamicTable.add encoder.dynamic_table header;
-          result
+      | Indexed -> Error (HeaderNotIndexed header)
       | LiteralWithIndexing ->
           let result = encode_literal_with_indexing ~name_index ~name ~value in
           DynamicTable.add encoder.dynamic_table header;
-          result
-      | LiteralWithoutIndexing -> encode_literal_without_indexing ~name_index ~name ~value
-      | LiteralNeverIndexed -> encode_literal_never_indexed ~name_index ~name ~value
+          Ok result
+      | LiteralWithoutIndexing -> Ok (encode_literal_without_indexing ~name_index ~name ~value)
+      | LiteralNeverIndexed -> Ok (encode_literal_never_indexed ~name_index ~name ~value)
 
 let encode = fun encoder ?(sensitive_headers = []) () ~headers ->
   let buf = Buffer.create ~size:256 in
-  List.for_each
-    headers
-    ~fn:(fun header ->
-      let encoding_type =
-        if
-          is_sensitive_header header.name || List.contains sensitive_headers ~value:header.name
-        then
-          LiteralNeverIndexed
-        else
-          LiteralWithIndexing
-      in
-      let encoded = encode_header encoder header ~encoding_type in
-      Buffer.add_bytes buf encoded);
-  Bytes.from_string (Buffer.contents buf)
+  let rec encode_all = function
+    | [] -> Ok (Bytes.from_string (Buffer.contents buf))
+    | header :: rest ->
+        let encoding_type =
+          if
+            is_sensitive_header header.name || List.contains sensitive_headers ~value:header.name
+          then
+            LiteralNeverIndexed
+          else
+            LiteralWithIndexing
+        in
+        match encode_header encoder header ~encoding_type with
+        | Error error -> Error error
+        | Ok encoded ->
+            Buffer.add_bytes buf encoded;
+            encode_all rest
+  in
+  encode_all headers
 
 (** {1 Decoder} *)
 

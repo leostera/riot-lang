@@ -2,6 +2,11 @@ open Std
 
 module Hpack = Http.Http2.Hpack
 
+let encode_or_error = fun encoder ~sensitive_headers ~headers ->
+  match Hpack.encode encoder ~sensitive_headers () ~headers with
+  | Ok encoded -> Ok encoded
+  | Error err -> Error ("Encode failed: " ^ Hpack.encode_error_to_string err)
+
 let test_encoder_decoder_roundtrip = fun _ctx ->
   let encoder = Hpack.create_encoder () in
   let decoder = Hpack.create_decoder () in
@@ -10,18 +15,20 @@ let test_encoder_decoder_roundtrip = fun _ctx ->
     { Hpack.name = "content-length"; value = "123" };
   ]
   in
-  let encoded = Hpack.encode encoder ~sensitive_headers:[] () ~headers in
-  let decoded = Hpack.decode decoder encoded in
-  match decoded with
-  | Ok decoded_headers ->
-      if List.length decoded_headers = List.length headers then
-        Result.Ok ()
-      else
-        Result.Error ("Header count mismatch: expected "
-        ^ Int.to_string (List.length headers)
-        ^ ", got "
-        ^ Int.to_string (List.length decoded_headers))
-  | Error err -> Result.Error ("Decode failed: " ^ Hpack.decode_error_to_string err)
+  match encode_or_error encoder ~sensitive_headers:[] ~headers with
+  | Error err -> Result.Error err
+  | Ok encoded ->
+      let decoded = Hpack.decode decoder encoded in
+      match decoded with
+      | Ok decoded_headers ->
+          if List.length decoded_headers = List.length headers then
+            Result.Ok ()
+          else
+            Result.Error ("Header count mismatch: expected "
+            ^ Int.to_string (List.length headers)
+            ^ ", got "
+            ^ Int.to_string (List.length decoded_headers))
+      | Error err -> Result.Error ("Decode failed: " ^ Hpack.decode_error_to_string err)
 
 let test_static_table_lookup = fun _ctx ->
   match Hpack.static_table_lookup 2 with
@@ -35,31 +42,37 @@ let test_static_table_lookup = fun _ctx ->
 let test_encode_simple_header = fun _ctx ->
   let encoder = Hpack.create_encoder () in
   let headers = [ { Hpack.name = ":method"; value = "GET" } ] in
-  let encoded = Hpack.encode encoder ~sensitive_headers:[] () ~headers in
-  if IO.Bytes.length encoded > 0 then
-    Result.Ok ()
-  else
-    Result.Error "Encoding produced empty output"
+  match encode_or_error encoder ~sensitive_headers:[] ~headers with
+  | Error err -> Result.Error err
+  | Ok encoded ->
+      if IO.Bytes.length encoded > 0 then
+        Result.Ok ()
+      else
+        Result.Error "Encoding produced empty output"
 
 let test_custom_header_name_roundtrip = fun _ctx ->
   let encoder = Hpack.create_encoder () in
   let decoder = Hpack.create_decoder () in
   let headers = [ { Hpack.name = "x-request-id"; value = "req-123" } ] in
-  let encoded = Hpack.encode encoder ~sensitive_headers:[] () ~headers in
-  match Hpack.decode decoder encoded with
-  | Ok [ { Hpack.name = "x-request-id"; value = "req-123" } ] -> Result.Ok ()
-  | Ok _ -> Result.Error "Custom header name did not roundtrip"
-  | Error err -> Result.Error ("Decode failed: " ^ Hpack.decode_error_to_string err)
+  match encode_or_error encoder ~sensitive_headers:[] ~headers with
+  | Error err -> Result.Error err
+  | Ok encoded ->
+      match Hpack.decode decoder encoded with
+      | Ok [ { Hpack.name = "x-request-id"; value = "req-123" } ] -> Result.Ok ()
+      | Ok _ -> Result.Error "Custom header name did not roundtrip"
+      | Error err -> Result.Error ("Decode failed: " ^ Hpack.decode_error_to_string err)
 
 let test_sensitive_custom_header_name_roundtrip = fun _ctx ->
   let encoder = Hpack.create_encoder () in
   let decoder = Hpack.create_decoder () in
   let headers = [ { Hpack.name = "x-secret"; value = "token" } ] in
-  let encoded = Hpack.encode encoder ~sensitive_headers:[ "x-secret"; ] () ~headers in
-  match Hpack.decode decoder encoded with
-  | Ok [ { Hpack.name = "x-secret"; value = "token" } ] -> Result.Ok ()
-  | Ok _ -> Result.Error "Sensitive custom header name did not roundtrip"
-  | Error err -> Result.Error ("Decode failed: " ^ Hpack.decode_error_to_string err)
+  match encode_or_error encoder ~sensitive_headers:[ "x-secret"; ] ~headers with
+  | Error err -> Result.Error err
+  | Ok encoded ->
+      match Hpack.decode decoder encoded with
+      | Ok [ { Hpack.name = "x-secret"; value = "token" } ] -> Result.Ok ()
+      | Ok _ -> Result.Error "Sensitive custom header name did not roundtrip"
+      | Error err -> Result.Error ("Decode failed: " ^ Hpack.decode_error_to_string err)
 
 let test_literal_with_indexing_updates_decoder_table = fun _ctx ->
   let encoder = Hpack.create_encoder () in
@@ -69,12 +82,14 @@ let test_literal_with_indexing_updates_decoder_table = fun _ctx ->
     { Hpack.name = "x-request-id"; value = "req-123" };
   ]
   in
-  let encoded = Hpack.encode encoder ~sensitive_headers:[] () ~headers in
-  match Hpack.decode decoder encoded with
-  | Ok [ { Hpack.name = "x-request-id"; value = "req-123" }; { Hpack.name = "x-request-id"; value = "req-123" } ] ->
-      Result.Ok ()
-  | Ok _ -> Result.Error "Decoder dynamic table did not preserve repeated indexed header"
-  | Error err -> Result.Error ("Decode failed: " ^ Hpack.decode_error_to_string err)
+  match encode_or_error encoder ~sensitive_headers:[] ~headers with
+  | Error err -> Result.Error err
+  | Ok encoded ->
+      match Hpack.decode decoder encoded with
+      | Ok [ { Hpack.name = "x-request-id"; value = "req-123" }; { Hpack.name = "x-request-id"; value = "req-123" } ] ->
+          Result.Ok ()
+      | Ok _ -> Result.Error "Decoder dynamic table did not preserve repeated indexed header"
+      | Error err -> Result.Error ("Decode failed: " ^ Hpack.decode_error_to_string err)
 
 let test_huffman_header_name_is_rejected = fun _ctx ->
   let decoder = Hpack.create_decoder () in
@@ -94,6 +109,14 @@ let test_huffman_header_value_is_rejected = fun _ctx ->
   | Error err -> Result.Error ("Wrong decode error: " ^ Hpack.decode_error_to_string err)
   | Ok _ -> Result.Error "Huffman-encoded header value decoded as plain text"
 
+let test_indexed_missing_header_returns_typed_error = fun _ctx ->
+  let encoder = Hpack.create_encoder () in
+  let header = { Hpack.name = "x-missing"; value = "value" } in
+  match Hpack.encode_header encoder header ~encoding_type:Hpack.Indexed with
+  | Error (Hpack.HeaderNotIndexed got) when got = header -> Result.Ok ()
+  | Error err -> Result.Error ("Wrong encode error: " ^ Hpack.encode_error_to_string err)
+  | Ok _ -> Result.Error "Missing indexed header encoded as a literal"
+
 let tests = [
   Test.case "encoder_decoder_roundtrip" test_encoder_decoder_roundtrip;
   Test.case "static_table_lookup" test_static_table_lookup;
@@ -105,6 +128,9 @@ let tests = [
     test_literal_with_indexing_updates_decoder_table;
   Test.case "huffman_header_name_is_rejected" test_huffman_header_name_is_rejected;
   Test.case "huffman_header_value_is_rejected" test_huffman_header_value_is_rejected;
+  Test.case
+    "indexed_missing_header_returns_typed_error"
+    test_indexed_missing_header_returns_typed_error;
 ]
 
 let main ~args:_ = Test.Cli.main ~name:"http:hpack" ~tests ~args:Env.args ()
