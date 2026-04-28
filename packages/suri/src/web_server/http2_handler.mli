@@ -33,6 +33,20 @@ type protocol_error =
   | UpgradeNotSupported
   | UnknownDataStream of int
   | InvalidPreface
+  | InvalidRequestHeaders of request_header_error
+
+and pseudo_header =
+  | Method
+  | Scheme
+  | Path
+
+and request_header_error =
+  | MissingPseudoHeader of pseudo_header
+  | EmptyPseudoHeader of pseudo_header
+  | InvalidPath of {
+      value: string;
+      reason: Std.Net.Uri.error;
+    }
 type io_operation =
   | SendSettings
   | SendSettingsAck
@@ -51,6 +65,15 @@ type error =
       error: Socket_pool.Connection.error;
     }
 val to_string_error: error -> string
+
+val pseudo_header_to_string: pseudo_header -> string
+
+val request_header_error_to_string: request_header_error -> string
+
+val headers_to_request:
+  Http.Http2.Hpack.header list ->
+  string ->
+  (Request.t, request_header_error) result
 
 (**
    Create HTTP/2 handler state

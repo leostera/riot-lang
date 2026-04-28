@@ -8,6 +8,20 @@ type protocol_error =
   | UpgradeNotSupported
   | UnknownDataStream of int
   | InvalidPreface
+  | InvalidRequestHeaders of request_header_error
+
+and pseudo_header =
+  | Method
+  | Scheme
+  | Path
+
+and request_header_error =
+  | MissingPseudoHeader of pseudo_header
+  | EmptyPseudoHeader of pseudo_header
+  | InvalidPath of {
+      value: string;
+      reason: Net.Uri.error;
+    }
 
 type io_operation =
   | SendSettings
@@ -30,10 +44,32 @@ type error =
 
 let parse_error_to_string = Http.Http2.Parser_reader.parse_error_to_string
 
-let protocol_error_to_string = function
+let rec protocol_error_to_string = function
   | UpgradeNotSupported -> "HTTP/2 upgrades are not supported"
   | UnknownDataStream stream_id -> "DATA for unknown stream " ^ Int.to_string stream_id
   | InvalidPreface -> "Invalid HTTP/2 preface"
+  | InvalidRequestHeaders error ->
+      "Invalid HTTP/2 request headers: " ^ request_header_error_to_string error
+
+and pseudo_header_to_string = function
+  | Method -> ":method"
+  | Scheme -> ":scheme"
+  | Path -> ":path"
+
+and uri_error_to_string = function
+  | Net.Uri.InvalidScheme -> "invalid scheme"
+  | Net.Uri.InvalidAuthority -> "invalid authority"
+  | Net.Uri.InvalidPath -> "invalid path"
+  | Net.Uri.InvalidQuery -> "invalid query"
+  | Net.Uri.InvalidFragment -> "invalid fragment"
+  | Net.Uri.InvalidFormat -> "invalid format"
+  | Net.Uri.TooLong -> "URI is too long"
+
+and request_header_error_to_string = function
+  | MissingPseudoHeader header -> "missing required pseudo-header " ^ pseudo_header_to_string header
+  | EmptyPseudoHeader header -> "empty required pseudo-header " ^ pseudo_header_to_string header
+  | InvalidPath { value; reason } ->
+      "invalid :path pseudo-header " ^ value ^ " (" ^ uri_error_to_string reason ^ ")"
 
 let io_operation_to_string = function
   | SendSettings -> "sending SETTINGS"
@@ -157,27 +193,43 @@ let send_data = fun conn stream_id data end_stream ->
   send_frame conn SendData frame
 
 (** Convert HTTP/2 headers to Request.t *)
-let headers_to_request = fun conn headers body ->
-  let method_ =
-    Std.Collections.Proplist.get headers ~key:":method"
-    |> Option.map ~fn:Net.Http.Method.of_string
-    |> Option.unwrap_or ~default:Net.Http.Method.Get
-  in
-  let uri =
-    Std.Collections.Proplist.get headers ~key:":path"
-    |> Option.unwrap_or ~default:"/"
-  in
-  let headers = List.filter ~fn:(fun (k, _) -> not (String.starts_with ~prefix:":" k)) headers in
-  let uri =
-    Net.Uri.of_string uri
-    |> Result.expect ~msg:"HTTP/2 request path must be a valid URI"
-  in
-  let http_request =
-    let request = Net.Http.Request.create method_ uri in
-    Net.Http.Request.with_headers request (Net.Http.Header.of_list headers)
-  in
-  let _ = conn in
-  Request.of_http ~body http_request
+let require_pseudo_header = fun header headers ->
+  let name = pseudo_header_to_string header in
+  match Std.Collections.Proplist.get headers ~key:name with
+  | None -> Error (MissingPseudoHeader header)
+  | Some value when String.equal value "" -> Error (EmptyPseudoHeader header)
+  | Some value -> Ok value
+
+let request_of_header_pairs = fun headers body ->
+  match require_pseudo_header Method headers with
+  | Error error -> Error error
+  | Ok method_value -> (
+      match require_pseudo_header Scheme headers with
+      | Error error -> Error error
+      | Ok _scheme -> (
+          match require_pseudo_header Path headers with
+          | Error error -> Error error
+          | Ok path -> (
+              let method_ = Net.Http.Method.of_string method_value in
+              let headers =
+                List.filter ~fn:(fun (k, _) -> not (String.starts_with ~prefix:":" k)) headers
+              in
+              match Net.Uri.of_string path with
+              | Error reason -> Error (InvalidPath { value = path; reason })
+              | Ok uri ->
+                  let http_request =
+                    let request = Net.Http.Request.create method_ uri in
+                    Net.Http.Request.with_headers request (Net.Http.Header.of_list headers)
+                  in
+                  Ok (Request.of_http ~body http_request)
+            )
+        )
+    )
+
+let headers_to_request = fun headers body ->
+  headers
+  |> List.map ~fn:(fun header -> (header.Http.Http2.Hpack.name, header.value))
+  |> fun headers -> request_of_header_pairs headers body
 
 (** Handle completed stream (all headers and data received *)
 let handle_stream = fun conn state stream_id stream ->
@@ -190,27 +242,30 @@ let handle_stream = fun conn state stream_id stream ->
       |> List.map ~fn:(fun header -> (header.Http.Http2.Hpack.name, header.value))
     in
     let body = String.concat "" (List.rev (Cell.get stream.data_chunks)) in
-    (* Convert to Request and call handler *)
-    let request = headers_to_request conn headers body in
-    match state.handler conn request with
-    | Http_handler.Response response ->
-        let status = response.status in
-        let response_headers =
-          [ (":status", Int.to_string (Net.Http.Status.to_int status)); ]
-          @ Net.Http.Header.to_list response.headers
-        in
-        (
-          match send_headers conn state.hpack_encoder stream_id response_headers false with
-          | Error e -> Error e
-          | Ok () ->
-              let body = response.body in
-              match send_data conn stream_id body true with
+    match request_of_header_pairs headers body with
+    | Error error -> Error (ProtocolError (InvalidRequestHeaders error))
+    | Ok request -> (
+        (* Convert to Request and call handler *)
+        match state.handler conn request with
+        | Http_handler.Response response ->
+            let status = response.status in
+            let response_headers =
+              [ (":status", Int.to_string (Net.Http.Status.to_int status)); ]
+              @ Net.Http.Header.to_list response.headers
+            in
+            (
+              match send_headers conn state.hpack_encoder stream_id response_headers false with
               | Error e -> Error e
               | Ok () ->
-                  let _ = HashMap.remove state.streams ~key:stream_id in
-                  Ok ()
-        )
-    | Http_handler.Upgrade _ -> Error (ProtocolError UpgradeNotSupported)
+                  let body = response.body in
+                  match send_data conn stream_id body true with
+                  | Error e -> Error e
+                  | Ok () ->
+                      let _ = HashMap.remove state.streams ~key:stream_id in
+                      Ok ()
+            )
+        | Http_handler.Upgrade _ -> Error (ProtocolError UpgradeNotSupported)
+      )
 
 (** Process a single HTTP/2 frame *)
 let process_frame = fun conn state frame ->

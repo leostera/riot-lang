@@ -140,3 +140,23 @@ module Http1: sig
     Web_server.Request.t ->
     bool
 end
+
+module Http2: sig
+  type pseudo_header =
+    | Method
+    | Scheme
+    | Path
+  type request_header_error =
+    | MissingPseudoHeader of pseudo_header
+    | EmptyPseudoHeader of pseudo_header
+    | InvalidPath of {
+        value: string;
+        reason: Std.Net.Uri.error;
+      }
+  val headers_to_request:
+    Http.Http2.Hpack.header list ->
+    string ->
+    (Web_server.Request.t, request_header_error) Std.result
+
+  val request_header_error_to_string: request_header_error -> string
+end

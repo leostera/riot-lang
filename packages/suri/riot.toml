@@ -89,6 +89,10 @@ name = "web_server_http1_tests"
 path = "tests/web_server_http1_tests.ml"
 
 [[bin]]
+name = "web_server_http2_tests"
+path = "tests/web_server_http2_tests.ml"
+
+[[bin]]
 name = "socket_pool_tests"
 path = "tests/socket_pool_tests.ml"
 

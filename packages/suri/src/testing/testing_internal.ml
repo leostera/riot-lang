@@ -138,3 +138,22 @@ module Http1 = struct
 
   let should_continue_keep_alive = Web_server.Http1.should_continue_keep_alive
 end
+
+module Http2 = struct
+  type pseudo_header = Web_server.Http2.pseudo_header =
+    | Method
+    | Scheme
+    | Path
+
+  type request_header_error = Web_server.Http2.request_header_error =
+    | MissingPseudoHeader of pseudo_header
+    | EmptyPseudoHeader of pseudo_header
+    | InvalidPath of {
+        value: string;
+        reason: Std.Net.Uri.error;
+      }
+
+  let headers_to_request = Web_server.Http2.headers_to_request
+
+  let request_header_error_to_string = Web_server.Http2.request_header_error_to_string
+end
