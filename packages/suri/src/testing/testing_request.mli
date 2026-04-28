@@ -1,6 +1,13 @@
 open Std
 
 type t
+type error =
+  | InvalidUri of {
+      value: string;
+      reason: Net.Uri.error;
+    }
+val error_to_string: error -> string
+
 val make:
   ?method_:Net.Http.Method.t ->
   ?uri:string ->
@@ -42,8 +49,8 @@ val delete:
   string ->
   t
 
-val to_http: t -> Net.Http.Request.t
+val to_http: t -> (Net.Http.Request.t, error) result
 
-val to_web_request: t -> Web_server.Request.t
+val to_web_request: t -> (Web_server.Request.t, error) result
 
-val to_conn: t -> Middleware.Conn.t
+val to_conn: t -> (Middleware.Conn.t, error) result

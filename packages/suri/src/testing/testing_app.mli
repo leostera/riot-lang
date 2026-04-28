@@ -4,6 +4,7 @@ type outcome =
   | Responded of Web_server.Response.t
   | Upgraded
 type response_error =
+  | InvalidRequest of Request.error
   | ExpectedResponseButUpgraded
 val response_error_to_string: response_error -> string
 
@@ -11,7 +12,7 @@ val run_pipeline_response: Middleware.Pipeline.t -> Middleware.Conn.t -> Web_ser
 
 val run_conn: Middleware.Pipeline.t -> Middleware.Conn.t -> outcome
 
-val run: Middleware.Pipeline.t -> Request.t -> outcome
+val run: Middleware.Pipeline.t -> Request.t -> (outcome, response_error) Std.result
 
 val response:
   Middleware.Pipeline.t ->

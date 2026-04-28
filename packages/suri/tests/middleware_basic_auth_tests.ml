@@ -148,7 +148,10 @@ let test_basic_auth_rejects_invalid_credentials = fun _ctx ->
   Ok ()
 
 let test_basic_auth_reports_missing_authorization_header = fun _ctx ->
-  let conn = Testing.Conn.make () in
+  let conn =
+    Testing.Conn.make ()
+    |> Result.unwrap
+  in
   Test.assert_equal
     ~expected:(Error Basic_auth.MissingAuthorizationHeader)
     ~actual:(Basic_auth.get_credentials_result conn);
@@ -158,7 +161,10 @@ let test_basic_auth_reports_missing_authorization_header = fun _ctx ->
   Ok ()
 
 let test_basic_auth_reports_malformed_authorization_header = fun _ctx ->
-  let conn = Testing.Conn.make ~headers:[ ("authorization", "Bearer token"); ] () in
+  let conn =
+    Testing.Conn.make ~headers:[ ("authorization", "Bearer token"); ] ()
+    |> Result.unwrap
+  in
   Test.assert_equal
     ~expected:(Error (Basic_auth.InvalidAuthorizationHeader Basic_auth.InvalidAuthorizationFormat))
     ~actual:(Basic_auth.get_credentials_result conn);

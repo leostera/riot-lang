@@ -180,6 +180,7 @@ let test_body_parser_responds_unsupported_media_type_for_multipart = fun _ctx ->
       ~headers:[ ("content-type", "multipart/form-data; boundary=abc123"); ]
       ~body:"--abc123\r\n"
       ()
+    |> Result.unwrap
   in
   let conn = Body_parser.make ~config () ~conn ~next:(fun conn -> conn) in
   Test.assert_equal
@@ -193,6 +194,7 @@ let test_body_parser_stores_raw_json = fun _ctx ->
       ~headers:[ ("content-type", "application/json"); ]
       ~body:{|{"name":"Alice","nested":{"role":"admin"}}|}
       ()
+    |> Result.unwrap
   in
   let conn = Body_parser.make () ~conn ~next:(fun conn -> conn) in
   Test.assert_equal ~expected:[ ("name", "Alice"); ] ~actual:(Conn.body_params conn);

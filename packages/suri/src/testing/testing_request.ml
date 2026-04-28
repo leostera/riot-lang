@@ -10,6 +10,12 @@ type t = {
   body_params: (string * string) list;
 }
 
+type error =
+  | InvalidUri of {
+      value: string;
+      reason: Net.Uri.error;
+    }
+
 let default_peer = Middleware.Conn.{ ip = "127.0.0.1"; port = 0 }
 
 let make = fun
@@ -75,29 +81,50 @@ let delete = fun ?(headers = []) ?(body = "") ?(peer = default_peer) uri ->
     ~peer
     ()
 
-let to_http = fun request ->
-  let uri =
-    Net.Uri.of_string request.uri
-    |> Result.expect ~msg:("invalid testing URI: " ^ request.uri)
-  in
-  Net.Http.Request.create request.method_ uri
-  |> fun http_request ->
-    List.fold_left
-      request.headers
-      ~init:http_request
-      ~fn:(fun http_request ((name, value)) ->
-        Net.Http.Request.with_header http_request name value)
-    |> fun http_request ->
-      if String.equal request.body "" then
-        http_request
-      else
-        Net.Http.Request.with_body http_request request.body
+let uri_error_to_string = function
+  | Net.Uri.InvalidScheme -> "invalid scheme"
+  | Net.Uri.InvalidAuthority -> "invalid authority"
+  | Net.Uri.InvalidPath -> "invalid path"
+  | Net.Uri.InvalidQuery -> "invalid query"
+  | Net.Uri.InvalidFragment -> "invalid fragment"
+  | Net.Uri.InvalidFormat -> "invalid format"
+  | Net.Uri.TooLong -> "URI is too long"
 
-let to_web_request = fun request -> Web_server.Request.of_http ~body:request.body (to_http request)
+let error_to_string = function
+  | InvalidUri { value; reason } ->
+      "invalid testing URI `" ^ value ^ "`: " ^ uri_error_to_string reason
+
+let to_http = fun request ->
+  match Net.Uri.of_string request.uri with
+  | Error reason -> Error (InvalidUri { value = request.uri; reason })
+  | Ok uri ->
+      Net.Http.Request.create request.method_ uri
+      |> fun http_request ->
+        List.fold_left
+          request.headers
+          ~init:http_request
+          ~fn:(fun http_request ((name, value)) ->
+            Net.Http.Request.with_header
+              http_request
+              name
+              value)
+        |> fun http_request ->
+          if String.equal request.body "" then
+            Ok http_request
+          else
+            Ok (Net.Http.Request.with_body http_request request.body)
+
+let to_web_request = fun request ->
+  match to_http request with
+  | Error error -> Error error
+  | Ok http_request -> Ok (Web_server.Request.of_http ~body:request.body http_request)
 
 let to_conn = fun request ->
-  to_web_request request
-  |> Middleware.Conn.of_request
-    ~peer:request.peer
-    ~params:request.params
-    ~body_params:request.body_params
+  match to_web_request request with
+  | Error error -> Error error
+  | Ok web_request ->
+      Ok (Middleware.Conn.of_request
+        ~peer:request.peer
+        ~params:request.params
+        ~body_params:request.body_params
+        web_request)

@@ -7,9 +7,11 @@ type outcome =
   | Upgraded
 
 type response_error =
+  | InvalidRequest of Request.error
   | ExpectedResponseButUpgraded
 
 let response_error_to_string = function
+  | InvalidRequest error -> Request.error_to_string error
   | ExpectedResponseButUpgraded -> "expected HTTP response, but app upgraded the connection"
 
 let internal_server_error_response = fun () ->
@@ -40,12 +42,16 @@ let run_conn = fun app conn ->
   | Web_server.Handler.Response response -> Responded response
   | Web_server.Handler.Upgrade _ -> Upgraded
 
-let run = fun app request -> run_conn app (Request.to_conn request)
+let run = fun app request ->
+  match Request.to_conn request with
+  | Error error -> Error (InvalidRequest error)
+  | Ok conn -> Ok (run_conn app conn)
 
 let response = fun app request ->
   match run app request with
-  | Responded response -> Ok response
-  | Upgraded -> Error ExpectedResponseButUpgraded
+  | Error error -> Error error
+  | Ok (Responded response) -> Ok response
+  | Ok Upgraded -> Error ExpectedResponseButUpgraded
 
 let get = fun app ?headers uri -> response app (Request.get ?headers uri)
 

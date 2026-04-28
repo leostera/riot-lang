@@ -10,6 +10,7 @@ type outcome = App.outcome =
   | Upgraded
 
 type response_error = App.response_error =
+  | InvalidRequest of Request.error
   | ExpectedResponseButUpgraded
 
 let response_error_to_string = App.response_error_to_string

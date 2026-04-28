@@ -59,7 +59,10 @@ let test_middleware_runner_exercises_middleware = fun _ctx ->
     |> next
     |> Conn.with_header "x-after-next" "yes"
   in
-  let conn = Testing.Conn.make ~uri:"/" ~headers:[ ("x-request-id", "request-1"); ] () in
+  let conn =
+    Testing.Conn.make ~uri:"/" ~headers:[ ("x-request-id", "request-1"); ] ()
+    |> Result.unwrap
+  in
   let conn = Testing.Middleware.run middleware conn in
   Test.assert_equal
     ~expected:(Some "request-1")
@@ -68,6 +71,36 @@ let test_middleware_runner_exercises_middleware = fun _ctx ->
     ~expected:[ ("x-after-next", "yes"); ("x-before-next", "yes"); ]
     ~actual:(Conn.resp_headers conn);
   Ok ()
+
+let invalid_uri = "/" ^ String.make ~len:66_000 ~char:'a'
+
+let test_request_reports_invalid_uri = fun _ctx ->
+  match Testing.Request.to_http (Testing.Request.get invalid_uri) with
+  | Error (Testing.Request.InvalidUri { value; reason = Net.Uri.TooLong }) ->
+      Test.assert_equal ~expected:invalid_uri ~actual:value;
+      Ok ()
+  | Ok _ -> Error "expected invalid testing URI"
+  | Error error -> Error (Testing.Request.error_to_string error)
+
+let test_conn_make_returns_typed_request_errors = fun _ctx ->
+  match Testing.Conn.make ~uri:invalid_uri () with
+  | Error (Testing.Request.InvalidUri { reason = Net.Uri.TooLong; _ }) -> Ok ()
+  | Ok _ -> Error "expected invalid testing URI"
+  | Error error -> Error (Testing.Request.error_to_string error)
+
+let test_app_returns_typed_request_errors = fun _ctx ->
+  let app = [
+    fun ~conn ~next:_ ->
+      conn
+      |> Conn.respond ~status:Net.Http.Status.Ok ~body:"ok"
+      |> Conn.send;
+  ]
+  in
+  match Testing.App.get app invalid_uri with
+  | Error (Testing.InvalidRequest (Testing.Request.InvalidUri { reason = Net.Uri.TooLong; _ })) ->
+      Ok ()
+  | Ok _ -> Error "expected invalid testing URI"
+  | Error error -> Error (Testing.response_error_to_string error)
 
 let test_expect_status_reports_typed_mismatch = fun _ctx ->
   let response = Suri.Response.not_found () in
@@ -85,6 +118,11 @@ let tests =
     case "Testing.App.post preserves request body" test_app_post_preserves_request_body;
     case "Testing.App returns not found for unsent pipelines" test_unsent_pipeline_returns_not_found;
     case "Testing.Middleware.run exercises middleware" test_middleware_runner_exercises_middleware;
+    case "Testing.Request reports invalid URIs" test_request_reports_invalid_uri;
+    case
+      "Testing.Conn.make returns typed request errors"
+      test_conn_make_returns_typed_request_errors;
+    case "Testing.App returns typed request errors" test_app_returns_typed_request_errors;
     case "Testing.Expect.status reports typed mismatches" test_expect_status_reports_typed_mismatch;
   ]
 

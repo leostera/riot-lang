@@ -29,6 +29,7 @@ let test_method_override_rejects_disallowed_method = fun _ctx ->
 let test_method_override_applies_allowed_method = fun _ctx ->
   let conn =
     Suri.Testing.Conn.make ~method_:Net.Http.Method.Post ~body_params:[ ("_method", "DELETE"); ] ()
+    |> Result.unwrap
   in
   let conn' =
     Method_override.middleware
@@ -49,6 +50,7 @@ let test_method_override_applies_allowed_method = fun _ctx ->
 let test_method_override_rejects_invalid_method = fun _ctx ->
   let conn =
     Suri.Testing.Conn.make ~method_:Net.Http.Method.Post ~body_params:[ ("_method", "GET"); ] ()
+    |> Result.unwrap
   in
   let continued = ref false in
   let response =
@@ -70,6 +72,7 @@ let test_method_override_rejects_invalid_method = fun _ctx ->
 let test_method_override_ignores_non_post_requests = fun _ctx ->
   let conn =
     Suri.Testing.Conn.make ~method_:Net.Http.Method.Get ~body_params:[ ("_method", "DELETE"); ] ()
+    |> Result.unwrap
   in
   let conn' =
     Method_override.middleware

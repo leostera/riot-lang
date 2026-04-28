@@ -19,6 +19,7 @@ let test_conditional_get_reports_invalid_month = fun _ctx ->
 let test_conditional_get_reports_invalid_request_date = fun _ctx ->
   let conn =
     Suri.Testing.Conn.make ~headers:[ ("if-modified-since", "Wed, nope Oct 2015 07:28:00 GMT"); ] ()
+    |> Result.unwrap
   in
   let headers = response_headers [ ("last-modified", "Wed, 21 Oct 2015 07:28:00 GMT"); ] in
   match Conditional_get.check_modified_since conn headers with
@@ -35,6 +36,7 @@ let test_conditional_get_if_none_match_precedes_modified_since = fun _ctx ->
         ("if-modified-since", "Wed, 21 Oct 2015 07:28:00 GMT");
       ]
       ()
+    |> Result.unwrap
   in
   let response =
     Conditional_get.middleware
@@ -52,7 +54,10 @@ let test_conditional_get_if_none_match_precedes_modified_since = fun _ctx ->
   Ok ()
 
 let test_conditional_get_etag_match_returns_not_modified = fun _ctx ->
-  let conn = Suri.Testing.Conn.make ~headers:[ ("if-none-match", "\"server\""); ] () in
+  let conn =
+    Suri.Testing.Conn.make ~headers:[ ("if-none-match", "\"server\""); ] ()
+    |> Result.unwrap
+  in
   let response =
     Conditional_get.middleware
       ~conn

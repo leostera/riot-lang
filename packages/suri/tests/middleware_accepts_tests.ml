@@ -154,7 +154,10 @@ let test_accepts_only_requires_content_type_for_declared_body = fun _ctx ->
 
 let test_accepts_validate_reports_malformed_accept = fun _ctx ->
   let config = Accepts.{ default_config with types = [ "application/json"; ] } in
-  let conn = Testing.Conn.make ~headers:[ ("accept", "application/json;q=wat"); ] () in
+  let conn =
+    Testing.Conn.make ~headers:[ ("accept", "application/json;q=wat"); ] ()
+    |> Result.unwrap
+  in
   Test.assert_equal
     ~expected:(Error (Accepts.AcceptRejected (Accepts.MalformedAcceptHeader {
       value = "application/json;q=wat";
@@ -171,6 +174,7 @@ let test_accepts_validate_reports_missing_content_type = fun _ctx ->
       ~headers:[ ("content-length", "2"); ]
       ~body:"{}"
       ()
+    |> Result.unwrap
   in
   Test.assert_equal
     ~expected:(Error (Accepts.ContentTypeRejected Accepts.MissingContentType))
@@ -185,6 +189,7 @@ let test_accepts_validate_reports_unsupported_content_type = fun _ctx ->
       ~headers:[ ("content-length", "5"); ("content-type", "text/plain"); ]
       ~body:"hello"
       ()
+    |> Result.unwrap
   in
   Test.assert_equal
     ~expected:(Error (Accepts.ContentTypeRejected (Accepts.UnsupportedContentType {
@@ -194,7 +199,10 @@ let test_accepts_validate_reports_unsupported_content_type = fun _ctx ->
   Ok ()
 
 let test_accepts_middleware_renders_structured_accept_error = fun _ctx ->
-  let conn = Testing.Conn.make ~headers:[ ("accept", "application/json;q=wat"); ] () in
+  let conn =
+    Testing.Conn.make ~headers:[ ("accept", "application/json;q=wat"); ] ()
+    |> Result.unwrap
+  in
   let response =
     Accepts.middleware [ "application/json"; ]
     |> fun middleware ->

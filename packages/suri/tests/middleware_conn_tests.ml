@@ -132,7 +132,13 @@ let test_conn_query_params_decode_percent_and_skip_empty_pairs = fun _ctx ->
   Ok ()
 
 let test_conn_to_response_returns_not_found_when_unsent = fun _ctx ->
-  let response = Conn.to_response (Suri.Testing.Conn.make ()) in
+  let response =
+    Conn.to_response
+      (
+        Suri.Testing.Conn.make ()
+        |> Result.unwrap
+      )
+  in
   Test.assert_equal ~expected:Net.Http.Status.NotFound ~actual:response.status;
   Test.assert_equal ~expected:"Not Found" ~actual:response.body;
   Ok ()
@@ -140,6 +146,7 @@ let test_conn_to_response_returns_not_found_when_unsent = fun _ctx ->
 let test_conn_set_header_replaces_case_insensitively = fun _ctx ->
   let response =
     Suri.Testing.Conn.make ()
+    |> Result.unwrap
     |> Conn.with_header "Vary" "Accept-Encoding"
     |> Conn.with_header "vary" "Origin"
     |> Conn.set_header "VARY" "Accept-Encoding, Origin"
@@ -153,7 +160,10 @@ let test_conn_set_header_replaces_case_insensitively = fun _ctx ->
 
 let test_conn_assign_returns_updated_connection = fun _ctx ->
   let key: string Conn.assign_key = Conn.assign_key () in
-  let conn = Suri.Testing.Conn.make () in
+  let conn =
+    Suri.Testing.Conn.make ()
+    |> Result.unwrap
+  in
   let conn' = Conn.assign key "alice" conn in
   Test.assert_equal ~expected:None ~actual:(Conn.get_assign key conn);
   Test.assert_equal ~expected:(Some "alice") ~actual:(Conn.get_assign key conn');

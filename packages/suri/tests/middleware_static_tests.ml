@@ -151,7 +151,10 @@ let test_static_middleware_respects_mount_segment_boundaries = fun _ctx ->
             |> Conn.respond ~status:Net.Http.Status.Ok ~body:"next"
             |> Conn.send
           in
-          let sibling_conn = Suri.Testing.Conn.make ~uri:"/assets2/app.css" () in
+          let sibling_conn =
+            Suri.Testing.Conn.make ~uri:"/assets2/app.css" ()
+            |> Result.unwrap
+          in
           let sibling_response =
             middleware ~conn:sibling_conn ~next
             |> Conn.to_response
@@ -159,7 +162,10 @@ let test_static_middleware_respects_mount_segment_boundaries = fun _ctx ->
           Test.assert_true !next_called;
           Test.assert_equal ~expected:"next" ~actual:sibling_response.body;
           next_called := false;
-          let mounted_conn = Suri.Testing.Conn.make ~uri:"/assets/app.css" () in
+          let mounted_conn =
+            Suri.Testing.Conn.make ~uri:"/assets/app.css" ()
+            |> Result.unwrap
+          in
           let mounted_response =
             middleware ~conn:mounted_conn ~next
             |> Conn.to_response
@@ -192,7 +198,10 @@ let test_static_middleware_enforces_nested_dotfile_policy = fun _ctx ->
           | Ok () ->
               let run = fun config ->
                 let middleware = Static.middleware ~at:"/assets" ~config root () in
-                let conn = Suri.Testing.Conn.make ~uri:"/assets/public/.git/config" () in
+                let conn =
+                  Suri.Testing.Conn.make ~uri:"/assets/public/.git/config" ()
+                  |> Result.unwrap
+                in
                 middleware
                   ~conn
                   ~next:(fun conn ->
@@ -236,7 +245,10 @@ let test_static_middleware_escapes_directory_listing_entries = fun _ctx ->
       | Ok () ->
           let config = Static.{ default_config with show_directory = true } in
           let middleware = Static.middleware ~at:"/files" ~config root () in
-          let conn = Suri.Testing.Conn.make ~uri:"/files/" () in
+          let conn =
+            Suri.Testing.Conn.make ~uri:"/files/" ()
+            |> Result.unwrap
+          in
           let response =
             middleware
               ~conn

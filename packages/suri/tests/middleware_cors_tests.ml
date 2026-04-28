@@ -131,7 +131,10 @@ let test_cors_reports_disallowed_origin = fun _ctx ->
   Ok ()
 
 let test_cors_middleware_renders_disallowed_origin = fun _ctx ->
-  let conn = Suri.Testing.Conn.make ~headers:[ ("origin", "https://evil.example"); ] () in
+  let conn =
+    Suri.Testing.Conn.make ~headers:[ ("origin", "https://evil.example"); ] ()
+    |> Result.unwrap
+  in
   match Cors.middleware ~origins:[ "https://example.com"; ] () with
   | Error error -> Error (Cors.config_error_to_string error)
   | Ok middleware ->
@@ -205,6 +208,7 @@ let test_cors_preflight_returns_no_content = fun _ctx ->
         ("access-control-request-headers", "Authorization");
       ]
       ()
+    |> Result.unwrap
   in
   let continued = ref false in
   match Cors.middleware
@@ -227,7 +231,10 @@ let test_cors_preflight_returns_no_content = fun _ctx ->
       Ok ()
 
 let test_cors_simple_request_merges_vary_origin = fun _ctx ->
-  let conn = Suri.Testing.Conn.make ~headers:[ ("origin", "https://example.com"); ] () in
+  let conn =
+    Suri.Testing.Conn.make ~headers:[ ("origin", "https://example.com"); ] ()
+    |> Result.unwrap
+  in
   match Cors.middleware ~origins:[ "https://example.com"; ] () with
   | Error error -> Error (Cors.config_error_to_string error)
   | Ok middleware ->
@@ -252,6 +259,7 @@ let test_cors_preflight_merges_vary_origin = fun _ctx ->
       ~method_:Net.Http.Method.Options
       ~headers:[ ("origin", "https://example.com"); ("access-control-request-method", "PUT"); ]
       ()
+    |> Result.unwrap
     |> Conn.with_header "vary" "Accept-Encoding"
   in
   match Cors.middleware ~origins:[ "https://example.com"; ] ~methods:[ Net.Http.Method.Put; ] () with

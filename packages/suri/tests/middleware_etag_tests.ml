@@ -7,7 +7,10 @@ let run = fun ?weak status body ->
   Etag.middleware
     ?weak
     ()
-    ~conn:(Suri.Testing.Conn.make ())
+    ~conn:(
+      Suri.Testing.Conn.make ()
+      |> Result.unwrap
+    )
     ~next:(fun conn ->
       conn
       |> Conn.respond ~status ~body
@@ -36,7 +39,10 @@ let test_etag_preserves_existing_header = fun _ctx ->
   let response =
     Etag.middleware
       ()
-      ~conn:(Suri.Testing.Conn.make ())
+      ~conn:(
+        Suri.Testing.Conn.make ()
+        |> Result.unwrap
+      )
       ~next:(fun conn ->
         conn
         |> Conn.with_header "etag" "\"custom\""

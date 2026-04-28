@@ -117,7 +117,10 @@ let tamper_last_char = fun value ->
   prefix ^ replacement
 
 let test_session_middleware_installs_session = fun _ctx ->
-  let conn = Suri.Testing.Conn.make () in
+  let conn =
+    Suri.Testing.Conn.make ()
+    |> Result.unwrap
+  in
   let found_session = ref false in
   match Session.middleware ~secret:"0123456789abcdef0123456789abcdef" () with
   | Error error -> Error (Session.setup_error_to_string error)

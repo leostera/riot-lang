@@ -195,21 +195,30 @@ let test_remote_ip_reports_all_trusted_chain = fun _ctx ->
 
 let test_remote_ip_middleware_ignores_spoofed_header = fun _ctx ->
   let peer = Conn.{ ip = "203.0.113.10"; port = 1_234 } in
-  let conn = Testing.Conn.make ~peer ~headers:[ ("x-forwarded-for", "127.0.0.1"); ] () in
+  let conn =
+    Testing.Conn.make ~peer ~headers:[ ("x-forwarded-for", "127.0.0.1"); ] ()
+    |> Result.unwrap
+  in
   let conn = Remote_ip.middleware () ~proxies:[ "10.0.1.50"; ] ~conn ~next:(fun conn -> conn) in
   Test.assert_equal ~expected:"203.0.113.10" ~actual:(Conn.peer conn).ip;
   Ok ()
 
 let test_remote_ip_middleware_rewrites_trusted_proxy_peer = fun _ctx ->
   let peer = Conn.{ ip = "10.0.1.50"; port = 1_234 } in
-  let conn = Testing.Conn.make ~peer ~headers:[ ("x-forwarded-for", "1.2.3.4, 10.0.1.50"); ] () in
+  let conn =
+    Testing.Conn.make ~peer ~headers:[ ("x-forwarded-for", "1.2.3.4, 10.0.1.50"); ] ()
+    |> Result.unwrap
+  in
   let conn = Remote_ip.middleware () ~proxies:[ "10.0.1.50"; ] ~conn ~next:(fun conn -> conn) in
   Test.assert_equal ~expected:"1.2.3.4" ~actual:(Conn.peer conn).ip;
   Ok ()
 
 let test_remote_ip_middleware_ignores_invalid_forwarded_chain = fun _ctx ->
   let peer = Conn.{ ip = "10.0.1.50"; port = 1_234 } in
-  let conn = Testing.Conn.make ~peer ~headers:[ ("x-forwarded-for", "example.com, 10.0.1.50"); ] () in
+  let conn =
+    Testing.Conn.make ~peer ~headers:[ ("x-forwarded-for", "example.com, 10.0.1.50"); ] ()
+    |> Result.unwrap
+  in
   let conn = Remote_ip.middleware () ~proxies:[ "10.0.1.50"; ] ~conn ~next:(fun conn -> conn) in
   Test.assert_equal ~expected:"10.0.1.50" ~actual:(Conn.peer conn).ip;
   Ok ()

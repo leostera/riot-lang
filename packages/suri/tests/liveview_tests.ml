@@ -274,7 +274,10 @@ let liveview_session_uri = fun json ->
   "/?session=" ^ Net.Uri.form_encode token
 
 let test_liveview_initializes_with_valid_session_token = fun _ctx ->
-  let conn = Suri.Testing.Conn.make ~uri:(liveview_session_uri Data.Json.Null) () in
+  let conn =
+    Suri.Testing.Conn.make ~uri:(liveview_session_uri Data.Json.Null) ()
+    |> Result.unwrap
+  in
   let (_opts, handler) = Suri.LiveView.mount (module TestLiveViewComponent) conn in
   match Channel.initialize handler with
   | Channel.Continue _ -> Ok ()
@@ -282,7 +285,10 @@ let test_liveview_initializes_with_valid_session_token = fun _ctx ->
   | Channel.Push _ -> Error "expected LiveView valid session token to initialize"
 
 let test_liveview_rejects_missing_session_tokens = fun _ctx ->
-  let conn = Suri.Testing.Conn.make ~uri:"/" () in
+  let conn =
+    Suri.Testing.Conn.make ~uri:"/" ()
+    |> Result.unwrap
+  in
   let (_opts, handler) = Suri.LiveView.mount (module TestLiveViewComponent) conn in
   match Channel.initialize handler with
   | Channel.Error reported -> (
@@ -301,7 +307,10 @@ let test_liveview_rejects_missing_session_tokens = fun _ctx ->
       Error "expected missing LiveView session token to reject handler initialization"
 
 let test_liveview_rejects_invalid_session_tokens = fun _ctx ->
-  let conn = Suri.Testing.Conn.make ~uri:"/?session=not-a-token" () in
+  let conn =
+    Suri.Testing.Conn.make ~uri:"/?session=not-a-token" ()
+    |> Result.unwrap
+  in
   let (_opts, handler) = Suri.LiveView.mount (module TestLiveViewComponent) conn in
   match Channel.initialize handler with
   | Channel.Error reported -> (
