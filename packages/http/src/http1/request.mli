@@ -10,6 +10,10 @@ open Common
    @param max_headers Maximum number of headers (default: 100)
    @param max_header_length Maximum length of header name+value (default: 8192)
    @param max_header_block_length Maximum total header block length (default: 65536)
+   @param max_body_size Maximum decoded body length (default: max_int)
+   @param max_chunk_size Maximum chunk length for chunked bodies (default: max_int)
+   @param max_trailers Maximum number of chunk trailers (default: 100)
+   @param max_trailer_length Maximum trailer name+value length (default: 8192)
 
    Returns [Done request] on success, [Need_more] if more data needed, or
    [Error error] if parsing fails.
@@ -19,6 +23,10 @@ val parse_slice:
   ?max_headers:int ->
   ?max_header_length:int ->
   ?max_header_block_length:int ->
+  ?max_body_size:int ->
+  ?max_chunk_size:int ->
+  ?max_trailers:int ->
+  ?max_trailer_length:int ->
   IO.IoVec.IoSlice.t ->
   Std.Net.Http.Request.t parse_result
 
@@ -27,6 +35,10 @@ val parse:
   ?max_headers:int ->
   ?max_header_length:int ->
   ?max_header_block_length:int ->
+  ?max_body_size:int ->
+  ?max_chunk_size:int ->
+  ?max_trailers:int ->
+  ?max_trailer_length:int ->
   string ->
   Std.Net.Http.Request.t parse_result
 

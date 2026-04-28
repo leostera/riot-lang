@@ -285,6 +285,10 @@ let parse_slice = fun
   ?(max_headers = 100)
   ?(max_header_length = 8_192)
   ?(max_header_block_length = 65_536)
+  ?(max_body_size = Int.max_int)
+  ?(max_chunk_size = Int.max_int)
+  ?(max_trailers = 100)
+  ?(max_trailer_length = 8_192)
   input ->
   match parse_head_owned
     ~max_status_line
@@ -308,20 +312,36 @@ let parse_slice = fun
         | Body_need_more -> Need_more
         | Body_error error -> Error error
         | Body_done CloseDelimitedBody ->
-            let response =
-              response_of_parts head_status_code head_version head_headers body_start
-            in
-            Done { value = response; remaining = "" }
+            if String.length body_start > max_body_size then
+              Error (Common.BodyTooLarge {
+                size = String.length body_start;
+                max_size = max_body_size;
+              })
+            else
+              let response =
+                response_of_parts head_status_code head_version head_headers body_start
+              in
+              Done { value = response; remaining = "" }
         | Body_done (FixedBody content_length) -> (
-            match split_fixed_body body_start content_length with
-            | Body_need_more -> Need_more
-            | Body_error error -> Error error
-            | Body_done (body, remaining) ->
-                let response = response_of_parts head_status_code head_version head_headers body in
-                Done { value = response; remaining }
+            if content_length > max_body_size then
+              Error (Common.BodyTooLarge { size = content_length; max_size = max_body_size })
+            else
+              match split_fixed_body body_start content_length with
+              | Body_need_more -> Need_more
+              | Body_error error -> Error error
+              | Body_done (body, remaining) ->
+                  let response =
+                    response_of_parts head_status_code head_version head_headers body
+                  in
+                  Done { value = response; remaining }
           )
         | Body_done ChunkedBody -> (
-            match Chunk.decode body_start with
+            match Chunk.decode
+              ~max_chunk_size
+              ~max_body_size
+              ~max_trailers
+              ~max_trailer_length
+              body_start with
             | Need_more -> Need_more
             | Error error -> Error error
             | Done { value = decoded; _ } ->
@@ -336,8 +356,21 @@ let parse = fun
   ?(max_headers = 100)
   ?(max_header_length = 8_192)
   ?(max_header_block_length = 65_536)
+  ?(max_body_size = Int.max_int)
+  ?(max_chunk_size = Int.max_int)
+  ?(max_trailers = 100)
+  ?(max_trailer_length = 8_192)
   input ->
   match Common.slice_of_string input with
   | Error error -> Error error
   | Ok input ->
-      parse_slice ~max_status_line ~max_headers ~max_header_length ~max_header_block_length input
+      parse_slice
+        ~max_status_line
+        ~max_headers
+        ~max_header_length
+        ~max_header_block_length
+        ~max_body_size
+        ~max_chunk_size
+        ~max_trailers
+        ~max_trailer_length
+        input

@@ -363,17 +363,17 @@ let rec parse_headers_owned = fun
   ?(count = 0)
   ?(total_length = 0)
   cursor ->
-  if count >= max_count then
-    Slice_error (Common.TooManyHeaders { max_count })
-  else
-    match take_header_block_terminator cursor with
-    | Some next_cursor ->
-        let total_length = total_length + (next_cursor.pos - cursor.pos) in
-        if total_length > max_total_length then
-          Slice_error (Common.HeaderBlockTooLong { max_length = max_total_length })
-        else
-          Slice_done (List.reverse acc, next_cursor)
-    | None ->
+  match take_header_block_terminator cursor with
+  | Some next_cursor ->
+      let total_length = total_length + (next_cursor.pos - cursor.pos) in
+      if total_length > max_total_length then
+        Slice_error (Common.HeaderBlockTooLong { max_length = max_total_length })
+      else
+        Slice_done (List.reverse acc, next_cursor)
+  | None ->
+      if count >= max_count then
+        Slice_error (Common.TooManyHeaders { max_count })
+      else
         match parse_header_line_owned cursor with
         | Slice_need_more ->
             let pending = Slice.length (SliceCursor.remaining cursor) in
@@ -513,6 +513,10 @@ let parse_slice = fun
   ?(max_headers = 100)
   ?(max_header_length = 8_192)
   ?(max_header_block_length = 65_536)
+  ?(max_body_size = Int.max_int)
+  ?(max_chunk_size = Int.max_int)
+  ?(max_trailers = 100)
+  ?(max_trailer_length = 8_192)
   input ->
   match parse_head_owned
     ~max_request_line
@@ -540,17 +544,28 @@ let parse_slice = fun
               in
               Common.Done { value = request; remaining = string_of_slice body_bytes }
           | Slice_done (FixedBody content_length) -> (
-              match split_fixed_body body_bytes content_length with
-              | Slice_need_more -> Common.Need_more
-              | Slice_error error -> Common.Error error
-              | Slice_done (body, remaining) ->
-                  let request =
-                    request_of_parts head_method head_uri head_version head_headers body
-                  in
-                  Common.Done { value = request; remaining }
+              if content_length > max_body_size then
+                Common.Error (Common.BodyTooLarge {
+                  size = content_length;
+                  max_size = max_body_size;
+                })
+              else
+                match split_fixed_body body_bytes content_length with
+                | Slice_need_more -> Common.Need_more
+                | Slice_error error -> Common.Error error
+                | Slice_done (body, remaining) ->
+                    let request =
+                      request_of_parts head_method head_uri head_version head_headers body
+                    in
+                    Common.Done { value = request; remaining }
             )
           | Slice_done ChunkedBody -> (
-              match Chunk.decode_slice body_bytes with
+              match Chunk.decode_slice
+                ~max_chunk_size
+                ~max_body_size
+                ~max_trailers
+                ~max_trailer_length
+                body_bytes with
               | Common.Need_more -> Common.Need_more
               | Common.Error error -> Common.Error error
               | Common.Done { value = decoded; _ } -> (
@@ -570,8 +585,21 @@ let parse = fun
   ?(max_headers = 100)
   ?(max_header_length = 8_192)
   ?(max_header_block_length = 65_536)
+  ?(max_body_size = Int.max_int)
+  ?(max_chunk_size = Int.max_int)
+  ?(max_trailers = 100)
+  ?(max_trailer_length = 8_192)
   input ->
   match Common.slice_of_string input with
   | Error error -> Common.Error error
   | Ok input ->
-      parse_slice ~max_request_line ~max_headers ~max_header_length ~max_header_block_length input
+      parse_slice
+        ~max_request_line
+        ~max_headers
+        ~max_header_length
+        ~max_header_block_length
+        ~max_body_size
+        ~max_chunk_size
+        ~max_trailers
+        ~max_trailer_length
+        input

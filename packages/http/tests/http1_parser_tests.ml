@@ -321,6 +321,20 @@ let test_request_accepts_matching_duplicate_content_length = fun _ctx ->
       else
         Result.Ok ()
 
+let test_request_rejects_fixed_body_over_limit = fun _ctx ->
+  let req =
+    build_request
+      ~method_:"POST"
+      ~path:"/upload"
+      ~headers:[ ("Host", "example.com"); ("Content-Length", "5"); ]
+      ~body:"Hello"
+  in
+  match Http1.Request.parse ~max_body_size:4 req with
+  | Error (BodyTooLarge { size = 5; max_size = 4 }) -> Result.Ok ()
+  | Error error -> Result.Error ("Expected body too large error, got " ^ error_to_string error)
+  | Need_more -> Result.Error "Expected body too large error, got Need_more"
+  | Done _ -> Result.Error "Expected body too large error"
+
 let test_request_rejects_conflicting_content_length = fun _ctx ->
   let req =
     build_request
@@ -624,6 +638,25 @@ let test_request_rejects_too_many_headers = fun _ctx ->
   | Need_more -> Result.Error "Expected too many headers error"
   | Done _ -> Result.Error "Expected too many headers error"
 
+let test_request_accepts_exact_max_headers = fun _ctx ->
+  let req =
+    build_request
+      ~method_:"GET"
+      ~path:"/"
+      ~headers:[ ("Host", "example.com"); ("X-Test", "ok"); ]
+      ~body:""
+  in
+  match Http1.Request.parse ~max_headers:2 req with
+  | Done { value = parsed; remaining = "" } -> (
+      match NetRequest.get_header parsed "x-test" with
+      | Some "ok" -> Result.Ok ()
+      | Some value -> Result.Error ("Expected X-Test: ok, got " ^ value)
+      | None -> Result.Error "Expected X-Test header"
+    )
+  | Done _ -> Result.Error "Expected empty remaining bytes"
+  | Need_more -> Result.Error "Unexpected Need_more"
+  | Error error -> Result.Error ("Parse error: " ^ error_to_string error)
+
 (* HTTP/1 Response Tests *)
 
 let test_response_200_ok = fun _ctx ->
@@ -808,6 +841,22 @@ let test_response_rejects_conflicting_content_length = fun _ctx ->
       Result.Error ("Expected conflicting Content-Length error, got " ^ error_to_string error)
   | Need_more -> Result.Error "Expected conflicting Content-Length error, got Need_more"
   | Done _ -> Result.Error "Expected conflicting Content-Length error"
+
+let test_response_rejects_fixed_body_over_limit = fun _ctx ->
+  let resp = "HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\nHello" in
+  match Http1.Response.parse ~max_body_size:4 resp with
+  | Error (BodyTooLarge { size = 5; max_size = 4 }) -> Result.Ok ()
+  | Error error -> Result.Error ("Expected body too large error, got " ^ error_to_string error)
+  | Need_more -> Result.Error "Expected body too large error, got Need_more"
+  | Done _ -> Result.Error "Expected body too large error"
+
+let test_response_rejects_close_delimited_body_over_limit = fun _ctx ->
+  let resp = "HTTP/1.1 200 OK\r\nConnection: close\r\n\r\nHello" in
+  match Http1.Response.parse ~max_body_size:4 resp with
+  | Error (BodyTooLarge { size = 5; max_size = 4 }) -> Result.Ok ()
+  | Error error -> Result.Error ("Expected body too large error, got " ^ error_to_string error)
+  | Need_more -> Result.Error "Expected body too large error, got Need_more"
+  | Done _ -> Result.Error "Expected body too large error"
 
 let test_response_rejects_invalid_content_length = fun _ctx ->
   let resp = "HTTP/1.1 200 OK\r\nContent-Length: nope\r\n\r\nHello" in
@@ -1175,6 +1224,32 @@ let test_chunk_decode_rejects_body_over_limit = fun _ctx ->
   | Need_more -> Result.Error "Expected chunked body too large error, got Need_more"
   | Done _ -> Result.Error "Expected chunked body too large error"
 
+let test_request_rejects_chunked_body_over_limit = fun _ctx ->
+  let req =
+    build_request
+      ~method_:"POST"
+      ~path:"/upload"
+      ~headers:[ ("Host", "example.com"); ("Transfer-Encoding", "chunked"); ]
+      ~body:"5\r\nHello\r\n6\r\n world\r\n0\r\n\r\n"
+  in
+  match Http1.Request.parse ~max_body_size:10 req with
+  | Error (ChunkedBodyTooLarge { size = 11; max_size = 10 }) -> Result.Ok ()
+  | Error error ->
+      Result.Error ("Expected chunked body too large error, got " ^ error_to_string error)
+  | Need_more -> Result.Error "Expected chunked body too large error, got Need_more"
+  | Done _ -> Result.Error "Expected chunked body too large error"
+
+let test_response_rejects_chunked_body_over_limit = fun _ctx ->
+  let resp =
+    "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n5\r\nHello\r\n6\r\n world\r\n0\r\n\r\n"
+  in
+  match Http1.Response.parse ~max_body_size:10 resp with
+  | Error (ChunkedBodyTooLarge { size = 11; max_size = 10 }) -> Result.Ok ()
+  | Error error ->
+      Result.Error ("Expected chunked body too large error, got " ^ error_to_string error)
+  | Need_more -> Result.Error "Expected chunked body too large error, got Need_more"
+  | Done _ -> Result.Error "Expected chunked body too large error"
+
 let test_chunk_decode_rejects_invalid_trailer_name = fun _ctx ->
   let body = "0\r\nBad@Name: value\r\n\r\n" in
   match Http1.Chunk.decode body with
@@ -1198,6 +1273,18 @@ let test_chunk_decode_allows_empty_trailers_at_zero_limit = fun _ctx ->
         Result.Error "Expected empty decoded body"
       else if decoded.trailers != [] then
         Result.Error "Expected no trailers"
+      else if decoded.remaining != "next" then
+        Result.Error ("Expected remaining next, got " ^ decoded.remaining)
+      else
+        Result.Ok ()
+  | Need_more -> Result.Error "Unexpected Need_more"
+  | Error error -> Result.Error ("Parse error: " ^ error_to_string error)
+
+let test_chunk_decode_accepts_exact_max_trailers = fun _ctx ->
+  match Http1.Chunk.decode ~max_trailers:1 "0\r\nETag: abc\r\n\r\nnext" with
+  | Done { value = decoded; _ } ->
+      if decoded.trailers != [ ("ETag", "abc"); ] then
+        Result.Error "Expected one decoded trailer"
       else if decoded.remaining != "next" then
         Result.Error ("Expected remaining next, got " ^ decoded.remaining)
       else
@@ -1267,6 +1354,11 @@ let test_sse_comment = fun _ctx ->
   | None -> Result.Ok ()
   | Some _ -> Result.Error "Should have ignored comment"
 
+let test_sse_line_does_not_skip_leading_whitespace = fun _ctx ->
+  match Http1.Sse.parse_line " data: hidden" with
+  | None -> Result.Ok ()
+  | Some _ -> Result.Error "Leading whitespace should make the SSE field unknown"
+
 let test_sse_parse_multiline_event = fun _ctx ->
   let input = "event: message\r\ndata: hello\r\ndata: world\r\nid: 42\r\nretry: 1000\r\n\r\n" in
   match Http1.Sse.parse input with
@@ -1299,6 +1391,11 @@ let test_sse_parse_dispatches_trailing_event = fun _ctx ->
   } ] -> Result.Ok ()
   | _ -> Result.Error "SSE parser did not dispatch the trailing event"
 
+let test_sse_parse_does_not_dispatch_event_without_data = fun _ctx ->
+  match Http1.Sse.parse "event: ping\r\nid: 42\r\nretry: 1000\r\n\r\n" with
+  | [] -> Result.Ok ()
+  | _ -> Result.Error "SSE parser dispatched an event with no data lines"
+
 let tests =
   Test.[
     case "common slice creation errors are typed" test_common_slice_creation_errors_are_typed;
@@ -1318,6 +1415,7 @@ let tests =
     case
       "request accepts matching duplicate content length"
       test_request_accepts_matching_duplicate_content_length;
+    case "request rejects fixed body over limit" test_request_rejects_fixed_body_over_limit;
     case
       "request rejects conflicting content length"
       test_request_rejects_conflicting_content_length;
@@ -1360,6 +1458,7 @@ let tests =
       test_request_rejects_invalid_header_value_character;
     case "request rejects invalid http version" test_request_rejects_invalid_http_version;
     case "request rejects invalid request target" test_request_rejects_invalid_request_target;
+    case "request accepts exact max headers" test_request_accepts_exact_max_headers;
     case "request_rejects_too_many_headers" test_request_rejects_too_many_headers;
     case "response_200_ok" test_response_200_ok;
     case "response_404" test_response_404;
@@ -1387,6 +1486,10 @@ let tests =
     case
       "response rejects conflicting content length"
       test_response_rejects_conflicting_content_length;
+    case "response rejects fixed body over limit" test_response_rejects_fixed_body_over_limit;
+    case
+      "response rejects close-delimited body over limit"
+      test_response_rejects_close_delimited_body_over_limit;
     case "response rejects invalid content length" test_response_rejects_invalid_content_length;
     case
       "response accepts matching duplicate content length"
@@ -1435,6 +1538,8 @@ let tests =
     case "chunk decode trailers and remaining" test_chunk_decode_trailers_and_remaining;
     case "chunk decode rejects chunk over limit" test_chunk_decode_rejects_chunk_over_limit;
     case "chunk decode rejects body over limit" test_chunk_decode_rejects_body_over_limit;
+    case "request rejects chunked body over limit" test_request_rejects_chunked_body_over_limit;
+    case "response rejects chunked body over limit" test_response_rejects_chunked_body_over_limit;
     case "chunk decode rejects invalid trailer name" test_chunk_decode_rejects_invalid_trailer_name;
     case
       "chunk decode incomplete trailer needs more"
@@ -1442,6 +1547,7 @@ let tests =
     case
       "chunk decode allows empty trailers at zero limit"
       test_chunk_decode_allows_empty_trailers_at_zero_limit;
+    case "chunk decode accepts exact max trailers" test_chunk_decode_accepts_exact_max_trailers;
     case "chunk decode rejects too many trailers" test_chunk_decode_rejects_too_many_trailers;
     case
       "chunk decode trailer length limit applies before crlf"
@@ -1456,11 +1562,15 @@ let tests =
     case "sse_event_type" test_sse_event_type;
     case "sse_empty_line" test_sse_empty_line;
     case "sse_comment" test_sse_comment;
+    case "sse line does not skip leading whitespace" test_sse_line_does_not_skip_leading_whitespace;
     case "sse parse multiline event" test_sse_parse_multiline_event;
     case
       "sse parse ignores comments and invalid retry"
       test_sse_parse_ignores_comments_and_invalid_retry;
     case "sse parse dispatches trailing event" test_sse_parse_dispatches_trailing_event;
+    case
+      "sse parse does not dispatch event without data"
+      test_sse_parse_does_not_dispatch_event_without_data;
   ]
 
 let main ~args:_ = Test.Cli.main ~name:"http:http1_parser" ~tests ~args:Env.args ()

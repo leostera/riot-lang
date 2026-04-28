@@ -242,6 +242,13 @@ let http1_error_json = fun error ->
           ("expected", Json.int expected);
           ("actual", Json.int actual);
         ]
+  | Http1.Common.BodyTooLarge { size; max_size } ->
+      Json.obj
+        [
+          ("type", Json.string "BodyTooLarge");
+          ("size", Json.int size);
+          ("max_size", Json.int max_size);
+        ]
   | Http1.Common.UnsupportedTransferEncoding ->
       Json.obj [ ("type", Json.string "UnsupportedTransferEncoding") ]
   | Http1.Common.TransferEncodingWithContentLength ->

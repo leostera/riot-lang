@@ -404,9 +404,8 @@ let encoder_dynamic_table_size = fun encoder -> DynamicTable.size encoder.dynami
 let encoder_dynamic_table_max_size = fun encoder -> DynamicTable.max_size encoder.dynamic_table
 
 let is_sensitive_header = fun name ->
-  List.contains
-    [ "authorization"; "cookie"; "set-cookie"; "proxy-authorization"; ]
-    ~value:name
+  let name = String.lowercase_ascii name in
+  List.contains [ "authorization"; "cookie"; "set-cookie"; "proxy-authorization"; ] ~value:name
 
 let encode_indexed_header = fun index ->
   (* Indexed Header Field: 1xxxxxxx *)
@@ -488,49 +487,56 @@ let encode_literal_never_indexed = fun ~name_index ~name ~value ->
       Buffer.add_bytes buf (String_.encode value);
       Bytes.from_string (Buffer.contents buf)
 
+let header_name_index = fun encoder name ->
+  let static_name_match = static_table_find_name name in
+  let dynamic_name_match = DynamicTable.find_name encoder.dynamic_table name in
+  match (static_name_match, dynamic_name_match) with
+  | (Some i, _) -> Some i
+  | (None, Some i) -> Some (static_table_size + i)
+  | (None, None) -> None
+
 let encode_header = fun encoder header ~encoding_type ->
+  let header = { header with name = String.lowercase_ascii header.name } in
   let { name; value } = header in
-  (* Try to find exact match in tables *)
-  let static_match = static_table_find ~name ~value in
-  let dynamic_match = DynamicTable.find encoder.dynamic_table ~name ~value in
-  match (static_match, dynamic_match) with
-  | (Some index, _)
-  | (_, Some index) ->
-      (* Full match found - use indexed representation *)
-      let actual_index =
-        match static_match with
-        | Some i -> i
-        | None -> static_table_size + Option.unwrap dynamic_match
-      in
-      Ok (encode_indexed_header actual_index)
-  | (None, None) ->
-      (* No full match - check for name match *)
-      let static_name_match = static_table_find_name name in
-      let dynamic_name_match = DynamicTable.find_name encoder.dynamic_table name in
-      let name_index =
-        match (static_name_match, dynamic_name_match) with
-        | (Some i, _) -> Some i
-        | (None, Some i) -> Some (static_table_size + i)
-        | (None, None) -> None
-      in
-      match encoding_type with
-      | Indexed -> Error (HeaderNotIndexed header)
-      | LiteralWithIndexing ->
-          let result = encode_literal_with_indexing ~name_index ~name ~value in
-          DynamicTable.add encoder.dynamic_table header;
-          Ok result
-      | LiteralWithoutIndexing -> Ok (encode_literal_without_indexing ~name_index ~name ~value)
-      | LiteralNeverIndexed -> Ok (encode_literal_never_indexed ~name_index ~name ~value)
+  let name_index = header_name_index encoder name in
+  match encoding_type with
+  | LiteralNeverIndexed -> Ok (encode_literal_never_indexed ~name_index ~name ~value)
+  | LiteralWithoutIndexing -> Ok (encode_literal_without_indexing ~name_index ~name ~value)
+  | Indexed
+  | LiteralWithIndexing ->
+      let static_match = static_table_find ~name ~value in
+      let dynamic_match = DynamicTable.find encoder.dynamic_table ~name ~value in
+      (
+        match (static_match, dynamic_match) with
+        | (Some index, _)
+        | (_, Some index) ->
+            let actual_index =
+              match static_match with
+              | Some i -> i
+              | None -> static_table_size + Option.unwrap dynamic_match
+            in
+            Ok (encode_indexed_header actual_index)
+        | (None, None) -> (
+            match encoding_type with
+            | Indexed -> Error (HeaderNotIndexed header)
+            | LiteralWithIndexing ->
+                let result = encode_literal_with_indexing ~name_index ~name ~value in
+                DynamicTable.add encoder.dynamic_table header;
+                Ok result
+            | LiteralWithoutIndexing
+            | LiteralNeverIndexed -> Ok (encode_literal_never_indexed ~name_index ~name ~value)
+          )
+      )
 
 let encode = fun encoder ?(sensitive_headers = []) () ~headers ->
   let buf = Buffer.create ~size:256 in
+  let sensitive_headers = List.map sensitive_headers ~fn:String.lowercase_ascii in
   let rec encode_all = function
     | [] -> Ok (Bytes.from_string (Buffer.contents buf))
     | header :: rest ->
         let encoding_type =
-          if
-            is_sensitive_header header.name || List.contains sensitive_headers ~value:header.name
-          then
+          if let name = String.lowercase_ascii header.name in
+          is_sensitive_header name || List.contains sensitive_headers ~value:name then
             LiteralNeverIndexed
           else
             LiteralWithIndexing

@@ -12,7 +12,7 @@ type event = {
 }
 
 type partial_event = {
-  data_lines: string list;
+  data_lines_rev: string list;
   event_type: string option;
   id: string option;
   retry: int option;
@@ -21,7 +21,7 @@ type partial_event = {
 type field = { name: string; value: string }
 
 let empty_partial = {
-  data_lines = [];
+  data_lines_rev = [];
   event_type = None;
   id = None;
   retry = None;
@@ -59,16 +59,12 @@ let split_field = fun line ->
         let value = String.sub line ~offset:value_start ~len:(String.length line - value_start) in
         Some { name; value }
 
-let partial_has_fields = fun partial ->
-  partial.data_lines != []
-  || Option.is_some partial.event_type
-  || Option.is_some partial.id
-  || Option.is_some partial.retry
+let partial_has_fields = fun partial -> partial.data_lines_rev != []
 
 let finalize_partial = fun partial ->
   if partial_has_fields partial then
     Some {
-      data = String.concat "\n" partial.data_lines;
+      data = String.concat "\n" (List.reverse partial.data_lines_rev);
       event_type = partial.event_type;
       id = partial.id;
       retry = partial.retry;
@@ -78,7 +74,7 @@ let finalize_partial = fun partial ->
 
 let apply_field = fun partial field ->
   match field.name with
-  | "data" -> { partial with data_lines = partial.data_lines @ [ field.value ] }
+  | "data" -> { partial with data_lines_rev = field.value :: partial.data_lines_rev }
   | "event" -> { partial with event_type = Some field.value }
   | "id" -> { partial with id = Some field.value }
   | "retry" -> (
@@ -90,9 +86,6 @@ let apply_field = fun partial field ->
   | _ -> partial
 
 let parse_line_slice = fun line ->
-  let line_cursor = Cursor.from_slice line in
-  let line_cursor = Cursor.skip_while line_cursor (fun c -> c = ' ' || c = '\t') in
-  let line = Cursor.remaining line_cursor in
   if Slice.length line = 0 then
     None
   else

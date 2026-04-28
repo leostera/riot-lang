@@ -148,6 +148,10 @@ type error =
   | ParserError of Parser.error
   | FrameConstructorError of Frame.constructor_error
   | SerializerError of Serializer.error
+  | InvalidClientPrefaceByte of { offset: int; expected: int; actual: int }
+  | ExpectedInitialSettings of {
+      frame_type: Frame.frame_type;
+    }
 val error_to_string: error -> string
 
 (** {1 Connection Lifecycle} *)

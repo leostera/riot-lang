@@ -75,6 +75,53 @@ let test_sensitive_custom_header_name_roundtrip = fun _ctx ->
       | Ok _ -> Result.Error "Sensitive custom header name did not roundtrip"
       | Error err -> Result.Error ("Decode failed: " ^ Hpack.decode_error_to_string err)
 
+let test_sensitive_header_name_matching_is_case_insensitive = fun _ctx ->
+  if not (Hpack.is_sensitive_header "Authorization") then
+    Result.Error "Authorization was not treated as sensitive"
+  else if not (Hpack.is_sensitive_header "Cookie") then
+    Result.Error "Cookie was not treated as sensitive"
+  else if not (Hpack.is_sensitive_header "Proxy-Authorization") then
+    Result.Error "Proxy-Authorization was not treated as sensitive"
+  else
+    Result.Ok ()
+
+let test_uppercase_sensitive_header_uses_never_indexed = fun _ctx ->
+  let encoder = Hpack.create_encoder () in
+  let decoder = Hpack.create_decoder () in
+  let headers = [ { Hpack.name = "Authorization"; value = "Bearer secret" } ] in
+  match encode_or_error encoder ~sensitive_headers:[] ~headers with
+  | Error err -> Result.Error err
+  | Ok encoded ->
+      let encoded_string = IO.Bytes.to_string encoded in
+      let first_byte = Char.to_int (String.get_unchecked encoded_string ~at:0) in
+      if first_byte land 0b1111_0000 != 0b0001_0000 then
+        Result.Error "Authorization was not encoded with the never-indexed representation"
+      else
+        match Hpack.decode decoder encoded with
+        | Ok [ { Hpack.name = "authorization"; value = "Bearer secret" } ] -> Result.Ok ()
+        | Ok _ -> Result.Error "Uppercase sensitive header did not decode as lowercase"
+        | Error err -> Result.Error ("Decode failed: " ^ Hpack.decode_error_to_string err)
+
+let test_explicit_never_indexed_ignores_dynamic_exact_match = fun _ctx ->
+  let encoder = Hpack.create_encoder () in
+  let header = { Hpack.name = "x-secret"; value = "token" } in
+  match Hpack.encode_header encoder header ~encoding_type:Hpack.LiteralWithIndexing with
+  | Error err -> Result.Error ("Initial encode failed: " ^ Hpack.encode_error_to_string err)
+  | Ok _ -> (
+      match Hpack.encode_header encoder header ~encoding_type:Hpack.LiteralNeverIndexed with
+      | Error err ->
+          Result.Error ("Never-indexed encode failed: " ^ Hpack.encode_error_to_string err)
+      | Ok encoded ->
+          let encoded_string = IO.Bytes.to_string encoded in
+          let first_byte = Char.to_int (String.get_unchecked encoded_string ~at:0) in
+          if first_byte land 0b1000_0000 = 0b1000_0000 then
+            Result.Error "Explicit never-indexed header reused the indexed representation"
+          else if first_byte land 0b1111_0000 != 0b0001_0000 then
+            Result.Error "Explicit never-indexed header used the wrong literal representation"
+          else
+            Result.Ok ()
+    )
+
 let test_literal_with_indexing_updates_decoder_table = fun _ctx ->
   let encoder = Hpack.create_encoder () in
   let decoder = Hpack.create_decoder () in
@@ -326,6 +373,15 @@ let tests = [
   Test.case "encode_simple_header" test_encode_simple_header;
   Test.case "custom_header_name_roundtrip" test_custom_header_name_roundtrip;
   Test.case "sensitive_custom_header_name_roundtrip" test_sensitive_custom_header_name_roundtrip;
+  Test.case
+    "sensitive_header_name_matching_is_case_insensitive"
+    test_sensitive_header_name_matching_is_case_insensitive;
+  Test.case
+    "uppercase_sensitive_header_uses_never_indexed"
+    test_uppercase_sensitive_header_uses_never_indexed;
+  Test.case
+    "explicit_never_indexed_ignores_dynamic_exact_match"
+    test_explicit_never_indexed_ignores_dynamic_exact_match;
   Test.case
     "literal_with_indexing_updates_decoder_table"
     test_literal_with_indexing_updates_decoder_table;

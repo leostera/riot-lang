@@ -25,6 +25,7 @@ and error =
   | TooManyHeaders of { max_count: int }
   | InvalidContentLength of content_length_error
   | ConflictingContentLength of { expected: int; actual: int }
+  | BodyTooLarge of { size: int; max_size: int }
   | UnsupportedTransferEncoding
   | TransferEncodingWithContentLength
   | InputSliceCreationFailed of IO.IoVec.error

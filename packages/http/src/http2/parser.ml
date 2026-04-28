@@ -690,8 +690,8 @@ let validate_priority_dependency = fun stream_id payload ->
   | Some _
   | None -> Result.Ok ()
 
-let parse_frame = fun data ->
-  match parse_frame_header data with
+let parse_frame = fun ?(config = default_config) data ->
+  match parse_frame_header ~config data with
   | Error msg -> Error msg
   | Need_more -> Need_more
   | Done { value = (length, frame_type, flags, stream_id); remaining } -> (

@@ -23,6 +23,7 @@ and error =
   | TooManyHeaders of { max_count: int }
   | InvalidContentLength of content_length_error
   | ConflictingContentLength of { expected: int; actual: int }
+  | BodyTooLarge of { size: int; max_size: int }
   | UnsupportedTransferEncoding
   | TransferEncodingWithContentLength
   | InputSliceCreationFailed of IO.IoVec.error
@@ -136,6 +137,8 @@ let error_to_string = function
       ^ Int.to_string expected
       ^ " and "
       ^ Int.to_string actual
+  | BodyTooLarge { size; max_size } ->
+      "HTTP body size " ^ Int.to_string size ^ " exceeds maximum " ^ Int.to_string max_size
   | UnsupportedTransferEncoding -> "Unsupported Transfer-Encoding"
   | TransferEncodingWithContentLength -> "Invalid body framing: Transfer-Encoding with Content-Length"
   | InputSliceCreationFailed error ->

@@ -1,7 +1,8 @@
 (**
    {1 HTTP Cookie Support}
 
-   RFC 6265 compliant cookie parsing and serialization.
+   Safe basic cookie parsing and serialization helpers for common RFC 6265
+   cookie shapes.
 
    {2 Quick Examples}
 

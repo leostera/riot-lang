@@ -72,14 +72,14 @@ let frame_payload_length = fun config header_bytes ->
   | Parser.Need_more -> Error (FrameParseFailed (Parser.FailedToRead Parser.FrameLength))
   | Parser.Error error -> Error (FrameParseFailed error)
 
-let parse_complete_frame = fun bytes ->
-  match Parser.parse_frame bytes with
+let parse_complete_frame = fun config bytes ->
+  match Parser.parse_frame ~config:(parser_config config) bytes with
   | Parser.Done { value; _ } -> Frame value
   | Parser.Need_more -> Need_more
   | Parser.Error error -> Error (FrameParseFailed error)
 
 let finish_complete_frame = fun state bytes ->
-  match parse_complete_frame bytes with
+  match parse_complete_frame state.config bytes with
   | Frame frame ->
       reset state;
       Frame frame

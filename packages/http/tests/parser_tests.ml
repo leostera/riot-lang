@@ -18,11 +18,45 @@ let send_preface = fun conn ->
   | Ok bytes -> bytes
   | Error error -> panic ("send_preface failed: " ^ Connection.error_to_string error)
 
+let client_connection_preface = "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n"
+
+let peer_initial_settings = fun settings -> serialize_frame (Frame.settings settings)
+
+let create_server_connection = fun ?config () ->
+  let conn =
+    match config with
+    | Some config -> Connection.create ~role:Connection.Server ~config ()
+    | None -> Connection.create ~role:Connection.Server ()
+  in
+  let _ = send_preface conn in
+  match Connection.process_data
+    conn
+    (Std.IO.Bytes.from_string (client_connection_preface ^ peer_initial_settings [])) with
+  | Ok [ Connection.SettingsReceived [] ] -> conn
+  | Ok _ -> panic "server preface activation emitted unexpected events"
+  | Error error -> panic ("server preface activation failed: " ^ Connection.error_to_string error)
+
+let create_client_connection = fun ?config () ->
+  let conn =
+    match config with
+    | Some config -> Connection.create ~role:Connection.Client ~config ()
+    | None -> Connection.create ~role:Connection.Client ()
+  in
+  let _ = send_preface conn in
+  match Connection.process_data conn (Std.IO.Bytes.from_string (peer_initial_settings [])) with
+  | Ok [ Connection.SettingsReceived [] ] -> conn
+  | Ok _ -> panic "client preface activation emitted unexpected events"
+  | Error error -> panic ("client preface activation failed: " ^ Connection.error_to_string error)
+
 let frame_payload_length_at = fun serialized ~offset ->
   let byte index = Char.code (String.get_unchecked serialized ~at:(offset + index)) in
   (byte 0 lsl 16) lor (byte 1 lsl 8) lor byte 2
 
 let frame_payload_length = fun serialized -> frame_payload_length_at serialized ~offset:0
+
+let frame_type_at = fun serialized ~offset ->
+  Char.code
+    (String.get_unchecked serialized ~at:(offset + 3))
 
 let settings_frame_with_payload = fun payload -> "\x00\x00\x06\x04\x00\x00\x00\x00\x00" ^ payload
 
@@ -272,6 +306,32 @@ let test_serialize_rejects_payload_length_overflow = fun _ctx ->
   | Error error -> Result.Error ("Wrong serializer error: " ^ Serializer.error_to_string error)
   | Ok _ -> Result.Error "serializer accepted payload larger than the HTTP/2 frame length field"
 
+let test_parse_frame_respects_configured_max_frame_size = fun _ctx ->
+  let payload = String.make ~len:20_000 ~char:'x' in
+  let frame = Frame.data ~stream_id:1 payload in
+  let bytes = serialize_frame frame in
+  let config = { Parser.max_frame_size = 20_000 } in
+  match Parser.parse_frame ~config bytes with
+  | Parser.Done { value = { Frame.payload = Frame.DataPayload { data; _ }; _ }; remaining = "" } when String.length
+    data
+  = 20_000 -> Result.Ok ()
+  | Parser.Done _ -> Result.Error "configured parser produced the wrong frame"
+  | Parser.Need_more -> Result.Error "configured parser treated complete frame as incomplete"
+  | Parser.Error error ->
+      Result.Error ("configured parser rejected frame: " ^ Parser.error_to_string error)
+
+let test_parse_frame_rejects_over_configured_max_frame_size = fun _ctx ->
+  let payload = String.make ~len:20_001 ~char:'x' in
+  let frame = Frame.data ~stream_id:1 payload in
+  let bytes = serialize_frame frame in
+  let config = { Parser.max_frame_size = 20_000 } in
+  match Parser.parse_frame ~config bytes with
+  | Parser.Error (Parser.FrameSizeExceedsMaximum { size = 20_001; max_size = 20_000 }) ->
+      Result.Ok ()
+  | Parser.Error error -> Result.Error ("Wrong parser error: " ^ Parser.error_to_string error)
+  | Parser.Need_more -> Result.Error "oversized frame was treated as incomplete"
+  | Parser.Done _ -> Result.Error "oversized frame parsed successfully"
+
 let test_serialize_rejects_invalid_unknown_frame_type_code = fun _ctx ->
   let frame = {
     Frame.length = 0;
@@ -422,7 +482,7 @@ let test_window_update_rejects_invalid_increment = fun _ctx ->
   | Ok _ -> Result.Error "WINDOW_UPDATE accepted an invalid increment"
 
 let test_connection_window_update_invalid_increment_preserves_state = fun _ctx ->
-  let conn = Connection.create ~role:Connection.Server () in
+  let conn = create_server_connection () in
   let before = Connection.connection_window_size conn in
   match Connection.send_window_update_connection conn ~increment:0 with
   | Error (
@@ -439,7 +499,7 @@ let test_connection_window_update_invalid_increment_preserves_state = fun _ctx -
   | Ok _ -> Result.Error "connection accepted invalid WINDOW_UPDATE increment"
 
 let test_connection_window_update_increases_receive_window_only = fun _ctx ->
-  let conn = Connection.create ~role:Connection.Server () in
+  let conn = create_server_connection () in
   let send_before = Connection.connection_window_size conn in
   let receive_before = Connection.receive_connection_window_size conn in
   match Connection.send_window_update_connection conn ~increment:10 with
@@ -453,6 +513,61 @@ let test_connection_window_update_increases_receive_window_only = fun _ctx ->
         Result.Error "sending WINDOW_UPDATE did not increase the receive window"
       else
         Result.Ok ()
+
+let test_send_data_splits_by_remote_max_frame_size = fun _ctx ->
+  let conn = create_client_connection () in
+  match Connection.create_stream conn with
+  | Error error -> Result.Error ("Creating stream failed: " ^ Connection.error_to_string error)
+  | Ok stream_id -> (
+      match Connection.send_headers
+        conn
+        ~stream_id
+        ~headers:[ { Hpack.name = ":method"; value = "GET" }; ]
+        ~end_stream:false with
+      | Error error -> Result.Error ("Sending HEADERS failed: " ^ Connection.error_to_string error)
+      | Ok _ -> (
+          let payload = Std.IO.Bytes.from_string (String.make ~len:20_000 ~char:'x') in
+          match Connection.send_data conn ~stream_id ~data:payload ~end_stream:true with
+          | Error error -> Result.Error ("Sending DATA failed: " ^ Connection.error_to_string error)
+          | Ok bytes ->
+              let first_len = frame_payload_length bytes in
+              let second_offset = 9 + first_len in
+              let second_len = frame_payload_length_at bytes ~offset:second_offset in
+              if not (Int.equal first_len 16_384) then
+                Result.Error ("First DATA frame length was " ^ Int.to_string first_len)
+              else if not (Int.equal second_len (20_000 - 16_384)) then
+                Result.Error ("Second DATA frame length was " ^ Int.to_string second_len)
+              else if String.length bytes != (9 + first_len + 9 + second_len) then
+                Result.Error "DATA split produced unexpected trailing bytes"
+              else
+                Result.Ok ()
+        )
+    )
+
+let test_send_headers_splits_continuations_by_remote_max_frame_size = fun _ctx ->
+  let conn = create_client_connection () in
+  match Connection.create_stream conn with
+  | Error error -> Result.Error ("Creating stream failed: " ^ Connection.error_to_string error)
+  | Ok stream_id -> (
+      let large_value = String.make ~len:20_000 ~char:'a' in
+      match Connection.send_headers
+        conn
+        ~stream_id
+        ~headers:[ { Hpack.name = "x-large-header"; value = large_value }; ]
+        ~end_stream:false with
+      | Error error -> Result.Error ("Sending HEADERS failed: " ^ Connection.error_to_string error)
+      | Ok bytes ->
+          let first_len = frame_payload_length bytes in
+          let second_offset = 9 + first_len in
+          if not (Int.equal (frame_type_at bytes ~offset:0) 0x1) then
+            Result.Error "First frame was not HEADERS"
+          else if not (Int.equal first_len 16_384) then
+            Result.Error ("First HEADERS frame length was " ^ Int.to_string first_len)
+          else if not (Int.equal (frame_type_at bytes ~offset:second_offset) 0x9) then
+            Result.Error "Second frame was not CONTINUATION"
+          else
+            Result.Ok ()
+    )
 
 let test_client_preface_settings_payload_length = fun _ctx ->
   let conn = Connection.create ~role:Connection.Client () in
@@ -472,8 +587,69 @@ let test_server_preface_settings_payload_length = fun _ctx ->
   else
     Result.Error ("Server preface settings length should be 30, got " ^ Int.to_string length)
 
-let test_process_data_buffers_split_frame_header = fun _ctx ->
+let test_server_preface_disables_push_by_default = fun _ctx ->
   let conn = Connection.create ~role:Connection.Server () in
+  let preface = send_preface conn in
+  match Parser.parse_frame preface with
+  | Parser.Done { value = { Frame.payload = Frame.SettingsPayload settings; _ }; remaining = "" } -> (
+      match settings with
+      | [ Frame.HeaderTableSize _; Frame.EnablePush false; Frame.MaxConcurrentStreams _; Frame.InitialWindowSize _; Frame.MaxFrameSize _ ] ->
+          Result.Ok ()
+      | _ -> Result.Error "server preface did not advertise EnablePush false"
+    )
+  | Parser.Done _ -> Result.Error "server preface left trailing bytes or wrong payload"
+  | Parser.Need_more -> Result.Error "server preface was incomplete"
+  | Parser.Error error ->
+      Result.Error ("server preface did not parse: " ^ Parser.error_to_string error)
+
+let test_server_accepts_split_client_preface = fun _ctx ->
+  let conn = Connection.create ~role:Connection.Server () in
+  let _ = send_preface conn in
+  let bytes = client_connection_preface ^ peer_initial_settings [] in
+  let first = String.sub bytes ~offset:0 ~len:12 in
+  let rest = String.sub bytes ~offset:12 ~len:(String.length bytes - 12) in
+  match Connection.process_data conn (Std.IO.Bytes.from_string first) with
+  | Error error -> Result.Error ("split preface failed early: " ^ Connection.error_to_string error)
+  | Ok events when List.length events != 0 -> Result.Error "partial client preface emitted events"
+  | Ok _ -> (
+      match Connection.process_data conn (Std.IO.Bytes.from_string rest) with
+      | Ok [ Connection.SettingsReceived [] ] -> Result.Ok ()
+      | Ok _ -> Result.Error "split client preface did not emit initial SETTINGS"
+      | Error error ->
+          Result.Error ("split client preface failed: " ^ Connection.error_to_string error)
+    )
+
+let test_server_rejects_malformed_client_preface = fun _ctx ->
+  let conn = Connection.create ~role:Connection.Server () in
+  let _ = send_preface conn in
+  let malformed =
+    "X"
+    ^ String.sub
+      client_connection_preface
+      ~offset:1
+      ~len:(String.length client_connection_preface - 1)
+  in
+  match Connection.process_data conn (Std.IO.Bytes.from_string malformed) with
+  | Error (Connection.InvalidClientPrefaceByte { offset = 0; expected = 80; actual = 88 }) ->
+      Result.Ok ()
+  | Error error -> Result.Error ("Wrong preface error: " ^ Connection.error_to_string error)
+  | Ok _ -> Result.Error "Malformed client preface was accepted"
+
+let test_client_rejects_non_settings_initial_frame = fun _ctx ->
+  let conn = Connection.create ~role:Connection.Client () in
+  let _ = send_preface conn in
+  let ping =
+    match Frame.ping "12345678" with
+    | Ok frame -> frame
+    | Error error -> panic ("PING construction failed: " ^ Frame.constructor_error_to_string error)
+  in
+  match Connection.process_data conn (Std.IO.Bytes.from_string (serialize_frame ping)) with
+  | Error (Connection.ExpectedInitialSettings { frame_type = Frame.Ping }) -> Result.Ok ()
+  | Error error -> Result.Error ("Wrong initial frame error: " ^ Connection.error_to_string error)
+  | Ok _ -> Result.Error "Client accepted a non-SETTINGS initial frame"
+
+let test_process_data_buffers_split_frame_header = fun _ctx ->
+  let conn = create_server_connection () in
   let frame = Frame.settings [ Frame.HeaderTableSize 1_024; ] in
   let bytes = serialize_frame frame in
   let first = String.sub bytes ~offset:0 ~len:4 in
@@ -491,7 +667,7 @@ let test_process_data_buffers_split_frame_header = fun _ctx ->
     )
 
 let test_process_data_buffers_split_frame_payload = fun _ctx ->
-  let conn = Connection.create ~role:Connection.Server () in
+  let conn = create_server_connection () in
   let frame = Frame.settings [ Frame.HeaderTableSize 1_024; Frame.MaxFrameSize 16_384; ] in
   let bytes = serialize_frame frame in
   let first = String.sub bytes ~offset:0 ~len:12 in
@@ -511,7 +687,7 @@ let test_process_data_buffers_split_frame_payload = fun _ctx ->
     )
 
 let test_process_data_buffers_frame_one_byte_at_a_time = fun _ctx ->
-  let conn = Connection.create ~role:Connection.Server () in
+  let conn = create_server_connection () in
   let frame = Frame.settings [ Frame.HeaderTableSize 2_048; ] in
   let bytes = serialize_frame frame in
   let rec loop index =
@@ -532,7 +708,7 @@ let test_process_data_buffers_frame_one_byte_at_a_time = fun _ctx ->
   loop 0
 
 let test_process_data_buffers_split_continuation_payload = fun _ctx ->
-  let conn = Connection.create ~role:Connection.Server () in
+  let conn = create_server_connection () in
   let header_block =
     encode_header_block [ { Hpack.name = "x-split-continuation"; value = "payload" } ]
   in
@@ -562,7 +738,7 @@ let test_process_data_buffers_split_continuation_payload = fun _ctx ->
     )
 
 let test_process_data_clears_pending_input_after_parse_error = fun _ctx ->
-  let conn = Connection.create ~role:Connection.Server () in
+  let conn = create_server_connection () in
   let invalid_ping = "\x00\x00\x07\x06\x00\x00\x00\x00\x00" ^ "1234567" in
   let valid_settings = serialize_frame (Frame.settings [ Frame.HeaderTableSize 1_024; ]) in
   let first = String.sub invalid_ping ~offset:0 ~len:4 in
@@ -846,7 +1022,7 @@ let test_parse_unknown_frame_preserves_payload = fun _ctx ->
   | Parser.Error err -> Result.Error ("Unknown frame was rejected: " ^ Parser.error_to_string err)
 
 let test_process_data_ignores_unknown_frame = fun _ctx ->
-  let conn = Connection.create ~role:Connection.Server () in
+  let conn = create_server_connection () in
   match Connection.process_data
     conn
     (Std.IO.Bytes.from_string "\x00\x00\x03\x0b\x00\x00\x00\x00\x00abc") with
@@ -856,7 +1032,7 @@ let test_process_data_ignores_unknown_frame = fun _ctx ->
       Result.Error ("Unknown frame failed connection processing: " ^ Connection.error_to_string err)
 
 let test_process_data_rejects_push_promise = fun _ctx ->
-  let conn = Connection.create ~role:Connection.Client () in
+  let conn = create_client_connection () in
   let frame = Frame.push_promise ~stream_id:2 ~promised_stream_id:4 "abc" in
   match Connection.process_data conn (Std.IO.Bytes.from_string (serialize_frame frame)) with
   | Error (
@@ -867,7 +1043,7 @@ let test_process_data_rejects_push_promise = fun _ctx ->
   | Ok _ -> Result.Error "PUSH_PROMISE was silently accepted"
 
 let test_process_data_rejects_unexpected_continuation = fun _ctx ->
-  let conn = Connection.create ~role:Connection.Server () in
+  let conn = create_server_connection () in
   let frame = Frame.continuation ~stream_id:1 ~end_headers:true "" in
   match Connection.process_data conn (Std.IO.Bytes.from_string (serialize_frame frame)) with
   | Error (Connection.UnexpectedContinuation { stream_id = 1 }) -> Result.Ok ()
@@ -875,7 +1051,7 @@ let test_process_data_rejects_unexpected_continuation = fun _ctx ->
   | Ok _ -> Result.Error "Unexpected CONTINUATION was accepted"
 
 let test_process_data_requires_continuation_after_headers = fun _ctx ->
-  let conn = Connection.create ~role:Connection.Server () in
+  let conn = create_server_connection () in
   let headers = Frame.headers ~stream_id:1 ~end_headers:false "" in
   let data = Frame.data ~stream_id:1 "hello" in
   match Connection.process_data
@@ -887,7 +1063,7 @@ let test_process_data_requires_continuation_after_headers = fun _ctx ->
   | Ok _ -> Result.Error "DATA frame was accepted before CONTINUATION completed the header block"
 
 let test_process_data_rejects_continuation_stream_mismatch = fun _ctx ->
-  let conn = Connection.create ~role:Connection.Server () in
+  let conn = create_server_connection () in
   let headers = Frame.headers ~stream_id:1 ~end_headers:false "" in
   let continuation = Frame.continuation ~stream_id:3 ~end_headers:true "" in
   match Connection.process_data
@@ -901,7 +1077,7 @@ let test_process_data_rejects_continuation_stream_mismatch = fun _ctx ->
   | Ok _ -> Result.Error "CONTINUATION on the wrong stream was accepted"
 
 let test_process_data_accepts_split_header_block = fun _ctx ->
-  let conn = Connection.create ~role:Connection.Server () in
+  let conn = create_server_connection () in
   let header_block = encode_header_block [ { Hpack.name = ":method"; value = "GET" }; ] in
   let headers = Frame.headers ~stream_id:1 ~end_headers:false "" in
   let continuation = Frame.continuation ~stream_id:1 ~end_headers:true header_block in
@@ -917,7 +1093,7 @@ let test_process_data_accepts_split_header_block = fun _ctx ->
   | Error err -> Result.Error ("Split header block failed: " ^ Connection.error_to_string err)
 
 let test_process_data_rejects_data_before_headers = fun _ctx ->
-  let conn = Connection.create ~role:Connection.Server () in
+  let conn = create_server_connection () in
   let data = Frame.data ~stream_id:1 "hello" in
   match Connection.process_data conn (Std.IO.Bytes.from_string (serialize_frame data)) with
   | Error (Connection.DataBeforeHeaders { stream_id = 1 }) -> Result.Ok ()
@@ -925,7 +1101,7 @@ let test_process_data_rejects_data_before_headers = fun _ctx ->
   | Ok _ -> Result.Error "DATA before HEADERS was accepted"
 
 let test_process_data_accepts_data_after_headers = fun _ctx ->
-  let conn = Connection.create ~role:Connection.Server () in
+  let conn = create_server_connection () in
   let header_block = encode_header_block [ { Hpack.name = ":method"; value = "GET" }; ] in
   let headers = Frame.headers ~stream_id:1 ~end_headers:true header_block in
   let data = Frame.data ~stream_id:1 "hello" in
@@ -940,7 +1116,7 @@ let test_process_data_accepts_data_after_headers = fun _ctx ->
 
 let test_process_data_decrements_receive_windows = fun _ctx ->
   let config = { Connection.default_config with initial_window_size = 8 } in
-  let conn = Connection.create ~role:Connection.Server ~config () in
+  let conn = create_server_connection ~config () in
   let header_block = encode_header_block [ { Hpack.name = ":method"; value = "GET" }; ] in
   let headers = Frame.headers ~stream_id:1 ~end_headers:true header_block in
   let data = Frame.data ~stream_id:1 "abc" in
@@ -964,7 +1140,7 @@ let test_process_data_decrements_receive_windows = fun _ctx ->
 
 let test_process_data_rejects_stream_flow_control_excess = fun _ctx ->
   let config = { Connection.default_config with initial_window_size = 3 } in
-  let conn = Connection.create ~role:Connection.Server ~config () in
+  let conn = create_server_connection ~config () in
   let header_block = encode_header_block [ { Hpack.name = ":method"; value = "GET" }; ] in
   let headers = Frame.headers ~stream_id:1 ~end_headers:true header_block in
   let data = Frame.data ~stream_id:1 "abcd" in
@@ -979,7 +1155,7 @@ let test_process_data_rejects_stream_flow_control_excess = fun _ctx ->
   | Ok _ -> Result.Error "DATA beyond the stream receive window was accepted"
 
 let test_process_data_rejects_even_peer_stream_on_server = fun _ctx ->
-  let conn = Connection.create ~role:Connection.Server () in
+  let conn = create_server_connection () in
   let header_block = encode_header_block [ { Hpack.name = ":method"; value = "GET" }; ] in
   let headers = Frame.headers ~stream_id:2 ~end_headers:true header_block in
   match Connection.process_data conn (Std.IO.Bytes.from_string (serialize_frame headers)) with
@@ -989,7 +1165,7 @@ let test_process_data_rejects_even_peer_stream_on_server = fun _ctx ->
   | Ok _ -> Result.Error "Server accepted HEADERS on an even peer stream"
 
 let test_process_data_rejects_lower_new_peer_stream = fun _ctx ->
-  let conn = Connection.create ~role:Connection.Server () in
+  let conn = create_server_connection () in
   let header_block = encode_header_block [ { Hpack.name = ":method"; value = "GET" }; ] in
   let higher = Frame.headers ~stream_id:3 ~end_headers:true header_block in
   let lower = Frame.headers ~stream_id:1 ~end_headers:true header_block in
@@ -1004,7 +1180,7 @@ let test_process_data_rejects_lower_new_peer_stream = fun _ctx ->
     )
 
 let test_process_data_rejects_unknown_odd_stream_on_client = fun _ctx ->
-  let conn = Connection.create ~role:Connection.Client () in
+  let conn = create_client_connection () in
   let header_block = encode_header_block [ { Hpack.name = ":status"; value = "200" }; ] in
   let headers = Frame.headers ~stream_id:1 ~end_headers:true header_block in
   match Connection.process_data conn (Std.IO.Bytes.from_string (serialize_frame headers)) with
@@ -1014,8 +1190,7 @@ let test_process_data_rejects_unknown_odd_stream_on_client = fun _ctx ->
   | Ok _ -> Result.Error "Client accepted HEADERS on an unknown odd stream"
 
 let test_process_data_accepts_response_on_existing_client_stream = fun _ctx ->
-  let conn = Connection.create ~role:Connection.Client () in
-  let _ = send_preface conn in
+  let conn = create_client_connection () in
   match Connection.create_stream conn with
   | Error err -> Result.Error ("Failed to create client stream: " ^ Connection.error_to_string err)
   | Ok 1 ->
@@ -1033,7 +1208,7 @@ let test_process_data_accepts_response_on_existing_client_stream = fun _ctx ->
 
 let test_process_data_rejects_peer_stream_over_max_concurrent = fun _ctx ->
   let config = { Connection.default_config with max_concurrent_streams = 1 } in
-  let conn = Connection.create ~role:Connection.Server ~config () in
+  let conn = create_server_connection ~config () in
   let header_block = encode_header_block [ { Hpack.name = ":method"; value = "GET" }; ] in
   let first_headers = Frame.headers ~stream_id:1 ~end_headers:true header_block in
   let second_headers = Frame.headers ~stream_id:3 ~end_headers:true header_block in
@@ -1056,7 +1231,7 @@ let test_process_data_rejects_peer_stream_over_max_concurrent = fun _ctx ->
 
 let test_process_data_frees_peer_capacity_after_rst_stream = fun _ctx ->
   let config = { Connection.default_config with max_concurrent_streams = 1 } in
-  let conn = Connection.create ~role:Connection.Server ~config () in
+  let conn = create_server_connection ~config () in
   let header_block = encode_header_block [ { Hpack.name = ":method"; value = "GET" }; ] in
   let first_headers = Frame.headers ~stream_id:1 ~end_headers:true header_block in
   let rst_stream = Frame.rst_stream ~stream_id:1 Frame.Cancel in
@@ -1072,8 +1247,7 @@ let test_process_data_frees_peer_capacity_after_rst_stream = fun _ctx ->
       Result.Error ("Peer stream after RST_STREAM failed: " ^ Connection.error_to_string err)
 
 let test_create_stream_obeys_remote_max_concurrent = fun _ctx ->
-  let conn = Connection.create ~role:Connection.Client () in
-  let _ = send_preface conn in
+  let conn = create_client_connection () in
   let remote_settings = Frame.settings [ Frame.MaxConcurrentStreams 1; ] in
   match Connection.process_data conn (Std.IO.Bytes.from_string (serialize_frame remote_settings)) with
   | Error err -> Result.Error ("Remote settings failed: " ^ Connection.error_to_string err)
@@ -1098,8 +1272,7 @@ let test_create_stream_obeys_remote_max_concurrent = fun _ctx ->
     )
 
 let test_create_stream_uses_remote_initial_window = fun _ctx ->
-  let conn = Connection.create ~role:Connection.Client () in
-  let _ = send_preface conn in
+  let conn = create_client_connection () in
   let remote_settings = Frame.settings [ Frame.InitialWindowSize 10; ] in
   match Connection.process_data conn (Std.IO.Bytes.from_string (serialize_frame remote_settings)) with
   | Error err -> Result.Error ("Remote settings failed: " ^ Connection.error_to_string err)
@@ -1116,35 +1289,43 @@ let test_create_stream_uses_remote_initial_window = fun _ctx ->
     )
 
 let test_remote_initial_window_adjusts_existing_streams = fun _ctx ->
-  let conn = Connection.create ~role:Connection.Client () in
-  let _ = send_preface conn in
+  let conn = create_client_connection () in
   match Connection.create_stream conn with
   | Error err -> Result.Error ("Creating stream failed: " ^ Connection.error_to_string err)
   | Ok stream_id -> (
-      match Connection.send_data
+      match Connection.send_headers
         conn
         ~stream_id
-        ~data:(Std.IO.Bytes.from_string "abc")
+        ~headers:[ { Hpack.name = ":method"; value = "GET" }; ]
         ~end_stream:false with
-      | Error err -> Result.Error ("Sending DATA failed: " ^ Connection.error_to_string err)
-      | Ok _ ->
-          let remote_settings = Frame.settings [ Frame.InitialWindowSize 10; ] in
-          match Connection.process_data
+      | Error err -> Result.Error ("Sending HEADERS failed: " ^ Connection.error_to_string err)
+      | Ok _ -> (
+          match Connection.send_data
             conn
-            (Std.IO.Bytes.from_string (serialize_frame remote_settings)) with
-          | Error err -> Result.Error ("Remote settings failed: " ^ Connection.error_to_string err)
-          | Ok _ -> (
-              match Connection.stream_window_size conn ~stream_id with
-              | Some 7 -> Result.Ok ()
-              | Some window ->
-                  Result.Error ("Expected adjusted stream send window 7, got "
-                  ^ Int.to_string window)
-              | None -> Result.Error "Existing stream was missing"
-            )
+            ~stream_id
+            ~data:(Std.IO.Bytes.from_string "abc")
+            ~end_stream:false with
+          | Error err -> Result.Error ("Sending DATA failed: " ^ Connection.error_to_string err)
+          | Ok _ ->
+              let remote_settings = Frame.settings [ Frame.InitialWindowSize 10; ] in
+              match Connection.process_data
+                conn
+                (Std.IO.Bytes.from_string (serialize_frame remote_settings)) with
+              | Error err ->
+                  Result.Error ("Remote settings failed: " ^ Connection.error_to_string err)
+              | Ok _ -> (
+                  match Connection.stream_window_size conn ~stream_id with
+                  | Some 7 -> Result.Ok ()
+                  | Some window ->
+                      Result.Error ("Expected adjusted stream send window 7, got "
+                      ^ Int.to_string window)
+                  | None -> Result.Error "Existing stream was missing"
+                )
+        )
     )
 
 let test_process_data_rejects_new_stream_after_goaway = fun _ctx ->
-  let conn = Connection.create ~role:Connection.Server () in
+  let conn = create_server_connection () in
   let goaway = Frame.goaway ~last_stream_id:1 ~error_code:Frame.NoError () in
   let header_block = encode_header_block [ { Hpack.name = ":method"; value = "GET" }; ] in
   let headers = Frame.headers ~stream_id:3 ~end_headers:true header_block in
@@ -1157,7 +1338,7 @@ let test_process_data_rejects_new_stream_after_goaway = fun _ctx ->
   | Ok _ -> Result.Error "New stream after GOAWAY was accepted"
 
 let test_process_data_allows_existing_stream_after_goaway = fun _ctx ->
-  let conn = Connection.create ~role:Connection.Server () in
+  let conn = create_server_connection () in
   let header_block = encode_header_block [ { Hpack.name = ":method"; value = "GET" }; ] in
   let headers = Frame.headers ~stream_id:1 ~end_headers:true header_block in
   let goaway = Frame.goaway ~last_stream_id:1 ~error_code:Frame.NoError () in
@@ -1174,7 +1355,7 @@ let test_process_data_allows_existing_stream_after_goaway = fun _ctx ->
       Result.Error ("Existing stream after GOAWAY failed: " ^ Connection.error_to_string err)
 
 let test_process_window_update_increases_send_window_only = fun _ctx ->
-  let conn = Connection.create ~role:Connection.Server () in
+  let conn = create_server_connection () in
   let send_before = Connection.connection_window_size conn in
   let receive_before = Connection.receive_connection_window_size conn in
   let frame = Frame.window_update ~stream_id:0 10 in
@@ -1197,7 +1378,7 @@ let test_process_window_update_increases_send_window_only = fun _ctx ->
     )
 
 let test_process_data_rejects_connection_window_overflow = fun _ctx ->
-  let conn = Connection.create ~role:Connection.Server () in
+  let conn = create_server_connection () in
   match Frame.window_update ~stream_id:0 2_147_483_647 with
   | Error error ->
       Result.Error ("WINDOW_UPDATE construction failed: " ^ Frame.constructor_error_to_string error)
@@ -1217,7 +1398,7 @@ let test_process_data_rejects_connection_window_overflow = fun _ctx ->
     )
 
 let test_process_data_rejects_stream_window_overflow = fun _ctx ->
-  let conn = Connection.create ~role:Connection.Server () in
+  let conn = create_server_connection () in
   let header_block = encode_header_block [ { Hpack.name = ":method"; value = "GET" }; ] in
   let headers = Frame.headers ~stream_id:1 ~end_headers:true header_block in
   match Frame.window_update ~stream_id:1 2_147_483_647 with
@@ -1241,7 +1422,7 @@ let test_process_data_rejects_stream_window_overflow = fun _ctx ->
     )
 
 let test_process_data_rejects_window_update_for_idle_stream = fun _ctx ->
-  let conn = Connection.create ~role:Connection.Server () in
+  let conn = create_server_connection () in
   match Frame.window_update ~stream_id:1 10 with
   | Error error ->
       Result.Error ("WINDOW_UPDATE construction failed: " ^ Frame.constructor_error_to_string error)
@@ -1254,7 +1435,7 @@ let test_process_data_rejects_window_update_for_idle_stream = fun _ctx ->
     )
 
 let test_process_data_rejects_rst_stream_for_idle_stream = fun _ctx ->
-  let conn = Connection.create ~role:Connection.Server () in
+  let conn = create_server_connection () in
   let frame = Frame.rst_stream ~stream_id:1 Frame.Cancel in
   match Connection.process_data conn (Std.IO.Bytes.from_string (serialize_frame frame)) with
   | Error (Connection.FrameForIdleStream { stream_id = 1; frame_type = Frame.RstStream }) ->
@@ -1263,7 +1444,7 @@ let test_process_data_rejects_rst_stream_for_idle_stream = fun _ctx ->
   | Ok _ -> Result.Error "RST_STREAM for idle stream was accepted"
 
 let test_process_data_rejects_data_after_headers_end_stream = fun _ctx ->
-  let conn = Connection.create ~role:Connection.Server () in
+  let conn = create_server_connection () in
   let header_block = encode_header_block [ { Hpack.name = ":method"; value = "GET" }; ] in
   let headers = Frame.headers ~stream_id:1 ~end_headers:true ~end_stream:true header_block in
   let data = Frame.data ~stream_id:1 "late" in
@@ -1278,7 +1459,7 @@ let test_process_data_rejects_data_after_headers_end_stream = fun _ctx ->
   | Ok _ -> Result.Error "DATA after end-stream HEADERS was accepted"
 
 let test_process_data_rejects_data_after_data_end_stream = fun _ctx ->
-  let conn = Connection.create ~role:Connection.Server () in
+  let conn = create_server_connection () in
   let header_block = encode_header_block [ { Hpack.name = ":method"; value = "GET" }; ] in
   let headers = Frame.headers ~stream_id:1 ~end_headers:true header_block in
   let end_data = Frame.data ~stream_id:1 ~end_stream:true "done" in
@@ -1295,7 +1476,7 @@ let test_process_data_rejects_data_after_data_end_stream = fun _ctx ->
   | Ok _ -> Result.Error "DATA after end-stream DATA was accepted"
 
 let test_process_data_rejects_headers_after_rst_stream = fun _ctx ->
-  let conn = Connection.create ~role:Connection.Server () in
+  let conn = create_server_connection () in
   let header_block = encode_header_block [ { Hpack.name = ":method"; value = "GET" }; ] in
   let headers = Frame.headers ~stream_id:1 ~end_headers:true header_block in
   let rst_stream = Frame.rst_stream ~stream_id:1 Frame.Cancel in
@@ -1312,7 +1493,7 @@ let test_process_data_rejects_headers_after_rst_stream = fun _ctx ->
   | Ok _ -> Result.Error "HEADERS after RST_STREAM was accepted"
 
 let test_process_data_rejects_headers_after_headers_end_stream = fun _ctx ->
-  let conn = Connection.create ~role:Connection.Server () in
+  let conn = create_server_connection () in
   let header_block = encode_header_block [ { Hpack.name = ":method"; value = "GET" }; ] in
   let headers = Frame.headers ~stream_id:1 ~end_headers:true ~end_stream:true header_block in
   let late_headers = Frame.headers ~stream_id:1 ~end_headers:true header_block in
@@ -1349,6 +1530,12 @@ let tests =
       "serialize_rejects_invalid_window_update_increment"
       test_serialize_rejects_invalid_window_update_increment;
     case "serialize_rejects_payload_length_overflow" test_serialize_rejects_payload_length_overflow;
+    case
+      "parse_frame_respects_configured_max_frame_size"
+      test_parse_frame_respects_configured_max_frame_size;
+    case
+      "parse_frame_rejects_over_configured_max_frame_size"
+      test_parse_frame_rejects_over_configured_max_frame_size;
     case
       "serialize_rejects_invalid_unknown_frame_type_code"
       test_serialize_rejects_invalid_unknown_frame_type_code;
@@ -1387,8 +1574,16 @@ let tests =
     case
       "connection_window_update_increases_receive_window_only"
       test_connection_window_update_increases_receive_window_only;
+    case "send_data_splits_by_remote_max_frame_size" test_send_data_splits_by_remote_max_frame_size;
+    case
+      "send_headers_splits_continuations_by_remote_max_frame_size"
+      test_send_headers_splits_continuations_by_remote_max_frame_size;
     case "client_preface_settings_payload_length" test_client_preface_settings_payload_length;
     case "server_preface_settings_payload_length" test_server_preface_settings_payload_length;
+    case "server_preface_disables_push_by_default" test_server_preface_disables_push_by_default;
+    case "server_accepts_split_client_preface" test_server_accepts_split_client_preface;
+    case "server_rejects_malformed_client_preface" test_server_rejects_malformed_client_preface;
+    case "client_rejects_non_settings_initial_frame" test_client_rejects_non_settings_initial_frame;
     case "process_data_buffers_split_frame_header" test_process_data_buffers_split_frame_header;
     case "process_data_buffers_split_frame_payload" test_process_data_buffers_split_frame_payload;
     case

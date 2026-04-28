@@ -14,6 +14,10 @@ val parse_slice:
   ?max_headers:int ->
   ?max_header_length:int ->
   ?max_header_block_length:int ->
+  ?max_body_size:int ->
+  ?max_chunk_size:int ->
+  ?max_trailers:int ->
+  ?max_trailer_length:int ->
   IO.IoVec.IoSlice.t ->
   t parse_result
 
@@ -22,6 +26,10 @@ val parse:
   ?max_headers:int ->
   ?max_header_length:int ->
   ?max_header_block_length:int ->
+  ?max_body_size:int ->
+  ?max_chunk_size:int ->
+  ?max_trailers:int ->
+  ?max_trailer_length:int ->
   string ->
   t parse_result
 

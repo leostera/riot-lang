@@ -65,7 +65,7 @@ val error_to_string: error -> string
 
 val frame_type_name: Frame.frame_type -> string
 
-val parse_frame: string -> Frame.t parse_result
+val parse_frame: ?config:config -> string -> Frame.t parse_result
 
 val parse_frame_header:
   ?config:config ->

@@ -41,6 +41,11 @@ type pending_header_block = {
   end_stream: bool;
 }
 
+type preface_state =
+  | AwaitingClientPreface of string
+  | AwaitingInitialSettings
+  | PrefaceComplete
+
 type settings = {
   header_table_size: int Cell.t;
   enable_push: bool Cell.t;
@@ -78,6 +83,7 @@ type t = {
   (** Last stream ID peer initiated *)
   pending_input: string Cell.t;
   pending_header_block: pending_header_block option Cell.t;
+  preface_state: preface_state Cell.t;
 }
 
 type event =
@@ -159,6 +165,10 @@ type error =
   | ParserError of Parser.error
   | FrameConstructorError of Frame.constructor_error
   | SerializerError of Serializer.error
+  | InvalidClientPrefaceByte of { offset: int; expected: int; actual: int }
+  | ExpectedInitialSettings of {
+      frame_type: Frame.frame_type;
+    }
 
 let window_scope_to_string = function
   | StreamWindow { stream_id } -> "stream " ^ Int.to_string stream_id
@@ -280,6 +290,15 @@ let error_to_string = function
   | ParserError error -> Parser.error_to_string error
   | FrameConstructorError error -> Frame.constructor_error_to_string error
   | SerializerError error -> Serializer.error_to_string error
+  | InvalidClientPrefaceByte { offset; expected; actual } ->
+      "HTTP/2 client preface byte "
+      ^ Int.to_string offset
+      ^ " was "
+      ^ Int.to_string actual
+      ^ ", expected "
+      ^ Int.to_string expected
+  | ExpectedInitialSettings { frame_type } ->
+      "HTTP/2 expected initial SETTINGS frame, got " ^ Parser.frame_type_name frame_type
 
 let frame_constructor_error = fun error -> FrameConstructorError error
 
@@ -299,7 +318,7 @@ let default_config = {
   max_frame_size = 16_384;
   initial_window_size = 65_535;
   max_concurrent_streams = 100;
-  enable_push = true;
+  enable_push = false;
 }
 
 let create_settings = fun config ->
@@ -336,6 +355,13 @@ let create = fun ~role ?(config = default_config) () ->
     peer_last_stream_id = Cell.create 0;
     pending_input = Cell.create "";
     pending_header_block = Cell.create None;
+    preface_state =
+      Cell.create
+        (
+          match role with
+          | Server -> AwaitingClientPreface ""
+          | Client -> AwaitingInitialSettings
+        );
   }
 
 let send_preface = fun conn ->
@@ -457,41 +483,184 @@ let create_stream = fun conn ->
 
 let get_stream = fun conn stream_id -> HashMap.get conn.streams ~key:stream_id
 
+let transition_send_headers = fun ~stream_id state ~end_stream ->
+  match state with
+  | StreamIdle
+  | StreamOpen ->
+      Ok (
+        if end_stream then
+          StreamHalfClosedLocal
+        else
+          StreamOpen
+      )
+  | StreamHalfClosedRemote ->
+      Ok (
+        if end_stream then
+          StreamClosed
+        else
+          StreamHalfClosedRemote
+      )
+  | StreamReservedLocal ->
+      Ok (
+        if end_stream then
+          StreamHalfClosedLocal
+        else
+          StreamOpen
+      )
+  | StreamReservedRemote -> Error (FrameForIdleStream { stream_id; frame_type = Frame.Headers })
+  | StreamHalfClosedLocal
+  | StreamClosed -> Error (FrameAfterStreamEnd { stream_id; frame_type = Frame.Headers; state })
+
+let transition_send_data = fun ~stream_id state ~end_stream ->
+  match state with
+  | StreamIdle -> Error (DataBeforeHeaders { stream_id })
+  | StreamOpen ->
+      Ok (
+        if end_stream then
+          StreamHalfClosedLocal
+        else
+          StreamOpen
+      )
+  | StreamHalfClosedRemote ->
+      Ok (
+        if end_stream then
+          StreamClosed
+        else
+          StreamHalfClosedRemote
+      )
+  | StreamReservedLocal
+  | StreamReservedRemote -> Error (FrameForIdleStream { stream_id; frame_type = Frame.Data })
+  | StreamHalfClosedLocal
+  | StreamClosed -> Error (FrameAfterStreamEnd { stream_id; frame_type = Frame.Data; state })
+
+let transition_recv_headers = fun ~stream_id state ~end_stream ->
+  match state with
+  | StreamIdle
+  | StreamOpen ->
+      Ok (
+        if end_stream then
+          StreamHalfClosedRemote
+        else
+          StreamOpen
+      )
+  | StreamHalfClosedLocal ->
+      Ok (
+        if end_stream then
+          StreamClosed
+        else
+          StreamHalfClosedLocal
+      )
+  | StreamReservedRemote ->
+      Ok (
+        if end_stream then
+          StreamHalfClosedRemote
+        else
+          StreamOpen
+      )
+  | StreamReservedLocal -> Error (FrameForIdleStream { stream_id; frame_type = Frame.Headers })
+  | StreamHalfClosedRemote
+  | StreamClosed -> Error (FrameAfterStreamEnd { stream_id; frame_type = Frame.Headers; state })
+
+let transition_recv_data = fun ~stream_id state ~end_stream ->
+  match state with
+  | StreamIdle -> Error (DataBeforeHeaders { stream_id })
+  | StreamOpen ->
+      Ok (
+        if end_stream then
+          StreamHalfClosedRemote
+        else
+          StreamOpen
+      )
+  | StreamHalfClosedLocal ->
+      Ok (
+        if end_stream then
+          StreamClosed
+        else
+          StreamHalfClosedLocal
+      )
+  | StreamReservedLocal
+  | StreamReservedRemote -> Error (FrameForIdleStream { stream_id; frame_type = Frame.Data })
+  | StreamHalfClosedRemote
+  | StreamClosed -> Error (FrameAfterStreamEnd { stream_id; frame_type = Frame.Data; state })
+
+let serialize_frames = fun frames ->
+  let buf = Buffer.create ~size:256 in
+  let rec loop = function
+    | [] ->
+        Ok (Buffer.contents buf)
+    | frame :: rest -> (
+        match serialize_frame frame with
+        | Error error -> Error error
+        | Ok bytes ->
+            Buffer.add_string buf bytes;
+            loop rest
+      )
+  in
+  loop frames
+
+let split_string_chunks = fun ~max_size data ->
+  let max_size =
+    if max_size <= 0 then
+      1
+    else
+      max_size
+  in
+  let len = String.length data in
+  if len = 0 then
+    [ "" ]
+  else
+    let rec loop offset acc =
+      if offset >= len then
+        List.reverse acc
+      else
+        let remaining = len - offset in
+        let chunk_len =
+          if remaining > max_size then
+            max_size
+          else
+            remaining
+        in
+        loop (offset + chunk_len) (String.sub data ~offset ~len:chunk_len :: acc)
+    in
+    loop 0 []
+
 let send_headers = fun conn ~stream_id ~headers ~end_stream ->
   match get_stream conn stream_id with
   | None -> Error (StreamNotFound { stream_id })
   | Some stream -> (
-      (* Encode headers using HPACK *)
       match Hpack.encode conn.hpack_encoder ~sensitive_headers:[] () ~headers with
       | Error error -> Error (HpackEncodeFailed error)
       | Ok encoded_headers ->
-          (* Create HEADERS frame *)
-          let frame = {
-            Frame.length = Bytes.length encoded_headers;
-            frame_type = Frame.Headers;
-            flags =
-              {
-                Frame.end_stream;
-                end_headers = true;
-                padded = false;
-                priority = false;
-                ack = false;
-              };
-            stream_id;
-            payload =
-              Frame.HeadersPayload {
-                pad_length = None;
-                stream_dependency = None;
-                weight = None;
-                exclusive = false;
-                header_block_fragment = Bytes.to_string encoded_headers;
-              };
-          }
-          in
-          (* Update stream state *)
-          if end_stream then
-            Cell.set stream.state StreamHalfClosedLocal;
-          serialize_frame frame
+          let state = Cell.get stream.state in
+          match transition_send_headers ~stream_id state ~end_stream with
+          | Error error -> Error error
+          | Ok next_state ->
+              let max_frame_size = Cell.get conn.remote_settings.max_frame_size in
+              let header_block = Bytes.to_string encoded_headers in
+              let chunks = split_string_chunks ~max_size:max_frame_size header_block in
+              let frames =
+                match chunks with
+                | [] -> []
+                | first :: rest ->
+                    let headers_frame =
+                      Frame.headers ~stream_id ~end_stream ~end_headers:(rest = []) first
+                    in
+                    let rec continuations acc = function
+                      | [] -> List.reverse acc
+                      | [ last ] ->
+                          List.reverse (Frame.continuation ~stream_id ~end_headers:true last :: acc)
+                      | chunk :: tail ->
+                          continuations
+                            (Frame.continuation ~stream_id ~end_headers:false chunk :: acc)
+                            tail
+                    in
+                    headers_frame :: continuations [] rest
+              in
+              match serialize_frames frames with
+              | Error error -> Error error
+              | Ok bytes ->
+                  Cell.set stream.state next_state;
+                  Ok bytes
     )
 
 let send_data = fun conn ~stream_id ~data ~end_stream ->
@@ -515,29 +684,63 @@ let send_data = fun conn ~stream_id ~data ~end_stream ->
           window_size = conn_window;
         })
       else
-        (* Create DATA frame *)
-        let frame = {
-          Frame.length = data_len;
-          frame_type = Frame.Data;
-          flags =
-            {
-              Frame.end_stream;
-              end_headers = false;
-              padded = false;
-              priority = false;
-              ack = false;
-            };
-          stream_id;
-          payload = Frame.DataPayload { data = Bytes.to_string data; pad_length = None };
-        }
-        in
-        (* Update flow control windows *)
-        Cell.set stream.window_size (stream_window - data_len);
-      Cell.set conn.send_connection_window_size (conn_window - data_len);
-      (* Update stream state *)
-      if end_stream then
-        Cell.set stream.state StreamHalfClosedLocal;
-      serialize_frame frame
+        let state = Cell.get stream.state in
+        match transition_send_data ~stream_id state ~end_stream with
+        | Error error -> Error error
+        | Ok next_state ->
+            let max_frame_size = Cell.get conn.remote_settings.max_frame_size in
+            let chunks = split_string_chunks ~max_size:max_frame_size (Bytes.to_string data) in
+            let rec build_frames acc = function
+              | [] -> List.reverse acc
+              | [ last ] ->
+                  build_frames
+                    (
+                      {
+                        Frame.length = String.length last;
+                        frame_type = Frame.Data;
+                        flags =
+                          {
+                            Frame.end_stream;
+                            end_headers = false;
+                            padded = false;
+                            priority = false;
+                            ack = false;
+                          };
+                        stream_id;
+                        payload = Frame.DataPayload { data = last; pad_length = None };
+                      }
+                      :: acc
+                    )
+                    []
+              | chunk :: rest ->
+                  build_frames
+                    (
+                      {
+                        Frame.length = String.length chunk;
+                        frame_type = Frame.Data;
+                        flags =
+                          {
+                            Frame.end_stream = false;
+                            end_headers = false;
+                            padded = false;
+                            priority = false;
+                            ack = false;
+                          };
+                        stream_id;
+                        payload = Frame.DataPayload { data = chunk; pad_length = None };
+                      }
+                      :: acc
+                    )
+                    rest
+            in
+            let frames = build_frames [] chunks in
+            match serialize_frames frames with
+            | Error error -> Error error
+            | Ok bytes ->
+                Cell.set stream.window_size (stream_window - data_len);
+                Cell.set conn.send_connection_window_size (conn_window - data_len);
+                Cell.set stream.state next_state;
+                Ok bytes
     )
 
 let reset_stream = fun conn ~stream_id ~error_code ->
@@ -761,15 +964,12 @@ let decode_header_block = fun conn ~stream_id ~fragment ~end_stream ->
       let stream =
         match get_stream conn stream_id with
         | Some stream -> (
-            match Cell.get stream.state with
-            | StreamHalfClosedRemote
-            | StreamClosed as state ->
-                Error (FrameAfterStreamEnd { stream_id; frame_type = Frame.Headers; state })
-            | StreamIdle
-            | StreamOpen
-            | StreamReservedLocal
-            | StreamReservedRemote
-            | StreamHalfClosedLocal -> Ok stream
+            let state = Cell.get stream.state in
+            match transition_recv_headers ~stream_id state ~end_stream with
+            | Error error -> Error error
+            | Ok next_state ->
+                Cell.set stream.state next_state;
+                Ok stream
           )
         | None ->
             if not (is_valid_peer_initiated_stream_id ~role:conn.role stream_id) then
@@ -791,7 +991,14 @@ let decode_header_block = fun conn ~stream_id ~fragment ~end_stream ->
                         | Ok () ->
                             let s = {
                               id = stream_id;
-                              state = Cell.create StreamOpen;
+                              state =
+                                Cell.create
+                                  (
+                                    if end_stream then
+                                      StreamHalfClosedRemote
+                                    else
+                                      StreamOpen
+                                  );
                               window_size = Cell.create
                                 (Cell.get conn.remote_settings.initial_window_size);
                               receive_window_size = Cell.create
@@ -811,8 +1018,6 @@ let decode_header_block = fun conn ~stream_id ~fragment ~end_stream ->
       | Error error -> Error error
       | Ok stream ->
           Cell.set stream.headers headers;
-          if end_stream then
-            Cell.set stream.state StreamHalfClosedRemote;
           Ok [ HeadersReceived { stream_id; headers; end_stream } ]
 
 let concatenate_fragments = fun fragments -> String.concat "" fragments
@@ -859,41 +1064,32 @@ let process_data_frame = fun conn stream_id payload flags ->
         | None -> Error (DataBeforeHeaders { stream_id })
         | Some stream ->
             let state = Cell.get stream.state in
-            (
-              match state with
-              | StreamHalfClosedRemote
-              | StreamClosed ->
-                  Error (FrameAfterStreamEnd { stream_id; frame_type = Frame.Data; state })
-              | StreamIdle
-              | StreamOpen
-              | StreamReservedLocal
-              | StreamReservedRemote
-              | StreamHalfClosedLocal ->
-                  let data_len = Bytes.length data_bytes in
-                  let connection_window = Cell.get conn.receive_connection_window_size in
-                  let stream_window = Cell.get stream.receive_window_size in
-                  if data_len > connection_window then
-                    Error (FlowControlWindowExceeded {
-                      scope = ConnectionWindow;
-                      data_size = data_len;
-                      window_size = connection_window;
-                    })
-                  else if data_len > stream_window then
-                    Error (FlowControlWindowExceeded {
-                      scope = StreamWindow { stream_id };
-                      data_size = data_len;
-                      window_size = stream_window;
-                    })
-                  else (
-                    Cell.set conn.receive_connection_window_size (connection_window - data_len);
-                    Cell.set stream.receive_window_size (stream_window - data_len);
-                    let chunks = Cell.get stream.data_chunks in
-                    Cell.set stream.data_chunks (chunks @ [ data_bytes ]);
-                    if end_stream then
-                      Cell.set stream.state StreamHalfClosedRemote;
-                    Ok [ DataReceived { stream_id; data = data_bytes; end_stream } ]
-                  )
-            )
+            match transition_recv_data ~stream_id state ~end_stream with
+            | Error error -> Error error
+            | Ok next_state ->
+                let data_len = Bytes.length data_bytes in
+                let connection_window = Cell.get conn.receive_connection_window_size in
+                let stream_window = Cell.get stream.receive_window_size in
+                if data_len > connection_window then
+                  Error (FlowControlWindowExceeded {
+                    scope = ConnectionWindow;
+                    data_size = data_len;
+                    window_size = connection_window;
+                  })
+                else if data_len > stream_window then
+                  Error (FlowControlWindowExceeded {
+                    scope = StreamWindow { stream_id };
+                    data_size = data_len;
+                    window_size = stream_window;
+                  })
+                else (
+                  Cell.set conn.receive_connection_window_size (connection_window - data_len);
+                  Cell.set stream.receive_window_size (stream_window - data_len);
+                  let chunks = Cell.get stream.data_chunks in
+                  Cell.set stream.data_chunks (chunks @ [ data_bytes ]);
+                  Cell.set stream.state next_state;
+                  Ok [ DataReceived { stream_id; data = data_bytes; end_stream } ]
+                )
       )
   | _ -> Error (InvalidPayloadForFrame { frame_type = Frame.Data; payload })
 
@@ -910,7 +1106,7 @@ let validate_header_block_sequence = fun conn frame ->
   | (None, Frame.Continuation) -> Error (UnexpectedContinuation { stream_id = frame.stream_id })
   | (None, _) -> Ok ()
 
-let process_frame = fun conn frame ->
+let process_frame_after_preface = fun conn frame ->
   match validate_header_block_sequence conn frame with
   | Error error -> Error error
   | Ok () -> (
@@ -1017,9 +1213,80 @@ let process_frame = fun conn frame ->
       | Frame.Unknown _ -> Ok []
     )
 
+let process_frame = fun conn frame ->
+  match Cell.get conn.preface_state with
+  | AwaitingClientPreface _ ->
+      Error (ExpectedInitialSettings { frame_type = frame.Frame.frame_type })
+  | AwaitingInitialSettings ->
+      if frame.Frame.frame_type != Frame.Settings then
+        Error (ExpectedInitialSettings { frame_type = frame.frame_type })
+      else (
+        Cell.set conn.preface_state PrefaceComplete;
+        process_frame_after_preface conn frame
+      )
+  | PrefaceComplete -> process_frame_after_preface conn frame
+
+let parser_config = fun conn -> ({
+  Parser.max_frame_size = Cell.get conn.local_settings.max_frame_size;
+}: Parser.config)
+
+let find_preface_mismatch = fun combined ->
+  let available = String.length combined in
+  let expected_length = String.length client_preface in
+  let limit =
+    if available < expected_length then
+      available
+    else
+      expected_length
+  in
+  let rec loop offset =
+    if offset >= limit then
+      None
+    else
+      let expected =
+        String.get_unchecked client_preface ~at:offset
+        |> Char.to_int
+      in
+      let actual =
+        String.get_unchecked combined ~at:offset
+        |> Char.to_int
+      in
+      if expected != actual then
+        Some (InvalidClientPrefaceByte { offset; expected; actual })
+      else
+        loop (offset + 1)
+  in
+  loop 0
+
+let consume_client_preface = fun conn input ->
+  match Cell.get conn.preface_state with
+  | AwaitingClientPreface buffered ->
+      let combined = buffered ^ input in
+      (
+        match find_preface_mismatch combined with
+        | Some error ->
+            Cell.set conn.preface_state (AwaitingClientPreface "");
+            Error error
+        | None ->
+            let expected_length = String.length client_preface in
+            let combined_length = String.length combined in
+            if combined_length < expected_length then (
+              Cell.set conn.preface_state (AwaitingClientPreface combined);
+              Ok ""
+            ) else (
+              Cell.set conn.preface_state AwaitingInitialSettings;
+              Ok (String.sub
+                combined
+                ~offset:expected_length
+                ~len:(combined_length - expected_length))
+            )
+      )
+  | AwaitingInitialSettings
+  | PrefaceComplete -> Ok input
+
 let process_data = fun conn data ->
   let rec process_all events remaining =
-    match Parser.parse_frame remaining with
+    match Parser.parse_frame ~config:(parser_config conn) remaining with
     | Parser.Done { value = frame; remaining = rest } -> (
         Cell.set conn.pending_input "";
         match process_frame conn frame with
@@ -1037,4 +1304,10 @@ let process_data = fun conn data ->
         Cell.set conn.pending_input "";
         Error (ParserError e)
   in
-  process_all [] (Cell.get conn.pending_input ^ Bytes.to_string data)
+  let input = Cell.get conn.pending_input ^ Bytes.to_string data in
+  match consume_client_preface conn input with
+  | Error error ->
+      Cell.set conn.pending_input "";
+      Error error
+  | Ok "" -> Ok []
+  | Ok input -> process_all [] input
