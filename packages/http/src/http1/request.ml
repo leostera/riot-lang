@@ -96,10 +96,6 @@ let is_space = fun c -> c = ' '
 
 let is_optional_whitespace = fun c -> c = ' ' || c = '\t'
 
-let trim_leading_ows = fun slice ->
-  SliceCursor.skip_while (SliceCursor.create slice) is_optional_whitespace
-  |> SliceCursor.remaining
-
 type 'a slice_parse_result =
   | Slice_done of 'a
   | Slice_need_more
@@ -187,6 +183,62 @@ let take_header_block_terminator = fun cursor ->
   | Some (prefix, cursor) when Slice.equal_string prefix "\r\n" -> Some cursor
   | _ -> None
 
+let is_tchar = fun c ->
+  let code = Char.to_int c in
+  (code >= Char.to_int '0' && code <= Char.to_int '9')
+  || (code >= Char.to_int 'A' && code <= Char.to_int 'Z')
+  || (code >= Char.to_int 'a' && code <= Char.to_int 'z')
+  || c = '!'
+  || c = '#'
+  || c = '$'
+  || c = '%'
+  || c = '&'
+  || c = '\''
+  || c = '*'
+  || c = '+'
+  || c = '-'
+  || c = '.'
+  || c = '^'
+  || c = '_'
+  || c = '`'
+  || c = '|'
+  || c = '~'
+
+let validate_header_name = fun name ->
+  if Slice.length name = 0 then
+    Slice_error (Common.InvalidHeaderFormat Common.EmptyName)
+  else
+    let rec loop index =
+      if index >= Slice.length name then
+        Slice_done ()
+      else
+        let c = Slice.get_unchecked name ~at:index in
+        if c = ' ' || c = '\t' then
+          Slice_error (Common.InvalidHeaderFormat Common.WhitespaceBeforeColon)
+        else if is_tchar c then
+          loop (index + 1)
+        else
+          Slice_error (Common.InvalidHeaderFormat (Common.InvalidNameCharacter {
+            code = Char.to_int c;
+            index;
+          }))
+    in
+    loop 0
+
+let validate_header_value = fun value ->
+  let rec loop index =
+    if index >= Slice.length value then
+      Slice_done ()
+    else
+      let c = Slice.get_unchecked value ~at:index in
+      let code = Char.to_int c in
+      if c = '\t' || (code >= 0x20 && code <= 0x7e) || code >= 0x80 then
+        loop (index + 1)
+      else
+        Slice_error (Common.InvalidHeaderFormat (Common.InvalidValueCharacter { code; index }))
+  in
+  loop 0
+
 let parse_request_line_owned = fun ?(max_length = 8_192) input ->
   let cursor = SliceCursor.create input in
   match SliceCursor.take_until_char cursor '\r' with
@@ -243,23 +295,34 @@ let parse_header_line_owned = fun cursor ->
       | Slice_error _ as result -> result
       | Slice_done cursor -> (
           let line_cursor = SliceCursor.create line in
-          match SliceCursor.take_until_char line_cursor ':' with
-          | None -> Slice_error (Common.InvalidHeaderFormat Common.MissingColon)
-          | Some (name, line_cursor) -> (
-              match SliceCursor.advance line_cursor with
-              | None -> Slice_error (Common.InvalidHeaderFormat Common.MissingValueSeparator)
-              | Some line_cursor ->
-                  let value =
-                    SliceCursor.skip_while line_cursor is_optional_whitespace
-                    |> SliceCursor.remaining
-                  in
-                  let name = trim_leading_ows name in
-                  Slice_done {
-                    header_name = string_of_slice name;
-                    header_value = string_of_slice value;
-                    next_cursor = cursor;
-                  }
-            )
+          if Slice.length line > 0 && is_optional_whitespace (Slice.get_unchecked line ~at:0) then
+            Slice_error (Common.InvalidHeaderFormat Common.ObsoleteLineFolding)
+          else
+            match SliceCursor.take_until_char line_cursor ':' with
+            | None -> Slice_error (Common.InvalidHeaderFormat Common.MissingColon)
+            | Some (name, line_cursor) -> (
+                match SliceCursor.advance line_cursor with
+                | None -> Slice_error (Common.InvalidHeaderFormat Common.MissingValueSeparator)
+                | Some line_cursor ->
+                    let value =
+                      SliceCursor.skip_while line_cursor is_optional_whitespace
+                      |> SliceCursor.remaining
+                    in
+                    match validate_header_name name with
+                    | Slice_need_more -> Slice_need_more
+                    | Slice_error error -> Slice_error error
+                    | Slice_done () -> (
+                        match validate_header_value value with
+                        | Slice_need_more -> Slice_need_more
+                        | Slice_error error -> Slice_error error
+                        | Slice_done () ->
+                            Slice_done {
+                              header_name = string_of_slice name;
+                              header_value = string_of_slice value;
+                              next_cursor = cursor;
+                            }
+                      )
+              )
         )
     )
 

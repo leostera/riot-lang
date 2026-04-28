@@ -30,6 +30,11 @@ and error =
 and header_format_error =
   | MissingColon
   | MissingValueSeparator
+  | EmptyName
+  | WhitespaceBeforeColon
+  | ObsoleteLineFolding
+  | InvalidNameCharacter of { code: int; index: int }
+  | InvalidValueCharacter of { code: int; index: int }
 
 let uri_error_to_string = function
   | Std.Net.Uri.InvalidScheme -> "invalid scheme"
@@ -43,6 +48,19 @@ let uri_error_to_string = function
 let header_format_error_to_string = function
   | MissingColon -> "missing colon"
   | MissingValueSeparator -> "missing value separator"
+  | EmptyName -> "empty header name"
+  | WhitespaceBeforeColon -> "whitespace before colon"
+  | ObsoleteLineFolding -> "obsolete line folding"
+  | InvalidNameCharacter { code; index } ->
+      "invalid header name character code "
+      ^ Int.to_string code
+      ^ " at index "
+      ^ Int.to_string index
+  | InvalidValueCharacter { code; index } ->
+      "invalid header value character code "
+      ^ Int.to_string code
+      ^ " at index "
+      ^ Int.to_string index
 
 let error_to_string = function
   | InvalidCrlf -> "Invalid CRLF"

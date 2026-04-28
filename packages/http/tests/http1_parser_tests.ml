@@ -387,6 +387,51 @@ let test_request_rejects_missing_lf_after_header_line = fun _ctx ->
   | Need_more -> Result.Error "Expected invalid CRLF error, got Need_more"
   | Done _ -> Result.Error "Expected invalid CRLF error"
 
+let test_request_rejects_empty_header_name = fun _ctx ->
+  let req = "GET /path HTTP/1.1\r\n: value\r\n\r\n" in
+  match Http1.Request.parse req with
+  | Error (InvalidHeaderFormat EmptyName) -> Result.Ok ()
+  | Error error -> Result.Error ("Expected empty header name error, got " ^ error_to_string error)
+  | Need_more -> Result.Error "Expected empty header name error, got Need_more"
+  | Done _ -> Result.Error "Expected empty header name error"
+
+let test_request_rejects_whitespace_before_colon = fun _ctx ->
+  let req = "GET /path HTTP/1.1\r\nHost : example.com\r\n\r\n" in
+  match Http1.Request.parse req with
+  | Error (InvalidHeaderFormat WhitespaceBeforeColon) -> Result.Ok ()
+  | Error error ->
+      Result.Error ("Expected whitespace-before-colon error, got " ^ error_to_string error)
+  | Need_more -> Result.Error "Expected whitespace-before-colon error, got Need_more"
+  | Done _ -> Result.Error "Expected whitespace-before-colon error"
+
+let test_request_rejects_obsolete_line_folding = fun _ctx ->
+  let req = "GET /path HTTP/1.1\r\nHost: example.com\r\n folded\r\n\r\n" in
+  match Http1.Request.parse req with
+  | Error (InvalidHeaderFormat ObsoleteLineFolding) -> Result.Ok ()
+  | Error error -> Result.Error ("Expected obs-fold error, got " ^ error_to_string error)
+  | Need_more -> Result.Error "Expected obs-fold error, got Need_more"
+  | Done _ -> Result.Error "Expected obs-fold error"
+
+let test_request_rejects_invalid_header_name_character = fun _ctx ->
+  let req = "GET /path HTTP/1.1\r\nBad@Name: value\r\n\r\n" in
+  match Http1.Request.parse req with
+  | Error (InvalidHeaderFormat (InvalidNameCharacter { code; index })) when code = 64 && index = 3 ->
+      Result.Ok ()
+  | Error error ->
+      Result.Error ("Expected invalid header name character error, got " ^ error_to_string error)
+  | Need_more -> Result.Error "Expected invalid header name character error, got Need_more"
+  | Done _ -> Result.Error "Expected invalid header name character error"
+
+let test_request_rejects_invalid_header_value_character = fun _ctx ->
+  let req = "GET /path HTTP/1.1\r\nX-Test: value\nbad\r\n\r\n" in
+  match Http1.Request.parse req with
+  | Error (InvalidHeaderFormat (InvalidValueCharacter { code; index })) when code = 10 && index = 5 ->
+      Result.Ok ()
+  | Error error ->
+      Result.Error ("Expected invalid header value character error, got " ^ error_to_string error)
+  | Need_more -> Result.Error "Expected invalid header value character error, got Need_more"
+  | Done _ -> Result.Error "Expected invalid header value character error"
+
 let test_request_rejects_invalid_http_version = fun _ctx ->
   let req = "GET /path HTTP/9.9\r\nHost: example.com\r\n\r\n" in
   match Http1.Request.parse req with
@@ -560,6 +605,16 @@ let test_response_rejects_invalid_http_version = fun _ctx ->
       in
       Result.Error ("Expected invalid HTTP version error, got parsed " ^ version)
 
+let test_response_rejects_invalid_header_name_character = fun _ctx ->
+  let resp = "HTTP/1.1 200 OK\r\nBad@Name: value\r\n\r\n" in
+  match Http1.Response.parse resp with
+  | Error (InvalidHeaderFormat (InvalidNameCharacter { code; index })) when code = 64 && index = 3 ->
+      Result.Ok ()
+  | Error error ->
+      Result.Error ("Expected invalid header name character error, got " ^ error_to_string error)
+  | Need_more -> Result.Error "Expected invalid header name character error, got Need_more"
+  | Done _ -> Result.Error "Expected invalid header name character error"
+
 (* Chunked Encoding Tests *)
 
 let test_chunk_single = fun _ctx ->
@@ -704,6 +759,15 @@ let tests =
     case
       "request rejects missing lf after header line"
       test_request_rejects_missing_lf_after_header_line;
+    case "request rejects empty header name" test_request_rejects_empty_header_name;
+    case "request rejects whitespace before colon" test_request_rejects_whitespace_before_colon;
+    case "request rejects obsolete line folding" test_request_rejects_obsolete_line_folding;
+    case
+      "request rejects invalid header name character"
+      test_request_rejects_invalid_header_name_character;
+    case
+      "request rejects invalid header value character"
+      test_request_rejects_invalid_header_value_character;
     case "request rejects invalid http version" test_request_rejects_invalid_http_version;
     case "request rejects invalid request target" test_request_rejects_invalid_request_target;
     case "request_rejects_too_many_headers" test_request_rejects_too_many_headers;
@@ -724,6 +788,9 @@ let tests =
       test_response_rejects_conflicting_content_length;
     case "response rejects invalid content length" test_response_rejects_invalid_content_length;
     case "response rejects invalid http version" test_response_rejects_invalid_http_version;
+    case
+      "response rejects invalid header name character"
+      test_response_rejects_invalid_header_name_character;
     case "chunk_single" test_chunk_single;
     case "chunk_last" test_chunk_last;
     case "chunk_hex_size" test_chunk_hex_size;

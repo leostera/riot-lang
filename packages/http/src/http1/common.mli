@@ -32,6 +32,11 @@ and error =
 and header_format_error =
   | MissingColon
   | MissingValueSeparator
+  | EmptyName
+  | WhitespaceBeforeColon
+  | ObsoleteLineFolding
+  | InvalidNameCharacter of { code: int; index: int }
+  | InvalidValueCharacter of { code: int; index: int }
 
 (** Render a parse error for logs, diagnostics, or tests. *)
 val error_to_string: error -> string
