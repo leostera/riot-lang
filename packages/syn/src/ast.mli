@@ -180,6 +180,8 @@ module Node: sig
 
   val token_width: t -> int
 
+  val width: t -> int
+
   val child_count: t -> int
 
   (**
@@ -243,6 +245,8 @@ module TypeExpr: sig
 
   val span: t -> Ceibo.Span.t
 
+  val width: t -> int
+
   val text: t -> string
 
   val view: t -> view
@@ -278,7 +282,11 @@ module RecordField: sig
 
   val as_node: t -> Node.t
 
+  val kind: t -> Syntax_kind.t
+
   val span: t -> Ceibo.Span.t
+
+  val width: t -> int
 
   val view: t -> view
 
@@ -297,6 +305,12 @@ module RecordType: sig
 
   val as_node: t -> Node.t
 
+  val kind: t -> Syntax_kind.t
+
+  val span: t -> Ceibo.Span.t
+
+  val width: t -> int
+
   val private_token: t -> Token.t option
 
   val opening_token: t -> Token.t option
@@ -311,6 +325,12 @@ end
 module RecordExprField: sig
   type t = record_expr_field
   val as_node: t -> Node.t
+
+  val kind: t -> Syntax_kind.t
+
+  val span: t -> Ceibo.Span.t
+
+  val width: t -> int
 end
 
 module VariantConstructor: sig
@@ -341,7 +361,11 @@ module VariantConstructor: sig
 
   val as_node: t -> Node.t
 
+  val kind: t -> Syntax_kind.t
+
   val span: t -> Ceibo.Span.t
+
+  val width: t -> int
 
   val view: t -> view
 
@@ -365,6 +389,12 @@ module VariantType: sig
   val cast: Node.t -> t cast_result
 
   val as_node: t -> Node.t
+
+  val kind: t -> Syntax_kind.t
+
+  val span: t -> Ceibo.Span.t
+
+  val width: t -> int
 
   val private_token: t -> Token.t option
 
@@ -425,6 +455,8 @@ module Pattern: sig
 
   val span: t -> Ceibo.Span.t
 
+  val width: t -> int
+
   val text: t -> string
 
   val view: t -> view
@@ -444,9 +476,17 @@ module AttributePattern: sig
 
   val as_node: t -> Node.t
 
+  val kind: t -> Syntax_kind.t
+
+  val span: t -> Ceibo.Span.t
+
+  val width: t -> int
+
   val inner: t -> pattern option
 
   val fold_shell_token: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
+
+  val shell_token_count: t -> int
 end
 
 module ExtensionPattern: sig
@@ -455,7 +495,15 @@ module ExtensionPattern: sig
 
   val as_node: t -> Node.t
 
+  val kind: t -> Syntax_kind.t
+
+  val span: t -> Ceibo.Span.t
+
+  val width: t -> int
+
   val fold_shell_token: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
+
+  val shell_token_count: t -> int
 end
 
 module LocallyAbstractTypePattern: sig
@@ -464,6 +512,12 @@ module LocallyAbstractTypePattern: sig
 
   val as_node: t -> Node.t
 
+  val kind: t -> Syntax_kind.t
+
+  val span: t -> Ceibo.Span.t
+
+  val width: t -> int
+
   val opening_token: t -> Token.t option
 
   val type_token: t -> Token.t option
@@ -471,6 +525,8 @@ module LocallyAbstractTypePattern: sig
   val closing_token: t -> Token.t option
 
   val fold_type_name: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
+
+  val type_name_count: t -> int
 end
 
 module FirstClassModulePattern: sig
@@ -482,6 +538,12 @@ module FirstClassModulePattern: sig
   val cast: pattern -> t cast_result
 
   val as_node: t -> Node.t
+
+  val kind: t -> Syntax_kind.t
+
+  val span: t -> Ceibo.Span.t
+
+  val width: t -> int
 
   val opening_token: t -> Token.t option
 
@@ -496,6 +558,8 @@ module FirstClassModulePattern: sig
   val ascription: t -> ascription
 
   val fold_ascription_ident_segment: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
+
+  val ascription_ident_segment_count: t -> int
 end
 
 module RecordPattern: sig
@@ -504,6 +568,12 @@ module RecordPattern: sig
   val cast: pattern -> t cast_result
 
   val as_node: t -> Node.t
+
+  val kind: t -> Syntax_kind.t
+
+  val span: t -> Ceibo.Span.t
+
+  val width: t -> int
 
   val open_wildcard: t -> Token.t option
 
@@ -531,6 +601,8 @@ module LocalOpenPattern: sig
 
   val span: t -> Ceibo.Span.t
 
+  val width: t -> int
+
   val view: t -> view
 
   val dot_token: t -> Token.t option
@@ -542,6 +614,8 @@ module LocalOpenPattern: sig
   val pattern: t -> pattern option
 
   val fold_module_ident_segment: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
+
+  val module_ident_segment_count: t -> int
 end
 
 module Parameter: sig
@@ -568,6 +642,8 @@ module Parameter: sig
   val kind: t -> Syntax_kind.t
 
   val span: t -> Ceibo.Span.t
+
+  val width: t -> int
 
   val view: t -> view
 
@@ -599,6 +675,8 @@ module MatchCase: sig
 
   val span: t -> Ceibo.Span.t
 
+  val width: t -> int
+
   val view: t -> view
 
   val pattern: t -> pattern option
@@ -620,6 +698,8 @@ module LetBinding: sig
   val kind: t -> Syntax_kind.t
 
   val span: t -> Ceibo.Span.t
+
+  val width: t -> int
 
   val view: t -> view
 
@@ -712,6 +792,8 @@ module Expr: sig
 
   val span: t -> Ceibo.Span.t
 
+  val width: t -> int
+
   val view: t -> view
 
   val literal_token: t -> Token.t option
@@ -727,6 +809,8 @@ module Expr: sig
   val match_case_count: t -> int
 
   val fold_parameter: t -> init:'acc -> fn:(parameter -> 'acc -> 'acc control) -> 'acc
+
+  val parameter_count: t -> int
 end
 
 module AttributeExpr: sig
@@ -735,9 +819,17 @@ module AttributeExpr: sig
 
   val as_node: t -> Node.t
 
+  val kind: t -> Syntax_kind.t
+
+  val span: t -> Ceibo.Span.t
+
+  val width: t -> int
+
   val inner: t -> expr option
 
   val fold_shell_token: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
+
+  val shell_token_count: t -> int
 end
 
 module ExtensionExpr: sig
@@ -746,7 +838,15 @@ module ExtensionExpr: sig
 
   val as_node: t -> Node.t
 
+  val kind: t -> Syntax_kind.t
+
+  val span: t -> Ceibo.Span.t
+
+  val width: t -> int
+
   val fold_shell_token: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
+
+  val shell_token_count: t -> int
 end
 
 module RecordExpr: sig
@@ -755,6 +855,12 @@ module RecordExpr: sig
   val cast: expr -> t cast_result
 
   val as_node: t -> Node.t
+
+  val kind: t -> Syntax_kind.t
+
+  val span: t -> Ceibo.Span.t
+
+  val width: t -> int
 
   val base: t -> expr option
 
@@ -786,6 +892,12 @@ module LocalOpenExpr: sig
 
   val as_node: t -> Node.t
 
+  val kind: t -> Syntax_kind.t
+
+  val span: t -> Ceibo.Span.t
+
+  val width: t -> int
+
   val view: t -> view
 end
 
@@ -798,6 +910,12 @@ module LetModuleExpr: sig
   val cast: expr -> t cast_result
 
   val as_node: t -> Node.t
+
+  val kind: t -> Syntax_kind.t
+
+  val span: t -> Ceibo.Span.t
+
+  val width: t -> int
 
   val let_token: t -> Token.t option
 
@@ -816,6 +934,8 @@ module LetModuleExpr: sig
   val body: t -> expr option
 
   val fold_module_body_ident_segment: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
+
+  val module_body_ident_segment_count: t -> int
 end
 
 module LetExceptionExpr: sig
@@ -823,6 +943,12 @@ module LetExceptionExpr: sig
   val cast: expr -> t cast_result
 
   val as_node: t -> Node.t
+
+  val kind: t -> Syntax_kind.t
+
+  val span: t -> Ceibo.Span.t
+
+  val width: t -> int
 
   val let_token: t -> Token.t option
 
@@ -847,6 +973,12 @@ module UnreachableExpr: sig
 
   val as_node: t -> Node.t
 
+  val kind: t -> Syntax_kind.t
+
+  val span: t -> Ceibo.Span.t
+
+  val width: t -> int
+
   val dot_token: t -> Token.t option
 end
 
@@ -862,6 +994,12 @@ module FirstClassModuleExpr: sig
   val cast: expr -> t cast_result
 
   val as_node: t -> Node.t
+
+  val kind: t -> Syntax_kind.t
+
+  val span: t -> Ceibo.Span.t
+
+  val width: t -> int
 
   val opening_token: t -> Token.t option
 
@@ -895,6 +1033,12 @@ module BindingOperatorExpr: sig
 
   val as_node: t -> Node.t
 
+  val kind: t -> Syntax_kind.t
+
+  val span: t -> Ceibo.Span.t
+
+  val width: t -> int
+
   val in_token: t -> Token.t option
 
   val body: t -> expr option
@@ -909,6 +1053,10 @@ module Ident: sig
   val cast: Node.t -> t cast_result
 
   val as_node: t -> Node.t
+
+  val kind: t -> Syntax_kind.t
+
+  val width: t -> int
 
   val span: t -> Ceibo.Span.t
 
@@ -947,6 +1095,12 @@ module ModuleTypeExpr: sig
 
   val as_node: t -> Node.t
 
+  val kind: t -> Syntax_kind.t
+
+  val span: t -> Ceibo.Span.t
+
+  val width: t -> int
+
   val view: t -> view
 
   val sig_token: t -> Token.t option
@@ -955,9 +1109,15 @@ module ModuleTypeExpr: sig
 
   val fold_ident_segment: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
 
+  val ident_segment_count: t -> int
+
   val fold_signature_item: t -> init:'acc -> fn:(signature_item -> 'acc -> 'acc control) -> 'acc
 
+  val signature_item_count: t -> int
+
   val fold_sig_body_token: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
+
+  val sig_body_token_count: t -> int
 end
 
 module ModuleExpr: sig
@@ -987,6 +1147,12 @@ module ModuleExpr: sig
 
   val as_node: t -> Node.t
 
+  val kind: t -> Syntax_kind.t
+
+  val span: t -> Ceibo.Span.t
+
+  val width: t -> int
+
   val view: t -> view
 
   val struct_token: t -> Token.t option
@@ -995,7 +1161,11 @@ module ModuleExpr: sig
 
   val fold_ident_segment: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
 
+  val ident_segment_count: t -> int
+
   val fold_structure_item: t -> init:'acc -> fn:(structure_item -> 'acc -> 'acc control) -> 'acc
+
+  val structure_item_count: t -> int
 end
 
 module StructureItem: sig
@@ -1017,6 +1187,12 @@ module StructureItem: sig
   val cast: Node.t -> t cast_result
 
   val as_node: t -> Node.t
+
+  val kind: t -> Syntax_kind.t
+
+  val span: t -> Ceibo.Span.t
+
+  val width: t -> int
 
   val view: t -> view
 
@@ -1046,6 +1222,12 @@ module SignatureItem: sig
 
   val as_node: t -> Node.t
 
+  val kind: t -> Syntax_kind.t
+
+  val span: t -> Ceibo.Span.t
+
+  val width: t -> int
+
   val view: t -> view
 
   val declaration: t -> Node.t option
@@ -1064,6 +1246,8 @@ module LetDeclaration: sig
   val kind: t -> Syntax_kind.t
 
   val span: t -> Ceibo.Span.t
+
+  val width: t -> int
 
   val rec_token: t -> Token.t option
 
@@ -1139,7 +1323,13 @@ module TypeDeclaration: sig
 
   val kind: t -> Syntax_kind.t
 
+  val span: t -> Ceibo.Span.t
+
+  val width: t -> int
+
   val fold_token: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
+
+  val token_count: t -> int
 
   val keyword_token: t -> Token.t option
 
@@ -1170,6 +1360,8 @@ module TypeExtensionDeclaration: sig
   val kind: t -> Syntax_kind.t
 
   val span: t -> Ceibo.Span.t
+
+  val width: t -> int
 
   val keyword_token: t -> Token.t option
 
@@ -1239,6 +1431,12 @@ module ModuleDeclaration: sig
 
   val as_node: t -> Node.t
 
+  val kind: t -> Syntax_kind.t
+
+  val span: t -> Ceibo.Span.t
+
+  val width: t -> int
+
   val name: t -> Token.t option
 
   val rec_token: t -> Token.t option
@@ -1263,9 +1461,13 @@ module ModuleDeclaration: sig
 
   val fold_body_ident_segment: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
 
+  val body_ident_segment_count: t -> int
+
   val has_typeof_body: t -> bool
 
   val fold_typeof_body_ident_segment: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
+
+  val typeof_body_ident_segment_count: t -> int
 
   val fold_structure_item: t -> init:'acc -> fn:(structure_item -> 'acc -> 'acc control) -> 'acc
 
@@ -1276,6 +1478,8 @@ module ModuleDeclaration: sig
   val signature_item_count: t -> int
 
   val fold_sig_body_token: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
+
+  val sig_body_token_count: t -> int
 end
 
 module ModuleTypeDeclaration: sig
@@ -1290,11 +1494,19 @@ module ModuleTypeDeclaration: sig
 
   val as_node: t -> Node.t
 
+  val kind: t -> Syntax_kind.t
+
+  val span: t -> Ceibo.Span.t
+
+  val width: t -> int
+
   val name: t -> Token.t option
 
   val equals_token: t -> Token.t option
 
   val fold_head_token: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
+
+  val head_token_count: t -> int
 
   val body: t -> body
 
@@ -1304,11 +1516,15 @@ module ModuleTypeDeclaration: sig
 
   val fold_body_ident_segment: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
 
+  val body_ident_segment_count: t -> int
+
   val fold_signature_item: t -> init:'acc -> fn:(signature_item -> 'acc -> 'acc control) -> 'acc
 
   val signature_item_count: t -> int
 
   val fold_sig_body_token: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
+
+  val sig_body_token_count: t -> int
 
   val base_module_type: t -> Node.t option
 
@@ -1335,6 +1551,12 @@ module ModuleTypeConstraint: sig
 
   val as_node: t -> Node.t
 
+  val kind: t -> Syntax_kind.t
+
+  val span: t -> Ceibo.Span.t
+
+  val width: t -> int
+
   val view: t -> view
 end
 
@@ -1344,6 +1566,12 @@ module OpenDeclaration: sig
 
   val as_node: t -> Node.t
 
+  val kind: t -> Syntax_kind.t
+
+  val span: t -> Ceibo.Span.t
+
+  val width: t -> int
+
   val ident_text: t -> string
 
   val first_ident_segment: t -> Token.t option
@@ -1351,6 +1579,8 @@ module OpenDeclaration: sig
   val last_ident_segment: t -> Token.t option
 
   val fold_ident_segment: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
+
+  val ident_segment_count: t -> int
 end
 
 module IncludeDeclaration: sig
@@ -1358,6 +1588,12 @@ module IncludeDeclaration: sig
   val cast: Node.t -> t cast_result
 
   val as_node: t -> Node.t
+
+  val kind: t -> Syntax_kind.t
+
+  val span: t -> Ceibo.Span.t
+
+  val width: t -> int
 
   val ident_text: t -> string
 
@@ -1368,6 +1604,8 @@ module IncludeDeclaration: sig
   val last_ident_segment: t -> Token.t option
 
   val fold_ident_segment: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
+
+  val ident_segment_count: t -> int
 end
 
 module ValueDeclaration: sig
@@ -1383,6 +1621,12 @@ module ValueDeclaration: sig
 
   val as_node: t -> Node.t
 
+  val kind: t -> Syntax_kind.t
+
+  val span: t -> Ceibo.Span.t
+
+  val width: t -> int
+
   val view: t -> view
 
   val name: t -> Token.t option
@@ -1396,6 +1640,8 @@ module ValueDeclaration: sig
   val name_token_count: t -> int
 
   val fold_annotation_token: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
+
+  val annotation_token_count: t -> int
 end
 
 module ExternalDeclaration: sig
@@ -1413,6 +1659,12 @@ module ExternalDeclaration: sig
   val cast: Node.t -> t cast_result
 
   val as_node: t -> Node.t
+
+  val kind: t -> Syntax_kind.t
+
+  val span: t -> Ceibo.Span.t
+
+  val width: t -> int
 
   val view: t -> view
 
@@ -1459,6 +1711,8 @@ module ExceptionDeclaration: sig
 
   val span: t -> Ceibo.Span.t
 
+  val width: t -> int
+
   val keyword_token: t -> Token.t option
 
   val name: t -> Token.t option
@@ -1476,7 +1730,11 @@ module ExtensionItem: sig
 
   val span: t -> Ceibo.Span.t
 
+  val width: t -> int
+
   val fold_shell_token: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
+
+  val shell_token_count: t -> int
 end
 
 module AttributeItem: sig
@@ -1489,7 +1747,11 @@ module AttributeItem: sig
 
   val span: t -> Ceibo.Span.t
 
+  val width: t -> int
+
   val fold_shell_token: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
+
+  val shell_token_count: t -> int
 end
 
 module ExprItem: sig
@@ -1497,6 +1759,12 @@ module ExprItem: sig
   val cast: Node.t -> t cast_result
 
   val as_node: t -> Node.t
+
+  val kind: t -> Syntax_kind.t
+
+  val span: t -> Ceibo.Span.t
+
+  val width: t -> int
 
   val expr: t -> expr option
 end
@@ -1506,6 +1774,12 @@ module Implementation: sig
   val cast: Node.t -> t cast_result
 
   val as_node: t -> Node.t
+
+  val kind: t -> Syntax_kind.t
+
+  val span: t -> Ceibo.Span.t
+
+  val width: t -> int
 
   val fold_item: t -> init:'acc -> fn:(structure_item -> 'acc -> 'acc control) -> 'acc
 
@@ -1517,6 +1791,12 @@ module Interface: sig
   val cast: Node.t -> t cast_result
 
   val as_node: t -> Node.t
+
+  val kind: t -> Syntax_kind.t
+
+  val span: t -> Ceibo.Span.t
+
+  val width: t -> int
 
   val fold_item: t -> init:'acc -> fn:(signature_item -> 'acc -> 'acc control) -> 'acc
 
@@ -1531,6 +1811,12 @@ module SourceFile: sig
   val make: Syntax_tree.t -> t
 
   val as_node: t -> Node.t
+
+  val kind: t -> Syntax_kind.t
+
+  val span: t -> Ceibo.Span.t
+
+  val width: t -> int
 
   val full_width: t -> int
 
