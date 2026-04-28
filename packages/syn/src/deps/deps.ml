@@ -280,14 +280,14 @@ module Ast_deps = struct
 
   let child_node_at = fun (node: A.Node.t) index ->
     match A.Node.child_at node index with
-    | Some (Syntax_tree.Node id) -> Some (({ tree = node.tree; id }: A.Node.t))
+    | Some (Syntax_tree.Node id) -> Some ({ tree = node.tree; id }: A.Node.t)
     | Some (Syntax_tree.Token _)
     | Some (Syntax_tree.Missing _)
     | None -> None
 
   let child_token_at = fun (node: A.Node.t) index ->
     match A.Node.child_at node index with
-    | Some (Syntax_tree.Token id) -> Some (({ tree = node.tree; id }: A.Token.t))
+    | Some (Syntax_tree.Token id) -> Some ({ tree = node.tree; id }: A.Token.t)
     | Some (Syntax_tree.Node _)
     | Some (Syntax_tree.Missing _)
     | None -> None

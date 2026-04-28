@@ -1758,20 +1758,19 @@ and parse_list_expr = fun p ~signature ->
         bump p;
         if at p Syntax_kind.SEMI then
           bump p
-      ) else
-        (
-          let before = p.pos in
-          ignore (parse_expression p ~signature ~stop_at_item:false ~stop_at_semi:true 0);
-          ensure_progress p before (invalid_expression p);
+      ) else (
+        let before = p.pos in
+        ignore (parse_expression p ~signature ~stop_at_item:false ~stop_at_semi:true 0);
+        ensure_progress p before (invalid_expression p);
+        if at p Syntax_kind.SEMI then (
+          bump p;
           if at p Syntax_kind.SEMI then (
-            bump p;
-            if at p Syntax_kind.SEMI then (
-              if not Syntax_kind.(peek_kind p 1 = RBRACKET) then
-                Event.Buffer.error p.events (list_double_semicolon p);
-              bump p
-            )
+            if not Syntax_kind.(peek_kind p 1 = RBRACKET) then
+              Event.Buffer.error p.events (list_double_semicolon p);
+            bump p
           )
-        );
+        )
+      );
       parse_elements ()
     )
   in
@@ -1932,38 +1931,37 @@ and parse_let_expr = fun p ~signature ~stop_at_item ~stop_at_semi ~stop_at_comma
     expect p Syntax_kind.IN_KW (invalid_expression p);
     ignore (parse_expression p ~signature ~stop_at_item ~stop_at_semi ~stop_at_comma 0);
     complete p marker Syntax_kind.LET_EXCEPTION_EXPR
-  ) else
-    (
-      let recover_missing_in () =
-        Event.Buffer.missing p.events ~kind:Syntax_kind.IN_KW ~offset:(current_offset p);
-        Event.Buffer.error
-          p.events
-          (
-            if is_eof p then
-              invalid_expression_at_previous_end p
-            else
-              invalid_expression p
-          );
-        if not (is_eof p) then
-          ignore (parse_expression p ~signature ~stop_at_item ~stop_at_semi ~stop_at_comma 0)
-      in
-      ignore (bump_if p Syntax_kind.REC_KW);
-      parse_let_binding p ~signature ~top_level:false;
-      let rec parse_and_bindings () =
-        if at p Syntax_kind.AND_KW then (
-          bump p;
-          parse_let_binding p ~signature ~top_level:false;
-          parse_and_bindings ()
-        )
-      in
-      parse_and_bindings ();
-      if at p Syntax_kind.IN_KW then (
-        bump p;
+  ) else (
+    let recover_missing_in () =
+      Event.Buffer.missing p.events ~kind:Syntax_kind.IN_KW ~offset:(current_offset p);
+      Event.Buffer.error
+        p.events
+        (
+          if is_eof p then
+            invalid_expression_at_previous_end p
+          else
+            invalid_expression p
+        );
+      if not (is_eof p) then
         ignore (parse_expression p ~signature ~stop_at_item ~stop_at_semi ~stop_at_comma 0)
-      ) else
-        recover_missing_in ();
-      complete p marker Syntax_kind.LET_EXPR
-    )
+    in
+    ignore (bump_if p Syntax_kind.REC_KW);
+    parse_let_binding p ~signature ~top_level:false;
+    let rec parse_and_bindings () =
+      if at p Syntax_kind.AND_KW then (
+        bump p;
+        parse_let_binding p ~signature ~top_level:false;
+        parse_and_bindings ()
+      )
+    in
+    parse_and_bindings ();
+    if at p Syntax_kind.IN_KW then (
+      bump p;
+      ignore (parse_expression p ~signature ~stop_at_item ~stop_at_semi ~stop_at_comma 0)
+    ) else
+      recover_missing_in ();
+    complete p marker Syntax_kind.LET_EXPR
+  )
 
 and parse_binding_operator_expr = fun
   p marker ~signature ~stop_at_item ~stop_at_semi ~stop_at_comma ->
@@ -3433,14 +3431,12 @@ and consume_type_params = fun p ->
 
 and parse_type_decl_head = fun p ~signature ->
   consume_type_params p;
-  if at p Syntax_kind.IDENT then
-    (
-      let text = token_text p (current p) in
-      bump p;
-      consume_path_segments p;
-      Some text
-    )
-  else (
+  if at p Syntax_kind.IDENT then (
+    let text = token_text p (current p) in
+    bump p;
+    consume_path_segments p;
+    Some text
+  ) else (
     if not (is_eof p || at_item_boundary p ~signature) then
       Event.Buffer.error p.events (missing_type_name p);
     None

@@ -42,16 +42,13 @@ let websocket_request = fun
         List.fold_left
           headers
           ~init:req
-          ~fn:(fun req ((name, value)) ->
+          ~fn:(fun req (name, value) ->
             Net.Http.Request.with_header req name value)
   in
   Suri.Request.of_http ~body:"" http_req
 
 let http_request = fun
-  ?(method_ = Net.Http.Method.Get)
-  ?(version = Net.Http.Version.Http11)
-  ?(headers = [])
-  () ->
+  ?(method_ = Net.Http.Method.Get) ?(version = Net.Http.Version.Http11) ?(headers = []) () ->
   let uri =
     Net.Uri.of_string "/"
     |> Result.unwrap
@@ -63,7 +60,7 @@ let http_request = fun
       List.fold_left
         headers
         ~init:req
-        ~fn:(fun req ((name, value)) ->
+        ~fn:(fun req (name, value) ->
           Net.Http.Request.add_header req name value)
 
 let config_for_test = fun
@@ -119,7 +116,9 @@ let tamper_last_char = fun value ->
 
 let test_accepts_rejects_invalid_quality = fun _ctx ->
   match Accepts.parse_accept "application/json;q=wat" with
-  | Error (Accepts.InvalidQuality (Accepts.InvalidQualityValue { value = "wat" })) -> Ok ()
+  | Error (Accepts.InvalidQuality (
+    Accepts.InvalidQualityValue { value = "wat" }
+  )) -> Ok ()
   | Ok _ -> Error "expected invalid Accept quality to fail parsing"
   | Error _ -> Error "unexpected Accept parse error"
 

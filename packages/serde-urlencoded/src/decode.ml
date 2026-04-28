@@ -51,13 +51,13 @@ let parse_fields = fun input ->
           let index = Vector.len groups in
           let values = Vector.with_capacity ~size:4 in
           Vector.push values ~value;
-          Vector.push groups ~value:(({ key; values }: grouped_field_acc));
+          Vector.push groups ~value:({ key; values }: grouped_field_acc);
           ignore (HashMap.insert indices ~key ~value:index));
   Array.init
     ~count:(Vector.len groups)
     ~fn:(fun index ->
       let group = Vector.get_unchecked groups ~at:index in
-      (({ key = group.key; values = Vector.to_array group.values }: grouped_field)))
+      ({ key = group.key; values = Vector.to_array group.values }: grouped_field))
 
 let with_values = fun state values fn ->
   let prev = state.context in

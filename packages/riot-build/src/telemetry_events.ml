@@ -1266,7 +1266,9 @@ let from_json: Data.Json.t -> (Telemetry.event, Data.Json.t) result = fun json -
                                       get_field planning_fields ~name:"path",
                                       get_field planning_fields ~name:"reason"
                                     ) with
-                                    | (Some (Data.Json.String path), Some (Data.Json.String reason)) ->
+                                    | (Some (Data.Json.String path), Some (
+                                      Data.Json.String reason
+                                    )) ->
                                         Ok (PlanningFailed (Planning_error.ScanFailed {
                                           path = Path.v path;
                                           reason;
@@ -1298,7 +1300,9 @@ let from_json: Data.Json.t -> (Telemetry.event, Data.Json.t) result = fun json -
                                           message = "Planning failed: graph build failed";
                                         })
                                   )
-                                | Some (Data.Json.String "source_depends_on_undeclared_package_module") -> (
+                                | Some (
+                                  Data.Json.String "source_depends_on_undeclared_package_module"
+                                ) -> (
                                     match (
                                       get_field planning_fields ~name:"package_name",
                                       get_field planning_fields ~name:"source",
@@ -1336,7 +1340,9 @@ let from_json: Data.Json.t -> (Telemetry.event, Data.Json.t) result = fun json -
                                           message = "Planning failed: source depends on undeclared package module";
                                         })
                                   )
-                                | Some (Data.Json.String "target_depends_on_internal_library_module") -> (
+                                | Some (
+                                  Data.Json.String "target_depends_on_internal_library_module"
+                                ) -> (
                                     match (
                                       get_field planning_fields ~name:"target_name",
                                       get_field planning_fields ~name:"source",
@@ -1367,7 +1373,9 @@ let from_json: Data.Json.t -> (Telemetry.event, Data.Json.t) result = fun json -
                                           message = "Planning failed: target depends on internal library module";
                                         })
                                   )
-                                | Some (Data.Json.String "target_depends_on_namespaced_internal_library_module") -> (
+                                | Some (
+                                  Data.Json.String "target_depends_on_namespaced_internal_library_module"
+                                ) -> (
                                     match (
                                       get_field planning_fields ~name:"target_name",
                                       get_field planning_fields ~name:"source",

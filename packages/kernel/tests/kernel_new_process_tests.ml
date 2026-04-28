@@ -794,7 +794,9 @@ let test_requested_pipe_ownership_matches_stdio = fun _ctx ->
 let test_spawn_missing_program_reports_no_such_file = fun _ctx ->
   let stdio = Kernel.Process.{ stdin = Stdin.Null; stdout = Stdout.Null; stderr = Stderr.Null } in
   match Kernel.Process.spawn ~program:"/definitely/missing/kernel-new-process" ~args:[||] ~stdio () with
-  | Kernel.Result.Error (Kernel.Process.System Kernel.SystemError.NoSuchFileOrDirectory) -> Ok ()
+  | Kernel.Result.Error (
+    Kernel.Process.System Kernel.SystemError.NoSuchFileOrDirectory
+  ) -> Ok ()
   | Kernel.Result.Error error -> Error (Kernel.Process.error_to_string error)
   | Kernel.Result.Ok process ->
       let _ = Kernel.Process.close process in
@@ -843,7 +845,9 @@ let test_kill_after_exit_reports_no_such_process = fun _ctx ->
         (fun poll ->
           let* _ = wait_for_exit poll ~token:(Kernel.Async.Token.make 535) process in
           match Kernel.Process.kill process ~signal:9 with
-          | Kernel.Result.Error (Kernel.Process.System Kernel.SystemError.NoSuchProcess) -> Ok ()
+          | Kernel.Result.Error (
+            Kernel.Process.System Kernel.SystemError.NoSuchProcess
+          ) -> Ok ()
           | Kernel.Result.Error error -> Error (Kernel.Process.error_to_string error)
           | Kernel.Result.Ok () ->
               Error "expected signaling an exited process to report no_such_process"))
@@ -1434,7 +1438,9 @@ let test_kill_rejects_invalid_signal_numbers = fun _ctx ->
     process
     (fun process ->
       match Kernel.Process.kill process ~signal:(-1) with
-      | Kernel.Result.Error (Kernel.Process.System Kernel.SystemError.InvalidArgument) -> Ok ()
+      | Kernel.Result.Error (
+        Kernel.Process.System Kernel.SystemError.InvalidArgument
+      ) -> Ok ()
       | Kernel.Result.Error error -> Error (Kernel.Process.error_to_string error)
       | Kernel.Result.Ok () -> Error "expected Process.kill to reject an invalid signal number")
 
@@ -1446,7 +1452,9 @@ let test_spawn_missing_current_dir_reports_no_such_file = fun _ctx ->
     ~current_dir:(Kernel.Path.from_string "/definitely/missing/kernel-new-process-dir")
     ~stdio
     () with
-  | Kernel.Result.Error (Kernel.Process.System Kernel.SystemError.NoSuchFileOrDirectory) -> Ok ()
+  | Kernel.Result.Error (
+    Kernel.Process.System Kernel.SystemError.NoSuchFileOrDirectory
+  ) -> Ok ()
   | Kernel.Result.Error error -> Error (Kernel.Process.error_to_string error)
   | Kernel.Result.Ok process ->
       let _ = Kernel.Process.close process in
@@ -1472,7 +1480,9 @@ let test_spawn_regular_file_current_dir_reports_not_directory = fun _ctx ->
         ~current_dir:file_path
         ~stdio
         () with
-      | Kernel.Result.Error (Kernel.Process.System Kernel.SystemError.NotDirectory) -> Ok ()
+      | Kernel.Result.Error (
+        Kernel.Process.System Kernel.SystemError.NotDirectory
+      ) -> Ok ()
       | Kernel.Result.Error error -> Error (Kernel.Process.error_to_string error)
       | Kernel.Result.Ok process ->
           let _ = Kernel.Process.close process in

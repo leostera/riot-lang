@@ -3818,36 +3818,34 @@ and render_or_pattern_inline = fun state pattern ->
     ~fn:(render_pattern state)
 
 and render_tuple_pattern = fun state pattern ->
-  if parenthesized_pattern_should_break state pattern then
-    (
-      let items = collect_tuple_pattern_items pattern in
-      let length = Vector.length items in
-      emit_text state "(";
-      emit_line state;
-      with_indent
-        state
-        2
-        (fun () ->
-          let rec loop index =
-            if Int.(index < length) then
-              (
-                let item = Vector.get_unchecked items ~at:index in
-                if pattern_is_tuple item then
-                  render_pattern_atom state item
-                else
-                  render_pattern state item;
-                if Int.(index < Int.sub length 1) then (
-                  emit_text state ",";
-                  emit_line state
-                );
-                loop (Int.add index 1)
-              )
-          in
-          loop 0);
-      emit_line state;
-      emit_text state ")"
-    )
-  else (
+  if parenthesized_pattern_should_break state pattern then (
+    let items = collect_tuple_pattern_items pattern in
+    let length = Vector.length items in
+    emit_text state "(";
+    emit_line state;
+    with_indent
+      state
+      2
+      (fun () ->
+        let rec loop index =
+          if Int.(index < length) then
+            (
+              let item = Vector.get_unchecked items ~at:index in
+              if pattern_is_tuple item then
+                render_pattern_atom state item
+              else
+                render_pattern state item;
+              if Int.(index < Int.sub length 1) then (
+                emit_text state ",";
+                emit_line state
+              );
+              loop (Int.add index 1)
+            )
+        in
+        loop 0);
+    emit_line state;
+    emit_text state ")"
+  ) else (
     emit_text state "(";
     render_tuple_pattern_contents state pattern;
     emit_text state ")"
@@ -4016,16 +4014,14 @@ and render_local_open_pattern = fun state pattern ->
 
 and render_poly_variant_pattern = fun state pattern ->
   let node = Ast.Pattern.as_node pattern in
-  if node_has_token_kind node Kind.HASH then
-    (
-      let children = collect_child_patterns node in
-      match Vector.length children with
-      | 1 ->
-          emit_text state "#";
-          render_pattern state (Vector.get_unchecked children ~at:0)
-      | _ -> unsupported_node "polymorphic variant inherit pattern without ident" node
-    )
-  else (
+  if node_has_token_kind node Kind.HASH then (
+    let children = collect_child_patterns node in
+    match Vector.length children with
+    | 1 ->
+        emit_text state "#";
+        render_pattern state (Vector.get_unchecked children ~at:0)
+    | _ -> unsupported_node "polymorphic variant inherit pattern without ident" node
+  ) else (
     (
       match first_ident_token node with
       | Some tag ->
@@ -5956,8 +5952,10 @@ and render_parenthesized_keyword_body = fun state body ->
   | _ ->
       emit_text state "(";
       emit_line state;
-      with_indent state 2 (fun () ->
-        with_delimited_expr state (fun () -> render_keyword_body_expr state body));
+      with_indent
+        state
+        2
+        (fun () -> with_delimited_expr state (fun () -> render_keyword_body_expr state body));
       emit_line state;
       emit_text state ")"
 
@@ -6272,16 +6270,15 @@ and render_if_expr = fun
     | Some inner ->
         emit_space state;
         render_parenthesized_sequence_keyword_body state inner
-    | None ->
-        (
-          match then_parenthesized_inner, else_parenthesized_inner with
-          | Some inner, Some _ ->
-              emit_space state;
-              render_parenthesized_keyword_body state inner
-          | _ ->
-              emit_line state;
-              with_indent state 2 (fun () -> render_keyword_body_expr state then_branch)
-        )
+    | None -> (
+        match (then_parenthesized_inner, else_parenthesized_inner) with
+        | (Some inner, Some _) ->
+            emit_space state;
+            render_parenthesized_keyword_body state inner
+        | _ ->
+            emit_line state;
+            with_indent state 2 (fun () -> render_keyword_body_expr state then_branch)
+      )
   );
   (
     match else_branch with
@@ -6324,16 +6321,15 @@ and render_if_expr = fun
           && expr_is_sequence inner ->
               emit_space state;
               render_parenthesized_sequence_keyword_body state inner
-          | _ ->
-              (
-                match then_parenthesized_inner, else_parenthesized_inner with
-                | Some _, Some inner ->
-                    emit_space state;
-                    render_parenthesized_keyword_body state inner
-                | _ ->
-                    emit_line state;
-                    with_indent state 2 (fun () -> render_keyword_body_expr state branch)
-              )
+          | _ -> (
+              match (then_parenthesized_inner, else_parenthesized_inner) with
+              | (Some _, Some inner) ->
+                  emit_space state;
+                  render_parenthesized_keyword_body state inner
+              | _ ->
+                  emit_line state;
+                  with_indent state 2 (fun () -> render_keyword_body_expr state branch)
+            )
         )
   )
 
@@ -7154,22 +7150,21 @@ and render_with_module_type_node = fun state node ->
           if is_module_type_kind (node_kind child) && not !rendered_base then (
             render_module_type_node state child;
             rendered_base := true
-          ) else
-            (
-              match Ast.cast_result_to_option (Ast.ModuleTypeConstraint.cast child) with
-              | Some _ ->
-                  emit_space state;
-                  (
-                    match !pending_connector with
-                    | Some connector ->
-                        emit_token state connector;
-                        pending_connector := None
-                    | None -> emit_text state "with"
-                  );
-                  emit_space state;
-                  render_module_type_constraint_node state child
-              | None -> ()
-            )
+          ) else (
+            match Ast.cast_result_to_option (Ast.ModuleTypeConstraint.cast child) with
+            | Some _ ->
+                emit_space state;
+                (
+                  match !pending_connector with
+                  | Some connector ->
+                      emit_token state connector;
+                      pending_connector := None
+                  | None -> emit_text state "with"
+                );
+                emit_space state;
+                render_module_type_constraint_node state child
+            | None -> ()
+          )
       | Syn.SyntaxTree.Missing _ -> ());
   if not !rendered_base then
     unsupported_node "with module type without base" node
@@ -7621,66 +7616,63 @@ and render_let_expr = fun state expr body ->
     emit_space state;
     render_let_binding_tail_with_body_break ~body_suffix_width state binding false
   in
-  if Int.equal length 1 then
-    (
-      let binding = Vector.get_unchecked bindings ~at:0 in
-      let binding_head_multiline = let_binding_tail_should_render_multiline binding in
-      let before_binding_lines = state.line_count in
-      render_binding_head ~body_suffix_width:(String.length let_in_inline_suffix) 0 binding;
-      let binding_rendered_multiline = Int.(state.line_count > before_binding_lines) in
-      match Ast.LetBinding.body binding with
-      | Some _ when binding_head_multiline ->
-          emit_line state;
-          emit_text state "in";
-          emit_line state;
-          render_in_body_expr state body
-      | Some binding_body when (not binding_rendered_multiline)
-      && let_binding_body_renders_inline binding_body
-      && current_line_fits_text state let_in_inline_suffix ->
-          emit_space state;
-          emit_text state "in";
-          emit_line state;
-          render_in_body_expr state body
-      | _ ->
-          emit_line state;
-          emit_text state "in";
-          emit_line state;
-          render_in_body_expr state body
-    )
-  else
-    (
-      let rec loop index =
-        if Int.(index < length) then
-          (
-            let body_suffix_width =
-              if Int.equal index (Int.sub length 1) then
-                String.length let_in_inline_suffix
-              else
-                0
-            in
-            render_binding_head
-              ~body_suffix_width
-              index
-              (Vector.get_unchecked bindings ~at:index);
-            if Int.(index < Int.sub length 1) then
-              emit_line state;
-            loop (Int.add index 1)
-          )
-      in
-      loop 0;
-      if
-        (not and_tokens_have_leading_comment)
-        && let_binding_tail_renders_inline_before_in
-          (Vector.get_unchecked bindings ~at:(Int.sub length 1))
-        && current_line_fits_text state let_in_inline_suffix
-      then
-        emit_space state
-      else
+  if Int.equal length 1 then (
+    let binding = Vector.get_unchecked bindings ~at:0 in
+    let binding_head_multiline = let_binding_tail_should_render_multiline binding in
+    let before_binding_lines = state.line_count in
+    render_binding_head ~body_suffix_width:(String.length let_in_inline_suffix) 0 binding;
+    let binding_rendered_multiline = Int.(state.line_count > before_binding_lines) in
+    match Ast.LetBinding.body binding with
+    | Some _ when binding_head_multiline ->
         emit_line state;
-      emit_text state "in";
+        emit_text state "in";
+        emit_line state;
+        render_in_body_expr state body
+    | Some binding_body when (not binding_rendered_multiline)
+    && let_binding_body_renders_inline binding_body
+    && current_line_fits_text state let_in_inline_suffix ->
+        emit_space state;
+        emit_text state "in";
+        emit_line state;
+        render_in_body_expr state body
+    | _ ->
+        emit_line state;
+        emit_text state "in";
+        emit_line state;
+        render_in_body_expr state body
+  ) else (
+    let rec loop index =
+      if Int.(index < length) then
+        (
+          let body_suffix_width =
+            if Int.equal index (Int.sub length 1) then
+              String.length let_in_inline_suffix
+            else
+              0
+          in
+          render_binding_head
+            ~body_suffix_width
+            index
+            (Vector.get_unchecked bindings ~at:index);
+          if Int.(index < Int.sub length 1) then
+            emit_line state;
+          loop (Int.add index 1)
+        )
+    in
+    loop 0;
+    if
+      (not and_tokens_have_leading_comment)
+      && let_binding_tail_renders_inline_before_in
+        (Vector.get_unchecked bindings ~at:(Int.sub length 1))
+      && current_line_fits_text state let_in_inline_suffix
+    then
+      emit_space state
+    else
       emit_line state;
-      render_in_body_expr state body
-    )
+    emit_text state "in";
+    emit_line state;
+    render_in_body_expr state body
+  )
 
 and render_let_binding_tail = fun state binding ->
   render_let_binding_tail_with_body_break
@@ -9278,30 +9270,29 @@ and render_module_declaration = fun state decl ->
               emit_text state "struct";
               emit_space state;
               emit_text state "end"
-            ) else
-              (
-                let end_token = Ast.ModuleDeclaration.end_token decl in
-                let has_terminal_trivia = token_has_leading_comment end_token in
-                emit_space state;
-                emit_text state "=";
-                emit_space state;
-                emit_text state "struct";
+            ) else (
+              let end_token = Ast.ModuleDeclaration.end_token decl in
+              let has_terminal_trivia = token_has_leading_comment end_token in
+              emit_space state;
+              emit_text state "=";
+              emit_space state;
+              emit_text state "struct";
+              emit_line state;
+              with_indent
+                state
+                2
+                (fun () ->
+                  render_structure_items state items;
+                  match end_token with
+                  | Some token when has_terminal_trivia ->
+                      emit_line state;
+                      emit_line state;
+                      emit_token_leading_comments_as_lines state token
+                  | _ -> ());
+              if not has_terminal_trivia then
                 emit_line state;
-                with_indent
-                  state
-                  2
-                  (fun () ->
-                    render_structure_items state items;
-                    match end_token with
-                    | Some token when has_terminal_trivia ->
-                        emit_line state;
-                        emit_line state;
-                        emit_token_leading_comments_as_lines state token
-                    | _ -> ());
-                if not has_terminal_trivia then
-                  emit_line state;
-                emit_text state "end"
-              );
+              emit_text state "end"
+            );
             render_wrapped_module_body_attribute_suffix state (Ast.ModuleDeclaration.as_node decl)
         | Ast.ModuleExpr.Apply _ ->
             render_module_declaration_separator state decl ~default:"=";
@@ -9495,13 +9486,12 @@ and render_structure_items = fun state items ->
               emit_line state;
               emit_line state;
               loop (Int.add index 1)
-            ) else
-              (
-                let next_index = render_suffix_attributes (Int.add index 1) in
-                if Int.(next_index < length) then
-                  emit_separator item (Vector.get_unchecked items ~at:next_index);
-                loop next_index
-              )
+            ) else (
+              let next_index = render_suffix_attributes (Int.add index 1) in
+              if Int.(next_index < length) then
+                emit_separator item (Vector.get_unchecked items ~at:next_index);
+              loop next_index
+            )
           else (
             emit_separator item (Vector.get_unchecked items ~at:(Int.add index 1));
             loop (Int.add index 1)
@@ -9555,15 +9545,13 @@ and render_structure_item_entries = fun state entries ->
                 emit_line state;
                 emit_line state;
                 loop (Int.add index 1)
-              ) else if Int.equal (Vector.length trailing_tokens) 0 then
-                (
-                  let next_index = render_suffix_attributes (Int.add index 1) in
-                  if Int.(next_index < length) then
-                    let (next_item, _) = Vector.get_unchecked entries ~at:next_index in
-                    emit_separator item next_item;
-                  loop next_index
-                )
-              else (
+              ) else if Int.equal (Vector.length trailing_tokens) 0 then (
+                let next_index = render_suffix_attributes (Int.add index 1) in
+                if Int.(next_index < length) then
+                  let (next_item, _) = Vector.get_unchecked entries ~at:next_index in
+                  emit_separator item next_item;
+                loop next_index
+              ) else (
                 emit_separator item next_item;
                 loop (Int.add index 1)
               )

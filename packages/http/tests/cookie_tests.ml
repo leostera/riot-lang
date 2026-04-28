@@ -28,8 +28,9 @@ let test_make_rejects_invalid_name_character = fun _ctx ->
 
 let test_make_rejects_value_semicolon = fun _ctx ->
   match Cookie.make ~name:"session" ~value:"abc;123" () with
-  | Error (Cookie.InvalidValueCharacter { index = 3; character = ';'; reason = Cookie.Semicolon }) ->
-      Result.Ok ()
+  | Error (
+    Cookie.InvalidValueCharacter { index = 3; character = ';'; reason = Cookie.Semicolon }
+  ) -> Result.Ok ()
   | Error error ->
       Result.Error ("wrong validation error: " ^ Cookie.validation_error_to_string error)
   | Ok _ -> Result.Error "cookie value with semicolon was accepted"
@@ -80,12 +81,14 @@ let test_make_rejects_host_prefix_non_root_path = fun _ctx ->
 
 let test_make_rejects_path_semicolon = fun _ctx ->
   match Cookie.make ~name:"session" ~value:"abc123" ~path:"/app;admin" () with
-  | Error (Cookie.InvalidAttributeCharacter {
-    attribute = Cookie.Path;
-    index = 4;
-    character = ';';
-    reason = Cookie.AttributeSemicolon
-  }) -> Result.Ok ()
+  | Error (
+    Cookie.InvalidAttributeCharacter {
+      attribute = Cookie.Path;
+      index = 4;
+      character = ';';
+      reason = Cookie.AttributeSemicolon
+    }
+  ) -> Result.Ok ()
   | Error error ->
       Result.Error ("wrong validation error: " ^ Cookie.validation_error_to_string error)
   | Ok _ -> Result.Error "cookie path with semicolon was accepted"
@@ -146,8 +149,9 @@ let test_parse_set_cookie_rejects_same_site_none_without_secure = fun _ctx ->
 
 let test_parse_set_cookie_result_reports_invalid_max_age = fun _ctx ->
   match Cookie.parse_set_cookie_result "session=abc; Max-Age=forever; Path=/" with
-  | Error (Cookie.InvalidMaxAge (Cookie.InvalidMaxAgeCharacter { code; index = 0 })) when code
-  = Char.to_int 'f' -> Result.Ok ()
+  | Error (Cookie.InvalidMaxAge (
+    Cookie.InvalidMaxAgeCharacter { code; index = 0 }
+  )) when code = Char.to_int 'f' -> Result.Ok ()
   | Error error ->
       Result.Error ("wrong parse error: " ^ Cookie.parse_set_cookie_error_to_string error)
   | Ok _ -> Result.Error "Set-Cookie with invalid Max-Age was accepted"

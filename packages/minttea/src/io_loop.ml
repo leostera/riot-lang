@@ -58,38 +58,37 @@ let rec loop = fun state ->
   if should_shutdown then (
     Log.trace "[IO_LOOP] Received shutdown, exiting";
     send state.parent ShutdownComplete
-  ) else
-    (
-      match Tty.read_utf8 state.termios with
-      | Read input ->
-          Log.trace ("[IO_LOOP] READ INPUT: " ^ input);
-          (* Parse input through ANSI parser *)
-          let events = Ansi_parser.parse_string state.parser input in
-          List.for_each events ~fn:(fun event -> send state.parent (Input event));
-          (* If no events were generated and it's a simple character *)
-          if List.length events = 0 && String.length input = 1 then
-            (
-              let c =
-                String.get input ~at:0
-                |> Option.unwrap
-              in
-              let event =
-                if c = '\027' then
-                  Event.KeyDown (Event.Escape, Event.NoModifier)
-                else
-                  (* Regular character *)
-                  Event.KeyDown (Ansi_parser.parse_char c, Event.NoModifier)
-              in
-              send state.parent (Input event)
-            );
-          loop state
-      | End -> send state.parent ShutdownComplete
-      | Malformed _err -> loop state
-      | Retry ->
-          (* No data available, yield and try again *)
-          yield ();
-          loop state
-    )
+  ) else (
+    match Tty.read_utf8 state.termios with
+    | Read input ->
+        Log.trace ("[IO_LOOP] READ INPUT: " ^ input);
+        (* Parse input through ANSI parser *)
+        let events = Ansi_parser.parse_string state.parser input in
+        List.for_each events ~fn:(fun event -> send state.parent (Input event));
+        (* If no events were generated and it's a simple character *)
+        if List.length events = 0 && String.length input = 1 then
+          (
+            let c =
+              String.get input ~at:0
+              |> Option.unwrap
+            in
+            let event =
+              if c = '\027' then
+                Event.KeyDown (Event.Escape, Event.NoModifier)
+              else
+                (* Regular character *)
+                Event.KeyDown (Ansi_parser.parse_char c, Event.NoModifier)
+            in
+            send state.parent (Input event)
+          );
+        loop state
+    | End -> send state.parent ShutdownComplete
+    | Malformed _err -> loop state
+    | Retry ->
+        (* No data available, yield and try again *)
+        yield ();
+        loop state
+  )
 
 let init = fun ~parent ~tty ->
   Log.trace ("[IO_LOOP] Starting IO loop, parent=" ^ Pid.to_string parent);

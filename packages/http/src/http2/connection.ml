@@ -926,34 +926,31 @@ let process_frame = fun conn frame ->
       | Frame.WindowUpdate -> (
           match frame.payload with
           | Frame.WindowUpdatePayload increment ->
-              if frame.stream_id = 0 then
-                (
-                  match add_flow_control_window
-                    conn.send_connection_window_size
-                    ~scope:ConnectionWindow
-                    ~increment with
-                  | Error error -> Error error
-                  | Ok () -> Ok [ WindowUpdateReceived { stream_id = frame.stream_id; increment } ]
-                )
-              else
-                (
-                  (* Stream-level window update *)
-                  match get_stream conn frame.stream_id with
-                  | None ->
-                      Error (FrameForIdleStream {
-                        stream_id = frame.stream_id;
-                        frame_type = Frame.WindowUpdate;
-                      })
-                  | Some stream -> (
-                      match add_flow_control_window
-                        stream.window_size
-                        ~scope:(StreamWindow { stream_id = frame.stream_id })
-                        ~increment with
-                      | Error error -> Error error
-                      | Ok () ->
-                          Ok [ WindowUpdateReceived { stream_id = frame.stream_id; increment }; ]
-                    )
-                )
+              if frame.stream_id = 0 then (
+                match add_flow_control_window
+                  conn.send_connection_window_size
+                  ~scope:ConnectionWindow
+                  ~increment with
+                | Error error -> Error error
+                | Ok () -> Ok [ WindowUpdateReceived { stream_id = frame.stream_id; increment } ]
+              ) else (
+                (* Stream-level window update *)
+                match get_stream conn frame.stream_id with
+                | None ->
+                    Error (FrameForIdleStream {
+                      stream_id = frame.stream_id;
+                      frame_type = Frame.WindowUpdate;
+                    })
+                | Some stream -> (
+                    match add_flow_control_window
+                      stream.window_size
+                      ~scope:(StreamWindow { stream_id = frame.stream_id })
+                      ~increment with
+                    | Error error -> Error error
+                    | Ok () ->
+                        Ok [ WindowUpdateReceived { stream_id = frame.stream_id; increment }; ]
+                  )
+              )
           | _ ->
               Error (InvalidPayloadForFrame {
                 frame_type = Frame.WindowUpdate;

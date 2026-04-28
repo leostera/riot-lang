@@ -110,8 +110,9 @@ let test_parse_rejects_non_minimal_64_bit_length = fun _ctx ->
 
 let test_parse_rejects_payload_over_limit = fun _ctx ->
   match Parser.parse ~max_payload_length:2 ~role:Parser.Client "\x81\x03abc" with
-  | Parser.Error (Parser.PayloadLengthExceedsLimit { payload_length = 3; max_payload_length = 2 }) ->
-      Result.Ok ()
+  | Parser.Error (
+    Parser.PayloadLengthExceedsLimit { payload_length = 3; max_payload_length = 2 }
+  ) -> Result.Ok ()
   | Parser.Error err -> Result.Error ("Wrong parse error: " ^ Parser.error_to_string err)
   | Parser.Need_more -> Result.Error "Expected payload limit error"
   | Parser.Done _ -> Result.Error "Frame over payload limit was accepted"

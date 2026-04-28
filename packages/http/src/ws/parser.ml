@@ -268,7 +268,9 @@ let parse = fun ?(max_payload_length = Int.max_int) ~role input ->
                       in
                       (* Extract payload *)
                       let payload_start = total_header_size in
-                      let raw_payload = String.sub input ~offset:payload_start ~len:payload_length in
+                      let raw_payload =
+                        String.sub input ~offset:payload_start ~len:payload_length
+                      in
                       (* Unmask if needed *)
                       let payload =
                         if masked then

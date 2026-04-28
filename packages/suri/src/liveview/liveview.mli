@@ -78,14 +78,12 @@ type 'msg event =
   | Custom of Message.t
   (** Any Runtime message from other processes *)
   | App of 'msg
-
 (** Component-specific messages from UI events *)
 type Channel.Handler.initialization_error +=
   | MissingSessionToken
   | InvalidSessionToken of Session.decode_error
   | InvalidSessionArgs of Data.Json.t
   | MissingSessionArgs of Data.Json.t
-
 val initialization_error_to_string: Channel.Handler.initialization_error -> string
 
 (**

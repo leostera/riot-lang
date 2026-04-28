@@ -361,18 +361,15 @@ let of_string = fun str ->
     in
     consume ();
     let num_str = String.sub str ~offset:start ~len:(!pos - start) in
-    if !is_float then
-      (
-        match Float.parse num_str with
-        | Some value -> Float value
-        | None -> raise_error (Invalid_number { position = start; text = num_str })
-      )
-    else
-      (
-        match Int.parse num_str with
-        | Some value -> Int value
-        | None -> raise_error (Invalid_number { position = start; text = num_str })
-      )
+    if !is_float then (
+      match Float.parse num_str with
+      | Some value -> Float value
+      | None -> raise_error (Invalid_number { position = start; text = num_str })
+    ) else (
+      match Int.parse num_str with
+      | Some value -> Int value
+      | None -> raise_error (Invalid_number { position = start; text = num_str })
+    )
   in
   let rec parse_value () =
     skip_whitespace ();

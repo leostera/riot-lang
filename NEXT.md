@@ -4,6 +4,10 @@
 
 # Before Announcing
 
+* std remove all polymorphic variants -> turn them into regular variants
+
+* riot test only tests the last `-p pkg` and not all of the -p's
+
 * `riot lock` to relock project deps
 
 * riot test print test time like ... ok (32µs)
@@ -11,6 +15,7 @@
 * riot test should build one test binary per package to maximize throughput
 
 * riot snapshots review sucks: its hella slow, its not very interactive (a+enter? yuk)
+* riot snapshots review is too slow!
 
 * `riot explain <error-id> --json`, explains any error in the stack
 

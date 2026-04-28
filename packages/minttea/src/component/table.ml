@@ -112,7 +112,7 @@ let handle_key = fun t (key: Event.key) modifier ->
         10
     in
     let half_page = page_size / 2 in
-    match ((key: Event.key)) with
+    match (key: Event.key) with
     | Up
     | Key "k" when modifier = NoModifier -> move_up t 1
     | Down

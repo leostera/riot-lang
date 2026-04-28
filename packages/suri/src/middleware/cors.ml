@@ -131,7 +131,7 @@ let append_header_token = fun value token ->
 let add_vary = fun token conn ->
   match List.find
     (Conn.resp_headers conn)
-    ~fn:(fun ((name, _value)) -> header_name_equal name "vary") with
+    ~fn:(fun (name, _value) -> header_name_equal name "vary") with
   | None -> Conn.with_header "vary" token conn
   | Some (_, value) -> Conn.set_header
     "vary"
@@ -205,112 +205,110 @@ let middleware = fun
                 && (
                   Net.Http.Header.get req_headers "access-control-request-method"
                   |> Option.is_some
-                ) then
-                  begin
-                    match validate_preflight
-                      ~methods
-                      ~headers
-                      ~request_method:(
-                        Net.Http.Header.get req_headers "access-control-request-method"
-                        |> Option.unwrap_or ~default:""
-                      )
-                      ~request_headers:(Net.Http.Header.get
-                        req_headers
-                        "access-control-request-headers") with
-                    | Error error ->
-                        Log.debug (preflight_error_to_string error);
+                ) then (
+                  match validate_preflight
+                    ~methods
+                    ~headers
+                    ~request_method:(
+                      Net.Http.Header.get req_headers "access-control-request-method"
+                      |> Option.unwrap_or ~default:""
+                    )
+                    ~request_headers:(Net.Http.Header.get
+                      req_headers
+                      "access-control-request-headers") with
+                  | Error error ->
+                      Log.debug (preflight_error_to_string error);
+                      conn
+                      |> Conn.respond
+                        ~status:Net.Http.Status.Forbidden
+                        ~body:(preflight_error_to_string error)
+                      |> Conn.halt
+                  | Ok () ->
+                      (* Preflight request - respond immediately *)
+                      let origin_val = get_response_origin origins req_origin credentials in
+                      (* Build allowed methods list *)
+                      let all_methods =
+                        method_names methods
+                        |> String.concat ", "
+                      in
+                      Log.debug
+                        (String.concat
+                          ""
+                          [ "[CORS] Preflight from origin: "; req_origin; " -> "; origin_val; ]);
+                      let conn =
                         conn
-                        |> Conn.respond
-                          ~status:Net.Http.Status.Forbidden
-                          ~body:(preflight_error_to_string error)
-                        |> Conn.halt
-                    | Ok () ->
-                        (* Preflight request - respond immediately *)
-                        let origin_val = get_response_origin origins req_origin credentials in
-                        (* Build allowed methods list *)
-                        let all_methods =
-                          method_names methods
-                          |> String.concat ", "
-                        in
-                        Log.debug
-                          (String.concat
-                            ""
-                            [ "[CORS] Preflight from origin: "; req_origin; " -> "; origin_val; ]);
-                        let conn =
+                        |> Conn.respond ~status:Net.Http.Status.NoContent
+                        |> Conn.with_header "access-control-allow-origin" origin_val
+                        |> Conn.with_header "access-control-allow-methods" all_methods
+                      in
+                      (* Add allowed headers if specified *)
+                      let conn =
+                        match headers with
+                        | [] -> conn
+                        | _ ->
+                            Conn.with_header
+                              "access-control-allow-headers"
+                              (String.concat ", " headers)
+                              conn
+                      in
+                      (* Add credentials if enabled *)
+                      let conn =
+                        if credentials then
+                          Conn.with_header "access-control-allow-credentials" "true" conn
+                        else
                           conn
-                          |> Conn.respond ~status:Net.Http.Status.NoContent
-                          |> Conn.with_header "access-control-allow-origin" origin_val
-                          |> Conn.with_header "access-control-allow-methods" all_methods
-                        in
-                        (* Add allowed headers if specified *)
-                        let conn =
-                          match headers with
-                          | [] -> conn
-                          | _ ->
-                              Conn.with_header
-                                "access-control-allow-headers"
-                                (String.concat ", " headers)
-                                conn
-                        in
-                        (* Add credentials if enabled *)
-                        let conn =
-                          if credentials then
-                            Conn.with_header "access-control-allow-credentials" "true" conn
-                          else
-                            conn
-                        in
-                        (* Add max-age if specified *)
-                        let conn =
-                          match max_age with
-                          | Some age ->
-                              Conn.with_header "access-control-max-age" (string_of_int age) conn
-                          | None -> conn
-                        in
-                        (* Add Vary header *)
-                        let conn =
-                          match origin_val with
-                          | "*" -> conn
-                          | _ -> add_vary "Origin" conn
-                        in
-                        Conn.halt conn
-                  end
+                      in
+                      (* Add max-age if specified *)
+                      let conn =
+                        match max_age with
+                        | Some age ->
+                            Conn.with_header "access-control-max-age" (string_of_int age) conn
+                        | None -> conn
+                      in
+                      (* Add Vary header *)
+                      let conn =
+                        match origin_val with
+                        | "*" -> conn
+                        | _ -> add_vary "Origin" conn
+                      in
+                      Conn.halt conn
+                )
                   (* Simple CORS request - add headers to response *)
-                else
-                  begin
-                    let origin_val = get_response_origin origins req_origin credentials in
-                    Log.debug
-                      (String.concat
-                        ""
-                        [ "[CORS] Simple request from origin: "; req_origin; " -> "; origin_val; ]);
-                    (* Call next handler *)
-                    let conn' = next conn in
-                    (* Add CORS headers to response *)
-                    let conn' =
-                      conn'
-                      |> Conn.with_header "access-control-allow-origin" origin_val
-                    in
-                    (* Add credentials if enabled *)
-                    let conn' =
-                      if credentials then
-                        Conn.with_header "access-control-allow-credentials" "true" conn'
-                      else
-                        conn'
-                    in
-                    (* Add exposed headers if specified *)
-                    let conn' =
-                      match expose with
-                      | [] -> conn'
-                      | _ ->
-                          Conn.with_header
-                            "access-control-expose-headers"
-                            (String.concat ", " expose)
-                            conn'
-                    in
-                    (* Add Vary header *)
-                    let conn' =
-                      match origin_val with
-                      | "*" -> conn'
-                      | _ -> add_vary "Origin" conn'
-                    in
+                else (
+                  let origin_val = get_response_origin origins req_origin credentials in
+                  Log.debug
+                    (String.concat
+                      ""
+                      [ "[CORS] Simple request from origin: "; req_origin; " -> "; origin_val; ]);
+                  (* Call next handler *)
+                  let conn' = next conn in
+                  (* Add CORS headers to response *)
+                  let conn' =
                     conn'
-                  end)
+                    |> Conn.with_header "access-control-allow-origin" origin_val
+                  in
+                  (* Add credentials if enabled *)
+                  let conn' =
+                    if credentials then
+                      Conn.with_header "access-control-allow-credentials" "true" conn'
+                    else
+                      conn'
+                  in
+                  (* Add exposed headers if specified *)
+                  let conn' =
+                    match expose with
+                    | [] -> conn'
+                    | _ ->
+                        Conn.with_header
+                          "access-control-expose-headers"
+                          (String.concat ", " expose)
+                          conn'
+                  in
+                  (* Add Vary header *)
+                  let conn' =
+                    match origin_val with
+                    | "*" -> conn'
+                    | _ -> add_vary "Origin" conn'
+                  in
+                  conn'
+                ))

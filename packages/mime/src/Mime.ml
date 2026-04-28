@@ -63,18 +63,16 @@ let percent_decode = fun s ->
   let rec decode i =
     if i >= len then
       Buffer.contents buf
-    else if String.get_unchecked s ~at:i = '%' && i + 2 < len then
-      (
-        let hex = String.sub s ~offset:(i + 1) ~len:2 in
-        match Int.of_string_opt ("0x" ^ hex) with
-        | Some code ->
-            Buffer.add_char buf (Char.chr code);
-            decode (i + 3)
-        | None ->
-            Buffer.add_char buf (String.get_unchecked s ~at:i);
-            decode (i + 1)
-      )
-    else (
+    else if String.get_unchecked s ~at:i = '%' && i + 2 < len then (
+      let hex = String.sub s ~offset:(i + 1) ~len:2 in
+      match Int.of_string_opt ("0x" ^ hex) with
+      | Some code ->
+          Buffer.add_char buf (Char.chr code);
+          decode (i + 3)
+      | None ->
+          Buffer.add_char buf (String.get_unchecked s ~at:i);
+          decode (i + 1)
+    ) else (
       Buffer.add_char buf (String.get_unchecked s ~at:i);
       decode (i + 1)
     )
@@ -410,18 +408,16 @@ let quoted_printable_decode = fun s ->
         && String.get_unchecked s ~at:(i + 2) = '\n'
       then
         decode (i + 3)
-      else if i + 2 < len then
-        (
-          let hex = String.sub s ~offset:(i + 1) ~len:2 in
-          match Int.of_string_opt ("0x" ^ hex) with
-          | Some code ->
-              Buffer.add_char buf (Char.chr code);
-              decode (i + 3)
-          | None ->
-              Buffer.add_char buf (String.get_unchecked s ~at:i);
-              decode (i + 1)
-        )
-      else (
+      else if i + 2 < len then (
+        let hex = String.sub s ~offset:(i + 1) ~len:2 in
+        match Int.of_string_opt ("0x" ^ hex) with
+        | Some code ->
+            Buffer.add_char buf (Char.chr code);
+            decode (i + 3)
+        | None ->
+            Buffer.add_char buf (String.get_unchecked s ~at:i);
+            decode (i + 1)
+      ) else (
         Buffer.add_char buf (String.get_unchecked s ~at:i);
         decode (i + 1)
       )

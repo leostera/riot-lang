@@ -103,7 +103,7 @@ let to_http = fun request ->
         List.fold_left
           request.headers
           ~init:http_request
-          ~fn:(fun http_request ((name, value)) ->
+          ~fn:(fun http_request (name, value) ->
             Net.Http.Request.with_header
               http_request
               name

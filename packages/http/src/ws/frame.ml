@@ -76,7 +76,9 @@ let unmask = fun mask payload ->
       |> String.get_unchecked ~at:i
       |> Char.to_int
     in
-    let _ = IO.Bytes.set result ~at:i ~char:(Char.from_int_unchecked (payload_byte lxor mask_byte)) in
+    let _ =
+      IO.Bytes.set result ~at:i ~char:(Char.from_int_unchecked (payload_byte lxor mask_byte))
+    in
     ()
   done;
   IO.Bytes.to_string result

@@ -103,7 +103,7 @@ module DLS = struct
 
   let key_counter = Sync.Atomic.make 0
 
-  let parent_keys = Sync.Atomic.make (([]: key_initializer list))
+  let parent_keys = Sync.Atomic.make ([]: key_initializer list)
 
   let rec add_parent_key = fun key ->
     let keys = Sync.Atomic.get parent_keys in
@@ -155,7 +155,7 @@ module DLS = struct
     let state = maybe_grow index in
     let value = Array.get_unchecked state ~at:index in
     if Obj_opt.is_some value then
-      ((Obj_opt.unsafe_get value: 'value))
+      ((Obj_opt.unsafe_get value): 'value)
     else
       let initialized = init () in
       let packed = Obj_opt.some (opaque_identity initialized) in
@@ -165,7 +165,7 @@ module DLS = struct
       else
         let updated = Array.get_unchecked state ~at:index in
         if Obj_opt.is_some updated then
-          ((Obj_opt.unsafe_get updated: 'value))
+          ((Obj_opt.unsafe_get updated): 'value)
         else
           System_error.panic "Thread.DLS.get observed an uninitialized slot after compare-and-set"
 

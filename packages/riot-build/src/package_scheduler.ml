@@ -713,8 +713,8 @@ let lane_result_of_states = fun package_states lane ->
           | Package_builder.Cached _
           | Package_builder.Skipped _ -> false)
     in
-    Some (({ target = Build_lane.target lane; results = package_results; had_partial_failure }:
-      Lane_result.t))
+    Some ({ target = Build_lane.target lane; results = package_results; had_partial_failure }:
+      Lane_result.t)
 
 let summarize = fun lanes package_states errors ->
   let lane_results =

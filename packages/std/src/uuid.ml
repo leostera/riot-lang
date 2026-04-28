@@ -181,20 +181,18 @@ module Monotonic = struct
     let uuid = v7 () in
     let time_ms = extract_timestamp_ms uuid in
     let last_ms = Cell.get state.last_timestamp_ms in
-    if time_ms < last_ms then
-      begin
-        (* Clock went backwards - need to clamp *)
-        let clamped_ms = Int64.add last_ms 1L in
-        Cell.set state.last_timestamp_ms clamped_ms;
-        (* Generate new UUID with clamped timestamp *)
-        (* For MVP, we'll just generate a new one and hope it's >= clamped_ms
-           A full implementation would rebuild the UUID with exact timestamp
-        *)
-        let new_uuid = v7 () in
-        Cell.set state.last_timestamp_ms (extract_timestamp_ms new_uuid);
-        new_uuid
-      end
-    else (
+    if time_ms < last_ms then (
+      (* Clock went backwards - need to clamp *)
+      let clamped_ms = Int64.add last_ms 1L in
+      Cell.set state.last_timestamp_ms clamped_ms;
+      (* Generate new UUID with clamped timestamp *)
+      (* For MVP, we'll just generate a new one and hope it's >= clamped_ms
+         A full implementation would rebuild the UUID with exact timestamp
+      *)
+      let new_uuid = v7 () in
+      Cell.set state.last_timestamp_ms (extract_timestamp_ms new_uuid);
+      new_uuid
+    ) else (
       Cell.set state.last_timestamp_ms time_ms;
       uuid
     )

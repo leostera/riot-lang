@@ -447,13 +447,15 @@ let plan_detailed = fun
           };
         graph_update = Some (Skipped_package { reason });
       }
-  | Ok (Riot_planner.Package_planner.Cached {
-    package_key = planned_key;
-    hash = package_hash;
-    artifact;
-    depset;
-    exports
-  }) ->
+  | Ok (
+    Riot_planner.Package_planner.Cached {
+      package_key = planned_key;
+      hash = package_hash;
+      artifact;
+      depset;
+      exports
+    }
+  ) ->
       let duration = Instant.duration_since ~earlier:start (Instant.now ()) in
       if emit_visible_progress && List.length artifact.ocamlc_warnings > 0 then
         Telemetry.emit
@@ -498,13 +500,15 @@ let plan_detailed = fun
             }
           );
       }
-  | Ok (Planned {
-    package_key = planned_key;
-    hash = package_hash;
-    depset;
-    module_graph;
-    action_graph
-  }) -> (
+  | Ok (
+    Planned {
+      package_key = planned_key;
+      hash = package_hash;
+      depset;
+      module_graph;
+      action_graph
+    }
+  ) -> (
       Log.info ("Package " ^ package_name_string ^ ": hash=" ^ Std.Crypto.Digest.hex package_hash);
       Execution_required {
         package_key = planned_key;

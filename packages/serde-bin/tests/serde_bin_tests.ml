@@ -135,7 +135,7 @@ let person_decode =
         builder.score
       ) with
       | (Some name, Some age, Some active, Some tags, Some nickname, Some pet, Some score) ->
-          (({
+          ({
             name;
             age;
             active;
@@ -143,7 +143,7 @@ let person_decode =
             nickname;
             pet;
             score;
-          }: person))
+          }: person)
       | _ -> De.missing_field ())
 
 let person_encode =

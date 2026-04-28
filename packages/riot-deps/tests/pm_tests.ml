@@ -374,7 +374,9 @@ let test_publisher_rejects_path_only_runtime_dependencies = fun _ctx ->
   in
   match Riot_deps.Publisher.validate_runtime_dependencies ~package with
   | Ok () -> Error "expected path-only runtime dependency to be rejected for publish"
-  | Error (Riot_deps.Publisher.RuntimeDependencyNotPublishable { dependency; reason = `PathOnly path; _ }) ->
+  | Error (
+    Riot_deps.Publisher.RuntimeDependencyNotPublishable { dependency; reason = `PathOnly path; _ }
+  ) ->
       if String.equal dependency "std" && Path.equal path (Path.v "../std") then
         Ok ()
       else
@@ -1371,7 +1373,9 @@ let test_lock_deps_reports_missing_registry_package_with_required_by = fun _ctx 
   in
   match run_lock_deps ~registry:(make_registry []) ~mode:Refresh ~existing_lock:None [ app_pkg ] with
   | Ok _ -> Error "expected missing registry package to fail"
-  | Error (Riot_deps.Error.PackageNotFound { package; registry; required_by = Some required_by }) ->
+  | Error (
+    Riot_deps.Error.PackageNotFound { package; registry; required_by = Some required_by }
+  ) ->
       if
         String.equal package "std"
         && String.equal registry "pkgs.ml"
@@ -1408,13 +1412,15 @@ let test_lock_deps_reports_missing_registry_version_with_available_versions = fu
   in
   match run_lock_deps ~registry ~mode:Refresh ~existing_lock:None [ app_pkg ] with
   | Ok _ -> Error "expected unavailable registry version to fail"
-  | Error (Riot_deps.Error.RegistryVersionNotFound {
-    package;
-    registry;
-    requirement;
-    available_versions;
-    required_by = Some required_by
-  }) ->
+  | Error (
+    Riot_deps.Error.RegistryVersionNotFound {
+      package;
+      registry;
+      requirement;
+      available_versions;
+      required_by = Some required_by
+    }
+  ) ->
       if
         String.equal package "minttea"
         && String.equal registry "pkgs.ml"
@@ -2436,7 +2442,9 @@ let test_lock_refresh_reports_non_table_dependency_sections = fun _ctx ->
         ~workspace_manager
         ~workspace_root
         ~manifest_paths:[ manifest_path ] with
-      | Error (Riot_deps.Lock_refresh.DependencySectionMustBeTable { manifest_path = path; section }) ->
+      | Error (
+        Riot_deps.Lock_refresh.DependencySectionMustBeTable { manifest_path = path; section }
+      ) ->
           if Path.equal path manifest_path && String.equal section "dependencies" then
             Ok ()
           else
@@ -2615,7 +2623,11 @@ version = "0.0.1"
         }
         () with
       | Ok () -> Error "expected remove to report typed manifest update error"
-      | Error (Riot_deps.ManifestUpdateFailed (Riot_deps.Manifest_edit.DependencySectionMustBeTable { path; section })) ->
+      | Error (
+        Riot_deps.ManifestUpdateFailed (
+          Riot_deps.Manifest_edit.DependencySectionMustBeTable { path; section }
+        )
+      ) ->
           if Path.equal path app_manifest && String.equal section "dependencies" then
             Ok ()
           else
@@ -2898,7 +2910,9 @@ version = "0.0.1"
                 dependencies = [ "../missing" ];
               }
               () with
-            | Error (Riot_deps.PathDependencyLoadFailed { dependency; path; error = Riot_deps.PathDependencyManifestReadFailed _ }) ->
+            | Error (
+              Riot_deps.PathDependencyLoadFailed { dependency; path; error = Riot_deps.PathDependencyManifestReadFailed _ }
+            ) ->
                 if
                   String.equal dependency "../missing"
                   && Path.equal path Path.(workspace_root / Path.v "packages/missing")
@@ -2921,7 +2935,9 @@ let test_git_dependency_parse_spec_normalizes_github_source = fun _ctx ->
 
 let test_git_dependency_parse_spec_reports_multiple_ref_suffixes = fun _ctx ->
   match Riot_deps.Git_dependency.parse_spec "github.com/riot/tests#main#extra" with
-  | Error (Riot_deps.Git_dependency.InvalidSourceSpec { source; reason = Riot_deps.Git_dependency.TooManyRefSuffixes }) ->
+  | Error (
+    Riot_deps.Git_dependency.InvalidSourceSpec { source; reason = Riot_deps.Git_dependency.TooManyRefSuffixes }
+  ) ->
       if String.equal source "github.com/riot/tests#main#extra" then
         Ok ()
       else
@@ -2932,7 +2948,9 @@ let test_git_dependency_parse_spec_reports_multiple_ref_suffixes = fun _ctx ->
 
 let test_git_dependency_parse_source_locator_reports_invalid_shape = fun _ctx ->
   match Riot_deps.Git_dependency.parse_source_locator "github.com/riot" with
-  | Error (Riot_deps.Git_dependency.InvalidSourceSpec { source; reason = Riot_deps.Git_dependency.InvalidLocatorShape }) ->
+  | Error (
+    Riot_deps.Git_dependency.InvalidSourceSpec { source; reason = Riot_deps.Git_dependency.InvalidLocatorShape }
+  ) ->
       if String.equal source "github.com/riot" then
         Ok ()
       else
@@ -3054,7 +3072,11 @@ version = "0.0.1"
               }
               () with
             | Ok () -> Error "expected unsupported non-github source dependency add to fail"
-            | Error (Riot_deps.DependencySpecInvalid { dependency; error = Riot_deps.SourceDependencySpecError (Riot_deps.Git_dependency.UnsupportedSourceHost { host; _ }) }) ->
+            | Error (
+              Riot_deps.DependencySpecInvalid { dependency; error = Riot_deps.SourceDependencySpecError (
+                Riot_deps.Git_dependency.UnsupportedSourceHost { host; _ }
+              ) }
+            ) ->
                 if
                   String.equal dependency "https://gitlab.com/leostera/widgets"
                   && String.equal host "gitlab.com"
@@ -4651,7 +4673,9 @@ let test_registry_package_spec_reports_invalid_shape = fun _ctx ->
 
 let test_registry_package_spec_reports_invalid_package_name = fun _ctx ->
   match Riot_deps.Registry_package_spec.from_string "Demo@1.0.0" with
-  | Error (Riot_deps.Registry_package_spec.InvalidPackageName { spec; name; error = Riot_model.Package_name.InvalidLeadingCharacter _ }) ->
+  | Error (
+    Riot_deps.Registry_package_spec.InvalidPackageName { spec; name; error = Riot_model.Package_name.InvalidLeadingCharacter _ }
+  ) ->
       if String.equal spec "Demo@1.0.0" && String.equal name "Demo" then
         Ok ()
       else

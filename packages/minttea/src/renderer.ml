@@ -143,12 +143,10 @@ let print_frame = fun state frame ->
     (* 2 = clear entire display *)
     state.needs_altscreen_setup <- false
   );
-  if state.is_altscreen_active then
-    (
-      (* Alt screen: always position at top-left *)
-      Buffer.add_string output (Tty.Escape_seq.cursor_position_seq 1 1)
-    )
-  else (
+  if state.is_altscreen_active then (
+    (* Alt screen: always position at top-left *)
+    Buffer.add_string output (Tty.Escape_seq.cursor_position_seq 1 1)
+  ) else (
     (* Inline mode: move cursor up to start of previous render if we had lines *)
     if state.lines_rendered > 1 then
       (

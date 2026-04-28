@@ -175,7 +175,7 @@ let select_last = fun t ->
 
 let handle_key = fun t (key: Event.key) modifier ->
   if t.filtering_active then
-    match ((key: Event.key)) with
+    match (key: Event.key) with
     | Event.Escape -> stop_filtering t
     | Event.Enter -> stop_filtering t
     | Event.Backspace when modifier = Event.NoModifier ->
@@ -194,7 +194,7 @@ let handle_key = fun t (key: Event.key) modifier ->
     | _ -> t
   else
     (* Normal navigation mode *)
-    match ((key: Event.key)) with
+    match (key: Event.key) with
     | Event.Up
     | Event.Key "k" when modifier = Event.NoModifier -> select_prev t
     | Event.Down

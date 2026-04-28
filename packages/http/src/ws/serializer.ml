@@ -172,30 +172,28 @@ let serialize = fun ?rng ?(role = Server) frame ->
         extended_length
         ~fn:(fun byte -> Buffer.add_char header (Char.from_int_unchecked byte));
       (* Add mask and masked payload if needed *)
-      if masked then
-        (
-          match Frame.generate_mask ?rng () with
-          | Error error -> Error (MaskGenerationFailed error)
-          | Ok mask ->
-              (* Write mask (4 bytes) *)
-              Buffer.add_char
-                header
-                (Char.from_int_unchecked Int32.(to_int (logand (shift_right mask 24) 0b1111_1111l)));
-              Buffer.add_char
-                header
-                (Char.from_int_unchecked Int32.(to_int (logand (shift_right mask 16) 0b1111_1111l)));
-              Buffer.add_char
-                header
-                (Char.from_int_unchecked Int32.(to_int (logand (shift_right mask 8) 0b1111_1111l)));
-              Buffer.add_char
-                header
-                (Char.from_int_unchecked Int32.(to_int (logand mask 0b1111_1111l)));
-              (* Apply mask to payload *)
-              let masked_payload = Frame.apply_mask mask payload in
-              Buffer.add_string header masked_payload;
-              Ok (Buffer.contents header)
-        )
-      else (
+      if masked then (
+        match Frame.generate_mask ?rng () with
+        | Error error -> Error (MaskGenerationFailed error)
+        | Ok mask ->
+            (* Write mask (4 bytes) *)
+            Buffer.add_char
+              header
+              (Char.from_int_unchecked Int32.(to_int (logand (shift_right mask 24) 0b1111_1111l)));
+            Buffer.add_char
+              header
+              (Char.from_int_unchecked Int32.(to_int (logand (shift_right mask 16) 0b1111_1111l)));
+            Buffer.add_char
+              header
+              (Char.from_int_unchecked Int32.(to_int (logand (shift_right mask 8) 0b1111_1111l)));
+            Buffer.add_char
+              header
+              (Char.from_int_unchecked Int32.(to_int (logand mask 0b1111_1111l)));
+            (* Apply mask to payload *)
+            let masked_payload = Frame.apply_mask mask payload in
+            Buffer.add_string header masked_payload;
+            Ok (Buffer.contents header)
+      ) else (
         Buffer.add_string header payload;
         Ok (Buffer.contents header)
       )

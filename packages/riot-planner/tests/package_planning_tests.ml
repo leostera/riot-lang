@@ -1139,13 +1139,15 @@ let test_build_scope_excludes_runtime_and_dev_roots = fun _ctx ->
       let build_ctx = Riot_model.Build_ctx.make ~session_id ~profile () in
       match plan_graph_package ~workspace ~store ~package_graph ~package_key:helper_key ~build_ctx with
       | Error _ as err -> err
-      | Ok (Riot_planner.Package_planner.Planned {
-        module_graph;
-        action_graph;
-        hash;
-        package = helper_package;
-        _
-      }) ->
+      | Ok (
+        Riot_planner.Package_planner.Planned {
+          module_graph;
+          action_graph;
+          hash;
+          package = helper_package;
+          _
+        }
+      ) ->
           let _ =
             Riot_planner.Package_graph.mark_planned
               package_graph
@@ -1215,7 +1217,9 @@ let test_binary_entrypoint_rejects_fun_labeled_args_main = fun _ctx ->
     ~prefix:"planner_binary_main_fun_invalid"
     (fun tmpdir ->
       match plan_single_binary_source ~tmpdir "let main = fun ~args -> Ok ()\n" with
-      | Error (Riot_planner.Planning_error.InvalidExecutableMain { error = Riot_planner.Planning_error.InvalidMainParameters { parameters }; _ }) ->
+      | Error (
+        Riot_planner.Planning_error.InvalidExecutableMain { error = Riot_planner.Planning_error.InvalidMainParameters { parameters }; _ }
+      ) ->
           if parameters = [] then
             Ok ()
           else
@@ -1232,7 +1236,9 @@ let test_binary_entrypoint_requires_main_binding = fun _ctx ->
     ~prefix:"planner_binary_main_missing"
     (fun tmpdir ->
       match plan_single_binary_source ~tmpdir "let () = print_endline \"hello\"\n" with
-      | Error (Riot_planner.Planning_error.InvalidExecutableMain { target_name; source; error = Riot_planner.Planning_error.MissingMain }) ->
+      | Error (
+        Riot_planner.Planning_error.InvalidExecutableMain { target_name; source; error = Riot_planner.Planning_error.MissingMain }
+      ) ->
           if not (String.equal target_name "entry-demo") then
             Error ("expected target entry-demo, got " ^ target_name)
           else if not (Path.equal source (Path.v "src/main.ml")) then
@@ -1252,7 +1258,9 @@ let test_binary_entrypoint_rejects_multiple_main_bindings = fun _ctx ->
     (fun tmpdir ->
       let source = "let main ~args:_ = Ok ()\nlet main ~args:_ = Ok ()\n" in
       match plan_single_binary_source ~tmpdir source with
-      | Error (Riot_planner.Planning_error.InvalidExecutableMain { error = Riot_planner.Planning_error.MultipleMainDefinitions { count }; _ }) ->
+      | Error (
+        Riot_planner.Planning_error.InvalidExecutableMain { error = Riot_planner.Planning_error.MultipleMainDefinitions { count }; _ }
+      ) ->
           if count = 2 then
             Ok ()
           else
@@ -1269,7 +1277,9 @@ let test_binary_entrypoint_rejects_positional_args_parameter = fun _ctx ->
     ~prefix:"planner_binary_main_positional"
     (fun tmpdir ->
       match plan_single_binary_source ~tmpdir "let main args = Ok ()\n" with
-      | Error (Riot_planner.Planning_error.InvalidExecutableMain { error = Riot_planner.Planning_error.InvalidMainParameters { parameters }; _ }) ->
+      | Error (
+        Riot_planner.Planning_error.InvalidExecutableMain { error = Riot_planner.Planning_error.InvalidMainParameters { parameters }; _ }
+      ) ->
           if parameters = [ "args" ] then
             Ok ()
           else
@@ -1286,7 +1296,9 @@ let test_binary_entrypoint_rejects_extra_parameters = fun _ctx ->
     ~prefix:"planner_binary_main_extra_parameter"
     (fun tmpdir ->
       match plan_single_binary_source ~tmpdir "let main ~args () = Ok ()\n" with
-      | Error (Riot_planner.Planning_error.InvalidExecutableMain { error = Riot_planner.Planning_error.InvalidMainParameters { parameters }; _ }) ->
+      | Error (
+        Riot_planner.Planning_error.InvalidExecutableMain { error = Riot_planner.Planning_error.InvalidMainParameters { parameters }; _ }
+      ) ->
           if parameters = [ "~args"; "<positional>" ] then
             Ok ()
           else
@@ -1421,13 +1433,15 @@ let plan_kernel_runtime_graphs = fun ~workspace ~store ~build_ctx ->
               ~package_key:runtime_key
               ~build_ctx with
             | Error err -> Error ("kernel runtime plan failed: " ^ err)
-            | Ok (Riot_planner.Package_planner.Planned {
-              module_graph;
-              action_graph;
-              hash;
-              depset;
-              _
-            }) -> Ok (package, module_graph, action_graph, hash, depset)
+            | Ok (
+              Riot_planner.Package_planner.Planned {
+                module_graph;
+                action_graph;
+                hash;
+                depset;
+                _
+              }
+            ) -> Ok (package, module_graph, action_graph, hash, depset)
             | Ok _ -> Error "expected kernel runtime plan to return Planned"
           )
       | Ok _ -> Error "expected kernel build-scope plan to return Planned"
@@ -1614,7 +1628,9 @@ let test_cached_artifact_and_exports_short_circuit_without_plan_bundle = fun _ct
         | Error err ->
             Error ("expected cached plan result, got planner error: "
             ^ Riot_planner.Planning_error.to_string err)
-        | Ok (Riot_planner.Package_planner.Cached { hash; artifact = cached_artifact; exports = cached_exports; _ }) ->
+        | Ok (
+          Riot_planner.Package_planner.Cached { hash; artifact = cached_artifact; exports = cached_exports; _ }
+        ) ->
             if Std.Crypto.Hash.compare hash input_hash != Std.Order.EQ then
               Error "expected cached plan hash to match input hash"
             else if not (List.length cached_artifact.Riot_store.Artifact.files = 1) then
@@ -2091,13 +2107,15 @@ let test_planner_rejects_direct_internal_library_access = fun _ctx ->
       let profile = Riot_model.Profile.debug in
       let build_ctx = Riot_model.Build_ctx.make ~session_id ~profile () in
       match plan_package_raw ~workspace ~store ~package_graph ~package_key ~build_ctx with
-      | Error (Riot_planner.Planning_error.TargetDependsOnInternalLibraryModule {
-        target_name;
-        source;
-        requested_module;
-        internal_module;
-        public_module
-      }) ->
+      | Error (
+        Riot_planner.Planning_error.TargetDependsOnInternalLibraryModule {
+          target_name;
+          source;
+          requested_module;
+          internal_module;
+          public_module
+        }
+      ) ->
           if not (String.equal target_name "berrybot") then
             Error ("expected target name berrybot, got " ^ target_name)
           else if not (Path.equal source (Path.v "src/main.ml")) then
@@ -2148,13 +2166,15 @@ let test_planner_rejects_namespaced_internal_library_access = fun _ctx ->
       let profile = Riot_model.Profile.debug in
       let build_ctx = Riot_model.Build_ctx.make ~session_id ~profile () in
       match plan_package_raw ~workspace ~store ~package_graph ~package_key ~build_ctx with
-      | Error (Riot_planner.Planning_error.TargetDependsOnNamespacedInternalLibraryModule {
-        target_name;
-        source;
-        requested_module;
-        internal_module;
-        public_module
-      }) ->
+      | Error (
+        Riot_planner.Planning_error.TargetDependsOnNamespacedInternalLibraryModule {
+          target_name;
+          source;
+          requested_module;
+          internal_module;
+          public_module
+        }
+      ) ->
           if not (String.equal target_name "berrybot") then
             Error ("expected target name berrybot, got " ^ target_name)
           else if not (Path.equal source (Path.v "src/main.ml")) then
@@ -2209,14 +2229,16 @@ let test_planner_rejects_direct_other_binary_root_access = fun _ctx ->
       let profile = Riot_model.Profile.debug in
       let build_ctx = Riot_model.Build_ctx.make ~session_id ~profile () in
       match plan_package_raw ~workspace ~store ~package_graph ~package_key ~build_ctx with
-      | Error (Riot_planner.Planning_error.TargetDependsOnOtherTargetRoot {
-        target_name;
-        source;
-        requested_module;
-        other_target_name;
-        other_target_module;
-        public_module
-      }) ->
+      | Error (
+        Riot_planner.Planning_error.TargetDependsOnOtherTargetRoot {
+          target_name;
+          source;
+          requested_module;
+          other_target_name;
+          other_target_module;
+          public_module
+        }
+      ) ->
           if not (String.equal target_name "berrybot") then
             Error ("expected target name berrybot, got " ^ target_name)
           else if not (Path.equal source (Path.v "src/main.ml")) then
@@ -2273,14 +2295,16 @@ let test_planner_rejects_namespaced_other_binary_root_access = fun _ctx ->
       let profile = Riot_model.Profile.debug in
       let build_ctx = Riot_model.Build_ctx.make ~session_id ~profile () in
       match plan_package_raw ~workspace ~store ~package_graph ~package_key ~build_ctx with
-      | Error (Riot_planner.Planning_error.TargetDependsOnOtherTargetRoot {
-        target_name;
-        source;
-        requested_module;
-        other_target_name;
-        other_target_module;
-        public_module
-      }) ->
+      | Error (
+        Riot_planner.Planning_error.TargetDependsOnOtherTargetRoot {
+          target_name;
+          source;
+          requested_module;
+          other_target_name;
+          other_target_module;
+          public_module
+        }
+      ) ->
           if not (String.equal target_name "berrybot") then
             Error ("expected target name berrybot, got " ^ target_name)
           else if not (Path.equal source (Path.v "src/main.ml")) then

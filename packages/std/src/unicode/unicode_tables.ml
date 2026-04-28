@@ -47,50 +47,47 @@ let in_range32: range32 -> int -> bool = fun r code ->
 let in_table: range_table -> int -> bool = fun tbl code ->
   if code < 0 || code > 0x10_ffff then
     false
-  else if code < 0x1_0000 then
-    begin
-      (* Binary search in R16 *)
-      let rec search lo hi =
-        if lo > hi then
-          false
-        else
-          let mid = (lo + hi) / 2 in
-          let range = Array.get_unchecked tbl.r16 ~at:mid in
-          if code < range.lo then
-            search lo (mid - 1)
-          else if code > range.hi then
-            search (mid + 1) hi
-          else
-            in_range16 range code
-      in
-      let len = Array.length tbl.r16 in
-      if len = 0 then
+  else if code < 0x1_0000 then (
+    (* Binary search in R16 *)
+    let rec search lo hi =
+      if lo > hi then
         false
       else
-        search 0 (len - 1)
-    end
-  else
-    begin
-      (* Binary search in R32 *)
-      let rec search lo hi =
-        if lo > hi then
-          false
+        let mid = (lo + hi) / 2 in
+        let range = Array.get_unchecked tbl.r16 ~at:mid in
+        if code < range.lo then
+          search lo (mid - 1)
+        else if code > range.hi then
+          search (mid + 1) hi
         else
-          let mid = (lo + hi) / 2 in
-          let range = Array.get_unchecked tbl.r32 ~at:mid in
-          if code < range.lo then
-            search lo (mid - 1)
-          else if code > range.hi then
-            search (mid + 1) hi
-          else
-            in_range32 range code
-      in
-      let len = Array.length tbl.r32 in
-      if len = 0 then
+          in_range16 range code
+    in
+    let len = Array.length tbl.r16 in
+    if len = 0 then
+      false
+    else
+      search 0 (len - 1)
+  ) else (
+    (* Binary search in R32 *)
+    let rec search lo hi =
+      if lo > hi then
         false
       else
-        search 0 (len - 1)
-    end
+        let mid = (lo + hi) / 2 in
+        let range = Array.get_unchecked tbl.r32 ~at:mid in
+        if code < range.lo then
+          search lo (mid - 1)
+        else if code > range.hi then
+          search (mid + 1) hi
+        else
+          in_range32 range code
+    in
+    let len = Array.length tbl.r32 in
+    if len = 0 then
+      false
+    else
+      search 0 (len - 1)
+  )
 
 (* ============================================ *)
 

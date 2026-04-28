@@ -198,8 +198,9 @@ let test_http1_websocket_upgrade_rejects_invalid_key = fun _ctx ->
   ]
   in
   match Http1.validate_websocket_upgrade (websocket_request ~headers ()) with
-  | Error (Http1.InvalidWebSocketKey { reason = Http1.InvalidLength { actual = 9; expected = 16 }; _ }) ->
-      Ok ()
+  | Error (
+    Http1.InvalidWebSocketKey { reason = Http1.InvalidLength { actual = 9; expected = 16 }; _ }
+  ) -> Ok ()
   | Ok _ -> Error "expected WebSocket upgrade to reject invalid Sec-WebSocket-Key"
   | Error error -> Error (Http1.websocket_upgrade_error_to_string error)
 
@@ -406,7 +407,9 @@ let test_http1_response_rejects_empty_header_name = fun _ctx ->
 let test_http1_response_rejects_header_injection = fun _ctx ->
   let res = Response.ok ~headers:[ ("x-test", "ok\r\nx-evil: yes"); ] ~body:"ok" () in
   match Http1.serialize_response res with
-  | Error (Http1.InvalidHeaderValue { name; value = _; reason = Http1.InvalidHeaderValueChar { char; index } }) ->
+  | Error (
+    Http1.InvalidHeaderValue { name; value = _; reason = Http1.InvalidHeaderValueChar { char; index } }
+  ) ->
       Test.assert_equal ~expected:"x-test" ~actual:name;
       Test.assert_equal ~expected:'\r' ~actual:char;
       Test.assert_equal ~expected:2 ~actual:index;
@@ -418,7 +421,9 @@ let test_http1_response_rejects_header_injection = fun _ctx ->
 let test_http1_response_rejects_header_control_values = fun _ctx ->
   let res = Response.ok ~headers:[ ("x-test", "bad\001value"); ] ~body:"ok" () in
   match Http1.serialize_response res with
-  | Error (Http1.InvalidHeaderValue { name; value = _; reason = Http1.InvalidHeaderValueChar { char; index } }) ->
+  | Error (
+    Http1.InvalidHeaderValue { name; value = _; reason = Http1.InvalidHeaderValueChar { char; index } }
+  ) ->
       Test.assert_equal ~expected:"x-test" ~actual:name;
       Test.assert_equal ~expected:'\001' ~actual:char;
       Test.assert_equal ~expected:3 ~actual:index;

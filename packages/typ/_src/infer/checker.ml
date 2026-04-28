@@ -2569,13 +2569,13 @@ let record_expr_trace = fun (state: state) expr_id origin_id env_before inferred
     | _ -> None
   in
   if state.config.capture_traces then
-    state.expr_traces <- (({
+    state.expr_traces <- ({
       Check_result.expr_id;
       origin_id;
       env_before = Env.render env_before;
       resolved_binding;
       inferred_type;
-    }: Check_result.expr_trace)) :: state.expr_traces
+    }: Check_result.expr_trace) :: state.expr_traces
 
 let binding_ref_of_binding = fun binding ->
   let provenance =
@@ -4107,11 +4107,11 @@ let infer_file = fun ~imported_world ~config ~(source:Source.t) file ->
                   | None -> []
                 in
                 let exports_after = Env.render exports_after_env in
-                state.item_traces <- (({
+                state.item_traces <- ({
                   Check_result.item_id = type_item.item_id;
                   binding_names;
                   exports_after;
-                }: Check_result.item_trace)) :: state.item_traces
+                }: Check_result.item_trace) :: state.item_traces
             in
             loop export_state type_decls scope rest
         | ItemTree.Exception exception_item ->
@@ -4144,11 +4144,11 @@ let infer_file = fun ~imported_world ~config ~(source:Source.t) file ->
                   | None -> []
                 in
                 let exports_after = Env.render exports_after_env in
-                state.item_traces <- (({
+                state.item_traces <- ({
                   Check_result.item_id = exception_item.item_id;
                   binding_names;
                   exports_after;
-                }: Check_result.item_trace)) :: state.item_traces
+                }: Check_result.item_trace) :: state.item_traces
             in
             loop export_state type_decls scope rest
         | ItemTree.ExtensionConstructor extension_item ->
@@ -4181,11 +4181,11 @@ let infer_file = fun ~imported_world ~config ~(source:Source.t) file ->
                   | None -> []
                 in
                 let exports_after = Env.render exports_after_env in
-                state.item_traces <- (({
+                state.item_traces <- ({
                   Check_result.item_id = extension_item.item_id;
                   binding_names;
                   exports_after;
-                }: Check_result.item_trace)) :: state.item_traces
+                }: Check_result.item_trace) :: state.item_traces
             in
             loop export_state type_decls scope rest
         | ItemTree.Value value_item ->
@@ -4219,11 +4219,11 @@ let infer_file = fun ~imported_world ~config ~(source:Source.t) file ->
                   | None -> []
                 in
                 let exports_after = Env.render exports_after_env in
-                state.item_traces <- (({
+                state.item_traces <- ({
                   Check_result.item_id = value_item.item_id;
                   binding_names;
                   exports_after;
-                }: Check_result.item_trace)) :: state.item_traces
+                }: Check_result.item_trace) :: state.item_traces
             in
             loop export_state type_decls scope rest
         | ItemTree.DeclaredValue declared_value_item ->
@@ -4259,11 +4259,11 @@ let infer_file = fun ~imported_world ~config ~(source:Source.t) file ->
                   | None -> []
                 in
                 let exports_after = Env.render exports_after_env in
-                state.item_traces <- (({
+                state.item_traces <- ({
                   Check_result.item_id = declared_value_item.item_id;
                   binding_names;
                   exports_after;
-                }: Check_result.item_trace)) :: state.item_traces
+                }: Check_result.item_trace) :: state.item_traces
             in
             loop export_state type_decls scope rest
         | ItemTree.Open open_item ->
@@ -4284,11 +4284,11 @@ let infer_file = fun ~imported_world ~config ~(source:Source.t) file ->
                   Env.export config export_state
                   |> Env.render
                 in
-                state.item_traces <- (({
+                state.item_traces <- ({
                   Check_result.item_id = open_item.item_id;
                   binding_names = [];
                   exports_after;
-                }: Check_result.item_trace)) :: state.item_traces
+                }: Check_result.item_trace) :: state.item_traces
             in
             loop export_state type_decls scope rest
         | ItemTree.Include include_item ->
@@ -4333,11 +4333,11 @@ let infer_file = fun ~imported_world ~config ~(source:Source.t) file ->
                   | None -> []
                 in
                 let exports_after = Env.render exports_after_env in
-                state.item_traces <- (({
+                state.item_traces <- ({
                   Check_result.item_id = include_item.item_id;
                   binding_names;
                   exports_after;
-                }: Check_result.item_trace)) :: state.item_traces
+                }: Check_result.item_trace) :: state.item_traces
             in
             let type_decls = bind_type_decls type_decls introduced_type_decls in
             let type_decls = set_visible_type_decls state type_decls in
@@ -4421,11 +4421,11 @@ let infer_file = fun ~imported_world ~config ~(source:Source.t) file ->
                   | None -> []
                 in
                 let exports_after = Env.render exports_after_env in
-                state.item_traces <- (({
+                state.item_traces <- ({
                   Check_result.item_id = module_alias_item.item_id;
                   binding_names;
                   exports_after;
-                }: Check_result.item_trace)) :: state.item_traces
+                }: Check_result.item_trace) :: state.item_traces
             in
             let type_decls = bind_type_decls type_decls introduced_type_decls in
             let type_decls = set_visible_type_decls state type_decls in
@@ -4437,11 +4437,11 @@ let infer_file = fun ~imported_world ~config ~(source:Source.t) file ->
                   Env.export config export_state
                   |> Env.render
                 in
-                state.item_traces <- (({
+                state.item_traces <- ({
                   Check_result.item_id = unsupported_item.item_id;
                   binding_names = [];
                   exports_after;
-                }: Check_result.item_trace)) :: state.item_traces
+                }: Check_result.item_trace) :: state.item_traces
             in
             loop export_state type_decls scope rest
       )

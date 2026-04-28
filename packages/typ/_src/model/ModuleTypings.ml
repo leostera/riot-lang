@@ -1013,13 +1013,13 @@ let constructor_of_json = fun json ->
         parse_labels [] labels_json
     | None -> Ok None
   in
-  Ok (({
+  Ok ({
     TypeDecl.constructor_id = ConstructorId.of_int constructor_id;
     name;
     scheme;
     generalized;
     inline_record_labels;
-  }: TypeDecl.constructor))
+  }: TypeDecl.constructor)
 
 let label_decl_of_json = fun json ->
   let* fields = get_object json in
@@ -1036,12 +1036,12 @@ let label_decl_of_json = fun json ->
     | other -> error_expected "bool" other
   in
   let* mutable_ = mutable_ in
-  Ok (({
+  Ok ({
     TypeDecl.label_id = LabelId.of_int label_id;
     name;
     field_type;
     mutable_;
-  }: TypeDecl.label))
+  }: TypeDecl.label)
 
 let poly_variant_tag_of_json = fun json ->
   let* fields = get_object json in
@@ -1055,7 +1055,7 @@ let poly_variant_tag_of_json = fun json ->
     | None -> Ok None
   in
   let* payload_type = payload_type in
-  Ok (({ TypeDecl.name = name; payload_type }: TypeDecl.poly_variant_tag))
+  Ok ({ TypeDecl.name = name; payload_type }: TypeDecl.poly_variant_tag)
 
 let manifest_of_json = fun json ->
   let* fields = get_object json in

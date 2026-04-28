@@ -198,7 +198,7 @@ let berth_decode =
       | None -> ignore (De.read reader De.skip_any))
     ~finish:(fun builder ->
       match (builder.island, builder.berth) with
-      | (Some island, Some berth) -> (({ island; berth }: berth))
+      | (Some island, Some berth) -> ({ island; berth }: berth)
       | _ -> De.missing_field ())
 
 let berth_encode =
@@ -222,7 +222,7 @@ let stop_decode =
       | None -> ignore (De.read reader De.skip_any))
     ~finish:(fun builder ->
       match (builder.island, builder.supplies) with
-      | (Some island, Some supplies) -> (({ island; supplies }: stop))
+      | (Some island, Some supplies) -> ({ island; supplies }: stop)
       | _ -> De.missing_field ())
 
 let stop_encode =
@@ -308,7 +308,7 @@ let manifest_decode =
             | Some nickname -> nickname
             | None -> None
           in
-          (({
+          ({
             ship;
             emergency;
             crew_count;
@@ -323,7 +323,7 @@ let manifest_decode =
             scores;
             stops;
             mirrors;
-          }: manifest))
+          }: manifest)
       | _ -> De.missing_field ())
 
 let manifest_encode =
@@ -419,7 +419,7 @@ let build_fixture = fun
     nickname = Some (repeat "black-leg-" string_repeat);
     rank = Captain;
     marker = ();
-    home = (({ island = repeat "water-seven-" string_repeat; berth = 7 }: berth));
+    home = ({ island = repeat "water-seven-" string_repeat; berth = 7 }: berth);
     tags = tags_of_count tag_count;
     scores = scores_of_count score_count;
     stops = stops_vec_of_count stop_count "log";

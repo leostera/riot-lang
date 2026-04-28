@@ -273,14 +273,14 @@ let group_diagnostics: t list -> grouped list = fun diags ->
         | (fix, _) :: _ -> fix
       in
       let spans = List.map spans ~fn:(fun (_, span) -> span) in
-      (({
+      ({
         severity;
         message;
         spans;
         rule_id;
         suggestion;
         fix;
-      }: grouped)))
+      }: grouped))
   |> Iter.Iterator.to_list
 
 let grouped_to_formatted_output = fun ~file ~source grouped ->

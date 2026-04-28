@@ -30,7 +30,6 @@ type parse_error =
   | ReadFailed of IO.error
   (** Reader returned an IO error while reading frame bytes *)
   | FrameParseFailed of Parser.error
-
 val parse_error_to_string: parse_error -> string
 
 (** Parse result *)

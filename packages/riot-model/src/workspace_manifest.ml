@@ -604,8 +604,11 @@ std = { version = 123 }
       |> Result.expect ~msg:"expected workspace toml to parse"
     in
     match of_toml toml with
-    | Error (DependencyError (DependencyFieldMustBeString { dependency_name = "std"; field = Version })) ->
-        Ok ()
+    | Error (
+      DependencyError (
+        DependencyFieldMustBeString { dependency_name = "std"; field = Version }
+      )
+    ) -> Ok ()
     | Error err -> Error ("expected non-string version error, got: " ^ error_message err)
     | Ok _ ->
         Error "expected workspace manifest parse to fail for non-string dependency version" [@test]

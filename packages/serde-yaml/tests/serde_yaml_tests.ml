@@ -210,7 +210,7 @@ let berth_decode =
       | None -> ignore (De.read reader De.skip_any))
     ~finish:(fun builder ->
       match (builder.island, builder.berth) with
-      | (Some island, Some berth) -> (({ island; berth }: berth))
+      | (Some island, Some berth) -> ({ island; berth }: berth)
       | _ -> De.missing_field ())
 
 let berth_encode =
@@ -234,7 +234,7 @@ let stop_decode =
       | None -> ignore (De.read reader De.skip_any))
     ~finish:(fun builder ->
       match (builder.island, builder.supplies) with
-      | (Some island, Some supplies) -> (({ island; supplies }: stop))
+      | (Some island, Some supplies) -> ({ island; supplies }: stop)
       | _ -> De.missing_field ())
 
 let stop_encode =
@@ -324,7 +324,7 @@ let manifest_decode =
             | Some nickname -> nickname
             | None -> None
           in
-          (({
+          ({
             ship;
             emergency;
             crew_count;
@@ -340,7 +340,7 @@ let manifest_decode =
             scores;
             stops;
             mirrors;
-          }: manifest))
+          }: manifest)
       | _ -> De.missing_field ())
 
 let manifest_encode =
@@ -417,16 +417,16 @@ let fixture: manifest = {
   rank = Captain;
   companion = Reindeer "Chopper";
   marker = ();
-  home = (({ island = "Water 7"; berth = 3 }: berth));
+  home = ({ island = "Water 7"; berth = 3 }: berth);
   tags = Vector.from_list [ "straw-hat"; "shipwright" ];
   scores = [|7; 9|];
   stops = Vector.from_list
     [
-      (({ island = "Water 7"; supplies = 25 }: stop));
-      (({ island = "Fish-Man Island"; supplies = 40 }: stop));
+      ({ island = "Water 7"; supplies = 25 }: stop);
+      ({ island = "Fish-Man Island"; supplies = 40 }: stop);
     ];
   mirrors = [|
-    (({ island = "Dressrosa"; supplies = 12 }: stop));
+    ({ island = "Dressrosa"; supplies = 12 }: stop);
   |];
 }
 

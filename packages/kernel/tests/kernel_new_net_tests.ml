@@ -692,8 +692,9 @@ let test_tcp_listener_accept_after_close_reports_bad_file_descriptor = fun _ctx 
   in
   let* () = lift_tcp_listener (Kernel.Net.TcpListener.close listener) in
   match Kernel.Net.TcpListener.accept listener with
-  | Kernel.Result.Error (Kernel.Net.TcpListener.System Kernel.SystemError.BadFileDescriptor) ->
-      Ok ()
+  | Kernel.Result.Error (
+    Kernel.Net.TcpListener.System Kernel.SystemError.BadFileDescriptor
+  ) -> Ok ()
   | Kernel.Result.Error error -> Error (string_of_tcp_listener_error error)
   | Kernel.Result.Ok (stream, _) ->
       close_stream stream;
@@ -1674,8 +1675,12 @@ let test_udp_send_and_recv_after_close_report_bad_file_descriptor = fun _ctx ->
             Kernel.Net.UdpSocket.recv server buffer
           ) with
           | (
-            Kernel.Result.Error (Kernel.Net.UdpSocket.System Kernel.SystemError.BadFileDescriptor),
-            Kernel.Result.Error (Kernel.Net.UdpSocket.System Kernel.SystemError.BadFileDescriptor)
+            Kernel.Result.Error (
+              Kernel.Net.UdpSocket.System Kernel.SystemError.BadFileDescriptor
+            ),
+            Kernel.Result.Error (
+              Kernel.Net.UdpSocket.System Kernel.SystemError.BadFileDescriptor
+            )
           ) -> Ok ()
           | (Kernel.Result.Error send_error, Kernel.Result.Error recv_error) ->
               Error (Kernel.String.concat
@@ -1751,8 +1756,9 @@ let test_tcp_listener_close_twice_reports_bad_file_descriptor = fun _ctx ->
   in
   let* () = lift_tcp_listener (Kernel.Net.TcpListener.close listener) in
   match Kernel.Net.TcpListener.close listener with
-  | Kernel.Result.Error (Kernel.Net.TcpListener.System Kernel.SystemError.BadFileDescriptor) ->
-      Ok ()
+  | Kernel.Result.Error (
+    Kernel.Net.TcpListener.System Kernel.SystemError.BadFileDescriptor
+  ) -> Ok ()
   | Kernel.Result.Error error -> Error (string_of_tcp_listener_error error)
   | Kernel.Result.Ok () ->
       Error "expected closing the same tcp listener twice to report bad_file_descriptor"
@@ -1804,8 +1810,9 @@ let test_tcp_stream_write_rejects_invalid_slices = fun _ctx ->
   with_tcp_pair
     (fun ~poll:_ ~listener:_ ~listener_addr:_ ~client ~server:_ ~peer:_ ->
       match Kernel.Net.TcpStream.write client ~pos:2 ~len:3 (Kernel.Bytes.create ~size:4) with
-      | Kernel.Result.Error (Kernel.Net.TcpStream.InvalidSlice { pos = 2; len = 3; buffer_len = 4 }) ->
-          Ok ()
+      | Kernel.Result.Error (
+        Kernel.Net.TcpStream.InvalidSlice { pos = 2; len = 3; buffer_len = 4 }
+      ) -> Ok ()
       | Kernel.Result.Error error -> Error (string_of_tcp_stream_error error)
       | Kernel.Result.Ok _ -> Error "expected TcpStream.write to reject invalid slices")
 
@@ -1814,8 +1821,9 @@ let test_tcp_stream_close_twice_reports_bad_file_descriptor = fun _ctx ->
     (fun ~poll:_ ~listener:_ ~listener_addr:_ ~client ~server:_ ~peer:_ ->
       let* () = lift_tcp_stream (Kernel.Net.TcpStream.close client) in
       match Kernel.Net.TcpStream.close client with
-      | Kernel.Result.Error (Kernel.Net.TcpStream.System Kernel.SystemError.BadFileDescriptor) ->
-          Ok ()
+      | Kernel.Result.Error (
+        Kernel.Net.TcpStream.System Kernel.SystemError.BadFileDescriptor
+      ) -> Ok ()
       | Kernel.Result.Error error -> Error (string_of_tcp_stream_error error)
       | Kernel.Result.Ok () ->
           Error "expected closing the same tcp stream twice to report bad_file_descriptor")
@@ -1825,8 +1833,9 @@ let test_finish_connect_after_close_reports_bad_file_descriptor = fun _ctx ->
     (fun ~poll:_ ~listener:_ ~listener_addr:_ ~client ~server:_ ~peer:_ ->
       let* () = lift_tcp_stream (Kernel.Net.TcpStream.close client) in
       match Kernel.Net.TcpStream.finish_connect client with
-      | Kernel.Result.Error (Kernel.Net.TcpStream.System Kernel.SystemError.BadFileDescriptor) ->
-          Ok ()
+      | Kernel.Result.Error (
+        Kernel.Net.TcpStream.System Kernel.SystemError.BadFileDescriptor
+      ) -> Ok ()
       | Kernel.Result.Error error -> Error (string_of_tcp_stream_error error)
       | Kernel.Result.Ok () ->
           Error "expected finish_connect after close to report bad_file_descriptor")
@@ -1837,8 +1846,12 @@ let test_local_and_peer_addr_after_close_report_bad_file_descriptor = fun _ctx -
       let* () = lift_tcp_stream (Kernel.Net.TcpStream.close client) in
       match (Kernel.Net.TcpStream.local_addr client, Kernel.Net.TcpStream.peer_addr client) with
       | (
-        Kernel.Result.Error (Kernel.Net.TcpStream.System Kernel.SystemError.BadFileDescriptor),
-        Kernel.Result.Error (Kernel.Net.TcpStream.System Kernel.SystemError.BadFileDescriptor)
+        Kernel.Result.Error (
+          Kernel.Net.TcpStream.System Kernel.SystemError.BadFileDescriptor
+        ),
+        Kernel.Result.Error (
+          Kernel.Net.TcpStream.System Kernel.SystemError.BadFileDescriptor
+        )
       ) -> Ok ()
       | (Kernel.Result.Error local_error, Kernel.Result.Error peer_error) ->
           Error (Kernel.String.concat
@@ -1884,7 +1897,9 @@ let test_udp_send_and_recv_reject_invalid_slices = fun _ctx ->
         Kernel.Net.UdpSocket.recv server ~pos:(-1) (Kernel.Bytes.create ~size:4)
       ) with
       | (
-        Kernel.Result.Error (Kernel.Net.UdpSocket.InvalidSlice { pos = 2; len = 3; buffer_len = 4 }),
+        Kernel.Result.Error (
+          Kernel.Net.UdpSocket.InvalidSlice { pos = 2; len = 3; buffer_len = 4 }
+        ),
         Kernel.Result.Error (Kernel.Net.UdpSocket.InvalidSlice { pos = (-1); _ })
       ) -> Ok ()
       | (Kernel.Result.Error send_error, Kernel.Result.Error recv_error) ->
@@ -1905,8 +1920,9 @@ let test_udp_connect_after_close_reports_bad_file_descriptor = fun _ctx ->
     (fun ~poll:_ ~server ~server_addr:_ ~client:_ ~client_addr ->
       let* () = lift_udp (Kernel.Net.UdpSocket.close server) in
       match Kernel.Net.UdpSocket.connect server client_addr with
-      | Kernel.Result.Error (Kernel.Net.UdpSocket.System Kernel.SystemError.BadFileDescriptor) ->
-          Ok ()
+      | Kernel.Result.Error (
+        Kernel.Net.UdpSocket.System Kernel.SystemError.BadFileDescriptor
+      ) -> Ok ()
       | Kernel.Result.Error error -> Error (string_of_udp_error error)
       | Kernel.Result.Ok () ->
           Error "expected UdpSocket.connect after close to report bad_file_descriptor")

@@ -751,10 +751,12 @@ and structure_item_symbols = fun text items ->
     ~fn:(fun item ->
       match Syn.Ast.StructureItem.view item with
       | Syn.Ast.StructureItem.Let declaration -> let_declaration_symbols text declaration
-      | Syn.Ast.StructureItem.Type (Syn.Ast.TypeDeclarationItem declaration) ->
-          type_declaration_symbols text declaration
-      | Syn.Ast.StructureItem.Type (Syn.Ast.TypeExtensionItem declaration) ->
-          type_extension_symbols text declaration
+      | Syn.Ast.StructureItem.Type (
+        Syn.Ast.TypeDeclarationItem declaration
+      ) -> type_declaration_symbols text declaration
+      | Syn.Ast.StructureItem.Type (
+        Syn.Ast.TypeExtensionItem declaration
+      ) -> type_extension_symbols text declaration
       | Syn.Ast.StructureItem.Module declaration -> module_declaration_symbols text declaration
       | Syn.Ast.StructureItem.ModuleType declaration ->
           module_type_declaration_symbols text declaration
@@ -775,10 +777,12 @@ and signature_item_symbols = fun text items ->
     ~fn:(fun item ->
       match Syn.Ast.SignatureItem.view item with
       | Syn.Ast.SignatureItem.Value declaration -> value_declaration_symbols text declaration
-      | Syn.Ast.SignatureItem.Type (Syn.Ast.TypeDeclarationItem declaration) ->
-          type_declaration_symbols text declaration
-      | Syn.Ast.SignatureItem.Type (Syn.Ast.TypeExtensionItem declaration) ->
-          type_extension_symbols text declaration
+      | Syn.Ast.SignatureItem.Type (
+        Syn.Ast.TypeDeclarationItem declaration
+      ) -> type_declaration_symbols text declaration
+      | Syn.Ast.SignatureItem.Type (
+        Syn.Ast.TypeExtensionItem declaration
+      ) -> type_extension_symbols text declaration
       | Syn.Ast.SignatureItem.Module declaration -> module_declaration_symbols text declaration
       | Syn.Ast.SignatureItem.ModuleType declaration ->
           module_type_declaration_symbols text declaration

@@ -70,10 +70,8 @@ open Global
 
 (** The type for UUIDs (128 bits / 16 bytes). *)
 type t
-
 type error =
   | InvalidUuid of string
-
 (** {1 Creation} *)
 (**
    Generates a random UUID v4.

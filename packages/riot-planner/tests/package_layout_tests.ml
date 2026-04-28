@@ -115,13 +115,15 @@ let assert_target_cannot_use_internal_library_module_directly = fun
   let () = add_dep root ~depends_on:child in
   let () = add_dep target ~depends_on:child in
   match validate_layout ~package ~graph ~analyzed:[ (target, target_source); ] with
-  | Error (Riot_planner.Planning_error.TargetDependsOnInternalLibraryModule {
-    target_name = actual_target_name;
-    source;
-    requested_module;
-    internal_module;
-    public_module = actual_public_module
-  }) ->
+  | Error (
+    Riot_planner.Planning_error.TargetDependsOnInternalLibraryModule {
+      target_name = actual_target_name;
+      source;
+      requested_module;
+      internal_module;
+      public_module = actual_public_module
+    }
+  ) ->
       Test.assert_equal ~expected:target_name ~actual:actual_target_name;
       Test.assert_equal ~expected:(Path.v target_source_path) ~actual:source;
       Test.assert_equal ~expected:"A" ~actual:requested_module;
@@ -150,13 +152,15 @@ let assert_target_cannot_use_namespaced_internal_library_module = fun
   let () = add_dep root ~depends_on:child in
   let () = add_dep target ~depends_on:child in
   match validate_layout ~package ~graph ~analyzed:[ (target, target_source); ] with
-  | Error (Riot_planner.Planning_error.TargetDependsOnNamespacedInternalLibraryModule {
-    target_name = actual_target_name;
-    source;
-    requested_module;
-    internal_module;
-    public_module = actual_public_module
-  }) ->
+  | Error (
+    Riot_planner.Planning_error.TargetDependsOnNamespacedInternalLibraryModule {
+      target_name = actual_target_name;
+      source;
+      requested_module;
+      internal_module;
+      public_module = actual_public_module
+    }
+  ) ->
       Test.assert_equal ~expected:target_name ~actual:actual_target_name;
       Test.assert_equal ~expected:(Path.v target_source_path) ~actual:source;
       Test.assert_equal ~expected:(public_module ^ "__A") ~actual:requested_module;
@@ -277,13 +281,15 @@ let test_same_package_binary_cannot_use_internal_library_module_directly = fun _
   let () = add_dep root ~depends_on:a in
   let () = add_dep main ~depends_on:a in
   match validate_layout ~package ~graph ~analyzed:[ (main, "let () = ignore A.value\n"); ] with
-  | Error (Riot_planner.Planning_error.TargetDependsOnInternalLibraryModule {
-    target_name;
-    source;
-    requested_module;
-    internal_module;
-    public_module
-  }) ->
+  | Error (
+    Riot_planner.Planning_error.TargetDependsOnInternalLibraryModule {
+      target_name;
+      source;
+      requested_module;
+      internal_module;
+      public_module
+    }
+  ) ->
       Test.assert_equal ~expected:"berrybot" ~actual:target_name;
       Test.assert_equal ~expected:(Path.v "src/main.ml") ~actual:source;
       Test.assert_equal ~expected:"A" ~actual:requested_module;
@@ -310,13 +316,15 @@ let test_same_package_binary_cannot_use_namespaced_internal_library_module = fun
   let () = add_dep root ~depends_on:a in
   let () = add_dep main ~depends_on:a in
   match validate_layout ~package ~graph ~analyzed:[ (main, "let () = ignore Berrybot__A.value\n"); ] with
-  | Error (Riot_planner.Planning_error.TargetDependsOnNamespacedInternalLibraryModule {
-    target_name;
-    source;
-    requested_module;
-    internal_module;
-    public_module
-  }) ->
+  | Error (
+    Riot_planner.Planning_error.TargetDependsOnNamespacedInternalLibraryModule {
+      target_name;
+      source;
+      requested_module;
+      internal_module;
+      public_module
+    }
+  ) ->
       Test.assert_equal ~expected:"berrybot" ~actual:target_name;
       Test.assert_equal ~expected:(Path.v "src/main.ml") ~actual:source;
       Test.assert_equal ~expected:"Berrybot__A" ~actual:requested_module;
@@ -348,13 +356,15 @@ let test_binary_private_helper_cannot_use_internal_library_module_directly = fun
     ~package
     ~graph
     ~analyzed:[ (helper, "let value = A.value\n"); (main, "let () = ignore B.value\n"); ] with
-  | Error (Riot_planner.Planning_error.TargetDependsOnInternalLibraryModule {
-    target_name;
-    source;
-    requested_module;
-    internal_module;
-    public_module
-  }) ->
+  | Error (
+    Riot_planner.Planning_error.TargetDependsOnInternalLibraryModule {
+      target_name;
+      source;
+      requested_module;
+      internal_module;
+      public_module
+    }
+  ) ->
       Test.assert_equal ~expected:"berrybot" ~actual:target_name;
       Test.assert_equal ~expected:(Path.v "src/b.ml") ~actual:source;
       Test.assert_equal ~expected:"A" ~actual:requested_module;
@@ -386,13 +396,15 @@ let test_binary_private_helper_cannot_use_namespaced_internal_library_module = f
     ~package
     ~graph
     ~analyzed:[ (helper, "let value = Berrybot__A.value\n"); (main, "let () = ignore B.value\n"); ] with
-  | Error (Riot_planner.Planning_error.TargetDependsOnNamespacedInternalLibraryModule {
-    target_name;
-    source;
-    requested_module;
-    internal_module;
-    public_module
-  }) ->
+  | Error (
+    Riot_planner.Planning_error.TargetDependsOnNamespacedInternalLibraryModule {
+      target_name;
+      source;
+      requested_module;
+      internal_module;
+      public_module
+    }
+  ) ->
       Test.assert_equal ~expected:"berrybot" ~actual:target_name;
       Test.assert_equal ~expected:(Path.v "src/b.ml") ~actual:source;
       Test.assert_equal ~expected:"Berrybot__A" ~actual:requested_module;
@@ -514,14 +526,16 @@ let test_same_package_binary_cannot_use_other_binary_root_directly = fun _ctx ->
       ~depends_on:(add_ml_node graph ~namespace:(public_namespace package) ~path:"src/a.ml")
   in
   match validate_layout ~package ~graph ~analyzed:[ (main, "let () = ignore Admin.run\n"); ] with
-  | Error (Riot_planner.Planning_error.TargetDependsOnOtherTargetRoot {
-    target_name;
-    source;
-    requested_module;
-    other_target_name;
-    other_target_module;
-    public_module
-  }) ->
+  | Error (
+    Riot_planner.Planning_error.TargetDependsOnOtherTargetRoot {
+      target_name;
+      source;
+      requested_module;
+      other_target_name;
+      other_target_module;
+      public_module
+    }
+  ) ->
       Test.assert_equal ~expected:"berrybot" ~actual:target_name;
       Test.assert_equal ~expected:(Path.v "src/main.ml") ~actual:source;
       Test.assert_equal ~expected:"Admin" ~actual:requested_module;
@@ -551,14 +565,16 @@ let test_same_package_binary_cannot_use_namespaced_other_binary_root = fun _ctx 
     ~package
     ~graph
     ~analyzed:[ (main, "let () = ignore Berrybot__Admin.run\n"); ] with
-  | Error (Riot_planner.Planning_error.TargetDependsOnOtherTargetRoot {
-    target_name;
-    source;
-    requested_module;
-    other_target_name;
-    other_target_module;
-    public_module
-  }) ->
+  | Error (
+    Riot_planner.Planning_error.TargetDependsOnOtherTargetRoot {
+      target_name;
+      source;
+      requested_module;
+      other_target_name;
+      other_target_module;
+      public_module
+    }
+  ) ->
       Test.assert_equal ~expected:"berrybot" ~actual:target_name;
       Test.assert_equal ~expected:(Path.v "src/main.ml") ~actual:source;
       Test.assert_equal ~expected:"Berrybot__Admin" ~actual:requested_module;
@@ -590,14 +606,16 @@ let test_binary_private_helper_cannot_use_other_binary_root = fun _ctx ->
     ~package
     ~graph
     ~analyzed:[ (helper, "let value = Admin.run\n"); (main, "let () = ignore B.value\n"); ] with
-  | Error (Riot_planner.Planning_error.TargetDependsOnOtherTargetRoot {
-    target_name;
-    source;
-    requested_module;
-    other_target_name;
-    other_target_module;
-    public_module
-  }) ->
+  | Error (
+    Riot_planner.Planning_error.TargetDependsOnOtherTargetRoot {
+      target_name;
+      source;
+      requested_module;
+      other_target_name;
+      other_target_module;
+      public_module
+    }
+  ) ->
       Test.assert_equal ~expected:"berrybot" ~actual:target_name;
       Test.assert_equal ~expected:(Path.v "src/b.ml") ~actual:source;
       Test.assert_equal ~expected:"Admin" ~actual:requested_module;

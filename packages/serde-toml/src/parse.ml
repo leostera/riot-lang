@@ -505,27 +505,26 @@ let find_assignment_from = fun text ~start ~stop ->
         else if Char.equal current '"' then
           in_string := false;
         loop (index + 1)
-      ) else
-        (
-          match current with
-          | '"' ->
-              in_string := true;
-              loop (index + 1)
-          | '[' ->
-              bracket_depth := !bracket_depth + 1;
-              loop (index + 1)
-          | ']' ->
-              bracket_depth := !bracket_depth - 1;
-              loop (index + 1)
-          | '{' ->
-              brace_depth := !brace_depth + 1;
-              loop (index + 1)
-          | '}' ->
-              brace_depth := !brace_depth - 1;
-              loop (index + 1)
-          | '=' when Int.equal !bracket_depth 0 && Int.equal !brace_depth 0 -> Some index
-          | _ -> loop (index + 1)
-        )
+      ) else (
+        match current with
+        | '"' ->
+            in_string := true;
+            loop (index + 1)
+        | '[' ->
+            bracket_depth := !bracket_depth + 1;
+            loop (index + 1)
+        | ']' ->
+            bracket_depth := !bracket_depth - 1;
+            loop (index + 1)
+        | '{' ->
+            brace_depth := !brace_depth + 1;
+            loop (index + 1)
+        | '}' ->
+            brace_depth := !brace_depth - 1;
+            loop (index + 1)
+        | '=' when Int.equal !bracket_depth 0 && Int.equal !brace_depth 0 -> Some index
+        | _ -> loop (index + 1)
+      )
   in
   loop start
 

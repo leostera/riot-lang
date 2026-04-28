@@ -41,16 +41,13 @@ let websocket_request = fun
         List.fold_left
           headers
           ~init:req
-          ~fn:(fun req ((name, value)) ->
+          ~fn:(fun req (name, value) ->
             Net.Http.Request.with_header req name value)
   in
   Suri.Request.of_http ~body:"" http_req
 
 let http_request = fun
-  ?(method_ = Net.Http.Method.Get)
-  ?(version = Net.Http.Version.Http11)
-  ?(headers = [])
-  () ->
+  ?(method_ = Net.Http.Method.Get) ?(version = Net.Http.Version.Http11) ?(headers = []) () ->
   let uri =
     Net.Uri.of_string "/"
     |> Result.unwrap
@@ -62,7 +59,7 @@ let http_request = fun
       List.fold_left
         headers
         ~init:req
-        ~fn:(fun req ((name, value)) ->
+        ~fn:(fun req (name, value) ->
           Net.Http.Request.add_header req name value)
 
 let config_for_test = fun

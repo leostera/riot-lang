@@ -622,7 +622,7 @@ let matches_mount = Security.matches_mount
 let directory_listing_html = fun ~request_path ~path ~entries ->
   let entries =
     List.map
-      ~fn:(fun ((name, is_dir, size, modified)) ->
+      ~fn:(fun (name, is_dir, size, modified) ->
         Directory.{
           name;
           is_dir;

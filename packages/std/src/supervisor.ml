@@ -390,27 +390,26 @@ let handle_delete_child = fun state reply_to id ->
         result = Error "Cannot delete child from SimpleOneForOne supervisor";
       });
     Ok ()
-  ) else
-    (
-      let children = Cell.get state.children in
-      let child_opt = List.find children ~fn:(fun c -> c.spec.id = id) in
-      match child_opt with
-      | None ->
-          send
-            reply_to
-            (Supervisor_delete_child_reply { result = Error ("Child not found: " ^ id) });
-          Ok ()
-      | Some child when Option.is_some child.pid ->
-          send
-            reply_to
-            (Supervisor_delete_child_reply { result = Error ("Child is still running: " ^ id) });
-          Ok ()
-      | Some _child ->
-          let updated = List.filter children ~fn:(fun c -> c.spec.id != id) in
-          Cell.set state.children updated;
-          send reply_to (Supervisor_delete_child_reply { result = Ok () });
-          Ok ()
-    )
+  ) else (
+    let children = Cell.get state.children in
+    let child_opt = List.find children ~fn:(fun c -> c.spec.id = id) in
+    match child_opt with
+    | None ->
+        send
+          reply_to
+          (Supervisor_delete_child_reply { result = Error ("Child not found: " ^ id) });
+        Ok ()
+    | Some child when Option.is_some child.pid ->
+        send
+          reply_to
+          (Supervisor_delete_child_reply { result = Error ("Child is still running: " ^ id) });
+        Ok ()
+    | Some _child ->
+        let updated = List.filter children ~fn:(fun c -> c.spec.id != id) in
+        Cell.set state.children updated;
+        send reply_to (Supervisor_delete_child_reply { result = Ok () });
+        Ok ()
+  )
 
 let handle_restart_child = fun state reply_to id ->
   if state.strategy = SimpleOneForOne then (
@@ -420,45 +419,42 @@ let handle_restart_child = fun state reply_to id ->
         result = Error "Cannot restart child in SimpleOneForOne supervisor";
       });
     Ok ()
-  ) else
-    (
-      let children = Cell.get state.children in
-      let child_opt = List.find children ~fn:(fun c -> c.spec.id = id) in
-      match child_opt with
-      | None ->
-          send
-            reply_to
-            (Supervisor_restart_child_reply { result = Error ("Child not found: " ^ id) });
-          Ok ()
-      | Some child when Option.is_some child.pid ->
-          send
-            reply_to
-            (Supervisor_restart_child_reply { result = Error ("Child already running: " ^ id) });
-          Ok ()
-      | Some child -> (
-          match start_child child.spec with
-          | Some (pid, monitor) ->
-              let updated =
-                List.map
-                  children
-                  ~fn:(fun (c: child_state) ->
-                    if c.spec.id = id then
-                      { c with pid = Some pid; monitor = Some monitor }
-                    else
-                      c)
-              in
-              Cell.set state.children updated;
-              send reply_to (Supervisor_restart_child_reply { result = Ok pid });
-              Ok ()
-          | None ->
-              send
-                reply_to
-                (Supervisor_restart_child_reply {
-                  result = Error ("Failed to start child: " ^ id);
-                });
-              Ok ()
-        )
-    )
+  ) else (
+    let children = Cell.get state.children in
+    let child_opt = List.find children ~fn:(fun c -> c.spec.id = id) in
+    match child_opt with
+    | None ->
+        send
+          reply_to
+          (Supervisor_restart_child_reply { result = Error ("Child not found: " ^ id) });
+        Ok ()
+    | Some child when Option.is_some child.pid ->
+        send
+          reply_to
+          (Supervisor_restart_child_reply { result = Error ("Child already running: " ^ id) });
+        Ok ()
+    | Some child -> (
+        match start_child child.spec with
+        | Some (pid, monitor) ->
+            let updated =
+              List.map
+                children
+                ~fn:(fun (c: child_state) ->
+                  if c.spec.id = id then
+                    { c with pid = Some pid; monitor = Some monitor }
+                  else
+                    c)
+            in
+            Cell.set state.children updated;
+            send reply_to (Supervisor_restart_child_reply { result = Ok pid });
+            Ok ()
+        | None ->
+            send
+              reply_to
+              (Supervisor_restart_child_reply { result = Error ("Failed to start child: " ^ id) });
+            Ok ()
+      )
+  )
 
 let handle_terminate_child = fun state reply_to id ->
   if state.strategy = SimpleOneForOne then (
@@ -468,36 +464,35 @@ let handle_terminate_child = fun state reply_to id ->
         result = Error "Cannot terminate child in SimpleOneForOne supervisor";
       });
     Ok ()
-  ) else
-    (
-      let children = Cell.get state.children in
-      let child_opt = List.find children ~fn:(fun c -> c.spec.id = id) in
-      match child_opt with
-      | None ->
-          send
-            reply_to
-            (Supervisor_terminate_child_reply { result = Error ("Child not found: " ^ id) });
-          Ok ()
-      | Some child ->
-          terminate_child_process child;
-          (
-            match child.monitor with
-            | Some mon -> Actor.demonitor mon
-            | None -> ()
-          );
-          let updated =
-            List.map
-              children
-              ~fn:(fun (c: child_state) ->
-                if c.spec.id = id then
-                  { c with pid = None; monitor = None }
-                else
-                  c)
-          in
-          Cell.set state.children updated;
-          send reply_to (Supervisor_terminate_child_reply { result = Ok () });
-          Ok ()
-    )
+  ) else (
+    let children = Cell.get state.children in
+    let child_opt = List.find children ~fn:(fun c -> c.spec.id = id) in
+    match child_opt with
+    | None ->
+        send
+          reply_to
+          (Supervisor_terminate_child_reply { result = Error ("Child not found: " ^ id) });
+        Ok ()
+    | Some child ->
+        terminate_child_process child;
+        (
+          match child.monitor with
+          | Some mon -> Actor.demonitor mon
+          | None -> ()
+        );
+        let updated =
+          List.map
+            children
+            ~fn:(fun (c: child_state) ->
+              if c.spec.id = id then
+                { c with pid = None; monitor = None }
+              else
+                c)
+        in
+        Cell.set state.children updated;
+        send reply_to (Supervisor_terminate_child_reply { result = Ok () });
+        Ok ()
+  )
 
 let handle_stop = fun state reply_to ->
   (* Stop all children in reverse order *)

@@ -187,7 +187,7 @@ let sample_decode =
             | Some nickname -> nickname
             | None -> None
           in
-          (({
+          ({
             name;
             age;
             active;
@@ -198,7 +198,7 @@ let sample_decode =
             scores;
             nickname;
             status;
-          }: sample))
+          }: sample)
       | _ -> De.missing_field ())
 
 let sample_encode =
@@ -281,7 +281,7 @@ let expect_equal = fun ~expected ~actual ~message ->
   else
     Error message
 
-let sample_value: sample = (({
+let sample_value: sample = ({
   name = "Monkey D. Luffy";
   age = 19;
   active = true;
@@ -292,9 +292,9 @@ let sample_value: sample = (({
   scores = [|1; 2|];
   nickname = None;
   status = Draft;
-}: sample))
+}: sample)
 
-let sample_value_with_nickname: sample = (({
+let sample_value_with_nickname: sample = ({
   name = "Monkey D. Luffy";
   age = 19;
   active = true;
@@ -305,7 +305,7 @@ let sample_value_with_nickname: sample = (({
   scores = [|1; 2|];
   nickname = Some "strawhat";
   status = Draft;
-}: sample))
+}: sample)
 
 let encoded_sample_without_nickname =
   "name=Monkey+D.+Luffy&age=19&active=true&small=12&big=345&ratio=1.25&tags=riot&tags=serde+ml&scores=1&scores=2&status=Draft"

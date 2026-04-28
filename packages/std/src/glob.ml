@@ -35,7 +35,7 @@ type glob_error =
       offset: int option;
     }
 
-let make_parse_error = fun input ?offset message -> Error (({ input; message; offset }: parse_error))
+let make_parse_error = fun input ?offset message -> Error ({ input; message; offset }: parse_error)
 
 let flush_literal = fun literal acc ->
   match literal with

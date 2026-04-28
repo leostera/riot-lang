@@ -41,16 +41,13 @@ let websocket_request = fun
         List.fold_left
           headers
           ~init:req
-          ~fn:(fun req ((name, value)) ->
+          ~fn:(fun req (name, value) ->
             Net.Http.Request.with_header req name value)
   in
   Suri.Request.of_http ~body:"" http_req
 
 let http_request = fun
-  ?(method_ = Net.Http.Method.Get)
-  ?(version = Net.Http.Version.Http11)
-  ?(headers = [])
-  () ->
+  ?(method_ = Net.Http.Method.Get) ?(version = Net.Http.Version.Http11) ?(headers = []) () ->
   let uri =
     Net.Uri.of_string "/"
     |> Result.unwrap
@@ -62,7 +59,7 @@ let http_request = fun
       List.fold_left
         headers
         ~init:req
-        ~fn:(fun req ((name, value)) ->
+        ~fn:(fun req (name, value) ->
           Net.Http.Request.add_header req name value)
 
 let config_for_test = fun
@@ -149,8 +146,9 @@ let test_session_rejects_short_secret = fun _ctx ->
 
 let test_session_rejects_invalid_cookie_name = fun _ctx ->
   match Session.middleware ~cookie_name:"bad name" ~secret:"0123456789abcdef0123456789abcdef" () with
-  | Error (Session.InvalidCookieName (Session.InvalidCookieNameChar { char = ' '; index = 3 })) ->
-      Ok ()
+  | Error (Session.InvalidCookieName (
+    Session.InvalidCookieNameChar { char = ' '; index = 3 }
+  )) -> Ok ()
   | Ok _ -> Error "expected invalid session cookie name to fail"
   | Error error -> Error (Session.setup_error_to_string error)
 

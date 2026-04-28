@@ -534,9 +534,7 @@ let serve_runtime ?(prefix = "/assets/liveview.js") () = fun ~conn ~next ->
 (** Create a LiveView mount handler *)
 
 let mount = fun
-  (type s m)
-  (module C : Component with type state = s and type msg = m)
-  (conn: Middleware.Conn.t) ->
+  (type s m) (module C : Component with type state = s and type msg = m) (conn: Middleware.Conn.t) ->
   let module M = MountHandler (C) in
   let opts = Channel.Handler.{ do_upgrade = true } in
   (opts, Channel.Handler.make (module M) conn)
@@ -632,13 +630,12 @@ let live = fun (type s m) (module C : Component with type state = s and type msg
       Log.info ("LiveView: Mounting component at " ^ ws_path);
       let (opts, handler) = mount (module C) conn in
       Middleware.Conn.upgrade_websocket opts handler conn
-    ) else
-      begin
-        (* Not a WebSocket upgrade - return error *)
-        conn
-        |> Middleware.Conn.with_status Net.Http.Status.BadRequest
-        |> Middleware.Conn.with_body "This endpoint only accepts WebSocket connections"
-        |> Middleware.Conn.send
-      end
+    ) else (
+      (* Not a WebSocket upgrade - return error *)
+      conn
+      |> Middleware.Conn.with_status Net.Http.Status.BadRequest
+      |> Middleware.Conn.with_body "This endpoint only accepts WebSocket connections"
+      |> Middleware.Conn.send
+    )
   in
   Middleware.Router.any ws_path handler

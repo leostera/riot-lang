@@ -272,7 +272,7 @@ let primitive_decode =
         Some alias,
         Some mode,
         Some unit_value
-      ) -> (({
+      ) -> ({
         ready;
         count;
         small;
@@ -282,7 +282,7 @@ let primitive_decode =
         alias;
         mode;
         unit_value;
-      }: primitive_record))
+      }: primitive_record)
       | _ -> De.missing_field ())
 
 let primitive_encode =
@@ -334,14 +334,14 @@ let batch_decode =
         builder.status
       ) with
       | (Some batch_id, Some name, Some items, Some mirrors, Some featured, Some status) ->
-          (({
+          ({
             batch_id;
             name;
             items;
             mirrors;
             featured;
             status;
-          }: batch))
+          }: batch)
       | _ -> De.missing_field ())
 
 let batch_encode =
@@ -389,14 +389,14 @@ let dataset_decode =
         builder.primary
       ) with
       | (Some version, Some source, Some batches, Some mirrors, Some flags, Some primary) ->
-          (({
+          ({
             version;
             source;
             batches;
             mirrors;
             flags;
             primary;
-          }: dataset))
+          }: dataset)
       | _ -> De.missing_field ())
 
 let dataset_encode =
@@ -422,7 +422,7 @@ let build_mode = fun seed ->
 
 let build_primitive_record = fun batch_index item_index ->
   let seed = (batch_index * 97) + item_index in
-  (({
+  ({
     ready = seed land 1 = 0;
     count = seed;
     small = Int32.of_int ((batch_index lsl 8) lxor item_index);
@@ -436,7 +436,7 @@ let build_primitive_record = fun batch_index item_index ->
         None;
     mode = build_mode seed;
     unit_value = ();
-  }: primitive_record))
+  }: primitive_record)
 
 let build_batch = fun batch_index ->
   let items = Vector.with_capacity ~size:12 in
@@ -448,14 +448,14 @@ let build_batch = fun batch_index ->
       ~count:6
       ~fn:(fun mirror_index -> build_primitive_record batch_index (mirror_index + 32))
   in
-  (({
+  ({
     batch_id = batch_index;
     name = "batch-" ^ Int.to_string batch_index;
     items;
     mirrors;
     featured = build_primitive_record batch_index 99;
     status = build_mode (batch_index * 11);
-  }: batch))
+  }: batch)
 
 type fixture_spec = { label: string; source: string; batch_count: int; mirror_count: int }
 
@@ -483,14 +483,14 @@ let build_dataset = fun spec ->
   for index = 0 to 63 do
     Vector.push flags ~value:(build_mode (index + 2_000))
   done;
-  (({
+  ({
     version = 2;
     source = spec.source;
     batches;
     mirrors;
     flags;
     primary = Sampled 3.141_592_653_5;
-  }: dataset))
+  }: dataset)
 
 type fixture = {
   label: string;

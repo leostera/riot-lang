@@ -434,41 +434,36 @@ let run = fun matches ->
                         Ok false
                     in
                     let* unchanged = unchanged in
-                    if unchanged then
-                      (
-                        let* () =
-                          match current_metadata with
-                          | Some current when Version_info.same_identity current metadata -> Ok ()
-                          | _ -> Version_info.write_installed metadata
-                        in
-                        write_unchanged_message metadata;
-                        Ok ()
-                      )
-                    else
-                      (
-                        let () =
-                          match current_metadata with
-                          | Some current when not (Version_info.same_identity current metadata) ->
-                              write_newer_release_message ~current ~next:metadata
-                          | Some _
-                          | None -> ()
-                        in
-                        let install_dir = Path.dirname current_binary in
-                        let* () =
-                          Fs.create_dir_all install_dir
-                          |> Result.map_err ~fn:IO.error_message
-                        in
-                        let* () =
-                          install_binary_atomically ~src:downloaded_binary ~dst:current_binary
-                        in
-                        let* () = Version_info.write_installed metadata in
-                        let duration =
-                          Time.Instant.duration_since ~earlier:started_at (Time.Instant.now ())
-                          |> Time.Duration.to_millis
-                        in
-                        write_upgraded_message ~duration_ms:duration ~metadata;
-                        Ok ()
-                      )) with
+                    if unchanged then (
+                      let* () =
+                        match current_metadata with
+                        | Some current when Version_info.same_identity current metadata -> Ok ()
+                        | _ -> Version_info.write_installed metadata
+                      in
+                      write_unchanged_message metadata;
+                      Ok ()
+                    ) else (
+                      let () =
+                        match current_metadata with
+                        | Some current when not (Version_info.same_identity current metadata) ->
+                            write_newer_release_message ~current ~next:metadata
+                        | Some _
+                        | None -> ()
+                      in
+                      let install_dir = Path.dirname current_binary in
+                      let* () =
+                        Fs.create_dir_all install_dir
+                        |> Result.map_err ~fn:IO.error_message
+                      in
+                      let* () = install_binary_atomically ~src:downloaded_binary ~dst:current_binary in
+                      let* () = Version_info.write_installed metadata in
+                      let duration =
+                        Time.Instant.duration_since ~earlier:started_at (Time.Instant.now ())
+                        |> Time.Duration.to_millis
+                      in
+                      write_upgraded_message ~duration_ms:duration ~metadata;
+                      Ok ()
+                    )) with
                 | Ok () -> Ok ()
                 | Error message ->
                     out ("\027[1;31mError\027[0m: " ^ message);

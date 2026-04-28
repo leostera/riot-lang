@@ -345,48 +345,45 @@ let handle_data = fun data conn state ->
   Cell.set state.buffer (current_buffer ^ data);
   let buffer_data = Cell.get state.buffer in
   (* Verify preface if not yet done *)
-  if not (Cell.get state.preface_verified) then
-    begin
-      if String.length buffer_data >= 24 then
-        begin
-          if verify_preface buffer_data then (
-            Cell.set state.preface_verified true;
-            (* Remove preface from buffer *)
-            Cell.set
-              state.buffer
-              (String.sub buffer_data ~offset:24 ~len:(String.length buffer_data - 24));
-            (* Send SETTINGS *)
-            match send_settings conn with
-            | Error e -> Socket_pool.Handler.Error (state, e)
-            | Ok () ->
-                Cell.set state.settings_sent true;
-                Socket_pool.Handler.Continue state
-          ) else
-            Socket_pool.Handler.Error (state, ProtocolError InvalidPreface)
-        end
-      else
-        (* Need more data for preface *)
-        Socket_pool.Handler.Continue state
-    end
-  else
-    begin
-      (* Parse frames *)
-      let reader = IO.Reader.from_string (Cell.get state.buffer) in
-      let rec parse_frames () =
-        match Http.Http2.Parser_reader.parse state.frame_parser reader with
-        | Http.Http2.Parser_reader.Frame frame -> (
-            match process_frame conn state frame with
-            | Ok () -> parse_frames ()
-            | Error e -> Socket_pool.Handler.Error (state, e)
-          )
-        | Http.Http2.Parser_reader.Need_more ->
-            (* Partial frame state is stored in frame_parser; wait for more bytes *)
-            Cell.set state.buffer "";
-            Socket_pool.Handler.Continue state
-        | Http.Http2.Parser_reader.Error err -> Socket_pool.Handler.Error (state, ParseError err)
-      in
-      parse_frames ()
-    end
+  if not (Cell.get state.preface_verified) then (
+    if String.length buffer_data >= 24 then
+      begin
+        if verify_preface buffer_data then (
+          Cell.set state.preface_verified true;
+          (* Remove preface from buffer *)
+          Cell.set
+            state.buffer
+            (String.sub buffer_data ~offset:24 ~len:(String.length buffer_data - 24));
+          (* Send SETTINGS *)
+          match send_settings conn with
+          | Error e -> Socket_pool.Handler.Error (state, e)
+          | Ok () ->
+              Cell.set state.settings_sent true;
+              Socket_pool.Handler.Continue state
+        ) else
+          Socket_pool.Handler.Error (state, ProtocolError InvalidPreface)
+      end
+    else
+      (* Need more data for preface *)
+      Socket_pool.Handler.Continue state
+  ) else (
+    (* Parse frames *)
+    let reader = IO.Reader.from_string (Cell.get state.buffer) in
+    let rec parse_frames () =
+      match Http.Http2.Parser_reader.parse state.frame_parser reader with
+      | Http.Http2.Parser_reader.Frame frame -> (
+          match process_frame conn state frame with
+          | Ok () -> parse_frames ()
+          | Error e -> Socket_pool.Handler.Error (state, e)
+        )
+      | Http.Http2.Parser_reader.Need_more ->
+          (* Partial frame state is stored in frame_parser; wait for more bytes *)
+          Cell.set state.buffer "";
+          Socket_pool.Handler.Continue state
+      | Http.Http2.Parser_reader.Error err -> Socket_pool.Handler.Error (state, ParseError err)
+    in
+    parse_frames ()
+  )
 
 let handle_connection = fun _conn state -> Socket_pool.Handler.Continue state
 

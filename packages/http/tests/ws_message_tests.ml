@@ -127,8 +127,9 @@ let test_binary_fragmented_message_emits_binary = fun _ctx ->
       | Ok (state, Some _) -> Error "Fragment start emitted a message"
       | Ok (state, None) -> (
           match handle state (continuation "\x02") with
-          | Ok (_, Some (Message.DataMessage { opcode = Message.Binary; payload = "\x00\x01\x02" })) ->
-              Ok ()
+          | Ok (_, Some (
+            Message.DataMessage { opcode = Message.Binary; payload = "\x00\x01\x02" }
+          )) -> Ok ()
           | Ok _ -> Error "Expected completed fragmented binary message"
           | Error error -> Error error
         )

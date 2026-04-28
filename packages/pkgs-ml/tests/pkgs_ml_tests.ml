@@ -865,7 +865,8 @@ let test_filesystem_registry_materializes_cached_release = fun _ctx ->
           let registry = Pkgs_ml.Registry.filesystem cache in
           match Pkgs_ml.Registry.materialize_release registry ~package_name:"std" ~version:"0.1.0" with
           | Error err -> Error err
-          | Ok Pkgs_ml.Registry.Already_present -> Error "expected cached archive to materialize on first attempt"
+          | Ok Pkgs_ml.Registry.Already_present ->
+              Error "expected cached archive to materialize on first attempt"
           | Ok Pkgs_ml.Registry.Materialized ->
               let manifest_path =
                 Pkgs_ml.Registry_cache.package_src_dir cache ~package_name:"std" ~version:"0.1.0"

@@ -168,7 +168,7 @@ let berth_decode =
       | None -> ignore (De.read reader De.skip_any))
     ~finish:(fun builder ->
       match (builder.island, builder.berth) with
-      | (Some island, Some berth) -> (({ island; berth }: berth))
+      | (Some island, Some berth) -> ({ island; berth }: berth)
       | _ -> De.missing_field ())
 
 let berth_encode =
@@ -243,7 +243,7 @@ let sample_decode =
         Some tags,
         Some scores
       ) ->
-          (({
+          ({
             ready;
             count;
             small;
@@ -256,7 +256,7 @@ let sample_decode =
             home;
             tags;
             scores;
-          }: sample))
+          }: sample)
       | _ -> De.missing_field ())
 
 let sample_encode =
@@ -357,20 +357,22 @@ let berth_arb = Arbitrary.make ~print:print_berth berth_gen
 
 let sample_gen =
   Generator.map3
-    (fun (((ready, count), small), (big, ratio)) (label, alias, tags) (scores, mode, home) -> ({
-      ready;
-      count;
-      small;
-      big;
-      ratio;
-      label;
-      alias;
-      mode;
-      marker = ();
-      home;
-      tags;
-      scores;
-    }: sample))
+    (fun (((ready, count), small), (big, ratio)) (label, alias, tags) (scores, mode, home) -> (
+      {
+        ready;
+        count;
+        small;
+        big;
+        ratio;
+        label;
+        alias;
+        mode;
+        marker = ();
+        home;
+        tags;
+        scores;
+      }: sample
+    ))
     (Generator.pair
       (Generator.pair (Generator.pair Generator.bool Generator.int) Generator.int32)
       (Generator.pair Generator.int64 finite_float_gen))

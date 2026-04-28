@@ -1361,7 +1361,9 @@ let test_binary_actions_include_target_private_modules = fun _ctx ->
           ) with
           | (
             Some (Riot_planner.Action.CreateLibrary { objects = library_objects; _ }),
-            Some (Riot_planner.Action.CreateExecutable { objects = binary_objects; libraries; _ }),
+            Some (
+              Riot_planner.Action.CreateExecutable { objects = binary_objects; libraries; _ }
+            ),
             Some b_cmx,
             Some a_cmx,
             Some main_cmx
@@ -1573,7 +1575,9 @@ let test_executable_actions_allow_private_helpers_without_a_library = fun _ctx -
           match (find_create_library actions, find_create_executable actions, helper_cmx, main_cmx) with
           | (
             None,
-            Some (Riot_planner.Action.CreateExecutable { objects = binary_objects; libraries; _ }),
+            Some (
+              Riot_planner.Action.CreateExecutable { objects = binary_objects; libraries; _ }
+            ),
             Some helper_cmx,
             Some main_cmx
           ) ->
@@ -1626,7 +1630,9 @@ let test_binary_actions_without_private_helpers = fun _ctx ->
           ) with
           | (
             Some (Riot_planner.Action.CreateLibrary { objects = library_objects; _ }),
-            Some (Riot_planner.Action.CreateExecutable { objects = binary_objects; libraries; _ }),
+            Some (
+              Riot_planner.Action.CreateExecutable { objects = binary_objects; libraries; _ }
+            ),
             Some shared_cmx,
             Some main_cmx
           ) ->
@@ -1924,7 +1930,9 @@ let test_private_helper_can_depend_on_library_owned_module = fun _ctx ->
           ) with
           | (
             Some (Riot_planner.Action.CreateLibrary { objects = library_objects; _ }),
-            Some (Riot_planner.Action.CreateExecutable { objects = binary_objects; libraries; _ }),
+            Some (
+              Riot_planner.Action.CreateExecutable { objects = binary_objects; libraries; _ }
+            ),
             Some a_cmx,
             Some b_cmx,
             Some main_cmx

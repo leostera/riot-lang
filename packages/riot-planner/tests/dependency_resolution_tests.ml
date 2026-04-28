@@ -1995,7 +1995,9 @@ let test_module_graph_rejects_non_direct_dependency_root = fun _ctx ->
             ~package
             ~module_graph:(Riot_planner.Module_graph.graph graph_builder)
             ~analyzed_modules:(Riot_planner.Module_graph.analyzed_modules graph_builder) with
-          | Error (Riot_planner.Planning_error.SourceDependsOnUndeclaredPackageModule { requested_module; allowed_modules; _ }) ->
+          | Error (
+            Riot_planner.Planning_error.SourceDependsOnUndeclaredPackageModule { requested_module; allowed_modules; _ }
+          ) ->
               if requested_module = "Kernel" && allowed_modules = [ "App"; "Std" ] then
                 Ok ()
               else

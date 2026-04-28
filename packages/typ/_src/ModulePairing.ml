@@ -563,8 +563,12 @@ let manifest_equal = fun ~visible_types left_decl right_decl ->
   | (Some (TypeDecl.Alias left_type), Some (TypeDecl.Alias right_type)) ->
       canonical_type_equal ~visible_types left_type right_type
   | (
-    Some (TypeDecl.PolyVariant { bound = left_bound; tags = left_tags; inherited = left_inherited }),
-    Some (TypeDecl.PolyVariant { bound = right_bound; tags = right_tags; inherited = right_inherited })
+    Some (
+      TypeDecl.PolyVariant { bound = left_bound; tags = left_tags; inherited = left_inherited }
+    ),
+    Some (
+      TypeDecl.PolyVariant { bound = right_bound; tags = right_tags; inherited = right_inherited }
+    )
   ) ->
       left_bound = right_bound
       && list_for_all2 (poly_variant_tag_equal ~visible_types) left_tags right_tags

@@ -55,7 +55,6 @@ type ctx = {
 type filter_result =
   | Keep
   | Skip
-
 val cases:
   ?filter:(Path.t -> filter_result) ->
   ?snapshot_path:(Path.t -> Path.t option) ->

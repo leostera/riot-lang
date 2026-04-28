@@ -207,7 +207,7 @@ let berth_decode =
       | None -> ignore (De.read reader De.skip_any))
     ~finish:(fun builder ->
       match (builder.island, builder.berth) with
-      | (Some island, Some berth) -> (({ island; berth }: berth))
+      | (Some island, Some berth) -> ({ island; berth }: berth)
       | _ -> De.missing_field ())
 
 let berth_encode =
@@ -286,7 +286,7 @@ let sample_decode =
         Some tags,
         Some scores
       ) ->
-          (({
+          ({
             ready;
             count;
             small;
@@ -300,7 +300,7 @@ let sample_decode =
             home;
             tags;
             scores;
-          }: sample))
+          }: sample)
       | _ -> De.missing_field ())
 
 let sample_encode =

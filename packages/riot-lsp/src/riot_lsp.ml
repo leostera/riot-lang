@@ -41,9 +41,9 @@ module File_log = struct
 
   let write = fun t ~level message ->
     let line = DateTime.to_iso8601 (DateTime.now_utc ()) ^ " | " ^ level ^ " | " ^ message ^ "\n" in
-    ignore ((Fs.File.write_all t.sink line: (unit, _) result))
+    ignore ((Fs.File.write_all t.sink line): (unit, _) result)
 
-  let close = fun t -> ignore ((Fs.File.close t.sink: (unit, _) result))
+  let close = fun t -> ignore ((Fs.File.close t.sink): (unit, _) result)
 end
 
 let log = fun logger ~level message ->

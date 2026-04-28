@@ -1005,7 +1005,9 @@ let test_closed_poller_rejects_later_operations = fun _ctx ->
       let source = Kernel.Fs.File.to_source read_end in
       let token = Kernel.Async.Token.make 14 in
       let expect_bad_fd = function
-        | Kernel.Result.Error (Kernel.Async.System Kernel.SystemError.BadFileDescriptor) -> true
+        | Kernel.Result.Error (
+          Kernel.Async.System Kernel.SystemError.BadFileDescriptor
+        ) -> true
         | _ -> false
       in
       let* poll = lift_async (Kernel.Async.Poll.make ()) in

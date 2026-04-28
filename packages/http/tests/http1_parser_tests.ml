@@ -345,8 +345,9 @@ let test_request_rejects_invalid_content_length = fun _ctx ->
       ~body:"Hello"
   in
   match Http1.Request.parse req with
-  | Error (InvalidContentLength (InvalidContentLengthCharacter { code; index = 0 })) when code
-  = Char.to_int 'n' -> Result.Ok ()
+  | Error (InvalidContentLength (
+    InvalidContentLengthCharacter { code; index = 0 }
+  )) when code = Char.to_int 'n' -> Result.Ok ()
   | Error error ->
       Result.Error ("Expected invalid Content-Length error, got " ^ error_to_string error)
   | Need_more -> Result.Error "Expected invalid Content-Length error, got Need_more"
@@ -810,8 +811,9 @@ let test_response_rejects_conflicting_content_length = fun _ctx ->
 let test_response_rejects_invalid_content_length = fun _ctx ->
   let resp = "HTTP/1.1 200 OK\r\nContent-Length: nope\r\n\r\nHello" in
   match Http1.Response.parse resp with
-  | Error (InvalidContentLength (InvalidContentLengthCharacter { code; index = 0 })) when code
-  = Char.to_int 'n' -> Result.Ok ()
+  | Error (InvalidContentLength (
+    InvalidContentLengthCharacter { code; index = 0 }
+  )) when code = Char.to_int 'n' -> Result.Ok ()
   | Error error ->
       Result.Error ("Expected invalid Content-Length error, got " ^ error_to_string error)
   | Need_more -> Result.Error "Expected invalid Content-Length error, got Need_more"
@@ -835,7 +837,9 @@ let test_response_accepts_matching_duplicate_content_length = fun _ctx ->
   | Error error -> Result.Error ("Parse error: " ^ error_to_string error)
 
 let test_response_rejects_transfer_encoding_with_content_length = fun _ctx ->
-  let resp = "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\nContent-Length: 5\r\n\r\n0\r\n\r\n" in
+  let resp =
+    "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\nContent-Length: 5\r\n\r\n0\r\n\r\n"
+  in
   match Http1.Response.parse resp with
   | Error TransferEncodingWithContentLength -> Result.Ok ()
   | Error error ->
@@ -911,8 +915,9 @@ let test_response_rejects_short_status_code = fun _ctx ->
 let test_response_rejects_status_code_below_100 = fun _ctx ->
   let resp = "HTTP/1.1 099 Weird\r\nContent-Length: 0\r\n\r\n" in
   match Http1.Response.parse resp with
-  | Error (InvalidStatusCode (StatusCodeOutOfRange { code = 99; min = 100; max = 999 })) ->
-      Result.Ok ()
+  | Error (InvalidStatusCode (
+    StatusCodeOutOfRange { code = 99; min = 100; max = 999 }
+  )) -> Result.Ok ()
   | Error error -> Result.Error ("Expected invalid status code error, got " ^ error_to_string error)
   | Need_more -> Result.Error "Expected invalid status code error, got Need_more"
   | Done _ -> Result.Error "Expected invalid status code error"

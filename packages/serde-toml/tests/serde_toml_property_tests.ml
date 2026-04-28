@@ -218,7 +218,7 @@ let pose_decode =
       | None -> ignore (De.read reader De.skip_any))
     ~finish:(fun builder ->
       match (builder.island, builder.bearing) with
-      | (Some island, Some bearing) -> (({ island; bearing }: pose))
+      | (Some island, Some bearing) -> ({ island; bearing }: pose)
       | _ -> De.missing_field ())
 
 let pose_encode =
@@ -242,7 +242,7 @@ let stop_decode =
       | None -> ignore (De.read reader De.skip_any))
     ~finish:(fun builder ->
       match (builder.island, builder.supplies) with
-      | (Some island, Some supplies) -> (({ island; supplies }: stop))
+      | (Some island, Some supplies) -> ({ island; supplies }: stop)
       | _ -> De.missing_field ())
 
 let stop_encode =
@@ -332,7 +332,7 @@ let sample_decode =
             | Some nickname -> nickname
             | None -> None
           in
-          (({
+          ({
             title;
             active;
             count;
@@ -348,7 +348,7 @@ let sample_decode =
             scores;
             stops;
             mirrors;
-          }: sample))
+          }: sample)
       | _ -> De.missing_field ())
 
 let sample_encode =

@@ -572,15 +572,17 @@ let schema_element_list_gen = Generator.list_size (Generator.int_range 1 3) sche
 
 let file_metadata_gen =
   Generator.map3
-    (fun (version, schema, num_rows) (row_groups, key_value_metadata) (created_by, column_orders) -> ({
-      version;
-      schema;
-      num_rows;
-      row_groups;
-      key_value_metadata;
-      created_by;
-      column_orders;
-    }: Parquet.file_metadata))
+    (fun (version, schema, num_rows) (row_groups, key_value_metadata) (created_by, column_orders) -> (
+      {
+        version;
+        schema;
+        num_rows;
+        row_groups;
+        key_value_metadata;
+        created_by;
+        column_orders;
+      }: Parquet.file_metadata
+    ))
     (Generator.triple
       (Generator.int_range 0 5)
       schema_element_list_gen

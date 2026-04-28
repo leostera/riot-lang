@@ -37,16 +37,15 @@ let replace_all = fun text ->
           else if starts_with_pattern offset then (
             IO.Buffer.add_string buffer with_;
             loop (offset + pattern_len)
-          ) else
-            (
-              let char =
-                match String.get text ~at:offset with
-                | Some value -> value
-                | None -> '\000'
-              in
-              IO.Buffer.add_char buffer char;
-              loop (offset + 1)
-            )
+          ) else (
+            let char =
+              match String.get text ~at:offset with
+              | Some value -> value
+              | None -> '\000'
+            in
+            IO.Buffer.add_char buffer char;
+            loop (offset + 1)
+          )
         in
         let () = loop 0 in
         IO.Buffer.contents buffer

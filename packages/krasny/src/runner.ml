@@ -352,7 +352,7 @@ let syntax_hash = fun (result: Syn.Parser.parse_result) ->
           | None -> write_node node
         else
           write_node node
-    | Syn.SyntaxTree.Token id -> write_token (({ tree = result.tree; id }: Ast.Token.t))
+    | Syn.SyntaxTree.Token id -> write_token ({ tree = result.tree; id }: Ast.Token.t)
     | Syn.SyntaxTree.Missing missing ->
         IO.Buffer.add_string buffer "M(";
         write_kind missing.kind;

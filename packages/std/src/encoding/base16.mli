@@ -3,7 +3,6 @@ open Global
 
 type decode_error =
   | InvalidBase16
-
 val encode: string -> string
 
 val encode_lower: string -> string

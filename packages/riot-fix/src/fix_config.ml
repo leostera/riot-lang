@@ -172,17 +172,16 @@ let glob_match = fun pattern text ->
           ~value:(Array.get_unchecked !previous ~at:text_idx
           || Array.get_unchecked current ~at:(text_idx - 1))
       done
-    ) else
-      (
-        for text_idx = 1 to text_len do
-          Array.set
-            current
-            ~at:text_idx
-            ~value:(Array.get_unchecked !previous ~at:(text_idx - 1)
-            && String.get_unchecked pattern ~at:(pattern_idx - 1)
-            = String.get_unchecked text ~at:(text_idx - 1))
-        done
-      );
+    ) else (
+      for text_idx = 1 to text_len do
+        Array.set
+          current
+          ~at:text_idx
+          ~value:(Array.get_unchecked !previous ~at:(text_idx - 1)
+          && String.get_unchecked pattern ~at:(pattern_idx - 1)
+          = String.get_unchecked text ~at:(text_idx - 1))
+      done
+    );
     previous := current
   done;
   Array.get_unchecked !previous ~at:text_len

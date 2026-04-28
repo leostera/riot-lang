@@ -134,13 +134,18 @@ let summarize_execution_failures = fun ~sandbox_dir result ->
       ~fn:(fun completed_action ->
         let action = action_label completed_action.Action_scheduler.node in
         match completed_action.result.status with
-        | Action_scheduler.Failed (Action_scheduler.ExecutionFailed { message }) ->
-            Some (action ^ "\n" ^ message)
-        | Action_scheduler.Failed (Action_scheduler.OutputsNotCreated { missing }) ->
+        | Action_scheduler.Failed (
+          Action_scheduler.ExecutionFailed { message }
+        ) -> Some (action ^ "\n" ^ message)
+        | Action_scheduler.Failed (
+          Action_scheduler.OutputsNotCreated { missing }
+        ) ->
             Some (action
             ^ "\nmissing outputs: "
             ^ String.concat ", " (List.map missing ~fn:Path.to_string))
-        | Action_scheduler.Failed (Action_scheduler.DependenciesFailed { failed }) ->
+        | Action_scheduler.Failed (
+          Action_scheduler.DependenciesFailed { failed }
+        ) ->
             Some (action
             ^ "\nfailed deps: "
             ^ String.concat ", " (List.map failed ~fn:G.Node_id.to_string))

@@ -50,31 +50,30 @@ let ensure_free = fun buffer needed ->
   else if capacity buffer - buffer.len >= needed then (
     compact buffer;
     Ok ()
-  ) else
-    (
-      let current_capacity = capacity buffer in
-      let min_capacity = buffer.len + needed in
-      let grown =
-        if current_capacity = 0 then
-          min_capacity
-        else if current_capacity * 2 > min_capacity then
-          current_capacity * 2
-        else
-          min_capacity
-      in
-      match IoSlice.create ~size:grown with
-      | Error _ as error -> error
-      | Ok next ->
-          IoSlice.blit_unchecked
-            ~src:buffer.storage
-            ~src_off:buffer.start
-            ~dst:next
-            ~dst_off:0
-            ~len:buffer.len;
-          buffer.storage <- next;
-          buffer.start <- 0;
-          Ok ()
-    )
+  ) else (
+    let current_capacity = capacity buffer in
+    let min_capacity = buffer.len + needed in
+    let grown =
+      if current_capacity = 0 then
+        min_capacity
+      else if current_capacity * 2 > min_capacity then
+        current_capacity * 2
+      else
+        min_capacity
+    in
+    match IoSlice.create ~size:grown with
+    | Error _ as error -> error
+    | Ok next ->
+        IoSlice.blit_unchecked
+          ~src:buffer.storage
+          ~src_off:buffer.start
+          ~dst:next
+          ~dst_off:0
+          ~len:buffer.len;
+        buffer.storage <- next;
+        buffer.start <- 0;
+        Ok ()
+  )
 
 let readable = fun buffer -> IoSlice.sub_unchecked buffer.storage ~off:buffer.start ~len:buffer.len
 

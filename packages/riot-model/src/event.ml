@@ -1956,7 +1956,9 @@ let kind_from_json = fun json ->
                     Fields.get "package" data_fields,
                     Fields.get "duration_ms" data_fields
                   ) with
-                  | (Some (Json.String registry), Some package_json, Some (Json.Int duration_ms)) ->
+                  | (Some (Json.String registry), Some package_json, Some (
+                    Json.Int duration_ms
+                  )) ->
                       let version =
                         match Fields.get "version" data_fields with
                         | Some json -> string_option_of_json json

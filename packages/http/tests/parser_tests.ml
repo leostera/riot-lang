@@ -420,7 +420,11 @@ let test_connection_window_update_invalid_increment_preserves_state = fun _ctx -
   let conn = Connection.create ~role:Connection.Server () in
   let before = Connection.connection_window_size conn in
   match Connection.send_window_update_connection conn ~increment:0 with
-  | Error (Connection.FrameConstructorError (Frame.InvalidWindowUpdateIncrement { increment = 0 })) ->
+  | Error (
+    Connection.FrameConstructorError (
+      Frame.InvalidWindowUpdateIncrement { increment = 0 }
+    )
+  ) ->
       let after = Connection.connection_window_size conn in
       if Int.equal before after then
         Result.Ok ()
@@ -618,7 +622,9 @@ let test_reader_parser_uses_canonical_header_errors = fun _ctx ->
   let reader = Std.IO.Reader.from_string bytes in
   match ParserReader.parse parser reader with
   | ParserReader.Error (
-    ParserReader.FrameParseFailed (Parser.FrameSizeExceedsMaximum { size = 5; max_size = 1 })
+    ParserReader.FrameParseFailed (
+      Parser.FrameSizeExceedsMaximum { size = 5; max_size = 1 }
+    )
   ) -> Result.Ok ()
   | ParserReader.Error error ->
       Result.Error ("wrong reader parser error: " ^ ParserReader.parse_error_to_string error)
@@ -793,9 +799,9 @@ let test_parse_headers_rejects_self_priority_dependency = fun _ctx ->
 
 let test_parse_rst_stream_preserves_unknown_error_code = fun _ctx ->
   match Parser.parse_frame "\x00\x00\x04\x03\x00\x00\x00\x00\x01\xfe\xed\xbe\xef" with
-  | Parser.Done { value = { Frame.payload = Frame.RstStreamPayload (Frame.UnknownErrorCode code); _ }; remaining = "" } when Int.equal
-    code
-    0xfeed_beef -> Result.Ok ()
+  | Parser.Done { value = { Frame.payload = Frame.RstStreamPayload (
+    Frame.UnknownErrorCode code
+  ); _ }; remaining = "" } when Int.equal code 0xfeed_beef -> Result.Ok ()
   | Parser.Done _ -> Result.Error "RST_STREAM unknown error code was not preserved"
   | Parser.Need_more -> Result.Error "RST_STREAM unexpectedly needed more data"
   | Parser.Error err -> Result.Error ("RST_STREAM parse failed: " ^ Parser.error_to_string err)
@@ -873,8 +879,9 @@ let test_process_data_rejects_continuation_stream_mismatch = fun _ctx ->
   match Connection.process_data
     conn
     (Std.IO.Bytes.from_string (serialize_frame headers ^ serialize_frame continuation)) with
-  | Error (Connection.ContinuationStreamMismatch { expected_stream_id = 1; actual_stream_id = 3 }) ->
-      Result.Ok ()
+  | Error (
+    Connection.ContinuationStreamMismatch { expected_stream_id = 1; actual_stream_id = 3 }
+  ) -> Result.Ok ()
   | Error err -> Result.Error ("Wrong connection error: " ^ Connection.error_to_string err)
   | Ok _ -> Result.Error "CONTINUATION on the wrong stream was accepted"
 

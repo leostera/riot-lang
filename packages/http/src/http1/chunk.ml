@@ -201,11 +201,7 @@ let parse_trailer_line = fun cursor ->
     )
 
 let rec parse_trailers = fun
-  ?(max_count = 100)
-  ?(max_length = 8_192)
-  ?(acc = [])
-  ?(count = 0)
-  cursor ->
+  ?(max_count = 100) ?(max_length = 8_192) ?(acc = []) ?(count = 0) cursor ->
   match take_trailer_block_terminator cursor with
   | Some cursor -> Cursor_done { value = List.reverse acc; remaining = cursor }
   | None ->

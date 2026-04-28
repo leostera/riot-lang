@@ -200,17 +200,15 @@ let ensure_lock = fun
                     | Some (lockfile: Riot_model.Lockfile.t) ->
                         not (String.equal lockfile.dependency_hash current_dependency_hash)
                   in
-                  if not needs_refresh then
-                    (
-                      match existing_lock with
-                      | Some lockfile -> Ok (lockfile, true, false, solve_started)
-                      | None ->
-                          Error (Error.LockRefreshCheckFailed {
-                            workspace_root;
-                            error = "missing existing lockfile during refresh reuse";
-                          })
-                    )
-                  else (
+                  if not needs_refresh then (
+                    match existing_lock with
+                    | Some lockfile -> Ok (lockfile, true, false, solve_started)
+                    | None ->
+                        Error (Error.LockRefreshCheckFailed {
+                          workspace_root;
+                          error = "missing existing lockfile during refresh reuse";
+                        })
+                  ) else (
                     emit
                       (
                         Riot_model.Event.DependencyResolutionStarted {

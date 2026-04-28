@@ -1777,8 +1777,8 @@ let rec lower_pattern = fun (state: state) pattern ->
                     ~label:"record_punned_field_pattern"
                     (BodyArena.PVar field_name)
             in
-            (({ BodyArena.label = path_text field.field_path; pattern_id }:
-              BodyArena.record_pattern_field)))
+            ({ BodyArena.label = path_text field.field_path; pattern_id }:
+              BodyArena.record_pattern_field))
       in
       add_pattern
         state
@@ -1874,11 +1874,10 @@ let labeled_function_parameter = fun label pattern_id -> ({
   default_value_id = None;
 }: BodyArena.function_parameter)
 
-let optional_function_parameter = fun label ~default_value_id pattern_id -> ({
-  BodyArena.label = BodyArena.Optional label;
-  pattern_id;
-  default_value_id;
-}: BodyArena.function_parameter)
+let optional_function_parameter = fun label ~default_value_id pattern_id -> (
+  { BodyArena.label = BodyArena.Optional label; pattern_id; default_value_id }:
+    BodyArena.function_parameter
+)
 
 let rec lower_parameter = fun (state: state) parameter ->
   match parameter with
@@ -2202,11 +2201,11 @@ and lower_local_module_scope = fun (state: state) ~module_name module_expression
 and lower_apply = fun (state: state) expression ->
   let lower_argument = function
     | Cst.Positional argument ->
-        (({
+        ({
           BodyArena.label = BodyArena.Positional;
           implicit = false;
           value_id = lower_expr state argument;
-        }: BodyArena.apply_argument))
+        }: BodyArena.apply_argument)
     | Cst.Labeled { syntax_node; label_token; value; _ } ->
         let value_id =
           match value with
@@ -2417,7 +2416,9 @@ and lower_expr = fun (state: state) expression ->
             ~label:"field_access_expression"
             (BodyArena.EFieldAccess { receiver_id; label = Cst.Token.text field_name })
     )
-  | Cst.Expression.Record (Cst.RecordExpression.Literal { syntax_node; fields; _ }) ->
+  | Cst.Expression.Record (
+    Cst.RecordExpression.Literal { syntax_node; fields; _ }
+  ) ->
       let fields =
         fields
         |> List.map
@@ -2431,7 +2432,9 @@ and lower_expr = fun (state: state) expression ->
         ~syntax_node
         ~label:"record_expression"
         (BodyArena.ERecord { base_id = None; fields })
-  | Cst.Expression.Record (Cst.RecordExpression.Update { syntax_node; base; fields; _ }) ->
+  | Cst.Expression.Record (
+    Cst.RecordExpression.Update { syntax_node; base; fields; _ }
+  ) ->
       let base_id = lower_expr state base in
       let fields =
         fields
@@ -2794,7 +2797,9 @@ and lower_expr = fun (state: state) expression ->
         ~label:"poly_variant_expression"
         (BodyArena.EPolyVariant { tag = Cst.Token.text tag_token; payload })
   | Cst.Expression.LocalOpen (LetOpen { syntax_node; module_path; body; _ })
-  | Cst.Expression.LocalOpen (Delimited { syntax_node; module_path; body; _ }) ->
+  | Cst.Expression.LocalOpen (
+    Delimited { syntax_node; module_path; body; _ }
+  ) ->
       let body_id = lower_expr state body in
       add_expr
         state

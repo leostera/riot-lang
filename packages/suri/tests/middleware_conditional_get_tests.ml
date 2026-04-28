@@ -7,7 +7,7 @@ let response_headers = fun headers ->
   List.fold_left
     headers
     ~init:Net.Http.Header.empty
-    ~fn:(fun acc ((name, value)) ->
+    ~fn:(fun acc (name, value) ->
       Net.Http.Header.add acc name value)
 
 let test_conditional_get_reports_invalid_month = fun _ctx ->
@@ -23,8 +23,9 @@ let test_conditional_get_reports_invalid_request_date = fun _ctx ->
   in
   let headers = response_headers [ ("last-modified", "Wed, 21 Oct 2015 07:28:00 GMT"); ] in
   match Conditional_get.check_modified_since conn headers with
-  | Error (Conditional_get.InvalidRequestDate (Conditional_get.InvalidDay { value = "nope" })) ->
-      Ok ()
+  | Error (Conditional_get.InvalidRequestDate (
+    Conditional_get.InvalidDay { value = "nope" }
+  )) -> Ok ()
   | Ok _ -> Error "expected invalid If-Modified-Since date"
   | Error error -> Error (Conditional_get.modified_since_error_to_string error)
 

@@ -42,7 +42,7 @@ let body = fun ?(children = []) () -> El { tag = "body"; attrs = []; children }
 let div = fun ?(attrs = []) ?id ?(children = []) () ->
   El {
     tag = "div";
-    attrs = optional_attr id attr_id @ List.map ~fn:(fun ((k, v)) -> Attr (k, v)) attrs;
+    attrs = optional_attr id attr_id @ List.map ~fn:(fun (k, v) -> Attr (k, v)) attrs;
     children;
   }
 
@@ -217,8 +217,7 @@ let rec map_action = fun fn t ->
         List.map
           ~fn:(fun attr ->
             match attr with
-            | Event (name, handler) -> Event (name, fun ev ->
-              fn (handler ev))
+            | Event (name, handler) -> Event (name, fun ev -> fn (handler ev))
             | Attr (k, v) -> Attr (k, v))
           attrs
       in

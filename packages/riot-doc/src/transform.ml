@@ -362,7 +362,7 @@ let detail_groups_of_type_member = fun source member ->
         []
       else
         [
-          (({ title = "Constructors"; details = details }: Doctree.item_detail_group));
+          ({ title = "Constructors"; details = details }: Doctree.item_detail_group);
         ]
   | (None, Some record) ->
       let details = record_field_details source record in
@@ -370,7 +370,7 @@ let detail_groups_of_type_member = fun source member ->
         []
       else
         [
-          (({ title = "Fields"; details = details }: Doctree.item_detail_group));
+          ({ title = "Fields"; details = details }: Doctree.item_detail_group);
         ]
   | (None, None) -> []
 

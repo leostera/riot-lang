@@ -303,21 +303,9 @@ end
 module Value: sig
   type content_type_error =
     | InvalidContentType
-
   type authorization_error =
     | InvalidAuthorization
 
-  (**
-     Parses Content-Type header into media type and parameters.
-
-     ## Examples
-
-     ```ocaml Header.Value.parse_content_type "text/html; charset=utf-8" (* Ok
-     ("text/html", [("charset", "utf-8")]) *)
-
-     Header.Value.parse_content_type "application/json" (* Ok
-     ("application/json", []) *) ```
-  *)
   val parse_content_type: value -> (string * (string * string) list, content_type_error) result
 
   (**

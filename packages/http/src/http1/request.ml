@@ -552,7 +552,9 @@ let parse_slice = fun
               match Common.slice_of_string decoded.body with
               | Error error -> Common.Error error
               | Ok body ->
-                  let request = request_of_parts head_method head_uri head_version head_headers body in
+                  let request =
+                    request_of_parts head_method head_uri head_version head_headers body
+                  in
                   Common.Done { value = request; remaining = decoded.remaining }
             )
         )

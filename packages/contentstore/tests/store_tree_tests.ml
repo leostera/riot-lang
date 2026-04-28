@@ -224,8 +224,9 @@ let test_commit_dir_rejects_file_source = fun _ctx ->
         |> Result.expect ~msg:"write source should succeed"
       in
       match Contentstore.commit_dir store ~hash:(Crypto.hash_string "invalid") ~source_dir:source with
-      | Error (Contentstore.Store.Invalid_source_path { reason = Contentstore.Store.Source_not_directory; _ }) ->
-          Ok ()
+      | Error (
+        Contentstore.Store.Invalid_source_path { reason = Contentstore.Store.Source_not_directory; _ }
+      ) -> Ok ()
       | Error err -> Error ("unexpected error: " ^ Contentstore.Store.error_message err)
       | Ok () -> Error "expected commit_dir to reject a file source")
 
@@ -236,8 +237,9 @@ let test_commit_dir_rejects_missing_source = fun _ctx ->
     (fun ~tmpdir ~store ->
       let source = Path.(tmpdir / Path.v "missing") in
       match Contentstore.commit_dir store ~hash:(Crypto.hash_string "missing") ~source_dir:source with
-      | Error (Contentstore.Store.Invalid_source_path { reason = Contentstore.Store.Source_missing; _ }) ->
-          Ok ()
+      | Error (
+        Contentstore.Store.Invalid_source_path { reason = Contentstore.Store.Source_missing; _ }
+      ) -> Ok ()
       | Error err -> Error ("unexpected error: " ^ Contentstore.Store.error_message err)
       | Ok () -> Error "expected commit_dir to reject a missing source path")
 
