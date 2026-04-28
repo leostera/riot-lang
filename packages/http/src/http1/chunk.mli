@@ -10,3 +10,25 @@ type chunk_result = { data: string; remaining: string }
 val parse_slice: IO.IoVec.IoSlice.t -> chunk_result parse_result
 
 val parse: string -> chunk_result parse_result
+
+(** Fully decode a chunked body, including the final zero-size chunk and trailers. *)
+type body_result = {
+  body: string;
+  trailers: (string * string) list;
+  remaining: string;
+}
+val decode_slice:
+  ?max_chunk_size:int ->
+  ?max_body_size:int ->
+  ?max_trailers:int ->
+  ?max_trailer_length:int ->
+  IO.IoVec.IoSlice.t ->
+  body_result parse_result
+
+val decode:
+  ?max_chunk_size:int ->
+  ?max_body_size:int ->
+  ?max_trailers:int ->
+  ?max_trailer_length:int ->
+  string ->
+  body_result parse_result

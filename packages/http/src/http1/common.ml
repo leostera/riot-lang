@@ -26,6 +26,9 @@ and error =
   | InvalidChunkSizeLineEnding
   | InvalidChunkDataLineEnding
   | InvalidChunkSize
+  | InvalidChunkExtensionCharacter of { code: int; index: int }
+  | ChunkTooLarge of { size: int; max_size: int }
+  | ChunkedBodyTooLarge of { size: int; max_size: int }
 
 and header_format_error =
   | MissingColon
@@ -84,6 +87,68 @@ let error_to_string = function
   | InvalidChunkSizeLineEnding -> "Invalid chunk size line ending"
   | InvalidChunkDataLineEnding -> "Invalid chunk data line ending"
   | InvalidChunkSize -> "Invalid chunk size"
+  | InvalidChunkExtensionCharacter { code; index } ->
+      "Invalid chunk extension character code "
+      ^ Int.to_string code
+      ^ " at index "
+      ^ Int.to_string index
+  | ChunkTooLarge { size; max_size } ->
+      "Chunk size " ^ Int.to_string size ^ " exceeds maximum " ^ Int.to_string max_size
+  | ChunkedBodyTooLarge { size; max_size } ->
+      "Chunked body size " ^ Int.to_string size ^ " exceeds maximum " ^ Int.to_string max_size
+
+let is_tchar = fun c ->
+  let code = Char.to_int c in
+  (code >= Char.to_int '0' && code <= Char.to_int '9')
+  || (code >= Char.to_int 'A' && code <= Char.to_int 'Z')
+  || (code >= Char.to_int 'a' && code <= Char.to_int 'z')
+  || c = '!'
+  || c = '#'
+  || c = '$'
+  || c = '%'
+  || c = '&'
+  || c = '\''
+  || c = '*'
+  || c = '+'
+  || c = '-'
+  || c = '.'
+  || c = '^'
+  || c = '_'
+  || c = '`'
+  || c = '|'
+  || c = '~'
+
+let validate_header_name = fun name ->
+  if String.length name = 0 then
+    Result.Error EmptyName
+  else
+    let rec loop index =
+      if index >= String.length name then
+        Result.Ok ()
+      else
+        let c = String.get_unchecked name ~at:index in
+        if c = ' ' || c = '\t' then
+          Result.Error WhitespaceBeforeColon
+        else if is_tchar c then
+          loop (index + 1)
+        else
+          Result.Error (InvalidNameCharacter { code = Char.to_int c; index })
+    in
+    loop 0
+
+let validate_header_value = fun value ->
+  let rec loop index =
+    if index >= String.length value then
+      Result.Ok ()
+    else
+      let c = String.get_unchecked value ~at:index in
+      let code = Char.to_int c in
+      if c = '\t' || (code >= 0x20 && code <= 0x7e) || code >= 0x80 then
+        loop (index + 1)
+      else
+        Result.Error (InvalidValueCharacter { code; index })
+  in
+  loop 0
 
 (** Helper: Find substring in string *)
 let find_substring = fun ~needle haystack ->

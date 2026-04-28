@@ -690,6 +690,88 @@ let test_chunk_incomplete_data_crlf_needs_more = fun _ctx ->
   | Error error -> Result.Error ("Expected Need_more, got " ^ error_to_string error)
   | Done _ -> Result.Error "Expected Need_more for partial chunk data CRLF"
 
+let test_chunk_accepts_extensions = fun _ctx ->
+  let chunk = "5;foo=bar; flag\r\nHello\r\n" in
+  match Http1.Chunk.parse chunk with
+  | Done { value = chunk_result; _ } ->
+      if chunk_result.data != "Hello" then
+        Result.Error "Expected data Hello"
+      else
+        Result.Ok ()
+  | Need_more -> Result.Error "Unexpected Need_more"
+  | Error error -> Result.Error ("Parse error: " ^ error_to_string error)
+
+let test_chunk_rejects_invalid_extension_character = fun _ctx ->
+  let chunk = "5;bad\next\r\nHello\r\n" in
+  match Http1.Chunk.parse chunk with
+  | Error (InvalidChunkExtensionCharacter { code; index }) when code = 10 && index = 5 ->
+      Result.Ok ()
+  | Error error ->
+      Result.Error ("Expected invalid chunk extension character, got " ^ error_to_string error)
+  | Need_more -> Result.Error "Expected invalid chunk extension character, got Need_more"
+  | Done _ -> Result.Error "Expected invalid chunk extension character"
+
+let test_chunk_decode_multiple_chunks = fun _ctx ->
+  let body = "5\r\nHello\r\n6\r\n world\r\n0\r\n\r\n" in
+  match Http1.Chunk.decode body with
+  | Done { value = decoded; _ } ->
+      if decoded.body != "Hello world" then
+        Result.Error ("Expected decoded body Hello world, got " ^ decoded.body)
+      else if decoded.trailers != [] then
+        Result.Error "Expected no trailers"
+      else if decoded.remaining != "" then
+        Result.Error ("Expected empty remaining, got " ^ decoded.remaining)
+      else
+        Result.Ok ()
+  | Need_more -> Result.Error "Unexpected Need_more"
+  | Error error -> Result.Error ("Parse error: " ^ error_to_string error)
+
+let test_chunk_decode_trailers_and_remaining = fun _ctx ->
+  let body = "5;foo=bar\r\nHello\r\n0\r\nETag: abc\r\nX-Trace: 42\r\n\r\nnext" in
+  match Http1.Chunk.decode body with
+  | Done { value = decoded; _ } ->
+      if decoded.body != "Hello" then
+        Result.Error ("Expected decoded body Hello, got " ^ decoded.body)
+      else if decoded.trailers != [ ("ETag", "abc"); ("X-Trace", "42"); ] then
+        Result.Error "Expected decoded trailers"
+      else if decoded.remaining != "next" then
+        Result.Error ("Expected remaining next, got " ^ decoded.remaining)
+      else
+        Result.Ok ()
+  | Need_more -> Result.Error "Unexpected Need_more"
+  | Error error -> Result.Error ("Parse error: " ^ error_to_string error)
+
+let test_chunk_decode_rejects_chunk_over_limit = fun _ctx ->
+  match Http1.Chunk.decode ~max_chunk_size:4 "5\r\nHello\r\n0\r\n\r\n" with
+  | Error (ChunkTooLarge { size = 5; max_size = 4 }) -> Result.Ok ()
+  | Error error -> Result.Error ("Expected chunk too large error, got " ^ error_to_string error)
+  | Need_more -> Result.Error "Expected chunk too large error, got Need_more"
+  | Done _ -> Result.Error "Expected chunk too large error"
+
+let test_chunk_decode_rejects_body_over_limit = fun _ctx ->
+  match Http1.Chunk.decode ~max_body_size:10 "5\r\nHello\r\n6\r\n world\r\n0\r\n\r\n" with
+  | Error (ChunkedBodyTooLarge { size = 11; max_size = 10 }) -> Result.Ok ()
+  | Error error ->
+      Result.Error ("Expected chunked body too large error, got " ^ error_to_string error)
+  | Need_more -> Result.Error "Expected chunked body too large error, got Need_more"
+  | Done _ -> Result.Error "Expected chunked body too large error"
+
+let test_chunk_decode_rejects_invalid_trailer_name = fun _ctx ->
+  let body = "0\r\nBad@Name: value\r\n\r\n" in
+  match Http1.Chunk.decode body with
+  | Error (InvalidHeaderFormat (InvalidNameCharacter { code; index })) when code = 64 && index = 3 ->
+      Result.Ok ()
+  | Error error ->
+      Result.Error ("Expected invalid trailer name character, got " ^ error_to_string error)
+  | Need_more -> Result.Error "Expected invalid trailer name character, got Need_more"
+  | Done _ -> Result.Error "Expected invalid trailer name character"
+
+let test_chunk_decode_incomplete_trailer_needs_more = fun _ctx ->
+  match Http1.Chunk.decode "0\r\nETag: abc\r\n" with
+  | Need_more -> Result.Ok ()
+  | Error error -> Result.Error ("Expected Need_more, got " ^ error_to_string error)
+  | Done _ -> Result.Error "Expected Need_more for incomplete trailers"
+
 (* SSE Tests *)
 
 let test_sse_data_line = fun _ctx ->
@@ -798,6 +880,16 @@ let tests =
     case "chunk rejects invalid size line crlf" test_chunk_rejects_invalid_size_line_crlf;
     case "chunk rejects invalid data crlf" test_chunk_rejects_invalid_data_crlf;
     case "chunk incomplete data crlf needs more" test_chunk_incomplete_data_crlf_needs_more;
+    case "chunk accepts extensions" test_chunk_accepts_extensions;
+    case "chunk rejects invalid extension character" test_chunk_rejects_invalid_extension_character;
+    case "chunk decode multiple chunks" test_chunk_decode_multiple_chunks;
+    case "chunk decode trailers and remaining" test_chunk_decode_trailers_and_remaining;
+    case "chunk decode rejects chunk over limit" test_chunk_decode_rejects_chunk_over_limit;
+    case "chunk decode rejects body over limit" test_chunk_decode_rejects_body_over_limit;
+    case "chunk decode rejects invalid trailer name" test_chunk_decode_rejects_invalid_trailer_name;
+    case
+      "chunk decode incomplete trailer needs more"
+      test_chunk_decode_incomplete_trailer_needs_more;
     case "sse_data_line" test_sse_data_line;
     case "sse_event_type" test_sse_event_type;
     case "sse_empty_line" test_sse_empty_line;

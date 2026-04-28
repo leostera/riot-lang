@@ -28,6 +28,9 @@ and error =
   | InvalidChunkSizeLineEnding
   | InvalidChunkDataLineEnding
   | InvalidChunkSize
+  | InvalidChunkExtensionCharacter of { code: int; index: int }
+  | ChunkTooLarge of { size: int; max_size: int }
+  | ChunkedBodyTooLarge of { size: int; max_size: int }
 
 and header_format_error =
   | MissingColon
@@ -40,6 +43,10 @@ and header_format_error =
 
 (** Render a parse error for logs, diagnostics, or tests. *)
 val error_to_string: error -> string
+
+val validate_header_name: string -> (unit, header_format_error) Result.t
+
+val validate_header_value: string -> (unit, header_format_error) Result.t
 
 val find_substring: needle:string -> string -> int option
 
