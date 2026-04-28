@@ -27,6 +27,8 @@ type let_binding = node
 type type_declaration = node
 type type_extension_declaration = node
 type module_declaration = node
+type module_expr = node
+type module_type_expr = node
 type module_type_declaration = node
 type module_type_constraint = node
 type open_declaration = node
@@ -829,6 +831,43 @@ module Path: sig
   val for_each_ident: t -> fn:(Token.t -> unit) -> unit
 end
 
+module ModuleTypeExpr: sig
+  type t = module_type_expr
+  type view =
+    | Path of {
+        path: path;
+      }
+    | Signature of {
+        body: Node.t;
+      }
+    | With of {
+        body: Node.t;
+        base: t option;
+        constraints: module_type_constraint Vector.t;
+      }
+    | Typeof of {
+        body: module_expr option;
+      }
+    | Functor of {
+        body: Node.t;
+      }
+    | Error of Node.t
+    | Unknown of Node.t
+  val cast: Node.t -> t option
+
+  val view: t -> view
+
+  val sig_token: t -> Token.t option
+
+  val end_token: t -> Token.t option
+
+  val for_each_path_ident: t -> fn:(Token.t -> unit) -> unit
+
+  val for_each_signature_item: t -> fn:(signature_item -> unit) -> unit
+
+  val for_each_sig_body_token: t -> fn:(Token.t -> unit) -> unit
+end
+
 module StructureItem: sig
   type t = structure_item
   type view =
@@ -1073,14 +1112,8 @@ module ModuleTypeDeclaration: sig
   type t = module_type_declaration
   type body =
     | Abstract
-    | Path of {
-        path: path;
-      }
-    | Sig of {
-        body: Node.t;
-      }
-    | With of {
-        body: Node.t;
+    | Manifest of {
+        body: module_type_expr;
       }
     | Unsupported of {
         body: Node.t option;

@@ -642,14 +642,21 @@ and module_type_declaration_symbols = fun text declaration ->
   | Some name ->
       let children =
         match Syn.Ast.ModuleTypeDeclaration.body declaration with
-        | Syn.Ast.ModuleTypeDeclaration.Sig _ ->
-            collect_signature_symbols
-              text
-              (Syn.Ast.ModuleTypeDeclaration.for_each_signature_item declaration)
         | Syn.Ast.ModuleTypeDeclaration.Abstract
-        | Syn.Ast.ModuleTypeDeclaration.Path _
-        | Syn.Ast.ModuleTypeDeclaration.With _
         | Syn.Ast.ModuleTypeDeclaration.Unsupported _ -> []
+        | Syn.Ast.ModuleTypeDeclaration.Manifest { body } -> (
+            match Syn.Ast.ModuleTypeExpr.view body with
+            | Syn.Ast.ModuleTypeExpr.Signature _ ->
+                collect_signature_symbols
+                  text
+                  (Syn.Ast.ModuleTypeDeclaration.for_each_signature_item declaration)
+            | Syn.Ast.ModuleTypeExpr.Path _
+            | Syn.Ast.ModuleTypeExpr.With _
+            | Syn.Ast.ModuleTypeExpr.Typeof _
+            | Syn.Ast.ModuleTypeExpr.Functor _
+            | Syn.Ast.ModuleTypeExpr.Error _
+            | Syn.Ast.ModuleTypeExpr.Unknown _ -> []
+          )
       in
       [
         document_symbol_of_named_item

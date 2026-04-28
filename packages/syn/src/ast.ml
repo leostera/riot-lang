@@ -31,6 +31,10 @@ type type_extension_declaration = node
 
 type module_declaration = node
 
+type module_expr = node
+
+type module_type_expr = node
+
 type module_type_declaration = node
 
 type module_type_constraint = node
@@ -1586,6 +1590,136 @@ module Path = struct
       ~fn:(fun token ->
         if token_kind_is token Syntax_kind.IDENT then
           fn token)
+end
+
+module ModuleTypeExpr = struct
+  type t = module_type_expr
+
+  type view =
+    | Path of {
+        path: path;
+      }
+    | Signature of {
+        body: node;
+      }
+    | With of {
+        body: node;
+        base: t option;
+        constraints: module_type_constraint Vector.t;
+      }
+    | Typeof of {
+        body: module_expr option;
+      }
+    | Functor of {
+        body: node;
+      }
+    | Error of node
+    | Unknown of node
+
+  let cast = fun (node: node) ->
+    if node_matches node is_module_type_kind then
+      Some node
+    else
+      None
+
+  let rec specific_node = fun module_type ->
+    match Node.kind module_type with
+    | Syntax_kind.MODULE_TYPE_EXPR
+    | Syntax_kind.PAREN_MODULE_TYPE -> (
+        match first_child_node_matching module_type ~matches:is_module_type_kind with
+        | Some child -> specific_node child
+        | None -> None
+      )
+    | kind when is_module_type_kind kind -> Some module_type
+    | _ -> None
+
+  let constraints = fun module_type ->
+    let items = Vector.with_capacity ~size:(Node.child_count module_type) in
+    Node.for_each_child_node
+      module_type
+      ~fn:(fun child ->
+        if
+          node_kind_is child Syntax_kind.WITH_TYPE_CONSTRAINT
+          || node_kind_is child Syntax_kind.WITH_MODULE_CONSTRAINT
+        then
+          Vector.push items ~value:child);
+    items
+
+  let view = fun module_type ->
+    match specific_node module_type with
+    | Some node when node_kind_is node Syntax_kind.PATH_MODULE_TYPE -> (
+        match Path.cast node with
+        | Some path -> Path { path }
+        | None -> Unknown node
+      )
+    | Some node when node_kind_is node Syntax_kind.SIGNATURE_MODULE_TYPE ->
+        Signature { body = node }
+    | Some node when node_kind_is node Syntax_kind.WITH_MODULE_TYPE ->
+        let base =
+          match first_child_node_matching node ~matches:is_module_type_kind with
+          | Some base -> cast base
+          | None -> None
+        in
+        With { body = node; base; constraints = constraints node }
+    | Some node when node_kind_is node Syntax_kind.TYPEOF_MODULE_TYPE ->
+        Typeof { body = first_child_node_matching node ~matches:is_module_expr_kind }
+    | Some node when node_kind_is node Syntax_kind.FUNCTOR_MODULE_TYPE ->
+        Functor { body = node }
+    | Some node when node_kind_is node Syntax_kind.ERROR -> Error node
+    | Some node -> Unknown node
+    | None -> Unknown module_type
+
+  let signature_body_node = fun module_type ->
+    match specific_node module_type with
+    | Some node when node_kind_is node Syntax_kind.SIGNATURE_MODULE_TYPE -> Some node
+    | _ -> None
+
+  let sig_token = fun module_type ->
+    match signature_body_node module_type with
+    | Some node -> Node.first_child_token node ~kind:Syntax_kind.SIG_KW
+    | None -> None
+
+  let end_token = fun module_type ->
+    match signature_body_node module_type with
+    | Some node -> Node.first_child_token node ~kind:Syntax_kind.END_KW
+    | None -> None
+
+  let for_each_path_ident = fun module_type ~fn ->
+    match view module_type with
+    | Path { path } -> Path.for_each_ident path ~fn
+    | _ -> ()
+
+  let for_each_signature_item = fun module_type ~fn ->
+    match signature_body_node module_type with
+    | Some node ->
+        for_each_child_node_matching
+          node
+          ~matches:(fun kind -> Syntax_kind.(kind = SIGNATURE_ITEM))
+          ~fn
+    | None -> ()
+
+  let for_each_sig_body_token = fun module_type ~fn ->
+    match signature_body_node module_type with
+    | None -> ()
+    | Some node ->
+        let inside = ref false in
+        Node.for_each_child
+          node
+          ~fn:(
+            function
+            | Syntax_tree.Token id ->
+                let token = wrap_token node.tree id in
+                if token_kind_is token Syntax_kind.SIG_KW then
+                  inside := true
+                else if token_kind_is token Syntax_kind.END_KW then
+                  inside := false
+                else if !inside then
+                  fn token
+            | Syntax_tree.Node id ->
+                if !inside then
+                  for_each_token_in_node (wrap_node node.tree id) ~fn
+            | Syntax_tree.Missing _ -> ()
+          )
 end
 
 module Expr: sig
@@ -4682,14 +4816,8 @@ module ModuleTypeDeclaration = struct
 
   type body =
     | Abstract
-    | Path of {
-        path: path;
-      }
-    | Sig of {
-        body: node;
-      }
-    | With of {
-        body: node;
+    | Manifest of {
+        body: module_type_expr;
       }
     | Unsupported of {
         body: node option;
@@ -4744,18 +4872,13 @@ module ModuleTypeDeclaration = struct
     | None -> None
 
   let body = fun decl ->
-    match (body_group decl, body_specific_node decl) with
-    | (None, _) -> Abstract
-    | (Some _, Some node) when node_kind_is node Syntax_kind.PATH_MODULE_TYPE -> (
-        match Path.cast node with
-        | Some path -> Path { path }
-        | None -> Unsupported { body = Some node }
+    match body_group decl with
+    | None -> Abstract
+    | Some body_group -> (
+        match body_node decl with
+        | Some body -> Manifest { body }
+        | None -> Unsupported { body = Some body_group }
       )
-    | (Some _, Some node) when node_kind_is node Syntax_kind.SIGNATURE_MODULE_TYPE ->
-        Sig { body = node }
-    | (Some _, Some node) when node_kind_is node Syntax_kind.WITH_MODULE_TYPE ->
-        With { body = node }
-    | (Some _, body) -> Unsupported { body }
 
   let signature_body_node = fun decl ->
     match body_specific_node decl with

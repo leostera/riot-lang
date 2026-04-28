@@ -1383,13 +1383,6 @@ let collect_type_members = fun decl ->
   Ast.TypeDeclaration.for_each_member decl ~fn:(fun member -> Vector.push members ~value:member);
   members
 
-let collect_module_type_declaration_constraints = fun decl ->
-  let constraints = Vector.with_capacity ~size:(Ast.Node.child_count decl) in
-  Ast.ModuleTypeDeclaration.for_each_constraint
-    decl
-    ~fn:(fun constraint_ -> Vector.push constraints ~value:constraint_);
-  constraints
-
 let collect_type_member_parameters = fun member ->
   let parameters = Vector.with_capacity ~size:(Ast.TypeDeclaration.Member.child_count member) in
   Ast.TypeDeclaration.Member.for_each_parameter
@@ -8866,38 +8859,52 @@ and render_module_type_declaration = fun state decl ->
   (
     match Ast.ModuleTypeDeclaration.body decl with
     | Abstract -> ()
-    | Path { path } ->
-        render_module_type_declaration_equals state decl;
-        render_module_body_path state (Ast.Path.for_each_ident path);
-        render_wrapped_module_body_attribute_suffix state decl
-    | Sig _ ->
-        render_module_type_declaration_equals state decl;
-        let items = collect_signature_items_from_module_type_decl decl in
-        render_signature_body state items ~end_token:(Ast.ModuleTypeDeclaration.end_token decl);
-        render_wrapped_module_body_attribute_suffix state decl
-    | With _ ->
-        render_module_type_declaration_equals state decl;
-        (
-          match Ast.ModuleTypeDeclaration.base_module_type decl with
-          | Some base -> render_module_type_node state base
-          | None -> unsupported_node "constrained module type declaration without base" decl
-        );
-        let constraints = collect_module_type_declaration_constraints decl in
-        let length = Vector.length constraints in
-        let rec loop index =
-          if Int.(index < length) then (
-            emit_space state;
-            if Int.equal index 0 then
-              emit_text state "with"
+    | Manifest { body } -> (
+        match Ast.ModuleTypeExpr.view body with
+        | Path { path } ->
+            render_module_type_declaration_equals state decl;
+            render_module_body_path state (Ast.Path.for_each_ident path);
+            render_wrapped_module_body_attribute_suffix state decl
+        | Signature _ ->
+            render_module_type_declaration_equals state decl;
+            let items = collect_signature_items_from_module_type_decl decl in
+            render_signature_body state items ~end_token:(Ast.ModuleTypeDeclaration.end_token decl);
+            render_wrapped_module_body_attribute_suffix state decl
+        | With { base; constraints; _ } ->
+            render_module_type_declaration_equals state decl;
+            (
+              match base with
+              | Some base -> render_module_type_node state base
+              | None -> unsupported_node "constrained module type declaration without base" decl
+            );
+            let length = Vector.length constraints in
+            let rec loop index =
+              if Int.(index < length) then (
+                emit_space state;
+                if Int.equal index 0 then
+                  emit_text state "with"
+                else
+                  emit_text state "and";
+                emit_space state;
+                render_module_type_constraint_node state (Vector.get_unchecked constraints ~at:index);
+                loop (Int.add index 1)
+              )
+            in
+            loop 0;
+            render_wrapped_module_body_attribute_suffix state decl
+        | Typeof _
+        | Functor _
+        | Error _
+        | Unknown _ ->
+            if node_has_token_kind decl Kind.PERCENT then
+              render_shell_body_after_separator
+                state
+                decl
+                Kind.EQ
+                ~label:"module type extension declaration without '='"
             else
-              emit_text state "and";
-            emit_space state;
-            render_module_type_constraint_node state (Vector.get_unchecked constraints ~at:index);
-            loop (Int.add index 1)
-          )
-        in
-        loop 0;
-        render_wrapped_module_body_attribute_suffix state decl
+              unsupported_node "unsupported module type declaration body" decl
+      )
     | Unsupported _ ->
         if node_has_token_kind decl Kind.PERCENT then
           render_shell_body_after_separator

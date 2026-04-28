@@ -1692,8 +1692,12 @@ let test_module_type_declaration_tokens = fun _ctx ->
           ~actual:(List.reverse !child_kinds);
         (
           match Ast.ModuleTypeDeclaration.body decl with
-          | Ast.ModuleTypeDeclaration.Path { path } ->
-              Test.assert_equal ~expected:SyntaxKind.PATH_MODULE_TYPE ~actual:(Ast.Node.kind path)
+          | Ast.ModuleTypeDeclaration.Manifest { body } -> (
+              match Ast.ModuleTypeExpr.view body with
+              | Ast.ModuleTypeExpr.Path { path } ->
+                  Test.assert_equal ~expected:SyntaxKind.PATH_MODULE_TYPE ~actual:(Ast.Node.kind path)
+              | _ -> panic "expected path module type body"
+            )
           | _ -> panic "expected path module type body"
         );
         Test.assert_equal ~expected:[ "Foo"; "S" ] ~actual:(List.reverse !segments)
@@ -1704,10 +1708,14 @@ let test_module_type_declaration_tokens = fun _ctx ->
     | Ast.SignatureItem.ModuleType decl ->
         (
           match Ast.ModuleTypeDeclaration.body decl with
-          | Ast.ModuleTypeDeclaration.Sig { body } ->
-              Test.assert_equal
-                ~expected:SyntaxKind.SIGNATURE_MODULE_TYPE
-                ~actual:(Ast.Node.kind body)
+          | Ast.ModuleTypeDeclaration.Manifest { body } -> (
+              match Ast.ModuleTypeExpr.view body with
+              | Ast.ModuleTypeExpr.Signature { body } ->
+                  Test.assert_equal
+                    ~expected:SyntaxKind.SIGNATURE_MODULE_TYPE
+                    ~actual:(Ast.Node.kind body)
+              | _ -> panic "expected signature module type body"
+            )
           | _ -> panic "expected signature module type body"
         )
     | _ -> panic "expected second module type declaration"
@@ -1735,8 +1743,13 @@ let test_module_type_with_constraint_views = fun _ctx ->
   | Ast.SignatureItem.ModuleType decl ->
       (
         match Ast.ModuleTypeDeclaration.body decl with
-        | Ast.ModuleTypeDeclaration.With { body } ->
-            Test.assert_equal ~expected:SyntaxKind.WITH_MODULE_TYPE ~actual:(Ast.Node.kind body)
+        | Ast.ModuleTypeDeclaration.Manifest { body } -> (
+            match Ast.ModuleTypeExpr.view body with
+            | Ast.ModuleTypeExpr.With { body; constraints; _ } ->
+                Test.assert_equal ~expected:SyntaxKind.WITH_MODULE_TYPE ~actual:(Ast.Node.kind body);
+                Test.assert_equal ~expected:2 ~actual:(Vector.length constraints)
+            | _ -> panic "expected constrained module type body"
+          )
         | _ -> panic "expected constrained module type body"
       );
       (

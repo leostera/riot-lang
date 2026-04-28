@@ -500,6 +500,7 @@ let lower_module_type_declaration = fun state declaration ->
       let has_definition =
         match Ast.ModuleTypeDeclaration.body declaration with
         | Ast.ModuleTypeDeclaration.Abstract -> false
+        | Ast.ModuleTypeDeclaration.Manifest _
         | _ -> true
       in
       push_item
