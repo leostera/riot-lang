@@ -14,4 +14,6 @@
 
 ## Validate
 
-`timeout 30 riot build http`
+`timeout 30 riot build -p http`
+`timeout 30 riot test -p http`
+`timeout 30 riot bench -p http --warmup 10 --compare 5`
