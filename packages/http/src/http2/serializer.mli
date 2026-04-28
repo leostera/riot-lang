@@ -8,6 +8,16 @@ type payload_error = {
 type stream_id_rule =
   | MustBeZero
   | MustBeNonZero
+type setting_id =
+  | HeaderTableSize
+  | MaxConcurrentStreams
+  | InitialWindowSize
+  | MaxFrameSize
+  | MaxHeaderListSize
+type setting_value_rule =
+  | Unsigned32
+  | InitialWindowSizeRange
+  | MaxFrameSizeRange
 type error =
   | PayloadMismatch of payload_error
   | SettingsAckWithPayload of { setting_count: int }
@@ -32,6 +42,7 @@ type error =
   | InvalidStreamIdRange of { stream_id: int }
   | InvalidPromisedStreamId of { promised_stream_id: int }
   | InvalidLastStreamId of { last_stream_id: int }
+  | InvalidSettingValue of { setting: setting_id; value: int; expected: setting_value_rule }
 val error_to_string: error -> string
 
 val serialize_frame: Frame.t -> (string, error) Result.t

@@ -9,6 +9,18 @@ type stream_id_rule =
   | MustBeZero
   | MustBeNonZero
 
+type setting_id =
+  | HeaderTableSize
+  | MaxConcurrentStreams
+  | InitialWindowSize
+  | MaxFrameSize
+  | MaxHeaderListSize
+
+type setting_value_rule =
+  | Unsigned32
+  | InitialWindowSizeRange
+  | MaxFrameSizeRange
+
 type error =
   | PayloadMismatch of payload_error
   | SettingsAckWithPayload of { setting_count: int }
@@ -33,6 +45,7 @@ type error =
   | InvalidStreamIdRange of { stream_id: int }
   | InvalidPromisedStreamId of { promised_stream_id: int }
   | InvalidLastStreamId of { last_stream_id: int }
+  | InvalidSettingValue of { setting: setting_id; value: int; expected: setting_value_rule }
 
 let frame_type_to_string = function
   | Frame.Data -> "DATA"
@@ -46,6 +59,18 @@ let frame_type_to_string = function
   | Frame.WindowUpdate -> "WINDOW_UPDATE"
   | Frame.Continuation -> "CONTINUATION"
   | Frame.Unknown code -> "UNKNOWN(" ^ Int.to_string code ^ ")"
+
+let setting_id_to_string = function
+  | HeaderTableSize -> "SETTINGS_HEADER_TABLE_SIZE"
+  | MaxConcurrentStreams -> "SETTINGS_MAX_CONCURRENT_STREAMS"
+  | InitialWindowSize -> "SETTINGS_INITIAL_WINDOW_SIZE"
+  | MaxFrameSize -> "SETTINGS_MAX_FRAME_SIZE"
+  | MaxHeaderListSize -> "SETTINGS_MAX_HEADER_LIST_SIZE"
+
+let setting_value_rule_to_string = function
+  | Unsigned32 -> "0..2^32-1"
+  | InitialWindowSizeRange -> "0..2^31-1"
+  | MaxFrameSizeRange -> "16384..16777215"
 
 let error_to_string = function
   | PayloadMismatch { frame_type; _ } ->
@@ -92,6 +117,12 @@ let error_to_string = function
       ^ Int.to_string promised_stream_id
   | InvalidLastStreamId { last_stream_id } ->
       "HTTP/2 last stream ID must be between 0 and 2^31-1, got " ^ Int.to_string last_stream_id
+  | InvalidSettingValue { setting; value; expected } ->
+      setting_id_to_string setting
+      ^ " must be in range "
+      ^ setting_value_rule_to_string expected
+      ^ ", got "
+      ^ Int.to_string value
 
 let write_uint24_be = fun value ->
   let b0 = Char.from_int_unchecked ((value lsr 16) land 0b1111_1111) in
@@ -186,6 +217,32 @@ let validate_last_stream_id = fun last_stream_id ->
     Ok ()
   else
     Error (InvalidLastStreamId { last_stream_id })
+
+let validate_uint32_setting = fun setting value ->
+  if value >= 0 && value <= 0xffff_ffff then
+    Ok ()
+  else
+    Error (InvalidSettingValue { setting; value; expected = Unsigned32 })
+
+let validate_setting_value = function
+  | Frame.HeaderTableSize value -> validate_uint32_setting HeaderTableSize value
+  | Frame.EnablePush _ -> Ok ()
+  | Frame.MaxConcurrentStreams value -> validate_uint32_setting MaxConcurrentStreams value
+  | Frame.InitialWindowSize value ->
+      if value >= 0 && value <= 0x7fff_ffff then
+        Ok ()
+      else
+        Error (InvalidSettingValue {
+          setting = InitialWindowSize;
+          value;
+          expected = InitialWindowSizeRange;
+        })
+  | Frame.MaxFrameSize value ->
+      if value >= 16_384 && value <= 16_777_215 then
+        Ok ()
+      else
+        Error (InvalidSettingValue { setting = MaxFrameSize; value; expected = MaxFrameSizeRange })
+  | Frame.MaxHeaderListSize value -> validate_uint32_setting MaxHeaderListSize value
 
 let flags_to_byte = fun frame_type flags ->
   let open Frame in
@@ -300,24 +357,40 @@ let serialize_rst_stream_payload = fun payload ->
   | payload -> Error (PayloadMismatch { frame_type = Frame.RstStream; payload })
 
 let serialize_setting = function
-  | Frame.HeaderTableSize value -> write_uint16_be 0x1 ^ write_uint32_be value
+  | Frame.HeaderTableSize value -> Ok (write_uint16_be 0x1 ^ write_uint32_be value)
   | Frame.EnablePush enabled ->
-      write_uint16_be 0x2 ^ write_uint32_be
-        (
-          if enabled then
-            1
-          else
-            0
-        )
-  | Frame.MaxConcurrentStreams value -> write_uint16_be 0x3 ^ write_uint32_be value
-  | Frame.InitialWindowSize value -> write_uint16_be 0x4 ^ write_uint32_be value
-  | Frame.MaxFrameSize value -> write_uint16_be 0x5 ^ write_uint32_be value
-  | Frame.MaxHeaderListSize value -> write_uint16_be 0x6 ^ write_uint32_be value
+      Ok (
+        write_uint16_be 0x2 ^ write_uint32_be
+          (
+            if enabled then
+              1
+            else
+              0
+          )
+      )
+  | Frame.MaxConcurrentStreams value -> Ok (write_uint16_be 0x3 ^ write_uint32_be value)
+  | Frame.InitialWindowSize value -> Ok (write_uint16_be 0x4 ^ write_uint32_be value)
+  | Frame.MaxFrameSize value -> Ok (write_uint16_be 0x5 ^ write_uint32_be value)
+  | Frame.MaxHeaderListSize value -> Ok (write_uint16_be 0x6 ^ write_uint32_be value)
 
 let serialize_settings_payload = fun payload ->
   match payload with
-  | Frame.SettingsPayload settings ->
-      Ok (String.concat "" (List.map settings ~fn:serialize_setting))
+  | Frame.SettingsPayload settings -> (
+      let rec loop acc = function
+        | [] ->
+            Ok (String.concat "" (List.reverse acc))
+        | setting :: rest -> (
+            match validate_setting_value setting with
+            | Error error -> Error error
+            | Ok () -> (
+                match serialize_setting setting with
+                | Error error -> Error error
+                | Ok bytes -> loop (bytes :: acc) rest
+              )
+          )
+      in
+      loop [] settings
+    )
   | payload -> Error (PayloadMismatch { frame_type = Frame.Settings; payload })
 
 let serialize_push_promise_payload = fun payload ->

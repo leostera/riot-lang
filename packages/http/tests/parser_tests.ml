@@ -184,6 +184,33 @@ let test_serialize_settings_ack_rejects_payload = fun _ctx ->
   | Error error -> Result.Error ("Wrong serializer error: " ^ Serializer.error_to_string error)
   | Ok _ -> Result.Error "serializer accepted SETTINGS ACK with payload"
 
+let test_serialize_rejects_invalid_initial_window_setting = fun _ctx ->
+  let frame = Frame.settings [ Frame.InitialWindowSize 2_147_483_648; ] in
+  match Serializer.serialize_frame frame with
+  | Error (
+    Serializer.InvalidSettingValue { setting = Serializer.InitialWindowSize; value = 2_147_483_648; expected = Serializer.InitialWindowSizeRange }
+  ) -> Result.Ok ()
+  | Error error -> Result.Error ("Wrong serializer error: " ^ Serializer.error_to_string error)
+  | Ok _ -> Result.Error "serializer accepted invalid SETTINGS_INITIAL_WINDOW_SIZE"
+
+let test_serialize_rejects_invalid_max_frame_size_setting = fun _ctx ->
+  let frame = Frame.settings [ Frame.MaxFrameSize 16_383; ] in
+  match Serializer.serialize_frame frame with
+  | Error (
+    Serializer.InvalidSettingValue { setting = Serializer.MaxFrameSize; value = 16_383; expected = Serializer.MaxFrameSizeRange }
+  ) -> Result.Ok ()
+  | Error error -> Result.Error ("Wrong serializer error: " ^ Serializer.error_to_string error)
+  | Ok _ -> Result.Error "serializer accepted invalid SETTINGS_MAX_FRAME_SIZE"
+
+let test_serialize_rejects_negative_uint32_setting = fun _ctx ->
+  let frame = Frame.settings [ Frame.MaxHeaderListSize (-1); ] in
+  match Serializer.serialize_frame frame with
+  | Error (
+    Serializer.InvalidSettingValue { setting = Serializer.MaxHeaderListSize; value = -1; expected = Serializer.Unsigned32 }
+  ) -> Result.Ok ()
+  | Error error -> Result.Error ("Wrong serializer error: " ^ Serializer.error_to_string error)
+  | Ok _ -> Result.Error "serializer accepted negative SETTINGS_MAX_HEADER_LIST_SIZE"
+
 let test_serialize_rejects_payload_mismatch = fun _ctx ->
   let frame = {
     Frame.length = 0;
@@ -1173,6 +1200,13 @@ let tests =
     case "serialize_settings_payload_length" test_serialize_settings_payload_length;
     case "serialize_settings_ack_has_empty_payload" test_serialize_settings_ack_has_empty_payload;
     case "serialize_settings_ack_rejects_payload" test_serialize_settings_ack_rejects_payload;
+    case
+      "serialize_rejects_invalid_initial_window_setting"
+      test_serialize_rejects_invalid_initial_window_setting;
+    case
+      "serialize_rejects_invalid_max_frame_size_setting"
+      test_serialize_rejects_invalid_max_frame_size_setting;
+    case "serialize_rejects_negative_uint32_setting" test_serialize_rejects_negative_uint32_setting;
     case "serialize_rejects_payload_mismatch" test_serialize_rejects_payload_mismatch;
     case
       "serialize_rejects_invalid_ping_payload_length"
