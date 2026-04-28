@@ -399,7 +399,7 @@ let create_stream = fun conn ->
         let stream = {
           id = stream_id;
           state = Cell.create StreamIdle;
-          window_size = Cell.create (Cell.get conn.local_settings.initial_window_size);
+          window_size = Cell.create (Cell.get conn.remote_settings.initial_window_size);
           receive_window_size = Cell.create (Cell.get conn.local_settings.initial_window_size);
           headers = Cell.create [];
           data_chunks = Cell.create [];
@@ -638,6 +638,18 @@ let process_settings_frame = fun conn settings_list flags ->
   if flags.Frame.ack then
     Ok [ SettingsAckReceived ]
   else
+    let adjust_send_stream_windows = fun delta ->
+      let _ =
+        HashMap.fold_left
+          conn.streams
+          ~init:()
+          ~fn:(fun () _stream_id stream ->
+            Cell.set
+              stream.window_size
+              (Cell.get stream.window_size + delta))
+      in
+      ()
+    in
     let rec apply_settings = function
       | [] ->
           Ok [ SettingsReceived settings_list ]
@@ -657,7 +669,9 @@ let process_settings_frame = fun conn settings_list flags ->
               Cell.set conn.remote_settings.max_concurrent_streams (Some max);
               apply_settings rest
           | Frame.InitialWindowSize size ->
+              let previous = Cell.get conn.remote_settings.initial_window_size in
               Cell.set conn.remote_settings.initial_window_size size;
+              adjust_send_stream_windows (size - previous);
               apply_settings rest
           | Frame.MaxFrameSize size ->
               Cell.set conn.remote_settings.max_frame_size size;

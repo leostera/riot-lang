@@ -674,6 +674,52 @@ let test_create_stream_obeys_remote_max_concurrent = fun _ctx ->
       | Ok stream_id -> Result.Error ("Expected first stream 1, got " ^ Int.to_string stream_id)
     )
 
+let test_create_stream_uses_remote_initial_window = fun _ctx ->
+  let conn = Connection.create ~role:Connection.Client () in
+  let _ = send_preface conn in
+  let remote_settings = Frame.settings [ Frame.InitialWindowSize 10; ] in
+  match Connection.process_data conn (Std.IO.Bytes.from_string (serialize_frame remote_settings)) with
+  | Error err -> Result.Error ("Remote settings failed: " ^ Connection.error_to_string err)
+  | Ok _ -> (
+      match Connection.create_stream conn with
+      | Error err -> Result.Error ("Creating stream failed: " ^ Connection.error_to_string err)
+      | Ok stream_id -> (
+          match Connection.stream_window_size conn ~stream_id with
+          | Some 10 -> Result.Ok ()
+          | Some window ->
+              Result.Error ("Expected stream send window 10, got " ^ Int.to_string window)
+          | None -> Result.Error "New stream was missing"
+        )
+    )
+
+let test_remote_initial_window_adjusts_existing_streams = fun _ctx ->
+  let conn = Connection.create ~role:Connection.Client () in
+  let _ = send_preface conn in
+  match Connection.create_stream conn with
+  | Error err -> Result.Error ("Creating stream failed: " ^ Connection.error_to_string err)
+  | Ok stream_id -> (
+      match Connection.send_data
+        conn
+        ~stream_id
+        ~data:(Std.IO.Bytes.from_string "abc")
+        ~end_stream:false with
+      | Error err -> Result.Error ("Sending DATA failed: " ^ Connection.error_to_string err)
+      | Ok _ ->
+          let remote_settings = Frame.settings [ Frame.InitialWindowSize 10; ] in
+          match Connection.process_data
+            conn
+            (Std.IO.Bytes.from_string (serialize_frame remote_settings)) with
+          | Error err -> Result.Error ("Remote settings failed: " ^ Connection.error_to_string err)
+          | Ok _ -> (
+              match Connection.stream_window_size conn ~stream_id with
+              | Some 7 -> Result.Ok ()
+              | Some window ->
+                  Result.Error ("Expected adjusted stream send window 7, got "
+                  ^ Int.to_string window)
+              | None -> Result.Error "Existing stream was missing"
+            )
+    )
+
 let test_process_data_rejects_new_stream_after_goaway = fun _ctx ->
   let conn = Connection.create ~role:Connection.Server () in
   let goaway = Frame.goaway ~last_stream_id:1 ~error_code:Frame.NoError () in
@@ -845,6 +891,10 @@ let tests =
       "process_data_frees_peer_capacity_after_rst_stream"
       test_process_data_frees_peer_capacity_after_rst_stream;
     case "create_stream_obeys_remote_max_concurrent" test_create_stream_obeys_remote_max_concurrent;
+    case "create_stream_uses_remote_initial_window" test_create_stream_uses_remote_initial_window;
+    case
+      "remote_initial_window_adjusts_existing_streams"
+      test_remote_initial_window_adjusts_existing_streams;
     case
       "process_data_rejects_new_stream_after_goaway"
       test_process_data_rejects_new_stream_after_goaway;
