@@ -137,6 +137,7 @@ type error =
   | UnexpectedContinuation of { stream_id: int }
   | ContinuationStreamMismatch of { expected_stream_id: int; actual_stream_id: int }
   | InvalidPeerStreamId of { role: role; stream_id: int }
+  | NewStreamRejected of { state: state; stream_id: int }
   | DataBeforeHeaders of { stream_id: int }
   | FrameAfterStreamEnd of {
       stream_id: int;
@@ -158,6 +159,12 @@ let role_to_string = function
 let stream_initiator_to_string = function
   | LocalInitiated -> "local"
   | PeerInitiated -> "peer"
+
+let state_to_string = function
+  | Idle -> "idle"
+  | Active -> "active"
+  | GoingAway -> "going away"
+  | Closed -> "closed"
 
 let stream_state_to_string = function
   | StreamIdle -> "idle"
@@ -218,6 +225,11 @@ let error_to_string = function
       ^ role_to_string role
       ^ " connection received HEADERS for invalid peer-initiated stream "
       ^ Int.to_string stream_id
+  | NewStreamRejected { state; stream_id } ->
+      "HTTP/2 connection rejected new stream "
+      ^ Int.to_string stream_id
+      ^ " while "
+      ^ state_to_string state
   | DataBeforeHeaders { stream_id } ->
       "HTTP/2 received DATA before headers on stream " ^ Int.to_string stream_id
   | FrameAfterStreamEnd { stream_id; frame_type; state } ->
@@ -361,6 +373,13 @@ let ensure_stream_capacity = fun conn ~initiator ~stream_id ~limit ->
         )
       else
         Ok ()
+
+let ensure_accepts_new_peer_stream = fun conn ~stream_id ->
+  match Cell.get conn.state with
+  | GoingAway -> Error (NewStreamRejected { state = GoingAway; stream_id })
+  | Closed -> Error (NewStreamRejected { state = Closed; stream_id })
+  | Idle
+  | Active -> Ok ()
 
 let create_stream = fun conn ->
   if Cell.get conn.state != Active then
@@ -663,25 +682,30 @@ let decode_header_block = fun conn ~stream_id ~fragment ~end_stream ->
               Error (InvalidPeerStreamId { role = conn.role; stream_id })
             else
               (
-                match ensure_stream_capacity
-                  conn
-                  ~initiator:PeerInitiated
-                  ~stream_id
-                  ~limit:(Cell.get conn.local_settings.max_concurrent_streams) with
+                match ensure_accepts_new_peer_stream conn ~stream_id with
                 | Error error -> Error error
-                | Ok () ->
-                    let s = {
-                      id = stream_id;
-                      state = Cell.create StreamOpen;
-                      window_size = Cell.create (Cell.get conn.remote_settings.initial_window_size);
-                      receive_window_size = Cell.create
-                        (Cell.get conn.local_settings.initial_window_size);
-                      headers = Cell.create [];
-                      data_chunks = Cell.create [];
-                    }
-                    in
-                    let _ = HashMap.insert conn.streams ~key:stream_id ~value:s in
-                    Ok s
+                | Ok () -> (
+                    match ensure_stream_capacity
+                      conn
+                      ~initiator:PeerInitiated
+                      ~stream_id
+                      ~limit:(Cell.get conn.local_settings.max_concurrent_streams) with
+                    | Error error -> Error error
+                    | Ok () ->
+                        let s = {
+                          id = stream_id;
+                          state = Cell.create StreamOpen;
+                          window_size = Cell.create
+                            (Cell.get conn.remote_settings.initial_window_size);
+                          receive_window_size = Cell.create
+                            (Cell.get conn.local_settings.initial_window_size);
+                          headers = Cell.create [];
+                          data_chunks = Cell.create [];
+                        }
+                        in
+                        let _ = HashMap.insert conn.streams ~key:stream_id ~value:s in
+                        Ok s
+                  )
               )
       in
       match stream with

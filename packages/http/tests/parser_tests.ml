@@ -674,6 +674,36 @@ let test_create_stream_obeys_remote_max_concurrent = fun _ctx ->
       | Ok stream_id -> Result.Error ("Expected first stream 1, got " ^ Int.to_string stream_id)
     )
 
+let test_process_data_rejects_new_stream_after_goaway = fun _ctx ->
+  let conn = Connection.create ~role:Connection.Server () in
+  let goaway = Frame.goaway ~last_stream_id:1 ~error_code:Frame.NoError () in
+  let header_block = encode_header_block [ { Hpack.name = ":method"; value = "GET" }; ] in
+  let headers = Frame.headers ~stream_id:3 ~end_headers:true header_block in
+  match Connection.process_data
+    conn
+    (Std.IO.Bytes.from_string (serialize_frame goaway ^ serialize_frame headers)) with
+  | Error (Connection.NewStreamRejected { state = Connection.GoingAway; stream_id = 3 }) ->
+      Result.Ok ()
+  | Error err -> Result.Error ("Wrong connection error: " ^ Connection.error_to_string err)
+  | Ok _ -> Result.Error "New stream after GOAWAY was accepted"
+
+let test_process_data_allows_existing_stream_after_goaway = fun _ctx ->
+  let conn = Connection.create ~role:Connection.Server () in
+  let header_block = encode_header_block [ { Hpack.name = ":method"; value = "GET" }; ] in
+  let headers = Frame.headers ~stream_id:1 ~end_headers:true header_block in
+  let goaway = Frame.goaway ~last_stream_id:1 ~error_code:Frame.NoError () in
+  let data = Frame.data ~stream_id:1 "ok" in
+  match Connection.process_data
+    conn
+    (Std.IO.Bytes.from_string
+      (serialize_frame headers ^ serialize_frame goaway ^ serialize_frame data)) with
+  | Ok [ Connection.HeadersReceived { stream_id = 1; _ }; Connection.GoawayReceived { last_stream_id = 1; error_code = Frame.NoError; _ }; Connection.DataReceived { stream_id = 1; data; _ } ] when Std.IO.Bytes.to_string
+    data
+  = "ok" -> Result.Ok ()
+  | Ok _ -> Result.Error "Existing stream after GOAWAY emitted unexpected events"
+  | Error err ->
+      Result.Error ("Existing stream after GOAWAY failed: " ^ Connection.error_to_string err)
+
 let test_process_window_update_increases_send_window_only = fun _ctx ->
   let conn = Connection.create ~role:Connection.Server () in
   let send_before = Connection.connection_window_size conn in
@@ -815,6 +845,12 @@ let tests =
       "process_data_frees_peer_capacity_after_rst_stream"
       test_process_data_frees_peer_capacity_after_rst_stream;
     case "create_stream_obeys_remote_max_concurrent" test_create_stream_obeys_remote_max_concurrent;
+    case
+      "process_data_rejects_new_stream_after_goaway"
+      test_process_data_rejects_new_stream_after_goaway;
+    case
+      "process_data_allows_existing_stream_after_goaway"
+      test_process_data_allows_existing_stream_after_goaway;
     case
       "process_window_update_increases_send_window_only"
       test_process_window_update_increases_send_window_only;
