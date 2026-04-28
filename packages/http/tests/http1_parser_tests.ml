@@ -777,6 +777,32 @@ let test_response_rejects_invalid_http_version = fun _ctx ->
       in
       Result.Error ("Expected invalid HTTP version error, got parsed " ^ version)
 
+let test_response_status_line_limit = fun _ctx ->
+  let resp = "HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n" in
+  match Http1.Response.parse ~max_status_line:8 resp with
+  | Error (StatusLineTooLong { max_length = 8 }) -> Result.Ok ()
+  | Error error ->
+      Result.Error ("Expected status line too long error, got " ^ error_to_string error)
+  | Need_more -> Result.Error "Expected status line too long error, got Need_more"
+  | Done _ -> Result.Error "Expected status line too long error"
+
+let test_response_status_line_limit_applies_before_crlf = fun _ctx ->
+  let resp = "HTTP/1.1 200" in
+  match Http1.Response.parse ~max_status_line:8 resp with
+  | Error (StatusLineTooLong { max_length = 8 }) -> Result.Ok ()
+  | Error error ->
+      Result.Error ("Expected status line too long error, got " ^ error_to_string error)
+  | Need_more -> Result.Error "Expected status line too long error, got Need_more"
+  | Done _ -> Result.Error "Expected status line too long error"
+
+let test_response_header_line_limit_applies_before_crlf = fun _ctx ->
+  let resp = "HTTP/1.1 200 OK\r\nX-Long: value" in
+  match Http1.Response.parse ~max_header_length:8 resp with
+  | Error (HeaderTooLong { max_length = 8 }) -> Result.Ok ()
+  | Error error -> Result.Error ("Expected header too long error, got " ^ error_to_string error)
+  | Need_more -> Result.Error "Expected header too long error, got Need_more"
+  | Done _ -> Result.Error "Expected header too long error"
+
 let test_response_rejects_invalid_header_name_character = fun _ctx ->
   let resp = "HTTP/1.1 200 OK\r\nBad@Name: value\r\n\r\n" in
   match Http1.Response.parse resp with
@@ -1106,6 +1132,13 @@ let tests =
       test_response_rejects_conflicting_content_length;
     case "response rejects invalid content length" test_response_rejects_invalid_content_length;
     case "response rejects invalid http version" test_response_rejects_invalid_http_version;
+    case "response status line limit" test_response_status_line_limit;
+    case
+      "response status line limit applies before crlf"
+      test_response_status_line_limit_applies_before_crlf;
+    case
+      "response header line limit applies before crlf"
+      test_response_header_line_limit_applies_before_crlf;
     case
       "response rejects invalid header name character"
       test_response_rejects_invalid_header_name_character;

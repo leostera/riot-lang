@@ -9,6 +9,7 @@ type 'a parse_result =
 and error =
   | InvalidCrlf
   | RequestLineTooLong of { max_length: int }
+  | StatusLineTooLong of { max_length: int }
   | MissingMethod
   | MissingPath
   | InvalidHttpVersion
@@ -70,6 +71,8 @@ let error_to_string = function
   | InvalidCrlf -> "Invalid CRLF"
   | RequestLineTooLong { max_length } ->
       "Request line too long (max " ^ Int.to_string max_length ^ " bytes)"
+  | StatusLineTooLong { max_length } ->
+      "Status line too long (max " ^ Int.to_string max_length ^ " bytes)"
   | MissingMethod -> "Missing method"
   | MissingPath -> "Missing path"
   | InvalidHttpVersion -> "Invalid HTTP version"

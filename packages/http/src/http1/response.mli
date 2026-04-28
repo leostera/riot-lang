@@ -10,6 +10,7 @@ open Common
 *)
 type t = Std.Net.Http.Response.t
 val parse_slice:
+  ?max_status_line:int ->
   ?max_headers:int ->
   ?max_header_length:int ->
   ?max_header_block_length:int ->
@@ -17,6 +18,7 @@ val parse_slice:
   t parse_result
 
 val parse:
+  ?max_status_line:int ->
   ?max_headers:int ->
   ?max_header_length:int ->
   ?max_header_block_length:int ->
@@ -31,6 +33,7 @@ val parse:
    framing separately.
 *)
 val parse_head_slice:
+  ?max_status_line:int ->
   ?max_headers:int ->
   ?max_header_length:int ->
   ?max_header_block_length:int ->
@@ -38,6 +41,7 @@ val parse_head_slice:
   t parse_result
 
 val parse_head:
+  ?max_status_line:int ->
   ?max_headers:int ->
   ?max_header_length:int ->
   ?max_header_block_length:int ->

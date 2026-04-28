@@ -37,46 +37,53 @@ let slice_of_string = fun value ->
   | Ok slice -> slice
   | Error error -> panic ("Http1.Response.slice_of_string: " ^ Slice.error_message error)
 
-let parse_status_line_slice = fun input ->
+let parse_status_line_slice = fun ?(max_length = 8_192) input ->
   let cursor = Cursor.from_slice input in
   match Cursor.take_until_char cursor '\r' with
-  | None -> Cursor_need_more
+  | None ->
+      if Slice.length input > max_length then
+        Cursor_error (Common.StatusLineTooLong { max_length })
+      else
+        Cursor_need_more
   | Some (line, cursor) -> (
-      match Cursor.take_n cursor 2 with
-      | None -> Cursor_need_more
-      | Some (ending, cursor) when Slice.equal_string ending "\r\n" -> (
-          let line_cursor = Cursor.from_slice line in
-          match Cursor.take_until_char line_cursor ' ' with
-          | None -> Cursor_error Common.MissingVersion
-          | Some (version, line_cursor) -> (
-              let line_cursor = Cursor.skip_while line_cursor (fun c -> c = ' ') in
-              match Cursor.take_until_char line_cursor ' ' with
-              | None -> Cursor_error Common.MissingStatusCode
-              | Some (code_str, line_cursor) -> (
-                  let line_cursor = Cursor.skip_while line_cursor (fun c -> c = ' ') in
-                  let reason = Cursor.remaining line_cursor in
-                  let version_cursor = Cursor.from_slice version in
-                  match Cursor.take_n version_cursor 5 with
-                  | Some (prefix, _) when Slice.equal_string prefix "HTTP/" -> (
-                      match Int.parse (Slice.to_string code_str) with
-                      | None -> Cursor_error Common.InvalidStatusCode
-                      | Some status_code ->
-                          Cursor_done {
-                            value =
-                              {
-                                version;
-                                status_code;
-                                reason;
-                                remaining = cursor;
-                              };
-                            remaining = cursor;
-                          }
-                    )
-                  | _ -> Cursor_error Common.InvalidHttpVersion
-                )
-            )
-        )
-      | Some _ -> Cursor_error Common.InvalidCrlf
+      if Slice.length line > max_length then
+        Cursor_error (Common.StatusLineTooLong { max_length })
+      else
+        match Cursor.take_n cursor 2 with
+        | None -> Cursor_need_more
+        | Some (ending, cursor) when Slice.equal_string ending "\r\n" -> (
+            let line_cursor = Cursor.from_slice line in
+            match Cursor.take_until_char line_cursor ' ' with
+            | None -> Cursor_error Common.MissingVersion
+            | Some (version, line_cursor) -> (
+                let line_cursor = Cursor.skip_while line_cursor (fun c -> c = ' ') in
+                match Cursor.take_until_char line_cursor ' ' with
+                | None -> Cursor_error Common.MissingStatusCode
+                | Some (code_str, line_cursor) -> (
+                    let line_cursor = Cursor.skip_while line_cursor (fun c -> c = ' ') in
+                    let reason = Cursor.remaining line_cursor in
+                    let version_cursor = Cursor.from_slice version in
+                    match Cursor.take_n version_cursor 5 with
+                    | Some (prefix, _) when Slice.equal_string prefix "HTTP/" -> (
+                        match Int.parse (Slice.to_string code_str) with
+                        | None -> Cursor_error Common.InvalidStatusCode
+                        | Some status_code ->
+                            Cursor_done {
+                              value =
+                                {
+                                  version;
+                                  status_code;
+                                  reason;
+                                  remaining = cursor;
+                                };
+                              remaining = cursor;
+                            }
+                      )
+                    | _ -> Cursor_error Common.InvalidHttpVersion
+                  )
+              )
+          )
+        | Some _ -> Cursor_error Common.InvalidCrlf
     )
 
 let header_name_equal = fun left right ->
@@ -179,8 +186,12 @@ type response_head_owned = {
 }
 
 let parse_head_owned = fun
-  ?(max_headers = 100) ?(max_header_length = 8_192) ?(max_header_block_length = 65_536) input ->
-  match parse_status_line_slice input with
+  ?(max_status_line = 8_192)
+  ?(max_headers = 100)
+  ?(max_header_length = 8_192)
+  ?(max_header_block_length = 65_536)
+  input ->
+  match parse_status_line_slice ~max_length:max_status_line input with
   | Cursor_need_more -> Cursor_need_more
   | Cursor_error error -> Cursor_error error
   | Cursor_done { value = {
@@ -214,8 +225,17 @@ let parse_head_owned = fun
     )
 
 let parse_head_slice = fun
-  ?(max_headers = 100) ?(max_header_length = 8_192) ?(max_header_block_length = 65_536) input ->
-  match parse_head_owned ~max_headers ~max_header_length ~max_header_block_length input with
+  ?(max_status_line = 8_192)
+  ?(max_headers = 100)
+  ?(max_header_length = 8_192)
+  ?(max_header_block_length = 65_536)
+  input ->
+  match parse_head_owned
+    ~max_status_line
+    ~max_headers
+    ~max_header_length
+    ~max_header_block_length
+    input with
   | Cursor_need_more -> Need_more
   | Cursor_error error -> Error error
   | Cursor_done { value = {
@@ -228,16 +248,30 @@ let parse_head_slice = fun
       Done { value = response; remaining = body_start }
 
 let parse_head = fun
-  ?(max_headers = 100) ?(max_header_length = 8_192) ?(max_header_block_length = 65_536) input ->
+  ?(max_status_line = 8_192)
+  ?(max_headers = 100)
+  ?(max_header_length = 8_192)
+  ?(max_header_block_length = 65_536)
+  input ->
   parse_head_slice
+    ~max_status_line
     ~max_headers
     ~max_header_length
     ~max_header_block_length
     (slice_of_string input)
 
 let parse_slice = fun
-  ?(max_headers = 100) ?(max_header_length = 8_192) ?(max_header_block_length = 65_536) input ->
-  match parse_head_owned ~max_headers ~max_header_length ~max_header_block_length input with
+  ?(max_status_line = 8_192)
+  ?(max_headers = 100)
+  ?(max_header_length = 8_192)
+  ?(max_header_block_length = 65_536)
+  input ->
+  match parse_head_owned
+    ~max_status_line
+    ~max_headers
+    ~max_header_length
+    ~max_header_block_length
+    input with
   | Cursor_need_more -> Need_more
   | Cursor_error error -> Error error
   | Cursor_done { value = {
@@ -278,8 +312,13 @@ let parse_slice = fun
           )
 
 let parse = fun
-  ?(max_headers = 100) ?(max_header_length = 8_192) ?(max_header_block_length = 65_536) input ->
+  ?(max_status_line = 8_192)
+  ?(max_headers = 100)
+  ?(max_header_length = 8_192)
+  ?(max_header_block_length = 65_536)
+  input ->
   parse_slice
+    ~max_status_line
     ~max_headers
     ~max_header_length
     ~max_header_block_length

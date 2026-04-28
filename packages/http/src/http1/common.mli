@@ -11,6 +11,7 @@ type 'a parse_result =
 and error =
   | InvalidCrlf
   | RequestLineTooLong of { max_length: int }
+  | StatusLineTooLong of { max_length: int }
   | MissingMethod
   | MissingPath
   | InvalidHttpVersion
