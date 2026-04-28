@@ -21,11 +21,6 @@ type 'a cursor_parse_result =
   | Cursor_need_more
   | Cursor_error of Common.error
 
-let slice_of_string = fun value ->
-  match Slice.from_string value with
-  | Ok slice -> slice
-  | Error error -> panic ("Http1.Chunk.slice_of_string: " ^ Slice.error_message error)
-
 let take_crlf = fun error cursor ->
   match Cursor.take_n cursor 2 with
   | None -> Cursor_need_more
@@ -118,9 +113,9 @@ let parse_slice = fun ?(max_chunk_size_line = 8_192) input ->
     )
 
 let parse = fun ?(max_chunk_size_line = 8_192) input ->
-  parse_slice
-    ~max_chunk_size_line
-    (slice_of_string input)
+  match Common.slice_of_string input with
+  | Error error -> Error error
+  | Ok input -> parse_slice ~max_chunk_size_line input
 
 type trailer_line = {
   trailer_name: string;
@@ -254,10 +249,13 @@ let decode = fun
   ?(max_trailers = 100)
   ?(max_trailer_length = 8_192)
   input ->
-  decode_slice
-    ~max_chunk_size
-    ~max_chunk_size_line
-    ~max_body_size
-    ~max_trailers
-    ~max_trailer_length
-    (slice_of_string input)
+  match Common.slice_of_string input with
+  | Error error -> Error error
+  | Ok input ->
+      decode_slice
+        ~max_chunk_size
+        ~max_chunk_size_line
+        ~max_body_size
+        ~max_trailers
+        ~max_trailer_length
+        input

@@ -181,6 +181,8 @@ let http1_error_json = fun error ->
       Json.obj [ ("type", Json.string "UnsupportedTransferEncoding") ]
   | Http1.Common.TransferEncodingWithContentLength ->
       Json.obj [ ("type", Json.string "TransferEncodingWithContentLength") ]
+  | Http1.Common.InputSliceCreationFailed _ ->
+      Json.obj [ ("type", Json.string "InputSliceCreationFailed") ]
   | Http1.Common.InvalidChunkSizeLineEnding ->
       Json.obj [ ("type", Json.string "InvalidChunkSizeLineEnding") ]
   | Http1.Common.InvalidChunkDataLineEnding ->

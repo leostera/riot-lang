@@ -85,11 +85,6 @@ module SliceCursor = struct
       Slice.sub_unchecked cursor.source ~off:cursor.pos ~len:(cursor.length - cursor.pos)
 end
 
-let slice_of_string = fun value ->
-  match Slice.from_string value with
-  | Ok slice -> slice
-  | Error error -> panic ("Http1.Request.slice_of_string: " ^ Slice.error_message error)
-
 let string_of_slice = Slice.to_string
 
 let is_space = fun c -> c = ' '
@@ -498,12 +493,15 @@ let parse_head = fun
   ?(max_header_length = 8_192)
   ?(max_header_block_length = 65_536)
   input ->
-  parse_head_slice
-    ~max_request_line
-    ~max_headers
-    ~max_header_length
-    ~max_header_block_length
-    (slice_of_string input)
+  match Common.slice_of_string input with
+  | Error error -> Common.Error error
+  | Ok input ->
+      parse_head_slice
+        ~max_request_line
+        ~max_headers
+        ~max_header_length
+        ~max_header_block_length
+        input
 
 let parse_slice = fun
   ?(max_request_line = 8_192)
@@ -547,16 +545,13 @@ let parse_slice = fun
           match Chunk.decode_slice body_bytes with
           | Common.Need_more -> Common.Need_more
           | Common.Error error -> Common.Error error
-          | Common.Done { value = decoded; _ } ->
-              let request =
-                request_of_parts
-                  head_method
-                  head_uri
-                  head_version
-                  head_headers
-                  (slice_of_string decoded.body)
-              in
-              Common.Done { value = request; remaining = decoded.remaining }
+          | Common.Done { value = decoded; _ } -> (
+              match Common.slice_of_string decoded.body with
+              | Error error -> Common.Error error
+              | Ok body ->
+                  let request = request_of_parts head_method head_uri head_version head_headers body in
+                  Common.Done { value = request; remaining = decoded.remaining }
+            )
         )
     )
 
@@ -566,9 +561,7 @@ let parse = fun
   ?(max_header_length = 8_192)
   ?(max_header_block_length = 65_536)
   input ->
-  parse_slice
-    ~max_request_line
-    ~max_headers
-    ~max_header_length
-    ~max_header_block_length
-    (slice_of_string input)
+  match Common.slice_of_string input with
+  | Error error -> Common.Error error
+  | Ok input ->
+      parse_slice ~max_request_line ~max_headers ~max_header_length ~max_header_block_length input

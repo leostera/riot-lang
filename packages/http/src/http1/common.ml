@@ -25,6 +25,7 @@ and error =
   | ConflictingContentLength
   | UnsupportedTransferEncoding
   | TransferEncodingWithContentLength
+  | InputSliceCreationFailed of IO.IoVec.error
   | InvalidChunkSizeLineEnding
   | InvalidChunkDataLineEnding
   | ChunkSizeLineTooLong of { max_length: int }
@@ -91,6 +92,8 @@ let error_to_string = function
   | ConflictingContentLength -> "Conflicting Content-Length"
   | UnsupportedTransferEncoding -> "Unsupported Transfer-Encoding"
   | TransferEncodingWithContentLength -> "Invalid body framing: Transfer-Encoding with Content-Length"
+  | InputSliceCreationFailed error ->
+      "Failed to create input slice: " ^ IO.IoVec.error_message error
   | InvalidChunkSizeLineEnding -> "Invalid chunk size line ending"
   | InvalidChunkDataLineEnding -> "Invalid chunk data line ending"
   | ChunkSizeLineTooLong { max_length } ->
@@ -178,3 +181,7 @@ let split_at = fun str pos ->
   let left = String.sub str ~offset:0 ~len:pos in
   let right = String.sub str ~offset:pos ~len:(String.length str - pos) in
   (left, right)
+
+let slice_of_string = fun ?off ?len value ->
+  IO.IoVec.IoSlice.from_string ?off ?len value
+  |> Result.map_err ~fn:(fun error -> InputSliceCreationFailed error)

@@ -32,11 +32,6 @@ type body_framing =
   | FixedBody of int
   | ChunkedBody
 
-let slice_of_string = fun value ->
-  match Slice.from_string value with
-  | Ok slice -> slice
-  | Error error -> panic ("Http1.Response.slice_of_string: " ^ Slice.error_message error)
-
 let parse_status_line_slice = fun ?(max_length = 8_192) input ->
   let cursor = Cursor.from_slice input in
   match Cursor.take_until_char cursor '\r' with
@@ -253,12 +248,15 @@ let parse_head = fun
   ?(max_header_length = 8_192)
   ?(max_header_block_length = 65_536)
   input ->
-  parse_head_slice
-    ~max_status_line
-    ~max_headers
-    ~max_header_length
-    ~max_header_block_length
-    (slice_of_string input)
+  match Common.slice_of_string input with
+  | Error error -> Error error
+  | Ok input ->
+      parse_head_slice
+        ~max_status_line
+        ~max_headers
+        ~max_header_length
+        ~max_header_block_length
+        input
 
 let parse_slice = fun
   ?(max_status_line = 8_192)
@@ -317,9 +315,7 @@ let parse = fun
   ?(max_header_length = 8_192)
   ?(max_header_block_length = 65_536)
   input ->
-  parse_slice
-    ~max_status_line
-    ~max_headers
-    ~max_header_length
-    ~max_header_block_length
-    (slice_of_string input)
+  match Common.slice_of_string input with
+  | Error error -> Error error
+  | Ok input ->
+      parse_slice ~max_status_line ~max_headers ~max_header_length ~max_header_block_length input

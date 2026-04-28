@@ -27,11 +27,6 @@ let empty_partial = {
   retry = None;
 }
 
-let slice_of_string = fun value ->
-  match Slice.from_string value with
-  | Ok slice -> slice
-  | Error error -> panic ("Http1.Sse.slice_of_string: " ^ Slice.error_message error)
-
 let trim_trailing_cr = fun line ->
   let len = String.length line in
   if len = 0 then
@@ -151,7 +146,10 @@ let parse_line_slice = fun line ->
         | _ -> None
       )
 
-let parse_line = fun line -> parse_line_slice (slice_of_string line)
+let parse_line = fun line ->
+  match Common.slice_of_string line with
+  | Error _ -> None
+  | Ok line -> parse_line_slice line
 
 let parse = fun input ->
   let lines = String.split ~by:"\n" input in

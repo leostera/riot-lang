@@ -27,6 +27,7 @@ and error =
   | ConflictingContentLength
   | UnsupportedTransferEncoding
   | TransferEncodingWithContentLength
+  | InputSliceCreationFailed of IO.IoVec.error
   | InvalidChunkSizeLineEnding
   | InvalidChunkDataLineEnding
   | ChunkSizeLineTooLong of { max_length: int }
@@ -54,3 +55,5 @@ val validate_header_value: string -> (unit, header_format_error) Result.t
 val find_substring: needle:string -> string -> int option
 
 val split_at: string -> int -> string * string
+
+val slice_of_string: ?off:int -> ?len:int -> string -> (IO.IoVec.IoSlice.t, error) result

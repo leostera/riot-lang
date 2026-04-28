@@ -42,6 +42,12 @@ let expect_request_parse_slice = fun input ->
   | Need_more -> Result.Error "Unexpected Need_more"
   | Error error -> Result.Error ("Parse error: " ^ error_to_string error)
 
+let test_common_slice_creation_errors_are_typed = fun _ctx ->
+  match Http1.Common.slice_of_string ~off:(-1) "GET" with
+  | Error (Http1.Common.InputSliceCreationFailed _) -> Result.Ok ()
+  | Error error -> Result.Error ("Wrong slice creation error: " ^ error_to_string error)
+  | Ok _ -> Result.Error "Negative slice offset was accepted"
+
 (* HTTP/1 Request Tests *)
 
 let test_request_simple_get = fun _ctx ->
@@ -1060,6 +1066,7 @@ let test_sse_parse_dispatches_trailing_event = fun _ctx ->
 
 let tests =
   Test.[
+    case "common slice creation errors are typed" test_common_slice_creation_errors_are_typed;
     case "request_simple_get" test_request_simple_get;
     case "request_post_with_body" test_request_post_with_body;
     case "request_incomplete" test_request_incomplete;
