@@ -146,10 +146,33 @@ let test_parse_set_cookie_rejects_same_site_none_without_secure = fun _ctx ->
 
 let test_parse_set_cookie_result_reports_invalid_max_age = fun _ctx ->
   match Cookie.parse_set_cookie_result "session=abc; Max-Age=forever; Path=/" with
-  | Error (Cookie.InvalidMaxAge { value = "forever" }) -> Result.Ok ()
+  | Error (Cookie.InvalidMaxAge (Cookie.InvalidMaxAgeCharacter { code; index = 0 })) when code
+  = Char.to_int 'f' -> Result.Ok ()
   | Error error ->
       Result.Error ("wrong parse error: " ^ Cookie.parse_set_cookie_error_to_string error)
   | Ok _ -> Result.Error "Set-Cookie with invalid Max-Age was accepted"
+
+let test_parse_set_cookie_result_reports_empty_max_age = fun _ctx ->
+  match Cookie.parse_set_cookie_result "session=abc; Max-Age=; Path=/" with
+  | Error (Cookie.InvalidMaxAge Cookie.EmptyMaxAge) -> Result.Ok ()
+  | Error error ->
+      Result.Error ("wrong parse error: " ^ Cookie.parse_set_cookie_error_to_string error)
+  | Ok _ -> Result.Error "Set-Cookie with empty Max-Age was accepted"
+
+let test_parse_set_cookie_result_reports_negative_max_age = fun _ctx ->
+  match Cookie.parse_set_cookie_result "session=abc; Max-Age=-1; Path=/" with
+  | Error (Cookie.InvalidMaxAge Cookie.NegativeMaxAge) -> Result.Ok ()
+  | Error error ->
+      Result.Error ("wrong parse error: " ^ Cookie.parse_set_cookie_error_to_string error)
+  | Ok _ -> Result.Error "Set-Cookie with negative Max-Age was accepted"
+
+let test_parse_set_cookie_result_reports_max_age_overflow = fun _ctx ->
+  let header = "session=abc; Max-Age=" ^ String.make ~len:32 ~char:'9' ^ "; Path=/" in
+  match Cookie.parse_set_cookie_result header with
+  | Error (Cookie.InvalidMaxAge Cookie.MaxAgeOverflow) -> Result.Ok ()
+  | Error error ->
+      Result.Error ("wrong parse error: " ^ Cookie.parse_set_cookie_error_to_string error)
+  | Ok _ -> Result.Error "Set-Cookie with overflowing Max-Age was accepted"
 
 let test_parse_set_cookie_result_reports_invalid_same_site = fun _ctx ->
   match Cookie.parse_set_cookie_result "session=abc; SameSite=Maybe" with
@@ -194,6 +217,15 @@ let tests =
     case
       "parse Set-Cookie result reports invalid Max-Age"
       test_parse_set_cookie_result_reports_invalid_max_age;
+    case
+      "parse Set-Cookie result reports empty Max-Age"
+      test_parse_set_cookie_result_reports_empty_max_age;
+    case
+      "parse Set-Cookie result reports negative Max-Age"
+      test_parse_set_cookie_result_reports_negative_max_age;
+    case
+      "parse Set-Cookie result reports Max-Age overflow"
+      test_parse_set_cookie_result_reports_max_age_overflow;
     case
       "parse Set-Cookie result reports invalid SameSite"
       test_parse_set_cookie_result_reports_invalid_same_site;

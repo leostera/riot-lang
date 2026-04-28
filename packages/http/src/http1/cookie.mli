@@ -123,9 +123,15 @@ val validation_error_to_string: validation_error -> string
 type parse_set_cookie_error =
   | EmptyHeader
   | MissingNameValueSeparator
-  | InvalidMaxAge of { value: string }
+  | InvalidMaxAge of max_age_error
   | InvalidSameSite of { value: string }
   | InvalidCookie of validation_error
+
+and max_age_error =
+  | EmptyMaxAge
+  | NegativeMaxAge
+  | MaxAgeOverflow
+  | InvalidMaxAgeCharacter of { code: int; index: int }
 val parse_set_cookie_error_to_string: parse_set_cookie_error -> string
 
 (** {2 Parsing} *)

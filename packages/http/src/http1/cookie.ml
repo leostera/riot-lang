@@ -51,9 +51,15 @@ type validation_error =
 type parse_set_cookie_error =
   | EmptyHeader
   | MissingNameValueSeparator
-  | InvalidMaxAge of { value: string }
+  | InvalidMaxAge of max_age_error
   | InvalidSameSite of { value: string }
   | InvalidCookie of validation_error
+
+and max_age_error =
+  | EmptyMaxAge
+  | NegativeMaxAge
+  | MaxAgeOverflow
+  | InvalidMaxAgeCharacter of { code: int; index: int }
 
 let character_code = fun character -> Int.to_string (Char.to_int character)
 
@@ -106,10 +112,17 @@ let validation_error_to_string = function
   | HostPrefixRequiresNoDomain -> "Cookie __Host- prefix must not set Domain"
   | HostPrefixRequiresRootPath -> "Cookie __Host- prefix requires Path=/"
 
+let max_age_error_to_string = function
+  | EmptyMaxAge -> "empty value"
+  | NegativeMaxAge -> "negative value"
+  | MaxAgeOverflow -> "value exceeds the maximum integer"
+  | InvalidMaxAgeCharacter { code; index } ->
+      "invalid character code " ^ Int.to_string code ^ " at index " ^ Int.to_string index
+
 let parse_set_cookie_error_to_string = function
   | EmptyHeader -> "Set-Cookie header is empty"
   | MissingNameValueSeparator -> "Set-Cookie header must start with name=value"
-  | InvalidMaxAge { value } -> "Set-Cookie Max-Age is not an integer: " ^ value
+  | InvalidMaxAge error -> "Set-Cookie Max-Age is invalid: " ^ max_age_error_to_string error
   | InvalidSameSite { value } -> "Set-Cookie SameSite value is invalid: " ^ value
   | InvalidCookie error -> validation_error_to_string error
 
@@ -135,6 +148,31 @@ let parse_attribute = fun attr ->
   | key :: value_parts ->
       let value = String.concat "=" value_parts in
       (Some (String.lowercase_ascii (String.trim key)), Some (String.trim value))
+
+let parse_max_age = fun value ->
+  let value = String.trim value in
+  let length = String.length value in
+  if length = 0 then
+    Result.Error EmptyMaxAge
+  else if String.get_unchecked value ~at:0 = '-' then
+    Result.Error NegativeMaxAge
+  else
+    let rec loop index acc =
+      if index >= length then
+        Result.Ok acc
+      else
+        let char = String.get_unchecked value ~at:index in
+        let code = Char.to_int char in
+        if code < Char.to_int '0' || code > Char.to_int '9' then
+          Result.Error (InvalidMaxAgeCharacter { code; index })
+        else
+          let digit = code - Char.to_int '0' in
+          if acc > (Int.max_int - digit) / 10 then
+            Result.Error MaxAgeOverflow
+          else
+            loop (index + 1) ((acc * 10) + digit)
+    in
+    loop 0 0
 
 (** Serialize SameSite to string *)
 let same_site_to_string = function
@@ -371,9 +409,9 @@ let parse_set_cookie_result = fun header ->
                 | attr :: rest -> (
                     match parse_attribute attr with
                     | (Some "max-age", Some value) -> (
-                        match Int.parse value with
-                        | Some age -> apply_attrs { cookie with max_age = Some age } rest
-                        | Option.None -> Error (InvalidMaxAge { value })
+                        match parse_max_age value with
+                        | Ok age -> apply_attrs { cookie with max_age = Some age } rest
+                        | Error error -> Error (InvalidMaxAge error)
                       )
                     | (Some "expires", Some value) ->
                         apply_attrs { cookie with expires = Some value } rest
