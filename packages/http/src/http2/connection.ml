@@ -139,6 +139,10 @@ type error =
   | InvalidPeerStreamId of { role: role; stream_id: int }
   | NewStreamRejected of { state: state; stream_id: int }
   | DataBeforeHeaders of { stream_id: int }
+  | FrameForIdleStream of {
+      stream_id: int;
+      frame_type: Frame.frame_type;
+    }
   | FrameAfterStreamEnd of {
       stream_id: int;
       frame_type: Frame.frame_type;
@@ -232,6 +236,11 @@ let error_to_string = function
       ^ state_to_string state
   | DataBeforeHeaders { stream_id } ->
       "HTTP/2 received DATA before headers on stream " ^ Int.to_string stream_id
+  | FrameForIdleStream { stream_id; frame_type } ->
+      "HTTP/2 received "
+      ^ Parser.frame_type_name frame_type
+      ^ " for idle stream "
+      ^ Int.to_string stream_id
   | FrameAfterStreamEnd { stream_id; frame_type; state } ->
       "HTTP/2 received "
       ^ Parser.frame_type_name frame_type
@@ -851,19 +860,24 @@ let process_frame = fun conn frame ->
       | Frame.WindowUpdate -> (
           match frame.payload with
           | Frame.WindowUpdatePayload increment ->
-              if frame.stream_id = 0 then
+              if frame.stream_id = 0 then (
                 Cell.set
                   conn.send_connection_window_size
-                  (Cell.get conn.send_connection_window_size + increment)
-              else
-                (* Stream-level window update *)
+                  (Cell.get conn.send_connection_window_size + increment);
+                Ok [ WindowUpdateReceived { stream_id = frame.stream_id; increment } ]
+              ) else
                 (
+                  (* Stream-level window update *)
                   match get_stream conn frame.stream_id with
+                  | None ->
+                      Error (FrameForIdleStream {
+                        stream_id = frame.stream_id;
+                        frame_type = Frame.WindowUpdate;
+                      })
                   | Some stream ->
-                      Cell.set stream.window_size (Cell.get stream.window_size + increment)
-                  | None -> ()
-                );
-              Ok [ WindowUpdateReceived { stream_id = frame.stream_id; increment } ]
+                      Cell.set stream.window_size (Cell.get stream.window_size + increment);
+                      Ok [ WindowUpdateReceived { stream_id = frame.stream_id; increment } ]
+                )
           | _ ->
               Error (InvalidPayloadForFrame {
                 frame_type = Frame.WindowUpdate;
@@ -889,13 +903,17 @@ let process_frame = fun conn frame ->
         )
       | Frame.RstStream -> (
           match frame.payload with
-          | Frame.RstStreamPayload error_code ->
-              (
-                match get_stream conn frame.stream_id with
-                | Some stream -> Cell.set stream.state StreamClosed
-                | None -> ()
-              );
-              Ok [ RstStreamReceived { stream_id = frame.stream_id; error_code } ]
+          | Frame.RstStreamPayload error_code -> (
+              match get_stream conn frame.stream_id with
+              | None ->
+                  Error (FrameForIdleStream {
+                    stream_id = frame.stream_id;
+                    frame_type = Frame.RstStream;
+                  })
+              | Some stream ->
+                  Cell.set stream.state StreamClosed;
+                  Ok [ RstStreamReceived { stream_id = frame.stream_id; error_code } ]
+            )
           | _ ->
               Error (InvalidPayloadForFrame {
                 frame_type = Frame.RstStream;

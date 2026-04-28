@@ -128,6 +128,10 @@ type error =
   | InvalidPeerStreamId of { role: role; stream_id: int }
   | NewStreamRejected of { state: state; stream_id: int }
   | DataBeforeHeaders of { stream_id: int }
+  | FrameForIdleStream of {
+      stream_id: int;
+      frame_type: Frame.frame_type;
+    }
   | FrameAfterStreamEnd of {
       stream_id: int;
       frame_type: Frame.frame_type;
