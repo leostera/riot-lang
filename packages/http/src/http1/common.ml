@@ -16,7 +16,7 @@ and error =
   | InvalidRequestTarget of Std.Net.Uri.error
   | MissingVersion
   | MissingStatusCode
-  | InvalidStatusCode
+  | InvalidStatusCode of status_code_error
   | InvalidHeaderFormat of header_format_error
   | HeaderTooLong of { max_length: int }
   | HeaderBlockTooLong of { max_length: int }
@@ -38,6 +38,11 @@ and chunk_size_error =
   | EmptyChunkSize
   | ChunkSizeOverflow
   | InvalidChunkSizeCharacter of { code: int; index: int }
+
+and status_code_error =
+  | StatusCodeLength of { length: int; expected: int }
+  | InvalidStatusCodeCharacter of { code: int; index: int }
+  | StatusCodeOutOfRange of { code: int; min: int; max: int }
 
 and content_length_error =
   | EmptyContentLength
@@ -93,6 +98,19 @@ let chunk_size_error_to_string = function
   | InvalidChunkSizeCharacter { code; index } ->
       "invalid hex character code " ^ Int.to_string code ^ " at index " ^ Int.to_string index
 
+let status_code_error_to_string = function
+  | StatusCodeLength { length; expected } ->
+      "expected " ^ Int.to_string expected ^ " digits, got " ^ Int.to_string length
+  | InvalidStatusCodeCharacter { code; index } ->
+      "invalid digit character code " ^ Int.to_string code ^ " at index " ^ Int.to_string index
+  | StatusCodeOutOfRange { code; min; max } ->
+      "status code "
+      ^ Int.to_string code
+      ^ " is outside "
+      ^ Int.to_string min
+      ^ ".."
+      ^ Int.to_string max
+
 let error_to_string = function
   | InvalidCrlf -> "Invalid CRLF"
   | RequestLineTooLong { max_length } ->
@@ -105,7 +123,7 @@ let error_to_string = function
   | InvalidRequestTarget error -> "Invalid request target: " ^ uri_error_to_string error
   | MissingVersion -> "Missing version"
   | MissingStatusCode -> "Missing status code"
-  | InvalidStatusCode -> "Invalid status code"
+  | InvalidStatusCode error -> "Invalid status code: " ^ status_code_error_to_string error
   | InvalidHeaderFormat error ->
       "Invalid header format (" ^ header_format_error_to_string error ^ ")"
   | HeaderTooLong { max_length } -> "Header too long (max " ^ Int.to_string max_length ^ " bytes)"

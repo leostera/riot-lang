@@ -18,7 +18,7 @@ and error =
   | InvalidRequestTarget of Std.Net.Uri.error
   | MissingVersion
   | MissingStatusCode
-  | InvalidStatusCode
+  | InvalidStatusCode of status_code_error
   | InvalidHeaderFormat of header_format_error
   | HeaderTooLong of { max_length: int }
   | HeaderBlockTooLong of { max_length: int }
@@ -40,6 +40,11 @@ and chunk_size_error =
   | EmptyChunkSize
   | ChunkSizeOverflow
   | InvalidChunkSizeCharacter of { code: int; index: int }
+
+and status_code_error =
+  | StatusCodeLength of { length: int; expected: int }
+  | InvalidStatusCodeCharacter of { code: int; index: int }
+  | StatusCodeOutOfRange of { code: int; min: int; max: int }
 
 and content_length_error =
   | EmptyContentLength

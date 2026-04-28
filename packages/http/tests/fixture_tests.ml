@@ -173,6 +173,31 @@ let http1_chunk_size_error_json = fun error ->
           ("index", Json.int index);
         ]
 
+let http1_status_code_error_json = fun error ->
+  match error with
+  | Http1.Common.StatusCodeLength { length; expected } ->
+      Json.obj
+        [
+          ("type", Json.string "StatusCodeLength");
+          ("length", Json.int length);
+          ("expected", Json.int expected);
+        ]
+  | Http1.Common.InvalidStatusCodeCharacter { code; index } ->
+      Json.obj
+        [
+          ("type", Json.string "InvalidStatusCodeCharacter");
+          ("code", Json.int code);
+          ("index", Json.int index);
+        ]
+  | Http1.Common.StatusCodeOutOfRange { code; min; max } ->
+      Json.obj
+        [
+          ("type", Json.string "StatusCodeOutOfRange");
+          ("code", Json.int code);
+          ("min", Json.int min);
+          ("max", Json.int max);
+        ]
+
 let http1_error_json = fun error ->
   match error with
   | Http1.Common.InvalidCrlf -> Json.obj [ ("type", Json.string "InvalidCrlf") ]
@@ -186,7 +211,12 @@ let http1_error_json = fun error ->
   | Http1.Common.InvalidRequestTarget _ -> Json.obj [ ("type", Json.string "InvalidRequestTarget") ]
   | Http1.Common.MissingVersion -> Json.obj [ ("type", Json.string "MissingVersion") ]
   | Http1.Common.MissingStatusCode -> Json.obj [ ("type", Json.string "MissingStatusCode") ]
-  | Http1.Common.InvalidStatusCode -> Json.obj [ ("type", Json.string "InvalidStatusCode") ]
+  | Http1.Common.InvalidStatusCode reason ->
+      Json.obj
+        [
+          ("type", Json.string "InvalidStatusCode");
+          ("reason", http1_status_code_error_json reason);
+        ]
   | Http1.Common.InvalidHeaderFormat reason ->
       Json.obj
         [

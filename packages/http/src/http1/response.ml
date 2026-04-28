@@ -33,12 +33,25 @@ type body_framing =
   | ChunkedBody
 
 let parse_status_code = fun code_str ->
-  if Slice.length code_str != 3 then
-    None
+  let length = Slice.length code_str in
+  if length != 3 then
+    Result.Error (Common.StatusCodeLength { length; expected = 3 })
   else
-    match Int.parse (Slice.to_string code_str) with
-    | Some status_code when status_code >= 100 && status_code <= 999 -> Some status_code
-    | _ -> None
+    let rec loop index acc =
+      if index >= length then
+        if acc >= 100 && acc <= 999 then
+          Result.Ok acc
+        else
+          Result.Error (Common.StatusCodeOutOfRange { code = acc; min = 100; max = 999 })
+      else
+        let char = Slice.get_unchecked code_str ~at:index in
+        let code = Char.to_int char in
+        if code < Char.to_int '0' || code > Char.to_int '9' then
+          Result.Error (Common.InvalidStatusCodeCharacter { code; index })
+        else
+          loop (index + 1) ((acc * 10) + (code - Char.to_int '0'))
+    in
+    loop 0 0
 
 let parse_status_line_slice = fun ?(max_length = 8_192) input ->
   let cursor = Cursor.from_slice input in
@@ -69,8 +82,8 @@ let parse_status_line_slice = fun ?(max_length = 8_192) input ->
                     match Cursor.take_n version_cursor 5 with
                     | Some (prefix, _) when Slice.equal_string prefix "HTTP/" -> (
                         match parse_status_code code_str with
-                        | None -> Cursor_error Common.InvalidStatusCode
-                        | Some status_code ->
+                        | Error error -> Cursor_error (Common.InvalidStatusCode error)
+                        | Ok status_code ->
                             Cursor_done {
                               value =
                                 {

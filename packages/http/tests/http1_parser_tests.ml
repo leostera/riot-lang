@@ -903,7 +903,7 @@ let test_response_rejects_invalid_http_version = fun _ctx ->
 let test_response_rejects_short_status_code = fun _ctx ->
   let resp = "HTTP/1.1 99 Weird\r\nContent-Length: 0\r\n\r\n" in
   match Http1.Response.parse resp with
-  | Error InvalidStatusCode -> Result.Ok ()
+  | Error (InvalidStatusCode (StatusCodeLength { length = 2; expected = 3 })) -> Result.Ok ()
   | Error error -> Result.Error ("Expected invalid status code error, got " ^ error_to_string error)
   | Need_more -> Result.Error "Expected invalid status code error, got Need_more"
   | Done _ -> Result.Error "Expected invalid status code error"
@@ -911,7 +911,8 @@ let test_response_rejects_short_status_code = fun _ctx ->
 let test_response_rejects_status_code_below_100 = fun _ctx ->
   let resp = "HTTP/1.1 099 Weird\r\nContent-Length: 0\r\n\r\n" in
   match Http1.Response.parse resp with
-  | Error InvalidStatusCode -> Result.Ok ()
+  | Error (InvalidStatusCode (StatusCodeOutOfRange { code = 99; min = 100; max = 999 })) ->
+      Result.Ok ()
   | Error error -> Result.Error ("Expected invalid status code error, got " ^ error_to_string error)
   | Need_more -> Result.Error "Expected invalid status code error, got Need_more"
   | Done _ -> Result.Error "Expected invalid status code error"
@@ -919,7 +920,16 @@ let test_response_rejects_status_code_below_100 = fun _ctx ->
 let test_response_rejects_long_status_code = fun _ctx ->
   let resp = "HTTP/1.1 1000 Weird\r\nContent-Length: 0\r\n\r\n" in
   match Http1.Response.parse resp with
-  | Error InvalidStatusCode -> Result.Ok ()
+  | Error (InvalidStatusCode (StatusCodeLength { length = 4; expected = 3 })) -> Result.Ok ()
+  | Error error -> Result.Error ("Expected invalid status code error, got " ^ error_to_string error)
+  | Need_more -> Result.Error "Expected invalid status code error, got Need_more"
+  | Done _ -> Result.Error "Expected invalid status code error"
+
+let test_response_rejects_status_code_character = fun _ctx ->
+  let resp = "HTTP/1.1 2xx Weird\r\nContent-Length: 0\r\n\r\n" in
+  match Http1.Response.parse resp with
+  | Error (InvalidStatusCode (InvalidStatusCodeCharacter { code; index = 1 })) when code
+  = Char.to_int 'x' -> Result.Ok ()
   | Error error -> Result.Error ("Expected invalid status code error, got " ^ error_to_string error)
   | Need_more -> Result.Error "Expected invalid status code error, got Need_more"
   | Done _ -> Result.Error "Expected invalid status code error"
@@ -1386,6 +1396,7 @@ let tests =
     case "response rejects short status code" test_response_rejects_short_status_code;
     case "response rejects status code below 100" test_response_rejects_status_code_below_100;
     case "response rejects long status code" test_response_rejects_long_status_code;
+    case "response rejects status code character" test_response_rejects_status_code_character;
     case "response rejects invalid status line crlf" test_response_rejects_invalid_status_line_crlf;
     case "response status line limit" test_response_status_line_limit;
     case
