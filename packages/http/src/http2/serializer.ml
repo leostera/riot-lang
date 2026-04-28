@@ -21,6 +21,15 @@ type error =
       stream_id: int;
       expected: stream_id_rule;
     }
+  | InvalidPaddingLength of {
+      frame_type: Frame.frame_type;
+      pad_length: int;
+    }
+  | MissingPriorityFields of {
+      frame_type: Frame.frame_type;
+    }
+  | InvalidPriorityWeight of { weight: int }
+  | InvalidStreamDependency of { stream_dependency: int }
 
 let frame_type_to_string = function
   | Frame.Data -> "DATA"
@@ -62,6 +71,17 @@ let error_to_string = function
       ^ Int.to_string stream_id
       ^ ", expected "
       ^ expected
+  | InvalidPaddingLength { frame_type; pad_length } ->
+      frame_type_to_string frame_type
+      ^ " frame padding length must fit in one byte, got "
+      ^ Int.to_string pad_length
+  | MissingPriorityFields { frame_type } ->
+      frame_type_to_string frame_type ^ " frame has incomplete priority fields"
+  | InvalidPriorityWeight { weight } ->
+      "HTTP/2 priority weight must be between 1 and 256, got " ^ Int.to_string weight
+  | InvalidStreamDependency { stream_dependency } ->
+      "HTTP/2 stream dependency must be between 0 and 2^31-1, got "
+      ^ Int.to_string stream_dependency
 
 let write_uint24_be = fun value ->
   let b0 = Char.from_int_unchecked ((value lsr 16) land 0b1111_1111) in
@@ -121,6 +141,27 @@ let validate_stream_id = fun frame_type stream_id ->
       Error (InvalidStreamId { frame_type; stream_id; expected = MustBeZero })
   | _ -> Ok ()
 
+let validate_padding = fun frame_type pad_length ->
+  match pad_length with
+  | None -> Ok ()
+  | Some pad_length ->
+      if pad_length >= 0 && pad_length <= 0b1111_1111 then
+        Ok ()
+      else
+        Error (InvalidPaddingLength { frame_type; pad_length })
+
+let validate_stream_dependency = fun stream_dependency ->
+  if stream_dependency >= 0 && stream_dependency <= 0x7fff_ffff then
+    Ok ()
+  else
+    Error (InvalidStreamDependency { stream_dependency })
+
+let validate_priority_weight = fun weight ->
+  if weight >= 1 && weight <= 256 then
+    Ok ()
+  else
+    Error (InvalidPriorityWeight { weight })
+
 let flags_to_byte = fun frame_type flags ->
   let open Frame in
   let byte = 0 in
@@ -157,19 +198,33 @@ let flags_to_byte = fun frame_type flags ->
   byte
 
 let serialize_priority = fun stream_dependency exclusive weight ->
-  let dep_with_exclusive =
-    if exclusive then
-      stream_dependency lor 0x8000_0000
-    else
-      stream_dependency land 0x7fff_ffff
-  in
-  write_uint32_be dep_with_exclusive ^ write_uint8 (weight - 1)
+  match validate_stream_dependency stream_dependency with
+  | Error error -> Error error
+  | Ok () -> (
+      match validate_priority_weight weight with
+      | Error error -> Error error
+      | Ok () ->
+          let dep_with_exclusive =
+            if exclusive then
+              stream_dependency lor 0x8000_0000
+            else
+              stream_dependency
+          in
+          Ok (write_uint32_be dep_with_exclusive ^ write_uint8 (weight - 1))
+    )
 
 let serialize_data_payload = fun payload ->
   match payload with
-  | Frame.DataPayload { data; pad_length = None } -> Ok data
-  | Frame.DataPayload { data; pad_length = Some pad_len } ->
-      Ok (write_uint8 pad_len ^ data ^ String.make ~len:pad_len ~char:'\x00')
+  | Frame.DataPayload { data; pad_length = None } -> (
+      match validate_padding Frame.Data None with
+      | Error error -> Error error
+      | Ok () -> Ok data
+    )
+  | Frame.DataPayload { data; pad_length = Some pad_len } -> (
+      match validate_padding Frame.Data (Some pad_len) with
+      | Error error -> Error error
+      | Ok () -> Ok (write_uint8 pad_len ^ data ^ String.make ~len:pad_len ~char:'\x00')
+    )
   | payload -> Error (PayloadMismatch { frame_type = Frame.Data; payload })
 
 let serialize_headers_payload = fun payload ->
@@ -180,29 +235,38 @@ let serialize_headers_payload = fun payload ->
     weight;
     exclusive;
     header_block_fragment
-  } ->
-      let pad_bytes =
-        match pad_length with
-        | Some pl -> write_uint8 pl
-        | None -> ""
-      in
-      let priority_bytes =
-        match (stream_dependency, weight) with
-        | (Some dep, Some w) -> serialize_priority dep exclusive w
-        | _ -> ""
-      in
-      let padding =
-        match pad_length with
-        | Some pl -> String.make ~len:pl ~char:'\x00'
-        | None -> ""
-      in
-      Ok (pad_bytes ^ priority_bytes ^ header_block_fragment ^ padding)
+  } -> (
+      match validate_padding Frame.Headers pad_length with
+      | Error error -> Error error
+      | Ok () -> (
+          let pad_bytes =
+            match pad_length with
+            | Some pl -> write_uint8 pl
+            | None -> ""
+          in
+          let priority_bytes =
+            match (stream_dependency, weight) with
+            | (Some dep, Some w) -> serialize_priority dep exclusive w
+            | (None, None) -> Ok ""
+            | _ -> Error (MissingPriorityFields { frame_type = Frame.Headers })
+          in
+          match priority_bytes with
+          | Error error -> Error error
+          | Ok priority_bytes ->
+              let padding =
+                match pad_length with
+                | Some pl -> String.make ~len:pl ~char:'\x00'
+                | None -> ""
+              in
+              Ok (pad_bytes ^ priority_bytes ^ header_block_fragment ^ padding)
+        )
+    )
   | payload -> Error (PayloadMismatch { frame_type = Frame.Headers; payload })
 
 let serialize_priority_payload = fun payload ->
   match payload with
   | Frame.PriorityPayload { stream_dependency; exclusive; weight } ->
-      Ok (serialize_priority stream_dependency exclusive weight)
+      serialize_priority stream_dependency exclusive weight
   | payload -> Error (PayloadMismatch { frame_type = Frame.Priority; payload })
 
 let serialize_rst_stream_payload = fun payload ->
@@ -233,19 +297,23 @@ let serialize_settings_payload = fun payload ->
 
 let serialize_push_promise_payload = fun payload ->
   match payload with
-  | Frame.PushPromisePayload { pad_length; promised_stream_id; header_block_fragment } ->
-      let pad_bytes =
-        match pad_length with
-        | Some pl -> write_uint8 pl
-        | None -> ""
-      in
-      let promised_id_bytes = write_uint32_be (promised_stream_id land 0x7fff_ffff) in
-      let padding =
-        match pad_length with
-        | Some pl -> String.make ~len:pl ~char:'\x00'
-        | None -> ""
-      in
-      Ok (pad_bytes ^ promised_id_bytes ^ header_block_fragment ^ padding)
+  | Frame.PushPromisePayload { pad_length; promised_stream_id; header_block_fragment } -> (
+      match validate_padding Frame.PushPromise pad_length with
+      | Error error -> Error error
+      | Ok () ->
+          let pad_bytes =
+            match pad_length with
+            | Some pl -> write_uint8 pl
+            | None -> ""
+          in
+          let promised_id_bytes = write_uint32_be (promised_stream_id land 0x7fff_ffff) in
+          let padding =
+            match pad_length with
+            | Some pl -> String.make ~len:pl ~char:'\x00'
+            | None -> ""
+          in
+          Ok (pad_bytes ^ promised_id_bytes ^ header_block_fragment ^ padding)
+    )
   | payload -> Error (PayloadMismatch { frame_type = Frame.PushPromise; payload })
 
 let serialize_ping_payload = fun payload ->

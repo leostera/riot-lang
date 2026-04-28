@@ -20,6 +20,15 @@ type error =
       stream_id: int;
       expected: stream_id_rule;
     }
+  | InvalidPaddingLength of {
+      frame_type: Frame.frame_type;
+      pad_length: int;
+    }
+  | MissingPriorityFields of {
+      frame_type: Frame.frame_type;
+    }
+  | InvalidPriorityWeight of { weight: int }
+  | InvalidStreamDependency of { stream_dependency: int }
 val error_to_string: error -> string
 
 val serialize_frame: Frame.t -> (string, error) Result.t

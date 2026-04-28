@@ -281,6 +281,49 @@ let test_serialize_rejects_nonzero_stream_settings_frame = fun _ctx ->
   | Error error -> Result.Error ("Wrong serializer error: " ^ Serializer.error_to_string error)
   | Ok _ -> Result.Error "serializer accepted SETTINGS frame on a non-zero stream"
 
+let test_serialize_rejects_invalid_padding_length = fun _ctx ->
+  let frame = Frame.data ~stream_id:1 ~pad_length:(-1) "hello" in
+  match Serializer.serialize_frame frame with
+  | Error (Serializer.InvalidPaddingLength { frame_type = Frame.Data; pad_length = -1 }) ->
+      Result.Ok ()
+  | Error error -> Result.Error ("Wrong serializer error: " ^ Serializer.error_to_string error)
+  | Ok _ -> Result.Error "serializer accepted negative DATA padding"
+
+let test_serialize_rejects_invalid_priority_weight = fun _ctx ->
+  let frame = Frame.priority ~stream_id:1 ~stream_dependency:0 ~exclusive:false ~weight:0 in
+  match Serializer.serialize_frame frame with
+  | Error (Serializer.InvalidPriorityWeight { weight = 0 }) -> Result.Ok ()
+  | Error error -> Result.Error ("Wrong serializer error: " ^ Serializer.error_to_string error)
+  | Ok _ -> Result.Error "serializer accepted invalid priority weight"
+
+let test_serialize_rejects_invalid_stream_dependency = fun _ctx ->
+  let frame = Frame.priority ~stream_id:1 ~stream_dependency:(-1) ~exclusive:false ~weight:1 in
+  match Serializer.serialize_frame frame with
+  | Error (Serializer.InvalidStreamDependency { stream_dependency = -1 }) -> Result.Ok ()
+  | Error error -> Result.Error ("Wrong serializer error: " ^ Serializer.error_to_string error)
+  | Ok _ -> Result.Error "serializer accepted invalid stream dependency"
+
+let test_serialize_rejects_incomplete_headers_priority = fun _ctx ->
+  let frame = {
+    Frame.length = 0;
+    frame_type = Frame.Headers;
+    flags = { Frame.default_flags with priority = true };
+    stream_id = 1;
+    payload =
+      Frame.HeadersPayload {
+        pad_length = None;
+        stream_dependency = Some 0;
+        weight = None;
+        exclusive = false;
+        header_block_fragment = "";
+      };
+  }
+  in
+  match Serializer.serialize_frame frame with
+  | Error (Serializer.MissingPriorityFields { frame_type = Frame.Headers }) -> Result.Ok ()
+  | Error error -> Result.Error ("Wrong serializer error: " ^ Serializer.error_to_string error)
+  | Ok _ -> Result.Error "serializer accepted incomplete HEADERS priority fields"
+
 let test_ping_rejects_invalid_payload_length = fun _ctx ->
   match Frame.ping "short" with
   | Error (Frame.InvalidPingPayloadLength { length = 5 }) -> Result.Ok ()
@@ -1124,6 +1167,14 @@ let tests =
     case
       "serialize_rejects_nonzero_stream_settings_frame"
       test_serialize_rejects_nonzero_stream_settings_frame;
+    case "serialize_rejects_invalid_padding_length" test_serialize_rejects_invalid_padding_length;
+    case "serialize_rejects_invalid_priority_weight" test_serialize_rejects_invalid_priority_weight;
+    case
+      "serialize_rejects_invalid_stream_dependency"
+      test_serialize_rejects_invalid_stream_dependency;
+    case
+      "serialize_rejects_incomplete_headers_priority"
+      test_serialize_rejects_incomplete_headers_priority;
     case "ping_rejects_invalid_payload_length" test_ping_rejects_invalid_payload_length;
     case "window_update_rejects_invalid_increment" test_window_update_rejects_invalid_increment;
     case
