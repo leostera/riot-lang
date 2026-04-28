@@ -80,6 +80,18 @@ let test_parse_rejects_64_bit_length_above_int_max = fun _ctx ->
     "\x82\x7f\x40\x00\x00\x00\x00\x00\x00\x00"
     (Parser.PayloadLengthTooLarge { most_significant_byte = 0x40; max_payload_length = Int.max_int })
 
+let test_parse_rejects_non_minimal_16_bit_length = fun _ctx ->
+  expect_parse_error
+    ~role:Parser.Client
+    "\x81\x7e\x00\x7d"
+    (Parser.NonMinimalPayloadLength { encoding = Parser.PayloadLength16; payload_length = 125 })
+
+let test_parse_rejects_non_minimal_64_bit_length = fun _ctx ->
+  expect_parse_error
+    ~role:Parser.Client
+    "\x82\x7f\x00\x00\x00\x00\x00\x00\xff\xff"
+    (Parser.NonMinimalPayloadLength { encoding = Parser.PayloadLength64; payload_length = 65_535 })
+
 let test_parse_rejects_payload_over_limit = fun _ctx ->
   match Parser.parse ~max_payload_length:2 ~role:Parser.Client "\x81\x03abc" with
   | Parser.Error (Parser.PayloadLengthExceedsLimit { payload_length = 3; max_payload_length = 2 }) ->
@@ -123,6 +135,12 @@ let test_parse_rejects_invalid_close_reason_utf8 = fun _ctx ->
     "\x88\x04\x03\xe8\xc0\x80"
     (Parser.InvalidCloseReasonUtf8 { reason_length = 2 })
 
+let test_parse_rejects_invalid_text_utf8 = fun _ctx ->
+  expect_parse_error
+    ~role:Parser.Client
+    "\x81\x02\xc0\x80"
+    (Parser.InvalidTextPayloadUtf8 { payload_length = 2 })
+
 let tests =
   Test.[
     case "parse_valid_ping" test_parse_valid_ping;
@@ -135,12 +153,15 @@ let tests =
     case "parse_64_bit_length_uses_high_bytes" test_parse_64_bit_length_uses_high_bytes;
     case "parse_rejects_64_bit_length_high_bit" test_parse_rejects_64_bit_length_high_bit;
     case "parse_rejects_64_bit_length_above_int_max" test_parse_rejects_64_bit_length_above_int_max;
+    case "parse_rejects_non_minimal_16_bit_length" test_parse_rejects_non_minimal_16_bit_length;
+    case "parse_rejects_non_minimal_64_bit_length" test_parse_rejects_non_minimal_64_bit_length;
     case "parse_rejects_payload_over_limit" test_parse_rejects_payload_over_limit;
     case "parse_rejects_negative_payload_limit" test_parse_rejects_negative_payload_limit;
     case "parse_valid_close_with_reason" test_parse_valid_close_with_reason;
     case "parse_rejects_one_byte_close_payload" test_parse_rejects_one_byte_close_payload;
     case "parse_rejects_invalid_close_code" test_parse_rejects_invalid_close_code;
     case "parse_rejects_invalid_close_reason_utf8" test_parse_rejects_invalid_close_reason_utf8;
+    case "parse_rejects_invalid_text_utf8" test_parse_rejects_invalid_text_utf8;
   ]
 
 let main ~args:_ = Test.Cli.main ~name:"http:ws_parser" ~tests ~args:Env.args ()

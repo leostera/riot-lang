@@ -5,7 +5,7 @@
 *)
 open Std
 
-let ( let* ) = Result.and_then
+let ( let* ) = fun result fn -> Result.and_then result ~fn
 
 type role =
   | Server
@@ -27,14 +27,24 @@ and error =
   | PayloadLengthTooLarge of { most_significant_byte: int; max_payload_length: int }
   | PayloadLengthExceedsLimit of { payload_length: int; max_payload_length: int }
   | InvalidPayloadLengthLimit of { max_payload_length: int }
+  | NonMinimalPayloadLength of { encoding: payload_length_encoding; payload_length: int }
+  | InvalidTextPayloadUtf8 of { payload_length: int }
   | ClosePayloadTooShort of { payload_length: int }
   | InvalidCloseCode of { code: int }
   | InvalidCloseReasonUtf8 of { reason_length: int }
+
+and payload_length_encoding =
+  | PayloadLength16
+  | PayloadLength64
 
 type payload_length_result =
   | PayloadLength of { header_size: int; payload_length: int }
   | PayloadLengthNeedMore
   | PayloadLengthError of error
+
+let payload_length_encoding_to_string = function
+  | PayloadLength16 -> "16-bit extended"
+  | PayloadLength64 -> "64-bit extended"
 
 let error_to_string = function
   | InvalidOpcode opcode -> "Invalid WebSocket opcode: 0x" ^ Int.to_string opcode
@@ -60,6 +70,14 @@ let error_to_string = function
       ^ Int.to_string max_payload_length
   | InvalidPayloadLengthLimit { max_payload_length } ->
       "Invalid WebSocket payload length limit: " ^ Int.to_string max_payload_length
+  | NonMinimalPayloadLength { encoding; payload_length } ->
+      "WebSocket "
+      ^ payload_length_encoding_to_string encoding
+      ^ " payload length encoding was used for length "
+      ^ Int.to_string payload_length
+      ^ ", but the minimal length encoding is required"
+  | InvalidTextPayloadUtf8 { payload_length } ->
+      "WebSocket text frame payload is not valid UTF-8, length " ^ Int.to_string payload_length
   | ClosePayloadTooShort { payload_length } ->
       "WebSocket close frame payload must be empty or at least 2 bytes, got "
       ^ Int.to_string payload_length
@@ -100,7 +118,11 @@ let validate_frame_header = fun ~fin ~rsv1 ~rsv2 ~rsv3 ~opcode ~payload_len_init
 let parse_uint16_payload_length = fun input ->
   let len_high = byte_at input 2 in
   let len_low = byte_at input 3 in
-  PayloadLength { header_size = 4; payload_length = (len_high lsl 8) lor len_low }
+  let payload_length = (len_high lsl 8) lor len_low in
+  if payload_length < 126 then
+    PayloadLengthError (NonMinimalPayloadLength { encoding = PayloadLength16; payload_length })
+  else
+    PayloadLength { header_size = 4; payload_length }
 
 let parse_uint64_payload_length = fun input ->
   let first_byte = byte_at input 2 in
@@ -109,7 +131,13 @@ let parse_uint64_payload_length = fun input ->
   else
     let rec loop at acc =
       if at = 10 then
-        PayloadLength { header_size = 10; payload_length = acc }
+        if acc <= 65_535 then
+          PayloadLengthError (NonMinimalPayloadLength {
+            encoding = PayloadLength64;
+            payload_length = acc;
+          })
+        else
+          PayloadLength { header_size = 10; payload_length = acc }
       else
         let byte = byte_at input at in
         if acc > (Int.max_int - byte) / 256 then
@@ -167,6 +195,16 @@ let validate_close_payload = fun opcode payload ->
           Result.Ok ()
         else
           Result.Error (InvalidCloseReasonUtf8 { reason_length })
+
+let validate_text_payload = fun ~fin ~opcode payload ->
+  if opcode = Frame.Text && fin && not (Unicode.Utf8.is_valid payload) then
+    Result.Error (InvalidTextPayloadUtf8 { payload_length = String.length payload })
+  else
+    Result.Ok ()
+
+let validate_payload = fun ~fin ~opcode payload ->
+  let* () = validate_close_payload opcode payload in
+  validate_text_payload ~fin ~opcode payload
 
 (* Parse a single WebSocket frame *)
 
@@ -251,7 +289,7 @@ let parse = fun ?(max_payload_length = Int.max_int) ~role input ->
                         else
                           raw_payload
                       in
-                      match validate_close_payload opcode payload with
+                      match validate_payload ~fin ~opcode payload with
                       | Result.Error err -> Error err
                       | Result.Ok () ->
                           (* Create frame *)
