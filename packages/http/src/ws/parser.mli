@@ -18,6 +18,8 @@ and error =
   | ServerFrameMasked
   | FragmentedControlFrame
   | ControlFramePayloadTooLarge of { payload_length: int }
+  | PayloadLengthHighBitSet of { first_byte: int }
+  | PayloadLengthTooLarge of { most_significant_byte: int; max_payload_length: int }
 val error_to_string: error -> string
 
 val parse: role:role -> string -> Frame.t parse_result

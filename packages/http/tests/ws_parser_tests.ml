@@ -62,6 +62,24 @@ let test_parse_rejects_oversized_control_length = fun _ctx ->
     "\x89\x7e\x00\x7e"
     (Parser.ControlFramePayloadTooLarge { payload_length = 126 })
 
+let test_parse_64_bit_length_uses_high_bytes = fun _ctx ->
+  match Parser.parse ~role:Parser.Client "\x82\x7f\x00\x00\x00\x01\x00\x00\x00\x00" with
+  | Parser.Need_more -> Result.Ok ()
+  | Parser.Error err -> Result.Error ("64-bit length was rejected: " ^ Parser.error_to_string err)
+  | Parser.Done _ -> Result.Error "64-bit length was truncated to the low 32 bits"
+
+let test_parse_rejects_64_bit_length_high_bit = fun _ctx ->
+  expect_parse_error
+    ~role:Parser.Client
+    "\x82\x7f\x80\x00\x00\x00\x00\x00\x00\x00"
+    (Parser.PayloadLengthHighBitSet { first_byte = 0x80 })
+
+let test_parse_rejects_64_bit_length_above_int_max = fun _ctx ->
+  expect_parse_error
+    ~role:Parser.Client
+    "\x82\x7f\x40\x00\x00\x00\x00\x00\x00\x00"
+    (Parser.PayloadLengthTooLarge { most_significant_byte = 0x40; max_payload_length = Int.max_int })
+
 let tests =
   Test.[
     case "parse_valid_ping" test_parse_valid_ping;
@@ -71,6 +89,9 @@ let tests =
     case "parse_rejects_rsv_bits" test_parse_rejects_rsv_bits;
     case "parse_rejects_fragmented_ping" test_parse_rejects_fragmented_ping;
     case "parse_rejects_oversized_control_length" test_parse_rejects_oversized_control_length;
+    case "parse_64_bit_length_uses_high_bytes" test_parse_64_bit_length_uses_high_bytes;
+    case "parse_rejects_64_bit_length_high_bit" test_parse_rejects_64_bit_length_high_bit;
+    case "parse_rejects_64_bit_length_above_int_max" test_parse_rejects_64_bit_length_above_int_max;
   ]
 
 let main ~args:_ = Test.Cli.main ~name:"http:ws_parser" ~tests ~args:Env.args ()
