@@ -26,7 +26,7 @@ and error =
   | MalformedPriorityPayload
   | SettingsAckWithPayload of { length: int }
   | SettingsLengthNotMultipleOfSix of { length: int }
-  | InvalidSettingValue of { setting: setting_id; value: int }
+  | InvalidSettingValue of { setting: setting_id; value: int; expected: setting_value_rule }
   | WindowUpdateIncrementZero
   | InvalidPriorityDependency of { stream_id: int; stream_dependency: int }
 
@@ -56,6 +56,11 @@ and setting_id =
   | EnablePush
   | InitialWindowSize
   | MaxFrameSize
+
+and setting_value_rule =
+  | ZeroOrOne
+  | InitialWindowSizeRange
+  | MaxFrameSizeRange
 val error_to_string: error -> string
 
 val frame_type_name: Frame.frame_type -> string

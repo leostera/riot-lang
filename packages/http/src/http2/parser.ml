@@ -26,7 +26,7 @@ and error =
   | MalformedPriorityPayload
   | SettingsAckWithPayload of { length: int }
   | SettingsLengthNotMultipleOfSix of { length: int }
-  | InvalidSettingValue of { setting: setting_id; value: int }
+  | InvalidSettingValue of { setting: setting_id; value: int; expected: setting_value_rule }
   | WindowUpdateIncrementZero
   | InvalidPriorityDependency of { stream_id: int; stream_dependency: int }
 
@@ -57,6 +57,11 @@ and setting_id =
   | InitialWindowSize
   | MaxFrameSize
 
+and setting_value_rule =
+  | ZeroOrOne
+  | InitialWindowSizeRange
+  | MaxFrameSizeRange
+
 (* RFC 9113: SETTINGS_MAX_FRAME_SIZE default is 16384, max is 16777215 *)
 
 (* For security, we enforce a configurable maximum *)
@@ -77,6 +82,11 @@ let setting_id_to_string = function
   | EnablePush -> "SETTINGS_ENABLE_PUSH"
   | InitialWindowSize -> "SETTINGS_INITIAL_WINDOW_SIZE"
   | MaxFrameSize -> "SETTINGS_MAX_FRAME_SIZE"
+
+let setting_value_rule_to_string = function
+  | ZeroOrOne -> "0 or 1"
+  | InitialWindowSizeRange -> "0..2^31-1"
+  | MaxFrameSizeRange -> "16384..16777215"
 
 let frame_type_name = function
   | Frame.Data -> "DATA"
@@ -156,8 +166,12 @@ let error_to_string = function
       "SETTINGS ACK must have zero length, got " ^ Int.to_string length
   | SettingsLengthNotMultipleOfSix { length } ->
       "SETTINGS frame length must be a multiple of 6, got " ^ Int.to_string length
-  | InvalidSettingValue { setting; value } ->
-      setting_id_to_string setting ^ " has invalid value " ^ Int.to_string value
+  | InvalidSettingValue { setting; value; expected } ->
+      setting_id_to_string setting
+      ^ " has invalid value "
+      ^ Int.to_string value
+      ^ ", expected "
+      ^ setting_value_rule_to_string expected
   | WindowUpdateIncrementZero -> "WINDOW_UPDATE increment must be non-zero"
   | InvalidPriorityDependency { stream_id; stream_dependency } ->
       "HTTP/2 stream "
@@ -489,10 +503,24 @@ let parse_settings_payload = fun length flags data ->
                 | Some s -> parse_settings (offset + 6) (s :: acc)
                 | None -> (
                     match id with
-                    | 0x2 -> Result.Error (InvalidSettingValue { setting = EnablePush; value })
+                    | 0x2 ->
+                        Result.Error (InvalidSettingValue {
+                          setting = EnablePush;
+                          value;
+                          expected = ZeroOrOne;
+                        })
                     | 0x4 ->
-                        Result.Error (InvalidSettingValue { setting = InitialWindowSize; value })
-                    | 0x5 -> Result.Error (InvalidSettingValue { setting = MaxFrameSize; value })
+                        Result.Error (InvalidSettingValue {
+                          setting = InitialWindowSize;
+                          value;
+                          expected = InitialWindowSizeRange;
+                        })
+                    | 0x5 ->
+                        Result.Error (InvalidSettingValue {
+                          setting = MaxFrameSize;
+                          value;
+                          expected = MaxFrameSizeRange;
+                        })
                     | _ -> parse_settings (offset + 6) acc
                   )
               )

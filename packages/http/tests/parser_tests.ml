@@ -630,7 +630,11 @@ let test_reader_parser_rejects_settings_nonzero_stream = fun _ctx ->
 let test_reader_parser_rejects_invalid_enable_push = fun _ctx ->
   expect_reader_parse_error
     (settings_frame_with_payload "\x00\x02\x00\x00\x00\x02")
-    (Parser.InvalidSettingValue { setting = Parser.EnablePush; value = 2 })
+    (Parser.InvalidSettingValue {
+      setting = Parser.EnablePush;
+      value = 2;
+      expected = Parser.ZeroOrOne;
+    })
 
 let test_reader_parser_rejects_zero_window_update_increment = fun _ctx ->
   expect_reader_parse_error
@@ -647,8 +651,9 @@ let test_frame_types = fun _ctx ->
 let test_parse_settings_rejects_invalid_enable_push = fun _ctx ->
   let bytes = settings_frame_with_payload "\x00\x02\x00\x00\x00\x02" in
   match Parser.parse_frame bytes with
-  | Parser.Error (Parser.InvalidSettingValue { setting = Parser.EnablePush; value = 2 }) ->
-      Result.Ok ()
+  | Parser.Error (
+    Parser.InvalidSettingValue { setting = Parser.EnablePush; value = 2; expected = Parser.ZeroOrOne }
+  ) -> Result.Ok ()
   | Parser.Error err -> Result.Error ("Wrong parse error: " ^ Parser.error_to_string err)
   | Parser.Need_more -> Result.Error "Expected invalid SETTINGS_ENABLE_PUSH to fail"
   | Parser.Done _ -> Result.Error "Invalid SETTINGS_ENABLE_PUSH was accepted"
@@ -657,7 +662,7 @@ let test_parse_settings_rejects_initial_window_overflow = fun _ctx ->
   let bytes = settings_frame_with_payload "\x00\x04\x80\x00\x00\x00" in
   match Parser.parse_frame bytes with
   | Parser.Error (
-    Parser.InvalidSettingValue { setting = Parser.InitialWindowSize; value = 2_147_483_648 }
+    Parser.InvalidSettingValue { setting = Parser.InitialWindowSize; value = 2_147_483_648; expected = Parser.InitialWindowSizeRange }
   ) -> Result.Ok ()
   | Parser.Error err -> Result.Error ("Wrong parse error: " ^ Parser.error_to_string err)
   | Parser.Need_more -> Result.Error "Expected oversized SETTINGS_INITIAL_WINDOW_SIZE to fail"
@@ -666,8 +671,9 @@ let test_parse_settings_rejects_initial_window_overflow = fun _ctx ->
 let test_parse_settings_rejects_small_max_frame_size = fun _ctx ->
   let bytes = settings_frame_with_payload "\x00\x05\x00\x00\x3f\xff" in
   match Parser.parse_frame bytes with
-  | Parser.Error (Parser.InvalidSettingValue { setting = Parser.MaxFrameSize; value = 16_383 }) ->
-      Result.Ok ()
+  | Parser.Error (
+    Parser.InvalidSettingValue { setting = Parser.MaxFrameSize; value = 16_383; expected = Parser.MaxFrameSizeRange }
+  ) -> Result.Ok ()
   | Parser.Error err -> Result.Error ("Wrong parse error: " ^ Parser.error_to_string err)
   | Parser.Need_more -> Result.Error "Expected small SETTINGS_MAX_FRAME_SIZE to fail"
   | Parser.Done _ -> Result.Error "Small SETTINGS_MAX_FRAME_SIZE was accepted"
@@ -675,8 +681,9 @@ let test_parse_settings_rejects_small_max_frame_size = fun _ctx ->
 let test_parse_settings_rejects_large_max_frame_size = fun _ctx ->
   let bytes = settings_frame_with_payload "\x00\x05\x01\x00\x00\x00" in
   match Parser.parse_frame bytes with
-  | Parser.Error (Parser.InvalidSettingValue { setting = Parser.MaxFrameSize; value = 16_777_216 }) ->
-      Result.Ok ()
+  | Parser.Error (
+    Parser.InvalidSettingValue { setting = Parser.MaxFrameSize; value = 16_777_216; expected = Parser.MaxFrameSizeRange }
+  ) -> Result.Ok ()
   | Parser.Error err -> Result.Error ("Wrong parse error: " ^ Parser.error_to_string err)
   | Parser.Need_more -> Result.Error "Expected large SETTINGS_MAX_FRAME_SIZE to fail"
   | Parser.Done _ -> Result.Error "Large SETTINGS_MAX_FRAME_SIZE was accepted"
