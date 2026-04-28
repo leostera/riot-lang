@@ -52,6 +52,7 @@ let is_incomplete_decode = function
   | Hpack.IncompleteStringEncoding
   | Hpack.StringDataTruncated _ -> true
   | Hpack.UnsupportedHuffmanStringEncoding
+  | Hpack.IntegerEncodingOverflow _
   | Hpack.InvalidHeaderIndex _
   | Hpack.InvalidNameIndex _
   | Hpack.DynamicTableSizeUpdateFailed _

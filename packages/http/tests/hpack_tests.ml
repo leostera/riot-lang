@@ -110,6 +110,14 @@ let test_huffman_header_value_is_rejected = fun _ctx ->
   | Error err -> Result.Error ("Wrong decode error: " ^ Hpack.decode_error_to_string err)
   | Ok _ -> Result.Error "Huffman-encoded header value decoded as plain text"
 
+let test_integer_decode_overflow_returns_typed_error = fun _ctx ->
+  let decoder = Hpack.create_decoder () in
+  let encoded = IO.Bytes.from_string ("\xff" ^ String.make ~len:20 ~char:'\xff') in
+  match Hpack.decode decoder encoded with
+  | Error (Hpack.IntegerEncodingOverflow _) -> Result.Ok ()
+  | Error err -> Result.Error ("Wrong decode error: " ^ Hpack.decode_error_to_string err)
+  | Ok _ -> Result.Error "Overflowing HPACK integer decoded successfully"
+
 let test_indexed_missing_header_returns_typed_error = fun _ctx ->
   let encoder = Hpack.create_encoder () in
   let header = { Hpack.name = "x-missing"; value = "value" } in
@@ -317,6 +325,9 @@ let tests = [
     test_literal_with_indexing_updates_decoder_table;
   Test.case "huffman_header_name_is_rejected" test_huffman_header_name_is_rejected;
   Test.case "huffman_header_value_is_rejected" test_huffman_header_value_is_rejected;
+  Test.case
+    "integer_decode_overflow_returns_typed_error"
+    test_integer_decode_overflow_returns_typed_error;
   Test.case
     "indexed_missing_header_returns_typed_error"
     test_indexed_missing_header_returns_typed_error;

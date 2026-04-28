@@ -22,6 +22,7 @@ val table_size_error_to_string: table_size_error -> string
 
 type decode_error =
   | IncompleteIntegerEncoding
+  | IntegerEncodingOverflow of { accumulator: int; multiplier: int; value: int }
   | IncompleteStringEncoding
   | StringDataTruncated of { length: int; available: int }
   | UnsupportedHuffmanStringEncoding

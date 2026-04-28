@@ -18,6 +18,7 @@ type table_size_error =
 
 type decode_error =
   | IncompleteIntegerEncoding
+  | IntegerEncodingOverflow of { accumulator: int; multiplier: int; value: int }
   | IncompleteStringEncoding
   | StringDataTruncated of { length: int; available: int }
   | UnsupportedHuffmanStringEncoding
@@ -34,6 +35,13 @@ let table_size_error_to_string = function
 
 let decode_error_to_string = function
   | IncompleteIntegerEncoding -> "Incomplete HPACK integer encoding"
+  | IntegerEncodingOverflow { accumulator; multiplier; value } ->
+      "HPACK integer encoding overflowed with accumulator "
+      ^ Int.to_string accumulator
+      ^ ", multiplier "
+      ^ Int.to_string multiplier
+      ^ ", value "
+      ^ Int.to_string value
   | IncompleteStringEncoding -> "Incomplete HPACK string encoding"
   | StringDataTruncated { length; available } ->
       "HPACK string data truncated: expected "
@@ -308,11 +316,20 @@ module Integer = struct
             |> Char.to_int
           in
           let value = byte land 0b0111_1111 in
-          let acc = acc + (value * multiplier) in
-          if byte land 0b1000_0000 = 0 then
-            Ok (acc, pos + 1)
+          if value != 0 && multiplier > Int.max_int / value then
+            Error (IntegerEncodingOverflow { accumulator = acc; multiplier; value })
           else
-            read_continuation acc (multiplier * 128) (pos + 1)
+            let delta = value * multiplier in
+            if acc > Int.max_int - delta then
+              Error (IntegerEncodingOverflow { accumulator = acc; multiplier; value })
+            else
+              let acc = acc + delta in
+              if byte land 0b1000_0000 = 0 then
+                Ok (acc, pos + 1)
+              else if multiplier > Int.max_int / 128 then
+                Error (IntegerEncodingOverflow { accumulator = acc; multiplier; value })
+              else
+                read_continuation acc (multiplier * 128) (pos + 1)
       in
       match read_continuation prefix_mask 1 offset with
       | Ok (value, new_offset) -> Ok (value, new_offset)
