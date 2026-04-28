@@ -243,14 +243,7 @@ let record_suite_timing = fun
       | Test_runtime.Skipped -> ())
 
 let print_summary = fun
-  ~small_only
-  ~large_only
-  ~label
-  ~total
-  ~passed
-  ~failed
-  ~skipped
-  ~(timing:timing_summary) ->
+  ~small_only ~large_only ~label ~total ~passed ~failed ~skipped ~(timing:timing_summary) ->
   println "";
   println label;
   println ("  Total test cases: " ^ Int.to_string total);
@@ -318,10 +311,7 @@ let upsert_int_field = fun name value fields ->
   filtered @ [ (name, Data.Json.Int value); ]
 
 let stamp_json_event = fun
-  ~command_started_at
-  ~duration_us
-  (event: Test_runtime.test_event)
-  (json: Data.Json.t) ->
+  ~command_started_at ~duration_us (event: Test_runtime.test_event) (json: Data.Json.t) ->
   match json with
   | Data.Json.Object fields ->
       let elapsed_us = event_elapsed_us ~command_started_at in
@@ -413,8 +403,7 @@ let suite_source_labels = fun ~(workspace:Riot_model.Workspace.t) ->
             None))
 
 let suite_source_label = fun
-  ~(suite_labels:suite_source_label_entry list)
-  (suite: Test_runtime.suite_binary) ->
+  ~(suite_labels:suite_source_label_entry list) (suite: Test_runtime.suite_binary) ->
   match suite_labels
   |> List.find
     ~fn:(fun (entry: suite_source_label_entry) ->
@@ -432,13 +421,11 @@ let listed_suite_source_label = fun
   | None -> suite_source_label ~suite_labels suite.suite
 
 let listed_test_selector = fun
-  (suite: Test_runtime.suite_binary)
-  (test: Test_runtime.listed_test_case) ->
+  (suite: Test_runtime.suite_binary) (test: Test_runtime.listed_test_case) ->
   Riot_model.Package_name.to_string suite.package_name ^ ":" ^ suite.suite_name ^ ":" ^ test.name
 
 let listed_test_json = fun
-  (suite: Test_runtime.suite_binary)
-  (test: Test_runtime.listed_test_case) ->
+  (suite: Test_runtime.suite_binary) (test: Test_runtime.listed_test_case) ->
   let type_fields =
     match test.test_type with
     | Test_runtime.Test -> [ ("type", Data.Json.String "test"); ]
@@ -470,8 +457,7 @@ let listed_test_json = fun
   @ reliability_fields)
 
 let listed_suite_path_json = fun
-  ~(workspace:Riot_model.Workspace.t)
-  (suite: Test_runtime.listed_test_suite) ->
+  ~(workspace:Riot_model.Workspace.t) (suite: Test_runtime.listed_test_suite) ->
   match suite.source_path with
   | Some path -> (
       match Path.strip_prefix path ~prefix:workspace.root with
@@ -500,9 +486,7 @@ let write_test_suite_listed_json = fun
     ])
 
 let write_test_case_listed_json = fun
-  ~command_started_at
-  (suite: Test_runtime.suite_binary)
-  (test: Test_runtime.listed_test_case) ->
+  ~command_started_at (suite: Test_runtime.suite_binary) (test: Test_runtime.listed_test_case) ->
   write_json_line
     (Data.Json.Object [
       ("type", Data.Json.String "TestCaseListed");
@@ -516,9 +500,7 @@ let write_test_case_listed_json = fun
     ])
 
 let write_test_suite_list_failed_json = fun
-  ~command_started_at
-  (suite: Test_runtime.suite_binary)
-  err ->
+  ~command_started_at (suite: Test_runtime.suite_binary) err ->
   write_json_line
     (Data.Json.Object [
       ("type", Data.Json.String "TestSuiteListFailed");
@@ -530,10 +512,7 @@ let write_test_suite_list_failed_json = fun
     ])
 
 let write_test_list_completed_json = fun
-  ~command_started_at
-  ~suite_count
-  ~test_count
-  ~failed_suite_count ->
+  ~command_started_at ~suite_count ~test_count ~failed_suite_count ->
   write_json_line
     (Data.Json.Object [
       ("type", Data.Json.String "TestListCompleted");
@@ -544,9 +523,7 @@ let write_test_list_completed_json = fun
     ])
 
 let write_test_list = fun
-  ~(workspace:Riot_model.Workspace.t)
-  ~(suite_labels:suite_source_label_entry list)
-  suites ->
+  ~(workspace:Riot_model.Workspace.t) ~(suite_labels:suite_source_label_entry list) suites ->
   List.for_each
     suites
     ~fn:(fun (suite: Test_runtime.listed_test_suite) ->
@@ -587,8 +564,7 @@ let suite_stream_key = fun (suite: Test_runtime.suite_binary) ->
   Riot_model.Package_name.to_string suite.package_name ^ ":" ^ suite.suite_name
 
 let qualified_test_name = fun
-  (suite: Test_runtime.suite_binary)
-  (result: Test_runtime.test_case_result) ->
+  (suite: Test_runtime.suite_binary) (result: Test_runtime.test_case_result) ->
   Riot_model.Package_name.to_string suite.package_name
   ^ "::"
   ^ suite.suite_name
@@ -596,8 +572,7 @@ let qualified_test_name = fun
   ^ result.name
 
 let print_test_result = fun
-  ~(suite:Test_runtime.suite_binary)
-  (result: Test_runtime.test_case_result) ->
+  ~(suite:Test_runtime.suite_binary) (result: Test_runtime.test_case_result) ->
   let prefix =
     match result.test_type with
     | Test_runtime.Test -> "test"

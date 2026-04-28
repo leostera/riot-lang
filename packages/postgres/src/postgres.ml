@@ -520,7 +520,8 @@ module Driver = struct
     | Error (Net.Addr.System_error _err) ->
         (* Host resolution failure - treat as connection refused *)
         Error (TransportError Net.TcpStream.Connection_refused)
-    | Error (Net.Addr.Invalid_port_number _ | Net.Addr.Invalid_format _) ->
+    | Error (Net.Addr.Invalid_port_number _
+    | Net.Addr.Invalid_format _) ->
         (* Invalid address format - treat as connection refused *)
         Error (TransportError Net.TcpStream.Connection_refused)
     | Ok addr -> (

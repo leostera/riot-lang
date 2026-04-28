@@ -49,7 +49,7 @@ let minimal_failure_prop =
   property
     "DEMO: pairs where both are positive (FALSE)"
     Arbitrary.(pair int int)
-    (fun ((a, b)) -> a > 0 && b > 0)
+    (fun (a, b) -> a > 0 && b > 0)
 
 (* Will shrink to find minimal negative case *)
 
@@ -65,7 +65,7 @@ let passing_with_assume_prop =
   property
     "PASS: division by non-zero works"
     Arbitrary.(pair int int)
-    (fun ((a, b)) ->
+    (fun (a, b) ->
       assume (b != 0);
       let result = a / b in
       result * b + (a mod b) = a)

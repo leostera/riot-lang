@@ -120,6 +120,8 @@ let current_offset = fun p -> (current p).Raw_token.span.Ceibo.Span.start
 
 let previous_end_offset = fun p -> (previous p).Raw_token.span.Ceibo.Span.end_
 
+let current_is_tight_after_previous = fun p -> Int.equal (current_offset p) (previous_end_offset p)
+
 let zero_span = fun offset -> Ceibo.Span.make ~start:offset ~end_:offset
 
 let token_text = fun p raw -> Raw_token.text_slice ~source:p.source raw
@@ -977,7 +979,7 @@ let starts_with_module_type_decl_keyword = fun p -> starts_with_module_type_decl
 
 let identifier_text_starts_uppercase = fun text ->
   String.length text > 0 && match String.get text ~at:0 with
-  | Some ('A' .. 'Z') -> true
+  | Some 'A' .. 'Z' -> true
   | _ -> false
 
 let previous_ident_starts_uppercase = fun p ->
@@ -1325,12 +1327,7 @@ let consume_first_class_module_shell = fun p ->
   expect_closer p Syntax_kind.RPAREN ~opener:"("
 
 let rec parse_expression = fun
-  p
-  ~signature
-  ~stop_at_item
-  ?(stop_at_semi = false)
-  ?(stop_at_comma = false)
-  min_bp ->
+  p ~signature ~stop_at_item ?(stop_at_semi = false) ?(stop_at_comma = false) min_bp ->
   let rec loop lhs =
     if expression_boundary p ~stop_at_item ~stop_at_semi ~stop_at_comma ~signature then
       lhs
@@ -1969,12 +1966,7 @@ and parse_let_expr = fun p ~signature ~stop_at_item ~stop_at_semi ~stop_at_comma
     )
 
 and parse_binding_operator_expr = fun
-  p
-  marker
-  ~signature
-  ~stop_at_item
-  ~stop_at_semi
-  ~stop_at_comma ->
+  p marker ~signature ~stop_at_item ~stop_at_semi ~stop_at_comma ->
   bump p;
   parse_let_binding p ~signature ~top_level:false;
   let rec parse_parallel_bindings () =
@@ -2036,17 +2028,33 @@ and parse_label_pattern = fun p ~stop_type_at_arrow kind ->
     parse_parenthesized_binding ()
   else (
     expect p Syntax_kind.IDENT (invalid_pattern p);
-    if at p Syntax_kind.COLON then (
+    if at p Syntax_kind.COLON && current_is_tight_after_previous p then (
       bump p;
       if at p Syntax_kind.LPAREN then
         parse_parenthesized_binding ()
       else (
-        parse_pattern ~stop_type_at_arrow p;
+        ignore (parse_pattern_no_apply ~stop_type_at_arrow p);
         complete_labeled_pattern false
       )
     ) else
       complete_labeled_pattern false
   )
+
+and parse_parameter_pattern = fun p ~stop_type_at_arrow ->
+  let rec loop lhs =
+    if is_attribute_suffix p then
+      (
+        let marker = precede p lhs in
+        bump p;
+        consume_attribute_sigils p;
+        consume_balanced_until p ~closer:Syntax_kind.RBRACKET 0;
+        expect p Syntax_kind.RBRACKET (invalid_pattern p);
+        loop (complete p marker Syntax_kind.ATTRIBUTE_PATTERN)
+      )
+    else
+      lhs
+  in
+  loop (parse_pattern_atom p ~stop_type_at_arrow)
 
 and parse_if_expr = fun p ~signature ~stop_at_item ~stop_at_semi ~stop_at_comma ->
   let rec parse_then_branch () =
@@ -2142,7 +2150,7 @@ and parse_fun_expr = fun p ~signature ~stop_at_item ~stop_at_semi ~stop_at_comma
   bump p;
   let rec parse_params () =
     if not (at p Syntax_kind.ARROW || at p Syntax_kind.COLON || is_eof p) then (
-      parse_pattern ~stop_type_at_arrow:true p;
+      ignore (parse_parameter_pattern p ~stop_type_at_arrow:true);
       parse_params ()
     )
   in
@@ -2873,7 +2881,7 @@ and parse_let_binding = fun p ~signature ~top_level ->
         bump p;
         parse_type_expr p ~allow_leading_poly_type_after_newline:true ~stop_at_arrow:false
       ) else (
-        parse_pattern ~stop_type_at_arrow:false p;
+        ignore (parse_parameter_pattern p ~stop_type_at_arrow:false);
         parse_params ()
       )
   in
@@ -2998,7 +3006,7 @@ and raw_first_char = fun p raw ->
 
 and raw_ident_is_capitalized = fun p raw ->
   Syntax_kind.(raw.Raw_token.kind = IDENT) && match raw_first_char p raw with
-  | Some ('A' .. 'Z') -> true
+  | Some 'A' .. 'Z' -> true
   | _ -> false
 
 and ident_at_is_capitalized = fun p offset ->

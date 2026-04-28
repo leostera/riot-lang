@@ -32,7 +32,7 @@ type t = {
 }
 
 (** Convert manifest to JSON *)
-let to_json manifest: Data.Json.t =
+let to_json manifest =
   let version_to_string = function
     | V0 -> "v0"
     | V1 -> "v1"

@@ -8,7 +8,6 @@ let iter_fold = fun fold value ~fn ->
       fn item;
       Syn.Ast.Continue ())
 
-
 module Vector = Collections.Vector
 
 let ( let* ) value fn = Result.and_then value ~fn
@@ -264,7 +263,8 @@ let leading_docstrings = fun node ->
     match Syn.Ast.Node.first_descendant_token node with
     | None -> ()
     | Some token ->
-        iter_fold Syn.Ast.Token.fold_leading_trivia_item
+        iter_fold
+          Syn.Ast.Token.fold_leading_trivia_item
           token
           ~fn:(
             function
@@ -321,7 +321,8 @@ let type_member_name = fun member fallback ->
 
 let variant_constructor_details = fun source variant ->
   let details = Vector.with_capacity ~size:4 in
-  iter_fold Syn.Ast.VariantType.fold_constructor
+  iter_fold
+    Syn.Ast.VariantType.fold_constructor
     variant
     ~fn:(fun constructor ->
       let name = token_text (Syn.Ast.VariantConstructor.name constructor) in
@@ -336,7 +337,8 @@ let variant_constructor_details = fun source variant ->
 
 let record_field_details = fun source record ->
   let details = Vector.with_capacity ~size:4 in
-  iter_fold Syn.Ast.RecordType.fold_field
+  iter_fold
+    Syn.Ast.RecordType.fold_field
     record
     ~fn:(fun field ->
       let name = token_text (Syn.Ast.RecordField.name field) in
@@ -360,7 +362,7 @@ let detail_groups_of_type_member = fun source member ->
         []
       else
         [
-          ({ title = "Constructors"; details = details }: Doctree.item_detail_group);
+          (({ title = "Constructors"; details = details }: Doctree.item_detail_group));
         ]
   | (None, Some record) ->
       let details = record_field_details source record in
@@ -368,7 +370,7 @@ let detail_groups_of_type_member = fun source member ->
         []
       else
         [
-          ({ title = "Fields"; details = details }: Doctree.item_detail_group);
+          (({ title = "Fields"; details = details }: Doctree.item_detail_group));
         ]
   | (None, None) -> []
 
@@ -377,7 +379,8 @@ let items_of_type_declaration = fun ?docstring source decl ->
   let snippet = strip_comments raw_snippet in
   let fallback_name = token_text (Syn.Ast.TypeDeclaration.name decl) in
   let items = Vector.with_capacity ~size:2 in
-  iter_fold Syn.Ast.TypeDeclaration.fold_member
+  iter_fold
+    Syn.Ast.TypeDeclaration.fold_member
     decl
     ~fn:(fun member ->
       let name = type_member_name member fallback_name in
@@ -422,7 +425,8 @@ let external_item_of_declaration = fun ?docstring source decl ->
 
 let module_path_segments = fun decl ->
   let segments = Vector.with_capacity ~size:4 in
-  iter_fold Syn.Ast.ModuleDeclaration.fold_body_ident_segment
+  iter_fold
+    Syn.Ast.ModuleDeclaration.fold_body_ident_segment
     decl
     ~fn:(fun token -> Vector.push segments ~value:(Syn.Ast.Token.text token));
   vector_to_list segments
@@ -444,14 +448,7 @@ let module_doc_of_empty = fun ~source_path ~path ?docstring ~snippet () ->
   }
 
 let rec module_of_signature_items = fun
-  ~lookup
-  ~source
-  ~source_path
-  ~path
-  ?docstring
-  ~is_source_root
-  ~snippet
-  items ->
+  ~lookup ~source ~source_path ~path ?docstring ~is_source_root ~snippet items ->
   let acc_items = Vector.with_capacity ~size:(List.length items) in
   let acc_modules = Vector.with_capacity ~size:4 in
   let overview = ref None in

@@ -233,9 +233,7 @@ let register_declared_type_name = fun (state: state) name ->
       type_constructor_id
 
 let with_nonrec_current_type_name_hidden = fun
-  (state: state)
-  (declaration: Cst.TypeDeclaration.t)
-  f ->
+  (state: state) (declaration: Cst.TypeDeclaration.t) f ->
   match Cst.TypeDeclaration.nonrec_token declaration with
   | None -> f ()
   | Some _ ->
@@ -575,7 +573,7 @@ and lower_package_type = fun (state: state) type_params (package_type: Cst.packa
             let constrained_name = SurfacePath.last_name constrained_path in
             template.abstract_types
             |> List.find_map
-              (fun ((type_name, (head: TypeRepr.named_type_head))) ->
+              (fun (type_name, (head: TypeRepr.named_type_head)) ->
                 if SurfacePath.equal head.name constrained_path then
                   Some head
                 else
@@ -624,9 +622,7 @@ let constructor_scheme = fun ~params ~result_type payload_type ->
 let invariant_param_variances = fun params -> List.map (fun _ -> TypeDecl.Invariant) params
 
 let variant_constructor_payload = fun
-  (state: state)
-  type_params
-  (constructor: Cst.VariantConstructor.t) ->
+  (state: state) type_params (constructor: Cst.VariantConstructor.t) ->
   match Cst.VariantConstructor.result_type constructor with
   | Some _ -> (
       match Cst.VariantConstructor.arguments constructor with
@@ -758,13 +754,7 @@ let add_expr = fun (state: state) ~syntax_node ~label desc ->
   expr_id
 
 let add_binding = fun
-  (state: state)
-  ~syntax_node
-  ~name
-  ~pattern_id
-  ~annotation
-  ~value_id
-  ~recursive ->
+  (state: state) ~syntax_node ~name ~pattern_id ~annotation ~value_id ~recursive ->
   let binding_id = BindingArenaId.of_int state.next_binding_id in
   let () =
     state.next_binding_id <- state.next_binding_id + 1
@@ -971,9 +961,7 @@ let collect_record_type_field_var_names = fun fields ->
     []
 
 let inline_record_labels_for_constructor = fun
-  (state: state)
-  constructor_params
-  (constructor: Cst.VariantConstructor.t) ->
+  (state: state) constructor_params (constructor: Cst.VariantConstructor.t) ->
   match Cst.VariantConstructor.arguments constructor with
   | Some (Cst.ConstructorArguments.Record { fields; _ }) ->
       Some (List.map (lower_record_label state constructor_params) fields)
@@ -1031,9 +1019,7 @@ let lower_poly_variant_tag = fun (state: state) type_params (tag: Cst.PolyVarian
   }
 
 let lower_poly_variant_manifest = fun
-  (state: state)
-  type_params
-  (poly_variant: Cst.PolyVariant.t) ->
+  (state: state) type_params (poly_variant: Cst.PolyVariant.t) ->
   let (tags, inherited) =
     Cst.PolyVariant.fields poly_variant
     |> List.fold_left
@@ -1268,9 +1254,7 @@ let lower_exception_declaration = fun (state: state) (declaration: Cst.exception
   ()
 
 let extension_target_result_type = fun
-  (state: state)
-  type_params
-  (extension: Cst.TypeExtension.t) ->
+  (state: state) type_params (extension: Cst.TypeExtension.t) ->
   let owner_path = ident_path (Cst.TypeExtension.type_name extension) in
   let result_path =
     if SurfacePath.is_bare owner_path && not (SurfacePath.is_empty state.scope_path) then
@@ -1422,7 +1406,7 @@ let lower_module_type_template =
           let constrained_name = SurfacePath.last_name constrained_path in
           template.abstract_types
           |> List.find_map
-            (fun ((type_name, (head: TypeRepr.named_type_head))) ->
+            (fun (type_name, (head: TypeRepr.named_type_head)) ->
               if SurfacePath.equal head.name constrained_path then
                 Some head
               else
@@ -1793,8 +1777,8 @@ let rec lower_pattern = fun (state: state) pattern ->
                     ~label:"record_punned_field_pattern"
                     (BodyArena.PVar field_name)
             in
-            ({ BodyArena.label = path_text field.field_path; pattern_id }:
-              BodyArena.record_pattern_field))
+            (({ BodyArena.label = path_text field.field_path; pattern_id }:
+              BodyArena.record_pattern_field)))
       in
       add_pattern
         state
@@ -1890,10 +1874,11 @@ let labeled_function_parameter = fun label pattern_id -> ({
   default_value_id = None;
 }: BodyArena.function_parameter)
 
-let optional_function_parameter = fun label ~default_value_id pattern_id -> (
-  { BodyArena.label = BodyArena.Optional label; pattern_id; default_value_id }:
-    BodyArena.function_parameter
-)
+let optional_function_parameter = fun label ~default_value_id pattern_id -> ({
+  BodyArena.label = BodyArena.Optional label;
+  pattern_id;
+  default_value_id;
+}: BodyArena.function_parameter)
 
 let rec lower_parameter = fun (state: state) parameter ->
   match parameter with
@@ -2023,12 +2008,7 @@ and lower_function_like = fun (state: state) ~syntax_node ~parameters ~body_anno
       | `Cases _ -> body_id)
 
 and lower_binding_source = fun
-  (state: state)
-  ~syntax_node
-  ~binding_pattern
-  ~parameters
-  ~value
-  ~recursive ->
+  (state: state) ~syntax_node ~binding_pattern ~parameters ~value ~recursive ->
   let rec explicit_scheme_of_core_type core_type =
     match core_type with
     | Cst.CoreType.Parenthesized { inner; _ }
@@ -2222,11 +2202,11 @@ and lower_local_module_scope = fun (state: state) ~module_name module_expression
 and lower_apply = fun (state: state) expression ->
   let lower_argument = function
     | Cst.Positional argument ->
-        ({
+        (({
           BodyArena.label = BodyArena.Positional;
           implicit = false;
           value_id = lower_expr state argument;
-        }: BodyArena.apply_argument)
+        }: BodyArena.apply_argument))
     | Cst.Labeled { syntax_node; label_token; value; _ } ->
         let value_id =
           match value with
@@ -2333,8 +2313,7 @@ and lower_binding_operator_name = fun (binding: Cst.binding_operator_binding) ->
   Cst.Token.text binding.keyword_token ^ Cst.Token.text binding.operator_token
 
 and lower_let_operator_expression = fun
-  (state: state)
-  (let_operator: Cst.let_operator_expression) ->
+  (state: state) (let_operator: Cst.let_operator_expression) ->
   match let_operator.binding.and_binding with
   | Some _ ->
       let syntax_node = let_operator.syntax_node in
@@ -3035,8 +3014,7 @@ and lower_include_statement = fun (state: state) (include_statement: Cst.include
   | Cst.ModuleType _ -> ()
 
 and lower_signature_include_statement = fun
-  (state: state)
-  (include_statement: Cst.include_statement) ->
+  (state: state) (include_statement: Cst.include_statement) ->
   let syntax_node = include_statement.syntax_node in
   match include_statement.target with
   | Cst.ModuleType module_type -> (
@@ -3053,11 +3031,7 @@ and lower_signature_include_statement = fun
   | Cst.ModuleExpression _ -> add_unsupported_signature_item state syntax_node
 
 and lower_module_binding = fun
-  (state: state)
-  ~syntax_node
-  ~module_name
-  ~module_type
-  ~module_expression ->
+  (state: state) ~syntax_node ~module_name ~module_type ~module_expression ->
   let lower_module_items_under_scope ~nested_scope_path ~result_module_type module_expression =
     with_scope
       state

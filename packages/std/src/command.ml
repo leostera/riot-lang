@@ -89,7 +89,7 @@ let to_string = fun t ->
     match t.env with
     | [] -> command
     | env ->
-        String.concat " " (List.map env ~fn:(fun ((key, value)) -> key ^ "=" ^ shell_quote value))
+        String.concat " " (List.map env ~fn:(fun (key, value) -> key ^ "=" ^ shell_quote value))
         ^ " "
         ^ command
   in
@@ -268,7 +268,7 @@ let output_with_pipes = fun ~on_stdout_line ~on_idle ~idle_interval t proc stdou
           stdout_closed := true;
           Ok false
       | Ok `Would_block -> Ok false
-      | Ok (`Read bytes_read) ->
+      | Ok `Read bytes_read ->
           append_stdout_chunk
             ~on_stdout_line
             ~stdout_buffer
@@ -287,7 +287,7 @@ let output_with_pipes = fun ~on_stdout_line ~on_idle ~idle_interval t proc stdou
           stderr_closed := true;
           Ok false
       | Ok `Would_block -> Ok false
-      | Ok (`Read bytes_read) ->
+      | Ok `Read bytes_read ->
           StringBuilder.add_subbytes stderr_buffer stderr_chunk 0 bytes_read;
           Ok true
   in

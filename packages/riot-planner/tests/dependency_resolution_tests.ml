@@ -20,10 +20,7 @@ let make_package = fun name ->
     ()
 
 let make_src_graph_builder = fun
-  ~package_root
-  ~(package:Riot_model.Package.t)
-  ~toolchain
-  ~workspace ->
+  ~package_root ~(package:Riot_model.Package.t) ~toolchain ~workspace ->
   let namespace =
     match package.library with
     | Some _ -> Namespace.empty
@@ -169,7 +166,7 @@ let test_module_graph_prefers_implementation_when_interface_exists = fun _ctx ->
       | Ok () ->
           let graph = Riot_planner.Module_graph.graph graph_builder in
           let find_node_id expected_kind expected_name =
-            let matches ((_id, (node: Riot_planner.Module_node.t G.node))) =
+            let matches (_id, (node: Riot_planner.Module_node.t G.node)) =
               match node.value.kind with
               | Riot_planner.Module_node.ML mod_ when expected_kind = `implementation ->
                   String.equal
@@ -292,7 +289,7 @@ let test_module_graph_resolves_nested_local_unix_backend = fun _ctx ->
       | Ok () ->
           let graph = Riot_planner.Module_graph.graph graph_builder in
           let find_ml qualified_name =
-            let matches ((_id, (node: Riot_planner.Module_node.t G.node))) =
+            let matches (_id, (node: Riot_planner.Module_node.t G.node)) =
               match node.value.kind with
               | Riot_planner.Module_node.ML mod_ ->
                   String.equal (Riot_model.Module.namespaced_name mod_) qualified_name
@@ -569,7 +566,7 @@ let test_module_graph_root_library_alias_depends_on_child_module = fun _ctx ->
       | Ok () ->
           let graph = Riot_planner.Module_graph.graph graph_builder in
           let find_ml qualified_name =
-            let matches ((_id, (node: Riot_planner.Module_node.t G.node))) =
+            let matches (_id, (node: Riot_planner.Module_node.t G.node)) =
               match node.value.kind with
               | Riot_planner.Module_node.ML mod_ ->
                   String.equal (Riot_model.Module.namespaced_name mod_) qualified_name
@@ -651,7 +648,7 @@ let test_module_graph_opened_public_root_resolves_children_to_public_module = fu
           let graph = Riot_planner.Module_graph.graph graph_builder in
           let analyzed_modules = Riot_planner.Module_graph.analyzed_modules graph_builder in
           let find_ml qualified_name =
-            let matches ((_id, (node: Riot_planner.Module_node.t G.node))) =
+            let matches (_id, (node: Riot_planner.Module_node.t G.node)) =
               match node.value.kind with
               | Riot_planner.Module_node.ML mod_ ->
                   String.equal (Riot_model.Module.namespaced_name mod_) qualified_name
@@ -795,7 +792,7 @@ let test_module_graph_implicit_alias_opens_resolve_nested_leaf_modules = fun _ct
           let graph = Riot_planner.Module_graph.graph graph_builder in
           let analyzed_modules = Riot_planner.Module_graph.analyzed_modules graph_builder in
           let find_ml qualified_name =
-            let matches ((_id, (node: Riot_planner.Module_node.t G.node))) =
+            let matches (_id, (node: Riot_planner.Module_node.t G.node)) =
               match node.value.kind with
               | Riot_planner.Module_node.ML mod_ ->
                   String.equal (Riot_model.Module.namespaced_name mod_) qualified_name
@@ -806,7 +803,7 @@ let test_module_graph_implicit_alias_opens_resolve_nested_leaf_modules = fun _ct
             | None -> Error ("expected module not found: " ^ qualified_name)
           in
           let find_mli qualified_name =
-            let matches ((_id, (node: Riot_planner.Module_node.t G.node))) =
+            let matches (_id, (node: Riot_planner.Module_node.t G.node)) =
               match node.value.kind with
               | Riot_planner.Module_node.MLI mod_ ->
                   String.equal (Riot_model.Module.namespaced_name mod_) qualified_name
@@ -956,7 +953,7 @@ let test_module_graph_implicit_root_alias_resolves_public_child_root = fun _ctx 
           let graph = Riot_planner.Module_graph.graph graph_builder in
           let analyzed_modules = Riot_planner.Module_graph.analyzed_modules graph_builder in
           let find_ml qualified_name =
-            let matches ((_id, (node: Riot_planner.Module_node.t G.node))) =
+            let matches (_id, (node: Riot_planner.Module_node.t G.node)) =
               match node.value.kind with
               | Riot_planner.Module_node.ML mod_ ->
                   String.equal (Riot_model.Module.namespaced_name mod_) qualified_name
@@ -967,7 +964,7 @@ let test_module_graph_implicit_root_alias_resolves_public_child_root = fun _ctx 
             | None -> Error ("expected module not found: " ^ qualified_name)
           in
           let find_mli qualified_name =
-            let matches ((_id, (node: Riot_planner.Module_node.t G.node))) =
+            let matches (_id, (node: Riot_planner.Module_node.t G.node)) =
               match node.value.kind with
               | Riot_planner.Module_node.MLI mod_ ->
                   String.equal (Riot_model.Module.namespaced_name mod_) qualified_name
@@ -1107,7 +1104,7 @@ let test_module_graph_resolves_deeply_nested_modules_namespace_first = fun _ctx 
       | Ok () ->
           let graph = Riot_planner.Module_graph.graph graph_builder in
           let find_ml qualified_name =
-            let matches ((_id, (node: Riot_planner.Module_node.t G.node))) =
+            let matches (_id, (node: Riot_planner.Module_node.t G.node)) =
               match node.value.kind with
               | Riot_planner.Module_node.ML mod_ ->
                   String.equal (Riot_model.Module.namespaced_name mod_) qualified_name
@@ -1117,9 +1114,9 @@ let test_module_graph_resolves_deeply_nested_modules_namespace_first = fun _ctx 
             | Some (_node_id, node) -> Ok node
             | None -> Error ("expected module not found: " ^ qualified_name)
           in
-          let depends_on (node: Riot_planner.Module_node.t G.node) (
-            dependency: Riot_planner.Module_node.t G.node
-          ) = List.any node.deps ~fn:(G.Node_id.eq dependency.id)
+          let depends_on (node: Riot_planner.Module_node.t G.node) (dependency:
+            Riot_planner.Module_node.t G.node) =
+            List.any node.deps ~fn:(G.Node_id.eq dependency.id)
           in
           match (
             find_ml "Deep_graph__Domains__Admin__Users__Models__Testing__User",
@@ -1287,7 +1284,7 @@ let test_module_graph_keeps_nested_sibling_dependency_across_allowed_source_orde
             | Ok () ->
                 let graph = Riot_planner.Module_graph.graph graph_builder in
                 let find_mli qualified_name =
-                  let matches ((_id, (node: Riot_planner.Module_node.t G.node))) =
+                  let matches (_id, (node: Riot_planner.Module_node.t G.node)) =
                     match node.value.kind with
                     | Riot_planner.Module_node.MLI mod_ ->
                         String.equal (Riot_model.Module.namespaced_name mod_) qualified_name
@@ -1298,7 +1295,7 @@ let test_module_graph_keeps_nested_sibling_dependency_across_allowed_source_orde
                   | None -> Error ("expected module not found: " ^ qualified_name)
                 in
                 let find_modules qualified_name =
-                  let matches ((_id, (node: Riot_planner.Module_node.t G.node))) =
+                  let matches (_id, (node: Riot_planner.Module_node.t G.node)) =
                     match node.value.kind with
                     | Riot_planner.Module_node.ML mod_
                     | Riot_planner.Module_node.MLI mod_ ->
@@ -1311,7 +1308,7 @@ let test_module_graph_keeps_nested_sibling_dependency_across_allowed_source_orde
                   else
                     Ok (List.map matches ~fn:(fun (_node_id, node) -> node))
                 in
-                let module_dependency_labels ((node: Riot_planner.Module_node.t G.node)) =
+                let module_dependency_labels (node: Riot_planner.Module_node.t G.node) =
                   List.filter_map
                     node.deps
                     ~fn:(fun dep_id ->
@@ -1998,9 +1995,7 @@ let test_module_graph_rejects_non_direct_dependency_root = fun _ctx ->
             ~package
             ~module_graph:(Riot_planner.Module_graph.graph graph_builder)
             ~analyzed_modules:(Riot_planner.Module_graph.analyzed_modules graph_builder) with
-          | Error (
-            Riot_planner.Planning_error.SourceDependsOnUndeclaredPackageModule { requested_module; allowed_modules; _ }
-          ) ->
+          | Error (Riot_planner.Planning_error.SourceDependsOnUndeclaredPackageModule { requested_module; allowed_modules; _ }) ->
               if requested_module = "Kernel" && allowed_modules = [ "App"; "Std" ] then
                 Ok ()
               else

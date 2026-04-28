@@ -574,10 +574,8 @@ let test_cached_build_does_not_emit_generation_recording_events = fun _ctx ->
       match build_request
         ~on_event:(
           function
-          | Riot_build.Event.Phase (
-            Riot_build.Event.CacheGenerationRecordingStarted _
-            | Riot_build.Event.CacheGenerationRecorded _
-          ) -> saw_generation_event := true
+          | Riot_build.Event.Phase (Riot_build.Event.CacheGenerationRecordingStarted _
+          | Riot_build.Event.CacheGenerationRecorded _) -> saw_generation_event := true
           | _ -> ()
         )
         request with
@@ -744,9 +742,7 @@ let test_build_multi_target_outputs_and_events = fun _ctx ->
               seen_target_count := Some target_count
           | Riot_build.Event.Phase (Riot_build.Event.TargetBuildStarted { target }) ->
               started_targets := Riot_model.Target.to_string target :: !started_targets
-          | Riot_build.Event.Phase (
-            Riot_build.Event.TargetBuildFinished { target; result_count; had_partial_failure }
-          ) ->
+          | Riot_build.Event.Phase (Riot_build.Event.TargetBuildFinished { target; result_count; had_partial_failure }) ->
               finished_targets := Riot_model.Target.to_string target :: !finished_targets;
               finished_counts := result_count :: !finished_counts;
               any_partial_failure := !any_partial_failure || had_partial_failure
@@ -877,9 +873,7 @@ let test_build_multi_target_partial_failures_fail_by_default = fun _ctx ->
               seen_target_count := Some target_count
           | Riot_build.Event.Phase (Riot_build.Event.TargetBuildStarted { target }) ->
               started_targets := Riot_model.Target.to_string target :: !started_targets
-          | Riot_build.Event.Phase (
-            Riot_build.Event.TargetBuildFinished { had_partial_failure; target; _ }
-          ) ->
+          | Riot_build.Event.Phase (Riot_build.Event.TargetBuildFinished { had_partial_failure; target; _ }) ->
               finished_targets := Riot_model.Target.to_string target :: !finished_targets;
               partial_failure_flags := had_partial_failure :: !partial_failure_flags
           | Riot_build.Event.Phase (Riot_build.Event.ReturningResults _) ->

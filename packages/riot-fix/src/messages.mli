@@ -10,7 +10,6 @@ type file_progress = {
   file: Path.t;
   event: Fixme.Source_runner.progress_event;
 }
-
 type Message.t +=
   | ScannerDiscovered of Path.t
   | ScannerComplete

@@ -29,7 +29,7 @@ let swisstable_gen = fun key_gen value_gen ->
       let map = Swisstable.create () in
       List.for_each
         pairs
-        ~fn:(fun ((k, v)) ->
+        ~fn:(fun (k, v) ->
           let _ = Swisstable.insert map k v in
           ());
       map)
@@ -47,7 +47,7 @@ let swisstable = fun key_arb value_arb ->
           (
             List.map
               entries
-              ~fn:(fun ((k, v)) ->
+              ~fn:(fun (k, v) ->
                 let k_str =
                   match key_arb.Arbitrary.print with
                   | Some p -> p k
@@ -76,7 +76,7 @@ let insert_get_prop =
   property
     "insert then get returns the value"
     Arbitrary.(triple int int populated_map)
-    (fun ((key, value, map)) ->
+    (fun (key, value, map) ->
       let _ = Swisstable.insert map key value in
       match Swisstable.get map key with
       | Some v -> v = value
@@ -88,7 +88,7 @@ let remove_get_prop =
   property
     "get returns None after remove"
     Arbitrary.(pair int populated_map)
-    (fun ((key, map)) ->
+    (fun (key, map) ->
       (* First insert to ensure key exists *)
       let _ = Swisstable.insert map key 42 in
       (* Then remove *)
@@ -102,7 +102,7 @@ let contains_get_equiv_prop =
   property
     "contains_key equivalent to is_some(get)"
     Arbitrary.(pair int populated_map)
-    (fun ((key, map)) ->
+    (fun (key, map) ->
       let has_key = Swisstable.contains_key map key in
       let get_result = Swisstable.get map key in
       has_key = Option.is_some get_result)
@@ -113,7 +113,7 @@ let insert_idempotent_prop =
   property
     "inserting same (k,v) twice is idempotent"
     Arbitrary.(triple int int populated_map)
-    (fun ((key, value, map)) ->
+    (fun (key, value, map) ->
       let _ = Swisstable.insert map key value in
       let len1 = Swisstable.len map in
       let _ = Swisstable.insert map key value in
@@ -126,7 +126,7 @@ let remove_absent_noop_prop =
   property
     "removing absent key is no-op"
     Arbitrary.(pair int populated_map)
-    (fun ((key, map)) ->
+    (fun (key, map) ->
       (* Ensure key doesn't exist *)
       let _ = Swisstable.remove map key in
       let len1 = Swisstable.len map in
@@ -140,7 +140,7 @@ let length_after_insert_prop =
   property
     "length increases by at most 1 after insert"
     Arbitrary.(triple int int populated_map)
-    (fun ((key, value, map)) ->
+    (fun (key, value, map) ->
       let len_before = Swisstable.len map in
       let _ = Swisstable.insert map key value in
       let len_after = Swisstable.len map in
@@ -152,7 +152,7 @@ let length_after_remove_prop =
   property
     "length decreases by at most 1 after remove"
     Arbitrary.(pair int populated_map)
-    (fun ((key, map)) ->
+    (fun (key, map) ->
       let len_before = Swisstable.len map in
       let _ = Swisstable.remove map key in
       let len_after = Swisstable.len map in
@@ -199,7 +199,7 @@ let to_list_entries_gettable_prop =
     (fun map ->
       let entries = Swisstable.to_list map in
       List.for_all
-        (fun ((k, v)) ->
+        (fun (k, v) ->
           match Swisstable.get map k with
           | Some v' -> v = v'
           | None -> false)
@@ -223,7 +223,7 @@ let or_insert_vacant_prop =
   property
     "or_insert creates entry for vacant key"
     Arbitrary.(triple int int populated_map)
-    (fun ((key, value, map)) ->
+    (fun (key, value, map) ->
       (* Ensure key doesn't exist *)
       let _ = Swisstable.remove map key in
       let len_before = Swisstable.len map in
@@ -237,7 +237,7 @@ let or_insert_occupied_prop =
   property
     "or_insert returns existing value for occupied key"
     Arbitrary.(triple int int populated_map)
-    (fun ((key, old_value, map)) ->
+    (fun (key, old_value, map) ->
       (* Insert old value first *)
       let _ = Swisstable.insert map key old_value in
       let len_before = Swisstable.len map in
@@ -252,7 +252,7 @@ let and_modify_existing_prop =
   property
     "and_modify only modifies existing keys"
     Arbitrary.(pair int populated_map)
-    (fun ((key, map)) ->
+    (fun (key, map) ->
       (* Try to modify non-existent key *)
       let _ = Swisstable.remove map key in
       Swisstable.and_modify map key (fun x -> x + 1);
@@ -295,14 +295,14 @@ let many_insertions_prop =
       (* Insert all pairs *)
       List.for_each
         pairs
-        ~fn:(fun ((k, v)) ->
+        ~fn:(fun (k, v) ->
           let _ = Swisstable.insert map k v in
           ());
       (* Build reference map using HashMap to deduplicate *)
       let ref_map = Collections.HashMap.create () in
       List.for_each
         pairs
-        ~fn:(fun ((k, v)) ->
+        ~fn:(fun (k, v) ->
           Collections.HashMap.insert ref_map ~key:k ~value:v
           |> ignore);
       (* Verify all unique keys are accessible and match reference *)
@@ -329,13 +329,13 @@ let length_invariant_prop =
       let ref_map = Collections.HashMap.create () in
       List.for_each
         pairs
-        ~fn:(fun ((k, v)) ->
+        ~fn:(fun (k, v) ->
           Collections.HashMap.insert ref_map ~key:k ~value:v
           |> ignore);
       (* Insert all into swisstable *)
       List.for_each
         pairs
-        ~fn:(fun ((k, v)) ->
+        ~fn:(fun (k, v) ->
           let _ = Swisstable.insert map k v in
           ());
       (* Length should equal unique keys *)
@@ -349,7 +349,7 @@ let insert_returns_previous_prop =
   property
     "insert returns previous value if key exists"
     Arbitrary.(triple int int int)
-    (fun ((key, old_val, new_val)) ->
+    (fun (key, old_val, new_val) ->
       let map = Swisstable.create () in
       let result1 = Swisstable.insert map key old_val in
       let result2 = Swisstable.insert map key new_val in
@@ -361,7 +361,7 @@ let remove_returns_value_prop =
   property
     "remove returns the removed value"
     Arbitrary.(pair int int)
-    (fun ((key, value)) ->
+    (fun (key, value) ->
       let map = Swisstable.create () in
       let _ = Swisstable.insert map key value in
       let result = Swisstable.remove map key in

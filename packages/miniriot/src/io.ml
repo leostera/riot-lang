@@ -34,7 +34,7 @@ let copy_file_with_permissions = fun src dst ->
   let src_stat = Unix.stat src in
   Unix.chmod dst src_stat.st_perm
 
-let run_command cmd: unit =
+let run_command cmd =
   let cmd = String.concat " " cmd in
   Printf.printf "  $ %s\n%!" cmd;
   let ret = Unix.system cmd in

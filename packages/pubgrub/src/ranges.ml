@@ -79,7 +79,7 @@ let min_by = fun cmp a b ->
   | Order.EQ -> a
   | Order.GT -> b
 
-let valid_segment = fun ~compare_v ((start, end_)) ->
+let valid_segment = fun ~compare_v (start, end_) ->
   match (start, end_) with
   | (Included v1, Included v2) -> (
       match compare_v v1 v2 with
@@ -176,7 +176,7 @@ let complement = fun ~compare_v ranges ->
     in
     build Unbounded [] ranges
 
-let within_bounds = fun ~compare_v version ((start, end_)) ->
+let within_bounds = fun ~compare_v version (start, end_) ->
   let after_start =
     match start with
     | Unbounded -> true

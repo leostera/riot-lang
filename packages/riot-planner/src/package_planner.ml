@@ -392,9 +392,7 @@ let module_graph_of_json = fun json ->
   | _ -> Error "module graph payload must be an object"
 
 let plan_bundle_to_json = fun
-  ~(package:Package.t)
-  ~(module_graph:Module_node.t G.t)
-  ~(action_graph:Action_graph.t) ->
+  ~(package:Package.t) ~(module_graph:Module_node.t G.t) ~(action_graph:Action_graph.t) ->
   Std.Data.Json.Object [
     ("version", Std.Data.Json.Int 1);
     ("package", Std.Data.Json.String (Package_name.to_string package.name));
@@ -599,13 +597,7 @@ let check_dependencies_built = fun ~store ~package_graph ~package_key ->
     Ok depset
 
 let plan_package = fun
-  ~workspace
-  ~toolchain
-  ~store
-  ~package_graph
-  ~package_key
-  ~package
-  ~build_ctx ->
+  ~workspace ~toolchain ~store ~package_graph ~package_key ~package ~build_ctx ->
   let dependency_check_started_at = Time.Instant.now () in
   match check_dependencies_built ~store ~package_graph ~package_key with
   | Error (Failed failed) ->

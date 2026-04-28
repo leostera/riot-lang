@@ -81,7 +81,9 @@ let make_diagnostic = fun ctx condition replacement ->
     ~suggestion:"Use the boolean expression directly in the conditional."
     ~fix:(Fix.make
       ~title:"Remove boolean comparison"
-      ~operations:[ Fix.replace_node_with_text ~target:(Ast.Expr.as_node condition) ~text:replacement; ])
+      ~operations:[
+        Fix.replace_node_with_text ~target:(Ast.Expr.as_node condition) ~text:replacement;
+      ])
     ()
 
 let diagnostic_for_expr = fun ctx expr ->

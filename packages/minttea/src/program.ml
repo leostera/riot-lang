@@ -40,12 +40,9 @@ let rec loop = fun state ->
   | Continue -> loop state
 
 and forward_event = fun event state ->
-  (* Forward resize events to renderer *)
-  (
-    match event with
-    | Event.Resize { width; height } -> Renderer.resize state.renderer ~width ~height
-    | _ -> ()
-  )
+  match event with
+  | Event.Resize { width; height } -> Renderer.resize state.renderer ~width ~height
+  | _ -> ()
 
 and handle_cmd = fun cmd state ->
   match cmd with

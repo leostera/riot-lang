@@ -204,7 +204,7 @@ let payload_decode =
             | Some nickname -> nickname
             | None -> None
           in
-          ({
+          (({
             name;
             role;
             crew;
@@ -217,7 +217,7 @@ let payload_decode =
             scores;
             nickname;
             status;
-          }: payload)
+          }: payload))
       | _ -> De.missing_field ())
 
 let payload_encode =

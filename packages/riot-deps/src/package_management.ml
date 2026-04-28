@@ -523,11 +523,7 @@ let init_registry = fun () ->
       })
 
 let ensure_loaded_workspace = fun
-  ~workspace_manager
-  ~registry
-  ~(workspace:Workspace_manifest.t)
-  ~package_name
-  () ->
+  ~workspace_manager ~registry ~(workspace:Workspace_manifest.t) ~package_name () ->
   let* workspace =
     Workspace_resolution.ensure_workspace
       ~workspace_manager
@@ -540,10 +536,7 @@ let ensure_loaded_workspace = fun
   Ok { workspace; package_name }
 
 let select_materialized_package = fun
-  ~(workspace:Riot_model.Workspace_manifest.t)
-  ?preferred_package_name
-  ~package_root
-  () ->
+  ~(workspace:Riot_model.Workspace_manifest.t) ?preferred_package_name ~package_root () ->
   match Riot_model.Workspace_manifest.find_package_for_path workspace ~path:package_root with
   | Some pkg -> Ok pkg.name
   | None -> (
@@ -599,8 +592,7 @@ let scan_workspace_from_root = fun ~workspace_manager ~package_root () ->
       Error (WorkspaceReloadHadErrors { workspace_root = workspace.root; errors = load_errors })
 
 let matching_release_of_document = fun
-  (document: Pkgs_ml.Sparse_index.package_document)
-  requirement ->
+  (document: Pkgs_ml.Sparse_index.package_document) requirement ->
   let matches =
     List.filter_map
       document.releases
@@ -766,8 +758,7 @@ let dependency_exists = fun ~(package_name:string) document requirement ->
   loop document.Pkgs_ml.Sparse_index.releases
 
 let yanked_release_of_document = fun
-  (document: Pkgs_ml.Sparse_index.package_document)
-  requirement ->
+  (document: Pkgs_ml.Sparse_index.package_document) requirement ->
   List.find
     document.releases
     ~fn:(fun (release: Pkgs_ml.Sparse_index.release) ->
@@ -903,11 +894,7 @@ let lookup_named_package = fun ~(emit:event_sink) ~registry (parsed: registry_de
         )
 
 let load_source_workspace_from_spec = fun
-  ?(emit = no_emit)
-  ~workspace_manager
-  ?(update = true)
-  ~spec
-  () ->
+  ?(emit = no_emit) ~workspace_manager ?(update = true) ~spec () ->
   let parsed = spec in
   let source_spec = Git_dependency.to_string spec in
   let* () =
@@ -1011,11 +998,7 @@ let load_source_workspace = fun ?(emit = no_emit) ~workspace_manager ?(update = 
   load_source_workspace_from_spec ~workspace_manager ~emit ~update ~spec:parsed ()
 
 let load_registry_workspace_from_spec = fun
-  ?(emit = no_emit)
-  ?registry
-  ~workspace_manager
-  ~spec
-  () ->
+  ?(emit = no_emit) ?registry ~workspace_manager ~spec () ->
   let parsed = spec in
   let package_name = registry_dependency_name parsed in
   let package_name_string = Riot_model.Package_name.to_string package_name in
@@ -1159,9 +1142,8 @@ let load_registry_workspace = fun ?(emit = no_emit) ?registry ~workspace_manager
 let upsert_dependency = fun
   (dependencies: Riot_model.Package.dependency list)
   ((dependency: Riot_model.Package.dependency) as replacement) ->
-  let rec loop (acc: Riot_model.Package.dependency list) (
-    remaining: Riot_model.Package.dependency list
-  ) =
+  let rec loop (acc: Riot_model.Package.dependency list) (remaining:
+    Riot_model.Package.dependency list) =
     match remaining with
     | [] -> List.reverse (replacement :: acc)
     | current :: rest when Riot_model.Package_name.equal current.name dependency.name ->
@@ -1272,9 +1254,7 @@ let lock_package_version_map = fun (lockfile: Riot_model.Lockfile.t) ->
       | _ -> acc)
 
 let emit_updated_packages = fun
-  ~(emit:event_sink)
-  ~(previous:Riot_model.Lockfile.t)
-  (current: Riot_model.Lockfile.t) ->
+  ~(emit:event_sink) ~(previous:Riot_model.Lockfile.t) (current: Riot_model.Lockfile.t) ->
   let previous_versions = lock_package_version_map previous in
   List.fold_left
     current.packages

@@ -187,10 +187,7 @@ let realized_bench_packages = fun ?(package_filters = []) (workspace: Workspace.
   |> List.filter ~fn:(fun (pkg: Package.t) -> matches_package_filters package_filters pkg.name)
 
 let collect_suite_binaries = fun
-  (workspace: Workspace.t)
-  ?(package_filters = [])
-  ?suite_filter
-  () ->
+  (workspace: Workspace.t) ?(package_filters = []) ?suite_filter () ->
   realized_bench_packages ~package_filters workspace
   |> List.flat_map
     ~fn:(fun (pkg: Package.t) ->
@@ -729,9 +726,7 @@ let ensure_executable_binary_path = fun ~kind path ->
           ~fn:(fun err -> "failed to mark " ^ kind ^ " executable: " ^ IO.error_message err)
 
 let materialized_suite_binary_path = fun
-  ~(workspace:Workspace.t)
-  ~profile
-  ~(suite:suite_binary) ->
+  ~(workspace:Workspace.t) ~profile ~(suite:suite_binary) ->
   let out_dir =
     Riot_model.Riot_dirs.out_dir_in_workspace
       ~workspace
@@ -881,9 +876,7 @@ let resolve_suite_binaries = fun ~(workspace:Workspace.t) ~profile ~store ~suite
   loop [] [] suites
 
 let list_benchmarks = fun
-  ?(on_suite = no_listed_suite)
-  ?(on_suite_error = no_list_error)
-  (request: bench_request) ->
+  ?(on_suite = no_listed_suite) ?(on_suite_error = no_list_error) (request: bench_request) ->
   let suites =
     collect_suite_binaries
       request.workspace

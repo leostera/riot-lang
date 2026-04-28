@@ -24,7 +24,8 @@ let opens_with_begin = fun expr ->
 
 let raw_first_child_expr = fun expr ->
   let found = ref None in
-  H.iter_fold Ast.Node.fold_child_node
+  H.iter_fold
+    Ast.Node.fold_child_node
     expr
     ~fn:(fun child ->
       match !found with
@@ -35,7 +36,8 @@ let raw_first_child_expr = fun expr ->
   !found
 
 let raw_for_each_child_expr = fun expr ~fn ->
-  H.iter_fold Ast.Node.fold_child_node
+  H.iter_fold
+    Ast.Node.fold_child_node
     expr
     ~fn:(fun child ->
       if Option.is_some (Ast.cast_result_to_option (Ast.Expr.cast child)) then
@@ -87,7 +89,10 @@ let check_tree = fun _ctx root ->
       Syn.Visitor.empty_hooks with
       enter_expr =
         Some (fun visitor expr ->
-          diagnostics_for_expression diagnostics ~inside_redundant_chain:false (Ast.Expr.as_node expr);
+          diagnostics_for_expression
+            diagnostics
+            ~inside_redundant_chain:false
+            (Ast.Expr.as_node expr);
           (visitor, Syn.Visitor.Skip_subtree));
     }
   in

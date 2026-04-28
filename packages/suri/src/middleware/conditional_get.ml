@@ -147,7 +147,7 @@ let middleware = fun ~conn ~next ->
         List.fold_left
           (Conn.resp_headers conn')
           ~init:Net.Http.Header.empty
-          ~fn:(fun headers ((name, value)) ->
+          ~fn:(fun headers (name, value) ->
             Net.Http.Header.add headers name value)
       in
       (* Check if we should return 304 *)

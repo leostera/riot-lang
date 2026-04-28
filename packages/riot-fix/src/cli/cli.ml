@@ -164,11 +164,7 @@ let run_args = fun ?cwd ?(on_event = Types.no_event) ?(report_output = true) ~bu
           run_matches ~build_package ~on_event ?output_mode matches)
 
 let run_check_paths = fun
-  ?cwd
-  ?(on_event = Types.no_event)
-  ?(report_output = false)
-  ~build_package
-  paths ->
+  ?cwd ?(on_event = Types.no_event) ?(report_output = false) ~build_package paths ->
   let args = "--check" :: List.map paths ~fn:Path.to_string in
   run_args ?cwd ~on_event ~report_output ~build_package args
 

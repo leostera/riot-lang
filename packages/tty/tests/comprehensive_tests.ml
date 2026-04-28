@@ -218,7 +218,7 @@ let test_mouse_sequences = fun _ctx ->
   let errors =
     List.filter_map
       tests
-      ~fn:(fun ((name, actual, expected)) ->
+      ~fn:(fun (name, actual, expected) ->
         if actual = expected then
           None
         else
@@ -312,7 +312,7 @@ let test_text_attributes = fun _ctx ->
   let errors =
     List.filter_map
       tests
-      ~fn:(fun ((name, actual, expected)) ->
+      ~fn:(fun (name, actual, expected) ->
         if actual = expected then
           None
         else

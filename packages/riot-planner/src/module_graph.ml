@@ -46,7 +46,6 @@ let iter_fold = fun fold value ~fn ->
       fn item;
       Syn.Ast.Continue ())
 
-
 module G = Std.Graph.SimpleGraph
 
 type root_mode =
@@ -265,12 +264,14 @@ let let_binding_name = fun binding ->
 let executable_main_bindings = fun (source_file: Syn.Ast.SourceFile.t) ->
   let module Ast = Syn.Ast in
   let bindings = Vector.with_capacity ~size:(Ast.SourceFile.structure_item_count source_file) in
-  iter_fold Ast.SourceFile.fold_structure_item
+  iter_fold
+    Ast.SourceFile.fold_structure_item
     source_file
     ~fn:(fun item ->
       match Ast.StructureItem.view item with
       | Ast.StructureItem.Let decl ->
-          iter_fold Ast.LetDeclaration.fold_binding
+          iter_fold
+            Ast.LetDeclaration.fold_binding
             decl
             ~fn:(fun binding ->
               match let_binding_name binding with
@@ -300,7 +301,8 @@ let validate_executable_main = fun ~package_name ~target_name ~source ~file sour
       )
   | [ binding ] ->
       let parameters = Vector.with_capacity ~size:(Syn.Ast.LetBinding.parameter_count binding) in
-      iter_fold Syn.Ast.LetBinding.fold_parameter
+      iter_fold
+        Syn.Ast.LetBinding.fold_parameter
         binding
         ~fn:(fun parameter -> Vector.push parameters ~value:parameter);
       let parameters =
@@ -884,10 +886,7 @@ let rec build_deps_env_for_library = fun
       | _ -> (env, root_export_sources))
 
 let build_deps_env_for_group = fun
-  config
-  (env, root_export_sources)
-  (group: source_group)
-  group_entries ->
+  config (env, root_export_sources) (group: source_group) group_entries ->
   match group.root_mode with
   | Loose_sources -> (env, root_export_sources)
   | Library_root { library_name } ->
@@ -1253,7 +1252,7 @@ let wire_dependencies = fun t ->
     in
     try_candidates candidate_names
   in
-  let all_nodes = G.map t.graph ~fn:(fun ((node_id, node)) -> (node_id, node)) in
+  let all_nodes = G.map t.graph ~fn:(fun (node_id, node) -> (node_id, node)) in
   (* Sort nodes by ID to ensure deterministic ordering - G.map uses Hashtbl.to_seq which is non-deterministic *)
   let sorted_nodes =
     List.sort

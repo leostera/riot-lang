@@ -114,7 +114,7 @@ let update = fun event model ->
 
 (* Render a single tab *)
 
-let render_tab = fun ~active index ((title, _)) ->
+let render_tab = fun ~active index (title, _) ->
   let open Element in
   let is_active = active = index in
   let style =

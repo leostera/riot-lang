@@ -407,7 +407,7 @@ type oracle_command_result = {
   source_path: Path.t;
 }
 
-let run_oracle_command = fun ~fixture_filename:_ ~source_text ~args ->
+let run_oracle_command = fun ~fixture_filename:_ ~args ->
   let ocamlc_path = oracle_ocamlc_path () in
   Fs.with_tempdir
     ~prefix:"typ_oracle"
@@ -486,8 +486,7 @@ let empty_oracle_signature_parts: oracle_signature_parts = {
 }
 
 let merge_oracle_signature_parts = fun
-  (left: oracle_signature_parts)
-  (right: oracle_signature_parts) ->
+  (left: oracle_signature_parts) (right: oracle_signature_parts) ->
   {
     value_exports = left.value_exports @ right.value_exports;
     value_export_types = left.value_export_types @ right.value_export_types;
@@ -1006,9 +1005,7 @@ let apply_core_type_constraints = fun constraints scheme ->
     scheme
 
 let rec normalize_core_type_with_constraints = fun
-  (interface: oracle_interface)
-  constraints
-  core_type ->
+  (interface: oracle_interface) constraints core_type ->
   match core_type with
   | Cst.CoreType.Parenthesized { inner; _ } ->
       normalize_core_type_with_constraints interface constraints inner
@@ -1059,9 +1056,7 @@ let rec normalize_core_type_with_constraints = fun
       |> String.trim
 
 and normalize_package_type_constraints = fun
-  (interface: oracle_interface)
-  constraints
-  (package_type: Cst.package_type) ->
+  (interface: oracle_interface) constraints (package_type: Cst.package_type) ->
   package_type.constraints
   |> List.map
     (fun (constraint_: Cst.module_type_constraint) ->
@@ -1084,10 +1079,7 @@ and normalize_package_type_constraints = fun
       (type_name, replacement))
 
 and normalize_package_type_with_constraints = fun
-  (interface: oracle_interface)
-  constraints
-  module_name
-  (package_type: Cst.package_type) ->
+  (interface: oracle_interface) constraints module_name (package_type: Cst.package_type) ->
   let package_constraints = normalize_package_type_constraints interface constraints package_type in
   let propagated_constraints =
     match module_name with
@@ -1575,8 +1567,7 @@ let expand_type_aliases = fun type_aliases scheme ->
   loop 16 scheme
 
 let normalize_export_scheme_with_interface = fun
-  (interface: oracle_interface)
-  ({ name; scheme }: oracle_value_export) ->
+  (interface: oracle_interface) ({ name; scheme }: oracle_value_export) ->
   (
     match oracle_value_export_type interface name with
     | Some core_type -> normalize_core_type_with_constraints interface [] core_type

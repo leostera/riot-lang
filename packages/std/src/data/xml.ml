@@ -41,7 +41,7 @@ let rec to_string = fun ?(indent = 0) ->
           ""
         else
           " "
-          ^ String.concat " " (List.map attrs ~fn:(fun ((k, v)) -> k ^ "=\"" ^ escape_xml v ^ "\""))
+          ^ String.concat " " (List.map attrs ~fn:(fun (k, v) -> k ^ "=\"" ^ escape_xml v ^ "\""))
       in
       if children = [] then
         spaces ^ "<" ^ name ^ attrs_str ^ "></" ^ name ^ ">"

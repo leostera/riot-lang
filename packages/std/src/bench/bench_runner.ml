@@ -47,7 +47,7 @@ let run_single_benchmark = fun index (bench: Bench_case.t) ->
 
 (* Run a comparison benchmark *)
 
-let run_comparison = fun index ((module R : Reporter.Intf.Intf)) (comp: Bench_comparison.t) ->
+let run_comparison = fun index (module R : Reporter.Intf.Intf) (comp: Bench_comparison.t) ->
   R.on_comparison_start index comp.description (List.length comp.cases);
   (* Run each case and collect results *)
   let case_results =

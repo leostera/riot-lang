@@ -57,18 +57,16 @@ let test_suite_progress_test_case_result_parses_completed_case = fun _ctx ->
   ]
   in
   match Riot_cli.Test_runtime.suite_progress_test_case_result json with
-  | Ok (
-    Some Riot_cli.Test_runtime.{
-      index;
-      name;
-      test_type = Property { examples };
-      size = Large;
-      reliability = Flaky { retry_attempts };
-      attempts;
-      result = Passed;
-      duration_us
-    }
-  ) ->
+  | Ok (Some Riot_cli.Test_runtime.{
+    index;
+    name;
+    test_type = Property { examples };
+    size = Large;
+    reliability = Flaky { retry_attempts };
+    attempts;
+    result = Passed;
+    duration_us
+  }) ->
       if
         Int.equal index 3
         && String.equal name "alpha"

@@ -573,6 +573,127 @@ let test_write_breaks_record_type_aliases_when_width_is_exceeded = fun ctx ->
 }
 |ocaml}
 
+let test_write_preserves_unit_parameter_return_annotation = fun ctx ->
+  let source = {ocaml|let create_counters ():runtime_counters={steals=Atomic.make 0}
+|ocaml}
+  in
+  let parsed = parse_ml source in
+  let actual = capture_write parsed in
+  Test.Snapshot.assert_inline_text
+    ~ctx
+    ~actual
+    ~expected:{ocaml|let create_counters (): runtime_counters = { steals = Atomic.make 0 }
+|ocaml}
+
+let test_write_preserves_function_return_annotation_before_record_body = fun ctx ->
+  let source =
+    {ocaml|let gc_delta ~(before:stat) ~(after_:stat):Bench_result.gc_stats={minor_collections=0}
+|ocaml}
+  in
+  let parsed = parse_ml source in
+  let actual = capture_write parsed in
+  Test.Snapshot.assert_inline_text
+    ~ctx
+    ~actual
+    ~expected:{ocaml|let gc_delta ~(before:stat) ~(after_:stat) : Bench_result.gc_stats = { minor_collections = 0 }
+|ocaml}
+
+let test_write_preserves_local_function_return_annotation_before_record_body = fun ctx ->
+  let source =
+    {ocaml|let parse_dependency raw_name value=
+let name=raw_name in
+let make_dependency source:Package.dependency={name;source} in
+make_dependency value
+|ocaml}
+  in
+  let parsed = parse_ml source in
+  let actual = capture_write parsed in
+  Test.Snapshot.assert_inline_text
+    ~ctx
+    ~actual
+    ~expected:{ocaml|let parse_dependency raw_name value =
+  let name = raw_name in
+  let make_dependency source: Package.dependency = { name; source } in
+  make_dependency value
+|ocaml}
+
+let test_write_parenthesizes_annotated_record_expressions = fun ctx ->
+  let source = {ocaml|let to_kernel_tm=fun tm->({tm_sec=tm.tm_sec}:Kernel.Time.tm)
+|ocaml}
+  in
+  let parsed = parse_ml source in
+  let actual = capture_write parsed in
+  Test.Snapshot.assert_inline_text
+    ~ctx
+    ~actual
+    ~expected:{ocaml|let to_kernel_tm = fun tm -> ({ tm_sec = tm.tm_sec }: Kernel.Time.tm)
+|ocaml}
+
+let test_write_parenthesizes_annotated_identifier_expressions = fun ctx ->
+  let source = {ocaml|let as_node=fun (value:t)->(value:node)
+|ocaml}
+  in
+  let parsed = parse_ml source in
+  let actual = capture_write parsed in
+  Test.Snapshot.assert_inline_text
+    ~ctx
+    ~actual
+    ~expected:{ocaml|let as_node = fun (value: t) -> (value: node)
+|ocaml}
+
+let test_write_preserves_coercion_expressions = fun ctx ->
+  let source = {ocaml|let f rgb=to_string (rgb:>color)
+|ocaml}
+  in
+  let parsed = parse_ml source in
+  let actual = capture_write parsed in
+  Test.Snapshot.assert_inline_text
+    ~ctx
+    ~actual
+    ~expected:{ocaml|let f rgb = to_string (rgb :> color)
+|ocaml}
+
+let test_write_keeps_nullary_constructor_pattern_payloads_atomic = fun ctx ->
+  let source =
+    {ocaml|let f=function|Ok Protocol.Event {handler_id;event_data}->event_data
+|ocaml}
+  in
+  let parsed = parse_ml source in
+  let actual = capture_write parsed in
+  Test.Snapshot.assert_inline_text
+    ~ctx
+    ~actual
+    ~expected:{ocaml|let f = function
+  | Ok Protocol.Event { handler_id; event_data } -> event_data
+|ocaml}
+
+let test_write_preserves_labeled_parameter_order_around_wildcards = fun ctx ->
+  let source =
+    {ocaml|let f=fun ~poll:_ ~server ~server_addr:_ ~client ~client_addr:_->server
+|ocaml}
+  in
+  let parsed = parse_ml source in
+  let actual = capture_write parsed in
+  Test.Snapshot.assert_inline_text
+    ~ctx
+    ~actual
+    ~expected:{ocaml|let f = fun ~poll:_ ~server ~server_addr:_ ~client ~client_addr:_ -> server
+|ocaml}
+
+let test_write_preserves_labeled_binding_return_annotation = fun ctx ->
+  let source =
+    {ocaml|let make ~start ~finish ~steps : color array =
+Array.make ~count:steps ~value:start
+|ocaml}
+  in
+  let parsed = parse_ml source in
+  let actual = capture_write parsed in
+  Test.Snapshot.assert_inline_text
+    ~ctx
+    ~actual
+    ~expected:{ocaml|let make ~start ~finish ~steps : color array = Array.make ~count:steps ~value:start
+|ocaml}
+
 let test_write_preserves_assignment_operators = fun ctx ->
   let source =
     {ocaml|let update state remaining=state.buffer<-remaining
@@ -2453,6 +2574,85 @@ let test_format_keeps_curried_nullary_constructor_fun_parameters_separate = fun 
     ~msg:"curried nullary constructor fun parameters should stay stable across repeated formatting";
   Ok ()
 
+let test_write_preserves_nullary_constructor_patterns = fun ctx ->
+  let source =
+    {ocaml|let width=function|EastAsianWide->2|EastAsianNarrow->1
+let describe=fun Type.Equal->"equal"
+let render=fun value->match value with|Ok->"ok"|Error->"error"
+|ocaml}
+  in
+  let parsed = parse_ml source in
+  let actual = capture_write parsed in
+  Test.Snapshot.assert_inline_text
+    ~ctx
+    ~actual
+    ~expected:{ocaml|let width = function
+  | EastAsianWide -> 2
+  | EastAsianNarrow -> 1
+
+let describe = fun Type.Equal -> "equal"
+
+let render = fun value ->
+  match value with
+  | Ok -> "ok"
+  | Error -> "error"
+|ocaml}
+
+let test_write_preserves_nested_constructor_patterns = fun ctx ->
+  let source =
+    {ocaml|let publish=fun result->match result with|Error (Riot_deps.Publisher.RegistryPublishFailed {locator;error})->locator^error|Ok value->value
+|ocaml}
+  in
+  let parsed = parse_ml source in
+  let actual = capture_write parsed in
+  Test.Snapshot.assert_inline_text
+    ~ctx
+    ~actual
+    ~expected:{ocaml|let publish = fun result ->
+  match result with
+  | Error (Riot_deps.Publisher.RegistryPublishFailed { locator; error }) -> locator ^ error
+  | Ok value -> value
+|ocaml}
+
+let test_write_preserves_defaulted_optional_parameters_after_renamed_labels = fun ctx ->
+  let source = {ocaml|let truncate_width=fun ~width:target_width ?(tail="x") s->tail
+|ocaml}
+  in
+  let parsed = parse_ml source in
+  let actual = capture_write parsed in
+  Test.Snapshot.assert_inline_text
+    ~ctx
+    ~actual
+    ~expected:{ocaml|let truncate_width = fun ~width:target_width ?(tail = "x") s -> tail
+|ocaml}
+
+let test_write_preserves_labeled_parameters_after_renamed_label = fun ctx ->
+  let source = {ocaml|let found_text=fun ~found:token ~text ~span->text
+|ocaml}
+  in
+  let parsed = parse_ml source in
+  let actual = capture_write parsed in
+  Test.Snapshot.assert_inline_text
+    ~ctx
+    ~actual
+    ~expected:{ocaml|let found_text = fun ~found:token ~text ~span -> text
+|ocaml}
+
+let test_write_preserves_return_annotated_fun_parameters = fun ctx ->
+  let source =
+    {ocaml|let make_release_source=fun ?(files=[]) ~package_name ~version manifest_toml:Pkgs_ml.Registry.release_source->manifest_toml
+|ocaml}
+  in
+  let parsed = parse_ml source in
+  let actual = capture_write parsed in
+  Test.Snapshot.assert_inline_text
+    ~ctx
+    ~actual
+    ~expected:{ocaml|let make_release_source = fun
+  ?(files = []) ~package_name ~version manifest_toml: Pkgs_ml.Registry.release_source ->
+  manifest_toml
+|ocaml}
+
 let test_desugar_typed_named_parameters_without_duplicating_inner_annotations = fun ctx ->
   let source =
     {|type 'a t = 'a list
@@ -4208,6 +4408,31 @@ let tests =
     case
       "write breaks record type aliases when width is exceeded"
       test_write_breaks_record_type_aliases_when_width_is_exceeded;
+    case
+      "write preserves unit parameter return annotation"
+      test_write_preserves_unit_parameter_return_annotation;
+    case
+      "write preserves function return annotation before record body"
+      test_write_preserves_function_return_annotation_before_record_body;
+    case
+      "write preserves local function return annotation before record body"
+      test_write_preserves_local_function_return_annotation_before_record_body;
+    case
+      "write parenthesizes annotated record expressions"
+      test_write_parenthesizes_annotated_record_expressions;
+    case
+      "write parenthesizes annotated identifier expressions"
+      test_write_parenthesizes_annotated_identifier_expressions;
+    case "write preserves coercion expressions" test_write_preserves_coercion_expressions;
+    case
+      "write keeps nullary constructor pattern payloads atomic"
+      test_write_keeps_nullary_constructor_pattern_payloads_atomic;
+    case
+      "write preserves labeled parameter order around wildcards"
+      test_write_preserves_labeled_parameter_order_around_wildcards;
+    case
+      "write preserves labeled binding return annotation"
+      test_write_preserves_labeled_binding_return_annotation;
     case "write preserves assignment operators" test_write_preserves_assignment_operators;
     case
       "write preserves labeled wildcard function parameters"
@@ -4465,6 +4690,21 @@ let tests =
     case
       "format keeps curried nullary constructor fun parameters separate"
       test_format_keeps_curried_nullary_constructor_fun_parameters_separate;
+    case
+      "write preserves nullary constructor patterns"
+      test_write_preserves_nullary_constructor_patterns;
+    case
+      "write preserves nested constructor patterns"
+      test_write_preserves_nested_constructor_patterns;
+    case
+      "write preserves defaulted optional parameters after renamed labels"
+      test_write_preserves_defaulted_optional_parameters_after_renamed_labels;
+    case
+      "write preserves labeled parameters after renamed label"
+      test_write_preserves_labeled_parameters_after_renamed_label;
+    case
+      "write preserves return annotated fun parameters"
+      test_write_preserves_return_annotated_fun_parameters;
     case
       "desugar typed named parameters without duplicating inner annotations"
       test_desugar_typed_named_parameters_without_duplicating_inner_annotations;

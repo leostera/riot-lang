@@ -701,7 +701,7 @@ let render_snippet = fun snippet ->
   let open Component in
   let line_number_divs =
     List.map
-      ~fn:(fun ((line_num, _)) ->
+      ~fn:(fun (line_num, _) ->
         let is_error = line_num = snippet.error_line in
         let classes =
           if is_error then
@@ -717,7 +717,7 @@ let render_snippet = fun snippet ->
   (* Each line gets its own code block for syntax highlighting *)
   let code_line_divs =
     List.map
-      ~fn:(fun ((line_num, content)) ->
+      ~fn:(fun (line_num, content) ->
         let is_error = line_num = snippet.error_line in
         let classes =
           if is_error then
@@ -921,7 +921,7 @@ let render_request = fun conn ->
               (
                 Net.Http.Header.to_list headers
                 |> List.map
-                  ~fn:(fun ((name, value)) ->
+                  ~fn:(fun (name, value) ->
                     tr
                       [
                         td ~attrs:[ class_ "header-name" ] [ code [ text name ] ];
@@ -939,7 +939,7 @@ let render_request = fun conn ->
             table
               ~attrs:[ class_ "params-table" ]
               (List.map
-                ~fn:(fun ((name, value)) ->
+                ~fn:(fun (name, value) ->
                   tr
                     [
                       td ~attrs:[ class_ "param-name" ] [ code [ text name ] ];
@@ -983,7 +983,7 @@ let render_response = fun conn ->
             table
               ~attrs:[ class_ "headers-table" ]
               (List.map
-                ~fn:(fun ((name, value)) ->
+                ~fn:(fun (name, value) ->
                   tr
                     [
                       td ~attrs:[ class_ "header-name" ] [ code [ text name ] ];

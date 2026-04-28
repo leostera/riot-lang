@@ -277,11 +277,7 @@ end
 
 module CornerRadius = struct
   let make = fun
-    ?(top_left = 0.0)
-    ?(top_right = 0.0)
-    ?(bottom_left = 0.0)
-    ?(bottom_right = 0.0)
-    () ->
+    ?(top_left = 0.0) ?(top_right = 0.0) ?(bottom_left = 0.0) ?(bottom_right = 0.0) () ->
     {
       top_left;
       top_right;

@@ -71,7 +71,8 @@ let first_out_of_order = fun parameters ->
 let diagnostic_for_binding = fun binding ->
   let labeled = Vector.with_capacity ~size:4 in
   let optional = Vector.with_capacity ~size:4 in
-  H.iter_fold Ast.LetBinding.fold_parameter
+  H.iter_fold
+    Ast.LetBinding.fold_parameter
     binding
     ~fn:(fun parameter ->
       match classify_parameter parameter with

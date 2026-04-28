@@ -18,7 +18,8 @@ Prefer `User.t` over `User.user`.
 |}
 
 let push_type_name = fun names declaration ->
-  H.iter_fold Ast.TypeDeclaration.fold_member
+  H.iter_fold
+    Ast.TypeDeclaration.fold_member
     declaration
     ~fn:(fun member ->
       match Ast.TypeDeclaration.Member.name member with
@@ -51,13 +52,22 @@ let diagnostic_for_names = fun diagnostics names ->
 
 let check_module_declaration = fun diagnostics declaration ->
   let names = Vector.with_capacity ~size:(Ast.ModuleDeclaration.member_count declaration) in
-  H.iter_fold Ast.ModuleDeclaration.fold_structure_item declaration ~fn:(type_names_in_structure_item names);
-  H.iter_fold Ast.ModuleDeclaration.fold_signature_item declaration ~fn:(type_names_in_signature_item names);
+  H.iter_fold
+    Ast.ModuleDeclaration.fold_structure_item
+    declaration
+    ~fn:(type_names_in_structure_item names);
+  H.iter_fold
+    Ast.ModuleDeclaration.fold_signature_item
+    declaration
+    ~fn:(type_names_in_signature_item names);
   diagnostic_for_names diagnostics names
 
 let check_module_type_declaration = fun diagnostics declaration ->
-  let names = Vector.with_capacity ~size:(Ast.ModuleTypeDeclaration.signature_item_count declaration) in
-  H.iter_fold Ast.ModuleTypeDeclaration.fold_signature_item
+  let names =
+    Vector.with_capacity ~size:(Ast.ModuleTypeDeclaration.signature_item_count declaration)
+  in
+  H.iter_fold
+    Ast.ModuleTypeDeclaration.fold_signature_item
     declaration
     ~fn:(type_names_in_signature_item names);
   diagnostic_for_names diagnostics names

@@ -64,7 +64,7 @@ let to_dot = fun graph ~name ~node_to_label ~node_to_attrs ->
         if attrs = [] then
           ""
         else
-          let attr_pairs = List.map (fun ((k, v)) -> Printf.sprintf "%s=\"%s\"" k v) attrs in
+          let attr_pairs = List.map (fun (k, v) -> Printf.sprintf "%s=\"%s\"" k v) attrs in
           ", " ^ String.concat ", " attr_pairs
       in
       Buffer.add_string

@@ -83,9 +83,7 @@ let diagnostic_for_expr = fun ctx expr chain ->
     ~suggestion:"Rewrite this call chain as a pipeline."
     ~fix:(Fix.make
       ~title:"Rewrite nested calls as a pipeline"
-      ~operations:[
-        Fix.replace_node_with_text ~target:(Ast.Expr.as_node expr) ~text:replacement;
-      ])
+      ~operations:[ Fix.replace_node_with_text ~target:(Ast.Expr.as_node expr) ~text:replacement; ])
     ()
 
 let check_expr = fun ctx diagnostics expr ->

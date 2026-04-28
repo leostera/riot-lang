@@ -176,7 +176,7 @@ let handle_key = fun t (key: Event.key) modifier ->
   if not t.focused then
     t
   else
-    match (key: Event.key) with
+    match ((key: Event.key)) with
     | Event.Left -> set_cursor_position t ~pos:(t.cursor_pos - 1)
     | Event.Right -> set_cursor_position t ~pos:(t.cursor_pos + 1)
     | Event.Home -> set_cursor_position t ~pos:0

@@ -45,7 +45,7 @@ type Message.t +=
   | ComponentEvent of { handler_id: string; event_data: string }
 
 (** Attach handler IDs to component tree and register handlers *)
-let rec attach_handler_ids registry (component: 'msg Component.t): 'msg Component.t =
+let rec attach_handler_ids registry (component: 'msg Component.t) =
   match component with
   | Component.Text _ -> component
   | Component.Fragment children ->
@@ -147,7 +147,7 @@ module ComponentProcess = struct
   let start_link = fun
     handler_pid
     (type s m a)
-    ((module C : Component with type state = s and type msg = m and type args = a))
+    (module C : Component with type state = s and type msg = m and type args = a)
     conn
     (args: a) ->
     spawn_link
@@ -502,9 +502,7 @@ let html_template = fun ~element_id ~ws_path ?title ?styles initial_content ->
      ]
    ]}
 *)
-let serve_runtime ?(prefix = "/assets/liveview.js") (): Middleware.Pipeline.middleware = fun
-  ~conn
-  ~next ->
+let serve_runtime ?(prefix = "/assets/liveview.js") () = fun ~conn ~next ->
   let req_path = Middleware.Conn.uri conn in
   if req_path = prefix then
     conn
@@ -519,9 +517,7 @@ let serve_runtime ?(prefix = "/assets/liveview.js") (): Middleware.Pipeline.midd
 (** Create a LiveView mount handler *)
 
 let mount = fun
-  (type s m)
-  ((module C : Component with type state = s and type msg = m))
-  (conn: Middleware.Conn.t) ->
+  (type s m) (module C : Component with type state = s and type msg = m) (conn: Middleware.Conn.t) ->
   let module M = MountHandler (C) in
   let opts = Channel.Handler.{ do_upgrade = true } in
   (opts, Channel.Handler.make (module M) conn)
@@ -535,7 +531,7 @@ let mount = fun
    @param module Component module to embed
    @param args Initialization arguments to pass to the component
 *)
-let embed = fun (type a) ((module C : Component with type args = a)) (args_value: a) ->
+let embed = fun (type a) (module C : Component with type args = a) (args_value: a) ->
   let open Component in
   let element_id = "liveview-" ^ C.id in
   let ws_path = "/suri/live/" ^ C.id in
@@ -601,7 +597,7 @@ let embed = fun (type a) ((module C : Component with type args = a)) (args_value
      ]
    ]}
 *)
-let live = fun (type s m) ((module C : Component with type state = s and type msg = m)) ->
+let live = fun (type s m) (module C : Component with type state = s and type msg = m) ->
   let ws_path = "/suri/live/" ^ C.id in
   let handler conn req =
     let headers = Middleware.Conn.headers conn in

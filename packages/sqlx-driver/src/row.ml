@@ -37,7 +37,7 @@ let timestamp = fun field row ->
   | None -> None
 
 let to_string = fun row ->
-  let parts = List.map ~fn:(fun ((field, value)) -> field ^ ": " ^ Value.to_string value) row in
+  let parts = List.map ~fn:(fun (field, value) -> field ^ ": " ^ Value.to_string value) row in
   String.concat ", " parts
 
 let equal = fun a b ->

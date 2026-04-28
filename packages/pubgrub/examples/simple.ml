@@ -41,7 +41,7 @@ let main ~args:_ =
         Log.info "Solution found:";
         List.for_each
           solution
-          ~fn:(fun ((pkg, ver)) -> Log.info ("  " ^ pkg ^ "@" ^ (version_to_string ver)))
+          ~fn:(fun (pkg, ver) -> Log.info ("  " ^ pkg ^ "@" ^ (version_to_string ver)))
     | Ok (Solver.Failure conflict) -> Log.error ("No solution found:\n" ^ (explain_conflict conflict))
     | Error err -> Log.error ("Error: " ^ err)
   in

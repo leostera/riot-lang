@@ -46,7 +46,8 @@ let binding_body_references_any_name = fun names binding ->
   match Ast.LetBinding.body binding with
   | Some body ->
       let found = ref false in
-      H.iter_fold Ast.Node.fold_token
+      H.iter_fold
+        Ast.Node.fold_token
         (Ast.Expr.as_node body)
         ~fn:(fun token ->
           if name_vector_contains names (Ast.Token.text token) then
@@ -56,7 +57,8 @@ let binding_body_references_any_name = fun names binding ->
 
 let let_declaration_has_recursive_reference = fun names declaration ->
   let found = ref false in
-  H.iter_fold Ast.LetDeclaration.fold_binding
+  H.iter_fold
+    Ast.LetDeclaration.fold_binding
     declaration
     ~fn:(fun binding ->
       if binding_body_references_any_name names binding then

@@ -575,7 +575,7 @@ and serve_regular_file = fun config path meta conn ->
           List.fold_left
             headers
             ~init:conn
-            ~fn:(fun c ((name, value)) ->
+            ~fn:(fun c (name, value) ->
               Conn.with_header name value c)
         in
         Conn.send conn

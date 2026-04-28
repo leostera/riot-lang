@@ -401,16 +401,13 @@ let rec insert_scope_at_path:
         Name_map.add name binding modules
 
 let bind_in_scope_modules: t -> scope_path:SurfacePath.t -> t -> t = fun
-  env
-  ~scope_path
-  introduced ->
-  {
-    env with
-    modules = insert_scope_at_path
-      env.modules
-      ~module_path:scope_path
-      (module_scope_of_env introduced);
-  }
+  env ~scope_path introduced -> {
+  env with
+  modules = insert_scope_at_path
+    env.modules
+    ~module_path:scope_path
+    (module_scope_of_env introduced);
+}
 
 let split_relative_binding = fun binding ->
   match EntityId.split_last (Binding.path binding) with
@@ -584,8 +581,7 @@ let singleton_constructor = fun
 let extend = fun env introduced -> bind env (of_bindings introduced)
 
 let rec lookup_module_scope_in: module_table -> SurfacePath.t -> module_scope option = fun
-  modules
-  module_path ->
+  modules module_path ->
   match SurfacePath.uncons module_path with
   | None -> None
   | Some (name, tail) -> (
@@ -755,8 +751,7 @@ let bindings = fun env ->
   Value_env.bindings env.values @ bindings_with_prefix SurfacePath.empty env.modules
 
 let rec scope_type_decls_with_prefix: SurfacePath.t -> module_scope -> FileSummary.type_decl list = fun
-  prefix
-  scope ->
+  prefix scope ->
   let local =
     Type_env.type_decls scope.types
     |> List.map
@@ -769,8 +764,7 @@ let rec scope_type_decls_with_prefix: SurfacePath.t -> module_scope -> FileSumma
   local @ nested
 
 and module_type_decls_with_prefix: SurfacePath.t -> module_table -> FileSummary.type_decl list = fun
-  prefix
-  modules ->
+  prefix modules ->
   Name_map.bindings modules
   |> List.concat_map
     (fun (_, binding) ->
@@ -976,7 +970,7 @@ let cache_and_return cache key value =
   let _ = Collections.HashMap.insert cache key value in
   value
 
-let env_of_summary_delta (Summary2.{ bindings; type_decls; _ }) =
+let env_of_summary_delta Summary2.{ bindings; type_decls; _ } =
   bind (of_bindings (List.map binding_of_summary_binding bindings)) (of_type_decls type_decls)
 
 let rec env_of_summary summary =

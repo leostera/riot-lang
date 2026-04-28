@@ -235,10 +235,7 @@ let realized_test_packages = fun ?(package_filters = []) (workspace: Workspace.t
   |> List.filter ~fn:(fun (pkg: Package.t) -> matches_package_filters package_filters pkg.name)
 
 let collect_suite_binaries = fun
-  (workspace: Workspace.t)
-  ?(package_filters = [])
-  ?suite_filter
-  () ->
+  (workspace: Workspace.t) ?(package_filters = []) ?suite_filter () ->
   realized_test_packages ~package_filters workspace
   |> List.flat_map
     ~fn:(fun (pkg: Package.t) ->
@@ -887,12 +884,7 @@ let find_suite_binary_path_in_output = fun
   |> Result.map_err ~fn:(fun reason -> SuiteArtifactNotFound { suite; reason })
 
 let suite_ctx_json_value = fun
-  ~workspace_root
-  ~package_name
-  ?source_file
-  ~binary_path
-  ~built_binaries
-  () ->
+  ~workspace_root ~package_name ?source_file ~binary_path ~built_binaries () ->
   let built_binaries_json =
     built_binaries
     |> List.map
@@ -969,13 +961,7 @@ let runtime_output_built_binaries = fun
 let run_suite_args = fun extra_args -> ("run-tests" :: remove_json_args extra_args) @ [ "--json" ]
 
 let run_suite = fun
-  ~on_event
-  ~workspace_root
-  ~suite
-  ?source_file
-  ~built_binaries
-  ~extra_args
-  binary_path ->
+  ~on_event ~workspace_root ~suite ?source_file ~built_binaries ~extra_args binary_path ->
   let ctx_json =
     suite_ctx_json_value
       ~workspace_root
@@ -1083,9 +1069,7 @@ let resolve_suite_binaries = fun ~(workspace:Workspace.t) ~profile ~store ~suite
   loop [] [] suites
 
 let list_tests = fun
-  ?(on_suite = no_listed_suite)
-  ?(on_suite_error = no_list_error)
-  (request: test_request) ->
+  ?(on_suite = no_listed_suite) ?(on_suite_error = no_list_error) (request: test_request) ->
   let suites =
     collect_suite_binaries
       request.workspace

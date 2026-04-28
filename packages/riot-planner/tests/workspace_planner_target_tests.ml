@@ -25,10 +25,7 @@ let dependency = fun name ->
   }
 
 let make_package = fun
-  ?(dependencies = [])
-  ?(dev_dependencies = [])
-  ?(build_dependencies = [])
-  name ->
+  ?(dependencies = []) ?(dev_dependencies = []) ?(build_dependencies = []) name ->
   Package.make
     ~name:(package_name name)
     ~path:(Path.v ("packages/" ^ name))

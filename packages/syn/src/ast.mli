@@ -733,7 +733,11 @@ module Expr: sig
         else_branch: t option;
       }
     | Match of { scrutinee: t; first_case: match_case }
-    | Fun of { body: fun_body }
+    | Fun of {
+        parameters: parameter Vector.t;
+        return_annotation: type_expr option;
+        body: fun_body;
+      }
     | Try of { body: t; first_case: match_case }
     | While of { condition: t; body: t }
     | For of { pattern: pattern; start_: t; stop: t; body: t }

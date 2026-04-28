@@ -204,7 +204,7 @@ and combine_rfc2231_params = fun raw_params ->
           | None -> `Regular (key, value)
   in
   List.for_each
-    ~fn:(fun ((key, value)) ->
+    ~fn:(fun (key, value) ->
       match parse_key key value with
       | `Regular (name, value) -> Cell.set regular ((name, value) :: Cell.get regular)
       | `Encoded (name, value) ->
@@ -226,7 +226,7 @@ and combine_rfc2231_params = fun raw_params ->
     ~fn:(fun name parts_cell ->
       let parts =
         Cell.get parts_cell
-        |> List.sort ~compare:(fun ((a, _)) ((b, _)) -> Int.compare a b)
+        |> List.sort ~compare:(fun (a, _) (b, _) -> Int.compare a b)
       in
       let value = String.concat "" (List.map ~fn:(fun (_, value) -> value) parts) in
       Cell.set combined ((name, value) :: Cell.get combined));
@@ -260,7 +260,7 @@ let parse_content_disposition = fun value ->
   | "attachment" -> Attachment { filename }
   | _ -> Inline { filename = None }
 
-let parse_header = fun ((name, value)) ->
+let parse_header = fun (name, value) ->
   let name_lower = String.lowercase_ascii name in
   match name_lower with
   | "content-type" -> ContentType (parse_content_type value)

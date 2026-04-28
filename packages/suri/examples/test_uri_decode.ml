@@ -13,7 +13,7 @@ let main ~args:_ =
   in
   List.for_each
     test_cases
-    ~fn:(fun ((input, desc)) ->
+    ~fn:(fun (input, desc) ->
       let decoded = Net.Uri.percent_decode input in
       println "";
       println desc;

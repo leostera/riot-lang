@@ -37,7 +37,7 @@ let division_properties_prop =
   property
     "division properties with assumptions"
     Arbitrary.(pair int int)
-    (fun ((a, b)) ->
+    (fun (a, b) ->
       assume (b != 0);
       assume (a mod b = 0);
       (* a is divisible by b *)
@@ -49,7 +49,7 @@ let rare_case_prop =
   property
     "properties on rare valid inputs"
     Arbitrary.(pair int int)
-    (fun ((a, b)) ->
+    (fun (a, b) ->
       assume (a > 0 && b > 0);
       assume (a < 100 && b < 100);
       assume (a mod 7 = 0);
@@ -74,7 +74,7 @@ let chained_assumptions_prop =
   property
     "multiple related assumptions"
     Arbitrary.(triple int int int)
-    (fun ((a, b, c)) ->
+    (fun (a, b, c) ->
       assume (a > 0);
       assume (b > a);
       (* b must be larger than a *)
@@ -89,7 +89,7 @@ let valid_date_prop =
   property
     "valid dates have 1-31 days"
     Arbitrary.(pair int int)
-    (fun ((month, day)) ->
+    (fun (month, day) ->
       let month = 1 + (month mod 12) in
       (* 1-12 *)
       let day = 1 + (day mod 31) in

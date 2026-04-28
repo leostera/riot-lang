@@ -206,10 +206,7 @@ let load_registry_workspace = fun ~on_event ~package_spec ->
       })
 
 let find_built_binary_path = fun
-  ~(store:Riot_store.Store.t)
-  ~(output:Riot_build.Build_result.t)
-  ~package_name
-  ~binary_name ->
+  ~(store:Riot_store.Store.t) ~(output:Riot_build.Build_result.t) ~package_name ~binary_name ->
   match Riot_build.Build_result.find_package output package_name
   |> Option.and_then
     ~fn:(fun package_output -> Riot_build.Build_result.find_export package_output binary_name) with

@@ -41,7 +41,8 @@ let check_parameter = fun pattern diagnostics ->
   | _ -> ()
 
 let check_binding = fun binding diagnostics ->
-  H.iter_fold Ast.LetBinding.fold_parameter
+  H.iter_fold
+    Ast.LetBinding.fold_parameter
     binding
     ~fn:(fun parameter -> check_parameter parameter diagnostics)
 

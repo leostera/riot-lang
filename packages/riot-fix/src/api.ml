@@ -75,10 +75,7 @@ let response_output response =
 let no_event = fun (_: Event.t) -> ()
 
 let fix = fun
-  ?(build_package = unavailable_build_package)
-  ?(on_event = no_event)
-  ?output_mode
-  request ->
+  ?(build_package = unavailable_build_package) ?(on_event = no_event) ?output_mode request ->
   let output_mode =
     match output_mode with
     | Some output_mode -> output_mode

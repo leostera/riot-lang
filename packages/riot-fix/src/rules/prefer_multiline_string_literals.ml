@@ -31,9 +31,7 @@ let expr_is_string_literal = fun expr ->
 let rec string_literal_chain_size = fun expr ->
   match Ast.Expr.view (H.unwrap_expr expr) with
   | Ast.Expr.Literal _ when expr_is_string_literal expr -> Some 1
-  | Ast.Expr.Infix { left; operator; right } when String.equal
-    (Ast.Token.text operator)
-    "^" -> (
+  | Ast.Expr.Infix { left; operator; right } when String.equal (Ast.Token.text operator) "^" -> (
       match (string_literal_chain_size left, string_literal_chain_size right) with
       | (Some left_count, Some right_count) -> Some (left_count + right_count)
       | _ -> None
@@ -45,7 +43,8 @@ let rec find_string_literal_chain = fun expr ->
   | Some count when count >= 2 -> Some expr
   | _ ->
       let found = ref None in
-      H.iter_fold Ast.Expr.fold_child_expr
+      H.iter_fold
+        Ast.Expr.fold_child_expr
         expr
         ~fn:(fun child ->
           match !found with

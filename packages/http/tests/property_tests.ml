@@ -17,7 +17,7 @@ let header_value_gen = Generator.string_size (Generator.int_range 1 64) Generato
 
 let header_gen =
   Generator.map
-    (fun ((name, value)) -> Http2.Hpack.{ name; value })
+    (fun (name, value) -> Http2.Hpack.{ name; value })
     (Generator.pair header_name_gen header_value_gen)
 
 (* Arbitrary for headers *)
@@ -73,7 +73,7 @@ let frame_type_gen =
 let frame_flags_gen =
   let open Generator in
   map2
-    (fun ((end_stream, end_headers, padded)) ((priority_flag, ack)) ->
+    (fun (end_stream, end_headers, padded) (priority_flag, ack) ->
       Http2.Frame.{
         end_stream;
         end_headers;
@@ -88,7 +88,7 @@ let frame_flags_gen =
 
 let data_frame_gen =
   Generator.map
-    (fun ((stream_id, payload_data, flags)) ->
+    (fun (stream_id, payload_data, flags) ->
       let length = String.length payload_data in
       Http2.Frame.{
         length;

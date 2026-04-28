@@ -168,8 +168,7 @@ let normalize_source_locator = fun raw ->
 let github_locator_of_value = fun value -> "github.com/" ^ String.trim value
 
 let parse_dependency: string -> Toml.value -> (Package.dependency, error) result = fun
-  raw_name
-  value ->
+  raw_name value ->
   let* name =
     Package_name.from_string raw_name
     |> Result.map_err ~fn:(fun error -> DependencyError (InvalidDependencyName { raw_name; error }))
@@ -262,8 +261,7 @@ let parse_dependencies: (string * Toml.value) list -> (Package.dependency list, 
   in
   loop [] items
 
-let parse_dependency_section section_name (toml: Toml.value):
-  (Package.dependency list, error) result =
+let parse_dependency_section section_name (toml: Toml.value) =
   match toml with
   | Toml.Table items -> (
       match Fields.get section_name items with
@@ -418,8 +416,7 @@ let resolve_target_dir_root = fun ~root ?target_dir () ->
   else
     Path.(root / target_dir_path)
 
-let make ?name ~root ~packages ?(dependencies = []) ?(dev_dependencies = []) ?(build_dependencies = []) ?(profile_overrides = []) ?target_dir ():
-  t = {
+let make ?name ~root ~packages ?(dependencies = []) ?(dev_dependencies = []) ?(build_dependencies = []) ?(profile_overrides = []) ?target_dir () = {
   name;
   root;
   target_dir_root = resolve_target_dir_root ~root ?target_dir ();
@@ -516,9 +513,9 @@ module Tests = struct
     Package_name.from_string value
     |> Result.expect ~msg:"expected valid package name"
 
-  let test_parse_workspace_toml (): (unit, string) result = Ok () [@test]
+  let test_parse_workspace_toml () = Ok () [@test]
 
-  let test_parse_target_dir (): (unit, string) result =
+  let test_parse_target_dir () =
     let toml =
       Std.Data.Toml.parse
         {|
@@ -539,7 +536,7 @@ target_dir = "build-out"
     else
       Error "expected [riot].target_dir to be parsed" [@test]
 
-  let test_parse_workspace_name (): (unit, string) result =
+  let test_parse_workspace_name () =
     let toml =
       Std.Data.Toml.parse {|
 [workspace]
@@ -557,14 +554,14 @@ members = ["packages/foo"]
     else
       Error "expected [workspace].name to be parsed" [@test]
 
-  let test_make_uses_custom_target_dir (): (unit, string) result =
+  let test_make_uses_custom_target_dir () =
     let workspace = make ~root:(Path.v "/tmp/example") ~packages:[] ~target_dir:"build-out" () in
     if Path.to_string workspace.target_dir_root = "/tmp/example/build-out" then
       Ok ()
     else
       Error "expected custom target_dir_root" [@test]
 
-  let test_workspace_dependencies_parse_registry_requirements (): (unit, string) result =
+  let test_workspace_dependencies_parse_registry_requirements () =
     let toml =
       Std.Data.Toml.parse {|
 [workspace]
@@ -595,7 +592,7 @@ std = ">= 1.2.3"
           | _ -> Error "expected workspace dependency to parse as a registry requirement"
         ) [@test]
 
-  let test_workspace_dependencies_reject_non_string_version (): (unit, string) result =
+  let test_workspace_dependencies_reject_non_string_version () =
     let toml =
       Std.Data.Toml.parse {|
 [workspace]
@@ -607,14 +604,13 @@ std = { version = 123 }
       |> Result.expect ~msg:"expected workspace toml to parse"
     in
     match of_toml toml with
-    | Error (
-      DependencyError (DependencyFieldMustBeString { dependency_name = "std"; field = Version })
-    ) -> Ok ()
+    | Error (DependencyError (DependencyFieldMustBeString { dependency_name = "std"; field = Version })) ->
+        Ok ()
     | Error err -> Error ("expected non-string version error, got: " ^ error_message err)
     | Ok _ ->
         Error "expected workspace manifest parse to fail for non-string dependency version" [@test]
 
-  let test_discover_fix_providers (): (unit, string) result =
+  let test_discover_fix_providers () =
     let package_toml =
       Std.Data.Toml.parse
         {|
@@ -657,7 +653,7 @@ rules = ["no-stdlib"]
           Error "expected provider metadata to round-trip"
     | _ -> Error "expected one fix provider" [@test]
 
-  let test_parse_workspace_dependency_classes (): (unit, string) result =
+  let test_parse_workspace_dependency_classes () =
     let toml =
       Std.Data.Toml.parse
         {|

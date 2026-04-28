@@ -59,8 +59,7 @@ let rec toml_json = function
   | Data.Toml.Bool value -> Data.Json.Bool value
 
 let workspace_kind = fun
-  ~(workspace_manager:Workspace_manager.t)
-  (workspace: Workspace_manifest.t) ->
+  ~(workspace_manager:Workspace_manager.t) (workspace: Workspace_manifest.t) ->
   let manifest_path = Path.(workspace.root / Path.v "riot.toml") in
   match Workspace_manager.load_riot_toml workspace_manager manifest_path with
   | Ok toml -> (
@@ -170,8 +169,7 @@ let error_json = fun ~kind ~message ->
   ]
 
 let print_workspace = fun
-  ~(load_errors:Workspace_manager.load_error list)
-  (workspace: Workspace_manifest.t) ->
+  ~(load_errors:Workspace_manager.load_error list) (workspace: Workspace_manifest.t) ->
   let workspace_manager = Workspace_manager.create () in
   let kind = workspace_kind ~workspace_manager workspace in
   let workspace_manifest_path = manifest_path workspace.root in

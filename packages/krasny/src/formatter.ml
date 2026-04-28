@@ -9,7 +9,6 @@ let iter_fold = fun fold value ~fn ->
       fn item;
       Syn.Ast.Continue ())
 
-
 module Ast = Syn.Ast
 module Kind = Syn.SyntaxKind
 module Layout = Layout_policy
@@ -195,10 +194,7 @@ let normalize_inline_docstring = fun (docstring: Ast.Token.delimited_trivia) ->
     docstring.opening ^ " " ^ body ^ " " ^ closing
 
 let normalize_inline_first_multiline_docstring = fun
-  (docstring: Ast.Token.delimited_trivia)
-  lines
-  ~first_index
-  ~last_index ->
+  (docstring: Ast.Token.delimited_trivia) lines ~first_index ~last_index ->
   let closing = delimited_trivia_closing docstring in
   let buffer = IO.Buffer.create ~size:(Int.add (String.length docstring.text) 8) in
   let first_line =
@@ -424,7 +420,8 @@ let token_leading_trivia_starts_inline = fun token ->
 let token_single_leading_delimited_trivia = fun token ->
   let result = ref None in
   let multiple = ref false in
-  iter_fold Ast.Token.fold_leading_trivia_item
+  iter_fold
+    Ast.Token.fold_leading_trivia_item
     token
     ~fn:(
       function
@@ -569,7 +566,8 @@ let emit_token_leading_comments_as_lines = fun state token ->
   | _ ->
       let emitted = ref false in
       let previous_kind = ref None in
-      iter_fold Ast.Token.fold_leading_trivia_item
+      iter_fold
+        Ast.Token.fold_leading_trivia_item
         token
         ~fn:(
           function
@@ -619,7 +617,8 @@ let emit_token_leading_comments_as_lines = fun state token ->
 
 let token_has_leading_ordinary_comment_needing_separator = fun token ->
   let found = ref false in
-  iter_fold Ast.Token.fold_leading_trivia_item
+  iter_fold
+    Ast.Token.fold_leading_trivia_item
     token
     ~fn:(
       function
@@ -633,13 +632,11 @@ let token_has_leading_ordinary_comment_needing_separator = fun token ->
   !found
 
 let emit_top_level_leading_comments_as_lines = fun
-  ?(drop_initial_docstring = false)
-  ?(compact_final_section_docstring = false)
-  state
-  token ->
+  ?(drop_initial_docstring = false) ?(compact_final_section_docstring = false) state token ->
   let previous_kind = ref None in
   let seen_non_whitespace = ref false in
-  iter_fold Ast.Token.fold_leading_trivia_item
+  iter_fold
+    Ast.Token.fold_leading_trivia_item
     token
     ~fn:(
       function
@@ -704,8 +701,8 @@ let emit_top_level_leading_comments_as_lines = fun
       if not compact_final_section_docstring then
         emit_line state;
       state.suppress_leading_token <- Some token.Ast.id
-  | Some (Leading_ordinary_comment | Leading_docstring) ->
-      state.suppress_leading_token <- Some token.Ast.id
+  | Some (Leading_ordinary_comment
+  | Leading_docstring) -> state.suppress_leading_token <- Some token.Ast.id
   | None ->
       if !seen_non_whitespace then
         state.suppress_leading_token <- Some token.Ast.id
@@ -760,10 +757,7 @@ let emit_node_keyword = fun state node ~kind ~fallback ->
   | None -> emit_keyword state fallback
 
 let emit_top_level_leading = fun
-  ?(drop_initial_docstring = false)
-  ?(compact_final_section_docstring = false)
-  state
-  node ->
+  ?(drop_initial_docstring = false) ?(compact_final_section_docstring = false) state node ->
   match Ast.Node.first_descendant_token node with
   | Some token -> (
       match state.suppress_leading_token with
@@ -848,13 +842,19 @@ let token_flat_width = fun token -> Slice.length (Ast.Token.slice token)
 let same_ast_node = fun (left: Ast.Node.t) (right: Ast.Node.t) -> Int.equal left.Ast.id right.Ast.id
 
 let same_expr_node = fun (left: Ast.Expr.t) (right: Ast.Expr.t) ->
-  same_ast_node (Ast.Expr.as_node left) (Ast.Expr.as_node right)
+  same_ast_node
+    (Ast.Expr.as_node left)
+    (Ast.Expr.as_node right)
 
 let same_pattern_node = fun (left: Ast.Pattern.t) (right: Ast.Pattern.t) ->
-  same_ast_node (Ast.Pattern.as_node left) (Ast.Pattern.as_node right)
+  same_ast_node
+    (Ast.Pattern.as_node left)
+    (Ast.Pattern.as_node right)
 
 let same_type_expr_node = fun (left: Ast.TypeExpr.t) (right: Ast.TypeExpr.t) ->
-  same_ast_node (Ast.TypeExpr.as_node left) (Ast.TypeExpr.as_node right)
+  same_ast_node
+    (Ast.TypeExpr.as_node left)
+    (Ast.TypeExpr.as_node right)
 
 let is_module_expr_kind = function
   | Kind.MODULE_EXPR
@@ -878,7 +878,8 @@ let is_module_type_kind = function
 
 let first_child_node_matching = fun node ~matches ->
   let found = ref None in
-  iter_fold Ast.Node.fold_child_node
+  iter_fold
+    Ast.Node.fold_child_node
     node
     ~fn:(fun child ->
       match !found with
@@ -891,7 +892,8 @@ let first_child_node_matching = fun node ~matches ->
 let nth_child_node_matching = fun node index ~matches ->
   let found = ref None in
   let current = ref 0 in
-  iter_fold Ast.Node.fold_child_node
+  iter_fold
+    Ast.Node.fold_child_node
     node
     ~fn:(fun child ->
       match !found with
@@ -906,7 +908,8 @@ let nth_child_node_matching = fun node index ~matches ->
 
 let first_child_token_matching = fun node ~matches ->
   let found = ref None in
-  iter_fold Ast.Node.fold_child_token
+  iter_fold
+    Ast.Node.fold_child_token
     node
     ~fn:(fun token ->
       match !found with
@@ -919,7 +922,8 @@ let first_child_token_matching = fun node ~matches ->
 let first_descendant_node_matching = fun (node: Ast.Node.t) ~matches ->
   let found = ref None in
   let rec visit node =
-    iter_fold Ast.Node.fold_child_node
+    iter_fold
+      Ast.Node.fold_child_node
       node
       ~fn:(fun child ->
         match !found with
@@ -935,7 +939,7 @@ let first_descendant_node_matching = fun (node: Ast.Node.t) ~matches ->
 
 let node_child_token_kind_is = fun (node: Ast.Node.t) index kind ->
   match Ast.Node.child_at node index with
-  | Some (Syn.SyntaxTree.Token id) -> token_kind_is ({ tree = node.Ast.tree; id }: Ast.Token.t) kind
+  | Some (Syn.SyntaxTree.Token id) -> token_kind_is (({ tree = node.Ast.tree; id }: Ast.Token.t)) kind
   | Some (Syn.SyntaxTree.Node _)
   | Some (Syn.SyntaxTree.Missing _)
   | None -> false
@@ -974,10 +978,11 @@ let collect_node_attribute_suffix_tokens_after_child = fun (node: Ast.Node.t) (c
             (
               match Ast.Node.child_at node index with
               | Some (Syn.SyntaxTree.Token id) ->
-                  Vector.push tokens ~value:({ tree = node.Ast.tree; id }: Ast.Token.t)
+                  Vector.push tokens ~value:(({ tree = node.Ast.tree; id }: Ast.Token.t))
               | Some (Syn.SyntaxTree.Node id) ->
-                  iter_fold Ast.Node.fold_token
-                    ({ tree = node.Ast.tree; id }: Ast.Node.t)
+                  iter_fold
+                    Ast.Node.fold_token
+                    (({ tree = node.Ast.tree; id }: Ast.Node.t))
                     ~fn:(fun token -> Vector.push tokens ~value:token)
               | Some (Syn.SyntaxTree.Missing _)
               | None -> ()
@@ -1008,7 +1013,8 @@ let collect_wrapped_module_body_attribute_suffix_tokens = fun (node: Ast.Node.t)
 
 let node_has_token_kind = fun node kind ->
   let found = ref false in
-  iter_fold Ast.Node.fold_token
+  iter_fold
+    Ast.Node.fold_token
     node
     ~fn:(fun token ->
       if not !found && token_kind_is token kind then
@@ -1017,7 +1023,8 @@ let node_has_token_kind = fun node kind ->
 
 let first_ident_token = fun node ->
   let found = ref None in
-  iter_fold Ast.Node.fold_child_token
+  iter_fold
+    Ast.Node.fold_child_token
     node
     ~fn:(fun token ->
       match !found with
@@ -1029,7 +1036,8 @@ let first_ident_token = fun node ->
 
 let last_ident_token = fun node ->
   let found = ref None in
-  iter_fold Ast.Node.fold_child_token
+  iter_fold
+    Ast.Node.fold_child_token
     node
     ~fn:(fun token ->
       if token_kind_is token Kind.IDENT then
@@ -1071,7 +1079,8 @@ let attribute_token_wants_space_before = fun previous token ->
 
 let emit_token_stream = fun state node ->
   let previous = ref None in
-  iter_fold Ast.Node.fold_token
+  iter_fold
+    Ast.Node.fold_token
     node
     ~fn:(fun token ->
       (
@@ -1085,7 +1094,8 @@ let emit_token_stream = fun state node ->
 
 let emit_attribute_token_stream = fun state node ->
   let previous = ref None in
-  iter_fold Ast.Node.fold_token
+  iter_fold
+    Ast.Node.fold_token
     node
     ~fn:(fun token ->
       (
@@ -1317,7 +1327,8 @@ let emit_shell_token_vector_range_stream = fun state tokens ~start ~stop ->
 let emit_shell_node_token_stream = fun state node ->
   emit_shell_token_stream
     state
-    (fun ~fn -> iter_fold Ast.Node.fold_token node ~fn)
+    (fun ~fn ->
+      iter_fold Ast.Node.fold_token node ~fn)
 
 let unsupported_node = fun label node ->
   unsupported
@@ -1325,7 +1336,8 @@ let unsupported_node = fun label node ->
 
 let collect_child_exprs = fun (node: Ast.Node.t) ->
   let exprs = Vector.with_capacity ~size:(Ast.Node.child_count node) in
-  iter_fold Ast.Node.fold_child_node
+  iter_fold
+    Ast.Node.fold_child_node
     node
     ~fn:(fun child ->
       match Ast.cast_result_to_option (Ast.Expr.cast child) with
@@ -1335,7 +1347,8 @@ let collect_child_exprs = fun (node: Ast.Node.t) ->
 
 let collect_child_patterns = fun (node: Ast.Node.t) ->
   let patterns = Vector.with_capacity ~size:(Ast.Node.child_count node) in
-  iter_fold Ast.Node.fold_child_node
+  iter_fold
+    Ast.Node.fold_child_node
     node
     ~fn:(fun child ->
       match Ast.cast_result_to_option (Ast.Pattern.cast child) with
@@ -1343,59 +1356,18 @@ let collect_child_patterns = fun (node: Ast.Node.t) ->
       | None -> ());
   patterns
 
-let collect_fun_parameters = fun (node: Ast.Node.t) ->
-  let parameters = Vector.with_capacity ~size:(Ast.Node.child_count node) in
-  let parameter_colon_has_leading_space = fun parameter ->
-    match Ast.Node.first_child_token (Ast.Parameter.as_node parameter) ~kind:Kind.COLON with
-    | Some colon -> Ast.Token.has_leading_whitespace colon
-    | None -> false
-  in
-  let rec push_parameter parameter =
-    match Ast.Parameter.view parameter with
-    | Ast.Parameter.Param { label = Ast.Parameter.NoLabel; _ } when node_kind_is
-      (Ast.Parameter.as_node parameter)
-      Kind.CONSTRUCT_PATTERN -> push_construct_parameters (Ast.Parameter.as_node parameter)
-    | Ast.Parameter.Param { label = Ast.Parameter.NoLabel; _ }
-    | Ast.Parameter.Unknown _ ->
-        Vector.push parameters ~value:parameter
-    | Ast.Parameter.Param _ ->
-        Vector.push parameters ~value:parameter;
-        push_labeled_parameter_tail parameter
-  and push_construct_parameters node =
-    iter_fold Ast.Node.fold_child_node
-      node
-      ~fn:(fun child ->
-        match Ast.cast_result_to_option (Ast.Parameter.cast child) with
-        | Some parameter -> push_parameter parameter
-        | None -> ())
-  and push_labeled_parameter_tail parameter =
-    if not (parameter_colon_has_leading_space parameter) then
-      match Ast.Node.first_child_node (Ast.Parameter.as_node parameter) ~kind:Kind.CONSTRUCT_PATTERN with
-      | Some construct ->
-          let seen_first = ref false in
-          iter_fold Ast.Node.fold_child_node
-            construct
-            ~fn:(fun child ->
-              match Ast.cast_result_to_option (Ast.Parameter.cast child) with
-              | Some parameter ->
-                  if !seen_first then
-                    push_parameter parameter
-                  else
-                    seen_first := true
-              | None -> ())
-      | None -> ()
-  in
-  iter_fold Ast.Node.fold_child_node
-    node
-    ~fn:(fun child ->
-      match Ast.cast_result_to_option (Ast.Parameter.cast child) with
-      | Some parameter -> push_parameter parameter
-      | None -> ());
+let collect_fun_parameters = fun (expr: Ast.Expr.t) ->
+  let parameters = Vector.with_capacity ~size:(Ast.Expr.parameter_count expr) in
+  iter_fold
+    Ast.Expr.fold_parameter
+    expr
+    ~fn:(fun parameter -> Vector.push parameters ~value:parameter);
   parameters
 
 let rec collect_child_type_exprs_from_node = fun node ->
   let items = Vector.with_capacity ~size:(Ast.Node.child_count node) in
-  iter_fold Ast.Node.fold_child_node
+  iter_fold
+    Ast.Node.fold_child_node
     node
     ~fn:(fun child ->
       match Ast.cast_result_to_option (Ast.TypeExpr.cast child) with
@@ -1411,7 +1383,8 @@ let rec collect_child_type_exprs_from_node = fun node ->
     items
 
 let collect_child_type_exprs = fun (type_expr: Ast.TypeExpr.t) ->
-  collect_child_type_exprs_from_node (Ast.TypeExpr.as_node type_expr)
+  collect_child_type_exprs_from_node
+    (Ast.TypeExpr.as_node type_expr)
 
 let collect_record_fields = fun (record: Ast.RecordExpr.t) ->
   let fields: Ast.record_expr_field_view Vector.t =
@@ -1424,19 +1397,24 @@ let collect_array_items = fun (expr: Ast.Expr.t) -> collect_child_exprs (Ast.Exp
 
 let collect_type_members = fun (decl: Ast.TypeDeclaration.t) ->
   let members = Vector.with_capacity ~size:(Ast.TypeDeclaration.member_count decl) in
-  iter_fold Ast.TypeDeclaration.fold_member decl ~fn:(fun member -> Vector.push members ~value:member);
+  iter_fold
+    Ast.TypeDeclaration.fold_member
+    decl
+    ~fn:(fun member -> Vector.push members ~value:member);
   members
 
 let collect_type_member_parameters = fun member ->
   let parameters = Vector.with_capacity ~size:(Ast.TypeDeclaration.Member.child_count member) in
-  iter_fold Ast.TypeDeclaration.Member.fold_parameter
+  iter_fold
+    Ast.TypeDeclaration.Member.fold_parameter
     member
     ~fn:(fun parameter -> Vector.push parameters ~value:parameter);
   parameters
 
 let collect_type_member_attribute_items = fun member ->
   let attributes = Vector.with_capacity ~size:(Ast.TypeDeclaration.Member.child_count member) in
-  iter_fold Ast.TypeDeclaration.Member.fold_child_node
+  iter_fold
+    Ast.TypeDeclaration.Member.fold_child_node
     member
     ~fn:(fun child ->
       if node_kind_is child Kind.ATTRIBUTE_ITEM then
@@ -1510,7 +1488,10 @@ let collect_type_member_attribute_suffix_tokens = fun member ->
             | Some (Syn.SyntaxTree.Node _) -> (
                 match Ast.TypeDeclaration.Member.child_node_at member index with
                 | Some node ->
-                    iter_fold Ast.Node.fold_token node ~fn:(fun token -> Vector.push tokens ~value:token)
+                    iter_fold
+                      Ast.Node.fold_token
+                      node
+                      ~fn:(fun token -> Vector.push tokens ~value:token)
                 | None -> ()
               )
             | Some (Syn.SyntaxTree.Missing _)
@@ -1525,7 +1506,8 @@ let collect_type_member_attribute_suffix_tokens = fun member ->
 let collect_type_declaration_attribute_items = fun (decl: Ast.TypeDeclaration.t) ->
   let node = Ast.TypeDeclaration.as_node decl in
   let attributes = Vector.with_capacity ~size:(Ast.Node.child_count node) in
-  iter_fold Ast.Node.fold_child_node
+  iter_fold
+    Ast.Node.fold_child_node
     node
     ~fn:(fun child ->
       if node_kind_is child Kind.ATTRIBUTE_ITEM then
@@ -1536,7 +1518,8 @@ let collect_type_declaration_attribute_items = fun (decl: Ast.TypeDeclaration.t)
 
 let collect_type_extension_parameters = fun (decl: Ast.TypeExtensionDeclaration.t) ->
   let parameters = Vector.with_capacity ~size:(Ast.TypeExtensionDeclaration.parameter_count decl) in
-  iter_fold Ast.TypeExtensionDeclaration.fold_parameter
+  iter_fold
+    Ast.TypeExtensionDeclaration.fold_parameter
     decl
     ~fn:(fun parameter -> Vector.push parameters ~value:parameter);
   parameters
@@ -1550,13 +1533,17 @@ let collect_record_type_fields = fun (record_type: Ast.RecordType.t) ->
 
 let collect_let_bindings = fun (decl: Ast.LetDeclaration.t) ->
   let bindings = Vector.with_capacity ~size:(Ast.LetDeclaration.binding_count decl) in
-  iter_fold Ast.LetDeclaration.fold_binding decl ~fn:(fun binding -> Vector.push bindings ~value:binding);
+  iter_fold
+    Ast.LetDeclaration.fold_binding
+    decl
+    ~fn:(fun binding -> Vector.push bindings ~value:binding);
   bindings
 
 let collect_let_bindings_from_expr = fun (expr: Ast.Expr.t) ->
-  let node = (Ast.Expr.as_node expr) in
+  let node = Ast.Expr.as_node expr in
   let bindings = Vector.with_capacity ~size:(Ast.Node.child_count node) in
-  iter_fold Ast.Node.fold_child_node
+  iter_fold
+    Ast.Node.fold_child_node
     node
     ~fn:(fun child ->
       match Ast.cast_result_to_option (Ast.LetBinding.cast child) with
@@ -1566,31 +1553,40 @@ let collect_let_bindings_from_expr = fun (expr: Ast.Expr.t) ->
 
 let collect_binding_operator_clauses = fun (expr: Ast.BindingOperatorExpr.t) ->
   let clauses = Vector.with_capacity ~size:(Ast.BindingOperatorExpr.clause_count expr) in
-  iter_fold Ast.BindingOperatorExpr.fold_clause expr ~fn:(fun clause -> Vector.push clauses ~value:clause);
+  iter_fold
+    Ast.BindingOperatorExpr.fold_clause
+    expr
+    ~fn:(fun clause -> Vector.push clauses ~value:clause);
   clauses
 
 let collect_external_name_tokens = fun (decl: Ast.ExternalDeclaration.t) ->
   let tokens = Vector.with_capacity ~size:(Ast.ExternalDeclaration.name_token_count decl) in
-  iter_fold Ast.ExternalDeclaration.fold_name_token
+  iter_fold
+    Ast.ExternalDeclaration.fold_name_token
     decl
     ~fn:(fun token -> Vector.push tokens ~value:token);
   tokens
 
 let collect_value_name_tokens = fun (decl: Ast.ValueDeclaration.t) ->
   let tokens = Vector.with_capacity ~size:(Ast.ValueDeclaration.name_token_count decl) in
-  iter_fold Ast.ValueDeclaration.fold_name_token decl ~fn:(fun token -> Vector.push tokens ~value:token);
+  iter_fold
+    Ast.ValueDeclaration.fold_name_token
+    decl
+    ~fn:(fun token -> Vector.push tokens ~value:token);
   tokens
 
 let collect_external_primitive_strings = fun (decl: Ast.ExternalDeclaration.t) ->
   let tokens = Vector.with_capacity ~size:(Ast.ExternalDeclaration.primitive_string_count decl) in
-  iter_fold Ast.ExternalDeclaration.fold_primitive_string
+  iter_fold
+    Ast.ExternalDeclaration.fold_primitive_string
     decl
     ~fn:(fun token -> Vector.push tokens ~value:token);
   tokens
 
 let collect_external_attribute_tokens = fun (decl: Ast.ExternalDeclaration.t) ->
   let tokens = Vector.with_capacity ~size:(Ast.ExternalDeclaration.attribute_token_count decl) in
-  iter_fold Ast.ExternalDeclaration.fold_attribute_token
+  iter_fold
+    Ast.ExternalDeclaration.fold_attribute_token
     decl
     ~fn:(fun token -> Vector.push tokens ~value:token);
   tokens
@@ -1696,23 +1692,15 @@ let first_child_pattern = fun node ->
   |> Option.and_then ~fn:(fun node -> Ast.cast_result_to_option (Ast.Pattern.cast node))
 
 let nth_child_pattern = fun node index ->
-  nth_child_node_matching
-    node
-    index
-    ~matches:is_pattern_node_kind
+  nth_child_node_matching node index ~matches:is_pattern_node_kind
   |> Option.and_then ~fn:(fun node -> Ast.cast_result_to_option (Ast.Pattern.cast node))
 
 let first_child_type_expr = fun node ->
-  first_child_node_matching
-    node
-    ~matches:is_type_expr_node_kind
+  first_child_node_matching node ~matches:is_type_expr_node_kind
   |> Option.and_then ~fn:(fun node -> Ast.cast_result_to_option (Ast.TypeExpr.cast node))
 
 let nth_child_type_expr = fun node index ->
-  nth_child_node_matching
-    node
-    index
-    ~matches:is_type_expr_node_kind
+  nth_child_node_matching node index ~matches:is_type_expr_node_kind
   |> Option.and_then ~fn:(fun node -> Ast.cast_result_to_option (Ast.TypeExpr.cast node))
 
 let first_ident_token = fun node ->
@@ -1721,15 +1709,11 @@ let first_ident_token = fun node ->
     ~matches:(fun kind -> Kind.(kind = IDENT))
 
 let first_match_case_child = fun node ->
-  first_child_node_matching
-    node
-    ~matches:(fun kind -> Kind.(kind = MATCH_CASE))
+  first_child_node_matching node ~matches:(fun kind -> Kind.(kind = MATCH_CASE))
   |> Option.and_then ~fn:(fun node -> Ast.cast_result_to_option (Ast.MatchCase.cast node))
 
 let first_let_binding_child = fun node ->
-  first_child_node_matching
-    node
-    ~matches:(fun kind -> Kind.(kind = LET_BINDING))
+  first_child_node_matching node ~matches:(fun kind -> Kind.(kind = LET_BINDING))
   |> Option.and_then ~fn:(fun node -> Ast.cast_result_to_option (Ast.LetBinding.cast node))
 
 module TypeExprView = struct
@@ -1771,9 +1755,10 @@ module TypeExprView = struct
     | Unknown of Ast.Node.t
 
   let tuple_separator = fun (type_expr: Ast.TypeExpr.t) ->
-    let node = (Ast.TypeExpr.as_node type_expr) in
+    let node = Ast.TypeExpr.as_node type_expr in
     let found = ref UnknownSeparator in
-    iter_fold Ast.Node.fold_child_token
+    iter_fold
+      Ast.Node.fold_child_token
       node
       ~fn:(fun token ->
         if token_kind_is token Kind.STAR then
@@ -1783,11 +1768,12 @@ module TypeExprView = struct
     !found
 
   let rec view = fun (type_expr: Ast.TypeExpr.t) ->
-    let node = (Ast.TypeExpr.as_node type_expr) in
+    let node = Ast.TypeExpr.as_node type_expr in
     match node_kind node with
     | Kind.TYPE_EXPR -> (
         match (first_child_type_expr node, nth_child_type_expr node 1) with
-        | (Some child, None) when not (same_ast_node (Ast.TypeExpr.as_node child) node) -> view child
+        | (Some child, None) when not (same_ast_node (Ast.TypeExpr.as_node child) node) ->
+            view child
         | _ -> Unknown node
       )
     | Kind.PATH_TYPE -> (
@@ -1798,10 +1784,7 @@ module TypeExprView = struct
     | Kind.VAR_TYPE -> Var { name = first_ident_token node }
     | Kind.WILDCARD_TYPE -> Wildcard
     | Kind.ARROW_TYPE ->
-        Arrow {
-          left = nth_child_type_expr node 0;
-          right = nth_child_type_expr node 1;
-        }
+        Arrow { left = nth_child_type_expr node 0; right = nth_child_type_expr node 1 }
     | Kind.POLY_TYPE -> Poly { body = first_child_type_expr node }
     | Kind.LABELED_TYPE ->
         Labeled {
@@ -1831,6 +1814,10 @@ module PatternView = struct
       }
     | Construct of {
         callee: Ast.Pattern.t option;
+        argument: Ast.Pattern.t option;
+      }
+    | ConstructIdent of {
+        constructor: Ast.ident;
         argument: Ast.Pattern.t option;
       }
     | Literal of {
@@ -1883,21 +1870,43 @@ module PatternView = struct
     | Error of Ast.Node.t
     | Unknown of Ast.Node.t
 
-  let view_node = fun node ->
+  let rec view_node = fun node ->
     match node_kind node with
     | Kind.PAREN_PATTERN -> Parenthesized { inner = first_child_pattern node }
     | Kind.ATTRIBUTE_PATTERN -> Attribute { inner = first_child_pattern node }
     | Kind.WILDCARD_PATTERN -> Wildcard
     | Kind.PATH_PATTERN -> (
-        match Ast.cast_result_to_option (Ast.Ident.cast node) with
-        | Some ident -> Ident { ident }
+        match Ast.cast_result_to_option (Ast.Pattern.cast node) with
+        | Some pattern -> (
+            match Ast.Pattern.view pattern with
+            | Ast.Pattern.Construct { constructor; payload = None } ->
+                ConstructIdent { constructor; argument = None }
+            | _ -> (
+                match Ast.cast_result_to_option (Ast.Ident.cast node) with
+                | Some ident -> Ident { ident }
+                | None -> Unknown node
+              )
+          )
         | None -> Unknown node
       )
-    | Kind.CONSTRUCT_PATTERN ->
-        Construct {
-          callee = nth_child_pattern node 0;
-          argument = nth_child_pattern node 1;
-        }
+    | Kind.CONSTRUCT_PATTERN -> (
+        match Ast.cast_result_to_option (Ast.Pattern.cast node) with
+        | Some pattern -> (
+            match Ast.Pattern.view pattern with
+            | Ast.Pattern.Construct { constructor; payload } ->
+                ConstructIdent { constructor; argument = payload }
+            | _ -> (
+                match (nth_child_pattern node 0, nth_child_pattern node 1) with
+                | (Some callee, None) -> view_node (Ast.Pattern.as_node callee)
+                | (callee, argument) -> Construct { callee; argument }
+              )
+          )
+        | None -> (
+            match (nth_child_pattern node 0, nth_child_pattern node 1) with
+            | (Some callee, None) -> view_node (Ast.Pattern.as_node callee)
+            | (callee, argument) -> Construct { callee; argument }
+          )
+      )
     | Kind.LITERAL_PATTERN ->
         Literal {
           token =
@@ -2088,7 +2097,7 @@ module ExprView = struct
   let first_direct_token = fun node -> first_child_token_matching node ~matches:(fun _ -> true)
 
   let view = fun (expr: Ast.Expr.t) ->
-    let node = (Ast.Expr.as_node expr) in
+    let node = Ast.Expr.as_node expr in
     match node_kind node with
     | Kind.PAREN_EXPR -> Parenthesized { inner = first_child_expr node }
     | Kind.PATH_EXPR -> (
@@ -2132,7 +2141,11 @@ module ExprView = struct
         }
     | Kind.LET_EXPR ->
         Let { first_binding = first_let_binding_child node; body = nth_child_expr node 0 }
-    | Kind.FUN_EXPR -> Fun { body = first_child_expr node }
+    | Kind.FUN_EXPR -> (
+        match Ast.Expr.view expr with
+        | Ast.Expr.Fun { body = Ast.Expr.Body_expr body; _ } -> Fun { body = Some body }
+        | _ -> Fun { body = None }
+      )
     | Kind.FUNCTION_EXPR -> Function { first_case = first_match_case_child node }
     | Kind.MATCH_EXPR ->
         Match { scrutinee = nth_child_expr node 0; first_case = first_match_case_child node }
@@ -2183,7 +2196,8 @@ let collect_node_tokens = fun node ->
 let collect_node_tokens_after_direct_token = fun node kind ->
   let tokens = Vector.with_capacity ~size:(Ast.Node.child_count node) in
   let after = ref false in
-  iter_fold Ast.Node.fold_child
+  iter_fold
+    Ast.Node.fold_child
     node
     ~fn:(
       function
@@ -2195,21 +2209,22 @@ let collect_node_tokens_after_direct_token = fun node kind ->
             after := true
       | Syn.SyntaxTree.Node id ->
           if !after then
-            iter_fold Ast.Node.fold_token
-              ({ tree = node.Ast.tree; id }: Ast.Node.t)
+            iter_fold
+              Ast.Node.fold_token
+              (({ tree = node.Ast.tree; id }: Ast.Node.t))
               ~fn:(fun token -> Vector.push tokens ~value:token)
       | Syn.SyntaxTree.Missing _ -> ()
     );
   tokens
 
 let collect_prefix_operator_tokens = fun (expr: Ast.Expr.t) ->
-  let node = (Ast.Expr.as_node expr) in
+  let node = Ast.Expr.as_node expr in
   let tokens = Vector.with_capacity ~size:(Ast.Node.child_count node) in
   let rec loop index =
     if Int.(index < Ast.Node.child_count node) then
       match Ast.Node.child_at node index with
       | Some (Syn.SyntaxTree.Token id) ->
-          Vector.push tokens ~value:({ tree = node.Ast.tree; id }: Ast.Token.t);
+          Vector.push tokens ~value:(({ tree = node.Ast.tree; id }: Ast.Token.t));
           loop (Int.add index 1)
       | Some (Syn.SyntaxTree.Node _)
       | Some (Syn.SyntaxTree.Missing _)
@@ -2227,7 +2242,7 @@ let collect_direct_tokens_between_children = fun node left right ->
           (
             match Ast.Node.child_at node index with
             | Some (Syn.SyntaxTree.Token id) ->
-                Vector.push tokens ~value:({ tree = node.Ast.tree; id }: Ast.Token.t)
+                Vector.push tokens ~value:(({ tree = node.Ast.tree; id }: Ast.Token.t))
             | Some (Syn.SyntaxTree.Node _)
             | Some (Syn.SyntaxTree.Missing _)
             | None -> ()
@@ -2249,7 +2264,7 @@ let collect_direct_tokens_after_child = fun node child ->
           (
             match Ast.Node.child_at node index with
             | Some (Syn.SyntaxTree.Token id) ->
-                Vector.push tokens ~value:({ tree = node.Ast.tree; id }: Ast.Token.t)
+                Vector.push tokens ~value:(({ tree = node.Ast.tree; id }: Ast.Token.t))
             | Some (Syn.SyntaxTree.Node _)
             | Some (Syn.SyntaxTree.Missing _)
             | None -> ()
@@ -2260,8 +2275,8 @@ let collect_direct_tokens_after_child = fun node child ->
       loop (Int.add child_index 1);
       tokens
 
-let collect_infix_operator_tokens =
-  fun (expr: Ast.Expr.t) (left: Ast.Expr.t) operator (right: Ast.Expr.t) ->
+let collect_infix_operator_tokens = fun
+  (expr: Ast.Expr.t) (left: Ast.Expr.t) operator (right: Ast.Expr.t) ->
   let tokens =
     collect_direct_tokens_between_children
       (Ast.Expr.as_node expr)
@@ -2349,26 +2364,26 @@ let node_spaced_flat_width = fun node ->
   let tokens = collect_child_tokens node in
   token_vector_spaced_flat_width tokens
 
-let infix_operator_tokens =
-  fun (expr: Ast.Expr.t) (left: Ast.Expr.t) operator (right: Ast.Expr.t) ->
+let infix_operator_tokens = fun
+  (expr: Ast.Expr.t) (left: Ast.Expr.t) operator (right: Ast.Expr.t) ->
   collect_infix_operator_tokens
     expr
     left
     operator
     right
 
-let infix_operator_text_from_expr =
-  fun (expr: Ast.Expr.t) (left: Ast.Expr.t) operator (right: Ast.Expr.t) ->
+let infix_operator_text_from_expr = fun
+  (expr: Ast.Expr.t) (left: Ast.Expr.t) operator (right: Ast.Expr.t) ->
   infix_operator_tokens expr left operator right
   |> token_vector_text
 
-let infix_operator_flat_width_from_expr =
-  fun (expr: Ast.Expr.t) (left: Ast.Expr.t) operator (right: Ast.Expr.t) ->
+let infix_operator_flat_width_from_expr = fun
+  (expr: Ast.Expr.t) (left: Ast.Expr.t) operator (right: Ast.Expr.t) ->
   infix_operator_tokens expr left operator right
   |> token_vector_tight_flat_width
 
-let render_infix_operator_tokens =
-  fun state (expr: Ast.Expr.t) (left: Ast.Expr.t) operator (right: Ast.Expr.t) ->
+let render_infix_operator_tokens = fun
+  state (expr: Ast.Expr.t) (left: Ast.Expr.t) operator (right: Ast.Expr.t) ->
   let tokens = infix_operator_tokens expr left operator right in
   if Int.equal (Vector.length tokens) 1 then
     emit_token state (Vector.get_unchecked tokens ~at:0)
@@ -2377,7 +2392,8 @@ let render_infix_operator_tokens =
 
 let collect_child_tokens_of_kind = fun node kind ->
   let tokens = Vector.with_capacity ~size:(Ast.Node.child_count node) in
-  iter_fold Ast.Node.fold_child_token
+  iter_fold
+    Ast.Node.fold_child_token
     node
     ~fn:(fun token ->
       if token_kind_is token kind then
@@ -2454,10 +2470,9 @@ let collect_match_cases = fun (expr: Ast.Expr.t) ->
   cases
 
 let collect_variant_constructors = fun (variant_type: Ast.VariantType.t) ->
-  let constructors =
-    Vector.with_capacity ~size:(Ast.VariantType.constructor_count variant_type)
-  in
-  iter_fold Ast.VariantType.fold_constructor
+  let constructors = Vector.with_capacity ~size:(Ast.VariantType.constructor_count variant_type) in
+  iter_fold
+    Ast.VariantType.fold_constructor
     variant_type
     ~fn:(fun constructor -> Vector.push constructors ~value:constructor);
   constructors
@@ -2471,19 +2486,24 @@ let collect_record_pattern_fields = fun (record: Ast.RecordPattern.t) ->
 
 let collect_signature_items_from_module_type_decl = fun (decl: Ast.ModuleTypeDeclaration.t) ->
   let items = Vector.with_capacity ~size:(Ast.ModuleTypeDeclaration.signature_item_count decl) in
-  iter_fold Ast.ModuleTypeDeclaration.fold_signature_item
+  iter_fold
+    Ast.ModuleTypeDeclaration.fold_signature_item
     decl
     ~fn:(fun item -> Vector.push items ~value:item);
   items
 
 let collect_signature_items_from_module_decl = fun (decl: Ast.ModuleDeclaration.t) ->
   let items = Vector.with_capacity ~size:(Ast.ModuleDeclaration.signature_item_count decl) in
-  iter_fold Ast.ModuleDeclaration.fold_signature_item decl ~fn:(fun item -> Vector.push items ~value:item);
+  iter_fold
+    Ast.ModuleDeclaration.fold_signature_item
+    decl
+    ~fn:(fun item -> Vector.push items ~value:item);
   items
 
 let collect_structure_items_from_node = fun node ->
   let items = Vector.with_capacity ~size:(Ast.Node.child_count node) in
-  iter_fold Ast.Node.fold_child_node
+  iter_fold
+    Ast.Node.fold_child_node
     node
     ~fn:(fun child ->
       match Ast.cast_result_to_option (Ast.StructureItem.cast child) with
@@ -2493,7 +2513,10 @@ let collect_structure_items_from_node = fun node ->
 
 let collect_structure_items_from_module_decl = fun (decl: Ast.ModuleDeclaration.t) ->
   let items = Vector.with_capacity ~size:(Ast.ModuleDeclaration.structure_item_count decl) in
-  iter_fold Ast.ModuleDeclaration.fold_structure_item decl ~fn:(fun item -> Vector.push items ~value:item);
+  iter_fold
+    Ast.ModuleDeclaration.fold_structure_item
+    decl
+    ~fn:(fun item -> Vector.push items ~value:item);
   items
 
 let collect_structure_item_entries_from_node = fun node ->
@@ -2511,7 +2534,7 @@ let collect_structure_item_entries_from_node = fun node ->
           else
             collect_trailing_tokens (Int.add index 1) tokens
       | Some (Syn.SyntaxTree.Token id) ->
-          Vector.push tokens ~value:({ tree = node.Ast.tree; id }: Ast.Token.t);
+          Vector.push tokens ~value:(({ tree = node.Ast.tree; id }: Ast.Token.t));
           collect_trailing_tokens (Int.add index 1) tokens
       | Some (Syn.SyntaxTree.Missing _)
       | None -> collect_trailing_tokens (Int.add index 1) tokens
@@ -2523,14 +2546,13 @@ let collect_structure_item_entries_from_node = fun node ->
           let child: Ast.Node.t = { tree = node.Ast.tree; id } in
           (
             match Ast.cast_result_to_option (Ast.StructureItem.cast child) with
-          | Some item ->
-              (
+            | Some item -> (
                 let trailing_tokens = Vector.with_capacity ~size:2 in
                 let next_index = collect_trailing_tokens (Int.add index 1) trailing_tokens in
                 Vector.push entries ~value:(item, trailing_tokens);
                 loop next_index
               )
-          | None -> loop (Int.add index 1)
+            | None -> loop (Int.add index 1)
           )
       | Some (Syn.SyntaxTree.Token _)
       | Some (Syn.SyntaxTree.Missing _)
@@ -2541,7 +2563,8 @@ let collect_structure_item_entries_from_node = fun node ->
 
 let collect_signature_items_from_node = fun node ->
   let items = Vector.with_capacity ~size:(Ast.Node.child_count node) in
-  iter_fold Ast.Node.fold_child_node
+  iter_fold
+    Ast.Node.fold_child_node
     node
     ~fn:(fun child ->
       match Ast.cast_result_to_option (Ast.SignatureItem.cast child) with
@@ -2551,7 +2574,10 @@ let collect_signature_items_from_node = fun node ->
 
 let collect_module_declaration_members = fun (decl: Ast.ModuleDeclaration.t) ->
   let members = Vector.with_capacity ~size:(Ast.ModuleDeclaration.member_count decl) in
-  iter_fold Ast.ModuleDeclaration.fold_member decl ~fn:(fun member -> Vector.push members ~value:member);
+  iter_fold
+    Ast.ModuleDeclaration.fold_member
+    decl
+    ~fn:(fun member -> Vector.push members ~value:member);
   members
 
 let emit_joined_vector = fun state values ~sep ~fn ->
@@ -2749,7 +2775,10 @@ let render_opaque_type = fun state node ->
     render_gt_opaque_type state node
 
 let render_ident = fun state (ident: Ast.Ident.t) ->
-  iter_fold Ast.Node.fold_token (Ast.Ident.as_node ident) ~fn:(emit_token state)
+  iter_fold
+    Ast.Node.fold_token
+    (Ast.Ident.as_node ident)
+    ~fn:(emit_token state)
 
 let token_vector_is_parenthesized_operator_name = fun tokens ->
   let length = Vector.length tokens in
@@ -2796,7 +2825,8 @@ let render_expr_ident = fun state (ident: Ast.Ident.t) ->
 
 let ident_contains_dot = fun (ident: Ast.Ident.t) ->
   let found = ref false in
-  iter_fold Ast.Node.fold_token
+  iter_fold
+    Ast.Node.fold_token
     (Ast.Ident.as_node ident)
     ~fn:(fun token ->
       if token_kind_is token Kind.DOT then
@@ -2842,7 +2872,7 @@ let collect_or_pattern_items = fun (pattern: Ast.Pattern.t) ->
   items
 
 let rec render_type_expr = fun state (type_expr: Ast.TypeExpr.t) ->
-  let node = (Ast.TypeExpr.as_node type_expr) in
+  let node = Ast.TypeExpr.as_node type_expr in
   match Ast.TypeExpr.inner_without_attribute_suffix type_expr with
   | Some inner ->
       render_type_expr state inner;
@@ -2917,7 +2947,8 @@ and render_alias_opaque_type = fun state node ->
 
 and render_type_expr_attribute_suffix = fun state (type_expr: Ast.TypeExpr.t) ->
   let tokens = Vector.with_capacity ~size:(Ast.TypeExpr.attribute_suffix_token_count type_expr) in
-  iter_fold Ast.TypeExpr.fold_attribute_suffix_token
+  iter_fold
+    Ast.TypeExpr.fold_attribute_suffix_token
     type_expr
     ~fn:(fun token -> Vector.push tokens ~value:token);
   let length = Vector.length tokens in
@@ -3054,7 +3085,8 @@ and type_expr_flat_width = fun type_expr ->
       | None -> None
       | Some body_width ->
           let names = Vector.with_capacity ~size:(Ast.TypeExpr.poly_type_name_count type_expr) in
-          iter_fold Ast.TypeExpr.fold_poly_type_name
+          iter_fold
+            Ast.TypeExpr.fold_poly_type_name
             type_expr
             ~fn:(fun name -> Vector.push names ~value:name);
           let length = Vector.length names in
@@ -3098,7 +3130,10 @@ and type_expr_flat_width = fun type_expr ->
 
 and render_poly_type_prefix = fun state (type_expr: Ast.TypeExpr.t) ->
   let names = Vector.with_capacity ~size:(Ast.TypeExpr.poly_type_name_count type_expr) in
-  iter_fold Ast.TypeExpr.fold_poly_type_name type_expr ~fn:(fun name -> Vector.push names ~value:name);
+  iter_fold
+    Ast.TypeExpr.fold_poly_type_name
+    type_expr
+    ~fn:(fun name -> Vector.push names ~value:name);
   let has_explicit_type_keyword =
     match Ast.TypeExpr.poly_type_keyword_token type_expr with
     | Some type_keyword ->
@@ -3290,7 +3325,7 @@ and type_expr_is_closed_backtick_bracketed_opaque = fun type_expr ->
   | _ -> false
 
 and render_multiline_type_arrow = fun state (type_expr: Ast.TypeExpr.t) ->
-  let node = (Ast.TypeExpr.as_node type_expr) in
+  let node = Ast.TypeExpr.as_node type_expr in
   match Ast.TypeExpr.inner_without_attribute_suffix type_expr with
   | Some inner ->
       render_multiline_type_arrow state inner;
@@ -3359,7 +3394,8 @@ let pattern_is_or = fun pattern ->
 let collect_tuple_pattern_items = fun (pattern: Ast.Pattern.t) ->
   let items = Vector.with_capacity ~size:(Ast.Pattern.child_pattern_count pattern) in
   let rec push_items (pattern: Ast.Pattern.t) =
-    iter_fold Ast.Node.fold_child_node
+    iter_fold
+      Ast.Node.fold_child_node
       (Ast.Pattern.as_node pattern)
       ~fn:(fun child ->
         match Ast.cast_result_to_option (Ast.Pattern.cast child) with
@@ -3376,7 +3412,8 @@ let collect_tuple_pattern_items = fun (pattern: Ast.Pattern.t) ->
 let ident_single_segment_token = fun (ident: Ast.Ident.t) ->
   let found = ref None in
   let count = ref 0 in
-  iter_fold Ast.Ident.fold_segment
+  iter_fold
+    Ast.Ident.fold_segment
     ident
     ~fn:(fun token ->
       count := Int.add !count 1;
@@ -3406,7 +3443,8 @@ let split_typed_parameter_pattern = fun pattern ->
       Some (pattern, annotation)
   | _ -> None
 
-let render_first_class_module_pattern_path = fun state (pattern: Ast.Pattern.t) for_each_ident_segment message ->
+let render_first_class_module_pattern_path = fun
+  state (pattern: Ast.Pattern.t) for_each_ident_segment message ->
   let segments = Vector.with_capacity ~size:(Ast.Pattern.child_pattern_count pattern) in
   for_each_ident_segment ~fn:(fun ident -> Vector.push segments ~value:ident);
   if Vector.length segments = 0 then
@@ -3414,7 +3452,8 @@ let render_first_class_module_pattern_path = fun state (pattern: Ast.Pattern.t) 
   else
     emit_joined_vector state segments ~sep:(fun () -> emit_text state ".") ~fn:(emit_token state)
 
-let render_first_class_module_pattern_ascription_tokens = fun state (pattern: Ast.FirstClassModulePattern.t) colon_token ->
+let render_first_class_module_pattern_ascription_tokens = fun
+  state (pattern: Ast.FirstClassModulePattern.t) colon_token ->
   let tokens = collect_child_tokens (Ast.Pattern.as_node pattern) in
   match (token_vector_find_kind tokens Kind.COLON, token_vector_find_kind tokens Kind.RPAREN) with
   | (Some colon_index, Some closing_index) when Int.(Int.add colon_index 1 < closing_index) ->
@@ -3426,7 +3465,10 @@ let render_first_class_module_pattern_ascription_tokens = fun state (pattern: As
         tokens
         ~start:(Int.add colon_index 1)
         ~stop:closing_index
-  | _ -> unsupported_node "unsupported first-class module pattern ascription" (Ast.Pattern.as_node pattern)
+  | _ ->
+      unsupported_node
+        "unsupported first-class module pattern ascription"
+        (Ast.Pattern.as_node pattern)
 
 let render_first_class_module_pattern_ascription = fun state pattern ->
   match (
@@ -3448,13 +3490,16 @@ let render_first_class_module_pattern_ascription = fun state pattern ->
   | (Some _, Ast.FirstClassModulePattern.NoAscription)
   | (None, Ast.FirstClassModulePattern.IdentAscription)
   | (None, Ast.FirstClassModulePattern.UnsupportedAscription) ->
-      unsupported_node "unsupported first-class module pattern ascription" (Ast.Pattern.as_node pattern)
+      unsupported_node
+        "unsupported first-class module pattern ascription"
+        (Ast.Pattern.as_node pattern)
 
 let render_first_class_module_pattern = fun state (pattern: Ast.Pattern.t) ->
   let module_pattern =
     match Ast.cast_result_to_option (Ast.FirstClassModulePattern.cast pattern) with
     | Some module_pattern -> module_pattern
-    | None -> unsupported_node "unsupported first-class module pattern" (Ast.Pattern.as_node pattern)
+    | None ->
+        unsupported_node "unsupported first-class module pattern" (Ast.Pattern.as_node pattern)
   in
   match (
     Ast.FirstClassModulePattern.opening_token module_pattern,
@@ -3488,7 +3533,8 @@ let parameter_pattern_renders_delimited = fun pattern ->
   | LocallyAbstractType -> true
   | _ -> false
 
-let record_pattern_fields_have_leading_comment = fun (fields: Ast.record_pattern_field_view Vector.t) ->
+let record_pattern_fields_have_leading_comment = fun
+  (fields: Ast.record_pattern_field_view Vector.t) ->
   let found = ref false in
   Vector.for_each
     fields
@@ -3515,7 +3561,8 @@ let parameter_token_wants_space_before = fun previous token ->
 
 let emit_parameter_token_stream = fun state (parameter: Ast.Parameter.t) ->
   let previous = ref None in
-  iter_fold Ast.Node.fold_token
+  iter_fold
+    Ast.Node.fold_token
     (Ast.Parameter.as_node parameter)
     ~fn:(fun token ->
       (
@@ -3529,7 +3576,8 @@ let emit_parameter_token_stream = fun state (parameter: Ast.Parameter.t) ->
 
 let parameter_colon_has_leading_space = fun (parameter: Ast.Parameter.t) ->
   let found = ref None in
-  iter_fold Ast.Node.fold_token
+  iter_fold
+    Ast.Node.fold_token
     (Ast.Parameter.as_node parameter)
     ~fn:(fun token ->
       match !found with
@@ -3544,7 +3592,8 @@ let parameter_colon_has_leading_space = fun (parameter: Ast.Parameter.t) ->
 let parenthesized_pattern_should_break = fun state (pattern: Ast.Pattern.t) ->
   let previous = ref None in
   let width = ref 0 in
-  iter_fold Ast.Node.fold_token
+  iter_fold
+    Ast.Node.fold_token
     (Ast.Pattern.as_node pattern)
     ~fn:(fun token ->
       let extra_space =
@@ -3557,7 +3606,7 @@ let parenthesized_pattern_should_break = fun state (pattern: Ast.Pattern.t) ->
   Int.(state.column + !width + 2 > state.width)
 
 let rec render_pattern = fun state (pattern: Ast.Pattern.t) ->
-  let node = (Ast.Pattern.as_node pattern) in
+  let node = Ast.Pattern.as_node pattern in
   match PatternView.view pattern with
   | Wildcard -> emit_text state "_"
   | Ident { ident } -> render_pattern_ident state ident
@@ -3569,6 +3618,12 @@ let rec render_pattern = fun state (pattern: Ast.Pattern.t) ->
       );
       emit_literal_token state token
   | Literal { token = None } -> unsupported_node "literal pattern without token" node
+  | ConstructIdent { constructor; argument = None } -> render_pattern_ident state constructor
+  | ConstructIdent { constructor; argument = Some argument } ->
+      render_pattern_ident state constructor;
+      emit_space state;
+      render_pattern_atom state argument
+  | Construct { callee = Some callee; argument = None } -> render_pattern state callee
   | Construct { callee = Some callee; argument = Some argument } ->
       render_pattern state callee;
       emit_space state;
@@ -3667,7 +3722,8 @@ let rec render_pattern = fun state (pattern: Ast.Pattern.t) ->
   | Cons { head = Some head; tail = Some tail } ->
       (
         match PatternView.view head with
-        | Construct _ -> render_pattern state head
+        | Construct _
+        | ConstructIdent _ -> render_pattern state head
         | _ -> render_pattern_atom state head
       );
       emit_space state;
@@ -3761,10 +3817,8 @@ and render_tuple_pattern_contents = fun state pattern ->
 and render_parameter_pattern = fun state parameter pattern ->
   let needs_parens =
     parameter_pattern_requires_parens pattern
-    || (
-      Ast.Parameter.has_explicit_pattern_parens parameter
-      && not (parameter_pattern_renders_delimited pattern)
-    )
+    || (Ast.Parameter.has_explicit_pattern_parens parameter
+    && not (parameter_pattern_renders_delimited pattern))
   in
   if needs_parens then (
     emit_text state "(";
@@ -3792,7 +3846,7 @@ and render_named_parameter = fun state ~sigil parameter label pattern ->
       render_parameter_pattern state parameter pattern
 
 and render_parameter = fun state (parameter: Ast.Parameter.t) ->
-  let node = (Ast.Parameter.as_node parameter) in
+  let node = Ast.Parameter.as_node parameter in
   match Ast.Parameter.view parameter with
   | Ast.Parameter.Param { label = Ast.Parameter.NoLabel; pattern = Some pattern } ->
       render_parameter_pattern state parameter pattern
@@ -3808,13 +3862,7 @@ and render_parameter = fun state (parameter: Ast.Parameter.t) ->
   | Ast.Parameter.Param { label = Ast.Parameter.Optional { name = Some label; default = None }; pattern = None } ->
       emit_text state "?";
       emit_token state label
-  | Ast.Parameter.Param {
-      label = Ast.Parameter.Optional {
-        name = Some label;
-        default = None;
-      };
-      pattern = Some pattern;
-    } ->
+  | Ast.Parameter.Param { label = Ast.Parameter.Optional { name = Some label; default = None }; pattern = Some pattern } ->
       render_named_parameter state ~sigil:"?" parameter label pattern
   | Ast.Parameter.Param { label = Ast.Parameter.Optional { default = Some _; _ }; _ } ->
       emit_parameter_token_stream state parameter
@@ -3833,10 +3881,7 @@ and loose_parameter_binding_annotation = fun (parameter: Ast.Parameter.t) ->
     )
   | OptionalParam parameter -> (
       match Ast.Parameter.view parameter with
-      | Ast.Parameter.Param {
-          label = Ast.Parameter.Optional { default = None; _ };
-          pattern = Some annotation;
-        } when (not
+      | Ast.Parameter.Param { label = Ast.Parameter.Optional { default = None; _ }; pattern = Some annotation } when (not
         (Ast.Parameter.has_explicit_pattern_parens parameter))
       && parameter_colon_has_leading_space parameter -> Some annotation
       | _ -> None
@@ -3876,6 +3921,7 @@ and pattern_is_named_parameter = fun pattern ->
 and pattern_ends_with_named_parameter = fun pattern ->
   let rec loop pattern =
     match PatternView.view pattern with
+    | ConstructIdent { argument = Some argument; _ }
     | Construct { argument = Some argument; _ } -> loop argument
     | Constraint { pattern = Some inner; _ }
     | Parenthesized { inner = Some inner }
@@ -3894,7 +3940,7 @@ and render_local_open_pattern = fun state pattern ->
     dot_token;
     opening_token = opening;
     pattern = body;
-    closing_token = closing;
+    closing_token = closing
   } ->
       emit_joined_vector
         state
@@ -3916,7 +3962,7 @@ and render_local_open_pattern = fun state pattern ->
   | Unknown node -> unsupported_node "unsupported local-open pattern" node
 
 and render_poly_variant_pattern = fun state pattern ->
-  let node = (Ast.Pattern.as_node pattern) in
+  let node = Ast.Pattern.as_node pattern in
   if node_has_token_kind node Kind.HASH then
     (
       let children = collect_child_patterns node in
@@ -4019,6 +4065,8 @@ and render_pattern_atom = fun state (pattern: Ast.Pattern.t) ->
       emit_line state;
       emit_text state ")"
   | Tuple -> render_pattern state pattern
+  | ConstructIdent { argument = None } -> render_pattern state pattern
+  | ConstructIdent _
   | Construct _
   | Or _
   | Cons _
@@ -4034,7 +4082,8 @@ and render_extension_pattern = fun state pattern ->
   | Some extension ->
       emit_shell_token_stream
         state
-        (fun ~fn -> iter_fold Ast.ExtensionPattern.fold_shell_token extension ~fn)
+        (fun ~fn ->
+          iter_fold Ast.ExtensionPattern.fold_shell_token extension ~fn)
   | None -> unsupported_node "unsupported extension pattern" (Ast.Pattern.as_node pattern)
 
 and render_attribute_pattern = fun state pattern ->
@@ -4046,8 +4095,10 @@ and render_attribute_pattern = fun state pattern ->
           emit_space state;
           emit_shell_token_stream
             state
-            (fun ~fn -> iter_fold Ast.AttributePattern.fold_shell_token attribute ~fn)
-      | None -> unsupported_node "attribute pattern without inner pattern" (Ast.Pattern.as_node pattern)
+            (fun ~fn ->
+              iter_fold Ast.AttributePattern.fold_shell_token attribute ~fn)
+      | None ->
+          unsupported_node "attribute pattern without inner pattern" (Ast.Pattern.as_node pattern)
     )
   | None -> unsupported_node "unsupported attribute pattern" (Ast.Pattern.as_node pattern)
 
@@ -4056,7 +4107,8 @@ let rec pattern_contains_type_annotation = fun pattern annotation ->
   | Constraint { annotation = Some existing; _ } when same_type_expr_node existing annotation -> true
   | _ ->
       let found = ref false in
-      iter_fold Ast.Pattern.fold_child_pattern
+      iter_fold
+        Ast.Pattern.fold_child_pattern
         pattern
         ~fn:(fun child ->
           if not !found && not (same_pattern_node pattern child) then
@@ -4076,6 +4128,7 @@ let rec pattern_should_render_multiline = fun pattern ->
   | Parenthesized { inner = Some inner }
   | Constraint { pattern = Some inner; _ }
   | Attribute { inner = Some inner } -> pattern_should_render_multiline inner
+  | ConstructIdent { argument = Some argument; _ } -> pattern_should_render_multiline argument
   | Construct { callee; argument } ->
       (
         match callee with
@@ -4093,7 +4146,9 @@ let expr_first_token_text_is = fun (expr: Ast.Expr.t) expected ->
   | Some token -> token_text_is token expected
   | None -> false
 
-let expr_has_leading_comment = fun (expr: Ast.Expr.t) -> node_has_leading_comment (Ast.Expr.as_node expr)
+let expr_has_leading_comment = fun (expr: Ast.Expr.t) ->
+  node_has_leading_comment
+    (Ast.Expr.as_node expr)
 
 let collect_apply = fun (expr: Ast.Expr.t) ->
   let args = Vector.with_capacity ~size:4 in
@@ -4289,7 +4344,8 @@ and expr_is_unit = fun expr ->
 
 and expr_is_prefix = fun expr ->
   match ExprView.view expr with
-  | Parenthesized { inner = Some inner } when not (same_expr_node expr inner) -> expr_is_prefix inner
+  | Parenthesized { inner = Some inner } when not (same_expr_node expr inner) ->
+      expr_is_prefix inner
   | Prefix _ -> true
   | _ -> false
 
@@ -4362,6 +4418,13 @@ and expr_can_render_atom_without_parens = fun expr ->
   | PolyVariant { payload = None } -> true
   | _ -> false
 
+and typed_expr_inner_needs_parens = fun expr ->
+  match ExprView.view expr with
+  | Tuple
+  | Record
+  | RecordUpdate -> true
+  | _ -> false
+
 and expr_can_render_record_update_base_without_parens = fun expr ->
   expr_can_render_atom_without_parens expr && not (expr_is_prefix expr)
 
@@ -4384,7 +4447,8 @@ and expr_tuple_has_parens = fun (expr: Ast.Expr.t) ->
 and collect_tuple_expr_items = fun (expr: Ast.Expr.t) ->
   let items = Vector.with_capacity ~size:(Ast.Expr.child_expr_count expr) in
   let rec push_items (expr: Ast.Expr.t) =
-    iter_fold Ast.Expr.fold_child_expr
+    iter_fold
+      Ast.Expr.fold_child_expr
       expr
       ~fn:(fun child ->
         match ExprView.view child with
@@ -4455,7 +4519,8 @@ and token_vector_flat_width = fun tokens ->
 and node_token_flat_width = fun node ->
   let previous = ref None in
   let total = ref 0 in
-  iter_fold Ast.Node.fold_token
+  iter_fold
+    Ast.Node.fold_token
     node
     ~fn:(fun token ->
       let extra_space =
@@ -4577,13 +4642,30 @@ and expr_flat_width_with_budget = fun budget expr ->
         match expr_flat_width_with_budget next_budget body with
         | None -> None
         | Some body_width ->
-            let params = collect_fun_parameters (Ast.Expr.as_node expr) in
+            let params = collect_fun_parameters expr in
+            let return_annotation =
+              match Ast.Expr.view expr with
+              | Ast.Expr.Fun { return_annotation; _ } -> return_annotation
+              | _ -> None
+            in
+            let return_annotation_width =
+              match return_annotation with
+              | Some annotation -> (
+                  match type_expr_flat_width annotation with
+                  | Some width -> Some (Int.add width 2)
+                  | None -> None
+                )
+              | None -> Some 0
+            in
             let length = Vector.length params in
             let rec loop index total =
               if Int.(index >= length) then
-                Some Int.(total + 4 + body_width)
+                match return_annotation_width with
+                | Some annotation_width -> Some Int.(total + annotation_width + 4 + body_width)
+                | None -> None
               else
-                match node_token_flat_width (Ast.Parameter.as_node (Vector.get_unchecked params ~at:index)) with
+                match node_token_flat_width
+                  (Ast.Parameter.as_node (Vector.get_unchecked params ~at:index)) with
                 | None -> None
                 | Some param_width -> loop (Int.add index 1) Int.(total + 1 + param_width)
             in
@@ -4737,7 +4819,8 @@ and record_expr_field_flat_width = fun budget (field: Ast.record_expr_field_view
           | None -> None
         )
     )
-  | Ast.RecordExprField { ident; value = None; _ } -> node_token_flat_width (Ast.Ident.as_node ident)
+  | Ast.RecordExprField { ident; value = None; _ } ->
+      node_token_flat_width (Ast.Ident.as_node ident)
   | Ast.UnknownRecordExprField _ -> None
 
 and record_expr_flat_width = fun budget expr ->
@@ -4815,7 +4898,10 @@ and local_open_expr_flat_width = fun budget expr ->
     body;
     closing_token
   } -> (
-      match (node_token_flat_width (Ast.Ident.as_node module_ident), expr_flat_width_with_budget budget body) with
+      match (
+        node_token_flat_width (Ast.Ident.as_node module_ident),
+        expr_flat_width_with_budget budget body
+      ) with
       | (Some module_width, Some _) ->
           delimited_width dot_token opening_token body closing_token ~prefix_width:module_width
       | _ -> None
@@ -4825,24 +4911,26 @@ and local_open_expr_flat_width = fun budget expr ->
       if Int.equal (Vector.length exprs) 2 then
         let body = Vector.get_unchecked exprs ~at:1 in
         let opening_token =
-          match first_child_token_matching (Ast.Expr.as_node expr) ~matches:(fun kind ->
-            Kind.(kind = LPAREN || kind = LBRACKET || kind = LBRACKET_BAR || kind = LBRACE)
-          ) with
+          match first_child_token_matching
+            (Ast.Expr.as_node expr)
+            ~matches:(fun kind ->
+              Kind.(kind = LPAREN || kind = LBRACKET || kind = LBRACKET_BAR || kind = LBRACE)) with
           | Some token -> Some token
           | None ->
-              first_child_token_matching (Ast.Expr.as_node body) ~matches:(fun kind ->
-                Kind.(kind = LBRACKET || kind = LBRACKET_BAR || kind = LBRACE)
-              )
+              first_child_token_matching
+                (Ast.Expr.as_node body)
+                ~matches:(fun kind -> Kind.(kind = LBRACKET || kind = LBRACKET_BAR || kind = LBRACE))
         in
         let closing_token =
-          match first_child_token_matching (Ast.Expr.as_node expr) ~matches:(fun kind ->
-            Kind.(kind = RPAREN || kind = RBRACKET || kind = BAR_RBRACKET || kind = RBRACE)
-          ) with
+          match first_child_token_matching
+            (Ast.Expr.as_node expr)
+            ~matches:(fun kind ->
+              Kind.(kind = RPAREN || kind = RBRACKET || kind = BAR_RBRACKET || kind = RBRACE)) with
           | Some token -> Some token
           | None ->
-              first_child_token_matching (Ast.Expr.as_node body) ~matches:(fun kind ->
-                Kind.(kind = RBRACKET || kind = BAR_RBRACKET || kind = RBRACE)
-              )
+              first_child_token_matching
+                (Ast.Expr.as_node body)
+                ~matches:(fun kind -> Kind.(kind = RBRACKET || kind = BAR_RBRACKET || kind = RBRACE))
         in
         match (
           Ast.Node.first_child_token (Ast.Expr.as_node expr) ~kind:Kind.DOT,
@@ -4857,7 +4945,10 @@ and local_open_expr_flat_width = fun budget expr ->
         None
     )
 
-and expr_is_inline = fun (expr: Ast.Expr.t) -> expr_is_inline_with_budget expr_classification_budget expr
+and expr_is_inline = fun (expr: Ast.Expr.t) ->
+  expr_is_inline_with_budget
+    expr_classification_budget
+    expr
 
 and expr_is_inline_with_budget = fun budget (expr: Ast.Expr.t) ->
   if Int.(budget <= 0) then
@@ -5193,7 +5284,7 @@ let infix_right_operand_can_be_bare = fun ~parent_operator right ->
         false
 
 let rec render_expr = fun ?(role = Layout.Top_expr) state (expr: Ast.Expr.t) ->
-  let node = (Ast.Expr.as_node expr) in
+  let node = Ast.Expr.as_node expr in
   emit_node_leading_trivia state node;
   match ExprView.view expr with
   | Ident { ident } -> render_expr_ident state ident
@@ -5293,15 +5384,21 @@ let rec render_expr = fun ?(role = Layout.Top_expr) state (expr: Ast.Expr.t) ->
   | Record -> render_record_expr state ~inline:false expr
   | RecordUpdate -> render_record_expr state ~inline:false expr
   | Typed { expr = Some inner; annotation = Some annotation } ->
-      (
-        if type_expr_is_coercion_annotation annotation then
-          render_expr state inner
-        else if expr_can_render_atom_without_parens inner then
-          render_expr state inner
+      if type_expr_is_coercion_annotation annotation then (
+        if typed_expr_inner_needs_parens inner then
+          render_parenthesized_expr state inner
         else
-          render_expr_atom state inner
-      );
-      render_typed_expr_annotation state annotation
+          render_expr state inner;
+        render_typed_expr_annotation state annotation
+      ) else (
+        emit_text state "(";
+        with_delimited_expr
+          state
+          (fun () ->
+            render_expr state inner;
+            render_typed_expr_annotation state annotation);
+        emit_text state ")"
+      )
   | Typed _ -> unsupported_node "incomplete typed expression" node
   | Tuple -> render_tuple_expr state expr
   | Sequence { left = Some left; right = Some right } ->
@@ -5937,13 +6034,7 @@ and application_callee_class = fun callee ->
     Layout.Ordinary
 
 and application_layout_decision_from_column = fun
-  ?(suffix_width = 0)
-  ~force_parent_break
-  state
-  expr
-  callee
-  args
-  ~column ->
+  ?(suffix_width = 0) ~force_parent_break state expr callee args ~column ->
   Layout.decide_application
     (layout_context ~column state)
     ~flat_width:(application_flat_width expr)
@@ -6053,12 +6144,7 @@ and render_apply_expr = fun ?(role = Layout.Top_expr) state expr ->
       loop 0 false
 
 and render_if_expr = fun
-  ?(else_if_continuation = false)
-  state
-  expr
-  condition
-  then_branch
-  else_branch ->
+  ?(else_if_continuation = false) state expr condition then_branch else_branch ->
   emit_node_keyword state (Ast.Expr.as_node expr) ~kind:Kind.IF_KW ~fallback:"if";
   if if_condition_should_break_after_keyword state condition then (
     emit_line state;
@@ -6132,22 +6218,68 @@ and render_if_expr = fun
         )
   )
 
-and fun_params_exceed_width = fun state (params: Ast.Parameter.t Vector.t) ->
+and fun_parameter_tail_flat_width = fun (params: Ast.Parameter.t Vector.t) ~return_annotation ->
   let length = Vector.length params in
+  let return_annotation_width =
+    match return_annotation with
+    | Some annotation -> (
+        match type_expr_flat_width annotation with
+        | Some width -> Some (Int.add width 2)
+        | None -> None
+      )
+    | None -> Some 0
+  in
   let rec loop index total =
     if Int.(index >= length) then
-      Int.(state.column + total + 3 > state.width)
+      match return_annotation_width with
+      | Some width -> Some Int.(total + width + 3)
+      | None -> None
     else
       match node_token_flat_width (Ast.Parameter.as_node (Vector.get_unchecked params ~at:index)) with
-      | Some width -> loop (Int.add index 1) Int.(total + 1 + width)
-      | None -> true
+      | Some width ->
+          let separator_width =
+            if Int.equal index 0 then
+              0
+            else
+              1
+          in
+          loop (Int.add index 1) Int.(total + separator_width + width)
+      | None -> None
   in
-  loop 0 3
+  loop 0 0
+
+and fun_params_exceed_width = fun state (params: Ast.Parameter.t Vector.t) ~return_annotation ->
+  match fun_parameter_tail_flat_width params ~return_annotation with
+  | Some tail_width ->
+      let leading_space_width =
+        if Int.(Vector.length params > 0) then
+          1
+        else
+          0
+      in
+      Int.(state.column + 3 + leading_space_width + tail_width > state.width)
+  | None -> true
+
+and fun_params_exceed_continuation_width = fun
+  state (params: Ast.Parameter.t Vector.t) ~return_annotation ->
+  match fun_parameter_tail_flat_width params ~return_annotation with
+  | Some tail_width -> Int.(state.indent + 2 + tail_width > state.width)
+  | None -> true
 
 and render_fun_expr = fun ?(role = Layout.Top_expr) state expr body ->
-  let params = collect_fun_parameters (Ast.Expr.as_node expr) in
+  let params = collect_fun_parameters expr in
+  let return_annotation =
+    match Ast.Expr.view expr with
+    | Ast.Expr.Fun { return_annotation; _ } -> return_annotation
+    | _ -> None
+  in
   let param_count = Vector.length params in
-  let break_params = Int.(param_count > 0) && fun_params_exceed_width state params in
+  let break_after_fun =
+    Int.(param_count > 0) && fun_params_exceed_width state params ~return_annotation
+  in
+  let break_params =
+    break_after_fun && fun_params_exceed_continuation_width state params ~return_annotation
+  in
   let role_forces_body_break =
     match role with
     | Layout.Apply_arg { broken_parent = true; _ } -> true
@@ -6168,6 +6300,30 @@ and render_fun_expr = fun ?(role = Layout.Top_expr) state expr body ->
     render ()
   in
   emit_text state "fun";
+  let render_return_annotation () =
+    match return_annotation with
+    | Some annotation ->
+        emit_text state ":";
+        render_type_expr_after_tight_colon state ~suffix_width:3 annotation
+    | None -> ()
+  in
+  let render_arrow_suffix () =
+    render_return_annotation ();
+    emit_space state;
+    emit_text state "->"
+  in
+  let render_parameter_tail_inline () =
+    let rec loop index =
+      if Int.(index < param_count) then (
+        if Int.(index > 0) then
+          emit_space state;
+        render_parameter state (Vector.get_unchecked params ~at:index);
+        loop (Int.add index 1)
+      )
+    in
+    loop 0;
+    render_arrow_suffix ()
+  in
   if break_params then (
     emit_line state;
     with_indent
@@ -6177,23 +6333,21 @@ and render_fun_expr = fun ?(role = Layout.Top_expr) state expr body ->
         let rec loop index =
           if Int.(index < param_count) then (
             render_parameter state (Vector.get_unchecked params ~at:index);
-            if Int.(index = Int.sub param_count 1) then (
-              emit_space state;
-              emit_text state "->"
-            ) else
+            if Int.(index = Int.sub param_count 1) then
+              render_arrow_suffix ()
+            else
               emit_line state;
             loop (Int.add index 1)
           )
         in
         loop 0)
+  ) else if break_after_fun then (
+    emit_line state;
+    with_indent state 2 render_parameter_tail_inline
   ) else (
-    Vector.for_each
-      params
-      ~fn:(fun param ->
-        emit_space state;
-        render_parameter state param);
-    emit_space state;
-    emit_text state "->"
+    if Int.(param_count > 0) then
+      emit_space state;
+    render_parameter_tail_inline ()
   );
   let body_exceeds_width =
     match ExprView.view body with
@@ -6288,8 +6442,10 @@ and render_attribute_expr = fun state expr ->
           emit_space state;
           emit_shell_token_stream
             state
-            (fun ~fn -> iter_fold Ast.AttributeExpr.fold_shell_token attribute ~fn)
-      | None -> unsupported_node "attribute expression without inner expression" (Ast.Expr.as_node expr)
+            (fun ~fn ->
+              iter_fold Ast.AttributeExpr.fold_shell_token attribute ~fn)
+      | None ->
+          unsupported_node "attribute expression without inner expression" (Ast.Expr.as_node expr)
     )
   | None -> unsupported_node "unsupported attribute expression" (Ast.Expr.as_node expr)
 
@@ -6298,7 +6454,8 @@ and render_extension_expr = fun state expr ->
   | Some extension ->
       emit_shell_token_stream
         state
-        (fun ~fn -> iter_fold Ast.ExtensionExpr.fold_shell_token extension ~fn)
+        (fun ~fn ->
+          iter_fold Ast.ExtensionExpr.fold_shell_token extension ~fn)
   | None -> unsupported_node "unsupported extension expression" (Ast.Expr.as_node expr)
 
 and render_let_exception_expr = fun state expr ->
@@ -6331,7 +6488,8 @@ and render_let_exception_expr = fun state expr ->
             let payload_tokens =
               Vector.with_capacity ~size:(Ast.LetExceptionExpr.payload_token_count let_exception)
             in
-            iter_fold Ast.LetExceptionExpr.fold_payload_token
+            iter_fold
+              Ast.LetExceptionExpr.fold_payload_token
               let_exception
               ~fn:(fun token -> Vector.push payload_tokens ~value:token);
             emit_token_vector_stream state payload_tokens
@@ -6447,7 +6605,8 @@ and render_match_case = fun state case -> render_match_case_with_body_break stat
 
 and render_match_case_with_body_break = fun state case force_body_break ->
   match Ast.MatchCase.view case with
-  | Ast.MatchCase.Unknown _ -> unsupported_node "match case without pattern or body" (Ast.MatchCase.as_node case)
+  | Ast.MatchCase.Unknown _ ->
+      unsupported_node "match case without pattern or body" (Ast.MatchCase.as_node case)
   | Ast.MatchCase.Case { pattern; guard; body } ->
       emit_text state "|";
       emit_space state;
@@ -6464,64 +6623,64 @@ and render_match_case_with_body_break = fun state case force_body_break ->
       emit_space state;
       emit_text state "->";
       (
-    match body with
-    | body when expr_is_parenthesized_apply body && force_body_break ->
-        emit_line state;
-        with_indent state 4 (fun () -> render_expr_atom state body)
-    | body when expr_is_parenthesized_apply body ->
-        emit_space state;
-        render_expr_atom state body
-    | body when expr_is_parenthesized_multiline body ->
-        emit_space state;
-        render_parenthesized_match_case_body state body
-    | body when force_body_break && expr_is_unit body ->
-        emit_space state;
-        render_expr state body
-    | body when force_body_break ->
-        emit_line state;
-        with_indent state 4 (fun () -> render_expr state body)
-    | body when expr_is_tuple body
-    && Int.(state.delimited_expr_depth > 0)
-    && expr_has_leading_comment body ->
-        emit_line state;
-        with_indent
-          state
-          4
-          (fun () ->
-            emit_node_leading_comments_as_lines state (Ast.Expr.as_node body);
-            render_expr_atom state body)
-    | body when expr_is_tuple body && Int.(state.delimited_expr_depth > 0) ->
-        emit_space state;
-        render_expr_atom state body
-    | body when expr_is_tuple body && expr_has_leading_comment body ->
-        emit_line state;
-        with_indent
-          state
-          4
-          (fun () ->
-            emit_node_leading_comments_as_lines state (Ast.Expr.as_node body);
-            render_expr_atom state body)
-    | body when expr_is_tuple body ->
-        emit_space state;
-        render_expr_atom state body
-    | body when expr_has_leading_comment body ->
-        emit_line state;
-        with_indent
-          state
-          4
-          (fun () ->
-            emit_node_leading_comments_as_lines state (Ast.Expr.as_node body);
-            render_expr state body)
-    | body when expr_is_multiline body ->
-        emit_line state;
-        with_indent state 4 (fun () -> render_expr state body)
-    | body when (not (expr_is_single_line_literal body))
-    && match_case_body_exceeds_width state body ->
-        emit_line state;
-        with_indent state 4 (fun () -> render_expr state body)
-    | body ->
-        emit_space state;
-        render_expr state body
+        match body with
+        | body when expr_is_parenthesized_apply body && force_body_break ->
+            emit_line state;
+            with_indent state 4 (fun () -> render_expr_atom state body)
+        | body when expr_is_parenthesized_apply body ->
+            emit_space state;
+            render_expr_atom state body
+        | body when expr_is_parenthesized_multiline body ->
+            emit_space state;
+            render_parenthesized_match_case_body state body
+        | body when force_body_break && expr_is_unit body ->
+            emit_space state;
+            render_expr state body
+        | body when force_body_break ->
+            emit_line state;
+            with_indent state 4 (fun () -> render_expr state body)
+        | body when expr_is_tuple body
+        && Int.(state.delimited_expr_depth > 0)
+        && expr_has_leading_comment body ->
+            emit_line state;
+            with_indent
+              state
+              4
+              (fun () ->
+                emit_node_leading_comments_as_lines state (Ast.Expr.as_node body);
+                render_expr_atom state body)
+        | body when expr_is_tuple body && Int.(state.delimited_expr_depth > 0) ->
+            emit_space state;
+            render_expr_atom state body
+        | body when expr_is_tuple body && expr_has_leading_comment body ->
+            emit_line state;
+            with_indent
+              state
+              4
+              (fun () ->
+                emit_node_leading_comments_as_lines state (Ast.Expr.as_node body);
+                render_expr_atom state body)
+        | body when expr_is_tuple body ->
+            emit_space state;
+            render_expr_atom state body
+        | body when expr_has_leading_comment body ->
+            emit_line state;
+            with_indent
+              state
+              4
+              (fun () ->
+                emit_node_leading_comments_as_lines state (Ast.Expr.as_node body);
+                render_expr state body)
+        | body when expr_is_multiline body ->
+            emit_line state;
+            with_indent state 4 (fun () -> render_expr state body)
+        | body when (not (expr_is_single_line_literal body))
+        && match_case_body_exceeds_width state body ->
+            emit_line state;
+            with_indent state 4 (fun () -> render_expr state body)
+        | body ->
+            emit_space state;
+            render_expr state body
       )
 
 and local_open_body_should_inline = fun state body ->
@@ -6622,24 +6781,26 @@ and render_local_open_expr = fun state expr ->
       if Int.equal (Vector.length exprs) 2 then
         let body = Vector.get_unchecked exprs ~at:1 in
         let opening =
-          match first_child_token_matching (Ast.Expr.as_node expr) ~matches:(fun kind ->
-            Kind.(kind = LPAREN || kind = LBRACKET || kind = LBRACKET_BAR || kind = LBRACE)
-          ) with
+          match first_child_token_matching
+            (Ast.Expr.as_node expr)
+            ~matches:(fun kind ->
+              Kind.(kind = LPAREN || kind = LBRACKET || kind = LBRACKET_BAR || kind = LBRACE)) with
           | Some token -> Some token
           | None ->
-              first_child_token_matching (Ast.Expr.as_node body) ~matches:(fun kind ->
-                Kind.(kind = LBRACKET || kind = LBRACKET_BAR || kind = LBRACE)
-              )
+              first_child_token_matching
+                (Ast.Expr.as_node body)
+                ~matches:(fun kind -> Kind.(kind = LBRACKET || kind = LBRACKET_BAR || kind = LBRACE))
         in
         let closing =
-          match first_child_token_matching (Ast.Expr.as_node expr) ~matches:(fun kind ->
-            Kind.(kind = RPAREN || kind = RBRACKET || kind = BAR_RBRACKET || kind = RBRACE)
-          ) with
+          match first_child_token_matching
+            (Ast.Expr.as_node expr)
+            ~matches:(fun kind ->
+              Kind.(kind = RPAREN || kind = RBRACKET || kind = BAR_RBRACKET || kind = RBRACE)) with
           | Some token -> Some token
           | None ->
-              first_child_token_matching (Ast.Expr.as_node body) ~matches:(fun kind ->
-                Kind.(kind = RBRACKET || kind = BAR_RBRACKET || kind = RBRACE)
-              )
+              first_child_token_matching
+                (Ast.Expr.as_node body)
+                ~matches:(fun kind -> Kind.(kind = RBRACKET || kind = BAR_RBRACKET || kind = RBRACE))
         in
         match (Ast.Node.first_child_token (Ast.Expr.as_node expr) ~kind:Kind.DOT, opening, closing) with
         | (Some dot_token, Some opening, Some closing) ->
@@ -6749,7 +6910,8 @@ and module_type_specific_node = fun node ->
 
 and collect_child_module_exprs = fun node ->
   let exprs = Vector.with_capacity ~size:(Ast.Node.child_count node) in
-  iter_fold Ast.Node.fold_child_node
+  iter_fold
+    Ast.Node.fold_child_node
     node
     ~fn:(fun child ->
       match module_expr_specific_node child with
@@ -6812,7 +6974,8 @@ and render_module_typeof_node = fun state node ->
   emit_text state "module type of";
   emit_space state;
   let tokens = Vector.with_capacity ~size:(Ast.Node.child_count node) in
-  iter_fold Ast.Node.fold_token
+  iter_fold
+    Ast.Node.fold_token
     node
     ~fn:(fun token ->
       if token_kind_is token Kind.IDENT || token_kind_is token Kind.DOT then
@@ -6858,7 +7021,8 @@ and render_module_type_constraint_module_body = fun state body ->
 and render_with_module_type_node = fun state node ->
   let rendered_base = ref false in
   let pending_connector = ref None in
-  iter_fold Ast.Node.fold_child
+  iter_fold
+    Ast.Node.fold_child
     node
     ~fn:(fun child ->
       match child with
@@ -7039,7 +7203,8 @@ and render_let_module_expr = fun state expr ->
       render_expr state body
   | _ -> unsupported_node "incomplete let module expression" (Ast.Expr.as_node expr)
 
-and render_first_class_module_ident = fun state (expr: Ast.Expr.t) ~capacity for_each_ident_segment message ->
+and render_first_class_module_ident = fun
+  state (expr: Ast.Expr.t) ~capacity for_each_ident_segment message ->
   let segments = Vector.with_capacity ~size:capacity in
   for_each_ident_segment ~fn:(fun ident -> Vector.push segments ~value:ident);
   if Vector.length segments = 0 then
@@ -7047,8 +7212,8 @@ and render_first_class_module_ident = fun state (expr: Ast.Expr.t) ~capacity for
   else
     emit_joined_vector state segments ~sep:(fun () -> emit_text state ".") ~fn:(emit_token state)
 
-and render_first_class_module_ascription_tokens =
-  fun state (expr: Ast.FirstClassModuleExpr.t) colon_token ->
+and render_first_class_module_ascription_tokens = fun
+  state (expr: Ast.FirstClassModuleExpr.t) colon_token ->
   let tokens = collect_child_tokens (Ast.Expr.as_node expr) in
   match (token_vector_find_kind tokens Kind.COLON, token_vector_find_kind tokens Kind.RPAREN) with
   | (Some colon_index, Some closing_index) when Int.(Int.add colon_index 1 < closing_index) ->
@@ -7094,7 +7259,9 @@ and render_first_class_module_expr = fun state expr ->
   ) with
   | (Some opening_token, Some closing_token) -> (
       emit_token state opening_token;
-      match Ast.Node.first_child_token (Ast.FirstClassModuleExpr.as_node module_expr) ~kind:Kind.VAL_KW with
+      match Ast.Node.first_child_token
+        (Ast.FirstClassModuleExpr.as_node module_expr)
+        ~kind:Kind.VAL_KW with
       | Some val_token ->
           let exprs = collect_child_exprs (Ast.FirstClassModuleExpr.as_node module_expr) in
           emit_token state val_token;
@@ -7102,7 +7269,10 @@ and render_first_class_module_expr = fun state expr ->
           (
             match Vector.length exprs with
             | 1 -> render_expr state (Vector.get_unchecked exprs ~at:0)
-            | _ -> unsupported_node "first-class module unpack without expression" (Ast.Expr.as_node expr)
+            | _ ->
+                unsupported_node
+                  "first-class module unpack without expression"
+                  (Ast.Expr.as_node expr)
           );
           render_first_class_module_ascription state module_expr;
           emit_token state closing_token
@@ -7122,7 +7292,8 @@ and render_first_class_module_expr = fun state expr ->
                 "first-class module expression without module ident";
               render_first_class_module_ascription state module_expr;
               emit_token state closing_token
-          | _ -> unsupported_node "unsupported first-class module expression" (Ast.Expr.as_node expr)
+          | _ ->
+              unsupported_node "unsupported first-class module expression" (Ast.Expr.as_node expr)
         )
     )
   | _ -> unsupported_node "incomplete first-class module expression" (Ast.Expr.as_node expr)
@@ -7153,9 +7324,12 @@ and render_binding_operator_expr = fun state expr ->
     Ast.BindingOperatorExpr.in_token view,
     Ast.BindingOperatorExpr.body view
   ) with
-  | (0, _, _) -> unsupported_node "binding operator expression without binding" (Ast.Expr.as_node expr)
-  | (_, None, _) -> unsupported_node "binding operator expression without in" (Ast.Expr.as_node expr)
-  | (_, _, None) -> unsupported_node "binding operator expression without body" (Ast.Expr.as_node expr)
+  | (0, _, _) ->
+      unsupported_node "binding operator expression without binding" (Ast.Expr.as_node expr)
+  | (_, None, _) ->
+      unsupported_node "binding operator expression without in" (Ast.Expr.as_node expr)
+  | (_, _, None) ->
+      unsupported_node "binding operator expression without body" (Ast.Expr.as_node expr)
   | (length, Some in_token, Some body) ->
       let before_clauses = state.line_count in
       let rec loop index =
@@ -7219,12 +7393,7 @@ and let_binding_apply_body_exceeds_inline_equals_width = fun ?(suffix_width = 0)
   | _ -> false
 
 and let_binding_rhs_decision = fun
-  ?(body_suffix_width = 0)
-  state
-  body
-  ~force_body_break
-  ~binding_pattern_is_unit
-  ~parameter_count ->
+  ?(body_suffix_width = 0) state body ~force_body_break ~binding_pattern_is_unit ~parameter_count ->
   let inline_body =
     match ExprView.view body with
     | Array
@@ -7401,15 +7570,15 @@ and render_let_binding_tail = fun state binding ->
     false
 
 and render_let_binding_tail_with_body_break = fun
-  ?(body_suffix_width = 0)
-  state
-  binding
-  force_body_break ->
+  ?(body_suffix_width = 0) state binding force_body_break ->
   let binding_pattern = Ast.LetBinding.pattern binding in
   let binding_body = Ast.LetBinding.body binding in
   let annotation = Ast.LetBinding.return_type_annotation binding in
   let parameters = Vector.with_capacity ~size:(Ast.LetBinding.parameter_count binding) in
-  iter_fold Ast.LetBinding.fold_parameter binding ~fn:(fun param -> Vector.push parameters ~value:param);
+  iter_fold
+    Ast.LetBinding.fold_parameter
+    binding
+    ~fn:(fun param -> Vector.push parameters ~value:param);
   let parameter_count = Vector.length parameters in
   let return_annotation_wants_leading_space =
     if Int.equal parameter_count 0 then
@@ -7630,10 +7799,8 @@ and render_record_expr = fun ?(force_multiline = false) state ~inline expr ->
                   render_record_field state ~inline:false field;
                   (
                     match field with
-                    | Ast.RecordExprField {
-                        value = Some value;
-                        _;
-                      } when expr_has_terminal_trailing_sequence value -> ()
+                    | Ast.RecordExprField { value = Some value; _ } when expr_has_terminal_trailing_sequence
+                      value -> ()
                     | Ast.RecordExprField _
                     | Ast.UnknownRecordExprField _ -> emit_text state ";"
                   );
@@ -7782,7 +7949,8 @@ and render_open_declaration = fun state (decl: Ast.OpenDeclaration.t) ->
   );
   emit_space state;
   let first = ref true in
-  iter_fold Ast.OpenDeclaration.fold_ident_segment
+  iter_fold
+    Ast.OpenDeclaration.fold_ident_segment
     decl
     ~fn:(fun ident ->
       if !first then
@@ -7798,12 +7966,18 @@ and render_include_declaration = fun state (decl: Ast.IncludeDeclaration.t) ->
   | Some node when is_module_type_kind (node_kind node) -> render_module_type_node state node
   | Some node when is_module_expr_kind (node_kind node) -> render_module_expr_node state node
   | Some node -> unsupported_node "unsupported include declaration target" node
-  | None -> unsupported_node "include declaration without target" (Ast.IncludeDeclaration.as_node decl)
+  | None ->
+      unsupported_node "include declaration without target" (Ast.IncludeDeclaration.as_node decl)
 
 and render_record_type_field = fun state ~last (field: Ast.RecordField.t) ->
   emit_node_leading_comments_as_lines state (Ast.RecordField.as_node field);
   match Ast.RecordField.view field with
-  | Ast.RecordField.Field { mutable_token; name; colon_token; annotation } ->
+  | Ast.RecordField.Field {
+    mutable_token;
+    name;
+    colon_token;
+    annotation
+  } ->
       (
         match mutable_token with
         | Some token ->
@@ -7822,8 +7996,7 @@ and render_record_type_field = fun state ~last (field: Ast.RecordField.t) ->
       render_type_expr_after_tight_colon state ~suffix_width annotation;
       if not last then
         emit_text state ";"
-  | Ast.RecordField.Unknown node ->
-      unsupported_node "unsupported record type field" node
+  | Ast.RecordField.Unknown node -> unsupported_node "unsupported record type field" node
 
 and record_type_field_flat_width = fun (field: Ast.RecordField.t) ->
   match Ast.RecordField.view field with
@@ -7872,7 +8045,9 @@ and record_type_fields_have_leading_comment = fun (fields: Ast.RecordField.t Vec
   let rec loop index =
     if Int.(index >= length) then
       false
-    else if node_has_leading_comment (Ast.RecordField.as_node (Vector.get_unchecked fields ~at:index)) then
+    else if
+      node_has_leading_comment (Ast.RecordField.as_node (Vector.get_unchecked fields ~at:index))
+    then
       true
     else
       loop (Int.add index 1)
@@ -7913,12 +8088,10 @@ and record_type_fields_have_multi_field_mutable = fun (fields: Ast.RecordField.t
     let rec loop index =
       if Int.(index >= length) then
         false
-      else if
-        match Ast.RecordField.view (Vector.get_unchecked fields ~at:index) with
-        | Ast.RecordField.Field { mutable_token = Some _; _ } -> true
-        | Ast.RecordField.Field { mutable_token = None; _ }
-        | Ast.RecordField.Unknown _ -> false
-      then
+      else if match Ast.RecordField.view (Vector.get_unchecked fields ~at:index) with
+      | Ast.RecordField.Field { mutable_token = Some _; _ } -> true
+      | Ast.RecordField.Field { mutable_token = None; _ }
+      | Ast.RecordField.Unknown _ -> false then
         true
       else
         loop (Int.add index 1)
@@ -7980,12 +8153,13 @@ and render_record_type_inline = fun state record_type fields ->
     render_record_type_closing state ~leading_trivia_indent:0 record_type
   )
 
-and render_record_type_field_trailing_trivia =
- fun state (record_type: Ast.RecordType.t) (fields: Ast.RecordField.t Vector.t) index ->
+and render_record_type_field_trailing_trivia = fun
+  state (record_type: Ast.RecordType.t) (fields: Ast.RecordField.t Vector.t) index ->
   let length = Vector.length fields in
   let next_token =
     if Int.(index < Int.sub length 1) then
-      Ast.Node.first_descendant_token (Ast.RecordField.as_node (Vector.get_unchecked fields ~at:(Int.add index 1)))
+      Ast.Node.first_descendant_token
+        (Ast.RecordField.as_node (Vector.get_unchecked fields ~at:(Int.add index 1)))
     else
       Ast.RecordType.closing_token record_type
   in
@@ -8047,8 +8221,7 @@ and external_declaration_suffix_width = fun primitive_strings attribute_tokens -
   in
   Int.(3 + primitive_width + attribute_width)
 
-and render_external_declaration_equals = fun state equals_token ->
-  emit_token state equals_token
+and render_external_declaration_equals = fun state equals_token -> emit_token state equals_token
 
 and render_external_primitive_body = fun state primitive_strings attribute_tokens ->
   emit_joined_vector
@@ -8062,11 +8235,7 @@ and render_external_primitive_body = fun state primitive_strings attribute_token
   )
 
 and render_external_primitive_suffix = fun
-  state
-  equals_token
-  primitive_strings
-  attribute_tokens
-  ~leading_space ->
+  state equals_token primitive_strings attribute_tokens ~leading_space ->
   if leading_space then
     emit_space state;
   render_external_declaration_equals state equals_token;
@@ -8074,10 +8243,7 @@ and render_external_primitive_suffix = fun
   render_external_primitive_body state primitive_strings attribute_tokens
 
 and render_external_primitive_body_after_equals = fun
-  state
-  equals_token
-  primitive_strings
-  attribute_tokens ->
+  state equals_token primitive_strings attribute_tokens ->
   (
     if Int.(state.column + 2 <= state.width) then (
       emit_space state;
@@ -8097,13 +8263,13 @@ and render_external_primitive_body_after_equals = fun
 and render_external_declaration = fun state decl ->
   match Ast.ExternalDeclaration.view decl with
   | Ast.ExternalDeclaration.External {
-      name = name_tokens;
-      colon_token;
-      annotation;
-      equals_token;
-      primitives = primitive_strings;
-      attributes = attribute_tokens;
-    } ->
+    name = name_tokens;
+    colon_token;
+    annotation;
+    equals_token;
+    primitives = primitive_strings;
+    attributes = attribute_tokens
+  } ->
       emit_text state "external";
       emit_space state;
       emit_token_vector_stream state name_tokens;
@@ -8136,8 +8302,7 @@ and render_external_declaration = fun state decl ->
             ~leading_space:true
         )
       )
-  | Ast.ExternalDeclaration.Unknown node ->
-      unsupported_node "unsupported external declaration" node
+  | Ast.ExternalDeclaration.Unknown node -> unsupported_node "unsupported external declaration" node
 
 and render_exception_payload = fun state payload ->
   match payload with
@@ -8158,7 +8323,8 @@ and render_exception_rhs = fun state rhs ->
       emit_token state of_token;
       emit_space state;
       render_exception_payload state payload
-  | Ast.ExceptionDeclaration.Unknown node -> unsupported_node "unsupported exception declaration" node
+  | Ast.ExceptionDeclaration.Unknown node ->
+      unsupported_node "unsupported exception declaration" node
 
 and render_exception_declaration = fun state decl ->
   (
@@ -8170,7 +8336,10 @@ and render_exception_declaration = fun state decl ->
   (
     match Ast.ExceptionDeclaration.name decl with
     | Some name -> emit_token state name
-    | None -> unsupported_node "exception declaration without name" (Ast.ExceptionDeclaration.as_node decl)
+    | None ->
+        unsupported_node
+          "exception declaration without name"
+          (Ast.ExceptionDeclaration.as_node decl)
   );
   render_exception_rhs state (Ast.ExceptionDeclaration.view decl)
 
@@ -8181,11 +8350,7 @@ and render_variant_constructor_payload = fun state payload ->
       with_indent state 2 (fun () -> render_record_type state ~allow_inline:true record_type)
 
 and render_variant_constructor_gadt_rhs = fun
-  state
-  ~colon_token
-  ~record_payload
-  ~arrow_token
-  ~result ->
+  state ~colon_token ~record_payload ~arrow_token ~result ->
   match record_payload with
   | Some record_type ->
       emit_token state colon_token;
@@ -8215,12 +8380,11 @@ and render_variant_constructor_rhs = fun state rhs ->
       emit_space state;
       render_variant_constructor_payload state payload
   | Ast.VariantConstructor.Gadt {
-      colon_token;
-      record_payload;
-      arrow_token;
-      result;
-    } ->
-      render_variant_constructor_gadt_rhs state ~colon_token ~record_payload ~arrow_token ~result
+    colon_token;
+    record_payload;
+    arrow_token;
+    result
+  } -> render_variant_constructor_gadt_rhs state ~colon_token ~record_payload ~arrow_token ~result
 
 and render_variant_constructor = fun state ~private_token constructor ->
   (
@@ -8339,7 +8503,8 @@ and render_type_parameters = fun state parameters ->
 
 and type_member_has_equals = fun member ->
   let found = ref false in
-  iter_fold Ast.TypeDeclaration.Member.fold_child_token
+  iter_fold
+    Ast.TypeDeclaration.Member.fold_child_token
     member
     ~fn:(fun token ->
       if token_kind_is token Kind.EQ then
@@ -8349,7 +8514,8 @@ and type_member_has_equals = fun member ->
 and type_member_private_token = fun member ->
   let saw_equals = ref false in
   let found = ref None in
-  iter_fold Ast.TypeDeclaration.Member.fold_child_token
+  iter_fold
+    Ast.TypeDeclaration.Member.fold_child_token
     member
     ~fn:(fun token ->
       match !found with
@@ -8366,7 +8532,8 @@ and type_member_private_token = fun member ->
     match !found with
     | Some _ -> ()
     | None ->
-        iter_fold Ast.TypeDeclaration.Member.fold_child_node
+        iter_fold
+          Ast.TypeDeclaration.Member.fold_child_node
           member
           ~fn:(fun node ->
             match !found with
@@ -8378,7 +8545,8 @@ and type_member_private_token = fun member ->
 and type_member_is_alias_extensible = fun member ->
   let equals_count = ref 0 in
   let saw_dotdot_after_alias = ref false in
-  iter_fold Ast.TypeDeclaration.Member.fold_child_token
+  iter_fold
+    Ast.TypeDeclaration.Member.fold_child_token
     member
     ~fn:(fun token ->
       if token_kind_is token Kind.EQ then
@@ -8420,7 +8588,8 @@ and render_type_expr_after_equals = fun state type_expr ->
 and type_member_representation_equals_token = fun member ->
   let equals_seen = ref 0 in
   let found = ref None in
-  iter_fold Ast.TypeDeclaration.Member.fold_child_token
+  iter_fold
+    Ast.TypeDeclaration.Member.fold_child_token
     member
     ~fn:(fun token ->
       if Option.is_none !found && token_kind_is token Kind.EQ then (
@@ -8453,7 +8622,10 @@ and collect_type_member_body_tokens = fun member ->
         | None -> (
             match Ast.TypeDeclaration.Member.child_node_at member index with
             | Some node when !collecting ->
-                iter_fold Ast.Node.fold_token node ~fn:(fun token -> Vector.push tokens ~value:token)
+                iter_fold
+                  Ast.Node.fold_token
+                  node
+                  ~fn:(fun token -> Vector.push tokens ~value:token)
             | Some _
             | None -> ()
           )
@@ -8484,7 +8656,10 @@ and collect_type_member_constraint_tokens = fun member ->
         | None -> (
             match Ast.TypeDeclaration.Member.child_node_at member index with
             | Some node when !collecting ->
-                iter_fold Ast.Node.fold_token node ~fn:(fun token -> Vector.push tokens ~value:token)
+                iter_fold
+                  Ast.Node.fold_token
+                  node
+                  ~fn:(fun token -> Vector.push tokens ~value:token)
             | Some _
             | None -> ()
           )
@@ -8637,12 +8812,17 @@ and render_type_extension_declaration = fun state decl ->
   );
   emit_space state;
   render_type_parameters state (collect_type_extension_parameters decl);
-  let name_tokens = Vector.with_capacity ~size:(Ast.TypeExtensionDeclaration.name_ident_count decl) in
-  iter_fold Ast.TypeExtensionDeclaration.fold_name_ident
+  let name_tokens =
+    Vector.with_capacity ~size:(Ast.TypeExtensionDeclaration.name_ident_count decl)
+  in
+  iter_fold
+    Ast.TypeExtensionDeclaration.fold_name_ident
     decl
     ~fn:(fun token -> Vector.push name_tokens ~value:token);
   if Vector.length name_tokens = 0 then
-    unsupported_node "type extension declaration without name" (Ast.TypeExtensionDeclaration.as_node decl)
+    unsupported_node
+      "type extension declaration without name"
+      (Ast.TypeExtensionDeclaration.as_node decl)
   else
     emit_joined_vector state name_tokens ~sep:(fun () -> emit_text state ".") ~fn:(emit_token state);
   emit_space state;
@@ -8714,7 +8894,9 @@ and render_module_typeof_body = fun state decl ->
   render_module_declaration_separator state decl ~default:":";
   emit_text state "module type of";
   emit_space state;
-  render_module_body_ident state (iter_fold Ast.ModuleDeclaration.fold_typeof_body_ident_segment decl)
+  render_module_body_ident
+    state
+    (iter_fold Ast.ModuleDeclaration.fold_typeof_body_ident_segment decl)
 
 and render_value_declaration = fun state decl ->
   match Ast.ValueDeclaration.view decl with
@@ -8726,15 +8908,16 @@ and render_value_declaration = fun state decl ->
       else
         emit_token_vector_stream state name_tokens;
       emit_token state colon_token;
-      let type_tokens = collect_node_tokens_after_direct_token (Ast.ValueDeclaration.as_node decl) Kind.COLON in
+      let type_tokens =
+        collect_node_tokens_after_direct_token (Ast.ValueDeclaration.as_node decl) Kind.COLON
+      in
       let annotation_tokens = collect_node_tokens (Ast.TypeExpr.as_node annotation) in
       if Int.(Vector.length type_tokens > Vector.length annotation_tokens) then (
         emit_space state;
         emit_core_type_token_vector_stream state type_tokens
       ) else
         render_type_expr_after_tight_colon state ~suffix_width:0 annotation
-  | Ast.ValueDeclaration.Unknown node ->
-      unsupported_node "unsupported value declaration" node
+  | Ast.ValueDeclaration.Unknown node -> unsupported_node "unsupported value declaration" node
 
 and render_let_declaration = fun state decl ->
   render_let_declaration_with_body_break
@@ -8868,7 +9051,8 @@ and render_module_declaration_members = fun state decl ->
 
 and module_declaration_has_ascribed_body = fun decl ->
   let found = ref false in
-  iter_fold Ast.ModuleDeclaration.fold_member
+  iter_fold
+    Ast.ModuleDeclaration.fold_member
     decl
     ~fn:(fun member ->
       match (
@@ -8881,7 +9065,8 @@ and module_declaration_has_ascribed_body = fun decl ->
 
 and module_declaration_has_head_parameter = fun decl ->
   let found = ref false in
-  iter_fold Ast.ModuleDeclaration.fold_member
+  iter_fold
+    Ast.ModuleDeclaration.fold_member
     decl
     ~fn:(fun member ->
       let rec loop index =
@@ -8901,7 +9086,8 @@ and module_declaration_has_empty_struct_body = fun decl ->
   match Ast.ModuleDeclaration.body decl with
   | Ast.ModuleDeclaration.Expr { body } -> (
       match Ast.ModuleExpr.view body with
-      | Ast.ModuleExpr.Structure _ -> Vector.is_empty (collect_structure_items_from_module_decl decl)
+      | Ast.ModuleExpr.Structure _ ->
+          Vector.is_empty (collect_structure_items_from_module_decl decl)
       | _ -> false
     )
   | _ -> false
@@ -8913,7 +9099,8 @@ and module_declaration_body_requires_member_render = fun decl body ->
       | Ast.ModuleExpr.Ident _
       | Ast.ModuleExpr.Structure _
       | Ast.ModuleExpr.Apply _ -> false
-      | Ast.ModuleExpr.Opaque _ -> not (node_has_token_kind (Ast.ModuleDeclaration.as_node decl) Kind.PERCENT)
+      | Ast.ModuleExpr.Opaque _ ->
+          not (node_has_token_kind (Ast.ModuleDeclaration.as_node decl) Kind.PERCENT)
       | Ast.ModuleExpr.Functor _
       | Ast.ModuleExpr.Constraint _
       | Ast.ModuleExpr.Error _
@@ -8929,7 +9116,8 @@ and module_declaration_body_requires_member_render = fun decl body ->
       | Ast.ModuleTypeExpr.Error _
       | Ast.ModuleTypeExpr.Unknown _ -> true
     )
-  | Ast.ModuleDeclaration.Unsupported _ -> not (node_has_token_kind (Ast.ModuleDeclaration.as_node decl) Kind.PERCENT)
+  | Ast.ModuleDeclaration.Unsupported _ ->
+      not (node_has_token_kind (Ast.ModuleDeclaration.as_node decl) Kind.PERCENT)
 
 and render_module_declaration = fun state decl ->
   let body = Ast.ModuleDeclaration.body decl in
@@ -8939,39 +9127,40 @@ and render_module_declaration = fun state decl ->
     || module_declaration_body_requires_member_render decl body
   then
     render_module_declaration_members state decl
-  else
+  else (
+    emit_text state "module";
     (
-      emit_text state "module";
-      (
-        match Ast.ModuleDeclaration.rec_token decl with
-        | Some token ->
-            emit_space state;
-            emit_token state token
-        | None -> ()
-      );
-      emit_space state;
-      (
-        match Ast.ModuleDeclaration.name decl with
-        | Some name -> emit_token state name
-        | None -> unsupported_node "module declaration without name" (Ast.ModuleDeclaration.as_node decl)
-      );
-      match body with
-      | Ast.ModuleDeclaration.Expr { body } -> (
-          match Ast.ModuleExpr.view body with
-          | Ast.ModuleExpr.Ident { ident } ->
-              render_module_declaration_separator state decl ~default:"=";
-              render_module_body_ident state (iter_fold Ast.Ident.fold_segment ident);
-              render_wrapped_module_body_attribute_suffix state (Ast.ModuleDeclaration.as_node decl)
-          | Ast.ModuleExpr.Structure _ ->
-              let items = collect_structure_items_from_module_decl decl in
-              if Vector.is_empty items then (
-                emit_space state;
-                emit_text state "=";
-                emit_space state;
-                emit_text state "struct";
-                emit_space state;
-                emit_text state "end"
-              ) else (
+      match Ast.ModuleDeclaration.rec_token decl with
+      | Some token ->
+          emit_space state;
+          emit_token state token
+      | None -> ()
+    );
+    emit_space state;
+    (
+      match Ast.ModuleDeclaration.name decl with
+      | Some name -> emit_token state name
+      | None ->
+          unsupported_node "module declaration without name" (Ast.ModuleDeclaration.as_node decl)
+    );
+    match body with
+    | Ast.ModuleDeclaration.Expr { body } -> (
+        match Ast.ModuleExpr.view body with
+        | Ast.ModuleExpr.Ident { ident } ->
+            render_module_declaration_separator state decl ~default:"=";
+            render_module_body_ident state (iter_fold Ast.Ident.fold_segment ident);
+            render_wrapped_module_body_attribute_suffix state (Ast.ModuleDeclaration.as_node decl)
+        | Ast.ModuleExpr.Structure _ ->
+            let items = collect_structure_items_from_module_decl decl in
+            if Vector.is_empty items then (
+              emit_space state;
+              emit_text state "=";
+              emit_space state;
+              emit_text state "struct";
+              emit_space state;
+              emit_text state "end"
+            ) else
+              (
                 let end_token = Ast.ModuleDeclaration.end_token decl in
                 let has_terminal_trivia = token_has_leading_comment end_token in
                 emit_space state;
@@ -8994,46 +9183,46 @@ and render_module_declaration = fun state decl ->
                   emit_line state;
                 emit_text state "end"
               );
-              render_wrapped_module_body_attribute_suffix state (Ast.ModuleDeclaration.as_node decl)
-          | Ast.ModuleExpr.Apply _ ->
-              render_module_declaration_separator state decl ~default:"=";
-              render_module_expr_node state (Ast.ModuleExpr.as_node body);
-              render_wrapped_module_body_attribute_suffix state (Ast.ModuleDeclaration.as_node decl)
-          | Ast.ModuleExpr.Opaque _ ->
-              render_shell_body_after_separator
-                state
-                (Ast.ModuleDeclaration.as_node decl)
-                Kind.EQ
-                ~label:"module extension declaration without '='"
-          | Ast.ModuleExpr.Functor _
-          | Ast.ModuleExpr.Constraint _
-          | Ast.ModuleExpr.Error _
-          | Ast.ModuleExpr.Unknown _ -> render_module_declaration_members state decl
-        )
-      | Ast.ModuleDeclaration.Type { body } -> (
-          match Ast.ModuleTypeExpr.view body with
-          | Ast.ModuleTypeExpr.Ident { ident } ->
-              render_module_declaration_separator state decl ~default:":";
-              render_module_body_ident state (iter_fold Ast.Ident.fold_segment ident);
-              render_wrapped_module_body_attribute_suffix state (Ast.ModuleDeclaration.as_node decl)
-          | Ast.ModuleTypeExpr.Signature _ ->
-              render_module_declaration_separator state decl ~default:":";
-              let items = collect_signature_items_from_module_decl decl in
-              render_signature_body state items ~end_token:(Ast.ModuleDeclaration.end_token decl);
-              render_wrapped_module_body_attribute_suffix state (Ast.ModuleDeclaration.as_node decl)
-          | Ast.ModuleTypeExpr.Typeof _ -> render_module_typeof_body state decl
-          | Ast.ModuleTypeExpr.With _
-          | Ast.ModuleTypeExpr.Functor _
-          | Ast.ModuleTypeExpr.Error _
-          | Ast.ModuleTypeExpr.Unknown _ -> render_module_declaration_members state decl
-        )
-      | Ast.ModuleDeclaration.Unsupported _ ->
-          render_shell_body_after_separator
-            state
-            (Ast.ModuleDeclaration.as_node decl)
-            Kind.EQ
-            ~label:"module extension declaration without '='"
-    )
+            render_wrapped_module_body_attribute_suffix state (Ast.ModuleDeclaration.as_node decl)
+        | Ast.ModuleExpr.Apply _ ->
+            render_module_declaration_separator state decl ~default:"=";
+            render_module_expr_node state (Ast.ModuleExpr.as_node body);
+            render_wrapped_module_body_attribute_suffix state (Ast.ModuleDeclaration.as_node decl)
+        | Ast.ModuleExpr.Opaque _ ->
+            render_shell_body_after_separator
+              state
+              (Ast.ModuleDeclaration.as_node decl)
+              Kind.EQ
+              ~label:"module extension declaration without '='"
+        | Ast.ModuleExpr.Functor _
+        | Ast.ModuleExpr.Constraint _
+        | Ast.ModuleExpr.Error _
+        | Ast.ModuleExpr.Unknown _ -> render_module_declaration_members state decl
+      )
+    | Ast.ModuleDeclaration.Type { body } -> (
+        match Ast.ModuleTypeExpr.view body with
+        | Ast.ModuleTypeExpr.Ident { ident } ->
+            render_module_declaration_separator state decl ~default:":";
+            render_module_body_ident state (iter_fold Ast.Ident.fold_segment ident);
+            render_wrapped_module_body_attribute_suffix state (Ast.ModuleDeclaration.as_node decl)
+        | Ast.ModuleTypeExpr.Signature _ ->
+            render_module_declaration_separator state decl ~default:":";
+            let items = collect_signature_items_from_module_decl decl in
+            render_signature_body state items ~end_token:(Ast.ModuleDeclaration.end_token decl);
+            render_wrapped_module_body_attribute_suffix state (Ast.ModuleDeclaration.as_node decl)
+        | Ast.ModuleTypeExpr.Typeof _ -> render_module_typeof_body state decl
+        | Ast.ModuleTypeExpr.With _
+        | Ast.ModuleTypeExpr.Functor _
+        | Ast.ModuleTypeExpr.Error _
+        | Ast.ModuleTypeExpr.Unknown _ -> render_module_declaration_members state decl
+      )
+    | Ast.ModuleDeclaration.Unsupported _ ->
+        render_shell_body_after_separator
+          state
+          (Ast.ModuleDeclaration.as_node decl)
+          Kind.EQ
+          ~label:"module extension declaration without '='"
+  )
 
 and render_empty_struct_module_declaration_multiline = fun state decl ->
   emit_text state "module";
@@ -9048,7 +9237,8 @@ and render_empty_struct_module_declaration_multiline = fun state decl ->
   (
     match Ast.ModuleDeclaration.name decl with
     | Some name -> emit_token state name
-    | None -> unsupported_node "module declaration without name" (Ast.ModuleDeclaration.as_node decl)
+    | None ->
+        unsupported_node "module declaration without name" (Ast.ModuleDeclaration.as_node decl)
   );
   emit_space state;
   emit_text state "=";
@@ -9065,7 +9255,10 @@ and render_module_type_declaration = fun state decl ->
   (
     match Ast.ModuleTypeDeclaration.name decl with
     | Some name -> emit_token state name
-    | None -> unsupported_node "module type declaration without name" (Ast.ModuleTypeDeclaration.as_node decl)
+    | None ->
+        unsupported_node
+          "module type declaration without name"
+          (Ast.ModuleTypeDeclaration.as_node decl)
   );
   (
     match Ast.ModuleTypeDeclaration.body decl with
@@ -9075,12 +9268,16 @@ and render_module_type_declaration = fun state decl ->
         | Ident { ident } ->
             render_module_type_declaration_equals state decl;
             render_module_body_ident state (iter_fold Ast.Ident.fold_segment ident);
-            render_wrapped_module_body_attribute_suffix state (Ast.ModuleTypeDeclaration.as_node decl)
+            render_wrapped_module_body_attribute_suffix
+              state
+              (Ast.ModuleTypeDeclaration.as_node decl)
         | Signature _ ->
             render_module_type_declaration_equals state decl;
             let items = collect_signature_items_from_module_type_decl decl in
             render_signature_body state items ~end_token:(Ast.ModuleTypeDeclaration.end_token decl);
-            render_wrapped_module_body_attribute_suffix state (Ast.ModuleTypeDeclaration.as_node decl)
+            render_wrapped_module_body_attribute_suffix
+              state
+              (Ast.ModuleTypeDeclaration.as_node decl)
         | With { base; constraints; _ } ->
             render_module_type_declaration_equals state decl;
             (
@@ -9107,7 +9304,9 @@ and render_module_type_declaration = fun state decl ->
               )
             in
             loop 0;
-            render_wrapped_module_body_attribute_suffix state (Ast.ModuleTypeDeclaration.as_node decl)
+            render_wrapped_module_body_attribute_suffix
+              state
+              (Ast.ModuleTypeDeclaration.as_node decl)
         | Typeof _
         | Functor _
         | Error _
@@ -9119,7 +9318,9 @@ and render_module_type_declaration = fun state decl ->
                 Kind.EQ
                 ~label:"module type extension declaration without '='"
             else
-              unsupported_node "unsupported module type declaration body" (Ast.ModuleTypeDeclaration.as_node decl)
+              unsupported_node
+                "unsupported module type declaration body"
+                (Ast.ModuleTypeDeclaration.as_node decl)
       )
     | Unsupported _ ->
         if node_has_token_kind (Ast.ModuleTypeDeclaration.as_node decl) Kind.PERCENT then
@@ -9129,7 +9330,9 @@ and render_module_type_declaration = fun state decl ->
             Kind.EQ
             ~label:"module type extension declaration without '='"
         else
-          unsupported_node "unsupported module type declaration body" (Ast.ModuleTypeDeclaration.as_node decl)
+          unsupported_node
+            "unsupported module type declaration body"
+            (Ast.ModuleTypeDeclaration.as_node decl)
   )
 
 and render_structure_items = fun state items ->
@@ -9319,12 +9522,16 @@ and render_signature_items = fun state items ->
   in
   loop 0
 
-and render_attribute_item = fun state item -> emit_attribute_token_stream state (Ast.AttributeItem.as_node item)
+and render_attribute_item = fun state item ->
+  emit_attribute_token_stream
+    state
+    (Ast.AttributeItem.as_node item)
 
 and render_extension_item = fun state item ->
   emit_shell_token_stream
     state
-    (fun ~fn -> iter_fold Ast.ExtensionItem.fold_shell_token item ~fn)
+    (fun ~fn ->
+      iter_fold Ast.ExtensionItem.fold_shell_token item ~fn)
 
 and render_attribute_item_suffix = fun state item ->
   (
@@ -9336,14 +9543,16 @@ and render_attribute_item_suffix = fun state item ->
 
 and collect_signature_item_attribute_suffixes = fun item ->
   let attributes = Vector.with_capacity ~size:(Ast.SignatureItem.attribute_suffix_count item) in
-  iter_fold Ast.SignatureItem.fold_attribute_suffix
+  iter_fold
+    Ast.SignatureItem.fold_attribute_suffix
     item
     ~fn:(fun attribute -> Vector.push attributes ~value:attribute);
   attributes
 
 and collect_structure_item_attribute_suffixes = fun item ->
   let attributes = Vector.with_capacity ~size:(Ast.StructureItem.attribute_suffix_count item) in
-  iter_fold Ast.StructureItem.fold_attribute_suffix
+  iter_fold
+    Ast.StructureItem.fold_attribute_suffix
     item
     ~fn:(fun attribute -> Vector.push attributes ~value:attribute);
   attributes
@@ -9419,7 +9628,8 @@ and signature_item_leading_docstring_count = fun item ->
   match Ast.Node.first_descendant_token (Ast.SignatureItem.as_node item) with
   | Some token ->
       let count = ref 0 in
-      iter_fold Ast.Token.fold_leading_trivia_item
+      iter_fold
+        Ast.Token.fold_leading_trivia_item
         token
         ~fn:(
           function
@@ -9435,7 +9645,8 @@ and signature_item_first_leading_docstring_is_section = fun item ->
   | Some token ->
       let seen_docstring = ref false in
       let first_is_section = ref false in
-      iter_fold Ast.Token.fold_leading_trivia_item
+      iter_fold
+        Ast.Token.fold_leading_trivia_item
         token
         ~fn:(
           function
@@ -9535,10 +9746,7 @@ and signature_item_should_compact_leading_section = fun previous item ->
   && signature_item_first_leading_docstring_is_section item
 
 and render_signature_item = fun
-  ?(drop_initial_docstring = false)
-  ?(compact_final_section_docstring = false)
-  state
-  item ->
+  ?(drop_initial_docstring = false) ?(compact_final_section_docstring = false) state item ->
   emit_top_level_leading
     ~drop_initial_docstring
     ~compact_final_section_docstring

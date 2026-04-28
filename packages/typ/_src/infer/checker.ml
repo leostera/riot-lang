@@ -379,13 +379,7 @@ let canonicalize_type_decl_in_env = fun (state: state) env (type_decl: FileSumma
   State.canonicalize_type_decl_with_named_type_head resolve_named_type_head type_decl
 
 let constructor_bindings = fun
-  (state: state)
-  env
-  ~name
-  ~scheme
-  ~provenance
-  ~constructor_id
-  ~inline_record_labels ->
+  (state: state) env ~name ~scheme ~provenance ~constructor_id ~inline_record_labels ->
   let visible_types = state.visible_types in
   let scheme = canonicalize_scheme_in_env state env scheme in
   let inline_record_labels =
@@ -432,9 +426,7 @@ let exception_bindings = fun (state: state) env (exception_item: ItemTree.except
     ~inline_record_labels:None
 
 let extension_constructor_bindings = fun
-  (state: state)
-  env
-  (extension_item: ItemTree.extension_constructor_item) ->
+  (state: state) env (extension_item: ItemTree.extension_constructor_item) ->
   constructor_bindings
     state
     env
@@ -448,9 +440,7 @@ let extension_constructor_bindings = fun
     ~inline_record_labels:extension_item.inline_record_labels
 
 let declared_value_bindings = fun
-  (state: state)
-  env
-  (declared_value_item: ItemTree.declared_value_item) ->
+  (state: state) env (declared_value_item: ItemTree.declared_value_item) ->
   Env.singleton
     ~make_id:(fun path -> fresh_binding_ident state (binding_name_of_path path))
     ~name:declared_value_item.value_name
@@ -921,9 +911,7 @@ let instantiate_named_type_decl = fun (state: state) (type_decl: FileSummary.typ
   )
 
 let instantiate_poly_variant_payload = fun
-  (state: state)
-  mapping
-  (payload_type: TypeRepr.t option) ->
+  (state: state) mapping (payload_type: TypeRepr.t option) ->
   payload_type
   |> Option.map (fun payload_type -> substitute_type_vars state payload_type mapping)
 
@@ -1280,10 +1268,7 @@ type instantiated_constructor_entry = {
 }
 
 let instantiate_constructor_entry = fun
-  ?(pattern_mode = false)
-  (state: state)
-  env
-  constructor_entry ->
+  ?(pattern_mode = false) (state: state) env constructor_entry ->
   let scheme =
     canonicalize_scheme_in_env state env (Env.Constructor_env.scheme constructor_entry)
   in
@@ -1462,10 +1447,7 @@ let supported_coverage_constructors_for_type = fun (state: state) ty ->
   | TypeRepr.Hole _ -> None
 
 let supported_constructor_for_pattern = fun
-  (state: state)
-  expected_ty
-  constructor_name
-  argument_count ->
+  (state: state) expected_ty constructor_name argument_count ->
   Option.and_then
     (supported_coverage_constructors_for_type state expected_ty)
     (fun constructors ->
@@ -2071,11 +2053,7 @@ let instantiate_package_signature = fun (_state: state) (signature: TypeRepr.pac
   signature
 
 let check_module_pack_against_signature = fun
-  (state: state)
-  env
-  ~origin
-  module_path
-  ((signature: TypeRepr.package_signature)) ->
+  (state: state) env ~origin module_path (signature: TypeRepr.package_signature) ->
   let signature = instantiate_package_signature state signature in
   match lookup_module_scope state env module_path with
   | Some scope ->
@@ -2112,8 +2090,7 @@ let check_module_pack_against_signature = fun
         })
 
 let local_module_pack_binding_names = fun
-  (state: state)
-  (local_scope: BodyArena.local_module_scope) ->
+  (state: state) (local_scope: BodyArena.local_module_scope) ->
   local_scope.binding_groups
   |> List.concat_map
     (fun (group: BodyArena.local_module_binding_group) ->
@@ -2592,13 +2569,13 @@ let record_expr_trace = fun (state: state) expr_id origin_id env_before inferred
     | _ -> None
   in
   if state.config.capture_traces then
-    state.expr_traces <- ({
+    state.expr_traces <- (({
       Check_result.expr_id;
       origin_id;
       env_before = Env.render env_before;
       resolved_binding;
       inferred_type;
-    }: Check_result.expr_trace) :: state.expr_traces
+    }: Check_result.expr_trace)) :: state.expr_traces
 
 let binding_ref_of_binding = fun binding ->
   let provenance =
@@ -2701,11 +2678,7 @@ let analyze_match_coverage = fun (state: state) ~expr_id scrutinee_ty cases ->
   loop [] cases
 
 let rec infer_match_case = fun
-  (state: state)
-  env
-  scrutinee_ty
-  result_ty
-  (case: BodyArena.match_case) ->
+  (state: state) env scrutinee_ty result_ty (case: BodyArena.match_case) ->
   let bindings = bind_pattern state env case.pattern_id scrutinee_ty in
   let case_env = env_with_pattern_bindings env bindings in
   let () =
@@ -2727,11 +2700,7 @@ let rec infer_match_case = fun
     case_ty
 
 and infer_match_case_against = fun
-  (state: state)
-  env
-  scrutinee_ty
-  expected_ty
-  (case: BodyArena.match_case) ->
+  (state: state) env scrutinee_ty expected_ty (case: BodyArena.match_case) ->
   State.with_local_rigid_equations
     state
     (fun () ->
@@ -3808,7 +3777,7 @@ and check_local_module_pack_against_signature = fun
   env
   ~origin
   (local_scope: BodyArena.local_module_scope)
-  ((signature: TypeRepr.package_signature)) ->
+  (signature: TypeRepr.package_signature) ->
   let signature = instantiate_package_signature state signature in
   let local_binding_names = local_module_pack_binding_names state local_scope in
   let local_type_env = Env.of_type_decls local_scope.type_decls in
@@ -3866,10 +3835,7 @@ and infer_binding_group = fun (state: state) env binding_ids ->
     infer_nonrecursive_group state env bindings
 
 and exported_schemes_for_binding = fun
-  annotation_scheme
-  (binding: BodyArena.binding)
-  entries
-  schemes ->
+  annotation_scheme (binding: BodyArena.binding) entries schemes ->
   match (annotation_scheme, binding.name, entries, schemes) with
   | (Some annotation, Some _, [ _ ], [ _ ]) -> [ annotation ]
   | _ -> schemes
@@ -4141,11 +4107,11 @@ let infer_file = fun ~imported_world ~config ~(source:Source.t) file ->
                   | None -> []
                 in
                 let exports_after = Env.render exports_after_env in
-                state.item_traces <- ({
+                state.item_traces <- (({
                   Check_result.item_id = type_item.item_id;
                   binding_names;
                   exports_after;
-                }: Check_result.item_trace) :: state.item_traces
+                }: Check_result.item_trace)) :: state.item_traces
             in
             loop export_state type_decls scope rest
         | ItemTree.Exception exception_item ->
@@ -4178,11 +4144,11 @@ let infer_file = fun ~imported_world ~config ~(source:Source.t) file ->
                   | None -> []
                 in
                 let exports_after = Env.render exports_after_env in
-                state.item_traces <- ({
+                state.item_traces <- (({
                   Check_result.item_id = exception_item.item_id;
                   binding_names;
                   exports_after;
-                }: Check_result.item_trace) :: state.item_traces
+                }: Check_result.item_trace)) :: state.item_traces
             in
             loop export_state type_decls scope rest
         | ItemTree.ExtensionConstructor extension_item ->
@@ -4215,11 +4181,11 @@ let infer_file = fun ~imported_world ~config ~(source:Source.t) file ->
                   | None -> []
                 in
                 let exports_after = Env.render exports_after_env in
-                state.item_traces <- ({
+                state.item_traces <- (({
                   Check_result.item_id = extension_item.item_id;
                   binding_names;
                   exports_after;
-                }: Check_result.item_trace) :: state.item_traces
+                }: Check_result.item_trace)) :: state.item_traces
             in
             loop export_state type_decls scope rest
         | ItemTree.Value value_item ->
@@ -4253,11 +4219,11 @@ let infer_file = fun ~imported_world ~config ~(source:Source.t) file ->
                   | None -> []
                 in
                 let exports_after = Env.render exports_after_env in
-                state.item_traces <- ({
+                state.item_traces <- (({
                   Check_result.item_id = value_item.item_id;
                   binding_names;
                   exports_after;
-                }: Check_result.item_trace) :: state.item_traces
+                }: Check_result.item_trace)) :: state.item_traces
             in
             loop export_state type_decls scope rest
         | ItemTree.DeclaredValue declared_value_item ->
@@ -4293,11 +4259,11 @@ let infer_file = fun ~imported_world ~config ~(source:Source.t) file ->
                   | None -> []
                 in
                 let exports_after = Env.render exports_after_env in
-                state.item_traces <- ({
+                state.item_traces <- (({
                   Check_result.item_id = declared_value_item.item_id;
                   binding_names;
                   exports_after;
-                }: Check_result.item_trace) :: state.item_traces
+                }: Check_result.item_trace)) :: state.item_traces
             in
             loop export_state type_decls scope rest
         | ItemTree.Open open_item ->
@@ -4318,11 +4284,11 @@ let infer_file = fun ~imported_world ~config ~(source:Source.t) file ->
                   Env.export config export_state
                   |> Env.render
                 in
-                state.item_traces <- ({
+                state.item_traces <- (({
                   Check_result.item_id = open_item.item_id;
                   binding_names = [];
                   exports_after;
-                }: Check_result.item_trace) :: state.item_traces
+                }: Check_result.item_trace)) :: state.item_traces
             in
             loop export_state type_decls scope rest
         | ItemTree.Include include_item ->
@@ -4367,11 +4333,11 @@ let infer_file = fun ~imported_world ~config ~(source:Source.t) file ->
                   | None -> []
                 in
                 let exports_after = Env.render exports_after_env in
-                state.item_traces <- ({
+                state.item_traces <- (({
                   Check_result.item_id = include_item.item_id;
                   binding_names;
                   exports_after;
-                }: Check_result.item_trace) :: state.item_traces
+                }: Check_result.item_trace)) :: state.item_traces
             in
             let type_decls = bind_type_decls type_decls introduced_type_decls in
             let type_decls = set_visible_type_decls state type_decls in
@@ -4455,11 +4421,11 @@ let infer_file = fun ~imported_world ~config ~(source:Source.t) file ->
                   | None -> []
                 in
                 let exports_after = Env.render exports_after_env in
-                state.item_traces <- ({
+                state.item_traces <- (({
                   Check_result.item_id = module_alias_item.item_id;
                   binding_names;
                   exports_after;
-                }: Check_result.item_trace) :: state.item_traces
+                }: Check_result.item_trace)) :: state.item_traces
             in
             let type_decls = bind_type_decls type_decls introduced_type_decls in
             let type_decls = set_visible_type_decls state type_decls in
@@ -4471,11 +4437,11 @@ let infer_file = fun ~imported_world ~config ~(source:Source.t) file ->
                   Env.export config export_state
                   |> Env.render
                 in
-                state.item_traces <- ({
+                state.item_traces <- (({
                   Check_result.item_id = unsupported_item.item_id;
                   binding_names = [];
                   exports_after;
-                }: Check_result.item_trace) :: state.item_traces
+                }: Check_result.item_trace)) :: state.item_traces
             in
             loop export_state type_decls scope rest
       )

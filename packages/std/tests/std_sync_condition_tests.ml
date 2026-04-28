@@ -76,7 +76,7 @@ let test_condition_wait_releases_mutex_and_reacquires_after_signal =
               | Ok `Signaler ->
                   saw_signaler.value <- true;
                   collect (remaining - 1)
-              | Ok (`Waiter entered) ->
+              | Ok `Waiter entered ->
                   waiter_entered.value <- Some entered;
                   collect (remaining - 1)
           in
@@ -126,8 +126,8 @@ let test_condition_wait_requires_mutex_ownership =
           | _ -> `skip
         ) with
       | Error _ as err -> err
-      | Ok (`Failed reason) when String.contains reason "mutex wait" -> Ok ()
-      | Ok (`Failed reason) -> Error ("unexpected condition wait failure: " ^ reason)
+      | Ok `Failed reason when String.contains reason "mutex wait" -> Ok ()
+      | Ok `Failed reason -> Error ("unexpected condition wait failure: " ^ reason)
       | Ok `Returned -> Error "expected condition wait without mutex ownership to fail")
 
 let test_condition_broadcast_wakes_all_waiters =

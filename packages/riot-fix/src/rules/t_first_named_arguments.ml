@@ -41,7 +41,8 @@ let parameter_name_is = fun name parameter ->
 let diagnostic_for_binding = fun binding ->
   let has_named_args = ref false in
   let positional = Vector.with_capacity ~size:4 in
-  H.iter_fold Ast.LetBinding.fold_parameter
+  H.iter_fold
+    Ast.LetBinding.fold_parameter
     binding
     ~fn:(fun parameter ->
       if is_named_parameter parameter then

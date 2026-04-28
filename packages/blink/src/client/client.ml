@@ -226,15 +226,7 @@ let budget_remaining = fun client -> Budget.remaining client.budget
 let circuit_state = fun client -> CircuitBreaker.state client.breaker
 
 let make_telemetry = fun
-  client
-  request
-  ~started_at
-  ~attempts
-  ?final_status
-  ?final_error_class
-  ~budget
-  ~breaker
-  () ->
+  client request ~started_at ~attempts ?final_status ?final_error_class ~budget ~breaker () ->
   let completed_at = client.config.now () in
   Telemetry.make
     ~request

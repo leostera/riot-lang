@@ -436,7 +436,7 @@ let run = fun ~config ~on_event ~graph ~execute ->
           ());
       let result_ref = Ref.make () in
       let worker_owner = self () in
-      let worker_fn ~owner ~task:((node, payload)) =
+      let worker_fn ~owner ~task:(node, payload) =
         let handle = Handle.create () in
         let outcome = execute ~graph:handle ~node ~payload in
         let result = {

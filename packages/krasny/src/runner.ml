@@ -10,7 +10,6 @@ let iter_fold = fun fold value ~fn ->
       fn item;
       Syn.Ast.Continue ())
 
-
 type run_mode =
   | Check
   | Verify
@@ -188,7 +187,8 @@ let syntax_hash = fun (result: Syn.Parser.parse_result) ->
   in
   let tuple_node_has_paren_token node =
     let found = ref false in
-    iter_fold Ast.Node.fold_child
+    iter_fold
+      Ast.Node.fold_child
       node
       ~fn:(fun child ->
         match child with
@@ -204,7 +204,8 @@ let syntax_hash = fun (result: Syn.Parser.parse_result) ->
   let redundant_paren_child node =
     let meaningful_child = ref None in
     let meaningful_count = ref 0 in
-    iter_fold Ast.Node.fold_child
+    iter_fold
+      Ast.Node.fold_child
       node
       ~fn:(fun child ->
         match child with
@@ -231,7 +232,8 @@ let syntax_hash = fun (result: Syn.Parser.parse_result) ->
   let trailing_sequence_child node =
     let meaningful_child = ref None in
     let meaningful_count = ref 0 in
-    iter_fold Ast.Node.fold_child
+    iter_fold
+      Ast.Node.fold_child
       node
       ~fn:(fun child ->
         match child with
@@ -291,7 +293,8 @@ let syntax_hash = fun (result: Syn.Parser.parse_result) ->
     IO.Buffer.add_string buffer (Ast.Token.text token);
     IO.Buffer.add_string buffer ")"
   and write_redundant_paren node =
-    iter_fold Ast.Node.fold_child
+    iter_fold
+      Ast.Node.fold_child
       node
       ~fn:(fun child ->
         match child with
@@ -303,7 +306,8 @@ let syntax_hash = fun (result: Syn.Parser.parse_result) ->
         | Syn.SyntaxTree.Node _ -> write_child ~parent_kind:(Some Kind.PAREN_EXPR) child
         | Syn.SyntaxTree.Missing _ -> ())
   and write_trailing_sequence node =
-    iter_fold Ast.Node.fold_child
+    iter_fold
+      Ast.Node.fold_child
       node
       ~fn:(fun child ->
         match child with
@@ -348,7 +352,7 @@ let syntax_hash = fun (result: Syn.Parser.parse_result) ->
           | None -> write_node node
         else
           write_node node
-    | Syn.SyntaxTree.Token id -> write_token ({ tree = result.tree; id }: Ast.Token.t)
+    | Syn.SyntaxTree.Token id -> write_token (({ tree = result.tree; id }: Ast.Token.t))
     | Syn.SyntaxTree.Missing missing ->
         IO.Buffer.add_string buffer "M(";
         write_kind missing.kind;
@@ -711,10 +715,7 @@ let run_format_streaming = fun ?concurrency ?should_ignore ~roots ~on_result () 
     ()
 
 let run_batch = fun
-  ~mode
-  ?(concurrency = Thread.available_parallelism)
-  ?(should_ignore = fun _ -> false)
-  files ->
+  ~mode ?(concurrency = Thread.available_parallelism) ?(should_ignore = fun _ -> false) files ->
   let concurrency = max 1 concurrency in
   let start = Time.Instant.now () in
   let check_fn =

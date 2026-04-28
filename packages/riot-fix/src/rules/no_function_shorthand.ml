@@ -47,7 +47,7 @@ let make_diagnostic = fun ctx expr replacement ->
 
 let diagnostic_for_expr = fun ctx expr ->
   match Ast.Expr.view expr with
-  | Ast.Expr.Fun { body = Ast.Expr.Body_cases _ } -> (
+  | Ast.Expr.Fun { body = Ast.Expr.Body_cases _; _ } -> (
       match replacement_text ctx expr with
       | Some replacement -> Some (make_diagnostic ctx expr replacement)
       | None -> None

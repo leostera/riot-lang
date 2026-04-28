@@ -38,8 +38,7 @@ module Internal = struct
       `rgb (red, green, blue)
 
     let distance_squared = fun
-      (left_red, left_green, left_blue)
-      (right_red, right_green, right_blue) ->
+      (left_red, left_green, left_blue) (right_red, right_green, right_blue) ->
       let diff_red = left_red - right_red in
       let diff_green = left_green - right_green in
       let diff_blue = left_blue - right_blue in
@@ -432,8 +431,7 @@ end
 
 module LUV = struct
   let distance = fun
-    (`luv (left_lightness, left_u, left_v))
-    (`luv (right_lightness, right_u, right_v)) ->
+    (`luv (left_lightness, left_u, left_v)) (`luv (right_lightness, right_u, right_v)) ->
     let diff_lightness = right_lightness -. left_lightness in
     let diff_u = right_u -. left_u in
     let diff_v = right_v -. left_v in

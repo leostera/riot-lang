@@ -468,6 +468,22 @@ let nth_child_node_matching = fun (node: node) target ~matches ->
     );
   !found
 
+let last_child_node_matching = fun (node: node) ~matches ->
+  let found = ref None in
+  Syntax_tree.for_each_child
+    node.tree
+    (syntax_node node)
+    ~fn:(
+      function
+      | Syntax_tree.Node id ->
+          let child = wrap_node node.tree id in
+          if node_matches child matches then
+            found := Some child
+      | Syntax_tree.Token _
+      | Syntax_tree.Missing _ -> ()
+    );
+  !found
+
 let for_each_child_node_matching = fun (node: node) ~matches ~fn ->
   Syntax_tree.for_each_child
     node.tree
@@ -667,6 +683,8 @@ let nth_expr_child = fun (node: node) target ->
     node
     target
     ~matches:is_expr_kind
+
+let last_expr_child = fun (node: node) -> last_child_node_matching node ~matches:is_expr_kind
 
 let first_pattern_child = fun (node: node) ->
   first_child_node_matching
@@ -2350,7 +2368,11 @@ module Expr: sig
         else_branch: t option;
       }
     | Match of { scrutinee: t; first_case: match_case }
-    | Fun of { body: fun_body }
+    | Fun of {
+        parameters: parameter Vector.t;
+        return_annotation: type_expr option;
+        body: fun_body;
+      }
     | Try of { body: t; first_case: match_case }
     | While of { condition: t; body: t }
     | For of { pattern: pattern; start_: t; stop: t; body: t }
@@ -2443,7 +2465,11 @@ end = struct
         else_branch: t option;
       }
     | Match of { scrutinee: t; first_case: match_case }
-    | Fun of { body: fun_body }
+    | Fun of {
+        parameters: parameter Vector.t;
+        return_annotation: type_expr option;
+        body: fun_body;
+      }
     | Try of { body: t; first_case: match_case }
     | While of { condition: t; body: t }
     | For of { pattern: pattern; start_: t; stop: t; body: t }
@@ -2587,6 +2613,23 @@ end = struct
         Int.(items > 0 && separators >= items)
       )
 
+  let fun_parameters = fun expr ->
+    let parameters = Vector.with_capacity ~size:(Node.child_count expr) in
+    for_each_child_node_matching
+      expr
+      ~matches:is_parameter_node_kind
+      ~fn:(fun parameter ->
+        ignore
+          (
+            fold_parameter_spine_node
+              parameter
+              ~acc:()
+              ~fn:(fun parameter () ->
+                Vector.push parameters ~value:parameter;
+                Continue ())
+          ));
+    parameters
+
   let rec view = fun (expr: expr) ->
     match Node.kind expr with
     | Syntax_kind.PAREN_EXPR -> (
@@ -2641,13 +2684,23 @@ end = struct
         | _ -> Unknown expr
       )
     | Syntax_kind.FUN_EXPR -> (
-        match normalize_expr_option (nth_expr_child expr 0) with
-        | Some body -> Fun { body = Body_expr body }
+        match normalize_expr_option (last_expr_child expr) with
+        | Some body ->
+            Fun {
+              parameters = fun_parameters expr;
+              return_annotation = normalize_type_expr_option (first_type_expr_child expr);
+              body = Body_expr body;
+            }
         | None -> Unknown expr
       )
     | Syntax_kind.FUNCTION_EXPR -> (
         match first_match_case_child expr with
-        | Some first_case -> Fun { body = Body_cases { first_case } }
+        | Some first_case ->
+            Fun {
+              parameters = Vector.with_capacity ~size:0;
+              return_annotation = None;
+              body = Body_cases { first_case };
+            }
         | None -> Unknown expr
       )
     | Syntax_kind.TRY_EXPR -> (
@@ -4824,10 +4877,13 @@ end = struct
               seen_binding_pattern := true);
     !found
 
-  let return_type_annotation = direct_binding_return_annotation
+  let return_type_annotation = fun binding ->
+    match direct_binding_return_annotation binding with
+    | Some annotation -> Some annotation
+    | None -> first_type_expr_child binding
 
   let type_annotation = fun (binding: let_binding) ->
-    match direct_binding_return_annotation binding with
+    match return_type_annotation binding with
     | Some annotation -> Some annotation
     | None -> (
         match first_type_expr_child binding with

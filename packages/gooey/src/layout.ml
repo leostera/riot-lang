@@ -265,9 +265,7 @@ let text_width_constraint = fun (constraints: node_constraints) (style: Style.t)
   Math.option_subtract width_hint (Box_model.horizontal_inset style)
 
 let rec measure_node: layout_node -> node_constraints -> Super.Config.t -> unit = fun
-  node
-  constraints
-  config ->
+  node constraints config ->
   match node.element with
   | Element.Text { content; _ } -> measure_text_node node constraints config content
   | Element.Empty -> measure_intrinsic_node node constraints zero_viewport
@@ -283,9 +281,7 @@ let rec measure_node: layout_node -> node_constraints -> Super.Config.t -> unit 
   | Element.Container _ -> measure_container node constraints config
 
 and measure_intrinsic_node: layout_node -> node_constraints -> Viewport.t -> unit = fun
-  node
-  constraints
-  intrinsic ->
+  node constraints intrinsic ->
   let style = node.style in
   let width =
     resolve_axis_size
@@ -308,10 +304,7 @@ and measure_intrinsic_node: layout_node -> node_constraints -> Viewport.t -> uni
   node.computed_size <- Viewport.make ~width ~height
 
 and measure_text_node: layout_node -> node_constraints -> Super.Config.t -> string -> unit = fun
-  node
-  constraints
-  config
-  content ->
+  node constraints config content ->
   let style = node.style in
   let measurement =
     config.Super.Config.text_measurer
@@ -326,9 +319,7 @@ and measure_text_node: layout_node -> node_constraints -> Super.Config.t -> stri
   measure_intrinsic_node node constraints measurement.size
 
 and measure_container: layout_node -> node_constraints -> Super.Config.t -> unit = fun
-  node
-  constraints
-  config ->
+  node constraints config ->
   let style = node.style in
   let width_probe =
     match constraints.forced_width with
@@ -764,9 +755,7 @@ let push_text = fun node commands ~clip_stack content ->
     loop 0 measurement.lines
 
 let rec generate_commands: layout_node -> clipped_command Vector.t -> Geometry.Rect.t list -> unit = fun
-  node
-  commands
-  clip_stack ->
+  node commands clip_stack ->
   let child_clip_stack = child_clip_stack node clip_stack in
   push_background node commands ~clip_stack;
   push_border node commands ~clip_stack;

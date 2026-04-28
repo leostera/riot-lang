@@ -39,7 +39,10 @@ let is_reraise_body = fun name expr ->
 
 let single_match_case = fun expr ->
   let cases = Vector.with_capacity ~size:1 in
-  H.iter_fold Ast.Expr.fold_match_case expr ~fn:(fun match_case -> Vector.push cases ~value:match_case);
+  H.iter_fold
+    Ast.Expr.fold_match_case
+    expr
+    ~fn:(fun match_case -> Vector.push cases ~value:match_case);
   if Int.equal (Vector.length cases) 1 then
     Vector.get cases ~at:0
   else
@@ -62,7 +65,9 @@ let diagnostic_for_expr = fun expr ->
                     ~fix:(Fix.make
                       ~title:"Remove redundant reraise handler"
                       ~operations:[
-                        Fix.replace_node ~target:(Ast.Expr.as_node expr) ~replacement:(Ast.Expr.as_node body);
+                        Fix.replace_node
+                          ~target:(Ast.Expr.as_node expr)
+                          ~replacement:(Ast.Expr.as_node body);
                       ])
                     ())
               | _ -> None

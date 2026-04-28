@@ -239,8 +239,7 @@ let validate_publish_metadata = fun ~(package:Riot_model.Package.t) ->
     )
 
 let validate_runtime_dependency = fun
-  ~(package:Riot_model.Package.t)
-  (dep: Riot_model.Package.dependency) ->
+  ~(package:Riot_model.Package.t) (dep: Riot_model.Package.dependency) ->
   let package_name = Riot_model.Package_name.to_string package.name in
   let dependency_name = Riot_model.Package_name.to_string dep.name in
   match dep.source with
@@ -284,9 +283,7 @@ let validate_runtime_dependencies = fun ~(package:Riot_model.Package.t) ->
   loop package.dependencies
 
 let validate_registry_dependencies = fun
-  ~registry
-  ~publishing_workspace_packages
-  ~(package:Riot_model.Package.t) ->
+  ~registry ~publishing_workspace_packages ~(package:Riot_model.Package.t) ->
   let package_name = Riot_model.Package_name.to_string package.name in
   let rec loop = function
     | [] ->
@@ -469,10 +466,7 @@ let prepare_publish_artifact = fun ~target_dir_root (plan: publish_plan) ->
       }
 
 let prepare_publish = fun
-  ~registry
-  ~target_dir_root
-  ~publishing_workspace_packages
-  ~(package:Riot_model.Package.t) ->
+  ~registry ~target_dir_root ~publishing_workspace_packages ~(package:Riot_model.Package.t) ->
   match plan_publish ~registry ~publishing_workspace_packages ~package with
   | Error _ as err -> err
   | Ok plan -> prepare_publish_artifact ~target_dir_root plan

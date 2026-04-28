@@ -2,7 +2,9 @@ open Std
 
 let fix_trace_enabled = fun () ->
   match Env.get Env.String ~var:"RIOT_FIX_TRACE" with
-  | Some ("1" | "true" | "yes") -> true
+  | Some ("1"
+  | "true"
+  | "yes") -> true
   | _ -> false
 
 let trace_fix = fun message ->
@@ -75,13 +77,7 @@ let run_result = fun ~mode ~scope ~limit ~files ->
     ~on_result:(fun _ -> ())
 
 let run_with_coordinator = fun
-  ?(on_event = Types.no_event)
-  ~output_mode
-  ~mode
-  ~scope
-  ~limit
-  ~roots
-  () ->
+  ?(on_event = Types.no_event) ~output_mode ~mode ~scope ~limit ~roots () ->
   let concurrency = recommended_concurrency ~limit in
   on_event (Types.Start { mode; concurrency });
   (

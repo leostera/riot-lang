@@ -70,9 +70,7 @@ let make = fun fn eff ->
   Suspended (k, eff)
 
 let run: type a. consume_reduction:(unit -> bool) -> perform:perform -> a t -> a t option = fun
-  ~consume_reduction
-  ~perform
-  t ->
+  ~consume_reduction ~perform t ->
   let exception Yield of a t in
   let exception Unwind in
   let t = Cell.create t in

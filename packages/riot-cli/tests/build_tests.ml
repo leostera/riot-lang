@@ -39,11 +39,7 @@ let empty_sources =
   }
 
 let make_package = fun
-  ?(workspace_member = true)
-  ?version
-  ?(sources = empty_sources)
-  ?(binaries = [])
-  name ->
+  ?(workspace_member = true) ?version ?(sources = empty_sources) ?(binaries = []) name ->
   let relative_path =
     if workspace_member then
       Path.v name

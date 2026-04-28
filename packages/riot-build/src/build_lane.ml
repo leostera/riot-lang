@@ -119,8 +119,7 @@ let make_lane_plan = fun lane_target workspace scope ~dev_artifacts ->
   |> Result.map_err ~fn:(fun error -> PlanningFailed error)
 
 let release_on_error: 'value. Build_lock.t -> ('value, error) result -> ('value, error) result = fun
-  lock
-  result ->
+  lock result ->
   match result with
   | Ok value -> Ok value
   | Error _ as error ->

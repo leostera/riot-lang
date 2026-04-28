@@ -51,7 +51,7 @@ type customer = { user: user; location: point; status: status }
 
 let user_gen =
   Generator.map
-    (fun ((id, name)) -> { id; name })
+    (fun (id, name) -> { id; name })
     (Generator.pair (Generator.int_range 0 1_000) Generator.string)
 
 let user_arb =
@@ -61,7 +61,7 @@ let user_arb =
 
 let point_gen =
   Generator.map
-    (fun ((x, y)) -> { x; y })
+    (fun (x, y) -> { x; y })
     (Generator.pair (Generator.int_range (-100) 100) (Generator.int_range (-100) 100))
 
 let point_arb =
@@ -71,7 +71,7 @@ let point_arb =
 
 let person_gen =
   Generator.map
-    (fun ((age, email, active)) -> { age; email; active })
+    (fun (age, email, active) -> { age; email; active })
     (Generator.triple
       (Generator.int_range 0 120)
       Generator.string
@@ -95,12 +95,12 @@ let event_gen =
   Generator.one_of
     [
       Generator.map
-        (fun ((x, y)) -> Click (x, y))
+        (fun (x, y) -> Click (x, y))
         (Generator.pair (Generator.int_range 0 1_000) (Generator.int_range 0 1_000));
       Generator.map (fun c -> KeyPress c) Generator.char;
       Generator.map (fun n -> Scroll n) (Generator.int_range (-100) 100);
       Generator.map
-        (fun ((w, h)) -> Resize (w, h))
+        (fun (w, h) -> Resize (w, h))
         (Generator.pair (Generator.int_range 0 2_000) (Generator.int_range 0 2_000));
     ]
 
@@ -141,7 +141,7 @@ let status_arb =
 
 let customer_gen =
   Generator.map
-    (fun ((user, location, status)) -> { user; location; status })
+    (fun (user, location, status) -> { user; location; status })
     (Generator.triple user_gen point_gen status_gen)
 
 let customer_arb =
@@ -164,7 +164,7 @@ let user_key_insert_get_prop =
   property
     "record keys (user): insert then get"
     Arbitrary.(pair user_arb int)
-    (fun ((user, value)) ->
+    (fun (user, value) ->
       let map = Swisstable.create () in
       let _ = Swisstable.insert map user value in
       match Swisstable.get map user with
@@ -182,14 +182,14 @@ let user_key_multiple_prop =
       (* Insert all users *)
       List.for_each
         pairs
-        ~fn:(fun ((user, value)) ->
+        ~fn:(fun (user, value) ->
           let _ = Swisstable.insert map user value in
           ());
       (* Build reference to handle duplicates *)
       let ref_map = Collections.HashMap.create () in
       List.for_each
         pairs
-        ~fn:(fun ((user, value)) ->
+        ~fn:(fun (user, value) ->
           Collections.HashMap.insert ref_map ~key:user ~value
           |> ignore);
       (* Verify all accessible *)
@@ -209,7 +209,7 @@ let point_key_prop =
   property
     "record keys (point): insert then get"
     Arbitrary.(pair point_arb string)
-    (fun ((point, value)) ->
+    (fun (point, value) ->
       let map = Swisstable.create () in
       let _ = Swisstable.insert map point value in
       match Swisstable.get map point with
@@ -222,7 +222,7 @@ let person_key_prop =
   property
     "record keys (person): all fields matter"
     Arbitrary.(triple person_arb int int)
-    (fun ((person, val1, val2)) ->
+    (fun (person, val1, val2) ->
       let map = Swisstable.create () in
       (* Insert original person *)
       let _ = Swisstable.insert map person val1 in
@@ -242,7 +242,7 @@ let event_key_prop =
   property
     "variant keys (event): insert then get"
     Arbitrary.(pair event_arb int)
-    (fun ((event, value)) ->
+    (fun (event, value) ->
       let map = Swisstable.create () in
       let _ = Swisstable.insert map event value in
       match Swisstable.get map event with
@@ -261,7 +261,7 @@ let event_key_multiple_prop =
       (* Insert all events *)
       List.for_each
         pairs
-        ~fn:(fun ((event, value)) ->
+        ~fn:(fun (event, value) ->
           let _ = Swisstable.insert map event value in
           let _ = Collections.HashMap.insert ref_map ~key:event ~value in
           ());
@@ -282,7 +282,7 @@ let status_key_prop =
   property
     "variant keys (status): insert then get"
     Arbitrary.(pair status_arb string)
-    (fun ((status, value)) ->
+    (fun (status, value) ->
       let map = Swisstable.create () in
       let _ = Swisstable.insert map status value in
       match Swisstable.get map status with
@@ -297,7 +297,7 @@ let tuple_int_int_prop =
   property
     "tuple keys (int * int): insert then get"
     Arbitrary.(pair (pair int int) string)
-    (fun ((key, value)) ->
+    (fun (key, value) ->
       let map = Swisstable.create () in
       let _ = Swisstable.insert map key value in
       match Swisstable.get map key with
@@ -310,7 +310,7 @@ let tuple_triple_prop =
   property
     "tuple keys (int * string * bool): insert then get"
     Arbitrary.(pair (triple int string bool) int)
-    (fun ((key, value)) ->
+    (fun (key, value) ->
       let map = Swisstable.create () in
       let _ = Swisstable.insert map key value in
       match Swisstable.get map key with
@@ -323,7 +323,7 @@ let tuple_user_int_prop =
   property
     "tuple keys (user * int): composite key"
     Arbitrary.(pair (pair user_arb int) string)
-    (fun ((key, value)) ->
+    (fun (key, value) ->
       let map = Swisstable.create () in
       let _ = Swisstable.insert map key value in
       match Swisstable.get map key with
@@ -338,7 +338,7 @@ let customer_key_prop =
   property
     "nested keys (customer): insert then get"
     Arbitrary.(pair customer_arb int)
-    (fun ((customer, value)) ->
+    (fun (customer, value) ->
       let map = Swisstable.create () in
       let _ = Swisstable.insert map customer value in
       match Swisstable.get map customer with
@@ -357,7 +357,7 @@ let customer_key_multiple_prop =
       (* Insert all *)
       List.for_each
         pairs
-        ~fn:(fun ((customer, value)) ->
+        ~fn:(fun (customer, value) ->
           let _ = Swisstable.insert map customer value in
           let _ = Collections.HashMap.insert ref_map ~key:customer ~value in
           ());
@@ -385,7 +385,7 @@ let collision_point_prop =
       let small_pairs =
         List.map
           pairs
-          ~fn:(fun ((k, v)) ->
+          ~fn:(fun (k, v) ->
             let x =
               if k < 0 then
                 -k mod 10
@@ -399,7 +399,7 @@ let collision_point_prop =
       (* Insert all *)
       List.for_each
         small_pairs
-        ~fn:(fun ((p, v)) ->
+        ~fn:(fun (p, v) ->
           let _ = Swisstable.insert map p v in
           let _ = Collections.HashMap.insert ref_map ~key:p ~value:v in
           ());
@@ -422,7 +422,7 @@ let record_mixed_ops_prop =
   property
     "record keys: insert/remove/reinsert cycle"
     Arbitrary.(pair user_arb int)
-    (fun ((user, value)) ->
+    (fun (user, value) ->
       let map = Swisstable.create () in
       (* Insert *)
       let r1 = Swisstable.insert map user value in
@@ -442,7 +442,7 @@ let variant_overwrite_prop =
   property
     "variant keys: overwrite behavior"
     Arbitrary.(triple event_arb int int)
-    (fun ((event, val1, val2)) ->
+    (fun (event, val1, val2) ->
       let map = Swisstable.create () in
       (* Insert first value *)
       let r1 = Swisstable.insert map event val1 in

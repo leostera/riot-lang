@@ -409,7 +409,7 @@ let vector = fun elem_shrinker ->
 let hashmap = fun key_shrinker value_shrinker ->
   fun hm ->
     let lst = HashMap.to_list hm in
-    let entry_shrinker ((key, value)) =
+    let entry_shrinker (key, value) =
       let shrunk_keys = List.map (key_shrinker key) ~fn:(fun key' -> (key', value)) in
       let shrunk_values = List.map (value_shrinker value) ~fn:(fun value' -> (key, value')) in
       shrunk_keys @ shrunk_values
@@ -455,13 +455,13 @@ let heap = fun elem_shrinker ->
 (* === TUPLE SHRINKERS === *)
 
 let pair = fun shrinker_a shrinker_b ->
-  fun ((a, b)) ->
+  fun (a, b) ->
     let shrunk_a = List.map (shrinker_a a) ~fn:(fun a' -> (a', b)) in
     let shrunk_b = List.map (shrinker_b b) ~fn:(fun b' -> (a, b')) in
     shrunk_a @ shrunk_b
 
 let triple = fun shrinker_a shrinker_b shrinker_c ->
-  fun ((a, b, c)) ->
+  fun (a, b, c) ->
     let shrunk_a = List.map (shrinker_a a) ~fn:(fun a' -> (a', b, c)) in
     let shrunk_b = List.map (shrinker_b b) ~fn:(fun b' -> (a, b', c)) in
     let shrunk_c = List.map (shrinker_c c) ~fn:(fun c' -> (a, b, c')) in

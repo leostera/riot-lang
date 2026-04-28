@@ -187,7 +187,7 @@ let sample_decode =
             | Some nickname -> nickname
             | None -> None
           in
-          ({
+          (({
             name;
             age;
             active;
@@ -198,7 +198,7 @@ let sample_decode =
             scores;
             nickname;
             status;
-          }: sample)
+          }: sample))
       | _ -> De.missing_field ())
 
 let sample_encode =
@@ -281,7 +281,7 @@ let expect_equal = fun ~expected ~actual ~message ->
   else
     Error message
 
-let sample_value: sample = ({
+let sample_value: sample = (({
   name = "Monkey D. Luffy";
   age = 19;
   active = true;
@@ -292,9 +292,9 @@ let sample_value: sample = ({
   scores = [|1; 2|];
   nickname = None;
   status = Draft;
-}: sample)
+}: sample))
 
-let sample_value_with_nickname: sample = ({
+let sample_value_with_nickname: sample = (({
   name = "Monkey D. Luffy";
   age = 19;
   active = true;
@@ -305,7 +305,7 @@ let sample_value_with_nickname: sample = ({
   scores = [|1; 2|];
   nickname = Some "strawhat";
   status = Draft;
-}: sample)
+}: sample))
 
 let encoded_sample_without_nickname =
   "name=Monkey+D.+Luffy&age=19&active=true&small=12&big=345&ratio=1.25&tags=riot&tags=serde+ml&scores=1&scores=2&status=Draft"
@@ -373,7 +373,7 @@ let test_writes_to_writer = fun _ctx ->
 let test_rejects_nested_record_values = fun _ctx ->
   let value = { title = "Sunny"; address = { city = "Wano" } } in
   match Serde_urlencoded.to_string nested_encode value with
-  | Error (`Msg message) when String.contains message "record" -> Ok ()
+  | Error `Msg message when String.contains message "record" -> Ok ()
   | Error err ->
       Error ("expected nested record encode to fail clearly, got " ^ Serde.Error.to_string err)
   | Ok encoded -> Error ("expected nested record encode to fail, got " ^ encoded)
@@ -390,14 +390,14 @@ let test_rejects_payload_variant_values = fun _ctx ->
         )
     )
     (Dog "Chouchou") with
-  | Error (`Msg message) when String.contains message "payload variant" -> Ok ()
+  | Error `Msg message when String.contains message "payload variant" -> Ok ()
   | Error err ->
       Error ("expected payload variant encode to fail clearly, got " ^ Serde.Error.to_string err)
   | Ok encoded -> Error ("expected payload variant encode to fail, got " ^ encoded)
 
 let test_rejects_top_level_scalars = fun _ctx ->
   match Serde_urlencoded.to_string Ser.int 42 with
-  | Error (`Msg message) when String.contains message "top-level" -> Ok ()
+  | Error `Msg message when String.contains message "top-level" -> Ok ()
   | Error err ->
       Error ("expected top-level scalar encode to fail clearly, got " ^ Serde.Error.to_string err)
   | Ok encoded -> Error ("expected top-level scalar encode to fail, got " ^ encoded)

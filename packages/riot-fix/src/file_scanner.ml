@@ -14,11 +14,11 @@ type state = {
 }
 
 let create_many = fun
-  ~roots
-  ?(exclude_patterns = ["."; "_build"; "target"])
-  ?(should_ignore = fun _ -> false)
-  () ->
-  { roots; exclude_patterns; should_ignore }
+  ~roots ?(exclude_patterns = ["."; "_build"; "target"]) ?(should_ignore = fun _ -> false) () -> {
+  roots;
+  exclude_patterns;
+  should_ignore;
+}
 
 let create = fun ~root ?exclude_patterns ?should_ignore () ->
   create_many

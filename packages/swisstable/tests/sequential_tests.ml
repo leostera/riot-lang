@@ -35,7 +35,7 @@ let operation_gen =
       (
         40,
         Generator.map
-          (fun ((k, v)) -> Insert (k, v))
+          (fun (k, v) -> Insert (k, v))
           (Generator.pair (Generator.int_range 0 50) Arbitrary.int.gen)
       );
       (30, Generator.map (fun k -> Get k) (Generator.int_range 0 50));
@@ -119,7 +119,7 @@ let random_sequence_prop =
       if not (Swisstable.len swiss = Collections.HashMap.length hash) then
         fail "Final lengths differ";
       let swiss_list = Swisstable.to_list swiss in
-      List.for_all (fun ((k, v)) -> Collections.HashMap.get hash ~key:k = Some v) swiss_list)
+      List.for_all (fun (k, v) -> Collections.HashMap.get hash ~key:k = Some v) swiss_list)
 
 (* Property 2: Insert-heavy sequence *)
 
@@ -131,9 +131,9 @@ let insert_heavy_sequence_prop =
       let swiss = Swisstable.create () in
       let hash = Collections.HashMap.create () in
       (* Insert all *)
-      List.for_each pairs ~fn:(fun ((k, v)) -> apply_operation (Insert (k, v)) swiss hash);
+      List.for_each pairs ~fn:(fun (k, v) -> apply_operation (Insert (k, v)) swiss hash);
       (* Get all *)
-      List.for_each pairs ~fn:(fun ((k, _)) -> apply_operation (Get k) swiss hash);
+      List.for_each pairs ~fn:(fun (k, _) -> apply_operation (Get k) swiss hash);
       true)
 
 (* Property 3: Remove-heavy sequence *)
@@ -146,9 +146,9 @@ let remove_heavy_sequence_prop =
       let swiss = Swisstable.create () in
       let hash = Collections.HashMap.create () in
       (* Insert all *)
-      List.for_each pairs ~fn:(fun ((k, v)) -> apply_operation (Insert (k, v)) swiss hash);
+      List.for_each pairs ~fn:(fun (k, v) -> apply_operation (Insert (k, v)) swiss hash);
       (* Remove all *)
-      List.for_each pairs ~fn:(fun ((k, _)) -> apply_operation (Remove k) swiss hash);
+      List.for_each pairs ~fn:(fun (k, _) -> apply_operation (Remove k) swiss hash);
       (* Both should be empty *)
       Swisstable.is_empty swiss && Collections.HashMap.is_empty hash)
 
@@ -183,18 +183,18 @@ let clear_interleaved_prop =
     (Arbitrary.pair
       (bounded_list_arb 50 Arbitrary.(pair int int))
       (bounded_list_arb 50 Arbitrary.(pair int int)))
-    (fun ((before_clear, after_clear)) ->
+    (fun (before_clear, after_clear) ->
       let swiss = Swisstable.create () in
       let hash = Collections.HashMap.create () in
       (* Insert before clear *)
-      List.for_each before_clear ~fn:(fun ((k, v)) -> apply_operation (Insert (k, v)) swiss hash);
+      List.for_each before_clear ~fn:(fun (k, v) -> apply_operation (Insert (k, v)) swiss hash);
       (* Clear *)
       apply_operation Clear swiss hash;
       (* Insert after clear *)
-      List.for_each after_clear ~fn:(fun ((k, v)) -> apply_operation (Insert (k, v)) swiss hash);
+      List.for_each after_clear ~fn:(fun (k, v) -> apply_operation (Insert (k, v)) swiss hash);
       (* Verify only after_clear entries present *)
       Swisstable.len swiss = Collections.HashMap.length hash && List.for_all
-        (fun ((k, _)) ->
+        (fun (k, _) ->
           let in_swiss = Swisstable.contains_key swiss k in
           let in_hash = Collections.HashMap.contains_key hash k in
           in_swiss = in_hash)
@@ -211,7 +211,7 @@ let contains_checks_prop =
       let hash = Collections.HashMap.create () in
       (* Insert with contains_key checks after each *)
       List.for_all
-        (fun ((k, v)) ->
+        (fun (k, v) ->
           apply_operation (Insert (k, v)) swiss hash;
           let c1 = Swisstable.contains_key swiss k in
           let c2 = Collections.HashMap.contains_key hash k in
@@ -258,13 +258,13 @@ let to_list_invariant_prop =
       (* Insert all *)
       List.for_each
         pairs
-        ~fn:(fun ((k, v)) ->
+        ~fn:(fun (k, v) ->
           let _ = Swisstable.insert swiss k v in
           ());
       (* All entries in to_list should be gettable *)
       let entries = Swisstable.to_list swiss in
       List.for_all
-        (fun ((k, v)) ->
+        (fun (k, v) ->
           match Swisstable.get swiss k with
           | Some v' when v = v' -> true
           | _ ->
@@ -277,7 +277,7 @@ let overwrite_sequence_prop =
   property
     "overwrite sequence: latest value wins"
     (Arbitrary.pair Arbitrary.int (non_empty_bounded_list_arb 20 Arbitrary.int))
-    (fun ((key, values)) ->
+    (fun (key, values) ->
       let swiss = Swisstable.create () in
       let hash = Collections.HashMap.create () in
       (* Insert same key with different values *)

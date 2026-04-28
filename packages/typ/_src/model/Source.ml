@@ -62,15 +62,7 @@ let infer_module_name = fun origin ->
   |> String.capitalize_ascii
 
 let make_prepared = fun
-  ~source_id
-  ~kind
-  ~module_name
-  ~implicit_opens
-  ~origin
-  ~revision
-  ~source_hash
-  ~parse_result
-  ~cst ->
+  ~source_id ~kind ~module_name ~implicit_opens ~origin ~revision ~source_hash ~parse_result ~cst ->
   {
     source_id;
     kind;

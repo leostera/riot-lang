@@ -49,7 +49,7 @@ type point = { x: int; y: int }
 
 let point_gen =
   Generator.map
-    (fun ((x, y)) -> { x; y })
+    (fun (x, y) -> { x; y })
     (Generator.pair (Generator.int_range (-100) 100) (Generator.int_range (-100) 100))
 
 (* Custom shrinker for points - shrink towards origin *)

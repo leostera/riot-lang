@@ -54,8 +54,8 @@ let test_mutex_serializes_contended_access =
               | _ -> `skip
             ) with
           | Error _ as err -> err
-          | Ok (`Done _) -> collect (remaining - 1)
-          | Ok (`Overlap idx) ->
+          | Ok `Done _ -> collect (remaining - 1)
+          | Ok `Overlap idx ->
               Error ("mutex allowed overlapping access for worker " ^ Int.to_string idx)
       in
       match collect worker_count with
@@ -190,8 +190,8 @@ let test_mutex_unlock_requires_ownership =
             );
           match result with
           | Error _ as err -> err
-          | Ok (`Failed reason) when String.contains reason "non-owner" -> Ok ()
-          | Ok (`Failed reason) -> Error ("unexpected mutex unlock failure: " ^ reason)
+          | Ok `Failed reason when String.contains reason "non-owner" -> Ok ()
+          | Ok `Failed reason -> Error ("unexpected mutex unlock failure: " ^ reason)
           | Ok `Returned -> Error "expected non-owner mutex unlock to fail")
 
 let test_mutex_owner_exit_releases_lock =

@@ -354,7 +354,7 @@ let cache_state_of_json = fun json ->
                 | Some value -> Data.Json.get_int value
                 | None -> None
               in
-              Ok ({ tracked_size_bytes; generation_hashes; receipt_count }: cache_state)
+              Ok (({ tracked_size_bytes; generation_hashes; receipt_count }: cache_state))
           | None -> Error "cache state field 'tracked_size_bytes' must be an int64 string"
         )
       | None -> Error "cache state is missing string field 'tracked_size_bytes'"
@@ -607,8 +607,8 @@ let load_or_rebuild_tracked_size = fun ~(workspace:Workspace.t) ->
             in
             Ok generation_hashes
       in
-      Ok ({ tracked_size_bytes = state.tracked_size_bytes; generation_hashes; rebuilt = false }:
-        tracked_size_snapshot)
+      Ok (({ tracked_size_bytes = state.tracked_size_bytes; generation_hashes; rebuilt = false }:
+        tracked_size_snapshot))
   | Ok None
   | Error _ ->
       let* entries = collect_cache_entries ~workspace in
@@ -623,7 +623,7 @@ let load_or_rebuild_tracked_size = fun ~(workspace:Workspace.t) ->
             receipt_count = Some (List.length generation_hashes);
           }
       in
-      Ok ({ tracked_size_bytes; generation_hashes; rebuilt = true }: tracked_size_snapshot)
+      Ok (({ tracked_size_bytes; generation_hashes; rebuilt = true }: tracked_size_snapshot))
 
 let take = fun n list ->
   let rec loop acc remaining count =
@@ -861,10 +861,7 @@ let added_size_for_new_entries = fun ~(workspace:Workspace.t) new_entries ->
         Ok (Int64.add acc size_bytes))
 
 let record_successful_build_with_events = fun
-  ~(workspace:Workspace.t)
-  ~on_event
-  ~lanes
-  ~new_entries ->
+  ~(workspace:Workspace.t) ~on_event ~lanes ~new_entries ->
   let lanes = normalize_lanes lanes in
   let generation_hash = generation_hash_of_lanes lanes in
   let receipt = { hash = generation_hash; lanes } in

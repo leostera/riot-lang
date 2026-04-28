@@ -33,25 +33,20 @@ let workspace_package_id_of_package = fun (package: Riot_model.Package_manifest.
   }
 
 let find_lock_package_by_id = fun
-  ~(package_id:Riot_model.Lockfile.package_id)
-  ~(lockfile:Riot_model.Lockfile.t) ->
+  ~(package_id:Riot_model.Lockfile.package_id) ~(lockfile:Riot_model.Lockfile.t) ->
   List.find
     lockfile.packages
     ~fn:(fun (lock_package: Riot_model.Lockfile.package) -> lock_package.id = package_id)
 
 let find_workspace_package_by_id = fun
-  ~(package_id:Riot_model.Lockfile.package_id)
-  ~(packages:Riot_model.Package_manifest.t list) ->
+  ~(package_id:Riot_model.Lockfile.package_id) ~(packages:Riot_model.Package_manifest.t list) ->
   List.find
     packages
     ~fn:(fun (package: Riot_model.Package_manifest.t) ->
       workspace_package_id_of_package package = package_id)
 
 let materialized_root_of_lock_package = fun
-  ~materialize_emit
-  ~registry
-  ~workspace_root
-  ~(lock_package:Riot_model.Lockfile.package) ->
+  ~materialize_emit ~registry ~workspace_root ~(lock_package:Riot_model.Lockfile.package) ->
   match lock_package.provenance with
   | Riot_model.Lockfile.Workspace -> (
       match lock_package.root with
@@ -122,11 +117,7 @@ let load_manifest_toml = fun ~manifest_path ->
     )
 
 let load_external_package = fun
-  ~emit
-  ~materialize_emit
-  ~registry
-  ~workspace_root
-  ~(lock_package:Riot_model.Lockfile.package) ->
+  ~emit ~materialize_emit ~registry ~workspace_root ~(lock_package:Riot_model.Lockfile.package) ->
   let version_opt = lock_package.id.version in
   let package_name = lock_package.id.name in
   match materialized_root_of_lock_package ~materialize_emit ~registry ~workspace_root ~lock_package with

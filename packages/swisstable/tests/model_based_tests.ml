@@ -36,7 +36,7 @@ let insert_equivalence_prop =
       (* Apply all inserts to both *)
       let all_match =
         List.for_all
-          (fun ((k, v)) ->
+          (fun (k, v) ->
             let r1 = Swisstable.insert swiss k v in
             let r2 = Collections.HashMap.insert hash ~key:k ~value:v in
             r1 = r2)
@@ -58,13 +58,13 @@ let get_equivalence_prop =
     (Arbitrary.pair
       (bounded_list_arb 50 Arbitrary.(pair int int))
       (bounded_list_arb 50 Arbitrary.int))
-    (fun ((insert_pairs, get_keys)) ->
+    (fun (insert_pairs, get_keys) ->
       let swiss = Swisstable.create () in
       let hash = Collections.HashMap.create () in
       (* Populate both *)
       List.for_each
         insert_pairs
-        ~fn:(fun ((k, v)) ->
+        ~fn:(fun (k, v) ->
           let _ = Swisstable.insert swiss k v in
           let _ = Collections.HashMap.insert hash ~key:k ~value:v in
           ());
@@ -79,13 +79,13 @@ let remove_equivalence_prop =
     (Arbitrary.pair
       (bounded_list_arb 50 Arbitrary.(pair int int))
       (bounded_list_arb 50 Arbitrary.int))
-    (fun ((insert_pairs, remove_keys)) ->
+    (fun (insert_pairs, remove_keys) ->
       let swiss = Swisstable.create () in
       let hash = Collections.HashMap.create () in
       (* Populate both *)
       List.for_each
         insert_pairs
-        ~fn:(fun ((k, v)) ->
+        ~fn:(fun (k, v) ->
           let _ = Swisstable.insert swiss k v in
           let _ = Collections.HashMap.insert hash ~key:k ~value:v in
           ());
@@ -110,13 +110,13 @@ let contains_equivalence_prop =
     (Arbitrary.pair
       (bounded_list_arb 50 Arbitrary.(pair int int))
       (bounded_list_arb 50 Arbitrary.int))
-    (fun ((insert_pairs, check_keys)) ->
+    (fun (insert_pairs, check_keys) ->
       let swiss = Swisstable.create () in
       let hash = Collections.HashMap.create () in
       (* Populate both *)
       List.for_each
         insert_pairs
-        ~fn:(fun ((k, v)) ->
+        ~fn:(fun (k, v) ->
           let _ = Swisstable.insert swiss k v in
           let _ = Collections.HashMap.insert hash ~key:k ~value:v in
           ());
@@ -137,7 +137,7 @@ let clear_equivalence_prop =
       (* Populate both *)
       List.for_each
         pairs
-        ~fn:(fun ((k, v)) ->
+        ~fn:(fun (k, v) ->
           let _ = Swisstable.insert swiss k v in
           let _ = Collections.HashMap.insert hash ~key:k ~value:v in
           ());
@@ -161,7 +161,7 @@ let to_list_equivalence_prop =
       (* Populate both *)
       List.for_each
         pairs
-        ~fn:(fun ((k, v)) ->
+        ~fn:(fun (k, v) ->
           let _ = Swisstable.insert swiss k v in
           let _ = Collections.HashMap.insert hash ~key:k ~value:v in
           ());
@@ -184,7 +184,7 @@ let keys_equivalence_prop =
       (* Populate both *)
       List.for_each
         pairs
-        ~fn:(fun ((k, v)) ->
+        ~fn:(fun (k, v) ->
           let _ = Swisstable.insert swiss k v in
           let _ = Collections.HashMap.insert hash ~key:k ~value:v in
           ());
@@ -207,7 +207,7 @@ let values_equivalence_prop =
       (* Populate both *)
       List.for_each
         pairs
-        ~fn:(fun ((k, v)) ->
+        ~fn:(fun (k, v) ->
           let _ = Swisstable.insert swiss k v in
           let _ = Collections.HashMap.insert hash ~key:k ~value:v in
           ());
@@ -232,7 +232,7 @@ let fold_equivalence_prop =
       (* Populate both *)
       List.for_each
         pairs
-        ~fn:(fun ((k, v)) ->
+        ~fn:(fun (k, v) ->
           let _ = Swisstable.insert swiss k v in
           let _ = Collections.HashMap.insert hash ~key:k ~value:v in
           ());
@@ -256,13 +256,13 @@ let or_insert_equivalence_prop =
       Arbitrary.int
       Arbitrary.int
       (bounded_list_arb 50 Arbitrary.(pair int int)))
-    (fun ((key, default, pairs)) ->
+    (fun (key, default, pairs) ->
       let swiss = Swisstable.create () in
       let hash = Collections.HashMap.create () in
       (* Populate both *)
       List.for_each
         pairs
-        ~fn:(fun ((k, v)) ->
+        ~fn:(fun (k, v) ->
           let _ = Swisstable.insert swiss k v in
           let _ = Collections.HashMap.insert hash ~key:k ~value:v in
           ());
@@ -287,7 +287,7 @@ let many_ops_equivalence_prop =
       (* Insert all *)
       List.for_each
         pairs
-        ~fn:(fun ((k, v)) ->
+        ~fn:(fun (k, v) ->
           let _ = Swisstable.insert swiss k v in
           let _ = Collections.HashMap.insert hash ~key:k ~value:v in
           ());
@@ -303,7 +303,7 @@ let many_ops_equivalence_prop =
       in
       List.for_each
         keys_to_remove
-        ~fn:(fun ((k, _)) ->
+        ~fn:(fun (k, _) ->
           let _ = Swisstable.remove swiss k in
           let _ = Collections.HashMap.remove hash ~key:k in
           ());

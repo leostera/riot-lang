@@ -119,10 +119,7 @@ let map_runtime_error = function
   | Build_runtime.UnexpectedError { reason } -> UnexpectedError { reason }
 
 let execute_raw = fun
-  ?(allow_partial_failures = false)
-  ?(record_cache_generation = true)
-  context
-  spec ->
+  ?(allow_partial_failures = false) ?(record_cache_generation = true) context spec ->
   Build_runtime.execute ~allow_partial_failures ~record_cache_generation context spec
   |> Result.map_err ~fn:map_runtime_error
 

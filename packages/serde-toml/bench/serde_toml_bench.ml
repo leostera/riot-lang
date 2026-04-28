@@ -185,7 +185,7 @@ let berth_decode =
       | None -> ignore (De.read reader De.skip_any))
     ~finish:(fun builder ->
       match (builder.island, builder.berth) with
-      | (Some island, Some berth) -> ({ island; berth }: berth)
+      | (Some island, Some berth) -> (({ island; berth }: berth))
       | _ -> De.missing_field ())
 
 let berth_encode =
@@ -209,7 +209,7 @@ let stop_decode =
       | None -> ignore (De.read reader De.skip_any))
     ~finish:(fun builder ->
       match (builder.island, builder.supplies) with
-      | (Some island, Some supplies) -> ({ island; supplies }: stop)
+      | (Some island, Some supplies) -> (({ island; supplies }: stop))
       | _ -> De.missing_field ())
 
 let stop_encode =
@@ -271,7 +271,7 @@ let manifest_decode =
         Some scores,
         Some stops,
         Some mirrors
-      ) -> ({
+      ) -> (({
         ship;
         emergency;
         crew_count;
@@ -281,7 +281,7 @@ let manifest_decode =
         scores;
         stops;
         mirrors;
-      }: manifest)
+      }: manifest))
       | _ -> De.missing_field ())
 
 let manifest_encode =
@@ -408,15 +408,17 @@ let status_of_string = function
 
 let stop_of_toml = fun value ->
   let table = table_of_toml value in
-  ({
+  (({
     island = string_of_toml (field table "island");
     supplies = int_of_toml (field table "supplies");
-  }: stop)
+  }: stop))
 
 let berth_of_toml = fun value ->
   let table = table_of_toml value in
-  ({ island = string_of_toml (field table "island"); berth = int_of_toml (field table "berth") }:
-    berth)
+  (({
+    island = string_of_toml (field table "island");
+    berth = int_of_toml (field table "berth");
+  }: berth))
 
 let vec_of_list = fun values ->
   let vec = Vector.with_capacity ~size:(List.length values) in
@@ -425,7 +427,7 @@ let vec_of_list = fun values ->
 
 let manifest_of_toml = fun value ->
   let table = table_of_toml value in
-  ({
+  (({
     ship = string_of_toml (field table "ship");
     emergency = bool_of_toml (field table "emergency");
     crew_count = int_of_toml (field table "crew_count");
@@ -451,7 +453,7 @@ let manifest_of_toml = fun value ->
       |> array_of_toml
       |> List.map ~fn:stop_of_toml
       |> Array.of_list;
-  }: manifest)
+  }: manifest))
 
 let equal_stop = fun (left: stop) (right: stop) ->
   String.equal left.island right.island && Int.equal left.supplies right.supplies
@@ -490,7 +492,7 @@ let build_fixture = fun
     emergency = false;
     crew_count = 10;
     status = Active;
-    home = ({ island = repeat "water-seven-" string_repeat; berth = 7 }: berth);
+    home = (({ island = repeat "water-seven-" string_repeat; berth = 7 }: berth));
     tags = tags_of_count tag_count;
     scores = scores_of_count score_count;
     stops = stops_vec_of_count stop_count "log";

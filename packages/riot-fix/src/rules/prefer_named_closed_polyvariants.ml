@@ -29,12 +29,13 @@ let is_closed_polyvariant_type = fun ctx type_expr ->
   && String.ends_with ~suffix:"]" text
   && String.contains text "`"
 
-let diagnostic_for_type = fun type_expr -> H.diagnostic
-  ~rule_id
-  ~message:rule_description
-  ~span:(H.span_of_node (Ast.TypeExpr.as_node type_expr))
-  ~suggestion:"Move the closed polyvariant row behind a named type alias."
-  ()
+let diagnostic_for_type = fun type_expr ->
+  H.diagnostic
+    ~rule_id
+    ~message:rule_description
+    ~span:(H.span_of_node (Ast.TypeExpr.as_node type_expr))
+    ~suggestion:"Move the closed polyvariant row behind a named type alias."
+    ()
 
 let rec check_type_expr = fun ctx diagnostics ~allow_named_alias_root type_expr ->
   if is_closed_polyvariant_type ctx type_expr then
@@ -55,7 +56,8 @@ let rec check_type_expr = fun ctx diagnostics ~allow_named_alias_root type_expr 
         Vector.for_each args ~fn:(check_type_expr ctx diagnostics ~allow_named_alias_root:false)
     | Ast.TypeExpr.Error node
     | Ast.TypeExpr.Unknown node ->
-        H.iter_fold Ast.Node.fold_child_node
+        H.iter_fold
+          Ast.Node.fold_child_node
           node
           ~fn:(fun node ->
             match Ast.cast_result_to_option (Ast.TypeExpr.cast node) with
@@ -67,7 +69,8 @@ let rec check_type_expr = fun ctx diagnostics ~allow_named_alias_root type_expr 
     | Ast.TypeExpr.Wildcard -> ()
 
 let check_type_declaration = fun ctx diagnostics declaration ->
-  H.iter_fold Ast.TypeDeclaration.fold_member
+  H.iter_fold
+    Ast.TypeDeclaration.fold_member
     declaration
     ~fn:(fun member ->
       Option.for_each

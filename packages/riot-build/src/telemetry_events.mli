@@ -36,7 +36,6 @@ type workspace_graph_breakdown = {
   edge_wiring_duration: Time.Duration.t;
 }
 type warning_source = [ | `Fresh | `Cached]
-
 (**
    Telemetry events for build system operations.
 

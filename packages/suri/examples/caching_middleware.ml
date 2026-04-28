@@ -21,7 +21,7 @@ let users = [
   ("3", "Charlie", "charlie@example.com");
 ]
 
-let find_user = fun id -> List.find users ~fn:(fun ((uid, _, _)) -> uid = id)
+let find_user = fun id -> List.find users ~fn:(fun (uid, _, _) -> uid = id)
 
 (** Routes demonstrating the middleware *)
 let routes =

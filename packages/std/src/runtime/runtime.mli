@@ -48,7 +48,6 @@ module Actor: sig
   type flag =
     | TrapExit of bool
   type monitor_ref
-
   type Message.t +=
     | EXIT of {
         from: Pid.t;
@@ -59,7 +58,6 @@ module Actor: sig
         pid: Pid.t;
         reason: (unit, exit_reason) result;
       }
-
   (** Scheduler-visible actor state. *)
   type state =
     private | Uninitialized

@@ -8,7 +8,7 @@ let vector_push_pop_prop =
   property
     "vector push then pop returns the element"
     Arbitrary.(pair int (vector int))
-    (fun ((x, vec)) ->
+    (fun (x, vec) ->
       let vec_copy =
         Std.Collections.Vector.from_list
           (
@@ -30,7 +30,7 @@ let hashmap_insert_get_prop =
       string
       int
       (hashmap string int))
-    (fun ((key, value, map)) ->
+    (fun (key, value, map) ->
       let _ = Std.Collections.HashMap.insert map ~key ~value in
       match Std.Collections.HashMap.get map ~key with
       | Some v -> v = value
@@ -42,7 +42,7 @@ let hashset_insert_contains_prop =
   property
     "hashset contains element after insert"
     Arbitrary.(pair int (hashset int))
-    (fun ((x, set)) ->
+    (fun (x, set) ->
       let _ = Std.Collections.HashSet.insert set ~value:x in
       Std.Collections.HashSet.contains set ~value:x)
 

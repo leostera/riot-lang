@@ -9,7 +9,6 @@ let iter_fold = fun fold value ~fn ->
       fn item;
       Syn.Ast.Continue ())
 
-
 module Ast = Syn.Ast
 module Syntax_tree = Syn.SyntaxTree
 
@@ -93,7 +92,8 @@ let is_trivia = Syn.SyntaxKind.is_trivia
 
 let first_non_trivia_child = fun node ->
   let result = ref None in
-  iter_fold Ast.Node.fold_child
+  iter_fold
+    Ast.Node.fold_child
     node
     ~fn:(fun child ->
       match !result with
@@ -109,7 +109,8 @@ let first_non_trivia_child = fun node ->
 
 let first_non_trivia_token = fun node ->
   let result = ref None in
-  iter_fold Ast.Node.fold_child
+  iter_fold
+    Ast.Node.fold_child
     node
     ~fn:(fun child ->
       match !result with

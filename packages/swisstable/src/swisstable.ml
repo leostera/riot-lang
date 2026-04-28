@@ -460,7 +460,7 @@ let of_list = fun pairs ->
   let map = create () in
   List.for_each
     pairs
-    ~fn:(fun ((k, v)) ->
+    ~fn:(fun (k, v) ->
       let _ = RawTable.insert map k v in
       ());
   map

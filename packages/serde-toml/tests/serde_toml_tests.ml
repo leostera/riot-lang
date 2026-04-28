@@ -325,7 +325,7 @@ let pose_decode =
       | None -> ignore (De.read reader De.skip_any))
     ~finish:(fun builder ->
       match (builder.island, builder.bearing) with
-      | (Some island, Some bearing) -> ({ island; bearing }: pose)
+      | (Some island, Some bearing) -> (({ island; bearing }: pose))
       | _ -> De.missing_field ())
 
 let pose_encode =
@@ -349,7 +349,7 @@ let stop_decode =
       | None -> ignore (De.read reader De.skip_any))
     ~finish:(fun builder ->
       match (builder.island, builder.supplies) with
-      | (Some island, Some supplies) -> ({ island; supplies }: stop)
+      | (Some island, Some supplies) -> (({ island; supplies }: stop))
       | _ -> De.missing_field ())
 
 let stop_encode =
@@ -374,7 +374,7 @@ let voyage_decode =
       | None -> ignore (De.read reader De.skip_any))
     ~finish:(fun builder ->
       match (builder.ship, builder.destination, builder.stops) with
-      | (Some ship, Some destination, Some stops) -> ({ ship; destination; stops }: voyage)
+      | (Some ship, Some destination, Some stops) -> (({ ship; destination; stops }: voyage))
       | _ -> De.missing_field ())
 
 let voyage_encode =
@@ -457,7 +457,7 @@ let crew_member_decode =
             | Some nickname -> nickname
             | None -> None
           in
-          ({
+          (({
             name;
             bounty;
             active;
@@ -471,7 +471,7 @@ let crew_member_decode =
             pet;
             flag;
             pose;
-          }: crew_member)
+          }: crew_member))
       | _ -> De.missing_field ())
 
 let crew_member_encode =
@@ -530,14 +530,14 @@ let manifest_decode =
         builder.scout
       ) with
       | (Some ship, Some emergency, Some featured, Some crew, Some reserves, Some scout) ->
-          ({
+          (({
             ship;
             emergency;
             featured;
             crew;
             reserves;
             scout;
-          }: manifest)
+          }: manifest))
       | _ -> De.missing_field ())
 
 let manifest_encode =
@@ -567,7 +567,7 @@ let roster_decode =
       | None -> ignore (De.read reader De.skip_any))
     ~finish:(fun builder ->
       match builder.crew with
-      | Some crew -> ({ crew }: roster)
+      | Some crew -> (({ crew }: roster))
       | None -> De.missing_field ())
 
 let roster_encode =
@@ -581,11 +581,11 @@ let roster_encode =
 
 let voyage_value: voyage = {
   ship = "Going Merry";
-  destination = ({ island = "Alabasta"; bearing = 90.0 }: pose);
+  destination = (({ island = "Alabasta"; bearing = 90.0 }: pose));
   stops = Vector.from_list
     [
-      ({ island = "Whisky Peak"; supplies = 3 }: stop);
-      ({ island = "Little Garden"; supplies = 5 }: stop);
+      (({ island = "Whisky Peak"; supplies = 3 }: stop));
+      (({ island = "Little Garden"; supplies = 5 }: stop));
     ];
 }
 
@@ -602,7 +602,7 @@ let chopper: crew_member = {
   role = Doctor;
   pet = Reindeer "Chopper";
   flag = ();
-  pose = ({ island = "Egghead"; bearing = 42.125 }: pose);
+  pose = (({ island = "Egghead"; bearing = 42.125 }: pose));
 }
 
 let nami: crew_member = {
@@ -618,7 +618,7 @@ let nami: crew_member = {
   role = Navigator;
   pet = NewsCoo;
   flag = ();
-  pose = ({ island = "Elbaf"; bearing = 12.75 }: pose);
+  pose = (({ island = "Elbaf"; bearing = 12.75 }: pose));
 }
 
 let manifest_value: manifest = {
@@ -739,7 +739,7 @@ let test_parser_rebuilds_nested_tables_inside_array_items = fun _ctx ->
       | _ -> Error "expected parser to rebuild [[crew]] as an array-of-tables"
     )
   | Ok _ -> Error "expected parser to return a top-level table"
-  | Error (`Msg message) -> Error ("array-item parser regression failed: " ^ message)
+  | Error `Msg message -> Error ("array-item parser regression failed: " ^ message)
 
 let test_roundtrips_rosters = fun _ctx ->
   let* encoded =
@@ -790,7 +790,7 @@ let test_roundtrips_rosters = fun _ctx ->
         | _ -> Error "expected parser to rebuild crew as an array-of-tables"
       )
     | Ok _ -> Error "expected parser to return a top-level table"
-    | Error (`Msg message) -> Error ("roster parse failed: " ^ message)
+    | Error `Msg message -> Error ("roster parse failed: " ^ message)
   in
   match Serde_toml.from_string roster_decode encoded with
   | Ok actual when vec_to_list actual.crew = vec_to_list roster_value.crew -> Ok ()
@@ -837,7 +837,7 @@ let test_decodes_nested_document = fun _ctx ->
           role = Navigator;
           pet = NewsCoo;
           flag = ();
-          pose = ({ island = "Elbaf"; bearing = 27.5 }: pose);
+          pose = (({ island = "Elbaf"; bearing = 27.5 }: pose));
         } then
         Ok ()
       else
@@ -869,7 +869,7 @@ let test_roundtrips_over_io = fun _ctx ->
 
 let test_rejects_top_level_scalars = fun _ctx ->
   match Serde_toml.to_string Ser.int 42 with
-  | Error (`Msg message) when String.contains message "table-shaped" -> Ok ()
+  | Error `Msg message when String.contains message "table-shaped" -> Ok ()
   | Error err ->
       Error ("expected top-level scalar encode to fail clearly, got " ^ Serde.Error.to_string err)
   | Ok encoded -> Error ("expected top-level scalar encode to fail, got " ^ encoded)

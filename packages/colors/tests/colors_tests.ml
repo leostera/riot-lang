@@ -48,14 +48,14 @@ let expect_finite = fun ~label value ->
     (Float.is_finite value)
     (label ^ ": expected finite float")
 
-let expect_rgb_equal = fun ~label ~expected:((er, eg, eb)) ->
+let expect_rgb_equal = fun ~label ~expected:(er, eg, eb) ->
   function
   | `rgb (r, g, b) ->
       let* () = expect_int_equal ~label:(label ^ " red") ~expected:er ~actual:r in
       let* () = expect_int_equal ~label:(label ^ " green") ~expected:eg ~actual:g in
       expect_int_equal ~label:(label ^ " blue") ~expected:eb ~actual:b
 
-let expect_rgb_within = fun ~label ~tolerance ~expected:((er, eg, eb)) ->
+let expect_rgb_within = fun ~label ~tolerance ~expected:(er, eg, eb) ->
   function
   | `rgb (r, g, b) ->
       let within left right = Int.abs (left - right) <= tolerance in
@@ -76,28 +76,28 @@ let expect_rgb_within = fun ~label ~tolerance ~expected:((er, eg, eb)) ->
         ^ Int.to_string b
         ^ ")")
 
-let expect_lrgb_close = fun ~label ~epsilon ~expected:((er, eg, eb)) ->
+let expect_lrgb_close = fun ~label ~epsilon ~expected:(er, eg, eb) ->
   function
   | `lrgb (r, g, b) ->
       let* () = expect_float_close ~label:(label ^ " red") ~epsilon ~expected:er ~actual:r in
       let* () = expect_float_close ~label:(label ^ " green") ~epsilon ~expected:eg ~actual:g in
       expect_float_close ~label:(label ^ " blue") ~epsilon ~expected:eb ~actual:b
 
-let expect_xyz_close = fun ~label ~epsilon ~expected:((ex, ey, ez)) ->
+let expect_xyz_close = fun ~label ~epsilon ~expected:(ex, ey, ez) ->
   function
   | `xyz (x, y, z) ->
       let* () = expect_float_close ~label:(label ^ " x") ~epsilon ~expected:ex ~actual:x in
       let* () = expect_float_close ~label:(label ^ " y") ~epsilon ~expected:ey ~actual:y in
       expect_float_close ~label:(label ^ " z") ~epsilon ~expected:ez ~actual:z
 
-let expect_luv_close = fun ~label ~epsilon ~expected:((el, eu, ev)) ->
+let expect_luv_close = fun ~label ~epsilon ~expected:(el, eu, ev) ->
   function
   | `luv (l, u, v) ->
       let* () = expect_float_close ~label:(label ^ " l") ~epsilon ~expected:el ~actual:l in
       let* () = expect_float_close ~label:(label ^ " u") ~epsilon ~expected:eu ~actual:u in
       expect_float_close ~label:(label ^ " v") ~epsilon ~expected:ev ~actual:v
 
-let expect_uv_close = fun ~label ~epsilon ~expected:((eu, ev)) ->
+let expect_uv_close = fun ~label ~epsilon ~expected:(eu, ev) ->
   function
   | `uv (u, v) ->
       let* () = expect_float_close ~label:(label ^ " u") ~epsilon ~expected:eu ~actual:u in

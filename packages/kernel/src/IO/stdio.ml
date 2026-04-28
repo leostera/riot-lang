@@ -8,7 +8,7 @@ type error =
 
 let validate_slice = fun buf ~pos ~len ->
   if pos < 0 || len < 0 || pos + len > Bytes.length buf then
-    Result.Error ({ pos; len; buffer_len = Bytes.length buf }: slice_validation)
+    Result.Error (({ pos; len; buffer_len = Bytes.length buf }: slice_validation))
   else
     Result.Ok ()
 

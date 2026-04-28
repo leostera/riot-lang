@@ -2,7 +2,6 @@
 
 (** File watcher process handle *)
 type t = Pid.t
-
 type Message.t +=
   | FileEvents of Event.t list
 

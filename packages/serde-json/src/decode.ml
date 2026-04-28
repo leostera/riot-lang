@@ -32,7 +32,13 @@ let is_digit = function
 
 let is_value_delimiter = function
   | None
-  | Some (' ' | '\t' | '\n' | '\r' | ',' | ']' | '}') -> true
+  | Some (' '
+  | '\t'
+  | '\n'
+  | '\r'
+  | ','
+  | ']'
+  | '}') -> true
   | _ -> false
 
 let expect_char = fun state expected expected_name ->
@@ -148,11 +154,7 @@ let reader_advance_by: Input.reader_state -> int -> unit = fun reader count -> r
 + count
 
 let reader_append_range: IO.Buffer.t -> Input.reader_state -> int -> int -> unit = fun
-  scratch
-  reader
-  start
-  stop ->
-  Input.reader_append_range scratch reader ~start ~stop
+  scratch reader start stop -> Input.reader_append_range scratch reader ~start ~stop
 
 let rec reader_scan_while:
   Input.reader_state ->
@@ -177,10 +179,7 @@ let rec reader_scan_while:
     loop reader.Input.pos
 
 let reader_expect_char: state -> Input.reader_state -> char -> string -> unit = fun
-  state
-  reader
-  expected
-  expected_name ->
+  state reader expected expected_name ->
   match reader_current_char reader with
   | None -> unexpected_end state expected_name
   | Some actual ->
@@ -222,9 +221,7 @@ let reader_skip_whitespace: Input.reader_state -> unit = fun reader ->
   loop ()
 
 let reader_expect_literal: state -> Input.reader_state -> string -> unit = fun
-  state
-  reader
-  literal ->
+  state reader literal ->
   let length = String.length literal in
   let rec loop index =
     if Int.equal index length then
@@ -464,7 +461,14 @@ let skip_string_reader = fun state reader ->
         (
           match reader_current_char reader with
           | None -> unexpected_end state "string escape"
-          | Some ('"' | '\\' | '/' | 'b' | 'f' | 'n' | 'r' | 't') ->
+          | Some ('"'
+          | '\\'
+          | '/'
+          | 'b'
+          | 'f'
+          | 'n'
+          | 'r'
+          | 't') ->
               reader_advance reader;
               loop ()
           | Some 'u' ->
@@ -496,7 +500,14 @@ let skip_string_generic = fun state ->
         (
           match Input.current_char state.input with
           | None -> unexpected_end state "string escape"
-          | Some ('"' | '\\' | '/' | 'b' | 'f' | 'n' | 'r' | 't') ->
+          | Some ('"'
+          | '\\'
+          | '/'
+          | 'b'
+          | 'f'
+          | 'n'
+          | 'r'
+          | 't') ->
               Input.advance state.input;
               loop ()
           | Some 'u' ->
@@ -813,7 +824,7 @@ let parse_number_text_reader_slow = fun state reader ->
               error_at (Input.position state.input) "leading zeros are not allowed in JSON numbers"
           | _ -> ()
         )
-    | Some ('1' .. '9') -> reader_append_digits state reader
+    | Some '1' .. '9' -> reader_append_digits state reader
     | Some actual ->
         error_at
           (Input.position state.input)
@@ -839,12 +850,14 @@ let parse_number_text_reader_slow = fun state reader ->
   );
   (
     match reader_current_char reader with
-    | Some ('e' | 'E' as exponent) ->
+    | Some ('e'
+    | 'E' as exponent) ->
         is_float := true;
         append_char exponent;
         (
           match reader_current_char reader with
-          | Some ('+' | '-' as sign) -> append_char sign
+          | Some ('+'
+          | '-' as sign) -> append_char sign
           | _ -> ()
         );
         (
@@ -914,7 +927,7 @@ let parse_number_text_reader = fun state reader ->
                   "leading zeros are not allowed in JSON numbers"
             | _ -> ()
           )
-      | Some ('1' .. '9') ->
+      | Some '1' .. '9' ->
           advance ();
           advance_digits ();
           if need_more () then
@@ -950,14 +963,16 @@ let parse_number_text_reader = fun state reader ->
     );
     (
       match current () with
-      | Some ('e' | 'E') ->
+      | Some ('e'
+      | 'E') ->
           is_float := true;
           advance ();
           if need_more () then
             raise Use_slow_number_path;
           (
             match current () with
-            | Some ('+' | '-') ->
+            | Some ('+'
+            | '-') ->
                 advance ();
                 if need_more () then
                   raise Use_slow_number_path
@@ -1048,7 +1063,7 @@ let parse_number_text_generic = fun state ->
               error_at (Input.position state.input) "leading zeros are not allowed in JSON numbers"
           | _ -> ()
         )
-    | Some ('1' .. '9') ->
+    | Some '1' .. '9' ->
         advance ();
         advance_digits ()
     | Some actual ->
@@ -1078,12 +1093,14 @@ let parse_number_text_generic = fun state ->
   );
   (
     match current () with
-    | Some ('e' | 'E' as _exponent) ->
+    | Some ('e'
+    | 'E' as _exponent) ->
         is_float := true;
         advance ();
         (
           match current () with
-          | Some ('+' | '-' as _sign) -> advance ()
+          | Some ('+'
+          | '-' as _sign) -> advance ()
           | _ -> ()
         );
         (
@@ -1175,7 +1192,9 @@ let parse_int_generic = fun state ->
           match current () with
           | Some digit when is_digit digit ->
               error_at (Input.position state.input) "leading zeros are not allowed in JSON numbers"
-          | Some ('.' | 'e' | 'E') -> invalid_field_type ()
+          | Some ('.'
+          | 'e'
+          | 'E') -> invalid_field_type ()
           | _ -> ()
         )
     | Some ('1' .. '9' as digit) ->
@@ -1183,7 +1202,9 @@ let parse_int_generic = fun state ->
         advance_digits ();
         (
           match current () with
-          | Some ('.' | 'e' | 'E') -> invalid_field_type ()
+          | Some ('.'
+          | 'e'
+          | 'E') -> invalid_field_type ()
           | _ -> ()
         )
     | Some actual ->
@@ -1279,7 +1300,9 @@ let parse_int_reader = fun state reader ->
                 error_at
                   (Input.position state.input)
                   "leading zeros are not allowed in JSON numbers"
-            | Some ('.' | 'e' | 'E') -> invalid_field_type ()
+            | Some ('.'
+            | 'e'
+            | 'E') -> invalid_field_type ()
             | _ -> ()
           )
       | Some ('1' .. '9' as digit) ->
@@ -1289,7 +1312,9 @@ let parse_int_reader = fun state reader ->
             raise Use_slow_number_path;
           (
             match current () with
-            | Some ('.' | 'e' | 'E') -> invalid_field_type ()
+            | Some ('.'
+            | 'e'
+            | 'E') -> invalid_field_type ()
             | _ -> ()
           )
       | Some actual ->
@@ -1403,7 +1428,8 @@ let rec skip_value_reader = fun state reader ->
             loop true
       )
   | Some '"' -> skip_string_reader state reader
-  | Some ('-' | '0' .. '9') -> ignore (parse_float state)
+  | Some ('-'
+  | '0' .. '9') -> ignore (parse_float state)
   | Some 't' -> reader_expect_literal state reader "true"
   | Some 'f' -> reader_expect_literal state reader "false"
   | Some 'n' -> reader_expect_literal state reader "null"
@@ -1461,7 +1487,8 @@ let rec skip_value = fun state ->
                 loop true
           )
       | Some '"' -> skip_string state
-      | Some ('-' | '0' .. '9') -> ignore (parse_float state)
+      | Some ('-'
+      | '0' .. '9') -> ignore (parse_float state)
       | Some 't' -> expect_literal state "true"
       | Some 'f' -> expect_literal state "false"
       | Some 'n' -> expect_literal state "null"
@@ -1692,8 +1719,7 @@ and record_mut_backend:
           finish builder
 
 and variant_backend: 'value. state -> 'value De.compiled_variant_cases -> 'value = fun
-  state
-  cases ->
+  state cases ->
   let find_unit tag =
     let rec loop index =
       if Int.equal index (Array.length cases) then

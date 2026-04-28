@@ -6,7 +6,7 @@ let test_some = fun _ctx ->
   | _ -> Error "expected Option.some 5 = Some 5"
 
 let test_none = fun _ctx ->
-  match (Option.none: int option) with
+  match ((Option.none: int option)) with
   | None -> Ok ()
   | Some _ -> Error "expected Option.none = None"
 

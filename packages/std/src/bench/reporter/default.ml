@@ -72,7 +72,7 @@ let on_comparison_summary = fun (result: Bench_result.comparison_result) ->
   (* Show each case relative to fastest *)
   List.for_each
     result.speedup_ratios
-    ~fn:(fun ((name, ratio)) ->
+    ~fn:(fun (name, ratio) ->
       if not (String.equal name fastest_name) then
         (
           let speedup_str = Float.to_string ~precision:2 ratio in

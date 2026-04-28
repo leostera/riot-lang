@@ -563,10 +563,7 @@ let resolve_scope = fun ~scope_name ~manifest_dependencies ~lock_dependencies ->
   loop [] manifest_dependencies
 
 let resolve = fun
-  ~(package:t)
-  ~(lock_package:Lockfile.package)
-  ~manifest_path
-  ~materialized_root ->
+  ~(package:t) ~(lock_package:Lockfile.package) ~manifest_path ~materialized_root ->
   match resolve_scope
     ~scope_name:"runtime"
     ~manifest_dependencies:package.dependencies
@@ -686,8 +683,7 @@ let manifest_error_message = function
 
 (** Package TOML parsing *)
 let parse_name: (string * Toml.value) list -> string -> (Package_name.t, manifest_error) result = fun
-  items
-  fallback ->
+  items fallback ->
   let raw_name =
     match Fields.get "package" items with
     | Some (Toml.Table pkg_items) -> (
@@ -769,8 +765,7 @@ let parse_publish_metadata:
   | None -> Ok default_publish_metadata
 
 let resolve_workspace_dependency: Package_name.t -> dependency list -> dependency = fun
-  name
-  workspace_deps ->
+  name workspace_deps ->
   match List.find workspace_deps ~fn:(fun (d: dependency) -> Package_name.equal d.name name) with
   | Some dep -> dep
   | None ->
@@ -808,13 +803,7 @@ let normalize_source_locator = fun raw ->
 let github_locator_of_value = fun value -> "github.com/" ^ String.trim value
 
 let make_source = fun
-  ?(workspace = false)
-  ?(builtin = false)
-  ?path
-  ?source_locator
-  ?ref_
-  ?version
-  () ->
+  ?(workspace = false) ?(builtin = false) ?path ?source_locator ?ref_ ?version () ->
   {
     workspace;
     builtin;
@@ -1240,7 +1229,7 @@ let parse_foreign_dependency:
         match Fields.get "env" attrs with
         | Some (Toml.Table env_items) ->
             List.filter_map
-              ~fn:(fun ((k, v)) ->
+              ~fn:(fun (k, v) ->
                 match v with
                 | Toml.String s -> Some (k, s)
                 | _ -> None)
@@ -1351,7 +1340,7 @@ let parse_foreign_dependencies:
   (* Collect all keys that start with "foreign-dependencies." *)
   let foreign_dep_items =
     List.filter_map
-      ~fn:(fun ((key, value)) ->
+      ~fn:(fun (key, value) ->
         if String.starts_with ~prefix:"foreign-dependencies." key then
           let prefix_len = String.length "foreign-dependencies." in
           let dep_name = String.sub key ~offset:prefix_len ~len:(String.length key - prefix_len) in
@@ -1386,10 +1375,7 @@ let parse_foreign_dependencies:
     Ok []
   else
     let results =
-      List.map
-        all_deps
-        ~fn:(fun ((name, value)) ->
-          parse_foreign_dependency name value ~package_path)
+      List.map all_deps ~fn:(fun (name, value) -> parse_foreign_dependency name value ~package_path)
     in
     let errors =
       List.filter_map
@@ -1412,8 +1398,7 @@ let parse_foreign_dependencies:
       )
 
 let parse_binary: Toml.value -> package_path:Path.t -> (binary, string) result = fun
-  value
-  ~package_path ->
+  value ~package_path ->
   match value with
   | Toml.Table items -> (
       match (Fields.get "name" items, Fields.get "path" items) with
@@ -1492,7 +1477,7 @@ let parse_compiler_config: (string * Toml.value) list -> compiler_config = fun i
     match Fields.get "profile" items with
     | Some (Toml.Table profile_table) ->
         List.filter_map
-          ~fn:(fun ((profile_name, value)) ->
+          ~fn:(fun (profile_name, value) ->
             match value with
             | Toml.Table profile_items ->
                 Some (profile_name, Profile.override_from_toml profile_items)
@@ -1505,7 +1490,7 @@ let parse_compiler_config: (string * Toml.value) list -> compiler_config = fun i
     match Fields.get "target" items with
     | Some (Toml.Table target_table) ->
         List.filter_map
-          ~fn:(fun ((platform, value)) ->
+          ~fn:(fun (platform, value) ->
             match value with
             | Toml.Table platform_items ->
                 let profile_override = Profile.override_from_toml platform_items in
@@ -1643,8 +1628,7 @@ let scan_roots_for_intent = fun ~(intent:realization_intent) ~(package_path:Path
   in
   List.filter roots ~fn:Path.exists
 
-let scan_sources_for_intent ~(intent:realization_intent) ~(package_path:Path.t) ?(excluded_relpaths = []) ():
-  sources =
+let scan_sources_for_intent ~(intent:realization_intent) ~(package_path:Path.t) ?(excluded_relpaths = []) () =
   let started_at = Time.Instant.now () in
   let excluded_relpath_strings =
     excluded_relpaths
@@ -1791,13 +1775,12 @@ let scan_sources_for_intent ~(intent:realization_intent) ~(package_path:Path.t) 
           in
           empty_sources
 
-let scan_sources ~(package_path:Path.t) ?(excluded_relpaths = []) (): sources =
+let scan_sources ~(package_path:Path.t) ?(excluded_relpaths = []) () =
   scan_sources_for_intent ~intent:Dev ~package_path ~excluded_relpaths ()
 
 (** Autodiscover test binaries from test files ending in _tests.ml or -tests.ml *)
 let autodiscover_test_binaries: sources -> package_path:Path.t -> binary list = fun
-  sources
-  ~package_path ->
+  sources ~package_path ->
   List.filter_map
     ~fn:(fun test_file ->
       let filename = Path.basename test_file in
@@ -1818,8 +1801,7 @@ let autodiscover_test_binaries: sources -> package_path:Path.t -> binary list = 
 
 (** Autodiscover a default runtime binary from src/main.ml when no explicit [[bin]] exists. *)
 let autodiscover_main_binary: sources -> package_name:Package_name.t -> binary list = fun
-  sources
-  ~package_name ->
+  sources ~package_name ->
   if List.any sources.src ~fn:(fun path -> Path.equal path (Path.v "src/main.ml")) then
     [ { name = Package_name.to_string package_name; path = Path.v "src/main.ml" } ]
   else
@@ -1827,8 +1809,7 @@ let autodiscover_main_binary: sources -> package_name:Package_name.t -> binary l
 
 (** Autodiscover example binaries from any .ml file in examples/ directory *)
 let autodiscover_example_binaries: sources -> package_path:Path.t -> binary list = fun
-  sources
-  ~package_path ->
+  sources ~package_path ->
   List.filter_map
     ~fn:(fun example_file ->
       let filename = Path.basename example_file in
@@ -1845,8 +1826,7 @@ let autodiscover_example_binaries: sources -> package_path:Path.t -> binary list
 
 (** Autodiscover benchmark binaries from bench files ending in _bench.ml *)
 let autodiscover_bench_binaries: sources -> package_path:Path.t -> binary list = fun
-  sources
-  ~package_path ->
+  sources ~package_path ->
   List.filter_map
     ~fn:(fun bench_file ->
       let filename = Path.basename bench_file in
@@ -1940,8 +1920,7 @@ let autodiscovered_binaries_for_intent = fun
   | Check -> []
 
 let merge_binaries: declared:binary list -> autodiscovered:binary list -> binary list = fun
-  ~declared
-  ~autodiscovered ->
+  ~declared ~autodiscovered ->
   let seen_paths =
     declared
     |> List.map ~fn:(fun (bin: binary) -> Path.to_string bin.path)
@@ -1967,12 +1946,7 @@ let parse_manifest_spec:
   path:Path.t ->
   relative_path:Path.t ->
   (manifest_spec, manifest_error) result = fun
-  toml
-  ~workspace_deps
-  ~workspace_dev_deps
-  ~workspace_build_deps
-  ~path
-  ~relative_path ->
+  toml ~workspace_deps ~workspace_dev_deps ~workspace_build_deps ~path ~relative_path ->
   match toml with
   | Toml.Table items -> (
       let fallback_name = Path.basename path in
@@ -2119,12 +2093,7 @@ let from_toml:
   path:Path.t ->
   relative_path:Path.t ->
   (t, manifest_error) result = fun
-  toml
-  ~workspace_deps
-  ~workspace_dev_deps
-  ~workspace_build_deps
-  ~path
-  ~relative_path ->
+  toml ~workspace_deps ~workspace_dev_deps ~workspace_build_deps ~path ~relative_path ->
   parse_manifest_spec
     toml
     ~workspace_deps
@@ -2396,7 +2365,7 @@ module type Hash_writer = sig
   val write_list: (state -> 'a -> unit) -> state -> 'a list -> unit
 end
 
-let hash_with = fun (type s) ((module H : Hash_writer with type state = s)) state (pkg: t) ->
+let hash_with = fun (type s) (module H : Hash_writer with type state = s) state (pkg: t) ->
   let hash_string_option value =
     match value with
     | Some value ->
@@ -2648,13 +2617,7 @@ module Tests = struct
     |> Result.expect ~msg:"expected valid package name"
 
   let source = fun
-    ?(workspace = false)
-    ?(builtin = false)
-    ?path
-    ?source_locator
-    ?ref_
-    ?version
-    () ->
+    ?(workspace = false) ?(builtin = false) ?path ?source_locator ?ref_ ?version () ->
     {
       workspace;
       builtin;
@@ -2666,7 +2629,7 @@ module Tests = struct
 
   let publish = default_publish_metadata
 
-  let test_parse_dependency_classes (): (unit, string) result =
+  let test_parse_dependency_classes () =
     let toml =
       Std.Data.Toml.parse
         {|
@@ -2707,7 +2670,7 @@ fixme = { path = "../fixme" }
     else
       Error "expected dependency classes to round-trip" [@test]
 
-  let test_parse_registry_requirement (): (unit, string) result =
+  let test_parse_registry_requirement () =
     let toml =
       Std.Data.Toml.parse
         {|
@@ -2745,7 +2708,7 @@ std = ">= 1.2.3"
           Error "expected parsed dependency requirement to be preserved structurally"
     | _ -> Error "expected a registry dependency with a parsed requirement" [@test]
 
-  let test_parse_builtin_dependency (): (unit, string) result =
+  let test_parse_builtin_dependency () =
     let toml =
       Std.Data.Toml.parse
         {|
@@ -2775,7 +2738,7 @@ stdlib = "*"
     && requirement_is_any requirement -> Ok ()
     | _ -> Error "expected stdlib '*' to parse as a builtin dependency" [@test]
 
-  let test_parse_github_dependency_shorthand (): (unit, string) result =
+  let test_parse_github_dependency_shorthand () =
     let toml =
       Std.Data.Toml.parse
         {|
@@ -2804,7 +2767,7 @@ widgets = { github = "riot-tests/widgets" }
       (package_name "widgets") -> Ok ()
     | _ -> Error "expected github shorthand to normalize into a source locator" [@test]
 
-  let test_parse_source_dependency_with_ref_and_path (): (unit, string) result =
+  let test_parse_source_dependency_with_ref_and_path () =
     let toml =
       Std.Data.Toml.parse
         {|
@@ -2833,7 +2796,7 @@ widgets = { source = "https://github.com/riot-tests/monorepo/packages/widgets", 
       (package_name "widgets") -> Ok ()
     | _ -> Error "expected source dependency to preserve locator and ref" [@test]
 
-  let test_builtin_dependency_rejects_version_constraints (): (unit, string) result =
+  let test_builtin_dependency_rejects_version_constraints () =
     let toml =
       Std.Data.Toml.parse
         {|
@@ -2856,7 +2819,7 @@ stdlib = ">= 1.0.0"
     | Ok _ -> Error "expected builtin dependency version constraints to fail"
     | Error _ -> Ok () [@test]
 
-  let test_invalid_registry_requirement_fails_manifest_parse (): (unit, string) result =
+  let test_invalid_registry_requirement_fails_manifest_parse () =
     let toml =
       Std.Data.Toml.parse
         {|
@@ -2879,7 +2842,7 @@ std = "definitely-not-semver"
     | Ok _ -> Error "expected invalid semver requirement to fail package parsing"
     | Error _ -> Ok () [@test]
 
-  let test_package_json_round_trips_registry_requirement (): (unit, string) result =
+  let test_package_json_round_trips_registry_requirement () =
     let requirement =
       Version.parse_requirement ">= 1.2.3"
       |> Result.expect ~msg:"expected requirement to parse"
@@ -2928,7 +2891,7 @@ std = "definitely-not-semver"
           | _ -> Error "expected registry dependency after package json roundtrip"
         ) [@test]
 
-  let test_package_json_round_trips_source_dependency (): (unit, string) result =
+  let test_package_json_round_trips_source_dependency () =
     let package = {
       name = package_name "example";
       path = Path.v "/tmp/example";
@@ -2965,7 +2928,7 @@ std = "definitely-not-semver"
     | Ok _ -> Error "expected source dependency to survive package json roundtrip"
     | Error err -> Error err [@test]
 
-  let test_resolve_projects_runtime_and_build_edges (): (unit, string) result =
+  let test_resolve_projects_runtime_and_build_edges () =
     let toml =
       Std.Data.Toml.parse
         {|
@@ -3051,7 +3014,7 @@ ppx = {}
           Error "expected resolved package projection to preserve exact ids"
     | Error err -> Error err [@test]
 
-  let test_resolve_requires_all_declared_dependencies (): (unit, string) result =
+  let test_resolve_requires_all_declared_dependencies () =
     let toml =
       Std.Data.Toml.parse {|
 [package]
@@ -3097,7 +3060,7 @@ std = {}
         Error "expected resolve to fail when a declared dependency is missing from the lockfile"
     | Error _ -> Ok () [@test]
 
-  let test_resolve_ignores_builtin_dependencies (): (unit, string) result =
+  let test_resolve_ignores_builtin_dependencies () =
     let package = {
       name = package_name "app";
       path = Path.v "/workspace/packages/app";
@@ -3148,7 +3111,7 @@ std = {}
     | Ok _ -> Error "expected builtin dependencies to stay out of the resolved lock graph"
     | Error err -> Error err [@test]
 
-  let test_build_graph_dependencies_exclude_build_only_deps (): (unit, string) result =
+  let test_build_graph_dependencies_exclude_build_only_deps () =
     let pkg = {
       name = package_name "example";
       path = Path.v "/tmp/example";
@@ -3193,7 +3156,7 @@ std = {}
     else
       Error "expected build graph dependencies to exclude build-only deps" [@test]
 
-  let test_dev_scope_dependencies_include_regular_dependencies (): (unit, string) result =
+  let test_dev_scope_dependencies_include_regular_dependencies () =
     let pkg = {
       name = package_name "example";
       path = Path.v "/tmp/example";
@@ -3231,7 +3194,7 @@ std = {}
     else
       Error "expected dev scope dependencies to include regular dependencies" [@test]
 
-  let test_root_module_name_sanitizes_hyphenated_package_names (): (unit, string) result =
+  let test_root_module_name_sanitizes_hyphenated_package_names () =
     let pkg =
       synthetic
         ~name:(package_name "kernel-new")

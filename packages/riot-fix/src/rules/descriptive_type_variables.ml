@@ -37,7 +37,8 @@ let check_parameter = fun parameter diagnostics ->
   | _ -> ()
 
 let check_member = fun member diagnostics ->
-  H.iter_fold Ast.TypeDeclaration.Member.fold_parameter
+  H.iter_fold
+    Ast.TypeDeclaration.Member.fold_parameter
     member
     ~fn:(fun parameter -> check_parameter parameter diagnostics)
 
@@ -46,7 +47,8 @@ let check_tree = fun _ctx root ->
   H.for_each_type_declaration
     root
     ~fn:(fun declaration ->
-      H.iter_fold Ast.TypeDeclaration.fold_member
+      H.iter_fold
+        Ast.TypeDeclaration.fold_member
         declaration
         ~fn:(fun member -> check_member member diagnostics));
   H.vector_to_list diagnostics

@@ -760,7 +760,7 @@ module Query = struct
     let param_strings =
       List.map
         params
-        ~fn:(fun ((k, v)) ->
+        ~fn:(fun (k, v) ->
           let k_enc = form_encode k in
           let v_enc = form_encode v in
           if String.length v = 0 then
@@ -779,7 +779,7 @@ module Query = struct
     List.fold_left
       params
       ~init:[]
-      ~fn:(fun acc ((k, v)) ->
+      ~fn:(fun acc (k, v) ->
         if String.equal k key then
           v :: acc
         else
@@ -788,5 +788,5 @@ module Query = struct
 
   let add = fun params key value -> (key, value) :: params
 
-  let remove = fun params key -> List.filter params ~fn:(fun ((k, _)) -> not (String.equal k key))
+  let remove = fun params key -> List.filter params ~fn:(fun (k, _) -> not (String.equal k key))
 end

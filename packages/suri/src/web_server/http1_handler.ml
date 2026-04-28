@@ -71,7 +71,7 @@ let send_response = fun conn (res: Response.t) ->
   in
   let header_lines =
     Net.Http.Header.to_list headers
-    |> List.map ~fn:(fun ((k, v)) -> k ^ ": " ^ v ^ "\r\n")
+    |> List.map ~fn:(fun (k, v) -> k ^ ": " ^ v ^ "\r\n")
     |> String.concat ""
   in
   let response_bytes = status_line ^ header_lines ^ "\r\n" ^ res.body in
@@ -178,7 +178,7 @@ let handle_websocket_upgrade = fun state socket_conn req ws_handler ->
       let status_line = "HTTP/1.1 101 Switching Protocols\r\n" in
       let header_lines =
         Net.Http.Header.to_list response_headers
-        |> List.map ~fn:(fun ((k, v)) -> k ^ ": " ^ v ^ "\r\n")
+        |> List.map ~fn:(fun (k, v) -> k ^ ": " ^ v ^ "\r\n")
         |> String.concat ""
       in
       let response_bytes = status_line ^ header_lines ^ "\r\n" in

@@ -117,8 +117,7 @@ and record_mut_backend:
   finish builder
 
 and variant_backend: 'value. state -> 'value De.compiled_variant_cases -> 'value = fun
-  state
-  cases ->
+  state cases ->
   let rec find_unit tag payload index =
     if Int.equal index (Array.length cases) then
       raise (Serde.Decode_error `invalid_tag)

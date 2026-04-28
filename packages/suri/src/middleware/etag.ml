@@ -29,7 +29,7 @@ let middleware = fun ?(weak = false) () ~conn ~next ->
   let conn' = next conn in
   (* Check if ETag already set *)
   let has_etag =
-    List.exists (fun ((name, _)) -> String.lowercase_ascii name = "etag") (Conn.resp_headers conn')
+    List.exists (fun (name, _) -> String.lowercase_ascii name = "etag") (Conn.resp_headers conn')
   in
   if has_etag then
     conn'

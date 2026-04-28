@@ -178,14 +178,7 @@ let make_runtime_request = fun
     ()
 
 let make_runtime_inputs = fun
-  ?on_event
-  ~workspace
-  ~package_names
-  ~targets
-  ?scope
-  ?profile
-  ?requested_parallelism
-  () ->
+  ?on_event ~workspace ~package_names ~targets ?scope ?profile ?requested_parallelism () ->
   let request =
     make_runtime_request
       ~workspace
@@ -720,9 +713,7 @@ let test_execute_allows_multi_target_partial_failures = fun _ctx ->
             match event with
             | Riot_build.Event.Phase (Riot_build.Event.TargetBuildStarted { target }) ->
                 started_targets := Riot_model.Target.to_string target :: !started_targets
-            | Riot_build.Event.Phase (
-              Riot_build.Event.TargetBuildFinished { target; result_count; had_partial_failure = partial }
-            ) ->
+            | Riot_build.Event.Phase (Riot_build.Event.TargetBuildFinished { target; result_count; had_partial_failure = partial }) ->
                 finished_targets := Riot_model.Target.to_string target :: !finished_targets;
                 finished_counts := result_count :: !finished_counts;
                 partial_flags := partial :: !partial_flags
@@ -824,9 +815,8 @@ let test_execute_multi_target_reports_global_returning_results = fun _ctx ->
           ~requested_parallelism:(Some 1)
           ~on_event:(fun event ->
             match event with
-            | Riot_build.Event.Phase (
-              Riot_build.Event.ReturningResults { result_count; had_partial_failure }
-            ) -> returning_event := Some (result_count, had_partial_failure)
+            | Riot_build.Event.Phase (Riot_build.Event.ReturningResults { result_count; had_partial_failure }) ->
+                returning_event := Some (result_count, had_partial_failure)
             | _ -> ())
           ()
       in
@@ -883,9 +873,8 @@ let test_execute_multi_target_all_success_reports_aggregated_results = fun _ctx 
           ~requested_parallelism:(Some 1)
           ~on_event:(fun event ->
             match event with
-            | Riot_build.Event.Phase (
-              Riot_build.Event.ReturningResults { result_count; had_partial_failure }
-            ) -> returning_event := Some (result_count, had_partial_failure)
+            | Riot_build.Event.Phase (Riot_build.Event.ReturningResults { result_count; had_partial_failure }) ->
+                returning_event := Some (result_count, had_partial_failure)
             | _ -> ())
           ()
       in

@@ -31,7 +31,8 @@ let diagnostic_for_mutable_token = fun token ->
     ()
 
 let record_type_diagnostics = fun diagnostics record_type ->
-  H.iter_fold Ast.RecordType.fold_field
+  H.iter_fold
+    Ast.RecordType.fold_field
     record_type
     ~fn:(fun field ->
       match Ast.RecordField.view field with
@@ -49,7 +50,8 @@ let check_tree = fun ctx root ->
           Syn.Visitor.empty_hooks with
           enter_type_declaration =
             Some (fun visitor declaration ->
-              H.iter_fold Ast.TypeDeclaration.fold_member
+              H.iter_fold
+                Ast.TypeDeclaration.fold_member
                 declaration
                 ~fn:(fun member ->
                   match Ast.TypeDeclaration.Member.record_type member with

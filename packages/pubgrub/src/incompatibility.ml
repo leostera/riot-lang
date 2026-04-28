@@ -50,7 +50,7 @@ let no_versions = fun pkg ranges ->
   let term = Term.positive pkg ranges in
   create_external [ term ] (NoVersions (pkg, ranges))
 
-let from_dependency = fun pkg ver ((dep_pkg, dep_ranges)) ->
+let from_dependency = fun pkg ver (dep_pkg, dep_ranges) ->
   let parent_term = Term.positive pkg (Ranges.singleton ver) in
   if Ranges.is_empty dep_ranges then
     create_external [ parent_term ] (FromDependency (pkg, ver, dep_pkg, dep_ranges))

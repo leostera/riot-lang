@@ -9,7 +9,6 @@ let iter_fold = fun fold value ~fn ->
       fn item;
       Syn.Ast.Continue ())
 
-
 module Ast = Syn.Ast
 module SyntaxKind = Syn.SyntaxKind
 module SyntaxTree = Syn.SyntaxTree
@@ -37,6 +36,8 @@ let span_from_raw = fun (span: Ceibo.Span.t) ->
   Syn.Ceibo.Span.make
     ~start:span.Ceibo.Span.start
     ~end_:span.Ceibo.Span.end_
+
+let span_from_ast = span_from_raw
 
 let span_of_raw_range = fun tree ~raw_lo ~raw_hi ->
   if Int.(raw_hi <= raw_lo) then
@@ -117,14 +118,14 @@ let span_of_children = fun tree ~child_count ~child_at ->
 let span_of_type_member = fun member ->
   let decl = Ast.TypeDeclaration.Member.declaration member in
   span_of_children
-    decl.tree
+    (Ast.TypeDeclaration.as_node decl).tree
     ~child_count:(Ast.TypeDeclaration.Member.child_count member)
     ~child_at:(Ast.TypeDeclaration.Member.child_at member)
 
 let span_of_module_member = fun member ->
   let decl = Ast.ModuleDeclaration.Member.declaration member in
   span_of_children
-    decl.tree
+    (Ast.ModuleDeclaration.as_node decl).tree
     ~child_count:(Ast.ModuleDeclaration.Member.child_count member)
     ~child_at:(Ast.ModuleDeclaration.Member.child_at member)
 
@@ -143,10 +144,10 @@ let collect_path = fun for_each_ident ->
   for_each_ident ~fn:(fun token -> Vector.push segments ~value:(Ast.Token.text token));
   vector_to_list segments
 
-let path_of_path = fun path -> collect_path (iter_fold Ast.Path.fold_ident path)
+let path_of_path = fun path -> collect_path (iter_fold Ast.Ident.fold_segment path)
 
 let path_of_node = fun node ->
-  match Ast.cast_result_to_option (Ast.Path.cast node) with
+  match Ast.cast_result_to_option (Ast.Ident.cast node) with
   | Some path -> Some (path_of_path path)
   | None -> None
 
@@ -170,6 +171,11 @@ let push_unsupported_type = fun state node summary ->
   push_diagnostic
     state
     (Diagnostics.Diagnostic.UnsupportedType { span = span_of_node node; summary })
+
+let push_unsupported_type_with_span = fun state ~span summary ->
+  push_diagnostic
+    state
+    (Diagnostics.Diagnostic.UnsupportedType { span; summary })
 
 let is_export = function
   | Semantic_tree.TypeDeclaration _ -> true
@@ -218,8 +224,8 @@ let rec lower_type_expr = fun state type_expr ->
   match Ast.TypeExpr.view type_expr with
   | Ast.TypeExpr.Wildcard -> Semantic_tree.AnyType
   | Ast.TypeExpr.Var { name } -> Semantic_tree.TypeVar (Ast.Token.text name)
-  | Ast.TypeExpr.Ident { path } ->
-      Semantic_tree.TypeConstr { path = path_of_path path; arguments = [] }
+  | Ast.TypeExpr.Ident { ident } ->
+      Semantic_tree.TypeConstr { path = path_of_path ident; arguments = [] }
   | Ast.TypeExpr.Apply { ident; args } ->
       let arguments = Vector.with_capacity ~size:(Vector.length args) in
       Vector.for_each args ~fn:(fun arg -> Vector.push arguments ~value:(lower_type_expr state arg));
@@ -273,7 +279,7 @@ let rec annotation_of_expression = fun state expr ->
 let binding_name_token = fun binding ->
   let rec of_pattern pattern =
     match Ast.Pattern.view pattern with
-    | Ast.Pattern.Ident { path } -> Ast.Path.last_ident path
+    | Ast.Pattern.Ident { ident } -> Ast.Ident.last_segment ident
     | Ast.Pattern.Constraint { pattern = inner; _ } -> of_pattern inner
     | Ast.Pattern.Alias { alias; _ } -> of_pattern alias
     | _ -> None
@@ -289,14 +295,20 @@ let parameter_count = fun binding ->
     | Ast.Pattern.Constraint { pattern; _ } -> count_parameter_pattern pattern
     | _ -> count := Int.add !count 1
   in
-  iter_fold Ast.LetBinding.fold_parameter binding ~fn:count_parameter_pattern;
+  let count_parameter parameter =
+    match Ast.Parameter.pattern parameter with
+    | Some pattern -> count_parameter_pattern pattern
+    | None -> count := Int.add !count 1
+  in
+  iter_fold Ast.LetBinding.fold_parameter binding ~fn:count_parameter;
   !count
 
 let return_annotation_of_binding = fun binding ->
   let seen_first_pattern = ref false in
   let annotation = ref None in
-  iter_fold Ast.Node.fold_child_node
-    binding
+  iter_fold
+    Ast.Node.fold_child_node
+    (Ast.LetBinding.as_node binding)
     ~fn:(fun node ->
       match Ast.cast_result_to_option (Ast.Pattern.cast node) with
       | None -> ()
@@ -318,10 +330,11 @@ let return_annotation_of_binding = fun binding ->
 
 let lower_let_declaration = fun state declaration ->
   let recursive = Option.is_some (Ast.LetDeclaration.rec_token declaration) in
-  let declaration_span = span_of_node declaration in
+  let declaration_span = span_from_ast (Ast.LetDeclaration.span declaration) in
   let declaration_end = span_end declaration_span in
   let first_binding = ref true in
-  iter_fold Ast.LetDeclaration.fold_binding
+  iter_fold
+    Ast.LetDeclaration.fold_binding
     declaration
     ~fn:(fun binding ->
       match binding_name_token binding with
@@ -365,10 +378,10 @@ let lower_let_declaration = fun state declaration ->
             if !first_binding then
               declaration_span
             else
-              span_of_node binding
+              span_from_ast (Ast.LetBinding.span binding)
           in
           first_binding := false;
-          push_unsupported_with_span state ~span ~kind:(Ast.Node.kind binding) "let_pattern")
+          push_unsupported_with_span state ~span ~kind:(Ast.LetBinding.kind binding) "let_pattern")
 
 let type_parameter_name = function
   | Ast.TypeDeclaration.Named { name; quote = Some _; _ } -> Some ("'" ^ Ast.Token.text name)
@@ -396,16 +409,18 @@ let member_has_token = fun child_count child_token_at kind ->
   loop 0
 
 let lower_type_declaration = fun state declaration ->
-  let declaration_span = span_of_node declaration in
+  let declaration_span = span_from_ast (Ast.TypeDeclaration.span declaration) in
   let declaration_end = span_end declaration_span in
   let first_member = ref true in
-  iter_fold Ast.TypeDeclaration.fold_member
+  iter_fold
+    Ast.TypeDeclaration.fold_member
     declaration
     ~fn:(fun member ->
       match Ast.TypeDeclaration.Member.name member with
       | Some name_token ->
           let params = Vector.with_capacity ~size:2 in
-          iter_fold Ast.TypeDeclaration.Member.fold_parameter
+          iter_fold
+            Ast.TypeDeclaration.Member.fold_parameter
             member
             ~fn:(fun parameter ->
               match type_parameter_name parameter with
@@ -440,7 +455,11 @@ let lower_type_declaration = fun state declaration ->
             )
       | None ->
           first_member := false;
-          push_unsupported state declaration "type declaration")
+          push_unsupported_with_span
+            state
+            ~span:(span_from_ast (Ast.TypeDeclaration.span declaration))
+            ~kind:(Ast.TypeDeclaration.kind declaration)
+            "type declaration")
 
 let path_of_module_body = fun for_each_ident ->
   let path = collect_path for_each_ident in
@@ -449,10 +468,11 @@ let path_of_module_body = fun for_each_ident ->
   | _ -> Some path
 
 let lower_module_declaration = fun state declaration ->
-  let declaration_span = span_of_node declaration in
+  let declaration_span = span_from_ast (Ast.ModuleDeclaration.span declaration) in
   let declaration_end = span_end declaration_span in
   let first_member = ref true in
-  iter_fold Ast.ModuleDeclaration.fold_member
+  iter_fold
+    Ast.ModuleDeclaration.fold_member
     declaration
     ~fn:(fun member ->
       match Ast.ModuleDeclaration.Member.name member with
@@ -500,7 +520,11 @@ let lower_module_declaration = fun state declaration ->
             )
       | None ->
           first_member := false;
-          push_unsupported state declaration "module declaration")
+          push_unsupported_with_span
+            state
+            ~span:(span_from_ast (Ast.ModuleDeclaration.span declaration))
+            ~kind:(Ast.ModuleDeclaration.kind declaration)
+            "module declaration")
 
 let lower_module_type_declaration = fun state declaration ->
   match Ast.ModuleTypeDeclaration.name declaration with
@@ -517,23 +541,32 @@ let lower_module_type_declaration = fun state declaration ->
         (
           Semantic_tree.ModuleTypeDeclaration {
             id = fresh_binding_id state ~name;
-            span = span_of_node declaration;
+            span = span_from_ast (Ast.ModuleTypeDeclaration.span declaration);
             name;
             has_definition;
           }
         )
-  | None -> push_unsupported state declaration "module type declaration"
+  | None ->
+      push_unsupported_with_span
+        state
+        ~span:(span_from_ast (Ast.ModuleTypeDeclaration.span declaration))
+        ~kind:(Ast.ModuleTypeDeclaration.kind declaration)
+        "module type declaration"
 
 let lower_open_declaration = fun state declaration ->
-  let target = path_of_module_body (iter_fold Ast.OpenDeclaration.fold_path_ident declaration) in
+  let target = path_of_module_body (iter_fold Ast.OpenDeclaration.fold_ident_segment declaration) in
   let override_ =
-    match Ast.Node.first_child_token declaration ~kind:SyntaxKind.BANG with
+    match Ast.Node.first_child_token (Ast.OpenDeclaration.as_node declaration) ~kind:SyntaxKind.BANG with
     | Some _ -> true
     | None -> false
   in
   push_item
     state
-    (Semantic_tree.OpenStatement { span = span_of_node declaration; target; override_ })
+    (Semantic_tree.OpenStatement {
+      span = span_from_ast (Ast.OpenDeclaration.span declaration);
+      target;
+      override_;
+    })
 
 let lower_include_declaration = fun state declaration ->
   let target =
@@ -555,7 +588,12 @@ let lower_include_declaration = fun state declaration ->
       )
     | None -> Semantic_tree.Opaque
   in
-  push_item state (Semantic_tree.IncludeStatement { span = span_of_node declaration; target })
+  push_item
+    state
+    (Semantic_tree.IncludeStatement {
+      span = span_from_ast (Ast.IncludeDeclaration.span declaration);
+      target;
+    })
 
 let lower_exception_declaration = fun state declaration ->
   match Ast.ExceptionDeclaration.name declaration with
@@ -564,12 +602,15 @@ let lower_exception_declaration = fun state declaration ->
       let rhs =
         match Ast.ExceptionDeclaration.view declaration with
         | Ast.ExceptionDeclaration.Bare -> None
-        | Ast.ExceptionDeclaration.Alias { path; _ } ->
-            Some (Semantic_tree.ExceptionAlias (path_of_path path))
+        | Ast.ExceptionDeclaration.Alias { ident; _ } ->
+            Some (Semantic_tree.ExceptionAlias (path_of_path ident))
         | Ast.ExceptionDeclaration.Payload { payload = Ast.ExceptionDeclaration.TypeExpr type_expr; _ } ->
             Some (Semantic_tree.ExceptionPayload (lower_type_expr state type_expr))
         | Ast.ExceptionDeclaration.Payload { payload = Ast.ExceptionDeclaration.Record record; _ } ->
-            push_unsupported_type state record "record";
+            push_unsupported_type_with_span
+              state
+              ~span:(span_from_ast (Ast.RecordType.span record))
+              "record";
             Some (Semantic_tree.ExceptionPayload (Semantic_tree.TypeUnsupported "record"))
         | Ast.ExceptionDeclaration.Unknown _ -> None
       in
@@ -578,12 +619,17 @@ let lower_exception_declaration = fun state declaration ->
         (
           Semantic_tree.ExceptionDeclaration {
             id = fresh_binding_id state ~name;
-            span = span_of_node declaration;
+            span = span_from_ast (Ast.ExceptionDeclaration.span declaration);
             name;
             rhs;
           }
         )
-  | None -> push_unsupported state declaration "exception declaration"
+  | None ->
+      push_unsupported_with_span
+        state
+        ~span:(span_from_ast (Ast.ExceptionDeclaration.span declaration))
+        ~kind:(Ast.ExceptionDeclaration.kind declaration)
+        "exception declaration"
 
 let lower_external_declaration = fun state declaration ->
   match Ast.ExternalDeclaration.view declaration with
@@ -594,12 +640,17 @@ let lower_external_declaration = fun state declaration ->
         (
           Semantic_tree.ExternalDeclaration {
             id = fresh_binding_id state ~name;
-            span = span_of_node declaration;
+            span = span_from_ast (Ast.ExternalDeclaration.span declaration);
             name;
             annotation = lower_type_expr state annotation;
           }
         )
-  | Ast.ExternalDeclaration.Unknown _ -> push_unsupported state declaration "external declaration"
+  | Ast.ExternalDeclaration.Unknown _ ->
+      push_unsupported_with_span
+        state
+        ~span:(span_from_ast (Ast.ExternalDeclaration.span declaration))
+        ~kind:(Ast.ExternalDeclaration.kind declaration)
+        "external declaration"
 
 let lower_value_declaration = fun state declaration ->
   match Ast.ValueDeclaration.view declaration with
@@ -610,7 +661,7 @@ let lower_value_declaration = fun state declaration ->
         (
           Semantic_tree.ValueDeclaration {
             id = fresh_binding_id state ~name;
-            span = span_of_node declaration;
+            span = span_from_ast (Ast.ValueDeclaration.span declaration);
             name = Some name;
             recursive = false;
             parameter_count = 0;
@@ -618,12 +669,23 @@ let lower_value_declaration = fun state declaration ->
             annotation = Some (lower_type_expr state annotation);
           }
         )
-  | Ast.ValueDeclaration.Unknown _ -> push_unsupported state declaration "value declaration"
+  | Ast.ValueDeclaration.Unknown _ ->
+      push_unsupported_with_span
+        state
+        ~span:(span_from_ast (Ast.ValueDeclaration.span declaration))
+        ~kind:(Ast.ValueDeclaration.kind declaration)
+        "value declaration"
 
 let lower_expr_item = fun state item ->
   match Ast.ExprItem.expr item with
-  | Some expr -> push_item state (Semantic_tree.Expression { span = span_of_node expr })
-  | None -> push_unsupported state item "expression"
+  | Some expr ->
+      push_item state (Semantic_tree.Expression { span = span_from_ast (Ast.Expr.span expr) })
+  | None ->
+      push_unsupported_with_span
+        state
+        ~span:(span_from_ast (Ast.ExprItem.span item))
+        ~kind:(Ast.ExprItem.kind item)
+        "expression"
 
 let lower_structure_item = fun state item ->
   match Ast.StructureItem.view item with
@@ -640,11 +702,13 @@ let lower_structure_item = fun state item ->
   | Ast.StructureItem.Type (Ast.TypeExtensionItem declaration) ->
       push_unsupported_with_span
         state
-        ~span:(span_of_node declaration)
+        ~span:(span_from_ast (Ast.TypeExtensionDeclaration.span declaration))
         ~kind:SyntaxKind.TYPE_DECL
         "type extension"
-  | Ast.StructureItem.Extension item -> push_unsupported state item "extension"
-  | Ast.StructureItem.Attribute item -> push_unsupported state item "attribute"
+  | Ast.StructureItem.Extension item ->
+      push_unsupported state (Ast.ExtensionItem.as_node item) "extension"
+  | Ast.StructureItem.Attribute item ->
+      push_unsupported state (Ast.AttributeItem.as_node item) "attribute"
   | Ast.StructureItem.Error node -> push_unsupported state node "error"
   | Ast.StructureItem.Unknown node -> push_unsupported state node "unknown"
 
@@ -662,11 +726,13 @@ let lower_signature_item = fun state item ->
   | Ast.SignatureItem.Type (Ast.TypeExtensionItem declaration) ->
       push_unsupported_with_span
         state
-        ~span:(span_of_node declaration)
+        ~span:(span_from_ast (Ast.TypeExtensionDeclaration.span declaration))
         ~kind:SyntaxKind.TYPE_DECL
         "type extension"
-  | Ast.SignatureItem.Extension item -> push_unsupported state item "extension"
-  | Ast.SignatureItem.Attribute item -> push_unsupported state item "attribute"
+  | Ast.SignatureItem.Extension item ->
+      push_unsupported state (Ast.ExtensionItem.as_node item) "extension"
+  | Ast.SignatureItem.Attribute item ->
+      push_unsupported state (Ast.AttributeItem.as_node item) "attribute"
   | Ast.SignatureItem.Error node -> push_unsupported state node "error"
   | Ast.SignatureItem.Unknown node -> push_unsupported state node "unknown"
 

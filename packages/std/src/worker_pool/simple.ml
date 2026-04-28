@@ -93,7 +93,7 @@ let rec loop: type task res. (task, res) state -> (unit, Actor.exit_reason) resu
 let init = fun ~owner ~concurrency ~tasks ~result_ref ~fn () ->
   let dispatcher_self = self () in
   (* Worker function: execute user's fn and send result back *)
-  let worker_fn ~owner ~task:((idx, task)) =
+  let worker_fn ~owner ~task:(idx, task) =
     match fn task with
     | result -> send owner (TaskResult { idx; result; result_ref })
     | exception exn -> send owner (TaskError { idx; exn; result_ref })

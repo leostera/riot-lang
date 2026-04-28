@@ -433,7 +433,7 @@ let satisfier_search = fun solution incompat ->
         List.fold_left
           rest
           ~init:first
-          ~fn:(fun ((current_term, current_info)) ((candidate_term, candidate_info)) ->
+          ~fn:(fun (current_term, current_info) (candidate_term, candidate_info) ->
             if candidate_info.global_index > current_info.global_index then
               (candidate_term, candidate_info)
             else
@@ -444,7 +444,7 @@ let satisfier_search = fun solution incompat ->
     List.fold_left
       package_satisfiers
       ~init:((-1), 1)
-      ~fn:(fun ((previous_global_index, previous_level)) ((term, info)) ->
+      ~fn:(fun (previous_global_index, previous_level) (term, info) ->
         let info =
           if String.equal (Term.package term) satisfier_pkg then
             find_package_previous_satisfier satisfier_pkg satisfier_term info.assignment_ranges

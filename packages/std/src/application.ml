@@ -61,12 +61,12 @@ let start_applications = fun apps ->
                   start_all rest
               | Error e ->
                   (* Rollback: stop all started apps in reverse order *)
-                  Vector.for_each started ~fn:(fun ((_, pid, a)) -> a.stop pid);
+                  Vector.for_each started ~fn:(fun (_, pid, a) -> a.stop pid);
                   Error e
             )
       in
       match start_all sorted_nodes with
       | Ok apps_with_pids ->
           (* Strip the app from the tuple *)
-          Ok (List.map apps_with_pids ~fn:(fun ((name, pid, _)) -> (name, pid)))
+          Ok (List.map apps_with_pids ~fn:(fun (name, pid, _) -> (name, pid)))
       | Error e -> Error e

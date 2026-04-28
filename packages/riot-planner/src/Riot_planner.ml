@@ -20,13 +20,7 @@ let plan_workspace = fun ~workspace ~target ~scope ~load_errors ~dev_artifacts -
     ~dev_artifacts
 
 let plan_package_with_graph = fun
-  ~workspace
-  ~toolchain
-  ~store
-  ~package_graph
-  ~package_key
-  ~package
-  ~build_ctx ->
+  ~workspace ~toolchain ~store ~package_graph ~package_key ~package ~build_ctx ->
   Package_planner.plan_package
     ~workspace
     ~toolchain

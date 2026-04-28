@@ -143,14 +143,14 @@ let person_decode =
     ~finish:(fun (builder: person_builder) ->
       match (builder.name, builder.age, builder.active, builder.tags, builder.nickname, builder.pet) with
       | (Some name, Some age, Some active, Some tags, Some nickname, Some pet) ->
-          ({
+          (({
             name;
             age;
             active;
             tags;
             nickname;
             pet;
-          }: person)
+          }: person))
       | _ -> De.missing_field ())
 
 let person_encode =
@@ -179,7 +179,7 @@ let prefix_decode =
       | None -> ignore (De.read reader De.skip_any))
     ~finish:(fun (builder: prefix_builder) ->
       match (builder.help, builder.hello, builder.hellsinborg) with
-      | (Some help, Some hello, Some hellsinborg) -> ({ help; hello; hellsinborg }: prefix_record)
+      | (Some help, Some hello, Some hellsinborg) -> (({ help; hello; hellsinborg }: prefix_record))
       | _ -> De.missing_field ())
 
 let expect_equal = fun ~expected ~actual ~message ->

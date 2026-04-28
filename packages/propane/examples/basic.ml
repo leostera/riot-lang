@@ -15,7 +15,7 @@ let division_prop =
   property
     "division and modulo relation"
     Arbitrary.(pair int int)
-    (fun ((a, b)) ->
+    (fun (a, b) ->
       assume (b != 0);
       (a / b) * b + (a mod b) = a)
 
@@ -25,7 +25,7 @@ let vector_length_prop =
   property
     "vector length after push"
     Arbitrary.(pair int (vector int))
-    (fun ((x, vec)) ->
+    (fun (x, vec) ->
       let original_len = Std.Collections.Vector.length vec in
       Std.Collections.Vector.push vec ~value:x;
       Std.Collections.Vector.length vec = original_len + 1)
@@ -36,7 +36,7 @@ let string_concat_prop =
   property
     "string concatenation length"
     Arbitrary.(pair string string)
-    (fun ((s1, s2)) -> String.length (s1 ^ s2) = String.length s1 + String.length s2)
+    (fun (s1, s2) -> String.length (s1 ^ s2) = String.length s1 + String.length s2)
 
 (* All tests - ready to use with Test.Cli.main! *)
 

@@ -200,7 +200,7 @@ let child_decode =
       | None -> ignore (De.read reader De.skip_any))
     ~finish:(fun (builder: child_builder) ->
       match (builder.owner, builder.score, builder.flags) with
-      | (Some owner, Some score, Some flags) -> ({ owner; score; flags }: child)
+      | (Some owner, Some score, Some flags) -> (({ owner; score; flags }: child))
       | _ -> De.missing_field ())
 
 let item_decode =
@@ -238,7 +238,7 @@ let item_decode =
         builder.note
       ) with
       | (Some id, Some name, Some active, Some tags, Some metrics, Some child, Some note) ->
-          ({
+          (({
             id;
             name;
             active;
@@ -246,7 +246,7 @@ let item_decode =
             metrics;
             child;
             note;
-          }: item)
+          }: item))
       | _ -> De.missing_field ())
 
 let dataset_decode =
@@ -262,7 +262,7 @@ let dataset_decode =
       | None -> ignore (De.read reader De.skip_any))
     ~finish:(fun (builder: dataset_builder) ->
       match (builder.version, builder.source, builder.items) with
-      | (Some version, Some source, Some items) -> ({ version; source; items }: dataset)
+      | (Some version, Some source, Some items) -> (({ version; source; items }: dataset))
       | _ -> De.missing_field ())
 
 let child_encode =
@@ -331,7 +331,7 @@ and manual_child_of_json = fun json ->
         let* values = expect_array value in
         manual_bool_vec values)
   in
-  Ok ({ owner; score; flags }: child)
+  Ok (({ owner; score; flags }: child))
 
 and manual_item_of_json = fun json ->
   let* json = expect_object (normalize_json json) in
@@ -366,7 +366,7 @@ and manual_item_of_json = fun json ->
             let* note = expect_string value in
             Ok (Some note))
   in
-  Ok ({
+  Ok (({
     id;
     name;
     active;
@@ -374,7 +374,7 @@ and manual_item_of_json = fun json ->
     metrics;
     child;
     note;
-  }: item)
+  }: item))
 
 let manual_dataset_of_json = fun json ->
   let* json = expect_object (normalize_json json) in
@@ -388,7 +388,7 @@ let manual_dataset_of_json = fun json ->
         let* values = expect_array value in
         manual_items_of_json values)
   in
-  Ok ({ version; source; items }: dataset)
+  Ok (({ version; source; items }: dataset))
 
 let rec child_to_json = fun (value: child) ->
   Json.Object [

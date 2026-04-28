@@ -200,8 +200,7 @@ let canonicalize_scheme_for_persistence = fun canonicalize_type scheme ->
     TypeScheme.of_explicit ~quantified body2
 
 let canonicalize_type_decl_for_persistence = fun
-  canonicalize_type
-  (type_decl: FileSummary.type_decl) ->
+  canonicalize_type (type_decl: FileSummary.type_decl) ->
   let declaration = type_decl.declaration in
   let manifest =
     match declaration.manifest with
@@ -297,12 +296,7 @@ let complete = fun ~module_name ~source_hash ?(type_decls = []) ?(value_definiti
   }
 
 let partial = fun
-  ~module_name
-  ~source_hash
-  ?(type_decls = [])
-  ?(value_definitions = [])
-  ?exports
-  () ->
+  ~module_name ~source_hash ?(type_decls = []) ?(value_definitions = []) ?exports () ->
   let export_result =
     match exports with
     | Some exports -> FileSummary.ErroredExport { exports }
@@ -347,10 +341,7 @@ let missing = fun ~module_name ~source_hash ?(type_decls = []) ?(value_definitio
     ()
 
 let of_file_summary = fun
-  ~module_name
-  ~source_hash
-  ?(value_definitions = [])
-  (summary: FileSummary.t) ->
+  ~module_name ~source_hash ?(value_definitions = []) (summary: FileSummary.t) ->
   let (export_result, type_decls) =
     canonicalize_payload_for_persistence
       ~export_result:summary.export_result
@@ -753,11 +744,7 @@ let payload_to_json = fun ~completeness ~export_result ~type_decls ~value_defini
   ]
 
 let synthetic_source_hash = fun
-  ~module_name
-  ~export_result
-  ~type_decls
-  ?(value_definitions = [])
-  () ->
+  ~module_name ~export_result ~type_decls ?(value_definitions = []) () ->
   let completeness =
     match export_result with
     | FileSummary.TrustedExport _ -> FileSummary.Complete
@@ -1026,13 +1013,13 @@ let constructor_of_json = fun json ->
         parse_labels [] labels_json
     | None -> Ok None
   in
-  Ok ({
+  Ok (({
     TypeDecl.constructor_id = ConstructorId.of_int constructor_id;
     name;
     scheme;
     generalized;
     inline_record_labels;
-  }: TypeDecl.constructor)
+  }: TypeDecl.constructor))
 
 let label_decl_of_json = fun json ->
   let* fields = get_object json in
@@ -1049,12 +1036,12 @@ let label_decl_of_json = fun json ->
     | other -> error_expected "bool" other
   in
   let* mutable_ = mutable_ in
-  Ok ({
+  Ok (({
     TypeDecl.label_id = LabelId.of_int label_id;
     name;
     field_type;
     mutable_;
-  }: TypeDecl.label)
+  }: TypeDecl.label))
 
 let poly_variant_tag_of_json = fun json ->
   let* fields = get_object json in
@@ -1068,7 +1055,7 @@ let poly_variant_tag_of_json = fun json ->
     | None -> Ok None
   in
   let* payload_type = payload_type in
-  Ok ({ TypeDecl.name = name; payload_type }: TypeDecl.poly_variant_tag)
+  Ok (({ TypeDecl.name = name; payload_type }: TypeDecl.poly_variant_tag))
 
 let manifest_of_json = fun json ->
   let* fields = get_object json in

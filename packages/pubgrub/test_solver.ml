@@ -29,10 +29,7 @@ let test_simple_solve = fun () ->
     (v 1 0 0) with
   | Ok (Solver.Success solution) ->
       Log.info "✓ Solution found with %d packages" (List.length solution);
-      List.for_each
-        solution
-        ~fn:(fun ((pkg, ver)) ->
-          Log.info "  %s@%s" pkg (version_to_string ver))
+      List.for_each solution ~fn:(fun (pkg, ver) -> Log.info "  %s@%s" pkg (version_to_string ver))
   | Ok (Solver.Failure _) -> Log.error "✗ Unexpected failure"
   | Error err -> Log.error "✗ Error: %s" err
 
@@ -61,10 +58,7 @@ let test_transitive_deps = fun () ->
     (v 1 0 0) with
   | Ok (Solver.Success solution) ->
       Log.info "✓ Solution found with %d packages" (List.length solution);
-      List.for_each
-        solution
-        ~fn:(fun ((pkg, ver)) ->
-          Log.info "  %s@%s" pkg (version_to_string ver))
+      List.for_each solution ~fn:(fun (pkg, ver) -> Log.info "  %s@%s" pkg (version_to_string ver))
   | Ok (Solver.Failure _) -> Log.error "✗ Unexpected failure"
   | Error err -> Log.error "✗ Error: %s" err
 

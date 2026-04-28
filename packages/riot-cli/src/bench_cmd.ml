@@ -190,8 +190,7 @@ let event_elapsed_us = fun ~command_started_at ->
   |> Time.Duration.to_micros
 
 let listed_suite_source_label = fun
-  ~(workspace:Riot_model.Workspace.t)
-  (suite: Bench_runtime.listed_bench_suite) ->
+  ~(workspace:Riot_model.Workspace.t) (suite: Bench_runtime.listed_bench_suite) ->
   match suite.source_path with
   | Some path -> (
       match Path.strip_prefix path ~prefix:workspace.root with
@@ -201,13 +200,11 @@ let listed_suite_source_label = fun
   | None -> Package_name.to_string suite.suite.package_name ^ "/" ^ suite.suite.suite_name
 
 let listed_bench_selector = fun
-  (suite: Bench_runtime.suite_binary)
-  (item: Bench_runtime.listed_bench_item) ->
+  (suite: Bench_runtime.suite_binary) (item: Bench_runtime.listed_bench_item) ->
   Package_name.to_string suite.package_name ^ ":" ^ suite.suite_name ^ ":" ^ item.name
 
 let listed_bench_item_json = fun
-  (suite: Bench_runtime.suite_binary)
-  (item: Bench_runtime.listed_bench_item) ->
+  (suite: Bench_runtime.suite_binary) (item: Bench_runtime.listed_bench_item) ->
   let kind =
     match item.kind with
     | Bench_runtime.Benchmark -> Data.Json.String "benchmark"
@@ -225,8 +222,7 @@ let listed_bench_item_json = fun
   ]
 
 let listed_suite_path_json = fun
-  ~(workspace:Riot_model.Workspace.t)
-  (suite: Bench_runtime.listed_bench_suite) ->
+  ~(workspace:Riot_model.Workspace.t) (suite: Bench_runtime.listed_bench_suite) ->
   match suite.source_path with
   | Some path -> (
       match Path.strip_prefix path ~prefix:workspace.root with
@@ -255,9 +251,7 @@ let write_bench_suite_listed_json = fun
     ])
 
 let write_bench_item_listed_json = fun
-  ~command_started_at
-  (suite: Bench_runtime.suite_binary)
-  (item: Bench_runtime.listed_bench_item) ->
+  ~command_started_at (suite: Bench_runtime.suite_binary) (item: Bench_runtime.listed_bench_item) ->
   write_json_line
     (Data.Json.Object [
       ("type", Data.Json.String "BenchItemListed");
@@ -270,9 +264,7 @@ let write_bench_item_listed_json = fun
     ])
 
 let write_bench_suite_list_failed_json = fun
-  ~command_started_at
-  (suite: Bench_runtime.suite_binary)
-  err ->
+  ~command_started_at (suite: Bench_runtime.suite_binary) err ->
   write_json_line
     (Data.Json.Object [
       ("type", Data.Json.String "BenchSuiteListFailed");
@@ -284,10 +276,7 @@ let write_bench_suite_list_failed_json = fun
     ])
 
 let write_bench_list_completed_json = fun
-  ~command_started_at
-  ~suite_count
-  ~benchmark_count
-  ~failed_suite_count ->
+  ~command_started_at ~suite_count ~benchmark_count ~failed_suite_count ->
   write_json_line
     (Data.Json.Object [
       ("type", Data.Json.String "BenchListCompleted");
@@ -576,10 +565,7 @@ let history_column_label = fun index (sample: History.history_sample) ->
     base
 
 let history_table_header = fun
-  ~label_width
-  ~column_width
-  ~current_partial
-  (history: History.history_sample list) ->
+  ~label_width ~column_width ~current_partial (history: History.history_sample list) ->
   let current_label =
     if current_partial then
       "curr*"
@@ -792,8 +778,7 @@ let print_benchmark_history = fun ~current_partial (history: History.benchmark_h
   println ""
 
 let print_comparison_case_history = fun
-  ~current_partial
-  (history: History.comparison_case_history) ->
+  ~current_partial (history: History.comparison_case_history) ->
   println ("  history: " ^ history.description ^ " / " ^ history.name);
   println
     ("  baseline: median of previous " ^ Int.to_string (List.length history.history) ^ " runs");
@@ -953,10 +938,7 @@ let upsert_int_field = fun name value fields ->
   filtered @ [ (name, Data.Json.Int value); ]
 
 let stamp_json_event = fun
-  ~command_started_at
-  ~duration_us
-  (event: Bench_runtime.bench_event)
-  (json: Data.Json.t) ->
+  ~command_started_at ~duration_us (event: Bench_runtime.bench_event) (json: Data.Json.t) ->
   match json with
   | Data.Json.Object fields ->
       let elapsed_us = event_elapsed_us ~command_started_at in
@@ -999,10 +981,7 @@ let summary_duration_us = fun ~command_started_at (event: Bench_runtime.bench_ev
   | _ -> None
 
 let write_bench_event = fun
-  ?history_comparison
-  ~current_partial
-  state
-  (event: Bench_runtime.bench_event) ->
+  ?history_comparison ~current_partial state (event: Bench_runtime.bench_event) ->
   match event with
   | Bench_runtime.Build _ -> ()
   | Bench_runtime.NoSuitesFound { package_name } ->
@@ -1114,10 +1093,7 @@ let bench_history_partial = fun (request: Test_selection.request) ->
   || Option.is_some request.query
 
 let bench_history_context = fun
-  ~(workspace:Riot_model.Workspace.t)
-  ~profile
-  (request: Test_selection.request)
-  ~argv ->
+  ~(workspace:Riot_model.Workspace.t) ~profile (request: Test_selection.request) ~argv ->
   History.create_run_context
     ~workspace_root:workspace.root
     ~profile

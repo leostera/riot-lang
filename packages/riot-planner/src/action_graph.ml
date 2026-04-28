@@ -131,9 +131,8 @@ let profile_compile_flags = fun (profile: Profile.t) ->
     @ List.map profile.ocamlc_flags ~fn:(fun flag -> Riot_toolchain.Ocamlc.Raw flag))
     ~compare:compare_compiler_flag
 
-let module_to_actions ~package ~profile ~ctx ~dep_includes ~get_dep_outputs ~get_dep_kind ~depset ~needs_unix ~needs_dynlink (
-  module_node: Module_node.t
-) (deps: G.Node_id.t list): Action.t list * Path.t list * Path.t list =
+let module_to_actions ~package ~profile ~ctx ~dep_includes ~get_dep_outputs ~get_dep_kind ~depset ~needs_unix ~needs_dynlink (module_node:
+  Module_node.t) (deps: G.Node_id.t list) =
   let base_compile_flags = stdlib_flags package @ profile_compile_flags profile in
   match module_node with
   | { kind = MLI mod_; file = Concrete path; open_modules; _ } ->
@@ -422,9 +421,8 @@ let module_to_actions ~package ~profile ~ctx ~dep_includes ~get_dep_outputs ~get
       in
       ([ link_action ], [ binary_output ], sources)
 
-let from_module_graph ?analyzed_modules ~package ~profile ~ctx ~toolchain ~store ~depset ~needs_unix ~needs_dynlink (
-  module_graph: Module_node.t G.t
-): t * Path.t list =
+let from_module_graph ?analyzed_modules ~package ~profile ~ctx ~toolchain ~store ~depset ~needs_unix ~needs_dynlink (module_graph:
+  Module_node.t G.t) =
   let transitive_deps = Dependency.transitive_closure depset in
   (* Extract dependency cache include paths - no file copying needed! *)
   let dep_cache_includes =

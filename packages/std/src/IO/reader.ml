@@ -61,14 +61,12 @@ let limited_writable = fun into limit ->
 let from_source = fun source src -> Reader (source, src)
 
 let read: t -> into:Buffer.t -> int result = fun
-  (Reader (((module Source) as source), src))
-  ~into ->
+  (Reader (((module Source) as source), src)) ~into ->
   let _ = source in
   Source.read src ~into
 
 let read_vectored: t -> into:IoVec.t -> int result = fun
-  (Reader (((module Source) as source), src))
-  ~into ->
+  (Reader (((module Source) as source), src)) ~into ->
   let _ = source in
   Source.read_vectored src ~into
 

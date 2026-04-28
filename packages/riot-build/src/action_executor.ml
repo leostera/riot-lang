@@ -400,12 +400,7 @@ let verify_outputs = fun outputs ->
     Ok ()
 
 let save_action_artifact = fun
-  ~store
-  ~package
-  ~action_hash
-  ~ocamlc_warnings
-  ~sandbox_dir
-  ~outputs ->
+  ~store ~package ~action_hash ~ocamlc_warnings ~sandbox_dir ~outputs ->
   Riot_store.Store.save store ~package ~ocamlc_warnings ~hash:action_hash ~sandbox_dir ~outs:outputs
   |> Result.map_err ~fn:Riot_store.Store.error_message
 

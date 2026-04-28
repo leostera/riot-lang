@@ -317,9 +317,7 @@ let list_for_all2 = fun predicate left right ->
   loop left right
 
 let package_signature_equal = fun
-  equal_type
-  (left: TypeRepr.package_signature)
-  (right: TypeRepr.package_signature) ->
+  equal_type (left: TypeRepr.package_signature) (right: TypeRepr.package_signature) ->
   List.length left.values = List.length right.values && List.for_all
     (fun (left_value: TypeRepr.package_value) ->
       match List.find_opt
@@ -331,9 +329,7 @@ let package_signature_equal = fun
     left.values
 
 let package_signature_includes = fun
-  includes_type
-  (actual: TypeRepr.package_signature)
-  (expected: TypeRepr.package_signature) ->
+  includes_type (actual: TypeRepr.package_signature) (expected: TypeRepr.package_signature) ->
   List.for_all
     (fun (expected_value: TypeRepr.package_value) ->
       match List.find_opt
@@ -527,17 +523,13 @@ let inline_record_labels_equal = fun ~visible_types left right ->
   | _ -> false
 
 let constructor_equal = fun
-  ~visible_types
-  (left: TypeDecl.constructor)
-  (right: TypeDecl.constructor) ->
+  ~visible_types (left: TypeDecl.constructor) (right: TypeDecl.constructor) ->
   String.equal left.name right.name
   && scheme_equal ~visible_types left.scheme right.scheme
   && inline_record_labels_equal ~visible_types left.inline_record_labels right.inline_record_labels
 
 let poly_variant_tag_equal = fun
-  ~visible_types
-  (left: TypeDecl.poly_variant_tag)
-  (right: TypeDecl.poly_variant_tag) ->
+  ~visible_types (left: TypeDecl.poly_variant_tag) (right: TypeDecl.poly_variant_tag) ->
   String.equal left.name right.name && (
     match (left.payload_type, right.payload_type) with
     | (None, None) -> true
@@ -547,9 +539,7 @@ let poly_variant_tag_equal = fun
   )
 
 let manifest_aliases_decl_self = fun
-  ~visible_types
-  (type_decl: FileSummary.type_decl)
-  manifest_type ->
+  ~visible_types (type_decl: FileSummary.type_decl) manifest_type ->
   match TypeRepr.view (VisibleTypes.canonicalize_type visible_types manifest_type) with
   | TypeRepr.Named { head; arguments = [] } ->
       TypeConstructorId.equal head.type_constructor_id type_decl.declaration.type_constructor_id
@@ -574,9 +564,7 @@ let manifest_equal = fun ~visible_types left_decl right_decl ->
       canonical_type_equal ~visible_types left_type right_type
   | (
     Some (TypeDecl.PolyVariant { bound = left_bound; tags = left_tags; inherited = left_inherited }),
-    Some (
-      TypeDecl.PolyVariant { bound = right_bound; tags = right_tags; inherited = right_inherited }
-    )
+    Some (TypeDecl.PolyVariant { bound = right_bound; tags = right_tags; inherited = right_inherited })
   ) ->
       left_bound = right_bound
       && list_for_all2 (poly_variant_tag_equal ~visible_types) left_tags right_tags

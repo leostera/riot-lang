@@ -185,7 +185,7 @@ let prune_old_restarts = fun state ->
   let recent =
     List.filter
       restarts
-      ~fn:(fun ((ts, _)) ->
+      ~fn:(fun (ts, _) ->
         match Time.Instant.compare ts cutoff with
         | Order.LT -> false
         | Order.EQ
@@ -744,7 +744,7 @@ module Dynamic = struct
                 let recent =
                   List.filter
                     (Cell.get state.restarts)
-                    ~fn:(fun ((ts, _)) ->
+                    ~fn:(fun (ts, _) ->
                       match Time.Instant.compare ts cutoff with
                       | Order.LT -> false
                       | Order.EQ
@@ -854,11 +854,7 @@ module Dynamic = struct
   let start = fun ?intensity ?max_children () -> spawn (init_dynamic intensity max_children)
 
   let start_child = fun
-    supervisor
-    ~start
-    ?(restart = Permanent)
-    ?(shutdown = Timeout (Time.Duration.from_secs 5))
-    () ->
+    supervisor ~start ?(restart = Permanent) ?(shutdown = Timeout (Time.Duration.from_secs 5)) () ->
     send
       supervisor
       (

@@ -98,7 +98,7 @@ let send_settings_ack = fun conn ->
 (** Send HTTP/2 HEADERS frame *)
 let send_headers = fun conn hpack_encoder stream_id headers end_stream ->
   let headers =
-    List.map ~fn:(fun ((name, value)) -> { Http.Http2.Hpack.name = name; value }) headers
+    List.map ~fn:(fun (name, value) -> { Http.Http2.Hpack.name = name; value }) headers
   in
   let header_block =
     Http.Http2.Hpack.encode hpack_encoder ~sensitive_headers:[] () ~headers
@@ -129,7 +129,7 @@ let headers_to_request = fun conn headers body ->
     Std.Collections.Proplist.get headers ~key:":path"
     |> Option.unwrap_or ~default:"/"
   in
-  let headers = List.filter ~fn:(fun ((k, _)) -> not (String.starts_with ~prefix:":" k)) headers in
+  let headers = List.filter ~fn:(fun (k, _) -> not (String.starts_with ~prefix:":" k)) headers in
   let uri =
     Net.Uri.of_string uri
     |> Result.expect ~msg:"HTTP/2 request path must be a valid URI"

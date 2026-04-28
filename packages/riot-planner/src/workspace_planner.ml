@@ -47,8 +47,7 @@ type plan_error =
     }
 
 let manifest_dependency_names_for_scope = fun
-  (scope: Package_graph.build_scope)
-  (pkg: Package_manifest.t) ->
+  (scope: Package_graph.build_scope) (pkg: Package_manifest.t) ->
   let dependency_name (dep: Package.dependency) = dep.name in
   match scope with
   | Package_graph.Build -> List.map pkg.build_dependencies ~fn:dependency_name
@@ -87,9 +86,7 @@ let target_missing_package_names = fun ~(workspace:Workspace.t) target ->
   |> List.unique ~compare:Package_name.compare
 
 let filter_workspace_for_target = fun
-  ~(workspace:Workspace.t)
-  ~target
-  ~(scope:Package_graph.build_scope) ->
+  ~(workspace:Workspace.t) ~target ~(scope:Package_graph.build_scope) ->
   match target with
   | All -> workspace
   | Package _

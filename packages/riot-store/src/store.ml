@@ -341,13 +341,7 @@ let promote = fun store hash ~target_dir ->
 
 (** Store artifacts from sandbox to content-addressable store *)
 let store_artifacts = fun
-  store
-  ~package
-  ?(ocamlc_warnings = [])
-  ?(exports = [])
-  hash
-  sandbox_dir
-  declared_outputs ->
+  store ~package ?(ocamlc_warnings = []) ?(exports = []) hash sandbox_dir declared_outputs ->
   let hash_dir = get_hash_dir store hash in
   let temp_dir = artifact_temp_dir store hash in
   let* () =

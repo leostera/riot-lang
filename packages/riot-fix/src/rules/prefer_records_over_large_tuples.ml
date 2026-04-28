@@ -19,12 +19,13 @@ names make construction, pattern matching, and later changes easier to review.
 
 let rec unwrap_type = fun type_expr -> H.unwrap_type_expr type_expr
 
-let diagnostic_for_type = fun type_expr -> H.diagnostic
-  ~rule_id
-  ~message:rule_description
-  ~span:(H.span_of_node (Ast.TypeExpr.as_node type_expr))
-  ~suggestion:"Use a record type instead of a large positional tuple."
-  ()
+let diagnostic_for_type = fun type_expr ->
+  H.diagnostic
+    ~rule_id
+    ~message:rule_description
+    ~span:(H.span_of_node (Ast.TypeExpr.as_node type_expr))
+    ~suggestion:"Use a record type instead of a large positional tuple."
+    ()
 
 let rec collect_tuple_parts = fun ctx parts type_expr ->
   let type_expr = unwrap_type type_expr in
@@ -70,22 +71,26 @@ let rec check_type_expr = fun ctx diagnostics type_expr ->
       if tuple_should_be_record ctx type_expr then
         H.push_diagnostic diagnostics (diagnostic_for_type type_expr)
       else
-        H.iter_fold Ast.TypeExpr.fold_child_type type_expr ~fn:(check_type_expr ctx diagnostics)
-  | _ -> H.iter_fold Ast.TypeExpr.fold_child_type type_expr ~fn:(check_type_expr ctx diagnostics)
+        H.iter_fold
+          Ast.TypeExpr.fold_child_type
+          type_expr
+          ~fn:(check_type_expr ctx diagnostics)
+  | _ -> H.iter_fold
+    Ast.TypeExpr.fold_child_type
+    type_expr
+    ~fn:(check_type_expr ctx diagnostics)
 
 let check_variant_constructor_rhs = fun ctx diagnostics rhs ->
   match rhs with
-  | Ast.VariantConstructor.Payload {
-      payload = Ast.VariantConstructor.TypeExpr type_expr;
-      _;
-    } ->
+  | Ast.VariantConstructor.Payload { payload = Ast.VariantConstructor.TypeExpr type_expr; _ } ->
       check_type_expr ctx diagnostics type_expr
   | Ast.VariantConstructor.Gadt { result; _ } -> check_type_expr ctx diagnostics result
   | Ast.VariantConstructor.Payload { payload = Ast.VariantConstructor.Record _; _ }
   | Ast.VariantConstructor.Plain -> ()
 
 let check_type_declaration = fun ctx diagnostics declaration ->
-  H.iter_fold Ast.TypeDeclaration.fold_member
+  H.iter_fold
+    Ast.TypeDeclaration.fold_member
     declaration
     ~fn:(fun member ->
       Option.for_each
@@ -94,7 +99,8 @@ let check_type_declaration = fun ctx diagnostics declaration ->
       Option.for_each
         (Ast.TypeDeclaration.Member.variant_type member)
         ~fn:(fun variant_type ->
-          H.iter_fold Ast.VariantType.fold_constructor
+          H.iter_fold
+            Ast.VariantType.fold_constructor
             variant_type
             ~fn:(fun constructor ->
               match Ast.VariantConstructor.view constructor with

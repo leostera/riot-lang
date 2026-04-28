@@ -9,7 +9,6 @@ let iter_fold = fun fold value ~fn ->
       fn item;
       Syn.Ast.Continue ())
 
-
 module Api = Fixme
 
 let package_name = "std"
@@ -156,16 +155,17 @@ let check_tree = fun (_ctx: Api.Rule.context) red_root ->
   in
   let non_trivia_children node =
     let children = Vector.with_capacity ~size:(Ast.Node.child_count node) in
-    iter_fold Ast.Node.fold_child
+    iter_fold
+      Ast.Node.fold_child
       node
       ~fn:(fun child ->
         match child with
         | Syn.SyntaxTree.Node id ->
-            let child_node = ({ tree = node.Ast.tree; id }: Ast.Node.t) in
+            let child_node = (({ tree = node.Ast.tree; id }: Ast.Node.t)) in
             if not (Api.Traversal.is_trivia (Ast.Node.kind child_node)) then
               Vector.push children ~value:(Api.Traversal.Node child_node)
         | Syn.SyntaxTree.Token id ->
-            let token = ({ tree = node.Ast.tree; id }: Ast.Token.t) in
+            let token = (({ tree = node.Ast.tree; id }: Ast.Token.t)) in
             if not (Api.Traversal.is_trivia (Ast.Token.kind token)) then
               Vector.push children ~value:(Api.Traversal.Token token)
         | Syn.SyntaxTree.Missing _ -> ());

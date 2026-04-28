@@ -9,7 +9,6 @@ let iter_fold = fun fold value ~fn ->
       fn item;
       Syn.Ast.Continue ())
 
-
 module Ast = Syn.Ast
 
 let span_of_token = fun token ->
@@ -116,7 +115,8 @@ let ident_last_segment = fun ident -> Ast.Ident.last_segment ident
 
 let first_child_expr = fun expr ->
   let found = ref None in
-  iter_fold Ast.Expr.fold_child_expr
+  iter_fold
+    Ast.Expr.fold_child_expr
     expr
     ~fn:(fun child ->
       match !found with
@@ -126,7 +126,8 @@ let first_child_expr = fun expr ->
 
 let first_child_pattern = fun pattern ->
   let found = ref None in
-  iter_fold Ast.Pattern.fold_child_pattern
+  iter_fold
+    Ast.Pattern.fold_child_pattern
     pattern
     ~fn:(fun child ->
       match !found with
@@ -136,7 +137,8 @@ let first_child_pattern = fun pattern ->
 
 let first_child_type_expr = fun type_expr ->
   let found = ref None in
-  iter_fold Ast.TypeExpr.fold_child_type
+  iter_fold
+    Ast.TypeExpr.fold_child_type
     type_expr
     ~fn:(fun child ->
       match !found with

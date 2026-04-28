@@ -225,7 +225,7 @@ let counter_view_interactive = fun count -> div
       ];
   ]
 
-let interactive_page count: msg t =
+let interactive_page count =
   html
     [
       head

@@ -93,10 +93,7 @@ type callee_class =
   | Operator_like
   | Unknown_callee
 
-type style = {
-  continuation_indent: int;
-  long_infix_chain_terms: int;
-}
+type style = { continuation_indent: int; long_infix_chain_terms: int }
 
 type context = { width: int; column: int; indent: int; role: role; style: style }
 
@@ -105,10 +102,7 @@ type decision = {
   reasons: reason list;
 }
 
-let default_style = {
-  continuation_indent = 2;
-  long_infix_chain_terms = 8;
-}
+let default_style = { continuation_indent = 2; long_infix_chain_terms = 8 }
 
 let make_context = fun ?(role = Top_expr) ?(style = default_style) ~width ~column ~indent () ->
   {
@@ -315,12 +309,7 @@ let decide_record_expr = fun ctx ~flat_width ~allow_inline ~item_count:_ ->
     ~allow_inline
 
 let decide_record_type = fun
-  ctx
-  ~flat_width
-  ~allow_inline
-  ~has_leading_comment
-  ~has_trailing_comment
-  ~item_count:_ ->
+  ctx ~flat_width ~allow_inline ~has_leading_comment ~has_trailing_comment ~item_count:_ ->
   let family = Separated Record_fields in
   let decision =
     if has_leading_comment then

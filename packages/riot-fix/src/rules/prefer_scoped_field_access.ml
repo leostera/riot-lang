@@ -40,10 +40,15 @@ let diagnostic = fun ~span ?fix () ->
     ()
 
 let field_access_replacement = fun ctx base module_token field ->
-  Ast.Token.text module_token ^ ".(" ^ (
+  Ast.Token.text module_token
+  ^ ".("
+  ^ (
     H.node_source ctx (Ast.Expr.as_node base)
     |> String.trim
-  ) ^ "." ^ Ast.Token.text field ^ ")"
+  )
+  ^ "."
+  ^ Ast.Token.text field
+  ^ ")"
 
 let field_access_diagnostic = fun ctx expr base module_token field ->
   let replacement = field_access_replacement ctx base module_token field in
@@ -51,9 +56,7 @@ let field_access_diagnostic = fun ctx expr base module_token field ->
     ~span:(H.span_of_node (Ast.Expr.as_node expr))
     ~fix:(Fix.make
       ~title:"Rewrite field access to scoped module qualification"
-      ~operations:[
-        Fix.replace_node_with_text ~target:(Ast.Expr.as_node expr) ~text:replacement;
-      ])
+      ~operations:[ Fix.replace_node_with_text ~target:(Ast.Expr.as_node expr) ~text:replacement; ])
     ()
 
 let ident_segments = fun ctx ident ->
@@ -66,14 +69,13 @@ let path_field_access_replacement = fun segments ->
   | [ base; module_; field ] -> Some (module_ ^ ".(" ^ base ^ "." ^ field ^ ")")
   | _ -> None
 
-let path_field_access_diagnostic = fun expr replacement -> diagnostic
-  ~span:(H.span_of_node (Ast.Expr.as_node expr))
-  ~fix:(Fix.make
-    ~title:"Rewrite field access to scoped module qualification"
-    ~operations:[
-      Fix.replace_node_with_text ~target:(Ast.Expr.as_node expr) ~text:replacement;
-    ])
-  ()
+let path_field_access_diagnostic = fun expr replacement ->
+  diagnostic
+    ~span:(H.span_of_node (Ast.Expr.as_node expr))
+    ~fix:(Fix.make
+      ~title:"Rewrite field access to scoped module qualification"
+      ~operations:[ Fix.replace_node_with_text ~target:(Ast.Expr.as_node expr) ~text:replacement; ])
+    ()
 
 let check_field_access = fun ctx diagnostics expr target field ->
   let field_name = Ast.Token.text field in
@@ -103,7 +105,8 @@ let module_qualifier_of_path = fun ctx ident ->
 
 let record_expr_repeats_qualifier = fun ctx record ->
   let qualifiers = Vector.with_capacity ~size:(Ast.RecordExpr.field_count record) in
-  H.iter_fold Ast.RecordExpr.fold_field
+  H.iter_fold
+    Ast.RecordExpr.fold_field
     record
     ~fn:(fun field ->
       match field with
@@ -136,16 +139,16 @@ let body_is_bracket_expr = fun body ->
 
 let check_local_open = fun diagnostics visitor expr ->
   match Ast.Expr.view expr with
-  | Ast.Expr.LocalOpen { body } when (Syn.Visitor.ctx visitor).local_open_depth = 0 && Option.is_some
-    (Ast.Node.first_child_token (Ast.Expr.as_node expr) ~kind:Syn.SyntaxKind.LET_KW) && body_is_bracket_expr
-    body -> H.push_diagnostic diagnostics (diagnostic ~span:(H.span_of_node (Ast.Expr.as_node expr)) ())
+  | Ast.Expr.LocalOpen { body } when (Syn.Visitor.ctx visitor).local_open_depth = 0
+  && Option.is_some (Ast.Node.first_child_token (Ast.Expr.as_node expr) ~kind:Syn.SyntaxKind.LET_KW)
+  && body_is_bracket_expr body ->
+      H.push_diagnostic diagnostics (diagnostic ~span:(H.span_of_node (Ast.Expr.as_node expr)) ())
   | _ -> ()
 
 let check_expr = fun ctx diagnostics visitor expr ->
   (
     match Ast.Expr.view expr with
-    | Ast.Expr.FieldAccess { target; field } ->
-        check_field_access ctx diagnostics expr target field
+    | Ast.Expr.FieldAccess { target; field } -> check_field_access ctx diagnostics expr target field
     | Ast.Expr.Ident { ident } -> check_path_access ctx diagnostics expr ident
     | Ast.Expr.Record _ ->
         Option.for_each

@@ -36,13 +36,13 @@ let unsupported_nested = fun kind -> raise_error ("unsupported nested form value
 let parse_fields = fun input ->
   let pairs =
     Net.Uri.Query.parse input
-    |> List.filter ~fn:(fun ((key, value)) -> not (String.equal key "" && String.equal value ""))
+    |> List.filter ~fn:(fun (key, value) -> not (String.equal key "" && String.equal value ""))
   in
   let groups = Vector.create () in
   let indices = HashMap.create () in
   List.for_each
     pairs
-    ~fn:(fun ((key, value)) ->
+    ~fn:(fun (key, value) ->
       match HashMap.get indices ~key with
       | Some index ->
           let group = Vector.get_unchecked groups ~at:index in
@@ -51,13 +51,13 @@ let parse_fields = fun input ->
           let index = Vector.len groups in
           let values = Vector.with_capacity ~size:4 in
           Vector.push values ~value;
-          Vector.push groups ~value:({ key; values }: grouped_field_acc);
+          Vector.push groups ~value:(({ key; values }: grouped_field_acc));
           ignore (HashMap.insert indices ~key ~value:index));
   Array.init
     ~count:(Vector.len groups)
     ~fn:(fun index ->
       let group = Vector.get_unchecked groups ~at:index in
-      ({ key = group.key; values = Vector.to_array group.values }: grouped_field))
+      (({ key = group.key; values = Vector.to_array group.values }: grouped_field)))
 
 let with_values = fun state values fn ->
   let prev = state.context in

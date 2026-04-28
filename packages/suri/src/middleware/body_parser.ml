@@ -24,7 +24,7 @@ let parse_json = fun body ->
   | Ok (Data.Json.Object fields) ->
       (* Convert JSON object to string pairs *)
       List.filter_map
-        ~fn:(fun ((k, v)) ->
+        ~fn:(fun (k, v) ->
           match v with
           | Data.Json.String s -> Some (k, s)
           | Data.Json.Int i -> Some (k, Int.to_string i)

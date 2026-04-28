@@ -273,12 +273,9 @@ let buffer_writer =
     type t = Buffer.t
 
     let write = fun buffer ~from ->
-      begin
-        match Buffer.append_slice buffer (Buffer.readable from) with
-        | Ok () -> Ok (Buffer.readable_bytes from)
-        | Error error ->
-            panic ("Compress.Gzip.buffer_writer.write: " ^ Kernel.IO.Error.message error)
-      end
+      match Buffer.append_slice buffer (Buffer.readable from) with
+      | Ok () -> Ok (Buffer.readable_bytes from)
+      | Error error -> panic ("Compress.Gzip.buffer_writer.write: " ^ Kernel.IO.Error.message error)
 
     let write_vectored = fun buffer ~from:bufs ->
       let written = ref 0 in

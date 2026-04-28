@@ -12,7 +12,6 @@ let iter_fold = fun fold value ~fn ->
       fn item;
       Syn.Ast.Continue ())
 
-
 module Vector = Std.Collections.Vector
 
 let lint_rules = Riot_fix.Pipeline.default_rules ()
@@ -473,17 +472,17 @@ let collect_tokens = fun ~size collect ->
 
 let rec binding_name_tokens_of_parameter = fun parameter ->
   match Syn.Ast.Parameter.view parameter with
-  | Syn.Ast.Parameter.Param { pattern = Some pattern; _ } ->
-      binding_name_tokens_of_pattern pattern
+  | Syn.Ast.Parameter.Param { pattern = Some pattern; _ } -> binding_name_tokens_of_pattern pattern
   | Syn.Ast.Parameter.Param { label = Syn.Ast.Parameter.Labeled { name = Some label }; _ }
-  | Syn.Ast.Parameter.Param { label = Syn.Ast.Parameter.Optional { name = Some label; _ }; _ } -> Some [ label ]
+  | Syn.Ast.Parameter.Param { label = Syn.Ast.Parameter.Optional { name = Some label; _ }; _ } ->
+      Some [ label ]
   | Syn.Ast.Parameter.Param _
   | Syn.Ast.Parameter.Unknown _ -> None
 
 and binding_name_tokens_of_pattern = fun pattern ->
   match Syn.Ast.Pattern.view pattern with
-  | Syn.Ast.Pattern.Ident { path } -> (
-      match Syn.Ast.Path.last_ident path with
+  | Syn.Ast.Pattern.Ident { ident } -> (
+      match Syn.Ast.Ident.last_segment ident with
       | Some token -> Some [ token ]
       | None -> None
     )
@@ -524,14 +523,7 @@ let symbol_children = function
   | children -> Some children
 
 let document_symbol_of_named_item = fun
-  ~text
-  ~name
-  ~kind
-  ~syntax_node
-  ~selection_range
-  ?detail
-  ?children
-  () ->
+  ~text ~name ~kind ~syntax_node ~selection_range ?detail ?children () ->
   {
     Lsp.Document_symbol_item.name;
     detail;
@@ -566,10 +558,11 @@ let let_binding_symbol = fun text ~range_node binding ->
 
 let let_declaration_symbols = fun text declaration ->
   let symbols = Vector.with_capacity ~size:2 in
-  iter_fold Syn.Ast.LetDeclaration.fold_binding
+  iter_fold
+    Syn.Ast.LetDeclaration.fold_binding
     declaration
     ~fn:(fun binding ->
-      let_binding_symbol text ~range_node:declaration binding
+      let_binding_symbol text ~range_node:(Syn.Ast.LetDeclaration.as_node declaration) binding
       |> List.for_each ~fn:(fun symbol -> Vector.push symbols ~value:symbol));
   vector_to_list symbols
 
@@ -585,7 +578,7 @@ let type_declaration_symbols = fun text declaration ->
             ~text
             ~name:(Syn.Ast.Token.text name)
             ~kind:(symbol_kind_of_type_member member)
-            ~syntax_node:declaration
+            ~syntax_node:(Syn.Ast.TypeDeclaration.as_node declaration)
             ~selection_range:(range_of_token text name)
             ()
           :: acc)
@@ -600,7 +593,7 @@ let type_extension_symbols = fun text declaration ->
           ~text
           ~name:(Syn.Ast.Token.text name)
           ~kind:Lsp.Symbol_kind.Enum
-          ~syntax_node:declaration
+          ~syntax_node:(Syn.Ast.TypeExtensionDeclaration.as_node declaration)
           ~selection_range:(range_of_token text name)
           ();
       ]
@@ -620,8 +613,10 @@ and module_declaration_children = fun text declaration ->
   | Syn.Ast.ModuleDeclaration.Expr { body } -> (
       match Syn.Ast.ModuleExpr.view body with
       | Syn.Ast.ModuleExpr.Structure _ ->
-          collect_structure_symbols text (iter_fold Syn.Ast.ModuleDeclaration.fold_structure_item declaration)
-      | Syn.Ast.ModuleExpr.Path _
+          collect_structure_symbols
+            text
+            (iter_fold Syn.Ast.ModuleDeclaration.fold_structure_item declaration)
+      | Syn.Ast.ModuleExpr.Ident _
       | Syn.Ast.ModuleExpr.Functor _
       | Syn.Ast.ModuleExpr.Apply _
       | Syn.Ast.ModuleExpr.Constraint _
@@ -632,8 +627,10 @@ and module_declaration_children = fun text declaration ->
   | Syn.Ast.ModuleDeclaration.Type { body } -> (
       match Syn.Ast.ModuleTypeExpr.view body with
       | Syn.Ast.ModuleTypeExpr.Signature _ ->
-          collect_signature_symbols text (iter_fold Syn.Ast.ModuleDeclaration.fold_signature_item declaration)
-      | Syn.Ast.ModuleTypeExpr.Path _
+          collect_signature_symbols
+            text
+            (iter_fold Syn.Ast.ModuleDeclaration.fold_signature_item declaration)
+      | Syn.Ast.ModuleTypeExpr.Ident _
       | Syn.Ast.ModuleTypeExpr.With _
       | Syn.Ast.ModuleTypeExpr.Typeof _
       | Syn.Ast.ModuleTypeExpr.Functor _
@@ -655,7 +652,7 @@ and module_declaration_symbols = fun text declaration ->
             ~text
             ~name:(Syn.Ast.Token.text name)
             ~kind:Lsp.Symbol_kind.Module
-            ~syntax_node:declaration
+            ~syntax_node:(Syn.Ast.ModuleDeclaration.as_node declaration)
             ~selection_range:(range_of_token text name)
             ?children:(symbol_children children)
             ()
@@ -676,7 +673,7 @@ and module_type_declaration_symbols = fun text declaration ->
                 collect_signature_symbols
                   text
                   (iter_fold Syn.Ast.ModuleTypeDeclaration.fold_signature_item declaration)
-            | Syn.Ast.ModuleTypeExpr.Path _
+            | Syn.Ast.ModuleTypeExpr.Ident _
             | Syn.Ast.ModuleTypeExpr.With _
             | Syn.Ast.ModuleTypeExpr.Typeof _
             | Syn.Ast.ModuleTypeExpr.Functor _
@@ -689,7 +686,7 @@ and module_type_declaration_symbols = fun text declaration ->
           ~text
           ~name:(Syn.Ast.Token.text name)
           ~kind:Lsp.Symbol_kind.Interface
-          ~syntax_node:declaration
+          ~syntax_node:(Syn.Ast.ModuleTypeDeclaration.as_node declaration)
           ~selection_range:(range_of_token text name)
           ?children:(symbol_children children)
           ();
@@ -704,7 +701,7 @@ and exception_symbols = fun text declaration ->
           ~text
           ~name:(Syn.Ast.Token.text name)
           ~kind:Lsp.Symbol_kind.Event
-          ~syntax_node:declaration
+          ~syntax_node:(Syn.Ast.ExceptionDeclaration.as_node declaration)
           ~selection_range:(range_of_token text name)
           ();
       ]
@@ -734,7 +731,7 @@ and value_declaration_symbols = fun text declaration ->
   in
   value_like_declaration_symbols
     text
-    ~syntax_node:declaration
+    ~syntax_node:(Syn.Ast.ValueDeclaration.as_node declaration)
     ~name_tokens
     ~type_annotation:(Syn.Ast.ValueDeclaration.type_annotation declaration)
 
@@ -744,7 +741,7 @@ and external_declaration_symbols = fun text declaration ->
   in
   value_like_declaration_symbols
     text
-    ~syntax_node:declaration
+    ~syntax_node:(Syn.Ast.ExternalDeclaration.as_node declaration)
     ~name_tokens
     ~type_annotation:(Syn.Ast.ExternalDeclaration.type_annotation declaration)
 
@@ -805,13 +802,17 @@ let document_symbols_for_document = fun document ->
       match Syn.Ast.SourceFile.view root with
       | Syn.Ast.SourceFile.Implementation implementation ->
           let items = Vector.with_capacity ~size:16 in
-          iter_fold Syn.Ast.Implementation.fold_item
+          iter_fold
+            Syn.Ast.Implementation.fold_item
             implementation
             ~fn:(fun item -> Vector.push items ~value:item);
           structure_item_symbols document.text (vector_to_list items)
       | Syn.Ast.SourceFile.Interface interface ->
           let items = Vector.with_capacity ~size:16 in
-          iter_fold Syn.Ast.Interface.fold_item interface ~fn:(fun item -> Vector.push items ~value:item);
+          iter_fold
+            Syn.Ast.Interface.fold_item
+            interface
+            ~fn:(fun item -> Vector.push items ~value:item);
           signature_item_symbols document.text (vector_to_list items)
     in
     Some symbols

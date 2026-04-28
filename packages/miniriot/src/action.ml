@@ -105,14 +105,7 @@ let print_build_plan = fun plan ->
 *)
 
 let execute_action = fun
-  ~project_root
-  ~package
-  ~cc_flags
-  ~ld_flags
-  ~uses_stdlib
-  ~uses_unix
-  ~uses_dynlink
-  action ->
+  ~project_root ~package ~cc_flags ~ld_flags ~uses_stdlib ~uses_unix ~uses_dynlink action ->
   match action with
   | WriteFile { path; content } ->
       Printf.printf "  DEBUG: Writing generated file %s\n" path;

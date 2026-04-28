@@ -39,8 +39,7 @@ let receive_raw_response = fun (Client { transport_mod; transport; _ }) ->
   T.receive transport
 
 let send_request: type req res. (req, res) t -> req -> (unit, Common.error) result = fun
-  (Client c as client)
-  request ->
+  (Client c as client) request ->
   let module P = (val c.protocol_mod : Common.ApplicationProtocol with type request = req and type response = res) in
   let prereq = P.request_to_params request in
   let id = Common.Number c.next_id in
@@ -130,7 +129,7 @@ let receive_response: type req res. (req, res) t -> (res Common.response, Common
         )
     )
 
-let call (type req res) (client: (req, res) t) ~method_ ?params (): (res, Common.error) result =
+let call (type req res) (client: (req, res) t) ~method_ ?params () =
   let (Client c) = client in
   let module P = (val c.protocol_mod : Common.ApplicationProtocol with type request = req and type response = res) in
   let id = Common.Number c.next_id in
@@ -203,7 +202,7 @@ let call (type req res) (client: (req, res) t) ~method_ ?params (): (res, Common
         )
     )
 
-let notify (type req res) (client: (req, res) t) ~method_ ?params (): (unit, Common.error) result =
+let notify (type req res) (client: (req, res) t) ~method_ ?params () =
   let jsonrpc_req = Common.notification ~method_ ?params () in
   let json = Common.request_to_json jsonrpc_req in
   let str = Json.to_string json in

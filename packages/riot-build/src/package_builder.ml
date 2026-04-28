@@ -351,13 +351,7 @@ let emits_visible_progress = function
   | Riot_planner.Package_graph.Dev -> true
 
 let plan_detailed = fun
-  ~workspace
-  ~toolchain
-  ~store
-  ~package_graph
-  ~package_key
-  ~(package:Package.t)
-  ~build_ctx ->
+  ~workspace ~toolchain ~store ~package_graph ~package_key ~(package:Package.t) ~build_ctx ->
   let start = Instant.now () in
   let session_id = build_ctx.Build_ctx.session_id in
   let build_target = Build_ctx.target_triplet build_ctx in
@@ -453,15 +447,13 @@ let plan_detailed = fun
           };
         graph_update = Some (Skipped_package { reason });
       }
-  | Ok (
-    Riot_planner.Package_planner.Cached {
-      package_key = planned_key;
-      hash = package_hash;
-      artifact;
-      depset;
-      exports
-    }
-  ) ->
+  | Ok (Riot_planner.Package_planner.Cached {
+    package_key = planned_key;
+    hash = package_hash;
+    artifact;
+    depset;
+    exports
+  }) ->
       let duration = Instant.duration_since ~earlier:start (Instant.now ()) in
       if emit_visible_progress && List.length artifact.ocamlc_warnings > 0 then
         Telemetry.emit
@@ -506,15 +498,13 @@ let plan_detailed = fun
             }
           );
       }
-  | Ok (
-    Planned {
-      package_key = planned_key;
-      hash = package_hash;
-      depset;
-      module_graph;
-      action_graph
-    }
-  ) -> (
+  | Ok (Planned {
+    package_key = planned_key;
+    hash = package_hash;
+    depset;
+    module_graph;
+    action_graph
+  }) -> (
       Log.info ("Package " ^ package_name_string ^ ": hash=" ^ Std.Crypto.Digest.hex package_hash);
       Execution_required {
         package_key = planned_key;
@@ -627,11 +617,7 @@ let prepare_execution = fun ~workspace ~toolchain ~store ~execution_plan ~build_
         ~graph_error:error_msg)
 
 let execute_action = fun
-  ~store
-  ~(prepared_execution:prepared_execution)
-  ~build_ctx
-  ~completed
-  action ->
+  ~store ~(prepared_execution:prepared_execution) ~build_ctx ~completed action ->
   Action_executor.execute_node
     ~completed
     ~store
@@ -641,11 +627,7 @@ let execute_action = fun
     action
 
 let finalize_execution = fun
-  ~workspace
-  ~store
-  ~(prepared_execution:prepared_execution)
-  ~completed
-  ~build_ctx ->
+  ~workspace ~store ~(prepared_execution:prepared_execution) ~completed ~build_ctx ->
   let execution_plan = prepared_execution.execution_plan in
   let session_id = build_ctx.Build_ctx.session_id in
   let profile_name = build_ctx.Build_ctx.profile.name in
@@ -784,13 +766,7 @@ let execute_detailed = fun ~workspace ~toolchain ~store ~execution_plan ~build_c
       finalize_execution ~workspace ~store ~prepared_execution ~completed ~build_ctx
 
 let build_detailed = fun
-  ~workspace
-  ~toolchain
-  ~store
-  ~package_graph
-  ~package_key
-  ~package
-  ~build_ctx ->
+  ~workspace ~toolchain ~store ~package_graph ~package_key ~package ~build_ctx ->
   match plan_detailed ~workspace ~toolchain ~store ~package_graph ~package_key ~package ~build_ctx with
   | Final_result detailed_result -> detailed_result
   | Execution_required execution_plan ->

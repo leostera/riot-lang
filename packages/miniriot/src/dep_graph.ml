@@ -360,7 +360,7 @@ end = struct
     let entries = Hashtbl.fold (fun node_id mod_ acc -> (node_id, mod_) :: acc) t.modules [] in
     let sorted_entries =
       List.sort
-        (fun ((_, mod1)) ((_, mod2)) ->
+        (fun (_, mod1) (_, mod2) ->
           String.compare
             (
               Module.module_name mod1
@@ -373,7 +373,7 @@ end = struct
         entries
     in
     List.iter
-      (fun ((node_id, mod_)) ->
+      (fun (node_id, mod_) ->
         printf
           "    Node %s -> %s | %s (%s)\n"
           (Graph.Node_id.to_string node_id)
@@ -496,10 +496,10 @@ module Alias_module = struct
           | `implementation ->
               Some (Module.module_name mod_
               |> Module_name.to_string, Module.namespaced_name mod_))
-      |> List.sort_uniq (fun ((n1, _)) ((n2, _)) -> String.compare n1 n2)
+      |> List.sort_uniq (fun (n1, _) (n2, _) -> String.compare n1 n2)
     in
     let body =
-      List.map (fun ((name, ns)) -> Format.sprintf "module %s = %s" name ns) unique_modules
+      List.map (fun (name, ns) -> Format.sprintf "module %s = %s" name ns) unique_modules
     in
     let super_body =
       if unique_modules = [] then
@@ -766,7 +766,7 @@ and handle_library = fun ~t ~ctx { path; name; children } ->
   (* Also get the actual file path if it exists *)
   let library_interface_ml_path =
     List.find_map
-      (fun ((mod_opt, child)) ->
+      (fun (mod_opt, child) ->
         match (mod_opt, child) with
         | (Some mod_, File_scanner.File { path; _ }) ->
             (* Compare module names, not paths - this handles case normalization *)
@@ -783,7 +783,7 @@ and handle_library = fun ~t ~ctx { path; name; children } ->
   in
   let library_interface_mli_path =
     List.find_map
-      (fun ((mod_opt, child)) ->
+      (fun (mod_opt, child) ->
         match (mod_opt, child) with
         | (Some mod_, File_scanner.File { path; _ }) ->
             (* Compare module names, not paths - this handles case normalization *)
@@ -807,7 +807,7 @@ and handle_library = fun ~t ~ctx { path; name; children } ->
     (* First, get all directory names so we can detect dir/dir.ml patterns *)
     let dir_names =
       List.filter_map
-        (fun ((_, child)) ->
+        (fun (_, child) ->
           match child with
           | File_scanner.Dir { name; _ } -> Some name
           | _ -> None)
@@ -816,7 +816,7 @@ and handle_library = fun ~t ~ctx { path; name; children } ->
       |> List.sort_uniq String.compare
     in
     List.filter
-      (fun ((mod_opt, child)) ->
+      (fun (mod_opt, child) ->
         match (mod_opt, child) with
         | (Some mod_, File_scanner.File { path; _ }) ->
             (* Check if this is the root library interface (kernel.ml/kernel.mli) *)
@@ -845,7 +845,7 @@ and handle_library = fun ~t ~ctx { path; name; children } ->
   (* Get modules from files first *)
   let file_modules =
     List.filter_map
-      (fun ((mod_opt, child)) ->
+      (fun (mod_opt, child) ->
         match (mod_opt, child) with
         | (Some mod_, File_scanner.File { ext = ".mli"
         | ".ml"; _ }) -> Some mod_
@@ -864,7 +864,7 @@ and handle_library = fun ~t ~ctx { path; name; children } ->
   (* Add directories only if there's no file module with the same name *)
   let dir_modules =
     List.filter_map
-      (fun ((mod_opt, child)) ->
+      (fun (mod_opt, child) ->
         match (mod_opt, child) with
         | (None, File_scanner.Dir { name; path; _ }) ->
             let module_name = Module_name.of_string name in
@@ -974,7 +974,7 @@ and handle_library = fun ~t ~ctx { path; name; children } ->
   (* This ensures subdirectory library interfaces are created before files that depend on them *)
   let sorted_children =
     List.sort
-      (fun ((_, a)) ((_, b)) ->
+      (fun (_, a) (_, b) ->
         let priority child =
           match child with
           | File_scanner.Dir _ -> 0
@@ -989,7 +989,7 @@ and handle_library = fun ~t ~ctx { path; name; children } ->
   (* Collect the subdirectory library interface nodes so we can add dependencies *)
   let subdir_lib_intfs = ref [] in
   List.iter
-    (fun ((_mod_opt, child)) ->
+    (fun (_mod_opt, child) ->
       match child with
       | File_scanner.Dir { name; _ } ->
           (* After processing this directory, look up its library interface node *)
@@ -1051,7 +1051,7 @@ and handle_library = fun ~t ~ctx { path; name; children } ->
     !subdir_lib_intfs;
   (* Now process all non-directory children *)
   List.iter
-    (fun ((_mod_opt, child)) ->
+    (fun (_mod_opt, child) ->
       match child with
       | File_scanner.Dir _ -> ()
       | _ -> do_scan ~t ~ctx child)

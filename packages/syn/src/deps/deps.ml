@@ -280,14 +280,14 @@ module Ast_deps = struct
 
   let child_node_at = fun (node: A.Node.t) index ->
     match A.Node.child_at node index with
-    | Some (Syntax_tree.Node id) -> Some ({ tree = node.tree; id }: A.Node.t)
+    | Some (Syntax_tree.Node id) -> Some (({ tree = node.tree; id }: A.Node.t))
     | Some (Syntax_tree.Token _)
     | Some (Syntax_tree.Missing _)
     | None -> None
 
   let child_token_at = fun (node: A.Node.t) index ->
     match A.Node.child_at node index with
-    | Some (Syntax_tree.Token id) -> Some ({ tree = node.tree; id }: A.Token.t)
+    | Some (Syntax_tree.Token id) -> Some (({ tree = node.tree; id }: A.Token.t))
     | Some (Syntax_tree.Node _)
     | Some (Syntax_tree.Missing _)
     | None -> None
@@ -695,20 +695,19 @@ module Ast_deps = struct
     match A.cast_result_to_option (A.Expr.cast node) with
     | Some expr -> (
         match A.cast_result_to_option (A.LocalOpenExpr.cast expr) with
-        | Some local_open ->
-            (
-              match A.LocalOpenExpr.view local_open with
-              | A.LocalOpenExpr.LetOpen { module_ident; body; _ }
-              | A.LocalOpenExpr.Delimited { module_ident; body; _ } ->
-                  let (deps, env) =
-                    match ast_ident_segments module_ident with
-                    | head :: _ as segments when is_module_head head ->
-                        open_alias ~fallback:true env deps segments
-                    | _ -> (deps, env)
-                  in
-                  collect_node env deps (A.Expr.as_node body)
-              | A.LocalOpenExpr.Unknown _ -> collect_local_open_fallback env deps node
-            )
+        | Some local_open -> (
+            match A.LocalOpenExpr.view local_open with
+            | A.LocalOpenExpr.LetOpen { module_ident; body; _ }
+            | A.LocalOpenExpr.Delimited { module_ident; body; _ } ->
+                let (deps, env) =
+                  match ast_ident_segments module_ident with
+                  | head :: _ as segments when is_module_head head ->
+                      open_alias ~fallback:true env deps segments
+                  | _ -> (deps, env)
+                in
+                collect_node env deps (A.Expr.as_node body)
+            | A.LocalOpenExpr.Unknown _ -> collect_local_open_fallback env deps node
+          )
         | None -> collect_local_open_fallback env deps node
       )
     | None -> collect_local_open_fallback env deps node
@@ -761,7 +760,9 @@ module Ast_deps = struct
           |> Iterator.fold
             ~init:env
             ~fn:(fun (parameter: A.Parameter.t) env ->
-              bind_pattern_modules env (A.Parameter.as_node parameter))
+              bind_pattern_modules
+                env
+                (A.Parameter.as_node parameter))
         in
         (
           match A.LetBinding.body binding with
@@ -772,20 +773,19 @@ module Ast_deps = struct
   and collect_match_case env deps node =
     match A.cast_result_to_option (A.MatchCase.cast node) with
     | None -> collect_child_nodes collect_node env deps node
-    | Some match_case ->
-        (
-          match A.MatchCase.view match_case with
-          | A.MatchCase.Case { pattern; guard; body } ->
-              let* deps = collect_node env deps (A.Pattern.as_node pattern) in
-              let env = bind_pattern_modules env (A.Pattern.as_node pattern) in
-              let* deps =
-                match guard with
-                | Some guard -> collect_node env deps (A.Expr.as_node guard)
-                | None -> Ok deps
-              in
-              collect_node env deps (A.Expr.as_node body)
-          | A.MatchCase.Unknown node -> collect_child_nodes collect_node env deps node
-        )
+    | Some match_case -> (
+        match A.MatchCase.view match_case with
+        | A.MatchCase.Case { pattern; guard; body } ->
+            let* deps = collect_node env deps (A.Pattern.as_node pattern) in
+            let env = bind_pattern_modules env (A.Pattern.as_node pattern) in
+            let* deps =
+              match guard with
+              | Some guard -> collect_node env deps (A.Expr.as_node guard)
+              | None -> Ok deps
+            in
+            collect_node env deps (A.Expr.as_node body)
+        | A.MatchCase.Unknown node -> collect_child_nodes collect_node env deps node
+      )
 
   and collect_let_module_expr env deps node =
     let count = A.Node.child_count node in
@@ -1060,30 +1060,30 @@ module Ast_deps = struct
         let* deps = collect_child_nodes collect_node env deps node in
         Ok (deps, env, bindings)
     | Some decl ->
-    if A.ModuleDeclaration.is_recursive decl then
-      let (env, bindings) = prebind_module_decl_group env bindings decl in
-      let* deps =
-        A.ModuleDeclaration.fold_members
-          decl
-          (Ok deps)
-          (fun acc member ->
-            let* deps = acc in
-            collect_module_member_rhs env deps member)
-      in
-      Ok (deps, env, bindings)
-    else
-      A.ModuleDeclaration.fold_members
-        decl
-        (Ok (deps, env, bindings))
-        (fun acc member ->
-          let* (deps, env, bindings) = acc in
-          let* (deps, binding) = module_member_binding env deps member in
-          match module_member_name member with
-          | Some name ->
-              let env = Env.add name binding env in
-              let bindings = Env.add name binding bindings in
-              Ok (deps, env, bindings)
-          | None -> Ok (deps, env, bindings))
+        if A.ModuleDeclaration.is_recursive decl then
+          let (env, bindings) = prebind_module_decl_group env bindings decl in
+          let* deps =
+            A.ModuleDeclaration.fold_members
+              decl
+              (Ok deps)
+              (fun acc member ->
+                let* deps = acc in
+                collect_module_member_rhs env deps member)
+          in
+          Ok (deps, env, bindings)
+        else
+          A.ModuleDeclaration.fold_members
+            decl
+            (Ok (deps, env, bindings))
+            (fun acc member ->
+              let* (deps, env, bindings) = acc in
+              let* (deps, binding) = module_member_binding env deps member in
+              match module_member_name member with
+              | Some name ->
+                  let env = Env.add name binding env in
+                  let bindings = Env.add name binding bindings in
+                  Ok (deps, env, bindings)
+              | None -> Ok (deps, env, bindings))
 
   and collect_module_type_decl env deps node =
     match first_child_node_matching

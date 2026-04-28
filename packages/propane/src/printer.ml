@@ -84,7 +84,7 @@ let hashmap = fun key_printer value_printer hm ->
     |> Iter.Iterator.to_list
   in
   let pair_strs =
-    List.map pairs ~fn:(fun ((k, v)) -> key_printer k ^ " => " ^ value_printer v)
+    List.map pairs ~fn:(fun (k, v) -> key_printer k ^ " => " ^ value_printer v)
     |> List.sort ~compare:String.compare
   in
   "map{" ^ String.concat "; " pair_strs ^ "}"
@@ -124,9 +124,9 @@ let heap = fun elem_printer h ->
 
 (* === TUPLE PRINTERS === *)
 
-let pair = fun printer_a printer_b ((a, b)) -> "(" ^ printer_a a ^ ", " ^ printer_b b ^ ")"
+let pair = fun printer_a printer_b (a, b) -> "(" ^ printer_a a ^ ", " ^ printer_b b ^ ")"
 
-let triple = fun printer_a printer_b printer_c ((a, b, c)) ->
+let triple = fun printer_a printer_b printer_c (a, b, c) ->
   "(" ^ printer_a a ^ ", " ^ printer_b b ^ ", " ^ printer_c c ^ ")"
 
 (* === OPTION & RESULT PRINTERS === *)

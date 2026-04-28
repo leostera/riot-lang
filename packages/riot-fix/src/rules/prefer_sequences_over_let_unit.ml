@@ -19,7 +19,10 @@ let node_source = fun ctx node ->
   H.node_source ctx node
   |> String.trim
 
-let is_unit_pattern = fun ctx pattern -> String.equal (node_source ctx (Ast.Pattern.as_node pattern)) "()"
+let is_unit_pattern = fun ctx pattern ->
+  String.equal
+    (node_source ctx (Ast.Pattern.as_node pattern))
+    "()"
 
 let indentation_at = fun source offset ->
   let rec find_line_start index =

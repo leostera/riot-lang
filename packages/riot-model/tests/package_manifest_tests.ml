@@ -86,12 +86,10 @@ std = "not-a-semver-range"
     ~workspace_build_deps:[]
     ~path:(Path.v "/tmp/demo")
     ~relative_path:(Path.v "packages/demo") with
-  | Error (
-    Riot_model.Package.InvalidDependency (
-      Riot_model.Package.InvalidDependencyRequirement { dependency_name; requirement; _ }
-    )
-  ) when String.equal dependency_name "std" && String.equal requirement "not-a-semver-range" ->
-      Ok ()
+  | Error (Riot_model.Package.InvalidDependency (Riot_model.Package.InvalidDependencyRequirement { dependency_name; requirement; _ })) when String.equal
+    dependency_name
+    "std"
+  && String.equal requirement "not-a-semver-range" -> Ok ()
   | Error err ->
       Error ("expected typed dependency requirement error, got "
       ^ Riot_model.Package_manifest.error_message err)

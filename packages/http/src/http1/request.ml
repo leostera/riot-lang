@@ -206,11 +206,7 @@ let parse_header_line_owned = fun cursor ->
     )
 
 let rec parse_headers_owned = fun
-  ?(max_count = 100)
-  ?(max_length = 8_192)
-  ?(acc = [])
-  ?(count = 0)
-  cursor ->
+  ?(max_count = 100) ?(max_length = 8_192) ?(acc = []) ?(count = 0) cursor ->
   if count >= max_count then
     Slice_error "Too many headers"
   else
@@ -256,10 +252,7 @@ let request_of_parts = fun method_ uri version headers_list body ->
   request
 
 let parse_slice = fun
-  ?(max_request_line = 8_192)
-  ?(max_headers = 100)
-  ?(max_header_length = 8_192)
-  input ->
+  ?(max_request_line = 8_192) ?(max_headers = 100) ?(max_header_length = 8_192) input ->
   match parse_request_line_owned ~max_length:max_request_line input with
   | Slice_need_more -> Common.Need_more
   | Slice_error error -> Common.Error error
@@ -281,8 +274,9 @@ let parse_slice = fun
     )
 
 let parse = fun
-  ?(max_request_line = 8_192)
-  ?(max_headers = 100)
-  ?(max_header_length = 8_192)
-  input ->
-  parse_slice ~max_request_line ~max_headers ~max_header_length (slice_of_string input)
+  ?(max_request_line = 8_192) ?(max_headers = 100) ?(max_header_length = 8_192) input ->
+  parse_slice
+    ~max_request_line
+    ~max_headers
+    ~max_header_length
+    (slice_of_string input)

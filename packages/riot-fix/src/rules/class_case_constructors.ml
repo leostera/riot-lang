@@ -34,13 +34,13 @@ let make_diagnostic = fun token ->
     ()
 
 let check_variant = fun variant diagnostics ->
-  H.iter_fold Ast.VariantType.fold_constructor
+  H.iter_fold
+    Ast.VariantType.fold_constructor
     variant
     ~fn:(fun constructor ->
       match Ast.VariantConstructor.view constructor with
-      | Ast.VariantConstructor.Constructor { name = token; _ }
-        when H.should_be_class_case (Ast.Token.text token) ->
-          H.push_diagnostic diagnostics (make_diagnostic token)
+      | Ast.VariantConstructor.Constructor { name = token; _ } when H.should_be_class_case
+        (Ast.Token.text token) -> H.push_diagnostic diagnostics (make_diagnostic token)
       | _ -> ());
   ()
 
@@ -54,7 +54,8 @@ let check_tree = fun _ctx root ->
   H.for_each_type_declaration
     root
     ~fn:(fun declaration ->
-      H.iter_fold Ast.TypeDeclaration.fold_member
+      H.iter_fold
+        Ast.TypeDeclaration.fold_member
         declaration
         ~fn:(fun member -> check_member member diagnostics));
   H.vector_to_list diagnostics

@@ -93,11 +93,7 @@ let output_root = fun ~(workspace:Riot_model.Workspace.t) ~release ->
   Path.(workspace.target_dir_root / Path.v "doc")
 
 let package_output_dir = fun
-  ~(workspace:Riot_model.Workspace.t)
-  ~package_name
-  ~version
-  ~release
-  ~output_root_opt ->
+  ~(workspace:Riot_model.Workspace.t) ~package_name ~version ~release ~output_root_opt ->
   let root =
     match output_root_opt with
     | Some override_root -> override_root
@@ -154,9 +150,7 @@ let find_lock_package = fun ~(package:Riot_model.Package.t) (lockfile: Riot_mode
       | lock_package :: _ -> Some lock_package
 
 let locked_dependency_versions = fun
-  ~(workspace:Riot_model.Workspace.t)
-  ~(package:Riot_model.Package.t)
-  lockfile_opt ->
+  ~(workspace:Riot_model.Workspace.t) ~(package:Riot_model.Package.t) lockfile_opt ->
   if not (Package.is_workspace_member package) then
     Ok []
   else
@@ -241,9 +235,7 @@ let documentation_dependencies = fun (package: Riot_model.Package.t) ->
         (Package.is_builtin_dependency dependency))
 
 let map_dependencies = fun
-  ~release
-  ~(dependency_map:(Package_name.t * string) list)
-  (package: Riot_model.Package.t) ->
+  ~release ~(dependency_map:(Package_name.t * string) list) (package: Riot_model.Package.t) ->
   documentation_dependencies package
   |> List.unique
     ~compare:(fun (left: Riot_model.Package.dependency) (right: Riot_model.Package.dependency) ->
@@ -460,12 +452,7 @@ let package_doc_of_sources = fun ~package ~version ~dependencies sources ->
       loop [] sources
 
 let run_for_package = fun
-  ~on_event
-  ~store
-  ~cache_allowed
-  ~request
-  ~(package:Riot_model.Package.t)
-  ~lockfile_opt ->
+  ~on_event ~store ~cache_allowed ~request ~(package:Riot_model.Package.t) ~lockfile_opt ->
   let* version = output_version ~release:request.release package in
   let output_dir =
     package_output_dir

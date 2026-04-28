@@ -436,7 +436,7 @@ let request_params_to_json = function
         (
           "arguments",
           option_to_json
-            (fun args -> Json.Object (List.map ~fn:(fun ((k, v)) -> (k, Json.String v)) args))
+            (fun args -> Json.Object (List.map ~fn:(fun (k, v) -> (k, Json.String v)) args))
             arguments
         );
       ]
@@ -641,8 +641,7 @@ module Protocol: Jsonrpc.ApplicationProtocol with type request = request and typ
     { Jsonrpc.method_ = req.method_name; params }
 
   let request_of_params: string -> Jsonrpc.params -> (request, Json.t) result = fun
-    method_
-    params ->
+    method_ params ->
     let id = String "0" in
     Ok {
       jsonrpc = "2.0";

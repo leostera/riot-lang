@@ -34,7 +34,8 @@ let make_diagnostic = fun expr depth ->
     ()
 
 let for_each_case_expr = fun expr ~fn ->
-  H.iter_fold Ast.Expr.fold_match_case
+  H.iter_fold
+    Ast.Expr.fold_match_case
     expr
     ~fn:(fun match_case ->
       match Ast.MatchCase.view match_case with

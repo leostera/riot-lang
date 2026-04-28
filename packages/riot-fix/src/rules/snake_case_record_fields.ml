@@ -34,7 +34,8 @@ let make_diagnostic = fun token ->
     ()
 
 let check_record_type = fun record diagnostics ->
-  H.iter_fold Ast.RecordType.fold_field
+  H.iter_fold
+    Ast.RecordType.fold_field
     record
     ~fn:(fun field ->
       match Ast.RecordField.view field with
@@ -53,7 +54,8 @@ let check_tree = fun _ctx root ->
   H.for_each_type_declaration
     root
     ~fn:(fun declaration ->
-      H.iter_fold Ast.TypeDeclaration.fold_member
+      H.iter_fold
+        Ast.TypeDeclaration.fold_member
         declaration
         ~fn:(fun member -> check_member member diagnostics));
   H.vector_to_list diagnostics

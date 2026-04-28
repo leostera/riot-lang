@@ -64,7 +64,7 @@ let load_string = fun str -> load ~provider:(Provider.static str) ()
 
 let load_file = fun path -> load ~provider:(Provider.file path) ()
 
-let get (type a) ((module M : ConfigSpec with type t = a)): (a, error) result =
+let get (type a) (module M : ConfigSpec with type t = a): (a, error) result =
   let app_name = Spec.app_name M.spec in
   let server = ensure_loaded () in
   match Server.get server ~app:app_name with

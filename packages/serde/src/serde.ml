@@ -225,10 +225,7 @@ module Fields = struct
     loop 0
 
   let match_slice: 'tag. 'tag t -> string -> offset:int -> length:int -> 'tag option = fun
-    fields
-    source
-    ~offset
-    ~length ->
+    fields source ~offset ~length ->
     let open Std.Int in
     let rec loop (node: 'tag node) offset length =
       if length = 0 then
@@ -249,10 +246,7 @@ module Fields = struct
     loop fields.root offset length
 
   let match_bytes: 'tag. 'tag t -> bytes -> offset:int -> length:int -> 'tag option = fun
-    fields
-    source
-    ~offset
-    ~length ->
+    fields source ~offset ~length ->
     let open Std.Int in
     let rec loop (node: 'tag node) offset length =
       if length = 0 then
@@ -273,10 +267,7 @@ module Fields = struct
     loop fields.root offset length
 
   let match_ioslice: 'tag. 'tag t -> IO.IoSlice.t -> offset:int -> length:int -> 'tag option = fun
-    fields
-    source
-    ~offset
-    ~length ->
+    fields source ~offset ~length ->
     let open Std.Int in
     let rec loop (node: 'tag node) offset length =
       if length = 0 then
@@ -317,10 +308,7 @@ module Fields = struct
     loop fields.root 0 (IO.Buffer.length buffer)
 
   let match_buffer_range: 'tag. 'tag t -> IO.Buffer.t -> offset:int -> length:int -> 'tag option = fun
-    fields
-    buffer
-    ~offset
-    ~length ->
+    fields buffer ~offset ~length ->
     let open Std.Int in
     let rec loop (node: 'tag node) offset length =
       if length = 0 then

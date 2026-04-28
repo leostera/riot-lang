@@ -143,11 +143,7 @@ let classify_other_target_root_error = fun
   | _ -> panic "expected concrete ML/MLI dependency when classifying other target root error"
 
 let classify_internal_module_error = fun
-  ~target_name
-  ~source
-  ~requested_modules
-  (dep_node: Module_node.t G.node)
-  ~public_module ->
+  ~target_name ~source ~requested_modules (dep_node: Module_node.t G.node) ~public_module ->
   match dep_node.value.kind with
   | Module_node.ML mod_
   | Module_node.MLI mod_ ->

@@ -663,9 +663,10 @@ let search_packages = fun registry ~query ?(limit = 5) () ->
             || String.contains normalized_name normalized_query)
         |> List.sort
           ~compare:(fun
-            (left: Sparse_index.package_document)
-            (right: Sparse_index.package_document) ->
-            String.compare left.name right.name)
+            (left: Sparse_index.package_document) (right: Sparse_index.package_document) ->
+            String.compare
+              left.name
+              right.name)
         |> take limit
         |> List.map
           ~fn:(fun (document: Sparse_index.package_document) ->

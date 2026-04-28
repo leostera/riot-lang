@@ -2435,7 +2435,7 @@ module Tests = struct
       (Package_name.from_string name)
       ~msg:("package name " ^ name)
 
-  let test_lockfile_event_json_roundtrip (): (unit, string) result =
+  let test_lockfile_event_json_roundtrip () =
     let event =
       create
         ~session_id:(Session_id.of_string "test-session")
@@ -2451,7 +2451,7 @@ module Tests = struct
     | Ok _ -> Error "expected LockfileReadFinished after round-trip"
     | Error err -> Error err [@test]
 
-  let test_resolution_event_json_roundtrip (): (unit, string) result =
+  let test_resolution_event_json_roundtrip () =
     let event =
       create
         ~session_id:(Session_id.of_string "test-session")
@@ -2472,7 +2472,7 @@ module Tests = struct
     | Ok _ -> Error "expected DependencyResolutionStarted unlock event after round-trip"
     | Error err -> Error err [@test]
 
-  let test_package_resolved_event_json_roundtrip (): (unit, string) result =
+  let test_package_resolved_event_json_roundtrip () =
     let event =
       create
         ~session_id:(Session_id.of_string "test-session")
@@ -2505,7 +2505,7 @@ module Tests = struct
     | Ok _ -> Error "expected PackageResolvedForBuild after round-trip"
     | Error err -> Error err [@test]
 
-  let test_manifest_update_event_json_roundtrip (): (unit, string) result =
+  let test_manifest_update_event_json_roundtrip () =
     let event =
       create
         ~session_id:(Session_id.of_string "test-session")
@@ -2537,7 +2537,7 @@ module Tests = struct
     | Ok _ -> Error "expected DependencyManifestUpdated after round-trip"
     | Error err -> Error err [@test]
 
-  let test_package_locked_event_json_roundtrip (): (unit, string) result =
+  let test_package_locked_event_json_roundtrip () =
     let event =
       create
         ~session_id:(Session_id.of_string "test-session")
@@ -2553,7 +2553,7 @@ module Tests = struct
     | Ok _ -> Error "expected PackageVersionLocked after round-trip"
     | Error err -> Error err [@test]
 
-  let test_package_versions_unchanged_event_json_roundtrip (): (unit, string) result =
+  let test_package_versions_unchanged_event_json_roundtrip () =
     let event =
       create
         ~session_id:(Session_id.of_string "test-session")

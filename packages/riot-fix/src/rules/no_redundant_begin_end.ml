@@ -39,7 +39,8 @@ let check_expression = fun diagnostics expr ->
   let expr_node = Ast.Expr.as_node expr in
   if Syn.SyntaxKind.(Ast.Node.kind expr_node = PAREN_EXPR) && opens_with_begin expr_node then
     match H.first_child_expr expr with
-    | Some inner -> H.push_diagnostic diagnostics (make_diagnostic expr_node (Ast.Expr.as_node inner))
+    | Some inner ->
+        H.push_diagnostic diagnostics (make_diagnostic expr_node (Ast.Expr.as_node inner))
     | None -> ()
 
 let check_tree = fun _ctx root ->

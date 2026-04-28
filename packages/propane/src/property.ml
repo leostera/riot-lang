@@ -197,7 +197,7 @@ let check = fun ?(config = default_config) ?(on_progress = fun _ -> ()) (Prop pr
               ^ Int.to_string size
               ^ ")");
           test_loop (n + 1)
-      | Some (`Failed value) ->
+      | Some `Failed value ->
           (* Property failed! Shrink to find minimal counter-example *)
           on_progress
             (Test.Context.PropertyCounterExampleFound {
@@ -221,7 +221,7 @@ let check = fun ?(config = default_config) ?(on_progress = fun _ -> ()) (Prop pr
             | None -> "<no printer available>"
           in
           Failure { counter_example; shrink_steps }
-      | Some (`Failed_with_msg (value, msg)) ->
+      | Some `Failed_with_msg (value, msg) ->
           on_progress
             (Test.Context.PropertyCounterExampleFound {
               current = n + 1;
@@ -245,7 +245,7 @@ let check = fun ?(config = default_config) ?(on_progress = fun _ -> ()) (Prop pr
           in
           let counter_example = value_str ^ "\nMessage: " ^ msg in
           Failure { counter_example; shrink_steps }
-      | Some (`Exception (value, exn, backtrace)) ->
+      | Some `Exception (value, exn, backtrace) ->
           on_progress
             (Test.Context.PropertyCounterExampleFound {
               current = n + 1;

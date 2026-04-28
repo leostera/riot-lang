@@ -151,7 +151,7 @@ let sandbox_dir = fun ~workspace_root ->
     ~target:(host_target ())
 
 module Tests = struct
-  let test_package_lock_path (): (unit, string) result =
+  let test_package_lock_path () =
     let actual =
       package_lock_path ~workspace_root:(Path.v "/tmp/workspace")
       |> Path.to_string
@@ -161,7 +161,7 @@ module Tests = struct
     else
       Error ("expected root riot.lock path, got " ^ actual) [@test]
 
-  let test_workspace_target_dirs_use_custom_target_dir_root (): (unit, string) result =
+  let test_workspace_target_dirs_use_custom_target_dir_root () =
     let workspace =
       Workspace.make ~root:(Path.v "/tmp/workspace") ~target_dir:"build-out" ~packages:[] ()
     in

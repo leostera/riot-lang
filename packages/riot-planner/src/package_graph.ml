@@ -178,9 +178,7 @@ let dependencies_for_scope = fun scope (pkg: Package.t) ->
   | Dev -> pkg.dependencies @ pkg.dev_dependencies
 
 let projected_package = fun
-  ?(dev_artifacts = {tests = true; examples = true; benches = true})
-  scope
-  pkg ->
+  ?(dev_artifacts = {tests = true; examples = true; benches = true}) scope pkg ->
   match scope with
   | Build -> Package.for_scope Package.Build pkg
   | Runtime -> Package.for_scope Package.Normal pkg
@@ -208,9 +206,8 @@ let empty_breakdown = {
   edge_wiring_duration = Time.Duration.zero;
 }
 
-let create_with_breakdown ~scope ?(dev_artifacts = {tests = true; examples = true; benches = true}) (
-  workspace: Workspace.t
-): (t * create_breakdown, create_error) result =
+let create_with_breakdown ~scope ?(dev_artifacts = {tests = true; examples = true; benches = true}) (workspace:
+  Workspace.t) =
   let started_at = Time.Instant.now () in
   let graph = G.make () in
   let name_to_node = HashMap.create () in
@@ -444,7 +441,7 @@ let mark_planned = fun pg package_key ~module_graph ~action_graph ~hash ->
 
 let size = fun pg -> HashMap.length pg.name_to_node
 
-let packages = fun pg -> G.map pg.graph ~fn:(fun ((_id, node)) -> get_package node.value)
+let packages = fun pg -> G.map pg.graph ~fn:(fun (_id, node) -> get_package node.value)
 
 let find_package = fun pg name ->
   match HashMap.get

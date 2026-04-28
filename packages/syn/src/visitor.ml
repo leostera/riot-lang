@@ -422,100 +422,160 @@ let rec visit_node: 'ctx. 'ctx t -> A.Node.t -> 'ctx t = fun visitor node ->
   call_leave_node visitor node
 
 let visit_source_file = fun visitor (source_file: A.SourceFile.t) ->
-  visit_node visitor (A.SourceFile.as_node source_file)
+  visit_node
+    visitor
+    (A.SourceFile.as_node source_file)
 
 let visit_implementation = fun visitor (implementation: A.Implementation.t) ->
-  visit_node visitor (A.Implementation.as_node implementation)
+  visit_node
+    visitor
+    (A.Implementation.as_node implementation)
 
 let visit_interface = fun visitor (interface: A.Interface.t) ->
-  visit_node visitor (A.Interface.as_node interface)
+  visit_node
+    visitor
+    (A.Interface.as_node interface)
 
 let visit_structure_item = fun visitor (item: A.StructureItem.t) ->
-  visit_node visitor (A.StructureItem.as_node item)
+  visit_node
+    visitor
+    (A.StructureItem.as_node item)
 
 let visit_signature_item = fun visitor (item: A.SignatureItem.t) ->
-  visit_node visitor (A.SignatureItem.as_node item)
+  visit_node
+    visitor
+    (A.SignatureItem.as_node item)
 
 let visit_let_declaration = fun visitor (decl: A.LetDeclaration.t) ->
-  visit_node visitor (A.LetDeclaration.as_node decl)
+  visit_node
+    visitor
+    (A.LetDeclaration.as_node decl)
 
 let visit_let_binding = fun visitor (binding: A.LetBinding.t) ->
-  visit_node visitor (A.LetBinding.as_node binding)
+  visit_node
+    visitor
+    (A.LetBinding.as_node binding)
 
 let visit_type_declaration = fun visitor (decl: A.TypeDeclaration.t) ->
-  visit_node visitor (A.TypeDeclaration.as_node decl)
+  visit_node
+    visitor
+    (A.TypeDeclaration.as_node decl)
 
 let visit_type_extension_declaration = fun visitor (decl: A.TypeExtensionDeclaration.t) ->
-  visit_node visitor (A.TypeExtensionDeclaration.as_node decl)
+  visit_node
+    visitor
+    (A.TypeExtensionDeclaration.as_node decl)
 
 let visit_module_declaration = fun visitor (decl: A.ModuleDeclaration.t) ->
-  visit_node visitor (A.ModuleDeclaration.as_node decl)
+  visit_node
+    visitor
+    (A.ModuleDeclaration.as_node decl)
 
 let visit_module_expr = fun visitor (expr: A.ModuleExpr.t) ->
-  visit_node visitor (A.ModuleExpr.as_node expr)
+  visit_node
+    visitor
+    (A.ModuleExpr.as_node expr)
 
 let visit_module_type_expr = fun visitor (expr: A.ModuleTypeExpr.t) ->
-  visit_node visitor (A.ModuleTypeExpr.as_node expr)
+  visit_node
+    visitor
+    (A.ModuleTypeExpr.as_node expr)
 
 let visit_module_type_declaration = fun visitor (decl: A.ModuleTypeDeclaration.t) ->
-  visit_node visitor (A.ModuleTypeDeclaration.as_node decl)
+  visit_node
+    visitor
+    (A.ModuleTypeDeclaration.as_node decl)
 
 let visit_module_type_constraint = fun visitor (constraint_: A.ModuleTypeConstraint.t) ->
-  visit_node visitor (A.ModuleTypeConstraint.as_node constraint_)
+  visit_node
+    visitor
+    (A.ModuleTypeConstraint.as_node constraint_)
 
 let visit_open_declaration = fun visitor (decl: A.OpenDeclaration.t) ->
-  visit_node visitor (A.OpenDeclaration.as_node decl)
+  visit_node
+    visitor
+    (A.OpenDeclaration.as_node decl)
 
 let visit_include_declaration = fun visitor (decl: A.IncludeDeclaration.t) ->
-  visit_node visitor (A.IncludeDeclaration.as_node decl)
+  visit_node
+    visitor
+    (A.IncludeDeclaration.as_node decl)
 
 let visit_value_declaration = fun visitor (decl: A.ValueDeclaration.t) ->
-  visit_node visitor (A.ValueDeclaration.as_node decl)
+  visit_node
+    visitor
+    (A.ValueDeclaration.as_node decl)
 
 let visit_external_declaration = fun visitor (decl: A.ExternalDeclaration.t) ->
-  visit_node visitor (A.ExternalDeclaration.as_node decl)
+  visit_node
+    visitor
+    (A.ExternalDeclaration.as_node decl)
 
 let visit_exception_declaration = fun visitor (decl: A.ExceptionDeclaration.t) ->
-  visit_node visitor (A.ExceptionDeclaration.as_node decl)
+  visit_node
+    visitor
+    (A.ExceptionDeclaration.as_node decl)
 
 let visit_extension_item = fun visitor (item: A.ExtensionItem.t) ->
-  visit_node visitor (A.ExtensionItem.as_node item)
+  visit_node
+    visitor
+    (A.ExtensionItem.as_node item)
 
 let visit_attribute_item = fun visitor (item: A.AttributeItem.t) ->
-  visit_node visitor (A.AttributeItem.as_node item)
+  visit_node
+    visitor
+    (A.AttributeItem.as_node item)
 
 let visit_expr_item = fun visitor (item: A.ExprItem.t) ->
-  visit_node visitor (A.ExprItem.as_node item)
+  visit_node
+    visitor
+    (A.ExprItem.as_node item)
 
-let visit_expr = fun visitor (expr: A.Expr.t) ->
-  visit_node visitor (A.Expr.as_node expr)
+let visit_expr = fun visitor (expr: A.Expr.t) -> visit_node visitor (A.Expr.as_node expr)
 
 let visit_pattern = fun visitor (pattern: A.Pattern.t) ->
-  visit_node visitor (A.Pattern.as_node pattern)
+  visit_node
+    visitor
+    (A.Pattern.as_node pattern)
 
 let visit_parameter = fun visitor (parameter: A.Parameter.t) ->
-  visit_node visitor (A.Parameter.as_node parameter)
+  visit_node
+    visitor
+    (A.Parameter.as_node parameter)
 
 let visit_match_case = fun visitor (case: A.MatchCase.t) ->
-  visit_node visitor (A.MatchCase.as_node case)
+  visit_node
+    visitor
+    (A.MatchCase.as_node case)
 
 let visit_type_expr = fun visitor (type_expr: A.TypeExpr.t) ->
-  visit_node visitor (A.TypeExpr.as_node type_expr)
+  visit_node
+    visitor
+    (A.TypeExpr.as_node type_expr)
 
 let visit_record_type = fun visitor (record_type: A.RecordType.t) ->
-  visit_node visitor (A.RecordType.as_node record_type)
+  visit_node
+    visitor
+    (A.RecordType.as_node record_type)
 
 let visit_record_field = fun visitor (field: A.RecordField.t) ->
-  visit_node visitor (A.RecordField.as_node field)
+  visit_node
+    visitor
+    (A.RecordField.as_node field)
 
 let visit_record_expr_field = fun visitor (field: A.RecordExprField.t) ->
-  visit_node visitor (A.RecordExprField.as_node field)
+  visit_node
+    visitor
+    (A.RecordExprField.as_node field)
 
 let visit_variant_type = fun visitor (variant_type: A.VariantType.t) ->
-  visit_node visitor (A.VariantType.as_node variant_type)
+  visit_node
+    visitor
+    (A.VariantType.as_node variant_type)
 
 let visit_variant_constructor = fun visitor (constructor: A.VariantConstructor.t) ->
-  visit_node visitor (A.VariantConstructor.as_node constructor)
+  visit_node
+    visitor
+    (A.VariantConstructor.as_node constructor)
 
-let visit_ident = fun visitor (ident: A.Ident.t) ->
-  visit_node visitor (A.Ident.as_node ident)
+let visit_ident = fun visitor (ident: A.Ident.t) -> visit_node visitor (A.Ident.as_node ident)

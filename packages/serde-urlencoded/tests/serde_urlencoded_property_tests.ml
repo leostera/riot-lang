@@ -186,7 +186,7 @@ let sample_decode =
             | Some nickname -> nickname
             | None -> None
           in
-          ({
+          (({
             name;
             age;
             active;
@@ -197,7 +197,7 @@ let sample_decode =
             scores;
             nickname;
             status;
-          }: sample)
+          }: sample))
       | _ -> De.missing_field ())
 
 let sample_encode =

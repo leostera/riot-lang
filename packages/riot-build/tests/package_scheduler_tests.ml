@@ -96,11 +96,7 @@ let make_workspace = fun ?toolchain_targets ~root ~packages () ->
   Riot_model.Workspace.make_realized ~root ~packages ()
 
 let make_request = fun
-  ~workspace
-  ~packages
-  ?(targets = Riot_model.Target.Host)
-  ?(requested_parallelism = None)
-  () ->
+  ~workspace ~packages ?(targets = Riot_model.Target.Host) ?(requested_parallelism = None) () ->
   Riot_build.Request.make
     ~workspace
     ~packages

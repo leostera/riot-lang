@@ -73,7 +73,7 @@ let to_json = fun data ->
   let open Data.Json in
   let values_list =
     HashMap.to_list data.values
-    |> List.map ~fn:(fun ((k, v)) -> (k, string v))
+    |> List.map ~fn:(fun (k, v) -> (k, string v))
   in
   obj
     [
@@ -95,7 +95,7 @@ let from_json = fun json ->
             let hm = HashMap.create () in
             List.for_each
               pairs
-              ~fn:(fun ((k, v)) ->
+              ~fn:(fun (k, v) ->
                 match get_string v with
                 | Option.Some s ->
                     let _ = HashMap.insert hm ~key:k ~value:s in
@@ -119,7 +119,7 @@ let from_json = fun json ->
       in
       let expires_at =
         match get_field "expires_at" json with
-        | Option.Some (Null) -> Option.none
+        | Option.Some Null -> Option.none
         | Option.Some v -> (
             match get_int v with
             | Option.Some n -> Option.some (Int64.of_int n)

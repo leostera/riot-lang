@@ -212,8 +212,7 @@ let source_resolution_key = fun ~source_locator ~ref_ ->
   "source:" ^ source_locator ^ "#" ^ Option.unwrap_or ~default:"main" ref_
 
 let find_workspace_package_by_name = fun
-  ~(workspace_packages:Riot_model.Package_manifest.t list)
-  ~package_name ->
+  ~(workspace_packages:Riot_model.Package_manifest.t list) ~package_name ->
   List.find
     workspace_packages
     ~fn:(fun (pkg: Riot_model.Package_manifest.t) ->
@@ -222,8 +221,7 @@ let find_workspace_package_by_name = fun
         package_name)
 
 let find_workspace_package_by_root = fun
-  ~(workspace_packages:Riot_model.Package_manifest.t list)
-  ~package_root ->
+  ~(workspace_packages:Riot_model.Package_manifest.t list) ~package_root ->
   let package_root = Path.normalize package_root in
   List.find
     workspace_packages
@@ -265,7 +263,7 @@ let remove_resolving = fun ~(state:resolution_state) ~key -> {
   state with
   resolving = List.filter
     state.resolving
-    ~fn:(fun ((candidate, _)) -> not (String.equal candidate key));
+    ~fn:(fun (candidate, _) -> not (String.equal candidate key));
 }
 
 let add_resolved = fun ~(state:resolution_state) ~key ~(pkg:Riot_model.Lockfile.package) ->
@@ -282,9 +280,7 @@ let materialized_root_for_registry_package = fun ~registry ~package_name ~versio
     ~version
 
 let find_existing_external_package = fun
-  ~registry_name
-  ~existing_lock
-  ~(package_name:Riot_model.Package_name.t) ->
+  ~registry_name ~existing_lock ~(package_name:Riot_model.Package_name.t) ->
   match existing_lock with
   | None -> None
   | Some (lockfile: Riot_model.Lockfile.t) ->
@@ -349,10 +345,7 @@ let dependency_counts = fun (packages: Riot_model.Lockfile.package list) ->
     ))
 
 let rec lock_package_of_local_package = fun
-  ~(ctx:context)
-  ~state
-  ~provenance
-  (pkg: Riot_model.Package_manifest.t) ->
+  ~(ctx:context) ~state ~provenance (pkg: Riot_model.Package_manifest.t) ->
   let required_by = Some (required_by_local_package pkg) in
   match resolve_manifest_dependencies
     ~ctx
@@ -410,10 +403,7 @@ let rec lock_package_of_local_package = fun
     )
 
 and resolve_registry_dependency = fun
-  ~(ctx:context)
-  ~state
-  ~required_by
-  (dep: Riot_model.Package.dependency) ->
+  ~(ctx:context) ~state ~required_by (dep: Riot_model.Package.dependency) ->
   let package_name = dep.name in
   let raw_package_name = Riot_model.Package_name.to_string package_name in
   let registry_name = Pkgs_ml.Registry.name ctx.registry in
@@ -515,11 +505,10 @@ and resolve_registry_dependency = fun
                         }
                       in
                       let state = add_resolving ~state ~key ~package_id in
-                      let rec resolve_release_dependencies ~(state:resolution_state) (
-                        acc_packages: Riot_model.Lockfile.package list
-                      ) (acc_dependencies: Riot_model.Lockfile.dependency list) (
-                        release_dependencies: Pkgs_ml.Sparse_index.dependency list
-                      ) =
+                      let rec resolve_release_dependencies ~(state:resolution_state) (acc_packages:
+                        Riot_model.Lockfile.package list) (acc_dependencies:
+                        Riot_model.Lockfile.dependency list) (release_dependencies:
+                        Pkgs_ml.Sparse_index.dependency list) =
                         match release_dependencies with
                         | [] -> Ok (List.reverse acc_dependencies, acc_packages, state)
                         | (dep: Pkgs_ml.Sparse_index.dependency) :: rest ->
@@ -755,13 +744,7 @@ and resolve_source_dependency = fun ~(ctx:context) ~state (dep: Riot_model.Packa
     )
 
 and resolve_manifest_dependencies = fun
-  ~(ctx:context)
-  ~state
-  ~required_by
-  ~declared_from
-  acc_packages
-  acc_dependencies
-  deps ->
+  ~(ctx:context) ~state ~required_by ~declared_from acc_packages acc_dependencies deps ->
   match deps with
   | [] -> Ok (List.reverse acc_dependencies, List.reverse acc_packages, state)
   | dep :: rest -> (
@@ -910,9 +893,7 @@ and resolve_manifest_dependencies = fun
     )
 
 let lock_package_of_workspace_package = fun
-  ~(ctx:context)
-  ~state
-  (pkg: Riot_model.Package_manifest.t) ->
+  ~(ctx:context) ~state (pkg: Riot_model.Package_manifest.t) ->
   lock_package_of_local_package
     ~ctx
     ~state
@@ -961,8 +942,7 @@ let lock_root_dependencies = fun ~(ctx:context) ~state ->
     )
 
 let collect_reachable_existing = fun
-  ~(existing_lock:Riot_model.Lockfile.t)
-  ~(root_ids:Riot_model.Lockfile.package_id list) ->
+  ~(existing_lock:Riot_model.Lockfile.t) ~(root_ids:Riot_model.Lockfile.package_id list) ->
   let find_package package_id =
     List.find
       existing_lock.packages
@@ -1277,10 +1257,7 @@ let validate_source_requirement = fun
   | (None, _) -> Ok ()
 
 let dependency_target_name = fun
-  (catalog: catalog)
-  ~declared_from
-  ~required_by
-  (dep: Riot_model.Package.dependency) ->
+  (catalog: catalog) ~declared_from ~required_by (dep: Riot_model.Package.dependency) ->
   match dep.source with
   | { builtin = true; _ } -> Ok None
   | { workspace = true; _ } -> Ok (Some (Riot_model.Package_name.to_string dep.name))
@@ -1382,10 +1359,7 @@ let dependency_target_name = fun
   | _ -> Ok (Some (Riot_model.Package_name.to_string dep.name))
 
 let provider_dependency_of_manifest_dependency = fun
-  (catalog: catalog)
-  ~declared_from
-  ~required_by
-  (dep: Riot_model.Package.dependency) ->
+  (catalog: catalog) ~declared_from ~required_by (dep: Riot_model.Package.dependency) ->
   let* target_name_opt = dependency_target_name catalog ~declared_from ~required_by dep in
   match target_name_opt with
   | None -> Ok None
@@ -1444,9 +1418,7 @@ let provider_dependencies_of_manifest = fun (catalog: catalog) ~declared_from ~r
   loop [] deps
 
 let find_existing_registry_package = fun
-  ~registry_name
-  ~existing_lock
-  ~(package_name:Riot_model.Package_name.t) ->
+  ~registry_name ~existing_lock ~(package_name:Riot_model.Package_name.t) ->
   match existing_lock with
   | None -> None
   | Some (lockfile: Riot_model.Lockfile.t) ->
@@ -1457,10 +1429,7 @@ let find_existing_registry_package = fun
           && Riot_model.Package_name.equal pkg.id.name package_name)
 
 let find_existing_registry_package_version = fun
-  ~registry_name
-  ~existing_lock
-  ~(package_name:Riot_model.Package_name.t)
-  ~version ->
+  ~registry_name ~existing_lock ~(package_name:Riot_model.Package_name.t) ~version ->
   match existing_lock with
   | None -> None
   | Some (lockfile: Riot_model.Lockfile.t) ->
@@ -1634,8 +1603,7 @@ let provider_dependencies_of_local_entry = fun (catalog: catalog) (entry: local_
   |> Result.map ~fn:(fun deps -> Pubgrub.Provider.Available deps)
 
 let provider_dependencies_of_root = fun
-  (catalog: catalog)
-  (workspace_packages: Riot_model.Package_manifest.t list) ->
+  (catalog: catalog) (workspace_packages: Riot_model.Package_manifest.t list) ->
   let workspace_deps =
     List.map
       workspace_packages

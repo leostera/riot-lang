@@ -28,7 +28,7 @@ module Handler = struct
   type t =
     | H: (module Intf with type args = 'a and type state = 'b) * 'b -> t
 
-  let make (type a b) ((module I : Intf with type args = a and type state = b)) (args: a): t =
+  let make (type a b) (module I : Intf with type args = a and type state = b) (args: a) =
     match I.init args with
     | `ok state -> H ((module I), state)
     | `push (_, state) -> H ((module I), state)

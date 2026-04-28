@@ -39,7 +39,7 @@ let body = fun ?(children = []) () -> El { tag = "body"; attrs = []; children }
 
 let div = fun ?(attrs = []) ?id ?(children = []) () -> El {
   tag = "div";
-  attrs = optional_attr id attr_id @ List.map ~fn:(fun ((k, v)) -> `attr (k, v)) attrs;
+  attrs = optional_attr id attr_id @ List.map ~fn:(fun (k, v) -> `attr (k, v)) attrs;
   children;
 }
 

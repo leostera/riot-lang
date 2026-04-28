@@ -43,7 +43,8 @@ let make_diagnostic = fun parameter ->
 
 let diagnostic_for_binding = fun binding ->
   let found = ref None in
-  H.iter_fold Ast.LetBinding.fold_parameter
+  H.iter_fold
+    Ast.LetBinding.fold_parameter
     binding
     ~fn:(fun parameter ->
       match !found with

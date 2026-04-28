@@ -237,7 +237,7 @@ let sample_decode =
         Some mode,
         Some tags,
         Some scores
-      ) -> ({
+      ) -> (({
         ready;
         count;
         small;
@@ -249,7 +249,7 @@ let sample_decode =
         mode;
         tags;
         scores;
-      }: sample)
+      }: sample))
       | _ -> De.missing_field ())
 
 let sample_encode =
@@ -366,21 +366,19 @@ let pet_arb = Arbitrary.make ~print:print_pet pet_gen
 
 let sample_gen =
   Generator.map3
-    (fun (((ready, count), small), (big, ratio)) (label, alias, tags) (scores, pet, mode) -> (
-      {
-        ready;
-        count;
-        small;
-        big;
-        ratio;
-        label;
-        alias;
-        pet;
-        mode;
-        tags;
-        scores;
-      }: sample
-    ))
+    (fun (((ready, count), small), (big, ratio)) (label, alias, tags) (scores, pet, mode) -> ({
+      ready;
+      count;
+      small;
+      big;
+      ratio;
+      label;
+      alias;
+      pet;
+      mode;
+      tags;
+      scores;
+    }: sample))
     (Generator.pair
       (Generator.pair (Generator.pair Generator.bool Generator.int) Generator.int32)
       (Generator.pair Generator.int64 finite_float_gen))

@@ -36,7 +36,7 @@ let scope = fun prefix routes -> Scope { prefix; routes }
 let websocket = fun
   (type a s)
   path
-  ((module H : Channel.Handler.Intf with type args = a and type state = s))
+  (module H : Channel.Handler.Intf with type args = a and type state = s)
   (args: a) ->
   (* This creates a route that's meant to be used with a Handler.t-based server *)
   (* It won't work correctly with the middleware-only routing we currently have *)

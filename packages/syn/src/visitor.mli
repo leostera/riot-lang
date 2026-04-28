@@ -58,8 +58,10 @@ val with_ctx: 'ctx t -> 'ctx -> 'ctx t
 
 val visit_source_file: 'ctx t -> Ast.SourceFile.t -> 'ctx t
 
-(** Raw-node traversal escape hatch for syntax utilities. Prefer typed
-    entrypoints below when the caller already has a typed Ast handle. *)
+(**
+   Raw-node traversal escape hatch for syntax utilities. Prefer typed
+   entrypoints below when the caller already has a typed Ast handle.
+*)
 val visit_node: 'ctx t -> Ast.Node.t -> 'ctx t
 
 val visit_implementation: 'ctx t -> Ast.Implementation.t -> 'ctx t

@@ -56,26 +56,33 @@ let rec check_pattern_node_tree = fun ctx diagnostics node ->
   | Some pattern ->
       if not (is_named_parameter_pattern pattern) then (
         check_parameter_pattern ctx diagnostics pattern;
-        H.iter_fold Ast.Node.fold_child_node node ~fn:(check_pattern_node_tree ctx diagnostics)
+        H.iter_fold
+          Ast.Node.fold_child_node
+          node
+          ~fn:(check_pattern_node_tree ctx diagnostics)
       )
-  | None -> H.iter_fold Ast.Node.fold_child_node node ~fn:(check_pattern_node_tree ctx diagnostics)
+  | None -> H.iter_fold
+    Ast.Node.fold_child_node
+    node
+    ~fn:(check_pattern_node_tree ctx diagnostics)
 
-let check_pattern_tree = fun ctx diagnostics pattern -> check_pattern_node_tree
-  ctx
-  diagnostics
-  (Ast.Pattern.as_node pattern)
+let check_pattern_tree = fun ctx diagnostics pattern ->
+  check_pattern_node_tree
+    ctx
+    diagnostics
+    (Ast.Pattern.as_node pattern)
 
 let rec check_application_arguments = fun ctx diagnostics pattern ->
   match Ast.Pattern.view pattern with
   | Ast.Pattern.Construct { payload = Some argument; _ } ->
       check_pattern_tree ctx diagnostics argument
-  | Ast.Pattern.Constraint { pattern; _ } ->
-      check_application_arguments ctx diagnostics pattern
+  | Ast.Pattern.Constraint { pattern; _ } -> check_application_arguments ctx diagnostics pattern
   | _ -> ()
 
 let check_let_binding_parameters = fun ctx diagnostics binding ->
   let seen_binding_pattern = ref false in
-  H.iter_fold Ast.Node.fold_child_node
+  H.iter_fold
+    Ast.Node.fold_child_node
     (Ast.LetBinding.as_node binding)
     ~fn:(fun node ->
       match Ast.cast_result_to_option (Ast.Pattern.cast node) with
@@ -99,7 +106,10 @@ let rec check_type_expr = fun ctx diagnostics type_expr ->
               H.push_diagnostic diagnostics (diagnostic_for_type arg)
       );
       check_type_expr ctx diagnostics ret
-  | _ -> H.iter_fold Ast.TypeExpr.fold_child_type type_expr ~fn:(check_type_expr ctx diagnostics)
+  | _ -> H.iter_fold
+    Ast.TypeExpr.fold_child_type
+    type_expr
+    ~fn:(check_type_expr ctx diagnostics)
 
 let check_tree = fun ctx root ->
   let diagnostics = H.diagnostics_for_root root in

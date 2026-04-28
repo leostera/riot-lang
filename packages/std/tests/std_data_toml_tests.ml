@@ -102,7 +102,7 @@ let test_integer_negative =
     | Ok (Toml.Table items) -> (
         match find_value items "offset"
         |> Option.and_then ~fn:get_int with
-        | Some (-42) -> Ok ()
+        | Some -42 -> Ok ()
         | Some i -> Error ("Got " ^ Int.to_string i ^ ", expected -42")
         | None -> Error "Expected integer"
       )

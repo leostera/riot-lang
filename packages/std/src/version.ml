@@ -360,7 +360,7 @@ let make = fun ~major ~minor ~patch ?(pre = []) ?build () ->
   }
 
 module Tests = struct
-  let test_requirement_to_string (): (unit, string) result =
+  let test_requirement_to_string () =
     match parse_requirement ">= 1.2.3" with
     | Ok requirement ->
         if String.equal (requirement_to_string requirement) ">= 1.2.3" then
@@ -369,7 +369,7 @@ module Tests = struct
           Error "expected requirement_to_string to preserve operator and version"
     | Error _ -> Error "expected requirement to parse" [@test]
 
-  let test_any_requirement_roundtrip (): (unit, string) result =
+  let test_any_requirement_roundtrip () =
     match parse_requirement "*" with
     | Ok requirement ->
         if
@@ -381,7 +381,7 @@ module Tests = struct
           Error "expected '*' to roundtrip as unconstrained requirement"
     | Error _ -> Error "expected '*' requirement to parse" [@test]
 
-  let test_prefix_minor_requirement_matches_patch_range (): (unit, string) result =
+  let test_prefix_minor_requirement_matches_patch_range () =
     match parse_requirement "0.2" with
     | Ok requirement ->
         if
@@ -395,7 +395,7 @@ module Tests = struct
           Error "expected bare major.minor requirement to match only that patch range"
     | Error _ -> Error "expected bare major.minor requirement to parse" [@test]
 
-  let test_prefix_major_requirement_matches_minor_and_patch_range (): (unit, string) result =
+  let test_prefix_major_requirement_matches_minor_and_patch_range () =
     match parse_requirement "0" with
     | Ok requirement ->
         if

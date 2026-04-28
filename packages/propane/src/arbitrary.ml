@@ -247,7 +247,7 @@ let pair = fun arb_a arb_b ->
     small =
       (
         match (arb_a.small, arb_b.small) with
-        | (Some small_a, Some small_b) -> Some (fun ((a, b)) -> small_a a + small_b b)
+        | (Some small_a, Some small_b) -> Some (fun (a, b) -> small_a a + small_b b)
         | _ -> None
       );
   }
@@ -273,7 +273,7 @@ let triple = fun arb_a arb_b arb_c ->
       (
         match (arb_a.small, arb_b.small, arb_c.small) with
         | (Some small_a, Some small_b, Some small_c) ->
-            Some (fun ((a, b, c)) -> small_a a + small_b b + small_c c)
+            Some (fun (a, b, c) -> small_a a + small_b b + small_c c)
         | _ -> None
       );
   }

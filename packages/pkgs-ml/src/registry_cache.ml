@@ -40,7 +40,7 @@ let package_src_dir = fun cache ~package_name ~version ->
   Path.(src_dir cache / Path.v package_name / Path.v version)
 
 module Tests = struct
-  let test_registry_split_layout (): (unit, string) result =
+  let test_registry_split_layout () =
     let cache =
       create ~riot_home:(Path.v "/tmp/.riot") ~registry_name:"pkgs.ml" ()
       |> Result.unwrap

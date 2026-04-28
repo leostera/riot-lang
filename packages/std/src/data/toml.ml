@@ -65,7 +65,9 @@ let parse = fun content ->
   (* Skip whitespace (spaces, tabs) but NOT newlines *)
   let rec skip_ws () =
     match peek () with
-    | Some (' ' | '\t' | '\r') ->
+    | Some (' '
+    | '\t'
+    | '\r') ->
         advance ();
         skip_ws ()
     | _ -> ()
@@ -423,7 +425,7 @@ let parse = fun content ->
           in
           let updated_table = insert_nested_table rest value existing_table in
           (* Replace or add the key with updated nested table *)
-          let acc_without_key = List.filter acc ~fn:(fun ((k, _)) -> not (String.equal k key)) in
+          let acc_without_key = List.filter acc ~fn:(fun (k, _) -> not (String.equal k key)) in
           (key, Table updated_table) :: acc_without_key
     in
     (* Convert sections to nested tables *)
@@ -444,7 +446,7 @@ let parse = fun content ->
       List.fold_left
         !array_sections
         ~init:items
-        ~fn:(fun acc ((name, tables)) ->
+        ~fn:(fun acc (name, tables) ->
           (* Split dotted array section names (e.g., "log.handler" -> ["log"; "handler"]) *)
           let path = String.split ~by:"." name in
           insert_nested_table path (Array (List.reverse tables)) acc)
@@ -496,7 +498,7 @@ let rec to_string = fun ?(indent = 0) value ->
           ",\n"
           (List.map
             items
-            ~fn:(fun ((k, v)) -> ind ^ "  " ^ k ^ " = " ^ to_string ~indent:(indent + 1) v))
+            ~fn:(fun (k, v) -> ind ^ "  " ^ k ^ " = " ^ to_string ~indent:(indent + 1) v))
       in
       if indent = 0 then
         "{\n" ^ items_str ^ "\n}"

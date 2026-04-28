@@ -9,7 +9,6 @@ let iter_fold = fun fold value ~fn ->
       fn item;
       Syn.Ast.Continue ())
 
-
 include Fixme.Traversal
 
 module Ast = Syn.Ast

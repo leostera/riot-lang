@@ -43,7 +43,8 @@ let diagnostic = fun parameter_token parameter_name ->
 
 let single_positional_parameter_name = fun binding ->
   let parameters = Vector.with_capacity ~size:(Ast.LetBinding.parameter_count binding) in
-  H.iter_fold Ast.LetBinding.fold_parameter
+  H.iter_fold
+    Ast.LetBinding.fold_parameter
     binding
     ~fn:(fun parameter ->
       match H.parameter_name_token parameter with

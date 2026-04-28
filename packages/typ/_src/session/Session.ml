@@ -219,14 +219,7 @@ let visible_module_names_of_source = fun session (source: Source.t) ->
   )
 
 let create_source = fun
-  session
-  ~kind
-  ~module_name
-  ~implicit_opens
-  ~origin
-  ~source_hash
-  ~parse_result
-  ~cst ->
+  session ~kind ~module_name ~implicit_opens ~origin ~source_hash ~parse_result ~cst ->
   let source_id = SourceId.of_int session.next_source_id in
   let source =
     Source.make_prepared

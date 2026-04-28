@@ -213,16 +213,7 @@ let is_valid_value = fun value ->
 
 (** Create validated cookie *)
 let make_validated = fun
-  ~name
-  ~value
-  ?max_age
-  ?expires
-  ?path
-  ?domain
-  ?secure
-  ?http_only
-  ?same_site
-  () ->
+  ~name ~value ?max_age ?expires ?path ?domain ?secure ?http_only ?same_site () ->
   if not (is_valid_name name) then
     Error (String.concat "" [ "Invalid cookie name: "; name ])
   else if not (is_valid_value value) then

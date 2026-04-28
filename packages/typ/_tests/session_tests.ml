@@ -390,12 +390,7 @@ let update_source_text = fun session source_id ~kind ~origin ~text ->
     ~cst
 
 let make_source_with_implicit_opens = fun
-  ~implicit_opens
-  ~source_id
-  ~kind
-  ~origin
-  ~revision
-  ~text ->
+  ~implicit_opens ~source_id ~kind ~origin ~revision ~text ->
   let filename =
     match origin with
     | Source.Path path -> path
@@ -482,12 +477,7 @@ let imported_world_of_loaded_modules = fun loaded_modules (source: Source.t) ->
     ~scope_view:(ScopeView.create ~visible_modules ~implicit_open_modules)
 
 let prepared_check_source = fun
-  ~source_id
-  ~filename
-  ~internal_module_name
-  ~local_module_name
-  ~public_module_name
-  ~text ->
+  ~source_id ~filename ~internal_module_name ~local_module_name ~public_module_name ~text ->
   let path = Path.v filename in
   let origin = Source.Label filename in
   let kind = Source.File in

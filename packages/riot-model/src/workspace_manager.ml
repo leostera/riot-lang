@@ -175,12 +175,7 @@ let load_member_package:
   workspace_dev_deps:Package.dependency list ->
   workspace_build_deps:Package.dependency list ->
   (Package_manifest.t option * load_error list) = fun
-  t
-  workspace_root
-  member
-  ~workspace_deps
-  ~workspace_dev_deps
-  ~workspace_build_deps ->
+  t workspace_root member ~workspace_deps ~workspace_dev_deps ~workspace_build_deps ->
   let member_path = Path.(workspace_root / Path.v member) in
   let toml_path = Path.(member_path / riot_toml) in
   let member_name = Path.basename member_path in

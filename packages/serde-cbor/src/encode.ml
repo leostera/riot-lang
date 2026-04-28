@@ -22,9 +22,7 @@ let expect_value = fun state kind ->
   | None -> encode_error ("CBOR encoder produced no value for " ^ kind)
 
 let rec encode_list: 'value. state -> 'value Ser.t -> 'value vec -> unit = fun
-  state
-  encode
-  values ->
+  state encode values ->
   let items = ref [] in
   Vector.for_each
     values
@@ -58,9 +56,7 @@ and encode_record: 'value. state -> 'value Ser.fields -> 'value -> unit = fun st
   set state (Cbor_value.Map (List.rev !items))
 
 and encode_variant: 'value. state -> 'value Ser.variant_cases -> 'value -> unit = fun
-  state
-  cases
-  value ->
+  state cases value ->
   let rec loop index =
     if Int.equal index (Array.length cases) then
       raise (Serde.Encode_error `invalid_tag)

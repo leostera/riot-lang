@@ -23,8 +23,7 @@ let resolve_target_dir_root = fun ~root ?target_dir () ->
   else
     Path.(root / target_dir_path)
 
-let make ?name ~root ~packages ?(dependencies = []) ?(dev_dependencies = []) ?(build_dependencies = []) ?(profile_overrides = []) ?target_dir ():
-  t = {
+let make ?name ~root ~packages ?(dependencies = []) ?(dev_dependencies = []) ?(build_dependencies = []) ?(profile_overrides = []) ?target_dir () = {
   name;
   root;
   target_dir_root = resolve_target_dir_root ~root ?target_dir ();

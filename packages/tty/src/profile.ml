@@ -125,7 +125,8 @@ let from_env = fun () ->
   | (_, Some "true") -> ANSI256
   | (_, Some "truecolor") when is_screen && not is_tmux -> ANSI256
   | (_, Some "truecolor") -> True_color
-  | (Some ("xterm-kitty" | "wezterm"), _) -> True_color
+  | (Some ("xterm-kitty"
+  | "wezterm"), _) -> True_color
   | (Some "linux", _) -> ANSI
   | (Some _, _) when is_256color -> ANSI256
   | (Some _, _) when is_color || is_ansi -> ANSI

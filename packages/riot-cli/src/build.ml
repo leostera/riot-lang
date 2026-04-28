@@ -49,7 +49,9 @@ type request = {
 
 let build_trace_enabled = fun () ->
   match Env.get Env.String ~var:"RIOT_BUILD_TRACE" with
-  | Some ("1" | "true" | "yes") -> true
+  | Some ("1"
+  | "true"
+  | "yes") -> true
   | _ -> false
 
 let trace_build = fun message ->
@@ -144,9 +146,7 @@ let workspace_artifact_labels = fun (package: Riot_model.Package.t) ->
           None)
 
 let display_package_name = fun
-  ?build_target
-  ?(show_target = false)
-  (package: Riot_model.Package.t) ->
+  ?build_target ?(show_target = false) (package: Riot_model.Package.t) ->
   let name = Riot_model.Package_name.to_string package.name in
   let version_details =
     if Riot_model.Package.is_workspace_member package then

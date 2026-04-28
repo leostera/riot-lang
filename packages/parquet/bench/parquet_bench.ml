@@ -94,7 +94,7 @@ let schema_for_columns = fun column_count ->
 let column_metadata = fun index row_group_index ->
   let name = column_name index in
   let offset = Int64.of_int ((row_group_index * 10_000) + (index * 128)) in
-  ({
+  (({
     type_ =
       if Int.rem index 2 = 0 then
         Parquet.Int32
@@ -117,11 +117,11 @@ let column_metadata = fun index row_group_index ->
     encoding_stats = Some [ { page_type = Parquet.Data_page; encoding = Parquet.Plain; count = 1 } ];
     bloom_filter_offset = Some Int64.(add offset 64L);
     bloom_filter_length = Some 16;
-  }: Parquet.column_metadata)
+  }: Parquet.column_metadata))
 
 let column_chunk = fun index row_group_index ->
   let metadata = column_metadata index row_group_index in
-  ({
+  (({
     file_path = None;
     file_offset = metadata.data_page_offset;
     meta_data = Some metadata;
@@ -130,13 +130,13 @@ let column_chunk = fun index row_group_index ->
     column_index_offset = Some Int64.(add metadata.data_page_offset 88L);
     column_index_length = Some 8;
     encrypted_column_metadata = None;
-  }: Parquet.column_chunk)
+  }: Parquet.column_chunk))
 
 let row_group = fun column_count row_group_index ->
   let columns =
     List.init ~count:column_count ~fn:(fun index -> column_chunk index row_group_index)
   in
-  ({
+  (({
     columns;
     total_byte_size = Int64.of_int (column_count * 4_096);
     num_rows = 1_024L;
@@ -144,7 +144,7 @@ let row_group = fun column_count row_group_index ->
     file_offset = Some (Int64.of_int (row_group_index * 10_000));
     total_compressed_size = Some (Int64.of_int (column_count * 2_048));
     ordinal = Some row_group_index;
-  }: Parquet.row_group)
+  }: Parquet.row_group))
 
 let build_fixture = fun (spec: fixture_spec) ->
   let metadata: Parquet.file_metadata = {
