@@ -75,7 +75,10 @@ val stream: t -> Std.Net.TcpStream.t
 (**
    [send_file conn ?off ~len path] sends a file through the connection.
 
-   TODO: Not yet implemented - will use sendfile optimization when available
+   The current implementation reads the requested file, validates the requested
+   slice, and writes all bytes to the socket. It returns [FileError] when the
+   file cannot be read, [InvalidRange] when [off] or [len] are outside the file
+   bounds, and [Closed] when the socket cannot be written completely.
 *)
 val send_file: t -> ?off:int -> len:int -> string -> (unit, send_file_error) result
 

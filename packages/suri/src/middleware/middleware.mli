@@ -501,11 +501,10 @@ module Session = Session
    - Set [~secure:true] in production (HTTPS only)
    - Default [SameSite=Lax] helps reduce CSRF exposure
    - Cookie payloads are signed with HMAC-SHA256
-   - Cookie encryption is still placeholder-only
+   - Cookie payloads are not encrypted
 
-   {b Warning:} Do not use this middleware for sensitive production sessions
-   until the placeholder encryption has been replaced with authenticated
-   encryption.
+   {b Warning:} Session cookies are integrity-protected plaintext. Do not store
+   secrets or other confidential values in cookie-backed sessions.
 
    See {!Session} for full documentation.
 *)
@@ -526,7 +525,7 @@ module Session = Session
    ]}
 
    {b Parameters:}
-   - [secret] - Encryption/signing key (required, at least 32 characters)
+   - [secret] - Signing key (required, at least 32 characters)
    - [cookie_name] - Cookie name (default: "_suri_session")
    - [max_age] - Session lifetime in seconds (default: 86400 = 24h)
    - [secure] - Require HTTPS (default: false, {b set true in production!})
