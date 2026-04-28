@@ -10,6 +10,10 @@ type review_decision = [`Approve | `Reject | `Ignore | `Quit]
 
 type review_summary = { approved_count: int; rejected_count: int; ignored_count: int; quit: bool }
 
+type 'value scan_step =
+  | Continue of 'value
+  | Stop of 'value
+
 let empty_review_summary = {
   approved_count = 0;
   rejected_count = 0;
@@ -73,9 +77,36 @@ let matches_query = fun ?query snapshot ->
       String.contains (Path.to_string snapshot.pending) query
       || String.contains (Path.to_string snapshot.approved) query
 
-let discover_pending_snapshots = fun ~workspace_root ?query () ->
+let pending_snapshot_of_path = fun path -> {
+  approved = ensure_trailing_new_removed path;
+  pending = path;
+}
+
+let add_scan_root = fun roots path ->
+  if Path.is_directory path then
+    Vector.push roots ~value:path
+
+let pending_snapshot_roots = fun ~workspace_root ->
+  let roots = Vector.with_capacity ~size:16 in
+  add_scan_root roots Path.(workspace_root / Path.v ".riot" / Path.v "snapshots");
+  let packages_root = Path.(workspace_root / Path.v "packages") in
+  if Path.is_directory packages_root then
+    (
+      match Fs.read_dir packages_root with
+      | Error _ -> ()
+      | Ok packages ->
+          Iter.MutIterator.for_each
+            packages
+            ~fn:(fun package -> add_scan_root roots Path.(packages_root / package / Path.v "tests"))
+    );
+  roots
+  |> Vector.to_array
+  |> Array.to_list
+
+let pending_snapshot_walker = fun ~workspace_root ->
+  let roots = pending_snapshot_roots ~workspace_root in
   let walker =
-    match Fs.Walker.create ~roots:[ workspace_root ] ~sort:true () with
+    match Fs.Walker.create ~roots () with
     | Ok walker ->
         Fs.Walker.filter_entry
           walker
@@ -88,28 +119,50 @@ let discover_pending_snapshots = fun ~workspace_root ?query () ->
             | Other -> false)
     | Error _ -> panic "snapshots walker configuration should be valid"
   in
+  walker
+
+let fold_pending_snapshots = fun ~workspace_root ?query ~init ~fn () ->
+  let walker = pending_snapshot_walker ~workspace_root in
   let iter = Fs.Walker.into_iter walker in
-  let rec collect acc iter =
+  let rec loop acc iter =
     match Iter.Iterator.next iter with
-    | (None, _) -> Ok (List.reverse acc)
+    | (None, _) -> Ok acc
     | (Some (Error (err: Fs.Walker.error)), _) -> Error err.cause
     | (Some (Ok (entry: Fs.Walker.FileItem.t)), iter') -> (
         let path = Fs.Walker.FileItem.path entry in
         match Fs.Walker.FileItem.kind entry with
         | File ->
-            let snapshot = { approved = ensure_trailing_new_removed path; pending = path } in
-            collect (snapshot :: acc) iter'
+            let snapshot = pending_snapshot_of_path path in
+            if matches_query ?query snapshot then
+              match fn acc snapshot with
+              | Error err -> Error err
+              | Ok (Continue acc') -> loop acc' iter'
+              | Ok (Stop acc') -> Ok acc'
+            else
+              loop acc iter'
         | Directory
         | Symlink
-        | Other -> collect acc iter'
+        | Other -> loop acc iter'
       )
   in
-  match collect [] iter with
+  loop init iter
+
+let discover_pending_snapshots = fun ~workspace_root ?query () ->
+  let snapshots = Vector.with_capacity ~size:16 in
+  match fold_pending_snapshots
+    ~workspace_root
+    ?query
+    ~init:()
+    ~fn:(fun () snapshot ->
+      Vector.push snapshots ~value:snapshot;
+      Ok (Continue ()))
+    () with
   | Error err -> Error err
-  | Ok snapshots ->
+  | Ok () ->
       Ok (
         snapshots
-        |> List.filter ~fn:(matches_query ?query)
+        |> Vector.to_array
+        |> Array.to_list
         |> List.sort
           ~compare:(fun left right ->
             String.compare
@@ -318,48 +371,151 @@ let review_pending_snapshots_interactively = fun ~workspace_root snapshots ->
       |> Result.map ~fn:(fun () -> empty_review_summary)
   | Error (Tty.SystemError err) -> Error err
   | Ok tty ->
-      print_review_help ();
       let result =
-        review_pending_snapshots_with_decider
+        if List.is_empty snapshots then
+          Ok empty_review_summary
+        else (
+          print_review_help ();
+          review_pending_snapshots_with_decider
+            ~workspace_root
+            snapshots
+            ~decide:(fun _snapshot -> prompt_review_decision tty)
+        )
+      in
+      Tty.restore tty;
+      result
+
+type snapshot_action_summary = { processed_count: int }
+
+type streaming_review_state = { reviewed_count: int; summary: review_summary }
+
+let empty_snapshot_action_summary = { processed_count = 0 }
+
+let empty_streaming_review_state = { reviewed_count = 0; summary = empty_review_summary }
+
+let run_streaming_approve = fun ~workspace_root ?query () ->
+  fold_pending_snapshots
+    ~workspace_root
+    ?query
+    ~init:empty_snapshot_action_summary
+    ~fn:(fun summary snapshot ->
+      let* () = approve_pending_snapshot snapshot in
+      print_approved ~workspace_root snapshot;
+      Ok (Continue { processed_count = summary.processed_count + 1 }))
+    ()
+
+let run_streaming_reject = fun ~workspace_root ?query () ->
+  fold_pending_snapshots
+    ~workspace_root
+    ?query
+    ~init:empty_snapshot_action_summary
+    ~fn:(fun summary snapshot ->
+      let* () = Fs.remove_file snapshot.pending in
+      print_rejected ~workspace_root snapshot;
+      Ok (Continue { processed_count = summary.processed_count + 1 }))
+    ()
+
+let run_streaming_review_with_decider = fun
+  ~workspace_root ?query ?before_first_snapshot ~decide () ->
+  fold_pending_snapshots
+    ~workspace_root
+    ?query
+    ~init:empty_streaming_review_state
+    ~fn:(fun state snapshot ->
+      let () =
+        if Int.equal state.reviewed_count 0 then
+          match before_first_snapshot with
+          | Some fn -> fn ()
+          | None -> ()
+      in
+      let* () = review_pending_snapshot ~workspace_root snapshot in
+      let* decision = decide snapshot in
+      let summary = state.summary in
+      let reviewed_count = state.reviewed_count + 1 in
+      match decision with
+      | `Approve ->
+          let* () = approve_pending_snapshot snapshot in
+          print_approved ~workspace_root snapshot;
+          Ok (Continue {
+            reviewed_count;
+            summary = { summary with approved_count = summary.approved_count + 1 };
+          })
+      | `Reject ->
+          let* () = Fs.remove_file snapshot.pending in
+          print_rejected ~workspace_root snapshot;
+          Ok (Continue {
+            reviewed_count;
+            summary = { summary with rejected_count = summary.rejected_count + 1 };
+          })
+      | `Ignore ->
+          print_ignored ~workspace_root snapshot;
+          Ok (Continue {
+            reviewed_count;
+            summary = { summary with ignored_count = summary.ignored_count + 1 };
+          })
+      | `Quit -> Ok (Stop { reviewed_count; summary = { summary with quit = true } }))
+    ()
+
+let run_streaming_review = fun ~workspace_root ?query () ->
+  match Tty.make () with
+  | Error Tty.NoTtyConnected ->
+      fold_pending_snapshots
+        ~workspace_root
+        ?query
+        ~init:empty_streaming_review_state
+        ~fn:(fun state snapshot ->
+          let* () = review_pending_snapshot ~workspace_root snapshot in
+          Ok (Continue {
+            reviewed_count = state.reviewed_count + 1;
+            summary = { state.summary with ignored_count = state.summary.ignored_count + 1 };
+          }))
+        ()
+  | Error (Tty.SystemError err) -> Error err
+  | Ok tty ->
+      let result =
+        run_streaming_review_with_decider
           ~workspace_root
-          snapshots
+          ?query
+          ~before_first_snapshot:print_review_help
           ~decide:(fun _snapshot -> prompt_review_decision tty)
+          ()
       in
       Tty.restore tty;
       result
 
 let run_action = fun ~workspace_root ?query action ->
-  match discover_pending_snapshots ~workspace_root ?query () with
+  let result =
+    match action with
+    | `Review -> (
+        match run_streaming_review ~workspace_root ?query () with
+        | Error err -> Error err
+        | Ok state ->
+            if state.reviewed_count = 0 then
+              print_no_pending ()
+            else
+              print_review_outcome state.summary;
+            Ok ()
+      )
+    | `Approve -> (
+        match run_streaming_approve ~workspace_root ?query () with
+        | Error err -> Error err
+        | Ok summary ->
+            if summary.processed_count = 0 then
+              print_no_pending ();
+            Ok ()
+      )
+    | `Reject -> (
+        match run_streaming_reject ~workspace_root ?query () with
+        | Error err -> Error err
+        | Ok summary ->
+            if summary.processed_count = 0 then
+              print_no_pending ();
+            Ok ()
+      )
+  in
+  match result with
+  | Ok () -> Ok ()
   | Error err -> Error (Failure (IO.error_message err))
-  | Ok [] ->
-      print_no_pending ();
-      Ok ()
-  | Ok snapshots -> (
-      match action with
-      | `Review ->
-          print_review_summary (List.length snapshots);
-          (
-            match review_pending_snapshots_interactively ~workspace_root snapshots with
-            | Ok summary ->
-                print_review_outcome summary;
-                Ok ()
-            | Error err -> Error (Failure (IO.error_message err))
-          )
-      | `Approve -> (
-          match approve_pending_snapshots snapshots with
-          | Error err -> Error (Failure (IO.error_message err))
-          | Ok () ->
-              List.for_each snapshots ~fn:(print_approved ~workspace_root);
-              Ok ()
-        )
-      | `Reject -> (
-          match reject_pending_snapshots snapshots with
-          | Error err -> Error (Failure (IO.error_message err))
-          | Ok () ->
-              List.for_each snapshots ~fn:(print_rejected ~workspace_root);
-              Ok ()
-        )
-    )
 
 let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
   let open ArgParser in

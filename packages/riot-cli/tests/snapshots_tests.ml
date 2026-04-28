@@ -56,6 +56,7 @@ let test_discover_pending_snapshots =
           let (fixture_pending, _, custom_pending, _, workspace_pending, _, build_pending) =
             pending_paths workspace_root
           in
+          let unsupported_pending = Path.(workspace_root / Path.v "docs/ignored.expected.new") in
           match write_file fixture_pending "fixture pending\n" with
           | Error msg -> Error msg
           | Ok () -> (
@@ -68,27 +69,31 @@ let test_discover_pending_snapshots =
                       match write_file build_pending "ignored\n" with
                       | Error msg -> Error msg
                       | Ok () -> (
-                          match Riot_cli.Snapshots.discover_pending_snapshots ~workspace_root () with
-                          | Error err -> Error (IO.error_message err)
-                          | Ok snapshots ->
-                              let actual =
-                                List.map
-                                  snapshots
-                                  ~fn:(fun snapshot ->
-                                    Path.to_string
-                                      snapshot.Riot_cli.Snapshots.pending)
-                              in
-                              let expected =
-                                [
-                                  Path.to_string workspace_pending;
-                                  Path.to_string fixture_pending;
-                                  Path.to_string custom_pending;
-                                ]
-                                |> List.sort ~compare:String.compare
-                              in
-                              let actual = List.sort actual ~compare:String.compare in
-                              Test.assert_equal ~expected ~actual;
-                              Ok ()
+                          match write_file unsupported_pending "unsupported\n" with
+                          | Error msg -> Error msg
+                          | Ok () -> (
+                              match Riot_cli.Snapshots.discover_pending_snapshots ~workspace_root () with
+                              | Error err -> Error (IO.error_message err)
+                              | Ok snapshots ->
+                                  let actual =
+                                    List.map
+                                      snapshots
+                                      ~fn:(fun snapshot ->
+                                        Path.to_string
+                                          snapshot.Riot_cli.Snapshots.pending)
+                                  in
+                                  let expected =
+                                    [
+                                      Path.to_string workspace_pending;
+                                      Path.to_string fixture_pending;
+                                      Path.to_string custom_pending;
+                                    ]
+                                    |> List.sort ~compare:String.compare
+                                  in
+                                  let actual = List.sort actual ~compare:String.compare in
+                                  Test.assert_equal ~expected ~actual;
+                                  Ok ()
+                            )
                         )
                     )
                 )
@@ -128,6 +133,41 @@ let test_discover_pending_snapshots_filters_by_query =
                           ^ Int.to_string (List.length snapshots))
                     )
                 )
+            )))
+
+let test_fold_pending_snapshots_can_stop_early =
+  Test.case
+    "snapshots: fold pending candidates can stop early"
+    (fun _ctx ->
+      with_tempdir_result
+        "snapshots_fold_stop"
+        (fun workspace_root ->
+          let (fixture_pending, _, custom_pending, _, workspace_pending, _, _) =
+            pending_paths workspace_root
+          in
+          let setup_result =
+            match write_file fixture_pending "fixture pending\n" with
+            | Error _ as err -> err
+            | Ok () -> (
+                match write_file custom_pending "custom pending\n" with
+                | Error _ as err -> err
+                | Ok () -> write_file workspace_pending "workspace pending\n"
+              )
+          in
+          match setup_result with
+          | Error msg -> Error msg
+          | Ok () -> (
+              match Riot_cli.Snapshots.fold_pending_snapshots
+                ~workspace_root
+                ~init:0
+                ~fn:(fun count _snapshot -> Ok (Riot_cli.Snapshots.Stop (count + 1)))
+                () with
+              | Error err -> Error (IO.error_message err)
+              | Ok count ->
+                  if Int.equal count 1 then
+                    Ok ()
+                  else
+                    Error ("expected fold to stop after one snapshot, got " ^ Int.to_string count)
             )))
 
 let test_approve_pending_snapshots =
@@ -409,6 +449,7 @@ let tests =
   Test.[
     test_discover_pending_snapshots;
     test_discover_pending_snapshots_filters_by_query;
+    test_fold_pending_snapshots_can_stop_early;
     test_approve_pending_snapshots;
     test_reject_pending_snapshots;
     test_snapshots_command_parses_subcommands;

@@ -24,12 +24,18 @@ type review_summary = {
   (** Whether the review loop stopped early due to [`Quit]. *)
   quit: bool;
 }
+type 'value scan_step =
+  | Continue of 'value
+  | Stop of 'value
 
 (** Command definition for [riot snapshots]. *)
 val command: ArgParser.command
 
 (**
-   Discover pending snapshot files under the workspace root.
+   Discover pending snapshot files under supported snapshot locations.
+
+   Snapshot candidates are only searched under [.riot/snapshots] and
+   [packages/*/tests]. Other workspace paths are intentionally ignored.
 
    Use [query] to narrow the scan to paths matching a substring.
 *)
@@ -38,6 +44,22 @@ val discover_pending_snapshots:
   ?query:string ->
   unit ->
   (pending_snapshot list, IO.error) result
+
+(**
+   Fold pending snapshot files from supported snapshot locations as they are
+   discovered.
+
+   Returning [Stop value] ends discovery early. This is the streaming surface
+   used by snapshot commands that should show feedback before the whole
+   workspace has been scanned.
+*)
+val fold_pending_snapshots:
+  workspace_root:Path.t ->
+  ?query:string ->
+  init:'value ->
+  fn:('value -> pending_snapshot -> ('value scan_step, IO.error) result) ->
+  unit ->
+  ('value, IO.error) result
 
 (** Promote pending snapshot files into their approved locations. *)
 val approve_pending_snapshots: pending_snapshot list -> (unit, IO.error) result
