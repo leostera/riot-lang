@@ -54,7 +54,8 @@ let is_incomplete_decode = function
   | Hpack.UnsupportedHuffmanStringEncoding
   | Hpack.InvalidHeaderIndex _
   | Hpack.InvalidNameIndex _
-  | Hpack.DynamicTableSizeUpdateFailed _ -> false
+  | Hpack.DynamicTableSizeUpdateFailed _
+  | Hpack.DynamicTableSizeUpdateAfterHeaders -> false
 
 let decode = fun decoder reader ->
   let buffer = Buffer.create ~size:4_096 in

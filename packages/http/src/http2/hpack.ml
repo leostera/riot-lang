@@ -24,6 +24,7 @@ type decode_error =
   | InvalidHeaderIndex of int
   | InvalidNameIndex of int
   | DynamicTableSizeUpdateFailed of table_size_error
+  | DynamicTableSizeUpdateAfterHeaders
 
 type encode_error =
   | HeaderNotIndexed of header
@@ -43,6 +44,7 @@ let decode_error_to_string = function
   | InvalidHeaderIndex index -> "Invalid HPACK header index: " ^ Int.to_string index
   | InvalidNameIndex index -> "Invalid HPACK name index: " ^ Int.to_string index
   | DynamicTableSizeUpdateFailed error -> table_size_error_to_string error
+  | DynamicTableSizeUpdateAfterHeaders -> "HPACK dynamic table size update appeared after a header field"
 
 let encode_error_to_string = function
   | HeaderNotIndexed header ->
@@ -554,7 +556,7 @@ let lookup_header = fun decoder index ->
   else
     DynamicTable.lookup decoder.dynamic_table (index - static_table_size)
 
-let decode_header_block = fun decoder data offset ->
+let decode_header_block = fun decoder ~allow_table_size_update data offset ->
   if offset >= Bytes.length data then
     Ok ([], offset)
   else
@@ -590,12 +592,15 @@ let decode_header_block = fun decoder data offset ->
                   Ok ([ header ], new_offset)
         )
     else if first_code land 0b0010_0000 != 0 then
-      match Integer.decode 5 first_byte data (offset + 1) with
-      | Error e -> Error e
-      | Ok (new_size, new_offset) ->
-          update_decoder_max_table_size decoder new_size
-          |> Result.map_err ~fn:(fun error -> DynamicTableSizeUpdateFailed error)
-          |> Result.map ~fn:(fun () -> ([], new_offset))
+      if not allow_table_size_update then
+        Error DynamicTableSizeUpdateAfterHeaders
+      else
+        match Integer.decode 5 first_byte data (offset + 1) with
+        | Error e -> Error e
+        | Ok (new_size, new_offset) ->
+            update_decoder_max_table_size decoder new_size
+            |> Result.map_err ~fn:(fun error -> DynamicTableSizeUpdateFailed error)
+            |> Result.map ~fn:(fun () -> ([], new_offset))
     else if first_code land 0b0001_0000 != 0 then
       match Integer.decode 4 first_byte data (offset + 1) with
       | Error e -> Error e
@@ -636,18 +641,19 @@ let decode_header_block = fun decoder data offset ->
 
 let decode = fun decoder data ->
   let headers = Vector.with_capacity ~size:8 in
-  let rec decode_all offset =
+  let rec decode_all allow_table_size_update offset =
     if offset >= Bytes.length data then
       Ok (
         Vector.to_array headers
         |> Array.to_list
       )
     else
-      match decode_header_block decoder data offset with
+      match decode_header_block decoder ~allow_table_size_update data offset with
       | Error e -> Error e
       | Ok (decoded, new_offset) ->
           decoded
           |> List.for_each ~fn:(fun header -> Vector.push headers ~value:header);
-          decode_all new_offset
+          let allow_table_size_update = allow_table_size_update && decoded = [] in
+          decode_all allow_table_size_update new_offset
   in
-  decode_all 0
+  decode_all true 0

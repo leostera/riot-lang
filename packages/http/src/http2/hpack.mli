@@ -28,6 +28,7 @@ type decode_error =
   | InvalidHeaderIndex of int
   | InvalidNameIndex of int
   | DynamicTableSizeUpdateFailed of table_size_error
+  | DynamicTableSizeUpdateAfterHeaders
 val decode_error_to_string: decode_error -> string
 
 type encode_error =

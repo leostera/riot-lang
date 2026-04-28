@@ -140,6 +140,22 @@ let test_header_block_table_size_update = fun _ctx ->
   | Ok _ -> Result.Error "Dynamic table size update produced headers"
   | Error err -> Result.Error ("Decode failed: " ^ Hpack.decode_error_to_string err)
 
+let test_header_block_allows_table_size_update_before_headers = fun _ctx ->
+  let decoder = Hpack.create_decoder () in
+  let encoded = IO.Bytes.from_string "\x20\x82" in
+  match Hpack.decode decoder encoded with
+  | Ok [ { Hpack.name = ":method"; value = "GET" } ] -> Result.Ok ()
+  | Ok _ -> Result.Error "Header block table size update decoded the wrong headers"
+  | Error err -> Result.Error ("Decode failed: " ^ Hpack.decode_error_to_string err)
+
+let test_header_block_rejects_table_size_update_after_headers = fun _ctx ->
+  let decoder = Hpack.create_decoder () in
+  let encoded = IO.Bytes.from_string "\x82\x20" in
+  match Hpack.decode decoder encoded with
+  | Error Hpack.DynamicTableSizeUpdateAfterHeaders -> Result.Ok ()
+  | Error err -> Result.Error ("Wrong decode error: " ^ Hpack.decode_error_to_string err)
+  | Ok _ -> Result.Error "Dynamic table size update after a header field was accepted"
+
 let test_literal_without_indexing_does_not_update_decoder_table = fun _ctx ->
   let decoder = Hpack.create_decoder () in
   let encoded = IO.Bytes.from_string "\x00\x01x\x01y\xbe" in
@@ -311,6 +327,12 @@ let tests = [
     "decoder_table_size_rejects_negative_update"
     test_decoder_table_size_rejects_negative_update;
   Test.case "header_block_table_size_update" test_header_block_table_size_update;
+  Test.case
+    "header_block_allows_table_size_update_before_headers"
+    test_header_block_allows_table_size_update_before_headers;
+  Test.case
+    "header_block_rejects_table_size_update_after_headers"
+    test_header_block_rejects_table_size_update_after_headers;
   Test.case
     "literal_without_indexing_does_not_update_decoder_table"
     test_literal_without_indexing_does_not_update_decoder_table;
