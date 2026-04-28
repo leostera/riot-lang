@@ -110,6 +110,7 @@ type error =
   | HpackDecodeFailed of Hpack.decode_error
   | InvalidPayloadForFrame of payload_error
   | ParserError of Parser.error
+  | FrameConstructorError of Frame.constructor_error
   | SerializerError of Serializer.error
 
 let window_scope_to_string = function
@@ -130,7 +131,10 @@ let error_to_string = function
   | InvalidPayloadForFrame { frame_type; _ } ->
       "Invalid payload for HTTP/2 " ^ Parser.frame_type_name frame_type ^ " frame"
   | ParserError error -> Parser.error_to_string error
+  | FrameConstructorError error -> Frame.constructor_error_to_string error
   | SerializerError error -> Serializer.error_to_string error
+
+let frame_constructor_error = fun error -> FrameConstructorError error
 
 let serialize_frame = fun frame ->
   Serializer.serialize_frame frame
@@ -347,46 +351,22 @@ let reset_stream = fun conn ~stream_id ~error_code ->
 (** {1 Flow Control} *)
 
 let send_window_update_connection = fun conn ~increment ->
-  let frame = {
-    Frame.length = 4;
-    frame_type = Frame.WindowUpdate;
-    flags =
-      {
-        Frame.end_stream = false;
-        end_headers = false;
-        padded = false;
-        priority = false;
-        ack = false;
-      };
-    stream_id = 0;
-    payload = Frame.WindowUpdatePayload increment;
-  }
-  in
-  Cell.set conn.connection_window_size (Cell.get conn.connection_window_size + increment);
-  serialize_frame frame
+  match Frame.window_update ~stream_id:0 increment with
+  | Error error -> Error (frame_constructor_error error)
+  | Ok frame ->
+      Cell.set conn.connection_window_size (Cell.get conn.connection_window_size + increment);
+      serialize_frame frame
 
 let send_window_update_stream = fun conn ~stream_id ~increment ->
-  let frame = {
-    Frame.length = 4;
-    frame_type = Frame.WindowUpdate;
-    flags =
-      {
-        Frame.end_stream = false;
-        end_headers = false;
-        padded = false;
-        priority = false;
-        ack = false;
-      };
-    stream_id;
-    payload = Frame.WindowUpdatePayload increment;
-  }
-  in
-  (
-    match get_stream conn stream_id with
-    | Some stream -> Cell.set stream.window_size (Cell.get stream.window_size + increment)
-    | None -> ()
-  );
-  serialize_frame frame
+  match Frame.window_update ~stream_id increment with
+  | Error error -> Error (frame_constructor_error error)
+  | Ok frame ->
+      (
+        match get_stream conn stream_id with
+        | Some stream -> Cell.set stream.window_size (Cell.get stream.window_size + increment)
+        | None -> ()
+      );
+      serialize_frame frame
 
 let connection_window_size = fun conn -> Cell.get conn.connection_window_size
 
@@ -440,40 +420,14 @@ let remote_settings = fun conn -> conn.remote_settings
 (** {1 Connection Control} *)
 
 let send_ping = fun conn ~data ->
-  let frame = {
-    Frame.length = 8;
-    frame_type = Frame.Ping;
-    flags =
-      {
-        Frame.end_stream = false;
-        end_headers = false;
-        padded = false;
-        priority = false;
-        ack = false;
-      };
-    stream_id = 0;
-    payload = Frame.PingPayload data;
-  }
-  in
-  serialize_frame frame
+  match Frame.ping data with
+  | Error error -> Error (frame_constructor_error error)
+  | Ok frame -> serialize_frame frame
 
 let send_ping_ack = fun conn ~data ->
-  let frame = {
-    Frame.length = 8;
-    frame_type = Frame.Ping;
-    flags =
-      {
-        Frame.end_stream = false;
-        end_headers = false;
-        padded = false;
-        priority = false;
-        ack = true;
-      };
-    stream_id = 0;
-    payload = Frame.PingPayload data;
-  }
-  in
-  serialize_frame frame
+  match Frame.ping ~ack:true data with
+  | Error error -> Error (frame_constructor_error error)
+  | Ok frame -> serialize_frame frame
 
 let send_goaway = fun conn ~last_stream_id ~error_code ?(debug_data = "") () ->
   Cell.set conn.state GoingAway;

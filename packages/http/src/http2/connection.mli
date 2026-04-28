@@ -107,6 +107,7 @@ type error =
   | HpackDecodeFailed of Hpack.decode_error
   | InvalidPayloadForFrame of payload_error
   | ParserError of Parser.error
+  | FrameConstructorError of Frame.constructor_error
   | SerializerError of Serializer.error
 val error_to_string: error -> string
 

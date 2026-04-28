@@ -84,7 +84,10 @@ type payload =
   (** Window size increment *)
   | ContinuationPayload of string
   | UnknownPayload of string
+
 (** Header block fragment *)
+
+(** HTTP/2 Frame *)
 type t = {
   length: int;
   (** Payload length (24-bit) *)
@@ -93,8 +96,14 @@ type t = {
   stream_id: stream_id;
   payload: payload;
 }
+(** HTTP/2 frame construction errors. *)
+type constructor_error =
+  | InvalidPingPayloadLength of { length: int }
+  | InvalidWindowUpdateIncrement of { increment: int }
 
-(** HTTP/2 Frame *)
+(** Render a frame construction error for diagnostics. *)
+val constructor_error_to_string: constructor_error -> string
+
 val default_flags: flags
 
 (** Default flags (all false) *)
@@ -118,11 +127,13 @@ val settings: ?ack:bool -> setting list -> t
 
 val push_promise: stream_id:stream_id -> promised_stream_id:int -> ?pad_length:int -> string -> t
 
-val ping: ?ack:bool -> string -> t
+(** Create a PING frame. The opaque data must be exactly 8 bytes. *)
+val ping: ?ack:bool -> string -> (t, constructor_error) Result.t
 
 val goaway: last_stream_id:int -> error_code:error_code -> ?debug_data:string -> unit -> t
 
-val window_update: stream_id:stream_id -> int -> t
+(** Create a WINDOW_UPDATE frame. The increment must be in 1..2^31-1. *)
+val window_update: stream_id:stream_id -> int -> (t, constructor_error) Result.t
 
 val continuation: stream_id:stream_id -> ?end_headers:bool -> string -> t
 

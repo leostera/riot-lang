@@ -166,6 +166,31 @@ let test_serialize_rejects_payload_mismatch = fun _ctx ->
   | Error error -> Result.Error ("Wrong serializer error: " ^ Serializer.error_to_string error)
   | Ok _ -> Result.Error "serializer accepted mismatched PING payload"
 
+let test_ping_rejects_invalid_payload_length = fun _ctx ->
+  match Frame.ping "short" with
+  | Error (Frame.InvalidPingPayloadLength { length = 5 }) -> Result.Ok ()
+  | Error error -> Result.Error ("Wrong frame error: " ^ Frame.constructor_error_to_string error)
+  | Ok _ -> Result.Error "PING accepted an invalid opaque data length"
+
+let test_window_update_rejects_invalid_increment = fun _ctx ->
+  match Frame.window_update ~stream_id:0 0 with
+  | Error (Frame.InvalidWindowUpdateIncrement { increment = 0 }) -> Result.Ok ()
+  | Error error -> Result.Error ("Wrong frame error: " ^ Frame.constructor_error_to_string error)
+  | Ok _ -> Result.Error "WINDOW_UPDATE accepted an invalid increment"
+
+let test_connection_window_update_invalid_increment_preserves_state = fun _ctx ->
+  let conn = Connection.create ~role:Connection.Server () in
+  let before = Connection.connection_window_size conn in
+  match Connection.send_window_update_connection conn ~increment:0 with
+  | Error (Connection.FrameConstructorError (Frame.InvalidWindowUpdateIncrement { increment = 0 })) ->
+      let after = Connection.connection_window_size conn in
+      if Int.equal before after then
+        Result.Ok ()
+      else
+        Result.Error "invalid WINDOW_UPDATE changed the connection window"
+  | Error error -> Result.Error ("Wrong connection error: " ^ Connection.error_to_string error)
+  | Ok _ -> Result.Error "connection accepted invalid WINDOW_UPDATE increment"
+
 let test_client_preface_settings_payload_length = fun _ctx ->
   let conn = Connection.create ~role:Connection.Client () in
   let preface = send_preface conn in
@@ -342,6 +367,11 @@ let tests =
     case "serialize_settings_payload_length" test_serialize_settings_payload_length;
     case "serialize_settings_ack_has_empty_payload" test_serialize_settings_ack_has_empty_payload;
     case "serialize_rejects_payload_mismatch" test_serialize_rejects_payload_mismatch;
+    case "ping_rejects_invalid_payload_length" test_ping_rejects_invalid_payload_length;
+    case "window_update_rejects_invalid_increment" test_window_update_rejects_invalid_increment;
+    case
+      "connection_window_update_invalid_increment_preserves_state"
+      test_connection_window_update_invalid_increment_preserves_state;
     case "client_preface_settings_payload_length" test_client_preface_settings_payload_length;
     case "server_preface_settings_payload_length" test_server_preface_settings_payload_length;
     case "process_data_buffers_split_frame_header" test_process_data_buffers_split_frame_header;

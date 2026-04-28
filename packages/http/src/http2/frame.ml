@@ -75,6 +75,16 @@ type t = {
   payload: payload;
 }
 
+type constructor_error =
+  | InvalidPingPayloadLength of { length: int }
+  | InvalidWindowUpdateIncrement of { increment: int }
+
+let constructor_error_to_string = function
+  | InvalidPingPayloadLength { length } ->
+      "PING opaque data must be exactly 8 bytes, got " ^ Int.to_string length
+  | InvalidWindowUpdateIncrement { increment } ->
+      "WINDOW_UPDATE increment must be between 1 and 2^31-1, got " ^ Int.to_string increment
+
 let default_flags = {
   end_stream = false;
   end_headers = false;
@@ -195,16 +205,18 @@ let push_promise = fun ~stream_id ~promised_stream_id ?pad_length header_block_f
   }
 
 let ping = fun ?(ack = false) opaque_data ->
-  if String.length opaque_data != 8 then
-    panic "ping: opaque_data must be exactly 8 bytes";
-  let flags = { default_flags with ack } in
-  {
-    length = 8;
-    frame_type = Ping;
-    flags;
-    stream_id = 0;
-    payload = PingPayload opaque_data;
-  }
+  let length = String.length opaque_data in
+  if length != 8 then
+    Error (InvalidPingPayloadLength { length })
+  else
+    let flags = { default_flags with ack } in
+    Ok {
+      length = 8;
+      frame_type = Ping;
+      flags;
+      stream_id = 0;
+      payload = PingPayload opaque_data;
+    }
 
 let goaway = fun ~last_stream_id ~error_code ?(debug_data = "") () ->
   {
@@ -217,14 +229,15 @@ let goaway = fun ~last_stream_id ~error_code ?(debug_data = "") () ->
 
 let window_update = fun ~stream_id increment ->
   if increment <= 0 || increment > 0x7fff_ffff then
-    panic "window_update: increment must be 1 to 2^31-1";
-  {
-    length = 4;
-    frame_type = WindowUpdate;
-    flags = default_flags;
-    stream_id;
-    payload = WindowUpdatePayload increment;
-  }
+    Error (InvalidWindowUpdateIncrement { increment })
+  else
+    Ok {
+      length = 4;
+      frame_type = WindowUpdate;
+      flags = default_flags;
+      stream_id;
+      payload = WindowUpdatePayload increment;
+    }
 
 let continuation = fun ~stream_id ?(end_headers = false) header_block_fragment ->
   let flags = { default_flags with end_headers } in
