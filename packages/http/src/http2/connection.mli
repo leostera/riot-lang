@@ -119,6 +119,7 @@ type error =
   | HpackDecodeFailed of Hpack.decode_error
   | HpackTableSizeUpdateFailed of Hpack.table_size_error
   | InvalidPayloadForFrame of payload_error
+  | UnsupportedFrameReceived of payload_error
   | ExpectedContinuation of {
       stream_id: int;
       frame_type: Frame.frame_type;

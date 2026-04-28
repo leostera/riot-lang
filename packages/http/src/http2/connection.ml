@@ -130,6 +130,7 @@ type error =
   | HpackDecodeFailed of Hpack.decode_error
   | HpackTableSizeUpdateFailed of Hpack.table_size_error
   | InvalidPayloadForFrame of payload_error
+  | UnsupportedFrameReceived of payload_error
   | ExpectedContinuation of {
       stream_id: int;
       frame_type: Frame.frame_type;
@@ -210,6 +211,8 @@ let error_to_string = function
       "HPACK table size update failed: " ^ Hpack.table_size_error_to_string error
   | InvalidPayloadForFrame { frame_type; _ } ->
       "Invalid payload for HTTP/2 " ^ Parser.frame_type_name frame_type ^ " frame"
+  | UnsupportedFrameReceived { frame_type; _ } ->
+      "Unsupported HTTP/2 " ^ Parser.frame_type_name frame_type ^ " frame"
   | ExpectedContinuation { stream_id; frame_type } ->
       "HTTP/2 expected CONTINUATION for stream "
       ^ Int.to_string stream_id
@@ -934,7 +937,11 @@ let process_frame = fun conn frame ->
           | _ ->
               Error (InvalidPayloadForFrame { frame_type = Frame.Priority; payload = frame.payload })
         )
-      | Frame.PushPromise -> Ok []
+      | Frame.PushPromise ->
+          Error (UnsupportedFrameReceived {
+            frame_type = Frame.PushPromise;
+            payload = frame.payload;
+          })
       | Frame.Continuation ->
           process_continuation_frame conn frame.stream_id frame.payload frame.flags
       | Frame.Unknown _ -> Ok []

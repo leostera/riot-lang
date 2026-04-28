@@ -463,6 +463,16 @@ let test_process_data_ignores_unknown_frame = fun _ctx ->
   | Error err ->
       Result.Error ("Unknown frame failed connection processing: " ^ Connection.error_to_string err)
 
+let test_process_data_rejects_push_promise = fun _ctx ->
+  let conn = Connection.create ~role:Connection.Client () in
+  let frame = Frame.push_promise ~stream_id:2 ~promised_stream_id:4 "abc" in
+  match Connection.process_data conn (Std.IO.Bytes.from_string (serialize_frame frame)) with
+  | Error (
+    Connection.UnsupportedFrameReceived { frame_type = Frame.PushPromise; payload = Frame.PushPromisePayload { promised_stream_id = 4; header_block_fragment = "abc"; _ } }
+  ) -> Result.Ok ()
+  | Error err -> Result.Error ("Wrong connection error: " ^ Connection.error_to_string err)
+  | Ok _ -> Result.Error "PUSH_PROMISE was silently accepted"
+
 let test_process_data_rejects_unexpected_continuation = fun _ctx ->
   let conn = Connection.create ~role:Connection.Server () in
   let frame = Frame.continuation ~stream_id:1 ~end_headers:true "" in
@@ -911,6 +921,7 @@ let tests =
     case "parse_window_update_allows_stream_zero" test_parse_window_update_allows_stream_zero;
     case "parse_unknown_frame_preserves_payload" test_parse_unknown_frame_preserves_payload;
     case "process_data_ignores_unknown_frame" test_process_data_ignores_unknown_frame;
+    case "process_data_rejects_push_promise" test_process_data_rejects_push_promise;
     case
       "process_data_rejects_unexpected_continuation"
       test_process_data_rejects_unexpected_continuation;
