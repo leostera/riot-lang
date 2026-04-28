@@ -20,6 +20,8 @@ and error =
   | ControlFramePayloadTooLarge of { payload_length: int }
   | PayloadLengthHighBitSet of { first_byte: int }
   | PayloadLengthTooLarge of { most_significant_byte: int; max_payload_length: int }
+  | PayloadLengthExceedsLimit of { payload_length: int; max_payload_length: int }
+  | InvalidPayloadLengthLimit of { max_payload_length: int }
 val error_to_string: error -> string
 
-val parse: role:role -> string -> Frame.t parse_result
+val parse: ?max_payload_length:int -> role:role -> string -> Frame.t parse_result

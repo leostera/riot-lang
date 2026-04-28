@@ -80,6 +80,23 @@ let test_parse_rejects_64_bit_length_above_int_max = fun _ctx ->
     "\x82\x7f\x40\x00\x00\x00\x00\x00\x00\x00"
     (Parser.PayloadLengthTooLarge { most_significant_byte = 0x40; max_payload_length = Int.max_int })
 
+let test_parse_rejects_payload_over_limit = fun _ctx ->
+  match Parser.parse ~max_payload_length:2 ~role:Parser.Client "\x81\x03abc" with
+  | Parser.Error (Parser.PayloadLengthExceedsLimit { payload_length = 3; max_payload_length = 2 }) ->
+      Result.Ok ()
+  | Parser.Error err -> Result.Error ("Wrong parse error: " ^ Parser.error_to_string err)
+  | Parser.Need_more -> Result.Error "Expected payload limit error"
+  | Parser.Done _ -> Result.Error "Frame over payload limit was accepted"
+
+let test_parse_rejects_negative_payload_limit = fun _ctx ->
+  match Parser.parse ~max_payload_length:(-1) ~role:Parser.Client "\x81\x00" with
+  | Parser.Error (Parser.InvalidPayloadLengthLimit { max_payload_length }) when Int.equal
+    max_payload_length
+    (-1) -> Result.Ok ()
+  | Parser.Error err -> Result.Error ("Wrong parse error: " ^ Parser.error_to_string err)
+  | Parser.Need_more -> Result.Error "Expected invalid payload limit error"
+  | Parser.Done _ -> Result.Error "Negative payload limit was accepted"
+
 let tests =
   Test.[
     case "parse_valid_ping" test_parse_valid_ping;
@@ -92,6 +109,8 @@ let tests =
     case "parse_64_bit_length_uses_high_bytes" test_parse_64_bit_length_uses_high_bytes;
     case "parse_rejects_64_bit_length_high_bit" test_parse_rejects_64_bit_length_high_bit;
     case "parse_rejects_64_bit_length_above_int_max" test_parse_rejects_64_bit_length_above_int_max;
+    case "parse_rejects_payload_over_limit" test_parse_rejects_payload_over_limit;
+    case "parse_rejects_negative_payload_limit" test_parse_rejects_negative_payload_limit;
   ]
 
 let main ~args:_ = Test.Cli.main ~name:"http:ws_parser" ~tests ~args:Env.args ()

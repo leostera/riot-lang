@@ -25,6 +25,8 @@ and error =
   | ControlFramePayloadTooLarge of { payload_length: int }
   | PayloadLengthHighBitSet of { first_byte: int }
   | PayloadLengthTooLarge of { most_significant_byte: int; max_payload_length: int }
+  | PayloadLengthExceedsLimit of { payload_length: int; max_payload_length: int }
+  | InvalidPayloadLengthLimit of { max_payload_length: int }
 
 type payload_length_result =
   | PayloadLength of { header_size: int; payload_length: int }
@@ -48,6 +50,13 @@ let error_to_string = function
       ^ Int.to_string most_significant_byte
       ^ " exceeds the parser limit "
       ^ Int.to_string max_payload_length
+  | PayloadLengthExceedsLimit { payload_length; max_payload_length } ->
+      "WebSocket payload length "
+      ^ Int.to_string payload_length
+      ^ " exceeds configured limit "
+      ^ Int.to_string max_payload_length
+  | InvalidPayloadLengthLimit { max_payload_length } ->
+      "Invalid WebSocket payload length limit: " ^ Int.to_string max_payload_length
 
 let byte_at = fun input at ->
   input
@@ -117,9 +126,17 @@ let parse_payload_length = fun input len payload_len_initial ->
   else
     parse_uint64_payload_length input
 
+let validate_payload_length_limit = fun ~payload_length ~max_payload_length ->
+  if max_payload_length < 0 then
+    Result.Error (InvalidPayloadLengthLimit { max_payload_length })
+  else if payload_length > max_payload_length then
+    Result.Error (PayloadLengthExceedsLimit { payload_length; max_payload_length })
+  else
+    Result.Ok ()
+
 (* Parse a single WebSocket frame *)
 
-let parse = fun ~role input ->
+let parse = fun ?(max_payload_length = Int.max_int) ~role input ->
   let len = String.length input in
   (* Need at least 2 bytes for header *)
   if len < 2 then
@@ -150,71 +167,75 @@ let parse = fun ~role input ->
             match parse_payload_length input len payload_len_initial with
             | PayloadLengthNeedMore -> Need_more
             | PayloadLengthError err -> Error err
-            | PayloadLength { header_size; payload_length } ->
-                (* Add mask size if masked *)
-                let mask_size =
-                  if masked then
-                    4
-                  else
-                    0
-                in
-                let total_header_size = header_size + mask_size in
-                (* Check if we have full frame *)
-                if payload_length > Int.max_int - total_header_size then
-                  Error (
-                    PayloadLengthTooLarge {
-                      most_significant_byte =
-                        if payload_len_initial = 127 then
-                          byte_at input 2
+            | PayloadLength { header_size; payload_length } -> (
+                match validate_payload_length_limit ~payload_length ~max_payload_length with
+                | Error err -> Error err
+                | Ok () ->
+                    (* Add mask size if masked *)
+                    let mask_size =
+                      if masked then
+                        4
+                      else
+                        0
+                    in
+                    let total_header_size = header_size + mask_size in
+                    (* Check if we have full frame *)
+                    if payload_length > Int.max_int - total_header_size then
+                      Error (
+                        PayloadLengthTooLarge {
+                          most_significant_byte =
+                            if payload_len_initial = 127 then
+                              byte_at input 2
+                            else
+                              0;
+                          max_payload_length = Int.max_int;
+                        }
+                      )
+                    else if len < total_header_size + payload_length then
+                      Need_more
+                    else
+                      (* Extract mask if present *)
+                      let mask =
+                        if masked then
+                          let m0 = Int32.from_int (byte_at input header_size) in
+                          let m1 = Int32.from_int (byte_at input (header_size + 1)) in
+                          let m2 = Int32.from_int (byte_at input (header_size + 2)) in
+                          let m3 = Int32.from_int (byte_at input (header_size + 3)) in
+                          Int32.(logor
+                            (shift_left m0 24)
+                            (logor (shift_left m1 16) (logor (shift_left m2 8) m3)))
                         else
-                          0;
-                      max_payload_length = Int.max_int;
-                    }
-                  )
-                else if len < total_header_size + payload_length then
-                  Need_more
-                else
-                  (* Extract mask if present *)
-                  let mask =
-                    if masked then
-                      let m0 = Int32.from_int (byte_at input header_size) in
-                      let m1 = Int32.from_int (byte_at input (header_size + 1)) in
-                      let m2 = Int32.from_int (byte_at input (header_size + 2)) in
-                      let m3 = Int32.from_int (byte_at input (header_size + 3)) in
-                      Int32.(logor
-                        (shift_left m0 24)
-                        (logor (shift_left m1 16) (logor (shift_left m2 8) m3)))
-                    else
-                      Int32.zero
-                  in
-                  (* Extract payload *)
-                  let payload_start = total_header_size in
-                  let raw_payload = String.sub input ~offset:payload_start ~len:payload_length in
-                  (* Unmask if needed *)
-                  let payload =
-                    if masked then
-                      Frame.unmask mask raw_payload
-                    else
-                      raw_payload
-                  in
-                  (* Create frame *)
-                  let frame =
-                    Frame.{
-                      fin;
-                      rsv1;
-                      rsv2;
-                      rsv3;
-                      opcode;
-                      masked;
-                      payload;
-                    }
-                  in
-                  (* Return frame and remaining data *)
-                  let remaining =
-                    String.sub
-                      input
-                      ~offset:(total_header_size + payload_length)
-                      ~len:(len - total_header_size - payload_length)
-                  in
-                  Done { value = frame; remaining }
+                          Int32.zero
+                      in
+                      (* Extract payload *)
+                      let payload_start = total_header_size in
+                      let raw_payload = String.sub input ~offset:payload_start ~len:payload_length in
+                      (* Unmask if needed *)
+                      let payload =
+                        if masked then
+                          Frame.unmask mask raw_payload
+                        else
+                          raw_payload
+                      in
+                      (* Create frame *)
+                      let frame =
+                        Frame.{
+                          fin;
+                          rsv1;
+                          rsv2;
+                          rsv3;
+                          opcode;
+                          masked;
+                          payload;
+                        }
+                      in
+                      (* Return frame and remaining data *)
+                      let remaining =
+                        String.sub
+                          input
+                          ~offset:(total_header_size + payload_length)
+                          ~len:(len - total_header_size - payload_length)
+                      in
+                      Done { value = frame; remaining }
+              )
       )
