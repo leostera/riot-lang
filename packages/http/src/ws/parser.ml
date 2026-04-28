@@ -7,6 +7,10 @@ open Std
 
 let ( let* ) = Result.and_then
 
+type role =
+  | Server
+  | Client
+
 type 'a parse_result =
   | Done of { value: 'a; remaining: string }
   | Need_more
@@ -15,12 +19,16 @@ type 'a parse_result =
 and error =
   | InvalidOpcode of int
   | ReservedBitsSet
+  | ClientFrameNotMasked
+  | ServerFrameMasked
   | FragmentedControlFrame
   | ControlFramePayloadTooLarge of { payload_length: int }
 
 let error_to_string = function
   | InvalidOpcode opcode -> "Invalid WebSocket opcode: 0x" ^ Int.to_string opcode
   | ReservedBitsSet -> "WebSocket RSV bits must be zero unless an extension negotiated them"
+  | ClientFrameNotMasked -> "WebSocket client frames must be masked"
+  | ServerFrameMasked -> "WebSocket server frames must not be masked"
   | FragmentedControlFrame -> "WebSocket control frames must not be fragmented"
   | ControlFramePayloadTooLarge { payload_length } ->
       "WebSocket control frame payload must be at most 125 bytes, got "
@@ -39,6 +47,13 @@ let is_control_opcode = function
   | Frame.Text
   | Frame.Binary -> false
 
+let validate_masking = fun ~role ~masked ->
+  match (role, masked) with
+  | (Server, false) -> Result.Error ClientFrameNotMasked
+  | (Client, true) -> Result.Error ServerFrameMasked
+  | (Server, true)
+  | (Client, false) -> Result.Ok ()
+
 let validate_frame_header = fun ~fin ~rsv1 ~rsv2 ~rsv3 ~opcode ~payload_len_initial ->
   if rsv1 || rsv2 || rsv3 then
     Result.Error ReservedBitsSet
@@ -51,7 +66,7 @@ let validate_frame_header = fun ~fin ~rsv1 ~rsv2 ~rsv3 ~opcode ~payload_len_init
 
 (* Parse a single WebSocket frame *)
 
-let parse = fun input ->
+let parse = fun ~role input ->
   let len = String.length input in
   (* Need at least 2 bytes for header *)
   if len < 2 then
@@ -72,7 +87,10 @@ let parse = fun input ->
     match Frame.opcode_of_int opcode_int with
     | None -> Error (InvalidOpcode opcode_int)
     | Some opcode -> (
-        match validate_frame_header ~fin ~rsv1 ~rsv2 ~rsv3 ~opcode ~payload_len_initial with
+        match validate_masking ~role ~masked
+        |> Result.and_then
+          ~fn:(fun () ->
+            validate_frame_header ~fin ~rsv1 ~rsv2 ~rsv3 ~opcode ~payload_len_initial) with
         | Error err -> Error err
         | Ok () ->
             (* Determine actual payload length and header size *)
