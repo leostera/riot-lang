@@ -27,7 +27,7 @@ type bool_case = {
 }
 
 let expr_source = fun ctx expr ->
-  H.node_source ctx (expr: Ast.Node.t)
+  H.node_source ctx (Ast.Expr.as_node expr)
   |> String.trim
 
 let rec pattern_kind = fun pattern ->
@@ -39,8 +39,8 @@ let rec pattern_kind = fun pattern ->
       | "false" -> Bool false
       | _ -> Unsupported
     )
-  | Ast.Pattern.Ident { path } -> (
-      match Ast.Path.text path with
+  | Ast.Pattern.Ident { ident } -> (
+      match Ast.Ident.text ident with
       | "true" -> Bool true
       | "false" -> Bool false
       | _ -> Unsupported
@@ -114,11 +114,11 @@ let make_diagnostic = fun ctx expr replacement ->
   H.diagnostic
     ~rule_id
     ~message:rule_description
-    ~span:(H.span_of_node expr)
+    ~span:(H.span_of_node (Ast.Expr.as_node expr))
     ~suggestion:"Rewrite the boolean match as an if expression."
     ~fix:(Fix.make
       ~title:"Rewrite boolean match as if"
-      ~operations:[ Fix.replace_node_with_text ~target:expr ~text:replacement; ])
+      ~operations:[ Fix.replace_node_with_text ~target:(Ast.Expr.as_node expr) ~text:replacement; ])
     ()
 
 let diagnostic_for_expr = fun ctx expr ->

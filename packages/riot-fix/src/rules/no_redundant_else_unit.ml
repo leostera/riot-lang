@@ -17,7 +17,7 @@ branch is the only branch the reader has to scan.
 |}
 
 let expr_source = fun ctx expr ->
-  H.node_source ctx (expr: Ast.Node.t)
+  H.node_source ctx (Ast.Expr.as_node expr)
   |> String.trim
 
 let is_unit_expr = fun ctx expr -> String.equal (expr_source ctx expr) "()"
@@ -29,12 +29,14 @@ let make_diagnostic = fun ctx expr condition then_branch ->
   H.diagnostic
     ~rule_id
     ~message:rule_description
-    ~span:(H.span_of_node expr)
+    ~span:(H.span_of_node (Ast.Expr.as_node expr))
     ~suggestion:"Drop the `else ()` branch."
     ~fix:(Fix.make
       ~title:"Remove redundant else unit branch"
       ~operations:[
-        Fix.replace_node_with_text ~target:expr ~text:(replacement_text ctx condition then_branch);
+        Fix.replace_node_with_text
+          ~target:(Ast.Expr.as_node expr)
+          ~text:(replacement_text ctx condition then_branch);
       ])
     ()
 

@@ -57,7 +57,7 @@ let make_diagnostic = fun expr ->
   H.diagnostic
     ~rule_id
     ~message:rule_description
-    ~span:(H.span_of_node expr)
+    ~span:(H.span_of_node (Ast.Expr.as_node expr))
     ~suggestion:"Use a multiline string literal like {| ... |} instead of concatenating string literals"
     ()
 

@@ -49,7 +49,7 @@ let make_diagnostic = fun parameter kind ->
   H.diagnostic
     ~rule_id
     ~message:rule_description
-    ~span:(H.span_of_node parameter)
+    ~span:(H.span_of_node (Ast.Parameter.as_node parameter))
     ~suggestion:("Move this "
     ^ kind_name kind
     ^ " argument earlier so parameters stay ordered as labeled, optional, then positional")

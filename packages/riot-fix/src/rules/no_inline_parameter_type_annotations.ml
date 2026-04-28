@@ -24,15 +24,9 @@ obvious place where its signature lives.
 |}
 
 let rec pattern_has_inline_type = fun pattern ->
-  match Ast.Node.kind pattern with
-  | Syn.SyntaxKind.LABELED_PARAM
-  | Syn.SyntaxKind.OPTIONAL_PARAM
-  | Syn.SyntaxKind.OPTIONAL_PARAM_DEFAULT -> parameter_has_inline_type pattern
-  | _ -> (
-      match Ast.Pattern.view (H.unwrap_pattern pattern) with
-      | Ast.Pattern.Constraint _ -> true
-      | _ -> false
-    )
+  match Ast.Pattern.view (H.unwrap_pattern pattern) with
+  | Ast.Pattern.Constraint _ -> true
+  | _ -> false
 
 and parameter_has_inline_type = fun parameter ->
   match Ast.Parameter.view parameter with
@@ -43,7 +37,7 @@ let make_diagnostic = fun parameter ->
   H.diagnostic
     ~rule_id
     ~message:rule_description
-    ~span:(H.span_of_node parameter)
+    ~span:(H.span_of_node (Ast.Parameter.as_node parameter))
     ~suggestion:"Move the parameter type annotation into the function signature"
     ()
 
@@ -55,7 +49,7 @@ let diagnostic_for_binding = fun binding ->
       match !found with
       | Some _ -> ()
       | None ->
-          if pattern_has_inline_type parameter then
+          if parameter_has_inline_type parameter then
             found := Some (make_diagnostic parameter));
   !found
 

@@ -17,42 +17,42 @@ type token = {
   tree: Syntax_tree.t;
   id: int;
 }
-type source_file = node
-type implementation = node
-type interface = node
-type structure_item = node
-type signature_item = node
-type let_declaration = node
-type let_binding = node
-type type_declaration = node
-type type_extension_declaration = node
-type module_declaration = node
-type module_expr = node
-type module_type_expr = node
-type module_type_declaration = node
-type module_type_constraint = node
-type open_declaration = node
-type include_declaration = node
-type value_declaration = node
-type external_declaration = node
-type exception_declaration = node
-type extension_item = node
-type attribute_item = node
-type expr_item = node
-type expr = node
-type pattern = node
-type parameter = node
-type match_case = node
-type type_expr = node
-type record_type = node
-type record_field = node
-type record_expr_field = node
-type variant_type = node
-type variant_constructor = node
-type path = node
+type source_file
+type implementation
+type interface
+type structure_item
+type signature_item
+type let_declaration
+type let_binding
+type type_declaration
+type type_extension_declaration
+type module_declaration
+type module_expr
+type module_type_expr
+type module_type_declaration
+type module_type_constraint
+type open_declaration
+type include_declaration
+type value_declaration
+type external_declaration
+type exception_declaration
+type extension_item
+type attribute_item
+type expr_item
+type expr
+type pattern
+type parameter
+type match_case
+type type_expr
+type record_type
+type record_field
+type record_expr_field
+type variant_type
+type variant_constructor
+type ident
 type record_expr_field_view =
   | RecordExprField of {
-      path: path;
+      ident: ident;
       value: expr option;
       node: record_expr_field;
     }
@@ -61,7 +61,7 @@ type record_expr_field_view =
     }
 type record_pattern_field_view =
   | RecordPatternField of {
-      path: path;
+      ident: ident;
       pattern: pattern option;
       node: pattern;
     }
@@ -70,7 +70,7 @@ type record_pattern_field_view =
     }
 type first_class_module_pattern_ascription =
   | NoAscription
-  | PathAscription
+  | IdentAscription
   | UnsupportedAscription
 type type_item =
   | TypeDeclarationItem of type_declaration
@@ -223,7 +223,7 @@ module TypeExpr: sig
     optional_: bool;
   }
   type view =
-    | Ident of { path: path }
+    | Ident of { ident: ident }
     | Var of {
         name: Token.t;
       }
@@ -241,12 +241,20 @@ module TypeExpr: sig
         parts: t Vector.t;
       }
     | Apply of {
-        ident: path;
+        ident: ident;
         args: t Vector.t;
       }
     | Error of Node.t
     | Unknown of Node.t
   val cast: Node.t -> t cast_result
+
+  val as_node: t -> Node.t
+
+  val kind: t -> Syntax_kind.t
+
+  val span: t -> Ceibo.Span.t
+
+  val text: t -> string
 
   val view: t -> view
 
@@ -254,7 +262,11 @@ module TypeExpr: sig
 
   val fold_poly_type_name: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
 
+  val poly_type_name_count: t -> int
+
   val fold_child_type: t -> init:'acc -> fn:(t -> 'acc -> 'acc control) -> 'acc
+
+  val child_type_count: t -> int
 
   val inner_without_attribute_suffix: t -> t option
 
@@ -263,6 +275,8 @@ module TypeExpr: sig
     init:'acc ->
     fn:(Token.t -> 'acc -> 'acc control) ->
     'acc
+
+  val attribute_suffix_token_count: t -> int
 end
 
 module RecordField: sig
@@ -276,6 +290,10 @@ module RecordField: sig
       }
     | Unknown of Node.t
   val cast: Node.t -> t cast_result
+
+  val as_node: t -> Node.t
+
+  val span: t -> Ceibo.Span.t
 
   val view: t -> view
 
@@ -292,6 +310,8 @@ module RecordType: sig
   type t = record_type
   val cast: Node.t -> t cast_result
 
+  val as_node: t -> Node.t
+
   val private_token: t -> Token.t option
 
   val opening_token: t -> Token.t option
@@ -300,6 +320,13 @@ module RecordType: sig
 
   val fold_field: t -> init:'acc -> fn:(record_field -> 'acc -> 'acc control) -> 'acc
 
+  val field_count: t -> int
+
+end
+
+module RecordExprField: sig
+  type t = record_expr_field
+  val as_node: t -> Node.t
 end
 
 module VariantConstructor: sig
@@ -328,6 +355,10 @@ module VariantConstructor: sig
     | Unknown of Node.t
   val cast: Node.t -> t cast_result
 
+  val as_node: t -> Node.t
+
+  val span: t -> Ceibo.Span.t
+
   val view: t -> view
 
   val pipe_token: t -> Token.t option
@@ -349,9 +380,13 @@ module VariantType: sig
   type t = variant_type
   val cast: Node.t -> t cast_result
 
+  val as_node: t -> Node.t
+
   val private_token: t -> Token.t option
 
   val fold_constructor: t -> init:'acc -> fn:(variant_constructor -> 'acc -> 'acc control) -> 'acc
+
+  val constructor_count: t -> int
 
 end
 
@@ -360,9 +395,9 @@ module Pattern: sig
   type view =
     | Unit
     | Wildcard
-    | Ident of { path: path }
+    | Ident of { ident: ident }
     | Construct of {
-        constructor: path;
+        constructor: ident;
         payload: t option;
       }
     | Literal of {
@@ -388,7 +423,7 @@ module Pattern: sig
     | FirstClassModule of {
         binder: Token.t;
         ascription: first_class_module_pattern_ascription;
-        ascription_path: Token.t Vector.t;
+        ascription_ident: Token.t Vector.t;
       }
     | Interval of {
         left: t;
@@ -420,6 +455,14 @@ module Pattern: sig
     | Unknown of Node.t
   val cast: Node.t -> t cast_result
 
+  val as_node: t -> Node.t
+
+  val kind: t -> Syntax_kind.t
+
+  val span: t -> Ceibo.Span.t
+
+  val text: t -> string
+
   val view: t -> view
 
   val literal_token: t -> Token.t option
@@ -428,11 +471,15 @@ module Pattern: sig
 
   val fold_child_pattern: t -> init:'acc -> fn:(t -> 'acc -> 'acc control) -> 'acc
 
+  val child_pattern_count: t -> int
+
 end
 
 module AttributePattern: sig
   type t = pattern
   val cast: pattern -> t cast_result
+
+  val as_node: t -> Node.t
 
   val inner: t -> pattern option
 
@@ -443,12 +490,16 @@ module ExtensionPattern: sig
   type t = pattern
   val cast: pattern -> t cast_result
 
+  val as_node: t -> Node.t
+
   val fold_shell_token: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
 end
 
 module LocallyAbstractTypePattern: sig
   type t = pattern
   val cast: pattern -> t cast_result
+
+  val as_node: t -> Node.t
 
   val opening_token: t -> Token.t option
 
@@ -463,9 +514,11 @@ module FirstClassModulePattern: sig
   type t = pattern
   type ascription = first_class_module_pattern_ascription =
     | NoAscription
-    | PathAscription
+    | IdentAscription
     | UnsupportedAscription
   val cast: pattern -> t cast_result
+
+  val as_node: t -> Node.t
 
   val opening_token: t -> Token.t option
 
@@ -479,7 +532,7 @@ module FirstClassModulePattern: sig
 
   val ascription: t -> ascription
 
-  val fold_ascription_path_ident:
+  val fold_ascription_ident_segment:
     t ->
     init:'acc ->
     fn:(Token.t -> 'acc -> 'acc control) ->
@@ -491,16 +544,20 @@ module RecordPattern: sig
   type field = record_pattern_field_view
   val cast: pattern -> t cast_result
 
+  val as_node: t -> Node.t
+
   val open_wildcard: t -> Token.t option
 
   val fold_field: t -> init:'acc -> fn:(field -> 'acc -> 'acc control) -> 'acc
+
+  val field_count: t -> int
 end
 
 module LocalOpenPattern: sig
   type t = pattern
   type view =
     | Delimited of {
-        module_path: Token.t Vector.t;
+        module_ident: Token.t Vector.t;
         dot_token: Token.t;
         opening_token: Token.t;
         pattern: pattern;
@@ -508,6 +565,12 @@ module LocalOpenPattern: sig
       }
     | Unknown of Node.t
   val cast: pattern -> t cast_result
+
+  val as_node: t -> Node.t
+
+  val kind: t -> Syntax_kind.t
+
+  val span: t -> Ceibo.Span.t
 
   val view: t -> view
 
@@ -519,7 +582,7 @@ module LocalOpenPattern: sig
 
   val pattern: t -> pattern option
 
-  val fold_module_path_ident:
+  val fold_module_ident_segment:
     t ->
     init:'acc ->
     fn:(Token.t -> 'acc -> 'acc control) ->
@@ -545,6 +608,12 @@ module Parameter: sig
     | Unknown of Node.t
   val cast: Node.t -> t cast_result
 
+  val as_node: t -> Node.t
+
+  val kind: t -> Syntax_kind.t
+
+  val span: t -> Ceibo.Span.t
+
   val view: t -> view
 
   val label: t -> label
@@ -569,6 +638,12 @@ module MatchCase: sig
     | Unknown of Node.t
   val cast: Node.t -> t cast_result
 
+  val as_node: t -> Node.t
+
+  val kind: t -> Syntax_kind.t
+
+  val span: t -> Ceibo.Span.t
+
   val view: t -> view
 
   val pattern: t -> pattern option
@@ -588,6 +663,12 @@ module LetBinding: sig
     | Unknown of Node.t
   val cast: Node.t -> t cast_result
 
+  val as_node: t -> Node.t
+
+  val kind: t -> Syntax_kind.t
+
+  val span: t -> Ceibo.Span.t
+
   val view: t -> view
 
   val pattern: t -> pattern option
@@ -595,6 +676,10 @@ module LetBinding: sig
   val body: t -> expr option
 
   val fold_parameter: t -> init:'acc -> fn:(parameter -> 'acc -> 'acc control) -> 'acc
+
+  val parameter_count: t -> int
+
+  val return_type_annotation: t -> type_expr option
 
   val type_annotation: t -> type_expr option
 end
@@ -678,7 +763,7 @@ module Expr: sig
         tag: Token.t;
         payload: t option;
       }
-    | Ident of { path: path }
+    | Ident of { ident: ident }
     | Literal of {
         token: Token.t;
       }
@@ -703,6 +788,12 @@ module Expr: sig
     | Unknown of Node.t
   val cast: Node.t -> t cast_result
 
+  val as_node: t -> Node.t
+
+  val kind: t -> Syntax_kind.t
+
+  val span: t -> Ceibo.Span.t
+
   val view: t -> view
 
   val literal_token: t -> Token.t option
@@ -711,12 +802,20 @@ module Expr: sig
 
   val fold_child_expr: t -> init:'acc -> fn:(t -> 'acc -> 'acc control) -> 'acc
 
+  val child_expr_count: t -> int
+
   val fold_match_case: t -> init:'acc -> fn:(match_case -> 'acc -> 'acc control) -> 'acc
+
+  val match_case_count: t -> int
+
+  val fold_parameter: t -> init:'acc -> fn:(parameter -> 'acc -> 'acc control) -> 'acc
 end
 
 module AttributeExpr: sig
   type t = expr
   val cast: expr -> t cast_result
+
+  val as_node: t -> Node.t
 
   val inner: t -> expr option
 
@@ -727,6 +826,8 @@ module ExtensionExpr: sig
   type t = expr
   val cast: expr -> t cast_result
 
+  val as_node: t -> Node.t
+
   val fold_shell_token: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
 end
 
@@ -735,9 +836,13 @@ module RecordExpr: sig
   type field = record_expr_field_view
   val cast: expr -> t cast_result
 
+  val as_node: t -> Node.t
+
   val base: t -> expr option
 
   val fold_field: t -> init:'acc -> fn:(field -> 'acc -> 'acc control) -> 'acc
+
+  val field_count: t -> int
 end
 
 module LocalOpenExpr: sig
@@ -747,12 +852,12 @@ module LocalOpenExpr: sig
         let_token: Token.t;
         open_token: Token.t;
         bang_token: Token.t option;
-        module_path: path;
+        module_ident: ident;
         in_token: Token.t;
         body: expr;
       }
     | Delimited of {
-        module_path: path;
+        module_ident: ident;
         dot_token: Token.t;
         opening_token: Token.t;
         body: expr;
@@ -761,16 +866,20 @@ module LocalOpenExpr: sig
     | Unknown of Node.t
   val cast: expr -> t cast_result
 
+  val as_node: t -> Node.t
+
   val view: t -> view
 end
 
 module LetModuleExpr: sig
   type t = expr
   type module_body =
-    | Path
+    | Ident
     | Struct
     | Unsupported
   val cast: expr -> t cast_result
+
+  val as_node: t -> Node.t
 
   val let_token: t -> Token.t option
 
@@ -788,7 +897,7 @@ module LetModuleExpr: sig
 
   val body: t -> expr option
 
-  val fold_module_body_path_ident:
+  val fold_module_body_ident_segment:
     t ->
     init:'acc ->
     fn:(Token.t -> 'acc -> 'acc control) ->
@@ -798,6 +907,8 @@ end
 module LetExceptionExpr: sig
   type t = expr
   val cast: expr -> t cast_result
+
+  val as_node: t -> Node.t
 
   val let_token: t -> Token.t option
 
@@ -812,25 +923,31 @@ module LetExceptionExpr: sig
   val body: t -> expr option
 
   val fold_payload_token: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
+
+  val payload_token_count: t -> int
 end
 
 module UnreachableExpr: sig
   type t = expr
   val cast: expr -> t cast_result
 
+  val as_node: t -> Node.t
+
   val dot_token: t -> Token.t option
 end
 
 module FirstClassModuleExpr: sig
   type t = expr
-  type module_path =
-    | ModulePath
-    | UnsupportedModulePath
+  type module_ident =
+    | ModuleIdent
+    | UnsupportedModuleIdent
   type ascription =
     | NoAscription
-    | PathAscription
+    | IdentAscription
     | UnsupportedAscription
   val cast: expr -> t cast_result
+
+  val as_node: t -> Node.t
 
   val opening_token: t -> Token.t option
 
@@ -840,21 +957,25 @@ module FirstClassModuleExpr: sig
 
   val closing_token: t -> Token.t option
 
-  val module_path: t -> module_path
+  val module_ident: t -> module_ident
 
   val ascription: t -> ascription
 
-  val fold_module_path_ident:
+  val fold_module_ident_segment:
     t ->
     init:'acc ->
     fn:(Token.t -> 'acc -> 'acc control) ->
     'acc
 
-  val fold_ascription_path_ident:
+  val module_ident_segment_count: t -> int
+
+  val fold_ascription_ident_segment:
     t ->
     init:'acc ->
     fn:(Token.t -> 'acc -> 'acc control) ->
     'acc
+
+  val ascription_ident_segment_count: t -> int
 end
 
 module BindingOperatorExpr: sig
@@ -866,31 +987,41 @@ module BindingOperatorExpr: sig
   }
   val cast: expr -> t cast_result
 
+  val as_node: t -> Node.t
+
   val in_token: t -> Token.t option
 
   val body: t -> expr option
 
   val fold_clause: t -> init:'acc -> fn:(clause -> 'acc -> 'acc control) -> 'acc
+
+  val clause_count: t -> int
 end
 
-module Path: sig
-  type t = path
+module Ident: sig
+  type t = ident
   val cast: Node.t -> t cast_result
+
+  val as_node: t -> Node.t
+
+  val span: t -> Ceibo.Span.t
 
   val text: t -> string
 
-  val first_ident: t -> Token.t option
+  val first_segment: t -> Token.t option
 
-  val last_ident: t -> Token.t option
+  val last_segment: t -> Token.t option
 
-  val fold_ident: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
+  val fold_segment: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
+
+  val segment_count: t -> int
 end
 
 module ModuleTypeExpr: sig
   type t = module_type_expr
   type view =
-    | Path of {
-        path: path;
+    | Ident of {
+        ident: ident;
       }
     | Signature of {
         body: Node.t;
@@ -910,13 +1041,15 @@ module ModuleTypeExpr: sig
     | Unknown of Node.t
   val cast: Node.t -> t cast_result
 
+  val as_node: t -> Node.t
+
   val view: t -> view
 
   val sig_token: t -> Token.t option
 
   val end_token: t -> Token.t option
 
-  val fold_path_ident: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
+  val fold_ident_segment: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
 
   val fold_signature_item: t -> init:'acc -> fn:(signature_item -> 'acc -> 'acc control) -> 'acc
 
@@ -926,8 +1059,8 @@ end
 module ModuleExpr: sig
   type t = module_expr
   type view =
-    | Path of {
-        path: path;
+    | Ident of {
+        ident: ident;
       }
     | Structure of {
         body: Node.t;
@@ -950,13 +1083,15 @@ module ModuleExpr: sig
     | Unknown of Node.t
   val cast: Node.t -> t cast_result
 
+  val as_node: t -> Node.t
+
   val view: t -> view
 
   val struct_token: t -> Token.t option
 
   val end_token: t -> Token.t option
 
-  val fold_path_ident: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
+  val fold_ident_segment: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
 
   val fold_structure_item: t -> init:'acc -> fn:(structure_item -> 'acc -> 'acc control) -> 'acc
 end
@@ -979,9 +1114,15 @@ module StructureItem: sig
     | Unknown of Node.t
   val cast: Node.t -> t cast_result
 
+  val as_node: t -> Node.t
+
   val view: t -> view
 
   val declaration: t -> Node.t option
+
+  val fold_attribute_suffix: t -> init:'acc -> fn:(attribute_item -> 'acc -> 'acc control) -> 'acc
+
+  val attribute_suffix_count: t -> int
 end
 
 module SignatureItem: sig
@@ -1001,20 +1142,34 @@ module SignatureItem: sig
     | Unknown of Node.t
   val cast: Node.t -> t cast_result
 
+  val as_node: t -> Node.t
+
   val view: t -> view
 
   val declaration: t -> Node.t option
+
+  val fold_attribute_suffix: t -> init:'acc -> fn:(attribute_item -> 'acc -> 'acc control) -> 'acc
+
+  val attribute_suffix_count: t -> int
 end
 
 module LetDeclaration: sig
   type t = let_declaration
   val cast: Node.t -> t cast_result
 
+  val as_node: t -> Node.t
+
+  val kind: t -> Syntax_kind.t
+
+  val span: t -> Ceibo.Span.t
+
   val rec_token: t -> Token.t option
 
   val first_binding: t -> let_binding option
 
   val fold_binding: t -> init:'acc -> fn:(let_binding -> 'acc -> 'acc control) -> 'acc
+
+  val binding_count: t -> int
 
 end
 
@@ -1041,6 +1196,8 @@ module TypeDeclaration: sig
     val start_index: t -> int
 
     val stop_index: t -> int
+
+    val covers_declaration: t -> bool
 
     val child_count: t -> int
 
@@ -1074,10 +1231,16 @@ module TypeDeclaration: sig
 
     val fold_parameter: t -> init:'acc -> fn:(parameter -> 'acc -> 'acc control) -> 'acc
 
+    val parameter_count: t -> int
+
     val manifest: t -> type_expr option
   end
 
   val cast: Node.t -> t cast_result
+
+  val as_node: t -> Node.t
+
+  val kind: t -> Syntax_kind.t
 
   val fold_token: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
 
@@ -1089,9 +1252,13 @@ module TypeDeclaration: sig
 
   val fold_parameter: t -> init:'acc -> fn:(parameter -> 'acc -> 'acc control) -> 'acc
 
+  val parameter_count: t -> int
+
   val manifest: t -> type_expr option
 
   val fold_member: t -> init:'acc -> fn:(member -> 'acc -> 'acc control) -> 'acc
+
+  val member_count: t -> int
 
   val fold_members: t -> 'acc -> ('acc -> member -> 'acc) -> 'acc
 end
@@ -1100,6 +1267,12 @@ module TypeExtensionDeclaration: sig
   type t = type_extension_declaration
   type parameter = TypeDeclaration.parameter
   val cast: Node.t -> t cast_result
+
+  val as_node: t -> Node.t
+
+  val kind: t -> Syntax_kind.t
+
+  val span: t -> Ceibo.Span.t
 
   val keyword_token: t -> Token.t option
 
@@ -1111,7 +1284,11 @@ module TypeExtensionDeclaration: sig
 
   val fold_name_ident: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
 
+  val name_ident_count: t -> int
+
   val fold_parameter: t -> init:'acc -> fn:(parameter -> 'acc -> 'acc control) -> 'acc
+
+  val parameter_count: t -> int
 
   val variant_type: t -> variant_type option
 end
@@ -1171,6 +1348,8 @@ module ModuleDeclaration: sig
       }
   val cast: Node.t -> t cast_result
 
+  val as_node: t -> Node.t
+
   val name: t -> Token.t option
 
   val rec_token: t -> Token.t option
@@ -1180,6 +1359,8 @@ module ModuleDeclaration: sig
   val separator_token: t -> Token.t option
 
   val fold_member: t -> init:'acc -> fn:(member -> 'acc -> 'acc control) -> 'acc
+
+  val member_count: t -> int
 
   val fold_members: t -> 'acc -> ('acc -> member -> 'acc) -> 'acc
 
@@ -1191,11 +1372,11 @@ module ModuleDeclaration: sig
 
   val end_token: t -> Token.t option
 
-  val fold_body_path_ident: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
+  val fold_body_ident_segment: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
 
   val has_typeof_body: t -> bool
 
-  val fold_typeof_body_path_ident:
+  val fold_typeof_body_ident_segment:
     t ->
     init:'acc ->
     fn:(Token.t -> 'acc -> 'acc control) ->
@@ -1203,7 +1384,11 @@ module ModuleDeclaration: sig
 
   val fold_structure_item: t -> init:'acc -> fn:(structure_item -> 'acc -> 'acc control) -> 'acc
 
+  val structure_item_count: t -> int
+
   val fold_signature_item: t -> init:'acc -> fn:(signature_item -> 'acc -> 'acc control) -> 'acc
+
+  val signature_item_count: t -> int
 
   val fold_sig_body_token: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
 end
@@ -1220,6 +1405,8 @@ module ModuleTypeDeclaration: sig
       }
   val cast: Node.t -> t cast_result
 
+  val as_node: t -> Node.t
+
   val name: t -> Token.t option
 
   val equals_token: t -> Token.t option
@@ -1232,9 +1419,11 @@ module ModuleTypeDeclaration: sig
 
   val end_token: t -> Token.t option
 
-  val fold_body_path_ident: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
+  val fold_body_ident_segment: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
 
   val fold_signature_item: t -> init:'acc -> fn:(signature_item -> 'acc -> 'acc control) -> 'acc
+
+  val signature_item_count: t -> int
 
   val fold_sig_body_token: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
 
@@ -1245,23 +1434,27 @@ module ModuleTypeDeclaration: sig
     init:'acc ->
     fn:(module_type_constraint -> 'acc -> 'acc control) ->
     'acc
+
+  val constraint_count: t -> int
 end
 
 module ModuleTypeConstraint: sig
   type t = module_type_constraint
   type view =
     | Type of {
-        path: path;
+        ident: ident;
         operator: Token.t;
         body: type_expr;
       }
     | Module of {
-        path: path;
+        ident: ident;
         operator: Token.t;
         body: Node.t;
       }
     | Unknown of Node.t
   val cast: Node.t -> t cast_result
+
+  val as_node: t -> Node.t
 
   val view: t -> view
 end
@@ -1270,28 +1463,32 @@ module OpenDeclaration: sig
   type t = open_declaration
   val cast: Node.t -> t cast_result
 
-  val path_text: t -> string
+  val as_node: t -> Node.t
 
-  val first_path_ident: t -> Token.t option
+  val ident_text: t -> string
 
-  val last_path_ident: t -> Token.t option
+  val first_ident_segment: t -> Token.t option
 
-  val fold_path_ident: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
+  val last_ident_segment: t -> Token.t option
+
+  val fold_ident_segment: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
 end
 
 module IncludeDeclaration: sig
   type t = include_declaration
   val cast: Node.t -> t cast_result
 
-  val path_text: t -> string
+  val as_node: t -> Node.t
+
+  val ident_text: t -> string
 
   val body_node: t -> Node.t option
 
-  val first_path_ident: t -> Token.t option
+  val first_ident_segment: t -> Token.t option
 
-  val last_path_ident: t -> Token.t option
+  val last_ident_segment: t -> Token.t option
 
-  val fold_path_ident: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
+  val fold_ident_segment: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
 end
 
 module ValueDeclaration: sig
@@ -1305,6 +1502,8 @@ module ValueDeclaration: sig
     | Unknown of Node.t
   val cast: Node.t -> t cast_result
 
+  val as_node: t -> Node.t
+
   val view: t -> view
 
   val name: t -> Token.t option
@@ -1314,6 +1513,8 @@ module ValueDeclaration: sig
   val type_annotation: t -> type_expr option
 
   val fold_name_token: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
+
+  val name_token_count: t -> int
 
   val fold_annotation_token: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
 end
@@ -1332,6 +1533,8 @@ module ExternalDeclaration: sig
     | Unknown of Node.t
   val cast: Node.t -> t cast_result
 
+  val as_node: t -> Node.t
+
   val view: t -> view
 
   val name: t -> Token.t option
@@ -1342,9 +1545,15 @@ module ExternalDeclaration: sig
 
   val fold_name_token: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
 
+  val name_token_count: t -> int
+
   val fold_primitive_string: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
 
+  val primitive_string_count: t -> int
+
   val fold_attribute_token: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
+
+  val attribute_token_count: t -> int
 end
 
 module ExceptionDeclaration: sig
@@ -1356,7 +1565,7 @@ module ExceptionDeclaration: sig
     | Bare
     | Alias of {
         equals_token: Token.t;
-        path: path;
+        ident: ident;
       }
     | Payload of {
         of_token: Token.t;
@@ -1364,6 +1573,12 @@ module ExceptionDeclaration: sig
       }
     | Unknown of Node.t
   val cast: Node.t -> t cast_result
+
+  val as_node: t -> Node.t
+
+  val kind: t -> Syntax_kind.t
+
+  val span: t -> Ceibo.Span.t
 
   val keyword_token: t -> Token.t option
 
@@ -1376,12 +1591,24 @@ module ExtensionItem: sig
   type t = extension_item
   val cast: Node.t -> t cast_result
 
+  val as_node: t -> Node.t
+
+  val kind: t -> Syntax_kind.t
+
+  val span: t -> Ceibo.Span.t
+
   val fold_shell_token: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
 end
 
 module AttributeItem: sig
   type t = attribute_item
   val cast: Node.t -> t cast_result
+
+  val as_node: t -> Node.t
+
+  val kind: t -> Syntax_kind.t
+
+  val span: t -> Ceibo.Span.t
 
   val fold_shell_token: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
 end
@@ -1390,6 +1617,8 @@ module ExprItem: sig
   type t = expr_item
   val cast: Node.t -> t cast_result
 
+  val as_node: t -> Node.t
+
   val expr: t -> expr option
 end
 
@@ -1397,7 +1626,11 @@ module Implementation: sig
   type t = implementation
   val cast: Node.t -> t cast_result
 
+  val as_node: t -> Node.t
+
   val fold_item: t -> init:'acc -> fn:(structure_item -> 'acc -> 'acc control) -> 'acc
+
+  val item_count: t -> int
 
 end
 
@@ -1405,7 +1638,11 @@ module Interface: sig
   type t = interface
   val cast: Node.t -> t cast_result
 
+  val as_node: t -> Node.t
+
   val fold_item: t -> init:'acc -> fn:(signature_item -> 'acc -> 'acc control) -> 'acc
+
+  val item_count: t -> int
 
 end
 
@@ -1416,6 +1653,10 @@ module SourceFile: sig
     | Interface of interface
   val make: Syntax_tree.t -> t
 
+  val as_node: t -> Node.t
+
+  val full_width: t -> int
+
   val view: t -> view
 
   val implementation: t -> implementation option
@@ -1424,7 +1665,13 @@ module SourceFile: sig
 
   val fold_item: t -> init:'acc -> fn:(Node.t -> 'acc -> 'acc control) -> 'acc
 
+  val item_count: t -> int
+
   val fold_structure_item: t -> init:'acc -> fn:(structure_item -> 'acc -> 'acc control) -> 'acc
 
+  val structure_item_count: t -> int
+
   val fold_signature_item: t -> init:'acc -> fn:(signature_item -> 'acc -> 'acc control) -> 'acc
+
+  val signature_item_count: t -> int
 end

@@ -19,7 +19,7 @@ let function_keyword = "function"
 
 let replacement_text = fun ctx expr ->
   let source =
-    H.node_source ctx (expr: Ast.Node.t)
+    H.node_source ctx (Ast.Expr.as_node expr)
     |> String.trim
   in
   if String.starts_with ~prefix:function_keyword source then
@@ -38,11 +38,11 @@ let make_diagnostic = fun ctx expr replacement ->
   H.diagnostic
     ~rule_id
     ~message:rule_description
-    ~span:(H.span_of_node expr)
+    ~span:(H.span_of_node (Ast.Expr.as_node expr))
     ~suggestion:"Introduce an explicit parameter and match on it."
     ~fix:(Fix.make
       ~title:"Expand function shorthand"
-      ~operations:[ Fix.replace_node_with_text ~target:expr ~text:replacement; ])
+      ~operations:[ Fix.replace_node_with_text ~target:(Ast.Expr.as_node expr) ~text:replacement; ])
     ()
 
 let diagnostic_for_expr = fun ctx expr ->

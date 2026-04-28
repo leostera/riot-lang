@@ -40,16 +40,17 @@ let raw_first_child_expr = fun expr ->
     ~fn:(fun child ->
       match !found with
       | Some _ -> ()
-      | None -> found := Ast.cast_result_to_option (Ast.Expr.cast child));
+      | None ->
+          if Option.is_some (Ast.cast_result_to_option (Ast.Expr.cast child)) then
+            found := Some child);
   !found
 
 let raw_for_each_child_expr = fun expr ~fn ->
   H.iter_fold Ast.Node.fold_child_node
     expr
     ~fn:(fun child ->
-      match Ast.cast_result_to_option (Ast.Expr.cast child) with
-      | Some child -> fn child
-      | None -> ())
+      if Option.is_some (Ast.cast_result_to_option (Ast.Expr.cast child)) then
+        fn child)
 
 let rec parenthesis_chain_depth = fun expr ->
   if Syn.SyntaxKind.(Ast.Node.kind expr = PAREN_EXPR) then
@@ -79,7 +80,7 @@ let check_tree = fun _ctx root ->
       Syn.Visitor.empty_hooks with
       enter_expr =
         Some (fun visitor expr ->
-          diagnostics_for_expression diagnostics expr;
+          diagnostics_for_expression diagnostics (Ast.Expr.as_node expr);
           (visitor, Syn.Visitor.Skip_subtree));
     }
   in

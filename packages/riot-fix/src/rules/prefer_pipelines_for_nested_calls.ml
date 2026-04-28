@@ -36,7 +36,7 @@ let callee_text = fun ctx callee ->
   | Ast.Expr.Ident _
   | Ast.Expr.FieldAccess _ ->
       Some (
-        H.node_source ctx (callee: Ast.Node.t)
+        H.node_source ctx (Ast.Expr.as_node callee)
         |> String.trim
       )
   | _ -> None
@@ -53,7 +53,7 @@ let rec collect_call_chain = fun ctx expr ->
             | None ->
                 {
                   base = argument;
-                  functions = Vector.with_capacity ~size:(Ast.Node.child_count (expr: Ast.Node.t));
+                  functions = Vector.with_capacity ~size:(Ast.Expr.child_expr_count expr);
                 }
           in
           Vector.push chain.functions ~value:callee;
@@ -67,7 +67,7 @@ let replacement_text = fun ctx chain ->
   Vector.push
     parts
     ~value:(
-      H.node_source ctx (chain.base: Ast.Node.t)
+      H.node_source ctx (Ast.Expr.as_node chain.base)
       |> String.trim
     );
   Vector.for_each chain.functions ~fn:(fun function_name -> Vector.push parts ~value:function_name);
@@ -79,12 +79,12 @@ let diagnostic_for_expr = fun ctx expr chain ->
   H.diagnostic
     ~rule_id
     ~message:rule_description
-    ~span:(H.span_of_node (expr: Ast.Node.t))
+    ~span:(H.span_of_node (Ast.Expr.as_node expr))
     ~suggestion:"Rewrite this call chain as a pipeline."
     ~fix:(Fix.make
       ~title:"Rewrite nested calls as a pipeline"
       ~operations:[
-        Fix.replace_node_with_text ~target:(expr: Ast.Node.t) ~text:replacement;
+        Fix.replace_node_with_text ~target:(Ast.Expr.as_node expr) ~text:replacement;
       ])
     ()
 

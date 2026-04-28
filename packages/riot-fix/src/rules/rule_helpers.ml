@@ -112,7 +112,7 @@ let should_be_snake_case = fun text -> not (String.equal text (to_snake_case tex
 
 let should_be_class_case = fun text -> not (String.equal text (to_class_case text))
 
-let path_last_ident = fun path -> Ast.Path.last_ident path
+let ident_last_segment = fun ident -> Ast.Ident.last_segment ident
 
 let first_child_expr = fun expr ->
   let found = ref None in
@@ -152,7 +152,7 @@ let rec unwrap_expr = fun expr ->
       | None -> expr
     )
   | None ->
-      if Syn.SyntaxKind.(Ast.Node.kind expr = PAREN_EXPR) then
+      if Syn.SyntaxKind.(Ast.Node.kind (Ast.Expr.as_node expr) = PAREN_EXPR) then
         match first_child_expr expr with
         | Some inner -> unwrap_expr inner
         | None -> expr
@@ -167,7 +167,7 @@ let rec unwrap_pattern = fun pattern ->
       | None -> pattern
     )
   | None ->
-      if Syn.SyntaxKind.(Ast.Node.kind pattern = PAREN_PATTERN) then
+      if Syn.SyntaxKind.(Ast.Node.kind (Ast.Pattern.as_node pattern) = PAREN_PATTERN) then
         match first_child_pattern pattern with
         | Some inner -> unwrap_pattern inner
         | None -> pattern
@@ -175,7 +175,7 @@ let rec unwrap_pattern = fun pattern ->
         pattern
 
 let rec unwrap_type_expr = fun type_expr ->
-  if Syn.SyntaxKind.(Ast.Node.kind type_expr = PAREN_TYPE) then
+  if Syn.SyntaxKind.(Ast.Node.kind (Ast.TypeExpr.as_node type_expr) = PAREN_TYPE) then
     match first_child_type_expr type_expr with
     | Some inner -> unwrap_type_expr inner
     | None -> type_expr
@@ -186,30 +186,20 @@ type parameter_kind =
   | LabeledParameter
   | OptionalParameter
 
-let parameter_kind = fun pattern ->
-  match Ast.Node.kind pattern with
-  | Syn.SyntaxKind.LABELED_PARAM
-  | Syn.SyntaxKind.OPTIONAL_PARAM
-  | Syn.SyntaxKind.OPTIONAL_PARAM_DEFAULT -> (
-      let parameter =
-        Ast.cast_result_to_option (Ast.Parameter.cast pattern)
-        |> Option.expect ~msg:"expected syntactic parameter view"
-      in
-      match Ast.Parameter.view parameter with
-      | Ast.Parameter.Param { label = Ast.Parameter.NoLabel; _ } -> None
-      | Ast.Parameter.Param { label = Ast.Parameter.Labeled _; _ } -> Some LabeledParameter
-      | Ast.Parameter.Param { label = Ast.Parameter.Optional _; _ } -> Some OptionalParameter
-      | Ast.Parameter.Unknown _ -> None
-    )
-  | _ -> None
+let parameter_kind = fun parameter ->
+  match Ast.Parameter.view parameter with
+  | Ast.Parameter.Param { label = Ast.Parameter.NoLabel; _ } -> None
+  | Ast.Parameter.Param { label = Ast.Parameter.Labeled _; _ } -> Some LabeledParameter
+  | Ast.Parameter.Param { label = Ast.Parameter.Optional _; _ } -> Some OptionalParameter
+  | Ast.Parameter.Unknown _ -> None
 
 let pattern_name_token = fun pattern ->
   match Ast.Pattern.view (unwrap_pattern pattern) with
-  | Ast.Pattern.Ident { path } -> path_last_ident path
+  | Ast.Pattern.Ident { ident } -> ident_last_segment ident
   | Ast.Pattern.Constraint { pattern; _ }
   | Ast.Pattern.Alias { pattern; _ } -> (
       match Ast.Pattern.view pattern with
-      | Ast.Pattern.Ident { path } -> path_last_ident path
+      | Ast.Pattern.Ident { ident } -> ident_last_segment ident
       | _ -> None
     )
   | _ -> None
@@ -233,29 +223,20 @@ let binding_is_function = fun binding ->
   | Some body -> expr_is_fun body
   | None -> false
 
-let rec parameter_name_token = fun pattern ->
-  match Ast.Node.kind pattern with
-  | Syn.SyntaxKind.LABELED_PARAM
-  | Syn.SyntaxKind.OPTIONAL_PARAM
-  | Syn.SyntaxKind.OPTIONAL_PARAM_DEFAULT -> (
-      let parameter =
-        Ast.cast_result_to_option (Ast.Parameter.cast pattern)
-        |> Option.expect ~msg:"expected syntactic parameter view"
-      in
-      match Ast.Parameter.view parameter with
-      | Ast.Parameter.Param { label = Ast.Parameter.NoLabel; pattern = Some pattern } ->
-          parameter_name_token pattern
-      | Ast.Parameter.Param { label = Ast.Parameter.Labeled { name = Some label }; _ }
-      | Ast.Parameter.Param { label = Ast.Parameter.Optional { name = Some label; _ }; _ } -> Some label
-      | Ast.Parameter.Param { pattern = Some pattern; _ } -> pattern_name_token pattern
-      | _ -> None
-    )
-  | _ -> (
-      match Ast.Pattern.view pattern with
-      | Ast.Pattern.Ident { path } -> path_last_ident path
-      | Ast.Pattern.Constraint { pattern; _ } -> parameter_name_token pattern
-      | _ -> None
-    )
+let rec parameter_pattern_name_token = fun pattern ->
+  match Ast.Pattern.view pattern with
+  | Ast.Pattern.Ident { ident } -> ident_last_segment ident
+  | Ast.Pattern.Constraint { pattern; _ } -> parameter_pattern_name_token pattern
+  | _ -> None
+
+let parameter_name_token = fun parameter ->
+  match Ast.Parameter.view parameter with
+  | Ast.Parameter.Param { label = Ast.Parameter.NoLabel; pattern = Some pattern } ->
+      parameter_pattern_name_token pattern
+  | Ast.Parameter.Param { label = Ast.Parameter.Labeled { name = Some label }; _ }
+  | Ast.Parameter.Param { label = Ast.Parameter.Optional { name = Some label; _ }; _ } -> Some label
+  | Ast.Parameter.Param { pattern = Some pattern; _ } -> pattern_name_token pattern
+  | _ -> None
 
 let for_each_let_binding = fun root ~fn ->
   let hooks =

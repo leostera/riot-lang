@@ -336,10 +336,10 @@ module Ast_deps = struct
         A.Continue ());
     vector_to_list segments
 
-  let ast_path_segments = fun path ->
+  let ast_ident_segments = fun ident ->
     let segments = Vector.with_capacity ~size:4 in
-    A.Path.fold_ident
-      path
+    A.Ident.fold_segment
+      ident
       ~init:()
       ~fn:(fun token () ->
         Vector.push segments ~value:(A.Token.text token);
@@ -698,15 +698,15 @@ module Ast_deps = struct
         | Some local_open ->
             (
               match A.LocalOpenExpr.view local_open with
-              | A.LocalOpenExpr.LetOpen { module_path; body; _ }
-              | A.LocalOpenExpr.Delimited { module_path; body; _ } ->
+              | A.LocalOpenExpr.LetOpen { module_ident; body; _ }
+              | A.LocalOpenExpr.Delimited { module_ident; body; _ } ->
                   let (deps, env) =
-                    match ast_path_segments module_path with
+                    match ast_ident_segments module_ident with
                     | head :: _ as segments when is_module_head head ->
                         open_alias ~fallback:true env deps segments
                     | _ -> (deps, env)
                   in
-                  collect_node env deps body
+                  collect_node env deps (A.Expr.as_node body)
               | A.LocalOpenExpr.Unknown _ -> collect_local_open_fallback env deps node
             )
         | None -> collect_local_open_fallback env deps node
@@ -735,34 +735,37 @@ module Ast_deps = struct
             A.Continue ());
         let* deps =
           match A.LetBinding.pattern binding with
-          | Some pattern -> collect_node env deps pattern
+          | Some pattern -> collect_node env deps (A.Pattern.as_node pattern)
           | None -> Ok deps
         in
         let* deps =
           Vector.iter parameters
           |> Iterator.fold
             ~init:(Ok deps)
-            ~fn:(fun parameter acc ->
+            ~fn:(fun (parameter: A.Parameter.t) acc ->
               let* deps = acc in
-              collect_node env deps parameter)
+              collect_node env deps (A.Parameter.as_node parameter))
         in
         let* deps =
           match A.LetBinding.type_annotation binding with
-          | Some annotation -> collect_node env deps annotation
+          | Some annotation -> collect_node env deps (A.TypeExpr.as_node annotation)
           | None -> Ok deps
         in
         let env =
           match A.LetBinding.pattern binding with
-          | Some pattern -> bind_pattern_modules env pattern
+          | Some pattern -> bind_pattern_modules env (A.Pattern.as_node pattern)
           | None -> env
         in
         let env =
           Vector.iter parameters
-          |> Iterator.fold ~init:env ~fn:(fun parameter env -> bind_pattern_modules env parameter)
+          |> Iterator.fold
+            ~init:env
+            ~fn:(fun (parameter: A.Parameter.t) env ->
+              bind_pattern_modules env (A.Parameter.as_node parameter))
         in
         (
           match A.LetBinding.body binding with
-          | Some body -> collect_node env deps body
+          | Some body -> collect_node env deps (A.Expr.as_node body)
           | None -> Ok deps
         )
 
@@ -773,14 +776,14 @@ module Ast_deps = struct
         (
           match A.MatchCase.view match_case with
           | A.MatchCase.Case { pattern; guard; body } ->
-              let* deps = collect_node env deps pattern in
-              let env = bind_pattern_modules env pattern in
+              let* deps = collect_node env deps (A.Pattern.as_node pattern) in
+              let env = bind_pattern_modules env (A.Pattern.as_node pattern) in
               let* deps =
                 match guard with
-                | Some guard -> collect_node env deps guard
+                | Some guard -> collect_node env deps (A.Expr.as_node guard)
                 | None -> Ok deps
               in
-              collect_node env deps body
+              collect_node env deps (A.Expr.as_node body)
           | A.MatchCase.Unknown node -> collect_child_nodes collect_node env deps node
         )
 
@@ -1052,11 +1055,16 @@ module Ast_deps = struct
     | None -> Ok (deps, Env.bound)
 
   and collect_module_decl env deps bindings node =
-    if A.ModuleDeclaration.is_recursive node then
-      let (env, bindings) = prebind_module_decl_group env bindings node in
+    match A.cast_result_to_option (A.ModuleDeclaration.cast node) with
+    | None ->
+        let* deps = collect_child_nodes collect_node env deps node in
+        Ok (deps, env, bindings)
+    | Some decl ->
+    if A.ModuleDeclaration.is_recursive decl then
+      let (env, bindings) = prebind_module_decl_group env bindings decl in
       let* deps =
         A.ModuleDeclaration.fold_members
-          node
+          decl
           (Ok deps)
           (fun acc member ->
             let* deps = acc in
@@ -1065,7 +1073,7 @@ module Ast_deps = struct
       Ok (deps, env, bindings)
     else
       A.ModuleDeclaration.fold_members
-        node
+        decl
         (Ok (deps, env, bindings))
         (fun acc member ->
           let* (deps, env, bindings) = acc in
@@ -1204,8 +1212,8 @@ module Ast_deps = struct
 
   let of_parse_result = fun ~env result ->
     match A.SourceFile.view (A.SourceFile.make result.Parser.tree) with
-    | A.SourceFile.Implementation impl -> finalize_impl env impl
-    | A.SourceFile.Interface intf -> finalize_intf env intf
+    | A.SourceFile.Implementation impl -> finalize_impl env (A.Implementation.as_node impl)
+    | A.SourceFile.Interface intf -> finalize_intf env (A.Interface.as_node intf)
 end
 
 let finalize = fun deps env exports -> { modules = DepSet.elements deps; env; exports }

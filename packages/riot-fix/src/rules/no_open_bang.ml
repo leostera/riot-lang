@@ -33,7 +33,7 @@ let make_diagnostic = fun token ->
 let bang_token = fun open_declaration ->
   let found = ref None in
   H.iter_fold Ast.Node.fold_child_token
-    open_declaration
+    (Ast.OpenDeclaration.as_node open_declaration)
     ~fn:(fun token ->
       match !found with
       | Some _ -> ()

@@ -35,10 +35,10 @@ let is_interface_file = fun ctx ->
 
 let rec unwrap_type = fun type_expr -> H.unwrap_type_expr type_expr
 
-let type_path_last_ident_text = fun type_expr ->
+let type_ident_last_segment_text = fun type_expr ->
   match Ast.TypeExpr.view (unwrap_type type_expr) with
-  | Ast.TypeExpr.Ident { path } ->
-      Ast.Path.last_ident path
+  | Ast.TypeExpr.Ident { ident } ->
+      Ast.Ident.last_segment ident
       |> Option.map ~fn:Ast.Token.text
   | _ -> None
 
@@ -67,7 +67,7 @@ let value_declaration_targets_record = fun value_declaration record ->
     match Ast.ValueDeclaration.type_annotation value_declaration with
     | Some type_annotation -> (
         match first_arrow_argument_type type_annotation
-        |> Option.and_then ~fn:type_path_last_ident_text with
+        |> Option.and_then ~fn:type_ident_last_segment_text with
         | Some type_name -> String.equal type_name record.name
         | None -> false
       )
@@ -84,7 +84,7 @@ let diagnostic_for_record = fun record ->
 let collect_record = fun records member record_type ->
   match Ast.TypeDeclaration.Member.name member with
   | Some name ->
-      let fields = Vector.with_capacity ~size:(Ast.Node.child_count (record_type: Ast.Node.t)) in
+      let fields = Vector.with_capacity ~size:(Ast.RecordType.field_count record_type) in
       H.iter_fold Ast.RecordType.fold_field
         record_type
         ~fn:(fun field ->
@@ -98,7 +98,7 @@ let collect_record = fun records member record_type ->
           ~value:{
             name = Ast.Token.text name;
             fields;
-            node = ((Ast.TypeDeclaration.Member.declaration member): Ast.Node.t);
+            node = Ast.TypeDeclaration.as_node (Ast.TypeDeclaration.Member.declaration member);
           }
   | None -> ()
 

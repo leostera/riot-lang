@@ -22,7 +22,7 @@ let rec unwrap_type = fun type_expr -> H.unwrap_type_expr type_expr
 let diagnostic_for_type = fun type_expr -> H.diagnostic
   ~rule_id
   ~message:rule_description
-  ~span:(H.span_of_node (type_expr: Ast.Node.t))
+  ~span:(H.span_of_node (Ast.TypeExpr.as_node type_expr))
   ~suggestion:"Use a record type instead of a large positional tuple."
   ()
 
@@ -35,7 +35,7 @@ let rec collect_tuple_parts = fun ctx parts type_expr ->
       Vector.push
         parts
         ~value:(
-          H.node_source ctx (type_expr: Ast.Node.t)
+          H.node_source ctx (Ast.TypeExpr.as_node type_expr)
           |> String.trim
         )
 

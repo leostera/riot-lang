@@ -21,7 +21,7 @@ let rec unwrap_type = fun type_expr -> H.unwrap_type_expr type_expr
 let is_bool_type = fun ctx type_expr ->
   String.equal
     (
-      H.node_source ctx ((unwrap_type type_expr): Ast.Node.t)
+      H.node_source ctx (Ast.TypeExpr.as_node (unwrap_type type_expr))
       |> String.trim
     )
     "bool"
@@ -34,13 +34,16 @@ let diagnostic_for_node = fun node ->
     ~suggestion:"Use a named boolean argument instead of a positional one."
     ()
 
-let diagnostic_for_type = fun type_expr -> diagnostic_for_node (type_expr: Ast.Node.t)
+let diagnostic_for_type = fun type_expr -> diagnostic_for_node (Ast.TypeExpr.as_node type_expr)
 
-let is_named_parameter_pattern = fun pattern -> Option.is_some (H.parameter_kind pattern)
+let is_named_parameter_pattern = fun pattern ->
+  match Ast.cast_result_to_option (Ast.Parameter.cast (Ast.Pattern.as_node pattern)) with
+  | Some parameter -> Option.is_some (H.parameter_kind parameter)
+  | None -> false
 
 let rec check_parameter_pattern = fun ctx diagnostics pattern ->
   if
-    Syn.SyntaxKind.(Ast.Node.kind pattern = CONSTRAINT_PATTERN)
+    Syn.SyntaxKind.(Ast.Node.kind (Ast.Pattern.as_node pattern) = CONSTRAINT_PATTERN)
     && not (is_named_parameter_pattern pattern)
   then
     match Ast.Pattern.view pattern with
@@ -60,7 +63,7 @@ let rec check_pattern_node_tree = fun ctx diagnostics node ->
 let check_pattern_tree = fun ctx diagnostics pattern -> check_pattern_node_tree
   ctx
   diagnostics
-  (pattern: Ast.Node.t)
+  (Ast.Pattern.as_node pattern)
 
 let rec check_application_arguments = fun ctx diagnostics pattern ->
   match Ast.Pattern.view pattern with
@@ -73,7 +76,7 @@ let rec check_application_arguments = fun ctx diagnostics pattern ->
 let check_let_binding_parameters = fun ctx diagnostics binding ->
   let seen_binding_pattern = ref false in
   H.iter_fold Ast.Node.fold_child_node
-    (binding: Ast.Node.t)
+    (Ast.LetBinding.as_node binding)
     ~fn:(fun node ->
       match Ast.cast_result_to_option (Ast.Pattern.cast node) with
       | Some pattern ->

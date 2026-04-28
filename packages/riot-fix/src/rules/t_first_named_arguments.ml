@@ -25,7 +25,7 @@ let make_diagnostic = fun parameter ->
   H.diagnostic
     ~rule_id
     ~message:rule_description
-    ~span:(H.span_of_node parameter)
+    ~span:(H.span_of_node (Ast.Parameter.as_node parameter))
     ~suggestion:"Move t to the front of the positional arguments so the function reads as named configuration followed by the receiver"
     ()
 

@@ -25,7 +25,7 @@ has become too implicit.
 |}
 
 let top_level_open_declarations = fun source_file ->
-  let opens = Vector.with_capacity ~size:(Ast.Node.child_count source_file) in
+  let opens = Vector.with_capacity ~size:(Ast.SourceFile.item_count source_file) in
   (
     match Ast.SourceFile.view source_file with
     | Ast.SourceFile.Implementation implementation ->
@@ -55,7 +55,7 @@ let diagnostic_for_open_count = fun opens ->
         H.diagnostic
           ~rule_id
           ~message:rule_description
-          ~span:(H.span_of_node third_open)
+          ~span:(H.span_of_node (Ast.OpenDeclaration.as_node third_open))
           ~suggestion:"Keep only the most useful opens and qualify the remaining names."
           ())
 

@@ -58,7 +58,73 @@ val with_ctx: 'ctx t -> 'ctx -> 'ctx t
 
 val visit_source_file: 'ctx t -> Ast.SourceFile.t -> 'ctx t
 
+(** Raw-node traversal escape hatch for syntax utilities. Prefer typed
+    entrypoints below when the caller already has a typed Ast handle. *)
 val visit_node: 'ctx t -> Ast.Node.t -> 'ctx t
+
+val visit_implementation: 'ctx t -> Ast.Implementation.t -> 'ctx t
+
+val visit_interface: 'ctx t -> Ast.Interface.t -> 'ctx t
+
+val visit_structure_item: 'ctx t -> Ast.StructureItem.t -> 'ctx t
+
+val visit_signature_item: 'ctx t -> Ast.SignatureItem.t -> 'ctx t
+
+val visit_let_declaration: 'ctx t -> Ast.LetDeclaration.t -> 'ctx t
+
+val visit_let_binding: 'ctx t -> Ast.LetBinding.t -> 'ctx t
+
+val visit_type_declaration: 'ctx t -> Ast.TypeDeclaration.t -> 'ctx t
+
+val visit_type_extension_declaration: 'ctx t -> Ast.TypeExtensionDeclaration.t -> 'ctx t
+
+val visit_module_declaration: 'ctx t -> Ast.ModuleDeclaration.t -> 'ctx t
+
+val visit_module_expr: 'ctx t -> Ast.ModuleExpr.t -> 'ctx t
+
+val visit_module_type_expr: 'ctx t -> Ast.ModuleTypeExpr.t -> 'ctx t
+
+val visit_module_type_declaration: 'ctx t -> Ast.ModuleTypeDeclaration.t -> 'ctx t
+
+val visit_module_type_constraint: 'ctx t -> Ast.ModuleTypeConstraint.t -> 'ctx t
+
+val visit_open_declaration: 'ctx t -> Ast.OpenDeclaration.t -> 'ctx t
+
+val visit_include_declaration: 'ctx t -> Ast.IncludeDeclaration.t -> 'ctx t
+
+val visit_value_declaration: 'ctx t -> Ast.ValueDeclaration.t -> 'ctx t
+
+val visit_external_declaration: 'ctx t -> Ast.ExternalDeclaration.t -> 'ctx t
+
+val visit_exception_declaration: 'ctx t -> Ast.ExceptionDeclaration.t -> 'ctx t
+
+val visit_extension_item: 'ctx t -> Ast.ExtensionItem.t -> 'ctx t
+
+val visit_attribute_item: 'ctx t -> Ast.AttributeItem.t -> 'ctx t
+
+val visit_expr_item: 'ctx t -> Ast.ExprItem.t -> 'ctx t
+
+val visit_expr: 'ctx t -> Ast.Expr.t -> 'ctx t
+
+val visit_pattern: 'ctx t -> Ast.Pattern.t -> 'ctx t
+
+val visit_parameter: 'ctx t -> Ast.Parameter.t -> 'ctx t
+
+val visit_match_case: 'ctx t -> Ast.MatchCase.t -> 'ctx t
+
+val visit_type_expr: 'ctx t -> Ast.TypeExpr.t -> 'ctx t
+
+val visit_record_type: 'ctx t -> Ast.RecordType.t -> 'ctx t
+
+val visit_record_field: 'ctx t -> Ast.RecordField.t -> 'ctx t
+
+val visit_record_expr_field: 'ctx t -> Ast.RecordExprField.t -> 'ctx t
+
+val visit_variant_type: 'ctx t -> Ast.VariantType.t -> 'ctx t
+
+val visit_variant_constructor: 'ctx t -> Ast.VariantConstructor.t -> 'ctx t
+
+val visit_ident: 'ctx t -> Ast.Ident.t -> 'ctx t
 
 val structure_item: 'ctx t -> Ast.Node.t -> Ast.StructureItem.t option
 

@@ -61,7 +61,7 @@ let bench_ast_view = fun fixture ->
   if Vector.length parsed.Syn.Parser.diagnostics > 0 then
     panic ("lower benchmark parse failed for " ^ Path.to_string fixture.path);
   let source_file = Syn.Ast.SourceFile.make parsed.Syn.Parser.tree in
-  touch_int (Syn.Ast.Node.full_width source_file)
+  touch_int (Syn.Ast.SourceFile.full_width source_file)
 
 let bench_stream_format = fun fixture ->
   let parsed = parse fixture in

@@ -75,11 +75,11 @@ type variant_type = node
 
 type variant_constructor = node
 
-type path = node
+type ident = node
 
 type record_expr_field_view =
   | RecordExprField of {
-      path: path;
+      ident: ident;
       value: expr option;
       node: record_expr_field;
     }
@@ -89,7 +89,7 @@ type record_expr_field_view =
 
 type record_pattern_field_view =
   | RecordPatternField of {
-      path: path;
+      ident: ident;
       pattern: pattern option;
       node: pattern;
     }
@@ -99,7 +99,7 @@ type record_pattern_field_view =
 
 type first_class_module_pattern_ascription =
   | NoAscription
-  | PathAscription
+  | IdentAscription
   | UnsupportedAscription
 
 type type_item =
@@ -121,6 +121,12 @@ type 'value control =
   | Continue of 'value
   | Return of 'value
 
+let count_fold = fun fold value ->
+  fold
+    value
+    ~init:0
+    ~fn:(fun _ count -> Continue (Int.add count 1))
+
 let root = fun tree -> ({ tree; id = tree.Syntax_tree.root }: node)
 
 let wrap_node = fun tree id -> ({ tree; id }: node)
@@ -134,6 +140,8 @@ let syntax_token = fun (token: token) -> Syntax_tree.token token.tree token.id
 let kind_is = Syntax_kind.is
 
 let node_kind_is = fun (node: node) kind -> kind_is (syntax_node node).Syntax_tree.kind kind
+
+let same_node = fun (left: node) (right: node) -> Int.equal left.id right.id
 
 let token_kind_is = fun (token: token) kind -> kind_is (syntax_token token).Syntax_tree.kind kind
 
@@ -211,7 +219,7 @@ let is_parameter_kind = function
 
 let is_parameter_node_kind = fun kind -> is_parameter_kind kind || is_pattern_kind kind
 
-let is_path_kind = function
+let is_ident_kind = function
   | Syntax_kind.PATH_EXPR
   | Syntax_kind.PATH_PATTERN
   | Syntax_kind.PATH_TYPE
@@ -357,7 +365,7 @@ let parameter_expected_kinds =
   ]
   @ pattern_expected_kinds
 
-let path_expected_kinds = Syntax_kind.[
+let ident_expected_kinds = Syntax_kind.[
   PATH_EXPR;
   PATH_PATTERN;
   PATH_TYPE;
@@ -1189,8 +1197,8 @@ let collect_record_pattern_fields = fun (record: pattern) ->
           Vector.push
             fields
             ~value:(
-              if node_matches child is_path_kind then
-                RecordPatternField { path = child; pattern; node = child }
+              if node_matches child is_ident_kind then
+                RecordPatternField { ident = child; pattern; node = child }
               else
                 UnknownRecordPatternField { node = child }
             );
@@ -1233,7 +1241,7 @@ let first_class_module_pattern_binder = fun pattern ->
     )
   | None -> None
 
-let first_class_module_pattern_range_is_path = fun pattern start stop ->
+let first_class_module_pattern_range_is_ident = fun pattern start stop ->
   let rec loop index saw_ident expect_ident =
     if index >= stop then
       saw_ident && not expect_ident
@@ -1266,31 +1274,39 @@ let first_class_module_pattern_ascription = fun pattern ->
     first_class_module_pattern_ascription_bounds pattern
   ) with
   | (None, _) -> NoAscription
-  | (Some _, Some (start, stop)) when first_class_module_pattern_range_is_path pattern start stop ->
-      PathAscription
+  | (Some _, Some (start, stop)) when first_class_module_pattern_range_is_ident pattern start stop ->
+      IdentAscription
   | (Some _, _) -> UnsupportedAscription
 
-let first_class_module_pattern_ascription_path = fun pattern ->
-  let path = Vector.with_capacity ~size:(Node.child_count pattern) in
+let first_class_module_pattern_ascription_ident = fun pattern ->
+  let ident = Vector.with_capacity ~size:(Node.child_count pattern) in
   let rec loop index stop =
     if index < stop then (
       match child_token_at pattern index with
       | Some token when token_kind_is token Syntax_kind.IDENT ->
-          Vector.push path ~value:token;
+          Vector.push ident ~value:token;
           loop (index + 1) stop
       | _ -> loop (index + 1) stop
     )
   in
   (
     match first_class_module_pattern_ascription_bounds pattern with
-    | Some (start, stop) when first_class_module_pattern_range_is_path pattern start stop ->
+    | Some (start, stop) when first_class_module_pattern_range_is_ident pattern start stop ->
         loop start stop
     | _ -> ()
   );
-  path
+  ident
 
 module TypeExpr = struct
   type t = type_expr
+
+  let as_node = fun (value: t) -> (value: node)
+
+  let kind = Node.kind
+
+  let span = Node.span
+
+  let text = Node.text
 
   type tuple_separator =
     | Star
@@ -1303,7 +1319,7 @@ module TypeExpr = struct
   }
 
   type view =
-    | Ident of { path: path }
+    | Ident of { ident: ident }
     | Var of {
         name: Token.t;
       }
@@ -1321,7 +1337,7 @@ module TypeExpr = struct
         parts: t Vector.t;
       }
     | Apply of {
-        ident: path;
+        ident: ident;
         args: t Vector.t;
       }
     | Error of Node.t
@@ -1400,7 +1416,7 @@ module TypeExpr = struct
     collect type_expr;
     parts
 
-  let type_constructor_path = fun type_expr ->
+  let type_constructor_ident = fun type_expr ->
     match parenthesized_inner type_expr with
     | Some inner when node_kind_is inner Syntax_kind.PATH_TYPE -> Some inner
     | _ -> None
@@ -1456,6 +1472,8 @@ module TypeExpr = struct
           Continue (before_dot, acc))
     |> fun (_, acc) -> acc
 
+  let poly_type_name_count = fun type_expr -> count_fold fold_poly_type_name type_expr
+
   let for_each_poly_type_name = fun type_expr ~fn ->
     fold_poly_type_name
       type_expr
@@ -1489,7 +1507,7 @@ module TypeExpr = struct
         if node_is_single_ident_text type_expr "unit" then
           Apply { ident = type_expr; args = Vector.with_capacity ~size:0 }
         else
-          Ident { path = type_expr }
+          Ident { ident = type_expr }
     | Syntax_kind.VAR_TYPE -> (
         match last_ident_token type_expr with
         | Some name -> Var { name }
@@ -1543,6 +1561,8 @@ module TypeExpr = struct
       ~matches:is_type_expr_kind
       ~init
       ~fn:(fun child acc -> fn (normalize_type_expr_node child) acc)
+
+  let child_type_count = fun type_expr -> count_fold fold_child_type type_expr
 
   let for_each_child_type = fun type_expr ~fn ->
     fold_child_type
@@ -1648,6 +1668,8 @@ module TypeExpr = struct
         in
         loop first_suffix_index init
 
+  let attribute_suffix_token_count = fun type_expr -> count_fold fold_attribute_suffix_token type_expr
+
   let for_each_attribute_suffix_token = fun type_expr ~fn ->
     fold_attribute_suffix_token
       type_expr
@@ -1663,6 +1685,10 @@ end
 
 module RecordField = struct
   type t = record_field
+
+  let as_node = fun (value: t) -> (value: node)
+
+  let span = Node.span
 
   type view =
     | Field of {
@@ -1699,6 +1725,8 @@ end
 module RecordType = struct
   type t = record_type
 
+  let as_node = fun (value: t) -> (value: node)
+
   let cast = fun (node: node) ->
     cast_matching node ~expected:[Syntax_kind.RECORD_TYPE] ~matches:is_record_type_kind
 
@@ -1718,6 +1746,8 @@ module RecordType = struct
       ~init
       ~fn
 
+  let field_count = fun record_type -> count_fold fold_field record_type
+
   let for_each_field = fun record_type ~fn ->
     fold_field
       record_type
@@ -1727,8 +1757,18 @@ module RecordType = struct
         Continue ())
 end
 
+module RecordExprField = struct
+  type t = record_expr_field
+
+  let as_node = fun (value: t) -> (value: node)
+end
+
 module VariantConstructor = struct
   type t = variant_constructor
+
+  let as_node = fun (value: t) -> (value: node)
+
+  let span = Node.span
 
   type payload =
     | TypeExpr of type_expr
@@ -1828,6 +1868,8 @@ end
 module VariantType = struct
   type t = variant_type
 
+  let as_node = fun (value: t) -> (value: node)
+
   let cast = fun (node: node) ->
     cast_matching node ~expected:[Syntax_kind.VARIANT_TYPE] ~matches:is_variant_type_kind
 
@@ -1843,6 +1885,8 @@ module VariantType = struct
       ~init
       ~fn
 
+  let constructor_count = fun variant_type -> count_fold fold_constructor variant_type
+
   let for_each_constructor = fun variant_type ~fn ->
     fold_constructor
       variant_type
@@ -1852,21 +1896,25 @@ module VariantType = struct
         Continue ())
 end
 
-module Path = struct
-  type t = path
+module Ident = struct
+  type t = ident
+
+  let as_node = fun (value: t) -> (value: node)
+
+  let span = Node.span
 
   let cast = fun (node: node) ->
-    cast_matching node ~expected:path_expected_kinds ~matches:is_path_kind
+    cast_matching node ~expected:ident_expected_kinds ~matches:is_ident_kind
 
   let text = Node.text
 
-  let first_ident = first_ident_token
+  let first_segment = first_ident_token
 
-  let last_ident = last_ident_token
+  let last_segment = last_ident_token
 
-  let fold_ident = fun (path: path) ~init ~fn ->
+  let fold_segment = fun (ident: ident) ~init ~fn ->
     Node.fold_child_token
-      path
+      ident
       ~init
       ~fn:(fun token acc ->
         if token_kind_is token Syntax_kind.IDENT then
@@ -1874,21 +1922,25 @@ module Path = struct
         else
           Continue acc)
 
-  let for_each_ident = fun path ~fn ->
-    fold_ident
-      path
+  let for_each_segment = fun ident ~fn ->
+    fold_segment
+      ident
       ~init:()
       ~fn:(fun token () ->
         fn token;
         Continue ())
+
+  let segment_count = Node.child_count
 end
 
 module ModuleTypeExpr = struct
   type t = module_type_expr
 
+  let as_node = fun (value: t) -> (value: node)
+
   type view =
-    | Path of {
-        path: path;
+    | Ident of {
+        ident: ident;
       }
     | Signature of {
         body: node;
@@ -1936,8 +1988,8 @@ module ModuleTypeExpr = struct
   let view = fun module_type ->
     match specific_node module_type with
     | Some node when node_kind_is node Syntax_kind.PATH_MODULE_TYPE -> (
-        match Path.cast node with
-        | Node path -> Path { path }
+        match Ident.cast node with
+        | Node ident -> Ident { ident }
         | Unknown _
         | Error _ -> Unknown node
       )
@@ -1973,13 +2025,13 @@ module ModuleTypeExpr = struct
     | Some node -> Node.first_child_token node ~kind:Syntax_kind.END_KW
     | None -> None
 
-  let fold_path_ident = fun module_type ~init ~fn ->
+  let fold_ident_segment = fun module_type ~init ~fn ->
     match view module_type with
-    | Path { path } -> Path.fold_ident path ~init ~fn
+    | Ident { ident } -> Ident.fold_segment ident ~init ~fn
     | _ -> init
 
-  let for_each_path_ident = fun module_type ~fn ->
-    fold_path_ident
+  let for_each_ident_segment = fun module_type ~fn ->
+    fold_ident_segment
       module_type
       ~init:()
       ~fn:(fun token () ->
@@ -2062,9 +2114,11 @@ end
 module ModuleExpr = struct
   type t = module_expr
 
+  let as_node = fun (value: t) -> (value: node)
+
   type view =
-    | Path of {
-        path: path;
+    | Ident of {
+        ident: ident;
       }
     | Structure of {
         body: node;
@@ -2108,8 +2162,8 @@ module ModuleExpr = struct
   let view = fun module_expr ->
     match specific_node module_expr with
     | Some node when node_kind_is node Syntax_kind.PATH_MODULE_EXPR -> (
-        match Path.cast node with
-        | Node path -> Path { path }
+        match Ident.cast node with
+        | Node ident -> Ident { ident }
         | Unknown _
         | Error _ -> Unknown node
       )
@@ -2151,13 +2205,13 @@ module ModuleExpr = struct
     | Some node -> Node.first_child_token node ~kind:Syntax_kind.END_KW
     | None -> None
 
-  let fold_path_ident = fun module_expr ~init ~fn ->
+  let fold_ident_segment = fun module_expr ~init ~fn ->
     match view module_expr with
-    | Path { path } -> Path.fold_ident path ~init ~fn
+    | Ident { ident } -> Ident.fold_segment ident ~init ~fn
     | _ -> init
 
-  let for_each_path_ident = fun module_expr ~fn ->
-    fold_path_ident
+  let for_each_ident_segment = fun module_expr ~fn ->
+    fold_ident_segment
       module_expr
       ~init:()
       ~fn:(fun token () ->
@@ -2262,7 +2316,7 @@ module Expr: sig
         tag: token;
         payload: t option;
       }
-    | Ident of { path: path }
+    | Ident of { ident: ident }
     | Literal of {
         token: token;
       }
@@ -2287,6 +2341,12 @@ module Expr: sig
     | Unknown of Node.t
   val cast: Node.t -> t cast_result
 
+  val as_node: t -> Node.t
+
+  val kind: t -> Syntax_kind.t
+
+  val span: t -> Ceibo.Span.t
+
   val view: t -> view
 
   val literal_token: t -> token option
@@ -2295,13 +2355,25 @@ module Expr: sig
 
   val fold_child_expr: t -> init:'acc -> fn:(t -> 'acc -> 'acc control) -> 'acc
 
+  val child_expr_count: t -> int
+
   val for_each_child_expr: t -> fn:(t -> unit) -> unit
 
   val fold_match_case: t -> init:'acc -> fn:(match_case -> 'acc -> 'acc control) -> 'acc
 
+  val match_case_count: t -> int
+
   val for_each_match_case: t -> fn:(match_case -> unit) -> unit
+
+  val fold_parameter: t -> init:'acc -> fn:(parameter -> 'acc -> 'acc control) -> 'acc
 end = struct
   type t = expr
+
+  let as_node = fun (value: t) -> (value: node)
+
+  let kind = Node.kind
+
+  let span = Node.span
 
   type fun_body =
     | Body_expr of t
@@ -2380,7 +2452,7 @@ end = struct
         tag: token;
         payload: t option;
       }
-    | Ident of { path: path }
+    | Ident of { ident: ident }
     | Literal of {
         token: token;
       }
@@ -2443,13 +2515,13 @@ end = struct
 
   let record_expr_field_of_node = fun (field: record_expr_field) ->
     let normalize_value = normalize_expr_option in
-    let field_view = fun path value -> RecordExprField { path; value; node = field } in
+    let field_view = fun ident value -> RecordExprField { ident; value; node = field } in
     let unknown () = UnknownRecordExprField { node = field } in
     match (nth_expr_child field 0, nth_expr_child field 1) with
     | (Some expr, value) when node_kind_is expr Syntax_kind.PATH_EXPR ->
         (
-          match Path.cast expr with
-          | Node path -> field_view path (normalize_value value)
+          match Ident.cast expr with
+          | Node ident -> field_view ident (normalize_value value)
           | Unknown _
           | Error _ -> unknown ()
         )
@@ -2457,8 +2529,8 @@ end = struct
         match (nth_expr_child expr 0, nth_expr_child expr 1) with
         | (Some left, Some right) ->
             if node_kind_is left Syntax_kind.PATH_EXPR then
-              match Path.cast left with
-              | Node path -> field_view path (Some (normalize_expr_node right))
+              match Ident.cast left with
+              | Node ident -> field_view ident (Some (normalize_expr_node right))
               | Unknown _
               | Error _ -> unknown ()
             else
@@ -2467,8 +2539,8 @@ end = struct
       )
     | (Some expr, value) ->
         (
-          match Path.cast expr with
-          | Node path -> field_view path (normalize_value value)
+          match Ident.cast expr with
+          | Node ident -> field_view ident (normalize_value value)
           | Unknown _
           | Error _ -> unknown ()
         )
@@ -2672,7 +2744,7 @@ end = struct
           | Some tag -> PolyVariant { tag; payload = normalize_expr_option (first_expr_child expr) }
           | None -> Unknown expr
         )
-    | Syntax_kind.PATH_EXPR -> Ident { path = expr }
+    | Syntax_kind.PATH_EXPR -> Ident { ident = expr }
     | Syntax_kind.LITERAL_EXPR -> (
         match literal_token expr with
         | Some token -> Literal { token }
@@ -2708,6 +2780,8 @@ end = struct
       ~init
       ~fn:(fun child acc -> fn (normalize_expr_node child) acc)
 
+  let child_expr_count = fun expr -> count_fold fold_child_expr expr
+
   let for_each_child_expr = fun expr ~fn ->
     fold_child_expr
       expr
@@ -2723,6 +2797,8 @@ end = struct
       ~init
       ~fn
 
+  let match_case_count = fun expr -> count_fold fold_match_case expr
+
   let for_each_match_case = fun expr ~fn ->
     fold_match_case
       expr
@@ -2730,11 +2806,20 @@ end = struct
       ~fn:(fun case () ->
         fn case;
         Continue ())
+
+  let fold_parameter = fun (expr: expr) ~init ~fn ->
+    fold_child_node_matching
+      expr
+      ~matches:is_parameter_node_kind
+      ~init
+      ~fn:(fun parameter acc -> fn parameter acc)
 end
 
 module AttributeExpr: sig
   type t = expr
   val cast: expr -> t cast_result
+
+  val as_node: t -> Node.t
 
   val inner: t -> expr option
 
@@ -2743,6 +2828,8 @@ module AttributeExpr: sig
   val for_each_shell_token: t -> fn:(token -> unit) -> unit
 end = struct
   type t = expr
+
+  let as_node = fun (value: t) -> (value: node)
 
   let cast = fun (expr: expr) ->
     cast_kind expr Syntax_kind.ATTRIBUTE_EXPR
@@ -2758,11 +2845,15 @@ module ExtensionExpr: sig
   type t = expr
   val cast: expr -> t cast_result
 
+  val as_node: t -> Node.t
+
   val fold_shell_token: t -> init:'acc -> fn:(token -> 'acc -> 'acc control) -> 'acc
 
   val for_each_shell_token: t -> fn:(token -> unit) -> unit
 end = struct
   type t = expr
+
+  let as_node = fun (value: t) -> (value: node)
 
   let cast = fun (expr: expr) ->
     cast_kind expr Syntax_kind.EXTENSION_EXPR
@@ -2777,13 +2868,19 @@ module RecordExpr: sig
   type field = record_expr_field_view
   val cast: expr -> t cast_result
 
+  val as_node: t -> Node.t
+
   val base: t -> expr option
 
   val fold_field: t -> init:'acc -> fn:(field -> 'acc -> 'acc control) -> 'acc
 
+  val field_count: t -> int
+
   val for_each_field: t -> fn:(field -> unit) -> unit
 end = struct
   type t = expr
+
+  let as_node = fun (value: t) -> (value: node)
 
   type field = record_expr_field_view
 
@@ -2802,13 +2899,13 @@ end = struct
       None
 
   let field_of_node = fun (field: record_expr_field) ->
-    let field_view = fun path value -> RecordExprField { path; value; node = field } in
+    let field_view = fun ident value -> RecordExprField { ident; value; node = field } in
     let unknown () = UnknownRecordExprField { node = field } in
     match (nth_expr_child field 0, nth_expr_child field 1) with
     | (Some expr, value) when node_kind_is expr Syntax_kind.PATH_EXPR ->
         (
-          match Path.cast expr with
-          | Node path -> field_view path value
+          match Ident.cast expr with
+          | Node ident -> field_view ident value
           | Unknown _
           | Error _ -> unknown ()
         )
@@ -2816,8 +2913,8 @@ end = struct
         match (nth_expr_child expr 0, nth_expr_child expr 1) with
         | (Some left, Some right) ->
             if node_kind_is left Syntax_kind.PATH_EXPR then
-              match Path.cast left with
-              | Node path -> field_view path (Some right)
+              match Ident.cast left with
+              | Node ident -> field_view ident (Some right)
               | Unknown _
               | Error _ -> unknown ()
             else
@@ -2825,8 +2922,8 @@ end = struct
         | _ -> unknown ()
       )
     | (Some expr, value) -> (
-        match Path.cast expr with
-        | Node path -> field_view path value
+        match Ident.cast expr with
+        | Node ident -> field_view ident value
         | Unknown _
         | Error _ -> unknown ()
       )
@@ -2838,6 +2935,8 @@ end = struct
       ~matches:is_record_expr_field_kind
       ~init
       ~fn:(fun child acc -> fn (field_of_node child) acc)
+
+  let field_count = fun record -> count_fold fold_field record
 
   let for_each_field = fun record ~fn ->
     fold_field
@@ -2855,12 +2954,12 @@ module LocalOpenExpr: sig
         let_token: token;
         open_token: token;
         bang_token: token option;
-        module_path: path;
+        module_ident: ident;
         in_token: token;
         body: expr;
       }
     | Delimited of {
-        module_path: path;
+        module_ident: ident;
         dot_token: token;
         opening_token: token;
         body: expr;
@@ -2869,21 +2968,25 @@ module LocalOpenExpr: sig
     | Unknown of node
   val cast: expr -> t cast_result
 
+  val as_node: t -> Node.t
+
   val view: t -> view
 end = struct
   type t = expr
+
+  let as_node = fun (value: t) -> (value: node)
 
   type view =
     | LetOpen of {
         let_token: token;
         open_token: token;
         bang_token: token option;
-        module_path: path;
+        module_ident: ident;
         in_token: token;
         body: expr;
       }
     | Delimited of {
-        module_path: path;
+        module_ident: ident;
         dot_token: token;
         opening_token: token;
         body: expr;
@@ -2894,9 +2997,9 @@ end = struct
   let cast = fun (expr: expr) ->
     cast_kind expr Syntax_kind.LOCAL_OPEN_EXPR
 
-  let path_expr_child = fun expr index ->
+  let ident_expr_child = fun expr index ->
     match nth_expr_child expr index with
-    | Some child -> cast_result_to_option (Path.cast child)
+    | Some child -> cast_result_to_option (Ident.cast child)
     | None -> None
 
   let opening_token = fun expr ->
@@ -2936,31 +3039,31 @@ end = struct
       match (
         Node.first_child_token expr ~kind:Syntax_kind.LET_KW,
         Node.first_child_token expr ~kind:Syntax_kind.OPEN_KW,
-        path_expr_child expr 0,
+        ident_expr_child expr 0,
         Node.first_child_token expr ~kind:Syntax_kind.IN_KW,
         nth_expr_child expr 1
       ) with
-      | (Some let_token, Some open_token, Some module_path, Some in_token, Some body) ->
+      | (Some let_token, Some open_token, Some module_ident, Some in_token, Some body) ->
           LetOpen {
             let_token;
             open_token;
             bang_token = Node.first_child_token expr ~kind:Syntax_kind.BANG;
-            module_path;
+            module_ident;
             in_token;
             body;
           }
       | _ -> Unknown expr
     else
       match (
-        path_expr_child expr 0,
+        ident_expr_child expr 0,
         Node.first_child_token expr ~kind:Syntax_kind.DOT,
         opening_token expr,
         nth_expr_child expr 1,
         closing_token expr
       ) with
-      | (Some module_path, Some dot_token, Some opening_token, Some body, Some closing_token) ->
+      | (Some module_ident, Some dot_token, Some opening_token, Some body, Some closing_token) ->
           Delimited {
-            module_path;
+            module_ident;
             dot_token;
             opening_token;
             body;
@@ -2972,10 +3075,12 @@ end
 module LetModuleExpr: sig
   type t = expr
   type module_body =
-    | Path
+    | Ident
     | Struct
     | Unsupported
   val cast: expr -> t cast_result
+
+  val as_node: t -> Node.t
 
   val let_token: t -> token option
 
@@ -2993,18 +3098,20 @@ module LetModuleExpr: sig
 
   val body: t -> expr option
 
-  val fold_module_body_path_ident:
+  val fold_module_body_ident_segment:
     t ->
     init:'acc ->
     fn:(token -> 'acc -> 'acc control) ->
     'acc
 
-  val for_each_module_body_path_ident: t -> fn:(token -> unit) -> unit
+  val for_each_module_body_ident_segment: t -> fn:(token -> unit) -> unit
 end = struct
   type t = expr
 
+  let as_node = fun (value: t) -> (value: node)
+
   type module_body =
-    | Path
+    | Ident
     | Struct
     | Unsupported
 
@@ -3101,13 +3208,13 @@ end = struct
 
   let module_body = fun expr ->
     match module_body_node expr with
-    | Some node when node_kind_is node Syntax_kind.PATH_MODULE_EXPR -> Path
+    | Some node when node_kind_is node Syntax_kind.PATH_MODULE_EXPR -> Ident
     | Some node when node_kind_is node Syntax_kind.STRUCT_MODULE_EXPR -> Struct
     | _ -> Unsupported
 
   let body = first_expr_child
 
-  let fold_module_body_path_ident = fun expr ~init ~fn ->
+  let fold_module_body_ident_segment = fun expr ~init ~fn ->
     match module_body_node expr with
     | Some node when node_kind_is node Syntax_kind.PATH_MODULE_EXPR ->
         Node.fold_token
@@ -3120,8 +3227,8 @@ end = struct
               Continue acc)
     | _ -> init
 
-  let for_each_module_body_path_ident = fun expr ~fn ->
-    fold_module_body_path_ident
+  let for_each_module_body_ident_segment = fun expr ~fn ->
+    fold_module_body_ident_segment
       expr
       ~init:()
       ~fn:(fun token () ->
@@ -3132,6 +3239,8 @@ end
 module LetExceptionExpr: sig
   type t = expr
   val cast: expr -> t cast_result
+
+  val as_node: t -> Node.t
 
   val let_token: t -> token option
 
@@ -3147,9 +3256,13 @@ module LetExceptionExpr: sig
 
   val fold_payload_token: t -> init:'acc -> fn:(token -> 'acc -> 'acc control) -> 'acc
 
+  val payload_token_count: t -> int
+
   val for_each_payload_token: t -> fn:(token -> unit) -> unit
 end = struct
   type t = expr
+
+  let as_node = fun (value: t) -> (value: node)
 
   let cast = fun (expr: expr) ->
     cast_kind expr Syntax_kind.LET_EXCEPTION_EXPR
@@ -3226,6 +3339,8 @@ end = struct
         in
         loop start init
 
+  let payload_token_count = fun expr -> count_fold fold_payload_token expr
+
   let for_each_payload_token = fun expr ~fn ->
     fold_payload_token
       expr
@@ -3239,9 +3354,13 @@ module UnreachableExpr: sig
   type t = expr
   val cast: expr -> t cast_result
 
+  val as_node: t -> Node.t
+
   val dot_token: t -> token option
 end = struct
   type t = expr
+
+  let as_node = fun (value: t) -> (value: node)
 
   let cast = fun (expr: expr) ->
     cast_kind expr Syntax_kind.UNREACHABLE_EXPR
@@ -3251,14 +3370,16 @@ end
 
 module FirstClassModuleExpr: sig
   type t = expr
-  type module_path =
-    | ModulePath
-    | UnsupportedModulePath
+  type module_ident =
+    | ModuleIdent
+    | UnsupportedModuleIdent
   type ascription =
     | NoAscription
-    | PathAscription
+    | IdentAscription
     | UnsupportedAscription
   val cast: expr -> t cast_result
+
+  val as_node: t -> Node.t
 
   val opening_token: t -> token option
 
@@ -3268,35 +3389,41 @@ module FirstClassModuleExpr: sig
 
   val closing_token: t -> token option
 
-  val module_path: t -> module_path
+  val module_ident: t -> module_ident
 
   val ascription: t -> ascription
 
-  val fold_module_path_ident:
+  val fold_module_ident_segment:
     t ->
     init:'acc ->
     fn:(token -> 'acc -> 'acc control) ->
     'acc
 
-  val for_each_module_path_ident: t -> fn:(token -> unit) -> unit
+  val module_ident_segment_count: t -> int
 
-  val fold_ascription_path_ident:
+  val for_each_module_ident_ident: t -> fn:(token -> unit) -> unit
+
+  val fold_ascription_ident_segment:
     t ->
     init:'acc ->
     fn:(token -> 'acc -> 'acc control) ->
     'acc
 
-  val for_each_ascription_path_ident: t -> fn:(token -> unit) -> unit
+  val ascription_ident_segment_count: t -> int
+
+  val for_each_ascription_ident_segment: t -> fn:(token -> unit) -> unit
 end = struct
   type t = expr
 
-  type module_path =
-    | ModulePath
-    | UnsupportedModulePath
+  let as_node = fun (value: t) -> (value: node)
+
+  type module_ident =
+    | ModuleIdent
+    | UnsupportedModuleIdent
 
   type ascription =
     | NoAscription
-    | PathAscription
+    | IdentAscription
     | UnsupportedAscription
 
   let cast = fun (expr: expr) ->
@@ -3322,7 +3449,7 @@ end = struct
     in
     loop from
 
-  let range_is_path = fun expr start stop ->
+  let range_is_ident = fun expr start stop ->
     let rec loop index saw_ident expect_ident =
       if index >= stop then
         saw_ident && not expect_ident
@@ -3336,7 +3463,7 @@ end = struct
     in
     loop start false true
 
-  let module_path_bounds = fun expr ->
+  let module_ident_bounds = fun expr ->
     match token_index expr ~from:0 ~matches:(fun kind -> Syntax_kind.(kind = MODULE_KW)) with
     | None -> None
     | Some module_index ->
@@ -3355,15 +3482,15 @@ end = struct
         token_index expr ~from:start ~matches:(fun kind -> Syntax_kind.(kind = RPAREN))
         |> Option.map ~fn:(fun stop -> (start, stop))
 
-  let module_path = fun expr ->
-    match module_path_bounds expr with
-    | Some (start, stop) when range_is_path expr start stop -> ModulePath
-    | _ -> UnsupportedModulePath
+  let module_ident = fun expr ->
+    match module_ident_bounds expr with
+    | Some (start, stop) when range_is_ident expr start stop -> ModuleIdent
+    | _ -> UnsupportedModuleIdent
 
   let ascription = fun expr ->
     match (colon_token expr, ascription_bounds expr) with
     | (None, _) -> NoAscription
-    | (Some _, Some (start, stop)) when range_is_path expr start stop -> PathAscription
+    | (Some _, Some (start, stop)) when range_is_ident expr start stop -> IdentAscription
     | (Some _, _) -> UnsupportedAscription
 
   let fold_ident_in_range = fun expr start stop ~init ~fn ->
@@ -3381,28 +3508,32 @@ end = struct
     in
     loop start init
 
-  let fold_module_path_ident = fun expr ~init ~fn ->
-    match module_path_bounds expr with
-    | Some (start, stop) when range_is_path expr start stop ->
+  let fold_module_ident_segment = fun expr ~init ~fn ->
+    match module_ident_bounds expr with
+    | Some (start, stop) when range_is_ident expr start stop ->
         fold_ident_in_range expr start stop ~init ~fn
     | _ -> init
 
-  let for_each_module_path_ident = fun expr ~fn ->
-    fold_module_path_ident
+  let module_ident_segment_count = fun expr -> count_fold fold_module_ident_segment expr
+
+  let for_each_module_ident_ident = fun expr ~fn ->
+    fold_module_ident_segment
       expr
       ~init:()
       ~fn:(fun token () ->
         fn token;
         Continue ())
 
-  let fold_ascription_path_ident = fun expr ~init ~fn ->
+  let fold_ascription_ident_segment = fun expr ~init ~fn ->
     match ascription_bounds expr with
-    | Some (start, stop) when range_is_path expr start stop ->
+    | Some (start, stop) when range_is_ident expr start stop ->
         fold_ident_in_range expr start stop ~init ~fn
     | _ -> init
 
-  let for_each_ascription_path_ident = fun expr ~fn ->
-    fold_ascription_path_ident
+  let ascription_ident_segment_count = fun expr -> count_fold fold_ascription_ident_segment expr
+
+  let for_each_ascription_ident_segment = fun expr ~fn ->
+    fold_ascription_ident_segment
       expr
       ~init:()
       ~fn:(fun token () ->
@@ -3419,15 +3550,21 @@ module BindingOperatorExpr: sig
   }
   val cast: expr -> t cast_result
 
+  val as_node: t -> Node.t
+
   val in_token: t -> Token.t option
 
   val body: t -> expr option
 
   val fold_clause: t -> init:'acc -> fn:(clause -> 'acc -> 'acc control) -> 'acc
 
+  val clause_count: t -> int
+
   val for_each_clause: t -> fn:(clause -> unit) -> unit
 end = struct
   type t = expr
+
+  let as_node = fun (value: t) -> (value: node)
 
   type clause = {
     keyword: Token.t option;
@@ -3476,6 +3613,8 @@ end = struct
     in
     loop 0 None None init
 
+  let clause_count = fun expr -> count_fold fold_clause expr
+
   let for_each_clause = fun expr ~fn ->
     fold_clause
       expr
@@ -3490,9 +3629,9 @@ module Pattern: sig
   type view =
     | Unit
     | Wildcard
-    | Ident of { path: path }
+    | Ident of { ident: ident }
     | Construct of {
-        constructor: path;
+        constructor: ident;
         payload: t option;
       }
     | Literal of {
@@ -3518,7 +3657,7 @@ module Pattern: sig
     | FirstClassModule of {
         binder: token;
         ascription: first_class_module_pattern_ascription;
-        ascription_path: token Vector.t;
+        ascription_ident: token Vector.t;
       }
     | Interval of {
         left: t;
@@ -3550,6 +3689,14 @@ module Pattern: sig
     | Unknown of Node.t
   val cast: Node.t -> t cast_result
 
+  val as_node: t -> Node.t
+
+  val kind: t -> Syntax_kind.t
+
+  val span: t -> Ceibo.Span.t
+
+  val text: t -> string
+
   val view: t -> view
 
   val literal_token: t -> token option
@@ -3558,16 +3705,26 @@ module Pattern: sig
 
   val fold_child_pattern: t -> init:'acc -> fn:(t -> 'acc -> 'acc control) -> 'acc
 
+  val child_pattern_count: t -> int
+
   val for_each_child_pattern: t -> fn:(t -> unit) -> unit
 end = struct
   type t = pattern
 
+  let as_node = fun (value: t) -> (value: node)
+
+  let kind = Node.kind
+
+  let span = Node.span
+
+  let text = Node.text
+
   type view =
     | Unit
     | Wildcard
-    | Ident of { path: path }
+    | Ident of { ident: ident }
     | Construct of {
-        constructor: path;
+        constructor: ident;
         payload: t option;
       }
     | Literal of {
@@ -3593,7 +3750,7 @@ end = struct
     | FirstClassModule of {
         binder: token;
         ascription: first_class_module_pattern_ascription;
-        ascription_path: token Vector.t;
+        ascription_ident: token Vector.t;
       }
     | Interval of {
         left: t;
@@ -3652,8 +3809,8 @@ end = struct
       ~fn:(fun child -> Vector.push items ~value:(normalize_pattern_node child));
     items
 
-  let path_is_constructor = fun path ->
-    match last_ident_token path with
+  let ident_is_constructor = fun ident ->
+    match last_ident_token ident with
     | None -> false
     | Some ident ->
         let text = Token.text ident in
@@ -3678,10 +3835,10 @@ end = struct
       )
     | Syntax_kind.WILDCARD_PATTERN -> Wildcard
     | Syntax_kind.PATH_PATTERN ->
-        if path_is_constructor pattern then
+        if ident_is_constructor pattern then
           Construct { constructor = pattern; payload = None }
         else
-          Ident { path = pattern }
+          Ident { ident = pattern }
     | Syntax_kind.CONSTRUCT_PATTERN -> (
         let callee = nth_pattern_child pattern 0 in
         let payload = normalize_pattern_option (nth_pattern_child pattern 1) in
@@ -3689,7 +3846,7 @@ end = struct
         | Some callee -> (
             match view callee with
             | Construct { constructor; payload = None } -> Construct { constructor; payload }
-            | Ident { path } -> Construct { constructor = path; payload }
+            | Ident { ident } -> Construct { constructor = ident; payload }
             | _ -> Unknown pattern
           )
         | None -> Unknown pattern
@@ -3725,7 +3882,7 @@ end = struct
             FirstClassModule {
               binder;
               ascription = first_class_module_pattern_ascription pattern;
-              ascription_path = first_class_module_pattern_ascription_path pattern;
+              ascription_ident = first_class_module_pattern_ascription_ident pattern;
             }
         | None -> Unknown pattern
       )
@@ -3792,6 +3949,8 @@ end = struct
       ~init
       ~fn:(fun child acc -> fn (normalize_pattern_node child) acc)
 
+  let child_pattern_count = fun pattern -> count_fold fold_child_pattern pattern
+
   let for_each_child_pattern = fun pattern ~fn ->
     fold_child_pattern
       pattern
@@ -3805,6 +3964,8 @@ module AttributePattern: sig
   type t = pattern
   val cast: pattern -> t cast_result
 
+  val as_node: t -> Node.t
+
   val inner: t -> pattern option
 
   val fold_shell_token: t -> init:'acc -> fn:(token -> 'acc -> 'acc control) -> 'acc
@@ -3812,6 +3973,8 @@ module AttributePattern: sig
   val for_each_shell_token: t -> fn:(token -> unit) -> unit
 end = struct
   type t = pattern
+
+  let as_node = fun (value: t) -> (value: node)
 
   let cast = fun (pattern: pattern) ->
     cast_kind pattern Syntax_kind.ATTRIBUTE_PATTERN
@@ -3827,11 +3990,15 @@ module ExtensionPattern: sig
   type t = pattern
   val cast: pattern -> t cast_result
 
+  val as_node: t -> Node.t
+
   val fold_shell_token: t -> init:'acc -> fn:(token -> 'acc -> 'acc control) -> 'acc
 
   val for_each_shell_token: t -> fn:(token -> unit) -> unit
 end = struct
   type t = pattern
+
+  let as_node = fun (value: t) -> (value: node)
 
   let cast = fun (pattern: pattern) ->
     cast_kind pattern Syntax_kind.EXTENSION_PATTERN
@@ -3845,6 +4012,8 @@ module LocallyAbstractTypePattern: sig
   type t = pattern
   val cast: pattern -> t cast_result
 
+  val as_node: t -> Node.t
+
   val opening_token: t -> token option
 
   val type_token: t -> token option
@@ -3856,6 +4025,8 @@ module LocallyAbstractTypePattern: sig
   val for_each_type_name: t -> fn:(token -> unit) -> unit
 end = struct
   type t = pattern
+
+  let as_node = fun (value: t) -> (value: node)
 
   let cast = fun (pattern: pattern) ->
     cast_kind pattern Syntax_kind.LOCALLY_ABSTRACT_TYPE_PATTERN
@@ -3889,9 +4060,11 @@ module FirstClassModulePattern: sig
   type t = pattern
   type ascription = first_class_module_pattern_ascription =
     | NoAscription
-    | PathAscription
+    | IdentAscription
     | UnsupportedAscription
   val cast: pattern -> t cast_result
+
+  val as_node: t -> Node.t
 
   val opening_token: t -> token option
 
@@ -3905,19 +4078,21 @@ module FirstClassModulePattern: sig
 
   val ascription: t -> ascription
 
-  val fold_ascription_path_ident:
+  val fold_ascription_ident_segment:
     t ->
     init:'acc ->
     fn:(token -> 'acc -> 'acc control) ->
     'acc
 
-  val for_each_ascription_path_ident: t -> fn:(token -> unit) -> unit
+  val for_each_ascription_ident_segment: t -> fn:(token -> unit) -> unit
 end = struct
   type t = pattern
 
+  let as_node = fun (value: t) -> (value: node)
+
   type ascription = first_class_module_pattern_ascription =
     | NoAscription
-    | PathAscription
+    | IdentAscription
     | UnsupportedAscription
 
   let cast = fun (pattern: pattern) ->
@@ -3950,14 +4125,14 @@ end = struct
     in
     loop start init
 
-  let fold_ascription_path_ident = fun pattern ~init ~fn ->
+  let fold_ascription_ident_segment = fun pattern ~init ~fn ->
     match first_class_module_pattern_ascription_bounds pattern with
-    | Some (start, stop) when first_class_module_pattern_range_is_path pattern start stop ->
+    | Some (start, stop) when first_class_module_pattern_range_is_ident pattern start stop ->
         fold_ident_in_range pattern start stop ~init ~fn
     | _ -> init
 
-  let for_each_ascription_path_ident = fun pattern ~fn ->
-    fold_ascription_path_ident
+  let for_each_ascription_ident_segment = fun pattern ~fn ->
+    fold_ascription_ident_segment
       pattern
       ~init:()
       ~fn:(fun token () ->
@@ -3970,13 +4145,19 @@ module RecordPattern: sig
   type field = record_pattern_field_view
   val cast: pattern -> t cast_result
 
+  val as_node: t -> Node.t
+
   val open_wildcard: t -> Token.t option
 
   val fold_field: t -> init:'acc -> fn:(field -> 'acc -> 'acc control) -> 'acc
 
+  val field_count: t -> int
+
   val for_each_field: t -> fn:(field -> unit) -> unit
 end = struct
   type t = pattern
+
+  let as_node = fun (value: t) -> (value: node)
 
   type field = record_pattern_field_view
 
@@ -3998,6 +4179,8 @@ end = struct
             returned := true);
     !acc
 
+  let field_count = fun record -> count_fold fold_field record
+
   let for_each_field = fun record ~fn ->
     fold_field
       record
@@ -4011,7 +4194,7 @@ module LocalOpenPattern: sig
   type t = pattern
   type view =
     | Delimited of {
-        module_path: token Vector.t;
+        module_ident: token Vector.t;
         dot_token: token;
         opening_token: token;
         pattern: pattern;
@@ -4019,6 +4202,12 @@ module LocalOpenPattern: sig
       }
     | Unknown of node
   val cast: pattern -> t cast_result
+
+  val as_node: t -> Node.t
+
+  val kind: t -> Syntax_kind.t
+
+  val span: t -> Ceibo.Span.t
 
   val view: t -> view
 
@@ -4030,18 +4219,25 @@ module LocalOpenPattern: sig
 
   val pattern: t -> pattern option
 
-  val fold_module_path_ident:
+  val fold_module_ident_segment:
     t ->
     init:'acc ->
     fn:(token -> 'acc -> 'acc control) ->
     'acc
 
-  val for_each_module_path_ident: t -> fn:(token -> unit) -> unit
+  val for_each_module_ident_ident: t -> fn:(token -> unit) -> unit
 end = struct
   type t = pattern
+
+  let as_node = fun (value: t) -> (value: node)
+
+  let kind = Node.kind
+
+  let span = Node.span
+
   type view =
     | Delimited of {
-        module_path: token Vector.t;
+        module_ident: token Vector.t;
         dot_token: token;
         opening_token: token;
         pattern: pattern;
@@ -4082,8 +4278,8 @@ end = struct
 
   let pattern = first_pattern_child
 
-  let module_path = fun pattern ->
-    let path = Vector.with_capacity ~size:(Node.child_count pattern) in
+  let module_ident = fun pattern ->
+    let ident = Vector.with_capacity ~size:(Node.child_count pattern) in
     let child_count = Node.child_count pattern in
     let rec loop index =
       if index >= child_count then
@@ -4096,22 +4292,22 @@ end = struct
         || token_kind_is token Syntax_kind.LBRACKET_BAR -> ()
         | Some token ->
             if token_kind_is token Syntax_kind.IDENT then
-              Vector.push path ~value:token;
+              Vector.push ident ~value:token;
             loop (index + 1)
         | None -> loop (index + 1)
     in
     loop 0;
-    path
+    ident
 
   let view = fun pattern ->
     match (dot_token pattern, opening_token pattern, first_pattern_child pattern, closing_token pattern) with
     | (Some dot_token, Some opening_token, Some body, Some closing_token) ->
-        let module_path = module_path pattern in
-        if Vector.is_empty module_path then
+        let module_ident = module_ident pattern in
+        if Vector.is_empty module_ident then
           Unknown pattern
         else
           Delimited {
-            module_path;
+            module_ident;
             dot_token;
             opening_token;
             pattern = body;
@@ -4119,11 +4315,11 @@ end = struct
           }
     | _ -> Unknown pattern
 
-  let fold_module_path_ident = fun pattern ~init ~fn ->
+  let fold_module_ident_segment = fun pattern ~init ~fn ->
     let acc = ref init in
     let returned = ref false in
     Vector.for_each
-      (module_path pattern)
+      (module_ident pattern)
       ~fn:(fun token ->
         if not !returned then
           match fn token !acc with
@@ -4133,8 +4329,8 @@ end = struct
               returned := true);
     !acc
 
-  let for_each_module_path_ident = fun pattern ~fn ->
-    fold_module_path_ident
+  let for_each_module_ident_ident = fun pattern ~fn ->
+    fold_module_ident_segment
       pattern
       ~init:()
       ~fn:(fun token () ->
@@ -4161,6 +4357,12 @@ module Parameter: sig
     | Unknown of Node.t
   val cast: Node.t -> t cast_result
 
+  val as_node: t -> Node.t
+
+  val kind: t -> Syntax_kind.t
+
+  val span: t -> Ceibo.Span.t
+
   val view: t -> view
 
   val label: t -> label
@@ -4174,6 +4376,12 @@ module Parameter: sig
   val has_explicit_pattern_parens: t -> bool
 end = struct
   type t = parameter
+
+  let as_node = fun (value: t) -> (value: node)
+
+  let kind = Node.kind
+
+  let span = Node.span
 
   type label =
     | NoLabel
@@ -4269,6 +4477,12 @@ module MatchCase: sig
     | Unknown of Node.t
   val cast: Node.t -> t cast_result
 
+  val as_node: t -> Node.t
+
+  val kind: t -> Syntax_kind.t
+
+  val span: t -> Ceibo.Span.t
+
   val view: t -> view
 
   val pattern: t -> pattern option
@@ -4278,6 +4492,12 @@ module MatchCase: sig
   val body: t -> expr option
 end = struct
   type t = match_case
+
+  let as_node = fun (value: t) -> (value: node)
+
+  let kind = Node.kind
+
+  let span = Node.span
 
   type view =
     | Case of {
@@ -4325,6 +4545,12 @@ module LetBinding: sig
     | Unknown of Node.t
   val cast: Node.t -> t cast_result
 
+  val as_node: t -> Node.t
+
+  val kind: t -> Syntax_kind.t
+
+  val span: t -> Ceibo.Span.t
+
   val view: t -> view
 
   val pattern: t -> pattern option
@@ -4333,11 +4559,21 @@ module LetBinding: sig
 
   val fold_parameter: t -> init:'acc -> fn:(parameter -> 'acc -> 'acc control) -> 'acc
 
+  val parameter_count: t -> int
+
   val for_each_parameter: t -> fn:(parameter -> unit) -> unit
+
+  val return_type_annotation: t -> type_expr option
 
   val type_annotation: t -> type_expr option
 end = struct
   type t = let_binding
+
+  let as_node = fun (value: t) -> (value: node)
+
+  let kind = Node.kind
+
+  let span = Node.span
 
   type view =
     | Binding of {
@@ -4394,6 +4630,8 @@ end = struct
           Continue acc
         ))
 
+  let parameter_count = fun binding -> count_fold fold_parameter binding
+
   let for_each_parameter = fun binding ~fn ->
     fold_parameter
       binding
@@ -4424,6 +4662,8 @@ end = struct
               seen_binding_pattern := true);
     !found
 
+  let return_type_annotation = direct_binding_return_annotation
+
   let type_annotation = fun (binding: let_binding) ->
     match direct_binding_return_annotation binding with
     | Some annotation -> Some annotation
@@ -4440,6 +4680,12 @@ end
 
 module LetDeclaration = struct
   type t = let_declaration
+
+  let as_node = fun (value: t) -> (value: node)
+
+  let kind = Node.kind
+
+  let span = Node.span
 
   let cast = fun (node: node) ->
     cast_kind node Syntax_kind.LET_DECL
@@ -4458,6 +4704,8 @@ module LetDeclaration = struct
       ~init
       ~fn
 
+  let binding_count = fun decl -> count_fold fold_binding decl
+
   let for_each_binding = fun decl ~fn ->
     fold_binding
       decl
@@ -4469,6 +4717,10 @@ end
 
 module TypeDeclaration = struct
   type t = type_declaration
+
+  let as_node = fun (value: t) -> (value: node)
+
+  let kind = Node.kind
 
   type member = { declaration: type_declaration; node: node; start_index: int; stop_index: int }
 
@@ -4683,6 +4935,8 @@ module TypeDeclaration = struct
         fn parameter;
         Continue ())
 
+  let parameter_count = fun decl -> count_fold fold_parameter decl
+
   let manifest = fun decl -> find_node_in (member_or_decl decl) 0 ~matches:is_type_expr_kind
 
   module Member = struct
@@ -4693,6 +4947,9 @@ module TypeDeclaration = struct
     let start_index = fun member -> member.start_index
 
     let stop_index = fun member -> member.stop_index
+
+    let covers_declaration = fun member ->
+      Int.equal member.start_index 0 && Int.equal member.stop_index (Node.child_count member.declaration)
 
     let child_count = fun member -> Node.child_count member.node
 
@@ -4900,6 +5157,8 @@ module TypeDeclaration = struct
           fn parameter;
           Continue ())
 
+    let parameter_count = fun member -> count_fold fold_parameter member
+
     let manifest = fun member -> find_node_in member.node 0 ~matches:is_type_expr_kind
   end
 
@@ -4949,6 +5208,8 @@ module TypeDeclaration = struct
               returned := true);
     !acc
 
+  let member_count = fun decl -> count_fold fold_member decl
+
   let fold_members = fun decl init fn ->
     fold_member
       decl
@@ -4958,6 +5219,12 @@ end
 
 module TypeExtensionDeclaration = struct
   type t = type_extension_declaration
+
+  let as_node = fun (value: t) -> (value: node)
+
+  let kind = Node.kind
+
+  let span = Node.span
 
   type parameter = TypeDeclaration.parameter =
     | Named of {
@@ -5108,6 +5375,8 @@ module TypeExtensionDeclaration = struct
         fn parameter;
         Continue ())
 
+  let parameter_count = fun decl -> count_fold fold_parameter decl
+
   let fold_name_ident = fun decl ~init ~fn ->
     match head_node decl with
     | None -> init
@@ -5162,6 +5431,8 @@ module TypeExtensionDeclaration = struct
       ~fn:(fun token () ->
         fn token;
         Continue ())
+
+  let name_ident_count = fun decl -> count_fold fold_name_ident decl
 
   let name = fun decl ->
     let found = ref None in
@@ -5218,6 +5489,8 @@ let last_non_attribute_suffix_token_index = fun node ->
 
 module ModuleDeclaration = struct
   type t = module_declaration
+
+  let as_node = fun (value: t) -> (value: node)
 
   type member = { declaration: module_declaration; node: node; start_index: int; stop_index: int }
 
@@ -5462,6 +5735,8 @@ module ModuleDeclaration = struct
               returned := true);
     !acc
 
+  let member_count = fun decl -> count_fold fold_member decl
+
   let fold_members = fun decl init fn ->
     fold_member
       decl
@@ -5570,14 +5845,14 @@ module ModuleDeclaration = struct
         | None -> None
       )
 
-  let fold_body_path_ident = fun decl ~init ~fn ->
+  let fold_body_ident_segment = fun decl ~init ~fn ->
     match body decl with
-    | Expr { body } -> ModuleExpr.fold_path_ident body ~init ~fn
-    | Type { body } -> ModuleTypeExpr.fold_path_ident body ~init ~fn
+    | Expr { body } -> ModuleExpr.fold_ident_segment body ~init ~fn
+    | Type { body } -> ModuleTypeExpr.fold_ident_segment body ~init ~fn
     | _ -> init
 
-  let for_each_body_path_ident = fun decl ~fn ->
-    fold_body_path_ident
+  let for_each_body_ident_segment = fun decl ~fn ->
+    fold_body_ident_segment
       decl
       ~init:()
       ~fn:(fun token () ->
@@ -5598,17 +5873,17 @@ module ModuleDeclaration = struct
     | Some _ -> true
     | None -> false
 
-  let fold_typeof_body_path_ident = fun decl ~init ~fn ->
+  let fold_typeof_body_ident_segment = fun decl ~init ~fn ->
     match body decl with
     | Type { body } -> (
         match ModuleTypeExpr.view body with
-        | ModuleTypeExpr.Typeof { body = Some body } -> ModuleExpr.fold_path_ident body ~init ~fn
+        | ModuleTypeExpr.Typeof { body = Some body } -> ModuleExpr.fold_ident_segment body ~init ~fn
         | _ -> init
       )
     | _ -> init
 
-  let for_each_typeof_body_path_ident = fun decl ~fn ->
-    fold_typeof_body_path_ident
+  let for_each_typeof_body_ident_segment = fun decl ~fn ->
+    fold_typeof_body_ident_segment
       decl
       ~init:()
       ~fn:(fun token () ->
@@ -5633,6 +5908,8 @@ module ModuleDeclaration = struct
         fn item;
         Continue ())
 
+  let structure_item_count = fun decl -> count_fold fold_structure_item decl
+
   let fold_signature_item = fun decl ~init ~fn ->
     match signature_body_node decl with
     | Some node ->
@@ -5650,6 +5927,8 @@ module ModuleDeclaration = struct
       ~fn:(fun item () ->
         fn item;
         Continue ())
+
+  let signature_item_count = fun decl -> count_fold fold_signature_item decl
 
   let fold_sig_body_token = fun decl ~init ~fn ->
     match signature_body_node decl with
@@ -5703,6 +5982,8 @@ end
 
 module ModuleTypeDeclaration = struct
   type t = module_type_declaration
+
+  let as_node = fun (value: t) -> (value: node)
 
   type body =
     | Abstract
@@ -5790,7 +6071,7 @@ module ModuleTypeDeclaration = struct
     | Some node -> Node.first_child_token node ~kind:Syntax_kind.END_KW
     | None -> None
 
-  let fold_body_path_ident = fun decl ~init ~fn ->
+  let fold_body_ident_segment = fun decl ~init ~fn ->
     match body_specific_node decl with
     | Some node when node_kind_is node Syntax_kind.PATH_MODULE_TYPE ->
         Node.fold_token
@@ -5803,8 +6084,8 @@ module ModuleTypeDeclaration = struct
               Continue acc)
     | _ -> init
 
-  let for_each_body_path_ident = fun decl ~fn ->
-    fold_body_path_ident
+  let for_each_body_ident_segment = fun decl ~fn ->
+    fold_body_ident_segment
       decl
       ~init:()
       ~fn:(fun token () ->
@@ -5828,6 +6109,8 @@ module ModuleTypeDeclaration = struct
       ~fn:(fun item () ->
         fn item;
         Continue ())
+
+  let signature_item_count = fun decl -> count_fold fold_signature_item decl
 
   let fold_sig_body_token = fun decl ~init ~fn ->
     match signature_body_node decl with
@@ -5904,6 +6187,8 @@ module ModuleTypeDeclaration = struct
             else
               Continue acc)
 
+  let constraint_count = fun decl -> count_fold fold_constraint decl
+
   let for_each_constraint = fun decl ~fn ->
     fold_constraint
       decl
@@ -5916,14 +6201,16 @@ end
 module ModuleTypeConstraint = struct
   type t = module_type_constraint
 
+  let as_node = fun (value: t) -> (value: node)
+
   type view =
     | Type of {
-        path: path;
+        ident: ident;
         operator: token;
         body: type_expr;
       }
     | Module of {
-        path: path;
+        ident: ident;
         operator: token;
         body: node;
       }
@@ -5940,9 +6227,9 @@ module ModuleTypeConstraint = struct
         node
         ~expected:Syntax_kind.[WITH_TYPE_CONSTRAINT; WITH_MODULE_CONSTRAINT]
 
-  let type_path = fun constraint_ ->
-    match first_child_node_matching constraint_ ~matches:is_path_kind with
-    | Some node -> cast_result_to_option (Path.cast node)
+  let type_ident = fun constraint_ ->
+    match first_child_node_matching constraint_ ~matches:is_ident_kind with
+    | Some node -> cast_result_to_option (Ident.cast node)
     | None -> None
 
   let type_body = fun constraint_ ->
@@ -5950,9 +6237,9 @@ module ModuleTypeConstraint = struct
     | Some node -> cast_result_to_option (TypeExpr.cast node)
     | None -> None
 
-  let module_path = fun constraint_ ->
-    match first_child_node_matching constraint_ ~matches:is_path_kind with
-    | Some node -> cast_result_to_option (Path.cast node)
+  let module_ident = fun constraint_ ->
+    match first_child_node_matching constraint_ ~matches:is_ident_kind with
+    | Some node -> cast_result_to_option (Ident.cast node)
     | None -> None
 
   let module_body = fun constraint_ ->
@@ -5973,12 +6260,12 @@ module ModuleTypeConstraint = struct
 
   let view = fun (constraint_: t) ->
     if node_kind_is constraint_ Syntax_kind.WITH_TYPE_CONSTRAINT then
-      match (type_path constraint_, type_operator constraint_, type_body constraint_) with
-      | (Some path, Some operator, Some body) -> Type { path; operator; body }
+      match (type_ident constraint_, type_operator constraint_, type_body constraint_) with
+      | (Some ident, Some operator, Some body) -> Type { ident; operator; body }
       | _ -> Unknown constraint_
     else if node_kind_is constraint_ Syntax_kind.WITH_MODULE_CONSTRAINT then
-      match (module_path constraint_, module_operator constraint_, module_body constraint_) with
-      | (Some path, Some operator, Some body) -> Module { path; operator; body }
+      match (module_ident constraint_, module_operator constraint_, module_body constraint_) with
+      | (Some ident, Some operator, Some body) -> Module { ident; operator; body }
       | _ -> Unknown constraint_
     else
       Unknown constraint_
@@ -5987,16 +6274,18 @@ end
 module OpenDeclaration = struct
   type t = open_declaration
 
+  let as_node = fun (value: t) -> (value: node)
+
   let cast = fun (node: node) ->
     cast_kind node Syntax_kind.OPEN_DECL
 
-  let path_text = Node.text
+  let ident_text = Node.text
 
-  let first_path_ident = first_ident_token
+  let first_ident_segment = first_ident_token
 
-  let last_path_ident = last_ident_token
+  let last_ident_segment = last_ident_token
 
-  let fold_path_ident = fun decl ~init ~fn ->
+  let fold_ident_segment = fun decl ~init ~fn ->
     Node.fold_child_token
       decl
       ~init
@@ -6006,8 +6295,8 @@ module OpenDeclaration = struct
         else
           Continue acc)
 
-  let for_each_path_ident = fun decl ~fn ->
-    fold_path_ident
+  let for_each_ident_segment = fun decl ~fn ->
+    fold_ident_segment
       decl
       ~init:()
       ~fn:(fun token () ->
@@ -6018,10 +6307,12 @@ end
 module IncludeDeclaration = struct
   type t = include_declaration
 
+  let as_node = fun (value: t) -> (value: node)
+
   let cast = fun (node: node) ->
     cast_kind node Syntax_kind.INCLUDE_DECL
 
-  let path_text = Node.text
+  let ident_text = Node.text
 
   let first_specific_body = fun decl ->
     let rec find_body index =
@@ -6053,17 +6344,17 @@ module IncludeDeclaration = struct
 
   let body_node = first_specific_body
 
-  let first_path_ident = fun decl ->
+  let first_ident_segment = fun decl ->
     match first_specific_body decl with
     | Some node -> first_ident_token node
     | None -> None
 
-  let last_path_ident = fun decl ->
+  let last_ident_segment = fun decl ->
     match first_specific_body decl with
     | Some node -> last_ident_token node
     | None -> None
 
-  let fold_path_ident = fun decl ~init ~fn ->
+  let fold_ident_segment = fun decl ~init ~fn ->
     match first_specific_body decl with
     | Some node ->
         Node.fold_token
@@ -6076,8 +6367,8 @@ module IncludeDeclaration = struct
               Continue acc)
     | None -> init
 
-  let for_each_path_ident = fun decl ~fn ->
-    fold_path_ident
+  let for_each_ident_segment = fun decl ~fn ->
+    fold_ident_segment
       decl
       ~init:()
       ~fn:(fun token () ->
@@ -6118,6 +6409,8 @@ let for_each_declaration_name_token = fun decl ~keyword ~fn ->
 module ValueDeclaration = struct
   type t = value_declaration
 
+  let as_node = fun (value: t) -> (value: node)
+
   type view =
     | Value of {
         name: Token.t Vector.t;
@@ -6149,6 +6442,8 @@ module ValueDeclaration = struct
       ~fn:(fun token () ->
         fn token;
         Continue ())
+
+  let name_token_count = fun decl -> count_fold fold_name_token decl
 
   let name_tokens = fun decl ->
     let tokens = Vector.with_capacity ~size:(Node.child_count decl) in
@@ -6192,6 +6487,8 @@ end
 module ExternalDeclaration = struct
   type t = external_declaration
 
+  let as_node = fun (value: t) -> (value: node)
+
   type view =
     | External of {
         name: Token.t Vector.t;
@@ -6229,6 +6526,8 @@ module ExternalDeclaration = struct
         fn token;
         Continue ())
 
+  let name_token_count = fun decl -> count_fold fold_name_token decl
+
   let name_tokens = fun decl ->
     let tokens = Vector.with_capacity ~size:(Node.child_count decl) in
     for_each_name_token decl ~fn:(fun token -> Vector.push tokens ~value:token);
@@ -6251,6 +6550,8 @@ module ExternalDeclaration = struct
       ~fn:(fun token () ->
         fn token;
         Continue ())
+
+  let primitive_string_count = fun decl -> count_fold fold_primitive_string decl
 
   let primitive_strings = fun decl ->
     let tokens = Vector.with_capacity ~size:(Node.child_count decl) in
@@ -6277,6 +6578,8 @@ module ExternalDeclaration = struct
             Continue (seen_primitive, after_primitives, acc))
     in
     acc
+
+  let attribute_token_count = fun decl -> count_fold fold_attribute_token decl
 
   let for_each_attribute_token = fun decl ~fn ->
     fold_attribute_token
@@ -6313,6 +6616,12 @@ end
 module ExceptionDeclaration = struct
   type t = exception_declaration
 
+  let as_node = fun (value: t) -> (value: node)
+
+  let kind = Node.kind
+
+  let span = Node.span
+
   type payload =
     | TypeExpr of type_expr
     | Record of record_type
@@ -6321,7 +6630,7 @@ module ExceptionDeclaration = struct
     | Bare
     | Alias of {
         equals_token: token;
-        path: path;
+        ident: ident;
       }
     | Payload of {
         of_token: token;
@@ -6352,14 +6661,14 @@ module ExceptionDeclaration = struct
       decl
       ~matches:(fun kind -> Syntax_kind.(kind = EXCEPTION_ALIAS || kind = EXCEPTION_PAYLOAD)) with
     | Some rhs when node_kind_is rhs Syntax_kind.EXCEPTION_ALIAS ->
-        let path =
-          match first_child_node_matching rhs ~matches:is_path_kind with
-          | Some path -> cast_result_to_option (Path.cast path)
+        let ident =
+          match first_child_node_matching rhs ~matches:is_ident_kind with
+          | Some ident -> cast_result_to_option (Ident.cast ident)
           | None -> None
         in
         (
-          match (Node.first_child_token rhs ~kind:Syntax_kind.EQ, path) with
-          | (Some equals_token, Some path) -> Alias { equals_token; path }
+          match (Node.first_child_token rhs ~kind:Syntax_kind.EQ, ident) with
+          | (Some equals_token, Some ident) -> Alias { equals_token; ident }
           | _ -> Unknown rhs
         )
     | Some rhs when node_kind_is rhs Syntax_kind.EXCEPTION_PAYLOAD ->
@@ -6383,6 +6692,12 @@ end
 module ExtensionItem = struct
   type t = extension_item
 
+  let as_node = fun (value: t) -> (value: node)
+
+  let kind = Node.kind
+
+  let span = Node.span
+
   let cast = fun (node: node) ->
     cast_kind node Syntax_kind.EXTENSION_ITEM
 
@@ -6393,6 +6708,12 @@ end
 
 module AttributeItem = struct
   type t = attribute_item
+
+  let as_node = fun (value: t) -> (value: node)
+
+  let kind = Node.kind
+
+  let span = Node.span
 
   let cast = fun (node: node) ->
     cast_kind node Syntax_kind.ATTRIBUTE_ITEM
@@ -6405,6 +6726,8 @@ end
 module ExprItem = struct
   type t = expr_item
 
+  let as_node = fun (value: t) -> (value: node)
+
   let cast = fun (node: node) ->
     cast_kind node Syntax_kind.EXPR_ITEM
 
@@ -6413,6 +6736,8 @@ end
 
 module StructureItem = struct
   type t = structure_item
+
+  let as_node = fun (value: t) -> (value: node)
 
   type view =
     | Let of let_declaration
@@ -6432,13 +6757,38 @@ module StructureItem = struct
   let cast = fun (node: node) ->
     cast_kind node Syntax_kind.STRUCTURE_ITEM
 
-  let declaration = fun (item: structure_item) ->
-    first_child_node_matching
-      item
-      ~matches:(fun kind -> not Syntax_kind.(kind = ERROR))
+	  let declaration = fun (item: structure_item) ->
+	    first_child_node_matching
+	      item
+	      ~matches:(fun kind -> not Syntax_kind.(kind = ERROR))
 
-  let view = fun (item: structure_item) ->
-    match declaration item with
+	  let fold_attribute_suffix = fun item ~init ~fn ->
+	    match declaration item with
+	    | None -> init
+	    | Some declaration ->
+	        let after_declaration = ref false in
+	        Node.fold_child_node
+	          item
+	          ~init
+	          ~fn:(fun child acc ->
+	            if !after_declaration then
+	              if node_kind_is child Syntax_kind.ATTRIBUTE_ITEM then
+	                match AttributeItem.cast child with
+	                | Node attribute -> fn attribute acc
+	                | Unknown _
+	                | Error _ -> Continue acc
+	              else
+	                Continue acc
+	            else (
+	              if same_node child declaration then
+	                after_declaration := true;
+	              Continue acc
+	            ))
+
+	  let attribute_suffix_count = fun item -> count_fold fold_attribute_suffix item
+
+	  let view = fun (item: structure_item) ->
+	    match declaration item with
     | Some node -> (
         match Node.kind node with
         | Syntax_kind.LET_DECL -> Let node
@@ -6463,6 +6813,8 @@ end
 module SignatureItem = struct
   type t = signature_item
 
+  let as_node = fun (value: t) -> (value: node)
+
   type view =
     | Value of value_declaration
     | Type of type_item
@@ -6480,13 +6832,38 @@ module SignatureItem = struct
   let cast = fun (node: node) ->
     cast_kind node Syntax_kind.SIGNATURE_ITEM
 
-  let declaration = fun (item: signature_item) ->
-    first_child_node_matching
-      item
-      ~matches:(fun _ -> true)
+	  let declaration = fun (item: signature_item) ->
+	    first_child_node_matching
+	      item
+	      ~matches:(fun _ -> true)
 
-  let view = fun (item: signature_item) ->
-    match declaration item with
+	  let fold_attribute_suffix = fun item ~init ~fn ->
+	    match declaration item with
+	    | None -> init
+	    | Some declaration ->
+	        let after_declaration = ref false in
+	        Node.fold_child_node
+	          item
+	          ~init
+	          ~fn:(fun child acc ->
+	            if !after_declaration then
+	              if node_kind_is child Syntax_kind.ATTRIBUTE_ITEM then
+	                match AttributeItem.cast child with
+	                | Node attribute -> fn attribute acc
+	                | Unknown _
+	                | Error _ -> Continue acc
+	              else
+	                Continue acc
+	            else (
+	              if same_node child declaration then
+	                after_declaration := true;
+	              Continue acc
+	            ))
+
+	  let attribute_suffix_count = fun item -> count_fold fold_attribute_suffix item
+
+	  let view = fun (item: signature_item) ->
+	    match declaration item with
     | Some node -> (
         match Node.kind node with
         | Syntax_kind.VAL_DECL -> Value node
@@ -6509,6 +6886,8 @@ end
 module Implementation = struct
   type t = implementation
 
+  let as_node = fun (value: t) -> (value: node)
+
   let cast = fun (node: node) ->
     cast_kind node Syntax_kind.IMPLEMENTATION
 
@@ -6526,10 +6905,14 @@ module Implementation = struct
       ~fn:(fun item () ->
         fn item;
         Continue ())
+
+  let item_count = fun impl -> count_fold fold_item impl
 end
 
 module Interface = struct
   type t = interface
+
+  let as_node = fun (value: t) -> (value: node)
 
   let cast = fun (node: node) ->
     cast_kind node Syntax_kind.INTERFACE
@@ -6548,10 +6931,16 @@ module Interface = struct
       ~fn:(fun item () ->
         fn item;
         Continue ())
+
+  let item_count = fun interface -> count_fold fold_item interface
 end
 
 module SourceFile = struct
   type t = source_file
+
+  let as_node = fun (value: t) -> (value: node)
+
+  let full_width = Node.full_width
 
   type view =
     | Implementation of implementation
@@ -6591,6 +6980,8 @@ module SourceFile = struct
         fn item;
         Continue ())
 
+  let item_count = fun source_file -> count_fold fold_item source_file
+
   let fold_structure_item = fun (source_file: source_file) ~init ~fn ->
     match view source_file with
     | Implementation impl -> Implementation.fold_item impl ~init ~fn
@@ -6604,6 +6995,8 @@ module SourceFile = struct
         fn item;
         Continue ())
 
+  let structure_item_count = fun source_file -> count_fold fold_structure_item source_file
+
   let fold_signature_item = fun (source_file: source_file) ~init ~fn ->
     match view source_file with
     | Implementation _ -> init
@@ -6616,4 +7009,6 @@ module SourceFile = struct
       ~fn:(fun item () ->
         fn item;
         Continue ())
+
+  let signature_item_count = fun source_file -> count_fold fold_signature_item source_file
 end

@@ -69,7 +69,7 @@ let bench_parse = fun () ->
 let bench_ast_view = fun () ->
   let result = parse () in
   let source_file = Syn.Ast.SourceFile.make result.Syn.Parser.tree in
-  touch_int (Syn.Ast.Node.full_width source_file)
+  touch_int (Syn.Ast.SourceFile.full_width source_file)
 
 let bench_format_to_string = fun () ->
   let formatted =

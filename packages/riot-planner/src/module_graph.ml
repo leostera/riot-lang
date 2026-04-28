@@ -217,14 +217,14 @@ let rec executable_pattern_to_string = fun pattern ->
   let module Ast = Syn.Ast in
   match Ast.Pattern.view pattern with
   | Ast.Pattern.Unit -> "<positional>"
-  | Ast.Pattern.Ident { path } ->
-      Ast.Path.last_ident path
+  | Ast.Pattern.Ident { ident } ->
+      Ast.Ident.last_segment ident
       |> Option.map ~fn:Ast.Token.text
-      |> Option.unwrap_or ~default:(String.trim (Ast.Node.text pattern))
+      |> Option.unwrap_or ~default:(String.trim (Ast.Node.text (Ast.Pattern.as_node pattern)))
   | Ast.Pattern.Constraint { pattern; _ } -> executable_pattern_to_string pattern
   | Ast.Pattern.Alias { pattern; _ } -> executable_pattern_to_string pattern
   | _ ->
-      let text = String.trim (Ast.Node.text pattern) in
+      let text = String.trim (Ast.Node.text (Ast.Pattern.as_node pattern)) in
       if String.is_empty text then
         "<positional>"
       else
@@ -241,22 +241,18 @@ let executable_parameter_to_string = fun parameter ->
       "?" ^ Ast.Token.text label
   | _ -> "<unknown>"
 
-let rec is_labeled_args_parameter = fun parameter ->
+let rec is_labeled_args_parameter = fun (parameter: Syn.Ast.Parameter.t) ->
   let module Ast = Syn.Ast in
-  match Ast.cast_result_to_option (Ast.Parameter.cast parameter) with
-  | Some param -> (
-      match Ast.Parameter.view param with
-      | Ast.Parameter.Param { label = Ast.Parameter.Labeled { name = Some label }; _ } ->
-          String.equal (Ast.Token.text label) "args"
-      | _ -> false
-    )
-  | None -> false
+  match Ast.Parameter.view parameter with
+  | Ast.Parameter.Param { label = Ast.Parameter.Labeled { name = Some label }; _ } ->
+      String.equal (Ast.Token.text label) "args"
+  | _ -> false
 
 let rec pattern_binding_name = fun pattern ->
   let module Ast = Syn.Ast in
   match Ast.Pattern.view pattern with
-  | Ast.Pattern.Ident { path } ->
-      Ast.Path.last_ident path
+  | Ast.Pattern.Ident { ident } ->
+      Ast.Ident.last_segment ident
       |> Option.map ~fn:Ast.Token.text
   | Ast.Pattern.Constraint { pattern = inner; _ } -> pattern_binding_name inner
   | Ast.Pattern.Alias { pattern = inner; _ } -> pattern_binding_name inner
@@ -266,9 +262,9 @@ let let_binding_name = fun binding ->
   Syn.Ast.LetBinding.pattern binding
   |> Option.and_then ~fn:pattern_binding_name
 
-let executable_main_bindings = fun source_file ->
+let executable_main_bindings = fun (source_file: Syn.Ast.SourceFile.t) ->
   let module Ast = Syn.Ast in
-  let bindings = Vector.with_capacity ~size:(Ast.Node.child_count source_file) in
+  let bindings = Vector.with_capacity ~size:(Ast.SourceFile.structure_item_count source_file) in
   iter_fold Ast.SourceFile.fold_structure_item
     source_file
     ~fn:(fun item ->
@@ -303,7 +299,7 @@ let validate_executable_main = fun ~package_name ~target_name ~source ~file sour
         }
       )
   | [ binding ] ->
-      let parameters = Vector.with_capacity ~size:(Syn.Ast.Node.child_count binding) in
+      let parameters = Vector.with_capacity ~size:(Syn.Ast.LetBinding.parameter_count binding) in
       iter_fold Syn.Ast.LetBinding.fold_parameter
         binding
         ~fn:(fun parameter -> Vector.push parameters ~value:parameter);

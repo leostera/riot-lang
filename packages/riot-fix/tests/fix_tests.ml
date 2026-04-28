@@ -37,7 +37,7 @@ let token_by_text_at = fun source text ~start ->
   let root = parse_source_file source in
   let found = ref None in
   iter_fold Syn.Ast.Node.fold_token
-    root
+    (Syn.Ast.SourceFile.as_node root)
     ~fn:(fun token ->
       let token_start = Syn.Ast.Token.span_start token in
       if
@@ -153,7 +153,9 @@ let tests = [
           ~title:"bad overlap"
           ~operations:[
             Riot_fix.Fix.replace_token_with_text ~target:token ~text:"Std";
-            Riot_fix.Fix.replace_node_with_text ~target:root ~text:"open Std\n";
+            Riot_fix.Fix.replace_node_with_text
+              ~target:(Syn.Ast.SourceFile.as_node root)
+              ~text:"open Std\n";
           ]
       in
       Test.assert_error (Riot_fix.Fix.apply_fix ~source fix);

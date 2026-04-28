@@ -26,8 +26,8 @@ let bool_literal = fun expr ->
       | "false" -> Some false
       | _ -> None
     )
-  | Ast.Expr.Ident { path } -> (
-      match Ast.Path.text path with
+  | Ast.Expr.Ident { ident } -> (
+      match Ast.Ident.text ident with
       | "true" -> Some true
       | "false" -> Some false
       | _ -> None
@@ -43,7 +43,7 @@ let comparison_operator = fun token ->
 
 let replacement_text = fun ctx ~operator_is_equal ~bool_value operand ->
   let operand_text =
-    H.node_source ctx (operand: Ast.Node.t)
+    H.node_source ctx (Ast.Expr.as_node operand)
     |> String.trim
   in
   let keep_direct =
@@ -77,11 +77,11 @@ let make_diagnostic = fun ctx condition replacement ->
   H.diagnostic
     ~rule_id
     ~message:rule_description
-    ~span:(H.span_of_node condition)
+    ~span:(H.span_of_node (Ast.Expr.as_node condition))
     ~suggestion:"Use the boolean expression directly in the conditional."
     ~fix:(Fix.make
       ~title:"Remove boolean comparison"
-      ~operations:[ Fix.replace_node_with_text ~target:condition ~text:replacement; ])
+      ~operations:[ Fix.replace_node_with_text ~target:(Ast.Expr.as_node condition) ~text:replacement; ])
     ()
 
 let diagnostic_for_expr = fun ctx expr ->

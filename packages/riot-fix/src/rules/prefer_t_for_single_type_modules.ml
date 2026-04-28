@@ -50,13 +50,13 @@ let diagnostic_for_names = fun diagnostics names ->
       H.push_diagnostic diagnostics (diagnostic_for_name name)
 
 let check_module_declaration = fun diagnostics declaration ->
-  let names = Vector.with_capacity ~size:(Ast.Node.child_count declaration) in
+  let names = Vector.with_capacity ~size:(Ast.ModuleDeclaration.member_count declaration) in
   H.iter_fold Ast.ModuleDeclaration.fold_structure_item declaration ~fn:(type_names_in_structure_item names);
   H.iter_fold Ast.ModuleDeclaration.fold_signature_item declaration ~fn:(type_names_in_signature_item names);
   diagnostic_for_names diagnostics names
 
 let check_module_type_declaration = fun diagnostics declaration ->
-  let names = Vector.with_capacity ~size:(Ast.Node.child_count declaration) in
+  let names = Vector.with_capacity ~size:(Ast.ModuleTypeDeclaration.signature_item_count declaration) in
   H.iter_fold Ast.ModuleTypeDeclaration.fold_signature_item
     declaration
     ~fn:(type_names_in_signature_item names);

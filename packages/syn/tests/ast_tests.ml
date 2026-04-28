@@ -124,16 +124,16 @@ let pattern_of_binding = fun binding ->
   Ast.LetBinding.pattern binding
   |> expect_some ~msg:"expected let binding pattern"
 
-let assert_last_ident_text = fun path expected ->
+let assert_last_ident_text = fun ident expected ->
   let token =
-    Ast.Path.last_ident path
-    |> require_some ~msg:"expected last path ident"
+    Ast.Ident.last_segment ident
+    |> require_some ~msg:"expected last ident segment"
   in
   Test.assert_equal ~expected ~actual:(Ast.Token.text token)
 
-let assert_type_path_last_ident = fun type_expr expected ->
+let assert_type_ident_last_segment = fun type_expr expected ->
   match Ast.TypeExpr.view type_expr with
-  | Ast.TypeExpr.Ident { path } -> assert_last_ident_text path expected
+  | Ast.TypeExpr.Ident { ident } -> assert_last_ident_text ident expected
   | _ -> panic "expected ident type"
 
 let vector_to_list = fun vector ->
@@ -162,14 +162,15 @@ let first_child_expr = fun node ->
       | None -> Ast.Continue None)
 
 let assert_labeled_argument = fun arg expected ->
-  if not (SyntaxKind.is (Ast.Node.kind arg) SyntaxKind.LABELED_ARG) then
+  let arg_node = Ast.Expr.as_node arg in
+  if not (SyntaxKind.is (Ast.Node.kind arg_node) SyntaxKind.LABELED_ARG) then
     panic ("expected labeled argument " ^ expected);
   let label =
-    Ast.Node.first_child_token arg ~kind:SyntaxKind.IDENT
+    Ast.Node.first_child_token arg_node ~kind:SyntaxKind.IDENT
     |> require_some ~msg:"expected labeled argument label"
   in
   Test.assert_equal ~expected ~actual:(Ast.Token.text label);
-  first_child_expr arg
+  first_child_expr arg_node
 
 type visitor_capture = {
   let_names: string Vector.t;
@@ -201,8 +202,8 @@ let test_source_file_and_let_binding_views = fun _ctx ->
   in
   (
     match Ast.Pattern.view pattern with
-    | Ast.Pattern.Ident { path } -> assert_last_ident_text path "x"
-    | _ -> panic "expected path pattern"
+    | Ast.Pattern.Ident { ident } -> assert_last_ident_text ident "x"
+    | _ -> panic "expected ident pattern"
   );
   let body =
     body_of_binding binding
@@ -228,7 +229,7 @@ val x:int
     |> require_some ~msg:"expected value item"
   in
   let token =
-    Ast.Node.first_descendant_token item
+    Ast.Node.first_descendant_token (Ast.SignatureItem.as_node item)
     |> require_some ~msg:"expected value token"
   in
   let docstring = ref None in
@@ -264,7 +265,7 @@ let x = 1
     nth_structure_item root 1
     |> require_some ~msg:"expected second structure item"
   in
-  let span = Ast.Node.span item in
+  let span = Ast.Node.span (Ast.StructureItem.as_node item) in
   let start = span.start in
   let end_ = span.end_ in
   let text = String.sub source ~offset:start ~len:(end_ - start) in
@@ -378,7 +379,7 @@ let test_labeled_application_after_poly_variant_argument = fun _ctx ->
   let (callee, arguments) = application_parts body [] in
   (
     match Ast.Expr.view callee with
-    | Ast.Expr.Ident { path } -> assert_last_ident_text path "parse"
+    | Ast.Expr.Ident { ident } -> assert_last_ident_text ident "parse"
     | _ -> panic "expected parse callee"
   );
   match arguments with
@@ -470,7 +471,7 @@ let test_poly_variant_tuple_pattern_boundary = fun _ctx ->
         | Ast.Pattern.Tuple { parts } -> Test.assert_equal ~expected:2 ~actual:(Vector.length parts)
         | _ -> panic "expected polyvariant pair case to parse as a tuple pattern"
       );
-      let children = Vector.with_capacity ~size:(Ast.Node.child_count pattern) in
+      let children = Vector.with_capacity ~size:(Ast.Pattern.child_pattern_count pattern) in
       iter_fold Ast.Pattern.fold_child_pattern
         pattern
         ~fn:(fun child -> Vector.push children ~value:child);
@@ -513,8 +514,8 @@ let test_signature_and_type_views = fun _ctx ->
         (
           match Ast.TypeExpr.view annotation with
           | Ast.TypeExpr.Arrow { arg; ret; _ } ->
-              assert_type_path_last_ident arg "int";
-              assert_type_path_last_ident ret "string";
+              assert_type_ident_last_segment arg "int";
+              assert_type_ident_last_segment ret "string";
               Ok ()
           | _ -> Error "expected arrow value type"
         )
@@ -537,7 +538,7 @@ let test_signature_and_type_views = fun _ctx ->
           Ast.TypeDeclaration.manifest decl
           |> require_some ~msg:"expected type manifest"
         in
-        assert_type_path_last_ident manifest "int"
+        assert_type_ident_last_segment manifest "int"
     | _ -> panic "expected type declaration"
   );
   let module_item =
@@ -606,7 +607,7 @@ val scoped_unit: M.unit
           | Ast.TypeExpr.Apply { ident; args } ->
               assert_last_ident_text ident "list";
               let argument = vector_first args ~msg:"expected list type argument" in
-              assert_type_path_last_ident argument "int";
+              assert_type_ident_last_segment argument "int";
               Ok ()
           | _ -> Error "expected type application"
         )
@@ -673,19 +674,19 @@ val scoped_unit: M.unit
       in
       (
         match Ast.TypeExpr.view annotation with
-        | Ast.TypeExpr.Ident { path } ->
+        | Ast.TypeExpr.Ident { ident } ->
             let first =
-              Ast.Path.first_ident path
-              |> require_some ~msg:"expected first scoped unit path ident"
+              Ast.Ident.first_segment ident
+              |> require_some ~msg:"expected first scoped unit ident segment"
             in
             let last =
-              Ast.Path.last_ident path
-              |> require_some ~msg:"expected last scoped unit path ident"
+              Ast.Ident.last_segment ident
+              |> require_some ~msg:"expected last scoped unit ident segment"
             in
             Test.assert_equal ~expected:"M" ~actual:(Ast.Token.text first);
             Test.assert_equal ~expected:"unit" ~actual:(Ast.Token.text last);
             Ok ()
-        | _ -> Error "expected scoped unit to remain a path type"
+        | _ -> Error "expected scoped unit to remain an ident type"
       )
   | _ -> Error "expected scoped unit value declaration"
 
@@ -744,8 +745,8 @@ let test_type_tuple_separator_views = fun _ctx ->
             Test.assert_equal ~expected:2 ~actual:(Vector.length parts);
             let arg = vector_first parts ~msg:"expected first tuple type" in
             let ret = vector_second parts ~msg:"expected second tuple type" in
-            assert_type_path_last_ident arg "int";
-            assert_type_path_last_ident ret "string";
+            assert_type_ident_last_segment arg "int";
+            assert_type_ident_last_segment ret "string";
             Ok ()
         | _ -> Error "expected star tuple type"
       )
@@ -847,8 +848,8 @@ let test_quoted_poly_let_annotation_views = fun _ctx ->
           | Ast.TypeExpr.Arrow { arg; ret; _ } ->
               (
                 match Ast.TypeExpr.view arg with
-                | Ast.TypeExpr.Ident { path } -> assert_last_ident_text path "state"
-                | _ -> panic "expected state path type"
+                | Ast.TypeExpr.Ident { ident } -> assert_last_ident_text ident "state"
+                | _ -> panic "expected state ident type"
               );
               (
                 match Ast.TypeExpr.view ret with
@@ -942,7 +943,7 @@ let test_type_declaration_member_views = fun _ctx ->
   | Ast.SignatureItem.Type (Ast.TypeDeclarationItem decl) ->
       let child_kinds = ref [] in
       iter_fold Ast.Node.fold_child_node
-        decl
+        (Ast.TypeDeclaration.as_node decl)
         ~fn:(fun child -> child_kinds := Ast.Node.kind child :: !child_kinds);
       Test.assert_equal
         ~expected:[
@@ -1039,7 +1040,7 @@ let test_type_declaration_body_group_views = fun _ctx ->
                   _;
                 } -> (
                   match Ast.TypeExpr.view payload with
-                  | Ast.TypeExpr.Ident _ -> "path"
+                  | Ast.TypeExpr.Ident _ -> "ident"
                   | Ast.TypeExpr.Tuple _ -> "tuple"
                   | _ -> "other"
                 )
@@ -1050,7 +1051,7 @@ let test_type_declaration_body_group_views = fun _ctx ->
         Test.assert_equal ~expected:[ "Red"; "Blue"; "Pair" ] ~actual:(vector_to_list names);
         Test.assert_equal ~expected:[ false; true; true ] ~actual:(vector_to_list pipe_flags);
         Test.assert_equal
-          ~expected:[ "none"; "path"; "tuple" ]
+          ~expected:[ "none"; "ident"; "tuple" ]
           ~actual:(vector_to_list payload_shapes);
         Ok ()
     | _ -> Error "expected color type declaration"
@@ -1090,13 +1091,13 @@ let test_type_declaration_body_group_views = fun _ctx ->
               Vector.push mutable_flags ~value:(Option.is_some mutable_token);
               (
                 match Ast.TypeExpr.view annotation with
-                | Ast.TypeExpr.Ident { path } ->
+                | Ast.TypeExpr.Ident { ident } ->
                     let last =
-                      Ast.Path.last_ident path
-                      |> require_some ~msg:"expected field type path"
+                      Ast.Ident.last_segment ident
+                      |> require_some ~msg:"expected field type ident"
                     in
                     Vector.push field_types ~value:(Ast.Token.text last)
-                | _ -> panic "expected field type path"
+                | _ -> panic "expected field type ident"
               )
           | Ast.RecordField.Unknown _ -> panic "expected record field view");
       Test.assert_equal ~expected:[ "x"; "y" ] ~actual:(vector_to_list names);
@@ -1130,7 +1131,7 @@ let test_type_alias_record_representation_views = fun _ctx ->
         Ast.TypeDeclaration.Member.manifest member
         |> require_some ~msg:"expected manifest alias"
       in
-      assert_type_path_last_ident manifest "point";
+      assert_type_ident_last_segment manifest "point";
       let record =
         Ast.TypeDeclaration.Member.record_type member
         |> require_some ~msg:"expected record representation"
@@ -1164,7 +1165,7 @@ let test_abstract_type_attribute_boundary_views = fun _ctx ->
   | Ast.StructureItem.Let _ -> Ok ()
   | _ -> Error "expected trailing let declaration after abstract type attribute"
 
-let test_open_declaration_path_tokens = fun _ctx ->
+let test_open_declaration_ident_tokens = fun _ctx ->
   let root =
     parse_ml "open Foo.Bar\n"
     |> Result.expect ~msg:"expected parse source file"
@@ -1176,15 +1177,15 @@ let test_open_declaration_path_tokens = fun _ctx ->
   match Ast.StructureItem.view item with
   | Ast.StructureItem.Open decl ->
       let first =
-        Ast.OpenDeclaration.first_path_ident decl
-        |> require_some ~msg:"expected first open path ident"
+        Ast.OpenDeclaration.first_ident_segment decl
+        |> require_some ~msg:"expected first open ident segment"
       in
       let last =
-        Ast.OpenDeclaration.last_path_ident decl
-        |> require_some ~msg:"expected last open path ident"
+        Ast.OpenDeclaration.last_ident_segment decl
+        |> require_some ~msg:"expected last open ident segment"
       in
       let count = ref 0 in
-      iter_fold Ast.OpenDeclaration.fold_path_ident decl ~fn:(fun _ -> count := !count + 1);
+      iter_fold Ast.OpenDeclaration.fold_ident_segment decl ~fn:(fun _ -> count := !count + 1);
       Test.assert_equal ~expected:"Foo" ~actual:(Ast.Token.text first);
       Test.assert_equal ~expected:"Bar" ~actual:(Ast.Token.text last);
       Test.assert_equal ~expected:2 ~actual:!count;
@@ -1207,15 +1208,15 @@ let test_simple_declaration_token_views = fun _ctx ->
     match Ast.StructureItem.view include_item with
     | Ast.StructureItem.Include decl ->
         let first =
-          Ast.IncludeDeclaration.first_path_ident decl
-          |> require_some ~msg:"expected first include path ident"
+          Ast.IncludeDeclaration.first_ident_segment decl
+          |> require_some ~msg:"expected first include ident segment"
         in
         let last =
-          Ast.IncludeDeclaration.last_path_ident decl
-          |> require_some ~msg:"expected last include path ident"
+          Ast.IncludeDeclaration.last_ident_segment decl
+          |> require_some ~msg:"expected last include ident segment"
         in
         let count = ref 0 in
-        iter_fold Ast.IncludeDeclaration.fold_path_ident decl ~fn:(fun _ -> count := !count + 1);
+        iter_fold Ast.IncludeDeclaration.fold_ident_segment decl ~fn:(fun _ -> count := !count + 1);
         Test.assert_equal ~expected:"Foo" ~actual:(Ast.Token.text first);
         Test.assert_equal ~expected:"Bar" ~actual:(Ast.Token.text last);
         Test.assert_equal ~expected:2 ~actual:!count
@@ -1266,7 +1267,7 @@ let test_simple_declaration_token_views = fun _ctx ->
         |> require_some ~msg:"expected exception name"
       in
       iter_fold Ast.Node.fold_child_node
-        decl
+        (Ast.ExceptionDeclaration.as_node decl)
         ~fn:(fun child -> child_kinds := Ast.Node.kind child :: !child_kinds);
       Test.assert_equal ~expected:"Boom" ~actual:(Ast.Token.text name);
       Test.assert_equal
@@ -1292,7 +1293,7 @@ let test_type_extension_and_exception_views = fun _ctx ->
     | Ast.SignatureItem.Type (Ast.TypeExtensionItem decl) ->
         let child_kinds = ref [] in
         iter_fold Ast.Node.fold_child_node
-          decl
+          (Ast.TypeExtensionDeclaration.as_node decl)
           ~fn:(fun child -> child_kinds := Ast.Node.kind child :: !child_kinds);
         let name =
           Ast.TypeExtensionDeclaration.name decl
@@ -1364,7 +1365,7 @@ let test_type_extension_and_exception_views = fun _ctx ->
             payload = Ast.ExceptionDeclaration.TypeExpr payload;
           } ->
               Test.assert_equal ~expected:"of" ~actual:(Ast.Token.text of_token);
-              assert_type_path_last_ident payload "string";
+              assert_type_ident_last_segment payload "string";
               Ok ()
           | _ -> Error "expected exception payload view"
         )
@@ -1384,9 +1385,9 @@ let test_type_extension_and_exception_views = fun _ctx ->
       Test.assert_equal ~expected:"Nested" ~actual:(Ast.Token.text name);
       (
         match Ast.ExceptionDeclaration.view decl with
-        | Ast.ExceptionDeclaration.Alias { equals_token; path } ->
+        | Ast.ExceptionDeclaration.Alias { equals_token; ident } ->
             Test.assert_equal ~expected:"=" ~actual:(Ast.Token.text equals_token);
-            assert_last_ident_text path "Error";
+            assert_last_ident_text ident "Error";
             Ok ()
         | _ -> Error "expected exception alias view"
       )
@@ -1419,7 +1420,7 @@ let test_exception_after_function_binding_views = fun _ctx ->
             payload = Ast.ExceptionDeclaration.TypeExpr payload;
           } ->
               Test.assert_equal ~expected:"of" ~actual:(Ast.Token.text of_token);
-              assert_type_path_last_ident payload "string";
+              assert_type_ident_last_segment payload "string";
               Ok ()
           | _ -> Error "expected exception payload view"
         )
@@ -1506,19 +1507,21 @@ let test_module_declaration_tokens = fun _ctx ->
           |> require_some ~msg:"expected module separator"
         in
         let segments = ref [] in
-        iter_fold Ast.ModuleDeclaration.fold_body_path_ident
+        iter_fold Ast.ModuleDeclaration.fold_body_ident_segment
           decl
           ~fn:(fun token -> segments := Ast.Token.text token :: !segments);
         Test.assert_equal ~expected:"=" ~actual:(Ast.Token.text separator);
         (
-          match Ast.ModuleDeclaration.body decl with
-          | Ast.ModuleDeclaration.Expr { body } -> (
-              match Ast.ModuleExpr.view body with
-              | Ast.ModuleExpr.Path { path } ->
-                  Test.assert_equal ~expected:SyntaxKind.PATH_MODULE_EXPR ~actual:(Ast.Node.kind path)
-              | _ -> panic "expected path module declaration body"
-            )
-          | _ -> panic "expected path module declaration body"
+	          match Ast.ModuleDeclaration.body decl with
+	          | Ast.ModuleDeclaration.Expr { body } -> (
+	              match Ast.ModuleExpr.view body with
+	              | Ast.ModuleExpr.Ident { ident } ->
+	                  Test.assert_equal
+	                    ~expected:SyntaxKind.PATH_MODULE_EXPR
+	                    ~actual:(Ast.Node.kind (Ast.Ident.as_node ident))
+	              | _ -> panic "expected ident module declaration body"
+	            )
+          | _ -> panic "expected ident module declaration body"
         );
         Test.assert_equal ~expected:[ "Foo"; "Bar" ] ~actual:(List.reverse !segments)
     | _ -> panic "expected third module declaration"
@@ -1586,8 +1589,8 @@ let test_trailing_sequence_before_and_views = fun _ctx ->
         in
         (
           match Ast.Pattern.view pattern with
-          | Ast.Pattern.Ident { path } -> assert_last_ident_text path expected_name
-          | _ -> panic "expected binding head path pattern"
+          | Ast.Pattern.Ident { ident } -> assert_last_ident_text ident expected_name
+          | _ -> panic "expected binding head ident pattern"
         );
         let parameters = ref [] in
         iter_fold Ast.LetBinding.fold_parameter
@@ -1728,12 +1731,12 @@ let test_module_type_declaration_tokens = fun _ctx ->
           Ast.ModuleTypeDeclaration.equals_token decl
           |> require_some ~msg:"expected module type equals token"
         in
-        let child_kinds = ref [] in
-        let segments = ref [] in
-        iter_fold Ast.Node.fold_child_node
-          decl
-          ~fn:(fun child -> child_kinds := Ast.Node.kind child :: !child_kinds);
-        iter_fold Ast.ModuleTypeDeclaration.fold_body_path_ident
+	        let child_kinds = ref [] in
+	        let segments = ref [] in
+	        iter_fold Ast.Node.fold_child_node
+	          (Ast.ModuleTypeDeclaration.as_node decl)
+	          ~fn:(fun child -> child_kinds := Ast.Node.kind child :: !child_kinds);
+        iter_fold Ast.ModuleTypeDeclaration.fold_body_ident_segment
           decl
           ~fn:(fun token -> segments := Ast.Token.text token :: !segments);
         Test.assert_equal ~expected:"S" ~actual:(Ast.Token.text name);
@@ -1744,12 +1747,14 @@ let test_module_type_declaration_tokens = fun _ctx ->
         (
           match Ast.ModuleTypeDeclaration.body decl with
           | Ast.ModuleTypeDeclaration.Manifest { body } -> (
-              match Ast.ModuleTypeExpr.view body with
-              | Ast.ModuleTypeExpr.Path { path } ->
-                  Test.assert_equal ~expected:SyntaxKind.PATH_MODULE_TYPE ~actual:(Ast.Node.kind path)
-              | _ -> panic "expected path module type body"
+	              match Ast.ModuleTypeExpr.view body with
+	              | Ast.ModuleTypeExpr.Ident { ident } ->
+	                  Test.assert_equal
+	                    ~expected:SyntaxKind.PATH_MODULE_TYPE
+	                    ~actual:(Ast.Node.kind (Ast.Ident.as_node ident))
+	              | _ -> panic "expected ident module type body"
             )
-          | _ -> panic "expected path module type body"
+          | _ -> panic "expected ident module type body"
         );
         Test.assert_equal ~expected:[ "Foo"; "S" ] ~actual:(List.reverse !segments)
     | _ -> panic "expected first module type declaration"
@@ -1806,12 +1811,12 @@ let test_module_type_with_constraint_views = fun _ctx ->
       (
         match Ast.ModuleTypeDeclaration.base_module_type decl with
         | Some base ->
-            let path =
-              Ast.cast_result_to_option (Ast.Path.cast base)
-              |> require_some ~msg:"expected constrained base path"
+            let ident =
+              Ast.cast_result_to_option (Ast.Ident.cast base)
+              |> require_some ~msg:"expected constrained base ident"
             in
             let name =
-              Ast.Path.last_ident path
+              Ast.Ident.last_segment ident
               |> require_some ~msg:"expected constrained base name"
             in
             Test.assert_equal ~expected:"Driver" ~actual:(Ast.Token.text name)
@@ -1824,28 +1829,28 @@ let test_module_type_with_constraint_views = fun _ctx ->
           let index = !seen in
           seen := !seen + 1;
           match Ast.ModuleTypeConstraint.view constraint_ with
-          | Ast.ModuleTypeConstraint.Type { path; operator; body } when Int.equal index 0 ->
-              let path_name =
-                Ast.Path.last_ident path
-                |> require_some ~msg:"expected type path name"
-              in
-              let body_token =
-                Ast.Node.first_descendant_token body
-                |> require_some ~msg:"expected type constraint body token"
-              in
-              Test.assert_equal ~expected:"config" ~actual:(Ast.Token.text path_name);
+          | Ast.ModuleTypeConstraint.Type { ident; operator; body } when Int.equal index 0 ->
+              let ident_name =
+                Ast.Ident.last_segment ident
+                |> require_some ~msg:"expected type ident name"
+	              in
+	              let body_token =
+	                Ast.Node.first_descendant_token (Ast.TypeExpr.as_node body)
+	                |> require_some ~msg:"expected type constraint body token"
+	              in
+              Test.assert_equal ~expected:"config" ~actual:(Ast.Token.text ident_name);
               Test.assert_equal ~expected:"=" ~actual:(Ast.Token.text operator);
               Test.assert_equal ~expected:"int" ~actual:(Ast.Token.text body_token)
-          | Ast.ModuleTypeConstraint.Module { path; operator; body } when Int.equal index 1 ->
-              let path_name =
-                Ast.Path.last_ident path
-                |> require_some ~msg:"expected module path name"
+          | Ast.ModuleTypeConstraint.Module { ident; operator; body } when Int.equal index 1 ->
+              let ident_name =
+                Ast.Ident.last_segment ident
+                |> require_some ~msg:"expected module ident name"
               in
               let body_token =
                 Ast.Node.first_descendant_token body
                 |> require_some ~msg:"expected module constraint body token"
               in
-              Test.assert_equal ~expected:"Nested" ~actual:(Ast.Token.text path_name);
+              Test.assert_equal ~expected:"Nested" ~actual:(Ast.Token.text ident_name);
               Test.assert_equal ~expected:"=" ~actual:(Ast.Token.text operator);
               Test.assert_equal ~expected:"Impl" ~actual:(Ast.Token.text body_token)
           | Ast.ModuleTypeConstraint.Unknown _ -> panic "unexpected module type constraint shape"
@@ -1870,10 +1875,10 @@ let test_binding_type_annotation_view = fun _ctx ->
     |> require_some ~msg:"expected binding type annotation"
   in
   match Ast.TypeExpr.view annotation with
-  | Ast.TypeExpr.Ident { path } ->
-      assert_last_ident_text path "int";
+  | Ast.TypeExpr.Ident { ident } ->
+      assert_last_ident_text ident "int";
       Ok ()
-  | _ -> Error "expected binding path type annotation"
+  | _ -> Error "expected binding ident type annotation"
 
 let test_function_binding_return_annotation_view = fun _ctx ->
   let root =
@@ -1893,7 +1898,7 @@ let test_function_binding_return_annotation_view = fun _ctx ->
   match Ast.TypeExpr.view annotation with
   | Ast.TypeExpr.Apply { ident; args } ->
       let argument = vector_first args ~msg:"expected function return type argument" in
-      assert_type_path_last_ident argument "b";
+      assert_type_ident_last_segment argument "b";
       assert_last_ident_text ident "t";
       Ok ()
   | _ -> Error "expected binding return apply type annotation"
@@ -1933,11 +1938,13 @@ let render = function | (((Some (((item)))))) -> item
     body_of_binding call_binding
     |> Result.expect ~msg:"expected call body"
   in
-  let* () =
-    match Ast.Expr.view call_body with
-    | Ast.Expr.Apply { argument; _ } ->
-        Test.assert_equal ~expected:SyntaxKind.APPLY_EXPR ~actual:(Ast.Node.kind argument);
-        Ok ()
+	let* () =
+	  match Ast.Expr.view call_body with
+	  | Ast.Expr.Apply { argument; _ } ->
+	      Test.assert_equal
+	        ~expected:SyntaxKind.APPLY_EXPR
+	        ~actual:(Ast.Node.kind (Ast.Expr.as_node argument));
+	      Ok ()
     | _ -> Error "expected outer call expression"
   in
   let typed_binding =
@@ -1951,11 +1958,13 @@ let render = function | (((Some (((item)))))) -> item
     |> require_some ~msg:"expected typed binding annotation"
   in
   let* () =
-    match Ast.TypeExpr.view annotation with
-    | Ast.TypeExpr.Apply { args; _ } ->
-        let arg = vector_first args ~msg:"expected applied type argument" in
-        Test.assert_equal ~expected:SyntaxKind.PATH_TYPE ~actual:(Ast.Node.kind arg);
-        Ok ()
+	  match Ast.TypeExpr.view annotation with
+	  | Ast.TypeExpr.Apply { args; _ } ->
+	      let arg = vector_first args ~msg:"expected applied type argument" in
+	      Test.assert_equal
+	        ~expected:SyntaxKind.PATH_TYPE
+	        ~actual:(Ast.Node.kind (Ast.TypeExpr.as_node arg));
+	      Ok ()
     | _ -> Error "expected applied type annotation"
   in
   let render_binding =
@@ -1972,20 +1981,22 @@ let render = function | (((Some (((item)))))) -> item
   | Ast.Expr.Fun { body = Ast.Expr.Body_cases { first_case } } -> (
       match Ast.MatchCase.view first_case with
       | Ast.MatchCase.Case { pattern; _ } -> (
-          match Ast.Pattern.view pattern with
-          | Ast.Pattern.Construct { payload = Some payload; _ } ->
-              Test.assert_equal ~expected:SyntaxKind.PATH_PATTERN ~actual:(Ast.Node.kind payload);
-              Ok ()
+	      match Ast.Pattern.view pattern with
+	      | Ast.Pattern.Construct { payload = Some payload; _ } ->
+	          Test.assert_equal
+	            ~expected:SyntaxKind.PATH_PATTERN
+	            ~actual:(Ast.Node.kind (Ast.Pattern.as_node payload));
+	          Ok ()
           | _ -> Error "expected constructor pattern"
         )
       | Ast.MatchCase.Unknown _ -> Error "expected function case pattern"
     )
   | _ -> Error "expected function expression"
 
-let last_path_text = fun path ->
+let last_ident_text = fun ident ->
   let token =
-    Ast.Path.last_ident path
-    |> require_some ~msg:"expected path ident"
+    Ast.Ident.last_segment ident
+    |> require_some ~msg:"expected ident segment"
   in
   Ast.Token.text token
 
@@ -2013,13 +2024,13 @@ let { x; y = z; _ } = record
     Ast.cast_result_to_option (Ast.RecordExpr.cast record_expr)
     |> require_some ~msg:"expected record expression view"
   in
-  let record_fields = Vector.with_capacity ~size:(Ast.Node.child_count record_view) in
+  let record_fields = Vector.with_capacity ~size:(Ast.RecordExpr.field_count record_view) in
   iter_fold Ast.RecordExpr.fold_field
     record_view
     ~fn:(fun field ->
       match field with
-      | Ast.RecordExprField { path; value; _ } ->
-          Vector.push record_fields ~value:(last_path_text path, Option.is_some value)
+      | Ast.RecordExprField { ident; value; _ } ->
+          Vector.push record_fields ~value:(last_ident_text ident, Option.is_some value)
       | Ast.UnknownRecordExprField _ -> panic "expected record expr field");
   Test.assert_equal ~expected:[ ("x", true); ("y", false); ] ~actual:(vector_to_list record_fields);
   let update_expr =
@@ -2038,19 +2049,19 @@ let { x; y = z; _ } = record
     match Ast.RecordExpr.base update_view with
     | Some base -> (
         match Ast.Expr.view base with
-        | Ast.Expr.Ident { path } ->
-            Test.assert_equal ~expected:"base" ~actual:(last_path_text path)
-        | _ -> panic "expected record update base path"
+        | Ast.Expr.Ident { ident } ->
+            Test.assert_equal ~expected:"base" ~actual:(last_ident_text ident)
+        | _ -> panic "expected record update base ident"
       )
     | None -> panic "expected record update base"
   );
-  let update_fields = Vector.with_capacity ~size:(Ast.Node.child_count update_view) in
+  let update_fields = Vector.with_capacity ~size:(Ast.RecordExpr.field_count update_view) in
   iter_fold Ast.RecordExpr.fold_field
     update_view
     ~fn:(fun field ->
       match field with
-      | Ast.RecordExprField { path; value; _ } ->
-          Vector.push update_fields ~value:(last_path_text path, Option.is_some value)
+      | Ast.RecordExprField { ident; value; _ } ->
+          Vector.push update_fields ~value:(last_ident_text ident, Option.is_some value)
       | Ast.UnknownRecordExprField _ -> panic "expected update field");
   Test.assert_equal ~expected:[ ("x", true); ("y", false); ] ~actual:(vector_to_list update_fields);
   let scoped_expr =
@@ -2067,19 +2078,19 @@ let { x; y = z; _ } = record
   in
   (
     match Ast.LocalOpenExpr.view scoped_local_open with
-    | Ast.LocalOpenExpr.Delimited { module_path; body; _ } ->
-        Test.assert_equal ~expected:"Lockfile" ~actual:(last_path_text module_path);
+    | Ast.LocalOpenExpr.Delimited { module_ident; body; _ } ->
+        Test.assert_equal ~expected:"Lockfile" ~actual:(last_ident_text module_ident);
         let scoped_record =
           Ast.cast_result_to_option (Ast.RecordExpr.cast body)
           |> require_some ~msg:"expected scoped record body"
         in
-        let scoped_fields = Vector.with_capacity ~size:(Ast.Node.child_count scoped_record) in
+        let scoped_fields = Vector.with_capacity ~size:(Ast.RecordExpr.field_count scoped_record) in
         iter_fold Ast.RecordExpr.fold_field
           scoped_record
           ~fn:(fun field ->
             match field with
-            | Ast.RecordExprField { path; value; _ } ->
-                Vector.push scoped_fields ~value:(last_path_text path, Option.is_some value)
+            | Ast.RecordExprField { ident; value; _ } ->
+                Vector.push scoped_fields ~value:(last_ident_text ident, Option.is_some value)
             | Ast.UnknownRecordExprField _ -> panic "expected scoped field");
         Test.assert_equal
           ~expected:[ ("name", true); ("version", true); ]
@@ -2098,13 +2109,13 @@ let { x; y = z; _ } = record
     Ast.cast_result_to_option (Ast.RecordPattern.cast record_pattern)
     |> require_some ~msg:"expected record pattern view"
   in
-  let pattern_fields = Vector.with_capacity ~size:(Ast.Node.child_count pattern_view) in
+  let pattern_fields = Vector.with_capacity ~size:(Ast.RecordPattern.field_count pattern_view) in
   iter_fold Ast.RecordPattern.fold_field
     pattern_view
     ~fn:(fun field ->
       match field with
-      | Ast.RecordPatternField { path; pattern; _ } ->
-          Vector.push pattern_fields ~value:(last_path_text path, Option.is_some pattern)
+      | Ast.RecordPatternField { ident; pattern; _ } ->
+          Vector.push pattern_fields ~value:(last_ident_text ident, Option.is_some pattern)
       | Ast.UnknownRecordPatternField _ -> panic "expected record pattern field");
   Test.assert_equal ~expected:[ ("x", false); ("y", true); ] ~actual:(vector_to_list pattern_fields);
   let wildcard =
@@ -2136,17 +2147,17 @@ let binding_pattern_text = fun binding ->
     |> Result.expect ~msg:"expected binding pattern"
   in
   match Ast.Pattern.view pattern with
-  | Ast.Pattern.Ident { path } -> last_path_text path
-  | _ -> panic "expected path binding pattern"
+  | Ast.Pattern.Ident { ident } -> last_ident_text ident
+  | _ -> panic "expected ident binding pattern"
 
-let binding_body_path_text = fun binding ->
+let binding_body_ident_text = fun binding ->
   let body =
     body_of_binding binding
     |> Result.expect ~msg:"expected binding body"
   in
   match Ast.Expr.view body with
-  | Ast.Expr.Ident { path } -> last_path_text path
-  | _ -> panic "expected path binding body"
+  | Ast.Expr.Ident { ident } -> last_ident_text ident
+  | _ -> panic "expected ident binding body"
 
 let test_binding_operator_views = fun _ctx ->
   let root =
@@ -2183,7 +2194,7 @@ let test_binding_operator_views = fun _ctx ->
         keyword,
         operator,
         binding_pattern_text clause.Ast.BindingOperatorExpr.binding,
-        binding_body_path_text clause.Ast.BindingOperatorExpr.binding
+        binding_body_ident_text clause.Ast.BindingOperatorExpr.binding
       )
       :: !clauses);
   Test.assert_equal
@@ -2204,17 +2215,17 @@ let test_binding_operator_views = fun _ctx ->
     | None -> Error "expected binding operator body"
   )
 
-let local_open_pattern_path_text = fun pattern ->
+let local_open_pattern_ident_text = fun pattern ->
   match Ast.LocalOpenPattern.view pattern with
-  | Ast.LocalOpenPattern.Delimited { module_path; _ } ->
-      vector_to_list module_path
+  | Ast.LocalOpenPattern.Delimited { module_ident; _ } ->
+      vector_to_list module_ident
       |> List.map ~fn:Ast.Token.text
       |> String.concat "."
   | Ast.LocalOpenPattern.Unknown _ -> panic "expected local-open pattern view"
 
-let first_class_module_path_text = fun expr ->
+let first_class_module_ident_text = fun expr ->
   let segments = ref [] in
-  iter_fold Ast.FirstClassModuleExpr.fold_module_path_ident
+  iter_fold Ast.FirstClassModuleExpr.fold_module_ident_segment
     expr
     ~fn:(fun token -> segments := Ast.Token.text token :: !segments);
   List.reverse !segments
@@ -2222,7 +2233,7 @@ let first_class_module_path_text = fun expr ->
 
 let first_class_module_ascription_text = fun expr ->
   let segments = ref [] in
-  iter_fold Ast.FirstClassModuleExpr.fold_ascription_path_ident
+  iter_fold Ast.FirstClassModuleExpr.fold_ascription_ident_segment
     expr
     ~fn:(fun token -> segments := Ast.Token.text token :: !segments);
   List.reverse !segments
@@ -2230,15 +2241,15 @@ let first_class_module_ascription_text = fun expr ->
 
 let first_class_module_pattern_ascription_text = fun pattern ->
   let segments = ref [] in
-  iter_fold Ast.FirstClassModulePattern.fold_ascription_path_ident
+  iter_fold Ast.FirstClassModulePattern.fold_ascription_ident_segment
     pattern
     ~fn:(fun token -> segments := Ast.Token.text token :: !segments);
   List.reverse !segments
   |> String.concat "."
 
-let let_module_body_path_text = fun expr ->
+let let_module_body_ident_text = fun expr ->
   let segments = ref [] in
-  iter_fold Ast.LetModuleExpr.fold_module_body_path_ident
+  iter_fold Ast.LetModuleExpr.fold_module_body_ident_segment
     expr
     ~fn:(fun token -> segments := Ast.Token.text token :: !segments);
   List.reverse !segments
@@ -2276,20 +2287,20 @@ let test_local_open_views = fun _ctx ->
     | Ast.LocalOpenExpr.LetOpen {
       let_token;
       open_token;
-      module_path;
+      module_ident;
       in_token;
       body;
       _
     } ->
         Test.assert_equal ~expected:"let" ~actual:(Ast.Token.text let_token);
         Test.assert_equal ~expected:"open" ~actual:(Ast.Token.text open_token);
-        Test.assert_equal ~expected:"Bar" ~actual:(last_path_text module_path);
+        Test.assert_equal ~expected:"Bar" ~actual:(last_ident_text module_ident);
         Test.assert_equal ~expected:"in" ~actual:(Ast.Token.text in_token);
         (
           match Ast.Expr.view body with
-          | Ast.Expr.Ident { path } ->
-              Test.assert_equal ~expected:"result" ~actual:(last_path_text path)
-          | _ -> panic "expected local open body path"
+          | Ast.Expr.Ident { ident } ->
+              Test.assert_equal ~expected:"result" ~actual:(last_ident_text ident)
+          | _ -> panic "expected local open body ident"
         )
     | _ -> panic "expected complete let open expression"
   );
@@ -2308,14 +2319,14 @@ let test_local_open_views = fun _ctx ->
   let* () =
     match Ast.LocalOpenPattern.view local_open_pattern with
     | Ast.LocalOpenPattern.Delimited { dot_token; pattern; _ } ->
-        Test.assert_equal ~expected:"Foo.Bar" ~actual:(local_open_pattern_path_text local_open_pattern);
+        Test.assert_equal ~expected:"Foo.Bar" ~actual:(local_open_pattern_ident_text local_open_pattern);
         Test.assert_equal ~expected:"." ~actual:(Ast.Token.text dot_token);
         (
           match Ast.Pattern.view pattern with
-          | Ast.Pattern.Ident { path } ->
-              Test.assert_equal ~expected:"x" ~actual:(last_path_text path);
+          | Ast.Pattern.Ident { ident } ->
+              Test.assert_equal ~expected:"x" ~actual:(last_ident_text ident);
               Ok ()
-          | _ -> Error "expected local open inner path pattern"
+          | _ -> Error "expected local open inner ident pattern"
         )
     | Ast.LocalOpenPattern.Unknown _ -> Error "expected local-open pattern view"
   in
@@ -2333,7 +2344,7 @@ let test_local_open_views = fun _ctx ->
   in
   Test.assert_equal
     ~expected:"Frame"
-    ~actual:(local_open_pattern_path_text local_open_record_pattern);
+    ~actual:(local_open_pattern_ident_text local_open_record_pattern);
   match Ast.LocalOpenPattern.view local_open_record_pattern with
   | Ast.LocalOpenPattern.Delimited { opening_token; closing_token; pattern; _ } -> (
       Test.assert_equal ~expected:"{" ~actual:(Ast.Token.text opening_token);
@@ -2345,10 +2356,10 @@ let test_local_open_views = fun _ctx ->
           let field = vector_first fields ~msg:"expected record pattern field" in
           (
             match field with
-            | Ast.RecordPatternField { path; _ } ->
-                Test.assert_equal ~expected:"payload" ~actual:(last_path_text path);
+            | Ast.RecordPatternField { ident; _ } ->
+                Test.assert_equal ~expected:"payload" ~actual:(last_ident_text ident);
                 Ok ()
-            | Ast.UnknownRecordPatternField _ -> Error "expected record pattern field path"
+            | Ast.UnknownRecordPatternField _ -> Error "expected record pattern field ident"
           )
       | _ -> Error "expected local open record inner pattern"
     )
@@ -2379,14 +2390,14 @@ let test_local_open_argument_views = fun _ctx ->
   let (callee, arguments) = application_parts body [] in
   (
     match Ast.Expr.view callee with
-    | Ast.Expr.Ident { path } -> assert_last_ident_text path "send"
+    | Ast.Expr.Ident { ident } -> assert_last_ident_text ident "send"
     | _ -> panic "expected send callee"
   );
   match arguments with
   | [ pid_arg; local_open_arg ] ->
       (
         match Ast.Expr.view pid_arg with
-        | Ast.Expr.Ident { path } -> assert_last_ident_text path "pid"
+        | Ast.Expr.Ident { ident } -> assert_last_ident_text ident "pid"
         | _ -> panic "expected pid argument"
       );
       let local_open =
@@ -2396,13 +2407,13 @@ let test_local_open_argument_views = fun _ctx ->
       (
         match Ast.LocalOpenExpr.view local_open with
         | Ast.LocalOpenExpr.Delimited {
-          module_path;
+          module_ident;
           opening_token;
           body = inner_body;
           closing_token;
           _
         } ->
-            Test.assert_equal ~expected:"Server" ~actual:(last_path_text module_path);
+            Test.assert_equal ~expected:"Server" ~actual:(last_ident_text module_ident);
             Test.assert_equal ~expected:"(" ~actual:(Ast.Token.text opening_token);
             Test.assert_equal ~expected:")" ~actual:(Ast.Token.text closing_token);
             (
@@ -2439,7 +2450,7 @@ let test_local_open_labeled_argument_views = fun _ctx ->
   let (callee, arguments) = application_parts body [] in
   (
     match Ast.Expr.view callee with
-    | Ast.Expr.Ident { path } -> assert_last_ident_text path "create"
+    | Ast.Expr.Ident { ident } -> assert_last_ident_text ident "create"
     | _ -> panic "expected create callee"
   );
   match arguments with
@@ -2453,8 +2464,8 @@ let test_local_open_labeled_argument_views = fun _ctx ->
             in
             (
               match Ast.LocalOpenExpr.view local_open with
-              | Ast.LocalOpenExpr.Delimited { module_path; body = inner_body; _ } ->
-                  Test.assert_equal ~expected:"Path" ~actual:(last_path_text module_path);
+              | Ast.LocalOpenExpr.Delimited { module_ident; body = inner_body; _ } ->
+                  Test.assert_equal ~expected:"Path" ~actual:(last_ident_text module_ident);
                   (
                     match Ast.Expr.view inner_body with
                     | Ast.Expr.Infix _ -> Ok ()
@@ -2492,12 +2503,12 @@ let test_first_class_module_views = fun _ctx ->
     |> require_some ~msg:"expected first-class module view"
   in
   Test.assert_equal
-    ~expected:Ast.FirstClassModuleExpr.ModulePath
-    ~actual:(Ast.FirstClassModuleExpr.module_path packed);
+    ~expected:Ast.FirstClassModuleExpr.ModuleIdent
+    ~actual:(Ast.FirstClassModuleExpr.module_ident packed);
   Test.assert_equal
     ~expected:Ast.FirstClassModuleExpr.NoAscription
     ~actual:(Ast.FirstClassModuleExpr.ascription packed);
-  Test.assert_equal ~expected:"Foo.Bar" ~actual:(first_class_module_path_text packed);
+  Test.assert_equal ~expected:"Foo.Bar" ~actual:(first_class_module_ident_text packed);
   let typed =
     nth_structure_item root 1
     |> require_some ~msg:"expected typed module item"
@@ -2511,12 +2522,12 @@ let test_first_class_module_views = fun _ctx ->
     |> require_some ~msg:"expected typed first-class module view"
   in
   Test.assert_equal
-    ~expected:Ast.FirstClassModuleExpr.ModulePath
-    ~actual:(Ast.FirstClassModuleExpr.module_path typed);
+    ~expected:Ast.FirstClassModuleExpr.ModuleIdent
+    ~actual:(Ast.FirstClassModuleExpr.module_ident typed);
   Test.assert_equal
-    ~expected:Ast.FirstClassModuleExpr.PathAscription
+    ~expected:Ast.FirstClassModuleExpr.IdentAscription
     ~actual:(Ast.FirstClassModuleExpr.ascription typed);
-  Test.assert_equal ~expected:"Foo" ~actual:(first_class_module_path_text typed);
+  Test.assert_equal ~expected:"Foo" ~actual:(first_class_module_ident_text typed);
   Test.assert_equal ~expected:"S.T" ~actual:(first_class_module_ascription_text typed);
   let colon =
     Ast.FirstClassModuleExpr.colon_token typed
@@ -2536,8 +2547,8 @@ let test_first_class_module_views = fun _ctx ->
     |> require_some ~msg:"expected advanced first-class module view"
   in
   Test.assert_equal
-    ~expected:Ast.FirstClassModuleExpr.ModulePath
-    ~actual:(Ast.FirstClassModuleExpr.module_path advanced);
+    ~expected:Ast.FirstClassModuleExpr.ModuleIdent
+    ~actual:(Ast.FirstClassModuleExpr.module_ident advanced);
   Test.assert_equal
     ~expected:Ast.FirstClassModuleExpr.UnsupportedAscription
     ~actual:(Ast.FirstClassModuleExpr.ascription advanced);
@@ -2584,16 +2595,16 @@ let test_let_module_expression_views = fun _ctx ->
   Test.assert_equal ~expected:"=" ~actual:(Ast.Token.text equals);
   Test.assert_equal ~expected:"in" ~actual:(Ast.Token.text in_token);
   Test.assert_equal
-    ~expected:Ast.LetModuleExpr.Path
+    ~expected:Ast.LetModuleExpr.Ident
     ~actual:(Ast.LetModuleExpr.module_body module_expr);
-  Test.assert_equal ~expected:"Foo.Bar" ~actual:(let_module_body_path_text module_expr);
+  Test.assert_equal ~expected:"Foo.Bar" ~actual:(let_module_body_ident_text module_expr);
   (
     match Ast.LetModuleExpr.body module_expr with
     | Some body -> (
         match Ast.Expr.view body with
-        | Ast.Expr.Ident { path } ->
-            Test.assert_equal ~expected:"result" ~actual:(last_path_text path)
-        | _ -> panic "expected let module body path"
+        | Ast.Expr.Ident { ident } ->
+            Test.assert_equal ~expected:"result" ~actual:(last_ident_text ident)
+        | _ -> panic "expected let module body ident"
       )
     | None -> panic "expected let module expression body"
   );
@@ -2678,9 +2689,9 @@ let test_let_exception_expression_views = fun _ctx ->
     match Ast.LetExceptionExpr.body exception_expr with
     | Some body -> (
         match Ast.Expr.view body with
-        | Ast.Expr.Ident { path } ->
-            Test.assert_equal ~expected:"result" ~actual:(last_path_text path)
-        | _ -> panic "expected let exception body path"
+        | Ast.Expr.Ident { ident } ->
+            Test.assert_equal ~expected:"result" ~actual:(last_ident_text ident)
+        | _ -> panic "expected let exception body ident"
       )
     | None -> panic "expected let exception expression body"
   );
@@ -2772,8 +2783,8 @@ let test_attribute_views = fun _ctx ->
   in
   (
     match Ast.Expr.view attribute_expr with
-    | Ast.Expr.Ident { path } -> assert_last_ident_text path "target"
-    | _ -> panic "expected attributed expression to unwrap to its inner path"
+    | Ast.Expr.Ident { ident } -> assert_last_ident_text ident "target"
+    | _ -> panic "expected attributed expression to unwrap to its inner ident"
   );
   let attribute_expr =
     Ast.cast_result_to_option (Ast.AttributeExpr.cast attribute_expr)
@@ -2792,7 +2803,8 @@ let test_attribute_views = fun _ctx ->
     |> Result.expect ~msg:"expected attribute pattern"
   in
   let attribute_pattern =
-    Ast.Node.first_child_node attribute_pattern ~kind:SyntaxKind.ATTRIBUTE_PATTERN
+    Ast.Node.first_child_node (Ast.Pattern.as_node attribute_pattern) ~kind:SyntaxKind.ATTRIBUTE_PATTERN
+    |> Option.and_then ~fn:(fun node -> Ast.cast_result_to_option (Ast.Pattern.cast node))
     |> require_some ~msg:"expected parenthesized attribute pattern"
   in
   let attribute_pattern =
@@ -2803,8 +2815,8 @@ let test_attribute_views = fun _ctx ->
     match Ast.AttributePattern.inner attribute_pattern with
     | Some inner -> (
         match Ast.Pattern.view inner with
-        | Ast.Pattern.Ident { path } -> assert_last_ident_text path "x"
-        | _ -> panic "expected attributed pattern inner path"
+        | Ast.Pattern.Ident { ident } -> assert_last_ident_text ident "x"
+        | _ -> panic "expected attributed pattern inner ident"
       )
     | None -> panic "expected attribute pattern inner"
   );
@@ -2913,6 +2925,14 @@ let test_special_pattern_views = fun _ctx ->
   match List.reverse !parameters with
   | [ locally_abstract; first_class_module ] ->
       let locally_abstract =
+        Ast.Parameter.pattern locally_abstract
+        |> require_some ~msg:"expected locally abstract type parameter pattern"
+      in
+      let first_class_module =
+        Ast.Parameter.pattern first_class_module
+        |> require_some ~msg:"expected first-class module parameter pattern"
+      in
+      let locally_abstract =
         Ast.cast_result_to_option (Ast.LocallyAbstractTypePattern.cast locally_abstract)
         |> require_some ~msg:"expected locally abstract type pattern view"
       in
@@ -2923,10 +2943,10 @@ let test_special_pattern_views = fun _ctx ->
       Test.assert_equal ~expected:[ "a"; "b" ] ~actual:(List.reverse !type_names);
       (
         match Ast.Pattern.view first_class_module with
-        | Ast.Pattern.FirstClassModule { binder; ascription; ascription_path } ->
+        | Ast.Pattern.FirstClassModule { binder; ascription; ascription_ident } ->
             Test.assert_equal ~expected:"M" ~actual:(Ast.Token.text binder);
-            Test.assert_equal ~expected:Ast.PathAscription ~actual:ascription;
-            Test.assert_equal ~expected:2 ~actual:(Vector.length ascription_path)
+            Test.assert_equal ~expected:Ast.IdentAscription ~actual:ascription;
+            Test.assert_equal ~expected:2 ~actual:(Vector.length ascription_ident)
         | _ -> panic "expected first-class module pattern"
       );
       let first_class_module =
@@ -2944,7 +2964,7 @@ let test_special_pattern_views = fun _ctx ->
       Test.assert_equal ~expected:"M" ~actual:(Ast.Token.text binder);
       Test.assert_equal ~expected:":" ~actual:(Ast.Token.text colon);
       Test.assert_equal
-        ~expected:Ast.FirstClassModulePattern.PathAscription
+        ~expected:Ast.FirstClassModulePattern.IdentAscription
         ~actual:(Ast.FirstClassModulePattern.ascription first_class_module);
       Test.assert_equal
         ~expected:"S.T"
@@ -2969,6 +2989,10 @@ let test_first_class_module_pattern_with_constraints_view = fun _ctx ->
     ~fn:(fun pattern -> parameters := pattern :: !parameters);
   match List.reverse !parameters with
   | [ first_class_module ] -> (
+      let first_class_module =
+        Ast.Parameter.pattern first_class_module
+        |> require_some ~msg:"expected first-class module parameter pattern"
+      in
       match Ast.Pattern.view first_class_module with
       | Ast.Pattern.FirstClassModule { ascription; _ } ->
           let first_class_module =
@@ -3002,32 +3026,28 @@ let test_typed_labeled_parameter_view = fun _ctx ->
     ~fn:(fun pattern -> parameters := pattern :: !parameters);
   match List.reverse !parameters with
   | [ _locally_abstract; _iter; labeled ] -> (
-      match Ast.cast_result_to_option (Ast.Parameter.cast labeled) with
-      | Some parameter -> (
-          match Ast.Parameter.view parameter with
-          | Ast.Parameter.Param {
-              label = Ast.Parameter.Labeled { name = Some label };
-              pattern = Some pattern;
-            } ->
-              Test.assert_equal ~expected:"fn" ~actual:(Ast.Token.text label);
-              (
-                match Ast.Pattern.view pattern with
-                | Ast.Pattern.Constraint { pattern = binding; annotation } ->
-                    (
-                      match Ast.Pattern.view binding with
-                      | Ast.Pattern.Ident { path } -> assert_last_ident_text path "fn"
-                      | _ -> panic "expected labeled parameter binding path"
-                    );
-                    (
-                      match Ast.TypeExpr.view annotation with
-                      | Ast.TypeExpr.Arrow { arg = _; ret = _ } -> Ok ()
-                      | _ -> Error "expected labeled parameter arrow annotation"
-                    )
-                | _ -> Error "expected typed labeled parameter pattern"
-              )
-          | _ -> Error "expected labeled parameter view with label and typed pattern"
-        )
-      | _ -> Error "expected labeled parameter pattern"
+      match Ast.Parameter.view labeled with
+      | Ast.Parameter.Param {
+          label = Ast.Parameter.Labeled { name = Some label };
+          pattern = Some pattern;
+        } ->
+          Test.assert_equal ~expected:"fn" ~actual:(Ast.Token.text label);
+          (
+            match Ast.Pattern.view pattern with
+            | Ast.Pattern.Constraint { pattern = binding; annotation } ->
+                (
+                  match Ast.Pattern.view binding with
+                  | Ast.Pattern.Ident { ident } -> assert_last_ident_text ident "fn"
+                  | _ -> panic "expected labeled parameter binding ident"
+                );
+                (
+                  match Ast.TypeExpr.view annotation with
+                  | Ast.TypeExpr.Arrow { arg = _; ret = _ } -> Ok ()
+                  | _ -> Error "expected labeled parameter arrow annotation"
+                )
+            | _ -> Error "expected typed labeled parameter pattern"
+          )
+      | _ -> Error "expected labeled parameter view with label and typed pattern"
     )
   | _ -> Error "expected locally abstract, positional, and labeled parameters"
 
@@ -3049,33 +3069,29 @@ let test_optional_default_labeled_parameter_view = fun _ctx ->
     ~fn:(fun pattern -> parameters := pattern :: !parameters);
   match List.reverse !parameters with
   | [ optional; _types ] -> (
-      match Ast.cast_result_to_option (Ast.Parameter.cast optional) with
-      | Some parameter -> (
-          match Ast.Parameter.view parameter with
-          | Ast.Parameter.Param {
-              label = Ast.Parameter.Optional {
-                name = Some label;
-                default = Some default;
-              };
-              pattern = Some pattern;
-            } ->
-              Test.assert_equal ~expected:"config" ~actual:(Ast.Token.text label);
-              (
-                match Ast.Pattern.view pattern with
-                | Ast.Pattern.Ident { path } ->
-                    Test.assert_equal ~expected:"cfg" ~actual:(last_path_text path)
-                | _ -> panic "expected optional default binding path"
-              );
-              (
-                match Ast.Expr.view default with
-                | Ast.Expr.Ident { path } ->
-                    Test.assert_equal ~expected:"default_config" ~actual:(last_path_text path);
-                    Ok ()
-                | _ -> Error "expected optional default expression path"
-              )
-          | _ -> Error "expected optional default parameter view"
-        )
-      | None -> Error "expected optional default parameter pattern"
+      match Ast.Parameter.view optional with
+      | Ast.Parameter.Param {
+          label = Ast.Parameter.Optional {
+            name = Some label;
+            default = Some default;
+          };
+          pattern = Some pattern;
+        } ->
+          Test.assert_equal ~expected:"config" ~actual:(Ast.Token.text label);
+          (
+            match Ast.Pattern.view pattern with
+            | Ast.Pattern.Ident { ident } ->
+                Test.assert_equal ~expected:"cfg" ~actual:(last_ident_text ident)
+            | _ -> panic "expected optional default binding ident"
+          );
+          (
+            match Ast.Expr.view default with
+            | Ast.Expr.Ident { ident } ->
+                Test.assert_equal ~expected:"default_config" ~actual:(last_ident_text ident);
+                Ok ()
+            | _ -> Error "expected optional default expression ident"
+          )
+      | _ -> Error "expected optional default parameter view"
     )
   | _ -> Error "expected optional and positional parameters"
 
@@ -3100,8 +3116,8 @@ let test_let_binding_parameters_are_parameter_views = fun _ctx ->
     match Ast.Parameter.view (Vector.get_unchecked parameters ~at:0) with
     | Ast.Parameter.Param { label = Ast.Parameter.NoLabel; pattern = Some pattern } -> (
         match Ast.Pattern.view pattern with
-        | Ast.Pattern.Ident { path } -> assert_last_ident_text path "name"
-        | _ -> panic "expected positional parameter path"
+        | Ast.Pattern.Ident { ident } -> assert_last_ident_text ident "name"
+        | _ -> panic "expected positional parameter ident"
       )
     | _ -> panic "expected positional parameter view"
   );
@@ -3115,7 +3131,7 @@ let test_let_binding_parameters_are_parameter_views = fun _ctx ->
         (
           match Ast.Pattern.view pattern with
           | Ast.Pattern.Constraint { annotation; _ } ->
-              assert_type_path_last_ident annotation "mode"
+              assert_type_ident_last_segment annotation "mode"
           | _ -> panic "expected labeled parameter type constraint"
         )
     | _ -> panic "expected labeled parameter view"
@@ -3131,12 +3147,12 @@ let test_let_binding_parameters_are_parameter_views = fun _ctx ->
       Test.assert_equal ~expected:"config" ~actual:(Ast.Token.text label);
       (
         match Ast.Pattern.view pattern with
-        | Ast.Pattern.Ident { path } -> assert_last_ident_text path "cfg"
+        | Ast.Pattern.Ident { ident } -> assert_last_ident_text ident "cfg"
         | _ -> panic "expected optional-default parameter pattern"
       );
       (
         match Ast.Expr.view default with
-        | Ast.Expr.Ident { path } -> assert_last_ident_text path "default_config"
+        | Ast.Expr.Ident { ident } -> assert_last_ident_text ident "default_config"
         | _ -> panic "expected optional-default parameter expression"
       );
       Ok ()
@@ -3290,21 +3306,21 @@ let y = 3
       enter_let_binding =
         Some (fun visitor binding ->
           (
-            match Ast.LetBinding.pattern binding with
-            | Some pattern -> (
-                match Ast.Node.first_descendant_token pattern with
-                | Some name ->
-                    Vector.push (Syn.Visitor.ctx visitor).let_names ~value:(Ast.Token.text name)
-                | None -> ()
-              )
+	        match Ast.LetBinding.pattern binding with
+	        | Some pattern -> (
+	                match Ast.Node.first_descendant_token (Ast.Pattern.as_node pattern) with
+	                | Some name ->
+	                    Vector.push (Syn.Visitor.ctx visitor).let_names ~value:(Ast.Token.text name)
+	                | None -> ()
+	              )
             | None -> ()
           );
           (visitor, Syn.Visitor.Continue));
-      enter_expr =
-        Some (fun visitor expr ->
-          match Ast.Node.kind expr with
-          | Syn.SyntaxKind.IF_EXPR -> (visitor, Syn.Visitor.Skip_subtree)
-          | _ -> (visitor, Syn.Visitor.Continue));
+	      enter_expr =
+	        Some (fun visitor expr ->
+	          match Ast.Node.kind (Ast.Expr.as_node expr) with
+	          | Syn.SyntaxKind.IF_EXPR -> (visitor, Syn.Visitor.Skip_subtree)
+	          | _ -> (visitor, Syn.Visitor.Continue));
       leave_node =
         Some (fun visitor _node ->
           let ctx = Syn.Visitor.ctx visitor in
@@ -3341,9 +3357,9 @@ let z = 3
       |> Result.expect ~msg:"expected let binding pattern"
     in
     match Ast.Pattern.view pattern with
-    | Ast.Pattern.Ident { path } ->
+    | Ast.Pattern.Ident { ident } ->
         let name =
-          Ast.Path.last_ident path
+          Ast.Ident.last_segment ident
           |> require_some ~msg:"expected let binding name"
         in
         Ast.Token.text name
@@ -3413,7 +3429,7 @@ let tests =
     case
       "ast keeps nested match guards from stealing outer case arrows"
       test_nested_match_guard_case_boundaries;
-    case "ast exposes open declaration path tokens" test_open_declaration_path_tokens;
+    case "ast exposes open declaration ident tokens" test_open_declaration_ident_tokens;
     case "ast exposes simple declaration token views" test_simple_declaration_token_views;
     case "ast exposes module declaration tokens" test_module_declaration_tokens;
     case

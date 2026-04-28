@@ -22,20 +22,21 @@ type binding_site = {
 
 let binding_name_token = fun binding ->
   match Ast.LetBinding.pattern binding with
-  | Some pattern -> Ast.Node.first_descendant_token pattern
+  | Some pattern -> Ast.Node.first_descendant_token (Ast.Pattern.as_node pattern)
   | None -> None
 
 let binding_site_of_let_binding = fun binding ->
   binding_name_token binding
   |> Option.map
     ~fn:(fun name_token -> {
-      syntax_node = (binding: Ast.Node.t);
+      syntax_node = Ast.LetBinding.as_node binding;
       name_token;
       is_function = false;
     })
 
-let binding_sites_of_structure_item = fun item ->
-  let sites = Vector.with_capacity ~size:(Ast.Node.child_count item) in
+let binding_sites_of_structure_item = fun (item: Ast.StructureItem.t) ->
+  let node = Ast.StructureItem.as_node item in
+  let sites = Vector.with_capacity ~size:(Ast.Node.child_count node) in
   let rec visit node =
     match Ast.cast_result_to_option (Ast.LetBinding.cast node) with
     | Some binding -> (
@@ -45,6 +46,6 @@ let binding_sites_of_structure_item = fun item ->
       )
     | None -> iter_fold Ast.Node.fold_child_node node ~fn:visit
   in
-  iter_fold Ast.Node.fold_child_node item ~fn:visit;
+  iter_fold Ast.Node.fold_child_node node ~fn:visit;
   Vector.to_array sites
   |> Array.to_list

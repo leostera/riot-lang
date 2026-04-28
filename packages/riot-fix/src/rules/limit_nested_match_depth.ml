@@ -27,7 +27,7 @@ let make_diagnostic = fun expr depth ->
   H.diagnostic
     ~rule_id
     ~message:rule_description
-    ~span:(H.span_of_node expr)
+    ~span:(H.span_of_node (Ast.Expr.as_node expr))
     ~suggestion:("Reduce nested match depth from "
     ^ Int.to_string depth
     ^ " by extracting a helper or flattening the control flow.")

@@ -144,8 +144,9 @@ let fold = fun visitor init tree ->
   Syn.Visitor.visit_node state tree
   |> Syn.Visitor.ctx
 
-let expressions_of_structure_item = fun item ->
-  let expressions = Vector.with_capacity ~size:(Ast.Node.child_count item) in
+let expressions_of_structure_item = fun (item: Ast.StructureItem.t) ->
+  let node = Ast.StructureItem.as_node item in
+  let expressions = Vector.with_capacity ~size:(Ast.Node.child_count node) in
   let hooks =
     {
       Syn.Visitor.empty_hooks with
@@ -157,11 +158,12 @@ let expressions_of_structure_item = fun item ->
   in
   Syn.Visitor.make ~ctx:() ~hooks
   |> fun visitor ->
-    ignore (Syn.Visitor.visit_node visitor item);
+    ignore (Syn.Visitor.visit_structure_item visitor item);
     to_list expressions
 
-let let_bindings_of_structure_item = fun item ->
-  let bindings = Vector.with_capacity ~size:(Ast.Node.child_count item) in
+let let_bindings_of_structure_item = fun (item: Ast.StructureItem.t) ->
+  let node = Ast.StructureItem.as_node item in
+  let bindings = Vector.with_capacity ~size:(Ast.Node.child_count node) in
   let hooks =
     {
       Syn.Visitor.empty_hooks with
@@ -173,5 +175,5 @@ let let_bindings_of_structure_item = fun item ->
   in
   Syn.Visitor.make ~ctx:() ~hooks
   |> fun visitor ->
-    ignore (Syn.Visitor.visit_node visitor item);
+    ignore (Syn.Visitor.visit_structure_item visitor item);
     to_list bindings

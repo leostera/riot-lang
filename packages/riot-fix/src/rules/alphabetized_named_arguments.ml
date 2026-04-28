@@ -33,7 +33,7 @@ let make_diagnostic = fun ~previous_name parameter ->
   H.diagnostic
     ~rule_id
     ~message:rule_description
-    ~span:(H.span_of_node parameter)
+    ~span:(H.span_of_node (Ast.Parameter.as_node parameter))
     ~suggestion:("Place "
     ^ current_name
     ^ " before "

@@ -29,23 +29,28 @@ let raw_first_child_expr = fun expr ->
     ~fn:(fun child ->
       match !found with
       | Some _ -> ()
-      | None -> found := Ast.cast_result_to_option (Ast.Expr.cast child));
+      | None ->
+          if Option.is_some (Ast.cast_result_to_option (Ast.Expr.cast child)) then
+            found := Some child);
   !found
 
 let raw_for_each_child_expr = fun expr ~fn ->
   H.iter_fold Ast.Node.fold_child_node
     expr
     ~fn:(fun child ->
-      match Ast.cast_result_to_option (Ast.Expr.cast child) with
-      | Some child -> fn child
-      | None -> ())
+      if Option.is_some (Ast.cast_result_to_option (Ast.Expr.cast child)) then
+        fn child)
 
 let is_obviously_redundant = fun expr ->
-  match Ast.Expr.view expr with
-  | Ast.Expr.Ident _
-  | Ast.Expr.Literal _ -> true
-  | _ when Syn.SyntaxKind.(Ast.Node.kind expr = PAREN_EXPR) -> true
-  | _ -> false
+  match Ast.cast_result_to_option (Ast.Expr.cast expr) with
+  | Some expr_view -> (
+      match Ast.Expr.view expr_view with
+      | Ast.Expr.Ident _
+      | Ast.Expr.Literal _ -> true
+      | _ when Syn.SyntaxKind.(Ast.Node.kind expr = PAREN_EXPR) -> true
+      | _ -> false
+    )
+  | None -> false
 
 let make_diagnostic = fun expr inner ->
   H.diagnostic
@@ -82,7 +87,7 @@ let check_tree = fun _ctx root ->
       Syn.Visitor.empty_hooks with
       enter_expr =
         Some (fun visitor expr ->
-          diagnostics_for_expression diagnostics ~inside_redundant_chain:false expr;
+          diagnostics_for_expression diagnostics ~inside_redundant_chain:false (Ast.Expr.as_node expr);
           (visitor, Syn.Visitor.Skip_subtree));
     }
   in

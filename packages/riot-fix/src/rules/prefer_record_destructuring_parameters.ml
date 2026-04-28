@@ -41,17 +41,12 @@ let diagnostic = fun parameter_token parameter_name ->
     ^ " and immediately unpacking it in the function body")
     ()
 
-let parameter_name_token = fun pattern ->
-  match H.pattern_name_token pattern with
-  | Some token -> Some token
-  | None -> None
-
 let single_positional_parameter_name = fun binding ->
-  let parameters = Vector.with_capacity ~size:(Ast.Node.child_count (binding: Ast.Node.t)) in
+  let parameters = Vector.with_capacity ~size:(Ast.LetBinding.parameter_count binding) in
   H.iter_fold Ast.LetBinding.fold_parameter
     binding
-    ~fn:(fun pattern ->
-      match parameter_name_token pattern with
+    ~fn:(fun parameter ->
+      match H.parameter_name_token parameter with
       | Some token -> Vector.push parameters ~value:token
       | None -> ());
   if Int.equal (Vector.length parameters) 1 then
@@ -59,8 +54,8 @@ let single_positional_parameter_name = fun binding ->
   else
     None
 
-let path_segments = fun ctx path ->
-  H.node_source ctx (path: Ast.Node.t)
+let ident_segments = fun ctx ident ->
+  H.node_source ctx (Ast.Ident.as_node ident)
   |> String.trim
   |> String.split ~by:"."
 
@@ -79,8 +74,8 @@ let record_pattern_field_count = fun record ->
 
 let rec expr_is_parameter_path = fun ctx expected_name expr ->
   match Ast.Expr.view (H.unwrap_expr expr) with
-  | Ast.Expr.Ident { path } -> (
-      match path_segments ctx path with
+  | Ast.Expr.Ident { ident } -> (
+      match ident_segments ctx ident with
       | [ name ] -> String.equal expected_name name
       | _ -> false
     )
@@ -116,7 +111,7 @@ let usage_has_two_distinct_fields = fun usage ->
 
 let should_prefer_destructuring = fun ctx expected_name expr ->
   let usage = {
-    fields = Vector.with_capacity ~size:(Ast.Node.child_count (expr: Ast.Node.t));
+    fields = Vector.with_capacity ~size:(Ast.Expr.child_expr_count expr);
     has_whole_value_use = false;
   }
   in
@@ -127,8 +122,8 @@ let should_prefer_destructuring = fun ctx expected_name expr ->
         Some (fun visitor expr ->
           (
             match Ast.Expr.view expr with
-            | Ast.Expr.Ident { path } -> (
-                match path_segments ctx path with
+            | Ast.Expr.Ident { ident } -> (
+                match ident_segments ctx ident with
                 | [ name ] when String.equal expected_name name -> usage.has_whole_value_use <- true
                 | [ base; field ] when String.equal expected_name base ->
                     Vector.push usage.fields ~value:field
@@ -141,7 +136,7 @@ let should_prefer_destructuring = fun ctx expected_name expr ->
   in
   Syn.Visitor.make ~ctx:() ~hooks
   |> fun visitor ->
-    ignore (Syn.Visitor.visit_node visitor (expr: Ast.Node.t));
+    ignore (Syn.Visitor.visit_expr visitor expr);
     usage_has_two_distinct_fields usage && not usage.has_whole_value_use
 
 let check_binding = fun ctx diagnostics binding ->

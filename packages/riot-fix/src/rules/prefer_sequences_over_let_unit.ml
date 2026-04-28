@@ -19,7 +19,7 @@ let node_source = fun ctx node ->
   H.node_source ctx node
   |> String.trim
 
-let is_unit_pattern = fun ctx pattern -> String.equal (node_source ctx (pattern: Ast.Node.t)) "()"
+let is_unit_pattern = fun ctx pattern -> String.equal (node_source ctx (Ast.Pattern.as_node pattern)) "()"
 
 let indentation_at = fun source offset ->
   let rec find_line_start index =
@@ -43,12 +43,15 @@ let separator_between = fun ctx left right ->
     H.source_span ctx.Rule.source stop start
 
 let replacement_text = fun ctx expr bound_value body ->
-  let bound_source = node_source ctx (bound_value: Ast.Node.t) in
-  let body_source = node_source ctx (body: Ast.Node.t) in
-  let between = separator_between ctx (bound_value: Ast.Node.t) (body: Ast.Node.t) in
+  let expr_node = Ast.Expr.as_node expr in
+  let bound_node = Ast.Expr.as_node bound_value in
+  let body_node = Ast.Expr.as_node body in
+  let bound_source = node_source ctx bound_node in
+  let body_source = node_source ctx body_node in
+  let between = separator_between ctx bound_node body_node in
   let separator =
     if String.contains between "\n" then
-      "\n" ^ indentation_at ctx.Rule.source (Ast.Node.span_start expr)
+      "\n" ^ indentation_at ctx.Rule.source (Ast.Node.span_start expr_node)
     else
       " "
   in
@@ -60,13 +63,13 @@ let make_diagnostic = fun ctx expr binding body ->
       Some (H.diagnostic
         ~rule_id
         ~message:rule_description
-        ~span:(H.span_of_node expr)
+        ~span:(H.span_of_node (Ast.Expr.as_node expr))
         ~suggestion:"Rewrite the unit binding as a sequence."
         ~fix:(Fix.make
           ~title:"Rewrite unit let-binding as a sequence"
           ~operations:[
             Fix.replace_node_with_text
-              ~target:expr
+              ~target:(Ast.Expr.as_node expr)
               ~text:(replacement_text ctx expr bound_value body);
           ])
         ())

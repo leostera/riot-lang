@@ -20,7 +20,7 @@ let rec unwrap_type = fun type_expr -> H.unwrap_type_expr type_expr
 
 let is_closed_polyvariant_type = fun ctx type_expr ->
   let text =
-    H.node_source ctx ((unwrap_type type_expr): Ast.Node.t)
+    H.node_source ctx (Ast.TypeExpr.as_node (unwrap_type type_expr))
     |> String.trim
   in
   String.starts_with ~prefix:"[" text
@@ -32,7 +32,7 @@ let is_closed_polyvariant_type = fun ctx type_expr ->
 let diagnostic_for_type = fun type_expr -> H.diagnostic
   ~rule_id
   ~message:rule_description
-  ~span:(H.span_of_node (type_expr: Ast.Node.t))
+  ~span:(H.span_of_node (Ast.TypeExpr.as_node type_expr))
   ~suggestion:"Move the closed polyvariant row behind a named type alias."
   ()
 

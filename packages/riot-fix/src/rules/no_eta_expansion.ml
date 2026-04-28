@@ -28,7 +28,7 @@ let rec equal_string_lists = fun left right ->
 
 let replacement_text = fun ctx expr ->
   let source =
-    H.node_source ctx (expr: Ast.Node.t)
+    H.node_source ctx (Ast.Expr.as_node expr)
     |> String.trim
   in
   if not (String.starts_with ~prefix:"fun " source) then
@@ -50,11 +50,11 @@ let make_diagnostic = fun ctx expr replacement ->
   H.diagnostic
     ~rule_id
     ~message:rule_description
-    ~span:(H.span_of_node expr)
+    ~span:(H.span_of_node (Ast.Expr.as_node expr))
     ~suggestion:"Replace this wrapper with the function it forwards to."
     ~fix:(Fix.make
       ~title:"Collapse eta-expanded wrapper"
-      ~operations:[ Fix.replace_node_with_text ~target:expr ~text:replacement; ])
+      ~operations:[ Fix.replace_node_with_text ~target:(Ast.Expr.as_node expr) ~text:replacement; ])
     ()
 
 let diagnostic_for_binding = fun ctx binding ->

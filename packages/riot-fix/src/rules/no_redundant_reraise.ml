@@ -21,8 +21,8 @@ let rec unwrap_expr = fun expr -> H.unwrap_expr expr
 
 let expr_path_name = fun expr ->
   match Ast.Expr.view (unwrap_expr expr) with
-  | Ast.Expr.Ident { path } -> (
-      match Ast.Path.last_ident path with
+  | Ast.Expr.Ident { ident } -> (
+      match Ast.Ident.last_segment ident with
       | Some token -> Some (Ast.Token.text token)
       | None -> None
     )
@@ -57,11 +57,13 @@ let diagnostic_for_expr = fun expr ->
                   Some (H.diagnostic
                     ~rule_id
                     ~message:rule_description
-                    ~span:(H.span_of_node expr)
+                    ~span:(H.span_of_node (Ast.Expr.as_node expr))
                     ~suggestion:"Remove the handler and keep the protected expression."
                     ~fix:(Fix.make
                       ~title:"Remove redundant reraise handler"
-                      ~operations:[ Fix.replace_node ~target:expr ~replacement:body; ])
+                      ~operations:[
+                        Fix.replace_node ~target:(Ast.Expr.as_node expr) ~replacement:(Ast.Expr.as_node body);
+                      ])
                     ())
               | _ -> None
             )
