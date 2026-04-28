@@ -5,7 +5,7 @@
 It is built on top of `syn`:
 
 - Ceibo provides exact lossless syntax and spans
-- `Syn.Cst` provides typed structure for clean parses
+- `Syn.Ast` provides typed views over the lossless syntax tree
 - `fixme` provides the shared rule-authoring surface
 
 ## Current model
@@ -14,7 +14,7 @@ The pipeline is:
 
 1. parse each file once with `syn`
 2. keep parse diagnostics separate from lint diagnostics
-3. run enabled rules against the red tree plus optional typed CST
+3. run enabled rules against the red tree plus typed Ast views
 4. apply only safe, package-owned fixes
 5. report remaining issues in text or JSON
 
@@ -66,7 +66,7 @@ riot run riot -- fix --explain std:no-stdlib
 Rules are defined with `fixme` and run against:
 
 - the file path
-- the optional typed CST for clean parses
+- the typed `Syn.Ast.SourceFile` view
 - the Ceibo red tree for exact source traversal
 
 At a high level:
@@ -87,7 +87,7 @@ let make () =
 The important constraints are:
 
 - keep rules small and specific
-- prefer typed `Syn.Cst` structure when the grammar has already been lifted
+- prefer typed `Syn.Ast` views when the grammar has already been lifted
 - push structural parser assumptions down into `syn` instead of re-encoding
   grammar in every rule
 - only emit fixes that are clearly safe

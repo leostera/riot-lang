@@ -2819,7 +2819,9 @@ let render x y z =
             Riot_fix.Fixme_runner.materialize ~workspace_root ~target_dir_root [ provider ]
           in
           let source = read_file plan.main_path in
-          Test.assert_true (String.contains source "Runtime.run ~main:Fixme_runner.main");
+          Test.assert_true (String.contains source "let main ~args =");
+          Test.assert_true (String.contains source "Fixme_runner.main ~args");
+          Test.assert_true (String.contains source "Runtime.run ~main ~args:Env.args");
           Ok ()));
   Test.case
     "fixme runner binary path uses workspace build dir"
