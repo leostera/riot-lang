@@ -495,6 +495,28 @@ let test_process_data_accepts_split_header_block = fun _ctx ->
   | Ok _ -> Result.Error "Split header block did not emit the expected headers and data events"
   | Error err -> Result.Error ("Split header block failed: " ^ Connection.error_to_string err)
 
+let test_process_data_rejects_data_before_headers = fun _ctx ->
+  let conn = Connection.create ~role:Connection.Server () in
+  let data = Frame.data ~stream_id:1 "hello" in
+  match Connection.process_data conn (Std.IO.Bytes.from_string (serialize_frame data)) with
+  | Error (Connection.DataBeforeHeaders { stream_id = 1 }) -> Result.Ok ()
+  | Error err -> Result.Error ("Wrong connection error: " ^ Connection.error_to_string err)
+  | Ok _ -> Result.Error "DATA before HEADERS was accepted"
+
+let test_process_data_accepts_data_after_headers = fun _ctx ->
+  let conn = Connection.create ~role:Connection.Server () in
+  let header_block = encode_header_block [ { Hpack.name = ":method"; value = "GET" }; ] in
+  let headers = Frame.headers ~stream_id:1 ~end_headers:true header_block in
+  let data = Frame.data ~stream_id:1 "hello" in
+  match Connection.process_data
+    conn
+    (Std.IO.Bytes.from_string (serialize_frame headers ^ serialize_frame data)) with
+  | Ok [ Connection.HeadersReceived { stream_id = 1; headers = [ { Hpack.name = ":method"; value = "GET" } ]; end_stream = false }; Connection.DataReceived { stream_id = 1; data; end_stream = false } ] when Std.IO.Bytes.to_string
+    data
+  = "hello" -> Result.Ok ()
+  | Ok _ -> Result.Error "DATA after HEADERS did not emit the expected events"
+  | Error err -> Result.Error ("DATA after HEADERS failed: " ^ Connection.error_to_string err)
+
 let tests =
   Test.[
     case "serialize_settings_frame" test_serialize_settings_frame;
@@ -558,6 +580,8 @@ let tests =
       "process_data_rejects_continuation_stream_mismatch"
       test_process_data_rejects_continuation_stream_mismatch;
     case "process_data_accepts_split_header_block" test_process_data_accepts_split_header_block;
+    case "process_data_rejects_data_before_headers" test_process_data_rejects_data_before_headers;
+    case "process_data_accepts_data_after_headers" test_process_data_accepts_data_after_headers;
   ]
 
 let main ~args:_ = Test.Cli.main ~name:"http:http2_parser" ~tests ~args:Env.args ()

@@ -124,6 +124,7 @@ type error =
     }
   | UnexpectedContinuation of { stream_id: int }
   | ContinuationStreamMismatch of { expected_stream_id: int; actual_stream_id: int }
+  | DataBeforeHeaders of { stream_id: int }
   | ParserError of Parser.error
   | FrameConstructorError of Frame.constructor_error
   | SerializerError of Serializer.error
@@ -162,6 +163,8 @@ let error_to_string = function
       ^ Int.to_string expected_stream_id
       ^ ", got stream "
       ^ Int.to_string actual_stream_id
+  | DataBeforeHeaders { stream_id } ->
+      "HTTP/2 received DATA before headers on stream " ^ Int.to_string stream_id
   | ParserError error -> Parser.error_to_string error
   | FrameConstructorError error -> Frame.constructor_error_to_string error
   | SerializerError error -> Serializer.error_to_string error
@@ -592,14 +595,14 @@ let process_data_frame = fun conn stream_id payload flags ->
       let end_stream = flags.Frame.end_stream in
       (
         match get_stream conn stream_id with
+        | None -> Error (DataBeforeHeaders { stream_id })
         | Some stream ->
             let chunks = Cell.get stream.data_chunks in
             Cell.set stream.data_chunks (chunks @ [ data_bytes ]);
             if end_stream then
-              Cell.set stream.state StreamHalfClosedRemote
-        | None -> ()
-      );
-      Ok [ DataReceived { stream_id; data = data_bytes; end_stream } ]
+              Cell.set stream.state StreamHalfClosedRemote;
+            Ok [ DataReceived { stream_id; data = data_bytes; end_stream } ]
+      )
   | _ -> Error (InvalidPayloadForFrame { frame_type = Frame.Data; payload })
 
 let validate_header_block_sequence = fun conn frame ->
