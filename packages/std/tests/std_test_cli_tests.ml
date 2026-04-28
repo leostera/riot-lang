@@ -101,6 +101,10 @@ let linear_tests = [
   make_linear_probe linear_probe_counter "linear_probe_beta";
 ]
 
+let failure_tests = [
+  Test.case "failure_probe" (fun _ctx -> Error "intentional failure");
+]
+
 let self_executable = fun () ->
   match Env.args with
   | exe :: _ -> exe
@@ -170,6 +174,13 @@ let run_sample_capture = fun args ->
   Command.output cmd
   |> Result.expect ~msg:"failed to run sample test cli"
 
+let run_failure_sample_capture = fun args ->
+  let cmd =
+    Command.make (self_executable ()) ~env:[ ("PROPANE_TESTS", "7"); ] ~args:("sample-fail" :: args)
+  in
+  Command.output cmd
+  |> Result.expect ~msg:"failed to run failure sample test cli"
+
 let run_linear_sample_capture = fun args ->
   let cmd =
     Command.make
@@ -182,7 +193,9 @@ let run_linear_sample_capture = fun args ->
 
 let ansi_reset = "\027[0m"
 
-let ansi_gray = "\027[90m"
+let ansi_gray = "\027[38;5;245m"
+
+let ansi_bold_red = "\027[1;31m"
 
 let ansi_bold_yellow = "\027[1;33m"
 
@@ -462,6 +475,19 @@ let test_run_tests_pretty_highlights_slow_small_case_timing = fun _ctx ->
     Ok ()
   else
     Error ("expected pretty output to highlight slow small timing, got: " ^ output.stdout)
+
+let test_run_tests_pretty_highlights_failed_status = fun _ctx ->
+  let output = run_failure_sample_capture [ "run-tests"; "failure_probe" ] in
+  let styled_failed = ansi_bold_red ^ "FAILED" ^ ansi_reset in
+  if Int.equal output.status 0 then
+    Error "expected failure probe to fail"
+  else if
+    String.contains output.stdout ("test failure_probe ... " ^ styled_failed)
+    && String.contains output.stdout ("test result: " ^ styled_failed ^ ".")
+  then
+    Ok ()
+  else
+    Error ("expected pretty output to highlight FAILED in bold red, got: " ^ output.stdout)
 
 let test_run_tests_json_includes_reliability_metadata = fun _ctx ->
   let output = run_sample_capture [ "run-tests"; "flaky_then_ok"; "--json" ] in
@@ -743,6 +769,10 @@ let meta_tests = [
     test_run_tests_pretty_highlights_slow_small_case_timing;
   Test.case
     ~size:Large
+    "run-tests pretty highlights failed status"
+    test_run_tests_pretty_highlights_failed_status;
+  Test.case
+    ~size:Large
     "run-tests --json includes reliability metadata"
     test_run_tests_json_includes_reliability_metadata;
   Test.case
@@ -808,6 +838,12 @@ let linear_sample_main = fun ~args ->
         ()
   | _ -> Error (Failure "expected sample-linear subcommand arguments")
 
+let failure_sample_main = fun ~args ->
+  match args with
+  | exe :: _sample :: rest ->
+      Test.Cli.main ~name:"sample_fail" ~tests:failure_tests ~args:(exe :: rest) ()
+  | _ -> Error (Failure "expected sample-fail subcommand arguments")
+
 let meta_main = fun ~args ->
   let normalize_args = function
     | [] -> [ "std_test_cli_tests"; "run-tests" ]
@@ -819,6 +855,7 @@ let meta_main = fun ~args ->
 let main ~args =
   match args with
   | _ :: "sample" :: _ -> sample_main ~args
+  | _ :: "sample-fail" :: _ -> failure_sample_main ~args
   | _ :: "sample-linear" :: _ -> linear_sample_main ~args
   | _ -> meta_main ~args
 

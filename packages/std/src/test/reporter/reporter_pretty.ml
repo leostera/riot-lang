@@ -35,11 +35,15 @@ let format_duration_us = fun duration_us ->
 
 let ansi_reset = "\027[0m"
 
-let ansi_gray = "\027[90m"
+let ansi_gray = "\027[38;5;245m"
+
+let ansi_bold_red = "\027[1;31m"
 
 let ansi_bold_yellow = "\027[1;33m"
 
 let slow_small_threshold_us = 500_000
+
+let failed_status = ansi_bold_red ^ "FAILED" ^ ansi_reset
 
 let duration_suffix = fun size duration ->
   let duration_us = Time.Duration.to_micros duration in
@@ -97,7 +101,8 @@ let on_result = fun _idx (result: Test_result.t) ->
         ^ " "
         ^ result.name
         ^ metadata
-        ^ " ... FAILED"
+        ^ " ... "
+        ^ failed_status
         ^ attempts_suffix result.attempts
         ^ duration_suffix result.size result.duration);
       println ("       " ^ msg)
@@ -125,7 +130,7 @@ let finalize = fun (summary: Test_result.summary) ->
   println "";
   let status =
     if summary.failed > 0 then
-      "FAILED"
+      failed_status
     else
       "ok"
   in
