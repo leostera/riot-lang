@@ -23,8 +23,8 @@ and error =
   | HeaderTooLong of { max_length: int }
   | HeaderBlockTooLong of { max_length: int }
   | TooManyHeaders of { max_count: int }
-  | InvalidContentLength
-  | ConflictingContentLength
+  | InvalidContentLength of content_length_error
+  | ConflictingContentLength of { expected: int; actual: int }
   | UnsupportedTransferEncoding
   | TransferEncodingWithContentLength
   | InputSliceCreationFailed of IO.IoVec.error
@@ -35,6 +35,12 @@ and error =
   | InvalidChunkExtensionCharacter of { code: int; index: int }
   | ChunkTooLarge of { size: int; max_size: int }
   | ChunkedBodyTooLarge of { size: int; max_size: int }
+
+and content_length_error =
+  | EmptyContentLength
+  | NegativeContentLength
+  | ContentLengthOverflow
+  | InvalidContentLengthCharacter of { code: int; index: int }
 
 and header_format_error =
   | MissingColon
@@ -51,6 +57,8 @@ val error_to_string: error -> string
 val validate_header_name: string -> (unit, header_format_error) Result.t
 
 val validate_header_value: string -> (unit, header_format_error) Result.t
+
+val parse_content_length_value: string -> (int, content_length_error) Result.t
 
 val find_substring: needle:string -> string -> int option
 

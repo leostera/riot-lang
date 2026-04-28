@@ -148,6 +148,19 @@ let http1_header_format_error_json = fun error ->
           ("index", Json.int index);
         ]
 
+let http1_content_length_error_json = fun error ->
+  match error with
+  | Http1.Common.EmptyContentLength -> Json.obj [ ("type", Json.string "EmptyContentLength") ]
+  | Http1.Common.NegativeContentLength -> Json.obj [ ("type", Json.string "NegativeContentLength") ]
+  | Http1.Common.ContentLengthOverflow -> Json.obj [ ("type", Json.string "ContentLengthOverflow") ]
+  | Http1.Common.InvalidContentLengthCharacter { code; index } ->
+      Json.obj
+        [
+          ("type", Json.string "InvalidContentLengthCharacter");
+          ("code", Json.int code);
+          ("index", Json.int index);
+        ]
+
 let http1_error_json = fun error ->
   match error with
   | Http1.Common.InvalidCrlf -> Json.obj [ ("type", Json.string "InvalidCrlf") ]
@@ -174,9 +187,19 @@ let http1_error_json = fun error ->
       Json.obj [ ("type", Json.string "HeaderBlockTooLong"); ("max_length", Json.int max_length); ]
   | Http1.Common.TooManyHeaders { max_count } ->
       Json.obj [ ("type", Json.string "TooManyHeaders"); ("max_count", Json.int max_count); ]
-  | Http1.Common.InvalidContentLength -> Json.obj [ ("type", Json.string "InvalidContentLength") ]
-  | Http1.Common.ConflictingContentLength ->
-      Json.obj [ ("type", Json.string "ConflictingContentLength") ]
+  | Http1.Common.InvalidContentLength reason ->
+      Json.obj
+        [
+          ("type", Json.string "InvalidContentLength");
+          ("reason", http1_content_length_error_json reason);
+        ]
+  | Http1.Common.ConflictingContentLength { expected; actual } ->
+      Json.obj
+        [
+          ("type", Json.string "ConflictingContentLength");
+          ("expected", Json.int expected);
+          ("actual", Json.int actual);
+        ]
   | Http1.Common.UnsupportedTransferEncoding ->
       Json.obj [ ("type", Json.string "UnsupportedTransferEncoding") ]
   | Http1.Common.TransferEncodingWithContentLength ->

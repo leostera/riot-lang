@@ -48,6 +48,52 @@ let test_common_slice_creation_errors_are_typed = fun _ctx ->
   | Error error -> Result.Error ("Wrong slice creation error: " ^ error_to_string error)
   | Ok _ -> Result.Error "Negative slice offset was accepted"
 
+let test_content_length_errors_are_typed = fun _ctx ->
+  let expect input check =
+    match Http1.Common.parse_content_length_value input with
+    | Error error when check error -> Result.Ok ()
+    | Error error ->
+        Result.Error ("Wrong Content-Length error: "
+        ^ Http1.Common.error_to_string (InvalidContentLength error))
+    | Ok value -> Result.Error ("Content-Length parsed unexpectedly as " ^ Int.to_string value)
+  in
+  match expect
+    ""
+    (
+      function
+      | EmptyContentLength -> true
+      | _ -> false
+    ) with
+  | Error _ as error -> error
+  | Ok () -> (
+      match expect
+        "-1"
+        (
+          function
+          | NegativeContentLength -> true
+          | _ -> false
+        ) with
+      | Error _ as error -> error
+      | Ok () -> (
+          match expect
+            "12x"
+            (
+              function
+              | InvalidContentLengthCharacter { code; index = 2 } when code = Char.to_int 'x' -> true
+              | _ -> false
+            ) with
+          | Error _ as error -> error
+          | Ok () ->
+              expect
+                (String.make ~len:32 ~char:'9')
+                (
+                  function
+                  | ContentLengthOverflow -> true
+                  | _ -> false
+                )
+        )
+    )
+
 (* HTTP/1 Request Tests *)
 
 let test_request_simple_get = fun _ctx ->
@@ -284,7 +330,7 @@ let test_request_rejects_conflicting_content_length = fun _ctx ->
       ~body:"Hello"
   in
   match Http1.Request.parse req with
-  | Error ConflictingContentLength -> Result.Ok ()
+  | Error (ConflictingContentLength { expected = 5; actual = 7 }) -> Result.Ok ()
   | Error error ->
       Result.Error ("Expected conflicting Content-Length error, got " ^ error_to_string error)
   | Need_more -> Result.Error "Expected conflicting Content-Length error, got Need_more"
@@ -299,7 +345,8 @@ let test_request_rejects_invalid_content_length = fun _ctx ->
       ~body:"Hello"
   in
   match Http1.Request.parse req with
-  | Error InvalidContentLength -> Result.Ok ()
+  | Error (InvalidContentLength (InvalidContentLengthCharacter { code; index = 0 })) when code
+  = Char.to_int 'n' -> Result.Ok ()
   | Error error ->
       Result.Error ("Expected invalid Content-Length error, got " ^ error_to_string error)
   | Need_more -> Result.Error "Expected invalid Content-Length error, got Need_more"
@@ -754,7 +801,7 @@ let test_response_rejects_unsupported_transfer_encoding = fun _ctx ->
 let test_response_rejects_conflicting_content_length = fun _ctx ->
   let resp = "HTTP/1.1 200 OK\r\nContent-Length: 5\r\nContent-Length: 7\r\n\r\nHello" in
   match Http1.Response.parse resp with
-  | Error ConflictingContentLength -> Result.Ok ()
+  | Error (ConflictingContentLength { expected = 5; actual = 7 }) -> Result.Ok ()
   | Error error ->
       Result.Error ("Expected conflicting Content-Length error, got " ^ error_to_string error)
   | Need_more -> Result.Error "Expected conflicting Content-Length error, got Need_more"
@@ -763,7 +810,8 @@ let test_response_rejects_conflicting_content_length = fun _ctx ->
 let test_response_rejects_invalid_content_length = fun _ctx ->
   let resp = "HTTP/1.1 200 OK\r\nContent-Length: nope\r\n\r\nHello" in
   match Http1.Response.parse resp with
-  | Error InvalidContentLength -> Result.Ok ()
+  | Error (InvalidContentLength (InvalidContentLengthCharacter { code; index = 0 })) when code
+  = Char.to_int 'n' -> Result.Ok ()
   | Error error ->
       Result.Error ("Expected invalid Content-Length error, got " ^ error_to_string error)
   | Need_more -> Result.Error "Expected invalid Content-Length error, got Need_more"

@@ -21,8 +21,8 @@ and error =
   | HeaderTooLong of { max_length: int }
   | HeaderBlockTooLong of { max_length: int }
   | TooManyHeaders of { max_count: int }
-  | InvalidContentLength
-  | ConflictingContentLength
+  | InvalidContentLength of content_length_error
+  | ConflictingContentLength of { expected: int; actual: int }
   | UnsupportedTransferEncoding
   | TransferEncodingWithContentLength
   | InputSliceCreationFailed of IO.IoVec.error
@@ -33,6 +33,12 @@ and error =
   | InvalidChunkExtensionCharacter of { code: int; index: int }
   | ChunkTooLarge of { size: int; max_size: int }
   | ChunkedBodyTooLarge of { size: int; max_size: int }
+
+and content_length_error =
+  | EmptyContentLength
+  | NegativeContentLength
+  | ContentLengthOverflow
+  | InvalidContentLengthCharacter of { code: int; index: int }
 
 and header_format_error =
   | MissingColon
@@ -69,6 +75,13 @@ let header_format_error_to_string = function
       ^ " at index "
       ^ Int.to_string index
 
+let content_length_error_to_string = function
+  | EmptyContentLength -> "empty value"
+  | NegativeContentLength -> "negative value"
+  | ContentLengthOverflow -> "value exceeds the maximum integer"
+  | InvalidContentLengthCharacter { code; index } ->
+      "invalid character code " ^ Int.to_string code ^ " at index " ^ Int.to_string index
+
 let error_to_string = function
   | InvalidCrlf -> "Invalid CRLF"
   | RequestLineTooLong { max_length } ->
@@ -88,8 +101,12 @@ let error_to_string = function
   | HeaderBlockTooLong { max_length } ->
       "Header block too long (max " ^ Int.to_string max_length ^ " bytes)"
   | TooManyHeaders { max_count } -> "Too many headers (max " ^ Int.to_string max_count ^ ")"
-  | InvalidContentLength -> "Invalid Content-Length"
-  | ConflictingContentLength -> "Conflicting Content-Length"
+  | InvalidContentLength error -> "Invalid Content-Length: " ^ content_length_error_to_string error
+  | ConflictingContentLength { expected; actual } ->
+      "Conflicting Content-Length values: "
+      ^ Int.to_string expected
+      ^ " and "
+      ^ Int.to_string actual
   | UnsupportedTransferEncoding -> "Unsupported Transfer-Encoding"
   | TransferEncodingWithContentLength -> "Invalid body framing: Transfer-Encoding with Content-Length"
   | InputSliceCreationFailed error ->
@@ -161,6 +178,31 @@ let validate_header_value = fun value ->
         Result.Error (InvalidValueCharacter { code; index })
   in
   loop 0
+
+let parse_content_length_value = fun value ->
+  let value = String.trim value in
+  let length = String.length value in
+  if length = 0 then
+    Result.Error EmptyContentLength
+  else if String.get_unchecked value ~at:0 = '-' then
+    Result.Error NegativeContentLength
+  else
+    let rec loop index acc =
+      if index >= length then
+        Result.Ok acc
+      else
+        let char = String.get_unchecked value ~at:index in
+        let code = Char.to_int char in
+        if code < Char.to_int '0' || code > Char.to_int '9' then
+          Result.Error (InvalidContentLengthCharacter { code; index })
+        else
+          let digit = code - Char.to_int '0' in
+          if acc > (Int.max_int - digit) / 10 then
+            Result.Error ContentLengthOverflow
+          else
+            loop (index + 1) ((acc * 10) + digit)
+    in
+    loop 0 0
 
 (** Helper: Find substring in string *)
 let find_substring = fun ~needle haystack ->

@@ -107,10 +107,9 @@ let header_values = fun headers name ->
   loop [] headers
 
 let parse_content_length_value = fun value ->
-  match Int.parse (String.trim value) with
-  | None -> Body_error Common.InvalidContentLength
-  | Some length when length < 0 -> Body_error Common.InvalidContentLength
-  | Some length -> Body_done length
+  match Common.parse_content_length_value value with
+  | Error error -> Body_error (Common.InvalidContentLength error)
+  | Ok length -> Body_done length
 
 let parse_content_length_values = fun values ->
   let rec loop expected = function
@@ -124,7 +123,8 @@ let parse_content_length_values = fun values ->
             match expected with
             | None -> loop (Some length) rest
             | Some previous when previous = length -> loop expected rest
-            | Some _ -> Body_error Common.ConflictingContentLength
+            | Some previous ->
+                Body_error (Common.ConflictingContentLength { expected = previous; actual = length })
           )
       )
   in
