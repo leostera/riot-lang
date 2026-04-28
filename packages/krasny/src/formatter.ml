@@ -6725,7 +6725,12 @@ and render_match_case_with_body_break = fun state case force_body_break ->
   | Ast.MatchCase.Case { pattern; guard; body } ->
       emit_text state "|";
       emit_space state;
+      let pattern_start_line = state.line_count in
       render_pattern state pattern;
+      let pattern_rendered_multiline = Int.(state.line_count > pattern_start_line) in
+      let pattern_forces_body_break =
+        pattern_rendered_multiline && pattern_is_constructor_with_payload pattern
+      in
       (
         match guard with
         | Some guard ->
@@ -6735,6 +6740,7 @@ and render_match_case_with_body_break = fun state case force_body_break ->
             render_expr state guard
         | None -> ()
       );
+      let force_body_break = force_body_break || pattern_forces_body_break in
       emit_space state;
       emit_text state "->";
       (
@@ -6745,12 +6751,18 @@ and render_match_case_with_body_break = fun state case force_body_break ->
         | body when expr_is_parenthesized_apply body ->
             emit_space state;
             render_expr_atom state body
+        | body when expr_is_parenthesized_multiline body && pattern_forces_body_break ->
+            emit_line state;
+            with_indent state 4 (fun () -> render_parenthesized_match_case_body state body)
         | body when expr_is_parenthesized_multiline body ->
             emit_space state;
             render_parenthesized_match_case_body state body
-        | body when force_body_break && expr_is_unit body ->
+        | body when force_body_break && expr_is_unit body && not pattern_forces_body_break ->
             emit_space state;
             render_expr state body
+        | body when force_body_break && expr_is_tuple body ->
+            emit_line state;
+            with_indent state 4 (fun () -> render_expr_atom state body)
         | body when force_body_break ->
             emit_line state;
             with_indent state 4 (fun () -> render_expr state body)

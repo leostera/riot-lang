@@ -2299,7 +2299,31 @@ let test_write_breaks_nested_constructor_match_patterns = fun ctx ->
     Cookie.InvalidCookie (
       Cookie.InvalidValueCharacter { index = 3; character = '\r'; reason = Cookie.ControlCharacter }
     )
-  ) -> Result.Ok ()
+  ) ->
+      Result.Ok ()
+|ocaml}
+
+let test_write_breaks_after_multiline_constructor_record_match_patterns = fun ctx ->
+  let source =
+    {ocaml|let test=match parse value with|Error(Cookie.InvalidAttributeCharacter{attribute=Cookie.Path;index=4;character=';';reason=Cookie.AttributeSemicolon})->Result.Ok()
+|ocaml}
+  in
+  let parsed = parse_ml source in
+  let actual = capture_write parsed in
+  Test.Snapshot.assert_inline_text
+    ~ctx
+    ~actual
+    ~expected:{ocaml|let test =
+  match parse value with
+  | Error (
+    Cookie.InvalidAttributeCharacter {
+      attribute = Cookie.Path;
+      index = 4;
+      character = ';';
+      reason = Cookie.AttributeSemicolon
+    }
+  ) ->
+      Result.Ok ()
 |ocaml}
 
 let test_write_keeps_parenthesized_match_case_bodies_attached_to_arrows = fun ctx ->
@@ -4684,6 +4708,9 @@ let tests =
     case
       "write breaks nested constructor match patterns"
       test_write_breaks_nested_constructor_match_patterns;
+    case
+      "write breaks after multiline constructor record match patterns"
+      test_write_breaks_after_multiline_constructor_record_match_patterns;
     case
       "write keeps parenthesized match case bodies attached to arrows"
       test_write_keeps_parenthesized_match_case_bodies_attached_to_arrows;
