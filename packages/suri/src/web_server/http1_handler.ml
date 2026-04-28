@@ -519,7 +519,7 @@ let serialize_websocket_frames = fun frames ->
     match frames with
     | [] -> Ok (String.concat "" (List.rev acc))
     | frame :: rest -> (
-        match Http.Ws.Serializer.serialize frame with
+        match Http.Ws.Serializer.serialize ~role:Http.Ws.Serializer.Server frame with
         | Ok bytes -> loop rest (bytes :: acc)
         | Error error -> Error error
       )

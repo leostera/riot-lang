@@ -178,7 +178,7 @@ let test_serialize_unmasked_frame = fun _ctx ->
 
 let test_serialize_masked_frame_uses_rng = fun _ctx ->
   let frame = Frame.{ (text "Hi") with masked = true } in
-  match Serializer.serialize ~rng:(fixed_mask_rng ()) frame with
+  match Serializer.serialize ~rng:(fixed_mask_rng ()) ~role:Serializer.Client frame with
   | Ok "\x81\x82\x01\x02\x03\x04Ik" -> Result.Ok ()
   | Ok _ -> Result.Error "masked frame serialized with the wrong mask or payload"
   | Error error ->
@@ -194,6 +194,17 @@ let test_serialize_rejects_rsv_bits = fun _ctx ->
   expect_serialize_error
     Frame.{ (text "x") with rsv1 = true }
     Serializer.ReservedBitsSet
+
+let test_serialize_rejects_unmasked_client_frame = fun _ctx ->
+  match Serializer.serialize ~role:Serializer.Client (Frame.text "x") with
+  | Error Serializer.ClientFrameNotMasked -> Result.Ok ()
+  | Error error -> Result.Error ("Wrong serializer error: " ^ Serializer.error_to_string error)
+  | Ok _ -> Result.Error "Expected serializer error"
+
+let test_serialize_rejects_masked_server_frame = fun _ctx ->
+  expect_serialize_error
+    Frame.{ (text "x") with masked = true }
+    Serializer.ServerFrameMasked
 
 let test_serialize_rejects_fragmented_control_frame = fun _ctx ->
   expect_serialize_error
@@ -241,6 +252,8 @@ let tests =
     case "serialize_unmasked_frame" test_serialize_unmasked_frame;
     case "serialize_masked_frame_uses_rng" test_serialize_masked_frame_uses_rng;
     case "serialize_rejects_rsv_bits" test_serialize_rejects_rsv_bits;
+    case "serialize_rejects_unmasked_client_frame" test_serialize_rejects_unmasked_client_frame;
+    case "serialize_rejects_masked_server_frame" test_serialize_rejects_masked_server_frame;
     case
       "serialize_rejects_fragmented_control_frame"
       test_serialize_rejects_fragmented_control_frame;

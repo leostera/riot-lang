@@ -2,8 +2,14 @@
 open Std
 open Std.IO
 
+type role =
+  | Server
+  | Client
+
 type error =
   | MaskGenerationFailed of Random.error
+  | ClientFrameNotMasked
+  | ServerFrameMasked
   | ReservedBitsSet
   | FragmentedControlFrame of {
       opcode: Frame.opcode;
@@ -18,6 +24,8 @@ type error =
 let error_to_string = function
   | MaskGenerationFailed error ->
       "Failed to generate WebSocket mask: " ^ Random.error_to_string error
+  | ClientFrameNotMasked -> "WebSocket client frames must be masked"
+  | ServerFrameMasked -> "WebSocket server frames must not be masked"
   | ReservedBitsSet -> "WebSocket RSV bits must be zero unless an extension negotiated them"
   | FragmentedControlFrame { opcode } ->
       "WebSocket control frame 0x"
@@ -39,6 +47,13 @@ let is_control_opcode = function
   | Frame.Continuation
   | Frame.Text
   | Frame.Binary -> false
+
+let validate_masking = fun ~role ~masked ->
+  match (role, masked) with
+  | (Client, false) -> Error ClientFrameNotMasked
+  | (Server, true) -> Error ServerFrameMasked
+  | (Client, true)
+  | (Server, false) -> Ok ()
 
 let validate_control_frame = fun frame ->
   let payload_length = String.length frame.Frame.payload in
@@ -72,18 +87,21 @@ let validate_data_frame = fun frame ->
   | Frame.Ping
   | Frame.Pong -> Ok ()
 
-let validate_frame = fun frame ->
-  if frame.Frame.rsv1 || frame.rsv2 || frame.rsv3 then
-    Error ReservedBitsSet
-  else if is_control_opcode frame.opcode then
-    validate_control_frame frame
-  else
-    validate_data_frame frame
+let validate_frame = fun ~role frame ->
+  match validate_masking ~role ~masked:frame.Frame.masked with
+  | Error error -> Error error
+  | Ok () ->
+      if frame.Frame.rsv1 || frame.rsv2 || frame.rsv3 then
+        Error ReservedBitsSet
+      else if is_control_opcode frame.opcode then
+        validate_control_frame frame
+      else
+        validate_data_frame frame
 
 (* Serialize a WebSocket frame to bytes *)
 
-let serialize = fun ?rng frame ->
-  match validate_frame frame with
+let serialize = fun ?rng ?(role = Server) frame ->
+  match validate_frame ~role frame with
   | Error error -> Error error
   | Ok () ->
       let Frame.{

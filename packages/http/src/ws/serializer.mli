@@ -1,8 +1,13 @@
 (** WebSocket Frame Serializer *)
 open Std
 
+type role =
+  | Server
+  | Client
 type error =
   | MaskGenerationFailed of Random.error
+  | ClientFrameNotMasked
+  | ServerFrameMasked
   | ReservedBitsSet
   | FragmentedControlFrame of {
       opcode: Frame.opcode;
@@ -16,4 +21,4 @@ type error =
 val error_to_string: error -> string
 
 (** Serialize a WebSocket frame to wire format *)
-val serialize: ?rng:Random.Rng.t -> Frame.t -> (string, error) result
+val serialize: ?rng:Random.Rng.t -> ?role:role -> Frame.t -> (string, error) result
