@@ -48,8 +48,9 @@
        | Ok _supervisor ->
            Log.info "Server running on http://0.0.0.0:8080";
            receive_any ()
-       | Error _ ->
-           Error (Failure "Failed to bind")
+       | Error error ->
+           Log.error (WebServer.start_error_to_string error);
+           Ok ()
    ]}
 
    {3 With Request Inspection}
@@ -155,8 +156,9 @@
          let count = Supervisor.Dynamic.count_children supervisor in
          Log.info "Active acceptors: %d" count.active;
          receive_any ()
-     | Error _ ->
-         Error (Failure "Failed to bind")
+     | Error error ->
+         Log.error (WebServer.start_error_to_string error);
+         Ok ()
    ]}
 
    ---
@@ -270,6 +272,8 @@ type start_error =
   | BindFailed of Std.Net.TcpListener.error
   | InvalidAcceptors of int
   | InvalidBufferSize of int
+val start_error_to_string: start_error -> string
+
 val start_link:
   ?host:string ->
   port:int ->

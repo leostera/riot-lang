@@ -61,16 +61,20 @@
 
    {3 Error Handling}
    {[
+     type process_error =
+       | InvalidInput of string
+       | ResourceMissing
+       | UnexpectedFailure
+
      let handler _conn req =
-       try
-         let result = process_request req in
+       match process_request req with
+       | Ok result ->
          Response.ok ~body:result ()
-       with
-       | Invalid_argument msg ->
+       | Error (InvalidInput msg) ->
            Response.bad_request ~body:("Invalid: " ^ msg) ()
-       | Not_found ->
+       | Error ResourceMissing ->
            Response.not_found ~body:"Resource not found" ()
-       | _ ->
+       | Error UnexpectedFailure ->
            Response.internal_server_error ~body:"Server error" ()
    ]}
 

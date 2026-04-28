@@ -12,6 +12,29 @@ type start_error = Socket_pool.error =
   | InvalidAcceptors of int
   | InvalidBufferSize of int
 
+let addr_error_to_string = function
+  | Std.Net.Addr.System_error error -> Std.IO.error_message error
+  | Std.Net.Addr.Invalid_port_number value ->
+      Std.String.concat "" [ "invalid port number: "; value; ]
+  | Std.Net.Addr.Invalid_format value -> Std.String.concat "" [ "invalid address format: "; value; ]
+
+let listener_error_to_string = function
+  | Std.Net.TcpListener.Connection_refused -> "connection refused"
+  | Std.Net.TcpListener.Closed -> "listener is closed"
+  | Std.Net.TcpListener.System_error error -> Std.IO.error_message error
+
+let start_error_to_string = function
+  | InvalidAddress error -> addr_error_to_string error
+  | BindFailed error -> listener_error_to_string error
+  | InvalidAcceptors acceptors ->
+      Std.String.concat
+        ""
+        [ "acceptors must be greater than 0, got "; Std.Int.to_string acceptors; ]
+  | InvalidBufferSize buffer_size ->
+      Std.String.concat
+        ""
+        [ "buffer_size must be greater than 0, got "; Std.Int.to_string buffer_size; ]
+
 (**
    Start an HTTP/1.1 server with supervision.
 
