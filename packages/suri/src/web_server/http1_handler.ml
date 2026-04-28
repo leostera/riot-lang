@@ -533,8 +533,7 @@ let send_websocket_frames = fun conn frames state ->
       match Socket_pool.Connection.send conn frame_data with
       | Ok () -> Socket_pool.Handler.Continue state
       | Error Socket_pool.Connection.Closed -> Socket_pool.Handler.Close state
-      | Error (Socket_pool.Connection.FileError _
-      | Socket_pool.Connection.InvalidRange _) ->
+      | Error (Socket_pool.Connection.FileError _ | Socket_pool.Connection.InvalidRange _) ->
           Socket_pool.Handler.Close state
     )
 
@@ -685,8 +684,7 @@ let handle_websocket_upgrade = fun state socket_conn req ws_handler ->
           | Error Socket_pool.Connection.Closed ->
               Log.error "Failed to send WebSocket upgrade response - connection closed";
               Socket_pool.Handler.Close state
-          | Error (Socket_pool.Connection.FileError _
-          | Socket_pool.Connection.InvalidRange _) ->
+          | Error (Socket_pool.Connection.FileError _ | Socket_pool.Connection.InvalidRange _) ->
               Log.error "Failed to send WebSocket upgrade response";
               Socket_pool.Handler.Close state
         )

@@ -62,8 +62,7 @@ let connect = fun uri ->
   Log.info "connecting!";
   match Net.Addr.of_host_and_port ~host ~port with
   | Error (Net.Addr.System_error io_err) -> Error (Error.NetError (Net.System_error io_err))
-  | Error (Net.Addr.Invalid_port_number _
-  | Net.Addr.Invalid_format _) ->
+  | Error (Net.Addr.Invalid_port_number _ | Net.Addr.Invalid_format _) ->
       Error (Error.NetError (Net.System_error IO.Invalid_argument))
   | Ok addr -> (
       match Net.Uri.scheme uri with

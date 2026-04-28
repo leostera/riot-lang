@@ -346,14 +346,10 @@ let of_string = fun str ->
     let is_float = cell false in
     let rec consume () =
       match peek () with
-      | Some ('0' .. '9'
-      | '-'
-      | '+') ->
+      | Some ('0' .. '9' | '-' | '+') ->
           advance ();
           consume ()
-      | Some ('.'
-      | 'e'
-      | 'E') ->
+      | Some ('.' | 'e' | 'E') ->
           is_float := true;
           advance ();
           consume ()
@@ -489,9 +485,7 @@ let of_string = fun str ->
                   (Expected_comma_or_bracket { kind = "object"; position = !pos; found = None })
           in
           parse_fields []
-    | Some ('-'
-    | '0' .. '9') ->
-        parse_number ()
+    | Some ('-' | '0' .. '9') -> parse_number ()
     | Some c ->
         raise_error (Unexpected_character { position = !pos; character = c; expected = "value" })
   in

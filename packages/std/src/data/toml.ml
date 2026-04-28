@@ -65,9 +65,7 @@ let parse = fun content ->
   (* Skip whitespace (spaces, tabs) but NOT newlines *)
   let rec skip_ws () =
     match peek () with
-    | Some (' '
-    | '\t'
-    | '\r') ->
+    | Some (' ' | '\t' | '\r') ->
         advance ();
         skip_ws ()
     | _ -> ()

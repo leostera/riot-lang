@@ -701,10 +701,7 @@ let parse_value_text = fun input ->
     let rec scan () =
       match peek () with
       | None -> ()
-      | Some (','
-      | ']'
-      | '}') ->
-          ()
+      | Some (',' | ']' | '}') -> ()
       | Some current when is_ws current -> ()
       | Some _ ->
           advance ();
