@@ -6,7 +6,8 @@ module Cell = Sync.Cell
 
 (** Reentrant HPACK decoder using IO.Reader. *)
 type decoder = {
-  hpack_decoder: Hpack.decoder;
+  max_dynamic_table_size: int Cell.t;
+  hpack_decoder: Hpack.decoder Cell.t;
   pending_input: string Cell.t;
 }
 
@@ -20,7 +21,8 @@ type decode_result =
   | Error of decode_error
 
 let create = fun ?(max_dynamic_table_size = 4_096) () -> {
-  hpack_decoder = Hpack.create_decoder ~max_dynamic_table_size ();
+  max_dynamic_table_size = Cell.create max_dynamic_table_size;
+  hpack_decoder = Cell.create (Hpack.create_decoder ~max_dynamic_table_size ());
   pending_input = Cell.create "";
 }
 
@@ -29,13 +31,21 @@ let decode_error_to_string = function
   | HpackDecodeFailed error -> Hpack.decode_error_to_string error
 
 let update_max_table_size = fun decoder size ->
-  Hpack.update_decoder_max_table_size decoder.hpack_decoder size
+  match Hpack.update_decoder_max_table_size (Cell.get decoder.hpack_decoder) size with
+  | Ok () ->
+      Cell.set decoder.max_dynamic_table_size size;
+      Ok ()
+  | Error error -> Error error
 
-let reset = fun decoder -> Cell.set decoder.pending_input ""
+let reset = fun decoder ->
+  Cell.set decoder.pending_input "";
+  Cell.set
+    decoder.hpack_decoder
+    (Hpack.create_decoder ~max_dynamic_table_size:(Cell.get decoder.max_dynamic_table_size) ())
 
-let dynamic_table_size = fun _decoder ->
-  (* Access internal dynamic table size - simplified for now. *)
-  4_096
+let dynamic_table_size = fun decoder ->
+  Hpack.decoder_dynamic_table_size
+    (Cell.get decoder.hpack_decoder)
 
 let is_incomplete_decode = function
   | Hpack.IncompleteIntegerEncoding
@@ -55,7 +65,7 @@ let decode = fun decoder reader ->
       if String.length input = 0 then
         Need_more
       else
-        match Hpack.decode decoder.hpack_decoder (Bytes.from_string input) with
+        match Hpack.decode (Cell.get decoder.hpack_decoder) (Bytes.from_string input) with
         | Ok headers ->
             Cell.set decoder.pending_input "";
             Headers headers

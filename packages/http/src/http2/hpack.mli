@@ -90,6 +90,12 @@ val encode_header:
 *)
 val update_encoder_max_table_size: encoder -> int -> (unit, table_size_error) Result.t
 
+(** Current encoder dynamic table byte size. *)
+val encoder_dynamic_table_size: encoder -> int
+
+(** Current encoder dynamic table byte limit. *)
+val encoder_dynamic_table_max_size: encoder -> int
+
 (** {1 Decoder} *)
 
 (**
@@ -114,6 +120,12 @@ val decode: decoder -> bytes -> (header list, decode_error) Result.t
 val update_decoder_max_table_size: decoder -> int -> (unit, table_size_error) Result.t
 
 val update_max_table_size: decoder -> int -> (unit, table_size_error) Result.t
+
+(** Current decoder dynamic table byte size. *)
+val decoder_dynamic_table_size: decoder -> int
+
+(** Current decoder dynamic table byte limit. *)
+val decoder_dynamic_table_max_size: decoder -> int
 
 (** {1 Static Table} *)
 

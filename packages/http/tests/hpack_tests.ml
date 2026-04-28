@@ -140,6 +140,52 @@ let test_header_block_table_size_update = fun _ctx ->
   | Ok _ -> Result.Error "Dynamic table size update produced headers"
   | Error err -> Result.Error ("Decode failed: " ^ Hpack.decode_error_to_string err)
 
+let test_literal_without_indexing_does_not_update_decoder_table = fun _ctx ->
+  let decoder = Hpack.create_decoder () in
+  let encoded = IO.Bytes.from_string "\x00\x01x\x01y\xbe" in
+  match Hpack.decode decoder encoded with
+  | Error (Hpack.InvalidHeaderIndex 62) -> Result.Ok ()
+  | Error err -> Result.Error ("Wrong decode error: " ^ Hpack.decode_error_to_string err)
+  | Ok _ -> Result.Error "Literal without indexing was added to the dynamic table"
+
+let test_literal_never_indexed_does_not_update_decoder_table = fun _ctx ->
+  let decoder = Hpack.create_decoder () in
+  let encoded = IO.Bytes.from_string "\x10\x01x\x01y\xbe" in
+  match Hpack.decode decoder encoded with
+  | Error (Hpack.InvalidHeaderIndex 62) -> Result.Ok ()
+  | Error err -> Result.Error ("Wrong decode error: " ^ Hpack.decode_error_to_string err)
+  | Ok _ -> Result.Error "Literal never indexed was added to the dynamic table"
+
+let test_decoder_dynamic_table_evicts_oversized_literal = fun _ctx ->
+  let decoder = Hpack.create_decoder ~max_dynamic_table_size:33 () in
+  let encoded = IO.Bytes.from_string "\x40\x01x\x01y" in
+  match Hpack.decode decoder encoded with
+  | Ok [ { Hpack.name = "x"; value = "y" } ] ->
+      if Hpack.decoder_dynamic_table_size decoder = 0 then
+        Result.Ok ()
+      else
+        Result.Error ("Oversized indexed literal left "
+        ^ Int.to_string (Hpack.decoder_dynamic_table_size decoder)
+        ^ " bytes in the dynamic table")
+  | Ok _ -> Result.Error "Oversized indexed literal decoded the wrong headers"
+  | Error err -> Result.Error ("Decode failed: " ^ Hpack.decode_error_to_string err)
+
+let test_encoder_dynamic_table_size_tracks_indexed_literals = fun _ctx ->
+  let encoder = Hpack.create_encoder () in
+  let header = { Hpack.name = "x"; value = "y" } in
+  match Hpack.encode_header encoder header ~encoding_type:Hpack.LiteralWithIndexing with
+  | Error err -> Result.Error ("Encode failed: " ^ Hpack.encode_error_to_string err)
+  | Ok _ ->
+      let expected = Hpack.header_size header in
+      let actual = Hpack.encoder_dynamic_table_size encoder in
+      if Int.equal actual expected then
+        Result.Ok ()
+      else
+        Result.Error ("Encoder dynamic table size mismatch: expected "
+        ^ Int.to_string expected
+        ^ ", got "
+        ^ Int.to_string actual)
+
 let test_reader_decodes_static_indexed_header = fun _ctx ->
   let decoder = HpackReader.create () in
   match HpackReader.decode decoder (IO.Reader.from_string "\x82") with
@@ -156,7 +202,8 @@ let test_reader_preserves_partial_literal = fun _ctx ->
       match HpackReader.decode decoder (IO.Reader.from_string "\x03one") with
       | HpackReader.Headers [ { Hpack.name = "x"; value = "one" } ] -> Result.Ok ()
       | HpackReader.Headers _ -> Result.Error "Reader decoded the wrong resumed literal"
-      | HpackReader.Need_more -> Result.Error "Reader still needed more data after literal completion"
+      | HpackReader.Need_more ->
+          Result.Error "Reader still needed more data after literal completion"
       | HpackReader.Error err ->
           Result.Error ("Reader failed after resume: " ^ HpackReader.decode_error_to_string err)
     )
@@ -182,9 +229,53 @@ let test_reader_reuses_dynamic_table = fun _ctx ->
       | HpackReader.Headers _ -> Result.Error "Reader decoded the wrong dynamic-table header"
       | HpackReader.Need_more -> Result.Error "Reader unexpectedly needed more dynamic index data"
       | HpackReader.Error err ->
-          Result.Error ("Reader dynamic-table decode failed: " ^ HpackReader.decode_error_to_string err)
+          Result.Error ("Reader dynamic-table decode failed: "
+          ^ HpackReader.decode_error_to_string err)
     )
   | HpackReader.Headers _ -> Result.Error "Reader decoded the wrong indexed literal"
+  | HpackReader.Need_more -> Result.Error "Reader unexpectedly needed more indexed literal data"
+  | HpackReader.Error err ->
+      Result.Error ("Reader indexed literal failed: " ^ HpackReader.decode_error_to_string err)
+
+let test_reader_dynamic_table_size_tracks_indexed_literals = fun _ctx ->
+  let decoder = HpackReader.create () in
+  if HpackReader.dynamic_table_size decoder != 0 then
+    Result.Error "New HPACK reader reported a non-empty dynamic table"
+  else
+    match HpackReader.decode decoder (IO.Reader.from_string "\x40\x01x\x01y") with
+    | HpackReader.Headers [ { Hpack.name = "x"; value = "y" } ] ->
+        let actual = HpackReader.dynamic_table_size decoder in
+        if Int.equal actual 34 then
+          Result.Ok ()
+        else
+          Result.Error ("Reader dynamic table size mismatch: expected 34, got "
+          ^ Int.to_string actual)
+    | HpackReader.Headers _ -> Result.Error "Reader decoded the wrong indexed literal"
+    | HpackReader.Need_more -> Result.Error "Reader unexpectedly needed more indexed literal data"
+    | HpackReader.Error err ->
+        Result.Error ("Reader indexed literal failed: " ^ HpackReader.decode_error_to_string err)
+
+let test_reader_reset_clears_dynamic_table = fun _ctx ->
+  let decoder = HpackReader.create () in
+  match HpackReader.decode decoder (IO.Reader.from_string "\x40\x01x\x01y") with
+  | HpackReader.Headers headers ->
+      if headers != [ { Hpack.name = "x"; value = "y" } ] then
+        Result.Error "Reader decoded the wrong indexed literal"
+      else (
+        HpackReader.reset decoder;
+        if HpackReader.dynamic_table_size decoder != 0 then
+          Result.Error "Reader reset did not clear the dynamic table"
+        else
+          match HpackReader.decode decoder (IO.Reader.from_string "\xbe") with
+          | HpackReader.Error (HpackReader.HpackDecodeFailed (Hpack.InvalidHeaderIndex 62)) ->
+              Result.Ok ()
+          | HpackReader.Error err ->
+              Result.Error ("Wrong reader error after reset: "
+              ^ HpackReader.decode_error_to_string err)
+          | HpackReader.Need_more ->
+              Result.Error "Reader treated invalid dynamic index as incomplete"
+          | HpackReader.Headers _ -> Result.Error "Reader reused a dynamic header after reset"
+      )
   | HpackReader.Need_more -> Result.Error "Reader unexpectedly needed more indexed literal data"
   | HpackReader.Error err ->
       Result.Error ("Reader indexed literal failed: " ^ HpackReader.decode_error_to_string err)
@@ -220,10 +311,26 @@ let tests = [
     "decoder_table_size_rejects_negative_update"
     test_decoder_table_size_rejects_negative_update;
   Test.case "header_block_table_size_update" test_header_block_table_size_update;
+  Test.case
+    "literal_without_indexing_does_not_update_decoder_table"
+    test_literal_without_indexing_does_not_update_decoder_table;
+  Test.case
+    "literal_never_indexed_does_not_update_decoder_table"
+    test_literal_never_indexed_does_not_update_decoder_table;
+  Test.case
+    "decoder_dynamic_table_evicts_oversized_literal"
+    test_decoder_dynamic_table_evicts_oversized_literal;
+  Test.case
+    "encoder_dynamic_table_size_tracks_indexed_literals"
+    test_encoder_dynamic_table_size_tracks_indexed_literals;
   Test.case "reader_decodes_static_indexed_header" test_reader_decodes_static_indexed_header;
   Test.case "reader_preserves_partial_literal" test_reader_preserves_partial_literal;
   Test.case "reader_decodes_literal_without_indexing" test_reader_decodes_literal_without_indexing;
   Test.case "reader_reuses_dynamic_table" test_reader_reuses_dynamic_table;
+  Test.case
+    "reader_dynamic_table_size_tracks_indexed_literals"
+    test_reader_dynamic_table_size_tracks_indexed_literals;
+  Test.case "reader_reset_clears_dynamic_table" test_reader_reset_clears_dynamic_table;
   Test.case "reader_rejects_huffman_with_typed_error" test_reader_rejects_huffman_with_typed_error;
 ]
 

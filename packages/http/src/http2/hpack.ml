@@ -380,6 +380,10 @@ let update_encoder_max_table_size = fun encoder new_size ->
     Ok ()
   )
 
+let encoder_dynamic_table_size = fun encoder -> DynamicTable.size encoder.dynamic_table
+
+let encoder_dynamic_table_max_size = fun encoder -> DynamicTable.max_size encoder.dynamic_table
+
 let is_sensitive_header = fun name ->
   List.contains
     [ "authorization"; "cookie"; "set-cookie"; "proxy-authorization"; ]
@@ -539,6 +543,10 @@ let update_decoder_max_table_size = fun decoder new_size ->
   )
 
 let update_max_table_size = update_decoder_max_table_size
+
+let decoder_dynamic_table_size = fun decoder -> DynamicTable.size decoder.dynamic_table
+
+let decoder_dynamic_table_max_size = fun decoder -> DynamicTable.max_size decoder.dynamic_table
 
 let lookup_header = fun decoder index ->
   if index <= static_table_size then

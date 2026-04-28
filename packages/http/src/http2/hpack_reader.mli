@@ -21,7 +21,6 @@ type decode_error =
   | ReadFailed of IO.error
   (** Reader returned an IO error before a header block could be decoded. *)
   | HpackDecodeFailed of Hpack.decode_error
-  (** Canonical HPACK decoder rejected the buffered header block. *)
 
 val decode_error_to_string: decode_error -> string
 
