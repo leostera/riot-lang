@@ -64,7 +64,7 @@ let has_lossless_snapshot = fun modified_fixture_paths path ->
       if
         should_skip_parse_fixture path || is_locally_modified_fixture modified_fixture_paths path
       then
-        Test.FixtureRunner.Skip
+        `skip
       else
         let snapshot_path = lossless_snapshot_path path in
         let exists =
@@ -72,10 +72,10 @@ let has_lossless_snapshot = fun modified_fixture_paths path ->
           |> Result.unwrap_or ~default:false
         in
         if exists then
-          Test.FixtureRunner.Keep
+          `keep
         else
-          Test.FixtureRunner.Skip
-  | _ -> Test.FixtureRunner.Skip
+          `skip
+  | _ -> `skip
 
 let source_slice = fun source ->
   match IO.IoVec.IoSlice.from_string source with

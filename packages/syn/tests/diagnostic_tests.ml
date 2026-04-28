@@ -54,10 +54,10 @@ let filter_diagnostic_fixture = fun path ->
         |> Result.unwrap_or ~default:false
       in
       if exists then
-        Test.FixtureRunner.Keep
+        `keep
       else
-        Test.FixtureRunner.Skip
-  | _ -> Test.FixtureRunner.Skip
+        `skip
+  | _ -> `skip
 
 let run_diagnostic = fun ctx -> test_diagnostic ~ctx
 

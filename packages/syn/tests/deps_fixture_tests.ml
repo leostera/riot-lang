@@ -11,8 +11,8 @@ let source_slice = fun source ->
 let has_expected = fun path ->
   match Path.extension path with
   | Some ".ml"
-  | Some ".mli" -> Test.FixtureRunner.Keep
-  | _ -> Test.FixtureRunner.Skip
+  | Some ".mli" -> `keep
+  | _ -> `skip
 
 let render_actual = fun ~fixture_path ->
   let source =
