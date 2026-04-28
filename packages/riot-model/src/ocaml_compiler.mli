@@ -14,6 +14,8 @@ type mode =
 
 (** OCaml compiler warnings *)
 type warning =
+  | LabelsOmitted
+  (** Warning 6: labels were omitted in function application *)
   | PartialMatch
   (** Warning 8: partial pattern match *)
   | BadModuleName

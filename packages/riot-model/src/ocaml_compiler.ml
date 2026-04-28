@@ -14,6 +14,8 @@ type mode =
 
 (** OCaml compiler warnings *)
 type warning =
+  | LabelsOmitted
+  (** Warning 6: labels were omitted in function application *)
   | PartialMatch
   (** Warning 8: partial pattern match *)
   | BadModuleName
@@ -32,6 +34,7 @@ type warning =
 
 (** All warnings *)
 let warning_to_number = function
+  | LabelsOmitted -> 6
   | PartialMatch -> 8
   | BadModuleName -> 24
   | UnusedVariable -> 26
@@ -44,6 +47,7 @@ let warning_to_number = function
 (* Special: use 'a' *)
 
 let warning_to_string = function
+  | LabelsOmitted -> "labels-omitted"
   | PartialMatch -> "partial-match"
   | BadModuleName -> "bad-module-name"
   | UnusedVariable -> "unused-variable"
@@ -54,6 +58,7 @@ let warning_to_string = function
   | All -> "all"
 
 let warning_of_string = function
+  | "labels-omitted" -> Some LabelsOmitted
   | "partial-match" -> Some PartialMatch
   | "bad-module-name" -> Some BadModuleName
   | "unused-variable" -> Some UnusedVariable
@@ -99,6 +104,7 @@ let render_warning_spec = fun ~sign warnings ->
 
 let parse_warning_spec = fun ~sign spec ->
   let warning_of_code = function
+    | "6" -> Some LabelsOmitted
     | "8" -> Some PartialMatch
     | "24" -> Some BadModuleName
     | "11" -> Some UnusedMatch

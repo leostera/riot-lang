@@ -45,6 +45,7 @@ val path: t -> Path.t
 
 (** Compiler warnings that can be suppressed *)
 type compiler_warning = Ocaml_compiler.warning =
+  | LabelsOmitted
   | PartialMatch
   | BadModuleName
   | UnusedVariable

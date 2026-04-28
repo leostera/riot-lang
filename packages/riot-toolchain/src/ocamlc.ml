@@ -6,6 +6,7 @@ open Riot_model
 type t = Path.t
 
 type compiler_warning = Ocaml_compiler.warning =
+  | LabelsOmitted
   | PartialMatch
   | BadModuleName
   | UnusedVariable

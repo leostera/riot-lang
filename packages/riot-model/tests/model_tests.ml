@@ -1503,15 +1503,18 @@ max_size = "3 frogs"
 let test_debug_profile_defaults_to_native_with_debug_symbols = fun _ctx ->
   let profile = Riot_model.Profile.debug in
   let flags = Riot_model.Profile.to_compiler_flags profile in
+  let rendered_flags = String.concat " " flags in
   if
     profile.kind = Riot_model.Ocaml_compiler.Native
     && List.contains flags ~value:"-inline"
     && List.contains flags ~value:"0"
     && List.contains flags ~value:"-g"
+    && String.contains rendered_flags "-warn-error"
+    && String.contains rendered_flags "+6"
   then
     Ok ()
   else
-    Error ("expected debug profile to default to native with -inline 0 -g, got kind="
+    Error ("expected debug profile to default to native with -inline 0 -g and warning 6 as error, got kind="
     ^ Riot_model.Ocaml_compiler.compilation_kind_to_string profile.kind
     ^ " flags=["
     ^ String.concat ", " flags

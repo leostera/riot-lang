@@ -70,12 +70,7 @@ let debug = {
   no_alias_deps = false;
   open_modules = [];
   warnings = [];
-  errors = [
-    Ocaml_compiler.PartialMatch;
-    Ocaml_compiler.UnusedVariable;
-    Ocaml_compiler.UnusedOpen;
-    Ocaml_compiler.UnusedMatch;
-  ];
+  errors = Ocaml_compiler.[ LabelsOmitted; PartialMatch; UnusedVariable; UnusedOpen; UnusedMatch; ];
   cc_flags = [];
   ld_flags = [];
   ocamlc_flags = [ "-g" ];
