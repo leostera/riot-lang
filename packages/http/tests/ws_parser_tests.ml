@@ -97,6 +97,32 @@ let test_parse_rejects_negative_payload_limit = fun _ctx ->
   | Parser.Need_more -> Result.Error "Expected invalid payload limit error"
   | Parser.Done _ -> Result.Error "Negative payload limit was accepted"
 
+let test_parse_valid_close_with_reason = fun _ctx ->
+  match Parser.parse ~role:Parser.Client "\x88\x05\x03\xe8bye" with
+  | Parser.Done { value = { Frame.opcode = Frame.Close; payload = "\x03\xe8bye"; _ }; remaining = "" } ->
+      Result.Ok ()
+  | Parser.Done _ -> Result.Error "Close frame parsed with the wrong shape"
+  | Parser.Need_more -> Result.Error "Close frame unexpectedly needed more data"
+  | Parser.Error err -> Result.Error ("Close frame was rejected: " ^ Parser.error_to_string err)
+
+let test_parse_rejects_one_byte_close_payload = fun _ctx ->
+  expect_parse_error
+    ~role:Parser.Client
+    "\x88\x01\x03"
+    (Parser.ClosePayloadTooShort { payload_length = 1 })
+
+let test_parse_rejects_invalid_close_code = fun _ctx ->
+  expect_parse_error
+    ~role:Parser.Client
+    "\x88\x02\x03\xe7"
+    (Parser.InvalidCloseCode { code = 999 })
+
+let test_parse_rejects_invalid_close_reason_utf8 = fun _ctx ->
+  expect_parse_error
+    ~role:Parser.Client
+    "\x88\x04\x03\xe8\xc0\x80"
+    (Parser.InvalidCloseReasonUtf8 { reason_length = 2 })
+
 let tests =
   Test.[
     case "parse_valid_ping" test_parse_valid_ping;
@@ -111,6 +137,10 @@ let tests =
     case "parse_rejects_64_bit_length_above_int_max" test_parse_rejects_64_bit_length_above_int_max;
     case "parse_rejects_payload_over_limit" test_parse_rejects_payload_over_limit;
     case "parse_rejects_negative_payload_limit" test_parse_rejects_negative_payload_limit;
+    case "parse_valid_close_with_reason" test_parse_valid_close_with_reason;
+    case "parse_rejects_one_byte_close_payload" test_parse_rejects_one_byte_close_payload;
+    case "parse_rejects_invalid_close_code" test_parse_rejects_invalid_close_code;
+    case "parse_rejects_invalid_close_reason_utf8" test_parse_rejects_invalid_close_reason_utf8;
   ]
 
 let main ~args:_ = Test.Cli.main ~name:"http:ws_parser" ~tests ~args:Env.args ()

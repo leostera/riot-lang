@@ -22,6 +22,9 @@ and error =
   | PayloadLengthTooLarge of { most_significant_byte: int; max_payload_length: int }
   | PayloadLengthExceedsLimit of { payload_length: int; max_payload_length: int }
   | InvalidPayloadLengthLimit of { max_payload_length: int }
+  | ClosePayloadTooShort of { payload_length: int }
+  | InvalidCloseCode of { code: int }
+  | InvalidCloseReasonUtf8 of { reason_length: int }
 val error_to_string: error -> string
 
 val parse: ?max_payload_length:int -> role:role -> string -> Frame.t parse_result

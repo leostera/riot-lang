@@ -27,6 +27,9 @@ and error =
   | PayloadLengthTooLarge of { most_significant_byte: int; max_payload_length: int }
   | PayloadLengthExceedsLimit of { payload_length: int; max_payload_length: int }
   | InvalidPayloadLengthLimit of { max_payload_length: int }
+  | ClosePayloadTooShort of { payload_length: int }
+  | InvalidCloseCode of { code: int }
+  | InvalidCloseReasonUtf8 of { reason_length: int }
 
 type payload_length_result =
   | PayloadLength of { header_size: int; payload_length: int }
@@ -57,6 +60,12 @@ let error_to_string = function
       ^ Int.to_string max_payload_length
   | InvalidPayloadLengthLimit { max_payload_length } ->
       "Invalid WebSocket payload length limit: " ^ Int.to_string max_payload_length
+  | ClosePayloadTooShort { payload_length } ->
+      "WebSocket close frame payload must be empty or at least 2 bytes, got "
+      ^ Int.to_string payload_length
+  | InvalidCloseCode { code } -> "Invalid WebSocket close code: " ^ Int.to_string code
+  | InvalidCloseReasonUtf8 { reason_length } ->
+      "WebSocket close reason is not valid UTF-8, length " ^ Int.to_string reason_length
 
 let byte_at = fun input at ->
   input
@@ -133,6 +142,31 @@ let validate_payload_length_limit = fun ~payload_length ~max_payload_length ->
     Result.Error (PayloadLengthExceedsLimit { payload_length; max_payload_length })
   else
     Result.Ok ()
+
+let is_valid_close_code = fun code ->
+  (code >= 1_000 && code <= 1_014 && code != 1_004 && code != 1_005 && code != 1_006)
+  || (code >= 3_000 && code <= 4_999)
+
+let validate_close_payload = fun opcode payload ->
+  if opcode != Frame.Close then
+    Result.Ok ()
+  else
+    let payload_length = String.length payload in
+    if payload_length = 0 then
+      Result.Ok ()
+    else if payload_length = 1 then
+      Result.Error (ClosePayloadTooShort { payload_length })
+    else
+      let code = (byte_at payload 0 lsl 8) lor byte_at payload 1 in
+      if not (is_valid_close_code code) then
+        Result.Error (InvalidCloseCode { code })
+      else
+        let reason_length = payload_length - 2 in
+        let reason = String.sub payload ~offset:2 ~len:reason_length in
+        if Unicode.Utf8.is_valid reason then
+          Result.Ok ()
+        else
+          Result.Error (InvalidCloseReasonUtf8 { reason_length })
 
 (* Parse a single WebSocket frame *)
 
@@ -217,25 +251,28 @@ let parse = fun ?(max_payload_length = Int.max_int) ~role input ->
                         else
                           raw_payload
                       in
-                      (* Create frame *)
-                      let frame =
-                        Frame.{
-                          fin;
-                          rsv1;
-                          rsv2;
-                          rsv3;
-                          opcode;
-                          masked;
-                          payload;
-                        }
-                      in
-                      (* Return frame and remaining data *)
-                      let remaining =
-                        String.sub
-                          input
-                          ~offset:(total_header_size + payload_length)
-                          ~len:(len - total_header_size - payload_length)
-                      in
-                      Done { value = frame; remaining }
+                      match validate_close_payload opcode payload with
+                      | Result.Error err -> Error err
+                      | Result.Ok () ->
+                          (* Create frame *)
+                          let frame =
+                            Frame.{
+                              fin;
+                              rsv1;
+                              rsv2;
+                              rsv3;
+                              opcode;
+                              masked;
+                              payload;
+                            }
+                          in
+                          (* Return frame and remaining data *)
+                          let remaining =
+                            String.sub
+                              input
+                              ~offset:(total_header_size + payload_length)
+                              ~len:(len - total_header_size - payload_length)
+                          in
+                          Done { value = frame; remaining }
               )
       )
