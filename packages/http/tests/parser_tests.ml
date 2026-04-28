@@ -256,6 +256,31 @@ let test_serialize_rejects_invalid_unknown_frame_type_code = fun _ctx ->
   | Error error -> Result.Error ("Wrong serializer error: " ^ Serializer.error_to_string error)
   | Ok _ -> Result.Error "serializer accepted an unknown frame code wider than one byte"
 
+let test_serialize_rejects_zero_stream_data_frame = fun _ctx ->
+  let frame = Frame.data ~stream_id:0 "hello" in
+  match Serializer.serialize_frame frame with
+  | Error (
+    Serializer.InvalidStreamId { frame_type = Frame.Data; stream_id = 0; expected = Serializer.MustBeNonZero }
+  ) -> Result.Ok ()
+  | Error error -> Result.Error ("Wrong serializer error: " ^ Serializer.error_to_string error)
+  | Ok _ -> Result.Error "serializer accepted DATA frame on stream 0"
+
+let test_serialize_rejects_nonzero_stream_settings_frame = fun _ctx ->
+  let frame = {
+    Frame.length = 0;
+    frame_type = Frame.Settings;
+    flags = Frame.default_flags;
+    stream_id = 1;
+    payload = Frame.SettingsPayload [];
+  }
+  in
+  match Serializer.serialize_frame frame with
+  | Error (
+    Serializer.InvalidStreamId { frame_type = Frame.Settings; stream_id = 1; expected = Serializer.MustBeZero }
+  ) -> Result.Ok ()
+  | Error error -> Result.Error ("Wrong serializer error: " ^ Serializer.error_to_string error)
+  | Ok _ -> Result.Error "serializer accepted SETTINGS frame on a non-zero stream"
+
 let test_ping_rejects_invalid_payload_length = fun _ctx ->
   match Frame.ping "short" with
   | Error (Frame.InvalidPingPayloadLength { length = 5 }) -> Result.Ok ()
@@ -1095,6 +1120,10 @@ let tests =
     case
       "serialize_rejects_invalid_unknown_frame_type_code"
       test_serialize_rejects_invalid_unknown_frame_type_code;
+    case "serialize_rejects_zero_stream_data_frame" test_serialize_rejects_zero_stream_data_frame;
+    case
+      "serialize_rejects_nonzero_stream_settings_frame"
+      test_serialize_rejects_nonzero_stream_settings_frame;
     case "ping_rejects_invalid_payload_length" test_ping_rejects_invalid_payload_length;
     case "window_update_rejects_invalid_increment" test_window_update_rejects_invalid_increment;
     case

@@ -5,6 +5,10 @@ type payload_error = {
   payload: Frame.payload;
 }
 
+type stream_id_rule =
+  | MustBeZero
+  | MustBeNonZero
+
 type error =
   | PayloadMismatch of payload_error
   | SettingsAckWithPayload of { setting_count: int }
@@ -12,6 +16,11 @@ type error =
   | InvalidWindowUpdateIncrement of { increment: int }
   | PayloadLengthTooLarge of { length: int; max_length: int }
   | InvalidUnknownFrameTypeCode of { code: int }
+  | InvalidStreamId of {
+      frame_type: Frame.frame_type;
+      stream_id: int;
+      expected: stream_id_rule;
+    }
 
 let frame_type_to_string = function
   | Frame.Data -> "DATA"
@@ -42,6 +51,17 @@ let error_to_string = function
       ^ Int.to_string max_length
   | InvalidUnknownFrameTypeCode { code } ->
       "HTTP/2 unknown frame type code must fit in one byte, got " ^ Int.to_string code
+  | InvalidStreamId { frame_type; stream_id; expected } ->
+      let expected =
+        match expected with
+        | MustBeZero -> "stream ID 0"
+        | MustBeNonZero -> "a non-zero stream ID"
+      in
+      frame_type_to_string frame_type
+      ^ " frame used stream ID "
+      ^ Int.to_string stream_id
+      ^ ", expected "
+      ^ expected
 
 let write_uint24_be = fun value ->
   let b0 = Char.from_int_unchecked ((value lsr 16) land 0b1111_1111) in
@@ -85,6 +105,21 @@ let frame_type_to_int = function
         Ok code
       else
         Error (InvalidUnknownFrameTypeCode { code })
+
+let validate_stream_id = fun frame_type stream_id ->
+  match frame_type with
+  | Frame.Data
+  | Frame.Headers
+  | Frame.Priority
+  | Frame.RstStream
+  | Frame.PushPromise
+  | Frame.Continuation when stream_id = 0 ->
+      Error (InvalidStreamId { frame_type; stream_id; expected = MustBeNonZero })
+  | Frame.Settings
+  | Frame.Ping
+  | Frame.Goaway when stream_id != 0 ->
+      Error (InvalidStreamId { frame_type; stream_id; expected = MustBeZero })
+  | _ -> Ok ()
 
 let flags_to_byte = fun frame_type flags ->
   let open Frame in
@@ -267,15 +302,19 @@ let serialize_payload = fun frame_type payload ->
 let serialize_frame = fun frame ->
   let open Frame in
   let payload_bytes =
-    match (frame.frame_type, frame.flags.ack) with
-    | (Settings, true) -> (
-        match frame.payload with
-        | SettingsPayload [] -> Ok ""
-        | SettingsPayload settings ->
-            Error (SettingsAckWithPayload { setting_count = List.length settings })
-        | payload -> Error (PayloadMismatch { frame_type = Settings; payload })
+    match validate_stream_id frame.frame_type frame.stream_id with
+    | Error error -> Error error
+    | Ok () -> (
+        match (frame.frame_type, frame.flags.ack) with
+        | (Settings, true) -> (
+            match frame.payload with
+            | SettingsPayload [] -> Ok ""
+            | SettingsPayload settings ->
+                Error (SettingsAckWithPayload { setting_count = List.length settings })
+            | payload -> Error (PayloadMismatch { frame_type = Settings; payload })
+          )
+        | _ -> serialize_payload frame.frame_type frame.payload
       )
-    | _ -> serialize_payload frame.frame_type frame.payload
   in
   match payload_bytes with
   | Error error -> Error error

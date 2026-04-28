@@ -5,6 +5,9 @@ type payload_error = {
   frame_type: Frame.frame_type;
   payload: Frame.payload;
 }
+type stream_id_rule =
+  | MustBeZero
+  | MustBeNonZero
 type error =
   | PayloadMismatch of payload_error
   | SettingsAckWithPayload of { setting_count: int }
@@ -12,6 +15,11 @@ type error =
   | InvalidWindowUpdateIncrement of { increment: int }
   | PayloadLengthTooLarge of { length: int; max_length: int }
   | InvalidUnknownFrameTypeCode of { code: int }
+  | InvalidStreamId of {
+      frame_type: Frame.frame_type;
+      stream_id: int;
+      expected: stream_id_rule;
+    }
 val error_to_string: error -> string
 
 val serialize_frame: Frame.t -> (string, error) Result.t
