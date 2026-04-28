@@ -38,6 +38,11 @@ type t = {
   payload: string;
 }
 
+type close_payload_error =
+  | ClosePayloadTooShort of { payload_length: int }
+  | InvalidCloseCode of { code: int }
+  | InvalidCloseReasonUtf8 of { reason_length: int }
+
 let opcode_to_int = function
   | Continuation -> 0x0
   | Text -> 0x1
@@ -83,6 +88,41 @@ let generate_mask = fun ?rng () -> Random.bits32 ?rng ()
 (* Apply mask to payload *)
 
 let apply_mask = fun mask payload -> unmask mask payload
+
+let close_payload_error_to_string = function
+  | ClosePayloadTooShort { payload_length } ->
+      "WebSocket close frame payload must be empty or at least 2 bytes, got "
+      ^ Int.to_string payload_length
+  | InvalidCloseCode { code } -> "Invalid WebSocket close code: " ^ Int.to_string code
+  | InvalidCloseReasonUtf8 { reason_length } ->
+      "WebSocket close reason is not valid UTF-8, length " ^ Int.to_string reason_length
+
+let byte_at = fun input at ->
+  input
+  |> String.get_unchecked ~at
+  |> Char.to_int
+
+let is_valid_close_code = fun code ->
+  (code >= 1_000 && code <= 1_014 && code != 1_004 && code != 1_005 && code != 1_006)
+  || (code >= 3_000 && code <= 4_999)
+
+let validate_close_payload = fun payload ->
+  let payload_length = String.length payload in
+  if payload_length = 0 then
+    Ok ()
+  else if payload_length = 1 then
+    Error (ClosePayloadTooShort { payload_length })
+  else
+    let code = (byte_at payload 0 lsl 8) lor byte_at payload 1 in
+    if not (is_valid_close_code code) then
+      Error (InvalidCloseCode { code })
+    else
+      let reason_length = payload_length - 2 in
+      let reason = String.sub payload ~offset:2 ~len:reason_length in
+      if Unicode.Utf8.is_valid reason then
+        Ok ()
+      else
+        Error (InvalidCloseReasonUtf8 { reason_length })
 
 (* Create frame helpers *)
 

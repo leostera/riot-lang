@@ -153,6 +153,33 @@ let test_oversized_control_frame_fails = fun _ctx ->
         Frame.{ (ping ()) with payload }
         (Message.ControlFramePayloadTooLarge { opcode = Message.Ping; payload_length = 126 })
 
+let test_one_byte_close_payload_fails = fun _ctx ->
+  match make_state () with
+  | Error error -> Error error
+  | Ok state ->
+      expect_handle_error
+        state
+        (Frame.close ~payload:"\x03" ())
+        (Message.InvalidClosePayload (Frame.ClosePayloadTooShort { payload_length = 1 }))
+
+let test_invalid_close_code_fails = fun _ctx ->
+  match make_state () with
+  | Error error -> Error error
+  | Ok state ->
+      expect_handle_error
+        state
+        (Frame.close ~payload:"\x03\xed" ())
+        (Message.InvalidClosePayload (Frame.InvalidCloseCode { code = 1_005 }))
+
+let test_invalid_close_reason_utf8_fails = fun _ctx ->
+  match make_state () with
+  | Error error -> Error error
+  | Ok state ->
+      expect_handle_error
+        state
+        (Frame.close ~payload:"\x03\xe8\xc0" ())
+        (Message.InvalidClosePayload (Frame.InvalidCloseReasonUtf8 { reason_length = 1 }))
+
 let tests =
   Test.[
     case "unfragmented text emits message" test_unfragmented_text_emits_message;
@@ -171,6 +198,9 @@ let tests =
     case "binary fragmented message emits binary" test_binary_fragmented_message_emits_binary;
     case "fragmented control frame fails" test_fragmented_control_frame_fails;
     case "oversized control frame fails" test_oversized_control_frame_fails;
+    case "one byte close payload fails" test_one_byte_close_payload_fails;
+    case "invalid close code fails" test_invalid_close_code_fails;
+    case "invalid close reason utf8 fails" test_invalid_close_reason_utf8_fails;
   ]
 
 let main ~args = Test.Cli.main ~name:"http:ws-message" ~tests ~args ()

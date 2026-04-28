@@ -171,30 +171,17 @@ let validate_payload_length_limit = fun ~payload_length ~max_payload_length ->
   else
     Result.Ok ()
 
-let is_valid_close_code = fun code ->
-  (code >= 1_000 && code <= 1_014 && code != 1_004 && code != 1_005 && code != 1_006)
-  || (code >= 3_000 && code <= 4_999)
-
 let validate_close_payload = fun opcode payload ->
   if opcode != Frame.Close then
     Result.Ok ()
   else
-    let payload_length = String.length payload in
-    if payload_length = 0 then
-      Result.Ok ()
-    else if payload_length = 1 then
-      Result.Error (ClosePayloadTooShort { payload_length })
-    else
-      let code = (byte_at payload 0 lsl 8) lor byte_at payload 1 in
-      if not (is_valid_close_code code) then
-        Result.Error (InvalidCloseCode { code })
-      else
-        let reason_length = payload_length - 2 in
-        let reason = String.sub payload ~offset:2 ~len:reason_length in
-        if Unicode.Utf8.is_valid reason then
-          Result.Ok ()
-        else
-          Result.Error (InvalidCloseReasonUtf8 { reason_length })
+    match Frame.validate_close_payload payload with
+    | Ok () -> Result.Ok ()
+    | Error (Frame.ClosePayloadTooShort { payload_length }) ->
+        Result.Error (ClosePayloadTooShort { payload_length })
+    | Error (Frame.InvalidCloseCode { code }) -> Result.Error (InvalidCloseCode { code })
+    | Error (Frame.InvalidCloseReasonUtf8 { reason_length }) ->
+        Result.Error (InvalidCloseReasonUtf8 { reason_length })
 
 let validate_text_payload = fun ~fin ~opcode payload ->
   if opcode = Frame.Text && fin && not (Unicode.Utf8.is_valid payload) then

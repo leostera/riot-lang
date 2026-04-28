@@ -31,6 +31,7 @@ type error =
   | DataFrameWhileFragmented of { opcode: data_opcode }
   | FragmentedControlFrame of { opcode: control_opcode }
   | ControlFramePayloadTooLarge of { opcode: control_opcode; payload_length: int }
+  | InvalidClosePayload of Frame.close_payload_error
   | MessagePayloadTooLarge of { payload_length: int; max_message_size: int }
   | InvalidTextMessageUtf8 of { payload_length: int }
 
@@ -58,6 +59,7 @@ let error_to_string = function
       ^ control_opcode_to_string opcode
       ^ " control frame payload must be at most 125 bytes, got "
       ^ Int.to_string payload_length
+  | InvalidClosePayload error -> Frame.close_payload_error_to_string error
   | MessagePayloadTooLarge { payload_length; max_message_size } ->
       "WebSocket message payload length "
       ^ Int.to_string payload_length
@@ -180,7 +182,14 @@ let handle_control_frame = fun state frame opcode ->
   else if payload_length > 125 then
     Error (ControlFramePayloadTooLarge { opcode; payload_length })
   else
-    Ok (state, Some (ControlFrame frame))
+    match opcode with
+    | Close -> (
+        match Frame.validate_close_payload frame.Frame.payload with
+        | Ok () -> Ok (state, Some (ControlFrame frame))
+        | Error error -> Error (InvalidClosePayload error)
+      )
+    | Ping
+    | Pong -> Ok (state, Some (ControlFrame frame))
 
 let handle_frame = fun state frame ->
   match frame_data_opcode frame.Frame.opcode with
