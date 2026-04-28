@@ -133,6 +133,7 @@ type error =
   | UnexpectedContinuation of { stream_id: int }
   | ContinuationStreamMismatch of { expected_stream_id: int; actual_stream_id: int }
   | InvalidPeerStreamId of { role: role; stream_id: int }
+  | PeerStreamIdNotIncreasing of { stream_id: int; last_stream_id: int }
   | NewStreamRejected of { state: state; stream_id: int }
   | DataBeforeHeaders of { stream_id: int }
   | FrameForIdleStream of {

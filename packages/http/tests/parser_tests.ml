@@ -723,6 +723,21 @@ let test_process_data_rejects_even_peer_stream_on_server = fun _ctx ->
   | Error err -> Result.Error ("Wrong connection error: " ^ Connection.error_to_string err)
   | Ok _ -> Result.Error "Server accepted HEADERS on an even peer stream"
 
+let test_process_data_rejects_lower_new_peer_stream = fun _ctx ->
+  let conn = Connection.create ~role:Connection.Server () in
+  let header_block = encode_header_block [ { Hpack.name = ":method"; value = "GET" }; ] in
+  let higher = Frame.headers ~stream_id:3 ~end_headers:true header_block in
+  let lower = Frame.headers ~stream_id:1 ~end_headers:true header_block in
+  match Connection.process_data conn (Std.IO.Bytes.from_string (serialize_frame higher)) with
+  | Error err -> Result.Error ("Higher peer stream failed: " ^ Connection.error_to_string err)
+  | Ok _ -> (
+      match Connection.process_data conn (Std.IO.Bytes.from_string (serialize_frame lower)) with
+      | Error (Connection.PeerStreamIdNotIncreasing { stream_id = 1; last_stream_id = 3 }) ->
+          Result.Ok ()
+      | Error err -> Result.Error ("Wrong connection error: " ^ Connection.error_to_string err)
+      | Ok _ -> Result.Error "Lower new peer stream was accepted after a higher stream"
+    )
+
 let test_process_data_rejects_unknown_odd_stream_on_client = fun _ctx ->
   let conn = Connection.create ~role:Connection.Client () in
   let header_block = encode_header_block [ { Hpack.name = ":status"; value = "200" }; ] in
@@ -1130,6 +1145,9 @@ let tests =
     case
       "process_data_rejects_even_peer_stream_on_server"
       test_process_data_rejects_even_peer_stream_on_server;
+    case
+      "process_data_rejects_lower_new_peer_stream"
+      test_process_data_rejects_lower_new_peer_stream;
     case
       "process_data_rejects_unknown_odd_stream_on_client"
       test_process_data_rejects_unknown_odd_stream_on_client;
