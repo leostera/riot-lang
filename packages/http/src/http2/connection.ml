@@ -126,6 +126,7 @@ type error =
     }
   | UnexpectedContinuation of { stream_id: int }
   | ContinuationStreamMismatch of { expected_stream_id: int; actual_stream_id: int }
+  | InvalidPeerStreamId of { role: role; stream_id: int }
   | DataBeforeHeaders of { stream_id: int }
   | FrameAfterStreamEnd of {
       stream_id: int;
@@ -139,6 +140,10 @@ type error =
 let window_scope_to_string = function
   | StreamWindow { stream_id } -> "stream " ^ Int.to_string stream_id
   | ConnectionWindow -> "connection"
+
+let role_to_string = function
+  | Client -> "client"
+  | Server -> "server"
 
 let stream_state_to_string = function
   | StreamIdle -> "idle"
@@ -179,6 +184,11 @@ let error_to_string = function
       ^ Int.to_string expected_stream_id
       ^ ", got stream "
       ^ Int.to_string actual_stream_id
+  | InvalidPeerStreamId { role; stream_id } ->
+      "HTTP/2 "
+      ^ role_to_string role
+      ^ " connection received HEADERS for invalid peer-initiated stream "
+      ^ Int.to_string stream_id
   | DataBeforeHeaders { stream_id } ->
       "HTTP/2 received DATA before headers on stream " ^ Int.to_string stream_id
   | FrameAfterStreamEnd { stream_id; frame_type; state } ->
@@ -304,6 +314,11 @@ let create_stream = fun conn ->
   Ok stream_id
 
 let get_stream = fun conn stream_id -> HashMap.get conn.streams ~key:stream_id
+
+let is_valid_peer_initiated_stream_id = fun ~role stream_id ->
+  match role with
+  | Server -> stream_id mod 2 = 1
+  | Client -> stream_id mod 2 = 0
 
 let send_headers = fun conn ~stream_id ~headers ~end_stream ->
   match get_stream conn stream_id with
@@ -571,24 +586,30 @@ let decode_header_block = fun conn ~stream_id ~fragment ~end_stream ->
   | Ok headers ->
       let stream =
         match get_stream conn stream_id with
-        | Some s -> s
+        | Some s -> Ok s
         | None ->
-            let s = {
-              id = stream_id;
-              state = Cell.create StreamOpen;
-              window_size = Cell.create (Cell.get conn.remote_settings.initial_window_size);
-              receive_window_size = Cell.create (Cell.get conn.local_settings.initial_window_size);
-              headers = Cell.create [];
-              data_chunks = Cell.create [];
-            }
-            in
-            let _ = HashMap.insert conn.streams ~key:stream_id ~value:s in
-            s
+            if not (is_valid_peer_initiated_stream_id ~role:conn.role stream_id) then
+              Error (InvalidPeerStreamId { role = conn.role; stream_id })
+            else
+              let s = {
+                id = stream_id;
+                state = Cell.create StreamOpen;
+                window_size = Cell.create (Cell.get conn.remote_settings.initial_window_size);
+                receive_window_size = Cell.create (Cell.get conn.local_settings.initial_window_size);
+                headers = Cell.create [];
+                data_chunks = Cell.create [];
+              }
+              in
+              let _ = HashMap.insert conn.streams ~key:stream_id ~value:s in
+              Ok s
       in
-      Cell.set stream.headers headers;
-      if end_stream then
-        Cell.set stream.state StreamHalfClosedRemote;
-      Ok [ HeadersReceived { stream_id; headers; end_stream } ]
+      match stream with
+      | Error error -> Error error
+      | Ok stream ->
+          Cell.set stream.headers headers;
+          if end_stream then
+            Cell.set stream.state StreamHalfClosedRemote;
+          Ok [ HeadersReceived { stream_id; headers; end_stream } ]
 
 let concatenate_fragments = fun fragments -> String.concat "" fragments
 

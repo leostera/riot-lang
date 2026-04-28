@@ -572,6 +572,44 @@ let test_process_data_rejects_stream_flow_control_excess = fun _ctx ->
   | Error err -> Result.Error ("Wrong connection error: " ^ Connection.error_to_string err)
   | Ok _ -> Result.Error "DATA beyond the stream receive window was accepted"
 
+let test_process_data_rejects_even_peer_stream_on_server = fun _ctx ->
+  let conn = Connection.create ~role:Connection.Server () in
+  let header_block = encode_header_block [ { Hpack.name = ":method"; value = "GET" }; ] in
+  let headers = Frame.headers ~stream_id:2 ~end_headers:true header_block in
+  match Connection.process_data conn (Std.IO.Bytes.from_string (serialize_frame headers)) with
+  | Error (Connection.InvalidPeerStreamId { role = Connection.Server; stream_id = 2 }) ->
+      Result.Ok ()
+  | Error err -> Result.Error ("Wrong connection error: " ^ Connection.error_to_string err)
+  | Ok _ -> Result.Error "Server accepted HEADERS on an even peer stream"
+
+let test_process_data_rejects_unknown_odd_stream_on_client = fun _ctx ->
+  let conn = Connection.create ~role:Connection.Client () in
+  let header_block = encode_header_block [ { Hpack.name = ":status"; value = "200" }; ] in
+  let headers = Frame.headers ~stream_id:1 ~end_headers:true header_block in
+  match Connection.process_data conn (Std.IO.Bytes.from_string (serialize_frame headers)) with
+  | Error (Connection.InvalidPeerStreamId { role = Connection.Client; stream_id = 1 }) ->
+      Result.Ok ()
+  | Error err -> Result.Error ("Wrong connection error: " ^ Connection.error_to_string err)
+  | Ok _ -> Result.Error "Client accepted HEADERS on an unknown odd stream"
+
+let test_process_data_accepts_response_on_existing_client_stream = fun _ctx ->
+  let conn = Connection.create ~role:Connection.Client () in
+  let _ = send_preface conn in
+  match Connection.create_stream conn with
+  | Error err -> Result.Error ("Failed to create client stream: " ^ Connection.error_to_string err)
+  | Ok 1 ->
+      let header_block = encode_header_block [ { Hpack.name = ":status"; value = "200" }; ] in
+      let headers = Frame.headers ~stream_id:1 ~end_headers:true header_block in
+      (
+        match Connection.process_data conn (Std.IO.Bytes.from_string (serialize_frame headers)) with
+        | Ok [ Connection.HeadersReceived { stream_id = 1; headers = [ { Hpack.name = ":status"; value = "200" } ]; end_stream = false } ] ->
+            Result.Ok ()
+        | Ok _ -> Result.Error "Client response HEADERS emitted unexpected events"
+        | Error err ->
+            Result.Error ("Client response HEADERS failed: " ^ Connection.error_to_string err)
+      )
+  | Ok stream_id -> Result.Error ("Expected stream 1, got " ^ Int.to_string stream_id)
+
 let test_process_window_update_increases_send_window_only = fun _ctx ->
   let conn = Connection.create ~role:Connection.Server () in
   let send_before = Connection.connection_window_size conn in
@@ -697,6 +735,15 @@ let tests =
     case
       "process_data_rejects_stream_flow_control_excess"
       test_process_data_rejects_stream_flow_control_excess;
+    case
+      "process_data_rejects_even_peer_stream_on_server"
+      test_process_data_rejects_even_peer_stream_on_server;
+    case
+      "process_data_rejects_unknown_odd_stream_on_client"
+      test_process_data_rejects_unknown_odd_stream_on_client;
+    case
+      "process_data_accepts_response_on_existing_client_stream"
+      test_process_data_accepts_response_on_existing_client_stream;
     case
       "process_window_update_increases_send_window_only"
       test_process_window_update_increases_send_window_only;

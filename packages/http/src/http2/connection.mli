@@ -116,6 +116,7 @@ type error =
     }
   | UnexpectedContinuation of { stream_id: int }
   | ContinuationStreamMismatch of { expected_stream_id: int; actual_stream_id: int }
+  | InvalidPeerStreamId of { role: role; stream_id: int }
   | DataBeforeHeaders of { stream_id: int }
   | FrameAfterStreamEnd of {
       stream_id: int;
