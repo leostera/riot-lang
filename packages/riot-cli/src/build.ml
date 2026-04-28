@@ -923,26 +923,112 @@ let format_cache_gc_cleanup = fun (summary: Riot_store.Cache_gc.summary) ->
   ^ size_to_string summary.size_after_bytes
   ^ ")"
 
+type cache_gc_progress = {
+  total_entries: int;
+  step: int;
+  mutable removed_entries: int;
+}
+
+let cache_gc_progress = ref None
+
+let max_cache_gc_progress_dots = 40
+
+let start_cache_gc_progress = fun total_entries ->
+  if total_entries > 0 then
+    (
+      let step =
+        let raw = (total_entries + max_cache_gc_progress_dots - 1) / max_cache_gc_progress_dots in
+        if raw > 0 then
+          raw
+        else
+          1
+      in
+      eprint "    Removing cache entries ";
+      cache_gc_progress := Some { total_entries; step; removed_entries = 0 }
+    )
+
+let tick_cache_gc_progress = fun () ->
+  match !cache_gc_progress with
+  | None -> ()
+  | Some progress ->
+      progress.removed_entries <- progress.removed_entries + 1;
+      if
+        progress.removed_entries = progress.total_entries
+        || progress.removed_entries mod progress.step = 0
+      then
+        eprint "."
+
+let close_cache_gc_progress = fun () ->
+  match !cache_gc_progress with
+  | None -> ()
+  | Some _ ->
+      eprintln "";
+      cache_gc_progress := None
+
 let write_cache_gc_event = fun ~mode event ->
   match mode with
   | Json -> write_json_event (Riot_store.Cache_gc.event_to_json event)
   | Human -> (
       match event with
-      | Riot_store.Cache_gc.GcStarted { trigger = Manual } ->
+      | Riot_store.Cache_gc.GcStarted { trigger = Riot_store.Cache_gc.Manual } ->
           out "    Running tracked cache GC (build root kept; use --force to remove it)"
-      | Riot_store.Cache_gc.GcStarted { trigger = Post_build } -> ()
-      | Riot_store.Cache_gc.GcSkipped { trigger = Post_build; _ } -> ()
+      | Riot_store.Cache_gc.GcStarted { trigger = Riot_store.Cache_gc.Post_build } -> ()
+      | Riot_store.Cache_gc.GcCacheScanStarted { trigger = Riot_store.Cache_gc.Manual; build_root } ->
+          out ("    Scanning tracked cache entries under " ^ Path.to_string build_root)
+      | Riot_store.Cache_gc.GcCacheScanStarted { trigger = Riot_store.Cache_gc.Post_build; _ } -> ()
+      | Riot_store.Cache_gc.GcCacheEntryScanStarted { trigger = Riot_store.Cache_gc.Manual; _ } ->
+          ()
+      | Riot_store.Cache_gc.GcCacheEntryScanStarted { trigger = Riot_store.Cache_gc.Post_build; _ } ->
+          ()
+      | Riot_store.Cache_gc.GcCacheEntryScanned { trigger = Riot_store.Cache_gc.Manual; _ } -> ()
+      | Riot_store.Cache_gc.GcCacheEntryScanned { trigger = Riot_store.Cache_gc.Post_build; _ } ->
+          ()
+      | Riot_store.Cache_gc.GcCacheScanCompleted { trigger = Riot_store.Cache_gc.Manual; entry_count; total_size_bytes } ->
+          out
+            ("    Found "
+            ^ Int.to_string entry_count
+            ^ " tracked cache entries ("
+            ^ size_to_string total_size_bytes
+            ^ ")")
+      | Riot_store.Cache_gc.GcCacheScanCompleted { trigger = Riot_store.Cache_gc.Post_build; _ } ->
+          ()
+      | Riot_store.Cache_gc.GcPlanComputed {
+        trigger = Riot_store.Cache_gc.Manual;
+        deleted_entries;
+        deleted_generations;
+        reclaimable_bytes
+      } ->
+          out
+            ("    Removing "
+            ^ Int.to_string deleted_entries
+            ^ " cache entries and "
+            ^ Int.to_string deleted_generations
+            ^ " generations; reclaiming "
+            ^ size_to_string reclaimable_bytes);
+          start_cache_gc_progress deleted_entries
+      | Riot_store.Cache_gc.GcPlanComputed { trigger = Riot_store.Cache_gc.Post_build; _ } -> ()
+      | Riot_store.Cache_gc.GcCacheEntryDeleteStarted { trigger = Riot_store.Cache_gc.Manual; _ } ->
+          tick_cache_gc_progress ()
+      | Riot_store.Cache_gc.GcCacheEntryDeleteStarted { trigger = Riot_store.Cache_gc.Post_build; _ } ->
+          ()
+      | Riot_store.Cache_gc.GcGenerationDeleteStarted { trigger = Riot_store.Cache_gc.Manual; _ } ->
+          ()
+      | Riot_store.Cache_gc.GcGenerationDeleteStarted { trigger = Riot_store.Cache_gc.Post_build; _ } ->
+          ()
+      | Riot_store.Cache_gc.GcSkipped { trigger = Riot_store.Cache_gc.Post_build; _ } -> ()
       | Riot_store.Cache_gc.GcSkipped { summary; _ } ->
           out
             ("    Cache GC skipped: tracked cache is already within policy ("
             ^ size_to_string summary.size_after_bytes
             ^ "). Build root kept; use --force to remove it.")
       | Riot_store.Cache_gc.GcCompleted { summary; _ } ->
+          close_cache_gc_progress ();
           out
             ("    \027[1;32mCleaned\027[0m tracked cache: "
             ^ format_cache_gc_cleanup summary
             ^ ". Build root kept.")
       | Riot_store.Cache_gc.GcFailed { error; _ } ->
+          close_cache_gc_progress ();
           out ("\027[1;31mError\027[0m: cache GC failed: " ^ error)
       | Riot_store.Cache_gc.ForceCleanStarted { build_root } ->
           out ("    Removing build root " ^ Path.to_string build_root)

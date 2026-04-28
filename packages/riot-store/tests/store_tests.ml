@@ -121,6 +121,8 @@ let write_cache_entry = fun ~(workspace:Riot_model.Workspace.t) ~profile ~target
     / Path.v profile
     / Path.v (Riot_model.Target.to_string target)
     / Path.v "cache"
+    / Path.v "trees"
+    / Path.v (String.sub hash ~offset:0 ~len:2)
     / Path.v hash)
   in
   let payload = Path.(entry_dir / Path.v "artifact.bin") in
@@ -133,6 +135,22 @@ let write_cache_entry = fun ~(workspace:Riot_model.Workspace.t) ~profile ~target
     |> Result.expect ~msg:"write cache payload should succeed"
   in
   entry_dir
+
+let overwrite_cache_state = fun
+  ~(workspace:Riot_model.Workspace.t) ~tracked_size ~generation_hashes ->
+  let cache_dir = Path.(workspace.target_dir_root / Path.v "cache") in
+  let _ =
+    Fs.create_dir_all cache_dir
+    |> Result.expect ~msg:"create cache state parent should succeed"
+  in
+  let json = Data.Json.Object [
+    ("schema_version", Data.Json.Int 2);
+    ("tracked_size_bytes", Data.Json.String tracked_size);
+    ("generation_hashes", Data.Json.Array (List.map generation_hashes ~fn:Data.Json.string));
+  ]
+  in
+  Fs.write (Data.Json.to_string_pretty json) Path.(cache_dir / Path.v "state.json")
+  |> Result.expect ~msg:"overwrite cache state should succeed"
 
 let test_save_and_promote_nested_outputs = fun _ctx ->
   match Fs.with_tempdir
@@ -1193,6 +1211,112 @@ let test_cache_gc_shrinks_retained_generations_to_meet_max_size = fun _ctx ->
   | Ok x -> x
   | Error _ -> Error "tempdir creation failed"
 
+let test_cache_gc_rebuilds_stale_zero_state_for_sharded_entries = fun _ctx ->
+  match Fs.with_tempdir
+    ~prefix:"store_cache_gc_stale_zero_state_test"
+    (fun tmpdir ->
+      let workspace = make_test_workspace tmpdir in
+      write_workspace_cache_config tmpdir ~keep_generations:1 ~max_size:"10 GiB";
+      let hash_a = make_hash 'a' in
+      let hash_b = make_hash 'b' in
+      let entry_a =
+        write_cache_entry ~workspace ~profile:"debug" ~target:host_target ~hash:hash_a ~size:16
+      in
+      let entry_b =
+        write_cache_entry ~workspace ~profile:"debug" ~target:host_target ~hash:hash_b ~size:16
+      in
+      let _ =
+        Riot_store.Cache_gc.record_successful_build
+          ~workspace
+          ~lanes:[
+            Riot_store.Cache_gc.{ profile = "debug"; target = host_target; hashes = [ hash_a ] };
+          ]
+          ~new_entries:[
+            Riot_store.Cache_gc.{ profile = "debug"; target = host_target; hash = hash_a };
+          ]
+        |> Result.expect ~msg:"first generation should record"
+      in
+      let _ =
+        Riot_store.Cache_gc.record_successful_build
+          ~workspace
+          ~lanes:[
+            Riot_store.Cache_gc.{ profile = "debug"; target = host_target; hashes = [ hash_b ] };
+          ]
+          ~new_entries:[
+            Riot_store.Cache_gc.{ profile = "debug"; target = host_target; hash = hash_b };
+          ]
+        |> Result.expect ~msg:"second generation should record"
+      in
+      let generation_hashes = read_cache_state_generation_hashes ~workspace in
+      overwrite_cache_state ~workspace ~tracked_size:"0" ~generation_hashes;
+      let events = ref [] in
+      let summary =
+        Riot_store.Cache_gc.clean_with_events
+          ~workspace
+          ~on_event:(fun event -> events := event :: !events)
+        |> Result.expect ~msg:"clean should rebuild stale cache state and collect sharded entries"
+      in
+      let events = List.reverse !events in
+      let saw_scan_started =
+        List.any
+          events
+          ~fn:(
+            function
+            | Riot_store.Cache_gc.GcCacheScanStarted { trigger = Riot_store.Cache_gc.Manual; _ } -> true
+            | _ -> false
+          )
+      in
+      let saw_entry_scan =
+        List.any
+          events
+          ~fn:(
+            function
+            | Riot_store.Cache_gc.GcCacheEntryScanStarted { trigger = Riot_store.Cache_gc.Manual; _ } -> true
+            | _ -> false
+          )
+      in
+      let saw_delete =
+        List.any
+          events
+          ~fn:(
+            function
+            | Riot_store.Cache_gc.GcCacheEntryDeleteStarted { trigger = Riot_store.Cache_gc.Manual; _ } -> true
+            | _ -> false
+          )
+      in
+      let saw_plan =
+        List.any
+          events
+          ~fn:(
+            function
+            | Riot_store.Cache_gc.GcPlanComputed { trigger = Riot_store.Cache_gc.Manual; deleted_entries = 1; reclaimable_bytes = 16L; _ } -> true
+            | _ -> false
+          )
+      in
+      let entry_a_exists =
+        Fs.exists entry_a
+        |> Result.unwrap_or ~default:false
+      in
+      let entry_b_exists =
+        Fs.exists entry_b
+        |> Result.unwrap_or ~default:false
+      in
+      if summary.ran_gc
+      && summary.deleted_entries = 1
+      && Int64.equal summary.size_before_bytes 32L
+      && Int64.equal summary.size_after_bytes 16L
+      && saw_scan_started
+      && saw_entry_scan
+      && saw_plan
+      && saw_delete
+      && not entry_a_exists
+      && entry_b_exists then
+        Ok ()
+      else
+        Error "expected manual clean to ignore stale zero state and delete old sharded entries") with
+  | Ok x -> x
+  | Error _ -> Error "tempdir creation failed"
+
 let tests =
   Test.[
     case "save/promote nested outputs" test_save_and_promote_nested_outputs;
@@ -1251,6 +1375,9 @@ let tests =
     case
       "cache GC shrinks retained generations to meet max_size"
       test_cache_gc_shrinks_retained_generations_to_meet_max_size;
+    case
+      "cache GC rebuilds stale zero state for sharded entries"
+      test_cache_gc_rebuilds_stale_zero_state_for_sharded_entries;
   ]
 
 let name = "Riot Store Tests"

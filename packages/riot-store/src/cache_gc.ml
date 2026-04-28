@@ -31,6 +31,38 @@ type trigger =
 
 type event =
   | GcStarted of { trigger: trigger }
+  | GcCacheScanStarted of {
+      trigger: trigger;
+      build_root: Path.t;
+    }
+  | GcCacheEntryScanStarted of {
+      trigger: trigger;
+      hash: string;
+      path: Path.t;
+    }
+  | GcCacheEntryScanned of {
+      trigger: trigger;
+      hash: string;
+      path: Path.t;
+      size_bytes: int64;
+    }
+  | GcCacheScanCompleted of { trigger: trigger; entry_count: int; total_size_bytes: int64 }
+  | GcPlanComputed of {
+      trigger: trigger;
+      deleted_entries: int;
+      deleted_generations: int;
+      reclaimable_bytes: int64;
+    }
+  | GcCacheEntryDeleteStarted of {
+      trigger: trigger;
+      hash: string;
+      path: Path.t;
+      size_bytes: int64;
+    }
+  | GcGenerationDeleteStarted of {
+      trigger: trigger;
+      path: Path.t;
+    }
   | GcSkipped of { trigger: trigger; summary: summary }
   | GcCompleted of { trigger: trigger; summary: summary }
   | GcFailed of { trigger: trigger; error: string }
@@ -70,6 +102,7 @@ type cache_state = {
 type tracked_size_snapshot = {
   tracked_size_bytes: int64;
   generation_hashes: string list;
+  cache_entries: cache_entry list option;
   rebuilt: bool;
 }
 
@@ -134,6 +167,12 @@ let trigger_to_string = function
   | Manual -> "manual"
   | Post_build -> "post_build"
 
+let short_hash = fun hash ->
+  if String.length hash > 12 then
+    String.sub hash ~offset:0 ~len:12
+  else
+    hash
+
 let summary_to_json = fun summary ->
   Data.Json.Object [
     ("ran_gc", Data.Json.Bool summary.ran_gc);
@@ -146,6 +185,28 @@ let summary_to_json = fun summary ->
 
 let event_message = function
   | GcStarted { trigger } -> "starting tracked cache GC (" ^ trigger_to_string trigger ^ ")"
+  | GcCacheScanStarted { build_root; _ } ->
+      "scanning tracked cache entries under " ^ Path.to_string build_root
+  | GcCacheEntryScanStarted { hash; path; _ } ->
+      "scanning cache entry " ^ short_hash hash ^ " at " ^ Path.to_string path
+  | GcCacheEntryScanned { hash; size_bytes; _ } ->
+      "scanned cache entry " ^ short_hash hash ^ " (" ^ size_to_string size_bytes ^ ")"
+  | GcCacheScanCompleted { entry_count; total_size_bytes; _ } ->
+      "scanned "
+      ^ Int.to_string entry_count
+      ^ " cache entries ("
+      ^ size_to_string total_size_bytes
+      ^ ")"
+  | GcPlanComputed { deleted_entries; deleted_generations; reclaimable_bytes; _ } ->
+      "will remove "
+      ^ Int.to_string deleted_entries
+      ^ " cache entries and "
+      ^ Int.to_string deleted_generations
+      ^ " generations, reclaiming "
+      ^ size_to_string reclaimable_bytes
+  | GcCacheEntryDeleteStarted { hash; size_bytes; _ } ->
+      "removing cache entry " ^ short_hash hash ^ " (" ^ size_to_string size_bytes ^ ")"
+  | GcGenerationDeleteStarted { path; _ } -> "removing generation receipt " ^ Path.to_string path
   | GcSkipped { summary; _ } -> summary_message summary
   | GcCompleted { summary; _ } -> summary_message summary
   | GcFailed { error; _ } -> error
@@ -159,6 +220,71 @@ let event_to_json = function
       Data.Json.Object [
         ("type", Data.Json.String "CacheGcStarted");
         ("trigger", Data.Json.String (trigger_to_string trigger));
+      ]
+  | GcCacheScanStarted { trigger; build_root } ->
+      Data.Json.Object [
+        ("type", Data.Json.String "CacheGcScanStarted");
+        ("trigger", Data.Json.String (trigger_to_string trigger));
+        ("build_root", Data.Json.String (Path.to_string build_root));
+      ]
+  | GcCacheEntryScanStarted { trigger; hash; path } ->
+      Data.Json.Object [
+        ("type", Data.Json.String "CacheGcEntryScanStarted");
+        ("trigger", Data.Json.String (trigger_to_string trigger));
+        ("hash", Data.Json.String hash);
+        ("path", Data.Json.String (Path.to_string path));
+      ]
+  | GcCacheEntryScanned {
+    trigger;
+    hash;
+    path;
+    size_bytes
+  } ->
+      Data.Json.Object [
+        ("type", Data.Json.String "CacheGcEntryScanned");
+        ("trigger", Data.Json.String (trigger_to_string trigger));
+        ("hash", Data.Json.String hash);
+        ("path", Data.Json.String (Path.to_string path));
+        ("size_bytes", Data.Json.String (Int64.to_string size_bytes));
+      ]
+  | GcCacheScanCompleted { trigger; entry_count; total_size_bytes } ->
+      Data.Json.Object [
+        ("type", Data.Json.String "CacheGcScanCompleted");
+        ("trigger", Data.Json.String (trigger_to_string trigger));
+        ("entry_count", Data.Json.Int entry_count);
+        ("total_size_bytes", Data.Json.String (Int64.to_string total_size_bytes));
+      ]
+  | GcPlanComputed {
+    trigger;
+    deleted_entries;
+    deleted_generations;
+    reclaimable_bytes
+  } ->
+      Data.Json.Object [
+        ("type", Data.Json.String "CacheGcPlanComputed");
+        ("trigger", Data.Json.String (trigger_to_string trigger));
+        ("deleted_entries", Data.Json.Int deleted_entries);
+        ("deleted_generations", Data.Json.Int deleted_generations);
+        ("reclaimable_bytes", Data.Json.String (Int64.to_string reclaimable_bytes));
+      ]
+  | GcCacheEntryDeleteStarted {
+    trigger;
+    hash;
+    path;
+    size_bytes
+  } ->
+      Data.Json.Object [
+        ("type", Data.Json.String "CacheGcEntryDeleteStarted");
+        ("trigger", Data.Json.String (trigger_to_string trigger));
+        ("hash", Data.Json.String hash);
+        ("path", Data.Json.String (Path.to_string path));
+        ("size_bytes", Data.Json.String (Int64.to_string size_bytes));
+      ]
+  | GcGenerationDeleteStarted { trigger; path } ->
+      Data.Json.Object [
+        ("type", Data.Json.String "CacheGcGenerationDeleteStarted");
+        ("trigger", Data.Json.String (trigger_to_string trigger));
+        ("path", Data.Json.String (Path.to_string path));
       ]
   | GcSkipped { trigger; summary } ->
       Data.Json.Object [
@@ -550,7 +676,21 @@ let path_size_bytes = fun root ->
     |> Result.map_err ~fn:IO.error_message
     |> Result.map ~fn:(fun () -> !total)
 
-let collect_cache_entries = fun ~(workspace:Workspace.t) ->
+let total_size = fun entries ->
+  List.fold_left
+    entries
+    ~init:0L
+    ~fn:(fun acc (entry: cache_entry) -> Int64.add acc entry.size_bytes)
+
+let collect_cache_entries = fun ~trigger ~on_event ~(workspace:Workspace.t) ->
+  let collect_hash_dirs = fun cache_dir ->
+    Path.(cache_dir / Path.v "trees")
+    |> list_subdirectories
+    |> List.flat_map
+      ~fn:(fun shard_dir ->
+        list_subdirectories shard_dir
+        |> List.filter ~fn:(fun dir -> is_hash_dir_name (Path.basename dir)))
+  in
   let profile_dirs =
     list_subdirectories workspace.target_dir_root
     |> List.filter ~fn:(fun dir -> not (String.equal (Path.basename dir) "cache"))
@@ -565,65 +705,90 @@ let collect_cache_entries = fun ~(workspace:Workspace.t) ->
     | [] -> Ok acc
     | target_dir :: rest ->
         let cache_dir = Path.(target_dir / Path.v "cache") in
-        let hash_dirs =
-          list_subdirectories cache_dir
-          |> List.filter ~fn:(fun dir -> is_hash_dir_name (Path.basename dir))
-        in
+        let hash_dirs = collect_hash_dirs cache_dir in
         let* acc =
           List.fold_left
             hash_dirs
             ~init:(Ok acc)
             ~fn:(fun acc_result dir ->
               let* acc = acc_result in
+              let hash = Path.basename dir in
+              on_event (GcCacheEntryScanStarted { trigger; hash; path = dir });
               let* size_bytes = path_size_bytes dir in
-              Ok ({ hash = Path.basename dir; dir; size_bytes } :: acc))
+              on_event
+                (
+                  GcCacheEntryScanned {
+                    trigger;
+                    hash;
+                    path = dir;
+                    size_bytes;
+                  }
+                );
+              Ok ({ hash; dir; size_bytes } :: acc))
         in
         collect_targets acc rest
   in
-  collect_profiles [] profile_dirs
+  on_event (GcCacheScanStarted { trigger; build_root = workspace.target_dir_root });
+  let* entries = collect_profiles [] profile_dirs in
+  on_event
+    (GcCacheScanCompleted {
+      trigger;
+      entry_count = List.length entries;
+      total_size_bytes = total_size entries;
+    });
+  Ok entries
 
-let total_size = fun entries ->
-  List.fold_left
-    entries
-    ~init:0L
-    ~fn:(fun acc (entry: cache_entry) -> Int64.add acc entry.size_bytes)
+let rebuild_tracked_size = fun ~trigger ~on_event ~(workspace:Workspace.t) ->
+  let* entries = collect_cache_entries ~trigger ~on_event ~workspace in
+  let tracked_size_bytes = total_size entries in
+  let* generation_hashes = rebuild_generation_hashes ~workspace in
+  let* () =
+    write_state
+      ~workspace
+      {
+        tracked_size_bytes;
+        generation_hashes = Some generation_hashes;
+        receipt_count = Some (List.length generation_hashes);
+      }
+  in
+  Ok ({
+    tracked_size_bytes;
+    generation_hashes;
+    cache_entries = Some entries;
+    rebuilt = true;
+  }: tracked_size_snapshot)
 
-let load_or_rebuild_tracked_size = fun ~(workspace:Workspace.t) ->
-  match read_state ~workspace with
-  | Ok (Some state) ->
-      let* generation_hashes =
-        match state.generation_hashes with
-        | Some generation_hashes -> Ok generation_hashes
-        | None ->
-            let* generation_hashes = rebuild_generation_hashes ~workspace in
-            let* () =
-              write_state
-                ~workspace
-                {
-                  tracked_size_bytes = state.tracked_size_bytes;
-                  generation_hashes = Some generation_hashes;
-                  receipt_count = Some (List.length generation_hashes);
-                }
-            in
-            Ok generation_hashes
-      in
-      Ok ({ tracked_size_bytes = state.tracked_size_bytes; generation_hashes; rebuilt = false }:
-        tracked_size_snapshot)
-  | Ok None
-  | Error _ ->
-      let* entries = collect_cache_entries ~workspace in
-      let tracked_size_bytes = total_size entries in
-      let* generation_hashes = rebuild_generation_hashes ~workspace in
-      let* () =
-        write_state
-          ~workspace
-          {
-            tracked_size_bytes;
-            generation_hashes = Some generation_hashes;
-            receipt_count = Some (List.length generation_hashes);
-          }
-      in
-      Ok ({ tracked_size_bytes; generation_hashes; rebuilt = true }: tracked_size_snapshot)
+let load_or_rebuild_tracked_size = fun
+  ~trigger ~on_event ~force_rebuild ~(workspace:Workspace.t) ->
+  if force_rebuild then
+    rebuild_tracked_size ~trigger ~on_event ~workspace
+  else
+    match read_state ~workspace with
+    | Ok (Some state) ->
+        let* generation_hashes =
+          match state.generation_hashes with
+          | Some generation_hashes -> Ok generation_hashes
+          | None ->
+              let* generation_hashes = rebuild_generation_hashes ~workspace in
+              let* () =
+                write_state
+                  ~workspace
+                  {
+                    tracked_size_bytes = state.tracked_size_bytes;
+                    generation_hashes = Some generation_hashes;
+                    receipt_count = Some (List.length generation_hashes);
+                  }
+              in
+              Ok generation_hashes
+        in
+        Ok ({
+          tracked_size_bytes = state.tracked_size_bytes;
+          generation_hashes;
+          cache_entries = None;
+          rebuilt = false;
+        }: tracked_size_snapshot)
+    | Ok None
+    | Error _ -> rebuild_tracked_size ~trigger ~on_event ~workspace
 
 let take = fun n list ->
   let rec loop acc remaining count =
@@ -701,12 +866,17 @@ let load_receipts_for_hashes = fun ~(workspace:Workspace.t) hashes ->
   in
   loop [] hashes
 
-let run_gc = fun ~(workspace:Workspace.t) ~policy ~generation_hashes ->
+let run_gc = fun
+  ~(workspace:Workspace.t) ~trigger ~on_event ~policy ~generation_hashes ~cache_entries ->
   let candidate_hashes =
     take policy.Riot_model.Workspace_operational_config.keep_generations generation_hashes
   in
   let* receipts = load_receipts_for_hashes ~workspace candidate_hashes in
-  let* entries = collect_cache_entries ~workspace in
+  let* entries =
+    match cache_entries with
+    | Some entries -> Ok entries
+    | None -> collect_cache_entries ~trigger ~on_event ~workspace
+  in
   let size_before_bytes = total_size entries in
   let (kept_receipts, live, size_after_bytes) = evaluate_retention ~policy receipts entries in
   let kept_hashes =
@@ -728,12 +898,30 @@ let run_gc = fun ~(workspace:Workspace.t) ~policy ~generation_hashes ->
       (receipt_paths_desc ~workspace)
       ~fn:(fun path -> not (HashSet.contains kept_paths ~value:(Path.to_string path)))
   in
+  on_event
+    (
+      GcPlanComputed {
+        trigger;
+        deleted_entries = List.length deleted_entries;
+        deleted_generations = List.length deleted_receipts;
+        reclaimable_bytes = Int64.sub size_before_bytes size_after_bytes;
+      }
+    );
   let* () =
     List.fold_left
       deleted_entries
       ~init:(Ok ())
       ~fn:(fun acc (entry: cache_entry) ->
         let* () = acc in
+        on_event
+          (
+            GcCacheEntryDeleteStarted {
+              trigger;
+              hash = entry.hash;
+              path = entry.dir;
+              size_bytes = entry.size_bytes;
+            }
+          );
         delete_path entry.dir ~kind:"directory")
   in
   let* () =
@@ -742,6 +930,7 @@ let run_gc = fun ~(workspace:Workspace.t) ~policy ~generation_hashes ->
       ~init:(Ok ())
       ~fn:(fun acc receipt_path ->
         let* () = acc in
+        on_event (GcGenerationDeleteStarted { trigger; path = receipt_path });
         delete_path receipt_path ~kind:"file")
   in
   let* () =
@@ -777,13 +966,14 @@ let clean_with_events = fun ~(workspace:Workspace.t) ~on_event ->
     on_event (GcFailed { trigger; error });
     Error error
   in
+  on_event (GcStarted { trigger });
   let* policy =
     match load_policy ~workspace with
     | Ok policy -> Ok policy
     | Error error -> report_error error
   in
   let* tracked_size =
-    match load_or_rebuild_tracked_size ~workspace with
+    match load_or_rebuild_tracked_size ~trigger ~on_event ~force_rebuild:true ~workspace with
     | Ok tracked_size -> Ok tracked_size
     | Error error -> report_error error
   in
@@ -801,16 +991,22 @@ let clean_with_events = fun ~(workspace:Workspace.t) ~on_event ->
     in
     on_event (GcSkipped { trigger; summary });
     Ok summary
-  else (
-    on_event (GcStarted { trigger });
-    match run_gc ~workspace ~policy ~generation_hashes:tracked_size.generation_hashes with
-    | Ok summary ->
-        on_event (GcCompleted { trigger; summary });
-        Ok summary
-    | Error error ->
-        on_event (GcFailed { trigger; error });
-        Error error
-  )
+  else
+    (
+      match run_gc
+        ~workspace
+        ~trigger
+        ~on_event
+        ~policy
+        ~generation_hashes:tracked_size.generation_hashes
+        ~cache_entries:tracked_size.cache_entries with
+      | Ok summary ->
+          on_event (GcCompleted { trigger; summary });
+          Ok summary
+      | Error error ->
+          on_event (GcFailed { trigger; error });
+          Error error
+    )
 
 let clean = fun ~(workspace:Workspace.t) -> clean_with_events ~workspace ~on_event:no_event
 
@@ -838,10 +1034,15 @@ let force_clean = fun ~(workspace:Workspace.t) ->
     ~on_event:no_event
 
 let new_entry_dir = fun ~(workspace:Workspace.t) (entry: new_cache_entry) ->
-  Path.(workspace.target_dir_root
-  / Path.v entry.profile
-  / Path.v (Riot_model.Target.to_string entry.target)
-  / Path.v "cache"
+  let cache_dir =
+    Path.(workspace.target_dir_root
+    / Path.v entry.profile
+    / Path.v (Riot_model.Target.to_string entry.target)
+    / Path.v "cache")
+  in
+  Path.(cache_dir
+  / Path.v "trees"
+  / Path.v (String.sub entry.hash ~offset:0 ~len:2)
   / Path.v entry.hash)
 
 let added_size_for_new_entries = fun ~(workspace:Workspace.t) new_entries ->
@@ -870,7 +1071,7 @@ let record_successful_build_with_events = fun
     Error error
   in
   let* tracked_size =
-    match load_or_rebuild_tracked_size ~workspace with
+    match load_or_rebuild_tracked_size ~trigger:Post_build ~on_event ~force_rebuild:false ~workspace with
     | Ok tracked_size -> Ok tracked_size
     | Error error -> report_error error
   in
