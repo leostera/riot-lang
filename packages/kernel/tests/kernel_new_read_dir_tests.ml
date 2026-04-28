@@ -184,7 +184,8 @@ let test_read_entry_surfaces_removed_entries = fun _ctx ->
             Kernel.Fs.ReadDir.File (
               Kernel.Fs.File.System Kernel.SystemError.NoSuchFileOrDirectory
             )
-          ) -> Ok ()
+          ) ->
+              Ok ()
           | Kernel.Result.Error error -> Error (Kernel.Fs.ReadDir.error_to_string error)
           | Kernel.Result.Ok _ -> Error "expected read_entry to surface a removed snapshotted entry"))
 

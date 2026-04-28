@@ -585,11 +585,12 @@ let rec lookup_owned = fun env entry_name owner_type_constructor_id ->
         type_decls;
         components;
         next
-      } -> (
-          match lookup_local components.by_owner with
-          | Some entry -> Some (qualify_entry ~root ~type_decls entry)
-          | None -> lookup_owned next entry_name owner_type_constructor_id
-        )
+      } ->
+          (
+              match lookup_local components.by_owner with
+              | Some entry -> Some (qualify_entry ~root ~type_decls entry)
+              | None -> lookup_owned next entry_name owner_type_constructor_id
+            )
       | Map { map_entry; next } ->
           lookup_owned next entry_name owner_type_constructor_id
           |> Option.map map_entry

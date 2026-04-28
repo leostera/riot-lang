@@ -173,56 +173,57 @@ let run_action = fun ~session_id ~package ~node ?c_compiler ocamlc sandbox_dir a
     cclibs;
     ccopt_flags;
     cclib_flags
-  } -> (
-      Log.debug
-        ("[ACTION_EXECUTOR] CreateExecutable: output="
-        ^ Path.to_string output
-        ^ ", "
-        ^ Int.to_string (List.length objects)
-        ^ " objects, "
-        ^ Int.to_string (List.length libraries)
-        ^ " libraries: ["
-        ^ String.concat ", " (List.map libraries ~fn:Path.to_string)
-        ^ "], cclibs: ["
-        ^ String.concat ", " (List.map cclibs ~fn:Path.to_string)
-        ^ "], ccopt_flags: ["
-        ^ String.concat ", " ccopt_flags
-        ^ "], cclib_flags: ["
-        ^ String.concat ", " cclib_flags
-        ^ "]");
-      let abs_output = Path.join sandbox_dir output in
-      let abs_objects = List.map objects ~fn:(Path.join sandbox_dir) in
-      let abs_libraries = libraries in
-      let abs_includes = resolve_include_paths sandbox_dir includes in
-      let abs_cclibs = cclibs in
-      let invocation =
-        Riot_toolchain.Ocamlc.create_executable
-          ocamlc
-          ~cwd:sandbox_dir
-          ~includes:abs_includes
-          ~libs:abs_libraries
-          ?cc:c_compiler
-          ~cclibs:abs_cclibs
-          ~ccopt_flags
-          ~cclib_flags
-          ~output:abs_output
-          abs_objects
-      in
-      let result = run_ocamlc_invocation ~session_id ~package ~node ~sandbox_dir invocation in
-      match result with
-      | Riot_toolchain.Ocamlc.Success _ -> (
-          match Fs.set_permissions abs_output (Fs.Permissions.of_mode 0o755) with
-          | Ok () -> result
-          | Error err ->
-              Log.warn
-                ("Failed to set executable permissions on "
-                ^ Path.to_string abs_output
-                ^ ": "
-                ^ IO.error_message err);
-              result
+  } ->
+      (
+          Log.debug
+            ("[ACTION_EXECUTOR] CreateExecutable: output="
+            ^ Path.to_string output
+            ^ ", "
+            ^ Int.to_string (List.length objects)
+            ^ " objects, "
+            ^ Int.to_string (List.length libraries)
+            ^ " libraries: ["
+            ^ String.concat ", " (List.map libraries ~fn:Path.to_string)
+            ^ "], cclibs: ["
+            ^ String.concat ", " (List.map cclibs ~fn:Path.to_string)
+            ^ "], ccopt_flags: ["
+            ^ String.concat ", " ccopt_flags
+            ^ "], cclib_flags: ["
+            ^ String.concat ", " cclib_flags
+            ^ "]");
+          let abs_output = Path.join sandbox_dir output in
+          let abs_objects = List.map objects ~fn:(Path.join sandbox_dir) in
+          let abs_libraries = libraries in
+          let abs_includes = resolve_include_paths sandbox_dir includes in
+          let abs_cclibs = cclibs in
+          let invocation =
+            Riot_toolchain.Ocamlc.create_executable
+              ocamlc
+              ~cwd:sandbox_dir
+              ~includes:abs_includes
+              ~libs:abs_libraries
+              ?cc:c_compiler
+              ~cclibs:abs_cclibs
+              ~ccopt_flags
+              ~cclib_flags
+              ~output:abs_output
+              abs_objects
+          in
+          let result = run_ocamlc_invocation ~session_id ~package ~node ~sandbox_dir invocation in
+          match result with
+          | Riot_toolchain.Ocamlc.Success _ -> (
+              match Fs.set_permissions abs_output (Fs.Permissions.of_mode 0o755) with
+              | Ok () -> result
+              | Error err ->
+                  Log.warn
+                    ("Failed to set executable permissions on "
+                    ^ Path.to_string abs_output
+                    ^ ": "
+                    ^ IO.error_message err);
+                  result
+            )
+          | _ -> result
         )
-      | _ -> result
-    )
   | Action.CreateSharedLibrary {
     outputs = output :: _;
     objects;
@@ -231,43 +232,44 @@ let run_action = fun ~session_id ~package ~node ?c_compiler ocamlc sandbox_dir a
     cclibs;
     ccopt_flags;
     cclib_flags
-  } -> (
-      Log.debug
-        ("[ACTION_EXECUTOR] CreateSharedLibrary: output="
-        ^ Path.to_string output
-        ^ ", "
-        ^ Int.to_string (List.length objects)
-        ^ " objects, "
-        ^ Int.to_string (List.length libraries)
-        ^ " libraries: ["
-        ^ String.concat ", " (List.map libraries ~fn:Path.to_string)
-        ^ "], cclibs: ["
-        ^ String.concat ", " (List.map cclibs ~fn:Path.to_string)
-        ^ "], ccopt_flags: ["
-        ^ String.concat ", " ccopt_flags
-        ^ "], cclib_flags: ["
-        ^ String.concat ", " cclib_flags
-        ^ "]");
-      let abs_output = Path.join sandbox_dir output in
-      let abs_objects = List.map objects ~fn:(Path.join sandbox_dir) in
-      let abs_libraries = libraries in
-      let abs_includes = resolve_include_paths sandbox_dir includes in
-      let abs_cclibs = cclibs in
-      let invocation =
-        Riot_toolchain.Ocamlc.create_shared_library
-          ocamlc
-          ~cwd:sandbox_dir
-          ~includes:abs_includes
-          ~libs:abs_libraries
-          ?cc:c_compiler
-          ~cclibs:abs_cclibs
-          ~ccopt_flags
-          ~cclib_flags
-          ~output:abs_output
-          abs_objects
-      in
-      run_ocamlc_invocation ~session_id ~package ~node ~sandbox_dir invocation
-    )
+  } ->
+      (
+          Log.debug
+            ("[ACTION_EXECUTOR] CreateSharedLibrary: output="
+            ^ Path.to_string output
+            ^ ", "
+            ^ Int.to_string (List.length objects)
+            ^ " objects, "
+            ^ Int.to_string (List.length libraries)
+            ^ " libraries: ["
+            ^ String.concat ", " (List.map libraries ~fn:Path.to_string)
+            ^ "], cclibs: ["
+            ^ String.concat ", " (List.map cclibs ~fn:Path.to_string)
+            ^ "], ccopt_flags: ["
+            ^ String.concat ", " ccopt_flags
+            ^ "], cclib_flags: ["
+            ^ String.concat ", " cclib_flags
+            ^ "]");
+          let abs_output = Path.join sandbox_dir output in
+          let abs_objects = List.map objects ~fn:(Path.join sandbox_dir) in
+          let abs_libraries = libraries in
+          let abs_includes = resolve_include_paths sandbox_dir includes in
+          let abs_cclibs = cclibs in
+          let invocation =
+            Riot_toolchain.Ocamlc.create_shared_library
+              ocamlc
+              ~cwd:sandbox_dir
+              ~includes:abs_includes
+              ~libs:abs_libraries
+              ?cc:c_compiler
+              ~cclibs:abs_cclibs
+              ~ccopt_flags
+              ~cclib_flags
+              ~output:abs_output
+              abs_objects
+          in
+          run_ocamlc_invocation ~session_id ~package ~node ~sandbox_dir invocation
+        )
   | Action.CompileInterface { outputs = []; _ }
   | Action.CompileImplementation { outputs = []; _ }
   | Action.GenerateInterface { outputs = []; _ }
@@ -312,59 +314,60 @@ let run_action = fun ~session_id ~package ~node ?c_compiler ocamlc sandbox_dir a
     build_cmd;
     outputs;
     env
-  } -> (
-      let build_cmd_str = String.concat " " build_cmd in
-      Log.info ("   \027[1;32mCompiling\027[0m " ^ name ^ " (" ^ build_cmd_str ^ ")");
-      match build_cmd with
-      | [] -> ocamlc_failed "BuildForeignDependency: empty build_cmd"
-      | cmd_name :: cmd_args ->
-          let normalized_path = Path.normalize path in
-          let cmd =
-            Command.make ~cwd:(Path.to_string normalized_path) ~env ~args:cmd_args cmd_name
-          in
-          let cmd_str = Command.to_string cmd in
-          emit_action_command ~session_id ~package ~node cmd_str;
-          Log.debug ("Executing: " ^ cmd_str);
-          match Command.output cmd with
-          | Ok output when output.Command.status = 0 ->
-              Log.debug ("Foreign build succeeded: " ^ name);
-              if String.length output.Command.stdout > 0 then
-                Log.debug ("stdout: " ^ output.Command.stdout);
-              let abs_outputs =
-                List.map outputs ~fn:(fun out -> Path.normalize (Path.join path out))
+  } ->
+      (
+          let build_cmd_str = String.concat " " build_cmd in
+          Log.info ("   \027[1;32mCompiling\027[0m " ^ name ^ " (" ^ build_cmd_str ^ ")");
+          match build_cmd with
+          | [] -> ocamlc_failed "BuildForeignDependency: empty build_cmd"
+          | cmd_name :: cmd_args ->
+              let normalized_path = Path.normalize path in
+              let cmd =
+                Command.make ~cwd:(Path.to_string normalized_path) ~env ~args:cmd_args cmd_name
               in
-              let missing =
-                List.filter
-                  abs_outputs
-                  ~fn:(fun out ->
-                    match Fs.exists out with
-                    | Ok true -> false
-                    | Ok false
-                    | Error _ -> true)
-              in
-              if List.length missing > 0 then
-                ocamlc_failed
-                  ("Foreign build succeeded but outputs not created: "
-                  ^ String.concat ", " (List.map missing ~fn:Path.to_string))
-              else
-                ocamlc_success ("Built foreign dependency: " ^ name)
-          | Ok output ->
-              Log.error
-                ("Foreign build failed: "
-                ^ name
-                ^ " - exit code "
-                ^ Int.to_string output.Command.status);
-              if String.length output.Command.stderr > 0 then
-                Log.error ("stderr: " ^ output.Command.stderr);
-              ocamlc_failed
-                ("Foreign build failed: "
-                ^ name
-                ^ " - exit code "
-                ^ Int.to_string output.Command.status)
-          | Error (Command.SystemError msg) ->
-              Log.error ("Failed to execute foreign build: " ^ msg);
-              ocamlc_failed ("Failed to execute foreign build command: " ^ msg)
-    )
+              let cmd_str = Command.to_string cmd in
+              emit_action_command ~session_id ~package ~node cmd_str;
+              Log.debug ("Executing: " ^ cmd_str);
+              match Command.output cmd with
+              | Ok output when output.Command.status = 0 ->
+                  Log.debug ("Foreign build succeeded: " ^ name);
+                  if String.length output.Command.stdout > 0 then
+                    Log.debug ("stdout: " ^ output.Command.stdout);
+                  let abs_outputs =
+                    List.map outputs ~fn:(fun out -> Path.normalize (Path.join path out))
+                  in
+                  let missing =
+                    List.filter
+                      abs_outputs
+                      ~fn:(fun out ->
+                        match Fs.exists out with
+                        | Ok true -> false
+                        | Ok false
+                        | Error _ -> true)
+                  in
+                  if List.length missing > 0 then
+                    ocamlc_failed
+                      ("Foreign build succeeded but outputs not created: "
+                      ^ String.concat ", " (List.map missing ~fn:Path.to_string))
+                  else
+                    ocamlc_success ("Built foreign dependency: " ^ name)
+              | Ok output ->
+                  Log.error
+                    ("Foreign build failed: "
+                    ^ name
+                    ^ " - exit code "
+                    ^ Int.to_string output.Command.status);
+                  if String.length output.Command.stderr > 0 then
+                    Log.error ("stderr: " ^ output.Command.stderr);
+                  ocamlc_failed
+                    ("Foreign build failed: "
+                    ^ name
+                    ^ " - exit code "
+                    ^ Int.to_string output.Command.status)
+              | Error (Command.SystemError msg) ->
+                  Log.error ("Failed to execute foreign build: " ^ msg);
+                  ocamlc_failed ("Failed to execute foreign build command: " ^ msg)
+        )
 
 let execute_actions = fun ~session_id ~(node:Action_node.t) toolchain sandbox_dir actions ->
   let ocamlc = Riot_toolchain.ocamlc toolchain in
@@ -410,7 +413,8 @@ let has_failed_dependencies = fun completed (node: Action_node.t) ->
     ~fn:(fun dep_id ->
       match HashMap.get completed ~key:dep_id with
       | Some { status = Failed _
-      | Skipped; _ } -> true
+      | Skipped; _ } ->
+          true
       | _ -> false)
 
 let resolve_source_for_copy = fun ~(package:Riot_model.Package.t) ~src_path ->

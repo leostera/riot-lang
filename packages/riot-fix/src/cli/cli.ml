@@ -120,25 +120,26 @@ let run_matches = fun ~build_package ?(on_event = Types.no_event) ?output_mode m
         target;
         use_generated_runner;
         output_mode = _
-      } -> (
-          match (request.scope, use_generated_runner) with
-          | (Some scope, true) ->
-              let report_output =
-                match output_mode with
-                | Types.Silent -> false
-                | Types.Report _ -> true
-              in
-              Execution.run_generated_runner
-                ~cwd:request.cwd
-                ~build_package
-                ~report_output
-                ~mode
-                ~limit
-                ~target
-                ~output_mode
-                scope
-          | _ -> run_request_direct ~on_event ~output_mode request
-        )
+      } ->
+          (
+              match (request.scope, use_generated_runner) with
+              | (Some scope, true) ->
+                  let report_output =
+                    match output_mode with
+                    | Types.Silent -> false
+                    | Types.Report _ -> true
+                  in
+                  Execution.run_generated_runner
+                    ~cwd:request.cwd
+                    ~build_package
+                    ~report_output
+                    ~mode
+                    ~limit
+                    ~target
+                    ~output_mode
+                    scope
+              | _ -> run_request_direct ~on_event ~output_mode request
+            )
 
 let run = fun ?(build_package = unavailable_build_package) matches ->
   run_matches

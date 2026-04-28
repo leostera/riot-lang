@@ -145,7 +145,8 @@ let test_stdin_source_register_and_deregister = fun _ctx ->
           Ok ()
       | Kernel.Result.Error (
         Kernel.Async.System Kernel.SystemError.InvalidArgument
-      ) -> Ok ()
+      ) ->
+          Ok ()
       | Kernel.Result.Error error -> Error (Kernel.Async.error_to_string error))
 
 let test_stdout_source_register_and_deregister = fun _ctx ->

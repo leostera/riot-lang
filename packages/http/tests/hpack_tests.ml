@@ -295,7 +295,8 @@ let test_reader_reset_clears_dynamic_table = fun _ctx ->
             HpackReader.HpackDecodeFailed (
               Hpack.InvalidHeaderIndex 62
             )
-          ) -> Result.Ok ()
+          ) ->
+              Result.Ok ()
           | HpackReader.Error err ->
               Result.Error ("Wrong reader error after reset: "
               ^ HpackReader.decode_error_to_string err)
@@ -312,7 +313,8 @@ let test_reader_rejects_huffman_with_typed_error = fun _ctx ->
   match HpackReader.decode decoder (IO.Reader.from_string "\x40\x81a\x01b") with
   | HpackReader.Error (
     HpackReader.HpackDecodeFailed Hpack.UnsupportedHuffmanStringEncoding
-  ) -> Result.Ok ()
+  ) ->
+      Result.Ok ()
   | HpackReader.Error err ->
       Result.Error ("Wrong reader error: " ^ HpackReader.decode_error_to_string err)
   | HpackReader.Need_more -> Result.Error "Reader treated Huffman input as incomplete"

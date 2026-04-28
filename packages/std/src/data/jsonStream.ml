@@ -331,7 +331,8 @@ let from_slice = fun source ->
           in
           parse_fields []
     | Some ('-'
-    | '0' .. '9') -> parse_number ()
+    | '0' .. '9') ->
+        parse_number ()
     | Some c ->
         raise_error (Unexpected_character { position = !pos; character = c; expected = "value" })
   in

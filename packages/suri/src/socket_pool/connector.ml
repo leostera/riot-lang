@@ -52,7 +52,8 @@ and try_receive: type s e. Connection.t -> (s, e) Handler.handler -> s -> unit =
     | Ok data -> handle_data data conn handler ctx
     | Error Connection.Closed -> handler.handle_close conn ctx
     | Error (Connection.FileError _
-    | Connection.InvalidRange _) -> handler.handle_close conn ctx
+    | Connection.InvalidRange _) ->
+        handler.handle_close conn ctx
   with
   | Syscall_timeout ->
       (* Timeout = no data available within 1ms, loop to check mailbox again *)

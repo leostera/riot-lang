@@ -132,7 +132,8 @@ let rec headline = function
     registry;
     version;
     required_by = _
-  } -> "package `" ^ package ^ "@" ^ version ^ "` was yanked from registry `" ^ registry ^ "`"
+  } ->
+      "package `" ^ package ^ "@" ^ version ^ "` was yanked from registry `" ^ registry ^ "`"
   | PackageMetadataReadFailed { package; error; _ } ->
       "failed to read package document for '" ^ package ^ "': " ^ error
   | PackageNotFound { package; registry; required_by = _ } ->

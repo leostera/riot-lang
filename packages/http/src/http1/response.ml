@@ -215,30 +215,31 @@ let parse_head_owned = fun
     status_code;
     reason = _;
     remaining
-  }; _ } -> (
-      match Request.parse_headers
-        ~max_count:max_headers
-        ~max_length:max_header_length
-        ~max_total_length:max_header_block_length
-        remaining with
-      | Need_more -> Cursor_need_more
-      | Error error -> Cursor_error error
-      | Done { value = (headers_list, body_start); _ } -> (
-          match Std.Net.Http.Version.from_slice version with
-          | Error _ -> Cursor_error Common.InvalidHttpVersion
-          | Ok version ->
-              Cursor_done {
-                value =
-                  {
-                    head_status_code = status_code;
-                    head_version = version;
-                    head_headers = headers_list;
-                    body_start;
-                  };
-                remaining;
-              }
+  }; _ } ->
+      (
+          match Request.parse_headers
+            ~max_count:max_headers
+            ~max_length:max_header_length
+            ~max_total_length:max_header_block_length
+            remaining with
+          | Need_more -> Cursor_need_more
+          | Error error -> Cursor_error error
+          | Done { value = (headers_list, body_start); _ } -> (
+              match Std.Net.Http.Version.from_slice version with
+              | Error _ -> Cursor_error Common.InvalidHttpVersion
+              | Ok version ->
+                  Cursor_done {
+                    value =
+                      {
+                        head_status_code = status_code;
+                        head_version = version;
+                        head_headers = headers_list;
+                        body_start;
+                      };
+                    remaining;
+                  }
+            )
         )
-    )
 
 let parse_head_slice = fun
   ?(max_status_line = 8_192)

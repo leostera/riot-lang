@@ -359,24 +359,25 @@ module BorrowedParser = struct
       path;
       version;
       remaining = next_cursor
-    }; _ } -> (
-        match parse_headers ~max_count:max_headers ~max_length:max_header_length next_cursor with
-        | Need_more -> Need_more
-        | Error error -> Error error
-        | Done { value = (headers, remaining); _ } ->
-            let body = Cursor.remaining remaining in
-            Done {
-              value =
-                {
-                  method_;
-                  path;
-                  version;
-                  headers;
-                  body;
-                };
-              remaining = body;
-            }
-      )
+    }; _ } ->
+        (
+            match parse_headers ~max_count:max_headers ~max_length:max_header_length next_cursor with
+            | Need_more -> Need_more
+            | Error error -> Error error
+            | Done { value = (headers, remaining); _ } ->
+                let body = Cursor.remaining remaining in
+                Done {
+                  value =
+                    {
+                      method_;
+                      path;
+                      version;
+                      headers;
+                      body;
+                    };
+                  remaining = body;
+                }
+          )
 end
 
 let build_request = fun ~method_ ~path ~headers ~body ->

@@ -42,7 +42,8 @@ let test_parse_valid_masked_client_ping = fun _ctx ->
     masked = true;
     payload = "";
     _
-  }; remaining = "" } -> Result.Ok ()
+  }; remaining = "" } ->
+      Result.Ok ()
   | Parser.Done _ -> Result.Error "masked PING frame parsed with the wrong shape"
   | Parser.Need_more -> Result.Error "masked PING frame unexpectedly needed more data"
   | Parser.Error err ->
@@ -112,7 +113,8 @@ let test_parse_rejects_payload_over_limit = fun _ctx ->
   match Parser.parse ~max_payload_length:2 ~role:Parser.Client "\x81\x03abc" with
   | Parser.Error (
     Parser.PayloadLengthExceedsLimit { payload_length = 3; max_payload_length = 2 }
-  ) -> Result.Ok ()
+  ) ->
+      Result.Ok ()
   | Parser.Error err -> Result.Error ("Wrong parse error: " ^ Parser.error_to_string err)
   | Parser.Need_more -> Result.Error "Expected payload limit error"
   | Parser.Done _ -> Result.Error "Frame over payload limit was accepted"

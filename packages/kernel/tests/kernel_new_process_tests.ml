@@ -796,7 +796,8 @@ let test_spawn_missing_program_reports_no_such_file = fun _ctx ->
   match Kernel.Process.spawn ~program:"/definitely/missing/kernel-new-process" ~args:[||] ~stdio () with
   | Kernel.Result.Error (
     Kernel.Process.System Kernel.SystemError.NoSuchFileOrDirectory
-  ) -> Ok ()
+  ) ->
+      Ok ()
   | Kernel.Result.Error error -> Error (Kernel.Process.error_to_string error)
   | Kernel.Result.Ok process ->
       let _ = Kernel.Process.close process in
@@ -847,7 +848,8 @@ let test_kill_after_exit_reports_no_such_process = fun _ctx ->
           match Kernel.Process.kill process ~signal:9 with
           | Kernel.Result.Error (
             Kernel.Process.System Kernel.SystemError.NoSuchProcess
-          ) -> Ok ()
+          ) ->
+              Ok ()
           | Kernel.Result.Error error -> Error (Kernel.Process.error_to_string error)
           | Kernel.Result.Ok () ->
               Error "expected signaling an exited process to report no_such_process"))
@@ -1440,7 +1442,8 @@ let test_kill_rejects_invalid_signal_numbers = fun _ctx ->
       match Kernel.Process.kill process ~signal:(-1) with
       | Kernel.Result.Error (
         Kernel.Process.System Kernel.SystemError.InvalidArgument
-      ) -> Ok ()
+      ) ->
+          Ok ()
       | Kernel.Result.Error error -> Error (Kernel.Process.error_to_string error)
       | Kernel.Result.Ok () -> Error "expected Process.kill to reject an invalid signal number")
 
@@ -1454,7 +1457,8 @@ let test_spawn_missing_current_dir_reports_no_such_file = fun _ctx ->
     () with
   | Kernel.Result.Error (
     Kernel.Process.System Kernel.SystemError.NoSuchFileOrDirectory
-  ) -> Ok ()
+  ) ->
+      Ok ()
   | Kernel.Result.Error error -> Error (Kernel.Process.error_to_string error)
   | Kernel.Result.Ok process ->
       let _ = Kernel.Process.close process in
@@ -1482,7 +1486,8 @@ let test_spawn_regular_file_current_dir_reports_not_directory = fun _ctx ->
         () with
       | Kernel.Result.Error (
         Kernel.Process.System Kernel.SystemError.NotDirectory
-      ) -> Ok ()
+      ) ->
+          Ok ()
       | Kernel.Result.Error error -> Error (Kernel.Process.error_to_string error)
       | Kernel.Result.Ok process ->
           let _ = Kernel.Process.close process in

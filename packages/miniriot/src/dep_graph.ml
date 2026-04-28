@@ -631,7 +631,8 @@ type scan_ctx = {
 let rec do_scan = fun ~t ~ctx (file_tree: File_scanner.file_tree) ->
   match file_tree with
   | File_scanner.File ({ ext = ".ml"
-  | ".mli"; _ } as file) -> handle_ocaml_module ~t ~ctx file
+  | ".mli"; _ } as file) ->
+      handle_ocaml_module ~t ~ctx file
   | File_scanner.File ({ ext = ".c"; _ } as file) -> handle_c_file ~t ~ctx file
   | File_scanner.File ({ ext = ".h"; _ } as file) -> handle_h_file ~t ~ctx file
   | File_scanner.File file -> printf "Skipping file with ext=%s: %s\n" file.ext file.path
@@ -758,7 +759,8 @@ and handle_library = fun ~t ~ctx { path; name; children } ->
       (fun child ->
         match child with
         | File_scanner.File { ext = ".ml"
-        | ".mli"; _ } -> (Some (Module.of_path ~ns (File_scanner.path child)), child)
+        | ".mli"; _ } ->
+            (Some (Module.of_path ~ns (File_scanner.path child)), child)
         | _ -> (None, child))
       children
   in

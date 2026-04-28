@@ -155,14 +155,16 @@ let get_planned_data = function
     action_graph;
     hash;
     _
-  } -> Some (package, module_graph, action_graph, hash)
+  } ->
+      Some (package, module_graph, action_graph, hash)
   | Built {
     package;
     module_graph;
     action_graph;
     hash;
     _
-  } -> Some (package, module_graph, action_graph, hash)
+  } ->
+      Some (package, module_graph, action_graph, hash)
   | Cached _ -> None
   | Failed _ -> None
   | Skipped _ -> None

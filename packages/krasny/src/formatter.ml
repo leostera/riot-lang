@@ -702,7 +702,8 @@ let emit_top_level_leading_comments_as_lines = fun
         emit_line state;
       state.suppress_leading_token <- Some token.Ast.id
   | Some (Leading_ordinary_comment
-  | Leading_docstring) -> state.suppress_leading_token <- Some token.Ast.id
+  | Leading_docstring) ->
+      state.suppress_leading_token <- Some token.Ast.id
   | None ->
       if !seen_non_whitespace then
         state.suppress_leading_token <- Some token.Ast.id
@@ -4960,15 +4961,16 @@ and local_open_expr_flat_width = fun budget expr ->
     opening_token;
     body;
     closing_token
-  } -> (
-      match (
-        node_token_flat_width (Ast.Ident.as_node module_ident),
-        expr_flat_width_with_budget budget body
-      ) with
-      | (Some module_width, Some _) ->
-          delimited_width dot_token opening_token body closing_token ~prefix_width:module_width
-      | _ -> None
-    )
+  } ->
+      (
+          match (
+            node_token_flat_width (Ast.Ident.as_node module_ident),
+            expr_flat_width_with_budget budget body
+          ) with
+          | (Some module_width, Some _) ->
+              delimited_width dot_token opening_token body closing_token ~prefix_width:module_width
+          | _ -> None
+        )
   | Unknown _ -> (
       let exprs = collect_child_exprs (Ast.Expr.as_node expr) in
       if Int.equal (Vector.length exprs) 2 then
@@ -5533,7 +5535,8 @@ let rec render_expr = fun ?(role = Layout.Top_expr) state (expr: Ast.Expr.t) ->
     start_ = Some start_;
     stop = Some stop;
     body = Some body
-  } -> render_for_expr state expr pattern start_ stop body
+  } ->
+      render_for_expr state expr pattern start_ stop body
   | For _ -> unsupported_node "incomplete for expression" node
   | Unreachable -> render_unreachable_expr state expr
   | Error _
@@ -8507,7 +8510,8 @@ and render_variant_constructor_rhs = fun state rhs ->
     record_payload;
     arrow_token;
     result
-  } -> render_variant_constructor_gadt_rhs state ~colon_token ~record_payload ~arrow_token ~result
+  } ->
+      render_variant_constructor_gadt_rhs state ~colon_token ~record_payload ~arrow_token ~result
 
 and render_variant_constructor = fun state ~private_token constructor ->
   (

@@ -225,26 +225,27 @@ module Make (Order: Std_order.Ordered) = struct
       value = current_value;
       right;
       height
-    } as node) -> (
-        match Order.compare key current_key with
-        | Kernel.Order.EQ ->
-            if Ptr.equal current_value value then
-              map
-            else
-              Node { node with key; value }
-        | Kernel.Order.LT ->
-            let next_left = insert left ~key ~value in
-            if Ptr.equal next_left left then
-              map
-            else
-              balance next_left ~key:current_key ~value:current_value right
-        | Kernel.Order.GT ->
-            let next_right = insert right ~key ~value in
-            if Ptr.equal next_right right then
-              map
-            else
-              balance left ~key:current_key ~value:current_value next_right
-      )
+    } as node) ->
+        (
+            match Order.compare key current_key with
+            | Kernel.Order.EQ ->
+                if Ptr.equal current_value value then
+                  map
+                else
+                  Node { node with key; value }
+            | Kernel.Order.LT ->
+                let next_left = insert left ~key ~value in
+                if Ptr.equal next_left left then
+                  map
+                else
+                  balance next_left ~key:current_key ~value:current_value right
+            | Kernel.Order.GT ->
+                let next_right = insert right ~key ~value in
+                if Ptr.equal next_right right then
+                  map
+                else
+                  balance left ~key:current_key ~value:current_value next_right
+          )
 
   and update = fun map ~key ~fn ->
     match map with
@@ -259,30 +260,31 @@ module Make (Order: Std_order.Ordered) = struct
       value = current_value;
       right;
       height
-    } as node) -> (
-        match Order.compare key current_key with
-        | Kernel.Order.EQ -> (
-            match fn (Some current_value) with
-            | None -> merge_branches left right
-            | Some value ->
-                if Ptr.equal current_value value then
+    } as node) ->
+        (
+            match Order.compare key current_key with
+            | Kernel.Order.EQ -> (
+                match fn (Some current_value) with
+                | None -> merge_branches left right
+                | Some value ->
+                    if Ptr.equal current_value value then
+                      map
+                    else
+                      Node { node with key; value }
+              )
+            | Kernel.Order.LT ->
+                let next_left = update left ~key ~fn in
+                if Ptr.equal next_left left then
                   map
                 else
-                  Node { node with key; value }
+                  balance next_left ~key:current_key ~value:current_value right
+            | Kernel.Order.GT ->
+                let next_right = update right ~key ~fn in
+                if Ptr.equal next_right right then
+                  map
+                else
+                  balance left ~key:current_key ~value:current_value next_right
           )
-        | Kernel.Order.LT ->
-            let next_left = update left ~key ~fn in
-            if Ptr.equal next_left left then
-              map
-            else
-              balance next_left ~key:current_key ~value:current_value right
-        | Kernel.Order.GT ->
-            let next_right = update right ~key ~fn in
-            if Ptr.equal next_right right then
-              map
-            else
-              balance left ~key:current_key ~value:current_value next_right
-      )
 
   and minimum_unchecked = function
     | Empty -> panic "minimum_unchecked called on an empty map"
@@ -303,7 +305,8 @@ module Make (Order: Std_order.Ordered) = struct
       value;
       right;
       _
-    } -> balance (remove_minimum left) ~key ~value right
+    } ->
+        balance (remove_minimum left) ~key ~value right
 
   and join = fun left ~key ~value right ->
     match (left, right) with
@@ -349,11 +352,12 @@ module Make (Order: Std_order.Ordered) = struct
       value = current_value;
       right;
       _
-    } -> balance
-      (add_minimum ~key ~value left)
-      ~key:current_key
-      ~value:current_value
-      right
+    } ->
+        balance
+          (add_minimum ~key ~value left)
+          ~key:current_key
+          ~value:current_value
+          right
 
   and add_maximum = fun map ~key ~value ->
     match map with
@@ -364,11 +368,12 @@ module Make (Order: Std_order.Ordered) = struct
       value = current_value;
       right;
       _
-    } -> balance
-      left
-      ~key:current_key
-      ~value:current_value
-      (add_maximum right ~key ~value)
+    } ->
+        balance
+          left
+          ~key:current_key
+          ~value:current_value
+          (add_maximum right ~key ~value)
 
   and concat = fun left right ->
     match (left, right) with
@@ -414,22 +419,23 @@ module Make (Order: Std_order.Ordered) = struct
       value;
       right;
       _
-    } -> (
-        match Order.compare key current_key with
-        | Kernel.Order.EQ -> merge_branches left right
-        | Kernel.Order.LT ->
-            let next_left = remove left ~key in
-            if Ptr.equal next_left left then
-              map
-            else
-              balance next_left ~key:current_key ~value right
-        | Kernel.Order.GT ->
-            let next_right = remove right ~key in
-            if Ptr.equal next_right right then
-              map
-            else
-              balance left ~key:current_key ~value next_right
-      )
+    } ->
+        (
+            match Order.compare key current_key with
+            | Kernel.Order.EQ -> merge_branches left right
+            | Kernel.Order.LT ->
+                let next_left = remove left ~key in
+                if Ptr.equal next_left left then
+                  map
+                else
+                  balance next_left ~key:current_key ~value right
+            | Kernel.Order.GT ->
+                let next_right = remove right ~key in
+                if Ptr.equal next_right right then
+                  map
+                else
+                  balance left ~key:current_key ~value next_right
+          )
 
   let rec split = fun map ~key ->
     match map with
@@ -440,16 +446,17 @@ module Make (Order: Std_order.Ordered) = struct
       value;
       right;
       _
-    } -> (
-        match Order.compare key current_key with
-        | Kernel.Order.EQ -> (left, Some value, right)
-        | Kernel.Order.LT ->
-            let (left_left, found, left_right) = split left ~key in
-            (left_left, found, join left_right ~key:current_key ~value right)
-        | Kernel.Order.GT ->
-            let (right_left, found, right_right) = split right ~key in
-            (join left ~key:current_key ~value right_left, found, right_right)
-      )
+    } ->
+        (
+            match Order.compare key current_key with
+            | Kernel.Order.EQ -> (left, Some value, right)
+            | Kernel.Order.LT ->
+                let (left_left, found, left_right) = split left ~key in
+                (left_left, found, join left_right ~key:current_key ~value right)
+            | Kernel.Order.GT ->
+                let (right_left, found, right_right) = split right ~key in
+                (join left ~key:current_key ~value right_left, found, right_right)
+          )
 
   let concat_or_join = fun left ~key ~value right ->
     match value with
@@ -541,12 +548,13 @@ module Make (Order: Std_order.Ordered) = struct
       value;
       right;
       _
-    } -> (
-        match Order.compare key current_key with
-        | Kernel.Order.EQ -> Some value
-        | Kernel.Order.LT -> get left ~key
-        | Kernel.Order.GT -> get right ~key
-      )
+    } ->
+        (
+            match Order.compare key current_key with
+            | Kernel.Order.EQ -> Some value
+            | Kernel.Order.LT -> get left ~key
+            | Kernel.Order.GT -> get right ~key
+          )
 
   let get_unchecked = fun map ~key ->
     match get map ~key with
@@ -732,7 +740,8 @@ module Make (Order: Std_order.Ordered) = struct
       value;
       right;
       _
-    } -> push_left left (More (key, value, right, enumeration))
+    } ->
+        push_left left (More (key, value, right, enumeration))
 
   let compare = fun ~left ~right ~fn ->
     let rec loop left right =
@@ -794,7 +803,8 @@ module Make (Order: Std_order.Ordered) = struct
         value;
         right;
         _
-      } -> loop ((key, value) :: loop acc right) left
+      } ->
+          loop ((key, value) :: loop acc right) left
     in
     fun map -> loop [] map
 

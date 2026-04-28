@@ -314,7 +314,8 @@ let test_input_parse_mouse_press = fun _ctx ->
     x = 10;
     y = 20;
     modifiers = []
-  } -> Ok ()
+  } ->
+      Ok ()
   | Some event -> Error ("Expected left mouse press, got " ^ Tty.Input.event_to_string event)
   | None -> Error "Expected parsed mouse press event"
 
@@ -326,7 +327,8 @@ let test_input_parse_mouse_release_with_modifiers = fun _ctx ->
     x = 7;
     y = 9;
     modifiers = [ Tty.Input.Shift; Tty.Input.Ctrl ]
-  } -> Ok ()
+  } ->
+      Ok ()
   | Some event -> Error ("Expected modified mouse release, got " ^ Tty.Input.event_to_string event)
   | None -> Error "Expected parsed mouse release event"
 

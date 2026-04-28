@@ -363,5 +363,6 @@ let install = fun ?(on_event = no_event) (request: request) ->
     package_name;
     binary_name;
     destination
-  } -> install_workspace ~on_event ~workspace ~package_name ~binary_name ~destination
+  } ->
+      install_workspace ~on_event ~workspace ~package_name ~binary_name ~destination
   | External { spec; binary_name } -> install_external ~on_event ~spec ~binary_name

@@ -46,7 +46,8 @@ packages = []
   match Riot_model.Lockfile.of_toml toml with
   | Error (
     Riot_model.Lockfile.MissingField { container = Riot_model.Lockfile.Lockfile; field = "dependency_hash" }
-  ) -> Ok ()
+  ) ->
+      Ok ()
   | Error err ->
       Error ("expected missing dependency_hash, got: " ^ Riot_model.Lockfile.error_message err)
   | Ok _ -> Error "expected lockfile decode to fail when dependency_hash is missing"
@@ -70,7 +71,8 @@ dev_dependencies = []
   match Riot_model.Lockfile.of_toml toml with
   | Error (
     Riot_model.Lockfile.InvalidPackageName { container = Riot_model.Lockfile.Dependency; field = "name"; value = "Std"; _ }
-  ) -> Ok ()
+  ) ->
+      Ok ()
   | Error err ->
       Error ("expected invalid dependency package name, got: "
       ^ Riot_model.Lockfile.error_message err)

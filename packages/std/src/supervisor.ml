@@ -759,36 +759,41 @@ module Dynamic = struct
       start;
       restart;
       shutdown
-    } -> (
-        match state.max_children with
-        | Some max when HashMap.length state.children >= max ->
-            send reply_to (Dynamic_start_child_reply { result = Error "max_children_reached" });
-            dynamic_loop state
-        | _ -> (
-            try
-              let pid = start () in
-              let monitor = Actor.monitor pid in
-              let _ =
-                HashMap.insert
-                  state.children
-                  ~key:pid
-                  ~value:{
-                    pid;
-                    monitor;
-                    restart;
-                    shutdown;
-                  }
-              in
-              send reply_to (Dynamic_start_child_reply { result = Ok pid });
-              dynamic_loop state
-            with
-            | exn ->
+    } ->
+        (
+            match state.max_children with
+            | Some max when HashMap.length state.children >= max ->
                 send
                   reply_to
-                  (Dynamic_start_child_reply { result = Error (Kernel.Exception.to_string exn) });
+                  (Dynamic_start_child_reply { result = Error "max_children_reached" });
                 dynamic_loop state
+            | _ -> (
+                try
+                  let pid = start () in
+                  let monitor = Actor.monitor pid in
+                  let _ =
+                    HashMap.insert
+                      state.children
+                      ~key:pid
+                      ~value:{
+                        pid;
+                        monitor;
+                        restart;
+                        shutdown;
+                      }
+                  in
+                  send reply_to (Dynamic_start_child_reply { result = Ok pid });
+                  dynamic_loop state
+                with
+                | exn ->
+                    send
+                      reply_to
+                      (Dynamic_start_child_reply {
+                        result = Error (Kernel.Exception.to_string exn);
+                      });
+                    dynamic_loop state
+              )
           )
-      )
     | Dynamic_terminate_child { reply_to; pid } -> (
         match HashMap.get state.children ~key:pid with
         | None ->

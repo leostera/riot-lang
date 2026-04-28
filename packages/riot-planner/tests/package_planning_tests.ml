@@ -1441,7 +1441,8 @@ let plan_kernel_runtime_graphs = fun ~workspace ~store ~build_ctx ->
                 depset;
                 _
               }
-            ) -> Ok (package, module_graph, action_graph, hash, depset)
+            ) ->
+                Ok (package, module_graph, action_graph, hash, depset)
             | Ok _ -> Error "expected kernel runtime plan to return Planned"
           )
       | Ok _ -> Error "expected kernel build-scope plan to return Planned"

@@ -200,7 +200,8 @@ let test_http1_websocket_upgrade_rejects_invalid_key = fun _ctx ->
   match Http1.validate_websocket_upgrade (websocket_request ~headers ()) with
   | Error (
     Http1.InvalidWebSocketKey { reason = Http1.InvalidLength { actual = 9; expected = 16 }; _ }
-  ) -> Ok ()
+  ) ->
+      Ok ()
   | Ok _ -> Error "expected WebSocket upgrade to reject invalid Sec-WebSocket-Key"
   | Error error -> Error (Http1.websocket_upgrade_error_to_string error)
 

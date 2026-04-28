@@ -579,7 +579,8 @@ let test_cached_build_does_not_emit_generation_recording_events = fun _ctx ->
         ~on_event:(
           function
           | Riot_build.Event.Phase (Riot_build.Event.CacheGenerationRecordingStarted _
-          | Riot_build.Event.CacheGenerationRecorded _) -> saw_generation_event := true
+          | Riot_build.Event.CacheGenerationRecorded _) ->
+              saw_generation_event := true
           | _ -> ()
         )
         request with
@@ -676,7 +677,8 @@ let test_build_preserves_exact_target_subset = fun _ctx ->
           function
           | Riot_build.Event.Phase (
             Riot_build.Event.TargetsResolved { target_count = count }
-          ) -> target_count := Some count
+          ) ->
+              target_count := Some count
           | Riot_build.Event.Phase (Riot_build.Event.TargetBuildStarted _) ->
               started_count := !started_count + 1
           | Riot_build.Event.Phase (Riot_build.Event.TargetBuildFinished _) ->
@@ -745,10 +747,12 @@ let test_build_multi_target_outputs_and_events = fun _ctx ->
           function
           | Riot_build.Event.Phase (
             Riot_build.Event.TargetsResolved { target_count }
-          ) -> seen_target_count := Some target_count
+          ) ->
+              seen_target_count := Some target_count
           | Riot_build.Event.Phase (
             Riot_build.Event.TargetBuildStarted { target }
-          ) -> started_targets := Riot_model.Target.to_string target :: !started_targets
+          ) ->
+              started_targets := Riot_model.Target.to_string target :: !started_targets
           | Riot_build.Event.Phase (
             Riot_build.Event.TargetBuildFinished { target; result_count; had_partial_failure }
           ) ->
@@ -880,10 +884,12 @@ let test_build_multi_target_partial_failures_fail_by_default = fun _ctx ->
           function
           | Riot_build.Event.Phase (
             Riot_build.Event.TargetsResolved { target_count }
-          ) -> seen_target_count := Some target_count
+          ) ->
+              seen_target_count := Some target_count
           | Riot_build.Event.Phase (
             Riot_build.Event.TargetBuildStarted { target }
-          ) -> started_targets := Riot_model.Target.to_string target :: !started_targets
+          ) ->
+              started_targets := Riot_model.Target.to_string target :: !started_targets
           | Riot_build.Event.Phase (
             Riot_build.Event.TargetBuildFinished { had_partial_failure; target; _ }
           ) ->

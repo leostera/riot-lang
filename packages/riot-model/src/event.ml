@@ -606,27 +606,28 @@ let display = function
     package;
     version;
     duration_ms
-  } -> (
-      match version with
-      | Some version ->
-          "Fetched package metadata for "
-          ^ Package_name.to_string package
-          ^ "@"
-          ^ version
-          ^ " from "
-          ^ registry
-          ^ " in "
-          ^ Int.to_string duration_ms
-          ^ "ms"
-      | None ->
-          "Fetched package metadata for "
-          ^ Package_name.to_string package
-          ^ " from "
-          ^ registry
-          ^ " in "
-          ^ Int.to_string duration_ms
-          ^ "ms"
-    )
+  } ->
+      (
+          match version with
+          | Some version ->
+              "Fetched package metadata for "
+              ^ Package_name.to_string package
+              ^ "@"
+              ^ version
+              ^ " from "
+              ^ registry
+              ^ " in "
+              ^ Int.to_string duration_ms
+              ^ "ms"
+          | None ->
+              "Fetched package metadata for "
+              ^ Package_name.to_string package
+              ^ " from "
+              ^ registry
+              ^ " in "
+              ^ Int.to_string duration_ms
+              ^ "ms"
+        )
   | PackageMetadataFetchFailed { registry; package; error } ->
       "Failed to fetch package metadata for "
       ^ Package_name.to_string package
@@ -644,12 +645,13 @@ let display = function
     ref_ = _;
     package;
     version
-  } -> (
-      match version with
-      | Some version ->
-          "Discovered source dependency " ^ Package_name.to_string package ^ "@" ^ version
-      | None -> "Discovered source dependency " ^ Package_name.to_string package
-    )
+  } ->
+      (
+          match version with
+          | Some version ->
+              "Discovered source dependency " ^ Package_name.to_string package ^ "@" ^ version
+          | None -> "Discovered source dependency " ^ Package_name.to_string package
+        )
   | DependencyManifestUpdated {
     path;
     section;
@@ -752,23 +754,24 @@ let display = function
     version;
     path;
     workspace
-  } -> (
-      match version with
-      | Some version ->
-          "Resolved " ^ Package_name.to_string package ^ "@" ^ version ^ " for build at " ^ path ^ (
-            if workspace then
-              " (workspace)"
-            else
-              ""
-          )
-      | None ->
-          "Resolved " ^ Package_name.to_string package ^ " for build at " ^ path ^ (
-            if workspace then
-              " (workspace)"
-            else
-              ""
-          )
-    )
+  } ->
+      (
+          match version with
+          | Some version ->
+              "Resolved " ^ Package_name.to_string package ^ "@" ^ version ^ " for build at " ^ path ^ (
+                if workspace then
+                  " (workspace)"
+                else
+                  ""
+              )
+          | None ->
+              "Resolved " ^ Package_name.to_string package ^ " for build at " ^ path ^ (
+                if workspace then
+                  " (workspace)"
+                else
+                  ""
+              )
+        )
   | PackageDownloadQueued { package; version; _ } ->
       "Queued download for " ^ Package_name.to_string package ^ "@" ^ version
   | BuildGraphCreating ->

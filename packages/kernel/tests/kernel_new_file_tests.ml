@@ -291,7 +291,8 @@ let test_metadata_reports_missing_target_for_dangling_symlink = fun _ctx ->
           match Kernel.Fs.File.metadata link with
           | Kernel.Result.Error (
             Kernel.Fs.File.System Kernel.SystemError.NoSuchFileOrDirectory
-          ) when Kernel.Fs.File.Metadata.is_symlink raw -> Ok ()
+          ) when Kernel.Fs.File.Metadata.is_symlink raw ->
+              Ok ()
           | Kernel.Result.Error error -> Error (Kernel.Fs.File.error_to_string error)
           | Kernel.Result.Ok _ ->
               Error "expected metadata to fail on a dangling symlink while symlink_metadata still succeeds"))
@@ -468,7 +469,8 @@ let test_remove_nonempty_dir_reports_resource_busy = fun _ctx ->
       match Kernel.Fs.File.remove_dir directory with
       | Kernel.Result.Error (
         Kernel.Fs.File.System Kernel.SystemError.DirectoryNotEmpty
-      ) -> Ok ()
+      ) ->
+          Ok ()
       | Kernel.Result.Error error -> Error (Kernel.Fs.File.error_to_string error)
       | Kernel.Result.Ok () -> Error "expected removing a non-empty directory to fail")
 
@@ -570,7 +572,8 @@ let test_open_read_missing_file_maps_error = fun _ctx ->
       | Kernel.Result.Ok _ -> Error "expected opening a missing file to fail"
       | Kernel.Result.Error (
         Kernel.Fs.File.System Kernel.SystemError.NoSuchFileOrDirectory
-      ) -> Ok ()
+      ) ->
+          Ok ()
       | Kernel.Result.Error error ->
           Error (Kernel.String.append
             "expected no-such-file error, got "
@@ -851,7 +854,8 @@ let test_renamed_target_turns_symlink_into_dangling_path = fun _ctx ->
           match Kernel.Fs.File.metadata link with
           | Kernel.Result.Error (
             Kernel.Fs.File.System Kernel.SystemError.NoSuchFileOrDirectory
-          ) when Kernel.Fs.File.Metadata.is_symlink raw -> Ok ()
+          ) when Kernel.Fs.File.Metadata.is_symlink raw ->
+              Ok ()
           | Kernel.Result.Error error -> Error (Kernel.Fs.File.error_to_string error)
           | Kernel.Result.Ok _ ->
               Error "expected moved symlink target to leave a dangling link behind"))
@@ -1118,7 +1122,8 @@ let test_close_twice_reports_bad_file_descriptor = fun _ctx ->
       match Kernel.Fs.File.close file with
       | Kernel.Result.Error (
         Kernel.Fs.File.System Kernel.SystemError.BadFileDescriptor
-      ) -> Ok ()
+      ) ->
+          Ok ()
       | Kernel.Result.Error error -> Error (Kernel.Fs.File.error_to_string error)
       | Kernel.Result.Ok () ->
           Error "expected closing the same file twice to report bad_file_descriptor")
@@ -1131,7 +1136,8 @@ let test_open_write_without_create_rejects_missing_paths = fun _ctx ->
       match Kernel.Fs.File.open_write ~create:false missing with
       | Kernel.Result.Error (
         Kernel.Fs.File.System Kernel.SystemError.NoSuchFileOrDirectory
-      ) -> Ok ()
+      ) ->
+          Ok ()
       | Kernel.Result.Error error -> Error (Kernel.Fs.File.error_to_string error)
       | Kernel.Result.Ok file ->
           let _ = Kernel.Fs.File.close file in
@@ -1291,7 +1297,8 @@ let test_read_rejects_slices_past_the_buffer_end = fun _ctx ->
           match Kernel.Fs.File.read file ~pos:2 ~len:3 buffer with
           | Kernel.Result.Error (
             Kernel.Fs.File.InvalidSlice { pos = 2; len = 3; buffer_len = 4 }
-          ) -> Ok ()
+          ) ->
+              Ok ()
           | Kernel.Result.Error error -> Error (Kernel.Fs.File.error_to_string error)
           | Kernel.Result.Ok _ ->
               Error "expected File.read to reject slices that extend past the buffer end"))
@@ -1310,7 +1317,8 @@ let test_write_rejects_slices_past_the_buffer_end = fun _ctx ->
           match Kernel.Fs.File.write file ~pos:2 ~len:3 (Kernel.Bytes.create ~size:4) with
           | Kernel.Result.Error (
             Kernel.Fs.File.InvalidSlice { pos = 2; len = 3; buffer_len = 4 }
-          ) -> Ok ()
+          ) ->
+              Ok ()
           | Kernel.Result.Error error -> Error (Kernel.Fs.File.error_to_string error)
           | Kernel.Result.Ok _ ->
               Error "expected File.write to reject slices that extend past the buffer end"))
@@ -1385,7 +1393,8 @@ let test_create_dir_on_existing_directory_reports_already_exists = fun _ctx ->
       match Kernel.Fs.File.create_dir directory ~perm:0o755 with
       | Kernel.Result.Error (
         Kernel.Fs.File.System Kernel.SystemError.AlreadyExists
-      ) -> Ok ()
+      ) ->
+          Ok ()
       | Kernel.Result.Error error -> Error (Kernel.Fs.File.error_to_string error)
       | Kernel.Result.Ok () -> Error "expected create_dir on an existing directory to fail")
 
@@ -1403,7 +1412,8 @@ let test_remove_dir_on_regular_file_reports_not_directory = fun _ctx ->
       match Kernel.Fs.File.remove_dir path with
       | Kernel.Result.Error (
         Kernel.Fs.File.System Kernel.SystemError.NotDirectory
-      ) -> Ok ()
+      ) ->
+          Ok ()
       | Kernel.Result.Error error -> Error (Kernel.Fs.File.error_to_string error)
       | Kernel.Result.Ok () -> Error "expected remove_dir on a regular file to report not_directory")
 
@@ -1416,10 +1426,12 @@ let test_remove_file_on_directory_reports_a_directory_error = fun _ctx ->
       match Kernel.Fs.File.remove_file directory with
       | Kernel.Result.Error (
         Kernel.Fs.File.System Kernel.SystemError.IsDirectory
-      ) -> Ok ()
+      ) ->
+          Ok ()
       | Kernel.Result.Error (
         Kernel.Fs.File.System Kernel.SystemError.PermissionDenied
-      ) -> Ok ()
+      ) ->
+          Ok ()
       | Kernel.Result.Error error -> Error (Kernel.Fs.File.error_to_string error)
       | Kernel.Result.Ok () ->
           Error "expected remove_file on a directory to fail with a directory-related error")
@@ -1438,7 +1450,8 @@ let test_read_link_on_non_symlink_reports_invalid_argument = fun _ctx ->
       match Kernel.Fs.File.read_link path with
       | Kernel.Result.Error (
         Kernel.Fs.File.System Kernel.SystemError.InvalidArgument
-      ) -> Ok ()
+      ) ->
+          Ok ()
       | Kernel.Result.Error error -> Error (Kernel.Fs.File.error_to_string error)
       | Kernel.Result.Ok _ -> Error "expected read_link on a non-symlink path to fail cleanly")
 

@@ -136,7 +136,8 @@ let summarize_execution_failures = fun ~sandbox_dir result ->
         match completed_action.result.status with
         | Action_scheduler.Failed (
           Action_scheduler.ExecutionFailed { message }
-        ) -> Some (action ^ "\n" ^ message)
+        ) ->
+            Some (action ^ "\n" ^ message)
         | Action_scheduler.Failed (
           Action_scheduler.OutputsNotCreated { missing }
         ) ->

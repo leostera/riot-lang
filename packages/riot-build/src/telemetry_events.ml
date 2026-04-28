@@ -1302,110 +1302,113 @@ let from_json: Data.Json.t -> (Telemetry.event, Data.Json.t) result = fun json -
                                   )
                                 | Some (
                                   Data.Json.String "source_depends_on_undeclared_package_module"
-                                ) -> (
-                                    match (
-                                      get_field planning_fields ~name:"package_name",
-                                      get_field planning_fields ~name:"source",
-                                      get_field planning_fields ~name:"requested_module",
-                                      get_field planning_fields ~name:"allowed_modules"
-                                    ) with
-                                    | (
-                                      Some (Data.Json.String package_name),
-                                      Some (Data.Json.String source),
-                                      Some (Data.Json.String requested_module),
-                                      Some (Data.Json.Array allowed_modules)
-                                    ) ->
-                                        let allowed_modules =
-                                          List.filter_map
-                                            allowed_modules
-                                            ~fn:(
-                                              function
-                                              | Data.Json.String allowed_module ->
-                                                  Some allowed_module
-                                              | _ -> None
+                                ) ->
+                                    (
+                                        match (
+                                          get_field planning_fields ~name:"package_name",
+                                          get_field planning_fields ~name:"source",
+                                          get_field planning_fields ~name:"requested_module",
+                                          get_field planning_fields ~name:"allowed_modules"
+                                        ) with
+                                        | (
+                                          Some (Data.Json.String package_name),
+                                          Some (Data.Json.String source),
+                                          Some (Data.Json.String requested_module),
+                                          Some (Data.Json.Array allowed_modules)
+                                        ) ->
+                                            let allowed_modules =
+                                              List.filter_map
+                                                allowed_modules
+                                                ~fn:(
+                                                  function
+                                                  | Data.Json.String allowed_module ->
+                                                      Some allowed_module
+                                                  | _ -> None
+                                                )
+                                            in
+                                            Ok (
+                                              PlanningFailed (
+                                                Planning_error.SourceDependsOnUndeclaredPackageModule {
+                                                  package_name;
+                                                  source = Path.v source;
+                                                  requested_module;
+                                                  allowed_modules;
+                                                }
+                                              )
                                             )
-                                        in
-                                        Ok (
-                                          PlanningFailed (
-                                            Planning_error.SourceDependsOnUndeclaredPackageModule {
-                                              package_name;
-                                              source = Path.v source;
-                                              requested_module;
-                                              allowed_modules;
-                                            }
-                                          )
-                                        )
-                                    | _ ->
-                                        Ok (ExecutionFailed {
-                                          message = "Planning failed: source depends on undeclared package module";
-                                        })
-                                  )
+                                        | _ ->
+                                            Ok (ExecutionFailed {
+                                              message = "Planning failed: source depends on undeclared package module";
+                                            })
+                                      )
                                 | Some (
                                   Data.Json.String "target_depends_on_internal_library_module"
-                                ) -> (
-                                    match (
-                                      get_field planning_fields ~name:"target_name",
-                                      get_field planning_fields ~name:"source",
-                                      get_field planning_fields ~name:"requested_module",
-                                      get_field planning_fields ~name:"internal_module",
-                                      get_field planning_fields ~name:"public_module"
-                                    ) with
-                                    | (
-                                      Some (Data.Json.String target_name),
-                                      Some (Data.Json.String source),
-                                      Some (Data.Json.String requested_module),
-                                      Some (Data.Json.String internal_module),
-                                      Some (Data.Json.String public_module)
-                                    ) ->
-                                        Ok (
-                                          PlanningFailed (
-                                            Planning_error.TargetDependsOnInternalLibraryModule {
-                                              target_name;
-                                              source = Path.v source;
-                                              requested_module;
-                                              internal_module;
-                                              public_module;
-                                            }
-                                          )
-                                        )
-                                    | _ ->
-                                        Ok (ExecutionFailed {
-                                          message = "Planning failed: target depends on internal library module";
-                                        })
-                                  )
+                                ) ->
+                                    (
+                                        match (
+                                          get_field planning_fields ~name:"target_name",
+                                          get_field planning_fields ~name:"source",
+                                          get_field planning_fields ~name:"requested_module",
+                                          get_field planning_fields ~name:"internal_module",
+                                          get_field planning_fields ~name:"public_module"
+                                        ) with
+                                        | (
+                                          Some (Data.Json.String target_name),
+                                          Some (Data.Json.String source),
+                                          Some (Data.Json.String requested_module),
+                                          Some (Data.Json.String internal_module),
+                                          Some (Data.Json.String public_module)
+                                        ) ->
+                                            Ok (
+                                              PlanningFailed (
+                                                Planning_error.TargetDependsOnInternalLibraryModule {
+                                                  target_name;
+                                                  source = Path.v source;
+                                                  requested_module;
+                                                  internal_module;
+                                                  public_module;
+                                                }
+                                              )
+                                            )
+                                        | _ ->
+                                            Ok (ExecutionFailed {
+                                              message = "Planning failed: target depends on internal library module";
+                                            })
+                                      )
                                 | Some (
                                   Data.Json.String "target_depends_on_namespaced_internal_library_module"
-                                ) -> (
-                                    match (
-                                      get_field planning_fields ~name:"target_name",
-                                      get_field planning_fields ~name:"source",
-                                      get_field planning_fields ~name:"requested_module",
-                                      get_field planning_fields ~name:"internal_module",
-                                      get_field planning_fields ~name:"public_module"
-                                    ) with
-                                    | (
-                                      Some (Data.Json.String target_name),
-                                      Some (Data.Json.String source),
-                                      Some (Data.Json.String requested_module),
-                                      Some (Data.Json.String internal_module),
-                                      Some (Data.Json.String public_module)
-                                    ) ->
-                                        Ok (
-                                          PlanningFailed (
-                                            Planning_error.TargetDependsOnNamespacedInternalLibraryModule {
-                                              target_name;
-                                              source = Path.v source;
-                                              requested_module;
-                                              internal_module;
-                                              public_module;
-                                            }
-                                          )
-                                        )
-                                    | _ ->
-                                        Ok (ExecutionFailed {
-                                          message = "Planning failed: target depends on namespaced internal library module";
-                                        })
-                                  )
+                                ) ->
+                                    (
+                                        match (
+                                          get_field planning_fields ~name:"target_name",
+                                          get_field planning_fields ~name:"source",
+                                          get_field planning_fields ~name:"requested_module",
+                                          get_field planning_fields ~name:"internal_module",
+                                          get_field planning_fields ~name:"public_module"
+                                        ) with
+                                        | (
+                                          Some (Data.Json.String target_name),
+                                          Some (Data.Json.String source),
+                                          Some (Data.Json.String requested_module),
+                                          Some (Data.Json.String internal_module),
+                                          Some (Data.Json.String public_module)
+                                        ) ->
+                                            Ok (
+                                              PlanningFailed (
+                                                Planning_error.TargetDependsOnNamespacedInternalLibraryModule {
+                                                  target_name;
+                                                  source = Path.v source;
+                                                  requested_module;
+                                                  internal_module;
+                                                  public_module;
+                                                }
+                                              )
+                                            )
+                                        | _ ->
+                                            Ok (ExecutionFailed {
+                                              message = "Planning failed: target depends on namespaced internal library module";
+                                            })
+                                      )
                                 | Some (Data.Json.String "target_depends_on_other_target_root") -> (
                                     match (
                                       get_field planning_fields ~name:"target_name",

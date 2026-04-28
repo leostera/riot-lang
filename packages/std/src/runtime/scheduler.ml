@@ -807,7 +807,8 @@ let perform = fun t proc ->
       interest;
       source;
       timeout
-    } -> handle_syscall k t proc name interest source timeout
+    } ->
+        handle_syscall k t proc name interest source timeout
     | _ -> k Suspend
   in
   { perform }

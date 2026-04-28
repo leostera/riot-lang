@@ -347,7 +347,8 @@ let test_request_rejects_invalid_content_length = fun _ctx ->
   match Http1.Request.parse req with
   | Error (InvalidContentLength (
     InvalidContentLengthCharacter { code; index = 0 }
-  )) when code = Char.to_int 'n' -> Result.Ok ()
+  )) when code = Char.to_int 'n' ->
+      Result.Ok ()
   | Error error ->
       Result.Error ("Expected invalid Content-Length error, got " ^ error_to_string error)
   | Need_more -> Result.Error "Expected invalid Content-Length error, got Need_more"
@@ -813,7 +814,8 @@ let test_response_rejects_invalid_content_length = fun _ctx ->
   match Http1.Response.parse resp with
   | Error (InvalidContentLength (
     InvalidContentLengthCharacter { code; index = 0 }
-  )) when code = Char.to_int 'n' -> Result.Ok ()
+  )) when code = Char.to_int 'n' ->
+      Result.Ok ()
   | Error error ->
       Result.Error ("Expected invalid Content-Length error, got " ^ error_to_string error)
   | Need_more -> Result.Error "Expected invalid Content-Length error, got Need_more"
@@ -917,7 +919,8 @@ let test_response_rejects_status_code_below_100 = fun _ctx ->
   match Http1.Response.parse resp with
   | Error (InvalidStatusCode (
     StatusCodeOutOfRange { code = 99; min = 100; max = 999 }
-  )) -> Result.Ok ()
+  )) ->
+      Result.Ok ()
   | Error error -> Result.Error ("Expected invalid status code error, got " ^ error_to_string error)
   | Need_more -> Result.Error "Expected invalid status code error, got Need_more"
   | Done _ -> Result.Error "Expected invalid status code error"

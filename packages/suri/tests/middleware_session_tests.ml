@@ -148,7 +148,8 @@ let test_session_rejects_invalid_cookie_name = fun _ctx ->
   match Session.middleware ~cookie_name:"bad name" ~secret:"0123456789abcdef0123456789abcdef" () with
   | Error (Session.InvalidCookieName (
     Session.InvalidCookieNameChar { char = ' '; index = 3 }
-  )) -> Ok ()
+  )) ->
+      Ok ()
   | Ok _ -> Error "expected invalid session cookie name to fail"
   | Error error -> Error (Session.setup_error_to_string error)
 

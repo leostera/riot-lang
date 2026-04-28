@@ -129,44 +129,49 @@ let execute_action = fun
     output;
     includes;
     opens
-  } -> (
-      (* Build flags for open modules *)
-      let base_flags = List.map (fun m -> Ocaml_platform.Open m) opens in
-      (* Only add -nopervasives -nostdlib if package doesn't use stdlib (including transitively) *)
-      let flags =
-        if uses_stdlib then
-          base_flags
-        else
-          base_flags @ [ Ocaml_platform.NoPervasives; Ocaml_platform.NoStdlib ]
-      in
-      (* Add +unix to includes if package uses unix (including transitively) *)
-      let final_includes =
-        if uses_unix then
-          "+unix" :: includes
-        else
-          includes
-      in
-      (* Add +dynlink to includes if package uses dynlink (including transitively) *)
-      let final_includes =
-        if uses_dynlink then
-          "+dynlink" :: final_includes
-        else
-          final_includes
-      in
-      (* Debug output *)
-      Printf.printf
-        "  DEBUG: Package %s, uses_stdlib=%b (transitive), uses_unix=%b (transitive), uses_dynlink=%b (transitive)\n"
-        package.Package.name
-        uses_stdlib
-        uses_unix
-        uses_dynlink;
-      (* Now we're in sandbox_dir, so use relative paths *)
-      match Ocaml_platform.Ocamlc.compile_interface ~includes:final_includes ~flags ~output src_file with
-      | Ok _ -> ()
-      | Error err ->
-          Printf.printf "%s\n%!" err;
-          failwith "compilation error"
-    )
+  } ->
+      (
+          (* Build flags for open modules *)
+          let base_flags = List.map (fun m -> Ocaml_platform.Open m) opens in
+          (* Only add -nopervasives -nostdlib if package doesn't use stdlib (including transitively) *)
+          let flags =
+            if uses_stdlib then
+              base_flags
+            else
+              base_flags @ [ Ocaml_platform.NoPervasives; Ocaml_platform.NoStdlib ]
+          in
+          (* Add +unix to includes if package uses unix (including transitively) *)
+          let final_includes =
+            if uses_unix then
+              "+unix" :: includes
+            else
+              includes
+          in
+          (* Add +dynlink to includes if package uses dynlink (including transitively) *)
+          let final_includes =
+            if uses_dynlink then
+              "+dynlink" :: final_includes
+            else
+              final_includes
+          in
+          (* Debug output *)
+          Printf.printf
+            "  DEBUG: Package %s, uses_stdlib=%b (transitive), uses_unix=%b (transitive), uses_dynlink=%b (transitive)\n"
+            package.Package.name
+            uses_stdlib
+            uses_unix
+            uses_dynlink;
+          (* Now we're in sandbox_dir, so use relative paths *)
+          match Ocaml_platform.Ocamlc.compile_interface
+            ~includes:final_includes
+            ~flags
+            ~output
+            src_file with
+          | Ok _ -> ()
+          | Error err ->
+              Printf.printf "%s\n%!" err;
+              failwith "compilation error"
+        )
   | CompileImplementation {
     sandbox_dir;
     src_file;
@@ -174,43 +179,44 @@ let execute_action = fun
     includes;
     opens;
     is_aliases
-  } -> (
-      (* Now we're in sandbox_dir, so use relative paths *)
-      (* Build flags for open modules *)
-      let base_flags = List.map (fun m -> Ocaml_platform.Open m) opens in
-      (* Only add -nopervasives -nostdlib if package doesn't use stdlib (including transitively) *)
-      let stdlib_flags =
-        if uses_stdlib then
-          []
-        else
-          [ Ocaml_platform.NoPervasives; Ocaml_platform.NoStdlib ]
-      in
-      let flags =
-        ((base_flags @ stdlib_flags) @ Ocaml_platform.[ Impl src_file ]) @ if is_aliases then
-          Ocaml_platform.[ NoAliasDeps ]
-        else
-          []
-      in
-      (* Add +unix to includes if package uses unix (including transitively) *)
-      let final_includes =
-        if uses_unix then
-          "+unix" :: includes
-        else
-          includes
-      in
-      (* Add +dynlink to includes if package uses dynlink (including transitively) *)
-      let final_includes =
-        if uses_dynlink then
-          "+dynlink" :: final_includes
-        else
-          final_includes
-      in
-      match Ocaml_platform.Ocamlc.compile_impl ~includes:final_includes ~flags ~output src_file with
-      | Ok _ -> ()
-      | Error err ->
-          Printf.printf "%s\n%!" err;
-          failwith "compilation error"
-    )
+  } ->
+      (
+          (* Now we're in sandbox_dir, so use relative paths *)
+          (* Build flags for open modules *)
+          let base_flags = List.map (fun m -> Ocaml_platform.Open m) opens in
+          (* Only add -nopervasives -nostdlib if package doesn't use stdlib (including transitively) *)
+          let stdlib_flags =
+            if uses_stdlib then
+              []
+            else
+              [ Ocaml_platform.NoPervasives; Ocaml_platform.NoStdlib ]
+          in
+          let flags =
+            ((base_flags @ stdlib_flags) @ Ocaml_platform.[ Impl src_file ]) @ if is_aliases then
+              Ocaml_platform.[ NoAliasDeps ]
+            else
+              []
+          in
+          (* Add +unix to includes if package uses unix (including transitively) *)
+          let final_includes =
+            if uses_unix then
+              "+unix" :: includes
+            else
+              includes
+          in
+          (* Add +dynlink to includes if package uses dynlink (including transitively) *)
+          let final_includes =
+            if uses_dynlink then
+              "+dynlink" :: final_includes
+            else
+              final_includes
+          in
+          match Ocaml_platform.Ocamlc.compile_impl ~includes:final_includes ~flags ~output src_file with
+          | Ok _ -> ()
+          | Error err ->
+              Printf.printf "%s\n%!" err;
+              failwith "compilation error"
+        )
   | CompileC { sandbox_dir; src_file } -> (
       (* Already in sandbox directory *)
       (* Output .o file to current directory with just the basename *)
@@ -235,149 +241,153 @@ let execute_action = fun
     archive_name;
     object_files;
     includes
-  } -> (
-      (* Already in sandbox directory *)
-      (* Add +unix to includes if package uses unix (including transitively) *)
-      let final_includes =
-        if uses_unix then
-          "+unix" :: includes
-        else
-          includes
-      in
-      (* Add +dynlink to includes if package uses dynlink (including transitively) *)
-      let final_includes =
-        if uses_dynlink then
-          "+dynlink" :: final_includes
-        else
-          final_includes
-      in
-      (* Don't use -nostdlib if package uses stdlib (including transitively) *)
-      let flags =
-        if uses_stdlib then
-          []
-        else
-          [ Ocaml_platform.NoStdlib ]
-      in
-      let has_c_stubs = List.exists (fun file -> Filename.check_suffix file ".o") object_files in
-      let wrapped_cc_flags =
-        cc_flags
-        |> List.concat_map (fun flag -> [ "-ccopt"; flag ])
-      in
-      let wrapped_ld_flags =
-        ld_flags
-        |> List.concat_map (fun flag -> [ "-cclib"; flag ])
-      in
-      let extra_args =
-        (
-          (
-            if has_c_stubs then
-              [ "-custom" ]
+  } ->
+      (
+          (* Already in sandbox directory *)
+          (* Add +unix to includes if package uses unix (including transitively) *)
+          let final_includes =
+            if uses_unix then
+              "+unix" :: includes
             else
+              includes
+          in
+          (* Add +dynlink to includes if package uses dynlink (including transitively) *)
+          let final_includes =
+            if uses_dynlink then
+              "+dynlink" :: final_includes
+            else
+              final_includes
+          in
+          (* Don't use -nostdlib if package uses stdlib (including transitively) *)
+          let flags =
+            if uses_stdlib then
               []
-          ) @ wrapped_cc_flags
-        ) @ wrapped_ld_flags
-      in
-      match Ocaml_platform.Ocamlc.run
-        ~includes:("." :: final_includes)
-        ~output:(Some archive_name)
-        ~mode:Ocaml_platform.Library
-        ~flags
-        ~extra_args
-        object_files with
-      | Ok _ -> ()
-      | Error err ->
-          Printf.printf "%s\n%!" err;
-          failwith "compilation error"
-    )
+            else
+              [ Ocaml_platform.NoStdlib ]
+          in
+          let has_c_stubs =
+            List.exists (fun file -> Filename.check_suffix file ".o") object_files
+          in
+          let wrapped_cc_flags =
+            cc_flags
+            |> List.concat_map (fun flag -> [ "-ccopt"; flag ])
+          in
+          let wrapped_ld_flags =
+            ld_flags
+            |> List.concat_map (fun flag -> [ "-cclib"; flag ])
+          in
+          let extra_args =
+            (
+              (
+                if has_c_stubs then
+                  [ "-custom" ]
+                else
+                  []
+              ) @ wrapped_cc_flags
+            ) @ wrapped_ld_flags
+          in
+          match Ocaml_platform.Ocamlc.run
+            ~includes:("." :: final_includes)
+            ~output:(Some archive_name)
+            ~mode:Ocaml_platform.Library
+            ~flags
+            ~extra_args
+            object_files with
+          | Ok _ -> ()
+          | Error err ->
+              Printf.printf "%s\n%!" err;
+              failwith "compilation error"
+        )
   | CreateExecutable {
     sandbox_dir;
     exe_name;
     main_module;
     archive;
     dependencies
-  } -> (
-      (* Link an executable from main module and archive *)
-      (* Dependencies should have been copied to our sandbox already *)
-      let dep_archives =
-        List.map
-          (fun dep_name -> Dep_graph.Module_name.cma (Dep_graph.Module_name.of_string dep_name))
-          dependencies
-      in
-      (* Link unix.cma if package uses unix (including transitively) *)
-      let needs_unix = uses_unix in
-      (* Link dynlink.cma if package uses dynlink (including transitively) *)
-      let needs_dynlink = uses_dynlink in
-      (* Wrap each cc_flag with -ccopt (needed for frameworks during linking) *)
-      let wrapped_cc_flags =
-        cc_flags
-        |> List.concat_map (fun flag -> [ "-ccopt"; flag ])
-      in
-      (* Wrap each ld_flag with -cclib as separate arguments *)
-      let wrapped_ld_flags =
-        ld_flags
-        |> List.concat_map (fun flag -> [ "-cclib"; flag ])
-      in
-      let libs =
-        (
-          (
+  } ->
+      (
+          (* Link an executable from main module and archive *)
+          (* Dependencies should have been copied to our sandbox already *)
+          let dep_archives =
+            List.map
+              (fun dep_name -> Dep_graph.Module_name.cma (Dep_graph.Module_name.of_string dep_name))
+              dependencies
+          in
+          (* Link unix.cma if package uses unix (including transitively) *)
+          let needs_unix = uses_unix in
+          (* Link dynlink.cma if package uses dynlink (including transitively) *)
+          let needs_dynlink = uses_dynlink in
+          (* Wrap each cc_flag with -ccopt (needed for frameworks during linking) *)
+          let wrapped_cc_flags =
+            cc_flags
+            |> List.concat_map (fun flag -> [ "-ccopt"; flag ])
+          in
+          (* Wrap each ld_flag with -cclib as separate arguments *)
+          let wrapped_ld_flags =
+            ld_flags
+            |> List.concat_map (fun flag -> [ "-cclib"; flag ])
+          in
+          let libs =
             (
-              if needs_unix then
-                [ "unix.cma" ]
-              else
-                []
-            ) @ (
-              if needs_dynlink then
-                [ "dynlink.cma" ]
-              else
-                []
-            )
-          ) @ dep_archives
-        ) @ [ archive ]
-      in
-      (* Everything is in the current sandbox directory *)
-      (* Add +unix to includes if we need the unix library *)
-      let base_includes =
-        if needs_unix then
-          [ "."; "+unix" ]
-        else
-          [ "." ]
-      in
-      (* Add +dynlink to includes if we need the dynlink library *)
-      let includes =
-        if needs_dynlink then
-          base_includes @ [ "+dynlink" ]
-        else
-          base_includes
-      in
-      (* Need to check if any dependency has C stubs to determine if we need -custom *)
-      let has_c_stubs = List.mem "Kernel" dependencies in
-      (* Build command with both cc_flags and ld_flags *)
-      let cmd_parts =
-        (
-          (
+              (
+                (
+                  if needs_unix then
+                    [ "unix.cma" ]
+                  else
+                    []
+                ) @ (
+                  if needs_dynlink then
+                    [ "dynlink.cma" ]
+                  else
+                    []
+                )
+              ) @ dep_archives
+            ) @ [ archive ]
+          in
+          (* Everything is in the current sandbox directory *)
+          (* Add +unix to includes if we need the unix library *)
+          let base_includes =
+            if needs_unix then
+              [ "."; "+unix" ]
+            else
+              [ "." ]
+          in
+          (* Add +dynlink to includes if we need the dynlink library *)
+          let includes =
+            if needs_dynlink then
+              base_includes @ [ "+dynlink" ]
+            else
+              base_includes
+          in
+          (* Need to check if any dependency has C stubs to determine if we need -custom *)
+          let has_c_stubs = List.mem "Kernel" dependencies in
+          (* Build command with both cc_flags and ld_flags *)
+          let cmd_parts =
             (
               (
                 (
                   (
-                    [ Ocaml_platform.Ocamlc.ocamlc_path ] @ (
-                      if has_c_stubs then
-                        [ "-custom" ]
-                      else
-                        []
-                    )
-                  ) @ List.concat_map (fun dir -> [ "-I"; dir ]) includes
-                ) @ [ "-o"; exe_name ]
-              ) @ libs
-            ) @ wrapped_cc_flags
-          ) @ wrapped_ld_flags
-        ) @ [ main_module ]
-      in
-      match Io.run_command_with_output cmd_parts with
-      | Ok _ -> ()
-      | Error err ->
-          Printf.printf "%s\n%!" err;
-          failwith "compilation error"
-    )
+                    (
+                      (
+                        [ Ocaml_platform.Ocamlc.ocamlc_path ] @ (
+                          if has_c_stubs then
+                            [ "-custom" ]
+                          else
+                            []
+                        )
+                      ) @ List.concat_map (fun dir -> [ "-I"; dir ]) includes
+                    ) @ [ "-o"; exe_name ]
+                  ) @ libs
+                ) @ wrapped_cc_flags
+              ) @ wrapped_ld_flags
+            ) @ [ main_module ]
+          in
+          match Io.run_command_with_output cmd_parts with
+          | Ok _ -> ()
+          | Error err ->
+              Printf.printf "%s\n%!" err;
+              failwith "compilation error"
+        )
   | SetPermissions { path; executable } ->
       (* Set file permissions *)
       if executable then

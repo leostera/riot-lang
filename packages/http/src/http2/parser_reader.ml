@@ -127,25 +127,26 @@ let rec parse = fun state reader ->
     buffer;
     bytes_read;
     total_length
-  } -> (
-      let needed = total_length - bytes_read in
-      match read_n_bytes reader buffer needed with
-      | Error error -> Error error
-      | Ok actual_read ->
-          if actual_read = 0 && bytes_read = 0 then
-            Need_more
-          else if bytes_read + actual_read < total_length then (
-            Cell.set
-              state.phase
-              (
-                ReadingFramePayload {
-                  header_bytes;
-                  buffer;
-                  bytes_read = bytes_read + actual_read;
-                  total_length;
-                }
-              );
-            Need_more
-          ) else
-            finish_complete_frame state (header_bytes ^ Buffer.contents buffer)
-    )
+  } ->
+      (
+          let needed = total_length - bytes_read in
+          match read_n_bytes reader buffer needed with
+          | Error error -> Error error
+          | Ok actual_read ->
+              if actual_read = 0 && bytes_read = 0 then
+                Need_more
+              else if bytes_read + actual_read < total_length then (
+                Cell.set
+                  state.phase
+                  (
+                    ReadingFramePayload {
+                      header_bytes;
+                      buffer;
+                      bytes_read = bytes_read + actual_read;
+                      total_length;
+                    }
+                  );
+                Need_more
+              ) else
+                finish_complete_frame state (header_bytes ^ Buffer.contents buffer)
+        )

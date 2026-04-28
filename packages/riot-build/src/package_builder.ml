@@ -508,19 +508,21 @@ let plan_detailed = fun
       module_graph;
       action_graph
     }
-  ) -> (
-      Log.info ("Package " ^ package_name_string ^ ": hash=" ^ Std.Crypto.Digest.hex package_hash);
-      Execution_required {
-        package_key = planned_key;
-        package;
-        module_graph;
-        action_graph;
-        hash = package_hash;
-        depset;
-        started_at = start;
-        emit_visible_progress;
-      }
-    )
+  ) ->
+      (
+          Log.info
+            ("Package " ^ package_name_string ^ ": hash=" ^ Std.Crypto.Digest.hex package_hash);
+          Execution_required {
+            package_key = planned_key;
+            package;
+            module_graph;
+            action_graph;
+            hash = package_hash;
+            depset;
+            started_at = start;
+            emit_visible_progress;
+          }
+        )
 
 type prepared_execution = {
   execution_plan: execution_plan;

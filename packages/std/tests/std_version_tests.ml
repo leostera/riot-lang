@@ -16,7 +16,8 @@ let test_parse_plain_version = fun _ctx ->
     patch = 3;
     pre = [];
     build = None
-  } -> Ok ()
+  } ->
+      Ok ()
   | Ok _ -> Error "expected Version.parse 1.2.3 to return a plain semver"
   | Error _ -> Error "expected Version.parse 1.2.3 to succeed"
 
@@ -28,7 +29,8 @@ let test_parse_zero_version = fun _ctx ->
     patch = 0;
     pre = [];
     build = None
-  } -> Ok ()
+  } ->
+      Ok ()
   | Ok _ -> Error "expected Version.parse 0.0.0 to return the zero version"
   | Error _ -> Error "expected Version.parse 0.0.0 to succeed"
 

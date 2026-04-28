@@ -703,7 +703,8 @@ let parse_value_text = fun input ->
       | None -> ()
       | Some (','
       | ']'
-      | '}') -> ()
+      | '}') ->
+          ()
       | Some current when is_ws current -> ()
       | Some _ ->
           advance ();

@@ -178,7 +178,8 @@ let skipped_reason = fun failed_packages ->
 
 let dependency_failed_state = function
   | Finalized { detailed_result = { result = { status = Package_builder.Failed _
-  | Package_builder.Skipped _; package; _ }; _ }; _ } -> Some package
+  | Package_builder.Skipped _; package; _ }; _ }; _ } ->
+      Some package
   | Finalized { detailed_result = { result = { status = Package_builder.Built _
   | Package_builder.Cached _; _ }; _ }; _ }
   | AwaitingPlan
@@ -489,7 +490,8 @@ let make_graph = fun state lanes ->
           package_key;
           action_id;
           result
-        } -> remember_action_result state.package_states lane package_key action_id result)
+        } ->
+            remember_action_result state.package_states lane package_key action_id result)
       ()
   in
   let node_ids: (string, Graph_scheduler.Node_id.t) HashMap.t = HashMap.create () in

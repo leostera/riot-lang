@@ -25,7 +25,8 @@ let test_conditional_get_reports_invalid_request_date = fun _ctx ->
   match Conditional_get.check_modified_since conn headers with
   | Error (Conditional_get.InvalidRequestDate (
     Conditional_get.InvalidDay { value = "nope" }
-  )) -> Ok ()
+  )) ->
+      Ok ()
   | Ok _ -> Error "expected invalid If-Modified-Since date"
   | Error error -> Error (Conditional_get.modified_since_error_to_string error)
 

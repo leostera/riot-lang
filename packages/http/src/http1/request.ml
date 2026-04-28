@@ -445,23 +445,24 @@ let parse_head_owned = fun
     parsed_uri;
     parsed_version;
     next_cursor
-  } -> (
-      match parse_headers_owned
-        ~max_count:max_headers
-        ~max_length:max_header_length
-        ~max_total_length:max_header_block_length
-        next_cursor with
-      | Slice_need_more -> Slice_need_more
-      | Slice_error error -> Slice_error error
-      | Slice_done (headers_list, body_cursor) ->
-          Slice_done {
-            head_method = parsed_method;
-            head_uri = parsed_uri;
-            head_version = parsed_version;
-            head_headers = headers_list;
-            body_cursor;
-          }
-    )
+  } ->
+      (
+          match parse_headers_owned
+            ~max_count:max_headers
+            ~max_length:max_header_length
+            ~max_total_length:max_header_block_length
+            next_cursor with
+          | Slice_need_more -> Slice_need_more
+          | Slice_error error -> Slice_error error
+          | Slice_done (headers_list, body_cursor) ->
+              Slice_done {
+                head_method = parsed_method;
+                head_uri = parsed_uri;
+                head_version = parsed_version;
+                head_headers = headers_list;
+                body_cursor;
+              }
+        )
 
 let parse_head_slice = fun
   ?(max_request_line = 8_192)
@@ -526,39 +527,42 @@ let parse_slice = fun
     head_version;
     head_headers;
     body_cursor
-  } -> (
-      let body_bytes = SliceCursor.remaining body_cursor in
-      match parse_body_framing head_headers with
-      | Slice_need_more -> Common.Need_more
-      | Slice_error error -> Common.Error error
-      | Slice_done NoBody ->
-          let request =
-            request_of_parts head_method head_uri head_version head_headers Slice.empty
-          in
-          Common.Done { value = request; remaining = string_of_slice body_bytes }
-      | Slice_done (FixedBody content_length) -> (
-          match split_fixed_body body_bytes content_length with
+  } ->
+      (
+          let body_bytes = SliceCursor.remaining body_cursor in
+          match parse_body_framing head_headers with
           | Slice_need_more -> Common.Need_more
           | Slice_error error -> Common.Error error
-          | Slice_done (body, remaining) ->
-              let request = request_of_parts head_method head_uri head_version head_headers body in
-              Common.Done { value = request; remaining }
-        )
-      | Slice_done ChunkedBody -> (
-          match Chunk.decode_slice body_bytes with
-          | Common.Need_more -> Common.Need_more
-          | Common.Error error -> Common.Error error
-          | Common.Done { value = decoded; _ } -> (
-              match Common.slice_of_string decoded.body with
-              | Error error -> Common.Error error
-              | Ok body ->
+          | Slice_done NoBody ->
+              let request =
+                request_of_parts head_method head_uri head_version head_headers Slice.empty
+              in
+              Common.Done { value = request; remaining = string_of_slice body_bytes }
+          | Slice_done (FixedBody content_length) -> (
+              match split_fixed_body body_bytes content_length with
+              | Slice_need_more -> Common.Need_more
+              | Slice_error error -> Common.Error error
+              | Slice_done (body, remaining) ->
                   let request =
                     request_of_parts head_method head_uri head_version head_headers body
                   in
-                  Common.Done { value = request; remaining = decoded.remaining }
+                  Common.Done { value = request; remaining }
+            )
+          | Slice_done ChunkedBody -> (
+              match Chunk.decode_slice body_bytes with
+              | Common.Need_more -> Common.Need_more
+              | Common.Error error -> Common.Error error
+              | Common.Done { value = decoded; _ } -> (
+                  match Common.slice_of_string decoded.body with
+                  | Error error -> Common.Error error
+                  | Ok body ->
+                      let request =
+                        request_of_parts head_method head_uri head_version head_headers body
+                      in
+                      Common.Done { value = request; remaining = decoded.remaining }
+                )
             )
         )
-    )
 
 let parse = fun
   ?(max_request_line = 8_192)

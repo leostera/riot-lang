@@ -534,7 +534,8 @@ let send_websocket_frames = fun conn frames state ->
       | Ok () -> Socket_pool.Handler.Continue state
       | Error Socket_pool.Connection.Closed -> Socket_pool.Handler.Close state
       | Error (Socket_pool.Connection.FileError _
-      | Socket_pool.Connection.InvalidRange _) -> Socket_pool.Handler.Close state
+      | Socket_pool.Connection.InvalidRange _) ->
+          Socket_pool.Handler.Close state
     )
 
 let websocket_event_to_frame = function

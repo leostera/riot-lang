@@ -30,7 +30,8 @@ let test_make_rejects_value_semicolon = fun _ctx ->
   match Cookie.make ~name:"session" ~value:"abc;123" () with
   | Error (
     Cookie.InvalidValueCharacter { index = 3; character = ';'; reason = Cookie.Semicolon }
-  ) -> Result.Ok ()
+  ) ->
+      Result.Ok ()
   | Error error ->
       Result.Error ("wrong validation error: " ^ Cookie.validation_error_to_string error)
   | Ok _ -> Result.Error "cookie value with semicolon was accepted"
@@ -39,7 +40,8 @@ let test_make_rejects_value_delete_character = fun _ctx ->
   match Cookie.make ~name:"session" ~value:"abc\x7f123" () with
   | Error (
     Cookie.InvalidValueCharacter { index = 3; character = '\x7f'; reason = Cookie.DeleteCharacter }
-  ) -> Result.Ok ()
+  ) ->
+      Result.Ok ()
   | Error error ->
       Result.Error ("wrong validation error: " ^ Cookie.validation_error_to_string error)
   | Ok _ -> Result.Error "cookie value with delete character was accepted"
@@ -88,7 +90,8 @@ let test_make_rejects_path_semicolon = fun _ctx ->
       character = ';';
       reason = Cookie.AttributeSemicolon
     }
-  ) -> Result.Ok ()
+  ) ->
+      Result.Ok ()
   | Error error ->
       Result.Error ("wrong validation error: " ^ Cookie.validation_error_to_string error)
   | Ok _ -> Result.Error "cookie path with semicolon was accepted"
@@ -137,7 +140,8 @@ let test_parse_set_cookie_result_reports_header_injection_value = fun _ctx ->
     Cookie.InvalidCookie (
       Cookie.InvalidValueCharacter { index = 3; character = '\r'; reason = Cookie.ControlCharacter }
     )
-  ) -> Result.Ok ()
+  ) ->
+      Result.Ok ()
   | Error error ->
       Result.Error ("wrong parse error: " ^ Cookie.parse_set_cookie_error_to_string error)
   | Ok _ -> Result.Error "Set-Cookie value with CRLF was accepted"
@@ -151,7 +155,8 @@ let test_parse_set_cookie_result_reports_invalid_max_age = fun _ctx ->
   match Cookie.parse_set_cookie_result "session=abc; Max-Age=forever; Path=/" with
   | Error (Cookie.InvalidMaxAge (
     Cookie.InvalidMaxAgeCharacter { code; index = 0 }
-  )) when code = Char.to_int 'f' -> Result.Ok ()
+  )) when code = Char.to_int 'f' ->
+      Result.Ok ()
   | Error error ->
       Result.Error ("wrong parse error: " ^ Cookie.parse_set_cookie_error_to_string error)
   | Ok _ -> Result.Error "Set-Cookie with invalid Max-Age was accepted"

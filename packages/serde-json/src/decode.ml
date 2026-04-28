@@ -857,7 +857,8 @@ let parse_number_text_reader_slow = fun state reader ->
         (
           match reader_current_char reader with
           | Some ('+'
-          | '-' as sign) -> append_char sign
+          | '-' as sign) ->
+              append_char sign
           | _ -> ()
         );
         (
@@ -1100,7 +1101,8 @@ let parse_number_text_generic = fun state ->
         (
           match current () with
           | Some ('+'
-          | '-' as _sign) -> advance ()
+          | '-' as _sign) ->
+              advance ()
           | _ -> ()
         );
         (
@@ -1194,7 +1196,8 @@ let parse_int_generic = fun state ->
               error_at (Input.position state.input) "leading zeros are not allowed in JSON numbers"
           | Some ('.'
           | 'e'
-          | 'E') -> invalid_field_type ()
+          | 'E') ->
+              invalid_field_type ()
           | _ -> ()
         )
     | Some ('1' .. '9' as digit) ->
@@ -1204,7 +1207,8 @@ let parse_int_generic = fun state ->
           match current () with
           | Some ('.'
           | 'e'
-          | 'E') -> invalid_field_type ()
+          | 'E') ->
+              invalid_field_type ()
           | _ -> ()
         )
     | Some actual ->
@@ -1302,7 +1306,8 @@ let parse_int_reader = fun state reader ->
                   "leading zeros are not allowed in JSON numbers"
             | Some ('.'
             | 'e'
-            | 'E') -> invalid_field_type ()
+            | 'E') ->
+                invalid_field_type ()
             | _ -> ()
           )
       | Some ('1' .. '9' as digit) ->
@@ -1314,7 +1319,8 @@ let parse_int_reader = fun state reader ->
             match current () with
             | Some ('.'
             | 'e'
-            | 'E') -> invalid_field_type ()
+            | 'E') ->
+                invalid_field_type ()
             | _ -> ()
           )
       | Some actual ->
@@ -1429,7 +1435,8 @@ let rec skip_value_reader = fun state reader ->
       )
   | Some '"' -> skip_string_reader state reader
   | Some ('-'
-  | '0' .. '9') -> ignore (parse_float state)
+  | '0' .. '9') ->
+      ignore (parse_float state)
   | Some 't' -> reader_expect_literal state reader "true"
   | Some 'f' -> reader_expect_literal state reader "false"
   | Some 'n' -> reader_expect_literal state reader "null"
@@ -1488,7 +1495,8 @@ let rec skip_value = fun state ->
           )
       | Some '"' -> skip_string state
       | Some ('-'
-      | '0' .. '9') -> ignore (parse_float state)
+      | '0' .. '9') ->
+          ignore (parse_float state)
       | Some 't' -> expect_literal state "true"
       | Some 'f' -> expect_literal state "false"
       | Some 'n' -> expect_literal state "null"

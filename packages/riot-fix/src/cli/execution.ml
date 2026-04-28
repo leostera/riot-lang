@@ -4,7 +4,8 @@ let fix_trace_enabled = fun () ->
   match Env.get Env.String ~var:"RIOT_FIX_TRACE" with
   | Some ("1"
   | "true"
-  | "yes") -> true
+  | "yes") ->
+      true
   | _ -> false
 
 let trace_fix = fun message ->

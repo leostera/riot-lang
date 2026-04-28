@@ -74,29 +74,30 @@ module Handler = struct
       pending_handle_message;
       pending_error_to_string;
       pending_args
-    } -> (
-        match pending_init pending_args with
-        | Continue state ->
-            Continue (
-              Ready {
-                ready_handle_frame = pending_handle_frame;
-                ready_handle_message = pending_handle_message;
-                ready_error_to_string = pending_error_to_string;
-                ready_state = state;
-              }
-            )
-        | Push (frames, state) ->
-            Push (
-              frames,
-              Ready {
-                ready_handle_frame = pending_handle_frame;
-                ready_handle_message = pending_handle_message;
-                ready_error_to_string = pending_error_to_string;
-                ready_state = state;
-              }
-            )
-        | Error err -> Error (ReportedError { error = err; render = pending_error_to_string })
-      )
+    } ->
+        (
+            match pending_init pending_args with
+            | Continue state ->
+                Continue (
+                  Ready {
+                    ready_handle_frame = pending_handle_frame;
+                    ready_handle_message = pending_handle_message;
+                    ready_error_to_string = pending_error_to_string;
+                    ready_state = state;
+                  }
+                )
+            | Push (frames, state) ->
+                Push (
+                  frames,
+                  Ready {
+                    ready_handle_frame = pending_handle_frame;
+                    ready_handle_message = pending_handle_message;
+                    ready_error_to_string = pending_error_to_string;
+                    ready_state = state;
+                  }
+                )
+            | Error err -> Error (ReportedError { error = err; render = pending_error_to_string })
+          )
 
   let init = fun handler _conn -> initialize handler
 
@@ -119,29 +120,30 @@ module Handler = struct
       ready_handle_message;
       ready_error_to_string;
       ready_state
-    } -> (
-        match ready_handle_frame frame conn ready_state with
-        | Continue state ->
-            Continue (
-              Ready {
-                ready_handle_frame;
-                ready_handle_message;
-                ready_error_to_string;
-                ready_state = state;
-              }
-            )
-        | Push (frames, state) ->
-            Push (
-              frames,
-              Ready {
-                ready_handle_frame;
-                ready_handle_message;
-                ready_error_to_string;
-                ready_state = state;
-              }
-            )
-        | Error err -> Error (ReportedError { error = err; render = ready_error_to_string })
-      )
+    } ->
+        (
+            match ready_handle_frame frame conn ready_state with
+            | Continue state ->
+                Continue (
+                  Ready {
+                    ready_handle_frame;
+                    ready_handle_message;
+                    ready_error_to_string;
+                    ready_state = state;
+                  }
+                )
+            | Push (frames, state) ->
+                Push (
+                  frames,
+                  Ready {
+                    ready_handle_frame;
+                    ready_handle_message;
+                    ready_error_to_string;
+                    ready_state = state;
+                  }
+                )
+            | Error err -> Error (ReportedError { error = err; render = ready_error_to_string })
+          )
 
   let rec handle_message = fun handler msg conn ->
     match handler with
@@ -156,29 +158,30 @@ module Handler = struct
       ready_handle_message;
       ready_error_to_string;
       ready_state
-    } -> (
-        match ready_handle_message msg ready_state with
-        | Continue state ->
-            Continue (
-              Ready {
-                ready_handle_frame;
-                ready_handle_message;
-                ready_error_to_string;
-                ready_state = state;
-              }
-            )
-        | Push (frames, state) ->
-            Push (
-              frames,
-              Ready {
-                ready_handle_frame;
-                ready_handle_message;
-                ready_error_to_string;
-                ready_state = state;
-              }
-            )
-        | Error err -> Error (ReportedError { error = err; render = ready_error_to_string })
-      )
+    } ->
+        (
+            match ready_handle_message msg ready_state with
+            | Continue state ->
+                Continue (
+                  Ready {
+                    ready_handle_frame;
+                    ready_handle_message;
+                    ready_error_to_string;
+                    ready_state = state;
+                  }
+                )
+            | Push (frames, state) ->
+                Push (
+                  frames,
+                  Ready {
+                    ready_handle_frame;
+                    ready_handle_message;
+                    ready_error_to_string;
+                    ready_state = state;
+                  }
+                )
+            | Error err -> Error (ReportedError { error = err; render = ready_error_to_string })
+          )
 
   module Default = struct
     let handle_frame = fun (frame: Http.Ws.Frame.t) _conn state ->

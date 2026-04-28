@@ -399,17 +399,19 @@ let lex_number = fun cursor token_start ->
   let exponent_follows () =
     match Cursor.peek cursor with
     | Some ('e'
-    | 'E') -> (
-        match Cursor.peek_n cursor 1 with
-        | Some ('+'
-        | '-') -> (
-            match Cursor.peek_n cursor 2 with
+    | 'E') ->
+        (
+            match Cursor.peek_n cursor 1 with
+            | Some ('+'
+            | '-') ->
+                (
+                    match Cursor.peek_n cursor 2 with
+                    | Some c when is_digit c -> true
+                    | _ -> false
+                  )
             | Some c when is_digit c -> true
             | _ -> false
           )
-        | Some c when is_digit c -> true
-        | _ -> false
-      )
     | _ -> false
   in
   let consume_float_exponent () =
@@ -419,7 +421,8 @@ let lex_number = fun cursor token_start ->
       let _ =
         match Cursor.peek cursor with
         | Some ('+'
-        | '-') -> Cursor.advance cursor
+        | '-') ->
+            Cursor.advance cursor
         | _ -> ()
       in
       let _ = Cursor.take_while cursor is_digit_or_underscore in
@@ -488,14 +491,15 @@ let lex_number = fun cursor token_start ->
       let kind =
         match Cursor.peek cursor with
         | Some ('e'
-        | 'E') when exponent_follows () -> (
-            let exponent = Option.unwrap_or (consume_float_exponent ()) ~default:"" in
-            let _ = consume_numeric_suffix () in
-            let float_str = num_str ^ exponent in
-            match float_of_string_opt float_str with
-            | Some f -> Token.Literal (Float f)
-            | None -> Token.Literal (Float 0.0)
-          )
+        | 'E') when exponent_follows () ->
+            (
+                let exponent = Option.unwrap_or (consume_float_exponent ()) ~default:"" in
+                let _ = consume_numeric_suffix () in
+                let float_str = num_str ^ exponent in
+                match float_of_string_opt float_str with
+                | Some f -> Token.Literal (Float f)
+                | None -> Token.Literal (Float 0.0)
+              )
         | Some c when is_alpha c ->
             let _ = consume_numeric_suffix () in
             Token.Literal (Int 0)

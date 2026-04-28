@@ -343,32 +343,33 @@ let serialize_headers_payload = fun ~stream_id payload ->
     weight;
     exclusive;
     header_block_fragment
-  } -> (
-      match validate_padding Frame.Headers pad_length with
-      | Error error -> Error error
-      | Ok () -> (
-          let pad_bytes =
-            match pad_length with
-            | Some pl -> write_uint8 pl
-            | None -> ""
-          in
-          let priority_bytes =
-            match (stream_dependency, weight) with
-            | (Some dep, Some w) -> serialize_priority ~stream_id dep exclusive w
-            | (None, None) -> Ok ""
-            | _ -> Error (MissingPriorityFields { frame_type = Frame.Headers })
-          in
-          match priority_bytes with
+  } ->
+      (
+          match validate_padding Frame.Headers pad_length with
           | Error error -> Error error
-          | Ok priority_bytes ->
-              let padding =
+          | Ok () -> (
+              let pad_bytes =
                 match pad_length with
-                | Some pl -> String.make ~len:pl ~char:'\x00'
+                | Some pl -> write_uint8 pl
                 | None -> ""
               in
-              Ok (pad_bytes ^ priority_bytes ^ header_block_fragment ^ padding)
+              let priority_bytes =
+                match (stream_dependency, weight) with
+                | (Some dep, Some w) -> serialize_priority ~stream_id dep exclusive w
+                | (None, None) -> Ok ""
+                | _ -> Error (MissingPriorityFields { frame_type = Frame.Headers })
+              in
+              match priority_bytes with
+              | Error error -> Error error
+              | Ok priority_bytes ->
+                  let padding =
+                    match pad_length with
+                    | Some pl -> String.make ~len:pl ~char:'\x00'
+                    | None -> ""
+                  in
+                  Ok (pad_bytes ^ priority_bytes ^ header_block_fragment ^ padding)
+            )
         )
-    )
   | payload -> Error (PayloadMismatch { frame_type = Frame.Headers; payload })
 
 let serialize_priority_payload = fun ~stream_id payload ->

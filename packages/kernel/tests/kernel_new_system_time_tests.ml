@@ -502,7 +502,8 @@ let test_system_time_rejects_negative_nanoseconds = fun _ctx ->
   match Kernel.Time.SystemTime.from_parts ~secs:1 ~nanos:(-1) with
   | Kernel.Result.Error (
     Kernel.Time.SystemTime.InvalidNanoseconds { nanos = (-1) }
-  ) -> Ok ()
+  ) ->
+      Ok ()
   | Kernel.Result.Error error -> Error (Kernel.Time.SystemTime.error_to_string error)
   | Kernel.Result.Ok _ -> Error "expected SystemTime.of_parts to reject negative nanoseconds"
 
@@ -510,7 +511,8 @@ let test_system_time_rejects_upper_bound_nanoseconds = fun _ctx ->
   match Kernel.Time.SystemTime.from_parts ~secs:1 ~nanos:1_000_000_000 with
   | Kernel.Result.Error (
     Kernel.Time.SystemTime.InvalidNanoseconds { nanos = 1_000_000_000 }
-  ) -> Ok ()
+  ) ->
+      Ok ()
   | Kernel.Result.Error error -> Error (Kernel.Time.SystemTime.error_to_string error)
   | Kernel.Result.Ok _ ->
       Error "expected SystemTime.of_parts to keep the nanosecond upper bound exclusive"

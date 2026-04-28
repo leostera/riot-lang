@@ -286,7 +286,8 @@ let test_save_file_rejects_directory_source = fun _ctx ->
       match Contentstore.save_file store ~hash:(Crypto.hash_string "source-dir") ~source with
       | Error (
         Contentstore.Store.Invalid_source_path { reason = Contentstore.Store.Source_not_file; _ }
-      ) -> Ok ()
+      ) ->
+          Ok ()
       | Error err -> Error ("unexpected error: " ^ Contentstore.Store.error_message err)
       | Ok () -> Error "expected save_file to reject a directory source")
 

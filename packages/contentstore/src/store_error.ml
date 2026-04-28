@@ -45,7 +45,8 @@ let error_message = fun error ->
     path;
     related_path = None;
     detail
-  } -> op ^ " failed for " ^ Path.to_string path ^ ": " ^ io_detail_message detail
+  } ->
+      op ^ " failed for " ^ Path.to_string path ^ ": " ^ io_detail_message detail
   | Io {
     op;
     path;

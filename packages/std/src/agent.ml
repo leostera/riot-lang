@@ -66,16 +66,17 @@ let rec loop: type state. state Ref.t -> state -> (unit, exn) result = fun state
     fn;
     state_ref = sr;
     reply_ref
-  } -> (
-      match Ref.type_equal state_ref sr with
-      | Some Type.Equal ->
-          let result = fn state in
-          send reply_to (AgentResponse (GetReply (result, reply_ref)));
-          loop state_ref state
-      | None ->
-          (* Message for different agent type, ignore *)
-          loop state_ref state
-    )
+  } ->
+      (
+          match Ref.type_equal state_ref sr with
+          | Some Type.Equal ->
+              let result = fn state in
+              send reply_to (AgentResponse (GetReply (result, reply_ref)));
+              loop state_ref state
+          | None ->
+              (* Message for different agent type, ignore *)
+              loop state_ref state
+        )
   | Update { reply_to; fn; state_ref = sr } -> (
       match Ref.type_equal state_ref sr with
       | Some Type.Equal ->
@@ -89,14 +90,15 @@ let rec loop: type state. state Ref.t -> state -> (unit, exn) result = fun state
     fn;
     state_ref = sr;
     reply_ref
-  } -> (
-      match Ref.type_equal state_ref sr with
-      | Some Type.Equal ->
-          let (result, new_state) = fn state in
-          send reply_to (AgentResponse (GetAndUpdateReply (result, reply_ref)));
-          loop state_ref new_state
-      | None -> loop state_ref state
-    )
+  } ->
+      (
+          match Ref.type_equal state_ref sr with
+          | Some Type.Equal ->
+              let (result, new_state) = fn state in
+              send reply_to (AgentResponse (GetAndUpdateReply (result, reply_ref)));
+              loop state_ref new_state
+          | None -> loop state_ref state
+        )
   | Cast { fn; state_ref = sr } -> (
       match Ref.type_equal state_ref sr with
       | Some Type.Equal ->

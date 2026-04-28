@@ -204,7 +204,8 @@ let execution_phase_counts = fun events ->
         failed_count;
         error_count;
         _
-      } -> Some (package_count, finalized_count, built_count, failed_count, error_count)
+      } ->
+          Some (package_count, finalized_count, built_count, failed_count, error_count)
       | _ -> None
     )
 

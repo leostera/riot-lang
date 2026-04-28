@@ -99,7 +99,8 @@ let test_app_returns_typed_request_errors = fun _ctx ->
   match Testing.App.get app invalid_uri with
   | Error (Testing.InvalidRequest (
     Testing.Request.InvalidUri { reason = Net.Uri.TooLong; _ }
-  )) -> Ok ()
+  )) ->
+      Ok ()
   | Ok _ -> Error "expected invalid testing URI"
   | Error error -> Error (Testing.response_error_to_string error)
 

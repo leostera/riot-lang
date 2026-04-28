@@ -51,7 +51,8 @@ let build_trace_enabled = fun () ->
   match Env.get Env.String ~var:"RIOT_BUILD_TRACE" with
   | Some ("1"
   | "true"
-  | "yes") -> true
+  | "yes") ->
+      true
   | _ -> false
 
 let trace_build = fun message ->

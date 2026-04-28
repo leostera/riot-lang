@@ -129,9 +129,7 @@ let append_header_token = fun value token ->
     value ^ ", " ^ token
 
 let add_vary = fun token conn ->
-  match List.find
-    (Conn.resp_headers conn)
-    ~fn:(fun (name, _value) -> header_name_equal name "vary") with
+  match List.find (Conn.resp_headers conn) ~fn:(fun (name, _value) -> header_name_equal name "vary") with
   | None -> Conn.with_header "vary" token conn
   | Some (_, value) -> Conn.set_header
     "vary"

@@ -1007,7 +1007,8 @@ let test_closed_poller_rejects_later_operations = fun _ctx ->
       let expect_bad_fd = function
         | Kernel.Result.Error (
           Kernel.Async.System Kernel.SystemError.BadFileDescriptor
-        ) -> true
+        ) ->
+            true
         | _ -> false
       in
       let* poll = lift_async (Kernel.Async.Poll.make ()) in

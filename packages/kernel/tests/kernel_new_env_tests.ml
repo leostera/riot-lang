@@ -183,7 +183,8 @@ let test_set_current_dir_missing_path_fails_cleanly = fun _ctx ->
   match Kernel.Env.set_current_dir "/definitely/missing/kernel-new-env-dir" with
   | Kernel.Result.Error (
     Kernel.Env.System Kernel.SystemError.NoSuchFileOrDirectory
-  ) -> Ok ()
+  ) ->
+      Ok ()
   | Kernel.Result.Error error -> Error (Kernel.Env.error_to_string error)
   | Kernel.Result.Ok () -> Error "expected set_current_dir to reject missing paths"
 
@@ -204,7 +205,8 @@ let test_set_current_dir_regular_file_fails_cleanly = fun _ctx ->
                 match Kernel.Env.set_current_dir path with
                 | Kernel.Result.Error (
                   Kernel.Env.System Kernel.SystemError.NotDirectory
-                ) -> Ok ()
+                ) ->
+                    Ok ()
                 | Kernel.Result.Error error -> Error (Kernel.Env.error_to_string error)
                 | Kernel.Result.Ok () -> Error "expected set_current_dir to reject regular files") with
       | Ok () -> Ok ()

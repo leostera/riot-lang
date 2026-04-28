@@ -979,7 +979,8 @@ std = { version = 123 }
     Riot_model.Workspace_manifest.DependencyError (
       Riot_model.Workspace_manifest.DependencyFieldMustBeString { dependency_name = "std"; field = Riot_model.Workspace_manifest.Version }
     )
-  ) -> Ok ()
+  ) ->
+      Ok ()
   | Error err ->
       Error ("expected typed dependency version error, got "
       ^ Riot_model.Workspace_manifest.error_message err)
@@ -1400,7 +1401,8 @@ api_url = 42
   match Riot_model.User_config.of_toml toml with
   | Error (
     Riot_model.User_config.InvalidRegistryConfig { registry_name; error = Riot_model.User_config.FieldMustBeString Riot_model.User_config.Api_url }
-  ) when String.equal registry_name "pkgs.ml" -> Ok ()
+  ) when String.equal registry_name "pkgs.ml" ->
+      Ok ()
   | Error err ->
       Error ("expected typed api_url field error, got " ^ Riot_model.User_config.message err)
   | Ok _ -> Error "expected non-string registry api_url to fail"
@@ -1491,7 +1493,8 @@ max_size = "3 frogs"
         Riot_model.Workspace_operational_config.InvalidConfig { error = CacheConfig (
           InvalidMaxSize (UnsupportedUnit unit_name)
         ); _ }
-      ) when String.equal unit_name "frogs" -> Ok ()
+      ) when String.equal unit_name "frogs" ->
+          Ok ()
       | Error err ->
           Error ("expected typed max_size unit error, got "
           ^ Riot_model.Workspace_operational_config.message err)

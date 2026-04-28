@@ -305,7 +305,6 @@ module Value: sig
     | InvalidContentType
   type authorization_error =
     | InvalidAuthorization
-
   val parse_content_type: value -> (string * (string * string) list, content_type_error) result
 
   (**
