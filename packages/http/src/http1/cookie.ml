@@ -19,6 +19,7 @@ type t = {
 
 type value_character_error =
   | ControlCharacter
+  | DeleteCharacter
   | Semicolon
   | Comma
 
@@ -47,10 +48,18 @@ type validation_error =
   | HostPrefixRequiresNoDomain
   | HostPrefixRequiresRootPath
 
+type parse_set_cookie_error =
+  | EmptyHeader
+  | MissingNameValueSeparator
+  | InvalidMaxAge of { value: string }
+  | InvalidSameSite of { value: string }
+  | InvalidCookie of validation_error
+
 let character_code = fun character -> Int.to_string (Char.to_int character)
 
 let value_character_error_to_string = function
   | ControlCharacter -> "control character"
+  | DeleteCharacter -> "delete character"
   | Semicolon -> "semicolon"
   | Comma -> "comma"
 
@@ -96,6 +105,13 @@ let validation_error_to_string = function
   | HostPrefixRequiresSecure -> "Cookie __Host- prefix requires Secure"
   | HostPrefixRequiresNoDomain -> "Cookie __Host- prefix must not set Domain"
   | HostPrefixRequiresRootPath -> "Cookie __Host- prefix requires Path=/"
+
+let parse_set_cookie_error_to_string = function
+  | EmptyHeader -> "Set-Cookie header is empty"
+  | MissingNameValueSeparator -> "Set-Cookie header must start with name=value"
+  | InvalidMaxAge { value } -> "Set-Cookie Max-Age is not an integer: " ^ value
+  | InvalidSameSite { value } -> "Set-Cookie SameSite value is invalid: " ^ value
+  | InvalidCookie error -> validation_error_to_string error
 
 (** Parse Cookie header: "name1=value1; name2=value2" *)
 let parse = fun header ->
@@ -207,8 +223,11 @@ let validate_value = fun value ->
       Option.none
     else
       let c = String.get_unchecked value ~at:i in
-      if Char.to_int c < 32 then
+      let code = Char.to_int c in
+      if code < 32 then
         Option.some (InvalidValueCharacter { index = i; character = c; reason = ControlCharacter })
+      else if code = 127 then
+        Option.some (InvalidValueCharacter { index = i; character = c; reason = DeleteCharacter })
       else if c = ';' then
         Option.some (InvalidValueCharacter { index = i; character = c; reason = Semicolon })
       else if c = ',' then
@@ -319,73 +338,91 @@ let make = fun
 (** Create validated cookie *)
 let make_validated = make
 
+(** Parse Set-Cookie header with structured errors. *)
+let parse_set_cookie_result = fun header ->
+  if String.trim header = "" then
+    Error EmptyHeader
+  else
+    match String.split ~by:";" header with
+    | [] -> Error EmptyHeader
+    | first :: attrs -> (
+        match String.split ~by:"=" first with
+        | []
+        | [ _ ] -> Error MissingNameValueSeparator
+        | name :: value_parts ->
+            let cookie = {
+              name = String.trim name;
+              value =
+                String.concat "=" value_parts
+                |> String.trim;
+              max_age = Option.none;
+              expires = Option.none;
+              domain = Option.none;
+              path = "/";
+              secure = false;
+              http_only = false;
+              same_site = Option.none;
+            }
+            in
+            let cookie =
+              let rec apply_attrs cookie attrs =
+                match attrs with
+                | [] -> Ok cookie
+                | attr :: rest -> (
+                    match parse_attribute attr with
+                    | (Some "max-age", Some value) -> (
+                        match Int.parse value with
+                        | Some age -> apply_attrs { cookie with max_age = Some age } rest
+                        | Option.None -> Error (InvalidMaxAge { value })
+                      )
+                    | (Some "expires", Some value) ->
+                        apply_attrs { cookie with expires = Some value } rest
+                    | (Some "path", Some value) -> apply_attrs { cookie with path = value } rest
+                    | (Some "domain", Some value) ->
+                        apply_attrs { cookie with domain = Some value } rest
+                    | (Some "secure", Option.None) -> apply_attrs { cookie with secure = true } rest
+                    | (Some "httponly", Option.None) ->
+                        apply_attrs { cookie with http_only = true } rest
+                    | (Some "samesite", Some value) -> (
+                        match String.lowercase_ascii value with
+                        | "strict" -> apply_attrs { cookie with same_site = Some Strict } rest
+                        | "lax" -> apply_attrs { cookie with same_site = Some Lax } rest
+                        | "none" -> apply_attrs { cookie with same_site = Some None } rest
+                        | _ -> Error (InvalidSameSite { value })
+                      )
+                    | _ -> apply_attrs cookie rest
+                  )
+              in
+              apply_attrs cookie attrs
+            in
+            match cookie with
+            | Error error -> Error error
+            | Ok cookie ->
+                let validation_error =
+                  validate_name cookie.name
+                  |> Option.or_else ~fn:(fun () -> validate_value cookie.value)
+                  |> Option.or_else
+                    ~fn:(fun () -> validate_optional_attribute Expires cookie.expires)
+                  |> Option.or_else ~fn:(fun () -> validate_optional_attribute Domain cookie.domain)
+                  |> Option.or_else ~fn:(fun () -> validate_attribute_value Path cookie.path)
+                  |> Option.or_else
+                    ~fn:(fun () ->
+                      validate_security
+                        ~name:cookie.name
+                        ~domain:cookie.domain
+                        ~path:cookie.path
+                        ~secure:cookie.secure
+                        ~same_site:cookie.same_site)
+                in
+                (
+                  match validation_error with
+                  | Some error -> Error (InvalidCookie error)
+                  | Option.None -> Ok cookie
+                )
+      )
+
 (** Parse Set-Cookie header *)
 let parse_set_cookie = fun header ->
-  match String.split ~by:";" header with
-  | [] -> Option.none
-  | first :: attrs -> (
-      match String.split ~by:"=" first with
-      | name :: value_parts ->
-          let cookie = {
-            name = String.trim name;
-            value =
-              String.concat "=" value_parts
-              |> String.trim;
-            max_age = Option.none;
-            expires = Option.none;
-            domain = Option.none;
-            path = "/";
-            secure = false;
-            http_only = false;
-            same_site = Option.none;
-          }
-          in
-          let cookie =
-            List.fold_left
-              attrs
-              ~init:cookie
-              ~fn:(fun c attr ->
-                match parse_attribute attr with
-                | (Some "max-age", Some value) -> (
-                    match Int.parse value with
-                    | Some age -> { c with max_age = Some age }
-                    | Option.None -> c
-                  )
-                | (Some "expires", Some value) -> { c with expires = Some value }
-                | (Some "path", Some value) -> { c with path = value }
-                | (Some "domain", Some value) -> { c with domain = Some value }
-                | (Some "secure", Option.None) -> { c with secure = true }
-                | (Some "httponly", Option.None) -> { c with http_only = true }
-                | (Some "samesite", Some value) ->
-                    let same_site =
-                      match String.lowercase_ascii value with
-                      | "strict" -> Some Strict
-                      | "lax" -> Some Lax
-                      | "none" -> Some None
-                      | _ -> Option.none
-                    in
-                    { c with same_site }
-                | _ -> c)
-          in
-          let validation_error =
-            validate_name cookie.name
-            |> Option.or_else ~fn:(fun () -> validate_value cookie.value)
-            |> Option.or_else ~fn:(fun () -> validate_optional_attribute Expires cookie.expires)
-            |> Option.or_else ~fn:(fun () -> validate_optional_attribute Domain cookie.domain)
-            |> Option.or_else ~fn:(fun () -> validate_attribute_value Path cookie.path)
-            |> Option.or_else
-              ~fn:(fun () ->
-                validate_security
-                  ~name:cookie.name
-                  ~domain:cookie.domain
-                  ~path:cookie.path
-                  ~secure:cookie.secure
-                  ~same_site:cookie.same_site)
-          in
-          (
-            match validation_error with
-            | Some _ -> Option.none
-            | Option.None -> Some cookie
-          )
-      | [] -> Option.none
-    )
+  match parse_set_cookie_result header with
+  | Ok cookie -> Some cookie
+  | Error _ -> Option.none

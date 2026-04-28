@@ -93,6 +93,7 @@ type t = {
 }
 type value_character_error =
   | ControlCharacter
+  | DeleteCharacter
   | Semicolon
   | Comma
 type attribute =
@@ -118,6 +119,14 @@ type validation_error =
   | HostPrefixRequiresNoDomain
   | HostPrefixRequiresRootPath
 val validation_error_to_string: validation_error -> string
+
+type parse_set_cookie_error =
+  | EmptyHeader
+  | MissingNameValueSeparator
+  | InvalidMaxAge of { value: string }
+  | InvalidSameSite of { value: string }
+  | InvalidCookie of validation_error
+val parse_set_cookie_error_to_string: parse_set_cookie_error -> string
 
 (** {2 Parsing} *)
 
@@ -148,6 +157,12 @@ val parse: string -> (string * string) list
    Returns [None] if header is malformed.
 *)
 val parse_set_cookie: string -> t option
+
+(**
+   Parse Set-Cookie header into cookie record, preserving structured failure
+   information.
+*)
+val parse_set_cookie_result: string -> (t, parse_set_cookie_error) result
 
 (** {2 Serialization} *)
 

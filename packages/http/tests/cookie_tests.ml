@@ -34,6 +34,15 @@ let test_make_rejects_value_semicolon = fun _ctx ->
       Result.Error ("wrong validation error: " ^ Cookie.validation_error_to_string error)
   | Ok _ -> Result.Error "cookie value with semicolon was accepted"
 
+let test_make_rejects_value_delete_character = fun _ctx ->
+  match Cookie.make ~name:"session" ~value:"abc\x7f123" () with
+  | Error (
+    Cookie.InvalidValueCharacter { index = 3; character = '\x7f'; reason = Cookie.DeleteCharacter }
+  ) -> Result.Ok ()
+  | Error error ->
+      Result.Error ("wrong validation error: " ^ Cookie.validation_error_to_string error)
+  | Ok _ -> Result.Error "cookie value with delete character was accepted"
+
 let test_make_validated_alias_accepts_safe_cookie = fun _ctx ->
   match Cookie.make_validated ~name:"session_id" ~value:"abc123" () with
   | Ok _ -> Result.Ok ()
@@ -100,15 +109,61 @@ let test_parse_set_cookie_accepts_safe_cookie = fun _ctx ->
         Result.Ok ()
   | Option.None -> Result.Error "safe Set-Cookie header was rejected"
 
+let test_parse_set_cookie_result_accepts_safe_cookie = fun _ctx ->
+  match Cookie.parse_set_cookie_result
+    "session=abc123; Max-Age=3600; Path=/app; Secure; SameSite=None" with
+  | Ok cookie ->
+      if cookie.name != "session" then
+        Result.Error "parsed cookie had wrong name"
+      else if cookie.max_age != Some 3_600 then
+        Result.Error "parsed cookie had wrong Max-Age"
+      else
+        Result.Ok ()
+  | Error error ->
+      Result.Error ("safe Set-Cookie header was rejected: "
+      ^ Cookie.parse_set_cookie_error_to_string error)
+
 let test_parse_set_cookie_rejects_header_injection_value = fun _ctx ->
   match Cookie.parse_set_cookie "session=abc\r\nSet-Cookie: evil=1; Path=/" with
   | Option.None -> Result.Ok ()
   | Some _ -> Result.Error "Set-Cookie value with CRLF was accepted"
 
+let test_parse_set_cookie_result_reports_header_injection_value = fun _ctx ->
+  match Cookie.parse_set_cookie_result "session=abc\r\nSet-Cookie: evil=1; Path=/" with
+  | Error (
+    Cookie.InvalidCookie (
+      Cookie.InvalidValueCharacter { index = 3; character = '\r'; reason = Cookie.ControlCharacter }
+    )
+  ) -> Result.Ok ()
+  | Error error ->
+      Result.Error ("wrong parse error: " ^ Cookie.parse_set_cookie_error_to_string error)
+  | Ok _ -> Result.Error "Set-Cookie value with CRLF was accepted"
+
 let test_parse_set_cookie_rejects_same_site_none_without_secure = fun _ctx ->
   match Cookie.parse_set_cookie "session=abc; SameSite=None" with
   | Option.None -> Result.Ok ()
   | Some _ -> Result.Error "SameSite=None without Secure was accepted"
+
+let test_parse_set_cookie_result_reports_invalid_max_age = fun _ctx ->
+  match Cookie.parse_set_cookie_result "session=abc; Max-Age=forever; Path=/" with
+  | Error (Cookie.InvalidMaxAge { value = "forever" }) -> Result.Ok ()
+  | Error error ->
+      Result.Error ("wrong parse error: " ^ Cookie.parse_set_cookie_error_to_string error)
+  | Ok _ -> Result.Error "Set-Cookie with invalid Max-Age was accepted"
+
+let test_parse_set_cookie_result_reports_invalid_same_site = fun _ctx ->
+  match Cookie.parse_set_cookie_result "session=abc; SameSite=Maybe" with
+  | Error (Cookie.InvalidSameSite { value = "Maybe" }) -> Result.Ok ()
+  | Error error ->
+      Result.Error ("wrong parse error: " ^ Cookie.parse_set_cookie_error_to_string error)
+  | Ok _ -> Result.Error "Set-Cookie with invalid SameSite was accepted"
+
+let test_parse_set_cookie_result_reports_missing_separator = fun _ctx ->
+  match Cookie.parse_set_cookie_result "session; Path=/" with
+  | Error Cookie.MissingNameValueSeparator -> Result.Ok ()
+  | Error error ->
+      Result.Error ("wrong parse error: " ^ Cookie.parse_set_cookie_error_to_string error)
+  | Ok _ -> Result.Error "Set-Cookie without name=value was accepted"
 
 let tests =
   Test.[
@@ -116,6 +171,7 @@ let tests =
     case "make rejects empty name" test_make_rejects_empty_name;
     case "make rejects invalid name character" test_make_rejects_invalid_name_character;
     case "make rejects value semicolon" test_make_rejects_value_semicolon;
+    case "make rejects value delete character" test_make_rejects_value_delete_character;
     case "make_validated alias accepts safe cookie" test_make_validated_alias_accepts_safe_cookie;
     case "make rejects SameSite None without Secure" test_make_rejects_same_site_none_without_secure;
     case "make rejects Secure prefix without Secure" test_make_rejects_secure_prefix_without_secure;
@@ -124,11 +180,26 @@ let tests =
     case "make rejects Path semicolon" test_make_rejects_path_semicolon;
     case "parse Set-Cookie accepts safe cookie" test_parse_set_cookie_accepts_safe_cookie;
     case
+      "parse Set-Cookie result accepts safe cookie"
+      test_parse_set_cookie_result_accepts_safe_cookie;
+    case
       "parse Set-Cookie rejects header injection value"
       test_parse_set_cookie_rejects_header_injection_value;
     case
+      "parse Set-Cookie result reports header injection value"
+      test_parse_set_cookie_result_reports_header_injection_value;
+    case
       "parse Set-Cookie rejects SameSite None without Secure"
       test_parse_set_cookie_rejects_same_site_none_without_secure;
+    case
+      "parse Set-Cookie result reports invalid Max-Age"
+      test_parse_set_cookie_result_reports_invalid_max_age;
+    case
+      "parse Set-Cookie result reports invalid SameSite"
+      test_parse_set_cookie_result_reports_invalid_same_site;
+    case
+      "parse Set-Cookie result reports missing separator"
+      test_parse_set_cookie_result_reports_missing_separator;
   ]
 
 let main ~args:_ = Test.Cli.main ~name:"http:cookie" ~tests ~args:Env.args ()
