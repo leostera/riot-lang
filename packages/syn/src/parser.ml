@@ -2862,11 +2862,26 @@ and parse_let_binding = fun p ~signature ~top_level ->
   let marker = start_node p in
   let diagnostics_before = Vector.length (Event.Buffer.diagnostics p.events) in
   let missing_pattern = at p Syntax_kind.EQ in
+  let starts_parenthesized_binding_name () =
+    Syntax_kind.(current_kind p = LPAREN)
+    && ((operator_pattern_token (peek_kind p 1) && Syntax_kind.(peek_kind p 2 = RPAREN))
+    || (binding_operator_keyword (peek_kind p 1)
+    && binding_operator_suffix (peek_kind p 2)
+    && Syntax_kind.(peek_kind p 3 = RPAREN)))
+  in
+  let starts_function_binding_head () =
+    match current_kind p with
+    | Syntax_kind.IDENT -> not (identifier_text_starts_uppercase (token_text p (current p)))
+    | Syntax_kind.LPAREN -> starts_parenthesized_binding_name ()
+    | _ -> false
+  in
   if missing_pattern then (
     Event.Buffer.missing p.events ~kind:Syntax_kind.IDENT ~offset:(current_offset p);
     Event.Buffer.error p.events (invalid_pattern_at_previous_end p)
-  ) else
-    ignore (parse_pattern_no_apply p ~stop_type_at_arrow:false);
+  ) else if starts_function_binding_head () then
+    ignore (parse_pattern_no_apply p ~stop_type_at_arrow:false)
+  else
+    ignore (parse_pattern p ~stop_type_at_arrow:false);
   let rec parse_params () =
     if
       not
