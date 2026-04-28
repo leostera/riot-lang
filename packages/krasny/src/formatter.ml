@@ -5880,6 +5880,13 @@ and render_keyword_body_expr = fun state expr ->
   | Tuple -> render_expr_atom state expr
   | _ -> render_expr state expr
 
+and keyword_body_parenthesized_inner = fun expr ->
+  match ExprView.view expr with
+  | Parenthesized { inner = Some inner } when not (same_expr_node expr inner)
+  && not (expr_is_tuple inner)
+  && not (expr_is_typed inner) -> Some inner
+  | _ -> None
+
 and if_condition_decision = fun state condition ->
   let flat_width =
     if expr_has_leading_comment condition || expr_is_multiline condition then
@@ -5899,6 +5906,17 @@ and render_parenthesized_sequence_keyword_body = fun state body ->
   with_indent state 2 (fun () -> with_delimited_expr state (fun () -> render_expr state body));
   emit_line state;
   emit_text state ")"
+
+and render_parenthesized_keyword_body = fun state body ->
+  match ExprView.view body with
+  | Sequence _ -> render_parenthesized_sequence_keyword_body state body
+  | _ ->
+      emit_text state "(";
+      emit_line state;
+      with_indent state 2 (fun () ->
+        with_delimited_expr state (fun () -> render_keyword_body_expr state body));
+      emit_line state;
+      emit_text state ")"
 
 and render_in_body_expr = fun state expr ->
   match ExprView.view expr with
@@ -6195,6 +6213,16 @@ and render_if_expr = fun
     && expr_is_sequence inner -> Some inner
     | _ -> None
   in
+  let then_parenthesized_inner = keyword_body_parenthesized_inner then_branch in
+  let else_parenthesized_inner =
+    match else_branch with
+    | Some branch -> keyword_body_parenthesized_inner branch
+    | None -> None
+  in
+  let then_renders_parenthesized_body =
+    Option.is_some then_sequence_inner
+    || (Option.is_some then_parenthesized_inner && Option.is_some else_parenthesized_inner)
+  in
   emit_node_keyword state (Ast.Expr.as_node expr) ~kind:Kind.THEN_KW ~fallback:"then";
   (
     match then_sequence_inner with
@@ -6202,8 +6230,15 @@ and render_if_expr = fun
         emit_space state;
         render_parenthesized_sequence_keyword_body state inner
     | None ->
-        emit_line state;
-        with_indent state 2 (fun () -> render_keyword_body_expr state then_branch)
+        (
+          match then_parenthesized_inner, else_parenthesized_inner with
+          | Some inner, Some _ ->
+              emit_space state;
+              render_parenthesized_keyword_body state inner
+          | _ ->
+              emit_line state;
+              with_indent state 2 (fun () -> render_keyword_body_expr state then_branch)
+        )
   );
   (
     match else_branch with
@@ -6215,7 +6250,7 @@ and render_if_expr = fun
           | Some token -> Ast.Token.has_leading_comment token
           | None -> false
         in
-        if Option.is_some then_sequence_inner && not else_has_leading_comment then
+        if then_renders_parenthesized_body && not else_has_leading_comment then
           emit_space state
         else
           emit_line state;
@@ -6247,8 +6282,15 @@ and render_if_expr = fun
               emit_space state;
               render_parenthesized_sequence_keyword_body state inner
           | _ ->
-              emit_line state;
-              with_indent state 2 (fun () -> render_keyword_body_expr state branch)
+              (
+                match then_parenthesized_inner, else_parenthesized_inner with
+                | Some _, Some inner ->
+                    emit_space state;
+                    render_parenthesized_keyword_body state inner
+                | _ ->
+                    emit_line state;
+                    with_indent state 2 (fun () -> render_keyword_body_expr state branch)
+              )
         )
   )
 

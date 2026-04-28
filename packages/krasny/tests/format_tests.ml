@@ -1390,6 +1390,25 @@ let test_write_parenthesizes_keyword_body_sequences = fun ctx ->
     )
 |ocaml}
 
+let test_write_keeps_paired_parenthesized_if_branches = fun ctx ->
+  let source =
+    {ocaml|let render cond=if cond then(render value)else(emit first;emit second)
+|ocaml}
+  in
+  let parsed = parse_ml source in
+  let actual = capture_write parsed in
+  Test.Snapshot.assert_inline_text
+    ~ctx
+    ~actual
+    ~expected:{ocaml|let render cond =
+  if cond then (
+    render value
+  ) else (
+    emit first;
+    emit second
+  )
+|ocaml}
+
 let test_write_keeps_match_case_keyword_body_sequences_unwrapped = fun ctx ->
   let source =
     {ocaml|let f=fun cond->match x with|Some data->if cond then let result=foo in bar;baz else qux
@@ -3938,9 +3957,10 @@ let test_format_unreachable_expressions_structurally = fun _ctx ->
   Ok ()
 
 let test_format_keeps_typed_and_polymorphic_expressions_structural = fun ctx ->
-  let source = {|let typed value = (value : source)
-let poly = ((fun x -> x) : 'a. 'a -> 'a)
-|}
+  let source =
+    {ocaml|let typed value = (value : source)
+let poly : 'a. 'a -> 'a = fun x -> x
+|ocaml}
   in
   assert_formatted_ml_snapshot
     ~ctx
@@ -4514,6 +4534,9 @@ let tests =
     case
       "write parenthesizes keyword body sequences"
       test_write_parenthesizes_keyword_body_sequences;
+    case
+      "write keeps paired parenthesized if branches"
+      test_write_keeps_paired_parenthesized_if_branches;
     case
       "write keeps match case keyword body sequences unwrapped"
       test_write_keeps_match_case_keyword_body_sequences_unwrapped;
