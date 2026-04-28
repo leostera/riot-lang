@@ -176,10 +176,17 @@ let test_parse_set_cookie_result_reports_max_age_overflow = fun _ctx ->
 
 let test_parse_set_cookie_result_reports_invalid_same_site = fun _ctx ->
   match Cookie.parse_set_cookie_result "session=abc; SameSite=Maybe" with
-  | Error (Cookie.InvalidSameSite { value = "Maybe" }) -> Result.Ok ()
+  | Error (Cookie.InvalidSameSite (Cookie.UnknownSameSite { value = "Maybe" })) -> Result.Ok ()
   | Error error ->
       Result.Error ("wrong parse error: " ^ Cookie.parse_set_cookie_error_to_string error)
   | Ok _ -> Result.Error "Set-Cookie with invalid SameSite was accepted"
+
+let test_parse_set_cookie_result_reports_empty_same_site = fun _ctx ->
+  match Cookie.parse_set_cookie_result "session=abc; SameSite=" with
+  | Error (Cookie.InvalidSameSite Cookie.EmptySameSite) -> Result.Ok ()
+  | Error error ->
+      Result.Error ("wrong parse error: " ^ Cookie.parse_set_cookie_error_to_string error)
+  | Ok _ -> Result.Error "Set-Cookie with empty SameSite was accepted"
 
 let test_parse_set_cookie_result_reports_missing_separator = fun _ctx ->
   match Cookie.parse_set_cookie_result "session; Path=/" with
@@ -229,6 +236,9 @@ let tests =
     case
       "parse Set-Cookie result reports invalid SameSite"
       test_parse_set_cookie_result_reports_invalid_same_site;
+    case
+      "parse Set-Cookie result reports empty SameSite"
+      test_parse_set_cookie_result_reports_empty_same_site;
     case
       "parse Set-Cookie result reports missing separator"
       test_parse_set_cookie_result_reports_missing_separator;

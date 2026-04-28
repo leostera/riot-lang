@@ -52,7 +52,7 @@ type parse_set_cookie_error =
   | EmptyHeader
   | MissingNameValueSeparator
   | InvalidMaxAge of max_age_error
-  | InvalidSameSite of { value: string }
+  | InvalidSameSite of same_site_error
   | InvalidCookie of validation_error
 
 and max_age_error =
@@ -60,6 +60,10 @@ and max_age_error =
   | NegativeMaxAge
   | MaxAgeOverflow
   | InvalidMaxAgeCharacter of { code: int; index: int }
+
+and same_site_error =
+  | EmptySameSite
+  | UnknownSameSite of { value: string }
 
 let character_code = fun character -> Int.to_string (Char.to_int character)
 
@@ -119,11 +123,16 @@ let max_age_error_to_string = function
   | InvalidMaxAgeCharacter { code; index } ->
       "invalid character code " ^ Int.to_string code ^ " at index " ^ Int.to_string index
 
+let same_site_error_to_string = function
+  | EmptySameSite -> "empty value"
+  | UnknownSameSite { value } -> "unknown value: " ^ value
+
 let parse_set_cookie_error_to_string = function
   | EmptyHeader -> "Set-Cookie header is empty"
   | MissingNameValueSeparator -> "Set-Cookie header must start with name=value"
   | InvalidMaxAge error -> "Set-Cookie Max-Age is invalid: " ^ max_age_error_to_string error
-  | InvalidSameSite { value } -> "Set-Cookie SameSite value is invalid: " ^ value
+  | InvalidSameSite error ->
+      "Set-Cookie SameSite value is invalid: " ^ same_site_error_to_string error
   | InvalidCookie error -> validation_error_to_string error
 
 (** Parse Cookie header: "name1=value1; name2=value2" *)
@@ -423,10 +432,11 @@ let parse_set_cookie_result = fun header ->
                         apply_attrs { cookie with http_only = true } rest
                     | (Some "samesite", Some value) -> (
                         match String.lowercase_ascii value with
+                        | "" -> Error (InvalidSameSite EmptySameSite)
                         | "strict" -> apply_attrs { cookie with same_site = Some Strict } rest
                         | "lax" -> apply_attrs { cookie with same_site = Some Lax } rest
                         | "none" -> apply_attrs { cookie with same_site = Some None } rest
-                        | _ -> Error (InvalidSameSite { value })
+                        | _ -> Error (InvalidSameSite (UnknownSameSite { value }))
                       )
                     | _ -> apply_attrs cookie rest
                   )

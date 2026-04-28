@@ -124,7 +124,7 @@ type parse_set_cookie_error =
   | EmptyHeader
   | MissingNameValueSeparator
   | InvalidMaxAge of max_age_error
-  | InvalidSameSite of { value: string }
+  | InvalidSameSite of same_site_error
   | InvalidCookie of validation_error
 
 and max_age_error =
@@ -132,6 +132,10 @@ and max_age_error =
   | NegativeMaxAge
   | MaxAgeOverflow
   | InvalidMaxAgeCharacter of { code: int; index: int }
+
+and same_site_error =
+  | EmptySameSite
+  | UnknownSameSite of { value: string }
 val parse_set_cookie_error_to_string: parse_set_cookie_error -> string
 
 (** {2 Parsing} *)
