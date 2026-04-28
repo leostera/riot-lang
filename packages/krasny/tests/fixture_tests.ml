@@ -53,9 +53,9 @@ let tracked_fixtures = fun () ->
 
 let fixture_filter = fun tracked path ->
   if HashSet.contains tracked ~value:(Path.basename path) then
-    `keep
+    Test.FixtureRunner.Keep
   else
-    `skip
+    Test.FixtureRunner.Skip
 
 let approved_snapshot_path = fun path ->
   match Path.extension path with

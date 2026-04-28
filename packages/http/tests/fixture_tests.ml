@@ -21,8 +21,8 @@ let keep_fixture = fun path ->
   match Path.extension path with
   | Some ".http"
   | Some ".frame"
-  | Some ".txt" -> `keep
-  | _ -> `skip
+  | Some ".txt" -> Test.FixtureRunner.Keep
+  | _ -> Test.FixtureRunner.Skip
 
 let replace_suffix = fun value ~suffix ~replacement ->
   if String.ends_with ~suffix value then
