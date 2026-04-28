@@ -2283,6 +2283,25 @@ let test_format_match_cases_from_structure_not_arrow_source_newlines = fun ctx -
     ~msg:"match case layout should not preserve source newlines after arrows"
     source
 
+let test_write_breaks_nested_constructor_match_patterns = fun ctx ->
+  let source =
+    {ocaml|let test=match Cookie.parse_set_cookie_result "session=abc\r\nSet-Cookie: evil=1; Path=/" with|Error(Cookie.InvalidCookie(Cookie.InvalidValueCharacter{index=3;character='\r';reason=Cookie.ControlCharacter}))->Result.Ok()
+|ocaml}
+  in
+  let parsed = parse_ml source in
+  let actual = capture_write parsed in
+  Test.Snapshot.assert_inline_text
+    ~ctx
+    ~actual
+    ~expected:{ocaml|let test =
+  match Cookie.parse_set_cookie_result "session=abc\r\nSet-Cookie: evil=1; Path=/" with
+  | Error (
+    Cookie.InvalidCookie (
+      Cookie.InvalidValueCharacter { index = 3; character = '\r'; reason = Cookie.ControlCharacter }
+    )
+  ) -> Result.Ok ()
+|ocaml}
+
 let test_write_keeps_parenthesized_match_case_bodies_attached_to_arrows = fun ctx ->
   let source =
     {ocaml|let get=fun value->match value with|Some x->(match x with|Some y->y|None->0)|None->0
@@ -4662,6 +4681,9 @@ let tests =
     case
       "format match cases from structure, not arrow source newlines"
       test_format_match_cases_from_structure_not_arrow_source_newlines;
+    case
+      "write breaks nested constructor match patterns"
+      test_write_breaks_nested_constructor_match_patterns;
     case
       "write keeps parenthesized match case bodies attached to arrows"
       test_write_keeps_parenthesized_match_case_bodies_attached_to_arrows;

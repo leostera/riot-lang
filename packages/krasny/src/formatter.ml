@@ -3632,12 +3632,12 @@ let rec render_pattern = fun state (pattern: Ast.Pattern.t) ->
   | ConstructIdent { constructor; argument = Some argument } ->
       render_pattern_ident state constructor;
       emit_space state;
-      render_pattern_atom state argument
+      render_constructor_pattern_argument state pattern argument
   | Construct { callee = Some callee; argument = None } -> render_pattern state callee
   | Construct { callee = Some callee; argument = Some argument } ->
       render_pattern state callee;
       emit_space state;
-      render_pattern_atom state argument
+      render_constructor_pattern_argument state pattern argument
   | Construct _ -> unsupported_node "incomplete construct pattern" node
   | Parenthesized { inner = Some inner } when pattern_is_tuple inner ->
       render_tuple_pattern state inner
@@ -3762,6 +3762,49 @@ let rec render_pattern = fun state (pattern: Ast.Pattern.t) ->
   | Attribute { inner = None } -> unsupported_node "attribute pattern without inner pattern" node
   | Error _
   | Unknown _ -> unsupported_node "unsupported pattern" node
+
+and pattern_is_constructor_with_payload = fun pattern ->
+  match PatternView.view pattern with
+  | ConstructIdent { argument = Some _; _ }
+  | Construct { argument = Some _; _ } -> true
+  | Parenthesized { inner = Some inner }
+  | Constraint { pattern = Some inner; _ }
+  | Attribute { inner = Some inner } -> pattern_is_constructor_with_payload inner
+  | _ -> false
+
+and pattern_exceeds_width = fun state pattern ->
+  let (_, width) =
+    Ast.Node.fold_token
+      (Ast.Pattern.as_node pattern)
+      ~init:(None, 0)
+      ~fn:(fun token (previous, width) ->
+        let extra_space =
+          match previous with
+          | Some previous when token_wants_space_before previous token -> 1
+          | _ -> 0
+        in
+        Ast.Continue (Some token, Int.add width (Int.add extra_space (token_flat_width token))))
+  in
+  Int.(state.column + width > state.width)
+
+and constructor_pattern_argument_should_break = fun state pattern argument ->
+  pattern_is_constructor_with_payload argument && pattern_exceeds_width state pattern
+
+and render_constructor_pattern_argument_body = fun state argument ->
+  match PatternView.view argument with
+  | Parenthesized { inner = Some inner } when not (same_pattern_node argument inner) ->
+      render_pattern state inner
+  | _ -> render_pattern state argument
+
+and render_constructor_pattern_argument = fun state pattern argument ->
+  if constructor_pattern_argument_should_break state pattern argument then (
+    emit_text state "(";
+    emit_line state;
+    with_indent state 2 (fun () -> render_constructor_pattern_argument_body state argument);
+    emit_line state;
+    emit_text state ")"
+  ) else
+    render_pattern_atom state argument
 
 and render_or_pattern_inline = fun state pattern ->
   let items = collect_or_pattern_items pattern in
