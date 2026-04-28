@@ -29,6 +29,30 @@ let start_error_of_web_server_error = function
   | Web_server.InvalidAcceptors acceptors -> InvalidAcceptors acceptors
   | Web_server.InvalidBufferSize buffer_size -> InvalidBufferSize buffer_size
 
+let addr_error_to_string = function
+  | Std.Net.Addr.System_error error -> Std.IO.error_message error
+  | Std.Net.Addr.Invalid_port_number value ->
+      Std.String.concat "" [ "invalid port number: "; value; ]
+  | Std.Net.Addr.Invalid_format value -> Std.String.concat "" [ "invalid address format: "; value; ]
+
+let listener_error_to_string = function
+  | Std.Net.TcpListener.Connection_refused -> "connection refused"
+  | Std.Net.TcpListener.Closed -> "listener is closed"
+  | Std.Net.TcpListener.System_error error -> Std.IO.error_message error
+
+let start_error_to_string = function
+  | InvalidConfig errors -> Config.errors_to_string errors
+  | InvalidAddress error -> addr_error_to_string error
+  | BindFailed error -> listener_error_to_string error
+  | InvalidAcceptors acceptors ->
+      Std.String.concat
+        ""
+        [ "acceptors must be greater than 0, got "; Std.Int.to_string acceptors; ]
+  | InvalidBufferSize buffer_size ->
+      Std.String.concat
+        ""
+        [ "buffer_size must be greater than 0, got "; Std.Int.to_string buffer_size; ]
+
 (* Low-level modules (not exposed in .mli) *)
 
 module SocketPool = Socket_pool
@@ -101,10 +125,7 @@ let config = fun
       liveview_secret;
     }
   in
-  match Config.validate config with
-  | Ok config -> config
-  | Error errors ->
-      Std.panic (Std.String.concat "" [ "Invalid Suri config:\n"; Config.errors_to_string errors; ])
+  Config.validate config
 
 (**
    Suri.start_link app -> starts the web server

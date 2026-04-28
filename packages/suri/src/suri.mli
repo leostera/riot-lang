@@ -58,8 +58,8 @@ open Std
            Log.info "Server running on http://0.0.0.0:4000";
            let rec loop () = sleep (Time.Duration.from_secs 100); loop () in
            loop ()
-       | Error _ ->
-           Error (Failure "Failed to bind")
+       | Error error ->
+           Error (Failure (Suri.start_error_to_string error))
 
      let () = Runtime.run ~main ~args:Env.args ()
    ]}
@@ -67,8 +67,11 @@ open Std
    {3 With Custom Port}
 
    {[
-     let config = Suri.config ~port:8080 () in
-     Suri.start_link ~config app
+     match Suri.config ~port:8080 () with
+     | Error errors ->
+         Error (Failure (Suri.Config.errors_to_string errors))
+     | Ok config ->
+         Suri.start_link ~config app
    ]}
 
    {3 With Routing and Middleware}
@@ -106,8 +109,8 @@ open Std
            Log.info "Server running";
            let rec loop () = sleep (Time.Duration.from_secs 100); loop () in
            loop ()
-       | Error _ ->
-           Error (Failure "Failed to bind")
+       | Error error ->
+           Error (Failure (Suri.start_error_to_string error))
 
      let () = Runtime.run ~main ~args:Env.args ()
    ]}
@@ -117,8 +120,11 @@ open Std
    Override defaults with optional parameters:
 
    {[
-     let config = Suri.config ~port:8080 () in
-     Suri.start_link ~config ~handler ()
+     match Suri.config ~port:8080 () with
+     | Error errors ->
+         Error (Failure (Suri.Config.errors_to_string errors))
+     | Ok config ->
+         Suri.start_link ~config app
    ]}
 
    {3 With Routing}
@@ -152,13 +158,13 @@ open Std
        close (Middleware.Conn.to_response conn)
 
      let main ~args:_ =
-       match Suri.start_link ~handler () with
+       match Suri.start_link app with
        | Ok _ ->
            Log.info "Server with routing on http://0.0.0.0:4000";
            let rec loop () = sleep (Time.Duration.from_secs 100); loop () in
            loop ()
-       | Error _ ->
-           Error (Failure "Failed to bind")
+       | Error error ->
+           Error (Failure (Suri.start_error_to_string error))
 
      let () = Runtime.run ~main ~args:Env.args ()
    ]}
@@ -408,7 +414,7 @@ val config:
   ?buffer_size:int ->
   ?liveview_secret:string ->
   unit ->
-  Config.t
+  (Config.t, Config.error list) result
 
 (** Create server configuration with optional parameters. *)
 (** {2 Core Types} *)
@@ -423,7 +429,10 @@ type start_error =
   | BindFailed of Std.Net.TcpListener.error
   | InvalidAcceptors of int
   | InvalidBufferSize of int
+val start_error_to_string: start_error -> string
+
 (** {2 Starting the Server} *)
+
 val start_link: ?config:Config.t -> handler -> (Supervisor.Dynamic.t, start_error) result
 
 (**
@@ -451,11 +460,14 @@ val start_link: ?config:Config.t -> handler -> (Supervisor.Dynamic.t, start_erro
      Suri.start_link app
 
      (* Custom config *)
-     let config = Suri.config ~port:8080 () in
-     Suri.start_link ~config app
+     match Suri.config ~port:8080 () with
+     | Error errors ->
+         Error (Failure (Suri.Config.errors_to_string errors))
+     | Ok config ->
+         Suri.start_link ~config app
    ]}
 
-   @param config Server configuration (defaults to Suri.config())
+   @param config Server configuration (defaults to {!Config.default})
    @param handler Middleware pipeline (list of Conn.t -> Conn.t)
    @return Ok supervisor_pid if successful, Error _ if startup fails
 *)

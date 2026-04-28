@@ -71,32 +71,35 @@ let main ~args:_ =
     router routes;
   ]
   in
-  let config = Suri.config ~port:3_000 () in
-  match Suri.start_link ~config app with
-  | Ok _supervisor ->
-      Log.info "===========================================";
-      Log.info "Basic Auth Example Server Running";
-      Log.info "===========================================";
-      Log.info "Server: http://localhost:3000";
-      Log.info "";
-      Log.info "Routes:";
-      Log.info "  /        - Public (no auth)";
-      Log.info "  /admin   - Protected (admin/secret)";
-      Log.info "  /api/users - Protected (admin/secret)";
-      Log.info "";
-      Log.info "Test with curl:";
-      Log.info "  curl http://localhost:3000/";
-      Log.info "  curl -u admin:secret http://localhost:3000/admin";
-      Log.info "  curl -u admin:wrong http://localhost:3000/admin  # Should fail";
-      Log.info "===========================================";
-      (* Keep alive *)
-      let rec loop () =
-        sleep (Time.Duration.from_secs 100);
-        loop ()
-      in
-      loop ()
-  | Error _ ->
-      Log.error "Failed to bind to port 3000";
-      Error (Failure "Failed to start server")
+  match Suri.config ~port:3_000 () with
+  | Error errors -> Error (Failure (Suri.Config.errors_to_string errors))
+  | Ok config -> (
+      match Suri.start_link ~config app with
+      | Ok _supervisor ->
+          Log.info "===========================================";
+          Log.info "Basic Auth Example Server Running";
+          Log.info "===========================================";
+          Log.info "Server: http://localhost:3000";
+          Log.info "";
+          Log.info "Routes:";
+          Log.info "  /        - Public (no auth)";
+          Log.info "  /admin   - Protected (admin/secret)";
+          Log.info "  /api/users - Protected (admin/secret)";
+          Log.info "";
+          Log.info "Test with curl:";
+          Log.info "  curl http://localhost:3000/";
+          Log.info "  curl -u admin:secret http://localhost:3000/admin";
+          Log.info "  curl -u admin:wrong http://localhost:3000/admin  # Should fail";
+          Log.info "===========================================";
+          (* Keep alive *)
+          let rec loop () =
+            sleep (Time.Duration.from_secs 100);
+            loop ()
+          in
+          loop ()
+      | Error error ->
+          Log.error "Failed to bind to port 3000";
+          Error (Failure (Suri.start_error_to_string error))
+    )
 
 let () = Runtime.run ~main ~args:Env.args ()

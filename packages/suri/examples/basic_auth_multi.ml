@@ -101,37 +101,40 @@ let main ~args:_ =
     router routes;
   ]
   in
-  let config = Suri.config ~port:3_002 () in
-  match Suri.start_link ~config app with
-  | Ok _supervisor ->
-      Log.info "===========================================";
-      Log.info "Multi-Credential Basic Auth Example";
-      Log.info "===========================================";
-      Log.info "Server: http://localhost:3002";
-      Log.info "";
-      Log.info "Routes and Credentials:";
-      Log.info "  /          - Public (no auth)";
-      Log.info "  /admin     - admin:secret";
-      Log.info "  /api/users - api:key123";
-      Log.info "  /api/posts - api:key123";
-      Log.info "";
-      Log.info "Test commands:";
-      Log.info "  curl http://localhost:3002/";
-      Log.info "  curl -u admin:secret http://localhost:3002/admin";
-      Log.info "  curl -u api:key123 http://localhost:3002/api/users";
-      Log.info "  curl -u api:key123 http://localhost:3002/api/posts";
-      Log.info "";
-      Log.info "These should fail (wrong credentials):";
-      Log.info "  curl -u api:key123 http://localhost:3002/admin";
-      Log.info "  curl -u admin:secret http://localhost:3002/api/users";
-      Log.info "===========================================";
-      let rec loop () =
-        sleep (Time.Duration.from_secs 100);
-        loop ()
-      in
-      loop ()
-  | Error _ ->
-      Log.error "Failed to bind to port 3002";
-      Error (Failure "Failed to start server")
+  match Suri.config ~port:3_002 () with
+  | Error errors -> Error (Failure (Suri.Config.errors_to_string errors))
+  | Ok config -> (
+      match Suri.start_link ~config app with
+      | Ok _supervisor ->
+          Log.info "===========================================";
+          Log.info "Multi-Credential Basic Auth Example";
+          Log.info "===========================================";
+          Log.info "Server: http://localhost:3002";
+          Log.info "";
+          Log.info "Routes and Credentials:";
+          Log.info "  /          - Public (no auth)";
+          Log.info "  /admin     - admin:secret";
+          Log.info "  /api/users - api:key123";
+          Log.info "  /api/posts - api:key123";
+          Log.info "";
+          Log.info "Test commands:";
+          Log.info "  curl http://localhost:3002/";
+          Log.info "  curl -u admin:secret http://localhost:3002/admin";
+          Log.info "  curl -u api:key123 http://localhost:3002/api/users";
+          Log.info "  curl -u api:key123 http://localhost:3002/api/posts";
+          Log.info "";
+          Log.info "These should fail (wrong credentials):";
+          Log.info "  curl -u api:key123 http://localhost:3002/admin";
+          Log.info "  curl -u admin:secret http://localhost:3002/api/users";
+          Log.info "===========================================";
+          let rec loop () =
+            sleep (Time.Duration.from_secs 100);
+            loop ()
+          in
+          loop ()
+      | Error error ->
+          Log.error "Failed to bind to port 3002";
+          Error (Failure (Suri.start_error_to_string error))
+    )
 
 let () = Runtime.run ~main ~args:Env.args ()

@@ -238,42 +238,45 @@ let main ~args:_ =
     router routes;
   ]
   in
-  let config = Suri.config ~port:3_003 () in
-  match Suri.start_link ~config app with
-  | Ok _supervisor ->
-      Log.info "===========================================";
-      Log.info "Database Validation Basic Auth Example";
-      Log.info "===========================================";
-      Log.info "Server: http://localhost:3003";
-      Log.info "";
-      Log.info "Test Accounts:";
-      Log.info "  alice:pass1 (admin)";
-      Log.info "  bob:pass2 (user)";
-      Log.info "  charlie:pass3 (user)";
-      Log.info "";
-      Log.info "Routes:";
-      Log.info "  /           - Public";
-      Log.info "  /dashboard  - All authenticated users";
-      Log.info "  /admin      - Admin role only";
-      Log.info "  /profile    - All authenticated users (JSON)";
-      Log.info "";
-      Log.info "Test commands:";
-      Log.info "  curl http://localhost:3003/";
-      Log.info "  curl -u alice:pass1 http://localhost:3003/dashboard";
-      Log.info "  curl -u alice:pass1 http://localhost:3003/admin  # Admin access";
-      Log.info "  curl -u bob:pass2 http://localhost:3003/admin    # Forbidden (not admin)";
-      Log.info "  curl -u bob:pass2 http://localhost:3003/profile";
-      Log.info "  curl -u charlie:pass3 http://localhost:3003/dashboard";
-      Log.info "";
-      Log.info "Check the logs to see authentication attempts!";
-      Log.info "===========================================";
-      let rec loop () =
-        sleep (Time.Duration.from_secs 100);
-        loop ()
-      in
-      loop ()
-  | Error _ ->
-      Log.error "Failed to bind to port 3003";
-      Error (Failure "Failed to start server")
+  match Suri.config ~port:3_003 () with
+  | Error errors -> Error (Failure (Suri.Config.errors_to_string errors))
+  | Ok config -> (
+      match Suri.start_link ~config app with
+      | Ok _supervisor ->
+          Log.info "===========================================";
+          Log.info "Database Validation Basic Auth Example";
+          Log.info "===========================================";
+          Log.info "Server: http://localhost:3003";
+          Log.info "";
+          Log.info "Test Accounts:";
+          Log.info "  alice:pass1 (admin)";
+          Log.info "  bob:pass2 (user)";
+          Log.info "  charlie:pass3 (user)";
+          Log.info "";
+          Log.info "Routes:";
+          Log.info "  /           - Public";
+          Log.info "  /dashboard  - All authenticated users";
+          Log.info "  /admin      - Admin role only";
+          Log.info "  /profile    - All authenticated users (JSON)";
+          Log.info "";
+          Log.info "Test commands:";
+          Log.info "  curl http://localhost:3003/";
+          Log.info "  curl -u alice:pass1 http://localhost:3003/dashboard";
+          Log.info "  curl -u alice:pass1 http://localhost:3003/admin  # Admin access";
+          Log.info "  curl -u bob:pass2 http://localhost:3003/admin    # Forbidden (not admin)";
+          Log.info "  curl -u bob:pass2 http://localhost:3003/profile";
+          Log.info "  curl -u charlie:pass3 http://localhost:3003/dashboard";
+          Log.info "";
+          Log.info "Check the logs to see authentication attempts!";
+          Log.info "===========================================";
+          let rec loop () =
+            sleep (Time.Duration.from_secs 100);
+            loop ()
+          in
+          loop ()
+      | Error error ->
+          Log.error "Failed to bind to port 3003";
+          Error (Failure (Suri.start_error_to_string error))
+    )
 
 let () = Runtime.run ~main ~args:Env.args ()

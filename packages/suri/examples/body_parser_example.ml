@@ -178,29 +178,32 @@ let make_app = fun () ->
 
 let main ~args:_ =
   let port = 8_080 in
-  let config = Suri.config ~port () in
-  Log.info "===========================================";
-  Log.info "🚀 Body Parser + CSRF Example";
-  Log.info "===========================================";
-  Log.info (String.concat "" [ "Server: http://localhost:"; string_of_int port ]);
-  Log.info "✨ Features:";
-  Log.info "  - HTML form with CSRF protection";
-  Log.info "  - JSON API endpoint (/api/data)";
-  Log.info "  - Automatic body parsing (urlencoded & JSON)";
-  Log.info "===========================================";
-  match make_app () with
-  | Error error -> Error (Failure error)
-  | Ok app -> (
-      match Suri.start_link ~config app with
-      | Ok _supervisor ->
-          let rec loop () =
-            sleep (Time.Duration.from_secs 100);
-            loop ()
-          in
-          loop ()
-      | Error _ ->
-          Log.error "Failed to bind to port 8080";
-          Error (Failure "Failed to start server")
+  match Suri.config ~port () with
+  | Error errors -> Error (Failure (Suri.Config.errors_to_string errors))
+  | Ok config -> (
+      Log.info "===========================================";
+      Log.info "🚀 Body Parser + CSRF Example";
+      Log.info "===========================================";
+      Log.info (String.concat "" [ "Server: http://localhost:"; string_of_int port ]);
+      Log.info "✨ Features:";
+      Log.info "  - HTML form with CSRF protection";
+      Log.info "  - JSON API endpoint (/api/data)";
+      Log.info "  - Automatic body parsing (urlencoded & JSON)";
+      Log.info "===========================================";
+      match make_app () with
+      | Error error -> Error (Failure error)
+      | Ok app -> (
+          match Suri.start_link ~config app with
+          | Ok _supervisor ->
+              let rec loop () =
+                sleep (Time.Duration.from_secs 100);
+                loop ()
+              in
+              loop ()
+          | Error error ->
+              Log.error "Failed to bind to port 8080";
+              Error (Failure (Suri.start_error_to_string error))
+        )
     )
 
 let () = Runtime.run ~main ~args:Env.args ()

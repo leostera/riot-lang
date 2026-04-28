@@ -94,34 +94,37 @@ let main ~args:_ =
   (* Enable backtraces! Critical for debugger *)
   Log.(set_level Debug);
   Exception.record_backtrace true;
-  let config = Suri.config ~port:3_000 () in
-  match Suri.start_link ~config app with
-  | Ok supervisor ->
-      Log.info
-        "╔════════════════════════════════════════════════╗";
-      Log.info "║  🐛 Debugger Middleware Test                  ║";
-      Log.info "║  http://localhost:3000                        ║";
-      Log.info "║                                                ║";
-      Log.info "║  Try /users/999 to see beautiful error page!  ║";
-      Log.info
-        "╚════════════════════════════════════════════════╝";
-      Log.info "";
-      Log.info "Routes:";
-      Log.info "  GET  /           - Home with links";
-      Log.info "  GET  /users/:id  - Throws if id != 123";
-      Log.info "  GET  /crash      - Direct failwith";
-      Log.info "  GET  /divide     - Division by zero";
-      Log.info "";
-      Log.info "Watch the terminal - errors are logged by debugger!";
-      let count = Supervisor.Dynamic.count_children supervisor in
-      Log.info (String.concat "" [ Int.to_string count.active; " acceptors ready" ]);
-      let rec loop () =
-        sleep (Time.Duration.from_secs 100);
-        loop ()
-      in
-      loop ()
-  | Error _ ->
-      Log.error "Failed to bind to port 3000";
-      Error (Failure "Failed to start server")
+  match Suri.config ~port:3_000 () with
+  | Error errors -> Error (Failure (Suri.Config.errors_to_string errors))
+  | Ok config -> (
+      match Suri.start_link ~config app with
+      | Ok supervisor ->
+          Log.info
+            "╔════════════════════════════════════════════════╗";
+          Log.info "║  🐛 Debugger Middleware Test                  ║";
+          Log.info "║  http://localhost:3000                        ║";
+          Log.info "║                                                ║";
+          Log.info "║  Try /users/999 to see beautiful error page!  ║";
+          Log.info
+            "╚════════════════════════════════════════════════╝";
+          Log.info "";
+          Log.info "Routes:";
+          Log.info "  GET  /           - Home with links";
+          Log.info "  GET  /users/:id  - Throws if id != 123";
+          Log.info "  GET  /crash      - Direct failwith";
+          Log.info "  GET  /divide     - Division by zero";
+          Log.info "";
+          Log.info "Watch the terminal - errors are logged by debugger!";
+          let count = Supervisor.Dynamic.count_children supervisor in
+          Log.info (String.concat "" [ Int.to_string count.active; " acceptors ready" ]);
+          let rec loop () =
+            sleep (Time.Duration.from_secs 100);
+            loop ()
+          in
+          loop ()
+      | Error error ->
+          Log.error "Failed to bind to port 3000";
+          Error (Failure (Suri.start_error_to_string error))
+    )
 
 let () = Runtime.run ~main ~args:Env.args ()
