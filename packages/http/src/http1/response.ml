@@ -81,28 +81,28 @@ let parse_slice = fun input ->
       match Request.parse_headers remaining with
       | Need_more -> Need_more
       | Error error -> Error error
-      | Done { value = (headers_list, body_start); _ } ->
-          let version =
-            Std.Net.Http.Version.from_slice version
-            |> Result.unwrap_or ~default:Std.Net.Http.Version.Http11
-          in
-          let status = Std.Net.Http.Status.of_int status_code in
-          let headers = Std.Net.Http.Header.of_list headers_list in
-          let response =
-            (
-              Std.Net.Http.Response.create status
-              |> fun res ->
-                Std.Net.Http.Response.with_version res version
-                |> fun res -> Std.Net.Http.Response.with_headers res headers
-            )
-            |> fun res ->
-              if String.length body_start > 0 then
-                Std.Net.Http.Response.with_body res body_start
-              else
-                res
-          in
-          let _ = reason in
-          Done { value = response; remaining = body_start }
+      | Done { value = (headers_list, body_start); _ } -> (
+          match Std.Net.Http.Version.from_slice version with
+          | Error _ -> Error Common.InvalidHttpVersion
+          | Ok version ->
+              let status = Std.Net.Http.Status.of_int status_code in
+              let headers = Std.Net.Http.Header.of_list headers_list in
+              let response =
+                (
+                  Std.Net.Http.Response.create status
+                  |> fun res ->
+                    Std.Net.Http.Response.with_version res version
+                    |> fun res -> Std.Net.Http.Response.with_headers res headers
+                )
+                |> fun res ->
+                  if String.length body_start > 0 then
+                    Std.Net.Http.Response.with_body res body_start
+                  else
+                    res
+              in
+              let _ = reason in
+              Done { value = response; remaining = body_start }
+        )
     )
 
 let parse = fun input -> parse_slice (slice_of_string input)

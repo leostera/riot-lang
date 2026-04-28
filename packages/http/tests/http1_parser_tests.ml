@@ -465,6 +465,20 @@ let test_response_404 = fun _ctx ->
   | Need_more -> Result.Error "Unexpected Need_more"
   | Error e -> Result.Error ("Parse error: " ^ error_to_string e)
 
+let test_response_rejects_invalid_http_version = fun _ctx ->
+  let resp = "HTTP/9.9 200 OK\r\nContent-Length: 0\r\n\r\n" in
+  match Http1.Response.parse resp with
+  | Error InvalidHttpVersion -> Result.Ok ()
+  | Error error ->
+      Result.Error ("Expected invalid HTTP version error, got " ^ error_to_string error)
+  | Need_more -> Result.Error "Expected invalid HTTP version error, got Need_more"
+  | Done { value; _ } ->
+      let version =
+        NetResponse.version value
+        |> NetVersion.to_string
+      in
+      Result.Error ("Expected invalid HTTP version error, got parsed " ^ version)
+
 (* Chunked Encoding Tests *)
 
 let test_chunk_single = fun _ctx ->
@@ -576,6 +590,7 @@ let tests =
     case "request_rejects_too_many_headers" test_request_rejects_too_many_headers;
     case "response_200_ok" test_response_200_ok;
     case "response_404" test_response_404;
+    case "response rejects invalid http version" test_response_rejects_invalid_http_version;
     case "chunk_single" test_chunk_single;
     case "chunk_last" test_chunk_last;
     case "chunk_hex_size" test_chunk_hex_size;
