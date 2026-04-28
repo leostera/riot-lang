@@ -48,7 +48,18 @@ find packages services -path '*/tests/*' -prune -o -name riot.toml -print | sort
 ## 0.0.24 - 2026-04-24
 ```
 
-Group by release themes instead of dumping raw commit subjects.
+Write release notes for users, not for the commit log:
+
+- Always put `### riot` first.
+- Bundle all `riot-*` package changes under `### riot`.
+- Do not bundle other packages together. Each non-`riot-*` package that needs
+  release notes gets its own `### <package>` subsection.
+- Each bullet should explain what changed, why it matters, and any behavior or
+  migration impact users should know about.
+- Avoid filler such as "tests were expanded", "code was formatted", or
+  "internals were refreshed" unless the user-facing behavior is also stated.
+- Do not dump raw commit subjects. Rewrite them into concise, descriptive
+  capability, bugfix, compatibility, or performance notes.
 
 Use the last reachable semver tag as the diff anchor:
 

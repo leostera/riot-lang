@@ -1,6 +1,6 @@
 [package]
 name = "pubgrub"
-version = "0.0.25"
+version = "0.0.26"
 description = "PubGrub version solver"
 license = "Apache-2.0"
 public = true

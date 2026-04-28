@@ -33,7 +33,7 @@ only tool you need to install and use to do _everything_ in this stack.
 cross-compilation
 
 * a familiar package management experience -- with commands like `riot add
-@leostera/agents` to add, remove, and update your dependencies
+agents@0.1.2` to add, remove, and update your dependencies
 
 * an extensible command system, where packages can provide custom commands to
 support your workflows better, and they are all surfaced via riot. Think `riot
@@ -91,12 +91,3 @@ There's a lot of things Riot aims to be, but here's a few that Riot does _not_ t
 Riot is the continuation of the work I started with
 [Caramel](https://github.com/leostera/caramel), an Erlang-backend for the OCaml
 compiler.
-
-The scheduler design was heavily inspired by [Eio][eio] by the OCaml Multicore team and
-[Miou][miou] by [Calascibetta Romain](https://twitter.com/Dinoosaure) and the
-[Robur team](https://robur.coop/), as I learned more about Algebraic Effects.
-In particular the `Proc_state` is based on the `State` module in Miou.
-
-[actors]: https://en.wikipedia.org/wiki/Actor_model
-[eio]: https://github.com/ocaml-multicore/eio
-[miou]: https://github.com/robur-coop/miou

@@ -4,32 +4,23 @@
 
 # Before Announcing
 
-* std remove all polymorphic variants -> turn them into regular variants
+* `riot check` should be able to type-check Riot! 
 
-* riot test only tests the last `-p pkg` and not all of the -p's
+* `riot lsp` doesn't use 200gb of ram
+
+# Next
 
 * `riot lock` to relock project deps
 
-* riot test print test time like ... ok (32µs)
-
 * riot test should build one test binary per package to maximize throughput
-
-* riot snapshots review sucks: its hella slow, its not very interactive (a+enter? yuk)
-* riot snapshots review is too slow!
 
 * `riot explain <error-id> --json`, explains any error in the stack
 
 * riot fmt formats markdown comments, and formats code blocks
 
-* riot build takes _ages_ to plan big packages like std: is it syn?
-
-* regression: cold riot build takes _ages_ on syn.deps? 
-
-* lint: if a function uses raise, it should be called _unchecked
+* lint: if a function uses panic, it should be called _unchecked
 
 * lint: externals should be called unsafe_* 
-
-* keep workign on making docs.riot.ml look great and writing the docs 
 
 * riot run hello_world.ml should just work:
   * parses files and detects pragmas like
@@ -38,18 +29,11 @@
 
 * build lock should be acquired _after planning_ to allow for fully cached builds to finish immediately
 
-* `riot check` should be able to type-check Riot! 
-
-* `riot lsp` doesn't use 200gb of ram
-
 * `riot refactor` ? 
     * rename-package
     * rename-module
     * rename-type
     * rename-value
-
-
-# Next
 
 * riot vendor -- quicklly make local copies of dependencies to modify them
 
@@ -111,7 +95,6 @@ ubuntu` that can help us run cross-compiled binaries in a container so can confi
 * Consider `crypto` package with bcrypt, argon, blake, etc
 
 * Std.Task.Supervisor
-* Std.Random.(one_of, choose n, take n, between(min,max)) and random primitives (bool, string, char, int, etc)
 
 * Std.Port for long-running external programs to communicate
 let cmd = Command.make "echo 'what'" in
@@ -137,8 +120,6 @@ Port.open({:spawn, "..."}, opts)
 
 
 * Std.Command.run "..." = (make "..." |> output)
-
-* Borow from Elixir.Enum group_by
 
 * Admin panel for pkgs.ml -- admins are listed via env vars at deploy time?
 

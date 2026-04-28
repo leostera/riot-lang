@@ -1,5 +1,123 @@
 # Changelog
 
+## 0.0.26 - 2026-04-28
+
+### riot
+- `riot build --all` now builds package-provided `riot-fix` rule runners as part of the all-artifacts graph. Packages that ship custom lint rules now fail during the normal workspace build when their generated runner no longer compiles, instead of surprising users later during `riot fix`.
+- Generated fix-rule runners now use the same binary entrypoint shape as regular Riot executables: `let main ~args = ...` plus `Runtime.run ~main ~args:Env.args`. This keeps provider binaries compatible with Riot's entrypoint validation.
+- `riot fix --check` works with the new `Syn.Ast`-based rule pipeline, including generated package providers. Parse diagnostics and lint diagnostics stay separate, which makes fix output easier to interpret.
+- Debug builds now treat OCaml warning 6, omitted labels in function application, as an error. This catches calls that accidentally drop required labels during development instead of letting them pass as warnings.
+- `riot test` now honors repeated `-p` filters. Commands such as `riot test -p syn -p krasny` now run both selected packages instead of silently using only the last package flag.
+- Human test output now shows per-test timings. Normal timings are subdued, slow small tests are highlighted, and failures render in bold red while JSON output remains machine-readable.
+- Snapshot commands start reporting work as pending snapshots are found instead of waiting for a full repository scan. `snapshot accept`, `snapshot reject`, and `snapshot review` only scan supported snapshot locations, so large workspaces get interactive feedback much sooner.
+- `snapshot review` now exits cleanly without printing action prompts when there are no pending snapshots.
+- Obsolete checked-in Riot binary artifacts were removed from the repository so releases are built from the current release pipeline instead of stale local binaries.
+
+### blink
+- Blink now follows the stricter HTTP and WebSocket validation introduced in `http`. Client, transport, websocket, and error paths surface protocol errors more consistently instead of accepting malformed frames or request/response metadata.
+- Managed HTTP, SSE, and websocket flows continue to work with the hardened protocol layer, including retry, budget, circuit-breaker, request rendering, and SSE parsing behavior.
+
+### colors
+- ANSI palette conversion has more stable edge behavior: out-of-range palette indices clamp to the closest valid entry, duplicate palette colors canonicalize predictably, and nearest-color lookup remains stable for off-palette inputs.
+- RGB, linear RGB, XYZ, LUV, and UV conversions now have tighter numeric behavior around roundtrips, finite edge cases, and perceptual blending, which makes terminal color and gradient output more predictable.
+
+### contentstore
+- Object, tree, and named-object writes are safer under concurrency. Same-hash object writers and same-key named writers now converge on a readable value instead of risking corrupt partial state.
+- Named-object overwrites preserve a valid old or new value for readers while the overwrite is in progress. This matters for cache and registry metadata paths that may be read while another process is updating them.
+- Store operations now return structured errors for missing objects, permission failures, unwritable namespaces, and failed tree commits, so callers can distinguish absent content from real filesystem failures.
+- Temporary files from failed object, named-object, and file saves are cleaned up more reliably, reducing stale cache debris after interrupted writes.
+
+### fixme
+- Rule authors now get `Syn.Ast`-based traversal and matching helpers for expressions, patterns, let bindings, parameters, match cases, applications, identifiers, and spans.
+- Provider rules use the same typed traversal shape as built-in rules, which removes the old dependency on the removed CST API and makes custom rule providers easier to keep compatible with Syn.
+- Rule helpers expose source spans directly from typed Ast handles, so diagnostics and fixes no longer need to recover locations by scanning raw syntax nodes.
+
+### gooey
+- Gooey layout and rendering behavior is more stable for nested layouts, clipping, borders, padding, margins, custom commands, unicode text width, and terminal scissor regions.
+- Style and config helpers now reject invalid values more consistently and preserve rendering metadata such as text size, z-index, background, borders, and custom render commands.
+
+### http
+- HTTP/1 parsing is stricter and more complete. Request and response parsers now validate CRLF placement, request targets, response versions, malformed headers, incomplete status/request lines, ambiguous body framing, and fixed body framing.
+- HTTP/1 chunked transfer support was expanded for requests and responses, including chunked body decoding, chunk delimiter validation, chunk-size overflow handling, trailer parsing, and line/header block byte limits.
+- HTTP cookie parsing and rendering now return structured errors for invalid names, values, max-age fields, same-site values, content-length fields, and set-cookie payloads.
+- HTTP/1 server-sent event parsing can now assemble complete SSE events.
+- HTTP/2 frame parsing, serialization, and connection handling were hardened across stream id validation, settings validation, empty settings acknowledgements, frame payload sizes, metadata checks, and invalid serialized payloads.
+- HTTP/2 stream-state validation now rejects peer protocol violations such as data before headers, data after stream end, headers after stream end, idle-stream control frames, new streams after GOAWAY, invalid stream ordering, unsupported push promises, and excessive concurrent streams.
+- HTTP/2 flow control now tracks split windows, applies remote initial windows, rejects window-update overflow, and validates self-dependent priorities.
+- HPACK handling now validates dynamic table size update order, resets reader state correctly, rejects unsupported Huffman strings, encodes custom literal header names, and guards integer overflow.
+- WebSocket parsing and serialization now validate masking roles, invalid frame encodings, close payloads, extended payload lengths, parser payload limits, and remaining frame bytes.
+- WebSocket message assembly was added so fragmented frames can be reconstructed into complete messages.
+
+### kernel
+- Kernel gained a queue surface for FIFO work management in lower-level runtime code.
+- Async readiness handling is more complete across pipes, timers, UDP, TCP, processes, deregistration, duplicate registration, mixed event sources, closed sources, and invalid polling limits.
+- File and filesystem operations now report more precise typed errors for missing paths, dangling symlinks, invalid file kinds, invalid read/write slices, directory removal failures, copy/rename behavior, and link metadata.
+- IO buffer, IoVec, IoSlice, process, environment, monotonic time, and system time paths were tightened so low-level runtime APIs preserve byte ranges, timestamps, and OS error context more reliably.
+
+### krasny
+- Krasny is now centered on the streaming formatter path. The old document solver pipeline, old stream-doc intermediary, and old lower2-style naming were removed or renamed so the formatter has one primary architecture.
+- Formatter internals were split and renamed around the actual streaming formatter responsibilities, with text helpers, formatter entrypoints, and layout policy surfaces separated more clearly.
+- Layout decisions now route through a central policy layer for let right-hand sides, function bodies, applications, infix chains, records, lists, tuples, parenthesized expressions, if conditions, and type separators.
+- Application formatting now uses explicit layout roles rather than ambient force flags, making nested applications and function bodies more predictable.
+- Layout policy tracing was added and covered by tests, so future formatter policy changes can explain why a node chose inline, hanging, vertical, or block layout.
+- The formatter preserves typed-expression parentheses correctly and avoids adding redundant parentheses around ascriptions in match scrutinees, constructor payloads, and parenthesized typed expressions.
+- Formatter policy now keeps fitting constructor or-patterns inline, breaks nested constructor patterns when needed, breaks match bodies after multiline constructor patterns, and keeps paired `if` branch parentheses on the right line.
+- Local let bindings now respect the configured width, including overflowing single-line bindings and multiline bodies that require `in` placement to stay stable.
+
+### minttea
+- Minttea FPS ticks are more regular, which makes time-driven terminal programs less dependent on uneven render-loop timing.
+- Renderer, IO loop, text input, cursor, sprite, and program paths were tightened so Elm-style terminal apps behave more consistently with the updated Gooey and TTY rendering layers.
+
+### pkgs-ml
+- Registry materialization now returns regular result values for cached and downloaded release trees. Callers can distinguish successful reuse, fresh materialization, and transport/cache failures without relying on exceptions.
+- Filesystem registry caches now handle stale config, corrupt cached archives, gzipped archives, missing package documents, and publish/yank routes more predictably.
+
+### propane
+- Generators, shrinkers, printers, and property runners have more consistent behavior for common standard-library containers such as lists, arrays, options, results, hash maps, hash sets, queues, deques, and heaps.
+- Property failures now retain stable printed values and shrink toward smaller counterexamples more predictably, making failing property tests easier to debug.
+
+### pubgrub
+- Pubgrub range operations, term algebra, incompatibility explanations, partial-solution caching, backtracking, and deterministic solution ordering were tightened.
+- Solver diagnostics now preserve dependency ranges and no-version explanations more clearly, which helps users understand why a package resolution failed.
+- Solver code now avoids removed `List.reverse_append` usage, keeping the package compatible with the cleaned-up standard collection surface.
+
+### std
+- `Std.Crypto` now exposes HMAC-SHA256 helpers used by Suri session, CSRF, and LiveView signing paths.
+- `Std.Http.Status` gained equality helpers for status comparisons.
+- `Std.Test` output now reports per-test timings in the human runner while preserving JSON mode for automation.
+- `Vector.concat` and `Vector.extend` support efficient vector concatenation without building temporary lists. `extend` mutates the left vector in place, which is useful in hot parser, formatter, and analysis paths.
+- Queue, Deque, HashMap, HashSet, Heap, TypeMap, iterator, mutable iterator, IO reader/writer, buffered reader, and Unicode helpers now have tighter semantics around order, mutation, borrowed slices, and invalid input.
+- `Std.Command.output` remains safe around inherited stdout/stderr pipes and delayed output, preserving idle callbacks and streamed line callbacks for long-running commands.
+
+### suri
+- Suri gained a hardened server limits configuration covering request body limits, keep-alive request limits, websocket frame limits, and socket pool startup validation.
+- HTTP request handling now validates host headers, request body framing, request ids, method overrides, forwarded client IPs, query parameters, accept headers, CORS configuration, basic auth, static file paths, router matching, websocket routes, and response serialization.
+- Suri now returns typed errors for startup configuration, connection handling, protocol handling, static paths, body parsing, session cookie decoding, config environment lookup, CSRF runtime and token unmasking, CORS preflight, liveview protocol, liveview HTML attributes, HTTP/1 validation, and accept quality parsing.
+- Sessions and CSRF handling were hardened with HMAC signing, session secret validation, mandatory sessions before CSRF, and structured liveview token/session validation.
+- CORS behavior now handles preflight responses as no-content responses and merges `Vary` headers correctly.
+- Static file handling now enforces directory roots, dotfile policy, mount boundaries, partial ranges, and no-body response ETag behavior.
+- LiveView support now carries typed event payload errors and serializes LiveView errors structurally.
+- WebSocket handshakes, frame limits, message flow, and connection writes are validated more carefully.
+- App testing helpers, middleware test helpers, and core testing helpers are now exposed as APIs, while the older top-level testing facade was removed.
+- Handler exceptions are recovered into structured responses, and fallback unsent response behavior is covered by tests.
+
+### syn
+- `Syn.Ast` continued the semantic-view cleanup: source files are now concrete implementation or interface views, and the old empty source-file state was removed from the public shape.
+- Ast view handles are opaque at the public boundary and expose typed helpers such as `span`, `width`, `view`, `fold_*`, and count accessors instead of requiring downstream callers to unwrap arbitrary syntax nodes.
+- Ast casts now use structured cast results, so callers can distinguish successful typed views, unknown recovery nodes, and true cast errors explicitly.
+- Identifier handling was normalized around opaque `Ident` views instead of loose path vectors, making downstream dependency and lint logic less likely to accidentally traverse arbitrary token sequences.
+- Module expression and module type views now expose structured bodies, including module declarations, module type declarations, module type constraints, and body items, instead of leaking parser-specific placeholder states.
+- Parameter views were normalized into a more semantic shape, covering labeled and optional parameters without splitting optional-default syntax into unrelated variants.
+- Pattern views were tightened to remove non-pattern constructs and expose constructor, record, alias, first-class module, and constraint structure more directly.
+- Expression and type views were simplified around semantic constructs; parenthesized and syntactic-only wrappers were collapsed where possible so consumers see the expression or type they actually need to analyze.
+- Destructuring `let` binding patterns and function parameter spines are parsed more precisely, including the distinction between multiple function parameters and parenthesized constructor patterns.
+- Class syntax support was removed from the supported Syn subset, matching the language surface Riot wants to keep formatting and analyzing.
+- `Syn.Deps` and other Ast consumers now use the new views and controlled folds, with less list churn in hot dependency-analysis paths.
+
+### swisstable
+- SwissTable behavior was tightened for insertion, removal, tombstone reuse, overwrite, clear, resize, entry APIs, collision handling, and iteration.
+- Complex record, tuple, variant, and nested keys now behave consistently with the standard hash-map model across long operation sequences.
+
 ## 0.0.25 - 2026-04-27
 
 ### riot
