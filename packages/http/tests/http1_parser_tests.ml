@@ -769,6 +769,75 @@ let test_response_rejects_invalid_content_length = fun _ctx ->
   | Need_more -> Result.Error "Expected invalid Content-Length error, got Need_more"
   | Done _ -> Result.Error "Expected invalid Content-Length error"
 
+let test_response_accepts_matching_duplicate_content_length = fun _ctx ->
+  let resp = "HTTP/1.1 200 OK\r\nContent-Length: 5\r\nContent-Length: 5\r\n\r\nHellonext" in
+  match Http1.Response.parse resp with
+  | Done { value = parsed; remaining } ->
+      let body =
+        NetResponse.body parsed
+        |> Option.map ~fn:NetBody.to_string
+      in
+      if body != Some "Hello" then
+        Result.Error "Expected body Hello on parsed response"
+      else if remaining != "next" then
+        Result.Error ("Expected remaining next, got " ^ remaining)
+      else
+        Result.Ok ()
+  | Need_more -> Result.Error "Unexpected Need_more"
+  | Error error -> Result.Error ("Parse error: " ^ error_to_string error)
+
+let test_response_rejects_transfer_encoding_with_content_length = fun _ctx ->
+  let resp = "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\nContent-Length: 5\r\n\r\n0\r\n\r\n" in
+  match Http1.Response.parse resp with
+  | Error TransferEncodingWithContentLength -> Result.Ok ()
+  | Error error ->
+      Result.Error ("Expected Transfer-Encoding with Content-Length error, got "
+      ^ error_to_string error)
+  | Need_more -> Result.Error "Expected Transfer-Encoding with Content-Length error, got Need_more"
+  | Done _ -> Result.Error "Expected Transfer-Encoding with Content-Length error"
+
+let test_response_no_body_informational_preserves_following_bytes = fun _ctx ->
+  let next = "HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n" in
+  let resp = "HTTP/1.1 103 Early Hints\r\nTransfer-Encoding: chunked\r\n\r\n" ^ next in
+  match Http1.Response.parse resp with
+  | Done { value = parsed; remaining } ->
+      let body = NetResponse.body parsed in
+      let status =
+        NetResponse.status parsed
+        |> NetStatus.to_int
+      in
+      if status != 103 then
+        Result.Error ("Expected status 103, got " ^ Int.to_string status)
+      else if body != None then
+        Result.Error "Expected informational response to have no body"
+      else if remaining != next then
+        Result.Error ("Expected following response in remaining, got " ^ remaining)
+      else
+        Result.Ok ()
+  | Need_more -> Result.Error "Unexpected Need_more"
+  | Error error -> Result.Error ("Parse error: " ^ error_to_string error)
+
+let test_response_not_modified_preserves_following_bytes = fun _ctx ->
+  let next = "HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n" in
+  let resp = "HTTP/1.1 304 Not Modified\r\nContent-Length: 8\r\n\r\n" ^ next in
+  match Http1.Response.parse resp with
+  | Done { value = parsed; remaining } ->
+      let body = NetResponse.body parsed in
+      let status =
+        NetResponse.status parsed
+        |> NetStatus.to_int
+      in
+      if status != 304 then
+        Result.Error ("Expected status 304, got " ^ Int.to_string status)
+      else if body != None then
+        Result.Error "Expected 304 response to have no body"
+      else if remaining != next then
+        Result.Error ("Expected following response in remaining, got " ^ remaining)
+      else
+        Result.Ok ()
+  | Need_more -> Result.Error "Unexpected Need_more"
+  | Error error -> Result.Error ("Parse error: " ^ error_to_string error)
+
 let test_response_rejects_invalid_http_version = fun _ctx ->
   let resp = "HTTP/9.9 200 OK\r\nContent-Length: 0\r\n\r\n" in
   match Http1.Response.parse resp with
@@ -782,6 +851,38 @@ let test_response_rejects_invalid_http_version = fun _ctx ->
         |> NetVersion.to_string
       in
       Result.Error ("Expected invalid HTTP version error, got parsed " ^ version)
+
+let test_response_rejects_short_status_code = fun _ctx ->
+  let resp = "HTTP/1.1 99 Weird\r\nContent-Length: 0\r\n\r\n" in
+  match Http1.Response.parse resp with
+  | Error InvalidStatusCode -> Result.Ok ()
+  | Error error -> Result.Error ("Expected invalid status code error, got " ^ error_to_string error)
+  | Need_more -> Result.Error "Expected invalid status code error, got Need_more"
+  | Done _ -> Result.Error "Expected invalid status code error"
+
+let test_response_rejects_status_code_below_100 = fun _ctx ->
+  let resp = "HTTP/1.1 099 Weird\r\nContent-Length: 0\r\n\r\n" in
+  match Http1.Response.parse resp with
+  | Error InvalidStatusCode -> Result.Ok ()
+  | Error error -> Result.Error ("Expected invalid status code error, got " ^ error_to_string error)
+  | Need_more -> Result.Error "Expected invalid status code error, got Need_more"
+  | Done _ -> Result.Error "Expected invalid status code error"
+
+let test_response_rejects_long_status_code = fun _ctx ->
+  let resp = "HTTP/1.1 1000 Weird\r\nContent-Length: 0\r\n\r\n" in
+  match Http1.Response.parse resp with
+  | Error InvalidStatusCode -> Result.Ok ()
+  | Error error -> Result.Error ("Expected invalid status code error, got " ^ error_to_string error)
+  | Need_more -> Result.Error "Expected invalid status code error, got Need_more"
+  | Done _ -> Result.Error "Expected invalid status code error"
+
+let test_response_rejects_invalid_status_line_crlf = fun _ctx ->
+  let resp = "HTTP/1.1 200 OK\rContent-Length: 0\r\n\r\n" in
+  match Http1.Response.parse resp with
+  | Error InvalidCrlf -> Result.Ok ()
+  | Error error -> Result.Error ("Expected invalid CRLF error, got " ^ error_to_string error)
+  | Need_more -> Result.Error "Expected invalid CRLF error, got Need_more"
+  | Done _ -> Result.Error "Expected invalid CRLF error"
 
 let test_response_status_line_limit = fun _ctx ->
   let resp = "HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n" in
@@ -1153,7 +1254,23 @@ let tests =
       "response rejects conflicting content length"
       test_response_rejects_conflicting_content_length;
     case "response rejects invalid content length" test_response_rejects_invalid_content_length;
+    case
+      "response accepts matching duplicate content length"
+      test_response_accepts_matching_duplicate_content_length;
+    case
+      "response rejects transfer encoding with content length"
+      test_response_rejects_transfer_encoding_with_content_length;
+    case
+      "response no-body informational preserves following bytes"
+      test_response_no_body_informational_preserves_following_bytes;
+    case
+      "response not modified preserves following bytes"
+      test_response_not_modified_preserves_following_bytes;
     case "response rejects invalid http version" test_response_rejects_invalid_http_version;
+    case "response rejects short status code" test_response_rejects_short_status_code;
+    case "response rejects status code below 100" test_response_rejects_status_code_below_100;
+    case "response rejects long status code" test_response_rejects_long_status_code;
+    case "response rejects invalid status line crlf" test_response_rejects_invalid_status_line_crlf;
     case "response status line limit" test_response_status_line_limit;
     case
       "response status line limit applies before crlf"

@@ -32,6 +32,14 @@ type body_framing =
   | FixedBody of int
   | ChunkedBody
 
+let parse_status_code = fun code_str ->
+  if Slice.length code_str != 3 then
+    None
+  else
+    match Int.parse (Slice.to_string code_str) with
+    | Some status_code when status_code >= 100 && status_code <= 999 -> Some status_code
+    | _ -> None
+
 let parse_status_line_slice = fun ?(max_length = 8_192) input ->
   let cursor = Cursor.from_slice input in
   match Cursor.take_until_char cursor '\r' with
@@ -60,7 +68,7 @@ let parse_status_line_slice = fun ?(max_length = 8_192) input ->
                     let version_cursor = Cursor.from_slice version in
                     match Cursor.take_n version_cursor 5 with
                     | Some (prefix, _) when Slice.equal_string prefix "HTTP/" -> (
-                        match Int.parse (Slice.to_string code_str) with
+                        match parse_status_code code_str with
                         | None -> Cursor_error Common.InvalidStatusCode
                         | Some status_code ->
                             Cursor_done {
