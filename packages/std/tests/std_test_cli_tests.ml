@@ -427,6 +427,19 @@ let test_run_tests_json_includes_timing_fields = fun _ctx ->
     else
       Error "expected test json output to include timing fields"
 
+let test_run_tests_pretty_includes_case_timing = fun _ctx ->
+  let output = run_sample_capture [ "run-tests"; "inline_snapshot_probe" ] in
+  if not (Int.equal output.status 0) then
+    Error ("expected pretty run to succeed, got "
+    ^ Int.to_string output.status
+    ^ ": "
+    ^ output.stdout
+    ^ output.stderr)
+  else if String.contains output.stdout "test inline_snapshot_probe ... ok (" then
+    Ok ()
+  else
+    Error ("expected pretty output to include per-test timing, got: " ^ output.stdout)
+
 let test_run_tests_json_includes_reliability_metadata = fun _ctx ->
   let output = run_sample_capture [ "run-tests"; "flaky_then_ok"; "--json" ] in
   if not (Int.equal output.status 0) then
@@ -697,6 +710,10 @@ let meta_tests = [
     ~size:Large
     "run-tests --json includes timing fields"
     test_run_tests_json_includes_timing_fields;
+  Test.case
+    ~size:Large
+    "run-tests pretty includes case timing"
+    test_run_tests_pretty_includes_case_timing;
   Test.case
     ~size:Large
     "run-tests --json includes reliability metadata"

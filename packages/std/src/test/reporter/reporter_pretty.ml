@@ -25,6 +25,17 @@ let attempts_suffix = fun attempts ->
   else
     " after " ^ Int.to_string attempts ^ " attempts"
 
+let format_duration_us = fun duration_us ->
+  if duration_us < 1_000 then
+    Int.to_string duration_us ^ "µs"
+  else if duration_us < 1_000_000 then
+    Float.to_string ~precision:2 (Float.from_int duration_us /. 1_000.0) ^ "ms"
+  else
+    Float.to_string ~precision:2 (Float.from_int duration_us /. 1_000_000.0) ^ "s"
+
+let duration_suffix = fun duration ->
+  " (" ^ format_duration_us (Time.Duration.to_micros duration) ^ ")"
+
 let init = fun (suite: Intf.suite_info) total ->
   (
     match (suite.source_file, suite.binary_path) with
@@ -54,10 +65,23 @@ let on_result = fun _idx (result: Test_result.t) ->
         | Test_case.Property { examples } -> Int.to_string examples ^ " examples ok"
       in
       println
-        (prefix ^ " " ^ result.name ^ metadata ^ " ... " ^ suffix ^ attempts_suffix result.attempts)
+        (prefix
+        ^ " "
+        ^ result.name
+        ^ metadata
+        ^ " ... "
+        ^ suffix
+        ^ attempts_suffix result.attempts
+        ^ duration_suffix result.duration)
   | Test_result.Failed msg ->
       println
-        (prefix ^ " " ^ result.name ^ metadata ^ " ... FAILED" ^ attempts_suffix result.attempts);
+        (prefix
+        ^ " "
+        ^ result.name
+        ^ metadata
+        ^ " ... FAILED"
+        ^ attempts_suffix result.attempts
+        ^ duration_suffix result.duration);
       println ("       " ^ msg)
   | Test_result.Timed_out { timeout } ->
       println
@@ -68,8 +92,11 @@ let on_result = fun _idx (result: Test_result.t) ->
         ^ " ... TIMED OUT after "
         ^ Int.to_string (Time.Duration.to_millis timeout)
         ^ "ms"
-        ^ attempts_suffix result.attempts)
-  | Test_result.Skipped -> println (prefix ^ " " ^ result.name ^ metadata ^ " ... skipped")
+        ^ attempts_suffix result.attempts
+        ^ duration_suffix result.duration)
+  | Test_result.Skipped ->
+      println
+        (prefix ^ " " ^ result.name ^ metadata ^ " ... skipped" ^ duration_suffix result.duration)
 
 let finalize = fun (summary: Test_result.summary) ->
   println "";

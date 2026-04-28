@@ -137,11 +137,13 @@ let take = fun limit values ->
 
 let format_duration_us = fun duration_us ->
   if duration_us < 1_000 then
-    Int.to_string duration_us ^ "us"
+    Int.to_string duration_us ^ "µs"
   else if duration_us < 1_000_000 then
     Float.to_string ~precision:2 (Float.from_int duration_us /. 1_000.0) ^ "ms"
   else
     Float.to_string ~precision:2 (Float.from_int duration_us /. 1_000_000.0) ^ "s"
+
+let duration_suffix = fun duration_us -> " (" ^ format_duration_us duration_us ^ ")"
 
 let metadata_labels = fun size reliability ->
   let size_labels =
@@ -587,9 +589,24 @@ let print_test_result = fun
         | Test_runtime.Test -> "ok"
         | Test_runtime.Property { examples } -> Int.to_string examples ^ " examples ok"
       in
-      println (prefix ^ " " ^ name ^ metadata ^ " ... " ^ suffix ^ attempts_suffix result.attempts)
+      println
+        (prefix
+        ^ " "
+        ^ name
+        ^ metadata
+        ^ " ... "
+        ^ suffix
+        ^ attempts_suffix result.attempts
+        ^ duration_suffix result.duration_us)
   | Test_runtime.Failed message ->
-      println (prefix ^ " " ^ name ^ metadata ^ " ... FAILED" ^ attempts_suffix result.attempts);
+      println
+        (prefix
+        ^ " "
+        ^ name
+        ^ metadata
+        ^ " ... FAILED"
+        ^ attempts_suffix result.attempts
+        ^ duration_suffix result.duration_us);
       if not (String.equal message "") then
         println ("       " ^ message)
   | Test_runtime.Timed_out { timeout_ms } ->
@@ -600,8 +617,10 @@ let print_test_result = fun
         ^ metadata
         ^ " ... TIMED OUT "
         ^ timeout_message timeout_ms
-        ^ attempts_suffix result.attempts)
-  | Test_runtime.Skipped -> println (prefix ^ " " ^ name ^ metadata ^ " ... skipped")
+        ^ attempts_suffix result.attempts
+        ^ duration_suffix result.duration_us)
+  | Test_runtime.Skipped ->
+      println (prefix ^ " " ^ name ^ metadata ^ " ... skipped" ^ duration_suffix result.duration_us)
 
 let write_test_event = fun
   ~(suite_labels:suite_source_label_entry list)

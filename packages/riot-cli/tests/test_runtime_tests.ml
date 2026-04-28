@@ -7,6 +7,14 @@ let package_name = fun name ->
   Riot_model.Package_name.from_string name
   |> Result.expect ~msg:("invalid package name: " ^ name)
 
+let make_test_package = fun name ->
+  Riot_model.Package.make
+    ~name:(package_name name)
+    ~path:(Path.v ("/workspace/packages/" ^ name))
+    ~relative_path:(Path.v ("packages/" ^ name))
+    ~binaries:[ { name = name ^ "_tests"; path = Path.v ("tests/" ^ name ^ "_tests.ml") } ]
+    ()
+
 let sample_suite = {
   Riot_cli.Test_runtime.package_name = package_name "demo";
   suite_name = "demo_tests";
@@ -95,6 +103,28 @@ let test_suite_progress_test_case_result_ignores_non_completed_event = fun _ctx 
   | Ok (Some _) -> Error "expected non-completed progress event to be ignored"
   | Error err -> Error ("expected non-completed progress event to be ignored: " ^ err)
 
+let test_collect_suite_binaries_keeps_multiple_package_filters = fun _ctx ->
+  let workspace =
+    Riot_model.Workspace.make_realized
+      ~root:(Path.v "/workspace")
+      ~packages:[ make_test_package "alpha"; make_test_package "beta"; make_test_package "gamma"; ]
+      ()
+  in
+  let suites =
+    Riot_cli.Test_runtime.collect_suite_binaries
+      workspace
+      ~package_filters:[ package_name "alpha"; package_name "gamma" ]
+      ()
+  in
+  let actual =
+    suites
+    |> List.map
+      ~fn:(fun (suite: Riot_cli.Test_runtime.suite_binary) ->
+        Riot_model.Package_name.to_string suite.package_name ^ ":" ^ suite.suite_name)
+  in
+  Test.assert_equal ~expected:[ "alpha:alpha_tests"; "gamma:gamma_tests" ] ~actual;
+  Ok ()
+
 let tests = [
   Test.case "suite heartbeat event renders json" test_suite_heartbeat_event_to_json;
   Test.case
@@ -103,6 +133,9 @@ let tests = [
   Test.case
     "suite progress ignores non-completed events"
     test_suite_progress_test_case_result_ignores_non_completed_event;
+  Test.case
+    "collect suite binaries keeps multiple package filters"
+    test_collect_suite_binaries_keeps_multiple_package_filters;
 ]
 
 let main ~args = Test.Cli.main ~name:"test_runtime_tests" ~tests ~args ()
