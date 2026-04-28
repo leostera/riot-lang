@@ -52,26 +52,13 @@ let make_diagnostic = fun token ->
     ()
 
 let check_tree = fun (ctx: Api.Rule.context) _red_root ->
-  match ctx.cst with
-  | Syn.Cst.Implementation { items; _ } ->
-      items
-      |> List.concat_map Api.Traversal.expressions_of_structure_item
-      |> List.filter_map
-        (
-          function
-          | Syn.Cst.Expression.Infix expr when String.equal
-            (Syn.Cst.InfixExpression.operator expr)
-            "<>" ->
-              let token =
-                match Syn.Cst.InfixExpression.operator_tokens expr with
-                | token :: _ -> Some (Syn.Cst.Token.syntax_token token)
-                | [] -> None
-              in
-              token
-              |> Option.map make_diagnostic
-          | _ -> None
-        )
-  | Syn.Cst.Interface _ -> []
+  Riot_fix.Rule_query.expressions ctx
+  |> List.filter_map
+    ~fn:(fun expr ->
+      match Syn.Ast.Expr.view expr with
+      | Infix { operator; _ } when String.equal (Syn.Ast.Token.text operator) "<>" ->
+          Some (make_diagnostic operator)
+      | _ -> None)
 
 let rule = fun () ->
   Api.Rule.make

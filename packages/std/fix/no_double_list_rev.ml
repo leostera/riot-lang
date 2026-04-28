@@ -2,6 +2,7 @@ open Std
 open Std.Collections
 
 module Api = Fixme
+module H = Ast_rule_helpers
 
 let package_name = "std"
 
@@ -32,45 +33,9 @@ intermediate transformation was deleted while the cleanup never happened.
 
 let explanations = fun () -> [ explanation ]
 
-let rec unwrap_expression = fun expr ->
-  match expr with
-  | Syn.Cst.Expression.Parenthesized { inner; _ } -> unwrap_expression inner
-  | _ -> expr
-
-let rec expression_name = fun expr ->
-  match unwrap_expression expr with
-  | Syn.Cst.Expression.Path { path; _ } ->
-      Syn.Cst.Ident.segments path
-      |> List.map Syn.Cst.Token.text
-      |> String.concat "."
-      |> fun name -> Some name
-  | Syn.Cst.Expression.FieldAccess { receiver; field_name; _ } -> (
-      match expression_name receiver with
-      | Some receiver_name -> Some (receiver_name ^ "." ^ Syn.Cst.Token.text field_name)
-      | None -> None
-    )
-  | _ -> None
-
-let rec flatten_apply = fun expr ->
-  match unwrap_expression expr with
-  | Syn.Cst.Expression.Apply { callee; argument; _ } ->
-      let (head, arguments) = flatten_apply callee in
-      (head, arguments @ [ argument ])
-  | _ -> (unwrap_expression expr, [])
-
-let positional_arguments = fun arguments ->
-  arguments
-  |> List.filter_map
-    (
-      function
-      | Syn.Cst.Positional expr -> Some expr
-      | Syn.Cst.Labeled _
-      | Syn.Cst.Optional _ -> None
-    )
-
 let rev_argument = fun expr ->
-  let (head, arguments) = flatten_apply expr in
-  match (expression_name head, positional_arguments arguments) with
+  let (head, arguments) = H.flatten_apply expr in
+  match (H.expr_name head, arguments) with
   | (Some "List.rev", [ argument ]) -> Some argument
   | _ -> None
 
@@ -78,9 +43,7 @@ let make_fix = fun ~outer ~replacement ->
   Api.Fix.make
     ~title:"Replace List.rev (List.rev xs) with xs"
     ~operations:[
-      Api.Fix.replace_node
-        ~target:(Syn.Cst.Expression.syntax_node outer)
-        ~replacement:(Syn.Cst.Expression.syntax_node replacement);
+      Api.Fix.replace_node ~target:(H.expr_node outer) ~replacement:(H.expr_node replacement);
     ]
 
 let make_diagnostic = fun ~outer ~replacement ->
@@ -90,7 +53,7 @@ let make_diagnostic = fun ~outer ~replacement ->
       rule_id = package_rule_id;
       message = explanation.Api.Explanation.message;
     })
-    ~span:(Syn.Ceibo.Red.SyntaxNode.span (Syn.Cst.Expression.syntax_node outer))
+    ~span:(H.expr_span outer)
     ~suggestion:"Replace List.rev (List.rev xs) with xs or keep only one rev if order matters."
     ~fix:(make_fix ~outer ~replacement)
     ()
@@ -105,11 +68,8 @@ let diagnostic_for_expression = fun expr ->
   | None -> None
 
 let check_tree = fun (ctx: Api.Rule.context) _red_root ->
-  let source_file = ctx.cst in
-  Syn.Cst.SourceFile.structure_items source_file
-  |> Option.unwrap_or ~default:[]
-  |> List.concat_map Api.Traversal.expressions_of_structure_item
-  |> List.filter_map diagnostic_for_expression
+  Riot_fix.Rule_query.expressions ctx
+  |> List.filter_map ~fn:diagnostic_for_expression
 
 let rule = fun () ->
   Api.Rule.make

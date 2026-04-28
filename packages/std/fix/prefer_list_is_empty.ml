@@ -2,6 +2,7 @@ open Std
 open Std.Collections
 
 module Api = Fixme
+module H = Ast_rule_helpers
 
 let package_name = "std"
 
@@ -30,51 +31,9 @@ When the code is asking about emptiness, say so explicitly.
 
 let explanations = fun () -> [ explanation ]
 
-let rec unwrap_expression = fun expr ->
-  match expr with
-  | Syn.Cst.Expression.Parenthesized { inner; _ } -> unwrap_expression inner
-  | _ -> expr
-
-let rec expression_name = fun expr ->
-  match unwrap_expression expr with
-  | Syn.Cst.Expression.Path { path; _ } ->
-      Syn.Cst.Ident.segments path
-      |> List.map Syn.Cst.Token.text
-      |> String.concat "."
-      |> fun name -> Some name
-  | Syn.Cst.Expression.FieldAccess { receiver; field_name; _ } -> (
-      match expression_name receiver with
-      | Some receiver_name -> Some (receiver_name ^ "." ^ Syn.Cst.Token.text field_name)
-      | None -> None
-    )
-  | _ -> None
-
-let rec flatten_apply = fun expr ->
-  match unwrap_expression expr with
-  | Syn.Cst.Expression.Apply { callee; argument; _ } ->
-      let (head, arguments) = flatten_apply callee in
-      (head, arguments @ [ argument ])
-  | _ -> (unwrap_expression expr, [])
-
-let positional_arguments = fun arguments ->
-  arguments
-  |> List.filter_map
-    (
-      function
-      | Syn.Cst.Positional expr -> Some expr
-      | Syn.Cst.Labeled _
-      | Syn.Cst.Optional _ -> None
-    )
-
-let is_zero_literal = fun expr ->
-  match unwrap_expression expr with
-  | Syn.Cst.Expression.Literal (Syn.Cst.Literal.Int { digits; base; _ }) ->
-      base = Syn.Cst.Decimal && String.equal digits "0"
-  | _ -> false
-
 let list_length_argument = fun expr ->
-  let (head, arguments) = flatten_apply expr in
-  match (expression_name head, positional_arguments arguments) with
+  let (head, arguments) = H.flatten_apply expr in
+  match (H.expr_name head, arguments) with
   | (Some "List.length", [ argument ]) -> Some argument
   | _ -> None
 
@@ -85,20 +44,18 @@ let make_diagnostic = fun ~suggestion expr ->
       rule_id = package_rule_id;
       message = explanation.Api.Explanation.message;
     })
-    ~span:(Syn.Ceibo.Red.SyntaxNode.span (Syn.Cst.Expression.syntax_node expr))
+    ~span:(H.expr_span expr)
     ~suggestion
     ()
 
 let diagnostic_for_expression = fun expr ->
-  match unwrap_expression expr with
-  | Syn.Cst.Expression.Infix infix -> (
-      let operator = Syn.Cst.InfixExpression.operator infix in
-      let left = Syn.Cst.InfixExpression.left infix in
-      let right = Syn.Cst.InfixExpression.right infix in
+  match Syn.Ast.Expr.view (H.unwrap_expr expr) with
+  | Infix { left; operator; right } -> (
+      let operator = Syn.Ast.Token.text operator in
       match (operator, list_length_argument left, list_length_argument right) with
-      | ("==", Some _list_expr, _) when is_zero_literal right ->
+      | ("==", Some _list_expr, _) when H.is_zero_literal right ->
           Some (make_diagnostic ~suggestion:"Use List.is_empty xs for this emptiness check." expr)
-      | (">", Some _list_expr, _) when is_zero_literal right ->
+      | (">", Some _list_expr, _) when H.is_zero_literal right ->
           Some (make_diagnostic
             ~suggestion:"Use not (List.is_empty xs) when checking that a list has elements."
             expr)
@@ -107,11 +64,8 @@ let diagnostic_for_expression = fun expr ->
   | _ -> None
 
 let check_tree = fun (ctx: Api.Rule.context) _red_root ->
-  let source_file = ctx.cst in
-  Syn.Cst.SourceFile.structure_items source_file
-  |> Option.unwrap_or ~default:[]
-  |> List.concat_map Api.Traversal.expressions_of_structure_item
-  |> List.filter_map diagnostic_for_expression
+  Riot_fix.Rule_query.expressions ctx
+  |> List.filter_map ~fn:diagnostic_for_expression
 
 let rule = fun () ->
   Api.Rule.make

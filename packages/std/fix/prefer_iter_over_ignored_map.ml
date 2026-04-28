@@ -2,6 +2,7 @@ open Std
 open Std.Collections
 
 module Api = Fixme
+module H = Ast_rule_helpers
 
 let package_name = "std"
 
@@ -28,47 +29,6 @@ program you meant to write.
 
 let explanations = fun () -> [ explanation ]
 
-let rec unwrap_expression = fun expr ->
-  match expr with
-  | Syn.Cst.Expression.Parenthesized { inner; _ } -> unwrap_expression inner
-  | _ -> expr
-
-let rec flatten_apply = fun expr ->
-  match unwrap_expression expr with
-  | Syn.Cst.Expression.Apply { callee; argument; _ } ->
-      let (head, arguments) = flatten_apply callee in
-      (head, arguments @ [ argument ])
-  | _ -> (unwrap_expression expr, [])
-
-let rec expression_name = fun expr ->
-  match unwrap_expression expr with
-  | Syn.Cst.Expression.Path { path; _ } ->
-      Syn.Cst.Ident.segments path
-      |> List.map Syn.Cst.Token.text
-      |> String.concat "."
-      |> fun name -> Some name
-  | Syn.Cst.Expression.FieldAccess { receiver; field_name; _ } -> (
-      match expression_name receiver with
-      | Some receiver_name -> Some (receiver_name ^ "." ^ Syn.Cst.Token.text field_name)
-      | None -> None
-    )
-  | _ -> None
-
-let path_matches = fun ~expected expr ->
-  match expression_name expr with
-  | Some actual -> String.equal actual expected
-  | None -> false
-
-let positional_arguments = fun args ->
-  args
-  |> List.filter_map
-    (
-      function
-      | Syn.Cst.Positional expr -> Some expr
-      | Syn.Cst.Labeled _
-      | Syn.Cst.Optional _ -> None
-    )
-
 let make_diagnostic = fun ~iter_name expr ->
   Api.Diagnostic.make
     ~severity:Warning
@@ -76,35 +36,32 @@ let make_diagnostic = fun ~iter_name expr ->
       rule_id = package_rule_id;
       message = explanation.Api.Explanation.message;
     })
-    ~span:(Syn.Ceibo.Red.SyntaxNode.span (Syn.Cst.Expression.syntax_node expr))
+    ~span:(H.expr_span expr)
     ~suggestion:("Use "
     ^ iter_name
     ^ " when the mapped result is ignored and the traversal exists only for side effects.")
     ()
 
 let diagnostic_for_expression = fun expr ->
-  let (head, arguments) = flatten_apply expr in
-  if not (path_matches ~expected:"ignore" head) then
+  let (head, arguments) = H.flatten_apply expr in
+  if not (H.path_matches ~expected:"ignore" head) then
     None
   else
-    match positional_arguments arguments with
+    match arguments with
     | [ mapped ] -> (
-        let (mapped_head, mapped_arguments) = flatten_apply mapped in
-        match positional_arguments mapped_arguments with
-        | [ _fn; _collection ] when path_matches ~expected:"List.map" mapped_head ->
+        let (mapped_head, mapped_arguments) = H.flatten_apply mapped in
+        match mapped_arguments with
+        | [ _fn; _collection ] when H.path_matches ~expected:"List.map" mapped_head ->
             Some (make_diagnostic ~iter_name:"List.iter" expr)
-        | [ _fn; _collection ] when path_matches ~expected:"Iter.map" mapped_head ->
+        | [ _fn; _collection ] when H.path_matches ~expected:"Iter.map" mapped_head ->
             Some (make_diagnostic ~iter_name:"Iter.iter" expr)
         | _ -> None
       )
     | _ -> None
 
 let check_tree = fun (ctx: Api.Rule.context) _red_root ->
-  let source_file = ctx.cst in
-  Syn.Cst.SourceFile.structure_items source_file
-  |> Option.unwrap_or ~default:[]
-  |> List.concat_map Api.Traversal.expressions_of_structure_item
-  |> List.filter_map diagnostic_for_expression
+  Riot_fix.Rule_query.expressions ctx
+  |> List.filter_map ~fn:diagnostic_for_expression
 
 let rule = fun () ->
   Api.Rule.make
