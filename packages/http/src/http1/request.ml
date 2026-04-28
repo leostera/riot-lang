@@ -142,11 +142,33 @@ let parse_content_length_values = fun values ->
   in
   loop None values
 
-let parse_content_length = fun headers ->
+type body_framing =
+  | NoBody
+  | FixedBody of int
+  | ChunkedBody
+
+let transfer_encoding_is_chunked = fun values ->
+  match values with
+  | [ value ] -> (
+      match String.compare (String.lowercase_ascii (String.trim value)) "chunked" with
+      | Order.EQ -> true
+      | Order.LT
+      | Order.GT -> false
+    )
+  | _ -> false
+
+let parse_body_framing = fun headers ->
   let transfer_encoding = header_values headers "Transfer-Encoding" in
   let content_lengths = header_values headers "Content-Length" in
   match (transfer_encoding, content_lengths) with
-  | ([], values) -> parse_content_length_values values
+  | ([], values) -> (
+      match parse_content_length_values values with
+      | Slice_need_more -> Slice_need_more
+      | Slice_error error -> Slice_error error
+      | Slice_done None -> Slice_done NoBody
+      | Slice_done (Some length) -> Slice_done (FixedBody length)
+    )
+  | (values, []) when transfer_encoding_is_chunked values -> Slice_done ChunkedBody
   | (_ :: _, []) -> Slice_error Common.UnsupportedTransferEncoding
   | (_ :: _, _ :: _) -> Slice_error Common.TransferEncodingWithContentLength
 
@@ -392,15 +414,15 @@ let parse_slice = fun
       | Slice_error error -> Common.Error error
       | Slice_done (headers_list, remaining) ->
           let body_bytes = SliceCursor.remaining remaining in
-          match parse_content_length headers_list with
+          match parse_body_framing headers_list with
           | Slice_need_more -> Common.Need_more
           | Slice_error error -> Common.Error error
-          | Slice_done None ->
+          | Slice_done NoBody ->
               let request =
                 request_of_parts parsed_method parsed_uri parsed_version headers_list Slice.empty
               in
               Common.Done { value = request; remaining = string_of_slice body_bytes }
-          | Slice_done (Some content_length) -> (
+          | Slice_done (FixedBody content_length) -> (
               match split_fixed_body body_bytes content_length with
               | Slice_need_more -> Common.Need_more
               | Slice_error error -> Common.Error error
@@ -409,6 +431,21 @@ let parse_slice = fun
                     request_of_parts parsed_method parsed_uri parsed_version headers_list body
                   in
                   Common.Done { value = request; remaining }
+            )
+          | Slice_done ChunkedBody -> (
+              match Chunk.decode_slice body_bytes with
+              | Common.Need_more -> Common.Need_more
+              | Common.Error error -> Common.Error error
+              | Common.Done { value = decoded; _ } ->
+                  let request =
+                    request_of_parts
+                      parsed_method
+                      parsed_uri
+                      parsed_version
+                      headers_list
+                      (slice_of_string decoded.body)
+                  in
+                  Common.Done { value = request; remaining = decoded.remaining }
             )
     )
 

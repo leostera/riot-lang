@@ -322,8 +322,8 @@ let test_request_rejects_unsupported_transfer_encoding = fun _ctx ->
     build_request
       ~method_:"POST"
       ~path:"/upload"
-      ~headers:[ ("Host", "example.com"); ("Transfer-Encoding", "chunked"); ]
-      ~body:"5\r\nHello\r\n0\r\n\r\n"
+      ~headers:[ ("Host", "example.com"); ("Transfer-Encoding", "gzip"); ]
+      ~body:"Hello"
   in
   match Http1.Request.parse req with
   | Error UnsupportedTransferEncoding -> Result.Ok ()
@@ -331,6 +331,64 @@ let test_request_rejects_unsupported_transfer_encoding = fun _ctx ->
       Result.Error ("Expected unsupported Transfer-Encoding error, got " ^ error_to_string error)
   | Need_more -> Result.Error "Expected unsupported Transfer-Encoding error, got Need_more"
   | Done _ -> Result.Error "Expected unsupported Transfer-Encoding error"
+
+let test_request_parses_chunked_body = fun _ctx ->
+  let req =
+    build_request
+      ~method_:"POST"
+      ~path:"/upload"
+      ~headers:[ ("Host", "example.com"); ("Transfer-Encoding", "chunked"); ]
+      ~body:"5\r\nHello\r\n6\r\n world\r\n0\r\n\r\n"
+  in
+  match expect_request_parse req with
+  | Error error -> Result.Error error
+  | Ok (parsed, remaining) ->
+      let body =
+        NetRequest.body parsed
+        |> Option.map ~fn:NetBody.to_string
+      in
+      if body != Some "Hello world" then
+        Result.Error "Expected decoded chunked request body"
+      else if remaining != "" then
+        Result.Error ("Expected empty remaining, got " ^ remaining)
+      else
+        Result.Ok ()
+
+let test_request_parses_chunked_body_with_trailers_and_remaining = fun _ctx ->
+  let next = "GET /next HTTP/1.1\r\nHost: example.com\r\n\r\n" in
+  let req =
+    build_request
+      ~method_:"POST"
+      ~path:"/upload"
+      ~headers:[ ("Host", "example.com"); ("Transfer-Encoding", "chunked"); ]
+      ~body:("5\r\nHello\r\n0\r\nETag: abc\r\n\r\n" ^ next)
+  in
+  match expect_request_parse req with
+  | Error error -> Result.Error error
+  | Ok (parsed, remaining) ->
+      let body =
+        NetRequest.body parsed
+        |> Option.map ~fn:NetBody.to_string
+      in
+      if body != Some "Hello" then
+        Result.Error "Expected decoded chunked request body"
+      else if remaining != next then
+        Result.Error ("Expected pipelined request in remaining, got " ^ remaining)
+      else
+        Result.Ok ()
+
+let test_request_incomplete_chunked_body_needs_more = fun _ctx ->
+  let req =
+    build_request
+      ~method_:"POST"
+      ~path:"/upload"
+      ~headers:[ ("Host", "example.com"); ("Transfer-Encoding", "chunked"); ]
+      ~body:"5\r\nHello\r\n0\r\n"
+  in
+  match Http1.Request.parse req with
+  | Need_more -> Result.Ok ()
+  | Error error -> Result.Error ("Expected Need_more, got " ^ error_to_string error)
+  | Done _ -> Result.Error "Expected Need_more for incomplete chunked request body"
 
 let test_request_line_limit_applies_before_crlf = fun _ctx ->
   let req = "GET /very-long-path" in
@@ -832,6 +890,13 @@ let tests =
     case
       "request rejects unsupported transfer encoding"
       test_request_rejects_unsupported_transfer_encoding;
+    case "request parses chunked body" test_request_parses_chunked_body;
+    case
+      "request parses chunked body with trailers and remaining"
+      test_request_parses_chunked_body_with_trailers_and_remaining;
+    case
+      "request incomplete chunked body needs more"
+      test_request_incomplete_chunked_body_needs_more;
     case "request line limit applies before crlf" test_request_line_limit_applies_before_crlf;
     case "header line limit applies before crlf" test_header_line_limit_applies_before_crlf;
     case "request_parse_slice" test_request_parse_slice;
