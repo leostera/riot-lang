@@ -48,7 +48,7 @@ let parameter_name_token = fun pattern ->
 
 let single_positional_parameter_name = fun binding ->
   let parameters = Vector.with_capacity ~size:(Ast.Node.child_count (binding: Ast.Node.t)) in
-  Ast.LetBinding.for_each_parameter
+  H.iter_fold Ast.LetBinding.fold_parameter
     binding
     ~fn:(fun pattern ->
       match parameter_name_token pattern with
@@ -74,7 +74,7 @@ let rec unwrap_record_pattern = fun pattern ->
 
 let record_pattern_field_count = fun record ->
   let count = ref 0 in
-  Ast.RecordPattern.for_each_field record ~fn:(fun _ -> count := !count + 1);
+  H.iter_fold Ast.RecordPattern.fold_field record ~fn:(fun _ -> count := !count + 1);
   !count
 
 let rec expr_is_parameter_path = fun ctx expected_name expr ->

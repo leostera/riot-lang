@@ -29,14 +29,14 @@ let top_level_open_declarations = fun source_file ->
   (
     match Ast.SourceFile.view source_file with
     | Ast.SourceFile.Implementation implementation ->
-        Ast.Implementation.for_each_item
+        H.iter_fold Ast.Implementation.fold_item
           implementation
           ~fn:(fun item ->
             match Ast.StructureItem.view item with
             | Ast.StructureItem.Open open_declaration -> Vector.push opens ~value:open_declaration
             | _ -> ())
     | Ast.SourceFile.Interface interface ->
-        Ast.Interface.for_each_item
+        H.iter_fold Ast.Interface.fold_item
           interface
           ~fn:(fun item ->
             match Ast.SignatureItem.view item with

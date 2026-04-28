@@ -1,5 +1,14 @@
 open Std
 
+let iter_fold = fun fold value ~fn ->
+  fold
+    value
+    ~init:()
+    ~fn:(fun item () ->
+      fn item;
+      Syn.Ast.Continue ())
+
+
 module Vector = Collections.Vector
 
 let ( let* ) value fn = Result.and_then value ~fn
@@ -255,7 +264,7 @@ let leading_docstrings = fun node ->
     match Syn.Ast.Node.first_descendant_token node with
     | None -> ()
     | Some token ->
-        Syn.Ast.Token.for_each_leading_trivia_item
+        iter_fold Syn.Ast.Token.fold_leading_trivia_item
           token
           ~fn:(
             function
@@ -312,7 +321,7 @@ let type_member_name = fun member fallback ->
 
 let variant_constructor_details = fun source variant ->
   let details = Vector.with_capacity ~size:4 in
-  Syn.Ast.VariantType.for_each_constructor
+  iter_fold Syn.Ast.VariantType.fold_constructor
     variant
     ~fn:(fun constructor ->
       let name = token_text (Syn.Ast.VariantConstructor.name constructor) in
@@ -327,7 +336,7 @@ let variant_constructor_details = fun source variant ->
 
 let record_field_details = fun source record ->
   let details = Vector.with_capacity ~size:4 in
-  Syn.Ast.RecordType.for_each_field
+  iter_fold Syn.Ast.RecordType.fold_field
     record
     ~fn:(fun field ->
       let name = token_text (Syn.Ast.RecordField.name field) in
@@ -368,7 +377,7 @@ let items_of_type_declaration = fun ?docstring source decl ->
   let snippet = strip_comments raw_snippet in
   let fallback_name = token_text (Syn.Ast.TypeDeclaration.name decl) in
   let items = Vector.with_capacity ~size:2 in
-  Syn.Ast.TypeDeclaration.for_each_member
+  iter_fold Syn.Ast.TypeDeclaration.fold_member
     decl
     ~fn:(fun member ->
       let name = type_member_name member fallback_name in
@@ -395,7 +404,7 @@ let value_name = fun for_each_name_token ->
 
 let value_item_of_declaration = fun ?docstring source decl ->
   let snippet = snippet_of_node source decl in
-  let name = value_name (Syn.Ast.ValueDeclaration.for_each_name_token decl) in
+  let name = value_name (iter_fold Syn.Ast.ValueDeclaration.fold_name_token decl) in
   if String.equal name "" then
     macro_items_of_snippet ?docstring snippet
   else
@@ -404,7 +413,7 @@ let value_item_of_declaration = fun ?docstring source decl ->
 
 let external_item_of_declaration = fun ?docstring source decl ->
   let snippet = snippet_of_node source decl in
-  let name = value_name (Syn.Ast.ExternalDeclaration.for_each_name_token decl) in
+  let name = value_name (iter_fold Syn.Ast.ExternalDeclaration.fold_name_token decl) in
   if String.equal name "" then
     macro_items_of_snippet ?docstring snippet
   else
@@ -413,7 +422,7 @@ let external_item_of_declaration = fun ?docstring source decl ->
 
 let module_path_segments = fun decl ->
   let segments = Vector.with_capacity ~size:4 in
-  Syn.Ast.ModuleDeclaration.for_each_body_path_ident
+  iter_fold Syn.Ast.ModuleDeclaration.fold_body_path_ident
     decl
     ~fn:(fun token -> Vector.push segments ~value:(Syn.Ast.Token.text token));
   vector_to_list segments
@@ -485,7 +494,7 @@ let rec module_of_signature_items = fun
             let child_path = path @ [ child_name ] in
             let child_snippet = snippet_of_node source decl in
             let nested_items =
-              collect_signature_items (Syn.Ast.ModuleDeclaration.for_each_signature_item decl)
+              collect_signature_items (iter_fold Syn.Ast.ModuleDeclaration.fold_signature_item decl)
             in
             let* child =
               if nested_items != [] then
@@ -574,7 +583,7 @@ and of_interface_source = fun ~lookup ?path ?docstring (source_file: Source.inte
   let parsed = Syn.parse_interface source_slice in
   let source = source_file.content in
   let root = Syn.Ast.SourceFile.make parsed.tree in
-  let items = collect_signature_items (Syn.Ast.SourceFile.for_each_signature_item root) in
+  let items = collect_signature_items (iter_fold Syn.Ast.SourceFile.fold_signature_item root) in
   let path =
     match path with
     | Some path -> path

@@ -407,16 +407,17 @@ let rec visit_node: 'ctx. 'ctx t -> A.Node.t -> 'ctx t = fun visitor node ->
     match action with
     | Skip_subtree -> visitor
     | Continue ->
-        let current = ref visitor in
-        A.Node.for_each_child
+        A.Node.fold_child
           node
+          ~init:visitor
           ~fn:(
             function
-            | Syntax_tree.Node id -> current := visit_node !current (node_of_child node id)
-            | Syntax_tree.Token id -> current := call_enter_token !current (token_of_child node id)
-            | Syntax_tree.Missing _ -> ()
-          );
-        !current
+            | Syntax_tree.Node id ->
+                fun current -> A.Continue (visit_node current (node_of_child node id))
+            | Syntax_tree.Token id ->
+                fun current -> A.Continue (call_enter_token current (token_of_child node id))
+            | Syntax_tree.Missing _ -> fun current -> A.Continue current
+          )
   in
   call_leave_node visitor node
 

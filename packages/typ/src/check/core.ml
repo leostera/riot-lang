@@ -1,6 +1,15 @@
 open Std
 open Std.Collections
 
+let iter_fold = fun fold value ~fn ->
+  fold
+    value
+    ~init:()
+    ~fn:(fun item () ->
+      fn item;
+      Syn.Ast.Continue ())
+
+
 module Ast = Syn.Ast
 module SyntaxKind = Syn.SyntaxKind
 module SyntaxTree = Syn.SyntaxTree
@@ -129,7 +138,7 @@ let span_of_type_declaration = fun declaration ->
             ~end_:(Int.max (span_end current) (span_end next))
     )
   in
-  Ast.TypeDeclaration.for_each_member
+  iter_fold Ast.TypeDeclaration.fold_member
     declaration
     ~fn:(fun member -> remember (span_of_type_member member));
   match !span with
@@ -297,7 +306,7 @@ let instantiate = fun state ~level ty ->
 
 let path_segments = fun path ->
   let segments = Vector.with_capacity ~size:(Ast.Node.child_count path) in
-  Ast.Path.for_each_ident path ~fn:(fun token -> Vector.push segments ~value:(Ast.Token.text token));
+  iter_fold Ast.Path.fold_ident path ~fn:(fun token -> Vector.push segments ~value:(Ast.Token.text token));
   Vector.to_array segments
   |> Array.to_list
 
@@ -521,19 +530,19 @@ let rec collect_parameter_pattern = fun parameters pattern ->
 
 let child_exprs = fun expr ->
   let children = Vector.with_capacity ~size:(Ast.Node.child_count expr) in
-  Ast.Expr.for_each_child_expr expr ~fn:(fun child -> Vector.push children ~value:child);
+  iter_fold Ast.Expr.fold_child_expr expr ~fn:(fun child -> Vector.push children ~value:child);
   Vector.to_array children
   |> Array.to_list
 
 let child_patterns = fun pattern ->
   let children = Vector.with_capacity ~size:(Ast.Node.child_count pattern) in
-  Ast.Pattern.for_each_child_pattern pattern ~fn:(fun child -> Vector.push children ~value:child);
+  iter_fold Ast.Pattern.fold_child_pattern pattern ~fn:(fun child -> Vector.push children ~value:child);
   Vector.to_array children
   |> Array.to_list
 
 let let_binding_parameters = fun binding ->
   let parameters = Vector.with_capacity ~size:(Ast.Node.child_count binding) in
-  Ast.LetBinding.for_each_parameter
+  iter_fold Ast.LetBinding.fold_parameter
     binding
     ~fn:(fun parameter -> Vector.push parameters ~value:parameter);
   Vector.to_array parameters
@@ -542,7 +551,7 @@ let let_binding_parameters = fun binding ->
 let let_binding_return_annotations = fun binding ->
   let annotations = Vector.with_capacity ~size:1 in
   let seen_first_pattern = ref false in
-  Ast.Node.for_each_child_node
+  iter_fold Ast.Node.fold_child_node
     binding
     ~fn:(fun node ->
       match Ast.cast_result_to_option (Ast.Pattern.cast node) with
@@ -566,7 +575,7 @@ let let_binding_return_annotations = fun binding ->
 
 let fun_parameters = fun expr ->
   let parameters = Vector.with_capacity ~size:(Ast.Node.child_count expr) in
-  Ast.Node.for_each_child_node
+  iter_fold Ast.Node.fold_child_node
     expr
     ~fn:(fun node ->
       match Ast.cast_result_to_option (Ast.Pattern.cast node) with
@@ -700,7 +709,7 @@ let rec lower_core_type = fun state ~level vars type_expr ->
 
 and child_type_exprs = fun type_expr ->
   let children = Vector.with_capacity ~size:(Ast.Node.child_count type_expr) in
-  Ast.TypeExpr.for_each_child_type type_expr ~fn:(fun child -> Vector.push children ~value:child);
+  iter_fold Ast.TypeExpr.fold_child_type type_expr ~fn:(fun child -> Vector.push children ~value:child);
   Vector.to_array children
   |> Array.to_list
 
@@ -1142,7 +1151,7 @@ let check_let_declaration = fun state env ~level declaration ->
   let public_bindings = Vector.with_capacity ~size:(Ast.Node.child_count declaration) in
   if Option.is_some (Ast.LetDeclaration.rec_token declaration) then
     add_diagnostic state (unsupported_syntax declaration "recursive let binding");
-  Ast.LetDeclaration.for_each_binding
+  iter_fold Ast.LetDeclaration.fold_binding
     declaration
     ~fn:(fun binding ->
       let (next_env, bindings) =
@@ -1179,7 +1188,7 @@ let infer_structure_item = fun state env ~level item ->
       | Some type_ ->
           let ty = lower_core_type state ~level [] type_ in
           let name =
-            surface_path_of_name_tokens (Ast.ExternalDeclaration.for_each_name_token declaration)
+            surface_path_of_name_tokens (iter_fold Ast.ExternalDeclaration.fold_name_token declaration)
           in
           let binding = make_binding state ~name ~ty in
           let public_binding = public_binding_of_binding binding in
@@ -1212,7 +1221,7 @@ let check_implementation = fun ~typing_context implementation ->
   let env = env_of_typing_context typing_context in
   let env_ref = ref env in
   let bindings = Vector.with_capacity ~size:(Ast.Node.child_count implementation) in
-  Ast.Implementation.for_each_item
+  iter_fold Ast.Implementation.fold_item
     implementation
     ~fn:(fun item ->
       let (next_env, item_bindings) = infer_structure_item state !env_ref ~level:0 item in
@@ -1238,7 +1247,7 @@ let check_signature_item = fun state env ~level item ->
       | Some type_ ->
           let ty = lower_core_type state ~level [] type_ in
           let name =
-            surface_path_of_name_tokens (Ast.ValueDeclaration.for_each_name_token declaration)
+            surface_path_of_name_tokens (iter_fold Ast.ValueDeclaration.fold_name_token declaration)
           in
           let binding = make_binding state ~name ~ty in
           let public_binding = public_binding_of_binding binding in
@@ -1251,7 +1260,7 @@ let check_signature_item = fun state env ~level item ->
       | Some type_ ->
           let ty = lower_core_type state ~level [] type_ in
           let name =
-            surface_path_of_name_tokens (Ast.ExternalDeclaration.for_each_name_token declaration)
+            surface_path_of_name_tokens (iter_fold Ast.ExternalDeclaration.fold_name_token declaration)
           in
           let binding = make_binding state ~name ~ty in
           let public_binding = public_binding_of_binding binding in
@@ -1295,7 +1304,7 @@ let check_interface = fun ~typing_context interface ->
   let env = env_of_typing_context typing_context in
   let env_ref = ref env in
   let bindings = Vector.with_capacity ~size:(Ast.Node.child_count interface) in
-  Ast.Interface.for_each_item
+  iter_fold Ast.Interface.fold_item
     interface
     ~fn:(fun item ->
       let (next_env, item_bindings) = check_signature_item state !env_ref ~level:0 item in

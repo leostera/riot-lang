@@ -4,6 +4,15 @@ open Std.Result.Syntax
 open Typ.Diagnostics
 open Typ.Model
 
+let iter_fold = fun fold value ~fn ->
+  fold
+    value
+    ~init:()
+    ~fn:(fun item () ->
+      fn item;
+      Syn.Ast.Continue ())
+
+
 module Vector = Std.Collections.Vector
 
 let lint_rules = Riot_fix.Pipeline.default_rules ()
@@ -538,7 +547,7 @@ let let_binding_symbol = fun text ~range_node binding ->
   | None -> []
   | Some name_tokens ->
       let has_parameters = ref false in
-      Syn.Ast.LetBinding.for_each_parameter binding ~fn:(fun _ -> has_parameters := true);
+      iter_fold Syn.Ast.LetBinding.fold_parameter binding ~fn:(fun _ -> has_parameters := true);
       let kind =
         match Syn.Ast.LetBinding.type_annotation binding with
         | Some type_ when value_like_type_is_function type_ -> Lsp.Symbol_kind.Function
@@ -557,7 +566,7 @@ let let_binding_symbol = fun text ~range_node binding ->
 
 let let_declaration_symbols = fun text declaration ->
   let symbols = Vector.with_capacity ~size:2 in
-  Syn.Ast.LetDeclaration.for_each_binding
+  iter_fold Syn.Ast.LetDeclaration.fold_binding
     declaration
     ~fn:(fun binding ->
       let_binding_symbol text ~range_node:declaration binding
@@ -611,7 +620,7 @@ and module_declaration_children = fun text declaration ->
   | Syn.Ast.ModuleDeclaration.Expr { body } -> (
       match Syn.Ast.ModuleExpr.view body with
       | Syn.Ast.ModuleExpr.Structure _ ->
-          collect_structure_symbols text (Syn.Ast.ModuleDeclaration.for_each_structure_item declaration)
+          collect_structure_symbols text (iter_fold Syn.Ast.ModuleDeclaration.fold_structure_item declaration)
       | Syn.Ast.ModuleExpr.Path _
       | Syn.Ast.ModuleExpr.Functor _
       | Syn.Ast.ModuleExpr.Apply _
@@ -623,7 +632,7 @@ and module_declaration_children = fun text declaration ->
   | Syn.Ast.ModuleDeclaration.Type { body } -> (
       match Syn.Ast.ModuleTypeExpr.view body with
       | Syn.Ast.ModuleTypeExpr.Signature _ ->
-          collect_signature_symbols text (Syn.Ast.ModuleDeclaration.for_each_signature_item declaration)
+          collect_signature_symbols text (iter_fold Syn.Ast.ModuleDeclaration.fold_signature_item declaration)
       | Syn.Ast.ModuleTypeExpr.Path _
       | Syn.Ast.ModuleTypeExpr.With _
       | Syn.Ast.ModuleTypeExpr.Typeof _
@@ -666,7 +675,7 @@ and module_type_declaration_symbols = fun text declaration ->
             | Syn.Ast.ModuleTypeExpr.Signature _ ->
                 collect_signature_symbols
                   text
-                  (Syn.Ast.ModuleTypeDeclaration.for_each_signature_item declaration)
+                  (iter_fold Syn.Ast.ModuleTypeDeclaration.fold_signature_item declaration)
             | Syn.Ast.ModuleTypeExpr.Path _
             | Syn.Ast.ModuleTypeExpr.With _
             | Syn.Ast.ModuleTypeExpr.Typeof _
@@ -721,7 +730,7 @@ and value_like_declaration_symbols = fun text ~syntax_node ~name_tokens ~type_an
 
 and value_declaration_symbols = fun text declaration ->
   let name_tokens =
-    collect_tokens ~size:2 (Syn.Ast.ValueDeclaration.for_each_name_token declaration)
+    collect_tokens ~size:2 (iter_fold Syn.Ast.ValueDeclaration.fold_name_token declaration)
   in
   value_like_declaration_symbols
     text
@@ -731,7 +740,7 @@ and value_declaration_symbols = fun text declaration ->
 
 and external_declaration_symbols = fun text declaration ->
   let name_tokens =
-    collect_tokens ~size:2 (Syn.Ast.ExternalDeclaration.for_each_name_token declaration)
+    collect_tokens ~size:2 (iter_fold Syn.Ast.ExternalDeclaration.fold_name_token declaration)
   in
   value_like_declaration_symbols
     text
@@ -796,13 +805,13 @@ let document_symbols_for_document = fun document ->
       match Syn.Ast.SourceFile.view root with
       | Syn.Ast.SourceFile.Implementation implementation ->
           let items = Vector.with_capacity ~size:16 in
-          Syn.Ast.Implementation.for_each_item
+          iter_fold Syn.Ast.Implementation.fold_item
             implementation
             ~fn:(fun item -> Vector.push items ~value:item);
           structure_item_symbols document.text (vector_to_list items)
       | Syn.Ast.SourceFile.Interface interface ->
           let items = Vector.with_capacity ~size:16 in
-          Syn.Ast.Interface.for_each_item interface ~fn:(fun item -> Vector.push items ~value:item);
+          iter_fold Syn.Ast.Interface.fold_item interface ~fn:(fun item -> Vector.push items ~value:item);
           signature_item_symbols document.text (vector_to_list items)
     in
     Some symbols

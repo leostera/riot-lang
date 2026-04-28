@@ -1,6 +1,15 @@
 open Std
 open Std.Collections
 
+let iter_fold = fun fold value ~fn ->
+  fold
+    value
+    ~init:()
+    ~fn:(fun item () ->
+      fn item;
+      Syn.Ast.Continue ())
+
+
 module Ast = Syn.Ast
 module SyntaxKind = Syn.SyntaxKind
 module SyntaxTree = Syn.SyntaxTree
@@ -134,7 +143,7 @@ let collect_path = fun for_each_ident ->
   for_each_ident ~fn:(fun token -> Vector.push segments ~value:(Ast.Token.text token));
   vector_to_list segments
 
-let path_of_path = fun path -> collect_path (Ast.Path.for_each_ident path)
+let path_of_path = fun path -> collect_path (iter_fold Ast.Path.fold_ident path)
 
 let path_of_node = fun node ->
   match Ast.cast_result_to_option (Ast.Path.cast node) with
@@ -280,13 +289,13 @@ let parameter_count = fun binding ->
     | Ast.Pattern.Constraint { pattern; _ } -> count_parameter_pattern pattern
     | _ -> count := Int.add !count 1
   in
-  Ast.LetBinding.for_each_parameter binding ~fn:count_parameter_pattern;
+  iter_fold Ast.LetBinding.fold_parameter binding ~fn:count_parameter_pattern;
   !count
 
 let return_annotation_of_binding = fun binding ->
   let seen_first_pattern = ref false in
   let annotation = ref None in
-  Ast.Node.for_each_child_node
+  iter_fold Ast.Node.fold_child_node
     binding
     ~fn:(fun node ->
       match Ast.cast_result_to_option (Ast.Pattern.cast node) with
@@ -312,7 +321,7 @@ let lower_let_declaration = fun state declaration ->
   let declaration_span = span_of_node declaration in
   let declaration_end = span_end declaration_span in
   let first_binding = ref true in
-  Ast.LetDeclaration.for_each_binding
+  iter_fold Ast.LetDeclaration.fold_binding
     declaration
     ~fn:(fun binding ->
       match binding_name_token binding with
@@ -390,13 +399,13 @@ let lower_type_declaration = fun state declaration ->
   let declaration_span = span_of_node declaration in
   let declaration_end = span_end declaration_span in
   let first_member = ref true in
-  Ast.TypeDeclaration.for_each_member
+  iter_fold Ast.TypeDeclaration.fold_member
     declaration
     ~fn:(fun member ->
       match Ast.TypeDeclaration.Member.name member with
       | Some name_token ->
           let params = Vector.with_capacity ~size:2 in
-          Ast.TypeDeclaration.Member.for_each_parameter
+          iter_fold Ast.TypeDeclaration.Member.fold_parameter
             member
             ~fn:(fun parameter ->
               match type_parameter_name parameter with
@@ -443,7 +452,7 @@ let lower_module_declaration = fun state declaration ->
   let declaration_span = span_of_node declaration in
   let declaration_end = span_end declaration_span in
   let first_member = ref true in
-  Ast.ModuleDeclaration.for_each_member
+  iter_fold Ast.ModuleDeclaration.fold_member
     declaration
     ~fn:(fun member ->
       match Ast.ModuleDeclaration.Member.name member with
@@ -516,7 +525,7 @@ let lower_module_type_declaration = fun state declaration ->
   | None -> push_unsupported state declaration "module type declaration"
 
 let lower_open_declaration = fun state declaration ->
-  let target = path_of_module_body (Ast.OpenDeclaration.for_each_path_ident declaration) in
+  let target = path_of_module_body (iter_fold Ast.OpenDeclaration.fold_path_ident declaration) in
   let override_ =
     match Ast.Node.first_child_token declaration ~kind:SyntaxKind.BANG with
     | Some _ -> true
@@ -668,9 +677,9 @@ let lower_source_file = fun ~source:_ (parse_result: Syn.Parser.parse_result) ->
   (
     match Ast.SourceFile.view source_file with
     | Ast.SourceFile.Implementation implementation ->
-        Ast.Implementation.for_each_item implementation ~fn:(lower_structure_item state)
+        iter_fold Ast.Implementation.fold_item implementation ~fn:(lower_structure_item state)
     | Ast.SourceFile.Interface interface ->
-        Ast.Interface.for_each_item interface ~fn:(lower_signature_item state)
+        iter_fold Ast.Interface.fold_item interface ~fn:(lower_signature_item state)
   );
   {
     Semantic_tree.kind = state.kind;

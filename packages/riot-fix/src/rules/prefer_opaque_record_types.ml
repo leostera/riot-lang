@@ -85,7 +85,7 @@ let collect_record = fun records member record_type ->
   match Ast.TypeDeclaration.Member.name member with
   | Some name ->
       let fields = Vector.with_capacity ~size:(Ast.Node.child_count (record_type: Ast.Node.t)) in
-      Ast.RecordType.for_each_field
+      H.iter_fold Ast.RecordType.fold_field
         record_type
         ~fn:(fun field ->
           match Ast.RecordField.view field with
@@ -112,7 +112,7 @@ let check_tree = fun ctx root ->
           Syn.Visitor.empty_hooks with
           enter_type_declaration =
             Some (fun visitor declaration ->
-              Ast.TypeDeclaration.for_each_member
+              H.iter_fold Ast.TypeDeclaration.fold_member
                 declaration
                 ~fn:(fun member ->
                   match Ast.TypeDeclaration.Member.record_type member with

@@ -1,6 +1,15 @@
 open Std
 open Std.Collections
 
+let iter_fold = fun fold value ~fn ->
+  fold
+    value
+    ~init:()
+    ~fn:(fun item () ->
+      fn item;
+      Syn.Ast.Continue ())
+
+
 module Api = Fixme
 
 let package_name = "std"
@@ -147,7 +156,7 @@ let check_tree = fun (_ctx: Api.Rule.context) red_root ->
   in
   let non_trivia_children node =
     let children = Vector.with_capacity ~size:(Ast.Node.child_count node) in
-    Ast.Node.for_each_child
+    iter_fold Ast.Node.fold_child
       node
       ~fn:(fun child ->
         match child with

@@ -70,8 +70,8 @@ let rec check_type_expr = fun ctx diagnostics type_expr ->
       if tuple_should_be_record ctx type_expr then
         H.push_diagnostic diagnostics (diagnostic_for_type type_expr)
       else
-        Ast.TypeExpr.for_each_child_type type_expr ~fn:(check_type_expr ctx diagnostics)
-  | _ -> Ast.TypeExpr.for_each_child_type type_expr ~fn:(check_type_expr ctx diagnostics)
+        H.iter_fold Ast.TypeExpr.fold_child_type type_expr ~fn:(check_type_expr ctx diagnostics)
+  | _ -> H.iter_fold Ast.TypeExpr.fold_child_type type_expr ~fn:(check_type_expr ctx diagnostics)
 
 let check_variant_constructor_rhs = fun ctx diagnostics rhs ->
   match rhs with
@@ -85,7 +85,7 @@ let check_variant_constructor_rhs = fun ctx diagnostics rhs ->
   | Ast.VariantConstructor.Plain -> ()
 
 let check_type_declaration = fun ctx diagnostics declaration ->
-  Ast.TypeDeclaration.for_each_member
+  H.iter_fold Ast.TypeDeclaration.fold_member
     declaration
     ~fn:(fun member ->
       Option.for_each
@@ -94,7 +94,7 @@ let check_type_declaration = fun ctx diagnostics declaration ->
       Option.for_each
         (Ast.TypeDeclaration.Member.variant_type member)
         ~fn:(fun variant_type ->
-          Ast.VariantType.for_each_constructor
+          H.iter_fold Ast.VariantType.fold_constructor
             variant_type
             ~fn:(fun constructor ->
               match Ast.VariantConstructor.view constructor with

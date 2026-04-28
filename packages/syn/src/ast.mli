@@ -86,6 +86,10 @@ type 'value cast_result =
   | Unknown of node
   | Error of cast_error
 
+type 'value control =
+  | Continue of 'value
+  | Return of 'value
+
 val cast_result_to_option: 'value cast_result -> 'value option
 
 (** Root view for a parsed syntax tree. *)
@@ -135,14 +139,22 @@ module Token: sig
   (** Materialize all leading trivia attached to this token. *)
   val leading_text: t -> string
 
-  (** Iterate raw leading trivia as syntax kind/text pairs. *)
-  val for_each_leading_trivia: t -> fn:(kind:Syntax_kind.t -> text:string -> unit) -> unit
+  (** Fold raw leading trivia as syntax kind/text pairs. *)
+  val fold_leading_trivia:
+    t ->
+    init:'acc ->
+    fn:(kind:Syntax_kind.t -> text:string -> 'acc -> 'acc control) ->
+    'acc
 
   (**
-     Iterate normalized leading trivia items. Whitespace is structural and
+     Fold normalized leading trivia items. Whitespace is structural and
      comment/docstring delimiters are split from their content.
   *)
-  val for_each_leading_trivia_item: t -> fn:(leading_trivia -> unit) -> unit
+  val fold_leading_trivia_item:
+    t ->
+    init:'acc ->
+    fn:(leading_trivia -> 'acc -> 'acc control) ->
+    'acc
 
   val has_leading_whitespace: t -> bool
 
@@ -183,13 +195,17 @@ module Node: sig
   *)
   val child_at: t -> int -> Syntax_tree.child option
 
-  val for_each_child: t -> fn:(Syntax_tree.child -> unit) -> unit
+  val fold_child:
+    t ->
+    init:'acc ->
+    fn:(Syntax_tree.child -> 'acc -> 'acc control) ->
+    'acc
 
-  val for_each_child_node: t -> fn:(t -> unit) -> unit
+  val fold_child_node: t -> init:'acc -> fn:(t -> 'acc -> 'acc control) -> 'acc
 
-  val for_each_child_token: t -> fn:(Token.t -> unit) -> unit
+  val fold_child_token: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
 
-  val for_each_token: t -> fn:(Token.t -> unit) -> unit
+  val fold_token: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
 
   val first_child_node: t -> kind:Syntax_kind.t -> t option
 
@@ -236,13 +252,17 @@ module TypeExpr: sig
 
   val poly_type_keyword_token: t -> Token.t option
 
-  val for_each_poly_type_name: t -> fn:(Token.t -> unit) -> unit
+  val fold_poly_type_name: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
 
-  val for_each_child_type: t -> fn:(t -> unit) -> unit
+  val fold_child_type: t -> init:'acc -> fn:(t -> 'acc -> 'acc control) -> 'acc
 
   val inner_without_attribute_suffix: t -> t option
 
-  val for_each_attribute_suffix_token: t -> fn:(Token.t -> unit) -> unit
+  val fold_attribute_suffix_token:
+    t ->
+    init:'acc ->
+    fn:(Token.t -> 'acc -> 'acc control) ->
+    'acc
 end
 
 module RecordField: sig
@@ -278,7 +298,8 @@ module RecordType: sig
 
   val closing_token: t -> Token.t option
 
-  val for_each_field: t -> fn:(record_field -> unit) -> unit
+  val fold_field: t -> init:'acc -> fn:(record_field -> 'acc -> 'acc control) -> 'acc
+
 end
 
 module VariantConstructor: sig
@@ -330,7 +351,8 @@ module VariantType: sig
 
   val private_token: t -> Token.t option
 
-  val for_each_constructor: t -> fn:(variant_constructor -> unit) -> unit
+  val fold_constructor: t -> init:'acc -> fn:(variant_constructor -> 'acc -> 'acc control) -> 'acc
+
 end
 
 module Pattern: sig
@@ -404,7 +426,8 @@ module Pattern: sig
 
   val literal_sign_token: t -> Token.t option
 
-  val for_each_child_pattern: t -> fn:(t -> unit) -> unit
+  val fold_child_pattern: t -> init:'acc -> fn:(t -> 'acc -> 'acc control) -> 'acc
+
 end
 
 module AttributePattern: sig
@@ -413,14 +436,14 @@ module AttributePattern: sig
 
   val inner: t -> pattern option
 
-  val for_each_shell_token: t -> fn:(Token.t -> unit) -> unit
+  val fold_shell_token: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
 end
 
 module ExtensionPattern: sig
   type t = pattern
   val cast: pattern -> t cast_result
 
-  val for_each_shell_token: t -> fn:(Token.t -> unit) -> unit
+  val fold_shell_token: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
 end
 
 module LocallyAbstractTypePattern: sig
@@ -433,7 +456,7 @@ module LocallyAbstractTypePattern: sig
 
   val closing_token: t -> Token.t option
 
-  val for_each_type_name: t -> fn:(Token.t -> unit) -> unit
+  val fold_type_name: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
 end
 
 module FirstClassModulePattern: sig
@@ -456,7 +479,11 @@ module FirstClassModulePattern: sig
 
   val ascription: t -> ascription
 
-  val for_each_ascription_path_ident: t -> fn:(Token.t -> unit) -> unit
+  val fold_ascription_path_ident:
+    t ->
+    init:'acc ->
+    fn:(Token.t -> 'acc -> 'acc control) ->
+    'acc
 end
 
 module RecordPattern: sig
@@ -466,7 +493,7 @@ module RecordPattern: sig
 
   val open_wildcard: t -> Token.t option
 
-  val for_each_field: t -> fn:(field -> unit) -> unit
+  val fold_field: t -> init:'acc -> fn:(field -> 'acc -> 'acc control) -> 'acc
 end
 
 module LocalOpenPattern: sig
@@ -492,7 +519,11 @@ module LocalOpenPattern: sig
 
   val pattern: t -> pattern option
 
-  val for_each_module_path_ident: t -> fn:(Token.t -> unit) -> unit
+  val fold_module_path_ident:
+    t ->
+    init:'acc ->
+    fn:(Token.t -> 'acc -> 'acc control) ->
+    'acc
 end
 
 module Parameter: sig
@@ -563,7 +594,7 @@ module LetBinding: sig
 
   val body: t -> expr option
 
-  val for_each_parameter: t -> fn:(parameter -> unit) -> unit
+  val fold_parameter: t -> init:'acc -> fn:(parameter -> 'acc -> 'acc control) -> 'acc
 
   val type_annotation: t -> type_expr option
 end
@@ -678,9 +709,9 @@ module Expr: sig
 
   val list_has_trailing_separator: t -> bool
 
-  val for_each_child_expr: t -> fn:(t -> unit) -> unit
+  val fold_child_expr: t -> init:'acc -> fn:(t -> 'acc -> 'acc control) -> 'acc
 
-  val for_each_match_case: t -> fn:(match_case -> unit) -> unit
+  val fold_match_case: t -> init:'acc -> fn:(match_case -> 'acc -> 'acc control) -> 'acc
 end
 
 module AttributeExpr: sig
@@ -689,14 +720,14 @@ module AttributeExpr: sig
 
   val inner: t -> expr option
 
-  val for_each_shell_token: t -> fn:(Token.t -> unit) -> unit
+  val fold_shell_token: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
 end
 
 module ExtensionExpr: sig
   type t = expr
   val cast: expr -> t cast_result
 
-  val for_each_shell_token: t -> fn:(Token.t -> unit) -> unit
+  val fold_shell_token: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
 end
 
 module RecordExpr: sig
@@ -706,7 +737,7 @@ module RecordExpr: sig
 
   val base: t -> expr option
 
-  val for_each_field: t -> fn:(field -> unit) -> unit
+  val fold_field: t -> init:'acc -> fn:(field -> 'acc -> 'acc control) -> 'acc
 end
 
 module LocalOpenExpr: sig
@@ -757,7 +788,11 @@ module LetModuleExpr: sig
 
   val body: t -> expr option
 
-  val for_each_module_body_path_ident: t -> fn:(Token.t -> unit) -> unit
+  val fold_module_body_path_ident:
+    t ->
+    init:'acc ->
+    fn:(Token.t -> 'acc -> 'acc control) ->
+    'acc
 end
 
 module LetExceptionExpr: sig
@@ -776,7 +811,7 @@ module LetExceptionExpr: sig
 
   val body: t -> expr option
 
-  val for_each_payload_token: t -> fn:(Token.t -> unit) -> unit
+  val fold_payload_token: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
 end
 
 module UnreachableExpr: sig
@@ -809,9 +844,17 @@ module FirstClassModuleExpr: sig
 
   val ascription: t -> ascription
 
-  val for_each_module_path_ident: t -> fn:(Token.t -> unit) -> unit
+  val fold_module_path_ident:
+    t ->
+    init:'acc ->
+    fn:(Token.t -> 'acc -> 'acc control) ->
+    'acc
 
-  val for_each_ascription_path_ident: t -> fn:(Token.t -> unit) -> unit
+  val fold_ascription_path_ident:
+    t ->
+    init:'acc ->
+    fn:(Token.t -> 'acc -> 'acc control) ->
+    'acc
 end
 
 module BindingOperatorExpr: sig
@@ -827,7 +870,7 @@ module BindingOperatorExpr: sig
 
   val body: t -> expr option
 
-  val for_each_clause: t -> fn:(clause -> unit) -> unit
+  val fold_clause: t -> init:'acc -> fn:(clause -> 'acc -> 'acc control) -> 'acc
 end
 
 module Path: sig
@@ -840,7 +883,7 @@ module Path: sig
 
   val last_ident: t -> Token.t option
 
-  val for_each_ident: t -> fn:(Token.t -> unit) -> unit
+  val fold_ident: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
 end
 
 module ModuleTypeExpr: sig
@@ -873,11 +916,11 @@ module ModuleTypeExpr: sig
 
   val end_token: t -> Token.t option
 
-  val for_each_path_ident: t -> fn:(Token.t -> unit) -> unit
+  val fold_path_ident: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
 
-  val for_each_signature_item: t -> fn:(signature_item -> unit) -> unit
+  val fold_signature_item: t -> init:'acc -> fn:(signature_item -> 'acc -> 'acc control) -> 'acc
 
-  val for_each_sig_body_token: t -> fn:(Token.t -> unit) -> unit
+  val fold_sig_body_token: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
 end
 
 module ModuleExpr: sig
@@ -913,9 +956,9 @@ module ModuleExpr: sig
 
   val end_token: t -> Token.t option
 
-  val for_each_path_ident: t -> fn:(Token.t -> unit) -> unit
+  val fold_path_ident: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
 
-  val for_each_structure_item: t -> fn:(structure_item -> unit) -> unit
+  val fold_structure_item: t -> init:'acc -> fn:(structure_item -> 'acc -> 'acc control) -> 'acc
 end
 
 module StructureItem: sig
@@ -971,7 +1014,8 @@ module LetDeclaration: sig
 
   val first_binding: t -> let_binding option
 
-  val for_each_binding: t -> fn:(let_binding -> unit) -> unit
+  val fold_binding: t -> init:'acc -> fn:(let_binding -> 'acc -> 'acc control) -> 'acc
+
 end
 
 module TypeDeclaration: sig
@@ -1008,11 +1052,15 @@ module TypeDeclaration: sig
 
     val child_token_kind_is: t -> int -> Syntax_kind.t -> bool
 
-    val for_each_child: t -> fn:(Syntax_tree.child -> unit) -> unit
+    val fold_child:
+      t ->
+      init:'acc ->
+      fn:(Syntax_tree.child -> 'acc -> 'acc control) ->
+      'acc
 
-    val for_each_child_token: t -> fn:(Token.t -> unit) -> unit
+    val fold_child_token: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
 
-    val for_each_child_node: t -> fn:(Node.t -> unit) -> unit
+    val fold_child_node: t -> init:'acc -> fn:(Node.t -> 'acc -> 'acc control) -> 'acc
 
     val record_type: t -> record_type option
 
@@ -1024,14 +1072,14 @@ module TypeDeclaration: sig
 
     val name: t -> Token.t option
 
-    val for_each_parameter: t -> fn:(parameter -> unit) -> unit
+    val fold_parameter: t -> init:'acc -> fn:(parameter -> 'acc -> 'acc control) -> 'acc
 
     val manifest: t -> type_expr option
   end
 
   val cast: Node.t -> t cast_result
 
-  val for_each_token: t -> fn:(Token.t -> unit) -> unit
+  val fold_token: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
 
   val keyword_token: t -> Token.t option
 
@@ -1039,11 +1087,11 @@ module TypeDeclaration: sig
 
   val name: t -> Token.t option
 
-  val for_each_parameter: t -> fn:(parameter -> unit) -> unit
+  val fold_parameter: t -> init:'acc -> fn:(parameter -> 'acc -> 'acc control) -> 'acc
 
   val manifest: t -> type_expr option
 
-  val for_each_member: t -> fn:(member -> unit) -> unit
+  val fold_member: t -> init:'acc -> fn:(member -> 'acc -> 'acc control) -> 'acc
 
   val fold_members: t -> 'acc -> ('acc -> member -> 'acc) -> 'acc
 end
@@ -1061,9 +1109,9 @@ module TypeExtensionDeclaration: sig
 
   val name: t -> Token.t option
 
-  val for_each_name_ident: t -> fn:(Token.t -> unit) -> unit
+  val fold_name_ident: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
 
-  val for_each_parameter: t -> fn:(parameter -> unit) -> unit
+  val fold_parameter: t -> init:'acc -> fn:(parameter -> 'acc -> 'acc control) -> 'acc
 
   val variant_type: t -> variant_type option
 end
@@ -1090,11 +1138,15 @@ module ModuleDeclaration: sig
 
     val child_token_kind_is: t -> int -> Syntax_kind.t -> bool
 
-    val for_each_child: t -> fn:(Syntax_tree.child -> unit) -> unit
+    val fold_child:
+      t ->
+      init:'acc ->
+      fn:(Syntax_tree.child -> 'acc -> 'acc control) ->
+      'acc
 
-    val for_each_child_token: t -> fn:(Token.t -> unit) -> unit
+    val fold_child_token: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
 
-    val for_each_child_node: t -> fn:(Node.t -> unit) -> unit
+    val fold_child_node: t -> init:'acc -> fn:(Node.t -> 'acc -> 'acc control) -> 'acc
 
     val name: t -> Token.t option
 
@@ -1127,7 +1179,7 @@ module ModuleDeclaration: sig
 
   val separator_token: t -> Token.t option
 
-  val for_each_member: t -> fn:(member -> unit) -> unit
+  val fold_member: t -> init:'acc -> fn:(member -> 'acc -> 'acc control) -> 'acc
 
   val fold_members: t -> 'acc -> ('acc -> member -> 'acc) -> 'acc
 
@@ -1139,17 +1191,21 @@ module ModuleDeclaration: sig
 
   val end_token: t -> Token.t option
 
-  val for_each_body_path_ident: t -> fn:(Token.t -> unit) -> unit
+  val fold_body_path_ident: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
 
   val has_typeof_body: t -> bool
 
-  val for_each_typeof_body_path_ident: t -> fn:(Token.t -> unit) -> unit
+  val fold_typeof_body_path_ident:
+    t ->
+    init:'acc ->
+    fn:(Token.t -> 'acc -> 'acc control) ->
+    'acc
 
-  val for_each_structure_item: t -> fn:(structure_item -> unit) -> unit
+  val fold_structure_item: t -> init:'acc -> fn:(structure_item -> 'acc -> 'acc control) -> 'acc
 
-  val for_each_signature_item: t -> fn:(signature_item -> unit) -> unit
+  val fold_signature_item: t -> init:'acc -> fn:(signature_item -> 'acc -> 'acc control) -> 'acc
 
-  val for_each_sig_body_token: t -> fn:(Token.t -> unit) -> unit
+  val fold_sig_body_token: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
 end
 
 module ModuleTypeDeclaration: sig
@@ -1168,7 +1224,7 @@ module ModuleTypeDeclaration: sig
 
   val equals_token: t -> Token.t option
 
-  val for_each_head_token: t -> fn:(Token.t -> unit) -> unit
+  val fold_head_token: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
 
   val body: t -> body
 
@@ -1176,15 +1232,19 @@ module ModuleTypeDeclaration: sig
 
   val end_token: t -> Token.t option
 
-  val for_each_body_path_ident: t -> fn:(Token.t -> unit) -> unit
+  val fold_body_path_ident: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
 
-  val for_each_signature_item: t -> fn:(signature_item -> unit) -> unit
+  val fold_signature_item: t -> init:'acc -> fn:(signature_item -> 'acc -> 'acc control) -> 'acc
 
-  val for_each_sig_body_token: t -> fn:(Token.t -> unit) -> unit
+  val fold_sig_body_token: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
 
   val base_module_type: t -> Node.t option
 
-  val for_each_constraint: t -> fn:(module_type_constraint -> unit) -> unit
+  val fold_constraint:
+    t ->
+    init:'acc ->
+    fn:(module_type_constraint -> 'acc -> 'acc control) ->
+    'acc
 end
 
 module ModuleTypeConstraint: sig
@@ -1216,7 +1276,7 @@ module OpenDeclaration: sig
 
   val last_path_ident: t -> Token.t option
 
-  val for_each_path_ident: t -> fn:(Token.t -> unit) -> unit
+  val fold_path_ident: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
 end
 
 module IncludeDeclaration: sig
@@ -1231,7 +1291,7 @@ module IncludeDeclaration: sig
 
   val last_path_ident: t -> Token.t option
 
-  val for_each_path_ident: t -> fn:(Token.t -> unit) -> unit
+  val fold_path_ident: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
 end
 
 module ValueDeclaration: sig
@@ -1253,9 +1313,9 @@ module ValueDeclaration: sig
 
   val type_annotation: t -> type_expr option
 
-  val for_each_name_token: t -> fn:(Token.t -> unit) -> unit
+  val fold_name_token: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
 
-  val for_each_annotation_token: t -> fn:(Token.t -> unit) -> unit
+  val fold_annotation_token: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
 end
 
 module ExternalDeclaration: sig
@@ -1280,11 +1340,11 @@ module ExternalDeclaration: sig
 
   val type_annotation: t -> type_expr option
 
-  val for_each_name_token: t -> fn:(Token.t -> unit) -> unit
+  val fold_name_token: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
 
-  val for_each_primitive_string: t -> fn:(Token.t -> unit) -> unit
+  val fold_primitive_string: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
 
-  val for_each_attribute_token: t -> fn:(Token.t -> unit) -> unit
+  val fold_attribute_token: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
 end
 
 module ExceptionDeclaration: sig
@@ -1316,14 +1376,14 @@ module ExtensionItem: sig
   type t = extension_item
   val cast: Node.t -> t cast_result
 
-  val for_each_shell_token: t -> fn:(Token.t -> unit) -> unit
+  val fold_shell_token: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
 end
 
 module AttributeItem: sig
   type t = attribute_item
   val cast: Node.t -> t cast_result
 
-  val for_each_shell_token: t -> fn:(Token.t -> unit) -> unit
+  val fold_shell_token: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
 end
 
 module ExprItem: sig
@@ -1337,14 +1397,16 @@ module Implementation: sig
   type t = implementation
   val cast: Node.t -> t cast_result
 
-  val for_each_item: t -> fn:(structure_item -> unit) -> unit
+  val fold_item: t -> init:'acc -> fn:(structure_item -> 'acc -> 'acc control) -> 'acc
+
 end
 
 module Interface: sig
   type t = interface
   val cast: Node.t -> t cast_result
 
-  val for_each_item: t -> fn:(signature_item -> unit) -> unit
+  val fold_item: t -> init:'acc -> fn:(signature_item -> 'acc -> 'acc control) -> 'acc
+
 end
 
 module SourceFile: sig
@@ -1360,9 +1422,9 @@ module SourceFile: sig
 
   val interface: t -> interface option
 
-  val for_each_item: t -> fn:(Node.t -> unit) -> unit
+  val fold_item: t -> init:'acc -> fn:(Node.t -> 'acc -> 'acc control) -> 'acc
 
-  val for_each_structure_item: t -> fn:(structure_item -> unit) -> unit
+  val fold_structure_item: t -> init:'acc -> fn:(structure_item -> 'acc -> 'acc control) -> 'acc
 
-  val for_each_signature_item: t -> fn:(signature_item -> unit) -> unit
+  val fold_signature_item: t -> init:'acc -> fn:(signature_item -> 'acc -> 'acc control) -> 'acc
 end

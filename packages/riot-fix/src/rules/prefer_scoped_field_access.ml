@@ -103,7 +103,7 @@ let module_qualifier_of_path = fun ctx path ->
 
 let record_expr_repeats_qualifier = fun ctx record ->
   let qualifiers = Vector.with_capacity ~size:(Ast.Node.child_count (record: Ast.Node.t)) in
-  Ast.RecordExpr.for_each_field
+  H.iter_fold Ast.RecordExpr.fold_field
     record
     ~fn:(fun field ->
       match field with

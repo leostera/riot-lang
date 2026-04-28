@@ -34,7 +34,7 @@ let count_parameter = fun counts parameter ->
 
 let parameter_counts = fun binding ->
   let counts = ref { positional_count = 0; named_count = 0 } in
-  Ast.LetBinding.for_each_parameter
+  H.iter_fold Ast.LetBinding.fold_parameter
     binding
     ~fn:(fun parameter -> counts := count_parameter !counts parameter);
   !counts

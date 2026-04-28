@@ -1,6 +1,15 @@
 open Std
 open Std.Collections
 
+let iter_fold = fun fold value ~fn ->
+  fold
+    value
+    ~init:()
+    ~fn:(fun item () ->
+      fn item;
+      Syn.Ast.Continue ())
+
+
 module Ast = Syn.Ast
 
 let span_of_token = fun token ->
@@ -107,7 +116,7 @@ let path_last_ident = fun path -> Ast.Path.last_ident path
 
 let first_child_expr = fun expr ->
   let found = ref None in
-  Ast.Expr.for_each_child_expr
+  iter_fold Ast.Expr.fold_child_expr
     expr
     ~fn:(fun child ->
       match !found with
@@ -117,7 +126,7 @@ let first_child_expr = fun expr ->
 
 let first_child_pattern = fun pattern ->
   let found = ref None in
-  Ast.Pattern.for_each_child_pattern
+  iter_fold Ast.Pattern.fold_child_pattern
     pattern
     ~fn:(fun child ->
       match !found with
@@ -127,7 +136,7 @@ let first_child_pattern = fun pattern ->
 
 let first_child_type_expr = fun type_expr ->
   let found = ref None in
-  Ast.TypeExpr.for_each_child_type
+  iter_fold Ast.TypeExpr.fold_child_type
     type_expr
     ~fn:(fun child ->
       match !found with
@@ -211,7 +220,7 @@ let binding_name_token = fun binding ->
 
 let binding_has_parameters = fun binding ->
   let found = ref false in
-  Ast.LetBinding.for_each_parameter binding ~fn:(fun _ -> found := true);
+  iter_fold Ast.LetBinding.fold_parameter binding ~fn:(fun _ -> found := true);
   !found
 
 let expr_is_fun = fun expr ->

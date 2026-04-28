@@ -39,7 +39,7 @@ let is_reraise_body = fun name expr ->
 
 let single_match_case = fun expr ->
   let cases = Vector.with_capacity ~size:1 in
-  Ast.Expr.for_each_match_case expr ~fn:(fun match_case -> Vector.push cases ~value:match_case);
+  H.iter_fold Ast.Expr.fold_match_case expr ~fn:(fun match_case -> Vector.push cases ~value:match_case);
   if Int.equal (Vector.length cases) 1 then
     Vector.get cases ~at:0
   else

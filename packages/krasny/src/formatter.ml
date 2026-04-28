@@ -1,6 +1,15 @@
 open Std
 open Std.Collections
 
+let iter_fold = fun fold value ~fn ->
+  fold
+    value
+    ~init:()
+    ~fn:(fun item () ->
+      fn item;
+      Syn.Ast.Continue ())
+
+
 module Ast = Syn.Ast
 module Kind = Syn.SyntaxKind
 module Layout = Layout_policy
@@ -415,7 +424,7 @@ let token_leading_trivia_starts_inline = fun token ->
 let token_single_leading_delimited_trivia = fun token ->
   let result = ref None in
   let multiple = ref false in
-  Ast.Token.for_each_leading_trivia_item
+  iter_fold Ast.Token.fold_leading_trivia_item
     token
     ~fn:(
       function
@@ -560,7 +569,7 @@ let emit_token_leading_comments_as_lines = fun state token ->
   | _ ->
       let emitted = ref false in
       let previous_kind = ref None in
-      Ast.Token.for_each_leading_trivia_item
+      iter_fold Ast.Token.fold_leading_trivia_item
         token
         ~fn:(
           function
@@ -610,7 +619,7 @@ let emit_token_leading_comments_as_lines = fun state token ->
 
 let token_has_leading_ordinary_comment_needing_separator = fun token ->
   let found = ref false in
-  Ast.Token.for_each_leading_trivia_item
+  iter_fold Ast.Token.fold_leading_trivia_item
     token
     ~fn:(
       function
@@ -630,7 +639,7 @@ let emit_top_level_leading_comments_as_lines = fun
   token ->
   let previous_kind = ref None in
   let seen_non_whitespace = ref false in
-  Ast.Token.for_each_leading_trivia_item
+  iter_fold Ast.Token.fold_leading_trivia_item
     token
     ~fn:(
       function
@@ -860,7 +869,7 @@ let is_module_type_kind = function
 
 let first_child_node_matching = fun node ~matches ->
   let found = ref None in
-  Ast.Node.for_each_child_node
+  iter_fold Ast.Node.fold_child_node
     node
     ~fn:(fun child ->
       match !found with
@@ -873,7 +882,7 @@ let first_child_node_matching = fun node ~matches ->
 let nth_child_node_matching = fun node index ~matches ->
   let found = ref None in
   let current = ref 0 in
-  Ast.Node.for_each_child_node
+  iter_fold Ast.Node.fold_child_node
     node
     ~fn:(fun child ->
       match !found with
@@ -888,7 +897,7 @@ let nth_child_node_matching = fun node index ~matches ->
 
 let first_child_token_matching = fun node ~matches ->
   let found = ref None in
-  Ast.Node.for_each_child_token
+  iter_fold Ast.Node.fold_child_token
     node
     ~fn:(fun token ->
       match !found with
@@ -901,7 +910,7 @@ let first_child_token_matching = fun node ~matches ->
 let first_descendant_node_matching = fun (node: Ast.Node.t) ~matches ->
   let found = ref None in
   let rec visit node =
-    Ast.Node.for_each_child_node
+    iter_fold Ast.Node.fold_child_node
       node
       ~fn:(fun child ->
         match !found with
@@ -958,7 +967,7 @@ let collect_node_attribute_suffix_tokens_after_child = fun (node: Ast.Node.t) (c
               | Some (Syn.SyntaxTree.Token id) ->
                   Vector.push tokens ~value:({ tree = node.Ast.tree; id }: Ast.Token.t)
               | Some (Syn.SyntaxTree.Node id) ->
-                  Ast.Node.for_each_token
+                  iter_fold Ast.Node.fold_token
                     ({ tree = node.Ast.tree; id }: Ast.Node.t)
                     ~fn:(fun token -> Vector.push tokens ~value:token)
               | Some (Syn.SyntaxTree.Missing _)
@@ -990,7 +999,7 @@ let collect_wrapped_module_body_attribute_suffix_tokens = fun (node: Ast.Node.t)
 
 let node_has_token_kind = fun node kind ->
   let found = ref false in
-  Ast.Node.for_each_token
+  iter_fold Ast.Node.fold_token
     node
     ~fn:(fun token ->
       if not !found && token_kind_is token kind then
@@ -999,7 +1008,7 @@ let node_has_token_kind = fun node kind ->
 
 let first_ident_token = fun node ->
   let found = ref None in
-  Ast.Node.for_each_child_token
+  iter_fold Ast.Node.fold_child_token
     node
     ~fn:(fun token ->
       match !found with
@@ -1011,7 +1020,7 @@ let first_ident_token = fun node ->
 
 let last_ident_token = fun node ->
   let found = ref None in
-  Ast.Node.for_each_child_token
+  iter_fold Ast.Node.fold_child_token
     node
     ~fn:(fun token ->
       if token_kind_is token Kind.IDENT then
@@ -1053,7 +1062,7 @@ let attribute_token_wants_space_before = fun previous token ->
 
 let emit_token_stream = fun state node ->
   let previous = ref None in
-  Ast.Node.for_each_token
+  iter_fold Ast.Node.fold_token
     node
     ~fn:(fun token ->
       (
@@ -1067,7 +1076,7 @@ let emit_token_stream = fun state node ->
 
 let emit_attribute_token_stream = fun state node ->
   let previous = ref None in
-  Ast.Node.for_each_token
+  iter_fold Ast.Node.fold_token
     node
     ~fn:(fun token ->
       (
@@ -1299,7 +1308,7 @@ let emit_shell_token_vector_range_stream = fun state tokens ~start ~stop ->
 let emit_shell_node_token_stream = fun state node ->
   emit_shell_token_stream
     state
-    (fun ~fn -> Ast.Node.for_each_token node ~fn)
+    (fun ~fn -> iter_fold Ast.Node.fold_token node ~fn)
 
 let unsupported_node = fun label node ->
   unsupported
@@ -1307,7 +1316,7 @@ let unsupported_node = fun label node ->
 
 let collect_child_exprs = fun (node: Ast.Node.t) ->
   let exprs = Vector.with_capacity ~size:(Ast.Node.child_count node) in
-  Ast.Node.for_each_child_node
+  iter_fold Ast.Node.fold_child_node
     node
     ~fn:(fun child ->
       match Ast.cast_result_to_option (Ast.Expr.cast child) with
@@ -1317,7 +1326,7 @@ let collect_child_exprs = fun (node: Ast.Node.t) ->
 
 let collect_child_patterns = fun (node: Ast.Node.t) ->
   let patterns = Vector.with_capacity ~size:(Ast.Node.child_count node) in
-  Ast.Node.for_each_child_node
+  iter_fold Ast.Node.fold_child_node
     node
     ~fn:(fun child ->
       match Ast.cast_result_to_option (Ast.Pattern.cast child) with
@@ -1336,7 +1345,7 @@ let collect_fun_parameters = fun (node: Ast.Node.t) ->
   and push_positional_construct pattern =
     match node_kind pattern with
     | Kind.CONSTRUCT_PATTERN ->
-        Ast.Node.for_each_child_node
+        iter_fold Ast.Node.fold_child_node
           pattern
           ~fn:(fun child ->
             match Ast.cast_result_to_option (Ast.Parameter.cast child) with
@@ -1344,7 +1353,7 @@ let collect_fun_parameters = fun (node: Ast.Node.t) ->
             | None -> ())
     | _ -> Vector.push parameters ~value:pattern
   in
-  Ast.Node.for_each_child_node
+  iter_fold Ast.Node.fold_child_node
     node
     ~fn:(fun child ->
       match Ast.cast_result_to_option (Ast.Parameter.cast child) with
@@ -1354,7 +1363,7 @@ let collect_fun_parameters = fun (node: Ast.Node.t) ->
 
 let rec collect_child_type_exprs = fun (type_expr: Ast.TypeExpr.t) ->
   let items = Vector.with_capacity ~size:(Ast.Node.child_count type_expr) in
-  Ast.Node.for_each_child_node
+  iter_fold Ast.Node.fold_child_node
     type_expr
     ~fn:(fun child ->
       match Ast.cast_result_to_option (Ast.TypeExpr.cast child) with
@@ -1373,26 +1382,26 @@ let collect_record_fields = fun record ->
   let fields: Ast.record_expr_field_view Vector.t =
     Vector.with_capacity ~size:(Ast.Node.child_count record)
   in
-  Ast.RecordExpr.for_each_field record ~fn:(fun field -> Vector.push fields ~value:field);
+  iter_fold Ast.RecordExpr.fold_field record ~fn:(fun field -> Vector.push fields ~value:field);
   fields
 
 let collect_array_items = collect_child_exprs
 
 let collect_type_members = fun decl ->
   let members = Vector.with_capacity ~size:(Ast.Node.child_count decl) in
-  Ast.TypeDeclaration.for_each_member decl ~fn:(fun member -> Vector.push members ~value:member);
+  iter_fold Ast.TypeDeclaration.fold_member decl ~fn:(fun member -> Vector.push members ~value:member);
   members
 
 let collect_type_member_parameters = fun member ->
   let parameters = Vector.with_capacity ~size:(Ast.TypeDeclaration.Member.child_count member) in
-  Ast.TypeDeclaration.Member.for_each_parameter
+  iter_fold Ast.TypeDeclaration.Member.fold_parameter
     member
     ~fn:(fun parameter -> Vector.push parameters ~value:parameter);
   parameters
 
 let collect_type_member_attribute_items = fun member ->
   let attributes = Vector.with_capacity ~size:(Ast.TypeDeclaration.Member.child_count member) in
-  Ast.TypeDeclaration.Member.for_each_child_node
+  iter_fold Ast.TypeDeclaration.Member.fold_child_node
     member
     ~fn:(fun child ->
       if node_kind_is child Kind.ATTRIBUTE_ITEM then
@@ -1464,7 +1473,7 @@ let collect_type_member_attribute_suffix_tokens = fun member ->
             | Some (Syn.SyntaxTree.Node _) -> (
                 match Ast.TypeDeclaration.Member.child_node_at member index with
                 | Some node ->
-                    Ast.Node.for_each_token node ~fn:(fun token -> Vector.push tokens ~value:token)
+                    iter_fold Ast.Node.fold_token node ~fn:(fun token -> Vector.push tokens ~value:token)
                 | None -> ()
               )
             | Some (Syn.SyntaxTree.Missing _)
@@ -1478,7 +1487,7 @@ let collect_type_member_attribute_suffix_tokens = fun member ->
 
 let collect_type_declaration_attribute_items = fun decl ->
   let attributes = Vector.with_capacity ~size:(Ast.Node.child_count decl) in
-  Ast.Node.for_each_child_node
+  iter_fold Ast.Node.fold_child_node
     decl
     ~fn:(fun child ->
       if node_kind_is child Kind.ATTRIBUTE_ITEM then
@@ -1487,24 +1496,24 @@ let collect_type_declaration_attribute_items = fun decl ->
 
 let collect_type_extension_parameters = fun decl ->
   let parameters = Vector.with_capacity ~size:(Ast.Node.child_count decl) in
-  Ast.TypeExtensionDeclaration.for_each_parameter
+  iter_fold Ast.TypeExtensionDeclaration.fold_parameter
     decl
     ~fn:(fun parameter -> Vector.push parameters ~value:parameter);
   parameters
 
 let collect_record_type_fields = fun record_type ->
   let fields = Vector.with_capacity ~size:(Ast.Node.child_count record_type) in
-  Ast.RecordType.for_each_field record_type ~fn:(fun field -> Vector.push fields ~value:field);
+  iter_fold Ast.RecordType.fold_field record_type ~fn:(fun field -> Vector.push fields ~value:field);
   fields
 
 let collect_let_bindings = fun decl ->
   let bindings = Vector.with_capacity ~size:(Ast.Node.child_count decl) in
-  Ast.LetDeclaration.for_each_binding decl ~fn:(fun binding -> Vector.push bindings ~value:binding);
+  iter_fold Ast.LetDeclaration.fold_binding decl ~fn:(fun binding -> Vector.push bindings ~value:binding);
   bindings
 
 let collect_let_bindings_from_expr = fun expr ->
   let bindings = Vector.with_capacity ~size:(Ast.Node.child_count expr) in
-  Ast.Node.for_each_child_node
+  iter_fold Ast.Node.fold_child_node
     expr
     ~fn:(fun child ->
       match Ast.cast_result_to_option (Ast.LetBinding.cast child) with
@@ -1514,38 +1523,38 @@ let collect_let_bindings_from_expr = fun expr ->
 
 let collect_binding_operator_clauses = fun expr ->
   let clauses = Vector.with_capacity ~size:(Ast.Node.child_count expr) in
-  Ast.BindingOperatorExpr.for_each_clause expr ~fn:(fun clause -> Vector.push clauses ~value:clause);
+  iter_fold Ast.BindingOperatorExpr.fold_clause expr ~fn:(fun clause -> Vector.push clauses ~value:clause);
   clauses
 
 let collect_external_name_tokens = fun decl ->
   let tokens = Vector.with_capacity ~size:(Ast.Node.child_count decl) in
-  Ast.ExternalDeclaration.for_each_name_token
+  iter_fold Ast.ExternalDeclaration.fold_name_token
     decl
     ~fn:(fun token -> Vector.push tokens ~value:token);
   tokens
 
 let collect_value_name_tokens = fun decl ->
   let tokens = Vector.with_capacity ~size:(Ast.Node.child_count decl) in
-  Ast.ValueDeclaration.for_each_name_token decl ~fn:(fun token -> Vector.push tokens ~value:token);
+  iter_fold Ast.ValueDeclaration.fold_name_token decl ~fn:(fun token -> Vector.push tokens ~value:token);
   tokens
 
 let collect_external_primitive_strings = fun decl ->
   let tokens = Vector.with_capacity ~size:(Ast.Node.child_count decl) in
-  Ast.ExternalDeclaration.for_each_primitive_string
+  iter_fold Ast.ExternalDeclaration.fold_primitive_string
     decl
     ~fn:(fun token -> Vector.push tokens ~value:token);
   tokens
 
 let collect_external_attribute_tokens = fun decl ->
   let tokens = Vector.with_capacity ~size:(Ast.Node.child_count decl) in
-  Ast.ExternalDeclaration.for_each_attribute_token
+  iter_fold Ast.ExternalDeclaration.fold_attribute_token
     decl
     ~fn:(fun token -> Vector.push tokens ~value:token);
   tokens
 
 let collect_child_tokens = fun node ->
   let tokens = Vector.with_capacity ~size:(Ast.Node.child_count node) in
-  Ast.Node.for_each_child_token node ~fn:(fun token -> Vector.push tokens ~value:token);
+  iter_fold Ast.Node.fold_child_token node ~fn:(fun token -> Vector.push tokens ~value:token);
   tokens
 
 let is_expr_node_kind = function
@@ -1709,7 +1718,7 @@ module TypeExprView = struct
 
   let tuple_separator = fun type_expr ->
     let found = ref UnknownSeparator in
-    Ast.Node.for_each_child_token
+    iter_fold Ast.Node.fold_child_token
       type_expr
       ~fn:(fun token ->
         if token_kind_is token Kind.STAR then
@@ -2087,13 +2096,13 @@ end
 
 let collect_node_tokens = fun node ->
   let tokens = Vector.with_capacity ~size:(Ast.Node.child_count node) in
-  Ast.Node.for_each_token node ~fn:(fun token -> Vector.push tokens ~value:token);
+  iter_fold Ast.Node.fold_token node ~fn:(fun token -> Vector.push tokens ~value:token);
   tokens
 
 let collect_node_tokens_after_direct_token = fun node kind ->
   let tokens = Vector.with_capacity ~size:(Ast.Node.child_count node) in
   let after = ref false in
-  Ast.Node.for_each_child
+  iter_fold Ast.Node.fold_child
     node
     ~fn:(
       function
@@ -2105,7 +2114,7 @@ let collect_node_tokens_after_direct_token = fun node kind ->
             after := true
       | Syn.SyntaxTree.Node id ->
           if !after then
-            Ast.Node.for_each_token
+            iter_fold Ast.Node.fold_token
               ({ tree = node.Ast.tree; id }: Ast.Node.t)
               ~fn:(fun token -> Vector.push tokens ~value:token)
       | Syn.SyntaxTree.Missing _ -> ()
@@ -2276,7 +2285,7 @@ let render_infix_operator_tokens = fun state expr left operator right ->
 
 let collect_child_tokens_of_kind = fun node kind ->
   let tokens = Vector.with_capacity ~size:(Ast.Node.child_count node) in
-  Ast.Node.for_each_child_token
+  iter_fold Ast.Node.fold_child_token
     node
     ~fn:(fun token ->
       if token_kind_is token kind then
@@ -2349,12 +2358,12 @@ let token_vector_find_last_kind = fun tokens kind ->
 
 let collect_match_cases = fun expr ->
   let cases = Vector.with_capacity ~size:(Ast.Node.child_count expr) in
-  Ast.Expr.for_each_match_case expr ~fn:(fun case -> Vector.push cases ~value:case);
+  iter_fold Ast.Expr.fold_match_case expr ~fn:(fun case -> Vector.push cases ~value:case);
   cases
 
 let collect_variant_constructors = fun variant_type ->
   let constructors = Vector.with_capacity ~size:(Ast.Node.child_count variant_type) in
-  Ast.VariantType.for_each_constructor
+  iter_fold Ast.VariantType.fold_constructor
     variant_type
     ~fn:(fun constructor -> Vector.push constructors ~value:constructor);
   constructors
@@ -2363,24 +2372,24 @@ let collect_record_pattern_fields = fun record ->
   let fields: Ast.record_pattern_field_view Vector.t =
     Vector.with_capacity ~size:(Ast.Node.child_count record)
   in
-  Ast.RecordPattern.for_each_field record ~fn:(fun field -> Vector.push fields ~value:field);
+  iter_fold Ast.RecordPattern.fold_field record ~fn:(fun field -> Vector.push fields ~value:field);
   fields
 
 let collect_signature_items_from_module_type_decl = fun decl ->
   let items = Vector.with_capacity ~size:(Ast.Node.child_count decl) in
-  Ast.ModuleTypeDeclaration.for_each_signature_item
+  iter_fold Ast.ModuleTypeDeclaration.fold_signature_item
     decl
     ~fn:(fun item -> Vector.push items ~value:item);
   items
 
 let collect_signature_items_from_module_decl = fun decl ->
   let items = Vector.with_capacity ~size:(Ast.Node.child_count decl) in
-  Ast.ModuleDeclaration.for_each_signature_item decl ~fn:(fun item -> Vector.push items ~value:item);
+  iter_fold Ast.ModuleDeclaration.fold_signature_item decl ~fn:(fun item -> Vector.push items ~value:item);
   items
 
 let collect_structure_items_from_node = fun node ->
   let items = Vector.with_capacity ~size:(Ast.Node.child_count node) in
-  Ast.Node.for_each_child_node
+  iter_fold Ast.Node.fold_child_node
     node
     ~fn:(fun child ->
       if node_kind_is child Kind.STRUCTURE_ITEM then
@@ -2389,7 +2398,7 @@ let collect_structure_items_from_node = fun node ->
 
 let collect_structure_items_from_module_decl = fun decl ->
   let items = Vector.with_capacity ~size:(Ast.Node.child_count decl) in
-  Ast.ModuleDeclaration.for_each_structure_item decl ~fn:(fun item -> Vector.push items ~value:item);
+  iter_fold Ast.ModuleDeclaration.fold_structure_item decl ~fn:(fun item -> Vector.push items ~value:item);
   items
 
 let collect_structure_item_entries_from_node = fun node ->
@@ -2435,7 +2444,7 @@ let collect_structure_item_entries_from_node = fun node ->
 
 let collect_signature_items_from_node = fun node ->
   let items = Vector.with_capacity ~size:(Ast.Node.child_count node) in
-  Ast.Node.for_each_child_node
+  iter_fold Ast.Node.fold_child_node
     node
     ~fn:(fun child ->
       if node_kind_is child Kind.SIGNATURE_ITEM then
@@ -2444,7 +2453,7 @@ let collect_signature_items_from_node = fun node ->
 
 let collect_module_declaration_members = fun decl ->
   let members = Vector.with_capacity ~size:(Ast.Node.child_count decl) in
-  Ast.ModuleDeclaration.for_each_member decl ~fn:(fun member -> Vector.push members ~value:member);
+  iter_fold Ast.ModuleDeclaration.fold_member decl ~fn:(fun member -> Vector.push members ~value:member);
   members
 
 let emit_joined_vector = fun state values ~sep ~fn ->
@@ -2641,7 +2650,7 @@ let render_opaque_type = fun state node ->
   else
     render_gt_opaque_type state node
 
-let render_path = fun state path -> Ast.Node.for_each_token path ~fn:(emit_token state)
+let render_path = fun state path -> iter_fold Ast.Node.fold_token path ~fn:(emit_token state)
 
 let token_vector_is_parenthesized_operator_name = fun tokens ->
   let length = Vector.length tokens in
@@ -2688,7 +2697,7 @@ let render_expr_path = fun state path ->
 
 let path_contains_dot = fun path ->
   let found = ref false in
-  Ast.Node.for_each_token
+  iter_fold Ast.Node.fold_token
     path
     ~fn:(fun token ->
       if token_kind_is token Kind.DOT then
@@ -2808,7 +2817,7 @@ and render_alias_opaque_type = fun state node ->
 
 and render_type_expr_attribute_suffix = fun state type_expr ->
   let tokens = Vector.with_capacity ~size:(Ast.Node.child_count type_expr) in
-  Ast.TypeExpr.for_each_attribute_suffix_token
+  iter_fold Ast.TypeExpr.fold_attribute_suffix_token
     type_expr
     ~fn:(fun token -> Vector.push tokens ~value:token);
   let length = Vector.length tokens in
@@ -2945,7 +2954,7 @@ and type_expr_flat_width = fun type_expr ->
       | None -> None
       | Some body_width ->
           let names = Vector.with_capacity ~size:(Ast.Node.child_count type_expr) in
-          Ast.TypeExpr.for_each_poly_type_name
+          iter_fold Ast.TypeExpr.fold_poly_type_name
             type_expr
             ~fn:(fun name -> Vector.push names ~value:name);
           let length = Vector.length names in
@@ -2989,7 +2998,7 @@ and type_expr_flat_width = fun type_expr ->
 
 and render_poly_type_prefix = fun state type_expr ->
   let names = Vector.with_capacity ~size:(Ast.Node.child_count type_expr) in
-  Ast.TypeExpr.for_each_poly_type_name type_expr ~fn:(fun name -> Vector.push names ~value:name);
+  iter_fold Ast.TypeExpr.fold_poly_type_name type_expr ~fn:(fun name -> Vector.push names ~value:name);
   let has_explicit_type_keyword =
     match Ast.TypeExpr.poly_type_keyword_token type_expr with
     | Some type_keyword ->
@@ -3249,7 +3258,7 @@ let pattern_is_or = fun pattern ->
 let collect_tuple_pattern_items = fun pattern ->
   let items = Vector.with_capacity ~size:(Ast.Node.child_count pattern) in
   let rec push_items pattern =
-    Ast.Node.for_each_child_node
+    iter_fold Ast.Node.fold_child_node
       pattern
       ~fn:(fun child ->
         match Ast.cast_result_to_option (Ast.Pattern.cast child) with
@@ -3266,7 +3275,7 @@ let collect_tuple_pattern_items = fun pattern ->
 let path_single_ident_token = fun path ->
   let found = ref None in
   let count = ref 0 in
-  Ast.Path.for_each_ident
+  iter_fold Ast.Path.fold_ident
     path
     ~fn:(fun token ->
       count := Int.add !count 1;
@@ -3331,7 +3340,7 @@ let render_first_class_module_pattern_ascription = fun state pattern ->
       render_first_class_module_pattern_path
         state
         pattern
-        (Ast.FirstClassModulePattern.for_each_ascription_path_ident pattern)
+        (iter_fold Ast.FirstClassModulePattern.fold_ascription_path_ident pattern)
         "first-class module pattern without module type path"
   | (Some colon_token, Ast.FirstClassModulePattern.UnsupportedAscription) ->
       render_first_class_module_pattern_ascription_tokens state pattern colon_token
@@ -3393,7 +3402,7 @@ let parameter_token_wants_space_before = fun previous token ->
 
 let emit_parameter_token_stream = fun state parameter ->
   let previous = ref None in
-  Ast.Node.for_each_token
+  iter_fold Ast.Node.fold_token
     parameter
     ~fn:(fun token ->
       (
@@ -3407,7 +3416,7 @@ let emit_parameter_token_stream = fun state parameter ->
 
 let parameter_colon_has_leading_space = fun parameter ->
   let found = ref None in
-  Ast.Node.for_each_token
+  iter_fold Ast.Node.fold_token
     parameter
     ~fn:(fun token ->
       match !found with
@@ -3422,7 +3431,7 @@ let parameter_colon_has_leading_space = fun parameter ->
 let parenthesized_pattern_should_break = fun state pattern ->
   let previous = ref None in
   let width = ref 0 in
-  Ast.Node.for_each_token
+  iter_fold Ast.Node.fold_token
     pattern
     ~fn:(fun token ->
       let extra_space =
@@ -3905,7 +3914,7 @@ and render_extension_pattern = fun state pattern ->
   | Some extension ->
       emit_shell_token_stream
         state
-        (fun ~fn -> Ast.ExtensionPattern.for_each_shell_token extension ~fn)
+        (fun ~fn -> iter_fold Ast.ExtensionPattern.fold_shell_token extension ~fn)
   | None -> unsupported_node "unsupported extension pattern" pattern
 
 and render_attribute_pattern = fun state pattern ->
@@ -3917,7 +3926,7 @@ and render_attribute_pattern = fun state pattern ->
           emit_space state;
           emit_shell_token_stream
             state
-            (fun ~fn -> Ast.AttributePattern.for_each_shell_token attribute ~fn)
+            (fun ~fn -> iter_fold Ast.AttributePattern.fold_shell_token attribute ~fn)
       | None -> unsupported_node "attribute pattern without inner pattern" pattern
     )
   | None -> unsupported_node "unsupported attribute pattern" pattern
@@ -3927,7 +3936,7 @@ let rec pattern_contains_type_annotation = fun pattern annotation ->
   | Constraint { annotation = Some existing; _ } when same_ast_node existing annotation -> true
   | _ ->
       let found = ref false in
-      Ast.Pattern.for_each_child_pattern
+      iter_fold Ast.Pattern.fold_child_pattern
         pattern
         ~fn:(fun child ->
           if not !found && not (same_ast_node pattern child) then
@@ -4255,7 +4264,7 @@ and expr_tuple_has_parens = fun expr ->
 and collect_tuple_expr_items = fun expr ->
   let items = Vector.with_capacity ~size:(Ast.Node.child_count expr) in
   let rec push_items expr =
-    Ast.Expr.for_each_child_expr
+    iter_fold Ast.Expr.fold_child_expr
       expr
       ~fn:(fun child ->
         match ExprView.view child with
@@ -4326,7 +4335,7 @@ and token_vector_flat_width = fun tokens ->
 and node_token_flat_width = fun node ->
   let previous = ref None in
   let total = ref 0 in
-  Ast.Node.for_each_token
+  iter_fold Ast.Node.fold_token
     node
     ~fn:(fun token ->
       let extra_space =
@@ -6144,7 +6153,7 @@ and render_attribute_expr = fun state expr ->
           emit_space state;
           emit_shell_token_stream
             state
-            (fun ~fn -> Ast.AttributeExpr.for_each_shell_token attribute ~fn)
+            (fun ~fn -> iter_fold Ast.AttributeExpr.fold_shell_token attribute ~fn)
       | None -> unsupported_node "attribute expression without inner expression" expr
     )
   | None -> unsupported_node "unsupported attribute expression" expr
@@ -6154,7 +6163,7 @@ and render_extension_expr = fun state expr ->
   | Some extension ->
       emit_shell_token_stream
         state
-        (fun ~fn -> Ast.ExtensionExpr.for_each_shell_token extension ~fn)
+        (fun ~fn -> iter_fold Ast.ExtensionExpr.fold_shell_token extension ~fn)
   | None -> unsupported_node "unsupported extension expression" expr
 
 and render_let_exception_expr = fun state expr ->
@@ -6185,7 +6194,7 @@ and render_let_exception_expr = fun state expr ->
             emit_token state of_token;
             emit_space state;
             let payload_tokens = Vector.with_capacity ~size:(Ast.Node.child_count expr) in
-            Ast.LetExceptionExpr.for_each_payload_token
+            iter_fold Ast.LetExceptionExpr.fold_payload_token
               let_exception
               ~fn:(fun token -> Vector.push payload_tokens ~value:token);
             emit_token_vector_stream state payload_tokens
@@ -6603,7 +6612,7 @@ and module_type_specific_node = fun node ->
 
 and collect_child_module_exprs = fun node ->
   let exprs = Vector.with_capacity ~size:(Ast.Node.child_count node) in
-  Ast.Node.for_each_child_node
+  iter_fold Ast.Node.fold_child_node
     node
     ~fn:(fun child ->
       match module_expr_specific_node child with
@@ -6666,7 +6675,7 @@ and render_module_typeof_node = fun state node ->
   emit_text state "module type of";
   emit_space state;
   let tokens = Vector.with_capacity ~size:(Ast.Node.child_count node) in
-  Ast.Node.for_each_token
+  iter_fold Ast.Node.fold_token
     node
     ~fn:(fun token ->
       if token_kind_is token Kind.IDENT || token_kind_is token Kind.DOT then
@@ -6712,7 +6721,7 @@ and render_module_type_constraint_module_body = fun state body ->
 and render_with_module_type_node = fun state node ->
   let rendered_base = ref false in
   let pending_connector = ref None in
-  Ast.Node.for_each_child
+  iter_fold Ast.Node.fold_child
     node
     ~fn:(fun child ->
       match child with
@@ -6854,7 +6863,7 @@ and render_let_module_body = fun state module_expr ->
       | Path ->
           render_module_body_path
             state
-            (Ast.LetModuleExpr.for_each_module_body_path_ident module_expr)
+            (iter_fold Ast.LetModuleExpr.fold_module_body_path_ident module_expr)
       | Struct ->
           emit_text state "struct";
           emit_space state;
@@ -6924,7 +6933,7 @@ and render_first_class_module_ascription = fun state expr ->
       render_first_class_module_path
         state
         expr
-        (Ast.FirstClassModuleExpr.for_each_ascription_path_ident expr)
+        (iter_fold Ast.FirstClassModuleExpr.fold_ascription_path_ident expr)
         "first-class module expression without module type path"
   | (Some colon_token, Ast.FirstClassModuleExpr.UnsupportedAscription) ->
       render_first_class_module_ascription_tokens state expr colon_token
@@ -6968,7 +6977,7 @@ and render_first_class_module_expr = fun state expr ->
               render_first_class_module_path
                 state
                 module_expr
-                (Ast.FirstClassModuleExpr.for_each_module_path_ident module_expr)
+                (iter_fold Ast.FirstClassModuleExpr.fold_module_path_ident module_expr)
                 "first-class module expression without module path";
               render_first_class_module_ascription state module_expr;
               emit_token state closing_token
@@ -7259,7 +7268,7 @@ and render_let_binding_tail_with_body_break = fun
   let binding_body = Ast.LetBinding.body binding in
   let annotation = Ast.LetBinding.type_annotation binding in
   let parameters = Vector.with_capacity ~size:(Ast.Node.child_count binding) in
-  Ast.LetBinding.for_each_parameter binding ~fn:(fun param -> Vector.push parameters ~value:param);
+  iter_fold Ast.LetBinding.fold_parameter binding ~fn:(fun param -> Vector.push parameters ~value:param);
   let parameter_count = Vector.length parameters in
   let return_annotation_wants_leading_space =
     if Int.equal parameter_count 0 then
@@ -7627,7 +7636,7 @@ and render_open_declaration = fun state decl ->
   );
   emit_space state;
   let first = ref true in
-  Ast.OpenDeclaration.for_each_path_ident
+  iter_fold Ast.OpenDeclaration.fold_path_ident
     decl
     ~fn:(fun ident ->
       if !first then
@@ -8183,7 +8192,7 @@ and render_type_parameters = fun state parameters ->
 
 and type_member_has_equals = fun member ->
   let found = ref false in
-  Ast.TypeDeclaration.Member.for_each_child_token
+  iter_fold Ast.TypeDeclaration.Member.fold_child_token
     member
     ~fn:(fun token ->
       if token_kind_is token Kind.EQ then
@@ -8193,7 +8202,7 @@ and type_member_has_equals = fun member ->
 and type_member_private_token = fun member ->
   let saw_equals = ref false in
   let found = ref None in
-  Ast.TypeDeclaration.Member.for_each_child_token
+  iter_fold Ast.TypeDeclaration.Member.fold_child_token
     member
     ~fn:(fun token ->
       match !found with
@@ -8210,7 +8219,7 @@ and type_member_private_token = fun member ->
     match !found with
     | Some _ -> ()
     | None ->
-        Ast.TypeDeclaration.Member.for_each_child_node
+        iter_fold Ast.TypeDeclaration.Member.fold_child_node
           member
           ~fn:(fun node ->
             match !found with
@@ -8222,7 +8231,7 @@ and type_member_private_token = fun member ->
 and type_member_is_alias_extensible = fun member ->
   let equals_count = ref 0 in
   let saw_dotdot_after_alias = ref false in
-  Ast.TypeDeclaration.Member.for_each_child_token
+  iter_fold Ast.TypeDeclaration.Member.fold_child_token
     member
     ~fn:(fun token ->
       if token_kind_is token Kind.EQ then
@@ -8264,7 +8273,7 @@ and render_type_expr_after_equals = fun state type_expr ->
 and type_member_representation_equals_token = fun member ->
   let equals_seen = ref 0 in
   let found = ref None in
-  Ast.TypeDeclaration.Member.for_each_child_token
+  iter_fold Ast.TypeDeclaration.Member.fold_child_token
     member
     ~fn:(fun token ->
       if Option.is_none !found && token_kind_is token Kind.EQ then (
@@ -8286,7 +8295,7 @@ and collect_type_member_body_tokens = fun member ->
   let tokens = Vector.with_capacity ~size:(Ast.TypeDeclaration.Member.child_count member) in
   let collecting = ref false in
   let tree = (Ast.TypeDeclaration.Member.declaration member).tree in
-  Ast.TypeDeclaration.Member.for_each_child
+  iter_fold Ast.TypeDeclaration.Member.fold_child
     member
     ~fn:(
       function
@@ -8299,7 +8308,7 @@ and collect_type_member_body_tokens = fun member ->
       | Syn.SyntaxTree.Node id ->
           if !collecting then
             let node: Ast.Node.t = { tree; id } in
-            Ast.Node.for_each_token node ~fn:(fun token -> Vector.push tokens ~value:token)
+            iter_fold Ast.Node.fold_token node ~fn:(fun token -> Vector.push tokens ~value:token)
       | Syn.SyntaxTree.Missing _ -> ()
     );
   tokens
@@ -8326,7 +8335,7 @@ and collect_type_member_constraint_tokens = fun member ->
         | Some (Syn.SyntaxTree.Node id) ->
             if !collecting then
               let node: Ast.Node.t = { tree; id } in
-              Ast.Node.for_each_token node ~fn:(fun token -> Vector.push tokens ~value:token)
+              iter_fold Ast.Node.fold_token node ~fn:(fun token -> Vector.push tokens ~value:token)
         | Some (Syn.SyntaxTree.Missing _)
         | None -> ()
       );
@@ -8482,7 +8491,7 @@ and render_type_extension_declaration = fun state decl ->
   emit_space state;
   render_type_parameters state (collect_type_extension_parameters decl);
   let name_tokens = Vector.with_capacity ~size:(Ast.Node.child_count decl) in
-  Ast.TypeExtensionDeclaration.for_each_name_ident
+  iter_fold Ast.TypeExtensionDeclaration.fold_name_ident
     decl
     ~fn:(fun token -> Vector.push name_tokens ~value:token);
   if Vector.length name_tokens = 0 then
@@ -8558,7 +8567,7 @@ and render_module_typeof_body = fun state decl ->
   render_module_declaration_separator state decl ~default:":";
   emit_text state "module type of";
   emit_space state;
-  render_module_body_path state (Ast.ModuleDeclaration.for_each_typeof_body_path_ident decl)
+  render_module_body_path state (iter_fold Ast.ModuleDeclaration.fold_typeof_body_path_ident decl)
 
 and render_value_declaration = fun state decl ->
   match Ast.ValueDeclaration.view decl with
@@ -8712,7 +8721,7 @@ and render_module_declaration_members = fun state decl ->
 
 and module_declaration_has_ascribed_body = fun decl ->
   let found = ref false in
-  Ast.ModuleDeclaration.for_each_member
+  iter_fold Ast.ModuleDeclaration.fold_member
     decl
     ~fn:(fun member ->
       match (
@@ -8725,7 +8734,7 @@ and module_declaration_has_ascribed_body = fun decl ->
 
 and module_declaration_has_head_parameter = fun decl ->
   let found = ref false in
-  Ast.ModuleDeclaration.for_each_member
+  iter_fold Ast.ModuleDeclaration.fold_member
     decl
     ~fn:(fun member ->
       let rec loop index =
@@ -8804,7 +8813,7 @@ and render_module_declaration = fun state decl ->
           match Ast.ModuleExpr.view body with
           | Ast.ModuleExpr.Path { path } ->
               render_module_declaration_separator state decl ~default:"=";
-              render_module_body_path state (Ast.Path.for_each_ident path);
+              render_module_body_path state (iter_fold Ast.Path.fold_ident path);
               render_wrapped_module_body_attribute_suffix state decl
           | Ast.ModuleExpr.Structure _ ->
               let items = collect_structure_items_from_module_decl decl in
@@ -8858,7 +8867,7 @@ and render_module_declaration = fun state decl ->
           match Ast.ModuleTypeExpr.view body with
           | Ast.ModuleTypeExpr.Path { path } ->
               render_module_declaration_separator state decl ~default:":";
-              render_module_body_path state (Ast.Path.for_each_ident path);
+              render_module_body_path state (iter_fold Ast.Path.fold_ident path);
               render_wrapped_module_body_attribute_suffix state decl
           | Ast.ModuleTypeExpr.Signature _ ->
               render_module_declaration_separator state decl ~default:":";
@@ -8918,7 +8927,7 @@ and render_module_type_declaration = fun state decl ->
         match Ast.ModuleTypeExpr.view body with
         | Path { path } ->
             render_module_type_declaration_equals state decl;
-            render_module_body_path state (Ast.Path.for_each_ident path);
+            render_module_body_path state (iter_fold Ast.Path.fold_ident path);
             render_wrapped_module_body_attribute_suffix state decl
         | Signature _ ->
             render_module_type_declaration_equals state decl;
@@ -9155,7 +9164,7 @@ and render_attribute_item = fun state item -> emit_attribute_token_stream state 
 and render_extension_item = fun state item ->
   emit_shell_token_stream
     state
-    (fun ~fn -> Ast.ExtensionItem.for_each_shell_token item ~fn)
+    (fun ~fn -> iter_fold Ast.ExtensionItem.fold_shell_token item ~fn)
 
 and render_attribute_item_suffix = fun state item ->
   (
@@ -9168,7 +9177,7 @@ and render_attribute_item_suffix = fun state item ->
 and collect_item_attribute_suffixes = fun item declaration ->
   let attributes = Vector.with_capacity ~size:(Ast.Node.child_count item) in
   let after_declaration = ref false in
-  Ast.Node.for_each_child_node
+  iter_fold Ast.Node.fold_child_node
     item
     ~fn:(fun child ->
       if !after_declaration then
@@ -9251,7 +9260,7 @@ and signature_item_leading_docstring_count = fun item ->
   match Ast.Node.first_descendant_token item with
   | Some token ->
       let count = ref 0 in
-      Ast.Token.for_each_leading_trivia_item
+      iter_fold Ast.Token.fold_leading_trivia_item
         token
         ~fn:(
           function
@@ -9267,7 +9276,7 @@ and signature_item_first_leading_docstring_is_section = fun item ->
   | Some token ->
       let seen_docstring = ref false in
       let first_is_section = ref false in
-      Ast.Token.for_each_leading_trivia_item
+      iter_fold Ast.Token.fold_leading_trivia_item
         token
         ~fn:(
           function

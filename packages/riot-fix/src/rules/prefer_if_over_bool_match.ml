@@ -55,7 +55,7 @@ let case_of_match_case = fun match_case ->
 
 let collect_cases = fun expr ->
   let cases = Vector.with_capacity ~size:2 in
-  Ast.Expr.for_each_match_case
+  H.iter_fold Ast.Expr.fold_match_case
     expr
     ~fn:(fun match_case ->
       match case_of_match_case match_case with

@@ -1,5 +1,14 @@
 open Std
 
+let iter_fold = fun fold value ~fn ->
+  fold
+    value
+    ~init:()
+    ~fn:(fun item () ->
+      fn item;
+      Syn.Ast.Continue ())
+
+
 let source_slice = fun source ->
   IO.IoVec.IoSlice.from_string source
   |> Result.expect ~msg:"failed to create riot-fix test source slice"
@@ -17,7 +26,7 @@ let span_of_token = fun token ->
 
 let find_token_by_text = fun root text ->
   let found = ref None in
-  Syn.Ast.Node.for_each_token
+  iter_fold Syn.Ast.Node.fold_token
     root
     ~fn:(fun token ->
       if Option.is_none !found && String.equal (Syn.Ast.Token.text token) text then
@@ -27,7 +36,7 @@ let find_token_by_text = fun root text ->
 let token_by_text_at = fun source text ~start ->
   let root = parse_source_file source in
   let found = ref None in
-  Syn.Ast.Node.for_each_token
+  iter_fold Syn.Ast.Node.fold_token
     root
     ~fn:(fun token ->
       let token_start = Syn.Ast.Token.span_start token in

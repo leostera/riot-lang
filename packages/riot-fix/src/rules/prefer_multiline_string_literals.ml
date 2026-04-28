@@ -45,7 +45,7 @@ let rec find_string_literal_chain = fun expr ->
   | Some count when count >= 2 -> Some expr
   | _ ->
       let found = ref None in
-      Ast.Expr.for_each_child_expr
+      H.iter_fold Ast.Expr.fold_child_expr
         expr
         ~fn:(fun child ->
           match !found with

@@ -2,6 +2,15 @@ open Std
 open Std.Iter
 open Std.Collections
 
+let iter_fold = fun fold value ~fn ->
+  fold
+    value
+    ~init:()
+    ~fn:(fun item () ->
+      fn item;
+      Syn.Ast.Continue ())
+
+
 type run_mode =
   | Check
   | Verify
@@ -179,7 +188,7 @@ let syntax_hash = fun (result: Syn.Parser.parse_result) ->
   in
   let tuple_node_has_paren_token node =
     let found = ref false in
-    Ast.Node.for_each_child
+    iter_fold Ast.Node.fold_child
       node
       ~fn:(fun child ->
         match child with
@@ -195,7 +204,7 @@ let syntax_hash = fun (result: Syn.Parser.parse_result) ->
   let redundant_paren_child node =
     let meaningful_child = ref None in
     let meaningful_count = ref 0 in
-    Ast.Node.for_each_child
+    iter_fold Ast.Node.fold_child
       node
       ~fn:(fun child ->
         match child with
@@ -222,7 +231,7 @@ let syntax_hash = fun (result: Syn.Parser.parse_result) ->
   let trailing_sequence_child node =
     let meaningful_child = ref None in
     let meaningful_count = ref 0 in
-    Ast.Node.for_each_child
+    iter_fold Ast.Node.fold_child
       node
       ~fn:(fun child ->
         match child with
@@ -265,9 +274,15 @@ let syntax_hash = fun (result: Syn.Parser.parse_result) ->
     IO.Buffer.add_string buffer "N(";
     write_kind node_kind;
     IO.Buffer.add_string buffer "[";
-    Ast.Node.for_each_child node ~fn:(write_child ~parent_kind:(Some node_kind));
+    iter_fold Ast.Node.fold_child node ~fn:(write_child ~parent_kind:(Some node_kind));
     IO.Buffer.add_string buffer "])"
-  and write_token_trivia token = Ast.Token.for_each_leading_trivia token ~fn:write_trivia
+  and write_token_trivia token =
+    Ast.Token.fold_leading_trivia
+      token
+      ~init:()
+      ~fn:(fun ~kind ~text () ->
+        write_trivia ~kind ~text;
+        Ast.Continue ())
   and write_token token =
     write_token_trivia token;
     IO.Buffer.add_string buffer "T(";
@@ -276,7 +291,7 @@ let syntax_hash = fun (result: Syn.Parser.parse_result) ->
     IO.Buffer.add_string buffer (Ast.Token.text token);
     IO.Buffer.add_string buffer ")"
   and write_redundant_paren node =
-    Ast.Node.for_each_child
+    iter_fold Ast.Node.fold_child
       node
       ~fn:(fun child ->
         match child with
@@ -288,7 +303,7 @@ let syntax_hash = fun (result: Syn.Parser.parse_result) ->
         | Syn.SyntaxTree.Node _ -> write_child ~parent_kind:(Some Kind.PAREN_EXPR) child
         | Syn.SyntaxTree.Missing _ -> ())
   and write_trailing_sequence node =
-    Ast.Node.for_each_child
+    iter_fold Ast.Node.fold_child
       node
       ~fn:(fun child ->
         match child with
@@ -307,7 +322,7 @@ let syntax_hash = fun (result: Syn.Parser.parse_result) ->
           | Some parent_kind when Kind.(parent_kind = node_kind)
           && is_tuple_kind node_kind
           && not (tuple_node_has_paren_token node) ->
-              Ast.Node.for_each_child node ~fn:(write_child ~parent_kind:(Some node_kind))
+              iter_fold Ast.Node.fold_child node ~fn:(write_child ~parent_kind:(Some node_kind))
           | _ -> write_element (Syn.SyntaxTree.Node id)
         )
     | Syn.SyntaxTree.Token id ->

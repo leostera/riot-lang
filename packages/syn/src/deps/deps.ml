@@ -327,16 +327,23 @@ module Ast_deps = struct
 
   let path_segments = fun node ->
     let segments = Vector.with_capacity ~size:(A.Node.child_count node) in
-    A.Node.for_each_token
+    A.Node.fold_token
       node
-      ~fn:(fun token ->
+      ~init:()
+      ~fn:(fun token () ->
         if Syntax_kind.(token_kind token = IDENT) then
-          Vector.push segments ~value:(A.Token.text token));
+          Vector.push segments ~value:(A.Token.text token);
+        A.Continue ());
     vector_to_list segments
 
   let ast_path_segments = fun path ->
     let segments = Vector.with_capacity ~size:4 in
-    A.Path.for_each_ident path ~fn:(fun token -> Vector.push segments ~value:(A.Token.text token));
+    A.Path.fold_ident
+      path
+      ~init:()
+      ~fn:(fun token () ->
+        Vector.push segments ~value:(A.Token.text token);
+        A.Continue ());
     vector_to_list segments
 
   let add_parent_segments = fun env deps segments ->
@@ -518,16 +525,14 @@ module Ast_deps = struct
     scan start deps Env.empty
 
   let first_child_node_matching = fun node ~matches ->
-    let found = ref None in
-    A.Node.for_each_child_node
+    A.Node.fold_child_node
       node
-      ~fn:(fun child ->
-        match !found with
-        | Some _ -> ()
-        | None ->
-            if matches (node_kind child) then
-              found := Some child);
-    !found
+      ~init:None
+      ~fn:(fun child _ ->
+        if matches (node_kind child) then
+          A.Return (Some child)
+        else
+          A.Continue None)
 
   let rec unwrap_module_expr = fun node ->
     match node_kind node with
@@ -553,9 +558,10 @@ module Ast_deps = struct
       ~matches:(fun child_kind -> Syntax_kind.(child_kind = kind))
 
   let fold_child_nodes = fun node init fn ->
-    let acc = ref init in
-    A.Node.for_each_child_node node ~fn:(fun child -> acc := fn !acc child);
-    !acc
+    A.Node.fold_child_node
+      node
+      ~init
+      ~fn:(fun child acc -> A.Continue (fn acc child))
 
   let collect_child_nodes = fun collect env deps node ->
     fold_child_nodes
@@ -721,9 +727,12 @@ module Ast_deps = struct
     | None -> collect_child_nodes collect_node env deps node
     | Some binding ->
         let parameters = Vector.with_capacity ~size:4 in
-        A.LetBinding.for_each_parameter
+        A.LetBinding.fold_parameter
           binding
-          ~fn:(fun parameter -> Vector.push parameters ~value:parameter);
+          ~init:()
+          ~fn:(fun parameter () ->
+            Vector.push parameters ~value:parameter;
+            A.Continue ());
         let* deps =
           match A.LetBinding.pattern binding with
           | Some pattern -> collect_node env deps pattern

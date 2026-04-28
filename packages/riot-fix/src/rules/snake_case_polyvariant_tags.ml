@@ -37,7 +37,7 @@ let make_diagnostic = fun token ->
 let check_tree = fun _ctx root ->
   let diagnostics = H.diagnostics_for_root root in
   let after_backtick = ref false in
-  Ast.Node.for_each_token
+  H.iter_fold Ast.Node.fold_token
     root
     ~fn:(fun token ->
       let kind = Ast.Token.kind token in

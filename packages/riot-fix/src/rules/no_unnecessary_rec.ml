@@ -46,7 +46,7 @@ let binding_body_references_any_name = fun names binding ->
   match Ast.LetBinding.body binding with
   | Some body ->
       let found = ref false in
-      Ast.Node.for_each_token
+      H.iter_fold Ast.Node.fold_token
         (body: Ast.Node.t)
         ~fn:(fun token ->
           if name_vector_contains names (Ast.Token.text token) then
@@ -56,7 +56,7 @@ let binding_body_references_any_name = fun names binding ->
 
 let let_declaration_has_recursive_reference = fun names declaration ->
   let found = ref false in
-  Ast.LetDeclaration.for_each_binding
+  H.iter_fold Ast.LetDeclaration.fold_binding
     declaration
     ~fn:(fun binding ->
       if binding_body_references_any_name names binding then
@@ -67,7 +67,7 @@ let check_let_declaration = fun diagnostics declaration ->
   match Ast.LetDeclaration.rec_token declaration with
   | Some rec_token ->
       let names = Vector.with_capacity ~size:(Ast.Node.child_count (declaration: Ast.Node.t)) in
-      Ast.LetDeclaration.for_each_binding declaration ~fn:(collect_binding_name names);
+      H.iter_fold Ast.LetDeclaration.fold_binding declaration ~fn:(collect_binding_name names);
       if not (let_declaration_has_recursive_reference names declaration) then
         H.push_diagnostic diagnostics (diagnostic_for_rec rec_token)
   | None -> ()

@@ -118,11 +118,13 @@ let test_tagged_quoted_string_token = fun _ctx ->
   else
     let root = Ast.root parse_result.Parser.tree in
     let string_token = ref None in
-    Ast.Node.for_each_token
+    Ast.Node.fold_token
       root
-      ~fn:(fun token ->
+      ~init:()
+      ~fn:(fun token () ->
         if SyntaxKind.(Ast.Token.kind token = STRING) then
-          string_token := Some token);
+          string_token := Some token;
+        Ast.Continue ());
   match !string_token with
   | Some token ->
       Test.assert_equal ~expected:"{explain|hello|explain}" ~actual:(Ast.Token.text token);

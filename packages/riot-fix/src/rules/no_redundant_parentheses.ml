@@ -24,7 +24,7 @@ let opens_with_begin = fun expr ->
 
 let raw_first_child_expr = fun expr ->
   let found = ref None in
-  Ast.Node.for_each_child_node
+  H.iter_fold Ast.Node.fold_child_node
     expr
     ~fn:(fun child ->
       match !found with
@@ -33,7 +33,7 @@ let raw_first_child_expr = fun expr ->
   !found
 
 let raw_for_each_child_expr = fun expr ~fn ->
-  Ast.Node.for_each_child_node
+  H.iter_fold Ast.Node.fold_child_node
     expr
     ~fn:(fun child ->
       match Ast.cast_result_to_option (Ast.Expr.cast child) with

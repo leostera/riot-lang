@@ -1,6 +1,15 @@
 open Std
 open Std.Collections
 
+let iter_fold = fun fold value ~fn ->
+  fold
+    value
+    ~init:()
+    ~fn:(fun item () ->
+      fn item;
+      Syn.Ast.Continue ())
+
+
 include Fixme.Traversal
 
 module Ast = Syn.Ast
@@ -34,8 +43,8 @@ let binding_sites_of_structure_item = fun item ->
         | Some site -> Vector.push sites ~value:site
         | None -> ()
       )
-    | None -> Ast.Node.for_each_child_node node ~fn:visit
+    | None -> iter_fold Ast.Node.fold_child_node node ~fn:visit
   in
-  Ast.Node.for_each_child_node item ~fn:visit;
+  iter_fold Ast.Node.fold_child_node item ~fn:visit;
   Vector.to_array sites
   |> Array.to_list

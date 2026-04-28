@@ -34,7 +34,7 @@ let make_diagnostic = fun expr depth ->
     ()
 
 let for_each_case_expr = fun expr ~fn ->
-  Ast.Expr.for_each_match_case
+  H.iter_fold Ast.Expr.fold_match_case
     expr
     ~fn:(fun match_case ->
       match Ast.MatchCase.view match_case with
@@ -44,7 +44,7 @@ let for_each_case_expr = fun expr ~fn ->
       | Ast.MatchCase.Unknown _ -> ())
 
 let for_each_nested_expr = fun expr ~fn ->
-  Ast.Expr.for_each_child_expr expr ~fn;
+  H.iter_fold Ast.Expr.fold_child_expr expr ~fn;
   for_each_case_expr expr ~fn
 
 let rec max_child_depth = fun expr ->

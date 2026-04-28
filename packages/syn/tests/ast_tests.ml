@@ -28,6 +28,14 @@ let require_some = fun value ~msg ->
   expect_some value ~msg
   |> Result.expect ~msg
 
+let iter_fold = fun fold value ~fn ->
+  fold
+    value
+    ~init:()
+    ~fn:(fun item () ->
+      fn item;
+      Ast.Continue ())
+
 let parse_root = fun ~filename source ->
   let source = source_slice source in
   let parse_result = Syn.parse ~filename source in
@@ -70,34 +78,36 @@ let test_empty_source_files_have_file_kind = fun _ctx ->
   | Ast.SourceFile.Implementation _ -> Error "expected empty interface source"
 
 let nth_structure_item = fun (root: Ast.source_file) target ->
-  let found = ref None in
-  let seen = ref 0 in
-  Ast.SourceFile.for_each_structure_item
-    root
-    ~fn:(fun item ->
-      match !found with
-      | Some _ -> ()
-      | None ->
-          if Int.equal !seen target then
-            found := Some item
-          else
-            seen := !seen + 1);
-  !found
+  let (found, _) =
+    Ast.SourceFile.fold_structure_item
+      root
+      ~init:(None, 0)
+      ~fn:(fun item (found, seen) ->
+        match found with
+        | Some _ -> Ast.Return (found, seen)
+        | None ->
+            if Int.equal seen target then
+              Ast.Return (Some item, seen)
+            else
+              Ast.Continue (None, seen + 1))
+  in
+  found
 
 let nth_signature_item = fun (root: Ast.source_file) target ->
-  let found = ref None in
-  let seen = ref 0 in
-  Ast.SourceFile.for_each_signature_item
-    root
-    ~fn:(fun item ->
-      match !found with
-      | Some _ -> ()
-      | None ->
-          if Int.equal !seen target then
-            found := Some item
-          else
-            seen := !seen + 1);
-  !found
+  let (found, _) =
+    Ast.SourceFile.fold_signature_item
+      root
+      ~init:(None, 0)
+      ~fn:(fun item (found, seen) ->
+        match found with
+        | Some _ -> Ast.Return (found, seen)
+        | None ->
+            if Int.equal seen target then
+              Ast.Return (Some item, seen)
+            else
+              Ast.Continue (None, seen + 1))
+  in
+  found
 
 let binding_of_structure_item = fun item ->
   match Ast.StructureItem.view item with
@@ -143,18 +153,13 @@ let vector_second = fun vector ~msg ->
     Vector.get_unchecked vector ~at:1
 
 let first_child_expr = fun node ->
-  let found = ref None in
-  Ast.Node.for_each_child_node
+  Ast.Node.fold_child_node
     node
-    ~fn:(fun child ->
-      match !found with
-      | Some _ -> ()
-      | None -> (
-          match Ast.cast_result_to_option (Ast.Expr.cast child) with
-          | Some expr -> found := Some expr
-          | None -> ()
-        ));
-  !found
+    ~init:None
+    ~fn:(fun child _ ->
+      match Ast.cast_result_to_option (Ast.Expr.cast child) with
+      | Some expr -> Ast.Return (Some expr)
+      | None -> Ast.Continue None)
 
 let assert_labeled_argument = fun arg expected ->
   if not (SyntaxKind.is (Ast.Node.kind arg) SyntaxKind.LABELED_ARG) then
@@ -227,7 +232,7 @@ val x:int
     |> require_some ~msg:"expected value token"
   in
   let docstring = ref None in
-  Ast.Token.for_each_leading_trivia_item
+  iter_fold Ast.Token.fold_leading_trivia_item
     token
     ~fn:(
       function
@@ -466,7 +471,7 @@ let test_poly_variant_tuple_pattern_boundary = fun _ctx ->
         | _ -> panic "expected polyvariant pair case to parse as a tuple pattern"
       );
       let children = Vector.with_capacity ~size:(Ast.Node.child_count pattern) in
-      Ast.Pattern.for_each_child_pattern
+      iter_fold Ast.Pattern.fold_child_pattern
         pattern
         ~fn:(fun child -> Vector.push children ~value:child);
       Test.assert_equal ~expected:2 ~actual:(Vector.length children);
@@ -903,7 +908,7 @@ let test_type_declaration_parameters = fun _ctx ->
       Test.assert_equal ~expected:"box" ~actual:(Ast.Token.text name);
       let named = ref None in
       let wildcard_param = ref None in
-      Ast.TypeDeclaration.for_each_parameter
+      iter_fold Ast.TypeDeclaration.fold_parameter
         decl
         ~fn:(
           function
@@ -936,7 +941,7 @@ let test_type_declaration_member_views = fun _ctx ->
   match Ast.SignatureItem.view type_item with
   | Ast.SignatureItem.Type (Ast.TypeDeclarationItem decl) ->
       let child_kinds = ref [] in
-      Ast.Node.for_each_child_node
+      iter_fold Ast.Node.fold_child_node
         decl
         ~fn:(fun child -> child_kinds := Ast.Node.kind child :: !child_kinds);
       Test.assert_equal
@@ -951,7 +956,7 @@ let test_type_declaration_member_views = fun _ctx ->
       let shells = ref [] in
       let parameter_counts = ref [] in
       let manifest_shapes = ref [] in
-      Ast.TypeDeclaration.for_each_member
+      iter_fold Ast.TypeDeclaration.fold_member
         decl
         ~fn:(fun member ->
           count := !count + 1;
@@ -964,7 +969,7 @@ let test_type_declaration_member_views = fun _ctx ->
             |> require_some ~msg:"expected type member shell"
           in
           let parameters = ref 0 in
-          Ast.TypeDeclaration.Member.for_each_parameter
+          iter_fold Ast.TypeDeclaration.Member.fold_parameter
             member
             ~fn:(fun _ -> parameters := !parameters + 1);
           let has_manifest =
@@ -1015,7 +1020,7 @@ let test_type_declaration_body_group_views = fun _ctx ->
         let names = Vector.with_capacity ~size:3 in
         let pipe_flags = Vector.with_capacity ~size:3 in
         let payload_shapes = Vector.with_capacity ~size:3 in
-        Ast.VariantType.for_each_constructor
+        iter_fold Ast.VariantType.fold_constructor
           variant
           ~fn:(fun constructor ->
             let (name, pipe_token, rhs) =
@@ -1075,7 +1080,7 @@ let test_type_declaration_body_group_views = fun _ctx ->
       let names = Vector.with_capacity ~size:2 in
       let mutable_flags = Vector.with_capacity ~size:2 in
       let field_types = Vector.with_capacity ~size:2 in
-      Ast.RecordType.for_each_field
+      iter_fold Ast.RecordType.fold_field
         record
         ~fn:(fun field ->
           match Ast.RecordField.view field with
@@ -1132,7 +1137,7 @@ let test_type_alias_record_representation_views = fun _ctx ->
       in
       Test.assert_true (Option.is_some (Ast.RecordType.private_token record));
       let field_names = Vector.with_capacity ~size:2 in
-      Ast.RecordType.for_each_field
+      iter_fold Ast.RecordType.fold_field
         record
         ~fn:(fun field ->
           match Ast.RecordField.view field with
@@ -1179,7 +1184,7 @@ let test_open_declaration_path_tokens = fun _ctx ->
         |> require_some ~msg:"expected last open path ident"
       in
       let count = ref 0 in
-      Ast.OpenDeclaration.for_each_path_ident decl ~fn:(fun _ -> count := !count + 1);
+      iter_fold Ast.OpenDeclaration.fold_path_ident decl ~fn:(fun _ -> count := !count + 1);
       Test.assert_equal ~expected:"Foo" ~actual:(Ast.Token.text first);
       Test.assert_equal ~expected:"Bar" ~actual:(Ast.Token.text last);
       Test.assert_equal ~expected:2 ~actual:!count;
@@ -1210,7 +1215,7 @@ let test_simple_declaration_token_views = fun _ctx ->
           |> require_some ~msg:"expected last include path ident"
         in
         let count = ref 0 in
-        Ast.IncludeDeclaration.for_each_path_ident decl ~fn:(fun _ -> count := !count + 1);
+        iter_fold Ast.IncludeDeclaration.fold_path_ident decl ~fn:(fun _ -> count := !count + 1);
         Test.assert_equal ~expected:"Foo" ~actual:(Ast.Token.text first);
         Test.assert_equal ~expected:"Bar" ~actual:(Ast.Token.text last);
         Test.assert_equal ~expected:2 ~actual:!count
@@ -1260,7 +1265,7 @@ let test_simple_declaration_token_views = fun _ctx ->
         Ast.ExceptionDeclaration.name decl
         |> require_some ~msg:"expected exception name"
       in
-      Ast.Node.for_each_child_node
+      iter_fold Ast.Node.fold_child_node
         decl
         ~fn:(fun child -> child_kinds := Ast.Node.kind child :: !child_kinds);
       Test.assert_equal ~expected:"Boom" ~actual:(Ast.Token.text name);
@@ -1286,7 +1291,7 @@ let test_type_extension_and_exception_views = fun _ctx ->
     match Ast.SignatureItem.view type_extension_item with
     | Ast.SignatureItem.Type (Ast.TypeExtensionItem decl) ->
         let child_kinds = ref [] in
-        Ast.Node.for_each_child_node
+        iter_fold Ast.Node.fold_child_node
           decl
           ~fn:(fun child -> child_kinds := Ast.Node.kind child :: !child_kinds);
         let name =
@@ -1298,7 +1303,7 @@ let test_type_extension_and_exception_views = fun _ctx ->
           ~expected:[ SyntaxKind.TYPE_EXTENSION_DECL_HEAD; SyntaxKind.TYPE_EXTENSION_DECL_BODY ]
           ~actual:(List.reverse !child_kinds);
         let parameter_count = ref 0 in
-        Ast.TypeExtensionDeclaration.for_each_parameter
+        iter_fold Ast.TypeExtensionDeclaration.fold_parameter
           decl
           ~fn:(fun _ -> parameter_count := !parameter_count + 1);
         Test.assert_equal ~expected:1 ~actual:!parameter_count;
@@ -1307,7 +1312,7 @@ let test_type_extension_and_exception_views = fun _ctx ->
           |> require_some ~msg:"expected type extension body"
         in
         let constructor = ref None in
-        Ast.VariantType.for_each_constructor
+        iter_fold Ast.VariantType.fold_constructor
           variant
           ~fn:(fun current ->
             match !constructor with
@@ -1501,7 +1506,7 @@ let test_module_declaration_tokens = fun _ctx ->
           |> require_some ~msg:"expected module separator"
         in
         let segments = ref [] in
-        Ast.ModuleDeclaration.for_each_body_path_ident
+        iter_fold Ast.ModuleDeclaration.fold_body_path_ident
           decl
           ~fn:(fun token -> segments := Ast.Token.text token :: !segments);
         Test.assert_equal ~expected:"=" ~actual:(Ast.Token.text separator);
@@ -1571,7 +1576,7 @@ let test_trailing_sequence_before_and_views = fun _ctx ->
     | _ -> panic "expected let declaration"
   in
   let bindings = ref [] in
-  Ast.LetDeclaration.for_each_binding decl ~fn:(fun binding -> bindings := binding :: !bindings);
+  iter_fold Ast.LetDeclaration.fold_binding decl ~fn:(fun binding -> bindings := binding :: !bindings);
   match List.reverse !bindings with
   | [ f_binding; g_binding ] ->
       let assert_trailing_sequence binding expected_name =
@@ -1585,7 +1590,7 @@ let test_trailing_sequence_before_and_views = fun _ctx ->
           | _ -> panic "expected binding head path pattern"
         );
         let parameters = ref [] in
-        Ast.LetBinding.for_each_parameter
+        iter_fold Ast.LetBinding.fold_parameter
           binding
           ~fn:(fun parameter -> parameters := parameter :: !parameters);
         if List.is_empty !parameters then
@@ -1618,7 +1623,7 @@ let test_module_declaration_member_views = fun _ctx ->
       let names = ref [] in
       let shells = ref [] in
       let body_shapes = ref [] in
-      Ast.ModuleDeclaration.for_each_member
+      iter_fold Ast.ModuleDeclaration.fold_member
         decl
         ~fn:(fun member ->
           count := !count + 1;
@@ -1725,10 +1730,10 @@ let test_module_type_declaration_tokens = fun _ctx ->
         in
         let child_kinds = ref [] in
         let segments = ref [] in
-        Ast.Node.for_each_child_node
+        iter_fold Ast.Node.fold_child_node
           decl
           ~fn:(fun child -> child_kinds := Ast.Node.kind child :: !child_kinds);
-        Ast.ModuleTypeDeclaration.for_each_body_path_ident
+        iter_fold Ast.ModuleTypeDeclaration.fold_body_path_ident
           decl
           ~fn:(fun token -> segments := Ast.Token.text token :: !segments);
         Test.assert_equal ~expected:"S" ~actual:(Ast.Token.text name);
@@ -1813,7 +1818,7 @@ let test_module_type_with_constraint_views = fun _ctx ->
         | None -> panic "expected constrained base module type"
       );
       let seen = ref 0 in
-      Ast.ModuleTypeDeclaration.for_each_constraint
+      iter_fold Ast.ModuleTypeDeclaration.fold_constraint
         decl
         ~fn:(fun constraint_ ->
           let index = !seen in
@@ -2009,7 +2014,7 @@ let { x; y = z; _ } = record
     |> require_some ~msg:"expected record expression view"
   in
   let record_fields = Vector.with_capacity ~size:(Ast.Node.child_count record_view) in
-  Ast.RecordExpr.for_each_field
+  iter_fold Ast.RecordExpr.fold_field
     record_view
     ~fn:(fun field ->
       match field with
@@ -2040,7 +2045,7 @@ let { x; y = z; _ } = record
     | None -> panic "expected record update base"
   );
   let update_fields = Vector.with_capacity ~size:(Ast.Node.child_count update_view) in
-  Ast.RecordExpr.for_each_field
+  iter_fold Ast.RecordExpr.fold_field
     update_view
     ~fn:(fun field ->
       match field with
@@ -2069,7 +2074,7 @@ let { x; y = z; _ } = record
           |> require_some ~msg:"expected scoped record body"
         in
         let scoped_fields = Vector.with_capacity ~size:(Ast.Node.child_count scoped_record) in
-        Ast.RecordExpr.for_each_field
+        iter_fold Ast.RecordExpr.fold_field
           scoped_record
           ~fn:(fun field ->
             match field with
@@ -2094,7 +2099,7 @@ let { x; y = z; _ } = record
     |> require_some ~msg:"expected record pattern view"
   in
   let pattern_fields = Vector.with_capacity ~size:(Ast.Node.child_count pattern_view) in
-  Ast.RecordPattern.for_each_field
+  iter_fold Ast.RecordPattern.fold_field
     pattern_view
     ~fn:(fun field ->
       match field with
@@ -2161,7 +2166,7 @@ let test_binding_operator_views = fun _ctx ->
     |> require_some ~msg:"expected binding operator view"
   in
   let clauses = ref [] in
-  Ast.BindingOperatorExpr.for_each_clause
+  iter_fold Ast.BindingOperatorExpr.fold_clause
     binding_operator
     ~fn:(fun clause ->
       let keyword =
@@ -2209,7 +2214,7 @@ let local_open_pattern_path_text = fun pattern ->
 
 let first_class_module_path_text = fun expr ->
   let segments = ref [] in
-  Ast.FirstClassModuleExpr.for_each_module_path_ident
+  iter_fold Ast.FirstClassModuleExpr.fold_module_path_ident
     expr
     ~fn:(fun token -> segments := Ast.Token.text token :: !segments);
   List.reverse !segments
@@ -2217,7 +2222,7 @@ let first_class_module_path_text = fun expr ->
 
 let first_class_module_ascription_text = fun expr ->
   let segments = ref [] in
-  Ast.FirstClassModuleExpr.for_each_ascription_path_ident
+  iter_fold Ast.FirstClassModuleExpr.fold_ascription_path_ident
     expr
     ~fn:(fun token -> segments := Ast.Token.text token :: !segments);
   List.reverse !segments
@@ -2225,7 +2230,7 @@ let first_class_module_ascription_text = fun expr ->
 
 let first_class_module_pattern_ascription_text = fun pattern ->
   let segments = ref [] in
-  Ast.FirstClassModulePattern.for_each_ascription_path_ident
+  iter_fold Ast.FirstClassModulePattern.fold_ascription_path_ident
     pattern
     ~fn:(fun token -> segments := Ast.Token.text token :: !segments);
   List.reverse !segments
@@ -2233,7 +2238,7 @@ let first_class_module_pattern_ascription_text = fun pattern ->
 
 let let_module_body_path_text = fun expr ->
   let segments = ref [] in
-  Ast.LetModuleExpr.for_each_module_body_path_ident
+  iter_fold Ast.LetModuleExpr.fold_module_body_path_ident
     expr
     ~fn:(fun token -> segments := Ast.Token.text token :: !segments);
   List.reverse !segments
@@ -2241,7 +2246,7 @@ let let_module_body_path_text = fun expr ->
 
 let let_exception_payload_tokens = fun expr ->
   let tokens = ref [] in
-  Ast.LetExceptionExpr.for_each_payload_token
+  iter_fold Ast.LetExceptionExpr.fold_payload_token
     expr
     ~fn:(fun token -> tokens := Ast.Token.text token :: !tokens);
   List.reverse !tokens
@@ -2712,7 +2717,7 @@ let test_unreachable_expression_views = fun _ctx ->
     |> Result.expect ~msg:"expected match body"
   in
   let unreachable = ref None in
-  Ast.Expr.for_each_match_case
+  iter_fold Ast.Expr.fold_match_case
     match_expr
     ~fn:(fun match_case ->
       match Ast.MatchCase.view match_case with
@@ -2737,16 +2742,18 @@ let test_unreachable_expression_views = fun _ctx ->
   Test.assert_equal ~expected:"." ~actual:(Ast.Token.text dot);
   Ok ()
 
-let attribute_shell_text = fun ~for_each_shell_token ->
+let attribute_shell_text = fun ~fold_shell_token ->
   let text = ref "" in
   let first = ref true in
-  for_each_shell_token
-    ~fn:(fun token ->
+  fold_shell_token
+    ~init:()
+    ~fn:(fun token () ->
       if !first then (
         first := false;
         text := !text ^ Ast.Token.text token
       ) else
-        text := !text ^ Ast.Token.full_text token);
+        text := !text ^ Ast.Token.full_text token;
+      Ast.Continue ());
   !text
 
 let test_attribute_views = fun _ctx ->
@@ -2775,7 +2782,7 @@ let test_attribute_views = fun _ctx ->
   Test.assert_equal
     ~expected:"[@inline always]"
     ~actual:(attribute_shell_text
-      ~for_each_shell_token:(fun ~fn -> Ast.AttributeExpr.for_each_shell_token attribute_expr ~fn));
+      ~fold_shell_token:(Ast.AttributeExpr.fold_shell_token attribute_expr));
   let attribute_pattern =
     nth_structure_item root 1
     |> require_some ~msg:"expected attribute pattern item"
@@ -2804,10 +2811,7 @@ let test_attribute_views = fun _ctx ->
   Test.assert_equal
     ~expected:"[@foo]"
     ~actual:(attribute_shell_text
-      ~for_each_shell_token:(fun ~fn ->
-        Ast.AttributePattern.for_each_shell_token
-          attribute_pattern
-          ~fn));
+      ~fold_shell_token:(Ast.AttributePattern.fold_shell_token attribute_pattern));
   Ok ()
 
 let test_extension_views = fun _ctx ->
@@ -2838,7 +2842,7 @@ let test_extension_views = fun _ctx ->
   Test.assert_equal
     ~expected:"[%expr payload]"
     ~actual:(attribute_shell_text
-      ~for_each_shell_token:(fun ~fn -> Ast.ExtensionExpr.for_each_shell_token extension_expr ~fn));
+      ~fold_shell_token:(Ast.ExtensionExpr.fold_shell_token extension_expr));
   let extension_pattern =
     nth_structure_item root 1
     |> require_some ~msg:"expected extension pattern item"
@@ -2859,10 +2863,7 @@ let test_extension_views = fun _ctx ->
   Test.assert_equal
     ~expected:"[%pat payload]"
     ~actual:(attribute_shell_text
-      ~for_each_shell_token:(fun ~fn ->
-        Ast.ExtensionPattern.for_each_shell_token
-          extension_pattern
-          ~fn));
+      ~fold_shell_token:(Ast.ExtensionPattern.fold_shell_token extension_pattern));
   let extension_item =
     nth_structure_item root 2
     |> require_some ~msg:"expected extension item"
@@ -2873,7 +2874,7 @@ let test_extension_views = fun _ctx ->
         Test.assert_equal
           ~expected:"[%%item payload]"
           ~actual:(attribute_shell_text
-            ~for_each_shell_token:(fun ~fn -> Ast.ExtensionItem.for_each_shell_token item ~fn))
+            ~fold_shell_token:(Ast.ExtensionItem.fold_shell_token item))
     | _ -> panic "expected extension structure item"
   );
   let attribute_item =
@@ -2886,7 +2887,7 @@ let test_extension_views = fun _ctx ->
         Test.assert_equal
           ~expected:"[@@@warning \"-32\"]"
           ~actual:(attribute_shell_text
-            ~for_each_shell_token:(fun ~fn -> Ast.AttributeItem.for_each_shell_token item ~fn))
+            ~fold_shell_token:(Ast.AttributeItem.fold_shell_token item))
     | _ -> panic "expected attribute structure item"
   );
   Ok ()
@@ -2906,7 +2907,7 @@ let test_special_pattern_views = fun _ctx ->
     |> Result.expect ~msg:"expected special pattern binding"
   in
   let parameters = ref [] in
-  Ast.LetBinding.for_each_parameter
+  iter_fold Ast.LetBinding.fold_parameter
     binding
     ~fn:(fun pattern -> parameters := pattern :: !parameters);
   match List.reverse !parameters with
@@ -2916,7 +2917,7 @@ let test_special_pattern_views = fun _ctx ->
         |> require_some ~msg:"expected locally abstract type pattern view"
       in
       let type_names = ref [] in
-      Ast.LocallyAbstractTypePattern.for_each_type_name
+      iter_fold Ast.LocallyAbstractTypePattern.fold_type_name
         locally_abstract
         ~fn:(fun token -> type_names := Ast.Token.text token :: !type_names);
       Test.assert_equal ~expected:[ "a"; "b" ] ~actual:(List.reverse !type_names);
@@ -2963,7 +2964,7 @@ let test_first_class_module_pattern_with_constraints_view = fun _ctx ->
     |> Result.expect ~msg:"expected constrained module pattern binding"
   in
   let parameters = ref [] in
-  Ast.LetBinding.for_each_parameter
+  iter_fold Ast.LetBinding.fold_parameter
     binding
     ~fn:(fun pattern -> parameters := pattern :: !parameters);
   match List.reverse !parameters with
@@ -2996,7 +2997,7 @@ let test_typed_labeled_parameter_view = fun _ctx ->
     |> Result.expect ~msg:"expected typed labeled parameter binding"
   in
   let parameters = ref [] in
-  Ast.LetBinding.for_each_parameter
+  iter_fold Ast.LetBinding.fold_parameter
     binding
     ~fn:(fun pattern -> parameters := pattern :: !parameters);
   match List.reverse !parameters with
@@ -3043,7 +3044,7 @@ let test_optional_default_labeled_parameter_view = fun _ctx ->
     |> Result.expect ~msg:"expected optional default binding"
   in
   let parameters = ref [] in
-  Ast.LetBinding.for_each_parameter
+  iter_fold Ast.LetBinding.fold_parameter
     binding
     ~fn:(fun pattern -> parameters := pattern :: !parameters);
   match List.reverse !parameters with
@@ -3091,7 +3092,7 @@ let test_let_binding_parameters_are_parameter_views = fun _ctx ->
     |> Result.expect ~msg:"expected parameter-view binding"
   in
   let parameters = Vector.with_capacity ~size:3 in
-  Ast.LetBinding.for_each_parameter
+  iter_fold Ast.LetBinding.fold_parameter
     binding
     ~fn:(fun parameter -> Vector.push parameters ~value:parameter);
   Test.assert_equal ~expected:3 ~actual:(Vector.length parameters);
@@ -3322,6 +3323,48 @@ let y = 3
   else
     Ok ()
 
+let test_ast_controlled_folds_return_early = fun _ctx ->
+  let root =
+    parse_ml {ocaml|let x = 1
+let y = 2
+let z = 3
+|ocaml}
+    |> Result.expect ~msg:"expected parse source file"
+  in
+  let binding_name = fun item ->
+    let binding =
+      binding_of_structure_item item
+      |> Result.expect ~msg:"expected let binding"
+    in
+    let pattern =
+      pattern_of_binding binding
+      |> Result.expect ~msg:"expected let binding pattern"
+    in
+    match Ast.Pattern.view pattern with
+    | Ast.Pattern.Ident { path } ->
+        let name =
+          Ast.Path.last_ident path
+          |> require_some ~msg:"expected let binding name"
+        in
+        Ast.Token.text name
+    | _ -> panic "expected identifier let binding pattern"
+  in
+  let (names, count) =
+    Ast.SourceFile.fold_structure_item
+      root
+      ~init:([], 0)
+      ~fn:(fun item (names, count) ->
+        let name = binding_name item in
+        let next = (name :: names, count + 1) in
+        if String.equal name "y" then
+          Ast.Return next
+        else
+          Ast.Continue next)
+  in
+  Test.assert_equal ~expected:2 ~actual:count;
+  Test.assert_equal ~expected:[ "x"; "y" ] ~actual:(List.reverse names);
+  Ok ()
+
 let tests =
   Test.[
     case
@@ -3433,6 +3476,9 @@ let tests =
     case
       "ast visitor threads state and skips subtrees"
       test_ast_visitor_threads_state_and_skips_subtrees;
+    case
+      "ast controlled folds carry state and return early"
+      test_ast_controlled_folds_return_early;
   ]
 
 let main ~args = Test.Cli.main ~name:"syn-ast" ~tests ~args ()

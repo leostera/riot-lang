@@ -55,7 +55,7 @@ let rec check_type_expr = fun ctx diagnostics ~allow_named_alias_root type_expr 
         Vector.for_each args ~fn:(check_type_expr ctx diagnostics ~allow_named_alias_root:false)
     | Ast.TypeExpr.Error node
     | Ast.TypeExpr.Unknown node ->
-        Ast.Node.for_each_child_node
+        H.iter_fold Ast.Node.fold_child_node
           node
           ~fn:(fun node ->
             match Ast.cast_result_to_option (Ast.TypeExpr.cast node) with
@@ -67,7 +67,7 @@ let rec check_type_expr = fun ctx diagnostics ~allow_named_alias_root type_expr 
     | Ast.TypeExpr.Wildcard -> ()
 
 let check_type_declaration = fun ctx diagnostics declaration ->
-  Ast.TypeDeclaration.for_each_member
+  H.iter_fold Ast.TypeDeclaration.fold_member
     declaration
     ~fn:(fun member ->
       Option.for_each

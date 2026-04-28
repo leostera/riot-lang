@@ -38,6 +38,15 @@ open Std.Collections
 open Std.Result.Syntax
 open Riot_model
 
+let iter_fold = fun fold value ~fn ->
+  fold
+    value
+    ~init:()
+    ~fn:(fun item () ->
+      fn item;
+      Syn.Ast.Continue ())
+
+
 module G = Std.Graph.SimpleGraph
 
 type root_mode =
@@ -260,12 +269,12 @@ let let_binding_name = fun binding ->
 let executable_main_bindings = fun source_file ->
   let module Ast = Syn.Ast in
   let bindings = Vector.with_capacity ~size:(Ast.Node.child_count source_file) in
-  Ast.SourceFile.for_each_structure_item
+  iter_fold Ast.SourceFile.fold_structure_item
     source_file
     ~fn:(fun item ->
       match Ast.StructureItem.view item with
       | Ast.StructureItem.Let decl ->
-          Ast.LetDeclaration.for_each_binding
+          iter_fold Ast.LetDeclaration.fold_binding
             decl
             ~fn:(fun binding ->
               match let_binding_name binding with
@@ -295,7 +304,7 @@ let validate_executable_main = fun ~package_name ~target_name ~source ~file sour
       )
   | [ binding ] ->
       let parameters = Vector.with_capacity ~size:(Syn.Ast.Node.child_count binding) in
-      Syn.Ast.LetBinding.for_each_parameter
+      iter_fold Syn.Ast.LetBinding.fold_parameter
         binding
         ~fn:(fun parameter -> Vector.push parameters ~value:parameter);
       let parameters =
