@@ -2,12 +2,46 @@ open Std
 
 module H = Blink.Client
 
+module DiscardWriter = struct
+  type t = unit
+
+  let write = fun () ~from:_ -> Ok 0
+
+  let write_vectored = fun () ~from:_ -> Ok 0
+
+  let flush = fun () -> Ok ()
+end
+
+let discard_writer = IO.Writer.from_sink (module DiscardWriter) ()
+
 let request () =
   H.Request.make
     ~method_:H.Request.Get
     ~url:"https://example.test/data"
     ~deadline:(Time.Duration.from_secs 5)
     ()
+
+let test_connection_await_keeps_fixed_length_body = fun _ctx ->
+  let response = "HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: keep-alive\r\n\r\nok" in
+  let uri =
+    Net.Uri.of_string "http://example.test/data"
+    |> Result.expect ~msg:"invalid test uri"
+  in
+  let conn =
+    Blink.Connection.make
+      ~reader:(IO.Reader.from_string response)
+      ~writer:discard_writer
+      ~of_io_error:Blink.Error.of_io_error
+      ~uri
+  in
+  match Blink.Connection.await conn with
+  | Error error -> Error (Blink.Error.to_string error)
+  | Ok (response, body) ->
+      Test.assert_equal
+        ~expected:200
+        ~actual:(Net.Http.Status.to_int (Net.Http.Response.status response));
+      Test.assert_equal ~expected:"ok" ~actual:body;
+      Ok ()
 
 let test_status_classification = fun _ctx ->
   Test.assert_equal ~expected:H.Response.Success ~actual:(H.Response.status_class 204);
@@ -208,6 +242,9 @@ let test_websocket_connect_budget_blocks = fun _ctx ->
 
 let tests =
   Test.[
+    case
+      "connection await keeps fixed-length response body"
+      test_connection_await_keeps_fixed_length_body;
     case "status classification" test_status_classification;
     case "retries retryable statuses" test_retries_retryable_statuses;
     case "rate budget blocks" test_rate_budget_blocks;

@@ -115,13 +115,22 @@ let read_more = fun (Conn conn) ->
       Ok ()
   | Error e -> Error (conn.of_io_error e)
 
+let status_has_no_body = fun status ->
+  let code = Net.Http.Status.to_int status in
+  (code >= 100 && code < 200) || code = 204 || code = 304
+
+let header_value_is_chunked = fun value ->
+  String.equal
+    (String.lowercase_ascii (String.trim value))
+    "chunked"
+
 let stream = fun (Conn conn as c) ->
   match conn.state with
   | Complete -> Ok [ Done ]
   | WaitingForHeaders ->
       let rec try_parse () =
         let data = Buffer.contents conn.buffer in
-        match Http.Http1.Response.parse data with
+        match Http.Http1.Response.parse_head data with
         | Http.Http1.Common.Done { value = response; remaining } ->
             let status = Net.Http.Response.status response in
             let headers = Net.Http.Response.headers response in
@@ -131,17 +140,20 @@ let stream = fun (Conn conn as c) ->
             let transfer_encoding = Net.Http.Header.get headers "transfer-encoding" in
             let content_length = Net.Http.Header.get headers "content-length" in
             conn.state <- (
-              match transfer_encoding with
-              | Some "chunked" -> ReadingChunkedBody
-              | _ -> (
-                  match content_length with
-                  | Some len -> (
-                      match Int.parse len with
-                      | Some length -> ReadingFixedBody { length; received = 0 }
-                      | None -> Complete
-                    )
-                  | None -> Complete
-                )
+              if status_has_no_body status then
+                Complete
+              else
+                match transfer_encoding with
+                | Some value when header_value_is_chunked value -> ReadingChunkedBody
+                | _ -> (
+                    match content_length with
+                    | Some len -> (
+                        match Int.parse (String.trim len) with
+                        | Some length -> ReadingFixedBody { length; received = 0 }
+                        | None -> Complete
+                      )
+                    | None -> Complete
+                  )
             );
             Ok [ Status status; Headers headers ]
         | Http.Http1.Common.Need_more -> (
