@@ -868,6 +868,44 @@ module ModuleTypeExpr: sig
   val for_each_sig_body_token: t -> fn:(Token.t -> unit) -> unit
 end
 
+module ModuleExpr: sig
+  type t = module_expr
+  type view =
+    | Path of {
+        path: path;
+      }
+    | Structure of {
+        body: Node.t;
+      }
+    | Functor of {
+        body: Node.t;
+      }
+    | Apply of {
+        body: Node.t;
+        callee: t option;
+        argument: t option;
+      }
+    | Constraint of {
+        body: Node.t;
+        expr: t option;
+        ascription: module_type_expr option;
+      }
+    | Opaque of Node.t
+    | Error of Node.t
+    | Unknown of Node.t
+  val cast: Node.t -> t option
+
+  val view: t -> view
+
+  val struct_token: t -> Token.t option
+
+  val end_token: t -> Token.t option
+
+  val for_each_path_ident: t -> fn:(Token.t -> unit) -> unit
+
+  val for_each_structure_item: t -> fn:(structure_item -> unit) -> unit
+end
+
 module StructureItem: sig
   type t = structure_item
   type view =
@@ -1058,17 +1096,11 @@ module ModuleDeclaration: sig
   end
 
   type body =
-    | Path of {
-        path: path;
+    | Expr of {
+        body: module_expr;
       }
-    | Struct of {
-        body: Node.t;
-      }
-    | Sig of {
-        body: Node.t;
-      }
-    | Typeof of {
-        body: Node.t;
+    | Type of {
+        body: module_type_expr;
       }
     | Unsupported of {
         body: Node.t option;

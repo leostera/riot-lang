@@ -8743,38 +8743,70 @@ and module_declaration_has_head_parameter = fun decl ->
 
 and module_declaration_has_empty_struct_body = fun decl ->
   match Ast.ModuleDeclaration.body decl with
-  | Struct _ -> Vector.is_empty (collect_structure_items_from_module_decl decl)
+  | Ast.ModuleDeclaration.Expr { body } -> (
+      match Ast.ModuleExpr.view body with
+      | Ast.ModuleExpr.Structure _ -> Vector.is_empty (collect_structure_items_from_module_decl decl)
+      | _ -> false
+    )
   | _ -> false
 
+and module_declaration_body_requires_member_render = fun decl body ->
+  match body with
+  | Ast.ModuleDeclaration.Expr { body } -> (
+      match Ast.ModuleExpr.view body with
+      | Ast.ModuleExpr.Path _
+      | Ast.ModuleExpr.Structure _
+      | Ast.ModuleExpr.Apply _ -> false
+      | Ast.ModuleExpr.Opaque _ -> not (node_has_token_kind decl Kind.PERCENT)
+      | Ast.ModuleExpr.Functor _
+      | Ast.ModuleExpr.Constraint _
+      | Ast.ModuleExpr.Error _
+      | Ast.ModuleExpr.Unknown _ -> true
+    )
+  | Ast.ModuleDeclaration.Type { body } -> (
+      match Ast.ModuleTypeExpr.view body with
+      | Ast.ModuleTypeExpr.Path _
+      | Ast.ModuleTypeExpr.Signature _
+      | Ast.ModuleTypeExpr.Typeof _ -> false
+      | Ast.ModuleTypeExpr.With _
+      | Ast.ModuleTypeExpr.Functor _
+      | Ast.ModuleTypeExpr.Error _
+      | Ast.ModuleTypeExpr.Unknown _ -> true
+    )
+  | Ast.ModuleDeclaration.Unsupported _ -> not (node_has_token_kind decl Kind.PERCENT)
+
 and render_module_declaration = fun state decl ->
-  if module_declaration_has_ascribed_body decl || module_declaration_has_head_parameter decl then
+  let body = Ast.ModuleDeclaration.body decl in
+  if
+    module_declaration_has_ascribed_body decl
+    || module_declaration_has_head_parameter decl
+    || module_declaration_body_requires_member_render decl body
+  then
     render_module_declaration_members state decl
   else
-    match Ast.ModuleDeclaration.body decl with
-    | Unsupported _ when not (node_has_token_kind decl Kind.PERCENT) ->
-        render_module_declaration_members state decl
-    | body ->
-        emit_text state "module";
-        (
-          match Ast.ModuleDeclaration.rec_token decl with
-          | Some token ->
-              emit_space state;
-              emit_token state token
-          | None -> ()
-        );
-        emit_space state;
-        (
-          match Ast.ModuleDeclaration.name decl with
-          | Some name -> emit_token state name
-          | None -> unsupported_node "module declaration without name" decl
-        );
-        (
-          match body with
-          | Path { path } ->
+    (
+      emit_text state "module";
+      (
+        match Ast.ModuleDeclaration.rec_token decl with
+        | Some token ->
+            emit_space state;
+            emit_token state token
+        | None -> ()
+      );
+      emit_space state;
+      (
+        match Ast.ModuleDeclaration.name decl with
+        | Some name -> emit_token state name
+        | None -> unsupported_node "module declaration without name" decl
+      );
+      match body with
+      | Ast.ModuleDeclaration.Expr { body } -> (
+          match Ast.ModuleExpr.view body with
+          | Ast.ModuleExpr.Path { path } ->
               render_module_declaration_separator state decl ~default:"=";
               render_module_body_path state (Ast.Path.for_each_ident path);
               render_wrapped_module_body_attribute_suffix state decl
-          | Struct _ ->
+          | Ast.ModuleExpr.Structure _ ->
               let items = collect_structure_items_from_module_decl decl in
               if Vector.is_empty items then (
                 emit_space state;
@@ -8807,22 +8839,45 @@ and render_module_declaration = fun state decl ->
                 emit_text state "end"
               );
               render_wrapped_module_body_attribute_suffix state decl
-          | Sig _ ->
+          | Ast.ModuleExpr.Apply _ ->
+              render_module_declaration_separator state decl ~default:"=";
+              render_module_expr_node state body;
+              render_wrapped_module_body_attribute_suffix state decl
+          | Ast.ModuleExpr.Opaque _ ->
+              render_shell_body_after_separator
+                state
+                decl
+                Kind.EQ
+                ~label:"module extension declaration without '='"
+          | Ast.ModuleExpr.Functor _
+          | Ast.ModuleExpr.Constraint _
+          | Ast.ModuleExpr.Error _
+          | Ast.ModuleExpr.Unknown _ -> render_module_declaration_members state decl
+        )
+      | Ast.ModuleDeclaration.Type { body } -> (
+          match Ast.ModuleTypeExpr.view body with
+          | Ast.ModuleTypeExpr.Path { path } ->
+              render_module_declaration_separator state decl ~default:":";
+              render_module_body_path state (Ast.Path.for_each_ident path);
+              render_wrapped_module_body_attribute_suffix state decl
+          | Ast.ModuleTypeExpr.Signature _ ->
               render_module_declaration_separator state decl ~default:":";
               let items = collect_signature_items_from_module_decl decl in
               render_signature_body state items ~end_token:(Ast.ModuleDeclaration.end_token decl);
               render_wrapped_module_body_attribute_suffix state decl
-          | Typeof _ -> render_module_typeof_body state decl
-          | Unsupported _ ->
-              if node_has_token_kind decl Kind.PERCENT then
-                render_shell_body_after_separator
-                  state
-                  decl
-                  Kind.EQ
-                  ~label:"module extension declaration without '='"
-              else
-                render_module_declaration_members state decl
+          | Ast.ModuleTypeExpr.Typeof _ -> render_module_typeof_body state decl
+          | Ast.ModuleTypeExpr.With _
+          | Ast.ModuleTypeExpr.Functor _
+          | Ast.ModuleTypeExpr.Error _
+          | Ast.ModuleTypeExpr.Unknown _ -> render_module_declaration_members state decl
         )
+      | Ast.ModuleDeclaration.Unsupported _ ->
+          render_shell_body_after_separator
+            state
+            decl
+            Kind.EQ
+            ~label:"module extension declaration without '='"
+    )
 
 and render_empty_struct_module_declaration_multiline = fun state decl ->
   emit_text state "module";
@@ -9278,7 +9333,11 @@ and structure_item_is_module_path_alias = fun item ->
   match Ast.StructureItem.view item with
   | Module decl -> (
       match Ast.ModuleDeclaration.body decl with
-      | Path _ -> not (module_declaration_has_ascribed_body decl)
+      | Ast.ModuleDeclaration.Expr { body } -> (
+          match Ast.ModuleExpr.view body with
+          | Ast.ModuleExpr.Path _ -> not (module_declaration_has_ascribed_body decl)
+          | _ -> false
+        )
       | _ -> false
     )
   | _ -> false

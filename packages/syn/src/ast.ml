@@ -1722,6 +1722,113 @@ module ModuleTypeExpr = struct
           )
 end
 
+module ModuleExpr = struct
+  type t = module_expr
+
+  type view =
+    | Path of {
+        path: path;
+      }
+    | Structure of {
+        body: node;
+      }
+    | Functor of {
+        body: node;
+      }
+    | Apply of {
+        body: node;
+        callee: t option;
+        argument: t option;
+      }
+    | Constraint of {
+        body: node;
+        expr: t option;
+        ascription: module_type_expr option;
+      }
+    | Opaque of node
+    | Error of node
+    | Unknown of node
+
+  let cast = fun (node: node) ->
+    if node_matches node is_module_expr_kind then
+      Some node
+    else
+      None
+
+  let rec specific_node = fun module_expr ->
+    match Node.kind module_expr with
+    | Syntax_kind.MODULE_EXPR
+    | Syntax_kind.PAREN_MODULE_EXPR -> (
+        match first_child_node_matching module_expr ~matches:is_module_expr_kind with
+        | Some child -> specific_node child
+        | None -> None
+      )
+    | kind when is_module_expr_kind kind -> Some module_expr
+    | _ -> None
+
+  let nth_specific_child = fun module_expr n ->
+    match nth_child_node_matching module_expr n ~matches:is_module_expr_kind with
+    | Some child -> cast child
+    | None -> None
+
+  let view = fun module_expr ->
+    match specific_node module_expr with
+    | Some node when node_kind_is node Syntax_kind.PATH_MODULE_EXPR -> (
+        match Path.cast node with
+        | Some path -> Path { path }
+        | None -> Unknown node
+      )
+    | Some node when node_kind_is node Syntax_kind.STRUCT_MODULE_EXPR ->
+        Structure { body = node }
+    | Some node when node_kind_is node Syntax_kind.FUNCTOR_MODULE_EXPR ->
+        Functor { body = node }
+    | Some node when node_kind_is node Syntax_kind.APPLY_MODULE_EXPR ->
+        Apply {
+          body = node;
+          callee = nth_specific_child node 0;
+          argument = nth_specific_child node 1;
+        }
+    | Some node when node_kind_is node Syntax_kind.CONSTRAINT_MODULE_EXPR ->
+        Constraint {
+          body = node;
+          expr = first_child_node_matching node ~matches:is_module_expr_kind |> Option.and_then ~fn:cast;
+          ascription = first_child_node_matching node ~matches:is_module_type_kind;
+        }
+    | Some node when node_kind_is node Syntax_kind.OPAQUE_MODULE_EXPR -> Opaque node
+    | Some node when node_kind_is node Syntax_kind.ERROR -> Error node
+    | Some node -> Unknown node
+    | None -> Unknown module_expr
+
+  let structure_body_node = fun module_expr ->
+    match view module_expr with
+    | Structure { body } -> Some body
+    | _ -> None
+
+  let struct_token = fun module_expr ->
+    match structure_body_node module_expr with
+    | Some node -> Node.first_child_token node ~kind:Syntax_kind.STRUCT_KW
+    | None -> None
+
+  let end_token = fun module_expr ->
+    match structure_body_node module_expr with
+    | Some node -> Node.first_child_token node ~kind:Syntax_kind.END_KW
+    | None -> None
+
+  let for_each_path_ident = fun module_expr ~fn ->
+    match view module_expr with
+    | Path { path } -> Path.for_each_ident path ~fn
+    | _ -> ()
+
+  let for_each_structure_item = fun module_expr ~fn ->
+    match structure_body_node module_expr with
+    | Some node ->
+        for_each_child_node_matching
+          node
+          ~matches:(fun kind -> Syntax_kind.(kind = STRUCTURE_ITEM))
+          ~fn
+    | None -> ()
+end
+
 module Expr: sig
   type t = expr
   type fun_body =
@@ -4442,17 +4549,11 @@ module ModuleDeclaration = struct
   type member = { declaration: module_declaration; node: node; start_index: int; stop_index: int }
 
   type body =
-    | Path of {
-        path: path;
+    | Expr of {
+        body: module_expr;
       }
-    | Struct of {
-        body: node;
-      }
-    | Sig of {
-        body: node;
-      }
-    | Typeof of {
-        body: node;
+    | Type of {
+        body: module_type_expr;
       }
     | Unsupported of {
         body: node option;
@@ -4694,29 +4795,34 @@ module ModuleDeclaration = struct
     | None -> None
 
   let body = fun decl ->
-    match body_specific_node decl with
-    | Some node when node_kind_is node Syntax_kind.PATH_MODULE_EXPR
-    || node_kind_is node Syntax_kind.PATH_MODULE_TYPE -> (
-        match Path.cast node with
-        | Some path -> Path { path }
-        | None -> Unsupported { body = Some node }
+    match body_node decl with
+    | Some node -> (
+        match ModuleExpr.cast node with
+        | Some body -> Expr { body }
+        | None -> (
+            match ModuleTypeExpr.cast node with
+            | Some body -> Type { body }
+            | None -> Unsupported { body = Some node }
+          )
       )
-    | Some node when node_kind_is node Syntax_kind.STRUCT_MODULE_EXPR ->
-        Struct { body = node }
-    | Some node when node_kind_is node Syntax_kind.SIGNATURE_MODULE_TYPE ->
-        Sig { body = node }
-    | Some node when node_kind_is node Syntax_kind.TYPEOF_MODULE_TYPE ->
-        Typeof { body = node }
-    | body -> Unsupported { body }
+    | None -> Unsupported { body = None }
 
   let structure_body_node = fun decl ->
-    match body_specific_node decl with
-    | Some node when node_kind_is node Syntax_kind.STRUCT_MODULE_EXPR -> Some node
+    match body decl with
+    | Expr { body } -> (
+        match ModuleExpr.view body with
+        | ModuleExpr.Structure { body } -> Some body
+        | _ -> None
+      )
     | _ -> None
 
   let signature_body_node = fun decl ->
-    match body_specific_node decl with
-    | Some node when node_kind_is node Syntax_kind.SIGNATURE_MODULE_TYPE -> Some node
+    match body decl with
+    | Type { body } -> (
+        match ModuleTypeExpr.view body with
+        | ModuleTypeExpr.Signature { body } -> Some body
+        | _ -> None
+      )
     | _ -> None
 
   let struct_token = fun decl ->
@@ -4739,19 +4845,18 @@ module ModuleDeclaration = struct
       )
 
   let for_each_body_path_ident = fun decl ~fn ->
-    match body_specific_node decl with
-    | Some node when node_kind_is node Syntax_kind.PATH_MODULE_EXPR
-    || node_kind_is node Syntax_kind.PATH_MODULE_TYPE ->
-        for_each_token_in_node
-          node
-          ~fn:(fun token ->
-            if token_kind_is token Syntax_kind.IDENT then
-              fn token)
+    match body decl with
+    | Expr { body } -> ModuleExpr.for_each_path_ident body ~fn
+    | Type { body } -> ModuleTypeExpr.for_each_path_ident body ~fn
     | _ -> ()
 
   let typeof_body_node = fun decl ->
-    match body_specific_node decl with
-    | Some node when node_kind_is node Syntax_kind.TYPEOF_MODULE_TYPE -> Some node
+    match body decl with
+    | Type { body } -> (
+        match ModuleTypeExpr.view body with
+        | ModuleTypeExpr.Typeof _ -> Some body
+        | _ -> None
+      )
     | _ -> None
 
   let has_typeof_body = fun decl ->
@@ -4760,14 +4865,13 @@ module ModuleDeclaration = struct
     | None -> false
 
   let for_each_typeof_body_path_ident = fun decl ~fn ->
-    match typeof_body_node decl with
-    | Some node ->
-        for_each_token_in_node
-          node
-          ~fn:(fun token ->
-            if token_kind_is token Syntax_kind.IDENT then
-              fn token)
-    | None -> ()
+    match body decl with
+    | Type { body } -> (
+        match ModuleTypeExpr.view body with
+        | ModuleTypeExpr.Typeof { body = Some body } -> ModuleExpr.for_each_path_ident body ~fn
+        | _ -> ()
+      )
+    | _ -> ()
 
   let for_each_structure_item = fun decl ~fn ->
     match structure_body_node decl with

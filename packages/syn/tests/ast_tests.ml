@@ -1471,10 +1471,14 @@ let test_module_declaration_tokens = fun _ctx ->
         Test.assert_equal ~expected:"M" ~actual:(Ast.Token.text name);
         (
           match Ast.ModuleDeclaration.body decl with
-          | Ast.ModuleDeclaration.Struct { body } ->
-              Test.assert_equal
-                ~expected:SyntaxKind.STRUCT_MODULE_EXPR
-                ~actual:(Ast.Node.kind body)
+          | Ast.ModuleDeclaration.Expr { body } -> (
+              match Ast.ModuleExpr.view body with
+              | Ast.ModuleExpr.Structure { body } ->
+                  Test.assert_equal
+                    ~expected:SyntaxKind.STRUCT_MODULE_EXPR
+                    ~actual:(Ast.Node.kind body)
+              | _ -> panic "expected struct module declaration body"
+            )
           | _ -> panic "expected struct module declaration body"
         )
     | _ -> panic "expected first module declaration"
@@ -1503,14 +1507,53 @@ let test_module_declaration_tokens = fun _ctx ->
         Test.assert_equal ~expected:"=" ~actual:(Ast.Token.text separator);
         (
           match Ast.ModuleDeclaration.body decl with
-          | Ast.ModuleDeclaration.Path { path } ->
-              Test.assert_equal ~expected:SyntaxKind.PATH_MODULE_EXPR ~actual:(Ast.Node.kind path)
+          | Ast.ModuleDeclaration.Expr { body } -> (
+              match Ast.ModuleExpr.view body with
+              | Ast.ModuleExpr.Path { path } ->
+                  Test.assert_equal ~expected:SyntaxKind.PATH_MODULE_EXPR ~actual:(Ast.Node.kind path)
+              | _ -> panic "expected path module declaration body"
+            )
           | _ -> panic "expected path module declaration body"
         );
         Test.assert_equal ~expected:[ "Foo"; "Bar" ] ~actual:(List.reverse !segments)
     | _ -> panic "expected third module declaration"
   );
   Ok ()
+
+let test_module_declaration_application_body_view = fun _ctx ->
+  let root =
+    parse_ml {ocaml|module Int_list_show = Make (Int_show)
+module Int_pair_show = Make_pair (Int_show) (Int_show)
+|ocaml}
+    |> Result.expect ~msg:"expected parse source file"
+  in
+  let assert_module_apply index expected_name =
+    let item =
+      nth_structure_item root index
+      |> require_some ~msg:"expected module item"
+    in
+    match Ast.StructureItem.view item with
+    | Ast.StructureItem.Module decl ->
+        let name =
+          Ast.ModuleDeclaration.name decl
+          |> require_some ~msg:"expected module name"
+        in
+        Test.assert_equal ~expected:expected_name ~actual:(Ast.Token.text name);
+        (
+          match Ast.ModuleDeclaration.body decl with
+          | Ast.ModuleDeclaration.Expr { body } -> (
+              match Ast.ModuleExpr.view body with
+              | Ast.ModuleExpr.Apply { callee = Some _; argument = Some _; _ } -> ()
+              | Ast.ModuleExpr.Apply _ -> panic "expected complete applied module body"
+              | _ -> panic "expected applied module body"
+            )
+          | _ -> panic "expected module expression body"
+        );
+        Ok ()
+    | _ -> Error "expected module declaration"
+  in
+  let* () = assert_module_apply 0 "Int_list_show" in
+  assert_module_apply 1 "Int_pair_show"
 
 let test_trailing_sequence_before_and_views = fun _ctx ->
   let source = "let rec f () = log \"f\";\nand g () = log \"g\";\n" in
@@ -1642,8 +1685,11 @@ let test_signature_module_typeof_declaration = fun _ctx ->
       Test.assert_equal ~expected:SyntaxKind.TYPEOF_MODULE_TYPE ~actual:(Ast.Node.kind module_type);
       (
         match Ast.ModuleDeclaration.body decl with
-        | Ast.ModuleDeclaration.Typeof { body } ->
-            Test.assert_equal ~expected:SyntaxKind.TYPEOF_MODULE_TYPE ~actual:(Ast.Node.kind body)
+        | Ast.ModuleDeclaration.Type { body } -> (
+            match Ast.ModuleTypeExpr.view body with
+            | Ast.ModuleTypeExpr.Typeof _ -> ()
+            | _ -> panic "expected module type of declaration body"
+          )
         | _ -> panic "expected module type of declaration body"
       );
       Ok ()
@@ -3327,6 +3373,9 @@ let tests =
     case "ast exposes open declaration path tokens" test_open_declaration_path_tokens;
     case "ast exposes simple declaration token views" test_simple_declaration_token_views;
     case "ast exposes module declaration tokens" test_module_declaration_tokens;
+    case
+      "ast exposes applied module declaration body views"
+      test_module_declaration_application_body_view;
     case "ast exposes module declaration member views" test_module_declaration_member_views;
     case
       "ast preserves signature module declarations with module type of bodies"

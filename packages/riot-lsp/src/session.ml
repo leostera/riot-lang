@@ -608,12 +608,29 @@ and collect_signature_symbols = fun text collect ->
 
 and module_declaration_children = fun text declaration ->
   match Syn.Ast.ModuleDeclaration.body declaration with
-  | Syn.Ast.ModuleDeclaration.Struct _ ->
-      collect_structure_symbols text (Syn.Ast.ModuleDeclaration.for_each_structure_item declaration)
-  | Syn.Ast.ModuleDeclaration.Sig _ ->
-      collect_signature_symbols text (Syn.Ast.ModuleDeclaration.for_each_signature_item declaration)
-  | Syn.Ast.ModuleDeclaration.Path _
-  | Syn.Ast.ModuleDeclaration.Typeof _
+  | Syn.Ast.ModuleDeclaration.Expr { body } -> (
+      match Syn.Ast.ModuleExpr.view body with
+      | Syn.Ast.ModuleExpr.Structure _ ->
+          collect_structure_symbols text (Syn.Ast.ModuleDeclaration.for_each_structure_item declaration)
+      | Syn.Ast.ModuleExpr.Path _
+      | Syn.Ast.ModuleExpr.Functor _
+      | Syn.Ast.ModuleExpr.Apply _
+      | Syn.Ast.ModuleExpr.Constraint _
+      | Syn.Ast.ModuleExpr.Opaque _
+      | Syn.Ast.ModuleExpr.Error _
+      | Syn.Ast.ModuleExpr.Unknown _ -> []
+    )
+  | Syn.Ast.ModuleDeclaration.Type { body } -> (
+      match Syn.Ast.ModuleTypeExpr.view body with
+      | Syn.Ast.ModuleTypeExpr.Signature _ ->
+          collect_signature_symbols text (Syn.Ast.ModuleDeclaration.for_each_signature_item declaration)
+      | Syn.Ast.ModuleTypeExpr.Path _
+      | Syn.Ast.ModuleTypeExpr.With _
+      | Syn.Ast.ModuleTypeExpr.Typeof _
+      | Syn.Ast.ModuleTypeExpr.Functor _
+      | Syn.Ast.ModuleTypeExpr.Error _
+      | Syn.Ast.ModuleTypeExpr.Unknown _ -> []
+    )
   | Syn.Ast.ModuleDeclaration.Unsupported _ -> []
 
 and module_declaration_symbols = fun text declaration ->
