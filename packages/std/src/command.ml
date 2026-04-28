@@ -211,11 +211,16 @@ let output_to_temp_files = fun t ->
 
 let command_pipe_chunk_size = 4_096
 
+type pipe_read =
+  | Pipe_closed
+  | Pipe_read of int
+  | Pipe_would_block
+
 let read_pipe_once = fun file buffer ->
   match Kernel.Fs.File.read file buffer ~pos:0 ~len:command_pipe_chunk_size with
-  | Ok 0 -> Ok `Closed
-  | Ok bytes_read -> Ok (`Read bytes_read)
-  | Error err when is_file_would_block err -> Ok `Would_block
+  | Ok 0 -> Ok Pipe_closed
+  | Ok bytes_read -> Ok (Pipe_read bytes_read)
+  | Error err when is_file_would_block err -> Ok Pipe_would_block
   | Error err -> Error err
 
 let append_stdout_chunk = fun ~on_stdout_line ~stdout_buffer ~line_buffer buffer bytes_read ->
@@ -264,11 +269,11 @@ let output_with_pipes = fun ~on_stdout_line ~on_idle ~idle_interval t proc stdou
     else
       match read_pipe_once stdout_fd stdout_chunk with
       | Error err -> Error err
-      | Ok `Closed ->
+      | Ok Pipe_closed ->
           stdout_closed := true;
           Ok false
-      | Ok `Would_block -> Ok false
-      | Ok `Read bytes_read ->
+      | Ok Pipe_would_block -> Ok false
+      | Ok (Pipe_read bytes_read) ->
           append_stdout_chunk
             ~on_stdout_line
             ~stdout_buffer
@@ -283,11 +288,11 @@ let output_with_pipes = fun ~on_stdout_line ~on_idle ~idle_interval t proc stdou
     else
       match read_pipe_once stderr_fd stderr_chunk with
       | Error err -> Error err
-      | Ok `Closed ->
+      | Ok Pipe_closed ->
           stderr_closed := true;
           Ok false
-      | Ok `Would_block -> Ok false
-      | Ok `Read bytes_read ->
+      | Ok Pipe_would_block -> Ok false
+      | Ok (Pipe_read bytes_read) ->
           StringBuilder.add_subbytes stderr_buffer stderr_chunk 0 bytes_read;
           Ok true
   in

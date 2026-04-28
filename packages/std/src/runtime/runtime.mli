@@ -191,17 +191,20 @@ val yield: unit -> unit
    A mailbox selector that either returns a decoded message or skips the
    current mailbox entry.
 *)
-type 'msg selector = Message.t -> [`select of 'msg | `skip]
+type 'msg selection = 'msg Proc_effect.selection =
+  | Select of 'msg
+  | Skip
+type 'msg selector = Message.t -> 'msg selection
 
 (**
-   Receive a message selected by [`selector`]. Raises
-   [Exception.Receive_timeout] when [`timeout`] expires.
+   Receive a message selected by [selector]. Raises
+   [Exception.Receive_timeout] when [timeout] expires.
 *)
 val receive: selector:'value selector -> ?timeout:float -> unit -> 'value
 
 (**
    Receive the next mailbox message. Raises [Exception.Receive_timeout] when
-   [`timeout`] expires.
+   [timeout] expires.
 *)
 val receive_any: ?timeout:float -> unit -> Message.t
 
@@ -210,7 +213,7 @@ val shutdown: status:int -> unit
 
 (**
    Wait for an async source to become ready, then run the continuation.
-   Raises [Exception.Syscall_timeout] when [`timeout`] expires.
+   Raises [Exception.Syscall_timeout] when [timeout] expires.
 *)
 val syscall:
   ?timeout:float ->

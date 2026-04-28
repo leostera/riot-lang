@@ -19,9 +19,9 @@ type control_flow =
 
 let selector = fun msg ->
   match msg with
-  | Io_loop.Input event -> `select event
-  | Timer ref -> `select (Event.Timer ref)
-  | other -> `select (Event.Custom other)
+  | Io_loop.Input event -> Select event
+  | Timer ref -> Select (Event.Timer ref)
+  | other -> Select (Event.Custom other)
 
 (* User custom messages *)
 

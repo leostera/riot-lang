@@ -58,8 +58,8 @@ module Server = struct
   let rec loop = fun state ->
     let selector msg =
       match msg with
-      | Telemetry msg -> `select msg
-      | _ -> `skip
+      | Telemetry msg -> Select msg
+      | _ -> Skip
     in
     match receive ~selector () with
     | AttachHandler handler ->
@@ -111,8 +111,8 @@ let await_stopped = fun pid ->
   send pid Server.(Telemetry (Stop { reply_to = self (); request_id }));
   let selector msg =
     match msg with
-    | Server.Stopped { request_id = got } when Kernel.Int.equal got request_id -> `select ()
-    | _ -> `skip
+    | Server.Stopped { request_id = got } when Kernel.Int.equal got request_id -> Select ()
+    | _ -> Skip
   in
   (
     try receive ~selector ~timeout:(Time.Duration.from_millis 200) () with
@@ -160,8 +160,8 @@ let list_handlers = fun () ->
       let selector msg =
         match msg with
         | Server.HandlerList { request_id = got; ids } when Kernel.Int.equal got request_id ->
-            `select ids
-        | _ -> `skip
+            Select ids
+        | _ -> Skip
       in
       (
         try receive ~selector ~timeout:(Time.Duration.from_millis 100) () with

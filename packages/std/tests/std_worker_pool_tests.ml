@@ -31,11 +31,11 @@ let await_ready_worker:
           match Ref.type_equal
             pool.WorkerPool.DynamicWorkerPool.task_ref
             (WorkerPool.DynamicWorkerPool.get_worker_task_ref worker) with
-          | Some witness -> `select (cast_worker witness worker)
-          | None -> `skip
+          | Some witness -> Select (cast_worker witness worker)
+          | None -> Skip
         )
       | _ ->
-          `skip
+          Skip
     )
 
 let test_simple_worker_pool_empty_returns_immediately =
@@ -169,11 +169,11 @@ let test_dynamic_worker_pool_send_task_executes_payload =
                 function
                 | Worker_pool_task_received { payload; run_ref = received_ref } -> (
                     match Ref.type_equal run_ref received_ref with
-                    | Some Type.Equal -> `select payload
-                    | None -> `skip
+                    | Some Type.Equal -> Select payload
+                    | None -> Skip
                   )
                 | _ ->
-                    `skip
+                    Skip
               )
           in
           match received with

@@ -95,8 +95,8 @@ let wait_for_go = fun () ->
     receive
       ~selector:(fun msg ->
         match msg with
-        | Contentstore_bench_go -> `select ()
-        | _ -> `skip)
+        | Contentstore_bench_go -> Select ()
+        | _ -> Skip)
       ~timeout:(Time.Duration.from_secs 5)
       ()
   in
@@ -110,8 +110,8 @@ let collect_worker_results = fun count ->
       match receive
         ~selector:(fun msg ->
           match msg with
-          | Contentstore_bench_done result -> `select result
-          | _ -> `skip)
+          | Contentstore_bench_done result -> Select result
+          | _ -> Skip)
         ~timeout:(Time.Duration.from_secs 10)
         () with
       | Ok () -> loop (remaining - 1)

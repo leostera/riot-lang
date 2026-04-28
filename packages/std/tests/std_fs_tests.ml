@@ -67,8 +67,8 @@ let test_with_tempdir_retries_collisions_under_concurrency = fun _ctx ->
     else
       let selector msg =
         match msg with
-        | TempdirResult result -> `select result
-        | _ -> `skip
+        | TempdirResult result -> Select result
+        | _ -> Skip
       in
       match receive ~selector ~timeout:(Time.Duration.from_secs 2) () with
       | Error error -> Error error

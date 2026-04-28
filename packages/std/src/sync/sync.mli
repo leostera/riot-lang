@@ -80,6 +80,8 @@ module Condition: sig
 end
 
 module OnceCell: sig
+  type error =
+    | AlreadyInitialized
   type 'a t
   val create: unit -> 'a t
 
@@ -91,7 +93,7 @@ module OnceCell: sig
 
   val get_or_try_init: 'a t -> (unit -> ('a, 'e) result) -> ('a, 'e) result
 
-  val set: 'a t -> 'a -> (unit, [`AlreadyInitialized]) result
+  val set: 'a t -> 'a -> (unit, error) result
 
   val is_initialized: 'a t -> bool
 end

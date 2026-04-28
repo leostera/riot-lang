@@ -303,7 +303,8 @@ let parse_request_line_owned = fun ?(max_length = 8_192) input ->
                       | Error error -> Slice_error (Common.InvalidRequestTarget error)
                       | Ok uri -> (
                           match Std.Net.Http.Version.from_slice version with
-                          | Error `InvalidVersion -> Slice_error Common.InvalidHttpVersion
+                          | Error Std.Net.Http.Version.InvalidVersion ->
+                              Slice_error Common.InvalidHttpVersion
                           | Ok version ->
                               Slice_done {
                                 parsed_method = method_;

@@ -11,6 +11,14 @@ type Message.t +=
   | Mutex_owner_ready
   | Mutex_owner_exit
 
+type contended_event =
+  | Worker_done of int
+  | Overlap of int
+
+type unlock_outcome =
+  | Unlock_returned
+  | Unlock_failed of string
+
 let await = fun ~what selector ->
   try Ok (receive ~selector ~timeout:(Time.Duration.from_secs 1) ()) with
   | Receive_timeout -> Error ("timed out waiting for " ^ what)
@@ -49,13 +57,13 @@ let test_mutex_serializes_contended_access =
             ~what:"mutex workers"
             (
               function
-              | Mutex_worker_done idx -> `select (`Done idx)
-              | Mutex_overlap_detected idx -> `select (`Overlap idx)
-              | _ -> `skip
+              | Mutex_worker_done idx -> Select (Worker_done idx)
+              | Mutex_overlap_detected idx -> Select (Overlap idx)
+              | _ -> Skip
             ) with
           | Error _ as err -> err
-          | Ok `Done _ -> collect (remaining - 1)
-          | Ok `Overlap idx ->
+          | Ok (Worker_done _) -> collect (remaining - 1)
+          | Ok (Overlap idx) ->
               Error ("mutex allowed overlapping access for worker " ^ Int.to_string idx)
       in
       match collect worker_count with
@@ -80,8 +88,8 @@ let test_mutex_try_lock_reports_held_and_free_states =
             receive
               ~selector:(
                 function
-                | Mutex_holder_release -> `select ()
-                | _ -> `skip
+                | Mutex_holder_release -> Select ()
+                | _ -> Skip
               )
               ();
             Sync.Mutex.unlock lock;
@@ -92,8 +100,8 @@ let test_mutex_try_lock_reports_held_and_free_states =
         ~what:"mutex holder lock"
         (
           function
-          | Mutex_holder_locked -> `select ()
-          | _ -> `skip
+          | Mutex_holder_locked -> Select ()
+          | _ -> Skip
         ) with
       | Error _ as err -> err
       | Ok () ->
@@ -105,8 +113,8 @@ let test_mutex_try_lock_reports_held_and_free_states =
               ~what:"mutex holder release"
               (
                 function
-                | Mutex_holder_released -> `select ()
-                | _ -> `skip
+                | Mutex_holder_released -> Select ()
+                | _ -> Skip
               ) with
             | Error _ as err -> err
             | Ok () ->
@@ -132,8 +140,8 @@ let test_mutex_unlock_requires_ownership =
             receive
               ~selector:(
                 function
-                | Mutex_holder_release -> `select ()
-                | _ -> `skip
+                | Mutex_holder_release -> Select ()
+                | _ -> Skip
               )
               ();
             Sync.Mutex.unlock lock;
@@ -144,8 +152,8 @@ let test_mutex_unlock_requires_ownership =
         ~what:"mutex holder lock"
         (
           function
-          | Mutex_holder_locked -> `select ()
-          | _ -> `skip
+          | Mutex_holder_locked -> Select ()
+          | _ -> Skip
         ) with
       | Error _ as err -> err
       | Ok () ->
@@ -156,14 +164,14 @@ let test_mutex_unlock_requires_ownership =
                   let result =
                     try
                       Sync.Mutex.unlock lock;
-                      `Returned
+                      Unlock_returned
                     with
-                    | Failure reason -> `Failed reason
+                    | Failure reason -> Unlock_failed reason
                   in
                   (
                     match result with
-                    | `Returned -> send parent Mutex_unlock_returned
-                    | `Failed reason -> send parent (Mutex_unlock_failed reason)
+                    | Unlock_returned -> send parent Mutex_unlock_returned
+                    | Unlock_failed reason -> send parent (Mutex_unlock_failed reason)
                   );
                   Ok ())
             );
@@ -172,9 +180,9 @@ let test_mutex_unlock_requires_ownership =
               ~what:"non-owner mutex unlock result"
               (
                 function
-                | Mutex_unlock_failed reason -> `select (`Failed reason)
-                | Mutex_unlock_returned -> `select `Returned
-                | _ -> `skip
+                | Mutex_unlock_failed reason -> Select (Unlock_failed reason)
+                | Mutex_unlock_returned -> Select Unlock_returned
+                | _ -> Skip
               )
           in
           send holder Mutex_holder_release;
@@ -184,15 +192,15 @@ let test_mutex_unlock_requires_ownership =
                 ~what:"mutex holder cleanup"
                 (
                   function
-                  | Mutex_holder_released -> `select ()
-                  | _ -> `skip
+                  | Mutex_holder_released -> Select ()
+                  | _ -> Skip
                 )
             );
           match result with
           | Error _ as err -> err
-          | Ok `Failed reason when String.contains reason "non-owner" -> Ok ()
-          | Ok `Failed reason -> Error ("unexpected mutex unlock failure: " ^ reason)
-          | Ok `Returned -> Error "expected non-owner mutex unlock to fail")
+          | Ok (Unlock_failed reason) when String.contains reason "non-owner" -> Ok ()
+          | Ok (Unlock_failed reason) -> Error ("unexpected mutex unlock failure: " ^ reason)
+          | Ok Unlock_returned -> Error "expected non-owner mutex unlock to fail")
 
 let test_mutex_owner_exit_releases_lock =
   Test.case
@@ -208,8 +216,8 @@ let test_mutex_owner_exit_releases_lock =
             receive
               ~selector:(
                 function
-                | Mutex_owner_exit -> `select ()
-                | _ -> `skip
+                | Mutex_owner_exit -> Select ()
+                | _ -> Skip
               )
               ();
             Ok ())
@@ -219,8 +227,8 @@ let test_mutex_owner_exit_releases_lock =
         ~what:"mutex owner ready"
         (
           function
-          | Mutex_owner_ready -> `select ()
-          | _ -> `skip
+          | Mutex_owner_ready -> Select ()
+          | _ -> Skip
         ) with
       | Error _ as err -> err
       | Ok () ->
@@ -230,8 +238,8 @@ let test_mutex_owner_exit_releases_lock =
               ~what:"mutex owner exit"
               (
                 function
-                | Runtime.Actor.DOWN { pid; _ } when Runtime.Pid.equal pid owner -> `select ()
-                | _ -> `skip
+                | Runtime.Actor.DOWN { pid; _ } when Runtime.Pid.equal pid owner -> Select ()
+                | _ -> Skip
               ) with
             | Error _ as err -> err
             | Ok () ->

@@ -22,8 +22,8 @@ let test_actor_self_in_spawned_actor = fun _ctx ->
     ~what:"spawned actor self"
     (
       function
-      | Actor_self_reply pid -> `select pid
-      | _ -> `skip
+      | Actor_self_reply pid -> Select pid
+      | _ -> Skip
     ) with
   | Error _ as err -> err
   | Ok child_pid ->
@@ -41,8 +41,8 @@ let test_actor_spawn_returns_live_pid = fun _ctx ->
         receive
           ~selector:(
             function
-            | Actor_stop -> `select ()
-            | _ -> `skip
+            | Actor_stop -> Select ()
+            | _ -> Skip
           )
           ();
         Ok ())
@@ -52,8 +52,8 @@ let test_actor_spawn_returns_live_pid = fun _ctx ->
     ~what:"spawned actor ready"
     (
       function
-      | Actor_ready pid -> `select pid
-      | _ -> `skip
+      | Actor_ready pid -> Select pid
+      | _ -> Skip
     ) with
   | Error _ as err -> err
   | Ok ready_pid ->
@@ -65,8 +65,8 @@ let test_actor_spawn_returns_live_pid = fun _ctx ->
               ~what:"spawned actor down"
               (
                 function
-                | Runtime.Actor.DOWN { pid; _ } when Pid.equal pid child -> `select ()
-                | _ -> `skip
+                | Runtime.Actor.DOWN { pid; _ } when Pid.equal pid child -> Select ()
+                | _ -> Skip
               )
           );
         Ok ()
@@ -86,8 +86,8 @@ let test_actor_spawn_link_reports_abnormal_exit = fun _ctx ->
     (
       function
       | Runtime.Actor.EXIT { from; reason = Error exn } when Pid.equal from child
-      && is_failure exn ~message:"boom" -> `select ()
-      | _ -> `skip
+      && is_failure exn ~message:"boom" -> Select ()
+      | _ -> Skip
     ) with
   | Ok () -> Ok ()
   | Error _ as err -> err

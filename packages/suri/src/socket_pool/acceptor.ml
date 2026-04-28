@@ -11,21 +11,13 @@ type ('ctx, 'err) state = {
 type internal_msg =
   | Shutdown
 
-type selector_result =
-  | Select of internal_msg
-  | Skip
-
 type Message.t +=
   | AcceptorMsg of internal_msg
 
-let select_message = function
+let receive_selector = fun msg ->
+  match msg with
   | AcceptorMsg msg -> Select msg
   | _ -> Skip
-
-let receive_selector = fun msg ->
-  match select_message msg with
-  | Select msg -> `select msg
-  | Skip -> `skip
 
 let rec loop = fun state ->
   match receive ~selector:receive_selector ~timeout:(Time.Duration.from_millis 5) () with

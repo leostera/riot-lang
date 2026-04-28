@@ -382,8 +382,8 @@ let start = fun ~config ~tty () ->
   let pid = spawn (fun () -> init ~parent ~config ~tty) in
   let selector msg =
     match msg with
-    | RendererStarted pid' when Pid.equal pid pid' -> `select pid
-    | _ -> `skip
+    | RendererStarted pid' when Pid.equal pid pid' -> Select pid
+    | _ -> Skip
   in
   let timeout = Time.Duration.from_secs 2 in
   receive ~selector ~timeout ()
@@ -400,8 +400,8 @@ let shutdown = fun pid ->
   send pid Shutdown;
   let selector msg =
     match msg with
-    | ShutdownComplete -> `select ()
-    | _ -> `skip
+    | ShutdownComplete -> Select ()
+    | _ -> Skip
   in
   let timeout = Time.Duration.from_secs 2 in
   receive ~selector ~timeout ()

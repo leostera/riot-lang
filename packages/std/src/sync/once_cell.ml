@@ -1,5 +1,8 @@
 open Kernel
 
+type error =
+  | AlreadyInitialized
+
 type 'a t = 'a option Cell.t
 
 let create = fun () -> Cell.create None
@@ -35,7 +38,7 @@ let set = fun cell value ->
   | None ->
       Cell.set cell (Some value);
       Ok ()
-  | Some _ -> Error `AlreadyInitialized
+  | Some _ -> Error AlreadyInitialized
 
 let is_initialized = fun cell ->
   match Cell.get cell with

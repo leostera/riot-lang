@@ -83,7 +83,7 @@ let connect_transport = fun uri host ->
           | "ws" ->
               Ok (Plain stream, Net.TcpStream.to_reader stream, Net.TcpStream.to_writer stream)
           | "wss" -> (
-              match Net.TlsStream.of_tcp_client ~hostname:host stream with
+              match Net.TlsStream.from_tcp_client ~hostname:host stream with
               | Error error ->
                   Net.TcpStream.close stream;
                   Error (Error.TlsError error)

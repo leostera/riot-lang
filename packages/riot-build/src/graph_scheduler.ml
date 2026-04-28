@@ -377,17 +377,17 @@ let rec loop:
           let worker_ref = DynamicWorkerPool.get_worker_task_ref worker in
           if Ref.equal state.pool.task_ref worker_ref then
             match Ref.type_equal state.pool.task_ref worker_ref with
-            | Some Type.Equal -> `select (`WorkerReady worker)
-            | None -> `skip
+            | Some Type.Equal -> Select (`WorkerReady worker)
+            | None -> Skip
           else
-            `skip
+            Skip
         )
       | GraphNodeResult { result; result_ref } -> (
           match Ref.type_equal state.result_ref result_ref with
-          | Some Type.Equal -> `select (`NodeResult result)
-          | None -> `skip
+          | Some Type.Equal -> Select (`NodeResult result)
+          | None -> Skip
         )
-      | _ -> `skip
+      | _ -> Skip
     in
     match receive ~selector () with
     | `WorkerReady worker ->
@@ -487,22 +487,22 @@ let run = fun ~config ~on_event ~graph ~execute ->
         ([`Event of 'event | `Completed of ('work, 'result, 'error) run_result | `Failed of exn]) selector = function
         | GraphRunEvent { event; event_ref = ref } -> (
             match Ref.cast ref event_ref event with
-            | Some event -> `select (`Event event)
-            | None -> `skip
+            | Some event -> Select (`Event event)
+            | None -> Skip
           )
         | GraphRunCompleted { results; run_ref = ref } -> (
             match Ref.cast ref run_ref results with
-            | Some results -> `select (`Completed results)
-            | None -> `skip
+            | Some results -> Select (`Completed results)
+            | None -> Skip
           )
         | GraphRunFailed { exn; run_ref = ref } -> (
             if Ref.equal run_ref ref then
-              `select (`Failed exn)
+              Select (`Failed exn)
             else
-              `skip
+              Skip
           )
         | _ ->
-            `skip
+            Skip
       in
       match receive ~selector () with
       | `Event event ->

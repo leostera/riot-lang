@@ -38,37 +38,44 @@ type Message.t +=
       result_ref: 'result Ref.t;
     } -> Message.t
 
+type ('task, 'res) dispatcher_event =
+  | Dispatcher_worker_ready of 'task worker
+  | Dispatcher_task_result of int * 'res
+  | Dispatcher_task_error of int * exn
+
+type 'result run_event =
+  | Run_completed of (int * 'result) list
+  | Run_failed of exn
+
 let rec loop: type task res. (task, res) state -> (unit, Actor.exit_reason) result = fun state ->
-  let selector:
-    ([`WorkerReady of task worker | `TaskResult of int * res | `TaskError of int * exn]) selector = fun
-    msg ->
+  let selector: (task, res) dispatcher_event selector = fun msg ->
     match msg with
     | Dynamic.WorkerReady worker -> (
         match Ref.type_equal state.pool.task_ref worker.task_ref with
-        | Some Type.Equal -> `select (`WorkerReady worker)
+        | Some Type.Equal -> Select (Dispatcher_worker_ready worker)
         | None -> panic "bad message"
       )
     | TaskResult { idx; result; result_ref } -> (
         match Ref.type_equal state.result_ref result_ref with
-        | Some Type.Equal -> `select (`TaskResult (idx, result))
+        | Some Type.Equal -> Select (Dispatcher_task_result (idx, result))
         | None -> panic "bad message"
       )
     | TaskError { idx; exn; result_ref } -> (
         match Ref.type_equal state.result_ref result_ref with
-        | Some Type.Equal -> `select (`TaskError (idx, exn))
+        | Some Type.Equal -> Select (Dispatcher_task_error (idx, exn))
         | None -> panic "bad message"
       )
-    | _ -> `skip
+    | _ -> Skip
   in
   match receive ~selector () with
-  | `TaskResult res ->
-      state.results <- res :: state.results;
+  | Dispatcher_task_result (idx, result) ->
+      state.results <- (idx, result) :: state.results;
       state.tasks_in_flight <- state.tasks_in_flight - 1;
       loop state
-  | `TaskError (idx, exn) ->
+  | Dispatcher_task_error (idx, exn) ->
       send state.owner (Failed { idx; exn; result_ref = state.result_ref });
       Ok ()
-  | `WorkerReady worker -> (
+  | Dispatcher_worker_ready worker -> (
       match Queue.pop state.task_queue with
       | Some task ->
           state.tasks_in_flight <- state.tasks_in_flight + 1;
@@ -134,20 +141,20 @@ let run:
     let owner = self () in
     (* Spawn dispatcher process *)
     let _dispatcher_pid = spawn (init ~owner ~result_ref ~concurrency ~tasks ~fn) in
-    let selector: ([`Completed of (int * result) list | `Failed of exn]) selector = function
+    let selector: result run_event selector = function
       | Completed { results; result_ref = ref } when Ref.equal result_ref ref -> (
           match Ref.type_equal result_ref ref with
-          | Some Type.Equal -> `select (`Completed results)
+          | Some Type.Equal -> Select (Run_completed results)
           | None -> panic "bad message"
         )
       | Failed { exn; result_ref = ref; _ } when Ref.equal result_ref ref -> (
           match Ref.type_equal result_ref ref with
-          | Some Type.Equal -> `select (`Failed exn)
+          | Some Type.Equal -> Select (Run_failed exn)
           | None -> panic "bad message"
         )
       | _ ->
-          `skip
+          Skip
     in
     match receive ~selector () with
-    | `Completed results -> results
-    | `Failed exn -> raise exn
+    | Run_completed results -> results
+    | Run_failed exn -> raise exn

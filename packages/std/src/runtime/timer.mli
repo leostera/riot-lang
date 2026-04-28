@@ -15,6 +15,10 @@ type action =
      [`send_interval`] style timers.
   *)
   | Send_message of Pid.t * Message.t
+(** Current timer status. *)
+type status =
+  | Pending
+  | Cancelled
 (** A scheduled timer. *)
 type t = {
   id: id;
@@ -27,7 +31,7 @@ type t = {
   duration_nanos: int64;
   action: action;
   (** Current timer status. *)
-  mutable status: [`pending | `cancelled];
+  mutable status: status;
 }
 
 (** Create a timer with the given clock state, duration, mode, and action. *)

@@ -21,8 +21,8 @@
    Checking file types:
 
    ```ocaml match Fs.metadata path with | Ok meta -> (match Metadata.file_type
-   meta with | `Regular -> Log.info "Regular file" | `Directory -> Log.info
-   "Directory" | `Symlink -> Log.info "Symbolic link" | _ -> Log.info "Special
+   meta with | Regular -> Log.info "Regular file" | Directory -> Log.info
+   "Directory" | Symlink -> Log.info "Symbolic link" | _ -> Log.info "Special
    file") | Error err -> () ```
 
    Working with timestamps:
@@ -38,15 +38,24 @@
 
 (** File metadata from filesystem stat operations. *)
 type t = Kernel.Fs.File.Metadata.t
+type file_type =
+  | Regular
+  | Directory
+  | Symlink
+  | Block
+  | Character
+  | Fifo
+  | Socket
+  | Unknown
 (** ## File Properties *)
 (**
    Returns the file type.
 
    ## Examples
 
-   ```ocaml match Metadata.file_type meta with | `Regular -> "regular file" |
-   `Directory -> "directory" | `Symlink -> "symbolic link" | `Block -> "block
-   device" | `Character -> "character device" | `Fifo -> "named pipe" | `Socket
+   ```ocaml match Metadata.file_type meta with | Regular -> "regular file" |
+   Directory -> "directory" | Symlink -> "symbolic link" | Block -> "block
+   device" | Character -> "character device" | Fifo -> "named pipe" | Socket
    -> "Unix socket" ```
 *)
 
@@ -57,9 +66,7 @@ type t = Kernel.Fs.File.Metadata.t
 
    ```ocaml if Metadata.is_file meta then process_file path ```
 *)
-val file_type:
-  t ->
-  [ | `Regular | `Directory | `Symlink | `Block | `Character | `Fifo | `Socket | `Unknown]
+val file_type: t -> file_type
 
 val is_file: t -> bool
 
@@ -212,7 +219,7 @@ val dev: t -> int
 
    ## Examples
 
-   ```ocaml if Metadata.file_type meta = `Block then let dev_id = Metadata.rdev
+   ```ocaml if Metadata.file_type meta = Block then let dev_id = Metadata.rdev
    meta ```
 *)
 val rdev: t -> int

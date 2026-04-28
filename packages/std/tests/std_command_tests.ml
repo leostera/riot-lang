@@ -151,8 +151,8 @@ let test_command_output_handles_parallel_shell_commands = fun _ctx ->
       match Runtime.receive
         ~selector:(
           function
-          | Parallel_command_finished (_index, result) -> `select result
-          | _ -> `skip
+          | Parallel_command_finished (_index, result) -> Select result
+          | _ -> Skip
         )
         ~timeout:5.0
         () with
@@ -204,8 +204,8 @@ let test_command_output_handles_parallel_fast_exit_commands = fun _ctx ->
       match Runtime.receive
         ~selector:(
           function
-          | Parallel_command_finished (_index, result) -> `select result
-          | _ -> `skip
+          | Parallel_command_finished (_index, result) -> Select result
+          | _ -> Skip
         )
         ~timeout:5.0
         () with

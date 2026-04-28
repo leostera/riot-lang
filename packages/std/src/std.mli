@@ -815,6 +815,10 @@ exception Receive_timeout
 exception Syscall_timeout
 
 (** Raised when a syscall operation times out *)
+type 'msg selection = 'msg Runtime.selection =
+  | Select of 'msg
+  | Skip
+(** Message selector result type *)
 type 'msg selector = 'msg Runtime.selector
 
 (** Message selector type *)

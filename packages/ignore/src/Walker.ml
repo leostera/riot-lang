@@ -232,14 +232,14 @@ let join_path_string = fun dir_path name ->
 
 let entry_kind_of_metadata = fun metadata ->
   match Fs.Metadata.file_type metadata with
-  | `Regular -> Fs.Walker.File
-  | `Directory -> Fs.Walker.Directory
-  | `Symlink -> Fs.Walker.Symlink
-  | `Block
-  | `Character
-  | `Fifo
-  | `Socket
-  | `Unknown -> Fs.Walker.Other
+  | Regular -> Fs.Walker.File
+  | Directory -> Fs.Walker.Directory
+  | Symlink -> Fs.Walker.Symlink
+  | Block
+  | Character
+  | Fifo
+  | Socket
+  | Unknown -> Fs.Walker.Other
 
 let metadata_for_path_string = fun config path_string ->
   match Path.from_string path_string with
@@ -544,11 +544,11 @@ let rec coordinator_loop = fun state ->
       match msg with
       | DynamicWorkerPool.WorkerReady worker -> (
           match Ref.type_equal state.pool.task_ref (DynamicWorkerPool.get_worker_task_ref worker) with
-          | Some Type.Equal -> `select (Worker_ready worker)
-          | None -> `skip
+          | Some Type.Equal -> Select (Worker_ready worker)
+          | None -> Skip
         )
-      | Ignore_walk inner -> `select (Walk_event inner)
-      | _ -> `skip
+      | Ignore_walk inner -> Select (Walk_event inner)
+      | _ -> Skip
     in
     match receive ~selector () with
     | Worker_ready worker ->
@@ -600,8 +600,8 @@ let parallel_walk = fun config ~f ->
     match msg with
     | Ignore_walk (Walk_completed { coordinator = sender; result }) when Pid.equal
       sender
-      coordinator -> `select result
-    | _ -> `skip
+      coordinator -> Select result
+    | _ -> Skip
   in
   receive ~selector ()
 

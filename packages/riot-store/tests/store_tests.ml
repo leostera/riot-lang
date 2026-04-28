@@ -317,8 +317,8 @@ let test_concurrent_same_hash_saves_share_cache_safely = fun _ctx ->
           (fun () ->
             let selector msg =
               match msg with
-              | ConcurrentSaveGo -> `select msg
-              | _ -> `skip
+              | ConcurrentSaveGo -> Select msg
+              | _ -> Skip
             in
             let _ = receive ~selector () in
             let result =
@@ -334,8 +334,8 @@ let test_concurrent_same_hash_saves_share_cache_safely = fun _ctx ->
       send right_worker ConcurrentSaveGo;
       let selector msg =
         match msg with
-        | ConcurrentSaveComplete _ -> `select msg
-        | _ -> `skip
+        | ConcurrentSaveComplete _ -> Select msg
+        | _ -> Skip
       in
       let result1 = receive ~selector () in
       let result2 = receive ~selector () in

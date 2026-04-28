@@ -65,8 +65,8 @@ let test_udp_server_serves_one_datagram = fun _ctx ->
               match Runtime.receive
                 ~selector:(
                   function
-                  | Udp_server_received payload -> `select payload
-                  | _ -> `skip
+                  | Udp_server_received payload -> Select payload
+                  | _ -> Skip
                 )
                 ~timeout:1.0
                 () with

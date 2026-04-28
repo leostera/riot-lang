@@ -29,9 +29,9 @@ let run_file = fun config file_path ->
 let rec worker_loop = fun config ->
   send config.coordinator (Messages.WorkerReady (self ()));
   let selector = function
-    | Messages.RunTask file -> `select (`RunTask file)
-    | Messages.Stop -> `select `Stop
-    | _ -> `skip
+    | Messages.RunTask file -> Select (`RunTask file)
+    | Messages.Stop -> Select `Stop
+    | _ -> Skip
   in
   match receive ~selector () with
   | `Stop -> Ok ()

@@ -545,17 +545,17 @@ let rec dispatch_loop = fun state ->
           match Ref.type_equal
             state.pool.task_ref
             (WorkerPool.DynamicWorkerPool.get_worker_task_ref worker) with
-          | Some Type.Equal -> `select (`WorkerReady worker)
-          | None -> `skip
+          | Some Type.Equal -> Select (`WorkerReady worker)
+          | None -> Skip
         )
       | ScannerDiscovered { scanner_ref; file } when Ref.equal state.scanner_ref scanner_ref ->
-          `select (`ScannerDiscovered file)
+          Select (`ScannerDiscovered file)
       | ScannerComplete scanner_ref when Ref.equal state.scanner_ref scanner_ref ->
-          `select `ScannerComplete
+          Select `ScannerComplete
       | DispatchFileChecked { result_ref; result } when Ref.equal state.result_ref result_ref ->
-          `select (`FileChecked result)
+          Select (`FileChecked result)
       | _ ->
-          `skip
+          Skip
     in
     match receive ~selector () with
     | `WorkerReady worker ->
@@ -672,9 +672,9 @@ let run_streaming = fun
   let rec collect results_rev =
     let selector: ([`FileResult of file_result | `Completed]) selector = function
       | StreamFileResult { run_ref = msg_ref; result } when Ref.equal run_ref msg_ref ->
-          `select (`FileResult result)
-      | StreamCompleted msg_ref when Ref.equal run_ref msg_ref -> `select `Completed
-      | _ -> `skip
+          Select (`FileResult result)
+      | StreamCompleted msg_ref when Ref.equal run_ref msg_ref -> Select `Completed
+      | _ -> Skip
     in
     match receive ~selector () with
     | `FileResult result ->

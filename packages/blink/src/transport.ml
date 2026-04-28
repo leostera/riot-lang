@@ -37,7 +37,7 @@ module Tls: Intf = struct
           Net.Uri.host uri
           |> Option.unwrap_or ~default:"localhost"
         in
-        match Net.TlsStream.of_tcp_client ~hostname sock with
+        match Net.TlsStream.from_tcp_client ~hostname sock with
         | Error e -> Error (Error.TlsError e)
         | Ok tls ->
             let reader = Net.TlsStream.to_reader tls in

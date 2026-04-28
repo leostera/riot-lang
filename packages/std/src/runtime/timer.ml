@@ -8,6 +8,10 @@ type action =
   | Wake_process of Process.t
   | Send_message of Pid.t * Message.t
 
+type status =
+  | Pending
+  | Cancelled
+
 type t = {
   id: id;
   mode: mode;
@@ -15,7 +19,7 @@ type t = {
   mutable expires_at: int64;
   duration_nanos: int64;
   action: action;
-  mutable status: [`pending | `cancelled];
+  mutable status: status;
 }
 
 let make = fun ~now ~duration_nanos ~mode ~action ->
@@ -28,15 +32,15 @@ let make = fun ~now ~duration_nanos ~mode ~action ->
     expires_at;
     duration_nanos;
     action;
-    status = `pending;
+    status = Pending;
   }
 
 let is_cancelled = fun t ->
   match t.status with
-  | `cancelled -> true
-  | `pending -> false
+  | Cancelled -> true
+  | Pending -> false
 
-let cancel = fun t -> t.status <- `cancelled
+let cancel = fun t -> t.status <- Cancelled
 
 let should_fire = fun t ~now ->
   let due =

@@ -52,8 +52,8 @@ module Server = struct
   let rec loop = fun state ->
     let selector msg =
       match msg with
-      | StdoutHandler msg -> `select msg
-      | _ -> `skip
+      | StdoutHandler msg -> Select msg
+      | _ -> Skip
     in
     match receive ~selector () with
     | Write event ->
@@ -108,8 +108,8 @@ let flush = fun () ->
       let selector msg =
         match msg with
         | Server.StdoutHandler_flushed { request_id = got } when Int.equal got request_id ->
-            `select ()
-        | _ -> `skip
+            Select ()
+        | _ -> Skip
       in
       receive ~selector ()
 
@@ -130,9 +130,8 @@ let child_spec = fun () ->
       in
       let selector msg =
         match msg with
-        | Server.StdoutHandler_ready { request_id = got } when Int.equal got request_id ->
-            `select ()
-        | _ -> `skip
+        | Server.StdoutHandler_ready { request_id = got } when Int.equal got request_id -> Select ()
+        | _ -> Skip
       in
       receive ~selector ();
       attach ();

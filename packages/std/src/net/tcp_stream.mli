@@ -53,8 +53,8 @@ val close: t -> unit
      let buf = Bytes.create 4096 in
      match IO.read reader buf with
      | Ok n -> process_data (Bytes.sub buf 0 n)
-     | Error `Closed -> handle_closed ()
-     | Error (`System_error msg) -> handle_error msg
+     | Error Closed -> handle_closed ()
+     | Error (System_error msg) -> handle_error msg
    ]}
 *)
 val to_reader: t -> IO.Reader.t
@@ -72,8 +72,8 @@ val to_reader: t -> IO.Reader.t
 
      match IO.write_all writer ~buf:"Hello, world!\n" with
      | Ok () -> println "Data sent"
-     | Error `Closed -> handle_closed ()
-     | Error (`System_error msg) -> handle_error msg
+     | Error Closed -> handle_closed ()
+     | Error (System_error msg) -> handle_error msg
    ]}
 *)
 val to_writer: t -> IO.Writer.t

@@ -11,6 +11,18 @@ type Message.t +=
 
 type 'a box = { mutable value: 'a }
 
+type signal_flow =
+  | Signaler
+  | Waiter of bool
+
+type wait_outcome =
+  | Wait_returned
+  | Wait_failed of string
+
+type broadcast_flow =
+  | Broadcast_signaled
+  | Broadcast_resumed
+
 let box = fun value -> { value }
 
 let await = fun ~what selector ->
@@ -41,8 +53,8 @@ let test_condition_wait_releases_mutex_and_reacquires_after_signal =
         ~what:"condition waiter readiness"
         (
           function
-          | Condition_waiter_ready -> `select ()
-          | _ -> `skip
+          | Condition_waiter_ready -> Select ()
+          | _ -> Skip
         ) with
       | Error _ as err -> err
       | Ok () ->
@@ -68,15 +80,15 @@ let test_condition_wait_releases_mutex_and_reacquires_after_signal =
                 ~what:"condition signal flow"
                 (
                   function
-                  | Condition_signaler_done -> `select `Signaler
-                  | Condition_waiter_resumed entered -> `select (`Waiter entered)
-                  | _ -> `skip
+                  | Condition_signaler_done -> Select Signaler
+                  | Condition_waiter_resumed entered -> Select (Waiter entered)
+                  | _ -> Skip
                 ) with
               | Error _ as err -> err
-              | Ok `Signaler ->
+              | Ok Signaler ->
                   saw_signaler.value <- true;
                   collect (remaining - 1)
-              | Ok `Waiter entered ->
+              | Ok (Waiter entered) ->
                   waiter_entered.value <- Some entered;
                   collect (remaining - 1)
           in
@@ -106,14 +118,14 @@ let test_condition_wait_requires_mutex_ownership =
               let outcome =
                 try
                   Sync.Condition.wait condition mutex;
-                  `Returned
+                  Wait_returned
                 with
-                | Failure reason -> `Failed reason
+                | Failure reason -> Wait_failed reason
               in
               (
                 match outcome with
-                | `Returned -> send parent Condition_wait_returned
-                | `Failed reason -> send parent (Condition_wait_failed reason)
+                | Wait_returned -> send parent Condition_wait_returned
+                | Wait_failed reason -> send parent (Condition_wait_failed reason)
               );
               Ok ())
         );
@@ -121,14 +133,14 @@ let test_condition_wait_requires_mutex_ownership =
         ~what:"condition wait failure"
         (
           function
-          | Condition_wait_failed reason -> `select (`Failed reason)
-          | Condition_wait_returned -> `select `Returned
-          | _ -> `skip
+          | Condition_wait_failed reason -> Select (Wait_failed reason)
+          | Condition_wait_returned -> Select Wait_returned
+          | _ -> Skip
         ) with
       | Error _ as err -> err
-      | Ok `Failed reason when String.contains reason "mutex wait" -> Ok ()
-      | Ok `Failed reason -> Error ("unexpected condition wait failure: " ^ reason)
-      | Ok `Returned -> Error "expected condition wait without mutex ownership to fail")
+      | Ok (Wait_failed reason) when String.contains reason "mutex wait" -> Ok ()
+      | Ok (Wait_failed reason) -> Error ("unexpected condition wait failure: " ^ reason)
+      | Ok Wait_returned -> Error "expected condition wait without mutex ownership to fail")
 
 let test_condition_broadcast_wakes_all_waiters =
   Test.case
@@ -159,8 +171,8 @@ let test_condition_broadcast_wakes_all_waiters =
             ~what:"broadcast waiter readiness"
             (
               function
-              | Condition_broadcast_waiter_ready _idx -> `select ()
-              | _ -> `skip
+              | Condition_broadcast_waiter_ready _idx -> Select ()
+              | _ -> Skip
             ) with
           | Error _ as err -> err
           | Ok () -> await_ready (remaining - 1)
@@ -188,13 +200,13 @@ let test_condition_broadcast_wakes_all_waiters =
                 ~what:"broadcast wakeup"
                 (
                   function
-                  | Condition_signaler_done -> `select `Signaled
-                  | Condition_broadcast_waiter_resumed _idx -> `select `Resumed
-                  | _ -> `skip
+                  | Condition_signaler_done -> Select Broadcast_signaled
+                  | Condition_broadcast_waiter_resumed _idx -> Select Broadcast_resumed
+                  | _ -> Skip
                 ) with
               | Error _ as err -> err
-              | Ok `Signaled -> collect (remaining - 1)
-              | Ok `Resumed ->
+              | Ok Broadcast_signaled -> collect (remaining - 1)
+              | Ok Broadcast_resumed ->
                   let _ = Sync.Atomic.fetch_and_add resumed 1 in
                   collect (remaining - 1)
           in

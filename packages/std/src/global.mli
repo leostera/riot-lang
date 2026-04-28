@@ -149,6 +149,9 @@ exception Receive_timeout
 exception Syscall_timeout
 
 (** Mailbox selector type used by receive operations. *)
+type 'msg selection = 'msg Runtime.selection =
+  | Select of 'msg
+  | Skip
 type 'msg selector = 'msg Runtime.selector
 
 (** Get the PID of the currently running process. *)

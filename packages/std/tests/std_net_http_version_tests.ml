@@ -11,7 +11,7 @@ let test_from_slice_standard = fun _ctx ->
   match Version.from_slice slice with
   | Ok Version.Http11 -> Ok ()
   | Ok version -> Error ("Expected HTTP/1.1, got " ^ Version.to_string version)
-  | Error `InvalidVersion -> Error "Expected HTTP/1.1 to parse"
+  | Error Version.InvalidVersion -> Error "Expected HTTP/1.1 to parse"
 
 let test_from_slice_invalid = fun _ctx ->
   let slice =
@@ -19,7 +19,7 @@ let test_from_slice_invalid = fun _ctx ->
     |> Result.unwrap
   in
   match Version.from_slice slice with
-  | Error `InvalidVersion -> Ok ()
+  | Error Version.InvalidVersion -> Ok ()
   | Ok version -> Error ("Expected invalid version, got " ^ Version.to_string version)
 
 let tests =

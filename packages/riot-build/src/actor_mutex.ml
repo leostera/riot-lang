@@ -74,9 +74,9 @@ module Server = struct
   let rec loop = fun state ->
     let selector msg =
       match msg with
-      | Riot_build_actor_mutex_request request -> `select (`request request)
-      | Actor.DOWN { ref; pid; _ } -> `select (`down (ref, pid))
-      | _ -> `skip
+      | Riot_build_actor_mutex_request request -> Select (`request request)
+      | Actor.DOWN { ref; pid; _ } -> Select (`down (ref, pid))
+      | _ -> Skip
     in
     match receive ~selector () with
     | `request (Acquire { reply_to; request_id }) ->
@@ -102,12 +102,12 @@ let await = fun request_id expected ->
   let selector msg =
     match msg with
     | Riot_build_actor_mutex_acquired { request_id = got } when expected = `acquired
-    && Int.equal got request_id -> `select (Ok ())
+    && Int.equal got request_id -> Select (Ok ())
     | Riot_build_actor_mutex_released { request_id = got } when expected = `released
-    && Int.equal got request_id -> `select (Ok ())
+    && Int.equal got request_id -> Select (Ok ())
     | Riot_build_actor_mutex_failed { request_id = got; reason } when Int.equal got request_id ->
-        `select (Error reason)
-    | _ -> `skip
+        Select (Error reason)
+    | _ -> Skip
   in
   receive ~selector ()
 

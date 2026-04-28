@@ -120,7 +120,7 @@ let current_version_from_slice = fun value ->
   | 8 when Slice.equal_string value "HTTP/2.0" -> Ok Version.Http2
   | 6 when Slice.equal_string value "HTTP/3" -> Ok Version.Http3
   | 8 when Slice.equal_string value "HTTP/3.0" -> Ok Version.Http3
-  | _ -> Error `InvalidVersion
+  | _ -> Error Version.InvalidVersion
 
 let optimized_version_from_slice = fun value ->
   match Slice.length value with
@@ -130,7 +130,7 @@ let optimized_version_from_slice = fun value ->
       else if equal_tail value ~at:0 "HTTP/3" then
         Ok Version.Http3
       else
-        Error `InvalidVersion
+        Error Version.InvalidVersion
   | 8 ->
       if equal_tail value ~at:0 "HTTP/0.9" then
         Ok Version.Http09
@@ -143,8 +143,8 @@ let optimized_version_from_slice = fun value ->
       else if equal_tail value ~at:0 "HTTP/3.0" then
         Ok Version.Http3
       else
-        Error `InvalidVersion
-  | _ -> Error `InvalidVersion
+        Error Version.InvalidVersion
+  | _ -> Error Version.InvalidVersion
 
 let current_take_until_char = fun value needle ->
   match Cursor.take_until_char (Cursor.from_slice value) needle with

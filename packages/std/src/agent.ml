@@ -57,8 +57,8 @@ type Message.t +=
 let rec loop: type state. state Ref.t -> state -> (unit, exn) result = fun state_ref state ->
   let selector msg =
     match msg with
-    | AgentRequest req -> `select req
-    | _ -> `skip
+    | AgentRequest req -> Select req
+    | _ -> Skip
   in
   match receive ~selector () with
   | Get {
@@ -136,8 +136,8 @@ let get: type state reply. state t -> fn:(state -> reply) -> reply = fun agent ~
     );
   let selector msg =
     match msg with
-    | AgentResponse res -> `select res
-    | _ -> `skip
+    | AgentResponse res -> Select res
+    | _ -> Skip
   in
   match receive ~selector () with
   | GetReply (result, rr) when Ref.equal reply_ref rr -> (
@@ -151,8 +151,8 @@ let update: type state. state t -> fn:(state -> state) -> unit = fun agent ~fn -
   send agent.pid (AgentRequest (Update { reply_to = self (); fn; state_ref = agent.state_ref }));
   let selector msg =
     match msg with
-    | AgentResponse res -> `select res
-    | _ -> `skip
+    | AgentResponse res -> Select res
+    | _ -> Skip
   in
   match receive ~selector () with
   | UpdateReply -> ()
@@ -175,8 +175,8 @@ let get_and_update: type state reply. state t -> fn:(state -> reply * state) -> 
     );
   let selector msg =
     match msg with
-    | AgentResponse res -> `select res
-    | _ -> `skip
+    | AgentResponse res -> Select res
+    | _ -> Skip
   in
   match receive ~selector () with
   | GetAndUpdateReply (result, rr) when Ref.equal reply_ref rr -> (
@@ -195,8 +195,8 @@ let stop: type state. state t -> unit = fun agent ->
   send agent.pid (AgentRequest (Stop { reply_to = self () }));
   let selector msg =
     match msg with
-    | AgentResponse res -> `select res
-    | _ -> `skip
+    | AgentResponse res -> Select res
+    | _ -> Skip
   in
   match receive ~selector () with
   | StopReply -> ()

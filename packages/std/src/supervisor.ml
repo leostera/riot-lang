@@ -506,14 +506,14 @@ let handle_stop = fun state reply_to ->
 let rec loop = fun state ->
   let selector msg =
     match msg with
-    | Actor.DOWN _ -> `select msg
-    | Supervisor_which_children _ -> `select msg
-    | Supervisor_count_children _ -> `select msg
-    | Supervisor_delete_child _ -> `select msg
-    | Supervisor_restart_child _ -> `select msg
-    | Supervisor_terminate_child _ -> `select msg
-    | Supervisor_stop _ -> `select msg
-    | _ -> `skip
+    | Actor.DOWN _ -> Select msg
+    | Supervisor_which_children _ -> Select msg
+    | Supervisor_count_children _ -> Select msg
+    | Supervisor_delete_child _ -> Select msg
+    | Supervisor_restart_child _ -> Select msg
+    | Supervisor_terminate_child _ -> Select msg
+    | Supervisor_stop _ -> Select msg
+    | _ -> Skip
   in
   match receive ~selector () with
   | Actor.DOWN { pid; reason; _ } ->
@@ -601,8 +601,8 @@ let which_children = fun supervisor ->
   send supervisor (Supervisor_which_children { reply_to = self () });
   let selector msg =
     match msg with
-    | Supervisor_which_children_reply { children } -> `select children
-    | _ -> `skip
+    | Supervisor_which_children_reply { children } -> Select children
+    | _ -> Skip
   in
   receive ~selector ()
 
@@ -610,8 +610,8 @@ let count_children = fun supervisor ->
   send supervisor (Supervisor_count_children { reply_to = self () });
   let selector msg =
     match msg with
-    | Supervisor_count_children_reply { count } -> `select count
-    | _ -> `skip
+    | Supervisor_count_children_reply { count } -> Select count
+    | _ -> Skip
   in
   receive ~selector ()
 
@@ -619,8 +619,8 @@ let delete_child = fun supervisor ~id ->
   send supervisor (Supervisor_delete_child { reply_to = self (); id });
   let selector msg =
     match msg with
-    | Supervisor_delete_child_reply { result } -> `select result
-    | _ -> `skip
+    | Supervisor_delete_child_reply { result } -> Select result
+    | _ -> Skip
   in
   receive ~selector ()
 
@@ -628,8 +628,8 @@ let restart_child = fun supervisor ~id ->
   send supervisor (Supervisor_restart_child { reply_to = self (); id });
   let selector msg =
     match msg with
-    | Supervisor_restart_child_reply { result } -> `select result
-    | _ -> `skip
+    | Supervisor_restart_child_reply { result } -> Select result
+    | _ -> Skip
   in
   receive ~selector ()
 
@@ -637,8 +637,8 @@ let terminate_child = fun supervisor ~id ->
   send supervisor (Supervisor_terminate_child { reply_to = self (); id });
   let selector msg =
     match msg with
-    | Supervisor_terminate_child_reply { result } -> `select result
-    | _ -> `skip
+    | Supervisor_terminate_child_reply { result } -> Select result
+    | _ -> Skip
   in
   receive ~selector ()
 
@@ -648,8 +648,8 @@ let stop = fun supervisor ->
   send supervisor (Supervisor_stop { reply_to = self () });
   let selector msg =
     match msg with
-    | Supervisor_stop_reply -> `select ()
-    | _ -> `skip
+    | Supervisor_stop_reply -> Select ()
+    | _ -> Skip
   in
   receive ~selector ()
 
@@ -705,12 +705,12 @@ module Dynamic = struct
   let rec dynamic_loop = fun state ->
     let selector msg =
       match msg with
-      | Actor.DOWN _ -> `select msg
-      | Dynamic_start_child _ -> `select msg
-      | Dynamic_terminate_child _ -> `select msg
-      | Dynamic_which_children _ -> `select msg
-      | Dynamic_count_children _ -> `select msg
-      | _ -> `skip
+      | Actor.DOWN _ -> Select msg
+      | Dynamic_start_child _ -> Select msg
+      | Dynamic_terminate_child _ -> Select msg
+      | Dynamic_which_children _ -> Select msg
+      | Dynamic_count_children _ -> Select msg
+      | _ -> Skip
     in
     match receive ~selector () with
     | Actor.DOWN { pid; reason; _ } -> (
@@ -867,8 +867,8 @@ module Dynamic = struct
       );
     let selector msg =
       match msg with
-      | Dynamic_start_child_reply { result } -> `select result
-      | _ -> `skip
+      | Dynamic_start_child_reply { result } -> Select result
+      | _ -> Skip
     in
     receive ~selector ()
 
@@ -876,8 +876,8 @@ module Dynamic = struct
     send supervisor (Dynamic_terminate_child { reply_to = self (); pid });
     let selector msg =
       match msg with
-      | Dynamic_terminate_child_reply { result } -> `select result
-      | _ -> `skip
+      | Dynamic_terminate_child_reply { result } -> Select result
+      | _ -> Skip
     in
     receive ~selector ()
 
@@ -885,8 +885,8 @@ module Dynamic = struct
     send supervisor (Dynamic_which_children { reply_to = self () });
     let selector msg =
       match msg with
-      | Dynamic_which_children_reply { children } -> `select children
-      | _ -> `skip
+      | Dynamic_which_children_reply { children } -> Select children
+      | _ -> Skip
     in
     receive ~selector ()
 
@@ -894,8 +894,8 @@ module Dynamic = struct
     send supervisor (Dynamic_count_children { reply_to = self () });
     let selector msg =
       match msg with
-      | Dynamic_count_children_reply { count } -> `select count
-      | _ -> `skip
+      | Dynamic_count_children_reply { count } -> Select count
+      | _ -> Skip
     in
     receive ~selector ()
 end

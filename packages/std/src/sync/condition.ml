@@ -54,8 +54,8 @@ let rec signal_all = fun waiters ->
 let rec loop = fun waiters ->
   let selector msg =
     match msg with
-    | Sync_condition_request request -> `select request
-    | _ -> `skip
+    | Sync_condition_request request -> Runtime.Select request
+    | _ -> Runtime.Skip
   in
   match Runtime.receive ~selector () with
   | Wait { reply_to; request_id; mutex } ->
@@ -92,10 +92,11 @@ let wait = fun (t: t) (mutex: Mutex.t) ->
     (Sync_condition_request (Wait { reply_to = Runtime.self (); request_id; mutex }));
   let selector msg =
     match msg with
-    | Sync_condition_signaled { request_id = got } when Int.equal got request_id -> `select (Ok ())
+    | Sync_condition_signaled { request_id = got } when Int.equal got request_id ->
+        Runtime.Select (Ok ())
     | Sync_condition_failed { request_id = got; reason } when Int.equal got request_id ->
-        `select (Error reason)
-    | _ -> `skip
+        Runtime.Select (Error reason)
+    | _ -> Runtime.Skip
   in
   match Runtime.receive ~selector () with
   | Ok () -> Mutex.lock mutex

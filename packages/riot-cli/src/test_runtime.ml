@@ -1137,8 +1137,8 @@ let list_tests = fun
                 receive
                   ~selector:(fun (msg: Message.t) ->
                     match msg with
-                    | ListedTestsReady payload -> `select payload
-                    | _ -> `skip)
+                    | ListedTestsReady payload -> Select payload
+                    | _ -> Skip)
                   ()
               in
               let acc =

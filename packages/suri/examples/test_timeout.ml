@@ -1,13 +1,6 @@
 open Std
 
-type selected_message =
-  | Skip
-
-let select_message = fun _msg -> Skip
-
-let receive_selector = fun msg ->
-  match select_message msg with
-  | Skip -> `skip
+let receive_selector = fun _msg -> Skip
 
 let main ~args:_ =
   Log.info "Testing receive timeout...";

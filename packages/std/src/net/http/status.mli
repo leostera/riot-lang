@@ -176,6 +176,8 @@ type t =
   (* Extension *)
   (** Custom or non-standard status code. *)
   | Extension of int
+type error =
+  | InvalidStatus
 
 (**
    Creates status code from integer value.
@@ -203,9 +205,9 @@ val to_int: t -> int
    ## Examples
 
    ```ocaml Status.of_string "200" (* Ok (Ok) *) Status.of_string "404" (* Ok
-   (NotFound) *) Status.of_string "abc" (* Error `InvalidStatus *) ```
+   (NotFound) *) Status.of_string "abc" (* Error InvalidStatus *) ```
 *)
-val of_string: string -> (t, [`InvalidStatus]) Kernel.result
+val of_string: string -> (t, error) Kernel.result
 
 (**
    Converts status code to string representation of the integer.

@@ -249,13 +249,23 @@ let of_string = fun s -> parse_with string_ops s
 
 let parse_origin_form_slice = fun value ->
   let len = Slice.length value in
+  let module Origin_scan = struct
+    type path_stop =
+      | Done of int
+      | Query of int
+      | Fragment of int
+
+    type next_part =
+      | Next_query
+      | Next_fragment
+  end in
   let rec scan_path pos =
     if pos >= len then
-      Ok (`Done pos)
+      Ok (Origin_scan.Done pos)
     else
       match Slice.get_unchecked value ~at:pos with
-      | '?' -> Ok (`Query pos)
-      | '#' -> Ok (`Fragment pos)
+      | '?' -> Ok (Origin_scan.Query pos)
+      | '#' -> Ok (Origin_scan.Fragment pos)
       | c when is_path_char c -> scan_path (pos + 1)
       | _ -> Error ()
   in
@@ -273,9 +283,9 @@ let parse_origin_form_slice = fun value ->
   | Ok path_stop -> (
       let (path_end, next) =
         match path_stop with
-        | `Done pos -> (pos, None)
-        | `Query pos -> (pos, Some (`Query, pos + 1))
-        | `Fragment pos -> (pos, Some (`Fragment, pos + 1))
+        | Origin_scan.Done pos -> (pos, None)
+        | Origin_scan.Query pos -> (pos, Some (Origin_scan.Next_query, pos + 1))
+        | Origin_scan.Fragment pos -> (pos, Some (Origin_scan.Next_fragment, pos + 1))
       in
       let path =
         if path_end = 0 then
@@ -292,7 +302,7 @@ let parse_origin_form_slice = fun value ->
             query = None;
             fragment = None;
           }
-      | Some (`Fragment, fragment_start) ->
+      | Some (Origin_scan.Next_fragment, fragment_start) ->
           Ok {
             scheme = None;
             authority = None;
@@ -301,7 +311,7 @@ let parse_origin_form_slice = fun value ->
             fragment = Some (Slice.to_string
               (Slice.sub_unchecked value ~off:fragment_start ~len:(len - fragment_start)));
           }
-      | Some (`Query, query_start) -> (
+      | Some (Origin_scan.Next_query, query_start) -> (
           match scan_query query_start with
           | Error () -> parse_with slice_ops value
           | Ok query_end ->

@@ -1,17 +1,25 @@
 open Kernel
 
 (**
-   Timeout values for receive and syscall effects. [`after seconds`] uses
+   Timeout values for receive and syscall effects. [After seconds] uses
    seconds.
 *)
-type timeout = [`infinity | `after of float]
+type timeout =
+  | Infinity
+  | After of float
+(** Selection outcome for mailbox receive selectors. *)
+type 'msg selection =
+  | Select of 'msg
+  | Skip
+(** Mailbox selector function. *)
+type 'msg selector = Message.t -> 'msg selection
 (**
-   Receive the next message selected by [`selector`], or abort when the
+   Receive the next message selected by [selector], or abort when the
    timeout expires.
 *)
 type _ Effect.t +=
   | Receive: {
-      selector: Message.t -> [`select of 'msg | `skip];
+      selector: 'msg selector;
       timeout: timeout;
     } -> 'msg Effect.t
 (** Cooperatively yield control back to the scheduler. *)

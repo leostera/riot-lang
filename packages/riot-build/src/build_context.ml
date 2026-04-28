@@ -85,8 +85,8 @@ let flush_events = fun context ->
     (Flush_build_events { session_id = context.session_id; reply_to = self (); request_id });
   let selector message =
     match message with
-    | Build_events_flushed { request_id = got } when Int.equal got request_id -> `select ()
-    | _ -> `skip
+    | Build_events_flushed { request_id = got } when Int.equal got request_id -> Select ()
+    | _ -> Skip
   in
   receive ~selector ()
 

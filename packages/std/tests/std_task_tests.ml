@@ -70,8 +70,8 @@ let test_await_all_preserves_input_order = fun _ctx ->
           receive
             ~selector:(
               function
-              | Register_slow slow_pid -> `select slow_pid
-              | _ -> `skip
+              | Register_slow slow_pid -> Select slow_pid
+              | _ -> Skip
             )
             ()
         in
@@ -79,8 +79,8 @@ let test_await_all_preserves_input_order = fun _ctx ->
         receive
           ~selector:(
             function
-            | Release_slow -> `select ()
-            | _ -> `skip
+            | Release_slow -> Select ()
+            | _ -> Skip
           )
           ();
         send slow_pid Slow_task_released;
@@ -93,8 +93,8 @@ let test_await_all_preserves_input_order = fun _ctx ->
         receive
           ~selector:(
             function
-            | Slow_task_released -> `select ()
-            | _ -> `skip
+            | Slow_task_released -> Select ()
+            | _ -> Skip
           )
           ();
         "slow")
@@ -103,8 +103,8 @@ let test_await_all_preserves_input_order = fun _ctx ->
     ~what:"slow task registration"
     (
       function
-      | Slow_task_registered -> `select ()
-      | _ -> `skip
+      | Slow_task_registered -> Select ()
+      | _ -> Skip
     ) with
   | Error _ as err -> err
   | Ok () ->
@@ -133,8 +133,8 @@ let test_await_all_ignores_unrelated_messages = fun _ctx ->
         ~what:"unrelated message"
         (
           function
-          | Task_unrelated payload -> `select payload
-          | _ -> `skip
+          | Task_unrelated payload -> Select payload
+          | _ -> Skip
         ) with
       | Ok "noise" -> Ok ()
       | Ok payload -> Error ("expected unrelated payload noise, got " ^ payload)
@@ -155,8 +155,8 @@ let test_async_starts_eagerly = fun _ctx ->
     ~what:"task start"
     (
       function
-      | Task_started -> `select ()
-      | _ -> `skip
+      | Task_started -> Select ()
+      | _ -> Skip
     ) with
   | Error _ as err -> err
   | Ok () -> (

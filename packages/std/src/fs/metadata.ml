@@ -2,16 +2,26 @@ open Global
 
 type t = Kernel.Fs.File.Metadata.t
 
+type file_type =
+  | Regular
+  | Directory
+  | Symlink
+  | Block
+  | Character
+  | Fifo
+  | Socket
+  | Unknown
+
 let file_type = fun t ->
   match Kernel.Fs.File.Metadata.file_type t with
-  | Kernel.Fs.File.RegularFile -> `Regular
-  | Kernel.Fs.File.Directory -> `Directory
-  | Kernel.Fs.File.SymbolicLink -> `Symlink
-  | Kernel.Fs.File.BlockDevice -> `Block
-  | Kernel.Fs.File.CharacterDevice -> `Character
-  | Kernel.Fs.File.NamedPipe -> `Fifo
-  | Kernel.Fs.File.Socket -> `Socket
-  | Kernel.Fs.File.Unknown -> `Unknown
+  | Kernel.Fs.File.RegularFile -> Regular
+  | Kernel.Fs.File.Directory -> Directory
+  | Kernel.Fs.File.SymbolicLink -> Symlink
+  | Kernel.Fs.File.BlockDevice -> Block
+  | Kernel.Fs.File.CharacterDevice -> Character
+  | Kernel.Fs.File.NamedPipe -> Fifo
+  | Kernel.Fs.File.Socket -> Socket
+  | Kernel.Fs.File.Unknown -> Unknown
 
 let is_file = Kernel.Fs.File.Metadata.is_file
 

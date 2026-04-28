@@ -107,6 +107,10 @@ let ignore = fun _ -> ()
 (** Process management globals *)
 include Runtime.Exception
 
+type 'msg selection = 'msg Runtime.selection =
+  | Select of 'msg
+  | Skip
+
 type 'msg selector = 'msg Runtime.selector
 
 let self = Runtime.self
@@ -126,7 +130,7 @@ let receive_any = fun ?timeout () ->
   Runtime.receive_any ?timeout ()
 
 let sleep = fun timeout ->
-  let selector _msg = `skip in
+  let selector _msg = Skip in
   try receive ~selector ~timeout () with
   | Receive_timeout -> ()
 

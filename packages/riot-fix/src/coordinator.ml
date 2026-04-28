@@ -77,13 +77,13 @@ let handle_complete = fun state ->
 let rec loop = fun state ->
   let selector msg =
     match msg with
-    | Messages.ScannerDiscovered file -> `select (`ScannerDiscovered file)
-    | Messages.ScannerComplete -> `select `ScannerComplete
-    | Messages.WorkerReady worker -> `select (`WorkerReady worker)
-    | Messages.StopRequested -> `select `StopRequested
-    | Messages.FileProgress progress -> `select (`FileProgress progress)
-    | Messages.FileResult r -> `select (`FileResult r)
-    | _ -> `skip
+    | Messages.ScannerDiscovered file -> Select (`ScannerDiscovered file)
+    | Messages.ScannerComplete -> Select `ScannerComplete
+    | Messages.WorkerReady worker -> Select (`WorkerReady worker)
+    | Messages.StopRequested -> Select `StopRequested
+    | Messages.FileProgress progress -> Select (`FileProgress progress)
+    | Messages.FileResult r -> Select (`FileResult r)
+    | _ -> Skip
   in
   if is_complete state then
     handle_complete state

@@ -9,6 +9,9 @@ type t =
   | Http2
   | Http3
 
+type error =
+  | InvalidVersion
+
 let of_string = function
   | "HTTP/0.9" -> Ok Http09
   | "HTTP/1.0" -> Ok Http10
@@ -17,7 +20,7 @@ let of_string = function
   | "HTTP/2.0" -> Ok Http2
   | "HTTP/3"
   | "HTTP/3.0" -> Ok Http3
-  | _ -> Error `InvalidVersion
+  | _ -> Error InvalidVersion
 
 let from_slice = fun value ->
   match Slice.length value with
@@ -28,7 +31,7 @@ let from_slice = fun value ->
   | 8 when Slice.equal_string value "HTTP/2.0" -> Ok Http2
   | 6 when Slice.equal_string value "HTTP/3" -> Ok Http3
   | 8 when Slice.equal_string value "HTTP/3.0" -> Ok Http3
-  | _ -> Error `InvalidVersion
+  | _ -> Error InvalidVersion
 
 let to_string = function
   | Http09 -> "HTTP/0.9"

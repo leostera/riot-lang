@@ -144,8 +144,8 @@ let test_concurrent_builds_different_packages = fun _ctx ->
       in
       let selector msg =
         match msg with
-        | BuildComplete _ -> `select msg
-        | _ -> `skip
+        | BuildComplete _ -> Select msg
+        | _ -> Skip
       in
       let result1 = receive ~selector () in
       let result2 = receive ~selector () in
@@ -251,8 +251,8 @@ let test_concurrent_builds_same_package = fun _ctx ->
       in
       let selector msg =
         match msg with
-        | BuildComplete _ -> `select msg
-        | _ -> `skip
+        | BuildComplete _ -> Select msg
+        | _ -> Skip
       in
       let result1 = receive ~selector () in
       let result2 = receive ~selector () in
@@ -382,8 +382,8 @@ let test_concurrent_builds_with_shared_cache = fun _ctx ->
           in
           let selector msg =
             match msg with
-            | BuildCompleteWithCache _ -> `select msg
-            | _ -> `skip
+            | BuildCompleteWithCache _ -> Select msg
+            | _ -> Skip
           in
           let result1 = receive ~selector () in
           let result2 = receive ~selector () in

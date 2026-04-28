@@ -207,8 +207,8 @@ let pool_supervisor = fun
   let rec loop () =
     let selector msg =
       match msg with
-      | PoolMsg msg -> `select msg
-      | _ -> `skip
+      | PoolMsg msg -> Select msg
+      | _ -> Skip
     in
     match receive ~selector () with
     | Acquire requester ->
@@ -263,9 +263,9 @@ let acquire = fun t ->
   (* TODO(@leostera): use receive ?timeout once available *)
   let selector msg =
     match msg with
-    | PoolResponse (ConnectionAcquired conn) -> `select (Ok conn)
-    | PoolResponse (AcquireError e) -> `select (Error e)
-    | _ -> `skip
+    | PoolResponse (ConnectionAcquired conn) -> Select (Ok conn)
+    | PoolResponse (AcquireError e) -> Select (Error e)
+    | _ -> Skip
   in
   receive ~selector ()
 
@@ -289,7 +289,7 @@ let stats = fun t ->
   send t.supervisor (PoolMsg (GetStats (self ())));
   let selector msg =
     match msg with
-    | PoolResponse (Stats s) -> `select s
-    | _ -> `skip
+    | PoolResponse (Stats s) -> Select s
+    | _ -> Skip
   in
   receive ~selector ()

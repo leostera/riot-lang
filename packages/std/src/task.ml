@@ -27,15 +27,15 @@ let async = fun fn ->
   { pid; ref }
 
 let await: type res. res t -> (res, exn) result = fun t ->
-  let selector: Message.t -> [`select of (res, exn) result | `skip] = fun msg ->
+  let selector: (res, exn) result selector = fun msg ->
     match msg with
-    | Crash (ref', exn) when Ref.equal t.ref ref' -> `select (Error exn)
+    | Crash (ref', exn) when Ref.equal t.ref ref' -> Select (Error exn)
     | Reply (ref', res) when Ref.equal t.ref ref' -> (
         match Ref.type_equal t.ref ref' with
-        | Some Type.Equal -> `select (Ok res)
+        | Some Type.Equal -> Select (Ok res)
         | None -> panic "bad message"
       )
-    | _ -> `skip
+    | _ -> Skip
   in
   let result = receive ~selector () in
   result
@@ -63,12 +63,11 @@ let rec await_all: type res. res t list -> (res, exn) result list = fun tasks ->
           Array.to_list (Array.map results ~fn:Option.unwrap)
         else
           (
-            let selector: Message.t -> [`select of (res, exn) result * int * res t | `skip] = fun
-              msg ->
+            let selector: ((res, exn) result * int * res t) selector = fun msg ->
               match msg with
               | Crash (ref', exn) when is_one_of_our_refs pending ref' -> (
                   match find_task_by_ref pending ref' with
-                  | Some (index, task) -> `select (Error exn, index, task)
+                  | Some (index, task) -> Select (Error exn, index, task)
                   | None -> panic "task awaited but no matching task found"
                 )
               | Reply (ref', res) when is_one_of_our_refs pending ref' -> (
@@ -76,11 +75,11 @@ let rec await_all: type res. res t list -> (res, exn) result list = fun tasks ->
                   | None -> panic "task awaited but no matching task found"
                   | Some (index, task) -> (
                       match Ref.type_equal task.ref ref' with
-                      | Some Type.Equal -> `select (Ok res, index, task)
+                      | Some Type.Equal -> Select (Ok res, index, task)
                       | None -> panic "bad message"
                     )
                 )
-              | _ -> `skip
+              | _ -> Skip
             in
             let (result, index, task) = receive ~selector () in
             Array.set results ~at:index ~value:(Some result);

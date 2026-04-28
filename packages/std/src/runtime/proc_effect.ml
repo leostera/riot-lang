@@ -2,11 +2,19 @@ open Kernel
 
 (* Timeout type for blocking operations *)
 
-type timeout = [ | `infinity | `after of float]
+type timeout =
+  | Infinity
+  | After of float
+
+type 'msg selection =
+  | Select of 'msg
+  | Skip
+
+type 'msg selector = Message.t -> 'msg selection
 
 type _ Effect.t +=
   | Receive: {
-      selector: Message.t -> [`select of 'msg | `skip];
+      selector: 'msg selector;
       timeout: timeout;
     } -> 'msg Effect.t
 

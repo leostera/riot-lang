@@ -43,6 +43,16 @@ type Runtime.Message.t +=
   | Sync_mutex_suspended of { request_id: request_id }
   | Sync_mutex_failed of { request_id: request_id; reason: string }
 
+type server_event =
+  | Server_request of request
+  | Owner_down of Runtime_actor.Monitor.t * Runtime_pid.t
+
+type expected_response =
+  | Expect_acquired
+  | Expect_suspended
+  | Expect_released
+  | Expect_try_lock
+
 type state = {
   mutable owner: owner option;
   waiters: (Runtime_pid.t * request_id) Waiters.t;
@@ -102,19 +112,19 @@ let release_owner_on_exit = fun state monitor_ref pid ->
 let rec loop = fun state ->
   let selector msg =
     match msg with
-    | Sync_mutex_request request -> `select (`request request)
-    | Runtime.Actor.DOWN { ref; pid; _ } -> `select (`down (ref, pid))
-    | _ -> `skip
+    | Sync_mutex_request request -> Runtime.Select (Server_request request)
+    | Runtime.Actor.DOWN { ref; pid; _ } -> Runtime.Select (Owner_down (ref, pid))
+    | _ -> Runtime.Skip
   in
   match Runtime.receive ~selector () with
-  | `request (Acquire { reply_to; request_id }) ->
+  | Server_request (Acquire { reply_to; request_id }) ->
       (
         match state.owner with
         | None -> grant state reply_to request_id
         | Some _ -> Waiters.push state.waiters ~value:(reply_to, request_id)
       );
       loop state
-  | `request (Try_acquire { reply_to; request_id }) ->
+  | Server_request (Try_acquire { reply_to; request_id }) ->
       (
         match state.owner with
         | None ->
@@ -124,13 +134,13 @@ let rec loop = fun state ->
         | Some _ -> Runtime.send reply_to (Sync_mutex_try_result { request_id; acquired = false })
       );
       loop state
-  | `request (Release { reply_to; request_id }) ->
+  | Server_request (Release { reply_to; request_id }) ->
       handle_release state reply_to request_id;
       loop state
-  | `request (Suspend { owner; reply_to; request_id }) ->
+  | Server_request (Suspend { owner; reply_to; request_id }) ->
       handle_suspend state owner reply_to request_id;
       loop state
-  | `down (monitor_ref, pid) ->
+  | Owner_down (monitor_ref, pid) ->
       release_owner_on_exit state monitor_ref pid;
       loop state
 
@@ -142,24 +152,24 @@ let create = fun () ->
 let await_result = fun request_id expected ->
   let selector msg =
     match msg with
-    | Sync_mutex_acquired { request_id = got } when expected = `acquired && Int.equal got request_id ->
-        `select (Ok true)
-    | Sync_mutex_suspended { request_id = got } when expected = `suspended
-    && Int.equal got request_id -> `select (Ok true)
-    | Sync_mutex_released { request_id = got } when expected = `released && Int.equal got request_id ->
-        `select (Ok true)
-    | Sync_mutex_try_result { request_id = got; acquired } when expected = `try_lock
-    && Int.equal got request_id -> `select (Ok acquired)
+    | Sync_mutex_acquired { request_id = got } when expected = Expect_acquired
+    && Int.equal got request_id -> Runtime.Select (Ok true)
+    | Sync_mutex_suspended { request_id = got } when expected = Expect_suspended
+    && Int.equal got request_id -> Runtime.Select (Ok true)
+    | Sync_mutex_released { request_id = got } when expected = Expect_released
+    && Int.equal got request_id -> Runtime.Select (Ok true)
+    | Sync_mutex_try_result { request_id = got; acquired } when expected = Expect_try_lock
+    && Int.equal got request_id -> Runtime.Select (Ok acquired)
     | Sync_mutex_failed { request_id = got; reason } when Int.equal got request_id ->
-        `select (Error reason)
-    | _ -> `skip
+        Runtime.Select (Error reason)
+    | _ -> Runtime.Skip
   in
   Runtime.receive ~selector ()
 
 let lock = fun (t: t) ->
   let request_id = next_request_id () in
   Runtime.send t.pid (Sync_mutex_request (Acquire { reply_to = Runtime.self (); request_id }));
-  match await_result request_id `acquired with
+  match await_result request_id Expect_acquired with
   | Ok _ -> ()
   | Error reason -> raise (Failure reason)
 
@@ -168,20 +178,20 @@ let suspend = fun (t: t) ~owner ->
   Runtime.send
     t.pid
     (Sync_mutex_request (Suspend { owner; reply_to = Runtime.self (); request_id }));
-  match await_result request_id `suspended with
+  match await_result request_id Expect_suspended with
   | Ok _ -> Ok ()
   | Error reason -> Error reason
 
 let unlock = fun (t: t) ->
   let request_id = next_request_id () in
   Runtime.send t.pid (Sync_mutex_request (Release { reply_to = Runtime.self (); request_id }));
-  match await_result request_id `released with
+  match await_result request_id Expect_released with
   | Ok _ -> ()
   | Error reason -> raise (Failure reason)
 
 let try_lock = fun (t: t) ->
   let request_id = next_request_id () in
   Runtime.send t.pid (Sync_mutex_request (Try_acquire { reply_to = Runtime.self (); request_id }));
-  match await_result request_id `try_lock with
+  match await_result request_id Expect_try_lock with
   | Ok acquired -> acquired
   | Error reason -> raise (Failure reason)

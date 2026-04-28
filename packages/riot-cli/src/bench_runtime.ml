@@ -944,8 +944,8 @@ let list_benchmarks = fun
                 receive
                   ~selector:(fun (msg: Message.t) ->
                     match msg with
-                    | ListedBenchmarksReady payload -> `select payload
-                    | _ -> `skip)
+                    | ListedBenchmarksReady payload -> Select payload
+                    | _ -> Skip)
                   ()
               in
               let acc =

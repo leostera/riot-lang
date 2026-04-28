@@ -20,11 +20,11 @@ let test_once_cell_set_initializes_once =
     (fun _ctx ->
       let cell = Sync.OnceCell.create () in
       match Sync.OnceCell.set cell "value" with
-      | Error `AlreadyInitialized -> Error "expected the first set to succeed"
+      | Error Sync.OnceCell.AlreadyInitialized -> Error "expected the first set to succeed"
       | Ok () -> (
           match Sync.OnceCell.set cell "other" with
           | Ok () -> Error "expected the second set to fail"
-          | Error `AlreadyInitialized ->
+          | Error Sync.OnceCell.AlreadyInitialized ->
               if Sync.OnceCell.is_initialized cell && Sync.OnceCell.get cell = Some "value" then
                 Ok ()
               else
@@ -37,7 +37,7 @@ let test_once_cell_take_clears_storage =
     (fun _ctx ->
       let cell = Sync.OnceCell.create () in
       match Sync.OnceCell.set cell 9 with
-      | Error `AlreadyInitialized -> Error "expected the initial set to succeed"
+      | Error Sync.OnceCell.AlreadyInitialized -> Error "expected the initial set to succeed"
       | Ok () ->
           let taken = Sync.OnceCell.take cell in
           if

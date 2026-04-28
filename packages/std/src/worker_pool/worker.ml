@@ -12,8 +12,8 @@ type 'task state = {
 let rec loop = fun state ->
   let selector msg =
     match msg with
-    | ToWorker (Task task) -> `select task
-    | _ -> `skip
+    | ToWorker (Task task) -> Select task
+    | _ -> Skip
   in
   let task = receive ~selector () in
   match Task.value task state.task_ref with

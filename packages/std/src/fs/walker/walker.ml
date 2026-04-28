@@ -175,14 +175,14 @@ let create ~roots ?(sort = false) ?(follow_symlinks = false) ?(follow_root_links
 
 let entry_kind_of_metadata = fun metadata ->
   match Metadata.file_type metadata with
-  | `Regular -> File
-  | `Directory -> Directory
-  | `Symlink -> Symlink
-  | `Block
-  | `Character
-  | `Fifo
-  | `Socket
-  | `Unknown -> Other
+  | Metadata.Regular -> File
+  | Metadata.Directory -> Directory
+  | Metadata.Symlink -> Symlink
+  | Metadata.Block
+  | Metadata.Character
+  | Metadata.Fifo
+  | Metadata.Socket
+  | Metadata.Unknown -> Other
 
 let metadata_for_path_string = fun ~follow_symlinks path_string ->
   if follow_symlinks then

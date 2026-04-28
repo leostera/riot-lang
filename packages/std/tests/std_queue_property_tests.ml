@@ -74,8 +74,8 @@ let wait_for_go = fun () ->
     receive
       ~selector:(
         function
-        | Queue_property_go -> `select ()
-        | _ -> `skip
+        | Queue_property_go -> Select ()
+        | _ -> Skip
       )
       ~timeout:(Time.Duration.from_secs 2)
       ()
@@ -146,8 +146,8 @@ let wait_for_producers = fun ~producer_count ->
         ~what:"queue property producer completion"
         (
           function
-          | Queue_property_producer_done _ -> `select ()
-          | _ -> `skip
+          | Queue_property_producer_done _ -> Select ()
+          | _ -> Skip
         ) with
       | Ok () -> loop (remaining - 1)
       | Error _ as error -> error
@@ -163,8 +163,8 @@ let collect_consumer_values = fun ~consumer_count ->
         ~what:"queue property consumer completion"
         (
           function
-          | Queue_property_consumer_values values -> `select values
-          | _ -> `skip
+          | Queue_property_consumer_values values -> Select values
+          | _ -> Skip
         ) with
       | Ok values -> loop (remaining - 1) (values :: acc)
       | Error _ as error -> error

@@ -51,6 +51,11 @@ type trace_counters = {
   duplicate_enqueue_races: int;
 }
 
+type syscall_timeout_state =
+  | No_syscall_timeout
+  | Syscall_timeout_armed
+  | Syscall_timeout_fired
+
 let create_counters (): runtime_counters = {
   steals = Atomic.make 0;
   failed_steals = Atomic.make 0;
@@ -682,8 +687,8 @@ let handle_receive = fun k t proc ~selector ~timeout ->
   let park_for_receive () =
     (
       match timeout with
-      | `infinity -> ()
-      | `after secs -> install_receive_timeout t proc secs
+      | Proc_effect.Infinity -> ()
+      | Proc_effect.After secs -> install_receive_timeout t proc secs
     );
     if Runtime_process.try_mark_awaiting_message proc then
       if Runtime_process.mailbox_count proc = 0 then
@@ -712,8 +717,8 @@ let handle_receive = fun k t proc ~selector ~timeout ->
       | None -> scan_mailbox (Runtime_process.mailbox_count proc)
       | Some msg -> (
           match selector Message.(msg.msg) with
-          | `select selected -> Some selected
-          | `skip ->
+          | Proc_effect.Select selected -> Some selected
+          | Proc_effect.Skip ->
               Runtime_process.add_to_save_queue proc msg;
               scan_saved (remaining - 1)
         )
@@ -725,8 +730,8 @@ let handle_receive = fun k t proc ~selector ~timeout ->
       | None -> None
       | Some msg -> (
           match selector Message.(msg.msg) with
-          | `select selected -> Some selected
-          | `skip ->
+          | Proc_effect.Select selected -> Some selected
+          | Proc_effect.Skip ->
               Runtime_process.add_to_save_queue proc msg;
               scan_mailbox (remaining - 1)
         )
@@ -748,31 +753,31 @@ let handle_syscall = fun k t proc name interest source timeout ->
   let open Proc_state in
   let timeout_state =
     match Runtime_process.syscall_timeout proc with
-    | None -> `none
+    | None -> No_syscall_timeout
     | Some timer_id ->
         if Runtime_process.take_syscall_timeout_fired proc then (
           Runtime_process.clear_syscall_timeout proc;
           cancel_timer t timer_id;
-          `fired
+          Syscall_timeout_fired
         ) else
-          `armed
+          Syscall_timeout_armed
   in
   match Runtime_process.get_ready_token proc with
   | Some _ ->
       (
         match timeout_state with
-        | `armed -> clear_syscall_timeout t proc
-        | `fired
-        | `none -> ()
+        | Syscall_timeout_armed -> clear_syscall_timeout t proc
+        | Syscall_timeout_fired
+        | No_syscall_timeout -> ()
       );
       k (Continue ())
   | None -> (
       match timeout_state with
-      | `fired -> k (Discontinue Effects.Exception.Syscall_timeout)
-      | `armed ->
+      | Syscall_timeout_fired -> k (Discontinue Effects.Exception.Syscall_timeout)
+      | Syscall_timeout_armed ->
           (* Spurious wakeup while still waiting on a registered syscall. *)
           k Suspend
-      | `none ->
+      | No_syscall_timeout ->
           let token = Async.Token.make proc in
           Runtime_process.mark_as_awaiting_io proc ~name token source;
           (
@@ -780,8 +785,8 @@ let handle_syscall = fun k t proc name interest source timeout ->
             | Ok () ->
                 (
                   match timeout with
-                  | `infinity -> ()
-                  | `after secs -> install_syscall_timeout t proc secs
+                  | Proc_effect.Infinity -> ()
+                  | Proc_effect.After secs -> install_syscall_timeout t proc secs
                 );
                 k Suspend
             | Error err ->

@@ -12,8 +12,13 @@ external version: unit -> string = "std_tls_version"
 
 external create_client_engine: hostname:string -> engine = "std_tls_create_client_engine"
 
-external create_server_engine: cert_file:string -> key_file:string -> engine =
+external create_server_engine_raw: cert_file:string -> key_file:string -> engine =
   "std_tls_create_server_engine"
+
+let create_server_engine = fun ~cert_path ~key_path ->
+  create_server_engine_raw
+    ~cert_file:(Path.to_string cert_path)
+    ~key_file:(Path.to_string key_path)
 
 external pump_encrypted_in: engine -> bytes -> pos:int -> len:int -> int =
   "std_tls_pump_encrypted_in"

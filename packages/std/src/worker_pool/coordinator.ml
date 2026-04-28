@@ -14,8 +14,8 @@ type 'task state = {
 let rec loop: type task. task state -> (unit, Actor.exit_reason) result = fun state ->
   let selector msg =
     match msg with
-    | ToCoordinator msg -> `select msg
-    | _ -> `skip
+    | ToCoordinator msg -> Select msg
+    | _ -> Skip
   in
   match receive ~selector () with
   | WorkerReady worker -> (

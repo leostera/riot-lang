@@ -136,8 +136,8 @@ let send_count_result = fun reply_to request_id result ->
 let rec loop = fun state ->
   let selector msg =
     match msg with
-    | IO_stdin_request request -> `select request
-    | _ -> `skip
+    | IO_stdin_request request -> Runtime.Select request
+    | _ -> Runtime.Skip
   in
   match Runtime.receive ~selector () with
   | Read {
@@ -169,12 +169,12 @@ let await = fun t request_id ~selector ->
   let monitor = Runtime_actor.monitor t.pid in
   let receive_selector msg =
     match selector msg with
-    | Some result -> `select result
+    | Some result -> Runtime.Select result
     | None -> (
         match msg with
         | Runtime.Actor.DOWN { ref; pid; _ } when ref = monitor && Runtime.Pid.equal pid t.pid ->
-            `select (Error Error.Process_down)
-        | _ -> `skip
+            Runtime.Select (Error Error.Process_down)
+        | _ -> Runtime.Skip
       )
   in
   let result = Runtime.receive ~selector:receive_selector () in

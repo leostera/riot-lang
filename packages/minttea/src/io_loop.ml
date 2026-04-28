@@ -110,8 +110,8 @@ let start = fun ~tty () ->
   Log.trace ("[Program] IO loop spawned as " ^ Pid.to_string pid);
   let selector msg =
     match msg with
-    | IoStarted pid' when Pid.equal pid pid' -> `select pid
-    | _ -> `skip
+    | IoStarted pid' when Pid.equal pid pid' -> Select pid
+    | _ -> Skip
   in
   let timeout = Time.Duration.from_secs 2 in
   receive ~selector ~timeout ()
@@ -120,8 +120,8 @@ let shutdown = fun pid ->
   send pid Shutdown;
   let selector msg =
     match msg with
-    | ShutdownComplete -> `select ()
-    | _ -> `skip
+    | ShutdownComplete -> Select ()
+    | _ -> Skip
   in
   let timeout = Time.Duration.from_secs 2 in
   receive ~selector ~timeout ()

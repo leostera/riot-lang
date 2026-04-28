@@ -122,11 +122,16 @@ end
 
 module Metadata: sig
   type t
-
-  (** File metadata *)
-  val file_type:
-    t ->
-    [`Regular | `Directory | `Symlink | `Block | `Character | `Fifo | `Socket | `Unknown]
+  type file_type =
+    | Regular
+    | Directory
+    | Symlink
+    | Block
+    | Character
+    | Fifo
+    | Socket
+    | Unknown
+  val file_type: t -> file_type
 
   (** Get the file type *)
   val is_file: t -> bool

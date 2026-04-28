@@ -253,8 +253,8 @@ let wait_for_exit = fun pid ?timeout () ->
     ~selector:(fun (msg: Runtime.Message.t) ->
       match msg with
       | Runtime.Actor.DOWN { pid = down_pid; reason; _ } when Pid.equal down_pid pid ->
-          `select reason
-      | _ -> `skip)
+          Select reason
+      | _ -> Skip)
     ?timeout
     ()
 
@@ -262,8 +262,8 @@ let wait_for_start = fun () ->
   receive
     ~selector:(fun (msg: Runtime.Message.t) ->
       match msg with
-      | Test_runner_start -> `select ()
-      | _ -> `skip)
+      | Test_runner_start -> Select ()
+      | _ -> Skip)
     ()
 
 let cast_worker:
@@ -416,6 +416,11 @@ type parallel_run_state = {
   run_ref: unit Ref.t;
 }
 
+type parallel_worker_event =
+  | Parallel_worker_ready of scheduled_test Worker_pool.DynamicWorkerPool.worker
+  | Parallel_worker_event of event
+  | Parallel_worker_failed of exn
+
 let flush_reporter_results = fun (state: parallel_run_state) ->
   let module R = (val state.reporter : Reporter.Intf) in
   let rec loop () =
@@ -476,35 +481,30 @@ let run_tests_parallel = fun ~(config:config) tests_to_run ->
     if Int.equal state.finished_count state.total then
       ()
     else
-      let selector:
-        ([
-          | `WorkerReady of scheduled_test Worker_pool.DynamicWorkerPool.worker
-          | `WorkerEvent of event
-          | `WorkerFailed of exn
-        ]) selector = function
+      let selector: parallel_worker_event selector = function
         | Worker_pool.DynamicWorkerPool.WorkerReady worker -> (
             match Ref.type_equal
               state.pool.task_ref
               (Worker_pool.DynamicWorkerPool.get_worker_task_ref worker) with
-            | Some witness -> `select (`WorkerReady (cast_worker witness worker))
-            | None -> `skip
+            | Some witness -> Select (Parallel_worker_ready (cast_worker witness worker))
+            | None -> Skip
           )
         | Test_runner_worker_event { run_ref; event } when Ref.equal state.run_ref run_ref ->
-            `select (`WorkerEvent event)
+            Select (Parallel_worker_event event)
         | Test_runner_worker_failed { run_ref; exn } when Ref.equal state.run_ref run_ref ->
-            `select (`WorkerFailed exn)
+            Select (Parallel_worker_failed exn)
         | _ ->
-            `skip
+            Skip
       in
       match receive ~selector () with
-      | `WorkerReady worker -> (
+      | Parallel_worker_ready worker -> (
           match Queue.pop state.pending with
           | Some task ->
               Worker_pool.DynamicWorkerPool.send_task state.pool worker task;
               loop ()
           | None -> loop ()
         )
-      | `WorkerEvent event ->
+      | Parallel_worker_event event ->
           state.on_event event;
           (
             match event with
@@ -516,7 +516,7 @@ let run_tests_parallel = fun ~(config:config) tests_to_run ->
             | _ -> ()
           );
           loop ()
-      | `WorkerFailed exn -> raise exn
+      | Parallel_worker_failed exn -> raise exn
   in
   loop ();
   let results =

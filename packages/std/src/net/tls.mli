@@ -16,7 +16,7 @@ val version: unit -> string
 
 val create_client_engine: hostname:string -> engine
 
-val create_server_engine: cert_file:string -> key_file:string -> engine
+val create_server_engine: cert_path:Path.t -> key_path:Path.t -> engine
 
 val pump_encrypted_in: engine -> bytes -> pos:int -> len:int -> int
 

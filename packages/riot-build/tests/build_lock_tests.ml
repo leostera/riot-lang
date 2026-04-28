@@ -54,9 +54,9 @@ let test_reentrant_acquire_in_same_process = fun _ctx ->
           in
           let selector msg =
             match msg with
-            | BuildLockAcquired waited -> `select (Ok waited)
-            | BuildLockAcquireFailed reason -> `select (Error reason)
-            | _ -> `skip
+            | BuildLockAcquired waited -> Select (Ok waited)
+            | BuildLockAcquireFailed reason -> Select (Error reason)
+            | _ -> Skip
           in
           let early_result =
             try Some (receive ~selector ~timeout:(Time.Duration.from_millis 200) ()) with
@@ -136,9 +136,9 @@ let test_different_targets_do_not_block_each_other = fun _ctx ->
           in
           let selector msg =
             match msg with
-            | BuildLockAcquired waited -> `select (Ok waited)
-            | BuildLockAcquireFailed reason -> `select (Error reason)
-            | _ -> `skip
+            | BuildLockAcquired waited -> Select (Ok waited)
+            | BuildLockAcquireFailed reason -> Select (Error reason)
+            | _ -> Skip
           in
           match receive ~selector ~timeout:(Time.Duration.from_millis 200) () with
           | Ok waited ->

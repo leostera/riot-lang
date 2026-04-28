@@ -195,13 +195,14 @@ let should_skip_entry = fun path ->
   is_apple_junk_entry name || List.any excluded_entry_names ~fn:(String.equal name)
 
 let file_kind_to_string = function
-  | `Regular -> "regular file"
-  | `Directory -> "directory"
-  | `Symlink -> "symlink"
-  | `Block -> "block device"
-  | `Character -> "character device"
-  | `Fifo -> "fifo"
-  | `Socket -> "socket"
+  | Fs.Metadata.Regular -> "regular file"
+  | Directory -> "directory"
+  | Symlink -> "symlink"
+  | Block -> "block device"
+  | Character -> "character device"
+  | Fifo -> "fifo"
+  | Socket -> "socket"
+  | Unknown -> "unknown file type"
 
 let walker_kind_to_string = function
   | Fs.Walker.File -> "regular file"

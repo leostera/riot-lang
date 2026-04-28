@@ -91,8 +91,8 @@ let test_atomic_fetch_and_add_serializes_concurrent_updates =
             ~what:"atomic worker completion"
             (
               function
-              | Atomic_worker_done _ -> `select ()
-              | _ -> `skip
+              | Atomic_worker_done _ -> Select ()
+              | _ -> Skip
             ) with
           | Error _ as err -> err
           | Ok () -> await_workers (remaining - 1)

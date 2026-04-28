@@ -72,6 +72,9 @@ type t =
   (* Extension *)
   | Extension of int
 
+type error =
+  | InvalidStatus
+
 let to_int = function
   | Continue -> 100
   | SwitchingProtocols -> 101
@@ -202,10 +205,10 @@ let of_int = function
   | 511 -> NetworkAuthenticationRequired
   | code -> Extension code
 
-let of_string: string -> (t, [`InvalidStatus]) Kernel.result = fun s ->
+let of_string: string -> (t, error) Kernel.result = fun s ->
   match Int.parse s with
   | Some code -> Ok (of_int code)
-  | None -> Error `InvalidStatus
+  | None -> Error InvalidStatus
 
 let to_string = fun status -> Int.to_string (to_int status)
 
