@@ -29,6 +29,9 @@ type error =
     }
   | InvalidPriorityWeight of { weight: int }
   | InvalidStreamDependency of { stream_dependency: int }
+  | InvalidStreamIdRange of { stream_id: int }
+  | InvalidPromisedStreamId of { promised_stream_id: int }
+  | InvalidLastStreamId of { last_stream_id: int }
 val error_to_string: error -> string
 
 val serialize_frame: Frame.t -> (string, error) Result.t

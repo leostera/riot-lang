@@ -324,6 +324,27 @@ let test_serialize_rejects_incomplete_headers_priority = fun _ctx ->
   | Error error -> Result.Error ("Wrong serializer error: " ^ Serializer.error_to_string error)
   | Ok _ -> Result.Error "serializer accepted incomplete HEADERS priority fields"
 
+let test_serialize_rejects_negative_stream_id = fun _ctx ->
+  let frame = Frame.data ~stream_id:(-1) "hello" in
+  match Serializer.serialize_frame frame with
+  | Error (Serializer.InvalidStreamIdRange { stream_id = -1 }) -> Result.Ok ()
+  | Error error -> Result.Error ("Wrong serializer error: " ^ Serializer.error_to_string error)
+  | Ok _ -> Result.Error "serializer accepted a negative stream ID"
+
+let test_serialize_rejects_invalid_promised_stream_id = fun _ctx ->
+  let frame = Frame.push_promise ~stream_id:1 ~promised_stream_id:0 "" in
+  match Serializer.serialize_frame frame with
+  | Error (Serializer.InvalidPromisedStreamId { promised_stream_id = 0 }) -> Result.Ok ()
+  | Error error -> Result.Error ("Wrong serializer error: " ^ Serializer.error_to_string error)
+  | Ok _ -> Result.Error "serializer accepted invalid promised stream ID"
+
+let test_serialize_rejects_invalid_last_stream_id = fun _ctx ->
+  let frame = Frame.goaway ~last_stream_id:(-1) ~error_code:Frame.NoError () in
+  match Serializer.serialize_frame frame with
+  | Error (Serializer.InvalidLastStreamId { last_stream_id = -1 }) -> Result.Ok ()
+  | Error error -> Result.Error ("Wrong serializer error: " ^ Serializer.error_to_string error)
+  | Ok _ -> Result.Error "serializer accepted invalid GOAWAY last stream ID"
+
 let test_ping_rejects_invalid_payload_length = fun _ctx ->
   match Frame.ping "short" with
   | Error (Frame.InvalidPingPayloadLength { length = 5 }) -> Result.Ok ()
@@ -1175,6 +1196,11 @@ let tests =
     case
       "serialize_rejects_incomplete_headers_priority"
       test_serialize_rejects_incomplete_headers_priority;
+    case "serialize_rejects_negative_stream_id" test_serialize_rejects_negative_stream_id;
+    case
+      "serialize_rejects_invalid_promised_stream_id"
+      test_serialize_rejects_invalid_promised_stream_id;
+    case "serialize_rejects_invalid_last_stream_id" test_serialize_rejects_invalid_last_stream_id;
     case "ping_rejects_invalid_payload_length" test_ping_rejects_invalid_payload_length;
     case "window_update_rejects_invalid_increment" test_window_update_rejects_invalid_increment;
     case

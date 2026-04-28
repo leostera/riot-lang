@@ -30,6 +30,9 @@ type error =
     }
   | InvalidPriorityWeight of { weight: int }
   | InvalidStreamDependency of { stream_dependency: int }
+  | InvalidStreamIdRange of { stream_id: int }
+  | InvalidPromisedStreamId of { promised_stream_id: int }
+  | InvalidLastStreamId of { last_stream_id: int }
 
 let frame_type_to_string = function
   | Frame.Data -> "DATA"
@@ -82,6 +85,13 @@ let error_to_string = function
   | InvalidStreamDependency { stream_dependency } ->
       "HTTP/2 stream dependency must be between 0 and 2^31-1, got "
       ^ Int.to_string stream_dependency
+  | InvalidStreamIdRange { stream_id } ->
+      "HTTP/2 stream ID must be between 0 and 2^31-1, got " ^ Int.to_string stream_id
+  | InvalidPromisedStreamId { promised_stream_id } ->
+      "HTTP/2 promised stream ID must be between 1 and 2^31-1, got "
+      ^ Int.to_string promised_stream_id
+  | InvalidLastStreamId { last_stream_id } ->
+      "HTTP/2 last stream ID must be between 0 and 2^31-1, got " ^ Int.to_string last_stream_id
 
 let write_uint24_be = fun value ->
   let b0 = Char.from_int_unchecked ((value lsr 16) land 0b1111_1111) in
@@ -127,19 +137,22 @@ let frame_type_to_int = function
         Error (InvalidUnknownFrameTypeCode { code })
 
 let validate_stream_id = fun frame_type stream_id ->
-  match frame_type with
-  | Frame.Data
-  | Frame.Headers
-  | Frame.Priority
-  | Frame.RstStream
-  | Frame.PushPromise
-  | Frame.Continuation when stream_id = 0 ->
-      Error (InvalidStreamId { frame_type; stream_id; expected = MustBeNonZero })
-  | Frame.Settings
-  | Frame.Ping
-  | Frame.Goaway when stream_id != 0 ->
-      Error (InvalidStreamId { frame_type; stream_id; expected = MustBeZero })
-  | _ -> Ok ()
+  if stream_id < 0 || stream_id > 0x7fff_ffff then
+    Error (InvalidStreamIdRange { stream_id })
+  else
+    match frame_type with
+    | Frame.Data
+    | Frame.Headers
+    | Frame.Priority
+    | Frame.RstStream
+    | Frame.PushPromise
+    | Frame.Continuation when stream_id = 0 ->
+        Error (InvalidStreamId { frame_type; stream_id; expected = MustBeNonZero })
+    | Frame.Settings
+    | Frame.Ping
+    | Frame.Goaway when stream_id != 0 ->
+        Error (InvalidStreamId { frame_type; stream_id; expected = MustBeZero })
+    | _ -> Ok ()
 
 let validate_padding = fun frame_type pad_length ->
   match pad_length with
@@ -161,6 +174,18 @@ let validate_priority_weight = fun weight ->
     Ok ()
   else
     Error (InvalidPriorityWeight { weight })
+
+let validate_promised_stream_id = fun promised_stream_id ->
+  if promised_stream_id >= 1 && promised_stream_id <= 0x7fff_ffff then
+    Ok ()
+  else
+    Error (InvalidPromisedStreamId { promised_stream_id })
+
+let validate_last_stream_id = fun last_stream_id ->
+  if last_stream_id >= 0 && last_stream_id <= 0x7fff_ffff then
+    Ok ()
+  else
+    Error (InvalidLastStreamId { last_stream_id })
 
 let flags_to_byte = fun frame_type flags ->
   let open Frame in
@@ -300,19 +325,23 @@ let serialize_push_promise_payload = fun payload ->
   | Frame.PushPromisePayload { pad_length; promised_stream_id; header_block_fragment } -> (
       match validate_padding Frame.PushPromise pad_length with
       | Error error -> Error error
-      | Ok () ->
-          let pad_bytes =
-            match pad_length with
-            | Some pl -> write_uint8 pl
-            | None -> ""
-          in
-          let promised_id_bytes = write_uint32_be (promised_stream_id land 0x7fff_ffff) in
-          let padding =
-            match pad_length with
-            | Some pl -> String.make ~len:pl ~char:'\x00'
-            | None -> ""
-          in
-          Ok (pad_bytes ^ promised_id_bytes ^ header_block_fragment ^ padding)
+      | Ok () -> (
+          match validate_promised_stream_id promised_stream_id with
+          | Error error -> Error error
+          | Ok () ->
+              let pad_bytes =
+                match pad_length with
+                | Some pl -> write_uint8 pl
+                | None -> ""
+              in
+              let promised_id_bytes = write_uint32_be promised_stream_id in
+              let padding =
+                match pad_length with
+                | Some pl -> String.make ~len:pl ~char:'\x00'
+                | None -> ""
+              in
+              Ok (pad_bytes ^ promised_id_bytes ^ header_block_fragment ^ padding)
+        )
     )
   | payload -> Error (PayloadMismatch { frame_type = Frame.PushPromise; payload })
 
@@ -328,10 +357,14 @@ let serialize_ping_payload = fun payload ->
 
 let serialize_goaway_payload = fun payload ->
   match payload with
-  | Frame.GoawayPayload { last_stream_id; error_code; debug_data } ->
-      Ok (write_uint32_be (last_stream_id land 0x7fff_ffff)
-      ^ write_uint32_be (Frame.error_code_to_int error_code)
-      ^ debug_data)
+  | Frame.GoawayPayload { last_stream_id; error_code; debug_data } -> (
+      match validate_last_stream_id last_stream_id with
+      | Error error -> Error error
+      | Ok () ->
+          Ok (write_uint32_be last_stream_id
+          ^ write_uint32_be (Frame.error_code_to_int error_code)
+          ^ debug_data)
+    )
   | payload -> Error (PayloadMismatch { frame_type = Frame.Goaway; payload })
 
 let serialize_window_update_payload = fun payload ->
