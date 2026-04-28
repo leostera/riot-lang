@@ -110,6 +110,7 @@ type error =
   | HpackDecodeFailed of Hpack.decode_error
   | InvalidPayloadForFrame of payload_error
   | ParserError of Parser.error
+  | SerializerError of Serializer.error
 
 let window_scope_to_string = function
   | StreamWindow { stream_id } -> "stream " ^ Int.to_string stream_id
@@ -129,6 +130,11 @@ let error_to_string = function
   | InvalidPayloadForFrame { frame_type; _ } ->
       "Invalid payload for HTTP/2 " ^ Parser.frame_type_name frame_type ^ " frame"
   | ParserError error -> Parser.error_to_string error
+  | SerializerError error -> Serializer.error_to_string error
+
+let serialize_frame = fun frame ->
+  Serializer.serialize_frame frame
+  |> Result.map_err ~fn:(fun error -> SerializerError error)
 
 (** {1 Constants} *)
 
@@ -190,16 +196,19 @@ let send_preface = fun conn ->
   ]
   in
   let settings_frame = Frame.settings settings_list in
-  let settings_bytes = Serializer.serialize_frame settings_frame in
-  match conn.role with
-  | Client ->
-      (* Client sends preface string + SETTINGS *)
-      Cell.set conn.state Active;
-      client_preface ^ settings_bytes
-  | Server ->
-      (* Server sends only SETTINGS *)
-      Cell.set conn.state Active;
-      settings_bytes
+  match serialize_frame settings_frame with
+  | Error error -> Error error
+  | Ok settings_bytes -> (
+      match conn.role with
+      | Client ->
+          (* Client sends preface string + SETTINGS *)
+          Cell.set conn.state Active;
+          Ok (client_preface ^ settings_bytes)
+      | Server ->
+          (* Server sends only SETTINGS *)
+          Cell.set conn.state Active;
+          Ok settings_bytes
+    )
 
 (** {1 Stream Management} *)
 
@@ -263,7 +272,7 @@ let send_headers = fun conn ~stream_id ~headers ~end_stream ->
       (* Update stream state *)
       if end_stream then
         Cell.set stream.state StreamHalfClosedLocal;
-      Ok (Serializer.serialize_frame frame)
+      serialize_frame frame
     )
 
 let send_data = fun conn ~stream_id ~data ~end_stream ->
@@ -309,7 +318,7 @@ let send_data = fun conn ~stream_id ~data ~end_stream ->
       (* Update stream state *)
       if end_stream then
         Cell.set stream.state StreamHalfClosedLocal;
-      Ok (Serializer.serialize_frame frame)
+      serialize_frame frame
     )
 
 let reset_stream = fun conn ~stream_id ~error_code ->
@@ -333,7 +342,7 @@ let reset_stream = fun conn ~stream_id ~error_code ->
     | Some stream -> Cell.set stream.state StreamClosed
     | None -> ()
   );
-  Serializer.serialize_frame frame
+  serialize_frame frame
 
 (** {1 Flow Control} *)
 
@@ -354,7 +363,7 @@ let send_window_update_connection = fun conn ~increment ->
   }
   in
   Cell.set conn.connection_window_size (Cell.get conn.connection_window_size + increment);
-  Serializer.serialize_frame frame
+  serialize_frame frame
 
 let send_window_update_stream = fun conn ~stream_id ~increment ->
   let frame = {
@@ -377,7 +386,7 @@ let send_window_update_stream = fun conn ~stream_id ~increment ->
     | Some stream -> Cell.set stream.window_size (Cell.get stream.window_size + increment)
     | None -> ()
   );
-  Serializer.serialize_frame frame
+  serialize_frame frame
 
 let connection_window_size = fun conn -> Cell.get conn.connection_window_size
 
@@ -404,7 +413,7 @@ let update_settings = fun conn settings ->
     payload = Frame.SettingsPayload settings;
   }
   in
-  Serializer.serialize_frame frame
+  serialize_frame frame
 
 let send_settings_ack = fun conn ->
   let frame = {
@@ -422,7 +431,7 @@ let send_settings_ack = fun conn ->
     payload = Frame.SettingsPayload [];
   }
   in
-  Serializer.serialize_frame frame
+  serialize_frame frame
 
 let local_settings = fun conn -> conn.local_settings
 
@@ -446,7 +455,7 @@ let send_ping = fun conn ~data ->
     payload = Frame.PingPayload data;
   }
   in
-  Serializer.serialize_frame frame
+  serialize_frame frame
 
 let send_ping_ack = fun conn ~data ->
   let frame = {
@@ -464,7 +473,7 @@ let send_ping_ack = fun conn ~data ->
     payload = Frame.PingPayload data;
   }
   in
-  Serializer.serialize_frame frame
+  serialize_frame frame
 
 let send_goaway = fun conn ~last_stream_id ~error_code ?(debug_data = "") () ->
   Cell.set conn.state GoingAway;
@@ -483,7 +492,7 @@ let send_goaway = fun conn ~last_stream_id ~error_code ?(debug_data = "") () ->
     payload = Frame.GoawayPayload { last_stream_id; error_code; debug_data };
   }
   in
-  Serializer.serialize_frame frame
+  serialize_frame frame
 
 let state = fun conn -> Cell.get conn.state
 

@@ -107,6 +107,7 @@ type error =
   | HpackDecodeFailed of Hpack.decode_error
   | InvalidPayloadForFrame of payload_error
   | ParserError of Parser.error
+  | SerializerError of Serializer.error
 val error_to_string: error -> string
 
 (** {1 Connection Lifecycle} *)
@@ -133,7 +134,7 @@ val create: role:role -> ?config:config -> unit -> t
    @param conn The connection
    @return Bytes to send over the wire
 *)
-val send_preface: t -> string
+val send_preface: t -> (string, error) Result.t
 
 (**
    Process received data from the wire.
@@ -193,7 +194,7 @@ val send_data: t -> stream_id:int -> data:bytes -> end_stream:bool -> (string, e
    @param error_code The error code
    @return Bytes to send
 *)
-val reset_stream: t -> stream_id:int -> error_code:Frame.error_code -> string
+val reset_stream: t -> stream_id:int -> error_code:Frame.error_code -> (string, error) Result.t
 
 (** {1 Flow Control} *)
 
@@ -204,7 +205,7 @@ val reset_stream: t -> stream_id:int -> error_code:Frame.error_code -> string
    @param increment Window size increment
    @return Bytes to send
 *)
-val send_window_update_connection: t -> increment:int -> string
+val send_window_update_connection: t -> increment:int -> (string, error) Result.t
 
 (**
    Send WINDOW_UPDATE frame for stream-level flow control.
@@ -214,7 +215,7 @@ val send_window_update_connection: t -> increment:int -> string
    @param increment Window size increment
    @return Bytes to send
 *)
-val send_window_update_stream: t -> stream_id:int -> increment:int -> string
+val send_window_update_stream: t -> stream_id:int -> increment:int -> (string, error) Result.t
 
 (** Get current connection flow control window size. *)
 val connection_window_size: t -> int
@@ -233,7 +234,7 @@ val stream_window_size: t -> stream_id:int -> int option
    @param settings The settings to update
    @return Bytes to send
 *)
-val update_settings: t -> Frame.setting list -> string
+val update_settings: t -> Frame.setting list -> (string, error) Result.t
 
 (**
    Send SETTINGS ACK frame.
@@ -241,7 +242,7 @@ val update_settings: t -> Frame.setting list -> string
    @param conn The connection
    @return Bytes to send
 *)
-val send_settings_ack: t -> string
+val send_settings_ack: t -> (string, error) Result.t
 
 (** Get current local settings. *)
 val local_settings: t -> settings
@@ -258,7 +259,7 @@ val remote_settings: t -> settings
    @param data 8-byte opaque data
    @return Bytes to send
 *)
-val send_ping: t -> data:string -> string
+val send_ping: t -> data:string -> (string, error) Result.t
 
 (**
    Send PING ACK frame.
@@ -267,7 +268,7 @@ val send_ping: t -> data:string -> string
    @param data 8-byte opaque data from received PING
    @return Bytes to send
 *)
-val send_ping_ack: t -> data:string -> string
+val send_ping_ack: t -> data:string -> (string, error) Result.t
 
 (**
    Send GOAWAY frame to gracefully close the connection.
@@ -284,7 +285,7 @@ val send_goaway:
   error_code:Frame.error_code ->
   ?debug_data:string ->
   unit ->
-  string
+  (string, error) Result.t
 
 (** Get connection state. *)
 val state: t -> state

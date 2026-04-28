@@ -1,5 +1,30 @@
 open Std
 
+type payload_error = {
+  frame_type: Frame.frame_type;
+  payload: Frame.payload;
+}
+
+type error =
+  | PayloadMismatch of payload_error
+
+let frame_type_to_string = function
+  | Frame.Data -> "DATA"
+  | Frame.Headers -> "HEADERS"
+  | Frame.Priority -> "PRIORITY"
+  | Frame.RstStream -> "RST_STREAM"
+  | Frame.Settings -> "SETTINGS"
+  | Frame.PushPromise -> "PUSH_PROMISE"
+  | Frame.Ping -> "PING"
+  | Frame.Goaway -> "GOAWAY"
+  | Frame.WindowUpdate -> "WINDOW_UPDATE"
+  | Frame.Continuation -> "CONTINUATION"
+  | Frame.Unknown code -> "UNKNOWN(" ^ Int.to_string code ^ ")"
+
+let error_to_string = function
+  | PayloadMismatch { frame_type; _ } ->
+      "Payload does not match HTTP/2 " ^ frame_type_to_string frame_type ^ " frame"
+
 let write_uint24_be = fun value ->
   let b0 = Char.from_int_unchecked ((value lsr 16) land 0xff) in
   let b1 = Char.from_int_unchecked ((value lsr 8) land 0xff) in
@@ -82,10 +107,10 @@ let serialize_priority = fun stream_dependency exclusive weight ->
 
 let serialize_data_payload = fun payload ->
   match payload with
-  | Frame.DataPayload { data; pad_length = None } -> data
+  | Frame.DataPayload { data; pad_length = None } -> Ok data
   | Frame.DataPayload { data; pad_length = Some pad_len } ->
-      write_uint8 pad_len ^ data ^ String.make ~len:pad_len ~char:'\x00'
-  | _ -> panic "serialize_data_payload: expected DataPayload"
+      Ok (write_uint8 pad_len ^ data ^ String.make ~len:pad_len ~char:'\x00')
+  | payload -> Error (PayloadMismatch { frame_type = Frame.Data; payload })
 
 let serialize_headers_payload = fun payload ->
   match payload with
@@ -111,19 +136,19 @@ let serialize_headers_payload = fun payload ->
         | Some pl -> String.make ~len:pl ~char:'\x00'
         | None -> ""
       in
-      pad_bytes ^ priority_bytes ^ header_block_fragment ^ padding
-  | _ -> panic "serialize_headers_payload: expected HeadersPayload"
+      Ok (pad_bytes ^ priority_bytes ^ header_block_fragment ^ padding)
+  | payload -> Error (PayloadMismatch { frame_type = Frame.Headers; payload })
 
 let serialize_priority_payload = fun payload ->
   match payload with
   | Frame.PriorityPayload { stream_dependency; exclusive; weight } ->
-      serialize_priority stream_dependency exclusive weight
-  | _ -> panic "serialize_priority_payload: expected PriorityPayload"
+      Ok (serialize_priority stream_dependency exclusive weight)
+  | payload -> Error (PayloadMismatch { frame_type = Frame.Priority; payload })
 
 let serialize_rst_stream_payload = fun payload ->
   match payload with
-  | Frame.RstStreamPayload error_code -> write_uint32_be (Frame.error_code_to_int error_code)
-  | _ -> panic "serialize_rst_stream_payload: expected RstStreamPayload"
+  | Frame.RstStreamPayload error_code -> Ok (write_uint32_be (Frame.error_code_to_int error_code))
+  | payload -> Error (PayloadMismatch { frame_type = Frame.RstStream; payload })
 
 let serialize_setting = function
   | Frame.HeaderTableSize value -> write_uint16_be 0x1 ^ write_uint32_be value
@@ -142,8 +167,9 @@ let serialize_setting = function
 
 let serialize_settings_payload = fun payload ->
   match payload with
-  | Frame.SettingsPayload settings -> String.concat "" (List.map settings ~fn:serialize_setting)
-  | _ -> panic "serialize_settings_payload: expected SettingsPayload"
+  | Frame.SettingsPayload settings ->
+      Ok (String.concat "" (List.map settings ~fn:serialize_setting))
+  | payload -> Error (PayloadMismatch { frame_type = Frame.Settings; payload })
 
 let serialize_push_promise_payload = fun payload ->
   match payload with
@@ -159,36 +185,36 @@ let serialize_push_promise_payload = fun payload ->
         | Some pl -> String.make ~len:pl ~char:'\x00'
         | None -> ""
       in
-      pad_bytes ^ promised_id_bytes ^ header_block_fragment ^ padding
-  | _ -> panic "serialize_push_promise_payload: expected PushPromisePayload"
+      Ok (pad_bytes ^ promised_id_bytes ^ header_block_fragment ^ padding)
+  | payload -> Error (PayloadMismatch { frame_type = Frame.PushPromise; payload })
 
 let serialize_ping_payload = fun payload ->
   match payload with
-  | Frame.PingPayload opaque_data -> opaque_data
-  | _ -> panic "serialize_ping_payload: expected PingPayload"
+  | Frame.PingPayload opaque_data -> Ok opaque_data
+  | payload -> Error (PayloadMismatch { frame_type = Frame.Ping; payload })
 
 let serialize_goaway_payload = fun payload ->
   match payload with
   | Frame.GoawayPayload { last_stream_id; error_code; debug_data } ->
-      write_uint32_be (last_stream_id land 0x7fff_ffff)
+      Ok (write_uint32_be (last_stream_id land 0x7fff_ffff)
       ^ write_uint32_be (Frame.error_code_to_int error_code)
-      ^ debug_data
-  | _ -> panic "serialize_goaway_payload: expected GoawayPayload"
+      ^ debug_data)
+  | payload -> Error (PayloadMismatch { frame_type = Frame.Goaway; payload })
 
 let serialize_window_update_payload = fun payload ->
   match payload with
-  | Frame.WindowUpdatePayload increment -> write_uint32_be (increment land 0x7fff_ffff)
-  | _ -> panic "serialize_window_update_payload: expected WindowUpdatePayload"
+  | Frame.WindowUpdatePayload increment -> Ok (write_uint32_be (increment land 0x7fff_ffff))
+  | payload -> Error (PayloadMismatch { frame_type = Frame.WindowUpdate; payload })
 
 let serialize_continuation_payload = fun payload ->
   match payload with
-  | Frame.ContinuationPayload header_block_fragment -> header_block_fragment
-  | _ -> panic "serialize_continuation_payload: expected ContinuationPayload"
+  | Frame.ContinuationPayload header_block_fragment -> Ok header_block_fragment
+  | payload -> Error (PayloadMismatch { frame_type = Frame.Continuation; payload })
 
-let serialize_unknown_payload = fun payload ->
+let serialize_unknown_payload = fun frame_type payload ->
   match payload with
-  | Frame.UnknownPayload data -> data
-  | _ -> panic "serialize_unknown_payload: expected UnknownPayload"
+  | Frame.UnknownPayload data -> Ok data
+  | payload -> Error (PayloadMismatch { frame_type; payload })
 
 let serialize_payload = fun frame_type payload ->
   match frame_type with
@@ -202,17 +228,20 @@ let serialize_payload = fun frame_type payload ->
   | Frame.Goaway -> serialize_goaway_payload payload
   | Frame.WindowUpdate -> serialize_window_update_payload payload
   | Frame.Continuation -> serialize_continuation_payload payload
-  | Frame.Unknown _ -> serialize_unknown_payload payload
+  | Frame.Unknown _ -> serialize_unknown_payload frame_type payload
 
 let serialize_frame = fun frame ->
   let open Frame in
   let payload_bytes =
     match (frame.frame_type, frame.flags.ack) with
-    | (Settings, true) -> ""
+    | (Settings, true) -> Ok ""
     | _ -> serialize_payload frame.frame_type frame.payload
   in
-  let length_bytes = write_uint24_be (String.length payload_bytes) in
-  let type_byte = write_uint8 (frame_type_to_int frame.frame_type) in
-  let flags_byte = write_uint8 (flags_to_byte frame.frame_type frame.flags) in
-  let stream_id_bytes = write_uint32_be (frame.stream_id land 0x7fff_ffff) in
-  length_bytes ^ type_byte ^ flags_byte ^ stream_id_bytes ^ payload_bytes
+  match payload_bytes with
+  | Error error -> Error error
+  | Ok payload_bytes ->
+      let length_bytes = write_uint24_be (String.length payload_bytes) in
+      let type_byte = write_uint8 (frame_type_to_int frame.frame_type) in
+      let flags_byte = write_uint8 (flags_to_byte frame.frame_type frame.flags) in
+      let stream_id_bytes = write_uint32_be (frame.stream_id land 0x7fff_ffff) in
+      Ok (length_bytes ^ type_byte ^ flags_byte ^ stream_id_bytes ^ payload_bytes)

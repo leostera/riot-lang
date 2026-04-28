@@ -1,7 +1,15 @@
 (** HTTP/2 Frame Serializer *)
 open Std
 
-val serialize_frame: Frame.t -> string
+type payload_error = {
+  frame_type: Frame.frame_type;
+  payload: Frame.payload;
+}
+type error =
+  | PayloadMismatch of payload_error
+val error_to_string: error -> string
+
+val serialize_frame: Frame.t -> (string, error) Result.t
 
 val write_uint24_be: int -> string
 

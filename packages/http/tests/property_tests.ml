@@ -123,8 +123,9 @@ let frame_length_prop =
     "Frame serialization includes 9-byte header"
     Arbitrary.(make settings_frame_gen)
     (fun frame ->
-      let serialized = Http2.Serializer.serialize_frame frame in
-      String.length serialized >= 9)
+      match Http2.Serializer.serialize_frame frame with
+      | Ok serialized -> String.length serialized >= 9
+      | Error _ -> false)
 
 (* ===== HTTP/1 Chunked Encoding Property Tests ===== *)
 

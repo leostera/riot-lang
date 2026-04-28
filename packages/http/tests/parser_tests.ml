@@ -6,6 +6,16 @@ module Serializer = Http.Http2.Serializer
 module Connection = Http.Http2.Connection
 module Parser = Http.Http2.Parser
 
+let serialize_frame = fun frame ->
+  match Serializer.serialize_frame frame with
+  | Ok bytes -> bytes
+  | Error error -> panic ("serialize_frame failed: " ^ Serializer.error_to_string error)
+
+let send_preface = fun conn ->
+  match Connection.send_preface conn with
+  | Ok bytes -> bytes
+  | Error error -> panic ("send_preface failed: " ^ Connection.error_to_string error)
+
 let frame_payload_length_at = fun serialized ~offset ->
   let byte index = Char.code (String.get_unchecked serialized ~at:(offset + index)) in
   (byte 0 lsl 16) lor (byte 1 lsl 8) lor byte 2
@@ -37,7 +47,7 @@ let test_serialize_settings_frame = fun _ctx ->
     payload = Frame.SettingsPayload [];
   }
   in
-  let serialized = Serializer.serialize_frame frame in
+  let serialized = serialize_frame frame in
   if String.length serialized >= 9 then
     Result.Ok ()
   else
@@ -59,7 +69,7 @@ let test_serialize_data_frame = fun _ctx ->
     payload = Frame.DataPayload { data = "hello"; pad_length = None };
   }
   in
-  let serialized = Serializer.serialize_frame frame in
+  let serialized = serialize_frame frame in
   if String.length serialized > 9 then
     Result.Ok ()
   else
@@ -81,7 +91,7 @@ let test_serialize_recomputes_payload_length = fun _ctx ->
     payload = Frame.DataPayload { data = "hello"; pad_length = None };
   }
   in
-  let serialized = Serializer.serialize_frame frame in
+  let serialized = serialize_frame frame in
   let length = frame_payload_length serialized in
   if Int.equal length 5 then
     Result.Ok ()
@@ -104,7 +114,7 @@ let test_serialize_settings_payload_length = fun _ctx ->
     payload = Frame.SettingsPayload [ Frame.HeaderTableSize 4_096; ];
   }
   in
-  let serialized = Serializer.serialize_frame frame in
+  let serialized = serialize_frame frame in
   let length = frame_payload_length serialized in
   if Int.equal length 6 then
     Result.Ok ()
@@ -127,7 +137,7 @@ let test_serialize_settings_ack_has_empty_payload = fun _ctx ->
     payload = Frame.SettingsPayload [ Frame.HeaderTableSize 4_096; ];
   }
   in
-  let serialized = Serializer.serialize_frame frame in
+  let serialized = serialize_frame frame in
   let length = frame_payload_length serialized in
   if Int.equal length 0 && Int.equal (String.length serialized) 9 then
     Result.Ok ()
@@ -135,9 +145,30 @@ let test_serialize_settings_ack_has_empty_payload = fun _ctx ->
     Result.Error ("Serialized settings ack should have empty payload, got length "
     ^ Int.to_string length)
 
+let test_serialize_rejects_payload_mismatch = fun _ctx ->
+  let frame = {
+    Frame.length = 0;
+    frame_type = Frame.Ping;
+    flags =
+      {
+        Frame.end_stream = false;
+        end_headers = false;
+        padded = false;
+        priority = false;
+        ack = false;
+      };
+    stream_id = 0;
+    payload = Frame.SettingsPayload [];
+  }
+  in
+  match Serializer.serialize_frame frame with
+  | Error (Serializer.PayloadMismatch { frame_type = Frame.Ping; _ }) -> Result.Ok ()
+  | Error error -> Result.Error ("Wrong serializer error: " ^ Serializer.error_to_string error)
+  | Ok _ -> Result.Error "serializer accepted mismatched PING payload"
+
 let test_client_preface_settings_payload_length = fun _ctx ->
   let conn = Connection.create ~role:Connection.Client () in
-  let preface = Connection.send_preface conn in
+  let preface = send_preface conn in
   let length = frame_payload_length_at preface ~offset:24 in
   if Int.equal length 30 then
     Result.Ok ()
@@ -146,7 +177,7 @@ let test_client_preface_settings_payload_length = fun _ctx ->
 
 let test_server_preface_settings_payload_length = fun _ctx ->
   let conn = Connection.create ~role:Connection.Server () in
-  let preface = Connection.send_preface conn in
+  let preface = send_preface conn in
   let length = frame_payload_length preface in
   if Int.equal length 30 then
     Result.Ok ()
@@ -156,7 +187,7 @@ let test_server_preface_settings_payload_length = fun _ctx ->
 let test_process_data_buffers_split_frame_header = fun _ctx ->
   let conn = Connection.create ~role:Connection.Server () in
   let frame = Frame.settings [ Frame.HeaderTableSize 1_024; ] in
-  let bytes = Serializer.serialize_frame frame in
+  let bytes = serialize_frame frame in
   let first = String.sub bytes ~offset:0 ~len:4 in
   let rest = String.sub bytes ~offset:4 ~len:(String.length bytes - 4) in
   match Connection.process_data conn (Std.IO.Bytes.from_string first) with
@@ -174,7 +205,7 @@ let test_process_data_buffers_split_frame_header = fun _ctx ->
 let test_process_data_buffers_split_frame_payload = fun _ctx ->
   let conn = Connection.create ~role:Connection.Server () in
   let frame = Frame.settings [ Frame.HeaderTableSize 1_024; Frame.MaxFrameSize 16_384; ] in
-  let bytes = Serializer.serialize_frame frame in
+  let bytes = serialize_frame frame in
   let first = String.sub bytes ~offset:0 ~len:12 in
   let rest = String.sub bytes ~offset:12 ~len:(String.length bytes - 12) in
   match Connection.process_data conn (Std.IO.Bytes.from_string first) with
@@ -310,6 +341,7 @@ let tests =
     case "serialize_recomputes_payload_length" test_serialize_recomputes_payload_length;
     case "serialize_settings_payload_length" test_serialize_settings_payload_length;
     case "serialize_settings_ack_has_empty_payload" test_serialize_settings_ack_has_empty_payload;
+    case "serialize_rejects_payload_mismatch" test_serialize_rejects_payload_mismatch;
     case "client_preface_settings_payload_length" test_client_preface_settings_payload_length;
     case "server_preface_settings_payload_length" test_server_preface_settings_payload_length;
     case "process_data_buffers_split_frame_header" test_process_data_buffers_split_frame_header;
