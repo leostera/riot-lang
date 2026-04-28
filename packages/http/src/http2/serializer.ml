@@ -35,27 +35,30 @@ let error_to_string = function
       "WINDOW_UPDATE increment must be between 1 and 2^31-1, got " ^ Int.to_string increment
 
 let write_uint24_be = fun value ->
-  let b0 = Char.from_int_unchecked ((value lsr 16) land 0xff) in
-  let b1 = Char.from_int_unchecked ((value lsr 8) land 0xff) in
-  let b2 = Char.from_int_unchecked (value land 0xff) in
+  let b0 = Char.from_int_unchecked ((value lsr 16) land 0b1111_1111) in
+  let b1 = Char.from_int_unchecked ((value lsr 8) land 0b1111_1111) in
+  let b2 = Char.from_int_unchecked (value land 0b1111_1111) in
   String.make ~len:1 ~char:b0 ^ String.make ~len:1 ~char:b1 ^ String.make ~len:1 ~char:b2
 
 let write_uint32_be = fun value ->
-  let b0 = Char.from_int_unchecked ((value lsr 24) land 0xff) in
-  let b1 = Char.from_int_unchecked ((value lsr 16) land 0xff) in
-  let b2 = Char.from_int_unchecked ((value lsr 8) land 0xff) in
-  let b3 = Char.from_int_unchecked (value land 0xff) in
+  let b0 = Char.from_int_unchecked ((value lsr 24) land 0b1111_1111) in
+  let b1 = Char.from_int_unchecked ((value lsr 16) land 0b1111_1111) in
+  let b2 = Char.from_int_unchecked ((value lsr 8) land 0b1111_1111) in
+  let b3 = Char.from_int_unchecked (value land 0b1111_1111) in
   String.make ~len:1 ~char:b0
   ^ String.make ~len:1 ~char:b1
   ^ String.make ~len:1 ~char:b2
   ^ String.make ~len:1 ~char:b3
 
 let write_uint16_be = fun value ->
-  let b0 = Char.from_int_unchecked ((value lsr 8) land 0xff) in
-  let b1 = Char.from_int_unchecked (value land 0xff) in
+  let b0 = Char.from_int_unchecked ((value lsr 8) land 0b1111_1111) in
+  let b1 = Char.from_int_unchecked (value land 0b1111_1111) in
   String.make ~len:1 ~char:b0 ^ String.make ~len:1 ~char:b1
 
-let write_uint8 = fun value -> String.make ~len:1 ~char:(Char.from_int_unchecked (value land 0xff))
+let write_uint8 = fun value ->
+  String.make
+    ~len:1
+    ~char:(Char.from_int_unchecked (value land 0b1111_1111))
 
 let frame_type_to_int = function
   | Frame.Data -> 0x0
@@ -68,38 +71,38 @@ let frame_type_to_int = function
   | Frame.Goaway -> 0x7
   | Frame.WindowUpdate -> 0x8
   | Frame.Continuation -> 0x9
-  | Frame.Unknown code -> code land 0xff
+  | Frame.Unknown code -> code land 0b1111_1111
 
 let flags_to_byte = fun frame_type flags ->
   let open Frame in
   let byte = 0 in
   let byte =
     if flags.end_stream then
-      byte lor 0x01
+      byte lor 0b0000_0001
     else
       byte
   in
   let byte =
     if flags.end_headers then
-      byte lor 0x04
+      byte lor 0b0000_0100
     else
       byte
   in
   let byte =
     if flags.padded then
-      byte lor 0x08
+      byte lor 0b0000_1000
     else
       byte
   in
   let byte =
     if flags.priority then
-      byte lor 0x20
+      byte lor 0b0010_0000
     else
       byte
   in
   let byte =
     if flags.ack then
-      byte lor 0x01
+      byte lor 0b0000_0001
     else
       byte
   in

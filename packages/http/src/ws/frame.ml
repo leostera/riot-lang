@@ -63,7 +63,7 @@ let unmask = fun mask payload ->
   for i = 0 to len - 1 do
     let shift = 8 * (3 - (i mod 4)) in
     let mask_byte =
-      Int32.(logand (shift_right mask shift) 0xffl
+      Int32.(logand (shift_right mask shift) 0b1111_1111l
       |> to_int)
     in
     let payload_byte =

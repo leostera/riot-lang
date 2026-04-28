@@ -211,10 +211,10 @@ let int_to_frame_type = function
   | code -> Frame.Unknown code
 
 let parse_flags = fun frame_type flags_byte ->
-  let end_headers = flags_byte land 0x04 != 0 in
-  let padded = flags_byte land 0x08 != 0 in
-  let priority = flags_byte land 0x20 != 0 in
-  let bit_0_set = flags_byte land 0x01 != 0 in
+  let end_headers = flags_byte land 0b0000_0100 != 0 in
+  let padded = flags_byte land 0b0000_1000 != 0 in
+  let priority = flags_byte land 0b0010_0000 != 0 in
+  let bit_0_set = flags_byte land 0b0000_0001 != 0 in
   let (end_stream, ack) =
     match frame_type with
     | Frame.Settings

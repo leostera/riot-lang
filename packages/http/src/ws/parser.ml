@@ -126,7 +126,7 @@ let parse_uint16_payload_length = fun input ->
 
 let parse_uint64_payload_length = fun input ->
   let first_byte = byte_at input 2 in
-  if first_byte land 0x80 != 0 then
+  if first_byte land 0b1000_0000 != 0 then
     PayloadLengthError (PayloadLengthHighBitSet { first_byte })
   else
     let rec loop at acc =
@@ -217,14 +217,14 @@ let parse = fun ?(max_payload_length = Int.max_int) ~role input ->
     let byte0 = byte_at input 0 in
     let byte1 = byte_at input 1 in
     (* Parse first byte *)
-    let fin = byte0 land 0x80 != 0 in
-    let rsv1 = byte0 land 0x40 != 0 in
-    let rsv2 = byte0 land 0x20 != 0 in
-    let rsv3 = byte0 land 0x10 != 0 in
-    let opcode_int = byte0 land 0x0f in
+    let fin = byte0 land 0b1000_0000 != 0 in
+    let rsv1 = byte0 land 0b0100_0000 != 0 in
+    let rsv2 = byte0 land 0b0010_0000 != 0 in
+    let rsv3 = byte0 land 0b0001_0000 != 0 in
+    let opcode_int = byte0 land 0b0000_1111 in
     (* Parse second byte *)
-    let masked = byte1 land 0x80 != 0 in
-    let payload_len_initial = byte1 land 0x7f in
+    let masked = byte1 land 0b1000_0000 != 0 in
+    let payload_len_initial = byte1 land 0b0111_1111 in
     (* Validate opcode *)
     match Frame.opcode_of_int opcode_int with
     | None -> Error (InvalidOpcode opcode_int)

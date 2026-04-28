@@ -283,7 +283,7 @@ module Integer = struct
       Buffer.add_char buf (Char.from_int_unchecked max_prefix);
     let remaining = Cell.create (value - max_prefix) in
     while Cell.get remaining >= 128 do
-      let byte = (Cell.get remaining land 0x7f) lor 0x80 in
+      let byte = (Cell.get remaining land 0b0111_1111) lor 0b1000_0000 in
       Buffer.add_char buf (Char.from_int_unchecked byte);
       Cell.set remaining (Cell.get remaining lsr 7)
     done;
@@ -305,9 +305,9 @@ module Integer = struct
             Bytes.get_unchecked data ~at:pos
             |> Char.to_int
           in
-          let value = byte land 0x7f in
+          let value = byte land 0b0111_1111 in
           let acc = acc + (value * multiplier) in
-          if byte land 0x80 = 0 then
+          if byte land 0b1000_0000 = 0 then
             Ok (acc, pos + 1)
           else
             read_continuation acc (multiplier * 128) (pos + 1)
@@ -347,7 +347,7 @@ module String_ = struct
       Error IncompleteStringEncoding
     else
       let first_byte = Bytes.get_unchecked data ~at:offset in
-      let is_huffman = Char.to_int first_byte land 0x80 != 0 in
+      let is_huffman = Char.to_int first_byte land 0b1000_0000 != 0 in
       match Integer.decode 7 first_byte data (offset + 1) with
       | Error e -> Error e
       | Ok (length, new_offset) ->
@@ -387,7 +387,7 @@ let is_sensitive_header = fun name ->
 
 let encode_indexed_header = fun index ->
   (* Indexed Header Field: 1xxxxxxx *)
-  let prefix_byte = 0x80 in
+  let prefix_byte = 0b1000_0000 in
   let index_bytes = Integer.encode 7 index in
   let result = Bytes.create ~size:(Bytes.length index_bytes) in
   Bytes.set_unchecked
@@ -409,7 +409,7 @@ let encode_literal_with_indexing = fun ~name_index ~name ~value ->
   match name_index with
   | Some index ->
       (* Name is indexed *)
-      let prefix_byte = 0x40 in
+      let prefix_byte = 0b0100_0000 in
       let index_bytes = Integer.encode 6 index in
       Buffer.add_char
         buf
@@ -446,7 +446,7 @@ let encode_literal_without_indexing = fun ~name_index ~name ~value ->
 let encode_literal_never_indexed = fun ~name_index ~name ~value ->
   (* Literal Header Field Never Indexed: 0001xxxx *)
   let buf = Buffer.create ~size:64 in
-  let prefix_byte = 0x10 in
+  let prefix_byte = 0b0001_0000 in
   match name_index with
   | Some index ->
       let index_bytes = Integer.encode 4 index in
@@ -552,7 +552,7 @@ let decode_header_block = fun decoder data offset ->
   else
     let first_byte = Bytes.get_unchecked data ~at:offset in
     let first_code = Char.to_int first_byte in
-    if first_code land 0x80 != 0 then
+    if first_code land 0b1000_0000 != 0 then
       match Integer.decode 7 first_byte data (offset + 1) with
       | Error e -> Error e
       | Ok (index, new_offset) -> (
@@ -560,7 +560,7 @@ let decode_header_block = fun decoder data offset ->
           | None -> Error (InvalidHeaderIndex index)
           | Some header -> Ok ([ header ], new_offset)
         )
-    else if first_code land 0x40 != 0 then
+    else if first_code land 0b0100_0000 != 0 then
       match Integer.decode 6 first_byte data (offset + 1) with
       | Error e -> Error e
       | Ok (name_index, pos1) -> (
@@ -581,14 +581,14 @@ let decode_header_block = fun decoder data offset ->
                   DynamicTable.add decoder.dynamic_table header;
                   Ok ([ header ], new_offset)
         )
-    else if first_code land 0x20 != 0 then
+    else if first_code land 0b0010_0000 != 0 then
       match Integer.decode 5 first_byte data (offset + 1) with
       | Error e -> Error e
       | Ok (new_size, new_offset) ->
           update_decoder_max_table_size decoder new_size
           |> Result.map_err ~fn:(fun error -> DynamicTableSizeUpdateFailed error)
           |> Result.map ~fn:(fun () -> ([], new_offset))
-    else if first_code land 0x10 != 0 then
+    else if first_code land 0b0001_0000 != 0 then
       match Integer.decode 4 first_byte data (offset + 1) with
       | Error e -> Error e
       | Ok (name_index, pos1) -> (
