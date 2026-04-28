@@ -2326,6 +2326,21 @@ let test_write_breaks_after_multiline_constructor_record_match_patterns = fun ct
       Result.Ok ()
 |ocaml}
 
+let test_write_keeps_fitting_constructor_or_patterns_inline = fun ctx ->
+  let source =
+    {ocaml|let test=function|Some(Leading_ordinary_comment|Leading_docstring)->state.suppress_leading_token<-Some token.Ast.id
+|ocaml}
+  in
+  let parsed = parse_ml source in
+  let actual = capture_write parsed in
+  Test.Snapshot.assert_inline_text
+    ~ctx
+    ~actual
+    ~expected:{ocaml|let test = function
+  | Some (Leading_ordinary_comment | Leading_docstring) ->
+      state.suppress_leading_token <- Some token.Ast.id
+|ocaml}
+
 let test_write_keeps_parenthesized_match_case_bodies_attached_to_arrows = fun ctx ->
   let source =
     {ocaml|let get=fun value->match value with|Some x->(match x with|Some y->y|None->0)|None->0
@@ -4711,6 +4726,9 @@ let tests =
     case
       "write breaks after multiline constructor record match patterns"
       test_write_breaks_after_multiline_constructor_record_match_patterns;
+    case
+      "write keeps fitting constructor or patterns inline"
+      test_write_keeps_fitting_constructor_or_patterns_inline;
     case
       "write keeps parenthesized match case bodies attached to arrows"
       test_write_keeps_parenthesized_match_case_bodies_attached_to_arrows;

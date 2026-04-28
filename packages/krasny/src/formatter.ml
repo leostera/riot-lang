@@ -701,8 +701,7 @@ let emit_top_level_leading_comments_as_lines = fun
       if not compact_final_section_docstring then
         emit_line state;
       state.suppress_leading_token <- Some token.Ast.id
-  | Some (Leading_ordinary_comment
-  | Leading_docstring) ->
+  | Some (Leading_ordinary_comment | Leading_docstring) ->
       state.suppress_leading_token <- Some token.Ast.id
   | None ->
       if !seen_non_whitespace then
@@ -4116,6 +4115,10 @@ and render_pattern_atom = fun state (pattern: Ast.Pattern.t) ->
       emit_text state ")"
   | Tuple -> render_pattern state pattern
   | ConstructIdent { argument = None } -> render_pattern state pattern
+  | Or _ when not (parenthesized_pattern_should_break state pattern) ->
+      emit_text state "(";
+      render_or_pattern_inline state pattern;
+      emit_text state ")"
   | ConstructIdent _
   | Construct _
   | Or _
