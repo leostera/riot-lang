@@ -2,6 +2,7 @@ open Std
 
 module Frame = Http.Ws.Frame
 module Parser = Http.Ws.Parser
+module Serializer = Http.Ws.Serializer
 
 let expect_parse_error = fun ~role bytes expected ->
   match Parser.parse ~role bytes with
@@ -156,6 +157,33 @@ let test_parse_rejects_invalid_text_utf8 = fun _ctx ->
     "\x81\x02\xc0\x80"
     (Parser.InvalidTextPayloadUtf8 { payload_length = 2 })
 
+let fixed_mask_rng = fun () ->
+  let mask_bytes = "\x04\x03\x02\x01" in
+  Random.Rng.make
+    ~state:()
+    ~fill_bytes:(fun () out ->
+      for index = 0 to IO.Bytes.length out - 1 do
+        IO.Bytes.set_unchecked
+          out
+          ~at:index
+          ~char:(String.get_unchecked mask_bytes ~at:(index mod 4))
+      done)
+
+let test_serialize_unmasked_frame = fun _ctx ->
+  match Serializer.serialize (Frame.ping ()) with
+  | Ok "\x89\x00" -> Result.Ok ()
+  | Ok _ -> Result.Error "PING frame serialized with the wrong bytes"
+  | Error error ->
+      Result.Error ("PING frame serialization failed: " ^ Serializer.error_to_string error)
+
+let test_serialize_masked_frame_uses_rng = fun _ctx ->
+  let frame = Frame.{ (text "Hi") with masked = true } in
+  match Serializer.serialize ~rng:(fixed_mask_rng ()) frame with
+  | Ok "\x81\x82\x01\x02\x03\x04Ik" -> Result.Ok ()
+  | Ok _ -> Result.Error "masked frame serialized with the wrong mask or payload"
+  | Error error ->
+      Result.Error ("masked frame serialization failed: " ^ Serializer.error_to_string error)
+
 let tests =
   Test.[
     case "parse_valid_ping" test_parse_valid_ping;
@@ -178,6 +206,8 @@ let tests =
     case "parse_rejects_invalid_close_code" test_parse_rejects_invalid_close_code;
     case "parse_rejects_invalid_close_reason_utf8" test_parse_rejects_invalid_close_reason_utf8;
     case "parse_rejects_invalid_text_utf8" test_parse_rejects_invalid_text_utf8;
+    case "serialize_unmasked_frame" test_serialize_unmasked_frame;
+    case "serialize_masked_frame_uses_rng" test_serialize_masked_frame_uses_rng;
   ]
 
 let main ~args:_ = Test.Cli.main ~name:"http:ws_parser" ~tests ~args:Env.args ()

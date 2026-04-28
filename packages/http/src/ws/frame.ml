@@ -12,7 +12,6 @@
    +-+-+-+-+-------+-+-------------+ - - - - - - - - - - - - - - - +
 *)
 open Std
-open Std.IO
 
 type opcode =
   | Continuation
@@ -60,7 +59,7 @@ let opcode_of_int = function
 
 let unmask = fun mask payload ->
   let len = String.length payload in
-  let result = Bytes.create ~size:len in
+  let result = IO.Bytes.create ~size:len in
   for i = 0 to len - 1 do
     let shift = 8 * (3 - (i mod 4)) in
     let mask_byte =
@@ -72,16 +71,14 @@ let unmask = fun mask payload ->
       |> String.get_unchecked ~at:i
       |> Char.to_int
     in
-    let _ = Bytes.set result ~at:i ~char:(Char.from_int_unchecked (payload_byte lxor mask_byte)) in
+    let _ = IO.Bytes.set result ~at:i ~char:(Char.from_int_unchecked (payload_byte lxor mask_byte)) in
     ()
   done;
-  Bytes.to_string result
+  IO.Bytes.to_string result
 
 (* Generate a random mask *)
 
-let generate_mask = fun () ->
-  Random.bits32 ()
-  |> Result.expect ~msg:"failed to generate websocket mask"
+let generate_mask = fun ?rng () -> Random.bits32 ?rng ()
 
 (* Apply mask to payload *)
 

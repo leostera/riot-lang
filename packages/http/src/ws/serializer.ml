@@ -2,9 +2,16 @@
 open Std
 open Std.IO
 
+type error =
+  | MaskGenerationFailed of Random.error
+
+let error_to_string = function
+  | MaskGenerationFailed error ->
+      "Failed to generate WebSocket mask: " ^ Random.error_to_string error
+
 (* Serialize a WebSocket frame to bytes *)
 
-let serialize = fun frame ->
+let serialize = fun ?rng frame ->
   let Frame.{
     fin;
     rsv1;
@@ -75,22 +82,26 @@ let serialize = fun frame ->
   (* Add mask and masked payload if needed *)
   if masked then
     (
-      let mask = Frame.generate_mask () in
-      (* Write mask (4 bytes) *)
-      Buffer.add_char
-        header
-        (Char.from_int_unchecked Int32.(to_int (logand (shift_right mask 24) 0xffl)));
-      Buffer.add_char
-        header
-        (Char.from_int_unchecked Int32.(to_int (logand (shift_right mask 16) 0xffl)));
-      Buffer.add_char
-        header
-        (Char.from_int_unchecked Int32.(to_int (logand (shift_right mask 8) 0xffl)));
-      Buffer.add_char header (Char.from_int_unchecked Int32.(to_int (logand mask 0xffl)));
-      (* Apply mask to payload *)
-      let masked_payload = Frame.apply_mask mask payload in
-      Buffer.add_string header masked_payload
+      match Frame.generate_mask ?rng () with
+      | Error error -> Error (MaskGenerationFailed error)
+      | Ok mask ->
+          (* Write mask (4 bytes) *)
+          Buffer.add_char
+            header
+            (Char.from_int_unchecked Int32.(to_int (logand (shift_right mask 24) 0xffl)));
+          Buffer.add_char
+            header
+            (Char.from_int_unchecked Int32.(to_int (logand (shift_right mask 16) 0xffl)));
+          Buffer.add_char
+            header
+            (Char.from_int_unchecked Int32.(to_int (logand (shift_right mask 8) 0xffl)));
+          Buffer.add_char header (Char.from_int_unchecked Int32.(to_int (logand mask 0xffl)));
+          (* Apply mask to payload *)
+          let masked_payload = Frame.apply_mask mask payload in
+          Buffer.add_string header masked_payload;
+          Ok (Buffer.contents header)
     )
-  else
+  else (
     Buffer.add_string header payload;
-  Buffer.contents header
+    Ok (Buffer.contents header)
+  )

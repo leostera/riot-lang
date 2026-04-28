@@ -23,7 +23,7 @@ val opcode_of_int: int -> opcode option
 
 val unmask: int32 -> string -> string
 
-val generate_mask: unit -> int32
+val generate_mask: ?rng:Random.Rng.t -> unit -> (int32, Random.error) result
 
 val apply_mask: int32 -> string -> string
 
