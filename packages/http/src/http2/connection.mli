@@ -109,6 +109,12 @@ type error =
   | ConnectionNotActive
   | StreamNotFound of { stream_id: int }
   | FlowControlWindowExceeded of { scope: window_scope; data_size: int; window_size: int }
+  | FlowControlWindowOverflow of {
+      scope: window_scope;
+      increment: int;
+      window_size: int;
+      max_size: int;
+    }
   | MaxConcurrentStreamsExceeded of {
       initiator: stream_initiator;
       stream_id: int;

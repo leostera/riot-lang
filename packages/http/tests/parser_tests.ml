@@ -783,6 +783,48 @@ let test_process_window_update_increases_send_window_only = fun _ctx ->
       | Ok _ -> Result.Error "WINDOW_UPDATE produced unexpected events"
     )
 
+let test_process_data_rejects_connection_window_overflow = fun _ctx ->
+  let conn = Connection.create ~role:Connection.Server () in
+  match Frame.window_update ~stream_id:0 2_147_483_647 with
+  | Error error ->
+      Result.Error ("WINDOW_UPDATE construction failed: " ^ Frame.constructor_error_to_string error)
+  | Ok frame -> (
+      match Connection.process_data conn (Std.IO.Bytes.from_string (serialize_frame frame)) with
+      | Error (
+        Connection.FlowControlWindowOverflow {
+          scope = Connection.ConnectionWindow;
+          increment = 2_147_483_647;
+          window_size = 65_535;
+          max_size = 2_147_483_647
+        }
+      ) -> Result.Ok ()
+      | Error err -> Result.Error ("Wrong connection error: " ^ Connection.error_to_string err)
+      | Ok _ -> Result.Error "WINDOW_UPDATE overflow was accepted"
+    )
+
+let test_process_data_rejects_stream_window_overflow = fun _ctx ->
+  let conn = Connection.create ~role:Connection.Server () in
+  let header_block = encode_header_block [ { Hpack.name = ":method"; value = "GET" }; ] in
+  let headers = Frame.headers ~stream_id:1 ~end_headers:true header_block in
+  match Frame.window_update ~stream_id:1 2_147_483_647 with
+  | Error error ->
+      Result.Error ("WINDOW_UPDATE construction failed: " ^ Frame.constructor_error_to_string error)
+  | Ok window_update -> (
+      match Connection.process_data
+        conn
+        (Std.IO.Bytes.from_string (serialize_frame headers ^ serialize_frame window_update)) with
+      | Error (
+        Connection.FlowControlWindowOverflow {
+          scope = Connection.StreamWindow { stream_id = 1 };
+          increment = 2_147_483_647;
+          window_size = 65_535;
+          max_size = 2_147_483_647
+        }
+      ) -> Result.Ok ()
+      | Error err -> Result.Error ("Wrong connection error: " ^ Connection.error_to_string err)
+      | Ok _ -> Result.Error "stream WINDOW_UPDATE overflow was accepted"
+    )
+
 let test_process_data_rejects_window_update_for_idle_stream = fun _ctx ->
   let conn = Connection.create ~role:Connection.Server () in
   match Frame.window_update ~stream_id:1 10 with
@@ -967,6 +1009,12 @@ let tests =
     case
       "process_window_update_increases_send_window_only"
       test_process_window_update_increases_send_window_only;
+    case
+      "process_data_rejects_connection_window_overflow"
+      test_process_data_rejects_connection_window_overflow;
+    case
+      "process_data_rejects_stream_window_overflow"
+      test_process_data_rejects_stream_window_overflow;
     case
       "process_data_rejects_window_update_for_idle_stream"
       test_process_data_rejects_window_update_for_idle_stream;

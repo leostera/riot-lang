@@ -120,6 +120,12 @@ type error =
   | ConnectionNotActive
   | StreamNotFound of { stream_id: int }
   | FlowControlWindowExceeded of { scope: window_scope; data_size: int; window_size: int }
+  | FlowControlWindowOverflow of {
+      scope: window_scope;
+      increment: int;
+      window_size: int;
+      max_size: int;
+    }
   | MaxConcurrentStreamsExceeded of {
       initiator: stream_initiator;
       stream_id: int;
@@ -190,6 +196,20 @@ let error_to_string = function
       ^ window_scope_to_string scope
       ^ " flow-control window "
       ^ Int.to_string window_size
+  | FlowControlWindowOverflow {
+    scope;
+    increment;
+    window_size;
+    max_size
+  } ->
+      "HTTP/2 WINDOW_UPDATE increment "
+      ^ Int.to_string increment
+      ^ " would overflow "
+      ^ window_scope_to_string scope
+      ^ " flow-control window "
+      ^ Int.to_string window_size
+      ^ " beyond "
+      ^ Int.to_string max_size
   | MaxConcurrentStreamsExceeded {
     initiator;
     stream_id;
@@ -265,6 +285,8 @@ let serialize_frame = fun frame ->
 
 (** RFC 9113: Connection preface for clients *)
 let client_preface = "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n"
+
+let max_flow_control_window_size = 2_147_483_647
 
 (** Default settings per RFC 9113 *)
 let default_config = {
@@ -530,26 +552,49 @@ let reset_stream = fun conn ~stream_id ~error_code ->
 
 (** {1 Flow Control} *)
 
+let add_flow_control_window = fun cell ~scope ~increment ->
+  let window_size = Cell.get cell in
+  if increment > max_flow_control_window_size - window_size then
+    Error (
+      FlowControlWindowOverflow {
+        scope;
+        increment;
+        window_size;
+        max_size = max_flow_control_window_size;
+      }
+    )
+  else (
+    Cell.set cell (window_size + increment);
+    Ok ()
+  )
+
 let send_window_update_connection = fun conn ~increment ->
   match Frame.window_update ~stream_id:0 increment with
   | Error error -> Error (frame_constructor_error error)
-  | Ok frame ->
-      Cell.set
+  | Ok frame -> (
+      match add_flow_control_window
         conn.receive_connection_window_size
-        (Cell.get conn.receive_connection_window_size + increment);
-      serialize_frame frame
+        ~scope:ConnectionWindow
+        ~increment with
+      | Error error -> Error error
+      | Ok () -> serialize_frame frame
+    )
 
 let send_window_update_stream = fun conn ~stream_id ~increment ->
   match Frame.window_update ~stream_id increment with
   | Error error -> Error (frame_constructor_error error)
-  | Ok frame ->
-      (
-        match get_stream conn stream_id with
-        | Some stream ->
-            Cell.set stream.receive_window_size (Cell.get stream.receive_window_size + increment)
-        | None -> ()
-      );
-      serialize_frame frame
+  | Ok frame -> (
+      match get_stream conn stream_id with
+      | None -> Error (StreamNotFound { stream_id })
+      | Some stream -> (
+          match add_flow_control_window
+            stream.receive_window_size
+            ~scope:(StreamWindow { stream_id })
+            ~increment with
+          | Error error -> Error error
+          | Ok () -> serialize_frame frame
+        )
+    )
 
 let connection_window_size = fun conn -> Cell.get conn.send_connection_window_size
 
@@ -863,12 +908,16 @@ let process_frame = fun conn frame ->
       | Frame.WindowUpdate -> (
           match frame.payload with
           | Frame.WindowUpdatePayload increment ->
-              if frame.stream_id = 0 then (
-                Cell.set
-                  conn.send_connection_window_size
-                  (Cell.get conn.send_connection_window_size + increment);
-                Ok [ WindowUpdateReceived { stream_id = frame.stream_id; increment } ]
-              ) else
+              if frame.stream_id = 0 then
+                (
+                  match add_flow_control_window
+                    conn.send_connection_window_size
+                    ~scope:ConnectionWindow
+                    ~increment with
+                  | Error error -> Error error
+                  | Ok () -> Ok [ WindowUpdateReceived { stream_id = frame.stream_id; increment } ]
+                )
+              else
                 (
                   (* Stream-level window update *)
                   match get_stream conn frame.stream_id with
@@ -877,9 +926,15 @@ let process_frame = fun conn frame ->
                         stream_id = frame.stream_id;
                         frame_type = Frame.WindowUpdate;
                       })
-                  | Some stream ->
-                      Cell.set stream.window_size (Cell.get stream.window_size + increment);
-                      Ok [ WindowUpdateReceived { stream_id = frame.stream_id; increment } ]
+                  | Some stream -> (
+                      match add_flow_control_window
+                        stream.window_size
+                        ~scope:(StreamWindow { stream_id = frame.stream_id })
+                        ~increment with
+                      | Error error -> Error error
+                      | Ok () ->
+                          Ok [ WindowUpdateReceived { stream_id = frame.stream_id; increment }; ]
+                    )
                 )
           | _ ->
               Error (InvalidPayloadForFrame {
