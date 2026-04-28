@@ -33,8 +33,26 @@ let format_duration_us = fun duration_us ->
   else
     Float.to_string ~precision:2 (Float.from_int duration_us /. 1_000_000.0) ^ "s"
 
-let duration_suffix = fun duration ->
-  " (" ^ format_duration_us (Time.Duration.to_micros duration) ^ ")"
+let ansi_reset = "\027[0m"
+
+let ansi_gray = "\027[90m"
+
+let ansi_bold_yellow = "\027[1;33m"
+
+let slow_small_threshold_us = 500_000
+
+let duration_suffix = fun size duration ->
+  let duration_us = Time.Duration.to_micros duration in
+  let text = "(" ^ format_duration_us duration_us ^ ")" in
+  let color =
+    match size with
+    | Test_case.Small when duration_us > slow_small_threshold_us -> ansi_bold_yellow
+    | Test_case.Small
+    | Test_case.Large -> ansi_gray
+  in
+  match size with
+  | Test_case.Small
+  | Test_case.Large -> " " ^ color ^ text ^ ansi_reset
 
 let init = fun (suite: Intf.suite_info) total ->
   (
@@ -72,7 +90,7 @@ let on_result = fun _idx (result: Test_result.t) ->
         ^ " ... "
         ^ suffix
         ^ attempts_suffix result.attempts
-        ^ duration_suffix result.duration)
+        ^ duration_suffix result.size result.duration)
   | Test_result.Failed msg ->
       println
         (prefix
@@ -81,7 +99,7 @@ let on_result = fun _idx (result: Test_result.t) ->
         ^ metadata
         ^ " ... FAILED"
         ^ attempts_suffix result.attempts
-        ^ duration_suffix result.duration);
+        ^ duration_suffix result.size result.duration);
       println ("       " ^ msg)
   | Test_result.Timed_out { timeout } ->
       println
@@ -93,10 +111,15 @@ let on_result = fun _idx (result: Test_result.t) ->
         ^ Int.to_string (Time.Duration.to_millis timeout)
         ^ "ms"
         ^ attempts_suffix result.attempts
-        ^ duration_suffix result.duration)
+        ^ duration_suffix result.size result.duration)
   | Test_result.Skipped ->
       println
-        (prefix ^ " " ^ result.name ^ metadata ^ " ... skipped" ^ duration_suffix result.duration)
+        (prefix
+        ^ " "
+        ^ result.name
+        ^ metadata
+        ^ " ... skipped"
+        ^ duration_suffix result.size result.duration)
 
 let finalize = fun (summary: Test_result.summary) ->
   println "";

@@ -180,6 +180,12 @@ let run_linear_sample_capture = fun args ->
   Command.output cmd
   |> Result.expect ~msg:"failed to run linear sample test cli"
 
+let ansi_reset = "\027[0m"
+
+let ansi_gray = "\027[90m"
+
+let ansi_bold_yellow = "\027[1;33m"
+
 let test_list_tests_lists_all_cases = fun _ctx ->
   let output = run_sample_capture [ "list-tests" ] in
   if not (Int.equal output.status 0) then
@@ -435,10 +441,27 @@ let test_run_tests_pretty_includes_case_timing = fun _ctx ->
     ^ ": "
     ^ output.stdout
     ^ output.stderr)
-  else if String.contains output.stdout "test inline_snapshot_probe ... ok (" then
+  else if
+    String.contains output.stdout ("test inline_snapshot_probe ... ok " ^ ansi_gray ^ "(")
+    && String.contains output.stdout ansi_reset
+  then
     Ok ()
   else
-    Error ("expected pretty output to include per-test timing, got: " ^ output.stdout)
+    Error ("expected pretty output to include gray per-test timing, got: " ^ output.stdout)
+
+let test_run_tests_pretty_highlights_slow_small_case_timing = fun _ctx ->
+  let output = run_sample_capture [ "run-tests"; "timeout_probe" ] in
+  if Int.equal output.status 0 then
+    Error "expected timeout probe to fail"
+  else if
+    String.contains
+      output.stdout
+      ("test timeout_probe ... TIMED OUT after 500ms " ^ ansi_bold_yellow ^ "(")
+    && String.contains output.stdout ansi_reset
+  then
+    Ok ()
+  else
+    Error ("expected pretty output to highlight slow small timing, got: " ^ output.stdout)
 
 let test_run_tests_json_includes_reliability_metadata = fun _ctx ->
   let output = run_sample_capture [ "run-tests"; "flaky_then_ok"; "--json" ] in
@@ -714,6 +737,10 @@ let meta_tests = [
     ~size:Large
     "run-tests pretty includes case timing"
     test_run_tests_pretty_includes_case_timing;
+  Test.case
+    ~size:Large
+    "run-tests pretty highlights slow small case timing"
+    test_run_tests_pretty_highlights_slow_small_case_timing;
   Test.case
     ~size:Large
     "run-tests --json includes reliability metadata"

@@ -143,7 +143,25 @@ let format_duration_us = fun duration_us ->
   else
     Float.to_string ~precision:2 (Float.from_int duration_us /. 1_000_000.0) ^ "s"
 
-let duration_suffix = fun duration_us -> " (" ^ format_duration_us duration_us ^ ")"
+let ansi_reset = "\027[0m"
+
+let ansi_gray = "\027[90m"
+
+let ansi_bold_yellow = "\027[1;33m"
+
+let slow_small_threshold_us = 500_000
+
+let duration_suffix = fun size duration_us ->
+  let text = "(" ^ format_duration_us duration_us ^ ")" in
+  let color =
+    match size with
+    | Test_runtime.Small when duration_us > slow_small_threshold_us -> ansi_bold_yellow
+    | Test_runtime.Small
+    | Test_runtime.Large -> ansi_gray
+  in
+  match size with
+  | Test_runtime.Small
+  | Test_runtime.Large -> " " ^ color ^ text ^ ansi_reset
 
 let metadata_labels = fun size reliability ->
   let size_labels =
@@ -597,7 +615,7 @@ let print_test_result = fun
         ^ " ... "
         ^ suffix
         ^ attempts_suffix result.attempts
-        ^ duration_suffix result.duration_us)
+        ^ duration_suffix result.size result.duration_us)
   | Test_runtime.Failed message ->
       println
         (prefix
@@ -606,7 +624,7 @@ let print_test_result = fun
         ^ metadata
         ^ " ... FAILED"
         ^ attempts_suffix result.attempts
-        ^ duration_suffix result.duration_us);
+        ^ duration_suffix result.size result.duration_us);
       if not (String.equal message "") then
         println ("       " ^ message)
   | Test_runtime.Timed_out { timeout_ms } ->
@@ -618,9 +636,15 @@ let print_test_result = fun
         ^ " ... TIMED OUT "
         ^ timeout_message timeout_ms
         ^ attempts_suffix result.attempts
-        ^ duration_suffix result.duration_us)
+        ^ duration_suffix result.size result.duration_us)
   | Test_runtime.Skipped ->
-      println (prefix ^ " " ^ name ^ metadata ^ " ... skipped" ^ duration_suffix result.duration_us)
+      println
+        (prefix
+        ^ " "
+        ^ name
+        ^ metadata
+        ^ " ... skipped"
+        ^ duration_suffix result.size result.duration_us)
 
 let write_test_event = fun
   ~(suite_labels:suite_source_label_entry list)
