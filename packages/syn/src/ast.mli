@@ -1062,10 +1062,18 @@ module ModuleTypeDeclaration: sig
   type t = module_type_declaration
   type body =
     | Abstract
-    | Path
-    | Sig
-    | With
-    | Unsupported
+    | Path of {
+        path: path;
+      }
+    | Sig of {
+        body: Node.t;
+      }
+    | With of {
+        body: Node.t;
+      }
+    | Unsupported of {
+        body: Node.t option;
+      }
   val cast: Node.t -> t option
 
   val name: t -> Token.t option

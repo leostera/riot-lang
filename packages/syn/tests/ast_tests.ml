@@ -1676,18 +1676,26 @@ let test_module_type_declaration_tokens = fun _ctx ->
         Test.assert_equal
           ~expected:[ SyntaxKind.MODULE_TYPE_DECL_HEAD; SyntaxKind.MODULE_TYPE_DECL_BODY ]
           ~actual:(List.reverse !child_kinds);
-        Test.assert_equal
-          ~expected:Ast.ModuleTypeDeclaration.Path
-          ~actual:(Ast.ModuleTypeDeclaration.body decl);
+        (
+          match Ast.ModuleTypeDeclaration.body decl with
+          | Ast.ModuleTypeDeclaration.Path { path } ->
+              Test.assert_equal ~expected:SyntaxKind.PATH_MODULE_TYPE ~actual:(Ast.Node.kind path)
+          | _ -> panic "expected path module type body"
+        );
         Test.assert_equal ~expected:[ "Foo"; "S" ] ~actual:(List.reverse !segments)
     | _ -> panic "expected first module type declaration"
   );
   (
     match Ast.SignatureItem.view second_item with
     | Ast.SignatureItem.ModuleType decl ->
-        Test.assert_equal
-          ~expected:Ast.ModuleTypeDeclaration.Sig
-          ~actual:(Ast.ModuleTypeDeclaration.body decl)
+        (
+          match Ast.ModuleTypeDeclaration.body decl with
+          | Ast.ModuleTypeDeclaration.Sig { body } ->
+              Test.assert_equal
+                ~expected:SyntaxKind.SIGNATURE_MODULE_TYPE
+                ~actual:(Ast.Node.kind body)
+          | _ -> panic "expected signature module type body"
+        )
     | _ -> panic "expected second module type declaration"
   );
   (
@@ -1711,9 +1719,12 @@ let test_module_type_with_constraint_views = fun _ctx ->
   in
   match Ast.SignatureItem.view item with
   | Ast.SignatureItem.ModuleType decl ->
-      Test.assert_equal
-        ~expected:Ast.ModuleTypeDeclaration.With
-        ~actual:(Ast.ModuleTypeDeclaration.body decl);
+      (
+        match Ast.ModuleTypeDeclaration.body decl with
+        | Ast.ModuleTypeDeclaration.With { body } ->
+            Test.assert_equal ~expected:SyntaxKind.WITH_MODULE_TYPE ~actual:(Ast.Node.kind body)
+        | _ -> panic "expected constrained module type body"
+      );
       (
         match Ast.ModuleTypeDeclaration.base_module_type decl with
         | Some base ->

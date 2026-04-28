@@ -4663,10 +4663,18 @@ module ModuleTypeDeclaration = struct
 
   type body =
     | Abstract
-    | Path
-    | Sig
-    | With
-    | Unsupported
+    | Path of {
+        path: path;
+      }
+    | Sig of {
+        body: node;
+      }
+    | With of {
+        body: node;
+      }
+    | Unsupported of {
+        body: node option;
+      }
 
   let cast = fun (node: node) ->
     if node_kind_is node Syntax_kind.MODULE_TYPE_DECL then
@@ -4719,10 +4727,16 @@ module ModuleTypeDeclaration = struct
   let body = fun decl ->
     match (body_group decl, body_specific_node decl) with
     | (None, _) -> Abstract
-    | (Some _, Some node) when node_kind_is node Syntax_kind.PATH_MODULE_TYPE -> Path
-    | (Some _, Some node) when node_kind_is node Syntax_kind.SIGNATURE_MODULE_TYPE -> Sig
-    | (Some _, Some node) when node_kind_is node Syntax_kind.WITH_MODULE_TYPE -> With
-    | (Some _, _) -> Unsupported
+    | (Some _, Some node) when node_kind_is node Syntax_kind.PATH_MODULE_TYPE -> (
+        match Path.cast node with
+        | Some path -> Path { path }
+        | None -> Unsupported { body = Some node }
+      )
+    | (Some _, Some node) when node_kind_is node Syntax_kind.SIGNATURE_MODULE_TYPE ->
+        Sig { body = node }
+    | (Some _, Some node) when node_kind_is node Syntax_kind.WITH_MODULE_TYPE ->
+        With { body = node }
+    | (Some _, body) -> Unsupported { body }
 
   let signature_body_node = fun decl ->
     match body_specific_node decl with

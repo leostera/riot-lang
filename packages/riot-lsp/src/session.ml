@@ -641,14 +641,14 @@ and module_type_declaration_symbols = fun text declaration ->
   | Some name ->
       let children =
         match Syn.Ast.ModuleTypeDeclaration.body declaration with
-        | Syn.Ast.ModuleTypeDeclaration.Sig ->
+        | Syn.Ast.ModuleTypeDeclaration.Sig _ ->
             collect_signature_symbols
               text
               (Syn.Ast.ModuleTypeDeclaration.for_each_signature_item declaration)
         | Syn.Ast.ModuleTypeDeclaration.Abstract
-        | Syn.Ast.ModuleTypeDeclaration.Path
-        | Syn.Ast.ModuleTypeDeclaration.With
-        | Syn.Ast.ModuleTypeDeclaration.Unsupported -> []
+        | Syn.Ast.ModuleTypeDeclaration.Path _
+        | Syn.Ast.ModuleTypeDeclaration.With _
+        | Syn.Ast.ModuleTypeDeclaration.Unsupported _ -> []
       in
       [
         document_symbol_of_named_item

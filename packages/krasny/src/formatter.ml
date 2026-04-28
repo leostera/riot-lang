@@ -8866,16 +8866,16 @@ and render_module_type_declaration = fun state decl ->
   (
     match Ast.ModuleTypeDeclaration.body decl with
     | Abstract -> ()
-    | Path ->
+    | Path { path } ->
         render_module_type_declaration_equals state decl;
-        render_module_body_path state (Ast.ModuleTypeDeclaration.for_each_body_path_ident decl);
+        render_module_body_path state (Ast.Path.for_each_ident path);
         render_wrapped_module_body_attribute_suffix state decl
-    | Sig ->
+    | Sig _ ->
         render_module_type_declaration_equals state decl;
         let items = collect_signature_items_from_module_type_decl decl in
         render_signature_body state items ~end_token:(Ast.ModuleTypeDeclaration.end_token decl);
         render_wrapped_module_body_attribute_suffix state decl
-    | With ->
+    | With _ ->
         render_module_type_declaration_equals state decl;
         (
           match Ast.ModuleTypeDeclaration.base_module_type decl with
@@ -8898,7 +8898,7 @@ and render_module_type_declaration = fun state decl ->
         in
         loop 0;
         render_wrapped_module_body_attribute_suffix state decl
-    | Unsupported ->
+    | Unsupported _ ->
         if node_has_token_kind decl Kind.PERCENT then
           render_shell_body_after_separator
             state
