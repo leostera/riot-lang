@@ -10,6 +10,8 @@ type error =
   | SettingsAckWithPayload of { setting_count: int }
   | InvalidPingPayloadLength of { length: int }
   | InvalidWindowUpdateIncrement of { increment: int }
+  | PayloadLengthTooLarge of { length: int; max_length: int }
+  | InvalidUnknownFrameTypeCode of { code: int }
 
 let frame_type_to_string = function
   | Frame.Data -> "DATA"
@@ -33,6 +35,13 @@ let error_to_string = function
       "PING opaque data must be exactly 8 bytes, got " ^ Int.to_string length
   | InvalidWindowUpdateIncrement { increment } ->
       "WINDOW_UPDATE increment must be between 1 and 2^31-1, got " ^ Int.to_string increment
+  | PayloadLengthTooLarge { length; max_length } ->
+      "HTTP/2 frame payload length "
+      ^ Int.to_string length
+      ^ " exceeds the 24-bit frame length limit "
+      ^ Int.to_string max_length
+  | InvalidUnknownFrameTypeCode { code } ->
+      "HTTP/2 unknown frame type code must fit in one byte, got " ^ Int.to_string code
 
 let write_uint24_be = fun value ->
   let b0 = Char.from_int_unchecked ((value lsr 16) land 0b1111_1111) in
@@ -61,17 +70,21 @@ let write_uint8 = fun value ->
     ~char:(Char.from_int_unchecked (value land 0b1111_1111))
 
 let frame_type_to_int = function
-  | Frame.Data -> 0x0
-  | Frame.Headers -> 0x1
-  | Frame.Priority -> 0x2
-  | Frame.RstStream -> 0x3
-  | Frame.Settings -> 0x4
-  | Frame.PushPromise -> 0x5
-  | Frame.Ping -> 0x6
-  | Frame.Goaway -> 0x7
-  | Frame.WindowUpdate -> 0x8
-  | Frame.Continuation -> 0x9
-  | Frame.Unknown code -> code land 0b1111_1111
+  | Frame.Data -> Ok 0x0
+  | Frame.Headers -> Ok 0x1
+  | Frame.Priority -> Ok 0x2
+  | Frame.RstStream -> Ok 0x3
+  | Frame.Settings -> Ok 0x4
+  | Frame.PushPromise -> Ok 0x5
+  | Frame.Ping -> Ok 0x6
+  | Frame.Goaway -> Ok 0x7
+  | Frame.WindowUpdate -> Ok 0x8
+  | Frame.Continuation -> Ok 0x9
+  | Frame.Unknown code ->
+      if code >= 0 && code <= 0b1111_1111 then
+        Ok code
+      else
+        Error (InvalidUnknownFrameTypeCode { code })
 
 let flags_to_byte = fun frame_type flags ->
   let open Frame in
@@ -267,8 +280,16 @@ let serialize_frame = fun frame ->
   match payload_bytes with
   | Error error -> Error error
   | Ok payload_bytes ->
-      let length_bytes = write_uint24_be (String.length payload_bytes) in
-      let type_byte = write_uint8 (frame_type_to_int frame.frame_type) in
-      let flags_byte = write_uint8 (flags_to_byte frame.frame_type frame.flags) in
-      let stream_id_bytes = write_uint32_be (frame.stream_id land 0x7fff_ffff) in
-      Ok (length_bytes ^ type_byte ^ flags_byte ^ stream_id_bytes ^ payload_bytes)
+      let payload_length = String.length payload_bytes in
+      let max_length = 0x00ff_ffff in
+      if payload_length > max_length then
+        Error (PayloadLengthTooLarge { length = payload_length; max_length })
+      else
+        match frame_type_to_int frame.frame_type with
+        | Error error -> Error error
+        | Ok frame_type_code ->
+            let length_bytes = write_uint24_be payload_length in
+            let type_byte = write_uint8 frame_type_code in
+            let flags_byte = write_uint8 (flags_to_byte frame.frame_type frame.flags) in
+            let stream_id_bytes = write_uint32_be (frame.stream_id land 0x7fff_ffff) in
+            Ok (length_bytes ^ type_byte ^ flags_byte ^ stream_id_bytes ^ payload_bytes)
