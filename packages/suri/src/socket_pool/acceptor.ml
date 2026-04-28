@@ -11,12 +11,12 @@ type ('ctx, 'err) state = {
 type internal_msg =
   | Shutdown
 
-type Message.t +=
-  | AcceptorMsg of internal_msg
-
-type selected_message =
+type selector_result =
   | Select of internal_msg
   | Skip
+
+type Message.t +=
+  | AcceptorMsg of internal_msg
 
 let select_message = function
   | AcceptorMsg msg -> Select msg

@@ -13,6 +13,8 @@ type ('s, 'e) conn_state = {
 type internal_msg =
   | Shutdown
 
+exception Handshake_failed of Connection.error
+
 type Message.t +=
   | ConnectorMsg of internal_msg
 
@@ -49,7 +51,8 @@ and try_receive: type s e. Connection.t -> (s, e) Handler.handler -> s -> unit =
     | Ok "" -> handler.handle_close conn ctx
     | Ok data -> handle_data data conn handler ctx
     | Error Connection.Closed -> handler.handle_close conn ctx
-    | Error (Connection.FileError _ | Connection.InvalidRange _) -> handler.handle_close conn ctx
+    | Error (Connection.FileError _
+    | Connection.InvalidRange _) -> handler.handle_close conn ctx
   with
   | Syscall_timeout ->
       (* Timeout = no data available within 1ms, loop to check mailbox again *)
@@ -84,8 +87,8 @@ let init = fun state ->
       handle_connection conn state.handler state.ctx;
       Connection.close conn;
       Ok ()
-  | Error _ ->
+  | Error error ->
       Log.error "[Connector] Failed to handshake connection";
-      Error (Failure "handshake failed")
+      Error (Handshake_failed error)
 
 let spawn = fun state -> spawn (fun () -> init state)
