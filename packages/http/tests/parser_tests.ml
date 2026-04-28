@@ -5,6 +5,7 @@ module Frame = Http.Http2.Frame
 module Serializer = Http.Http2.Serializer
 module Connection = Http.Http2.Connection
 module Parser = Http.Http2.Parser
+module ParserReader = Http.Http2.Parser_reader
 
 let serialize_frame = fun frame ->
   match Serializer.serialize_frame frame with
@@ -247,6 +248,48 @@ let test_process_data_buffers_split_frame_payload = fun _ctx ->
       | Error err -> Result.Error (Connection.error_to_string err)
     )
 
+let test_reader_parser_parses_full_data_frame = fun _ctx ->
+  let frame = Frame.data ~stream_id:1 "hello" in
+  let bytes = serialize_frame frame in
+  let parser = ParserReader.create () in
+  let reader = Std.IO.Reader.from_string bytes in
+  match ParserReader.parse parser reader with
+  | ParserReader.Frame { Frame.frame_type = Frame.Data; stream_id = 1; payload = Frame.DataPayload { data = "hello"; pad_length = None }; _ } ->
+      Result.Ok ()
+  | ParserReader.Frame _ -> Result.Error "reader parser returned the wrong DATA frame"
+  | ParserReader.Need_more -> Result.Error "reader parser unexpectedly needed more data"
+  | ParserReader.Error error ->
+      Result.Error ("reader parser failed: " ^ ParserReader.parse_error_to_string error)
+
+let test_reader_parser_uses_canonical_payload_errors = fun _ctx ->
+  let bytes = "\x00\x00\x07\x06\x00\x00\x00\x00\x00" ^ "1234567" in
+  let parser = ParserReader.create () in
+  let reader = Std.IO.Reader.from_string bytes in
+  match ParserReader.parse parser reader with
+  | ParserReader.Error (
+    ParserReader.FrameParseFailed (
+      Parser.InvalidPayloadLength { frame_type = Frame.Ping; expected = Parser.Exactly 8; actual = 7 }
+    )
+  ) -> Result.Ok ()
+  | ParserReader.Error error ->
+      Result.Error ("wrong reader parser error: " ^ ParserReader.parse_error_to_string error)
+  | ParserReader.Need_more -> Result.Error "expected canonical payload error"
+  | ParserReader.Frame _ -> Result.Error "invalid PING payload was accepted"
+
+let test_reader_parser_uses_canonical_header_errors = fun _ctx ->
+  let frame = Frame.data ~stream_id:1 "hello" in
+  let bytes = serialize_frame frame in
+  let parser = ParserReader.create ~config:{ ParserReader.max_frame_size = 1 } () in
+  let reader = Std.IO.Reader.from_string bytes in
+  match ParserReader.parse parser reader with
+  | ParserReader.Error (
+    ParserReader.FrameParseFailed (Parser.FrameSizeExceedsMaximum { size = 5; max_size = 1 })
+  ) -> Result.Ok ()
+  | ParserReader.Error error ->
+      Result.Error ("wrong reader parser error: " ^ ParserReader.parse_error_to_string error)
+  | ParserReader.Need_more -> Result.Error "expected canonical frame size error"
+  | ParserReader.Frame _ -> Result.Error "oversized frame was accepted"
+
 let test_frame_types = fun _ctx ->
   let types = [ Frame.Data; Frame.Headers; Frame.Settings; Frame.Ping; Frame.Goaway; ] in
   if List.length types = 5 then
@@ -376,6 +419,13 @@ let tests =
     case "server_preface_settings_payload_length" test_server_preface_settings_payload_length;
     case "process_data_buffers_split_frame_header" test_process_data_buffers_split_frame_header;
     case "process_data_buffers_split_frame_payload" test_process_data_buffers_split_frame_payload;
+    case "reader_parser_parses_full_data_frame" test_reader_parser_parses_full_data_frame;
+    case
+      "reader_parser_uses_canonical_payload_errors"
+      test_reader_parser_uses_canonical_payload_errors;
+    case
+      "reader_parser_uses_canonical_header_errors"
+      test_reader_parser_uses_canonical_header_errors;
     case "frame_types" test_frame_types;
     case
       "parse_settings_rejects_invalid_enable_push"
