@@ -126,6 +126,91 @@ let response_json = fun response ->
         ));
     ]
 
+let http1_header_format_error_json = fun error ->
+  match error with
+  | Http1.Common.MissingColon -> Json.obj [ ("type", Json.string "MissingColon") ]
+  | Http1.Common.MissingValueSeparator -> Json.obj [ ("type", Json.string "MissingValueSeparator") ]
+  | Http1.Common.EmptyName -> Json.obj [ ("type", Json.string "EmptyName") ]
+  | Http1.Common.WhitespaceBeforeColon -> Json.obj [ ("type", Json.string "WhitespaceBeforeColon") ]
+  | Http1.Common.ObsoleteLineFolding -> Json.obj [ ("type", Json.string "ObsoleteLineFolding") ]
+  | Http1.Common.InvalidNameCharacter { code; index } ->
+      Json.obj
+        [
+          ("type", Json.string "InvalidNameCharacter");
+          ("code", Json.int code);
+          ("index", Json.int index);
+        ]
+  | Http1.Common.InvalidValueCharacter { code; index } ->
+      Json.obj
+        [
+          ("type", Json.string "InvalidValueCharacter");
+          ("code", Json.int code);
+          ("index", Json.int index);
+        ]
+
+let http1_error_json = fun error ->
+  match error with
+  | Http1.Common.InvalidCrlf -> Json.obj [ ("type", Json.string "InvalidCrlf") ]
+  | Http1.Common.RequestLineTooLong { max_length } ->
+      Json.obj [ ("type", Json.string "RequestLineTooLong"); ("max_length", Json.int max_length); ]
+  | Http1.Common.StatusLineTooLong { max_length } ->
+      Json.obj [ ("type", Json.string "StatusLineTooLong"); ("max_length", Json.int max_length); ]
+  | Http1.Common.MissingMethod -> Json.obj [ ("type", Json.string "MissingMethod") ]
+  | Http1.Common.MissingPath -> Json.obj [ ("type", Json.string "MissingPath") ]
+  | Http1.Common.InvalidHttpVersion -> Json.obj [ ("type", Json.string "InvalidHttpVersion") ]
+  | Http1.Common.InvalidRequestTarget _ -> Json.obj [ ("type", Json.string "InvalidRequestTarget") ]
+  | Http1.Common.MissingVersion -> Json.obj [ ("type", Json.string "MissingVersion") ]
+  | Http1.Common.MissingStatusCode -> Json.obj [ ("type", Json.string "MissingStatusCode") ]
+  | Http1.Common.InvalidStatusCode -> Json.obj [ ("type", Json.string "InvalidStatusCode") ]
+  | Http1.Common.InvalidHeaderFormat reason ->
+      Json.obj
+        [
+          ("type", Json.string "InvalidHeaderFormat");
+          ("reason", http1_header_format_error_json reason);
+        ]
+  | Http1.Common.HeaderTooLong { max_length } ->
+      Json.obj [ ("type", Json.string "HeaderTooLong"); ("max_length", Json.int max_length); ]
+  | Http1.Common.HeaderBlockTooLong { max_length } ->
+      Json.obj [ ("type", Json.string "HeaderBlockTooLong"); ("max_length", Json.int max_length); ]
+  | Http1.Common.TooManyHeaders { max_count } ->
+      Json.obj [ ("type", Json.string "TooManyHeaders"); ("max_count", Json.int max_count); ]
+  | Http1.Common.InvalidContentLength -> Json.obj [ ("type", Json.string "InvalidContentLength") ]
+  | Http1.Common.ConflictingContentLength ->
+      Json.obj [ ("type", Json.string "ConflictingContentLength") ]
+  | Http1.Common.UnsupportedTransferEncoding ->
+      Json.obj [ ("type", Json.string "UnsupportedTransferEncoding") ]
+  | Http1.Common.TransferEncodingWithContentLength ->
+      Json.obj [ ("type", Json.string "TransferEncodingWithContentLength") ]
+  | Http1.Common.InvalidChunkSizeLineEnding ->
+      Json.obj [ ("type", Json.string "InvalidChunkSizeLineEnding") ]
+  | Http1.Common.InvalidChunkDataLineEnding ->
+      Json.obj [ ("type", Json.string "InvalidChunkDataLineEnding") ]
+  | Http1.Common.ChunkSizeLineTooLong { max_length } ->
+      Json.obj
+        [ ("type", Json.string "ChunkSizeLineTooLong"); ("max_length", Json.int max_length); ]
+  | Http1.Common.InvalidChunkSize -> Json.obj [ ("type", Json.string "InvalidChunkSize") ]
+  | Http1.Common.InvalidChunkExtensionCharacter { code; index } ->
+      Json.obj
+        [
+          ("type", Json.string "InvalidChunkExtensionCharacter");
+          ("code", Json.int code);
+          ("index", Json.int index);
+        ]
+  | Http1.Common.ChunkTooLarge { size; max_size } ->
+      Json.obj
+        [
+          ("type", Json.string "ChunkTooLarge");
+          ("size", Json.int size);
+          ("max_size", Json.int max_size);
+        ]
+  | Http1.Common.ChunkedBodyTooLarge { size; max_size } ->
+      Json.obj
+        [
+          ("type", Json.string "ChunkedBodyTooLarge");
+          ("size", Json.int size);
+          ("max_size", Json.int max_size);
+        ]
+
 let find_header_end = fun input -> Http1.Common.find_substring ~needle:"\r\n\r\n" input
 
 let parse_header_lines = fun lines ->
@@ -185,6 +270,18 @@ let fixture_response_json = fun input ->
   | Http1.Common.Done { value; _ } -> Ok (response_json value)
   | Http1.Common.Need_more -> Error "incomplete HTTP/1 response fixture"
   | Http1.Common.Error error -> Error (Http1.Common.error_to_string error)
+
+let fixture_request_error_json = fun input ->
+  match Http1.Request.parse ~max_request_line:8 input with
+  | Http1.Common.Error error -> Ok (Json.obj [ ("error", http1_error_json error) ])
+  | Http1.Common.Need_more -> Error "HTTP/1 request error fixture needed more data"
+  | Http1.Common.Done _ -> Error "HTTP/1 request error fixture parsed successfully"
+
+let fixture_response_error_json = fun input ->
+  match Http1.Response.parse ~max_status_line:8 input with
+  | Http1.Common.Error error -> Ok (Json.obj [ ("error", http1_error_json error) ])
+  | Http1.Common.Need_more -> Error "HTTP/1 response error fixture needed more data"
+  | Http1.Common.Done _ -> Error "HTTP/1 response error fixture parsed successfully"
 
 let hex_digit = fun value -> String.get_unchecked "0123456789abcdef" ~at:value
 
@@ -449,8 +546,12 @@ let fixture_json = fun relpath source ->
   let relpath = Path.to_string relpath in
   if String.starts_with ~prefix:"http1/request/" relpath then
     fixture_request_json source
+  else if String.starts_with ~prefix:"http1/request_errors/" relpath then
+    fixture_request_error_json source
   else if String.starts_with ~prefix:"http1/response/" relpath then
     fixture_response_json source
+  else if String.starts_with ~prefix:"http1/response_errors/" relpath then
+    fixture_response_error_json source
   else if String.starts_with ~prefix:"http2/frames/" relpath then
     match Http2.Parser.parse_frame source with
     | Http2.Parser.Done { value; remaining = "" } -> Ok (http2_frame_json value)
