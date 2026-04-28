@@ -1310,7 +1310,7 @@ let collect_child_exprs = fun (node: Ast.Node.t) ->
   Ast.Node.for_each_child_node
     node
     ~fn:(fun child ->
-      match Ast.Expr.cast child with
+      match Ast.cast_result_to_option (Ast.Expr.cast child) with
       | Some expr -> Vector.push exprs ~value:expr
       | None -> ());
   exprs
@@ -1320,7 +1320,7 @@ let collect_child_patterns = fun (node: Ast.Node.t) ->
   Ast.Node.for_each_child_node
     node
     ~fn:(fun child ->
-      match Ast.Pattern.cast child with
+      match Ast.cast_result_to_option (Ast.Pattern.cast child) with
       | Some pattern -> Vector.push patterns ~value:pattern
       | None -> ());
   patterns
@@ -1339,7 +1339,7 @@ let collect_fun_parameters = fun (node: Ast.Node.t) ->
         Ast.Node.for_each_child_node
           pattern
           ~fn:(fun child ->
-            match Ast.Parameter.cast child with
+            match Ast.cast_result_to_option (Ast.Parameter.cast child) with
             | Some child -> push_parameter child
             | None -> ())
     | _ -> Vector.push parameters ~value:pattern
@@ -1347,7 +1347,7 @@ let collect_fun_parameters = fun (node: Ast.Node.t) ->
   Ast.Node.for_each_child_node
     node
     ~fn:(fun child ->
-      match Ast.Parameter.cast child with
+      match Ast.cast_result_to_option (Ast.Parameter.cast child) with
       | Some parameter -> push_parameter parameter
       | None -> ());
   parameters
@@ -1357,7 +1357,7 @@ let rec collect_child_type_exprs = fun (type_expr: Ast.TypeExpr.t) ->
   Ast.Node.for_each_child_node
     type_expr
     ~fn:(fun child ->
-      match Ast.TypeExpr.cast child with
+      match Ast.cast_result_to_option (Ast.TypeExpr.cast child) with
       | Some item -> Vector.push items ~value:item
       | None -> ());
   if Int.equal (Vector.length items) 1 && node_kind_is type_expr Kind.TYPE_EXPR then
@@ -1507,7 +1507,7 @@ let collect_let_bindings_from_expr = fun expr ->
   Ast.Node.for_each_child_node
     expr
     ~fn:(fun child ->
-      match Ast.LetBinding.cast child with
+      match Ast.cast_result_to_option (Ast.LetBinding.cast child) with
       | Some binding -> Vector.push bindings ~value:binding
       | None -> ());
   bindings
@@ -1847,17 +1847,17 @@ module PatternView = struct
     | Kind.LAZY_PATTERN -> Lazy { pattern = first_child_pattern pattern }
     | Kind.EXCEPTION_PATTERN -> Exception { pattern = first_child_pattern pattern }
     | Kind.LABELED_PARAM -> (
-        match Ast.Parameter.cast pattern with
+        match Ast.cast_result_to_option (Ast.Parameter.cast pattern) with
         | Some parameter -> LabeledParam parameter
         | None -> Unknown pattern
       )
     | Kind.OPTIONAL_PARAM -> (
-        match Ast.Parameter.cast pattern with
+        match Ast.cast_result_to_option (Ast.Parameter.cast pattern) with
         | Some parameter -> OptionalParam parameter
         | None -> Unknown pattern
       )
     | Kind.OPTIONAL_PARAM_DEFAULT -> (
-        match Ast.Parameter.cast pattern with
+        match Ast.cast_result_to_option (Ast.Parameter.cast pattern) with
         | Some parameter -> OptionalParamDefault parameter
         | None -> Unknown pattern
       )
@@ -3252,7 +3252,7 @@ let collect_tuple_pattern_items = fun pattern ->
     Ast.Node.for_each_child_node
       pattern
       ~fn:(fun child ->
-        match Ast.Pattern.cast child with
+        match Ast.cast_result_to_option (Ast.Pattern.cast child) with
         | Some child -> (
             match PatternView.view child with
             | Tuple when not (pattern_tuple_has_parens child) -> push_items child
@@ -3342,7 +3342,7 @@ let render_first_class_module_pattern_ascription = fun state pattern ->
 
 let render_first_class_module_pattern = fun state pattern ->
   let module_pattern =
-    match Ast.FirstClassModulePattern.cast pattern with
+    match Ast.cast_result_to_option (Ast.FirstClassModulePattern.cast pattern) with
     | Some module_pattern -> module_pattern
     | None -> unsupported_node "unsupported first-class module pattern" pattern
   in
@@ -3901,7 +3901,7 @@ and render_pattern_atom = fun state pattern ->
   | _ -> render_pattern state pattern
 
 and render_extension_pattern = fun state pattern ->
-  match Ast.ExtensionPattern.cast pattern with
+  match Ast.cast_result_to_option (Ast.ExtensionPattern.cast pattern) with
   | Some extension ->
       emit_shell_token_stream
         state
@@ -3909,7 +3909,7 @@ and render_extension_pattern = fun state pattern ->
   | None -> unsupported_node "unsupported extension pattern" pattern
 
 and render_attribute_pattern = fun state pattern ->
-  match Ast.AttributePattern.cast pattern with
+  match Ast.cast_result_to_option (Ast.AttributePattern.cast pattern) with
   | Some attribute -> (
       match Ast.AttributePattern.inner attribute with
       | Some inner ->
@@ -6136,7 +6136,7 @@ and render_unreachable_expr = fun state expr ->
     ~fallback:"."
 
 and render_attribute_expr = fun state expr ->
-  match Ast.AttributeExpr.cast expr with
+  match Ast.cast_result_to_option (Ast.AttributeExpr.cast expr) with
   | Some attribute -> (
       match Ast.AttributeExpr.inner attribute with
       | Some inner ->
@@ -6150,7 +6150,7 @@ and render_attribute_expr = fun state expr ->
   | None -> unsupported_node "unsupported attribute expression" expr
 
 and render_extension_expr = fun state expr ->
-  match Ast.ExtensionExpr.cast expr with
+  match Ast.cast_result_to_option (Ast.ExtensionExpr.cast expr) with
   | Some extension ->
       emit_shell_token_stream
         state
@@ -6158,7 +6158,7 @@ and render_extension_expr = fun state expr ->
   | None -> unsupported_node "unsupported extension expression" expr
 
 and render_let_exception_expr = fun state expr ->
-  match Ast.LetExceptionExpr.cast expr with
+  match Ast.cast_result_to_option (Ast.LetExceptionExpr.cast expr) with
   | None -> unsupported_node "unsupported let exception expression" expr
   | Some let_exception -> (
       (
@@ -6677,7 +6677,7 @@ and render_module_typeof_node = fun state node ->
     emit_token_vector_stream state tokens
 
 and render_module_type_constraint_node = fun state node ->
-  match Ast.ModuleTypeConstraint.cast node with
+  match Ast.cast_result_to_option (Ast.ModuleTypeConstraint.cast node) with
   | None -> unsupported_node "unsupported module type constraint" node
   | Some constraint_ -> (
       match Ast.ModuleTypeConstraint.view constraint_ with
@@ -6727,7 +6727,7 @@ and render_with_module_type_node = fun state node ->
             rendered_base := true
           ) else
             (
-              match Ast.ModuleTypeConstraint.cast child with
+              match Ast.cast_result_to_option (Ast.ModuleTypeConstraint.cast child) with
               | Some _ ->
                   emit_space state;
                   (
@@ -6864,7 +6864,7 @@ and render_let_module_body = fun state module_expr ->
 
 and render_let_module_expr = fun state expr ->
   let module_expr =
-    match Ast.LetModuleExpr.cast expr with
+    match Ast.cast_result_to_option (Ast.LetModuleExpr.cast expr) with
     | Some module_expr -> module_expr
     | None -> unsupported_node "unsupported let module expression" expr
   in
@@ -6935,7 +6935,7 @@ and render_first_class_module_ascription = fun state expr ->
 
 and render_first_class_module_expr = fun state expr ->
   let module_expr =
-    match Ast.FirstClassModuleExpr.cast expr with
+    match Ast.cast_result_to_option (Ast.FirstClassModuleExpr.cast expr) with
     | Some module_expr -> module_expr
     | None -> unsupported_node "unsupported first-class module expression" expr
   in
@@ -6993,7 +6993,7 @@ and binding_operator_clause_is_multiline = fun (clause: Ast.BindingOperatorExpr.
 
 and render_binding_operator_expr = fun state expr ->
   let view =
-    match Ast.BindingOperatorExpr.cast expr with
+    match Ast.cast_result_to_option (Ast.BindingOperatorExpr.cast expr) with
     | Some view -> view
     | None -> unsupported_node "unsupported binding operator expression" expr
   in

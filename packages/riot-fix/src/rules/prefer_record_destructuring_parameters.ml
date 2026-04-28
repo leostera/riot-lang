@@ -67,7 +67,7 @@ let path_segments = fun ctx path ->
 let rec unwrap_record_pattern = fun pattern ->
   let pattern = H.unwrap_pattern pattern in
   match Ast.Pattern.view pattern with
-  | Ast.Pattern.Record _ -> Ast.RecordPattern.cast pattern
+  | Ast.Pattern.Record _ -> Ast.cast_result_to_option (Ast.RecordPattern.cast pattern)
   | Ast.Pattern.Constraint { pattern; _ }
   | Ast.Pattern.Alias { pattern; _ } -> unwrap_record_pattern pattern
   | _ -> None

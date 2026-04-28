@@ -23,18 +23,18 @@ let signature_items = fun (ctx: Rule.context) ->
 
 let expressions = fun (ctx: Rule.context) ->
   Traversal.find_nodes
-    (fun node -> Option.is_some (Ast.Expr.cast node))
+    (fun node -> Option.is_some (Ast.cast_result_to_option (Ast.Expr.cast node)))
     (ctx.source_file: Ast.Node.t)
-  |> List.filter_map ~fn:Ast.Expr.cast
+  |> List.filter_map ~fn:(fun node -> Ast.cast_result_to_option (Ast.Expr.cast node))
 
 let let_bindings = fun (ctx: Rule.context) ->
   Traversal.find_nodes
-    (fun node -> Option.is_some (Ast.LetBinding.cast node))
+    (fun node -> Option.is_some (Ast.cast_result_to_option (Ast.LetBinding.cast node)))
     (ctx.source_file: Ast.Node.t)
-  |> List.filter_map ~fn:Ast.LetBinding.cast
+  |> List.filter_map ~fn:(fun node -> Ast.cast_result_to_option (Ast.LetBinding.cast node))
 
 let type_declarations = fun (ctx: Rule.context) ->
   Traversal.find_nodes
-    (fun node -> Option.is_some (Ast.TypeDeclaration.cast node))
+    (fun node -> Option.is_some (Ast.cast_result_to_option (Ast.TypeDeclaration.cast node)))
     (ctx.source_file: Ast.Node.t)
-  |> List.filter_map ~fn:Ast.TypeDeclaration.cast
+  |> List.filter_map ~fn:(fun node -> Ast.cast_result_to_option (Ast.TypeDeclaration.cast node))

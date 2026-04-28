@@ -28,7 +28,7 @@ let binding_site_of_let_binding = fun binding ->
 let binding_sites_of_structure_item = fun item ->
   let sites = Vector.with_capacity ~size:(Ast.Node.child_count item) in
   let rec visit node =
-    match Ast.LetBinding.cast node with
+    match Ast.cast_result_to_option (Ast.LetBinding.cast node) with
     | Some binding -> (
         match binding_site_of_let_binding binding with
         | Some site -> Vector.push sites ~value:site

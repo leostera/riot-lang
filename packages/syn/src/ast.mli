@@ -76,6 +76,18 @@ type type_item =
   | TypeDeclarationItem of type_declaration
   | TypeExtensionItem of type_extension_declaration
 
+type cast_error = {
+  expected: Syntax_kind.t list;
+  actual: Syntax_kind.t;
+  node: node;
+}
+type 'value cast_result =
+  | Node of 'value
+  | Unknown of node
+  | Error of cast_error
+
+val cast_result_to_option: 'value cast_result -> 'value option
+
 (** Root view for a parsed syntax tree. *)
 val root: Syntax_tree.t -> node
 
@@ -218,7 +230,7 @@ module TypeExpr: sig
       }
     | Error of Node.t
     | Unknown of Node.t
-  val cast: Node.t -> t option
+  val cast: Node.t -> t cast_result
 
   val view: t -> view
 
@@ -243,7 +255,7 @@ module RecordField: sig
         annotation: type_expr;
       }
     | Unknown of Node.t
-  val cast: Node.t -> t option
+  val cast: Node.t -> t cast_result
 
   val view: t -> view
 
@@ -258,7 +270,7 @@ end
 
 module RecordType: sig
   type t = record_type
-  val cast: Node.t -> t option
+  val cast: Node.t -> t cast_result
 
   val private_token: t -> Token.t option
 
@@ -293,7 +305,7 @@ module VariantConstructor: sig
         rhs: rhs;
       }
     | Unknown of Node.t
-  val cast: Node.t -> t option
+  val cast: Node.t -> t cast_result
 
   val view: t -> view
 
@@ -314,7 +326,7 @@ end
 
 module VariantType: sig
   type t = variant_type
-  val cast: Node.t -> t option
+  val cast: Node.t -> t cast_result
 
   val private_token: t -> Token.t option
 
@@ -384,7 +396,7 @@ module Pattern: sig
       }
     | Error of Node.t
     | Unknown of Node.t
-  val cast: Node.t -> t option
+  val cast: Node.t -> t cast_result
 
   val view: t -> view
 
@@ -397,7 +409,7 @@ end
 
 module AttributePattern: sig
   type t = pattern
-  val cast: pattern -> t option
+  val cast: pattern -> t cast_result
 
   val inner: t -> pattern option
 
@@ -406,14 +418,14 @@ end
 
 module ExtensionPattern: sig
   type t = pattern
-  val cast: pattern -> t option
+  val cast: pattern -> t cast_result
 
   val for_each_shell_token: t -> fn:(Token.t -> unit) -> unit
 end
 
 module LocallyAbstractTypePattern: sig
   type t = pattern
-  val cast: pattern -> t option
+  val cast: pattern -> t cast_result
 
   val opening_token: t -> Token.t option
 
@@ -430,7 +442,7 @@ module FirstClassModulePattern: sig
     | NoAscription
     | PathAscription
     | UnsupportedAscription
-  val cast: pattern -> t option
+  val cast: pattern -> t cast_result
 
   val opening_token: t -> Token.t option
 
@@ -450,7 +462,7 @@ end
 module RecordPattern: sig
   type t = pattern
   type field = record_pattern_field_view
-  val cast: pattern -> t option
+  val cast: pattern -> t cast_result
 
   val open_wildcard: t -> Token.t option
 
@@ -468,7 +480,7 @@ module LocalOpenPattern: sig
         closing_token: Token.t;
       }
     | Unknown of Node.t
-  val cast: pattern -> t option
+  val cast: pattern -> t cast_result
 
   val view: t -> view
 
@@ -500,7 +512,7 @@ module Parameter: sig
         pattern: pattern option;
       }
     | Unknown of Node.t
-  val cast: Node.t -> t option
+  val cast: Node.t -> t cast_result
 
   val view: t -> view
 
@@ -524,7 +536,7 @@ module MatchCase: sig
         body: expr;
       }
     | Unknown of Node.t
-  val cast: Node.t -> t option
+  val cast: Node.t -> t cast_result
 
   val view: t -> view
 
@@ -543,7 +555,7 @@ module LetBinding: sig
         body: expr;
       }
     | Unknown of Node.t
-  val cast: Node.t -> t option
+  val cast: Node.t -> t cast_result
 
   val view: t -> view
 
@@ -658,7 +670,7 @@ module Expr: sig
       }
     | Error of Node.t
     | Unknown of Node.t
-  val cast: Node.t -> t option
+  val cast: Node.t -> t cast_result
 
   val view: t -> view
 
@@ -673,7 +685,7 @@ end
 
 module AttributeExpr: sig
   type t = expr
-  val cast: expr -> t option
+  val cast: expr -> t cast_result
 
   val inner: t -> expr option
 
@@ -682,7 +694,7 @@ end
 
 module ExtensionExpr: sig
   type t = expr
-  val cast: expr -> t option
+  val cast: expr -> t cast_result
 
   val for_each_shell_token: t -> fn:(Token.t -> unit) -> unit
 end
@@ -690,7 +702,7 @@ end
 module RecordExpr: sig
   type t = expr
   type field = record_expr_field_view
-  val cast: expr -> t option
+  val cast: expr -> t cast_result
 
   val base: t -> expr option
 
@@ -716,7 +728,7 @@ module LocalOpenExpr: sig
         closing_token: Token.t;
       }
     | Unknown of Node.t
-  val cast: expr -> t option
+  val cast: expr -> t cast_result
 
   val view: t -> view
 end
@@ -727,7 +739,7 @@ module LetModuleExpr: sig
     | Path
     | Struct
     | Unsupported
-  val cast: expr -> t option
+  val cast: expr -> t cast_result
 
   val let_token: t -> Token.t option
 
@@ -750,7 +762,7 @@ end
 
 module LetExceptionExpr: sig
   type t = expr
-  val cast: expr -> t option
+  val cast: expr -> t cast_result
 
   val let_token: t -> Token.t option
 
@@ -769,7 +781,7 @@ end
 
 module UnreachableExpr: sig
   type t = expr
-  val cast: expr -> t option
+  val cast: expr -> t cast_result
 
   val dot_token: t -> Token.t option
 end
@@ -783,7 +795,7 @@ module FirstClassModuleExpr: sig
     | NoAscription
     | PathAscription
     | UnsupportedAscription
-  val cast: expr -> t option
+  val cast: expr -> t cast_result
 
   val opening_token: t -> Token.t option
 
@@ -809,7 +821,7 @@ module BindingOperatorExpr: sig
     operator: Token.t option;
     binding: let_binding;
   }
-  val cast: expr -> t option
+  val cast: expr -> t cast_result
 
   val in_token: t -> Token.t option
 
@@ -820,7 +832,7 @@ end
 
 module Path: sig
   type t = path
-  val cast: Node.t -> t option
+  val cast: Node.t -> t cast_result
 
   val text: t -> string
 
@@ -853,7 +865,7 @@ module ModuleTypeExpr: sig
       }
     | Error of Node.t
     | Unknown of Node.t
-  val cast: Node.t -> t option
+  val cast: Node.t -> t cast_result
 
   val view: t -> view
 
@@ -893,7 +905,7 @@ module ModuleExpr: sig
     | Opaque of Node.t
     | Error of Node.t
     | Unknown of Node.t
-  val cast: Node.t -> t option
+  val cast: Node.t -> t cast_result
 
   val view: t -> view
 
@@ -922,7 +934,7 @@ module StructureItem: sig
     | Expr of expr_item
     | Error of Node.t
     | Unknown of Node.t
-  val cast: Node.t -> t option
+  val cast: Node.t -> t cast_result
 
   val view: t -> view
 
@@ -944,7 +956,7 @@ module SignatureItem: sig
     | Attribute of attribute_item
     | Error of Node.t
     | Unknown of Node.t
-  val cast: Node.t -> t option
+  val cast: Node.t -> t cast_result
 
   val view: t -> view
 
@@ -953,7 +965,7 @@ end
 
 module LetDeclaration: sig
   type t = let_declaration
-  val cast: Node.t -> t option
+  val cast: Node.t -> t cast_result
 
   val rec_token: t -> Token.t option
 
@@ -1017,7 +1029,7 @@ module TypeDeclaration: sig
     val manifest: t -> type_expr option
   end
 
-  val cast: Node.t -> t option
+  val cast: Node.t -> t cast_result
 
   val for_each_token: t -> fn:(Token.t -> unit) -> unit
 
@@ -1039,7 +1051,7 @@ end
 module TypeExtensionDeclaration: sig
   type t = type_extension_declaration
   type parameter = TypeDeclaration.parameter
-  val cast: Node.t -> t option
+  val cast: Node.t -> t cast_result
 
   val keyword_token: t -> Token.t option
 
@@ -1105,7 +1117,7 @@ module ModuleDeclaration: sig
     | Unsupported of {
         body: Node.t option;
       }
-  val cast: Node.t -> t option
+  val cast: Node.t -> t cast_result
 
   val name: t -> Token.t option
 
@@ -1150,7 +1162,7 @@ module ModuleTypeDeclaration: sig
     | Unsupported of {
         body: Node.t option;
       }
-  val cast: Node.t -> t option
+  val cast: Node.t -> t cast_result
 
   val name: t -> Token.t option
 
@@ -1189,14 +1201,14 @@ module ModuleTypeConstraint: sig
         body: Node.t;
       }
     | Unknown of Node.t
-  val cast: Node.t -> t option
+  val cast: Node.t -> t cast_result
 
   val view: t -> view
 end
 
 module OpenDeclaration: sig
   type t = open_declaration
-  val cast: Node.t -> t option
+  val cast: Node.t -> t cast_result
 
   val path_text: t -> string
 
@@ -1209,7 +1221,7 @@ end
 
 module IncludeDeclaration: sig
   type t = include_declaration
-  val cast: Node.t -> t option
+  val cast: Node.t -> t cast_result
 
   val path_text: t -> string
 
@@ -1231,7 +1243,7 @@ module ValueDeclaration: sig
         annotation: type_expr;
       }
     | Unknown of Node.t
-  val cast: Node.t -> t option
+  val cast: Node.t -> t cast_result
 
   val view: t -> view
 
@@ -1258,7 +1270,7 @@ module ExternalDeclaration: sig
         attributes: Token.t Vector.t;
       }
     | Unknown of Node.t
-  val cast: Node.t -> t option
+  val cast: Node.t -> t cast_result
 
   val view: t -> view
 
@@ -1291,7 +1303,7 @@ module ExceptionDeclaration: sig
         payload: payload;
       }
     | Unknown of Node.t
-  val cast: Node.t -> t option
+  val cast: Node.t -> t cast_result
 
   val keyword_token: t -> Token.t option
 
@@ -1302,35 +1314,35 @@ end
 
 module ExtensionItem: sig
   type t = extension_item
-  val cast: Node.t -> t option
+  val cast: Node.t -> t cast_result
 
   val for_each_shell_token: t -> fn:(Token.t -> unit) -> unit
 end
 
 module AttributeItem: sig
   type t = attribute_item
-  val cast: Node.t -> t option
+  val cast: Node.t -> t cast_result
 
   val for_each_shell_token: t -> fn:(Token.t -> unit) -> unit
 end
 
 module ExprItem: sig
   type t = expr_item
-  val cast: Node.t -> t option
+  val cast: Node.t -> t cast_result
 
   val expr: t -> expr option
 end
 
 module Implementation: sig
   type t = implementation
-  val cast: Node.t -> t option
+  val cast: Node.t -> t cast_result
 
   val for_each_item: t -> fn:(structure_item -> unit) -> unit
 end
 
 module Interface: sig
   type t = interface
-  val cast: Node.t -> t option
+  val cast: Node.t -> t cast_result
 
   val for_each_item: t -> fn:(signature_item -> unit) -> unit
 end

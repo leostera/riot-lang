@@ -106,6 +106,17 @@ type type_item =
   | TypeDeclarationItem of type_declaration
   | TypeExtensionItem of type_extension_declaration
 
+type cast_error = {
+  expected: Syntax_kind.t list;
+  actual: Syntax_kind.t;
+  node: node;
+}
+
+type 'value cast_result =
+  | Node of 'value
+  | Unknown of node
+  | Error of cast_error
+
 let root = fun tree -> ({ tree; id = tree.Syntax_tree.root }: node)
 
 let wrap_node = fun tree id -> ({ tree; id }: node)
@@ -268,9 +279,151 @@ let is_let_binding_kind = function
   | Syntax_kind.LET_BINDING -> true
   | _ -> false
 
+let expr_expected_kinds = Syntax_kind.[
+  LET_EXPR;
+  LOCAL_OPEN_EXPR;
+  LET_MODULE_EXPR;
+  LET_EXCEPTION_EXPR;
+  BINDING_OPERATOR_EXPR;
+  FIRST_CLASS_MODULE_EXPR;
+  EXTENSION_EXPR;
+  UNREACHABLE_EXPR;
+  IF_EXPR;
+  MATCH_EXPR;
+  FUN_EXPR;
+  FUNCTION_EXPR;
+  TRY_EXPR;
+  WHILE_EXPR;
+  FOR_EXPR;
+  ASSERT_EXPR;
+  LAZY_EXPR;
+  ATTRIBUTE_EXPR;
+  SEQUENCE_EXPR;
+  APPLY_EXPR;
+  INFIX_EXPR;
+  PREFIX_EXPR;
+  ASSIGN_EXPR;
+  FIELD_ACCESS_EXPR;
+  POLY_VARIANT_EXPR;
+  LABELED_ARG;
+  OPTIONAL_ARG;
+  ARRAY_INDEX_EXPR;
+  STRING_INDEX_EXPR;
+  TYPED_EXPR;
+  PATH_EXPR;
+  LITERAL_EXPR;
+  PAREN_EXPR;
+  TUPLE_EXPR;
+  LIST_EXPR;
+  ARRAY_EXPR;
+  RECORD_EXPR;
+  RECORD_UPDATE_EXPR;
+]
+
+let pattern_expected_kinds = Syntax_kind.[
+  WILDCARD_PATTERN;
+  PATH_PATTERN;
+  CONSTRUCT_PATTERN;
+  LITERAL_PATTERN;
+  PAREN_PATTERN;
+  TUPLE_PATTERN;
+  LIST_PATTERN;
+  ARRAY_PATTERN;
+  RECORD_PATTERN;
+  POLY_VARIANT_PATTERN;
+  EXTENSION_PATTERN;
+  ATTRIBUTE_PATTERN;
+  LOCAL_OPEN_PATTERN;
+  LOCALLY_ABSTRACT_TYPE_PATTERN;
+  FIRST_CLASS_MODULE_PATTERN;
+  INTERVAL_PATTERN;
+  CONSTRAINT_PATTERN;
+  ALIAS_PATTERN;
+  OR_PATTERN;
+  CONS_PATTERN;
+  LAZY_PATTERN;
+  EXCEPTION_PATTERN;
+]
+
+let parameter_expected_kinds =
+  Syntax_kind.[
+    LABELED_PARAM;
+    OPTIONAL_PARAM;
+    OPTIONAL_PARAM_DEFAULT;
+  ]
+  @ pattern_expected_kinds
+
+let path_expected_kinds = Syntax_kind.[
+  PATH_EXPR;
+  PATH_PATTERN;
+  PATH_TYPE;
+  PATH_MODULE_EXPR;
+  PATH_MODULE_TYPE;
+]
+
+let type_expr_expected_kinds = Syntax_kind.[
+  TYPE_EXPR;
+  PATH_TYPE;
+  VAR_TYPE;
+  WILDCARD_TYPE;
+  ARROW_TYPE;
+  POLY_TYPE;
+  LABELED_TYPE;
+  TUPLE_TYPE;
+  APPLY_TYPE;
+  PAREN_TYPE;
+  OPAQUE_TYPE;
+]
+
+let module_expr_expected_kinds = Syntax_kind.[
+  MODULE_EXPR;
+  PATH_MODULE_EXPR;
+  STRUCT_MODULE_EXPR;
+  FUNCTOR_MODULE_EXPR;
+  APPLY_MODULE_EXPR;
+  CONSTRAINT_MODULE_EXPR;
+  PAREN_MODULE_EXPR;
+  OPAQUE_MODULE_EXPR;
+]
+
+let module_type_expected_kinds = Syntax_kind.[
+  MODULE_TYPE_EXPR;
+  PATH_MODULE_TYPE;
+  SIGNATURE_MODULE_TYPE;
+  TYPEOF_MODULE_TYPE;
+  FUNCTOR_MODULE_TYPE;
+  WITH_MODULE_TYPE;
+  PAREN_MODULE_TYPE;
+  OPAQUE_MODULE_TYPE;
+]
+
 let node_matches = fun (node: node) matches -> matches (syntax_node node).Syntax_tree.kind
 
 let token_matches = fun (token: token) matches -> matches (syntax_token token).Syntax_tree.kind
+
+let cast_failure = fun node ~expected ->
+  Error {
+    expected;
+    actual = (syntax_node node).Syntax_tree.kind;
+    node;
+  }
+
+let cast_matching = fun node ~expected ~matches ->
+  if node_matches node matches then
+    Node node
+  else
+    cast_failure node ~expected
+
+let cast_kind = fun node expected ->
+  if node_kind_is node expected then
+    Node node
+  else
+    cast_failure node ~expected:[expected]
+
+let cast_result_to_option = function
+  | Node value -> Some value
+  | Unknown _
+  | Error _ -> None
 
 let first_child_node_matching = fun (node: node) ~matches ->
   let found = ref None in
@@ -1074,10 +1227,7 @@ module TypeExpr = struct
     | Unknown of Node.t
 
   let cast = fun (node: node) ->
-    if node_matches node is_type_expr_kind then
-      Some node
-    else
-      None
+    cast_matching node ~expected:type_expr_expected_kinds ~matches:is_type_expr_kind
 
   let tuple_separator = fun type_expr ->
     let rec loop index =
@@ -1397,10 +1547,7 @@ module RecordField = struct
     | Unknown of node
 
   let cast = fun (node: node) ->
-    if node_matches node is_record_field_kind then
-      Some node
-    else
-      None
+    cast_matching node ~expected:[Syntax_kind.RECORD_FIELD] ~matches:is_record_field_kind
 
   let mutable_token = fun field -> Node.first_child_token field ~kind:Syntax_kind.MUTABLE_KW
 
@@ -1426,10 +1573,7 @@ module RecordType = struct
   type t = record_type
 
   let cast = fun (node: node) ->
-    if node_matches node is_record_type_kind then
-      Some node
-    else
-      None
+    cast_matching node ~expected:[Syntax_kind.RECORD_TYPE] ~matches:is_record_type_kind
 
   let private_token = fun record_type ->
     Node.first_child_token
@@ -1476,10 +1620,7 @@ module VariantConstructor = struct
     | Unknown of node
 
   let cast = fun (node: node) ->
-    if node_matches node is_variant_constructor_kind then
-      Some node
-    else
-      None
+    cast_matching node ~expected:[Syntax_kind.VARIANT_CONSTRUCTOR] ~matches:is_variant_constructor_kind
 
   let pipe_token = fun constructor -> Node.first_child_token constructor ~kind:Syntax_kind.PIPE
 
@@ -1552,10 +1693,7 @@ module VariantType = struct
   type t = variant_type
 
   let cast = fun (node: node) ->
-    if node_matches node is_variant_type_kind then
-      Some node
-    else
-      None
+    cast_matching node ~expected:[Syntax_kind.VARIANT_TYPE] ~matches:is_variant_type_kind
 
   let private_token = fun variant_type ->
     Node.first_child_token
@@ -1573,10 +1711,7 @@ module Path = struct
   type t = path
 
   let cast = fun (node: node) ->
-    if node_matches node is_path_kind then
-      Some node
-    else
-      None
+    cast_matching node ~expected:path_expected_kinds ~matches:is_path_kind
 
   let text = Node.text
 
@@ -1617,10 +1752,7 @@ module ModuleTypeExpr = struct
     | Unknown of node
 
   let cast = fun (node: node) ->
-    if node_matches node is_module_type_kind then
-      Some node
-    else
-      None
+    cast_matching node ~expected:module_type_expected_kinds ~matches:is_module_type_kind
 
   let rec specific_node = fun module_type ->
     match Node.kind module_type with
@@ -1649,15 +1781,16 @@ module ModuleTypeExpr = struct
     match specific_node module_type with
     | Some node when node_kind_is node Syntax_kind.PATH_MODULE_TYPE -> (
         match Path.cast node with
-        | Some path -> Path { path }
-        | None -> Unknown node
+        | Node path -> Path { path }
+        | Unknown _
+        | Error _ -> Unknown node
       )
     | Some node when node_kind_is node Syntax_kind.SIGNATURE_MODULE_TYPE ->
         Signature { body = node }
     | Some node when node_kind_is node Syntax_kind.WITH_MODULE_TYPE ->
         let base =
           match first_child_node_matching node ~matches:is_module_type_kind with
-          | Some base -> cast base
+          | Some base -> cast_result_to_option (cast base)
           | None -> None
         in
         With { body = node; base; constraints = constraints node }
@@ -1750,10 +1883,7 @@ module ModuleExpr = struct
     | Unknown of node
 
   let cast = fun (node: node) ->
-    if node_matches node is_module_expr_kind then
-      Some node
-    else
-      None
+    cast_matching node ~expected:module_expr_expected_kinds ~matches:is_module_expr_kind
 
   let rec specific_node = fun module_expr ->
     match Node.kind module_expr with
@@ -1768,15 +1898,16 @@ module ModuleExpr = struct
 
   let nth_specific_child = fun module_expr n ->
     match nth_child_node_matching module_expr n ~matches:is_module_expr_kind with
-    | Some child -> cast child
+    | Some child -> cast_result_to_option (cast child)
     | None -> None
 
   let view = fun module_expr ->
     match specific_node module_expr with
     | Some node when node_kind_is node Syntax_kind.PATH_MODULE_EXPR -> (
         match Path.cast node with
-        | Some path -> Path { path }
-        | None -> Unknown node
+        | Node path -> Path { path }
+        | Unknown _
+        | Error _ -> Unknown node
       )
     | Some node when node_kind_is node Syntax_kind.STRUCT_MODULE_EXPR ->
         Structure { body = node }
@@ -1791,7 +1922,9 @@ module ModuleExpr = struct
     | Some node when node_kind_is node Syntax_kind.CONSTRAINT_MODULE_EXPR ->
         Constraint {
           body = node;
-          expr = first_child_node_matching node ~matches:is_module_expr_kind |> Option.and_then ~fn:cast;
+          expr =
+            first_child_node_matching node ~matches:is_module_expr_kind
+            |> Option.and_then ~fn:(fun node -> cast_result_to_option (cast node));
           ascription = first_child_node_matching node ~matches:is_module_type_kind;
         }
     | Some node when node_kind_is node Syntax_kind.OPAQUE_MODULE_EXPR -> Opaque node
@@ -1931,7 +2064,7 @@ module Expr: sig
       }
     | Error of Node.t
     | Unknown of Node.t
-  val cast: Node.t -> t option
+  val cast: Node.t -> t cast_result
 
   val view: t -> view
 
@@ -2047,10 +2180,7 @@ end = struct
     | Unknown of Node.t
 
   let cast = fun (node: node) ->
-    if node_matches node is_expr_kind then
-      Some node
-    else
-      None
+    cast_matching node ~expected:expr_expected_kinds ~matches:is_expr_kind
 
   let first_operator_token = fun (node: node) ->
     first_child_token_matching
@@ -2094,16 +2224,18 @@ end = struct
     | (Some expr, value) when node_kind_is expr Syntax_kind.PATH_EXPR ->
         (
           match Path.cast expr with
-          | Some path -> field_view path (normalize_value value)
-          | None -> unknown ()
+          | Node path -> field_view path (normalize_value value)
+          | Unknown _
+          | Error _ -> unknown ()
         )
     | (Some expr, _) when node_kind_is expr Syntax_kind.INFIX_EXPR -> (
         match (nth_expr_child expr 0, nth_expr_child expr 1) with
         | (Some left, Some right) ->
             if node_kind_is left Syntax_kind.PATH_EXPR then
               match Path.cast left with
-              | Some path -> field_view path (Some (normalize_expr_node right))
-              | None -> unknown ()
+              | Node path -> field_view path (Some (normalize_expr_node right))
+              | Unknown _
+              | Error _ -> unknown ()
             else
               unknown ()
         | _ -> unknown ()
@@ -2111,8 +2243,9 @@ end = struct
     | (Some expr, value) ->
         (
           match Path.cast expr with
-          | Some path -> field_view path (normalize_value value)
-          | None -> unknown ()
+          | Node path -> field_view path (normalize_value value)
+          | Unknown _
+          | Error _ -> unknown ()
         )
     | (None, _) -> unknown ()
 
@@ -2358,7 +2491,7 @@ end
 
 module AttributeExpr: sig
   type t = expr
-  val cast: expr -> t option
+  val cast: expr -> t cast_result
 
   val inner: t -> expr option
 
@@ -2367,10 +2500,7 @@ end = struct
   type t = expr
 
   let cast = fun (expr: expr) ->
-    if node_kind_is expr Syntax_kind.ATTRIBUTE_EXPR then
-      Some expr
-    else
-      None
+    cast_kind expr Syntax_kind.ATTRIBUTE_EXPR
 
   let inner = first_expr_child
 
@@ -2379,17 +2509,14 @@ end
 
 module ExtensionExpr: sig
   type t = expr
-  val cast: expr -> t option
+  val cast: expr -> t cast_result
 
   val for_each_shell_token: t -> fn:(token -> unit) -> unit
 end = struct
   type t = expr
 
   let cast = fun (expr: expr) ->
-    if node_kind_is expr Syntax_kind.EXTENSION_EXPR then
-      Some expr
-    else
-      None
+    cast_kind expr Syntax_kind.EXTENSION_EXPR
 
   let for_each_shell_token = Node.for_each_child_token
 end
@@ -2397,7 +2524,7 @@ end
 module RecordExpr: sig
   type t = expr
   type field = record_expr_field_view
-  val cast: expr -> t option
+  val cast: expr -> t cast_result
 
   val base: t -> expr option
 
@@ -2411,9 +2538,9 @@ end = struct
     if
       node_kind_is expr Syntax_kind.RECORD_EXPR || node_kind_is expr Syntax_kind.RECORD_UPDATE_EXPR
     then
-      Some expr
+      Node expr
     else
-      None
+      cast_failure expr ~expected:Syntax_kind.[RECORD_EXPR; RECORD_UPDATE_EXPR]
 
   let base = fun (record: t) ->
     if node_kind_is record Syntax_kind.RECORD_UPDATE_EXPR then
@@ -2428,24 +2555,27 @@ end = struct
     | (Some expr, value) when node_kind_is expr Syntax_kind.PATH_EXPR ->
         (
           match Path.cast expr with
-          | Some path -> field_view path value
-          | None -> unknown ()
+          | Node path -> field_view path value
+          | Unknown _
+          | Error _ -> unknown ()
         )
     | (Some expr, _) when node_kind_is expr Syntax_kind.INFIX_EXPR -> (
         match (nth_expr_child expr 0, nth_expr_child expr 1) with
         | (Some left, Some right) ->
             if node_kind_is left Syntax_kind.PATH_EXPR then
               match Path.cast left with
-              | Some path -> field_view path (Some right)
-              | None -> unknown ()
+              | Node path -> field_view path (Some right)
+              | Unknown _
+              | Error _ -> unknown ()
             else
               unknown ()
         | _ -> unknown ()
       )
     | (Some expr, value) -> (
         match Path.cast expr with
-        | Some path -> field_view path value
-        | None -> unknown ()
+        | Node path -> field_view path value
+        | Unknown _
+        | Error _ -> unknown ()
       )
     | (None, _) -> unknown ()
 
@@ -2483,7 +2613,7 @@ module LocalOpenExpr: sig
         closing_token: token;
       }
     | Unknown of node
-  val cast: expr -> t option
+  val cast: expr -> t cast_result
 
   val view: t -> view
 end = struct
@@ -2508,14 +2638,11 @@ end = struct
     | Unknown of node
 
   let cast = fun (expr: expr) ->
-    if node_kind_is expr Syntax_kind.LOCAL_OPEN_EXPR then
-      Some expr
-    else
-      None
+    cast_kind expr Syntax_kind.LOCAL_OPEN_EXPR
 
   let path_expr_child = fun expr index ->
     match nth_expr_child expr index with
-    | Some child -> Path.cast child
+    | Some child -> cast_result_to_option (Path.cast child)
     | None -> None
 
   let opening_token = fun expr ->
@@ -2594,7 +2721,7 @@ module LetModuleExpr: sig
     | Path
     | Struct
     | Unsupported
-  val cast: expr -> t option
+  val cast: expr -> t cast_result
 
   val let_token: t -> token option
 
@@ -2622,10 +2749,7 @@ end = struct
     | Unsupported
 
   let cast = fun (expr: expr) ->
-    if node_kind_is expr Syntax_kind.LET_MODULE_EXPR then
-      Some expr
-    else
-      None
+    cast_kind expr Syntax_kind.LET_MODULE_EXPR
 
   let let_token = fun expr -> Node.first_child_token expr ~kind:Syntax_kind.LET_KW
 
@@ -2736,7 +2860,7 @@ end
 
 module LetExceptionExpr: sig
   type t = expr
-  val cast: expr -> t option
+  val cast: expr -> t cast_result
 
   val let_token: t -> token option
 
@@ -2755,10 +2879,7 @@ end = struct
   type t = expr
 
   let cast = fun (expr: expr) ->
-    if node_kind_is expr Syntax_kind.LET_EXCEPTION_EXPR then
-      Some expr
-    else
-      None
+    cast_kind expr Syntax_kind.LET_EXCEPTION_EXPR
 
   let let_token = fun expr -> Node.first_child_token expr ~kind:Syntax_kind.LET_KW
 
@@ -2833,17 +2954,14 @@ end
 
 module UnreachableExpr: sig
   type t = expr
-  val cast: expr -> t option
+  val cast: expr -> t cast_result
 
   val dot_token: t -> token option
 end = struct
   type t = expr
 
   let cast = fun (expr: expr) ->
-    if node_kind_is expr Syntax_kind.UNREACHABLE_EXPR then
-      Some expr
-    else
-      None
+    cast_kind expr Syntax_kind.UNREACHABLE_EXPR
 
   let dot_token = fun expr -> Node.first_child_token expr ~kind:Syntax_kind.DOT
 end
@@ -2857,7 +2975,7 @@ module FirstClassModuleExpr: sig
     | NoAscription
     | PathAscription
     | UnsupportedAscription
-  val cast: expr -> t option
+  val cast: expr -> t cast_result
 
   val opening_token: t -> token option
 
@@ -2887,10 +3005,7 @@ end = struct
     | UnsupportedAscription
 
   let cast = fun (expr: expr) ->
-    if node_kind_is expr Syntax_kind.FIRST_CLASS_MODULE_EXPR then
-      Some expr
-    else
-      None
+    cast_kind expr Syntax_kind.FIRST_CLASS_MODULE_EXPR
 
   let opening_token = fun expr -> Node.first_child_token expr ~kind:Syntax_kind.LPAREN
 
@@ -2989,7 +3104,7 @@ module BindingOperatorExpr: sig
     operator: Token.t option;
     binding: let_binding;
   }
-  val cast: expr -> t option
+  val cast: expr -> t cast_result
 
   val in_token: t -> Token.t option
 
@@ -3006,10 +3121,7 @@ end = struct
   }
 
   let cast = fun (expr: expr) ->
-    if node_kind_is expr Syntax_kind.BINDING_OPERATOR_EXPR then
-      Some expr
-    else
-      None
+    cast_kind expr Syntax_kind.BINDING_OPERATOR_EXPR
 
   let in_token = fun (expr: t) -> Node.first_child_token expr ~kind:Syntax_kind.IN_KW
 
@@ -3112,7 +3224,7 @@ module Pattern: sig
       }
     | Error of Node.t
     | Unknown of Node.t
-  val cast: Node.t -> t option
+  val cast: Node.t -> t cast_result
 
   val view: t -> view
 
@@ -3187,10 +3299,7 @@ end = struct
     | Unknown of Node.t
 
   let cast = fun (node: node) ->
-    if node_matches node is_pattern_kind then
-      Some node
-    else
-      None
+    cast_matching node ~expected:pattern_expected_kinds ~matches:is_pattern_kind
 
   let literal_token = fun pattern ->
     first_child_token_matching
@@ -3359,7 +3468,7 @@ end
 
 module AttributePattern: sig
   type t = pattern
-  val cast: pattern -> t option
+  val cast: pattern -> t cast_result
 
   val inner: t -> pattern option
 
@@ -3368,10 +3477,7 @@ end = struct
   type t = pattern
 
   let cast = fun (pattern: pattern) ->
-    if node_kind_is pattern Syntax_kind.ATTRIBUTE_PATTERN then
-      Some pattern
-    else
-      None
+    cast_kind pattern Syntax_kind.ATTRIBUTE_PATTERN
 
   let inner = first_pattern_child
 
@@ -3380,24 +3486,21 @@ end
 
 module ExtensionPattern: sig
   type t = pattern
-  val cast: pattern -> t option
+  val cast: pattern -> t cast_result
 
   val for_each_shell_token: t -> fn:(token -> unit) -> unit
 end = struct
   type t = pattern
 
   let cast = fun (pattern: pattern) ->
-    if node_kind_is pattern Syntax_kind.EXTENSION_PATTERN then
-      Some pattern
-    else
-      None
+    cast_kind pattern Syntax_kind.EXTENSION_PATTERN
 
   let for_each_shell_token = Node.for_each_child_token
 end
 
 module LocallyAbstractTypePattern: sig
   type t = pattern
-  val cast: pattern -> t option
+  val cast: pattern -> t cast_result
 
   val opening_token: t -> token option
 
@@ -3410,10 +3513,7 @@ end = struct
   type t = pattern
 
   let cast = fun (pattern: pattern) ->
-    if node_kind_is pattern Syntax_kind.LOCALLY_ABSTRACT_TYPE_PATTERN then
-      Some pattern
-    else
-      None
+    cast_kind pattern Syntax_kind.LOCALLY_ABSTRACT_TYPE_PATTERN
 
   let opening_token = fun pattern -> Node.first_child_token pattern ~kind:Syntax_kind.LPAREN
 
@@ -3435,7 +3535,7 @@ module FirstClassModulePattern: sig
     | NoAscription
     | PathAscription
     | UnsupportedAscription
-  val cast: pattern -> t option
+  val cast: pattern -> t cast_result
 
   val opening_token: t -> token option
 
@@ -3459,10 +3559,7 @@ end = struct
     | UnsupportedAscription
 
   let cast = fun (pattern: pattern) ->
-    if node_kind_is pattern Syntax_kind.FIRST_CLASS_MODULE_PATTERN then
-      Some pattern
-    else
-      None
+    cast_kind pattern Syntax_kind.FIRST_CLASS_MODULE_PATTERN
 
   let opening_token = fun pattern -> Node.first_child_token pattern ~kind:Syntax_kind.LPAREN
 
@@ -3499,7 +3596,7 @@ end
 module RecordPattern: sig
   type t = pattern
   type field = record_pattern_field_view
-  val cast: pattern -> t option
+  val cast: pattern -> t cast_result
 
   val open_wildcard: t -> Token.t option
 
@@ -3510,10 +3607,7 @@ end = struct
   type field = record_pattern_field_view
 
   let cast = fun (pattern: pattern) ->
-    if node_kind_is pattern Syntax_kind.RECORD_PATTERN then
-      Some pattern
-    else
-      None
+    cast_kind pattern Syntax_kind.RECORD_PATTERN
 
   let open_wildcard = record_pattern_open_wildcard
 
@@ -3533,7 +3627,7 @@ module LocalOpenPattern: sig
         closing_token: token;
       }
     | Unknown of node
-  val cast: pattern -> t option
+  val cast: pattern -> t cast_result
 
   val view: t -> view
 
@@ -3559,10 +3653,7 @@ end = struct
     | Unknown of node
 
   let cast = fun (pattern: pattern) ->
-    if node_kind_is pattern Syntax_kind.LOCAL_OPEN_PATTERN then
-      Some pattern
-    else
-      None
+    cast_kind pattern Syntax_kind.LOCAL_OPEN_PATTERN
 
   let dot_token = fun pattern -> Node.first_child_token pattern ~kind:Syntax_kind.DOT
 
@@ -3652,7 +3743,7 @@ module Parameter: sig
         pattern: pattern option;
       }
     | Unknown of Node.t
-  val cast: Node.t -> t option
+  val cast: Node.t -> t cast_result
 
   val view: t -> view
 
@@ -3686,10 +3777,7 @@ end = struct
     | Unknown of Node.t
 
   let cast = fun (node: node) ->
-    if node_matches node is_parameter_node_kind then
-      Some node
-    else
-      None
+    cast_matching node ~expected:parameter_expected_kinds ~matches:is_parameter_node_kind
 
   let parameter_label_token = fun parameter ->
     match first_ident_token parameter with
@@ -3763,7 +3851,7 @@ module MatchCase: sig
         body: expr;
       }
     | Unknown of Node.t
-  val cast: Node.t -> t option
+  val cast: Node.t -> t cast_result
 
   val view: t -> view
 
@@ -3784,10 +3872,7 @@ end = struct
     | Unknown of Node.t
 
   let cast = fun (node: node) ->
-    if node_matches node is_match_case_kind then
-      Some node
-    else
-      None
+    cast_matching node ~expected:[Syntax_kind.MATCH_CASE] ~matches:is_match_case_kind
 
   let pattern = first_pattern_child
 
@@ -3822,7 +3907,7 @@ module LetBinding: sig
         body: expr;
       }
     | Unknown of Node.t
-  val cast: Node.t -> t option
+  val cast: Node.t -> t cast_result
 
   val view: t -> view
 
@@ -3844,10 +3929,7 @@ end = struct
     | Unknown of Node.t
 
   let cast = fun (node: node) ->
-    if node_matches node is_let_binding_kind then
-      Some node
-    else
-      None
+    cast_matching node ~expected:[Syntax_kind.LET_BINDING] ~matches:is_let_binding_kind
 
   let pattern = first_pattern_child
 
@@ -3923,10 +4005,7 @@ module LetDeclaration = struct
   type t = let_declaration
 
   let cast = fun (node: node) ->
-    if node_kind_is node Syntax_kind.LET_DECL then
-      Some node
-    else
-      None
+    cast_kind node Syntax_kind.LET_DECL
 
   let rec_token = fun (decl: let_declaration) ->
     Node.first_child_token
@@ -3961,10 +4040,7 @@ module TypeDeclaration = struct
       }
 
   let cast = fun (node: node) ->
-    if node_kind_is node Syntax_kind.TYPE_DECL then
-      Some node
-    else
-      None
+    cast_kind node Syntax_kind.TYPE_DECL
 
   let first_member_node = fun decl ->
     first_child_node_matching
@@ -4344,10 +4420,7 @@ module TypeExtensionDeclaration = struct
       }
 
   let cast = fun (node: node) ->
-    if node_kind_is node Syntax_kind.TYPE_EXTENSION_DECL then
-      Some node
-    else
-      None
+    cast_kind node Syntax_kind.TYPE_EXTENSION_DECL
 
   let head_node = fun decl ->
     first_child_node_matching
@@ -4560,10 +4633,7 @@ module ModuleDeclaration = struct
       }
 
   let cast = fun (node: node) ->
-    if node_kind_is node Syntax_kind.MODULE_DECL then
-      Some node
-    else
-      None
+    cast_kind node Syntax_kind.MODULE_DECL
 
   let first_member_node = fun decl ->
     first_child_node_matching
@@ -4798,11 +4868,13 @@ module ModuleDeclaration = struct
     match body_node decl with
     | Some node -> (
         match ModuleExpr.cast node with
-        | Some body -> Expr { body }
-        | None -> (
+        | Node body -> Expr { body }
+        | Unknown _
+        | Error _ -> (
             match ModuleTypeExpr.cast node with
-            | Some body -> Type { body }
-            | None -> Unsupported { body = Some node }
+            | Node body -> Type { body }
+            | Unknown _
+            | Error _ -> Unsupported { body = Some node }
           )
       )
     | None -> Unsupported { body = None }
@@ -4928,10 +5000,7 @@ module ModuleTypeDeclaration = struct
       }
 
   let cast = fun (node: node) ->
-    if node_kind_is node Syntax_kind.MODULE_TYPE_DECL then
-      Some node
-    else
-      None
+    cast_kind node Syntax_kind.MODULE_TYPE_DECL
 
   let head_node = fun decl ->
     first_child_node_matching
@@ -5086,23 +5155,25 @@ module ModuleTypeConstraint = struct
       node_kind_is node Syntax_kind.WITH_TYPE_CONSTRAINT
       || node_kind_is node Syntax_kind.WITH_MODULE_CONSTRAINT
     then
-      Some node
+      Node node
     else
-      None
+      cast_failure
+        node
+        ~expected:Syntax_kind.[WITH_TYPE_CONSTRAINT; WITH_MODULE_CONSTRAINT]
 
   let type_path = fun constraint_ ->
     match first_child_node_matching constraint_ ~matches:is_path_kind with
-    | Some node -> Path.cast node
+    | Some node -> cast_result_to_option (Path.cast node)
     | None -> None
 
   let type_body = fun constraint_ ->
     match nth_child_node_matching constraint_ 1 ~matches:is_type_expr_kind with
-    | Some node -> TypeExpr.cast node
+    | Some node -> cast_result_to_option (TypeExpr.cast node)
     | None -> None
 
   let module_path = fun constraint_ ->
     match first_child_node_matching constraint_ ~matches:is_path_kind with
-    | Some node -> Path.cast node
+    | Some node -> cast_result_to_option (Path.cast node)
     | None -> None
 
   let module_body = fun constraint_ ->
@@ -5138,10 +5209,7 @@ module OpenDeclaration = struct
   type t = open_declaration
 
   let cast = fun (node: node) ->
-    if node_kind_is node Syntax_kind.OPEN_DECL then
-      Some node
-    else
-      None
+    cast_kind node Syntax_kind.OPEN_DECL
 
   let path_text = Node.text
 
@@ -5161,10 +5229,7 @@ module IncludeDeclaration = struct
   type t = include_declaration
 
   let cast = fun (node: node) ->
-    if node_kind_is node Syntax_kind.INCLUDE_DECL then
-      Some node
-    else
-      None
+    cast_kind node Syntax_kind.INCLUDE_DECL
 
   let path_text = Node.text
 
@@ -5245,10 +5310,7 @@ module ValueDeclaration = struct
     | Unknown of node
 
   let cast = fun (node: node) ->
-    if node_kind_is node Syntax_kind.VAL_DECL then
-      Some node
-    else
-      None
+    cast_kind node Syntax_kind.VAL_DECL
 
   let name = first_ident_token
 
@@ -5299,10 +5361,7 @@ module ExternalDeclaration = struct
     | Unknown of node
 
   let cast = fun (node: node) ->
-    if node_kind_is node Syntax_kind.EXTERNAL_DECL then
-      Some node
-    else
-      None
+    cast_kind node Syntax_kind.EXTERNAL_DECL
 
   let name = first_ident_token
 
@@ -5394,10 +5453,7 @@ module ExceptionDeclaration = struct
     | Unknown of node
 
   let cast = fun (node: node) ->
-    if node_kind_is node Syntax_kind.EXCEPTION_DECL then
-      Some node
-    else
-      None
+    cast_kind node Syntax_kind.EXCEPTION_DECL
 
   let head_node = fun decl ->
     first_child_node_matching
@@ -5421,7 +5477,7 @@ module ExceptionDeclaration = struct
     | Some rhs when node_kind_is rhs Syntax_kind.EXCEPTION_ALIAS ->
         let path =
           match first_child_node_matching rhs ~matches:is_path_kind with
-          | Some path -> Path.cast path
+          | Some path -> cast_result_to_option (Path.cast path)
           | None -> None
         in
         (
@@ -5451,10 +5507,7 @@ module ExtensionItem = struct
   type t = extension_item
 
   let cast = fun (node: node) ->
-    if node_kind_is node Syntax_kind.EXTENSION_ITEM then
-      Some node
-    else
-      None
+    cast_kind node Syntax_kind.EXTENSION_ITEM
 
   let for_each_shell_token = Node.for_each_child_token
 end
@@ -5463,10 +5516,7 @@ module AttributeItem = struct
   type t = attribute_item
 
   let cast = fun (node: node) ->
-    if node_kind_is node Syntax_kind.ATTRIBUTE_ITEM then
-      Some node
-    else
-      None
+    cast_kind node Syntax_kind.ATTRIBUTE_ITEM
 
   let for_each_shell_token = Node.for_each_child_token
 end
@@ -5475,10 +5525,7 @@ module ExprItem = struct
   type t = expr_item
 
   let cast = fun (node: node) ->
-    if node_kind_is node Syntax_kind.EXPR_ITEM then
-      Some node
-    else
-      None
+    cast_kind node Syntax_kind.EXPR_ITEM
 
   let expr = first_expr_child
 end
@@ -5502,10 +5549,7 @@ module StructureItem = struct
     | Unknown of Node.t
 
   let cast = fun (node: node) ->
-    if node_kind_is node Syntax_kind.STRUCTURE_ITEM then
-      Some node
-    else
-      None
+    cast_kind node Syntax_kind.STRUCTURE_ITEM
 
   let declaration = fun (item: structure_item) ->
     first_child_node_matching
@@ -5553,10 +5597,7 @@ module SignatureItem = struct
     | Unknown of Node.t
 
   let cast = fun (node: node) ->
-    if node_kind_is node Syntax_kind.SIGNATURE_ITEM then
-      Some node
-    else
-      None
+    cast_kind node Syntax_kind.SIGNATURE_ITEM
 
   let declaration = fun (item: signature_item) ->
     first_child_node_matching
@@ -5588,10 +5629,7 @@ module Implementation = struct
   type t = implementation
 
   let cast = fun (node: node) ->
-    if node_kind_is node Syntax_kind.IMPLEMENTATION then
-      Some node
-    else
-      None
+    cast_kind node Syntax_kind.IMPLEMENTATION
 
   let for_each_item = fun (impl: implementation) ~fn ->
     for_each_child_node_matching
@@ -5604,10 +5642,7 @@ module Interface = struct
   type t = interface
 
   let cast = fun (node: node) ->
-    if node_kind_is node Syntax_kind.INTERFACE then
-      Some node
-    else
-      None
+    cast_kind node Syntax_kind.INTERFACE
 
   let for_each_item = fun (interface: interface) ~fn ->
     for_each_child_node_matching

@@ -686,9 +686,9 @@ module Ast_deps = struct
     | _ -> collect_child_nodes collect_node env deps node
 
   and collect_local_open env deps node =
-    match A.Expr.cast node with
+    match A.cast_result_to_option (A.Expr.cast node) with
     | Some expr -> (
-        match A.LocalOpenExpr.cast expr with
+        match A.cast_result_to_option (A.LocalOpenExpr.cast expr) with
         | Some local_open ->
             (
               match A.LocalOpenExpr.view local_open with
@@ -717,7 +717,7 @@ module Ast_deps = struct
     collect_child_nodes collect_node env deps node
 
   and collect_let_binding env deps node =
-    match A.LetBinding.cast node with
+    match A.cast_result_to_option (A.LetBinding.cast node) with
     | None -> collect_child_nodes collect_node env deps node
     | Some binding ->
         let parameters = Vector.with_capacity ~size:4 in
@@ -758,7 +758,7 @@ module Ast_deps = struct
         )
 
   and collect_match_case env deps node =
-    match A.MatchCase.cast node with
+    match A.cast_result_to_option (A.MatchCase.cast node) with
     | None -> collect_child_nodes collect_node env deps node
     | Some match_case ->
         (

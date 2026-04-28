@@ -142,16 +142,17 @@ let prepare_arena = fun arena tree ->
 let cached_cast:
   type value. value cached array ->
   A.Node.t ->
-  (A.Node.t -> value option) ->
+  (A.Node.t -> value A.cast_result) ->
   value option = fun slots node cast ->
+  let cast_node node = A.cast_result_to_option (cast node) in
   let index = node.Ast.id in
   if index < 0 || index >= Array.length slots then
-    cast node
+    cast_node node
   else
     match Array.get_unchecked slots ~at:index with
     | Cached value -> value
     | Unknown ->
-        let value = cast node in
+        let value = cast_node node in
         Array.set_unchecked slots ~at:index ~value:(Cached value);
         value
 
@@ -239,7 +240,7 @@ let parameter = fun visitor (node: A.Node.t) ->
       | Syntax_kind.LABELED_PARAM
       | Syntax_kind.OPTIONAL_PARAM
       | Syntax_kind.OPTIONAL_PARAM_DEFAULT -> A.Parameter.cast node
-      | _ -> None)
+      | _ -> A.Unknown node)
 
 let type_expr = fun visitor (node: A.Node.t) ->
   prepare_arena visitor.arena node.Ast.tree;

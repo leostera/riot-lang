@@ -40,14 +40,14 @@ let raw_first_child_expr = fun expr ->
     ~fn:(fun child ->
       match !found with
       | Some _ -> ()
-      | None -> found := Ast.Expr.cast child);
+      | None -> found := Ast.cast_result_to_option (Ast.Expr.cast child));
   !found
 
 let raw_for_each_child_expr = fun expr ~fn ->
   Ast.Node.for_each_child_node
     expr
     ~fn:(fun child ->
-      match Ast.Expr.cast child with
+      match Ast.cast_result_to_option (Ast.Expr.cast child) with
       | Some child -> fn child
       | None -> ())
 

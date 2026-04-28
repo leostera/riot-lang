@@ -234,7 +234,7 @@ let executable_parameter_to_string = fun parameter ->
 
 let rec is_labeled_args_parameter = fun parameter ->
   let module Ast = Syn.Ast in
-  match Ast.Parameter.cast parameter with
+  match Ast.cast_result_to_option (Ast.Parameter.cast parameter) with
   | Some param -> (
       match Ast.Parameter.view param with
       | Ast.Parameter.Param { label = Ast.Parameter.Labeled { name = Some label }; _ } ->

@@ -49,7 +49,7 @@ let rec check_parameter_pattern = fun ctx diagnostics pattern ->
     | _ -> ()
 
 let rec check_pattern_node_tree = fun ctx diagnostics node ->
-  match Ast.Pattern.cast node with
+  match Ast.cast_result_to_option (Ast.Pattern.cast node) with
   | Some pattern ->
       if not (is_named_parameter_pattern pattern) then (
         check_parameter_pattern ctx diagnostics pattern;
@@ -75,7 +75,7 @@ let check_let_binding_parameters = fun ctx diagnostics binding ->
   Ast.Node.for_each_child_node
     (binding: Ast.Node.t)
     ~fn:(fun node ->
-      match Ast.Pattern.cast node with
+      match Ast.cast_result_to_option (Ast.Pattern.cast node) with
       | Some pattern ->
           if !seen_binding_pattern then
             check_pattern_tree ctx diagnostics pattern

@@ -150,7 +150,7 @@ let first_child_expr = fun node ->
       match !found with
       | Some _ -> ()
       | None -> (
-          match Ast.Expr.cast child with
+          match Ast.cast_result_to_option (Ast.Expr.cast child) with
           | Some expr -> found := Some expr
           | None -> ()
         ));
@@ -1802,7 +1802,7 @@ let test_module_type_with_constraint_views = fun _ctx ->
         match Ast.ModuleTypeDeclaration.base_module_type decl with
         | Some base ->
             let path =
-              Ast.Path.cast base
+              Ast.cast_result_to_option (Ast.Path.cast base)
               |> require_some ~msg:"expected constrained base path"
             in
             let name =
@@ -2005,7 +2005,7 @@ let { x; y = z; _ } = record
     |> Result.expect ~msg:"expected record expression"
   in
   let record_view =
-    Ast.RecordExpr.cast record_expr
+    Ast.cast_result_to_option (Ast.RecordExpr.cast record_expr)
     |> require_some ~msg:"expected record expression view"
   in
   let record_fields = Vector.with_capacity ~size:(Ast.Node.child_count record_view) in
@@ -2026,7 +2026,7 @@ let { x; y = z; _ } = record
     |> Result.expect ~msg:"expected update expression"
   in
   let update_view =
-    Ast.RecordExpr.cast update_expr
+    Ast.cast_result_to_option (Ast.RecordExpr.cast update_expr)
     |> require_some ~msg:"expected record update view"
   in
   (
@@ -2057,7 +2057,7 @@ let { x; y = z; _ } = record
     |> Result.expect ~msg:"expected scoped record expression"
   in
   let scoped_local_open =
-    Ast.LocalOpenExpr.cast scoped_expr
+    Ast.cast_result_to_option (Ast.LocalOpenExpr.cast scoped_expr)
     |> require_some ~msg:"expected local open record expression"
   in
   (
@@ -2065,7 +2065,7 @@ let { x; y = z; _ } = record
     | Ast.LocalOpenExpr.Delimited { module_path; body; _ } ->
         Test.assert_equal ~expected:"Lockfile" ~actual:(last_path_text module_path);
         let scoped_record =
-          Ast.RecordExpr.cast body
+          Ast.cast_result_to_option (Ast.RecordExpr.cast body)
           |> require_some ~msg:"expected scoped record body"
         in
         let scoped_fields = Vector.with_capacity ~size:(Ast.Node.child_count scoped_record) in
@@ -2090,7 +2090,7 @@ let { x; y = z; _ } = record
     |> Result.expect ~msg:"expected record pattern"
   in
   let pattern_view =
-    Ast.RecordPattern.cast record_pattern
+    Ast.cast_result_to_option (Ast.RecordPattern.cast record_pattern)
     |> require_some ~msg:"expected record pattern view"
   in
   let pattern_fields = Vector.with_capacity ~size:(Ast.Node.child_count pattern_view) in
@@ -2157,7 +2157,7 @@ let test_binding_operator_views = fun _ctx ->
     |> Result.expect ~msg:"expected binding operator expression"
   in
   let binding_operator =
-    Ast.BindingOperatorExpr.cast expr
+    Ast.cast_result_to_option (Ast.BindingOperatorExpr.cast expr)
     |> require_some ~msg:"expected binding operator view"
   in
   let clauses = ref [] in
@@ -2263,7 +2263,7 @@ let test_local_open_views = fun _ctx ->
     |> Result.expect ~msg:"expected local open body"
   in
   let local_open =
-    Ast.LocalOpenExpr.cast local_open_expr
+    Ast.cast_result_to_option (Ast.LocalOpenExpr.cast local_open_expr)
     |> require_some ~msg:"expected local open expression view"
   in
   (
@@ -2297,7 +2297,7 @@ let test_local_open_views = fun _ctx ->
     |> Result.expect ~msg:"expected local open pattern"
   in
   let local_open_pattern =
-    Ast.LocalOpenPattern.cast local_open_pattern
+    Ast.cast_result_to_option (Ast.LocalOpenPattern.cast local_open_pattern)
     |> require_some ~msg:"expected local open pattern view"
   in
   let* () =
@@ -2323,7 +2323,7 @@ let test_local_open_views = fun _ctx ->
     |> Result.expect ~msg:"expected local open record pattern"
   in
   let local_open_record_pattern =
-    Ast.LocalOpenPattern.cast local_open_record_pattern
+    Ast.cast_result_to_option (Ast.LocalOpenPattern.cast local_open_record_pattern)
     |> require_some ~msg:"expected local open record pattern view"
   in
   Test.assert_equal
@@ -2385,7 +2385,7 @@ let test_local_open_argument_views = fun _ctx ->
         | _ -> panic "expected pid argument"
       );
       let local_open =
-        Ast.LocalOpenExpr.cast local_open_arg
+        Ast.cast_result_to_option (Ast.LocalOpenExpr.cast local_open_arg)
         |> require_some ~msg:"expected local open argument"
       in
       (
@@ -2443,7 +2443,7 @@ let test_local_open_labeled_argument_views = fun _ctx ->
         match assert_labeled_argument root_arg "root" with
         | Some value ->
             let local_open =
-              Ast.LocalOpenExpr.cast value
+              Ast.cast_result_to_option (Ast.LocalOpenExpr.cast value)
               |> require_some ~msg:"expected local open root value"
             in
             (
@@ -2483,7 +2483,7 @@ let test_first_class_module_views = fun _ctx ->
     |> Result.expect ~msg:"expected packed module body"
   in
   let packed =
-    Ast.FirstClassModuleExpr.cast packed
+    Ast.cast_result_to_option (Ast.FirstClassModuleExpr.cast packed)
     |> require_some ~msg:"expected first-class module view"
   in
   Test.assert_equal
@@ -2502,7 +2502,7 @@ let test_first_class_module_views = fun _ctx ->
     |> Result.expect ~msg:"expected typed module body"
   in
   let typed =
-    Ast.FirstClassModuleExpr.cast typed
+    Ast.cast_result_to_option (Ast.FirstClassModuleExpr.cast typed)
     |> require_some ~msg:"expected typed first-class module view"
   in
   Test.assert_equal
@@ -2527,7 +2527,7 @@ let test_first_class_module_views = fun _ctx ->
     |> Result.expect ~msg:"expected advanced module body"
   in
   let advanced =
-    Ast.FirstClassModuleExpr.cast advanced
+    Ast.cast_result_to_option (Ast.FirstClassModuleExpr.cast advanced)
     |> require_some ~msg:"expected advanced first-class module view"
   in
   Test.assert_equal
@@ -2555,7 +2555,7 @@ let test_let_module_expression_views = fun _ctx ->
     |> Result.expect ~msg:"expected let module body"
   in
   let module_expr =
-    Ast.LetModuleExpr.cast value_expr
+    Ast.cast_result_to_option (Ast.LetModuleExpr.cast value_expr)
     |> require_some ~msg:"expected let module expression view"
   in
   let module_token =
@@ -2601,7 +2601,7 @@ let test_let_module_expression_views = fun _ctx ->
     |> Result.expect ~msg:"expected empty let module body"
   in
   let empty_module =
-    Ast.LetModuleExpr.cast empty_expr
+    Ast.cast_result_to_option (Ast.LetModuleExpr.cast empty_expr)
     |> require_some ~msg:"expected empty let module view"
   in
   Test.assert_equal
@@ -2616,7 +2616,7 @@ let test_let_module_expression_views = fun _ctx ->
     |> Result.expect ~msg:"expected nested let module body"
   in
   let nested_module =
-    Ast.LetModuleExpr.cast nested_expr
+    Ast.cast_result_to_option (Ast.LetModuleExpr.cast nested_expr)
     |> require_some ~msg:"expected nested let module view"
   in
   let nested_body =
@@ -2643,7 +2643,7 @@ let test_let_exception_expression_views = fun _ctx ->
     |> Result.expect ~msg:"expected let exception body"
   in
   let exception_expr =
-    Ast.LetExceptionExpr.cast value_expr
+    Ast.cast_result_to_option (Ast.LetExceptionExpr.cast value_expr)
     |> require_some ~msg:"expected let exception expression view"
   in
   let exception_token =
@@ -2688,7 +2688,7 @@ let test_let_exception_expression_views = fun _ctx ->
     |> Result.expect ~msg:"expected bare let exception body"
   in
   let bare_exception =
-    Ast.LetExceptionExpr.cast bare_expr
+    Ast.cast_result_to_option (Ast.LetExceptionExpr.cast bare_expr)
     |> require_some ~msg:"expected bare let exception view"
   in
   (
@@ -2717,7 +2717,7 @@ let test_unreachable_expression_views = fun _ctx ->
     ~fn:(fun match_case ->
       match Ast.MatchCase.view match_case with
       | Ast.MatchCase.Case { body; _ } -> (
-          match Ast.UnreachableExpr.cast body with
+          match Ast.cast_result_to_option (Ast.UnreachableExpr.cast body) with
           | Some _ -> unreachable := Some body
           | None -> ()
         )
@@ -2727,7 +2727,7 @@ let test_unreachable_expression_views = fun _ctx ->
     |> require_some ~msg:"expected unreachable expression"
   in
   let unreachable =
-    Ast.UnreachableExpr.cast unreachable
+    Ast.cast_result_to_option (Ast.UnreachableExpr.cast unreachable)
     |> require_some ~msg:"expected unreachable expression view"
   in
   let dot =
@@ -2769,7 +2769,7 @@ let test_attribute_views = fun _ctx ->
     | _ -> panic "expected attributed expression to unwrap to its inner path"
   );
   let attribute_expr =
-    Ast.AttributeExpr.cast attribute_expr
+    Ast.cast_result_to_option (Ast.AttributeExpr.cast attribute_expr)
     |> require_some ~msg:"expected attribute expression view"
   in
   Test.assert_equal
@@ -2789,7 +2789,7 @@ let test_attribute_views = fun _ctx ->
     |> require_some ~msg:"expected parenthesized attribute pattern"
   in
   let attribute_pattern =
-    Ast.AttributePattern.cast attribute_pattern
+    Ast.cast_result_to_option (Ast.AttributePattern.cast attribute_pattern)
     |> require_some ~msg:"expected attribute pattern view"
   in
   (
@@ -2832,7 +2832,7 @@ let test_extension_views = fun _ctx ->
     | _ -> panic "expected extension expression to lower as unknown"
   );
   let extension_expr =
-    Ast.ExtensionExpr.cast extension_expr
+    Ast.cast_result_to_option (Ast.ExtensionExpr.cast extension_expr)
     |> require_some ~msg:"expected extension expression view"
   in
   Test.assert_equal
@@ -2853,7 +2853,7 @@ let test_extension_views = fun _ctx ->
     | _ -> panic "expected extension pattern to lower as unknown"
   );
   let extension_pattern =
-    Ast.ExtensionPattern.cast extension_pattern
+    Ast.cast_result_to_option (Ast.ExtensionPattern.cast extension_pattern)
     |> require_some ~msg:"expected extension pattern view"
   in
   Test.assert_equal
@@ -2912,7 +2912,7 @@ let test_special_pattern_views = fun _ctx ->
   match List.reverse !parameters with
   | [ locally_abstract; first_class_module ] ->
       let locally_abstract =
-        Ast.LocallyAbstractTypePattern.cast locally_abstract
+        Ast.cast_result_to_option (Ast.LocallyAbstractTypePattern.cast locally_abstract)
         |> require_some ~msg:"expected locally abstract type pattern view"
       in
       let type_names = ref [] in
@@ -2929,7 +2929,7 @@ let test_special_pattern_views = fun _ctx ->
         | _ -> panic "expected first-class module pattern"
       );
       let first_class_module =
-        Ast.FirstClassModulePattern.cast first_class_module
+        Ast.cast_result_to_option (Ast.FirstClassModulePattern.cast first_class_module)
         |> require_some ~msg:"expected first-class module pattern view"
       in
       let binder =
@@ -2971,7 +2971,7 @@ let test_first_class_module_pattern_with_constraints_view = fun _ctx ->
       match Ast.Pattern.view first_class_module with
       | Ast.Pattern.FirstClassModule { ascription; _ } ->
           let first_class_module =
-            Ast.FirstClassModulePattern.cast first_class_module
+            Ast.cast_result_to_option (Ast.FirstClassModulePattern.cast first_class_module)
             |> require_some ~msg:"expected constrained first-class module pattern view"
           in
           Test.assert_equal ~expected:Ast.UnsupportedAscription ~actual:ascription;
@@ -3001,7 +3001,7 @@ let test_typed_labeled_parameter_view = fun _ctx ->
     ~fn:(fun pattern -> parameters := pattern :: !parameters);
   match List.reverse !parameters with
   | [ _locally_abstract; _iter; labeled ] -> (
-      match Ast.Parameter.cast labeled with
+      match Ast.cast_result_to_option (Ast.Parameter.cast labeled) with
       | Some parameter -> (
           match Ast.Parameter.view parameter with
           | Ast.Parameter.Param {
@@ -3048,7 +3048,7 @@ let test_optional_default_labeled_parameter_view = fun _ctx ->
     ~fn:(fun pattern -> parameters := pattern :: !parameters);
   match List.reverse !parameters with
   | [ optional; _types ] -> (
-      match Ast.Parameter.cast optional with
+      match Ast.cast_result_to_option (Ast.Parameter.cast optional) with
       | Some parameter -> (
           match Ast.Parameter.view parameter with
           | Ast.Parameter.Param {

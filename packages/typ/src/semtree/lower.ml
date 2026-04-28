@@ -137,7 +137,7 @@ let collect_path = fun for_each_ident ->
 let path_of_path = fun path -> collect_path (Ast.Path.for_each_ident path)
 
 let path_of_node = fun node ->
-  match Ast.Path.cast node with
+  match Ast.cast_result_to_option (Ast.Path.cast node) with
   | Some path -> Some (path_of_path path)
   | None -> None
 
@@ -289,7 +289,7 @@ let return_annotation_of_binding = fun binding ->
   Ast.Node.for_each_child_node
     binding
     ~fn:(fun node ->
-      match Ast.Pattern.cast node with
+      match Ast.cast_result_to_option (Ast.Pattern.cast node) with
       | None -> ()
       | Some pattern ->
           if !seen_first_pattern then

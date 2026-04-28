@@ -136,7 +136,7 @@ let first_child_type_expr = fun type_expr ->
   !found
 
 let rec unwrap_expr = fun expr ->
-  match Ast.AttributeExpr.cast expr with
+  match Ast.cast_result_to_option (Ast.AttributeExpr.cast expr) with
   | Some attribute -> (
       match Ast.AttributeExpr.inner attribute with
       | Some inner -> unwrap_expr inner
@@ -151,7 +151,7 @@ let rec unwrap_expr = fun expr ->
         expr
 
 let rec unwrap_pattern = fun pattern ->
-  match Ast.AttributePattern.cast pattern with
+  match Ast.cast_result_to_option (Ast.AttributePattern.cast pattern) with
   | Some attribute -> (
       match Ast.AttributePattern.inner attribute with
       | Some inner -> unwrap_pattern inner
@@ -183,7 +183,7 @@ let parameter_kind = fun pattern ->
   | Syn.SyntaxKind.OPTIONAL_PARAM
   | Syn.SyntaxKind.OPTIONAL_PARAM_DEFAULT -> (
       let parameter =
-        Ast.Parameter.cast pattern
+        Ast.cast_result_to_option (Ast.Parameter.cast pattern)
         |> Option.expect ~msg:"expected syntactic parameter view"
       in
       match Ast.Parameter.view parameter with
@@ -230,7 +230,7 @@ let rec parameter_name_token = fun pattern ->
   | Syn.SyntaxKind.OPTIONAL_PARAM
   | Syn.SyntaxKind.OPTIONAL_PARAM_DEFAULT -> (
       let parameter =
-        Ast.Parameter.cast pattern
+        Ast.cast_result_to_option (Ast.Parameter.cast pattern)
         |> Option.expect ~msg:"expected syntactic parameter view"
       in
       match Ast.Parameter.view parameter with

@@ -545,7 +545,7 @@ let let_binding_return_annotations = fun binding ->
   Ast.Node.for_each_child_node
     binding
     ~fn:(fun node ->
-      match Ast.Pattern.cast node with
+      match Ast.cast_result_to_option (Ast.Pattern.cast node) with
       | Some pattern ->
           if !seen_first_pattern then
             (
@@ -569,7 +569,7 @@ let fun_parameters = fun expr ->
   Ast.Node.for_each_child_node
     expr
     ~fn:(fun node ->
-      match Ast.Pattern.cast node with
+      match Ast.cast_result_to_option (Ast.Pattern.cast node) with
       | Some pattern -> collect_parameter_pattern parameters pattern
       | None -> ());
   Vector.to_array parameters
@@ -953,7 +953,7 @@ let rec infer_expression = fun state env ~level expression ->
         || Syn.SyntaxKind.(Ast.Node.kind node = STRING_INDEX_EXPR)
       then
         add_diagnostic state (unsupported_syntax node "index expression")
-      else if Option.is_some (Ast.FirstClassModuleExpr.cast node) then
+      else if Option.is_some (Ast.cast_result_to_option (Ast.FirstClassModuleExpr.cast node)) then
         add_diagnostic state (unsupported_syntax node "first-class module expression")
       else
         add_diagnostic state (unsupported_syntax node "unsupported expression");
@@ -1018,11 +1018,11 @@ and infer_lambda = fun state env ~level parameters body ->
       TArrow (parameter_ty, result_ty)
 
 and infer_parameter = fun state env ~level parameter ->
-  match Ast.Parameter.cast parameter with
+  match Ast.cast_result_to_option (Ast.Parameter.cast parameter) with
   | Some parameter_node -> (
       match Ast.Parameter.view parameter_node with
       | Ast.Parameter.Param { label = Ast.Parameter.NoLabel; pattern = Some pattern } ->
-          if Option.is_some (Ast.LocallyAbstractTypePattern.cast pattern) then (
+          if Option.is_some (Ast.cast_result_to_option (Ast.LocallyAbstractTypePattern.cast pattern)) then (
             add_diagnostic state (unsupported_syntax pattern "locally abstract parameter");
             (fresh_tyvar state ~level, [])
           ) else
@@ -1041,7 +1041,7 @@ and infer_parameter = fun state env ~level parameter ->
       | Ast.Parameter.Unknown _ -> (fresh_tyvar state ~level, [])
     )
   | None ->
-      if Option.is_some (Ast.LocallyAbstractTypePattern.cast parameter) then (
+      if Option.is_some (Ast.cast_result_to_option (Ast.LocallyAbstractTypePattern.cast parameter)) then (
         add_diagnostic state (unsupported_syntax parameter "locally abstract parameter");
         (fresh_tyvar state ~level, [])
       ) else

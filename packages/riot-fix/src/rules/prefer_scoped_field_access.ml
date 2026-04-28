@@ -149,7 +149,7 @@ let check_expr = fun ctx diagnostics visitor expr ->
     | Ast.Expr.Ident { path } -> check_path_access ctx diagnostics expr path
     | Ast.Expr.Record _ ->
         Option.for_each
-          (Ast.RecordExpr.cast expr)
+          (Ast.cast_result_to_option (Ast.RecordExpr.cast expr))
           ~fn:(fun record ->
             if record_expr_repeats_qualifier ctx record then
               H.push_diagnostic

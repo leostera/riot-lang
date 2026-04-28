@@ -58,7 +58,7 @@ let rec check_type_expr = fun ctx diagnostics ~allow_named_alias_root type_expr 
         Ast.Node.for_each_child_node
           node
           ~fn:(fun node ->
-            match Ast.TypeExpr.cast node with
+            match Ast.cast_result_to_option (Ast.TypeExpr.cast node) with
             | Some type_expr ->
                 check_type_expr ctx diagnostics ~allow_named_alias_root:false type_expr
             | None -> ())
