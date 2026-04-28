@@ -1019,10 +1019,21 @@ module ModuleDeclaration: sig
   end
 
   type body =
-    | Path
-    | Struct
-    | Sig
-    | Unsupported
+    | Path of {
+        path: path;
+      }
+    | Struct of {
+        body: Node.t;
+      }
+    | Sig of {
+        body: Node.t;
+      }
+    | Typeof of {
+        body: Node.t;
+      }
+    | Unsupported of {
+        body: Node.t option;
+      }
   val cast: Node.t -> t option
 
   val name: t -> Token.t option

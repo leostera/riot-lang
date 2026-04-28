@@ -4308,10 +4308,21 @@ module ModuleDeclaration = struct
   type member = { declaration: module_declaration; node: node; start_index: int; stop_index: int }
 
   type body =
-    | Path
-    | Struct
-    | Sig
-    | Unsupported
+    | Path of {
+        path: path;
+      }
+    | Struct of {
+        body: node;
+      }
+    | Sig of {
+        body: node;
+      }
+    | Typeof of {
+        body: node;
+      }
+    | Unsupported of {
+        body: node option;
+      }
 
   let cast = fun (node: node) ->
     if node_kind_is node Syntax_kind.MODULE_DECL then
@@ -4551,10 +4562,18 @@ module ModuleDeclaration = struct
   let body = fun decl ->
     match body_specific_node decl with
     | Some node when node_kind_is node Syntax_kind.PATH_MODULE_EXPR
-    || node_kind_is node Syntax_kind.PATH_MODULE_TYPE -> Path
-    | Some node when node_kind_is node Syntax_kind.STRUCT_MODULE_EXPR -> Struct
-    | Some node when node_kind_is node Syntax_kind.SIGNATURE_MODULE_TYPE -> Sig
-    | _ -> Unsupported
+    || node_kind_is node Syntax_kind.PATH_MODULE_TYPE -> (
+        match Path.cast node with
+        | Some path -> Path { path }
+        | None -> Unsupported { body = Some node }
+      )
+    | Some node when node_kind_is node Syntax_kind.STRUCT_MODULE_EXPR ->
+        Struct { body = node }
+    | Some node when node_kind_is node Syntax_kind.SIGNATURE_MODULE_TYPE ->
+        Sig { body = node }
+    | Some node when node_kind_is node Syntax_kind.TYPEOF_MODULE_TYPE ->
+        Typeof { body = node }
+    | body -> Unsupported { body }
 
   let structure_body_node = fun decl ->
     match body_specific_node decl with

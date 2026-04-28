@@ -608,12 +608,13 @@ and collect_signature_symbols = fun text collect ->
 
 and module_declaration_children = fun text declaration ->
   match Syn.Ast.ModuleDeclaration.body declaration with
-  | Syn.Ast.ModuleDeclaration.Struct ->
+  | Syn.Ast.ModuleDeclaration.Struct _ ->
       collect_structure_symbols text (Syn.Ast.ModuleDeclaration.for_each_structure_item declaration)
-  | Syn.Ast.ModuleDeclaration.Sig ->
+  | Syn.Ast.ModuleDeclaration.Sig _ ->
       collect_signature_symbols text (Syn.Ast.ModuleDeclaration.for_each_signature_item declaration)
-  | Syn.Ast.ModuleDeclaration.Path
-  | Syn.Ast.ModuleDeclaration.Unsupported -> []
+  | Syn.Ast.ModuleDeclaration.Path _
+  | Syn.Ast.ModuleDeclaration.Typeof _
+  | Syn.Ast.ModuleDeclaration.Unsupported _ -> []
 
 and module_declaration_symbols = fun text declaration ->
   Syn.Ast.ModuleDeclaration.fold_members

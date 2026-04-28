@@ -8749,16 +8749,17 @@ and module_declaration_has_head_parameter = fun decl ->
   !found
 
 and module_declaration_has_empty_struct_body = fun decl ->
-  Ast.ModuleDeclaration.body decl = Struct
-  && Vector.is_empty (collect_structure_items_from_module_decl decl)
+  match Ast.ModuleDeclaration.body decl with
+  | Struct _ -> Vector.is_empty (collect_structure_items_from_module_decl decl)
+  | _ -> false
 
 and render_module_declaration = fun state decl ->
   if module_declaration_has_ascribed_body decl || module_declaration_has_head_parameter decl then
     render_module_declaration_members state decl
   else
     match Ast.ModuleDeclaration.body decl with
-    | Unsupported when not (Ast.ModuleDeclaration.has_typeof_body decl)
-    && not (node_has_token_kind decl Kind.PERCENT) -> render_module_declaration_members state decl
+    | Unsupported _ when not (node_has_token_kind decl Kind.PERCENT) ->
+        render_module_declaration_members state decl
     | body ->
         emit_text state "module";
         (
@@ -8776,11 +8777,11 @@ and render_module_declaration = fun state decl ->
         );
         (
           match body with
-          | Path ->
+          | Path { path } ->
               render_module_declaration_separator state decl ~default:"=";
-              render_module_body_path state (Ast.ModuleDeclaration.for_each_body_path_ident decl);
+              render_module_body_path state (Ast.Path.for_each_ident path);
               render_wrapped_module_body_attribute_suffix state decl
-          | Struct ->
+          | Struct _ ->
               let items = collect_structure_items_from_module_decl decl in
               if Vector.is_empty items then (
                 emit_space state;
@@ -8813,15 +8814,14 @@ and render_module_declaration = fun state decl ->
                 emit_text state "end"
               );
               render_wrapped_module_body_attribute_suffix state decl
-          | Sig ->
+          | Sig _ ->
               render_module_declaration_separator state decl ~default:":";
               let items = collect_signature_items_from_module_decl decl in
               render_signature_body state items ~end_token:(Ast.ModuleDeclaration.end_token decl);
               render_wrapped_module_body_attribute_suffix state decl
-          | Unsupported ->
-              if Ast.ModuleDeclaration.has_typeof_body decl then
-                render_module_typeof_body state decl
-              else if node_has_token_kind decl Kind.PERCENT then
+          | Typeof _ -> render_module_typeof_body state decl
+          | Unsupported _ ->
+              if node_has_token_kind decl Kind.PERCENT then
                 render_shell_body_after_separator
                   state
                   decl
@@ -9269,8 +9269,11 @@ and structure_item_is_open = fun item ->
 
 and structure_item_is_module_path_alias = fun item ->
   match Ast.StructureItem.view item with
-  | Module decl ->
-      Ast.ModuleDeclaration.body decl = Path && not (module_declaration_has_ascribed_body decl)
+  | Module decl -> (
+      match Ast.ModuleDeclaration.body decl with
+      | Path _ -> not (module_declaration_has_ascribed_body decl)
+      | _ -> false
+    )
   | _ -> false
 
 and signature_items_join_tightly = fun left right ->

@@ -1469,9 +1469,14 @@ let test_module_declaration_tokens = fun _ctx ->
         in
         Test.assert_equal ~expected:"rec" ~actual:(Ast.Token.text rec_token);
         Test.assert_equal ~expected:"M" ~actual:(Ast.Token.text name);
-        Test.assert_equal
-          ~expected:Ast.ModuleDeclaration.Struct
-          ~actual:(Ast.ModuleDeclaration.body decl)
+        (
+          match Ast.ModuleDeclaration.body decl with
+          | Ast.ModuleDeclaration.Struct { body } ->
+              Test.assert_equal
+                ~expected:SyntaxKind.STRUCT_MODULE_EXPR
+                ~actual:(Ast.Node.kind body)
+          | _ -> panic "expected struct module declaration body"
+        )
     | _ -> panic "expected first module declaration"
   );
   (
@@ -1496,9 +1501,12 @@ let test_module_declaration_tokens = fun _ctx ->
           decl
           ~fn:(fun token -> segments := Ast.Token.text token :: !segments);
         Test.assert_equal ~expected:"=" ~actual:(Ast.Token.text separator);
-        Test.assert_equal
-          ~expected:Ast.ModuleDeclaration.Path
-          ~actual:(Ast.ModuleDeclaration.body decl);
+        (
+          match Ast.ModuleDeclaration.body decl with
+          | Ast.ModuleDeclaration.Path { path } ->
+              Test.assert_equal ~expected:SyntaxKind.PATH_MODULE_EXPR ~actual:(Ast.Node.kind path)
+          | _ -> panic "expected path module declaration body"
+        );
         Test.assert_equal ~expected:[ "Foo"; "Bar" ] ~actual:(List.reverse !segments)
     | _ -> panic "expected third module declaration"
   );
@@ -1632,6 +1640,12 @@ let test_signature_module_typeof_declaration = fun _ctx ->
       in
       Test.assert_equal ~expected:":" ~actual:(Ast.Token.text separator);
       Test.assert_equal ~expected:SyntaxKind.TYPEOF_MODULE_TYPE ~actual:(Ast.Node.kind module_type);
+      (
+        match Ast.ModuleDeclaration.body decl with
+        | Ast.ModuleDeclaration.Typeof { body } ->
+            Test.assert_equal ~expected:SyntaxKind.TYPEOF_MODULE_TYPE ~actual:(Ast.Node.kind body)
+        | _ -> panic "expected module type of declaration body"
+      );
       Ok ()
   | _ -> Error "expected module declaration"
 
