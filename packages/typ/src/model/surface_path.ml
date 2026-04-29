@@ -5,28 +5,15 @@ type t =
   | Bare of string
   | Qualified of string * t
 
-let empty = Bare ""
-
-let is_empty = fun value ->
-  match value with
-  | Bare "" -> true
-  | _ -> false
-
-let from_name = fun name -> Bare name
-
-let from_segments = fun segments ->
-  let rec loop segments =
-    match segments with
-    | [] -> empty
-    | [ name ] -> Bare name
-    | module_name :: rest -> Qualified (module_name, loop rest)
-  in
-  loop segments
+let rec from_syn_ident = fun ident ->
+  match ident with
+  | Syn.Ast.Ident.Bare token -> Bare (Syn.Ast.Token.text token)
+  | Syn.Ast.Ident.Qualified (token, rest) ->
+      Qualified (Syn.Ast.Token.text token, from_syn_ident rest)
 
 let to_segments =
   let rec loop acc value =
     match value with
-    | Bare "" -> List.reverse acc
     | Bare name -> List.reverse (name :: acc)
     | Qualified (name, tail) -> loop (name :: acc) tail
   in

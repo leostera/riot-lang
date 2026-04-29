@@ -9,54 +9,28 @@
    - It is about **surface spelling**, not binding resolution.
    - Two paths with the same text can resolve to different bindings in
      different environments.
-   - It is not an identifier validator. Constructors currently accept raw
-     strings because the syntax layer has already tokenized the source.
-
-   Use a narrower type, such as a future `ValueName.t`, when the model needs to
-   represent one local value binding rather than an arbitrary dotted path.
+   - The only construction path is `from_syn_ident`, so source-originated names
+     stay tied to Syn's structured identifier view instead of being rebuilt from
+     strings or raw token lists.
 *)
 type t
 
 (**
-   Empty path sentinel.
+   `from_syn_ident ident` builds a surface path from Syn's structured
+   identifier view.
 
-   This is used in places where the model needs a path value before a real
-   source path is available. Prefer a domain-specific `option` in new APIs
-   when absence is meaningful.
+   This preserves Syn's identifier segments directly. It does **not** render the
+   identifier to text and parse it again.
 *)
-val empty: t
-
-(** `is_empty path` is `true` only for `empty`. *)
-val is_empty: t -> bool
-
-(**
-   `from_name name` builds a single-segment surface path.
-
-   The string is stored as provided. This function does not check whether
-   `name` is a valid OCaml/Riot identifier, constructor name, operator name, or
-   module name.
-*)
-val from_name: string -> t
-
-(**
-   `from_segments segments` builds a dotted path from left to right.
-
-   For example, `from_segments ["A"; "B"; "t"]` represents `A.B.t`. An empty
-   list produces `empty`. Segment strings are stored as provided.
-*)
-val from_segments: string list -> t
+val from_syn_ident: Syn.Ast.Ident.t -> t
 
 (**
    `to_segments path` returns the path segments from left to right.
-
-   For `empty`, this returns `[]`.
 *)
 val to_segments: t -> string list
 
 (**
    `to_string path` renders the path by joining segments with dots.
-
-   For `empty`, this returns the empty string.
 *)
 val to_string: t -> string
 

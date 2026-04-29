@@ -100,6 +100,13 @@ val has_module: t -> name:Ast.ident -> bool
 (** Find a nested module summary by unqualified name. *)
 val get_module: t -> name:Ast.ident -> module_summary option
 
+(**
+   Iterate over values exported directly by a module summary.
+
+   Parent-module bindings are intentionally not included.
+*)
+val module_values: module_summary -> (Ast.ident * TypeScheme.t) Std.Iter.Iterator.t
+
 (** Find a value exported directly by a module summary. *)
 val module_get_value: module_summary -> name:Ast.ident -> TypeScheme.t option
 
@@ -112,6 +119,13 @@ val module_get_constructor: module_summary -> name:Ast.ident -> TypeScheme.t opt
 (** True when a module summary exports `name` as a constructor. *)
 val module_has_constructor: module_summary -> name:Ast.ident -> bool
 
+(**
+   Iterate over types exported directly by a module summary.
+
+   Parent-module bindings are intentionally not included.
+*)
+val module_types: module_summary -> (Ast.ident * Ast.type_declaration) Std.Iter.Iterator.t
+
 (** Find a type exported directly by a module summary. *)
 val module_get_type: module_summary -> name:Ast.ident -> Ast.type_declaration option
 
@@ -123,6 +137,9 @@ val module_get_module: module_summary -> name:Ast.ident -> module_summary option
 
 (** True when a module summary exports `name` as a nested module. *)
 val module_has_module: module_summary -> name:Ast.ident -> bool
+
+(** Iterate over nested modules exported directly by a module summary. *)
+val module_modules: module_summary -> (Ast.ident * module_summary) Std.Iter.Iterator.t
 
 (**
    Iterate over exported value bindings from the root module.
@@ -141,3 +158,11 @@ val exports: t -> (Ast.ident * TypeScheme.t) Iter.Iterator.t
    addition.
 *)
 val exported_types: t -> (Ast.ident * Ast.type_declaration) Iter.Iterator.t
+
+(**
+   Iterate over nested modules exported directly by the root module.
+
+   Nested-module contents are exposed as module summaries so callers can copy
+   or render them recursively.
+*)
+val exported_modules: t -> (Ast.ident * module_summary) Iter.Iterator.t

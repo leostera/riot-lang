@@ -5,11 +5,14 @@ module Type = Typ.Ast.Type
 module TypeVar = Typ.Ast.TypeVar
 module SurfacePath = Typ.Model.Surface_path
 
-let mk_path name = SurfacePath.from_name name
+let mk_path name =
+  Syn.parse_ident name
+  |> Option.map ~fn:SurfacePath.from_syn_ident
+  |> Option.expect ~msg:("expected surface path test identifier " ^ name)
 
-let int_type = Type.Constructor { ident = mk_path "int"; arguments = [] }
+let int_type = fun () -> Type.Constructor { ident = mk_path "int"; arguments = [] }
 
-let bool_type = Type.Constructor { ident = mk_path "bool"; arguments = [] }
+let bool_type = fun () -> Type.Constructor { ident = mk_path "bool"; arguments = [] }
 
 let list_type argument = Type.Constructor { ident = mk_path "list"; arguments = [ argument ] }
 
@@ -44,8 +47,8 @@ let assert_path_string ~expected actual =
   Ok ()
 
 let test_equal_follows_linked_variables _ctx =
-  let linked = variable ~link:int_type TypeVar.first in
-  assert_equal_type linked int_type
+  let linked = variable ~link:(int_type ()) TypeVar.first in
+  assert_equal_type linked (int_type ())
 
 let test_equal_compares_unlinked_variable_ids _ctx =
   let first = variable TypeVar.first in
@@ -56,60 +59,41 @@ let test_equal_compares_unlinked_variable_ids _ctx =
   | Ok () -> assert_not_equal_type first second
 
 let test_equal_tuple_arity_mismatch_is_false _ctx =
-  let one = Type.Tuple [ int_type ] in
-  let two = Type.Tuple [ int_type; bool_type ] in
+  let one = Type.Tuple [ int_type () ] in
+  let two = Type.Tuple [ int_type (); bool_type () ] in
   assert_not_equal_type one two
 
 let test_equal_constructor_arguments_are_structural _ctx =
-  let int_list = list_type int_type in
-  let same_int_list = list_type int_type in
-  let bool_list = list_type bool_type in
+  let int_list = list_type (int_type ()) in
+  let same_int_list = list_type (int_type ()) in
+  let bool_list = list_type (bool_type ()) in
   match assert_equal_type int_list same_int_list with
   | Error _ as error -> error
   | Ok () -> assert_not_equal_type int_list bool_list
 
 let test_equal_arrows_compare_labels_and_children _ctx =
-  let unlabeled = arrow int_type bool_type in
-  let same_unlabeled = arrow int_type bool_type in
-  let labeled = arrow ~label:(Type.Label.Labelled "value") int_type bool_type in
+  let unlabeled = arrow (int_type ()) (bool_type ()) in
+  let same_unlabeled = arrow (int_type ()) (bool_type ()) in
+  let labeled = arrow ~label:(Type.Label.Labelled "value") (int_type ()) (bool_type ()) in
   match assert_equal_type unlabeled same_unlabeled with
   | Error _ as error -> error
   | Ok () -> assert_not_equal_type unlabeled labeled
 
 let test_from_syn_keeps_constructor_patterns _ctx =
-  let ast =
-    parse_typ_ast
-      {ocaml|let value = function
+  let ast = parse_typ_ast {ocaml|let value = function
   | Some x -> x
   | None -> 0
 |ocaml}
   in
   match ast.kind with
-  | Implementation [
-      {
-        kind = Let {
-          bindings = [
-            {
-              body = { kind = Function { body = Cases [ some_case; none_case ]; _ }; _ };
-              _;
-            };
-          ];
-          _;
-        };
-        _;
-      };
-    ] ->
+  | Implementation [ { kind = Let { bindings = [ { body = { kind = Function { body = Cases [ some_case; none_case ]; _ }; _ }; _ } ]; _ }; _ } ] ->
       let some_result =
         match some_case.pattern.kind with
-        | Apply {
-          callee = { kind = Constructor { ident = constructor }; _ };
-          argument = { kind = Bind binding; _ };
-        } ->
-            (
-              match assert_path_string ~expected:"Some" constructor with
-              | Error _ as error -> error
-              | Ok () -> assert_path_string ~expected:"x" binding
-            )
+        | Apply { callee = { kind = Constructor { ident = constructor }; _ }; argument = { kind = Bind binding; _ } } -> (
+            match assert_path_string ~expected:"Some" constructor with
+            | Error _ as error -> error
+            | Ok () -> assert_path_string ~expected:"x" binding
+          )
         | _ -> Error "expected Some x to lower as constructor pattern application"
       in
       (
@@ -134,9 +118,7 @@ let tests =
     case
       "type equal arrows compare labels and children"
       test_equal_arrows_compare_labels_and_children;
-    case
-      "from syn keeps constructor patterns"
-      test_from_syn_keeps_constructor_patterns;
+    case "from syn keeps constructor patterns" test_from_syn_keeps_constructor_patterns;
   ]
 
 let main ~args = Test.Cli.main ~name:"typ:ast" ~tests ~args ()

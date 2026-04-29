@@ -239,7 +239,7 @@ and package_type = {
   (** Source origin for the package type. *)
   origin: origin;
   (** Optional local module binder. *)
-  binder: string option;
+  binder: ident option;
   (** Module type identifier. *)
   module_type: ident;
   (** `with type` constraints attached to the package. *)
@@ -262,18 +262,23 @@ and package_type_constraint = {
    parameter whose name could not be recovered.
 *)
 type type_parameter = string option
+(** Constructor argument shape. *)
+type constructor_arguments =
+  (** Tuple-style arguments, including `[]` for nullary constructors. *)
+  | Tuple of core_type list
+  (** Inline record arguments, as in `C of { field : type }`. *)
+  | Record of record_field_declaration list
+
 (** Variant constructor declaration. *)
-type type_constructor = {
+and type_constructor = {
   (** Source origin for the constructor declaration. *)
   origin: origin;
   (** Constructor name. *)
-  name: string;
-  (** Optional tuple-style payload. *)
-  payload: core_type option;
+  name: ident;
+  (** Constructor arguments. *)
+  arguments: constructor_arguments;
   (** Optional explicit result type, used by GADT-style constructors. *)
   result: core_type option;
-  (** Optional inline record payload. *)
-  inline_record: record_field_declaration list option;
 }
 
 (** Record field declaration inside a record type or inline record constructor. *)
@@ -281,7 +286,7 @@ and record_field_declaration = {
   (** Source origin for the field declaration. *)
   origin: origin;
   (** Field name. *)
-  name: string;
+  name: ident;
   (** Whether the field was declared `mutable`. *)
   mutable_: bool;
   (** Field type annotation. *)
@@ -312,7 +317,7 @@ type type_declaration = {
   (** Source origin for the declaration. *)
   origin: origin;
   (** Declared type name. *)
-  name: string;
+  name: ident;
   (** Declared type parameters. *)
   parameters: type_parameter list;
   (** Type body. *)
@@ -449,7 +454,7 @@ and alias_pattern = {
 (** First-class module pattern payload. *)
 and first_class_module_pattern = {
   (** Optional bound module name. *)
-  binder: string option;
+  binder: ident option;
   (** Optional package type annotation. *)
   package_type: package_type option;
 }
@@ -726,7 +731,7 @@ and let_expression = {
 (** Local module binding payload. *)
 and let_module = {
   (** Local module name. *)
-  name: string;
+  name: ident;
   (** Inline module structure, when present. *)
   items: structure_item list;
   (** Module alias target, when present. *)
@@ -793,7 +798,7 @@ and value_declaration = {
   (** Source origin for the declaration. *)
   origin: origin;
   (** Declared value name. *)
-  name: string;
+  name: ident;
   (** Declared value type. *)
   type_annotation: core_type;
 }
@@ -803,7 +808,7 @@ and external_declaration = {
   (** Source origin for the declaration. *)
   origin: origin;
   (** Declared external name. *)
-  name: string;
+  name: ident;
   (** Declared external type. *)
   type_annotation: core_type;
   (** Primitive names listed in the declaration. *)
@@ -825,7 +830,7 @@ and exception_declaration = {
   (** Source origin for the declaration. *)
   origin: origin;
   (** Exception constructor name. *)
-  name: string;
+  name: ident;
   (** Optional exception payload type. *)
   payload: core_type option;
 }
@@ -835,7 +840,7 @@ and module_declaration = {
   (** Source origin for the declaration. *)
   origin: origin;
   (** Module name. *)
-  name: string;
+  name: ident;
   (** Whether this is a recursive module declaration. *)
   recursive: bool;
   (** Functor parameters declared on the module. *)
@@ -855,7 +860,7 @@ and functor_parameter = {
   (** Source origin for the parameter. *)
   origin: origin;
   (** Parameter module name. *)
-  name: string;
+  name: ident;
   (** Optional module type identifier. *)
   module_type: ident option;
 }
@@ -873,7 +878,7 @@ and module_type_declaration = {
   (** Source origin for the declaration. *)
   origin: origin;
   (** Module type name. *)
-  name: string;
+  name: ident;
   (** Signature items in the module type. *)
   items: signature_item list;
 }

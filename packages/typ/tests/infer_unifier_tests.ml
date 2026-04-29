@@ -6,11 +6,14 @@ module Unifier = Typ.Infer.Unifier
 module Type = Typ.Ast.Type
 module SurfacePath = Typ.Model.Surface_path
 
-let mk_path name = SurfacePath.from_name name
+let mk_path name =
+  Syn.parse_ident name
+  |> Option.map ~fn:SurfacePath.from_syn_ident
+  |> Option.expect ~msg:("expected surface path test identifier " ^ name)
 
-let int_type = Type.Constructor { ident = mk_path "int"; arguments = [] }
+let int_type = fun () -> Type.Constructor { ident = mk_path "int"; arguments = [] }
 
-let bool_type = Type.Constructor { ident = mk_path "bool"; arguments = [] }
+let bool_type = fun () -> Type.Constructor { ident = mk_path "bool"; arguments = [] }
 
 let arrow ?(label = Type.Label.NoLabel) parameter result = Type.Arrow { label; parameter; result }
 
@@ -28,9 +31,9 @@ let assert_type expected type_ =
   else
     Error ("expected " ^ Type.to_string expected ^ " but found " ^ Type.to_string resolved)
 
-let assert_type_is_int type_ = assert_type int_type type_
+let assert_type_is_int type_ = assert_type (int_type ()) type_
 
-let assert_type_is_bool type_ = assert_type bool_type type_
+let assert_type_is_bool type_ = assert_type (bool_type ()) type_
 
 let assert_type_mismatch result =
   match result with
@@ -41,7 +44,7 @@ let assert_type_mismatch result =
 let test_resolve_follows_links _ctx =
   let state = State.create () in
   let* a = fresh_variable state in
-  a.link <- Some int_type;
+  a.link <- Some (int_type ());
   assert_type_is_int (type_var a)
 
 let test_resolve_compresses_links _ctx =
@@ -53,7 +56,7 @@ let test_resolve_compresses_links _ctx =
   a.link <- Some (type_var b);
   b.link <- Some (type_var c);
   c.link <- Some (type_var d);
-  d.link <- Some int_type;
+  d.link <- Some (int_type ());
   let _ = Unifier.resolve (type_var a) in
   match (a.link, b.link, c.link, d.link) with
   | (Some a_type, Some b_type, Some c_type, Some d_type) ->
@@ -67,11 +70,11 @@ let test_solve_var_links_unsolved_variable _ctx =
   let state = State.create () in
   let* a = fresh_variable state in
   let* _ =
-    Unifier.solve_var a bool_type
+    Unifier.solve_var a (bool_type ())
     |> Result.map_err ~fn:Unifier.error_to_string
   in
   match a.link with
-  | Some linked when Type.equal (Unifier.resolve linked) bool_type -> Ok ()
+  | Some linked when Type.equal (Unifier.resolve linked) (bool_type ()) -> Ok ()
   | Some _ -> Error "expected variable to link to bool"
   | None -> Error "expected variable to be linked"
 
@@ -85,24 +88,24 @@ let test_solve_var_accepts_self _ctx =
 let test_solve_var_rejects_infinite_type _ctx =
   let state = State.create () in
   let* a = fresh_variable state in
-  let infinite = arrow (type_var a) int_type in
+  let infinite = arrow (type_var a) (int_type ()) in
   match Unifier.solve_var a infinite with
   | Error (Unifier.InfiniteSubstitution _) -> Ok ()
   | _ -> Error "expected infinite type to be rejected"
 
 let test_unify_same_constructor _ctx =
-  Unifier.unify ~expected:int_type ~actual:int_type
+  Unifier.unify ~expected:(int_type ()) ~actual:(int_type ())
   |> Result.map_err ~fn:Unifier.error_to_string
 
 let test_unify_constructor_mismatch _ctx =
-  Unifier.unify ~expected:int_type ~actual:bool_type
+  Unifier.unify ~expected:(int_type ()) ~actual:(bool_type ())
   |> assert_type_mismatch
 
 let test_unify_var_with_constructor _ctx =
   let state = State.create () in
   let* a = fresh_variable state in
   let* () =
-    Unifier.unify ~expected:(type_var a) ~actual:int_type
+    Unifier.unify ~expected:(type_var a) ~actual:(int_type ())
     |> Result.map_err ~fn:Unifier.error_to_string
   in
   assert_type_is_int (type_var a)
@@ -110,8 +113,8 @@ let test_unify_var_with_constructor _ctx =
 let test_unify_tuple_links_nested_var _ctx =
   let state = State.create () in
   let* a = fresh_variable state in
-  let expected = Type.Tuple [ type_var a; bool_type ] in
-  let actual = Type.Tuple [ int_type; bool_type ] in
+  let expected = Type.Tuple [ type_var a; bool_type () ] in
+  let actual = Type.Tuple [ int_type (); bool_type () ] in
   let* () =
     Unifier.unify ~expected ~actual
     |> Result.map_err ~fn:Unifier.error_to_string
@@ -122,19 +125,19 @@ let test_unify_tuple_crosslinks_nested_vars _ctx =
   let state = State.create () in
   let* a = fresh_variable state in
   let* b = fresh_variable state in
-  let expected = Type.Tuple [ type_var a; bool_type ] in
-  let actual = Type.Tuple [ int_type; type_var b ] in
+  let expected = Type.Tuple [ type_var a; bool_type () ] in
+  let actual = Type.Tuple [ int_type (); type_var b ] in
   let* () =
     Unifier.unify ~expected ~actual
     |> Result.map_err ~fn:Unifier.error_to_string
   in
-  let* () = assert_type int_type (type_var a) in
-  let* () = assert_type bool_type (type_var b) in
+  let* () = assert_type (int_type ()) (type_var a) in
+  let* () = assert_type (bool_type ()) (type_var b) in
   Ok ()
 
 let test_unify_tuple_arity_mismatch _ctx =
-  let expected = Type.Tuple [ int_type ] in
-  let actual = Type.Tuple [ int_type; bool_type ] in
+  let expected = Type.Tuple [ int_type () ] in
+  let actual = Type.Tuple [ int_type (); bool_type () ] in
   Unifier.unify ~expected ~actual
   |> assert_type_mismatch
 
@@ -142,8 +145,8 @@ let test_unify_arrow_links_parameter_and_result _ctx =
   let state = State.create () in
   let* a = fresh_variable state in
   let* b = fresh_variable state in
-  let expected = arrow (type_var a) bool_type in
-  let actual = arrow int_type (type_var b) in
+  let expected = arrow (type_var a) (bool_type ()) in
+  let actual = arrow (int_type ()) (type_var b) in
   let* () =
     Unifier.unify ~expected ~actual
     |> Result.map_err ~fn:Unifier.error_to_string

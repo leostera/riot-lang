@@ -1,5 +1,6 @@
 open Std
 open Std.Collections
+open Std.Iter
 open Ast
 
 module IdentMap = Map.Make (Model.Surface_path)
@@ -249,6 +250,8 @@ module ModuleScopes = struct
   let root_value_bindings t = ValueScopes.root_bindings (root t).values
 
   let root_type_bindings t = (root t).types
+
+  let root_module_bindings t = (root t).modules
 end
 
 type t = {
@@ -337,8 +340,8 @@ module ExportIter = struct
   let size = List.length
 end
 
-let exports t =
-  ModuleScopes.root_value_bindings t.modules
+let value_bindings bindings =
+  bindings
   |> IdentMap.to_list
   |> List.sort
     ~compare:(fun (_, (left: ValueScopes.binding)) (_, (right: ValueScopes.binding)) ->
@@ -346,7 +349,9 @@ let exports t =
         left.ordinal
         right.ordinal)
   |> List.map ~fn:(fun (name, binding) -> (name, ValueScopes.binding_scheme binding))
-  |> Iter.Iterator.make (module ExportIter)
+  |> Iterator.make (module ExportIter)
+
+let exports t = value_bindings (ModuleScopes.root_value_bindings t.modules)
 
 module TypeExportIter = struct
   type state = (ident * type_declaration) list
@@ -360,8 +365,8 @@ module TypeExportIter = struct
   let size = List.length
 end
 
-let exported_types t =
-  ModuleScopes.root_type_bindings t.modules
+let type_bindings bindings =
+  bindings
   |> IdentMap.to_list
   |> List.sort
     ~compare:(fun (_, (left: TypeScopes.binding)) (_, (right: TypeScopes.binding)) ->
@@ -369,4 +374,37 @@ let exported_types t =
         left.ordinal
         right.ordinal)
   |> List.map ~fn:(fun (name, (binding: TypeScopes.binding)) -> (name, binding.declaration))
-  |> Iter.Iterator.make (module TypeExportIter)
+  |> Iterator.make (module TypeExportIter)
+
+let exported_types t = type_bindings (ModuleScopes.root_type_bindings t.modules)
+
+module ModuleExportIter = struct
+  type state = (ident * module_summary) list
+
+  type item = ident * module_summary
+
+  let next = function
+    | [] -> (None, [])
+    | item :: rest -> (Some item, rest)
+
+  let size = List.length
+end
+
+let module_bindings bindings =
+  bindings
+  |> IdentMap.to_list
+  |> List.sort
+    ~compare:(fun (_, (left: module_binding)) (_, (right: module_binding)) ->
+      Int.compare
+        left.ordinal
+        right.ordinal)
+  |> List.map ~fn:(fun (name, (binding: module_binding)) -> (name, binding.summary))
+  |> Iterator.make (module ModuleExportIter)
+
+let exported_modules t = module_bindings (ModuleScopes.root_module_bindings t.modules)
+
+let module_values (summary: module_summary) = value_bindings summary.values
+
+let module_types (summary: module_summary) = type_bindings summary.types
+
+let module_modules (summary: module_summary) = module_bindings summary.modules

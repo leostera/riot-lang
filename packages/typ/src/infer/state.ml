@@ -38,6 +38,8 @@ let has_type state ~name = Env.has_type state.env ~name
 
 let diagnostics state = state.diagnostics
 
+let add_diagnostic state diagnostic = Diagnostics.add state.diagnostics diagnostic
+
 (** Instantiates a new fresh type variable in the current typing environment. *)
 let fresh_var state =
   let id = state.next_var in

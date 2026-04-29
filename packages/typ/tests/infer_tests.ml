@@ -1,5 +1,6 @@
 open Std
 open Std.Collections
+open Std.Iter
 open Std.Result.Syntax
 
 let name = "typ:infer"
@@ -42,15 +43,18 @@ let render_diagnostics = fun diagnostics ->
 let render_infer_diagnostics = fun (diagnostics: Typ.Diagnostics.t) ->
   diagnostics.items
   |> Vector.iter
-  |> Iter.Iterator.to_list
+  |> Iterator.to_list
   |> render_diagnostics
 
 let render_interface = fun (intf: Typ.Infer.ModuleInterface.t) ->
-  intf
-  |> Typ.Infer.ModuleInterface.values
-  |> Iter.Iterator.map
-    ~fn:(fun (name, (type_scheme: Typ.Infer.TypeScheme.t)) -> (name, type_scheme.body))
-  |> Typ.SignatureGenerator.from_values
+  Typ.SignatureGenerator.from_exports
+    ~types:(Typ.Infer.ModuleInterface.types intf)
+    ~values:(
+      intf
+      |> Typ.Infer.ModuleInterface.values
+      |> Iterator.map
+        ~fn:(fun (name, (type_scheme: Typ.Infer.TypeScheme.t)) -> (name, type_scheme.body))
+    )
 
 type rendered_result =
   | Interface of string

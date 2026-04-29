@@ -7,13 +7,16 @@ module Type = Typ.Ast.Type
 module TypeScheme = Typ.Infer.TypeScheme
 module SurfacePath = Typ.Model.Surface_path
 
-let ident name = SurfacePath.from_name name
+let ident name =
+  Syn.parse_ident name
+  |> Option.map ~fn:SurfacePath.from_syn_ident
+  |> Option.expect ~msg:("expected surface path test identifier " ^ name)
 
 let nominal name = Type.Constructor { ident = ident name; arguments = [] }
 
-let int_type = nominal "int"
+let int_type = fun () -> nominal "int"
 
-let bool_type = nominal "bool"
+let bool_type = fun () -> nominal "bool"
 
 let scheme type_ = TypeScheme.monomorphic type_
 
@@ -24,7 +27,7 @@ let origin: Ast.origin = {
 
 let type_decl name: Ast.type_declaration = {
   Ast.origin;
-  name;
+  name = ident name;
   parameters = [];
   definition = { origin; kind = Ast.Abstract };
 }
@@ -44,14 +47,16 @@ let assert_no_scheme actual =
 
 let assert_type_decl_name ~expected (actual: Ast.type_declaration option) =
   match actual with
-  | Some actual when String.equal actual.Ast.name expected -> Ok ()
-  | Some actual -> Error ("expected type " ^ expected ^ " but found " ^ actual.name)
+  | Some actual when SurfacePath.equal actual.Ast.name (ident expected) -> Ok ()
+  | Some actual ->
+      Error ("expected type " ^ expected ^ " but found " ^ SurfacePath.to_string actual.name)
   | None -> Error ("expected type " ^ expected)
 
 let assert_no_type_decl (actual: Ast.type_declaration option) =
   match actual with
   | None -> Ok ()
-  | Some actual -> Error ("expected no type declaration but found " ^ actual.Ast.name)
+  | Some actual ->
+      Error ("expected no type declaration but found " ^ SurfacePath.to_string actual.Ast.name)
 
 let assert_true ~msg value =
   if value then
@@ -84,21 +89,21 @@ let assert_names ~expected actual =
 let test_value_scope_shadows_and_pops _ctx =
   let name = ident "value" in
   let env = Env.create () in
-  let env = Env.add_value env ~name ~scheme:(scheme int_type) in
+  let env = Env.add_value env ~name ~scheme:(scheme (int_type ())) in
   let env = Env.push_scope env in
-  let env = Env.add_value env ~name ~scheme:(scheme bool_type) in
-  let* () = assert_scheme_body ~expected:bool_type (Env.get_value env ~name) in
+  let env = Env.add_value env ~name ~scheme:(scheme (bool_type ())) in
+  let* () = assert_scheme_body ~expected:(bool_type ()) (Env.get_value env ~name) in
   let env = Env.pop_scope env in
-  assert_scheme_body ~expected:int_type (Env.get_value env ~name)
+  assert_scheme_body ~expected:(int_type ()) (Env.get_value env ~name)
 
 let test_exports_ignore_local_value_scopes _ctx =
   let root_name = ident "root_value" in
   let local_name = ident "local_value" in
   let env = Env.create () in
-  let env = Env.add_value env ~name:root_name ~scheme:(scheme int_type) in
+  let env = Env.add_value env ~name:root_name ~scheme:(scheme (int_type ())) in
   let env = Env.push_scope env in
-  let env = Env.add_value env ~name:local_name ~scheme:(scheme bool_type) in
-  let* () = assert_scheme_body ~expected:bool_type (Env.get_value env ~name:local_name) in
+  let env = Env.add_value env ~name:local_name ~scheme:(scheme (bool_type ())) in
+  let* () = assert_scheme_body ~expected:(bool_type ()) (Env.get_value env ~name:local_name) in
   assert_names ~expected:[ "root_value" ] (export_names env)
 
 let test_types_are_current_module_not_lexical_scope _ctx =
@@ -115,10 +120,10 @@ let test_constructors_are_current_module_not_lexical_scope _ctx =
   let name = ident "Red" in
   let env = Env.create () in
   let env = Env.push_scope env in
-  let env = Env.add_constructor env ~name ~scheme:(scheme int_type) in
-  let* () = assert_scheme_body ~expected:int_type (Env.get_constructor env ~name) in
+  let env = Env.add_constructor env ~name ~scheme:(scheme (int_type ())) in
+  let* () = assert_scheme_body ~expected:(int_type ()) (Env.get_constructor env ~name) in
   let env = Env.pop_scope env in
-  assert_scheme_body ~expected:int_type (Env.get_constructor env ~name)
+  assert_scheme_body ~expected:(int_type ()) (Env.get_constructor env ~name)
 
 let test_module_sees_parent_types_but_exports_only_own_types _ctx =
   let parent_type = ident "a" in
@@ -187,10 +192,10 @@ let test_module_values_see_parent_values_but_do_not_leak _ctx =
   let child_value = ident "child_value" in
   let module_name = ident "M" in
   let env = Env.create () in
-  let env = Env.add_value env ~name:root_value ~scheme:(scheme int_type) in
+  let env = Env.add_value env ~name:root_value ~scheme:(scheme (int_type ())) in
   let env = Env.push_module env ~name:module_name in
-  let* () = assert_scheme_body ~expected:int_type (Env.get_value env ~name:root_value) in
-  let env = Env.add_value env ~name:child_value ~scheme:(scheme bool_type) in
+  let* () = assert_scheme_body ~expected:(int_type ()) (Env.get_value env ~name:root_value) in
+  let env = Env.add_value env ~name:child_value ~scheme:(scheme (bool_type ())) in
   let env = Env.pop_module env in
   let* () = assert_no_scheme (Env.get_value env ~name:child_value) in
   match Env.get_module env ~name:module_name with

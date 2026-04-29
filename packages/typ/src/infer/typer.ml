@@ -5,7 +5,7 @@ open TypeScheme
 let unify (state: State.t) ~expected ~actual ~on_error =
   match Unifier.unify ~expected ~actual with
   | Ok () -> ()
-  | Error err -> Diagnostics.add (State.diagnostics state) (on_error err)
+  | Error err -> State.add_diagnostic state (on_error err)
 
 let annotation_diagnostic (annotation: core_type) err =
   match err with
@@ -35,12 +35,11 @@ let expression_hint_diagnostic (expr: expression) (hint: expression_type_hint) e
         ~var:(TypeVar.to_string var.id)
         ~type_:(Type.to_string type_)
 
-let expression_diagnostic (expr: expression) err =
+let expression_constraint_diagnostic (expr: expression) err =
   match err with
   | Unifier.TypeMismatch { expected; actual } ->
-      Diagnostics.Diagnostic.annotation_mismatch
+      Diagnostics.Diagnostic.type_mismatch
         ~span:expr.origin.span
-        ~annotation_span:expr.origin.span
         ~expected:(Type.to_string expected)
         ~actual:(Type.to_string actual)
   | Unifier.InfiniteSubstitution { var; type_ } ->
@@ -50,25 +49,40 @@ let expression_diagnostic (expr: expression) err =
         ~type_:(Type.to_string type_)
 
 module Builtin = struct
-  open Model
+  let ident_from_source name =
+    Syn.parse_ident name
+    |> Option.map ~fn:Model.Surface_path.from_syn_ident
+    |> Option.expect ~msg:("expected builtin identifier " ^ name)
 
-  let make ?(arguments = []) name =
-    let ident = Model.Surface_path.from_name name in
-    Type.Constructor { ident; arguments }
+  let int_ident = fun () -> ident_from_source "int"
 
-  let int = make "int"
+  let bool_ident = fun () -> ident_from_source "bool"
 
-  let bool = make "bool"
+  let float_ident = fun () -> ident_from_source "float"
 
-  let float = make "float"
+  let char_ident = fun () -> ident_from_source "char"
 
-  let char = make "char"
+  let string_ident = fun () -> ident_from_source "string"
 
-  let string = make "string"
+  let unit_ident = fun () -> ident_from_source "unit"
 
-  let unit = make "unit"
+  let list_ident = fun () -> ident_from_source "list"
 
-  let list el = make "list" ~arguments:[ el ]
+  let make ?(arguments = []) ident = Type.Constructor { ident; arguments }
+
+  let int = fun () -> make (int_ident ())
+
+  let bool = fun () -> make (bool_ident ())
+
+  let float = fun () -> make (float_ident ())
+
+  let char = fun () -> make (char_ident ())
+
+  let string = fun () -> make (string_ident ())
+
+  let unit = fun () -> make (unit_ident ())
+
+  let list el = make (list_ident ()) ~arguments:[ el ]
 end
 
 let arrow_label_to_type_label = function
@@ -128,11 +142,11 @@ let rec bind_pattern ~mode (state: State.t) (pattern: pattern) type_ =
 let infer_literal _state (lit: literal) =
   let open Builtin in
   match lit with
-  | Int -> int
-  | Float -> float
-  | Char -> char
-  | String -> string
-  | Bool -> bool
+  | Int -> int ()
+  | Float -> float ()
+  | Char -> char ()
+  | String -> string ()
+  | Bool -> bool ()
 
 let infer_ident (state: State.t) ident =
   match State.get_value state ~name:ident with
@@ -194,7 +208,7 @@ and infer_list state items =
     items
     ~fn:(fun item ->
       let actual = infer_expression state item in
-      unify state ~expected:element ~actual ~on_error:(expression_diagnostic item));
+      unify state ~expected:element ~actual ~on_error:(expression_constraint_diagnostic item));
   Builtin.list element
 
 and infer_apply state apply =
@@ -212,24 +226,35 @@ and infer_apply state apply =
         in
         Ast.Type.arrow arg_type ret)
   in
-  unify state ~expected ~actual:callee ~on_error:(expression_diagnostic apply.callee);
+  unify state ~expected ~actual:callee ~on_error:(expression_constraint_diagnostic apply.callee);
   result
 
 and infer_if_else state ifelse =
   let condition = infer_expression state ifelse.condition in
   unify
     state
-    ~expected:Builtin.bool
+    ~expected:(Builtin.bool ())
     ~actual:condition
-    ~on_error:(expression_diagnostic ifelse.condition);
+    ~on_error:(expression_constraint_diagnostic ifelse.condition);
   let then_ = infer_expression state ifelse.then_branch in
-  let else_ =
+  (
     match ifelse.else_branch with
-    | Some else_ -> infer_expression state else_
-    | None -> Builtin.unit
-  in
-  unify state ~expected:then_ ~actual:else_ ~on_error:(expression_diagnostic ifelse.then_branch);
-  then_
+    | Some else_branch ->
+        let else_ = infer_expression state else_branch in
+        unify
+          state
+          ~expected:then_
+          ~actual:else_
+          ~on_error:(expression_constraint_diagnostic else_branch);
+        then_
+    | None ->
+        unify
+          state
+          ~expected:(Builtin.unit ())
+          ~actual:then_
+          ~on_error:(expression_constraint_diagnostic ifelse.then_branch);
+        Builtin.unit ()
+  )
 
 and infer_tuple (state: State.t) parts =
   let types = List.map ~fn:(infer_expression state) parts in
@@ -246,6 +271,41 @@ and infer_function state fn_decl =
   State.pop_scope state;
   List.fold_right params ~init:body ~fn:Ast.Type.arrow
 
+let type_declaration_result (decl: type_declaration) = Type.Constructor {
+  ident = decl.name;
+  arguments = [];
+}
+
+let constructor_scheme state (decl: type_declaration) (ctr: type_constructor) =
+  let result =
+    match ctr.result with
+    | Some result -> core_type_to_type state result
+    | None -> type_declaration_result decl
+  in
+  let body =
+    match ctr.arguments with
+    | Tuple [] -> result
+    | Tuple [ argument ] -> Ast.Type.arrow (core_type_to_type state argument) result
+    | Tuple arguments ->
+        let argument_type = Type.Tuple (List.map arguments ~fn:(core_type_to_type state)) in
+        Ast.Type.arrow argument_type result
+    | Record _fields -> Ast.Type.arrow (State.fresh_var state) result
+  in
+  TypeScheme.monomorphic body
+
+let register_type_decl state (decl: type_declaration) =
+  let name = decl.name in
+  State.add_type state ~name ~declaration:decl;
+  match decl.definition.kind with
+  | Variant ctrs ->
+      List.for_each
+        ctrs
+        ~fn:(fun (ctr: type_constructor) ->
+          let name = ctr.name in
+          let scheme = constructor_scheme state decl ctr in
+          State.add_constructor state ~name ~scheme)
+  | _ -> ()
+
 let type_let_binding (state: State.t) (lb: let_binding) =
   let type_ = infer_expression state lb.body in
   bind_pattern ~mode:Generalized state lb.pattern type_
@@ -255,6 +315,7 @@ let type_let_decl (state: State.t) (ld: let_declaration) =
 
 let type_impl_item (state: State.t) (item: structure_item) =
   match item.kind with
+  | Type decl -> List.for_each decl ~fn:(register_type_decl state)
   | Let ld -> type_let_decl state ld
   | _ -> ()
 
