@@ -1,5 +1,3 @@
-module InferEnv = Env
-
 open Std
 open Ast
 open TypeScheme
@@ -116,7 +114,7 @@ let rec bind_pattern ~mode (state: State.t) (pattern: pattern) type_ =
         | Local -> TypeScheme.monomorphic type_
         | Generalized -> Quantifier.generalize type_
       in
-      State.update_env state (fun env -> InferEnv.add_value env ~name ~scheme)
+      State.add_value state ~name ~scheme
   | Constraint { pattern; annotation } ->
       let expected = core_type_to_type state annotation in
       unify state ~expected ~actual:type_ ~on_error:(annotation_diagnostic annotation);
@@ -137,12 +135,12 @@ let infer_literal _state (lit: literal) =
   | Bool -> bool
 
 let infer_ident (state: State.t) ident =
-  match InferEnv.get_value (State.env state) ~name:ident with
+  match State.get_value state ~name:ident with
   | Some scheme -> Quantifier.instantiate state scheme
   | None -> State.fresh_var state
 
 let infer_constructor (state: State.t) constructor =
-  match InferEnv.get_constructor (State.env state) ~name:constructor.ident with
+  match State.get_constructor state ~name:constructor.ident with
   | Some scheme -> Quantifier.instantiate state scheme
   | None -> State.fresh_var state
 

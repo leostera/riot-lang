@@ -15,8 +15,23 @@ let env state = state.env
 let set_env state env =
   state.env <- env
 
-let update_env state fn =
-  state.env <- fn state.env
+let add_value state ~name ~scheme =
+  state.env <- Env.add_value state.env ~name ~scheme
+
+let get_value state ~name =
+  Env.get_value state.env ~name
+
+let has_value state ~name =
+  Env.has_value state.env ~name
+
+let add_constructor state ~name ~scheme =
+  state.env <- Env.add_constructor state.env ~name ~scheme
+
+let get_constructor state ~name =
+  Env.get_constructor state.env ~name
+
+let has_constructor state ~name =
+  Env.has_constructor state.env ~name
 
 let diagnostics state = state.diagnostics
 
