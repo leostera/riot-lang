@@ -645,6 +645,28 @@ let generation_hashes_of_receipts = fun receipts ->
         ))
   |> List.reverse
 
+let preserve_generation_recency = fun ~preferred ~discovered ->
+  let discovered_set =
+    List.fold_left
+      discovered
+      ~init:(HashSet.create ())
+      ~fn:(fun set hash ->
+        let _ = HashSet.insert set ~value:hash in
+        set)
+  in
+  let add_if_available = fun (seen, acc) hash ->
+    if HashSet.contains discovered_set ~value:hash && not (HashSet.contains seen ~value:hash) then
+      (
+        let _ = HashSet.insert seen ~value:hash in
+        (seen, hash :: acc)
+      )
+    else
+      (seen, acc)
+  in
+  let (seen, acc) = List.fold_left preferred ~init:(HashSet.create (), []) ~fn:add_if_available in
+  let (_, acc) = List.fold_left discovered ~init:(seen, acc) ~fn:add_if_available in
+  List.reverse acc
+
 let rebuild_generation_hashes = fun ~(workspace:Workspace.t) ->
   let* receipts = load_receipts ~workspace in
   let* () = write_canonical_receipts ~workspace receipts in
@@ -741,7 +763,19 @@ let collect_cache_entries = fun ~trigger ~on_event ~(workspace:Workspace.t) ->
 let rebuild_tracked_size = fun ~trigger ~on_event ~(workspace:Workspace.t) ->
   let* entries = collect_cache_entries ~trigger ~on_event ~workspace in
   let tracked_size_bytes = total_size entries in
-  let* generation_hashes = rebuild_generation_hashes ~workspace in
+  let preferred_generation_hashes =
+    match read_state ~workspace with
+    | Ok (Some { generation_hashes = Some generation_hashes; _ }) -> generation_hashes
+    | Ok (Some { generation_hashes = None; _ })
+    | Ok None
+    | Error _ -> []
+  in
+  let* discovered_generation_hashes = rebuild_generation_hashes ~workspace in
+  let generation_hashes =
+    preserve_generation_recency
+      ~preferred:preferred_generation_hashes
+      ~discovered:discovered_generation_hashes
+  in
   let* () =
     write_state
       ~workspace

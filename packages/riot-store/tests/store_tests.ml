@@ -1131,6 +1131,145 @@ let test_record_successful_build_reorders_existing_cached_generation_to_front = 
   | Ok x -> x
   | Error _ -> Error "tempdir creation failed"
 
+let candidate_hash_chars = [
+  '0';
+  '1';
+  '2';
+  '3';
+  '4';
+  '5';
+  '6';
+  '7';
+  '8';
+  '9';
+  'a';
+  'b';
+  'c';
+  'd';
+  'e';
+  'f';
+]
+
+let test_cache_gc_preserves_state_recency_when_rebuilding_size = fun _ctx ->
+  match Fs.with_tempdir
+    ~prefix:"store_cache_gc_rebuild_recency_test"
+    (fun tmpdir ->
+      let rec find_case case_index old_candidates =
+        match old_candidates with
+        | [] -> Error "could not find generation hashes where lexical order disagrees with recency"
+        | old_char :: rest -> (
+            match find_new case_index old_char candidate_hash_chars with
+            | Ok selected -> Ok selected
+            | Error _ -> find_case (case_index + 100) rest
+          )
+      and find_new case_index old_char new_candidates =
+        match new_candidates with
+        | [] -> Error "no candidate pair"
+        | new_char :: rest ->
+            if new_char = old_char then
+              find_new (case_index + 1) old_char rest
+            else
+              (
+                let case_root = Path.(tmpdir / Path.v ("case-" ^ Int.to_string case_index)) in
+                let _ =
+                  Fs.create_dir_all case_root
+                  |> Result.expect ~msg:"create candidate workspace should succeed"
+                in
+                let workspace = make_test_workspace case_root in
+                write_workspace_cache_config case_root ~keep_generations:1 ~max_size:"10 GiB";
+                let old_hash = make_hash old_char in
+                let new_hash = make_hash new_char in
+                let old_entry =
+                  write_cache_entry
+                    ~workspace
+                    ~profile:"debug"
+                    ~target:host_target
+                    ~hash:old_hash
+                    ~size:16
+                in
+                let new_entry =
+                  write_cache_entry
+                    ~workspace
+                    ~profile:"debug"
+                    ~target:host_target
+                    ~hash:new_hash
+                    ~size:16
+                in
+                let _ =
+                  Riot_store.Cache_gc.record_successful_build
+                    ~workspace
+                    ~lanes:[
+                      Riot_store.Cache_gc.{
+                        profile = "debug";
+                        target = host_target;
+                        hashes = [ old_hash ];
+                      };
+                    ]
+                    ~new_entries:[
+                      Riot_store.Cache_gc.{
+                        profile = "debug";
+                        target = host_target;
+                        hash = old_hash;
+                      };
+                    ]
+                  |> Result.expect ~msg:"old generation should record"
+                in
+                let _ =
+                  Riot_store.Cache_gc.record_successful_build
+                    ~workspace
+                    ~lanes:[
+                      Riot_store.Cache_gc.{
+                        profile = "debug";
+                        target = host_target;
+                        hashes = [ new_hash ];
+                      };
+                    ]
+                    ~new_entries:[
+                      Riot_store.Cache_gc.{
+                        profile = "debug";
+                        target = host_target;
+                        hash = new_hash;
+                      };
+                    ]
+                  |> Result.expect ~msg:"new generation should record"
+                in
+                match read_cache_state_generation_hashes ~workspace with
+                | new_generation_hash :: old_generation_hash :: [] ->
+                    if String.compare old_generation_hash new_generation_hash = Order.GT then
+                      Ok (workspace, old_entry, new_entry)
+                    else
+                      find_new (case_index + 1) old_char rest
+                | _ -> Error "expected two generation hashes in state"
+              )
+      in
+      match find_case 0 candidate_hash_chars with
+      | Error _ as error -> error
+      | Ok (workspace, old_entry, new_entry) ->
+          let summary =
+            Riot_store.Cache_gc.clean ~workspace
+            |> Result.expect ~msg:"clean should preserve newest generation while rebuilding size"
+          in
+          let old_entry_exists =
+            Fs.exists old_entry
+            |> Result.unwrap_or ~default:false
+          in
+          let new_entry_exists =
+            Fs.exists new_entry
+            |> Result.unwrap_or ~default:false
+          in
+          if
+            summary.ran_gc
+            && summary.deleted_entries = 1
+            && summary.kept_generations = 1
+            && not old_entry_exists
+            && new_entry_exists
+          then
+            Ok ()
+          else
+            Error "expected manual clean to keep the state-recency newest generation") with
+  | Ok x -> x
+  | Error _ -> Error "tempdir creation failed"
+
 let test_cache_gc_shrinks_retained_generations_to_meet_max_size = fun _ctx ->
   match Fs.with_tempdir
     ~prefix:"store_cache_gc_max_size_test"
@@ -1369,6 +1508,9 @@ let tests =
     case
       "cache GC reorders an existing cached generation to the front"
       test_record_successful_build_reorders_existing_cached_generation_to_front;
+    case
+      "cache GC preserves state recency when rebuilding size"
+      test_cache_gc_preserves_state_recency_when_rebuilding_size;
     case
       "cache GC drops unreferenced entries after generation overflow"
       test_cache_gc_drops_unreferenced_entries_after_generation_overflow;
