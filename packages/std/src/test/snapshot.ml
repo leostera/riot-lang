@@ -194,28 +194,84 @@ let make_diff_hunk = fun ~expected ~actual ->
     context_after;
   }
 
-let format_line = fun prefix line -> prefix ^ line
+let ansi_reset = "\027[0m"
+
+let ansi_dim = "\027[2m"
+
+let ansi_red = "\027[31m"
+
+let ansi_green = "\027[32m"
+
+let ansi_cyan = "\027[36m"
+
+let env_value_is_truthy = function
+  | None ->
+      false
+  | Some value -> (
+      match String.lowercase_ascii value with
+      | ""
+      | "0"
+      | "false"
+      | "no"
+      | "off" -> false
+      | _ -> true
+    )
+
+let env_value_disables_color = function
+  | Some "0" -> true
+  | _ -> false
+
+let should_color_diff = fun () ->
+  if Option.is_some (Env.get Env.String ~var:"NO_COLOR") then
+    false
+  else if
+    env_value_is_truthy (Env.get Env.String ~var:"FORCE_COLOR")
+    || env_value_is_truthy (Env.get Env.String ~var:"CLICOLOR_FORCE")
+  then
+    true
+  else if env_value_disables_color (Env.get Env.String ~var:"CLICOLOR") then
+    false
+  else
+    match Env.get Env.String ~var:"TERM" with
+    | Some term -> not (String.equal term "dumb")
+    | None -> Option.is_some (Env.get Env.String ~var:"COLORTERM")
+
+let colorize = fun ~enabled color text ->
+  if enabled then
+    color ^ text ^ ansi_reset
+  else
+    text
+
+let format_line = fun ?(color = None) ~color_enabled prefix line ->
+  let text = prefix ^ line in
+  match color with
+  | Some color -> colorize ~enabled:color_enabled color text
+  | None -> text
 
 let format_diff = fun ~expected_label ~actual_label ~expected ~actual ->
   let hunk = make_diff_hunk ~expected ~actual in
+  let color_enabled = should_color_diff () in
   let lines =
     ((([
-      "--- " ^ expected_label;
-      "+++ " ^ actual_label;
-      "@@ -"
-      ^ Int.to_string hunk.start_line
-      ^ ","
-      ^ Int.to_string hunk.expected_count
-      ^ " +"
-      ^ Int.to_string hunk.start_line
-      ^ ","
-      ^ Int.to_string hunk.actual_count
-      ^ " @@";
+      colorize ~enabled:color_enabled ansi_dim ("--- " ^ expected_label);
+      colorize ~enabled:color_enabled ansi_dim ("+++ " ^ actual_label);
+      colorize
+        ~enabled:color_enabled
+        ansi_cyan
+        ("@@ -"
+        ^ Int.to_string hunk.start_line
+        ^ ","
+        ^ Int.to_string hunk.expected_count
+        ^ " +"
+        ^ Int.to_string hunk.start_line
+        ^ ","
+        ^ Int.to_string hunk.actual_count
+        ^ " @@");
     ]
-    @ List.map hunk.context_before ~fn:(format_line " "))
-    @ List.map hunk.expected_lines ~fn:(format_line "-"))
-    @ List.map hunk.actual_lines ~fn:(format_line "+"))
-    @ List.map hunk.context_after ~fn:(format_line " ")
+    @ List.map hunk.context_before ~fn:(format_line ~color_enabled " "))
+    @ List.map hunk.expected_lines ~fn:(format_line ~color_enabled ~color:(Some ansi_red) "-"))
+    @ List.map hunk.actual_lines ~fn:(format_line ~color_enabled ~color:(Some ansi_green) "+"))
+    @ List.map hunk.context_after ~fn:(format_line ~color_enabled " ")
   in
   String.concat "\n" lines
 

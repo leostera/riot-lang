@@ -39,6 +39,26 @@ let pending_snapshot_path = fun approved ->
   Path.from_string (Path.to_string approved ^ ".new")
   |> Result.expect ~msg:"pending snapshot path should be valid"
 
+let restore_env_value = fun var value ->
+  match value with
+  | Some value -> ignore (Env.set ~var ~value)
+  | None -> ignore (Env.remove ~var)
+
+let with_env_values = fun values fn ->
+  let previous = List.map values ~fn:(fun (var, value) -> (var, Env.get Env.String ~var, value)) in
+  List.for_each previous ~fn:(fun (var, _, value) -> restore_env_value var value);
+  let restore () =
+    List.for_each previous ~fn:(fun (var, previous, _) -> restore_env_value var previous)
+  in
+  try
+    let result = fn () in
+    restore ();
+    result
+  with
+  | exn ->
+      restore ();
+      raise exn
+
 let test_snapshot_missing_approved_writes_pending =
   Test.case
     "snapshot missing approved writes pending"
@@ -244,6 +264,58 @@ let test_inline_snapshot_mismatch_reports_error =
           else
             Ok ())
 
+let test_inline_snapshot_diff_uses_color_when_forced =
+  Test.case
+    "inline snapshot diff uses color when forced"
+    (fun ctx ->
+      with_env_values
+        [
+          ("FORCE_COLOR", Some "1");
+          ("CLICOLOR_FORCE", None);
+          ("CLICOLOR", None);
+          ("NO_COLOR", None);
+          ("TERM", Some "dumb");
+          ("COLORTERM", None);
+        ]
+        (fun () ->
+          match Test.Snapshot.assert_inline_text
+            ~ctx
+            ~actual:"alpha\nbeta\n"
+            ~expected:"alpha\ncharlie\n" with
+          | Ok () -> Error "expected inline snapshot mismatch to fail"
+          | Error msg ->
+              if not (String.contains msg "\027[31m-charlie\027[0m") then
+                Error ("expected removed lines to be red, got " ^ msg)
+              else if not (String.contains msg "\027[32m+beta\027[0m") then
+                Error ("expected added lines to be green, got " ^ msg)
+              else if not (String.contains msg "\027[36m@@ -2,1 +2,1 @@\027[0m") then
+                Error ("expected hunk header to be cyan, got " ^ msg)
+              else
+                Ok ()))
+
+let test_inline_snapshot_diff_respects_no_color =
+  Test.case
+    "inline snapshot diff respects no color"
+    (fun ctx ->
+      with_env_values
+        [
+          ("FORCE_COLOR", Some "1");
+          ("CLICOLOR_FORCE", Some "1");
+          ("NO_COLOR", Some "1");
+          ("TERM", Some "xterm-256color");
+        ]
+        (fun () ->
+          match Test.Snapshot.assert_inline_text
+            ~ctx
+            ~actual:"alpha\nbeta\n"
+            ~expected:"alpha\ncharlie\n" with
+          | Ok () -> Error "expected inline snapshot mismatch to fail"
+          | Error msg ->
+              if String.contains msg "\027[" then
+                Error ("expected NO_COLOR to disable ANSI escapes, got " ^ msg)
+              else
+                Ok ()))
+
 let test_json_snapshot_canonicalizes_object_keys =
   Test.case
     "json snapshot canonicalizes object keys"
@@ -379,6 +451,8 @@ let tests = [
   test_snapshot_existing_pending_is_refreshed_before_pending_failure;
   test_snapshot_existing_pending_mismatch_is_rewritten_and_reports_diff;
   test_inline_snapshot_mismatch_reports_error;
+  test_inline_snapshot_diff_uses_color_when_forced;
+  test_inline_snapshot_diff_respects_no_color;
   test_json_snapshot_canonicalizes_object_keys;
   test_inline_json_snapshot_canonicalizes_object_keys;
   test_json_snapshot_emits_json_progress;

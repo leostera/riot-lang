@@ -13,6 +13,10 @@ open Global
    Existing pending files remain visible failures until they are approved or
    rejected.
 
+   Snapshot mismatch messages include a unified diff. The diff uses ANSI color
+   when color output is available, while respecting [NO_COLOR],
+   [FORCE_COLOR], and [CLICOLOR_FORCE].
+
    Non-fixture snapshots live under:
 
    {[
