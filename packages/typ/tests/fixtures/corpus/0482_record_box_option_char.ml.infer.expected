@@ -1,2 +1,3 @@
-val get : 'a
-val answer : 'a
+type t = { value : char option; }
+val get : t -> char option
+val answer : char option

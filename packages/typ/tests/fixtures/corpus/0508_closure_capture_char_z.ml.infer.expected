@@ -1,2 +1,2 @@
-val make : 'a
-val answer : 'a
+val make : 'a -> 'b -> 'a * 'b
+val answer : char * char

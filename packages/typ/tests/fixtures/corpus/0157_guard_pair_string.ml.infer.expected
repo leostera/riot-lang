@@ -1,2 +1,2 @@
-val choose : 'a
-val answer : 'a
+val choose : 'a * 'a -> 'a
+val answer : string

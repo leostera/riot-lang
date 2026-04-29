@@ -1,2 +1,3 @@
-val project : 'a
-val answer : 'a
+type flagged = { flag : bool; code : int; }
+val project : flagged -> bool
+val answer : bool

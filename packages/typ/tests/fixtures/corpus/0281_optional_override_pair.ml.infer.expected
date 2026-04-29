@@ -1,2 +1,2 @@
-val build : 'a
-val answer : 'a
+val build : ?value:int * bool -> unit -> int * bool
+val answer : int * bool

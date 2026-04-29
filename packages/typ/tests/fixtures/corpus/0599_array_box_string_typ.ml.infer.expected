@@ -1,1 +1,2 @@
-unsupported syntax: ARRAY_INDEX_EXPR
+val touch : string array -> string * string
+val answer : string * string

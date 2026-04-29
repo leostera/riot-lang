@@ -1,2 +1,3 @@
-val choose : 'a
-val answer : 'a
+type color = Red | Blue | Green
+val choose : color -> color
+val answer : color

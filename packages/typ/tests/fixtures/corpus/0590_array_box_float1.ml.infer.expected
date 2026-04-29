@@ -1,1 +1,2 @@
-unsupported syntax: ARRAY_INDEX_EXPR
+val touch : float array -> float * float
+val answer : float * float

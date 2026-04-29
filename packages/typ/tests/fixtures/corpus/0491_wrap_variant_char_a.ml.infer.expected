@@ -1,2 +1,3 @@
-val unwrap : 'a
-val answer : 'a
+type t = Wrap of char
+val unwrap : t -> char
+val answer : char

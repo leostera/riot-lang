@@ -1,2 +1,2 @@
-val view : 'a
-val answer : 'a
+val view : int list -> int * int list
+val answer : int * int list

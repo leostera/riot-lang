@@ -1,2 +1,2 @@
-val id : 'a
-val answer : 'a * 'b
+val id : ([> `Yes ] as 'a) -> 'a
+val answer : [> `Yes ] * [> `No | `Yes ]

@@ -1,1 +1,2 @@
-val answer : 'a
+module M : sig type t = Wrap of char val value : t end
+val answer : M.t

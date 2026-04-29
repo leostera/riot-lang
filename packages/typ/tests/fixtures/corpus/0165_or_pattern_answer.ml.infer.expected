@@ -1,2 +1,3 @@
-val classify : 'a
-val answer : 'a
+type reply = Yes | No | Maybe
+val classify : reply -> reply
+val answer : reply

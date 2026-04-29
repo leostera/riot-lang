@@ -1,1 +1,2 @@
-val answer : 'a
+module M : sig type t = int option val value : t val id : t -> t end
+val answer : M.t

@@ -1,1 +1,2 @@
-unsupported syntax: ARRAY_INDEX_EXPR
+val touch : bool array -> bool * bool
+val answer : bool * bool

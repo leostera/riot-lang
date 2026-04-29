@@ -1,2 +1,3 @@
-val swap : 'a
-val answer : 'a
+type t = [ `No | `Yes ]
+val swap : [< `No | `Yes ] -> [> `No | `Yes ]
+val answer : [> `No | `Yes ]

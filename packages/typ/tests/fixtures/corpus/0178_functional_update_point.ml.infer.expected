@@ -1,2 +1,3 @@
-val bump : 'a
-val answer : 'a
+type point = { x : int; y : int; }
+val bump : point -> point
+val answer : point

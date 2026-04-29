@@ -1,2 +1,3 @@
-val get : 'a
-val answer : 'a
+type flagged = { flag : bool; code : int; }
+val get : flagged -> bool
+val answer : bool

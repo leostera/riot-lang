@@ -1,2 +1,2 @@
-val view : 'a
-val answer : 'a
+val view : char list -> char * char list
+val answer : char * char list

@@ -1,2 +1,3 @@
-val classify : 'a
-val answer : 'a
+type light = Red | Amber | Green
+val classify : light -> light
+val answer : light

@@ -1,2 +1,3 @@
-val keep : 'a
-val answer : 'a
+type any = Any : 'a -> any
+val keep : any -> any
+val answer : any

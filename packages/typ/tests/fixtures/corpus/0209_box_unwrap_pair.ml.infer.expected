@@ -1,2 +1,3 @@
-val unwrap : 'a * 'b
-val answer : 'a
+type box = Box of int * bool
+val unwrap : box -> int * bool
+val answer : int * bool

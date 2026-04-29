@@ -1,2 +1,3 @@
-val touch : 'a
-val answer : 'a
+type toggle = { mutable flag : bool; }
+val touch : toggle -> bool * bool
+val answer : bool * bool

@@ -1,2 +1,3 @@
-val touch : 'a
-val answer : 'a
+type t = { mutable value : bool; }
+val touch : t -> bool * bool
+val answer : bool * bool

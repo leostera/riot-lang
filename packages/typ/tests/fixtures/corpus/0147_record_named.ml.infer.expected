@@ -1,2 +1,3 @@
-val project : 'a
-val answer : 'a
+type named = { name : string; mark : char; }
+val project : named -> string
+val answer : string

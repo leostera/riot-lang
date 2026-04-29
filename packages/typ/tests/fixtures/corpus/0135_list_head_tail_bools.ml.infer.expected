@@ -1,2 +1,2 @@
-val view : 'a
-val answer : 'a
+val view : bool list -> bool * bool list
+val answer : bool * bool list

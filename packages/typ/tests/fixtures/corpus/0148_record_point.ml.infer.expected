@@ -1,2 +1,3 @@
-val project : 'a
-val answer : 'a
+type point = { x : int; y : int; }
+val project : point -> int
+val answer : int

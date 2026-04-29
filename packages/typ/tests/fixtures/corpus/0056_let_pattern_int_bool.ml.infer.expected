@@ -1,2 +1,4 @@
 val pair : int * bool
-val answer : 'a
+val left : int
+val right : bool
+val answer : int

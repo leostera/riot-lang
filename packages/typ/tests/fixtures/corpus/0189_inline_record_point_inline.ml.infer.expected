@@ -1,3 +1,4 @@
-val make : 'a
-val view : 'a * 'b
-val answer : 'a
+type t = Point of { x : int; y : int; }
+val make : unit -> t
+val view : t -> int * int
+val answer : int * int

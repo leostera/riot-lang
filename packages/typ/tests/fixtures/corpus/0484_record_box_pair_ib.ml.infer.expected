@@ -1,2 +1,3 @@
-val get : 'a
-val answer : 'a
+type t = { value : int * bool; }
+val get : t -> int * bool
+val answer : int * bool

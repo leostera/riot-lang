@@ -1,2 +1,4 @@
-val to_string : 'a
-val answer : 'a
+module Nested : sig type t = File of bool | System of char end
+type error = File of string | System of int
+val to_string : error -> string
+val answer : string

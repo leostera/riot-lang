@@ -1,2 +1,3 @@
-val touch : 'a
-val answer : 'a
+type t = { mutable value : string * char; }
+val touch : t -> (string * char) * (string * char)
+val answer : (string * char) * (string * char)

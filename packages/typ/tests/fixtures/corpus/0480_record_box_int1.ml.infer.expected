@@ -1,2 +1,3 @@
-val get : 'a
-val answer : 'a
+type t = { value : int; }
+val get : t -> int
+val answer : int

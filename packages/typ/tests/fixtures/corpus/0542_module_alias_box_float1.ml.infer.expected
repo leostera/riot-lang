@@ -1,1 +1,3 @@
-val answer : 'a
+module Source : sig type t = float val value : t end
+module Alias = Source
+val answer : Alias.t
