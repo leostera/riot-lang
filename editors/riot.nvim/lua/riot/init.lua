@@ -1970,55 +1970,6 @@ function M.remove_dependency(dependency)
   return true
 end
 
-function M.neotest_adapter()
-  return require("neotest-riot")
-end
-
-local function require_neotest()
-  local ok, neotest = pcall(require, "neotest")
-  if not ok then
-    notify("neotest is not installed", vim.log.levels.WARN)
-    return nil
-  end
-
-  return neotest
-end
-
-function M.neotest_summary()
-  local neotest = require_neotest()
-  if neotest then
-    neotest.summary.toggle()
-  end
-end
-
-function M.neotest_output()
-  local neotest = require_neotest()
-  if neotest then
-    neotest.output_panel.toggle()
-  end
-end
-
-function M.neotest_nearest()
-  local neotest = require_neotest()
-  if neotest then
-    neotest.run.run()
-  end
-end
-
-function M.neotest_file()
-  local neotest = require_neotest()
-  if neotest then
-    neotest.run.run(vim.fn.expand("%"))
-  end
-end
-
-function M.neotest_last()
-  local neotest = require_neotest()
-  if neotest then
-    neotest.run.run_last()
-  end
-end
-
 M.diagnostics_namespace = diagnostics_namespace
 
 return M

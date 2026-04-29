@@ -158,29 +158,4 @@ command("RiotLspInfo", "show_lsp_info", {
   nargs = 0,
 })
 
-command("RiotNeotestSummary", "neotest_summary", {
-  desc = "Toggle the neotest summary",
-  nargs = 0,
-})
-
-command("RiotNeotestOutput", "neotest_output", {
-  desc = "Toggle the neotest output panel",
-  nargs = 0,
-})
-
-command("RiotNeotestNearest", "neotest_nearest", {
-  desc = "Run the nearest test through neotest",
-  nargs = 0,
-})
-
-command("RiotNeotestFile", "neotest_file", {
-  desc = "Run the current file through neotest",
-  nargs = 0,
-})
-
-command("RiotNeotestLast", "neotest_last", {
-  desc = "Re-run the last neotest target",
-  nargs = 0,
-})
-
 riot.setup()

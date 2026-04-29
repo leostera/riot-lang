@@ -16,20 +16,6 @@ if not ok then
   return
 end
 
-local ok_neotest, neotest = pcall(require, "neotest")
-if ok_neotest and type(neotest.setup_project) == "function" then
-  local ok_adapter, riot_adapter = pcall(require, "neotest-riot")
-  if ok_adapter then
-    neotest.setup_project(repo_root, {
-      adapters = {
-        riot_adapter({
-          riot_cmd = { "riot" },
-        }),
-      },
-    })
-  end
-end
-
 vim.o.updatetime = 50
 
 vim.diagnostic.config({

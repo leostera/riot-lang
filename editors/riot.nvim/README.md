@@ -19,7 +19,6 @@ Current features:
 - `:RiotBench`, `:RiotBenchPackage`, `:RiotBenchFile`, `:RiotBenchNearest`, and `:RiotBenchLast`
 - `:RiotAdd` and `:RiotRemove`
 - `:RiotLogs`, `:RiotLspLogs`, `:RiotLspStart`, `:RiotLspStop`, `:RiotLspRestart`, and `:RiotLspInfo`
-- optional `neotest` bridge commands plus an experimental `neotest-riot` adapter module
 
 Planned next:
 
@@ -102,28 +101,6 @@ Options:
 - `:RiotAdd [dep]` and `:RiotRemove [dep]`
 - `:RiotLogs` and `:RiotLspLogs`
 - `:RiotLspStart`, `:RiotLspStop`, `:RiotLspRestart`, `:RiotLspInfo`
-- `:RiotNeotestSummary`, `:RiotNeotestOutput`, `:RiotNeotestNearest`, `:RiotNeotestFile`, `:RiotNeotestLast`
-
-## Neotest
-
-`riot.nvim` ships an experimental `neotest-riot` adapter module. If you
-already use `nvim-neotest/neotest`, you can wire it like this:
-
-```lua
-require("neotest").setup({
-  adapters = {
-    require("neotest-riot")({
-      riot_cmd = { "riot" },
-    }),
-  },
-})
-```
-
-The adapter discovers Riot tests from `riot test --list --json` and runs them
-through `riot test --json`. It currently approximates in-file test positions by
-scanning for `Test.case` and `Test.property` names, so the nearest-position UX
-is good for conventional test suites but not yet perfect for heavily-generated
-test lists.
 
 ## Notes
 
