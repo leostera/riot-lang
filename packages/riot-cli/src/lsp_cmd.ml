@@ -13,9 +13,7 @@ let command =
 let run = fun matches ->
   let open ArgParser in
   match get_subcommand matches with
-  | Some ("stdio", _) ->
-      eprintln "riot lsp is currently unavailable in this build";
-      Error (Failure "riot lsp is currently unavailable in this build")
+  | Some ("stdio", _) -> Riot_lsp.run ()
   | _ ->
       eprintln "Usage: riot lsp stdio";
       Error (Failure "Unknown lsp subcommand")
