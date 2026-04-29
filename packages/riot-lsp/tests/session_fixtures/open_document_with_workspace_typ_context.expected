@@ -13,6 +13,7 @@
           "documentFormattingProvider": true,
           "definitionProvider": true,
           "hoverProvider": true,
+          "inlayHintProvider": true,
           "documentSymbolProvider": true,
           "codeActionProvider": {
             "codeActionKinds": [
@@ -29,35 +30,7 @@
     },
     {
       "params": {
-        "diagnostics": [
-          {
-            "message": "Library source modules should usually have a matching .mli file",
-            "range": {
-              "start": {
-                "line": 0,
-                "character": 0
-              },
-              "end": {
-                "line": 0,
-                "character": 0
-              }
-            },
-            "severity": 2,
-            "code": "require-module-interfaces",
-            "source": "riot-fix",
-            "data": {
-              "severity": "warning",
-              "message": "Library source modules should usually have a matching .mli file",
-              "span": {
-                "start": 0,
-                "end": 0
-              },
-              "rule_id": "require-module-interfaces",
-              "suggestion": "Add a matching interface file at `__REPO_ROOT__/packages/riot-lsp/tests/workspace_fixtures/snow/app/src/app.mli`.",
-              "fix": null
-            }
-          }
-        ],
+        "diagnostics": [],
         "uri": "__REPO_ROOT_URI__/packages/riot-lsp/tests/workspace_fixtures/snow/app/src/app.ml",
         "version": 1
       },

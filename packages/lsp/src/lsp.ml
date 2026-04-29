@@ -268,6 +268,72 @@ module Hover_result = struct
     Ok { contents; range }
 end
 
+module Inlay_hint = struct
+  module Kind = struct
+    type t =
+      | Type
+      | Parameter
+
+    let to_int = function
+      | Type -> 1
+      | Parameter -> 2
+
+    let of_int = function
+      | 1 -> Ok Type
+      | 2 -> Ok Parameter
+      | value -> Error ("invalid inlay hint kind: " ^ Int.to_string value)
+
+    let to_json = fun value -> Json.int (to_int value)
+
+    let of_json = fun value ->
+      let* value = Decode.int "inlayHintKind" value in
+      of_int value
+  end
+
+  type t = {
+    position: Position.t;
+    label: string;
+    kind: Kind.t option;
+    tooltip: Markup_content.t option;
+    padding_left: bool option;
+    padding_right: bool option;
+  }
+
+  let to_json = fun {
+    position;
+    label;
+    kind;
+    tooltip;
+    padding_left;
+    padding_right
+  } ->
+    let fields = [ ("position", Position.to_json position); ("label", Json.string label); ] in
+    let fields = Encode.field_opt "kind" Kind.to_json kind fields in
+    let fields = Encode.field_opt "tooltip" Markup_content.to_json tooltip fields in
+    let fields = Encode.field_opt "paddingLeft" Json.bool padding_left fields in
+    let fields = Encode.field_opt "paddingRight" Json.bool padding_right fields in
+    Json.obj (List.rev fields)
+
+  let of_json = fun value ->
+    let* fields = Decode.object_fields "inlayHint" value in
+    let* position = Decode.required "inlayHint" "position" (ignore_context Position.of_json) fields in
+    let* label = Decode.required "inlayHint" "label" Decode.string fields in
+    let* kind = Decode.optional "inlayHint" "kind" (ignore_context Kind.of_json) fields in
+    let* tooltip =
+      Decode.optional "inlayHint" "tooltip" (ignore_context Markup_content.of_json) fields
+    in
+    let* padding_left = Decode.optional "inlayHint" "paddingLeft" Decode.bool fields in
+    let* padding_right = Decode.optional "inlayHint" "paddingRight" Decode.bool fields in
+    Ok {
+      position;
+      label;
+      kind;
+      tooltip;
+      padding_left;
+      padding_right;
+    }
+end
+
 module Symbol_kind = struct
   type t =
     | File
@@ -1068,6 +1134,7 @@ module Initialize = struct
       document_formatting_provider: bool option;
       definition_provider: bool option;
       hover_provider: bool option;
+      inlay_hint_provider: bool option;
       document_symbol_provider: bool option;
       code_action_provider: code_action_provider option;
       experimental: json option;
@@ -1148,6 +1215,9 @@ module Initialize = struct
       in
       let fields = Encode.field_opt "hoverProvider" Json.bool capabilities.hover_provider fields in
       let fields =
+        Encode.field_opt "inlayHintProvider" Json.bool capabilities.inlay_hint_provider fields
+      in
+      let fields =
         Encode.field_opt
           "documentSymbolProvider"
           Json.bool
@@ -1185,6 +1255,9 @@ module Initialize = struct
         Decode.optional "serverCapabilities" "definitionProvider" Decode.bool fields
       in
       let* hover_provider = Decode.optional "serverCapabilities" "hoverProvider" Decode.bool fields in
+      let* inlay_hint_provider =
+        Decode.optional "serverCapabilities" "inlayHintProvider" Decode.bool fields
+      in
       let* document_symbol_provider =
         Decode.optional "serverCapabilities" "documentSymbolProvider" Decode.bool fields
       in
@@ -1202,6 +1275,7 @@ module Initialize = struct
         document_formatting_provider;
         definition_provider;
         hover_provider;
+        inlay_hint_provider;
         document_symbol_provider;
         code_action_provider;
         experimental;
@@ -1340,6 +1414,8 @@ module Exit = struct
       ~params_of_jsonrpc:(Params.no_params "exit")
       ~params_to_jsonrpc:(fun () -> Jsonrpc.NoParams)
 end
+
+module Inlay_hint_item = Inlay_hint
 
 module Text_document_requests = struct
   module Did_open = struct
@@ -1588,6 +1664,57 @@ module Text_document_requests = struct
     let request =
       Method.request
         ~name:"textDocument/definition"
+        ~params_of_jsonrpc
+        ~params_to_jsonrpc
+        ~result_of_json
+        ~result_to_json
+  end
+
+  module Inlay_hint = struct
+    type params = {
+      text_document: Text_document.identifier;
+      range: Range.t;
+    }
+
+    type result = Inlay_hint_item.t list option
+
+    let params_to_jsonrpc = fun { text_document; range } ->
+      Params.named
+        [
+          ("textDocument", Text_document.Identifier.to_json text_document);
+          ("range", Range.to_json range);
+        ]
+
+    let params_of_jsonrpc =
+      Params.object_params
+        "textDocument/inlayHint"
+        (fun fields ->
+          let* text_document =
+            Decode.required
+              "textDocument/inlayHint"
+              "textDocument"
+              (ignore_context Text_document.Identifier.of_json)
+              fields
+          in
+          let* range =
+            Decode.required "textDocument/inlayHint" "range" (ignore_context Range.of_json) fields
+          in
+          Ok { text_document; range })
+
+    let result_to_json = function
+      | None -> Json.Null
+      | Some hints -> Json.array (List.map hints ~fn:Inlay_hint_item.to_json)
+
+    let result_of_json = function
+      | Json.Null -> Ok None
+      | Json.Array _ as value ->
+          let* hints = Decode.list "textDocument/inlayHint result" Inlay_hint_item.of_json value in
+          Ok (Some hints)
+      | value -> Error (unsupported_json_kind "textDocument/inlayHint result array" value)
+
+    let request =
+      Method.request
+        ~name:"textDocument/inlayHint"
         ~params_of_jsonrpc
         ~params_to_jsonrpc
         ~result_of_json

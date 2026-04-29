@@ -13,6 +13,7 @@
           "documentFormattingProvider": true,
           "definitionProvider": true,
           "hoverProvider": true,
+          "inlayHintProvider": true,
           "documentSymbolProvider": true,
           "codeActionProvider": {
             "codeActionKinds": [
@@ -39,7 +40,22 @@
     {
       "jsonrpc": "2.0",
       "id": 2,
-      "result": null
+      "result": {
+        "contents": {
+          "kind": "plaintext",
+          "value": "int"
+        },
+        "range": {
+          "start": {
+            "line": 0,
+            "character": 13
+          },
+          "end": {
+            "line": 0,
+            "character": 15
+          }
+        }
+      }
     }
   ],
   "exitCode": null,

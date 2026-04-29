@@ -457,23 +457,24 @@ let query_position_of_lsp_position = fun text position ->
   | Error _ -> None
   | Ok offset -> Some offset
 
-let range_of_span = fun text (span: Syn.Ceibo.Span.t) ->
+let range_of_span = fun text (span: Syn.Span.t) ->
   Lsp.Utf16.range_of_offsets
     text
     ~start_offset:span.start
     ~end_offset:span.end_
 
+let position_of_offset = fun text offset ->
+  (Lsp.Utf16.range_of_offsets text ~start_offset:offset ~end_offset:offset).start_
+
 let range_of_node = fun text node ->
   range_of_span
     text
-    (Syn.Ceibo.Span.make ~start:(Syn.Ast.Node.span_start node) ~end_:(Syn.Ast.Node.span_end node))
+    (Syn.Span.make ~start:(Syn.Ast.Node.span_start node) ~end_:(Syn.Ast.Node.span_end node))
 
 let range_of_token = fun text token ->
   range_of_span
     text
-    (Syn.Ceibo.Span.make
-      ~start:(Syn.Ast.Token.span_start token)
-      ~end_:(Syn.Ast.Token.span_end token))
+    (Syn.Span.make ~start:(Syn.Ast.Token.span_start token) ~end_:(Syn.Ast.Token.span_end token))
 
 let range_of_ident = fun text ident -> range_of_span text (Syn.Ast.Ident.span ident)
 
@@ -849,13 +850,466 @@ let document_symbols_for_document = fun document ->
     in
     Some symbols
 
+type hover_candidate = {
+  hover_origin: Typ.Ast.origin;
+  hover_type: Typ.Ast.Type.t;
+}
+
+let span_contains_offset = fun (span: Syn.Span.t) offset ->
+  offset >= span.start && offset <= span.end_
+
+let hover_candidate_width = fun candidate ->
+  candidate.hover_origin.span.end_ - candidate.hover_origin.span.start
+
+let better_hover_candidate = fun left right ->
+  match (left, right) with
+  | (None, candidate)
+  | (candidate, None) -> candidate
+  | (Some left, Some right) ->
+      if hover_candidate_width right < hover_candidate_width left then
+        Some right
+      else
+        Some left
+
+let hover_candidate = fun offset origin type_ ->
+  if span_contains_offset origin.Typ.Ast.span offset then
+    Option.map type_ ~fn:(fun hover_type -> { hover_origin = origin; hover_type })
+  else
+    None
+
+let best_hover_candidate = fun candidates ->
+  List.fold_left
+    candidates
+    ~init:None
+    ~fn:better_hover_candidate
+
+let rec hover_pattern = fun offset (pattern: Typ.Ast.pattern) ->
+  let self = hover_candidate offset pattern.origin pattern.type_ in
+  let children =
+    match pattern.kind with
+    | Typ.Ast.Wildcard
+    | Typ.Ast.Bind _
+    | Typ.Ast.Constructor _
+    | Typ.Ast.Literal _
+    | Typ.Ast.FirstClassModule _ -> []
+    | Typ.Ast.Apply { callee; argument } ->
+        [ hover_pattern offset callee; hover_pattern offset argument ]
+    | Typ.Ast.PolyVariant { payload; _ } -> [ Option.and_then payload ~fn:(hover_pattern offset) ]
+    | Typ.Ast.Tuple patterns
+    | Typ.Ast.List patterns -> List.map patterns ~fn:(hover_pattern offset)
+    | Typ.Ast.Record fields ->
+        List.map
+          fields
+          ~fn:(fun field -> Option.and_then field.Typ.Ast.pattern ~fn:(hover_pattern offset))
+    | Typ.Ast.Or { left; right }
+    | Typ.Ast.Cons { head = left; tail = right } ->
+        [ hover_pattern offset left; hover_pattern offset right ]
+    | Typ.Ast.Constraint { pattern; _ }
+    | Typ.Ast.Attribute pattern -> [ hover_pattern offset pattern ]
+    | Typ.Ast.Alias { pattern; alias } ->
+        [ hover_pattern offset pattern; hover_pattern offset alias ]
+  in
+  best_hover_candidate (self :: children)
+
+and hover_parameter = fun offset (parameter: Typ.Ast.parameter) ->
+  best_hover_candidate
+    [
+      hover_pattern offset parameter.pattern;
+      Option.and_then parameter.default ~fn:(hover_expression offset);
+    ]
+
+and hover_parameters = fun offset parameters ->
+  parameters
+  |> List.map ~fn:(hover_parameter offset)
+  |> best_hover_candidate
+
+and hover_function_body = fun offset body ->
+  match body with
+  | Typ.Ast.Body expression -> hover_expression offset expression
+  | Typ.Ast.Cases cases -> hover_match_cases offset cases
+
+and hover_match_case = fun offset (case: Typ.Ast.match_case) ->
+  best_hover_candidate
+    [
+      hover_pattern offset case.pattern;
+      Option.and_then case.guard ~fn:(hover_expression offset);
+      hover_expression offset case.body;
+    ]
+
+and hover_match_cases = fun offset cases ->
+  cases
+  |> List.map ~fn:(hover_match_case offset)
+  |> best_hover_candidate
+
+and hover_argument = fun offset (argument: Typ.Ast.argument) ->
+  match argument.kind with
+  | Typ.Ast.Positional expression -> hover_expression offset expression
+  | Typ.Ast.Labeled { value; _ }
+  | Typ.Ast.Optional { value; _ } -> Option.and_then value ~fn:(hover_expression offset)
+
+and hover_let_binding = fun offset (binding: Typ.Ast.let_binding) ->
+  best_hover_candidate
+    [
+      hover_pattern offset binding.pattern;
+      hover_parameters offset binding.parameters;
+      hover_expression offset binding.body;
+    ]
+
+and hover_expression = fun offset (expression: Typ.Ast.expression) ->
+  let self = hover_candidate offset expression.origin expression.type_ in
+  let children =
+    match expression.kind with
+    | Typ.Ast.Literal _
+    | Typ.Ast.Ident _
+    | Typ.Ast.Constructor _
+    | Typ.Ast.FirstClassModule _ -> []
+    | Typ.Ast.Tuple expressions
+    | Typ.Ast.List expressions
+    | Typ.Ast.Array expressions -> List.map expressions ~fn:(hover_expression offset)
+    | Typ.Ast.PolyVariant { payload; _ } ->
+        [ Option.and_then payload ~fn:(hover_expression offset) ]
+    | Typ.Ast.Record { update; fields } ->
+        Option.and_then update ~fn:(hover_expression offset)
+        :: List.map fields ~fn:(fun field -> hover_expression offset field.Typ.Ast.value)
+    | Typ.Ast.FieldAccess { receiver; _ } -> [ hover_expression offset receiver ]
+    | Typ.Ast.Assign { target; value }
+    | Typ.Ast.Sequence { left = target; right = value }
+    | Typ.Ast.Infix { left = target; right = value; _ } ->
+        [ hover_expression offset target; hover_expression offset value ]
+    | Typ.Ast.If { condition; then_branch; else_branch } ->
+        [
+          hover_expression offset condition;
+          hover_expression offset then_branch;
+          Option.and_then else_branch ~fn:(hover_expression offset);
+        ]
+    | Typ.Ast.Match { scrutinee; cases } ->
+        [ hover_expression offset scrutinee; hover_match_cases offset cases ]
+    | Typ.Ast.Try { body; cases } ->
+        [ hover_expression offset body; hover_match_cases offset cases ]
+    | Typ.Ast.While { condition; body } ->
+        [ hover_expression offset condition; hover_expression offset body ]
+    | Typ.Ast.For {
+      pattern;
+      start_;
+      stop;
+      body
+    } ->
+        [
+          hover_pattern offset pattern;
+          hover_expression offset start_;
+          hover_expression offset stop;
+          hover_expression offset body;
+        ]
+    | Typ.Ast.Function { parameters; body; _ } ->
+        [ hover_parameters offset parameters; hover_function_body offset body ]
+    | Typ.Ast.Apply { callee; arguments } ->
+        hover_expression offset callee :: List.map arguments ~fn:(hover_argument offset)
+    | Typ.Ast.Let { first_binding; body } ->
+        [ hover_let_binding offset first_binding; hover_expression offset body ]
+    | Typ.Ast.LetModule { body; _ }
+    | Typ.Ast.LocalOpen { body; _ }
+    | Typ.Ast.Assert body -> [ hover_expression offset body ]
+  in
+  best_hover_candidate (self :: children)
+
+let rec hover_structure_item = fun offset (item: Typ.Ast.structure_item) ->
+  match item.kind with
+  | Typ.Ast.Let declaration ->
+      declaration.bindings
+      |> List.map ~fn:(hover_let_binding offset)
+      |> best_hover_candidate
+  | Typ.Ast.Expression expression -> hover_expression offset expression
+  | Typ.Ast.Module modules ->
+      modules
+      |> List.map
+        ~fn:(fun (module_: Typ.Ast.module_declaration) ->
+          module_.items
+          |> List.map ~fn:(hover_structure_item offset)
+          |> best_hover_candidate)
+      |> best_hover_candidate
+  | Typ.Ast.Type _
+  | Typ.Ast.TypeExtension _
+  | Typ.Ast.External _
+  | Typ.Ast.Exception _
+  | Typ.Ast.ModuleType _
+  | Typ.Ast.Include _ -> None
+
+let hover_ast = fun offset (ast: Typ.Ast.t) ->
+  match ast.kind with
+  | Typ.Ast.Implementation items ->
+      items
+      |> List.map ~fn:(hover_structure_item offset)
+      |> best_hover_candidate
+  | Typ.Ast.Interface _ -> None
+
 let hover_for_document = fun state ->
   fun document ->
     fun position ->
       ignore state;
-      ignore position;
-      ignore document;
-      None
+      match query_position_of_lsp_position document.text position with
+      | None -> None
+      | Some offset ->
+          let parse_result =
+            Syn.parse ~filename:(filename_of_document document) (source_slice document.text)
+          in
+          if Vector.length parse_result.diagnostics > 0 then
+            None
+          else
+            (
+              let source = Typ.Model.Source.make ~text:document.text in
+              match Typ.Ast.from_parse_result ~source parse_result with
+              | Error _ -> None
+              | Ok ast -> (
+                  let _ = Typ.Infer.check ast in
+                  match hover_ast offset ast with
+                  | None -> None
+                  | Some candidate ->
+                      Some {
+                        Lsp.Hover_result.contents = {
+                          Lsp.Markup_content.kind = Lsp.Markup_kind.Plain_text;
+                          value = Typ.Ast.Type.to_string candidate.hover_type;
+                        };
+                        range = Some (range_of_span document.text candidate.hover_origin.span);
+                      }
+                )
+            )
+
+let inlay_hint_in_range = fun start_offset end_offset origin ->
+  let hint_offset = origin.Typ.Ast.span.end_ in
+  hint_offset >= start_offset && hint_offset <= end_offset
+
+let inlay_hint_for_pattern = fun text start_offset end_offset (pattern: Typ.Ast.pattern) ->
+  match (pattern.kind, pattern.type_) with
+  | (Typ.Ast.Bind _, Some type_) when inlay_hint_in_range start_offset end_offset pattern.origin ->
+      Some {
+        Lsp.Inlay_hint.position = position_of_offset text pattern.origin.span.end_;
+        label = ": " ^ Typ.Ast.Type.to_string type_;
+        kind = Some Lsp.Inlay_hint.Kind.Type;
+        tooltip = None;
+        padding_left = Some false;
+        padding_right = Some false;
+      }
+  | _ -> None
+
+let rec inlay_hints_pattern = fun text start_offset end_offset (pattern: Typ.Ast.pattern) ->
+  let children =
+    match pattern.kind with
+    | Typ.Ast.Wildcard
+    | Typ.Ast.Bind _
+    | Typ.Ast.Constructor _
+    | Typ.Ast.Literal _
+    | Typ.Ast.FirstClassModule _ -> []
+    | Typ.Ast.Apply { callee; argument } ->
+        inlay_hints_pattern text start_offset end_offset callee
+        @ inlay_hints_pattern text start_offset end_offset argument
+    | Typ.Ast.PolyVariant { payload; _ } ->
+        Option.unwrap_or
+          (Option.map payload ~fn:(inlay_hints_pattern text start_offset end_offset))
+          ~default:[]
+    | Typ.Ast.Tuple patterns
+    | Typ.Ast.List patterns ->
+        patterns
+        |> List.map ~fn:(inlay_hints_pattern text start_offset end_offset)
+        |> List.concat
+    | Typ.Ast.Record fields ->
+        fields
+        |> List.filter_map ~fn:(fun (field: Typ.Ast.record_pattern_field) -> field.pattern)
+        |> List.map ~fn:(inlay_hints_pattern text start_offset end_offset)
+        |> List.concat
+    | Typ.Ast.Or { left; right }
+    | Typ.Ast.Cons { head = left; tail = right } ->
+        inlay_hints_pattern text start_offset end_offset left
+        @ inlay_hints_pattern text start_offset end_offset right
+    | Typ.Ast.Constraint { pattern; _ }
+    | Typ.Ast.Attribute pattern -> inlay_hints_pattern text start_offset end_offset pattern
+    | Typ.Ast.Alias { pattern; alias } ->
+        inlay_hints_pattern text start_offset end_offset pattern
+        @ inlay_hints_pattern text start_offset end_offset alias
+  in
+  match inlay_hint_for_pattern text start_offset end_offset pattern with
+  | None -> children
+  | Some hint -> hint :: children
+
+and inlay_hints_parameter = fun text start_offset end_offset (parameter: Typ.Ast.parameter) ->
+  let pattern_hints = inlay_hints_pattern text start_offset end_offset parameter.pattern in
+  let default_hints =
+    Option.unwrap_or
+      (Option.map parameter.default ~fn:(inlay_hints_expression text start_offset end_offset))
+      ~default:[]
+  in
+  pattern_hints @ default_hints
+
+and inlay_hints_parameters = fun text start_offset end_offset parameters ->
+  parameters
+  |> List.map ~fn:(inlay_hints_parameter text start_offset end_offset)
+  |> List.concat
+
+and inlay_hints_function_body = fun text start_offset end_offset body ->
+  match body with
+  | Typ.Ast.Body expression -> inlay_hints_expression text start_offset end_offset expression
+  | Typ.Ast.Cases cases -> inlay_hints_match_cases text start_offset end_offset cases
+
+and inlay_hints_match_case = fun text start_offset end_offset (case: Typ.Ast.match_case) ->
+  inlay_hints_pattern text start_offset end_offset case.pattern
+  @ Option.unwrap_or
+    (Option.map case.guard ~fn:(inlay_hints_expression text start_offset end_offset))
+    ~default:[]
+  @ inlay_hints_expression text start_offset end_offset case.body
+
+and inlay_hints_match_cases = fun text start_offset end_offset cases ->
+  cases
+  |> List.map ~fn:(inlay_hints_match_case text start_offset end_offset)
+  |> List.concat
+
+and inlay_hints_argument = fun text start_offset end_offset (argument: Typ.Ast.argument) ->
+  match argument.kind with
+  | Typ.Ast.Positional expression -> inlay_hints_expression text start_offset end_offset expression
+  | Typ.Ast.Labeled { value; _ }
+  | Typ.Ast.Optional { value; _ } ->
+      Option.unwrap_or
+        (Option.map value ~fn:(inlay_hints_expression text start_offset end_offset))
+        ~default:[]
+
+and inlay_hints_let_binding = fun text start_offset end_offset (binding: Typ.Ast.let_binding) ->
+  inlay_hints_pattern text start_offset end_offset binding.pattern
+  @ inlay_hints_parameters text start_offset end_offset binding.parameters
+  @ inlay_hints_expression text start_offset end_offset binding.body
+
+and inlay_hints_expression = fun text start_offset end_offset (expression: Typ.Ast.expression) ->
+  match expression.kind with
+  | Typ.Ast.Literal _
+  | Typ.Ast.Ident _
+  | Typ.Ast.Constructor _
+  | Typ.Ast.FirstClassModule _ -> []
+  | Typ.Ast.Tuple expressions
+  | Typ.Ast.List expressions
+  | Typ.Ast.Array expressions ->
+      expressions
+      |> List.map ~fn:(inlay_hints_expression text start_offset end_offset)
+      |> List.concat
+  | Typ.Ast.PolyVariant { payload; _ } ->
+      Option.unwrap_or
+        (Option.map payload ~fn:(inlay_hints_expression text start_offset end_offset))
+        ~default:[]
+  | Typ.Ast.Record { update; fields } ->
+      Option.unwrap_or
+        (Option.map update ~fn:(inlay_hints_expression text start_offset end_offset))
+        ~default:[]
+      @ (
+        fields
+        |> List.map
+          ~fn:(fun (field: Typ.Ast.record_expression_field) ->
+            inlay_hints_expression
+              text
+              start_offset
+              end_offset
+              field.value)
+        |> List.concat
+      )
+  | Typ.Ast.FieldAccess { receiver; _ } ->
+      inlay_hints_expression text start_offset end_offset receiver
+  | Typ.Ast.Assign { target; value }
+  | Typ.Ast.Sequence { left = target; right = value }
+  | Typ.Ast.Infix { left = target; right = value; _ } ->
+      inlay_hints_expression text start_offset end_offset target
+      @ inlay_hints_expression text start_offset end_offset value
+  | Typ.Ast.If { condition; then_branch; else_branch } ->
+      inlay_hints_expression text start_offset end_offset condition
+      @ inlay_hints_expression text start_offset end_offset then_branch
+      @ Option.unwrap_or
+        (Option.map else_branch ~fn:(inlay_hints_expression text start_offset end_offset))
+        ~default:[]
+  | Typ.Ast.Match { scrutinee; cases } ->
+      inlay_hints_expression text start_offset end_offset scrutinee
+      @ inlay_hints_match_cases text start_offset end_offset cases
+  | Typ.Ast.Try { body; cases } ->
+      inlay_hints_expression text start_offset end_offset body
+      @ inlay_hints_match_cases text start_offset end_offset cases
+  | Typ.Ast.While { condition; body } ->
+      inlay_hints_expression text start_offset end_offset condition
+      @ inlay_hints_expression text start_offset end_offset body
+  | Typ.Ast.For {
+    pattern;
+    start_;
+    stop;
+    body
+  } ->
+      inlay_hints_pattern text start_offset end_offset pattern
+      @ inlay_hints_expression text start_offset end_offset start_
+      @ inlay_hints_expression text start_offset end_offset stop
+      @ inlay_hints_expression text start_offset end_offset body
+  | Typ.Ast.Function { parameters; body; _ } ->
+      inlay_hints_parameters text start_offset end_offset parameters
+      @ inlay_hints_function_body text start_offset end_offset body
+  | Typ.Ast.Apply { callee; arguments } ->
+      inlay_hints_expression text start_offset end_offset callee
+      @ (
+        arguments
+        |> List.map ~fn:(inlay_hints_argument text start_offset end_offset)
+        |> List.concat
+      )
+  | Typ.Ast.Let { first_binding; body } ->
+      inlay_hints_let_binding text start_offset end_offset first_binding
+      @ inlay_hints_expression text start_offset end_offset body
+  | Typ.Ast.LetModule { body; _ }
+  | Typ.Ast.LocalOpen { body; _ }
+  | Typ.Ast.Assert body -> inlay_hints_expression text start_offset end_offset body
+
+let rec inlay_hints_structure_item = fun
+  text start_offset end_offset (item: Typ.Ast.structure_item) ->
+  match item.kind with
+  | Typ.Ast.Let declaration ->
+      declaration.bindings
+      |> List.map ~fn:(inlay_hints_let_binding text start_offset end_offset)
+      |> List.concat
+  | Typ.Ast.Expression expression -> inlay_hints_expression text start_offset end_offset expression
+  | Typ.Ast.Module modules ->
+      modules
+      |> List.map
+        ~fn:(fun (module_: Typ.Ast.module_declaration) ->
+          module_.items
+          |> List.map ~fn:(inlay_hints_structure_item text start_offset end_offset)
+          |> List.concat)
+      |> List.concat
+  | Typ.Ast.Type _
+  | Typ.Ast.TypeExtension _
+  | Typ.Ast.External _
+  | Typ.Ast.Exception _
+  | Typ.Ast.ModuleType _
+  | Typ.Ast.Include _ -> []
+
+let inlay_hints_ast = fun text start_offset end_offset (ast: Typ.Ast.t) ->
+  match ast.kind with
+  | Typ.Ast.Implementation items ->
+      items
+      |> List.map ~fn:(inlay_hints_structure_item text start_offset end_offset)
+      |> List.concat
+  | Typ.Ast.Interface _ -> []
+
+let inlay_hints_for_document = fun state ->
+  fun document ->
+    fun range ->
+      ignore state;
+      match (
+        Lsp.Utf16.offset_of_position document.text range.Lsp.Range.start_,
+        Lsp.Utf16.offset_of_position document.text range.Lsp.Range.end_
+      ) with
+      | (Ok start_offset, Ok end_offset) ->
+          let parse_result =
+            Syn.parse ~filename:(filename_of_document document) (source_slice document.text)
+          in
+          if Vector.length parse_result.diagnostics > 0 then
+            None
+          else
+            (
+              let source = Typ.Model.Source.make ~text:document.text in
+              match Typ.Ast.from_parse_result ~source parse_result with
+              | Error _ -> None
+              | Ok ast ->
+                  let _ = Typ.Infer.check ast in
+                  Some (inlay_hints_ast document.text start_offset end_offset ast)
+            )
+      | _ -> None
 
 let document_source_for_origin = fun state origin ->
   ignore state;
@@ -923,6 +1377,7 @@ let capabilities = {
   document_formatting_provider = Some true;
   definition_provider = Some true;
   hover_provider = Some true;
+  inlay_hint_provider = Some true;
   document_symbol_provider = Some true;
   code_action_provider = Some (Lsp.Initialize.Server_capabilities.Provider_options {
     code_action_kinds = Some [ Lsp.Action_kind.Quick_fix; Source_fix_all ];
@@ -1085,6 +1540,36 @@ let handle_hover = fun state ->
               ]
       )
 
+let handle_inlay_hint = fun state ->
+  fun payload ->
+    match Lsp.request_of_json Lsp.Text_document_methods.Inlay_hint.request payload with
+    | Error reason ->
+        ok
+          state
+          [ response_error ~id:Jsonrpc.Null ~code:Lsp.Error_code.invalid_params ~message:reason () ]
+    | Ok (id, params) -> (
+        match find_document state params.text_document.uri with
+        | None ->
+            ok
+              state
+              [
+                response_error
+                  ~id
+                  ~code:Lsp.Error_code.invalid_params
+                  ~message:"inlay hints requested for a document that is not open"
+                  ();
+              ]
+        | Some document ->
+            ok
+              state
+              [
+                Lsp.response_to_json
+                  ~id
+                  Lsp.Text_document_methods.Inlay_hint.request
+                  (inlay_hints_for_document state document params.range);
+              ]
+      )
+
 let handle_definition = fun state ->
   fun payload ->
     match Lsp.request_of_json Lsp.Text_document_methods.Definition.request payload with
@@ -1227,6 +1712,7 @@ let handle_request = fun state ->
         | "textDocument/definition" -> handle_definition state payload
         | "textDocument/documentSymbol" -> handle_document_symbol state payload
         | "textDocument/hover" -> handle_hover state payload
+        | "textDocument/inlayHint" -> handle_inlay_hint state payload
         | "textDocument/formatting" -> handle_formatting state payload
         | "textDocument/codeAction" -> handle_code_action state payload
         | method_ ->

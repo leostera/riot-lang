@@ -29,15 +29,40 @@
       }
     },
     {
+      "params": {
+        "diagnostics": [],
+        "uri": "file:///workspace/app.ml",
+        "version": 1
+      },
+      "jsonrpc": "2.0",
+      "method": "textDocument/publishDiagnostics"
+    },
+    {
       "jsonrpc": "2.0",
       "id": 2,
-      "result": null
+      "result": [
+        {
+          "label": ": int",
+          "position": {
+            "line": 0,
+            "character": 9
+          },
+          "kind": 1,
+          "paddingLeft": false,
+          "paddingRight": false
+        }
+      ]
     }
   ],
-  "exitCode": 0,
+  "exitCode": null,
   "state": {
     "initialized": true,
-    "shutdownRequested": true,
-    "documents": []
+    "shutdownRequested": false,
+    "documents": [
+      {
+        "uri": "file:///workspace/app.ml",
+        "version": 1
+      }
+    ]
   }
 }

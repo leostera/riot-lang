@@ -13,6 +13,7 @@
           "documentFormattingProvider": true,
           "definitionProvider": true,
           "hoverProvider": true,
+          "inlayHintProvider": true,
           "documentSymbolProvider": true,
           "codeActionProvider": {
             "codeActionKinds": [
