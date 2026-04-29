@@ -2,6 +2,7 @@ module InferEnv = Env
 
 open Std
 open Ast
+open TypeScheme
 
 let unify (state: State.t) ~expected ~actual ~on_error =
   match Unifier.unify ~expected ~actual with
@@ -19,6 +20,20 @@ let annotation_diagnostic (annotation: core_type) err =
   | Unifier.InfiniteSubstitution { var; type_ } ->
       Diagnostics.Diagnostic.infinite_substitution
         ~span:annotation.origin.span
+        ~var:(TypeVar.to_string var.id)
+        ~type_:(Type.to_string type_)
+
+let expression_hint_diagnostic (expr: expression) (hint: expression_type_hint) err =
+  match err with
+  | Unifier.TypeMismatch { expected; actual } ->
+      Diagnostics.Diagnostic.annotation_mismatch
+        ~span:expr.origin.span
+        ~annotation_span:hint.type_.origin.span
+        ~expected:(Type.to_string expected)
+        ~actual:(Type.to_string actual)
+  | Unifier.InfiniteSubstitution { var; type_ } ->
+      Diagnostics.Diagnostic.infinite_substitution
+        ~span:expr.origin.span
         ~var:(TypeVar.to_string var.id)
         ~type_:(Type.to_string type_)
 
@@ -41,36 +56,6 @@ module Builtin = struct
 
   let unit = make "unit"
 end
-
-let infer_literal _state (lit: literal) =
-  let open Builtin in
-  match lit with
-  | Int -> int
-  | Float -> float
-  | Char -> char
-  | String -> string
-  | Bool -> bool
-
-let infer_ident (state: State.t) ident =
-  match InferEnv.get_value (State.env state) ~name:ident with
-  | Some scheme -> Quantifier.instantiate state scheme
-  | None -> State.fresh_var state
-
-let rec infer_expr (state: State.t) (expr: expression) =
-  match expr.kind with
-  | Literal lit -> infer_literal state lit
-  | Ident ident -> infer_ident state ident
-  | Tuple parts -> infer_tuple state parts
-  | _ -> State.fresh_var state
-
-and infer_tuple (state: State.t) parts =
-  let types = List.map ~fn:(infer_expr state) parts in
-  Type.Tuple types
-
-let rec type_expression (state: State.t) (expr: expression) =
-  let type_ = infer_expr state expr in
-  expr.type_ <- Some type_;
-  type_
 
 let arrow_label_to_type_label = function
   | NoLabel -> Type.Label.NoLabel
@@ -106,25 +91,95 @@ let rec core_type_to_type (state: State.t) (annotation: core_type) =
   annotation.type_ <- Some type_;
   type_
 
-let rec bind_pattern (state: State.t) (pattern: pattern) type_ =
+let rec bind_pattern ~mode (state: State.t) (pattern: pattern) type_ =
   pattern.type_ <- Some type_;
   match pattern.kind with
   | Bind name ->
-      let scheme = Quantifier.generalize type_ in
+      let scheme =
+        match mode with
+        | Local -> TypeScheme.monomorphic type_
+        | Generalized -> Quantifier.generalize type_
+      in
       State.update_env state (fun env -> InferEnv.add_value env ~name ~scheme)
   | Constraint { pattern; annotation } ->
       let expected = core_type_to_type state annotation in
       unify state ~expected ~actual:type_ ~on_error:(annotation_diagnostic annotation);
-      bind_pattern state pattern expected
-  | Attribute pattern -> bind_pattern state pattern type_
+      bind_pattern ~mode state pattern expected
+  | Attribute pattern -> bind_pattern ~mode state pattern type_
   | Alias { pattern; alias } ->
-      bind_pattern state pattern type_;
-      bind_pattern state alias type_
+      bind_pattern ~mode state pattern type_;
+      bind_pattern ~mode state alias type_
   | _ -> ()
+
+let infer_literal _state (lit: literal) =
+  let open Builtin in
+  match lit with
+  | Int -> int
+  | Float -> float
+  | Char -> char
+  | String -> string
+  | Bool -> bool
+
+let infer_ident (state: State.t) ident =
+  match InferEnv.get_value (State.env state) ~name:ident with
+  | Some scheme -> Quantifier.instantiate state scheme
+  | None -> State.fresh_var state
+
+let infer_function_param state (param: parameter) =
+  let param_type = State.fresh_var state in
+  bind_pattern ~mode:Local state param.pattern param_type;
+  (
+    match param.annotation with
+    | Some hint ->
+        let expected = core_type_to_type state hint in
+        unify state ~expected ~actual:param_type ~on_error:(annotation_diagnostic hint)
+    | None -> ()
+  );
+  param_type
+
+let rec infer_expr (state: State.t) (expr: expression) =
+  match expr.kind with
+  | Function fn -> infer_function state fn
+  | Literal lit -> infer_literal state lit
+  | Ident ident -> infer_ident state ident
+  | Tuple parts -> infer_tuple state parts
+  | _ -> State.fresh_var state
+
+and infer_tuple (state: State.t) parts =
+  let types = List.map ~fn:(infer_expr state) parts in
+  Type.Tuple types
+
+and infer_function state fn_decl =
+  State.push_scope state;
+  let params = List.map ~fn:(infer_function_param state) fn_decl.parameters in
+  let body =
+    match fn_decl.body with
+    | Body expr -> type_expression state expr
+    | Cases _ -> State.fresh_var state
+  in
+  State.pop_scope state;
+  List.fold_right params ~init:body ~fn:Ast.Type.arrow
+
+and type_expression (state: State.t) (expr: expression) =
+  let type_ =
+    let inferred_type = infer_expr state expr in
+    match expr.type_hint with
+    | None -> inferred_type
+    | Some hint ->
+        let expected = core_type_to_type state hint.type_ in
+        unify
+          state
+          ~expected
+          ~actual:inferred_type
+          ~on_error:(expression_hint_diagnostic expr hint);
+        expected
+  in
+  expr.type_ <- Some type_;
+  type_
 
 let type_let_binding (state: State.t) (lb: let_binding) =
   let type_ = type_expression state lb.body in
-  bind_pattern state lb.pattern type_
+  bind_pattern ~mode:Generalized state lb.pattern type_
 
 let type_let_decl (state: State.t) (ld: let_declaration) =
   List.for_each ld.bindings ~fn:(type_let_binding state)

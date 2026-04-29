@@ -139,6 +139,8 @@ module Type: sig
 
   (** Debug/user-facing rendering for inferred types. *)
   val to_string: t -> string
+
+  val arrow: ?label:Label.t -> t -> t -> t
 end
 
 (**

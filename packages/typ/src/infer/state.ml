@@ -25,3 +25,9 @@ let fresh_var state =
   let id = state.next_var in
   state.next_var <- Ast.TypeVar.next id;
   Ast.Type.Var { id; link = None }
+
+let push_scope state =
+  state.env <- Env.push_scope state.env
+
+let pop_scope state =
+  state.env <- Env.pop_scope state.env

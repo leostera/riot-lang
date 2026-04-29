@@ -179,6 +179,8 @@ module Type = struct
 
   and equal_constructor left right =
     SurfacePath.equal left.ident right.ident && equal_many left.arguments right.arguments
+
+  let arrow ?(label = Label.NoLabel) parameter result = Arrow { label; parameter; result }
 end
 
 type literal =
