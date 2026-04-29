@@ -16,8 +16,8 @@ It should stay small.
 - fixture-only helpers that have not been moved out yet
 - cross-backend integration tests that still live under `compiler/raml/tests/`
 
-`compiler/raml` does **not** own the shared frontend/core compiler logic or the
-native/wasm backend implementations anymore.
+Shared frontend/core compiler logic and backend implementations live in the
+owning `raml-*` packages.
 
 ## Route First
 
@@ -41,7 +41,7 @@ Before changing code, pick the right package:
 
 ## Rules
 
-1. Keep the facade thin. Do not move backend logic back into `compiler/raml`.
+1. Keep the facade thin, with backend logic in backend packages.
 2. Shared compiler types and frontend stages belong in `raml-core`.
 3. Native lowering/codegen belongs in `raml-native`.
 4. Wasm lowering/codegen belongs in `raml-wasm`.
@@ -50,13 +50,3 @@ Before changing code, pick the right package:
    package docs/AGENTS together.
 7. If an integration helper only exists for tests, keep it out of the public
    API unless there is a deliberate reason to expose it.
-
-## Verification
-
-For facade work, prefer:
-
-- `riot build raml`
-- `riot test -p raml`
-
-For implementation work inside a backend or shared layer, verify the owning
-package first instead of forcing everything through the facade package.

@@ -10,9 +10,3 @@
 4. Treat Gooey as terminal-cell based: sizing, measurement, wrapping, and renderer behavior should align with visible terminal cell width.
 5. Keep container helpers honest: `Element.row` and `Element.column` set direction only, while grow behavior must be explicit in style.
 6. Prefer explicit, renderer-backed API surface. If a public style or render feature exists, tests should exercise the layout and terminal behavior it promises.
-
-## Validate
-
-`timeout 30 riot build gooey`
-`timeout 60 riot test -p gooey`
-`timeout 60 riot bench -p gooey --json`

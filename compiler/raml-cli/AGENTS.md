@@ -13,7 +13,7 @@ This package owns:
 - emitted artifact writing
 - temporary runtime companion copying needed to execute JS output locally
 
-This package does **not** own:
+Backend and compiler packages own:
 
 - frontend lowering or `Core_ir`
 - JS/native/wasm backend implementation details
@@ -26,13 +26,6 @@ This package does **not** own:
    shell around it.
 3. If the CLI needs new compiler data, prefer adding a narrow compiler accessor
    over parsing internal pipeline JSON in the binary.
-4. JS runtime asset copying is a temporary repo-local packaging step. Do not
-   move backend logic into this package. Keep it conditional on the selected JS
-   target instead of treating it as a generic output step.
-
-## Verification
-
-Prefer:
-
-- `riot build raml-cli`
-- `./_build/default/compiler/raml-cli/src/raml --help`
+4. JS runtime asset copying is a temporary repo-local packaging step. Keep
+   backend logic in backend packages, and keep this copy step conditional on
+   the selected JS target.

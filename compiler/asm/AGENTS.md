@@ -8,7 +8,7 @@ It should own:
 - per-ISA instruction vocabularies
 - rendering rules for those vocabularies
 
-It should not own:
+Compiler packages own:
 
 - compiler lowering policy
 - runtime layout decisions
@@ -31,19 +31,7 @@ Today `asm` is intentionally narrow:
 
 1. Keep `Asm.Doc` ISA-neutral.
 2. Keep ISA-specific spellings in the ISA modules, not in compiler emitters.
-3. Do not invent a fake universal assembly AST that erases useful ISA
-   differences.
+3. Preserve useful ISA differences in typed assembly structures.
 4. Prefer typed operands and typed instructions over stringly-typed helpers.
 5. If rendering rules move, update this file and the consuming emitter docs in
    the same change.
-
-## Validate
-
-Run:
-
-```sh
-riot fix ./compiler/asm
-riot fmt ./compiler/asm
-riot build asm
-git diff --check -- compiler/asm
-```

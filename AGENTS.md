@@ -1,16 +1,10 @@
 # AGENTS Router
 
-This file is the entrypoint for project-specific agent guidance. If you're looking for your scratch pad and todo list, look at ./TODO.md
-
-The `AGENTS.md` files in this repo are maintained alongside the code and should be updated when behavior or contracts change.
-
-Use it as a router: pick the most relevant existing AGENTS file before making changes.
+Use this file as the route map for package-specific guidance. General contributor workflow lives in the `riot-contributor` skill.
 
 ## Routing Table
 
 - `packages/kernel/AGENTS.md`: C FFI, platform shims, file descriptors, event loop primitives
-- `packages/kernel-new/AGENTS.md`: new platform abstraction layer, Riot-owned native shims, and Unix-first kernel bootstrap
-- `packages/actors/AGENTS.md`: actor runtime, scheduler, mailbox, timers, process lifecycle
 - `packages/std/AGENTS.md`: shared standard library surface used by the rest of the repo
 - `packages/colors/AGENTS.md`: ANSI palette mapping, sRGB/XYZ/LUV conversions, and perceptual color blending
 - `packages/ignore/AGENTS.md`: ignore-aware recursive walking, gitignore-style precedence, and subtree pruning
@@ -24,6 +18,11 @@ Use it as a router: pick the most relevant existing AGENTS file before making ch
 - `packages/krasny/AGENTS.md`: OCaml formatter, document layout, syntax-to-text rendering
 - `editors/riot.nvim/AGENTS.md`: Neovim plugin, editor-facing Riot command integration
 - `editors/vscode-riot-ml/AGENTS.md`: VS Code extension, editor-facing Riot command integration
+- `docs/AGENTS.md`: documentation and RFD maintenance
+- `specs/AGENTS.md`: formal specification routing and TLC workflow
+- `specs/actors/AGENTS.md`: actor/runtime TLA+ model
+- `specs/riot/AGENTS.md`: build/runtime TLA+ model slices
+- `specs/riot-deps/AGENTS.md`: dependency solver and lockfile TLA+ model slices
 - `packages/riot-model/AGENTS.md`: shared build-system types and workspace/package model
 - `packages/riot-deps/AGENTS.md`: package management, dependency solving, lock refresh, registry cache layout
 - `packages/riot-publish/AGENTS.md`: publish command orchestration across fmt, fix, build, and registry upload
@@ -71,19 +70,3 @@ Use it as a router: pick the most relevant existing AGENTS file before making ch
 - `packages/mime/AGENTS.md`: MIME parsing and rendering helpers
 - `packages/propane/AGENTS.md`: property-based testing support
 - `packages/hello-foreign/AGENTS.md`: OCaml to Rust FFI smoke test
-- `native/AGENTS.md`: Rust binding layer overview and crate routing
-- `native/riot-core/AGENTS.md`: shared value model and ABI-safe types
-- `native/riot-derive/AGENTS.md`: derive macros for the native binding layer
-- `native/riot-ffi/AGENTS.md`: Rust-facing FFI facade and prelude
-- `native/riot-bindgen/AGENTS.md`: binding code generation tooling
-- `native/hello-rust/AGENTS.md`: example native library used by `hello-foreign`
-
-## Fast Start Checklist
-
-1. Identify the domain area.
-2. Read the matching AGENTS file if one exists.
-3. Implement changes.
-4. Run required builds.
-5. Update affected AGENTS files if behavior or contracts changed.
-
-When comitting, always use conventional commits.

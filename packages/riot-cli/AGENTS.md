@@ -1,75 +1,38 @@
 # riot-cli AGENTS
 
-`riot-cli` owns command parsing, user-facing output, and the top-level build workflow.
+`riot-cli` owns command parsing, user-facing output, and top-level command flow. Domain behavior belongs in the package that owns the command.
 
 ## Rules
 
-1. Keep the CLI thin. It should orchestrate, not duplicate planner or executor logic.
-2. Prefer direct local calls into riot libraries over protocol-shaped wrappers.
-3. User-facing messages should stay concise and actionable.
-4. When adding commands, update completions and help output in the same change.
-5. Built-in commands that own domain logic elsewhere should delegate into their package library.
-6. `riot check` logic lives in `riot-check`. Keep `Check_cmd` as a thin wrapper over `Riot_check`.
-7. Human `riot check` progress such as package starts and cache hits belongs on stderr, and JSON mode must stream the matching structured events on stdout.
-7. Commands that touch build artifacts must resolve the workspace root and honor `[riot].target_dir` instead of assuming `_build` or `./target`.
-8. Keep rule-oriented and diagnostic-oriented fix surfaces distinct: `--list-rules` should describe rules, while `--list-diagnostics` should describe diagnostic codes.
-9. Keep `riot test` and `riot bench` on the build-once flow: build the workspace once, then delegate `run-tests [query]` / `run-benchmarks [query]` into every suite binary. Use `-p/--package` for package narrowing rather than CLI-side suite prefiltering.
-9. Reserve stdout for command payloads (JSON, completion scripts, binary/test output that is the command result). Send CLI control output such as progress, status lines, and user-facing errors to stderr.
-10. Build locks must be scoped to the effective build lane, not the whole workspace. If artifacts are split by profile and target, the lock should be too.
-11. Package-scoped warnings and failures should be labeled with the package name exactly once; when replaying multiline compiler payloads, preserve the payload text after the first prefixed line instead of reindenting it.
-12. `riot install` must reuse the normal streamed build path. Do not keep a silent private build loop in `install.ml`.
-13. `riot install` must fail if promotion into the workspace root or `~/.riot/bin` fails. Do not print synthetic success after a failed promote.
-14. CLI workspace commands should reject workspace load errors at the boundary instead of threading partial-workspace state through downstream request APIs.
-15. `fix_cmd.ml` should parse `matches`, build a `Riot_fix.fix_request`, call `Riot_fix.fix`, and render the returned output/events. Do not delegate raw `matches` into `Riot_fix.Cli.run`.
-16. `publish.ml` should parse `matches`, build a `Riot_publish.publish_request`, call `Riot_publish.publish`, and render publish events. Keep the combined publish command surface in `riot-publish`, not in `riot-deps`. In `--json` mode, emit JSONL on stdout for fmt/fix/build and publish-specific events, including terminal success or error records.
-17. `login` and `logout` should stay thin auth-config commands. They manage `~/.riot/config.toml` through `Riot_model.User_config`; do not turn them into registry-discovery or profile-management commands while the main registry stays hardcoded.
-18. `riot snapshots` owns repository-level snapshot review commands. Keep it focused on discovering pending `.expected.new` files, showing review diffs, and promoting or rejecting candidates; do not fold snapshot approval into `riot test`. When a TTY is attached, `riot snapshots review` should be interactive and prompt `[a]pprove / [r]eject / [i]gnore / [q]uit`; keep a non-interactive diff dump fallback for non-TTY use.
-19. PM human output should only show `Fetching <pkg> <version>` for real download-start events. Cache-hit materialization events and `PackageResolvedForBuild` stay structured in JSON but should be silent in human mode.
-20. `add`, `rm`, and `update` are thin package-management commands. Parse flags into `Riot_deps` request types, delegate, and reuse the normal PM event renderer instead of inventing a second lock/progress surface. `add` and `rm` accept one or more dependency operands; `update` accepts zero or more package names, where no names means refresh everything and names mean unlock only those packages.
-21. `riot add` should accept named registry specs, local path specs, and GitHub source specs. Keep the CLI help text and errors honest about the accepted forms, but keep package-name discovery and Git materialization inside `riot-deps`.
-22. Outside a workspace, `riot add` may bootstrap a minimal root workspace (`riot.toml` + `riot.lock`) and then route the first add through the workspace root manifest. `riot rm` and `riot update` should stay no-op/user-guidance commands in that case rather than failing with the generic workspace error. Outside a workspace, `riot new` should scaffold a detached one-package root at the requested path instead of failing with the generic workspace error; keep that flow delegated into `riot-init`.
-22. Workspace-required commands should render the shared neutral `Workspace_hint` guidance when no workspace is found, including the `riot init` and `riot new <name>` hints. Do not style this as an `Error:` block. Keep workspace-free commands such as `search`, `upgrade`, and `toolchain list-available` out of this guard.
-23. `riot test` selection should use explicit flags: repeat `-p/--package` to narrow packages and use `-f/--filter` for the forwarded substring query. Do not keep positional `package:suite` selector parsing in the CLI.
-24. `riot search` should stay workspace-independent. Parse flags in the CLI, delegate to `Riot_deps.search`, and keep stdout reserved for the search results themselves.
-25. Keep `Riot_cli.Cli.run` reusable for in-process benches and tools. One-time runtime bootstrapping belongs in `initialize_runtime`, not in every embedded caller loop.
-26. Keep workspace scans and `~/.riot` setup lazy. Built-in commands that do not need workspace state or riot-home state should not pay for them during startup.
-27. `add` / `rm` / `update` should consume the same shared `Riot_model.Event` PM stream that builds use. Do not duplicate JSON or human rendering logic for package-management-only wrapper events in the command modules.
-28. `riot upgrade` stays workspace-free and should reuse the published Riot release archive path plus release metadata JSON from `cdn.pkgs.ml/riot/latest.json` and `cdn.pkgs.ml/riot/riot-<version>.json`. Keep the UX concise, compare the downloaded binary with the installed one before replacing it, write `~/.riot/release.json` for installed metadata, and avoid delegating user-visible control flow to `install.sh`.
-29. `riot --version` and `riot version` should prefer installed release metadata when available and render both the release id and build sha. Keep fallback output explicit for dev builds without installed metadata.
-30. `riot lsp` must stay a thin delegate into `riot-lsp`, and it must keep stdout protocol-only. Do not run the normal stdout logger/runtime bootstrap for that command.
-31. `riot toolchain list-available` stays workspace-free and should render data from `Riot_toolchain.list_available_toolchains` without scanning the workspace first.
-32. `riot clean` is the normal workspace-wide cache-GC entrypoint and `riot clean --force` is the destructive build-root wipe. Keep the command thin: resolve the workspace at the CLI boundary once, acquire the currently materialized build-lane locks under `workspace.target_dir_root`, surface any lock wait through the shared `BuildLockWaiting` event path, and delegate the maintenance policy to `riot-store`.
-33. User-facing CLI aliases such as `docs` -> `doc`, `toolchains` -> `toolchain`, and top-level `help` -> `--help` should normalize before parsing. Do not add duplicate subcommands just to spell the same command twice.
-34. `riot doc --json` should emit JSONL payloads on stdout only. When `riot run` launches a child command with `--json` in its forwarded args, the wrapper should switch its own build/run progress output to JSON too so the combined stream stays machine-readable.
-35. `Riot_cli.Cli.run` should stamp the default `X-Riot-Agent` value early through the `pkgs-ml` client API so downstream registry and CDN clients emit Riot version metadata consistently. Keep `RIOT_AGENT_HEADER` available as an override for automation that shells out to `riot` and needs a different identity.
-35. Workspace resolution for build-facing commands should go through `Workspace_manager.scan` directly so detached single-package manifests can synthesize a one-package workspace. Do not prefilter those invocations with a separate "workspace root only" check.
-36. `riot install` resolves targets in this order: local workspace binary, remote source, registry package. `riot run` resolves in this order: local workspace binary, remote source. Keep the target parsing and fallback policy in the CLI, including `-p/--package` disambiguation for local binaries, but delegate the actual external load/build/install/run work into `riot-build`.
-37. `--local` is only for workspace-binary installs. Do not silently reinterpret `riot install --local <remote-or-registry-target>` as a global install.
-38. `riot run` and `riot install` should allow omitting `<name>` when the current workspace or detached package has exactly one normal runnable binary. If multiple runnable binaries exist, keep the ambiguity explicit and require a binary name or `--package`.
-39. `riot run <remote-source>` and `riot install <remote-source>` should reuse a cached source checkout by default. Surface `--update` as the explicit opt-in refresh path instead of fetching on every invocation.
-40. `riot test` should run suites in JSON mode and reconstruct the human view from the parsed results. Suppress suites whose parsed summary has zero matching cases so substring queries do not leak `running 0 tests`, but keep the human output in the familiar per-suite pretty shape plus one unified case-level summary at the end, including measured test timing stats, explicit failed-test lists, and size-aware classification hints: `--small` should surface the slowest matched small tests, `--large` should surface the fastest matched large tests, and unfiltered runs may keep the slowest overall tests. `riot test --json` should carry the same aggregated failure list on the final `TestSummary` event, and the CLI should forward shared test policy from `.riot/config.toml` plus selectors such as `--small`, `--large`, and `--flaky` down to the suite runner instead of reimplementing that policy locally.
-41. `riot bench` should render benchmark measurements from parsed structured suite results, not by scraping suite-local pretty output. Keep the final summary case-level (`completed`/`skipped`/`failed`) across the matched benchmark cases, and mirror `riot test` selection with repeated `-p/--package` plus `-f/--filter` instead of positional selector parsing.
-42. `riot test` and `riot bench` should resolve suite binaries from the build result exports first, then fall back to the materialized `_build/.../out/<package>/<suite>` path when the export entry is absent or lacks a source path. Do not fail early if the suite binary was still materialized correctly.
-43. `riot yank` must require an exact `<package>@<version>` target, refuse to run without a saved pkgs.ml token, and prompt for interactive confirmation before sending the registry request.
-44. `riot test --json` and `riot bench --json` should keep structured timing monotonic. Use `emitted_at_us` for generic build/progress events and `started_at_us` / `completed_at_us` / `duration_us` for suite lifecycle events instead of wall-clock timestamps.
-45. `riot check` should resolve explicit file and directory arguments against the process cwd before workspace/package lookup so relative paths keep the same package context as absolute paths.
-46. `riot build` should exit when the build is done. Do not hide synchronous post-build type-cache warmups or second workspace-preparation passes behind the build command.
-47. `riot init` should delegate scaffolding decisions to `riot-init` and only render the structured init event stream in the CLI. Keep package-creation hints and current-directory handling consistent with the emitted events rather than duplicating that policy in `cli.ml`.
-48. `riot info workspace --json` is the canonical editor-facing workspace introspection surface. Keep it workspace-root scoped, include the resolved workspace manifest plus each package manifest, and encode workspace-load failures as structured stdout payloads in JSON mode. `riot info <pkg>[@<version>]` should prefer local workspace packages for bare names, fall back to registry resolution, and report docs/cache paths without turning the CLI into a second package manager. Local workspace packages must not synthesize pkgs.ml docs/package links or registry cache paths, especially for private packages; show workspace-root and package-manifest-relative-path metadata instead.
-49. `riot test --list --json` and `riot bench --list --json` should stream discovery as JSONL so large workspaces can populate editor UIs incrementally. Preserve partial results when some suites fail to build or list, and surface suite-list failures as structured events instead of aborting the whole listing pass.
-50. `riot run --list --json` should identify whether each runnable is a normal binary or an example. Keep that metadata in the machine-readable payload so editors do not have to infer it from paths.
-51. `riot test --json` should expose explicit post-build progress between build completion and suite results. Emit structured events for suite collection, suite-binary resolution, suite process execution, and output parsing so hangs and long gaps are diagnosable from the JSONL stream alone.
-52. When suite binaries emit their own JSONL lifecycle stream, `riot test --json` should forward those non-summary child events as suite-scoped progress instead of hiding them in raw stdout. Strip forwarded child progress lines back out of `SuiteCompleted.stdout` so consumers do not have to deduplicate them.
-53. `riot test --json` should also emit parent-side suite heartbeats while a suite process is alive but quiet. Keep them structured (`SuiteHeartbeat`) so long silent startup or teardown gaps are distinguishable from real hangs even before suite-local progress events appear.
-54. `riot test` owns the suite-context handoff for `Std.Test`. Pass suite metadata such as `workspace_root`, `package_name`, `binary_path`, `source_file`, and reachable runtime binaries through the suite runner’s explicit `--ctx <json>` argument, not hidden environment variables. The runtime-binary list should come from the build result for the suite package's reachable runtime dependency closure so tests can execute the exact binaries that were just built.
-55. `riot bench` should delegate benchmark-history persistence into `riot-bench`. Keep the CLI responsible only for collecting invocation context and forwarding normalized per-suite results to the storage package.
-56. `riot bench --json` should forward child benchmark progress events such as `BenchCaseStarted` and emit parent-side `BenchCaseHeartbeat` idle events while a suite is quiet. Strip forwarded child progress lines back out of `BenchSuiteCompleted.stdout` so consumers do not have to deduplicate them.
-57. `riot bench --compare N` should stay as a rendering flag in `riot-cli`. Load and align prior suite runs through `riot-bench`, then render current-versus-history tables, including GC diagnostics from the stored stats, or the matching structured JSON event without duplicating history matching logic in the CLI.
-58. Benchmark history recording must be explicit. Only `riot bench --record` should persist runs into `.riot/bench`; plain `riot bench` and `--compare` reads must not create new history files.
-59. `riot build` should keep runtime builds as the default. Use explicit artifact selectors (`--tests`, `--examples`, `--benches`, `--all`) to opt into dev binaries for build-only workflows, and keep those selectors thin wrappers over typed build-request state rather than CLI-side artifact discovery.
-60. `riot build` human output should render structured planner failures as targeted detail lines instead of flattening them into one string. Keep package status labels concise: show external/non-workspace packages as `name (version)`, append target triples only when multiple build targets are active, and label workspace dev artifacts as `test`, `example`, or `bench`.
-
-## Validate
-
-`timeout 30 riot build riot-cli`
-`timeout 30 riot test riot-cli:test_selection_tests`
+1. Keep the CLI thin. Parse arguments, resolve workspace context, call package libraries, and render returned events.
+2. Reserve stdout for command payloads: JSON, completion scripts, binary/test output, and other requested results. Send progress, status lines, and human errors to stderr.
+3. Commands that touch build artifacts must resolve the workspace root and honor `[riot].target_dir`.
+4. Built-in commands with package owners should delegate: `riot-check`, `riot-fmt`, `riot-fix`, `riot-publish`, `riot-deps`, `riot-init`, `riot-run`, `riot-install`, `riot-store`, `riot-toolchain`, `riot-lsp`, and `riot-bench`.
+5. Keep command request construction explicit. CLI modules should parse `matches`, build typed request values, call the owning package, and render typed events.
+6. Keep human and JSON rendering behaviorally aligned. JSON mode should emit JSONL on stdout and include terminal success/error records where the command owns a lifecycle.
+7. Build locks must be scoped to the effective build lane. Surface lock waits through structured events, not ad hoc output.
+8. Workspace-required commands should render shared neutral workspace guidance when no workspace is found. Workspace-free commands such as `search`, `upgrade`, and `toolchain list-available` should start without workspace scans.
+9. Keep workspace and `~/.riot` setup lazy. Built-ins should initialize only the state they need.
+10. `riot lsp` must stay a thin delegate into `riot-lsp`, with stdout reserved for the LSP protocol.
+11. `riot check` should delegate typechecking flow to `riot-check`; `Check_cmd` stays a wrapper over `Riot_check`.
+12. `riot fmt --explain <id>` and parse diagnostics should delegate directly to `syn` / `krasny` surfaces.
+13. `riot fix` should keep rule-oriented and diagnostic-oriented surfaces distinct: `--list-rules` describes rules, `--list-diagnostics` describes diagnostic codes.
+14. `riot snapshots` owns repository-level snapshot review. Discover pending `.expected.new` files, show diffs, and approve/reject candidates without folding approval into `riot test`.
+15. Package-management commands (`add`, `rm`, `update`, `search`, `yank`) should parse flags, delegate to `riot-deps`, and reuse the shared PM event renderer.
+16. Outside a workspace, `riot add` may bootstrap a minimal root workspace. `riot rm` and `riot update` should provide targeted workspace guidance.
+17. `riot init` should delegate scaffolding to `riot-init` and render structured init events.
+18. `riot run` and `riot install` resolve local workspace binaries before external sources. `riot install` may then fall back to registry packages; `riot run` stays workspace-local unless the caller selects a remote source form.
+19. Keep `--local` scoped to workspace-binary installs.
+20. Remote source runs/installs should reuse cached checkouts by default and refresh only when the caller opts into update behavior.
+21. `riot test` and `riot bench` should build once, then delegate to suite binaries. Use repeated `-p/--package` for package narrowing and `-f/--filter` for forwarded substring filtering.
+22. Suite discovery/listing should stream JSONL progress and preserve partial results when some suites fail to build or list.
+23. `riot test --json` and `riot bench --json` should expose parent-side progress and heartbeat events so long quiet suite runs remain diagnosable.
+24. Suite binaries that emit JSONL lifecycle events should have non-summary progress forwarded as suite-scoped events, with forwarded child progress removed from captured stdout.
+25. `riot test` owns the explicit `Std.Test` suite-context handoff through `--ctx <json>`, including workspace root, package name, binary path, source file, and reachable runtime binaries.
+26. `riot bench` should delegate benchmark-history persistence and comparison loading to `riot-bench`. Plain `riot bench` and `--compare` are read-only; `--record` persists history.
+27. `riot build` should exit when the build is done and keep runtime builds as the default. Tests, examples, benches, and `--all` are explicit artifact selectors.
+28. `riot build` human output should render structured planner failures as targeted detail lines.
+29. `riot info workspace --json` is the canonical editor-facing workspace introspection surface.
+30. User-facing aliases such as `docs` -> `doc`, `toolchains` -> `toolchain`, and top-level `help` -> `--help` should normalize before parsing into the canonical command.
+31. `riot --version` and `riot version` should prefer installed release metadata, include release id and build sha, and keep dev-build fallback explicit.
+32. `riot upgrade` should stay workspace-free and use published Riot release metadata and archives.

@@ -24,7 +24,7 @@ semantics.
 5. Update `README.md` when the modeled package-management behavior or validation
    commands change.
 
-## Validate
+## TLC Checks
 
 From the repo root:
 

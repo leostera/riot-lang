@@ -16,7 +16,7 @@ late syntax lowering, and JS emission.
 - `src/js/Printf.js`
 - package-local JS backend docs
 
-`compiler/raml-js` does **not** own:
+Other compiler packages own:
 
 - shared frontend or `Core_ir` contracts from `compiler/raml-core`
 - facade/public `Raml` API wiring from `compiler/raml`
@@ -26,39 +26,26 @@ late syntax lowering, and JS emission.
 
 1. Keep `Core_ir` backend-neutral. JS-specific semantics belong in `JIR`,
    runtime metadata, or `JST`, not in `raml-core`.
-2. Keep pass composition explicit in `src/js/jir/lowering.ml`. Do not add a
-   pipeline abstraction layer just to sequence passes.
+2. Keep pass composition explicit in `src/js/jir/lowering.ml`.
 3. Every pass should document:
    - algorithm
    - effect
    - rationale
 4. Prefer strengthening existing analyses and passes over adding new pass
    modules without a concrete invariant.
-5. `JST` should only see resolved `JIR`. Do not reintroduce unresolved
-   import/runtime expression forms into `JST`.
+5. `JST` should only see resolved `JIR`; import/runtime expression forms are
+   resolved before this layer.
 6. When comparing with Melange `jscomp`, copy invariants and subsystem ideas,
    not compiler-lib coupling or early JS leakage into the shared IR.
-7. Treat `Raml_core.Primitive` as the shared primitive contract. Do not
-   reintroduce `%foo` string matching into `raml-js`; any legacy string parsing
-   belongs at compatibility boundaries, not in JS lowering.
+7. Treat `Raml_core.Primitive` as the shared primitive contract. Legacy `%foo`
+   string parsing belongs at compatibility boundaries.
 8. In `raml-js`, `Object` means a plain JavaScript object literal/property
    shape. It does not mean the OCaml object system.
-9. Use `src/js/syntax.*` for JS naming and property-syntax decisions. Do not
-   duplicate ad hoc “is this a valid JS name?” heuristics in lowering,
-   passes, or emission.
+9. Use `src/js/syntax.*` for JS naming and property-syntax decisions across
+   lowering, passes, and emission.
 10. Thread `Raml_core.Compilation_context.t` through backend lowering, passes,
     `JST`, and emission. Future target-sensitive decisions like ESM vs CJS
-    should read from that context instead of inventing new ambient inputs.
+    should read from that context.
 11. Keep JS module-surface policy in `src/js/jst/module_format.*`, not inline
     in the emitter. New target-specific import/export shapes should hang off
     that module.
-
-## Verification
-
-Prefer:
-
-- `riot build raml-js`
-- `git diff --check -- compiler/raml-js`
-
-If `raml-js` is blocked by unrelated upstream package failures, call that out
-explicitly instead of papering over it.

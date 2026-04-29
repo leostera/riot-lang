@@ -8,8 +8,8 @@ typing flow.
 1. Keep `riot-check` focused on typechecking flows, diagnostics rendering, and
    package-aware typing orchestration.
 2. `riot-cli` should stay a thin wrapper over this package.
-3. Planner, store, and `typ` integration should live here rather than
-   accreting back into `riot-cli`.
+3. Planner, store, and `typ` integration should live here, with `riot-cli`
+   staying as the command wrapper.
 4. Keep human and JSON output paths behaviorally aligned.
 5. Preserve workspace-relative paths and structured diagnostics in both output
    modes.
@@ -21,12 +21,6 @@ typing flow.
    and typed errors; `riot-cli` decides how those events are rendered in human,
    JSON, or quiet modes.
 8. Package-level check progress belongs in the event stream too. When `riot
-   check` reuses persisted package typings, emit a cache-hit package event
-   instead of silently skipping that package.
-9. `riot check` is workspace-scoped. Do not reintroduce standalone
-   current-directory checking or side-channel warmup APIs such as
-   `populate_workspace_typings`.
-
-## Validate
-
-`timeout 30 riot build riot-check`
+   check` reuses persisted package typings, emit a cache-hit package event.
+9. `riot check` is workspace-scoped. Workspace setup and warmup should flow
+   through the normal workspace command path.

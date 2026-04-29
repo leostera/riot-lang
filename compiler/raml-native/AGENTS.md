@@ -4,7 +4,7 @@
 
 ## Read First
 
-- [NATIVE_LOOP.md](/Users/leostera/Developer/github.com/leostera/riot/compiler/raml-native/NATIVE_LOOP.md)
+- [NATIVE_LOOP.md](NATIVE_LOOP.md)
 - `compiler/raml/docs/native/index.md`
 - `compiler/raml/docs/native/strategy.md`
 - `compiler/raml/docs/native/pipeline.md`
@@ -25,17 +25,15 @@ This package owns:
 
 ## Rules
 
-1. Keep pass threading explicit. Do not reintroduce a generic native pass
-   framework.
+1. Keep pass threading explicit.
 2. Keep `aarch64-apple-darwin` as the primary target until it is good.
-3. Do not widen to new native targets just to prove abstraction purity.
+3. Add native targets when there is a real target need and implementation path.
 4. Keep backend-neutral semantics in `raml-core`; native-only runtime/layout
    choices belong here.
-5. Use `compiler/asm` for typed assembly DSL work instead of open-coded target
-   text machinery where that package can own the concern.
+5. Use `compiler/asm` for typed assembly DSL work where that package can own
+   the concern.
 6. Snapshot every named native pass that materially changes the program.
-7. Document native passes in their `.ml` and `.mli` modules. Do not maintain a
-   separate markdown pass catalogue.
+7. Document native passes in their `.ml` and `.mli` modules.
 
 ## Current Shape
 
@@ -67,12 +65,6 @@ compilation context. That keeps ABI shuffling out of the emitter.
 Target-specific register and toolchain policy should live in
 `target_profile.ml`, not be duplicated across `allocate_homes`, `legalize`,
 `calling_convention`, `Emitter`, and `Linker`.
-
-## Verification
-
-Prefer:
-
-- `riot build raml-native`
 
 The native fixture harness and snapshots may still live under
 `compiler/raml/tests/` while the package split settles. Treat that as

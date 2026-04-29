@@ -12,7 +12,3 @@
    should return `result` or `option`; use `_unchecked` only for APIs that skip
    checks and may panic by contract; reserve `unsafe_` for memory, FFI, or other
    representation-unsafe boundaries.
-
-## Validate
-
-`timeout 30 riot build suri`

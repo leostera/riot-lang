@@ -22,8 +22,8 @@ This package owns:
 ## Rules
 
 1. Keep `raml-core` backend-neutral.
-2. Do not introduce JS module-system details, native ABI details, or wasm host
-   import policy here.
+2. Keep JS module-system details, native ABI details, and wasm host import
+   policy in the backend packages.
 3. Prefer typed shared compiler contracts over stringly backend shims. Shared
    primitives should stay backend-neutral and Riot-owned; legacy `%foo` names
    are parser-compatibility only, not the live `Core_ir` contract.
@@ -39,14 +39,8 @@ The shared compiler path is:
 
 `Syn/Typ -> Source_unit -> Typ_lowering -> Core_ir -> Frontend_pipeline`
 
-`Core_ir` is the shared semantic center. Keep it Lambda-shaped and executable,
-not backend-shaped.
-
-## Verification
-
-Prefer:
-
-- `riot build raml-core`
+`Core_ir` is the shared semantic center. Keep it Lambda-shaped, executable,
+and backend-neutral.
 
 If package-level tests are still living elsewhere, call that out explicitly
-instead of pulling backend work into this package.
+and keep backend work in the backend package.

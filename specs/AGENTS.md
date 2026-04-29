@@ -4,7 +4,7 @@
 
 ## Routing
 
-- `specs/actors/AGENTS.md`: `packages/actors` runtime semantics, scheduler behavior, mailbox rules, timers, lifecycle, links, and monitors
+- `specs/actors/AGENTS.md`: `packages/std/src/runtime` semantics, scheduler behavior, mailbox rules, timers, lifecycle, links, and monitors
 - `specs/riot/AGENTS.md`: `packages/riot-*` build planning, action scheduling, cache semantics, pipeline boundaries, and artifact materialization
 - `specs/riot-deps/AGENTS.md`: `packages/riot-deps`, `riot-model`, and `pubgrub` dependency-graph, lock, and package-feature semantics
 
@@ -25,6 +25,6 @@
 13. Keep smoke configs and bug-reproduction configs separate, and name the bug configs so expected failures are obvious.
 14. Update the local `README.md` files when the spec’s scope, assumptions, or validation commands change.
 
-## Validate
+## TLC Checks
 
 If the spec changed, run the narrowest useful TLC check from the repo root and record any remaining state-space limits, safety/liveness split, and temporary model constraints in the local README.

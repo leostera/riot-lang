@@ -4,10 +4,6 @@
 
 ## Rules
 
-1. High-level query APIs belong here; wire-protocol and driver mechanics do not.
+1. High-level query APIs belong here; wire-protocol and driver mechanics belong in drivers.
 2. Keep the abstraction honest. If behavior only works for one backend, model that explicitly.
 3. Re-check driver compatibility when changing shared query or row semantics.
-
-## Validate
-
-`timeout 30 riot build sqlx`
