@@ -17,7 +17,7 @@ let is_snapshot_artifact = fun path ->
   String.ends_with ~suffix:".expected" basename || String.ends_with ~suffix:".expected.new" basename
 
 let discover_fixture_paths = fun root ->
-  match Fs.Walker.to_list ~roots:[ root ] ~sort:true ~include_directories:false () with
+  match Fs.Walker.to_list ~roots:[ root ] ~include_directories:false () with
   | Error err -> Error err
   | Ok found ->
       Ok (
@@ -29,7 +29,6 @@ let discover_fixture_paths = fun root ->
               Some path
             else
               None)
-        |> List.sort ~compare:Path.compare
       )
 
 let relpath = fun ~root path ->
