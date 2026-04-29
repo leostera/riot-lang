@@ -39,52 +39,75 @@ type block_node =
   | Heading of {
       level: int;
       inlines: inline_node list;
-      span: Ceibo.Span.t;
+      span: Markdown_span.t;
     }
   | Paragraph of {
       inlines: inline_node list;
-      span: Ceibo.Span.t;
+      span: Markdown_span.t;
     }
   | Block_quote of {
       blocks: block_node list;
-      span: Ceibo.Span.t;
+      span: Markdown_span.t;
     }
   | List of {
       ordered: bool;
       start: int;
       tight: bool;
       items: block_node list list;
-      span: Ceibo.Span.t;
+      span: Markdown_span.t;
     }
   | Task_list_item of {
       checked: bool;
       blocks: block_node list;
-      span: Ceibo.Span.t;
+      span: Markdown_span.t;
     }
   | List_item of {
       blocks: block_node list;
-      span: Ceibo.Span.t;
+      span: Markdown_span.t;
     }
   | Code_block of {
       info: string;
       code: string;
-      span: Ceibo.Span.t;
+      span: Markdown_span.t;
       fenced: bool;
     }
-  | Horizontal_rule of Ceibo.Span.t
+  | Horizontal_rule of Markdown_span.t
   | Raw_html of {
       html: string;
-      span: Ceibo.Span.t;
+      span: Markdown_span.t;
     }
   | Table of {
       header: table_row;
       rows: table_row list;
-      span: Ceibo.Span.t;
+      span: Markdown_span.t;
     }
   | Error_block of {
       message: string;
-      span: Ceibo.Span.t;
+      span: Markdown_span.t;
     }
+(** Lightweight Markdown-specific syntax token used between block parsing and lowering. *)
+type syntax_token
+(** Lightweight Markdown-specific syntax node used between block parsing and lowering. *)
+type syntax_node
+
+module SyntaxToken: sig
+  val kind: syntax_token -> Markdown_syntax_kind.t
+
+  val text: syntax_token -> string
+
+  val span: syntax_token -> Markdown_span.t
+end
+
+module SyntaxNode: sig
+  val kind: syntax_node -> Markdown_syntax_kind.t
+
+  val span: syntax_node -> Markdown_span.t
+
+  val direct_tokens: syntax_node -> syntax_token list
+
+  val direct_nodes: syntax_node -> syntax_node list
+end
+
 (**
    Markdown flavor.
 
@@ -100,16 +123,33 @@ type parsed = {
   source: string;
   (** Low-level lexer tokens. *)
   tokens: Markdown_token.t list;
-  (** Green syntax tree. *)
-  tree: (Markdown_syntax_kind.t, string) Ceibo.Green.node;
+  (** Markdown-specific syntax tree. *)
+  tree: syntax_node;
   (** Parse diagnostics produced while reading the source. *)
   diagnostics: Markdown_diagnostic.t list;
 }
+type edit = { start: int; end_: int; text: string }
+type update_stats = {
+  reused_prefix_blocks: int;
+  reparsed_blocks: int;
+  reused_suffix_blocks: int;
+  reparsed_full: bool;
+}
+type update_result = { parsed: parsed; stats: update_stats }
 
 (**
-   Parse markdown source into tokens, a green tree, and lowered block nodes.
+   Parse markdown source into tokens, a syntax tree, and diagnostics.
 
    Use this lower-level parser interface when you need direct access to the
    lexer tokens or syntax tree, not just rendered HTML.
 *)
 val parse: ?flavor:flavor -> string -> parsed
+
+(**
+   Apply a text edit to a previous parse result.
+
+   Single-line edits inside simple top-level blocks are reparsed locally and
+   the untouched syntax nodes are reused. Structural edits conservatively
+   fall back to a full parse.
+*)
+val update: ?flavor:flavor -> previous:parsed -> edit:edit -> unit -> update_result

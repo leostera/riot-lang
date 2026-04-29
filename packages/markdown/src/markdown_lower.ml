@@ -1629,13 +1629,13 @@ let rec parse_inline = fun ?(allow_links = true) ?(allow_images = true) ~flavor 
   | _ -> [ Text text ]
 
 let direct_token_texts = fun node ->
-  Ceibo.Red.SyntaxNode.direct_tokens node
-  |> List.map ~fn:Ceibo.Red.SyntaxToken.text
+  Markdown_parser.SyntaxNode.direct_tokens node
+  |> List.map ~fn:Markdown_parser.SyntaxToken.text
 
 let ordered_list_start = fun node ->
-  Ceibo.Red.SyntaxNode.direct_tokens node
-  |> List.find ~fn:(fun token -> Ceibo.Red.SyntaxToken.kind token = Markdown_syntax_kind.Text)
-  |> Option.and_then ~fn:(fun token -> int_of_string_opt (Ceibo.Red.SyntaxToken.text token))
+  Markdown_parser.SyntaxNode.direct_tokens node
+  |> List.find ~fn:(fun token -> Markdown_parser.SyntaxToken.kind token = Markdown_syntax_kind.Text)
+  |> Option.and_then ~fn:(fun token -> int_of_string_opt (Markdown_parser.SyntaxToken.text token))
   |> Option.unwrap_or ~default:1
 
 let first_token_text = fun node ->
@@ -1648,7 +1648,7 @@ let heading_token_text = fun node ->
   | " " -> ""
   | text -> text
 
-let child_nodes = fun node -> Ceibo.Red.SyntaxNode.direct_nodes node
+let child_nodes = fun node -> Markdown_parser.SyntaxNode.direct_nodes node
 
 let heading_level_of_kind = function
   | Markdown_syntax_kind.Heading_1 -> 1
@@ -1672,7 +1672,7 @@ let lower_table_row = fun ~flavor ~references row_node ->
   in
   let alignments =
     child_nodes row_node
-    |> List.map ~fn:(fun cell_node -> alignment_of_kind (Ceibo.Red.SyntaxNode.kind cell_node))
+    |> List.map ~fn:(fun cell_node -> alignment_of_kind (Markdown_parser.SyntaxNode.kind cell_node))
   in
   { cells; alignments }
 
@@ -1682,7 +1682,7 @@ let rec collect_references = fun references nodes ->
     ~init:references
     ~fn:(fun references node ->
       let references =
-        match Ceibo.Red.SyntaxNode.kind node with
+        match Markdown_parser.SyntaxNode.kind node with
         | Markdown_syntax_kind.Paragraph -> (
             match parse_reference_definition (first_token_text node) with
             | Some (label, reference) when not
@@ -1695,16 +1695,16 @@ let rec collect_references = fun references nodes ->
       collect_references references (child_nodes node))
 
 let is_reference_definition_node = fun node ->
-  Ceibo.Red.SyntaxNode.kind node = Markdown_syntax_kind.Paragraph
+  Markdown_parser.SyntaxNode.kind node = Markdown_syntax_kind.Paragraph
   && Option.is_some (parse_reference_definition (first_token_text node))
 
 let rec lower_list_item = fun ~flavor ~references node ->
-  let span = Ceibo.Red.SyntaxNode.span node in
+  let span = Markdown_parser.SyntaxNode.span node in
   let blocks =
     child_nodes node
     |> List.filter_map ~fn:(lower_block_opt ~flavor ~references)
   in
-  match Ceibo.Red.SyntaxNode.kind node with
+  match Markdown_parser.SyntaxNode.kind node with
   | Markdown_syntax_kind.Task_list_item_checked ->
       [ Task_list_item { checked = true; blocks; span } ]
   | Markdown_syntax_kind.Task_list_item_unchecked ->
@@ -1718,8 +1718,8 @@ and lower_block_opt = fun ~flavor ~references node ->
     Some (lower_block ~flavor ~references node)
 
 and lower_block = fun ~flavor ~references node ->
-  let span = Ceibo.Red.SyntaxNode.span node in
-  match Ceibo.Red.SyntaxNode.kind node with
+  let span = Markdown_parser.SyntaxNode.span node in
+  match Markdown_parser.SyntaxNode.kind node with
   | Markdown_syntax_kind.Heading_1
   | Markdown_syntax_kind.Heading_2
   | Markdown_syntax_kind.Heading_3
@@ -1727,7 +1727,7 @@ and lower_block = fun ~flavor ~references node ->
   | Markdown_syntax_kind.Heading_5
   | Markdown_syntax_kind.Heading_6 ->
       Heading {
-        level = heading_level_of_kind (Ceibo.Red.SyntaxNode.kind node);
+        level = heading_level_of_kind (Markdown_parser.SyntaxNode.kind node);
         inlines = parse_inline ~flavor ~references (heading_token_text node);
         span;
       }
@@ -1790,12 +1790,13 @@ and lower_block = fun ~flavor ~references node ->
         span;
       }
   | Markdown_syntax_kind.Fenced_code_block ->
-      let tokens = Ceibo.Red.SyntaxNode.direct_tokens node in
+      let tokens = Markdown_parser.SyntaxNode.direct_tokens node in
       let info =
         List.find
           tokens
-          ~fn:(fun token -> Ceibo.Red.SyntaxToken.kind token = Markdown_syntax_kind.Info_string)
-        |> Option.map ~fn:Ceibo.Red.SyntaxToken.text
+          ~fn:(fun token ->
+            Markdown_parser.SyntaxToken.kind token = Markdown_syntax_kind.Info_string)
+        |> Option.map ~fn:Markdown_parser.SyntaxToken.text
         |> Option.unwrap_or ~default:""
         |> unescape_backslashes
         |> decode_entities
@@ -1803,8 +1804,8 @@ and lower_block = fun ~flavor ~references node ->
       let code =
         List.find
           tokens
-          ~fn:(fun token -> Ceibo.Red.SyntaxToken.kind token = Markdown_syntax_kind.Text)
-        |> Option.map ~fn:Ceibo.Red.SyntaxToken.text
+          ~fn:(fun token -> Markdown_parser.SyntaxToken.kind token = Markdown_syntax_kind.Text)
+        |> Option.map ~fn:Markdown_parser.SyntaxToken.text
         |> Option.unwrap_or ~default:""
       in
       Code_block {
@@ -1837,12 +1838,12 @@ and lower_block = fun ~flavor ~references node ->
   | Markdown_syntax_kind.Error -> Error_block { message = first_token_text node; span }
   | _ ->
       Error_block {
-        message = Markdown_syntax_kind.to_string (Ceibo.Red.SyntaxNode.kind node);
+        message = Markdown_syntax_kind.to_string (Markdown_parser.SyntaxNode.kind node);
         span;
       }
 
 let lower = fun ~flavor tree ->
-  let root = Ceibo.Red.new_root tree in
+  let root = tree in
   let children = child_nodes root in
   let references = collect_references [] children in
   children

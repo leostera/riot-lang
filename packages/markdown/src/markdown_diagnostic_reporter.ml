@@ -45,11 +45,11 @@ let line_for_pos = fun layout pos ->
     let (line_idx, line_start) = loop layout.line_starts 0 0 0 in
     (line_idx, Int.max 0 (pos - line_start))
 
-let extract_code_snippet = fun layout (span: Ceibo.Span.t) ->
+let extract_code_snippet = fun layout (span: Markdown_span.t) ->
   if layout.lines = [] then
     None
   else
-    let (line_idx, start_col) = line_for_pos layout span.Ceibo.Span.start in
+    let (line_idx, start_col) = line_for_pos layout span.Markdown_span.start in
     match nth_opt layout.lines line_idx with
     | None -> None
     | Some code_line ->

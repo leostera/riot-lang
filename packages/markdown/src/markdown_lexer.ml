@@ -25,7 +25,7 @@ let normalize_newlines = fun source ->
 
 let make_token = fun ~kind ~start ~end_ ~text -> {
   Markdown_token.kind;
-  span = Ceibo.Span.make ~start ~end_;
+  span = Markdown_span.make ~start ~end_;
   text;
 }
 

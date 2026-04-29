@@ -1,6 +1,7 @@
 open Std
 
 module Error = Markdown_error
+module Span = Markdown_span
 module Syntax_kind = Markdown_syntax_kind
 module Diagnostic = Markdown_diagnostic
 module Diagnostic_reporter = Markdown_diagnostic_reporter
@@ -22,15 +23,26 @@ let cast_fixture = fun (fixture: Markdown_fixture_db.fixture) ->
   }
 
 type parse_result = {
-  root: (Syntax_kind.t, string) Ceibo.Green.node;
+  root: Markdown_parser.syntax_node;
   source: string;
   diagnostics: Diagnostic.t list;
   blocks: Markdown_parser.block_node list;
 }
 
-let parse = fun source ->
-  let parsed = Markdown_parser.parse source in
-  let blocks = Markdown_lower.lower ~flavor:Markdown_parser.Markdown parsed.tree in
+type flavor =
+  | Markdown
+  | Gfm
+
+let parse_flavor = function
+  | Markdown -> Markdown_parser.Markdown
+  | Gfm -> Markdown_parser.Gfm
+
+let lower_flavor = function
+  | Markdown -> Markdown_parser.Markdown
+  | Gfm -> Markdown_parser.Gfm
+
+let parse_result_of_parsed = fun flavor (parsed: Markdown_parser.parsed) ->
+  let blocks = Markdown_lower.lower ~flavor:(lower_flavor flavor) parsed.tree in
   {
     root = parsed.tree;
     source = parsed.source;
@@ -38,15 +50,13 @@ let parse = fun source ->
     blocks;
   }
 
+let parse = fun source ->
+  let parsed = Markdown_parser.parse source in
+  parse_result_of_parsed Markdown parsed
+
 let parse_gfm = fun source ->
   let parsed = Markdown_parser.parse ~flavor:Markdown_parser.Gfm source in
-  let blocks = Markdown_lower.lower ~flavor:Markdown_parser.Gfm parsed.tree in
-  {
-    root = parsed.tree;
-    source = parsed.source;
-    diagnostics = parsed.diagnostics;
-    blocks;
-  }
+  parse_result_of_parsed Gfm parsed
 
 let all_spec_fixtures = fun () -> List.map (Fixture_db.all_spec_fixtures ()) ~fn:cast_fixture
 
@@ -59,3 +69,48 @@ let compile = fun source ->
 let compile_gfm = fun source ->
   let parse_result = parse_gfm source in
   to_html parse_result
+
+module Document = struct
+  type edit = Markdown_parser.edit = { start: int; end_: int; text: string }
+
+  type update_stats = Markdown_parser.update_stats = {
+    reused_prefix_blocks: int;
+    reparsed_blocks: int;
+    reused_suffix_blocks: int;
+    reparsed_full: bool;
+  }
+
+  type t = {
+    flavor: flavor;
+    parsed: Markdown_parser.parsed;
+    last_update: update_stats option;
+  }
+
+  let parse_with_flavor = fun flavor source -> {
+    flavor;
+    parsed = Markdown_parser.parse ~flavor:(parse_flavor flavor) source;
+    last_update = None;
+  }
+
+  let parse = fun source -> parse_with_flavor Markdown source
+
+  let parse_gfm = fun source -> parse_with_flavor Gfm source
+
+  let update = fun t ~edit ->
+    let result =
+      Markdown_parser.update ~flavor:(parse_flavor t.flavor) ~previous:t.parsed ~edit ()
+    in
+    { t with parsed = result.parsed; last_update = Some result.stats }
+
+  let source = fun t -> t.parsed.source
+
+  let diagnostics = fun t -> t.parsed.diagnostics
+
+  let last_update = fun t -> t.last_update
+
+  let to_parse_result = fun t -> parse_result_of_parsed t.flavor t.parsed
+
+  let to_html = fun t ->
+    let parse_result = to_parse_result t in
+    Markdown_renderer.render parse_result.blocks
+end

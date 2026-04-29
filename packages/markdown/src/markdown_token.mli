@@ -10,7 +10,7 @@ type t = {
   (** Token kind. *)
   kind: token_kind;
   (** Source span covered by the token. *)
-  span: Ceibo.Span.t;
+  span: Markdown_span.t;
   (** Raw token text. *)
   text: string;
 }

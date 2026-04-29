@@ -7,7 +7,7 @@ type token_kind =
 
 type t = {
   kind: token_kind;
-  span: Ceibo.Span.t;
+  span: Markdown_span.t;
   text: string;
 }
 

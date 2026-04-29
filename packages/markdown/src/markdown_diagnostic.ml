@@ -13,7 +13,7 @@ type kind =
 
 type t = {
   kind: kind;
-  span: Ceibo.Span.t;
+  span: Markdown_span.t;
 }
 
 let make = fun ~kind ~span -> { kind; span }
@@ -100,7 +100,7 @@ let to_string = fun diag ->
     "Parse error \"";
     diag_id;
     "\" at ";
-    Ceibo.Span.to_string diag.span;
+    Markdown_span.to_string diag.span;
     ": ";
     main_message diag;
     "\nfix: ";
@@ -204,8 +204,8 @@ let to_json = fun diag ->
         "span",
         Data.Json.obj
           [
-            ("start", Data.Json.int diag.span.Ceibo.Span.start);
-            ("end", Data.Json.int diag.span.Ceibo.Span.end_);
+            ("start", Data.Json.int diag.span.Markdown_span.start);
+            ("end", Data.Json.int diag.span.Markdown_span.end_);
           ]
       );
       ("main_message", Data.Json.string (main_message diag));
@@ -261,7 +261,7 @@ let from_json = fun json ->
             in
             { kind; text }
           in
-          let span = Ceibo.Span.make ~start ~end_ in
+          let span = Markdown_span.make ~start ~end_ in
           match id with
           | Some "markdown_invalid_markdown" -> Ok { kind = Invalid_markdown { found }; span }
           | Some "markdown_unsupported_feature" -> (

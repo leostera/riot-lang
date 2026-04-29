@@ -1,5 +1,8 @@
 open Std
 
+(** Source spans used by markdown tokens, diagnostics, and parsed blocks. *)
+module Span = Markdown_span
+
 (** Stable error identifiers used by the markdown diagnostic system. *)
 module Error: sig
   type id = string
@@ -17,7 +20,7 @@ module Error: sig
   val from_json: Data.Json.t -> (id, string) result
 end
 
-(** Syntax kinds used by the green tree produced by the markdown parser. *)
+(** Syntax kinds used by the markdown parser. *)
 module Syntax_kind: sig
   type t =
     | Document
@@ -65,26 +68,26 @@ module Diagnostic: sig
     | Parser_internal of { message: string; found: found_token }
   type t = {
     kind: kind;
-    span: Ceibo.Span.t;
+    span: Markdown_span.t;
   }
 
   (** Create a diagnostic directly. *)
-  val make: kind:kind -> span:Ceibo.Span.t -> t
+  val make: kind:kind -> span:Markdown_span.t -> t
 
   (** Create an invalid-markdown diagnostic. *)
-  val invalid_markdown: found:found_token -> span:Ceibo.Span.t -> t
+  val invalid_markdown: found:found_token -> span:Markdown_span.t -> t
 
   (** Create an unsupported-feature diagnostic. *)
-  val unsupported_feature: found:found_token -> feature:string -> span:Ceibo.Span.t -> t
+  val unsupported_feature: found:found_token -> feature:string -> span:Markdown_span.t -> t
 
   (** Create an unclosed-fenced-code-block diagnostic. *)
-  val unclosed_fenced_code_block: found:found_token -> opener:string -> span:Ceibo.Span.t -> t
+  val unclosed_fenced_code_block: found:found_token -> opener:string -> span:Markdown_span.t -> t
 
   (** Create an unexpected-control-character diagnostic. *)
-  val unexpected_control_character: found:found_token -> code:int -> span:Ceibo.Span.t -> t
+  val unexpected_control_character: found:found_token -> code:int -> span:Markdown_span.t -> t
 
   (** Create a parser-internal diagnostic. *)
-  val parser_internal: found:found_token -> message:string -> span:Ceibo.Span.t -> t
+  val parser_internal: found:found_token -> message:string -> span:Markdown_span.t -> t
 
   (** Return the token that triggered the diagnostic. *)
   val found_token: t -> found_token
@@ -132,8 +135,8 @@ type fixture = {
 }
 (** High-level parse result returned by [parse] and [parse_gfm]. *)
 type parse_result = {
-  (** Root green syntax tree. *)
-  root: (Syntax_kind.t, string) Ceibo.Green.node;
+  (** Root markdown syntax tree. *)
+  root: Markdown_parser.syntax_node;
   (** Original source text. *)
   source: string;
   (** Parse diagnostics. *)
@@ -150,6 +153,39 @@ val parse_gfm: string -> parse_result
 
 (** Render a parsed markdown document to HTML. *)
 val to_html: parse_result -> string
+
+(**
+   Incrementally editable markdown document.
+
+   Single-line edits inside simple top-level blocks reuse the unchanged syntax
+   nodes around the edit. Structural edits conservatively fall back to a full
+   parse so the public result stays equivalent to parsing from scratch.
+*)
+module Document: sig
+  type t
+  type edit = { start: int; end_: int; text: string }
+  type update_stats = {
+    reused_prefix_blocks: int;
+    reparsed_blocks: int;
+    reused_suffix_blocks: int;
+    reparsed_full: bool;
+  }
+  val parse: string -> t
+
+  val parse_gfm: string -> t
+
+  val update: t -> edit:edit -> t
+
+  val source: t -> string
+
+  val diagnostics: t -> Diagnostic.t list
+
+  val last_update: t -> update_stats option
+
+  val to_parse_result: t -> parse_result
+
+  val to_html: t -> string
+end
 
 (** Parse and render baseline markdown to HTML. *)
 val compile: string -> string

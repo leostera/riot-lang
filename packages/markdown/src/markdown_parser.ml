@@ -39,57 +39,90 @@ type block_node =
   | Heading of {
       level: int;
       inlines: inline_node list;
-      span: Ceibo.Span.t;
+      span: Markdown_span.t;
     }
   | Paragraph of {
       inlines: inline_node list;
-      span: Ceibo.Span.t;
+      span: Markdown_span.t;
     }
   | Block_quote of {
       blocks: block_node list;
-      span: Ceibo.Span.t;
+      span: Markdown_span.t;
     }
   | List of {
       ordered: bool;
       start: int;
       tight: bool;
       items: block_node list list;
-      span: Ceibo.Span.t;
+      span: Markdown_span.t;
     }
   | Task_list_item of {
       checked: bool;
       blocks: block_node list;
-      span: Ceibo.Span.t;
+      span: Markdown_span.t;
     }
   | List_item of {
       blocks: block_node list;
-      span: Ceibo.Span.t;
+      span: Markdown_span.t;
     }
   | Code_block of {
       info: string;
       code: string;
-      span: Ceibo.Span.t;
+      span: Markdown_span.t;
       fenced: bool;
     }
-  | Horizontal_rule of Ceibo.Span.t
+  | Horizontal_rule of Markdown_span.t
   | Raw_html of {
       html: string;
-      span: Ceibo.Span.t;
+      span: Markdown_span.t;
     }
   | Table of {
       header: table_row;
       rows: table_row list;
-      span: Ceibo.Span.t;
+      span: Markdown_span.t;
     }
   | Error_block of {
       message: string;
-      span: Ceibo.Span.t;
+      span: Markdown_span.t;
     }
+
+type syntax_token = {
+  kind: Markdown_syntax_kind.t;
+  text: string;
+  span: Markdown_span.t;
+}
+
+type syntax_node = {
+  kind: Markdown_syntax_kind.t;
+  span: Markdown_span.t;
+  tokens: syntax_token list;
+  children: syntax_node list;
+}
+
+type syntax_element =
+  | Token of syntax_token
+  | Node of syntax_node
 
 type parsed = {
   source: string;
   tokens: Markdown_token.t list;
-  tree: (Markdown_syntax_kind.t, string) Ceibo.Green.node;
+  tree: syntax_node;
+  diagnostics: Markdown_diagnostic.t list;
+}
+
+type edit = { start: int; end_: int; text: string }
+
+type update_stats = {
+  reused_prefix_blocks: int;
+  reparsed_blocks: int;
+  reused_suffix_blocks: int;
+  reparsed_full: bool;
+}
+
+type update_result = { parsed: parsed; stats: update_stats }
+
+type parsed_fragment = {
+  nodes: syntax_node list;
   diagnostics: Markdown_diagnostic.t list;
 }
 
@@ -119,9 +152,97 @@ type html_block_kind =
   | Html_block_6
   | Html_block_7
 
-let token = fun kind text -> Ceibo.Builder.make_token ~kind ~text ~width:(String.length text)
+let empty_span = Markdown_span.make ~start:0 ~end_:0
 
-let node = fun kind children -> Ceibo.Builder.make_node ~kind children
+let token = fun kind text ->
+  let span = Markdown_span.make ~start:0 ~end_:(String.length text) in
+  Token { kind; text; span }
+
+let element_span = function
+  | Token token -> token.span
+  | Node node -> node.span
+
+let element_kind = function
+  | Token token -> token.kind
+  | Node node -> node.kind
+
+let node_span = fun children ->
+  match children with
+  | [] -> empty_span
+  | head :: tail ->
+      List.fold_left
+        tail
+        ~init:(element_span head)
+        ~fn:(fun span element -> Markdown_span.union span (element_span element))
+
+let make_node = fun kind children ->
+  let tokens = Vector.with_capacity ~size:(List.length children) in
+  let child_nodes = Vector.with_capacity ~size:(List.length children) in
+  List.for_each
+    children
+    ~fn:(
+      function
+      | Token token -> Vector.push tokens ~value:token
+      | Node node -> Vector.push child_nodes ~value:node
+    );
+  {
+    kind;
+    span = node_span children;
+    tokens =
+      Vector.to_array tokens
+      |> Array.to_list;
+    children =
+      Vector.to_array child_nodes
+      |> Array.to_list;
+  }
+
+let node = fun kind children -> Node (make_node kind children)
+
+module SyntaxToken = struct
+  let kind = fun (token: syntax_token) -> token.kind
+
+  let text = fun (token: syntax_token) -> token.text
+
+  let span = fun (token: syntax_token) -> token.span
+end
+
+module SyntaxNode = struct
+  let kind = fun (node: syntax_node) -> node.kind
+
+  let span = fun (node: syntax_node) -> node.span
+
+  let direct_tokens = fun (node: syntax_node) -> node.tokens
+
+  let direct_nodes = fun (node: syntax_node) -> node.children
+end
+
+let set_node_span = fun node span -> { node with span }
+
+let set_element_span = fun element span ->
+  match element with
+  | Token token -> Token { token with span }
+  | Node node -> Node (set_node_span node span)
+
+let node_of_element = function
+  | Node node -> Some node
+  | Token _ -> None
+
+let shift_token = fun delta (token: syntax_token) -> {
+  token with
+  span = Markdown_span.shift token.span ~by:delta;
+}
+
+let rec shift_node = fun delta (node: syntax_node) -> {
+  node with
+  span = Markdown_span.shift node.span ~by:delta;
+  tokens = List.map node.tokens ~fn:(shift_token delta);
+  children = List.map node.children ~fn:(shift_node delta);
+}
+
+let shift_diagnostic = fun delta (diagnostic: Markdown_diagnostic.t) -> {
+  diagnostic with
+  span = Markdown_span.shift diagnostic.span ~by:delta;
+}
 
 let is_space = fun char -> char = ' ' || char = '\t'
 
@@ -152,7 +273,76 @@ let string_all_equal = fun char text ->
 
 let line_end = fun line -> line.start + String.length line.text
 
-let make_span = fun ~start ~len -> Ceibo.Span.make ~start ~end_:(start + len)
+let make_span = fun ~start ~len -> Markdown_span.make ~start ~end_:(start + len)
+
+let block_span = fun lines start next ->
+  if next <= start || start >= Array.length lines then
+    empty_span
+  else
+    let last_index = Int.min (Array.length lines - 1) (next - 1) in
+    let first = array_at lines start in
+    let last = array_at lines last_index in
+    Markdown_span.make ~start:first.start ~end_:(line_end last)
+
+let line_start_before = fun source offset ->
+  let offset = Int.max 0 (Int.min offset (String.length source)) in
+  let rec loop index =
+    if index <= 0 then
+      0
+    else if Char.equal (char_at source (index - 1)) '\n' then
+      index
+    else
+      loop (index - 1)
+  in
+  loop offset
+
+let line_end_after = fun source offset ->
+  let len = String.length source in
+  let offset = Int.max 0 (Int.min offset len) in
+  let rec loop index =
+    if index >= len then
+      len
+    else if Char.equal (char_at source index) '\n' then
+      index
+    else
+      loop (index + 1)
+  in
+  loop offset
+
+let source_range_has_newline = fun source ~start ~end_ ->
+  let start = Int.max 0 start in
+  let end_ = Int.min (String.length source) end_ in
+  let rec loop index =
+    if index >= end_ then
+      false
+    else if Char.equal (char_at source index) '\n' then
+      true
+    else
+      loop (index + 1)
+  in
+  loop start
+
+let lines_of_source_range = fun source ~start ~end_ ->
+  let source_len = String.length source in
+  let start = Int.max 0 (Int.min start source_len) in
+  let end_ = Int.max start (Int.min end_ source_len) in
+  let rec loop index line_start acc =
+    if index >= end_ then
+      let acc =
+        if line_start < end_ then
+          let text = substring source line_start (end_ - line_start) in
+          { text; start = line_start } :: acc
+        else
+          acc
+      in
+      Array.from_list (List.reverse acc)
+    else if Char.equal (char_at source index) '\n' then
+      let text = substring source line_start (index - line_start) in
+      loop (index + 1) (index + 1) ({ text; start = line_start } :: acc)
+    else
+      loop (index + 1) line_start acc
+  in
+  loop start start []
 
 let line_is_blank = fun line ->
   let len = String.length line in
@@ -617,10 +807,12 @@ let string_of_char = fun char len ->
   else
     repeat_char len char
 
-let make_control_diagnostics = fun source ->
+let make_control_diagnostics_range = fun source ~start ~end_ ->
   let len = String.length source in
+  let start = Int.max 0 (Int.min start len) in
+  let end_ = Int.max start (Int.min end_ len) in
   let rec loop index diags =
-    if index >= len then
+    if index >= end_ then
       diags
     else
       let char = char_at source index in
@@ -636,7 +828,13 @@ let make_control_diagnostics = fun source ->
       else
         loop (index + 1) diags
   in
-  loop 0 []
+  loop start []
+
+let make_control_diagnostics = fun source ->
+  make_control_diagnostics_range
+    source
+    ~start:0
+    ~end_:(String.length source)
 
 let parse_heading = fun text ->
   let indent = count_indent text 3 in
@@ -1861,7 +2059,7 @@ and parse_list = fun flavor lines start ->
                 let body_lines = Array.from_list body_lines in
                 let (body_blocks, body_diagnostics) = parse_blocks ~flavor body_lines 0 in
                 let is_list_block block =
-                  match Ceibo.Green.kind block with
+                  match element_kind block with
                   | Syntax_kind.Ordered_list_tight
                   | Syntax_kind.Ordered_list_loose
                   | Syntax_kind.Unordered_list_tight
@@ -1869,7 +2067,7 @@ and parse_list = fun flavor lines start ->
                   | _ -> false
                 in
                 let is_code_block block =
-                  match Ceibo.Green.kind block with
+                  match element_kind block with
                   | Syntax_kind.Indented_code_block
                   | Syntax_kind.Fenced_code_block -> true
                   | _ -> false
@@ -1878,7 +2076,7 @@ and parse_list = fun flavor lines start ->
                   trailing_blank || (
                     body_has_blank && match body_blocks with
                     | [ only ] when is_list_block only || is_code_block only -> false
-                    | [ first_block; second_block ] when Ceibo.Green.kind first_block
+                    | [ first_block; second_block ] when element_kind first_block
                     = Syntax_kind.Paragraph
                     && is_list_block second_block -> blank_before_direct_child_list
                     | _ -> true
@@ -2094,6 +2292,7 @@ and parse_blocks = fun ~flavor lines start ->
     in
     match block with
     | Some (node_, next, diagnostics) ->
+        let node_ = set_element_span node_ (block_span lines start next) in
         let (parsed_next, nested) = parse_blocks ~flavor lines next in
         (node_ :: parsed_next, diagnostics @ nested)
     | None -> parse_blocks ~flavor lines (start + 1)
@@ -2107,6 +2306,19 @@ let lines_of_tokens = fun tokens ->
       | _ -> None)
   |> Array.from_list
 
+let document_tree = fun nodes ->
+  List.map nodes ~fn:(fun node -> Node node)
+  |> make_node Syntax_kind.Document
+
+let parse_source_range = fun ~flavor source ~start ~end_ ->
+  let lines = lines_of_source_range source ~start ~end_ in
+  let control_diagnostics = make_control_diagnostics_range source ~start ~end_ in
+  let (elements, diagnostics) = parse_blocks ~flavor lines 0 in
+  {
+    nodes = List.filter_map elements ~fn:node_of_element;
+    diagnostics = List.append control_diagnostics diagnostics;
+  }
+
 let parse = fun ?(flavor = Markdown) source ->
   let source = Markdown_lexer.normalize_newlines source in
   let tokens = Markdown_lexer.tokenize source in
@@ -2115,7 +2327,7 @@ let parse = fun ?(flavor = Markdown) source ->
   try
     let (blocks, diagnostics) = parse_blocks ~flavor lines 0 in
     let diagnostics = List.append control_diagnostics diagnostics in
-    let tree = Ceibo.Green.make_node ~kind:Syntax_kind.Document ~children:blocks in
+    let tree = make_node Syntax_kind.Document blocks in
     {
       source;
       tokens;
@@ -2131,8 +2343,144 @@ let parse = fun ?(flavor = Markdown) source ->
       {
         source;
         tokens;
-        tree = Ceibo.Green.make_node
-          ~kind:Syntax_kind.Document
-          ~children:[ node Syntax_kind.Error [ token Syntax_kind.Text message ] ];
+        tree = make_node
+          Syntax_kind.Document
+          [ node Syntax_kind.Error [ token Syntax_kind.Text message ] ];
         diagnostics = List.append control_diagnostics [ diagnostic ];
       }
+
+let clamp_edit = fun source (edit: edit) ->
+  let len = String.length source in
+  let start = Int.max 0 (Int.min edit.start len) in
+  let end_ = Int.max start (Int.min edit.end_ len) in
+  { edit with start; end_ }
+
+let apply_edit = fun source (edit: edit) ->
+  let edit = clamp_edit source edit in
+  let prefix = substring source 0 edit.start in
+  let suffix = substring source edit.end_ (String.length source - edit.end_) in
+  (prefix ^ edit.text ^ suffix)
+  |> Markdown_lexer.normalize_newlines
+
+let edit_crosses_newline = fun source (edit: edit) ->
+  source_range_has_newline source ~start:edit.start ~end_:edit.end_
+  || source_range_has_newline edit.text ~start:0 ~end_:(String.length edit.text)
+
+let simple_incremental_kind = function
+  | Syntax_kind.Heading_1
+  | Syntax_kind.Heading_2
+  | Syntax_kind.Heading_3
+  | Syntax_kind.Heading_4
+  | Syntax_kind.Heading_5
+  | Syntax_kind.Heading_6
+  | Syntax_kind.Paragraph
+  | Syntax_kind.Horizontal_rule -> true
+  | _ -> false
+
+let nodes_are_simple = fun nodes ->
+  not
+    (List.any nodes ~fn:(fun node -> not (simple_incremental_kind node.kind)))
+
+let edit_touches_span = fun (edit: edit) span ->
+  if edit.start = edit.end_ then
+    edit.start >= span.Markdown_span.start && edit.start <= span.Markdown_span.end_
+  else
+    edit.start < span.Markdown_span.end_ && edit.end_ > span.Markdown_span.start
+
+let find_touched_block = fun blocks edit ->
+  let rec loop index = function
+    | [] -> None
+    | block :: tail ->
+        if edit_touches_span edit block.span then
+          Some (index, block)
+        else
+          loop (index + 1) tail
+  in
+  loop 0 blocks
+
+let split_at = fun index values ->
+  let rec loop remaining prefix suffix =
+    if remaining <= 0 then
+      (List.reverse prefix, suffix)
+    else
+      match suffix with
+      | [] -> (List.reverse prefix, [])
+      | head :: tail -> loop (remaining - 1) (head :: prefix) tail
+  in
+  loop index [] values
+
+let diagnostics_before = fun offset diagnostics ->
+  List.filter
+    diagnostics
+    ~fn:(fun (diagnostic: Markdown_diagnostic.t) -> diagnostic.span.Markdown_span.end_ <= offset)
+
+let diagnostics_after = fun offset delta diagnostics ->
+  diagnostics
+  |> List.filter
+    ~fn:(fun (diagnostic: Markdown_diagnostic.t) -> diagnostic.span.Markdown_span.start >= offset)
+  |> List.map ~fn:(shift_diagnostic delta)
+
+let full_update = fun flavor new_source ->
+  let parsed = parse ~flavor new_source in
+  {
+    parsed;
+    stats =
+      {
+        reused_prefix_blocks = 0;
+        reparsed_blocks = List.length parsed.tree.children;
+        reused_suffix_blocks = 0;
+        reparsed_full = true;
+      };
+  }
+
+let update = fun ?(flavor = Markdown) ~previous ~edit () ->
+  let edit = clamp_edit previous.source edit in
+  let new_source = apply_edit previous.source edit in
+  let delta = String.length new_source - String.length previous.source in
+  if edit_crosses_newline previous.source edit then
+    full_update flavor new_source
+  else
+    match find_touched_block previous.tree.children edit with
+    | None -> full_update flavor new_source
+    | Some (index, touched) ->
+        if not (simple_incremental_kind touched.kind) then
+          full_update flavor new_source
+        else
+          let old_span = touched.span in
+          let new_block_start = line_start_before new_source old_span.start in
+          let new_block_end = line_end_after new_source (old_span.end_ + delta) in
+          let fragment =
+            parse_source_range ~flavor new_source ~start:new_block_start ~end_:new_block_end
+          in
+          if not (nodes_are_simple fragment.nodes) then
+            full_update flavor new_source
+          else
+            let (prefix, touched_and_suffix) = split_at index previous.tree.children in
+            let suffix =
+              match touched_and_suffix with
+              | [] -> []
+              | _ :: tail -> List.map tail ~fn:(shift_node delta)
+            in
+            let nodes = (prefix @ fragment.nodes) @ suffix in
+            let diagnostics =
+              diagnostics_before old_span.start previous.diagnostics
+              @ fragment.diagnostics
+              @ diagnostics_after old_span.end_ delta previous.diagnostics
+            in
+            let parsed = {
+              source = new_source;
+              tokens = Markdown_lexer.tokenize new_source;
+              tree = document_tree nodes;
+              diagnostics;
+            }
+            in
+            {
+              parsed;
+              stats =
+                {
+                  reused_prefix_blocks = List.length prefix;
+                  reparsed_blocks = List.length fragment.nodes;
+                  reused_suffix_blocks = List.length suffix;
+                  reparsed_full = false;
+                };
+            }
