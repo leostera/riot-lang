@@ -8,6 +8,11 @@ open Global
    writes a pending [*.expected.new] candidate and fails. Approved snapshots
    are never mutated by ordinary test execution.
 
+   Pending candidates are recreated from the current assertion output every
+   time the assertion runs, even when a stale pending file already exists.
+   Existing pending files remain visible failures until they are approved or
+   rejected.
+
    Non-fixture snapshots live under:
 
    {[

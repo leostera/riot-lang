@@ -35,6 +35,10 @@ let snapshot_path = fun workspace_root test_name ->
   / Path.v test_name
   |> fun path -> Path.add_extension path ~ext:"expected")
 
+let pending_snapshot_path = fun approved ->
+  Path.from_string (Path.to_string approved ^ ".new")
+  |> Result.expect ~msg:"pending snapshot path should be valid"
+
 let test_snapshot_missing_approved_writes_pending =
   Test.case
     "snapshot missing approved writes pending"
@@ -48,9 +52,7 @@ let test_snapshot_missing_approved_writes_pending =
           | Error _ ->
               let pending =
                 snapshot_path workspace_root "missing_approved"
-                |> fun path ->
-                  Path.from_string (Path.to_string path ^ ".new")
-                  |> Result.expect ~msg:"pending snapshot path should be valid"
+                |> pending_snapshot_path
               in
               let approved_exists =
                 Fs.exists (snapshot_path workspace_root "missing_approved")
@@ -92,10 +94,7 @@ let test_snapshot_matching_approved_passes =
                   match Test.Snapshot.assert_text ~ctx ~actual:"matching text\n" with
                   | Error msg -> Error msg
                   | Ok () ->
-                      let pending =
-                        Path.from_string (Path.to_string approved ^ ".new")
-                        |> Result.expect ~msg:"pending snapshot path should be valid"
-                      in
+                      let pending = pending_snapshot_path approved in
                       let pending_exists =
                         Fs.exists pending
                         |> Result.expect ~msg:"stat pending snapshot"
@@ -124,10 +123,7 @@ let test_snapshot_mismatch_writes_pending =
                   match Test.Snapshot.assert_text ~ctx ~actual:"new text\n" with
                   | Ok () -> Error "expected snapshot mismatch to fail"
                   | Error msg ->
-                      let pending =
-                        Path.from_string (Path.to_string approved ^ ".new")
-                        |> Result.expect ~msg:"pending snapshot path should be valid"
-                      in
+                      let pending = pending_snapshot_path approved in
                       let pending_content =
                         Fs.read pending
                         |> Result.expect ~msg:"read pending snapshot"
@@ -149,6 +145,82 @@ let test_snapshot_mismatch_writes_pending =
                         ^ msg)
                       else
                         Ok ()
+            )))
+
+let test_snapshot_existing_pending_is_refreshed_before_pending_failure =
+  Test.case
+    "snapshot existing pending is refreshed before pending failure"
+    (fun _ctx ->
+      with_tempdir_result
+        "snapshot_pending_refresh"
+        (fun workspace_root ->
+          let approved = snapshot_path workspace_root "pending_refresh" in
+          let pending = pending_snapshot_path approved in
+          match Fs.create_dir_all (Path.dirname approved) with
+          | Error err -> Error (IO.error_message err)
+          | Ok () -> (
+              match Fs.write "current text\n" approved with
+              | Error err -> Error (IO.error_message err)
+              | Ok () -> (
+                  match Fs.write "stale pending text\n" pending with
+                  | Error err -> Error (IO.error_message err)
+                  | Ok () ->
+                      let ctx = make_ctx ~test_name:"pending_refresh" workspace_root in
+                      match Test.Snapshot.assert_text ~ctx ~actual:"current text\n" with
+                      | Ok () -> Error "expected existing pending snapshot to fail visibly"
+                      | Error msg ->
+                          let pending_content =
+                            Fs.read pending
+                            |> Result.expect ~msg:"read refreshed pending snapshot"
+                          in
+                          if not (String.equal pending_content "current text\n") then
+                            Error ("expected pending snapshot to be refreshed, got "
+                            ^ pending_content)
+                          else if
+                            not (String.contains msg "pending candidate awaiting review")
+                          then
+                            Error ("expected pending-review failure, got " ^ msg)
+                          else
+                            Ok ()
+                )
+            )))
+
+let test_snapshot_existing_pending_mismatch_is_rewritten_and_reports_diff =
+  Test.case
+    "snapshot existing pending mismatch is rewritten and reports diff"
+    (fun _ctx ->
+      with_tempdir_result
+        "snapshot_pending_mismatch"
+        (fun workspace_root ->
+          let approved = snapshot_path workspace_root "pending_mismatch" in
+          let pending = pending_snapshot_path approved in
+          match Fs.create_dir_all (Path.dirname approved) with
+          | Error err -> Error (IO.error_message err)
+          | Ok () -> (
+              match Fs.write "approved text\n" approved with
+              | Error err -> Error (IO.error_message err)
+              | Ok () -> (
+                  match Fs.write "old pending text\n" pending with
+                  | Error err -> Error (IO.error_message err)
+                  | Ok () ->
+                      let ctx = make_ctx ~test_name:"pending_mismatch" workspace_root in
+                      match Test.Snapshot.assert_text ~ctx ~actual:"fresh mismatch\n" with
+                      | Ok () -> Error "expected snapshot mismatch to fail"
+                      | Error msg ->
+                          let pending_content =
+                            Fs.read pending
+                            |> Result.expect ~msg:"read refreshed pending snapshot"
+                          in
+                          if not (String.equal pending_content "fresh mismatch\n") then
+                            Error ("expected pending snapshot to contain fresh mismatch, got "
+                            ^ pending_content)
+                          else if not (String.contains msg "Snapshot mismatch.") then
+                            Error ("expected mismatch failure, got " ^ msg)
+                          else if not (String.contains msg "Diff:") then
+                            Error ("expected mismatch failure to include diff, got " ^ msg)
+                          else
+                            Ok ()
+                )
             )))
 
 let test_inline_snapshot_mismatch_reports_error =
@@ -304,6 +376,8 @@ let tests = [
   test_snapshot_missing_approved_writes_pending;
   test_snapshot_matching_approved_passes;
   test_snapshot_mismatch_writes_pending;
+  test_snapshot_existing_pending_is_refreshed_before_pending_failure;
+  test_snapshot_existing_pending_mismatch_is_rewritten_and_reports_diff;
   test_inline_snapshot_mismatch_reports_error;
   test_json_snapshot_canonicalizes_object_keys;
   test_inline_json_snapshot_canonicalizes_object_keys;

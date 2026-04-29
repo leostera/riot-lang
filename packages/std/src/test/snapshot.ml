@@ -306,18 +306,21 @@ let assert_text_with_format = fun ~ctx ~format ~actual ->
         | Ok expected ->
             if String.equal expected actual then
               if pending_exists then (
-                emit_snapshot_progress
-                  ctx
-                  (
-                    Test_context.SnapshotAssertionMismatch {
-                      mode = Test_context.External;
-                      format;
-                      approved_path = Some paths.approved;
-                      pending_path = Some paths.pending;
-                      reason = Test_context.Pending_exists;
-                    }
-                  );
-                Error (pending_exists_message ~approved:paths.approved ~pending:paths.pending)
+                match write_pending_snapshot paths.pending actual with
+                | Error err -> Error (IO.error_message err)
+                | Ok () ->
+                    emit_snapshot_progress
+                      ctx
+                      (
+                        Test_context.SnapshotAssertionMismatch {
+                          mode = Test_context.External;
+                          format;
+                          approved_path = Some paths.approved;
+                          pending_path = Some paths.pending;
+                          reason = Test_context.Pending_exists;
+                        }
+                      );
+                    Error (pending_exists_message ~approved:paths.approved ~pending:paths.pending)
               ) else (
                 emit_snapshot_progress
                   ctx
