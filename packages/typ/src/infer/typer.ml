@@ -54,9 +54,9 @@ let expression_diagnostic (expr: expression) err =
 module Builtin = struct
   open Model
 
-  let make name =
+  let make ?(arguments = []) name =
     let ident = Model.Surface_path.from_name name in
-    Type.Constructor { ident; arguments = [] }
+    Type.Constructor { ident; arguments }
 
   let int = make "int"
 
@@ -69,6 +69,8 @@ module Builtin = struct
   let string = make "string"
 
   let unit = make "unit"
+
+  let list el = make "list" ~arguments:[ el ]
 end
 
 let arrow_label_to_type_label = function
@@ -159,7 +161,21 @@ let rec infer_expr (state: State.t) (expr: expression) =
   | Literal lit -> infer_literal state lit
   | Ident ident -> infer_ident state ident
   | Tuple parts -> infer_tuple state parts
+  | List items -> infer_list state items
   | _ -> State.fresh_var state
+
+(**
+   When inferring lists, we will start with a fresh variable and unify it
+   against every list element type.
+*)
+and infer_list state items =
+  let element = State.fresh_var state in
+  List.for_each
+    items
+    ~fn:(fun item ->
+      let actual = type_expression state item in
+      unify state ~expected:element ~actual ~on_error:(expression_diagnostic item));
+  Builtin.list element
 
 and infer_apply state apply =
   let callee = type_expression state apply.callee in
