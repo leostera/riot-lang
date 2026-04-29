@@ -260,6 +260,44 @@ let test_source_file_and_let_binding_views = fun _ctx ->
     | _ -> Error "expected literal expression body"
   )
 
+let test_local_let_type_identifier_after_typed_rec_binding = fun _ctx ->
+  let root =
+    parse_ml
+      {ocaml|let rec type_expression (state: State.t) (expr: expression) =
+let type_ = ok in 1
+|ocaml}
+    |> Result.expect ~msg:"expected typed recursive binding with local type_ let to parse"
+  in
+  let outer_binding =
+    nth_structure_item root 0
+    |> require_some ~msg:"expected outer let item"
+    |> binding_of_structure_item
+    |> Result.expect ~msg:"expected outer let binding"
+  in
+  let body =
+    body_of_binding outer_binding
+    |> Result.expect ~msg:"expected outer let body"
+  in
+  match Ast.Expr.view body with
+  | Ast.Expr.Let { first_binding; body } ->
+      let inner_pattern =
+        pattern_of_binding first_binding
+        |> Result.expect ~msg:"expected inner let pattern"
+      in
+      (
+        match Ast.Pattern.view inner_pattern with
+        | Ast.Pattern.Ident { ident } -> assert_last_ident_text ident "type_"
+        | _ -> panic "expected inner let identifier pattern"
+      );
+      (
+        match Ast.Expr.view body with
+        | Ast.Expr.Literal { token } ->
+            Test.assert_equal ~expected:"1" ~actual:(Ast.Token.text token);
+            Ok ()
+        | _ -> Error "expected inner let body literal"
+      )
+  | _ -> Error "expected outer binding body to be local let expression"
+
 let test_token_leading_docstring_trivia_parts = fun _ctx ->
   let root =
     parse_mli {ocaml|(** hello *)
@@ -3686,6 +3724,9 @@ let tests =
       test_class_subset_words_are_not_keywords;
     case "ast keeps empty source files typed by file kind" test_empty_source_files_have_file_kind;
     case "ast exposes source file and let binding views" test_source_file_and_let_binding_views;
+    case
+      "ast parses local let type identifier after typed rec binding"
+      test_local_let_type_identifier_after_typed_rec_binding;
     case "ast exposes separated docstring trivia parts" test_token_leading_docstring_trivia_parts;
     case "ast node spans exclude leading trivia" test_node_span_excludes_leading_trivia;
     case "ast exposes if and match expression views" test_expression_views;
