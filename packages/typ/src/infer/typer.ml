@@ -37,6 +37,20 @@ let expression_hint_diagnostic (expr: expression) (hint: expression_type_hint) e
         ~var:(TypeVar.to_string var.id)
         ~type_:(Type.to_string type_)
 
+let expression_diagnostic (expr: expression) err =
+  match err with
+  | Unifier.TypeMismatch { expected; actual } ->
+      Diagnostics.Diagnostic.annotation_mismatch
+        ~span:expr.origin.span
+        ~annotation_span:expr.origin.span
+        ~expected:(Type.to_string expected)
+        ~actual:(Type.to_string actual)
+  | Unifier.InfiniteSubstitution { var; type_ } ->
+      Diagnostics.Diagnostic.infinite_substitution
+        ~span:expr.origin.span
+        ~var:(TypeVar.to_string var.id)
+        ~type_:(Type.to_string type_)
+
 module Builtin = struct
   open Model
 
@@ -139,11 +153,47 @@ let infer_function_param state (param: parameter) =
 
 let rec infer_expr (state: State.t) (expr: expression) =
   match expr.kind with
+  | If ifelse -> infer_if_else state ifelse
   | Function fn -> infer_function state fn
+  | Apply apply -> infer_apply state apply
   | Literal lit -> infer_literal state lit
   | Ident ident -> infer_ident state ident
   | Tuple parts -> infer_tuple state parts
   | _ -> State.fresh_var state
+
+and infer_apply state apply =
+  let callee = type_expression state apply.callee in
+  let result = State.fresh_var state in
+  let expected =
+    List.fold_right
+      apply.arguments
+      ~init:result
+      ~fn:(fun arg ret ->
+        let arg_type =
+          match arg.kind with
+          | Positional expr -> type_expression state expr
+          | _ -> State.fresh_var state
+        in
+        Ast.Type.arrow arg_type ret)
+  in
+  unify state ~expected ~actual:callee ~on_error:(expression_diagnostic apply.callee);
+  result
+
+and infer_if_else state ifelse =
+  let condition = type_expression state ifelse.condition in
+  unify
+    state
+    ~expected:Builtin.bool
+    ~actual:condition
+    ~on_error:(expression_diagnostic ifelse.condition);
+  let then_ = type_expression state ifelse.then_branch in
+  let else_ =
+    match ifelse.else_branch with
+    | Some else_ -> type_expression state else_
+    | None -> Builtin.unit
+  in
+  unify state ~expected:then_ ~actual:else_ ~on_error:(expression_diagnostic ifelse.then_branch);
+  then_
 
 and infer_tuple (state: State.t) parts =
   let types = List.map ~fn:(infer_expr state) parts in
