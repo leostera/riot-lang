@@ -998,7 +998,7 @@ module Ast_deps = struct
 
   and module_member_name member =
     match A.ModuleDeclaration.Member.name member with
-    | Some token -> Some (A.Token.text token)
+    | Some ident -> Some (A.Ident.text ident)
     | None -> None
 
   and find_token_between node start stop kind =
@@ -1210,7 +1210,7 @@ module Ast_deps = struct
     let* (deps, env, exports) = collect_signature_binding env (DepSet.empty ()) intf in
     Ok (deps, env, exports)
 
-  let of_parse_result = fun ~env result ->
+  let from_parse_result = fun ~env result ->
     match A.SourceFile.view (A.SourceFile.make result.Parser.tree) with
     | A.SourceFile.Implementation impl -> finalize_impl env (A.Implementation.as_node impl)
     | A.SourceFile.Interface intf -> finalize_intf env (A.Interface.as_node intf)
@@ -1218,7 +1218,7 @@ end
 
 let finalize = fun deps env exports -> { modules = DepSet.elements deps; env; exports }
 
-let of_parse_result = fun ?(env = Env.empty) result ->
+let from_parse_result = fun ?(env = Env.empty) result ->
   if Int.(Vector.length result.Parser.diagnostics != 0) then
     Error (
       Parse_diagnostics (
@@ -1227,6 +1227,6 @@ let of_parse_result = fun ?(env = Env.empty) result ->
       )
     )
   else
-    match Ast_deps.of_parse_result ~env result with
+    match Ast_deps.from_parse_result ~env result with
     | Ok (deps, env, exports) -> Ok (finalize deps env exports)
     | Error err -> Error err

@@ -56,7 +56,7 @@ let source_slice = fun source ->
 let analyzed_module = fun (node: Riot_planner.Module_node.t G.node) ~source ->
   let display_path = node_path node in
   let parse_result = Syn.parse ~filename:display_path (source_slice source) in
-  let deps = Syn.Deps.of_parse_result parse_result in
+  let deps = Syn.Deps.from_parse_result parse_result in
   (
     node.id,
     Riot_planner.Module_graph.{

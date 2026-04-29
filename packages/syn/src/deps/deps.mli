@@ -45,4 +45,4 @@ val to_json: t -> Json.t
    Extract dependencies from a clean parse result. Diagnostics are returned as
    an error because dependency output from malformed syntax is not stable.
 *)
-val of_parse_result: ?env:Env.t -> Parser.parse_result -> (t, parse_error) result
+val from_parse_result: ?env:Env.t -> Parser.parse_result -> (t, parse_error) result

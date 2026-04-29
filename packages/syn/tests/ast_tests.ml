@@ -442,7 +442,8 @@ let lower = value
         assert_last_ident_text constructor "Some";
         (
           match Ast.Expr.view payload with
-          | Ast.Expr.Literal { token } -> Test.assert_equal ~expected:"1" ~actual:(Ast.Token.text token)
+          | Ast.Expr.Literal { token } ->
+              Test.assert_equal ~expected:"1" ~actual:(Ast.Token.text token)
           | _ -> panic "expected Some argument literal"
         )
     | _ -> panic "expected Some constructor application"
@@ -483,7 +484,8 @@ let lower = value
                   )
               | Ast.RecordExprField { value = None; _ } ->
                   panic "expected record constructor payload field value"
-              | Ast.UnknownRecordExprField _ -> panic "expected known record constructor payload field"
+              | Ast.UnknownRecordExprField _ ->
+                  panic "expected known record constructor payload field"
             )
           | _ -> panic "expected record constructor payload"
         )
@@ -675,10 +677,10 @@ let test_signature_and_type_views = fun _ctx ->
           match Ast.ValueDeclaration.view decl with
           | Ast.ValueDeclaration.Value { name; colon_token; annotation } ->
               Test.assert_equal ~expected:":" ~actual:(Ast.Token.text colon_token);
-              (vector_first name ~msg:"expected value name token", annotation)
+              (name, annotation)
           | Ast.ValueDeclaration.Unknown _ -> panic "expected value declaration view"
         in
-        Test.assert_equal ~expected:"x" ~actual:(Ast.Token.text name);
+        Test.assert_equal ~expected:"x" ~actual:(Ast.Ident.text name);
         (
           match Ast.TypeExpr.view annotation with
           | Ast.TypeExpr.Arrow { arg; ret; _ } ->
@@ -701,7 +703,7 @@ let test_signature_and_type_views = fun _ctx ->
           Ast.TypeDeclaration.name decl
           |> require_some ~msg:"expected type name"
         in
-        Test.assert_equal ~expected:"t" ~actual:(Ast.Token.text name);
+        Test.assert_equal ~expected:"t" ~actual:(Ast.Ident.text name);
         let manifest =
           Ast.TypeDeclaration.manifest decl
           |> require_some ~msg:"expected type manifest"
@@ -719,7 +721,7 @@ let test_signature_and_type_views = fun _ctx ->
         Ast.ModuleDeclaration.name decl
         |> require_some ~msg:"expected module name"
       in
-      Test.assert_equal ~expected:"M" ~actual:(Ast.Token.text name);
+      Test.assert_equal ~expected:"M" ~actual:(Ast.Ident.text name);
       Ok ()
   | _ -> Error "expected module declaration"
 
@@ -1071,7 +1073,7 @@ let test_type_declaration_parameters = fun _ctx ->
         Ast.TypeDeclaration.name decl
         |> require_some ~msg:"expected type name"
       in
-      Test.assert_equal ~expected:"box" ~actual:(Ast.Token.text name);
+      Test.assert_equal ~expected:"box" ~actual:(Ast.Ident.text name);
       let named = ref None in
       let wildcard_param = ref None in
       iter_fold
@@ -1147,7 +1149,7 @@ let test_type_declaration_member_views = fun _ctx ->
             | Some _ -> true
             | None -> false
           in
-          names := Ast.Token.text name :: !names;
+          names := Ast.Ident.text name :: !names;
           shells := Ast.Token.text shell :: !shells;
           parameter_counts := !parameters :: !parameter_counts;
           manifest_shapes := has_manifest :: !manifest_shapes);
@@ -1203,7 +1205,7 @@ let test_type_declaration_body_group_views = fun _ctx ->
               )
               | Ast.VariantConstructor.Unknown _ -> panic "expected constructor view"
             in
-            Vector.push names ~value:(Ast.Token.text name);
+            Vector.push names ~value:(Ast.Ident.text name);
             Vector.push pipe_flags ~value:(Option.is_some pipe_token);
             let payload_shape =
               match rhs with
@@ -1263,7 +1265,7 @@ let test_type_declaration_body_group_views = fun _ctx ->
             annotation
           } ->
               Test.assert_equal ~expected:":" ~actual:(Ast.Token.text colon_token);
-              Vector.push names ~value:(Ast.Token.text name);
+              Vector.push names ~value:(Ast.Ident.text name);
               Vector.push mutable_flags ~value:(Option.is_some mutable_token);
               (
                 match Ast.TypeExpr.view annotation with
@@ -1320,7 +1322,7 @@ let test_type_alias_record_representation_views = fun _ctx ->
         ~fn:(fun field ->
           match Ast.RecordField.view field with
           | Ast.RecordField.Field { name; _ } ->
-              Vector.push field_names ~value:(Ast.Token.text name)
+              Vector.push field_names ~value:(Ast.Ident.text name)
           | Ast.RecordField.Unknown _ -> panic "expected field view");
       Test.assert_equal ~expected:2 ~actual:(Vector.length field_names);
       Test.assert_equal ~expected:"x" ~actual:(Vector.get_unchecked field_names ~at:0);
@@ -1353,19 +1355,21 @@ let test_open_declaration_ident_tokens = fun _ctx ->
   in
   match Ast.StructureItem.view item with
   | Ast.StructureItem.Open decl ->
+      let ident =
+        Ast.OpenDeclaration.ident decl
+        |> require_some ~msg:"expected open ident"
+      in
       let first =
-        Ast.OpenDeclaration.first_ident_segment decl
+        Ast.Ident.first_segment ident
         |> require_some ~msg:"expected first open ident segment"
       in
       let last =
-        Ast.OpenDeclaration.last_ident_segment decl
+        Ast.Ident.last_segment ident
         |> require_some ~msg:"expected last open ident segment"
       in
-      let count = ref 0 in
-      iter_fold Ast.OpenDeclaration.fold_ident_segment decl ~fn:(fun _ -> count := !count + 1);
       Test.assert_equal ~expected:"Foo" ~actual:(Ast.Token.text first);
       Test.assert_equal ~expected:"Bar" ~actual:(Ast.Token.text last);
-      Test.assert_equal ~expected:2 ~actual:!count;
+      Test.assert_equal ~expected:2 ~actual:(Ast.Ident.segment_count ident);
       Ok ()
   | _ -> Error "expected open declaration"
 
@@ -1384,22 +1388,21 @@ let test_simple_declaration_token_views = fun _ctx ->
   (
     match Ast.StructureItem.view include_item with
     | Ast.StructureItem.Include decl ->
+        let ident =
+          Ast.IncludeDeclaration.body_ident decl
+          |> require_some ~msg:"expected include ident"
+        in
         let first =
-          Ast.IncludeDeclaration.first_ident_segment decl
+          Ast.Ident.first_segment ident
           |> require_some ~msg:"expected first include ident segment"
         in
         let last =
-          Ast.IncludeDeclaration.last_ident_segment decl
+          Ast.Ident.last_segment ident
           |> require_some ~msg:"expected last include ident segment"
         in
-        let count = ref 0 in
-        iter_fold
-          Ast.IncludeDeclaration.fold_ident_segment
-          decl
-          ~fn:(fun _ -> count := !count + 1);
         Test.assert_equal ~expected:"Foo" ~actual:(Ast.Token.text first);
         Test.assert_equal ~expected:"Bar" ~actual:(Ast.Token.text last);
-        Test.assert_equal ~expected:2 ~actual:!count
+        Test.assert_equal ~expected:2 ~actual:(Ast.Ident.segment_count ident)
     | _ -> panic "expected include declaration"
   );
   let external_item =
@@ -1420,10 +1423,10 @@ let test_simple_declaration_token_views = fun _ctx ->
           } ->
               Test.assert_equal ~expected:":" ~actual:(Ast.Token.text colon_token);
               Test.assert_equal ~expected:"=" ~actual:(Ast.Token.text equals_token);
-              (vector_first name ~msg:"expected external name token", primitives)
+              (name, primitives)
           | Ast.ExternalDeclaration.Unknown _ -> panic "expected external declaration view"
         in
-        Test.assert_equal ~expected:"id" ~actual:(Ast.Token.text name);
+        Test.assert_equal ~expected:"id" ~actual:(Ast.Ident.text name);
         Test.assert_equal
           ~expected:[ "\"%identity\""; "\"caml_id\"" ]
           ~actual:(
@@ -1449,7 +1452,7 @@ let test_simple_declaration_token_views = fun _ctx ->
         Ast.Node.fold_child_node
         (Ast.ExceptionDeclaration.as_node decl)
         ~fn:(fun child -> child_kinds := Ast.Node.kind child :: !child_kinds);
-      Test.assert_equal ~expected:"Boom" ~actual:(Ast.Token.text name);
+      Test.assert_equal ~expected:"Boom" ~actual:(Ast.Ident.text name);
       Test.assert_equal
         ~expected:[ SyntaxKind.EXCEPTION_DECL_HEAD ]
         ~actual:(List.reverse !child_kinds);
@@ -1480,7 +1483,7 @@ let test_type_extension_and_exception_views = fun _ctx ->
           Ast.TypeExtensionDeclaration.name decl
           |> require_some ~msg:"expected type extension name"
         in
-        Test.assert_equal ~expected:"box" ~actual:(Ast.Token.text name);
+        Test.assert_equal ~expected:"box" ~actual:(Ast.Ident.text name);
         Test.assert_equal
           ~expected:[ SyntaxKind.TYPE_EXTENSION_DECL_HEAD; SyntaxKind.TYPE_EXTENSION_DECL_BODY ]
           ~actual:(List.reverse !child_kinds);
@@ -1511,7 +1514,7 @@ let test_type_extension_and_exception_views = fun _ctx ->
           | Ast.VariantConstructor.Constructor { name; rhs; _ } -> (name, rhs)
           | Ast.VariantConstructor.Unknown _ -> panic "expected type extension constructor view"
         in
-        Test.assert_equal ~expected:"More" ~actual:(Ast.Token.text constructor_name);
+        Test.assert_equal ~expected:"More" ~actual:(Ast.Ident.text constructor_name);
         (
           match rhs with
           | Ast.VariantConstructor.Payload { payload = Ast.VariantConstructor.TypeExpr payload; _ } -> (
@@ -1537,7 +1540,7 @@ let test_type_extension_and_exception_views = fun _ctx ->
           Ast.ExceptionDeclaration.name decl
           |> require_some ~msg:"expected exception payload name"
         in
-        Test.assert_equal ~expected:"Parse_error" ~actual:(Ast.Token.text name);
+        Test.assert_equal ~expected:"Parse_error" ~actual:(Ast.Ident.text name);
         (
           match Ast.ExceptionDeclaration.view decl with
           | Ast.ExceptionDeclaration.Payload { of_token; payload = Ast.ExceptionDeclaration.TypeExpr payload } ->
@@ -1559,7 +1562,7 @@ let test_type_extension_and_exception_views = fun _ctx ->
         Ast.ExceptionDeclaration.name decl
         |> require_some ~msg:"expected exception alias name"
       in
-      Test.assert_equal ~expected:"Nested" ~actual:(Ast.Token.text name);
+      Test.assert_equal ~expected:"Nested" ~actual:(Ast.Ident.text name);
       (
         match Ast.ExceptionDeclaration.view decl with
         | Ast.ExceptionDeclaration.Alias { equals_token; ident } ->
@@ -1589,7 +1592,7 @@ let test_exception_after_function_binding_views = fun _ctx ->
           Ast.ExceptionDeclaration.name decl
           |> require_some ~msg:"expected exception name"
         in
-        Test.assert_equal ~expected:"Parse_exception" ~actual:(Ast.Token.text name);
+        Test.assert_equal ~expected:"Parse_exception" ~actual:(Ast.Ident.text name);
         (
           match Ast.ExceptionDeclaration.view decl with
           | Ast.ExceptionDeclaration.Payload { of_token; payload = Ast.ExceptionDeclaration.TypeExpr payload } ->
@@ -1648,7 +1651,7 @@ let test_module_declaration_tokens = fun _ctx ->
           |> require_some ~msg:"expected module name"
         in
         Test.assert_equal ~expected:"rec" ~actual:(Ast.Token.text rec_token);
-        Test.assert_equal ~expected:"M" ~actual:(Ast.Token.text name);
+        Test.assert_equal ~expected:"M" ~actual:(Ast.Ident.text name);
         (
           match Ast.ModuleDeclaration.body decl with
           | Ast.ModuleDeclaration.Expr { body } -> (
@@ -1670,7 +1673,7 @@ let test_module_declaration_tokens = fun _ctx ->
           Ast.ModuleDeclaration.name decl
           |> require_some ~msg:"expected module wildcard name"
         in
-        Test.assert_equal ~expected:"_" ~actual:(Ast.Token.text name)
+        Test.assert_equal ~expected:"_" ~actual:(Ast.Ident.text name)
     | _ -> panic "expected second module declaration"
   );
   (
@@ -1680,25 +1683,29 @@ let test_module_declaration_tokens = fun _ctx ->
           Ast.ModuleDeclaration.separator_token decl
           |> require_some ~msg:"expected module separator"
         in
-        let segments = ref [] in
-        iter_fold
-          Ast.ModuleDeclaration.fold_body_ident_segment
-          decl
-          ~fn:(fun token -> segments := Ast.Token.text token :: !segments);
+        let ident =
+          Ast.ModuleDeclaration.body_ident decl
+          |> require_some ~msg:"expected module body ident"
+        in
+        let segments =
+          Ast.Ident.fold_segment
+            ident
+            ~init:[]
+            ~fn:(fun token segments -> Ast.Continue (Ast.Token.text token :: segments))
+          |> List.reverse
+        in
         Test.assert_equal ~expected:"=" ~actual:(Ast.Token.text separator);
         (
           match Ast.ModuleDeclaration.body decl with
           | Ast.ModuleDeclaration.Expr { body } -> (
               match Ast.ModuleExpr.view body with
               | Ast.ModuleExpr.Ident { ident } ->
-                  Test.assert_equal
-                    ~expected:SyntaxKind.PATH_MODULE_EXPR
-                    ~actual:(Ast.Node.kind (Ast.Ident.as_node ident))
+                  Test.assert_equal ~expected:SyntaxKind.IDENT ~actual:(Ast.Ident.kind ident)
               | _ -> panic "expected ident module declaration body"
             )
           | _ -> panic "expected ident module declaration body"
         );
-        Test.assert_equal ~expected:[ "Foo"; "Bar" ] ~actual:(List.reverse !segments)
+        Test.assert_equal ~expected:[ "Foo"; "Bar" ] ~actual:segments
     | _ -> panic "expected third module declaration"
   );
   Ok ()
@@ -1722,7 +1729,7 @@ module Int_pair_show = Make_pair (Int_show) (Int_show)
           Ast.ModuleDeclaration.name decl
           |> require_some ~msg:"expected module name"
         in
-        Test.assert_equal ~expected:expected_name ~actual:(Ast.Token.text name);
+        Test.assert_equal ~expected:expected_name ~actual:(Ast.Ident.text name);
         (
           match Ast.ModuleDeclaration.body decl with
           | Ast.ModuleDeclaration.Expr { body } -> (
@@ -1829,7 +1836,7 @@ let test_module_declaration_member_views = fun _ctx ->
             | Some _ -> true
             | None -> false
           in
-          names := Ast.Token.text name :: !names;
+          names := Ast.Ident.text name :: !names;
           shells := Ast.Token.text shell :: !shells;
           body_shapes := (has_module_type, has_module_expr) :: !body_shapes);
       Test.assert_equal ~expected:2 ~actual:!count;
@@ -1913,16 +1920,22 @@ let test_module_type_declaration_tokens = fun _ctx ->
           |> require_some ~msg:"expected module type equals token"
         in
         let child_kinds = ref [] in
-        let segments = ref [] in
+        let ident =
+          Ast.ModuleTypeDeclaration.body_ident decl
+          |> require_some ~msg:"expected module type body ident"
+        in
+        let segments =
+          Ast.Ident.fold_segment
+            ident
+            ~init:[]
+            ~fn:(fun token segments -> Ast.Continue (Ast.Token.text token :: segments))
+          |> List.reverse
+        in
         iter_fold
           Ast.Node.fold_child_node
           (Ast.ModuleTypeDeclaration.as_node decl)
           ~fn:(fun child -> child_kinds := Ast.Node.kind child :: !child_kinds);
-        iter_fold
-          Ast.ModuleTypeDeclaration.fold_body_ident_segment
-          decl
-          ~fn:(fun token -> segments := Ast.Token.text token :: !segments);
-        Test.assert_equal ~expected:"S" ~actual:(Ast.Token.text name);
+        Test.assert_equal ~expected:"S" ~actual:(Ast.Ident.text name);
         Test.assert_equal ~expected:"=" ~actual:(Ast.Token.text equals);
         Test.assert_equal
           ~expected:[ SyntaxKind.MODULE_TYPE_DECL_HEAD; SyntaxKind.MODULE_TYPE_DECL_BODY ]
@@ -1932,14 +1945,12 @@ let test_module_type_declaration_tokens = fun _ctx ->
           | Ast.ModuleTypeDeclaration.Manifest { body } -> (
               match Ast.ModuleTypeExpr.view body with
               | Ast.ModuleTypeExpr.Ident { ident } ->
-                  Test.assert_equal
-                    ~expected:SyntaxKind.PATH_MODULE_TYPE
-                    ~actual:(Ast.Node.kind (Ast.Ident.as_node ident))
+                  Test.assert_equal ~expected:SyntaxKind.IDENT ~actual:(Ast.Ident.kind ident)
               | _ -> panic "expected ident module type body"
             )
           | _ -> panic "expected ident module type body"
         );
-        Test.assert_equal ~expected:[ "Foo"; "S" ] ~actual:(List.reverse !segments)
+        Test.assert_equal ~expected:[ "Foo"; "S" ] ~actual:segments
     | _ -> panic "expected first module type declaration"
   );
   (
@@ -2455,47 +2466,28 @@ let test_binding_operator_views = fun _ctx ->
 
 let local_open_pattern_ident_text = fun pattern ->
   match Ast.LocalOpenPattern.view pattern with
-  | Ast.LocalOpenPattern.Delimited { module_ident; _ } ->
-      vector_to_list module_ident
-      |> List.map ~fn:Ast.Token.text
-      |> String.concat "."
+  | Ast.LocalOpenPattern.Delimited { module_ident; _ } -> Ast.Ident.text module_ident
   | Ast.LocalOpenPattern.Unknown _ -> panic "expected local-open pattern view"
 
 let first_class_module_ident_text = fun expr ->
-  let segments = ref [] in
-  iter_fold
-    Ast.FirstClassModuleExpr.fold_module_ident_segment
-    expr
-    ~fn:(fun token -> segments := Ast.Token.text token :: !segments);
-  List.reverse !segments
-  |> String.concat "."
+  Ast.FirstClassModuleExpr.module_ident expr
+  |> require_some ~msg:"expected first-class module ident"
+  |> Ast.Ident.text
 
 let first_class_module_ascription_text = fun expr ->
-  let segments = ref [] in
-  iter_fold
-    Ast.FirstClassModuleExpr.fold_ascription_ident_segment
-    expr
-    ~fn:(fun token -> segments := Ast.Token.text token :: !segments);
-  List.reverse !segments
-  |> String.concat "."
+  Ast.FirstClassModuleExpr.ascription_ident expr
+  |> require_some ~msg:"expected first-class module ascription ident"
+  |> Ast.Ident.text
 
 let first_class_module_pattern_ascription_text = fun pattern ->
-  let segments = ref [] in
-  iter_fold
-    Ast.FirstClassModulePattern.fold_ascription_ident_segment
-    pattern
-    ~fn:(fun token -> segments := Ast.Token.text token :: !segments);
-  List.reverse !segments
-  |> String.concat "."
+  Ast.FirstClassModulePattern.ascription_ident pattern
+  |> require_some ~msg:"expected first-class module pattern ascription ident"
+  |> Ast.Ident.text
 
 let let_module_body_ident_text = fun expr ->
-  let segments = ref [] in
-  iter_fold
-    Ast.LetModuleExpr.fold_module_body_ident_segment
-    expr
-    ~fn:(fun token -> segments := Ast.Token.text token :: !segments);
-  List.reverse !segments
-  |> String.concat "."
+  Ast.LetModuleExpr.module_body_ident expr
+  |> require_some ~msg:"expected let module body ident"
+  |> Ast.Ident.text
 
 let let_exception_payload_tokens = fun expr ->
   let tokens = ref [] in
@@ -2746,8 +2738,8 @@ let test_first_class_module_views = fun _ctx ->
     |> require_some ~msg:"expected first-class module view"
   in
   Test.assert_equal
-    ~expected:Ast.FirstClassModuleExpr.ModuleIdent
-    ~actual:(Ast.FirstClassModuleExpr.module_ident packed);
+    ~expected:true
+    ~actual:(Option.is_some (Ast.FirstClassModuleExpr.module_ident packed));
   Test.assert_equal
     ~expected:Ast.FirstClassModuleExpr.NoAscription
     ~actual:(Ast.FirstClassModuleExpr.ascription packed);
@@ -2765,8 +2757,8 @@ let test_first_class_module_views = fun _ctx ->
     |> require_some ~msg:"expected typed first-class module view"
   in
   Test.assert_equal
-    ~expected:Ast.FirstClassModuleExpr.ModuleIdent
-    ~actual:(Ast.FirstClassModuleExpr.module_ident typed);
+    ~expected:true
+    ~actual:(Option.is_some (Ast.FirstClassModuleExpr.module_ident typed));
   Test.assert_equal
     ~expected:Ast.FirstClassModuleExpr.IdentAscription
     ~actual:(Ast.FirstClassModuleExpr.ascription typed);
@@ -2790,8 +2782,8 @@ let test_first_class_module_views = fun _ctx ->
     |> require_some ~msg:"expected advanced first-class module view"
   in
   Test.assert_equal
-    ~expected:Ast.FirstClassModuleExpr.ModuleIdent
-    ~actual:(Ast.FirstClassModuleExpr.module_ident advanced);
+    ~expected:true
+    ~actual:(Option.is_some (Ast.FirstClassModuleExpr.module_ident advanced));
   Test.assert_equal
     ~expected:Ast.FirstClassModuleExpr.UnsupportedAscription
     ~actual:(Ast.FirstClassModuleExpr.ascription advanced);
@@ -2834,7 +2826,7 @@ let test_let_module_expression_views = fun _ctx ->
     |> require_some ~msg:"expected let module in"
   in
   Test.assert_equal ~expected:"module" ~actual:(Ast.Token.text module_token);
-  Test.assert_equal ~expected:"M" ~actual:(Ast.Token.text name);
+  Test.assert_equal ~expected:"M" ~actual:(Ast.Ident.text name);
   Test.assert_equal ~expected:"=" ~actual:(Ast.Token.text equals);
   Test.assert_equal ~expected:"in" ~actual:(Ast.Token.text in_token);
   Test.assert_equal
@@ -2922,7 +2914,7 @@ let test_let_exception_expression_views = fun _ctx ->
     |> require_some ~msg:"expected in token"
   in
   Test.assert_equal ~expected:"exception" ~actual:(Ast.Token.text exception_token);
-  Test.assert_equal ~expected:"Local" ~actual:(Ast.Token.text name);
+  Test.assert_equal ~expected:"Local" ~actual:(Ast.Ident.text name);
   Test.assert_equal ~expected:"of" ~actual:(Ast.Token.text of_token);
   Test.assert_equal ~expected:"in" ~actual:(Ast.Token.text in_token);
   Test.assert_equal
@@ -3183,16 +3175,20 @@ let test_special_pattern_views = fun _ctx ->
       in
       let type_names = ref [] in
       iter_fold
-        Ast.LocallyAbstractTypePattern.fold_type_name
+        Ast.LocallyAbstractTypePattern.fold_type_ident
         locally_abstract
-        ~fn:(fun token -> type_names := Ast.Token.text token :: !type_names);
+        ~fn:(fun ident -> type_names := Ast.Ident.text ident :: !type_names);
       Test.assert_equal ~expected:[ "a"; "b" ] ~actual:(List.reverse !type_names);
       (
         match Ast.Pattern.view first_class_module with
         | Ast.Pattern.FirstClassModule { binder; ascription; ascription_ident } ->
-            Test.assert_equal ~expected:"M" ~actual:(Ast.Token.text binder);
+            let ascription_ident =
+              ascription_ident
+              |> require_some ~msg:"expected first-class module pattern ascription"
+            in
+            Test.assert_equal ~expected:"M" ~actual:(Ast.Ident.text binder);
             Test.assert_equal ~expected:Ast.IdentAscription ~actual:ascription;
-            Test.assert_equal ~expected:2 ~actual:(Vector.length ascription_ident)
+            Test.assert_equal ~expected:2 ~actual:(Ast.Ident.segment_count ascription_ident)
         | _ -> panic "expected first-class module pattern"
       );
       let first_class_module =
@@ -3207,7 +3203,7 @@ let test_special_pattern_views = fun _ctx ->
         Ast.FirstClassModulePattern.colon_token first_class_module
         |> require_some ~msg:"expected first-class module colon"
       in
-      Test.assert_equal ~expected:"M" ~actual:(Ast.Token.text binder);
+      Test.assert_equal ~expected:"M" ~actual:(Ast.Ident.text binder);
       Test.assert_equal ~expected:":" ~actual:(Ast.Token.text colon);
       Test.assert_equal
         ~expected:Ast.FirstClassModulePattern.IdentAscription

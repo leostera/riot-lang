@@ -578,4 +578,8 @@ let visit_variant_constructor = fun visitor (constructor: A.VariantConstructor.t
     visitor
     (A.VariantConstructor.as_node constructor)
 
-let visit_ident = fun visitor (ident: A.Ident.t) -> visit_node visitor (A.Ident.as_node ident)
+let visit_ident = fun visitor (ident: A.Ident.t) ->
+  A.Ident.fold_token
+    ident
+    ~init:visitor
+    ~fn:(fun token current -> A.Continue (call_enter_token current token))

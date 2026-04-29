@@ -257,6 +257,10 @@ let token_text = function
   | Some token -> Syn.Ast.Token.text token
   | None -> ""
 
+let ident_text = function
+  | Some ident -> Syn.Ast.Ident.text ident
+  | None -> ""
+
 let leading_docstrings = fun node ->
   let docs = Vector.with_capacity ~size:2 in
   (
@@ -316,7 +320,7 @@ let split_initial_docstrings = fun ~is_source_root docs ->
 
 let type_member_name = fun member fallback ->
   match Syn.Ast.TypeDeclaration.Member.name member with
-  | Some token -> Syn.Ast.Token.text token
+  | Some ident -> Syn.Ast.Ident.text ident
   | None -> fallback
 
 let variant_constructor_details = fun source variant ->
@@ -325,7 +329,7 @@ let variant_constructor_details = fun source variant ->
     Syn.Ast.VariantType.fold_constructor
     variant
     ~fn:(fun constructor ->
-      let name = token_text (Syn.Ast.VariantConstructor.name constructor) in
+      let name = ident_text (Syn.Ast.VariantConstructor.name constructor) in
       if not (String.equal name "") then
         Vector.push
           details
@@ -341,7 +345,7 @@ let record_field_details = fun source record ->
     Syn.Ast.RecordType.fold_field
     record
     ~fn:(fun field ->
-      let name = token_text (Syn.Ast.RecordField.name field) in
+      let name = ident_text (Syn.Ast.RecordField.name field) in
       if not (String.equal name "") then
         Vector.push
           details
@@ -377,7 +381,7 @@ let detail_groups_of_type_member = fun source member ->
 let items_of_type_declaration = fun ?docstring source decl ->
   let raw_snippet = snippet_of_node source (Syn.Ast.TypeDeclaration.as_node decl) in
   let snippet = strip_comments raw_snippet in
-  let fallback_name = token_text (Syn.Ast.TypeDeclaration.name decl) in
+  let fallback_name = ident_text (Syn.Ast.TypeDeclaration.name decl) in
   let items = Vector.with_capacity ~size:2 in
   iter_fold
     Syn.Ast.TypeDeclaration.fold_member
@@ -399,15 +403,9 @@ let items_of_type_declaration = fun ?docstring source decl ->
       ~value:(make_item ?docstring ~kind:Doctree.Type_item ~name:fallback_name snippet);
   vector_to_list items @ macro_items_of_snippet ?docstring raw_snippet
 
-let value_name = fun for_each_name_token ->
-  let tokens = Vector.with_capacity ~size:2 in
-  for_each_name_token ~fn:(fun token -> Vector.push tokens ~value:(Syn.Ast.Token.text token));
-  vector_to_list tokens
-  |> String.concat ""
-
 let value_item_of_declaration = fun ?docstring source decl ->
   let snippet = snippet_of_node source (Syn.Ast.ValueDeclaration.as_node decl) in
-  let name = value_name (iter_fold Syn.Ast.ValueDeclaration.fold_name_token decl) in
+  let name = ident_text (Syn.Ast.ValueDeclaration.name decl) in
   if String.equal name "" then
     macro_items_of_snippet ?docstring snippet
   else
@@ -416,7 +414,7 @@ let value_item_of_declaration = fun ?docstring source decl ->
 
 let external_item_of_declaration = fun ?docstring source decl ->
   let snippet = snippet_of_node source (Syn.Ast.ExternalDeclaration.as_node decl) in
-  let name = value_name (iter_fold Syn.Ast.ExternalDeclaration.fold_name_token decl) in
+  let name = ident_text (Syn.Ast.ExternalDeclaration.name decl) in
   if String.equal name "" then
     macro_items_of_snippet ?docstring snippet
   else
@@ -424,12 +422,15 @@ let external_item_of_declaration = fun ?docstring source decl ->
     :: macro_items_of_snippet ?docstring snippet
 
 let module_path_segments = fun decl ->
-  let segments = Vector.with_capacity ~size:4 in
-  iter_fold
-    Syn.Ast.ModuleDeclaration.fold_body_ident_segment
-    decl
-    ~fn:(fun token -> Vector.push segments ~value:(Syn.Ast.Token.text token));
-  vector_to_list segments
+  match Syn.Ast.ModuleDeclaration.body_ident decl with
+  | None -> []
+  | Some ident ->
+      let segments = Vector.with_capacity ~size:(Syn.Ast.Ident.segment_count ident) in
+      iter_fold
+        Syn.Ast.Ident.fold_segment
+        ident
+        ~fn:(fun token -> Vector.push segments ~value:(Syn.Ast.Token.text token));
+      vector_to_list segments
 
 let module_doc_of_empty = fun ~source_path ~path ?docstring ~snippet () ->
   let name =
@@ -487,7 +488,7 @@ let rec module_of_signature_items = fun
         seen_item := true;
         match Syn.Ast.SignatureItem.view item with
         | Syn.Ast.SignatureItem.Module decl ->
-            let child_name = token_text (Syn.Ast.ModuleDeclaration.name decl) in
+            let child_name = ident_text (Syn.Ast.ModuleDeclaration.name decl) in
             let child_path = path @ [ child_name ] in
             let child_snippet = snippet_of_node source (Syn.Ast.ModuleDeclaration.as_node decl) in
             let nested_items =
@@ -533,7 +534,7 @@ let rec module_of_signature_items = fun
             Vector.push acc_modules ~value:child;
             loop rest
         | Syn.Ast.SignatureItem.ModuleType decl ->
-            let name = token_text (Syn.Ast.ModuleTypeDeclaration.name decl) in
+            let name = ident_text (Syn.Ast.ModuleTypeDeclaration.name decl) in
             if not (String.equal name "") then
               Vector.push
                 acc_items

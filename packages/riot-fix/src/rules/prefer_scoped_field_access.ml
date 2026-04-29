@@ -60,8 +60,8 @@ let field_access_diagnostic = fun ctx expr base module_token field ->
     ()
 
 let ident_segments = fun ctx ident ->
-  H.node_source ctx (Ast.Ident.as_node ident)
-  |> String.trim
+  ignore ctx;
+  Ast.Ident.text ident
   |> String.split ~by:"."
 
 let path_field_access_replacement = fun segments ->

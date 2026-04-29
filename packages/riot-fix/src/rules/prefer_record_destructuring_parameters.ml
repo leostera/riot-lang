@@ -56,8 +56,8 @@ let single_positional_parameter_name = fun binding ->
     None
 
 let ident_segments = fun ctx ident ->
-  H.node_source ctx (Ast.Ident.as_node ident)
-  |> String.trim
+  ignore ctx;
+  Ast.Ident.text ident
   |> String.split ~by:"."
 
 let rec unwrap_record_pattern = fun pattern ->

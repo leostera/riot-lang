@@ -136,7 +136,7 @@ let handle_deps = fun sub_matches ->
       System.exit 1
   | Ok source -> (
       let result = Syn.Parser.parse ~filename:(Path.v file) (slice_of_file_contents source) in
-      match Syn.Deps.of_parse_result result with
+      match Syn.Deps.from_parse_result result with
       | Ok deps ->
           if json then
             println (Data.Json.to_string (Syn.Deps.to_json deps))

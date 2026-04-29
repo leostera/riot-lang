@@ -7,7 +7,7 @@ let source_slice = fun source ->
 
 let parse_modules = fun ~env ~filename source ->
   let parse_result = Syn.parse ~filename:(Path.v filename) (source_slice source) in
-  match Syn.Deps.of_parse_result ~env parse_result with
+  match Syn.Deps.from_parse_result ~env parse_result with
   | Ok deps -> Ok (Syn.Deps.modules deps)
   | Error (Syn.Deps.Parse_diagnostics diagnostics) ->
       Error ("parse diagnostics: "

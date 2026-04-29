@@ -420,8 +420,21 @@ let fix_all_action = fun document entries ->
 let typ_diagnostics = fun state ->
   fun document ->
     ignore state;
-    ignore document;
-    []
+    let parse_result =
+      Syn.parse ~filename:(filename_of_document document) (source_slice document.text)
+    in
+    if not (Vector.is_empty parse_result.diagnostics) then
+      []
+    else
+      let source = Typ.Model.Source.make ~text:document.text in
+      match Typ.Ast.from_parse_result ~source parse_result with
+      | Error diagnostics -> List.map diagnostics ~fn:(typ_diagnostic_to_lsp document.text)
+      | Ok ast ->
+          let result = Typ.Infer.check ast in
+          result.diagnostics.items
+          |> Vector.iter
+          |> Iter.Iterator.map ~fn:(typ_diagnostic_to_lsp document.text)
+          |> Iter.Iterator.to_list
 
 let publish_diagnostics = fun state ->
   fun document ->
@@ -461,6 +474,8 @@ let range_of_token = fun text token ->
     (Syn.Ceibo.Span.make
       ~start:(Syn.Ast.Token.span_start token)
       ~end_:(Syn.Ast.Token.span_end token))
+
+let range_of_ident = fun text ident -> range_of_span text (Syn.Ast.Ident.span ident)
 
 let range_of_tokens = fun text tokens ->
   match tokens with
@@ -591,10 +606,10 @@ let type_declaration_symbols = fun text declaration ->
       | Some name ->
           document_symbol_of_named_item
             ~text
-            ~name:(Syn.Ast.Token.text name)
+            ~name:(Syn.Ast.Ident.text name)
             ~kind:(symbol_kind_of_type_member member)
             ~syntax_node:(Syn.Ast.TypeDeclaration.as_node declaration)
-            ~selection_range:(range_of_token text name)
+            ~selection_range:(range_of_ident text name)
             ()
           :: acc)
   |> List.reverse
@@ -606,10 +621,10 @@ let type_extension_symbols = fun text declaration ->
       [
         document_symbol_of_named_item
           ~text
-          ~name:(Syn.Ast.Token.text name)
+          ~name:(Syn.Ast.Ident.text name)
           ~kind:Lsp.Symbol_kind.Enum
           ~syntax_node:(Syn.Ast.TypeExtensionDeclaration.as_node declaration)
-          ~selection_range:(range_of_token text name)
+          ~selection_range:(range_of_ident text name)
           ();
       ]
 
@@ -665,10 +680,10 @@ and module_declaration_symbols = fun text declaration ->
           let children = module_declaration_children text declaration in
           document_symbol_of_named_item
             ~text
-            ~name:(Syn.Ast.Token.text name)
+            ~name:(Syn.Ast.Ident.text name)
             ~kind:Lsp.Symbol_kind.Module
             ~syntax_node:(Syn.Ast.ModuleDeclaration.as_node declaration)
-            ~selection_range:(range_of_token text name)
+            ~selection_range:(range_of_ident text name)
             ?children:(symbol_children children)
             ()
           :: acc)
@@ -699,10 +714,10 @@ and module_type_declaration_symbols = fun text declaration ->
       [
         document_symbol_of_named_item
           ~text
-          ~name:(Syn.Ast.Token.text name)
+          ~name:(Syn.Ast.Ident.text name)
           ~kind:Lsp.Symbol_kind.Interface
           ~syntax_node:(Syn.Ast.ModuleTypeDeclaration.as_node declaration)
-          ~selection_range:(range_of_token text name)
+          ~selection_range:(range_of_ident text name)
           ?children:(symbol_children children)
           ();
       ]
@@ -714,17 +729,17 @@ and exception_symbols = fun text declaration ->
       [
         document_symbol_of_named_item
           ~text
-          ~name:(Syn.Ast.Token.text name)
+          ~name:(Syn.Ast.Ident.text name)
           ~kind:Lsp.Symbol_kind.Event
           ~syntax_node:(Syn.Ast.ExceptionDeclaration.as_node declaration)
-          ~selection_range:(range_of_token text name)
+          ~selection_range:(range_of_ident text name)
           ();
       ]
 
-and value_like_declaration_symbols = fun text ~syntax_node ~name_tokens ~type_annotation ->
-  match name_tokens with
-  | [] -> []
-  | _ ->
+and value_like_declaration_symbols = fun text ~syntax_node ~name ~type_annotation ->
+  match name with
+  | None -> []
+  | Some name ->
       let kind =
         match type_annotation with
         | Some type_ when value_like_type_is_function type_ -> Lsp.Symbol_kind.Function
@@ -733,31 +748,25 @@ and value_like_declaration_symbols = fun text ~syntax_node ~name_tokens ~type_an
       [
         document_symbol_of_named_item
           ~text
-          ~name:(text_of_name_tokens name_tokens)
+          ~name:(Syn.Ast.Ident.text name)
           ~kind
           ~syntax_node
-          ~selection_range:(range_of_tokens text name_tokens)
+          ~selection_range:(range_of_ident text name)
           ();
       ]
 
 and value_declaration_symbols = fun text declaration ->
-  let name_tokens =
-    collect_tokens ~size:2 (iter_fold Syn.Ast.ValueDeclaration.fold_name_token declaration)
-  in
   value_like_declaration_symbols
     text
     ~syntax_node:(Syn.Ast.ValueDeclaration.as_node declaration)
-    ~name_tokens
+    ~name:(Syn.Ast.ValueDeclaration.name declaration)
     ~type_annotation:(Syn.Ast.ValueDeclaration.type_annotation declaration)
 
 and external_declaration_symbols = fun text declaration ->
-  let name_tokens =
-    collect_tokens ~size:2 (iter_fold Syn.Ast.ExternalDeclaration.fold_name_token declaration)
-  in
   value_like_declaration_symbols
     text
     ~syntax_node:(Syn.Ast.ExternalDeclaration.as_node declaration)
-    ~name_tokens
+    ~name:(Syn.Ast.ExternalDeclaration.name declaration)
     ~type_annotation:(Syn.Ast.ExternalDeclaration.type_annotation declaration)
 
 and structure_item_symbols = fun text items ->

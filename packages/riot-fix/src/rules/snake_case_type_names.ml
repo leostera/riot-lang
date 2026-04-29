@@ -36,8 +36,12 @@ let make_diagnostic = fun token ->
 
 let check_member = fun member diagnostics ->
   match Ast.TypeDeclaration.Member.name member with
-  | Some token when H.should_be_snake_case (Ast.Token.text token) ->
-      H.push_diagnostic diagnostics (make_diagnostic token)
+  | Some ident -> (
+      match H.ident_last_segment ident with
+      | Some token when H.should_be_snake_case (Ast.Token.text token) ->
+          H.push_diagnostic diagnostics (make_diagnostic token)
+      | _ -> ()
+    )
   | _ -> ()
 
 let check_tree = fun _ctx root ->

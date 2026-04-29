@@ -51,7 +51,7 @@ let value_declaration_targets_record = fun value_declaration record ->
   let name_matches_field =
     match Ast.ValueDeclaration.name value_declaration with
     | Some name ->
-        let value_name = Ast.Token.text name in
+        let value_name = Ast.Ident.text name in
         let found = ref false in
         Vector.for_each
           record.fields
@@ -91,13 +91,13 @@ let collect_record = fun records member record_type ->
         ~fn:(fun field ->
           match Ast.RecordField.view field with
           | Ast.RecordField.Field { name = field_name; _ } ->
-              Vector.push fields ~value:(Ast.Token.text field_name)
+              Vector.push fields ~value:(Ast.Ident.text field_name)
           | Ast.RecordField.Unknown _ -> ());
       if not (Vector.is_empty fields) then
         Vector.push
           records
           ~value:{
-            name = Ast.Token.text name;
+            name = Ast.Ident.text name;
             fields;
             node = Ast.TypeDeclaration.as_node (Ast.TypeDeclaration.Member.declaration member);
           }

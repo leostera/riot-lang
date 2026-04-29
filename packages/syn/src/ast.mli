@@ -49,28 +49,6 @@ type record_field
 type record_expr_field
 type variant_type
 type variant_constructor
-type ident
-type record_expr_field_view =
-  | RecordExprField of {
-      ident: ident;
-      value: expr option;
-      node: record_expr_field;
-    }
-  | UnknownRecordExprField of { node: record_expr_field }
-type record_pattern_field_view =
-  | RecordPatternField of {
-      ident: ident;
-      pattern: pattern option;
-      node: pattern;
-    }
-  | UnknownRecordPatternField of { node: pattern }
-type first_class_module_pattern_ascription =
-  | NoAscription
-  | IdentAscription
-  | UnsupportedAscription
-type type_item =
-  | TypeDeclarationItem of type_declaration
-  | TypeExtensionItem of type_extension_declaration
 type cast_error = {
   expected: Syntax_kind.t list;
   actual: Syntax_kind.t;
@@ -84,6 +62,66 @@ type 'value control =
   | Continue of 'value
   | Return of 'value
 val cast_result_to_option: 'value cast_result -> 'value option
+
+module Ident: sig
+  type t =
+    | Bare of token
+    | Qualified of token * t
+  type view = t
+  val cast: node -> t cast_result
+
+  val from_node: node -> t
+
+  val from_node_option: node -> t option
+
+  val from_child_range: node -> start_index:int -> stop_index:int -> t
+
+  val from_child_range_option: node -> start_index:int -> stop_index:int -> t option
+
+  val kind: t -> Syntax_kind.t
+
+  val width: t -> int
+
+  val span: t -> Ceibo.Span.t
+
+  val text: t -> string
+
+  val node_is_single_text: node -> string -> bool
+
+  val view: t -> view option
+
+  val first_segment: t -> token option
+
+  val last_segment: t -> token option
+
+  val fold_token: t -> init:'acc -> fn:(token -> 'acc -> 'acc control) -> 'acc
+
+  val fold_segment: t -> init:'acc -> fn:(token -> 'acc -> 'acc control) -> 'acc
+
+  val segment_count: t -> int
+end
+
+type record_expr_field_view =
+  | RecordExprField of {
+      ident: Ident.t;
+      value: expr option;
+      node: record_expr_field;
+    }
+  | UnknownRecordExprField of { node: record_expr_field }
+type record_pattern_field_view =
+  | RecordPatternField of {
+      ident: Ident.t;
+      pattern: pattern option;
+      node: pattern;
+    }
+  | UnknownRecordPatternField of { node: pattern }
+type first_class_module_pattern_ascription =
+  | NoAscription
+  | IdentAscription
+  | UnsupportedAscription
+type type_item =
+  | TypeDeclarationItem of type_declaration
+  | TypeExtensionItem of type_extension_declaration
 
 (** Root view for a parsed syntax tree. *)
 val root: Syntax_tree.t -> node
@@ -214,7 +252,9 @@ module TypeExpr: sig
     optional_: bool;
   }
   type view =
-    | Ident of { ident: ident }
+    | Ident of {
+        ident: Ident.t;
+      }
     | Var of {
         name: Token.t;
       }
@@ -232,7 +272,7 @@ module TypeExpr: sig
         parts: t Vector.t;
       }
     | Apply of {
-        ident: ident;
+        ident: Ident.t;
         args: t Vector.t;
       }
     | Error of Node.t
@@ -273,7 +313,7 @@ module RecordField: sig
   type view =
     | Field of {
         mutable_token: Token.t option;
-        name: Token.t;
+        name: Ident.t;
         colon_token: Token.t;
         annotation: type_expr;
       }
@@ -292,7 +332,7 @@ module RecordField: sig
 
   val mutable_token: t -> Token.t option
 
-  val name: t -> Token.t option
+  val name: t -> Ident.t option
 
   val colon_token: t -> Token.t option
 
@@ -353,7 +393,7 @@ module VariantConstructor: sig
   type view =
     | Constructor of {
         pipe_token: Token.t option;
-        name: Token.t;
+        name: Ident.t;
         rhs: rhs;
       }
     | Unknown of Node.t
@@ -371,7 +411,7 @@ module VariantConstructor: sig
 
   val pipe_token: t -> Token.t option
 
-  val name: t -> Token.t option
+  val name: t -> Ident.t option
 
   val of_token: t -> Token.t option
 
@@ -408,9 +448,11 @@ module Pattern: sig
   type view =
     | Unit
     | Wildcard
-    | Ident of { ident: ident }
+    | Ident of {
+        ident: Ident.t;
+      }
     | Constructor of {
-        constructor: ident;
+        constructor: Ident.t;
         payload: t option;
       }
     | Literal of {
@@ -434,9 +476,9 @@ module Pattern: sig
         payload: t option;
       }
     | FirstClassModule of {
-        binder: Token.t;
+        binder: Ident.t;
         ascription: first_class_module_pattern_ascription;
-        ascription_ident: Token.t Vector.t;
+        ascription_ident: Ident.t option;
       }
     | Interval of { left: t; right: t }
     | Constraint of { pattern: t; annotation: type_expr }
@@ -524,9 +566,11 @@ module LocallyAbstractTypePattern: sig
 
   val closing_token: t -> Token.t option
 
-  val fold_type_name: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
+  val type_ident: t -> Ident.t option
 
-  val type_name_count: t -> int
+  val fold_type_ident: t -> init:'acc -> fn:(Ident.t -> 'acc -> 'acc control) -> 'acc
+
+  val type_ident_count: t -> int
 end
 
 module FirstClassModulePattern: sig
@@ -549,7 +593,7 @@ module FirstClassModulePattern: sig
 
   val module_token: t -> Token.t option
 
-  val binder: t -> Token.t option
+  val binder: t -> Ident.t option
 
   val colon_token: t -> Token.t option
 
@@ -557,9 +601,7 @@ module FirstClassModulePattern: sig
 
   val ascription: t -> ascription
 
-  val fold_ascription_ident_segment: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
-
-  val ascription_ident_segment_count: t -> int
+  val ascription_ident: t -> Ident.t option
 end
 
 module RecordPattern: sig
@@ -586,7 +628,7 @@ module LocalOpenPattern: sig
   type t = pattern
   type view =
     | Delimited of {
-        module_ident: Token.t Vector.t;
+        module_ident: Ident.t;
         dot_token: Token.t;
         opening_token: Token.t;
         pattern: pattern;
@@ -613,9 +655,7 @@ module LocalOpenPattern: sig
 
   val pattern: t -> pattern option
 
-  val fold_module_ident_segment: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
-
-  val module_ident_segment_count: t -> int
+  val module_ident: t -> Ident.t option
 end
 
 module Parameter: sig
@@ -769,10 +809,12 @@ module Expr: sig
         payload: t option;
       }
     | Constructor of {
-        constructor: ident;
+        constructor: Ident.t;
         payload: t option;
       }
-    | Ident of { ident: ident }
+    | Ident of {
+        ident: Ident.t;
+      }
     | Literal of {
         token: Token.t;
       }
@@ -884,12 +926,12 @@ module LocalOpenExpr: sig
         let_token: Token.t;
         open_token: Token.t;
         bang_token: Token.t option;
-        module_ident: ident;
+        module_ident: Ident.t;
         in_token: Token.t;
         body: expr;
       }
     | Delimited of {
-        module_ident: ident;
+        module_ident: Ident.t;
         dot_token: Token.t;
         opening_token: Token.t;
         body: expr;
@@ -929,7 +971,7 @@ module LetModuleExpr: sig
 
   val module_token: t -> Token.t option
 
-  val name: t -> Token.t option
+  val name: t -> Ident.t option
 
   val equals_token: t -> Token.t option
 
@@ -941,9 +983,7 @@ module LetModuleExpr: sig
 
   val body: t -> expr option
 
-  val fold_module_body_ident_segment: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
-
-  val module_body_ident_segment_count: t -> int
+  val module_body_ident: t -> Ident.t option
 end
 
 module LetExceptionExpr: sig
@@ -962,7 +1002,7 @@ module LetExceptionExpr: sig
 
   val exception_token: t -> Token.t option
 
-  val name: t -> Token.t option
+  val name: t -> Ident.t option
 
   val of_token: t -> Token.t option
 
@@ -992,9 +1032,6 @@ end
 
 module FirstClassModuleExpr: sig
   type t = expr
-  type module_ident =
-    | ModuleIdent
-    | UnsupportedModuleIdent
   type ascription =
     | NoAscription
     | IdentAscription
@@ -1017,17 +1054,11 @@ module FirstClassModuleExpr: sig
 
   val closing_token: t -> Token.t option
 
-  val module_ident: t -> module_ident
+  val module_ident: t -> Ident.t option
 
   val ascription: t -> ascription
 
-  val fold_module_ident_segment: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
-
-  val module_ident_segment_count: t -> int
-
-  val fold_ascription_ident_segment: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
-
-  val ascription_ident_segment_count: t -> int
+  val ascription_ident: t -> Ident.t option
 end
 
 module BindingOperatorExpr: sig
@@ -1056,33 +1087,12 @@ module BindingOperatorExpr: sig
   val clause_count: t -> int
 end
 
-module Ident: sig
-  type t = ident
-  val cast: Node.t -> t cast_result
-
-  val as_node: t -> Node.t
-
-  val kind: t -> Syntax_kind.t
-
-  val width: t -> int
-
-  val span: t -> Ceibo.Span.t
-
-  val text: t -> string
-
-  val first_segment: t -> Token.t option
-
-  val last_segment: t -> Token.t option
-
-  val fold_segment: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
-
-  val segment_count: t -> int
-end
-
 module ModuleTypeExpr: sig
   type t = module_type_expr
   type view =
-    | Ident of { ident: ident }
+    | Ident of {
+        ident: Ident.t;
+      }
     | Signature of {
         body: Node.t;
       }
@@ -1115,9 +1125,7 @@ module ModuleTypeExpr: sig
 
   val end_token: t -> Token.t option
 
-  val fold_ident_segment: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
-
-  val ident_segment_count: t -> int
+  val ident: t -> Ident.t option
 
   val fold_signature_item: t -> init:'acc -> fn:(signature_item -> 'acc -> 'acc control) -> 'acc
 
@@ -1131,7 +1139,9 @@ end
 module ModuleExpr: sig
   type t = module_expr
   type view =
-    | Ident of { ident: ident }
+    | Ident of {
+        ident: Ident.t;
+      }
     | Structure of {
         body: Node.t;
       }
@@ -1167,9 +1177,7 @@ module ModuleExpr: sig
 
   val end_token: t -> Token.t option
 
-  val fold_ident_segment: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
-
-  val ident_segment_count: t -> int
+  val ident: t -> Ident.t option
 
   val fold_structure_item: t -> init:'acc -> fn:(structure_item -> 'acc -> 'acc control) -> 'acc
 
@@ -1316,7 +1324,7 @@ module TypeDeclaration: sig
 
     val nonrec_token: t -> Token.t option
 
-    val name: t -> Token.t option
+    val name: t -> Ident.t option
 
     val fold_parameter: t -> init:'acc -> fn:(parameter -> 'acc -> 'acc control) -> 'acc
 
@@ -1343,7 +1351,7 @@ module TypeDeclaration: sig
 
   val nonrec_token: t -> Token.t option
 
-  val name: t -> Token.t option
+  val name: t -> Ident.t option
 
   val fold_parameter: t -> init:'acc -> fn:(parameter -> 'acc -> 'acc control) -> 'acc
 
@@ -1377,11 +1385,7 @@ module TypeExtensionDeclaration: sig
 
   val equals_token: t -> Token.t option
 
-  val name: t -> Token.t option
-
-  val fold_name_ident: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
-
-  val name_ident_count: t -> int
+  val name: t -> Ident.t option
 
   val fold_parameter: t -> init:'acc -> fn:(parameter -> 'acc -> 'acc control) -> 'acc
 
@@ -1418,7 +1422,7 @@ module ModuleDeclaration: sig
 
     val fold_child_node: t -> init:'acc -> fn:(Node.t -> 'acc -> 'acc control) -> 'acc
 
-    val name: t -> Token.t option
+    val name: t -> Ident.t option
 
     val find_token: t -> Syntax_kind.t -> int option
 
@@ -1445,7 +1449,7 @@ module ModuleDeclaration: sig
 
   val width: t -> int
 
-  val name: t -> Token.t option
+  val name: t -> Ident.t option
 
   val rec_token: t -> Token.t option
 
@@ -1467,15 +1471,11 @@ module ModuleDeclaration: sig
 
   val end_token: t -> Token.t option
 
-  val fold_body_ident_segment: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
-
-  val body_ident_segment_count: t -> int
+  val body_ident: t -> Ident.t option
 
   val has_typeof_body: t -> bool
 
-  val fold_typeof_body_ident_segment: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
-
-  val typeof_body_ident_segment_count: t -> int
+  val typeof_body_ident: t -> Ident.t option
 
   val fold_structure_item: t -> init:'acc -> fn:(structure_item -> 'acc -> 'acc control) -> 'acc
 
@@ -1508,7 +1508,7 @@ module ModuleTypeDeclaration: sig
 
   val width: t -> int
 
-  val name: t -> Token.t option
+  val name: t -> Ident.t option
 
   val equals_token: t -> Token.t option
 
@@ -1522,9 +1522,7 @@ module ModuleTypeDeclaration: sig
 
   val end_token: t -> Token.t option
 
-  val fold_body_ident_segment: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
-
-  val body_ident_segment_count: t -> int
+  val body_ident: t -> Ident.t option
 
   val fold_signature_item: t -> init:'acc -> fn:(signature_item -> 'acc -> 'acc control) -> 'acc
 
@@ -1545,12 +1543,12 @@ module ModuleTypeConstraint: sig
   type t = module_type_constraint
   type view =
     | Type of {
-        ident: ident;
+        ident: Ident.t;
         operator: Token.t;
         body: type_expr;
       }
     | Module of {
-        ident: ident;
+        ident: Ident.t;
         operator: Token.t;
         body: Node.t;
       }
@@ -1580,15 +1578,7 @@ module OpenDeclaration: sig
 
   val width: t -> int
 
-  val ident_text: t -> string
-
-  val first_ident_segment: t -> Token.t option
-
-  val last_ident_segment: t -> Token.t option
-
-  val fold_ident_segment: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
-
-  val ident_segment_count: t -> int
+  val ident: t -> Ident.t option
 end
 
 module IncludeDeclaration: sig
@@ -1603,24 +1593,16 @@ module IncludeDeclaration: sig
 
   val width: t -> int
 
-  val ident_text: t -> string
-
   val body_node: t -> Node.t option
 
-  val first_ident_segment: t -> Token.t option
-
-  val last_ident_segment: t -> Token.t option
-
-  val fold_ident_segment: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
-
-  val ident_segment_count: t -> int
+  val body_ident: t -> Ident.t option
 end
 
 module ValueDeclaration: sig
   type t = value_declaration
   type view =
     | Value of {
-        name: Token.t Vector.t;
+        name: Ident.t;
         colon_token: Token.t;
         annotation: type_expr;
       }
@@ -1637,15 +1619,11 @@ module ValueDeclaration: sig
 
   val view: t -> view
 
-  val name: t -> Token.t option
+  val name: t -> Ident.t option
 
   val colon_token: t -> Token.t option
 
   val type_annotation: t -> type_expr option
-
-  val fold_name_token: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
-
-  val name_token_count: t -> int
 
   val fold_annotation_token: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
 
@@ -1656,7 +1634,7 @@ module ExternalDeclaration: sig
   type t = external_declaration
   type view =
     | External of {
-        name: Token.t Vector.t;
+        name: Ident.t;
         colon_token: Token.t;
         annotation: type_expr;
         equals_token: Token.t;
@@ -1676,15 +1654,11 @@ module ExternalDeclaration: sig
 
   val view: t -> view
 
-  val name: t -> Token.t option
+  val name: t -> Ident.t option
 
   val colon_token: t -> Token.t option
 
   val type_annotation: t -> type_expr option
-
-  val fold_name_token: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
-
-  val name_token_count: t -> int
 
   val fold_primitive_string: t -> init:'acc -> fn:(Token.t -> 'acc -> 'acc control) -> 'acc
 
@@ -1704,7 +1678,7 @@ module ExceptionDeclaration: sig
     | Bare
     | Alias of {
         equals_token: Token.t;
-        ident: ident;
+        ident: Ident.t;
       }
     | Payload of {
         of_token: Token.t;
@@ -1723,7 +1697,7 @@ module ExceptionDeclaration: sig
 
   val keyword_token: t -> Token.t option
 
-  val name: t -> Token.t option
+  val name: t -> Ident.t option
 
   val view: t -> view
 end

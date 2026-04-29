@@ -20,7 +20,7 @@ let render_actual = fun ~fixture_path ->
     |> Result.expect ~msg:"failed to read deps fixture"
   in
   let parse_result = Syn.parse ~filename:fixture_path (source_slice source) in
-  match Syn.Deps.of_parse_result parse_result with
+  match Syn.Deps.from_parse_result parse_result with
   | Ok deps -> Json.to_string_pretty (Syn.Deps.to_json deps) ^ "\n"
   | Error (Syn.Deps.Parse_diagnostics diagnostics) ->
       "parse diagnostics:\n"

@@ -1004,7 +1004,7 @@ let dependency_root_export_env = fun config env (group: source_group) group_entr
                 let alias_module_segments = Namespace.to_list alias_namespace @ [ "Aliases" ] in
                 let parse_env = Syn.Deps.Env.open_path env ~path:alias_module_segments in
                 let parse_result = Syn.parse ~filename:display_path (source_slice source) in
-                match Syn.Deps.of_parse_result ~env:parse_env parse_result with
+                match Syn.Deps.from_parse_result ~env:parse_env parse_result with
                 | Error _ -> env
                 | Ok deps ->
                     Syn.Deps.Env.add_binding
@@ -1106,7 +1106,7 @@ let prime_dependency_root_exports = fun dependency_config env root_export_source
           let alias_segments = module_segments @ [ "Aliases" ] in
           let parse_env = Syn.Deps.Env.open_path env ~path:alias_segments in
           let parse_result = Syn.parse ~filename:display_path (source_slice text) in
-          match Syn.Deps.of_parse_result ~env:parse_env parse_result with
+          match Syn.Deps.from_parse_result ~env:parse_env parse_result with
           | Error _ -> env
           | Ok deps ->
               Syn.Deps.Env.add_binding
@@ -1411,7 +1411,7 @@ let wire_dependencies = fun t ->
           | _ -> Ok ()
         in
         let deps_env = deps_env_with_implicit_opens (Cell.get t.deps_env) node.value.open_modules in
-        let deps = Syn.Deps.of_parse_result ~env:deps_env parse_result in
+        let deps = Syn.Deps.from_parse_result ~env:deps_env parse_result in
         let source_hash = source_hash ~implicit_opens ~source:raw_text in
         let requested_deps =
           match (deps, node.value.file) with

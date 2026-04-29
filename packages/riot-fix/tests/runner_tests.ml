@@ -77,7 +77,7 @@ let binding_name = fun binding ->
 
 let type_declaration_name = fun declaration ->
   match Syn.Ast.TypeDeclaration.name declaration with
-  | Some token -> Syn.Ast.Token.text token
+  | Some name -> Syn.Ast.Ident.text name
   | None -> ""
 
 let assert_explanation_contains = fun ~rule_id ~snippet ->

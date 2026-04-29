@@ -47,8 +47,10 @@ let diagnostic_for_name = fun token ->
 let diagnostic_for_names = fun diagnostics names ->
   if Int.equal (Vector.length names) 1 then
     let name = Vector.get_unchecked names ~at:0 in
-    if not (String.equal (Ast.Token.text name) "t") then
-      H.push_diagnostic diagnostics (diagnostic_for_name name)
+    if not (String.equal (Ast.Ident.text name) "t") then
+      Ast.Ident.last_segment name
+      |> Option.for_each
+        ~fn:(fun token -> H.push_diagnostic diagnostics (diagnostic_for_name token))
 
 let check_module_declaration = fun diagnostics declaration ->
   let names = Vector.with_capacity ~size:(Ast.ModuleDeclaration.member_count declaration) in

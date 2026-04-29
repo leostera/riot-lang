@@ -47,7 +47,9 @@ let check_tree = fun _ctx root ->
         Some (fun visitor declaration ->
           (
             match Ast.ModuleDeclaration.name declaration with
-            | Some token -> check_name token diagnostics
+            | Some ident ->
+                Ast.Ident.last_segment ident
+                |> Option.for_each ~fn:(fun token -> check_name token diagnostics)
             | None -> ()
           );
           (visitor, Syn.Visitor.Continue));
@@ -55,7 +57,9 @@ let check_tree = fun _ctx root ->
         Some (fun visitor declaration ->
           (
             match Ast.ModuleTypeDeclaration.name declaration with
-            | Some token -> check_name token diagnostics
+            | Some ident ->
+                Ast.Ident.last_segment ident
+                |> Option.for_each ~fn:(fun token -> check_name token diagnostics)
             | None -> ()
           );
           (visitor, Syn.Visitor.Continue));
