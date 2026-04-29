@@ -4,251 +4,319 @@ open Ast
 
 module IdentMap = Map.Make (Model.Surface_path)
 
-type binding = {
-  scheme: TypeScheme.t;
-  ordinal: int;
-}
+(**
+   Lexical value scopes inside one module.
 
-type type_binding = { declaration: type_declaration; ordinal: int }
+   Values are the only bindings here that follow regular expression-level
+   lexical scoping. A function body, match branch, or local let can push a new
+   scope. Lookups walk from the current scope to the root scope, while exports
+   only read the root scope of the module.
+*)
+module ValueScopes = struct
+  type binding = {
+    scheme: TypeScheme.t;
+    ordinal: int;
+  }
 
-type module_binding = { summary: module_summary; ordinal: int }
+  type scope = {
+    values: binding IdentMap.t;
+  }
 
-and module_summary = {
-  values: binding IdentMap.t;
-  constructors: binding IdentMap.t;
-  types: type_binding IdentMap.t;
+  type t =
+    | Root of scope
+    | Scope of { root: scope; current: scope; parent: t }
+
+  let empty_scope = { values = IdentMap.empty }
+
+  let create () = Root empty_scope
+
+  let root = function
+    | Root scope -> scope
+    | Scope { root; _ } -> root
+
+  let map_current t ~fn =
+    match t with
+    | Root current -> Root (fn current)
+    | Scope ({ current; _ } as scope) -> Scope { scope with current = fn current }
+
+  let push t = Scope { root = root t; current = empty_scope; parent = t }
+
+  let pop = function
+    | Root _ as t -> t
+    | Scope { parent; _ } -> parent
+
+  let add t ~name ~scheme ~ordinal =
+    let binding = { scheme; ordinal } in
+    map_current
+      t
+      ~fn:(fun scope -> { values = IdentMap.insert scope.values ~key:name ~value:binding })
+
+  let rec get t ~name =
+    match t with
+    | Root scope ->
+        Option.map (IdentMap.get scope.values ~key:name) ~fn:(fun binding -> binding.scheme)
+    | Scope { current; parent; _ } -> (
+        match IdentMap.get current.values ~key:name with
+        | Some binding -> Some binding.scheme
+        | None -> get parent ~name
+      )
+
+  let root_bindings t = (root t).values
+
+  let binding_scheme binding = binding.scheme
+end
+
+(**
+   Type declarations stored in a single module frame.
+
+   Types are not expression-level lexical bindings in this first checker. A type
+   declaration is added to the current module table and remains visible for the
+   rest of that module. Nested modules get their own table, and unqualified
+   lookup through parent modules is handled by `ModuleScopes`.
+*)
+module TypeScopes = struct
+  type binding = { declaration: type_declaration; ordinal: int }
+
+  type t = binding IdentMap.t
+
+  let empty = IdentMap.empty
+
+  let add t ~name ~declaration ~ordinal =
+    IdentMap.insert t ~key:name ~value:{ declaration; ordinal }
+
+  let get_binding t ~name = IdentMap.get t ~key:name
+
+  let get t ~name = Option.map (get_binding t ~name) ~fn:(fun binding -> binding.declaration)
+
+  let has t ~name = Option.is_some (get t ~name)
+end
+
+type module_summary = {
+  values: ValueScopes.binding IdentMap.t;
+  constructors: ValueScopes.binding IdentMap.t;
+  types: TypeScopes.binding IdentMap.t;
   modules: module_binding IdentMap.t;
 }
 
-type value_scope = {
-  values: binding IdentMap.t;
-}
+and module_binding = { summary: module_summary; ordinal: int }
 
-type value_scopes =
-  | ValueRoot of value_scope
-  | ValueScope of { root: value_scope; current: value_scope; parent: value_scopes }
+(**
+   Module chain for module-level namespaces.
 
-type module_frame = {
-  name: ident option;
-  values: value_scopes;
-  constructors: binding IdentMap.t;
-  types: type_binding IdentMap.t;
-  modules: module_binding IdentMap.t;
-}
+   Each module frame has:
 
-type module_scopes =
-  | ModuleRoot of module_frame
-  | ModuleScope of { root: module_frame; current: module_frame; parent: module_scopes }
+   - lexical value scopes for values introduced inside that module;
+   - a flat constructor table for value constructors;
+   - a flat type table for type declarations;
+   - a flat nested-module table.
 
-type t = { modules: module_scopes; next_ordinal: int }
+   Entering a module pushes a fresh frame whose lookups fall back to parent
+   frames. Leaving a module stores only its direct exports in the parent module,
+   so summaries do not copy parent names.
+*)
+module ModuleScopes = struct
+  type frame = {
+    name: ident option;
+    values: ValueScopes.t;
+    constructors: ValueScopes.binding IdentMap.t;
+    types: TypeScopes.t;
+    modules: module_binding IdentMap.t;
+  }
 
-let empty_value_scope = { values = IdentMap.empty }
+  type t =
+    | Root of frame
+    | Scope of { root: frame; current: frame; parent: t }
 
-let empty_module_frame ?name () = {
-  name;
-  values = ValueRoot empty_value_scope;
-  constructors = IdentMap.empty;
-  types = IdentMap.empty;
-  modules = IdentMap.empty;
-}
+  let empty_frame ?name () = {
+    name;
+    values = ValueScopes.create ();
+    constructors = IdentMap.empty;
+    types = TypeScopes.empty;
+    modules = IdentMap.empty;
+  }
 
-let create () = { modules = ModuleRoot (empty_module_frame ()); next_ordinal = 0 }
+  let create () = Root (empty_frame ())
 
-let root_value_scope = function
-  | ValueRoot scope -> scope
-  | ValueScope { root; _ } -> root
+  let root = function
+    | Root frame -> frame
+    | Scope { root; _ } -> root
 
-let map_current_value_scope scopes ~fn =
-  match scopes with
-  | ValueRoot current -> ValueRoot (fn current)
-  | ValueScope ({ current; _ } as scope) -> ValueScope { scope with current = fn current }
+  let current = function
+    | Root frame -> frame
+    | Scope { current; _ } -> current
 
-let push_value_scope scopes =
-  let root = root_value_scope scopes in
-  let parent = scopes in
-  ValueScope { root; current = empty_value_scope; parent }
+  let map_current t ~fn =
+    match t with
+    | Root current -> Root (fn current)
+    | Scope ({ current; _ } as scope) -> Scope { scope with current = fn current }
 
-let pop_value_scope = function
-  | ValueRoot _ as scopes -> scopes
-  | ValueScope { parent; _ } -> parent
+  let push t ~name = Scope { root = root t; current = empty_frame ~name (); parent = t }
 
-let rec get_value_in_scopes scopes ~name =
-  match scopes with
-  | ValueRoot scope ->
-      Option.map (IdentMap.get scope.values ~key:name) ~fn:(fun binding -> binding.scheme)
-  | ValueScope { current; parent; _ } -> (
-      match IdentMap.get current.values ~key:name with
-      | Some binding -> Some binding.scheme
-      | None -> get_value_in_scopes parent ~name
-    )
+  let summary_of_frame frame = {
+    values = ValueScopes.root_bindings frame.values;
+    constructors = frame.constructors;
+    types = frame.types;
+    modules = frame.modules;
+  }
 
-let root_module = function
-  | ModuleRoot frame -> frame
-  | ModuleScope { root; _ } -> root
-
-let current_module = function
-  | ModuleRoot frame -> frame
-  | ModuleScope { current; _ } -> current
-
-let map_current_module modules ~fn =
-  match modules with
-  | ModuleRoot current -> ModuleRoot (fn current)
-  | ModuleScope ({ current; _ } as scope) -> ModuleScope { scope with current = fn current }
-
-let push_scope t =
-  let modules =
-    map_current_module
-      t.modules
-      ~fn:(fun current -> { current with values = push_value_scope current.values })
-  in
-  { t with modules }
-
-let pop_scope t =
-  let modules =
-    map_current_module
-      t.modules
-      ~fn:(fun current -> { current with values = pop_value_scope current.values })
-  in
-  { t with modules }
-
-let push_module t ~name =
-  let root = root_module t.modules in
-  let parent = t.modules in
-  let current = empty_module_frame ~name () in
-  { t with modules = ModuleScope { root; current; parent } }
-
-let add_module_to_current modules ~name ~summary ~ordinal =
-  let binding = { summary; ordinal } in
-  map_current_module
-    modules
-    ~fn:(fun current -> {
-      current with
-      modules = IdentMap.insert current.modules ~key:name ~value:binding;
-    })
-
-let summary_of_frame frame = {
-  values = (root_value_scope frame.values).values;
-  constructors = frame.constructors;
-  types = frame.types;
-  modules = frame.modules;
-}
-
-let pop_module t =
-  match t.modules with
-  | ModuleRoot _ -> t
-  | ModuleScope { current; parent; _ } -> (
-      match current.name with
-      | None -> { t with modules = parent }
-      | Some name ->
-          let summary = summary_of_frame current in
-          {
-            modules = add_module_to_current parent ~name ~summary ~ordinal:t.next_ordinal;
-            next_ordinal = t.next_ordinal + 1;
-          }
-    )
-
-let add_value t ~name ~scheme =
-  let binding = { scheme; ordinal = t.next_ordinal } in
-  let modules =
-    map_current_module
-      t.modules
+  let add_module_to_current t ~name ~summary ~ordinal =
+    let binding = { summary; ordinal } in
+    map_current
+      t
       ~fn:(fun current -> {
         current with
-        values = map_current_value_scope
-          current.values
-          ~fn:(fun scope -> { values = IdentMap.insert scope.values ~key:name ~value:binding });
+        modules = IdentMap.insert current.modules ~key:name ~value:binding;
       })
-  in
-  { modules; next_ordinal = t.next_ordinal + 1 }
 
-let rec get_value_in_modules modules ~name =
-  match get_value_in_scopes (current_module modules).values ~name with
-  | Some _ as scheme -> scheme
-  | None -> (
-      match modules with
-      | ModuleRoot _ -> None
-      | ModuleScope { parent; _ } -> get_value_in_modules parent ~name
-    )
+  let pop t ~ordinal =
+    match t with
+    | Root _ -> (t, false)
+    | Scope { current; parent; _ } -> (
+        match current.name with
+        | None -> (parent, false)
+        | Some name ->
+            let summary = summary_of_frame current in
+            (add_module_to_current parent ~name ~summary ~ordinal, true)
+      )
 
-let get_value t ~name = get_value_in_modules t.modules ~name
+  let push_value_scope t =
+    map_current t ~fn:(fun current -> { current with values = ValueScopes.push current.values })
 
-let has_value t ~name = Option.is_some (get_value t ~name)
+  let pop_value_scope t =
+    map_current t ~fn:(fun current -> { current with values = ValueScopes.pop current.values })
 
-let add_constructor t ~name ~scheme =
-  let binding = { scheme; ordinal = t.next_ordinal } in
-  let modules =
-    map_current_module
-      t.modules
+  let add_value t ~name ~scheme ~ordinal =
+    map_current
+      t
+      ~fn:(fun current -> {
+        current with
+        values = ValueScopes.add current.values ~name ~scheme ~ordinal;
+      })
+
+  let rec get_value t ~name =
+    match ValueScopes.get (current t).values ~name with
+    | Some _ as scheme -> scheme
+    | None -> (
+        match t with
+        | Root _ -> None
+        | Scope { parent; _ } -> get_value parent ~name
+      )
+
+  let add_constructor t ~name ~scheme ~ordinal =
+    let binding: ValueScopes.binding = { scheme; ordinal } in
+    map_current
+      t
       ~fn:(fun current -> {
         current with
         constructors = IdentMap.insert current.constructors ~key:name ~value:binding;
       })
-  in
-  { modules; next_ordinal = t.next_ordinal + 1 }
 
-let rec get_constructor_in_modules modules ~name =
-  match IdentMap.get (current_module modules).constructors ~key:name with
-  | Some binding -> Some binding.scheme
-  | None -> (
-      match modules with
-      | ModuleRoot _ -> None
-      | ModuleScope { parent; _ } -> get_constructor_in_modules parent ~name
-    )
+  let rec get_constructor t ~name =
+    match IdentMap.get (current t).constructors ~key:name with
+    | Some binding -> Some (ValueScopes.binding_scheme binding)
+    | None -> (
+        match t with
+        | Root _ -> None
+        | Scope { parent; _ } -> get_constructor parent ~name
+      )
 
-let get_constructor t ~name = get_constructor_in_modules t.modules ~name
+  let add_type t ~name ~declaration ~ordinal =
+    map_current
+      t
+      ~fn:(fun current -> {
+        current with
+        types = TypeScopes.add current.types ~name ~declaration ~ordinal;
+      })
+
+  let rec get_type t ~name =
+    match TypeScopes.get (current t).types ~name with
+    | Some _ as declaration -> declaration
+    | None -> (
+        match t with
+        | Root _ -> None
+        | Scope { parent; _ } -> get_type parent ~name
+      )
+
+  let rec get_module t ~name =
+    match IdentMap.get (current t).modules ~key:name with
+    | Some binding -> Some binding.summary
+    | None -> (
+        match t with
+        | Root _ -> None
+        | Scope { parent; _ } -> get_module parent ~name
+      )
+
+  let root_value_bindings t = ValueScopes.root_bindings (root t).values
+
+  let root_type_bindings t = (root t).types
+end
+
+type t = {
+  modules: ModuleScopes.t;
+  next_ordinal: int;
+}
+
+let create () = { modules = ModuleScopes.create (); next_ordinal = 0 }
+
+let push_scope t = { t with modules = ModuleScopes.push_value_scope t.modules }
+
+let pop_scope t = { t with modules = ModuleScopes.pop_value_scope t.modules }
+
+let push_module t ~name = { t with modules = ModuleScopes.push t.modules ~name }
+
+let pop_module t =
+  let (modules, registered) = ModuleScopes.pop t.modules ~ordinal:t.next_ordinal in
+  {
+    modules;
+    next_ordinal =
+      if registered then
+        t.next_ordinal + 1
+      else
+        t.next_ordinal;
+  }
+
+let add_value t ~name ~scheme = {
+  modules = ModuleScopes.add_value t.modules ~name ~scheme ~ordinal:t.next_ordinal;
+  next_ordinal = t.next_ordinal + 1;
+}
+
+let get_value t ~name = ModuleScopes.get_value t.modules ~name
+
+let has_value t ~name = Option.is_some (get_value t ~name)
+
+let add_constructor t ~name ~scheme = {
+  modules = ModuleScopes.add_constructor t.modules ~name ~scheme ~ordinal:t.next_ordinal;
+  next_ordinal = t.next_ordinal + 1;
+}
+
+let get_constructor t ~name = ModuleScopes.get_constructor t.modules ~name
 
 let has_constructor t ~name = Option.is_some (get_constructor t ~name)
 
-let add_type t ~name ~declaration =
-  let binding = { declaration; ordinal = t.next_ordinal } in
-  let modules =
-    map_current_module
-      t.modules
-      ~fn:(fun current -> {
-        current with
-        types = IdentMap.insert current.types ~key:name ~value:binding;
-      })
-  in
-  { modules; next_ordinal = t.next_ordinal + 1 }
+let add_type t ~name ~declaration = {
+  modules = ModuleScopes.add_type t.modules ~name ~declaration ~ordinal:t.next_ordinal;
+  next_ordinal = t.next_ordinal + 1;
+}
 
-let rec get_type_in_modules modules ~name =
-  match IdentMap.get (current_module modules).types ~key:name with
-  | Some binding -> Some binding.declaration
-  | None -> (
-      match modules with
-      | ModuleRoot _ -> None
-      | ModuleScope { parent; _ } -> get_type_in_modules parent ~name
-    )
-
-let get_type t ~name = get_type_in_modules t.modules ~name
+let get_type t ~name = ModuleScopes.get_type t.modules ~name
 
 let has_type t ~name = Option.is_some (get_type t ~name)
 
-let rec get_module_in_modules modules ~name =
-  match IdentMap.get (current_module modules).modules ~key:name with
-  | Some binding -> Some binding.summary
-  | None -> (
-      match modules with
-      | ModuleRoot _ -> None
-      | ModuleScope { parent; _ } -> get_module_in_modules parent ~name
-    )
-
-let get_module t ~name = get_module_in_modules t.modules ~name
+let get_module t ~name = ModuleScopes.get_module t.modules ~name
 
 let has_module t ~name = Option.is_some (get_module t ~name)
 
 let module_get_value (summary: module_summary) ~name =
-  Option.map (IdentMap.get summary.values ~key:name) ~fn:(fun binding -> binding.scheme)
+  Option.map (IdentMap.get summary.values ~key:name) ~fn:ValueScopes.binding_scheme
 
 let module_has_value summary ~name = Option.is_some (module_get_value summary ~name)
 
 let module_get_constructor (summary: module_summary) ~name =
-  Option.map (IdentMap.get summary.constructors ~key:name) ~fn:(fun binding -> binding.scheme)
+  Option.map (IdentMap.get summary.constructors ~key:name) ~fn:ValueScopes.binding_scheme
 
 let module_has_constructor summary ~name = Option.is_some (module_get_constructor summary ~name)
 
-let module_get_type (summary: module_summary) ~name =
-  Option.map (IdentMap.get summary.types ~key:name) ~fn:(fun binding -> binding.declaration)
+let module_get_type (summary: module_summary) ~name = TypeScopes.get summary.types ~name
 
 let module_has_type summary ~name = Option.is_some (module_get_type summary ~name)
 
@@ -270,14 +338,14 @@ module ExportIter = struct
 end
 
 let exports t =
-  (root_value_scope (root_module t.modules).values).values
+  ModuleScopes.root_value_bindings t.modules
   |> IdentMap.to_list
   |> List.sort
-    ~compare:(fun (_, (left: binding)) (_, (right: binding)) ->
+    ~compare:(fun (_, (left: ValueScopes.binding)) (_, (right: ValueScopes.binding)) ->
       Int.compare
         left.ordinal
         right.ordinal)
-  |> List.map ~fn:(fun (name, (binding: binding)) -> (name, binding.scheme))
+  |> List.map ~fn:(fun (name, binding) -> (name, ValueScopes.binding_scheme binding))
   |> Iter.Iterator.make (module ExportIter)
 
 module TypeExportIter = struct
@@ -293,12 +361,12 @@ module TypeExportIter = struct
 end
 
 let exported_types t =
-  (root_module t.modules).types
+  ModuleScopes.root_type_bindings t.modules
   |> IdentMap.to_list
   |> List.sort
-    ~compare:(fun (_, (left: type_binding)) (_, (right: type_binding)) ->
+    ~compare:(fun (_, (left: TypeScopes.binding)) (_, (right: TypeScopes.binding)) ->
       Int.compare
         left.ordinal
         right.ordinal)
-  |> List.map ~fn:(fun (name, (binding: type_binding)) -> (name, binding.declaration))
+  |> List.map ~fn:(fun (name, (binding: TypeScopes.binding)) -> (name, binding.declaration))
   |> Iter.Iterator.make (module TypeExportIter)
