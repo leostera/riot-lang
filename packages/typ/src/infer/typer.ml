@@ -156,17 +156,33 @@ let infer_function_param state (param: parameter) =
   );
   param_type
 
-let rec infer_expr (state: State.t) (expr: expression) =
-  match expr.kind with
-  | If ifelse -> infer_if_else state ifelse
-  | Function fn -> infer_function state fn
-  | Apply apply -> infer_apply state apply
-  | Literal lit -> infer_literal state lit
-  | Ident ident -> infer_ident state ident
-  | Constructor constructor -> infer_constructor state constructor
-  | Tuple parts -> infer_tuple state parts
-  | List items -> infer_list state items
-  | _ -> State.fresh_var state
+let rec infer_expression (state: State.t) (expr: expression) =
+  let inferred =
+    match expr.kind with
+    | If ifelse -> infer_if_else state ifelse
+    | Function fn -> infer_function state fn
+    | Apply apply -> infer_apply state apply
+    | Literal lit -> infer_literal state lit
+    | Ident ident -> infer_ident state ident
+    | Constructor constructor -> infer_constructor state constructor
+    | Tuple parts -> infer_tuple state parts
+    | List items -> infer_list state items
+    | _ -> State.fresh_var state
+  in
+  let unified =
+    match expr.type_hint with
+    | None -> inferred
+    | Some hint ->
+        let expected = core_type_to_type state hint.type_ in
+        unify
+          state
+          ~expected
+          ~actual:inferred
+          ~on_error:(expression_hint_diagnostic expr hint);
+        expected
+  in
+  expr.type_ <- Some unified;
+  unified
 
 (**
    When inferring lists, we will start with a fresh variable and unify it
@@ -177,12 +193,12 @@ and infer_list state items =
   List.for_each
     items
     ~fn:(fun item ->
-      let actual = type_expression state item in
+      let actual = infer_expression state item in
       unify state ~expected:element ~actual ~on_error:(expression_diagnostic item));
   Builtin.list element
 
 and infer_apply state apply =
-  let callee = type_expression state apply.callee in
+  let callee = infer_expression state apply.callee in
   let result = State.fresh_var state in
   let expected =
     List.fold_right
@@ -191,7 +207,7 @@ and infer_apply state apply =
       ~fn:(fun arg ret ->
         let arg_type =
           match arg.kind with
-          | Positional expr -> type_expression state expr
+          | Positional expr -> infer_expression state expr
           | _ -> State.fresh_var state
         in
         Ast.Type.arrow arg_type ret)
@@ -200,23 +216,23 @@ and infer_apply state apply =
   result
 
 and infer_if_else state ifelse =
-  let condition = type_expression state ifelse.condition in
+  let condition = infer_expression state ifelse.condition in
   unify
     state
     ~expected:Builtin.bool
     ~actual:condition
     ~on_error:(expression_diagnostic ifelse.condition);
-  let then_ = type_expression state ifelse.then_branch in
+  let then_ = infer_expression state ifelse.then_branch in
   let else_ =
     match ifelse.else_branch with
-    | Some else_ -> type_expression state else_
+    | Some else_ -> infer_expression state else_
     | None -> Builtin.unit
   in
   unify state ~expected:then_ ~actual:else_ ~on_error:(expression_diagnostic ifelse.then_branch);
   then_
 
 and infer_tuple (state: State.t) parts =
-  let types = List.map ~fn:(infer_expr state) parts in
+  let types = List.map ~fn:(infer_expression state) parts in
   Type.Tuple types
 
 and infer_function state fn_decl =
@@ -224,31 +240,14 @@ and infer_function state fn_decl =
   let params = List.map ~fn:(infer_function_param state) fn_decl.parameters in
   let body =
     match fn_decl.body with
-    | Body expr -> type_expression state expr
+    | Body expr -> infer_expression state expr
     | Cases _ -> State.fresh_var state
   in
   State.pop_scope state;
   List.fold_right params ~init:body ~fn:Ast.Type.arrow
 
-and type_expression (state: State.t) (expr: expression) =
-  let type_ =
-    let inferred_type = infer_expr state expr in
-    match expr.type_hint with
-    | None -> inferred_type
-    | Some hint ->
-        let expected = core_type_to_type state hint.type_ in
-        unify
-          state
-          ~expected
-          ~actual:inferred_type
-          ~on_error:(expression_hint_diagnostic expr hint);
-        expected
-  in
-  expr.type_ <- Some type_;
-  type_
-
 let type_let_binding (state: State.t) (lb: let_binding) =
-  let type_ = type_expression state lb.body in
+  let type_ = infer_expression state lb.body in
   bind_pattern ~mode:Generalized state lb.pattern type_
 
 let type_let_decl (state: State.t) (ld: let_declaration) =
