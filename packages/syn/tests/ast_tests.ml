@@ -83,6 +83,30 @@ let test_empty_source_files_have_file_kind = fun _ctx ->
   | Ast.SourceFile.Interface _ -> Ok ()
   | Ast.SourceFile.Implementation _ -> Error "expected empty interface source"
 
+let assert_parse_ident_text = fun source expected ->
+  match Syn.parse_ident source with
+  | Some ident when String.equal (Ast.Ident.text ident) expected -> Ok ()
+  | Some ident -> Error ("expected ident " ^ expected ^ " but found " ^ Ast.Ident.text ident)
+  | None -> Error ("expected ident " ^ expected)
+
+let assert_parse_ident_none = fun source ->
+  match Syn.parse_ident source with
+  | None -> Ok ()
+  | Some ident -> Error ("expected no ident but found " ^ Ast.Ident.text ident)
+
+let test_parse_ident = fun _ctx ->
+  let* () = assert_parse_ident_text "value" "value" in
+  let* () = assert_parse_ident_text "Some" "Some" in
+  let* () = assert_parse_ident_text "int" "int" in
+  let* () = assert_parse_ident_text "bool" "bool" in
+  let* () = assert_parse_ident_text "float" "float" in
+  let* () = assert_parse_ident_text "char" "char" in
+  let* () = assert_parse_ident_text "string" "string" in
+  let* () = assert_parse_ident_text "list" "list" in
+  let* () = assert_parse_ident_text "unit" "unit" in
+  let* () = assert_parse_ident_none "Some 1" in
+  assert_parse_ident_none "let value = 1"
+
 let nth_structure_item = fun (root: Ast.source_file) target ->
   let (found, _) =
     Ast.SourceFile.fold_structure_item
@@ -3804,6 +3828,7 @@ let tests =
       "ast leaves class subset words out of the keyword table"
       test_class_subset_words_are_not_keywords;
     case "ast keeps empty source files typed by file kind" test_empty_source_files_have_file_kind;
+    case "parse_ident accepts only single identifier expressions" test_parse_ident;
     case "ast exposes source file and let binding views" test_source_file_and_let_binding_views;
     case
       "ast parses local let type identifier after typed rec binding"

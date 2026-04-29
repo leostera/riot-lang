@@ -64,3 +64,13 @@ val parse_implementation: IO.IoVec.IoSlice.t -> Parser.parse_result
    filename extension.
 *)
 val parse: filename:Std.Path.t -> IO.IoVec.IoSlice.t -> Parser.parse_result
+
+(**
+   Parse a single source identifier or constructor path.
+
+   Returns `None` unless the input parses cleanly as exactly one identifier-like
+   implementation expression. This helper is for tooling boundaries that need
+   to construct a structured `Ast.Ident.t` from a known-good string without
+   reimplementing identifier parsing.
+*)
+val parse_ident: string -> Ast.Ident.t option
