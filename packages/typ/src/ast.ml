@@ -1416,12 +1416,28 @@ and build_let_binding = fun context (binding: Syn.Ast.LetBinding.t) ->
     parameters
     |> List.map ~fn:(strip_built_let_return_annotation_from_parameter syntax_type_annotation)
   in
+  let body = build_expression context syntax_body in
+  let (body, type_annotation) =
+    match (parameters, type_annotation) with
+    | ([], type_annotation) -> (body, type_annotation)
+    | (_, Some type_annotation) -> (with_expression_type_hint Annotation type_annotation body, None)
+    | (_ :: _, None) -> (body, None)
+  in
+  let (type_binders, parameters, body) =
+    match parameters with
+    | [] -> (type_binders, parameters, body)
+    | _ :: _ -> (
+      [],
+      [],
+      make_expression origin (Function { type_binders; parameters; body = Body body })
+    )
+  in
   ({
     origin;
     pattern = build_pattern context syntax_pattern;
     type_binders;
     parameters;
-    body = build_expression context syntax_body;
+    body;
     type_annotation;
   }: let_binding)
 
