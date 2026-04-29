@@ -1,5 +1,3 @@
-open Std
-
 (**
    Mutable inference state.
 
@@ -8,6 +6,15 @@ open Std
    interface.
 *)
 module State: module type of State
+
+(**
+   Semantic lookup environment used by the inference state.
+
+   `Env` keeps value scopes separate from module-level type, constructor, and
+   nested-module tables. Unit tests cover this module directly because subtle
+   scoping bugs here become hard-to-debug inference failures later.
+*)
+module Env: module type of Env
 
 (**
    Type unification engine.

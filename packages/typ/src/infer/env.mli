@@ -1,71 +1,143 @@
 open Std
 
 (**
-   Lexically scoped environment for one inference run.
+   Query-local inference environment.
 
-   `Env.t` is query-local checker state. It records value and constructor
-   bindings discovered while typing a file and supports lookup from the current
-   lexical scope outwards. The root scope is the module scope; only values in
-   that root scope are exported through `exports`.
+   `Env.t` owns the semantic lookup tables used by the new one-shot checker.
+   Value bindings are lexically scoped. Type declarations, constructors, and
+   nested modules are flat within the current module and are resolved by walking
+   the current module chain outward.
 *)
 type t
+(**
+   Exported contents of a checked module.
 
-(** Create an empty environment with a single root/module scope. *)
+   A summary stores only the names introduced directly by that module. Parent
+   module bindings are intentionally not copied into child summaries.
+*)
+type module_summary
+
+(** Create an empty environment with one root module. *)
 val create: unit -> t
 
 (**
-   Push a new empty lexical scope.
+   Push a lexical value scope inside the current module.
 
-   The new scope can see all bindings from its parent scopes, but bindings
-   added to it disappear after `pop_scope`.
+   Values added in the new scope shadow outer values and disappear after
+   `pop_scope`. Type, constructor, and module declarations are not affected by
+   lexical value scopes.
 *)
 val push_scope: t -> t
 
 (**
-   Pop the current lexical scope.
+   Pop the current lexical value scope.
 
-   Popping the root scope is a no-op, so the environment always has a module
-   scope available.
+   Popping the root value scope is a no-op.
 *)
 val pop_scope: t -> t
 
 (**
-   Add or replace a value binding in the current scope.
+   Enter a nested module.
 
-   At top level this creates or updates an exported module value. Inside a
-   pushed scope it creates or updates a local value that shadows outer bindings
-   during lookup but is never exported.
+   The new module starts with empty direct exports but can resolve unqualified
+   names through its parent module chain.
+*)
+val push_module: t -> name:Ast.ident -> t
+
+(**
+   Leave the current nested module.
+
+   The popped module is summarized and registered in the parent module table.
+   Popping the root module is a no-op.
+*)
+val pop_module: t -> t
+
+(**
+   Add or replace a value binding in the current lexical value scope.
+
+   At the current module root this creates or updates an exported value. Inside
+   a pushed value scope it creates a local value that is not exported.
 *)
 val add_value: t -> name:Ast.ident -> scheme:TypeScheme.t -> t
 
-(** True when a value binding exists in the current scope or any outer scope. *)
+(** True when a value binding exists in the current scope/module chain. *)
 val has_value: t -> name:Ast.ident -> bool
 
 (** Find the nearest type scheme currently bound to `name`, if any. *)
 val get_value: t -> name:Ast.ident -> TypeScheme.t option
 
 (**
-   Add or replace a value-constructor binding in the current scope.
+   Add or replace a value-constructor binding in the current module.
 
    Constructors share expression syntax with values but live in a separate
-   namespace. Examples include `None`, `Some`, and constructors introduced by
-   user-defined variant declarations.
+   namespace. Lexical value scopes do not affect where constructors are stored.
 *)
 val add_constructor: t -> name:Ast.ident -> scheme:TypeScheme.t -> t
 
-(**
-   True when a constructor binding exists in the current scope or any outer
-   scope.
-*)
+(** True when a constructor exists in the current module chain. *)
 val has_constructor: t -> name:Ast.ident -> bool
 
 (** Find the nearest constructor type scheme currently bound to `name`, if any. *)
 val get_constructor: t -> name:Ast.ident -> TypeScheme.t option
 
 (**
-   Iterate over exported value bindings from the root/module scope.
+   Add or replace a type declaration in the current module.
 
-   Local scopes are intentionally ignored. Bindings are yielded in source
-   addition order, with replacement bindings ordered by their last addition.
+   Type declarations live in their own namespace. Lexical value scopes do not
+   affect where types are stored.
+*)
+val add_type: t -> name:Ast.ident -> declaration:Ast.type_declaration -> t
+
+(** True when a type declaration exists in the current module chain. *)
+val has_type: t -> name:Ast.ident -> bool
+
+(** Find the nearest type declaration currently bound to `name`, if any. *)
+val get_type: t -> name:Ast.ident -> Ast.type_declaration option
+
+(** True when a nested module exists in the current module chain. *)
+val has_module: t -> name:Ast.ident -> bool
+
+(** Find a nested module summary by unqualified name. *)
+val get_module: t -> name:Ast.ident -> module_summary option
+
+(** Find a value exported directly by a module summary. *)
+val module_get_value: module_summary -> name:Ast.ident -> TypeScheme.t option
+
+(** True when a module summary exports `name` as a value. *)
+val module_has_value: module_summary -> name:Ast.ident -> bool
+
+(** Find a constructor exported directly by a module summary. *)
+val module_get_constructor: module_summary -> name:Ast.ident -> TypeScheme.t option
+
+(** True when a module summary exports `name` as a constructor. *)
+val module_has_constructor: module_summary -> name:Ast.ident -> bool
+
+(** Find a type exported directly by a module summary. *)
+val module_get_type: module_summary -> name:Ast.ident -> Ast.type_declaration option
+
+(** True when a module summary exports `name` as a type. *)
+val module_has_type: module_summary -> name:Ast.ident -> bool
+
+(** Find a nested module exported directly by a module summary. *)
+val module_get_module: module_summary -> name:Ast.ident -> module_summary option
+
+(** True when a module summary exports `name` as a nested module. *)
+val module_has_module: module_summary -> name:Ast.ident -> bool
+
+(**
+   Iterate over exported value bindings from the root module.
+
+   Local lexical scopes and nested-module contents are intentionally ignored.
+   Bindings are yielded in source addition order, with replacement bindings
+   ordered by their last addition.
 *)
 val exports: t -> (Ast.ident * TypeScheme.t) Iter.Iterator.t
+
+(**
+   Iterate over exported type declarations from the root module.
+
+   Nested-module contents are intentionally ignored. Declarations are yielded in
+   source addition order, with replacement declarations ordered by their last
+   addition.
+*)
+val exported_types: t -> (Ast.ident * Ast.type_declaration) Iter.Iterator.t

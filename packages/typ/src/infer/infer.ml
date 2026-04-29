@@ -1,6 +1,5 @@
-open Std
-
 module State = State
+module Env = Env
 module Unifier = Unifier
 module TypeScheme = TypeScheme
 module Quantifier = Quantifier
