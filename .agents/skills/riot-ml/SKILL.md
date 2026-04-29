@@ -23,7 +23,6 @@ Use this skill when the user wants to:
 4. If dependency or package behavior is unclear, check the official docs:
    - `docs.riot.ml` for command and ecosystem guidance
    - `docs.pkg.ml/p/<pkg>/<version>/` for package docs
-5. If the request shifts toward contributing to Riot internals, switch to contributor routing and read the AGENTS index.
 
 ## Practical Riot style guidance for users
 1. Keep APIs safe by default:
@@ -50,6 +49,18 @@ Use this skill when the user wants to:
    - `-p` / `--package` selectors for iterative work.
 10. Read local signatures from `~/.riot/registry` before adding wrapper code:
    - quick `.mli` discovery helps avoid API confusion.
+11. Prefer direct iterator module use in code:
+    - `open Std.Iter`, then call `Iterator.map`, `Iterator.to_list`, etc.
+
+## Testing
+For test authoring, selectors, fixture runners, and snapshot workflow, read:
+
+- [Riot testing workflow](references/testing.md)
+
+## Benchmarking
+For benchmark grouping, regression checks, and comparison workflow, read:
+
+- [Riot benchmarking workflow](references/benchmarking.md)
 
 ## Common Riot commands
 - `riot build --json` : compile packages and dependencies.
@@ -76,8 +87,3 @@ Use this skill when the user wants to:
   - inspect package docs quickly:  
     `find ~/.riot/registry -path '*<pkg>*' | head`
 - Useful for reading APIs before opening external docs.
-
-## Contributor-mode fallback
-When user asks for Riot internals, architecture, or package-level coding changes, read contributor instructions first.
-
-- [Riot AGENTS map for contributors](references/riot-agents-index.md)
