@@ -508,7 +508,7 @@ and binding_name_tokens_of_pattern = fun pattern ->
   | Syn.Ast.Pattern.Unit
   | Syn.Ast.Pattern.Wildcard
   | Syn.Ast.Pattern.Literal _
-  | Syn.Ast.Pattern.Construct _
+  | Syn.Ast.Pattern.Constructor _
   | Syn.Ast.Pattern.Tuple _
   | Syn.Ast.Pattern.List _
   | Syn.Ast.Pattern.Array _

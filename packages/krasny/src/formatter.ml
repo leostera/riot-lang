@@ -1826,11 +1826,11 @@ module PatternView = struct
     | Ident of {
         ident: Ast.ident;
       }
-    | Construct of {
+    | Constructor of {
         callee: Ast.Pattern.t option;
         argument: Ast.Pattern.t option;
       }
-    | ConstructIdent of {
+    | ConstructorIdent of {
         constructor: Ast.ident;
         argument: Ast.Pattern.t option;
       }
@@ -1893,8 +1893,8 @@ module PatternView = struct
         match Ast.cast_result_to_option (Ast.Pattern.cast node) with
         | Some pattern -> (
             match Ast.Pattern.view pattern with
-            | Ast.Pattern.Construct { constructor; payload = None } ->
-                ConstructIdent { constructor; argument = None }
+            | Ast.Pattern.Constructor { constructor; payload = None } ->
+                ConstructorIdent { constructor; argument = None }
             | _ -> (
                 match Ast.cast_result_to_option (Ast.Ident.cast node) with
                 | Some ident -> Ident { ident }
@@ -1907,18 +1907,18 @@ module PatternView = struct
         match Ast.cast_result_to_option (Ast.Pattern.cast node) with
         | Some pattern -> (
             match Ast.Pattern.view pattern with
-            | Ast.Pattern.Construct { constructor; payload } ->
-                ConstructIdent { constructor; argument = payload }
+            | Ast.Pattern.Constructor { constructor; payload } ->
+                ConstructorIdent { constructor; argument = payload }
             | _ -> (
                 match (nth_child_pattern node 0, nth_child_pattern node 1) with
                 | (Some callee, None) -> view_node (Ast.Pattern.as_node callee)
-                | (callee, argument) -> Construct { callee; argument }
+                | (callee, argument) -> Constructor { callee; argument }
               )
           )
         | None -> (
             match (nth_child_pattern node 0, nth_child_pattern node 1) with
             | (Some callee, None) -> view_node (Ast.Pattern.as_node callee)
-            | (callee, argument) -> Construct { callee; argument }
+            | (callee, argument) -> Constructor { callee; argument }
           )
       )
     | Kind.LITERAL_PATTERN ->
@@ -3628,17 +3628,17 @@ let rec render_pattern = fun state (pattern: Ast.Pattern.t) ->
       );
       emit_literal_token state token
   | Literal { token = None } -> unsupported_node "literal pattern without token" node
-  | ConstructIdent { constructor; argument = None } -> render_pattern_ident state constructor
-  | ConstructIdent { constructor; argument = Some argument } ->
+  | ConstructorIdent { constructor; argument = None } -> render_pattern_ident state constructor
+  | ConstructorIdent { constructor; argument = Some argument } ->
       render_pattern_ident state constructor;
       emit_space state;
       render_constructor_pattern_argument state pattern argument
-  | Construct { callee = Some callee; argument = None } -> render_pattern state callee
-  | Construct { callee = Some callee; argument = Some argument } ->
+  | Constructor { callee = Some callee; argument = None } -> render_pattern state callee
+  | Constructor { callee = Some callee; argument = Some argument } ->
       render_pattern state callee;
       emit_space state;
       render_constructor_pattern_argument state pattern argument
-  | Construct _ -> unsupported_node "incomplete construct pattern" node
+  | Constructor _ -> unsupported_node "incomplete constructor pattern" node
   | Parenthesized { inner = Some inner } when pattern_is_tuple inner ->
       render_tuple_pattern state inner
   | Parenthesized { inner = Some inner } when pattern_is_operator_name inner ->
@@ -3732,8 +3732,8 @@ let rec render_pattern = fun state (pattern: Ast.Pattern.t) ->
   | Cons { head = Some head; tail = Some tail } ->
       (
         match PatternView.view head with
-        | Construct _
-        | ConstructIdent _ -> render_pattern state head
+        | Constructor _
+        | ConstructorIdent _ -> render_pattern state head
         | _ -> render_pattern_atom state head
       );
       emit_space state;
@@ -3765,8 +3765,8 @@ let rec render_pattern = fun state (pattern: Ast.Pattern.t) ->
 
 and pattern_is_constructor_with_payload = fun pattern ->
   match PatternView.view pattern with
-  | ConstructIdent { argument = Some _; _ }
-  | Construct { argument = Some _; _ } -> true
+  | ConstructorIdent { argument = Some _; _ }
+  | Constructor { argument = Some _; _ } -> true
   | Parenthesized { inner = Some inner }
   | Constraint { pattern = Some inner; _ }
   | Attribute { inner = Some inner } -> pattern_is_constructor_with_payload inner
@@ -3972,8 +3972,8 @@ and pattern_is_named_parameter = fun pattern ->
 and pattern_ends_with_named_parameter = fun pattern ->
   let rec loop pattern =
     match PatternView.view pattern with
-    | ConstructIdent { argument = Some argument; _ }
-    | Construct { argument = Some argument; _ } -> loop argument
+    | ConstructorIdent { argument = Some argument; _ }
+    | Constructor { argument = Some argument; _ } -> loop argument
     | Constraint { pattern = Some inner; _ }
     | Parenthesized { inner = Some inner }
     | Attribute { inner = Some inner } -> loop inner
@@ -4114,13 +4114,13 @@ and render_pattern_atom = fun state (pattern: Ast.Pattern.t) ->
       emit_line state;
       emit_text state ")"
   | Tuple -> render_pattern state pattern
-  | ConstructIdent { argument = None } -> render_pattern state pattern
+  | ConstructorIdent { argument = None } -> render_pattern state pattern
   | Or _ when not (parenthesized_pattern_should_break state pattern) ->
       emit_text state "(";
       render_or_pattern_inline state pattern;
       emit_text state ")"
-  | ConstructIdent _
-  | Construct _
+  | ConstructorIdent _
+  | Constructor _
   | Or _
   | Cons _
   | Alias _
@@ -4181,8 +4181,8 @@ let rec pattern_should_render_multiline = fun pattern ->
   | Parenthesized { inner = Some inner }
   | Constraint { pattern = Some inner; _ }
   | Attribute { inner = Some inner } -> pattern_should_render_multiline inner
-  | ConstructIdent { argument = Some argument; _ } -> pattern_should_render_multiline argument
-  | Construct { callee; argument } ->
+  | ConstructorIdent { argument = Some argument; _ } -> pattern_should_render_multiline argument
+  | Constructor { callee; argument } ->
       (
         match callee with
         | Some callee when pattern_should_render_multiline callee -> true

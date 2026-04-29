@@ -301,6 +301,7 @@ and record_pattern_field = {
 and pattern_kind =
   | Wildcard
   | Bind of ident
+  | Constructor of constructor_pattern
   | Apply of pattern_application
   | Literal of literal
   | PolyVariant of poly_variant_pattern
@@ -315,6 +316,8 @@ and pattern_kind =
   | FirstClassModule of first_class_module_pattern
 
 and pattern_application = { callee: pattern; argument: pattern }
+
+and constructor_pattern = { ident: ident }
 
 and or_pattern = { left: pattern; right: pattern }
 
@@ -376,6 +379,7 @@ and fun_decl = {
 and expression_kind =
   | Literal of literal
   | Ident of ident
+  | Constructor of constructor_expression
   | Tuple of expression list
   | List of expression list
   | Array of expression list
@@ -397,6 +401,8 @@ and expression_kind =
   | LocalOpen of local_open
   | FirstClassModule of first_class_module
   | Assert of expression
+
+and constructor_expression = { ident: ident }
 
 and poly_variant_expression = {
   tag: string;
@@ -1297,11 +1303,15 @@ and build_pattern = fun context (syntax_pattern: Syn.Ast.Pattern.t) ->
   let origin = origin_from_node (Syn.Ast.Pattern.as_node syntax_pattern) in
   (
     match Syn.Ast.Pattern.view syntax_pattern with
-    | Syn.Ast.Pattern.Unit -> make_pattern origin (Bind unit_constructor_ident)
+    | Syn.Ast.Pattern.Unit -> make_pattern origin (Constructor { ident = unit_constructor_ident })
     | Syn.Ast.Pattern.Wildcard -> make_pattern origin Wildcard
     | Syn.Ast.Pattern.Ident { ident } -> make_pattern origin (Bind (ident_from_syn_ident ident))
-    | Syn.Ast.Pattern.Construct { constructor; payload } ->
-        let callee = make_pattern origin (Bind (ident_from_syn_ident constructor)) in
+    | Syn.Ast.Pattern.Constructor { constructor; payload } ->
+        let callee =
+          make_pattern
+            origin
+            (Constructor { ident = ident_from_syn_ident constructor })
+        in
         (
           match payload with
           | Some payload ->
@@ -1489,10 +1499,22 @@ and build_expression = fun context (syntax_expression: Syn.Ast.Expr.t) ->
   let origin = origin_from_node (Syn.Ast.Expr.as_node syntax_expression) in
   (
     match Syn.Ast.Expr.view syntax_expression with
-    | Syn.Ast.Expr.Unit -> make_expression origin (Ident unit_constructor_ident)
+    | Syn.Ast.Expr.Unit -> make_expression origin (Constructor { ident = unit_constructor_ident })
     | Syn.Ast.Expr.Literal { token } ->
         make_expression origin (Literal (literal_from_token origin token))
     | Syn.Ast.Expr.Ident { ident } -> make_expression origin (Ident (ident_from_syn_ident ident))
+    | Syn.Ast.Expr.Constructor { constructor; payload = None } ->
+        make_expression origin (Constructor { ident = ident_from_syn_ident constructor })
+    | Syn.Ast.Expr.Constructor { constructor; payload = Some payload } ->
+        let callee =
+          make_expression
+            origin
+            (Constructor { ident = ident_from_syn_ident constructor })
+        in
+        let argument = build_expression context payload in
+        make_expression
+          origin
+          (Apply { callee; arguments = [ make_argument argument.origin (Positional argument) ] })
     | Syn.Ast.Expr.Annotated { expr; annotation } ->
         let (kind, type_) =
           if type_expr_is_coercion annotation then

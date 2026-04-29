@@ -74,7 +74,7 @@ let check_pattern_tree = fun ctx diagnostics pattern ->
 
 let rec check_application_arguments = fun ctx diagnostics pattern ->
   match Ast.Pattern.view pattern with
-  | Ast.Pattern.Construct { payload = Some argument; _ } ->
+  | Ast.Pattern.Constructor { payload = Some argument; _ } ->
       check_pattern_tree ctx diagnostics argument
   | Ast.Pattern.Constraint { pattern; _ } -> check_application_arguments ctx diagnostics pattern
   | _ -> ()

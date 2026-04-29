@@ -141,6 +141,11 @@ let infer_ident (state: State.t) ident =
   | Some scheme -> Quantifier.instantiate state scheme
   | None -> State.fresh_var state
 
+let infer_constructor (state: State.t) constructor =
+  match InferEnv.get_constructor (State.env state) ~name:constructor.ident with
+  | Some scheme -> Quantifier.instantiate state scheme
+  | None -> State.fresh_var state
+
 let infer_function_param state (param: parameter) =
   let param_type = State.fresh_var state in
   bind_pattern ~mode:Local state param.pattern param_type;
@@ -160,6 +165,7 @@ let rec infer_expr (state: State.t) (expr: expression) =
   | Apply apply -> infer_apply state apply
   | Literal lit -> infer_literal state lit
   | Ident ident -> infer_ident state ident
+  | Constructor constructor -> infer_constructor state constructor
   | Tuple parts -> infer_tuple state parts
   | List items -> infer_list state items
   | _ -> State.fresh_var state

@@ -410,6 +410,91 @@ let test_expression_views = fun _ctx ->
       )
   | _ -> Error "expected match expression"
 
+let test_expression_constructor_views = fun _ctx ->
+  let root =
+    parse_ml
+      {ocaml|let none = None
+let some = Some 1
+let ok = Result.Ok 1
+let hello = Hello ("world", "yeah!")
+let goodbye = Goodbye { moon = "men" }
+let lower = value
+|ocaml}
+    |> Result.expect ~msg:"expected parse source file"
+  in
+  let body index =
+    nth_structure_item root index
+    |> require_some ~msg:"expected structure item"
+    |> binding_of_structure_item
+    |> Result.expect ~msg:"expected let binding"
+    |> body_of_binding
+    |> Result.expect ~msg:"expected let binding body"
+  in
+  (
+    match Ast.Expr.view (body 0) with
+    | Ast.Expr.Constructor { constructor; payload = None } ->
+        assert_last_ident_text constructor "None"
+    | _ -> panic "expected None constructor expression"
+  );
+  (
+    match Ast.Expr.view (body 1) with
+    | Ast.Expr.Constructor { constructor; payload = Some payload } ->
+        assert_last_ident_text constructor "Some";
+        (
+          match Ast.Expr.view payload with
+          | Ast.Expr.Literal { token } -> Test.assert_equal ~expected:"1" ~actual:(Ast.Token.text token)
+          | _ -> panic "expected Some argument literal"
+        )
+    | _ -> panic "expected Some constructor application"
+  );
+  (
+    match Ast.Expr.view (body 2) with
+    | Ast.Expr.Constructor { constructor; payload = Some _ } ->
+        assert_last_ident_text constructor "Ok"
+    | _ -> panic "expected qualified constructor application"
+  );
+  (
+    match Ast.Expr.view (body 3) with
+    | Ast.Expr.Constructor { constructor; payload = Some payload } ->
+        assert_last_ident_text constructor "Hello";
+        (
+          match Ast.Expr.view payload with
+          | Ast.Expr.Tuple { items } -> Test.assert_equal ~expected:2 ~actual:(Vector.length items)
+          | _ -> panic "expected tuple constructor payload"
+        )
+    | _ -> panic "expected tuple-payload constructor application"
+  );
+  (
+    match Ast.Expr.view (body 4) with
+    | Ast.Expr.Constructor { constructor; payload = Some payload } ->
+        assert_last_ident_text constructor "Goodbye";
+        (
+          match Ast.Expr.view payload with
+          | Ast.Expr.Record { base = None; fields } -> (
+              Test.assert_equal ~expected:1 ~actual:(Vector.length fields);
+              match Vector.get_unchecked fields ~at:0 with
+              | Ast.RecordExprField { ident; value = Some value; _ } ->
+                  assert_last_ident_text ident "moon";
+                  (
+                    match Ast.Expr.view value with
+                    | Ast.Expr.Literal { token } ->
+                        Test.assert_equal ~expected:"\"men\"" ~actual:(Ast.Token.text token)
+                    | _ -> panic "expected record constructor payload literal"
+                  )
+              | Ast.RecordExprField { value = None; _ } ->
+                  panic "expected record constructor payload field value"
+              | Ast.UnknownRecordExprField _ -> panic "expected known record constructor payload field"
+            )
+          | _ -> panic "expected record constructor payload"
+        )
+    | _ -> panic "expected record-payload constructor application"
+  );
+  match Ast.Expr.view (body 5) with
+  | Ast.Expr.Ident { ident } ->
+      assert_last_ident_text ident "value";
+      Ok ()
+  | _ -> Error "expected lowercase identifier expression"
+
 let test_assignment_operator_views = fun _ctx ->
   let root =
     parse_ml "let update state remaining = state.buffer <- remaining\nlet assign r = r := 1\n"
@@ -2130,7 +2215,7 @@ let render = function | (((Some (((item)))))) -> item
       match Ast.MatchCase.view first_case with
       | Ast.MatchCase.Case { pattern; _ } -> (
           match Ast.Pattern.view pattern with
-          | Ast.Pattern.Construct { payload = Some payload; _ } ->
+          | Ast.Pattern.Constructor { payload = Some payload; _ } ->
               Test.assert_equal
                 ~expected:SyntaxKind.PATH_PATTERN
                 ~actual:(Ast.Node.kind (Ast.Pattern.as_node payload));
@@ -2577,8 +2662,8 @@ let test_local_open_argument_views = fun _ctx ->
             Test.assert_equal ~expected:")" ~actual:(Ast.Token.text closing_token);
             (
               match Ast.Expr.view inner_body with
-              | Ast.Expr.Apply _ -> Ok ()
-              | _ -> Error "expected local open inner application"
+              | Ast.Expr.Constructor { payload = Some _; _ } -> Ok ()
+              | _ -> Error "expected local open inner constructor payload"
             )
         | _ -> Error "expected complete delimited local open argument"
       )
@@ -3487,7 +3572,7 @@ let parenthesized = fun (Some x) -> x
         match Ast.Parameter.pattern (Vector.get_unchecked parameters ~at:0) with
         | Some pattern -> (
             match Ast.Pattern.view pattern with
-            | Ast.Pattern.Construct { payload = Some _; _ } -> Ok ()
+            | Ast.Pattern.Constructor { payload = Some _; _ } -> Ok ()
             | _ -> Error "expected parenthesized constructor pattern payload"
           )
         | None -> Error "expected parenthesized parameter pattern"
@@ -3734,6 +3819,7 @@ let tests =
     case
       "ast preserves trailing sequence bodies before and-bindings"
       test_trailing_sequence_before_and_views;
+    case "ast lifts constructor expressions out of identifiers" test_expression_constructor_views;
     case
       "ast keeps labels after polymorphic variant arguments as application arguments"
       test_labeled_application_after_poly_variant_argument;

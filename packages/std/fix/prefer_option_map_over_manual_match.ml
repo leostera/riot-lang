@@ -42,12 +42,12 @@ let option_case_kind = fun case ->
   | Unknown _ -> `Other
   | Case { pattern; _ } -> (
       match Ast.Pattern.view (H.unwrap_pattern pattern) with
-      | Construct { constructor; payload = Some argument_pattern } -> (
+      | Constructor { constructor; payload = Some argument_pattern } -> (
           match (H.ident_last_name constructor, H.identifier_name_of_pattern argument_pattern) with
           | (Some "Some", Some name) -> `SomeCase name
           | _ -> `Other
         )
-      | Construct { constructor; payload = None } -> (
+      | Constructor { constructor; payload = None } -> (
           match H.ident_last_name constructor with
           | Some "None" -> `NoneCase
           | _ -> `Other

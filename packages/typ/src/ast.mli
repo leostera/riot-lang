@@ -371,8 +371,10 @@ and record_pattern_field = {
 and pattern_kind =
   (** Wildcard pattern, written `_`. *)
   | Wildcard
-  (** Binding or constructor surface identifier. *)
+  (** Value binding pattern. *)
   | Bind of ident
+  (** Value constructor pattern, such as `None`, `Some`, or `M.C`. *)
+  | Constructor of constructor_pattern
   (** Constructor/application pattern. *)
   | Apply of pattern_application
   (** Literal pattern. *)
@@ -404,6 +406,12 @@ and pattern_application = {
   callee: pattern;
   (** Runtime argument pattern. *)
   argument: pattern;
+}
+
+(** Value constructor pattern payload. *)
+and constructor_pattern = {
+  (** Surface constructor identifier. *)
+  ident: ident;
 }
 
 (** Or-pattern payload. *)
@@ -529,8 +537,10 @@ and fun_decl = {
 and expression_kind =
   (** Literal expression. *)
   | Literal of literal
-  (** Identifier, constructor, or qualified value identifier. *)
+  (** Value identifier or qualified value identifier. *)
   | Ident of ident
+  (** Value constructor, such as `None`, `Some`, `Red`, or `M.C`. *)
+  | Constructor of constructor_expression
   (** Tuple expression. *)
   | Tuple of expression list
   (** List expression. *)
@@ -573,6 +583,12 @@ and expression_kind =
   | FirstClassModule of first_class_module
   (** Assertion expression. *)
   | Assert of expression
+
+(** Value constructor expression payload. *)
+and constructor_expression = {
+  (** Surface constructor identifier. *)
+  ident: ident;
+}
 
 (** Polymorphic variant expression payload. *)
 and poly_variant_expression = {

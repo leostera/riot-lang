@@ -37,7 +37,7 @@ let result_case_kind = fun case ->
   | Unknown _ -> `Other
   | Case { pattern; _ } -> (
       match Ast.Pattern.view (H.unwrap_pattern pattern) with
-      | Construct { constructor; payload = Some argument_pattern } -> (
+      | Constructor { constructor; payload = Some argument_pattern } -> (
           match (H.ident_last_name constructor, H.identifier_name_of_pattern argument_pattern) with
           | (Some "Ok", Some name) -> `OkCase name
           | (Some "Error", Some name) -> `ErrorCase name

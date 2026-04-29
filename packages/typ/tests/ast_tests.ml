@@ -1,5 +1,6 @@
 open Std
 
+module Ast = Typ.Ast
 module Type = Typ.Ast.Type
 module TypeVar = Typ.Ast.TypeVar
 module SurfacePath = Typ.Model.Surface_path
@@ -27,6 +28,20 @@ let assert_not_equal_type left right =
     Ok ()
 
 let variable ?link id = Type.Var { id; link }
+
+let source_slice = fun source ->
+  IO.IoVec.IoSlice.from_string source
+  |> Result.expect ~msg:"failed to create typ ast test source slice"
+
+let parse_typ_ast = fun source ->
+  let parse_result = Syn.parse ~filename:(Path.v "test.ml") (source_slice source) in
+  let model_source = Typ.Model.Source.make ~text:source in
+  Ast.from_parse_result ~source:model_source parse_result
+  |> Result.expect ~msg:"expected typ ast build"
+
+let assert_path_string ~expected actual =
+  Test.assert_equal ~expected ~actual:(SurfacePath.to_string actual);
+  Ok ()
 
 let test_equal_follows_linked_variables _ctx =
   let linked = variable ~link:int_type TypeVar.first in
@@ -61,6 +76,53 @@ let test_equal_arrows_compare_labels_and_children _ctx =
   | Error _ as error -> error
   | Ok () -> assert_not_equal_type unlabeled labeled
 
+let test_from_syn_keeps_constructor_patterns _ctx =
+  let ast =
+    parse_typ_ast
+      {ocaml|let value = function
+  | Some x -> x
+  | None -> 0
+|ocaml}
+  in
+  match ast.kind with
+  | Implementation [
+      {
+        kind = Let {
+          bindings = [
+            {
+              body = { kind = Function { body = Cases [ some_case; none_case ]; _ }; _ };
+              _;
+            };
+          ];
+          _;
+        };
+        _;
+      };
+    ] ->
+      let some_result =
+        match some_case.pattern.kind with
+        | Apply {
+          callee = { kind = Constructor { ident = constructor }; _ };
+          argument = { kind = Bind binding; _ };
+        } ->
+            (
+              match assert_path_string ~expected:"Some" constructor with
+              | Error _ as error -> error
+              | Ok () -> assert_path_string ~expected:"x" binding
+            )
+        | _ -> Error "expected Some x to lower as constructor pattern application"
+      in
+      (
+        match some_result with
+        | Error _ as error -> error
+        | Ok () -> (
+            match none_case.pattern.kind with
+            | Constructor { ident } -> assert_path_string ~expected:"None" ident
+            | _ -> Error "expected None to lower as constructor pattern"
+          )
+      )
+  | _ -> Error "expected function with Some and None cases"
+
 let tests =
   Test.[
     case "type equal follows linked variables" test_equal_follows_linked_variables;
@@ -72,6 +134,9 @@ let tests =
     case
       "type equal arrows compare labels and children"
       test_equal_arrows_compare_labels_and_children;
+    case
+      "from syn keeps constructor patterns"
+      test_from_syn_keeps_constructor_patterns;
   ]
 
 let main ~args = Test.Cli.main ~name:"typ:ast" ~tests ~args ()

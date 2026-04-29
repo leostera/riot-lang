@@ -78,7 +78,7 @@ let is_zero_literal = fun expr ->
 
 let constructor_name_of_pattern = fun pattern ->
   match Ast.Pattern.view (unwrap_pattern pattern) with
-  | Construct { constructor; _ } -> ident_last_name constructor
+  | Constructor { constructor; _ } -> ident_last_name constructor
   | _ -> None
 
 let identifier_name_of_pattern = fun pattern ->
@@ -88,11 +88,21 @@ let identifier_name_of_pattern = fun pattern ->
 
 let constructor_payload_of_pattern = fun pattern ->
   match Ast.Pattern.view (unwrap_pattern pattern) with
-  | Construct { payload; _ } -> payload
+  | Constructor { payload; _ } -> payload
   | _ -> None
 
 let is_constructor_expr = fun ~name expr ->
   match Ast.Expr.view (unwrap_expr expr) with
+  | Constructor { constructor; payload = None } -> (
+      match ident_last_name constructor with
+      | Some actual -> String.equal actual name
+      | None -> false
+    )
+  | Constructor { constructor; payload = Some _ } -> (
+      match ident_last_name constructor with
+      | Some actual -> String.equal actual name
+      | None -> false
+    )
   | Ident { ident } -> (
       match ident_last_name ident with
       | Some actual -> String.equal actual name
@@ -103,6 +113,11 @@ let is_constructor_expr = fun ~name expr ->
 
 let constructor_payload = fun ~name expr ->
   match Ast.Expr.view (unwrap_expr expr) with
+  | Constructor { constructor; payload = Some payload } -> (
+      match ident_last_name constructor with
+      | Some actual when String.equal actual name -> Some payload
+      | _ -> None
+    )
   | Apply { callee; argument } when path_matches ~expected:name callee -> Some argument
   | _ -> None
 

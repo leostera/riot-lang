@@ -409,7 +409,7 @@ module Pattern: sig
     | Unit
     | Wildcard
     | Ident of { ident: ident }
-    | Construct of {
+    | Constructor of {
         constructor: ident;
         payload: t option;
       }
@@ -766,6 +766,10 @@ module Expr: sig
       }
     | PolyVariant of {
         tag: Token.t;
+        payload: t option;
+      }
+    | Constructor of {
+        constructor: ident;
         payload: t option;
       }
     | Ident of { ident: ident }

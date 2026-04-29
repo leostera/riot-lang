@@ -2389,6 +2389,10 @@ module Expr: sig
         tag: token;
         payload: t option;
       }
+    | Constructor of {
+        constructor: ident;
+        payload: t option;
+      }
     | Ident of { ident: ident }
     | Literal of { token: token }
     | Tuple of {
@@ -2484,6 +2488,10 @@ end = struct
     | FieldAccess of { target: t; field: token }
     | PolyVariant of {
         tag: token;
+        payload: t option;
+      }
+    | Constructor of {
+        constructor: ident;
         payload: t option;
       }
     | Ident of { ident: ident }
@@ -2630,6 +2638,18 @@ end = struct
           ));
     parameters
 
+  let ident_is_constructor = fun ident ->
+    match last_ident_token ident with
+    | None -> false
+    | Some ident ->
+        let text = Token.text ident in
+        if Int.equal (String.length text) 0 then
+          false
+        else
+          match String.get_unchecked text ~at:0 with
+          | 'A' .. 'Z' -> true
+          | _ -> false
+
   let rec view = fun (expr: expr) ->
     match Node.kind expr with
     | Syntax_kind.PAREN_EXPR -> (
@@ -2749,7 +2769,12 @@ end = struct
           normalize_expr_option (nth_expr_child expr 0),
           normalize_expr_option (nth_expr_child expr 1)
         ) with
-        | (Some callee, Some argument) -> Apply { callee; argument }
+        | (Some callee, Some argument) -> (
+            match view callee with
+            | Constructor { constructor; payload = None } ->
+                Constructor { constructor; payload = Some argument }
+            | _ -> Apply { callee; argument }
+          )
         | _ -> Unknown expr
       )
     | Syntax_kind.INFIX_EXPR -> (
@@ -2785,7 +2810,11 @@ end = struct
         | Some tag -> PolyVariant { tag; payload = normalize_expr_option (first_expr_child expr) }
         | None -> Unknown expr
       )
-    | Syntax_kind.PATH_EXPR -> Ident { ident = expr }
+    | Syntax_kind.PATH_EXPR ->
+        if ident_is_constructor expr then
+          Constructor { constructor = expr; payload = None }
+        else
+          Ident { ident = expr }
     | Syntax_kind.LITERAL_EXPR -> (
         match literal_token expr with
         | Some token -> Literal { token }
@@ -3771,7 +3800,7 @@ module Pattern: sig
     | Unit
     | Wildcard
     | Ident of { ident: ident }
-    | Construct of {
+    | Constructor of {
         constructor: ident;
         payload: t option;
       }
@@ -3847,7 +3876,7 @@ end = struct
     | Unit
     | Wildcard
     | Ident of { ident: ident }
-    | Construct of {
+    | Constructor of {
         constructor: ident;
         payload: t option;
       }
@@ -3942,7 +3971,7 @@ end = struct
     | Syntax_kind.WILDCARD_PATTERN -> Wildcard
     | Syntax_kind.PATH_PATTERN ->
         if ident_is_constructor pattern then
-          Construct { constructor = pattern; payload = None }
+          Constructor { constructor = pattern; payload = None }
         else
           Ident { ident = pattern }
     | Syntax_kind.CONSTRUCT_PATTERN -> (
@@ -3951,8 +3980,8 @@ end = struct
         match callee with
         | Some callee -> (
             match view callee with
-            | Construct { constructor; payload = None } -> Construct { constructor; payload }
-            | Ident { ident } -> Construct { constructor = ident; payload }
+            | Constructor { constructor; payload = None } -> Constructor { constructor; payload }
+            | Ident { ident } -> Constructor { constructor = ident; payload }
             | _ -> Unknown pattern
           )
         | None -> Unknown pattern

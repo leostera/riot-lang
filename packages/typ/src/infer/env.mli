@@ -3,10 +3,10 @@ open Std
 (**
    Lexically scoped environment for one inference run.
 
-   `Env.t` is query-local checker state. It records value bindings discovered
-   while typing a file and supports lookup from the current lexical scope
-   outwards. The root scope is the module scope; only values in that root scope
-   are exported through `values`.
+   `Env.t` is query-local checker state. It records value and constructor
+   bindings discovered while typing a file and supports lookup from the current
+   lexical scope outwards. The root scope is the module scope; only values in
+   that root scope are exported through `exports`.
 *)
 type t
 
@@ -43,6 +43,24 @@ val has_value: t -> name:Ast.ident -> bool
 
 (** Find the nearest type scheme currently bound to `name`, if any. *)
 val get_value: t -> name:Ast.ident -> TypeScheme.t option
+
+(**
+   Add or replace a value-constructor binding in the current scope.
+
+   Constructors share expression syntax with values but live in a separate
+   namespace. Examples include `None`, `Some`, and constructors introduced by
+   user-defined variant declarations.
+*)
+val add_constructor: t -> name:Ast.ident -> scheme:TypeScheme.t -> t
+
+(**
+   True when a constructor binding exists in the current scope or any outer
+   scope.
+*)
+val has_constructor: t -> name:Ast.ident -> bool
+
+(** Find the nearest constructor type scheme currently bound to `name`, if any. *)
+val get_constructor: t -> name:Ast.ident -> TypeScheme.t option
 
 (**
    Iterate over exported value bindings from the root/module scope.
