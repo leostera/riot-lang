@@ -2,6 +2,8 @@ open Std
 open Ast
 open TypeScheme
 
+module HashMap = Std.Collections.HashMap
+
 let unify (state: State.t) ~expected ~actual ~on_error =
   match Unifier.unify ~expected ~actual with
   | Ok () -> ()
@@ -111,8 +113,13 @@ let rec core_type_to_type (state: State.t) (annotation: core_type) =
     | Tuple parts -> Type.Tuple (List.map parts ~fn:(core_type_to_type state))
     | Parenthesized inner
     | ForAll { body = inner; _ } -> core_type_to_type state inner
+    | Var (Some name) -> (
+        match State.get_type_param state ~name with
+        | Some type_ -> type_
+        | None -> State.fresh_var state
+      )
+    | Var None -> State.fresh_var state
     | Wildcard
-    | Var _
     | PolyVariant _
     | Package _ -> State.fresh_var state
   in
@@ -271,27 +278,41 @@ and infer_function state fn_decl =
   State.pop_scope state;
   List.fold_right params ~init:body ~fn:Ast.Type.arrow
 
-let type_declaration_result (decl: type_declaration) = Type.Constructor {
-  ident = decl.name;
-  arguments = [];
-}
+let type_declaration_result (decl: type_declaration) arguments =
+  Type.Constructor { ident = decl.name; arguments }
 
 let constructor_scheme state (decl: type_declaration) (ctr: type_constructor) =
-  let result =
-    match ctr.result with
-    | Some result -> core_type_to_type state result
-    | None -> type_declaration_result decl
+  let scope = HashMap.with_capacity ~size:(List.length decl.parameters) in
+  let arguments =
+    List.map
+      decl.parameters
+      ~fn:(fun param ->
+        match param with
+        | Some name ->
+            let type_ = State.fresh_var state in
+            let _ = HashMap.insert scope ~key:name ~value:type_ in
+            type_
+        | None -> State.fresh_var state)
   in
-  let body =
-    match ctr.arguments with
-    | Tuple [] -> result
-    | Tuple [ argument ] -> Ast.Type.arrow (core_type_to_type state argument) result
-    | Tuple arguments ->
-        let argument_type = Type.Tuple (List.map arguments ~fn:(core_type_to_type state)) in
-        Ast.Type.arrow argument_type result
-    | Record _fields -> Ast.Type.arrow (State.fresh_var state) result
-  in
-  TypeScheme.monomorphic body
+  State.with_type_params
+    state
+    scope
+    (fun state ->
+      let result =
+        match ctr.result with
+        | Some result -> core_type_to_type state result
+        | None -> type_declaration_result decl arguments
+      in
+      let body =
+        match ctr.arguments with
+        | Tuple [] -> result
+        | Tuple [ argument ] -> Ast.Type.arrow (core_type_to_type state argument) result
+        | Tuple arguments ->
+            let argument_type = Type.Tuple (List.map arguments ~fn:(core_type_to_type state)) in
+            Ast.Type.arrow argument_type result
+        | Record _fields -> Ast.Type.arrow (State.fresh_var state) result
+      in
+      Quantifier.generalize body)
 
 let register_type_decl state (decl: type_declaration) =
   let name = decl.name in

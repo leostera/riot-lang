@@ -6,6 +6,10 @@
    tags: basics, const, intoption
 *)
 
+type 'a option =
+  | Some of 'a
+  | None
+
 let value = Some 0
 
 let const x _ = x
