@@ -1395,18 +1395,20 @@ let solve total feedback_ref =
         ~rule_id:"limit-parenthesis-depth"
         ~snippet:"parenthesized expressions");
   Test.case
-    "limit-nested-match-depth flags triple-nested matches"
+    "limit-nested-match-depth flags fourth nested matches"
     (fun _ctx ->
       let source =
-        {|
-let render x y z =
-  match x with
+        {ocaml|
+let render w x y z =
+  match w with
   | _ ->
-      match y with
+      match x with
       | _ ->
-          match z with
-          | _ -> 1
-|}
+          match y with
+          | _ ->
+              match z with
+              | _ -> 1
+|ocaml}
       in
       let pipeline =
         Riot_fix.Pipeline.make ~rules:[ Riot_fix.Rules.Limit_nested_match_depth.make () ] ()
@@ -1416,16 +1418,36 @@ let render x y z =
       Test.assert_equal ~expected:[ "limit-nested-match-depth" ] ~actual:codes;
       Ok ());
   Test.case
+    "limit-nested-match-depth keeps triple-nested matches clean"
+    (fun _ctx ->
+      let source =
+        {ocaml|
+let render x y z =
+  match x with
+  | _ ->
+      match y with
+      | _ ->
+          match z with
+          | _ -> 1
+|ocaml}
+      in
+      let pipeline =
+        Riot_fix.Pipeline.make ~rules:[ Riot_fix.Rules.Limit_nested_match_depth.make () ] ()
+      in
+      let result = Riot_fix.Pipeline.run pipeline source in
+      Test.assert_equal ~expected:0 ~actual:(List.length result.diagnostics);
+      Ok ());
+  Test.case
     "limit-nested-match-depth keeps shallower matches clean"
     (fun _ctx ->
       let source =
-        {|
+        {ocaml|
 let render x y =
   match x with
   | _ ->
       match y with
       | _ -> 1
-|}
+|ocaml}
       in
       let pipeline =
         Riot_fix.Pipeline.make ~rules:[ Riot_fix.Rules.Limit_nested_match_depth.make () ] ()
@@ -1437,15 +1459,17 @@ let render x y =
     "limit-nested-match-depth reports one issue per match tower"
     (fun _ctx ->
       let source =
-        {|
-let render x y z =
-  match x with
+        {ocaml|
+let render w x y z =
+  match w with
   | _ ->
-      match y with
+      match x with
       | _ ->
-          match z with
-          | _ -> 1
-|}
+          match y with
+          | _ ->
+              match z with
+              | _ -> 1
+|ocaml}
       in
       let pipeline =
         Riot_fix.Pipeline.make ~rules:[ Riot_fix.Rules.Limit_nested_match_depth.make () ] ()

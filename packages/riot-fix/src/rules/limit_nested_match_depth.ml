@@ -9,16 +9,16 @@ let rule_description = "Deep towers of nested match expressions should be flatte
 
 let rule_explain =
   {|
-Three layers of nested `match` usually means the control flow has stopped fitting in
-the reader's head. Each additional `match` introduces another indentation level,
+More than three layers of nested `match` usually means the control flow has stopped
+fitting in the reader's head. Each additional `match` introduces another indentation level,
 another set of cases, and another question about which values are still in scope.
 
 When a branch has to open yet another `match`, the code often wants one of three
 things instead: a helper function, a smaller intermediate value, or a different data
 shape that captures the combination up front.
 
-As a rough rule, once you are writing `match x with ... match y with ... match z with`,
-stop and ask whether the innermost logic deserves a name of its own.
+As a rough rule, once you are writing a fourth nested `match`, stop and ask whether
+the innermost logic deserves a name of its own.
 |}
 
 let max_nested_match_depth = 3
@@ -64,7 +64,7 @@ let rec diagnostics_for_expression = fun diagnostics ~inside_match expr ->
       for_each_nested_expr expr ~fn:(diagnostics_for_expression diagnostics ~inside_match:true);
       if not inside_match then
         let depth = match_chain_depth expr in
-        if depth >= max_nested_match_depth then
+        if depth > max_nested_match_depth then
           H.push_diagnostic diagnostics (make_diagnostic expr depth)
   | _ -> for_each_nested_expr expr ~fn:(diagnostics_for_expression diagnostics ~inside_match)
 
