@@ -348,6 +348,7 @@ let test_planning_error_lines_describe_undeclared_package_module = fun _ctx ->
           source = Path.v "src/main.ml";
           requested_module = "Kernel";
           allowed_modules = [ "Demo"; "Std" ];
+          suggested_modules = [];
         }
       )
   in
@@ -361,6 +362,35 @@ let test_planning_error_lines_describe_undeclared_package_module = fun _ctx ->
       "available direct modules: Demo, Std";
       "examples:";
       "  - add the package that provides Kernel to [dependencies]";
+      "  - or depend through one of the exposed modules above if that is the public API you meant";
+    ]
+    ~actual:lines;
+  Ok ()
+
+let test_planning_error_lines_include_module_name_suggestions = fun _ctx ->
+  let lines =
+    Riot_cli.Build.planning_error_lines
+      (
+        Riot_planner.Planning_error.SourceDependsOnUndeclaredPackageModule {
+          package_name = "typ";
+          source = Path.v "src/check.ml";
+          requested_module = "SurfacePath";
+          allowed_modules = [ "Std"; "Typ" ];
+          suggested_modules = [ "Surface_path" ];
+        }
+      )
+  in
+  Test.assert_equal
+    ~expected:[
+      error_line "SurfacePath is not available to package typ";
+      "The source file imports SurfacePath, but Riot only exposes modules from this package and its direct dependencies.";
+      "package: typ";
+      "source: src/check.ml";
+      "requested module: SurfacePath";
+      "available direct modules: Std, Typ";
+      "did you mean: Surface_path";
+      "examples:";
+      "  - add the package that provides SurfacePath to [dependencies]";
       "  - or depend through one of the exposed modules above if that is the public API you meant";
     ]
     ~actual:lines;
@@ -1269,6 +1299,9 @@ let tests =
     case
       "build: planning error lines explain undeclared package modules"
       test_planning_error_lines_describe_undeclared_package_module;
+    case
+      "build: planning error lines include module name suggestions"
+      test_planning_error_lines_include_module_name_suggestions;
     case
       "build: planning error lines explain invalid executable main"
       test_planning_error_lines_describe_invalid_executable_main;

@@ -43,6 +43,7 @@ type t =
       source: Path.t;
       requested_module: string;
       allowed_modules: string list;
+      suggested_modules: string list;
     }
   | InvalidExecutableMain of {
       package_name: string;

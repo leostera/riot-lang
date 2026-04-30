@@ -45,6 +45,7 @@ type t =
       source: Path.t;
       requested_module: string;
       allowed_modules: string list;
+      suggested_modules: string list;
     }
   | InvalidExecutableMain of {
       package_name: string;
@@ -148,8 +149,15 @@ let to_string = function
     package_name;
     source;
     requested_module;
-    allowed_modules
+    allowed_modules;
+    suggested_modules
   } ->
+      let suggestion =
+        match suggested_modules with
+        | [] -> ""
+        | [ suggestion ] -> " Did you mean '" ^ suggestion ^ "'?"
+        | suggestions -> " Did you mean one of: " ^ String.concat ", " suggestions ^ "?"
+      in
       "Package '"
       ^ package_name
       ^ "' source '"
@@ -159,6 +167,7 @@ let to_string = function
       ^ "', but that module is not provided by this package or one of its direct dependencies. Allowed package modules: "
       ^ String.concat ", " allowed_modules
       ^ "."
+      ^ suggestion
   | InvalidExecutableMain {
     package_name;
     target_name;
@@ -268,7 +277,8 @@ let to_json = function
     package_name;
     source;
     requested_module;
-    allowed_modules
+    allowed_modules;
+    suggested_modules
   } ->
       Data.Json.obj
         [
@@ -277,6 +287,7 @@ let to_json = function
           ("source", Data.Json.string (Path.to_string source));
           ("requested_module", Data.Json.string requested_module);
           ("allowed_modules", Data.Json.array (List.map allowed_modules ~fn:Data.Json.string));
+          ("suggested_modules", Data.Json.array (List.map suggested_modules ~fn:Data.Json.string));
         ]
   | InvalidExecutableMain {
     package_name;

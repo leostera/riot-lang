@@ -1330,6 +1330,21 @@ let from_json: Data.Json.t -> (Telemetry.event, Data.Json.t) result = fun json -
                                                   | _ -> None
                                                 )
                                             in
+                                            let suggested_modules =
+                                              match get_field
+                                                planning_fields
+                                                ~name:"suggested_modules" with
+                                              | Some (Data.Json.Array suggested_modules) ->
+                                                  List.filter_map
+                                                    suggested_modules
+                                                    ~fn:(
+                                                      function
+                                                      | Data.Json.String suggested_module ->
+                                                          Some suggested_module
+                                                      | _ -> None
+                                                    )
+                                              | _ -> []
+                                            in
                                             Ok (
                                               PlanningFailed (
                                                 Planning_error.SourceDependsOnUndeclaredPackageModule {
@@ -1337,6 +1352,7 @@ let from_json: Data.Json.t -> (Telemetry.event, Data.Json.t) result = fun json -
                                                   source = Path.v source;
                                                   requested_module;
                                                   allowed_modules;
+                                                  suggested_modules;
                                                 }
                                               )
                                             )

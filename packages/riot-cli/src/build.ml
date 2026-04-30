@@ -224,12 +224,19 @@ let planning_error_lines = function
     package_name;
     source;
     requested_module;
-    allowed_modules
+    allowed_modules;
+    suggested_modules
   } ->
       let allowed_modules =
         match allowed_modules with
         | [] -> "<none>"
         | allowed_modules -> String.concat ", " allowed_modules
+      in
+      let suggestion_lines =
+        match suggested_modules with
+        | [] -> []
+        | [ suggestion ] -> [ "did you mean: " ^ suggestion ]
+        | suggestions -> [ "did you mean one of: " ^ String.concat ", " suggestions ]
       in
       [
         error_line (requested_module ^ " is not available to package " ^ package_name);
@@ -240,6 +247,9 @@ let planning_error_lines = function
         "source: " ^ Path.to_string source;
         "requested module: " ^ requested_module;
         "available direct modules: " ^ allowed_modules;
+      ]
+      @ suggestion_lines
+      @ [
         "examples:";
         "  - add the package that provides " ^ requested_module ^ " to [dependencies]";
         "  - or depend through one of the exposed modules above if that is the public API you meant";

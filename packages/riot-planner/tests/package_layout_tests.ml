@@ -78,6 +78,32 @@ let validate_layout = fun ~package ~graph ~analyzed ->
     ~module_graph:graph
     ~analyzed_modules:(List.map analyzed ~fn:(fun (node, source) -> analyzed_module node ~source))
 
+let test_undeclared_package_module_suggests_available_module_name = fun _ctx ->
+  let package = make_package ~library:{ path = Path.v "src/typ.ml" } "typ" in
+  let graph = G.make () in
+  let _root = add_ml_node graph ~namespace:Namespace.empty ~path:"src/typ.ml" in
+  let _surface_path =
+    add_ml_node graph ~namespace:(public_namespace package) ~path:"src/model/surface_path.ml"
+  in
+  let main = add_ml_node graph ~namespace:(public_namespace package) ~path:"src/main.ml" in
+  let (node_id, analyzed) = analyzed_module main ~source:"let _ = SurfacePath.empty\n" in
+  let analyzed = { analyzed with Riot_planner.Module_graph.unresolved_deps = [ "SurfacePath" ] } in
+  match Riot_planner.Package_layout_validator.validate
+    ~direct_dependency_modules:[]
+    ~package
+    ~module_graph:graph
+    ~analyzed_modules:[ (node_id, analyzed) ] with
+  | Error (
+    Riot_planner.Planning_error.SourceDependsOnUndeclaredPackageModule { requested_module; suggested_modules; _ }
+  ) ->
+      Test.assert_equal ~expected:"SurfacePath" ~actual:requested_module;
+      Test.assert_equal ~expected:[ "Surface_path" ] ~actual:suggested_modules;
+      Ok ()
+  | Error err ->
+      Error ("expected undeclared package module planner error, got: "
+      ^ Riot_planner.Planning_error.to_string err)
+  | Ok () -> Error "expected misspelled module dependency to fail"
+
 let assert_target_can_use_public_root_module = fun
   ~package_name ~target_name ~target_source_path ~target_source ->
   let package =
@@ -633,6 +659,9 @@ let tests =
     case
       "same-package binary can use public root module"
       test_same_package_binary_can_use_public_root_module;
+    case
+      "undeclared package module suggests available module name"
+      test_undeclared_package_module_suggests_available_module_name;
     case
       "same-package binary can use generated public root module"
       test_same_package_binary_can_use_generated_public_root_module;

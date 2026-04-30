@@ -283,10 +283,99 @@ let unique_sorted_strings = fun values ->
   |> List.sort ~compare:String.compare
   |> List.unique ~compare:String.compare
 
-let validate_dependency_edges = fun ~package ~direct_dependency_modules ~analyzed_modules ->
+let levenshtein_distance = fun left right ->
+  let left = String.lowercase_ascii left in
+  let right = String.lowercase_ascii right in
+  let left_len = String.length left in
+  let right_len = String.length right in
+  let previous = Array.init ~count:(right_len + 1) ~fn:(fun index -> index) in
+  let current = Array.make ~count:(right_len + 1) ~value:0 in
+  for left_index = 1 to left_len do
+    Array.set_unchecked current ~at:0 ~value:left_index;
+    for right_index = 1 to right_len do
+      let cost =
+        if
+          String.get_unchecked left ~at:(left_index - 1)
+          = String.get_unchecked right ~at:(right_index - 1)
+        then
+          0
+        else
+          1
+      in
+      let deletion = Array.get_unchecked previous ~at:right_index + 1 in
+      let insertion = Array.get_unchecked current ~at:(right_index - 1) + 1 in
+      let substitution = Array.get_unchecked previous ~at:(right_index - 1) + cost in
+      Array.set_unchecked
+        current
+        ~at:right_index
+        ~value:(Int.min deletion (Int.min insertion substitution))
+    done;
+    for right_index = 0 to right_len do
+      Array.set_unchecked
+        previous
+        ~at:right_index
+        ~value:(Array.get_unchecked current ~at:right_index)
+    done
+  done;
+  Array.get_unchecked previous ~at:right_len
+
+let suggestion_threshold = fun requested_module ->
+  let len = String.length requested_module in
+  if Int.(len <= 3) then
+    1
+  else
+    Int.max 2 (Int.div len 3)
+
+let module_node_suggestion_names = fun (node: Module_node.t G.node) ->
+  match node.value.kind with
+  | Module_node.ML mod_
+  | Module_node.MLI mod_ ->
+      let simple_name =
+        Module.module_name mod_
+        |> Module_name.to_string
+      in
+      let qualified_name = Module.namespaced_name mod_ in
+      if String.equal simple_name qualified_name then
+        [ simple_name ]
+      else
+        [ simple_name; qualified_name ]
+  | Module_node.PackageDependency { root_module; _ } -> [ root_module ]
+  | _ -> []
+
+let available_module_names = fun ~package ~direct_dependency_modules module_graph ->
+  let node_names =
+    sorted_nodes module_graph
+    |> List.flat_map ~fn:module_node_suggestion_names
+  in
+  unique_sorted_strings ((Package.root_module_name package :: direct_dependency_modules) @ node_names)
+
+let suggested_modules = fun ~requested_module ~available_modules ->
+  let threshold = suggestion_threshold requested_module in
+  available_modules
+  |> List.filter_map
+    ~fn:(fun candidate ->
+      if String.equal candidate requested_module then
+        None
+      else
+        let distance = levenshtein_distance requested_module candidate in
+        if Int.(distance <= threshold) then
+          Some (candidate, distance)
+        else
+          None)
+  |> List.sort
+    ~compare:(fun (left_name, left_distance) (right_name, right_distance) ->
+      match Int.compare left_distance right_distance with
+      | Order.EQ -> String.compare left_name right_name
+      | ordering -> ordering)
+  |> List.map ~fn:(fun (name, _distance) -> name)
+  |> List.take ~len:3
+
+let validate_dependency_edges = fun
+  ~package ~direct_dependency_modules ~module_graph ~analyzed_modules ->
   let allowed_modules =
     unique_sorted_strings (Package.root_module_name package :: direct_dependency_modules)
   in
+  let available_modules = available_module_names ~package ~direct_dependency_modules module_graph in
   List.fold_left
     analyzed_modules
     ~init:(Ok ())
@@ -303,12 +392,17 @@ let validate_dependency_edges = fun ~package ~direct_dependency_modules ~analyze
                   source = analyzed_module.display_path;
                   requested_module;
                   allowed_modules;
+                  suggested_modules = suggested_modules ~requested_module ~available_modules;
                 }
               )
         ))
 
 let validate = fun ~direct_dependency_modules ~package ~module_graph ~analyzed_modules ->
-  match validate_dependency_edges ~package ~direct_dependency_modules ~analyzed_modules with
+  match validate_dependency_edges
+    ~package
+    ~direct_dependency_modules
+    ~module_graph
+    ~analyzed_modules with
   | Error _ as err -> err
   | Ok () ->
       let nodes = sorted_nodes module_graph in
