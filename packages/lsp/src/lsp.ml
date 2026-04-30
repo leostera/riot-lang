@@ -334,6 +334,141 @@ module Inlay_hint = struct
     }
 end
 
+module Completion_item = struct
+  module Kind = struct
+    type t =
+      | Text
+      | Method
+      | Function
+      | Constructor
+      | Field
+      | Variable
+      | Class
+      | Interface
+      | Module
+      | Property
+      | Unit
+      | Value
+      | Enum
+      | Keyword
+      | Snippet
+      | Color
+      | File
+      | Reference
+      | Folder
+      | EnumMember
+      | Constant
+      | Struct
+      | Event
+      | Operator
+      | TypeParameter
+
+    let to_int = function
+      | Text -> 1
+      | Method -> 2
+      | Function -> 3
+      | Constructor -> 4
+      | Field -> 5
+      | Variable -> 6
+      | Class -> 7
+      | Interface -> 8
+      | Module -> 9
+      | Property -> 10
+      | Unit -> 11
+      | Value -> 12
+      | Enum -> 13
+      | Keyword -> 14
+      | Snippet -> 15
+      | Color -> 16
+      | File -> 17
+      | Reference -> 18
+      | Folder -> 19
+      | EnumMember -> 20
+      | Constant -> 21
+      | Struct -> 22
+      | Event -> 23
+      | Operator -> 24
+      | TypeParameter -> 25
+
+    let of_int = function
+      | 1 -> Ok Text
+      | 2 -> Ok Method
+      | 3 -> Ok Function
+      | 4 -> Ok Constructor
+      | 5 -> Ok Field
+      | 6 -> Ok Variable
+      | 7 -> Ok Class
+      | 8 -> Ok Interface
+      | 9 -> Ok Module
+      | 10 -> Ok Property
+      | 11 -> Ok Unit
+      | 12 -> Ok Value
+      | 13 -> Ok Enum
+      | 14 -> Ok Keyword
+      | 15 -> Ok Snippet
+      | 16 -> Ok Color
+      | 17 -> Ok File
+      | 18 -> Ok Reference
+      | 19 -> Ok Folder
+      | 20 -> Ok EnumMember
+      | 21 -> Ok Constant
+      | 22 -> Ok Struct
+      | 23 -> Ok Event
+      | 24 -> Ok Operator
+      | 25 -> Ok TypeParameter
+      | value -> Error ("invalid completion item kind: " ^ Int.to_string value)
+
+    let to_json = fun value -> Json.int (to_int value)
+
+    let of_json = fun value ->
+      let* value = Decode.int "completionItemKind" value in
+      of_int value
+  end
+
+  type t = {
+    label: string;
+    kind: Kind.t option;
+    detail: string option;
+    documentation: Markup_content.t option;
+    insert_text: string option;
+  }
+
+  let to_json = fun {
+    label;
+    kind;
+    detail;
+    documentation;
+    insert_text
+  } ->
+    let fields = [ ("label", Json.string label); ] in
+    let fields = Encode.field_opt "kind" Kind.to_json kind fields in
+    let fields = Encode.field_opt "detail" Json.string detail fields in
+    let fields = Encode.field_opt "documentation" Markup_content.to_json documentation fields in
+    let fields = Encode.field_opt "insertText" Json.string insert_text fields in
+    Json.obj (List.rev fields)
+
+  let of_json = fun value ->
+    let* fields = Decode.object_fields "completionItem" value in
+    let* label = Decode.required "completionItem" "label" Decode.string fields in
+    let* kind = Decode.optional "completionItem" "kind" (ignore_context Kind.of_json) fields in
+    let* detail = Decode.optional "completionItem" "detail" Decode.string fields in
+    let* documentation =
+      Decode.optional
+        "completionItem"
+        "documentation"
+        (ignore_context Markup_content.of_json)
+        fields
+    in
+    let* insert_text = Decode.optional "completionItem" "insertText" Decode.string fields in
+    Ok {
+      label;
+      kind;
+      detail;
+      documentation;
+      insert_text;
+    }
+end
+
 module Symbol_kind = struct
   type t =
     | File
@@ -1128,12 +1263,18 @@ module Initialize = struct
       | Bool of bool
       | Provider_options of code_action_options
 
+    type completion_options = {
+      resolve_provider: bool option;
+      trigger_characters: string list option;
+    }
+
     type t = {
       position_encoding: string option;
       text_document_sync: text_document_sync option;
       document_formatting_provider: bool option;
       definition_provider: bool option;
       hover_provider: bool option;
+      completion_provider: completion_options option;
       inlay_hint_provider: bool option;
       document_symbol_provider: bool option;
       code_action_provider: code_action_provider option;
@@ -1191,6 +1332,35 @@ module Initialize = struct
           Ok (Provider_options options)
       | value -> Error (unsupported_json_kind "serverCapabilities.codeActionProvider value" value)
 
+    let completion_options_to_json = fun { resolve_provider; trigger_characters } ->
+      let fields = [] in
+      let fields = Encode.field_opt "resolveProvider" Json.bool resolve_provider fields in
+      let fields =
+        Encode.field_opt
+          "triggerCharacters"
+          (fun characters -> Json.array (List.map characters ~fn:Json.string))
+          trigger_characters
+          fields
+      in
+      Json.obj (List.rev fields)
+
+    let completion_options_of_json = fun value ->
+      let* fields = Decode.object_fields "serverCapabilities.completionProvider" value in
+      let* resolve_provider =
+        Decode.optional "serverCapabilities.completionProvider" "resolveProvider" Decode.bool fields
+      in
+      let* trigger_characters =
+        Decode.optional
+          "serverCapabilities.completionProvider"
+          "triggerCharacters"
+          (ignore_context
+            (Decode.list
+              "serverCapabilities.completionProvider.triggerCharacters"
+              (Decode.string "serverCapabilities.completionProvider.triggerCharacters[]")))
+          fields
+      in
+      Ok { resolve_provider; trigger_characters }
+
     let to_json = fun capabilities ->
       let fields = [] in
       let fields =
@@ -1214,6 +1384,13 @@ module Initialize = struct
         Encode.field_opt "definitionProvider" Json.bool capabilities.definition_provider fields
       in
       let fields = Encode.field_opt "hoverProvider" Json.bool capabilities.hover_provider fields in
+      let fields =
+        Encode.field_opt
+          "completionProvider"
+          completion_options_to_json
+          capabilities.completion_provider
+          fields
+      in
       let fields =
         Encode.field_opt "inlayHintProvider" Json.bool capabilities.inlay_hint_provider fields
       in
@@ -1255,6 +1432,13 @@ module Initialize = struct
         Decode.optional "serverCapabilities" "definitionProvider" Decode.bool fields
       in
       let* hover_provider = Decode.optional "serverCapabilities" "hoverProvider" Decode.bool fields in
+      let* completion_provider =
+        Decode.optional
+          "serverCapabilities"
+          "completionProvider"
+          (ignore_context completion_options_of_json)
+          fields
+      in
       let* inlay_hint_provider =
         Decode.optional "serverCapabilities" "inlayHintProvider" Decode.bool fields
       in
@@ -1275,6 +1459,7 @@ module Initialize = struct
         document_formatting_provider;
         definition_provider;
         hover_provider;
+        completion_provider;
         inlay_hint_provider;
         document_symbol_provider;
         code_action_provider;
@@ -1558,6 +1743,61 @@ module Text_document_requests = struct
         ~name:"textDocument/publishDiagnostics"
         ~params_of_jsonrpc
         ~params_to_jsonrpc
+  end
+
+  module Completion = struct
+    type params = {
+      text_document: Text_document.identifier;
+      position: Position.t;
+    }
+
+    type result = Completion_item.t list option
+
+    let params_to_jsonrpc = fun { text_document; position } ->
+      Params.named
+        [
+          ("textDocument", Text_document.Identifier.to_json text_document);
+          ("position", Position.to_json position);
+        ]
+
+    let params_of_jsonrpc =
+      Params.object_params
+        "textDocument/completion"
+        (fun fields ->
+          let* text_document =
+            Decode.required
+              "textDocument/completion"
+              "textDocument"
+              (ignore_context Text_document.Identifier.of_json)
+              fields
+          in
+          let* position =
+            Decode.required
+              "textDocument/completion"
+              "position"
+              (ignore_context Position.of_json)
+              fields
+          in
+          Ok { text_document; position })
+
+    let result_to_json = function
+      | None -> Json.Null
+      | Some items -> Json.array (List.map items ~fn:Completion_item.to_json)
+
+    let result_of_json = function
+      | Json.Null -> Ok None
+      | Json.Array _ as value ->
+          let* items = Decode.list "textDocument/completion result" Completion_item.of_json value in
+          Ok (Some items)
+      | value -> Error (unsupported_json_kind "textDocument/completion result array" value)
+
+    let request =
+      Method.request
+        ~name:"textDocument/completion"
+        ~params_of_jsonrpc
+        ~params_to_jsonrpc
+        ~result_of_json
+        ~result_to_json
   end
 
   module Hover = struct
