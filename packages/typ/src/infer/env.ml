@@ -94,7 +94,7 @@ end
 
 type module_summary = {
   values: ValueScopes.binding IdentMap.t;
-  constructors: ValueScopes.binding IdentMap.t;
+  constructors: constructor_binding IdentMap.t;
   record_fields: record_field_binding IdentMap.t;
   types: TypeScopes.binding IdentMap.t;
   modules: module_binding IdentMap.t;
@@ -105,6 +105,34 @@ and module_binding = { summary: module_summary; ordinal: int }
 and record_field_info = { owner: type_declaration; field: record_field_declaration }
 
 and record_field_binding = { info: record_field_info; ordinal: int }
+
+and inline_record_field = {
+  declaration: record_field_declaration;
+  type_: Type.t;
+}
+
+and inline_record = {
+  owner: type_declaration;
+  constructor: type_constructor;
+  payload_type: Type.t;
+  fields: inline_record_field list;
+}
+
+and constructor_arguments =
+  | Tuple of Type.t list
+  | InlineRecord of inline_record
+
+and constructor_description = {
+  name: ident;
+  scheme: TypeScheme.t;
+  result: Type.t;
+  arguments: constructor_arguments;
+}
+
+and constructor_binding = {
+  description: constructor_description;
+  ordinal: int;
+}
 
 (**
    Module chain for module-level namespaces.
@@ -125,7 +153,7 @@ module ModuleScopes = struct
     name: ident option;
     values: ValueScopes.t;
     record_fields: record_field_binding IdentMap.t;
-    constructors: ValueScopes.binding IdentMap.t;
+    constructors: constructor_binding IdentMap.t;
     types: TypeScopes.t;
     modules: module_binding IdentMap.t;
   }
@@ -211,8 +239,8 @@ module ModuleScopes = struct
         | Scope { parent; _ } -> get_value parent ~name
       )
 
-  let add_constructor t ~name ~scheme ~ordinal =
-    let binding: ValueScopes.binding = { scheme; ordinal } in
+  let add_constructor t ~name ~description ~ordinal =
+    let binding = { description; ordinal } in
     map_current
       t
       ~fn:(fun current -> {
@@ -222,7 +250,7 @@ module ModuleScopes = struct
 
   let rec get_constructor t ~name =
     match IdentMap.get (current t).constructors ~key:name with
-    | Some binding -> Some (ValueScopes.binding_scheme binding)
+    | Some binding -> Some binding.description
     | None -> (
         match t with
         | Root _ -> None
@@ -313,8 +341,8 @@ let get_value t ~name = ModuleScopes.get_value t.modules ~name
 
 let has_value t ~name = Option.is_some (get_value t ~name)
 
-let add_constructor t ~name ~scheme = {
-  modules = ModuleScopes.add_constructor t.modules ~name ~scheme ~ordinal:t.next_ordinal;
+let add_constructor t ~name ~description = {
+  modules = ModuleScopes.add_constructor t.modules ~name ~description ~ordinal:t.next_ordinal;
   next_ordinal = t.next_ordinal + 1;
 }
 
@@ -350,7 +378,8 @@ let module_get_value (summary: module_summary) ~name =
 let module_has_value summary ~name = Option.is_some (module_get_value summary ~name)
 
 let module_get_constructor (summary: module_summary) ~name =
-  Option.map (IdentMap.get summary.constructors ~key:name) ~fn:ValueScopes.binding_scheme
+  Option.map (IdentMap.get summary.constructors ~key:name) ~fn:(fun binding ->
+    binding.description)
 
 let module_has_constructor summary ~name = Option.is_some (module_get_constructor summary ~name)
 

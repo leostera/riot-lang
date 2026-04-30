@@ -6,7 +6,11 @@
    tags: records, inline_record, variant
 *)
 
-type t = Payload of { flag : bool; code : int }
+type t =
+  | Payload of { flag: bool; code: int }
+
 let make () = Payload { flag = true; code = 0 }
+
 let view (Payload { flag; code }) = (flag, code)
+
 let answer = view (make ())

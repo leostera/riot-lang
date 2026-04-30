@@ -31,8 +31,8 @@ let get_value state ~name = InferenceEnv.get_value state.env ~name
 
 let has_value state ~name = InferenceEnv.has_value state.env ~name
 
-let add_constructor state ~name ~scheme =
-  state.env <- InferenceEnv.add_constructor state.env ~name ~scheme
+let add_constructor state ~name ~description =
+  state.env <- InferenceEnv.add_constructor state.env ~name ~description
 
 let get_constructor state ~name = InferenceEnv.get_constructor state.env ~name
 

@@ -28,6 +28,49 @@ type record_field_info = {
   field: Ast.record_field_declaration;
 }
 
+(**
+   Field metadata for an inline-record constructor payload.
+
+   Inline-record fields are not registered in the ordinary record-field
+   namespace. They are resolved through the constructor description that owns
+   them.
+*)
+type inline_record_field = {
+  declaration: Ast.record_field_declaration;
+  type_: Ast.Type.t;
+}
+
+(**
+   Hidden record payload attached to a variant constructor.
+
+   This mirrors OCaml's inlined-record constructor descriptions: the payload has
+   a nominal semantic type, but no normal surface type binding.
+*)
+type inline_record = {
+  owner: Ast.type_declaration;
+  constructor: Ast.type_constructor;
+  payload_type: Ast.Type.t;
+  fields: inline_record_field list;
+}
+
+(** Typed constructor argument metadata. *)
+type constructor_arguments =
+  | Tuple of Ast.Type.t list
+  | InlineRecord of inline_record
+
+(**
+   Rich constructor lookup payload.
+
+   Constructors are callable values, but the checker also needs their semantic
+   argument shape to type constructor-specific syntax such as inline records.
+*)
+type constructor_description = {
+  name: Ast.ident;
+  scheme: TypeScheme.t;
+  result: Ast.Type.t;
+  arguments: constructor_arguments;
+}
+
 (** Create an empty environment with one root module. *)
 val create: unit -> t
 
@@ -83,13 +126,13 @@ val get_value: t -> name:Ast.ident -> TypeScheme.t option
    Constructors share expression syntax with values but live in a separate
    namespace. Lexical value scopes do not affect where constructors are stored.
 *)
-val add_constructor: t -> name:Ast.ident -> scheme:TypeScheme.t -> t
+val add_constructor: t -> name:Ast.ident -> description:constructor_description -> t
 
 (** True when a constructor exists in the current module chain. *)
 val has_constructor: t -> name:Ast.ident -> bool
 
-(** Find the nearest constructor type scheme currently bound to `name`, if any. *)
-val get_constructor: t -> name:Ast.ident -> TypeScheme.t option
+(** Find the nearest constructor description currently bound to `name`, if any. *)
+val get_constructor: t -> name:Ast.ident -> constructor_description option
 
 (**
    Add or replace a record-field binding in the current module.
@@ -140,7 +183,7 @@ val module_get_value: module_summary -> name:Ast.ident -> TypeScheme.t option
 val module_has_value: module_summary -> name:Ast.ident -> bool
 
 (** Find a constructor exported directly by a module summary. *)
-val module_get_constructor: module_summary -> name:Ast.ident -> TypeScheme.t option
+val module_get_constructor: module_summary -> name:Ast.ident -> constructor_description option
 
 (** True when a module summary exports `name` as a constructor. *)
 val module_has_constructor: module_summary -> name:Ast.ident -> bool
