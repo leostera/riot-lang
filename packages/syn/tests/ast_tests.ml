@@ -593,6 +593,38 @@ let qualified_field = point.Point.y
       Ok ()
   | _ -> Error "expected lowercase field access chain"
 
+let test_expression_poly_variant_payload_keeps_field_access = fun _ctx ->
+  let root =
+    parse_ml {ocaml|let event = `Paste state.paste_buffer
+|ocaml}
+    |> Result.expect ~msg:"expected parse source file"
+  in
+  let body =
+    nth_structure_item root 0
+    |> require_some ~msg:"expected structure item"
+    |> binding_of_structure_item
+    |> Result.expect ~msg:"expected let binding"
+    |> body_of_binding
+    |> Result.expect ~msg:"expected let binding body"
+  in
+  match Ast.Expr.view body with
+  | Ast.Expr.PolyVariant { tag; payload = Some payload } ->
+      Test.assert_equal ~expected:"Paste" ~actual:(Ast.Token.text tag);
+      (
+        match Ast.Expr.view payload with
+        | Ast.Expr.FieldAccess { target; field } ->
+            Test.assert_equal ~expected:"paste_buffer" ~actual:(Ast.Token.text field);
+            (
+              match Ast.Expr.view target with
+              | Ast.Expr.Ident { ident } ->
+                  Test.assert_equal ~expected:"state" ~actual:(Ast.Ident.text ident)
+              | _ -> panic "expected field payload target identifier"
+            )
+        | _ -> panic "expected polymorphic variant payload field access"
+      );
+      Ok ()
+  | _ -> Error "expected polymorphic variant payload"
+
 let test_assignment_operator_views = fun _ctx ->
   let root =
     parse_ml "let update state remaining = state.buffer <- remaining\nlet assign r = r := 1\n"
@@ -3915,6 +3947,9 @@ let tests =
     case
       "ast parses field access separately from qualified value paths"
       test_expression_field_access_splits_value_paths;
+    case
+      "ast keeps field access inside polymorphic variant payloads"
+      test_expression_poly_variant_payload_keeps_field_access;
     case
       "ast keeps labels after polymorphic variant arguments as application arguments"
       test_labeled_application_after_poly_variant_argument;

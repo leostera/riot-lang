@@ -2874,6 +2874,11 @@ let expr_is_dotted_path = fun expr ->
   | Ident { ident } -> ident_contains_dot ident
   | _ -> false
 
+let expr_is_field_access = fun expr ->
+  match ExprView.view expr with
+  | FieldAccess _ -> true
+  | _ -> false
+
 let render_parenthesized_empty_pattern = fun state (pattern: Ast.Pattern.t) ->
   let tokens = collect_child_tokens (Ast.Pattern.as_node pattern) in
   if token_vector_is_parenthesized_operator_name tokens then
@@ -5695,7 +5700,7 @@ and render_expr_atom = fun ?(role = Layout.Top_expr) state expr ->
 and render_prefix_operand = fun state operand ->
   match ExprView.view operand with
   | Parenthesized { inner = Some inner } when not (same_expr_node operand inner)
-  && expr_is_dotted_path inner -> render_parenthesized_expr state inner
+  && (expr_is_dotted_path inner || expr_is_field_access inner) -> render_parenthesized_expr state inner
   | FieldAccess _ -> render_parenthesized_expr state operand
   | _ when expr_is_prefix_deref operand -> render_parenthesized_expr state operand
   | _ -> render_expr_atom state operand

@@ -1277,6 +1277,28 @@ let ok=assert_relation `Satisfied (Pubgrub.Partial_solution.relation solution in
 let ok = assert_relation `Satisfied (Pubgrub.Partial_solution.relation solution incompat)
 |ocaml}
 
+let test_write_keeps_field_access_bound_to_polyvariant_payloads = fun ctx ->
+  let source =
+    {ocaml|let schedule=fun t timer->t.overflow:=timer::!(t.overflow)
+let event=fun state->`Paste state.paste_buffer
+let constrained=fun state->`Constrained state.ranges
+let events=fun state events->(`Paste state.paste_buffer)::events
+|ocaml}
+  in
+  let parsed = parse_ml source in
+  let actual = capture_write parsed in
+  Test.Snapshot.assert_inline_text
+    ~ctx
+    ~actual
+    ~expected:{ocaml|let schedule = fun t timer -> t.overflow := timer :: !(t.overflow)
+
+let event = fun state -> `Paste state.paste_buffer
+
+let constrained = fun state -> `Constrained state.ranges
+
+let events = fun state events -> (`Paste state.paste_buffer) :: events
+|ocaml}
+
 let test_write_keeps_cons_chains_right_associative = fun ctx ->
   let source =
     {ocaml|let fields=timestamp_field()::("type",Data.Json.String"file")::fields
@@ -4735,6 +4757,9 @@ let tests =
     case
       "write keeps bare polymorphic variant application arguments split"
       test_write_keeps_bare_polymorphic_variant_application_arguments_split;
+    case
+      "write keeps field access bound to polyvariant payloads"
+      test_write_keeps_field_access_bound_to_polyvariant_payloads;
     case "write keeps cons chains right associative" test_write_keeps_cons_chains_right_associative;
     case
       "write keeps infix precedence parens minimal"

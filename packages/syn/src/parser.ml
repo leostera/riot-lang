@@ -1697,7 +1697,14 @@ and parse_poly_variant_expr = fun p ~signature ~stop_at_item ~stop_at_semi ~stop
     (not (expression_boundary p ~stop_at_item ~stop_at_semi ~stop_at_comma ~signature))
     && can_start_poly_variant_payload p
   then
-    ignore (parse_prefix_or_atom p ~signature ~stop_at_item ~stop_at_semi ~stop_at_comma);
+    ignore
+      (parse_expression
+        p
+        ~signature
+        ~stop_at_item
+        ~stop_at_semi
+        ~stop_at_comma
+        (application_binding_power + 1));
   complete p marker Syntax_kind.POLY_VARIANT_EXPR
 
 and parse_label_arg_expr = fun p ~signature ~stop_at_item ~stop_at_semi ~stop_at_comma kind ->
