@@ -48,7 +48,7 @@ let line_for_pos = fun layout pos ->
   in
   (line_idx, Int.max 0 (pos - start_offset))
 
-let extract_code_snippet_from_layout = fun layout (span: Ceibo.Span.t) ->
+let extract_code_snippet_from_layout = fun layout (span: Span.t) ->
   if Array.length layout.lines = 0 then
     None
   else

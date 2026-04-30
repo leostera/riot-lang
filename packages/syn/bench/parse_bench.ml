@@ -115,7 +115,7 @@ let selected_benchmarks = fun () -> [
     ~config:medium_config
     (load_fixture
       "docstrings"
-      (Path.v "packages/syn/tests/fixtures/9104_print_ceibo_comments_docstrings_bridge.ml"));
+      (Path.v "packages/syn/tests/fixtures/9104_comments_docstrings_bridge.ml"));
   fixture_benchmark
     ~config:large_config
     (load_fixture

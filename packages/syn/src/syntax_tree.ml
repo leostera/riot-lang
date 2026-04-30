@@ -67,13 +67,13 @@ let raw_start = fun raw_tokens raw_index ->
   if Int.(raw_index < 0) || Int.(raw_index >= Vector.length raw_tokens) then
     0
   else
-    (raw_at raw_tokens raw_index).Raw_token.span.Ceibo.Span.start
+    (raw_at raw_tokens raw_index).Raw_token.span.Span.start
 
 let raw_end = fun raw_tokens raw_index ->
   if Int.(raw_index < 0) || Int.(raw_index >= Vector.length raw_tokens) then
     0
   else
-    (raw_at raw_tokens raw_index).Raw_token.span.Ceibo.Span.end_
+    (raw_at raw_tokens raw_index).Raw_token.span.Span.end_
 
 let include_range = fun frame ~lo ~hi ->
   if frame.has_range then (
@@ -572,7 +572,7 @@ let token_text = fun tree token ->
 let node_text = fun tree node -> raw_range_text tree ~raw_lo:node.raw_lo ~raw_hi:node.raw_hi
 
 let span_json = fun span ->
-  Json.Object [ ("start", Json.Int span.Ceibo.Span.start); ("end", Json.Int span.Ceibo.Span.end_); ]
+  Json.Object [ ("start", Json.Int span.Span.start); ("end", Json.Int span.Span.end_); ]
 
 let raw_token_json = fun tree index token ->
   Json.Object [

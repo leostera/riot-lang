@@ -33,7 +33,7 @@ type t
 val make:
   severity:severity ->
   kind:kind ->
-  span:Syn.Ceibo.Span.t ->
+  span:Syn.Span.t ->
   ?suggestion:string ->
   ?fix:Fix.fix ->
   unit ->
@@ -49,7 +49,7 @@ val severity: t -> severity
 val message: t -> string
 
 (** Return the source span covered by the diagnostic. *)
-val span: t -> Syn.Ceibo.Span.t
+val span: t -> Syn.Span.t
 
 (** Return the rule identifier associated with the diagnostic. *)
 val rule_id: t -> Rule_id.t

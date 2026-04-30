@@ -11,7 +11,7 @@ open Std.Collections
 *)
 type t = {
   kind: Syntax_kind.t;
-  span: Ceibo.Span.t;
+  span: Span.t;
   legacy_kind: Token.token_kind;
   has_newline: bool;
 }

@@ -9,16 +9,16 @@ let slice_of_file_contents = fun contents ->
 
 let span_to_json = fun span ->
   Data.Json.Object [
-    ("start", Data.Json.int span.Ceibo.Span.start);
-    ("end", Data.Json.int span.Ceibo.Span.end_);
+    ("start", Data.Json.int span.Span.start);
+    ("end", Data.Json.int span.Span.end_);
   ]
 
 let span_text = fun source span ->
-  let width = span.Ceibo.Span.end_ - span.Ceibo.Span.start in
+  let width = span.Span.end_ - span.Span.start in
   if width <= 0 then
     ""
   else
-    String.sub source ~offset:span.Ceibo.Span.start ~len:width
+    String.sub source ~offset:span.Span.start ~len:width
 
 let trivia_kind_to_json = function
   | Syn.Token.CommentTrivia { terminated; _ } ->

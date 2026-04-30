@@ -49,7 +49,7 @@ let source_layout_line_for_pos = fun source_text (_, line_starts) pos ->
     in
     (line_idx, Int.max 0 (position_of_offset source_text pos).character)
 
-let extract_snippet = fun source_layout source_text (span: Syn.Ceibo.Span.t) ->
+let extract_snippet = fun source_layout source_text (span: Syn.Span.t) ->
   if Array.length (fst source_layout) = 0 then
     None
   else
@@ -70,7 +70,7 @@ let extract_snippet = fun source_layout source_text (span: Syn.Ceibo.Span.t) ->
       Some (line_idx + 1, start_col, line_text, pointer_span)
 
 let format_diagnostic = fun ~path_text ~source_layout ~source_text diagnostic ->
-  let span: Syn.Ceibo.Span.t = Diagnostic.span diagnostic in
+  let span: Syn.Span.t = Diagnostic.span diagnostic in
   let start_position = position_of_offset source_text span.start in
   let line = start_position.line + 1 in
   let column = start_position.character + 1 in

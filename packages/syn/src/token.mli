@@ -13,7 +13,7 @@ open Std
 
    Each token has:
    - **kind**: What type of token it is
-   - **span**: Where it appears in the source (using `Ceibo.Span.t`)
+   - **span**: Where it appears in the source (using `Span.t`)
    - **leading_trivia**: Trivia immediately preceding the token
 
    The text of the token is not stored directly - use the span to extract it
@@ -55,7 +55,7 @@ type trivia_kind =
   | WhitespaceTrivia
 type trivia = {
   kind: trivia_kind;
-  span: Ceibo.Span.t;
+  span: Span.t;
 }
 type token_kind =
   (* Keywords *)
@@ -182,7 +182,7 @@ type token_kind =
 (** Unknown/invalid character. Used for error recovery. *)
 type t = {
   kind: token_kind;
-  span: Ceibo.Span.t;
+  span: Span.t;
   leading_trivia: trivia list;
 }
 (** # Utilities *)

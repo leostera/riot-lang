@@ -5,7 +5,7 @@ module Slice = IO.IoVec.IoSlice
 
 type t = {
   kind: Syntax_kind.t;
-  span: Ceibo.Span.t;
+  span: Span.t;
   legacy_kind: Token.token_kind;
   has_newline: bool;
 }
@@ -36,7 +36,7 @@ let is_trivia = fun token -> Syntax_kind.is_trivia token.kind
 
 let is_significant = fun token -> not (is_trivia token)
 
-let width = fun token -> token.span.Ceibo.Span.end_ - token.span.Ceibo.Span.start
+let width = fun token -> token.span.Span.end_ - token.span.Span.start
 
 let has_newline = fun token -> token.has_newline
 
@@ -45,7 +45,7 @@ let slice = fun ~source token ->
   if len <= 0 then
     Slice.empty
   else
-    Slice.sub_unchecked source ~off:token.span.Ceibo.Span.start ~len
+    Slice.sub_unchecked source ~off:token.span.Span.start ~len
 
 let text_slice = fun ~source token ->
   slice ~source token
@@ -65,8 +65,8 @@ let contains_char = fun ~source token needle ->
   loop 0
 
 let span_contains_char = fun ~source span needle ->
-  let start = span.Ceibo.Span.start in
-  let end_ = span.Ceibo.Span.end_ in
+  let start = span.Span.start in
+  let end_ = span.Span.end_ in
   let rec loop index =
     if Int.(index >= end_) then
       false

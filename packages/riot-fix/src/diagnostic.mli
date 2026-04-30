@@ -18,7 +18,7 @@ type t = Fixme.Diagnostic.t
 val make:
   severity:severity ->
   kind:kind ->
-  span:Syn.Ceibo.Span.t ->
+  span:Syn.Span.t ->
   ?suggestion:string ->
   ?fix:Fix.fix ->
   unit ->
@@ -42,7 +42,7 @@ val severity: t -> severity
 
 val message: t -> string
 
-val span: t -> Syn.Ceibo.Span.t
+val span: t -> Syn.Span.t
 
 val rule_id: t -> Rule_id.t
 
@@ -53,7 +53,7 @@ val fix: t -> Fix.fix option
 type grouped = {
   severity: severity;
   message: string;
-  spans: Syn.Ceibo.Span.t list;
+  spans: Syn.Span.t list;
   rule_id: Rule_id.t;
   suggestion: string option;
   fix: Fix.fix option;

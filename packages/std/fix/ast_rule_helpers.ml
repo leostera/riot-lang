@@ -14,12 +14,12 @@ let pattern_node = Ast.Pattern.as_node
 let parameter_node = Ast.Parameter.as_node
 
 let node_span = fun node ->
-  Syn.Ceibo.Span.make
+  Syn.Span.make
     ~start:(Ast.Node.span_start node)
     ~end_:(Ast.Node.span_end node)
 
 let token_span = fun token ->
-  Syn.Ceibo.Span.make
+  Syn.Span.make
     ~start:(Ast.Token.span_start token)
     ~end_:(Ast.Token.span_end token)
 

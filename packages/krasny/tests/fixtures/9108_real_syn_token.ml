@@ -86,13 +86,13 @@ type token_kind =
 
 type t = {
   kind: token_kind;
-  span: Ceibo.Span.t;
+  span: Span.t;
   leading_trivia: trivia list;
 }
 
 and trivia = {
   kind: trivia_kind;
-  span: Ceibo.Span.t;
+  span: Span.t;
 }
 
 let delimiter_of_keyword: keyword -> delimiter option = function

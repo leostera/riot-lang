@@ -22,7 +22,7 @@ type fix = Fixme.Fix.fix = {
 }
 
 type text_edit = Fixme.Fix.text_edit = {
-  span: Syn.Ceibo.Span.t;
+  span: Syn.Span.t;
   new_text: string;
 }
 
@@ -69,12 +69,12 @@ let apply_fixes = Fixme.Fix.apply_fixes
 let validate_fix = Fixme.Fix.validate_fix
 
 let span_of_node = fun node ->
-  Syn.Ceibo.Span.make
+  Syn.Span.make
     ~start:(Syn.Ast.Node.span_start node)
     ~end_:(Syn.Ast.Node.span_end node)
 
 let span_of_token = fun token ->
-  Syn.Ceibo.Span.make
+  Syn.Span.make
     ~start:(Syn.Ast.Token.span_start token)
     ~end_:(Syn.Ast.Token.span_end token)
 

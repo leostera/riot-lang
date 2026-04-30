@@ -12,12 +12,12 @@ let iter_fold = fun fold value ~fn ->
 module Ast = Syn.Ast
 
 let span_of_token = fun token ->
-  Syn.Ceibo.Span.make
+  Syn.Span.make
     ~start:(Ast.Token.span_start token)
     ~end_:(Ast.Token.span_end token)
 
 let span_of_node = fun node ->
-  Syn.Ceibo.Span.make
+  Syn.Span.make
     ~start:(Ast.Node.span_start node)
     ~end_:(Ast.Node.span_end node)
 
@@ -268,7 +268,7 @@ let for_each_type_declaration = fun root ~fn ->
 
 let source_span = fun source start stop -> String.sub source ~offset:start ~len:(stop - start)
 
-let span_text = fun source span -> source_span source span.Syn.Ceibo.Span.start span.end_
+let span_text = fun source span -> source_span source span.Syn.Span.start span.end_
 
 let node_source = fun ctx node ->
   source_span

@@ -92,7 +92,7 @@ let span = function
   | Lowering diagnostic
   | Typing diagnostic -> Typ_diagnostic.primary_span diagnostic
 
-let span_to_json = fun (span: Ceibo.Span.t) ->
+let span_to_json = fun (span: Syn.Span.t) ->
   Data.Json.Object [ ("start", Data.Json.Int span.start); ("end", Data.Json.Int span.end_); ]
 
 let to_json = fun diagnostic ->

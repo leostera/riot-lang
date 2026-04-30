@@ -8,7 +8,6 @@ members = [
   # "compiler/raml-cli",
   "packages/blink",
   "packages/markdown",
-  "packages/ceibo",
   "packages/colors",
   "packages/contentstore",
   "packages/fixme",

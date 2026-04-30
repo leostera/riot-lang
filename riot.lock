@@ -1,6 +1,6 @@
 format_version = 1
 
-dependency_hash = "d3546051a7a11200"
+dependency_hash = "a8d287405da6b072"
 
 [[packages]]
 name = "blink"
@@ -13,14 +13,6 @@ dev_dependencies = []
 [[packages]]
 name = "markdown"
 root = "packages/markdown"
-provenance = { kind = "workspace" }
-dependencies = [{ name = "std", package = { name = "std" } }]
-build_dependencies = []
-dev_dependencies = []
-
-[[packages]]
-name = "ceibo"
-root = "packages/ceibo"
 provenance = { kind = "workspace" }
 dependencies = [{ name = "std", package = { name = "std" } }]
 build_dependencies = []
@@ -302,7 +294,7 @@ dev_dependencies = []
 name = "syn"
 root = "packages/syn"
 provenance = { kind = "workspace" }
-dependencies = [{ name = "ceibo", package = { name = "ceibo" } }, { name = "colors", package = { name = "colors" } }, { name = "std", package = { name = "std" } }, { name = "tty", package = { name = "tty" } }]
+dependencies = [{ name = "colors", package = { name = "colors" } }, { name = "std", package = { name = "std" } }, { name = "tty", package = { name = "tty" } }]
 build_dependencies = []
 dev_dependencies = []
 
@@ -318,7 +310,7 @@ dev_dependencies = [{ name = "propane", package = { name = "propane" } }]
 name = "typ"
 root = "packages/typ"
 provenance = { kind = "workspace" }
-dependencies = [{ name = "ceibo", package = { name = "ceibo" } }, { name = "contentstore", package = { name = "contentstore" } }, { name = "serde", package = { name = "serde" } }, { name = "std", package = { name = "std" } }, { name = "syn", package = { name = "syn" } }]
+dependencies = [{ name = "contentstore", package = { name = "contentstore" } }, { name = "serde", package = { name = "serde" } }, { name = "std", package = { name = "std" } }, { name = "syn", package = { name = "syn" } }]
 build_dependencies = []
 dev_dependencies = []
 

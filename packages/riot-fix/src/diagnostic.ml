@@ -71,7 +71,7 @@ let explain_hint = fun severity rule_id ->
 
 let to_string = fun diag ->
   let severity_str = severity_to_string (severity diag) in
-  let span_str = Syn.Ceibo.Span.to_string (span diag) in
+  let span_str = Syn.Span.to_string (span diag) in
   let base_msg =
     "["
     ^ severity_str
@@ -89,7 +89,7 @@ let to_string = fun diag ->
   | (None, None) -> base_msg
 
 let to_colored_string = fun diag ->
-  let span_str = Syn.Ceibo.Span.to_string (span diag) in
+  let span_str = Syn.Span.to_string (span diag) in
   let lines = [
     colored_header_label (severity diag) (rule_id diag);
     "";
@@ -146,7 +146,7 @@ let line_for_pos = fun layout pos ->
   in
   (line_idx, Int.max 0 (pos - start_offset))
 
-let extract_code_snippet_from_layout = fun layout (span: Syn.Ceibo.Span.t) ->
+let extract_code_snippet_from_layout = fun layout (span: Syn.Span.t) ->
   if Array.length layout.lines = 0 then
     None
   else
@@ -205,7 +205,7 @@ let to_formatted_output = fun ~file ~source diag ->
           ^ " |\027[0m "
           ^ pointer_line;
         ]
-    | None -> basic_info @ [ "  at " ^ Syn.Ceibo.Span.to_string (span diag) ]
+    | None -> basic_info @ [ "  at " ^ Syn.Span.to_string (span diag) ]
   in
   let lines_with_suggestion =
     match (suggestion diag, fix diag) with
@@ -239,7 +239,7 @@ let to_json = fun diag ->
 type grouped = {
   severity: severity;
   message: string;
-  spans: Syn.Ceibo.Span.t list;
+  spans: Syn.Span.t list;
   rule_id: Rule_id.t;
   suggestion: string option;
   fix: Fix.fix option;
@@ -290,10 +290,7 @@ let grouped_to_formatted_output = fun ~file ~source grouped ->
   let spans =
     List.sort
       grouped.spans
-      ~compare:(fun (left: Syn.Ceibo.Span.t) (right: Syn.Ceibo.Span.t) ->
-        Int.compare
-          left.start
-          right.start)
+      ~compare:(fun (left: Syn.Span.t) (right: Syn.Span.t) -> Int.compare left.start right.start)
   in
   let lines_with_snippets =
     List.fold_left
@@ -311,7 +308,7 @@ let grouped_to_formatted_output = fun ~file ~source grouped ->
               ^ " |\027[0m "
               ^ pointer_line;
             ]
-        | None -> acc @ [ "  at " ^ Syn.Ceibo.Span.to_string span ])
+        | None -> acc @ [ "  at " ^ Syn.Span.to_string span ])
   in
   let lines_with_suggestion =
     match (grouped.suggestion, grouped.fix) with
@@ -330,10 +327,7 @@ let grouped_to_formatted_output_with_layout = fun ~file ~layout grouped ->
   let spans =
     List.sort
       grouped.spans
-      ~compare:(fun (left: Syn.Ceibo.Span.t) (right: Syn.Ceibo.Span.t) ->
-        Int.compare
-          left.start
-          right.start)
+      ~compare:(fun (left: Syn.Span.t) (right: Syn.Span.t) -> Int.compare left.start right.start)
   in
   let lines_with_snippets =
     List.fold_left
@@ -351,7 +345,7 @@ let grouped_to_formatted_output_with_layout = fun ~file ~layout grouped ->
               ^ " |\027[0m "
               ^ pointer_line;
             ]
-        | None -> acc @ [ "  at " ^ Syn.Ceibo.Span.to_string span ])
+        | None -> acc @ [ "  at " ^ Syn.Span.to_string span ])
   in
   let lines_with_suggestion =
     match (grouped.suggestion, grouped.fix) with

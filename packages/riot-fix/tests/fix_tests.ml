@@ -19,7 +19,7 @@ let parse_source_file = fun source ->
   Syn.Ast.SourceFile.make parsed.Syn.Parser.tree
 
 let span_of_token = fun token ->
-  Syn.Ceibo.Span.make
+  Syn.Span.make
     ~start:(Syn.Ast.Token.span_start token)
     ~end_:(Syn.Ast.Token.span_end token)
 

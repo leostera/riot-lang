@@ -82,7 +82,7 @@ module Ident: sig
 
   val width: t -> int
 
-  val span: t -> Ceibo.Span.t
+  val span: t -> Span.t
 
   val text: t -> string
 
@@ -161,7 +161,7 @@ module Token: sig
   val text: t -> string
 
   (** Source span of the token body, excluding leading trivia. *)
-  val span: t -> Ceibo.Span.t
+  val span: t -> Span.t
 
   val span_start: t -> int
 
@@ -206,7 +206,7 @@ module Node: sig
   val text: t -> string
 
   (** Source span covered by this node's syntactic tokens, excluding leading trivia. *)
-  val span: t -> Ceibo.Span.t
+  val span: t -> Span.t
 
   val span_start: t -> int
 
@@ -283,7 +283,7 @@ module TypeExpr: sig
 
   val kind: t -> Syntax_kind.t
 
-  val span: t -> Ceibo.Span.t
+  val span: t -> Span.t
 
   val width: t -> int
 
@@ -324,7 +324,7 @@ module RecordField: sig
 
   val kind: t -> Syntax_kind.t
 
-  val span: t -> Ceibo.Span.t
+  val span: t -> Span.t
 
   val width: t -> int
 
@@ -347,7 +347,7 @@ module RecordType: sig
 
   val kind: t -> Syntax_kind.t
 
-  val span: t -> Ceibo.Span.t
+  val span: t -> Span.t
 
   val width: t -> int
 
@@ -368,7 +368,7 @@ module RecordExprField: sig
 
   val kind: t -> Syntax_kind.t
 
-  val span: t -> Ceibo.Span.t
+  val span: t -> Span.t
 
   val width: t -> int
 end
@@ -403,7 +403,7 @@ module VariantConstructor: sig
 
   val kind: t -> Syntax_kind.t
 
-  val span: t -> Ceibo.Span.t
+  val span: t -> Span.t
 
   val width: t -> int
 
@@ -432,7 +432,7 @@ module VariantType: sig
 
   val kind: t -> Syntax_kind.t
 
-  val span: t -> Ceibo.Span.t
+  val span: t -> Span.t
 
   val width: t -> int
 
@@ -495,7 +495,7 @@ module Pattern: sig
 
   val kind: t -> Syntax_kind.t
 
-  val span: t -> Ceibo.Span.t
+  val span: t -> Span.t
 
   val width: t -> int
 
@@ -520,7 +520,7 @@ module AttributePattern: sig
 
   val kind: t -> Syntax_kind.t
 
-  val span: t -> Ceibo.Span.t
+  val span: t -> Span.t
 
   val width: t -> int
 
@@ -539,7 +539,7 @@ module ExtensionPattern: sig
 
   val kind: t -> Syntax_kind.t
 
-  val span: t -> Ceibo.Span.t
+  val span: t -> Span.t
 
   val width: t -> int
 
@@ -556,7 +556,7 @@ module LocallyAbstractTypePattern: sig
 
   val kind: t -> Syntax_kind.t
 
-  val span: t -> Ceibo.Span.t
+  val span: t -> Span.t
 
   val width: t -> int
 
@@ -585,7 +585,7 @@ module FirstClassModulePattern: sig
 
   val kind: t -> Syntax_kind.t
 
-  val span: t -> Ceibo.Span.t
+  val span: t -> Span.t
 
   val width: t -> int
 
@@ -613,7 +613,7 @@ module RecordPattern: sig
 
   val kind: t -> Syntax_kind.t
 
-  val span: t -> Ceibo.Span.t
+  val span: t -> Span.t
 
   val width: t -> int
 
@@ -641,7 +641,7 @@ module LocalOpenPattern: sig
 
   val kind: t -> Syntax_kind.t
 
-  val span: t -> Ceibo.Span.t
+  val span: t -> Span.t
 
   val width: t -> int
 
@@ -681,7 +681,7 @@ module Parameter: sig
 
   val kind: t -> Syntax_kind.t
 
-  val span: t -> Ceibo.Span.t
+  val span: t -> Span.t
 
   val width: t -> int
 
@@ -713,7 +713,7 @@ module MatchCase: sig
 
   val kind: t -> Syntax_kind.t
 
-  val span: t -> Ceibo.Span.t
+  val span: t -> Span.t
 
   val width: t -> int
 
@@ -737,7 +737,7 @@ module LetBinding: sig
 
   val kind: t -> Syntax_kind.t
 
-  val span: t -> Ceibo.Span.t
+  val span: t -> Span.t
 
   val width: t -> int
 
@@ -840,7 +840,7 @@ module Expr: sig
 
   val kind: t -> Syntax_kind.t
 
-  val span: t -> Ceibo.Span.t
+  val span: t -> Span.t
 
   val width: t -> int
 
@@ -871,7 +871,7 @@ module AttributeExpr: sig
 
   val kind: t -> Syntax_kind.t
 
-  val span: t -> Ceibo.Span.t
+  val span: t -> Span.t
 
   val width: t -> int
 
@@ -890,7 +890,7 @@ module ExtensionExpr: sig
 
   val kind: t -> Syntax_kind.t
 
-  val span: t -> Ceibo.Span.t
+  val span: t -> Span.t
 
   val width: t -> int
 
@@ -908,7 +908,7 @@ module RecordExpr: sig
 
   val kind: t -> Syntax_kind.t
 
-  val span: t -> Ceibo.Span.t
+  val span: t -> Span.t
 
   val width: t -> int
 
@@ -944,7 +944,7 @@ module LocalOpenExpr: sig
 
   val kind: t -> Syntax_kind.t
 
-  val span: t -> Ceibo.Span.t
+  val span: t -> Span.t
 
   val width: t -> int
 
@@ -963,7 +963,7 @@ module LetModuleExpr: sig
 
   val kind: t -> Syntax_kind.t
 
-  val span: t -> Ceibo.Span.t
+  val span: t -> Span.t
 
   val width: t -> int
 
@@ -994,7 +994,7 @@ module LetExceptionExpr: sig
 
   val kind: t -> Syntax_kind.t
 
-  val span: t -> Ceibo.Span.t
+  val span: t -> Span.t
 
   val width: t -> int
 
@@ -1023,7 +1023,7 @@ module UnreachableExpr: sig
 
   val kind: t -> Syntax_kind.t
 
-  val span: t -> Ceibo.Span.t
+  val span: t -> Span.t
 
   val width: t -> int
 
@@ -1042,7 +1042,7 @@ module FirstClassModuleExpr: sig
 
   val kind: t -> Syntax_kind.t
 
-  val span: t -> Ceibo.Span.t
+  val span: t -> Span.t
 
   val width: t -> int
 
@@ -1074,7 +1074,7 @@ module BindingOperatorExpr: sig
 
   val kind: t -> Syntax_kind.t
 
-  val span: t -> Ceibo.Span.t
+  val span: t -> Span.t
 
   val width: t -> int
 
@@ -1115,7 +1115,7 @@ module ModuleTypeExpr: sig
 
   val kind: t -> Syntax_kind.t
 
-  val span: t -> Ceibo.Span.t
+  val span: t -> Span.t
 
   val width: t -> int
 
@@ -1167,7 +1167,7 @@ module ModuleExpr: sig
 
   val kind: t -> Syntax_kind.t
 
-  val span: t -> Ceibo.Span.t
+  val span: t -> Span.t
 
   val width: t -> int
 
@@ -1206,7 +1206,7 @@ module StructureItem: sig
 
   val kind: t -> Syntax_kind.t
 
-  val span: t -> Ceibo.Span.t
+  val span: t -> Span.t
 
   val width: t -> int
 
@@ -1240,7 +1240,7 @@ module SignatureItem: sig
 
   val kind: t -> Syntax_kind.t
 
-  val span: t -> Ceibo.Span.t
+  val span: t -> Span.t
 
   val width: t -> int
 
@@ -1261,7 +1261,7 @@ module LetDeclaration: sig
 
   val kind: t -> Syntax_kind.t
 
-  val span: t -> Ceibo.Span.t
+  val span: t -> Span.t
 
   val width: t -> int
 
@@ -1339,7 +1339,7 @@ module TypeDeclaration: sig
 
   val kind: t -> Syntax_kind.t
 
-  val span: t -> Ceibo.Span.t
+  val span: t -> Span.t
 
   val width: t -> int
 
@@ -1375,7 +1375,7 @@ module TypeExtensionDeclaration: sig
 
   val kind: t -> Syntax_kind.t
 
-  val span: t -> Ceibo.Span.t
+  val span: t -> Span.t
 
   val width: t -> int
 
@@ -1445,7 +1445,7 @@ module ModuleDeclaration: sig
 
   val kind: t -> Syntax_kind.t
 
-  val span: t -> Ceibo.Span.t
+  val span: t -> Span.t
 
   val width: t -> int
 
@@ -1504,7 +1504,7 @@ module ModuleTypeDeclaration: sig
 
   val kind: t -> Syntax_kind.t
 
-  val span: t -> Ceibo.Span.t
+  val span: t -> Span.t
 
   val width: t -> int
 
@@ -1559,7 +1559,7 @@ module ModuleTypeConstraint: sig
 
   val kind: t -> Syntax_kind.t
 
-  val span: t -> Ceibo.Span.t
+  val span: t -> Span.t
 
   val width: t -> int
 
@@ -1574,7 +1574,7 @@ module OpenDeclaration: sig
 
   val kind: t -> Syntax_kind.t
 
-  val span: t -> Ceibo.Span.t
+  val span: t -> Span.t
 
   val width: t -> int
 
@@ -1589,7 +1589,7 @@ module IncludeDeclaration: sig
 
   val kind: t -> Syntax_kind.t
 
-  val span: t -> Ceibo.Span.t
+  val span: t -> Span.t
 
   val width: t -> int
 
@@ -1613,7 +1613,7 @@ module ValueDeclaration: sig
 
   val kind: t -> Syntax_kind.t
 
-  val span: t -> Ceibo.Span.t
+  val span: t -> Span.t
 
   val width: t -> int
 
@@ -1648,7 +1648,7 @@ module ExternalDeclaration: sig
 
   val kind: t -> Syntax_kind.t
 
-  val span: t -> Ceibo.Span.t
+  val span: t -> Span.t
 
   val width: t -> int
 
@@ -1691,7 +1691,7 @@ module ExceptionDeclaration: sig
 
   val kind: t -> Syntax_kind.t
 
-  val span: t -> Ceibo.Span.t
+  val span: t -> Span.t
 
   val width: t -> int
 
@@ -1710,7 +1710,7 @@ module ExtensionItem: sig
 
   val kind: t -> Syntax_kind.t
 
-  val span: t -> Ceibo.Span.t
+  val span: t -> Span.t
 
   val width: t -> int
 
@@ -1727,7 +1727,7 @@ module AttributeItem: sig
 
   val kind: t -> Syntax_kind.t
 
-  val span: t -> Ceibo.Span.t
+  val span: t -> Span.t
 
   val width: t -> int
 
@@ -1744,7 +1744,7 @@ module ExprItem: sig
 
   val kind: t -> Syntax_kind.t
 
-  val span: t -> Ceibo.Span.t
+  val span: t -> Span.t
 
   val width: t -> int
 
@@ -1759,7 +1759,7 @@ module Implementation: sig
 
   val kind: t -> Syntax_kind.t
 
-  val span: t -> Ceibo.Span.t
+  val span: t -> Span.t
 
   val width: t -> int
 
@@ -1776,7 +1776,7 @@ module Interface: sig
 
   val kind: t -> Syntax_kind.t
 
-  val span: t -> Ceibo.Span.t
+  val span: t -> Span.t
 
   val width: t -> int
 
@@ -1796,7 +1796,7 @@ module SourceFile: sig
 
   val kind: t -> Syntax_kind.t
 
-  val span: t -> Ceibo.Span.t
+  val span: t -> Span.t
 
   val width: t -> int
 

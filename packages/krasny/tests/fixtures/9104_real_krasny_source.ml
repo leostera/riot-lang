@@ -95,14 +95,8 @@ let split_trailing_comment_block text =
       String.sub body suffix_start (String.length body - suffix_start)
       ^ trailing_layout )
 
-let source_of_syntax_node (node : Syn.Cst.syntax_node) =
-  let buffer = IO.Buffer.create 1024 in
-  Syn.Ceibo.Red.SyntaxNode.preorder node (function
-    | Syn.Ceibo.Red.Token token ->
-        IO.Buffer.add_string buffer (Syn.Ceibo.Red.SyntaxToken.text token)
-    | Syn.Ceibo.Red.Node _ ->
-        ());
-  IO.Buffer.contents buffer |> trim_trailing_newlines
+let source_of_syntax_node node =
+  Syn.Ast.Node.text node |> trim_trailing_newlines
 
 let source_of_token token = Syn.Cst.Token.text token
 let source_of_ident ident = Syn.Cst.Ident.segments ident |> List.map source_of_token |> String.concat "."
@@ -175,19 +169,17 @@ let fresh_match_parameter_name syntax_node =
     ]
 
 let syntax_node_has_comment_like_trivia (node : Syn.Cst.syntax_node) =
-  let found = ref false in
-  Syn.Ceibo.Red.SyntaxNode.preorder node (function
-    | Syn.Ceibo.Red.Token token -> (
-        match Syn.Ceibo.Red.SyntaxToken.kind token with
-        | Syn.SyntaxKind.COMMENT | Syn.SyntaxKind.DOCSTRING ->
-            found := true
-        | _ ->
-            ())
-    | Syn.Ceibo.Red.Node _ ->
-        ());
-  !found
+  Syn.Ast.Node.fold_token node ~init:false ~fn:(fun token found ->
+    if found then
+      Syn.Ast.Return true
+    else
+      match Syn.Ast.Token.kind token with
+      | Syn.SyntaxKind.COMMENT | Syn.SyntaxKind.DOCSTRING ->
+          Syn.Ast.Return true
+      | _ ->
+          Syn.Ast.Continue false)
 
-let source_of_span source (span : Syn.Ceibo.Span.t) =
+let source_of_span source (span : Syn.Span.t) =
   let source_length = String.length source in
   let start =
     if span.start < 0 then
@@ -211,8 +203,9 @@ let source_of_span source (span : Syn.Ceibo.Span.t) =
     String.sub source start (end_ - start)
 
 let source_between source ~start ~end_ =
-  source_of_span source (Syn.Ceibo.Span.make ~start ~end_)
+  source_of_span source (Syn.Span.make ~start ~end_)
 
 let is_whitespace_only text = String.trim text = ""
 let contains_comment_like_text text = contains_substring text "(*"
-let source_of_node_from_source source node = source_of_span source (Syn.Ceibo.Red.SyntaxNode.span node)
+let source_of_node_from_source source node =
+  source_of_span source (Syn.Ast.Node.span node)

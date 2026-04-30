@@ -298,8 +298,8 @@ module Ident = struct
         let last_raw =
           Vector.get_unchecked last.tree.Syntax_tree.raw_tokens ~at:last_leaf.body_raw
         in
-        Ceibo.Span.make ~start:first_raw.Raw_token.span.start ~end_:last_raw.Raw_token.span.end_
-    | _ -> Ceibo.Span.make ~start:0 ~end_:0
+        Span.make ~start:first_raw.Raw_token.span.start ~end_:last_raw.Raw_token.span.end_
+    | _ -> Span.make ~start:0 ~end_:0
 
   let rec width = function
     | Bare token -> Syntax_tree.token_width token.tree (syntax_token token)
@@ -967,11 +967,11 @@ let first_let_binding_child = fun (node: node) ->
 
 let span_of_raw_range = fun tree ~raw_lo ~raw_hi ->
   if Int.(raw_hi <= raw_lo) then
-    Ceibo.Span.make ~start:0 ~end_:0
+    Span.make ~start:0 ~end_:0
   else
     let first = Vector.get_unchecked tree.Syntax_tree.raw_tokens ~at:raw_lo in
     let last = Vector.get_unchecked tree.Syntax_tree.raw_tokens ~at:(Int.sub raw_hi 1) in
-    Ceibo.Span.make ~start:first.Raw_token.span.start ~end_:last.Raw_token.span.end_
+    Span.make ~start:first.Raw_token.span.start ~end_:last.Raw_token.span.end_
 
 let rec for_each_token_in_node = fun (node: node) ~fn ->
   Syntax_tree.for_each_child
@@ -1082,9 +1082,9 @@ module Token = struct
     let leaf = syntax_token token in
     (Vector.get_unchecked token.tree.Syntax_tree.raw_tokens ~at:leaf.Syntax_tree.body_raw).Raw_token.span
 
-  let span_start = fun token -> (span token).Ceibo.Span.start
+  let span_start = fun token -> (span token).Span.start
 
-  let span_end = fun token -> (span token).Ceibo.Span.end_
+  let span_end = fun token -> (span token).Span.end_
 
   let leading_text = fun (token: token) ->
     let syntax_token = syntax_token token in
@@ -1228,16 +1228,16 @@ module Node = struct
         (
           match !first with
           | Some _ -> ()
-          | None -> first := Some span.Ceibo.Span.start
+          | None -> first := Some span.Span.start
         );
-        last := Some span.Ceibo.Span.end_);
+        last := Some span.Span.end_);
     match (!first, !last) with
-    | (Some start, Some end_) -> Ceibo.Span.make ~start ~end_
-    | _ -> Ceibo.Span.make ~start:0 ~end_:0
+    | (Some start, Some end_) -> Span.make ~start ~end_
+    | _ -> Span.make ~start:0 ~end_:0
 
-  let span_start = fun node -> (span node).Ceibo.Span.start
+  let span_start = fun node -> (span node).Span.start
 
-  let span_end = fun node -> (span node).Ceibo.Span.end_
+  let span_end = fun node -> (span node).Span.end_
 
   let raw_range = fun (node: node) ->
     let node = syntax_node node in
@@ -2539,7 +2539,7 @@ module Expr: sig
 
   val kind: t -> Syntax_kind.t
 
-  val span: t -> Ceibo.Span.t
+  val span: t -> Span.t
 
   val width: t -> int
 
@@ -3018,7 +3018,7 @@ module AttributeExpr: sig
 
   val kind: t -> Syntax_kind.t
 
-  val span: t -> Ceibo.Span.t
+  val span: t -> Span.t
 
   val width: t -> int
 
@@ -3059,7 +3059,7 @@ module ExtensionExpr: sig
 
   val kind: t -> Syntax_kind.t
 
-  val span: t -> Ceibo.Span.t
+  val span: t -> Span.t
 
   val width: t -> int
 
@@ -3097,7 +3097,7 @@ module RecordExpr: sig
 
   val kind: t -> Syntax_kind.t
 
-  val span: t -> Ceibo.Span.t
+  val span: t -> Span.t
 
   val width: t -> int
 
@@ -3208,7 +3208,7 @@ module LocalOpenExpr: sig
 
   val kind: t -> Syntax_kind.t
 
-  val span: t -> Ceibo.Span.t
+  val span: t -> Span.t
 
   val width: t -> int
 
@@ -3331,7 +3331,7 @@ module LetModuleExpr: sig
 
   val kind: t -> Syntax_kind.t
 
-  val span: t -> Ceibo.Span.t
+  val span: t -> Span.t
 
   val width: t -> int
 
@@ -3484,7 +3484,7 @@ module LetExceptionExpr: sig
 
   val kind: t -> Syntax_kind.t
 
-  val span: t -> Ceibo.Span.t
+  val span: t -> Span.t
 
   val width: t -> int
 
@@ -3613,7 +3613,7 @@ module UnreachableExpr: sig
 
   val kind: t -> Syntax_kind.t
 
-  val span: t -> Ceibo.Span.t
+  val span: t -> Span.t
 
   val width: t -> int
 
@@ -3646,7 +3646,7 @@ module FirstClassModuleExpr: sig
 
   val kind: t -> Syntax_kind.t
 
-  val span: t -> Ceibo.Span.t
+  val span: t -> Span.t
 
   val width: t -> int
 
@@ -3770,7 +3770,7 @@ module BindingOperatorExpr: sig
 
   val kind: t -> Syntax_kind.t
 
-  val span: t -> Ceibo.Span.t
+  val span: t -> Span.t
 
   val width: t -> int
 
@@ -3901,7 +3901,7 @@ module Pattern: sig
 
   val kind: t -> Syntax_kind.t
 
-  val span: t -> Ceibo.Span.t
+  val span: t -> Span.t
 
   val width: t -> int
 
@@ -4161,7 +4161,7 @@ module AttributePattern: sig
 
   val kind: t -> Syntax_kind.t
 
-  val span: t -> Ceibo.Span.t
+  val span: t -> Span.t
 
   val width: t -> int
 
@@ -4202,7 +4202,7 @@ module ExtensionPattern: sig
 
   val kind: t -> Syntax_kind.t
 
-  val span: t -> Ceibo.Span.t
+  val span: t -> Span.t
 
   val width: t -> int
 
@@ -4239,7 +4239,7 @@ module LocallyAbstractTypePattern: sig
 
   val kind: t -> Syntax_kind.t
 
-  val span: t -> Ceibo.Span.t
+  val span: t -> Span.t
 
   val width: t -> int
 
@@ -4300,7 +4300,7 @@ module FirstClassModulePattern: sig
 
   val kind: t -> Syntax_kind.t
 
-  val span: t -> Ceibo.Span.t
+  val span: t -> Span.t
 
   val width: t -> int
 
@@ -4359,7 +4359,7 @@ module RecordPattern: sig
 
   val kind: t -> Syntax_kind.t
 
-  val span: t -> Ceibo.Span.t
+  val span: t -> Span.t
 
   val width: t -> int
 
@@ -4429,7 +4429,7 @@ module LocalOpenPattern: sig
 
   val kind: t -> Syntax_kind.t
 
-  val span: t -> Ceibo.Span.t
+  val span: t -> Span.t
 
   val width: t -> int
 
@@ -4586,7 +4586,7 @@ module Parameter: sig
 
   val kind: t -> Syntax_kind.t
 
-  val span: t -> Ceibo.Span.t
+  val span: t -> Span.t
 
   val width: t -> int
 
@@ -4714,7 +4714,7 @@ module MatchCase: sig
 
   val kind: t -> Syntax_kind.t
 
-  val span: t -> Ceibo.Span.t
+  val span: t -> Span.t
 
   val width: t -> int
 
@@ -4786,7 +4786,7 @@ module LetBinding: sig
 
   val kind: t -> Syntax_kind.t
 
-  val span: t -> Ceibo.Span.t
+  val span: t -> Span.t
 
   val width: t -> int
 

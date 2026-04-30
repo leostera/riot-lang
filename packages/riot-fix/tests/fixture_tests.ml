@@ -105,7 +105,7 @@ Replace direct `Pervasives` references with `Std`.
     Api.Diagnostic.make
       ~severity:Warning
       ~kind
-      ~span:(Syn.Ceibo.Span.make
+      ~span:(Syn.Span.make
         ~start:(Syn.Ast.Token.span_start token)
         ~end_:(Syn.Ast.Token.span_end token))
       ?suggestion

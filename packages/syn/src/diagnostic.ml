@@ -65,7 +65,7 @@ type kind =
 
 type t = {
   kind: kind;
-  span: Ceibo.Span.t;
+  span: Span.t;
 }
 
 let make = fun ~kind ~span -> { kind; span }
@@ -555,7 +555,7 @@ let to_string = fun err ->
     | Some fix -> "fix: " ^ fix ^ "\n\nhint: " ^ hint
     | None -> "hint: " ^ hint
   in
-  "Parse error \"" ^ id ^ "\" at " ^ Ceibo.Span.to_string err.span ^ ": " ^ message
+  "Parse error \"" ^ id ^ "\" at " ^ Span.to_string err.span ^ ": " ^ message
 
 let found_token = fun diag ->
   match diag.kind with
@@ -727,7 +727,7 @@ let from_json = fun json ->
               )
             |> Option.unwrap_or ~default:0
           in
-          let span = Ceibo.Span.make ~start ~end_ in
+          let span = Span.make ~start ~end_ in
           match id_opt with
           | Some id ->
               let expected =

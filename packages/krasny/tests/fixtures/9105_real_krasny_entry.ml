@@ -30,28 +30,10 @@ let format (result : Syn.Parser.parse_result) =
 
 (* TODO(@leostera): rewrite this hasher to use Crypto.Sha521.create () *)
 let syntax_hash (result : Syn.Parser.parse_result) =
-  let buffer = IO.Buffer.create 1024 in
-  let rec write_element = function
-    | Syn.Ceibo.Green.Token _ as element -> (
-        match Syn.Ceibo.Green.kind element with
-        | Syn.SyntaxKind.WHITESPACE -> ()
-        | kind ->
-            IO.Buffer.add_string buffer "T(";
-            IO.Buffer.add_string buffer (Syn.SyntaxKind.to_string kind);
-            IO.Buffer.add_string buffer ":";
-            IO.Buffer.add_string buffer
-              (Syn.Ceibo.Green.text element |> Option.expect ~msg:"token text");
-            IO.Buffer.add_string buffer ")")
-    | Syn.Ceibo.Green.Node node as element ->
-        IO.Buffer.add_string buffer "N(";
-        IO.Buffer.add_string buffer
-          (Syn.SyntaxKind.to_string (Syn.Ceibo.Green.kind element));
-        IO.Buffer.add_string buffer "[";
-        List.iter write_element (Syn.Ceibo.Green.children node);
-        IO.Buffer.add_string buffer "])"
-  in
-  write_element (Syn.Ceibo.Green.Node result.tree);
-  IO.Buffer.contents buffer |> Crypto.hash_string |> Crypto.Digest.hex
+  Syn.SyntaxTree.to_json result.tree
+  |> Data.Json.to_string
+  |> Crypto.hash_string
+  |> Crypto.Digest.hex
 
 let write ~writer result =
   match format result with

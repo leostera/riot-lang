@@ -54,7 +54,7 @@ let make_diagnostic = fun name ->
   Diagnostic.make
     ~severity:Warning
     ~kind:(Diagnostic.Known { rule_id; message = rule_description })
-    ~span:(Syn.Ceibo.Span.make ~start:0 ~end_:0)
+    ~span:(Syn.Span.make ~start:0 ~end_:0)
     ~suggestion:("Rename `" ^ name ^ "` to use lowercase letters, digits, and underscores only.")
     ()
 

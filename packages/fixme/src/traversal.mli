@@ -84,7 +84,7 @@ type 'acc visitor = {
          visit_node = (fun _ acc -> acc);
          visit_token =
            (fun tok acc ->
-             if Syn.Ceibo.Red.SyntaxToken.kind tok = IDENT then acc + 1 else acc);
+             if Syn.Ast.Token.kind tok = IDENT then acc + 1 else acc);
        }
        0
        tree

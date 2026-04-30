@@ -21,7 +21,7 @@ let bool_type = fun () -> nominal "bool"
 let scheme type_ = TypeScheme.monomorphic type_
 
 let origin: Ast.origin = {
-  span = Ceibo.Span.make ~start:0 ~end_:0;
+  span = Syn.Span.make ~start:0 ~end_:0;
   kind = Syn.SyntaxKind.TYPE_DECL;
 }
 

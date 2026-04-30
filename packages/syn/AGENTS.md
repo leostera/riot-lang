@@ -11,21 +11,24 @@ and Ast typed-view layer.
    the single parser/traversal path.
 3. Preserve lossless parsing. Raw tokens, spans, diagnostics, comments, and
    docstrings must stay recoverable from the streaming parser tree.
-4. Keep parser-built syntax trees trivia-free in child arrays. Comments,
+4. Use `Syn.Span.t` for source ranges exposed by tokens, diagnostics, syntax
+   trees, and Ast views. Keep Syn self-contained; do not re-export generic
+   red/green tree packages through the public facade.
+5. Keep parser-built syntax trees trivia-free in child arrays. Comments,
    docstrings, and whitespace belong in token-attached leading trivia.
-5. Keep formatter-facing Ast whitespace trivia collapsed. Exact raw whitespace
+6. Keep formatter-facing Ast whitespace trivia collapsed. Exact raw whitespace
    can stay in the backing tree for spans and diagnostics, but Ast token views
    should expose whitespace as a structural marker.
-6. Keep docstring delimiter structure explicit on `Ast.Token`: opening,
+7. Keep docstring delimiter structure explicit on `Ast.Token`: opening,
    delimiter-free content, and optional closing delimiter must be available
    without rescanning raw comment text.
-7. Prefer explicit `SyntaxKind` facts and spans over inferred syntax shape.
-8. When syntax support grows, add parser/Ast coverage before relying on that
+8. Prefer explicit `SyntaxKind` facts and spans over inferred syntax shape.
+9. When syntax support grows, add parser/Ast coverage before relying on that
    syntax from downstream packages.
-9. Keep the OCaml class/object subset outside the supported grammar:
+10. Keep the OCaml class/object subset outside the supported grammar:
    `class`, `object`, `method`, `new`, `virtual`, `inherit`, `initializer`,
    object types, and object method calls.
-10. Keep `Syn.Deps` on the Ast path and differential against `ocamldep`-style
+11. Keep `Syn.Deps` on the Ast path and differential against `ocamldep`-style
    expectations for dependency behavior.
-11. Prefer `Std.Test.FixtureRunner` plus `Std.Test.Snapshot` for fixture-backed
+12. Prefer `Std.Test.FixtureRunner` plus `Std.Test.Snapshot` for fixture-backed
     parser and diagnostic suites.

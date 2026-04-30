@@ -4,7 +4,7 @@ open Std.Collections
 module SurfacePath = Model.Surface_path
 
 type origin = {
-  span: Ceibo.Span.t;
+  span: Syn.Span.t;
   kind: Syn.SyntaxKind.t;
 }
 
@@ -596,7 +596,7 @@ let origin_from_type_expr = fun type_expr -> {
   kind = Syn.Ast.TypeExpr.kind type_expr;
 }
 
-let origin_has_same_span = fun (origin: origin) (span: Ceibo.Span.t) ->
+let origin_has_same_span = fun (origin: origin) (span: Syn.Span.t) ->
   Int.equal origin.span.start span.start && Int.equal origin.span.end_ span.end_
 
 let origin_has_same_span_as_node = fun origin node ->
@@ -2248,8 +2248,8 @@ let span_serializer =
     (
       Serde.Ser.fields
         [
-          Serde.Ser.field "start" Serde.Ser.int (fun (span: Ceibo.Span.t) -> span.start);
-          Serde.Ser.field "end" Serde.Ser.int (fun (span: Ceibo.Span.t) -> span.end_);
+          Serde.Ser.field "start" Serde.Ser.int (fun (span: Syn.Span.t) -> span.start);
+          Serde.Ser.field "end" Serde.Ser.int (fun (span: Syn.Span.t) -> span.end_);
         ]
     )
 

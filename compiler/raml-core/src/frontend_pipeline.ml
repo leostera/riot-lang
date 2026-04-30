@@ -25,7 +25,7 @@ let core_ir = fun pipeline -> pipeline.core_ir
 let wrap_issue = fun stage diagnostic ->
   Json.obj [ ("stage", Json.string stage); ("diagnostic", diagnostic) ]
 
-let span_to_json = fun (span: Syn.Ceibo.Span.t) ->
+let span_to_json = fun (span: Syn.Span.t) ->
   Json.obj [ ("start", Json.int span.start); ("end", Json.int span.end_) ]
 
 let diagnostic_to_json = fun diagnostic ->

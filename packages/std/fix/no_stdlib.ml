@@ -89,7 +89,7 @@ let make_suggestion = fun text ->
   | None -> None
 
 let span_of_ast_token = fun token ->
-  Syn.Ceibo.Span.make
+  Syn.Span.make
     ~start:(Ast.Token.span_start token)
     ~end_:(Ast.Token.span_end token)
 

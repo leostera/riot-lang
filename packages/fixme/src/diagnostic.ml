@@ -19,7 +19,7 @@ type kind =
 type t = {
   severity: severity;
   kind: kind;
-  span: Syn.Ceibo.Span.t;
+  span: Syn.Span.t;
   suggestion: string option;
   fix: Fix.fix option;
 }

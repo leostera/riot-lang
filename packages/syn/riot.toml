@@ -16,4 +16,3 @@ path = "src/main.ml"
 std = { path = "../std" , version = "*"}
 tty = { path  ="../tty", version = "*"} 
 colors = { path ="../colors", version = "*"}
-ceibo = { path = "../ceibo", version = "*" }

@@ -30,7 +30,7 @@ type fix = {
 }
 (** Concrete text edit produced after lowering a syntax-directed fix. *)
 type text_edit = {
-  span: Syn.Ceibo.Span.t;
+  span: Syn.Span.t;
   new_text: string;
 }
 

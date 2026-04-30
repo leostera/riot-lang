@@ -18,7 +18,7 @@ type fix = Fixme.Fix.fix = {
   operations: operation list;
 }
 type text_edit = Fixme.Fix.text_edit = {
-  span: Syn.Ceibo.Span.t;
+  span: Syn.Span.t;
   new_text: string;
 }
 val source_of_node: Syn.Ast.Node.t -> replacement

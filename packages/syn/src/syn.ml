@@ -1,6 +1,6 @@
 open Std
 
-module Ceibo = Ceibo
+module Span = Span
 module Error = Error
 module Token = Token
 module Keyword = Keyword

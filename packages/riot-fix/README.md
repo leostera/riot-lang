@@ -4,8 +4,8 @@
 
 It is built on top of `syn`:
 
-- Ceibo provides exact lossless syntax and spans
-- `Syn.Ast` provides typed views over the lossless syntax tree
+- `Syn.SyntaxTree` provides exact lossless syntax and spans
+- `Syn.Ast` provides typed views over that lossless syntax tree
 - `fixme` provides the shared rule-authoring surface
 
 ## Current model
@@ -14,7 +14,7 @@ The pipeline is:
 
 1. parse each file once with `syn`
 2. keep parse diagnostics separate from lint diagnostics
-3. run enabled rules against the red tree plus typed Ast views
+3. run enabled rules against typed Ast views plus exact syntax spans
 4. apply only safe, package-owned fixes
 5. report remaining issues in text or JSON
 
@@ -67,7 +67,7 @@ Rules are defined with `fixme` and run against:
 
 - the file path
 - the typed `Syn.Ast.SourceFile` view
-- the Ceibo red tree for exact source traversal
+- exact spans and tokens from the backing `Syn.SyntaxTree`
 
 At a high level:
 
@@ -77,9 +77,9 @@ let make () =
     ~id:"snake-case-type-names"
     ~description:"Type names should use snake_case instead of camelCase"
     ~explain:"Prefer snake_case type names so declarations read consistently."
-    ~run:(fun context red_root ->
+    ~run:(fun context source_file ->
       ignore context;
-      ignore red_root;
+      ignore source_file;
       [])
     ()
 ```

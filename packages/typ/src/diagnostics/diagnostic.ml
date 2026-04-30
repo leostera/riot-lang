@@ -1,31 +1,31 @@
 open Std
 
 type unsupported_syntax = {
-  span: Ceibo.Span.t;
+  span: Syn.Span.t;
   kind: Syn.SyntaxKind.t;
   summary: string;
 }
 
 type unsupported_type = {
-  span: Ceibo.Span.t;
+  span: Syn.Span.t;
   summary: string;
 }
 
 type annotation_mismatch = {
-  span: Ceibo.Span.t;
-  annotation_span: Ceibo.Span.t;
+  span: Syn.Span.t;
+  annotation_span: Syn.Span.t;
   expected: string;
   actual: string;
 }
 
 type infinite_substitution = {
-  span: Ceibo.Span.t;
+  span: Syn.Span.t;
   var: string;
   type_: string;
 }
 
 type type_mismatch = {
-  span: Ceibo.Span.t;
+  span: Syn.Span.t;
   expected: string;
   actual: string;
 }
@@ -69,8 +69,8 @@ let to_string diagnostic =
 let span_serializer = Serde.Ser.record
   (Serde.Ser.fields
     [
-      Serde.Ser.field "start" Serde.Ser.int (fun (span: Ceibo.Span.t) -> span.start);
-      Serde.Ser.field "end" Serde.Ser.int (fun (span: Ceibo.Span.t) -> span.end_);
+      Serde.Ser.field "start" Serde.Ser.int (fun (span: Syn.Span.t) -> span.start);
+      Serde.Ser.field "end" Serde.Ser.int (fun (span: Syn.Span.t) -> span.end_);
     ])
 
 let unsupported_syntax_serializer = Serde.Ser.record

@@ -116,13 +116,13 @@ let peek_is = fun p offset kind -> kind_is (peek_kind p offset) kind
 
 let is_eof = fun p -> at p Syntax_kind.EOF
 
-let current_offset = fun p -> (current p).Raw_token.span.Ceibo.Span.start
+let current_offset = fun p -> (current p).Raw_token.span.Span.start
 
-let previous_end_offset = fun p -> (previous p).Raw_token.span.Ceibo.Span.end_
+let previous_end_offset = fun p -> (previous p).Raw_token.span.Span.end_
 
 let current_is_tight_after_previous = fun p -> Int.equal (current_offset p) (previous_end_offset p)
 
-let zero_span = fun offset -> Ceibo.Span.make ~start:offset ~end_:offset
+let zero_span = fun offset -> Span.make ~start:offset ~end_:offset
 
 let token_text = fun p raw -> Raw_token.text_slice ~source:p.source raw
 
@@ -135,9 +135,9 @@ let text_between = fun p ~start ~end_ ->
     |> Slice.to_string
 
 let raw_char_is = fun p raw ~offset expected ->
-  let index = raw.Raw_token.span.Ceibo.Span.start + offset in
-  raw.Raw_token.span.Ceibo.Span.start >= 0
-  && index < raw.Raw_token.span.Ceibo.Span.end_
+  let index = raw.Raw_token.span.Span.start + offset in
+  raw.Raw_token.span.Span.start >= 0
+  && index < raw.Raw_token.span.Span.end_
   && index < Slice.length p.source && try Slice.get_unchecked p.source ~at:index = expected with
   | Invalid_argument _ -> false
 
@@ -145,8 +145,8 @@ let raw_starts_with = fun p raw expected -> raw_char_is p raw ~offset:0 expected
 
 let raw_text_is = fun p raw expected ->
   let len = String.length expected in
-  let start = raw.Raw_token.span.Ceibo.Span.start in
-  let end_ = raw.Raw_token.span.Ceibo.Span.end_ in
+  let start = raw.Raw_token.span.Span.start in
+  let end_ = raw.Raw_token.span.Span.end_ in
   let width = end_ - start in
   width = len && start >= 0 && end_ <= Slice.length p.source && try
     let rec loop index =
@@ -317,9 +317,7 @@ let uppercase_type_variable_at = fun p ~quote ~ident ->
     ~text
     ~found:(legacy_token ident)
     ~text_found:text
-    ~span:(Ceibo.Span.make
-      ~start:quote.Raw_token.span.Ceibo.Span.start
-      ~end_:ident.Raw_token.span.Ceibo.Span.end_)
+    ~span:(Span.make ~start:quote.Raw_token.span.Span.start ~end_:ident.Raw_token.span.Span.end_)
 
 let unclosed_delimiter = fun p ~opener ->
   diagnostic_with_current_at
@@ -526,7 +524,7 @@ let expect_closer = fun p kind ~opener ->
     Event.Buffer.missing p.events ~kind ~offset:(current_offset p);
     let diagnostic = unclosed_delimiter p ~opener in
     if is_eof p then
-      let offset = diagnostic.Diagnostic.span.Ceibo.Span.start in
+      let offset = diagnostic.Diagnostic.span.Span.start in
       match p.last_eof_unclosed_delimiter_offset with
       | Some previous when previous = offset -> ()
       | _ ->
@@ -1546,16 +1544,11 @@ and parse_prefix_or_atom = fun p ~signature ~stop_at_item ~stop_at_semi ~stop_at
       bump p;
       let ident = current p in
       let text =
-        text_between
-          p
-          ~start:quote.Raw_token.span.Ceibo.Span.start
-          ~end_:ident.Raw_token.span.Ceibo.Span.end_
+        text_between p ~start:quote.Raw_token.span.Span.start ~end_:ident.Raw_token.span.Span.end_
       in
       Event.Buffer.error
         p.events
-        (Diagnostic.unclosed_char_literal
-          ~text
-          ~span:(zero_span ident.Raw_token.span.Ceibo.Span.end_));
+        (Diagnostic.unclosed_char_literal ~text ~span:(zero_span ident.Raw_token.span.Span.end_));
       bump p;
       complete p marker Syntax_kind.ERROR
   | Syntax_kind.UNKNOWN when raw_starts_with p (current p) '\'' ->
@@ -3010,7 +3003,7 @@ and parse_let_decl = fun p ~signature ->
   ignore (complete p marker kind)
 
 and raw_first_char = fun p raw ->
-  let index = raw.Raw_token.span.Ceibo.Span.start in
+  let index = raw.Raw_token.span.Span.start in
   if index < 0 || index >= Slice.length p.source then
     None
   else
@@ -3337,7 +3330,7 @@ and consume_type_variable = fun p ->
     (
       let ident = current p in
       let first =
-        try Some (Slice.get_unchecked p.source ~at:ident.Raw_token.span.Ceibo.Span.start) with
+        try Some (Slice.get_unchecked p.source ~at:ident.Raw_token.span.Span.start) with
         | Invalid_argument _ -> None
       in
       (

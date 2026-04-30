@@ -8,6 +8,8 @@
 
 * `riot lsp` doesn't use 200gb of ram
 
+* revisit all cli output -- i'd like it to be more inlined/interactive
+
 # Next
 
 * `riot lock` to relock project deps

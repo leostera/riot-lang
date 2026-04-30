@@ -35,7 +35,7 @@ let make_fix = fun token ->
     ~operations:[ Api.Fix.replace_token_with_text ~target:token ~text:"!=" ]
 
 let span_of_ast_token = fun token ->
-  Syn.Ceibo.Span.make
+  Syn.Span.make
     ~start:(Syn.Ast.Token.span_start token)
     ~end_:(Syn.Ast.Token.span_end token)
 

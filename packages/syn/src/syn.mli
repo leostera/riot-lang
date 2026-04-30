@@ -2,8 +2,8 @@ open Std
 
 (** Syn - OCaml lexer, streaming parser, diagnostics, and Ast views. *)
 
-(** Red-green utility library used for source spans. *)
-module Ceibo: module type of Ceibo
+(** Source-text spans used by tokens, diagnostics, and Ast views. *)
+module Span = Span
 
 (** Structured parse error descriptions. *)
 module Error: module type of Error

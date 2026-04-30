@@ -22,7 +22,7 @@ type fix = {
 }
 
 type text_edit = {
-  span: Syn.Ceibo.Span.t;
+  span: Syn.Span.t;
   new_text: string;
 }
 
@@ -66,12 +66,12 @@ let title = fun fix -> fix.title
 let operations = fun fix -> fix.operations
 
 let span_of_node = fun node ->
-  Syn.Ceibo.Span.make
+  Syn.Span.make
     ~start:(Syn.Ast.Node.span_start node)
     ~end_:(Syn.Ast.Node.span_end node)
 
 let span_of_token = fun token ->
-  Syn.Ceibo.Span.make
+  Syn.Span.make
     ~start:(Syn.Ast.Token.span_start token)
     ~end_:(Syn.Ast.Token.span_end token)
 
@@ -81,7 +81,7 @@ let target_span = fun target ->
   | Token token -> span_of_token token
 
 let source_slice = fun ~source span ->
-  let len = Syn.Ceibo.Span.(span.end_ - span.start) in
+  let len = Syn.Span.(span.end_ - span.start) in
   String.sub source ~offset:span.start ~len
 
 let replacement_text = fun ~source ->
@@ -91,7 +91,7 @@ let replacement_text = fun ~source ->
   | Text text -> text
 
 let make_insert_at = fun pos ~new_text ->
-  let span = Syn.Ceibo.Span.make ~start:pos ~end_:pos in
+  let span = Syn.Span.make ~start:pos ~end_:pos in
   { span; new_text }
 
 let lower_operation = fun ~source ->
@@ -108,7 +108,7 @@ let lower_operation = fun ~source ->
   | Swap { left; right } ->
       let left_span = target_span left in
       let right_span = target_span right in
-      if Syn.Ceibo.Span.overlaps left_span right_span then
+      if Syn.Span.overlaps left_span right_span then
         Error "Swap operations require non-overlapping syntax objects"
       else
         Ok [
@@ -160,7 +160,7 @@ let validate_edits = fun ~source edits ->
         | Error _ as err -> err
         | Ok () -> (
             match previous with
-            | Some prev when Syn.Ceibo.Span.overlaps prev.span edit.span ->
+            | Some prev when Syn.Span.overlaps prev.span edit.span ->
                 Error "Fix operations overlap and cannot be applied safely"
             | _ -> loop (Some edit) rest
           )
