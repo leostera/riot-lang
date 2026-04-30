@@ -71,13 +71,13 @@ let point_arb =
     ~small:(fun p ->
       let abs_x =
         if p.x < 0 then
-          -p.x
+          -(p.x)
         else
           p.x
       in
       let abs_y =
         if p.y < 0 then
-          -p.y
+          -(p.y)
         else
           p.y
       in

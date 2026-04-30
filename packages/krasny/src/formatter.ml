@@ -6702,13 +6702,12 @@ and render_match_cases_with_body_break = fun state cases force_body_break ->
         state
         (Vector.get_unchecked cases ~at:index)
         force_body_break;
-      if Int.(index < Int.sub length 1) then
-        (
-          emit_line state;
-          let next_case = Vector.get_unchecked cases ~at:(Int.add index 1) in
-          if match_case_has_leading_comment next_case then
-            emit_line state
-        );
+      if Int.(index < Int.sub length 1) then (
+        emit_line state;
+        let next_case = Vector.get_unchecked cases ~at:(Int.add index 1) in
+        if match_case_has_leading_comment next_case then
+          emit_line state
+      );
       loop (Int.add index 1)
     )
   in
