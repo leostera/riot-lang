@@ -296,53 +296,61 @@ let rec infer_expression (state: State.t) (expr: expression) =
   expr.type_ <- Some unified;
   unified
 
-and infer_record state record =
-  match record with
-  | { fields = []; _ } ->
-      (* todo: add diangostic! *)
-      State.fresh_var state
-  | { fields = field :: fields; update } -> (
-      match State.get_record_field state ~name:field.name with
-      | None ->
-          List.for_each
-            (field :: fields)
-            ~fn:(fun field ->
-              let _ = infer_expression state field.value in
-              ());
-          State.fresh_var state
+and infer_unknown_record state (fields: record_expression_field list) =
+  List.for_each
+    fields
+    ~fn:(fun field ->
+      let _ = infer_expression state field.value in
+      ());
+  State.fresh_var state
+
+and infer_record_field state record_type (field: record_expression_field) =
+  match State.get_record_field state ~name:field.name with
+  | Some info ->
+      let (field_owner_type, field_type) = instantiate_record_field state info in
+      unify
+        state
+        ~expected:record_type
+        ~actual:field_owner_type
+        ~on_error:(expression_constraint_diagnostic field.value);
+      let value_type = infer_expression state field.value in
+      unify
+        state
+        ~expected:field_type
+        ~actual:value_type
+        ~on_error:(expression_constraint_diagnostic field.value)
+  | None ->
+      let _ = infer_expression state field.value in
+      ()
+
+and infer_record_body state (fields: record_expression_field list) =
+  match fields with
+  | [] -> State.fresh_var state
+  | first_field :: _ -> (
+      match State.get_record_field state ~name:first_field.name with
+      | None -> infer_unknown_record state fields
       | Some info ->
           let (record_type, _) = instantiate_record_field state info in
-          let check_field (field: record_expression_field) =
-            match State.get_record_field state ~name:field.name with
-            | Some info ->
-                let (field_owner_type, field_type) = instantiate_record_field state info in
-                unify
-                  state
-                  ~expected:record_type
-                  ~actual:field_owner_type
-                  ~on_error:(expression_constraint_diagnostic field.value);
-                let value_type = infer_expression state field.value in
-                unify
-                  state
-                  ~expected:field_type
-                  ~actual:value_type
-                  ~on_error:(expression_constraint_diagnostic field.value)
-            | None ->
-                let _ = infer_expression state field.value in
-                ()
-          in
-          List.for_each (field :: fields) ~fn:check_field;
-          Option.for_each
-            update
-            ~fn:(fun update ->
-              let update_type = infer_expression state update in
-              unify
-                state
-                ~expected:record_type
-                ~actual:update_type
-                ~on_error:(expression_constraint_diagnostic update));
+          List.for_each fields ~fn:(infer_record_field state record_type);
           record_type
     )
+
+and infer_record state record =
+  match record with
+  | { update = None; fields = [] } ->
+      (* todo: add diangostic! *)
+      State.fresh_var state
+  | { update = Some update; fields = [] } -> infer_expression state update
+  | { update = None; fields } -> infer_record_body state fields
+  | { update = Some update; fields } ->
+      let record_type = infer_record_body state fields in
+      let update_type = infer_expression state update in
+      unify
+        state
+        ~expected:record_type
+        ~actual:update_type
+        ~on_error:(expression_constraint_diagnostic update);
+      record_type
 
 and infer_match state match_ =
   let scrutinee_type = infer_expression state match_.scrutinee in
