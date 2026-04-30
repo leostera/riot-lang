@@ -6,7 +6,10 @@
    tags: variants, enum
 *)
 
-type shape = Dot | Line | Area
+type shape =
+  | Dot
+  | Line
+  | Area
 
 let id value =
   match value with

@@ -303,7 +303,7 @@ and infer_let_binding state ~mode (bind: let_binding) =
         unify state ~expected ~actual:expr_type ~on_error:(annotation_diagnostic hint);
         expected
   in
-  bind_pattern ~mode:Generalized state bind.pattern binding_type;
+  bind_pattern ~mode state bind.pattern binding_type;
   binding_type
 
 and infer_let_expr state (let_: let_expression) =
