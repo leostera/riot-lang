@@ -18,6 +18,9 @@ module Diagnostics: module type of Diagnostics
 (** Small inference engine being built over `Typ.Ast`. *)
 module Infer: module type of Infer
 
+(** Query helpers over checked typed trees. *)
+module Query: module type of Query
+
 (** Temporary `.mli`-style renderer for inferred value summaries. *)
 module SignatureGenerator: module type of Signature_generator
 
