@@ -159,7 +159,15 @@ let rec bind_pattern ~mode (state: State.t) (pattern: pattern) type_ =
   | Alias { pattern; alias } ->
       bind_pattern ~mode state pattern type_;
       bind_pattern ~mode state alias type_
+  | Tuple parts -> bind_tuple ~mode state pattern parts type_
   | _ -> ()
+
+and bind_tuple ~mode state pattern parts type_ =
+  let expected_parts = List.map parts ~fn:(fun _ -> State.fresh_var state) in
+  let expected = Type.Tuple expected_parts in
+  unify state ~expected ~actual:type_ ~on_error:(pattern_constraint_diagnostic pattern);
+  List.zip parts expected_parts
+  |> List.for_each ~fn:(fun (part, type_) -> bind_pattern ~mode state part type_)
 
 and bind_constructor state pattern ctr type_ =
   match ctr with
