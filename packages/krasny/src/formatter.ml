@@ -7546,8 +7546,18 @@ and let_binding_rhs_decision = fun
     | Array
     | List
     | Record
+    | RecordUpdate
     | Fun _
     | Function _ -> true
+    | _ -> false
+  in
+  let inline_body_handles_width_overflow =
+    match ExprView.view body with
+    | Array
+    | List
+    | Record
+    | RecordUpdate
+    | Fun _ -> true
     | _ -> false
   in
   let is_assignment =
@@ -7588,6 +7598,7 @@ and let_binding_rhs_decision = fun
     ~is_pipeline:(expr_is_pipeline body)
     ~is_assignment
     ~inline_body
+    ~inline_body_handles_width_overflow
     ~single_constructor_payload
     ~known_width_overflow
     ~is_multiline:(expr_is_multiline body)

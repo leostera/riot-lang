@@ -53,6 +53,7 @@ let test_layout_trace_snapshots_unknown_widths_and_comments = fun ctx ->
       ~is_pipeline:false
       ~is_assignment:false
       ~inline_body:false
+      ~inline_body_handles_width_overflow:false
       ~single_constructor_payload:false
       ~known_width_overflow:false
       ~is_multiline:false
@@ -78,6 +79,7 @@ let test_layout_trace_snapshots_let_rhs_width_vetoes_inline_body = fun ctx ->
       ~is_pipeline:false
       ~is_assignment:false
       ~inline_body:true
+      ~inline_body_handles_width_overflow:false
       ~single_constructor_payload:true
       ~known_width_overflow:true
       ~is_multiline:false
@@ -89,6 +91,32 @@ let test_layout_trace_snapshots_let_rhs_width_vetoes_inline_body = fun ctx ->
     ~ctx
     ~actual
     ~expected:{|krasny layout: Binding_rhs(Let_binding) column=58 width=100 flat=42 -> Block [Known_width_overflow]|}
+
+let test_layout_trace_snapshots_let_rhs_fun_wrapper_handles_width_overflow = fun ctx ->
+  let render_ctx = Layout.make_context ~role:Layout.Let_rhs ~width:100 ~column:58 ~indent:0 () in
+  let flat_width = Some 42 in
+  let decision =
+    Layout.decide_let_binding_rhs
+      render_ctx
+      ~flat_width
+      ~suffix_width:0
+      ~force_body_break:false
+      ~has_leading_comment:false
+      ~is_pipeline:false
+      ~is_assignment:false
+      ~inline_body:true
+      ~inline_body_handles_width_overflow:true
+      ~single_constructor_payload:false
+      ~known_width_overflow:true
+      ~is_multiline:false
+  in
+  let actual =
+    trace_direct (Layout.Binding_rhs Layout.Let_binding) render_ctx ~flat_width decision
+  in
+  Test.Snapshot.assert_inline_text
+    ~ctx
+    ~actual
+    ~expected:{|krasny layout: Binding_rhs(Let_binding) column=58 width=100 flat=42 -> Inline [Inline_rhs_body]|}
 
 let test_layout_trace_snapshots_separated_list_width_overflow = fun ctx ->
   let render_ctx = Layout.make_context ~width:20 ~column:8 ~indent:2 () in
@@ -225,6 +253,7 @@ let test_layout_trace_snapshots_let_binding_pipeline_body = fun ctx ->
       ~is_pipeline:true
       ~is_assignment:false
       ~inline_body:false
+      ~inline_body_handles_width_overflow:false
       ~single_constructor_payload:false
       ~known_width_overflow:false
       ~is_multiline:false
@@ -249,6 +278,9 @@ let tests =
     case
       "layout trace snapshots let rhs width vetoes inline body"
       test_layout_trace_snapshots_let_rhs_width_vetoes_inline_body;
+    case
+      "layout trace snapshots let rhs fun wrapper handles width overflow"
+      test_layout_trace_snapshots_let_rhs_fun_wrapper_handles_width_overflow;
     case
       "layout trace snapshots separated list width overflow"
       test_layout_trace_snapshots_separated_list_width_overflow;

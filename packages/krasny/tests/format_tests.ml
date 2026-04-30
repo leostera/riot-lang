@@ -2165,6 +2165,113 @@ let test_format_inlines_short_explicit_fun_rhs_with_qualified_apply_bodies = fun
     ~expected:{ocaml|let execv = fun ~program ~args -> Kernel.Process.execv program args
 |ocaml}
 
+let test_format_breaks_explicit_fun_rhs_after_arrow_when_body_exceeds_width = fun ctx ->
+  let source =
+    {ocaml|let f=fun x->very_long_function_call_name another_long_argument_name third_long_argument_name fourth_long_argument_name fifth_long_argument_name
+|ocaml}
+  in
+  let actual =
+    parse_ml source
+    |> Krasny.format
+    |> Result.expect ~msg:"explicit fun RHS body should break after arrow"
+  in
+  Test.Snapshot.assert_inline_text
+    ~ctx
+    ~actual
+    ~expected:{ocaml|let f = fun x ->
+  very_long_function_call_name
+    another_long_argument_name
+    third_long_argument_name
+    fourth_long_argument_name
+    fifth_long_argument_name
+|ocaml}
+
+let test_format_breaks_function_binding_body_after_equals_when_body_exceeds_width = fun ctx ->
+  let source =
+    {ocaml|let f x=very_long_function_call_name another_long_argument_name third_long_argument_name fourth_long_argument_name fifth_long_argument_name
+|ocaml}
+  in
+  let actual =
+    parse_ml source
+    |> Krasny.format
+    |> Result.expect ~msg:"function binding body should break after equals"
+  in
+  Test.Snapshot.assert_inline_text
+    ~ctx
+    ~actual
+    ~expected:{ocaml|let f x =
+  very_long_function_call_name
+    another_long_argument_name
+    third_long_argument_name
+    fourth_long_argument_name
+    fifth_long_argument_name
+|ocaml}
+
+let test_format_keeps_long_list_rhs_opener_after_equals = fun ctx ->
+  let source =
+    {ocaml|let values=[very_long_item_name;another_long_item_name;third_long_item_name;fourth_long_item_name;fifth_long_item_name]
+|ocaml}
+  in
+  let actual =
+    parse_ml source
+    |> Krasny.format
+    |> Result.expect ~msg:"long list RHS should keep opener after equals"
+  in
+  Test.Snapshot.assert_inline_text
+    ~ctx
+    ~actual
+    ~expected:{ocaml|let values = [
+  very_long_item_name;
+  another_long_item_name;
+  third_long_item_name;
+  fourth_long_item_name;
+  fifth_long_item_name;
+]
+|ocaml}
+
+let test_format_keeps_long_array_rhs_opener_after_equals = fun ctx ->
+  let source =
+    {ocaml|let values=[|very_long_item_name;another_long_item_name;third_long_item_name;fourth_long_item_name;fifth_long_item_name|]
+|ocaml}
+  in
+  let actual =
+    parse_ml source
+    |> Krasny.format
+    |> Result.expect ~msg:"long array RHS should keep opener after equals"
+  in
+  Test.Snapshot.assert_inline_text
+    ~ctx
+    ~actual
+    ~expected:{ocaml|let values = [|
+  very_long_item_name;
+  another_long_item_name;
+  third_long_item_name;
+  fourth_long_item_name;
+  fifth_long_item_name;
+|]
+|ocaml}
+
+let test_format_keeps_long_record_rhs_opener_after_equals = fun ctx ->
+  let source =
+    {ocaml|let value={very_long_field_name;another_long_field_name;third_long_field_name;fourth_long_field_name}
+|ocaml}
+  in
+  let actual =
+    parse_ml source
+    |> Krasny.format
+    |> Result.expect ~msg:"long record RHS should keep opener after equals"
+  in
+  Test.Snapshot.assert_inline_text
+    ~ctx
+    ~actual
+    ~expected:{ocaml|let value = {
+  very_long_field_name;
+  another_long_field_name;
+  third_long_field_name;
+  fourth_long_field_name;
+}
+|ocaml}
+
 let test_format_keeps_multiline_explicit_fun_rhs_with_local_module_bodies = fun _ctx ->
   let source =
     {|let bytes = fun reader ->
@@ -4370,7 +4477,8 @@ let test_json_file_events_include_structured_diagnostics_for_parse_failures = fu
               |> Data.Json.of_string
               |> Result.expect ~msg:"parse event json"
             in
-            let expected = Some (Data.Json.Array (List.map diagnostics ~fn:Syn.Diagnostic.to_json))
+            let expected =
+              Some (Data.Json.Array (List.map diagnostics ~fn:Syn.Diagnostic.to_json))
             in
             Test.assert_equal ~expected ~actual:(Data.Json.get_field "diagnostics" json);
           Ok ()
@@ -4714,6 +4822,21 @@ let tests =
     case
       "format inlines short explicit fun rhs with qualified apply bodies"
       test_format_inlines_short_explicit_fun_rhs_with_qualified_apply_bodies;
+    case
+      "format breaks explicit fun rhs after arrow when body exceeds width"
+      test_format_breaks_explicit_fun_rhs_after_arrow_when_body_exceeds_width;
+    case
+      "format breaks function binding body after equals when body exceeds width"
+      test_format_breaks_function_binding_body_after_equals_when_body_exceeds_width;
+    case
+      "format keeps long list rhs opener after equals"
+      test_format_keeps_long_list_rhs_opener_after_equals;
+    case
+      "format keeps long array rhs opener after equals"
+      test_format_keeps_long_array_rhs_opener_after_equals;
+    case
+      "format keeps long record rhs opener after equals"
+      test_format_keeps_long_record_rhs_opener_after_equals;
     case
       "format keeps multiline explicit fun rhs with local module bodies"
       test_format_keeps_multiline_explicit_fun_rhs_with_local_module_bodies;
