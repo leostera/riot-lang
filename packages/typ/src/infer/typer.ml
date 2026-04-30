@@ -140,6 +140,9 @@ let rec core_type_to_type (state: State.t) (annotation: core_type) =
   annotation.type_ <- Some type_;
   type_
 
+let type_declaration_to_type ?(arguments = []) (decl: type_declaration) =
+  Type.Apply { ident = decl.name; arguments }
+
 let rec bind_pattern ~mode (state: State.t) (pattern: pattern) type_ =
   pattern.type_ <- Some type_;
   match pattern.kind with
@@ -225,9 +228,6 @@ let infer_constructor (state: State.t) constructor =
       | None -> State.fresh_var state
     )
 
-let type_declaration_result (decl: type_declaration) arguments =
-  Type.Apply { ident = decl.name; arguments }
-
 let fresh_type_parameters state parameters =
   let scope = HashMap.with_capacity ~size:(List.length parameters) in
   let arguments =
@@ -249,7 +249,7 @@ let instantiate_record_field state (info: State.InferenceEnv.record_field_info) 
     state
     scope
     (fun state ->
-      let owner_type = type_declaration_result info.owner arguments in
+      let owner_type = type_declaration_to_type ~arguments info.owner in
       let field_type = core_type_to_type state info.field.type_annotation in
       (owner_type, field_type))
 
@@ -477,7 +477,7 @@ let register_constructor state (decl: type_declaration) (ctr: type_constructor) 
         let result =
           match ctr.result with
           | Some result -> core_type_to_type state result
-          | None -> type_declaration_result decl arguments
+          | None -> type_declaration_to_type ~arguments decl
         in
         let body =
           match ctr.arguments with
