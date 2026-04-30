@@ -5,11 +5,24 @@ type t =
   | Bare of string
   | Qualified of string * t
 
+type error =
+  | EmptyParts
+
 let rec from_syn_ident = fun ident ->
   match ident with
   | Syn.Ast.Ident.Bare token -> Bare (Syn.Ast.Token.text token)
   | Syn.Ast.Ident.Qualified (token, rest) ->
       Qualified (Syn.Ast.Token.text token, from_syn_ident rest)
+
+let from_parts parts =
+  let rec loop part rest =
+    match rest with
+    | [] -> Bare part
+    | next :: rest -> Qualified (part, loop next rest)
+  in
+  match parts with
+  | [] -> Error EmptyParts
+  | part :: rest -> Ok (loop part rest)
 
 let to_segments =
   let rec loop acc value =

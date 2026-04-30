@@ -6,6 +6,10 @@
    tags: basics, identity, intoption
 *)
 
+type 'a option =
+  | Some of 'a
+  | None
+
 let value = Some 0
 
 let id x = x

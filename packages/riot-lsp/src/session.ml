@@ -889,11 +889,9 @@ let rec hover_pattern = fun offset (pattern: Typ.Ast.pattern) ->
     match pattern.kind with
     | Typ.Ast.Wildcard
     | Typ.Ast.Bind _
-    | Typ.Ast.Constructor _
     | Typ.Ast.Literal _
     | Typ.Ast.FirstClassModule _ -> []
-    | Typ.Ast.Apply { callee; argument } ->
-        [ hover_pattern offset callee; hover_pattern offset argument ]
+    | Typ.Ast.Constructor { payload; _ } -> [ Option.and_then payload ~fn:(hover_pattern offset) ]
     | Typ.Ast.PolyVariant { payload; _ } -> [ Option.and_then payload ~fn:(hover_pattern offset) ]
     | Typ.Ast.Tuple patterns
     | Typ.Ast.List patterns -> List.map patterns ~fn:(hover_pattern offset)
@@ -1096,12 +1094,12 @@ let rec inlay_hints_pattern = fun text start_offset end_offset (pattern: Typ.Ast
     match pattern.kind with
     | Typ.Ast.Wildcard
     | Typ.Ast.Bind _
-    | Typ.Ast.Constructor _
     | Typ.Ast.Literal _
     | Typ.Ast.FirstClassModule _ -> []
-    | Typ.Ast.Apply { callee; argument } ->
-        inlay_hints_pattern text start_offset end_offset callee
-        @ inlay_hints_pattern text start_offset end_offset argument
+    | Typ.Ast.Constructor { payload; _ } ->
+        Option.unwrap_or
+          (Option.map payload ~fn:(inlay_hints_pattern text start_offset end_offset))
+          ~default:[]
     | Typ.Ast.PolyVariant { payload; _ } ->
         Option.unwrap_or
           (Option.map payload ~fn:(inlay_hints_pattern text start_offset end_offset))

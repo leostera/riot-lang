@@ -305,7 +305,6 @@ and pattern_kind =
   | Wildcard
   | Bind of ident
   | Constructor of constructor_pattern
-  | Apply of pattern_application
   | Literal of literal
   | PolyVariant of poly_variant_pattern
   | Tuple of pattern list
@@ -318,9 +317,10 @@ and pattern_kind =
   | Attribute of pattern
   | FirstClassModule of first_class_module_pattern
 
-and pattern_application = { callee: pattern; argument: pattern }
-
-and constructor_pattern = { ident: ident }
+and constructor_pattern = {
+  ident: ident;
+  payload: pattern option;
+}
 
 and or_pattern = { left: pattern; right: pattern }
 
@@ -1304,19 +1304,16 @@ and build_pattern = fun context (syntax_pattern: Syn.Ast.Pattern.t) ->
   (
     match Syn.Ast.Pattern.view syntax_pattern with
     | Syn.Ast.Pattern.Unit ->
-        make_pattern origin (Constructor { ident = unit_constructor_ident () })
+        make_pattern origin (Constructor { ident = unit_constructor_ident (); payload = None })
     | Syn.Ast.Pattern.Wildcard -> make_pattern origin Wildcard
     | Syn.Ast.Pattern.Ident { ident } -> make_pattern origin (Bind (ident_from_syn_ident ident))
     | Syn.Ast.Pattern.Constructor { constructor; payload } ->
-        let callee =
-          make_pattern origin (Constructor { ident = ident_from_syn_ident constructor })
-        in
-        (
-          match payload with
-          | Some payload ->
-              make_pattern origin (Apply { callee; argument = build_pattern context payload })
-          | None -> callee
-        )
+        make_pattern
+          origin
+          (Constructor {
+            ident = ident_from_syn_ident constructor;
+            payload = Option.map payload ~fn:(build_pattern context);
+          })
     | Syn.Ast.Pattern.Literal { token } ->
         make_pattern origin (Literal (literal_from_token origin token))
     | Syn.Ast.Pattern.PolyVariant { tag; payload } ->

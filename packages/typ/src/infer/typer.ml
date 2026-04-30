@@ -50,41 +50,55 @@ let expression_constraint_diagnostic (expr: expression) err =
         ~var:(TypeVar.to_string var.id)
         ~type_:(Type.to_string type_)
 
+let pattern_constraint_diagnostic (pat: pattern) err =
+  match err with
+  | Unifier.TypeMismatch { expected; actual } ->
+      Diagnostics.Diagnostic.type_mismatch
+        ~span:pat.origin.span
+        ~expected:(Type.to_string expected)
+        ~actual:(Type.to_string actual)
+  | Unifier.InfiniteSubstitution { var; type_ } ->
+      Diagnostics.Diagnostic.infinite_substitution
+        ~span:pat.origin.span
+        ~var:(TypeVar.to_string var.id)
+        ~type_:(Type.to_string type_)
+
 module Builtin = struct
-  let ident_from_source name =
-    Syn.parse_ident name
-    |> Option.map ~fn:Model.Surface_path.from_syn_ident
-    |> Option.expect ~msg:("expected builtin identifier " ^ name)
+  let ident name =
+    Model.Surface_path.from_parts [ name ]
+    |> Result.expect ~msg:("expected builtin identifier " ^ name)
 
-  let int_ident = fun () -> ident_from_source "int"
+  let int_ident = ident "int"
 
-  let bool_ident = fun () -> ident_from_source "bool"
+  let bool_ident = ident "bool"
 
-  let float_ident = fun () -> ident_from_source "float"
+  let float_ident = ident "float"
 
-  let char_ident = fun () -> ident_from_source "char"
+  let char_ident = ident "char"
 
-  let string_ident = fun () -> ident_from_source "string"
+  let string_ident = ident "string"
 
-  let unit_ident = fun () -> ident_from_source "unit"
+  let unit_ident = ident "unit"
 
-  let list_ident = fun () -> ident_from_source "list"
+  let list_ident = ident "list"
 
   let make ?(arguments = []) ident = Type.Constructor { ident; arguments }
 
-  let int = fun () -> make (int_ident ())
+  let int = make int_ident
 
-  let bool = fun () -> make (bool_ident ())
+  let bool = make bool_ident
 
-  let float = fun () -> make (float_ident ())
+  let float = make float_ident
 
-  let char = fun () -> make (char_ident ())
+  let char = make char_ident
 
-  let string = fun () -> make (string_ident ())
+  let string = make string_ident
 
-  let unit = fun () -> make (unit_ident ())
+  let unit = make unit_ident
 
-  let list el = make (list_ident ()) ~arguments:[ el ]
+  let list el = make list_ident ~arguments:[ el ]
+
+  let is_unit ident = Model.Surface_path.equal ident unit_ident
 end
 
 let arrow_label_to_type_label = function
@@ -129,6 +143,7 @@ let rec core_type_to_type (state: State.t) (annotation: core_type) =
 let rec bind_pattern ~mode (state: State.t) (pattern: pattern) type_ =
   pattern.type_ <- Some type_;
   match pattern.kind with
+  | Constructor ctr -> bind_constructor state pattern ctr type_
   | Bind name ->
       let scheme =
         match mode with
@@ -146,14 +161,24 @@ let rec bind_pattern ~mode (state: State.t) (pattern: pattern) type_ =
       bind_pattern ~mode state alias type_
   | _ -> ()
 
+and bind_constructor state pattern ctr type_ =
+  match ctr with
+  | { ident; payload = None } when Builtin.is_unit ident ->
+      unify
+        state
+        ~expected:Builtin.unit
+        ~actual:type_
+        ~on_error:(pattern_constraint_diagnostic pattern)
+  | _ -> ()
+
 let infer_literal _state (lit: literal) =
   let open Builtin in
   match lit with
-  | Int -> int ()
-  | Float -> float ()
-  | Char -> char ()
-  | String -> string ()
-  | Bool -> bool ()
+  | Int -> int
+  | Float -> float
+  | Char -> char
+  | String -> string
+  | Bool -> bool
 
 let infer_ident (state: State.t) ident =
   match State.get_value state ~name:ident with
@@ -161,9 +186,13 @@ let infer_ident (state: State.t) ident =
   | None -> State.fresh_var state
 
 let infer_constructor (state: State.t) constructor =
-  match State.get_constructor state ~name:constructor.ident with
-  | Some scheme -> Quantifier.instantiate state scheme
-  | None -> State.fresh_var state
+  match constructor with
+  | { ident; _ } when Builtin.is_unit ident -> Builtin.unit
+  | { ident; _ } -> (
+      match State.get_constructor state ~name:ident with
+      | Some scheme -> Quantifier.instantiate state scheme
+      | None -> State.fresh_var state
+    )
 
 let infer_function_param state (param: parameter) =
   let param_type = State.fresh_var state in
@@ -240,7 +269,7 @@ and infer_if_else state ifelse =
   let condition = infer_expression state ifelse.condition in
   unify
     state
-    ~expected:(Builtin.bool ())
+    ~expected:Builtin.bool
     ~actual:condition
     ~on_error:(expression_constraint_diagnostic ifelse.condition);
   let then_ = infer_expression state ifelse.then_branch in
@@ -257,10 +286,10 @@ and infer_if_else state ifelse =
     | None ->
         unify
           state
-          ~expected:(Builtin.unit ())
+          ~expected:Builtin.unit
           ~actual:then_
           ~on_error:(expression_constraint_diagnostic ifelse.then_branch);
-        Builtin.unit ()
+        Builtin.unit
   )
 
 and infer_tuple (state: State.t) parts =

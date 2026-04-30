@@ -378,10 +378,8 @@ and pattern_kind =
   | Wildcard
   (** Value binding pattern. *)
   | Bind of ident
-  (** Value constructor pattern, such as `None`, `Some`, or `M.C`. *)
+  (** Value constructor pattern, such as `None`, `Some x`, or `M.C`. *)
   | Constructor of constructor_pattern
-  (** Constructor/application pattern. *)
-  | Apply of pattern_application
   (** Literal pattern. *)
   | Literal of literal
   (** Polymorphic variant pattern. *)
@@ -405,18 +403,12 @@ and pattern_kind =
   (** First-class module pattern. *)
   | FirstClassModule of first_class_module_pattern
 
-(** Pattern application payload. *)
-and pattern_application = {
-  (** Applied pattern, usually a constructor. *)
-  callee: pattern;
-  (** Runtime argument pattern. *)
-  argument: pattern;
-}
-
 (** Value constructor pattern payload. *)
 and constructor_pattern = {
   (** Surface constructor identifier. *)
   ident: ident;
+  (** Optional constructor payload pattern. *)
+  payload: pattern option;
 }
 
 (** Or-pattern payload. *)

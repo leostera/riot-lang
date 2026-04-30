@@ -6,11 +6,12 @@
    tags: functions, closure, capture
 *)
 
-type color = Red | Blue
+type color =
+  | Red
+  | Blue
 
 let seed = Red
 
-let make () =
-  fun value -> (seed, value)
+let make () = fun value -> (seed, value)
 
 let answer = make () ()

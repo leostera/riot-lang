@@ -89,19 +89,19 @@ let test_from_syn_keeps_constructor_patterns _ctx =
   | Implementation [ { kind = Let { bindings = [ { body = { kind = Function { body = Cases [ some_case; none_case ]; _ }; _ }; _ } ]; _ }; _ } ] ->
       let some_result =
         match some_case.pattern.kind with
-        | Apply { callee = { kind = Constructor { ident = constructor }; _ }; argument = { kind = Bind binding; _ } } -> (
+        | Constructor { ident = constructor; payload = Some { kind = Bind binding; _ } } -> (
             match assert_path_string ~expected:"Some" constructor with
             | Error _ as error -> error
             | Ok () -> assert_path_string ~expected:"x" binding
           )
-        | _ -> Error "expected Some x to lower as constructor pattern application"
+        | _ -> Error "expected Some x to lower as constructor pattern with payload"
       in
       (
         match some_result with
         | Error _ as error -> error
         | Ok () -> (
             match none_case.pattern.kind with
-            | Constructor { ident } -> assert_path_string ~expected:"None" ident
+            | Constructor { ident; payload = None } -> assert_path_string ~expected:"None" ident
             | _ -> Error "expected None to lower as constructor pattern"
           )
       )

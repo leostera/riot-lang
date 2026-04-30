@@ -14,6 +14,9 @@
      strings or raw token lists.
 *)
 type t
+(** Errors returned while constructing surface paths from non-Syn input. *)
+type error =
+  | EmptyParts
 
 (**
    `from_syn_ident ident` builds a surface path from Syn's structured
@@ -23,6 +26,16 @@ type t
    identifier to text and parse it again.
 *)
 val from_syn_ident: Syn.Ast.Ident.t -> t
+
+(**
+   `from_parts parts` builds a surface path from left-to-right path segments.
+
+   This is intended for compiler-known names that do not come from Syn syntax,
+   such as the primitive paths used by the checker itself.
+
+   Returns an error if `parts` is empty.
+*)
+val from_parts: string list -> (t, error) Std.Result.t
 
 (**
    `to_segments path` returns the path segments from left to right.
