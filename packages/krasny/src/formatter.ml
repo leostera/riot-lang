@@ -6684,6 +6684,11 @@ and render_for_expr = fun state expr pattern start_ stop body ->
 
 and render_match_cases = fun state cases -> render_match_cases_with_body_break state cases false
 
+and match_case_has_leading_comment = fun case ->
+  match Ast.Node.first_child_token (Ast.MatchCase.as_node case) ~kind:Kind.PIPE with
+  | Some token -> Ast.Token.has_leading_comment token
+  | None -> node_has_leading_comment (Ast.MatchCase.as_node case)
+
 and render_match_cases_with_body_break = fun state cases force_body_break ->
   let length = Vector.length cases in
   let rec loop index =
@@ -6693,7 +6698,12 @@ and render_match_cases_with_body_break = fun state cases force_body_break ->
         (Vector.get_unchecked cases ~at:index)
         force_body_break;
       if Int.(index < Int.sub length 1) then
-        emit_line state;
+        (
+          emit_line state;
+          let next_case = Vector.get_unchecked cases ~at:(Int.add index 1) in
+          if match_case_has_leading_comment next_case then
+            emit_line state
+        );
       loop (Int.add index 1)
     )
   in
@@ -6748,7 +6758,10 @@ and render_match_case_with_body_break = fun state case force_body_break ->
   | Ast.MatchCase.Unknown _ ->
       unsupported_node "match case without pattern or body" (Ast.MatchCase.as_node case)
   | Ast.MatchCase.Case { pattern; guard; body } ->
-      emit_text state "|";
+      emit_token_or_keyword
+        state
+        (Ast.Node.first_child_token (Ast.MatchCase.as_node case) ~kind:Kind.PIPE)
+        ~fallback:"|";
       emit_space state;
       let pattern_start_line = state.line_count in
       render_pattern state pattern;

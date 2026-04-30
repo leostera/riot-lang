@@ -2390,6 +2390,42 @@ let test_format_match_cases_from_structure_not_arrow_source_newlines = fun ctx -
     ~msg:"match case layout should not preserve source newlines after arrows"
     source
 
+let test_format_preserves_leading_comments_on_match_cases = fun ctx ->
+  let source =
+    {ocaml|let infer_record=fun state record->match record with
+(* if you have `{}` we'll just fallback to a hole *)
+|{update=None;fields=[]}->State.fresh_var state
+(* if you have `{hello}` we'll fallback to hello's type assuming its a record update *)
+|{update=Some update;fields=[]}->infer_expression state update
+(* if you have `{hello=1}` we'll type the record body *)
+|{update=None;fields}->infer_record_body state fields
+(* if you have `{hello with x=1}` we'll type the record body and unify against the updated value *)
+|{update=Some update;fields}->infer_record_update state update fields
+|ocaml}
+  in
+  let actual =
+    parse_ml source
+    |> Krasny.format
+    |> Result.expect ~msg:"match case leading comments should format"
+  in
+  Test.Snapshot.assert_inline_text
+    ~ctx
+    ~actual
+    ~expected:{ocaml|let infer_record = fun state record ->
+  match record with
+  (* if you have `{}` we'll just fallback to a hole *)
+  | { update = None; fields = [] } -> State.fresh_var state
+
+  (* if you have `{hello}` we'll fallback to hello's type assuming its a record update *)
+  | { update = Some update; fields = [] } -> infer_expression state update
+
+  (* if you have `{hello=1}` we'll type the record body *)
+  | { update = None; fields } -> infer_record_body state fields
+
+  (* if you have `{hello with x=1}` we'll type the record body and unify against the updated value *)
+  | { update = Some update; fields } -> infer_record_update state update fields
+|ocaml}
+
 let test_write_breaks_nested_constructor_match_patterns = fun ctx ->
   let source =
     {ocaml|let test=match Cookie.parse_set_cookie_result "session=abc\r\nSet-Cookie: evil=1; Path=/" with|Error(Cookie.InvalidCookie(Cookie.InvalidValueCharacter{index=3;character='\r';reason=Cookie.ControlCharacter}))->Result.Ok()
@@ -4858,6 +4894,9 @@ let tests =
     case
       "format match cases from structure, not arrow source newlines"
       test_format_match_cases_from_structure_not_arrow_source_newlines;
+    case
+      "format preserves leading comments on match cases"
+      test_format_preserves_leading_comments_on_match_cases;
     case
       "write breaks nested constructor match patterns"
       test_write_breaks_nested_constructor_match_patterns;
