@@ -177,7 +177,30 @@ and bind_constructor state pattern ctr type_ =
         ~expected:Builtin.unit
         ~actual:type_
         ~on_error:(pattern_constraint_diagnostic pattern)
-  | _ -> ()
+  | { ident; payload = None } ->
+      let constructor_type =
+        match State.get_constructor state ~name:ident with
+        | None -> State.fresh_var state
+        | Some scheme -> Quantifier.instantiate state scheme
+      in
+      unify
+        state
+        ~expected:constructor_type
+        ~actual:type_
+        ~on_error:(pattern_constraint_diagnostic pattern)
+  | { ident; payload = Some payload_pattern } ->
+      let constructor_type =
+        match State.get_constructor state ~name:ident with
+        | None -> State.fresh_var state
+        | Some scheme -> Quantifier.instantiate state scheme
+      in
+      let payload_type = State.fresh_var state in
+      unify
+        state
+        ~expected:constructor_type
+        ~actual:(Ast.Type.arrow payload_type type_)
+        ~on_error:(pattern_constraint_diagnostic pattern);
+      bind_pattern ~mode:Local state payload_pattern payload_type
 
 let infer_literal _state (lit: literal) =
   let open Builtin in
@@ -226,6 +249,7 @@ let rec infer_expression (state: State.t) (expr: expression) =
     | Tuple parts -> infer_tuple state parts
     | List items -> infer_list state items
     | Let letexpr -> infer_let_expr state letexpr
+    | Match match_ -> infer_match state match_
     | _ -> State.fresh_var state
   in
   let unified =
@@ -242,6 +266,32 @@ let rec infer_expression (state: State.t) (expr: expression) =
   in
   expr.type_ <- Some unified;
   unified
+
+and infer_match state match_ =
+  let scrutinee_type = infer_expression state match_.scrutinee in
+  let result_type = State.fresh_var state in
+  let infer_case state scrutinee_type (case: match_case) =
+    bind_pattern ~mode:Local state case.pattern scrutinee_type;
+    (
+      match case.guard with
+      | Some guard ->
+          let guard_type = infer_expression state guard in
+          unify
+            state
+            ~expected:Builtin.bool
+            ~actual:guard_type
+            ~on_error:(expression_constraint_diagnostic guard)
+      | None -> ()
+    );
+    let body_type = infer_expression state case.body in
+    unify
+      state
+      ~expected:result_type
+      ~actual:body_type
+      ~on_error:(expression_constraint_diagnostic case.body)
+  in
+  List.for_each match_.cases ~fn:(infer_case state scrutinee_type);
+  result_type
 
 and infer_let_binding state ~mode (bind: let_binding) =
   let expr_type = infer_expression state bind.expr in
