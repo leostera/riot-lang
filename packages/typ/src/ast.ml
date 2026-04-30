@@ -1589,12 +1589,13 @@ and build_expression = fun context (syntax_expression: Syn.Ast.Expr.t) ->
           | None -> make_expression origin (Record { update = None; fields })
         )
     | Syn.Ast.Expr.FieldAccess { target; field } ->
-        make_expression
-          origin
-          (FieldAccess {
-            receiver = build_expression context target;
-            field = ident_from_token field;
-          })
+        let receiver = build_expression context target in
+        let origin = {
+          origin with
+          span = Syn.Span.union receiver.origin.span (Syn.Ast.Token.span field);
+        }
+        in
+        make_expression origin (FieldAccess { receiver; field = ident_from_token field })
     | Syn.Ast.Expr.Assign { target; value; _ } ->
         make_expression
           origin

@@ -6,10 +6,14 @@
    tags: patterns, record, field
 *)
 
-type point = { x : int; y : int }
+type point = { x: int; y: int }
 
 let project value =
   match value with
   | { x; _ } -> x
 
+let zero = { x = 0; y = 0 }
+
 let answer = project { x = 0; y = 1 }
+
+let hello: int = answer

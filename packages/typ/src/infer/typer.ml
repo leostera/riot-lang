@@ -143,17 +143,44 @@ let rec core_type_to_type (state: State.t) (annotation: core_type) =
 let type_declaration_to_type ?(arguments = []) (decl: type_declaration) =
   Type.Apply { ident = decl.name; arguments }
 
+let fresh_type_parameters state parameters =
+  let scope = HashMap.with_capacity ~size:(List.length parameters) in
+  let arguments =
+    List.map
+      parameters
+      ~fn:(fun param ->
+        match param with
+        | Some name ->
+            let type_ = State.fresh_var state in
+            let _ = HashMap.insert scope ~key:name ~value:type_ in
+            type_
+        | None -> State.fresh_var state)
+  in
+  (scope, arguments)
+
+let instantiate_record_field state (info: State.InferenceEnv.record_field_info) =
+  let (scope, arguments) = fresh_type_parameters state info.owner.parameters in
+  State.with_type_params
+    state
+    scope
+    (fun state ->
+      let owner_type = type_declaration_to_type ~arguments info.owner in
+      let field_type = core_type_to_type state info.field.type_annotation in
+      (owner_type, field_type))
+
+let bind_value ~mode state ~name type_ =
+  let scheme =
+    match mode with
+    | Local -> TypeScheme.monomorphic type_
+    | Generalized -> Quantifier.generalize type_
+  in
+  State.add_value state ~name ~scheme
+
 let rec bind_pattern ~mode (state: State.t) (pattern: pattern) type_ =
   pattern.type_ <- Some type_;
   match pattern.kind with
   | Constructor ctr -> bind_constructor state pattern ctr type_
-  | Bind name ->
-      let scheme =
-        match mode with
-        | Local -> TypeScheme.monomorphic type_
-        | Generalized -> Quantifier.generalize type_
-      in
-      State.add_value state ~name ~scheme
+  | Bind name -> bind_value ~mode state ~name type_
   | Constraint { pattern; annotation } ->
       let expected = core_type_to_type state annotation in
       unify state ~expected ~actual:type_ ~on_error:(annotation_diagnostic annotation);
@@ -163,7 +190,37 @@ let rec bind_pattern ~mode (state: State.t) (pattern: pattern) type_ =
       bind_pattern ~mode state pattern type_;
       bind_pattern ~mode state alias type_
   | Tuple parts -> bind_tuple ~mode state pattern parts type_
+  | Record record -> bind_record ~mode state pattern record type_
   | _ -> ()
+
+and bind_record_field ~mode state pattern record_type (field: record_pattern_field) =
+  match State.get_record_field state ~name:field.name with
+  | None -> ()
+  | Some info ->
+      let (owner_type, field_type) = instantiate_record_field state info in
+      unify
+        state
+        ~expected:record_type
+        ~actual:owner_type
+        ~on_error:(pattern_constraint_diagnostic pattern);
+      match field.pattern with
+      | Some field_pattern -> bind_pattern ~mode state field_pattern field_type
+      | None -> bind_value ~mode state ~name:field.name field_type
+
+and bind_record ~mode state pattern fields type_ =
+  match fields with
+  | [] -> ()
+  | first_field :: _ ->
+      match State.get_record_field state ~name:first_field.name with
+      | None -> ()
+      | Some info ->
+          let (record_type, _) = instantiate_record_field state info in
+          unify
+            state
+            ~expected:record_type
+            ~actual:type_
+            ~on_error:(pattern_constraint_diagnostic pattern);
+          List.for_each fields ~fn:(bind_record_field ~mode state pattern record_type)
 
 and bind_tuple ~mode state pattern parts type_ =
   let expected_parts = List.map parts ~fn:(fun _ -> State.fresh_var state) in
@@ -228,31 +285,6 @@ let infer_constructor (state: State.t) constructor =
       | None -> State.fresh_var state
     )
 
-let fresh_type_parameters state parameters =
-  let scope = HashMap.with_capacity ~size:(List.length parameters) in
-  let arguments =
-    List.map
-      parameters
-      ~fn:(fun param ->
-        match param with
-        | Some name ->
-            let type_ = State.fresh_var state in
-            let _ = HashMap.insert scope ~key:name ~value:type_ in
-            type_
-        | None -> State.fresh_var state)
-  in
-  (scope, arguments)
-
-let instantiate_record_field state (info: State.InferenceEnv.record_field_info) =
-  let (scope, arguments) = fresh_type_parameters state info.owner.parameters in
-  State.with_type_params
-    state
-    scope
-    (fun state ->
-      let owner_type = type_declaration_to_type ~arguments info.owner in
-      let field_type = core_type_to_type state info.field.type_annotation in
-      (owner_type, field_type))
-
 let infer_function_param state (param: parameter) =
   let param_type = State.fresh_var state in
   bind_pattern ~mode:Local state param.pattern param_type;
@@ -279,6 +311,7 @@ let rec infer_expression (state: State.t) (expr: expression) =
     | Let letexpr -> infer_let_expr state letexpr
     | Match match_ -> infer_match state match_
     | Record record -> infer_record state record
+    | FieldAccess access -> infer_field_access state access
     | _ -> State.fresh_var state
   in
   let unified =
@@ -337,20 +370,38 @@ and infer_record_body state (fields: record_expression_field list) =
 
 and infer_record state record =
   match record with
-  | { update = None; fields = [] } ->
-      (* todo: add diangostic! *)
-      State.fresh_var state
+  (* if you have `{}` we'll just fallback to a hole *)
+  | { update = None; fields = [] } -> State.fresh_var state
+
+  (* if you have `{hello}` we'll fallback to hello's type assuming its a record update *)
   | { update = Some update; fields = [] } -> infer_expression state update
+
+  (* if you have `{hello=1}` we'll type the record body *)
   | { update = None; fields } -> infer_record_body state fields
+
+  (* if you have `{hello with x=1}` we'll type the record body and unify against the updated value *)
   | { update = Some update; fields } ->
       let record_type = infer_record_body state fields in
       let update_type = infer_expression state update in
       unify
         state
-        ~expected:record_type
-        ~actual:update_type
+        ~expected:update_type
+        ~actual:record_type
         ~on_error:(expression_constraint_diagnostic update);
       record_type
+
+and infer_field_access state access =
+  let receiver_type = infer_expression state access.receiver in
+  match State.get_record_field state ~name:access.field with
+  | None -> State.fresh_var state
+  | Some info ->
+      let (owner_type, field_type) = instantiate_record_field state info in
+      unify
+        state
+        ~expected:owner_type
+        ~actual:receiver_type
+        ~on_error:(expression_constraint_diagnostic access.receiver);
+      field_type
 
 and infer_match state match_ =
   let scrutinee_type = infer_expression state match_.scrutinee in
