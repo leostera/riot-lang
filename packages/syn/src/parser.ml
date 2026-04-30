@@ -147,7 +147,7 @@ let raw_text_is = fun p raw expected ->
   let len = String.length expected in
   let start = raw.Raw_token.span.Span.start in
   let end_ = raw.Raw_token.span.Span.end_ in
-  let width = end_ - start in
+  let width = Span.width raw.Raw_token.span in
   width = len && start >= 0 && end_ <= Slice.length p.source && try
     let rec loop index =
       if index >= len then

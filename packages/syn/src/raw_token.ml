@@ -36,7 +36,7 @@ let is_trivia = fun token -> Syntax_kind.is_trivia token.kind
 
 let is_significant = fun token -> not (is_trivia token)
 
-let width = fun token -> token.span.Span.end_ - token.span.Span.start
+let width = fun token -> Span.width token.span
 
 let has_newline = fun token -> token.has_newline
 

@@ -14,7 +14,7 @@ let span_to_json = fun span ->
   ]
 
 let span_text = fun source span ->
-  let width = span.Span.end_ - span.Span.start in
+  let width = Syn.Span.width span in
   if width <= 0 then
     ""
   else

@@ -524,7 +524,8 @@ let raw_range_text = fun tree ~raw_lo ~raw_hi ->
   else
     let start = raw_start tree.raw_tokens raw_lo in
     let end_ = raw_end tree.raw_tokens (raw_hi - 1) in
-    Slice.sub_unchecked tree.source ~off:start ~len:(end_ - start)
+    let span = Span.make ~start ~end_ in
+    Slice.sub_unchecked tree.source ~off:start ~len:(Span.width span)
     |> Slice.to_string
 
 let token_width = fun tree token -> Raw_token.width (raw_at tree.raw_tokens token.body_raw)
