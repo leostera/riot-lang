@@ -63,18 +63,17 @@ let diagnostic_for_expr = fun expr ->
 
 let check_tree = fun _ctx root ->
   let diagnostics = H.diagnostics_for_root root in
-  let hooks =
-    {
-      Syn.Visitor.empty_hooks with
-      enter_expr =
-        Some (fun visitor expr ->
-          (
-            match diagnostic_for_expr expr with
-            | Some diagnostic -> H.push_diagnostic diagnostics diagnostic
-            | None -> ()
-          );
-          (visitor, Syn.Visitor.Continue));
-    }
+  let hooks = {
+    Syn.Visitor.empty_hooks with
+    enter_expr =
+      Some (fun visitor expr ->
+        (
+          match diagnostic_for_expr expr with
+          | Some diagnostic -> H.push_diagnostic diagnostics diagnostic
+          | None -> ()
+        );
+        (visitor, Syn.Visitor.Continue));
+  }
   in
   Syn.Visitor.make ~ctx:() ~hooks
   |> fun visitor ->

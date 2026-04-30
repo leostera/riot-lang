@@ -302,13 +302,14 @@ let module_graph_to_json = fun (module_graph: Module_node.t G.t) ->
     | Ok nodes -> nodes
     | Error _ -> []
   in
-  let node_to_json (node: Module_node.t G.node) = Object [
-    ("id", Int (G.Node_id.to_int node.id));
-    ("file", file_to_json node.value.file);
-    ("kind", module_kind_to_json node.value.kind);
-    ("deps", Array (List.map node.deps ~fn:(fun dep -> Int (G.Node_id.to_int dep))));
-    ("opens", Array []);
-  ]
+  let node_to_json (node: Module_node.t G.node) =
+    Object [
+      ("id", Int (G.Node_id.to_int node.id));
+      ("file", file_to_json node.value.file);
+      ("kind", module_kind_to_json node.value.kind);
+      ("deps", Array (List.map node.deps ~fn:(fun dep -> Int (G.Node_id.to_int dep))));
+      ("opens", Array []);
+    ]
   in
   Object [ ("nodes", Array (List.map nodes ~fn:node_to_json)); ]
 
@@ -804,13 +805,14 @@ let plan_package = fun
                                 ^ " with "
                                 ^ Int.to_string (List.length fdep.inputs)
                                 ^ " input files");
-                              let foreign_action = Action.BuildForeignDependency {
-                                name = fdep.name;
-                                path = fdep.path;
-                                build_cmd = fdep.build_cmd;
-                                outputs = fdep.outputs;
-                                env = fdep.env;
-                              }
+                              let foreign_action =
+                                Action.BuildForeignDependency {
+                                  name = fdep.name;
+                                  path = fdep.path;
+                                  build_cmd = fdep.build_cmd;
+                                  outputs = fdep.outputs;
+                                  env = fdep.env;
+                                }
                               in
                               let foreign_node =
                                 Action_node.make
@@ -935,13 +937,14 @@ let plan_package = fun
                           ^ " with "
                           ^ Int.to_string (List.length fdep.inputs)
                           ^ " input files");
-                        let foreign_action = Action.BuildForeignDependency {
-                          name = fdep.name;
-                          path = fdep.path;
-                          build_cmd = fdep.build_cmd;
-                          outputs = fdep.outputs;
-                          env = fdep.env;
-                        }
+                        let foreign_action =
+                          Action.BuildForeignDependency {
+                            name = fdep.name;
+                            path = fdep.path;
+                            build_cmd = fdep.build_cmd;
+                            outputs = fdep.outputs;
+                            env = fdep.env;
+                          }
                         in
                         let foreign_node =
                           Action_node.make

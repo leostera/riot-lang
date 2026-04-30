@@ -72,18 +72,17 @@ let diagnostic_for_binding = fun ctx binding ->
 
 let check_tree = fun ctx root ->
   let diagnostics = H.diagnostics_for_root root in
-  let hooks =
-    {
-      Syn.Visitor.empty_hooks with
-      enter_let_binding =
-        Some (fun visitor binding ->
-          (
-            match diagnostic_for_binding ctx binding with
-            | Some diagnostic -> H.push_diagnostic diagnostics diagnostic
-            | None -> ()
-          );
-          (visitor, Syn.Visitor.Continue));
-    }
+  let hooks = {
+    Syn.Visitor.empty_hooks with
+    enter_let_binding =
+      Some (fun visitor binding ->
+        (
+          match diagnostic_for_binding ctx binding with
+          | Some diagnostic -> H.push_diagnostic diagnostics diagnostic
+          | None -> ()
+        );
+        (visitor, Syn.Visitor.Continue));
+  }
   in
   Syn.Visitor.make ~ctx:() ~hooks
   |> fun visitor ->

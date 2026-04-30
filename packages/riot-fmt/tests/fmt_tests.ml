@@ -274,13 +274,14 @@ let test_fmt_json_includes_structured_syn_diagnostics_for_syntax_errors = fun _c
                     | _ -> false)
                 |> Option.expect ~msg:"file event missing"
               in
-              let expected = Some (
-                Data.Json.Array (
-                  parsed.diagnostics
-                  |> diagnostics_to_list
-                  |> List.map ~fn:Syn.Diagnostic.to_json
+              let expected =
+                Some (
+                  Data.Json.Array (
+                    parsed.diagnostics
+                    |> diagnostics_to_list
+                    |> List.map ~fn:Syn.Diagnostic.to_json
+                  )
                 )
-              )
               in
               Test.assert_equal ~expected ~actual:(Data.Json.get_field "diagnostics" file_event);
               Test.assert_equal ~expected:"" ~actual:(stderr_contents ());

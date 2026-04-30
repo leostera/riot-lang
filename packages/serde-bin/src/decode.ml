@@ -366,14 +366,15 @@ let of_string = fun decode input -> of_input decode (String_input { input; pos =
 
 let of_reader = fun decode reader ->
   let buf = IO.Bytes.create ~size:buffer_capacity in
-  let input = Reader_input {
-    reader;
-    buf;
-    view = IO.Bytes.unsafe_to_string buf;
-    base = 0;
-    pos = 0;
-    limit = 0;
-    eof = false;
-  }
+  let input =
+    Reader_input {
+      reader;
+      buf;
+      view = IO.Bytes.unsafe_to_string buf;
+      base = 0;
+      pos = 0;
+      limit = 0;
+      eof = false;
+    }
   in
   of_input decode input

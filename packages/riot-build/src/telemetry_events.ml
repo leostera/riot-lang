@@ -283,32 +283,36 @@ let warning_source_of_json = function
   | Data.Json.String "cached" -> Ok `Cached
   | _ -> Error (Data.Json.String "Invalid warning source")
 
-let planning_breakdown_to_json breakdown = Data.Json.Object [
-  ("dependency_count", Data.Json.Int breakdown.dependency_count);
-  (
-    "dependency_check_duration_ms",
-    Data.Json.Int (Time.Duration.to_millis breakdown.dependency_check_duration)
-  );
-  ("input_hash_duration_ms", Data.Json.Int (Time.Duration.to_millis breakdown.input_hash_duration));
-  (
-    "artifact_lookup_duration_ms",
-    Data.Json.Int (Time.Duration.to_millis breakdown.artifact_lookup_duration)
-  );
-  ("artifact_cache_hit", Data.Json.Bool breakdown.artifact_cache_hit);
-  (
-    "plan_bundle_lookup_duration_ms",
-    Data.Json.Int (Time.Duration.to_millis breakdown.plan_bundle_lookup_duration)
-  );
-  (
-    "plan_bundle_decode_duration_ms",
-    Data.Json.Int (Time.Duration.to_millis breakdown.plan_bundle_decode_duration)
-  );
-  ("plan_bundle_cache_hit", Data.Json.Bool breakdown.plan_bundle_cache_hit);
-  (
-    "module_plan_duration_ms",
-    Data.Json.Int (Time.Duration.to_millis breakdown.module_plan_duration)
-  );
-]
+let planning_breakdown_to_json breakdown =
+  Data.Json.Object [
+    ("dependency_count", Data.Json.Int breakdown.dependency_count);
+    (
+      "dependency_check_duration_ms",
+      Data.Json.Int (Time.Duration.to_millis breakdown.dependency_check_duration)
+    );
+    (
+      "input_hash_duration_ms",
+      Data.Json.Int (Time.Duration.to_millis breakdown.input_hash_duration)
+    );
+    (
+      "artifact_lookup_duration_ms",
+      Data.Json.Int (Time.Duration.to_millis breakdown.artifact_lookup_duration)
+    );
+    ("artifact_cache_hit", Data.Json.Bool breakdown.artifact_cache_hit);
+    (
+      "plan_bundle_lookup_duration_ms",
+      Data.Json.Int (Time.Duration.to_millis breakdown.plan_bundle_lookup_duration)
+    );
+    (
+      "plan_bundle_decode_duration_ms",
+      Data.Json.Int (Time.Duration.to_millis breakdown.plan_bundle_decode_duration)
+    );
+    ("plan_bundle_cache_hit", Data.Json.Bool breakdown.plan_bundle_cache_hit);
+    (
+      "module_plan_duration_ms",
+      Data.Json.Int (Time.Duration.to_millis breakdown.module_plan_duration)
+    );
+  ]
 
 let planning_breakdown_of_json = function
   | Data.Json.Object fields -> (
@@ -350,27 +354,28 @@ let planning_breakdown_of_json = function
   | _ ->
       Error (Data.Json.String "Package planning breakdown must be an object")
 
-let workspace_graph_breakdown_to_json breakdown = Data.Json.Object [
-  ("build_node_realization_count", Data.Json.Int breakdown.build_node_realization_count);
-  (
-    "build_node_realization_duration_ms",
-    Data.Json.Int (Time.Duration.to_millis breakdown.build_node_realization_duration)
-  );
-  ("runtime_node_realization_count", Data.Json.Int breakdown.runtime_node_realization_count);
-  (
-    "runtime_node_realization_duration_ms",
-    Data.Json.Int (Time.Duration.to_millis breakdown.runtime_node_realization_duration)
-  );
-  ("dev_node_realization_count", Data.Json.Int breakdown.dev_node_realization_count);
-  (
-    "dev_node_realization_duration_ms",
-    Data.Json.Int (Time.Duration.to_millis breakdown.dev_node_realization_duration)
-  );
-  (
-    "edge_wiring_duration_ms",
-    Data.Json.Int (Time.Duration.to_millis breakdown.edge_wiring_duration)
-  );
-]
+let workspace_graph_breakdown_to_json breakdown =
+  Data.Json.Object [
+    ("build_node_realization_count", Data.Json.Int breakdown.build_node_realization_count);
+    (
+      "build_node_realization_duration_ms",
+      Data.Json.Int (Time.Duration.to_millis breakdown.build_node_realization_duration)
+    );
+    ("runtime_node_realization_count", Data.Json.Int breakdown.runtime_node_realization_count);
+    (
+      "runtime_node_realization_duration_ms",
+      Data.Json.Int (Time.Duration.to_millis breakdown.runtime_node_realization_duration)
+    );
+    ("dev_node_realization_count", Data.Json.Int breakdown.dev_node_realization_count);
+    (
+      "dev_node_realization_duration_ms",
+      Data.Json.Int (Time.Duration.to_millis breakdown.dev_node_realization_duration)
+    );
+    (
+      "edge_wiring_duration_ms",
+      Data.Json.Int (Time.Duration.to_millis breakdown.edge_wiring_duration)
+    );
+  ]
 
 let workspace_graph_breakdown_of_json = function
   | Data.Json.Object fields -> (
@@ -694,9 +699,8 @@ let to_json: Telemetry.event -> Data.Json.t option = function
     status;
     duration
   } ->
-      let artifact_files = Data.Json.Array (List.map
-        artifact.files
-        ~fn:(fun p -> Data.Json.String (Path.to_string p)))
+      let artifact_files =
+        Data.Json.Array (List.map artifact.files ~fn:(fun p -> Data.Json.String (Path.to_string p)))
       in
       Some (
         Data.Json.Object [

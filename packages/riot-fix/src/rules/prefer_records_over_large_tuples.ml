@@ -110,20 +110,19 @@ let check_type_declaration = fun ctx diagnostics declaration ->
 
 let check_tree = fun ctx root ->
   let diagnostics = H.diagnostics_for_root root in
-  let hooks =
-    {
-      Syn.Visitor.empty_hooks with
-      enter_type_declaration =
-        Some (fun visitor declaration ->
-          check_type_declaration ctx diagnostics declaration;
-          (visitor, Syn.Visitor.Continue));
-      enter_value_declaration =
-        Some (fun visitor declaration ->
-          Option.for_each
-            (Ast.ValueDeclaration.type_annotation declaration)
-            ~fn:(check_type_expr ctx diagnostics);
-          (visitor, Syn.Visitor.Continue));
-    }
+  let hooks = {
+    Syn.Visitor.empty_hooks with
+    enter_type_declaration =
+      Some (fun visitor declaration ->
+        check_type_declaration ctx diagnostics declaration;
+        (visitor, Syn.Visitor.Continue));
+    enter_value_declaration =
+      Some (fun visitor declaration ->
+        Option.for_each
+          (Ast.ValueDeclaration.type_annotation declaration)
+          ~fn:(check_type_expr ctx diagnostics);
+        (visitor, Syn.Visitor.Continue));
+  }
   in
   Syn.Visitor.make ~ctx:() ~hooks
   |> fun visitor ->

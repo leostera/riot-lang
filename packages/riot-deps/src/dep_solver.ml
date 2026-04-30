@@ -455,11 +455,12 @@ and resolve_registry_dependency = fun
                 ctx.registry
                 ~package_name:raw_package_name with
               | Error err ->
-                  let error = Error.PackageMetadataReadFailed {
-                    package = raw_package_name;
-                    registry = registry_name;
-                    error = err;
-                  }
+                  let error =
+                    Error.PackageMetadataReadFailed {
+                      package = raw_package_name;
+                      registry = registry_name;
+                      error = err;
+                    }
                   in
                   ctx.emit
                     (Riot_model.Event.PackageMetadataFetchFailed {
@@ -469,11 +470,12 @@ and resolve_registry_dependency = fun
                     });
                   Error error
               | Ok None ->
-                  let error = Error.PackageNotFound {
-                    package = raw_package_name;
-                    registry = registry_name;
-                    required_by;
-                  }
+                  let error =
+                    Error.PackageNotFound {
+                      package = raw_package_name;
+                      registry = registry_name;
+                      required_by;
+                    }
                   in
                   ctx.emit
                     (Riot_model.Event.PackageMetadataFetchFailed {
@@ -1091,14 +1093,15 @@ let load_registry_package_manifest = fun (catalog: catalog) ~package_name ~versi
                 });
               Ok manifest
           | Error err ->
-              let error = Error.Unexpected {
-                error = "failed to decode registry package manifest '"
-                ^ package_name
-                ^ "@"
-                ^ version
-                ^ "': "
-                ^ Riot_model.Package_manifest.error_message err;
-              }
+              let error =
+                Error.Unexpected {
+                  error = "failed to decode registry package manifest '"
+                  ^ package_name
+                  ^ "@"
+                  ^ version
+                  ^ "': "
+                  ^ Riot_model.Package_manifest.error_message err;
+                }
               in
               catalog.ctx.emit
                 (Riot_model.Event.PackageManifestFetchFailed {
@@ -1456,11 +1459,12 @@ let read_registry_document = fun (catalog: catalog) ~package_name ->
       (
         match Pkgs_ml.Registry.read_package_document catalog.ctx.registry ~package_name with
         | Error err ->
-            let error = Error.PackageMetadataReadFailed {
-              package = package_name;
-              registry = registry_name;
-              error = err;
-            }
+            let error =
+              Error.PackageMetadataReadFailed {
+                package = package_name;
+                registry = registry_name;
+                error = err;
+              }
             in
             catalog.ctx.emit
               (Riot_model.Event.PackageMetadataFetchFailed {
@@ -1488,11 +1492,12 @@ let read_registry_document = fun (catalog: catalog) ~package_name ->
                     );
                   Ok document_opt
               | None ->
-                  let error = Error.PackageNotFound {
-                    package = package_name;
-                    registry = registry_name;
-                    required_by = required_by_for_package catalog package_name;
-                  }
+                  let error =
+                    Error.PackageNotFound {
+                      package = package_name;
+                      registry = registry_name;
+                      required_by = required_by_for_package catalog package_name;
+                    }
                   in
                   catalog.ctx.emit
                     (Riot_model.Event.PackageMetadataFetchFailed {

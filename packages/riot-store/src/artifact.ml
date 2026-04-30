@@ -10,11 +10,12 @@ type t = {
 }
 
 let to_json = fun artifact ->
-  let export_to_json (entry: Manifest.export_entry) = Json.Object [
-    ("name", Json.String entry.name);
-    ("path", Json.String (Path.to_string entry.path));
-    ("action_hash", Json.String entry.action_hash);
-  ]
+  let export_to_json (entry: Manifest.export_entry) =
+    Json.Object [
+      ("name", Json.String entry.name);
+      ("path", Json.String (Path.to_string entry.path));
+      ("action_hash", Json.String entry.action_hash);
+    ]
   in
   Json.Object [
     ("hash", Json.String (Crypto.Digest.hex artifact.hash));

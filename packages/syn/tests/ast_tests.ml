@@ -3737,36 +3737,35 @@ let y = 3
     leave_count = 0;
   }
   in
-  let hooks =
-    {
-      Syn.Visitor.empty_hooks with
-      enter_token =
-        Some (fun visitor token ->
-          Vector.push (Syn.Visitor.ctx visitor).token_texts ~value:(Ast.Token.text token);
-          visitor);
-      enter_let_binding =
-        Some (fun visitor binding ->
-          (
-            match Ast.LetBinding.pattern binding with
-            | Some pattern -> (
-                match Ast.Node.first_descendant_token (Ast.Pattern.as_node pattern) with
-                | Some name ->
-                    Vector.push (Syn.Visitor.ctx visitor).let_names ~value:(Ast.Token.text name)
-                | None -> ()
-              )
-            | None -> ()
-          );
-          (visitor, Syn.Visitor.Continue));
-      enter_expr =
-        Some (fun visitor expr ->
-          match Ast.Node.kind (Ast.Expr.as_node expr) with
-          | Syn.SyntaxKind.IF_EXPR -> (visitor, Syn.Visitor.Skip_subtree)
-          | _ -> (visitor, Syn.Visitor.Continue));
-      leave_node =
-        Some (fun visitor _node ->
-          let ctx = Syn.Visitor.ctx visitor in
-          Syn.Visitor.with_ctx visitor { ctx with leave_count = ctx.leave_count + 1 });
-    }
+  let hooks = {
+    Syn.Visitor.empty_hooks with
+    enter_token =
+      Some (fun visitor token ->
+        Vector.push (Syn.Visitor.ctx visitor).token_texts ~value:(Ast.Token.text token);
+        visitor);
+    enter_let_binding =
+      Some (fun visitor binding ->
+        (
+          match Ast.LetBinding.pattern binding with
+          | Some pattern -> (
+              match Ast.Node.first_descendant_token (Ast.Pattern.as_node pattern) with
+              | Some name ->
+                  Vector.push (Syn.Visitor.ctx visitor).let_names ~value:(Ast.Token.text name)
+              | None -> ()
+            )
+          | None -> ()
+        );
+        (visitor, Syn.Visitor.Continue));
+    enter_expr =
+      Some (fun visitor expr ->
+        match Ast.Node.kind (Ast.Expr.as_node expr) with
+        | Syn.SyntaxKind.IF_EXPR -> (visitor, Syn.Visitor.Skip_subtree)
+        | _ -> (visitor, Syn.Visitor.Continue));
+    leave_node =
+      Some (fun visitor _node ->
+        let ctx = Syn.Visitor.ctx visitor in
+        Syn.Visitor.with_ctx visitor { ctx with leave_count = ctx.leave_count + 1 });
+  }
   in
   let visitor = Syn.Visitor.make ~ctx:initial ~hooks in
   let visitor = Syn.Visitor.visit_source_file visitor root in

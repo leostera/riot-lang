@@ -57,13 +57,14 @@ module Handler = struct
 
   type operation_result = (t, reported_error) result
 
-  let make (type a b) (module I : Intf with type args = a and type state = b) (args: a): t = Pending {
-    pending_init = I.init;
-    pending_handle_frame = I.handle_frame;
-    pending_handle_message = I.handle_message;
-    pending_error_to_string = I.error_to_string;
-    pending_args = args;
-  }
+  let make (type a b) (module I : Intf with type args = a and type state = b) (args: a): t =
+    Pending {
+      pending_init = I.init;
+      pending_handle_frame = I.handle_frame;
+      pending_handle_message = I.handle_message;
+      pending_error_to_string = I.error_to_string;
+      pending_args = args;
+    }
 
   let initialize = function
     | Ready _ as handler ->

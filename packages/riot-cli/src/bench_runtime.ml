@@ -607,23 +607,27 @@ let bench_event_to_json = function
     comparisons;
     summary
   } ->
-      let statistics_to_json (stats: bench_statistics) = Data.Json.Object [
-        ("min_nanos", Data.Json.Int (Int64.to_int (Time.Duration.to_nanos stats.min)));
-        ("max_nanos", Data.Json.Int (Int64.to_int (Time.Duration.to_nanos stats.max)));
-        ("mean_nanos", Data.Json.Int (Int64.to_int (Time.Duration.to_nanos stats.mean)));
-        ("median_nanos", Data.Json.Int (Int64.to_int (Time.Duration.to_nanos stats.median)));
-        ("std_dev_nanos", Data.Json.Int (Int64.to_int (Time.Duration.to_nanos stats.std_dev)));
-        ("iterations", Data.Json.Int stats.iterations);
-        ("total_time_nanos", Data.Json.Int (Int64.to_int (Time.Duration.to_nanos stats.total_time)));
-        (
-          "gc",
-          Data.Json.Object [
-            ("minor_collections", Data.Json.Int stats.gc.minor_collections);
-            ("major_collections", Data.Json.Int stats.gc.major_collections);
-            ("compactions", Data.Json.Int stats.gc.compactions);
-          ]
-        );
-      ]
+      let statistics_to_json (stats: bench_statistics) =
+        Data.Json.Object [
+          ("min_nanos", Data.Json.Int (Int64.to_int (Time.Duration.to_nanos stats.min)));
+          ("max_nanos", Data.Json.Int (Int64.to_int (Time.Duration.to_nanos stats.max)));
+          ("mean_nanos", Data.Json.Int (Int64.to_int (Time.Duration.to_nanos stats.mean)));
+          ("median_nanos", Data.Json.Int (Int64.to_int (Time.Duration.to_nanos stats.median)));
+          ("std_dev_nanos", Data.Json.Int (Int64.to_int (Time.Duration.to_nanos stats.std_dev)));
+          ("iterations", Data.Json.Int stats.iterations);
+          (
+            "total_time_nanos",
+            Data.Json.Int (Int64.to_int (Time.Duration.to_nanos stats.total_time))
+          );
+          (
+            "gc",
+            Data.Json.Object [
+              ("minor_collections", Data.Json.Int stats.gc.minor_collections);
+              ("major_collections", Data.Json.Int stats.gc.major_collections);
+              ("compactions", Data.Json.Int stats.gc.compactions);
+            ]
+          );
+        ]
       in
       let result_to_json (result: bench_case_result) =
         let base_fields = [
@@ -643,30 +647,31 @@ let bench_event_to_json = function
             @ [ ("status", Data.Json.String "failed"); ("message", Data.Json.String message); ])
         | Skipped -> Data.Json.Object (base_fields @ [ ("status", Data.Json.String "skipped"); ])
       in
-      let comparison_to_json (comparison: bench_comparison_result) = Data.Json.Object [
-        ("description", Data.Json.String comparison.description);
-        ("fastest", Data.Json.String comparison.fastest);
-        (
-          "case_results",
-          Data.Json.Array (List.map
-            comparison.case_results
-            ~fn:(fun (case_result: bench_comparison_case_result) ->
-              Data.Json.Object [
-                ("name", Data.Json.String case_result.name);
-                ("statistics", statistics_to_json case_result.statistics);
-              ]))
-        );
-        (
-          "speedup_ratios",
-          Data.Json.Array (List.map
-            comparison.speedup_ratios
-            ~fn:(fun (name, ratio) ->
-              Data.Json.Object [
-                ("name", Data.Json.String name);
-                ("ratio", Data.Json.Float ratio);
-              ]))
-        );
-      ]
+      let comparison_to_json (comparison: bench_comparison_result) =
+        Data.Json.Object [
+          ("description", Data.Json.String comparison.description);
+          ("fastest", Data.Json.String comparison.fastest);
+          (
+            "case_results",
+            Data.Json.Array (List.map
+              comparison.case_results
+              ~fn:(fun (case_result: bench_comparison_case_result) ->
+                Data.Json.Object [
+                  ("name", Data.Json.String case_result.name);
+                  ("statistics", statistics_to_json case_result.statistics);
+                ]))
+          );
+          (
+            "speedup_ratios",
+            Data.Json.Array (List.map
+              comparison.speedup_ratios
+              ~fn:(fun (name, ratio) ->
+                Data.Json.Object [
+                  ("name", Data.Json.String name);
+                  ("ratio", Data.Json.Float ratio);
+                ]))
+          );
+        ]
       in
       Some (
         Data.Json.Object [

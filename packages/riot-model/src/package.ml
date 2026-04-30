@@ -865,8 +865,10 @@ let parse_dependency:
   | Toml.Table attrs -> (
       match Fields.get "workspace" attrs with
       | Some (Toml.Bool true) -> (
-          let source =
-            { (resolve_workspace_dependency name workspace_deps).source with workspace = true }
+          let source = {
+            (resolve_workspace_dependency name workspace_deps).source with
+            workspace = true;
+          }
           in
           validate_dependency_source ~dependency_name source
           |> Result.map ~fn:(fun source -> { name; source })
@@ -2104,37 +2106,41 @@ let from_toml:
   |> Result.map ~fn:(realize_manifest_spec ~intent:Dev)
 
 let to_json: t -> Json.t = fun pkg ->
-  let dependencies_json = Json.Array (List.map
-    pkg.dependencies
-    ~fn:(fun (dep: dependency) ->
-      Json.Object [
-        ("name", Json.String (Package_name.to_string dep.name));
-        ("source", dependency_source_to_json dep.source);
-      ]))
+  let dependencies_json =
+    Json.Array (List.map
+      pkg.dependencies
+      ~fn:(fun (dep: dependency) ->
+        Json.Object [
+          ("name", Json.String (Package_name.to_string dep.name));
+          ("source", dependency_source_to_json dep.source);
+        ]))
   in
-  let dev_dependencies_json = Json.Array (List.map
-    pkg.dev_dependencies
-    ~fn:(fun (dep: dependency) ->
-      Json.Object [
-        ("name", Json.String (Package_name.to_string dep.name));
-        ("source", dependency_source_to_json dep.source);
-      ]))
+  let dev_dependencies_json =
+    Json.Array (List.map
+      pkg.dev_dependencies
+      ~fn:(fun (dep: dependency) ->
+        Json.Object [
+          ("name", Json.String (Package_name.to_string dep.name));
+          ("source", dependency_source_to_json dep.source);
+        ]))
   in
-  let build_dependencies_json = Json.Array (List.map
-    pkg.build_dependencies
-    ~fn:(fun (dep: dependency) ->
-      Json.Object [
-        ("name", Json.String (Package_name.to_string dep.name));
-        ("source", dependency_source_to_json dep.source);
-      ]))
+  let build_dependencies_json =
+    Json.Array (List.map
+      pkg.build_dependencies
+      ~fn:(fun (dep: dependency) ->
+        Json.Object [
+          ("name", Json.String (Package_name.to_string dep.name));
+          ("source", dependency_source_to_json dep.source);
+        ]))
   in
-  let binaries_json = Json.Array (List.map
-    pkg.binaries
-    ~fn:(fun (bin: binary) ->
-      Json.Object [
-        ("name", Json.String bin.name);
-        ("path", Json.String (Path.to_string bin.path));
-      ]))
+  let binaries_json =
+    Json.Array (List.map
+      pkg.binaries
+      ~fn:(fun (bin: binary) ->
+        Json.Object [
+          ("name", Json.String bin.name);
+          ("path", Json.String (Path.to_string bin.path));
+        ]))
   in
   let library_json =
     match pkg.library with
@@ -2851,7 +2857,7 @@ std = "definitely-not-semver"
       name = package_name "example";
       path = Path.v "/tmp/example";
       relative_path = Path.v "packages/example";
-      dependencies = [ { name = package_name "std"; source = source ~version:requirement () } ];
+      dependencies = [ { name = package_name "std"; source = source ~version:requirement () }; ];
       dev_dependencies = [];
       build_dependencies = [];
       foreign_dependencies = [];

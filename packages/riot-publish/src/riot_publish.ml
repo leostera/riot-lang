@@ -564,15 +564,11 @@ module For_test = struct
         | (Publish, Some api_token) -> (
             match deps.publish_prepared ~registry ~api_token prepared with
             | Error (PublishFailed { error; _ }) when publish_error_is_already_published error ->
-                let event: publish_event = SkippedAlreadyPublished {
-                  package = package.name;
-                  version = prepared.version;
-                }
+                let event: publish_event =
+                  SkippedAlreadyPublished { package = package.name; version = prepared.version }
                 in
-                let outcome: publish_outcome = Skipped {
-                  package = package.name;
-                  version = prepared.version;
-                }
+                let outcome: publish_outcome =
+                  Skipped { package = package.name; version = prepared.version }
                 in
                 emit event;
                 run_packages

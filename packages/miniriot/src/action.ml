@@ -533,13 +533,14 @@ let from_dep_graph: Dep_graph.t -> build_plan = fun dep_graph ->
           (* Compile interface *)
           let output = Module.cmi mod_ in
           let opens = opens open_modules in
-          let action = CompileInterface {
-            sandbox_dir;
-            src_file = path;
-            output;
-            includes = [];
-            opens;
-          }
+          let action =
+            CompileInterface {
+              sandbox_dir;
+              src_file = path;
+              output;
+              includes = [];
+              opens;
+            }
           in
           actions := action :: !actions;
           outputs := Filename.concat sandbox_dir output :: !outputs
@@ -549,14 +550,15 @@ let from_dep_graph: Dep_graph.t -> build_plan = fun dep_graph ->
           (* Compile implementation *)
           let output = Module.cmo mod_ in
           let opens = opens open_modules in
-          let action = CompileImplementation {
-            sandbox_dir;
-            src_file = path;
-            output;
-            includes = [];
-            opens;
-            is_aliases = false;
-          }
+          let action =
+            CompileImplementation {
+              sandbox_dir;
+              src_file = path;
+              output;
+              includes = [];
+              opens;
+              is_aliases = false;
+            }
           in
           actions := action :: !actions;
           cmo_files := !cmo_files @ [ output ];
@@ -572,14 +574,15 @@ let from_dep_graph: Dep_graph.t -> build_plan = fun dep_graph ->
           let output = Module.cmo mod_ in
           let opens = opens open_modules in
           let is_aliases = Module.is_aliases mod_ in
-          let compile = CompileImplementation {
-            sandbox_dir;
-            src_file = path;
-            output;
-            includes = [];
-            opens;
-            is_aliases;
-          }
+          let compile =
+            CompileImplementation {
+              sandbox_dir;
+              src_file = path;
+              output;
+              includes = [];
+              opens;
+              is_aliases;
+            }
           in
           actions := compile :: !actions;
           cmo_files := !cmo_files @ [ output ];
@@ -595,13 +598,14 @@ let from_dep_graph: Dep_graph.t -> build_plan = fun dep_graph ->
           (* Compile the generated interface file *)
           let output = Module.cmi mod_ in
           let opens = opens open_modules in
-          let compile = CompileInterface {
-            sandbox_dir;
-            src_file = path;
-            output;
-            includes = [];
-            opens;
-          }
+          let compile =
+            CompileInterface {
+              sandbox_dir;
+              src_file = path;
+              output;
+              includes = [];
+              opens;
+            }
           in
           actions := compile :: !actions;
           outputs := Filename.concat sandbox_dir output :: !outputs
@@ -633,12 +637,13 @@ let from_dep_graph: Dep_graph.t -> build_plan = fun dep_graph ->
         let archive_name = Dep_graph.Module_name.cma dep_graph.package_name in
         (* cmo_files should now be in correct linking order after edge fixes *)
         let all_objects = !cmo_files @ !o_files in
-        let archive = CreateArchive {
-          sandbox_dir;
-          archive_name;
-          object_files = all_objects;
-          includes = [];
-        }
+        let archive =
+          CreateArchive {
+            sandbox_dir;
+            archive_name;
+            object_files = all_objects;
+            includes = [];
+          }
         in
         actions := archive :: !actions;
         outputs := Filename.concat sandbox_dir archive_name :: !outputs
@@ -657,24 +662,26 @@ let from_dep_graph: Dep_graph.t -> build_plan = fun dep_graph ->
         (* Compile it with -open Package to access library modules *)
         let binary_basename = Filename.basename binary.path in
         let binary_cmo = Filename.chop_extension binary_basename ^ ".cmo" in
-        let compile_binary = CompileImplementation {
-          sandbox_dir;
-          src_file = binary.path;
-          output = binary_cmo;
-          includes = [];
-          opens = [ package_name_str ];
-          is_aliases = false;
-        }
+        let compile_binary =
+          CompileImplementation {
+            sandbox_dir;
+            src_file = binary.path;
+            output = binary_cmo;
+            includes = [];
+            opens = [ package_name_str ];
+            is_aliases = false;
+          }
         in
         actions := compile_binary :: !actions;
         (* Link the binary with the package archive *)
-        let link_action = CreateExecutable {
-          sandbox_dir;
-          exe_name = binary.name;
-          main_module = binary_cmo;
-          archive = archive_name;
-          dependencies;
-        }
+        let link_action =
+          CreateExecutable {
+            sandbox_dir;
+            exe_name = binary.name;
+            main_module = binary_cmo;
+            archive = archive_name;
+            dependencies;
+          }
         in
         actions := link_action :: !actions;
         (* Make it executable *)

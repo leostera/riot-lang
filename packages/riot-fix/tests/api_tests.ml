@@ -88,15 +88,16 @@ let tests = [
   Test.case
     "event to_json encodes progress events"
     (fun _ctx ->
-      let event = Riot_fix.Event.FileProgress {
-        file = Path.v "sample.ml";
-        progress = {
-          phase = Fixme.Source_runner.RuleStarted {
-            rule_id = Fixme.Rule_id.of_string "riot:snake-case-type-names";
+      let event =
+        Riot_fix.Event.FileProgress {
+          file = Path.v "sample.ml";
+          progress = {
+            phase = Fixme.Source_runner.RuleStarted {
+              rule_id = Fixme.Rule_id.of_string "riot:snake-case-type-names";
+            };
+            timestamp_ms = 42;
           };
-          timestamp_ms = 42;
-        };
-      }
+        }
       in
       match Riot_fix.Event.to_json event with
       | Data.Json.Object fields ->

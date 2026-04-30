@@ -37,17 +37,19 @@ let to_json manifest =
     | V0 -> "v0"
     | V1 -> "v1"
   in
-  let file_entry_to_json (entry: file_entry) = Data.Json.Object [
-    ("path", Data.Json.String (Path.to_string entry.path));
-    ("hash", Data.Json.String entry.hash);
-    ("size", Data.Json.Int entry.size);
-  ]
+  let file_entry_to_json (entry: file_entry) =
+    Data.Json.Object [
+      ("path", Data.Json.String (Path.to_string entry.path));
+      ("hash", Data.Json.String entry.hash);
+      ("size", Data.Json.Int entry.size);
+    ]
   in
-  let export_entry_to_json (entry: export_entry) = Data.Json.Object [
-    ("name", Data.Json.String entry.name);
-    ("path", Data.Json.String (Path.to_string entry.path));
-    ("action_hash", Data.Json.String entry.action_hash);
-  ]
+  let export_entry_to_json (entry: export_entry) =
+    Data.Json.Object [
+      ("name", Data.Json.String entry.name);
+      ("path", Data.Json.String (Path.to_string entry.path));
+      ("action_hash", Data.Json.String entry.action_hash);
+    ]
   in
   Data.Json.Object [
     ("version", Data.Json.String (version_to_string manifest.version));

@@ -76,14 +76,13 @@ let check_let_declaration = fun diagnostics declaration ->
 
 let check_tree = fun _ctx root ->
   let diagnostics = H.diagnostics_for_root root in
-  let hooks =
-    {
-      Syn.Visitor.empty_hooks with
-      enter_let_declaration =
-        Some (fun visitor declaration ->
-          check_let_declaration diagnostics declaration;
-          (visitor, Syn.Visitor.Continue));
-    }
+  let hooks = {
+    Syn.Visitor.empty_hooks with
+    enter_let_declaration =
+      Some (fun visitor declaration ->
+        check_let_declaration diagnostics declaration;
+        (visitor, Syn.Visitor.Continue));
+  }
   in
   Syn.Visitor.make ~ctx:() ~hooks
   |> fun visitor ->

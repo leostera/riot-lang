@@ -116,24 +116,23 @@ let should_prefer_destructuring = fun ctx expected_name expr ->
     has_whole_value_use = false;
   }
   in
-  let hooks =
-    {
-      Syn.Visitor.empty_hooks with
-      enter_expr =
-        Some (fun visitor expr ->
-          (
-            match Ast.Expr.view expr with
-            | Ast.Expr.Ident { ident } -> (
-                match ident_segments ctx ident with
-                | [ name ] when String.equal expected_name name -> usage.has_whole_value_use <- true
-                | [ base; field ] when String.equal expected_name base ->
-                    Vector.push usage.fields ~value:field
-                | _ -> ()
-              )
-            | _ -> ()
-          );
-          (visitor, Syn.Visitor.Continue));
-    }
+  let hooks = {
+    Syn.Visitor.empty_hooks with
+    enter_expr =
+      Some (fun visitor expr ->
+        (
+          match Ast.Expr.view expr with
+          | Ast.Expr.Ident { ident } -> (
+              match ident_segments ctx ident with
+              | [ name ] when String.equal expected_name name -> usage.has_whole_value_use <- true
+              | [ base; field ] when String.equal expected_name base ->
+                  Vector.push usage.fields ~value:field
+              | _ -> ()
+            )
+          | _ -> ()
+        );
+        (visitor, Syn.Visitor.Continue));
+  }
   in
   Syn.Visitor.make ~ctx:() ~hooks
   |> fun visitor ->
@@ -155,14 +154,13 @@ let check_binding = fun ctx diagnostics binding ->
 
 let check_tree = fun ctx root ->
   let diagnostics = H.diagnostics_for_root root in
-  let hooks =
-    {
-      Syn.Visitor.empty_hooks with
-      enter_let_binding =
-        Some (fun visitor binding ->
-          check_binding ctx diagnostics binding;
-          (visitor, Syn.Visitor.Continue));
-    }
+  let hooks = {
+    Syn.Visitor.empty_hooks with
+    enter_let_binding =
+      Some (fun visitor binding ->
+        check_binding ctx diagnostics binding;
+        (visitor, Syn.Visitor.Continue));
+  }
   in
   Syn.Visitor.make ~ctx:() ~hooks
   |> fun visitor ->

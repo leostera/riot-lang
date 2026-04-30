@@ -117,14 +117,13 @@ let headers = fun
   ?priority
   header_block_fragment ->
   let has_priority = Option.is_some priority in
-  let flags =
-    {
-      default_flags with
-      end_stream;
-      end_headers;
-      padded = Option.is_some pad_length;
-      priority = has_priority;
-    }
+  let flags = {
+    default_flags with
+    end_stream;
+    end_headers;
+    padded = Option.is_some pad_length;
+    priority = has_priority;
+  }
   in
   let (stream_dependency, weight, exclusive) =
     match priority with

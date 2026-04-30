@@ -707,8 +707,12 @@ let test_solver_randomized_small_graphs_match_bruteforce =
     "Solver: randomized small graphs match brute-force satisfiability"
     ~examples:120
     (fun ctx ->
-      let config =
-        { Property.default_config with test_count = 120; max_size = 20; seed = Some 20_260_418 }
+      let config = {
+        Property.default_config with
+        test_count = 120;
+        max_size = 20;
+        seed = Some 20_260_418;
+      }
       in
       check_property
         ~ctx
@@ -790,8 +794,12 @@ let test_solver_randomized_insertion_order_is_deterministic =
     "Solver: randomized insertion order stays deterministic"
     ~examples:120
     (fun ctx ->
-      let config =
-        { Property.default_config with test_count = 120; max_size = 20; seed = Some 20_260_419 }
+      let config = {
+        Property.default_config with
+        test_count = 120;
+        max_size = 20;
+        seed = Some 20_260_419;
+      }
       in
       let build_provider ~reverse (graph: fuzz_graph) =
         let provider = Pubgrub.create_offline () in

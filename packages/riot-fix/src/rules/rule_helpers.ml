@@ -241,27 +241,25 @@ let parameter_name_token = fun parameter ->
   | _ -> None
 
 let for_each_let_binding = fun root ~fn ->
-  let hooks =
-    {
-      Syn.Visitor.empty_hooks with
-      enter_let_binding =
-        Some (fun visitor binding ->
-          fn binding;
-          (visitor, Syn.Visitor.Continue));
-    }
+  let hooks = {
+    Syn.Visitor.empty_hooks with
+    enter_let_binding =
+      Some (fun visitor binding ->
+        fn binding;
+        (visitor, Syn.Visitor.Continue));
+  }
   in
   Syn.Visitor.make ~ctx:() ~hooks
   |> fun visitor -> ignore (Syn.Visitor.visit_node visitor root)
 
 let for_each_type_declaration = fun root ~fn ->
-  let hooks =
-    {
-      Syn.Visitor.empty_hooks with
-      enter_type_declaration =
-        Some (fun visitor declaration ->
-          fn declaration;
-          (visitor, Syn.Visitor.Continue));
-    }
+  let hooks = {
+    Syn.Visitor.empty_hooks with
+    enter_type_declaration =
+      Some (fun visitor declaration ->
+        fn declaration;
+        (visitor, Syn.Visitor.Continue));
+  }
   in
   Syn.Visitor.make ~ctx:() ~hooks
   |> fun visitor -> ignore (Syn.Visitor.visit_node visitor root)

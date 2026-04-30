@@ -146,10 +146,8 @@ let test_action_graph_json_round_trip_preserves_package_paths_and_hashes = fun _
       ~relative_path:(Path.v "packages/kernel")
   in
   let graph = Riot_planner.Action_graph.create () in
-  let action = Riot_planner.Action.WriteFile {
-    destination = Path.v "build/meta.txt";
-    content = "ok";
-  }
+  let action =
+    Riot_planner.Action.WriteFile { destination = Path.v "build/meta.txt"; content = "ok" }
   in
   let spec =
     Riot_planner.Action_node.make
@@ -268,12 +266,13 @@ let test_action_hash_tracks_package_relative_source_contents = fun _ctx ->
           ~path:package_root
           ~relative_path:(Path.v "packages/demo")
       in
-      let action = Riot_planner.Action.CompileImplementation {
-        source = Path.v "src/demo.ml";
-        outputs = [ Path.v "Demo.cmt"; Path.v "Demo.cmi"; Path.v "Demo.cmx" ];
-        includes = [ Path.v "." ];
-        flags = [];
-      }
+      let action =
+        Riot_planner.Action.CompileImplementation {
+          source = Path.v "src/demo.ml";
+          outputs = [ Path.v "Demo.cmt"; Path.v "Demo.cmi"; Path.v "Demo.cmx" ];
+          includes = [ Path.v "." ];
+          flags = [];
+        }
       in
       let write contents =
         Fs.write contents source

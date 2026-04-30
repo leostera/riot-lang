@@ -3246,11 +3246,10 @@ let test_package_error_message_lists_search_suggestions = fun _ctx ->
     Error ("unexpected suggestion message:\n" ^ message)
 
 let test_search_returns_registry_results = fun _ctx ->
-  let release =
-    {
-      (make_release ~version:"0.0.1" ()) with
-      description = Some "Bootstrap build tool for the Riot toolchain";
-    }
+  let release = {
+    (make_release ~version:"0.0.1" ()) with
+    description = Some "Bootstrap build tool for the Riot toolchain";
+  }
   in
   let registry =
     make_registry
@@ -3522,19 +3521,18 @@ let test_ensure_lock_reuses_existing_lock_and_repairs_missing_registry_packages 
           ()
         |> Result.expect ~msg:"expected initial lock solve to succeed"
       in
-      let existing_lock =
-        {
-          existing_lock with
-          dependency_hash =
-            Riot_deps.Lock_refresh.dependency_hash
-              ~workspace_manager:(workspace_manager ())
-              ~workspace_root
-              ~manifest_paths:[
-                manifest_path;
-                Path.(workspace_root / Path.v "packages/app/riot.toml");
-              ]
-            |> Result.expect ~msg:"expected dependency hash to compute";
-        }
+      let existing_lock = {
+        existing_lock with
+        dependency_hash =
+          Riot_deps.Lock_refresh.dependency_hash
+            ~workspace_manager:(workspace_manager ())
+            ~workspace_root
+            ~manifest_paths:[
+              manifest_path;
+              Path.(workspace_root / Path.v "packages/app/riot.toml");
+            ]
+          |> Result.expect ~msg:"expected dependency hash to compute";
+      }
       in
       Riot_deps.Lockfile_store.write ~workspace_root existing_lock
       |> Result.expect ~msg:"expected initial lockfile write to succeed";

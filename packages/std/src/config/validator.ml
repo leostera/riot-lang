@@ -285,8 +285,10 @@ let rec validate_field (field: Spec.field) toml_opt: (Spec.value, string) result
               function
               | [] -> Ok (Collections.List.reverse acc)
               | item :: rest ->
-                  let item_field =
-                    { item_spec with Spec.name = field_name ^ "[" ^ Int.to_string index ^ "]" }
+                  let item_field = {
+                    item_spec with
+                    Spec.name = field_name ^ "[" ^ Int.to_string index ^ "]";
+                  }
                   in
                   (
                     match validate_field item_field (Some item) with

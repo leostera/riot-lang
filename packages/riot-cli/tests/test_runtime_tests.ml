@@ -50,19 +50,20 @@ let test_suite_heartbeat_event_to_json = fun _ctx ->
   | None -> Error "expected suite heartbeat event to render json"
 
 let test_suite_progress_test_case_result_parses_completed_case = fun _ctx ->
-  let json = Data.Json.Object [
-    ("type", Data.Json.String "TestCaseCompleted");
-    ("index", Data.Json.Int 3);
-    ("name", Data.Json.String "alpha");
-    ("test_type", Data.Json.String "property");
-    ("examples", Data.Json.Int 7);
-    ("size", Data.Json.String "large");
-    ("reliability", Data.Json.String "flaky");
-    ("retry_attempts", Data.Json.Int 2);
-    ("attempts", Data.Json.Int 3);
-    ("status", Data.Json.String "passed");
-    ("duration_us", Data.Json.Int 1_234);
-  ]
+  let json =
+    Data.Json.Object [
+      ("type", Data.Json.String "TestCaseCompleted");
+      ("index", Data.Json.Int 3);
+      ("name", Data.Json.String "alpha");
+      ("test_type", Data.Json.String "property");
+      ("examples", Data.Json.Int 7);
+      ("size", Data.Json.String "large");
+      ("reliability", Data.Json.String "flaky");
+      ("retry_attempts", Data.Json.Int 2);
+      ("attempts", Data.Json.Int 3);
+      ("status", Data.Json.String "passed");
+      ("duration_us", Data.Json.Int 1_234);
+    ]
   in
   match Riot_cli.Test_runtime.suite_progress_test_case_result json with
   | Ok (
@@ -93,10 +94,11 @@ let test_suite_progress_test_case_result_parses_completed_case = fun _ctx ->
   | Error err -> Error ("expected completed case progress to parse: " ^ err)
 
 let test_suite_progress_test_case_result_ignores_non_completed_event = fun _ctx ->
-  let json = Data.Json.Object [
-    ("type", Data.Json.String "TestCaseStarted");
-    ("name", Data.Json.String "alpha");
-  ]
+  let json =
+    Data.Json.Object [
+      ("type", Data.Json.String "TestCaseStarted");
+      ("name", Data.Json.String "alpha");
+    ]
   in
   match Riot_cli.Test_runtime.suite_progress_test_case_result json with
   | Ok None -> Ok ()

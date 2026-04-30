@@ -448,17 +448,16 @@ let repeat_items = fun (items: item vec) ~count ->
     let repeated = Vector.with_capacity ~size:count in
     for index = 0 to count - 1 do
       let template: item = vec_get_exn items (index mod base_count) in
-      let item: item =
-        {
-          template with
-          id = template.id + index;
-          name = template.name ^ "-" ^ Int.to_string index;
-          note =
-            match template.note with
-            | None -> None
-            | Some note ->
-                Some (note ^ "-" ^ Int.to_string index);
-        }
+      let item: item = {
+        template with
+        id = template.id + index;
+        name = template.name ^ "-" ^ Int.to_string index;
+        note =
+          match template.note with
+          | None -> None
+          | Some note ->
+              Some (note ^ "-" ^ Int.to_string index);
+      }
       in
       Vector.push repeated ~value:item
     done;

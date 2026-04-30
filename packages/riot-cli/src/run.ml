@@ -290,18 +290,19 @@ let write_binary_list_json = fun ~(workspace:Riot_model.Workspace.t) binaries ->
     else
       "binary"
   in
-  let binary_json (binary: Run_runtime.runnable_binary) = Data.Json.Object [
-    ("kind", Data.Json.String (binary_kind binary));
-    ("package", Data.Json.String (Riot_model.Package_name.to_string binary.package_name));
-    ("binary", Data.Json.String binary.binary_name);
-    ("path", Data.Json.String (binary_source_label ~workspace binary));
-    (
-      "selector",
-      Data.Json.String (Riot_model.Package_name.to_string binary.package_name
-      ^ ":"
-      ^ binary.binary_name)
-    );
-  ]
+  let binary_json (binary: Run_runtime.runnable_binary) =
+    Data.Json.Object [
+      ("kind", Data.Json.String (binary_kind binary));
+      ("package", Data.Json.String (Riot_model.Package_name.to_string binary.package_name));
+      ("binary", Data.Json.String binary.binary_name);
+      ("path", Data.Json.String (binary_source_label ~workspace binary));
+      (
+        "selector",
+        Data.Json.String (Riot_model.Package_name.to_string binary.package_name
+        ^ ":"
+        ^ binary.binary_name)
+      );
+    ]
   in
   write_json_event
     (Data.Json.Object [

@@ -51,11 +51,10 @@ let test_add_edge_renders_undirected_arrow = fun _ctx ->
     Error "Undirected DOT graphs should render -- edges"
 
 let test_graph_level_attributes_are_rendered = fun _ctx ->
-  let graph =
-    {
-      (Graph.Dot.create ~name:"deps" ~style:Graph.Dot.Directed) with
-      graph_attrs = [ ("rankdir", "LR"); ("label", "Dependency Graph"); ];
-    }
+  let graph = {
+    (Graph.Dot.create ~name:"deps" ~style:Graph.Dot.Directed) with
+    graph_attrs = [ ("rankdir", "LR"); ("label", "Dependency Graph"); ];
+  }
   in
   let rendered = Graph.Dot.to_string graph in
   if

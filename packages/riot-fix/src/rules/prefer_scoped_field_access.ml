@@ -164,39 +164,38 @@ let check_expr = fun ctx diagnostics visitor expr ->
 
 let check_tree = fun ctx root ->
   let diagnostics = H.diagnostics_for_root root in
-  let hooks =
-    {
-      Syn.Visitor.empty_hooks with
-      enter_expr =
-        Some (fun visitor expr ->
-          check_expr ctx diagnostics visitor expr;
-          let visitor =
-            match Ast.Expr.view expr with
-            | Ast.Expr.LocalOpen _ ->
-                Syn.Visitor.with_ctx
-                  visitor
-                  {
-                    local_open_depth = (Syn.Visitor.ctx visitor).local_open_depth + 1;
-                  }
-            | _ -> visitor
-          in
-          (visitor, Syn.Visitor.Continue));
-      leave_node =
-        Some (fun visitor node ->
-          if Ast.Node.kind node = Syn.SyntaxKind.LOCAL_OPEN_EXPR then
-            let depth = (Syn.Visitor.ctx visitor).local_open_depth in
-            Syn.Visitor.with_ctx
-              visitor
-              {
-                local_open_depth =
-                  if depth > 0 then
-                    depth - 1
-                  else
-                    0;
-              }
-          else
-            visitor);
-    }
+  let hooks = {
+    Syn.Visitor.empty_hooks with
+    enter_expr =
+      Some (fun visitor expr ->
+        check_expr ctx diagnostics visitor expr;
+        let visitor =
+          match Ast.Expr.view expr with
+          | Ast.Expr.LocalOpen _ ->
+              Syn.Visitor.with_ctx
+                visitor
+                {
+                  local_open_depth = (Syn.Visitor.ctx visitor).local_open_depth + 1;
+                }
+          | _ -> visitor
+        in
+        (visitor, Syn.Visitor.Continue));
+    leave_node =
+      Some (fun visitor node ->
+        if Ast.Node.kind node = Syn.SyntaxKind.LOCAL_OPEN_EXPR then
+          let depth = (Syn.Visitor.ctx visitor).local_open_depth in
+          Syn.Visitor.with_ctx
+            visitor
+            {
+              local_open_depth =
+                if depth > 0 then
+                  depth - 1
+                else
+                  0;
+            }
+        else
+          visitor);
+  }
   in
   Syn.Visitor.make ~ctx:{ local_open_depth = 0 } ~hooks
   |> fun visitor ->

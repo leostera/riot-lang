@@ -879,8 +879,10 @@ let solve_with_stats = fun
                                           ver
                                       in
                                       record_decision stats new_solution;
-                                      let new_state =
-                                        { propagated_state with solution = new_solution }
+                                      let new_state = {
+                                        propagated_state with
+                                        solution = new_solution;
+                                      }
                                       in
                                       (* Add dependency incompatibilities and collect affected packages *)
                                       let affected_packages = ref [] in

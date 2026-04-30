@@ -53,15 +53,16 @@ end
 
 let test_pool_creation = fun () ->
   Log.info "Testing pool creation...";
-  let config = Pool.Config {
-    driver = (module MockDriver);
-    driver_config = ();
-    min_connections = 2;
-    max_connections = 5;
-    acquire_timeout = Time.Duration.from_secs 5;
-    idle_timeout = Time.Duration.from_mins 5;
-    max_lifetime = Some (Time.Duration.from_hours 1);
-  }
+  let config =
+    Pool.Config {
+      driver = (module MockDriver);
+      driver_config = ();
+      min_connections = 2;
+      max_connections = 5;
+      acquire_timeout = Time.Duration.from_secs 5;
+      idle_timeout = Time.Duration.from_mins 5;
+      max_lifetime = Some (Time.Duration.from_hours 1);
+    }
   in
   match Pool.create config with
   | Error _ -> Log.error "Failed to create pool"

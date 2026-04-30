@@ -722,10 +722,11 @@ let write_test_event = fun
 let write_test_error = fun err -> println ("error: " ^ Test_runtime.test_error_message err)
 
 let write_test_error_json = fun ~command_started_at err ->
-  let event_json = Data.Json.Object [
-    ("type", Data.Json.String "test.error");
-    ("message", Data.Json.String (Test_runtime.test_error_message err));
-  ]
+  let event_json =
+    Data.Json.Object [
+      ("type", Data.Json.String "test.error");
+      ("message", Data.Json.String (Test_runtime.test_error_message err));
+    ]
   in
   print
     (

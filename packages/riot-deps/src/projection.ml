@@ -173,9 +173,8 @@ let load_external_package = fun
               Riot_model.Package.of_manifest_spec manifest)
           |> Result.map_err
             ~fn:(fun err ->
-              let err = Error.ProjectionFailed {
-                error = Riot_model.Package_manifest.error_message err;
-              }
+              let err =
+                Error.ProjectionFailed { error = Riot_model.Package_manifest.error_message err }
               in
               emit_failed err;
               err)

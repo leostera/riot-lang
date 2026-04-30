@@ -1283,8 +1283,11 @@ let to_json = fun event ->
   let clean_event =
     match event.kind with
     | CompileError { package; error } ->
-        let clean_error =
-          { error with raw = strip_ansi_codes error.raw; hint = strip_ansi_codes error.hint }
+        let clean_error = {
+          error with
+          raw = strip_ansi_codes error.raw;
+          hint = strip_ansi_codes error.hint;
+        }
         in
         { event with kind = CompileError { package; error = clean_error } }
     | _ -> event

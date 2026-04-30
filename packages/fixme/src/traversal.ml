@@ -46,15 +46,14 @@ let to_list = fun vector ->
 
 let find_nodes = fun predicate tree ->
   let found = Vector.with_capacity ~size:(Ast.Node.child_count tree + 1) in
-  let hooks =
-    {
-      Syn.Visitor.empty_hooks with
-      enter_node =
-        Some (fun visitor node ->
-          if predicate node then
-            Vector.push found ~value:node;
-          (visitor, Syn.Visitor.Continue));
-    }
+  let hooks = {
+    Syn.Visitor.empty_hooks with
+    enter_node =
+      Some (fun visitor node ->
+        if predicate node then
+          Vector.push found ~value:node;
+        (visitor, Syn.Visitor.Continue));
+  }
   in
   Syn.Visitor.make ~ctx:() ~hooks
   |> fun visitor ->
@@ -73,15 +72,14 @@ let find_by_kinds = fun kinds tree ->
 
 let find_tokens = fun predicate tree ->
   let found = Vector.with_capacity ~size:(Ast.Node.token_width tree) in
-  let hooks =
-    {
-      Syn.Visitor.empty_hooks with
-      enter_token =
-        Some (fun visitor token ->
-          if predicate token then
-            Vector.push found ~value:token;
-          visitor);
-    }
+  let hooks = {
+    Syn.Visitor.empty_hooks with
+    enter_token =
+      Some (fun visitor token ->
+        if predicate token then
+          Vector.push found ~value:token;
+        visitor);
+  }
   in
   Syn.Visitor.make ~ctx:() ~hooks
   |> fun visitor ->
@@ -128,18 +126,17 @@ type 'acc visitor = {
 }
 
 let fold = fun visitor init tree ->
-  let hooks =
-    {
-      Syn.Visitor.empty_hooks with
-      enter_node = Some (fun state node -> (
-        Syn.Visitor.with_ctx state (visitor.visit_node node (Syn.Visitor.ctx state)),
-        Syn.Visitor.Continue
-      ));
-      enter_token = Some (fun state token ->
-        Syn.Visitor.with_ctx
-          state
-          (visitor.visit_token token (Syn.Visitor.ctx state)));
-    }
+  let hooks = {
+    Syn.Visitor.empty_hooks with
+    enter_node = Some (fun state node -> (
+      Syn.Visitor.with_ctx state (visitor.visit_node node (Syn.Visitor.ctx state)),
+      Syn.Visitor.Continue
+    ));
+    enter_token = Some (fun state token ->
+      Syn.Visitor.with_ctx
+        state
+        (visitor.visit_token token (Syn.Visitor.ctx state)));
+  }
   in
   let state = Syn.Visitor.make ~ctx:init ~hooks in
   Syn.Visitor.visit_node state tree
@@ -148,14 +145,13 @@ let fold = fun visitor init tree ->
 let expressions_of_structure_item = fun (item: Ast.StructureItem.t) ->
   let node = Ast.StructureItem.as_node item in
   let expressions = Vector.with_capacity ~size:(Ast.Node.child_count node) in
-  let hooks =
-    {
-      Syn.Visitor.empty_hooks with
-      enter_expr =
-        Some (fun visitor expr ->
-          Vector.push expressions ~value:expr;
-          (visitor, Syn.Visitor.Skip_subtree));
-    }
+  let hooks = {
+    Syn.Visitor.empty_hooks with
+    enter_expr =
+      Some (fun visitor expr ->
+        Vector.push expressions ~value:expr;
+        (visitor, Syn.Visitor.Skip_subtree));
+  }
   in
   Syn.Visitor.make ~ctx:() ~hooks
   |> fun visitor ->
@@ -165,14 +161,13 @@ let expressions_of_structure_item = fun (item: Ast.StructureItem.t) ->
 let let_bindings_of_structure_item = fun (item: Ast.StructureItem.t) ->
   let node = Ast.StructureItem.as_node item in
   let bindings = Vector.with_capacity ~size:(Ast.Node.child_count node) in
-  let hooks =
-    {
-      Syn.Visitor.empty_hooks with
-      enter_let_binding =
-        Some (fun visitor binding ->
-          Vector.push bindings ~value:binding;
-          (visitor, Syn.Visitor.Skip_subtree));
-    }
+  let hooks = {
+    Syn.Visitor.empty_hooks with
+    enter_let_binding =
+      Some (fun visitor binding ->
+        Vector.push bindings ~value:binding;
+        (visitor, Syn.Visitor.Skip_subtree));
+  }
   in
   Syn.Visitor.make ~ctx:() ~hooks
   |> fun visitor ->

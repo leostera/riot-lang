@@ -1067,10 +1067,11 @@ let write_bench_event = fun
 let write_bench_error = fun err -> println ("error: " ^ Bench_runtime.bench_error_message err)
 
 let write_bench_error_json = fun ~command_started_at err ->
-  let event_json = Data.Json.Object [
-    ("type", Data.Json.String "bench.error");
-    ("message", Data.Json.String (Bench_runtime.bench_error_message err));
-  ]
+  let event_json =
+    Data.Json.Object [
+      ("type", Data.Json.String "bench.error");
+      ("message", Data.Json.String (Bench_runtime.bench_error_message err));
+    ]
   in
   print
     (

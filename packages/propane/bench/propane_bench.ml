@@ -75,9 +75,7 @@ let bench_string_shrinker = fun len ->
 
 let bench_property_check = fun () ->
   let prop = Property.for_all Arbitrary.int (fun value -> value + 0 = value) in
-  let config =
-    { Property.default_config with test_count = 100; max_size = 50; seed = Some 123 }
-  in
+  let config = { Property.default_config with test_count = 100; max_size = 50; seed = Some 123 } in
   fun () ->
     let _ = Property.check ~config prop in
     ()
@@ -104,8 +102,12 @@ let bench_shrinking_failure = fun () ->
       (Generator.return [ 50; 25; 10 ])
   in
   let prop = Property.for_all arb (fun values -> List.is_empty values) in
-  let config =
-    { Property.default_config with test_count = 1; max_shrink_steps = 100; seed = Some 1 }
+  let config = {
+    Property.default_config with
+    test_count = 1;
+    max_shrink_steps = 100;
+    seed = Some 1;
+  }
   in
   fun () ->
     let _ = Property.check ~config prop in

@@ -696,8 +696,12 @@ let handle_request = fun state socket_conn (req: Request.t) ->
       | Ok () ->
           let is_keep_alive = should_keep_alive req in
           let requests_processed = state.requests_processed + 1 in
-          let new_state =
-            { state with is_keep_alive; requests_processed; parse_state = WaitingForHeaders }
+          let new_state = {
+            state with
+            is_keep_alive;
+            requests_processed;
+            parse_state = WaitingForHeaders;
+          }
           in
           if
             should_continue_keep_alive

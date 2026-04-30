@@ -140,12 +140,13 @@ let module_to_actions ~package ~profile ~ctx ~dep_includes ~get_dep_outputs ~get
       let cmti_output = Module.cmti mod_ in
       let outputs = [ cmti_output; cmi_output ] in
       let sources = [ path ] in
-      let compile = Action.CompileInterface {
-        source = path;
-        outputs;
-        includes = Path.v "." :: dep_includes;
-        flags = base_compile_flags @ opens open_modules;
-      }
+      let compile =
+        Action.CompileInterface {
+          source = path;
+          outputs;
+          includes = Path.v "." :: dep_includes;
+          flags = base_compile_flags @ opens open_modules;
+        }
       in
       ([ compile ], outputs, sources)
   | { kind = ML mod_; file = Concrete path; open_modules; _ } ->
@@ -155,12 +156,13 @@ let module_to_actions ~package ~profile ~ctx ~dep_includes ~get_dep_outputs ~get
       let cmt_output = Module.cmt mod_ in
       let outputs = [ cmt_output; cmi_output; cmx_output; native_object_output; ] in
       let sources = [ path ] in
-      let compile = Action.CompileImplementation {
-        source = path;
-        outputs;
-        includes = Path.v "." :: dep_includes;
-        flags = base_compile_flags @ opens open_modules;
-      }
+      let compile =
+        Action.CompileImplementation {
+          source = path;
+          outputs;
+          includes = Path.v "." :: dep_includes;
+          flags = base_compile_flags @ opens open_modules;
+        }
       in
       ([ compile ], outputs, sources)
   | { kind = ML mod_; file = Generated { path; contents }; open_modules; _ } ->
@@ -181,12 +183,13 @@ let module_to_actions ~package ~profile ~ctx ~dep_includes ~get_dep_outputs ~get
         else
           base_compile_flags @ opens open_modules
       in
-      let compile_action = Action.CompileImplementation {
-        source = path;
-        outputs;
-        includes = Path.v "." :: dep_includes;
-        flags;
-      }
+      let compile_action =
+        Action.CompileImplementation {
+          source = path;
+          outputs;
+          includes = Path.v "." :: dep_includes;
+          flags;
+        }
       in
       ([ write_action; compile_action ], outputs, sources)
   | { kind = MLI mod_; file = Generated { path; contents }; open_modules; _ } ->
@@ -195,12 +198,13 @@ let module_to_actions ~package ~profile ~ctx ~dep_includes ~get_dep_outputs ~get
       let cmti_output = Module.cmti mod_ in
       let outputs = [ cmti_output; cmi_output ] in
       let sources = [] in
-      let compile_action = Action.CompileInterface {
-        source = path;
-        outputs;
-        includes = Path.v "." :: dep_includes;
-        flags = base_compile_flags @ opens open_modules;
-      }
+      let compile_action =
+        Action.CompileInterface {
+          source = path;
+          outputs;
+          includes = Path.v "." :: dep_includes;
+          flags = base_compile_flags @ opens open_modules;
+        }
       in
       ([ write_action; compile_action ], outputs, sources)
   | { kind = Native { files }; _ } ->
@@ -289,11 +293,8 @@ let module_to_actions ~package ~profile ~ctx ~dep_includes ~get_dep_outputs ~get
               None)
       in
       (* Create static library metadata (.cmxa). *)
-      let create_lib = Action.CreateLibrary {
-        outputs = [ library_name; archive_name ];
-        objects;
-        includes;
-      }
+      let create_lib =
+        Action.CreateLibrary { outputs = [ library_name; archive_name ]; objects; includes }
       in
       let all_outputs = [ library_name; archive_name ] in
       ([ create_lib ], all_outputs, sources)
@@ -409,15 +410,16 @@ let module_to_actions ~package ~profile ~ctx ~dep_includes ~get_dep_outputs ~get
       (* Keep ccopt_flags and cclib_flags separate *)
       let ccopt_flags = ccflags in
       let cclib_flags = ldflags in
-      let link_action = Action.CreateExecutable {
-        outputs = [ binary_output ];
-        objects;
-        libraries;
-        includes;
-        cclibs;
-        ccopt_flags;
-        cclib_flags;
-      }
+      let link_action =
+        Action.CreateExecutable {
+          outputs = [ binary_output ];
+          objects;
+          libraries;
+          includes;
+          cclibs;
+          ccopt_flags;
+          cclib_flags;
+        }
       in
       ([ link_action ], [ binary_output ], sources)
 

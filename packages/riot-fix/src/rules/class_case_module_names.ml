@@ -40,30 +40,29 @@ let check_name = fun token diagnostics ->
 
 let check_tree = fun _ctx root ->
   let diagnostics = H.diagnostics_for_root root in
-  let hooks =
-    {
-      Syn.Visitor.empty_hooks with
-      enter_module_declaration =
-        Some (fun visitor declaration ->
-          (
-            match Ast.ModuleDeclaration.name declaration with
-            | Some ident ->
-                Ast.Ident.last_segment ident
-                |> Option.for_each ~fn:(fun token -> check_name token diagnostics)
-            | None -> ()
-          );
-          (visitor, Syn.Visitor.Continue));
-      enter_module_type_declaration =
-        Some (fun visitor declaration ->
-          (
-            match Ast.ModuleTypeDeclaration.name declaration with
-            | Some ident ->
-                Ast.Ident.last_segment ident
-                |> Option.for_each ~fn:(fun token -> check_name token diagnostics)
-            | None -> ()
-          );
-          (visitor, Syn.Visitor.Continue));
-    }
+  let hooks = {
+    Syn.Visitor.empty_hooks with
+    enter_module_declaration =
+      Some (fun visitor declaration ->
+        (
+          match Ast.ModuleDeclaration.name declaration with
+          | Some ident ->
+              Ast.Ident.last_segment ident
+              |> Option.for_each ~fn:(fun token -> check_name token diagnostics)
+          | None -> ()
+        );
+        (visitor, Syn.Visitor.Continue));
+    enter_module_type_declaration =
+      Some (fun visitor declaration ->
+        (
+          match Ast.ModuleTypeDeclaration.name declaration with
+          | Some ident ->
+              Ast.Ident.last_segment ident
+              |> Option.for_each ~fn:(fun token -> check_name token diagnostics)
+          | None -> ()
+        );
+        (visitor, Syn.Visitor.Continue));
+  }
   in
   Syn.Visitor.make ~ctx:() ~hooks
   |> fun visitor ->

@@ -70,14 +70,13 @@ let rec diagnostics_for_expression = fun diagnostics ~inside_match expr ->
 
 let check_tree = fun _ctx root ->
   let diagnostics = H.diagnostics_for_root root in
-  let hooks =
-    {
-      Syn.Visitor.empty_hooks with
-      enter_expr =
-        Some (fun visitor expr ->
-          diagnostics_for_expression diagnostics ~inside_match:false expr;
-          (visitor, Syn.Visitor.Skip_subtree));
-    }
+  let hooks = {
+    Syn.Visitor.empty_hooks with
+    enter_expr =
+      Some (fun visitor expr ->
+        diagnostics_for_expression diagnostics ~inside_match:false expr;
+        (visitor, Syn.Visitor.Skip_subtree));
+  }
   in
   Syn.Visitor.make ~ctx:() ~hooks
   |> fun visitor ->

@@ -56,8 +56,10 @@ let add_package = fun provider pkg ver deps ->
       ()
   | Some offline_pkg ->
       let _ = Collections.HashMap.insert offline_pkg.deps_by_version ~key:ver ~value:deps in
-      let updated =
-        { offline_pkg with versions_desc = insert_version_desc offline_pkg.versions_desc ver }
+      let updated = {
+        offline_pkg with
+        versions_desc = insert_version_desc offline_pkg.versions_desc ver;
+      }
       in
       let _ = Collections.HashMap.insert provider.packages ~key:pkg ~value:updated in
       ()
