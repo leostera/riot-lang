@@ -399,15 +399,6 @@ let infer_ident (state: State.t) ident =
   | Some scheme -> Quantifier.instantiate state scheme
   | None -> State.fresh_var state
 
-let infer_constructor (state: State.t) constructor =
-  match constructor with
-  | { ident; _ } when Builtin.is_unit ident -> Builtin.unit
-  | { ident; _ } -> (
-      match instantiate_constructor state ident with
-      | Some constructor -> constructor.scheme.body
-      | None -> State.fresh_var state
-    )
-
 let infer_function_param state (param: parameter) =
   let param_type = State.fresh_var state in
   bind_pattern ~mode:Local state param.pattern param_type;
@@ -428,7 +419,7 @@ let rec infer_expression (state: State.t) (expr: expression) =
     | Apply apply -> infer_apply state apply
     | Literal lit -> infer_literal state lit
     | Ident ident -> infer_ident state ident
-    | Constructor constructor -> infer_constructor state constructor
+    | Constructor constructor -> infer_constructor state expr constructor
     | Tuple parts -> infer_tuple state parts
     | List items -> infer_list state items
     | Let letexpr -> infer_let_expr state letexpr
@@ -589,7 +580,7 @@ and infer_list state items =
       unify state ~expected:element ~actual ~on_error:(expression_constraint_diagnostic item));
   Builtin.list element
 
-and infer_normal_apply state (apply: application) =
+and infer_apply state (apply: application) =
   let callee = infer_expression state apply.callee in
   let result = State.fresh_var state in
   let expected =
@@ -629,9 +620,9 @@ and infer_inline_record_payload
             ~on_error:(expression_constraint_diagnostic field.value);
           field.value.type_ <- Some expected_field.type_)
 
-and infer_inline_record_constructor_apply
+and infer_inline_record_constructor
   state
-  (apply: application)
+  (expr: expression)
   (payload_expr: expression)
   (fields: record_expression_field list)
   (constructor: InferenceEnv.constructor_description)
@@ -641,28 +632,49 @@ and infer_inline_record_constructor_apply
     state
     ~expected:constructor.scheme.body
     ~actual:(Ast.Type.arrow inline_record.InferenceEnv.payload_type result)
-    ~on_error:(expression_constraint_diagnostic apply.callee);
+    ~on_error:(expression_constraint_diagnostic expr);
   infer_inline_record_payload state payload_expr fields inline_record;
   result
 
-and infer_apply state (apply: application) =
-  match (apply.callee.kind, apply.arguments) with
-  | (
-      Constructor { ident },
-      [ { kind = Positional ({ kind = Record { update = None; fields }; _ } as payload_expr) } ]
-    ) -> (
+and infer_constructor state (expr: expression) (constructor: constructor_expression) =
+  match constructor with
+  | { ident; payload = None } when Builtin.is_unit ident -> Builtin.unit
+  | { ident; payload = None } -> (
+      match instantiate_constructor state ident with
+      | Some constructor -> constructor.scheme.body
+      | None -> State.fresh_var state
+    )
+  | {
+    ident;
+    payload = Some ({ kind = Record { update = None; fields }; _ } as payload_expr)
+  } -> (
       match instantiate_constructor state ident with
       | Some ({ arguments = InferenceEnv.InlineRecord inline_record; _ } as constructor) ->
-          infer_inline_record_constructor_apply
+          infer_inline_record_constructor
             state
-            apply
+            expr
             payload_expr
             fields
             constructor
             inline_record
-      | _ -> infer_normal_apply state apply
+      | _ -> infer_constructor_payload state expr ident payload_expr
     )
-  | _ -> infer_normal_apply state apply
+  | { ident; payload = Some payload_expr } -> infer_constructor_payload state expr ident payload_expr
+
+and infer_constructor_payload state expr ident payload_expr =
+  let payload_type = infer_expression state payload_expr in
+  let result = State.fresh_var state in
+  let constructor_type =
+    match instantiate_constructor state ident with
+    | None -> State.fresh_var state
+    | Some constructor -> constructor.scheme.body
+  in
+  unify
+    state
+    ~expected:constructor_type
+    ~actual:(Ast.Type.arrow payload_type result)
+    ~on_error:(expression_constraint_diagnostic expr);
+  result
 
 and infer_if_else state ifelse =
   let condition = infer_expression state ifelse.condition in

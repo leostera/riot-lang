@@ -593,6 +593,8 @@ and expression_kind =
 and constructor_expression = {
   (** Surface constructor identifier. *)
   ident: ident;
+  (** Optional constructor payload expression. *)
+  payload: expression option;
 }
 
 (** Polymorphic variant expression payload. *)

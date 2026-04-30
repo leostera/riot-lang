@@ -121,6 +121,33 @@ let test_from_syn_keeps_constructor_patterns _ctx =
       )
   | _ -> Error "expected function with Some and None cases"
 
+let test_from_syn_keeps_constructor_expression_payloads _ctx =
+  let ast = parse_typ_ast {ocaml|let value = Some 1|ocaml} in
+  match ast.kind with
+  | Implementation [
+    {
+      kind =
+        Let {
+          bindings = [
+            {
+              expr = {
+                kind =
+                  Constructor {
+                    ident;
+                    payload = Some { kind = Literal Int; _ };
+                  };
+                _;
+              };
+              _;
+            };
+          ];
+          _;
+        };
+      _;
+    };
+  ] -> assert_path_string ~expected:"Some" ident
+  | _ -> Error "expected Some 1 to lower as constructor expression with payload"
+
 let tests =
   Test.[
     case
@@ -139,6 +166,9 @@ let tests =
       "type equal arrows compare labels and children"
       test_equal_arrows_compare_labels_and_children;
     case "from syn keeps constructor patterns" test_from_syn_keeps_constructor_patterns;
+    case
+      "from syn keeps constructor expression payloads"
+      test_from_syn_keeps_constructor_expression_payloads;
   ]
 
 let main ~args = Test.Cli.main ~name:"typ:ast" ~tests ~args ()

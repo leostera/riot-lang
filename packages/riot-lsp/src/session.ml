@@ -982,8 +982,9 @@ and hover_expression = fun offset (expression: Typ.Ast.expression) ->
     match expression.kind with
     | Typ.Ast.Literal _
     | Typ.Ast.Ident _
-    | Typ.Ast.Constructor _
     | Typ.Ast.FirstClassModule _ -> []
+    | Typ.Ast.Constructor { payload; _ } ->
+        [ Option.and_then payload ~fn:(hover_expression offset) ]
     | Typ.Ast.Tuple expressions
     | Typ.Ast.List expressions
     | Typ.Ast.Array expressions -> List.map expressions ~fn:(hover_expression offset)
@@ -1548,8 +1549,9 @@ and inlay_hints_expression = fun ctx (expression: Typ.Ast.expression) ->
     match expression.kind with
     | Typ.Ast.Literal _
     | Typ.Ast.Ident _
-    | Typ.Ast.Constructor _
     | Typ.Ast.FirstClassModule _ -> []
+    | Typ.Ast.Constructor { payload; _ } ->
+        Option.unwrap_or (Option.map payload ~fn:(inlay_hints_expression ctx)) ~default:[]
     | Typ.Ast.Tuple expressions
     | Typ.Ast.List expressions
     | Typ.Ast.Array expressions ->

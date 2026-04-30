@@ -413,7 +413,7 @@ and expression_kind =
   | FirstClassModule of first_class_module
   | Assert of expression
 
-and constructor_expression = { ident: ident }
+and constructor_expression = { ident: ident; payload: expression option }
 
 and poly_variant_expression = {
   tag: string;
@@ -1502,20 +1502,19 @@ and build_expression = fun context (syntax_expression: Syn.Ast.Expr.t) ->
   (
     match Syn.Ast.Expr.view syntax_expression with
     | Syn.Ast.Expr.Unit ->
-        make_expression origin (Constructor { ident = unit_constructor_ident () })
+        make_expression origin (Constructor { ident = unit_constructor_ident (); payload = None })
     | Syn.Ast.Expr.Literal { token } ->
         make_expression origin (Literal (literal_from_token origin token))
     | Syn.Ast.Expr.Ident { ident } -> make_expression origin (Ident (ident_from_syn_ident ident))
     | Syn.Ast.Expr.Constructor { constructor; payload = None } ->
-        make_expression origin (Constructor { ident = ident_from_syn_ident constructor })
+        make_expression origin (Constructor { ident = ident_from_syn_ident constructor; payload = None })
     | Syn.Ast.Expr.Constructor { constructor; payload = Some payload } ->
-        let callee =
-          make_expression origin (Constructor { ident = ident_from_syn_ident constructor })
-        in
-        let argument = build_expression context payload in
         make_expression
           origin
-          (Apply { callee; arguments = [ make_argument argument.origin (Positional argument) ] })
+          (Constructor {
+            ident = ident_from_syn_ident constructor;
+            payload = Some (build_expression context payload);
+          })
     | Syn.Ast.Expr.Annotated { expr; annotation } ->
         let (kind, type_) =
           if type_expr_is_coercion annotation then

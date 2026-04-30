@@ -381,8 +381,8 @@ and find_expression_kind = fun query parent kind ->
   match kind with
   | Ast.Literal _
   | Ast.Ident _
-  | Ast.Constructor _
   | Ast.PolyVariant { payload = None; _ } -> None
+  | Ast.Constructor { payload; _ } -> find_option payload ~fn:(find_expression query parent)
   | Ast.Tuple expressions
   | Ast.List expressions
   | Ast.Array expressions -> find_first expressions ~fn:(find_expression query parent)
