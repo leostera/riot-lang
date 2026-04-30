@@ -633,8 +633,16 @@ let test_stream_formatter_keeps_index_expressions_bare_in_apply_arguments = fun 
 
 let test_stream_formatter_keeps_deref_prefix_expressions_bare_in_apply_arguments = fun _ctx ->
   assert_format_ml
-    ~expected:"let count_text = string_of_int !chunk_count\n"
-    "let count_text = string_of_int !chunk_count\n"
+    ~expected:(top_level
+      [
+        "let count_text = string_of_int !chunk_count";
+        "let overflow = List.for_each !(t.overflow) ~fn:handle";
+        "let assign = fun t timer -> t.overflow := timer :: !(t.overflow)";
+      ])
+    {ocaml|let count_text=string_of_int !chunk_count
+let overflow=List.for_each !(t.overflow) ~fn:handle
+let assign=fun t timer->t.overflow:=timer::!(t.overflow)
+|ocaml}
 
 let test_stream_formatter_formats_record_expressions_and_patterns = fun _ctx ->
   assert_format_ml
