@@ -55,7 +55,7 @@ module Type = struct
     result: t;
   }
 
-  and constructor = {
+  and application = {
     ident: ident;
     arguments: t list;
   }
@@ -65,7 +65,7 @@ module Type = struct
     | Generic of TypeVar.t
     | Tuple of t list
     | Arrow of arrow
-    | Constructor of constructor
+    | Apply of application
 
   let type_var_display_name index =
     match List.get
@@ -130,10 +130,10 @@ module Type = struct
             |> String.concat " * "
         | Arrow { label; parameter; result } ->
             Label.to_string label ^ arrow_parameter_to_string parameter ^ " -> " ^ loop result
-        | Constructor { ident; arguments = [] } -> SurfacePath.to_string ident
-        | Constructor { ident; arguments = [ argument ] } ->
+        | Apply { ident; arguments = [] } -> SurfacePath.to_string ident
+        | Apply { ident; arguments = [ argument ] } ->
             constructor_argument_to_string argument ^ " " ^ SurfacePath.to_string ident
-        | Constructor { ident; arguments } ->
+        | Apply { ident; arguments } ->
             "("
             ^ (
               arguments
@@ -172,7 +172,7 @@ module Type = struct
     | (Generic left, Generic right) -> TypeVar.equal left right
     | (Tuple left, Tuple right) -> equal_many left right
     | (Arrow left, Arrow right) -> equal_arrow left right
-    | (Constructor left, Constructor right) -> equal_constructor left right
+    | (Apply left, Apply right) -> equal_application left right
     | _ -> false
 
   and equal_many left right =
@@ -187,7 +187,7 @@ module Type = struct
     && equal left.parameter right.parameter
     && equal left.result right.result
 
-  and equal_constructor left right =
+  and equal_application left right =
     SurfacePath.equal left.ident right.ident && equal_many left.arguments right.arguments
 
   let arrow ?(label = Label.NoLabel) parameter result = Arrow { label; parameter; result }

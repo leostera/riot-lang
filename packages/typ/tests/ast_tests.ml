@@ -10,11 +10,11 @@ let mk_path name =
   |> Option.map ~fn:SurfacePath.from_syn_ident
   |> Option.expect ~msg:("expected surface path test identifier " ^ name)
 
-let int_type = fun () -> Type.Constructor { ident = mk_path "int"; arguments = [] }
+let int_type = fun () -> Type.Apply { ident = mk_path "int"; arguments = [] }
 
-let bool_type = fun () -> Type.Constructor { ident = mk_path "bool"; arguments = [] }
+let bool_type = fun () -> Type.Apply { ident = mk_path "bool"; arguments = [] }
 
-let list_type argument = Type.Constructor { ident = mk_path "list"; arguments = [ argument ] }
+let list_type argument = Type.Apply { ident = mk_path "list"; arguments = [ argument ] }
 
 let arrow ?(label = Type.Label.NoLabel) parameter result = Type.Arrow { label; parameter; result }
 
@@ -77,7 +77,7 @@ let test_equal_tuple_arity_mismatch_is_false _ctx =
   let two = Type.Tuple [ int_type (); bool_type () ] in
   assert_not_equal_type one two
 
-let test_equal_constructor_arguments_are_structural _ctx =
+let test_equal_application_arguments_are_structural _ctx =
   let int_list = list_type (int_type ()) in
   let same_int_list = list_type (int_type ()) in
   let bool_list = list_type (bool_type ()) in
@@ -133,8 +133,8 @@ let tests =
     case "type equal compares unlinked variable ids" test_equal_compares_unlinked_variable_ids;
     case "type equal tuple arity mismatch is false" test_equal_tuple_arity_mismatch_is_false;
     case
-      "type equal constructor arguments are structural"
-      test_equal_constructor_arguments_are_structural;
+      "type equal application arguments are structural"
+      test_equal_application_arguments_are_structural;
     case
       "type equal arrows compare labels and children"
       test_equal_arrows_compare_labels_and_children;

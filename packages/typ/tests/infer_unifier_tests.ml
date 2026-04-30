@@ -11,9 +11,9 @@ let mk_path name =
   |> Option.map ~fn:SurfacePath.from_syn_ident
   |> Option.expect ~msg:("expected surface path test identifier " ^ name)
 
-let int_type = fun () -> Type.Constructor { ident = mk_path "int"; arguments = [] }
+let int_type = fun () -> Type.Apply { ident = mk_path "int"; arguments = [] }
 
-let bool_type = fun () -> Type.Constructor { ident = mk_path "bool"; arguments = [] }
+let bool_type = fun () -> Type.Apply { ident = mk_path "bool"; arguments = [] }
 
 let arrow ?(label = Type.Label.NoLabel) parameter result = Type.Arrow { label; parameter; result }
 

@@ -25,9 +25,9 @@ let generalize type_ =
         let parameter = loop arrow.parameter in
         let result = loop arrow.result in
         Type.Arrow { arrow with parameter; result }
-    | Type.Constructor ctr ->
-        let arguments = List.map ctr.arguments ~fn:loop in
-        Type.Constructor { ctr with arguments }
+    | Type.Apply application ->
+        let arguments = List.map application.arguments ~fn:loop in
+        Type.Apply { application with arguments }
   in
   TypeScheme.monomorphic (loop type_)
 
@@ -54,8 +54,8 @@ let instantiate state t =
         let parameter = loop arrow.parameter in
         let result = loop arrow.result in
         Type.Arrow { arrow with parameter; result }
-    | Type.Constructor ctr ->
-        let arguments = List.map ctr.arguments ~fn:loop in
-        Type.Constructor { ctr with arguments }
+    | Type.Apply application ->
+        let arguments = List.map application.arguments ~fn:loop in
+        Type.Apply { application with arguments }
   in
   loop TypeScheme.(t.body)

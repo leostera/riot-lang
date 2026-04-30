@@ -15,7 +15,7 @@ let ident name =
   |> Option.map ~fn:SurfacePath.from_syn_ident
   |> Option.expect ~msg:("expected surface path test identifier " ^ name)
 
-let nominal name = Type.Constructor { ident = ident name; arguments = [] }
+let nominal name = Type.Apply { ident = ident name; arguments = [] }
 
 let int_type = fun () -> nominal "int"
 

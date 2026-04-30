@@ -42,7 +42,7 @@ let rec occurs_in var type_ =
   | Type.Var other -> Type.same_var var other
   | Tuple elements -> List.any elements ~fn:(occurs_in var)
   | Arrow { parameter; result; _ } -> occurs_in var parameter || occurs_in var result
-  | Constructor { arguments; _ } -> List.any arguments ~fn:(occurs_in var)
+  | Apply { arguments; _ } -> List.any arguments ~fn:(occurs_in var)
   | Generic _ -> false
 
 (** Solve a type variable by linking it to a known type *)
@@ -67,7 +67,7 @@ let rec unify ~expected ~actual =
   | (type_, Var var) -> solve_var var type_
   | (Tuple a, Tuple b) -> unify_many a b
   | (Arrow a, Arrow b) -> unify_arrow a b
-  | (Constructor a, Constructor b) -> unify_constructors a b
+  | (Apply a, Apply b) -> unify_applications a b
   | (expected, actual) -> type_mismatch ~expected ~actual
 
 and unify_many expected actual =
@@ -90,10 +90,10 @@ and unify_arrow expected actual =
     let* () = unify ~expected:expected.parameter ~actual:actual.parameter in
     unify ~expected:expected.result ~actual:actual.result
 
-and unify_constructors expected actual =
+and unify_applications expected actual =
   let same_constructor = Model.Surface_path.equal expected.ident actual.ident in
   let same_args_length = Int.(List.length expected.arguments = List.length actual.arguments) in
   if same_constructor && same_args_length then
     unify_many expected.arguments actual.arguments
   else
-    type_mismatch ~expected:(Type.Constructor expected) ~actual:(Type.Constructor actual)
+    type_mismatch ~expected:(Type.Apply expected) ~actual:(Type.Apply actual)

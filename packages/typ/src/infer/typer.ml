@@ -82,7 +82,7 @@ module Builtin = struct
 
   let list_ident = ident "list"
 
-  let make ?(arguments = []) ident = Type.Constructor { ident; arguments }
+  let make ?(arguments = []) ident = Type.Apply { ident; arguments }
 
   let int = make int_ident
 
@@ -109,13 +109,13 @@ let arrow_label_to_type_label = function
 let rec core_type_to_type (state: State.t) (annotation: core_type) =
   let type_ =
     match annotation.kind with
-    | TypeIdent ident -> Type.Constructor { ident; arguments = [] }
+    | TypeIdent ident -> Type.Apply { ident; arguments = [] }
     | Apply { constructor; arguments } -> (
         let constructor = core_type_to_type state constructor in
         let arguments = List.map arguments ~fn:(core_type_to_type state) in
         match Unifier.resolve constructor with
-        | Type.Constructor { ident; arguments = existing_arguments } ->
-            Type.Constructor { ident; arguments = List.append existing_arguments arguments }
+        | Type.Apply { ident; arguments = existing_arguments } ->
+            Type.Apply { ident; arguments = List.append existing_arguments arguments }
         | _ -> State.fresh_var state
       )
     | Arrow { label; parameter; result } ->
@@ -225,6 +225,34 @@ let infer_constructor (state: State.t) constructor =
       | None -> State.fresh_var state
     )
 
+let type_declaration_result (decl: type_declaration) arguments =
+  Type.Apply { ident = decl.name; arguments }
+
+let fresh_type_parameters state parameters =
+  let scope = HashMap.with_capacity ~size:(List.length parameters) in
+  let arguments =
+    List.map
+      parameters
+      ~fn:(fun param ->
+        match param with
+        | Some name ->
+            let type_ = State.fresh_var state in
+            let _ = HashMap.insert scope ~key:name ~value:type_ in
+            type_
+        | None -> State.fresh_var state)
+  in
+  (scope, arguments)
+
+let instantiate_record_field state (info: State.InferenceEnv.record_field_info) =
+  let (scope, arguments) = fresh_type_parameters state info.owner.parameters in
+  State.with_type_params
+    state
+    scope
+    (fun state ->
+      let owner_type = type_declaration_result info.owner arguments in
+      let field_type = core_type_to_type state info.field.type_annotation in
+      (owner_type, field_type))
+
 let infer_function_param state (param: parameter) =
   let param_type = State.fresh_var state in
   bind_pattern ~mode:Local state param.pattern param_type;
@@ -250,6 +278,7 @@ let rec infer_expression (state: State.t) (expr: expression) =
     | List items -> infer_list state items
     | Let letexpr -> infer_let_expr state letexpr
     | Match match_ -> infer_match state match_
+    | Record record -> infer_record state record
     | _ -> State.fresh_var state
   in
   let unified =
@@ -266,6 +295,54 @@ let rec infer_expression (state: State.t) (expr: expression) =
   in
   expr.type_ <- Some unified;
   unified
+
+and infer_record state record =
+  match record with
+  | { fields = []; _ } ->
+      (* todo: add diangostic! *)
+      State.fresh_var state
+  | { fields = field :: fields; update } -> (
+      match State.get_record_field state ~name:field.name with
+      | None ->
+          List.for_each
+            (field :: fields)
+            ~fn:(fun field ->
+              let _ = infer_expression state field.value in
+              ());
+          State.fresh_var state
+      | Some info ->
+          let (record_type, _) = instantiate_record_field state info in
+          let check_field (field: record_expression_field) =
+            match State.get_record_field state ~name:field.name with
+            | Some info ->
+                let (field_owner_type, field_type) = instantiate_record_field state info in
+                unify
+                  state
+                  ~expected:record_type
+                  ~actual:field_owner_type
+                  ~on_error:(expression_constraint_diagnostic field.value);
+                let value_type = infer_expression state field.value in
+                unify
+                  state
+                  ~expected:field_type
+                  ~actual:value_type
+                  ~on_error:(expression_constraint_diagnostic field.value)
+            | None ->
+                let _ = infer_expression state field.value in
+                ()
+          in
+          List.for_each (field :: fields) ~fn:check_field;
+          Option.for_each
+            update
+            ~fn:(fun update ->
+              let update_type = infer_expression state update in
+              unify
+                state
+                ~expected:record_type
+                ~actual:update_type
+                ~on_error:(expression_constraint_diagnostic update));
+          record_type
+    )
 
 and infer_match state match_ =
   let scrutinee_type = infer_expression state match_.scrutinee in
@@ -390,23 +467,9 @@ and infer_function state fn_decl =
   State.pop_scope state;
   List.fold_right params ~init:body ~fn:Ast.Type.arrow
 
-let type_declaration_result (decl: type_declaration) arguments =
-  Type.Constructor { ident = decl.name; arguments }
-
 let register_constructor state (decl: type_declaration) (ctr: type_constructor) =
   let scheme =
-    let scope = HashMap.with_capacity ~size:(List.length decl.parameters) in
-    let arguments =
-      List.map
-        decl.parameters
-        ~fn:(fun param ->
-          match param with
-          | Some name ->
-              let type_ = State.fresh_var state in
-              let _ = HashMap.insert scope ~key:name ~value:type_ in
-              type_
-          | None -> State.fresh_var state)
-    in
+    let (scope, arguments) = fresh_type_parameters state decl.parameters in
     State.with_type_params
       state
       scope
@@ -457,11 +520,6 @@ let type_impl (state: State.t) (items: structure_item list) =
   List.for_each items ~fn:(type_impl_item state)
 
 let type_intf (_state: State.t) (_items: signature_item list) = ()
-
-let type_ast (state: State.t) (ast: Ast.t) =
-  match ast.kind with
-  | Implementation items -> type_impl state items
-  | Interface items -> type_intf state items
 
 let type_ast (state: State.t) (ast: Ast.t) =
   match ast.kind with

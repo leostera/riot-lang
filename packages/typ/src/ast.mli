@@ -110,10 +110,10 @@ module Type: sig
   (**
      Nominal type application.
 
-     `ident` names the type constructor, such as `int`, `list`, or `Result.t`.
-     `arguments` are the applied type arguments.
+     `ident` names the type being applied, such as `int`, `list`, or
+     `Result.t`. `arguments` are the applied type arguments.
   *)
-  and constructor = {
+  and application = {
     (** Nominal type identifier. *)
     ident: ident;
     (** Applied type arguments. *)
@@ -130,8 +130,8 @@ module Type: sig
     | Tuple of t list
     (** Function arrow type. *)
     | Arrow of arrow
-    (** Nominal type constructor application. *)
-    | Constructor of constructor
+    (** Nominal type application. *)
+    | Apply of application
 
   module Printer: sig
     (** Printer state carrying solver-variable display names. *)
