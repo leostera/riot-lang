@@ -1,4 +1,5 @@
 open Std
+
 module Typ_check_result = Typ.Analysis.Check_result
 module Typ_diagnostic = Typ.Model.Diagnostic
 
@@ -10,16 +11,20 @@ type t =
 let of_report = fun (report: Typ_check_result.t) ->
   List.concat
     [
-      report.parse_diagnostics |> List.map (fun diagnostic -> Parse diagnostic);
-      report.lowering_diagnostics |> List.map (fun diagnostic -> Lowering diagnostic);
-      report.typing_diagnostics |> List.map (fun diagnostic -> Typing diagnostic);
+      report.parse_diagnostics
+      |> List.map (fun diagnostic -> Parse diagnostic);
+      report.lowering_diagnostics
+      |> List.map (fun diagnostic -> Lowering diagnostic);
+      report.typing_diagnostics
+      |> List.map (fun diagnostic -> Typing diagnostic);
     ]
 
 let has_errors = fun diagnostics ->
   List.exists
     (
       function
-      | Parse _ -> true
+      | Parse _ ->
+          true
       | Lowering diagnostic
       | Typing diagnostic -> (
           match Typ_diagnostic.severity diagnostic with
@@ -34,8 +39,7 @@ let has_warning_diagnostic = function
   | Lowering diagnostic
   | Typing diagnostic -> Typ_diagnostic.severity diagnostic = Typ_diagnostic.Warning
 
-let has_warnings = fun diagnostics ->
-  List.exists has_warning_diagnostic diagnostics
+let has_warnings = fun diagnostics -> List.exists has_warning_diagnostic diagnostics
 
 let severity = function
   | Parse _ -> "error"
@@ -80,7 +84,8 @@ let expected = function
       else
         Some ("expected " ^ expected)
     )
-  | _ -> None
+  | _ ->
+      None
 
 let data = function
   | Parse diagnostic -> Syn.Diagnostic.to_json diagnostic

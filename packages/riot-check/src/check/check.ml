@@ -1,4 +1,5 @@
 open Std
+
 module Check_error = Error
 module State = State
 module Event = Event
@@ -23,7 +24,11 @@ let check_all = fun ~workspace ?package_filter ?on_start ?on_result ?on_event pa
         | None -> ()
       in
       let _checked_files =
-        Session.check_target_files ~workspace ~scan_mode ~include_dev ?on_event
+        Session.check_target_files
+          ~workspace
+          ~scan_mode
+          ~include_dev
+          ?on_event
           ~on_result:(fun checked_file ->
             summary := State.update_checked_summary !summary checked_file;
             match on_result with
@@ -37,16 +42,22 @@ let run = fun ?on_event ~workspace ~paths ~package_filter () ->
   match Session.prepare_workspace workspace with
   | Error _ as err -> err
   | Ok workspace ->
-      let () = emit
-        ?on_event
-        (Event.WorkspacePrepared {
-          packages = workspace.packages
-          |> List.map (fun (pkg: Riot_model.Package.t) -> (pkg.name, pkg.path))
-        }) in
+      let () =
+        emit
+          ?on_event
+          (
+            Event.WorkspacePrepared {
+              packages =
+                workspace.packages
+                |> List.map (fun (pkg: Riot_model.Package.t) -> (pkg.name, pkg.path));
+            }
+          )
+      in
       let on_start target_count = emit ?on_event (Event.Start { target_count }) in
       let on_result checked_file =
         let () = emit ?on_event (Event.File checked_file) in
-        Event.diagnostic_events checked_file |> List.iter (emit ?on_event)
+        Event.diagnostic_events checked_file
+        |> List.iter (emit ?on_event)
       in
       match check_all ~workspace ?package_filter ~on_start ~on_result ?on_event paths with
       | Error _ as err -> err

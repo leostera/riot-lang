@@ -1,9 +1,17 @@
 open Std
+
 module Typ_check_result = Typ.Analysis.Check_result
 
 type checked_file =
-  | Typed of { path: Path.t; report: Typ_check_result.t; diagnostics: Diagnostic.t list }
-  | Unreadable of { path: Path.t; reason: string }
+  | Typed of {
+      path: Path.t;
+      report: Typ_check_result.t;
+      diagnostics: Diagnostic.t list;
+    }
+  | Unreadable of {
+      path: Path.t;
+      reason: string;
+    }
 
 type checked_summary = {
   checked_files: int;
@@ -13,10 +21,7 @@ type checked_summary = {
   has_error: bool;
 }
 
-type check_run_summary = {
-  target_count: int;
-  summary: checked_summary;
-}
+type check_run_summary = { target_count: int; summary: checked_summary }
 
 let empty_checked_summary = {
   checked_files = 0;
@@ -41,7 +46,11 @@ let update_checked_summary = fun summary checked_file ->
         has_error = true;
       }
   | Typed { diagnostics; _ } ->
-      let warning_count = diagnostics |> List.filter Diagnostic.has_warning_diagnostic |> List.length in
+      let warning_count =
+        diagnostics
+        |> List.filter Diagnostic.has_warning_diagnostic
+        |> List.length
+      in
       {
         checked_files = summary.checked_files + 1;
         read_failures = summary.read_failures;

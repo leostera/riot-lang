@@ -1,6 +1,8 @@
 open Std
 open Std.Collections
+
 module Check_error = Error
+
 open Riot_model
 
 type package_scope = {
@@ -14,8 +16,7 @@ type t = {
   packages: package_scope list;
 }
 
-let compare_paths = fun left right ->
-  String.compare (Path.to_string left) (Path.to_string right)
+let compare_paths = fun left right -> String.compare (Path.to_string left) (Path.to_string right)
 
 let dedupe_paths = fun paths ->
   let seen = HashSet.create () in
@@ -60,7 +61,8 @@ let workspace_roots_for_package = fun (workspace: Workspace.t) package_name ->
   |> List.map (Workspace.package_root workspace)
   |> dedupe_paths
 
-let target_files_for_package = fun ~(workspace:Workspace.t) ~(include_dev:bool) (pkg: Package.t) ->
+let target_files_for_package = fun
+  ~(workspace:Workspace.t) ~(include_dev:bool) (pkg: Package.t) ->
   let package_root = Workspace.package_root workspace pkg in
   let sources =
     if
@@ -75,7 +77,7 @@ let target_files_for_package = fun ~(workspace:Workspace.t) ~(include_dev:bool) 
   in
   let scoped_sources =
     if include_dev then
-      sources.src @ sources.tests @ sources.examples @ sources.bench
+      ((sources.src @ sources.tests) @ sources.examples) @ sources.bench
     else
       sources.src
   in
@@ -90,7 +92,8 @@ let workspace_target_files = fun ~(include_dev:bool) (workspace: Workspace.t) ->
   |> List.concat_map (target_files_for_package ~workspace ~include_dev)
   |> dedupe_paths
 
-let workspace_target_files_for_package = fun ~(include_dev:bool) (workspace: Workspace.t) package_name ->
+let workspace_target_files_for_package = fun
+  ~(include_dev:bool) (workspace: Workspace.t) package_name ->
   workspace.packages
   |> List.filter
     (fun (pkg: Package.t) -> Package.is_workspace_member pkg && String.equal pkg.name package_name)
@@ -107,7 +110,9 @@ let of_workspace = fun (workspace: Workspace.t) ->
   {
     workspace_root = workspace.root;
     workspace_config = Fmt_config.load workspace_toml;
-    packages = workspace.packages |> List.map scope_of_package
+    packages =
+      workspace.packages
+      |> List.map scope_of_package;
   }
 
 let matches_ignore_pattern = fun ~root pattern path ->
@@ -119,28 +124,33 @@ let matches_ignore_pattern = fun ~root pattern path ->
   String.contains rel pattern
 
 let find_package_scope = fun (scope: t) file ->
-  scope.packages |> List.filter_map
+  scope.packages
+  |> List.filter_map
     (fun package_scope ->
       match Path.strip_prefix file ~prefix:package_scope.package_root with
       | Ok _ -> Some (String.length (Path.to_string package_scope.package_root), package_scope)
-      | Error _ -> None) |> List.sort
-    (fun (left_len, _) (right_len, _) ->
-      Int.compare right_len left_len) |> List.map snd |> function
-  | package_scope :: _ -> Some package_scope
-  | [] -> None
+      | Error _ -> None)
+  |> List.sort (fun (left_len, _) (right_len, _) -> Int.compare right_len left_len)
+  |> List.map snd
+  |> function
+    | package_scope :: _ -> Some package_scope
+    | [] -> None
 
 let should_ignore_file = fun (scope: t) file ->
   if
     List.exists
-      (fun pattern -> matches_ignore_pattern ~root:scope.workspace_root pattern file)
+      (fun pattern ->
+        matches_ignore_pattern ~root:scope.workspace_root pattern file)
       scope.workspace_config.ignore_patterns
   then
     true
   else
     match find_package_scope scope file with
-    | Some package_scope -> List.exists
-      (fun pattern -> matches_ignore_pattern ~root:package_scope.package_root pattern file)
-      package_scope.config.ignore_patterns
+    | Some package_scope ->
+        List.exists
+          (fun pattern ->
+            matches_ignore_pattern ~root:package_scope.package_root pattern file)
+          package_scope.config.ignore_patterns
     | None -> false
 
 let resolve_search_roots = fun ~workspace ?package_filter () ->
@@ -184,7 +194,7 @@ let validate_explicit_target = fun ~workspace path ->
   else if Path.is_file resolved && not (is_supported_source_file resolved) then
     Error (Check_error.InvalidPath {
       path;
-      reason = "path is not an OCaml source file (.ml/.mli) or directory"
+      reason = "path is not an OCaml source file (.ml/.mli) or directory";
     })
   else
     Ok resolved
@@ -204,7 +214,7 @@ let validate_explicit_targets = fun ~workspace roots ->
 let resolve_targets = fun ~workspace ?package_filter ?(include_dev = false) paths ->
   let scope = of_workspace workspace in
   let collect_ordered_files roots =
-    let explicit_files, directory_roots =
+    let (explicit_files, directory_roots) =
       roots
       |> List.fold_left
         (fun (files, directories) root ->
@@ -214,11 +224,16 @@ let resolve_targets = fun ~workspace ?package_filter ?(include_dev = false) path
             (files, root :: directories))
         ([], [])
     in
-    let walked_files = directory_roots
-    |> List.concat_map
-      (fun root ->
-        Krasny.Runner.collect_ocaml_files ~should_ignore:(should_ignore_file scope) ~roots:[ root ] ()
-        |> List.sort compare_paths) in
+    let walked_files =
+      directory_roots
+      |> List.concat_map
+        (fun root ->
+          Krasny.Runner.collect_ocaml_files
+            ~should_ignore:(should_ignore_file scope)
+            ~roots:[ root ]
+            ()
+          |> List.sort compare_paths)
+    in
     dedupe_paths (explicit_files @ walked_files)
   in
   let roots =
@@ -239,7 +254,8 @@ let resolve_targets = fun ~workspace ?package_filter ?(include_dev = false) path
           | files -> Ok files
         )
     else
-      validate_explicit_targets ~workspace paths |> Result.map (List.sort_uniq compare_paths)
+      validate_explicit_targets ~workspace paths
+      |> Result.map (List.sort_uniq compare_paths)
   in
   match roots with
   | Error _ as err -> err

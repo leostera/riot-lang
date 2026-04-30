@@ -9,16 +9,31 @@ type rendered_file = {
 
 let severity_style = fun severity ->
   match severity with
-  | "warning" -> Style.default |> Style.fg (Color.make "#E5C07B") |> Style.bold
-  | "note" -> Style.default |> Style.fg (Color.make "#56B6C2") |> Style.bold
-  | _ -> Style.default |> Style.fg (Color.make "#E06C75") |> Style.bold
+  | "warning" ->
+      Style.default
+      |> Style.fg (Color.make "#E5C07B")
+      |> Style.bold
+  | "note" ->
+      Style.default
+      |> Style.fg (Color.make "#56B6C2")
+      |> Style.bold
+  | _ ->
+      Style.default
+      |> Style.fg (Color.make "#E06C75")
+      |> Style.bold
 
-let fix_style = Style.default |> Style.fg (Color.make "#98C379") |> Style.bold
+let fix_style =
+  Style.default
+  |> Style.fg (Color.make "#98C379")
+  |> Style.bold
 
 let position_of_offset = fun text offset -> Std.Unicode.Utf16.position_of_offset text ~offset
 
 let make_source_layout = fun source ->
-  let lines = String.split_on_char '\n' source |> Array.of_list in
+  let lines =
+    String.split_on_char '\n' source
+    |> Array.of_list
+  in
   let line_starts = Array.make (Array.length lines) 0 in
   let offset = ref 0 in
   for index = 0 to Array.length lines - 1 do
@@ -44,8 +59,7 @@ let source_layout_line_for_pos = fun source_text (_, line_starts) pos ->
     let last = Array.length line_starts - 1 in
     let line_idx =
       loop 0 last 0
-      |> fun line_idx ->
-        Int.min last (Int.max 0 line_idx)
+      |> fun line_idx -> Int.min last (Int.max 0 line_idx)
     in
     (line_idx, Int.max 0 (position_of_offset source_text pos).character)
 
@@ -55,7 +69,10 @@ let extract_snippet = fun source_layout source_text (span: Syn.Span.t) ->
   else
     let start_position = position_of_offset source_text span.start in
     let end_position = position_of_offset source_text span.end_ in
-    let line_idx = source_layout_line_for_pos source_text source_layout span.start |> fst in
+    let line_idx =
+      source_layout_line_for_pos source_text source_layout span.start
+      |> fst
+    in
     if line_idx < 0 || line_idx >= Array.length (fst source_layout) then
       None
     else
@@ -99,9 +116,10 @@ let format_diagnostic = fun ~path_text ~source_layout ~source_text diagnostic ->
         let id = Syn.Diagnostic.id diagnostic in
         "  For more information about this error, try `riot fmt --explain " ^ id ^ "`"
     | Diagnostic.Lowering _
-    | Diagnostic.Typing _ -> "  For more information about this error, try `riot check --explain "
-    ^ Diagnostic.code diagnostic
-    ^ "`"
+    | Diagnostic.Typing _ ->
+        "  For more information about this error, try `riot check --explain "
+        ^ Diagnostic.code diagnostic
+        ^ "`"
   in
   match extract_snippet source_layout source_text span with
   | None -> header
@@ -155,9 +173,10 @@ let format_diagnostic_without_snippet = fun ~path_text diagnostic ->
         let id = Syn.Diagnostic.id diagnostic in
         "  For more information about this error, try `riot fmt --explain " ^ id ^ "`"
     | Diagnostic.Lowering _
-    | Diagnostic.Typing _ -> "  For more information about this error, try `riot check --explain "
-    ^ Diagnostic.code diagnostic
-    ^ "`"
+    | Diagnostic.Typing _ ->
+        "  For more information about this error, try `riot check --explain "
+        ^ Diagnostic.code diagnostic
+        ^ "`"
   in
   path_text
   ^ "\n\n"
@@ -174,10 +193,11 @@ let format_diagnostic_without_snippet = fun ~path_text diagnostic ->
 
 let render_checked_file = fun ~workspace_root checked_file ->
   match checked_file with
-  | State.Unreadable { path; reason } -> {
-    stdout = [];
-    stderr = [ Scope.relative_or_absolute ~workspace_root path ^ ": " ^ reason ^ "\n" ]
-  }
+  | State.Unreadable { path; reason } ->
+      {
+        stdout = [];
+        stderr = [ Scope.relative_or_absolute ~workspace_root path ^ ": " ^ reason ^ "\n" ];
+      }
   | State.Typed { path; report; diagnostics } ->
       if List.is_empty diagnostics then
         { stdout = []; stderr = [] }
@@ -187,16 +207,25 @@ let render_checked_file = fun ~workspace_root checked_file ->
         | Some source_text ->
             let source_layout = make_source_layout source_text in
             {
-              stdout = diagnostics
-              |> List.map
-                (fun diagnostic -> format_diagnostic ~path_text ~source_layout ~source_text diagnostic);
-              stderr = []
+              stdout =
+                diagnostics
+                |> List.map
+                  (fun diagnostic ->
+                    format_diagnostic
+                      ~path_text
+                      ~source_layout
+                      ~source_text
+                      diagnostic);
+              stderr = [];
             }
-        | None -> {
-          stdout = diagnostics
-          |> List.map (fun diagnostic -> format_diagnostic_without_snippet ~path_text diagnostic);
-          stderr = []
-        }
+        | None ->
+            {
+              stdout =
+                diagnostics
+                |> List.map
+                  (fun diagnostic -> format_diagnostic_without_snippet ~path_text diagnostic);
+              stderr = [];
+            }
 
 let success_summary = fun ~quiet (summary: State.checked_summary) ->
   if quiet then
