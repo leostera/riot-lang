@@ -1,250 +1,16 @@
 open Std
 open Ast
 open TypeScheme
+open Constraint
+open TypeExpr
 
-module HashMap = Std.Collections.HashMap
 module InferenceEnv = State.InferenceEnv
 module SurfacePath = Model.Surface_path
 
-let unify (state: State.t) ~expected ~actual ~on_error =
-  match Unifier.unify ~expected ~actual with
-  | Ok () -> ()
-  | Error err -> State.add_diagnostic state (on_error err)
-
-let annotation_diagnostic (annotation: core_type) err =
-  match err with
-  | Unifier.TypeMismatch { expected; actual } ->
-      Diagnostics.Diagnostic.annotation_mismatch
-        ~span:annotation.origin.span
-        ~annotation_span:annotation.origin.span
-        ~expected:(Type.to_string expected)
-        ~actual:(Type.to_string actual)
-  | Unifier.InfiniteSubstitution { var; type_ } ->
-      Diagnostics.Diagnostic.infinite_substitution
-        ~span:annotation.origin.span
-        ~var:(TypeVar.to_string var.id)
-        ~type_:(Type.to_string type_)
-
-let expression_hint_diagnostic (expr: expression) (hint: expression_type_hint) err =
-  match err with
-  | Unifier.TypeMismatch { expected; actual } ->
-      Diagnostics.Diagnostic.annotation_mismatch
-        ~span:expr.origin.span
-        ~annotation_span:hint.type_.origin.span
-        ~expected:(Type.to_string expected)
-        ~actual:(Type.to_string actual)
-  | Unifier.InfiniteSubstitution { var; type_ } ->
-      Diagnostics.Diagnostic.infinite_substitution
-        ~span:expr.origin.span
-        ~var:(TypeVar.to_string var.id)
-        ~type_:(Type.to_string type_)
-
-let expression_constraint_diagnostic (expr: expression) err =
-  match err with
-  | Unifier.TypeMismatch { expected; actual } ->
-      Diagnostics.Diagnostic.type_mismatch
-        ~span:expr.origin.span
-        ~expected:(Type.to_string expected)
-        ~actual:(Type.to_string actual)
-  | Unifier.InfiniteSubstitution { var; type_ } ->
-      Diagnostics.Diagnostic.infinite_substitution
-        ~span:expr.origin.span
-        ~var:(TypeVar.to_string var.id)
-        ~type_:(Type.to_string type_)
-
-let pattern_constraint_diagnostic (pat: pattern) err =
-  match err with
-  | Unifier.TypeMismatch { expected; actual } ->
-      Diagnostics.Diagnostic.type_mismatch
-        ~span:pat.origin.span
-        ~expected:(Type.to_string expected)
-        ~actual:(Type.to_string actual)
-  | Unifier.InfiniteSubstitution { var; type_ } ->
-      Diagnostics.Diagnostic.infinite_substitution
-        ~span:pat.origin.span
-        ~var:(TypeVar.to_string var.id)
-        ~type_:(Type.to_string type_)
-
-module Builtin = struct
-  let ident name =
-    Model.Surface_path.from_parts [ name ]
-    |> Result.expect ~msg:("expected builtin identifier " ^ name)
-
-  let int_ident = ident "int"
-
-  let bool_ident = ident "bool"
-
-  let float_ident = ident "float"
-
-  let char_ident = ident "char"
-
-  let string_ident = ident "string"
-
-  let unit_ident = ident "unit"
-
-  let list_ident = ident "list"
-
-  let make ?(arguments = []) ident = Type.Apply { ident; arguments }
-
-  let int = make int_ident
-
-  let bool = make bool_ident
-
-  let float = make float_ident
-
-  let char = make char_ident
-
-  let string = make string_ident
-
-  let unit = make unit_ident
-
-  let list el = make list_ident ~arguments:[ el ]
-
-  let is_unit ident = Model.Surface_path.equal ident unit_ident
-end
-
-let arrow_label_to_type_label = function
-  | NoLabel -> Type.Label.NoLabel
-  | Labelled label -> Type.Label.Labelled label
-  | Optional label -> Type.Label.Optional label
-
-let rec core_type_to_type (state: State.t) (annotation: core_type) =
-  let type_ =
-    match annotation.kind with
-    | TypeIdent ident -> Type.Apply { ident; arguments = [] }
-    | Apply { constructor; arguments } -> (
-        let constructor = core_type_to_type state constructor in
-        let arguments = List.map arguments ~fn:(core_type_to_type state) in
-        match Unifier.resolve constructor with
-        | Type.Apply { ident; arguments = existing_arguments } ->
-            Type.Apply { ident; arguments = List.append existing_arguments arguments }
-        | _ -> State.fresh_var state
-      )
-    | Arrow { label; parameter; result } ->
-        Type.Arrow {
-          label = arrow_label_to_type_label label;
-          parameter = core_type_to_type state parameter;
-          result = core_type_to_type state result;
-        }
-    | Tuple parts -> Type.Tuple (List.map parts ~fn:(core_type_to_type state))
-    | Parenthesized inner
-    | ForAll { body = inner; _ } -> core_type_to_type state inner
-    | Var (Some name) -> (
-        match State.get_type_param state ~name with
-        | Some type_ -> type_
-        | None -> State.fresh_var state
-      )
-    | Var None -> State.fresh_var state
-    | Wildcard
-    | PolyVariant _
-    | Package _ -> State.fresh_var state
-  in
-  annotation.type_ <- Some type_;
-  type_
-
-let type_declaration_to_type ?(arguments = []) (decl: type_declaration) =
-  Type.Apply { ident = decl.name; arguments }
-
-let inline_record_payload_ident (decl: type_declaration) (ctr: type_constructor) =
-  let owner = SurfacePath.to_segments decl.name in
-  let constructor = SurfacePath.to_string ctr.name in
-  SurfacePath.from_parts (owner @ [ "$" ^ constructor ])
-  |> Result.expect ~msg:"inline record constructor payload paths are non-empty"
-
-let fresh_type_parameters state parameters =
-  let scope = HashMap.with_capacity ~size:(List.length parameters) in
-  let arguments =
-    List.map
-      parameters
-      ~fn:(fun param ->
-        match param with
-        | Some name ->
-            let type_ = State.fresh_var state in
-            let _ = HashMap.insert scope ~key:name ~value:type_ in
-            type_
-        | None -> State.fresh_var state)
-  in
-  (scope, arguments)
-
-let generalize_type type_ = (Quantifier.generalize type_).body
-
-let generalize_constructor_arguments arguments =
-  match arguments with
-  | InferenceEnv.Tuple arguments -> InferenceEnv.Tuple (List.map arguments ~fn:generalize_type)
-  | InferenceEnv.InlineRecord inline_record ->
-      InferenceEnv.InlineRecord {
-        inline_record with
-        payload_type = generalize_type inline_record.payload_type;
-        fields = List.map
-          inline_record.fields
-          ~fn:(fun (field: InferenceEnv.inline_record_field) -> {
-            field with
-            type_ = generalize_type field.type_;
-          });
-      }
-
-let instantiate_constructor_description state (description: InferenceEnv.constructor_description) =
-  let substitutions = HashMap.with_capacity ~size:8 in
-  let fresh_for_generic id =
-    match HashMap.get substitutions ~key:id with
-    | Some type_ -> type_
-    | None ->
-        let type_ = State.fresh_var state in
-        let _ = HashMap.insert substitutions ~key:id ~value:type_ in
-        type_
-  in
-  let rec instantiate_type type_ =
-    match Unifier.resolve type_ with
-    | Type.Generic id -> fresh_for_generic id
-    | Type.Var _ as type_ -> type_
-    | Type.Tuple parts -> Type.Tuple (List.map parts ~fn:instantiate_type)
-    | Type.Arrow arrow ->
-        Type.Arrow {
-          arrow with
-          parameter = instantiate_type arrow.parameter;
-          result = instantiate_type arrow.result;
-        }
-    | Type.Apply application ->
-        Type.Apply {
-          application with
-          arguments = List.map application.arguments ~fn:instantiate_type;
-        }
-  in
-  let instantiate_arguments arguments =
-    match arguments with
-    | InferenceEnv.Tuple arguments -> InferenceEnv.Tuple (List.map arguments ~fn:instantiate_type)
-    | InferenceEnv.InlineRecord inline_record ->
-        InferenceEnv.InlineRecord {
-          inline_record with
-          payload_type = instantiate_type inline_record.payload_type;
-          fields = List.map
-            inline_record.fields
-            ~fn:(fun (field: InferenceEnv.inline_record_field) -> {
-              field with
-              type_ = instantiate_type field.type_;
-            });
-        }
-  in
-  {
-    description with
-    scheme = TypeScheme.monomorphic (instantiate_type description.scheme.body);
-    result = instantiate_type description.result;
-    arguments = instantiate_arguments description.arguments;
-  }
-
-let instantiate_constructor state ident =
-  State.get_constructor state ~name:ident
-  |> Option.map ~fn:(instantiate_constructor_description state)
-
-let instantiate_record_field state (info: State.InferenceEnv.record_field_info) =
-  let (scope, arguments) = fresh_type_parameters state info.owner.parameters in
-  State.with_type_params
-    state
-    scope
-    (fun state ->
-      let owner_type = type_declaration_to_type ~arguments info.owner in
-      let field_type = core_type_to_type state info.field.type_annotation in
-      (owner_type, field_type))
+let parameter_label_to_type_label = function
+  | Unlabeled -> Type.Label.NoLabel
+  | Labeled label -> Type.Label.Labelled (SurfacePath.to_string label)
+  | Optional label -> Type.Label.Optional (SurfacePath.to_string label)
 
 let bind_value ~mode state ~name type_ =
   let scheme =
@@ -335,7 +101,7 @@ and bind_constructor state pattern ctr type_ =
         ~on_error:(pattern_constraint_diagnostic pattern)
   | { ident; payload = None } ->
       let constructor_type =
-        match instantiate_constructor state ident with
+        match ConstructorDescription.instantiate_from_state state ident with
         | None -> State.fresh_var state
         | Some constructor -> constructor.scheme.body
       in
@@ -345,7 +111,7 @@ and bind_constructor state pattern ctr type_ =
         ~actual:type_
         ~on_error:(pattern_constraint_diagnostic pattern)
   | { ident; payload = Some ({ kind = Record fields; _ } as payload_pattern) } -> (
-      match instantiate_constructor state ident with
+      match ConstructorDescription.instantiate_from_state state ident with
       | None ->
           let payload_type = State.fresh_var state in
           unify
@@ -369,7 +135,7 @@ and bind_constructor state pattern ctr type_ =
     )
   | { ident; payload = Some payload_pattern } ->
       let constructor_type =
-        match instantiate_constructor state ident with
+        match ConstructorDescription.instantiate_from_state state ident with
         | None -> State.fresh_var state
         | Some constructor -> constructor.scheme.body
       in
@@ -395,18 +161,6 @@ let infer_ident (state: State.t) ident =
   | Some scheme -> Quantifier.instantiate state scheme
   | None -> State.fresh_var state
 
-let infer_function_param state (param: parameter) =
-  let param_type = State.fresh_var state in
-  bind_pattern ~mode:Local state param.pattern param_type;
-  (
-    match param.annotation with
-    | Some hint ->
-        let expected = core_type_to_type state hint in
-        unify state ~expected ~actual:param_type ~on_error:(annotation_diagnostic hint)
-    | None -> ()
-  );
-  param_type
-
 let rec infer_expression (state: State.t) (expr: expression) =
   let inferred =
     match expr.kind with
@@ -422,7 +176,9 @@ let rec infer_expression (state: State.t) (expr: expression) =
     | Match match_ -> infer_match state match_
     | Record record -> infer_record state record
     | FieldAccess access -> infer_field_access state access
-    | _ -> State.fresh_var state
+    | _ ->
+        (* TODO(@leostera): implement the remaining expression forms. *)
+        State.fresh_var state
   in
   let unified =
     match expr.type_hint with
@@ -493,10 +249,10 @@ and infer_record_body state (fields: record_expression_field list) =
 
 and infer_record state record =
   match record with
-  (* if you have `{}` we'll just fallback to a hole *)
+  (* TODO(@leostera): model empty records instead of falling back to a hole. *)
   | { update = None; fields = [] } -> State.fresh_var state
 
-  (* if you have `{hello}` we'll fallback to hello's type assuming its a record update *)
+  (* TODO(@leostera): decide whether empty updates should be accepted here. *)
   | { update = Some update; fields = [] } -> infer_expression state update
 
   (* if you have `{hello=1}` we'll type the record body *)
@@ -590,22 +346,7 @@ and infer_list state items =
   Builtin.list element
 
 and infer_apply state (apply: application) =
-  let callee = infer_expression state apply.callee in
-  let result = State.fresh_var state in
-  let expected =
-    List.fold_right
-      apply.arguments
-      ~init:result
-      ~fn:(fun arg ret ->
-        let arg_type =
-          match arg.kind with
-          | Positional expr -> infer_expression state expr
-          | _ -> State.fresh_var state
-        in
-        Ast.Type.arrow arg_type ret)
-  in
-  unify state ~expected ~actual:callee ~on_error:(expression_constraint_diagnostic apply.callee);
-  result
+  Apply.infer state ~infer_expression:(infer_expression state) apply
 
 and infer_inline_record_field_type inline_record (field: record_expression_field) =
   match inline_record_find_field inline_record field.name with
@@ -636,12 +377,12 @@ and infer_constructor state (expr: expression) (constructor: constructor_express
   (* when there's no payload and the ident is a built in, just return the builtin type *)
   | { ident; payload = None } when Builtin.is_unit ident -> Builtin.unit
   | { ident; payload = None } -> (
-      match instantiate_constructor state ident with
+      match ConstructorDescription.instantiate_from_state state ident with
       | Some constructor -> constructor.scheme.body
       | None -> State.fresh_var state
     )
   | { ident; payload = Some ({ kind = Record { update = None; fields }; _ } as payload_expr) } -> (
-      match instantiate_constructor state ident with
+      match ConstructorDescription.instantiate_from_state state ident with
       | Some ({ arguments = InferenceEnv.InlineRecord inline_record; _ } as constructor) ->
           infer_inline_record_constructor state expr payload_expr fields constructor inline_record
       | _ -> infer_constructor_payload state expr ident payload_expr
@@ -653,7 +394,7 @@ and infer_constructor_payload state expr ident payload_expr =
   let payload_type = infer_expression state payload_expr in
   let result = State.fresh_var state in
   let constructor_type =
-    match instantiate_constructor state ident with
+    match ConstructorDescription.instantiate_from_state state ident with
     | None -> State.fresh_var state
     | Some constructor -> constructor.scheme.body
   in
@@ -695,65 +436,47 @@ and infer_tuple (state: State.t) parts =
   let types = List.map ~fn:(infer_expression state) parts in
   Type.Tuple types
 
+and infer_function_param state (param: parameter) =
+  let param_type = State.fresh_var state in
+  bind_pattern ~mode:Local state param.pattern param_type;
+  (
+    match param.annotation with
+    | Some hint ->
+        let expected = core_type_to_type state hint in
+        unify state ~expected ~actual:param_type ~on_error:(annotation_diagnostic hint)
+    | None -> ()
+  );
+  (
+    match param.default with
+    | Some default ->
+        let actual = infer_expression state default in
+        unify
+          state
+          ~expected:param_type
+          ~actual
+          ~on_error:(expression_constraint_diagnostic default)
+    | None -> ()
+  );
+  (parameter_label_to_type_label param.label, param_type)
+
 and infer_function state fn_decl =
   State.push_scope state;
   let params = List.map ~fn:(infer_function_param state) fn_decl.parameters in
   let body =
     match fn_decl.body with
     | Body expr -> infer_expression state expr
-    | Cases _ -> State.fresh_var state
+    | Cases _ ->
+        (* TODO(@leostera): lower `function` cases to an explicit match. *)
+        State.fresh_var state
   in
   State.pop_scope state;
-  List.fold_right params ~init:body ~fn:Ast.Type.arrow
+  List.fold_right
+    params
+    ~init:body
+    ~fn:(fun (label, parameter) result -> Ast.Type.arrow ~label parameter result)
 
 let register_constructor state (decl: type_declaration) (ctr: type_constructor) =
-  let (scope, arguments) = fresh_type_parameters state decl.parameters in
-  let description =
-    State.with_type_params
-      state
-      scope
-      (fun state ->
-        let result =
-          match ctr.result with
-          | Some result -> core_type_to_type state result
-          | None -> type_declaration_to_type ~arguments decl
-        in
-        let constructor_arguments =
-          match ctr.arguments with
-          | Tuple arguments -> InferenceEnv.Tuple (List.map arguments ~fn:(core_type_to_type state))
-          | Record fields ->
-              let payload_type =
-                Type.Apply { ident = inline_record_payload_ident decl ctr; arguments }
-              in
-              let inline_record: InferenceEnv.inline_record = {
-                owner = decl;
-                constructor = ctr;
-                payload_type;
-                fields = List.map
-                  fields
-                  ~fn:(fun field -> ({
-                    declaration = field;
-                    type_ = core_type_to_type state field.type_annotation;
-                  }: InferenceEnv.inline_record_field));
-              }
-              in
-              InferenceEnv.InlineRecord inline_record
-        in
-        let body =
-          match constructor_arguments with
-          | InferenceEnv.Tuple [] -> result
-          | InferenceEnv.Tuple [ argument ] -> Ast.Type.arrow argument result
-          | InferenceEnv.Tuple arguments -> Ast.Type.arrow (Type.Tuple arguments) result
-          | InferenceEnv.InlineRecord inline_record ->
-              Ast.Type.arrow inline_record.payload_type result
-        in
-        ({
-          name = ctr.name;
-          scheme = Quantifier.generalize body;
-          result = generalize_type result;
-          arguments = generalize_constructor_arguments constructor_arguments;
-        }: InferenceEnv.constructor_description))
-  in
+  let description = ConstructorDescription.from_type_constructor state decl ctr in
   State.add_constructor state ~name:ctr.name ~description
 
 let register_record_field state (decl: type_declaration) (field: record_field_declaration) =
