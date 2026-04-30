@@ -134,7 +134,7 @@ command("RiotLogs", "show_logs", {
 })
 
 command("RiotLspLogs", "show_lsp_logs", {
-  desc = "Open the Neovim LSP log",
+  desc = "Open riot-lsp and Neovim LSP logs",
   nargs = 0,
 })
 

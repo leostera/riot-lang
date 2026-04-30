@@ -281,6 +281,46 @@ local function riot_lsp_active(bufnr)
   return #riot_lsp_clients(bufnr) > 0
 end
 
+local function configure_riot_lsp_buffer(bufnr)
+  if vim.api.nvim_buf_is_valid(bufnr) then
+    vim.bo[bufnr].omnifunc = "v:lua.vim.lsp.omnifunc"
+  end
+end
+
+local function client_supports_method(client, method)
+  if type(client.supports_method) == "function" then
+    return client:supports_method(method)
+  end
+
+  local capabilities = client.server_capabilities
+  if type(capabilities) ~= "table" then
+    return false
+  end
+
+  if method == "textDocument/completion" then
+    return capabilities.completionProvider ~= nil
+  end
+
+  if method == "textDocument/inlayHint" then
+    return capabilities.inlayHintProvider ~= nil
+  end
+
+  return false
+end
+
+local function attach_riot_lsp_buffer(client, bufnr)
+  if not vim.api.nvim_buf_is_valid(bufnr) then
+    return
+  end
+
+  clear_diagnostics(bufnr)
+  configure_riot_lsp_buffer(bufnr)
+
+  if vim.lsp.inlay_hint ~= nil and client_supports_method(client, "textDocument/inlayHint") then
+    vim.lsp.inlay_hint.enable(true, { bufnr = bufnr })
+  end
+end
+
 local function start_riot_lsp(bufnr)
   if not state.config.enable_lsp then
     return false
@@ -295,6 +335,8 @@ local function start_riot_lsp(bufnr)
     return false
   end
 
+  configure_riot_lsp_buffer(bufnr)
+
   local root = workspace_root(path)
   if type(root) ~= "string" or root == "" then
     return false
@@ -302,6 +344,9 @@ local function start_riot_lsp(bufnr)
 
   if riot_lsp_active(bufnr) then
     clear_diagnostics(bufnr)
+    for _, client in ipairs(riot_lsp_clients(bufnr)) do
+      attach_riot_lsp_buffer(client, bufnr)
+    end
     return true
   end
 
@@ -312,10 +357,8 @@ local function start_riot_lsp(bufnr)
       cmd = riot_lsp_command(),
       root_dir = root,
       single_file_support = true,
-      on_attach = function(_, attached_bufnr)
-        if vim.api.nvim_buf_is_valid(attached_bufnr) then
-          clear_diagnostics(attached_bufnr)
-        end
+      on_attach = function(client, attached_bufnr)
+        attach_riot_lsp_buffer(client, attached_bufnr)
       end,
     })
 
@@ -908,6 +951,26 @@ local function open_file_in_split(path, opts)
   vim.cmd("botright split")
   vim.api.nvim_win_set_height(0, opts.height or state.config.logs_height)
   vim.cmd("edit " .. vim.fn.fnameescape(path))
+end
+
+local function riot_lsp_server_log_path()
+  if type(vim.env.RIOT_LSP_LOG_PATH) == "string" and vim.env.RIOT_LSP_LOG_PATH ~= "" then
+    return vim.env.RIOT_LSP_LOG_PATH
+  end
+
+  return table.concat({ vim.fn.expand("~"), ".riot", "logs", "riot-lsp.log" }, "/")
+end
+
+local function nvim_lsp_log_path()
+  if vim.lsp.log ~= nil and type(vim.lsp.log.get_filename) == "function" then
+    return vim.lsp.log.get_filename()
+  end
+
+  if vim.lsp.get_log_path then
+    return vim.lsp.get_log_path()
+  end
+
+  return nil
 end
 
 local function explain_command(source, code)
@@ -1610,12 +1673,36 @@ local function configure_lsp_autostart()
       start_riot_lsp(args.buf)
     end,
   })
+
+  vim.api.nvim_create_autocmd("LspAttach", {
+    group = vim.api.nvim_create_augroup("riot.nvim.lsp.attach", { clear = true }),
+    pattern = { "*.ml", "*.mli" },
+    desc = "Configure buffers attached to riot-lsp",
+    callback = function(args)
+      local client = vim.lsp.get_client_by_id(args.data.client_id)
+      if client and client.name == "riot-lsp" then
+        attach_riot_lsp_buffer(client, args.buf)
+      end
+    end,
+  })
 end
 
 function M.setup(opts)
   state.config = merge_config(opts)
   configure_lsp_autostart()
   configure_format_on_save()
+
+  for _, bufnr in ipairs(vim.api.nvim_list_bufs()) do
+    if vim.api.nvim_buf_is_loaded(bufnr) then
+      local path = current_buffer_path(bufnr)
+      if type(path) == "string" and supported_file(path) then
+        configure_riot_lsp_buffer(bufnr)
+        for _, client in ipairs(riot_lsp_clients(bufnr)) do
+          attach_riot_lsp_buffer(client, bufnr)
+        end
+      end
+    end
+  end
 end
 
 function M.format_current_buffer()
@@ -1708,12 +1795,16 @@ function M.show_logs()
 end
 
 function M.show_lsp_logs()
-  if not vim.lsp.get_log_path then
-    notify("this Neovim build does not expose vim.lsp.get_log_path()", vim.log.levels.WARN)
-    return
-  end
+  local server_log = riot_lsp_server_log_path()
 
-  open_file_in_split(vim.lsp.get_log_path(), { height = state.config.logs_height })
+  open_file_in_split(server_log, { height = state.config.logs_height })
+
+  local client_log = nvim_lsp_log_path()
+  if type(client_log) == "string" and client_log ~= "" and client_log ~= server_log then
+    open_file_in_split(client_log, { height = state.config.logs_height })
+  elseif client_log == nil then
+    notify("this Neovim build does not expose an LSP log path", vim.log.levels.WARN)
+  end
 end
 
 function M.start_lsp()
@@ -1748,7 +1839,9 @@ end
 
 function M.show_lsp_info()
   local lines = {}
+  local bufnr = vim.api.nvim_get_current_buf()
   local clients = vim.lsp.get_clients({ name = "riot-lsp" })
+  local buffer_clients = riot_lsp_clients(bufnr)
 
   if #clients == 0 then
     table.insert(lines, "riot-lsp is not running")
@@ -1760,10 +1853,14 @@ function M.show_lsp_info()
     end
   end
 
-  if vim.lsp.get_log_path then
-    table.insert(lines, "")
-    table.insert(lines, ("log: %s"):format(vim.lsp.get_log_path()))
-  end
+  table.insert(lines, "")
+  table.insert(lines, ("current buffer: %d"):format(bufnr))
+  table.insert(lines, ("attached clients: %d"):format(#buffer_clients))
+  table.insert(lines, ("omnifunc: %s"):format(vim.bo[bufnr].omnifunc ~= "" and vim.bo[bufnr].omnifunc or "<unset>"))
+
+  table.insert(lines, "")
+  table.insert(lines, ("riot-lsp log: %s"):format(riot_lsp_server_log_path()))
+  table.insert(lines, ("nvim lsp log: %s"):format(nvim_lsp_log_path() or "<unavailable>"))
 
   open_scratch("riot://lsp-info", lines, { height = state.config.logs_height })
 end

@@ -224,6 +224,22 @@ vim.api.nvim_create_autocmd("LspAttach", {
       })
     end
 
+    local supports_completion = false
+    if type(client.supports_method) == "function" then
+      supports_completion = client:supports_method("textDocument/completion")
+    else
+      supports_completion = client.server_capabilities ~= nil
+          and client.server_capabilities.completionProvider ~= nil
+    end
+
+    if supports_completion then
+      vim.bo[args.buf].omnifunc = "v:lua.vim.lsp.omnifunc"
+      vim.keymap.set("i", "<C-o>", "<C-x><C-o>", {
+        buffer = args.buf,
+        desc = "Riot LSP complete",
+      })
+    end
+
     if vim.lsp.inlay_hint == nil then
       return
     end

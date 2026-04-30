@@ -99,7 +99,8 @@ Options:
 - `:RiotTestWorkspace`, `:RiotTestPackage`, `:RiotTestFile`, `:RiotTestNearest`
 - `:RiotBench`, `:RiotBenchPackage`, `:RiotBenchFile`, `:RiotBenchNearest`, `:RiotBenchLast`
 - `:RiotAdd [dep]` and `:RiotRemove [dep]`
-- `:RiotLogs` and `:RiotLspLogs`
+- `:RiotLogs` opens plugin-local logs
+- `:RiotLspLogs` opens the `riot-lsp` server log and Neovim LSP client log
 - `:RiotLspStart`, `:RiotLspStop`, `:RiotLspRestart`, `:RiotLspInfo`
 
 ## Notes
