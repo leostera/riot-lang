@@ -36,55 +36,52 @@
     },
     {
       "params": {
+        "diagnostics": [],
+        "uri": "file:///workspace/stable.ml",
+        "version": 1
+      },
+      "jsonrpc": "2.0",
+      "method": "textDocument/publishDiagnostics"
+    },
+    {
+      "params": {
         "diagnostics": [
           {
-            "message": "Prefer explicit function parameters over `function` shorthand",
+            "message": "expected expression, found end of file",
             "range": {
               "start": {
-                "line": 0,
-                "character": 13
+                "line": 1,
+                "character": 7
               },
               "end": {
-                "line": 0,
-                "character": 34
+                "line": 1,
+                "character": 7
               }
             },
-            "severity": 2,
-            "code": "no-function-shorthand",
-            "source": "riot-fix",
+            "severity": 1,
+            "code": "E0004",
+            "source": "syn",
             "data": {
-              "severity": "warning",
-              "message": "Prefer explicit function parameters over `function` shorthand",
-              "span": {
-                "start": 13,
-                "end": 34
+              "kind": {
+                "id": "E0004",
+                "name": "missing-let-binding-expr",
+                "expected": "expression",
+                "found": {
+                  "kind": "end of file",
+                  "text": ""
+                },
+                "fix": "add an expression after the =",
+                "hint": "Every let binding needs a value on the right side of the =."
               },
-              "rule_id": "no-function-shorthand",
-              "suggestion": "Introduce an explicit parameter and match on it.",
-              "fix": {
-                "title": "Expand function shorthand",
-                "operations": [
-                  {
-                    "kind": "replace",
-                    "target": {
-                      "kind": "node",
-                      "span": {
-                        "start": 13,
-                        "end": 34
-                      }
-                    },
-                    "replacement": {
-                      "kind": "text",
-                      "text": "fun value -> match value with | x -> x + 1"
-                    }
-                  }
-                ]
+              "span": {
+                "start": 26,
+                "end": 26
               }
             }
           }
         ],
-        "uri": "file:///workspace/app.ml",
-        "version": 1
+        "uri": "file:///workspace/stable.ml",
+        "version": 2
       },
       "jsonrpc": "2.0",
       "method": "textDocument/publishDiagnostics"
@@ -92,7 +89,18 @@
     {
       "jsonrpc": "2.0",
       "id": 2,
-      "result": null
+      "result": [
+        {
+          "label": ": int",
+          "position": {
+            "line": 0,
+            "character": 5
+          },
+          "kind": 1,
+          "paddingLeft": false,
+          "paddingRight": false
+        }
+      ]
     }
   ],
   "exitCode": null,
@@ -101,8 +109,8 @@
     "shutdownRequested": false,
     "documents": [
       {
-        "uri": "file:///workspace/app.ml",
-        "version": 1
+        "uri": "file:///workspace/stable.ml",
+        "version": 2
       }
     ]
   }

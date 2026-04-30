@@ -16,11 +16,17 @@ module Vector = Std.Collections.Vector
 
 let lint_rules = Riot_fix.Pipeline.default_rules ()
 
+type typ_query_context = {
+  text: string;
+  context: Typ.Query.context;
+}
+
 type document = {
   uri: Lsp.Uri.t;
   version: int;
   text: string;
   path: Path.t option;
+  typ_context: typ_query_context option;
 }
 
 type fixable_lint_diagnostic = {
@@ -28,8 +34,6 @@ type fixable_lint_diagnostic = {
   lsp_diagnostic: Lsp.Diagnostic.t;
   fix: Riot_fix.Fix.fix;
 }
-
-type typ_query_context = unit
 
 type t = {
   initialized: bool;
@@ -42,6 +46,7 @@ type outcome = {
   state: t;
   outbound: Json.t list;
   exit_code: int option;
+  debug_events: string list;
 }
 
 let empty = {
@@ -75,7 +80,12 @@ let response_error = fun ~id ~code ~message ?data () ->
     ~id
     Lsp.{ code; message; data }
 
-let ok = fun state ?exit_code outbound -> { state; outbound; exit_code }
+let ok = fun ?(debug_events=[]) state ?exit_code outbound -> {
+  state;
+  outbound;
+  exit_code;
+  debug_events;
+}
 
 let filename_of_uri = fun uri ->
   match Lsp.Uri.to_path uri with
@@ -207,7 +217,28 @@ let typ_config_for_document = fun _state -> fun (_document: document) -> ()
 
 let typ_snapshot_for_document = fun _state -> fun (_document: document) -> None
 
-let typ_query_context_for_document = fun _state -> fun _document -> None
+let typ_query_context_for_document = fun ?(allow_parse_diagnostics=false) _state ->
+  fun document ->
+    let parse_result =
+      Syn.parse ~filename:(filename_of_document document) (source_slice document.text)
+    in
+    if (not allow_parse_diagnostics) && not (Vector.is_empty parse_result.diagnostics) then
+      None
+    else
+      let source = Typ.Model.Source.make ~text:document.text in
+      match Typ.Ast.from_parse_result ~source parse_result with
+      | Error _diagnostics -> None
+      | Ok source_file ->
+          let infer_result = Typ.Infer.check source_file in
+          Some {
+            text = document.text;
+            context = Typ.Query.create ~source_file ~infer_result;
+          }
+
+let refresh_document_typ_context = fun state document ->
+  match typ_query_context_for_document ~allow_parse_diagnostics:true state document with
+  | Some typ_context -> { document with typ_context = Some typ_context }
+  | None -> document
 
 let typ_analysis_for_document = fun _state -> fun _document -> None
 
@@ -419,22 +450,19 @@ let fix_all_action = fun document entries ->
 
 let typ_diagnostics = fun state ->
   fun document ->
-    ignore state;
-    let parse_result =
-      Syn.parse ~filename:(filename_of_document document) (source_slice document.text)
-    in
-    if not (Vector.is_empty parse_result.diagnostics) then
-      []
-    else
-      let source = Typ.Model.Source.make ~text:document.text in
-      match Typ.Ast.from_parse_result ~source parse_result with
-      | Error diagnostics -> List.map diagnostics ~fn:(typ_diagnostic_to_lsp document.text)
-      | Ok ast ->
-          let result = Typ.Infer.check ast in
-          result.diagnostics.items
-          |> Vector.iter
-          |> Iter.Iterator.map ~fn:(typ_diagnostic_to_lsp document.text)
-          |> Iter.Iterator.to_list
+    match typ_query_context_for_document state document with
+    | None -> []
+    | Some context ->
+        let result = Typ.Query.infer_result context.context in
+        result.diagnostics.items
+        |> Vector.iter
+        |> Iter.Iterator.map ~fn:(typ_diagnostic_to_lsp document.text)
+        |> Iter.Iterator.to_list
+
+let infer_interface_for_document = fun state ->
+  fun document ->
+    typ_query_context_for_document state document
+    |> Option.map ~fn:(fun context -> (Typ.Query.infer_result context.context).intf)
 
 let publish_diagnostics = fun state ->
   fun document ->
@@ -851,15 +879,14 @@ let document_symbols_for_document = fun document ->
     Some symbols
 
 type hover_candidate = {
-  hover_origin: Typ.Ast.origin;
+  hover_span: Syn.Span.t;
   hover_type: Typ.Ast.Type.t;
 }
 
 let span_contains_offset = fun (span: Syn.Span.t) offset ->
   offset >= span.start && offset <= span.end_
 
-let hover_candidate_width = fun candidate ->
-  candidate.hover_origin.span.end_ - candidate.hover_origin.span.start
+let hover_candidate_width = fun candidate -> Syn.Span.width candidate.hover_span
 
 let better_hover_candidate = fun left right ->
   match (left, right) with
@@ -873,7 +900,7 @@ let better_hover_candidate = fun left right ->
 
 let hover_candidate = fun offset origin type_ ->
   if span_contains_offset origin.Typ.Ast.span offset then
-    Option.map type_ ~fn:(fun hover_type -> { hover_origin = origin; hover_type })
+    Option.map type_ ~fn:(fun hover_type -> { hover_span = origin.span; hover_type })
   else
     None
 
@@ -1036,26 +1063,46 @@ let hover_ast = fun offset (ast: Typ.Ast.t) ->
       |> best_hover_candidate
   | Typ.Ast.Interface _ -> None
 
+let hover_candidate_of_query_node node =
+  let rec loop node =
+    match Typ.Query.Node.kind node with
+    | Typ.Query.Node.Expression expression -> (
+        match expression.type_ with
+        | Some hover_type -> Some { hover_span = Typ.Query.Node.span node; hover_type }
+        | None -> parent node
+      )
+    | Typ.Query.Node.Pattern pattern -> (
+        match pattern.type_ with
+        | Some hover_type -> Some { hover_span = Typ.Query.Node.span node; hover_type }
+        | None -> parent node
+      )
+    | Typ.Query.Node.CoreType type_ -> (
+        match type_.type_ with
+        | Some hover_type -> Some { hover_span = Typ.Query.Node.span node; hover_type }
+        | None -> parent node
+      )
+    | _ -> parent node
+  and parent node =
+    match Typ.Query.Node.parent node with
+    | Some parent -> loop parent
+    | None -> None
+  in
+  loop node
+
 let hover_for_document = fun state ->
   fun document ->
     fun position ->
-      ignore state;
       match query_position_of_lsp_position document.text position with
       | None -> None
       | Some offset ->
-          let parse_result =
-            Syn.parse ~filename:(filename_of_document document) (source_slice document.text)
-          in
-          if Vector.length parse_result.diagnostics > 0 then
-            None
-          else
-            (
-              let source = Typ.Model.Source.make ~text:document.text in
-              match Typ.Ast.from_parse_result ~source parse_result with
-              | Error _ -> None
-              | Ok ast -> (
-                  let _ = Typ.Infer.check ast in
-                  match hover_ast offset ast with
+          match typ_query_context_for_document state document with
+          | None -> None
+          | Some context -> (
+              let cursor = Syn.Span.make ~start:offset ~end_:offset in
+              match Typ.Query.node_at context.context cursor with
+              | None -> None
+              | Some node -> (
+                  match hover_candidate_of_query_node node with
                   | None -> None
                   | Some candidate ->
                       Some {
@@ -1063,25 +1110,344 @@ let hover_for_document = fun state ->
                           Lsp.Markup_content.kind = Lsp.Markup_kind.Plain_text;
                           value = Typ.Ast.Type.to_string candidate.hover_type;
                         };
-                        range = Some (range_of_span document.text candidate.hover_origin.span);
+                        range = Some (range_of_span document.text candidate.hover_span);
                       }
                 )
             )
+
+let completion_item = fun ?detail kind label ->
+  {
+    Lsp.Completion_item.label;
+    kind = Some kind;
+    detail;
+    documentation = None;
+    insert_text = None;
+  }
+
+let completion_kind_of_value = fun (scheme: Typ.Infer.TypeScheme.t) ->
+  match Typ.Infer.Unifier.resolve scheme.body with
+  | Typ.Ast.Type.Arrow _ -> Lsp.Completion_item.Kind.Function
+  | _ -> Lsp.Completion_item.Kind.Variable
+
+let value_completion_item = fun (name, (scheme: Typ.Infer.TypeScheme.t)) ->
+  completion_item
+    ~detail:(Typ.Ast.Type.to_string scheme.body)
+    (completion_kind_of_value scheme)
+    (Typ.Model.Surface_path.to_string name)
+
+let type_completion_item = fun (name, _declaration) ->
+  completion_item
+    ~detail:"type"
+    Lsp.Completion_item.Kind.Struct
+    (Typ.Model.Surface_path.to_string name)
+
+let module_completion_item = fun (name, _module_) ->
+  completion_item
+    ~detail:"module"
+    Lsp.Completion_item.Kind.Module
+    (Typ.Model.Surface_path.to_string name)
+
+let constructor_completion_item = fun owner (constructor: Typ.Ast.type_constructor) ->
+  completion_item
+    ~detail:(Typ.Model.Surface_path.to_string owner)
+    Lsp.Completion_item.Kind.Constructor
+    (Typ.Model.Surface_path.to_string constructor.name)
+
+let constructor_completion_items_for_type = fun (_name, (declaration: Typ.Ast.type_declaration)) ->
+  match declaration.definition.kind with
+  | Typ.Ast.Variant constructors ->
+      List.map constructors ~fn:(constructor_completion_item declaration.name)
+  | _ -> []
+
+let record_field_detail = fun (field: Typ.Ast.record_field_declaration) ->
+  field.type_annotation.type_
+  |> Option.map ~fn:Typ.Ast.Type.to_string
+
+let record_field_completion_item = fun (field: Typ.Ast.record_field_declaration) ->
+  completion_item
+    ?detail:(record_field_detail field)
+    Lsp.Completion_item.Kind.Field
+    (Typ.Model.Surface_path.to_string field.name)
+
+let value_completion_items_for_interface = fun (intf: Typ.Infer.ModuleInterface.t) ->
+  intf
+  |> Typ.Infer.ModuleInterface.values
+  |> Iter.Iterator.map ~fn:value_completion_item
+  |> Iter.Iterator.to_list
+
+let type_completion_items_for_interface = fun (intf: Typ.Infer.ModuleInterface.t) ->
+  intf
+  |> Typ.Infer.ModuleInterface.types
+  |> Iter.Iterator.map ~fn:type_completion_item
+  |> Iter.Iterator.to_list
+
+let constructor_completion_items_for_interface = fun (intf: Typ.Infer.ModuleInterface.t) ->
+  intf
+  |> Typ.Infer.ModuleInterface.types
+  |> Iter.Iterator.map ~fn:constructor_completion_items_for_type
+  |> Iter.Iterator.to_list
+  |> List.concat
+
+let module_completion_items_for_interface = fun (intf: Typ.Infer.ModuleInterface.t) ->
+  intf
+  |> Typ.Infer.ModuleInterface.modules
+  |> Iter.Iterator.map ~fn:module_completion_item
+  |> Iter.Iterator.to_list
+
+let expression_completion_items_for_interface = fun intf ->
+  let values =
+    value_completion_items_for_interface intf
+  in
+  let constructors =
+    constructor_completion_items_for_interface intf
+  in
+  let modules =
+    module_completion_items_for_interface intf
+  in
+  (values @ constructors) @ modules
+
+let type_position_completion_items_for_interface = fun intf ->
+  type_completion_items_for_interface intf @ module_completion_items_for_interface intf
+
+let type_ident_of_type = fun type_ ->
+  match Typ.Infer.Unifier.resolve type_ with
+  | Typ.Ast.Type.Apply { ident; _ } -> Some ident
+  | _ -> None
+
+let record_fields_for_interface = fun ?owner (intf: Typ.Infer.ModuleInterface.t) ->
+  let fields = Vector.with_capacity ~size:8 in
+  intf
+  |> Typ.Infer.ModuleInterface.types
+  |> Iter.Iterator.for_each
+    ~fn:(fun (_name, (declaration: Typ.Ast.type_declaration)) ->
+      let matches_owner =
+        match owner with
+        | None -> true
+        | Some owner -> Typ.Model.Surface_path.equal owner declaration.name
+      in
+      if matches_owner then
+        match declaration.definition.kind with
+        | Typ.Ast.Record record_fields ->
+            List.for_each record_fields ~fn:(fun field -> Vector.push fields ~value:field)
+        | _ -> ());
+  Vector.iter fields
+  |> Iter.Iterator.map ~fn:record_field_completion_item
+  |> Iter.Iterator.to_list
+
+let record_completion_items = fun intf expression ->
+  let owner = Option.and_then expression.Typ.Ast.type_ ~fn:type_ident_of_type in
+  record_fields_for_interface ?owner intf
+
+let field_access_completion_items = fun intf access ->
+  match Option.and_then access.Typ.Ast.receiver.type_ ~fn:type_ident_of_type with
+  | None -> []
+  | Some owner -> record_fields_for_interface ~owner intf
+
+let record_fields_for_receiver_expression = fun intf (receiver: Typ.Ast.expression) ->
+  match Option.and_then receiver.type_ ~fn:type_ident_of_type with
+  | None -> []
+  | Some owner -> record_fields_for_interface ~owner intf
+
+let last = fun values ->
+  let rec loop = function
+    | [] -> None
+    | [ value ] -> Some value
+    | _ :: rest -> loop rest
+  in
+  loop values
+
+let find_record_expression_for_completion = fun path ->
+  match last path with
+  | Some { Typ.Query.Node.kind = Typ.Query.Node.Expression ({ kind = Typ.Ast.Record _; _ } as expression); _ } ->
+      Some expression
+  | Some { Typ.Query.Node.kind = Typ.Query.Node.RecordExpressionField _; parent = Some parent; _ } -> (
+      match Typ.Query.Node.kind parent with
+      | Typ.Query.Node.Expression ({ kind = Typ.Ast.Record _; _ } as expression) -> Some expression
+      | _ -> None
+    )
+  | _ -> None
+
+let find_field_access_for_completion = fun offset path ->
+  path
+  |> List.reverse
+  |> List.find
+    ~fn:(fun node ->
+      match Typ.Query.Node.kind node with
+      | Typ.Query.Node.Expression { kind = Typ.Ast.FieldAccess access; _ } ->
+          offset >= access.receiver.origin.span.end_
+      | _ -> false)
+  |> Option.and_then
+    ~fn:(fun node ->
+      match Typ.Query.Node.kind node with
+      | Typ.Query.Node.Expression { kind = Typ.Ast.FieldAccess access; _ } -> Some access
+      | _ -> None)
+
+let rec expression_of_query_node = fun node ->
+  match Typ.Query.Node.kind node with
+  | Typ.Query.Node.Expression expression -> Some expression
+  | _ -> (
+      match Typ.Query.Node.parent node with
+      | None -> None
+      | Some parent -> expression_of_query_node parent
+    )
+
+let receiver_expression_for_dot_completion = fun offset node ->
+  match expression_of_query_node node with
+  | None -> None
+  | Some ({ Typ.Ast.kind = Typ.Ast.FieldAccess access; _ }) when offset >= access.receiver.origin.span.end_ ->
+      Some access.receiver
+  | Some expression -> Some expression
+
+let node_at_cursor_or_previous_byte = fun context offset ->
+  let cursor = Syn.Span.make ~start:offset ~end_:offset in
+  match Typ.Query.node_at context cursor with
+  | Some _ as found -> found
+  | None ->
+      if offset <= 0 then
+        None
+      else
+        let cursor = Syn.Span.make ~start:(offset - 1) ~end_:(offset - 1) in
+        Typ.Query.node_at context cursor
+
+let dot_offset_for_completion = fun text offset ->
+  let candidates =
+    if offset > 1 then
+      [ offset; offset - 1; offset - 2 ]
+    else if offset > 0 then
+      [ offset; offset - 1 ]
+    else
+      [ offset ]
+  in
+  List.find
+    candidates
+    ~fn:(fun candidate ->
+      match String.get text ~at:candidate with
+      | Some '.' -> true
+      | _ -> false)
+
+let completion_after_dot = fun text offset context intf ->
+  match dot_offset_for_completion text offset with
+  | None -> None
+  | Some dot_offset -> (
+        match node_at_cursor_or_previous_byte context dot_offset with
+        | None -> Some []
+        | Some node -> (
+            match receiver_expression_for_dot_completion dot_offset node with
+            | None -> Some []
+            | Some receiver -> Some (record_fields_for_receiver_expression intf receiver)
+          )
+      )
+
+let completion_path_is_type_position = fun path ->
+  List.exists
+    (fun node ->
+      match Typ.Query.Node.kind node with
+      | Typ.Query.Node.CoreType _
+      | Typ.Query.Node.PackageType _
+      | Typ.Query.Node.PackageTypeConstraint _ -> true
+      | _ -> false)
+    path
+
+let completion_items_for_query_context = fun text context offset ->
+  let cursor = Syn.Span.make ~start:offset ~end_:offset in
+  let path = Typ.Query.path_at context cursor in
+  let intf = (Typ.Query.infer_result context).intf in
+  match completion_after_dot text offset context intf with
+  | Some items -> items
+  | None -> (
+      match find_field_access_for_completion offset path with
+      | Some access -> field_access_completion_items intf access
+      | None -> (
+          match find_record_expression_for_completion path with
+          | Some expression -> record_completion_items intf expression
+          | None ->
+              if completion_path_is_type_position path then
+                type_position_completion_items_for_interface intf
+              else
+                expression_completion_items_for_interface intf
+        )
+    )
+
+let completion_for_document = fun state ->
+  fun document ->
+    fun position ->
+      match query_position_of_lsp_position document.text position with
+      | None -> Some []
+      | Some offset -> (
+          match typ_query_context_for_document ~allow_parse_diagnostics:true state document with
+          | None ->
+              Option.map document.typ_context ~fn:(fun context ->
+                completion_items_for_query_context document.text context.context offset)
+          | Some context -> Some (completion_items_for_query_context document.text context.context offset)
+        )
+
+let line_text_at = fun text requested_line ->
+  let rec loop = fun line_number ->
+    fun lines ->
+      match lines with
+      | [] -> None
+      | line :: rest ->
+          if line_number = requested_line then
+            Some line
+          else
+            loop (line_number + 1) rest
+  in
+  loop 0 (String.split_on_char '\n' text)
+
+let line_prefix_at = fun text position ->
+  match line_text_at text position.Lsp.Position.line with
+  | None -> "<line out of range>"
+  | Some line ->
+      let line_length = String.length line in
+      let prefix_length =
+        if position.character < line_length then
+          position.character
+        else
+          line_length
+      in
+      String.sub line ~offset:0 ~len:prefix_length
 
 type inlay_hint_context = {
   source_text: string;
   start_offset: int;
   end_offset: int;
+  stable_until: int option;
+  stability_span: Syn.Span.t option;
   type_printer: Typ.Ast.Type.Printer.printer;
 }
+
+let first_changed_offset = fun before after ->
+  let before_length = String.length before in
+  let after_length = String.length after in
+  let limit = min before_length after_length in
+  let rec loop offset =
+    if offset >= limit then
+      if Int.equal before_length after_length then
+        None
+      else
+        Some limit
+    else
+      match (String.get before ~at:offset, String.get after ~at:offset) with
+      | (Some left, Some right) when Char.equal left right -> loop (offset + 1)
+      | _ -> Some offset
+  in
+  loop 0
 
 let inlay_hint_in_range = fun ctx origin ->
   let hint_offset = origin.Typ.Ast.span.end_ in
   hint_offset >= ctx.start_offset && hint_offset <= ctx.end_offset
 
+let inlay_hint_is_stable = fun ctx origin ->
+  match ctx.stable_until with
+  | None -> true
+  | Some stable_until ->
+      let span = Option.unwrap_or ctx.stability_span ~default:origin.Typ.Ast.span in
+      span.end_ <= stable_until
+
 let inlay_hint_for_pattern = fun ctx (pattern: Typ.Ast.pattern) ->
   match (pattern.kind, pattern.type_) with
-  | (Typ.Ast.Bind _, Some type_) when inlay_hint_in_range ctx pattern.origin ->
+  | (Typ.Ast.Bind _, Some type_)
+    when inlay_hint_in_range ctx pattern.origin && inlay_hint_is_stable ctx pattern.origin ->
       Some {
         Lsp.Inlay_hint.position = position_of_offset ctx.source_text pattern.origin.span.end_;
         label = ": " ^ Typ.Ast.Type.Printer.to_string ctx.type_printer type_;
@@ -1094,7 +1460,8 @@ let inlay_hint_for_pattern = fun ctx (pattern: Typ.Ast.pattern) ->
 
 let inlay_hint_for_expression = fun ctx (expression: Typ.Ast.expression) ->
   match (expression.kind, expression.type_) with
-  | (Typ.Ast.Record _, Some type_) when inlay_hint_in_range ctx expression.origin ->
+  | (Typ.Ast.Record _, Some type_)
+    when inlay_hint_in_range ctx expression.origin && inlay_hint_is_stable ctx expression.origin ->
       Some {
         Lsp.Inlay_hint.position = position_of_offset ctx.source_text expression.origin.span.end_;
         label = ": " ^ Typ.Ast.Type.Printer.to_string ctx.type_printer type_;
@@ -1173,6 +1540,7 @@ and inlay_hints_argument = fun ctx (argument: Typ.Ast.argument) ->
       Option.unwrap_or (Option.map value ~fn:(inlay_hints_expression ctx)) ~default:[]
 
 and inlay_hints_let_binding = fun ctx (binding: Typ.Ast.let_binding) ->
+  let ctx = { ctx with stability_span = Some binding.origin.span } in
   inlay_hints_pattern ctx binding.pattern @ inlay_hints_expression ctx binding.expr
 
 and inlay_hints_expression = fun ctx (expression: Typ.Ast.expression) ->
@@ -1272,11 +1640,13 @@ let rec inlay_hints_structure_item = fun ctx (item: Typ.Ast.structure_item) ->
   | Typ.Ast.ModuleType _
   | Typ.Ast.Include _ -> []
 
-let inlay_hints_ast = fun text start_offset end_offset (ast: Typ.Ast.t) ->
+let inlay_hints_ast = fun text ?stable_until start_offset end_offset (ast: Typ.Ast.t) ->
   let ctx = {
     source_text = text;
     start_offset;
     end_offset;
+    stable_until;
+    stability_span = None;
     type_printer = Typ.Ast.Type.Printer.create ();
   }
   in
@@ -1290,26 +1660,23 @@ let inlay_hints_ast = fun text start_offset end_offset (ast: Typ.Ast.t) ->
 let inlay_hints_for_document = fun state ->
   fun document ->
     fun range ->
-      ignore state;
       match (
         Lsp.Utf16.offset_of_position document.text range.Lsp.Range.start_,
         Lsp.Utf16.offset_of_position document.text range.Lsp.Range.end_
       ) with
       | (Ok start_offset, Ok end_offset) ->
-          let parse_result =
-            Syn.parse ~filename:(filename_of_document document) (source_slice document.text)
+          let hints_for_context ?stable_until context =
+            Typ.Query.source_file context.context
+            |> inlay_hints_ast document.text ?stable_until start_offset end_offset
           in
-          if Vector.length parse_result.diagnostics > 0 then
-            None
-          else
-            (
-              let source = Typ.Model.Source.make ~text:document.text in
-              match Typ.Ast.from_parse_result ~source parse_result with
-              | Error _ -> None
-              | Ok ast ->
-                  let _ = Typ.Infer.check ast in
-                  Some (inlay_hints_ast document.text start_offset end_offset ast)
-            )
+          (
+            match typ_query_context_for_document state document with
+            | Some context -> Some (hints_for_context context)
+            | None ->
+                Option.map document.typ_context ~fn:(fun context ->
+                  let stable_until = first_changed_offset context.text document.text in
+                  hints_for_context ?stable_until context)
+          )
       | _ -> None
 
 let document_source_for_origin = fun state origin ->
@@ -1378,6 +1745,10 @@ let capabilities = {
   document_formatting_provider = Some true;
   definition_provider = Some true;
   hover_provider = Some true;
+  completion_provider = Some {
+    resolve_provider = Some false;
+    trigger_characters = Some [ "." ];
+  };
   inlay_hint_provider = Some true;
   document_symbol_provider = Some true;
   code_action_provider = Some (Lsp.Initialize.Server_capabilities.Provider_options {
@@ -1538,6 +1909,66 @@ let handle_hover = fun state ->
                   ~id
                   Lsp.Text_document_methods.Hover.request
                   (hover_for_document state document params.position);
+              ]
+      )
+
+let handle_completion = fun state ->
+  fun payload ->
+    match Lsp.request_of_json Lsp.Text_document_methods.Completion.request payload with
+    | Error reason ->
+        ok
+          state
+          [ response_error ~id:Jsonrpc.Null ~code:Lsp.Error_code.invalid_params ~message:reason () ]
+    | Ok (id, params) -> (
+        match find_document state params.text_document.uri with
+        | None ->
+            ok
+              ~debug_events:[
+                "completion "
+                ^ Lsp.Uri.to_string params.text_document.uri
+                ^ " line="
+                ^ Int.to_string params.position.line
+                ^ " character="
+                ^ Int.to_string params.position.character
+                ^ " unopened-document";
+              ]
+              state
+              [
+                response_error
+                  ~id
+                  ~code:Lsp.Error_code.invalid_params
+                  ~message:"completion requested for a document that is not open"
+                  ();
+              ]
+        | Some document ->
+            let result = completion_for_document state document params.position in
+            let item_count =
+              match result with
+              | None -> 0
+              | Some items -> List.length items
+            in
+            ok
+              ~debug_events:[
+                "completion "
+                ^ Lsp.Uri.to_string document.uri
+                ^ " line="
+                ^ Int.to_string params.position.line
+                ^ " character="
+                ^ Int.to_string params.position.character
+                ^ " version="
+                ^ Int.to_string document.version
+                ^ " prefix=\""
+                ^ String.escaped (line_prefix_at document.text params.position)
+                ^ "\""
+                ^ " items="
+                ^ Int.to_string item_count;
+              ]
+              state
+              [
+                Lsp.response_to_json
+                  ~id
+                  Lsp.Text_document_methods.Completion.request
+                  result;
               ]
       )
 
@@ -1712,6 +2143,7 @@ let handle_request = fun state ->
         | "shutdown" -> handle_shutdown state payload
         | "textDocument/definition" -> handle_definition state payload
         | "textDocument/documentSymbol" -> handle_document_symbol state payload
+        | "textDocument/completion" -> handle_completion state payload
         | "textDocument/hover" -> handle_hover state payload
         | "textDocument/inlayHint" -> handle_inlay_hint state payload
         | "textDocument/formatting" -> handle_formatting state payload
@@ -1740,22 +2172,27 @@ let handle_did_open = fun state ->
               version = params.text_document.version;
               text = params.text_document.text;
               path = existing.path;
+              typ_context = existing.typ_context;
             }
             in
+            let document = refresh_document_typ_context state document in
             let state = upsert_document state document in
             ok state [ publish_diagnostics state document ]
         | None ->
+            let path =
+              match Lsp.Uri.to_path params.text_document.uri with
+              | Ok path -> Some path
+              | Error _ -> None
+            in
             let document = {
               uri = params.text_document.uri;
               version = params.text_document.version;
               text = params.text_document.text;
-              path =
-                match Lsp.Uri.to_path params.text_document.uri with
-                | Ok path -> Some path
-                | Error _ ->
-                    None;
+              path;
+              typ_context = None;
             }
             in
+            let document = refresh_document_typ_context state document in
             let state = upsert_document state document in
             ok state [ publish_diagnostics state document ]
       )
@@ -1776,8 +2213,10 @@ let handle_did_change = fun state ->
                   version = params.text_document.version;
                   text;
                   path = document.path;
+                  typ_context = document.typ_context;
                 }
                 in
+                let document = refresh_document_typ_context state document in
                 let state = upsert_document state document in
                 ok state [ publish_diagnostics state document ]
           )

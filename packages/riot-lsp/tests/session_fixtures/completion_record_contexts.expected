@@ -38,44 +38,47 @@
       "params": {
         "diagnostics": [
           {
-            "message": "Prefer explicit function parameters over `function` shorthand",
+            "message": "Obvious grouping parentheses should be removed",
             "range": {
               "start": {
-                "line": 0,
+                "line": 5,
                 "character": 13
               },
               "end": {
-                "line": 0,
-                "character": 34
+                "line": 5,
+                "character": 19
               }
             },
             "severity": 2,
-            "code": "no-function-shorthand",
+            "code": "no-redundant-parentheses",
             "source": "riot-fix",
             "data": {
               "severity": "warning",
-              "message": "Prefer explicit function parameters over `function` shorthand",
+              "message": "Obvious grouping parentheses should be removed",
               "span": {
-                "start": 13,
-                "end": 34
+                "start": 209,
+                "end": 215
               },
-              "rule_id": "no-function-shorthand",
-              "suggestion": "Introduce an explicit parameter and match on it.",
+              "rule_id": "no-redundant-parentheses",
+              "suggestion": "Remove these redundant parentheses.",
               "fix": {
-                "title": "Expand function shorthand",
+                "title": "Remove redundant parentheses",
                 "operations": [
                   {
                     "kind": "replace",
                     "target": {
                       "kind": "node",
                       "span": {
-                        "start": 13,
-                        "end": 34
+                        "start": 209,
+                        "end": 215
                       }
                     },
                     "replacement": {
-                      "kind": "text",
-                      "text": "fun value -> match value with | x -> x + 1"
+                      "kind": "source_of_node",
+                      "span": {
+                        "start": 210,
+                        "end": 214
+                      }
                     }
                   }
                 ]
@@ -83,7 +86,7 @@
             }
           }
         ],
-        "uri": "file:///workspace/app.ml",
+        "uri": "file:///workspace/crew.ml",
         "version": 1
       },
       "jsonrpc": "2.0",
@@ -92,7 +95,50 @@
     {
       "jsonrpc": "2.0",
       "id": 2,
-      "result": null
+      "result": [
+        {
+          "label": "name",
+          "kind": 5,
+          "detail": "string"
+        },
+        {
+          "label": "bounty",
+          "kind": 5,
+          "detail": "int"
+        }
+      ]
+    },
+    {
+      "jsonrpc": "2.0",
+      "id": 3,
+      "result": [
+        {
+          "label": "name",
+          "kind": 5,
+          "detail": "string"
+        },
+        {
+          "label": "bounty",
+          "kind": 5,
+          "detail": "int"
+        }
+      ]
+    },
+    {
+      "jsonrpc": "2.0",
+      "id": 4,
+      "result": [
+        {
+          "label": "name",
+          "kind": 5,
+          "detail": "string"
+        },
+        {
+          "label": "bounty",
+          "kind": 5,
+          "detail": "int"
+        }
+      ]
     }
   ],
   "exitCode": null,
@@ -101,7 +147,7 @@
     "shutdownRequested": false,
     "documents": [
       {
-        "uri": "file:///workspace/app.ml",
+        "uri": "file:///workspace/crew.ml",
         "version": 1
       }
     ]

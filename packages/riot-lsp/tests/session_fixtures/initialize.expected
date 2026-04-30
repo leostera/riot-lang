@@ -13,6 +13,12 @@
           "documentFormattingProvider": true,
           "definitionProvider": true,
           "hoverProvider": true,
+          "completionProvider": {
+            "resolveProvider": false,
+            "triggerCharacters": [
+              "."
+            ]
+          },
           "inlayHintProvider": true,
           "documentSymbolProvider": true,
           "codeActionProvider": {

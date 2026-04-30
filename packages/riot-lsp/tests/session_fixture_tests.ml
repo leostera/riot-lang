@@ -85,6 +85,7 @@ let run_fixture = fun path ->
     state = Riot_lsp.Session.empty;
     outbound = [];
     exit_code = None;
+    debug_events = [];
   }
   in
   Ok (
@@ -96,6 +97,7 @@ let run_fixture = fun path ->
         {
           Riot_lsp.Session.state = outcome.state;
           outbound = acc.outbound @ outcome.outbound;
+          debug_events = acc.debug_events @ outcome.debug_events;
           exit_code =
             match outcome.exit_code with
             | Some code -> Some code

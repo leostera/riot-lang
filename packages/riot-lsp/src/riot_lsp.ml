@@ -93,6 +93,7 @@ let rec loop = fun logger ->
         | Some payload ->
             log logger ~level:"DEBUG" ("received " ^ payload_summary payload);
             let outcome = Session.handle_payload state payload in
+            List.for_each outcome.debug_events ~fn:(fun event -> log logger ~level:"DEBUG" event);
             if not (List.is_empty outcome.outbound) then
               log
                 logger
