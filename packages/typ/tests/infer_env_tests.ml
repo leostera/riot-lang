@@ -32,6 +32,24 @@ let type_decl name: Ast.type_declaration = {
   definition = { origin; kind = Ast.Abstract };
 }
 
+let core_type name: Ast.core_type = { origin; type_ = None; kind = Ast.TypeIdent (ident name) }
+
+let record_field name type_name: Ast.record_field_declaration = {
+  origin;
+  name = ident name;
+  mutable_ = false;
+  type_annotation = core_type type_name;
+}
+
+let record_type_decl name fields: Ast.type_declaration = {
+  origin;
+  name = ident name;
+  parameters = [];
+  definition = { origin; kind = Ast.Record fields };
+}
+
+let record_field_info owner field: Env.record_field_info = { owner; field }
+
 let assert_scheme_body ~expected actual =
   match actual with
   | Some actual when Type.equal actual.TypeScheme.body expected -> Ok ()
@@ -57,6 +75,30 @@ let assert_no_type_decl (actual: Ast.type_declaration option) =
   | None -> Ok ()
   | Some actual ->
       Error ("expected no type declaration but found " ^ SurfacePath.to_string actual.Ast.name)
+
+let assert_record_field ~owner ~field (actual: Env.record_field_info option) =
+  match actual with
+  | Some actual when SurfacePath.equal actual.Env.owner.Ast.name (ident owner)
+  && SurfacePath.equal actual.field.Ast.name (ident field) -> Ok ()
+  | Some actual ->
+      Error ("expected record field "
+      ^ owner
+      ^ "."
+      ^ field
+      ^ " but found "
+      ^ SurfacePath.to_string actual.owner.Ast.name
+      ^ "."
+      ^ SurfacePath.to_string actual.field.Ast.name)
+  | None -> Error ("expected record field " ^ owner ^ "." ^ field)
+
+let assert_no_record_field (actual: Env.record_field_info option) =
+  match actual with
+  | None -> Ok ()
+  | Some actual ->
+      Error ("expected no record field but found "
+      ^ SurfacePath.to_string actual.owner.Ast.name
+      ^ "."
+      ^ SurfacePath.to_string actual.field.Ast.name)
 
 let assert_true ~msg value =
   if value then
@@ -124,6 +166,50 @@ let test_constructors_are_current_module_not_lexical_scope _ctx =
   let* () = assert_scheme_body ~expected:(int_type ()) (Env.get_constructor env ~name) in
   let env = Env.pop_scope env in
   assert_scheme_body ~expected:(int_type ()) (Env.get_constructor env ~name)
+
+let test_record_fields_are_current_module_not_lexical_scope _ctx =
+  let field_name = ident "x" in
+  let field = record_field "x" "int" in
+  let owner = record_type_decl "point" [ field ] in
+  let info = record_field_info owner field in
+  let env = Env.create () in
+  let env = Env.push_scope env in
+  let env = Env.add_record_field env ~name:field_name ~info in
+  let* () =
+    assert_record_field
+      ~owner:"point"
+      ~field:"x"
+      (Env.get_record_field env ~name:field_name)
+  in
+  let env = Env.pop_scope env in
+  assert_record_field
+    ~owner:"point"
+    ~field:"x"
+    (Env.get_record_field env ~name:field_name)
+
+let test_record_fields_shadow_in_declaration_order _ctx =
+  let field_name = ident "hello" in
+  let first_field = record_field "hello" "int" in
+  let first_owner = record_type_decl "a" [ first_field ] in
+  let second_field = record_field "hello" "int" in
+  let second_owner = record_type_decl "b" [ second_field ] in
+  let env = Env.create () in
+  let env =
+    Env.add_record_field
+      env
+      ~name:field_name
+      ~info:(record_field_info first_owner first_field)
+  in
+  let env =
+    Env.add_record_field
+      env
+      ~name:field_name
+      ~info:(record_field_info second_owner second_field)
+  in
+  assert_record_field
+    ~owner:"b"
+    ~field:"hello"
+    (Env.get_record_field env ~name:field_name)
 
 let test_module_sees_parent_types_but_exports_only_own_types _ctx =
   let parent_type = ident "a" in
@@ -205,6 +291,48 @@ let test_module_values_see_parent_values_but_do_not_leak _ctx =
         ~msg:"module summary should export own value"
         (Env.module_has_value summary ~name:child_value)
 
+let test_module_sees_parent_record_fields_but_exports_only_own_fields _ctx =
+  let parent_field_name = ident "x" in
+  let child_field_name = ident "y" in
+  let module_name = ident "M" in
+  let parent_field = record_field "x" "int" in
+  let parent_owner = record_type_decl "point" [ parent_field ] in
+  let child_field = record_field "y" "bool" in
+  let child_owner = record_type_decl "box" [ child_field ] in
+  let env = Env.create () in
+  let env =
+    Env.add_record_field
+      env
+      ~name:parent_field_name
+      ~info:(record_field_info parent_owner parent_field)
+  in
+  let env = Env.push_module env ~name:module_name in
+  let* () =
+    assert_record_field
+      ~owner:"point"
+      ~field:"x"
+      (Env.get_record_field env ~name:parent_field_name)
+  in
+  let env =
+    Env.add_record_field
+      env
+      ~name:child_field_name
+      ~info:(record_field_info child_owner child_field)
+  in
+  let env = Env.pop_module env in
+  let* () = assert_no_record_field (Env.get_record_field env ~name:child_field_name) in
+  match Env.get_module env ~name:module_name with
+  | None -> Error "expected module M"
+  | Some summary ->
+      let* () =
+        assert_false
+          ~msg:"module summary should not copy parent field x"
+          (Env.module_has_record_field summary ~name:parent_field_name)
+      in
+      assert_true
+        ~msg:"module summary should export own field y"
+        (Env.module_has_record_field summary ~name:child_field_name)
+
 let tests =
   Test.[
     case "infer-env: value scope shadows and pops" test_value_scope_shadows_and_pops;
@@ -216,6 +344,12 @@ let tests =
       "infer-env: constructors are current-module not lexical-scope"
       test_constructors_are_current_module_not_lexical_scope;
     case
+      "infer-env: record fields are current-module not lexical-scope"
+      test_record_fields_are_current_module_not_lexical_scope;
+    case
+      "infer-env: record fields shadow in declaration order"
+      test_record_fields_shadow_in_declaration_order;
+    case
       "infer-env: module sees parent types but exports only own types"
       test_module_sees_parent_types_but_exports_only_own_types;
     case
@@ -224,6 +358,9 @@ let tests =
     case
       "infer-env: module values see parent values but do not leak"
       test_module_values_see_parent_values_but_do_not_leak;
+    case
+      "infer-env: module sees parent record fields but exports only own fields"
+      test_module_sees_parent_record_fields_but_exports_only_own_fields;
   ]
 
 let main ~args = Test.Cli.main ~name:"typ:infer-env" ~tests ~args ()

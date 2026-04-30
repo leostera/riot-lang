@@ -429,11 +429,15 @@ let register_constructor state (decl: type_declaration) (ctr: type_constructor) 
   in
   State.add_constructor state ~name:ctr.name ~scheme
 
+let register_record_field state (decl: type_declaration) (field: record_field_declaration) =
+  State.add_record_field state ~name:field.name ~owner:decl ~field
+
 let register_type_decl state (decl: type_declaration) =
   let name = decl.name in
   State.add_type state ~name ~declaration:decl;
   match decl.definition.kind with
   | Variant ctrs -> List.for_each ctrs ~fn:(register_constructor state decl)
+  | Record fields -> List.for_each fields ~fn:(register_record_field state decl)
   | _ -> ()
 
 let type_let_binding (state: State.t) (lb: let_binding) =

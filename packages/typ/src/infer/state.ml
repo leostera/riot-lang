@@ -38,6 +38,14 @@ let get_constructor state ~name = InferenceEnv.get_constructor state.env ~name
 
 let has_constructor state ~name = InferenceEnv.has_constructor state.env ~name
 
+let add_record_field state ~name ~owner ~field =
+  let info: InferenceEnv.record_field_info = { owner; field } in
+  state.env <- InferenceEnv.add_record_field state.env ~name ~info
+
+let get_record_field state ~name = InferenceEnv.get_record_field state.env ~name
+
+let has_record_field state ~name = InferenceEnv.has_record_field state.env ~name
+
 let add_type state ~name ~declaration =
   state.env <- InferenceEnv.add_type state.env ~name ~declaration
 

@@ -95,11 +95,16 @@ end
 type module_summary = {
   values: ValueScopes.binding IdentMap.t;
   constructors: ValueScopes.binding IdentMap.t;
+  record_fields: record_field_binding IdentMap.t;
   types: TypeScopes.binding IdentMap.t;
   modules: module_binding IdentMap.t;
 }
 
 and module_binding = { summary: module_summary; ordinal: int }
+
+and record_field_info = { owner: type_declaration; field: record_field_declaration }
+
+and record_field_binding = { info: record_field_info; ordinal: int }
 
 (**
    Module chain for module-level namespaces.
@@ -119,6 +124,7 @@ module ModuleScopes = struct
   type frame = {
     name: ident option;
     values: ValueScopes.t;
+    record_fields: record_field_binding IdentMap.t;
     constructors: ValueScopes.binding IdentMap.t;
     types: TypeScopes.t;
     modules: module_binding IdentMap.t;
@@ -131,6 +137,7 @@ module ModuleScopes = struct
   let empty_frame ?name () = {
     name;
     values = ValueScopes.create ();
+    record_fields = IdentMap.empty;
     constructors = IdentMap.empty;
     types = TypeScopes.empty;
     modules = IdentMap.empty;
@@ -156,6 +163,7 @@ module ModuleScopes = struct
   let summary_of_frame frame = {
     values = ValueScopes.root_bindings frame.values;
     constructors = frame.constructors;
+    record_fields = frame.record_fields;
     types = frame.types;
     modules = frame.modules;
   }
@@ -219,6 +227,24 @@ module ModuleScopes = struct
         match t with
         | Root _ -> None
         | Scope { parent; _ } -> get_constructor parent ~name
+      )
+
+  let add_record_field t ~name ~info ~ordinal =
+    let binding = { info; ordinal } in
+    map_current
+      t
+      ~fn:(fun current -> {
+        current with
+        record_fields = IdentMap.insert current.record_fields ~key:name ~value:binding;
+      })
+
+  let rec get_record_field t ~name =
+    match IdentMap.get (current t).record_fields ~key:name with
+    | Some binding -> Some binding.info
+    | None -> (
+        match t with
+        | Root _ -> None
+        | Scope { parent; _ } -> get_record_field parent ~name
       )
 
   let add_type t ~name ~declaration ~ordinal =
@@ -296,6 +322,15 @@ let get_constructor t ~name = ModuleScopes.get_constructor t.modules ~name
 
 let has_constructor t ~name = Option.is_some (get_constructor t ~name)
 
+let add_record_field t ~name ~info = {
+  modules = ModuleScopes.add_record_field t.modules ~name ~info ~ordinal:t.next_ordinal;
+  next_ordinal = t.next_ordinal + 1;
+}
+
+let get_record_field t ~name = ModuleScopes.get_record_field t.modules ~name
+
+let has_record_field t ~name = Option.is_some (get_record_field t ~name)
+
 let add_type t ~name ~declaration = {
   modules = ModuleScopes.add_type t.modules ~name ~declaration ~ordinal:t.next_ordinal;
   next_ordinal = t.next_ordinal + 1;
@@ -318,6 +353,11 @@ let module_get_constructor (summary: module_summary) ~name =
   Option.map (IdentMap.get summary.constructors ~key:name) ~fn:ValueScopes.binding_scheme
 
 let module_has_constructor summary ~name = Option.is_some (module_get_constructor summary ~name)
+
+let module_get_record_field (summary: module_summary) ~name =
+  Option.map (IdentMap.get summary.record_fields ~key:name) ~fn:(fun binding -> binding.info)
+
+let module_has_record_field summary ~name = Option.is_some (module_get_record_field summary ~name)
 
 let module_get_type (summary: module_summary) ~name = TypeScopes.get summary.types ~name
 
