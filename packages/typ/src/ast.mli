@@ -132,6 +132,18 @@ module Type: sig
     | Arrow of arrow
     (** Nominal type constructor application. *)
     | Constructor of constructor
+
+  module Printer: sig
+    (** Printer state carrying solver-variable display names. *)
+    type printer
+
+    (** Create a fresh printer with no variable names assigned yet. *)
+    val create: unit -> printer
+
+    (** Render a type, reusing variable names already assigned by this printer. *)
+    val to_string: printer -> t -> string
+  end
+
   val same_var: variable -> variable -> bool
 
   (** Structural equality after following solved variable links. *)

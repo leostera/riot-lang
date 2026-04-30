@@ -1072,16 +1072,23 @@ let hover_for_document = fun state ->
                 )
             )
 
-let inlay_hint_in_range = fun start_offset end_offset origin ->
-  let hint_offset = origin.Typ.Ast.span.end_ in
-  hint_offset >= start_offset && hint_offset <= end_offset
+type inlay_hint_context = {
+  source_text: string;
+  start_offset: int;
+  end_offset: int;
+  type_printer: Typ.Ast.Type.Printer.printer;
+}
 
-let inlay_hint_for_pattern = fun text start_offset end_offset (pattern: Typ.Ast.pattern) ->
+let inlay_hint_in_range = fun ctx origin ->
+  let hint_offset = origin.Typ.Ast.span.end_ in
+  hint_offset >= ctx.start_offset && hint_offset <= ctx.end_offset
+
+let inlay_hint_for_pattern = fun ctx (pattern: Typ.Ast.pattern) ->
   match (pattern.kind, pattern.type_) with
-  | (Typ.Ast.Bind _, Some type_) when inlay_hint_in_range start_offset end_offset pattern.origin ->
+  | (Typ.Ast.Bind _, Some type_) when inlay_hint_in_range ctx pattern.origin ->
       Some {
-        Lsp.Inlay_hint.position = position_of_offset text pattern.origin.span.end_;
-        label = ": " ^ Typ.Ast.Type.to_string type_;
+        Lsp.Inlay_hint.position = position_of_offset ctx.source_text pattern.origin.span.end_;
+        label = ": " ^ Typ.Ast.Type.Printer.to_string ctx.type_printer type_;
         kind = Some Lsp.Inlay_hint.Kind.Type;
         tooltip = None;
         padding_left = Some false;
@@ -1089,7 +1096,7 @@ let inlay_hint_for_pattern = fun text start_offset end_offset (pattern: Typ.Ast.
       }
   | _ -> None
 
-let rec inlay_hints_pattern = fun text start_offset end_offset (pattern: Typ.Ast.pattern) ->
+let rec inlay_hints_pattern = fun ctx (pattern: Typ.Ast.pattern) ->
   let children =
     match pattern.kind with
     | Typ.Ast.Wildcard
@@ -1097,83 +1104,71 @@ let rec inlay_hints_pattern = fun text start_offset end_offset (pattern: Typ.Ast
     | Typ.Ast.Literal _
     | Typ.Ast.FirstClassModule _ -> []
     | Typ.Ast.Constructor { payload; _ } ->
-        Option.unwrap_or
-          (Option.map payload ~fn:(inlay_hints_pattern text start_offset end_offset))
-          ~default:[]
+        Option.unwrap_or (Option.map payload ~fn:(inlay_hints_pattern ctx)) ~default:[]
     | Typ.Ast.PolyVariant { payload; _ } ->
-        Option.unwrap_or
-          (Option.map payload ~fn:(inlay_hints_pattern text start_offset end_offset))
-          ~default:[]
+        Option.unwrap_or (Option.map payload ~fn:(inlay_hints_pattern ctx)) ~default:[]
     | Typ.Ast.Tuple patterns
     | Typ.Ast.List patterns ->
         patterns
-        |> List.map ~fn:(inlay_hints_pattern text start_offset end_offset)
+        |> List.map ~fn:(inlay_hints_pattern ctx)
         |> List.concat
     | Typ.Ast.Record fields ->
         fields
         |> List.filter_map ~fn:(fun (field: Typ.Ast.record_pattern_field) -> field.pattern)
-        |> List.map ~fn:(inlay_hints_pattern text start_offset end_offset)
+        |> List.map ~fn:(inlay_hints_pattern ctx)
         |> List.concat
     | Typ.Ast.Or { left; right }
     | Typ.Ast.Cons { head = left; tail = right } ->
-        inlay_hints_pattern text start_offset end_offset left
-        @ inlay_hints_pattern text start_offset end_offset right
+        inlay_hints_pattern ctx left @ inlay_hints_pattern ctx right
     | Typ.Ast.Constraint { pattern; _ }
-    | Typ.Ast.Attribute pattern -> inlay_hints_pattern text start_offset end_offset pattern
+    | Typ.Ast.Attribute pattern -> inlay_hints_pattern ctx pattern
     | Typ.Ast.Alias { pattern; alias } ->
-        inlay_hints_pattern text start_offset end_offset pattern
-        @ inlay_hints_pattern text start_offset end_offset alias
+        inlay_hints_pattern ctx pattern @ inlay_hints_pattern ctx alias
   in
-  match inlay_hint_for_pattern text start_offset end_offset pattern with
+  match inlay_hint_for_pattern ctx pattern with
   | None -> children
   | Some hint -> hint :: children
 
-and inlay_hints_parameter = fun text start_offset end_offset (parameter: Typ.Ast.parameter) ->
-  let pattern_hints = inlay_hints_pattern text start_offset end_offset parameter.pattern in
+and inlay_hints_parameter = fun ctx (parameter: Typ.Ast.parameter) ->
+  let pattern_hints = inlay_hints_pattern ctx parameter.pattern in
   let default_hints =
-    Option.unwrap_or
-      (Option.map parameter.default ~fn:(inlay_hints_expression text start_offset end_offset))
-      ~default:[]
+    Option.unwrap_or (Option.map parameter.default ~fn:(inlay_hints_expression ctx)) ~default:[]
   in
   pattern_hints @ default_hints
 
-and inlay_hints_parameters = fun text start_offset end_offset parameters ->
+and inlay_hints_parameters = fun ctx parameters ->
   parameters
-  |> List.map ~fn:(inlay_hints_parameter text start_offset end_offset)
+  |> List.map ~fn:(inlay_hints_parameter ctx)
   |> List.concat
 
-and inlay_hints_function_body = fun text start_offset end_offset body ->
+and inlay_hints_function_body = fun ctx body ->
   match body with
-  | Typ.Ast.Body expression -> inlay_hints_expression text start_offset end_offset expression
-  | Typ.Ast.Cases cases -> inlay_hints_match_cases text start_offset end_offset cases
+  | Typ.Ast.Body expression -> inlay_hints_expression ctx expression
+  | Typ.Ast.Cases cases -> inlay_hints_match_cases ctx cases
 
-and inlay_hints_match_case = fun text start_offset end_offset (case: Typ.Ast.match_case) ->
-  inlay_hints_pattern text start_offset end_offset case.pattern
-  @ Option.unwrap_or
-    (Option.map case.guard ~fn:(inlay_hints_expression text start_offset end_offset))
-    ~default:[]
-  @ inlay_hints_expression text start_offset end_offset case.body
+and inlay_hints_match_case = fun ctx (case: Typ.Ast.match_case) ->
+  inlay_hints_pattern ctx case.pattern
+  @ Option.unwrap_or (Option.map case.guard ~fn:(inlay_hints_expression ctx)) ~default:[]
+  @ inlay_hints_expression ctx case.body
 
-and inlay_hints_match_cases = fun text start_offset end_offset cases ->
+and inlay_hints_match_cases = fun ctx cases ->
   cases
-  |> List.map ~fn:(inlay_hints_match_case text start_offset end_offset)
+  |> List.map ~fn:(inlay_hints_match_case ctx)
   |> List.concat
 
-and inlay_hints_argument = fun text start_offset end_offset (argument: Typ.Ast.argument) ->
+and inlay_hints_argument = fun ctx (argument: Typ.Ast.argument) ->
   match argument.kind with
-  | Typ.Ast.Positional expression -> inlay_hints_expression text start_offset end_offset expression
+  | Typ.Ast.Positional expression -> inlay_hints_expression ctx expression
   | Typ.Ast.Labeled { value; _ }
   | Typ.Ast.Optional { value; _ } ->
-      Option.unwrap_or
-        (Option.map value ~fn:(inlay_hints_expression text start_offset end_offset))
-        ~default:[]
+      Option.unwrap_or (Option.map value ~fn:(inlay_hints_expression ctx)) ~default:[]
 
-and inlay_hints_let_binding = fun text start_offset end_offset (binding: Typ.Ast.let_binding) ->
-  inlay_hints_pattern text start_offset end_offset binding.pattern
-  @ inlay_hints_parameters text start_offset end_offset binding.parameters
-  @ inlay_hints_expression text start_offset end_offset binding.body
+and inlay_hints_let_binding = fun ctx (binding: Typ.Ast.let_binding) ->
+  inlay_hints_pattern ctx binding.pattern
+  @ inlay_hints_parameters ctx binding.parameters
+  @ inlay_hints_expression ctx binding.body
 
-and inlay_hints_expression = fun text start_offset end_offset (expression: Typ.Ast.expression) ->
+and inlay_hints_expression = fun ctx (expression: Typ.Ast.expression) ->
   match expression.kind with
   | Typ.Ast.Literal _
   | Typ.Ast.Ident _
@@ -1183,90 +1178,74 @@ and inlay_hints_expression = fun text start_offset end_offset (expression: Typ.A
   | Typ.Ast.List expressions
   | Typ.Ast.Array expressions ->
       expressions
-      |> List.map ~fn:(inlay_hints_expression text start_offset end_offset)
+      |> List.map ~fn:(inlay_hints_expression ctx)
       |> List.concat
   | Typ.Ast.PolyVariant { payload; _ } ->
-      Option.unwrap_or
-        (Option.map payload ~fn:(inlay_hints_expression text start_offset end_offset))
-        ~default:[]
+      Option.unwrap_or (Option.map payload ~fn:(inlay_hints_expression ctx)) ~default:[]
   | Typ.Ast.Record { update; fields } ->
-      Option.unwrap_or
-        (Option.map update ~fn:(inlay_hints_expression text start_offset end_offset))
-        ~default:[]
+      Option.unwrap_or (Option.map update ~fn:(inlay_hints_expression ctx)) ~default:[]
       @ (
         fields
         |> List.map
           ~fn:(fun (field: Typ.Ast.record_expression_field) ->
             inlay_hints_expression
-              text
-              start_offset
-              end_offset
+              ctx
               field.value)
         |> List.concat
       )
-  | Typ.Ast.FieldAccess { receiver; _ } ->
-      inlay_hints_expression text start_offset end_offset receiver
+  | Typ.Ast.FieldAccess { receiver; _ } -> inlay_hints_expression ctx receiver
   | Typ.Ast.Assign { target; value }
   | Typ.Ast.Sequence { left = target; right = value }
   | Typ.Ast.Infix { left = target; right = value; _ } ->
-      inlay_hints_expression text start_offset end_offset target
-      @ inlay_hints_expression text start_offset end_offset value
+      inlay_hints_expression ctx target @ inlay_hints_expression ctx value
   | Typ.Ast.If { condition; then_branch; else_branch } ->
-      inlay_hints_expression text start_offset end_offset condition
-      @ inlay_hints_expression text start_offset end_offset then_branch
-      @ Option.unwrap_or
-        (Option.map else_branch ~fn:(inlay_hints_expression text start_offset end_offset))
-        ~default:[]
+      inlay_hints_expression ctx condition
+      @ inlay_hints_expression ctx then_branch
+      @ Option.unwrap_or (Option.map else_branch ~fn:(inlay_hints_expression ctx)) ~default:[]
   | Typ.Ast.Match { scrutinee; cases } ->
-      inlay_hints_expression text start_offset end_offset scrutinee
-      @ inlay_hints_match_cases text start_offset end_offset cases
+      inlay_hints_expression ctx scrutinee @ inlay_hints_match_cases ctx cases
   | Typ.Ast.Try { body; cases } ->
-      inlay_hints_expression text start_offset end_offset body
-      @ inlay_hints_match_cases text start_offset end_offset cases
+      inlay_hints_expression ctx body @ inlay_hints_match_cases ctx cases
   | Typ.Ast.While { condition; body } ->
-      inlay_hints_expression text start_offset end_offset condition
-      @ inlay_hints_expression text start_offset end_offset body
+      inlay_hints_expression ctx condition @ inlay_hints_expression ctx body
   | Typ.Ast.For {
     pattern;
     start_;
     stop;
     body
   } ->
-      inlay_hints_pattern text start_offset end_offset pattern
-      @ inlay_hints_expression text start_offset end_offset start_
-      @ inlay_hints_expression text start_offset end_offset stop
-      @ inlay_hints_expression text start_offset end_offset body
+      inlay_hints_pattern ctx pattern
+      @ inlay_hints_expression ctx start_
+      @ inlay_hints_expression ctx stop
+      @ inlay_hints_expression ctx body
   | Typ.Ast.Function { parameters; body; _ } ->
-      inlay_hints_parameters text start_offset end_offset parameters
-      @ inlay_hints_function_body text start_offset end_offset body
+      inlay_hints_parameters ctx parameters @ inlay_hints_function_body ctx body
   | Typ.Ast.Apply { callee; arguments } ->
-      inlay_hints_expression text start_offset end_offset callee
+      inlay_hints_expression ctx callee
       @ (
         arguments
-        |> List.map ~fn:(inlay_hints_argument text start_offset end_offset)
+        |> List.map ~fn:(inlay_hints_argument ctx)
         |> List.concat
       )
   | Typ.Ast.Let { first_binding; body } ->
-      inlay_hints_let_binding text start_offset end_offset first_binding
-      @ inlay_hints_expression text start_offset end_offset body
+      inlay_hints_let_binding ctx first_binding @ inlay_hints_expression ctx body
   | Typ.Ast.LetModule { body; _ }
   | Typ.Ast.LocalOpen { body; _ }
-  | Typ.Ast.Assert body -> inlay_hints_expression text start_offset end_offset body
+  | Typ.Ast.Assert body -> inlay_hints_expression ctx body
 
-let rec inlay_hints_structure_item = fun
-  text start_offset end_offset (item: Typ.Ast.structure_item) ->
+let rec inlay_hints_structure_item = fun ctx (item: Typ.Ast.structure_item) ->
   match item.kind with
   | Typ.Ast.Let declaration ->
       declaration.bindings
-      |> List.map ~fn:(inlay_hints_let_binding text start_offset end_offset)
+      |> List.map ~fn:(inlay_hints_let_binding ctx)
       |> List.concat
-  | Typ.Ast.Expression expression -> inlay_hints_expression text start_offset end_offset expression
+  | Typ.Ast.Expression expression -> inlay_hints_expression ctx expression
   | Typ.Ast.Module modules ->
       modules
       |> List.map
         ~fn:(fun (module_: Typ.Ast.module_declaration) ->
           module_.items
-          |> List.map ~fn:(inlay_hints_structure_item text start_offset end_offset)
+          |> List.map ~fn:(inlay_hints_structure_item ctx)
           |> List.concat)
       |> List.concat
   | Typ.Ast.Type _
@@ -1277,10 +1256,17 @@ let rec inlay_hints_structure_item = fun
   | Typ.Ast.Include _ -> []
 
 let inlay_hints_ast = fun text start_offset end_offset (ast: Typ.Ast.t) ->
+  let ctx = {
+    source_text = text;
+    start_offset;
+    end_offset;
+    type_printer = Typ.Ast.Type.Printer.create ();
+  }
+  in
   match ast.kind with
   | Typ.Ast.Implementation items ->
       items
-      |> List.map ~fn:(inlay_hints_structure_item text start_offset end_offset)
+      |> List.map ~fn:(inlay_hints_structure_item ctx)
       |> List.concat
   | Typ.Ast.Interface _ -> []
 

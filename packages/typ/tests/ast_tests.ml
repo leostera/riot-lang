@@ -51,6 +51,15 @@ let test_type_to_string_preserves_nested_tuple_grouping _ctx =
   Test.assert_equal ~expected:"(int * int) * bool" ~actual:(Type.to_string type_);
   Ok ()
 
+let test_type_printer_reuses_variable_names_across_calls _ctx =
+  let printer = Type.Printer.create () in
+  let first = variable TypeVar.first in
+  let second = variable (TypeVar.next TypeVar.first) in
+  Test.assert_equal ~expected:"'a" ~actual:(Type.Printer.to_string printer first);
+  Test.assert_equal ~expected:"'b" ~actual:(Type.Printer.to_string printer second);
+  Test.assert_equal ~expected:"'a" ~actual:(Type.Printer.to_string printer first);
+  Ok ()
+
 let test_equal_follows_linked_variables _ctx =
   let linked = variable ~link:(int_type ()) TypeVar.first in
   assert_equal_type linked (int_type ())
@@ -117,6 +126,9 @@ let tests =
     case
       "type to string preserves nested tuple grouping"
       test_type_to_string_preserves_nested_tuple_grouping;
+    case
+      "type printer reuses variable names across calls"
+      test_type_printer_reuses_variable_names_across_calls;
     case "type equal follows linked variables" test_equal_follows_linked_variables;
     case "type equal compares unlinked variable ids" test_equal_compares_unlinked_variable_ids;
     case "type equal tuple arity mismatch is false" test_equal_tuple_arity_mismatch_is_false;
