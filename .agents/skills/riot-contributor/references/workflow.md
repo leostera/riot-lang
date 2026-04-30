@@ -36,6 +36,16 @@ The repo-local `AGENTS.md` files are maintained alongside the code. When behavio
 - For formatter development, stabilize with small policy fixtures first, then verify broader fixture suites.
 - A full workspace format should be idempotent: repeated runs should converge with no extra changes.
 
+## Recovering Riot
+
+If the workspace `riot` can no longer build or install itself, reinstall the latest stable Riot binary and use it to recover the repo:
+
+```sh
+curl -SsL https://get.riot.ml | sh -
+```
+
+This is useful when a broken planner, formatter, parser, or build-system change prevents `riot run riot -- ...` from bootstrapping a fresh workspace binary.
+
 ## Commits
 
 - Use conventional commits, scoped by package or area when practical:
