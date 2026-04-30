@@ -1092,6 +1092,19 @@ let inlay_hint_for_pattern = fun ctx (pattern: Typ.Ast.pattern) ->
       }
   | _ -> None
 
+let inlay_hint_for_expression = fun ctx (expression: Typ.Ast.expression) ->
+  match (expression.kind, expression.type_) with
+  | (Typ.Ast.Record _, Some type_) when inlay_hint_in_range ctx expression.origin ->
+      Some {
+        Lsp.Inlay_hint.position = position_of_offset ctx.source_text expression.origin.span.end_;
+        label = ": " ^ Typ.Ast.Type.Printer.to_string ctx.type_printer type_;
+        kind = Some Lsp.Inlay_hint.Kind.Type;
+        tooltip = None;
+        padding_left = Some false;
+        padding_right = Some false;
+      }
+  | _ -> None
+
 let rec inlay_hints_pattern = fun ctx (pattern: Typ.Ast.pattern) ->
   let children =
     match pattern.kind with
@@ -1163,74 +1176,79 @@ and inlay_hints_let_binding = fun ctx (binding: Typ.Ast.let_binding) ->
   inlay_hints_pattern ctx binding.pattern @ inlay_hints_expression ctx binding.expr
 
 and inlay_hints_expression = fun ctx (expression: Typ.Ast.expression) ->
-  match expression.kind with
-  | Typ.Ast.Literal _
-  | Typ.Ast.Ident _
-  | Typ.Ast.Constructor _
-  | Typ.Ast.FirstClassModule _ -> []
-  | Typ.Ast.Tuple expressions
-  | Typ.Ast.List expressions
-  | Typ.Ast.Array expressions ->
-      expressions
-      |> List.map ~fn:(inlay_hints_expression ctx)
-      |> List.concat
-  | Typ.Ast.PolyVariant { payload; _ } ->
-      Option.unwrap_or (Option.map payload ~fn:(inlay_hints_expression ctx)) ~default:[]
-  | Typ.Ast.Record { update; fields } ->
-      Option.unwrap_or (Option.map update ~fn:(inlay_hints_expression ctx)) ~default:[]
-      @ (
-        fields
-        |> List.map
-          ~fn:(fun (field: Typ.Ast.record_expression_field) ->
-            inlay_hints_expression
-              ctx
-              field.value)
+  let children =
+    match expression.kind with
+    | Typ.Ast.Literal _
+    | Typ.Ast.Ident _
+    | Typ.Ast.Constructor _
+    | Typ.Ast.FirstClassModule _ -> []
+    | Typ.Ast.Tuple expressions
+    | Typ.Ast.List expressions
+    | Typ.Ast.Array expressions ->
+        expressions
+        |> List.map ~fn:(inlay_hints_expression ctx)
         |> List.concat
-      )
-  | Typ.Ast.FieldAccess { receiver; _ } -> inlay_hints_expression ctx receiver
-  | Typ.Ast.Assign { target; value }
-  | Typ.Ast.Sequence { left = target; right = value }
-  | Typ.Ast.Infix { left = target; right = value; _ } ->
-      inlay_hints_expression ctx target @ inlay_hints_expression ctx value
-  | Typ.Ast.If { condition; then_branch; else_branch } ->
-      inlay_hints_expression ctx condition
-      @ inlay_hints_expression ctx then_branch
-      @ Option.unwrap_or (Option.map else_branch ~fn:(inlay_hints_expression ctx)) ~default:[]
-  | Typ.Ast.Match { scrutinee; cases } ->
-      inlay_hints_expression ctx scrutinee @ inlay_hints_match_cases ctx cases
-  | Typ.Ast.Try { body; cases } ->
-      inlay_hints_expression ctx body @ inlay_hints_match_cases ctx cases
-  | Typ.Ast.While { condition; body } ->
-      inlay_hints_expression ctx condition @ inlay_hints_expression ctx body
-  | Typ.Ast.For {
-    pattern;
-    start_;
-    stop;
-    body
-  } ->
-      inlay_hints_pattern ctx pattern
-      @ inlay_hints_expression ctx start_
-      @ inlay_hints_expression ctx stop
-      @ inlay_hints_expression ctx body
-  | Typ.Ast.Function { parameters; body; _ } ->
-      inlay_hints_parameters ctx parameters @ inlay_hints_function_body ctx body
-  | Typ.Ast.Apply { callee; arguments } ->
-      inlay_hints_expression ctx callee
-      @ (
-        arguments
-        |> List.map ~fn:(inlay_hints_argument ctx)
-        |> List.concat
-      )
-  | Typ.Ast.Let { bindings; body; _ } ->
-      (
-        bindings
-        |> List.map ~fn:(inlay_hints_let_binding ctx)
-        |> List.concat
-      )
-      @ inlay_hints_expression ctx body
-  | Typ.Ast.LetModule { body; _ }
-  | Typ.Ast.LocalOpen { body; _ }
-  | Typ.Ast.Assert body -> inlay_hints_expression ctx body
+    | Typ.Ast.PolyVariant { payload; _ } ->
+        Option.unwrap_or (Option.map payload ~fn:(inlay_hints_expression ctx)) ~default:[]
+    | Typ.Ast.Record { update; fields } ->
+        Option.unwrap_or (Option.map update ~fn:(inlay_hints_expression ctx)) ~default:[]
+        @ (
+          fields
+          |> List.map
+            ~fn:(fun (field: Typ.Ast.record_expression_field) ->
+              inlay_hints_expression
+                ctx
+                field.value)
+          |> List.concat
+        )
+    | Typ.Ast.FieldAccess { receiver; _ } -> inlay_hints_expression ctx receiver
+    | Typ.Ast.Assign { target; value }
+    | Typ.Ast.Sequence { left = target; right = value }
+    | Typ.Ast.Infix { left = target; right = value; _ } ->
+        inlay_hints_expression ctx target @ inlay_hints_expression ctx value
+    | Typ.Ast.If { condition; then_branch; else_branch } ->
+        inlay_hints_expression ctx condition
+        @ inlay_hints_expression ctx then_branch
+        @ Option.unwrap_or (Option.map else_branch ~fn:(inlay_hints_expression ctx)) ~default:[]
+    | Typ.Ast.Match { scrutinee; cases } ->
+        inlay_hints_expression ctx scrutinee @ inlay_hints_match_cases ctx cases
+    | Typ.Ast.Try { body; cases } ->
+        inlay_hints_expression ctx body @ inlay_hints_match_cases ctx cases
+    | Typ.Ast.While { condition; body } ->
+        inlay_hints_expression ctx condition @ inlay_hints_expression ctx body
+    | Typ.Ast.For {
+      pattern;
+      start_;
+      stop;
+      body
+    } ->
+        inlay_hints_pattern ctx pattern
+        @ inlay_hints_expression ctx start_
+        @ inlay_hints_expression ctx stop
+        @ inlay_hints_expression ctx body
+    | Typ.Ast.Function { parameters; body; _ } ->
+        inlay_hints_parameters ctx parameters @ inlay_hints_function_body ctx body
+    | Typ.Ast.Apply { callee; arguments } ->
+        inlay_hints_expression ctx callee
+        @ (
+          arguments
+          |> List.map ~fn:(inlay_hints_argument ctx)
+          |> List.concat
+        )
+    | Typ.Ast.Let { bindings; body; _ } ->
+        (
+          bindings
+          |> List.map ~fn:(inlay_hints_let_binding ctx)
+          |> List.concat
+        )
+        @ inlay_hints_expression ctx body
+    | Typ.Ast.LetModule { body; _ }
+    | Typ.Ast.LocalOpen { body; _ }
+    | Typ.Ast.Assert body -> inlay_hints_expression ctx body
+  in
+  match inlay_hint_for_expression ctx expression with
+  | None -> children
+  | Some hint -> children @ [ hint ]
 
 let rec inlay_hints_structure_item = fun ctx (item: Typ.Ast.structure_item) ->
   match item.kind with
