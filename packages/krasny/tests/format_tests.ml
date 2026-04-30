@@ -3231,6 +3231,23 @@ let test_format_breaks_local_let_rhs_when_trailing_in_would_exceed_width = fun c
   { scopes }
 |ocaml}
 
+let test_format_breaks_let_rhs_after_equals_then_retries_constructor_record_payload = fun ctx ->
+  let source =
+    {ocaml|let type_declaration_result (decl:type_declaration) arguments=Type.Constructor{ident=decl.name;arguments}
+|ocaml}
+  in
+  let actual =
+    parse_ml source
+    |> Krasny.format
+    |> Result.expect ~msg:"long constructor record payload RHS should retry after equals"
+  in
+  Test.Snapshot.assert_inline_text
+    ~ctx
+    ~actual
+    ~expected:{ocaml|let type_declaration_result (decl: type_declaration) arguments =
+  Type.Constructor { ident = decl.name; arguments }
+|ocaml}
+
 let test_format_parenthesized_pipeline_arguments_vertically = fun ctx ->
   let source =
     {ocaml|let styled=Element.container ~style:(Style.empty|>Style.width Style.Grow|>Style.height (Style.Fixed 20.0)) [Element.text "Middle"]
@@ -4889,6 +4906,9 @@ let tests =
     case
       "format breaks local let rhs when trailing in would exceed width"
       test_format_breaks_local_let_rhs_when_trailing_in_would_exceed_width;
+    case
+      "format breaks let rhs after equals then retries constructor record payload"
+      test_format_breaks_let_rhs_after_equals_then_retries_constructor_record_payload;
     case
       "format parenthesized pipeline arguments vertically"
       test_format_parenthesized_pipeline_arguments_vertically;
