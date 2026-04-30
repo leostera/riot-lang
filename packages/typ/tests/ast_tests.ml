@@ -46,6 +46,11 @@ let assert_path_string ~expected actual =
   Test.assert_equal ~expected ~actual:(SurfacePath.to_string actual);
   Ok ()
 
+let test_type_to_string_preserves_nested_tuple_grouping _ctx =
+  let type_ = Type.Tuple [ Type.Tuple [ int_type (); int_type () ]; bool_type () ] in
+  Test.assert_equal ~expected:"(int * int) * bool" ~actual:(Type.to_string type_);
+  Ok ()
+
 let test_equal_follows_linked_variables _ctx =
   let linked = variable ~link:(int_type ()) TypeVar.first in
   assert_equal_type linked (int_type ())
@@ -109,6 +114,9 @@ let test_from_syn_keeps_constructor_patterns _ctx =
 
 let tests =
   Test.[
+    case
+      "type to string preserves nested tuple grouping"
+      test_type_to_string_preserves_nested_tuple_grouping;
     case "type equal follows linked variables" test_equal_follows_linked_variables;
     case "type equal compares unlinked variable ids" test_equal_compares_unlinked_variable_ids;
     case "type equal tuple arity mismatch is false" test_equal_tuple_arity_mismatch_is_false;

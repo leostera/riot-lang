@@ -124,7 +124,7 @@ module Type = struct
       | Generic id -> type_var_to_string state id
       | Tuple elements ->
           elements
-          |> List.map ~fn:loop
+          |> List.map ~fn:tuple_element_to_string
           |> String.concat " * "
       | Arrow { label; parameter; result } ->
           Label.to_string label ^ arrow_parameter_to_string parameter ^ " -> " ^ loop result
@@ -145,6 +145,11 @@ module Type = struct
       | Arrow _ -> "(" ^ loop type_ ^ ")"
       | _ -> loop type_
     and constructor_argument_to_string type_ =
+      match type_ with
+      | Arrow _
+      | Tuple _ -> "(" ^ loop type_ ^ ")"
+      | _ -> loop type_
+    and tuple_element_to_string type_ =
       match type_ with
       | Arrow _
       | Tuple _ -> "(" ^ loop type_ ^ ")"
