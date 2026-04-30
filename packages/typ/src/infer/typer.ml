@@ -281,50 +281,47 @@ and infer_function state fn_decl =
 let type_declaration_result (decl: type_declaration) arguments =
   Type.Constructor { ident = decl.name; arguments }
 
-let constructor_scheme state (decl: type_declaration) (ctr: type_constructor) =
-  let scope = HashMap.with_capacity ~size:(List.length decl.parameters) in
-  let arguments =
-    List.map
-      decl.parameters
-      ~fn:(fun param ->
-        match param with
-        | Some name ->
-            let type_ = State.fresh_var state in
-            let _ = HashMap.insert scope ~key:name ~value:type_ in
-            type_
-        | None -> State.fresh_var state)
+let register_constructor state (decl: type_declaration) (ctr: type_constructor) =
+  let scheme =
+    let scope = HashMap.with_capacity ~size:(List.length decl.parameters) in
+    let arguments =
+      List.map
+        decl.parameters
+        ~fn:(fun param ->
+          match param with
+          | Some name ->
+              let type_ = State.fresh_var state in
+              let _ = HashMap.insert scope ~key:name ~value:type_ in
+              type_
+          | None -> State.fresh_var state)
+    in
+    State.with_type_params
+      state
+      scope
+      (fun state ->
+        let result =
+          match ctr.result with
+          | Some result -> core_type_to_type state result
+          | None -> type_declaration_result decl arguments
+        in
+        let body =
+          match ctr.arguments with
+          | Tuple [] -> result
+          | Tuple [ argument ] -> Ast.Type.arrow (core_type_to_type state argument) result
+          | Tuple arguments ->
+              let argument_type = Type.Tuple (List.map arguments ~fn:(core_type_to_type state)) in
+              Ast.Type.arrow argument_type result
+          | Record _fields -> Ast.Type.arrow (State.fresh_var state) result
+        in
+        Quantifier.generalize body)
   in
-  State.with_type_params
-    state
-    scope
-    (fun state ->
-      let result =
-        match ctr.result with
-        | Some result -> core_type_to_type state result
-        | None -> type_declaration_result decl arguments
-      in
-      let body =
-        match ctr.arguments with
-        | Tuple [] -> result
-        | Tuple [ argument ] -> Ast.Type.arrow (core_type_to_type state argument) result
-        | Tuple arguments ->
-            let argument_type = Type.Tuple (List.map arguments ~fn:(core_type_to_type state)) in
-            Ast.Type.arrow argument_type result
-        | Record _fields -> Ast.Type.arrow (State.fresh_var state) result
-      in
-      Quantifier.generalize body)
+  State.add_constructor state ~name:ctr.name ~scheme
 
 let register_type_decl state (decl: type_declaration) =
   let name = decl.name in
   State.add_type state ~name ~declaration:decl;
   match decl.definition.kind with
-  | Variant ctrs ->
-      List.for_each
-        ctrs
-        ~fn:(fun (ctr: type_constructor) ->
-          let name = ctr.name in
-          let scheme = constructor_scheme state decl ctr in
-          State.add_constructor state ~name ~scheme)
+  | Variant ctrs -> List.for_each ctrs ~fn:(register_constructor state decl)
   | _ -> ()
 
 let type_let_binding (state: State.t) (lb: let_binding) =
