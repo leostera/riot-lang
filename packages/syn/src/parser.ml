@@ -984,6 +984,10 @@ let previous_ident_starts_uppercase = fun p ->
   let raw = previous p in
   Syntax_kind.(raw.Raw_token.kind = IDENT) && identifier_text_starts_uppercase (token_text p raw)
 
+let ident_at_starts_uppercase = fun p offset ->
+  Syntax_kind.(peek_kind p offset = IDENT)
+  && identifier_text_starts_uppercase (token_text p (peek p offset))
+
 let parenthesized_operator_start = fun p ->
   at p Syntax_kind.DOT
   || (operator_pattern_token (current_kind p)
@@ -1114,6 +1118,20 @@ let rec consume_path_segments = fun p ->
     bump p;
     consume_path_segments p
   )
+
+let consume_expr_path_segments = fun p ->
+  let rec loop can_consume_value_segment =
+    if at p Syntax_kind.DOT && Syntax_kind.(peek_kind p 1 = IDENT) then
+      if can_consume_value_segment && ident_at_starts_uppercase p 1 then (
+        bump p;
+        bump p;
+        loop true
+      ) else if can_consume_value_segment then (
+        bump p;
+        bump p
+      )
+  in
+  loop (previous_ident_starts_uppercase p)
 
 let rec consume_balanced_until = fun p ~closer depth ->
   let at_closer = Syntax_kind.(closer = END_KW) && at_end_keyword p || at p closer in
@@ -1663,7 +1681,7 @@ and parse_extended_index_expr = fun p lhs ~signature ~stop_at_item:_ ->
 and parse_path_expr = fun p ->
   let marker = start_node p in
   expect p Syntax_kind.IDENT (invalid_expression p);
-  consume_path_segments p;
+  consume_expr_path_segments p;
   complete p marker Syntax_kind.PATH_EXPR
 
 and parse_literal_expr = fun p ->

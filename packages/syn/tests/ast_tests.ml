@@ -521,6 +521,78 @@ let lower = value
       Ok ()
   | _ -> Error "expected lowercase identifier expression"
 
+let test_expression_field_access_splits_value_paths = fun _ctx ->
+  let root =
+    parse_ml
+      {ocaml|let module_value = Std.List.map
+let module_value_field = Hello.record.field
+let field_chain = obj.field1.field2
+let qualified_field = point.Point.y
+|ocaml}
+    |> Result.expect ~msg:"expected parse source file"
+  in
+  let body index =
+    nth_structure_item root index
+    |> require_some ~msg:"expected structure item"
+    |> binding_of_structure_item
+    |> Result.expect ~msg:"expected let binding"
+    |> body_of_binding
+    |> Result.expect ~msg:"expected let binding body"
+  in
+  (
+    match Ast.Expr.view (body 0) with
+    | Ast.Expr.Ident { ident } ->
+        Test.assert_equal ~expected:"Std.List.map" ~actual:(Ast.Ident.text ident)
+    | _ -> panic "expected qualified value path identifier"
+  );
+  (
+    match Ast.Expr.view (body 1) with
+    | Ast.Expr.FieldAccess { target; field } ->
+        Test.assert_equal ~expected:"field" ~actual:(Ast.Token.text field);
+        (
+          match Ast.Expr.view target with
+          | Ast.Expr.Ident { ident } ->
+              Test.assert_equal ~expected:"Hello.record" ~actual:(Ast.Ident.text ident)
+          | _ -> panic "expected qualified target value path"
+        )
+    | _ -> panic "expected qualified value field access"
+  );
+  match Ast.Expr.view (body 2) with
+  | Ast.Expr.FieldAccess { target; field } ->
+      Test.assert_equal ~expected:"field2" ~actual:(Ast.Token.text field);
+      (
+        match Ast.Expr.view target with
+        | Ast.Expr.FieldAccess { target; field } ->
+            Test.assert_equal ~expected:"field1" ~actual:(Ast.Token.text field);
+            (
+              match Ast.Expr.view target with
+              | Ast.Expr.Ident { ident } ->
+                  Test.assert_equal ~expected:"obj" ~actual:(Ast.Ident.text ident)
+              | _ -> panic "expected field-chain root identifier"
+            )
+        | _ -> panic "expected nested field access target"
+      );
+      (
+        match Ast.Expr.view (body 3) with
+        | Ast.Expr.FieldAccess { target; field } ->
+            Test.assert_equal ~expected:"y" ~actual:(Ast.Token.text field);
+            (
+              match Ast.Expr.view target with
+              | Ast.Expr.FieldAccess { target; field } ->
+                  Test.assert_equal ~expected:"Point" ~actual:(Ast.Token.text field);
+                  (
+                    match Ast.Expr.view target with
+                    | Ast.Expr.Ident { ident } ->
+                        Test.assert_equal ~expected:"point" ~actual:(Ast.Ident.text ident)
+                    | _ -> panic "expected qualified field root identifier"
+                  )
+              | _ -> panic "expected qualified field access target"
+            )
+        | _ -> panic "expected qualified record field access"
+      );
+      Ok ()
+  | _ -> Error "expected lowercase field access chain"
+
 let test_assignment_operator_views = fun _ctx ->
   let root =
     parse_ml "let update state remaining = state.buffer <- remaining\nlet assign r = r := 1\n"
@@ -3840,6 +3912,9 @@ let tests =
       "ast preserves trailing sequence bodies before and-bindings"
       test_trailing_sequence_before_and_views;
     case "ast lifts constructor expressions out of identifiers" test_expression_constructor_views;
+    case
+      "ast parses field access separately from qualified value paths"
+      test_expression_field_access_splits_value_paths;
     case
       "ast keeps labels after polymorphic variant arguments as application arguments"
       test_labeled_application_after_poly_variant_argument;
