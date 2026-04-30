@@ -128,6 +128,10 @@ MLI(Kernel__Ptr)
   deps:
     - ML(Kernel__Aliases)
 
+MLI(Kernel__Queue)
+  deps:
+    - ML(Kernel__Aliases)
+
 MLI(Kernel__System_error)
   deps:
     - ML(Kernel__Aliases)
@@ -530,6 +534,15 @@ ML(Kernel__Unicode__Rune)
     - ML(Kernel__Unicode__Aliases)
     - ML(Kernel__Aliases)
     - MLI(Kernel__Unicode__Rune)
+
+ML(Kernel__Queue)
+  deps:
+    - ML(Kernel__Sync)
+    - ML(Kernel__Ptr)
+    - ML(Kernel__Prelude)
+    - ML(Kernel__List)
+    - ML(Kernel__Aliases)
+    - MLI(Kernel__Queue)
 
 MLI(Kernel__IO__IoVec__Io_slice)
   deps:
@@ -1631,6 +1644,7 @@ MLI(Kernel)
     - ML(Kernel__Result)
     - ML(Kernel__Regex)
     - ML(Kernel__Random)
+    - ML(Kernel__Queue)
     - ML(Kernel__Ptr)
     - ML(Kernel__Process)
     - ML(Kernel__Prelude)
@@ -1663,6 +1677,8 @@ MLI(Kernel)
     - ML(Kernel__String)
     - MLI(Kernel__Result)
     - ML(Kernel__Result)
+    - MLI(Kernel__Queue)
+    - ML(Kernel__Queue)
     - MLI(Kernel__Ptr)
     - ML(Kernel__Ptr)
     - MLI(Kernel__Prelude)
@@ -1709,6 +1725,8 @@ MLI(Kernel)
     - ML(Kernel__String)
     - MLI(Kernel__Result)
     - ML(Kernel__Result)
+    - MLI(Kernel__Queue)
+    - ML(Kernel__Queue)
     - MLI(Kernel__Ptr)
     - ML(Kernel__Ptr)
     - MLI(Kernel__Prelude)
@@ -1761,6 +1779,7 @@ ML(Kernel)
     - ML(Kernel__Result)
     - ML(Kernel__Regex)
     - ML(Kernel__Random)
+    - ML(Kernel__Queue)
     - ML(Kernel__Ptr)
     - ML(Kernel__Process)
     - ML(Kernel__Prelude)
@@ -1829,6 +1848,7 @@ Library(kernel)
     - MLI(Kernel__Order)
     - MLI(Kernel__Path)
     - MLI(Kernel__Ptr)
+    - MLI(Kernel__Queue)
     - MLI(Kernel__System_error)
     - MLI(Kernel__IO__Error)
     - MLI(Kernel__Async__Libc)
@@ -1889,6 +1909,7 @@ Library(kernel)
     - MLI(Kernel__Time__Monotonic__Unix)
     - MLI(Kernel__Time__System_time__Unix)
     - ML(Kernel__Unicode__Rune)
+    - ML(Kernel__Queue)
     - MLI(Kernel__IO__IoVec__Io_slice)
     - MLI(Kernel__Async__Event)
     - ML(Kernel__Async__Interest)
@@ -2063,6 +2084,7 @@ CREATE LIBRARY OBJECTS
 - Kernel__IO__Error.cmx
 - Kernel__Async__Token.cmx
 - Kernel__Unicode__Rune.cmx
+- Kernel__Queue.cmx
 - Kernel__Async__Interest.cmx
 - Kernel__Regex.cmx
 - Kernel__Async__Common.cmx
