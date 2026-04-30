@@ -477,14 +477,10 @@ and let_binding = {
   origin: origin;
   (** Bound pattern. *)
   pattern: pattern;
-  (** Function-style parameters attached to the binding. *)
-  type_binders: string list;
-  (** Runtime function parameters attached to the binding. *)
-  parameters: parameter list;
-  (** Binding body. *)
-  body: expression;
-  (** Optional result/type annotation. *)
-  type_annotation: core_type option;
+  (** Optional type hint attached to the binding. *)
+  type_hint: core_type option;
+  (** Right-hand side expression. Function-style `let` parameters are lowered into this expression. *)
+  expr: expression;
 }
 
 (** Kind of type hint attached to an expression. *)
@@ -726,8 +722,10 @@ and infix_operation = {
 
 (** Local let-expression payload. *)
 and let_expression = {
-  (** First binding in the local declaration. *)
-  first_binding: let_binding;
+  (** Whether the binding group was declared `rec`. *)
+  recursive: bool;
+  (** Local bindings in source order. *)
+  bindings: let_binding list;
   (** Expression body scoped by the binding. *)
   body: expression;
 }
@@ -787,7 +785,7 @@ and labeled_argument = {
   value: expression option;
 }
 
-(** Top-level or local `let` group. *)
+(** Top-level `let` group. Local `let` expressions use `let_expression`. *)
 and let_declaration = {
   (** Source origin for the declaration. *)
   origin: origin;

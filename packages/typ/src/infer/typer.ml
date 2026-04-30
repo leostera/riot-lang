@@ -225,6 +225,7 @@ let rec infer_expression (state: State.t) (expr: expression) =
     | Constructor constructor -> infer_constructor state constructor
     | Tuple parts -> infer_tuple state parts
     | List items -> infer_list state items
+    | Let letexpr -> infer_let_expr state letexpr
     | _ -> State.fresh_var state
   in
   let unified =
@@ -241,6 +242,30 @@ let rec infer_expression (state: State.t) (expr: expression) =
   in
   expr.type_ <- Some unified;
   unified
+
+and infer_let_binding state ~mode (bind: let_binding) =
+  let expr_type = infer_expression state bind.expr in
+  let binding_type =
+    match bind.type_hint with
+    | None -> expr_type
+    | Some hint ->
+        let expected = core_type_to_type state hint in
+        unify state ~expected ~actual:expr_type ~on_error:(annotation_diagnostic hint);
+        expected
+  in
+  bind_pattern ~mode:Generalized state bind.pattern binding_type;
+  binding_type
+
+and infer_let_expr state (let_: let_expression) =
+  State.push_scope state;
+  List.for_each
+    let_.bindings
+    ~fn:(fun binding ->
+      let _ = infer_let_binding state ~mode:Generalized binding in
+      ());
+  let body_type = infer_expression state let_.body in
+  State.pop_scope state;
+  body_type
 
 (**
    When inferring lists, we will start with a fresh variable and unify it
@@ -362,8 +387,8 @@ let register_type_decl state (decl: type_declaration) =
   | _ -> ()
 
 let type_let_binding (state: State.t) (lb: let_binding) =
-  let type_ = infer_expression state lb.body in
-  bind_pattern ~mode:Generalized state lb.pattern type_
+  let _ = infer_let_binding state ~mode:Generalized lb in
+  ()
 
 let type_let_decl (state: State.t) (ld: let_declaration) =
   List.for_each ld.bindings ~fn:(type_let_binding state)
@@ -378,6 +403,11 @@ let type_impl (state: State.t) (items: structure_item list) =
   List.for_each items ~fn:(type_impl_item state)
 
 let type_intf (_state: State.t) (_items: signature_item list) = ()
+
+let type_ast (state: State.t) (ast: Ast.t) =
+  match ast.kind with
+  | Implementation items -> type_impl state items
+  | Interface items -> type_intf state items
 
 let type_ast (state: State.t) (ast: Ast.t) =
   match ast.kind with

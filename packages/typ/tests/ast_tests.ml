@@ -100,7 +100,7 @@ let test_from_syn_keeps_constructor_patterns _ctx =
 |ocaml}
   in
   match ast.kind with
-  | Implementation [ { kind = Let { bindings = [ { body = { kind = Function { body = Cases [ some_case; none_case ]; _ }; _ }; _ } ]; _ }; _ } ] ->
+  | Implementation [ { kind = Let { bindings = [ { expr = { kind = Function { body = Cases [ some_case; none_case ]; _ }; _ }; _ } ]; _ }; _ } ] ->
       let some_result =
         match some_case.pattern.kind with
         | Constructor { ident = constructor; payload = Some { kind = Bind binding; _ } } -> (

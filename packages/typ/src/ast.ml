@@ -353,10 +353,8 @@ and poly_variant_pattern = {
 and let_binding = {
   origin: origin;
   pattern: pattern;
-  type_binders: string list;
-  parameters: parameter list;
-  body: expression;
-  type_annotation: core_type option;
+  type_hint: core_type option;
+  expr: expression;
 }
 
 and expression_type_hint_kind =
@@ -468,7 +466,11 @@ and application = {
 
 and infix_operation = { left: expression; operator: ident; right: expression }
 
-and let_expression = { first_binding: let_binding; body: expression }
+and let_expression = {
+  recursive: bool;
+  bindings: let_binding list;
+  body: expression;
+}
 
 and let_module = {
   name: ident;
@@ -1441,22 +1443,16 @@ and build_let_binding = fun context (binding: Syn.Ast.LetBinding.t) ->
     | (_, Some type_annotation) -> (with_expression_type_hint Annotation type_annotation body, None)
     | (_ :: _, None) -> (body, None)
   in
-  let (type_binders, parameters, body) =
+  let body =
     match parameters with
-    | [] -> (type_binders, parameters, body)
-    | _ :: _ -> (
-      [],
-      [],
-      make_expression origin (Function { type_binders; parameters; body = Body body })
-    )
+    | [] -> body
+    | _ :: _ -> make_expression origin (Function { type_binders; parameters; body = Body body })
   in
   ({
     origin;
     pattern = build_pattern context syntax_pattern;
-    type_binders;
-    parameters;
-    body;
-    type_annotation;
+    type_hint = type_annotation;
+    expr = body;
   }: let_binding)
 
 and build_match_case = fun context (match_case: Syn.Ast.MatchCase.t) ->
@@ -1701,7 +1697,8 @@ and build_expression = fun context (syntax_expression: Syn.Ast.Expr.t) ->
         make_expression
           origin
           (Let {
-            first_binding = build_let_binding context first_binding;
+            recursive = false;
+            bindings = [ build_let_binding context first_binding ];
             body = build_expression context body;
           })
     | Syn.Ast.Expr.LetModule _ -> build_let_module_expression context origin syntax_expression

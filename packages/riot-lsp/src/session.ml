@@ -947,11 +947,7 @@ and hover_argument = fun offset (argument: Typ.Ast.argument) ->
 
 and hover_let_binding = fun offset (binding: Typ.Ast.let_binding) ->
   best_hover_candidate
-    [
-      hover_pattern offset binding.pattern;
-      hover_parameters offset binding.parameters;
-      hover_expression offset binding.body;
-    ]
+    [ hover_pattern offset binding.pattern; hover_expression offset binding.expr; ]
 
 and hover_expression = fun offset (expression: Typ.Ast.expression) ->
   let self = hover_candidate offset expression.origin expression.type_ in
@@ -1002,8 +998,8 @@ and hover_expression = fun offset (expression: Typ.Ast.expression) ->
         [ hover_parameters offset parameters; hover_function_body offset body ]
     | Typ.Ast.Apply { callee; arguments } ->
         hover_expression offset callee :: List.map arguments ~fn:(hover_argument offset)
-    | Typ.Ast.Let { first_binding; body } ->
-        [ hover_let_binding offset first_binding; hover_expression offset body ]
+    | Typ.Ast.Let { bindings; body; _ } ->
+        hover_expression offset body :: List.map bindings ~fn:(hover_let_binding offset)
     | Typ.Ast.LetModule { body; _ }
     | Typ.Ast.LocalOpen { body; _ }
     | Typ.Ast.Assert body -> [ hover_expression offset body ]
@@ -1164,9 +1160,7 @@ and inlay_hints_argument = fun ctx (argument: Typ.Ast.argument) ->
       Option.unwrap_or (Option.map value ~fn:(inlay_hints_expression ctx)) ~default:[]
 
 and inlay_hints_let_binding = fun ctx (binding: Typ.Ast.let_binding) ->
-  inlay_hints_pattern ctx binding.pattern
-  @ inlay_hints_parameters ctx binding.parameters
-  @ inlay_hints_expression ctx binding.body
+  inlay_hints_pattern ctx binding.pattern @ inlay_hints_expression ctx binding.expr
 
 and inlay_hints_expression = fun ctx (expression: Typ.Ast.expression) ->
   match expression.kind with
@@ -1227,8 +1221,13 @@ and inlay_hints_expression = fun ctx (expression: Typ.Ast.expression) ->
         |> List.map ~fn:(inlay_hints_argument ctx)
         |> List.concat
       )
-  | Typ.Ast.Let { first_binding; body } ->
-      inlay_hints_let_binding ctx first_binding @ inlay_hints_expression ctx body
+  | Typ.Ast.Let { bindings; body; _ } ->
+      (
+        bindings
+        |> List.map ~fn:(inlay_hints_let_binding ctx)
+        |> List.concat
+      )
+      @ inlay_hints_expression ctx body
   | Typ.Ast.LetModule { body; _ }
   | Typ.Ast.LocalOpen { body; _ }
   | Typ.Ast.Assert body -> inlay_hints_expression ctx body
