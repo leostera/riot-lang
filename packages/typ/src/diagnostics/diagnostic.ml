@@ -30,12 +30,22 @@ type type_mismatch = {
   actual: string;
 }
 
+type unerasable_optional_argument = {
+  span: Syn.Span.t;
+  label: string;
+}
+
+type severity =
+  | Error
+  | Warning
+
 type t =
   | UnsupportedSyntax of unsupported_syntax
   | UnsupportedType of unsupported_type
   | AnnotationMismatch of annotation_mismatch
   | InfiniteSubstitution of infinite_substitution
   | TypeMismatch of type_mismatch
+  | UnerasableOptionalArgument of unerasable_optional_argument
 
 let annotation_mismatch ~span ~annotation_span ~expected ~actual =
   AnnotationMismatch { span; annotation_span; expected; actual }
@@ -45,6 +55,18 @@ let infinite_substitution ~span ~var ~type_ =
 
 let type_mismatch ~span ~expected ~actual =
   TypeMismatch { span; expected; actual }
+
+let unerasable_optional_argument ~span ~label =
+  UnerasableOptionalArgument { span; label }
+
+let severity diagnostic =
+  match diagnostic with
+  | UnsupportedSyntax _
+  | UnsupportedType _
+  | AnnotationMismatch _
+  | InfiniteSubstitution _
+  | TypeMismatch _ -> Error
+  | UnerasableOptionalArgument _ -> Warning
 
 let to_string diagnostic =
   match diagnostic with
@@ -65,6 +87,10 @@ let to_string diagnostic =
       ^ expected
       ^ " but got "
       ^ actual
+  | UnerasableOptionalArgument { label; _ } ->
+      "Warning: optional argument ?"
+      ^ label
+      ^ " cannot be erased"
 
 let span_serializer = Serde.Ser.record
   (Serde.Ser.fields
@@ -116,6 +142,13 @@ let type_mismatch_serializer = Serde.Ser.record
       Serde.Ser.field "actual" Serde.Ser.string (fun (value: type_mismatch) -> value.actual);
     ])
 
+let unerasable_optional_argument_serializer = Serde.Ser.record
+  (Serde.Ser.fields
+    [
+      Serde.Ser.field "span" span_serializer (fun (value: unerasable_optional_argument) -> value.span);
+      Serde.Ser.field "label" Serde.Ser.string (fun (value: unerasable_optional_argument) -> value.label);
+    ])
+
 let serializer = Serde.Ser.variant
   [ Serde.Ser.Variant.newtype "UnsupportedSyntax" unsupported_syntax_serializer
       (
@@ -141,5 +174,10 @@ let serializer = Serde.Ser.variant
       (
         function
         | TypeMismatch value -> Some value
+        | _ -> None
+      ); Serde.Ser.Variant.newtype "UnerasableOptionalArgument" unerasable_optional_argument_serializer
+      (
+        function
+        | UnerasableOptionalArgument value -> Some value
         | _ -> None
       ); ]

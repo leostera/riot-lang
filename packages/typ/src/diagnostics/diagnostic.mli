@@ -59,6 +59,27 @@ type type_mismatch = {
   actual: string;
 }
 
+(** Optional argument whose default cannot be used by ordinary application.
+
+    This mirrors OCaml warning 16. For now `typ` treats it as a warning-level
+    diagnostic, not as a type-checking error. *)
+type unerasable_optional_argument = {
+  (** Source span for the optional parameter. *)
+  span: Syn.Span.t;
+  (** Optional argument label without the leading `?`. *)
+  label: string;
+}
+
+(** Diagnostic severity.
+
+    Errors mean the checker could not fully validate the program. Warnings are
+    non-fatal observations attached to otherwise usable typing results. *)
+type severity =
+  (** Fatal diagnostic for the current checking slice. *)
+  | Error
+  (** Non-fatal diagnostic. *)
+  | Warning
+
 (** Diagnostic emitted while building or checking `Typ.Ast`. *)
 type t =
   (** Unsupported syntax node. *)
@@ -71,6 +92,8 @@ type t =
   | InfiniteSubstitution of infinite_substitution
   (** Generic type mismatch fallback. *)
   | TypeMismatch of type_mismatch
+  (** Optional argument cannot be erased because no later positional argument exists. *)
+  | UnerasableOptionalArgument of unerasable_optional_argument
 
 (** Build an annotation mismatch diagnostic. *)
 val annotation_mismatch :
@@ -93,6 +116,15 @@ val type_mismatch :
   expected:string ->
   actual:string ->
   t
+
+(** Build an unerasable optional argument warning. *)
+val unerasable_optional_argument :
+  span:Syn.Span.t ->
+  label:string ->
+  t
+
+(** Severity for a diagnostic. *)
+val severity : t -> severity
 
 (** Human-readable diagnostic summary for tests and debugging. *)
 val to_string : t -> string

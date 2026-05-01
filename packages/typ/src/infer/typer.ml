@@ -436,6 +436,33 @@ and infer_tuple (state: State.t) parts =
   let types = List.map ~fn:(infer_expression state) parts in
   Type.Tuple types
 
+and parameter_is_positional ({ label; _ }: parameter) =
+  match label with
+  | Unlabeled -> true
+  | Labeled _
+  | Optional _ -> false
+
+and warn_unerasable_optional_arguments (state: State.t) (params: parameter list) =
+  let rec loop (params: parameter list) =
+    match params with
+    | [] -> ()
+    | ({ label = param_label; origin; _ }: parameter) :: rest ->
+        (
+          match param_label with
+          | Optional label when not (List.any rest ~fn:parameter_is_positional) ->
+              State.add_diagnostic
+                state
+                (Diagnostics.Diagnostic.unerasable_optional_argument
+                  ~span:origin.span
+                  ~label:(SurfacePath.to_string label))
+          | Unlabeled
+          | Labeled _
+          | Optional _ -> ()
+        );
+        loop rest
+  in
+  loop params
+
 and infer_function_param state (param: parameter) =
   let param_type = State.fresh_var state in
   bind_pattern ~mode:Local state param.pattern param_type;
@@ -460,6 +487,7 @@ and infer_function_param state (param: parameter) =
   (parameter_label_to_type_label param.label, param_type)
 
 and infer_function state fn_decl =
+  warn_unerasable_optional_arguments state fn_decl.parameters;
   State.push_scope state;
   let params = List.map ~fn:(infer_function_param state) fn_decl.parameters in
   let body =
