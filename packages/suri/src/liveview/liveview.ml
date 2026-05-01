@@ -25,6 +25,7 @@ module type Component = sig
   type state
   type msg
   type args
+
   val serialize_args: args -> Data.Json.t
 
   val deserialize_args: Data.Json.t -> (args, Data.Json.t) result

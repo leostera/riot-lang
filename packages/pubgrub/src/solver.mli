@@ -23,6 +23,7 @@ type outcome = {
   result: (solve_result, string) result;
   stats: stats;
 }
+
 val default_options: options
 
 val solve_with_stats:

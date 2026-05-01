@@ -7,6 +7,7 @@ type error =
   | AddressNotAvailable
   | ConnectionAborted
   | System of System_error.t
+
 val error_to_string: error -> string
 
 (**

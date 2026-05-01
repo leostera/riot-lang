@@ -128,6 +128,7 @@ type verification_error =
   | InvalidStoredToken
   | InvalidRequestToken of unmask_error
   | TokenMismatch
+
 val random_error_to_string: random_error -> string
 
 val error_to_string: error -> string

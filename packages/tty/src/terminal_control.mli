@@ -115,6 +115,7 @@ type window_size = {
   height_px: int;
   (** Terminal height in pixels (may be 0) *)
 }
+
 val window_size: Terminal.t -> window_size
 
 (**

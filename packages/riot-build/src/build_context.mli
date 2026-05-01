@@ -11,6 +11,7 @@ type t = {
   parallelism: int;
   on_event: Event.t -> unit;
 }
+
 val make: ?on_event:(Event.t -> unit) -> Request.t -> (t, error) result
 
 val emit_phase: t -> Event.runtime_phase -> unit

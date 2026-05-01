@@ -61,6 +61,7 @@ type error =
       error: Package_name.error;
     }
   | UnknownProvenanceKind of { value: string }
+
 val error_message: error -> string
 
 val of_toml: Std.Data.Toml.value -> (t, error) result

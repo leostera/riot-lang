@@ -2,10 +2,12 @@ open Std
 
 type toolchain_install_error =
   | ToolchainDownloadFailed of { message: string }
+
 val toolchain_install_error_message: toolchain_install_error -> string
 
 type toolchain_initialization_error =
   | ToolchainInitFailed of { message: string }
+
 val toolchain_initialization_error_message: toolchain_initialization_error -> string
 
 type build_error =
@@ -22,6 +24,7 @@ type build_error =
     }
   | PlanningFailed of Riot_planner.Workspace_planner.plan_error
   | UnexpectedError of { reason: string }
+
 val error_message: build_error -> string
 
 val execute:

@@ -20,6 +20,7 @@ type plan = {
   package: Riot_model.Package.t;
   providers: generated_provider list;
 }
+
 val plan: workspace_root:Path.t -> target_dir_root:Path.t -> Riot_model.Fix_provider.t list -> plan
 
 val registry_source: Riot_model.Fix_provider.t list -> string

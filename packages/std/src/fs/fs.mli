@@ -131,6 +131,7 @@ module Metadata: sig
     | Fifo
     | Socket
     | Unknown
+
   val file_type: t -> file_type
 
   (** Get the file type *)
@@ -197,6 +198,7 @@ module ReadDir: sig
     path: Path.t;
     kind: entry_kind;
   }
+
   val open_dir: Path.t -> (t, error) Result.t
 
   (** Opaque directory handle *)

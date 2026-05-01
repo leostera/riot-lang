@@ -6,6 +6,7 @@ type request =
 type error =
   | ConflictingSelection
   | PublishFailed of Riot_publish.publish_error
+
 val command: Std.ArgParser.command
 
 val message: error -> string

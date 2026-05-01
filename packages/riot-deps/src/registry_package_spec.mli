@@ -16,6 +16,7 @@ type error =
       requirement: string;
       error: Std.Version.parse_error;
     }
+
 val from_string: string -> (t, error) result
 
 val to_string: t -> string

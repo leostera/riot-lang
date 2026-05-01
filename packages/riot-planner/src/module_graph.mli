@@ -30,6 +30,7 @@ type analyzed_module = {
   unresolved_deps: string list;
 }
 type t
+
 val create: config -> t
 
 val add_direct_dependency_root: t -> package_name:Package_name.t -> root_module:string -> unit

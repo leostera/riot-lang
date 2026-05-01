@@ -2,6 +2,7 @@ type t
 type tick_result =
   | Frame
   | Skip
+
 val make: float -> t
 
 val of_int: int -> t

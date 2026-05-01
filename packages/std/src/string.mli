@@ -40,6 +40,7 @@ open Iter
 
 type t = string
 type utf_decode = Kernel.Unicode.Rune.utf_decode
+
 val empty: t
 
 val is_empty: t -> bool

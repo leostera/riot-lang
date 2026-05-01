@@ -2605,6 +2605,7 @@ module Expr: sig
       }
     | Error of Node.t
     | Unknown of Node.t
+
   val cast: Node.t -> t cast_result
 
   val as_node: t -> Node.t
@@ -3133,6 +3134,7 @@ end
 
 module AttributeExpr: sig
   type t = expr
+
   val cast: expr -> t cast_result
 
   val as_node: t -> Node.t
@@ -3174,6 +3176,7 @@ end
 
 module ExtensionExpr: sig
   type t = expr
+
   val cast: expr -> t cast_result
 
   val as_node: t -> Node.t
@@ -3212,6 +3215,7 @@ end
 module RecordExpr: sig
   type t = expr
   type field = record_expr_field_view
+
   val cast: expr -> t cast_result
 
   val as_node: t -> Node.t
@@ -3323,6 +3327,7 @@ module LocalOpenExpr: sig
         closing_token: token;
       }
     | Unknown of node
+
   val cast: expr -> t cast_result
 
   val as_node: t -> Node.t
@@ -3446,6 +3451,7 @@ module LetModuleExpr: sig
     | Ident
     | Struct
     | Unsupported
+
   val cast: expr -> t cast_result
 
   val as_node: t -> Node.t
@@ -3599,6 +3605,7 @@ end
 
 module LetExceptionExpr: sig
   type t = expr
+
   val cast: expr -> t cast_result
 
   val as_node: t -> Node.t
@@ -3728,6 +3735,7 @@ end
 
 module UnreachableExpr: sig
   type t = expr
+
   val cast: expr -> t cast_result
 
   val as_node: t -> Node.t
@@ -3761,6 +3769,7 @@ module FirstClassModuleExpr: sig
     | NoAscription
     | IdentAscription
     | UnsupportedAscription
+
   val cast: expr -> t cast_result
 
   val as_node: t -> Node.t
@@ -3885,6 +3894,7 @@ module BindingOperatorExpr: sig
     operator: Token.t option;
     binding: let_binding;
   }
+
   val cast: expr -> t cast_result
 
   val as_node: t -> Node.t
@@ -4021,6 +4031,7 @@ module Pattern: sig
     | Exception of { pattern: t }
     | Error of Node.t
     | Unknown of Node.t
+
   val cast: Node.t -> t cast_result
 
   val as_node: t -> Node.t
@@ -4286,6 +4297,7 @@ end
 
 module AttributePattern: sig
   type t = pattern
+
   val cast: pattern -> t cast_result
 
   val as_node: t -> Node.t
@@ -4327,6 +4339,7 @@ end
 
 module ExtensionPattern: sig
   type t = pattern
+
   val cast: pattern -> t cast_result
 
   val as_node: t -> Node.t
@@ -4364,6 +4377,7 @@ end
 
 module LocallyAbstractTypePattern: sig
   type t = pattern
+
   val cast: pattern -> t cast_result
 
   val as_node: t -> Node.t
@@ -4425,6 +4439,7 @@ module FirstClassModulePattern: sig
     | NoAscription
     | IdentAscription
     | UnsupportedAscription
+
   val cast: pattern -> t cast_result
 
   val as_node: t -> Node.t
@@ -4484,6 +4499,7 @@ end
 module RecordPattern: sig
   type t = pattern
   type field = record_pattern_field_view
+
   val cast: pattern -> t cast_result
 
   val as_node: t -> Node.t
@@ -4554,6 +4570,7 @@ module LocalOpenPattern: sig
         closing_token: token;
       }
     | Unknown of node
+
   val cast: pattern -> t cast_result
 
   val as_node: t -> Node.t
@@ -4711,6 +4728,7 @@ module Parameter: sig
         pattern: pattern option;
       }
     | Unknown of Node.t
+
   val cast: Node.t -> t cast_result
 
   val as_node: t -> Node.t
@@ -4839,6 +4857,7 @@ module MatchCase: sig
         body: expr;
       }
     | Unknown of Node.t
+
   val cast: Node.t -> t cast_result
 
   val as_node: t -> Node.t
@@ -4914,6 +4933,7 @@ module LetBinding: sig
         body: expr;
       }
     | Unknown of Node.t
+
   val cast: Node.t -> t cast_result
 
   val as_node: t -> Node.t

@@ -65,6 +65,7 @@ and setting_value_rule =
   | ZeroOrOne
   | InitialWindowSizeRange
   | MaxFrameSizeRange
+
 val error_to_string: error -> string
 
 val frame_type_name: Frame.frame_type -> string

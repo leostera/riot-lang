@@ -4,6 +4,7 @@ open Printf
 
 module Module_name: sig
   type t
+
   val of_string: string -> t
 
   val of_path: string -> t
@@ -53,6 +54,7 @@ end
 
 module Namespace: sig
   type t
+
   val empty: t
 
   val of_parts: Module_name.t list -> t
@@ -80,6 +82,7 @@ end
 
 module Module: sig
   type t
+
   val of_path: ns:Namespace.t -> string -> t
 
   val module_name: t -> Module_name.t
@@ -131,6 +134,7 @@ end
 
 module Build_results: sig
   type t
+
   val create: unit -> t
 
   (* Register a package with it's module interface *)
@@ -305,6 +309,7 @@ end
 
 module Module_registry: sig
   type t
+
   val create: unit -> t
 
   val register: t -> Module.t -> Graph.Node_id.t -> unit

@@ -70,6 +70,7 @@
    for timestamps but may not be monotonic.
 *)
 type t
+
 val epoch: t
 
 (** {1 Accessors} *)

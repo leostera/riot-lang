@@ -43,6 +43,7 @@ type error =
       registry_name: string;
       error: registry_error;
     }
+
 val empty: t
 
 val default: t

@@ -60,6 +60,7 @@ module Context: sig
         pending_path: Path.t option;
         reason: snapshot_mismatch_reason;
       }
+
   val with_fixture: t -> fixture -> t
 
   val with_progress_handler: t -> Test_context.progress_handler -> t
@@ -151,6 +152,7 @@ module Cli: sig
   type execution_mode = Cli.execution_mode =
     | Concurrent
     | Linear
+
   val main:
     ?execution_mode:execution_mode ->
     name:string ->

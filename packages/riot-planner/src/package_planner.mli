@@ -58,6 +58,7 @@ and planning_breakdown = {
   plan_bundle_cache_hit: bool;
   module_plan_duration: Time.Duration.t;
 }
+
 val compute_input_hash:
   ?planner_version:string ->
   package:Package.t ->

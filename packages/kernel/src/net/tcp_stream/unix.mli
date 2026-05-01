@@ -16,11 +16,13 @@ type error =
   | ConnectionAborted
   | NetworkUnreachable
   | System of System_error.t
+
 val error_to_string: error -> string
 
 type connect_result =
   | Connected of t
   | InProgress of t
+
 val connect: Socket_addr.t -> (connect_result, error) Result.t
 
 val close: t -> (unit, error) Result.t

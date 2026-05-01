@@ -7,6 +7,7 @@ open Common
    input
 *)
 type chunk_result = { data: string; remaining: string }
+
 val parse_slice: ?max_chunk_size_line:int -> IO.IoVec.IoSlice.t -> chunk_result parse_result
 
 val parse: ?max_chunk_size_line:int -> string -> chunk_result parse_result
@@ -17,6 +18,7 @@ type body_result = {
   trailers: (string * string) list;
   remaining: string;
 }
+
 val decode_slice:
   ?max_chunk_size:int ->
   ?max_chunk_size_line:int ->

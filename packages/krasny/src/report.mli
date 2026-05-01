@@ -7,6 +7,7 @@ type event =
     }
   | File of Runner.file_result
   | Summary of Runner.summary
+
 val event_to_json: root:Path.t -> event -> Data.Json.t
 
 val write_text_file_result:

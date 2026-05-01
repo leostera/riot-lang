@@ -12,6 +12,7 @@ type error =
   | ManifestMustBeTable of {
       manifest_path: Path.t;
     }
+
 val error_message: error -> string
 
 val dependency_hash:

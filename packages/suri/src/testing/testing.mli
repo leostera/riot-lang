@@ -23,4 +23,5 @@ type outcome = App.outcome =
 type response_error = App.response_error =
   | InvalidRequest of Request.error
   | ExpectedResponseButUpgraded
+
 val response_error_to_string: response_error -> string

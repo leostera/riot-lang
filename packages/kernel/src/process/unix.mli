@@ -3,6 +3,7 @@ type error =
   | File of Fs.File.error
   | InvalidStatus of { tag: int }
   | System of System_error.t
+
 val error_to_string: error -> string
 
 type status =
@@ -44,6 +45,7 @@ type stdio_config = {
   stdout: output_stdio;
   stderr: error_stdio;
 }
+
 val default_stdio: stdio_config
 
 val spawn:

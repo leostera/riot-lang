@@ -71,6 +71,7 @@
    Returns a profile that matches the detected capability.
 *)
 type t
+
 val from_env: unit -> t
 
 (** [default] snapshots {!from_env} at module initialization time. *)

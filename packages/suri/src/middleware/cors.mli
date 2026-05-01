@@ -116,6 +116,7 @@ open Std
 
 type config_error =
   | WildcardOriginWithCredentials
+
 val config_error_to_string: config_error -> string
 
 type origin_error =
@@ -123,6 +124,7 @@ type origin_error =
       origin: string;
       allowed: string list;
     }
+
 val origin_error_to_string: origin_error -> string
 
 type preflight_error =
@@ -132,6 +134,7 @@ type preflight_error =
       requested: string list;
       allowed: string list;
     }
+
 val preflight_error_to_string: preflight_error -> string
 
 (**

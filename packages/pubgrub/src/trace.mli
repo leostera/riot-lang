@@ -43,6 +43,7 @@ type event =
       solution: (package * version) list;
     }
 type t
+
 val create: unit -> t
 
 val record: t -> event -> unit

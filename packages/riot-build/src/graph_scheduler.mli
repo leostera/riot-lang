@@ -2,6 +2,7 @@ open Std
 
 module Node_id: sig
   type t
+
   val equal: t -> t -> bool
 
   val compare: t -> t -> Order.t
@@ -14,6 +15,7 @@ module Run_config: sig
     | Fail_fast
     | Continue_on_failure
   type t
+
   val make: parallelism:int -> mode:mode -> unit -> t
 
   val parallelism: t -> int
@@ -23,6 +25,7 @@ end
 
 module Graph: sig
   type ('work, 'mutation) t
+
   val create:
     apply_mutation:(('work, 'mutation) t -> 'mutation -> unit) ->
     unit ->
@@ -39,6 +42,7 @@ end
 
 module Handle: sig
   type ('work, 'mutation, 'event) t
+
   val add_node: ('work, 'mutation, 'event) t -> payload:'work -> Node_id.t
 
   val add_dependency: ('work, 'mutation, 'event) t -> node:Node_id.t -> depends_on:Node_id.t -> unit
@@ -56,6 +60,7 @@ type ('work, 'result, 'error) node_result = {
 type ('work, 'result, 'error) run_result = {
   results: ('work, 'result, 'error) node_result list;
 }
+
 val run:
   config:Run_config.t ->
   on_event:('event -> unit) ->

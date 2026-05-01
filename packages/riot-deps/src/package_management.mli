@@ -125,6 +125,7 @@ type error =
       workspace_root: Path.t;
     }
   | LockRefreshFailed of Error.t
+
 val error_message: error -> string
 
 val load_source_workspace:

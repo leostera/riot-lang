@@ -10,6 +10,7 @@ open Std
    @param exclude_patterns Directory names to exclude (default: ["."; "_build"; "target"])
 *)
 type t
+
 val create:
   root:Path.t ->
   ?exclude_patterns:string list ->

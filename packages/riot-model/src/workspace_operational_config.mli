@@ -47,6 +47,7 @@ type error =
       path: Path.t;
       error: invalid_config_error;
     }
+
 val default_cache_policy: cache_policy
 
 val default_test_policy: test_policy

@@ -23,6 +23,7 @@ type run_result = {
   files: file_result list;
   summary: summary;
 }
+
 val run_file:
   ?pipeline:Pipeline.t ->
   ?pipeline_for_file:(Path.t -> Pipeline.t) ->

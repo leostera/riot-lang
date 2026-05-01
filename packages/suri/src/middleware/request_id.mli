@@ -32,6 +32,7 @@ type validation_error =
   | EmptyRequestId
   | RequestIdTooLong of { length: int; max_length: int }
   | InvalidRequestIdCharacter of { char: char; index: int }
+
 val validation_error_to_string: validation_error -> string
 
 val validate_request_id: string -> (unit, validation_error) Std.result

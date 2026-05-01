@@ -1,5 +1,6 @@
 (** Thin wrapper around OCaml condition variables. *)
 type t
+
 val create: unit -> t
 
 val wait: t -> Mutex.t -> unit

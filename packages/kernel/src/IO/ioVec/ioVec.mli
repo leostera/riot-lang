@@ -1,6 +1,7 @@
 module IoSlice: sig
   type t
   type error = Error.t
+
   val empty: t
 
   val create: size:int -> (t, error) Result.t
@@ -70,6 +71,7 @@ end
 type segment = IoSlice.t
 type t
 type error = Error.t
+
 val empty: t
 
 val create: ?count:int -> size:int -> unit -> (t, error) Result.t

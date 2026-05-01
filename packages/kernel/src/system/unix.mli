@@ -7,6 +7,7 @@ module Host: sig
     os: string;
     abi: string option;
   }
+
   val current: t
 
   val to_string: t -> string
@@ -23,6 +24,7 @@ module OS: sig
     | Unix
     | Win32
     | Cygwin
+
   val current: t
 
   val to_string: t -> string

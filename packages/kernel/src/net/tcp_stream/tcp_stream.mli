@@ -16,6 +16,7 @@ type error =
   | ConnectionAborted
   | NetworkUnreachable
   | System of System_error.t
+
 val error_to_string: error -> string
 
 type connect_result =

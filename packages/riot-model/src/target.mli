@@ -12,6 +12,7 @@ type t = System.TargetTriple.t = {
 module Set: sig
   type elt = t
   type t
+
   val empty: unit -> t
 
   val singleton: elt -> t
@@ -38,6 +39,7 @@ type resolve_error = {
   pattern: string;
   available_targets: t list;
 }
+
 val current: t
 
 val error_message: error -> string

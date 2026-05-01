@@ -52,6 +52,7 @@ type entry = {
 }
 (** Open a directory for reading. *)
 type item = entry
+
 val open_dir: Path.t -> (t, error) result
 
 (**

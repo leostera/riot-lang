@@ -80,6 +80,7 @@ module Type: sig
       | Labelled of string
       (** Optional labeled argument, for example `?x:int -> ...`. *)
       | Optional of string
+
     val equal: t -> t -> bool
   end
 

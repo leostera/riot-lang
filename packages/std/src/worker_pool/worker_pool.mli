@@ -83,6 +83,7 @@ module DynamicWorkerPool: sig
   }
   (** Get the task_ref from a worker for type equality checking. *)
   type 'task worker
+
   val get_worker_task_ref: 'task worker -> 'task Ref.t
 
   (** {1 Advanced Mode - Dynamic Task Assignment} *)

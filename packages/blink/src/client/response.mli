@@ -23,6 +23,7 @@ type t = {
   body: string;
   headers: (string * string) list;
 }
+
 val make: ?headers:(string * string) list -> status:int -> body:string -> unit -> t
 
 val status_class: int -> status_class

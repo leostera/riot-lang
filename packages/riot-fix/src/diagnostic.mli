@@ -15,6 +15,7 @@ type kind = Fixme.Diagnostic.kind =
       message: string;
     }
 type t = Fixme.Diagnostic.t
+
 val make:
   severity:severity ->
   kind:kind ->
@@ -58,6 +59,7 @@ type grouped = {
   suggestion: string option;
   fix: Fix.fix option;
 }
+
 val group_diagnostics: t list -> grouped list
 
 val grouped_to_formatted_output: file:Path.t -> source:string -> grouped -> string

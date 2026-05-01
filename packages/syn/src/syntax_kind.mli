@@ -236,6 +236,7 @@ type t =
   | VARIANT_CONSTRUCTOR
   | ERROR
   | MISSING
+
 val equal: t -> t -> bool
 
 val not_equal: t -> t -> bool

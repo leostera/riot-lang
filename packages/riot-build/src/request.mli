@@ -9,6 +9,7 @@ type dev_artifacts = Riot_model.Package.dev_artifacts = {
   benches: bool;
 }
 type t
+
 val make:
   workspace:Riot_model.Workspace.t ->
   packages:Riot_model.Package_name.t list ->

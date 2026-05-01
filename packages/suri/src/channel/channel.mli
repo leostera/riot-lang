@@ -78,6 +78,7 @@ module Handler: sig
     | InitializationFailed of initialization_error
     | UnknownOpcode of int
   type reported_error
+
   val reported_error: reported_error -> error
 
   val reported_error_to_string: reported_error -> string

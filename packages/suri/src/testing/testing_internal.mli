@@ -11,6 +11,7 @@ module Connection: sig
     | Closed
     | FileError of Std.Fs.error
     | InvalidRange of send_file_range_error
+
   val write_all_with:
     write:(bytes -> pos:int -> len:int -> (int, 'error) Std.result) ->
     string ->
@@ -25,6 +26,7 @@ module SocketPool: sig
     | BindFailed of Std.Net.TcpListener.error
     | InvalidAcceptors of int
     | InvalidBufferSize of int
+
   val validate_start_options: acceptors:int -> buffer_size:int -> (unit, error) Std.result
 end
 
@@ -49,6 +51,7 @@ module Channel: sig
     | Continue of 'state
     | Push of Http.Ws.Frame.t list * 'state
     | Error of 'error
+
   val initialize: Channel.Handler.t -> (Channel.Handler.t, reported_error) result
 
   val reported_error: reported_error -> error
@@ -112,6 +115,7 @@ module Http1: sig
     | UnsupportedTransferEncoding of { value: string }
   type request_header_error =
     | MissingHostHeader
+
   val serialize_response: Web_server.Response.t -> (string, serialization_error) Std.result
 
   val parse_error_of_upstream_error: Http.Http1.Common.error -> parse_error
@@ -166,6 +170,7 @@ module Http2: sig
         value: string;
         reason: Std.Net.Uri.error;
       }
+
   val headers_to_request:
     Http.Http2.Hpack.header list ->
     string ->

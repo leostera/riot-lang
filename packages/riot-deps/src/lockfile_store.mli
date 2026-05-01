@@ -21,6 +21,7 @@ type error =
       path: Path.t;
       error: IO.error;
     }
+
 val error_message: error -> string
 
 val read: workspace_root:Path.t -> (Riot_model.Lockfile.t option, error) result

@@ -55,6 +55,7 @@ type t =
   | Exception of {
       exn: exn;
     }
+
 val to_string: t -> string
 
 val to_json: t -> Std.Data.Json.t

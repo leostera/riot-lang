@@ -119,6 +119,7 @@ type config = {
      Default: returns simple 406/415 with plain text body.
   *)
 }
+
 val default_config: config
 
 (**
@@ -253,6 +254,7 @@ type content_type_rejection =
 type validation_error =
   | AcceptRejected of accept_rejection
   | ContentTypeRejected of content_type_rejection
+
 val quality_parse_error_to_string: quality_parse_error -> string
 
 val accept_parse_error_to_string: accept_parse_error -> string

@@ -32,6 +32,7 @@ type t = {
   first_failure: action_error option;
   ocamlc_warnings: string list;
 }
+
 val summarize_completed:
   action_graph:Action_graph.t ->
   completed_results:(Graph.SimpleGraph.Node_id.t, execution_result) HashMap.t ->

@@ -4,6 +4,7 @@ module IoVec: sig
   module IoSlice: sig
     type t
     type error = Error.t
+
     val empty: t
 
     val create: size:int -> (t, error) Result.t
@@ -78,6 +79,7 @@ module IoVec: sig
   type segment = IoSlice.t
   type t
   type error = Error.t
+
   val empty: t
 
   val create: ?count:int -> size:int -> unit -> (t, error) Result.t
@@ -110,6 +112,7 @@ module Buffer: sig
 
   type t
   type error = Error.t
+
   val create: ?size:int -> unit -> (t, error) Result.t
 
   val length: t -> int
@@ -161,6 +164,7 @@ module Stdin: sig
   type error =
     | InvalidSlice of { pos: int; len: int; buffer_len: int }
     | System of System_error.t
+
   val error_to_string: error -> string
 
   val read: ?pos:int -> ?len:int -> bytes -> (int, error) Result.t
@@ -174,6 +178,7 @@ module Stdout: sig
   type error =
     | InvalidSlice of { pos: int; len: int; buffer_len: int }
     | System of System_error.t
+
   val error_to_string: error -> string
 
   val write: ?pos:int -> ?len:int -> bytes -> (int, error) Result.t
@@ -193,6 +198,7 @@ module Stderr: sig
   type error =
     | InvalidSlice of { pos: int; len: int; buffer_len: int }
     | System of System_error.t
+
   val error_to_string: error -> string
 
   val write: ?pos:int -> ?len:int -> bytes -> (int, error) Result.t

@@ -34,6 +34,7 @@ and error =
 and payload_length_encoding =
   | PayloadLength16
   | PayloadLength64
+
 val error_to_string: error -> string
 
 val parse: ?max_payload_length:int -> role:role -> string -> Frame.t parse_result

@@ -690,6 +690,7 @@ end
 module type ToolProtocol = sig
   type tool_request
   type tool_response
+
   val tools: tool list
 
   val resources: resource list

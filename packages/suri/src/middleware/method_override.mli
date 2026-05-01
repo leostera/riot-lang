@@ -114,6 +114,7 @@ type override_error =
       method_: Net.Http.Method.t;
       allowed: Net.Http.Method.t list;
     }
+
 val override_error_to_string: override_error -> string
 
 val allowed_override_methods: Net.Http.Method.t list

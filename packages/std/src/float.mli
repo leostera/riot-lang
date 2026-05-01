@@ -1,4 +1,5 @@
 type t = float
+
 val max_float: t
 
 val min_float: t

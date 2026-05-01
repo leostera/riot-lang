@@ -32,6 +32,7 @@ type error =
       related_path: Path.t option;
       detail: io_detail;
     }
+
 val error_message: error -> string
 
 (** Create one logical store handle rooted at [root] scoped to [ns]. *)

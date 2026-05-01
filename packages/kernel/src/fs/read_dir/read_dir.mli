@@ -15,6 +15,7 @@ type t
 type error =
   | Closed
   | File of File.error
+
 val error_to_string: error -> string
 
 (**

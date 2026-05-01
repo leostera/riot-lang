@@ -3,6 +3,7 @@ open Riot_model
 
 (** OCamldep wrapper - handles dependency analysis *)
 type t
+
 val make: Path.t -> t
 
 val path: t -> Path.t

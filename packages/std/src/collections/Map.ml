@@ -5,6 +5,7 @@ open Kernel
 module type S = sig
   type key
   type +'value t
+
   val empty: 'value t
 
   val is_empty: 'value t -> bool

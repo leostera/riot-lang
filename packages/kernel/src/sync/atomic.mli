@@ -1,5 +1,6 @@
 (** Atomic references. *)
 type !'value t
+
 val make: 'value -> 'value t
 
 val make_contended: 'value -> 'value t

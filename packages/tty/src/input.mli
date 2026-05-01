@@ -183,6 +183,7 @@ end
 
 module Tokenizer: sig
   type t
+
   val create: unit -> t
 
   val feed: t -> string -> t * Token.t list
@@ -192,6 +193,7 @@ end
 
 module Parser: sig
   type t
+
   val create: unit -> t
 
   val feed: t -> string -> t * event list

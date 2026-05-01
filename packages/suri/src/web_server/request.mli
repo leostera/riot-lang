@@ -10,6 +10,7 @@ open Std
 
 (** Create a request from parsed HTTP data *)
 type t
+
 val of_http: body:string -> Net.Http.Request.t -> t
 
 (** Returns the HTTP method *)

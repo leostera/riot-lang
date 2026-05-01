@@ -1,4 +1,5 @@
 type t
+
 val make:
   ?percent:float ->
   ?full_char:string ->

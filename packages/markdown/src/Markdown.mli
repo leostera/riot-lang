@@ -54,6 +54,7 @@ module Syntax_kind: sig
     | Raw_html
     | Text
     | Error
+
   val to_string: t -> string
 end
 
@@ -184,6 +185,7 @@ module Document: sig
     reused_suffix_blocks: int;
     reparsed_full: bool;
   }
+
   val parse: string -> t
 
   val parse_gfm: string -> t

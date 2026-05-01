@@ -66,6 +66,7 @@ type publish_plan = {
   locator: string;
   selector: string;
 }
+
 val message: error -> string
 
 val validate_publish_metadata: package:Riot_model.Package.t -> (Std.Version.t, error) result

@@ -351,6 +351,7 @@ type upgrade_info = private {
   opts: Channel.Handler.upgrade_opts;
   handler: Channel.Handler.t;
 }
+
 val get_upgrade: t -> upgrade_info option
 
 (**

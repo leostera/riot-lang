@@ -20,4 +20,5 @@ type config = {
   scope: Fix_config.scope option;
   coordinator: Pid.t;
 }
+
 val start: config -> Pid.t

@@ -1,4 +1,5 @@
 type 'value t = 'value array
+
 val make: count:int -> value:'value -> 'value t
 
 val init: count:int -> fn:(int -> 'value) -> 'value t

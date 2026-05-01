@@ -8,6 +8,7 @@ type 'model t = {
   update: Event.t -> 'model -> 'model * Command.t;
   view: 'model -> Gooey.Element.t;
 }
+
 val make:
   init:('model -> 'model * Command.t) ->
   update:(Event.t -> 'model -> 'model * Command.t) ->

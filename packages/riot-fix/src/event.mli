@@ -17,4 +17,5 @@ type t =
       summary: Runner.summary;
       limit_reached: bool;
     }
+
 val to_json: t -> Data.Json.t

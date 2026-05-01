@@ -6,6 +6,7 @@ type error =
 type unresolved
 type locked
 type 'stage t
+
 val error_message: error -> string
 
 val target: 'a t -> Riot_model.Target.t

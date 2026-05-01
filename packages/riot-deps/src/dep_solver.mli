@@ -13,6 +13,7 @@ type context = {
   existing_lock: Riot_model.Lockfile.t option;
   workspace: Riot_model.Workspace_manifest.t;
 }
+
 val lock_deps:
   ?emit:event_sink ->
   mode:mode ->

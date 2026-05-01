@@ -70,6 +70,7 @@ type t =
   | MaterializationFailed of { error: string }
   | ProjectionFailed of { error: string }
   | Unexpected of { error: string }
+
 val headline: t -> string
 
 val detail_lines: t -> string list

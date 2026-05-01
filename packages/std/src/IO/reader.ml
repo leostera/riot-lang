@@ -14,6 +14,7 @@ let panic_buffer_error = fun fn error ->
 
 module type Read = sig
   type t
+
   val read: t -> into:Buffer.t -> int result
 
   val read_vectored: t -> into:IoVec.t -> int result

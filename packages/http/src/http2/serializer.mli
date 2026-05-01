@@ -49,6 +49,7 @@ type error =
       expected: setting_value_rule;
     }
   | InvalidErrorCode of { code: int }
+
 val error_to_string: error -> string
 
 val serialize_frame: Frame.t -> (string, error) Result.t

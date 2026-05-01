@@ -95,6 +95,7 @@ type error =
   | BindFailed of Net.TcpListener.error
   | InvalidAcceptors of int
   | InvalidBufferSize of int
+
 val validate_start_options: acceptors:int -> buffer_size:int -> (unit, error) result
 
 val start_link:

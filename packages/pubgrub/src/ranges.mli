@@ -4,6 +4,7 @@ type 'v bound =
   | Excluded of 'v
 type 'v range = 'v bound * 'v bound
 type 'v t
+
 val empty: 'v t
 
 val full: 'v t

@@ -117,6 +117,7 @@ type fix_response = Api.fix_response =
       rule_id: Rule_id.t;
       output: string;
     }
+
 val check_request: cwd:Path.t -> target:Path.t -> fix_request
 
 val fix_request_of_matches: ArgParser.matches -> (fix_request, exn) result

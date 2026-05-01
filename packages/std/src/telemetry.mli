@@ -35,6 +35,7 @@
    server is already running.
 *)
 type event = ..
+
 val start: unit -> Pid.t
 
 (** Emit a telemetry event. All attached handlers will receive it. *)

@@ -20,6 +20,7 @@ type t = {
   auth_required: bool;
   deadline: Time.Duration.t option;
 }
+
 val make:
   ?headers:(string * string) list ->
   ?body:string ->

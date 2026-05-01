@@ -12,6 +12,7 @@ type error =
   | File of Kernel.Fs.File.error
   | InvalidStatus of { tag: int }
   | System of Kernel.SystemError.t
+
 val error_to_string: error -> string
 
 type status =

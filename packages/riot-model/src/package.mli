@@ -173,6 +173,7 @@ type resolved = {
   build_resolved: resolved_dependency list;
   dev_resolved: resolved_dependency list;
 }
+
 val equal: t -> t -> bool
 
 val is_workspace_member: t -> bool

@@ -22,6 +22,7 @@ type t = {
   scope: Fix_config.scope option;
   action: action;
 }
+
 val check_request: cwd:Path.t -> target:Path.t -> t
 
 val of_matches: ArgParser.matches -> (t, exn) result

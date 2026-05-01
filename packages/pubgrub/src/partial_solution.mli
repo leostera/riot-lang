@@ -11,6 +11,7 @@ type same_decision_levels = {
   cause: Incompatibility.t;
   extra_term: Term.t option;
 }
+
 val empty: unit -> t
 
 val add_decision: t -> package -> version -> t

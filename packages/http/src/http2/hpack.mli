@@ -18,6 +18,7 @@ open Std
 type header = { name: string; value: string }
 type table_size_error =
   | InvalidTableSize of { size: int }
+
 val table_size_error_to_string: table_size_error -> string
 
 type decode_error =
@@ -30,10 +31,12 @@ type decode_error =
   | InvalidNameIndex of int
   | DynamicTableSizeUpdateFailed of table_size_error
   | DynamicTableSizeUpdateAfterHeaders
+
 val decode_error_to_string: decode_error -> string
 
 type encode_error =
   | HeaderNotIndexed of header
+
 val encode_error_to_string: encode_error -> string
 
 (** Encoding representation for a header field *)

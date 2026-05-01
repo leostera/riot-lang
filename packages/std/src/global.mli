@@ -44,6 +44,7 @@ type format = Format.t
 type ('value, 'error) result = ('value, 'error) Kernel.result =
   | Ok of 'value
   | Error of 'error
+
 val format: format list -> string
 
 val ( = ): 'value -> 'value -> bool

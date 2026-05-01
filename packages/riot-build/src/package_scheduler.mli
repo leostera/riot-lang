@@ -37,6 +37,7 @@ type event =
       failed_count: int;
       error_count: int;
     }
+
 val run:
   parallelism:int ->
   ?on_event:(event -> unit) ->

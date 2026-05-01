@@ -38,6 +38,7 @@ type t = {
   mutable open_modules: t G.node list;
   kind: kind;
 }
+
 val file_to_string: file -> string
 
 val kind_to_string: kind -> string

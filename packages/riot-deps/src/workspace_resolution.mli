@@ -1,6 +1,7 @@
 open Std
 
 type event_sink = Riot_model.Event.kind -> unit
+
 val ensure_lock:
   ?emit:event_sink ->
   ?existing_lock:Riot_model.Lockfile.t option ->

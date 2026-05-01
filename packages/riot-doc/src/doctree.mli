@@ -43,6 +43,7 @@ type package_doc = {
   modules: module_doc list;
   dependencies: dependency_link list;
 }
+
 val item_kind_slug: item_kind -> string
 
 val item_kind_title: item_kind -> string

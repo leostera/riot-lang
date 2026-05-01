@@ -19,4 +19,5 @@ type t = {
   fps: int;
   output: output_target;
 }
+
 val make: ?render_mode:render_mode -> ?fps:int -> ?output:output_target -> unit -> t

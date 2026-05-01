@@ -11,6 +11,7 @@ type t = {
   pid: Pid.t option;
   custom: (string * string) list;
 }
+
 val empty: t
 
 (** Create metadata with the given fields *)

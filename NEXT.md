@@ -10,6 +10,8 @@
 
 * revisit all cli output -- i'd like it to be more inlined/interactive
 
+* `riot build --all` skips building dependencies in test/bench/example mode!
+
 # Next
 
 * `riot lock` to relock project deps

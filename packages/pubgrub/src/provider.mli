@@ -13,6 +13,7 @@ type 'error t = {
   get_dependencies: package -> version -> (dependencies, 'error) result;
 }
 type offline
+
 val create_offline: unit -> offline
 
 val add_package: offline -> package -> version -> dependency_list -> unit

@@ -28,6 +28,7 @@ type error =
       command: string;
       error: Command.error;
     }
+
 val message: error -> string
 
 val discover: package_root:Path.t -> (t, error) result

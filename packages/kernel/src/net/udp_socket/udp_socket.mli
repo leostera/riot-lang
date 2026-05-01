@@ -13,6 +13,7 @@ type error =
   | AddressInUse
   | AddressNotAvailable
   | System of System_error.t
+
 val error_to_string: error -> string
 
 (** Use `bind addr` to create a nonblocking UDP socket immediately. *)

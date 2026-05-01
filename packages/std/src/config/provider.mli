@@ -11,6 +11,7 @@ type t =
       path: Path.t;
     }
   | Static of { toml_string: string }
+
 val env: ?env:env -> unit -> t
 
 (** The empty configuration provider *)

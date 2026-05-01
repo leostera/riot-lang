@@ -28,6 +28,7 @@ type error = {
 type t
 type connection
 type message = Connection.message
+
 val make: ?config:Config.t -> unit -> t
 
 val execute: t -> Request.t -> (Response.t * Telemetry.t, error) Std.result
@@ -70,6 +71,7 @@ module SSE: sig
     event_type: string option;
     id: string option;
   }
+
   val await: t -> connection -> event Std.Iter.MutIterator.t
 end
 
@@ -83,6 +85,7 @@ module WebSocket: sig
     | Ping of string
     | Pong of string
     | Close of int option * string
+
   val connect: client -> Std.Net.Uri.t -> (t, error) Std.result
 
   val send_text: client -> t -> string -> (unit, error) Std.result

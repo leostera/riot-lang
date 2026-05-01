@@ -21,6 +21,7 @@ type error =
   | FileError of Std.Fs.error
   | InvalidRange of send_file_range_error
 type send_file_error = error
+
 val make:
   ?protocol:string option ->
   accepted_at:Std.Time.Instant.t ->

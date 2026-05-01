@@ -20,6 +20,7 @@ type compiler_config = Package.compiler_config
 type foreign_dependency = Package.foreign_dependency
 type error = Package.manifest_error
 type t = Package.manifest_spec
+
 val of_package: Package.t -> t
 
 val is_workspace_member: t -> bool

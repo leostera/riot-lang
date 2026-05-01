@@ -123,6 +123,7 @@ type validation_error =
   | HostPrefixRequiresSecure
   | HostPrefixRequiresNoDomain
   | HostPrefixRequiresRootPath
+
 val validation_error_to_string: validation_error -> string
 
 type parse_set_cookie_error =
@@ -141,6 +142,7 @@ and max_age_error =
 and same_site_error =
   | EmptySameSite
   | UnknownSameSite of { value: string }
+
 val parse_set_cookie_error_to_string: parse_set_cookie_error -> string
 
 (** {2 Parsing} *)

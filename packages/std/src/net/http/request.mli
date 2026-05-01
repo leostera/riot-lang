@@ -269,6 +269,7 @@ module Builder: sig
   type request = t
   (** Creates a new request builder. *)
   type t
+
   val create: Method.t -> Uri.t -> t
 
   (** Sets the HTTP method. *)

@@ -25,6 +25,7 @@ module Buffer: sig
   type t
   type marker
   type completed
+
   val create: ?event_capacity:int -> ?diagnostic_capacity:int -> unit -> t
 
   val start_node: t -> marker

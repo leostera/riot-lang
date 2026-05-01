@@ -5,6 +5,7 @@ type policy = {
   window: Time.Duration.t;
 }
 type t
+
 val policy: capacity:int -> window:Time.Duration.t -> policy
 
 val create: capacity:int -> window:Time.Duration.t -> Time.Instant.t -> t

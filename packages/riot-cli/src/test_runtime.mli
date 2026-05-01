@@ -133,6 +133,7 @@ type test_error =
       reason: string;
     }
   | SuitesFailed of int
+
 val collect_suite_binaries:
   Workspace.t ->
   ?package_filters:Package_name.t list ->

@@ -81,6 +81,7 @@ type error =
   | ExportSourceMissing of {
       path: Std.Path.t;
     }
+
 val error_message: error -> string
 
 type export_entry = Manifest.export_entry = {

@@ -4,6 +4,7 @@ type section =
   | Runtime
   | Build
   | Dev
+
 val section_name: section -> string
 
 type error =
@@ -31,6 +32,7 @@ type error =
   | ManifestMustBeTable of {
       path: Path.t;
     }
+
 val error_message: error -> string
 
 val update_dependency_section:

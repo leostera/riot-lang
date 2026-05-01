@@ -61,6 +61,7 @@ type t = {
   overline: bool;
   (** Overlined text *)
 }
+
 val default: t
 
 (**

@@ -7,6 +7,7 @@ type t
 type watch_id
 (** Create a new file system watcher *)
 type error = IO.error
+
 val create: unit -> (t, error) result
 
 (** Watch a path for changes *)

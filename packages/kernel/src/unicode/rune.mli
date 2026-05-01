@@ -4,6 +4,7 @@ type t = int [@@ immediate]
 type utf_decode = int [@@ immediate]
 type error =
   | BadRune of { int: int }
+
 val min: t
 
 val max: t

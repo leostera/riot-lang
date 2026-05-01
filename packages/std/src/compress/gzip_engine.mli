@@ -21,6 +21,7 @@ type flush =
   | No_flush
   | Sync_flush
   | Finish
+
 val create_encoder: ?level:int -> unit -> (encoder, error) result
 
 val create_decoder: unit -> (decoder, error) result

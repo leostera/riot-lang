@@ -31,4 +31,5 @@ type event = Event.t =
 type output_mode =
   | Silent
   | Report of Reporter.format
+
 val no_event: event -> unit

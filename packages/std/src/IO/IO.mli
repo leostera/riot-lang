@@ -83,6 +83,7 @@ type file_kind =
   | Character
   | Fifo
   | Socket
+
 val of_system_error: Kernel.SystemError.t -> error
 
 val of_system_error_code: int -> error
@@ -112,6 +113,7 @@ module Writer = Writer
 module Stdin: sig
   type t
   type nonrec error = error
+
   val open_: ?chunk_size:int -> unit -> t
 
   val read: t -> into:Buffer.t -> int result
@@ -123,6 +125,7 @@ end
 
 module Stdout: sig
   type nonrec error = error
+
   val write: from:Buffer.t -> int result
 
   val write_vectored: from:IoVec.t -> int result
@@ -132,6 +135,7 @@ end
 
 module Stderr: sig
   type nonrec error = error
+
   val write: from:Buffer.t -> int result
 
   val write_vectored: from:IoVec.t -> int result

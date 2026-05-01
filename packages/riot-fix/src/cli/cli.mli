@@ -29,6 +29,7 @@ type event = Types.event =
       summary: Runner.summary;
       limit_reached: bool;
     }
+
 val command: ArgParser.command
 
 val list_rules_output: format:Reporter.format -> string

@@ -20,6 +20,7 @@ type t = {
   mutable resume_mode: mode option;
   input_buffer: input_buffer;
 }
+
 val write_to_fd: Platform.fd -> string -> unit
 
 val write_escape: t -> string -> unit

@@ -34,6 +34,7 @@ module DefaultHasher: Hasher.Intf
 (** Random state for HashMap/HashSet - provides seeded hashing. *)
 module RandomState: sig
   type t
+
   val create: unit -> t
 
   (** Create a new random state with random seeds *)

@@ -17,6 +17,7 @@ type compile_error = {
   offset: int option;
 }
 type match_ = { start: int; stop: int }
+
 val compile: string -> (t, compile_error) result
 
 val is_match: t -> string -> bool

@@ -9,6 +9,7 @@ type t =
   | Info
   | Warn
   | Error
+
 val to_int: t -> int
 
 (** Convert level to string representation *)

@@ -77,6 +77,7 @@ type parse_error =
   | MissingMultipartBoundary
   (** Multipart request did not provide a boundary parameter. *)
   | UnsupportedMultipart of { boundary: string }
+
 val default_config: unit -> config
 
 (** Default configuration: urlencoded and JSON parsing, 10MB limit *)

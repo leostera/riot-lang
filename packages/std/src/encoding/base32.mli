@@ -3,6 +3,7 @@ open Global
 
 type decode_error =
   | InvalidBase32
+
 val encode: string -> string
 
 val encode_bytes: bytes -> string

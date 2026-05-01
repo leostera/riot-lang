@@ -10,10 +10,12 @@ module BuildLock = Build_lock
 
 type toolchain_install_error = Build_core.toolchain_install_error =
   | ToolchainDownloadFailed of { message: string }
+
 val toolchain_install_error_message: toolchain_install_error -> string
 
 type toolchain_initialization_error = Build_core.toolchain_initialization_error =
   | ToolchainInitFailed of { message: string }
+
 val toolchain_initialization_error_message: toolchain_initialization_error -> string
 
 module Internal: sig
@@ -78,6 +80,7 @@ type error = Build_core.error =
     }
   | InvalidRequestedParallelism of int
   | UnexpectedError of { reason: string }
+
 val error_message: error -> string
 
 val build: ?on_event:(Event.t -> unit) -> Request.t -> (Build_result.t, error) result

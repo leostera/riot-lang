@@ -4,6 +4,7 @@ type error =
     }
   | InvalidMaxEvents of { max_events: int }
   | System of System_error.t
+
 val error_to_string: error -> string
 
 module Token: sig
@@ -28,6 +29,7 @@ end
 
 module Interest: sig
   type t
+
   val readable: t
 
   val writable: t
@@ -136,6 +138,7 @@ module Source: sig
 
   module type Intf = sig
     type t
+
     val register: t -> Adapter.Selector.t -> Token.t -> Interest.t -> (unit, error) Result.t
 
     val reregister: t -> Adapter.Selector.t -> Token.t -> Interest.t -> (unit, error) Result.t

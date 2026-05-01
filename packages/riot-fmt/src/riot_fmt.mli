@@ -1,6 +1,7 @@
 open Std
 
 type event = Krasny.Report.event
+
 val command: Std.ArgParser.command
 
 val event_to_json: root:Path.t -> event -> Data.Json.t

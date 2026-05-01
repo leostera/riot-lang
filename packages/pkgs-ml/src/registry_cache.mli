@@ -4,6 +4,7 @@ open Std
 type t
 type create_error =
   | HomeDirectoryUnavailable
+
 val create_error_message: create_error -> string
 
 (**

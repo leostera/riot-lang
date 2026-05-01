@@ -33,6 +33,7 @@ module type Intf = sig
 
   (** Create a new state state *)
   type state
+
   val create: unit -> state
 
   (** Write immutable string data to the state. *)

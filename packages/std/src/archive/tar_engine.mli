@@ -32,6 +32,7 @@ type read_result =
 type skip_result =
   | Need_input
   | Skipped
+
 val create_reader: unit -> (reader, error) result
 
 val feed_reader: reader -> src:bytes -> src_pos:int -> src_len:int -> (int, error) result

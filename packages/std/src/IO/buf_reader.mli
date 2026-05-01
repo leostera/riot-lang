@@ -5,6 +5,7 @@ module IoSlice = IoSlice
 
 type 'value result = ('value, Error.t) Result.t
 type t
+
 val from_reader: ?size:int -> Reader.t -> t
 
 val to_reader: t -> Reader.t

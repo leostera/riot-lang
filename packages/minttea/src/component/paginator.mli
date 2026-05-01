@@ -2,6 +2,7 @@ type style =
   | Dots
   | Numerals
 type t
+
 val make:
   ?style:style ->
   ?page:int ->

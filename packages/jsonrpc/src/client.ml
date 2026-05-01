@@ -6,6 +6,7 @@ open Std.Result.Syntax
 
 module type Transport = sig
   type t
+
   val send: t -> string -> (unit, string) result
 
   val receive: t -> (string, string) result

@@ -20,6 +20,7 @@ type error =
   | HandlerCalledAfterDetection
   | UnknownProtocol
   | DetectionLimitExceeded of { limit: int }
+
 val to_string_error: error -> string
 
 (**

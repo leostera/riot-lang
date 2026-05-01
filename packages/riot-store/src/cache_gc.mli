@@ -85,6 +85,7 @@ type event =
       build_root: Path.t;
       error: string;
     }
+
 val clean: workspace:Workspace.t -> (summary, error) result
 
 val clean_with_events: workspace:Workspace.t -> on_event:(event -> unit) -> (summary, error) result

@@ -31,6 +31,7 @@ type t = {
   budget_remaining: int option;
   circuit_state: Circuit_breaker.state;
 }
+
 val lifecycle_to_string: lifecycle -> string
 
 val attempt:

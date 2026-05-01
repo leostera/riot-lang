@@ -8,6 +8,7 @@ module Host: sig
     os: string;
     abi: string option;
   }
+
   val current: t
 
   (** Use `to_string host` to render `host` as `arch-vendor-os[-abi]`. *)
@@ -26,6 +27,7 @@ module OS: sig
     | Unix
     | Win32
     | Cygwin
+
   val current: t
 
   (** Use `to_string value` for the stable legacy rendering used across Riot. *)

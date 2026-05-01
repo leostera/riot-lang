@@ -3,6 +3,7 @@ open Std
 
 (** Create a module from a namespace and filename *)
 type t
+
 val make: namespace:Namespace.t -> filename:Path.t -> t
 
 (** Get the simple module name (e.g., "Path") *)

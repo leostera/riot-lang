@@ -1,4 +1,5 @@
 type raw_backtrace = Kernel.Exception.raw_backtrace
+
 val to_string: exn -> string
 
 val get_raw_backtrace: unit -> raw_backtrace

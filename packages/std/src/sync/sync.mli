@@ -15,6 +15,7 @@ open Kernel
 *)
 module Atomic: sig
   type 'value t = 'value Kernel.Sync.Atomic.t
+
   val make: 'value -> 'value t
 
   val get: 'value t -> 'value
@@ -30,6 +31,7 @@ end
 
 module Cell: sig
   type 'a t
+
   val create: 'a -> 'a t
 
   val get: 'a t -> 'a
@@ -59,6 +61,7 @@ end
 
 module Mutex: sig
   type t
+
   val create: unit -> t
 
   val lock: t -> unit
@@ -70,6 +73,7 @@ end
 
 module Condition: sig
   type t
+
   val create: unit -> t
 
   val wait: t -> Mutex.t -> unit
@@ -83,6 +87,7 @@ module OnceCell: sig
   type error =
     | AlreadyInitialized
   type 'a t
+
   val create: unit -> 'a t
 
   val get: 'a t -> 'a option
@@ -100,6 +105,7 @@ end
 
 module LazyCell: sig
   type 'a t
+
   val create: (unit -> 'a) -> 'a t
 
   val get: 'a t -> 'a

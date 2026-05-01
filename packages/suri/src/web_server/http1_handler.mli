@@ -82,6 +82,7 @@ type error =
   | ParseError of parse_error
   | ExcessBodyRead
   | IoError of io_error
+
 val to_string_error: error -> string
 
 val parse_error_of_upstream_error: Http.Http1.Common.error -> parse_error

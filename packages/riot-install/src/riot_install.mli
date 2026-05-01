@@ -59,6 +59,7 @@ type install_error =
       target: string;
       error: Riot_deps.package_error;
     }
+
 val install_error_message: install_error -> string
 
 val install_event_to_json: install_event -> Data.Json.t option

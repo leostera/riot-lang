@@ -3,6 +3,7 @@ open Std
 module Error = Error
 
 type event_sink = Riot_model.Event.kind -> unit
+
 val resolve_packages:
   ?emit:event_sink ->
   ?materialize_emit:event_sink ->

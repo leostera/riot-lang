@@ -33,6 +33,7 @@ type error =
   | InvalidProbability of { probability: float }
   | EmptyPopulation
   | InvalidSampleSize of { requested: int; available: int }
+
 val error_to_string: error -> string
 
 module Rng: sig
@@ -69,6 +70,7 @@ val sample: ?rng:Rng.t -> 'value distribution -> ('value, error) Result.t
 
 module Distribution: sig
   type 'value t = 'value distribution
+
   val sample: ?rng:Rng.t -> 'value t -> ('value, error) Result.t
 
   val map: ('a -> 'b) -> 'a t -> 'b t

@@ -3,6 +3,7 @@ open Prelude
 type t = bytes
 type error =
   | OutOfBoundSet of { bytes: bytes; lenght: int; at: int; char: char }
+
 val create: size:int -> t
 
 val length: t -> int

@@ -6,6 +6,7 @@ module type Intf = sig
 
   (** Create a new hasher state *)
   type state
+
   val create: unit -> state
 
   (** Write immutable string data to the hasher - mutates state *)

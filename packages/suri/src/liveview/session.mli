@@ -11,6 +11,7 @@ type decode_error =
   | InvalidSignature
   | InvalidPayloadBase64
   | InvalidJson of Data.Json.error
+
 val decode_error_to_string: decode_error -> string
 
 val encode: secret:string -> json:Data.Json.t -> string

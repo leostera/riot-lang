@@ -11,6 +11,7 @@ include Common
 module type ApplicationProtocol = sig
   type request
   type response
+
   val response_to_json: response -> Json.t
 
   val response_of_json: Json.t -> (response, Json.t) result

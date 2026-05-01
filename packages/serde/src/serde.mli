@@ -268,6 +268,7 @@ module Ser: sig
     type 'value case = 'value variant_case =
       | Unit: string * ('value -> bool) -> 'value case
       | Newtype: string * 'payload t * ('value -> 'payload option) -> 'value case
+
     val unit: string -> ('value -> bool) -> 'value case
 
     (** Match a newtype constructor and project its payload. *)

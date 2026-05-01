@@ -1,6 +1,7 @@
 type 'value t
 type error =
   | OutOfBoundsSet of { length: int; at: int }
+
 val create: unit -> 'value t
 
 val with_capacity: size:int -> 'value t

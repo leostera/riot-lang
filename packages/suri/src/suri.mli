@@ -331,6 +331,7 @@ module Config: sig
     liveview_secret: string;
     (** Secret key for signing LiveView session tokens (min 32 characters) *)
   }
+
   val default: t
 
   (**
@@ -382,6 +383,7 @@ module Config: sig
     | InvalidWriteTimeoutMs of int
     | InvalidBufferSize of int
     | InvalidLiveViewSecret of liveview_secret_error
+
   val env_to_string: env -> string
 
   val env_from_string: string -> (env, error) result
@@ -429,6 +431,7 @@ type start_error =
   | BindFailed of Std.Net.TcpListener.error
   | InvalidAcceptors of int
   | InvalidBufferSize of int
+
 val start_error_to_string: start_error -> string
 
 (** {2 Starting the Server} *)

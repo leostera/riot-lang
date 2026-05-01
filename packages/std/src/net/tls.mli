@@ -8,6 +8,7 @@ open Global
 open IO
 
 type engine
+
 val init: unit -> unit
 
 val is_available: unit -> bool
@@ -27,18 +28,21 @@ type read_result =
   | Need_network_read
   | Need_network_write
   | Eof
+
 val read_decrypted: engine -> bytes -> pos:int -> len:int -> read_result
 
 type write_result =
   | Written of int
   | Need_network_read
   | Need_network_write
+
 val write_plaintext: engine -> bytes -> pos:int -> len:int -> write_result
 
 type handshake_result =
   | Handshake_done
   | Need_network_read
   | Need_network_write
+
 val do_handshake: engine -> handshake_result
 
 val handshake_complete: engine -> bool

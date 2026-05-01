@@ -13,6 +13,7 @@ type t = {
   id: id;
   fn: Event.t -> unit;
 }
+
 val emit: Event.t -> unit
 
 (** Attach a handler with the given ID and callback function *)

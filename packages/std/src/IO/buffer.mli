@@ -4,6 +4,7 @@ module IoVec = IoVec
 
 type t
 type error = Kernel.IO.Error.t
+
 val create: size:int -> t
 
 val from_string: string -> t

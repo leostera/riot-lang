@@ -12,6 +12,7 @@ type request = {
   size_filter: size_filter;
   flaky_only: bool;
 }
+
 val parse_request:
   filter:string option ->
   package_filters:Riot_model.Package_name.t list ->

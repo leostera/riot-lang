@@ -111,6 +111,7 @@ type error =
 (** Parsing errors. *)
 module Arg: sig
   type 'a t = 'a arg
+
   val flag: string -> unit t
 
   val option: string -> unit t

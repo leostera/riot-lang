@@ -2371,6 +2371,7 @@ let from_json: Json.t -> (t, string) result = fun json ->
 (** Hash package metadata into a hasher state *)
 module type Hash_writer = sig
   type state
+
   val write: state -> string -> unit
 
   val write_int: state -> int -> unit

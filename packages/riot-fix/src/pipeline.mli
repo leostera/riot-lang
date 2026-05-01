@@ -6,6 +6,7 @@ type result = Fixme.Source_runner.result = {
   diagnostics: Diagnostic.t list;
   parse_diagnostics: Syn.Diagnostic.t list;
 }
+
 val make: rules:Rule.t list -> unit -> t
 
 val run:

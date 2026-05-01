@@ -64,6 +64,7 @@ type error =
       operation: io_operation;
       error: Socket_pool.Connection.error;
     }
+
 val to_string_error: error -> string
 
 val pseudo_header_to_string: pseudo_header -> string

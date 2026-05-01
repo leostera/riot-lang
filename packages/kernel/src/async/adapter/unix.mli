@@ -7,6 +7,7 @@ type error =
 
 module Selector: sig
   type t
+
   val make: unit -> (t, error) Result.t
 
   val close: t -> (unit, error) Result.t

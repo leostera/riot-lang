@@ -149,6 +149,7 @@ type package_error = Package_management.error =
       workspace_root: Path.t;
     }
   | LockRefreshFailed of Error.t
+
 val package_error_message: package_error -> string
 
 val load_source_workspace:

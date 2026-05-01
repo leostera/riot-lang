@@ -19,6 +19,7 @@ module Config: sig
     fps: int;
     output: output_target;
   }
+
   val make: ?render_mode:render_mode -> ?fps:int -> ?output:output_target -> unit -> t
 end
 
@@ -89,6 +90,7 @@ module Event: sig
     | FocusGained
     | FocusLost
     | Custom of Message.t
+
   val key_to_string: key -> string
 
   val modifier_to_string: modifier -> string
@@ -118,6 +120,7 @@ module Command: sig
         ref: Timer.id Ref.t;
         duration: Time.Duration.t;
       }
+
   val timer: after:Time.Duration.t -> Timer.id Ref.t * t
 end
 
@@ -130,6 +133,7 @@ module Style = Gooey.Style
 (** Application definition *)
 module App: sig
   type 'model t
+
   val make:
     init:('model -> 'model * Command.t) ->
     update:(Event.t -> 'model -> 'model * Command.t) ->

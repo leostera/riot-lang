@@ -24,6 +24,7 @@ module Diagnostic: sig
     column: int option;
   }
   type t
+
   val parse: string -> t list
 
   val render: t -> string

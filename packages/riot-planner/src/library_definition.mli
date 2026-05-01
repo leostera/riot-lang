@@ -2,6 +2,7 @@ open Std
 open Riot_model
 
 type t
+
 val from_entries:
   namespace:Namespace.t ->
   library_name:string ->

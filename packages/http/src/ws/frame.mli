@@ -21,6 +21,7 @@ type close_payload_error =
   | ClosePayloadTooShort of { payload_length: int }
   | InvalidCloseCode of { code: int }
   | InvalidCloseReasonUtf8 of { reason_length: int }
+
 val opcode_to_int: opcode -> int
 
 val opcode_of_int: int -> opcode option

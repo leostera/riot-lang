@@ -4,6 +4,7 @@ open Riot_model
 module G = Std.Graph.SimpleGraph
 
 type t
+
 val create: unit -> t
 
 val register: t -> Module.t -> G.Node_id.t -> unit

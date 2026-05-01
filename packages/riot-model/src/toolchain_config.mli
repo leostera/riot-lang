@@ -10,6 +10,7 @@ type t = {
   targets: System.TargetTriple.t list;
   (* Target architectures for cross-compilation *)
 }
+
 val default_ocaml_version: string
 
 val default: t

@@ -53,6 +53,7 @@ type t = {
      Must be at least 32 characters for security.
   *)
 }
+
 val default: t
 
 (**
@@ -88,6 +89,7 @@ type error =
   | InvalidWriteTimeoutMs of int
   | InvalidBufferSize of int
   | InvalidLiveViewSecret of liveview_secret_error
+
 val env_to_string: env -> string
 
 val env_from_string: string -> (env, error) result

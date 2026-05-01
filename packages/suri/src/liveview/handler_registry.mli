@@ -9,6 +9,7 @@
 
 (** Create a new empty registry *)
 type 'msg t
+
 val create: unit -> 'msg t
 
 (**

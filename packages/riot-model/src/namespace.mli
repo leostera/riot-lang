@@ -4,6 +4,7 @@
 
 (** Empty namespace *)
 type t
+
 val empty: t
 
 (** Create namespace from string (splits on __) *)

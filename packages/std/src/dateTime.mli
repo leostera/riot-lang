@@ -60,6 +60,7 @@ module Tz: sig
   type t =
     | Etc_UTC
     | Local
+
   val to_string: t -> string
 
   (**

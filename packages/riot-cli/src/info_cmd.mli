@@ -13,6 +13,7 @@ and workspace_scan_error =
 type target =
   | Workspace_target
   | Package_target of string
+
 val target_of_matches: ArgParser.matches -> target
 
 val workspace_scan_error_message: workspace_scan_error -> string

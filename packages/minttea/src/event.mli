@@ -88,6 +88,7 @@ type t =
   | FocusGained
   | FocusLost
   | Custom of Message.t
+
 val to_string: t -> string
 
 (** Convert an event to a human-readable string *)

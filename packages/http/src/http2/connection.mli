@@ -162,6 +162,7 @@ type error =
   | ExpectedInitialSettings of {
       frame_type: Frame.frame_type;
     }
+
 val error_to_string: error -> string
 
 (** {1 Connection Lifecycle} *)

@@ -19,6 +19,7 @@ type stream = {
   raw: t Vector.t;
   significant: int Vector.t;
 }
+
 val create_stream: unit -> stream
 
 val create_stream_with_capacity: raw:int -> significant:int -> stream

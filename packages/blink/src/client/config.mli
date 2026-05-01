@@ -21,6 +21,7 @@ type t = {
   circuit_breaker_policy: Circuit_breaker.policy;
   telemetry: Telemetry.t -> unit;
 }
+
 val pool: ?idle_ttl:Std.Time.Duration.t -> max_idle_per_endpoint:int -> unit -> pool_config
 
 val connection_policy_to_string: connection_policy -> string

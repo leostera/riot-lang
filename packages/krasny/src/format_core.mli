@@ -4,11 +4,13 @@ open Std.Collections
 type format_error =
   | Cannot_parse of Syn.Diagnostic.t Vector.t
   | Cannot_render of string
+
 val format_error_to_string: format_error -> string
 
 type write_error =
   | Format_failed of format_error
   | Write_failed of IO.error
+
 val parse_source: filename:Path.t -> string -> Syn.Parser.parse_result
 
 val format: Syn.Parser.parse_result -> (string, format_error) result

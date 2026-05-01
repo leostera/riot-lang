@@ -11,4 +11,5 @@ type t = {
   start: unit -> (Pid.t, exn) result;
   stop: Pid.t -> unit;
 }
+
 val start_applications: t list -> ((string * Pid.t) list, exn) result

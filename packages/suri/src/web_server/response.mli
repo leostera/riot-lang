@@ -116,6 +116,7 @@ type t = {
   version: Net.Http.Version.t;
   body: string;
 }
+
 val make:
   Net.Http.Status.t ->
   ?headers:(string * string) list ->

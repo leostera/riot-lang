@@ -43,6 +43,7 @@ module type ConfigSpec = sig
   val spec: Spec.t
 
   type t
+
   val get: Spec.value -> (t, error) result
 end
 

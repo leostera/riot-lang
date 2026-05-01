@@ -32,6 +32,7 @@ type t = {
   links: link_set;
 }
 type error = { kind: string; message: string }
+
 val resolve:
   ?registry:Pkgs_ml.Registry.t ->
   local_workspace:(Riot_model.Workspace_manifest.t * Riot_model.Workspace_manager.load_error list) option ->

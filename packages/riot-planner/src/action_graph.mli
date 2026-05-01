@@ -5,6 +5,7 @@ module G = Std.Graph.SimpleGraph
 
 (** Create an empty action graph *)
 type t
+
 val create: unit -> t
 
 (**

@@ -241,6 +241,7 @@ module Builder: sig
   type response = t
   (** Creates a new response builder. *)
   type t
+
   val create: Status.t -> t
 
   (** Sets the status code. *)

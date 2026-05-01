@@ -15,6 +15,7 @@ type error =
       package_names: Riot_model.Package_name.t list;
       available_packages: Riot_model.Package_name.t list;
     }
+
 val package_names: t -> Riot_model.Package_name.t list
 
 val targets: t -> Riot_model.Target.Set.t

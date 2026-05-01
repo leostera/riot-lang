@@ -170,6 +170,7 @@ val form_decode: string -> string
 
 module Scheme: sig
   type t = string
+
   val http: t
 
   val https: t
@@ -185,6 +186,7 @@ end
 
 module Authority: sig
   type t
+
   val host: t -> string
 
   val port: t -> int option
@@ -198,6 +200,7 @@ end
 
 module PathAndQuery: sig
   type t
+
   val path: t -> string
 
   val query: t -> string option
@@ -211,6 +214,7 @@ end
 
 module Builder: sig
   type t
+
   val create: unit -> t
 
   val scheme: t -> string -> t
@@ -270,6 +274,7 @@ module Query: sig
      Now returns decoded values per RFC 3986.
   *)
   type t = param list
+
   val parse: string -> t
 
   (**

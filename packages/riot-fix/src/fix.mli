@@ -35,6 +35,7 @@ type text_edit = Fixme.Fix.text_edit = {
   span: Syn.Span.t;
   new_text: string;
 }
+
 val source_of_node: Syn.Ast.Node.t -> replacement
 
 val source_of_token: Syn.Ast.Token.t -> replacement

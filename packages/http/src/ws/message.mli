@@ -36,6 +36,7 @@ type error =
   | InvalidClosePayload of Frame.close_payload_error
   | MessagePayloadTooLarge of { payload_length: int; max_message_size: int }
   | InvalidTextMessageUtf8 of { payload_length: int }
+
 val error_to_string: error -> string
 
 val create: ?max_message_size:int -> unit -> (t, error) result

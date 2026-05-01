@@ -14,6 +14,7 @@ type package_error =
   | ActionDependenciesFailed of {
       failed: Graph.SimpleGraph.Node_id.t list;
     }
+
 val package_error_to_string: package_error -> string
 
 val package_error_to_json: package_error -> Std.Data.Json.t
@@ -24,6 +25,7 @@ type build_status =
   | Built of Riot_store.Artifact.t
   | Skipped of { reason: string }
   | Failed of package_error
+
 val build_status_to_json: build_status -> Std.Data.Json.t
 
 (** Result of building a package *)
@@ -34,6 +36,7 @@ type build_result = {
   ocamlc_warnings: string list;
   duration: Time.Duration.t;
 }
+
 val build_result_to_json: build_result -> Std.Data.Json.t
 
 type graph_update =
@@ -83,6 +86,7 @@ type prepared_execution = {
   sandbox: Sandbox.t;
   toolchain: Riot_toolchain.t;
 }
+
 val apply_graph_update: Package_graph.t -> Package.key -> Package.t -> graph_update option -> unit
 
 val planned_graph_update: execution_plan -> graph_update

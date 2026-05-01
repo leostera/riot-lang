@@ -5,6 +5,7 @@ open Sync.Cell
 
 module Node_id: sig
   type t
+
   val next: unit -> t
 
   val eq: t -> t -> bool

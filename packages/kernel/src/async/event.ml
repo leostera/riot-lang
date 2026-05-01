@@ -1,5 +1,6 @@
 module type Intf = sig
   type t
+
   val is_error: t -> bool
 
   val is_priority: t -> bool

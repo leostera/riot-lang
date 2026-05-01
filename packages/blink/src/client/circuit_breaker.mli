@@ -9,6 +9,7 @@ type policy = {
   reset_after: Time.Duration.t;
 }
 type t
+
 val policy: ?failure_threshold:int -> ?reset_after:Time.Duration.t -> unit -> policy
 
 val default_policy: policy

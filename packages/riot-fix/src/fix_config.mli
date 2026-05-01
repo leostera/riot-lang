@@ -12,6 +12,7 @@ type fix_config = {
   rules: rule_override list;
 }
 type scope
+
 val empty_fix_config: fix_config
 
 (**

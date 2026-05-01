@@ -1,5 +1,6 @@
 type t
 type error = Error.t
+
 val empty: t
 
 val create: size:int -> (t, error) Result.t

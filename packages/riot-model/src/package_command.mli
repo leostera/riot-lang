@@ -18,6 +18,7 @@ type t = {
   command_binary: Path.t;
   (* _build/debug/out/minttea/Demo_cmd *)
 }
+
 val is_built: t -> bool
 
 (** Check if the command binary exists *)

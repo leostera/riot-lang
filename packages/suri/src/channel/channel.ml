@@ -31,6 +31,7 @@ module Handler = struct
   module type Intf = sig
     type state
     type args
+
     val init: args -> state handle_result
 
     val handle_frame: Http.Ws.Frame.t -> Net.TcpStream.t -> state -> state handle_result

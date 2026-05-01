@@ -44,6 +44,7 @@ type error =
       command: string;
       error: command_spawn_error;
     }
+
 val message: error -> string
 
 val looks_like_remote_spec: string -> bool

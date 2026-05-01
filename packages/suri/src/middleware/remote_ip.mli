@@ -179,6 +179,7 @@ type resolve_error =
   | EmptyForwardedFor
   | InvalidForwardedIp of { value: string }
   | NoClientIpInForwardedChain
+
 val resolve_error_to_string: resolve_error -> string
 
 val parse_forwarded_for: string -> string list

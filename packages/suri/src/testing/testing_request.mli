@@ -6,6 +6,7 @@ type error =
       value: string;
       reason: Net.Uri.error;
     }
+
 val error_to_string: error -> string
 
 val make:

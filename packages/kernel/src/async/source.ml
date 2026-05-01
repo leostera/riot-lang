@@ -1,5 +1,6 @@
 module type Intf = sig
   type t
+
   val register: t -> Adapter.Selector.t -> Token.t -> Interest.t -> (unit, Adapter.error) Result.t
 
   val reregister: t -> Adapter.Selector.t -> Token.t -> Interest.t -> (unit, Adapter.error) Result.t

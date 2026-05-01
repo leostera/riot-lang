@@ -6,6 +6,7 @@ open Global
 *)
 type t = Kernel.Fs.File.t
 type error = Kernel.Fs.File.error
+
 val error_to_string: error -> string
 
 module OpenFlags: sig

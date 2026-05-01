@@ -3,6 +3,7 @@ val available_parallelism: int
 
 (** Thread primitives for multicore runtimes. *)
 type 'value t
+
 val spawn: (unit -> 'value) -> 'value t
 
 val join: 'value t -> 'value
@@ -12,6 +13,7 @@ val sleep_ns: int64 -> unit
 
 module DLS: sig
   type 'value key
+
   val new_key: ?split_from_parent:('value -> 'value) -> (unit -> 'value) -> 'value key
 
   val get: 'value key -> 'value

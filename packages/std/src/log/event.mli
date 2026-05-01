@@ -9,4 +9,5 @@ type t = {
   message: string;
   metadata: Metadata.t;
 }
+
 val make: level:Level.t -> message:string -> ?metadata:Metadata.t -> unit -> t

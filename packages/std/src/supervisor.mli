@@ -121,6 +121,7 @@ type child_spec = {
   significant: bool;
   (** If true, supervisor terminates when this child terminates *)
 }
+
 val child_spec:
   id:string ->
   start:(unit -> Pid.t) ->
@@ -201,6 +202,7 @@ type child_info = {
   child_type: child_type;
   restart: restart;
 }
+
 val which_children: t -> child_info list
 
 (**

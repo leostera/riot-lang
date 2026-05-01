@@ -18,6 +18,7 @@ type t =
       cause2: t;
       shared_id: int option;
     }
+
 val create_external: Term.t list -> external_cause -> t
 
 val create_derived: Term.t list -> t -> t -> int option -> t

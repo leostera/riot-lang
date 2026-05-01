@@ -3,6 +3,7 @@ type error =
   | InvalidTimeoutNs of {
       timeout_ns: int64;
     }
+
 val error_to_string: error -> string
 
 (**

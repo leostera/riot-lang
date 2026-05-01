@@ -3,12 +3,14 @@ type color = Tty.Color.t =
   | ANSI of int
   | ANSI256 of int
   | No_color
+
 val color: ?profile:Tty.Profile.t -> string -> color
 
 val gradient: start:color -> finish:color -> steps:int -> color array
 
 module Border: sig
   type t
+
   val make:
     ?top:string ->
     ?left:string ->
@@ -71,6 +73,7 @@ type constraints = {
   max_height: int option;
 }
 type t
+
 val default: t
 
 val equal: t -> t -> bool

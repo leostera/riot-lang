@@ -86,6 +86,7 @@ type date_parse_error =
 type modified_since_error =
   | InvalidRequestDate of date_parse_error
   | InvalidResponseDate of date_parse_error
+
 val date_parse_error_to_string: date_parse_error -> string
 
 val modified_since_error_to_string: modified_since_error -> string

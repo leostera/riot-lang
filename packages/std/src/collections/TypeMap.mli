@@ -7,6 +7,7 @@ type t
 type 'value entry =
   | Occupied of 'value
   | Vacant
+
 val create: unit -> t
 
 val with_capacity: size:int -> t

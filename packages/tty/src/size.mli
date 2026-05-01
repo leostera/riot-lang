@@ -53,6 +53,7 @@ type t = {
   cols: int;
   (** Number of columns (characters per line) in terminal *)
 }
+
 val get: unit -> (t, [`System_error of string]) result
 
 (**

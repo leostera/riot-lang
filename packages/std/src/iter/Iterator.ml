@@ -3,6 +3,7 @@ open Kernel
 module type Intf = sig
   type state
   type item
+
   val next: state -> item option * state
 
   val size: state -> int

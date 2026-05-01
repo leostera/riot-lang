@@ -1,6 +1,7 @@
 type error =
   | InvalidVarName of { name: string }
   | System of System_error.t
+
 val error_to_string: error -> string
 
 val args: string array

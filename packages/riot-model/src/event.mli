@@ -321,6 +321,7 @@ type t = {
   level: level;
   kind: kind;
 }
+
 val create: session_id:Session_id.t -> level:level -> kind -> t
 
 (** Get the machine-readable event name *)

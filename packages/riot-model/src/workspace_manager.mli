@@ -42,6 +42,7 @@ type load_error =
       path: string;
       error: Package_manifest.error;
     }
+
 val manifest_load_error_message: manifest_load_error -> string
 
 val scan_error_message: scan_error -> string
