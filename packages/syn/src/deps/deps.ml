@@ -262,7 +262,12 @@ let add_path = fun env deps segments ->
   | [] -> deps
   | head :: _ when is_module_head head ->
       let names =
-        match Env.lookup_free ~use_open_fallback:false segments env with
+        let use_open_fallback =
+          match segments with
+          | [ _ ] -> true
+          | _ -> false
+        in
+        match Env.lookup_free ~use_open_fallback segments env with
         | Some names -> names
         | None -> Env.singleton_name head
       in
@@ -374,11 +379,12 @@ module Ast_deps = struct
     (deps, binding)
 
   let open_alias = fun ?(fallback = false) env deps segments ->
+    let binding_known = Option.is_some (Env.lookup_map segments env) in
     let (deps, binding) = module_alias env deps segments in
     let deps = add_names deps (Env.top_free binding) in
     let env = Env.merge_children env binding in
     let env =
-      if fallback && not (Env.has_children binding) then
+      if fallback && binding_known && not (Env.has_children binding) then
         match segments with
         | head :: _ when is_module_head head ->
             let free_names =

@@ -68,6 +68,24 @@ let test_deps_collect_opened_public_root_module_instead_of_child_module = fun _c
   | Ok modules -> Error ("expected deps [Syn], got [" ^ String.concat ", " modules ^ "]")
   | Error err -> Error err
 
+let test_deps_collect_opaque_opened_public_root_for_child_module = fun _ctx ->
+  let env =
+    Syn.Deps.Env.empty
+    |> Syn.Deps.Env.add_path ~path:[ "Std" ] ~free_names:[ "Std" ]
+  in
+  let source =
+    {ocaml|open Std
+
+let cwd = Env.current_dir ()
+
+let value = Env.get Env.String ~var:"RIOT_ENV"
+|ocaml}
+  in
+  match parse_modules ~env ~filename:"environment.ml" source with
+  | Ok modules when modules = [ "Std" ] -> Ok ()
+  | Ok modules -> Error ("expected deps [Std], got [" ^ String.concat ", " modules ^ "]")
+  | Error err -> Error err
+
 let test_deps_collect_qualified_public_root_module_instead_of_child_module = fun _ctx ->
   let env =
     Syn.Deps.Env.empty
@@ -391,6 +409,9 @@ let tests =
     case
       "deps collect opened public root module instead of child module"
       test_deps_collect_opened_public_root_module_instead_of_child_module;
+    case
+      "deps collect opaque opened public root for child module"
+      test_deps_collect_opaque_opened_public_root_for_child_module;
     case
       "deps collect qualified public root module instead of child module"
       test_deps_collect_qualified_public_root_module_instead_of_child_module;

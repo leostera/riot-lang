@@ -1697,7 +1697,7 @@ let test_module_graph_wires_direct_dependency_root_edge = fun _ctx ->
         |> Result.expect ~msg:("expected file write to succeed: " ^ Path.to_string path)
       in
       let _ = create_dir src_dir in
-      let _ = write Path.(src_dir / Path.v "app.ml") "let _ = Std.value\n" in
+      let _ = write Path.(src_dir / Path.v "app.ml") "open Std\nlet _ = Env.current_dir ()\n" in
       let package =
         Riot_model.Package.make
           ~name:(
