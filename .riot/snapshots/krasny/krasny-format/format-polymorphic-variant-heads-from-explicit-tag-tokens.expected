@@ -1,4 +1,5 @@
-let classify = function
+let classify = fun __tmp1 ->
+  match __tmp1 with
   | `Ok value -> value
   | `Error -> fallback
 

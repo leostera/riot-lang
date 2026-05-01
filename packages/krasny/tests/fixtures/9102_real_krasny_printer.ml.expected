@@ -2,7 +2,8 @@ open Std
 
 let to_string doc =
   let buffer = IO.Buffer.create 1_024 in
-  let rec write ~line_start ~indent = function
+  let rec write ~line_start ~indent = fun __tmp1 ->
+    match __tmp1 with
     | Doc.Empty -> line_start
     | Doc.Text value -> write_text ~line_start ~indent value
     | Doc.Space ->
@@ -30,7 +31,8 @@ let to_string doc =
         List.fold_left (fun line_start doc -> write ~line_start ~indent doc) line_start docs
     | Doc.Indent (extra, doc) -> write ~line_start ~indent:(indent + extra) doc
   and write_text ~line_start ~indent value =
-    let rec write_lines line_start = function
+    let rec write_lines line_start = fun __tmp1 ->
+      match __tmp1 with
       | [] -> line_start
       | [ line ] ->
           if line_start && String.length line > 0 then

@@ -66,7 +66,8 @@ let layout_context = fun ?(role = Layout.Top_expr) ?column state ->
   in
   Layout.make_context ~role ~width:state.width ~column ~indent:state.indent ()
 
-let layout_decision_is_inline = function
+let layout_decision_is_inline = fun __tmp1 ->
+  match __tmp1 with
   | { Layout.mode = Inline; _ } -> true
   | _ -> false
 
@@ -419,8 +420,8 @@ let token_single_leading_delimited_trivia = fun token ->
   iter_fold
     Ast.Token.fold_leading_trivia_item
     token
-    ~fn:(
-      function
+    ~fn:(fun __tmp1 ->
+      match __tmp1 with
       | Ast.Token.Whitespace -> ()
       | Ast.Token.Comment comment -> (
           match !result with
@@ -431,8 +432,7 @@ let token_single_leading_delimited_trivia = fun token ->
           match !result with
           | Some _ -> multiple := true
           | None -> result := Some (Leading_docstring_trivia docstring)
-        )
-    );
+        ));
   if !multiple then
     None
   else
@@ -444,7 +444,8 @@ let token_single_inline_leading_delimited_trivia = fun token ->
   else
     None
 
-let record_field_trailing_trivia_text = function
+let record_field_trailing_trivia_text = fun __tmp1 ->
+  match __tmp1 with
   | Leading_comment_trivia comment ->
       let text = normalize_comment comment in
       if String.contains text "\n" then
@@ -575,8 +576,8 @@ let emit_token_leading_comments_as_lines = fun state token ->
       iter_fold
         Ast.Token.fold_leading_trivia_item
         token
-        ~fn:(
-          function
+        ~fn:(fun __tmp1 ->
+          match __tmp1 with
           | Ast.Token.Comment comment ->
               let kind = delimited_trivia_comment_kind comment in
               if !emitted then
@@ -614,8 +615,7 @@ let emit_token_leading_comments_as_lines = fun state token ->
               state.last_leading_comment_kind <- Some kind;
               previous_kind := Some kind;
               emitted := true
-          | Ast.Token.Whitespace -> ()
-        );
+          | Ast.Token.Whitespace -> ());
       if !emitted then (
         emit_line state;
         state.suppress_leading_token <- Some token.Ast.id
@@ -626,15 +626,14 @@ let token_has_leading_ordinary_comment_needing_separator = fun token ->
   iter_fold
     Ast.Token.fold_leading_trivia_item
     token
-    ~fn:(
-      function
+    ~fn:(fun __tmp1 ->
+      match __tmp1 with
       | Ast.Token.Comment comment ->
           let text = normalize_comment comment in
           if not (String.ends_with ~suffix:"\n" text) then
             found := true
       | Ast.Token.Docstring _
-      | Ast.Token.Whitespace -> ()
-    );
+      | Ast.Token.Whitespace -> ());
   !found
 
 let emit_top_level_leading_comments_as_lines = fun
@@ -644,8 +643,8 @@ let emit_top_level_leading_comments_as_lines = fun
   iter_fold
     Ast.Token.fold_leading_trivia_item
     token
-    ~fn:(
-      function
+    ~fn:(fun __tmp1 ->
+      match __tmp1 with
       | Ast.Token.Comment comment ->
           let kind = delimited_trivia_comment_kind comment in
           seen_non_whitespace := true;
@@ -700,8 +699,7 @@ let emit_top_level_leading_comments_as_lines = fun
                 Leading_docstring
             )
           )
-      | Ast.Token.Whitespace -> ()
-    );
+      | Ast.Token.Whitespace -> ());
   match !previous_kind with
   | Some Leading_section_docstring ->
       if not compact_final_section_docstring then
@@ -810,11 +808,13 @@ let emit_token_or_keyword = fun state token ~fallback ->
       emit_token state token
   | None -> emit_text state fallback
 
-let token_has_leading_comment = function
+let token_has_leading_comment = fun __tmp1 ->
+  match __tmp1 with
   | Some token -> Ast.Token.has_leading_comment token
   | None -> false
 
-let token_has_leading_docstring = function
+let token_has_leading_docstring = fun __tmp1 ->
+  match __tmp1 with
   | Some token -> Ast.Token.has_leading_docstring token
   | None -> false
 
@@ -861,7 +861,8 @@ let same_type_expr_node = fun (left: Ast.TypeExpr.t) (right: Ast.TypeExpr.t) ->
     (Ast.TypeExpr.as_node left)
     (Ast.TypeExpr.as_node right)
 
-let is_module_expr_kind = function
+let is_module_expr_kind = fun __tmp1 ->
+  match __tmp1 with
   | Kind.MODULE_EXPR
   | Kind.PATH_MODULE_EXPR
   | Kind.STRUCT_MODULE_EXPR
@@ -872,7 +873,8 @@ let is_module_expr_kind = function
   | Kind.OPAQUE_MODULE_EXPR -> true
   | _ -> false
 
-let is_module_type_kind = function
+let is_module_type_kind = fun __tmp1 ->
+  match __tmp1 with
   | Kind.MODULE_TYPE_EXPR
   | Kind.PATH_MODULE_TYPE
   | Kind.SIGNATURE_MODULE_TYPE
@@ -1607,7 +1609,8 @@ let collect_child_tokens = fun node ->
   iter_fold Ast.Node.fold_child_token node ~fn:(fun token -> Vector.push tokens ~value:token);
   tokens
 
-let is_expr_node_kind = function
+let is_expr_node_kind = fun __tmp1 ->
+  match __tmp1 with
   | Kind.LET_EXPR
   | Kind.LOCAL_OPEN_EXPR
   | Kind.LET_MODULE_EXPR
@@ -1648,7 +1651,8 @@ let is_expr_node_kind = function
   | Kind.RECORD_UPDATE_EXPR -> true
   | _ -> false
 
-let is_pattern_node_kind = function
+let is_pattern_node_kind = fun __tmp1 ->
+  match __tmp1 with
   | Kind.WILDCARD_PATTERN
   | Kind.PATH_PATTERN
   | Kind.CONSTRUCT_PATTERN
@@ -1676,7 +1680,8 @@ let is_pattern_node_kind = function
   | Kind.OPTIONAL_PARAM_DEFAULT -> true
   | _ -> false
 
-let is_type_expr_node_kind = function
+let is_type_expr_node_kind = fun __tmp1 ->
+  match __tmp1 with
   | Kind.TYPE_EXPR
   | Kind.PATH_TYPE
   | Kind.VAR_TYPE
@@ -2220,8 +2225,8 @@ let collect_node_tokens_after_direct_token = fun node kind ->
   iter_fold
     Ast.Node.fold_child
     node
-    ~fn:(
-      function
+    ~fn:(fun __tmp1 ->
+      match __tmp1 with
       | Syn.SyntaxTree.Token id ->
           let token: Ast.Token.t = { tree = node.Ast.tree; id } in
           if !after then
@@ -2234,8 +2239,7 @@ let collect_node_tokens_after_direct_token = fun node kind ->
               Ast.Node.fold_token
               ({ tree = node.Ast.tree; id }: Ast.Node.t)
               ~fn:(fun token -> Vector.push tokens ~value:token)
-      | Syn.SyntaxTree.Missing _ -> ()
-    );
+      | Syn.SyntaxTree.Missing _ -> ());
   tokens
 
 let collect_prefix_operator_tokens = fun (expr: Ast.Expr.t) ->
@@ -3237,7 +3241,8 @@ and render_tuple_type_expr = fun state (type_expr: Ast.TypeExpr.t) separator ->
       ~sep:(fun () -> render_type_tuple_separator state separator)
       ~fn:(render_type_expr state)
 
-and type_tuple_separator_width = function
+and type_tuple_separator_width = fun __tmp1 ->
+  match __tmp1 with
   | TypeExprView.Star
   | TypeExprView.UnknownSeparator -> 3
   | TypeExprView.Comma -> 2
@@ -4686,7 +4691,8 @@ and expr_unwrap_redundant_parentheses_for_delimited_render = fun expr ->
 
 and expr_is_fun = fun expr ->
   match ExprView.view expr with
-  | Fun _ -> true
+  | Fun _
+  | Function _ -> true
   | _ -> false
 
 and expr_is_typed = fun expr ->
@@ -6276,7 +6282,8 @@ and render_apply_argument = fun ?(role = Layout.Top_expr) state arg ->
 
 and expr_is_fun_or_parenthesized_fun = fun expr ->
   match ExprView.view expr with
-  | Fun _ -> true
+  | Fun _
+  | Function _ -> true
   | Parenthesized { inner = Some inner } when not (same_expr_node expr inner) ->
       expr_is_fun_or_parenthesized_fun inner
   | _ -> false
@@ -6728,7 +6735,12 @@ and render_fun_expr = fun ?(role = Layout.Top_expr) state expr body ->
     | RecordUpdate
     | Tuple -> false
     | _ -> (
-        match expr_flat_width body with
+        let body_width =
+          match expr_flat_width body with
+          | Some _ as width -> width
+          | None -> node_token_flat_width (Ast.Expr.as_node body)
+        in
+        match body_width with
         | Some width -> Int.(state.column + 1 + width > state.width)
         | None -> false
       )
@@ -6750,16 +6762,84 @@ and render_fun_expr = fun ?(role = Layout.Top_expr) state expr body ->
     render_body ()
   )
 
-and render_function_expr = fun state expr ->
-  let inline = not state.line_start in
-  emit_text state "function";
+and render_function_body_after_arrow = fun state body ->
+  let body_exceeds_width =
+    match ExprView.view body with
+    | Array
+    | List
+    | Record
+    | RecordUpdate
+    | Tuple -> false
+    | _ -> (
+        let body_width =
+          match expr_flat_width body with
+          | Some _ as width -> width
+          | None -> node_token_flat_width (Ast.Expr.as_node body)
+        in
+        match body_width with
+        | Some width -> Int.(state.column + 1 + width > state.width)
+        | None -> false
+      )
+  in
+  let render_body () =
+    let role =
+      if body_exceeds_width && expr_is_apply body then
+        Layout.Function_body { force_apply_break = true }
+      else
+        Layout.Top_expr
+    in
+    match ExprView.view body with
+    | Tuple -> render_expr_atom ~role state body
+    | _ -> render_expr ~role state body
+  in
+  if expr_has_leading_comment body || expr_is_multiline body || body_exceeds_width then (
+    emit_line state;
+    with_indent state 2 render_body
+  ) else (
+    emit_space state;
+    render_body ()
+  )
+
+and render_single_case_function_expr = fun state pattern body ->
+  emit_text state "fun";
+  emit_space state;
+  render_pattern_atom state pattern;
+  emit_space state;
+  emit_text state "->";
+  render_function_body_after_arrow state body
+
+and render_function_expr_as_match = fun state expr ->
+  emit_text state "fun";
+  emit_space state;
+  emit_text state "__tmp1";
+  emit_space state;
+  emit_text state "->";
   emit_line state;
+  with_indent
+    state
+    2
+    (fun () ->
+      emit_text state "match";
+      emit_space state;
+      emit_text state "__tmp1";
+      emit_space state;
+      emit_text state "with";
+      emit_line state;
+      let cases = collect_match_cases expr in
+      render_match_cases state cases)
+
+and render_function_expr = fun state expr ->
   let cases = collect_match_cases expr in
-  let force_body_break = match_cases_have_parenthesized_multiline_body cases in
-  if inline then
-    with_indent state 2 (fun () -> render_match_cases_with_body_break state cases force_body_break)
-  else
-    render_match_cases_with_body_break state cases force_body_break
+  if Int.equal (Vector.length cases) 1 then (
+    let case = Vector.get_unchecked cases ~at:0 in
+    match Ast.MatchCase.view case with
+    | Ast.MatchCase.Case { pattern; guard = None; body } when not
+      (match_case_has_leading_comment case || node_has_leading_comment (Ast.Pattern.as_node pattern)) ->
+        render_single_case_function_expr state pattern body
+    | Ast.MatchCase.Case _
+    | Ast.MatchCase.Unknown _ -> render_function_expr_as_match state expr
+  ) else
+    render_function_expr_as_match state expr
 
 and render_match_expr = fun state expr scrutinee ->
   emit_text state "match";
@@ -10107,12 +10187,11 @@ and signature_item_leading_docstring_count = fun item ->
       iter_fold
         Ast.Token.fold_leading_trivia_item
         token
-        ~fn:(
-          function
+        ~fn:(fun __tmp1 ->
+          match __tmp1 with
           | Ast.Token.Docstring _ -> count := Int.add !count 1
           | Ast.Token.Comment _
-          | Ast.Token.Whitespace -> ()
-        );
+          | Ast.Token.Whitespace -> ());
       !count
   | None -> 0
 
@@ -10124,8 +10203,8 @@ and signature_item_first_leading_docstring_is_section = fun item ->
       iter_fold
         Ast.Token.fold_leading_trivia_item
         token
-        ~fn:(
-          function
+        ~fn:(fun __tmp1 ->
+          match __tmp1 with
           | Ast.Token.Docstring docstring ->
               if not !seen_docstring then (
                 seen_docstring := true;
@@ -10133,8 +10212,7 @@ and signature_item_first_leading_docstring_is_section = fun item ->
                   first_is_section := true
               )
           | Ast.Token.Comment _
-          | Ast.Token.Whitespace -> ()
-        );
+          | Ast.Token.Whitespace -> ());
       !first_is_section
   | None -> false
 

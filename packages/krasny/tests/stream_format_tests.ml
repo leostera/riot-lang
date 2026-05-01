@@ -78,7 +78,8 @@ let manifest_fixture_paths = fun () ->
     |> String.split_on_char '\n'
     |> List.map ~fn:String.trim
   in
-  let rec loop paths = function
+  let rec loop paths = fun __tmp1 ->
+    match __tmp1 with
     | [] -> List.reverse paths
     | line :: rest ->
         if String.equal line "" || String.starts_with ~prefix:"#" line then
@@ -307,7 +308,8 @@ let assert_stream_existing_fixture_subset = fun () ->
     Path.v "packages/krasny/tests/fixtures/0987_inline_constructor_record_spacing.mli";
   ]
   in
-  let rec loop errors = function
+  let rec loop errors = fun __tmp1 ->
+    match __tmp1 with
     | [] -> (
         match List.reverse errors with
         | [] -> Ok ()
@@ -322,7 +324,8 @@ let assert_stream_existing_fixture_subset = fun () ->
   loop [] (List.filter fixtures ~fn:stream_formatter_fixture_supported)
 
 let assert_stream_manifest_fixtures = fun () ->
-  let rec loop errors = function
+  let rec loop errors = fun __tmp1 ->
+    match __tmp1 with
     | [] -> (
         match List.reverse errors with
         | [] -> Ok ()
@@ -400,6 +403,16 @@ let test_stream_formatter_formats_function_expressions = fun _ctx ->
   assert_format_ml
     ~expected:"let id = fun x -> x\n"
     "let id = fun x -> x\n"
+
+let test_stream_formatter_desugars_function_expressions = fun _ctx ->
+  assert_format_ml
+    ~expected:"let classify = fun __tmp1 ->\n  match __tmp1 with\n  | Some value -> value\n  | None -> 0\n"
+    "let classify = function | Some value -> value | None -> 0\n"
+
+let test_stream_formatter_desugars_single_case_function_to_fun_pattern = fun _ctx ->
+  assert_format_ml
+    ~expected:"let message = fun (Error msg) -> msg\n"
+    "let message = function | Error msg -> msg\n"
 
 let test_stream_formatter_formats_function_expressions_with_return_annotations = fun _ctx ->
   assert_format_ml
@@ -581,7 +594,10 @@ let test_stream_formatter_formats_labels_and_optional_labels = fun _ctx ->
 let test_stream_formatter_formats_polymorphic_variants = fun _ctx ->
   assert_format_ml
     ~expected:(top_level
-      [ "let ok = `Ok 1"; "let classify = function\n  | `Ok value -> value\n  | `Error -> 0" ])
+      [
+        "let ok = `Ok 1";
+        "let classify = fun __tmp1 ->\n  match __tmp1 with\n  | `Ok value -> value\n  | `Error -> 0";
+      ])
     "let ok = `Ok 1\nlet classify = function | `Ok value -> value | `Error -> 0\n"
 
 let test_stream_formatter_preserves_parens_around_polymorphic_variant_payload_apply_arguments = fun
@@ -798,9 +814,9 @@ let test_stream_formatter_formats_lazy_exception_and_interval_patterns = fun _ct
   assert_format_ml
     ~expected:(top_level
       [
-        "let force = function\n  | lazy value -> value";
+        "let force = fun (lazy value) -> value";
         "let recovered =\n  match read () with\n  | exception Failure -> 0\n  | value -> value";
-        "let classify = function\n  | 'a' .. 'z' -> 1\n  | _ -> 0";
+        "let classify = fun __tmp1 ->\n  match __tmp1 with\n  | 'a' .. 'z' -> 1\n  | _ -> 0";
       ])
     "let force = function | lazy value -> value\nlet recovered = match read () with | exception Failure -> 0 | value -> value\nlet classify = function | 'a' .. 'z' -> 1 | _ -> 0\n"
 
@@ -834,7 +850,7 @@ let test_stream_formatter_formats_top_level_exceptions_after_function_bindings =
   assert_format_ml
     ~expected:(top_level
       [
-        "let error_to_string = function\n  | Error message -> message";
+        "let error_to_string = fun (Error message) -> message";
         "exception Parse_exception of string";
       ])
     "let error_to_string = function\n  | Error message -> message\n\nexception Parse_exception of string\n"
@@ -1177,6 +1193,12 @@ let tests =
     case
       "stream formatter formats function expressions"
       test_stream_formatter_formats_function_expressions;
+    case
+      "stream formatter desugars function expressions"
+      test_stream_formatter_desugars_function_expressions;
+    case
+      "stream formatter desugars single-case function to fun pattern"
+      test_stream_formatter_desugars_single_case_function_to_fun_pattern;
     case
       "stream formatter formats function expressions with return annotations"
       test_stream_formatter_formats_function_expressions_with_return_annotations;

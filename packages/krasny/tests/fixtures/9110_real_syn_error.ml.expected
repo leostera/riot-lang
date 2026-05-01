@@ -54,7 +54,8 @@ type id =
   | E0051_MissingWithKeyword
   | E0052_InvalidModuleName
 
-let id_to_string = function
+let id_to_string = fun __tmp1 ->
+  match __tmp1 with
   | E0001_MalformedTypeVariable -> "E0001"
   | E0002_MissingLetBindingPattern -> "E0002"
   | E0003_MissingLetBindingEquals -> "E0003"
@@ -108,7 +109,8 @@ let id_to_string = function
   | E0051_MissingWithKeyword -> "E0051"
   | E0052_InvalidModuleName -> "E0052"
 
-let id_of_string = function
+let id_of_string = fun __tmp1 ->
+  match __tmp1 with
   | "E0001" -> Some E0001_MalformedTypeVariable
   | "E0002" -> Some E0002_MissingLetBindingPattern
   | "E0003" -> Some E0003_MissingLetBindingEquals
@@ -163,7 +165,8 @@ let id_of_string = function
   | "E0052" -> Some E0052_InvalidModuleName
   | _ -> None
 
-let name = function
+let name = fun __tmp1 ->
+  match __tmp1 with
   | E0001_MalformedTypeVariable -> "malformed-type-variable"
   | E0002_MissingLetBindingPattern -> "missing-let-binding-pattern"
   | E0003_MissingLetBindingEquals -> "missing-let-binding-equals"
@@ -217,7 +220,8 @@ let name = function
   | E0051_MissingWithKeyword -> "missing-with-keyword"
   | E0052_InvalidModuleName -> "invalid-module-name"
 
-let explain = function
+let explain = fun __tmp1 ->
+  match __tmp1 with
   | E0001_MalformedTypeVariable -> {|Type variables must be written as 'a, 'b, etc. with no space or comments between the quote and name.|}
   | E0002_MissingLetBindingPattern ->
       {|

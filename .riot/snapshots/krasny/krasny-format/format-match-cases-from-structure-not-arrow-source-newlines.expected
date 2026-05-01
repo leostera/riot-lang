@@ -1,2 +1,1 @@
-let render = function
-  | A -> value
+let render = fun A -> value

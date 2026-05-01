@@ -1,4 +1,5 @@
-let f = function
+let f = fun __tmp1 ->
+  match __tmp1 with
   | `Plain c -> `Plain c
   | `Gradient Style.(No_color, No_color) -> `Plain no_color
   | `Gradient Style.(No_color, c) -> `Plain c

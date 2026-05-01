@@ -27,41 +27,46 @@ let match_simple =
 
 let function_one_case = fun [] -> 0
 
-let function_two_cases = function
+let function_two_cases = fun __tmp1 ->
+  match __tmp1 with
   | [] -> 0
   | x :: _ -> x
 
 let function_tuple = fun (x, y) -> x + y
 
-let function_list = function
+let function_list = fun __tmp1 ->
+  match __tmp1 with
   | [] -> 0
   | [ x ] -> x
   | x :: xs -> x + List.length xs
 
-let function_constructor = function
+let function_constructor = fun __tmp1 ->
+  match __tmp1 with
   | Some x -> x
   | None -> 0
 
-let function_or_pattern = function
+let function_or_pattern = fun __tmp1 ->
+  match __tmp1 with
   | `A
   | `B -> 1
   | `C -> 2
 
-let function_when_guard = function
+let function_when_guard = fun __tmp1 ->
+  match __tmp1 with
   | x when x > 0 -> x
   | _ -> 0
 
-let function_nested_pattern = function
+let function_nested_pattern = fun __tmp1 ->
+  match __tmp1 with
   | Some (x, Some y) -> x + y
   | _ -> 0
 
 let function_application =
   List.map
-    (
-      function
+    (fun __tmp1 ->
+      match __tmp1 with
       | Some x -> x
-      | None -> 0
-    )
+      | None -> 0)
     values
 
 let sum_point = fun { x; y } -> x + y
@@ -74,7 +79,8 @@ let summarize_large_record {
   country;
 } = first_name ^ last_name ^ email ^ city ^ country
 
-let classify_many = function
+let classify_many = fun __tmp1 ->
+  match __tmp1 with
   | `Start -> 0
   | `Stop -> 1
   | `Pause -> 2
@@ -95,7 +101,8 @@ let combine_many a b c d e f g h i j =
   + i
   + j
 
-let function_many_or_patterns = function
+let function_many_or_patterns = fun __tmp1 ->
+  match __tmp1 with
   | `A
   | `B
   | `C
@@ -103,7 +110,8 @@ let function_many_or_patterns = function
   | `E -> true
   | _ -> false
 
-let classify_letter = function
+let classify_letter = fun __tmp1 ->
+  match __tmp1 with
   | 'a' .. 'z' -> `Lowercase
   | 'A' .. 'Z' -> `Uppercase
   | '0' .. '9' -> `Digit

@@ -117,7 +117,8 @@ let source_of_parameter parameter =
   source_of_syntax_node (Syn.Cst.Parameter.syntax_node parameter)
   |> String.trim
 
-let identifier_character = function
+let identifier_character = fun __tmp1 ->
+  match __tmp1 with
   | 'a' .. 'z'
   | 'A' .. 'Z'
   | '0' .. '9'
@@ -163,7 +164,8 @@ let contains_substring source needle =
 
 let fresh_match_parameter_name syntax_node =
   let source = source_of_syntax_node syntax_node in
-  let rec pick = function
+  let rec pick = fun __tmp1 ->
+    match __tmp1 with
     | [] -> "value"
     | name :: rest ->
         if source_mentions_identifier source name then

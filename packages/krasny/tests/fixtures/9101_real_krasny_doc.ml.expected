@@ -79,26 +79,20 @@ let concat docs =
       | _ when count = 1 -> Space :: acc
       | _ -> Spaces count :: acc
   in
-  let rec flatten acc = function
-    | [] ->
-        List.rev acc
-    | Empty :: rest ->
-        flatten acc rest
-    | Space :: rest ->
-        (flatten (add_spaces 1 acc) rest)
-    | Spaces count :: rest ->
-        flatten (add_spaces count acc) rest
+  let rec flatten acc = fun __tmp1 ->
+    match __tmp1 with
+    | [] -> List.rev acc
+    | Empty :: rest -> flatten acc rest
+    | Space :: rest -> (flatten (add_spaces 1 acc) rest)
+    | Spaces count :: rest -> flatten (add_spaces count acc) rest
     | Break flat :: rest -> (
         match acc with
         | Break current :: _ when current = flat -> flatten acc rest
         | _ -> flatten (Break flat :: acc) rest
       )
-    | Group doc :: rest ->
-        flatten (Group doc :: acc) rest
-    | Concat nested :: rest ->
-        flatten acc (nested @ rest)
-    | doc :: rest ->
-        flatten (doc :: acc) rest
+    | Group doc :: rest -> flatten (Group doc :: acc) rest
+    | Concat nested :: rest -> flatten acc (nested @ rest)
+    | doc :: rest -> flatten (doc :: acc) rest
   in
   match flatten [] docs with
   | [] -> Empty
@@ -130,7 +124,8 @@ let suffixed doc suffix = concat [ doc; suffix ]
 
 let wrapped left doc right = concat [ left; doc; right ]
 
-let rec is_multiline = function
+let rec is_multiline = fun __tmp1 ->
+  match __tmp1 with
   | Empty -> false
   | Text value -> String.contains value "\n"
   | Space -> false

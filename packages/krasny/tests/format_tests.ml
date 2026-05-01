@@ -681,8 +681,52 @@ let test_write_keeps_nullary_constructor_pattern_payloads_atomic = fun ctx ->
   Test.Snapshot.assert_inline_text
     ~ctx
     ~actual
-    ~expected:{ocaml|let f = function
-  | Ok Protocol.Event { handler_id; event_data } -> event_data
+    ~expected:{ocaml|let f = fun (Ok Protocol.Event { handler_id; event_data }) -> event_data
+|ocaml}
+
+let test_write_desugars_function_expressions = fun ctx ->
+  let source = {ocaml|let classify=function|Some value->value|None->0
+|ocaml}
+  in
+  let parsed = parse_ml source in
+  let actual = capture_write parsed in
+  Test.Snapshot.assert_inline_text
+    ~ctx
+    ~actual
+    ~expected:{ocaml|let classify = fun __tmp1 ->
+  match __tmp1 with
+  | Some value -> value
+  | None -> 0
+|ocaml}
+
+let test_write_desugars_single_case_function_to_fun_pattern = fun ctx ->
+  let source = {ocaml|let message=function|Error msg->msg
+|ocaml}
+  in
+  let parsed = parse_ml source in
+  let actual = capture_write parsed in
+  Test.Snapshot.assert_inline_text
+    ~ctx
+    ~actual
+    ~expected:{ocaml|let message = fun (Error msg) -> msg
+|ocaml}
+
+let test_write_desugars_function_application_arguments = fun ctx ->
+  let source = {ocaml|let values=List.map(function|Some value->value|None->0) options
+|ocaml}
+  in
+  let parsed = parse_ml source in
+  let actual = capture_write parsed in
+  Test.Snapshot.assert_inline_text
+    ~ctx
+    ~actual
+    ~expected:{ocaml|let values =
+  List.map
+    (fun __tmp1 ->
+      match __tmp1 with
+      | Some value -> value
+      | None -> 0)
+    options
 |ocaml}
 
 let test_write_preserves_labeled_parameter_order_around_wildcards = fun ctx ->
@@ -2209,15 +2253,15 @@ let classify = function | 'a' .. 'z' -> 1 | _ -> 0
   Test.Snapshot.assert_inline_text
     ~ctx
     ~actual
-    ~expected:{ocaml|let force = function
-  | lazy value -> value
+    ~expected:{ocaml|let force = fun (lazy value) -> value
 
 let recovered =
   match read () with
   | exception Failure -> 0
   | value -> value
 
-let classify = function
+let classify = fun __tmp1 ->
+  match __tmp1 with
   | 'a' .. 'z' -> 1
   | _ -> 0
 |ocaml}
@@ -2233,12 +2277,14 @@ let is_layout = function | ' ' | '\t' | '\n' | '\r' -> true | _ -> false
   Test.Snapshot.assert_inline_text
     ~ctx
     ~actual
-    ~expected:{ocaml|let is_newline = function
+    ~expected:{ocaml|let is_newline = fun __tmp1 ->
+  match __tmp1 with
   | '\n'
   | '\r' -> true
   | _ -> false
 
-let is_layout = function
+let is_layout = fun __tmp1 ->
+  match __tmp1 with
   | ' '
   | '\t'
   | '\n'
@@ -2255,7 +2301,8 @@ let test_write_formats_polymorphic_variants = fun ctx ->
   Test.Snapshot.assert_inline_text
     ~ctx
     ~actual
-    ~expected:{ocaml|let classify = function
+    ~expected:{ocaml|let classify = fun __tmp1 ->
+  match __tmp1 with
   | `Alpha -> `Seen
   | `Beta value -> value
 |ocaml}
@@ -2631,7 +2678,8 @@ let test_write_keeps_small_record_list_patterns_inline = fun ctx ->
   Test.Snapshot.assert_inline_text
     ~ctx
     ~actual
-    ~expected:{ocaml|let test = function
+    ~expected:{ocaml|let test = fun __tmp1 ->
+  match __tmp1 with
   | Ok [ { Hpack.name = "x"; value = "y" } ] -> Ok ()
   | _ -> Error ()
 |ocaml}
@@ -2646,7 +2694,8 @@ let test_write_aligns_multiline_list_pattern_closing_delimiter = fun ctx ->
   Test.Snapshot.assert_inline_text
     ~ctx
     ~actual
-    ~expected:{ocaml|let test = function
+    ~expected:{ocaml|let test = fun __tmp1 ->
+  match __tmp1 with
   | [
       (
         {
@@ -2676,7 +2725,8 @@ let test_write_aligns_constructor_record_pattern_payloads = fun ctx ->
   Test.Snapshot.assert_inline_text
     ~ctx
     ~actual
-    ~expected:{ocaml|let message = function
+    ~expected:{ocaml|let message = fun __tmp1 ->
+  match __tmp1 with
   | Io {
       op;
       path;
@@ -2703,9 +2753,8 @@ let test_write_keeps_fitting_constructor_or_patterns_inline = fun ctx ->
   Test.Snapshot.assert_inline_text
     ~ctx
     ~actual
-    ~expected:{ocaml|let test = function
-  | Some (Leading_ordinary_comment | Leading_docstring) ->
-      state.suppress_leading_token <- Some token.Ast.id
+    ~expected:{ocaml|let test = fun (Some (Leading_ordinary_comment | Leading_docstring)) ->
+  state.suppress_leading_token <- Some token.Ast.id
 |ocaml}
 
 let test_write_keeps_parenthesized_match_case_bodies_attached_to_arrows = fun ctx ->
@@ -3049,7 +3098,8 @@ let render=fun value->match value with|Ok->"ok"|Error->"error"
   Test.Snapshot.assert_inline_text
     ~ctx
     ~actual
-    ~expected:{ocaml|let width = function
+    ~expected:{ocaml|let width = fun __tmp1 ->
+  match __tmp1 with
   | EastAsianWide -> 2
   | EastAsianNarrow -> 1
 
@@ -3227,7 +3277,8 @@ let test_write_preserves_signed_literal_constructor_payload_patterns = fun ctx -
   Test.Snapshot.assert_inline_text
     ~ctx
     ~actual
-    ~expected:{ocaml|let parse = function
+    ~expected:{ocaml|let parse = fun __tmp1 ->
+  match __tmp1 with
   | Ok (Json.Int -123) -> Ok ()
   | Ok (Json.Float -1.5) -> Ok ()
   | _ -> Error "no"
@@ -3242,7 +3293,8 @@ let test_write_keeps_record_field_wildcard_values_closed = fun ctx ->
   Test.Snapshot.assert_inline_text
     ~ctx
     ~actual
-    ~expected:{ocaml|let show = function
+    ~expected:{ocaml|let show = fun __tmp1 ->
+  match __tmp1 with
   | Error { exception_ = _; backtrace } -> backtrace
   | _ -> ""
 |ocaml}
@@ -3452,7 +3504,8 @@ let destructure = fun pair ->
   let (a, b) = pair in
   (a, b)
 
-let consume = function
+let consume = fun __tmp1 ->
+  match __tmp1 with
   | [] -> (Doc.empty, column)
   | M.(x, y) -> (x, y)
 |ocaml}
@@ -3887,6 +3940,29 @@ let test_syntax_hash_normalizes_constructor_pattern_parens = fun _ctx ->
 |ocaml}
   in
   Test.assert_equal ~expected:(Krasny.syntax_hash parenthesized) ~actual:(Krasny.syntax_hash bare);
+  Ok ()
+
+let test_syntax_hash_normalizes_function_desugaring = fun _ctx ->
+  let multi_case_function =
+    parse_ml {ocaml|let classify=function|Some value->value|None->0
+|ocaml}
+  in
+  let multi_case_fun_match =
+    parse_ml {ocaml|let classify=fun __tmp1->match __tmp1 with|Some value->value|None->0
+|ocaml}
+  in
+  Test.assert_equal
+    ~expected:(Krasny.syntax_hash multi_case_function)
+    ~actual:(Krasny.syntax_hash multi_case_fun_match);
+  let single_case_function = parse_ml {ocaml|let message=function|Error msg->msg
+|ocaml}
+  in
+  let single_case_fun = parse_ml {ocaml|let message=fun (Error msg)->msg
+|ocaml}
+  in
+  Test.assert_equal
+    ~expected:(Krasny.syntax_hash single_case_function)
+    ~actual:(Krasny.syntax_hash single_case_fun);
   Ok ()
 
 let test_syntax_hash_normalizes_trailing_sequence_semis = fun _ctx ->
@@ -4333,7 +4409,8 @@ let test_format_typed_first_class_module_patterns_structurally = fun ctx ->
   Test.Snapshot.assert_inline_text
     ~ctx
     ~actual
-    ~expected:{ocaml|let unpack = function
+    ~expected:{ocaml|let unpack = fun __tmp1 ->
+  match __tmp1 with
   | (module M : S) -> ()
   | (module _) -> ()
 |ocaml}
@@ -4907,6 +4984,13 @@ let tests =
     case
       "write keeps nullary constructor pattern payloads atomic"
       test_write_keeps_nullary_constructor_pattern_payloads_atomic;
+    case "write desugars function expressions" test_write_desugars_function_expressions;
+    case
+      "write desugars single-case function to fun pattern"
+      test_write_desugars_single_case_function_to_fun_pattern;
+    case
+      "write desugars function application arguments"
+      test_write_desugars_function_application_arguments;
     case
       "write preserves labeled parameter order around wildcards"
       test_write_preserves_labeled_parameter_order_around_wildcards;
@@ -5377,6 +5461,9 @@ let tests =
     case
       "syntax hash normalizes constructor pattern parens"
       test_syntax_hash_normalizes_constructor_pattern_parens;
+    case
+      "syntax hash normalizes function desugaring"
+      test_syntax_hash_normalizes_function_desugaring;
     case
       "syntax hash normalizes trailing sequence semis"
       test_syntax_hash_normalizes_trailing_sequence_semis;

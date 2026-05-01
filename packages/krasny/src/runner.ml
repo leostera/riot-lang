@@ -135,13 +135,15 @@ let syntax_hash = fun (result: Syn.Parser.parse_result) ->
   let trivia_buffer = IO.Buffer.create ~size:256 in
   let write_kind kind = IO.Buffer.add_string buffer (Kind.to_string kind) in
   let write_trivia_kind kind = IO.Buffer.add_string trivia_buffer (Kind.to_string kind) in
-  let is_tuple_kind = function
+  let is_tuple_kind = fun __tmp1 ->
+    match __tmp1 with
     | Kind.TUPLE_EXPR
     | Kind.TUPLE_PATTERN
     | Kind.TUPLE_TYPE -> true
     | _ -> false
   in
-  let is_redundant_paren_inner_kind = function
+  let is_redundant_paren_inner_kind = fun __tmp1 ->
+    match __tmp1 with
     | Kind.PATH_EXPR
     | Kind.FIELD_ACCESS_EXPR
     | Kind.POLY_VARIANT_EXPR
@@ -271,6 +273,36 @@ let syntax_hash = fun (result: Syn.Parser.parse_result) ->
       IO.Buffer.add_string trivia_buffer ")"
     )
   in
+  let node_child (node: Ast.Node.t) = Syn.SyntaxTree.Node node.Ast.id in
+  let collect_match_cases expr =
+    let cases = Vector.with_capacity ~size:(Ast.Expr.match_case_count expr) in
+    iter_fold Ast.Expr.fold_match_case expr ~fn:(fun case -> Vector.push cases ~value:case);
+    cases
+  in
+  let single_unlabeled_parameter_pattern expr =
+    if not (Int.equal (Ast.Expr.parameter_count expr) 1) then
+      None
+    else
+      Ast.Expr.fold_parameter
+        expr
+        ~init:None
+        ~fn:(fun parameter _ ->
+          match Ast.Parameter.view parameter with
+          | Ast.Parameter.Param { label = Ast.Parameter.NoLabel; pattern = Some pattern } ->
+              Ast.Return (Some pattern)
+          | Ast.Parameter.Param _
+          | Ast.Parameter.Unknown _ -> Ast.Return None)
+  in
+  let pattern_is_temp_arg pattern =
+    match Ast.Pattern.view pattern with
+    | Ast.Pattern.Ident { ident } -> String.equal (Ast.Ident.text ident) "__tmp1"
+    | _ -> false
+  in
+  let expr_is_temp_arg expr =
+    match Ast.Expr.view expr with
+    | Ast.Expr.Ident { ident } -> String.equal (Ast.Ident.text ident) "__tmp1"
+    | _ -> false
+  in
   let rec write_node node =
     let node_kind = Ast.Node.kind node in
     IO.Buffer.add_string buffer "N(";
@@ -317,7 +349,70 @@ let syntax_hash = fun (result: Syn.Parser.parse_result) ->
               write_token_trivia token
         | Syn.SyntaxTree.Node _ -> write_child ~parent_kind:(Some Kind.SEQUENCE_EXPR) child
         | Syn.SyntaxTree.Missing _ -> ())
-  and write_child ~parent_kind = function
+  and write_direct_token_trivia node =
+    iter_fold
+      Ast.Node.fold_child
+      node
+      ~fn:(fun child ->
+        match child with
+        | Syn.SyntaxTree.Token id -> write_token_trivia ({ tree = result.tree; id }: Ast.Token.t)
+        | Syn.SyntaxTree.Node _
+        | Syn.SyntaxTree.Missing _ -> ())
+  and write_canonical_function_case case =
+    write_direct_token_trivia (Ast.MatchCase.as_node case);
+    match Ast.MatchCase.view case with
+    | Ast.MatchCase.Case { pattern; guard; body } ->
+        IO.Buffer.add_string buffer "CASE(";
+        write_element (node_child (Ast.Pattern.as_node pattern));
+        IO.Buffer.add_string buffer "G(";
+        (
+          match guard with
+          | Some guard -> write_element (node_child (Ast.Expr.as_node guard))
+          | None -> ()
+        );
+        IO.Buffer.add_string buffer ")";
+        write_element (node_child (Ast.Expr.as_node body));
+        IO.Buffer.add_string buffer ")"
+    | Ast.MatchCase.Unknown node -> write_element (node_child node)
+  and write_canonical_function_cases cases =
+    IO.Buffer.add_string buffer "N(FUNCTION_EXPR[";
+    Vector.for_each cases ~fn:write_canonical_function_case;
+    IO.Buffer.add_string buffer "])"
+  and write_canonical_single_function pattern body =
+    IO.Buffer.add_string buffer "N(FUNCTION_EXPR[";
+    IO.Buffer.add_string buffer "CASE(";
+    write_element (node_child (Ast.Pattern.as_node pattern));
+    IO.Buffer.add_string buffer "G()";
+    write_element (node_child (Ast.Expr.as_node body));
+    IO.Buffer.add_string buffer ")";
+    IO.Buffer.add_string buffer "])"
+  and write_canonical_function_expr expr =
+    match Ast.Expr.view expr with
+    | Ast.Expr.Fun { parameters; return_annotation = None; body = Ast.Expr.Body_cases _ } when Vector.is_empty
+      parameters ->
+        write_direct_token_trivia (Ast.Expr.as_node expr);
+        write_canonical_function_cases (collect_match_cases expr);
+        true
+    | Ast.Expr.Fun { parameters = _; return_annotation = None; body = Ast.Expr.Body_expr body } -> (
+        match single_unlabeled_parameter_pattern expr with
+        | Some pattern -> (
+            match Ast.Expr.view body with
+            | Ast.Expr.Match { scrutinee; first_case = _ } when pattern_is_temp_arg pattern
+            && expr_is_temp_arg scrutinee ->
+                write_direct_token_trivia (Ast.Expr.as_node expr);
+                write_direct_token_trivia (Ast.Expr.as_node body);
+                write_canonical_function_cases (collect_match_cases body);
+                true
+            | _ ->
+                write_direct_token_trivia (Ast.Expr.as_node expr);
+                write_canonical_single_function pattern body;
+                true
+          )
+        | None -> false
+      )
+    | _ -> false
+  and write_child ~parent_kind = fun __tmp1 ->
+    match __tmp1 with
     | Syn.SyntaxTree.Node id ->
         let node: Ast.Node.t = { tree = result.tree; id } in
         let node_kind = Ast.Node.kind node in
@@ -339,10 +434,17 @@ let syntax_hash = fun (result: Syn.Parser.parse_result) ->
         IO.Buffer.add_string buffer "M(";
         write_kind missing.kind;
         IO.Buffer.add_string buffer ")"
-  and write_element = function
+  and write_element = fun __tmp1 ->
+    match __tmp1 with
     | Syn.SyntaxTree.Node id ->
         let node: Ast.Node.t = { tree = result.tree; id } in
-        if Kind.(Ast.Node.kind node = PAREN_EXPR || Ast.Node.kind node = PAREN_PATTERN) then
+        if Kind.(Ast.Node.kind node = FUN_EXPR || Ast.Node.kind node = FUNCTION_EXPR) then
+          match Ast.Expr.cast node with
+          | Ast.Node expr when write_canonical_function_expr expr -> ()
+          | Ast.Node _
+          | Ast.Unknown _
+          | Ast.Error _ -> write_node node
+        else if Kind.(Ast.Node.kind node = PAREN_EXPR || Ast.Node.kind node = PAREN_PATTERN) then
           match redundant_paren_child node with
           | Some _child -> write_redundant_paren node
           | None -> write_node node
@@ -540,7 +642,8 @@ let rec dispatch_loop = fun state ->
         | `ScannerDiscovered of Path.t
         | `ScannerComplete
         | `FileChecked of file_result
-      ]) selector = function
+      ]) selector = fun __tmp1 ->
+      match __tmp1 with
       | WorkerPool.DynamicWorkerPool.WorkerReady worker -> (
           match Ref.type_equal
             state.pool.task_ref
@@ -554,8 +657,7 @@ let rec dispatch_loop = fun state ->
           Select `ScannerComplete
       | DispatchFileChecked { result_ref; result } when Ref.equal state.result_ref result_ref ->
           Select (`FileChecked result)
-      | _ ->
-          Skip
+      | _ -> Skip
     in
     match receive ~selector () with
     | `WorkerReady worker ->
@@ -670,7 +772,8 @@ let run_streaming = fun
     spawn (fun () -> start_dispatcher ~owner ~run_ref ~concurrency ~roots ~should_ignore ~check_fn)
   in
   let rec collect results_rev =
-    let selector: ([`FileResult of file_result | `Completed]) selector = function
+    let selector: ([`FileResult of file_result | `Completed]) selector = fun __tmp1 ->
+      match __tmp1 with
       | StreamFileResult { run_ref = msg_ref; result } when Ref.equal run_ref msg_ref ->
           Select (`FileResult result)
       | StreamCompleted msg_ref when Ref.equal run_ref msg_ref -> Select `Completed
