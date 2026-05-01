@@ -2142,6 +2142,7 @@ type 'value field =
   | Field: string * 'field t * ('value -> 'field) -> 'value field
 type 'msg attr =
   | Event of string * (string -> 'msg)
+
 val event_handlers: 'msg attr list -> (string * (string -> 'msg)) list
 |ocaml}
 

@@ -10290,9 +10290,6 @@ and signature_items_join_tightly = fun left right ->
   && signature_item_is_type right
   && (Int.(signature_item_leading_docstring_count right <= 1)
   || signature_item_should_drop_initial_docstring left right))
-  || (signature_item_is_type left
-  && signature_item_is_value right
-  && not (node_has_leading_comment (Ast.SignatureItem.as_node right)))
 
 and structure_items_join_tightly = fun left right ->
   (structure_item_is_open left && structure_item_is_open right)

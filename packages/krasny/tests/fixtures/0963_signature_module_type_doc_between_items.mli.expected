@@ -4,6 +4,7 @@ open Global0
 module type Write = sig
   type t
   type err
+
   val write: t -> buf:string -> (int, err) result
 end
 

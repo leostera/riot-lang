@@ -181,6 +181,7 @@
 0996_else_parenthesized_sequence.ml
 0997_long_fun_parameters.ml
 0998_binding_operator_multiline_in.ml
+0999_signature_type_then_value_spacing.mli
 
 # 91xx copied real-file regressions
 9101_real_krasny_doc.ml

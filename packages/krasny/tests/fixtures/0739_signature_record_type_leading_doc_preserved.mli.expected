@@ -8,4 +8,5 @@ type event = {
   event_type: string option;
   id: string option;
 }
+
 val await: Connection.t -> event Iter.MutIterator.t
