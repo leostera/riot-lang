@@ -127,7 +127,6 @@ module Sqlstate: sig
     | IndexCorrupted
     (* Other/Unknown *)
     | UnknownSqlstate of string
-
   val of_string: string -> t
 
   val to_string: t -> string
@@ -153,7 +152,6 @@ module Error: sig
     source_line: int option;
     source_routine: string option;
   }
-
   val severity: t -> string option
 
   val sqlstate: t -> Sqlstate.t option
@@ -218,7 +216,6 @@ module TypeOid: sig
     | Uuid
     | Jsonb
     | Unknown of int
-
   val of_int: int -> t
 
   val to_int: t -> int
@@ -228,7 +225,6 @@ end
 
 module Oid: sig
   type t = int
-
   val of_int: int -> t
 
   val to_int: t -> int
@@ -242,7 +238,6 @@ module ColumnAttr: sig
   type t =
     | NotFromTable
     | Position of int
-
   val of_int: int -> t
 
   val to_int: t -> int
@@ -255,7 +250,6 @@ module TypeSize: sig
     | VariableLength
     | NullTerminated
     | Fixed of int
-
   val of_int: int -> t
 
   val to_int: t -> int
@@ -267,7 +261,6 @@ module TypeModifier: sig
   type t =
     | NoModifier
     | Modifier of int
-
   val of_int: int -> t
 
   val to_int: t -> int
@@ -279,7 +272,6 @@ module Format: sig
   type t =
     | Text
     | Binary
-
   val of_int: int -> t
 
   val to_int: t -> int

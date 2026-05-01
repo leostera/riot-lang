@@ -1,5 +1,6 @@
 open Std
 open Std.IO
+open Result.Syntax
 
 module Error = Protocol.Error
 
@@ -213,9 +214,17 @@ module Driver = struct
 
   let write_message = fun stream msg ->
     let bytes = Bytes.from_string msg in
-    match Net.TcpStream.write stream bytes () with
-    | Error err -> Error (TransportError err)
-    | Ok _n -> Ok ()
+    let total = Bytes.length bytes in
+    let rec loop offset =
+      if offset >= total then
+        Ok ()
+      else
+        match Net.TcpStream.write stream bytes ~pos:offset ~len:(total - offset) () with
+        | Error err -> Error (TransportError err)
+        | Ok 0 -> Error (TransportError Net.TcpStream.Closed)
+        | Ok written -> loop (offset + written)
+    in
+    loop 0
 
   let hmac_sha256 = fun ~key ~data ->
     hmac_sha256_bytes key data
@@ -763,19 +772,16 @@ module Driver = struct
             in
             let execute_msg = Protocol.Writer.execute_message ~portal_name:"" ~max_rows:0 in
             let sync_msg = Protocol.Writer.sync_message () in
-            match (
-              write_message stream parse_msg,
-              write_message stream describe_msg,
-              write_message stream bind_msg,
-              write_message stream execute_msg,
+            let send_messages =
+              let* () = write_message stream parse_msg in
+              let* () = write_message stream describe_msg in
+              let* () = write_message stream bind_msg in
+              let* () = write_message stream execute_msg in
               write_message stream sync_msg
-            ) with
-            | (Error e, _, _, _, _)
-            | (_, Error e, _, _, _)
-            | (_, _, Error e, _, _)
-            | (_, _, _, Error e, _)
-            | (_, _, _, _, Error e) -> Error e
-            | (Ok (), Ok (), Ok (), Ok (), Ok ()) ->
+            in
+            match send_messages with
+            | Error e -> Error e
+            | Ok () ->
                 let result_set = { rows = Collections.Queue.create (); rows_affected = 0 } in
                 let column_info = ref [] in
                 let rec read_extended_results () =
