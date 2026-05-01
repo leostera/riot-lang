@@ -55,10 +55,31 @@ let single_positional_parameter_name = fun binding ->
   else
     None
 
-let ident_segments = fun ctx ident ->
-  ignore ctx;
-  Ast.Ident.text ident
-  |> String.split ~by:"."
+let ident_is_single_name = fun expected_name ident ->
+  match (Ast.Ident.segment_count ident, Ast.Ident.first_segment ident) with
+  | (1, Some token) -> String.equal expected_name (Ast.Token.text token)
+  | _ -> false
+
+let ident_base_and_field = fun ident ->
+  if Int.equal (Ast.Ident.segment_count ident) 2 then
+    Ast.Ident.fold_segment
+      ident
+      ~init:(None, None)
+      ~fn:(fun token (base, field) ->
+        match base with
+        | None -> Ast.Continue (Some (Ast.Token.text token), field)
+        | Some _ -> Ast.Continue (base, Some (Ast.Token.text token)))
+    |> fun segments ->
+      match segments with
+      | (Some base, Some field) -> Some (base, field)
+      | _ -> None
+  else
+    None
+
+let ident_last_segment = fun ident ->
+  Ast.Ident.last_segment ident
+  |> Option.map ~fn:Ast.Token.text
+  |> Option.unwrap_or ~default:""
 
 let rec unwrap_record_pattern = fun pattern ->
   let pattern = H.unwrap_pattern pattern in
@@ -74,12 +95,9 @@ let record_pattern_field_count = fun record ->
   !count
 
 let rec expr_is_parameter_path = fun ctx expected_name expr ->
+  ignore ctx;
   match Ast.Expr.view (H.unwrap_expr expr) with
-  | Ast.Expr.Ident { ident } -> (
-      match ident_segments ctx ident with
-      | [ name ] -> String.equal expected_name name
-      | _ -> false
-    )
+  | Ast.Expr.Ident { ident } -> ident_is_single_name expected_name ident
   | Ast.Expr.Annotated { expr = inner; _ } -> expr_is_parameter_path ctx expected_name inner
   | _ -> false
 
@@ -120,18 +138,28 @@ let should_prefer_destructuring = fun ctx expected_name expr ->
     Syn.Visitor.empty_hooks with
     enter_expr =
       Some (fun visitor expr ->
-        (
+        let action =
           match Ast.Expr.view expr with
-          | Ast.Expr.Ident { ident } -> (
-              match ident_segments ctx ident with
-              | [ name ] when String.equal expected_name name -> usage.has_whole_value_use <- true
-              | [ base; field ] when String.equal expected_name base ->
-                  Vector.push usage.fields ~value:field
-              | _ -> ()
-            )
-          | _ -> ()
-        );
-        (visitor, Syn.Visitor.Continue));
+          | Ast.Expr.FieldAccess { target; field } when expr_is_parameter_path
+            ctx
+            expected_name
+            target ->
+              Vector.push usage.fields ~value:(ident_last_segment field);
+              Syn.Visitor.Skip_subtree
+          | Ast.Expr.Ident { ident } ->
+              (
+                if ident_is_single_name expected_name ident then
+                  usage.has_whole_value_use <- true
+                else
+                  match ident_base_and_field ident with
+                  | Some (base, field) when String.equal expected_name base ->
+                      Vector.push usage.fields ~value:field
+                  | _ -> ()
+              );
+              Syn.Visitor.Continue
+          | _ -> Syn.Visitor.Continue
+        in
+        (visitor, action));
   }
   in
   Syn.Visitor.make ~ctx:() ~hooks
