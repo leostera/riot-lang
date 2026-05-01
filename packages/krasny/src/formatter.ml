@@ -3584,14 +3584,18 @@ let rec pattern_is_structurally_complex_shallow = fun pattern ->
   | Attribute { inner = Some inner } -> pattern_is_structurally_complex_shallow inner
   | ConstructorIdent { argument = Some argument; _ }
   | Constructor { argument = Some argument; _ } -> pattern_is_structurally_complex_shallow argument
-  | Record -> true
+  | Record ->
+      let fields = collect_record_pattern_fields pattern in
+      Int.(Vector.length fields > 3)
+      || record_pattern_fields_have_leading_comment fields
+      || record_pattern_fields_have_complex_values fields
   | List
   | Array ->
       let items = collect_child_patterns (Ast.Pattern.as_node pattern) in
       Int.(Vector.length items > 0)
   | _ -> false
 
-let record_pattern_fields_have_complex_values = fun
+and record_pattern_fields_have_complex_values = fun
   (fields: Ast.record_pattern_field_view Vector.t) ->
   let length = Vector.length fields in
   let rec loop index =
@@ -3606,7 +3610,7 @@ let record_pattern_fields_have_complex_values = fun
   in
   loop 0
 
-let pattern_items_have_complex_values = fun (items: Ast.Pattern.t Vector.t) ->
+and pattern_items_have_complex_values = fun (items: Ast.Pattern.t Vector.t) ->
   let length = Vector.length items in
   let rec loop index =
     if Int.(index >= length) then
@@ -3764,7 +3768,7 @@ let rec render_pattern = fun state (pattern: Ast.Pattern.t) ->
         emit_line state;
         with_indent
           state
-          2
+          4
           (fun () ->
             let length = Vector.length items in
             let rec loop index =
@@ -3803,7 +3807,7 @@ let rec render_pattern = fun state (pattern: Ast.Pattern.t) ->
         emit_line state;
         with_indent
           state
-          2
+          4
           (fun () ->
             let length = Vector.length items in
             let rec loop index =
@@ -4032,16 +4036,10 @@ and render_parameter = fun state (parameter: Ast.Parameter.t) ->
       render_parameter_pattern state parameter pattern
   | Ast.Parameter.Param { label = Ast.Parameter.NoLabel; pattern = None } ->
       unsupported_node "positional parameter without pattern" node
-  | Ast.Parameter.Param {
-    label = Ast.Parameter.Labeled { name = Some label };
-    pattern = None;
-  } ->
+  | Ast.Parameter.Param { label = Ast.Parameter.Labeled { name = Some label }; pattern = None } ->
       emit_text state "~";
       emit_token state label
-  | Ast.Parameter.Param {
-    label = Ast.Parameter.Labeled { name = Some label };
-    pattern = Some pattern;
-  } ->
+  | Ast.Parameter.Param { label = Ast.Parameter.Labeled { name = Some label }; pattern = Some pattern } ->
       render_named_parameter state ~sigil:"~" parameter label pattern
   | Ast.Parameter.Param { label = Ast.Parameter.Labeled _; _ } ->
       unsupported_node "labeled parameter without label" node

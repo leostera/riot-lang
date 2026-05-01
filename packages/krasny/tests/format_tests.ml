@@ -2602,28 +2602,38 @@ let test_write_breaks_deep_record_list_patterns = fun ctx ->
     ~expected:{ocaml|let test ast =
   match ast.kind with
   | Implementation [
-    {
-      kind =
-        Let {
-          bindings = [
-            {
-              expr = {
-                kind =
-                  Constructor {
-                    ident;
-                    payload = Some { kind = Literal Int; _ };
+      {
+        kind =
+          Let {
+            bindings = [
+                {
+                  expr = {
+                    kind = Constructor { ident; payload = Some { kind = Literal Int; _ } };
+                    _;
                   };
-                _;
-              };
-              _;
-            };
-          ];
-          _;
-        };
-      _;
-    };
+                  _;
+                };
+            ];
+            _;
+          };
+        _;
+      };
   ] -> assert_path_string ~expected:"Some" ident
   | _ -> ()
+|ocaml}
+
+let test_write_keeps_small_record_list_patterns_inline = fun ctx ->
+  let source = {ocaml|let test=function|Ok[{Hpack.name="x";value="y"}]->Ok()|_->Error()
+|ocaml}
+  in
+  let parsed = parse_ml source in
+  let actual = capture_write parsed in
+  Test.Snapshot.assert_inline_text
+    ~ctx
+    ~actual
+    ~expected:{ocaml|let test = function
+  | Ok [ { Hpack.name = "x"; value = "y" } ] -> Ok ()
+  | _ -> Error ()
 |ocaml}
 
 let test_write_keeps_fitting_constructor_or_patterns_inline = fun ctx ->
@@ -5074,6 +5084,9 @@ let tests =
       "write breaks after multiline constructor record match patterns"
       test_write_breaks_after_multiline_constructor_record_match_patterns;
     case "write breaks deep record list patterns" test_write_breaks_deep_record_list_patterns;
+    case
+      "write keeps small record list patterns inline"
+      test_write_keeps_small_record_list_patterns_inline;
     case
       "write keeps fitting constructor or patterns inline"
       test_write_keeps_fitting_constructor_or_patterns_inline;
