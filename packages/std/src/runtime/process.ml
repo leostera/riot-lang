@@ -119,10 +119,11 @@ let init = fun t ->
   t.reductions_remaining <- default_reduction_budget;
   Runtime_atomic.set t.state Runnable
 
-let reset_reductions = fun t remaining -> t.reductions_remaining <- if remaining <= 0 then
-  1
-else
-  remaining
+let reset_reductions = fun t remaining ->
+  t.reductions_remaining <- if remaining <= 0 then
+    1
+  else
+    remaining
 
 let use_reduction = fun t ->
   let remaining = t.reductions_remaining - 1 in
@@ -277,9 +278,10 @@ let mark_as_awaiting_io = fun t ~name token source ->
   if is_alive t then
     Runtime_atomic.set t.state (Waiting_io { name; token; source })
 
-let add_ready_token = fun t token source -> with_lock
-  t
-  (fun () -> t.ready_tokens <- (token, source) :: t.ready_tokens)
+let add_ready_token = fun t token source ->
+  with_lock
+    t
+    (fun () -> t.ready_tokens <- (token, source) :: t.ready_tokens)
 
 let get_ready_token = fun t ->
   with_lock
@@ -355,9 +357,10 @@ let link = fun proc target_pid ->
       if not (List.contains proc.links ~value:target_pid) then
         proc.links <- target_pid :: proc.links)
 
-let unlink = fun proc target_pid -> with_lock
-  proc
-  (fun () -> proc.links <- List.filter proc.links ~fn:(fun pid -> not (Pid.equal pid target_pid)))
+let unlink = fun proc target_pid ->
+  with_lock
+    proc
+    (fun () -> proc.links <- List.filter proc.links ~fn:(fun pid -> not (Pid.equal pid target_pid)))
 
 let monitor = fun proc target_pid ->
   with_lock
@@ -367,21 +370,23 @@ let monitor = fun proc target_pid ->
       proc.monitors <- (ref, target_pid) :: proc.monitors;
       ref)
 
-let demonitor = fun proc ref -> with_lock
-  proc
-  (fun () -> proc.monitors <- List.filter
-    proc.monitors
-    ~fn:(fun (r, _) ->
-      match (ref, r) with
-      | (Monitor_ref id1, Monitor_ref id2) -> not (Int.equal id1 id2)))
+let demonitor = fun proc ref ->
+  with_lock
+    proc
+    (fun () ->
+      proc.monitors <- List.filter
+        proc.monitors
+        ~fn:(fun (r, _) ->
+          match (ref, r) with
+          | (Monitor_ref id1, Monitor_ref id2) -> not (Int.equal id1 id2)))
 
 let monitored_pid_for_ref = fun proc ref ->
   with_lock
     proc
     (fun () ->
-      let rec find = function
-        | [] ->
-            None
+      let rec find = fun __tmp1 ->
+        match __tmp1 with
+        | [] -> None
         | (r, pid) :: rest -> (
             match (ref, r) with
             | (Monitor_ref id1, Monitor_ref id2) ->
@@ -411,20 +416,23 @@ let get_monitors = fun proc -> with_lock proc (fun () -> proc.monitors)
 
 let get_monitored_by = fun proc -> with_lock proc (fun () -> proc.monitored_by)
 
-let add_monitored_by = fun proc monitor_pid ref -> with_lock
-  proc
-  (fun () -> proc.monitored_by <- (monitor_pid, ref) :: proc.monitored_by)
+let add_monitored_by = fun proc monitor_pid ref ->
+  with_lock
+    proc
+    (fun () -> proc.monitored_by <- (monitor_pid, ref) :: proc.monitored_by)
 
-let remove_monitored_by = fun proc monitor_pid ref -> with_lock
-  proc
-  (fun () -> proc.monitored_by <- List.filter
-    proc.monitored_by
-    ~fn:(fun (pid, r) ->
-      not
-        (
-          Pid.equal pid monitor_pid && match (ref, r) with
-          | (Monitor_ref id1, Monitor_ref id2) -> id1 = id2
-        )))
+let remove_monitored_by = fun proc monitor_pid ref ->
+  with_lock
+    proc
+    (fun () ->
+      proc.monitored_by <- List.filter
+        proc.monitored_by
+        ~fn:(fun (pid, r) ->
+          not
+            (
+              Pid.equal pid monitor_pid && match (ref, r) with
+              | (Monitor_ref id1, Monitor_ref id2) -> id1 = id2
+            )))
 
 let is_linked = fun proc pid -> with_lock proc (fun () -> List.contains proc.links ~value:pid)
 

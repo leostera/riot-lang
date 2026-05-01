@@ -29,7 +29,8 @@ let parse_new = fun args ->
   | Ok matches -> Ok matches
   | Error err -> Error (ArgParser.error_message err)
 
-let path_error_message = function
+let path_error_message = fun __tmp1 ->
+  match __tmp1 with
   | Path.InvalidUtf8 { path } -> "invalid utf-8 path: " ^ path
   | Path.SystemInvalidUtf8 { syscall; path } ->
       "system returned invalid utf-8 for " ^ syscall ^ ": " ^ path

@@ -23,7 +23,8 @@ let command =
       |> help "Render results as JSON";
     ]
 
-let message = function
+let message = fun __tmp1 ->
+  match __tmp1 with
   | MissingQuery -> "missing search query"
   | InvalidLimit value -> "invalid --limit value '" ^ value ^ "'"
   | SearchFailed error -> Package_error.message error

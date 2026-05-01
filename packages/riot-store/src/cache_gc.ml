@@ -178,7 +178,8 @@ let summary_message = fun summary ->
     ^ size_to_string summary.size_after_bytes
     ^ ")"
 
-let trigger_to_string = function
+let trigger_to_string = fun __tmp1 ->
+  match __tmp1 with
   | Manual -> "manual"
   | Post_build -> "post_build"
 
@@ -198,7 +199,8 @@ let summary_to_json = fun summary ->
     ("size_after_bytes", Data.Json.String (Int64.to_string summary.size_after_bytes));
   ]
 
-let event_message = function
+let event_message = fun __tmp1 ->
+  match __tmp1 with
   | GcStarted { trigger } -> "starting tracked cache GC (" ^ trigger_to_string trigger ^ ")"
   | GcCacheScanStarted { build_root; _ } ->
       "scanning tracked cache entries under " ^ Path.to_string build_root
@@ -230,7 +232,8 @@ let event_message = function
   | ForceCleanFailed { build_root; error } ->
       "failed to remove build root " ^ Path.to_string build_root ^ ": " ^ error
 
-let event_to_json = function
+let event_to_json = fun __tmp1 ->
+  match __tmp1 with
   | GcStarted { trigger } ->
       Data.Json.Object [
         ("type", Data.Json.String "CacheGcStarted");
@@ -337,7 +340,8 @@ let event_to_json = function
       ]
 
 let sort_uniq_strings = fun values ->
-  let rec dedupe acc = function
+  let rec dedupe acc = fun __tmp1 ->
+    match __tmp1 with
     | [] -> List.reverse acc
     | [ value ] -> List.reverse (value :: acc)
     | left :: ((right :: _) as rest) ->
@@ -427,9 +431,9 @@ let generation_lane_of_json = fun json ->
   let* hashes =
     match Data.Json.get_field "hashes" json with
     | Some (Data.Json.Array hashes) ->
-        let rec loop acc = function
-          | [] ->
-              Ok (List.reverse acc)
+        let rec loop acc = fun __tmp1 ->
+          match __tmp1 with
+          | [] -> Ok (List.reverse acc)
           | value :: rest -> (
               match Data.Json.get_string value with
               | Some hash -> loop (hash :: acc) rest
@@ -445,9 +449,9 @@ let receipt_of_json = fun json ->
   let* lanes =
     match Data.Json.get_field "lanes" json with
     | Some (Data.Json.Array lanes) ->
-        let rec loop acc = function
-          | [] ->
-              Ok (List.reverse acc)
+        let rec loop acc = fun __tmp1 ->
+          match __tmp1 with
+          | [] -> Ok (List.reverse acc)
           | lane :: rest -> (
               match generation_lane_of_json lane with
               | Ok lane -> loop (lane :: acc) rest
@@ -478,9 +482,9 @@ let cache_state_of_json = fun json ->
               let generation_hashes =
                 match Data.Json.get_field "generation_hashes" json with
                 | Some (Data.Json.Array hashes) ->
-                    let rec loop acc = function
-                      | [] ->
-                          Some (List.reverse acc)
+                    let rec loop acc = fun __tmp1 ->
+                      match __tmp1 with
+                      | [] -> Some (List.reverse acc)
                       | value :: rest -> (
                           match Data.Json.get_string value with
                           | Some hash -> loop (hash :: acc) rest
@@ -528,7 +532,8 @@ let list_subdirectories = fun dir ->
 let is_json_file = fun path ->
   String.ends_with ~suffix:".json" (Path.basename path) && not (path_is_directory path)
 
-let is_hex_char = function
+let is_hex_char = fun __tmp1 ->
+  match __tmp1 with
   | '0' .. '9'
   | 'a' .. 'f'
   | 'A' .. 'F' -> true
@@ -626,9 +631,9 @@ let load_latest_receipt = fun ~(workspace:Workspace.t) ->
 
 let load_receipts = fun ~(workspace:Workspace.t) ->
   let paths = receipt_paths_desc ~workspace in
-  let rec loop acc = function
-    | [] ->
-        Ok (List.reverse acc)
+  let rec loop acc = fun __tmp1 ->
+    match __tmp1 with
+    | [] -> Ok (List.reverse acc)
     | path :: rest -> (
         match read_receipt_file path with
         | Ok receipt -> loop (receipt :: acc) rest
@@ -730,13 +735,15 @@ let collect_cache_entries = fun ~trigger ~on_event ~(workspace:Workspace.t) ->
     list_subdirectories workspace.target_dir_root
     |> List.filter ~fn:(fun dir -> not (String.equal (Path.basename dir) "cache"))
   in
-  let rec collect_profiles acc = function
+  let rec collect_profiles acc = fun __tmp1 ->
+    match __tmp1 with
     | [] -> Ok (List.reverse acc)
     | profile_dir :: rest ->
         let target_dirs = list_subdirectories profile_dir in
         let* acc = collect_targets acc target_dirs in
         collect_profiles acc rest
-  and collect_targets acc = function
+  and collect_targets acc = fun __tmp1 ->
+    match __tmp1 with
     | [] -> Ok acc
     | target_dir :: rest ->
         let cache_dir = Path.(target_dir / Path.v "cache") in
@@ -848,9 +855,9 @@ let take = fun n list ->
   in
   loop [] list n
 
-let drop_last = function
-  | [] ->
-      []
+let drop_last = fun __tmp1 ->
+  match __tmp1 with
+  | [] -> []
   | list -> (
       match List.reverse list with
       | [] -> []
@@ -902,9 +909,9 @@ let delete_path = fun path ~kind ->
         "failed to remove " ^ kind ^ " " ^ Path.to_string path ^ ": " ^ IO.error_message err)
 
 let load_receipts_for_hashes = fun ~(workspace:Workspace.t) hashes ->
-  let rec loop acc = function
-    | [] ->
-        Ok (List.reverse acc)
+  let rec loop acc = fun __tmp1 ->
+    match __tmp1 with
+    | [] -> Ok (List.reverse acc)
     | hash :: rest -> (
         match read_receipt_file (receipt_path ~workspace hash) with
         | Ok receipt -> loop (receipt :: acc) rest

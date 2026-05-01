@@ -30,9 +30,9 @@ let header_separator = fun payload ->
 
 let parse_content_length = fun headers ->
   let parse_int = Int.parse in
-  let rec loop = function
-    | [] ->
-        Error "missing Content-Length header"
+  let rec loop = fun __tmp1 ->
+    match __tmp1 with
+    | [] -> Error "missing Content-Length header"
     | header :: rest -> (
         match String.split_on_char ':' header with
         | name :: value_parts when String.equal

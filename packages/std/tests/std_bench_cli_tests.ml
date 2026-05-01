@@ -58,11 +58,10 @@ let listed_benchmark_fields_from_json = fun stdout ->
   | Some (Data.Json.Array benchmarks) ->
       benchmarks
       |> List.filter_map
-        ~fn:(
-          function
+        ~fn:(fun __tmp1 ->
+          match __tmp1 with
           | Data.Json.Object fields -> Some fields
-          | _ -> None
-        )
+          | _ -> None)
   | _ -> []
 
 let test_list_benchmarks_lists_all_cases = fun _ctx ->
@@ -290,7 +289,8 @@ let sample_main = fun ~args ->
   | _ -> Error (Failure "expected sample subcommand arguments")
 
 let meta_main = fun ~args ->
-  let normalize_args = function
+  let normalize_args = fun __tmp1 ->
+    match __tmp1 with
     | [] -> [ "std_bench_cli_tests"; "run-tests" ]
     | [ exe ] -> [ exe; "run-tests" ]
     | args -> args

@@ -12,7 +12,8 @@ type t =
 type error =
   | InvalidVersion
 
-let of_string = function
+let of_string = fun __tmp1 ->
+  match __tmp1 with
   | "HTTP/0.9" -> Ok Http09
   | "HTTP/1.0" -> Ok Http10
   | "HTTP/1.1" -> Ok Http11
@@ -33,7 +34,8 @@ let from_slice = fun value ->
   | 8 when Slice.equal_string value "HTTP/3.0" -> Ok Http3
   | _ -> Error InvalidVersion
 
-let to_string = function
+let to_string = fun __tmp1 ->
+  match __tmp1 with
   | Http09 -> "HTTP/0.9"
   | Http10 -> "HTTP/1.0"
   | Http11 -> "HTTP/1.1"
@@ -41,7 +43,8 @@ let to_string = function
   | Http3 -> "HTTP/3"
 
 let compare = fun v1 v2 ->
-  let version_num = function
+  let version_num = fun __tmp1 ->
+    match __tmp1 with
     | Http09 -> 0
     | Http10 -> 1
     | Http11 -> 2
@@ -56,7 +59,8 @@ let equal = fun v1 v2 ->
   | Order.LT
   | Order.GT -> false
 
-let is_supported = function
+let is_supported = fun __tmp1 ->
+  match __tmp1 with
   | Http09
   | Http10
   | Http11 -> true

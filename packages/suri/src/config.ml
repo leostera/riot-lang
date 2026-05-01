@@ -78,7 +78,8 @@ type error =
   | InvalidBufferSize of int
   | InvalidLiveViewSecret of liveview_secret_error
 
-let env_to_string = function
+let env_to_string = fun __tmp1 ->
+  match __tmp1 with
   | Development -> "development"
   | Test -> "test"
   | Production -> "production"
@@ -95,12 +96,14 @@ let env_from_string = fun raw ->
   | "prod" -> Ok Production
   | _ -> Error (InvalidEnv { value = raw; normalized; allowed = allowed_envs })
 
-let liveview_secret_error_to_string = function
+let liveview_secret_error_to_string = fun __tmp1 ->
+  match __tmp1 with
   | Missing -> "liveview_secret must not be empty"
   | TooShort len -> "liveview_secret must be at least 32 characters long, got " ^ Int.to_string len
   | Placeholder -> "liveview_secret must not use the default placeholder in production"
 
-let error_to_string = function
+let error_to_string = fun __tmp1 ->
+  match __tmp1 with
   | InvalidEnv { value; allowed; _ } ->
       "env must be one of "
       ^ (

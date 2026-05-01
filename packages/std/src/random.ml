@@ -25,22 +25,26 @@ type error =
 
 let ( let* ) = fun result fn -> Result.and_then ~fn result
 
-let order_lt = function
+let order_lt = fun __tmp1 ->
+  match __tmp1 with
   | Order.LT -> true
   | Order.EQ
   | Order.GT -> false
 
-let order_lte = function
+let order_lte = fun __tmp1 ->
+  match __tmp1 with
   | Order.LT
   | Order.EQ -> true
   | Order.GT -> false
 
-let order_gt = function
+let order_gt = fun __tmp1 ->
+  match __tmp1 with
   | Order.GT -> true
   | Order.LT
   | Order.EQ -> false
 
-let error_to_string = function
+let error_to_string = fun __tmp1 ->
+  match __tmp1 with
   | Entropy error ->
       String.concat "" [ "entropy failure: "; Kernel.Random.Source.error_to_string error ]
   | InvalidIntBound { bound } -> String.concat "" [ "invalid int bound: "; Int.to_string bound ]

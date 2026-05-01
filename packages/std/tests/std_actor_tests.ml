@@ -20,11 +20,10 @@ let test_actor_self_in_spawned_actor = fun _ctx ->
     );
   match await
     ~what:"spawned actor self"
-    (
-      function
+    (fun __tmp1 ->
+      match __tmp1 with
       | Actor_self_reply pid -> Select pid
-      | _ -> Skip
-    ) with
+      | _ -> Skip) with
   | Error _ as err -> err
   | Ok child_pid ->
       if not (Pid.equal child_pid parent) then
@@ -39,22 +38,20 @@ let test_actor_spawn_returns_live_pid = fun _ctx ->
       (fun () ->
         send parent (Actor_ready (Actor.self ()));
         receive
-          ~selector:(
-            function
+          ~selector:(fun __tmp1 ->
+            match __tmp1 with
             | Actor_stop -> Select ()
-            | _ -> Skip
-          )
+            | _ -> Skip)
           ();
         Ok ())
   in
   let _monitor = Runtime.Actor.monitor child in
   match await
     ~what:"spawned actor ready"
-    (
-      function
+    (fun __tmp1 ->
+      match __tmp1 with
       | Actor_ready pid -> Select pid
-      | _ -> Skip
-    ) with
+      | _ -> Skip) with
   | Error _ as err -> err
   | Ok ready_pid ->
       if Pid.equal ready_pid child then (
@@ -63,11 +60,10 @@ let test_actor_spawn_returns_live_pid = fun _ctx ->
           (
             await
               ~what:"spawned actor down"
-              (
-                function
+              (fun __tmp1 ->
+                match __tmp1 with
                 | Runtime.Actor.DOWN { pid; _ } when Pid.equal pid child -> Select ()
-                | _ -> Skip
-              )
+                | _ -> Skip)
           );
         Ok ()
       ) else
@@ -83,12 +79,11 @@ let test_actor_spawn_link_reports_abnormal_exit = fun _ctx ->
   let child = Actor.spawn_link (fun () -> Error (Failure "boom")) in
   match await
     ~what:"linked actor exit"
-    (
-      function
+    (fun __tmp1 ->
+      match __tmp1 with
       | Runtime.Actor.EXIT { from; reason = Error exn } when Pid.equal from child
       && is_failure exn ~message:"boom" -> Select ()
-      | _ -> Skip
-    ) with
+      | _ -> Skip) with
   | Ok () -> Ok ()
   | Error _ as err -> err
 

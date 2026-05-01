@@ -33,7 +33,8 @@ type warning =
   | All
 
 (** All warnings *)
-let warning_to_number = function
+let warning_to_number = fun __tmp1 ->
+  match __tmp1 with
   | LabelsOmitted -> 6
   | PartialMatch -> 8
   | BadModuleName -> 24
@@ -46,7 +47,8 @@ let warning_to_number = function
 
 (* Special: use 'a' *)
 
-let warning_to_string = function
+let warning_to_string = fun __tmp1 ->
+  match __tmp1 with
   | LabelsOmitted -> "labels-omitted"
   | PartialMatch -> "partial-match"
   | BadModuleName -> "bad-module-name"
@@ -57,7 +59,8 @@ let warning_to_string = function
   | NoCmiFile -> "no-cmi-file"
   | All -> "all"
 
-let warning_of_string = function
+let warning_of_string = fun __tmp1 ->
+  match __tmp1 with
   | "labels-omitted" -> Some LabelsOmitted
   | "partial-match" -> Some PartialMatch
   | "bad-module-name" -> Some BadModuleName
@@ -91,7 +94,8 @@ type flag =
   | LinkAll
 
 (** -w: Configure warning flags *)
-let warning_code = function
+let warning_code = fun __tmp1 ->
+  match __tmp1 with
   | All -> "a"
   | warning ->
       warning_to_number warning
@@ -103,7 +107,8 @@ let render_warning_spec = fun ~sign warnings ->
   |> String.concat ""
 
 let parse_warning_spec = fun ~sign spec ->
-  let warning_of_code = function
+  let warning_of_code = fun __tmp1 ->
+    match __tmp1 with
     | "6" -> Some LabelsOmitted
     | "8" -> Some PartialMatch
     | "24" -> Some BadModuleName
@@ -129,7 +134,8 @@ let parse_warning_spec = fun ~sign spec ->
         | (Error _, _) -> acc
         | (Ok warnings, Some warning) -> Ok (warning :: warnings)
         | (Ok _, None) -> Error ())
-    |> function
+    |> fun __tmp1 ->
+      match __tmp1 with
       | Ok warnings -> Some (List.reverse warnings)
       | Error () -> None
 
@@ -162,30 +168,22 @@ let flags_to_string = fun flags ->
       | LinkAll -> acc @ [ "-linkall" ])
 
 let flags_of_string = fun raw_flags ->
-  let rec go acc = function
-    | [] ->
-        List.reverse acc
-    | "-open" :: mod_name :: rest ->
-        go (Open mod_name :: acc) rest
-    | "-no-alias-deps" :: rest ->
-        go (NoAliasDeps :: acc) rest
-    | "-nostdlib" :: rest ->
-        go (NoStdlib :: acc) rest
-    | "-nopervasives" :: rest ->
-        go (NoPervasives :: acc) rest
+  let rec go acc = fun __tmp1 ->
+    match __tmp1 with
+    | [] -> List.reverse acc
+    | "-open" :: mod_name :: rest -> go (Open mod_name :: acc) rest
+    | "-no-alias-deps" :: rest -> go (NoAliasDeps :: acc) rest
+    | "-nostdlib" :: rest -> go (NoStdlib :: acc) rest
+    | "-nopervasives" :: rest -> go (NoPervasives :: acc) rest
     | "-inline" :: threshold :: rest -> (
         match Int.parse threshold with
         | Some parsed -> go (Inline parsed :: acc) rest
         | None -> go (Raw threshold :: Raw "-inline" :: acc) rest
       )
-    | "-noassert" :: rest ->
-        go (NoAssert :: acc) rest
-    | "-compact" :: rest ->
-        go (Compact :: acc) rest
-    | "-unsafe" :: rest ->
-        go (Unsafe :: acc) rest
-    | "-impl" :: file :: rest ->
-        go (Impl (Path.v file) :: acc) rest
+    | "-noassert" :: rest -> go (NoAssert :: acc) rest
+    | "-compact" :: rest -> go (Compact :: acc) rest
+    | "-unsafe" :: rest -> go (Unsafe :: acc) rest
+    | "-impl" :: file :: rest -> go (Impl (Path.v file) :: acc) rest
     | "-w" :: warning_spec :: rest -> (
         match parse_warning_spec ~sign:'-' warning_spec with
         | Some warnings -> go (Warning warnings :: acc) rest
@@ -196,10 +194,8 @@ let flags_of_string = fun raw_flags ->
         | Some warnings -> go (WarnError warnings :: acc) rest
         | None -> go (Raw warning_spec :: Raw "-warn-error" :: acc) rest
       )
-    | "-linkall" :: rest ->
-        go (LinkAll :: acc) rest
-    | raw :: rest ->
-        go (Raw raw :: acc) rest
+    | "-linkall" :: rest -> go (LinkAll :: acc) rest
+    | raw :: rest -> go (Raw raw :: acc) rest
   in
   go [] raw_flags
 
@@ -210,11 +206,13 @@ type compilation_kind =
   | Native
 
 (** ocamlopt - slower compilation, optimized runtime *)
-let compilation_kind_to_string = function
+let compilation_kind_to_string = fun __tmp1 ->
+  match __tmp1 with
   | Bytecode -> "bytecode"
   | Native -> "native"
 
-let compilation_kind_of_string = function
+let compilation_kind_of_string = fun __tmp1 ->
+  match __tmp1 with
   | "bytecode" -> Some Bytecode
   | "native" -> Some Native
   | _ -> None

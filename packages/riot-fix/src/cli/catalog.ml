@@ -66,44 +66,46 @@ let rule_to_json = fun rule ->
     ("enabled", bool (Rule.enabled rule));
   ]
 
-let diagnostic_to_json = fun entry -> let open Data.Json in
-Object [
-  ("rule_id", string (display_rule_id_text Explanation.(entry.rule_id)));
-  ("message", string Explanation.(entry.message));
-]
+let diagnostic_to_json = fun entry ->
+  let open Data.Json in
+  Object [
+    ("rule_id", string (display_rule_id_text Explanation.(entry.rule_id)));
+    ("message", string Explanation.(entry.message));
+  ]
 
 let list_rules_text = fun rules ->
   let bold text = "\027[1m" ^ text ^ "\027[0m" in
   let rec build_lines = fun current_package current_category acc ->
-    function
-    | [] -> List.reverse acc
-    | rule :: rest ->
-        let (package_name, local_id) = split_rule_id (Rule.id rule) in
-        let category =
-          if String.equal package_name "riot" then
-            Pipeline.builtin_rule_category (Rule.id rule)
-          else
-            None
-        in
-        let rule_line =
-          if String.equal package_name "riot" then
-            "  " ^ bold (display_rule_id rule) ^ " - " ^ Rule.description rule
-          else
-            bold (display_rule_id rule) ^ " - " ^ Rule.description rule
-        in
-        let acc =
-          match (package_name, current_package, category, current_category) with
-          | ("riot", Some "riot", Some category_name, Some current) when not
-            (String.equal category_name current) -> rule_line :: ("  " ^ category_name ^ ":") :: acc
-          | ("riot", Some "riot", _, _) -> rule_line :: acc
-          | ("riot", _, Some category_name, _) ->
-              rule_line :: ("  " ^ category_name ^ ":") :: "riot:" :: "" :: acc
-          | (_, Some current, _, _) when not (String.equal current package_name) ->
-              rule_line :: (package_name ^ ":") :: "" :: acc
-          | (_, Some _, _, _) -> rule_line :: acc
-          | (_, None, _, _) -> rule_line :: (package_name ^ ":") :: acc
-        in
-        build_lines (Some package_name) category acc rest
+    fun __tmp1 ->
+      match __tmp1 with
+      | [] -> List.reverse acc
+      | rule :: rest ->
+          let (package_name, local_id) = split_rule_id (Rule.id rule) in
+          let category =
+            if String.equal package_name "riot" then
+              Pipeline.builtin_rule_category (Rule.id rule)
+            else
+              None
+          in
+          let rule_line =
+            if String.equal package_name "riot" then
+              "  " ^ bold (display_rule_id rule) ^ " - " ^ Rule.description rule
+            else
+              bold (display_rule_id rule) ^ " - " ^ Rule.description rule
+          in
+          let acc =
+            match (package_name, current_package, category, current_category) with
+            | ("riot", Some "riot", Some category_name, Some current) when not
+              (String.equal category_name current) -> rule_line :: ("  " ^ category_name ^ ":") :: acc
+            | ("riot", Some "riot", _, _) -> rule_line :: acc
+            | ("riot", _, Some category_name, _) ->
+                rule_line :: ("  " ^ category_name ^ ":") :: "riot:" :: "" :: acc
+            | (_, Some current, _, _) when not (String.equal current package_name) ->
+                rule_line :: (package_name ^ ":") :: "" :: acc
+            | (_, Some _, _, _) -> rule_line :: acc
+            | (_, None, _, _) -> rule_line :: (package_name ^ ":") :: acc
+          in
+          build_lines (Some package_name) category acc rest
   in
   build_lines None None [] rules
   |> String.concat "\n"

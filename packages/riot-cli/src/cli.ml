@@ -61,7 +61,8 @@ let set_verbosity = fun verbose ->
   | 2 -> Log.(set_level Debug)
   | _ -> Log.(set_level Trace)
 
-let path_error_message = function
+let path_error_message = fun __tmp1 ->
+  match __tmp1 with
   | Path.InvalidUtf8 { path } -> "invalid UTF-8 path: " ^ path
   | Path.SystemInvalidUtf8 { syscall; path } ->
       "system call '" ^ syscall ^ "' returned invalid UTF-8 path: " ^ path
@@ -84,7 +85,8 @@ let trace_cli = fun message ->
   let _ = message in
   ()
 
-let normalize_args = function
+let normalize_args = fun __tmp1 ->
+  match __tmp1 with
   | executable :: "docs" :: rest -> executable :: "doc" :: rest
   | executable :: "toolchains" :: rest -> executable :: "toolchain" :: rest
   | executable :: "help" :: [] -> [ executable; "--help" ]
@@ -251,7 +253,8 @@ format = "full"
   ()
 
 let is_lsp_invocation = fun args ->
-  let rec loop = function
+  let rec loop = fun __tmp1 ->
+    match __tmp1 with
     | [] -> false
     | arg :: rest when String.length arg > 0 && String.get_unchecked arg ~at:0 = '-' -> loop rest
     | "lsp" :: _ -> true
@@ -261,7 +264,8 @@ let is_lsp_invocation = fun args ->
   | _program :: rest -> loop rest
   | [] -> false
 
-let render_init_event = function
+let render_init_event = fun __tmp1 ->
+  match __tmp1 with
   | Riot_init.WorkspaceInitializationStarted { name; target_dir } ->
       println "";
       println ("Creating workspace '" ^ name ^ "' in '" ^ Path.to_string target_dir ^ "'");

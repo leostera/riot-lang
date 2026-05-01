@@ -192,35 +192,31 @@ let mode_encode =
     [
       Ser.Variant.unit
         "Idle"
-        (
-          function
+        (fun __tmp1 ->
+          match __tmp1 with
           | Idle -> true
-          | _ -> false
-        );
+          | _ -> false);
       Ser.Variant.newtype
         "Named"
         Ser.string
-        (
-          function
+        (fun __tmp1 ->
+          match __tmp1 with
           | Named value -> Some value
-          | _ -> None
-        );
+          | _ -> None);
       Ser.Variant.newtype
         "Counted"
         Ser.int
-        (
-          function
+        (fun __tmp1 ->
+          match __tmp1 with
           | Counted value -> Some value
-          | _ -> None
-        );
+          | _ -> None);
       Ser.Variant.newtype
         "Sampled"
         Ser.float
-        (
-          function
+        (fun __tmp1 ->
+          match __tmp1 with
           | Sampled value -> Some value
-          | _ -> None
-        );
+          | _ -> None);
     ]
 
 let primitive_decode =

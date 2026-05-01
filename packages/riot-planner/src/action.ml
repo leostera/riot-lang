@@ -213,7 +213,8 @@ let hash = fun action ->
       List.for_each sorted_env ~fn:(fun (k, v) -> Sha256.write hasher (k ^ "=" ^ v));
       Sha256.finish hasher
 
-let to_string = function
+let to_string = fun __tmp1 ->
+  match __tmp1 with
   | CompileInterface {
       source;
       outputs;
@@ -488,11 +489,10 @@ let from_json = fun json ->
         Some (
           List.filter_map
             arr
-            ~fn:(
-              function
+            ~fn:(fun __tmp1 ->
+              match __tmp1 with
               | String s -> Some (Path.v s)
-              | _ -> None
-            )
+              | _ -> None)
         )
     | _ -> None
   in
@@ -502,11 +502,10 @@ let from_json = fun json ->
         Some (
           List.filter_map
             arr
-            ~fn:(
-              function
+            ~fn:(fun __tmp1 ->
+              match __tmp1 with
               | String s -> Some s
-              | _ -> None
-            )
+              | _ -> None)
         )
     | _ -> None
   in
@@ -675,11 +674,10 @@ let from_json = fun json ->
             Some (
               List.filter_map
                 arr
-                ~fn:(
-                  function
+                ~fn:(fun __tmp1 ->
+                  match __tmp1 with
                   | String s -> Some s
-                  | _ -> None
-                )
+                  | _ -> None)
             )
         | _ -> None
       in
@@ -771,7 +769,8 @@ let equal = fun a1 a2 ->
       && r1.env = r2.env
   | _ -> false
 
-let outputs = function
+let outputs = fun __tmp1 ->
+  match __tmp1 with
   | CompileInterface { outputs; _ } -> outputs
   | CompileImplementation { outputs; _ } -> outputs
   | GenerateInterface { outputs; _ } -> outputs
@@ -783,7 +782,8 @@ let outputs = function
   | WriteFile { destination; _ } -> [ destination ]
   | BuildForeignDependency { outputs; _ } -> outputs
 
-let kind = function
+let kind = fun __tmp1 ->
+  match __tmp1 with
   | CompileInterface _ -> "CompileInterface"
   | CompileImplementation _ -> "CompileImplementation"
   | GenerateInterface _ -> "GenerateInterface"

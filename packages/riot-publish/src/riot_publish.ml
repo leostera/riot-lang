@@ -112,9 +112,9 @@ let exn_message = fun exn ->
   | Failure message -> message
   | exn -> Exception.to_string exn
 
-let registry_initialization_error_message = function
-  | Riot_deps.RegistryFilesystemInitializationFailed error ->
-      Pkgs_ml.Registry_cache.create_error_message error
+let registry_initialization_error_message = fun (Riot_deps.RegistryFilesystemInitializationFailed error) ->
+  Pkgs_ml.Registry_cache.create_error_message
+    error
 
 let publish_error_message = fun error ->
   match error with
@@ -266,7 +266,8 @@ let load_workspace_strict = fun workspace_root ->
       else
         Error (WorkspaceLoadHadErrors { workspace_root; errors = load_errors })
 
-let profile_of_name = function
+let profile_of_name = fun __tmp1 ->
+  match __tmp1 with
   | "release" -> Riot_model.Profile.release
   | _ -> Riot_model.Profile.debug
 

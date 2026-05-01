@@ -100,7 +100,8 @@ type export_entry = Manifest.export_entry = {
   action_hash: string;
 }
 
-let error_message = function
+let error_message = fun __tmp1 ->
+  match __tmp1 with
   | HashNotFound { hash } -> "Hash not found in store: " ^ Crypto.Digest.hex hash
   | LoadManifestFailed { path; cause } ->
       "Failed to load manifest: " ^ Path.to_string path ^ " (" ^ cause ^ ")"
@@ -374,15 +375,15 @@ let store_artifacts = fun
         Ok (Some (Path.v output_file, Fs.Metadata.len metadata))
   in
   let rec collect_outputs = fun acc ->
-    function
-    | [] ->
-        Ok (List.reverse acc)
-    | output_file :: rest -> (
-        match copy_output output_file with
-        | Error _ as err -> err
-        | Ok None -> collect_outputs acc rest
-        | Ok (Some entry) -> collect_outputs (entry :: acc) rest
-      )
+    fun __tmp1 ->
+      match __tmp1 with
+      | [] -> Ok (List.reverse acc)
+      | output_file :: rest -> (
+          match copy_output output_file with
+          | Error _ as err -> err
+          | Ok None -> collect_outputs acc rest
+          | Ok (Some entry) -> collect_outputs (entry :: acc) rest
+        )
   in
   let result =
     let* stored_files_with_sizes = collect_outputs [] declared_outputs in

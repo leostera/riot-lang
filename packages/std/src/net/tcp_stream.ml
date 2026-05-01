@@ -10,7 +10,8 @@ type error =
   | Closed
   | System_error of IO.error
 
-let io_error_of_tcp_error = function
+let io_error_of_tcp_error = fun __tmp1 ->
+  match __tmp1 with
   | Kernel.Net.TcpStream.InvalidSlice _ -> IO.Invalid_argument
   | Kernel.Net.TcpStream.InvalidSocketAddr _ -> IO.Invalid_argument
   | Kernel.Net.TcpStream.InvalidConnectState _ -> IO.Invalid_argument

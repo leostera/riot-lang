@@ -64,7 +64,8 @@ let make_build_ctx = fun ~host ~target ~toolchain ~session_id ~profile ~parallel
       ~parallelism
       ()
 
-let workspace_plan_error_to_string = function
+let workspace_plan_error_to_string = fun __tmp1 ->
+  match __tmp1 with
   | Riot_planner.Workspace_planner.PackageNotFound { name; available } ->
       "package not found: "
       ^ Riot_model.Package_name.to_string name
@@ -110,7 +111,8 @@ let workspace_plan_error_to_string = function
       in
       "package load failed: " ^ String.concat "; " (List.map errors ~fn:format_load_error)
 
-let error_message = function
+let error_message = fun __tmp1 ->
+  match __tmp1 with
   | PlanningFailed error -> workspace_plan_error_to_string error
   | Failure reason -> reason
 

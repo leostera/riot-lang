@@ -23,7 +23,8 @@ let error_to_string = Kernel.Fs.File.error_to_string
 
 let kernel_path = fun path -> Kernel.Path.from_string (Path.to_string path)
 
-let wrap_result: type value error. (value, error) Kernel.Result.t -> (value, error) result = function
+let wrap_result: type value error. (value, error) Kernel.Result.t -> (value, error) result = fun __tmp1 ->
+  match __tmp1 with
   | Ok value -> Ok value
   | Error error -> Error error
 
@@ -80,11 +81,13 @@ let unlock = fun file -> wrap_result (Kernel.Fs.File.unlock file)
 
 let to_source = Kernel.Fs.File.to_source
 
-let is_would_block = function
+let is_would_block = fun __tmp1 ->
+  match __tmp1 with
   | Kernel.Fs.File.System error -> Kernel.SystemError.would_block error
   | Kernel.Fs.File.InvalidSlice _ -> false
 
-let io_error_of_file_error = function
+let io_error_of_file_error = fun __tmp1 ->
+  match __tmp1 with
   | Kernel.Fs.File.System error -> IO.of_system_error error
   | Kernel.Fs.File.InvalidSlice _ -> IO.Invalid_argument
 

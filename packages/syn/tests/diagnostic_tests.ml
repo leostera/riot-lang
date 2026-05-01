@@ -6,7 +6,8 @@ open Syn
 module Iterator = Iter.Iterator
 
 let canonicalize_json =
-  let rec loop = function
+  let rec loop = fun __tmp1 ->
+    match __tmp1 with
     | Json.Object fields ->
         Json.Object (
           fields

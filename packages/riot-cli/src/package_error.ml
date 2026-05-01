@@ -1,42 +1,47 @@
 open Std
 
-let dependency_spec_error_message = function
+let dependency_spec_error_message = fun __tmp1 ->
+  match __tmp1 with
   | Riot_deps.RegistryDependencySpecError error ->
       Riot_deps.Registry_package_spec.error_message error
   | Riot_deps.SourceDependencySpecError error -> Riot_deps.Git_dependency.message error
 
-let path_dependency_load_error_message = function
+let path_dependency_load_error_message = fun __tmp1 ->
+  match __tmp1 with
   | Riot_deps.PathDependencyManifestReadFailed error -> IO.error_message error
   | Riot_deps.PathDependencyTomlParseFailed error -> Data.Toml.error_to_string error
   | Riot_deps.PathDependencyManifestDecodeFailed error ->
       Riot_model.Package.manifest_error_message error
 
-let source_dependency_load_error_message = function
+let source_dependency_load_error_message = fun __tmp1 ->
+  match __tmp1 with
   | Riot_deps.SourceDependencyMaterializationFailed error -> Riot_deps.Git_dependency.message error
   | Riot_deps.SourceDependencyManifestReadFailed error -> IO.error_message error
   | Riot_deps.SourceDependencyTomlParseFailed error -> Data.Toml.error_to_string error
   | Riot_deps.SourceDependencyManifestDecodeFailed error ->
       Riot_model.Package.manifest_error_message error
 
-let registry_initialization_error_message = function
-  | Riot_deps.RegistryFilesystemInitializationFailed error ->
-      Pkgs_ml.Registry_cache.create_error_message error
+let registry_initialization_error_message = fun (Riot_deps.RegistryFilesystemInitializationFailed error) ->
+  Pkgs_ml.Registry_cache.create_error_message
+    error
 
-let registry_lookup_error_message = function
+let registry_lookup_error_message = fun __tmp1 ->
+  match __tmp1 with
   | Riot_deps.RegistryPackageDocumentReadFailed error -> error
   | Riot_deps.RegistryPackageNameDecodeFailed error -> Riot_model.Package_name.error_message error
 
-let registry_search_error_message = function
-  | Riot_deps.RegistrySearchRequestFailed error -> error
+let registry_search_error_message = fun (Riot_deps.RegistrySearchRequestFailed error) -> error
 
-let registry_materialization_error_message = function
+let registry_materialization_error_message = fun __tmp1 ->
+  match __tmp1 with
   | Riot_deps.RegistryPackageMaterializationFailed error -> Riot_deps.Error.message error
   | Riot_deps.RegistryPackageManifestReadFailed error -> IO.error_message error
   | Riot_deps.RegistryPackageTomlParseFailed error -> Data.Toml.error_to_string error
   | Riot_deps.RegistryPackageManifestDecodeFailed error ->
       Riot_model.Package.manifest_error_message error
 
-let message = function
+let message = fun __tmp1 ->
+  match __tmp1 with
   | Riot_deps.CurrentPackageNotFound { cwd } ->
       "could not determine current package from '" ^ Path.to_string cwd ^ "'"
   | Riot_deps.PackageNotFound { package } ->

@@ -75,7 +75,8 @@ type t =
 type error =
   | InvalidStatus
 
-let to_int = function
+let to_int = fun __tmp1 ->
+  match __tmp1 with
   | Continue -> 100
   | SwitchingProtocols -> 101
   | Processing -> 102
@@ -140,7 +141,8 @@ let to_int = function
   | NetworkAuthenticationRequired -> 511
   | Extension code -> code
 
-let of_int = function
+let of_int = fun __tmp1 ->
+  match __tmp1 with
   | 100 -> Continue
   | 101 -> SwitchingProtocols
   | 102 -> Processing
@@ -214,7 +216,8 @@ let to_string = fun status -> Int.to_string (to_int status)
 
 let equal = fun a b -> to_int a = to_int b
 
-let reason_phrase = function
+let reason_phrase = fun __tmp1 ->
+  match __tmp1 with
   | Continue -> "Continue"
   | SwitchingProtocols -> "Switching Protocols"
   | Processing -> "Processing"

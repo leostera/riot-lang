@@ -9,7 +9,8 @@ type validation_error =
   | RequestIdTooLong of { length: int; max_length: int }
   | InvalidRequestIdCharacter of { char: char; index: int }
 
-let validation_error_to_string = function
+let validation_error_to_string = fun __tmp1 ->
+  match __tmp1 with
   | EmptyRequestId -> "request ID must not be empty"
   | RequestIdTooLong { length; max_length } ->
       "request ID is too long: "

@@ -373,9 +373,9 @@ let execute_actions = fun ~session_id ~(node:Action_node.t) toolchain sandbox_di
   let ocamlc = Riot_toolchain.ocamlc toolchain in
   let c_compiler = Riot_toolchain.c_compiler toolchain in
   let package = node.value.package in
-  let rec execute_next ocamlc_warnings = function
-    | [] ->
-        Ok ocamlc_warnings
+  let rec execute_next ocamlc_warnings = fun __tmp1 ->
+    match __tmp1 with
+    | [] -> Ok ocamlc_warnings
     | action :: rest -> (
         let result = run_action ~session_id ~package ~node ?c_compiler ocamlc sandbox_dir action in
         match result with
@@ -450,9 +450,9 @@ let resolve_source_for_copy = fun ~(package:Riot_model.Package.t) ~src_path ->
       in
       with_workspace @ [ src_path ]
   in
-  let rec first_existing = function
-    | [] ->
-        None
+  let rec first_existing = fun __tmp1 ->
+    match __tmp1 with
+    | [] -> None
     | p :: rest -> (
         match Fs.exists p with
         | Ok true -> Some p
@@ -607,11 +607,10 @@ let execute_node = fun ~completed ~store ~session_id toolchain sandbox_dir (node
                 let needs_output_verification =
                   List.any
                     actions
-                    ~fn:(
-                      function
+                    ~fn:(fun __tmp1 ->
+                      match __tmp1 with
                       | Action.BuildForeignDependency _ -> false
-                      | _ -> true
-                    )
+                      | _ -> true)
                 in
                 if not needs_output_verification then
                   match save_action_artifact

@@ -15,25 +15,29 @@ let err = fun e -> Error e
 
 (* Querying *)
 
-let is_ok = function
+let is_ok = fun __tmp1 ->
+  match __tmp1 with
   | Ok _ -> true
   | Error _ -> false
 
-let is_error = function
+let is_error = fun __tmp1 ->
+  match __tmp1 with
   | Ok _ -> false
   | Error _ -> true
 
 let is_err = is_error
 
 let is_ok_and = fun f ->
-  function
-  | Ok x -> f x
-  | Error _ -> false
+  fun __tmp1 ->
+    match __tmp1 with
+    | Ok x -> f x
+    | Error _ -> false
 
 let is_err_and = fun f ->
-  function
-  | Error e -> f e
-  | Ok _ -> false
+  fun __tmp1 ->
+    match __tmp1 with
+    | Error e -> f e
+    | Ok _ -> false
 
 (* Transforming *)
 
@@ -78,7 +82,8 @@ let or_else = fun value ~fn ->
 
 (* Extracting values *)
 
-let unwrap = function
+let unwrap = fun __tmp1 ->
+  match __tmp1 with
   | Ok x -> x
   | Error _ -> panic "called Result.unwrap on an Error value"
 
@@ -88,34 +93,40 @@ let unwrap_or = fun value ~default ->
   | Error _ -> default
 
 let unwrap_or_default = fun ~default ->
-  function
-  | Ok x -> x
-  | Error _ -> default ()
+  fun __tmp1 ->
+    match __tmp1 with
+    | Ok x -> x
+    | Error _ -> default ()
 
 let unwrap_or_else = fun value ~fn ->
   match value with
   | Ok x -> x
   | Error _ -> fn ()
 
-let unwrap_err = function
+let unwrap_err = fun __tmp1 ->
+  match __tmp1 with
   | Error e -> e
   | Ok _ -> panic "called Result.unwrap_err on an Ok value"
 
 let expect = fun ~msg ->
-  function
-  | Ok x -> x
-  | Error _ -> panic msg
+  fun __tmp1 ->
+    match __tmp1 with
+    | Ok x -> x
+    | Error _ -> panic msg
 
 let expect_err = fun ~msg ->
-  function
-  | Error e -> e
-  | Ok _ -> panic msg
+  fun __tmp1 ->
+    match __tmp1 with
+    | Error e -> e
+    | Ok _ -> panic msg
 
-let ok_value = function
+let ok_value = fun __tmp1 ->
+  match __tmp1 with
   | Ok x -> Some x
   | Error _ -> None
 
-let err_value = function
+let err_value = fun __tmp1 ->
+  match __tmp1 with
   | Error e -> Some e
   | Ok _ -> None
 
@@ -155,25 +166,29 @@ let iter_error = iiter_err
 
 (* Converting *)
 
-let to_option = function
+let to_option = fun __tmp1 ->
+  match __tmp1 with
   | Ok x -> Some x
   | Error _ -> None
 
 let of_option = fun ~error ->
-  function
-  | Some x -> Ok x
-  | None -> Error error
+  fun __tmp1 ->
+    match __tmp1 with
+    | Some x -> Ok x
+    | None -> Error error
 
 let from_option = of_option
 
-let transpose = function
+let transpose = fun __tmp1 ->
+  match __tmp1 with
   | Ok None -> None
   | Ok (Some x) -> Some (Ok x)
   | Error e -> Some (Error e)
 
 (* Flattening *)
 
-let flatten = function
+let flatten = fun __tmp1 ->
+  match __tmp1 with
   | Ok r -> r
   | Error e -> Error e
 
@@ -181,10 +196,11 @@ let flatten = function
 
 let all = fun results ->
   let rec go = fun acc ->
-    function
-    | [] -> Ok (List.reverse acc)
-    | (Ok x) :: rest -> go (x :: acc) rest
-    | (Error e) :: _ -> Error e
+    fun __tmp1 ->
+      match __tmp1 with
+      | [] -> Ok (List.reverse acc)
+      | (Ok x) :: rest -> go (x :: acc) rest
+      | (Error e) :: _ -> Error e
   in
   go [] results
 

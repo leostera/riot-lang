@@ -14,15 +14,18 @@ let error = fun message -> raise (Serde.Decode_error (`Msg message))
 
 let invalid_field_type = fun kind -> error ("unexpected TOML value while decoding " ^ kind)
 
-let expect_int64 = function
+let expect_int64 = fun __tmp1 ->
+  match __tmp1 with
   | Document.Int value -> value
   | _ -> invalid_field_type "integer"
 
-let expect_table = function
+let expect_table = fun __tmp1 ->
+  match __tmp1 with
   | Document.Table items -> items
   | _ -> invalid_field_type "table"
 
-let expect_array = function
+let expect_array = fun __tmp1 ->
+  match __tmp1 with
   | Document.Array _ as value -> value
   | Document.Array_of_tables _ as value -> value
   | _ -> invalid_field_type "array"

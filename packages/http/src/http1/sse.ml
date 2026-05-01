@@ -146,7 +146,8 @@ let parse_line = fun line ->
 
 let parse = fun input ->
   let lines = String.split ~by:"\n" input in
-  let rec loop events partial = function
+  let rec loop events partial = fun __tmp1 ->
+    match __tmp1 with
     | [] -> (
         match finalize_partial partial with
         | Some event -> List.reverse (event :: events)

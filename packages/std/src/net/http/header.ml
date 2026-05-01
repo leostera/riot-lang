@@ -31,9 +31,9 @@ let normalize_name = fun name -> String.lowercase_ascii name
 
 let get = fun headers name ->
   let normalized = normalize_name name in
-  let rec find_header = function
-    | [] ->
-        None
+  let rec find_header = fun __tmp1 ->
+    match __tmp1 with
+    | [] -> None
     | (n, v) :: rest -> (
         match String.compare (normalize_name n) normalized with
         | Order.EQ -> Some v

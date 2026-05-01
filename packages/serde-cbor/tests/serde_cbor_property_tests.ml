@@ -135,26 +135,23 @@ let mode_encode =
     [
       Ser.Variant.unit
         "Captain"
-        (
-          function
+        (fun __tmp1 ->
+          match __tmp1 with
           | Captain -> true
-          | _ -> false
-        );
+          | _ -> false);
       Ser.Variant.unit
         "Doctor"
-        (
-          function
+        (fun __tmp1 ->
+          match __tmp1 with
           | Doctor -> true
-          | _ -> false
-        );
+          | _ -> false);
       Ser.Variant.newtype
         "Navigator"
         Ser.string
-        (
-          function
+        (fun __tmp1 ->
+          match __tmp1 with
           | Navigator value -> Some value
-          | _ -> None
-        );
+          | _ -> None);
     ]
 
 let berth_decode =
@@ -279,7 +276,8 @@ let sample_encode =
         ]
     )
 
-let print_mode = function
+let print_mode = fun __tmp1 ->
+  match __tmp1 with
   | Captain -> "Captain"
   | Doctor -> "Doctor"
   | Navigator value -> "Navigator(" ^ value ^ ")"
@@ -357,8 +355,8 @@ let berth_arb = Arbitrary.make ~print:print_berth berth_gen
 
 let sample_gen =
   Generator.map3
-    (fun (((ready, count), small), (big, ratio)) (label, alias, tags) (scores, mode, home) -> (
-      {
+    (fun (((ready, count), small), (big, ratio)) (label, alias, tags) (scores, mode, home) ->
+      ({
         ready;
         count;
         small;
@@ -371,8 +369,7 @@ let sample_gen =
         home;
         tags;
         scores;
-      }: sample
-    ))
+      }: sample))
     (Generator.pair
       (Generator.pair (Generator.pair Generator.bool Generator.int) Generator.int32)
       (Generator.pair Generator.int64 finite_float_gen))

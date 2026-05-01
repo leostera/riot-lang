@@ -16,7 +16,8 @@ exception Parse_error of string
 (** Parse error *)
 
 (** Convert S-expression to string *)
-let rec to_string = function
+let rec to_string = fun __tmp1 ->
+  match __tmp1 with
   | Atom s ->
       (* Quote atoms that contain special characters *)
       if
@@ -34,18 +35,19 @@ let rec to_string = function
 
 (** Pretty print S-expression *)
 let rec pp_sexp = fun indent ->
-  function
-  | Atom s -> indent ^ to_string (Atom s)
-  | List [] -> indent ^ "()"
-  | List [ single ] -> indent ^ "(" ^ to_string single ^ ")"
-  | List elems ->
-      let indent_next = indent ^ "  " in
-      indent
-      ^ "(\n"
-      ^ String.concat "\n" (List.map elems ~fn:(pp_sexp indent_next))
-      ^ "\n"
-      ^ indent
-      ^ ")"
+  fun __tmp1 ->
+    match __tmp1 with
+    | Atom s -> indent ^ to_string (Atom s)
+    | List [] -> indent ^ "()"
+    | List [ single ] -> indent ^ "(" ^ to_string single ^ ")"
+    | List elems ->
+        let indent_next = indent ^ "  " in
+        indent
+        ^ "(\n"
+        ^ String.concat "\n" (List.map elems ~fn:(pp_sexp indent_next))
+        ^ "\n"
+        ^ indent
+        ^ ")"
 
 let pretty_print = fun sexp -> pp_sexp "" sexp
 
@@ -210,46 +212,50 @@ let atom = fun s -> Atom s
 
 let list = fun l -> List l
 
-let is_atom = function
+let is_atom = fun __tmp1 ->
+  match __tmp1 with
   | Atom _ -> true
   | _ -> false
 
-let is_list = function
+let is_list = fun __tmp1 ->
+  match __tmp1 with
   | List _ -> true
   | _ -> false
 
-let to_atom = function
+let to_atom = fun __tmp1 ->
+  match __tmp1 with
   | Atom s -> Some s
   | _ -> None
 
-let to_list = function
+let to_list = fun __tmp1 ->
+  match __tmp1 with
   | List l -> Some l
   | _ -> None
 
 let rec find_atom = fun name ->
-  function
-  | [] ->
-      None
-  | (Atom s) :: _ when s = name ->
-      Some (Atom s)
-  | (List l) :: rest -> (
-      match find_atom name l with
-      | Some v -> Some v
-      | None -> find_atom name rest
-    )
-  | _ :: rest ->
-      find_atom name rest
+  fun __tmp1 ->
+    match __tmp1 with
+    | [] -> None
+    | (Atom s) :: _ when s = name -> Some (Atom s)
+    | (List l) :: rest -> (
+        match find_atom name l with
+        | Some v -> Some v
+        | None -> find_atom name rest
+      )
+    | _ :: rest -> find_atom name rest
 
 let rec assoc = fun key ->
-  function
-  | [] -> None
-  | (List ((Atom k) :: v :: _)) :: _ when k = key -> Some v
-  | _ :: rest -> assoc key rest
+  fun __tmp1 ->
+    match __tmp1 with
+    | [] -> None
+    | (List ((Atom k) :: v :: _)) :: _ when k = key -> Some v
+    | _ :: rest -> assoc key rest
 
 (** Canonical S-expressions (Csexp) module *)
 module Csexp = struct
   (** Convert S-expression to canonical format *)
-  let rec to_string = function
+  let rec to_string = fun __tmp1 ->
+    match __tmp1 with
     | Atom s ->
         (* Format: <length>:<string> *)
         Int.to_string (String.length s) ^ ":" ^ s

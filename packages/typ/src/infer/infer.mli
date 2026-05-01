@@ -42,10 +42,26 @@ type infer_result = {
 }
 
 (**
-   Check a complete `Typ.Ast` in one shot.
+   Check a typed implementation in one shot.
 
    The returned AST annotations are written directly onto the input tree. The
    `ModuleInterface.t` is the exported summary that tests and future cache
    layers can render or persist.
+*)
+val check_implementation: Ast.implementation -> infer_result
+
+(**
+   Check a typed interface in one shot.
+
+   This is currently a stub-shaped path while interface summaries are being
+   built out, but it gives callers a typed entrypoint for `.mli` files.
+*)
+val check_interface: Ast.interface -> infer_result
+
+(**
+   Check a complete `Typ.Ast` in one shot.
+
+   Dispatches to `check_implementation` or `check_interface` based on the file
+   kind.
 *)
 val check: Ast.t -> infer_result

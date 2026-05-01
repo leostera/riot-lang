@@ -92,7 +92,8 @@ let split_lines = fun text ->
   loop 0 0;
   lines
 
-let char_is_int_suffix = function
+let char_is_int_suffix = fun __tmp1 ->
+  match __tmp1 with
   | 'l'
   | 'L'
   | 'n' -> true

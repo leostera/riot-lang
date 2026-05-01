@@ -11,7 +11,8 @@ type t = {
   text: string;
 }
 
-let show_kind = function
+let show_kind = fun __tmp1 ->
+  match __tmp1 with
   | Line_text -> "line_text"
   | Newline -> "newline"
   | EOF -> "eof"

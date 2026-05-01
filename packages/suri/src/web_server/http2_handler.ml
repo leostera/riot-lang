@@ -44,19 +44,22 @@ type error =
 
 let parse_error_to_string = Http.Http2.Parser_reader.parse_error_to_string
 
-let rec protocol_error_to_string = function
+let rec protocol_error_to_string = fun __tmp1 ->
+  match __tmp1 with
   | UpgradeNotSupported -> "HTTP/2 upgrades are not supported"
   | UnknownDataStream stream_id -> "DATA for unknown stream " ^ Int.to_string stream_id
   | InvalidPreface -> "Invalid HTTP/2 preface"
   | InvalidRequestHeaders error ->
       "Invalid HTTP/2 request headers: " ^ request_header_error_to_string error
 
-and pseudo_header_to_string = function
+and pseudo_header_to_string = fun __tmp1 ->
+  match __tmp1 with
   | Method -> ":method"
   | Scheme -> ":scheme"
   | Path -> ":path"
 
-and uri_error_to_string = function
+and uri_error_to_string = fun __tmp1 ->
+  match __tmp1 with
   | Net.Uri.InvalidScheme -> "invalid scheme"
   | Net.Uri.InvalidAuthority -> "invalid authority"
   | Net.Uri.InvalidPath -> "invalid path"
@@ -65,20 +68,23 @@ and uri_error_to_string = function
   | Net.Uri.InvalidFormat -> "invalid format"
   | Net.Uri.TooLong -> "URI is too long"
 
-and request_header_error_to_string = function
+and request_header_error_to_string = fun __tmp1 ->
+  match __tmp1 with
   | MissingPseudoHeader header -> "missing required pseudo-header " ^ pseudo_header_to_string header
   | EmptyPseudoHeader header -> "empty required pseudo-header " ^ pseudo_header_to_string header
   | InvalidPath { value; reason } ->
       "invalid :path pseudo-header " ^ value ^ " (" ^ uri_error_to_string reason ^ ")"
 
-let io_operation_to_string = function
+let io_operation_to_string = fun __tmp1 ->
+  match __tmp1 with
   | SendSettings -> "sending SETTINGS"
   | SendSettingsAck -> "sending SETTINGS ACK"
   | SendHeaders -> "sending HEADERS"
   | SendData -> "sending DATA"
   | SendPing -> "sending PING"
 
-let connection_error_to_string = function
+let connection_error_to_string = fun __tmp1 ->
+  match __tmp1 with
   | Socket_pool.Connection.Closed -> "connection closed"
   | Socket_pool.Connection.FileError _ -> "file operation failed"
   | Socket_pool.Connection.InvalidRange { off; len; size } ->
@@ -89,7 +95,8 @@ let connection_error_to_string = function
       ^ ", size="
       ^ Int.to_string size
 
-let to_string_error = function
+let to_string_error = fun __tmp1 ->
+  match __tmp1 with
   | ParseError err -> "HTTP/2 parse error: " ^ parse_error_to_string err
   | SerializerError err -> "HTTP/2 serializer error: " ^ Http.Http2.Serializer.error_to_string err
   | FrameConstructorError err ->

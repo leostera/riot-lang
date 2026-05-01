@@ -257,10 +257,11 @@ let restart_rest_for_one = fun state child_id reason ->
   let children = Cell.get state.children in
   (* Find the failed child index *)
   let rec find_index = fun idx ->
-    function
-    | [] -> None
-    | child :: _ when child.spec.id = child_id -> Some idx
-    | _ :: rest -> find_index (idx + 1) rest
+    fun __tmp1 ->
+      match __tmp1 with
+      | [] -> None
+      | child :: _ when child.spec.id = child_id -> Some idx
+      | _ :: rest -> find_index (idx + 1) rest
   in
   match find_index 0 children with
   | None -> ()

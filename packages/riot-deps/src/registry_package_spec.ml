@@ -19,7 +19,8 @@ type error =
       error: Std.Version.parse_error;
     }
 
-let version_parse_error_message = function
+let version_parse_error_message = fun __tmp1 ->
+  match __tmp1 with
   | Std.Version.Invalid_format msg -> msg
   | Std.Version.Invalid_version_segment segment -> "invalid version segment: " ^ segment
   | Std.Version.Invalid_pre_release_segment segment -> "invalid pre-release segment: " ^ segment
@@ -54,7 +55,8 @@ let to_string = fun { name; requirement } ->
       | _ -> name ^ "@" ^ Std.Version.requirement_to_string requirement
     )
 
-let error_message = function
+let error_message = fun __tmp1 ->
+  match __tmp1 with
   | InvalidShape { spec } ->
       "invalid registry package spec '" ^ spec ^ "': expected <name> or <name>@<version>"
   | InvalidPackageName { spec; error; _ } ->

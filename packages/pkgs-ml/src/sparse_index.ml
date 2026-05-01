@@ -89,7 +89,8 @@ let optional_string_list_field = fun ~field fields ->
   | None
   | Some Data.Json.Null -> Ok []
   | Some (Data.Json.Array items) ->
-      let rec loop acc = function
+      let rec loop acc = fun __tmp1 ->
+        match __tmp1 with
         | [] -> Ok (List.reverse acc)
         | (Data.Json.String value) :: rest -> loop (value :: acc) rest
         | _ :: _ -> Error ("field '" ^ field ^ "' must be an array of strings")
@@ -109,9 +110,9 @@ let dependency_of_json = fun json ->
 let dependencies_of_json = fun json ->
   match json with
   | Data.Json.Array items ->
-      let rec loop acc = function
-        | [] ->
-            Ok (List.reverse acc)
+      let rec loop acc = fun __tmp1 ->
+        match __tmp1 with
+        | [] -> Ok (List.reverse acc)
         | item :: rest -> (
             match dependency_of_json item with
             | Ok dependency -> loop (dependency :: acc) rest
@@ -186,9 +187,9 @@ let release_of_json = fun json ->
 let releases_of_json = fun json ->
   match json with
   | Data.Json.Array items ->
-      let rec loop acc = function
-        | [] ->
-            Ok (List.reverse acc)
+      let rec loop acc = fun __tmp1 ->
+        match __tmp1 with
+        | [] -> Ok (List.reverse acc)
         | item :: rest -> (
             match release_of_json item with
             | Ok release -> loop (release :: acc) rest

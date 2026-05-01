@@ -51,7 +51,8 @@ type Channel.Handler.initialization_error +=
   | InvalidSessionArgs of Data.Json.t
   | MissingSessionArgs of Data.Json.t
 
-let initialization_error_to_string = function
+let initialization_error_to_string = fun __tmp1 ->
+  match __tmp1 with
   | MissingSessionToken -> "LiveView session token is required"
   | InvalidSessionToken error ->
       "Invalid LiveView session token: " ^ Session.decode_error_to_string error
@@ -264,7 +265,8 @@ module MountHandler (C: Component) = struct
         Channel.Handler.Push ([ frame ], state)
     | _ -> Channel.Handler.Continue state
 
-  let error_to_string = function
+  let error_to_string = fun __tmp1 ->
+    match __tmp1 with
     | Channel.Handler.InitializationFailed error -> initialization_error_to_string error
     | error -> Channel.Handler.Default.error_to_string error
 end

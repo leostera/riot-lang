@@ -112,25 +112,22 @@ let status_encode =
     [
       Ser.Variant.unit
         "Active"
-        (
-          function
+        (fun __tmp1 ->
+          match __tmp1 with
           | Active -> true
-          | _ -> false
-        );
+          | _ -> false);
       Ser.Variant.unit
         "Draft"
-        (
-          function
+        (fun __tmp1 ->
+          match __tmp1 with
           | Draft -> true
-          | _ -> false
-        );
+          | _ -> false);
       Ser.Variant.unit
         "Archived"
-        (
-          function
+        (fun __tmp1 ->
+          match __tmp1 with
           | Archived -> true
-          | _ -> false
-        );
+          | _ -> false);
     ]
 
 let sample_decode =
@@ -246,19 +243,17 @@ let pet_encode =
     [
       Ser.Variant.unit
         "Cat"
-        (
-          function
+        (fun __tmp1 ->
+          match __tmp1 with
           | Cat -> true
-          | _ -> false
-        );
+          | _ -> false);
       Ser.Variant.newtype
         "Dog"
         Ser.string
-        (
-          function
+        (fun __tmp1 ->
+          match __tmp1 with
           | Dog value -> Some value
-          | _ -> None
-        );
+          | _ -> None);
     ]
 
 let vec_to_list = fun values ->

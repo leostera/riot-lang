@@ -122,7 +122,8 @@ let resolve = fun ~host ~configured_targets request ->
         )
     )
 
-let request_to_string = function
+let request_to_string = fun __tmp1 ->
+  match __tmp1 with
   | Host -> "host"
   | All -> "all"
   | Pattern pattern -> pattern

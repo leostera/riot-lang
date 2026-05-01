@@ -109,7 +109,8 @@ let header_name_equal = fun left right ->
   | Order.GT -> false
 
 let header_values = fun headers name ->
-  let rec loop acc = function
+  let rec loop acc = fun __tmp1 ->
+    match __tmp1 with
     | [] -> List.reverse acc
     | (header_name, value) :: rest ->
         if header_name_equal header_name name then
@@ -125,9 +126,9 @@ let parse_content_length_value = fun value ->
   | Ok length -> Body_done length
 
 let parse_content_length_values = fun values ->
-  let rec loop expected = function
-    | [] ->
-        Body_done expected
+  let rec loop expected = fun __tmp1 ->
+    match __tmp1 with
+    | [] -> Body_done expected
     | value :: rest -> (
         match parse_content_length_value value with
         | Body_need_more -> Body_need_more

@@ -84,7 +84,8 @@ type constructor_error =
   | InvalidPingPayloadLength of { length: int }
   | InvalidWindowUpdateIncrement of { increment: int }
 
-let constructor_error_to_string = function
+let constructor_error_to_string = fun __tmp1 ->
+  match __tmp1 with
   | InvalidPingPayloadLength { length } ->
       "PING opaque data must be exactly 8 bytes, got " ^ Int.to_string length
   | InvalidWindowUpdateIncrement { increment } ->
@@ -253,7 +254,8 @@ let continuation = fun ~stream_id ?(end_headers = false) header_block_fragment -
     payload = ContinuationPayload header_block_fragment;
   }
 
-let error_code_to_int = function
+let error_code_to_int = fun __tmp1 ->
+  match __tmp1 with
   | NoError -> 0x0
   | ProtocolError -> 0x1
   | InternalError -> 0x2
@@ -270,7 +272,8 @@ let error_code_to_int = function
   | Http11Required -> 0xd
   | UnknownErrorCode code -> code
 
-let int_to_error_code = function
+let int_to_error_code = fun __tmp1 ->
+  match __tmp1 with
   | 0x0 -> Some NoError
   | 0x1 -> Some ProtocolError
   | 0x2 -> Some InternalError

@@ -53,7 +53,8 @@ type error =
     }
   | InvalidErrorCode of { code: int }
 
-let frame_type_to_string = function
+let frame_type_to_string = fun __tmp1 ->
+  match __tmp1 with
   | Frame.Data -> "DATA"
   | Frame.Headers -> "HEADERS"
   | Frame.Priority -> "PRIORITY"
@@ -66,19 +67,22 @@ let frame_type_to_string = function
   | Frame.Continuation -> "CONTINUATION"
   | Frame.Unknown code -> "UNKNOWN(" ^ Int.to_string code ^ ")"
 
-let setting_id_to_string = function
+let setting_id_to_string = fun __tmp1 ->
+  match __tmp1 with
   | HeaderTableSize -> "SETTINGS_HEADER_TABLE_SIZE"
   | MaxConcurrentStreams -> "SETTINGS_MAX_CONCURRENT_STREAMS"
   | InitialWindowSize -> "SETTINGS_INITIAL_WINDOW_SIZE"
   | MaxFrameSize -> "SETTINGS_MAX_FRAME_SIZE"
   | MaxHeaderListSize -> "SETTINGS_MAX_HEADER_LIST_SIZE"
 
-let setting_value_rule_to_string = function
+let setting_value_rule_to_string = fun __tmp1 ->
+  match __tmp1 with
   | Unsigned32 -> "0..2^32-1"
   | InitialWindowSizeRange -> "0..2^31-1"
   | MaxFrameSizeRange -> "16384..16777215"
 
-let error_to_string = function
+let error_to_string = fun __tmp1 ->
+  match __tmp1 with
   | PayloadMismatch { frame_type; _ } ->
       "Payload does not match HTTP/2 " ^ frame_type_to_string frame_type ^ " frame"
   | SettingsAckWithPayload { setting_count } ->
@@ -163,7 +167,8 @@ let write_uint8 = fun value ->
     ~len:1
     ~char:(Char.from_int_unchecked (value land 0b1111_1111))
 
-let frame_type_to_int = function
+let frame_type_to_int = fun __tmp1 ->
+  match __tmp1 with
   | Frame.Data -> Ok 0x0
   | Frame.Headers -> Ok 0x1
   | Frame.Priority -> Ok 0x2
@@ -250,7 +255,8 @@ let validate_uint32_setting = fun setting value ->
   else
     Error (InvalidSettingValue { setting; value; expected = Unsigned32 })
 
-let validate_setting_value = function
+let validate_setting_value = fun __tmp1 ->
+  match __tmp1 with
   | Frame.HeaderTableSize value -> validate_uint32_setting HeaderTableSize value
   | Frame.EnablePush _ -> Ok ()
   | Frame.MaxConcurrentStreams value -> validate_uint32_setting MaxConcurrentStreams value
@@ -391,7 +397,8 @@ let serialize_rst_stream_payload = fun payload ->
     )
   | payload -> Error (PayloadMismatch { frame_type = Frame.RstStream; payload })
 
-let serialize_setting = function
+let serialize_setting = fun __tmp1 ->
+  match __tmp1 with
   | Frame.HeaderTableSize value -> Ok (write_uint16_be 0x1 ^ write_uint32_be value)
   | Frame.EnablePush enabled ->
       Ok (
@@ -411,9 +418,9 @@ let serialize_setting = function
 let serialize_settings_payload = fun payload ->
   match payload with
   | Frame.SettingsPayload settings -> (
-      let rec loop acc = function
-        | [] ->
-            Ok (String.concat "" (List.reverse acc))
+      let rec loop acc = fun __tmp1 ->
+        match __tmp1 with
+        | [] -> Ok (String.concat "" (List.reverse acc))
         | setting :: rest -> (
             match validate_setting_value setting with
             | Error error -> Error error

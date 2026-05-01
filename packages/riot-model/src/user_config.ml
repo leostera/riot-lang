@@ -72,15 +72,16 @@ let default = {
     ];
 }
 
-let registry_field_name = function
+let registry_field_name = fun __tmp1 ->
+  match __tmp1 with
   | Api_url -> "api_url"
   | Cdn_url -> "cdn_url"
   | Api_token -> "api_token"
 
-let config_error_message = function
-  | RegistryMustBeTable -> "top-level 'registry' entry must be a table"
+let config_error_message = fun RegistryMustBeTable -> "top-level 'registry' entry must be a table"
 
-let uri_error_message = function
+let uri_error_message = fun __tmp1 ->
+  match __tmp1 with
   | Net.Uri.InvalidScheme -> "invalid scheme"
   | Net.Uri.InvalidAuthority -> "invalid authority"
   | Net.Uri.InvalidPath -> "invalid path"
@@ -89,7 +90,8 @@ let uri_error_message = function
   | Net.Uri.InvalidFormat -> "invalid format"
   | Net.Uri.TooLong -> "uri too long"
 
-let registry_error_message = function
+let registry_error_message = fun __tmp1 ->
+  match __tmp1 with
   | InvalidDefaultUri { field; error } ->
       "invalid default " ^ registry_field_name field ^ ": " ^ uri_error_message error
   | InvalidUri { field; error } ->
@@ -97,7 +99,8 @@ let registry_error_message = function
   | FieldMustBeString field -> "field '" ^ registry_field_name field ^ "' must be a string"
   | RegistryEntryMustBeTable -> "registry entry must be a table"
 
-let message = function
+let message = fun __tmp1 ->
+  match __tmp1 with
   | ReadFailed { path; error } ->
       "failed to read config '" ^ Path.to_string path ^ "': " ^ IO.error_message error
   | ParseFailed { path; error } ->
@@ -205,16 +208,15 @@ let rec collect_registries = fun ~path acc fields ->
     | Ok registry -> Ok ((registry_name, registry) :: acc)
     | Error _ as err -> err
   else
-    let rec loop acc = function
-      | [] ->
-          Ok acc
+    let rec loop acc = fun __tmp1 ->
+      match __tmp1 with
+      | [] -> Ok acc
       | (name, Toml.Table nested_fields) :: rest -> (
           match collect_registries ~path:(name :: path) acc nested_fields with
           | Ok acc -> loop acc rest
           | Error _ as err -> err
         )
-      | _ :: rest ->
-          loop acc rest
+      | _ :: rest -> loop acc rest
     in
     loop acc fields
 
@@ -268,7 +270,8 @@ let save = fun config path ->
   |> Result.map_err ~fn:(fun io_error -> WriteFailed { path; error = io_error })
 
 let upsert_registry = fun config ~registry_name ~update ->
-  let rec loop acc = function
+  let rec loop acc = fun __tmp1 ->
+    match __tmp1 with
     | [] -> (
         match default_registry ~registry_name with
         | Ok registry -> List.reverse ((registry_name, update registry) :: acc)
@@ -276,8 +279,7 @@ let upsert_registry = fun config ~registry_name ~update ->
       )
     | (name, registry) :: rest when String.equal name registry_name ->
         List.append (List.reverse acc) ((name, update registry) :: rest)
-    | entry :: rest ->
-        loop (entry :: acc) rest
+    | entry :: rest -> loop (entry :: acc) rest
   in
   { registries = loop [] config.registries }
 

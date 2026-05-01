@@ -2,7 +2,8 @@ open Std
 open Std.Data
 open Std.Collections
 
-let rec describe_json = function
+let rec describe_json = fun __tmp1 ->
+  match __tmp1 with
   | Json.Null -> "null"
   | Json.Bool b -> "bool(" ^ Bool.to_string b ^ ")"
   | Json.Int i -> "int(" ^ Int.to_string i ^ ")"

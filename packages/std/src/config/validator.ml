@@ -282,19 +282,20 @@ let rec validate_field (field: Spec.field) toml_opt: (Spec.value, string) result
         | Some (Data.Toml.Array items) ->
             (* Validate each item in the array *)
             let rec validate_items = fun acc index ->
-              function
-              | [] -> Ok (Collections.List.reverse acc)
-              | item :: rest ->
-                  let item_field = {
-                    item_spec with
-                    Spec.name = field_name ^ "[" ^ Int.to_string index ^ "]";
-                  }
-                  in
-                  (
-                    match validate_field item_field (Some item) with
-                    | Ok validated_item -> validate_items (validated_item :: acc) (index + 1) rest
-                    | Error err -> Error err
-                  )
+              fun __tmp1 ->
+                match __tmp1 with
+                | [] -> Ok (Collections.List.reverse acc)
+                | item :: rest ->
+                    let item_field = {
+                      item_spec with
+                      Spec.name = field_name ^ "[" ^ Int.to_string index ^ "]";
+                    }
+                    in
+                    (
+                      match validate_field item_field (Some item) with
+                      | Ok validated_item -> validate_items (validated_item :: acc) (index + 1) rest
+                      | Error err -> Error err
+                    )
             in
             (
               match validate_items [] 0 items with
@@ -370,14 +371,15 @@ and validate_fields (fields: Spec.field list) toml_opt: (Spec.value, string) res
     | _ -> []
   in
   let rec process_fields = fun acc ->
-    function
-    | [] -> Ok (Collections.List.reverse acc)
-    | field :: rest ->
-        let name = field.Spec.name in
-        let field_value = find_assoc name table in
-        match validate_field field field_value with
-        | Ok validated -> process_fields ((name, validated) :: acc) rest
-        | Error err -> Error err
+    fun __tmp1 ->
+      match __tmp1 with
+      | [] -> Ok (Collections.List.reverse acc)
+      | field :: rest ->
+          let name = field.Spec.name in
+          let field_value = find_assoc name table in
+          match validate_field field field_value with
+          | Ok validated -> process_fields ((name, validated) :: acc) rest
+          | Error err -> Error err
   in
   match process_fields [] fields with
   | Ok validated_fields -> Ok (Spec.Map validated_fields)

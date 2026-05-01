@@ -340,7 +340,8 @@ let test_poll_handles_many_pipe_sources = fun _ctx ->
     (fun pipes ->
       with_poll
         (fun poll ->
-          let rec register index = function
+          let rec register index = fun __tmp1 ->
+            match __tmp1 with
             | [] -> Ok ()
             | (read_end, _) :: rest ->
                 let* () =
@@ -353,7 +354,8 @@ let test_poll_handles_many_pipe_sources = fun _ctx ->
                 in
                 register (index + 1) rest
           in
-          let rec write_all = function
+          let rec write_all = fun __tmp1 ->
+            match __tmp1 with
             | [] -> Ok ()
             | (_, write_end) :: rest ->
                 let* written =
@@ -370,7 +372,8 @@ let test_poll_handles_many_pipe_sources = fun _ctx ->
             lift_async (Kernel.Async.Poll.poll ~timeout:100_000_000L ~max_events:128 poll)
           in
           let seen = Kernel.Array.make ~count:64 ~value:false in
-          let rec mark = function
+          let rec mark = fun __tmp1 ->
+            match __tmp1 with
             | [] -> ()
             | event :: rest ->
                 if Kernel.Async.Event.is_readable event then
@@ -419,7 +422,8 @@ let test_poll_handles_many_process_exits = fun _ctx ->
       with_processes
         16
         (fun processes ->
-          let rec register index = function
+          let rec register index = fun __tmp1 ->
+            match __tmp1 with
             | [] -> Ok ()
             | process :: rest ->
                 let* () =
@@ -433,7 +437,8 @@ let test_poll_handles_many_process_exits = fun _ctx ->
                 register (index + 1) rest
           in
           let seen = Kernel.Array.make ~count:16 ~value:false in
-          let rec mark_events = function
+          let rec mark_events = fun __tmp1 ->
+            match __tmp1 with
             | [] -> ()
             | event :: rest ->
                 if Kernel.Async.Event.is_priority event then
@@ -442,7 +447,8 @@ let test_poll_handles_many_process_exits = fun _ctx ->
                     Kernel.Array.set seen ~at:token ~value:true;
                 mark_events rest
           in
-          let rec mark_exits index = function
+          let rec mark_exits index = fun __tmp1 ->
+            match __tmp1 with
             | [] -> Ok ()
             | process :: rest ->
                 let* status =
@@ -500,7 +506,8 @@ let test_poll_handles_many_timer_sources = fun _ctx ->
       in
       let* timers = create 16 [] in
       let timers = List.reverse timers in
-      let rec register index = function
+      let rec register index = fun __tmp1 ->
+        match __tmp1 with
         | [] -> Ok ()
         | timer :: rest ->
             let* () =
@@ -514,7 +521,8 @@ let test_poll_handles_many_timer_sources = fun _ctx ->
             register (index + 1) rest
       in
       let seen = Kernel.Array.make ~count:16 ~value:false in
-      let rec mark = function
+      let rec mark = fun __tmp1 ->
+        match __tmp1 with
         | [] -> ()
         | event :: rest ->
             if Kernel.Async.Event.is_readable event then
@@ -706,7 +714,8 @@ let test_poll_handles_mixed_source_types = fun _ctx ->
                               let seen_timer = ref false in
                               let seen_process = ref false in
                               let seen_udp = ref false in
-                              let rec mark = function
+                              let rec mark = fun __tmp1 ->
+                                match __tmp1 with
                                 | [] -> ()
                                 | event :: rest ->
                                     let token =
@@ -756,7 +765,8 @@ let test_poll_tolerates_closed_registered_pipe_sources = fun _ctx ->
     (fun pipes ->
       with_poll
         (fun poll ->
-          let rec register index = function
+          let rec register index = fun __tmp1 ->
+            match __tmp1 with
             | [] -> Ok ()
             | (read_end, _) :: rest ->
                 let* () =
@@ -769,7 +779,8 @@ let test_poll_tolerates_closed_registered_pipe_sources = fun _ctx ->
                 in
                 register (index + 1) rest
           in
-          let rec close_even index = function
+          let rec close_even index = fun __tmp1 ->
+            match __tmp1 with
             | [] -> ()
             | (read_end, _) :: rest ->
                 if index land 1 = 0 then
@@ -777,7 +788,8 @@ let test_poll_tolerates_closed_registered_pipe_sources = fun _ctx ->
                   ();
                 close_even (index + 1) rest
           in
-          let rec write_live index = function
+          let rec write_live index = fun __tmp1 ->
+            match __tmp1 with
             | [] -> Ok ()
             | (_, write_end) :: rest ->
                 if index land 1 = 0 then
@@ -792,7 +804,8 @@ let test_poll_tolerates_closed_registered_pipe_sources = fun _ctx ->
                     write_live (index + 1) rest
           in
           let seen = Kernel.Array.make ~count:8 ~value:false in
-          let rec mark = function
+          let rec mark = fun __tmp1 ->
+            match __tmp1 with
             | [] -> ()
             | event :: rest ->
                 if Kernel.Async.Event.is_readable event then
@@ -1004,7 +1017,8 @@ let test_closed_poller_rejects_later_operations = fun _ctx ->
     (fun read_end _write_end ->
       let source = Kernel.Fs.File.to_source read_end in
       let token = Kernel.Async.Token.make 14 in
-      let expect_bad_fd = function
+      let expect_bad_fd = fun __tmp1 ->
+        match __tmp1 with
         | Kernel.Result.Error (
           Kernel.Async.System Kernel.SystemError.BadFileDescriptor
         ) ->

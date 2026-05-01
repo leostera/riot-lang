@@ -128,7 +128,8 @@ let render_time_ascii = fun time_str ->
     |> List.rev
   in
   (* Convert each character to its ASCII art representation *)
-  let char_to_art = function
+  let char_to_art = fun __tmp1 ->
+    match __tmp1 with
     | '0' .. '9' as c -> render_digit (Char.code c - Char.code '0')
     | ':' -> colon
     | _ -> space

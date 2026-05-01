@@ -48,7 +48,8 @@ let optional_string_field = fun fields name ->
   | Some (_, Data.Json.String value) -> Ok (Some value)
   | Some _ -> Error ("invalid '" ^ name ^ "' field")
 
-let metadata_of_json = function
+let metadata_of_json = fun __tmp1 ->
+  match __tmp1 with
   | Data.Json.Object fields ->
       let* release_id = string_field fields "release_id" in
       let* build_sha = string_field fields "build_sha" in

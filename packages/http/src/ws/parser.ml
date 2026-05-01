@@ -45,11 +45,13 @@ type payload_length_result =
   | PayloadLengthNeedMore
   | PayloadLengthError of error
 
-let payload_length_encoding_to_string = function
+let payload_length_encoding_to_string = fun __tmp1 ->
+  match __tmp1 with
   | PayloadLength16 -> "16-bit extended"
   | PayloadLength64 -> "64-bit extended"
 
-let error_to_string = function
+let error_to_string = fun __tmp1 ->
+  match __tmp1 with
   | InvalidOpcode opcode -> "Invalid WebSocket opcode: 0x" ^ Int.to_string opcode
   | ReservedBitsSet -> "WebSocket RSV bits must be zero unless an extension negotiated them"
   | ClientFrameNotMasked -> "WebSocket client frames must be masked"
@@ -93,7 +95,8 @@ let byte_at = fun input at ->
   |> String.get_unchecked ~at
   |> Char.to_int
 
-let is_control_opcode = function
+let is_control_opcode = fun __tmp1 ->
+  match __tmp1 with
   | Frame.Close
   | Frame.Ping
   | Frame.Pong -> true

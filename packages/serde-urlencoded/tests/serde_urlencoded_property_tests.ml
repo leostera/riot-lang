@@ -108,25 +108,22 @@ let status_encode =
     [
       Ser.Variant.unit
         "Active"
-        (
-          function
+        (fun __tmp1 ->
+          match __tmp1 with
           | Active -> true
-          | _ -> false
-        );
+          | _ -> false);
       Ser.Variant.unit
         "Draft"
-        (
-          function
+        (fun __tmp1 ->
+          match __tmp1 with
           | Draft -> true
-          | _ -> false
-        );
+          | _ -> false);
       Ser.Variant.unit
         "Archived"
-        (
-          function
+        (fun __tmp1 ->
+          match __tmp1 with
           | Archived -> true
-          | _ -> false
-        );
+          | _ -> false);
     ]
 
 let sample_decode =
@@ -287,7 +284,8 @@ let equal_sample = fun (left: sample) (right: sample) ->
   && left.nickname = right.nickname
   && equal_status left.status right.status
 
-let print_status = function
+let print_status = fun __tmp1 ->
+  match __tmp1 with
   | Active -> "Active"
   | Draft -> "Draft"
   | Archived -> "Archived"
@@ -343,18 +341,19 @@ let non_empty_int_array_arb =
 
 let sample_gen =
   Generator.map3
-    (fun (((name, age), active), (small, big, ratio)) (tags, scores, nickname) status -> ({
-      name;
-      age;
-      active;
-      small;
-      big;
-      ratio;
-      tags;
-      scores;
-      nickname;
-      status;
-    }: sample))
+    (fun (((name, age), active), (small, big, ratio)) (tags, scores, nickname) status ->
+      ({
+        name;
+        age;
+        active;
+        small;
+        big;
+        ratio;
+        tags;
+        scores;
+        nickname;
+        status;
+      }: sample))
     (Generator.pair
       (Generator.pair (Generator.pair Generator.string Generator.int) Generator.bool)
       (Generator.triple Generator.int32 Generator.int64 finite_float_gen))

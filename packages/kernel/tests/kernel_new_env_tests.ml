@@ -194,7 +194,8 @@ let test_set_current_dir_regular_file_fails_cleanly = fun _ctx ->
     (fun root ->
       let path = Kernel.Path.(root / "plain.txt") in
       match Kernel.Fs.File.open_write path
-      |> function
+      |> fun __tmp1 ->
+        match __tmp1 with
         | Kernel.Result.Error error -> Error (Kernel.Fs.File.error_to_string error)
         | Kernel.Result.Ok file ->
             protect

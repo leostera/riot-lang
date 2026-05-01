@@ -38,7 +38,8 @@ module Type = struct
       | (Optional a, Optional b) -> String.equal a b
       | _ -> false
 
-    let to_string = function
+    let to_string = fun __tmp1 ->
+      match __tmp1 with
       | NoLabel -> ""
       | Labelled label -> label ^ ":"
       | Optional label -> "?" ^ label ^ ":"
@@ -649,14 +650,19 @@ and signature_item_kind =
   | External of external_declaration
   | Exception of exception_declaration
 
-type t = {
+type implementation = {
   origin: origin;
-  kind: source_file_kind;
+  items: structure_item list;
 }
 
-and source_file_kind =
-  | Implementation of structure_item list
-  | Interface of signature_item list
+type interface = {
+  origin: origin;
+  items: signature_item list;
+}
+
+type t =
+  | Implementation of implementation
+  | Interface of interface
 
 let core_type_origin = fun (type_: core_type) -> type_.origin
 
@@ -706,7 +712,8 @@ let ident_from_syn_ident = SurfacePath.from_syn_ident
 
 let ident_from_token = fun token -> ident_from_syn_ident (Syn.Ast.Ident.Bare token)
 
-let rec syn_ident_from_tokens = function
+let rec syn_ident_from_tokens = fun __tmp1 ->
+  match __tmp1 with
   | [] -> None
   | [ token ] -> Some (Syn.Ast.Ident.Bare token)
   | token :: rest ->
@@ -905,16 +912,17 @@ let child_exprs = fun expression ->
 
 let make_core_type = fun origin (kind: core_type_kind) -> ({ origin; type_ = None; kind }: core_type)
 
-let make_type_definition = fun origin (kind: type_definition_kind) -> ({ origin; kind }:
-  type_definition)
+let make_type_definition = fun origin (kind: type_definition_kind) ->
+  ({ origin; kind }: type_definition)
 
-let make_parameter = fun ?annotation ?default origin label pattern -> ({
-  origin;
-  label;
-  pattern;
-  annotation;
-  default;
-}: parameter)
+let make_parameter = fun ?annotation ?default origin label pattern ->
+  ({
+    origin;
+    label;
+    pattern;
+    annotation;
+    default;
+  }: parameter)
 
 let make_pattern = fun origin (kind: pattern_kind) -> ({ origin; type_ = None; kind }: pattern)
 
@@ -934,7 +942,9 @@ let make_structure_item = fun origin (kind: structure_item_kind) -> ({ origin; k
 let make_signature_item = fun origin (kind: signature_item_kind) -> ({ origin; kind }:
   signature_item)
 
-let make_source_file = fun origin (kind: source_file_kind) -> ({ origin; kind }: t)
+let make_implementation = fun origin items -> Implementation ({ origin; items }: implementation)
+
+let make_interface = fun origin items -> Interface ({ origin; items }: interface)
 
 let with_expression_type_hint = fun kind type_ (expression: expression) -> {
   expression with
@@ -1262,11 +1272,12 @@ and first_class_module_unpack_expression_from_tokens = fun origin tokens ->
   | [] -> build_failed origin "missing first-class module unpack expression"
   | identifiers -> make_expression origin (Ident (ident_from_tokens_as_segments identifiers))
 
-and first_class_module_unpack_from_tokens = fun context origin tokens -> ({
-  origin;
-  expression = first_class_module_unpack_expression_from_tokens origin tokens;
-  package_type = first_class_package_type_from_tokens context origin tokens;
-}: module_unpack)
+and first_class_module_unpack_from_tokens = fun context origin tokens ->
+  ({
+    origin;
+    expression = first_class_module_unpack_expression_from_tokens origin tokens;
+    package_type = first_class_package_type_from_tokens context origin tokens;
+  }: module_unpack)
 
 and module_body_unpack = fun context node ->
   let tokens = direct_child_tokens node in
@@ -1951,7 +1962,8 @@ and build_external_declaration = fun context (declaration: Syn.Ast.ExternalDecla
       }: external_declaration)
   | Unknown node -> unsupported_node node (node_summary node)
 
-and build_type_parameter = function
+and build_type_parameter = fun __tmp1 ->
+  match __tmp1 with
   | Syn.Ast.TypeDeclaration.Named { name; _ } -> Some (token_text name)
   | Syn.Ast.TypeDeclaration.Wildcard _ -> None
 
@@ -2308,9 +2320,9 @@ let from_parse_result = fun ~source:_ (parse_result: Syn.Parser.parse_result) ->
                 | Some item -> Continue (item :: items)
                 | None -> Continue items)
           in
-          make_source_file
+          make_implementation
             (origin_from_node (Syn.Ast.SourceFile.as_node source_file))
-            (Implementation (List.reverse items))
+            (List.reverse items)
       | Interface interface ->
           let items =
             Syn.Ast.Interface.fold_item
@@ -2321,9 +2333,9 @@ let from_parse_result = fun ~source:_ (parse_result: Syn.Parser.parse_result) ->
                 | Some item -> Continue (item :: items)
                 | None -> Continue items)
           in
-          make_source_file
+          make_interface
             (origin_from_node (Syn.Ast.SourceFile.as_node source_file))
-            (Interface (List.reverse items))
+            (List.reverse items)
     in
     Ok ast
   with
@@ -2357,33 +2369,37 @@ let file_kind_serializer =
     [
       Serde.Ser.Variant.unit
         "Implementation"
-        (
-          function
+        (fun __tmp1 ->
+          match __tmp1 with
           | `Implementation -> true
-          | `Interface -> false
-        );
+          | `Interface -> false);
       Serde.Ser.Variant.unit
         "Interface"
-        (
-          function
+        (fun __tmp1 ->
+          match __tmp1 with
           | `Implementation -> false
-          | `Interface -> true
-        );
+          | `Interface -> true);
     ]
 
-let file_kind = function
-  | { kind = Implementation _; _ } -> `Implementation
-  | { kind = Interface _; _ } -> `Interface
+let file_kind = fun __tmp1 ->
+  match __tmp1 with
+  | Implementation _ -> `Implementation
+  | Interface _ -> `Interface
 
-let file_origin = fun file -> file.origin
+let file_origin = fun __tmp1 ->
+  match __tmp1 with
+  | Implementation implementation -> implementation.origin
+  | Interface interface -> interface.origin
 
-let view_name = function
-  | { kind = Implementation _; _ } -> "Implementation"
-  | { kind = Interface _; _ } -> "Interface"
+let view_name = fun __tmp1 ->
+  match __tmp1 with
+  | Implementation _ -> "Implementation"
+  | Interface _ -> "Interface"
 
-let item_count = function
-  | { kind = Implementation items; _ } -> List.length items
-  | { kind = Interface items; _ } -> List.length items
+let item_count = fun __tmp1 ->
+  match __tmp1 with
+  | Implementation implementation -> List.length implementation.items
+  | Interface interface -> List.length interface.items
 
 let serializer =
   Serde.Ser.record

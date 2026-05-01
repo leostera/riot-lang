@@ -13,7 +13,8 @@ type t =
   | Object of (string * t) list
   | Embed of t
 
-let rec type_name = function
+let rec type_name = fun __tmp1 ->
+  match __tmp1 with
   | Null -> "null"
   | Bool _ -> "bool"
   | Int _ -> "int"
@@ -45,7 +46,8 @@ type error =
   | Extra_input_after_value of { position: int }
   | Unknown_error of string
 
-let error_to_string = function
+let error_to_string = fun __tmp1 ->
+  match __tmp1 with
   | Unterminated_string { position } -> "Unterminated string at position " ^ Int.to_string position
   | Invalid_literal { expected; position; found } ->
       "Invalid literal at position "
@@ -127,8 +129,8 @@ let add_unicode_escape = fun buffer code ->
 let escape_string = fun s ->
   let buffer = Buffer.create ~size:(String.length s * 2) in
   String.for_each
-    ~fn:(
-      function
+    ~fn:(fun __tmp1 ->
+      match __tmp1 with
       | '"' -> Buffer.add_string buffer "\\\""
       | '\\' -> Buffer.add_string buffer "\\\\"
       | '\b' -> Buffer.add_string buffer "\\b"
@@ -137,8 +139,7 @@ let escape_string = fun s ->
       | '\r' -> Buffer.add_string buffer "\\r"
       | '\t' -> Buffer.add_string buffer "\\t"
       | c when Char.to_int c < 0x20 -> add_unicode_escape buffer (Char.to_int c)
-      | c -> Buffer.add_char buffer c
-    )
+      | c -> Buffer.add_char buffer c)
     s;
   Buffer.contents buffer
 
@@ -163,7 +164,8 @@ let format_float = fun f ->
       s
 
 (** Serialize JSON to string *)
-let rec to_string = function
+let rec to_string = fun __tmp1 ->
+  match __tmp1 with
   | Null -> "null"
   | Bool b ->
       if b then
@@ -517,29 +519,35 @@ let array = fun items -> Array items
 let obj = fun fields -> Object fields
 
 let get_field = fun name ->
-  function
-  | Object fields ->
-      List.find fields ~fn:(fun (key, _) -> String.equal key name)
-      |> Option.map ~fn:(fun (_, value) -> value)
-  | _ -> None
+  fun __tmp1 ->
+    match __tmp1 with
+    | Object fields ->
+        List.find fields ~fn:(fun (key, _) -> String.equal key name)
+        |> Option.map ~fn:(fun (_, value) -> value)
+    | _ -> None
 
-let get_string = function
+let get_string = fun __tmp1 ->
+  match __tmp1 with
   | String s -> Some s
   | _ -> None
 
-let get_int = function
+let get_int = fun __tmp1 ->
+  match __tmp1 with
   | Int i -> Some i
   | _ -> None
 
-let get_bool = function
+let get_bool = fun __tmp1 ->
+  match __tmp1 with
   | Bool b -> Some b
   | _ -> None
 
-let get_array = function
+let get_array = fun __tmp1 ->
+  match __tmp1 with
   | Array a -> Some a
   | _ -> None
 
-let get_object = function
+let get_object = fun __tmp1 ->
+  match __tmp1 with
   | Object o -> Some o
   | _ -> None
 

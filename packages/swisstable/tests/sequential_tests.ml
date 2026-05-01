@@ -48,16 +48,15 @@ let operation_gen =
 
 let operation_arb =
   Arbitrary.make
-    ~print:(
-      function
+    ~print:(fun __tmp1 ->
+      match __tmp1 with
       | Insert (k, v) -> "Insert(" ^ Int.to_string k ^ ", " ^ Int.to_string v ^ ")"
       | Get k -> "Get(" ^ Int.to_string k ^ ")"
       | Remove k -> "Remove(" ^ Int.to_string k ^ ")"
       | Clear -> "Clear"
       | ContainsKey k -> "ContainsKey(" ^ Int.to_string k ^ ")"
       | Len -> "Len"
-      | IsEmpty -> "IsEmpty"
-    )
+      | IsEmpty -> "IsEmpty")
     operation_gen
 
 (** {1 Operation Application} *)

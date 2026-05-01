@@ -69,7 +69,8 @@ let cast_kind = fun node expected ->
   else
     cast_failure node ~expected:[ expected ]
 
-let cast_result_to_option = function
+let cast_result_to_option = fun __tmp1 ->
+  match __tmp1 with
   | Node value -> Some value
   | Unknown _
   | Error _ -> None
@@ -90,7 +91,8 @@ module Ident = struct
 
   type view = t
 
-  let is_ident_kind = function
+  let is_ident_kind = fun __tmp1 ->
+    match __tmp1 with
     | Syntax_kind.PATH_EXPR
     | Syntax_kind.PATH_PATTERN
     | Syntax_kind.PATH_TYPE
@@ -101,7 +103,8 @@ module Ident = struct
   let ident_expected_kinds =
     Syntax_kind.[ PATH_EXPR; PATH_PATTERN; PATH_TYPE; PATH_MODULE_EXPR; PATH_MODULE_TYPE; ]
 
-  let segment_token_kind = function
+  let segment_token_kind = fun __tmp1 ->
+    match __tmp1 with
     | Syntax_kind.IDENT
     | Syntax_kind.UNDERSCORE
     | Syntax_kind.OPERATOR_KW
@@ -235,11 +238,10 @@ module Ident = struct
       node
       ~matches:(fun kind -> Syntax_kind.(kind = IDENT))
 
-  let first_segment = function
-    | Bare token
-    | Qualified (token, _) -> Some token
+  let first_segment = fun (Bare token | Qualified (token, _)) -> Some token
 
-  let rec last_segment = function
+  let rec last_segment = fun __tmp1 ->
+    match __tmp1 with
     | Bare token -> Some token
     | Qualified (_, rest) -> last_segment rest
 
@@ -301,7 +303,8 @@ module Ident = struct
         Span.make ~start:first_raw.Raw_token.span.start ~end_:last_raw.Raw_token.span.end_
     | _ -> Span.make ~start:0 ~end_:0
 
-  let rec width = function
+  let rec width = fun __tmp1 ->
+    match __tmp1 with
     | Bare token -> Syntax_tree.token_width token.tree (syntax_token token)
     | Qualified (token, rest) ->
         Syntax_tree.token_width token.tree (syntax_token token) + 1 + width rest
@@ -316,7 +319,8 @@ module Ident = struct
     | Unknown node -> Unknown node
     | Error error -> Error error
 
-  let rec text = function
+  let rec text = fun __tmp1 ->
+    match __tmp1 with
     | Bare token -> Syntax_tree.token_text token.tree (syntax_token token)
     | Qualified (token, rest) ->
         Syntax_tree.token_text token.tree (syntax_token token) ^ "." ^ text rest
@@ -422,7 +426,8 @@ type type_item =
   | TypeDeclarationItem of type_declaration
   | TypeExtensionItem of type_extension_declaration
 
-let is_expr_kind = function
+let is_expr_kind = fun __tmp1 ->
+  match __tmp1 with
   | Syntax_kind.LET_EXPR
   | Syntax_kind.LOCAL_OPEN_EXPR
   | Syntax_kind.LET_MODULE_EXPR
@@ -463,7 +468,8 @@ let is_expr_kind = function
   | Syntax_kind.RECORD_UPDATE_EXPR -> true
   | _ -> false
 
-let is_pattern_kind = function
+let is_pattern_kind = fun __tmp1 ->
+  match __tmp1 with
   | Syntax_kind.WILDCARD_PATTERN
   | Syntax_kind.PATH_PATTERN
   | Syntax_kind.CONSTRUCT_PATTERN
@@ -488,7 +494,8 @@ let is_pattern_kind = function
   | Syntax_kind.EXCEPTION_PATTERN -> true
   | _ -> false
 
-let is_parameter_kind = function
+let is_parameter_kind = fun __tmp1 ->
+  match __tmp1 with
   | Syntax_kind.LABELED_PARAM
   | Syntax_kind.OPTIONAL_PARAM
   | Syntax_kind.OPTIONAL_PARAM_DEFAULT -> true
@@ -496,7 +503,8 @@ let is_parameter_kind = function
 
 let is_parameter_node_kind = fun kind -> is_parameter_kind kind || is_pattern_kind kind
 
-let is_type_expr_kind = function
+let is_type_expr_kind = fun __tmp1 ->
+  match __tmp1 with
   | Syntax_kind.TYPE_EXPR
   | Syntax_kind.PATH_TYPE
   | Syntax_kind.VAR_TYPE
@@ -510,27 +518,33 @@ let is_type_expr_kind = function
   | Syntax_kind.OPAQUE_TYPE -> true
   | _ -> false
 
-let is_record_type_kind = function
+let is_record_type_kind = fun __tmp1 ->
+  match __tmp1 with
   | Syntax_kind.RECORD_TYPE -> true
   | _ -> false
 
-let is_record_field_kind = function
+let is_record_field_kind = fun __tmp1 ->
+  match __tmp1 with
   | Syntax_kind.RECORD_FIELD -> true
   | _ -> false
 
-let is_record_expr_field_kind = function
+let is_record_expr_field_kind = fun __tmp1 ->
+  match __tmp1 with
   | Syntax_kind.RECORD_EXPR_FIELD -> true
   | _ -> false
 
-let is_variant_type_kind = function
+let is_variant_type_kind = fun __tmp1 ->
+  match __tmp1 with
   | Syntax_kind.VARIANT_TYPE -> true
   | _ -> false
 
-let is_variant_constructor_kind = function
+let is_variant_constructor_kind = fun __tmp1 ->
+  match __tmp1 with
   | Syntax_kind.VARIANT_CONSTRUCTOR -> true
   | _ -> false
 
-let is_module_expr_kind = function
+let is_module_expr_kind = fun __tmp1 ->
+  match __tmp1 with
   | Syntax_kind.MODULE_EXPR
   | Syntax_kind.PATH_MODULE_EXPR
   | Syntax_kind.STRUCT_MODULE_EXPR
@@ -541,7 +555,8 @@ let is_module_expr_kind = function
   | Syntax_kind.OPAQUE_MODULE_EXPR -> true
   | _ -> false
 
-let is_module_type_kind = function
+let is_module_type_kind = fun __tmp1 ->
+  match __tmp1 with
   | Syntax_kind.MODULE_TYPE_EXPR
   | Syntax_kind.PATH_MODULE_TYPE
   | Syntax_kind.SIGNATURE_MODULE_TYPE
@@ -552,11 +567,13 @@ let is_module_type_kind = function
   | Syntax_kind.OPAQUE_MODULE_TYPE -> true
   | _ -> false
 
-let is_match_case_kind = function
+let is_match_case_kind = fun __tmp1 ->
+  match __tmp1 with
   | Syntax_kind.MATCH_CASE -> true
   | _ -> false
 
-let is_let_binding_kind = function
+let is_let_binding_kind = fun __tmp1 ->
+  match __tmp1 with
   | Syntax_kind.LET_BINDING -> true
   | _ -> false
 
@@ -675,8 +692,8 @@ let first_child_node_matching = fun (node: node) ~matches ->
   Syntax_tree.for_each_child
     node.tree
     (syntax_node node)
-    ~fn:(
-      function
+    ~fn:(fun __tmp1 ->
+      match __tmp1 with
       | Syntax_tree.Node id -> (
           match !found with
           | Some _ -> ()
@@ -686,8 +703,7 @@ let first_child_node_matching = fun (node: node) ~matches ->
                 found := Some child
         )
       | Syntax_tree.Token _
-      | Syntax_tree.Missing _ -> ()
-    );
+      | Syntax_tree.Missing _ -> ());
   !found
 
 let nth_child_node_matching = fun (node: node) target ~matches ->
@@ -696,8 +712,8 @@ let nth_child_node_matching = fun (node: node) target ~matches ->
   Syntax_tree.for_each_child
     node.tree
     (syntax_node node)
-    ~fn:(
-      function
+    ~fn:(fun __tmp1 ->
+      match __tmp1 with
       | Syntax_tree.Node id -> (
           match !found with
           | Some _ -> ()
@@ -710,8 +726,7 @@ let nth_child_node_matching = fun (node: node) target ~matches ->
                   seen := !seen + 1
         )
       | Syntax_tree.Token _
-      | Syntax_tree.Missing _ -> ()
-    );
+      | Syntax_tree.Missing _ -> ());
   !found
 
 let last_child_node_matching = fun (node: node) ~matches ->
@@ -719,30 +734,28 @@ let last_child_node_matching = fun (node: node) ~matches ->
   Syntax_tree.for_each_child
     node.tree
     (syntax_node node)
-    ~fn:(
-      function
+    ~fn:(fun __tmp1 ->
+      match __tmp1 with
       | Syntax_tree.Node id ->
           let child = wrap_node node.tree id in
           if node_matches child matches then
             found := Some child
       | Syntax_tree.Token _
-      | Syntax_tree.Missing _ -> ()
-    );
+      | Syntax_tree.Missing _ -> ());
   !found
 
 let for_each_child_node_matching = fun (node: node) ~matches ~fn ->
   Syntax_tree.for_each_child
     node.tree
     (syntax_node node)
-    ~fn:(
-      function
+    ~fn:(fun __tmp1 ->
+      match __tmp1 with
       | Syntax_tree.Node id ->
           let child = wrap_node node.tree id in
           if node_matches child matches then
             fn child
       | Syntax_tree.Token _
-      | Syntax_tree.Missing _ -> ()
-    )
+      | Syntax_tree.Missing _ -> ())
 
 let fold_child_node_matching = fun (node: node) ~matches ~init ~fn ->
   let acc = ref init in
@@ -750,8 +763,8 @@ let fold_child_node_matching = fun (node: node) ~matches ~init ~fn ->
   Syntax_tree.for_each_child
     node.tree
     (syntax_node node)
-    ~fn:(
-      function
+    ~fn:(fun __tmp1 ->
+      match __tmp1 with
       | Syntax_tree.Node id when not !returned ->
           let child = wrap_node node.tree id in
           if node_matches child matches then (
@@ -763,8 +776,7 @@ let fold_child_node_matching = fun (node: node) ~matches ~init ~fn ->
           )
       | Syntax_tree.Node _
       | Syntax_tree.Token _
-      | Syntax_tree.Missing _ -> ()
-    );
+      | Syntax_tree.Missing _ -> ());
   !acc
 
 let first_child_token_matching = fun (node: node) ~matches ->
@@ -772,8 +784,8 @@ let first_child_token_matching = fun (node: node) ~matches ->
   Syntax_tree.for_each_child
     node.tree
     (syntax_node node)
-    ~fn:(
-      function
+    ~fn:(fun __tmp1 ->
+      match __tmp1 with
       | Syntax_tree.Token id -> (
           match !found with
           | Some _ -> ()
@@ -783,8 +795,7 @@ let first_child_token_matching = fun (node: node) ~matches ->
                 found := Some token
         )
       | Syntax_tree.Node _
-      | Syntax_tree.Missing _ -> ()
-    );
+      | Syntax_tree.Missing _ -> ());
   !found
 
 let rec first_descendant_token_matching = fun (node: node) ~matches ->
@@ -792,8 +803,8 @@ let rec first_descendant_token_matching = fun (node: node) ~matches ->
   Syntax_tree.for_each_child
     node.tree
     (syntax_node node)
-    ~fn:(
-      function
+    ~fn:(fun __tmp1 ->
+      match __tmp1 with
       | Syntax_tree.Token id -> (
           match !found with
           | Some _ -> ()
@@ -811,8 +822,7 @@ let rec first_descendant_token_matching = fun (node: node) ~matches ->
               | None -> ()
             )
         )
-      | Syntax_tree.Missing _ -> ()
-    );
+      | Syntax_tree.Missing _ -> ());
   !found
 
 let child_node_at = fun (node: node) index ->
@@ -827,15 +837,14 @@ let has_child_token_kind = fun (node: node) expected_kind ->
   Syntax_tree.for_each_child
     node.tree
     (syntax_node node)
-    ~fn:(
-      function
+    ~fn:(fun __tmp1 ->
+      match __tmp1 with
       | Syntax_tree.Token id ->
           let token = wrap_token node.tree id in
           if token_kind_is token expected_kind then
             found := true
       | Syntax_tree.Node _
-      | Syntax_tree.Missing _ -> ()
-    );
+      | Syntax_tree.Missing _ -> ());
   !found
 
 let nth_child_token_matching = fun (node: node) target ~matches ->
@@ -844,8 +853,8 @@ let nth_child_token_matching = fun (node: node) target ~matches ->
   Syntax_tree.for_each_child
     node.tree
     (syntax_node node)
-    ~fn:(
-      function
+    ~fn:(fun __tmp1 ->
+      match __tmp1 with
       | Syntax_tree.Token id -> (
           match !found with
           | Some _ -> ()
@@ -858,8 +867,7 @@ let nth_child_token_matching = fun (node: node) target ~matches ->
                   seen := !seen + 1
         )
       | Syntax_tree.Node _
-      | Syntax_tree.Missing _ -> ()
-    );
+      | Syntax_tree.Missing _ -> ());
   !found
 
 let child_token_kind_at = fun (node: node) index ->
@@ -903,7 +911,8 @@ let rec normalize_expr_node = fun (expr: expr) ->
     )
   | _ -> expr
 
-let normalize_expr_option = function
+let normalize_expr_option = fun __tmp1 ->
+  match __tmp1 with
   | Some expr -> Some (normalize_expr_node expr)
   | None -> None
 
@@ -917,7 +926,8 @@ let rec normalize_pattern_node = fun (pattern: pattern) ->
     )
   | _ -> pattern
 
-let normalize_pattern_option = function
+let normalize_pattern_option = fun __tmp1 ->
+  match __tmp1 with
   | Some pattern -> Some (normalize_pattern_node pattern)
   | None -> None
 
@@ -931,7 +941,8 @@ let rec normalize_type_expr_node = fun (type_expr: type_expr) ->
     )
   | _ -> type_expr
 
-let normalize_type_expr_option = function
+let normalize_type_expr_option = fun __tmp1 ->
+  match __tmp1 with
   | Some type_expr -> Some (normalize_type_expr_node type_expr)
   | None -> None
 
@@ -943,8 +954,8 @@ let rec first_type_expr_descendant_of_pattern = fun (node: node) ->
       Syntax_tree.for_each_child
         node.tree
         (syntax_node node)
-        ~fn:(
-          function
+        ~fn:(fun __tmp1 ->
+          match __tmp1 with
           | Syntax_tree.Node id -> (
               match !found with
               | Some _ -> ()
@@ -954,8 +965,7 @@ let rec first_type_expr_descendant_of_pattern = fun (node: node) ->
                     found := first_type_expr_descendant_of_pattern child
             )
           | Syntax_tree.Token _
-          | Syntax_tree.Missing _ -> ()
-        );
+          | Syntax_tree.Missing _ -> ());
       !found
 
 let first_match_case_child = fun (node: node) ->
@@ -980,20 +990,19 @@ let rec for_each_token_in_node = fun (node: node) ~fn ->
   Syntax_tree.for_each_child
     node.tree
     (syntax_node node)
-    ~fn:(
-      function
+    ~fn:(fun __tmp1 ->
+      match __tmp1 with
       | Syntax_tree.Token id -> fn (wrap_token node.tree id)
       | Syntax_tree.Node id -> for_each_token_in_node (wrap_node node.tree id) ~fn
-      | Syntax_tree.Missing _ -> ()
-    )
+      | Syntax_tree.Missing _ -> ())
 
 let for_each_token_after_child_token = fun (node: node) ~matches ~fn ->
   let seen_boundary = ref false in
   Syntax_tree.for_each_child
     node.tree
     (syntax_node node)
-    ~fn:(
-      function
+    ~fn:(fun __tmp1 ->
+      match __tmp1 with
       | Syntax_tree.Token id ->
           let token = wrap_token node.tree id in
           if !seen_boundary then
@@ -1003,8 +1012,7 @@ let for_each_token_after_child_token = fun (node: node) ~matches ~fn ->
       | Syntax_tree.Node id ->
           if !seen_boundary then
             for_each_token_in_node (wrap_node node.tree id) ~fn
-      | Syntax_tree.Missing _ -> ()
-    )
+      | Syntax_tree.Missing _ -> ())
 
 module Lex_token = Token
 
@@ -2328,8 +2336,8 @@ module ModuleTypeExpr = struct
         let returned = ref false in
         Node.for_each_child
           node
-          ~fn:(
-            function
+          ~fn:(fun __tmp1 ->
+            match __tmp1 with
             | Syntax_tree.Token id ->
                 if not !returned then (
                   let token = wrap_token node.tree id in
@@ -2359,8 +2367,7 @@ module ModuleTypeExpr = struct
                   in
                   acc := next
                 )
-            | Syntax_tree.Missing _ -> ()
-          );
+            | Syntax_tree.Missing _ -> ());
         !acc
 
   let for_each_sig_body_token = fun module_type ~fn ->
@@ -2813,15 +2820,14 @@ end = struct
     Syntax_tree.for_each_child
       record.tree
       (syntax_node record)
-      ~fn:(
-        function
+      ~fn:(fun __tmp1 ->
+        match __tmp1 with
         | Syntax_tree.Node id ->
             let child = wrap_node record.tree id in
             if node_matches child is_record_expr_field_kind then
               Vector.push fields ~value:(record_expr_field_of_node child)
         | Syntax_tree.Token _
-        | Syntax_tree.Missing _ -> ()
-      );
+        | Syntax_tree.Missing _ -> ());
     fields
 
   let list_has_trailing_separator = fun (expr: expr) ->
@@ -5425,12 +5431,11 @@ module TypeDeclaration = struct
       fold_child
         member
         ~init
-        ~fn:(
-          function
+        ~fn:(fun __tmp1 ->
+          match __tmp1 with
           | Syntax_tree.Token id -> fn (wrap_token member.node.tree id)
           | Syntax_tree.Node _
-          | Syntax_tree.Missing _ -> fun acc -> Continue acc
-        )
+          | Syntax_tree.Missing _ -> fun acc -> Continue acc)
 
     let for_each_child_token = fun member ~fn ->
       fold_child_token
@@ -5444,12 +5449,11 @@ module TypeDeclaration = struct
       fold_child
         member
         ~init
-        ~fn:(
-          function
+        ~fn:(fun __tmp1 ->
+          match __tmp1 with
           | Syntax_tree.Node id -> fn (wrap_node member.node.tree id)
           | Syntax_tree.Token _
-          | Syntax_tree.Missing _ -> fun acc -> Continue acc
-        )
+          | Syntax_tree.Missing _ -> fun acc -> Continue acc)
 
     let for_each_child_node = fun member ~fn ->
       fold_child_node
@@ -5572,8 +5576,8 @@ module TypeDeclaration = struct
     let index = ref 0 in
     Node.for_each_child
       decl
-      ~fn:(
-        function
+      ~fn:(fun __tmp1 ->
+        match __tmp1 with
         | Syntax_tree.Node id ->
             let node = wrap_node decl.tree id in
             if node_kind_is node Syntax_kind.TYPE_DECL_MEMBER then (
@@ -5588,8 +5592,7 @@ module TypeDeclaration = struct
             );
             index := !index + 1
         | Syntax_tree.Token _
-        | Syntax_tree.Missing _ -> index := !index + 1
-      );
+        | Syntax_tree.Missing _ -> index := !index + 1);
     if not !saw_member then
       fn
         {
@@ -6047,12 +6050,11 @@ module ModuleDeclaration = struct
       fold_child
         member
         ~init
-        ~fn:(
-          function
+        ~fn:(fun __tmp1 ->
+          match __tmp1 with
           | Syntax_tree.Token id -> fn (wrap_token member.node.tree id)
           | Syntax_tree.Node _
-          | Syntax_tree.Missing _ -> fun acc -> Continue acc
-        )
+          | Syntax_tree.Missing _ -> fun acc -> Continue acc)
 
     let for_each_child_token = fun member ~fn ->
       fold_child_token
@@ -6066,12 +6068,11 @@ module ModuleDeclaration = struct
       fold_child
         member
         ~init
-        ~fn:(
-          function
+        ~fn:(fun __tmp1 ->
+          match __tmp1 with
           | Syntax_tree.Node id -> fn (wrap_node member.node.tree id)
           | Syntax_tree.Token _
-          | Syntax_tree.Missing _ -> fun acc -> Continue acc
-        )
+          | Syntax_tree.Missing _ -> fun acc -> Continue acc)
 
     let for_each_child_node = fun member ~fn ->
       fold_child_node
@@ -6139,8 +6140,8 @@ module ModuleDeclaration = struct
     let index = ref 0 in
     Node.for_each_child
       decl
-      ~fn:(
-        function
+      ~fn:(fun __tmp1 ->
+        match __tmp1 with
         | Syntax_tree.Node id ->
             let node = wrap_node decl.tree id in
             if node_kind_is node Syntax_kind.MODULE_DECL_MEMBER then (
@@ -6155,8 +6156,7 @@ module ModuleDeclaration = struct
             );
             index := !index + 1
         | Syntax_tree.Token _
-        | Syntax_tree.Missing _ -> index := !index + 1
-      );
+        | Syntax_tree.Missing _ -> index := !index + 1);
     if not !saw_member then
       fn
         {
@@ -6368,8 +6368,8 @@ module ModuleDeclaration = struct
         let inside = ref false in
         Node.for_each_child
           node
-          ~fn:(
-            function
+          ~fn:(fun __tmp1 ->
+            match __tmp1 with
             | Syntax_tree.Token id ->
                 let token = wrap_token node.tree id in
                 if !returned then
@@ -6396,8 +6396,7 @@ module ModuleDeclaration = struct
                       | Return value ->
                           returned := true;
                           Return value)
-            | Syntax_tree.Missing _ -> ()
-          );
+            | Syntax_tree.Missing _ -> ());
         !acc
 
   let for_each_sig_body_token = fun decl ~fn ->
@@ -6543,8 +6542,8 @@ module ModuleTypeDeclaration = struct
         let inside = ref false in
         Node.for_each_child
           node
-          ~fn:(
-            function
+          ~fn:(fun __tmp1 ->
+            match __tmp1 with
             | Syntax_tree.Token id ->
                 let token = wrap_token node.tree id in
                 if !returned then
@@ -6571,8 +6570,7 @@ module ModuleTypeDeclaration = struct
                       | Return value ->
                           returned := true;
                           Return value)
-            | Syntax_tree.Missing _ -> ()
-          );
+            | Syntax_tree.Missing _ -> ());
         !acc
 
   let for_each_sig_body_token = fun decl ~fn ->

@@ -53,7 +53,8 @@ and runtime_phase =
   | CacheGenerationRecorded of { lane_count: int; new_entry_count: int }
   | ReturningResults of { result_count: int; had_partial_failure: bool }
 
-let phase_name_of_runtime_phase = function
+let phase_name_of_runtime_phase = fun __tmp1 ->
+  match __tmp1 with
   | TargetsResolved _ -> "targets_resolved"
   | ToolchainsEnsured _ -> "toolchains_ensured"
   | ToolchainsValidated _ -> "toolchains_validated"
@@ -70,7 +71,8 @@ let phase_name_of_runtime_phase = function
   | CacheGenerationRecorded _ -> "cache_generation_recorded"
   | ReturningResults _ -> "returning_results"
 
-let runtime_phase_fields = function
+let runtime_phase_fields = fun __tmp1 ->
+  match __tmp1 with
   | TargetsResolved { target_count }
   | ToolchainsEnsured { target_count }
   | ToolchainsValidated { target_count } -> [ ("target_count", Data.Json.Int target_count); ]
@@ -142,7 +144,8 @@ let runtime_phase_fields = function
         ("had_partial_failure", Data.Json.Bool had_partial_failure);
       ]
 
-let to_json = function
+let to_json = fun __tmp1 ->
+  match __tmp1 with
   | Pm event -> Some (Riot_model.Event.to_json event)
   | BuildingTarget { target; host } ->
       Some (Data.Json.Object [

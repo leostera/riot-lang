@@ -64,32 +64,37 @@ let default_test_policy = { small_test_timeout = None; flaky_max_retries = 0 }
 
 let default = { cache = default_cache_policy; test = default_test_policy }
 
-let value_error_message = function
+let value_error_message = fun __tmp1 ->
+  match __tmp1 with
   | MissingNumberPrefix -> "must start with a number"
   | UnsupportedUnit unit_name -> "unsupported unit '" ^ unit_name ^ "'"
   | InvalidNumber value -> "invalid number '" ^ value ^ "'"
   | NegativeValue -> "must be non-negative"
 
-let cache_error_message = function
+let cache_error_message = fun __tmp1 ->
+  match __tmp1 with
   | KeepGenerationsMustBePositiveInt -> "riot.cache.keep_generations must be greater than 0"
   | MaxSizeMustBeString -> "riot.cache.max_size must be a string like \"50 GiB\""
   | InvalidMaxSize error -> "riot.cache.max_size " ^ value_error_message error
 
-let test_error_message = function
+let test_error_message = fun __tmp1 ->
+  match __tmp1 with
   | SmallTestTimeoutMustBeDurationString -> "riot.test.small_test_timeout must be a duration string like \"500ms\""
   | SmallTestTimeoutMustBeNonNegativeInt -> "riot.test.small_test_timeout must be non-negative"
   | InvalidSmallTestTimeout error -> "riot.test.small_test_timeout " ^ value_error_message error
   | FlakyMaxRetriesMustBeNonNegativeInt -> "riot.test.flaky_max_retries must be greater than or equal to 0"
   | FlakyMaxRetriesMustBeInt -> "riot.test.flaky_max_retries must be an integer"
 
-let invalid_config_error_message = function
+let invalid_config_error_message = fun __tmp1 ->
+  match __tmp1 with
   | RiotMustBeTable -> "top-level [riot] must be a table"
   | RiotCacheMustBeTable -> "top-level [riot.cache] must be a table"
   | RiotTestMustBeTable -> "top-level [riot.test] must be a table"
   | CacheConfig error -> cache_error_message error
   | TestConfig error -> test_error_message error
 
-let message = function
+let message = fun __tmp1 ->
+  match __tmp1 with
   | ReadFailed { path; error } ->
       "failed to read workspace config '" ^ Path.to_string path ^ "': " ^ IO.error_message error
   | ParseFailed { path; error } ->
@@ -130,7 +135,8 @@ let normalize_size = fun raw ->
   in
   String.lowercase_ascii (IO.Bytes.to_string compact)
 
-let unit_multiplier = function
+let unit_multiplier = fun __tmp1 ->
+  match __tmp1 with
   | ""
   | "b" -> Some 1L
   | "k"
@@ -230,7 +236,8 @@ let normalize_duration = fun raw ->
   in
   String.lowercase_ascii (IO.Bytes.to_string compact)
 
-let duration_unit_seconds = function
+let duration_unit_seconds = fun __tmp1 ->
+  match __tmp1 with
   | ""
   | "s" -> Some 1.0
   | "ms" -> Some 0.001

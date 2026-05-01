@@ -47,9 +47,9 @@ let resolve_source_for_hash = fun ~(package:Package.t) ~src_path ->
       in
       workspace_relative @ [ src_path ]
   in
-  let rec first_existing = function
-    | [] ->
-        src_path
+  let rec first_existing = fun __tmp1 ->
+    match __tmp1 with
+    | [] -> src_path
     | path :: rest -> (
         match Fs.exists path with
         | Ok true -> path

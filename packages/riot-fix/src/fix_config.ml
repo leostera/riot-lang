@@ -219,7 +219,8 @@ let find_package_scope = fun scope file ->
       | Error _ -> None)
   |> List.sort ~compare:(fun (left_len, _) (right_len, _) -> Int.compare right_len left_len)
   |> List.map ~fn:(fun (_, package_scope) -> package_scope)
-  |> function
+  |> fun __tmp1 ->
+    match __tmp1 with
     | package_scope :: _ -> Some package_scope
     | [] -> None
 

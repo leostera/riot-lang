@@ -59,7 +59,8 @@ let compare_labeled_sets = fun labeled_sets ->
   match labeled_sets with
   | [] -> Ok ()
   | (baseline_label, baseline) :: rest ->
-      let rec loop = function
+      let rec loop = fun __tmp1 ->
+        match __tmp1 with
         | [] -> Ok ()
         | (label, paths) :: remaining ->
             if baseline = paths then
@@ -89,7 +90,8 @@ let compare_labeled_sets = fun labeled_sets ->
       in
       loop rest
 
-let glob_error_message = function
+let glob_error_message = fun __tmp1 ->
+  match __tmp1 with
   | Glob.Empty -> "empty glob"
   | Glob.Invalid_glob { input; message; offset } ->
       let offset =
@@ -120,12 +122,11 @@ let collect_paths = fun walker ->
   Ignore.Walker.to_list walker
   |> Result.map ~fn:(List.map ~fn:Fs.Walker.FileItem.path_string)
   |> Result.map_err
-    ~fn:(
-      function
+    ~fn:(fun __tmp1 ->
+      match __tmp1 with
       | Ignore.Walker.File_system { cause; _ } -> IO.error_message cause
       | Ignore.Walker.Invalid_glob { path; line; message; _ } ->
-          Path.to_string path ^ ":" ^ Int.to_string line ^ ": " ^ message
-    )
+          Path.to_string path ^ ":" ^ Int.to_string line ^ ": " ^ message)
 
 let collect_file_paths = fun ~root walker ->
   Ignore.Walker.to_list walker
@@ -145,12 +146,11 @@ let collect_file_paths = fun ~root walker ->
     )
   |> Result.map ~fn:sorted
   |> Result.map_err
-    ~fn:(
-      function
+    ~fn:(fun __tmp1 ->
+      match __tmp1 with
       | Ignore.Walker.File_system { cause; _ } -> IO.error_message cause
       | Ignore.Walker.Invalid_glob { path; line; message; _ } ->
-          Path.to_string path ^ ":" ^ Int.to_string line ^ ": " ^ message
-    )
+          Path.to_string path ^ ":" ^ Int.to_string line ^ ": " ^ message)
 
 let collect_file_paths_parallel = fun walker ->
   let lock = Sync.Mutex.create () in
@@ -170,12 +170,11 @@ let collect_file_paths_parallel = fun walker ->
       !seen
       |> sorted)
   |> Result.map_err
-    ~fn:(
-      function
+    ~fn:(fun __tmp1 ->
+      match __tmp1 with
       | Ignore.Walker.File_system { cause; _ } -> IO.error_message cause
       | Ignore.Walker.Invalid_glob { path; line; message; _ } ->
-          Path.to_string path ^ ":" ^ Int.to_string line ^ ": " ^ message
-    )
+          Path.to_string path ^ ":" ^ Int.to_string line ^ ": " ^ message)
 
 let contains_path = fun paths suffix ->
   List.any
@@ -364,7 +363,8 @@ let tests = [
         ("concurrency=available sort=false", Thread.available_parallelism, false);
       ]
       in
-      let rec collect acc = function
+      let rec collect acc = fun __tmp1 ->
+        match __tmp1 with
         | [] -> Ok (List.reverse acc)
         | (label, concurrency, sort) :: rest ->
             let* walker =

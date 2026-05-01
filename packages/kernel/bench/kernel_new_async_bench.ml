@@ -174,7 +174,8 @@ let bench_many_source_poll = fun () ->
     (fun pipes ->
       with_poll
         (fun poll ->
-          let rec register index = function
+          let rec register index = fun __tmp1 ->
+            match __tmp1 with
             | [] -> ()
             | Kernel.Fs.File.{ read_end; _ } :: rest ->
                 let _ =
@@ -186,7 +187,8 @@ let bench_many_source_poll = fun () ->
                 in
                 register (index + 1) rest
           in
-          let rec wake = function
+          let rec wake = fun __tmp1 ->
+            match __tmp1 with
             | [] -> ()
             | Kernel.Fs.File.{ write_end; _ } :: rest ->
                 let _ = Kernel.Fs.File.write write_end (Kernel.Bytes.from_string "x") in
@@ -274,7 +276,8 @@ let bench_mixed_source_poll = fun () ->
                               let seen_timer = ref false in
                               let seen_process = ref false in
                               let seen_udp = ref false in
-                              let rec mark = function
+                              let rec mark = fun __tmp1 ->
+                                match __tmp1 with
                                 | [] -> ()
                                 | event :: rest ->
                                     let token =

@@ -27,7 +27,8 @@ type url = t
 
 (* Character validation *)
 
-let is_scheme_char = function
+let is_scheme_char = fun __tmp1 ->
+  match __tmp1 with
   | 'a' .. 'z'
   | 'A' .. 'Z'
   | '0' .. '9'
@@ -36,7 +37,8 @@ let is_scheme_char = function
   | '.' -> true
   | _ -> false
 
-let is_authority_char = function
+let is_authority_char = fun __tmp1 ->
+  match __tmp1 with
   | 'a' .. 'z'
   | 'A' .. 'Z'
   | '0' .. '9'
@@ -50,7 +52,8 @@ let is_authority_char = function
   | ']' -> true
   | _ -> false
 
-let is_path_char = function
+let is_path_char = fun __tmp1 ->
+  match __tmp1 with
   | 'a' .. 'z'
   | 'A' .. 'Z'
   | '0' .. '9'
@@ -75,7 +78,8 @@ let is_path_char = function
   | '%' -> true
   | _ -> false
 
-let is_query_char = function
+let is_query_char = fun __tmp1 ->
+  match __tmp1 with
   | 'a' .. 'z'
   | 'A' .. 'Z'
   | '0' .. '9'
@@ -602,7 +606,8 @@ let compare = fun url1 url2 -> String.compare (to_string url1) (to_string url2)
 (* Percent encoding/decoding *)
 (** Check if character is unreserved per RFC 3986 Section 2.3 *)
 
-let is_unreserved = function
+let is_unreserved = fun __tmp1 ->
+  match __tmp1 with
   | 'a' .. 'z'
   | 'A' .. 'Z'
   | '0' .. '9'

@@ -28,7 +28,8 @@ let udp = fun ip port ->
   | Ok addr -> addr
   | Error err -> panic ("Std.Net.Addr.udp: " ^ Kernel.Net.SocketAddr.error_to_string err)
 
-let io_error_of_resolver_error = function
+let io_error_of_resolver_error = fun __tmp1 ->
+  match __tmp1 with
   | Kernel.Net.Addr.System err -> IO.of_system_error err
   | error -> IO.Unknown_error (Kernel.Net.Addr.error_to_string error)
 

@@ -486,7 +486,8 @@ let ( = ) = is
 
 let ( != ) = not_equal
 
-let to_string = function
+let to_string = fun __tmp1 ->
+  match __tmp1 with
   | WHITESPACE -> "WHITESPACE"
   | COMMENT -> "COMMENT"
   | DOCSTRING -> "DOCSTRING"
@@ -723,13 +724,15 @@ let to_string = function
   | ERROR -> "ERROR"
   | MISSING -> "MISSING"
 
-let is_trivia = function
+let is_trivia = fun __tmp1 ->
+  match __tmp1 with
   | WHITESPACE
   | COMMENT
   | DOCSTRING -> true
   | _ -> false
 
-let is_token = function
+let is_token = fun __tmp1 ->
+  match __tmp1 with
   | SOURCE_FILE
   | IMPLEMENTATION
   | INTERFACE

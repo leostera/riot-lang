@@ -72,7 +72,8 @@ Replace direct `Pervasives` references with `Std`.
 
   let forbidden_modules = [ "Stdlib"; "Pervasives"; "Unix"; "Sys"; ]
 
-  let replacement_for = function
+  let replacement_for = fun __tmp1 ->
+    match __tmp1 with
     | "Stdlib"
     | "Pervasives" -> Some "Std"
     | _ -> None
@@ -157,7 +158,8 @@ end
 
 let tests_dir = Path.v "packages/riot-fix/tests/fixtures"
 
-let is_digit = function
+let is_digit = fun __tmp1 ->
+  match __tmp1 with
   | '0' .. '9' -> true
   | _ -> false
 

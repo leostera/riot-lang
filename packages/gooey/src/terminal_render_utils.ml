@@ -43,7 +43,8 @@ let slice_text_by_cells = fun text ~skip ~take ->
       String.into_grapheme_iter text
       |> Std.Iter.Iterator.to_list
     in
-    let rec loop col acc = function
+    let rec loop col acc = fun __tmp1 ->
+      match __tmp1 with
       | [] ->
           List.rev acc
           |> String.concat ""

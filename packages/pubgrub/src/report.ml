@@ -72,7 +72,8 @@ let format_terms = fun terms ->
       let formatted = List.map terms ~fn:format_term in
       String.concat ", " formatted
 
-let format_external_cause = function
+let format_external_cause = fun __tmp1 ->
+  match __tmp1 with
   | Incompatibility.NotRoot (pkg, ver) ->
       "root package " ^ pkg ^ "@" ^ version_to_string ver ^ " must be selected"
   | Incompatibility.NoVersions (pkg, ranges) ->

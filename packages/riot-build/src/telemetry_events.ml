@@ -208,7 +208,8 @@ let target_to_json = fun target ->
         "packages:" ^ String.concat "," (List.map pkgs ~fn:Package_name.to_string)
   )
 
-let target_of_json = function
+let target_of_json = fun __tmp1 ->
+  match __tmp1 with
   | Data.Json.String "all" -> Ok Workspace_planner.All
   | Data.Json.String target_str when String.starts_with ~prefix:"packages:" target_str ->
       let prefix_len = String.length "packages:" in
@@ -219,9 +220,9 @@ let target_of_json = function
         if String.equal packages_str "" then
           Ok []
         else
-          let rec loop = function
-            | [] ->
-                Ok []
+          let rec loop = fun __tmp1 ->
+            match __tmp1 with
+            | [] -> Ok []
             | package_name :: rest -> (
                 match Package_name.from_string package_name with
                 | Error error -> Error (Data.Json.String (Package_name.error_message error))
@@ -243,7 +244,8 @@ let target_of_json = function
 
 let build_target_to_json = fun target -> Data.Json.String (Target.to_string target)
 
-let build_target_of_json = function
+let build_target_of_json = fun __tmp1 ->
+  match __tmp1 with
   | Data.Json.String target ->
       Target.from_string target
       |> Result.map_err ~fn:(fun error -> Data.Json.String (Target.error_message error))
@@ -261,24 +263,28 @@ let action_to_json = fun (action: Action_node.t) ->
     ("action_node", Action_node.to_json action);
   ]
 
-let planning_status_to_json = function
+let planning_status_to_json = fun __tmp1 ->
+  match __tmp1 with
   | `Planned -> Data.Json.String "planned"
   | `MissingDependencies -> Data.Json.String "missing_dependencies"
   | `FailedDependencies -> Data.Json.String "failed_dependencies"
   | `Failed -> Data.Json.String "failed"
 
-let planning_status_of_json = function
+let planning_status_of_json = fun __tmp1 ->
+  match __tmp1 with
   | Data.Json.String "planned" -> Ok `Planned
   | Data.Json.String "missing_dependencies" -> Ok `MissingDependencies
   | Data.Json.String "failed_dependencies" -> Ok `FailedDependencies
   | Data.Json.String "failed" -> Ok `Failed
   | _ -> Error (Data.Json.String "Invalid planning status")
 
-let warning_source_to_json = function
+let warning_source_to_json = fun __tmp1 ->
+  match __tmp1 with
   | `Fresh -> Data.Json.String "fresh"
   | `Cached -> Data.Json.String "cached"
 
-let warning_source_of_json = function
+let warning_source_of_json = fun __tmp1 ->
+  match __tmp1 with
   | Data.Json.String "fresh" -> Ok `Fresh
   | Data.Json.String "cached" -> Ok `Cached
   | _ -> Error (Data.Json.String "Invalid warning source")
@@ -314,7 +320,8 @@ let planning_breakdown_to_json breakdown =
     );
   ]
 
-let planning_breakdown_of_json = function
+let planning_breakdown_of_json = fun __tmp1 ->
+  match __tmp1 with
   | Data.Json.Object fields -> (
       match (
         Data.Json.get_field "dependency_count" (Data.Json.Object fields),
@@ -351,8 +358,7 @@ let planning_breakdown_of_json = function
           }
       | _ -> Error (Data.Json.String "Invalid package planning breakdown")
     )
-  | _ ->
-      Error (Data.Json.String "Package planning breakdown must be an object")
+  | _ -> Error (Data.Json.String "Package planning breakdown must be an object")
 
 let workspace_graph_breakdown_to_json breakdown =
   Data.Json.Object [
@@ -377,7 +383,8 @@ let workspace_graph_breakdown_to_json breakdown =
     );
   ]
 
-let workspace_graph_breakdown_of_json = function
+let workspace_graph_breakdown_of_json = fun __tmp1 ->
+  match __tmp1 with
   | Data.Json.Object fields -> (
       match (
         Data.Json.get_field "build_node_realization_count" (Data.Json.Object fields),
@@ -411,10 +418,10 @@ let workspace_graph_breakdown_of_json = function
           }
       | _ -> Error (Data.Json.String "Invalid workspace graph breakdown")
     )
-  | _ ->
-      Error (Data.Json.String "Workspace graph breakdown must be an object")
+  | _ -> Error (Data.Json.String "Workspace graph breakdown must be an object")
 
-let to_json: Telemetry.event -> Data.Json.t option = function
+let to_json: Telemetry.event -> Data.Json.t option = fun __tmp1 ->
+  match __tmp1 with
   | BuildStarted { session_id; package; target } ->
       Some (Data.Json.Object [
         ("type", Data.Json.String "BuildStarted");
@@ -783,7 +790,8 @@ let to_json: Telemetry.event -> Data.Json.t option = function
       ])
   | _ -> None
 
-let event_session_id: Telemetry.event -> Session_id.t option = function
+let event_session_id: Telemetry.event -> Session_id.t option = fun __tmp1 ->
+  match __tmp1 with
   | BuildStarted { session_id; _ }
   | WorkspacePlanStarted { session_id; _ }
   | WorkspacePlanCompleted { session_id; _ }
@@ -1158,7 +1166,8 @@ let from_json: Data.Json.t -> (Telemetry.event, Data.Json.t) result = fun json -
                     warning_source_of_json source_json
                   ) with
                   | (Ok target, Ok build_target, Ok source) ->
-                      let rec collect_messages acc = function
+                      let rec collect_messages acc = fun __tmp1 ->
+                        match __tmp1 with
                         | [] -> Ok (List.reverse acc)
                         | (Data.Json.String msg) :: rest -> collect_messages (msg :: acc) rest
                         | _ -> Error (Data.Json.String "Invalid PackageOcamlcWarnings messages")
@@ -1252,11 +1261,10 @@ let from_json: Data.Json.t -> (Telemetry.event, Data.Json.t) result = fun json -
                                         let cycle =
                                           List.filter_map
                                             arr
-                                            ~fn:(
-                                              function
+                                            ~fn:(fun __tmp1 ->
+                                              match __tmp1 with
                                               | Data.Json.String s -> Some s
-                                              | _ -> None
-                                            )
+                                              | _ -> None)
                                         in
                                         Ok (PlanningFailed (Planning_error.CyclicDependency {
                                           cycle;
@@ -1325,12 +1333,11 @@ let from_json: Data.Json.t -> (Telemetry.event, Data.Json.t) result = fun json -
                                             let allowed_modules =
                                               List.filter_map
                                                 allowed_modules
-                                                ~fn:(
-                                                  function
+                                                ~fn:(fun __tmp1 ->
+                                                  match __tmp1 with
                                                   | Data.Json.String allowed_module ->
                                                       Some allowed_module
-                                                  | _ -> None
-                                                )
+                                                  | _ -> None)
                                             in
                                             let suggested_modules =
                                               match get_field
@@ -1339,12 +1346,11 @@ let from_json: Data.Json.t -> (Telemetry.event, Data.Json.t) result = fun json -
                                               | Some (Data.Json.Array suggested_modules) ->
                                                   List.filter_map
                                                     suggested_modules
-                                                    ~fn:(
-                                                      function
+                                                    ~fn:(fun __tmp1 ->
+                                                      match __tmp1 with
                                                       | Data.Json.String suggested_module ->
                                                           Some suggested_module
-                                                      | _ -> None
-                                                    )
+                                                      | _ -> None)
                                               | _ -> []
                                             in
                                             Ok (
@@ -1466,7 +1472,8 @@ let from_json: Data.Json.t -> (Telemetry.event, Data.Json.t) result = fun json -
                                         })
                                   )
                                 | Some (Data.Json.String "invalid_executable_main") -> (
-                                    let executable_main_error_of_json = function
+                                    let executable_main_error_of_json = fun __tmp1 ->
+                                      match __tmp1 with
                                       | Data.Json.Object fields -> (
                                           match get_field fields ~name:"type" with
                                           | Some (Data.Json.String "missing_main") ->
@@ -1485,12 +1492,11 @@ let from_json: Data.Json.t -> (Telemetry.event, Data.Json.t) result = fun json -
                                                   let parameters =
                                                     List.filter_map
                                                       parameters
-                                                      ~fn:(
-                                                        function
+                                                      ~fn:(fun __tmp1 ->
+                                                        match __tmp1 with
                                                         | Data.Json.String parameter ->
                                                             Some parameter
-                                                        | _ -> None
-                                                      )
+                                                        | _ -> None)
                                                   in
                                                   Some (Planning_error.InvalidMainParameters {
                                                     parameters;
@@ -1499,8 +1505,7 @@ let from_json: Data.Json.t -> (Telemetry.event, Data.Json.t) result = fun json -
                                             )
                                           | _ -> None
                                         )
-                                      | _ ->
-                                          None
+                                      | _ -> None
                                     in
                                     match (
                                       get_field planning_fields ~name:"package_name",
@@ -1591,11 +1596,10 @@ let from_json: Data.Json.t -> (Telemetry.event, Data.Json.t) result = fun json -
                                 let missing =
                                   List.filter_map
                                     arr
-                                    ~fn:(
-                                      function
+                                    ~fn:(fun __tmp1 ->
+                                      match __tmp1 with
                                       | Data.Json.String s -> Some (Path.v s)
-                                      | _ -> None
-                                    )
+                                      | _ -> None)
                                 in
                                 Ok (ActionOutputsNotCreated { missing })
                             | _ ->

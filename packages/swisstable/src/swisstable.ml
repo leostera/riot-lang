@@ -417,11 +417,10 @@ module RawTable = struct
   let iter = fun f table ->
     Array.for_each
       table.buckets
-      ~fn:(
-        function
+      ~fn:(fun __tmp1 ->
+        match __tmp1 with
         | Some (k, v) -> f k v
-        | None -> ()
-      )
+        | None -> ())
 
   (* Fold over all key-value pairs *)
 

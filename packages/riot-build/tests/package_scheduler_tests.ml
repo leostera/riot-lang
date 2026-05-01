@@ -157,7 +157,8 @@ let result_statuses = fun lane_result ->
   Lane_result.results lane_result
   |> List.map ~fn:(fun (result: Package_builder.build_result) -> result.status)
 
-let status_label = function
+let status_label = fun __tmp1 ->
+  match __tmp1 with
   | Package_builder.Built _ -> "built"
   | Package_builder.Cached _ -> "cached"
   | Package_builder.Skipped { reason } -> "skipped(" ^ reason ^ ")"
@@ -166,8 +167,8 @@ let status_label = function
 let planning_phase_counts = fun events ->
   events
   |> List.filter_map
-    ~fn:(
-      function
+    ~fn:(fun __tmp1 ->
+      match __tmp1 with
       | Package_scheduler.PlanningFinished {
           package_count;
           deferred_count;
@@ -189,14 +190,13 @@ let planning_phase_counts = fun events ->
             failed_count,
             error_count
           )
-      | _ -> None
-    )
+      | _ -> None)
 
 let execution_phase_counts = fun events ->
   events
   |> List.filter_map
-    ~fn:(
-      function
+    ~fn:(fun __tmp1 ->
+      match __tmp1 with
       | Package_scheduler.ExecutionFinished {
           package_count;
           finalized_count;
@@ -206,8 +206,7 @@ let execution_phase_counts = fun events ->
           _;
         } ->
           Some (package_count, finalized_count, built_count, failed_count, error_count)
-      | _ -> None
-    )
+      | _ -> None)
 
 let lane_targets = fun summary ->
   summary.Package_scheduler.lane_results
@@ -296,13 +295,12 @@ let test_package_scheduler_succeeds_for_dependency_chain = fun _ctx ->
         let completed_all =
           result_statuses lane_result
           |> List.all
-            ~fn:(
-              function
+            ~fn:(fun __tmp1 ->
+              match __tmp1 with
               | Package_builder.Built _
               | Package_builder.Cached _ -> true
               | Package_builder.Skipped _
-              | Package_builder.Failed _ -> false
-            )
+              | Package_builder.Failed _ -> false)
         in
         if not completed_all then
           Error "expected dependency chain packages to complete successfully"
@@ -476,13 +474,10 @@ let test_package_scheduler_keeps_multi_lane_results_isolated = fun _ctx ->
         let lane_count_events_ok =
           events
           |> List.filter_map
-            ~fn:(
-              function
-              | Package_scheduler.PlanningStarted { lane_count; _ }
-              | Package_scheduler.PlanningFinished { lane_count; _ }
-              | Package_scheduler.ExecutionStarted { lane_count; _ }
-              | Package_scheduler.ExecutionFinished { lane_count; _ } -> Some lane_count
-            )
+            ~fn:(fun (Package_scheduler.PlanningStarted { lane_count; _ }
+            | Package_scheduler.PlanningFinished { lane_count; _ }
+            | Package_scheduler.ExecutionStarted { lane_count; _ }
+            | Package_scheduler.ExecutionFinished { lane_count; _ }) -> Some lane_count)
           |> List.all ~fn:(fun lane_count -> lane_count = 2)
         in
         if actual_targets != expected_targets then
@@ -528,13 +523,12 @@ let test_package_scheduler_rerun_uses_cached_dependency_frontiers = fun _ctx ->
         let all_cached =
           List.all
             statuses
-            ~fn:(
-              function
+            ~fn:(fun __tmp1 ->
+              match __tmp1 with
               | Package_builder.Cached _ -> true
               | Package_builder.Built _
               | Package_builder.Skipped _
-              | Package_builder.Failed _ -> false
-            )
+              | Package_builder.Failed _ -> false)
         in
         if not all_cached then
           Error "expected cached rerun to finalize every package from cache"
@@ -605,13 +599,12 @@ let test_package_scheduler_cached_rerun_preserves_multi_lane_isolation = fun _ct
             ~fn:(fun lane_result ->
               result_statuses lane_result
               |> List.all
-                ~fn:(
-                  function
+                ~fn:(fun __tmp1 ->
+                  match __tmp1 with
                   | Package_builder.Cached _ -> true
                   | Package_builder.Built _
                   | Package_builder.Skipped _
-                  | Package_builder.Failed _ -> false
-                ))
+                  | Package_builder.Failed _ -> false))
         in
         let all_result_counts_are_one =
           second_summary.Package_scheduler.completions

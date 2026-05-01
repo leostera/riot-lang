@@ -32,7 +32,8 @@ module Tz = struct
     | Etc_UTC
     | Local
 
-  let to_string = function
+  let to_string = fun __tmp1 ->
+    match __tmp1 with
     | Etc_UTC -> "UTC"
     | Local -> "Local"
 end

@@ -1,11 +1,12 @@
 open Std
 
 let rec string_contains = fun ~sub_str ->
-  function
-  | "" -> sub_str = ""
-  | s ->
-      String.starts_with ~prefix:sub_str s
-      || string_contains ~sub_str (String.sub s ~offset:1 ~len:(String.length s - 1))
+  fun __tmp1 ->
+    match __tmp1 with
+    | "" -> sub_str = ""
+    | s ->
+        String.starts_with ~prefix:sub_str s
+        || string_contains ~sub_str (String.sub s ~offset:1 ~len:(String.length s - 1))
 
 let ansi_palette = [|
   (0, 0, 0);

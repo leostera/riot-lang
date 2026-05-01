@@ -159,25 +159,22 @@ let status_encode =
     [
       Ser.Variant.unit
         "Active"
-        (
-          function
+        (fun __tmp1 ->
+          match __tmp1 with
           | Active -> true
-          | _ -> false
-        );
+          | _ -> false);
       Ser.Variant.unit
         "Draft"
-        (
-          function
+        (fun __tmp1 ->
+          match __tmp1 with
           | Draft -> true
-          | _ -> false
-        );
+          | _ -> false);
       Ser.Variant.unit
         "Archived"
-        (
-          function
+        (fun __tmp1 ->
+          match __tmp1 with
           | Archived -> true
-          | _ -> false
-        );
+          | _ -> false);
     ]
 
 let pet_decode =
@@ -192,19 +189,17 @@ let pet_encode =
     [
       Ser.Variant.unit
         "NewsCoo"
-        (
-          function
+        (fun __tmp1 ->
+          match __tmp1 with
           | NewsCoo -> true
-          | _ -> false
-        );
+          | _ -> false);
       Ser.Variant.newtype
         "Reindeer"
         Ser.string
-        (
-          function
+        (fun __tmp1 ->
+          match __tmp1 with
           | Reindeer value -> Some value
-          | _ -> None
-        );
+          | _ -> None);
     ]
 
 let pose_decode =
@@ -464,12 +459,14 @@ let equal_sample = fun (left: sample) (right: sample) ->
   && equal_vec equal_stop left.stops right.stops
   && Array.to_list left.mirrors = Array.to_list right.mirrors
 
-let print_status = function
+let print_status = fun __tmp1 ->
+  match __tmp1 with
   | Active -> "Active"
   | Draft -> "Draft"
   | Archived -> "Archived"
 
-let print_pet = function
+let print_pet = fun __tmp1 ->
+  match __tmp1 with
   | NewsCoo -> "NewsCoo"
   | Reindeer value -> "Reindeer " ^ Printer.string value
 

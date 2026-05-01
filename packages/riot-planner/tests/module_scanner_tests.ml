@@ -5,15 +5,14 @@ module Test = Std.Test
 let rec flatten_entries = fun entries ->
   List.flat_map
     entries
-    ~fn:(
-      function
+    ~fn:(fun __tmp1 ->
+      match __tmp1 with
       | Riot_planner.Module_scanner.ML _ as entry -> [ entry ]
       | MLI _ as entry -> [ entry ]
       | C _ as entry -> [ entry ]
       | H _ as entry -> [ entry ]
       | Other _ as entry -> [ entry ]
-      | Dir (_, _, children) as entry -> entry :: flatten_entries children
-    )
+      | Dir (_, _, children) as entry -> entry :: flatten_entries children)
 
 let test_scan_tags_c_and_h_files = fun _ctx ->
   match Fs.with_tempdir
@@ -41,22 +40,20 @@ let test_scan_tags_c_and_h_files = fun _ctx ->
       let has_c =
         List.any
           flat
-          ~fn:(
-            function
+          ~fn:(fun __tmp1 ->
+            match __tmp1 with
             | Riot_planner.Module_scanner.C (name, path) ->
                 String.equal name "stubs.c" && Path.equal path Path.(Path.v "src/stubs.c")
-            | _ -> false
-          )
+            | _ -> false)
       in
       let has_h =
         List.any
           flat
-          ~fn:(
-            function
+          ~fn:(fun __tmp1 ->
+            match __tmp1 with
             | Riot_planner.Module_scanner.H (name, path) ->
                 String.equal name "stubs.h" && Path.equal path Path.(Path.v "src/stubs.h")
-            | _ -> false
-          )
+            | _ -> false)
       in
       if has_c && has_h then
         Ok ()

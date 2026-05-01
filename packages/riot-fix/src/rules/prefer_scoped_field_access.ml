@@ -40,7 +40,8 @@ let diagnostic = fun ~span ?fix () ->
     ()
 
 let split_last = fun segments ->
-  let rec loop before = function
+  let rec loop before = fun __tmp1 ->
+    match __tmp1 with
     | [] -> None
     | [ last ] -> Some (List.reverse before, last)
     | segment :: rest -> loop (segment :: before) rest

@@ -241,11 +241,10 @@ let await = fun ?(on_message = fun _ -> ()) (Conn conn as c) ->
       let body_chunks =
         List.filter_map
           msgs
-          ~fn:(
-            function
+          ~fn:(fun __tmp1 ->
+            match __tmp1 with
             | Data chunk -> Some chunk
-            | _ -> None
-          )
+            | _ -> None)
       in
       let body = String.concat "" body_chunks in
       Ok (response, body)

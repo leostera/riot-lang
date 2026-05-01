@@ -619,13 +619,15 @@ let version_parse_error_to_string = fun err ->
   | Version.Invalid_version_segment segment -> "invalid version segment: " ^ segment
   | Version.Invalid_pre_release_segment segment -> "invalid pre-release segment: " ^ segment
 
-let publish_field_name = function
+let publish_field_name = fun __tmp1 ->
+  match __tmp1 with
   | PublishVersion -> "version"
   | PublishDescription -> "description"
   | PublishLicense -> "license"
   | PublishPublic -> "public"
 
-let dependency_field_name = function
+let dependency_field_name = fun __tmp1 ->
+  match __tmp1 with
   | DependencyWorkspace -> "workspace"
   | DependencyPath -> "path"
   | DependencySource -> "source"
@@ -633,7 +635,8 @@ let dependency_field_name = function
   | DependencyRef -> "ref"
   | DependencyVersion -> "version"
 
-let publish_metadata_error_message = function
+let publish_metadata_error_message = fun __tmp1 ->
+  match __tmp1 with
   | PackageSectionMustBeTable -> "[package] must be a table"
   | InvalidPackageVersion { package_name; version; error } ->
       "package '"
@@ -647,7 +650,8 @@ let publish_metadata_error_message = function
   | NonBooleanPublicFlag { package_name } ->
       "package '" ^ package_name ^ "' has non-boolean public flag"
 
-let dependency_error_message = function
+let dependency_error_message = fun __tmp1 ->
+  match __tmp1 with
   | InvalidDependencyName { raw_name; error } ->
       "dependency '" ^ raw_name ^ "' has invalid package name: " ^ Package_name.error_message error
   | InvalidDependencyRequirement { dependency_name; requirement; error } ->
@@ -680,7 +684,8 @@ let dependency_error_message = function
   | DependencyMustBeStringOrTable { dependency_name } ->
       "dependency '" ^ dependency_name ^ "' must be a string or table"
 
-let manifest_error_message = function
+let manifest_error_message = fun __tmp1 ->
+  match __tmp1 with
   | ManifestMustBeTable -> "package manifest must be a table"
   | InvalidPackageName { raw_name = _; error } -> Package_name.error_message error
   | InvalidPublishMetadata error -> publish_metadata_error_message error
@@ -706,25 +711,27 @@ let parse_publish_metadata:
   (string * Toml.value) list ->
   (publish_metadata, publish_metadata_error) result = fun items ->
   let parse_version = fun ~package_name ->
-    function
-    | Toml.String raw_version -> (
-        match Version.parse (String.trim raw_version) with
-        | Ok version -> Ok (Some version)
-        | Error error ->
-            Error (InvalidPackageVersion { package_name; version = raw_version; error })
-      )
-    | _ ->
-        Error (NonStringPublishField { package_name; field = PublishVersion })
+    fun __tmp1 ->
+      match __tmp1 with
+      | Toml.String raw_version -> (
+          match Version.parse (String.trim raw_version) with
+          | Ok version -> Ok (Some version)
+          | Error error ->
+              Error (InvalidPackageVersion { package_name; version = raw_version; error })
+        )
+      | _ -> Error (NonStringPublishField { package_name; field = PublishVersion })
   in
   let parse_optional_string = fun ~package_name ~field ->
-    function
-    | Toml.String value -> Ok (Some value)
-    | _ -> Error (NonStringPublishField { package_name; field })
+    fun __tmp1 ->
+      match __tmp1 with
+      | Toml.String value -> Ok (Some value)
+      | _ -> Error (NonStringPublishField { package_name; field })
   in
   let parse_public = fun ~package_name ->
-    function
-    | Toml.Bool value -> Ok (Some value)
-    | _ -> Error (NonBooleanPublicFlag { package_name })
+    fun __tmp1 ->
+      match __tmp1 with
+      | Toml.Bool value -> Ok (Some value)
+      | _ -> Error (NonBooleanPublicFlag { package_name })
   in
   match Fields.get "package" items with
   | Some (Toml.Table pkg_items) ->
@@ -1201,11 +1208,10 @@ let parse_foreign_dependency:
         | Some (Toml.Array arr) ->
             let strings =
               List.filter_map
-                ~fn:(
-                  function
+                ~fn:(fun __tmp1 ->
+                  match __tmp1 with
                   | Toml.String s -> Some s
-                  | _ -> None
-                )
+                  | _ -> None)
                 arr
             in
             if List.length strings = List.length arr then
@@ -1220,11 +1226,10 @@ let parse_foreign_dependency:
         | Some (Toml.Array arr) ->
             let strings =
               List.filter_map
-                ~fn:(
-                  function
+                ~fn:(fun __tmp1 ->
+                  match __tmp1 with
                   | Toml.String s -> Some s
-                  | _ -> None
-                )
+                  | _ -> None)
                 arr
             in
             if List.length strings = List.length arr then
@@ -1589,7 +1594,8 @@ type source_bucket =
   | Examples
   | Bench
 
-let source_buckets_for_intent = function
+let source_buckets_for_intent = fun __tmp1 ->
+  match __tmp1 with
   | Build -> []
   | Runtime -> [ Src; Native ]
   | Dev -> [ Src; Native; Tests; Examples; Bench; ]
@@ -1609,7 +1615,8 @@ let trace_package = fun message ->
   let _ = message in
   ()
 
-let string_of_realization_intent = function
+let string_of_realization_intent = fun __tmp1 ->
+  match __tmp1 with
   | Build -> "build"
   | Runtime -> "runtime"
   | Dev -> "dev"
@@ -2239,8 +2246,8 @@ let from_json: Json.t -> (t, string) result = fun json ->
                                 match Fields.get "binaries" fields with
                                 | Some (Json.Array bins) ->
                                     List.filter_map
-                                      ~fn:(
-                                        function
+                                      ~fn:(fun __tmp1 ->
+                                        match __tmp1 with
                                         | Json.Object bin_fields -> (
                                             match (
                                               Fields.get "name" bin_fields,
@@ -2253,9 +2260,7 @@ let from_json: Json.t -> (t, string) result = fun json ->
                                                 Some { name = bin_name; path = Path.v bin_path }
                                             | _ -> None
                                           )
-                                        | _ ->
-                                            None
-                                      )
+                                        | _ -> None)
                                       bins
                                 | _ -> []
                               in

@@ -48,55 +48,56 @@ module Counter = struct
     Log.info ("Counter: " ^ Int.to_string state.count ^ " -> " ^ Int.to_string new_state.count);
     new_state
 
-  let render = fun ~state () -> div
-    ~attrs:[ class_ "counter-app" ]
-    [
-      header
-        ~attrs:[ class_ "header" ]
-        [
-          h1 [ text "LiveView Counter" ];
-          p ~attrs:[ class_ "subtitle" ] [ text "Server-side rendering with real-time updates" ];
-        ];
-      div
-        ~attrs:[ class_ "counter-display" ]
-        [
-          div ~attrs:[ class_ "count-label" ] [ text "Current Count:" ];
-          div ~attrs:[ class_ "count-value" ] [ text (Int.to_string state.count) ];
-        ];
-      div
-        ~attrs:[ class_ "controls" ]
-        [
-          button
-            ~attrs:[
-              class_ "btn btn-decrement";
-              on_click (fun _ -> Decrement);
-            ]
-            [ text "−" ];
-          button
-            ~attrs:[
-              class_ "btn btn-reset";
-              on_click (fun _ -> Reset);
-            ]
-            [ text "Reset" ];
-          button
-            ~attrs:[
-              class_ "btn btn-increment";
-              on_click (fun _ -> Increment);
-            ]
-            [ text "+" ];
-        ];
-      footer
-        ~attrs:[ class_ "info" ]
-        [
-          p
-            [
-              strong [ text "How it works: " ];
-              text "Clicks are sent to the server over WebSocket. ";
-              text "The server updates state and sends back only the HTML changes. ";
-              text "No client-side framework needed!";
-            ];
-        ];
-    ]
+  let render = fun ~state () ->
+    div
+      ~attrs:[ class_ "counter-app" ]
+      [
+        header
+          ~attrs:[ class_ "header" ]
+          [
+            h1 [ text "LiveView Counter" ];
+            p ~attrs:[ class_ "subtitle" ] [ text "Server-side rendering with real-time updates" ];
+          ];
+        div
+          ~attrs:[ class_ "counter-display" ]
+          [
+            div ~attrs:[ class_ "count-label" ] [ text "Current Count:" ];
+            div ~attrs:[ class_ "count-value" ] [ text (Int.to_string state.count) ];
+          ];
+        div
+          ~attrs:[ class_ "controls" ]
+          [
+            button
+              ~attrs:[
+                class_ "btn btn-decrement";
+                on_click (fun _ -> Decrement);
+              ]
+              [ text "−" ];
+            button
+              ~attrs:[
+                class_ "btn btn-reset";
+                on_click (fun _ -> Reset);
+              ]
+              [ text "Reset" ];
+            button
+              ~attrs:[
+                class_ "btn btn-increment";
+                on_click (fun _ -> Increment);
+              ]
+              [ text "+" ];
+          ];
+        footer
+          ~attrs:[ class_ "info" ]
+          [
+            p
+              [
+                strong [ text "How it works: " ];
+                text "Clicks are sent to the server over WebSocket. ";
+                text "The server updates state and sends back only the HTML changes. ";
+                text "No client-side framework needed!";
+              ];
+          ];
+      ]
 end
 
 (** Page styles *)

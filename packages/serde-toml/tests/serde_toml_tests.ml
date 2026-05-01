@@ -223,25 +223,22 @@ let role_encode =
     [
       Ser.Variant.unit
         "Captain"
-        (
-          function
+        (fun __tmp1 ->
+          match __tmp1 with
           | Captain -> true
-          | _ -> false
-        );
+          | _ -> false);
       Ser.Variant.unit
         "Doctor"
-        (
-          function
+        (fun __tmp1 ->
+          match __tmp1 with
           | Doctor -> true
-          | _ -> false
-        );
+          | _ -> false);
       Ser.Variant.unit
         "Navigator"
-        (
-          function
+        (fun __tmp1 ->
+          match __tmp1 with
           | Navigator -> true
-          | _ -> false
-        );
+          | _ -> false);
     ]
 
 let pet_decode =
@@ -256,19 +253,17 @@ let pet_encode =
     [
       Ser.Variant.unit
         "NewsCoo"
-        (
-          function
+        (fun __tmp1 ->
+          match __tmp1 with
           | NewsCoo -> true
-          | _ -> false
-        );
+          | _ -> false);
       Ser.Variant.newtype
         "Reindeer"
         Ser.string
-        (
-          function
+        (fun __tmp1 ->
+          match __tmp1 with
           | Reindeer name -> Some name
-          | _ -> None
-        );
+          | _ -> None);
     ]
 
 let pose_fields = De.fields [ De.field "island" Pose_island; De.field "bearing" Pose_bearing ]

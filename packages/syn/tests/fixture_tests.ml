@@ -36,7 +36,8 @@ let load_modified_fixture_paths = fun () ->
         |> String.split_on_char '\n'
         |> List.map ~fn:String.trim
       in
-      let rec loop = function
+      let rec loop = fun __tmp1 ->
+        match __tmp1 with
         | [] -> modified
         | "" :: rest -> loop rest
         | relpath :: rest ->

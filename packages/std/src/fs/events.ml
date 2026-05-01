@@ -11,7 +11,8 @@ type watch_id = Ev.watch_id
 
 type error = IO.error
 
-let of_events_error = function
+let of_events_error = fun __tmp1 ->
+  match __tmp1 with
   | Ev.Closed -> IO.Closed
   | Ev.AlreadyWatching -> IO.Invalid_argument
   | Ev.System error -> IO.of_system_error error
@@ -36,12 +37,14 @@ let unwatch = fun t watch_id ->
   | Ok () -> Ok ()
   | Error error -> Error (of_events_error error)
 
-let is_would_block = function
+let is_would_block = fun __tmp1 ->
+  match __tmp1 with
   | Ev.System error -> Kernel.SystemError.would_block error
   | _ -> false
 
 let poll = fun t ->
-  let rec map_events = function
+  let rec map_events = fun __tmp1 ->
+    match __tmp1 with
     | [] -> []
     | event :: rest -> Event.from_kernel_event event :: map_events rest
   in

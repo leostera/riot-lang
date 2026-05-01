@@ -166,10 +166,11 @@ let from_type_constructor state (decl: type_declaration) (ctr: type_constructor)
               payload_type;
               fields = List.map
                 fields
-                ~fn:(fun field -> ({
-                  declaration = field;
-                  type_ = TypeExpr.core_type_to_type state field.type_annotation;
-                }: InferenceEnv.inline_record_field));
+                ~fn:(fun field ->
+                  ({
+                    declaration = field;
+                    type_ = TypeExpr.core_type_to_type state field.type_annotation;
+                  }: InferenceEnv.inline_record_field));
             }
             in
             InferenceEnv.InlineRecord inline_record

@@ -1399,39 +1399,36 @@ let test_cache_gc_rebuilds_stale_zero_state_for_sharded_entries = fun _ctx ->
       let saw_scan_started =
         List.any
           events
-          ~fn:(
-            function
+          ~fn:(fun __tmp1 ->
+            match __tmp1 with
             | Riot_store.Cache_gc.GcCacheScanStarted { trigger = Riot_store.Cache_gc.Manual; _ } -> true
-            | _ -> false
-          )
+            | _ -> false)
       in
       let saw_entry_scan =
         List.any
           events
-          ~fn:(
-            function
+          ~fn:(fun __tmp1 ->
+            match __tmp1 with
             | Riot_store.Cache_gc.GcCacheEntryScanStarted { trigger = Riot_store.Cache_gc.Manual; _ } -> true
-            | _ -> false
-          )
+            | _ -> false)
       in
       let saw_delete =
         List.any
           events
-          ~fn:(
-            function
+          ~fn:(fun __tmp1 ->
+            match __tmp1 with
             | Riot_store.Cache_gc.GcCacheEntryDeleteStarted {
                 trigger = Riot_store.Cache_gc.Manual;
                 _;
               } ->
                 true
-            | _ -> false
-          )
+            | _ -> false)
       in
       let saw_plan =
         List.any
           events
-          ~fn:(
-            function
+          ~fn:(fun __tmp1 ->
+            match __tmp1 with
             | Riot_store.Cache_gc.GcPlanComputed {
                 trigger = Riot_store.Cache_gc.Manual;
                 deleted_entries = 1;
@@ -1439,8 +1436,7 @@ let test_cache_gc_rebuilds_stale_zero_state_for_sharded_entries = fun _ctx ->
                 _;
               } ->
                 true
-            | _ -> false
-          )
+            | _ -> false)
       in
       let entry_a_exists =
         Fs.exists entry_a

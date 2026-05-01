@@ -22,7 +22,8 @@ let make = fun ?(timer_resolution = Millisecond) ?(scheduler_count = default_sch
 
 let worker_count = fun config -> config.scheduler_count
 
-let resolution_to_nanos = function
+let resolution_to_nanos = fun __tmp1 ->
+  match __tmp1 with
   | Second -> 1_000_000_000L
   | Millisecond -> 1_000_000L
   | Microsecond -> 1_000L

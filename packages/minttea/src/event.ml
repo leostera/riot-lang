@@ -49,7 +49,8 @@ let key_to_string = fun key ->
   | F n -> "f" ^ Int.to_string n
   | Key key -> key
 
-let modifier_to_string = function
+let modifier_to_string = fun __tmp1 ->
+  match __tmp1 with
   | NoModifier -> ""
   | Ctrl -> "ctrl"
   | Alt -> "alt"
@@ -94,7 +95,8 @@ type t =
   | FocusLost
   | Custom of Message.t
 
-let to_string = function
+let to_string = fun __tmp1 ->
+  match __tmp1 with
   | KeyDown (key, mod_) ->
       let mod_str = modifier_to_string mod_ in
       let key_str = key_to_string key in

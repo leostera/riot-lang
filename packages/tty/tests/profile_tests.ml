@@ -15,7 +15,8 @@ let apply_env_value = fun name value_opt ->
 
 let with_env = fun bindings fn ->
   let saved = List.map bindings ~fn:(fun (name, _) -> (name, Env.get Env.String ~var:name)) in
-  let rec apply = function
+  let rec apply = fun __tmp1 ->
+    match __tmp1 with
     | [] -> Ok ()
     | (name, value_opt) :: rest ->
         let* () = apply_env_value name value_opt in

@@ -69,10 +69,11 @@ let validate_slice = fun buffer ~offset ~len ->
   else
     Ok ()
 
-let store_leftover = fun state bytes ~offset ~len -> state.leftover <- if len <= 0 then
-  None
-else
-  Some (Bytes.sub_unchecked bytes ~offset ~len)
+let store_leftover = fun state bytes ~offset ~len ->
+  state.leftover <- if len <= 0 then
+    None
+  else
+    Some (Bytes.sub_unchecked bytes ~offset ~len)
 
 let consume_leftover = fun state buffer ~offset ~len ->
   match state.leftover with
@@ -216,14 +217,13 @@ let read_bytes = fun (t: t) ?(offset = 0) ?len buffer ->
       await
         t
         request_id
-        ~selector:(
-          function
+        ~selector:(fun __tmp1 ->
+          match __tmp1 with
           | IO_stdin_read_result { request_id = got; count } when Int.equal got request_id ->
               Some (Ok count)
           | IO_stdin_error { request_id = got; error } when Int.equal got request_id ->
               Some (Error error)
-          | _ -> None
-        )
+          | _ -> None)
 
 let read_vectored = fun (t: t) ~into ->
   if IoVec.length into = 0 then
@@ -236,14 +236,13 @@ let read_vectored = fun (t: t) ~into ->
   await
     t
     request_id
-    ~selector:(
-      function
+    ~selector:(fun __tmp1 ->
+      match __tmp1 with
       | IO_stdin_read_result { request_id = got; count } when Int.equal got request_id ->
           Some (Ok count)
       | IO_stdin_error { request_id = got; error } when Int.equal got request_id ->
           Some (Error error)
-      | _ -> None
-    )
+      | _ -> None)
 
 let commit_into = fun into count ->
   match Buffer.commit into count with

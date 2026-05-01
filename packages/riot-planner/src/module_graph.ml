@@ -153,8 +153,8 @@ let rec filter_entries = fun ~allowed entries ->
   let allowed_strings = List.map allowed ~fn:Path.to_string in
   List.filter_map
     entries
-    ~fn:(
-      function
+    ~fn:(fun __tmp1 ->
+      match __tmp1 with
       | Module_scanner.ML (name, path) ->
           if List.contains allowed_strings ~value:(Path.to_string path) then
             Some (Module_scanner.ML (name, path))
@@ -181,8 +181,7 @@ let rec filter_entries = fun ~allowed entries ->
           if List.length children = 0 then
             None
           else
-            Some (Module_scanner.Dir (name, path, children))
-    )
+            Some (Module_scanner.Dir (name, path, children)))
 
 (**
    Check if a path is a binary source file.
@@ -865,25 +864,26 @@ let rec build_deps_env_for_library = fun
     (Library_definition.children_without_lib lib_def)
     ~init:(env, root_export_sources)
     ~fn:(fun (env, root_export_sources) ->
-      function
-      | Module_scanner.Dir (name, _, nested_children) ->
-          let child_name =
-            Module_name.of_string name
-            |> Module_name.to_string
-          in
-          if HashSet.contains child_dir_names ~value:child_name then
-            build_deps_env_for_library
+      fun __tmp1 ->
+        match __tmp1 with
+        | Module_scanner.Dir (name, _, nested_children) ->
+            let child_name =
+              Module_name.of_string name
+              |> Module_name.to_string
+            in
+            if HashSet.contains child_dir_names ~value:child_name then
+              build_deps_env_for_library
+                (env, root_export_sources)
+                ~package_path
+                ~binaries
+                ~namespace:child_namespace
+                ~public_root_name
+                ~library_name:name
+                ~concrete_library_path:None
+                nested_children
+            else
               (env, root_export_sources)
-              ~package_path
-              ~binaries
-              ~namespace:child_namespace
-              ~public_root_name
-              ~library_name:name
-              ~concrete_library_path:None
-              nested_children
-          else
-            (env, root_export_sources)
-      | _ -> (env, root_export_sources))
+        | _ -> (env, root_export_sources))
 
 let build_deps_env_for_group = fun
   config (env, root_export_sources) (group: source_group) group_entries ->
@@ -1065,13 +1065,11 @@ let add_direct_dependency_root = fun t ~package_name ~root_module ->
       |> add_ocaml_stdlib_exports ~root_module
     )
 
-let dependency_export_source_path = function
-  | Export_from_ml { source_path; _ }
-  | Export_from_mli { source_path; _ } -> source_path
+let dependency_export_source_path = fun (Export_from_ml { source_path; _ }
+| Export_from_mli { source_path; _ }) -> source_path
 
-let dependency_export_public_root_name = function
-  | Export_from_ml { public_root_name; _ }
-  | Export_from_mli { public_root_name; _ } -> public_root_name
+let dependency_export_public_root_name = fun (Export_from_ml { public_root_name; _ }
+| Export_from_mli { public_root_name; _ }) -> public_root_name
 
 let qualified_name_segments = fun qualified_name ->
   String.split qualified_name ~by:"__"
@@ -1161,7 +1159,8 @@ let add_direct_dependency_package = fun t (package: Package.t) ->
 *)
 let wire_dependencies = fun t ->
   let () = HashMap.clear t.analyzed_modules in
-  let rec strip_last_namespace = function
+  let rec strip_last_namespace = fun __tmp1 ->
+    match __tmp1 with
     | [] -> []
     | [ _ ] -> []
     | component :: rest -> component :: strip_last_namespace rest
@@ -1211,9 +1210,9 @@ let wire_dependencies = fun t ->
     | Module_node.Generated _ -> None
   in
   let preferred_dependency_nodes dep_node_ids =
-    let rec collect acc has_ml = function
-      | [] ->
-          (List.reverse acc, has_ml)
+    let rec collect acc has_ml = fun __tmp1 ->
+      match __tmp1 with
+      | [] -> (List.reverse acc, has_ml)
       | dep_node_id :: rest -> (
           match G.get_node t.graph dep_node_id with
           | Some (dep_node: Module_node.t G.node) -> (
@@ -1242,9 +1241,9 @@ let wire_dependencies = fun t ->
       |> Namespace.to_list
     in
     let candidate_names = qualified_dependency_names simple_name namespace_parts in
-    let rec try_candidates = function
-      | [] ->
-          raise Not_found
+    let rec try_candidates = fun __tmp1 ->
+      match __tmp1 with
+      | [] -> raise Not_found
       | candidate_name :: rest -> (
           try Module_registry.get_by_qualified_name t.registry candidate_name with
           | Not_found -> try_candidates rest
@@ -1309,13 +1308,12 @@ let wire_dependencies = fun t ->
   in
   let () = Cell.set t.deps_env (add_loose_source_module_paths (Cell.get t.deps_env)) in
   let stringify_dependency_error = fun path ->
-    function
-    | Syn.Deps.Parse_diagnostics diagnostics ->
-        let messages = List.map diagnostics ~fn:Syn.Diagnostic.to_string in
-        "failed to parse "
-        ^ Path.to_string path
-        ^ " for dependency analysis: "
-        ^ String.concat "; " messages
+    fun (Syn.Deps.Parse_diagnostics diagnostics) ->
+      let messages = List.map diagnostics ~fn:Syn.Diagnostic.to_string in
+      "failed to parse "
+      ^ Path.to_string path
+      ^ " for dependency analysis: "
+      ^ String.concat "; " messages
   in
   let raw_source_text (node: Module_node.t G.node) =
     let source_result =

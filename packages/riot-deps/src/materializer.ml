@@ -141,9 +141,9 @@ let ensure_registry_package = fun
     )
 
 let ensure_packages = fun ?(emit = no_emit) ~registry ~(lockfile:Riot_model.Lockfile.t) () ->
-  let rec loop = function
-    | [] ->
-        Ok ()
+  let rec loop = fun __tmp1 ->
+    match __tmp1 with
+    | [] -> Ok ()
     | (pkg: Riot_model.Lockfile.package) :: rest -> (
         match pkg.provenance with
         | Riot_model.Lockfile.Workspace

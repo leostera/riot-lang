@@ -43,13 +43,15 @@ let command =
       |> help "Render events as JSON";
     ]
 
-let path_error_message = function
+let path_error_message = fun __tmp1 ->
+  match __tmp1 with
   | Path.InvalidUtf8 { path } -> "invalid UTF-8 path: " ^ path
   | Path.SystemInvalidUtf8 { syscall; path } ->
       "system call '" ^ syscall ^ "' returned invalid UTF-8 path: " ^ path
   | Path.SystemError error -> error
 
-let message = function
+let message = fun __tmp1 ->
+  match __tmp1 with
   | MissingDependency -> "missing dependency name"
   | ConflictingTarget -> "cannot combine --workspace with --package"
   | ConflictingScope -> "cannot combine --build with --dev"
@@ -101,7 +103,8 @@ let run = fun ~workspace matches ->
     match ArgParser.get_many matches "dependency" with
     | [] -> Error MissingDependency
     | dependencies ->
-        let rec parse_all acc = function
+        let rec parse_all acc = fun __tmp1 ->
+          match __tmp1 with
           | [] -> Ok (List.reverse acc)
           | dependency :: rest ->
               let* dependency =

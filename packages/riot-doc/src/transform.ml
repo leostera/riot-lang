@@ -50,7 +50,8 @@ let clean_docstring = fun raw ->
   |> String.trim
 
 let first_nonempty_line = fun text ->
-  let rec loop = function
+  let rec loop = fun __tmp1 ->
+    match __tmp1 with
     | [] -> ""
     | line :: rest ->
         if String.trim line = "" then
@@ -60,7 +61,8 @@ let first_nonempty_line = fun text ->
   in
   loop (String.split ~by:"\n" text)
 
-let docstring_of_docs = function
+let docstring_of_docs = fun __tmp1 ->
+  match __tmp1 with
   | [] -> None
   | docs -> Some (String.concat "\n\n" docs)
 
@@ -144,7 +146,8 @@ let module_docstring = fun outer_doc inner_doc ->
   | (_, Some inner) when not (String.equal inner "") -> Some inner
   | _ -> None
 
-let is_ident_char = function
+let is_ident_char = fun __tmp1 ->
+  match __tmp1 with
   | 'a' .. 'z'
   | 'A' .. 'Z'
   | '0' .. '9'
@@ -247,17 +250,17 @@ let make_item = fun ?docstring ?(detail_groups = []) ~kind ~name snippet ->
     detail_groups;
   }
 
-let make_detail = fun ?docstring ~name signature -> ({
-  name = name;
-  signature = clean_member_signature signature;
-  docstring = docstring;
-}: Doctree.item_detail)
+let make_detail = fun ?docstring ~name signature ->
+  ({ name = name; signature = clean_member_signature signature; docstring = docstring }:
+    Doctree.item_detail)
 
-let token_text = function
+let token_text = fun __tmp1 ->
+  match __tmp1 with
   | Some token -> Syn.Ast.Token.text token
   | None -> ""
 
-let ident_text = function
+let ident_text = fun __tmp1 ->
+  match __tmp1 with
   | Some ident -> Syn.Ast.Ident.text ident
   | None -> ""
 
@@ -270,15 +273,14 @@ let leading_docstrings = fun node ->
         iter_fold
           Syn.Ast.Token.fold_leading_trivia_item
           token
-          ~fn:(
-            function
+          ~fn:(fun __tmp1 ->
+            match __tmp1 with
             | Syn.Ast.Token.Docstring doc ->
                 let text = clean_docstring doc.content in
                 if not (String.equal text "") then
                   Vector.push docs ~value:text
             | Syn.Ast.Token.Whitespace
-            | Syn.Ast.Token.Comment _ -> ()
-          )
+            | Syn.Ast.Token.Comment _ -> ())
   );
   vector_to_list docs
 
@@ -454,7 +456,8 @@ let rec module_of_signature_items = fun
   let acc_modules = Vector.with_capacity ~size:4 in
   let overview = ref None in
   let seen_item = ref false in
-  let rec loop = function
+  let rec loop = fun __tmp1 ->
+    match __tmp1 with
     | [] ->
         let name =
           match List.reverse path with

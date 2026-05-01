@@ -11,10 +11,11 @@ type t = {
 let panic = Kernel.SystemError.panic
 
 let unwrap_slice = fun context ->
-  function
-  | Kernel.Result.Ok value -> value
-  | Kernel.Result.Error error ->
-      panic (Kernel.String.concat "" [ context; ": "; Kernel.IO.Error.message error ])
+  fun __tmp1 ->
+    match __tmp1 with
+    | Kernel.Result.Ok value -> value
+    | Kernel.Result.Error error ->
+        panic (Kernel.String.concat "" [ context; ": "; Kernel.IO.Error.message error ])
 
 let from_slice = fun source -> { source; pos = 0; length = IoSlice.length source }
 

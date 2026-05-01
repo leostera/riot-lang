@@ -99,57 +99,33 @@ type event = [
 
 let string_of_char = fun char -> String.make ~len:1 ~char
 
-let key_to_string = function
-  | Char c ->
-      string_of_char c
-  | Enter ->
-      "enter"
-  | Tab ->
-      "tab"
-  | BackTab ->
-      "backtab"
-  | Backspace ->
-      "backspace"
-  | Escape ->
-      "escape"
-  | Space ->
-      "space"
-  | Up ->
-      "up"
-  | Down ->
-      "down"
-  | Left ->
-      "left"
-  | Right ->
-      "right"
-  | Home ->
-      "home"
-  | End ->
-      "end"
-  | PageUp ->
-      "pageup"
-  | PageDown ->
-      "pagedown"
-  | Insert ->
-      "insert"
-  | Delete ->
-      "delete"
-  | F n ->
-      "f" ^ Int.to_string n
-  | CapsLock ->
-      "capslock"
-  | ScrollLock ->
-      "scrolllock"
-  | NumLock ->
-      "numlock"
-  | PrintScreen ->
-      "printscreen"
-  | Pause ->
-      "pause"
-  | Menu ->
-      "menu"
-  | KeypadBegin ->
-      "keypadbegin"
+let key_to_string = fun __tmp1 ->
+  match __tmp1 with
+  | Char c -> string_of_char c
+  | Enter -> "enter"
+  | Tab -> "tab"
+  | BackTab -> "backtab"
+  | Backspace -> "backspace"
+  | Escape -> "escape"
+  | Space -> "space"
+  | Up -> "up"
+  | Down -> "down"
+  | Left -> "left"
+  | Right -> "right"
+  | Home -> "home"
+  | End -> "end"
+  | PageUp -> "pageup"
+  | PageDown -> "pagedown"
+  | Insert -> "insert"
+  | Delete -> "delete"
+  | F n -> "f" ^ Int.to_string n
+  | CapsLock -> "capslock"
+  | ScrollLock -> "scrolllock"
+  | NumLock -> "numlock"
+  | PrintScreen -> "printscreen"
+  | Pause -> "pause"
+  | Menu -> "menu"
+  | KeypadBegin -> "keypadbegin"
   | Media key -> (
       match key with
       | Play -> "media-play"
@@ -166,7 +142,8 @@ let key_to_string = function
       | MuteVolume -> "media-mutevolume"
     )
 
-let modifier_to_string = function
+let modifier_to_string = fun __tmp1 ->
+  match __tmp1 with
   | Shift -> "shift"
   | Alt -> "alt"
   | Ctrl -> "ctrl"
@@ -174,7 +151,8 @@ let modifier_to_string = function
   | Super -> "super"
   | Hyper -> "hyper"
 
-let button_to_string = function
+let button_to_string = fun __tmp1 ->
+  match __tmp1 with
   | Left -> "left"
   | Middle -> "middle"
   | Right -> "right"
@@ -183,7 +161,8 @@ let button_to_string = function
   | ScrollLeft -> "scroll-left"
   | ScrollRight -> "scroll-right"
 
-let event_to_string = function
+let event_to_string = fun __tmp1 ->
+  match __tmp1 with
   | `Key { code; modifiers; kind } ->
       let key_str = key_to_string code in
       let mod_str = String.concat "+" (List.map modifiers ~fn:modifier_to_string) in
@@ -262,9 +241,10 @@ module Tokenizer = struct
   let create = fun () -> { pending = "" }
 
   let rec reverse = fun acc ->
-    function
-    | [] -> acc
-    | item :: rest -> reverse (item :: acc) rest
+    fun __tmp1 ->
+      match __tmp1 with
+      | [] -> acc
+      | item :: rest -> reverse (item :: acc) rest
 
   let is_csi_final = fun char ->
     let code = Char.to_int char in
@@ -384,7 +364,8 @@ module Parser = struct
     paste_buffer = state.paste_buffer ^ fragment;
   }
 
-  let raw_of_control = function
+  let raw_of_control = fun __tmp1 ->
+    match __tmp1 with
     | Token.Escape -> "\x1b"
     | Token.Csi { raw; body = _ }
     | Token.Ss3 { raw; body = _ }
@@ -604,55 +585,59 @@ module Parser = struct
       (state, events_of_text text [])
 
   let handle_control = fun state ->
-    function
-    | Token.Escape ->
-        if state.in_paste then
-          (append_paste state "\x1b", [])
-        else if state.pending_escape then
-          ({ state with pending_escape = true }, [ make_key Escape ])
-        else
-          ({ state with pending_escape = true }, [])
-    | control -> (
-        let raw = raw_of_control control in
-        match control with
-        | Token.Csi { raw = _; body } ->
-            if state.in_paste && not (String.equal body "201~") then
-              (append_paste state raw, [])
-            else if String.equal body "200~" then
-              ({ (clear_pending_escape state) with in_paste = true; paste_buffer = "" }, [])
-            else if String.equal body "201~" then
-              let event = `Paste state.paste_buffer in
-              ({ (clear_pending_escape state) with in_paste = false; paste_buffer = "" }, [ event ])
-            else
-              let state = clear_pending_escape state in
-              (
-                match parse_csi body with
-                | Some event -> (state, [ event ])
-                | None -> (state, [
+    fun __tmp1 ->
+      match __tmp1 with
+      | Token.Escape ->
+          if state.in_paste then
+            (append_paste state "\x1b", [])
+          else if state.pending_escape then
+            ({ state with pending_escape = true }, [ make_key Escape ])
+          else
+            ({ state with pending_escape = true }, [])
+      | control -> (
+          let raw = raw_of_control control in
+          match control with
+          | Token.Csi { raw = _; body } ->
+              if state.in_paste && not (String.equal body "201~") then
+                (append_paste state raw, [])
+              else if String.equal body "200~" then
+                ({ (clear_pending_escape state) with in_paste = true; paste_buffer = "" }, [])
+              else if String.equal body "201~" then
+                let event = `Paste state.paste_buffer in
+                (
+                  { (clear_pending_escape state) with in_paste = false; paste_buffer = "" },
+                  [ event ]
+                )
+              else
+                let state = clear_pending_escape state in
+                (
+                  match parse_csi body with
+                  | Some event -> (state, [ event ])
+                  | None -> (state, [
+                    `Unknown raw;
+                  ])
+                )
+          | Token.Ss3 { raw = _; body } ->
+              if state.in_paste then
+                (append_paste state raw, [])
+              else
+                let state = clear_pending_escape state in
+                (
+                  match parse_ss3 body with
+                  | Some event -> (state, [ event ])
+                  | None -> (state, [
+                    `Unknown raw;
+                  ])
+                )
+          | Token.Osc { raw = _; body = _ } ->
+              if state.in_paste then
+                (append_paste state raw, [])
+              else
+                (clear_pending_escape state, [
                   `Unknown raw;
                 ])
-              )
-        | Token.Ss3 { raw = _; body } ->
-            if state.in_paste then
-              (append_paste state raw, [])
-            else
-              let state = clear_pending_escape state in
-              (
-                match parse_ss3 body with
-                | Some event -> (state, [ event ])
-                | None -> (state, [
-                  `Unknown raw;
-                ])
-              )
-        | Token.Osc { raw = _; body = _ } ->
-            if state.in_paste then
-              (append_paste state raw, [])
-            else
-              (clear_pending_escape state, [
-                `Unknown raw;
-              ])
-        | Token.Escape -> (state, [])
-      )
+          | Token.Escape -> (state, [])
+        )
 
   let handle_unknown = fun state raw ->
     if state.in_paste then

@@ -8,7 +8,8 @@ type t =
   | Map of (string * t) list
   | Tagged of string * t
 
-let rec is_scalar = function
+let rec is_scalar = fun __tmp1 ->
+  match __tmp1 with
   | Null
   | Bool _
   | Int _

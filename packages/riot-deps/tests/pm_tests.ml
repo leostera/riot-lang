@@ -280,9 +280,9 @@ let run_git = fun ~cwd args ->
   | Ok output -> Ok (String.trim output.stdout)
 
 let run_git_steps = fun ~cwd commands ->
-  let rec loop outputs = function
-    | [] ->
-        Ok (List.reverse outputs)
+  let rec loop outputs = fun __tmp1 ->
+    match __tmp1 with
+    | [] -> Ok (List.reverse outputs)
     | args :: rest -> (
         match run_git ~cwd args with
         | Ok output -> loop (output :: outputs) rest
@@ -2327,8 +2327,8 @@ version = "0.2.0"
                     Riot_deps.Lockfile_store.read ~workspace_root
                     |> Result.map_err ~fn:Riot_deps.Lockfile_store.error_message
                     |> Result.and_then
-                      ~fn:(
-                        function
+                      ~fn:(fun __tmp1 ->
+                        match __tmp1 with
                         | None -> Error "expected update to write riot.lock"
                         | Some (lockfile: Lockfile.t) ->
                             let std_lock =
@@ -2344,8 +2344,8 @@ version = "0.2.0"
                             let updated_std =
                               List.any
                                 !events
-                                ~fn:(
-                                  function
+                                ~fn:(fun __tmp1 ->
+                                  match __tmp1 with
                                   | Riot_model.Event.PackageVersionUpdated {
                                       package;
                                       from_version;
@@ -2354,16 +2354,14 @@ version = "0.2.0"
                                       has_name "std" package
                                       && String.equal from_version "0.1.0"
                                       && String.equal to_version "0.2.0"
-                                  | _ -> false
-                                )
+                                  | _ -> false)
                             in
                             match (std_lock, mime_lock) with
                             | (Some std_lock, Some mime_lock) when std_lock.id.version
                             = Some "0.2.0"
                             && mime_lock.id.version = Some "0.1.0"
                             && updated_std -> Ok ()
-                            | _ -> Error "expected targeted update to update std and preserve mime"
-                      )))))
+                            | _ -> Error "expected targeted update to update std and preserve mime")))))
 
 let test_lock_refresh_requires_lock_when_missing = fun _ctx ->
   with_tempdir
@@ -3138,7 +3136,8 @@ let test_package_error_message_renders_typed_source_dependency_errors = fun _ctx
     );
   ]
   in
-  let rec loop = function
+  let rec loop = fun __tmp1 ->
+    match __tmp1 with
     | [] -> Ok ()
     | (error, expected) :: rest ->
         let message = message_for error in

@@ -50,7 +50,8 @@ let wrap_characters = fun ~width text ->
           in
           line :: acc
     in
-    let rec loop current current_width acc = function
+    let rec loop current current_width acc = fun __tmp1 ->
+      match __tmp1 with
       | [] ->
           flush current acc
           |> List.rev

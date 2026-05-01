@@ -7,7 +7,8 @@ type Runtime.Message.t +=
   | Test_runner_start
 
 let find_segment_index = fun segments needle ->
-  let rec loop idx = function
+  let rec loop idx = fun __tmp1 ->
+    match __tmp1 with
     | [] -> None
     | segment :: rest ->
         if String.equal segment needle then
@@ -18,7 +19,8 @@ let find_segment_index = fun segments needle ->
   loop 0 segments
 
 let take = fun count xs ->
-  let rec loop remaining acc = function
+  let rec loop remaining acc = fun __tmp1 ->
+    match __tmp1 with
     | _ when remaining <= 0 -> List.reverse acc
     | [] -> List.reverse acc
     | x :: rest -> loop (remaining - 1) (x :: acc) rest
@@ -479,7 +481,8 @@ let run_tests_parallel = fun ~(config:config) tests_to_run ->
     if Int.equal state.finished_count state.total then
       ()
     else
-      let selector: parallel_worker_event selector = function
+      let selector: parallel_worker_event selector = fun __tmp1 ->
+        match __tmp1 with
         | Worker_pool.DynamicWorkerPool.WorkerReady worker -> (
             match Ref.type_equal
               state.pool.task_ref
@@ -491,8 +494,7 @@ let run_tests_parallel = fun ~(config:config) tests_to_run ->
             Select (Parallel_worker_event event)
         | Test_runner_worker_failed { run_ref; exn } when Ref.equal state.run_ref run_ref ->
             Select (Parallel_worker_failed exn)
-        | _ ->
-            Skip
+        | _ -> Skip
       in
       match receive ~selector () with
       | Parallel_worker_ready worker -> (
@@ -542,7 +544,8 @@ let run_tests = fun ~config tests ->
   config.event_handler
     (SuiteStarted { suite_name = config.suite_info.name; total = List.length tests_to_run });
   if config.concurrency <= 1 || List.length tests_to_run <= 1 then (
-    let rec run_all index = function
+    let rec run_all index = fun __tmp1 ->
+      match __tmp1 with
       | [] -> []
       | test :: rest ->
           let result =

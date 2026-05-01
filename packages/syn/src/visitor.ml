@@ -410,14 +410,13 @@ let rec visit_node: 'ctx. 'ctx t -> A.Node.t -> 'ctx t = fun visitor node ->
         A.Node.fold_child
           node
           ~init:visitor
-          ~fn:(
-            function
+          ~fn:(fun __tmp1 ->
+            match __tmp1 with
             | Syntax_tree.Node id ->
                 fun current -> A.Continue (visit_node current (node_of_child node id))
             | Syntax_tree.Token id ->
                 fun current -> A.Continue (call_enter_token current (token_of_child node id))
-            | Syntax_tree.Missing _ -> fun current -> A.Continue current
-          )
+            | Syntax_tree.Missing _ -> fun current -> A.Continue current)
   in
   call_leave_node visitor node
 

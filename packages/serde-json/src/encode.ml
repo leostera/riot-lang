@@ -81,8 +81,8 @@ let add_unicode_escape = fun write_str write_chr code ->
 let append_escaped_string = fun write_str write_chr value ->
   write_chr '"';
   String.iter
-    (
-      function
+    (fun __tmp1 ->
+      match __tmp1 with
       | '"' -> write_str "\\\""
       | '\\' -> write_str "\\\\"
       | '\b' -> write_str "\\b"
@@ -91,8 +91,7 @@ let append_escaped_string = fun write_str write_chr value ->
       | '\r' -> write_str "\\r"
       | '\t' -> write_str "\\t"
       | c when Char.code c < 0x20 -> add_unicode_escape write_str write_chr (Char.code c)
-      | c -> write_chr c
-    )
+      | c -> write_chr c)
     value;
   write_chr '"'
 
@@ -103,7 +102,8 @@ let write_escaped_string = fun state value ->
     value
 
 let write_cached_escaped_literal = fun state value ->
-  let rec lookup = function
+  let rec lookup = fun __tmp1 ->
+    match __tmp1 with
     | [] ->
         IO.Buffer.clear state.scratch;
         append_escaped_string (scratch_write_string state) (scratch_write_char state) value;

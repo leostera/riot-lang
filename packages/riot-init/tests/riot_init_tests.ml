@@ -53,7 +53,8 @@ let assert_executable = fun path ->
   else
     Error ("expected file to be executable: " ^ Path.to_string path)
 
-let path_error_to_string = function
+let path_error_to_string = fun __tmp1 ->
+  match __tmp1 with
   | Path.InvalidUtf8 { path } -> "invalid UTF-8 path: " ^ path
   | Path.SystemInvalidUtf8 { syscall; path } -> syscall ^ ": invalid UTF-8 path: " ^ path
   | Path.SystemError message -> message
@@ -83,11 +84,10 @@ let completion_event = fun events ->
   events
   |> List.reverse
   |> List.find
-    ~fn:(
-      function
+    ~fn:(fun __tmp1 ->
+      match __tmp1 with
       | Riot_init.WorkspaceInitializationCompleted _ -> true
-      | _ -> false
-    )
+      | _ -> false)
 
 let test_init_scaffolds_library_workspace = fun _ctx ->
   with_tempdir_result

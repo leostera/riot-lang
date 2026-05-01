@@ -52,12 +52,14 @@ let append = fun left right ->
   Caml_runtime.bytes_unsafe_to_string out
 
 let concat = fun separator values ->
-  let rec total_length acc = function
+  let rec total_length acc = fun __tmp1 ->
+    match __tmp1 with
     | [] -> acc
     | [ value ] -> acc + length value
     | value :: rest -> total_length (acc + length value + length separator) rest
   in
-  let rec fill out offset = function
+  let rec fill out offset = fun __tmp1 ->
+    match __tmp1 with
     | [] -> out
     | [ value ] ->
         let value_length = length value in
@@ -162,7 +164,8 @@ let last_index = fun value needle ->
   in
   loop (length value - 1)
 
-let is_trim_char = function
+let is_trim_char = fun __tmp1 ->
+  match __tmp1 with
   | ' '
   | '\t'
   | '\n'

@@ -16,7 +16,8 @@ type error =
   | Empty_input
   | Unknown_error of string
 
-let error_to_string = function
+let error_to_string = fun __tmp1 ->
+  match __tmp1 with
   | Unterminated_quote { line; column } ->
       "Unterminated quote at line " ^ Int.to_string line ^ ", column " ^ Int.to_string column
   | Invalid_escape_sequence { line; column } ->

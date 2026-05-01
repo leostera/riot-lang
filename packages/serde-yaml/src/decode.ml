@@ -13,15 +13,18 @@ let error = fun message -> raise (Serde.Decode_error (`Msg message))
 
 let invalid_field_type = fun kind -> error ("unexpected YAML value while decoding " ^ kind)
 
-let expect_int64 = function
+let expect_int64 = fun __tmp1 ->
+  match __tmp1 with
   | Yaml_value.Int value -> value
   | _ -> invalid_field_type "integer"
 
-let expect_map = function
+let expect_map = fun __tmp1 ->
+  match __tmp1 with
   | Yaml_value.Map items -> items
   | _ -> invalid_field_type "mapping"
 
-let expect_seq = function
+let expect_seq = fun __tmp1 ->
+  match __tmp1 with
   | Yaml_value.Seq items -> items
   | _ -> invalid_field_type "sequence"
 
@@ -57,7 +60,8 @@ let with_current = fun state value fn ->
   state.current <- previous;
   result
 
-let map_singleton = function
+let map_singleton = fun __tmp1 ->
+  match __tmp1 with
   | [ (key, value) ] -> Some (key, value)
   | _ -> None
 
@@ -82,8 +86,8 @@ and array_backend: 'value. state -> 'value De.t -> 'value array = fun state deco
   let items = ref [] in
   List.for_each
     values
-    ~fn:(fun value -> items := with_current state value (fun () -> decode.run backend state)
-    :: !items);
+    ~fn:(fun value ->
+      items := with_current state value (fun () -> decode.run backend state) :: !items);
   Array.of_list (List.rev !items)
 
 and record_backend:

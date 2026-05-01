@@ -3,8 +3,8 @@ open Std
 type config_error =
   | WildcardOriginWithCredentials
 
-let config_error_to_string = function
-  | WildcardOriginWithCredentials -> "CORS wildcard origins cannot be combined with credentials"
+let config_error_to_string = fun WildcardOriginWithCredentials ->
+  "CORS wildcard origins cannot be combined with credentials"
 
 type origin_error =
   | OriginNotAllowed of {
@@ -12,13 +12,12 @@ type origin_error =
       allowed: string list;
     }
 
-let origin_error_to_string = function
-  | OriginNotAllowed { origin; allowed } ->
-      "CORS origin is not allowed: " ^ origin ^ "; allowed origins: " ^ (
-        match allowed with
-        | [] -> "<none>"
-        | _ -> String.concat ", " allowed
-      )
+let origin_error_to_string = fun (OriginNotAllowed { origin; allowed }) ->
+  "CORS origin is not allowed: " ^ origin ^ "; allowed origins: " ^ (
+    match allowed with
+    | [] -> "<none>"
+    | _ -> String.concat ", " allowed
+  )
 
 type preflight_error =
   | MissingRequestMethod
@@ -28,7 +27,8 @@ type preflight_error =
       allowed: string list;
     }
 
-let preflight_error_to_string = function
+let preflight_error_to_string = fun __tmp1 ->
+  match __tmp1 with
   | MissingRequestMethod -> "CORS preflight request is missing Access-Control-Request-Method"
   | MethodNotAllowed method_ ->
       "CORS preflight method is not allowed: " ^ Net.Http.Method.to_string method_

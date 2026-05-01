@@ -130,9 +130,9 @@ let remove_dir_all = fun path ->
             match collect_entries [] with
             | Error _ as err -> err
             | Ok entries ->
-                let rec remove_entries = function
-                  | [] ->
-                      rmdir path
+                let rec remove_entries = fun __tmp1 ->
+                  match __tmp1 with
+                  | [] -> rmdir path
                   | entry_path :: rest -> (
                       let full_path = Path.join path entry_path in
                       match remove_recursive full_path with

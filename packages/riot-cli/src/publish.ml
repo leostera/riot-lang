@@ -38,7 +38,8 @@ let command =
       |> help "Emit machine-readable JSONL events";
     ]
 
-let message = function
+let message = fun __tmp1 ->
+  match __tmp1 with
   | ConflictingSelection -> "cannot combine --package with --workspace"
   | PublishFailed error -> Riot_publish.publish_error_message error
 
@@ -138,7 +139,8 @@ let write_fix_summary = fun (summary: Riot_fix.Runner.summary) ->
       ^ Int.to_string summary.total_files
       ^ " files")
 
-let version_label = function
+let version_label = fun __tmp1 ->
+  match __tmp1 with
   | Some version -> Std.Version.to_string version
   | None -> "<missing version>"
 
@@ -225,11 +227,13 @@ let write_publish_event = fun
   | Riot_publish.PackagePublished published ->
       out (render_publishing ~package:published.package_name ~version:published.package_version)
 
-let json_version_or_null = function
+let json_version_or_null = fun __tmp1 ->
+  match __tmp1 with
   | Some version -> Data.Json.String (Std.Version.to_string version)
   | None -> Data.Json.Null
 
-let publish_stage_json = function
+let publish_stage_json = fun __tmp1 ->
+  match __tmp1 with
   | `availability -> Data.Json.String "availability"
   | `fmt -> Data.Json.String "fmt"
   | `fix -> Data.Json.String "fix"

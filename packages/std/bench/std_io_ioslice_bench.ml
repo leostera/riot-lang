@@ -9,7 +9,8 @@ module Array = Collections.Array
 
 let sink = ref 0
 
-let method_tag = function
+let method_tag = fun __tmp1 ->
+  match __tmp1 with
   | Method.Get -> 1
   | Method.Head -> 2
   | Method.Post -> 3
@@ -21,7 +22,8 @@ let method_tag = function
   | Method.Patch -> 9
   | Method.Extension _ -> 10
 
-let version_tag = function
+let version_tag = fun __tmp1 ->
+  match __tmp1 with
   | Version.Http09 -> 1
   | Version.Http10 -> 2
   | Version.Http11 -> 3
@@ -35,14 +37,16 @@ type origin_form_uri = {
 }
 
 let origin_form_uri_size = fun uri ->
-  let option_length = function
+  let option_length = fun __tmp1 ->
+    match __tmp1 with
     | None -> 0
     | Some value -> String.length value
   in
   String.length uri.path + option_length uri.query + option_length uri.fragment
 
 let std_uri_size = fun uri ->
-  let option_length = function
+  let option_length = fun __tmp1 ->
+    match __tmp1 with
     | None -> 0
     | Some value -> String.length value
   in

@@ -15,7 +15,8 @@ type request = {
   flaky_only: bool;
 }
 
-let single_package_filter = function
+let single_package_filter = fun __tmp1 ->
+  match __tmp1 with
   | [ package_filter ] -> Some package_filter
   | _ -> None
 

@@ -58,7 +58,8 @@ type t =
       exn: exn;
     }
 
-let executable_main_error_to_string = function
+let executable_main_error_to_string = fun __tmp1 ->
+  match __tmp1 with
   | MissingMain -> "it does not define a top-level `let main ~args = ...` binding"
   | MultipleMainDefinitions { count } ->
       "it defines "
@@ -73,7 +74,8 @@ let executable_main_error_to_string = function
       "`main` must be written with exactly one labeled `~args` parameter, for example `let main ~args = Ok ()`; found parameters: "
       ^ parameter_list
 
-let to_string = function
+let to_string = fun __tmp1 ->
+  match __tmp1 with
   | CyclicDependency { cycle } -> "Cyclic dependency detected: " ^ String.concat " -> " cycle
   | ScanFailed { path; reason } -> "Failed to scan " ^ Path.to_string path ^ ": " ^ reason
   | DependencyAnalysisFailed { reason } -> "Dependency analysis failed: " ^ reason
@@ -190,7 +192,8 @@ let to_string = function
       ^ "."
   | Exception { exn } -> "Unexpected exception: " ^ Exception.to_string exn
 
-let executable_main_error_to_json = function
+let executable_main_error_to_json = fun __tmp1 ->
+  match __tmp1 with
   | MissingMain -> Data.Json.obj [ ("type", Data.Json.string "missing_main"); ]
   | MultipleMainDefinitions { count } ->
       Data.Json.obj
@@ -202,7 +205,8 @@ let executable_main_error_to_json = function
           ("parameters", Data.Json.array (List.map parameters ~fn:Data.Json.string));
         ]
 
-let to_json = function
+let to_json = fun __tmp1 ->
+  match __tmp1 with
   | CyclicDependency { cycle } ->
       Data.Json.obj
         [

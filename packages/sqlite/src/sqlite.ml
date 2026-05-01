@@ -57,7 +57,8 @@ module Driver = struct
 
   let name = "SQLite"
 
-  let error_to_string = function
+  let error_to_string = fun __tmp1 ->
+    match __tmp1 with
     | ConnectionClosed -> "Connection is closed"
     | PrepareFailed msg -> "Failed to prepare statement: " ^ msg
     | ExecutionFailed msg -> "Failed to execute statement: " ^ msg

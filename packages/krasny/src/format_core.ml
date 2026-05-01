@@ -23,7 +23,8 @@ let parser_diagnostics_to_string = fun diagnostics ->
     else
       first ^ " (+" ^ Int.to_string (count - 1) ^ " more)"
 
-let format_error_to_string = function
+let format_error_to_string = fun __tmp1 ->
+  match __tmp1 with
   | Cannot_parse diagnostics -> parser_diagnostics_to_string diagnostics
   | Cannot_render err -> err
 

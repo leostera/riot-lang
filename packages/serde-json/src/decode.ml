@@ -13,8 +13,9 @@ type state = {
   scratch: IO.Buffer.t;
 }
 
-let error_at = fun pos message -> raise
-  (Serde.Decode_error (`Msg (message ^ " at position " ^ Int.to_string pos)))
+let error_at = fun pos message ->
+  raise
+    (Serde.Decode_error (`Msg (message ^ " at position " ^ Int.to_string pos)))
 
 let unexpected_end = fun state expected ->
   error_at
@@ -26,11 +27,13 @@ let unexpected_character = fun state actual expected ->
     (Input.position state.input)
     ("unexpected character '" ^ String.make ~len:1 ~char:actual ^ "' (expected " ^ expected ^ ")")
 
-let is_digit = function
+let is_digit = fun __tmp1 ->
+  match __tmp1 with
   | '0' .. '9' -> true
   | _ -> false
 
-let is_value_delimiter = function
+let is_value_delimiter = fun __tmp1 ->
+  match __tmp1 with
   | None
   | Some (' ' | '\t' | '\n' | '\r' | ',' | ']' | '}') -> true
   | _ -> false
@@ -69,7 +72,8 @@ let expect_literal = fun state literal ->
   in
   loop 0
 
-let hex_value = function
+let hex_value = fun __tmp1 ->
+  match __tmp1 with
   | '0' .. '9' as c -> Some (Char.code c - Char.code '0')
   | 'a' .. 'f' as c -> Some (10 + Char.code c - Char.code 'a')
   | 'A' .. 'F' as c -> Some (10 + Char.code c - Char.code 'A')
@@ -141,11 +145,11 @@ let reader_current_char: Input.reader_state -> char option = fun reader ->
   else
     None
 
-let reader_advance: Input.reader_state -> unit = fun reader -> reader.Input.pos <- reader.Input.pos
-+ 1
+let reader_advance: Input.reader_state -> unit = fun reader ->
+  reader.Input.pos <- reader.Input.pos + 1
 
-let reader_advance_by: Input.reader_state -> int -> unit = fun reader count -> reader.Input.pos <- reader.Input.pos
-+ count
+let reader_advance_by: Input.reader_state -> int -> unit = fun reader count ->
+  reader.Input.pos <- reader.Input.pos + count
 
 let reader_append_range: IO.Buffer.t -> Input.reader_state -> int -> int -> unit = fun
   scratch reader start stop -> Input.reader_append_range scratch reader ~start ~stop

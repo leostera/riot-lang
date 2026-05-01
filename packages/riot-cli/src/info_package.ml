@@ -42,7 +42,8 @@ let docs_url = fun ~package ~version -> "https://docs.pkgs.ml/p/" ^ package ^ "/
 
 let package_url = fun ~package ~version -> "https://pkgs.ml/p/" ^ package ^ "/" ^ version
 
-let rec toml_json = function
+let rec toml_json = fun __tmp1 ->
+  match __tmp1 with
   | Data.Toml.String value -> Data.Json.String value
   | Data.Toml.Int value -> Data.Json.Int value
   | Data.Toml.Array values -> Data.Json.Array (List.map values ~fn:toml_json)
@@ -50,11 +51,13 @@ let rec toml_json = function
       Data.Json.Object (List.map fields ~fn:(fun (key, value) -> (key, toml_json value)))
   | Data.Toml.Bool value -> Data.Json.Bool value
 
-let json_string_or_null = function
+let json_string_or_null = fun __tmp1 ->
+  match __tmp1 with
   | Some value -> Data.Json.String value
   | None -> Data.Json.Null
 
-let source_kind_string = function
+let source_kind_string = fun __tmp1 ->
+  match __tmp1 with
   | Workspace -> "workspace"
   | Registry -> "registry"
 

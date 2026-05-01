@@ -16,7 +16,8 @@ type error =
   | ParseError of { path: string; message: string }
   | FileNotFound of { path: string }
 
-let error_to_string = function
+let error_to_string = fun __tmp1 ->
+  match __tmp1 with
   | NotFound { app } ->
       format Format.[ str "Config section ["; str app; str "] not found in config file" ]
   | ValidationError { app; errors } ->

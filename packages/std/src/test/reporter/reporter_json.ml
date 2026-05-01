@@ -5,11 +5,13 @@ let suite_started_monotonic = ref None
 
 let duration_us = fun duration -> Time.Duration.to_micros duration
 
-let size_to_json = function
+let size_to_json = fun __tmp1 ->
+  match __tmp1 with
   | Test_case.Small -> Data.Json.string "small"
   | Test_case.Large -> Data.Json.string "large"
 
-let reliability_fields = function
+let reliability_fields = fun __tmp1 ->
+  match __tmp1 with
   | Test_case.Stable -> [ ("reliability", Data.Json.string "stable"); ]
   | Test_case.Flaky { retry_attempts } ->
       [
@@ -17,8 +19,8 @@ let reliability_fields = function
         ("retry_attempts", Data.Json.int retry_attempts);
       ]
 
-let init = fun (_suite: Intf.suite_info) _total -> suite_started_monotonic := Some (Time.Instant.now
-  ())
+let init = fun (_suite: Intf.suite_info) _total ->
+  suite_started_monotonic := Some (Time.Instant.now ())
 
 let on_result = fun _idx _result -> ()
 

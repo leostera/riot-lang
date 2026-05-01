@@ -131,7 +131,8 @@ let measurement_constraints = fun ?available_width ?available_height () ->
     ?available_height
     ()
 
-let get_element_style = function
+let get_element_style = fun __tmp1 ->
+  match __tmp1 with
   | Element.Text { style; _ } -> style
   | Element.Container { style; _ } -> style
   | Element.Empty -> Style.empty
@@ -720,7 +721,8 @@ let push_text = fun node commands ~clip_stack content ->
     in
     let max_lines = Int.max 0 (Float.to_int (Float.floor text_rect.height)) in
     let color = Math.option_default style.foreground (`rgb (255, 255, 255)) in
-    let rec loop line_index = function
+    let rec loop line_index = fun __tmp1 ->
+      match __tmp1 with
       | [] -> ()
       | _ when line_index >= max_lines -> ()
       | line :: rest ->
@@ -777,7 +779,8 @@ let rec generate_commands: layout_node -> clipped_command Vector.t -> Geometry.R
   )
 
 let index_commands = fun commands ->
-  let rec loop index acc = function
+  let rec loop index acc = fun __tmp1 ->
+    match __tmp1 with
     | [] -> List.rev acc
     | command :: rest -> loop (index + 1) ((index, command) :: acc) rest
   in
@@ -798,17 +801,18 @@ let rec drop = fun count values ->
     | _ :: rest -> drop (count - 1) rest
 
 let rec emit_scissor_ends = fun output z_index ->
-  function
-  | [] -> ()
-  | _ :: rest ->
-      emit_scissor_ends output z_index rest;
-      Vector.push
-        output
-        ~value:{
-          Render.bounding_box = Geometry.Rect.zero;
-          command_type = Render.ScissorEnd;
-          z_index;
-        }
+  fun __tmp1 ->
+    match __tmp1 with
+    | [] -> ()
+    | _ :: rest ->
+        emit_scissor_ends output z_index rest;
+        Vector.push
+          output
+          ~value:{
+            Render.bounding_box = Geometry.Rect.zero;
+            command_type = Render.ScissorEnd;
+            z_index;
+          }
 
 let emit_scissor_starts = fun output z_index rects ->
   List.for_each
@@ -831,7 +835,8 @@ let emit_scissor_transition = fun output ~current ~target ~z_index ->
 
 let linearize_commands = fun commands ->
   let output = Vector.create () in
-  let rec loop current_clip_stack last_z = function
+  let rec loop current_clip_stack last_z = fun __tmp1 ->
+    match __tmp1 with
     | [] -> emit_scissor_transition output ~current:current_clip_stack ~target:[] ~z_index:last_z
     | (_, annotated) :: rest ->
         let z_index = annotated.command.Render.z_index in

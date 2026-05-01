@@ -30,7 +30,8 @@ let command =
       |> help "Version to install (default: latest)";
     ]
 
-let path_error_message = function
+let path_error_message = fun __tmp1 ->
+  match __tmp1 with
   | Path.InvalidUtf8 { path } -> "invalid UTF-8 path: " ^ path
   | Path.SystemInvalidUtf8 { syscall; path } ->
       "system call '" ^ syscall ^ "' returned invalid UTF-8 path: " ^ path
@@ -158,7 +159,8 @@ let download_archive = fun ~url ~dst ->
     )
   | Error error -> Error error
 
-let tar_error_message = function
+let tar_error_message = fun __tmp1 ->
+  match __tmp1 with
   | Archive.Tar.Engine_error err -> Archive.Tar.error_to_string (Archive.Tar.Engine_error err)
   | Archive.Tar.Invalid_path path -> "invalid archive path: " ^ path
   | Archive.Tar.Unsafe_path path -> "unsafe archive path: " ^ path

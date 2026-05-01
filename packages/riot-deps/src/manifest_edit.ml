@@ -5,7 +5,8 @@ type section =
   | Build
   | Dev
 
-let section_name = function
+let section_name = fun __tmp1 ->
+  match __tmp1 with
   | Runtime -> "dependencies"
   | Build -> "build-dependencies"
   | Dev -> "dev-dependencies"
@@ -36,7 +37,8 @@ type error =
       path: Path.t;
     }
 
-let error_message = function
+let error_message = fun __tmp1 ->
+  match __tmp1 with
   | ReadFailed { path; error } ->
       "failed to read manifest '" ^ Path.to_string path ^ "': " ^ IO.error_message error
   | WriteFailed { path; error } ->
@@ -131,7 +133,8 @@ let replace_section_lines = fun ~source ~section dependencies ->
   let replacement = render_section_lines ~section dependencies in
   let lines = String.split ~by:"\n" source in
   let len = List.length lines in
-  let rec line_at index = function
+  let rec line_at index = fun __tmp1 ->
+    match __tmp1 with
     | [] -> None
     | line :: _ when index = 0 -> Some line
     | _ :: rest -> line_at (index - 1) rest

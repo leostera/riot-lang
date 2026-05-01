@@ -109,7 +109,8 @@ module Make (Order: Std_order.Ordered) = struct
 
   let panic = fun message -> Kernel.SystemError.panic ("Map: " ^ message)
 
-  let height = function
+  let height = fun __tmp1 ->
+    match __tmp1 with
     | Empty -> 0
     | Node { height; _ } -> height
 
@@ -207,11 +208,13 @@ module Make (Order: Std_order.Ordered) = struct
 
   let empty = Empty
 
-  let is_empty = function
+  let is_empty = fun __tmp1 ->
+    match __tmp1 with
     | Empty -> true
     | Node _ -> false
 
-  let is_singleton = function
+  let is_singleton = fun __tmp1 ->
+    match __tmp1 with
     | Node { left = Empty; right = Empty; _ } -> true
     | Empty
     | Node _ -> false
@@ -286,17 +289,20 @@ module Make (Order: Std_order.Ordered) = struct
                   balance left ~key:current_key ~value:current_value next_right
           )
 
-  and minimum_unchecked = function
+  and minimum_unchecked = fun __tmp1 ->
+    match __tmp1 with
     | Empty -> panic "minimum_unchecked called on an empty map"
     | Node { left = Empty; key; value; _ } -> (key, value)
     | Node { left; _ } -> minimum_unchecked left
 
-  and maximum_unchecked = function
+  and maximum_unchecked = fun __tmp1 ->
+    match __tmp1 with
     | Empty -> panic "maximum_unchecked called on an empty map"
     | Node { right = Empty; key; value; _ } -> (key, value)
     | Node { right; _ } -> maximum_unchecked right
 
-  and remove_minimum = function
+  and remove_minimum = fun __tmp1 ->
+    match __tmp1 with
     | Empty -> panic "remove_minimum called on an empty map"
     | Node { left = Empty; right; _ } -> right
     | Node {
@@ -392,17 +398,20 @@ module Make (Order: Std_order.Ordered) = struct
         balance left ~key ~value (remove_minimum right)
 
   let insert_to_list = fun map ~key ~value ->
-    let prepend = function
+    let prepend = fun __tmp1 ->
+      match __tmp1 with
       | None -> Some [ value ]
       | Some values -> Some (value :: values)
     in
     update map ~key ~fn:prepend
 
-  let minimum = function
+  let minimum = fun __tmp1 ->
+    match __tmp1 with
     | Empty -> None
     | map -> Some (minimum_unchecked map)
 
-  let maximum = function
+  let maximum = fun __tmp1 ->
+    match __tmp1 with
     | Empty -> None
     | map -> Some (maximum_unchecked map)
 
@@ -788,14 +797,16 @@ module Make (Order: Std_order.Ordered) = struct
     loop (push_left left End) (push_left right End)
 
   let length =
-    let rec loop = function
+    let rec loop = fun __tmp1 ->
+      match __tmp1 with
       | Empty -> 0
       | Node { left; right; _ } -> loop left + 1 + loop right
     in
     loop
 
   let to_list =
-    let rec loop acc = function
+    let rec loop acc = fun __tmp1 ->
+      match __tmp1 with
       | Empty -> acc
       | Node {
           left;

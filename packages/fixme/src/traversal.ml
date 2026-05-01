@@ -35,10 +35,11 @@ let node_of_child = fun (parent: syntax_node) id: syntax_node -> { tree = parent
 let token_of_child = fun (parent: syntax_node) id: syntax_token -> { tree = parent.Ast.tree; id }
 
 let child_element = fun (parent: syntax_node) ->
-  function
-  | Syntax_tree.Node id -> Some (Node (node_of_child parent id))
-  | Syntax_tree.Token id -> Some (Token (token_of_child parent id))
-  | Syntax_tree.Missing _ -> None
+  fun __tmp1 ->
+    match __tmp1 with
+    | Syntax_tree.Node id -> Some (Node (node_of_child parent id))
+    | Syntax_tree.Token id -> Some (Token (token_of_child parent id))
+    | Syntax_tree.Missing _ -> None
 
 let to_list = fun vector ->
   Vector.to_array vector

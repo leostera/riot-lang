@@ -784,11 +784,10 @@ let from_json = fun json ->
           let id_opt =
             Option.and_then
               (field "id" kind_fields)
-              ~fn:(
-                function
+              ~fn:(fun __tmp1 ->
+                match __tmp1 with
                 | String s -> Some s
-                | _ -> None
-              )
+                | _ -> None)
           in
           let found_obj = field "found" kind_fields in
           let found =
@@ -797,21 +796,19 @@ let from_json = fun json ->
                 let kind =
                   Option.and_then
                     (field "kind" found_fields)
-                    ~fn:(
-                      function
+                    ~fn:(fun __tmp1 ->
+                      match __tmp1 with
                       | String s -> Some s
-                      | _ -> None
-                    )
+                      | _ -> None)
                   |> Option.unwrap_or ~default:""
                 in
                 let text =
                   Option.and_then
                     (field "text" found_fields)
-                    ~fn:(
-                      function
+                    ~fn:(fun __tmp1 ->
+                      match __tmp1 with
                       | String s -> Some s
-                      | _ -> None
-                    )
+                      | _ -> None)
                   |> Option.unwrap_or ~default:""
                 in
                 { kind; text }
@@ -820,21 +817,19 @@ let from_json = fun json ->
           let start =
             Option.and_then
               (field "start" span_fields)
-              ~fn:(
-                function
+              ~fn:(fun __tmp1 ->
+                match __tmp1 with
                 | Int n -> Some n
-                | _ -> None
-              )
+                | _ -> None)
             |> Option.unwrap_or ~default:0
           in
           let end_ =
             Option.and_then
               (field "end" span_fields)
-              ~fn:(
-                function
+              ~fn:(fun __tmp1 ->
+                match __tmp1 with
                 | Int n -> Some n
-                | _ -> None
-              )
+                | _ -> None)
             |> Option.unwrap_or ~default:0
           in
           let span = Span.make ~start ~end_ in
@@ -843,21 +838,19 @@ let from_json = fun json ->
               let expected =
                 Option.and_then
                   (field "expected" kind_fields)
-                  ~fn:(
-                    function
+                  ~fn:(fun __tmp1 ->
+                    match __tmp1 with
                     | String s -> Some s
-                    | _ -> None
-                  )
+                    | _ -> None)
                 |> Option.unwrap_or ~default:""
               in
               let fix =
                 Option.and_then
                   (field "fix" kind_fields)
-                  ~fn:(
-                    function
+                  ~fn:(fun __tmp1 ->
+                    match __tmp1 with
                     | String s -> Some s
-                    | _ -> None
-                  )
+                    | _ -> None)
                 |> Option.unwrap_or ~default:""
               in
               let strip_prefix_str str ~prefix =

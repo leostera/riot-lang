@@ -68,16 +68,18 @@ let to_string = fun t ->
   in
   (* Add custom fields *)
   let rec add_custom = fun acc ->
-    function
-    | [] -> acc
-    | (k, v) :: rest -> add_custom ((k ^ "=" ^ v) :: acc) rest
+    fun __tmp1 ->
+      match __tmp1 with
+      | [] -> acc
+      | (k, v) :: rest -> add_custom ((k ^ "=" ^ v) :: acc) rest
   in
   let parts = add_custom parts t.custom in
   (* Reverse to get correct order *)
   let rec rev = fun acc ->
-    function
-    | [] -> acc
-    | x :: xs -> rev (x :: acc) xs
+    fun __tmp1 ->
+      match __tmp1 with
+      | [] -> acc
+      | x :: xs -> rev (x :: acc) xs
   in
   let parts = rev [] parts in
   if parts = [] then

@@ -4,12 +4,14 @@ open Std.Iter
 module SurfacePath = Model.Surface_path
 module TypAst = Ast
 
-let is_ident_start = function
+let is_ident_start = fun __tmp1 ->
+  match __tmp1 with
   | 'a' .. 'z'
   | '_' -> true
   | _ -> false
 
-let is_ident_continue = function
+let is_ident_continue = fun __tmp1 ->
+  match __tmp1 with
   | 'a' .. 'z'
   | 'A' .. 'Z'
   | '0' .. '9'
@@ -40,12 +42,14 @@ let render_value_name = fun name ->
 let render_value = fun (name, type_) ->
   "val " ^ render_value_name (SurfacePath.to_string name) ^ " : " ^ TypAst.Type.to_string type_
 
-let render_type_parameter = function
+let render_type_parameter = fun __tmp1 ->
+  match __tmp1 with
   | None -> "_"
   | Some name when String.starts_with ~prefix:"'" name -> name
   | Some name -> "'" ^ name
 
-let render_type_parameters = function
+let render_type_parameters = fun __tmp1 ->
+  match __tmp1 with
   | [] -> ""
   | [ parameter ] -> render_type_parameter parameter ^ " "
   | parameters ->
@@ -152,7 +156,8 @@ let lines_of_values values =
   |> Iterator.to_list
   |> List.map ~fn:render_value
 
-let render_lines = function
+let render_lines = fun __tmp1 ->
+  match __tmp1 with
   | [] -> ""
   | lines -> String.concat "\n" lines ^ "\n"
 

@@ -45,11 +45,10 @@ let parse_string_list = fun toml_array ->
   match toml_array with
   | Toml.Array items ->
       List.filter_map
-        (
-          function
+        (fun __tmp1 ->
+          match __tmp1 with
           | Toml.String s -> Some s
-          | _ -> None
-        )
+          | _ -> None)
         items
   | _ -> []
 

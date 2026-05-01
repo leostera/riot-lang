@@ -134,7 +134,8 @@ let metadata_of_tuple = fun
   }
 
 let flags_to_mask = fun flags ->
-  let rec loop acc = function
+  let rec loop acc = fun __tmp1 ->
+    match __tmp1 with
     | [] -> acc
     | ReadOnly :: rest -> loop (acc lor flag_read_only) rest
     | WriteOnly :: rest -> loop (acc lor flag_write_only) rest

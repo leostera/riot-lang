@@ -14,14 +14,16 @@ type error =
   | Validation_failed of { app: string; message: string }
   | Patch_failed of { message: string }
 
-let error_to_string = function
+let error_to_string = fun __tmp1 ->
+  match __tmp1 with
   | App_not_found { app } -> format Format.[ str "App not found: "; str app ]
   | Load_failed { message } -> format Format.[ str "Failed to load config: "; str message ]
   | Validation_failed { app; message } ->
       format Format.[ str "Validation failed for ["; str app; str "]: "; str message; ]
   | Patch_failed { message } -> format Format.[ str "Patch failed: "; str message ]
 
-let error_to_json = function
+let error_to_json = fun __tmp1 ->
+  match __tmp1 with
   | App_not_found { app } ->
       Data.Json.Object [
         ("type", Data.Json.String "app_not_found");

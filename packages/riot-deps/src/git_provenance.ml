@@ -30,15 +30,16 @@ type error =
       error: Command.error;
     }
 
-let path_error_message = function
+let path_error_message = fun __tmp1 ->
+  match __tmp1 with
   | Path.InvalidUtf8 { path } -> "invalid utf8 path: " ^ path
   | Path.SystemInvalidUtf8 { syscall; path } -> "invalid utf8 from " ^ syscall ^ ": " ^ path
   | Path.SystemError msg -> msg
 
-let command_error_message = function
-  | Command.SystemError error -> error
+let command_error_message = fun (Command.SystemError error) -> error
 
-let message = function
+let message = fun __tmp1 ->
+  match __tmp1 with
   | NotGitRepository { path } ->
       "package root '" ^ Path.to_string path ^ "' is not inside a git repository"
   | MissingOriginRemote { path } ->

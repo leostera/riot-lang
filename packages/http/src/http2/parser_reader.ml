@@ -38,7 +38,8 @@ let parser_config = fun (config: config): Parser.config -> {
   Parser.max_frame_size = config.max_frame_size;
 }
 
-let parse_error_to_string = function
+let parse_error_to_string = fun __tmp1 ->
+  match __tmp1 with
   | ReadFailed error -> "Read failed: " ^ IO.error_message error
   | FrameParseFailed error -> Parser.error_to_string error
 

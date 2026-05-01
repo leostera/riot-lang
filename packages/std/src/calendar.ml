@@ -125,7 +125,8 @@ let dy = fun year ->
     (x / 4) - (x / 100) + (x / 400) + (x * days_per_year) + days_per_leap_year
 
 (** Days in previous months (January = 1 .. December = 12) *)
-let dm = function
+let dm = fun __tmp1 ->
+  match __tmp1 with
   | 1 -> 0
   | 2 -> 31
   | 3 -> 59

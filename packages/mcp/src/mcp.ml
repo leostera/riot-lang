@@ -251,7 +251,8 @@ let invalid_params = (-32_602)
 let internal_error = (-32_603)
 
 (** Helper functions *)
-let method_to_string = function
+let method_to_string = fun __tmp1 ->
+  match __tmp1 with
   | Initialize -> "initialize"
   | Initialized -> "initialized"
   | Shutdown -> "shutdown"
@@ -265,7 +266,8 @@ let method_to_string = function
   | Ping -> "ping"
   | Custom s -> s
 
-let string_to_method = function
+let string_to_method = fun __tmp1 ->
+  match __tmp1 with
   | "initialize" -> Initialize
   | "initialized" -> Initialized
   | "shutdown" -> Shutdown
@@ -279,7 +281,8 @@ let string_to_method = function
   | "ping" -> Ping
   | s -> Custom s
 
-let notification_method_to_string = function
+let notification_method_to_string = fun __tmp1 ->
+  match __tmp1 with
   | ResourceListChanged -> "resources/list_changed"
   | ToolListChanged -> "tools/list_changed"
   | PromptListChanged -> "prompts/list_changed"
@@ -287,7 +290,8 @@ let notification_method_to_string = function
   | LogMessage -> "log_message"
   | CustomNotification s -> s
 
-let string_to_notification_method = function
+let string_to_notification_method = fun __tmp1 ->
+  match __tmp1 with
   | "resources/list_changed" -> ResourceListChanged
   | "tools/list_changed" -> ToolListChanged
   | "prompts/list_changed" -> PromptListChanged
@@ -296,30 +300,33 @@ let string_to_notification_method = function
   | s -> CustomNotification s
 
 (** JSON Serialization *)
-let request_id_to_json = function
+let request_id_to_json = fun __tmp1 ->
+  match __tmp1 with
   | String s -> Json.String s
   | Number n -> Json.Int n
 
-let request_id_of_json = function
+let request_id_of_json = fun __tmp1 ->
+  match __tmp1 with
   | Json.String s -> Ok (String s)
   | Json.Int n -> Ok (Number n)
   | Json.Float f -> Ok (Number (int_of_float f))
   | _ -> Error "Invalid request ID"
 
 let option_to_json = fun f ->
-  function
-  | None -> Json.Null
-  | Some v -> f v
+  fun __tmp1 ->
+    match __tmp1 with
+    | None -> Json.Null
+    | Some v -> f v
 
 let option_of_json = fun f ->
-  function
-  | Json.Null ->
-      Ok None
-  | j -> (
-      match f j with
-      | Ok v -> Ok (Some v)
-      | Error e -> Error e
-    )
+  fun __tmp1 ->
+    match __tmp1 with
+    | Json.Null -> Ok None
+    | j -> (
+        match f j with
+        | Ok v -> Ok (Some v)
+        | Error e -> Error e
+      )
 
 let capabilities_to_json = fun (caps: server_capabilities) ->
   Json.Object [
@@ -379,7 +386,8 @@ let resource_to_json = fun (r: resource) ->
     ("mimeType", option_to_json (fun s -> Json.String s) r.mime_type);
   ]
 
-let resource_contents_to_json = function
+let resource_contents_to_json = fun __tmp1 ->
+  match __tmp1 with
   | TextContent r ->
       Json.Object [
         ("type", Json.String "text");
@@ -393,7 +401,8 @@ let resource_contents_to_json = function
         ("mimeType", Json.String b.mime_type);
       ]
 
-let message_content_to_json = function
+let message_content_to_json = fun __tmp1 ->
+  match __tmp1 with
   | Text s -> Json.Object [ ("type", Json.String "text"); ("text", Json.String s); ]
   | Resource rc -> resource_contents_to_json rc
 
@@ -419,7 +428,8 @@ let prompt_to_json = fun (p: prompt) ->
     );
   ]
 
-let request_params_to_json = function
+let request_params_to_json = fun __tmp1 ->
+  match __tmp1 with
   | InitializeParams { protocol_version; capabilities; client_info } ->
       Json.Object [
         ("protocolVersion", Json.String protocol_version);
@@ -472,7 +482,8 @@ let request_params_to_json = function
   | PingParams -> Json.Object []
   | CustomParams j -> j
 
-let response_result_to_json = function
+let response_result_to_json = fun __tmp1 ->
+  match __tmp1 with
   | InitializeResult {
       protocol_version;
       capabilities;
@@ -561,7 +572,8 @@ let request_to_json = fun (req: request) ->
   ]
   @ params_field)
 
-let response_to_json = function
+let response_to_json = fun __tmp1 ->
+  match __tmp1 with
   | SuccessResponse { jsonrpc; id; result } ->
       Json.Object [
         ("jsonrpc", Json.String jsonrpc);
@@ -575,7 +587,8 @@ let response_to_json = function
         ("error", error_to_json error);
       ]
 
-let notification_params_to_json = function
+let notification_params_to_json = fun __tmp1 ->
+  match __tmp1 with
   | ResourceListChangedParams -> Json.Object []
   | ToolListChangedParams -> Json.Object []
   | PromptListChangedParams -> Json.Object []
@@ -793,7 +806,8 @@ module MakeProtocol (T: ToolProtocol): McpApplicationProtocol with type tool_req
     | ShutdownResult
     | Error of string
 
-  let request_to_params = function
+  let request_to_params = fun __tmp1 ->
+    match __tmp1 with
     | Initialize { protocol_version; capabilities; client_info } ->
         { Jsonrpc.method_ = "initialize"; params = Jsonrpc.NoParams }
     | Initialized -> { method_ = "initialized"; params = NoParams }
@@ -839,7 +853,8 @@ module MakeProtocol (T: ToolProtocol): McpApplicationProtocol with type tool_req
     | "shutdown" -> Ok Shutdown
     | _ -> Error (Json.String ("Unknown method: " ^ method_))
 
-  let response_to_json = function
+  let response_to_json = fun __tmp1 ->
+    match __tmp1 with
     | InitializeResult {
         protocol_version;
         capabilities;

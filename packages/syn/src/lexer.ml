@@ -12,20 +12,23 @@ let int_of_string_opt = Int.parse
 
 let float_of_string_opt = Float.parse
 
-let is_whitespace = function
+let is_whitespace = fun __tmp1 ->
+  match __tmp1 with
   | ' '
   | '\t'
   | '\n'
   | '\r' -> true
   | _ -> false
 
-let is_ident_start = function
+let is_ident_start = fun __tmp1 ->
+  match __tmp1 with
   | 'a' .. 'z'
   | 'A' .. 'Z'
   | '_' -> true
   | _ -> false
 
-let is_ident_continue = function
+let is_ident_continue = fun __tmp1 ->
+  match __tmp1 with
   | 'a' .. 'z'
   | 'A' .. 'Z'
   | '0' .. '9'
@@ -33,48 +36,57 @@ let is_ident_continue = function
   | '\'' -> true
   | _ -> false
 
-let is_digit = function
+let is_digit = fun __tmp1 ->
+  match __tmp1 with
   | '0' .. '9' -> true
   | _ -> false
 
-let is_digit_or_underscore = function
+let is_digit_or_underscore = fun __tmp1 ->
+  match __tmp1 with
   | '0' .. '9'
   | '_' -> true
   | _ -> false
 
-let is_alpha = function
+let is_alpha = fun __tmp1 ->
+  match __tmp1 with
   | 'a' .. 'z'
   | 'A' .. 'Z' -> true
   | _ -> false
 
-let is_hex_digit = function
+let is_hex_digit = fun __tmp1 ->
+  match __tmp1 with
   | '0' .. '9'
   | 'a' .. 'f'
   | 'A' .. 'F' -> true
   | _ -> false
 
-let is_hex_digit_or_underscore = function
+let is_hex_digit_or_underscore = fun __tmp1 ->
+  match __tmp1 with
   | '0' .. '9'
   | 'a' .. 'f'
   | 'A' .. 'F'
   | '_' -> true
   | _ -> false
 
-let is_octal_digit = function
+let is_octal_digit = fun __tmp1 ->
+  match __tmp1 with
   | '0' .. '7' -> true
   | _ -> false
 
-let is_octal_digit_or_underscore = function
+let is_octal_digit_or_underscore = fun __tmp1 ->
+  match __tmp1 with
   | '0' .. '7'
   | '_' -> true
   | _ -> false
 
-let is_binary_digit = function
+let is_binary_digit = fun __tmp1 ->
+  match __tmp1 with
   | '0'
   | '1' -> true
   | _ -> false
 
-let is_binary_digit_or_underscore = function
+let is_binary_digit_or_underscore = fun __tmp1 ->
+  match __tmp1 with
   | '0'
   | '1'
   | '_' -> true
@@ -82,7 +94,8 @@ let is_binary_digit_or_underscore = function
 
 type quoted_string_info = { pipe_offset: int; delimiter: string; is_extension: bool }
 
-let is_quoted_string_header_char = function
+let is_quoted_string_header_char = fun __tmp1 ->
+  match __tmp1 with
   | '%' -> true
   | c -> is_ident_continue c
 
@@ -1043,7 +1056,8 @@ let tokenize_cursor = fun cursor ->
         let pending_count = List.length pending_rev in
         let leading = token.Token.leading_trivia in
         let trivia = Vector.with_capacity ~size:(pending_count + List.length leading) in
-        let rec push_pending = function
+        let rec push_pending = fun __tmp1 ->
+          match __tmp1 with
           | [] -> ()
           | item :: rest ->
               push_pending rest;

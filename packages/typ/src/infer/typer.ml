@@ -7,7 +7,8 @@ open TypeExpr
 module InferenceEnv = State.InferenceEnv
 module SurfacePath = Model.Surface_path
 
-let parameter_label_to_type_label = function
+let parameter_label_to_type_label = fun __tmp1 ->
+  match __tmp1 with
   | Unlabeled -> Type.Label.NoLabel
   | Labeled label -> Type.Label.Labelled (SurfacePath.to_string label)
   | Optional label -> Type.Label.Optional (SurfacePath.to_string label)
@@ -546,7 +547,12 @@ let type_impl (state: State.t) (items: structure_item list) =
 
 let type_intf (_state: State.t) (_items: signature_item list) = ()
 
+let type_implementation state (implementation: Ast.implementation) =
+  type_impl state implementation.items
+
+let type_interface state (interface: Ast.interface) = type_intf state interface.items
+
 let type_ast (state: State.t) (ast: Ast.t) =
-  match ast.kind with
-  | Implementation items -> type_impl state items
-  | Interface items -> type_intf state items
+  match ast with
+  | Implementation implementation -> type_implementation state implementation
+  | Interface interface -> type_interface state interface

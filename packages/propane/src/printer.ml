@@ -132,11 +132,13 @@ let triple = fun printer_a printer_b printer_c (a, b, c) ->
 (* === OPTION & RESULT PRINTERS === *)
 
 let option = fun elem_printer ->
-  function
-  | None -> "None"
-  | Some x -> "Some (" ^ elem_printer x ^ ")"
+  fun __tmp1 ->
+    match __tmp1 with
+    | None -> "None"
+    | Some x -> "Some (" ^ elem_printer x ^ ")"
 
 let result = fun ok_printer err_printer ->
-  function
-  | Ok x -> "Ok (" ^ ok_printer x ^ ")"
-  | Error e -> "Error (" ^ err_printer e ^ ")"
+  fun __tmp1 ->
+    match __tmp1 with
+    | Ok x -> "Ok (" ^ ok_printer x ^ ")"
+    | Error e -> "Error (" ^ err_printer e ^ ")"

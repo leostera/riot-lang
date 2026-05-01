@@ -14,7 +14,8 @@ type modified_since_error =
   | InvalidRequestDate of date_parse_error
   | InvalidResponseDate of date_parse_error
 
-let date_parse_error_to_string = function
+let date_parse_error_to_string = fun __tmp1 ->
+  match __tmp1 with
   | InvalidDateFormat { value } -> "invalid HTTP date format: " ^ value
   | InvalidDay { value } -> "invalid HTTP date day: " ^ value
   | InvalidMonth { value } -> "invalid HTTP date month: " ^ value
@@ -24,7 +25,8 @@ let date_parse_error_to_string = function
   | InvalidMinute { value } -> "invalid HTTP date minute: " ^ value
   | InvalidSecond { value } -> "invalid HTTP date second: " ^ value
 
-let modified_since_error_to_string = function
+let modified_since_error_to_string = fun __tmp1 ->
+  match __tmp1 with
   | InvalidRequestDate error ->
       "invalid If-Modified-Since request date: " ^ date_parse_error_to_string error
   | InvalidResponseDate error ->

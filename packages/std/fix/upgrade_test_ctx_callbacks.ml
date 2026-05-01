@@ -58,7 +58,8 @@ let is_test_source_path = fun path ->
   || String.ends_with ~suffix:"_test.ml" basename
   || String.starts_with ~prefix:"test_" basename)
 
-let is_test_callback_callee = function
+let is_test_callback_callee = fun __tmp1 ->
+  match __tmp1 with
   | Some "case"
   | Some "property"
   | Some "skip"

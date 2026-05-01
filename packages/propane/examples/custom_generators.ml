@@ -12,7 +12,8 @@ type color =
   | Black
   | White
 
-let color_to_string = function
+let color_to_string = fun __tmp1 ->
+  match __tmp1 with
   | Red -> "Red"
   | Green -> "Green"
   | Blue -> "Blue"

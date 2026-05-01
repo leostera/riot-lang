@@ -19,7 +19,8 @@ type error =
   | Unterminated_array of { position: int }
   | Unexpected_char of { position: int; found: char; expected: string }
 
-let error_to_string = function
+let error_to_string = fun __tmp1 ->
+  match __tmp1 with
   | Invalid_path { path } -> "Invalid path: " ^ path
   | File_read_error { path; reason } -> "Failed to read file " ^ path ^ ": " ^ reason
   | Parse_error { position; context; reason } ->
@@ -345,7 +346,8 @@ let parse = fun content ->
   let current_items = ref [] in
   let array_sections = ref [] in
   let assoc_opt key items =
-    let rec loop = function
+    let rec loop = fun __tmp1 ->
+      match __tmp1 with
       | [] -> None
       | (name, value) :: rest ->
           if String.equal name key then
@@ -356,7 +358,8 @@ let parse = fun content ->
     loop items
   in
   let assoc_remove key items =
-    let rec loop acc = function
+    let rec loop acc = fun __tmp1 ->
+      match __tmp1 with
       | [] -> List.reverse acc
       | (name, value) :: rest ->
           if String.equal name key then
@@ -461,19 +464,23 @@ let parse = fun content ->
 
 (* Recursive descent TOML parser *)
 
-let get_string = function
+let get_string = fun __tmp1 ->
+  match __tmp1 with
   | String s -> Some s
   | _ -> None
 
-let get_int = function
+let get_int = fun __tmp1 ->
+  match __tmp1 with
   | Int i -> Some i
   | _ -> None
 
-let get_array = function
+let get_array = fun __tmp1 ->
+  match __tmp1 with
   | Array items -> Some items
   | _ -> None
 
-let get_table = function
+let get_table = fun __tmp1 ->
+  match __tmp1 with
   | Table items -> Some items
   | _ -> None
 

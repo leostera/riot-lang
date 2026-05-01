@@ -139,7 +139,8 @@ let run:
     let owner = self () in
     (* Spawn dispatcher process *)
     let _dispatcher_pid = spawn (init ~owner ~result_ref ~concurrency ~tasks ~fn) in
-    let selector: result run_event selector = function
+    let selector: result run_event selector = fun __tmp1 ->
+      match __tmp1 with
       | Completed { results; result_ref = ref } when Ref.equal result_ref ref -> (
           match Ref.type_equal result_ref ref with
           | Some Type.Equal -> Select (Run_completed results)
@@ -150,8 +151,7 @@ let run:
           | Some Type.Equal -> Select (Run_failed exn)
           | None -> panic "bad message"
         )
-      | _ ->
-          Skip
+      | _ -> Skip
     in
     match receive ~selector () with
     | Run_completed results -> results

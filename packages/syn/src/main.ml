@@ -20,7 +20,8 @@ let span_text = fun source span ->
   else
     String.sub source ~offset:span.Span.start ~len:width
 
-let trivia_kind_to_json = function
+let trivia_kind_to_json = fun __tmp1 ->
+  match __tmp1 with
   | Syn.Token.CommentTrivia { terminated; _ } ->
       Data.Json.Object [
         ("kind", Data.Json.string "comment");
@@ -117,12 +118,11 @@ let handle_parse = fun sub_matches ->
         let root = Syn.SyntaxTree.root result.Syn.Parser.tree in
         Log.info ("Parsed successfully: " ^ Int.to_string root.Syn.SyntaxTree.full_width ^ " bytes")
 
-let parse_error_to_json = function
-  | Syn.Deps.Parse_diagnostics diagnostics ->
-      Data.Json.Object [
-        ("error", Data.Json.string "parse_diagnostics");
-        ("diagnostics", Data.Json.Array (List.map diagnostics ~fn:Syn.Diagnostic.to_json));
-      ]
+let parse_error_to_json = fun (Syn.Deps.Parse_diagnostics diagnostics) ->
+  Data.Json.Object [
+    ("error", Data.Json.string "parse_diagnostics");
+    ("diagnostics", Data.Json.Array (List.map diagnostics ~fn:Syn.Diagnostic.to_json));
+  ]
 
 let handle_deps = fun sub_matches ->
   let file =

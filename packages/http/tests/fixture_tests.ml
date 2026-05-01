@@ -58,7 +58,8 @@ let json_of_option = fun to_json value ->
   | Some value -> to_json value
 
 let headers_json = fun headers ->
-  let rec loop seen acc = function
+  let rec loop seen acc = fun __tmp1 ->
+    match __tmp1 with
     | [] -> Json.obj (List.reverse acc)
     | (name, value) :: rest ->
         let normalized = String.lowercase_ascii name in
@@ -293,7 +294,8 @@ let http1_error_json = fun error ->
 let find_header_end = fun input -> Http1.Common.find_substring ~needle:"\r\n\r\n" input
 
 let parse_header_lines = fun lines ->
-  let rec loop acc = function
+  let rec loop acc = fun __tmp1 ->
+    match __tmp1 with
     | [] -> Ok (List.reverse acc)
     | line :: rest ->
         if String.equal line "" then
@@ -378,7 +380,8 @@ let hex_string = fun value ->
   done;
   IO.Bytes.to_string out
 
-let frame_type_string = function
+let frame_type_string = fun __tmp1 ->
+  match __tmp1 with
   | Http2.Frame.Data -> "Data"
   | Http2.Frame.Headers -> "Headers"
   | Http2.Frame.Priority -> "Priority"
@@ -401,7 +404,8 @@ let flags_json = fun flags ->
       ("ack", Json.bool flags.Http2.Frame.ack);
     ]
 
-let error_code_string = function
+let error_code_string = fun __tmp1 ->
+  match __tmp1 with
   | Http2.Frame.NoError -> "NO_ERROR"
   | Http2.Frame.ProtocolError -> "PROTOCOL_ERROR"
   | Http2.Frame.InternalError -> "INTERNAL_ERROR"
@@ -418,7 +422,8 @@ let error_code_string = function
   | Http2.Frame.Http11Required -> "HTTP_1_1_REQUIRED"
   | Http2.Frame.UnknownErrorCode code -> "UNKNOWN(" ^ Int.to_string code ^ ")"
 
-let setting_json = function
+let setting_json = fun __tmp1 ->
+  match __tmp1 with
   | Http2.Frame.HeaderTableSize value ->
       Json.obj [ ("type", Json.string "HeaderTableSize"); ("value", Json.int value); ]
   | Http2.Frame.EnablePush value ->
@@ -432,7 +437,8 @@ let setting_json = function
   | Http2.Frame.MaxHeaderListSize value ->
       Json.obj [ ("type", Json.string "MaxHeaderListSize"); ("value", Json.int value); ]
 
-let payload_json = function
+let payload_json = fun __tmp1 ->
+  match __tmp1 with
   | Http2.Frame.DataPayload { data; pad_length } ->
       let data =
         let len = String.length data in
@@ -519,7 +525,8 @@ let http2_frame_json = fun frame ->
       ("payload", payload_json frame.payload);
     ]
 
-let opcode_string = function
+let opcode_string = fun __tmp1 ->
+  match __tmp1 with
   | Ws.Frame.Continuation -> "Continuation"
   | Ws.Frame.Text -> "Text"
   | Ws.Frame.Binary -> "Binary"

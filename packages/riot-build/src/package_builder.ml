@@ -16,7 +16,8 @@ type package_error = Telemetry_events.package_error =
       failed: Graph.SimpleGraph.Node_id.t list;
     }
 
-let convert_action_error = function
+let convert_action_error = fun __tmp1 ->
+  match __tmp1 with
   | Action_scheduler.ExecutionFailed { message } ->
       Telemetry_events.ActionExecutionFailed { message }
   | Action_scheduler.OutputsNotCreated { missing } ->
@@ -24,7 +25,8 @@ let convert_action_error = function
   | Action_scheduler.DependenciesFailed { failed } ->
       Telemetry_events.ActionDependenciesFailed { failed }
 
-let package_error_to_string = function
+let package_error_to_string = fun __tmp1 ->
+  match __tmp1 with
   | PlanningFailed err -> "Planning failed: " ^ Planning_error.to_string err
   | ExecutionFailed { message } -> "Execution failed: " ^ message ^ ""
   | ActionExecutionFailed { message } -> "Action failed: " ^ message ^ ""
@@ -33,7 +35,8 @@ let package_error_to_string = function
   | ActionDependenciesFailed { failed } ->
       "Dependencies failed: " ^ Int.to_string (List.length failed) ^ " actions"
 
-let package_error_to_json = function
+let package_error_to_json = fun __tmp1 ->
+  match __tmp1 with
   | PlanningFailed planning_err ->
       Std.Data.Json.Object [
         ("type", Std.Data.Json.String "planning_failed");
@@ -71,7 +74,8 @@ type build_status =
   | Skipped of { reason: string }
   | Failed of package_error
 
-let build_status_to_json = function
+let build_status_to_json = fun __tmp1 ->
+  match __tmp1 with
   | Cached artifact ->
       Std.Data.Json.Object [
         ("type", Std.Data.Json.String "cached");
@@ -283,8 +287,8 @@ let compute_export_entries: Action_graph.t -> Riot_store.Store.export_entry list
         let is_package_export =
           List.any
             node.value.actions
-            ~fn:(
-              function
+            ~fn:(fun __tmp1 ->
+              match __tmp1 with
               | Action.CreateLibrary _
               | Action.CreateExecutable _
               | Action.CreateSharedLibrary _ -> true
@@ -294,8 +298,7 @@ let compute_export_entries: Action_graph.t -> Riot_store.Store.export_entry list
               | Action.CompileC _
               | Action.CopyFile _
               | Action.WriteFile _
-              | Action.BuildForeignDependency _ -> false
-            )
+              | Action.BuildForeignDependency _ -> false)
         in
         if not is_package_export then
           []
@@ -345,7 +348,8 @@ let package_scope = fun package_graph package_key ->
   | Some node -> Riot_planner.Package_graph.get_scope node.value
   | None -> Riot_planner.Package_graph.Runtime
 
-let emits_visible_progress = function
+let emits_visible_progress = fun __tmp1 ->
+  match __tmp1 with
   | Riot_planner.Package_graph.Build -> false
   | Riot_planner.Package_graph.Runtime
   | Riot_planner.Package_graph.Dev -> true

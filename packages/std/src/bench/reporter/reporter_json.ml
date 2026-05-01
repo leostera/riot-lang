@@ -23,38 +23,41 @@ let reset = fun () ->
 
 let write_json_line = fun json -> println (Data.Json.to_string json)
 
-let on_case_start = fun index name ~iterations ~warmup -> let open Data.Json in
-write_json_line
-  (obj
+let on_case_start = fun index name ~iterations ~warmup ->
+  let open Data.Json in
+  write_json_line
+    (obj
+      [
+        ("type", string "BenchCaseStarted");
+        ("index", int index);
+        ("name", string name);
+        ("iterations", int iterations);
+        ("warmup", int warmup);
+        ("emitted_at_us", int (event_elapsed_us ()));
+      ])
+
+let gc_to_json = fun (gc: Bench_result.gc_stats) ->
+  let open Data.Json in
+  obj
     [
-      ("type", string "BenchCaseStarted");
-      ("index", int index);
-      ("name", string name);
-      ("iterations", int iterations);
-      ("warmup", int warmup);
-      ("emitted_at_us", int (event_elapsed_us ()));
-    ])
+      ("minor_collections", int gc.minor_collections);
+      ("major_collections", int gc.major_collections);
+      ("compactions", int gc.compactions);
+    ]
 
-let gc_to_json = fun (gc: Bench_result.gc_stats) -> let open Data.Json in
-obj
-  [
-    ("minor_collections", int gc.minor_collections);
-    ("major_collections", int gc.major_collections);
-    ("compactions", int gc.compactions);
-  ]
-
-let statistics_to_json = fun (stats: Bench_result.statistics) -> let open Data.Json in
-obj
-  [
-    ("min_nanos", int (Int64.to_int (Time.Duration.to_nanos stats.min)));
-    ("max_nanos", int (Int64.to_int (Time.Duration.to_nanos stats.max)));
-    ("mean_nanos", int (Int64.to_int (Time.Duration.to_nanos stats.mean)));
-    ("median_nanos", int (Int64.to_int (Time.Duration.to_nanos stats.median)));
-    ("std_dev_nanos", int (Int64.to_int (Time.Duration.to_nanos stats.std_dev)));
-    ("iterations", int stats.iterations);
-    ("total_time_nanos", int (Int64.to_int (Time.Duration.to_nanos stats.total_time)));
-    ("gc", gc_to_json stats.gc);
-  ]
+let statistics_to_json = fun (stats: Bench_result.statistics) ->
+  let open Data.Json in
+  obj
+    [
+      ("min_nanos", int (Int64.to_int (Time.Duration.to_nanos stats.min)));
+      ("max_nanos", int (Int64.to_int (Time.Duration.to_nanos stats.max)));
+      ("mean_nanos", int (Int64.to_int (Time.Duration.to_nanos stats.mean)));
+      ("median_nanos", int (Int64.to_int (Time.Duration.to_nanos stats.median)));
+      ("std_dev_nanos", int (Int64.to_int (Time.Duration.to_nanos stats.std_dev)));
+      ("iterations", int stats.iterations);
+      ("total_time_nanos", int (Int64.to_int (Time.Duration.to_nanos stats.total_time)));
+      ("gc", gc_to_json stats.gc);
+    ]
 
 let benchmark_result_to_json = fun (result: Bench_result.t) ->
   let open Data.Json in
@@ -67,31 +70,32 @@ let benchmark_result_to_json = fun (result: Bench_result.t) ->
       obj (base_fields @ [ ("status", string "failed"); ("message", string message); ])
   | Bench_result.Skipped -> obj (base_fields @ [ ("status", string "skipped"); ])
 
-let comparison_result_to_json = fun (result: Bench_result.comparison_result) -> let open Data.Json in
-obj
-  [
-    ("description", string result.description);
-    ("fastest", string result.fastest);
-    (
-      "case_results",
-      array
-        (List.map
-          result.case_results
-          ~fn:(fun (case_result: Bench_result.case_result) ->
-            obj
-              [
-                ("name", string case_result.name);
-                ("statistics", statistics_to_json case_result.statistics);
-              ]))
-    );
-    (
-      "speedup_ratios",
-      array
-        (List.map
-          result.speedup_ratios
-          ~fn:(fun (name, ratio) -> obj [ ("name", string name); ("ratio", float ratio); ]))
-    );
-  ]
+let comparison_result_to_json = fun (result: Bench_result.comparison_result) ->
+  let open Data.Json in
+  obj
+    [
+      ("description", string result.description);
+      ("fastest", string result.fastest);
+      (
+        "case_results",
+        array
+          (List.map
+            result.case_results
+            ~fn:(fun (case_result: Bench_result.case_result) ->
+              obj
+                [
+                  ("name", string case_result.name);
+                  ("statistics", statistics_to_json case_result.statistics);
+                ]))
+      );
+      (
+        "speedup_ratios",
+        array
+          (List.map
+            result.speedup_ratios
+            ~fn:(fun (name, ratio) -> obj [ ("name", string name); ("ratio", float ratio); ]))
+      );
+    ]
 
 let init = fun (_suite: Intf.suite_info) _count -> reset ()
 

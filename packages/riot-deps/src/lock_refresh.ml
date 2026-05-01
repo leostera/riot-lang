@@ -14,7 +14,8 @@ type error =
       manifest_path: Path.t;
     }
 
-let error_message = function
+let error_message = fun __tmp1 ->
+  match __tmp1 with
   | ManifestLoadFailed { error; _ } ->
       Riot_model.Workspace_manager.manifest_load_error_message error
   | DependencySectionMustBeTable { manifest_path; section } ->
@@ -28,7 +29,8 @@ let error_message = function
 
 let compare_by_path = fun left right -> String.compare (Path.to_string left) (Path.to_string right)
 
-let rec canonicalize_toml_value = function
+let rec canonicalize_toml_value = fun __tmp1 ->
+  match __tmp1 with
   | Std.Data.Toml.String _ as value -> value
   | Std.Data.Toml.Int _ as value -> value
   | Std.Data.Toml.Bool _ as value -> value
@@ -74,7 +76,8 @@ let manifest_dependency_fingerprint = fun ~workspace_manager ~workspace_root man
 
 let dependency_hash = fun ~workspace_manager ~workspace_root ~manifest_paths ->
   let manifest_paths = List.unique manifest_paths ~compare:compare_by_path in
-  let rec loop acc = function
+  let rec loop acc = fun __tmp1 ->
+    match __tmp1 with
     | [] ->
         let canonical =
           Std.Data.Toml.Array (List.reverse acc)

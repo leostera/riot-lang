@@ -21,7 +21,8 @@ type payload_kind =
 
 type payload = { data: string; expected_bytes: int; expected_lines: int }
 
-let mode_to_string = function
+let mode_to_string = fun __tmp1 ->
+  match __tmp1 with
   | Kernel_chunks -> "kernel-chunks"
   | Std_chunks -> "std-chunks"
   | Std_reader_chunks -> "std-reader-chunks"
@@ -31,7 +32,8 @@ let mode_to_string = function
   | Std_buffered_chars -> "std-buffered-chars"
   | Std_lines -> "std-lines"
 
-let mode_of_string = function
+let mode_of_string = fun __tmp1 ->
+  match __tmp1 with
   | "kernel-chunks" -> Kernel_chunks
   | "std-chunks" -> Std_chunks
   | "std-reader-chunks" -> Std_reader_chunks
@@ -42,7 +44,8 @@ let mode_of_string = function
   | "std-lines" -> Std_lines
   | value -> panic ("unknown stdin bench worker mode: " ^ value)
 
-let payload_for_kind = function
+let payload_for_kind = fun __tmp1 ->
+  match __tmp1 with
   | Chunk_payload ->
       let chunk = "0123456789abcdef" in
       let repeat_count = 65_536 in
@@ -78,7 +81,8 @@ let payload_for_kind = function
       let data = Buffer.contents buffer in
       { data; expected_bytes = String.length data; expected_lines = line_count }
 
-let payload_for_mode = function
+let payload_for_mode = fun __tmp1 ->
+  match __tmp1 with
   | Kernel_chunks
   | Std_chunks
   | Std_reader_chunks
@@ -95,25 +99,30 @@ let executable_path =
 
 let ( let* ) value fn = Result.and_then value ~fn
 
-let lift_process = function
+let lift_process = fun __tmp1 ->
+  match __tmp1 with
   | Ok value -> Ok value
   | Error error -> Error (Kernel.Process.error_to_string error)
 
-let lift_async = function
+let lift_async = fun __tmp1 ->
+  match __tmp1 with
   | Ok value -> Ok value
   | Error error -> Error (Kernel.Async.error_to_string error)
 
-let lift_file = function
+let lift_file = fun __tmp1 ->
+  match __tmp1 with
   | Ok value -> Ok value
   | Error error -> Error (Kernel.Fs.File.error_to_string error)
 
-let is_would_block = function
+let is_would_block = fun __tmp1 ->
+  match __tmp1 with
   | Kernel.Fs.File.System system_error -> Kernel.SystemError.would_block system_error
   | _ -> false
 
 let bufreader_error_message = IO.error_message
 
-let status_to_string = function
+let status_to_string = fun __tmp1 ->
+  match __tmp1 with
   | Kernel.Process.Running -> "running"
   | Kernel.Process.Exited code -> "exited(" ^ Int.to_string code ^ ")"
   | Kernel.Process.Signaled signal -> "signaled(" ^ Int.to_string signal ^ ")"
@@ -282,7 +291,8 @@ let run_worker_process = fun mode payload ->
                   Error ("stdin bench worker failed: " ^ status_to_string status ^ details))
       | _ -> Error "stdin bench worker expected stdin and stderr pipes")
 
-let expect_ok = function
+let expect_ok = fun __tmp1 ->
+  match __tmp1 with
   | Ok () -> ()
   | Error error -> panic error
 
@@ -464,7 +474,8 @@ let run_worker = fun mode ~expected_bytes ~expected_lines ->
   | Std_buffered_chars -> run_std_buffered_chars expected_bytes
   | Std_lines -> run_std_lines expected_bytes expected_lines
 
-let parse_worker_args = function
+let parse_worker_args = fun __tmp1 ->
+  match __tmp1 with
   | mode :: "--expected-bytes" :: expected_bytes :: "--expected-lines" :: expected_lines :: [] -> (
     mode_of_string mode,
     Int.of_string expected_bytes,

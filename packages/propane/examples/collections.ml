@@ -103,7 +103,8 @@ let vector_sort_prop =
         Std.Collections.Vector.iter vec
         |> Iter.Iterator.to_list
       in
-      let rec is_sorted = function
+      let rec is_sorted = fun __tmp1 ->
+        match __tmp1 with
         | []
         | [ _ ] -> true
         | x :: y :: rest -> x <= y && is_sorted (y :: rest)

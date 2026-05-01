@@ -68,12 +68,14 @@ type credentials_error =
   | MissingAuthorizationHeader
   | InvalidAuthorizationHeader of credential_decode_error
 
-let credential_decode_error_to_string = function
+let credential_decode_error_to_string = fun __tmp1 ->
+  match __tmp1 with
   | InvalidAuthorizationFormat -> "invalid Basic authorization header format"
   | InvalidBase64Credentials -> "invalid Basic authorization credentials encoding"
   | MissingCredentialSeparator -> "Basic authorization credentials must contain ':'"
 
-let credentials_error_to_string = function
+let credentials_error_to_string = fun __tmp1 ->
+  match __tmp1 with
   | MissingAuthorizationHeader -> "missing Authorization header"
   | InvalidAuthorizationHeader error -> credential_decode_error_to_string error
 

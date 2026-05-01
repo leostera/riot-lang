@@ -212,7 +212,8 @@ let write_nested_udp_workspace = fun ~root ~creation_order ->
     "[package]\nname = \"demo\"\nversion = \"0.0.1\"\n\n[lib]\npath = \"src/demo.ml\"\n"
     Path.(pkg_dir / Path.v "riot.toml")
   |> Result.expect ~msg:"Write nested riot.toml failed";
-  let file_for_key = function
+  let file_for_key = fun __tmp1 ->
+    match __tmp1 with
     | "demo_ml" -> (Path.(src_dir / Path.v "demo.ml"), "module Net = Net\n")
     | "net_ml" -> (
       Path.(net_dir / Path.v "net.ml"),
@@ -357,7 +358,8 @@ let test_nested_udp_workspace_builds_across_file_creation_orders = fun _ctx ->
         );
       ]
       in
-      let rec run = function
+      let rec run = fun __tmp1 ->
+        match __tmp1 with
         | [] -> Ok ()
         | (order_name, creation_order) :: rest ->
             let root = Path.(tmpdir / Path.v order_name) in

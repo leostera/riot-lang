@@ -26,11 +26,10 @@ let await = fun ~what selector ->
 let wait_for_go = fun () ->
   let _ =
     receive
-      ~selector:(
-        function
+      ~selector:(fun __tmp1 ->
+        match __tmp1 with
         | Queue_test_go -> Select ()
-        | _ -> Skip
-      )
+        | _ -> Skip)
       ~timeout:(Time.Duration.from_secs 2)
       ()
   in
@@ -60,12 +59,14 @@ let drain = fun queue ->
 let render_int_list = fun values ->
   "[" ^ String.concat ", " (List.map values ~fn:Int.to_string) ^ "]"
 
-let render_int_option = function
+let render_int_option = fun __tmp1 ->
+  match __tmp1 with
   | None -> "None"
   | Some value -> "Some(" ^ Int.to_string value ^ ")"
 
 let make_batches = fun counts ->
-  let rec loop producer = function
+  let rec loop producer = fun __tmp1 ->
+    match __tmp1 with
     | [] -> []
     | count :: rest -> ints_from (producer * 1_000_000) count :: loop (producer + 1) rest
   in
@@ -102,11 +103,10 @@ let wait_for_producers = fun ~producer_count ->
     else
       match await
         ~what:"queue producer completion"
-        (
-          function
+        (fun __tmp1 ->
+          match __tmp1 with
           | Queue_producer_done _ -> Select ()
-          | _ -> Skip
-        ) with
+          | _ -> Skip) with
       | Ok () -> loop (remaining - 1)
       | Error _ as error -> error
   in
@@ -119,11 +119,10 @@ let collect_consumer_values = fun ~consumer_count ->
     else
       match await
         ~what:"queue consumer completion"
-        (
-          function
+        (fun __tmp1 ->
+          match __tmp1 with
           | Queue_consumer_values values -> Select values
-          | _ -> Skip
-        ) with
+          | _ -> Skip) with
       | Ok values -> loop (remaining - 1) (values :: acc)
       | Error _ as error -> error
   in
@@ -340,11 +339,13 @@ let test_regression_clear_pop_sequence = fun _ctx ->
   ]
   in
   let queue = Queue.create () in
-  let rec pop_model = function
+  let rec pop_model = fun __tmp1 ->
+    match __tmp1 with
     | [] -> (None, [])
     | value :: rest -> (Some value, rest)
   in
-  let render_operation = function
+  let render_operation = fun __tmp1 ->
+    match __tmp1 with
     | Push value -> "Push(" ^ Int.to_string value ^ ")"
     | Pop -> "Pop"
     | Clear -> "Clear"

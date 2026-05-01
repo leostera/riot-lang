@@ -16,11 +16,13 @@ let equal = fun left right ~fn ->
   | (Some left, Some right) -> fn left right
   | _ -> false
 
-let is_some = function
+let is_some = fun __tmp1 ->
+  match __tmp1 with
   | Some _ -> true
   | None -> false
 
-let is_none = function
+let is_none = fun __tmp1 ->
+  match __tmp1 with
   | Some _ -> false
   | None -> true
 
@@ -80,7 +82,8 @@ let xor = fun left right ->
   | (None, Some _) -> right
   | _ -> None
 
-let unwrap = function
+let unwrap = fun __tmp1 ->
+  match __tmp1 with
   | Some value -> value
   | None -> panic "called Option.unwrap on a None value"
 
@@ -99,7 +102,8 @@ let expect = fun ~msg value ->
   | Some value -> value
   | None -> panic msg
 
-let unwrap_none = function
+let unwrap_none = fun __tmp1 ->
+  match __tmp1 with
   | None -> ()
   | Some _ -> panic "called Option.unwrap_none on a Some value"
 
@@ -128,11 +132,13 @@ let ok_or_else = fun ~error value ->
 
 let to_result = fun ~error value -> ok_or ~error value
 
-let to_list = function
+let to_list = fun __tmp1 ->
+  match __tmp1 with
   | Some value -> [ value ]
   | None -> []
 
-let transpose = function
+let transpose = fun __tmp1 ->
+  match __tmp1 with
   | Some (Ok value) -> Ok (Some value)
   | Some (Error error) -> Error error
   | None -> Ok None
@@ -142,7 +148,8 @@ let filter = fun value ~fn ->
   | Some item when fn item -> Some item
   | _ -> None
 
-let flatten = function
+let flatten = fun __tmp1 ->
+  match __tmp1 with
   | Some value -> value
   | None -> None
 
@@ -156,15 +163,17 @@ let zip_with = fun left right ~fn ->
   | (Some left, Some right) -> Some (fn left right)
   | _ -> None
 
-let unzip = function
+let unzip = fun __tmp1 ->
+  match __tmp1 with
   | Some (left, right) -> (Some left, Some right)
   | None -> (None, None)
 
 let all = fun values ->
   let rec go = fun acc ->
-    function
-    | [] -> Some (List.reverse acc)
-    | (Some value) :: rest -> go (value :: acc) rest
-    | None :: _ -> None
+    fun __tmp1 ->
+      match __tmp1 with
+      | [] -> Some (List.reverse acc)
+      | (Some value) :: rest -> go (value :: acc) rest
+      | None :: _ -> None
   in
   go [] values

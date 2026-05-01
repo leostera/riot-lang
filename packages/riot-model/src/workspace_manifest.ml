@@ -62,19 +62,22 @@ type error =
   | DependencySectionMustBeTable of { section_name: string }
   | DependencyError of dependency_error
 
-let version_parse_error_to_string = function
+let version_parse_error_to_string = fun __tmp1 ->
+  match __tmp1 with
   | Version.Invalid_format msg -> msg
   | Version.Invalid_version_segment segment -> "invalid version segment: " ^ segment
   | Version.Invalid_pre_release_segment segment -> "invalid pre-release segment: " ^ segment
 
-let dependency_field_name = function
+let dependency_field_name = fun __tmp1 ->
+  match __tmp1 with
   | Path -> "path"
   | Source -> "source"
   | Github -> "github"
   | Ref -> "ref"
   | Version -> "version"
 
-let dependency_error_message = function
+let dependency_error_message = fun __tmp1 ->
+  match __tmp1 with
   | InvalidDependencyName { raw_name; error } ->
       "dependency name '" ^ raw_name ^ "' is invalid: " ^ Package_name.error_message error
   | InvalidDependencyRequirement { dependency_name; requirement; error } ->
@@ -103,7 +106,8 @@ let dependency_error_message = function
   | DependencyMustBeStringOrTable { dependency_name } ->
       "dependency '" ^ dependency_name ^ "' must be a string or table"
 
-let error_message = function
+let error_message = fun __tmp1 ->
+  match __tmp1 with
   | DependencySectionMustBeTable { section_name } -> "[" ^ section_name ^ "] must be a table"
   | DependencyError error -> dependency_error_message error
 
@@ -487,7 +491,8 @@ let find_package_for_path = fun (workspace: t) ~path ->
       Int.compare
         (String.length (Path.to_string (package_root workspace right)))
         (String.length (Path.to_string (package_root workspace left))))
-  |> function
+  |> fun __tmp1 ->
+    match __tmp1 with
     | pkg :: _ -> Some pkg
     | [] -> None
 

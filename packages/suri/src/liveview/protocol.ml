@@ -19,11 +19,13 @@ type server_msg =
   (* Full HTML replacement *)
   | Error of server_error
 
-let char_to_json = function
+let char_to_json = fun __tmp1 ->
+  match __tmp1 with
   | Some char -> Data.Json.string (String.make ~len:1 ~char)
   | None -> Data.Json.null
 
-let json_error_to_json = function
+let json_error_to_json = fun __tmp1 ->
+  match __tmp1 with
   | Data.Json.Unterminated_string { position } ->
       Data.Json.obj
         [ ("type", Data.Json.string "UnterminatedString"); ("position", Data.Json.int position); ]
@@ -85,7 +87,8 @@ let json_error_to_json = function
       Data.Json.obj
         [ ("type", Data.Json.string "UnknownError"); ("message", Data.Json.string message); ]
 
-let client_msg_error_to_json = function
+let client_msg_error_to_json = fun __tmp1 ->
+  match __tmp1 with
   | InvalidJson error ->
       Data.Json.obj
         [ ("type", Data.Json.string "InvalidJson"); ("error", json_error_to_json error); ]
@@ -94,7 +97,8 @@ let client_msg_error_to_json = function
   | UnknownMessageFormat json ->
       Data.Json.obj [ ("type", Data.Json.string "UnknownMessageFormat"); ("message", json); ]
 
-let server_error_to_json = function
+let server_error_to_json = fun __tmp1 ->
+  match __tmp1 with
   | ClientMessageDecodeFailed error ->
       Data.Json.obj
         [
@@ -103,12 +107,14 @@ let server_error_to_json = function
         ]
   | InternalServerError -> Data.Json.obj [ ("type", Data.Json.string "InternalServerError"); ]
 
-let client_msg_error_to_string = function
+let client_msg_error_to_string = fun __tmp1 ->
+  match __tmp1 with
   | InvalidJson error -> "invalid JSON: " ^ Data.Json.error_to_string error
   | InvalidEventPayload json -> "invalid Event payload: " ^ Data.Json.to_string json
   | UnknownMessageFormat json -> "unknown message format: " ^ Data.Json.to_string json
 
-let server_error_to_string = function
+let server_error_to_string = fun __tmp1 ->
+  match __tmp1 with
   | ClientMessageDecodeFailed error -> client_msg_error_to_string error
   | InternalServerError -> "internal LiveView server error"
 

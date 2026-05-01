@@ -50,7 +50,8 @@ let enumerate = fun list ->
 let map = fun values ~fn -> Kernel.List.map values ~fn
 
 let flat_map = fun values ~fn ->
-  let rec loop acc = function
+  let rec loop acc = fun __tmp1 ->
+    match __tmp1 with
     | [] -> acc
     | value :: rest -> loop (fn value @ acc) rest
   in
@@ -91,9 +92,9 @@ let find = fun values ~fn -> Kernel.List.find values ~fn
 let filter = fun values ~fn -> Kernel.List.filter values ~fn
 
 let filter_map = fun values ~fn ->
-  let rec loop acc = function
-    | [] ->
-        reverse acc
+  let rec loop acc = fun __tmp1 ->
+    match __tmp1 with
+    | [] -> reverse acc
     | value :: rest -> (
         match fn value with
         | Some mapped -> loop (mapped :: acc) rest

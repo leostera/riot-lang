@@ -191,7 +191,8 @@ let display_planner_file = fun path ->
   else
     "./" ^ path_text
 
-let planning_error_lines = function
+let planning_error_lines = fun __tmp1 ->
+  match __tmp1 with
   | Riot_planner.Planning_error.CyclicDependency { cycle } ->
       [
         error_line "cyclic dependency detected while planning modules";
@@ -384,7 +385,8 @@ let planning_error_lines = function
       ]
       @ labeled_multiline_lines ~label:"reason" (Exception.to_string exn)
 
-let workspace_load_error_line = function
+let workspace_load_error_line = fun __tmp1 ->
+  match __tmp1 with
   | Riot_model.Workspace_manager.PackageNotFound { package; path; dependant = None } ->
       "missing package: " ^ package ^ " (" ^ path ^ ")"
   | Riot_model.Workspace_manager.PackageNotFound { package; path; dependant = Some dependant } ->
@@ -401,7 +403,8 @@ let workspace_load_error_line = function
       ^ "): "
       ^ Riot_model.Package_manifest.error_message error
 
-let workspace_planning_error_lines = function
+let workspace_planning_error_lines = fun __tmp1 ->
+  match __tmp1 with
   | Riot_planner.Workspace_planner.PackageNotFound { name; available } ->
       [
         error_line ("package " ^ Riot_model.Package_name.to_string name ^ " was not found");
@@ -453,7 +456,8 @@ let out_prefixed_payload = fun ~prefix payload ->
       rest
       |> List.for_each ~fn:out
 
-let telemetry_package_error_message = function
+let telemetry_package_error_message = fun __tmp1 ->
+  match __tmp1 with
   | Build_telemetry.PlanningFailed planning_error ->
       Riot_planner.Planning_error.to_string planning_error
   | Build_telemetry.ExecutionFailed { message }
@@ -464,7 +468,8 @@ let telemetry_package_error_message = function
       "failed dependencies: "
       ^ String.concat ", " (List.map failed ~fn:Graph.SimpleGraph.Node_id.to_string)
 
-let show_target_in_package_labels = function
+let show_target_in_package_labels = fun __tmp1 ->
+  match __tmp1 with
   | Some { target_count = Some target_count } -> target_count > 1
   | Some { target_count = None }
   | None -> false
@@ -714,7 +719,8 @@ let build_failure_detail_lines = fun (failure: Riot_build.Build_result.failure) 
   | _ -> [ error_line (package_name ^ " failed"); failure.message ]
 
 let write_failure_blocks = fun failures ->
-  let rec loop = function
+  let rec loop = fun __tmp1 ->
+    match __tmp1 with
     | [] -> ()
     | [ failure ] ->
         out "";
@@ -840,9 +846,9 @@ let requested_parallelism_of_matches = fun matches ->
     )
 
 let parse_package_names = fun package_names ->
-  let rec loop acc = function
-    | [] ->
-        Ok (List.reverse acc)
+  let rec loop acc = fun __tmp1 ->
+    match __tmp1 with
+    | [] -> Ok (List.reverse acc)
     | package_name :: rest -> (
         match Riot_model.Package_name.from_string package_name with
         | Ok package_name -> loop (package_name :: acc) rest

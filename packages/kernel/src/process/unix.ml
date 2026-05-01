@@ -236,7 +236,8 @@ let kill = fun process ~signal ->
 let execv = fun program argv -> Result.map_err (FFI.execv program argv) ~fn:System_error.from_code
 
 let close = fun process ->
-  let rec close_all first_error = function
+  let rec close_all first_error = fun __tmp1 ->
+    match __tmp1 with
     | [] -> (
         match first_error with
         | Some error -> Result.Error error

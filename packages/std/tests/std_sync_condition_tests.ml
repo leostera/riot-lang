@@ -51,11 +51,10 @@ let test_condition_wait_releases_mutex_and_reacquires_after_signal =
         );
       match await
         ~what:"condition waiter readiness"
-        (
-          function
+        (fun __tmp1 ->
+          match __tmp1 with
           | Condition_waiter_ready -> Select ()
-          | _ -> Skip
-        ) with
+          | _ -> Skip) with
       | Error _ as err -> err
       | Ok () ->
           sleep (Time.Duration.from_millis 20);
@@ -78,12 +77,11 @@ let test_condition_wait_releases_mutex_and_reacquires_after_signal =
             else
               match await
                 ~what:"condition signal flow"
-                (
-                  function
+                (fun __tmp1 ->
+                  match __tmp1 with
                   | Condition_signaler_done -> Select Signaler
                   | Condition_waiter_resumed entered -> Select (Waiter entered)
-                  | _ -> Skip
-                ) with
+                  | _ -> Skip) with
               | Error _ as err -> err
               | Ok Signaler ->
                   saw_signaler.value <- true;
@@ -131,12 +129,11 @@ let test_condition_wait_requires_mutex_ownership =
         );
       match await
         ~what:"condition wait failure"
-        (
-          function
+        (fun __tmp1 ->
+          match __tmp1 with
           | Condition_wait_failed reason -> Select (Wait_failed reason)
           | Condition_wait_returned -> Select Wait_returned
-          | _ -> Skip
-        ) with
+          | _ -> Skip) with
       | Error _ as err -> err
       | Ok (Wait_failed reason) when String.contains reason "mutex wait" -> Ok ()
       | Ok (Wait_failed reason) -> Error ("unexpected condition wait failure: " ^ reason)
@@ -169,11 +166,10 @@ let test_condition_broadcast_wakes_all_waiters =
         else
           match await
             ~what:"broadcast waiter readiness"
-            (
-              function
+            (fun __tmp1 ->
+              match __tmp1 with
               | Condition_broadcast_waiter_ready _idx -> Select ()
-              | _ -> Skip
-            ) with
+              | _ -> Skip) with
           | Error _ as err -> err
           | Ok () -> await_ready (remaining - 1)
       in
@@ -198,12 +194,11 @@ let test_condition_broadcast_wakes_all_waiters =
             else
               match await
                 ~what:"broadcast wakeup"
-                (
-                  function
+                (fun __tmp1 ->
+                  match __tmp1 with
                   | Condition_signaler_done -> Select Broadcast_signaled
                   | Condition_broadcast_waiter_resumed _idx -> Select Broadcast_resumed
-                  | _ -> Skip
-                ) with
+                  | _ -> Skip) with
               | Error _ as err -> err
               | Ok Broadcast_signaled -> collect (remaining - 1)
               | Ok Broadcast_resumed ->

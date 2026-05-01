@@ -43,7 +43,8 @@ type close_payload_error =
   | InvalidCloseCode of { code: int }
   | InvalidCloseReasonUtf8 of { reason_length: int }
 
-let opcode_to_int = function
+let opcode_to_int = fun __tmp1 ->
+  match __tmp1 with
   | Continuation -> 0x0
   | Text -> 0x1
   | Binary -> 0x2
@@ -51,7 +52,8 @@ let opcode_to_int = function
   | Ping -> 0x9
   | Pong -> 0xa
 
-let opcode_of_int = function
+let opcode_of_int = fun __tmp1 ->
+  match __tmp1 with
   | 0x0 -> Some Continuation
   | 0x1 -> Some Text
   | 0x2 -> Some Binary
@@ -91,7 +93,8 @@ let generate_mask = fun ?rng () -> Random.bits32 ?rng ()
 
 let apply_mask = fun mask payload -> unmask mask payload
 
-let close_payload_error_to_string = function
+let close_payload_error_to_string = fun __tmp1 ->
+  match __tmp1 with
   | ClosePayloadTooShort { payload_length } ->
       "WebSocket close frame payload must be empty or at least 2 bytes, got "
       ^ Int.to_string payload_length

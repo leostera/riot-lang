@@ -36,7 +36,8 @@ let small_message = "test case passed"
 let medium_message =
   "this is a medium-sized human test output line with metadata [large flaky/2] and a long suffix"
 
-let mode_of_string = function
+let mode_of_string = fun __tmp1 ->
+  match __tmp1 with
   | "noop" -> Noop
   | "std-print" -> StdPrint
   | "std-println" -> StdPrintln
@@ -48,7 +49,8 @@ let mode_of_string = function
   | "raw-native-write" -> RawNativeWrite
   | value -> panic ("unknown mode: " ^ value)
 
-let mode_to_string = function
+let mode_to_string = fun __tmp1 ->
+  match __tmp1 with
   | Noop -> "noop"
   | StdPrint -> "std-print"
   | StdPrintln -> "std-println"
@@ -59,21 +61,25 @@ let mode_to_string = function
   | RawIntWrite -> "rawint-write"
   | RawNativeWrite -> "raw-native-write"
 
-let message_kind_of_string = function
+let message_kind_of_string = fun __tmp1 ->
+  match __tmp1 with
   | "small" -> Small
   | "medium" -> Medium
   | value -> panic ("unknown message kind: " ^ value)
 
-let message_kind_to_string = function
+let message_kind_to_string = fun __tmp1 ->
+  match __tmp1 with
   | Small -> "small"
   | Medium -> "medium"
 
-let message_for_kind = function
+let message_for_kind = fun __tmp1 ->
+  match __tmp1 with
   | Small -> small_message
   | Medium -> medium_message
 
 let parse_args = fun args ->
-  let rec loop config = function
+  let rec loop config = fun __tmp1 ->
+    match __tmp1 with
     | [] -> Ok config
     | "--iterations" :: value :: rest ->
         loop { config with iterations = Int.of_string value } rest
@@ -177,7 +183,8 @@ let run_loop = fun mode message message_bytes message_len iterations ->
     run_mode mode message message_bytes message_len
   done
 
-let flush_mode = function
+let flush_mode = fun __tmp1 ->
+  match __tmp1 with
   | LogCompact
   | LogFull -> Log.flush ()
   | _ -> ()

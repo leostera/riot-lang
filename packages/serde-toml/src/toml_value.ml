@@ -8,14 +8,17 @@ type t =
   | Array of t list
   | Table of (string * t) list
 
-let is_table = function
+let is_table = fun __tmp1 ->
+  match __tmp1 with
   | Table _ -> true
   | _ -> false
 
-let is_array_of_tables = function
+let is_array_of_tables = fun __tmp1 ->
+  match __tmp1 with
   | Array values -> List.for_all is_table values
   | _ -> false
 
-let is_empty_table = function
+let is_empty_table = fun __tmp1 ->
+  match __tmp1 with
   | Table [] -> true
   | _ -> false

@@ -153,25 +153,22 @@ let status_encode =
     [
       Ser.Variant.unit
         "Active"
-        (
-          function
+        (fun __tmp1 ->
+          match __tmp1 with
           | Active -> true
-          | _ -> false
-        );
+          | _ -> false);
       Ser.Variant.unit
         "Draft"
-        (
-          function
+        (fun __tmp1 ->
+          match __tmp1 with
           | Draft -> true
-          | _ -> false
-        );
+          | _ -> false);
       Ser.Variant.unit
         "Archived"
-        (
-          function
+        (fun __tmp1 ->
+          match __tmp1 with
           | Archived -> true
-          | _ -> false
-        );
+          | _ -> false);
     ]
 
 let berth_decode =
@@ -308,7 +305,8 @@ let repeat = fun text count ->
   done;
   IO.Buffer.contents buffer
 
-let status_to_string = function
+let status_to_string = fun __tmp1 ->
+  match __tmp1 with
   | Active -> "Active"
   | Draft -> "Draft"
   | Archived -> "Archived"
@@ -327,10 +325,8 @@ let vec_to_list = fun values ->
   Vector.for_each values ~fn:(fun value -> items := value :: !items);
   List.rev !items
 
-let stop_of_index = fun index prefix -> ({
-  island = prefix ^ "-island-" ^ Int.to_string index;
-  supplies = (index * 17) mod 10_000;
-}: stop)
+let stop_of_index = fun index prefix ->
+  ({ island = prefix ^ "-island-" ^ Int.to_string index; supplies = (index * 17) mod 10_000 }: stop)
 
 let stops_vec_of_count = fun count prefix ->
   let stops = Vector.with_capacity ~size:count in
@@ -375,23 +371,28 @@ let manifest_to_toml = fun (value: manifest) ->
     ));
   ]
 
-let bool_of_toml = function
+let bool_of_toml = fun __tmp1 ->
+  match __tmp1 with
   | Toml.Bool value -> value
   | _ -> panic "serde_toml_bench: expected bool"
 
-let string_of_toml = function
+let string_of_toml = fun __tmp1 ->
+  match __tmp1 with
   | Toml.String value -> value
   | _ -> panic "serde_toml_bench: expected string"
 
-let int_of_toml = function
+let int_of_toml = fun __tmp1 ->
+  match __tmp1 with
   | Toml.Int value -> value
   | _ -> panic "serde_toml_bench: expected int"
 
-let array_of_toml = function
+let array_of_toml = fun __tmp1 ->
+  match __tmp1 with
   | Toml.Array values -> values
   | _ -> panic "serde_toml_bench: expected array"
 
-let table_of_toml = function
+let table_of_toml = fun __tmp1 ->
+  match __tmp1 with
   | Toml.Table values -> values
   | _ -> panic "serde_toml_bench: expected table"
 
@@ -400,7 +401,8 @@ let field = fun table key ->
   | Some value -> value
   | None -> panic ("serde_toml_bench: missing field '" ^ key ^ "'")
 
-let status_of_string = function
+let status_of_string = fun __tmp1 ->
+  match __tmp1 with
   | "Active" -> Active
   | "Draft" -> Draft
   | "Archived" -> Archived

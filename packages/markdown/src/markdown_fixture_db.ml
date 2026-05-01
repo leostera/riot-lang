@@ -34,7 +34,8 @@ let normalize_newlines = fun source ->
   IO.Buffer.contents buffer
 
 let line_field = fun fields name ->
-  let rec loop = function
+  let rec loop = fun __tmp1 ->
+    match __tmp1 with
     | [] -> None
     | (candidate, value) :: rest ->
         if String.equal candidate name then
@@ -225,7 +226,8 @@ let locate_fixture_path = fun () ->
     @ [ Path.v "spec_fixtures.json" ]
   in
   let candidates = dedupe candidates in
-  let rec pick = function
+  let rec pick = fun __tmp1 ->
+    match __tmp1 with
     | [] -> None
     | head :: rest ->
         let exists = Fs.exists head in

@@ -23,11 +23,16 @@ let flush_threshold = 4_096
 
 let raise_io_error = fun err -> raise (Serde.Encode_error (`Io_error err))
 
-let raise_no_space = fun () -> raise
-  (Serde.Encode_error (`Msg "serde-bin destination buffer is too small"))
+let raise_no_space = fun () ->
+  raise
+    (Serde.Encode_error (`Msg "serde-bin destination buffer is too small"))
 
-let raise_length_out_of_range = fun kind value -> raise
-  (Serde.Encode_error (`Msg ("serde-bin " ^ kind ^ " length is out of range: " ^ Int.to_string value)))
+let raise_length_out_of_range = fun kind value ->
+  raise
+    (Serde.Encode_error (`Msg ("serde-bin "
+    ^ kind
+    ^ " length is out of range: "
+    ^ Int.to_string value)))
 
 let int_lt = fun left right -> left < right
 

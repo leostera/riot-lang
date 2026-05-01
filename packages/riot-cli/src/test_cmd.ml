@@ -61,9 +61,9 @@ let profile_of_matches = fun matches ->
     "debug"
 
 let parse_package_names = fun package_names ->
-  let rec loop acc = function
-    | [] ->
-        Ok (List.reverse acc)
+  let rec loop acc = fun __tmp1 ->
+    match __tmp1 with
+    | [] -> Ok (List.reverse acc)
     | package_name :: rest -> (
         match Riot_model.Package_name.from_string package_name with
         | Ok package_name -> loop (package_name :: acc) rest
@@ -227,12 +227,13 @@ let record_suite_timing = fun
   let slow_suite_tests: slow_test list =
     summary.results
     |> List.map
-      ~fn:(fun (result: Test_runtime.test_case_result) -> ({
-        suite_label;
-        test_name = result.name;
-        duration_us = result.duration_us;
-        size = result.size;
-      }: slow_test))
+      ~fn:(fun (result: Test_runtime.test_case_result) ->
+        ({
+          suite_label;
+          test_name = result.name;
+          duration_us = result.duration_us;
+          size = result.size;
+        }: slow_test))
   in
   let slowest_tests: slow_test list =
     List.append timing.slowest_tests slow_suite_tests

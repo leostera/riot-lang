@@ -5,9 +5,10 @@ open Riot_model
 module Test = Std.Test
 module G = Std.Graph.SimpleGraph
 
-let deps_error_to_string = function
-  | Syn.Deps.Parse_diagnostics diagnostics ->
-      String.concat "; " (List.map diagnostics ~fn:Syn.Diagnostic.to_string)
+let deps_error_to_string = fun (Syn.Deps.Parse_diagnostics diagnostics) ->
+  String.concat
+    "; "
+    (List.map diagnostics ~fn:Syn.Diagnostic.to_string)
 
 let make_package = fun name ->
   Riot_model.Package.make
@@ -1245,7 +1246,8 @@ let test_module_graph_keeps_nested_sibling_dependency_across_allowed_source_orde
         |> List.map ~fn:Path.to_string
         |> String.concat ", "
       in
-      let rec run = function
+      let rec run = fun __tmp1 ->
+        match __tmp1 with
         | [] -> Ok ()
         | source_order :: rest ->
             let package =

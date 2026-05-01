@@ -35,8 +35,7 @@ let expect_array_length = fun ~label ~expected ~actual ->
     ~actual:(Array.length actual)
 
 let expect_ansi_equal = fun ~label ~expected ->
-  function
-  | `ansi actual -> expect_int_equal ~label ~expected ~actual
+  fun (`ansi actual) -> expect_int_equal ~label ~expected ~actual
 
 let expect_float_close = fun ~label ~epsilon ~expected ~actual ->
   expect
@@ -49,76 +48,67 @@ let expect_finite = fun ~label value ->
     (label ^ ": expected finite float")
 
 let expect_rgb_equal = fun ~label ~expected:(er, eg, eb) ->
-  function
-  | `rgb (r, g, b) ->
-      let* () = expect_int_equal ~label:(label ^ " red") ~expected:er ~actual:r in
-      let* () = expect_int_equal ~label:(label ^ " green") ~expected:eg ~actual:g in
-      expect_int_equal ~label:(label ^ " blue") ~expected:eb ~actual:b
+  fun (`rgb (r, g, b)) ->
+    let* () = expect_int_equal ~label:(label ^ " red") ~expected:er ~actual:r in
+    let* () = expect_int_equal ~label:(label ^ " green") ~expected:eg ~actual:g in
+    expect_int_equal ~label:(label ^ " blue") ~expected:eb ~actual:b
 
 let expect_rgb_within = fun ~label ~tolerance ~expected:(er, eg, eb) ->
-  function
-  | `rgb (r, g, b) ->
-      let within left right = Int.abs (left - right) <= tolerance in
-      expect
-        (within er r && within eg g && within eb b)
-        (label
-        ^ ": expected approx RGB("
-        ^ Int.to_string er
-        ^ ","
-        ^ Int.to_string eg
-        ^ ","
-        ^ Int.to_string eb
-        ^ "), got RGB("
-        ^ Int.to_string r
-        ^ ","
-        ^ Int.to_string g
-        ^ ","
-        ^ Int.to_string b
-        ^ ")")
+  fun (`rgb (r, g, b)) ->
+    let within left right = Int.abs (left - right) <= tolerance in
+    expect
+      (within er r && within eg g && within eb b)
+      (label
+      ^ ": expected approx RGB("
+      ^ Int.to_string er
+      ^ ","
+      ^ Int.to_string eg
+      ^ ","
+      ^ Int.to_string eb
+      ^ "), got RGB("
+      ^ Int.to_string r
+      ^ ","
+      ^ Int.to_string g
+      ^ ","
+      ^ Int.to_string b
+      ^ ")")
 
 let expect_lrgb_close = fun ~label ~epsilon ~expected:(er, eg, eb) ->
-  function
-  | `lrgb (r, g, b) ->
-      let* () = expect_float_close ~label:(label ^ " red") ~epsilon ~expected:er ~actual:r in
-      let* () = expect_float_close ~label:(label ^ " green") ~epsilon ~expected:eg ~actual:g in
-      expect_float_close ~label:(label ^ " blue") ~epsilon ~expected:eb ~actual:b
+  fun (`lrgb (r, g, b)) ->
+    let* () = expect_float_close ~label:(label ^ " red") ~epsilon ~expected:er ~actual:r in
+    let* () = expect_float_close ~label:(label ^ " green") ~epsilon ~expected:eg ~actual:g in
+    expect_float_close ~label:(label ^ " blue") ~epsilon ~expected:eb ~actual:b
 
 let expect_xyz_close = fun ~label ~epsilon ~expected:(ex, ey, ez) ->
-  function
-  | `xyz (x, y, z) ->
-      let* () = expect_float_close ~label:(label ^ " x") ~epsilon ~expected:ex ~actual:x in
-      let* () = expect_float_close ~label:(label ^ " y") ~epsilon ~expected:ey ~actual:y in
-      expect_float_close ~label:(label ^ " z") ~epsilon ~expected:ez ~actual:z
+  fun (`xyz (x, y, z)) ->
+    let* () = expect_float_close ~label:(label ^ " x") ~epsilon ~expected:ex ~actual:x in
+    let* () = expect_float_close ~label:(label ^ " y") ~epsilon ~expected:ey ~actual:y in
+    expect_float_close ~label:(label ^ " z") ~epsilon ~expected:ez ~actual:z
 
 let expect_luv_close = fun ~label ~epsilon ~expected:(el, eu, ev) ->
-  function
-  | `luv (l, u, v) ->
-      let* () = expect_float_close ~label:(label ^ " l") ~epsilon ~expected:el ~actual:l in
-      let* () = expect_float_close ~label:(label ^ " u") ~epsilon ~expected:eu ~actual:u in
-      expect_float_close ~label:(label ^ " v") ~epsilon ~expected:ev ~actual:v
+  fun (`luv (l, u, v)) ->
+    let* () = expect_float_close ~label:(label ^ " l") ~epsilon ~expected:el ~actual:l in
+    let* () = expect_float_close ~label:(label ^ " u") ~epsilon ~expected:eu ~actual:u in
+    expect_float_close ~label:(label ^ " v") ~epsilon ~expected:ev ~actual:v
 
 let expect_uv_close = fun ~label ~epsilon ~expected:(eu, ev) ->
-  function
-  | `uv (u, v) ->
-      let* () = expect_float_close ~label:(label ^ " u") ~epsilon ~expected:eu ~actual:u in
-      expect_float_close ~label:(label ^ " v") ~epsilon ~expected:ev ~actual:v
+  fun (`uv (u, v)) ->
+    let* () = expect_float_close ~label:(label ^ " u") ~epsilon ~expected:eu ~actual:u in
+    expect_float_close ~label:(label ^ " v") ~epsilon ~expected:ev ~actual:v
 
 let expect_xyz_finite = fun ~label ->
-  function
-  | `xyz (x, y, z) ->
-      let* () = expect_finite ~label:(label ^ " x") x in
-      let* () = expect_finite ~label:(label ^ " y") y in
-      expect_finite ~label:(label ^ " z") z
+  fun (`xyz (x, y, z)) ->
+    let* () = expect_finite ~label:(label ^ " x") x in
+    let* () = expect_finite ~label:(label ^ " y") y in
+    expect_finite ~label:(label ^ " z") z
 
 let expect_luv_finite = fun ~label ->
-  function
-  | `luv (l, u, v) ->
-      let* () = expect_finite ~label:(label ^ " l") l in
-      let* () = expect_finite ~label:(label ^ " u") u in
-      expect_finite ~label:(label ^ " v") v
+  fun (`luv (l, u, v)) ->
+    let* () = expect_finite ~label:(label ^ " l") l in
+    let* () = expect_finite ~label:(label ^ " u") u in
+    expect_finite ~label:(label ^ " v") v
 
-let rgb_tuple_of = function
-  | `rgb (red, green, blue) -> (red, green, blue)
+let rgb_tuple_of = fun (`rgb (red, green, blue)) -> (red, green, blue)
 
 let linearize_channel = fun channel ->
   match Linear_RGB.linearize (`rgb (channel, channel, channel)) with

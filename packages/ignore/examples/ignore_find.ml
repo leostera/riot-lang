@@ -23,32 +23,30 @@ let print_usage = fun () ->
   eprintln "defaults: hidden, .ignore, .gitignore"
 
 let rec parse_args = fun config ->
-  function
-  | [] ->
-      Config config
-  | "--count-only" :: rest ->
-      parse_args { config with count_only = true } rest
-  | "--concurrency" :: value :: rest -> (
-      match Int.parse value with
-      | Some concurrency -> parse_args { config with concurrency = Int.max 1 concurrency } rest
-      | None -> Help
-    )
-  | "--repeat" :: value :: rest -> (
-      match Int.parse value with
-      | Some repeat -> parse_args { config with repeat = Int.max 1 repeat } rest
-      | None -> Help
-    )
-  | "--help" :: _
-  | "-h" :: _ ->
-      Help
-  | root :: rest ->
-      let roots =
-        if config.roots = default_config.roots then
-          [ Path.v root ]
-        else
-          config.roots @ [ Path.v root ]
-      in
-      parse_args { config with roots } rest
+  fun __tmp1 ->
+    match __tmp1 with
+    | [] -> Config config
+    | "--count-only" :: rest -> parse_args { config with count_only = true } rest
+    | "--concurrency" :: value :: rest -> (
+        match Int.parse value with
+        | Some concurrency -> parse_args { config with concurrency = Int.max 1 concurrency } rest
+        | None -> Help
+      )
+    | "--repeat" :: value :: rest -> (
+        match Int.parse value with
+        | Some repeat -> parse_args { config with repeat = Int.max 1 repeat } rest
+        | None -> Help
+      )
+    | "--help" :: _
+    | "-h" :: _ -> Help
+    | root :: rest ->
+        let roots =
+          if config.roots = default_config.roots then
+            [ Path.v root ]
+          else
+            config.roots @ [ Path.v root ]
+        in
+        parse_args { config with roots } rest
 
 let render_error = fun value ->
   match value with
@@ -108,7 +106,8 @@ let main ~args =
           Ok ()
       | Ok walker ->
           run_repeated config walker config.repeat 0
-          |> function
+          |> fun __tmp1 ->
+            match __tmp1 with
             | Error err ->
                 eprintln (render_error err);
                 Ok ()

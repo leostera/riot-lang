@@ -936,20 +936,26 @@ and signature_item_kind =
   | External of external_declaration
   (** Exception declaration. *)
   | Exception of exception_declaration
-(** Complete typed source file. *)
-type t = {
+(** Typed implementation file. *)
+type implementation = {
   (** Source origin for the file root. *)
   origin: origin;
-  (** File body. *)
-  kind: source_file_kind;
+  (** Structure items in source order. *)
+  items: structure_item list;
 }
-
-(** Source file body. *)
-and source_file_kind =
+(** Typed interface file. *)
+type interface = {
+  (** Source origin for the file root. *)
+  origin: origin;
+  (** Signature items in source order. *)
+  items: signature_item list;
+}
+(** Complete typed source file. *)
+type t =
   (** Implementation with structure items. *)
-  | Implementation of structure_item list
+  | Implementation of implementation
   (** Interface with signature items. *)
-  | Interface of signature_item list
+  | Interface of interface
 
 (** Return the source origin of a type expression. *)
 val core_type_origin: core_type -> origin

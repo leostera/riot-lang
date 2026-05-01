@@ -80,14 +80,14 @@ let parse_pre_release_segment = fun s ->
 let parse_pre_release_identifiers = fun s ->
   let segments = split_on_char '.' s in
   let rec parse_all = fun acc ->
-    function
-    | [] ->
-        Ok (List.reverse acc)
-    | seg :: rest -> (
-        match parse_pre_release_segment seg with
-        | Ok segment -> parse_all (segment :: acc) rest
-        | Error e -> Error e
-      )
+    fun __tmp1 ->
+      match __tmp1 with
+      | [] -> Ok (List.reverse acc)
+      | seg :: rest -> (
+          match parse_pre_release_segment seg with
+          | Ok segment -> parse_all (segment :: acc) rest
+          | Error e -> Error e
+        )
   in
   parse_all [] segments
 
@@ -152,7 +152,8 @@ let parse = fun version_string ->
 
 (* Conversion *)
 
-let pre_release_segment_to_string = function
+let pre_release_segment_to_string = fun __tmp1 ->
+  match __tmp1 with
   | Numeric n -> Int.to_string n
   | Alphanumeric s -> s
 
@@ -169,7 +170,8 @@ let to_string = fun v ->
   | None -> with_pre
   | Some build -> with_pre ^ "+" ^ build
 
-let requirement_op_to_string = function
+let requirement_op_to_string = fun __tmp1 ->
+  match __tmp1 with
   | ReqEq -> "=="
   | ReqNeq -> "!="
   | ReqGt -> ">"
@@ -305,13 +307,15 @@ let parse_requirement = fun req_string ->
 
 let any = Any
 
-let requirement_to_string = function
+let requirement_to_string = fun __tmp1 ->
+  match __tmp1 with
   | Any -> "*"
   | Requirement (op, version) -> requirement_op_to_string op ^ " " ^ to_string version
   | PrefixMajor major -> Int.to_string major
   | PrefixMinor (major, minor) -> Int.to_string major ^ "." ^ Int.to_string minor
 
-let view_requirement = function
+let view_requirement = fun __tmp1 ->
+  match __tmp1 with
   | Any -> AnyRequirement
   | PrefixMajor major -> PrefixMajorRequirement major
   | PrefixMinor (major, minor) -> PrefixMinorRequirement (major, minor)

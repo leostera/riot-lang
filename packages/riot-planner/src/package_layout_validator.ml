@@ -229,7 +229,8 @@ let validate_target_source = fun
                           ~target_name
                           ~source:(
                             node.value.file
-                            |> function
+                            |> fun __tmp1 ->
+                              match __tmp1 with
                               | Module_node.Concrete path -> path
                               | Module_node.Generated { path; _ } -> path
                           )
@@ -264,7 +265,8 @@ let validate_target_source = fun
                               ~target_name
                               ~source:(
                                 node.value.file
-                                |> function
+                                |> fun __tmp1 ->
+                                  match __tmp1 with
                                   | Module_node.Concrete path -> path
                                   | Module_node.Generated { path; _ } -> path
                               )

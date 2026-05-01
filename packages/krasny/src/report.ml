@@ -37,17 +37,18 @@ let file_result_to_json = fun ~root (result: Runner.file_result) ->
     | None -> Null);
   ]
 
-let summary_to_json = fun (summary: Runner.summary) -> let open Data.Json in
-Object [
-  ("total_files", Int summary.total_files);
-  ("already_formatted", Int summary.already_formatted);
-  ("needs_formatting", Int summary.needs_formatting);
-  ("would_reformat", Int summary.would_reformat);
-  ("unsafe_to_format", Int summary.unsafe_to_format);
-  ("formatted_files", Int summary.formatted_files);
-  ("failed_files", Int summary.failed_files);
-  ("duration_secs", Float (Time.Duration.to_secs_float summary.duration));
-]
+let summary_to_json = fun (summary: Runner.summary) ->
+  let open Data.Json in
+  Object [
+    ("total_files", Int summary.total_files);
+    ("already_formatted", Int summary.already_formatted);
+    ("needs_formatting", Int summary.needs_formatting);
+    ("would_reformat", Int summary.would_reformat);
+    ("unsafe_to_format", Int summary.unsafe_to_format);
+    ("formatted_files", Int summary.formatted_files);
+    ("failed_files", Int summary.failed_files);
+    ("duration_secs", Float (Time.Duration.to_secs_float summary.duration));
+  ]
 
 let timestamp_field = fun () -> (
   "timestamp",
@@ -58,31 +59,32 @@ let timestamp_field = fun () -> (
 )
 
 let event_to_json = fun ~root ->
-  function
-  | Start { mode; concurrency } ->
-      Data.Json.Object [
-        timestamp_field ();
-        ("type", Data.Json.String "start");
-        ("mode", Data.Json.String (
-          match mode with
-          | Runner.Check -> "check"
-          | Runner.Verify -> "verify"
-          | Runner.Format -> "format"
-        ));
-        ("concurrency", Data.Json.Int concurrency);
-      ]
-  | File result -> (
-      match file_result_to_json ~root result with
-      | Data.Json.Object fields ->
-          Data.Json.Object (timestamp_field () :: ("type", Data.Json.String "file") :: fields)
-      | _ -> panic "expected JSON object"
-    )
-  | Summary summary -> (
-      match summary_to_json summary with
-      | Data.Json.Object fields ->
-          Data.Json.Object (timestamp_field () :: ("type", Data.Json.String "summary") :: fields)
-      | _ -> panic "expected JSON object"
-    )
+  fun __tmp1 ->
+    match __tmp1 with
+    | Start { mode; concurrency } ->
+        Data.Json.Object [
+          timestamp_field ();
+          ("type", Data.Json.String "start");
+          ("mode", Data.Json.String (
+            match mode with
+            | Runner.Check -> "check"
+            | Runner.Verify -> "verify"
+            | Runner.Format -> "format"
+          ));
+          ("concurrency", Data.Json.Int concurrency);
+        ]
+    | File result -> (
+        match file_result_to_json ~root result with
+        | Data.Json.Object fields ->
+            Data.Json.Object (timestamp_field () :: ("type", Data.Json.String "file") :: fields)
+        | _ -> panic "expected JSON object"
+      )
+    | Summary summary -> (
+        match summary_to_json summary with
+        | Data.Json.Object fields ->
+            Data.Json.Object (timestamp_field () :: ("type", Data.Json.String "summary") :: fields)
+        | _ -> panic "expected JSON object"
+      )
 
 let write_line = fun ~writer line ->
   let buffer = IO.Buffer.from_string (line ^ "\n") in

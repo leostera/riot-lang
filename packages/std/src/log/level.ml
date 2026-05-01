@@ -8,14 +8,16 @@ type t =
   | Warn
   | Error
 
-let to_int = function
+let to_int = fun __tmp1 ->
+  match __tmp1 with
   | Trace -> 0
   | Debug -> 1
   | Info -> 2
   | Warn -> 3
   | Error -> 4
 
-let to_string = function
+let to_string = fun __tmp1 ->
+  match __tmp1 with
   | Trace -> "TRACE"
   | Debug -> "DEBUG"
   | Info -> "INFO"

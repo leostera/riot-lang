@@ -10,7 +10,8 @@ let with_tempdir = fun prefix fn ->
   | Error err -> Error (IO.error_message err)
 
 let find_index = fun items ~f ->
-  let rec loop idx = function
+  let rec loop idx = fun __tmp1 ->
+    match __tmp1 with
     | [] -> None
     | item :: rest ->
         if f item then
@@ -83,7 +84,8 @@ let compare_labeled_sets = fun labeled_sets ->
   match labeled_sets with
   | [] -> Ok ()
   | (baseline_label, baseline) :: rest ->
-      let rec loop = function
+      let rec loop = fun __tmp1 ->
+        match __tmp1 with
         | [] -> Ok ()
         | (label, paths) :: remaining ->
             if baseline = paths then
@@ -214,11 +216,10 @@ let tests = [
             |> Fs.Walker.into_iter
             |> Iter.Iterator.to_list
             |> List.filter_map
-              ~fn:(
-                function
+              ~fn:(fun __tmp1 ->
+                match __tmp1 with
                 | Ok (entry: Fs.Walker.FileItem.t) -> Some (Fs.Walker.FileItem.path_string entry)
-                | Error _ -> None
-              )
+                | Error _ -> None)
           in
           let file_index =
             find_index entries ~f:(String.equal (Path.to_string nested_file))
@@ -316,7 +317,8 @@ let tests = [
     (fun _ctx ->
       let* packages_root = find_packages_root () in
       let configs = [ ("sort=true", true); ("sort=false", false); ] in
-      let rec collect acc = function
+      let rec collect acc = fun __tmp1 ->
+        match __tmp1 with
         | [] -> Ok (List.reverse acc)
         | (label, sort) :: rest ->
             let* paths = collect_file_paths ~root:packages_root ~sort in

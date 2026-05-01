@@ -178,25 +178,22 @@ let rank_encode =
     [
       Ser.Variant.unit
         "Captain"
-        (
-          function
+        (fun __tmp1 ->
+          match __tmp1 with
           | Captain -> true
-          | _ -> false
-        );
+          | _ -> false);
       Ser.Variant.unit
         "Doctor"
-        (
-          function
+        (fun __tmp1 ->
+          match __tmp1 with
           | Doctor -> true
-          | _ -> false
-        );
+          | _ -> false);
       Ser.Variant.unit
         "Navigator"
-        (
-          function
+        (fun __tmp1 ->
+          match __tmp1 with
           | Navigator -> true
-          | _ -> false
-        );
+          | _ -> false);
     ]
 
 let companion_decode =
@@ -211,19 +208,17 @@ let companion_encode =
     [
       Ser.Variant.unit
         "NewsCoo"
-        (
-          function
+        (fun __tmp1 ->
+          match __tmp1 with
           | NewsCoo -> true
-          | _ -> false
-        );
+          | _ -> false);
       Ser.Variant.newtype
         "Reindeer"
         Ser.string
-        (
-          function
+        (fun __tmp1 ->
+          match __tmp1 with
           | Reindeer value -> Some value
-          | _ -> None
-        );
+          | _ -> None);
     ]
 
 let berth_decode =
@@ -409,10 +404,8 @@ let tags_of_count = fun count ->
 
 let scores_of_count = fun count -> Array.init ~count ~fn:(fun index -> (index * 97) mod 1_000_000)
 
-let stop_of_index = fun index prefix -> ({
-  island = prefix ^ "-island-" ^ Int.to_string index;
-  supplies = (index * 17) mod 10_000;
-}: stop)
+let stop_of_index = fun index prefix ->
+  ({ island = prefix ^ "-island-" ^ Int.to_string index; supplies = (index * 17) mod 10_000 }: stop)
 
 let stops_vec_of_count = fun count prefix ->
   let stops = Vector.with_capacity ~size:count in

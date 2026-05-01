@@ -67,7 +67,8 @@ let json_array = Data.Json.array
 
 let version_to_json = fun version -> json_string (Version.to_string version)
 
-let bound_to_json = function
+let bound_to_json = fun __tmp1 ->
+  match __tmp1 with
   | Ranges.Unbounded -> json_obj [ ("kind", json_string "unbounded"); ]
   | Ranges.Included version ->
       json_obj [ ("kind", json_string "included"); ("version", version_to_json version); ]
@@ -107,7 +108,8 @@ let solution_to_json = fun solution ->
         [ ("package", json_string package); ("version", version_to_json version); ])
   |> json_array
 
-let event_to_json = function
+let event_to_json = fun __tmp1 ->
+  match __tmp1 with
   | Iteration { iteration; next_package } ->
       json_obj
         [

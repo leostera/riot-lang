@@ -41,7 +41,8 @@ let basename_is_hidden = fun entry ->
   String.length name > 0 && Char.equal (String.get_unchecked name ~at:0) '.'
 
 let trim_frames = fun frames depth ->
-  let rec loop index = function
+  let rec loop index = fun __tmp1 ->
+    match __tmp1 with
     | [] -> []
     | frame :: rest ->
         if index < depth then
@@ -73,7 +74,8 @@ let load_ignore_file = fun path ->
 
 let load_frame = fun config entry ->
   let dir = Fs.Walker.FileItem.path entry in
-  let rec load_custom acc = function
+  let rec load_custom acc = fun __tmp1 ->
+    match __tmp1 with
     | [] -> Ok (List.reverse acc)
     | name :: rest ->
         let path = Path.(dir / Path.v name) in
@@ -114,10 +116,12 @@ let match_across_frames = fun config frames path ~is_dir ->
       | frame :: _ -> [ frame ]
   in
   let rec match_group getter =
-    let rec find_in_frames = function
+    let rec find_in_frames = fun __tmp1 ->
+      match __tmp1 with
       | [] -> Match.None_
       | frame :: rest ->
-          let rec find_in_matchers = function
+          let rec find_in_matchers = fun __tmp1 ->
+            match __tmp1 with
             | [] -> find_in_frames rest
             | matcher :: matchers ->
                 let match_ = Gitignore.matched matcher ~path ~is_dir in
@@ -428,7 +432,8 @@ let process_directory_task = fun config task f ->
   match read_child_entries config task.dir with
   | Error err -> Error err
   | Ok entries ->
-      let rec loop child_tasks = function
+      let rec loop child_tasks = fun __tmp1 ->
+        match __tmp1 with
         | [] -> Ok { child_tasks = List.reverse child_tasks; stop = false }
         | entry :: rest ->
             match decision_for_entry config task.frames entry with

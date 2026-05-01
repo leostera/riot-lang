@@ -66,11 +66,10 @@ let spawn_connection = fun (Config { driver; driver_config; _ }) ->
 let find_available = fun connections ->
   List.find
     (Cell.get connections)
-    ~fn:(
-      function
+    ~fn:(fun __tmp1 ->
+      match __tmp1 with
       | Available _ -> true
-      | _ -> false
-    )
+      | _ -> false)
 
 let mark_in_use = fun connections conn requester ->
   Cell.set
@@ -78,12 +77,11 @@ let mark_in_use = fun connections conn requester ->
     (
       List.map
         (Cell.get connections)
-        ~fn:(
-          function
+        ~fn:(fun __tmp1 ->
+          match __tmp1 with
           | Available c when Connection.id c = Connection.id conn ->
               InUse (c, requester, Time.Instant.now ())
-          | other -> other
-        )
+          | other -> other)
     )
 
 let mark_available = fun connections conn ->
@@ -92,11 +90,10 @@ let mark_available = fun connections conn ->
     (
       List.map
         (Cell.get connections)
-        ~fn:(
-          function
+        ~fn:(fun __tmp1 ->
+          match __tmp1 with
           | InUse (c, _, _) when Connection.id c = Connection.id conn -> Available c
-          | other -> other
-        )
+          | other -> other)
     )
 
 let handle_acquire = fun state requester ->
@@ -130,8 +127,8 @@ let check_connections = fun state ->
   let updated =
     List.filter_map
       (Cell.get state.connections)
-      ~fn:(
-        function
+      ~fn:(fun __tmp1 ->
+        match __tmp1 with
         | Available conn ->
             let age = Time.Instant.duration_since ~earlier:(Connection.created_at conn) now in
             let idle = Time.Instant.duration_since ~earlier:(Connection.last_used conn) now in
@@ -147,8 +144,7 @@ let check_connections = fun state ->
                 Some (Available conn)
             else
               Some (Available conn)
-        | InUse _ as conn -> Some conn
-      )
+        | InUse _ as conn -> Some conn)
   in
   Cell.set state.connections updated;
   let total = List.length (Cell.get state.connections) in
@@ -166,9 +162,10 @@ let get_stats = fun state ->
       (Cell.get state.connections)
       ~init:0
       ~fn:(fun acc ->
-        function
-        | Available _ -> acc + 1
-        | _ -> acc)
+        fun __tmp1 ->
+          match __tmp1 with
+          | Available _ -> acc + 1
+          | _ -> acc)
   in
   let in_use = total - available in
   let waiting = Queue.length state.waiting in
@@ -227,11 +224,7 @@ let pool_supervisor = fun
     | Shutdown ->
         List.for_each
           (Cell.get state.connections)
-          ~fn:(
-            function
-            | Available conn
-            | InUse (conn, _, _) -> Connection.close conn
-          );
+          ~fn:(fun (Available conn | InUse (conn, _, _)) -> Connection.close conn);
         ()
   in
   loop ()

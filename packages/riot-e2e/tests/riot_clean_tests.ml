@@ -21,9 +21,9 @@ let nonempty_lines = fun text ->
   |> List.filter ~fn:(fun line -> not (String.equal line ""))
 
 let parse_json_lines = fun ~cmd (output: command_output) ->
-  let rec loop acc = function
-    | [] ->
-        Ok (List.reverse acc)
+  let rec loop acc = fun __tmp1 ->
+    match __tmp1 with
+    | [] -> Ok (List.reverse acc)
     | line :: rest -> (
         match Data.Json.of_string line with
         | Ok json -> loop (json :: acc) rest

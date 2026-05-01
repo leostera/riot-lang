@@ -122,35 +122,31 @@ let mode_encode =
     [
       Ser.Variant.unit
         "Idle"
-        (
-          function
+        (fun __tmp1 ->
+          match __tmp1 with
           | Idle -> true
-          | _ -> false
-        );
+          | _ -> false);
       Ser.Variant.newtype
         "Named"
         Ser.string
-        (
-          function
+        (fun __tmp1 ->
+          match __tmp1 with
           | Named value -> Some value
-          | _ -> None
-        );
+          | _ -> None);
       Ser.Variant.newtype
         "Counted"
         Ser.int
-        (
-          function
+        (fun __tmp1 ->
+          match __tmp1 with
           | Counted value -> Some value
-          | _ -> None
-        );
+          | _ -> None);
       Ser.Variant.newtype
         "Sampled"
         Ser.float
-        (
-          function
+        (fun __tmp1 ->
+          match __tmp1 with
           | Sampled value -> Some value
-          | _ -> None
-        );
+          | _ -> None);
     ]
 
 let pet_decode =
@@ -165,19 +161,17 @@ let pet_encode =
     [
       Ser.Variant.unit
         "Cat"
-        (
-          function
+        (fun __tmp1 ->
+          match __tmp1 with
           | Cat -> true
-          | _ -> false
-        );
+          | _ -> false);
       Ser.Variant.newtype
         "Dog"
         Ser.string
-        (
-          function
+        (fun __tmp1 ->
+          match __tmp1 with
           | Dog value -> Some value
-          | _ -> None
-        );
+          | _ -> None);
     ]
 
 let sample_decode =
@@ -305,13 +299,15 @@ let equal_sample = fun (left: sample) (right: sample) ->
   && equal_string_vec left.tags right.tags
   && left.scores = right.scores
 
-let print_mode = function
+let print_mode = fun __tmp1 ->
+  match __tmp1 with
   | Idle -> "Idle"
   | Named value -> "Named " ^ Printer.string value
   | Counted value -> "Counted " ^ Printer.int value
   | Sampled value -> "Sampled " ^ Printer.float value
 
-let print_pet = function
+let print_pet = fun __tmp1 ->
+  match __tmp1 with
   | Cat -> "Cat"
   | Dog value -> "Dog " ^ Printer.string value
 
@@ -366,8 +362,8 @@ let pet_arb = Arbitrary.make ~print:print_pet pet_gen
 
 let sample_gen =
   Generator.map3
-    (fun (((ready, count), small), (big, ratio)) (label, alias, tags) (scores, pet, mode) -> (
-      {
+    (fun (((ready, count), small), (big, ratio)) (label, alias, tags) (scores, pet, mode) ->
+      ({
         ready;
         count;
         small;
@@ -379,8 +375,7 @@ let sample_gen =
         mode;
         tags;
         scores;
-      }: sample
-    ))
+      }: sample))
     (Generator.pair
       (Generator.pair (Generator.pair Generator.bool Generator.int) Generator.int32)
       (Generator.pair Generator.int64 finite_float_gen))

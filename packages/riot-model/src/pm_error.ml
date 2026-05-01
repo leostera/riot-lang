@@ -77,7 +77,8 @@ let format_required_by = fun { package; path } ->
   | Some path -> "required by package `" ^ package ^ "` (" ^ Path.to_string path ^ ")"
   | None -> "required by package `" ^ package ^ "`"
 
-let rec headline = function
+let rec headline = fun __tmp1 ->
+  match __tmp1 with
   | ManifestReadFailed { manifest_path; error } ->
       "failed to read manifest '" ^ Path.to_string manifest_path ^ "': " ^ error
   | ManifestParseFailed { manifest_path; error } ->
@@ -165,7 +166,8 @@ let rec headline = function
   | ProjectionFailed { error } -> error
   | Unexpected { error } -> error
 
-and detail_lines = function
+and detail_lines = fun __tmp1 ->
+  match __tmp1 with
   | PackageNotFound { required_by = Some required_by; _ } -> [ format_required_by required_by ]
   | RegistryVersionNotFound { available_versions; required_by; _ } ->
       let version_line =
@@ -189,7 +191,8 @@ and message error =
 
 let json_of_path = fun path -> Json.String (Path.to_string path)
 
-let path_of_json = function
+let path_of_json = fun __tmp1 ->
+  match __tmp1 with
   | Json.String path -> (
       match Path.from_string path with
       | Ok path -> Ok path
@@ -205,10 +208,10 @@ let path_of_json = function
           ^ "'")
       | Error (Path.SystemError err) -> Error ("invalid path '" ^ path ^ "': " ^ err)
     )
-  | _ ->
-      Error "expected path string"
+  | _ -> Error "expected path string"
 
-let rec to_json = function
+let rec to_json = fun __tmp1 ->
+  match __tmp1 with
   | ManifestReadFailed { manifest_path; error } ->
       Json.Object [
         ("kind", Json.String "ManifestReadFailed");
@@ -357,7 +360,8 @@ let rec to_json = function
   | Unexpected { error } ->
       Json.Object [ ("kind", Json.String "Unexpected"); ("error", Json.String error); ]
 
-let rec of_json = function
+let rec of_json = fun __tmp1 ->
+  match __tmp1 with
   | Json.Object fields -> (
       match Fields.get "kind" fields with
       | Some (Json.String "ManifestReadFailed") -> (
@@ -551,7 +555,8 @@ let rec of_json = function
               required_by_json_opt
             ) ->
               let available_versions =
-                let rec loop acc = function
+                let rec loop acc = fun __tmp1 ->
+                  match __tmp1 with
                   | [] -> Ok (List.reverse acc)
                   | (Json.String version) :: rest -> loop (version :: acc) rest
                   | _ -> Error "invalid RegistryVersionNotFound.available_versions"
@@ -635,5 +640,4 @@ let rec of_json = function
       | Some (Json.String kind) -> Error ("unknown pm error kind '" ^ kind ^ "'")
       | _ -> Error "pm error is missing kind"
     )
-  | _ ->
-      Error "pm error must be a table"
+  | _ -> Error "pm error must be a table"

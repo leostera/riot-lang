@@ -137,14 +137,15 @@ let run_files = fun ?pipeline ?pipeline_for_file ~mode files ->
   let results = List.map files ~fn:(run_file ?pipeline ?pipeline_for_file ~mode) in
   { files = results; summary = summarize results }
 
-let summary_to_json = fun summary -> let open Data.Json in
-Object [
-  ("total_files", Int summary.total_files);
-  ("changed_files", Int summary.changed_files);
-  ("remaining_diagnostics", Int summary.remaining_diagnostics);
-  ("applied_fixes", Int summary.applied_fixes);
-  ("failed_files", Int summary.failed_files);
-]
+let summary_to_json = fun summary ->
+  let open Data.Json in
+  Object [
+    ("total_files", Int summary.total_files);
+    ("changed_files", Int summary.changed_files);
+    ("remaining_diagnostics", Int summary.remaining_diagnostics);
+    ("applied_fixes", Int summary.applied_fixes);
+    ("failed_files", Int summary.failed_files);
+  ]
 
 let file_result_to_json = fun result ->
   let open Data.Json in
@@ -159,8 +160,9 @@ let file_result_to_json = fun result ->
     ("diagnostics", Array (List.map result.diagnostics ~fn:Diagnostic.to_json));
   ]
 
-let run_result_to_json = fun result -> let open Data.Json in
-Object [
-  ("summary", summary_to_json result.summary);
-  ("files", Array (List.map result.files ~fn:file_result_to_json));
-]
+let run_result_to_json = fun result ->
+  let open Data.Json in
+  Object [
+    ("summary", summary_to_json result.summary);
+    ("files", Array (List.map result.files ~fn:file_result_to_json));
+  ]

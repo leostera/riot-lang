@@ -21,7 +21,8 @@ type error =
   | InvalidClosePayload of Frame.close_payload_error
   | InvalidTextPayloadUtf8 of { payload_length: int }
 
-let error_to_string = function
+let error_to_string = fun __tmp1 ->
+  match __tmp1 with
   | MaskGenerationFailed error ->
       "Failed to generate WebSocket mask: " ^ Random.error_to_string error
   | ClientFrameNotMasked -> "WebSocket client frames must be masked"
@@ -40,7 +41,8 @@ let error_to_string = function
   | InvalidTextPayloadUtf8 { payload_length } ->
       "WebSocket text frame payload is not valid UTF-8, length " ^ Int.to_string payload_length
 
-let is_control_opcode = function
+let is_control_opcode = fun __tmp1 ->
+  match __tmp1 with
   | Frame.Close
   | Frame.Ping
   | Frame.Pong -> true

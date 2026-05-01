@@ -40,17 +40,18 @@ let command =
       |> help "Disable docs cache read/write";
     ]
 
-let build_request = fun ~workspace matches -> ({
-  workspace;
-  package_name = ArgParser.get_one matches "package";
-  all = ArgParser.get_flag matches "all";
-  release = ArgParser.get_flag matches "release";
-  output_root =
-    ArgParser.get_one matches "output"
-    |> Option.map ~fn:Path.v;
-  force = ArgParser.get_flag matches "force";
-  no_cache = ArgParser.get_flag matches "no-cache";
-}: Riot_doc.request)
+let build_request = fun ~workspace matches ->
+  ({
+    workspace;
+    package_name = ArgParser.get_one matches "package";
+    all = ArgParser.get_flag matches "all";
+    release = ArgParser.get_flag matches "release";
+    output_root =
+      ArgParser.get_one matches "output"
+      |> Option.map ~fn:Path.v;
+    force = ArgParser.get_flag matches "force";
+    no_cache = ArgParser.get_flag matches "no-cache";
+  }: Riot_doc.request)
 
 let display_path = fun ~workspace_root path ->
   match Path.strip_prefix path ~prefix:workspace_root with

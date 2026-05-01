@@ -14,15 +14,18 @@ let error = fun message -> raise (Serde.Decode_error (`Msg message))
 
 let invalid_field_type = fun kind -> error ("unexpected CBOR value while decoding " ^ kind)
 
-let expect_map = function
+let expect_map = fun __tmp1 ->
+  match __tmp1 with
   | Cbor_value.Map items -> items
   | _ -> invalid_field_type "map"
 
-let expect_array = function
+let expect_array = fun __tmp1 ->
+  match __tmp1 with
   | Cbor_value.Array items -> items
   | _ -> invalid_field_type "array"
 
-let expect_int64 = function
+let expect_int64 = fun __tmp1 ->
+  match __tmp1 with
   | Cbor_value.Int value -> value
   | _ -> invalid_field_type "integer"
 
@@ -58,7 +61,8 @@ let int32_of_int64 = fun value ->
   else
     Int64.to_int32 value
 
-let map_singleton = function
+let map_singleton = fun __tmp1 ->
+  match __tmp1 with
   | [ (key, value) ] -> Some (key, value)
   | _ -> None
 
@@ -83,8 +87,8 @@ and array_backend: 'value. state -> 'value De.t -> 'value array = fun state deco
   let items = ref [] in
   List.for_each
     values
-    ~fn:(fun value -> items := with_current state value (fun () -> decode.run backend state)
-    :: !items);
+    ~fn:(fun value ->
+      items := with_current state value (fun () -> decode.run backend state) :: !items);
   Array.from_list (List.rev !items)
 
 and record_backend:

@@ -54,7 +54,8 @@ let run_comparison = fun index (module R : Reporter.Intf.Intf) (comp: Bench_comp
   R.on_comparison_start index comp.description (List.length comp.cases);
   (* Run each case and collect results *)
   let case_results =
-    let rec loop i acc = function
+    let rec loop i acc = fun __tmp1 ->
+      match __tmp1 with
       | [] -> List.reverse acc
       | (case: Bench_case.t) :: rest ->
           if not case.skip then

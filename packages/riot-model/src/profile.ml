@@ -216,11 +216,10 @@ let override_from_toml: (string * Std.Data.Toml.value) list -> profile_override 
     | Some (Array arr) ->
         Override (
           List.filter_map
-            ~fn:(
-              function
+            ~fn:(fun __tmp1 ->
+              match __tmp1 with
               | String s -> Some s
-              | _ -> None
-            )
+              | _ -> None)
             arr
         )
     | _ -> Inherit
@@ -267,11 +266,10 @@ let from_toml: (string * Std.Data.Toml.value) list -> base:t -> t = fun table_it
     match Fields.get key table_items with
     | Some (Array arr) ->
         List.filter_map
-          ~fn:(
-            function
+          ~fn:(fun __tmp1 ->
+            match __tmp1 with
             | String s -> Some s
-            | _ -> None
-          )
+            | _ -> None)
           arr
     | _ -> base.open_modules
   in
@@ -311,11 +309,10 @@ let from_toml: (string * Std.Data.Toml.value) list -> base:t -> t = fun table_it
         match Fields.get "cc_flags" table_items with
         | Some (Array arr) ->
             List.filter_map
-              ~fn:(
-                function
+              ~fn:(fun __tmp1 ->
+                match __tmp1 with
                 | String s -> Some s
-                | _ -> None
-              )
+                | _ -> None)
               arr
         | _ -> base.cc_flags
       );
@@ -324,11 +321,10 @@ let from_toml: (string * Std.Data.Toml.value) list -> base:t -> t = fun table_it
         match Fields.get "ld_flags" table_items with
         | Some (Array arr) ->
             List.filter_map
-              ~fn:(
-                function
+              ~fn:(fun __tmp1 ->
+                match __tmp1 with
                 | String s -> Some s
-                | _ -> None
-              )
+                | _ -> None)
               arr
         | _ -> base.ld_flags
       );
@@ -337,11 +333,10 @@ let from_toml: (string * Std.Data.Toml.value) list -> base:t -> t = fun table_it
         match Fields.get "ocamlc_flags" table_items with
         | Some (Array arr) ->
             List.filter_map
-              ~fn:(
-                function
+              ~fn:(fun __tmp1 ->
+                match __tmp1 with
                 | String s -> Some s
-                | _ -> None
-              )
+                | _ -> None)
               arr
         | _ -> base.ocamlc_flags
       );

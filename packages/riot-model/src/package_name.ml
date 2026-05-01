@@ -8,7 +8,8 @@ type error =
   | TrailingDelimiter of { value: string }
   | InvalidCharacterSet of { value: string }
 
-let error_message = function
+let error_message = fun __tmp1 ->
+  match __tmp1 with
   | Empty -> "Package name cannot be empty"
   | InvalidLeadingCharacter { suggestion; _ } ->
       "Package name must start with a lowercase letter. Try '" ^ suggestion ^ "' instead"

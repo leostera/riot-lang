@@ -131,12 +131,14 @@ let from_list = fun value ->
   match value with
   | [] -> [||]
   | head :: tail ->
-      let rec list_length acc = function
+      let rec list_length acc = fun __tmp1 ->
+        match __tmp1 with
         | [] -> acc
         | _ :: rest -> list_length (acc + 1) rest
       in
       let out = make ~count:(list_length 1 tail) ~value:head in
-      let rec fill index = function
+      let rec fill index = fun __tmp1 ->
+        match __tmp1 with
         | [] -> out
         | value :: rest ->
             set_unchecked out ~at:index ~value;

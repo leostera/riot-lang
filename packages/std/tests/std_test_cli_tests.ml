@@ -160,11 +160,10 @@ let listed_test_fields_from_json = fun stdout ->
   | Some (Data.Json.Array tests) ->
       tests
       |> List.filter_map
-        ~fn:(
-          function
+        ~fn:(fun __tmp1 ->
+          match __tmp1 with
           | Data.Json.Object fields -> Some fields
-          | _ -> None
-        )
+          | _ -> None)
   | _ -> []
 
 let run_sample_capture = fun args ->
@@ -262,11 +261,10 @@ let test_list_tests_respects_filters = fun _ctx ->
       listed_test_fields_from_json output.stdout
       |> List.filter_map ~fn:(assoc_value "name")
       |> List.filter_map
-        ~fn:(
-          function
+        ~fn:(fun __tmp1 ->
+          match __tmp1 with
           | Data.Json.String name -> Some name
-          | _ -> None
-        )
+          | _ -> None)
     in
     if names = [ "flaky_then_ok" ] then
       Ok ()
@@ -292,11 +290,10 @@ let test_list_tests_accepts_ctx_flag = fun _ctx ->
       listed_test_fields_from_json output.stdout
       |> List.filter_map ~fn:(assoc_value "name")
       |> List.filter_map
-        ~fn:(
-          function
+        ~fn:(fun __tmp1 ->
+          match __tmp1 with
           | Data.Json.String name -> Some name
-          | _ -> None
-        )
+          | _ -> None)
     in
     if names = [ "ctx_probe" ] then
       Ok ()
@@ -845,7 +842,8 @@ let failure_sample_main = fun ~args ->
   | _ -> Error (Failure "expected sample-fail subcommand arguments")
 
 let meta_main = fun ~args ->
-  let normalize_args = function
+  let normalize_args = fun __tmp1 ->
+    match __tmp1 with
     | [] -> [ "std_test_cli_tests"; "run-tests" ]
     | [ exe ] -> [ exe; "run-tests" ]
     | args -> args

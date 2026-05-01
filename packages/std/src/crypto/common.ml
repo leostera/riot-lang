@@ -86,11 +86,13 @@ let bytes_of_int64 = fun value ->
 
 let bytes_of_float = fun value -> bytes_of_int64 (int64_bits_of_float value)
 
-let rec list_length = function
+let rec list_length = fun __tmp1 ->
+  match __tmp1 with
   | [] -> 0
   | _ :: tail -> 1 + list_length tail
 
-let rec iter_list f = function
+let rec iter_list f = fun __tmp1 ->
+  match __tmp1 with
   | [] -> ()
   | head :: tail ->
       f head;

@@ -205,7 +205,8 @@ let render_docstring_block = fun ~class_name docstring ->
   | "" -> ""
   | html -> "<div class=\"" ^ class_name ^ "\">" ^ html ^ "</div>\n"
 
-let first_doc_line = function
+let first_doc_line = fun __tmp1 ->
+  match __tmp1 with
   | Some docstring ->
       docstring
       |> String.split ~by:"\n"
@@ -219,7 +220,8 @@ let summary_text = fun ~meta ~signature ~docstring ->
   | _ when not (String.equal meta "") -> meta
   | _ -> signature
 
-let item_kind_name = function
+let item_kind_name = fun __tmp1 ->
+  match __tmp1 with
   | Doctree.Module_item -> "Module"
   | Doctree.Type_item -> "Type"
   | Doctree.Function_item -> "Function"
@@ -385,7 +387,8 @@ let render_module_breadcrumbs = fun package (module_doc: Doctree.module_doc) ->
     ^ escape_html package
     ^ "</a>"
   in
-  let rec loop prefix = function
+  let rec loop prefix = fun __tmp1 ->
+    match __tmp1 with
     | [] -> []
     | [ last ] -> [ escape_html last ]
     | segment :: rest ->

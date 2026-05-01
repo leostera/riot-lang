@@ -26,7 +26,8 @@ let command =
       |> help "Render events as JSON";
     ]
 
-let message = function
+let message = fun __tmp1 ->
+  match __tmp1 with
   | InvalidPackageName error -> Riot_model.Package_name.error_message error
   | UpdateFailed error -> Package_error.message error
 
@@ -39,7 +40,8 @@ let write_event = fun ~mode ~pm_session_id ~seen_registry_updates kind ->
   |> Build.write_pm_event ~mode ~seen_registry_updates
 
 let package_names_of_matches = fun matches ->
-  let rec parse_all acc = function
+  let rec parse_all acc = fun __tmp1 ->
+    match __tmp1 with
     | [] -> Ok (List.reverse acc)
     | package :: rest ->
         let* package =

@@ -69,7 +69,8 @@ let with_tempdir = fun prefix fn ->
   | Ok result -> result
   | Error _ -> Error "Tempdir creation failed"
 
-let path_error_message = function
+let path_error_message = fun __tmp1 ->
+  match __tmp1 with
   | Path.InvalidUtf8 { path } -> "invalid UTF-8 path: " ^ path
   | Path.SystemInvalidUtf8 { syscall; path } ->
       "system call '" ^ syscall ^ "' returned invalid UTF-8 path: " ^ path

@@ -4,11 +4,9 @@ open IO
 type Message.t +=
   | Udp_server_received of string
 
-let string_of_udp_error = function
-  | Net.UdpSocket.System_error err -> IO.error_message err
+let string_of_udp_error = fun (Net.UdpSocket.System_error err) -> IO.error_message err
 
-let string_of_udp_server_error = function
-  | Net.UdpServer.System_error err -> IO.error_message err
+let string_of_udp_server_error = fun (Net.UdpServer.System_error err) -> IO.error_message err
 
 let local_udp_addr = fun port -> Net.Addr.udp Net.Addr.loopback port
 
@@ -63,11 +61,10 @@ let test_udp_server_serves_one_datagram = fun _ctx ->
               Error ("client send_to server failed: " ^ string_of_udp_error err)
           | Ok _ -> (
               match Runtime.receive
-                ~selector:(
-                  function
+                ~selector:(fun __tmp1 ->
+                  match __tmp1 with
                   | Udp_server_received payload -> Select payload
-                  | _ -> Skip
-                )
+                  | _ -> Skip)
                 ~timeout:1.0
                 () with
               | payload when not (String.equal payload "ping") ->

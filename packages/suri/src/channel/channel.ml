@@ -66,9 +66,9 @@ module Handler = struct
       pending_args = args;
     }
 
-  let initialize = function
-    | Ready _ as handler ->
-        Continue handler
+  let initialize = fun __tmp1 ->
+    match __tmp1 with
+    | Ready _ as handler -> Continue handler
     | Pending {
         pending_init;
         pending_handle_frame;
@@ -192,7 +192,8 @@ module Handler = struct
 
     let handle_message = fun _msg state -> Continue state
 
-    let error_to_string = function
+    let error_to_string = fun __tmp1 ->
+      match __tmp1 with
       | InitializationFailed _ -> "WebSocket handler initialization failed"
       | UnknownOpcode code -> "Unknown WebSocket opcode: " ^ Int.to_string code
   end

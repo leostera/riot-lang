@@ -176,7 +176,8 @@ let skipped_reason = fun failed_packages ->
   in
   "needs " ^ String.concat ", " failed_names
 
-let dependency_failed_state = function
+let dependency_failed_state = fun __tmp1 ->
+  match __tmp1 with
   | Finalized {
       detailed_result = {
         result = {

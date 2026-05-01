@@ -9,7 +9,8 @@ type resolve_error =
   | InvalidForwardedIp of { value: string }
   | NoClientIpInForwardedChain
 
-let resolve_error_to_string = function
+let resolve_error_to_string = fun __tmp1 ->
+  match __tmp1 with
   | UntrustedPeer { peer_ip } -> "socket peer is not a trusted proxy: " ^ peer_ip
   | EmptyForwardedFor -> "forwarded IP chain is empty"
   | InvalidForwardedIp { value } -> "forwarded IP chain contains invalid IP literal: " ^ value
@@ -56,7 +57,8 @@ let parse_forwarded_for = fun header_value ->
 (** Find real client IP by walking X-Forwarded-For chain from right to left *)
 let find_real_ip_result = fun proxies forwarded_ips ->
   (* Walk from right to left (closest proxy first) *)
-  let rec walk_chain = function
+  let rec walk_chain = fun __tmp1 ->
+    match __tmp1 with
     | [] -> Error NoClientIpInForwardedChain
     | ip_str :: rest ->
         if not (is_valid_ip_literal ip_str) then

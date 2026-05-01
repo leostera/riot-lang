@@ -18,14 +18,13 @@ type run_context = {
 let sanitize_run_id = fun value ->
   String.map
     value
-    ~fn:(
-      function
+    ~fn:(fun __tmp1 ->
+      match __tmp1 with
       | ':'
       | '/'
       | '\\'
       | ' ' -> '-'
-      | ch -> ch
-    )
+      | ch -> ch)
 
 let run_id_suffix = fun () ->
   let raw = UUID.to_string_nodash (UUID.v7 ()) in
@@ -164,7 +163,8 @@ let field = fun name fields ->
   List.find fields ~fn:(fun (field_name, _) -> String.equal field_name name)
   |> Option.map ~fn:(fun (_, value) -> value)
 
-let rec json_type_name = function
+let rec json_type_name = fun __tmp1 ->
+  match __tmp1 with
   | Data.Json.Null -> "null"
   | Data.Json.Bool _ -> "bool"
   | Data.Json.Int _ -> "int"
@@ -177,28 +177,34 @@ let rec json_type_name = function
 let error_expected = fun expected actual ->
   Error ("expected " ^ expected ^ " but got " ^ json_type_name actual)
 
-let get_object = function
+let get_object = fun __tmp1 ->
+  match __tmp1 with
   | Data.Json.Object fields -> Ok fields
   | other -> error_expected "object" other
 
-let get_string = function
+let get_string = fun __tmp1 ->
+  match __tmp1 with
   | Data.Json.String value -> Ok value
   | other -> error_expected "string" other
 
-let get_bool = function
+let get_bool = fun __tmp1 ->
+  match __tmp1 with
   | Data.Json.Bool value -> Ok value
   | other -> error_expected "bool" other
 
-let get_int = function
+let get_int = fun __tmp1 ->
+  match __tmp1 with
   | Data.Json.Int value -> Ok value
   | other -> error_expected "int" other
 
-let get_float = function
+let get_float = fun __tmp1 ->
+  match __tmp1 with
   | Data.Json.Float value -> Ok value
   | Data.Json.Int value -> Ok (Float.of_int value)
   | other -> error_expected "float" other
 
-let get_array = function
+let get_array = fun __tmp1 ->
+  match __tmp1 with
   | Data.Json.Array values -> Ok values
   | other -> error_expected "array" other
 
@@ -458,7 +464,8 @@ let load_recent_suite_runs = fun context ~package_name ~suite_name ~limit ->
     let* paths =
       list_suite_run_paths ~workspace_root:context.workspace_root ~package_name ~suite_name
     in
-    let rec collect acc remaining = function
+    let rec collect acc remaining = fun __tmp1 ->
+      match __tmp1 with
       | [] -> Ok (List.rev acc)
       | _ when Int.(remaining <= 0) -> Ok (List.rev acc)
       | path :: rest ->

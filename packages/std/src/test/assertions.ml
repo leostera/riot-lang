@@ -8,11 +8,13 @@ let assert_equal = fun ~expected ~actual ->
       ^ " but got "
       ^ (Exception.to_string (Failure "actual")))
 
-let assert_ok = function
+let assert_ok = fun __tmp1 ->
+  match __tmp1 with
   | Ok _ -> ()
   | Error _ -> panic "Expected Ok but got Error"
 
-let assert_error = function
+let assert_error = fun __tmp1 ->
+  match __tmp1 with
   | Ok _ -> panic "Expected Error but got Ok"
   | Error _ -> ()
 

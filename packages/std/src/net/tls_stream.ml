@@ -24,7 +24,8 @@ type state =
   | Eof
   | Failed of exn
 
-let io_error_from_tls_error = function
+let io_error_from_tls_error = fun __tmp1 ->
+  match __tmp1 with
   | Closed -> IO.Closed
   | Handshake_failed message -> IO.Unknown_error ("tls handshake failed: " ^ message)
   | System_error error -> error

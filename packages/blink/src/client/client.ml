@@ -563,13 +563,12 @@ module SSE = struct
             | Ok messages ->
                 List.for_each
                   messages
-                  ~fn:(
-                    function
+                  ~fn:(fun __tmp1 ->
+                    match __tmp1 with
                     | Connection.Data chunk -> state.buffer <- state.buffer ^ chunk
                     | Connection.Done -> state.done_ <- true
                     | Connection.Status _
-                    | Connection.Headers _ -> ()
-                  );
+                    | Connection.Headers _ -> ());
                 if state.done_ && String.equal state.buffer "" then
                   None
                 else

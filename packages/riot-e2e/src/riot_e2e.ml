@@ -5,8 +5,7 @@ module Test = Std.Test
 
 type command_output = Command.output
 
-let command_error_message = function
-  | Command.SystemError message -> message
+let command_error_message = fun (Command.SystemError message) -> message
 
 let render_output = fun (output: command_output) ->
   let stdout =

@@ -34,7 +34,8 @@ let spec =
         ~default:[];
     ])
 
-let parse_format = function
+let parse_format = fun __tmp1 ->
+  match __tmp1 with
   | "full" -> Full
   | "compact" -> Compact
   | _ -> Full

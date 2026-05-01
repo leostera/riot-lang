@@ -113,7 +113,8 @@ let assert_ranges_equal = fun ~expected ~actual ~message ->
     Error message
 
 let assert_range_membership = fun ~present ~absent ranges ->
-  let rec check_present = function
+  let rec check_present = fun __tmp1 ->
+    match __tmp1 with
     | [] -> Ok ()
     | version :: rest ->
         if Pubgrub.Ranges.contains ~compare_v:Pubgrub.version_compare ranges version then
@@ -121,7 +122,8 @@ let assert_range_membership = fun ~present ~absent ranges ->
         else
           Error ("Expected range to contain " ^ Pubgrub.version_to_string version)
   in
-  let rec check_absent = function
+  let rec check_absent = fun __tmp1 ->
+    match __tmp1 with
     | [] -> Ok ()
     | version :: rest ->
         if Pubgrub.Ranges.contains ~compare_v:Pubgrub.version_compare ranges version then
@@ -337,20 +339,23 @@ let fuzz_package_names = [ "alpha"; "beta"; "gamma" ]
 
 let fuzz_version_indices = [ 0; 1; 2 ]
 
-let rec int_list_to_string = function
+let rec int_list_to_string = fun __tmp1 ->
+  match __tmp1 with
   | [] -> ""
   | [ value ] -> Int.to_string value
   | value :: rest -> Int.to_string value ^ "," ^ int_list_to_string rest
 
 let rec string_member = fun target ->
-  function
-  | [] -> false
-  | head :: rest -> String.equal target head || string_member target rest
+  fun __tmp1 ->
+    match __tmp1 with
+    | [] -> false
+    | head :: rest -> String.equal target head || string_member target rest
 
 let rec int_member = fun target ->
-  function
-  | [] -> false
-  | head :: rest -> Int.equal target head || int_member target rest
+  fun __tmp1 ->
+    match __tmp1 with
+    | [] -> false
+    | head :: rest -> Int.equal target head || int_member target rest
 
 let rec lookup_fuzz_package = fun packages pkg ->
   match packages with
@@ -373,7 +378,8 @@ let rec lookup_assigned_version = fun assignment pkg ->
 let fuzz_pub_version = fun version -> v version 0 0
 
 let fuzz_ranges_of_versions = fun versions ->
-  let rec build = function
+  let rec build = fun __tmp1 ->
+    match __tmp1 with
     | [] -> Pubgrub.empty
     | index :: rest ->
         Pubgrub.Ranges.union
@@ -494,7 +500,8 @@ let rec fuzz_oracle_search = fun (graph: fuzz_graph) assignment pending ->
           match lookup_fuzz_package graph.packages dep.package with
           | None -> None
           | Some package ->
-              let rec try_versions = function
+              let rec try_versions = fun __tmp1 ->
+                match __tmp1 with
                 | [] -> None
                 | version_spec :: version_rest ->
                     if int_member version_spec.version dep.allowed_versions then
@@ -548,9 +555,9 @@ let canonical_result_string = fun result ->
   | Error err -> "error:" ^ err
 
 let validate_fuzz_solution = fun (graph: fuzz_graph) solution ->
-  let rec ensure_known_versions = function
-    | [] ->
-        Ok ()
+  let rec ensure_known_versions = fun __tmp1 ->
+    match __tmp1 with
+    | [] -> Ok ()
     | (pkg, version) :: rest when String.equal pkg "root" ->
         if Pubgrub.version_compare version (v 1 0 0) = Order.EQ then
           ensure_known_versions rest

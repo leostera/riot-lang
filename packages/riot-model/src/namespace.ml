@@ -12,11 +12,13 @@ let of_string = fun s ->
   else
     String.split ~by:"_" s
     |> List.filter ~fn:(fun part -> not (String.is_empty part))
-    |> function
+    |> fun __tmp1 ->
+      match __tmp1 with
       | [] -> []
       | parts when List.length parts mod 2 = 0 ->
           (* Try to reconstruct from __ separated *)
-          let rec pair = function
+          let rec pair = fun __tmp1 ->
+            match __tmp1 with
             | [] -> []
             | [ x ] -> [ x ]
             | "" :: "" :: rest -> pair rest
@@ -30,7 +32,8 @@ let of_list = fun l -> l
 
 let append = fun ns component -> ns @ [ component ]
 
-let to_string = function
+let to_string = fun __tmp1 ->
+  match __tmp1 with
   | [] -> ""
   | ns -> String.concat "__" ns
 

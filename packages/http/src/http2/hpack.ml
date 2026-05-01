@@ -30,10 +30,11 @@ type decode_error =
 type encode_error =
   | HeaderNotIndexed of header
 
-let table_size_error_to_string = function
-  | InvalidTableSize { size } -> "Invalid HPACK dynamic table size: " ^ Int.to_string size
+let table_size_error_to_string = fun (InvalidTableSize { size }) ->
+  "Invalid HPACK dynamic table size: " ^ Int.to_string size
 
-let decode_error_to_string = function
+let decode_error_to_string = fun __tmp1 ->
+  match __tmp1 with
   | IncompleteIntegerEncoding -> "Incomplete HPACK integer encoding"
   | IntegerEncodingOverflow { accumulator; multiplier; value } ->
       "HPACK integer encoding overflowed with accumulator "
@@ -54,12 +55,8 @@ let decode_error_to_string = function
   | DynamicTableSizeUpdateFailed error -> table_size_error_to_string error
   | DynamicTableSizeUpdateAfterHeaders -> "HPACK dynamic table size update appeared after a header field"
 
-let encode_error_to_string = function
-  | HeaderNotIndexed header ->
-      "HPACK header is not present in the static or dynamic table: "
-      ^ header.name
-      ^ ": "
-      ^ header.value
+let encode_error_to_string = fun (HeaderNotIndexed header) ->
+  "HPACK header is not present in the static or dynamic table: " ^ header.name ^ ": " ^ header.value
 
 type encoding_type =
   | Indexed
@@ -241,26 +238,28 @@ module DynamicTable = struct
   let find = fun t ~name ~value ->
     let entries = Cell.get t.entries in
     let rec loop = fun i ->
-      function
-      | [] -> None
-      | hdr :: rest ->
-          if String.equal hdr.name name && String.equal hdr.value value then
-            Some i
-          else
-            loop (i + 1) rest
+      fun __tmp1 ->
+        match __tmp1 with
+        | [] -> None
+        | hdr :: rest ->
+            if String.equal hdr.name name && String.equal hdr.value value then
+              Some i
+            else
+              loop (i + 1) rest
     in
     loop 1 entries
 
   let find_name = fun t name ->
     let entries = Cell.get t.entries in
     let rec loop = fun i ->
-      function
-      | [] -> None
-      | hdr :: rest ->
-          if String.equal hdr.name name then
-            Some i
-          else
-            loop (i + 1) rest
+      fun __tmp1 ->
+        match __tmp1 with
+        | [] -> None
+        | hdr :: rest ->
+            if String.equal hdr.name name then
+              Some i
+            else
+              loop (i + 1) rest
     in
     loop 1 entries
 
@@ -531,7 +530,8 @@ let encode_header = fun encoder header ~encoding_type ->
 let encode = fun encoder ?(sensitive_headers = []) () ~headers ->
   let buf = Buffer.create ~size:256 in
   let sensitive_headers = List.map sensitive_headers ~fn:String.lowercase_ascii in
-  let rec encode_all = function
+  let rec encode_all = fun __tmp1 ->
+    match __tmp1 with
     | [] -> Ok (Bytes.from_string (Buffer.contents buf))
     | header :: rest ->
         let encoding_type =

@@ -140,7 +140,8 @@ let from_list_with = fun ~compare list ->
   | first :: rest ->
       let len = List.length list in
       let data = Array.make ~count:len ~value:first in
-      let rec fill index = function
+      let rec fill index = fun __tmp1 ->
+        match __tmp1 with
         | [] -> ()
         | value :: rest ->
             Array.set_unchecked data ~at:index ~value;

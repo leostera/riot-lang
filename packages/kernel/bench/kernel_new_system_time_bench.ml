@@ -93,7 +93,8 @@ let bench_timer_many_same_tick_wakeups = fun () ->
       in
       let timers = create 16 [] in
       let sources = List.map timers ~fn:Kernel.Time.Timer.to_source in
-      let rec deregister_all = function
+      let rec deregister_all = fun __tmp1 ->
+        match __tmp1 with
         | [] -> ()
         | source :: rest ->
             let _ = Kernel.Async.Poll.deregister poll source in
@@ -102,7 +103,8 @@ let bench_timer_many_same_tick_wakeups = fun () ->
       protect
         ~finally:(fun () -> deregister_all sources)
         (fun () ->
-          let rec register index = function
+          let rec register index = fun __tmp1 ->
+            match __tmp1 with
             | [] -> ()
             | timer :: rest ->
                 let _ =
@@ -115,7 +117,8 @@ let bench_timer_many_same_tick_wakeups = fun () ->
                 register (index + 1) rest
           in
           let seen = Kernel.Array.make ~count:16 ~value:false in
-          let rec mark = function
+          let rec mark = fun __tmp1 ->
+            match __tmp1 with
             | [] -> ()
             | event :: rest ->
                 if Kernel.Async.Event.is_readable event then

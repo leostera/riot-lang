@@ -89,7 +89,8 @@ type t = {
   name_to_node: (Package.key, package_node G.node) HashMap.t;
 }
 
-let get_package = function
+let get_package = fun __tmp1 ->
+  match __tmp1 with
   | Unplanned { package; _ } -> package
   | Planned { package; _ } -> package
   | Cached { package; _ } -> package
@@ -97,7 +98,8 @@ let get_package = function
   | Failed { package; _ } -> package
   | Skipped { package; _ } -> package
 
-let get_scope = function
+let get_scope = fun __tmp1 ->
+  match __tmp1 with
   | Unplanned { scope; _ } -> scope
   | Planned { scope; _ } -> scope
   | Cached { scope; _ } -> scope
@@ -122,7 +124,8 @@ let trace_package_graph = fun message ->
   let _ = message in
   ()
 
-let string_of_build_scope = function
+let string_of_build_scope = fun __tmp1 ->
+  match __tmp1 with
   | Build -> "build"
   | Runtime -> "runtime"
   | Dev -> "dev"
@@ -131,7 +134,8 @@ let get_key = fun node ->
   let package = get_package node in
   package_key ~package_name:(Package_name.to_string package.name) (get_scope node)
 
-let is_planned = function
+let is_planned = fun __tmp1 ->
+  match __tmp1 with
   | Unplanned _ -> false
   | Planned _ -> true
   | Cached _ -> true
@@ -139,7 +143,8 @@ let is_planned = function
   | Failed _ -> true
   | Skipped _ -> true
 
-let get_hash = function
+let get_hash = fun __tmp1 ->
+  match __tmp1 with
   | Unplanned _ -> None
   | Planned { hash; _ } -> Some hash
   | Cached { hash; _ } -> Some hash
@@ -147,7 +152,8 @@ let get_hash = function
   | Failed { hash; _ } -> Some hash
   | Skipped _ -> None
 
-let get_planned_data = function
+let get_planned_data = fun __tmp1 ->
+  match __tmp1 with
   | Unplanned _ -> None
   | Planned {
       package;

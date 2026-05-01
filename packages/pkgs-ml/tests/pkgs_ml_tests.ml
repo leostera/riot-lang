@@ -836,13 +836,12 @@ let gzip_file = fun ~src ~dst ->
   | Ok () ->
       Compress.Gzip.compress_file ~src ~dst
       |> Result.map_err
-        ~fn:(
-          function
+        ~fn:(fun __tmp1 ->
+          match __tmp1 with
           | Compress.Gzip.File_io_error err ->
               "failed to gzip test archive: " ^ IO.error_message err
           | Compress.Gzip.File_gzip_error err ->
-              "failed to gzip test archive: " ^ Compress.Gzip.error_to_string err
-        )
+              "failed to gzip test archive: " ^ Compress.Gzip.error_to_string err)
 
 let test_filesystem_registry_materializes_cached_release = fun _ctx ->
   match Fs.with_tempdir

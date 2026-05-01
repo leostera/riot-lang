@@ -104,19 +104,17 @@ let pet_encode =
     [
       Ser.Variant.unit
         "Cat"
-        (
-          function
+        (fun __tmp1 ->
+          match __tmp1 with
           | Cat -> true
-          | Dog _ -> false
-        );
+          | Dog _ -> false);
       Ser.Variant.newtype
         "Dog"
         Ser.string
-        (
-          function
+        (fun __tmp1 ->
+          match __tmp1 with
           | Dog value -> Some value
-          | Cat -> None
-        );
+          | Cat -> None);
     ]
 
 let person_decode =

@@ -30,7 +30,8 @@ let is_snake_case = fun name ->
   ) && loop 1
 
 let split_source_path = fun path ->
-  let rec after_src = function
+  let rec after_src = fun __tmp1 ->
+    match __tmp1 with
     | [] -> []
     | "src" :: rest -> rest
     | _ :: rest -> after_src rest

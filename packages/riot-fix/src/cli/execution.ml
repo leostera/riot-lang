@@ -36,7 +36,8 @@ let run_result_with = fun ~on_result ~mode ~scope ~limit ~files ->
       }
   in
   let rec loop results_rev diagnostics_seen limit_reached =
-    let selector = function
+    let selector = fun __tmp1 ->
+      match __tmp1 with
       | Messages.FileResult result -> Select (`FileResult result)
       | Messages.AllComplete summary -> Select (`AllComplete summary)
       | _ -> Skip
@@ -100,7 +101,8 @@ let run_with_coordinator = fun
         }
     in
     let rec loop results_rev diagnostics_seen limit_reached =
-      let selector = function
+      let selector = fun __tmp1 ->
+        match __tmp1 with
         | Messages.FileStarted file -> Select (`FileStarted file)
         | Messages.FileProgress progress -> Select (`FileProgress progress)
         | Messages.FileResult result -> Select (`FileResult result)

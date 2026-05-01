@@ -50,19 +50,22 @@ type package_doc = {
   dependencies: dependency_link list;
 }
 
-let item_kind_slug = function
+let item_kind_slug = fun __tmp1 ->
+  match __tmp1 with
   | Module_item -> "modules"
   | Type_item -> "types"
   | Function_item -> "functions"
   | Macro_item -> "macros"
 
-let item_kind_title = function
+let item_kind_title = fun __tmp1 ->
+  match __tmp1 with
   | Module_item -> "Modules"
   | Type_item -> "Types"
   | Function_item -> "Functions"
   | Macro_item -> "Macros"
 
-let item_kind_label = function
+let item_kind_label = fun __tmp1 ->
+  match __tmp1 with
   | Module_item -> "module"
   | Type_item -> "type"
   | Function_item -> "function"
@@ -121,13 +124,15 @@ let relative_module_href = fun ~from_module ~to_module ->
     ~from_segments:from_module.path
     ~to_segments:to_module.path
 
-let item_kind_file_prefix = function
+let item_kind_file_prefix = fun __tmp1 ->
+  match __tmp1 with
   | Module_item -> "module"
   | Type_item -> "type"
   | Function_item -> "fn"
   | Macro_item -> "macro"
 
-let is_safe_file_char = function
+let is_safe_file_char = fun __tmp1 ->
+  match __tmp1 with
   | 'a' .. 'z'
   | 'A' .. 'Z'
   | '0' .. '9'

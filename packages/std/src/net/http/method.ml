@@ -14,7 +14,8 @@ type t =
   | Patch
   | Extension of string
 
-let of_string = function
+let of_string = fun __tmp1 ->
+  match __tmp1 with
   | "GET" -> Get
   | "HEAD" -> Head
   | "POST" -> Post
@@ -39,7 +40,8 @@ let from_slice = fun value ->
   | 7 when Slice.equal_string value "OPTIONS" -> Options
   | _ -> Extension (Slice.to_string value)
 
-let to_string = function
+let to_string = fun __tmp1 ->
+  match __tmp1 with
   | Get -> "GET"
   | Head -> "HEAD"
   | Post -> "POST"
@@ -51,7 +53,8 @@ let to_string = function
   | Patch -> "PATCH"
   | Extension s -> s
 
-let is_safe = function
+let is_safe = fun __tmp1 ->
+  match __tmp1 with
   | Get
   | Head
   | Options
@@ -63,7 +66,8 @@ let is_safe = function
   | Patch
   | Extension _ -> false
 
-let is_idempotent = function
+let is_idempotent = fun __tmp1 ->
+  match __tmp1 with
   | Get
   | Head
   | Put
@@ -75,7 +79,8 @@ let is_idempotent = function
   | Patch
   | Extension _ -> false
 
-let is_cacheable = function
+let is_cacheable = fun __tmp1 ->
+  match __tmp1 with
   | Get
   | Head
   | Post -> true
@@ -88,7 +93,8 @@ let is_cacheable = function
   | Extension _ -> false
 
 let compare = fun m1 m2 ->
-  let method_priority = function
+  let method_priority = fun __tmp1 ->
+    match __tmp1 with
     | Get -> 0
     | Head -> 1
     | Post -> 2

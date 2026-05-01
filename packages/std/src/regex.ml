@@ -60,11 +60,12 @@ let zero_or_more = fun expr -> repeat ~min:0 expr
 
 let one_or_more = fun expr -> repeat ~min:1 expr
 
-let rec optimize = function
+let rec optimize = fun __tmp1 ->
+  match __tmp1 with
   | Seq items ->
-      let rec collect acc = function
-        | [] ->
-            List.reverse acc
+      let rec collect acc = fun __tmp1 ->
+        match __tmp1 with
+        | [] -> List.reverse acc
         | item :: rest -> (
             match optimize item with
             | Empty -> collect acc rest
@@ -73,7 +74,8 @@ let rec optimize = function
           )
       in
       let items = collect [] items in
-      let rec merge_literals acc = function
+      let rec merge_literals acc = fun __tmp1 ->
+        match __tmp1 with
         | (Literal left) :: (Literal right) :: rest ->
             merge_literals acc (Literal (left ^ right) :: rest)
         | item :: rest -> merge_literals (item :: acc) rest
@@ -87,9 +89,9 @@ let rec optimize = function
         | items -> Seq items
       end
   | Alt items ->
-      let rec collect acc = function
-        | [] ->
-            List.reverse acc
+      let rec collect acc = fun __tmp1 ->
+        match __tmp1 with
+        | [] -> List.reverse acc
         | item :: rest -> (
             match optimize item with
             | Alt nested -> collect acc (nested @ rest)
@@ -150,11 +152,13 @@ let escape_class_char = fun ch ->
   | '-' -> "\\" ^ String.make ~len:1 ~char:ch
   | ch -> String.make ~len:1 ~char:ch
 
-let char_class_item_to_string = function
+let char_class_item_to_string = fun __tmp1 ->
+  match __tmp1 with
   | Single ch -> escape_class_char ch
   | Range (left, right) -> escape_class_char left ^ "-" ^ escape_class_char right
 
-let rec is_atomic = function
+let rec is_atomic = fun __tmp1 ->
+  match __tmp1 with
   | Empty
   | Start_of_text
   | End_of_text
@@ -165,7 +169,8 @@ let rec is_atomic = function
   | Alt _
   | Repeat _ -> false
 
-let rec regex_to_string = function
+let rec regex_to_string = fun __tmp1 ->
+  match __tmp1 with
   | Empty -> ""
   | Start_of_text -> "^"
   | End_of_text -> "$"

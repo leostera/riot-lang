@@ -644,7 +644,8 @@ let bench_udp_many_source_readiness = fun () ->
       protect
         ~finally:(fun () -> close_udp_pairs pairs)
         (fun () ->
-          let rec register index = function
+          let rec register index = fun __tmp1 ->
+            match __tmp1 with
             | [] -> ()
             | (server, _) :: rest ->
                 let _ =
@@ -657,7 +658,8 @@ let bench_udp_many_source_readiness = fun () ->
                 in
                 register (index + 1) rest
           in
-          let rec send_all = function
+          let rec send_all = fun __tmp1 ->
+            match __tmp1 with
             | [] -> ()
             | (server, client) :: rest ->
                 let server_addr = lift_udp (Kernel.Net.UdpSocket.local_addr server) in
@@ -696,7 +698,8 @@ let bench_tcp_many_stream_readiness = fun () ->
               close_streams clients;
               close_streams servers)
             (fun () ->
-              let rec register index = function
+              let rec register index = fun __tmp1 ->
+                match __tmp1 with
                 | [] -> ()
                 | server :: rest ->
                     let _ =
@@ -709,7 +712,8 @@ let bench_tcp_many_stream_readiness = fun () ->
                     in
                     register (index + 1) rest
               in
-              let rec send_all index = function
+              let rec send_all index = fun __tmp1 ->
+                match __tmp1 with
                 | [] -> ()
                 | client :: rest ->
                     let payload = Kernel.Bytes.from_string "x" in

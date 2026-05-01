@@ -73,13 +73,12 @@ let test_pool_creation = fun () ->
             ", "
             (
               List.map
-                ~fn:(
-                  function
+                ~fn:(fun __tmp1 ->
+                  match __tmp1 with
                   | `Total n -> "total=" ^ Int.to_string n
                   | `Available n -> "available=" ^ Int.to_string n
                   | `InUse n -> "in_use=" ^ Int.to_string n
-                  | `Waiting n -> "waiting=" ^ Int.to_string n
-                )
+                  | `Waiting n -> "waiting=" ^ Int.to_string n)
                 stats
             )
         );

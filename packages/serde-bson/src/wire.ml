@@ -20,7 +20,8 @@ let type_int64 = Char.chr 0x12
 
 let error = fun message -> Error (`Msg message)
 
-let hex_char = function
+let hex_char = fun __tmp1 ->
+  match __tmp1 with
   | value when value < 10 -> Char.chr (Char.code '0' + value)
   | value -> Char.chr (Char.code 'A' + value - 10)
 
@@ -106,7 +107,8 @@ let add_cstring = fun buffer value ->
     Ok ()
   )
 
-let rec encode_value = function
+let rec encode_value = fun __tmp1 ->
+  match __tmp1 with
   | Null -> Ok (type_null, "")
   | Bool value -> Ok (type_bool, if value then
     "\x01"
@@ -328,7 +330,8 @@ and read_document_body = fun input _parent_end ->
     in
     loop []
 
-let to_string = function
+let to_string = fun __tmp1 ->
+  match __tmp1 with
   | Document fields -> encode_document fields
   | _ -> error "serde-bson top-level value must be a document"
 

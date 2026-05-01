@@ -82,17 +82,20 @@ type config = { max_frame_size: int }
 
 let default_config = { max_frame_size = default_max_frame_size }
 
-let setting_id_to_string = function
+let setting_id_to_string = fun __tmp1 ->
+  match __tmp1 with
   | EnablePush -> "SETTINGS_ENABLE_PUSH"
   | InitialWindowSize -> "SETTINGS_INITIAL_WINDOW_SIZE"
   | MaxFrameSize -> "SETTINGS_MAX_FRAME_SIZE"
 
-let setting_value_rule_to_string = function
+let setting_value_rule_to_string = fun __tmp1 ->
+  match __tmp1 with
   | ZeroOrOne -> "0 or 1"
   | InitialWindowSizeRange -> "0..2^31-1"
   | MaxFrameSizeRange -> "16384..16777215"
 
-let frame_type_name = function
+let frame_type_name = fun __tmp1 ->
+  match __tmp1 with
   | Frame.Data -> "DATA"
   | Frame.Headers -> "HEADERS"
   | Frame.Priority -> "PRIORITY"
@@ -105,7 +108,8 @@ let frame_type_name = function
   | Frame.Continuation -> "CONTINUATION"
   | Frame.Unknown code -> "UNKNOWN(" ^ Int.to_string code ^ ")"
 
-let read_field_to_string = function
+let read_field_to_string = fun __tmp1 ->
+  match __tmp1 with
   | FrameLength -> "frame length"
   | FrameType -> "frame type"
   | Flags -> "flags"
@@ -118,16 +122,19 @@ let read_field_to_string = function
   | LastStreamId -> "last stream ID"
   | WindowSizeIncrement -> "window size increment"
 
-let payload_length_rule_to_string = function
+let payload_length_rule_to_string = fun __tmp1 ->
+  match __tmp1 with
   | Exactly size -> "exactly " ^ Int.to_string size ^ " bytes"
   | AtLeast size -> "at least " ^ Int.to_string size ^ " bytes"
   | MultipleOf size -> "a multiple of " ^ Int.to_string size ^ " bytes"
 
-let stream_id_rule_to_string = function
+let stream_id_rule_to_string = fun __tmp1 ->
+  match __tmp1 with
   | MustBeZero -> "stream ID 0"
   | MustBeNonZero -> "a non-zero stream ID"
 
-let error_to_string = function
+let error_to_string = fun __tmp1 ->
+  match __tmp1 with
   | FailedToRead field -> "Failed to read HTTP/2 " ^ read_field_to_string field
   | FrameSizeExceedsMaximum { size; max_size } ->
       "HTTP/2 frame size "
@@ -221,7 +228,8 @@ let read_uint8 = fun data offset ->
   else
     Some (byte_at data offset)
 
-let int_to_frame_type = function
+let int_to_frame_type = fun __tmp1 ->
+  match __tmp1 with
   | 0x0 -> Frame.Data
   | 0x1 -> Frame.Headers
   | 0x2 -> Frame.Priority

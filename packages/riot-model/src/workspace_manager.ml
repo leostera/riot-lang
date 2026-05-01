@@ -71,13 +71,15 @@ let trace_workspace_manager = fun message ->
   let _ = message in
   ()
 
-let manifest_load_error_message = function
+let manifest_load_error_message = fun __tmp1 ->
+  match __tmp1 with
   | ManifestReadFailed { path; error } ->
       "failed to read manifest '" ^ Path.to_string path ^ "': " ^ IO.error_message error
   | ManifestParseFailed { path; error } ->
       "failed to parse manifest '" ^ Path.to_string path ^ "': " ^ Data.Toml.error_to_string error
 
-let scan_error_message = function
+let scan_error_message = fun __tmp1 ->
+  match __tmp1 with
   | WorkspaceTomlLoadFailed { error; _ }
   | PackageTomlLoadFailed { error; _ } -> manifest_load_error_message error
   | WorkspaceManifestDecodeFailed { path; error } ->
@@ -592,7 +594,8 @@ let scan: t -> Path.t -> (Workspace_manifest.t * load_error list, scan_error) re
 
 let load = fun t ~root -> scan t root
 
-let load_error_to_string = function
+let load_error_to_string = fun __tmp1 ->
+  match __tmp1 with
   | PackageNotFound { dependant; package; path } ->
       let dep_str =
         match dependant with

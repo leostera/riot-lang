@@ -12,7 +12,8 @@ let await_message = fun ~what selector ->
   try Ok (receive ~selector ~timeout:(Time.Duration.from_secs 1) ()) with
   | Receive_timeout -> Error ("timed out waiting for " ^ what)
 
-let is_failure_message = function
+let is_failure_message = fun __tmp1 ->
+  match __tmp1 with
   | Failure message -> String.equal message "boom"
   | _ -> false
 
@@ -68,20 +69,18 @@ let test_await_all_preserves_input_order = fun _ctx ->
       (fun () ->
         let slow_pid =
           receive
-            ~selector:(
-              function
+            ~selector:(fun __tmp1 ->
+              match __tmp1 with
               | Register_slow slow_pid -> Select slow_pid
-              | _ -> Skip
-            )
+              | _ -> Skip)
             ()
         in
         send parent Slow_task_registered;
         receive
-          ~selector:(
-            function
+          ~selector:(fun __tmp1 ->
+            match __tmp1 with
             | Release_slow -> Select ()
-            | _ -> Skip
-          )
+            | _ -> Skip)
           ();
         send slow_pid Slow_task_released;
         Ok ())
@@ -91,21 +90,19 @@ let test_await_all_preserves_input_order = fun _ctx ->
       (fun () ->
         send gate (Register_slow (self ()));
         receive
-          ~selector:(
-            function
+          ~selector:(fun __tmp1 ->
+            match __tmp1 with
             | Slow_task_released -> Select ()
-            | _ -> Skip
-          )
+            | _ -> Skip)
           ();
         "slow")
   in
   match await_message
     ~what:"slow task registration"
-    (
-      function
+    (fun __tmp1 ->
+      match __tmp1 with
       | Slow_task_registered -> Select ()
-      | _ -> Skip
-    ) with
+      | _ -> Skip) with
   | Error _ as err -> err
   | Ok () ->
       let fast =
@@ -131,11 +128,10 @@ let test_await_all_ignores_unrelated_messages = fun _ctx ->
   | [ Ok 7; Ok 9 ] -> (
       match await_message
         ~what:"unrelated message"
-        (
-          function
+        (fun __tmp1 ->
+          match __tmp1 with
           | Task_unrelated payload -> Select payload
-          | _ -> Skip
-        ) with
+          | _ -> Skip) with
       | Ok "noise" -> Ok ()
       | Ok payload -> Error ("expected unrelated payload noise, got " ^ payload)
       | Error _ as err -> err
@@ -153,11 +149,10 @@ let test_async_starts_eagerly = fun _ctx ->
   in
   match await_message
     ~what:"task start"
-    (
-      function
+    (fun __tmp1 ->
+      match __tmp1 with
       | Task_started -> Select ()
-      | _ -> Skip
-    ) with
+      | _ -> Skip) with
   | Error _ as err -> err
   | Ok () -> (
       match Task.await task with

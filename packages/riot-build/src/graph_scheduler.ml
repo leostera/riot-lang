@@ -282,52 +282,53 @@ let resolve_node_ref = fun locals node_id ->
         panic ("graph scheduler: unresolved local node " ^ Int.to_string (Node_id.to_int node_id))
 
 let apply_command = fun state locals touched ->
-  function
-  | Add_node { local_id; payload } ->
-      let node_id = Graph.add_node state.graph ~payload in
-      let _ = HashMap.insert locals ~key:local_id ~value:node_id in
-      let _ =
-        HashMap.insert
-          state.runtime_nodes
-          ~key:node_id
-          ~value:{
-            payload;
-            unresolved_dependencies = 0;
-            status = `Pending;
-          }
-      in
-      node_id :: touched
-  | Add_dependency { node; depends_on } ->
-      let node = resolve_node_ref locals node in
-      let depends_on = resolve_node_ref locals depends_on in
-      if Graph.add_dependency_internal state.graph ~node ~depends_on then (
-        let runtime_node = find_runtime_node state node in
-        (
-          match runtime_node.status with
-          | `Pending -> ()
-          | `Running
-          | `Completed _ ->
-              panic
-                ("graph scheduler: cannot add dependencies to active node "
-                ^ Int.to_string (Node_id.to_int node))
-        );
-        let dependency = find_runtime_node state depends_on in
-        (
-          match dependency.status with
-          | `Completed _ -> ()
-          | `Pending
-          | `Running ->
-              runtime_node.unresolved_dependencies <- runtime_node.unresolved_dependencies + 1
-        );
-        node :: touched
-      ) else
+  fun __tmp1 ->
+    match __tmp1 with
+    | Add_node { local_id; payload } ->
+        let node_id = Graph.add_node state.graph ~payload in
+        let _ = HashMap.insert locals ~key:local_id ~value:node_id in
+        let _ =
+          HashMap.insert
+            state.runtime_nodes
+            ~key:node_id
+            ~value:{
+              payload;
+              unresolved_dependencies = 0;
+              status = `Pending;
+            }
+        in
+        node_id :: touched
+    | Add_dependency { node; depends_on } ->
+        let node = resolve_node_ref locals node in
+        let depends_on = resolve_node_ref locals depends_on in
+        if Graph.add_dependency_internal state.graph ~node ~depends_on then (
+          let runtime_node = find_runtime_node state node in
+          (
+            match runtime_node.status with
+            | `Pending -> ()
+            | `Running
+            | `Completed _ ->
+                panic
+                  ("graph scheduler: cannot add dependencies to active node "
+                  ^ Int.to_string (Node_id.to_int node))
+          );
+          let dependency = find_runtime_node state depends_on in
+          (
+            match dependency.status with
+            | `Completed _ -> ()
+            | `Pending
+            | `Running ->
+                runtime_node.unresolved_dependencies <- runtime_node.unresolved_dependencies + 1
+          );
+          node :: touched
+        ) else
+          touched
+    | Record_mutation mutation ->
+        state.graph.apply_mutation state.graph mutation;
         touched
-  | Record_mutation mutation ->
-      state.graph.apply_mutation state.graph mutation;
-      touched
-  | Emit_event event ->
-      state.on_event event;
-      touched
+    | Emit_event event ->
+        state.on_event event;
+        touched
 
 let apply_commands = fun state commands ->
   let locals: (Node_id.t, Node_id.t) HashMap.t = HashMap.create () in
@@ -484,7 +485,8 @@ let run = fun ~config ~on_event ~graph ~execute ->
     let _ = spawn init_run in
     let rec await () =
       let selector:
-        ([`Event of 'event | `Completed of ('work, 'result, 'error) run_result | `Failed of exn]) selector = function
+        ([`Event of 'event | `Completed of ('work, 'result, 'error) run_result | `Failed of exn]) selector = fun __tmp1 ->
+        match __tmp1 with
         | GraphRunEvent { event; event_ref = ref } -> (
             match Ref.cast ref event_ref event with
             | Some event -> Select (`Event event)
@@ -501,8 +503,7 @@ let run = fun ~config ~on_event ~graph ~execute ->
             else
               Skip
           )
-        | _ ->
-            Skip
+        | _ -> Skip
       in
       match receive ~selector () with
       | `Event event ->

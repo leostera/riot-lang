@@ -7,7 +7,8 @@ module ListIter = struct
 
   type item = int
 
-  let next = function
+  let next = fun __tmp1 ->
+    match __tmp1 with
     | [] -> (None, [])
     | head :: tail -> (Some head, tail)
 

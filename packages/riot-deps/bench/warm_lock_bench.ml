@@ -114,7 +114,8 @@ let make_registry_names = fun count ->
   loop [] (count - 1)
 
 let registry_documents = fun names ->
-  let rec loop acc = function
+  let rec loop acc = fun __tmp1 ->
+    match __tmp1 with
     | [] -> List.reverse acc
     | [ name ] -> loop (make_document ~name ~dependencies:[] :: acc) []
     | name :: ((next_name :: _) as rest) ->

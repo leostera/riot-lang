@@ -547,7 +547,8 @@ let ensure_progress = fun p before diagnostic ->
   if p.pos = before && not (is_eof p) then
     recover_current_as_error p diagnostic
 
-let starts_structure_item = function
+let starts_structure_item = fun __tmp1 ->
+  match __tmp1 with
   | Syntax_kind.LET_KW
   | Syntax_kind.TYPE_KW
   | Syntax_kind.MODULE_KW
@@ -576,7 +577,8 @@ let starts_structure_item_at_position = fun p position ->
   | Syntax_kind.MODULE_KW -> not (starts_with_typeof_module_expr_at p position)
   | kind -> starts_structure_item kind
 
-let starts_signature_item = function
+let starts_signature_item = fun __tmp1 ->
+  match __tmp1 with
   | Syntax_kind.VAL_KW
   | Syntax_kind.TYPE_KW
   | Syntax_kind.MODULE_KW
@@ -744,7 +746,8 @@ let trailing_sequence_boundary = fun p ->
   | Syntax_kind.DONE_KW -> true
   | _ -> false
 
-let can_start_atom = function
+let can_start_atom = fun __tmp1 ->
+  match __tmp1 with
   | Syntax_kind.IDENT
   | Syntax_kind.INT
   | Syntax_kind.FLOAT
@@ -815,7 +818,8 @@ let missing_binding_expr_boundary = fun p ~signature ~top_level ->
     (can_start_atom (current_kind p)
     && (leading_trivia_has_post_newline_indent p || let_expr_has_in_before_item_boundary ())))
 
-let can_start_pattern_atom = function
+let can_start_pattern_atom = fun __tmp1 ->
+  match __tmp1 with
   | Syntax_kind.IDENT
   | Syntax_kind.UNDERSCORE
   | Syntax_kind.INT
@@ -839,19 +843,22 @@ let can_start_pattern_atom = function
   | Syntax_kind.EXCEPTION_KW -> true
   | _ -> false
 
-let sign_token = function
+let sign_token = fun __tmp1 ->
+  match __tmp1 with
   | Syntax_kind.PLUS
   | Syntax_kind.MINUS
   | Syntax_kind.PLUSDOT
   | Syntax_kind.MINUSDOT -> true
   | _ -> false
 
-let literal_after_sign = function
+let literal_after_sign = fun __tmp1 ->
+  match __tmp1 with
   | Syntax_kind.INT
   | Syntax_kind.FLOAT -> true
   | _ -> false
 
-let prefix_operator = function
+let prefix_operator = fun __tmp1 ->
+  match __tmp1 with
   | Syntax_kind.PLUS
   | Syntax_kind.MINUS
   | Syntax_kind.PLUSDOT
@@ -859,7 +866,8 @@ let prefix_operator = function
   | Syntax_kind.BANG -> true
   | _ -> false
 
-let closing_delimiter_text = function
+let closing_delimiter_text = fun __tmp1 ->
+  match __tmp1 with
   | Syntax_kind.RPAREN -> Some ")"
   | Syntax_kind.RBRACKET -> Some "]"
   | Syntax_kind.RBRACE -> Some "}"
@@ -867,14 +875,16 @@ let closing_delimiter_text = function
   | Syntax_kind.END_KW -> Some "end"
   | _ -> None
 
-let closing_punctuation = function
+let closing_punctuation = fun __tmp1 ->
+  match __tmp1 with
   | Syntax_kind.RPAREN
   | Syntax_kind.RBRACKET
   | Syntax_kind.RBRACE
   | Syntax_kind.BAR_RBRACKET -> true
   | _ -> false
 
-let operator_pattern_token = function
+let operator_pattern_token = fun __tmp1 ->
+  match __tmp1 with
   | Syntax_kind.PLUS
   | Syntax_kind.MINUS
   | Syntax_kind.STAR
@@ -914,7 +924,8 @@ let operator_pattern_token = function
   | Syntax_kind.SLASHDOT -> true
   | _ -> false
 
-let operator_text = function
+let operator_text = fun __tmp1 ->
+  match __tmp1 with
   | Syntax_kind.PLUS -> "+"
   | Syntax_kind.MINUS -> "-"
   | Syntax_kind.STAR -> "*"
@@ -958,7 +969,8 @@ let application_binding_power = 60
 
 let attribute_suffix_binding_power = 5
 
-let symbolic_operator_part = function
+let symbolic_operator_part = fun __tmp1 ->
+  match __tmp1 with
   | kind when operator_pattern_token kind -> true
   | _ -> false
 
@@ -990,7 +1002,8 @@ let parenthesized_operator_start = fun p ->
   || (operator_pattern_token (current_kind p)
   && (Syntax_kind.(peek_kind p 1 = RPAREN) || symbolic_operator_part (peek_kind p 1)))
 
-let index_opener = function
+let index_opener = fun __tmp1 ->
+  match __tmp1 with
   | Syntax_kind.LPAREN
   | Syntax_kind.LBRACKET
   | Syntax_kind.LBRACE -> true
@@ -1016,17 +1029,20 @@ let symbolic_sequence_followed_by_closer = fun p offset closer ->
   in
   loop offset false
 
-let binding_operator_suffix = function
+let binding_operator_suffix = fun __tmp1 ->
+  match __tmp1 with
   | Syntax_kind.STAR
   | Syntax_kind.PLUS -> true
   | _ -> false
 
-let binding_operator_keyword = function
+let binding_operator_keyword = fun __tmp1 ->
+  match __tmp1 with
   | Syntax_kind.LET_KW
   | Syntax_kind.AND_KW -> true
   | _ -> false
 
-let infix_binding_power = function
+let infix_binding_power = fun __tmp1 ->
+  match __tmp1 with
   | Syntax_kind.BARBAR -> Some 10
   | Syntax_kind.AMPAMP -> Some 15
   | Syntax_kind.EQ
@@ -1100,7 +1116,8 @@ let operator_name_start_at = fun p offset ->
   || operator_keyword_at p offset
   || (binding_operator_keyword kind && binding_operator_suffix (peek_kind p (offset + 1)))
 
-let pattern_binding_power = function
+let pattern_binding_power = fun __tmp1 ->
+  match __tmp1 with
   | Syntax_kind.PIPE -> Some 10
   | Syntax_kind.COMMA -> Some 15
   | Syntax_kind.AS_KW -> Some 20

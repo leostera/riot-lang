@@ -15,7 +15,8 @@ type error =
   | Unterminated_array of { position: int }
   | Unexpected_char of { position: int; found: char; expected: string }
 
-let error_to_string = function
+let error_to_string = fun __tmp1 ->
+  match __tmp1 with
   | Invalid_path { path } -> "Invalid path: " ^ path
   | File_read_error { path; reason } -> "Failed to read file " ^ path ^ ": " ^ reason
   | Parse_error { position; context; reason } ->
@@ -451,19 +452,23 @@ let parse = fun content ->
 
 (* Helper functions *)
 
-let get_string = function
+let get_string = fun __tmp1 ->
+  match __tmp1 with
   | String s -> Some s
   | _ -> None
 
-let get_int = function
+let get_int = fun __tmp1 ->
+  match __tmp1 with
   | Int i -> Some i
   | _ -> None
 
-let get_array = function
+let get_array = fun __tmp1 ->
+  match __tmp1 with
   | Array items -> Some items
   | _ -> None
 
-let get_table = function
+let get_table = fun __tmp1 ->
+  match __tmp1 with
   | Table items -> Some items
   | _ -> None
 

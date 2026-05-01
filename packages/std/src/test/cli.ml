@@ -6,21 +6,25 @@ type execution_mode =
   | Concurrent
   | Linear
 
-let test_type_fields = function
+let test_type_fields = fun __tmp1 ->
+  match __tmp1 with
   | Test_case.UnitTest -> [ ("type", Data.Json.String "test"); ]
   | Test_case.Property { examples } ->
       [ ("type", Data.Json.String "property"); ("examples", Data.Json.Int examples); ]
 
-let event_test_type_fields = function
+let event_test_type_fields = fun __tmp1 ->
+  match __tmp1 with
   | Test_case.UnitTest -> [ ("test_type", Data.Json.String "test"); ]
   | Test_case.Property { examples } ->
       [ ("test_type", Data.Json.String "property"); ("examples", Data.Json.Int examples); ]
 
-let size_to_json = function
+let size_to_json = fun __tmp1 ->
+  match __tmp1 with
   | Test_case.Small -> Data.Json.String "small"
   | Test_case.Large -> Data.Json.String "large"
 
-let reliability_fields = function
+let reliability_fields = fun __tmp1 ->
+  match __tmp1 with
   | Test_case.Stable -> [ ("reliability", Data.Json.String "stable"); ]
   | Test_case.Flaky { retry_attempts } ->
       [
@@ -37,15 +41,18 @@ let descriptor_fields = fun (test: Runner.test_descriptor) ->
   @ event_test_type_fields test.test_type)
   @ reliability_fields test.reliability
 
-let snapshot_mode_to_json = function
+let snapshot_mode_to_json = fun __tmp1 ->
+  match __tmp1 with
   | Test_context.External -> Data.Json.String "external"
   | Test_context.Inline -> Data.Json.String "inline"
 
-let snapshot_format_to_json = function
+let snapshot_format_to_json = fun __tmp1 ->
+  match __tmp1 with
   | Test_context.Text -> Data.Json.String "text"
   | Test_context.Json -> Data.Json.String "json"
 
-let snapshot_reason_to_json = function
+let snapshot_reason_to_json = fun __tmp1 ->
+  match __tmp1 with
   | Test_context.Missing_approved -> Data.Json.String "missing_approved"
   | Test_context.Pending_exists -> Data.Json.String "pending_exists"
   | Test_context.Mismatch -> Data.Json.String "mismatch"
@@ -55,7 +62,8 @@ let optional_path_fields = fun name value ->
   | Some path -> [ (name, Data.Json.String (Path.to_string path)); ]
   | None -> []
 
-let progress_fields = function
+let progress_fields = fun __tmp1 ->
+  match __tmp1 with
   | Test_context.PropertyIterationPassed { current; total; size } ->
       [
         ("progress_type", Data.Json.String "property_iteration_passed");
@@ -132,7 +140,8 @@ let progress_fields = function
       @ optional_path_fields "approved_path" approved_path)
       @ optional_path_fields "pending_path" pending_path
 
-let single_result_fields = function
+let single_result_fields = fun __tmp1 ->
+  match __tmp1 with
   | Test_result.Passed -> [ ("status", Data.Json.String "passed"); ]
   | Test_result.Skipped -> [ ("status", Data.Json.String "skipped"); ]
   | Test_result.Failed message ->
@@ -154,7 +163,8 @@ let event_elapsed_us = fun () ->
 
 let write_json_line = fun json -> println (Data.Json.to_string json)
 
-let event_to_json = function
+let event_to_json = fun __tmp1 ->
+  match __tmp1 with
   | Runner.SuiteStarted { suite_name; total } ->
       event_started_at := Some (Time.Instant.now ());
       Data.Json.Object [
@@ -256,7 +266,8 @@ let filtered_tests = fun ~query ~small_only ~large_only ~flaky_only tests ->
       && matches_flaky ~flaky_only test)
 
 let write_tests_json = fun tests ->
-  let rec to_json_items index = function
+  let rec to_json_items index = fun __tmp1 ->
+    match __tmp1 with
     | [] -> []
     | (test: Test_case.t) :: rest ->
         let base_fields = [
@@ -292,7 +303,8 @@ let empty_suite_ctx = {
 }
 
 let suite_ctx_of_json = fun value ->
-  let built_binary_of_json = function
+  let built_binary_of_json = fun __tmp1 ->
+    match __tmp1 with
     | Data.Json.Object fields -> (
         match (
           List.find fields ~fn:(fun (name, _) -> String.equal name "name"),
@@ -302,8 +314,7 @@ let suite_ctx_of_json = fun value ->
             Some Test_context.{ name; path = Path.v path }
         | _ -> None
       )
-    | _ ->
-        None
+    | _ -> None
   in
   match Data.Json.of_string value with
   | Ok (Data.Json.Object fields) ->
@@ -333,7 +344,8 @@ let suite_ctx_of_json = fun value ->
   | Ok _ -> empty_suite_ctx
 
 let suite_ctx_from_args = fun args ->
-  let rec loop = function
+  let rec loop = fun __tmp1 ->
+    match __tmp1 with
     | [] -> empty_suite_ctx
     | flag :: value :: _ when String.equal flag ctx_json_arg -> suite_ctx_of_json value
     | arg :: _ when String.starts_with ~prefix:(ctx_json_arg ^ "=") arg ->
@@ -351,7 +363,8 @@ let list_tests = fun ~json tests ->
     List.for_each tests ~fn:(fun (test: Test_case.t) -> println test.name);
   Ok ()
 
-let parse_format_to_reporter = function
+let parse_format_to_reporter = fun __tmp1 ->
+  match __tmp1 with
   | "tap" -> Ok (module Reporter.TAP : Reporter.Intf)
   | "json" -> Ok (module Reporter.JSON : Reporter.Intf)
   | "junit" -> Ok (module Reporter.JUnit : Reporter.Intf)

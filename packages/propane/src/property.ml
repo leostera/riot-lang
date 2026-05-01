@@ -92,7 +92,8 @@ let shrink_counter_example = fun ?on_progress ~iteration ~total arb value predic
             Shrinker.shrink shrinker current
             |> order_candidates arb
           in
-          let rec try_candidates = function
+          let rec try_candidates = fun __tmp1 ->
+            match __tmp1 with
             | [] -> (current, steps_taken)
             | candidate :: rest ->
                 (* Test if this smaller value also fails *)

@@ -26,7 +26,8 @@ type summary = Package_scheduler.summary = {
 
 type run_result = summary
 
-let runtime_phase_of_package_scheduler_event = function
+let runtime_phase_of_package_scheduler_event = fun __tmp1 ->
+  match __tmp1 with
   | Package_scheduler.PlanningStarted { lane_count; package_count } ->
       Event.PackagePlanningStarted { lane_count; package_count }
   | Package_scheduler.PlanningFinished {
@@ -94,9 +95,9 @@ let prepare_lanes = fun context spec ~toolchain ->
     Riot_model.Target.Set.to_list (Resolved_build.targets spec)
     |> List.sort ~compare:Riot_model.Target.compare
   in
-  let rec loop prepared = function
-    | [] ->
-        Ok (List.reverse prepared)
+  let rec loop prepared = fun __tmp1 ->
+    match __tmp1 with
+    | [] -> Ok (List.reverse prepared)
     | target :: rest -> (
         match prepare_lane context spec ~toolchain target with
         | Ok lane -> loop (lane :: prepared) rest

@@ -89,19 +89,21 @@ let is_apple_junk_entry = fun name ->
   || String.equal name ".DS_Store"
   || String.equal name "__MACOSX"
 
-let path_error_message = function
+let path_error_message = fun __tmp1 ->
+  match __tmp1 with
   | Path.InvalidUtf8 { path } -> "invalid utf8 path: " ^ path
   | Path.SystemInvalidUtf8 { syscall; path } -> "invalid utf8 from " ^ syscall ^ ": " ^ path
   | Path.SystemError msg -> msg
 
-let metadata_error_message = function
+let metadata_error_message = fun __tmp1 ->
+  match __tmp1 with
   | MetadataIoError error -> IO.error_message error
   | MetadataPathError error -> path_error_message error
 
-let command_error_message = function
-  | Command.SystemError error -> error
+let command_error_message = fun (Command.SystemError error) -> error
 
-let message = function
+let message = fun __tmp1 ->
+  match __tmp1 with
   | MissingPublishVersion { package } -> "package '" ^ package ^ "' is missing [package].version"
   | MissingPublishDescription { package } ->
       "package '" ^ package ^ "' is missing [package].description"
@@ -194,7 +196,8 @@ let should_skip_entry = fun path ->
   let name = Path.basename path in
   is_apple_junk_entry name || List.any excluded_entry_names ~fn:(String.equal name)
 
-let file_kind_to_string = function
+let file_kind_to_string = fun __tmp1 ->
+  match __tmp1 with
   | Fs.Metadata.Regular -> "regular file"
   | Directory -> "directory"
   | Symlink -> "symlink"
@@ -204,7 +207,8 @@ let file_kind_to_string = function
   | Socket -> "socket"
   | Unknown -> "unknown file type"
 
-let walker_kind_to_string = function
+let walker_kind_to_string = fun __tmp1 ->
+  match __tmp1 with
   | Fs.Walker.File -> "regular file"
   | Fs.Walker.Directory -> "directory"
   | Fs.Walker.Symlink -> "symlink"
@@ -272,9 +276,9 @@ let validate_runtime_dependency = fun
   | _ -> Ok ()
 
 let validate_runtime_dependencies = fun ~(package:Riot_model.Package.t) ->
-  let rec loop = function
-    | [] ->
-        Ok ()
+  let rec loop = fun __tmp1 ->
+    match __tmp1 with
+    | [] -> Ok ()
     | dep :: rest -> (
         match validate_runtime_dependency ~package dep with
         | Ok () -> loop rest
@@ -286,9 +290,9 @@ let validate_runtime_dependencies = fun ~(package:Riot_model.Package.t) ->
 let validate_registry_dependencies = fun
   ~registry ~publishing_workspace_packages ~(package:Riot_model.Package.t) ->
   let package_name = Riot_model.Package_name.to_string package.name in
-  let rec loop = function
-    | [] ->
-        Ok ()
+  let rec loop = fun __tmp1 ->
+    match __tmp1 with
+    | [] -> Ok ()
     | dep :: rest -> (
         if Riot_model.Package.is_builtin_dependency dep then
           loop rest
@@ -531,7 +535,8 @@ let workspace_publish_order = fun ~packages ->
       | Some pkg ->
           let visiting = name :: visiting in
           let dependency_names = workspace_runtime_dependency_names ~workspace_packages pkg in
-          let rec visit_dependencies visited ordered = function
+          let rec visit_dependencies visited ordered = fun __tmp1 ->
+            match __tmp1 with
             | [] ->
                 let visited = name :: visited in
                 Ok (visited, pkg :: ordered)
@@ -543,9 +548,9 @@ let workspace_publish_order = fun ~packages ->
           in
           visit_dependencies visited ordered dependency_names
   in
-  let rec walk_names visited ordered = function
-    | [] ->
-        Ok (List.reverse ordered)
+  let rec walk_names visited ordered = fun __tmp1 ->
+    match __tmp1 with
+    | [] -> Ok (List.reverse ordered)
     | name :: rest -> (
         match visit ~visiting:[] ~visited ordered name with
         | Error _ as err -> err

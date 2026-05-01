@@ -3,7 +3,8 @@ open Toml_value
 
 external format_float: string -> float -> string = "caml_format_float"
 
-let hex_digit = function
+let hex_digit = fun __tmp1 ->
+  match __tmp1 with
   | 0 -> '0'
   | 1 -> '1'
   | 2 -> '2'
@@ -56,8 +57,8 @@ let float_to_string = fun value ->
 let add_quoted_string = fun buffer value ->
   IO.Buffer.add_char buffer '"';
   String.iter
-    (
-      function
+    (fun __tmp1 ->
+      match __tmp1 with
       | '"' -> IO.Buffer.add_string buffer "\\\""
       | '\\' -> IO.Buffer.add_string buffer "\\\\"
       | '\b' -> IO.Buffer.add_string buffer "\\b"
@@ -66,8 +67,7 @@ let add_quoted_string = fun buffer value ->
       | '\r' -> IO.Buffer.add_string buffer "\\r"
       | '\t' -> IO.Buffer.add_string buffer "\\t"
       | c when Char.code c < 0x20 -> add_unicode_escape buffer (Char.code c)
-      | c -> IO.Buffer.add_char buffer c
-    )
+      | c -> IO.Buffer.add_char buffer c)
     value;
   IO.Buffer.add_char buffer '"'
 
@@ -165,7 +165,8 @@ let rec render_table_body = fun buffer path items ->
               render_table_body buffer (path @ [ key ]) nested
           | _ -> panic "Render.render_table_body: expected table in array-of-tables"))
 
-let to_string = function
+let to_string = fun __tmp1 ->
+  match __tmp1 with
   | Table items ->
       let buffer = IO.Buffer.create ~size:256 in
       render_table_body buffer [] items;

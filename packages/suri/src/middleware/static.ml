@@ -404,15 +404,14 @@ module Directory = struct
   let html_escape = fun str ->
     let buf = IO.Buffer.create ~size:(String.length str) in
     String.iter
-      (
-        function
+      (fun __tmp1 ->
+        match __tmp1 with
         | '&' -> IO.Buffer.add_string buf "&amp;"
         | '<' -> IO.Buffer.add_string buf "&lt;"
         | '>' -> IO.Buffer.add_string buf "&gt;"
         | '"' -> IO.Buffer.add_string buf "&quot;"
         | '\'' -> IO.Buffer.add_string buf "&#39;"
-        | c -> IO.Buffer.add_char buf c
-      )
+        | c -> IO.Buffer.add_char buf c)
       str;
     IO.Buffer.contents buf
 

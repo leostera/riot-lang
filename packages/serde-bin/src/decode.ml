@@ -29,10 +29,12 @@ type state = {
 
 let buffer_capacity = 4_096
 
-let error_at = fun pos message -> raise
-  (Serde.Decode_error (`Msg (message ^ " at byte " ^ Int.to_string pos)))
+let error_at = fun pos message ->
+  raise
+    (Serde.Decode_error (`Msg (message ^ " at byte " ^ Int.to_string pos)))
 
-let position = function
+let position = fun __tmp1 ->
+  match __tmp1 with
   | String_input state -> state.pos
   | Reader_input state -> state.base + state.pos
 
@@ -81,7 +83,8 @@ let refill = fun state ->
       | Error err -> raise (Serde.Decode_error (`Io_error err))
   )
 
-let peek_byte = function
+let peek_byte = fun __tmp1 ->
+  match __tmp1 with
   | String_input state ->
       if state.pos < String.length state.input then
         Some (String.unsafe_get state.input state.pos)
@@ -95,7 +98,8 @@ let peek_byte = function
       else
         None
 
-let advance = function
+let advance = fun __tmp1 ->
+  match __tmp1 with
   | String_input state -> state.pos <- state.pos + 1
   | Reader_input state -> state.pos <- state.pos + 1
 

@@ -105,25 +105,22 @@ let status_encode =
     [
       Ser.Variant.unit
         "Active"
-        (
-          function
+        (fun __tmp1 ->
+          match __tmp1 with
           | Active -> true
-          | _ -> false
-        );
+          | _ -> false);
       Ser.Variant.unit
         "Draft"
-        (
-          function
+        (fun __tmp1 ->
+          match __tmp1 with
           | Draft -> true
-          | _ -> false
-        );
+          | _ -> false);
       Ser.Variant.unit
         "Archived"
-        (
-          function
+        (fun __tmp1 ->
+          match __tmp1 with
           | Archived -> true
-          | _ -> false
-        );
+          | _ -> false);
     ]
 
 let payload_fields =

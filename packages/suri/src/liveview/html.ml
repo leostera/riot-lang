@@ -74,12 +74,14 @@ let string = fun (str: string) -> Text str
 let int = fun (x: int) -> Text (Int.to_string x)
 
 let is_valid_tag_name = fun tag ->
-  let is_first_char = function
+  let is_first_char = fun __tmp1 ->
+    match __tmp1 with
     | 'a' .. 'z'
     | 'A' .. 'Z' -> true
     | _ -> false
   in
-  let is_name_char = function
+  let is_name_char = fun __tmp1 ->
+    match __tmp1 with
     | 'a' .. 'z'
     | 'A' .. 'Z'
     | '0' .. '9'
@@ -98,7 +100,8 @@ let is_valid_tag_name = fun tag ->
   String.length tag > 0 && is_first_char (String.get_unchecked tag ~at:0) && go 1
 
 let is_valid_attr_name = fun name ->
-  let is_name_char = function
+  let is_name_char = fun __tmp1 ->
+    match __tmp1 with
     | 'a' .. 'z'
     | 'A' .. 'Z'
     | '0' .. '9'
@@ -156,15 +159,14 @@ and to_raw_text_string = fun (t: 'msg t) ->
 
 and attrs_to_string = fun attrs ->
   List.map
-    ~fn:(
-      function
+    ~fn:(fun __tmp1 ->
+      match __tmp1 with
       | Attr (k, v) ->
           if is_valid_attr_name k then
             k ^ "=" ^ "\"" ^ escape_attr v ^ "\""
           else
             ""
-      | _ -> ""
-    )
+      | _ -> "")
     attrs
   |> List.filter ~fn:(fun attr -> attr != "")
   |> String.concat " "
@@ -172,30 +174,28 @@ and attrs_to_string = fun attrs ->
 and escape_text = fun str ->
   let buf = IO.Buffer.create ~size:(String.length str) in
   String.iter
-    (
-      function
+    (fun __tmp1 ->
+      match __tmp1 with
       | '&' -> IO.Buffer.add_string buf "&amp;"
       | '<' -> IO.Buffer.add_string buf "&lt;"
       | '>' -> IO.Buffer.add_string buf "&gt;"
       | '"' -> IO.Buffer.add_string buf "&quot;"
       | '\'' -> IO.Buffer.add_string buf "&#39;"
-      | c -> IO.Buffer.add_char buf c
-    )
+      | c -> IO.Buffer.add_char buf c)
     str;
   IO.Buffer.contents buf
 
 and escape_attr = fun str ->
   let buf = IO.Buffer.create ~size:(String.length str) in
   String.iter
-    (
-      function
+    (fun __tmp1 ->
+      match __tmp1 with
       | '&' -> IO.Buffer.add_string buf "&amp;"
       | '<' -> IO.Buffer.add_string buf "&lt;"
       | '>' -> IO.Buffer.add_string buf "&gt;"
       | '"' -> IO.Buffer.add_string buf "&quot;"
       | '\'' -> IO.Buffer.add_string buf "&#39;"
-      | c -> IO.Buffer.add_char buf c
-    )
+      | c -> IO.Buffer.add_char buf c)
     str;
   IO.Buffer.contents buf
 

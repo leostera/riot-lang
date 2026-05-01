@@ -55,7 +55,8 @@ type invocation_args = {
   trailing: string list;
 }
 
-let is_known_flag_without_value = function
+let is_known_flag_without_value = fun __tmp1 ->
+  match __tmp1 with
   | "--list"
   | "--record"
   | "--release"
@@ -66,7 +67,8 @@ let is_known_flag_without_value = function
   | "--help" -> true
   | _ -> false
 
-let is_known_flag_with_value = function
+let is_known_flag_with_value = fun __tmp1 ->
+  match __tmp1 with
   | "-p"
   | "--package"
   | "-f"
@@ -79,7 +81,8 @@ let is_known_flag_with_value = function
 let looks_like_flag = fun value -> String.starts_with ~prefix:"-" value
 
 let bench_invocation_args = fun argv ->
-  let rec loop parsed trailing = function
+  let rec loop parsed trailing = fun __tmp1 ->
+    match __tmp1 with
     | [] -> { parsed = List.reverse parsed; trailing = List.reverse trailing }
     | "--" :: rest ->
         { parsed = List.reverse parsed; trailing = List.append (List.reverse trailing) rest }
@@ -97,7 +100,8 @@ let bench_invocation_args = fun argv ->
       { parsed = result.parsed; trailing = result.trailing }
 
 let extract_bench_argv = fun argv ->
-  let rec loop = function
+  let rec loop = fun __tmp1 ->
+    match __tmp1 with
     | [] -> None
     | "bench" :: _ as bench_argv -> Some bench_argv
     | _ :: rest -> loop rest
@@ -146,9 +150,9 @@ let bench_override_args = fun matches ->
   !args
 
 let parse_package_names = fun package_names ->
-  let rec loop acc = function
-    | [] ->
-        Ok (List.reverse acc)
+  let rec loop acc = fun __tmp1 ->
+    match __tmp1 with
+    | [] -> Ok (List.reverse acc)
     | package_name :: rest -> (
         match Riot_model.Package_name.from_string package_name with
         | Ok package_name -> loop (package_name :: acc) rest
@@ -440,7 +444,8 @@ let render_cv = fun cv_value ->
   | None -> "n/a"
   | Some value -> print_percent value
 
-let styled_stability_label = function
+let styled_stability_label = fun __tmp1 ->
+  match __tmp1 with
   | History.Stable -> styled "#98C379" "stable"
   | History.Noisy -> styled "#E5C07B" "noisy"
 

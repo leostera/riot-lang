@@ -3,7 +3,8 @@ open Std.Result.Syntax
 
 let command = Riot_fix.Cli.command
 
-let build_mode_of_output_mode = function
+let build_mode_of_output_mode = fun __tmp1 ->
+  match __tmp1 with
   | Riot_fix.Report Riot_fix.Reporter.Json -> Build.Json
   | Riot_fix.Report Riot_fix.Reporter.Text
   | Riot_fix.Silent -> Build.Human

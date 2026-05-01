@@ -152,7 +152,8 @@ let iter: type item. item t -> item Iter.Iterator.t = fun queue ->
 
     type nonrec item = item
 
-    let next = function
+    let next = fun __tmp1 ->
+      match __tmp1 with
       | [] -> (None, [])
       | value :: rest -> (Some value, rest)
 

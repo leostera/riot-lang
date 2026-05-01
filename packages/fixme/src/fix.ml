@@ -99,36 +99,38 @@ let source_slice = fun ~source span ->
   String.sub source ~offset:span.start ~len
 
 let replacement_text = fun ~source ->
-  function
-  | SourceOfNode node -> source_slice ~source (span_of_node node)
-  | SourceOfToken token -> source_slice ~source (span_of_token token)
-  | Text text -> text
+  fun __tmp1 ->
+    match __tmp1 with
+    | SourceOfNode node -> source_slice ~source (span_of_node node)
+    | SourceOfToken token -> source_slice ~source (span_of_token token)
+    | Text text -> text
 
 let make_insert_at = fun pos ~new_text ->
   let span = Syn.Span.make ~start:pos ~end_:pos in
   { span; new_text }
 
 let lower_operation = fun ~source ->
-  function
-  | Delete { target } -> Ok [ { span = target_span target; new_text = "" } ]
-  | Replace { target; replacement } ->
-      Ok [ { span = target_span target; new_text = replacement_text ~source replacement } ]
-  | InsertBefore { anchor; content } ->
-      let anchor_span = target_span anchor in
-      Ok [ make_insert_at anchor_span.start ~new_text:(replacement_text ~source content) ]
-  | InsertAfter { anchor; content } ->
-      let anchor_span = target_span anchor in
-      Ok [ make_insert_at anchor_span.end_ ~new_text:(replacement_text ~source content) ]
-  | Swap { left; right } ->
-      let left_span = target_span left in
-      let right_span = target_span right in
-      if Syn.Span.overlaps left_span right_span then
-        Error "Swap operations require non-overlapping syntax objects"
-      else
-        Ok [
-          { span = left_span; new_text = source_slice ~source right_span };
-          { span = right_span; new_text = source_slice ~source left_span };
-        ]
+  fun __tmp1 ->
+    match __tmp1 with
+    | Delete { target } -> Ok [ { span = target_span target; new_text = "" } ]
+    | Replace { target; replacement } ->
+        Ok [ { span = target_span target; new_text = replacement_text ~source replacement } ]
+    | InsertBefore { anchor; content } ->
+        let anchor_span = target_span anchor in
+        Ok [ make_insert_at anchor_span.start ~new_text:(replacement_text ~source content) ]
+    | InsertAfter { anchor; content } ->
+        let anchor_span = target_span anchor in
+        Ok [ make_insert_at anchor_span.end_ ~new_text:(replacement_text ~source content) ]
+    | Swap { left; right } ->
+        let left_span = target_span left in
+        let right_span = target_span right in
+        if Syn.Span.overlaps left_span right_span then
+          Error "Swap operations require non-overlapping syntax objects"
+        else
+          Ok [
+            { span = left_span; new_text = source_slice ~source right_span };
+            { span = right_span; new_text = source_slice ~source left_span };
+          ]
 
 let compare_text_edit = fun a b ->
   match Int.compare a.span.start b.span.start with
@@ -141,14 +143,15 @@ let same_text_edit = fun a b ->
 let dedupe_text_edits = fun edits ->
   let sorted = List.sort edits ~compare:compare_text_edit in
   let rec loop = fun acc ->
-    function
-    | [] -> List.reverse acc
-    | [ edit ] -> List.reverse (edit :: acc)
-    | edit :: (next :: rest) ->
-        if same_text_edit edit next then
-          loop acc (next :: rest)
-        else
-          loop (edit :: acc) (next :: rest)
+    fun __tmp1 ->
+      match __tmp1 with
+      | [] -> List.reverse acc
+      | [ edit ] -> List.reverse (edit :: acc)
+      | edit :: (next :: rest) ->
+          if same_text_edit edit next then
+            loop acc (next :: rest)
+          else
+            loop (edit :: acc) (next :: rest)
   in
   loop [] sorted
 
@@ -166,19 +169,19 @@ let validate_text_edit = fun ~source edit ->
 let validate_edits = fun ~source edits ->
   let edits = dedupe_text_edits edits in
   let rec loop = fun previous ->
-    function
-    | [] ->
-        Ok edits
-    | edit :: rest -> (
-        match validate_text_edit ~source edit with
-        | Error _ as err -> err
-        | Ok () -> (
-            match previous with
-            | Some prev when Syn.Span.overlaps prev.span edit.span ->
-                Error "Fix operations overlap and cannot be applied safely"
-            | _ -> loop (Some edit) rest
-          )
-      )
+    fun __tmp1 ->
+      match __tmp1 with
+      | [] -> Ok edits
+      | edit :: rest -> (
+          match validate_text_edit ~source edit with
+          | Error _ as err -> err
+          | Ok () -> (
+              match previous with
+              | Some prev when Syn.Span.overlaps prev.span edit.span ->
+                  Error "Fix operations overlap and cannot be applied safely"
+              | _ -> loop (Some edit) rest
+            )
+        )
   in
   loop None edits
 

@@ -205,9 +205,9 @@ let text_for_path = fun state path ->
       match document_path_key document with
       | Some candidate -> String.equal candidate key
       | None -> false)
-  |> function
-    | Some document ->
-        Some document.text
+  |> fun __tmp1 ->
+    match __tmp1 with
+    | Some document -> Some document.text
     | None -> (
         match Fs.read path with
         | Ok text -> Some text
@@ -552,7 +552,8 @@ let symbol_kind_of_type_member = fun member ->
   else
     Lsp.Symbol_kind.Struct
 
-let symbol_children = function
+let symbol_children = fun __tmp1 ->
+  match __tmp1 with
   | [] -> None
   | children -> Some children
 
@@ -1032,9 +1033,9 @@ let rec hover_structure_item = fun offset (item: Typ.Ast.structure_item) ->
   | Typ.Ast.Include _ -> None
 
 let hover_ast = fun offset (ast: Typ.Ast.t) ->
-  match ast.kind with
-  | Typ.Ast.Implementation items ->
-      items
+  match ast with
+  | Typ.Ast.Implementation implementation ->
+      implementation.items
       |> List.map ~fn:(hover_structure_item offset)
       |> best_hover_candidate
   | Typ.Ast.Interface _ -> None
@@ -1219,7 +1220,8 @@ let record_fields_for_receiver_expression = fun intf (receiver: Typ.Ast.expressi
   | Some owner -> record_fields_for_interface ~owner intf
 
 let last = fun values ->
-  let rec loop = function
+  let rec loop = fun __tmp1 ->
+    match __tmp1 with
     | [] -> None
     | [ value ] -> Some value
     | _ :: rest -> loop rest
@@ -1630,9 +1632,9 @@ let inlay_hints_ast = fun text ?stable_until start_offset end_offset (ast: Typ.A
     type_printer = Typ.Ast.Type.Printer.create ();
   }
   in
-  match ast.kind with
-  | Typ.Ast.Implementation items ->
-      items
+  match ast with
+  | Typ.Ast.Implementation implementation ->
+      implementation.items
       |> List.map ~fn:(inlay_hints_structure_item ctx)
       |> List.concat
   | Typ.Ast.Interface _ -> []

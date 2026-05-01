@@ -32,7 +32,8 @@ let assert_property = fun _ctx ~examples name property ->
       Error (name ^ " raised an unexpected exception\n" ^ backtrace)
   | Property.Assumption_violated -> Error (name ^ " exhausted assumptions")
 
-let print_operation = function
+let print_operation = fun __tmp1 ->
+  match __tmp1 with
   | Push value -> "Push(" ^ Int.to_string value ^ ")"
   | Pop -> "Pop"
   | Clear -> "Clear"
@@ -72,11 +73,10 @@ let await = fun ~what selector ->
 let wait_for_go = fun () ->
   let _ =
     receive
-      ~selector:(
-        function
+      ~selector:(fun __tmp1 ->
+        match __tmp1 with
         | Queue_property_go -> Select ()
-        | _ -> Skip
-      )
+        | _ -> Skip)
       ~timeout:(Time.Duration.from_secs 2)
       ()
   in
@@ -98,16 +98,19 @@ let sort_ints = fun values -> List.sort values ~compare:Int.compare
 let render_int_list = fun values ->
   "[" ^ String.concat ", " (List.map values ~fn:Int.to_string) ^ "]"
 
-let render_int_option = function
+let render_int_option = fun __tmp1 ->
+  match __tmp1 with
   | None -> "None"
   | Some value -> "Some(" ^ Int.to_string value ^ ")"
 
-let rec pop_model = function
+let rec pop_model = fun __tmp1 ->
+  match __tmp1 with
   | [] -> (None, [])
   | value :: rest -> (Some value, rest)
 
 let make_batches = fun counts ->
-  let rec loop producer = function
+  let rec loop producer = fun __tmp1 ->
+    match __tmp1 with
     | [] -> []
     | count :: rest -> ints_from (producer * 1_000_000) count :: loop (producer + 1) rest
   in
@@ -144,11 +147,10 @@ let wait_for_producers = fun ~producer_count ->
     else
       match await
         ~what:"queue property producer completion"
-        (
-          function
+        (fun __tmp1 ->
+          match __tmp1 with
           | Queue_property_producer_done _ -> Select ()
-          | _ -> Skip
-        ) with
+          | _ -> Skip) with
       | Ok () -> loop (remaining - 1)
       | Error _ as error -> error
   in
@@ -161,11 +163,10 @@ let collect_consumer_values = fun ~consumer_count ->
     else
       match await
         ~what:"queue property consumer completion"
-        (
-          function
+        (fun __tmp1 ->
+          match __tmp1 with
           | Queue_property_consumer_values values -> Select values
-          | _ -> Skip
-        ) with
+          | _ -> Skip) with
       | Ok values -> loop (remaining - 1) (values :: acc)
       | Error _ as error -> error
   in

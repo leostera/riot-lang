@@ -1,8 +1,7 @@
 open Std
 open IO
 
-let string_of_udp_error = function
-  | Net.UdpSocket.System_error err -> IO.error_message err
+let string_of_udp_error = fun (Net.UdpSocket.System_error err) -> IO.error_message err
 
 let local_udp_addr = fun port -> Net.Addr.udp Net.Addr.loopback port
 

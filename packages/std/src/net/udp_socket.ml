@@ -13,7 +13,8 @@ type recv_result = {
   from: Addr.datagram_addr;
 }
 
-let io_error_of_udp_error = function
+let io_error_of_udp_error = fun __tmp1 ->
+  match __tmp1 with
   | Kernel.Net.UdpSocket.InvalidSlice _ -> IO.Invalid_argument
   | Kernel.Net.UdpSocket.InvalidSocketAddr _ -> IO.Invalid_argument
   | Kernel.Net.UdpSocket.WouldBlock -> IO.Operation_would_block

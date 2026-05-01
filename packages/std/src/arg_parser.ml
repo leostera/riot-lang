@@ -479,7 +479,8 @@ let subcommand_matches = fun matches name ->
 
 let trailing_args = fun matches -> matches.trailing_args
 
-let error_message = function
+let error_message = fun __tmp1 ->
+  match __tmp1 with
   | UnknownArgument arg -> "Unknown argument: " ^ arg
   | MissingRequired name -> "Missing required argument: " ^ name
   | InvalidValue (name, msg) -> "Invalid value for " ^ name ^ ": " ^ msg

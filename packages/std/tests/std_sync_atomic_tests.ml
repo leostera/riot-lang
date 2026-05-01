@@ -89,11 +89,10 @@ let test_atomic_fetch_and_add_serializes_concurrent_updates =
         else
           match await
             ~what:"atomic worker completion"
-            (
-              function
+            (fun __tmp1 ->
+              match __tmp1 with
               | Atomic_worker_done _ -> Select ()
-              | _ -> Skip
-            ) with
+              | _ -> Skip) with
           | Error _ as err -> err
           | Ok () -> await_workers (remaining - 1)
       in

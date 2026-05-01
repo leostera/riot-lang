@@ -44,43 +44,44 @@ module Counter = struct
     | App Reset -> { count = 0 }
     | _ -> state
 
-  let render = fun ~state () -> div
-    ~attrs:[ class_ "component-card" ]
-    [
-      div
-        ~attrs:[ class_ "card-header" ]
-        [
-          h2 [ text "Counter" ];
-          p ~attrs:[ class_ "card-subtitle" ] [ text "Click buttons to change the count" ];
-        ];
-      div
-        ~attrs:[ class_ "card-body" ]
-        [
-          div ~attrs:[ class_ "display-value" ] [ text (Int.to_string state.count) ];
-          div
-            ~attrs:[ class_ "button-group" ]
-            [
-              button
-                ~attrs:[
-                  class_ "btn btn-decrement";
-                  on_click (fun _ -> Decrement);
-                ]
-                [ text "−" ];
-              button
-                ~attrs:[
-                  class_ "btn btn-reset";
-                  on_click (fun _ -> Reset);
-                ]
-                [ text "Reset" ];
-              button
-                ~attrs:[
-                  class_ "btn btn-increment";
-                  on_click (fun _ -> Increment);
-                ]
-                [ text "+" ];
-            ];
-        ];
-    ]
+  let render = fun ~state () ->
+    div
+      ~attrs:[ class_ "component-card" ]
+      [
+        div
+          ~attrs:[ class_ "card-header" ]
+          [
+            h2 [ text "Counter" ];
+            p ~attrs:[ class_ "card-subtitle" ] [ text "Click buttons to change the count" ];
+          ];
+        div
+          ~attrs:[ class_ "card-body" ]
+          [
+            div ~attrs:[ class_ "display-value" ] [ text (Int.to_string state.count) ];
+            div
+              ~attrs:[ class_ "button-group" ]
+              [
+                button
+                  ~attrs:[
+                    class_ "btn btn-decrement";
+                    on_click (fun _ -> Decrement);
+                  ]
+                  [ text "−" ];
+                button
+                  ~attrs:[
+                    class_ "btn btn-reset";
+                    on_click (fun _ -> Reset);
+                  ]
+                  [ text "Reset" ];
+                button
+                  ~attrs:[
+                    class_ "btn btn-increment";
+                    on_click (fun _ -> Increment);
+                  ]
+                  [ text "+" ];
+              ];
+          ];
+      ]
 end
 
 (** Status LiveView - Shows current server timestamp *)

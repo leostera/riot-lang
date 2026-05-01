@@ -137,13 +137,12 @@ type iterator_state = {
   mutable oldest_opened: int;
 }
 
-let create_error_message = function
-  | MinDepthCannotBeMoreThanMaxDepth { min_depth; max_depth } ->
-      "Walker min_depth cannot be greater than max_depth (min_depth="
-      ^ Int.to_string min_depth
-      ^ ", max_depth="
-      ^ Int.to_string max_depth
-      ^ ")"
+let create_error_message = fun (MinDepthCannotBeMoreThanMaxDepth { min_depth; max_depth }) ->
+  "Walker min_depth cannot be greater than max_depth (min_depth="
+  ^ Int.to_string min_depth
+  ^ ", max_depth="
+  ^ Int.to_string max_depth
+  ^ ")"
 
 let create
   ~roots

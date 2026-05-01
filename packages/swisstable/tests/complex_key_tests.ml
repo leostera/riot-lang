@@ -110,13 +110,12 @@ let event_gen =
 
 let event_arb =
   Arbitrary.make
-    ~print:(
-      function
+    ~print:(fun __tmp1 ->
+      match __tmp1 with
       | Click (x, y) -> "Click(" ^ Int.to_string x ^ "," ^ Int.to_string y ^ ")"
       | KeyPress c -> "KeyPress('" ^ String.make ~len:1 ~char:c ^ "')"
       | Scroll n -> "Scroll(" ^ Int.to_string n ^ ")"
-      | Resize (w, h) -> "Resize(" ^ Int.to_string w ^ "," ^ Int.to_string h ^ ")"
-    )
+      | Resize (w, h) -> "Resize(" ^ Int.to_string w ^ "," ^ Int.to_string h ^ ")")
     event_gen
 
 (* Status generator *)
@@ -132,13 +131,12 @@ let status_gen =
 
 let status_arb =
   Arbitrary.make
-    ~print:(
-      function
+    ~print:(fun __tmp1 ->
+      match __tmp1 with
       | Pending -> "Pending"
       | Running n -> "Running(" ^ Int.to_string n ^ ")"
       | Complete s -> "Complete(" ^ s ^ ")"
-      | Failed s -> "Failed(" ^ s ^ ")"
-    )
+      | Failed s -> "Failed(" ^ s ^ ")")
     status_gen
 
 (* Customer generator (nested) *)

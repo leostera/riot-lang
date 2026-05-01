@@ -49,7 +49,8 @@ type level =
   | Debug
   | Trace
 
-let level_to_string = function
+let level_to_string = fun __tmp1 ->
+  match __tmp1 with
   | Error -> "error"
   | Warn -> "warn"
   | Info -> "info"
@@ -372,7 +373,8 @@ let create = fun ~session_id ~level kind ->
 (** Format timestamp for display *)
 
 (** Get the machine-readable event name *)
-let name = function
+let name = fun __tmp1 ->
+  match __tmp1 with
   | BuildComplete _ -> "riot.build.completed"
   | BuildGraphCreated _ -> "riot.build_graph.created"
   | BuildGraphCreating -> "riot.build_graph.creating"
@@ -455,7 +457,8 @@ let name = function
   | WorkerPoolCreated _ -> "riot.worker_pool.created"
 
 (** Get human-readable display message *)
-let display = function
+let display = fun __tmp1 ->
+  match __tmp1 with
   | BuildStarted { packages; _ } ->
       "Build started for " ^ Int.to_string (List.length packages) ^ " packages"
   | BuildComplete { duration_ms; succeeded; failed; _ } ->
@@ -466,8 +469,7 @@ let display = function
       ^ " succeeded, "
       ^ Int.to_string (List.length failed)
       ^ " failed)"
-  | PackageStarted { package } ->
-      "Building " ^ Package_name.to_string package ^ "..."
+  | PackageStarted { package } -> "Building " ^ Package_name.to_string package ^ "..."
   | PackageComplete { package; success; duration_ms; _ } ->
       if success then
         "✓ Built " ^ Package_name.to_string package ^ " in " ^ Int.to_string duration_ms ^ "ms"
@@ -504,10 +506,8 @@ let display = function
   | CycleDetected { packages } ->
       "Circular dependency detected: "
       ^ String.concat " -> " (List.map packages ~fn:Package_name.to_string)
-  | CacheHit { package; _ } ->
-      "Cached " ^ Package_name.to_string package
-  | CacheMiss { package; _ } ->
-      "Cache miss for " ^ Package_name.to_string package
+  | CacheHit { package; _ } -> "Cached " ^ Package_name.to_string package
+  | CacheMiss { package; _ } -> "Cache miss for " ^ Package_name.to_string package
   | CacheStored { package; artifacts; _ } ->
       "Cached "
       ^ Package_name.to_string package
@@ -516,36 +516,28 @@ let display = function
       ^ " artifacts)"
   | WorkerPoolStarted { workers } ->
       "Started worker pool with " ^ Int.to_string workers ^ " workers"
-  | WorkerStarted { worker_id } ->
-      "Worker " ^ Worker_id.to_string worker_id ^ " started"
+  | WorkerStarted { worker_id } -> "Worker " ^ Worker_id.to_string worker_id ^ " started"
   | WorkerAssigned { worker_id; package } ->
       "Worker " ^ Worker_id.to_string worker_id ^ " assigned to " ^ Package_name.to_string package
-  | WorkerIdle { worker_id } ->
-      "Worker " ^ Worker_id.to_string worker_id ^ " idle"
-  | ServerStarted { pid } ->
-      "Server started (pid: " ^ pid ^ ")"
-  | ServerScanning { root } ->
-      "Scanning workspace: " ^ root
+  | WorkerIdle { worker_id } -> "Worker " ^ Worker_id.to_string worker_id ^ " idle"
+  | ServerStarted { pid } -> "Server started (pid: " ^ pid ^ ")"
+  | ServerScanning { root } -> "Scanning workspace: " ^ root
   | ServerRestarted { packages; toolchain } ->
       "Server restarted with " ^ Int.to_string packages ^ " packages (toolchain: " ^ toolchain ^ ")"
-  | WorkspaceEmpty ->
-      "No packages found in workspace"
-  | WorkspaceScanning ->
-      "Scanning workspace..."
+  | WorkspaceEmpty -> "No packages found in workspace"
+  | WorkspaceScanning -> "Scanning workspace..."
   | WorkspaceScanned { packages; duration_ms } ->
       "Scanned workspace: "
       ^ Int.to_string packages
       ^ " packages in "
       ^ Int.to_string duration_ms
       ^ "ms"
-  | LockfileReadStarted { path } ->
-      "Reading lockfile " ^ path
+  | LockfileReadStarted { path } -> "Reading lockfile " ^ path
   | LockfileReadFinished { path; duration_ms } ->
       "Read lockfile " ^ path ^ " in " ^ Int.to_string duration_ms ^ "ms"
   | LockfileReadFailed { path; error } ->
       "Failed to read lockfile " ^ path ^ ": " ^ Pm_error.message error
-  | LockfileWriteStarted { path } ->
-      "Writing lockfile " ^ path
+  | LockfileWriteStarted { path } -> "Writing lockfile " ^ path
   | LockfileWriteFinished { path; duration_ms } ->
       "Wrote lockfile " ^ path ^ " in " ^ Int.to_string duration_ms ^ "ms"
   | LockfileWriteFailed { path; error } ->
@@ -561,10 +553,8 @@ let display = function
       ^ ") for "
       ^ Int.to_string (List.length packages)
       ^ " packages"
-  | DependencyResolutionUsingExistingLock { path } ->
-      "Using existing lockfile " ^ path
-  | DependencyResolutionRefreshingLock { path } ->
-      "Refreshing lockfile " ^ path
+  | DependencyResolutionUsingExistingLock { path } -> "Using existing lockfile " ^ path
+  | DependencyResolutionRefreshingLock { path } -> "Refreshing lockfile " ^ path
   | DependencyResolutionUnlocking { path } -> (
       match path with
       | Some path -> "Unlocking dependency graph from " ^ path
@@ -580,8 +570,7 @@ let display = function
       ^ "ms"
   | DependencyResolutionFailed { error } ->
       "Dependency resolution failed: " ^ Pm_error.message error
-  | RegistryIndexUpdating { registry } ->
-      "Updating " ^ registry ^ " index"
+  | RegistryIndexUpdating { registry } -> "Updating " ^ registry ^ " index"
   | DependencyUniverseBuilding { packages } ->
       "Building dependency universe for " ^ Int.to_string (List.length packages) ^ " packages"
   | DependencyUniverseBuilt {
@@ -774,16 +763,14 @@ let display = function
         )
   | PackageDownloadQueued { package; version; _ } ->
       "Queued download for " ^ Package_name.to_string package ^ "@" ^ version
-  | BuildGraphCreating ->
-      "Creating build graph..."
+  | BuildGraphCreating -> "Creating build graph..."
   | BuildGraphCreated { nodes; duration_ms } ->
       "Created build graph: "
       ^ Int.to_string nodes
       ^ " nodes in "
       ^ Int.to_string duration_ms
       ^ "ms"
-  | ServerShutdown ->
-      "Server shutting down"
+  | ServerShutdown -> "Server shutting down"
   | QueuePackage { package; queue_type } ->
       let typ =
         match queue_type with
@@ -803,8 +790,7 @@ let display = function
       Package_name.to_string package
       ^ " waiting for: "
       ^ String.concat ", " (List.map missing ~fn:Package_name.to_string)
-  | DependencySatisfied { package } ->
-      Package_name.to_string package ^ " dependencies satisfied"
+  | DependencySatisfied { package } -> Package_name.to_string package ^ " dependencies satisfied"
   | CompilingInterface { package; file } ->
       "[" ^ Package_name.to_string package ^ "] Compiling interface " ^ file
   | CompilingImplementation { package; file } ->
@@ -813,18 +799,12 @@ let display = function
       "[" ^ Package_name.to_string package ^ "] Linking library " ^ output
   | LinkingExecutable { package; output } ->
       "[" ^ Package_name.to_string package ^ "] Linking executable " ^ output
-  | ComputingHash { package } ->
-      "Computing hash for " ^ Package_name.to_string package
-  | HashComputed { package; hash } ->
-      "Hash for " ^ Package_name.to_string package ^ ": " ^ hash
-  | CopyingFile { source; dest } ->
-      "Copying " ^ source ^ " -> " ^ dest
-  | WritingFile { path } ->
-      "Writing " ^ path
-  | CreatingDirectory { path } ->
-      "Creating directory " ^ path
-  | RpcRequestReceived { request_type; _ } ->
-      "RPC request: " ^ request_type
+  | ComputingHash { package } -> "Computing hash for " ^ Package_name.to_string package
+  | HashComputed { package; hash } -> "Hash for " ^ Package_name.to_string package ^ ": " ^ hash
+  | CopyingFile { source; dest } -> "Copying " ^ source ^ " -> " ^ dest
+  | WritingFile { path } -> "Writing " ^ path
+  | CreatingDirectory { path } -> "Creating directory " ^ path
+  | RpcRequestReceived { request_type; _ } -> "RPC request: " ^ request_type
   | RpcResponseSent { result } ->
       "RPC response sent (success: " ^ Bool.to_string
         (
@@ -832,12 +812,9 @@ let display = function
           | Ok _ -> true
           | Error _ -> false
         ) ^ ")"
-  | McpToolCall { tool; _ } ->
-      "MCP tool call: " ^ tool
-  | StoreCreating ->
-      "Creating build cache store"
-  | StoreCreated { duration_ms } ->
-      "Store created in " ^ Int.to_string duration_ms ^ "ms"
+  | McpToolCall { tool; _ } -> "MCP tool call: " ^ tool
+  | StoreCreating -> "Creating build cache store"
+  | StoreCreated { duration_ms } -> "Store created in " ^ Int.to_string duration_ms ^ "ms"
   | WorkerPoolCreating { workers } ->
       "Creating worker pool with " ^ Int.to_string workers ^ " workers"
   | WorkerPoolCreated { workers; duration_ms } ->
@@ -868,15 +845,18 @@ let package_name_json = fun package -> Json.String (Package_name.to_string packa
 
 let package_names_json = fun packages -> Json.Array (List.map packages ~fn:package_name_json)
 
-let package_name_of_json = function
+let package_name_of_json = fun __tmp1 ->
+  match __tmp1 with
   | Json.String package ->
       Package_name.from_string package
       |> Result.map_err ~fn:Package_name.error_message
   | _ -> Error "invalid package name"
 
-let package_names_of_json = function
+let package_names_of_json = fun __tmp1 ->
+  match __tmp1 with
   | Json.Array packages ->
-      let rec loop acc = function
+      let rec loop acc = fun __tmp1 ->
+        match __tmp1 with
         | [] -> Ok (List.reverse acc)
         | json :: rest ->
             let* package = package_name_of_json json in
@@ -885,35 +865,42 @@ let package_names_of_json = function
       loop [] packages
   | _ -> Error "invalid package names"
 
-let json_of_string_option = function
+let json_of_string_option = fun __tmp1 ->
+  match __tmp1 with
   | Some value -> Json.String value
   | None -> Json.Null
 
-let string_option_of_json = function
+let string_option_of_json = fun __tmp1 ->
+  match __tmp1 with
   | Json.String value -> Some value
   | Json.Null -> None
   | _ -> None
 
-let json_of_resolution_mode = function
+let json_of_resolution_mode = fun __tmp1 ->
+  match __tmp1 with
   | `Refresh -> Json.String "refresh"
   | `Unlock -> Json.String "unlock"
 
-let resolution_mode_of_json = function
+let resolution_mode_of_json = fun __tmp1 ->
+  match __tmp1 with
   | Json.String "refresh" -> Some `Refresh
   | Json.String "unlock" -> Some `Unlock
   | _ -> None
 
-let json_of_manifest_operation = function
+let json_of_manifest_operation = fun __tmp1 ->
+  match __tmp1 with
   | `Add -> Json.String "add"
   | `Remove -> Json.String "remove"
 
-let manifest_operation_of_json = function
+let manifest_operation_of_json = fun __tmp1 ->
+  match __tmp1 with
   | Json.String "add" -> Some `Add
   | Json.String "remove" -> Some `Remove
   | _ -> None
 
 (** Convert kind to JSON *)
-let kind_to_json = function
+let kind_to_json = fun __tmp1 ->
+  match __tmp1 with
   | BuildComplete {
       duration_ms;
       results;
@@ -1495,11 +1482,10 @@ let kind_from_json = fun json ->
                     match Fields.get "artifacts" data_fields with
                     | Some (Json.Array arr) ->
                         List.filter_map
-                          ~fn:(
-                            function
+                          ~fn:(fun __tmp1 ->
+                            match __tmp1 with
                             | Json.String s -> Some s
-                            | _ -> None
-                          )
+                            | _ -> None)
                           arr
                     | _ -> []
                   in

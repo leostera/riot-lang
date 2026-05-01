@@ -33,11 +33,13 @@ type flavor =
   | Markdown
   | Gfm
 
-let parse_flavor = function
+let parse_flavor = fun __tmp1 ->
+  match __tmp1 with
   | Markdown -> Markdown_parser.Markdown
   | Gfm -> Markdown_parser.Gfm
 
-let lower_flavor = function
+let lower_flavor = fun __tmp1 ->
+  match __tmp1 with
   | Markdown -> Markdown_parser.Markdown
   | Gfm -> Markdown_parser.Gfm
 

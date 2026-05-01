@@ -33,7 +33,8 @@ type t =
   | Text
   | Error
 
-let to_string = function
+let to_string = fun __tmp1 ->
+  match __tmp1 with
   | Document -> "document"
   | Heading_1 -> "heading_1"
   | Heading_2 -> "heading_2"

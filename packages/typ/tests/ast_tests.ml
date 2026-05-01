@@ -99,25 +99,28 @@ let test_from_syn_keeps_constructor_patterns _ctx =
   | None -> 0
 |ocaml}
   in
-  match ast.kind with
-  | Implementation [
-      {
-        kind =
-          Let {
-            bindings = [
-                {
-                  expr = {
-                    kind = Function { body = Cases [ some_case; none_case ]; _ };
-                    _;
-                  };
-                  _;
-                };
-            ];
+  match ast with
+  | Implementation {
+      items = [
+          {
+            kind =
+              Let {
+                bindings = [
+                    {
+                      expr = {
+                        kind = Function { body = Cases [ some_case; none_case ]; _ };
+                        _;
+                      };
+                      _;
+                    };
+                ];
+                _;
+              };
             _;
           };
-        _;
-      };
-    ] ->
+      ];
+      _;
+    } ->
       let some_result =
         match some_case.pattern.kind with
         | Constructor { ident = constructor; payload = Some { kind = Bind binding; _ } } -> (
@@ -140,25 +143,29 @@ let test_from_syn_keeps_constructor_patterns _ctx =
 
 let test_from_syn_keeps_constructor_expression_payloads _ctx =
   let ast = parse_typ_ast {ocaml|let value = Some 1|ocaml} in
-  match ast.kind with
-  | Implementation [
-      {
-        kind =
-          Let {
-            bindings = [
-                {
-                  expr = {
-                    kind = Constructor { ident; payload = Some { kind = Literal Int; _ } };
-                    _;
-                  };
-                  _;
-                };
-            ];
+  match ast with
+  | Implementation {
+      items = [
+          {
+            kind =
+              Let {
+                bindings = [
+                    {
+                      expr = {
+                        kind = Constructor { ident; payload = Some { kind = Literal Int; _ } };
+                        _;
+                      };
+                      _;
+                    };
+                ];
+                _;
+              };
             _;
           };
-        _;
-      };
-    ] -> assert_path_string ~expected:"Some" ident
+      ];
+      _;
+    } ->
+      assert_path_string ~expected:"Some" ident
   | _ -> Error "expected Some 1 to lower as constructor expression with payload"
 
 let tests =

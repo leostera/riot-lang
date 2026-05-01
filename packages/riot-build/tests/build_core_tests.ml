@@ -70,7 +70,8 @@ let make_package = fun ~root ~name ~value ->
     ()
 
 let map_with_index = fun items ~fn ->
-  let rec loop index acc = function
+  let rec loop index acc = fun __tmp1 ->
+    match __tmp1 with
     | [] -> acc
     | item :: rest -> loop (index + 1) (acc @ [ fn index item ]) rest
   in
@@ -194,7 +195,8 @@ let expect_string_list = fun ~label ~expected ~actual ->
     ^ String.concat ", " actual
     ^ "]")
 
-let phase_name = function
+let phase_name = fun __tmp1 ->
+  match __tmp1 with
   | Riot_build.Event.TargetsResolved _ -> "targets_resolved"
   | Riot_build.Event.ToolchainsEnsured _ -> "toolchains_ensured"
   | Riot_build.Event.ToolchainsValidated _ -> "toolchains_validated"
@@ -576,13 +578,12 @@ let test_cached_build_does_not_emit_generation_recording_events = fun _ctx ->
       in
       let saw_generation_event = ref false in
       match build_request
-        ~on_event:(
-          function
+        ~on_event:(fun __tmp1 ->
+          match __tmp1 with
           | Riot_build.Event.Phase (Riot_build.Event.CacheGenerationRecordingStarted _
           | Riot_build.Event.CacheGenerationRecorded _) ->
               saw_generation_event := true
-          | _ -> ()
-        )
+          | _ -> ())
         request with
       | Error err ->
           Error ("expected second build to succeed, got: " ^ Riot_build.error_message err)
@@ -599,11 +600,10 @@ let test_build_emits_runtime_phases_in_order = fun _ctx ->
       let prepared_workspace = make_valid_workspace tmpdir in
       let seen = ref [] in
       match build_request
-        ~on_event:(
-          function
+        ~on_event:(fun __tmp1 ->
+          match __tmp1 with
           | Riot_build.Event.Phase phase -> seen := !seen @ [ phase_name phase ]
-          | _ -> ()
-        )
+          | _ -> ())
         (make_request ~workspace:prepared_workspace ()) with
       | Error err -> Error ("expected build to succeed, got: " ^ Riot_build.error_message err)
       | Ok _ ->
@@ -633,8 +633,8 @@ let test_build_emits_detailed_build_telemetry = fun _ctx ->
       let prepared_workspace = make_valid_workspace tmpdir in
       let seen = ref [] in
       match build_request
-        ~on_event:(
-          function
+        ~on_event:(fun __tmp1 ->
+          match __tmp1 with
           | Riot_build.Event.Telemetry event -> (
               match event with
               | Telemetry_events.BuildStarted _ -> seen := !seen @ [ "build_started" ]
@@ -642,8 +642,7 @@ let test_build_emits_detailed_build_telemetry = fun _ctx ->
               | Telemetry_events.BuildCompleted _ -> seen := !seen @ [ "build_completed" ]
               | _ -> ()
             )
-          | _ -> ()
-        )
+          | _ -> ())
         (make_request ~workspace:prepared_workspace ()) with
       | Error err -> Error ("expected build to succeed, got: " ^ Riot_build.error_message err)
       | Ok _ ->
@@ -673,8 +672,8 @@ let test_build_preserves_exact_target_subset = fun _ctx ->
       let started_count = ref 0 in
       let finished_count = ref 0 in
       match build_request
-        ~on_event:(
-          function
+        ~on_event:(fun __tmp1 ->
+          match __tmp1 with
           | Riot_build.Event.Phase (
             Riot_build.Event.TargetsResolved { target_count = count }
           ) ->
@@ -683,8 +682,7 @@ let test_build_preserves_exact_target_subset = fun _ctx ->
               started_count := !started_count + 1
           | Riot_build.Event.Phase (Riot_build.Event.TargetBuildFinished _) ->
               finished_count := !finished_count + 1
-          | _ -> ()
-        )
+          | _ -> ())
         (make_request
           ~workspace:prepared_workspace
           ~targets:(Riot_model.Target.Exact requested_targets)
@@ -743,8 +741,8 @@ let test_build_multi_target_outputs_and_events = fun _ctx ->
       let finished_counts = ref [] in
       let any_partial_failure = ref false in
       match build_request
-        ~on_event:(
-          function
+        ~on_event:(fun __tmp1 ->
+          match __tmp1 with
           | Riot_build.Event.Phase (
             Riot_build.Event.TargetsResolved { target_count }
           ) ->
@@ -759,8 +757,7 @@ let test_build_multi_target_outputs_and_events = fun _ctx ->
               finished_targets := Riot_model.Target.to_string target :: !finished_targets;
               finished_counts := result_count :: !finished_counts;
               any_partial_failure := !any_partial_failure || had_partial_failure
-          | _ -> ()
-        )
+          | _ -> ())
         (make_request
           ~workspace:prepared_workspace
           ~targets:(Riot_model.Target.Exact requested_targets)
@@ -880,8 +877,8 @@ let test_build_multi_target_partial_failures_fail_by_default = fun _ctx ->
       let partial_failure_flags = ref [] in
       let saw_returning_results = ref false in
       match build_request
-        ~on_event:(
-          function
+        ~on_event:(fun __tmp1 ->
+          match __tmp1 with
           | Riot_build.Event.Phase (
             Riot_build.Event.TargetsResolved { target_count }
           ) ->
@@ -897,8 +894,7 @@ let test_build_multi_target_partial_failures_fail_by_default = fun _ctx ->
               partial_failure_flags := had_partial_failure :: !partial_failure_flags
           | Riot_build.Event.Phase (Riot_build.Event.ReturningResults _) ->
               saw_returning_results := true
-          | _ -> ()
-        )
+          | _ -> ())
         (make_request
           ~workspace:prepared_workspace
           ~targets:(Riot_model.Target.Exact requested_targets)

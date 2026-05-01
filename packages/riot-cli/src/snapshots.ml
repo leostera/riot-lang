@@ -188,9 +188,9 @@ let approve_pending_snapshot = fun snapshot ->
     )
 
 let approve_pending_snapshots = fun snapshots ->
-  let rec loop = function
-    | [] ->
-        Ok ()
+  let rec loop = fun __tmp1 ->
+    match __tmp1 with
+    | [] -> Ok ()
     | snapshot :: rest -> (
         match approve_pending_snapshot snapshot with
         | Ok () -> loop rest
@@ -200,9 +200,9 @@ let approve_pending_snapshots = fun snapshots ->
   loop snapshots
 
 let reject_pending_snapshots = fun snapshots ->
-  let rec loop = function
-    | [] ->
-        Ok ()
+  let rec loop = fun __tmp1 ->
+    match __tmp1 with
+    | [] -> Ok ()
     | snapshot :: rest -> (
         match Fs.remove_file snapshot.pending with
         | Ok () -> loop rest
@@ -277,9 +277,9 @@ let review_pending_snapshot = fun ~workspace_root snapshot ->
     )
 
 let review_pending_snapshots = fun ~workspace_root snapshots ->
-  let rec loop = function
-    | [] ->
-        Ok ()
+  let rec loop = fun __tmp1 ->
+    match __tmp1 with
+    | [] -> Ok ()
     | snapshot :: rest -> (
         match review_pending_snapshot ~workspace_root snapshot with
         | Ok () -> loop rest
@@ -340,7 +340,8 @@ let print_review_outcome = fun summary ->
     ^ " ignored")
 
 let review_pending_snapshots_with_decider = fun ~workspace_root snapshots ~decide ->
-  let rec loop summary = function
+  let rec loop summary = fun __tmp1 ->
+    match __tmp1 with
     | [] -> Ok summary
     | snapshot :: rest ->
         let* () = review_pending_snapshot ~workspace_root snapshot in

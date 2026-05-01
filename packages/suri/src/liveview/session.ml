@@ -6,7 +6,8 @@ type decode_error =
   | InvalidPayloadBase64
   | InvalidJson of Data.Json.error
 
-let decode_error_to_string = function
+let decode_error_to_string = fun __tmp1 ->
+  match __tmp1 with
   | InvalidTokenFormat -> "invalid token format; expected '<payload>.<signature>'"
   | InvalidSignature -> "invalid signature"
   | InvalidPayloadBase64 -> "invalid base64 encoding in payload"

@@ -5,12 +5,14 @@ type shell =
   | Bash
   | Fish
 
-let shell_to_string = function
+let shell_to_string = fun __tmp1 ->
+  match __tmp1 with
   | Zsh -> "zsh"
   | Bash -> "bash"
   | Fish -> "fish"
 
-let shell_from_string = function
+let shell_from_string = fun __tmp1 ->
+  match __tmp1 with
   | "zsh" -> Some Zsh
   | "bash" -> Some Bash
   | "fish" -> Some Fish
@@ -443,7 +445,8 @@ let generate_fish_script = fun () ->
   (* Placeholder for future fish support *)
   "# Fish completions not yet implemented\n"
 
-let generate_script = function
+let generate_script = fun __tmp1 ->
+  match __tmp1 with
   | Zsh -> generate_zsh_script ()
   | Bash -> generate_bash_script ()
   | Fish -> generate_fish_script ()

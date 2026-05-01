@@ -4,23 +4,28 @@ open Std.Collections
 
 (* Helper to extract values *)
 
-let get_string = function
+let get_string = fun __tmp1 ->
+  match __tmp1 with
   | Toml.String s -> Some s
   | _ -> None
 
-let get_int = function
+let get_int = fun __tmp1 ->
+  match __tmp1 with
   | Toml.Int i -> Some i
   | _ -> None
 
-let get_table = function
+let get_table = fun __tmp1 ->
+  match __tmp1 with
   | Toml.Table t -> Some t
   | _ -> None
 
-let get_array = function
+let get_array = fun __tmp1 ->
+  match __tmp1 with
   | Toml.Array a -> Some a
   | _ -> None
 
-let get_bool = function
+let get_bool = fun __tmp1 ->
+  match __tmp1 with
   | Toml.Bool b -> Some b
   | _ -> None
 

@@ -80,7 +80,8 @@ let span_contains_char = fun ~source span needle ->
   else
     loop start
 
-let keyword_kind = function
+let keyword_kind = fun __tmp1 ->
+  match __tmp1 with
   | Keyword.And -> Syntax_kind.AND_KW
   | Keyword.As -> Syntax_kind.AS_KW
   | Keyword.Asr -> Syntax_kind.OPERATOR_KW
@@ -130,7 +131,8 @@ let keyword_kind = function
   | Keyword.While -> Syntax_kind.WHILE_KW
   | Keyword.With -> Syntax_kind.WITH_KW
 
-let open_delim_kind = function
+let open_delim_kind = fun __tmp1 ->
+  match __tmp1 with
   | Token.Paren -> Syntax_kind.LPAREN
   | Token.Brace -> Syntax_kind.LBRACE
   | Token.Bracket -> Syntax_kind.LBRACKET
@@ -139,7 +141,8 @@ let open_delim_kind = function
   | Token.StructEnd -> Syntax_kind.STRUCT_KW
   | Token.SigEnd -> Syntax_kind.SIG_KW
 
-let close_delim_kind = function
+let close_delim_kind = fun __tmp1 ->
+  match __tmp1 with
   | Token.Paren -> Syntax_kind.RPAREN
   | Token.Brace -> Syntax_kind.RBRACE
   | Token.Bracket -> Syntax_kind.RBRACKET
@@ -148,7 +151,8 @@ let close_delim_kind = function
   | Token.StructEnd
   | Token.SigEnd -> Syntax_kind.END_KW
 
-let kind_of_token_kind = function
+let kind_of_token_kind = fun __tmp1 ->
+  match __tmp1 with
   | Token.Keyword keyword -> keyword_kind keyword
   | Token.Ident _ -> Syntax_kind.IDENT
   | Token.Literal (Token.Int _) -> Syntax_kind.INT
@@ -209,7 +213,8 @@ let kind_of_token_kind = function
   | Token.EOF -> Syntax_kind.EOF
   | Token.Unknown _ -> Syntax_kind.UNKNOWN
 
-let kind_of_trivia_kind = function
+let kind_of_trivia_kind = fun __tmp1 ->
+  match __tmp1 with
   | Token.WhitespaceTrivia -> Syntax_kind.WHITESPACE
   | Token.CommentTrivia _ -> Syntax_kind.COMMENT
   | Token.DocstringTrivia _ -> Syntax_kind.DOCSTRING

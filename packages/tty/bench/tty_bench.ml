@@ -110,7 +110,8 @@ let bench_utf8_reader_emoji = fun () ->
   ()
 
 let bench_parser_chunked_trace = fun () ->
-  let rec loop parser = function
+  let rec loop parser = fun __tmp1 ->
+    match __tmp1 with
     | [] ->
         let _ = Tty.Input.Parser.flush parser in
         ()
@@ -126,7 +127,8 @@ let bench_parser_whole_trace = fun () ->
   ()
 
 let bench_parser_chunked_paste = fun () ->
-  let rec loop parser = function
+  let rec loop parser = fun __tmp1 ->
+    match __tmp1 with
     | [] ->
         let _ = Tty.Input.Parser.flush parser in
         ()
@@ -137,7 +139,8 @@ let bench_parser_chunked_paste = fun () ->
   loop (Tty.Input.Parser.create ()) paste_trace_chunks
 
 let bench_parser_chunked_plain_typing = fun () ->
-  let rec loop parser = function
+  let rec loop parser = fun __tmp1 ->
+    match __tmp1 with
     | [] ->
         let _ = Tty.Input.Parser.flush parser in
         ()

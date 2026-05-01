@@ -84,7 +84,8 @@ let insert = fun map ~key ~value ->
 
 let get = fun map ~key ->
   let bucket = Array.get_unchecked map.buckets ~at:(hash_index map key) in
-  let rec loop = function
+  let rec loop = fun __tmp1 ->
+    match __tmp1 with
     | [] -> None
     | (existing_key, value) :: rest ->
         if existing_key = key then

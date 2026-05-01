@@ -59,38 +59,34 @@ let test_content_length_errors_are_typed = fun _ctx ->
   in
   match expect
     ""
-    (
-      function
+    (fun __tmp1 ->
+      match __tmp1 with
       | EmptyContentLength -> true
-      | _ -> false
-    ) with
+      | _ -> false) with
   | Error _ as error -> error
   | Ok () -> (
       match expect
         "-1"
-        (
-          function
+        (fun __tmp1 ->
+          match __tmp1 with
           | NegativeContentLength -> true
-          | _ -> false
-        ) with
+          | _ -> false) with
       | Error _ as error -> error
       | Ok () -> (
           match expect
             "12x"
-            (
-              function
+            (fun __tmp1 ->
+              match __tmp1 with
               | InvalidContentLengthCharacter { code; index = 2 } when code = Char.to_int 'x' -> true
-              | _ -> false
-            ) with
+              | _ -> false) with
           | Error _ as error -> error
           | Ok () ->
               expect
                 (String.make ~len:32 ~char:'9')
-                (
-                  function
+                (fun __tmp1 ->
+                  match __tmp1 with
                   | ContentLengthOverflow -> true
-                  | _ -> false
-                )
+                  | _ -> false)
         )
     )
 

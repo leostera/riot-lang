@@ -188,42 +188,43 @@ type msg =
   | Decrement
   | Reset
 
-let counter_view_interactive = fun count -> div
-  ~attrs:[ class_ "card" ]
-  [
-    h1 [ text "Counter (LiveView)" ];
-    span ~attrs:[ class_ "label" ] [ text "Interactive component with server-side handlers" ];
-    div ~attrs:[ class_ "count" ] [ text (Int.to_string count) ];
-    div
-      ~attrs:[ class_ "buttons" ]
-      [
-        button
-          ~attrs:[
-            class_ "btn btn-secondary";
-            on_click (fun _ -> Decrement);
-          ]
-          [ text "-" ];
-        button
-          ~attrs:[
-            class_ "btn btn-secondary";
-            on_click (fun _ -> Reset);
-          ]
-          [ text "Reset" ];
-        button
-          ~attrs:[
-            class_ "btn btn-primary";
-            on_click (fun _ -> Increment);
-          ]
-          [ text "+" ];
-      ];
-    div
-      ~attrs:[ class_ "success" ]
-      [
-        strong [ text "✓ Interactive: " ];
-        text "Buttons are wired to LiveView event handlers. ";
-        text "Clicks are processed on the server and the UI updates automatically.";
-      ];
-  ]
+let counter_view_interactive = fun count ->
+  div
+    ~attrs:[ class_ "card" ]
+    [
+      h1 [ text "Counter (LiveView)" ];
+      span ~attrs:[ class_ "label" ] [ text "Interactive component with server-side handlers" ];
+      div ~attrs:[ class_ "count" ] [ text (Int.to_string count) ];
+      div
+        ~attrs:[ class_ "buttons" ]
+        [
+          button
+            ~attrs:[
+              class_ "btn btn-secondary";
+              on_click (fun _ -> Decrement);
+            ]
+            [ text "-" ];
+          button
+            ~attrs:[
+              class_ "btn btn-secondary";
+              on_click (fun _ -> Reset);
+            ]
+            [ text "Reset" ];
+          button
+            ~attrs:[
+              class_ "btn btn-primary";
+              on_click (fun _ -> Increment);
+            ]
+            [ text "+" ];
+        ];
+      div
+        ~attrs:[ class_ "success" ]
+        [
+          strong [ text "✓ Interactive: " ];
+          text "Buttons are wired to LiveView event handlers. ";
+          text "Clicks are processed on the server and the UI updates automatically.";
+        ];
+    ]
 
 let interactive_page count =
   html

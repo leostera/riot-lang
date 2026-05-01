@@ -131,7 +131,8 @@ let unescape_backslashes = fun text ->
   in
   loop 0
 
-let is_escapable = function
+let is_escapable = fun __tmp1 ->
+  match __tmp1 with
   | '!'
   | '"'
   | '#'
@@ -413,7 +414,8 @@ let find_inline_link_close = fun text start ->
   in
   loop start 0 false None
 
-let is_title_opener = function
+let is_title_opener = fun __tmp1 ->
+  match __tmp1 with
   | '"'
   | '\''
   | '(' -> true
@@ -717,7 +719,8 @@ let find_reference = fun references label ->
   if normalized = "" then
     None
   else
-    let rec loop = function
+    let rec loop = fun __tmp1 ->
+      match __tmp1 with
       | [] -> None
       | (key, value) :: tail ->
           if String.equal key normalized then
@@ -771,26 +774,30 @@ let autolink_destination = fun inside ->
   else
     None
 
-let is_ascii_letter = function
+let is_ascii_letter = fun __tmp1 ->
+  match __tmp1 with
   | 'a' .. 'z'
   | 'A' .. 'Z' -> true
   | _ -> false
 
-let is_html_tag_name_char = function
+let is_html_tag_name_char = fun __tmp1 ->
+  match __tmp1 with
   | 'a' .. 'z'
   | 'A' .. 'Z'
   | '0' .. '9'
   | '-' -> true
   | _ -> false
 
-let is_html_attribute_name_start = function
+let is_html_attribute_name_start = fun __tmp1 ->
+  match __tmp1 with
   | 'a' .. 'z'
   | 'A' .. 'Z'
   | '_'
   | ':' -> true
   | _ -> false
 
-let is_html_attribute_name_char = function
+let is_html_attribute_name_char = fun __tmp1 ->
+  match __tmp1 with
   | 'a' .. 'z'
   | 'A' .. 'Z'
   | '0' .. '9'
@@ -800,7 +807,8 @@ let is_html_attribute_name_char = function
   | '-' -> true
   | _ -> false
 
-let is_unquoted_html_attribute_value_char = function
+let is_unquoted_html_attribute_value_char = fun __tmp1 ->
+  match __tmp1 with
   | ' '
   | '\t'
   | '\n'
@@ -1018,7 +1026,8 @@ type inline_stack_item =
   | Inline_node of inline_node
   | Delimiter of delimiter_run
 
-let is_ascii_alnum = function
+let is_ascii_alnum = fun __tmp1 ->
+  match __tmp1 with
   | 'a' .. 'z'
   | 'A' .. 'Z'
   | '0' .. '9' -> true
@@ -1124,7 +1133,8 @@ let inline_stack_push_text = fun text stack ->
     Inline_node (Text text) :: stack
 
 let inline_stack_to_nodes = fun items ->
-  let rec loop acc = function
+  let rec loop acc = fun __tmp1 ->
+    match __tmp1 with
     | [] -> List.reverse acc
     | (Inline_node node) :: tail -> loop (node :: acc) tail
     | (Delimiter delimiter) :: tail ->
@@ -1133,12 +1143,13 @@ let inline_stack_to_nodes = fun items ->
   loop [] items
 
 let rec find_matching_opener = fun current content ->
-  function
-  | [] -> None
-  | (Delimiter opener) :: rest when Char.equal opener.marker current.marker
-  && opener.can_open
-  && not (delimiter_pair_disallowed opener current) -> Some (rest, opener, content)
-  | item :: rest -> find_matching_opener current (item :: content) rest
+  fun __tmp1 ->
+    match __tmp1 with
+    | [] -> None
+    | (Delimiter opener) :: rest when Char.equal opener.marker current.marker
+    && opener.can_open
+    && not (delimiter_pair_disallowed opener current) -> Some (rest, opener, content)
+    | item :: rest -> find_matching_opener current (item :: content) rest
 
 let rec push_delimiter = fun current stack ->
   if current.count <= 0 then
@@ -1171,7 +1182,8 @@ let rec push_delimiter = fun current stack ->
         let stack = inline_stack_push node stack in
         push_delimiter { current with count = current.count - use_delimiters } stack
 
-let rec contains_link_inline = function
+let rec contains_link_inline = fun __tmp1 ->
+  match __tmp1 with
   | [] -> false
   | (Link _) :: _ -> true
   | (Emphasis children) :: tail
@@ -1626,7 +1638,8 @@ let heading_token_text = fun node ->
 
 let child_nodes = fun node -> Markdown_parser.SyntaxNode.direct_nodes node
 
-let heading_level_of_kind = function
+let heading_level_of_kind = fun __tmp1 ->
+  match __tmp1 with
   | Markdown_syntax_kind.Heading_1 -> 1
   | Markdown_syntax_kind.Heading_2 -> 2
   | Markdown_syntax_kind.Heading_3 -> 3
@@ -1635,7 +1648,8 @@ let heading_level_of_kind = function
   | Markdown_syntax_kind.Heading_6 -> 6
   | _ -> 1
 
-let alignment_of_kind = function
+let alignment_of_kind = fun __tmp1 ->
+  match __tmp1 with
   | Markdown_syntax_kind.Table_cell_left -> Left
   | Markdown_syntax_kind.Table_cell_center -> Center
   | Markdown_syntax_kind.Table_cell_right -> Right

@@ -67,11 +67,13 @@ type install_error =
 
 let no_event: install_event -> unit = fun _ -> ()
 
-let destination_name = function
+let destination_name = fun __tmp1 ->
+  match __tmp1 with
   | Local -> "local"
   | Global -> "global"
 
-let install_error_message = function
+let install_error_message = fun __tmp1 ->
+  match __tmp1 with
   | BinaryNotFound { binary_name } -> "binary '" ^ binary_name ^ "' not found in workspace"
   | BinaryNotFoundInPackage { package_name; binary_name } ->
       "binary '"
@@ -107,7 +109,8 @@ let install_error_message = function
 
 let path_json = fun path -> Data.Json.String (Path.to_string path)
 
-let install_event_to_json = function
+let install_event_to_json = fun __tmp1 ->
+  match __tmp1 with
   | Build event -> Riot_build.Event.to_json event
   | InstallingBinary { package; binary } ->
       Some (Data.Json.Object [

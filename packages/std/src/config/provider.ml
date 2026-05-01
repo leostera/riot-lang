@@ -26,7 +26,8 @@ let file = fun path -> Path { path }
 
 let static = fun toml_string -> Static { toml_string }
 
-let load = function
+let load = fun __tmp1 ->
+  match __tmp1 with
   | Empty -> Error "Cannot load from empty provider"
   | Env { env } -> Loader.load_for_env env
   | Path { path } -> Loader.load_file (Path.to_string path)

@@ -13,7 +13,8 @@ type error =
   | Closed
   | System_error of IO.error
 
-let io_error_of_addr_error = function
+let io_error_of_addr_error = fun __tmp1 ->
+  match __tmp1 with
   | Addr.System_error error -> error
   | Addr.Invalid_port_number value -> IO.Unknown_error ("invalid port: " ^ value)
   | Addr.Invalid_format value -> IO.Unknown_error ("invalid address: " ^ value)

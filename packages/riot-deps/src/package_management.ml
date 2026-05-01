@@ -177,33 +177,37 @@ type parsed_dependency =
   | Path of path_dependency
   | Source of source_dependency
 
-let dependency_spec_error_message = function
+let dependency_spec_error_message = fun __tmp1 ->
+  match __tmp1 with
   | RegistryDependencySpecError error -> Registry_package_spec.error_message error
   | SourceDependencySpecError error -> Git_dependency.message error
 
-let path_dependency_load_error_message = function
+let path_dependency_load_error_message = fun __tmp1 ->
+  match __tmp1 with
   | PathDependencyManifestReadFailed error -> IO.error_message error
   | PathDependencyTomlParseFailed error -> Data.Toml.error_to_string error
   | PathDependencyManifestDecodeFailed error -> Package.manifest_error_message error
 
-let source_dependency_load_error_message = function
+let source_dependency_load_error_message = fun __tmp1 ->
+  match __tmp1 with
   | SourceDependencyMaterializationFailed error -> Git_dependency.message error
   | SourceDependencyManifestReadFailed error -> IO.error_message error
   | SourceDependencyTomlParseFailed error -> Data.Toml.error_to_string error
   | SourceDependencyManifestDecodeFailed error -> Package.manifest_error_message error
 
-let registry_initialization_error_message = function
-  | RegistryFilesystemInitializationFailed error ->
-      Pkgs_ml.Registry_cache.create_error_message error
+let registry_initialization_error_message = fun (RegistryFilesystemInitializationFailed error) ->
+  Pkgs_ml.Registry_cache.create_error_message
+    error
 
-let registry_lookup_error_message = function
+let registry_lookup_error_message = fun __tmp1 ->
+  match __tmp1 with
   | RegistryPackageDocumentReadFailed error -> error
   | RegistryPackageNameDecodeFailed error -> Package_name.error_message error
 
-let registry_search_error_message = function
-  | RegistrySearchRequestFailed error -> error
+let registry_search_error_message = fun (RegistrySearchRequestFailed error) -> error
 
-let registry_materialization_error_message = function
+let registry_materialization_error_message = fun __tmp1 ->
+  match __tmp1 with
   | RegistryPackageMaterializationFailed error -> Deps_error.message error
   | RegistryPackageManifestReadFailed error -> IO.error_message error
   | RegistryPackageTomlParseFailed error -> Data.Toml.error_to_string error
@@ -233,7 +237,8 @@ let should_emit_source_materialization_started = fun ~source_locator ~update ->
         | Error _ -> true
       )
 
-let error_message = function
+let error_message = fun __tmp1 ->
+  match __tmp1 with
   | CurrentPackageNotFound { cwd } ->
       "could not determine current package from '" ^ Path.to_string cwd ^ "'"
   | PackageNotFound { package } ->
@@ -354,7 +359,8 @@ let error_message = function
       ^ "'"
   | LockRefreshFailed error -> Deps_error.message error
 
-let scope_to_section = function
+let scope_to_section = fun __tmp1 ->
+  match __tmp1 with
   | Runtime -> Manifest_edit.Runtime
   | Build -> Manifest_edit.Build
   | Dev -> Manifest_edit.Dev
@@ -678,7 +684,8 @@ let dependency_names_for_section = fun ~manifest_path ~section ->
       |> Option.map ~fn:(fun (_, value) -> value) with
       | None -> Ok []
       | Some (Data.Toml.Table dep_items) ->
-          let rec loop acc = function
+          let rec loop acc = fun __tmp1 ->
+            match __tmp1 with
             | [] -> Ok (List.reverse acc)
             | (name, _) :: rest ->
                 let* name =
@@ -753,9 +760,9 @@ let target_manifest = fun ~(workspace:Riot_model.Workspace_manifest.t) ~cwd sele
       }
 
 let dependency_exists = fun ~(package_name:string) document requirement ->
-  let rec loop = function
-    | [] ->
-        false
+  let rec loop = fun __tmp1 ->
+    match __tmp1 with
+    | [] -> false
     | release :: rest -> (
         if release.Pkgs_ml.Sparse_index.yanked then
           loop rest
@@ -1175,7 +1182,8 @@ let remove_dependency = fun dependencies ~name ->
   in
   (kept, not (Int.equal (List.length kept) (List.length dependencies)))
 
-let dependency_of_parsed = function
+let dependency_of_parsed = fun __tmp1 ->
+  match __tmp1 with
   | Registry parsed ->
       Package.{
         name = registry_dependency_name parsed;
@@ -1293,7 +1301,8 @@ let emit_updated_packages = fun
         )
       | _ -> updates)
 
-let parsed_dependency_name = function
+let parsed_dependency_name = fun __tmp1 ->
+  match __tmp1 with
   | Registry parsed -> Package_name.to_string (registry_dependency_name parsed)
   | Path parsed -> Package_name.to_string parsed.name
   | Source parsed -> Package_name.to_string parsed.name
@@ -1335,7 +1344,8 @@ let add = fun
   let emit = on_event in
   let* target = target_manifest ~workspace ~cwd request.selection request.scope in
   let* registry = init_registry () in
-  let rec parse_all acc = function
+  let rec parse_all acc = fun __tmp1 ->
+    match __tmp1 with
     | [] -> Ok (List.reverse acc)
     | dependency :: rest ->
         let* parsed =
@@ -1386,7 +1396,8 @@ let remove = fun
   let emit = on_event in
   let* registry = init_registry () in
   let* target = target_manifest ~workspace ~cwd request.selection request.scope in
-  let rec remove_all dependencies = function
+  let rec remove_all dependencies = fun __tmp1 ->
+    match __tmp1 with
     | [] -> Ok dependencies
     | dependency :: rest ->
         let (dependencies, removed) = remove_dependency dependencies ~name:dependency in

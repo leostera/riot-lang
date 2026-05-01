@@ -106,7 +106,8 @@ let plan_package_raw = fun ~workspace ~store ~package_graph ~package_key ~build_
         ~package
         ~build_ctx
 
-let describe_plan_result = function
+let describe_plan_result = fun __tmp1 ->
+  match __tmp1 with
   | Riot_planner.Package_planner.Cached _ -> "Cached"
   | Riot_planner.Package_planner.Planned _ -> "Planned"
   | Riot_planner.Package_planner.MissingDependencies _ -> "MissingDependencies"
@@ -205,9 +206,9 @@ let make_package_with_files = fun ~library ~tmpdir ~package_name ~files ~binarie
     ()
 
 let find_compile_cmx = fun actions source ->
-  let rec loop = function
-    | [] ->
-        None
+  let rec loop = fun __tmp1 ->
+    match __tmp1 with
+    | [] -> None
     | action :: rest -> (
         match action with
         | Riot_planner.Action.CompileImplementation { source = compile_source; outputs; _ } when Path.equal
@@ -227,12 +228,11 @@ let find_compile_cmx = fun actions source ->
 let find_create_executable_named = fun action_graph name ->
   List.find
     (Riot_planner.Action_graph.to_action_list action_graph)
-    ~fn:(
-      function
+    ~fn:(fun __tmp1 ->
+      match __tmp1 with
       | Riot_planner.Action.CreateExecutable { outputs; _ } ->
           List.any outputs ~fn:(fun output -> String.equal (Path.to_string output) name)
-      | _ -> false
-    )
+      | _ -> false)
 
 let path_list_to_string = fun paths -> String.concat ", " (List.map paths ~fn:Path.to_string)
 
@@ -269,12 +269,11 @@ let plan_single_binary_source = fun ~tmpdir source_text ->
 let has_compile_implementation_for_source = fun actions source ->
   List.any
     actions
-    ~fn:(
-      function
+    ~fn:(fun __tmp1 ->
+      match __tmp1 with
       | Riot_planner.Action.CompileImplementation { source = compile_source; _ } ->
           Path.equal compile_source source
-      | _ -> false
-    )
+      | _ -> false)
 
 let plan_dev_package_actions_with_library = fun ~library ~tmpdir ~package_name ~files ~binaries ->
   let package = make_package_with_files ~library ~tmpdir ~package_name ~files ~binaries in
@@ -457,11 +456,10 @@ let find_create_library_node = fun action_graph ->
     ~fn:(fun (node: Riot_planner.Action_node.t) ->
       List.any
         node.value.actions
-        ~fn:(
-          function
+        ~fn:(fun __tmp1 ->
+          match __tmp1 with
           | Riot_planner.Action.CreateLibrary _ -> true
-          | _ -> false
-        ))
+          | _ -> false))
 
 let find_action_node_by_source = fun action_graph source ->
   List.find
@@ -469,13 +467,12 @@ let find_action_node_by_source = fun action_graph source ->
     ~fn:(fun (node: Riot_planner.Action_node.t) ->
       List.any
         node.value.actions
-        ~fn:(
-          function
+        ~fn:(fun __tmp1 ->
+          match __tmp1 with
           | Riot_planner.Action.CompileInterface { source = action_source; _ }
           | Riot_planner.Action.CompileImplementation { source = action_source; _ } ->
               Path.equal action_source source
-          | _ -> false
-        ))
+          | _ -> false))
 
 let dependency_output_names = fun action_graph (node: Riot_planner.Action_node.t) ->
   List.filter_map
@@ -613,11 +610,10 @@ let rewrite_create_library_objects_json = fun json ~rewrite ->
             let objects =
               List.filter_map
                 object_jsons
-                ~fn:(
-                  function
+                ~fn:(fun __tmp1 ->
+                  match __tmp1 with
                   | String path -> Some path
-                  | _ -> None
-                )
+                  | _ -> None)
             in
             Object [
               ("type", String "CreateLibrary");
@@ -1171,21 +1167,19 @@ let test_build_scope_excludes_runtime_and_dev_roots = fun _ctx ->
                     let actions = Riot_planner.Action_graph.to_action_list action_graph in
                     if List.any
                       actions
-                      ~fn:(
-                        function
+                      ~fn:(fun __tmp1 ->
+                        match __tmp1 with
                         | Riot_planner.Action.CompileInterface _
                         | Riot_planner.Action.CompileImplementation _ -> true
-                        | _ -> false
-                      ) then
+                        | _ -> false) then
                       Error "did not expect build scope to compile runtime or dev source roots"
                     else if List.any
                       actions
-                      ~fn:(
-                        function
+                      ~fn:(fun __tmp1 ->
+                        match __tmp1 with
                         | Riot_planner.Action.CreateLibrary _
                         | Riot_planner.Action.CreateExecutable _ -> true
-                        | _ -> false
-                      ) then
+                        | _ -> false) then
                       Error "did not expect build scope to archive or link projected package sources"
                     else
                       Ok ()
@@ -1789,11 +1783,10 @@ let test_stale_plan_bundle_version_rebuilds_plan_graphs = fun _ctx ->
           let actions = Riot_planner.Action_graph.to_action_list action_graph in
           if List.any
             actions
-            ~fn:(
-              function
+            ~fn:(fun __tmp1 ->
+              match __tmp1 with
               | Riot_planner.Action.CreateLibrary _ -> true
-              | _ -> false
-            ) then
+              | _ -> false) then
             Ok ()
           else
             Error "expected stale plan bundle to be ignored and rebuilt"

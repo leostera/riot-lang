@@ -91,7 +91,8 @@ let find_package_for_path = fun (workspace: t) ~path ->
       Int.compare
         (String.length (Path.to_string (package_root workspace right)))
         (String.length (Path.to_string (package_root workspace left))))
-  |> function
+  |> fun __tmp1 ->
+    match __tmp1 with
     | pkg :: _ -> Some pkg
     | [] -> None
 

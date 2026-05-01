@@ -161,7 +161,8 @@ let trace_enabled =
   | Some false
   | None -> false
 
-let mode_to_string = function
+let mode_to_string = fun __tmp1 ->
+  match __tmp1 with
   | Inline -> "Inline"
   | Hang indent -> "Hang(" ^ Int.to_string indent ^ ")"
   | Vertical -> "Vertical"
@@ -169,7 +170,8 @@ let mode_to_string = function
   | Isolate_child_blocks -> "Isolate_child_blocks"
   | Break_after_separator -> "Break_after_separator"
 
-let family_to_string = function
+let family_to_string = fun __tmp1 ->
+  match __tmp1 with
   | Delimited Parens -> "Delimited(Parens)"
   | Delimited Brackets -> "Delimited(Brackets)"
   | Delimited Braces -> "Delimited(Braces)"
@@ -199,7 +201,8 @@ let family_to_string = function
   | After_separator With -> "After_separator(With)"
   | Top_level_join -> "Top_level_join"
 
-let reason_to_string = function
+let reason_to_string = fun __tmp1 ->
+  match __tmp1 with
   | Has_leading_comment -> "Has_leading_comment"
   | Has_trailing_comment -> "Has_trailing_comment"
   | Contains_hardline -> "Contains_hardline"

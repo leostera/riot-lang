@@ -161,9 +161,9 @@ let from_string = fun input ->
   loop 0 [] []
 
 let from_strings = fun patterns ->
-  let rec loop acc = function
-    | [] ->
-        Ok (List.reverse acc)
+  let rec loop acc = fun __tmp1 ->
+    match __tmp1 with
+    | [] -> Ok (List.reverse acc)
     | input :: rest -> (
         match from_string input with
         | Error _ as err -> err
@@ -173,7 +173,8 @@ let from_strings = fun patterns ->
   loop [] patterns
 
 let optimize = fun glob ->
-  let rec loop acc = function
+  let rec loop acc = fun __tmp1 ->
+    match __tmp1 with
     | [] -> List.reverse acc
     | (Literal left) :: (Literal right) :: rest -> loop acc (Literal (left ^ right) :: rest)
     | item :: rest -> loop (item :: acc) rest
@@ -187,7 +188,8 @@ let non_empty_segment = Regex.one_or_more no_separator
 let recursive_prefix = Regex.zero_or_more (Regex.seq [ non_empty_segment; Regex.literal "/" ])
 
 let body_to_regex = fun glob ->
-  let rec lower acc = function
+  let rec lower acc = fun __tmp1 ->
+    match __tmp1 with
     | [] -> Regex.seq (List.reverse acc)
     | Recursive_wildcard :: Separator :: rest -> lower (recursive_prefix :: acc) rest
     | (Literal value) :: rest -> lower (Regex.literal value :: acc) rest

@@ -853,7 +853,8 @@ let test_async_poll_handles_many_tcp_streams = fun _ctx ->
               let* (stream, _) = accept_stream poll listener in
               accept_many (remaining - 1) (stream :: acc)
           in
-          let rec close_streams = function
+          let rec close_streams = fun __tmp1 ->
+            match __tmp1 with
             | [] -> ()
             | stream :: rest ->
                 close_stream stream;
@@ -869,7 +870,8 @@ let test_async_poll_handles_many_tcp_streams = fun _ctx ->
                 (fun () ->
                   let clients = List.reverse clients in
                   let servers = List.reverse servers in
-                  let rec register index = function
+                  let rec register index = fun __tmp1 ->
+                    match __tmp1 with
                     | [] -> Ok ()
                     | stream :: rest ->
                         let* () =
@@ -882,7 +884,8 @@ let test_async_poll_handles_many_tcp_streams = fun _ctx ->
                         in
                         register (index + 1) rest
                   in
-                  let rec write_all_clients = function
+                  let rec write_all_clients = fun __tmp1 ->
+                    match __tmp1 with
                     | [] -> Ok ()
                     | stream :: rest ->
                         let* written =
@@ -895,7 +898,8 @@ let test_async_poll_handles_many_tcp_streams = fun _ctx ->
                           write_all_clients rest
                   in
                   let seen = Kernel.Array.make ~count:12 ~value:false in
-                  let rec mark = function
+                  let rec mark = fun __tmp1 ->
+                    match __tmp1 with
                     | [] -> ()
                     | event :: rest ->
                         if Kernel.Async.Event.is_readable event then
@@ -1156,7 +1160,8 @@ let test_async_poll_handles_many_udp_sockets = fun _ctx ->
           in
           bind_many (remaining - 1) ((server, client) :: acc)
       in
-      let rec close_many = function
+      let rec close_many = fun __tmp1 ->
+        match __tmp1 with
         | [] -> ()
         | (server, client) :: rest ->
             let _ = Kernel.Net.UdpSocket.close server in
@@ -1168,7 +1173,8 @@ let test_async_poll_handles_many_udp_sockets = fun _ctx ->
         ~finally:(fun () -> close_many pairs)
         (fun () ->
           let pairs = List.reverse pairs in
-          let rec register index = function
+          let rec register index = fun __tmp1 ->
+            match __tmp1 with
             | [] -> Ok ()
             | (server, _) :: rest ->
                 let* () =
@@ -1181,7 +1187,8 @@ let test_async_poll_handles_many_udp_sockets = fun _ctx ->
                 in
                 register (index + 1) rest
           in
-          let rec send_all = function
+          let rec send_all = fun __tmp1 ->
+            match __tmp1 with
             | [] -> Ok ()
             | (server, client) :: rest ->
                 let* server_addr = lift_udp (Kernel.Net.UdpSocket.local_addr server) in
@@ -1197,7 +1204,8 @@ let test_async_poll_handles_many_udp_sockets = fun _ctx ->
           let* () = register 0 pairs in
           let* () = send_all pairs in
           let seen = Kernel.Array.make ~count:16 ~value:false in
-          let rec mark = function
+          let rec mark = fun __tmp1 ->
+            match __tmp1 with
             | [] -> ()
             | event :: rest ->
                 if Kernel.Async.Event.is_readable event then
@@ -1244,7 +1252,8 @@ let test_async_poll_tolerates_closed_registered_udp_sockets = fun _ctx ->
           in
           bind_many (remaining - 1) ((server, client) :: acc)
       in
-      let rec close_many = function
+      let rec close_many = fun __tmp1 ->
+        match __tmp1 with
         | [] -> ()
         | (server, client) :: rest ->
             let _ = Kernel.Net.UdpSocket.close server in
@@ -1256,7 +1265,8 @@ let test_async_poll_tolerates_closed_registered_udp_sockets = fun _ctx ->
         ~finally:(fun () -> close_many pairs)
         (fun () ->
           let pairs = List.reverse pairs in
-          let rec register index = function
+          let rec register index = fun __tmp1 ->
+            match __tmp1 with
             | [] -> Ok ()
             | (server, _) :: rest ->
                 let* () =
@@ -1269,14 +1279,16 @@ let test_async_poll_tolerates_closed_registered_udp_sockets = fun _ctx ->
                 in
                 register (index + 1) rest
           in
-          let rec close_even index = function
+          let rec close_even index = fun __tmp1 ->
+            match __tmp1 with
             | [] -> ()
             | (server, _) :: rest ->
                 if index land 1 = 0 then
                   close_udp server;
                 close_even (index + 1) rest
           in
-          let rec send_live index = function
+          let rec send_live index = fun __tmp1 ->
+            match __tmp1 with
             | [] -> Ok ()
             | (server, client) :: rest ->
                 if index land 1 = 0 then
@@ -1296,7 +1308,8 @@ let test_async_poll_tolerates_closed_registered_udp_sockets = fun _ctx ->
                     send_live (index + 1) rest
           in
           let seen = Kernel.Array.make ~count:8 ~value:false in
-          let rec mark = function
+          let rec mark = fun __tmp1 ->
+            match __tmp1 with
             | [] -> ()
             | event :: rest ->
                 if Kernel.Async.Event.is_readable event then
@@ -1409,7 +1422,8 @@ let test_async_poll_tolerates_closed_registered_tcp_streams = fun _ctx ->
                 (fun () ->
                   let clients = List.reverse clients in
                   let servers = List.reverse servers in
-                  let rec register index = function
+                  let rec register index = fun __tmp1 ->
+                    match __tmp1 with
                     | [] -> Ok ()
                     | stream :: rest ->
                         let* () =
@@ -1422,7 +1436,8 @@ let test_async_poll_tolerates_closed_registered_tcp_streams = fun _ctx ->
                         in
                         register (index + 1) rest
                   in
-                  let rec close_even index = function
+                  let rec close_even index = fun __tmp1 ->
+                    match __tmp1 with
                     | [] -> ()
                     | stream :: rest ->
                         if index land 1 = 0 then
@@ -1447,7 +1462,8 @@ let test_async_poll_tolerates_closed_registered_tcp_streams = fun _ctx ->
                     | _ -> Error "expected tcp client/server lists to stay aligned"
                   in
                   let seen = Kernel.Array.make ~count:8 ~value:false in
-                  let rec mark = function
+                  let rec mark = fun __tmp1 ->
+                    match __tmp1 with
                     | [] -> ()
                     | event :: rest ->
                         if Kernel.Async.Event.is_readable event then

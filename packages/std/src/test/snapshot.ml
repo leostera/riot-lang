@@ -25,7 +25,8 @@ let append_path_suffix = fun path suffix ->
   |> Path.from_string
   |> Result.expect ~msg:"snapshot path should stay valid UTF-8"
 
-let is_safe_snapshot_char = function
+let is_safe_snapshot_char = fun __tmp1 ->
+  match __tmp1 with
   | 'a' .. 'z'
   | '0' .. '9'
   | '_'
@@ -95,7 +96,8 @@ let write_pending_snapshot = fun path content ->
   | Ok () -> Fs.write content path
 
 let canonicalize_json =
-  let rec loop = function
+  let rec loop = fun __tmp1 ->
+    match __tmp1 with
     | Data.Json.Object fields ->
         Data.Json.Object (
           fields
@@ -204,9 +206,9 @@ let ansi_green = "\027[32m"
 
 let ansi_cyan = "\027[36m"
 
-let env_value_is_truthy = function
-  | None ->
-      false
+let env_value_is_truthy = fun __tmp1 ->
+  match __tmp1 with
+  | None -> false
   | Some value -> (
       match String.lowercase_ascii value with
       | ""
@@ -217,7 +219,8 @@ let env_value_is_truthy = function
       | _ -> true
     )
 
-let env_value_disables_color = function
+let env_value_disables_color = fun __tmp1 ->
+  match __tmp1 with
   | Some "0" -> true
   | _ -> false
 

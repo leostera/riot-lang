@@ -60,9 +60,9 @@ let parse_ml_tree = parse_tree ~filename:(Path.v "sample.ml")
 
 let test_class_subset_words_are_not_keywords = fun _ctx ->
   let words = [ "class"; "object"; "method"; "new"; "virtual"; "inherit"; "initializer" ] in
-  let rec loop = function
-    | [] ->
-        Ok ()
+  let rec loop = fun __tmp1 ->
+    match __tmp1 with
+    | [] -> Ok ()
     | word :: rest -> (
         match Syn.Keyword.of_string word with
         | None -> loop rest
@@ -182,12 +182,11 @@ let first_syntax_node = fun tree kind ->
           SyntaxTree.for_each_child
             tree
             node
-            ~fn:(
-              function
+            ~fn:(fun __tmp1 ->
+              match __tmp1 with
               | SyntaxTree.Node id -> visit (SyntaxTree.node tree id)
               | SyntaxTree.Token _
-              | SyntaxTree.Missing _ -> ()
-            )
+              | SyntaxTree.Missing _ -> ())
   in
   visit (SyntaxTree.root tree);
   !found
@@ -197,14 +196,13 @@ let direct_syntax_child_node_kinds = fun tree node ->
   SyntaxTree.for_each_child
     tree
     node
-    ~fn:(
-      function
+    ~fn:(fun __tmp1 ->
+      match __tmp1 with
       | SyntaxTree.Node id ->
           let child = SyntaxTree.node tree id in
           Vector.push kinds ~value:child.SyntaxTree.kind
       | SyntaxTree.Token _
-      | SyntaxTree.Missing _ -> ()
-    );
+      | SyntaxTree.Missing _ -> ());
   vector_to_list kinds
 
 let vector_first = fun vector ~msg ->
@@ -341,12 +339,11 @@ val x:int
   iter_fold
     Ast.Token.fold_leading_trivia_item
     token
-    ~fn:(
-      function
+    ~fn:(fun __tmp1 ->
+      match __tmp1 with
       | Ast.Token.Docstring doc -> docstring := Some doc
       | Ast.Token.Comment _
-      | Ast.Token.Whitespace -> ()
-    );
+      | Ast.Token.Whitespace -> ());
   match !docstring with
   | Some doc ->
       Test.assert_equal ~expected:"(** hello *)" ~actual:doc.text;
@@ -1280,13 +1277,12 @@ let test_type_declaration_parameters = fun _ctx ->
       iter_fold
         Ast.TypeDeclaration.fold_parameter
         decl
-        ~fn:(
-          function
+        ~fn:(fun __tmp1 ->
+          match __tmp1 with
           | Ast.TypeDeclaration.Named { name; variance; _ } ->
               named := Some (Ast.Token.text name, Option.map variance ~fn:Ast.Token.text)
           | Ast.TypeDeclaration.Wildcard { wildcard; _ } ->
-              wildcard_param := Some (Ast.Token.text wildcard)
-        );
+              wildcard_param := Some (Ast.Token.text wildcard));
       (
         match !named with
         | Some ("a", Some "+") -> ()

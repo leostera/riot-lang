@@ -28,7 +28,8 @@ let sort_compare_target = fun left right ->
     (System.TargetTriple.to_string right)
 
 let normalize_targets = fun targets ->
-  let rec dedupe acc = function
+  let rec dedupe acc = fun __tmp1 ->
+    match __tmp1 with
     | [] -> List.reverse acc
     | [ target ] -> List.reverse (target :: acc)
     | left :: ((right :: _) as rest) ->
@@ -61,16 +62,14 @@ let from_root = fun ~root ->
                       | Some (Data.Toml.Array arr) ->
                           List.filter_map
                             arr
-                            ~fn:(
-                              function
+                            ~fn:(fun __tmp1 ->
+                              match __tmp1 with
                               | Data.Toml.String s -> (
                                   match System.TargetTriple.from_string s with
                                   | Ok target -> Some target
                                   | Error _ -> None
                                 )
-                              | _ ->
-                                  None
-                            )
+                              | _ -> None)
                       | _ -> []
                     )
                     |> normalize_targets

@@ -56,26 +56,30 @@ type batch_request = request list
 type 'res batch_response = 'res response list
 
 (** Convert ID to JSON *)
-let id_to_json = function
+let id_to_json = fun __tmp1 ->
+  match __tmp1 with
   | String s -> Json.String s
   | Number n -> Json.Int n
   | Null -> Json.Null
 
 (** Convert JSON to ID *)
-let id_of_json = function
+let id_of_json = fun __tmp1 ->
+  match __tmp1 with
   | Json.String s -> Ok (String s)
   | Json.Int n -> Ok (Number n)
   | Json.Null -> Ok Null
   | _ -> Error "Invalid ID type"
 
 (** Convert params to JSON *)
-let params_to_json = function
+let params_to_json = fun __tmp1 ->
+  match __tmp1 with
   | Positional lst -> Json.Array lst
   | Named pairs -> Json.Object pairs
   | NoParams -> Json.Null
 
 (** Convert JSON to params *)
-let params_of_json = function
+let params_of_json = fun __tmp1 ->
+  match __tmp1 with
   | Json.Array lst -> Ok (Positional lst)
   | Json.Object pairs -> Ok (Named pairs)
   | Json.Null -> Ok NoParams

@@ -23,7 +23,8 @@ type file_type =
   | Symlink
   | Unknown
 
-let file_type_to_string = function
+let file_type_to_string = fun __tmp1 ->
+  match __tmp1 with
   | File -> "FILE"
   | Directory -> "DIRECTORY"
   | Symlink -> "SYMLINK"

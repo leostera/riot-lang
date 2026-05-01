@@ -45,7 +45,8 @@ let generation_to_json = fun (summary: generation) ->
     ("cache_key", Data.Json.String summary.cache_key);
   ]
 
-let event_to_json = function
+let event_to_json = fun __tmp1 ->
+  match __tmp1 with
   | PackageGenerationStarted { package; version; output_dir } ->
       Some (Data.Json.Object [
         ("type", Data.Json.String "doc.package_generation_started");
@@ -437,7 +438,8 @@ let package_doc_of_sources = fun ~package ~version ~dependencies sources ->
         dependencies;
       }
   | None ->
-      let rec loop acc = function
+      let rec loop acc = fun __tmp1 ->
+        match __tmp1 with
         | [] ->
             Ok {
               Doctree.package = package;

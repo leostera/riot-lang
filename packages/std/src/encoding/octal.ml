@@ -71,11 +71,10 @@ let classify = fun s ->
         Error InvalidOctal
       else if String.for_all
         digits
-        ~fn:(
-          function
+        ~fn:(fun __tmp1 ->
+          match __tmp1 with
           | '0' .. '7' -> true
-          | _ -> false
-        ) then
+          | _ -> false) then
         Ok (sign ^ "0o" ^ digits)
       else
         Error InvalidOctal

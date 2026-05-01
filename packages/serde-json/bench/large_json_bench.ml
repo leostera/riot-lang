@@ -99,7 +99,8 @@ let human_size = fun bytes ->
   else
     Int.to_string bytes ^ "B"
 
-let normalize_json = function
+let normalize_json = fun __tmp1 ->
+  match __tmp1 with
   | Json.Embed value -> value
   | value -> value
 
@@ -132,28 +133,34 @@ let expect_field = fun name json ->
   | Some value -> Ok value
   | None -> Error ("missing field " ^ name)
 
-let expect_string = function
+let expect_string = fun __tmp1 ->
+  match __tmp1 with
   | Json.String value -> Ok value
   | _ -> Error "expected string"
 
-let expect_int = function
+let expect_int = fun __tmp1 ->
+  match __tmp1 with
   | Json.Int value -> Ok value
   | _ -> Error "expected int"
 
-let expect_float = function
+let expect_float = fun __tmp1 ->
+  match __tmp1 with
   | Json.Float value -> Ok value
   | Json.Int value -> Ok (Float.of_int value)
   | _ -> Error "expected float"
 
-let expect_bool = function
+let expect_bool = fun __tmp1 ->
+  match __tmp1 with
   | Json.Bool value -> Ok value
   | _ -> Error "expected bool"
 
-let expect_array = function
+let expect_array = fun __tmp1 ->
+  match __tmp1 with
   | Json.Array values -> Ok values
   | _ -> Error "expected array"
 
-let expect_object = function
+let expect_object = fun __tmp1 ->
+  match __tmp1 with
   | Json.Object _ as value -> Ok value
   | _ -> Error "expected object"
 
@@ -178,7 +185,8 @@ let vec_get_exn = fun values index ->
 
 let decode_vec = fun values decode ->
   let decoded = Vector.with_capacity ~size:(List.length values) in
-  let rec loop = function
+  let rec loop = fun __tmp1 ->
+    match __tmp1 with
     | [] -> Ok decoded
     | value :: rest ->
         let* value = decode value in

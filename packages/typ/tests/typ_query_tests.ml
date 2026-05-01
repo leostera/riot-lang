@@ -52,8 +52,8 @@ let test_query_context_keeps_typed_file_and_infer_result _ctx =
 |ocaml}
   in
   let context = parse_and_check source in
-  match (Query.source_file context).kind with
-  | Ast.Implementation [ { kind = Let _; _ } ] ->
+  match Query.source_file context with
+  | Ast.Implementation { items = [ { kind = Let _; _ } ]; _ } ->
       let result: Typ.Infer.infer_result = Query.infer_result context in
       let values =
         result.intf

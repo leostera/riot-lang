@@ -30,7 +30,8 @@ let of_reader = fun reader ->
     eof = false;
   }
 
-let position = function
+let position = fun __tmp1 ->
+  match __tmp1 with
   | String_input state -> state.pos
   | Reader_input state -> state.base + state.pos
 
@@ -107,7 +108,8 @@ let peek_char = fun input ~offset ->
 
 let current_char = fun input -> peek_char input ~offset:0
 
-let advance = function
+let advance = fun __tmp1 ->
+  match __tmp1 with
   | String_input state -> state.pos <- state.pos + 1
   | Reader_input state -> state.pos <- state.pos + 1
 
@@ -121,7 +123,8 @@ let set_position = fun input absolute ->
   | String_input state -> state.pos <- absolute
   | Reader_input state -> state.pos <- local_index state absolute
 
-let remaining = function
+let remaining = fun __tmp1 ->
+  match __tmp1 with
   | String_input state -> String.length state.input - state.pos
   | Reader_input state -> reader_length state - state.pos
 
@@ -155,7 +158,8 @@ let match_field_range = fun fields input ~start ~stop ->
         ~offset:(local_index state start)
         ~length
 
-let skip_whitespace = function
+let skip_whitespace = fun __tmp1 ->
+  match __tmp1 with
   | String_input state ->
       let input = state.input in
       let length = String.length input in

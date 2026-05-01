@@ -144,48 +144,49 @@ let word_wrap = fun ~width:target_width str ->
         (* Split into words while tracking ANSI codes *)
         let words = String.split_on_char ' ' line in
         let rec build_lines = fun current_line current_width acc ->
-          function
-          | [] ->
-              if current_line = "" then
-                List.rev acc
-              else
-                List.rev (current_line :: acc)
-          | word :: rest ->
-              let word_width = width word in
-              let space_width =
+          fun __tmp1 ->
+            match __tmp1 with
+            | [] ->
                 if current_line = "" then
-                  0
+                  List.rev acc
                 else
-                  1
-              in
-              let new_width = current_width + space_width + word_width in
-              if current_line = "" then
-                if word_width > target_width then
-                  let stripped_word = strip word in
-                  let chars_fit = target_width in
-                  if chars_fit <= 0 then
-                    build_lines "" 0 (word :: acc) rest
+                  List.rev (current_line :: acc)
+            | word :: rest ->
+                let word_width = width word in
+                let space_width =
+                  if current_line = "" then
+                    0
                   else
-                    let part =
-                      String.sub
-                        stripped_word
-                        ~offset:0
-                        ~len:(min chars_fit (String.length stripped_word))
-                    in
-                    let remaining =
-                      String.sub
-                        stripped_word
-                        ~offset:chars_fit
-                        ~len:(String.length stripped_word - chars_fit)
-                    in
-                    build_lines "" 0 (part :: acc) (remaining :: rest)
+                    1
+                in
+                let new_width = current_width + space_width + word_width in
+                if current_line = "" then
+                  if word_width > target_width then
+                    let stripped_word = strip word in
+                    let chars_fit = target_width in
+                    if chars_fit <= 0 then
+                      build_lines "" 0 (word :: acc) rest
+                    else
+                      let part =
+                        String.sub
+                          stripped_word
+                          ~offset:0
+                          ~len:(min chars_fit (String.length stripped_word))
+                      in
+                      let remaining =
+                        String.sub
+                          stripped_word
+                          ~offset:chars_fit
+                          ~len:(String.length stripped_word - chars_fit)
+                      in
+                      build_lines "" 0 (part :: acc) (remaining :: rest)
+                  else
+                    build_lines word word_width acc rest
+                else if new_width <= target_width then
+                  build_lines (current_line ^ " " ^ word) new_width acc rest
                 else
-                  build_lines word word_width acc rest
-              else if new_width <= target_width then
-                build_lines (current_line ^ " " ^ word) new_width acc rest
-              else
-                (* Start new line with this word *)
-                build_lines word word_width (current_line :: acc) rest
+                  (* Start new line with this word *)
+                  build_lines word word_width (current_line :: acc) rest
         in
         build_lines "" 0 [] words
     in

@@ -14,7 +14,8 @@ type t =
 
 let of_net_error = fun e -> NetError e
 
-let of_io_error = function
+let of_io_error = fun __tmp1 ->
+  match __tmp1 with
   | IO.Connection_refused -> NetError Net.Connection_refused
   | IO.Closed -> NetError Net.Closed
   | error -> NetError (Net.System_error error)

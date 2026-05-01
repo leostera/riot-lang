@@ -99,7 +99,8 @@ let infer_test = fun (ctx: Test.FixtureRunner.ctx) ->
     | Ok ast ->
         Typ.Infer.check ast
         |> render_result
-        |> function
+        |> fun __tmp1 ->
+          match __tmp1 with
           | Interface source ->
               let* _ = validate_interface_source source in
               Ok (Json.Array [])

@@ -138,35 +138,31 @@ let mode_encode =
     [
       Ser.Variant.unit
         "Idle"
-        (
-          function
+        (fun __tmp1 ->
+          match __tmp1 with
           | Idle -> true
-          | _ -> false
-        );
+          | _ -> false);
       Ser.Variant.newtype
         "Named"
         Ser.string
-        (
-          function
+        (fun __tmp1 ->
+          match __tmp1 with
           | Named value -> Some value
-          | _ -> None
-        );
+          | _ -> None);
       Ser.Variant.newtype
         "Counted"
         Ser.int
-        (
-          function
+        (fun __tmp1 ->
+          match __tmp1 with
           | Counted value -> Some value
-          | _ -> None
-        );
+          | _ -> None);
       Ser.Variant.newtype
         "Sampled"
         Ser.float
-        (
-          function
+        (fun __tmp1 ->
+          match __tmp1 with
           | Sampled value -> Some value
-          | _ -> None
-        );
+          | _ -> None);
     ]
 
 let companion_decode =
@@ -181,19 +177,17 @@ let companion_encode =
     [
       Ser.Variant.unit
         "NewsCoo"
-        (
-          function
+        (fun __tmp1 ->
+          match __tmp1 with
           | NewsCoo -> true
-          | _ -> false
-        );
+          | _ -> false);
       Ser.Variant.newtype
         "Reindeer"
         Ser.string
-        (
-          function
+        (fun __tmp1 ->
+          match __tmp1 with
           | Reindeer value -> Some value
-          | _ -> None
-        );
+          | _ -> None);
     ]
 
 let berth_decode =
@@ -362,13 +356,15 @@ let equal_sample = fun (left: sample) (right: sample) ->
   && equal_string_vec left.tags right.tags
   && left.scores = right.scores
 
-let print_mode = function
+let print_mode = fun __tmp1 ->
+  match __tmp1 with
   | Idle -> "Idle"
   | Named value -> "Named " ^ Printer.string value
   | Counted value -> "Counted " ^ Printer.int value
   | Sampled value -> "Sampled " ^ Printer.float value
 
-let print_companion = function
+let print_companion = fun __tmp1 ->
+  match __tmp1 with
   | NewsCoo -> "NewsCoo"
   | Reindeer value -> "Reindeer " ^ Printer.string value
 

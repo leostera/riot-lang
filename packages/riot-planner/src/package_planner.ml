@@ -188,7 +188,8 @@ let module_kind_to_json = fun (kind: Module_node.kind) ->
         ("includes", Array (List.map includes ~fn:(fun p -> String (Path.to_string p))));
       ]
 
-let parse_string_array = function
+let parse_string_array = fun __tmp1 ->
+  match __tmp1 with
   | Std.Data.Json.Array xs ->
       List.fold_left
         xs
@@ -322,7 +323,8 @@ let module_graph_of_json = fun json ->
           let graph = G.make () in
           let id_to_node: (int, Module_node.t G.node) HashMap.t = HashMap.create () in
           let pending_deps: (Module_node.t G.node * int list) vec = vec [] in
-          let parse_int_array = function
+          let parse_int_array = fun __tmp1 ->
+            match __tmp1 with
             | Array xs ->
                 List.fold_left
                   xs

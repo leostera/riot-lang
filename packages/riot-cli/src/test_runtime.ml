@@ -226,7 +226,8 @@ let requested_packages = fun suites ->
   |> List.map ~fn:(fun (suite: suite_binary) -> suite.package_name)
   |> List.unique ~compare:Package_name.compare
 
-let profile_of_name = function
+let profile_of_name = fun __tmp1 ->
+  match __tmp1 with
   | "release" -> Riot_model.Profile.release
   | _ -> Riot_model.Profile.debug
 
@@ -236,7 +237,8 @@ let matches_package_filters = fun package_filters package_name ->
     (fun package_filter -> Package_name.equal package_filter package_name)
     package_filters
 
-let selected_package_name = function
+let selected_package_name = fun __tmp1 ->
+  match __tmp1 with
   | [ package_name ] -> Some package_name
   | _ -> None
 
@@ -274,13 +276,15 @@ let find_suite_source_path = fun ~(workspace:Workspace.t) (suite: suite_binary) 
         ~fn:(fun (bin: Package.binary) -> String.equal bin.name suite.suite_name)
       |> Option.map ~fn:(fun (bin: Package.binary) -> Path.(pkg.path / bin.path))
 
-let test_error_message = function
+let test_error_message = fun __tmp1 ->
+  match __tmp1 with
   | BuildFailed err -> Riot_build.error_message err
   | SuiteArtifactNotFound { reason; _ } -> reason
   | SuiteExecutionError { reason; _ } -> reason
   | SuitesFailed count -> Int.to_string count ^ " test suite(s) failed"
 
-let rec json_type_name = function
+let rec json_type_name = fun __tmp1 ->
+  match __tmp1 with
   | Data.Json.Null -> "null"
   | Bool _ -> "bool"
   | Int _ -> "int"
@@ -293,23 +297,28 @@ let rec json_type_name = function
 let error_expected = fun expected actual ->
   Error ("expected " ^ expected ^ " but got " ^ json_type_name actual)
 
-let get_object = function
+let get_object = fun __tmp1 ->
+  match __tmp1 with
   | Data.Json.Object fields -> Ok fields
   | other -> error_expected "object" other
 
-let get_array = function
+let get_array = fun __tmp1 ->
+  match __tmp1 with
   | Data.Json.Array values -> Ok values
   | other -> error_expected "array" other
 
-let get_string = function
+let get_string = fun __tmp1 ->
+  match __tmp1 with
   | Data.Json.String value -> Ok value
   | other -> error_expected "string" other
 
-let get_int = function
+let get_int = fun __tmp1 ->
+  match __tmp1 with
   | Data.Json.Int value -> Ok value
   | other -> error_expected "int" other
 
-let get_bool = function
+let get_bool = fun __tmp1 ->
+  match __tmp1 with
   | Data.Json.Bool value -> Ok value
   | other -> error_expected "bool" other
 
@@ -346,7 +355,8 @@ let split_json_stdout = fun stdout ->
       Ok (prefix, json_line)
 
 let remove_json_args = fun args ->
-  let rec loop acc = function
+  let rec loop acc = fun __tmp1 ->
+    match __tmp1 with
     | [] -> List.reverse acc
     | "--json" :: rest -> loop acc rest
     | "--format" :: _value :: rest -> loop acc rest
@@ -356,7 +366,8 @@ let remove_json_args = fun args ->
   loop [] args
 
 let remove_list_args = fun args ->
-  let rec loop acc = function
+  let rec loop acc = fun __tmp1 ->
+    match __tmp1 with
     | [] -> List.reverse acc
     | "--json" :: rest -> loop acc rest
     | "--format" :: _value :: rest -> loop acc rest
@@ -547,7 +558,8 @@ let parse_test_suite_output = fun stdout ->
   let* tests_json = field "tests" fields in
   let* summary_json = field "summary" fields in
   let* tests = get_array tests_json in
-  let rec parse_results index acc = function
+  let rec parse_results index acc = fun __tmp1 ->
+    match __tmp1 with
     | [] -> Ok (List.reverse acc)
     | test_json :: rest ->
         let* result = test_result_of_json index test_json in
@@ -582,7 +594,8 @@ let parse_listed_tests_output = fun stdout ->
   let* fields = get_object json in
   let* tests_json = field "tests" fields in
   let* tests = get_array tests_json in
-  let rec loop acc = function
+  let rec loop acc = fun __tmp1 ->
+    match __tmp1 with
     | [] -> Ok (List.reverse acc)
     | json :: rest ->
         let* listed = listed_test_case_of_json json in
@@ -634,7 +647,8 @@ let parse_failure_reason = fun ~suite ~(output:Command.output) reason ->
       ")";
     ]
 
-let test_event_to_json = function
+let test_event_to_json = fun __tmp1 ->
+  match __tmp1 with
   | Build event -> Riot_build.Event.to_json event
   | NoSuitesFound { package_name; suite_name } ->
       Some (
@@ -1068,9 +1082,9 @@ let store_for_request = fun (request: test_request) ->
     ~target:(Riot_dirs.host_target ())
 
 let resolve_suite_binaries = fun ~(workspace:Workspace.t) ~profile ~store ~suites output ->
-  let rec loop resolved missing = function
-    | [] ->
-        (List.reverse resolved, List.reverse missing)
+  let rec loop resolved missing = fun __tmp1 ->
+    match __tmp1 with
+    | [] -> (List.reverse resolved, List.reverse missing)
     | suite :: rest -> (
         match find_suite_binary_path_in_output ~workspace ~profile ~store ~suite output with
         | Ok binary_path -> loop ((suite, binary_path) :: resolved) missing rest
@@ -1230,7 +1244,8 @@ let test = fun ?(on_event = no_event) (request: test_request) ->
         let failed = ref 0 in
         let skipped = ref 0 in
         let failed_tests = Vector.with_capacity ~size:8 in
-        let rec loop = function
+        let rec loop = fun __tmp1 ->
+          match __tmp1 with
           | [] ->
               on_event
                 (

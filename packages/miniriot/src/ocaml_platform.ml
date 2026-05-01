@@ -67,7 +67,8 @@ module Ocamlc = struct
     Filename.concat bin_dir "ocamlc.opt"
 
   (** Convert warning to its numeric code *)
-  let warning_to_code = function
+  let warning_to_code = fun __tmp1 ->
+    match __tmp1 with
     | NoCmiFile -> "49"
     | All -> "a"
 
@@ -135,11 +136,10 @@ module Ocamlc = struct
     (* Add stdlib path if -nostdlib is used (needed for camlinternalFormatBasics) *)
     let has_nostdlib =
       List.exists
-        (
-          function
+        (fun __tmp1 ->
+          match __tmp1 with
           | NoStdlib -> true
-          | _ -> false
-        )
+          | _ -> false)
         flags
     in
     let stdlib_path = Const.get_toolchain_lib_dir () in
@@ -155,11 +155,10 @@ module Ocamlc = struct
       (* Check if we have an -impl flag - if so, don't add source at the end *)
       let has_impl_flag =
         List.exists
-          (
-            function
+          (fun __tmp1 ->
+            match __tmp1 with
             | Impl _ -> true
-            | _ -> false
-          )
+            | _ -> false)
           flags
       in
       let cmd_parts =
@@ -186,11 +185,10 @@ module Ocamlc = struct
     (* Add stdlib path if -nostdlib is used (needed for camlinternalFormatBasics) *)
     let has_nostdlib =
       List.exists
-        (
-          function
+        (fun __tmp1 ->
+          match __tmp1 with
           | NoStdlib -> true
-          | _ -> false
-        )
+          | _ -> false)
         flags
     in
     let stdlib_path = Const.get_toolchain_lib_dir () in
@@ -206,11 +204,10 @@ module Ocamlc = struct
       (* Check if we have an -impl flag - if so, don't add source at the end *)
       let has_impl_flag =
         List.exists
-          (
-            function
+          (fun __tmp1 ->
+            match __tmp1 with
             | Impl _ -> true
-            | _ -> false
-          )
+            | _ -> false)
           flags
       in
       let cmd_parts =

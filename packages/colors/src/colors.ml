@@ -396,17 +396,19 @@ module White_reference = struct
 end
 
 module Linear_RGB = struct
-  let linearize = fun (`rgb (red, green, blue)) -> `lrgb (
-    Internal.Transfer_curve.decode_channel red,
-    Internal.Transfer_curve.decode_channel green,
-    Internal.Transfer_curve.decode_channel blue
-  )
+  let linearize = fun (`rgb (red, green, blue)) ->
+    `lrgb (
+      Internal.Transfer_curve.decode_channel red,
+      Internal.Transfer_curve.decode_channel green,
+      Internal.Transfer_curve.decode_channel blue
+    )
 
-  let delinearize = fun (`lrgb (red, green, blue)) -> `rgb (
-    Internal.Transfer_curve.encode_channel red,
-    Internal.Transfer_curve.encode_channel green,
-    Internal.Transfer_curve.encode_channel blue
-  )
+  let delinearize = fun (`lrgb (red, green, blue)) ->
+    `rgb (
+      Internal.Transfer_curve.encode_channel red,
+      Internal.Transfer_curve.encode_channel green,
+      Internal.Transfer_curve.encode_channel blue
+    )
 
   let to_xyz = Internal.XYZ_space.linear_rgb_to_xyz
 end

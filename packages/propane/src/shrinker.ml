@@ -32,7 +32,8 @@ let dedupe = fun values ->
   loop [] values
 
 let vector_push_reversed = fun vector values ->
-  let rec loop = function
+  let rec loop = fun __tmp1 ->
+    match __tmp1 with
     | [] -> ()
     | value :: rest ->
         loop rest;
@@ -321,13 +322,14 @@ let list = fun elem_shrinker ->
           acc
         else
           let rec remove_nth = fun i ->
-            function
-            | [] -> []
-            | x :: xs ->
-                if i = n then
-                  xs
-                else
-                  x :: remove_nth (i + 1) xs
+            fun __tmp1 ->
+              match __tmp1 with
+              | [] -> []
+              | x :: xs ->
+                  if i = n then
+                    xs
+                  else
+                    x :: remove_nth (i + 1) xs
           in
           remove_at (n + 1) (remove_nth 0 lst :: acc)
       in
@@ -387,11 +389,12 @@ let array = fun elem_shrinker ->
           let len = List.length lst in
           let a = Array.make ~count:len ~value:hd in
           let rec fill = fun i ->
-            function
-            | [] -> ()
-            | x :: xs ->
-                Array.set_unchecked a ~at:i ~value:x;
-                fill (i + 1) xs
+            fun __tmp1 ->
+              match __tmp1 with
+              | [] -> ()
+              | x :: xs ->
+                  Array.set_unchecked a ~at:i ~value:x;
+                  fill (i + 1) xs
           in
           fill 0 lst;
           a

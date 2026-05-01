@@ -180,7 +180,8 @@ let requested_packages = fun suites ->
   |> List.map ~fn:(fun (suite: suite_binary) -> suite.package_name)
   |> List.unique ~compare:Package_name.compare
 
-let profile_of_name = function
+let profile_of_name = fun __tmp1 ->
+  match __tmp1 with
   | "release" -> Riot_model.Profile.release
   | _ -> Riot_model.Profile.debug
 
@@ -190,7 +191,8 @@ let matches_package_filters = fun package_filters package_name ->
     (fun package_filter -> Package_name.equal package_filter package_name)
     package_filters
 
-let selected_package_name = function
+let selected_package_name = fun __tmp1 ->
+  match __tmp1 with
   | [ package_name ] -> Some package_name
   | _ -> None
 
@@ -228,13 +230,15 @@ let find_suite_source_path = fun ~(workspace:Workspace.t) (suite: suite_binary) 
         ~fn:(fun (bin: Package.binary) -> String.equal bin.name suite.suite_name)
       |> Option.map ~fn:(fun (bin: Package.binary) -> Path.(pkg.path / bin.path))
 
-let bench_error_message = function
+let bench_error_message = fun __tmp1 ->
+  match __tmp1 with
   | BuildFailed err -> Riot_build.error_message err
   | SuiteArtifactNotFound { reason; _ } -> reason
   | SuiteExecutionError { reason; _ } -> reason
   | SuitesFailed count -> Int.to_string count ^ " benchmark suite(s) failed"
 
-let rec json_type_name = function
+let rec json_type_name = fun __tmp1 ->
+  match __tmp1 with
   | Data.Json.Null -> "null"
   | Bool _ -> "bool"
   | Int _ -> "int"
@@ -247,28 +251,34 @@ let rec json_type_name = function
 let error_expected = fun expected actual ->
   Error ("expected " ^ expected ^ " but got " ^ json_type_name actual)
 
-let get_object = function
+let get_object = fun __tmp1 ->
+  match __tmp1 with
   | Data.Json.Object fields -> Ok fields
   | other -> error_expected "object" other
 
-let get_array = function
+let get_array = fun __tmp1 ->
+  match __tmp1 with
   | Data.Json.Array values -> Ok values
   | other -> error_expected "array" other
 
-let get_string = function
+let get_string = fun __tmp1 ->
+  match __tmp1 with
   | Data.Json.String value -> Ok value
   | other -> error_expected "string" other
 
-let get_int = function
+let get_int = fun __tmp1 ->
+  match __tmp1 with
   | Data.Json.Int value -> Ok value
   | other -> error_expected "int" other
 
-let get_float = function
+let get_float = fun __tmp1 ->
+  match __tmp1 with
   | Data.Json.Float value -> Ok value
   | Data.Json.Int value -> Ok (Float.from_int value)
   | other -> error_expected "float" other
 
-let get_bool = function
+let get_bool = fun __tmp1 ->
+  match __tmp1 with
   | Data.Json.Bool value -> Ok value
   | other -> error_expected "bool" other
 
@@ -332,7 +342,8 @@ let split_json_stdout = fun stdout ->
       Ok (prefix, json_line)
 
 let remove_json_args = fun args ->
-  let rec loop acc = function
+  let rec loop acc = fun __tmp1 ->
+    match __tmp1 with
     | [] -> List.reverse acc
     | "--json" :: rest -> loop acc rest
     | "--format" :: _value :: rest -> loop acc rest
@@ -342,7 +353,8 @@ let remove_json_args = fun args ->
   loop [] args
 
 let remove_list_args = fun args ->
-  let rec loop acc = function
+  let rec loop acc = fun __tmp1 ->
+    match __tmp1 with
     | [] -> List.reverse acc
     | "--json" :: rest -> loop acc rest
     | "--format" :: _value :: rest -> loop acc rest
@@ -455,7 +467,8 @@ let listed_bench_item_of_json = fun json ->
     | None -> Ok []
     | Some (_, value) ->
         let* values = get_array value in
-        let rec loop acc = function
+        let rec loop acc = fun __tmp1 ->
+          match __tmp1 with
           | [] -> Ok (List.reverse acc)
           | value :: rest ->
               let* name = get_string value in
@@ -493,13 +506,15 @@ let comparison_result_of_json = fun json ->
   let* fastest = get_string fastest_json in
   let* case_results_values = get_array case_results_json in
   let* speedup_ratio_values = get_array speedup_ratios_json in
-  let rec parse_cases acc = function
+  let rec parse_cases acc = fun __tmp1 ->
+    match __tmp1 with
     | [] -> Ok (List.reverse acc)
     | item :: rest ->
         let* parsed = comparison_case_result_of_json item in
         parse_cases (parsed :: acc) rest
   in
-  let rec parse_ratios acc = function
+  let rec parse_ratios acc = fun __tmp1 ->
+    match __tmp1 with
     | [] -> Ok (List.reverse acc)
     | item :: rest ->
         let* parsed = speedup_ratio_of_json item in
@@ -543,13 +558,15 @@ let parse_bench_suite_output = fun stdout ->
   let* summary_json = field "summary" fields in
   let* benchmark_values = get_array benchmarks_json in
   let* comparison_values = get_array comparisons_json in
-  let rec parse_results acc = function
+  let rec parse_results acc = fun __tmp1 ->
+    match __tmp1 with
     | [] -> Ok (List.reverse acc)
     | item :: rest ->
         let* parsed = bench_result_of_json item in
         parse_results (parsed :: acc) rest
   in
-  let rec parse_comparisons acc = function
+  let rec parse_comparisons acc = fun __tmp1 ->
+    match __tmp1 with
     | [] -> Ok (List.reverse acc)
     | item :: rest ->
         let* parsed = comparison_result_of_json item in
@@ -563,7 +580,8 @@ let parse_bench_suite_output = fun stdout ->
   let* duration_us = optional_int_field "duration_us" fields in
   Ok (prefix_stdout, started_at_us, completed_at_us, duration_us, results, comparisons, summary)
 
-let bench_event_to_json = function
+let bench_event_to_json = fun __tmp1 ->
+  match __tmp1 with
   | Build event -> Riot_build.Event.to_json event
   | NoSuitesFound { package_name } ->
       Some (
@@ -840,7 +858,8 @@ let parse_listed_benchmarks_output = fun stdout ->
   let* fields = get_object json in
   let* benchmarks_json = field "benchmarks" fields in
   let* benchmarks = get_array benchmarks_json in
-  let rec loop acc = function
+  let rec loop acc = fun __tmp1 ->
+    match __tmp1 with
     | [] -> Ok (List.reverse acc)
     | json :: rest ->
         let* listed = listed_bench_item_of_json json in
@@ -882,9 +901,9 @@ let store_for_request = fun (request: bench_request) ->
     ~target:(Riot_dirs.host_target ())
 
 let resolve_suite_binaries = fun ~(workspace:Workspace.t) ~profile ~store ~suites output ->
-  let rec loop resolved missing = function
-    | [] ->
-        (List.reverse resolved, List.reverse missing)
+  let rec loop resolved missing = fun __tmp1 ->
+    match __tmp1 with
+    | [] -> (List.reverse resolved, List.reverse missing)
     | suite :: rest -> (
         match find_suite_binary_path_in_output ~workspace ~profile ~store ~suite output with
         | Ok binary_path -> loop ((suite, binary_path) :: resolved) missing rest
@@ -1031,7 +1050,8 @@ let bench = fun ?(on_event = no_event) (request: bench_request) ->
         let completed = ref 0 in
         let skipped = ref 0 in
         let failed = ref 0 in
-        let rec loop = function
+        let rec loop = fun __tmp1 ->
+          match __tmp1 with
           | [] ->
               on_event
                 (

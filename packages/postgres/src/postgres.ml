@@ -159,7 +159,8 @@ module Driver = struct
 
   let name = "PostgreSQL"
 
-  let error_to_string = function
+  let error_to_string = fun __tmp1 ->
+    match __tmp1 with
     | TransportError Net.TcpStream.Connection_refused -> "Connection refused"
     | TransportError Net.TcpStream.Closed -> "Connection closed"
     | TransportError (Net.TcpStream.System_error io_err) ->
@@ -169,7 +170,8 @@ module Driver = struct
     | AuthenticationNotSupported method_ -> "Authentication method not supported: " ^ method_
     | UnexpectedMessage msg -> "Unexpected message: " ^ msg
 
-  let error_to_json = function
+  let error_to_json = fun __tmp1 ->
+    match __tmp1 with
     | TransportError Net.TcpStream.Connection_refused ->
         Data.Json.obj
           [
@@ -940,9 +942,10 @@ module Driver = struct
     )
 
   let set_isolation_level = fun _conn ->
-    function
-    | `Read_uncommitted -> Ok ()
-    | `Read_committed -> Ok ()
-    | `Repeatable_read -> Ok ()
-    | `Serializable -> Ok ()
+    fun __tmp1 ->
+      match __tmp1 with
+      | `Read_uncommitted -> Ok ()
+      | `Read_committed -> Ok ()
+      | `Repeatable_read -> Ok ()
+      | `Serializable -> Ok ()
 end

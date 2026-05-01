@@ -81,7 +81,8 @@ let delete = fun ?(headers = []) ?(body = "") ?(peer = default_peer) uri ->
     ~peer
     ()
 
-let uri_error_to_string = function
+let uri_error_to_string = fun __tmp1 ->
+  match __tmp1 with
   | Net.Uri.InvalidScheme -> "invalid scheme"
   | Net.Uri.InvalidAuthority -> "invalid authority"
   | Net.Uri.InvalidPath -> "invalid path"
@@ -90,9 +91,8 @@ let uri_error_to_string = function
   | Net.Uri.InvalidFormat -> "invalid format"
   | Net.Uri.TooLong -> "URI is too long"
 
-let error_to_string = function
-  | InvalidUri { value; reason } ->
-      "invalid testing URI `" ^ value ^ "`: " ^ uri_error_to_string reason
+let error_to_string = fun (InvalidUri { value; reason }) ->
+  "invalid testing URI `" ^ value ^ "`: " ^ uri_error_to_string reason
 
 let to_http = fun request ->
   match Net.Uri.of_string request.uri with

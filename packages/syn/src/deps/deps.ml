@@ -38,10 +38,11 @@ module Env = struct
   let make_node map = Node (Names.empty, map)
 
   let rec remove = fun name ->
-    function
-    | [] -> []
-    | (key, _) :: rest when key = name -> rest
-    | entry :: rest -> entry :: remove name rest
+    fun __tmp1 ->
+      match __tmp1 with
+      | [] -> []
+      | (key, _) :: rest when key = name -> rest
+      | entry :: rest -> entry :: remove name rest
 
   let add = fun name node env -> (name, node) :: remove name env
 
@@ -53,12 +54,11 @@ module Env = struct
         add name node env)
 
   let rec rebind = fun free_names ->
-    function
-    | Node (_, children) ->
-        Node (
-          free_names,
-          List.map children ~fn:(fun (name, child) -> (name, rebind free_names child))
-        )
+    fun (Node (_, children)) ->
+      Node (
+        free_names,
+        List.map children ~fn:(fun (name, child) -> (name, rebind free_names child))
+      )
 
   let rebind_exports = fun free_names exports ->
     List.map
@@ -126,18 +126,15 @@ module Env = struct
         let updated_children = add_scoped_binding children ~path:rest ~free_names ~exports in
         add segment (Node (free, updated_children)) env
 
-  let top_free = function
-    | Node (free, _) -> free
+  let top_free = fun (Node (free, _)) -> free
 
-  let children = function
-    | Node (_, children) -> children
+  let children = fun (Node (_, children)) -> children
 
-  let rec collect_free = function
-    | Node (free, children) ->
-        List.fold_left
-          children
-          ~init:free
-          ~fn:(fun acc (_, child) -> Names.union acc (collect_free child))
+  let rec collect_free = fun (Node (free, children)) ->
+    List.fold_left
+      children
+      ~init:free
+      ~fn:(fun acc (_, child) -> Names.union acc (collect_free child))
 
   let merge_children env node = merge env (children node)
 
@@ -158,8 +155,7 @@ module Env = struct
     in
     add open_fallback_key (Node (Names.union existing free_names, [])) env
 
-  let has_children = function
-    | Node (_, children) -> not (List.is_empty children)
+  let has_children = fun (Node (_, children)) -> not (List.is_empty children)
 
   let rec lookup_free = fun ~use_open_fallback segments env ->
     match segments with
@@ -241,11 +237,13 @@ let exports = fun t -> t.exports
 let to_json = fun t ->
   Json.Object [ ("modules", Json.Array (List.map t.modules ~fn:(fun name -> Json.String name))); ]
 
-let drop_last = function
+let drop_last = fun __tmp1 ->
+  match __tmp1 with
   | [] -> []
   | [ _ ] -> []
   | items ->
-      let rec loop acc = function
+      let rec loop acc = fun __tmp1 ->
+        match __tmp1 with
         | []
         | [ _ ] -> List.reverse acc
         | head :: tail -> loop (head :: acc) tail
@@ -299,7 +297,8 @@ module Ast_deps = struct
 
   let node_kind_is = fun node kind -> Syntax_kind.(node_kind node = kind)
 
-  let is_module_expr_kind = function
+  let is_module_expr_kind = fun __tmp1 ->
+    match __tmp1 with
     | Syntax_kind.MODULE_EXPR
     | Syntax_kind.PATH_MODULE_EXPR
     | Syntax_kind.STRUCT_MODULE_EXPR
@@ -310,7 +309,8 @@ module Ast_deps = struct
     | Syntax_kind.OPAQUE_MODULE_EXPR -> true
     | _ -> false
 
-  let is_module_type_kind = function
+  let is_module_type_kind = fun __tmp1 ->
+    match __tmp1 with
     | Syntax_kind.MODULE_TYPE_EXPR
     | Syntax_kind.PATH_MODULE_TYPE
     | Syntax_kind.SIGNATURE_MODULE_TYPE

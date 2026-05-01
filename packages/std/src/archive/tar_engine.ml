@@ -56,7 +56,8 @@ external skip_entry_raw: reader -> int * int = "std_tar_skip_entry"
 
 external close_reader_raw: reader -> unit = "std_tar_close_reader"
 
-let error_of_code = function
+let error_of_code = fun __tmp1 ->
+  match __tmp1 with
   | 0 -> None
   | 1 -> Some (Invalid_header "invalid tar header")
   | 2 -> Some Entry_in_progress

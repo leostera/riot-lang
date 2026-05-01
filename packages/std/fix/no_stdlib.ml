@@ -71,7 +71,8 @@ let explanations = fun () -> [ explanation ]
 
 let forbidden_modules = [ "Stdlib"; "Pervasives"; "Unix"; "Sys"; ]
 
-let replacement_for = function
+let replacement_for = fun __tmp1 ->
+  match __tmp1 with
   | "Stdlib"
   | "Pervasives" -> Some "Std"
   | _ -> None

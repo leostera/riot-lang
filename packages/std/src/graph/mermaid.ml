@@ -72,7 +72,8 @@ let add_edge = fun t ~from_node ~to_node ?label ?(style = Solid) () ->
   in
   { t with edges = edge :: t.edges }
 
-let direction_to_string = function
+let direction_to_string = fun __tmp1 ->
+  match __tmp1 with
   | TD -> "TD"
   | TB -> "TB"
   | BT -> "BT"

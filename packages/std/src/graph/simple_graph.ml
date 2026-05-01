@@ -158,13 +158,14 @@ let topo_sort = fun graph ->
           let rec dfs node_id path =
             if HashMap.has_key rec_stack ~key:node_id then
               let rec extract_cycle = fun acc ->
-                function
-                | [] -> acc
-                | id :: rest ->
-                    if Node_id.eq id node_id then
-                      (node_id :: (List.reverse acc)) @ [ node_id ]
-                    else
-                      extract_cycle (id :: acc) rest
+                fun __tmp1 ->
+                  match __tmp1 with
+                  | [] -> acc
+                  | id :: rest ->
+                      if Node_id.eq id node_id then
+                        (node_id :: (List.reverse acc)) @ [ node_id ]
+                      else
+                        extract_cycle (id :: acc) rest
               in
               Some (extract_cycle [] path)
             else if HashMap.has_key visited ~key:node_id then

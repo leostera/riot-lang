@@ -250,7 +250,8 @@ let dependency_entries = fun workspace_root providers ->
         provider.package_path
       ))
   in
-  let rec dedupe_by_name seen acc = function
+  let rec dedupe_by_name seen acc = fun __tmp1 ->
+    match __tmp1 with
     | [] -> List.reverse acc
     | (name, path) :: rest ->
         if List.any seen ~fn:(Riot_model.Package_name.equal name) then

@@ -1,12 +1,14 @@
 open Std
 open Ast
 
-let argument_label_to_type_label = function
+let argument_label_to_type_label = fun __tmp1 ->
+  match __tmp1 with
   | Positional _ -> Type.Label.NoLabel
   | Labeled { label; _ } -> Type.Label.Labelled label
   | Optional { label; _ } -> Type.Label.Optional label
 
-let argument_value = function
+let argument_value = fun __tmp1 ->
+  match __tmp1 with
   | Positional expr -> Some expr
   | Labeled { value; _ }
   | Optional { value; _ } -> value
@@ -30,7 +32,8 @@ let label_matches supplied expected =
   | (Type.Label.Labelled supplied, Type.Label.Optional expected) -> String.equal supplied expected
   | _ -> false
 
-let is_optional_label = function
+let is_optional_label = fun __tmp1 ->
+  match __tmp1 with
   | Type.Label.Optional _ -> true
   | _ -> false
 

@@ -2,7 +2,8 @@ open Global
 open Collections
 open Arg_parser
 
-let parse_format_to_reporter = function
+let parse_format_to_reporter = fun __tmp1 ->
+  match __tmp1 with
   | "default" -> Ok (module Reporter.Default : Reporter.Intf.Intf)
   | "json" -> Ok (module Reporter.Reporter_json : Reporter.Intf.Intf)
   | other -> Error ("Unknown format: " ^ other)
@@ -34,7 +35,8 @@ let run_benchmarks_cmd =
 
 let get_suite_info name: Reporter.Intf.suite_info = { name }
 
-let benchmark_name = function
+let benchmark_name = fun __tmp1 ->
+  match __tmp1 with
   | Bench_runner.Single case -> case.Bench_case.name
   | Bench_runner.Compare comp -> comp.Bench_comparison.description
 

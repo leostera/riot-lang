@@ -226,18 +226,19 @@ let word_boundaries = fun s -> Unicode.Segmentation.find_word_boundaries s
 let split_words = fun s ->
   let boundaries = word_boundaries s in
   let rec split = fun start ->
-    function
-    | [] ->
-        if start < length s then
-          [ sub s ~offset:start ~len:(length s - start) ]
-        else
-          []
-    | pos :: rest ->
-        let word = trim (sub s ~offset:start ~len:(pos - start)) in
-        if word = "" then
-          split pos rest
-        else
-          word :: split pos rest
+    fun __tmp1 ->
+      match __tmp1 with
+      | [] ->
+          if start < length s then
+            [ sub s ~offset:start ~len:(length s - start) ]
+          else
+            []
+      | pos :: rest ->
+          let word = trim (sub s ~offset:start ~len:(pos - start)) in
+          if word = "" then
+            split pos rest
+          else
+            word :: split pos rest
   in
   split 0 boundaries
 
@@ -251,33 +252,34 @@ let wrap = fun ~width:_ s ->
 let wrap_words = fun ~width:target_width s ->
   let words = split_words s in
   let rec build_lines = fun current_line current_width ->
-    function
-    | [] ->
-        if current_line = "" then
-          []
-        else
-          [ trim current_line ]
-    | word :: rest ->
-        let word_width = width word in
-        let space_width =
+    fun __tmp1 ->
+      match __tmp1 with
+      | [] ->
           if current_line = "" then
-            0
+            []
           else
-            1
-        in
-        if current_width + space_width + word_width <= target_width then
-          let new_line =
+            [ trim current_line ]
+      | word :: rest ->
+          let word_width = width word in
+          let space_width =
             if current_line = "" then
-              word
+              0
             else
-              current_line ^ " " ^ word
+              1
           in
-          build_lines new_line (current_width + space_width + word_width) rest
-        else if current_line = "" then
-          word :: build_lines "" 0 rest
-        else
-          (* Start new line *)
-          trim current_line :: build_lines word word_width rest
+          if current_width + space_width + word_width <= target_width then
+            let new_line =
+              if current_line = "" then
+                word
+              else
+                current_line ^ " " ^ word
+            in
+            build_lines new_line (current_width + space_width + word_width) rest
+          else if current_line = "" then
+            word :: build_lines "" 0 rest
+          else
+            (* Start new line *)
+            trim current_line :: build_lines word word_width rest
   in
   build_lines "" 0 words
 

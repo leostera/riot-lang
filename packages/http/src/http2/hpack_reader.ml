@@ -26,7 +26,8 @@ let create = fun ?(max_dynamic_table_size = 4_096) () -> {
   pending_input = Cell.create "";
 }
 
-let decode_error_to_string = function
+let decode_error_to_string = fun __tmp1 ->
+  match __tmp1 with
   | ReadFailed error -> "HPACK reader failed to read input: " ^ IO.error_message error
   | HpackDecodeFailed error -> Hpack.decode_error_to_string error
 
@@ -47,7 +48,8 @@ let dynamic_table_size = fun decoder ->
   Hpack.decoder_dynamic_table_size
     (Cell.get decoder.hpack_decoder)
 
-let is_incomplete_decode = function
+let is_incomplete_decode = fun __tmp1 ->
+  match __tmp1 with
   | Hpack.IncompleteIntegerEncoding
   | Hpack.IncompleteStringEncoding
   | Hpack.StringDataTruncated _ -> true

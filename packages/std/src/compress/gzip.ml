@@ -50,18 +50,21 @@ let output_buffer_size = 256 * 1_024
 
 let error_of_engine = fun err -> Engine_error err
 
-let fs_error_of_file_error = function
+let fs_error_of_file_error = fun __tmp1 ->
+  match __tmp1 with
   | Kernel.Fs.File.InvalidSlice _ -> IO.Invalid_argument
   | Kernel.Fs.File.System error -> IO.of_system_error error
 
-let string_of_engine_error = function
+let string_of_engine_error = fun __tmp1 ->
+  match __tmp1 with
   | Engine.Invalid_data -> "invalid gzip data"
   | Engine.Need_dictionary -> "gzip stream requires a preset dictionary"
   | Engine.Buffer_error -> "gzip decoder buffer error"
   | Engine.Out_of_memory -> "gzip decoder out of memory"
   | Engine.Unknown_error msg -> msg
 
-let error_to_string = function
+let error_to_string = fun __tmp1 ->
+  match __tmp1 with
   | Engine_error err -> string_of_engine_error err
   | Truncated_input -> "truncated gzip input"
 
@@ -187,7 +190,8 @@ let read_into = fun (t: reader) dst ->
   in
   loop ()
 
-let io_error_of_read_error = function
+let io_error_of_read_error = fun __tmp1 ->
+  match __tmp1 with
   | Source_error error -> error
   | Gzip_error Truncated_input -> IO.Unexpected_end_of_file
   | Gzip_error (Engine_error Engine.Invalid_data) -> IO.Invalid_data
@@ -449,12 +453,11 @@ let decompress_file = fun ~src ~dst ->
         (fun dst_file ->
           decompress (Fs.File.to_reader src_file) (Fs.File.to_writer dst_file)
           |> Result.map_err
-            ~fn:(
-              function
+            ~fn:(fun __tmp1 ->
+              match __tmp1 with
               | Stream_source_error err -> File_io_error err
               | Stream_destination_error err -> File_io_error err
-              | Stream_gzip_error err -> File_gzip_error err
-            )))
+              | Stream_gzip_error err -> File_gzip_error err)))
 
 let compress_file = fun ~src ~dst ->
   with_open_input
@@ -465,12 +468,11 @@ let compress_file = fun ~src ~dst ->
         (fun dst_file ->
           compress (Fs.File.to_reader src_file) (Fs.File.to_writer dst_file)
           |> Result.map_err
-            ~fn:(
-              function
+            ~fn:(fun __tmp1 ->
+              match __tmp1 with
               | Stream_source_error err -> File_io_error err
               | Stream_destination_error err -> File_io_error err
-              | Stream_gzip_error err -> File_gzip_error err
-            )))
+              | Stream_gzip_error err -> File_gzip_error err)))
 
 let compress_string = fun data ->
   let buffer = Buffer.create ~size:128 in

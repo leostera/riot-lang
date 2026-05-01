@@ -9,7 +9,8 @@ type override_error =
 
 let allowed_override_methods = [ Net.Http.Method.Put; Patch; Delete; ]
 
-let override_error_to_string = function
+let override_error_to_string = fun __tmp1 ->
+  match __tmp1 with
   | MissingOverrideMethod -> "method override parameter is empty"
   | MethodNotAllowed { method_; allowed } ->
       "method override is not allowed: "

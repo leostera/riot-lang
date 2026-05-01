@@ -34,7 +34,8 @@ type domain_context = Scheduler_types.domain_context
 
 type io_registration_error = Scheduler_types.io_registration_error
 
-let io_registration_error_message = function
+let io_registration_error_message = fun __tmp1 ->
+  match __tmp1 with
   | Closed -> "Closed"
   | Async error -> Async.error_to_string error
 
@@ -599,9 +600,10 @@ let with_blocking_lanes_lock = fun t f ->
       Runtime_mutex.unlock t.blocking_lanes_lock;
       raise exn
 
-let add_blocking_lane = fun t lane -> with_blocking_lanes_lock
-  t
-  (fun () -> t.blocking_lanes <- lane :: t.blocking_lanes)
+let add_blocking_lane = fun t lane ->
+  with_blocking_lanes_lock
+    t
+    (fun () -> t.blocking_lanes <- lane :: t.blocking_lanes)
 
 let wait_for_blocking_work = fun t slot ->
   match slot.blocking_lane with

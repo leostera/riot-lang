@@ -26,7 +26,8 @@ let command =
       |> help "Package release in the form <name>@<version>";
     ]
 
-let message = function
+let message = fun __tmp1 ->
+  match __tmp1 with
   | MissingPackageSpec -> "missing package release, expected <name>@<version>"
   | InvalidPackageSpec value -> "invalid package release '" ^ value ^ "', expected <name>@<version>"
   | InvalidPackageName err -> Package_name.error_message err
@@ -56,7 +57,8 @@ let load_config = fun path ->
       User_config.load path
       |> Result.map_err ~fn:(fun err -> ConfigFailed (User_config.message err))
 
-let version_parse_error_to_string = function
+let version_parse_error_to_string = fun __tmp1 ->
+  match __tmp1 with
   | Version.Invalid_format msg -> msg
   | Version.Invalid_version_segment segment -> "invalid version segment: " ^ segment
   | Version.Invalid_pre_release_segment segment -> "invalid pre-release segment: " ^ segment

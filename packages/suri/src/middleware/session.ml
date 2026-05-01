@@ -37,11 +37,13 @@ type decode_error =
   | InvalidJson of Data.Json.error
   | InvalidSessionData of Data.Json.t
 
-let secret_error_to_string = function
+let secret_error_to_string = fun __tmp1 ->
+  match __tmp1 with
   | Missing -> "session secret must not be empty"
   | TooShort len -> "session secret must be at least 32 characters long, got " ^ Int.to_string len
 
-let cookie_name_error_to_string = function
+let cookie_name_error_to_string = fun __tmp1 ->
+  match __tmp1 with
   | EmptyCookieName -> "session cookie name must not be empty"
   | InvalidCookieNameChar { char; index } ->
       "session cookie name contains invalid character code "
@@ -49,13 +51,15 @@ let cookie_name_error_to_string = function
       ^ " at index "
       ^ Int.to_string index
 
-let setup_error_to_string = function
+let setup_error_to_string = fun __tmp1 ->
+  match __tmp1 with
   | InvalidSecret error -> secret_error_to_string error
   | InvalidCookieName error -> cookie_name_error_to_string error
   | InvalidMaxAge value -> "session max_age must be greater than 0, got " ^ Int.to_string value
   | SameSiteNoneRequiresSecure -> "session cookies with SameSite=None must also set Secure"
 
-let decode_error_to_string = function
+let decode_error_to_string = fun __tmp1 ->
+  match __tmp1 with
   | InvalidCookieFormat { parts } ->
       "invalid cookie format; expected '<payload>.<signature>', got "
       ^ Int.to_string parts
@@ -74,7 +78,8 @@ let validate_secret = fun secret ->
   else
     Ok ()
 
-let is_cookie_name_char = function
+let is_cookie_name_char = fun __tmp1 ->
+  match __tmp1 with
   | 'a' .. 'z'
   | 'A' .. 'Z'
   | '0' .. '9'

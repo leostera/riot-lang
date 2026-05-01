@@ -7,7 +7,8 @@ type error =
   | UnknownProtocol
   | DetectionLimitExceeded of { limit: int }
 
-let to_string_error = function
+let to_string_error = fun __tmp1 ->
+  match __tmp1 with
   | HandlerCalledAfterDetection -> "Protocol detection error: handler called after protocol detection"
   | UnknownProtocol -> "Protocol detection error: unknown protocol"
   | DetectionLimitExceeded { limit } ->

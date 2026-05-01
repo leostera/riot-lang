@@ -56,26 +56,30 @@ let command =
       |> help "Render events as JSON";
     ]
 
-let path_error_message = function
+let path_error_message = fun __tmp1 ->
+  match __tmp1 with
   | Path.InvalidUtf8 { path } -> "invalid UTF-8 path: " ^ path
   | Path.SystemInvalidUtf8 { syscall; path } ->
       "system call '" ^ syscall ^ "' returned invalid UTF-8 path: " ^ path
   | Path.SystemError error -> error
 
-let workspace_bootstrap_error_message = function
+let workspace_bootstrap_error_message = fun __tmp1 ->
+  match __tmp1 with
   | BootstrapManifestWriteFailed { path; error } ->
       "failed to write manifest '" ^ Path.to_string path ^ "': " ^ IO.error_message error
   | BootstrapDependencyHashFailed error -> Riot_deps.Lock_refresh.error_message error
   | BootstrapLockfileWriteFailed error -> Riot_deps.Lockfile_store.error_message error
 
-let workspace_load_error_message = function
+let workspace_load_error_message = fun __tmp1 ->
+  match __tmp1 with
   | WorkspaceScanFailed error -> Riot_model.Workspace_manager.scan_error_message error
   | WorkspaceLoadHadErrors errors ->
       errors
       |> List.map ~fn:Riot_model.Workspace_manager.load_error_to_string
       |> String.concat "; "
 
-let message = function
+let message = fun __tmp1 ->
+  match __tmp1 with
   | MissingDependency -> "missing dependency name"
   | ConflictingTarget -> "cannot combine --workspace with --package"
   | ConflictingScope -> "cannot combine --build with --dev"

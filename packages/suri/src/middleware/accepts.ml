@@ -139,27 +139,32 @@ let accept_header_matches = fun ~types accept ->
             types)
         entries)
 
-let quality_parse_error_to_string = function
+let quality_parse_error_to_string = fun __tmp1 ->
+  match __tmp1 with
   | MissingQualityValue -> "missing q value"
   | InvalidQualityValue { value } -> "invalid q value: " ^ value
   | MalformedQualityParameter { parameter } -> "malformed q parameter: " ^ parameter
 
-let accept_parse_error_to_string = function
+let accept_parse_error_to_string = fun __tmp1 ->
+  match __tmp1 with
   | EmptyMediaType -> "empty media type"
   | InvalidQuality error -> quality_parse_error_to_string error
   | QualityOutOfRange quality -> "q value is outside 0.0..1.0: " ^ Float.to_string quality
 
-let accept_rejection_to_string = function
+let accept_rejection_to_string = fun __tmp1 ->
+  match __tmp1 with
   | MalformedAcceptHeader { value; error } ->
       "Malformed Accept header: " ^ value ^ " (" ^ accept_parse_error_to_string error ^ ")"
   | UnsupportedAcceptHeader { value } -> "No supported response media type matches Accept: " ^ value
 
-let content_type_rejection_to_string = function
+let content_type_rejection_to_string = fun __tmp1 ->
+  match __tmp1 with
   | MissingContentType -> "Request body is missing a Content-Type header"
   | InvalidContentType { value } -> "Invalid Content-Type header: " ^ value
   | UnsupportedContentType { value } -> "Unsupported request Content-Type: " ^ value
 
-let validation_error_to_string = function
+let validation_error_to_string = fun __tmp1 ->
+  match __tmp1 with
   | AcceptRejected rejection -> accept_rejection_to_string rejection
   | ContentTypeRejected rejection -> content_type_rejection_to_string rejection
 

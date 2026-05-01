@@ -122,26 +122,23 @@ let mode_encode =
     [
       Ser.Variant.unit
         "Captain"
-        (
-          function
+        (fun __tmp1 ->
+          match __tmp1 with
           | Captain -> true
-          | _ -> false
-        );
+          | _ -> false);
       Ser.Variant.unit
         "Doctor"
-        (
-          function
+        (fun __tmp1 ->
+          match __tmp1 with
           | Doctor -> true
-          | _ -> false
-        );
+          | _ -> false);
       Ser.Variant.newtype
         "Navigator"
         Ser.string
-        (
-          function
+        (fun __tmp1 ->
+          match __tmp1 with
           | Navigator value -> Some value
-          | _ -> None
-        );
+          | _ -> None);
     ]
 
 let berth_decode =

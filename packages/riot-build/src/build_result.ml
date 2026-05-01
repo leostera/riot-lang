@@ -45,13 +45,15 @@ type t = {
   packages: package_result list;
 }
 
-let package_status_of_build_status = function
+let package_status_of_build_status = fun __tmp1 ->
+  match __tmp1 with
   | Package_builder.Built artifact -> Built artifact
   | Package_builder.Cached artifact -> Cached artifact
   | Package_builder.Skipped { reason } -> Skipped reason
   | Package_builder.Failed error -> Failed (Package_builder.package_error_to_string error)
 
-let artifact_of_status = function
+let artifact_of_status = fun __tmp1 ->
+  match __tmp1 with
   | Built artifact
   | Cached artifact -> Some artifact
   | Skipped _
@@ -68,13 +70,15 @@ let scope_of_package_key = fun key ->
   else
     Unknown
 
-let scope_priority = function
+let scope_priority = fun __tmp1 ->
+  match __tmp1 with
   | Unknown -> 0
   | Build -> 1
   | Runtime -> 2
   | Dev -> 3
 
-let status_priority = function
+let status_priority = fun __tmp1 ->
+  match __tmp1 with
   | Failed _ -> 0
   | Skipped _ -> 1
   | Cached _ -> 2
@@ -170,7 +174,8 @@ let rec find_export_in_artifacts = fun artifacts export_name ->
 
 let find_export = fun t export_name -> find_export_in_artifacts t.artifacts export_name
 
-let failure_reason_of_package_error = function
+let failure_reason_of_package_error = fun __tmp1 ->
+  match __tmp1 with
   | Package_builder.PlanningFailed planning_error -> PackagePlanningFailed planning_error
   | Package_builder.ExecutionFailed { message } -> PackageExecutionFailed { message }
   | Package_builder.ActionExecutionFailed { message } -> PackageActionFailed { message }
@@ -179,7 +184,8 @@ let failure_reason_of_package_error = function
   | Package_builder.ActionDependenciesFailed { failed } ->
       PackageActionDependenciesFailed { failed }
 
-let failure_reason_message = function
+let failure_reason_message = fun __tmp1 ->
+  match __tmp1 with
   | PackagePlanningFailed planning_error ->
       "Planning failed: " ^ Riot_planner.Planning_error.to_string planning_error
   | PackageExecutionFailed { message } -> "Execution failed: " ^ message
@@ -191,7 +197,8 @@ let failure_reason_message = function
   | PackageSkipped { reason } -> "Skipped: " ^ reason
   | UnknownFailure -> "Build failed"
 
-let failure_reason_to_json = function
+let failure_reason_to_json = fun __tmp1 ->
+  match __tmp1 with
   | PackagePlanningFailed planning_error ->
       Data.Json.Object [
         ("type", Data.Json.String "planning_failed");

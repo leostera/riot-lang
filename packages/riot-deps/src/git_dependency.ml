@@ -53,18 +53,20 @@ type error =
 
 let ( let* ) value fn = Result.and_then value ~fn
 
-let invalid_source_spec_message = function
+let invalid_source_spec_message = fun __tmp1 ->
+  match __tmp1 with
   | TooManyRefSuffixes -> "expected at most one #ref suffix"
   | InvalidLocatorShape -> "expected github.com/<owner>/<repo>[/path/to/package]"
 
-let command_error_message = function
-  | Command.SystemError error -> error
+let command_error_message = fun (Command.SystemError error) -> error
 
-let command_spawn_error_message = function
+let command_spawn_error_message = fun __tmp1 ->
+  match __tmp1 with
   | CommandError error -> command_error_message error
   | IoError error -> IO.error_message error
 
-let message = function
+let message = fun __tmp1 ->
+  match __tmp1 with
   | InvalidSourceSpec { source; reason } ->
       "invalid source dependency '" ^ source ^ "': " ^ invalid_source_spec_message reason
   | UnsupportedSourceHost { source; host } ->

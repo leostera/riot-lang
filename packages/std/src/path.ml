@@ -188,19 +188,17 @@ let components = fun t ->
 
 let rec normalize = fun path ->
   let parts = String.split ~by:"/" path in
-  let rec process acc = function
-    | [] ->
-        List.reverse acc
-    | "." :: rest ->
-        process acc rest
+  let rec process acc = fun __tmp1 ->
+    match __tmp1 with
+    | [] -> List.reverse acc
+    | "." :: rest -> process acc rest
     | ".." :: rest -> (
         match acc with
         | [] -> process [ ".." ] rest
         | ".." :: _ -> process (".." :: acc) rest
         | _ :: acc' -> process acc' rest
       )
-    | part :: rest ->
-        process (part :: acc) rest
+    | part :: rest -> process (part :: acc) rest
   in
   let normalized = process [] parts in
   let result = String.concat "/" normalized in

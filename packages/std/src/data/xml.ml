@@ -31,24 +31,25 @@ let text = fun str -> Text (escape_xml str)
 let cdata = fun str -> CData str
 
 let rec to_string = fun ?(indent = 0) ->
-  function
-  | Text str -> str
-  | CData str -> "<![CDATA[" ^ str ^ "]]>"
-  | Element { name; attrs; children } ->
-      let spaces = String.make ~len:(indent * 2) ~char:' ' in
-      let attrs_str =
-        if attrs = [] then
-          ""
-        else
-          " "
-          ^ String.concat " " (List.map attrs ~fn:(fun (k, v) -> k ^ "=\"" ^ escape_xml v ^ "\""))
-      in
-      if children = [] then
-        spaces ^ "<" ^ name ^ attrs_str ^ "></" ^ name ^ ">"
-      else
-        let children_str =
-          String.concat "\n" (List.map children ~fn:(to_string ~indent:(indent + 1)))
+  fun __tmp1 ->
+    match __tmp1 with
+    | Text str -> str
+    | CData str -> "<![CDATA[" ^ str ^ "]]>"
+    | Element { name; attrs; children } ->
+        let spaces = String.make ~len:(indent * 2) ~char:' ' in
+        let attrs_str =
+          if attrs = [] then
+            ""
+          else
+            " "
+            ^ String.concat " " (List.map attrs ~fn:(fun (k, v) -> k ^ "=\"" ^ escape_xml v ^ "\""))
         in
-        spaces ^ "<" ^ name ^ attrs_str ^ ">\n" ^ children_str ^ "\n" ^ spaces ^ "</" ^ name ^ ">"
+        if children = [] then
+          spaces ^ "<" ^ name ^ attrs_str ^ "></" ^ name ^ ">"
+        else
+          let children_str =
+            String.concat "\n" (List.map children ~fn:(to_string ~indent:(indent + 1)))
+          in
+          spaces ^ "<" ^ name ^ attrs_str ^ ">\n" ^ children_str ^ "\n" ^ spaces ^ "</" ^ name ^ ">"
 
 let declaration = {|<?xml version="1.0" encoding="UTF-8"?>|}

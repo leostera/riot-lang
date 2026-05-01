@@ -1079,11 +1079,10 @@ let from_json = fun json ->
             Ok (
               List.filter_map
                 path_jsons
-                ~fn:(
-                  function
+                ~fn:(fun __tmp1 ->
+                  match __tmp1 with
                   | String s -> Some (Path.v s)
-                  | _ -> None
-                )
+                  | _ -> None)
             )
         | _ -> Error "paths must be array"
       in

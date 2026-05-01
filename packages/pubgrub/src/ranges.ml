@@ -130,9 +130,9 @@ let normalize = fun ~compare_v ranges ->
         | Order.EQ -> compare_bound_end ~compare_v left_end right_end
         | n -> n)
   in
-  let rec merge acc = function
-    | [] ->
-        List.reverse acc
+  let rec merge acc = fun __tmp1 ->
+    match __tmp1 with
+    | [] -> List.reverse acc
     | segment :: rest -> (
         match acc with
         | [] -> merge [ segment ] rest
@@ -158,7 +158,8 @@ let complement = fun ~compare_v ranges ->
   if ranges = [] then
     full
   else
-    let rec build current_start acc = function
+    let rec build current_start acc = fun __tmp1 ->
+      match __tmp1 with
       | [] ->
           List.reverse
             (

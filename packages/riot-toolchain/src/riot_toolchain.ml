@@ -122,17 +122,18 @@ let first_existing = fun paths ->
 
 let parse_json_field_string = fun json fields ->
   let rec resolve = fun value ->
-    function
-    | [] -> (
-        match Data.Json.get_string value with
-        | Some string -> Some string
-        | None -> None
-      )
-    | field :: rest -> (
-        match Data.Json.get_field field value with
-        | Some next -> resolve next rest
-        | None -> None
-      )
+    fun __tmp1 ->
+      match __tmp1 with
+      | [] -> (
+          match Data.Json.get_string value with
+          | Some string -> Some string
+          | None -> None
+        )
+      | field :: rest -> (
+          match Data.Json.get_field field value with
+          | Some next -> resolve next rest
+          | None -> None
+        )
   in
   resolve json fields
 
@@ -757,51 +758,46 @@ let install_all_toolchains = fun ~config ->
   let successes =
     List.filter
       results
-      ~fn:(
-        function
+      ~fn:(fun __tmp1 ->
+        match __tmp1 with
         | Ok _ -> true
-        | Error _ -> false
-      )
+        | Error _ -> false)
   in
   let failures =
     List.filter
       results
-      ~fn:(
-        function
+      ~fn:(fun __tmp1 ->
+        match __tmp1 with
         | Error _ -> true
-        | Ok _ -> false
-      )
+        | Ok _ -> false)
   in
   if List.length failures > 0 then
     let errors =
       List.filter_map
         results
-        ~fn:(
-          function
+        ~fn:(fun __tmp1 ->
+          match __tmp1 with
           | Error (target, msg) -> Some (target ^ ": " ^ msg)
-          | _ -> None
-        )
+          | _ -> None)
     in
     Error ("Failed to install toolchains:\n  " ^ String.concat "\n  " errors)
   else
     let installed =
       List.filter
         successes
-        ~fn:(
-          function
+        ~fn:(fun __tmp1 ->
+          match __tmp1 with
           | Ok `Installed -> true
-          | _ -> false
-        )
+          | _ -> false)
       |> List.length
     in
     let skipped =
       List.filter
         successes
-        ~fn:(
-          function
+        ~fn:(fun __tmp1 ->
+          match __tmp1 with
           | Ok `Skipped -> true
-          | _ -> false
-        )
+          | _ -> false)
       |> List.length
     in
     Ok (installed, skipped)
@@ -868,7 +864,8 @@ let optional_json_int_field = fun name json ->
       | None -> Error ("Toolchain manifest field '" ^ name ^ "' must be an int")
     )
 
-let parse_available_toolchain_kind = function
+let parse_available_toolchain_kind = fun __tmp1 ->
+  match __tmp1 with
   | "native" -> Ok Native
   | "cross" -> Ok Cross
   | other -> Error ("Unknown toolchain manifest kind '" ^ other ^ "'")
@@ -940,7 +937,8 @@ let parse_available_toolchains_manifest = fun raw ->
           match Data.Json.get_array toolchains_json with
           | None -> Error "Toolchain manifest field 'toolchains' must be an array"
           | Some entries ->
-              let rec loop acc = function
+              let rec loop acc = fun __tmp1 ->
+                match __tmp1 with
                 | [] ->
                     Ok (
                       List.reverse acc

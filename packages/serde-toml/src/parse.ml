@@ -117,16 +117,18 @@ module Builder = struct
 
   let table_is_empty = fun table -> Int.equal (Vector.len table.order) 0
 
-  let array_len = function
+  let array_len = fun __tmp1 ->
+    match __tmp1 with
     | Array values
     | Array_of_tables values -> Vector.len values
     | _ -> panic "Parse.Builder.array_len: expected array value"
 
   let array_iter = fun fn ->
-    function
-    | Array values
-    | Array_of_tables values -> Vector.for_each values ~fn
-    | _ -> panic "Parse.Builder.array_iter: expected array value"
+    fun __tmp1 ->
+      match __tmp1 with
+      | Array values
+      | Array_of_tables values -> Vector.for_each values ~fn
+      | _ -> panic "Parse.Builder.array_iter: expected array value"
 
   let get_field = fun table key -> HashMap.get table.values ~key
 
@@ -205,7 +207,8 @@ let strip_prefix = fun ~prefix path ->
   in
   loop prefix path
 
-let is_ws = function
+let is_ws = fun __tmp1 ->
+  match __tmp1 with
   | ' '
   | '\t'
   | '\r'
@@ -392,7 +395,8 @@ let quoted_key = fun segment ->
     let text_len = String.length value_text in
     let pos = ref 1 in
     let buffer = IO.Buffer.create ~size:(text_len - 2) in
-    let hex_value = function
+    let hex_value = fun __tmp1 ->
+      match __tmp1 with
       | '0' .. '9' as c -> Some (Char.code c - Char.code '0')
       | 'a' .. 'f' as c -> Some (10 + Char.code c - Char.code 'a')
       | 'A' .. 'F' as c -> Some (10 + Char.code c - Char.code 'A')
@@ -546,7 +550,8 @@ let parse_value_text = fun input ->
         skip_ws ()
     | _ -> ()
   in
-  let hex_value = function
+  let hex_value = fun __tmp1 ->
+    match __tmp1 with
     | '0' .. '9' as c -> Some (Char.code c - Char.code '0')
     | 'a' .. 'f' as c -> Some (10 + Char.code c - Char.code 'a')
     | 'A' .. 'F' as c -> Some (10 + Char.code c - Char.code 'A')

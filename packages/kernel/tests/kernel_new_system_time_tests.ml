@@ -221,7 +221,8 @@ let test_many_same_tick_timers_wake_the_poller = fun _ctx ->
           create (remaining - 1) (timer :: acc)
       in
       let* timers = create 12 [] in
-      let rec register index = function
+      let rec register index = fun __tmp1 ->
+        match __tmp1 with
         | [] -> Ok ()
         | timer :: rest ->
             let* () =
@@ -235,7 +236,8 @@ let test_many_same_tick_timers_wake_the_poller = fun _ctx ->
             register (index + 1) rest
       in
       let seen = Kernel.Array.make ~count:12 ~value:false in
-      let rec mark = function
+      let rec mark = fun __tmp1 ->
+        match __tmp1 with
         | [] -> ()
         | event :: rest ->
             if Kernel.Async.Event.is_readable event then

@@ -95,18 +95,21 @@ and trivia = {
   span: Span.t;
 }
 
-let delimiter_of_keyword: keyword -> delimiter option = function
+let delimiter_of_keyword: keyword -> delimiter option = fun __tmp1 ->
+  match __tmp1 with
   | Begin -> Some BeginEnd
   | Struct -> Some StructEnd
   | Sig -> Some SigEnd
   | _ -> None
 
-let token_kind_of_trivia_kind = function
+let token_kind_of_trivia_kind = fun __tmp1 ->
+  match __tmp1 with
   | CommentTrivia { value; terminated } -> Comment { value; terminated }
   | DocstringTrivia { value; terminated } -> Docstring { value; terminated }
   | WhitespaceTrivia -> Whitespace
 
-let trivia_kind_of_token_kind = function
+let trivia_kind_of_token_kind = fun __tmp1 ->
+  match __tmp1 with
   | Comment { value; terminated } -> Some (CommentTrivia { value; terminated })
   | Docstring { value; terminated } -> Some (DocstringTrivia { value; terminated })
   | Whitespace -> Some WhitespaceTrivia
@@ -125,7 +128,8 @@ let trivia_to_token = fun (trivia: trivia) -> {
 
 let with_leading_trivia = fun token leading_trivia -> { token with leading_trivia }
 
-let show_kind = function
+let show_kind = fun __tmp1 ->
+  match __tmp1 with
   | Keyword _ -> "keyword"
   | Ident _ -> "identifier"
   | Literal (Int _) -> "integer"

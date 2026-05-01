@@ -904,7 +904,8 @@ let test_many_process_sources_report_burst_exit_readiness = fun _ctx ->
       in
       let* processes = spawn_many 12 [] in
       let sources = List.map processes ~fn:Kernel.Process.to_source in
-      let rec deregister_all = function
+      let rec deregister_all = fun __tmp1 ->
+        match __tmp1 with
         | [] -> ()
         | source :: rest ->
             let _ = Kernel.Async.Poll.deregister poll source in
@@ -915,9 +916,9 @@ let test_many_process_sources_report_burst_exit_readiness = fun _ctx ->
           deregister_all sources;
           close_processes processes)
         (fun () ->
-          let rec trigger_exit_burst = function
-            | [] ->
-                Ok ()
+          let rec trigger_exit_burst = fun __tmp1 ->
+            match __tmp1 with
+            | [] -> Ok ()
             | process :: rest -> (
                 match Kernel.Process.stdin process with
                 | None -> Error "expected burst-exit process to own a stdin pipe"
@@ -926,7 +927,8 @@ let test_many_process_sources_report_burst_exit_readiness = fun _ctx ->
                     trigger_exit_burst rest
               )
           in
-          let rec register index = function
+          let rec register index = fun __tmp1 ->
+            match __tmp1 with
             | [] -> Ok ()
             | process :: rest ->
                 let* () =
@@ -940,7 +942,8 @@ let test_many_process_sources_report_burst_exit_readiness = fun _ctx ->
                 register (index + 1) rest
           in
           let seen = Kernel.Array.make ~count:12 ~value:false in
-          let rec mark = function
+          let rec mark = fun __tmp1 ->
+            match __tmp1 with
             | [] -> ()
             | event :: rest ->
                 if Kernel.Async.Event.is_priority event then
@@ -957,7 +960,8 @@ let test_many_process_sources_report_burst_exit_readiness = fun _ctx ->
             else
               false
           in
-          let rec mark_observed index = function
+          let rec mark_observed index = fun __tmp1 ->
+            match __tmp1 with
             | [] -> Ok ()
             | process :: rest ->
                 if Kernel.Array.get_unchecked seen ~at:index then
@@ -985,7 +989,8 @@ let test_many_process_sources_report_burst_exit_readiness = fun _ctx ->
               mark events;
             poll_until (attempts - 1)
           in
-          let rec verify = function
+          let rec verify = fun __tmp1 ->
+            match __tmp1 with
             | [] -> Ok ()
             | process :: rest ->
                 let* first = lift_process (Kernel.Process.try_wait process) in
@@ -1016,7 +1021,8 @@ let test_many_process_sources_report_burst_signals = fun _ctx ->
       in
       let* processes = spawn_many 12 [] in
       let sources = List.map processes ~fn:Kernel.Process.to_source in
-      let rec deregister_all = function
+      let rec deregister_all = fun __tmp1 ->
+        match __tmp1 with
         | [] -> ()
         | source :: rest ->
             let _ = Kernel.Async.Poll.deregister poll source in
@@ -1027,13 +1033,15 @@ let test_many_process_sources_report_burst_signals = fun _ctx ->
           deregister_all sources;
           close_processes processes)
         (fun () ->
-          let rec signal_all = function
+          let rec signal_all = fun __tmp1 ->
+            match __tmp1 with
             | [] -> Ok ()
             | process :: rest ->
                 let* () = lift_process (Kernel.Process.kill process ~signal:15) in
                 signal_all rest
           in
-          let rec register index = function
+          let rec register index = fun __tmp1 ->
+            match __tmp1 with
             | [] -> Ok ()
             | process :: rest ->
                 let* () =
@@ -1047,7 +1055,8 @@ let test_many_process_sources_report_burst_signals = fun _ctx ->
                 register (index + 1) rest
           in
           let seen = Kernel.Array.make ~count:12 ~value:false in
-          let rec mark = function
+          let rec mark = fun __tmp1 ->
+            match __tmp1 with
             | [] -> ()
             | event :: rest ->
                 if Kernel.Async.Event.is_priority event then
@@ -1064,7 +1073,8 @@ let test_many_process_sources_report_burst_signals = fun _ctx ->
             else
               false
           in
-          let rec mark_observed index = function
+          let rec mark_observed index = fun __tmp1 ->
+            match __tmp1 with
             | [] -> Ok ()
             | process :: rest ->
                 if Kernel.Array.get_unchecked seen ~at:index then
@@ -1092,7 +1102,8 @@ let test_many_process_sources_report_burst_signals = fun _ctx ->
               mark events;
             poll_until (attempts - 1)
           in
-          let rec verify = function
+          let rec verify = fun __tmp1 ->
+            match __tmp1 with
             | [] -> Ok ()
             | process :: rest ->
                 let* first = lift_process (Kernel.Process.try_wait process) in

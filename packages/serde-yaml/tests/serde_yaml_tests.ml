@@ -151,25 +151,22 @@ let rank_encode =
     [
       Ser.Variant.unit
         "Captain"
-        (
-          function
+        (fun __tmp1 ->
+          match __tmp1 with
           | Captain -> true
-          | _ -> false
-        );
+          | _ -> false);
       Ser.Variant.unit
         "Doctor"
-        (
-          function
+        (fun __tmp1 ->
+          match __tmp1 with
           | Doctor -> true
-          | _ -> false
-        );
+          | _ -> false);
       Ser.Variant.unit
         "Navigator"
-        (
-          function
+        (fun __tmp1 ->
+          match __tmp1 with
           | Navigator -> true
-          | _ -> false
-        );
+          | _ -> false);
     ]
 
 let companion_decode =
@@ -184,19 +181,17 @@ let companion_encode =
     [
       Ser.Variant.unit
         "NewsCoo"
-        (
-          function
+        (fun __tmp1 ->
+          match __tmp1 with
           | NewsCoo -> true
-          | _ -> false
-        );
+          | _ -> false);
       Ser.Variant.newtype
         "Reindeer"
         Ser.string
-        (
-          function
+        (fun __tmp1 ->
+          match __tmp1 with
           | Reindeer value -> Some value
-          | _ -> None
-        );
+          | _ -> None);
     ]
 
 let berth_decode =

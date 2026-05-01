@@ -68,7 +68,8 @@ let package_manifest_table = fun (workspace: Workspace.t) ->
       ());
   table
 
-let target_package_names = function
+let target_package_names = fun __tmp1 ->
+  match __tmp1 with
   | All -> []
   | Package name -> [ name ]
   | Packages names -> names
@@ -93,7 +94,8 @@ let filter_workspace_for_target = fun
   | Packages _ ->
       let manifests_by_name = package_manifest_table workspace in
       let seen = HashSet.create () in
-      let rec visit = function
+      let rec visit = fun __tmp1 ->
+        match __tmp1 with
         | [] -> ()
         | pkg_name :: rest when HashSet.contains seen ~value:pkg_name -> visit rest
         | pkg_name :: rest ->

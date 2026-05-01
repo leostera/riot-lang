@@ -9,7 +9,8 @@ type error =
   | Closed
   | System_error of IO.error
 
-let io_error_of_listener_error = function
+let io_error_of_listener_error = fun __tmp1 ->
+  match __tmp1 with
   | Kernel.Net.TcpListener.InvalidBacklog _ -> IO.Invalid_argument
   | Kernel.Net.TcpListener.InvalidSocketAddr _ -> IO.Invalid_argument
   | Kernel.Net.TcpListener.WouldBlock -> IO.Operation_would_block

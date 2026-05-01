@@ -60,7 +60,8 @@ and header_format_error =
   | InvalidNameCharacter of { code: int; index: int }
   | InvalidValueCharacter of { code: int; index: int }
 
-let uri_error_to_string = function
+let uri_error_to_string = fun __tmp1 ->
+  match __tmp1 with
   | Std.Net.Uri.InvalidScheme -> "invalid scheme"
   | Std.Net.Uri.InvalidAuthority -> "invalid authority"
   | Std.Net.Uri.InvalidPath -> "invalid path"
@@ -69,7 +70,8 @@ let uri_error_to_string = function
   | Std.Net.Uri.InvalidFormat -> "invalid format"
   | Std.Net.Uri.TooLong -> "too long"
 
-let header_format_error_to_string = function
+let header_format_error_to_string = fun __tmp1 ->
+  match __tmp1 with
   | MissingColon -> "missing colon"
   | MissingValueSeparator -> "missing value separator"
   | EmptyName -> "empty header name"
@@ -86,20 +88,23 @@ let header_format_error_to_string = function
       ^ " at index "
       ^ Int.to_string index
 
-let content_length_error_to_string = function
+let content_length_error_to_string = fun __tmp1 ->
+  match __tmp1 with
   | EmptyContentLength -> "empty value"
   | NegativeContentLength -> "negative value"
   | ContentLengthOverflow -> "value exceeds the maximum integer"
   | InvalidContentLengthCharacter { code; index } ->
       "invalid character code " ^ Int.to_string code ^ " at index " ^ Int.to_string index
 
-let chunk_size_error_to_string = function
+let chunk_size_error_to_string = fun __tmp1 ->
+  match __tmp1 with
   | EmptyChunkSize -> "empty value"
   | ChunkSizeOverflow -> "value exceeds the maximum integer"
   | InvalidChunkSizeCharacter { code; index } ->
       "invalid hex character code " ^ Int.to_string code ^ " at index " ^ Int.to_string index
 
-let status_code_error_to_string = function
+let status_code_error_to_string = fun __tmp1 ->
+  match __tmp1 with
   | StatusCodeLength { length; expected } ->
       "expected " ^ Int.to_string expected ^ " digits, got " ^ Int.to_string length
   | InvalidStatusCodeCharacter { code; index } ->
@@ -112,7 +117,8 @@ let status_code_error_to_string = function
       ^ ".."
       ^ Int.to_string max
 
-let error_to_string = function
+let error_to_string = fun __tmp1 ->
+  match __tmp1 with
   | InvalidCrlf -> "Invalid CRLF"
   | RequestLineTooLong { max_length } ->
       "Request line too long (max " ^ Int.to_string max_length ^ " bytes)"

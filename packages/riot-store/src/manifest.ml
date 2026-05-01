@@ -33,7 +33,8 @@ type t = {
 
 (** Convert manifest to JSON *)
 let to_json manifest =
-  let version_to_string = function
+  let version_to_string = fun __tmp1 ->
+    match __tmp1 with
     | V0 -> "v0"
     | V1 -> "v1"
   in
@@ -99,7 +100,8 @@ let of_json = fun json ->
         let files =
           match get_field "files" with
           | Some (Array entries) ->
-              let parse_entry = function
+              let parse_entry = fun __tmp1 ->
+                match __tmp1 with
                 | Object entry_fields -> (
                     let get_entry_field name =
                       List.find
@@ -112,8 +114,7 @@ let of_json = fun json ->
                         Ok { path = Path.v path; hash; size }
                     | _ -> Error "Invalid file entry"
                   )
-                | _ ->
-                    Error "File entry must be an object"
+                | _ -> Error "File entry must be an object"
               in
               List.fold_left
                 entries
@@ -145,7 +146,8 @@ let of_json = fun json ->
           match get_field "exports" with
           | None -> Ok []
           | Some (Array entries) ->
-              let parse_entry = function
+              let parse_entry = fun __tmp1 ->
+                match __tmp1 with
                 | Object entry_fields -> (
                     let get_entry_field name =
                       List.find
@@ -162,8 +164,7 @@ let of_json = fun json ->
                         Ok { name; path = Path.v path; action_hash }
                     | _ -> Error "Invalid export entry"
                   )
-                | _ ->
-                    Error "Export entry must be an object"
+                | _ -> Error "Export entry must be an object"
               in
               List.fold_left
                 entries

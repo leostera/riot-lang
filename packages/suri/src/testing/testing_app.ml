@@ -10,7 +10,8 @@ type response_error =
   | InvalidRequest of Request.error
   | ExpectedResponseButUpgraded
 
-let response_error_to_string = function
+let response_error_to_string = fun __tmp1 ->
+  match __tmp1 with
   | InvalidRequest error -> Request.error_to_string error
   | ExpectedResponseButUpgraded -> "expected HTTP response, but app upgraded the connection"
 

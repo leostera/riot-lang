@@ -150,7 +150,8 @@ let middleware = fun routes ->
       let meth = Conn.method_ conn in
       let path = normalize_path (Conn.path conn) in
       let req = Conn.request conn in
-      let rec try_routes allowed_methods = function
+      let rec try_routes allowed_methods = fun __tmp1 ->
+        match __tmp1 with
         | [] ->
             if List.is_empty allowed_methods then
               next conn

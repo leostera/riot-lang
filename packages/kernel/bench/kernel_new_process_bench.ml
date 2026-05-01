@@ -196,7 +196,8 @@ let bench_many_process_exit_sources = fun () ->
       with_processes
         16
         (fun processes ->
-          let rec register index = function
+          let rec register index = fun __tmp1 ->
+            match __tmp1 with
             | [] -> ()
             | process :: rest ->
                 let _ =
@@ -210,7 +211,8 @@ let bench_many_process_exit_sources = fun () ->
                 register (index + 1) rest
           in
           let seen = Kernel.Array.make ~count:16 ~value:false in
-          let rec mark_events = function
+          let rec mark_events = fun __tmp1 ->
+            match __tmp1 with
             | [] -> ()
             | event :: rest ->
                 if Kernel.Async.Event.is_priority event then
@@ -219,7 +221,8 @@ let bench_many_process_exit_sources = fun () ->
                     Kernel.Array.set seen ~at:token ~value:true;
                 mark_events rest
           in
-          let rec mark_exits index = function
+          let rec mark_exits index = fun __tmp1 ->
+            match __tmp1 with
             | [] -> ()
             | process :: rest ->
                 (

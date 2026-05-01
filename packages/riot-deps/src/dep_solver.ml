@@ -86,7 +86,8 @@ let relative_path_from = fun ~base path ->
             drop_common base_rest path_rest
         | _ -> (base_parts, path_parts)
       in
-      let rec build_path = function
+      let rec build_path = fun __tmp1 ->
+        match __tmp1 with
         | [] -> Path.v "."
         | first :: rest -> List.fold_left rest ~init:first ~fn:Path.join
       in
@@ -323,7 +324,8 @@ let lock_dependency_of_local_dependency = fun (dep: Riot_model.Package.dependenc
   }
 
 let merge_lock_packages = fun packages ->
-  let rec loop seen acc = function
+  let rec loop seen acc = fun __tmp1 ->
+    match __tmp1 with
     | [] -> List.reverse acc
     | (pkg: Riot_model.Lockfile.package) :: rest ->
         let key = package_id_key pkg.id in
@@ -1138,7 +1140,8 @@ let register_local_entry = fun (catalog: catalog) (entry: local_entry) ->
       Ok ()
 
 let register_workspace_packages = fun (catalog: catalog) packages ->
-  let rec loop = function
+  let rec loop = fun __tmp1 ->
+    match __tmp1 with
     | [] -> Ok ()
     | (pkg: Riot_model.Package_manifest.t) :: rest ->
         let* () =
@@ -1404,7 +1407,8 @@ let provider_dependency_of_manifest_dependency = fun
         Ok (Some (target_name, ranges))
 
 let provider_dependencies_of_manifest = fun (catalog: catalog) ~declared_from ~required_by deps ->
-  let rec loop acc = function
+  let rec loop acc = fun __tmp1 ->
+    match __tmp1 with
     | [] -> Ok (List.reverse acc)
     | dep :: rest ->
         let* provider_dep_opt =
@@ -1526,7 +1530,8 @@ let sort_registry_versions = fun ~package_name versions ->
   List.sort versions ~compare
 
 let matching_registry_versions = fun (catalog: catalog) ~package_name ~ranges ->
-  let rec contains_version version = function
+  let rec contains_version version = fun __tmp1 ->
+    match __tmp1 with
     | [] -> false
     | existing :: rest ->
         if Std.Version.equal existing version then
@@ -1569,7 +1574,8 @@ let matching_registry_versions = fun (catalog: catalog) ~package_name ~ranges ->
   match document_opt with
   | None -> Ok versions
   | Some document ->
-      let rec loop acc = function
+      let rec loop acc = fun __tmp1 ->
+        match __tmp1 with
         | [] -> Ok acc
         | (release: Pkgs_ml.Sparse_index.release) :: rest ->
             if release.yanked then
@@ -1800,7 +1806,8 @@ let selected_package_id = fun (catalog: catalog) ~selected_versions ~package_nam
     )
 
 let lock_dependencies_of_manifest = fun (catalog: catalog) ~selected_versions ~declared_from deps ->
-  let rec loop acc = function
+  let rec loop acc = fun __tmp1 ->
+    match __tmp1 with
     | [] -> Ok (List.reverse acc)
     | (dep: Riot_model.Package.dependency) :: rest ->
         if dep.source.builtin then
@@ -1850,7 +1857,8 @@ let lock_package_of_local_entry = fun (catalog: catalog) ~selected_versions (ent
 
 let pm_error_of_pubgrub_failure = fun (catalog: catalog) incompat ->
   let registry_name = Pkgs_ml.Registry.name catalog.ctx.registry in
-  let rec find_no_versions = function
+  let rec find_no_versions = fun __tmp1 ->
+    match __tmp1 with
     | Pubgrub.Incompatibility.External {
         cause = Pubgrub.Incompatibility.NoVersions (package_name, _);
         _;
@@ -1868,8 +1876,7 @@ let pm_error_of_pubgrub_failure = fun (catalog: catalog) incompat ->
         | Some _ as found -> found
         | None -> find_no_versions cause2
       )
-    | _ ->
-        None
+    | _ -> None
   in
   match find_no_versions incompat with
   | Some package_name -> (
@@ -1969,7 +1976,8 @@ let lock_deps = fun ?(emit = no_emit) ~mode ~registry ~existing_lock ~workspace 
   | Ok (Pubgrub.Solver.Failure incompat) -> Error (pm_error_of_pubgrub_failure catalog incompat)
   | Ok (Pubgrub.Solver.Success solution) ->
       let selected_versions = selected_versions_of_solution solution in
-      let rec lock_workspace_packages acc = function
+      let rec lock_workspace_packages acc = fun __tmp1 ->
+        match __tmp1 with
         | [] -> Ok (List.reverse acc)
         | (pkg: Riot_model.Package_manifest.t) :: rest ->
             let* lock_package =
@@ -2000,9 +2008,9 @@ let lock_deps = fun ?(emit = no_emit) ~mode ~registry ~existing_lock ~workspace 
             | Some _ -> true
             | None -> false)
       in
-      let rec lock_external_local_packages acc = function
-        | [] ->
-            Ok (List.reverse acc)
+      let rec lock_external_local_packages acc = fun __tmp1 ->
+        match __tmp1 with
+        | [] -> Ok (List.reverse acc)
         | package_name :: rest -> (
             match HashMap.get catalog.local_by_name ~key:package_name with
             | Some entry ->
@@ -2024,9 +2032,9 @@ let lock_deps = fun ?(emit = no_emit) ~mode ~registry ~existing_lock ~workspace 
               names := package_name :: !names);
         List.reverse !names
       in
-      let rec lock_registry_packages acc = function
-        | [] ->
-            Ok (List.reverse acc)
+      let rec lock_registry_packages acc = fun __tmp1 ->
+        match __tmp1 with
+        | [] -> Ok (List.reverse acc)
         | package_name :: rest -> (
             match HashMap.get selected_versions ~key:package_name with
             | Some version ->

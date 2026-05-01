@@ -85,7 +85,8 @@ let state_of_value = fun value -> {
   context = Field_values [|value|];
 }
 
-let parse_bool = function
+let parse_bool = fun __tmp1 ->
+  match __tmp1 with
   | "true" -> true
   | "false" -> false
   | _ -> invalid_field_type ()

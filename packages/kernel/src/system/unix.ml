@@ -39,10 +39,13 @@ module Host = struct
     |> Bytes.sub_unchecked ~offset ~len
     |> Bytes.to_string
 
-  let error_message = function
-    | InvalidTripletFormat { value } -> String.concat "" [ "invalid host triplet format: "; value ]
+  let error_message = fun (InvalidTripletFormat { value }) ->
+    String.concat
+      ""
+      [ "invalid host triplet format: "; value ]
 
-  let rec reverse_parts = function
+  let rec reverse_parts = fun __tmp1 ->
+    match __tmp1 with
     | [] -> []
     | head :: tail ->
         let rec prepend_tail rest =
@@ -113,7 +116,8 @@ module OS = struct
     | "cygwin" -> Cygwin
     | _ -> Unix
 
-  let to_string = function
+  let to_string = fun __tmp1 ->
+    match __tmp1 with
     | Unix -> "Unix"
     | Win32 -> "Win32"
     | Cygwin -> "Cygwin"

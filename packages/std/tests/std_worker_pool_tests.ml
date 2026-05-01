@@ -25,8 +25,8 @@ let await_ready_worker:
   (task WorkerPool.DynamicWorkerPool.worker, string) result = fun pool ->
   await
     ~what:"worker readiness"
-    (
-      function
+    (fun __tmp1 ->
+      match __tmp1 with
       | WorkerPool.DynamicWorkerPool.WorkerReady worker -> (
           match Ref.type_equal
             pool.WorkerPool.DynamicWorkerPool.task_ref
@@ -34,9 +34,7 @@ let await_ready_worker:
           | Some witness -> Select (cast_worker witness worker)
           | None -> Skip
         )
-      | _ ->
-          Skip
-    )
+      | _ -> Skip)
 
 let test_simple_worker_pool_empty_returns_immediately =
   Test.case
@@ -165,16 +163,14 @@ let test_dynamic_worker_pool_send_task_executes_payload =
           let received =
             await
               ~what:"dynamic worker payload"
-              (
-                function
+              (fun __tmp1 ->
+                match __tmp1 with
                 | Worker_pool_task_received { payload; run_ref = received_ref } -> (
                     match Ref.type_equal run_ref received_ref with
                     | Some Type.Equal -> Select payload
                     | None -> Skip
                   )
-                | _ ->
-                    Skip
-              )
+                | _ -> Skip)
           in
           match received with
           | Ok "payload" -> (

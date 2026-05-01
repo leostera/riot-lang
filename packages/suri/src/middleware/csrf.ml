@@ -26,7 +26,8 @@ type verification_error =
 let missing_session_body =
   "CSRF middleware requires Suri.Middleware.Session.middleware to run before it"
 
-let random_error_to_string = function
+let random_error_to_string = fun __tmp1 ->
+  match __tmp1 with
   | RngInitializationFailed error ->
       "failed to initialize CSRF random generator: " ^ Random.error_to_string error
   | RandomByteFailed { index; error } ->
@@ -39,11 +40,13 @@ let random_error_to_string = function
           Random.error_to_string error;
         ]
 
-let error_to_string = function
+let error_to_string = fun __tmp1 ->
+  match __tmp1 with
   | MissingSession -> missing_session_body
   | TokenGenerationFailed error -> random_error_to_string error
 
-let unmask_error_to_string = function
+let unmask_error_to_string = fun __tmp1 ->
+  match __tmp1 with
   | InvalidMaskedTokenEncoding -> "invalid CSRF masked token encoding"
   | InvalidMaskedTokenLength { expected; actual } ->
       String.concat
@@ -55,7 +58,8 @@ let unmask_error_to_string = function
           Int.to_string actual;
         ]
 
-let verification_error_to_string = function
+let verification_error_to_string = fun __tmp1 ->
+  match __tmp1 with
   | MissingStoredToken -> "CSRF token is missing from the session"
   | InvalidStoredToken -> "CSRF token stored in the session is malformed"
   | InvalidRequestToken error ->
@@ -213,7 +217,8 @@ let unmask_token = fun masked_b64 ->
       let unmasked_hex = bytes_to_hex (IO.Bytes.to_string raw_bytes) in
       Ok unmasked_hex
 
-let is_hex_char = function
+let is_hex_char = fun __tmp1 ->
+  match __tmp1 with
   | '0' .. '9'
   | 'a' .. 'f'
   | 'A' .. 'F' -> true

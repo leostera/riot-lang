@@ -3,13 +3,15 @@ open Prelude
 type 'value t = 'value list
 
 let length =
-  let rec loop count = function
+  let rec loop count = fun __tmp1 ->
+    match __tmp1 with
     | [] -> count
     | _ :: rest -> loop (count + 1) rest
   in
   fun values -> loop 0 values
 
-let is_empty = function
+let is_empty = fun __tmp1 ->
+  match __tmp1 with
   | [] -> true
   | _ -> false
 
@@ -26,7 +28,8 @@ let rec reverse_append left right =
 let reverse = fun values -> reverse_append values []
 
 let concat =
-  let rec loop acc = function
+  let rec loop acc = fun __tmp1 ->
+    match __tmp1 with
     | [] -> reverse acc
     | values :: rest -> loop (reverse_append values acc) rest
   in
@@ -45,14 +48,16 @@ let init = fun ~count ~fn ->
     loop (count - 1) []
 
 let map = fun values ~fn ->
-  let rec loop acc = function
+  let rec loop acc = fun __tmp1 ->
+    match __tmp1 with
     | [] -> reverse acc
     | value :: rest -> loop (fn value :: acc) rest
   in
   loop [] values
 
 let for_each = fun values ~fn ->
-  let rec loop = function
+  let rec loop = fun __tmp1 ->
+    match __tmp1 with
     | [] -> ()
     | value :: rest ->
         fn value;
@@ -61,7 +66,8 @@ let for_each = fun values ~fn ->
   loop values
 
 let fold_left = fun values ~acc ~fn ->
-  let rec loop acc = function
+  let rec loop acc = fun __tmp1 ->
+    match __tmp1 with
     | [] -> acc
     | value :: rest -> loop (fn acc value) rest
   in
@@ -76,14 +82,16 @@ let fold_right = fun values ~acc ~fn ->
   loop values acc
 
 let exists = fun values ~fn ->
-  let rec loop = function
+  let rec loop = fun __tmp1 ->
+    match __tmp1 with
     | [] -> false
     | value :: rest -> fn value || loop rest
   in
   loop values
 
 let contains = fun values ~value ->
-  let rec loop = function
+  let rec loop = fun __tmp1 ->
+    match __tmp1 with
     | [] -> false
     | current :: rest ->
         match compare current value with
@@ -93,11 +101,13 @@ let contains = fun values ~value ->
   in
   loop values
 
-let head = function
+let head = fun __tmp1 ->
+  match __tmp1 with
   | [] -> None
   | value :: _ -> Some value
 
-let tail = function
+let tail = fun __tmp1 ->
+  match __tmp1 with
   | [] -> []
   | _ :: rest -> rest
 
@@ -123,7 +133,8 @@ let get_unchecked = fun values ~at ->
       System_error.panic ("List.get_unchecked received an out-of-bounds index: " ^ Int.to_string at)
 
 let find = fun values ~fn ->
-  let rec loop = function
+  let rec loop = fun __tmp1 ->
+    match __tmp1 with
     | [] -> None
     | value :: rest ->
         if fn value then
@@ -134,7 +145,8 @@ let find = fun values ~fn ->
   loop values
 
 let filter = fun values ~fn ->
-  let rec loop acc = function
+  let rec loop acc = fun __tmp1 ->
+    match __tmp1 with
     | [] -> reverse acc
     | value :: rest ->
         if fn value then
@@ -145,9 +157,9 @@ let filter = fun values ~fn ->
   loop [] values
 
 let sort = fun values ~compare ->
-  let rec insert value = function
-    | [] ->
-        [ value ]
+  let rec insert value = fun __tmp1 ->
+    match __tmp1 with
+    | [] -> [ value ]
     | current :: rest as values -> (
         match compare value current with
         | Order.LT
@@ -159,11 +171,10 @@ let sort = fun values ~compare ->
 
 let unique = fun values ~compare ->
   let sorted = sort values ~compare in
-  let rec loop acc = function
-    | [] ->
-        reverse acc
-    | [ value ] ->
-        reverse (value :: acc)
+  let rec loop acc = fun __tmp1 ->
+    match __tmp1 with
+    | [] -> reverse acc
+    | [ value ] -> reverse (value :: acc)
     | left :: ((right :: _) as rest) -> (
         match compare left right with
         | Order.EQ -> loop acc rest

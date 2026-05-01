@@ -74,11 +74,10 @@ module Server = struct
       | Ok config -> (
           match List.find
             config.handlers
-            ~fn:(
-              function
+            ~fn:(fun __tmp1 ->
+              match __tmp1 with
               | Log_config.Stdout _ -> true
-              | _ -> false
-            ) with
+              | _ -> false) with
           | Some (Log_config.Stdout { format }) -> format
           | Some _
           | None -> Log_config.Full

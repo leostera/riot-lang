@@ -77,7 +77,8 @@ module Fields = struct
     in
     loop 0
 
-  let longest_common_prefix_length = function
+  let longest_common_prefix_length = fun __tmp1 ->
+    match __tmp1 with
     | [] -> 0
     | first :: rest ->
         List.fold_left
@@ -717,7 +718,8 @@ end
 module Error = struct
   type t = error
 
-  let to_string = function
+  let to_string = fun __tmp1 ->
+    match __tmp1 with
     | `invalid_field_type -> "invalid_field_type"
     | `missing_field -> "missing_field"
     | `no_more_data -> "no_more_data"

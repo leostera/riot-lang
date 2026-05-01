@@ -20,58 +20,66 @@ let string_contains_char = fun s ->
     | Some _ -> true
     | None -> false
 
-let path_error_message = function
+let path_error_message = fun __tmp1 ->
+  match __tmp1 with
   | Path.InvalidUtf8 { path } -> "invalid UTF-8 path: " ^ path
   | Path.SystemInvalidUtf8 { syscall; path } ->
       "system call '" ^ syscall ^ "' returned invalid UTF-8 path: " ^ path
   | Path.SystemError error -> error
 
 let rec unsupported_json_kind = fun expected ->
-  function
-  | Json.Null -> expected ^ " must not be null"
-  | Json.Bool _ -> expected ^ " must be a JSON " ^ expected ^ ", found bool"
-  | Json.Int _ -> expected ^ " must be a JSON " ^ expected ^ ", found int"
-  | Json.Float _ -> expected ^ " must be a JSON " ^ expected ^ ", found float"
-  | Json.String _ -> expected ^ " must be a JSON " ^ expected ^ ", found string"
-  | Json.Array _ -> expected ^ " must be a JSON " ^ expected ^ ", found array"
-  | Json.Object _ -> expected ^ " must be a JSON " ^ expected ^ ", found object"
-  | Json.Embed t -> unsupported_json_kind expected t
+  fun __tmp1 ->
+    match __tmp1 with
+    | Json.Null -> expected ^ " must not be null"
+    | Json.Bool _ -> expected ^ " must be a JSON " ^ expected ^ ", found bool"
+    | Json.Int _ -> expected ^ " must be a JSON " ^ expected ^ ", found int"
+    | Json.Float _ -> expected ^ " must be a JSON " ^ expected ^ ", found float"
+    | Json.String _ -> expected ^ " must be a JSON " ^ expected ^ ", found string"
+    | Json.Array _ -> expected ^ " must be a JSON " ^ expected ^ ", found array"
+    | Json.Object _ -> expected ^ " must be a JSON " ^ expected ^ ", found object"
+    | Json.Embed t -> unsupported_json_kind expected t
 
 module Decode = struct
   let field = fun name -> fun fields -> Std.Collections.Proplist.get fields ~key:name
 
   let object_fields = fun context ->
-    function
-    | Json.Object fields -> Ok fields
-    | value -> Error (unsupported_json_kind (context ^ " object") value)
+    fun __tmp1 ->
+      match __tmp1 with
+      | Json.Object fields -> Ok fields
+      | value -> Error (unsupported_json_kind (context ^ " object") value)
 
   let string = fun context ->
-    function
-    | Json.String value -> Ok value
-    | value -> Error (unsupported_json_kind (context ^ " string") value)
+    fun __tmp1 ->
+      match __tmp1 with
+      | Json.String value -> Ok value
+      | value -> Error (unsupported_json_kind (context ^ " string") value)
 
   let int = fun context ->
-    function
-    | Json.Int value -> Ok value
-    | value -> Error (unsupported_json_kind (context ^ " int") value)
+    fun __tmp1 ->
+      match __tmp1 with
+      | Json.Int value -> Ok value
+      | value -> Error (unsupported_json_kind (context ^ " int") value)
 
   let bool = fun context ->
-    function
-    | Json.Bool value -> Ok value
-    | value -> Error (unsupported_json_kind (context ^ " bool") value)
+    fun __tmp1 ->
+      match __tmp1 with
+      | Json.Bool value -> Ok value
+      | value -> Error (unsupported_json_kind (context ^ " bool") value)
 
   let list = fun context ->
     fun decode ->
-      function
-      | Json.Array items ->
-          let rec loop acc = function
-            | [] -> Ok (List.rev acc)
-            | item :: rest ->
-                let* decoded = decode item in
-                loop (decoded :: acc) rest
-          in
-          loop [] items
-      | value -> Error (unsupported_json_kind (context ^ " array") value)
+      fun __tmp1 ->
+        match __tmp1 with
+        | Json.Array items ->
+            let rec loop acc = fun __tmp1 ->
+              match __tmp1 with
+              | [] -> Ok (List.rev acc)
+              | item :: rest ->
+                  let* decoded = decode item in
+                  loop (decoded :: acc) rest
+            in
+            loop [] items
+        | value -> Error (unsupported_json_kind (context ^ " array") value)
 
   let required = fun context ->
     fun name ->
@@ -215,11 +223,13 @@ module Markup_kind = struct
     | Plain_text
     | Markdown
 
-  let to_string = function
+  let to_string = fun __tmp1 ->
+    match __tmp1 with
     | Plain_text -> "plaintext"
     | Markdown -> "markdown"
 
-  let of_string = function
+  let of_string = fun __tmp1 ->
+    match __tmp1 with
     | "plaintext" -> Ok Plain_text
     | "markdown" -> Ok Markdown
     | value -> Error ("invalid markup kind: " ^ value)
@@ -274,11 +284,13 @@ module Inlay_hint = struct
       | Type
       | Parameter
 
-    let to_int = function
+    let to_int = fun __tmp1 ->
+      match __tmp1 with
       | Type -> 1
       | Parameter -> 2
 
-    let of_int = function
+    let of_int = fun __tmp1 ->
+      match __tmp1 with
       | 1 -> Ok Type
       | 2 -> Ok Parameter
       | value -> Error ("invalid inlay hint kind: " ^ Int.to_string value)
@@ -363,7 +375,8 @@ module Completion_item = struct
       | Operator
       | TypeParameter
 
-    let to_int = function
+    let to_int = fun __tmp1 ->
+      match __tmp1 with
       | Text -> 1
       | Method -> 2
       | Function -> 3
@@ -390,7 +403,8 @@ module Completion_item = struct
       | Operator -> 24
       | TypeParameter -> 25
 
-    let of_int = function
+    let of_int = fun __tmp1 ->
+      match __tmp1 with
       | 1 -> Ok Text
       | 2 -> Ok Method
       | 3 -> Ok Function
@@ -498,7 +512,8 @@ module Symbol_kind = struct
     | Operator
     | TypeParameter
 
-  let to_int = function
+  let to_int = fun __tmp1 ->
+    match __tmp1 with
     | File -> 1
     | Module -> 2
     | Namespace -> 3
@@ -526,7 +541,8 @@ module Symbol_kind = struct
     | Operator -> 25
     | TypeParameter -> 26
 
-  let of_int = function
+  let of_int = fun __tmp1 ->
+    match __tmp1 with
     | 1 -> Ok File
     | 2 -> Ok Module
     | 3 -> Ok Namespace
@@ -644,24 +660,28 @@ module Diagnostic = struct
     data: json option;
   }
 
-  let severity_to_int = function
+  let severity_to_int = fun __tmp1 ->
+    match __tmp1 with
     | Error -> 1
     | Warning -> 2
     | Information -> 3
     | Hint -> 4
 
-  let severity_of_int = function
+  let severity_of_int = fun __tmp1 ->
+    match __tmp1 with
     | 1 -> Ok Error
     | 2 -> Ok Warning
     | 3 -> Ok Information
     | 4 -> Ok Hint
     | value -> Error ("invalid diagnostic severity: " ^ Int.to_string value)
 
-  let tag_to_int = function
+  let tag_to_int = fun __tmp1 ->
+    match __tmp1 with
     | Unnecessary -> 1
     | Deprecated -> 2
 
-  let tag_of_int = function
+  let tag_of_int = fun __tmp1 ->
+    match __tmp1 with
     | 1 -> Ok Unnecessary
     | 2 -> Ok Deprecated
     | value -> Error ("invalid diagnostic tag: " ^ Int.to_string value)
@@ -782,7 +802,8 @@ module Workspace_edit = struct
       | Some value -> Error (unsupported_json_kind "workspaceEdit.changes object" value)
       | None -> Error "missing required field `workspaceEdit.changes`"
     in
-    let rec loop acc = function
+    let rec loop acc = fun __tmp1 ->
+      match __tmp1 with
       | [] -> Ok (List.rev acc)
       | (uri, edits_json) :: rest ->
           let* edits = Decode.list "workspaceEdit.changes" Text_edit.of_json edits_json in
@@ -828,7 +849,8 @@ module Action_kind = struct
     | Source_fix_all
     | Custom of string
 
-  let to_string = function
+  let to_string = fun __tmp1 ->
+    match __tmp1 with
     | Quick_fix -> "quickfix"
     | Refactor -> "refactor"
     | Refactor_extract -> "refactor.extract"
@@ -838,7 +860,8 @@ module Action_kind = struct
     | Source_fix_all -> "source.fixAll"
     | Custom value -> value
 
-  let of_string = function
+  let of_string = fun __tmp1 ->
+    match __tmp1 with
     | "quickfix" -> Quick_fix
     | "refactor" -> Refactor
     | "refactor.extract" -> Refactor_extract
@@ -921,7 +944,8 @@ module Code_action_or_command = struct
     | Action of Code_action.t
     | Command of Command.t
 
-  let to_json = function
+  let to_json = fun __tmp1 ->
+    match __tmp1 with
     | Action action -> Code_action.to_json action
     | Command command -> Command.to_json command
 
@@ -1019,12 +1043,14 @@ module Text_document = struct
       | Full
       | Incremental
 
-    let to_int = function
+    let to_int = fun __tmp1 ->
+      match __tmp1 with
       | None_ -> 0
       | Full -> 1
       | Incremental -> 2
 
-    let of_int = function
+    let of_int = fun __tmp1 ->
+      match __tmp1 with
       | 0 -> Ok None_
       | 1 -> Ok Full
       | 2 -> Ok Incremental
@@ -1173,7 +1199,8 @@ module Text_document = struct
     let* trim_final_newlines =
       Decode.optional "formattingOptions" "trimFinalNewlines" Decode.bool fields
     in
-    let is_known = function
+    let is_known = fun __tmp1 ->
+      match __tmp1 with
       | "tabSize"
       | "insertSpaces"
       | "trimTrailingWhitespace"
@@ -1228,18 +1255,20 @@ end
 module Params = struct
   let object_params = fun context ->
     fun decode ->
-      function
-      | Jsonrpc.Named fields -> decode fields
-      | Jsonrpc.NoParams -> decode []
-      | Jsonrpc.Positional _ -> Error (context ^ " expects named object params")
+      fun __tmp1 ->
+        match __tmp1 with
+        | Jsonrpc.Named fields -> decode fields
+        | Jsonrpc.NoParams -> decode []
+        | Jsonrpc.Positional _ -> Error (context ^ " expects named object params")
 
   let no_params = fun context ->
-    function
-    | Jsonrpc.NoParams
-    | Jsonrpc.Named [] -> Ok ()
-    | Jsonrpc.Named _ -> Error (context ^ " expects no params")
-    | Jsonrpc.Positional [] -> Ok ()
-    | Jsonrpc.Positional _ -> Error (context ^ " expects no params")
+    fun __tmp1 ->
+      match __tmp1 with
+      | Jsonrpc.NoParams
+      | Jsonrpc.Named [] -> Ok ()
+      | Jsonrpc.Named _ -> Error (context ^ " expects no params")
+      | Jsonrpc.Positional [] -> Ok ()
+      | Jsonrpc.Positional _ -> Error (context ^ " expects no params")
 
   let named = fun fields ->
     if List.is_empty fields then
@@ -1308,11 +1337,13 @@ module Initialize = struct
       in
       Ok { code_action_kinds; resolve_provider }
 
-    let text_document_sync_to_json = function
+    let text_document_sync_to_json = fun __tmp1 ->
+      match __tmp1 with
       | Kind kind -> Text_document.Sync_kind.to_json kind
       | Sync_options options -> Text_document.sync_options_to_json options
 
-    let text_document_sync_of_json = function
+    let text_document_sync_of_json = fun __tmp1 ->
+      match __tmp1 with
       | Json.Int _ as value ->
           let* kind = Text_document.Sync_kind.of_json value in
           Ok (Kind kind)
@@ -1321,11 +1352,13 @@ module Initialize = struct
           Ok (Sync_options options)
       | value -> Error (unsupported_json_kind "serverCapabilities.textDocumentSync value" value)
 
-    let code_action_provider_to_json = function
+    let code_action_provider_to_json = fun __tmp1 ->
+      match __tmp1 with
       | Bool value -> Json.bool value
       | Provider_options value -> code_action_options_to_json value
 
-    let code_action_provider_of_json = function
+    let code_action_provider_of_json = fun __tmp1 ->
+      match __tmp1 with
       | Json.Bool value -> Ok (Bool value)
       | Json.Object _ as value ->
           let* options = code_action_options_of_json value in
@@ -1780,11 +1813,13 @@ module Text_document_requests = struct
           in
           Ok { text_document; position })
 
-    let result_to_json = function
+    let result_to_json = fun __tmp1 ->
+      match __tmp1 with
       | None -> Json.Null
       | Some items -> Json.array (List.map items ~fn:Completion_item.to_json)
 
-    let result_of_json = function
+    let result_of_json = fun __tmp1 ->
+      match __tmp1 with
       | Json.Null -> Ok None
       | Json.Array _ as value ->
           let* items = Decode.list "textDocument/completion result" Completion_item.of_json value in
@@ -1831,11 +1866,13 @@ module Text_document_requests = struct
           in
           Ok { text_document; position })
 
-    let result_to_json = function
+    let result_to_json = fun __tmp1 ->
+      match __tmp1 with
       | None -> Json.Null
       | Some hover -> Hover_result.to_json hover
 
-    let result_of_json = function
+    let result_of_json = fun __tmp1 ->
+      match __tmp1 with
       | Json.Null -> Ok None
       | Json.Object _ as value ->
           let* hover = Hover_result.of_json value in
@@ -1886,11 +1923,13 @@ module Text_document_requests = struct
           in
           Ok { text_document; position })
 
-    let result_to_json = function
+    let result_to_json = fun __tmp1 ->
+      match __tmp1 with
       | None -> Json.Null
       | Some locations -> Json.array (List.map locations ~fn:Location.to_json)
 
-    let result_of_json = function
+    let result_of_json = fun __tmp1 ->
+      match __tmp1 with
       | Json.Null -> Ok None
       | Json.Object _ as value ->
           let* location = Location.of_json value in
@@ -1941,11 +1980,13 @@ module Text_document_requests = struct
           in
           Ok { text_document; range })
 
-    let result_to_json = function
+    let result_to_json = fun __tmp1 ->
+      match __tmp1 with
       | None -> Json.Null
       | Some hints -> Json.array (List.map hints ~fn:Inlay_hint_item.to_json)
 
-    let result_of_json = function
+    let result_of_json = fun __tmp1 ->
+      match __tmp1 with
       | Json.Null -> Ok None
       | Json.Array _ as value ->
           let* hints = Decode.list "textDocument/inlayHint result" Inlay_hint_item.of_json value in
@@ -1985,11 +2026,13 @@ module Text_document_requests = struct
           in
           Ok { text_document })
 
-    let result_to_json = function
+    let result_to_json = fun __tmp1 ->
+      match __tmp1 with
       | None -> Json.Null
       | Some symbols -> Json.array (List.map symbols ~fn:Document_symbol_item.to_json)
 
-    let result_of_json = function
+    let result_of_json = fun __tmp1 ->
+      match __tmp1 with
       | Json.Null -> Ok None
       | Json.Array _ as value ->
           let* symbols =
@@ -2042,11 +2085,13 @@ module Text_document_requests = struct
           in
           Ok { text_document; options })
 
-    let result_to_json = function
+    let result_to_json = fun __tmp1 ->
+      match __tmp1 with
       | None -> Json.Null
       | Some edits -> Json.array (List.map edits ~fn:Text_edit.to_json)
 
-    let result_of_json = function
+    let result_of_json = fun __tmp1 ->
+      match __tmp1 with
       | Json.Null -> Ok None
       | Json.Array edits as value ->
           let* edits = Decode.list "textDocument/formatting result" Text_edit.of_json value in
@@ -2139,11 +2184,13 @@ module Text_document_requests = struct
           in
           Ok { text_document; range; context })
 
-    let result_to_json = function
+    let result_to_json = fun __tmp1 ->
+      match __tmp1 with
       | None -> Json.Null
       | Some actions -> Json.array (List.map actions ~fn:Code_action_or_command.to_json)
 
-    let result_of_json = function
+    let result_of_json = fun __tmp1 ->
+      match __tmp1 with
       | Json.Null -> Ok None
       | Json.Array _ as value ->
           let* actions =

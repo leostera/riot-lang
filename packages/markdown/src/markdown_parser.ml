@@ -161,11 +161,13 @@ let token = fun kind text ->
   let span = Markdown_span.make ~start:0 ~end_:(String.length text) in
   Token { kind; text; span }
 
-let element_span = function
+let element_span = fun __tmp1 ->
+  match __tmp1 with
   | Token token -> token.span
   | Node node -> node.span
 
-let element_kind = function
+let element_kind = fun __tmp1 ->
+  match __tmp1 with
   | Token token -> token.kind
   | Node node -> node.kind
 
@@ -183,11 +185,10 @@ let make_node = fun kind children ->
   let child_nodes = Vector.with_capacity ~size:(List.length children) in
   List.for_each
     children
-    ~fn:(
-      function
+    ~fn:(fun __tmp1 ->
+      match __tmp1 with
       | Token token -> Vector.push tokens ~value:token
-      | Node node -> Vector.push child_nodes ~value:node
-    );
+      | Node node -> Vector.push child_nodes ~value:node);
   {
     kind;
     span = node_span children;
@@ -226,7 +227,8 @@ let set_element_span = fun element span ->
   | Token token -> Token { token with span }
   | Node node -> Node (set_node_span node span)
 
-let node_of_element = function
+let node_of_element = fun __tmp1 ->
+  match __tmp1 with
   | Node node -> Some node
   | Token _ -> None
 
@@ -538,7 +540,8 @@ let parse_bracket_label = fun text start ->
     in
     loop (start + 1) 0
 
-let is_title_opener = function
+let is_title_opener = fun __tmp1 ->
+  match __tmp1 with
   | '"'
   | '\''
   | '(' -> true
@@ -941,7 +944,8 @@ let parse_setext_underline = fun text ->
       else
         None
 
-let heading_kind = function
+let heading_kind = fun __tmp1 ->
+  match __tmp1 with
   | 1 -> Syntax_kind.Heading_1
   | 2 -> Syntax_kind.Heading_2
   | 3 -> Syntax_kind.Heading_3
@@ -1115,7 +1119,8 @@ let parse_indented_code_block = fun lines start ->
             (index, List.reverse acc)
       in
       let (next, code_lines) = collect start [] in
-      let rec drop_trailing_blank = function
+      let rec drop_trailing_blank = fun __tmp1 ->
+        match __tmp1 with
         | [] -> []
         | head :: tail ->
             let tail = drop_trailing_blank tail in
@@ -1334,7 +1339,8 @@ let parse_table_alignment = fun text ->
       else
         Some Default
 
-let cell_kind_of_alignment = function
+let cell_kind_of_alignment = fun __tmp1 ->
+  match __tmp1 with
   | Default -> Syntax_kind.Table_cell_default
   | Left -> Syntax_kind.Table_cell_left
   | Center -> Syntax_kind.Table_cell_center
@@ -1416,26 +1422,30 @@ let contains_ascii_ci = fun ~needle text ->
   Option.is_some
     (find_substring (String.lowercase_ascii text) 0 needle)
 
-let is_ascii_letter = function
+let is_ascii_letter = fun __tmp1 ->
+  match __tmp1 with
   | 'a' .. 'z'
   | 'A' .. 'Z' -> true
   | _ -> false
 
-let is_html_tag_name_char = function
+let is_html_tag_name_char = fun __tmp1 ->
+  match __tmp1 with
   | 'a' .. 'z'
   | 'A' .. 'Z'
   | '0' .. '9'
   | '-' -> true
   | _ -> false
 
-let is_html_attribute_name_start = function
+let is_html_attribute_name_start = fun __tmp1 ->
+  match __tmp1 with
   | 'a' .. 'z'
   | 'A' .. 'Z'
   | '_'
   | ':' -> true
   | _ -> false
 
-let is_html_attribute_name_char = function
+let is_html_attribute_name_char = fun __tmp1 ->
+  match __tmp1 with
   | 'a' .. 'z'
   | 'A' .. 'Z'
   | '0' .. '9'
@@ -1445,7 +1455,8 @@ let is_html_attribute_name_char = function
   | '-' -> true
   | _ -> false
 
-let is_unquoted_html_attribute_value_char = function
+let is_unquoted_html_attribute_value_char = fun __tmp1 ->
+  match __tmp1 with
   | ' '
   | '\t'
   | '"'
@@ -2044,10 +2055,12 @@ and parse_list = fun flavor lines start ->
                     let offset = count_indent text 256 in
                     columns_of_prefix text offset
                   in
-                  let rec loop = function
+                  let rec loop = fun __tmp1 ->
+                    match __tmp1 with
                     | [] -> false
                     | { text; _ } :: tail when String.equal text "" ->
-                        let rec next_nonblank = function
+                        let rec next_nonblank = fun __tmp1 ->
+                          match __tmp1 with
                           | [] -> false
                           | { text; _ } :: rest when String.equal text "" -> next_nonblank rest
                           | { text; _ } :: _ -> leading_columns text < 2
@@ -2370,7 +2383,8 @@ let edit_crosses_newline = fun source (edit: edit) ->
   source_range_has_newline source ~start:edit.start ~end_:edit.end_
   || source_range_has_newline edit.text ~start:0 ~end_:(String.length edit.text)
 
-let simple_incremental_kind = function
+let simple_incremental_kind = fun __tmp1 ->
+  match __tmp1 with
   | Syntax_kind.Heading_1
   | Syntax_kind.Heading_2
   | Syntax_kind.Heading_3
@@ -2392,7 +2406,8 @@ let edit_touches_span = fun (edit: edit) span ->
     edit.start < span.Markdown_span.end_ && edit.end_ > span.Markdown_span.start
 
 let find_touched_block = fun blocks edit ->
-  let rec loop index = function
+  let rec loop index = fun __tmp1 ->
+    match __tmp1 with
     | [] -> None
     | block :: tail ->
         if edit_touches_span edit block.span then

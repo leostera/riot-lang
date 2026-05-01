@@ -127,7 +127,8 @@ let parse_line = fun ~syntax ~line_number input ->
           }
 
 let of_lines = fun ~root ~syntax lines ->
-  let rec loop line_number acc = function
+  let rec loop line_number acc = fun __tmp1 ->
+    match __tmp1 with
     | [] ->
         let rules = List.reverse acc in
         let unmatched_is_ignore_on_files =
@@ -181,7 +182,8 @@ let matches_rule = fun rule ~candidate ~is_dir ->
 
 let matched = fun matcher ~path ~is_dir ->
   let candidate = relative_path_string matcher path in
-  let rec loop = function
+  let rec loop = fun __tmp1 ->
+    match __tmp1 with
     | [] ->
         if matcher.unmatched_is_ignore_on_files && not is_dir then
           Match.Ignore

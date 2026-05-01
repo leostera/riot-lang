@@ -75,7 +75,8 @@ let cache_derivation = fun solution pkg state ->
 
 let rebuild_derived = fun assignments ->
   let derived = Collections.HashMap.create () in
-  let rec loop = function
+  let rec loop = fun __tmp1 ->
+    match __tmp1 with
     | [] -> derived
     | (Derivation (pkg, ranges, requires_decision, _, _, global_index)) :: rest ->
         let state = { ranges; requires_decision; latest_global_index = global_index } in
@@ -151,7 +152,8 @@ let get_constraint = fun solution pkg ->
     )
 
 let extract_solution = fun solution ->
-  let rec collect acc = function
+  let rec collect acc = fun __tmp1 ->
+    match __tmp1 with
     | [] -> List.reverse acc
     | (Decision (pkg, ver, _, _)) :: rest -> collect ((pkg, ver) :: acc) rest
     | (Derivation _) :: rest -> collect acc rest
@@ -200,22 +202,23 @@ let pick_highest_priority_pkg = fun solution prioritizer ->
 let backtrack = fun solution target_level ->
   let new_decisions = Collections.HashMap.create () in
   let rec filter_assignments = fun acc ->
-    function
-    | [] -> List.reverse acc
-    | (Decision (pkg, ver, level, gidx)) :: rest when level <= target_level ->
-        let _ = Collections.HashMap.insert new_decisions ~key:pkg ~value:ver in
-        filter_assignments (Decision (pkg, ver, level, gidx) :: acc) rest
-    | (Decision (_, _, level, _)) :: rest when level > target_level -> filter_assignments acc rest
-    | (Derivation (pkg, ranges, requires_decision, cause, level, gidx)) :: rest when level
-    <= target_level ->
-        (* KEEP derivations at or below target level - they're still valid! *)
-        filter_assignments
-          (Derivation (pkg, ranges, requires_decision, cause, level, gidx) :: acc)
-          rest
-    | (Derivation (_, _, _, _, level, _)) :: rest when level > target_level ->
-        (* REMOVE derivations above target level *)
-        filter_assignments acc rest
-    | _ -> filter_assignments acc []
+    fun __tmp1 ->
+      match __tmp1 with
+      | [] -> List.reverse acc
+      | (Decision (pkg, ver, level, gidx)) :: rest when level <= target_level ->
+          let _ = Collections.HashMap.insert new_decisions ~key:pkg ~value:ver in
+          filter_assignments (Decision (pkg, ver, level, gidx) :: acc) rest
+      | (Decision (_, _, level, _)) :: rest when level > target_level -> filter_assignments acc rest
+      | (Derivation (pkg, ranges, requires_decision, cause, level, gidx)) :: rest when level
+      <= target_level ->
+          (* KEEP derivations at or below target level - they're still valid! *)
+          filter_assignments
+            (Derivation (pkg, ranges, requires_decision, cause, level, gidx) :: acc)
+            rest
+      | (Derivation (_, _, _, _, level, _)) :: rest when level > target_level ->
+          (* REMOVE derivations above target level *)
+          filter_assignments acc rest
+      | _ -> filter_assignments acc []
   in
   let new_assignments = filter_assignments [] solution.assignments in
   let new_derived = rebuild_derived new_assignments in
@@ -324,23 +327,21 @@ type satisfier_info = {
 
 let satisfier_search = fun solution incompat ->
   let chronological = List.reverse solution.assignments in
-  let assignment_pkg = function
-    | Decision (pkg, _, _, _)
-    | Derivation (pkg, _, _, _, _, _) -> pkg
+  let assignment_pkg = fun (Decision (pkg, _, _, _) | Derivation (pkg, _, _, _, _, _)) -> pkg
   in
-  let assignment_global_index = function
-    | Decision (_, _, _, global_index)
-    | Derivation (_, _, _, _, _, global_index) -> global_index
+  let assignment_global_index = fun (Decision (_, _, _, global_index)
+  | Derivation (_, _, _, _, _, global_index)) -> global_index
   in
-  let assignment_level = function
-    | Decision (_, _, level, _)
-    | Derivation (_, _, _, _, level, _) -> level
+  let assignment_level = fun (Decision (_, _, level, _) | Derivation (_, _, _, _, level, _)) ->
+    level
   in
-  let assignment_cause = function
+  let assignment_cause = fun __tmp1 ->
+    match __tmp1 with
     | Decision _ -> None
     | Derivation (_, _, _, cause, _, _) -> Some cause
   in
-  let assignment_ranges = function
+  let assignment_ranges = fun __tmp1 ->
+    match __tmp1 with
     | Decision (pkg, ver, _, _) -> Term.positive pkg (Ranges.singleton ver)
     | Derivation (pkg, ranges, _, _, _, _) -> Term.positive pkg ranges
   in
@@ -379,7 +380,8 @@ let satisfier_search = fun solution incompat ->
       Some (Term.negative (Term.package term) difference)
   in
   let find_package_satisfier pkg term =
-    let rec loop accumulated = function
+    let rec loop accumulated = fun __tmp1 ->
+      match __tmp1 with
       | [] -> panic ("No satisfier found for package " ^ pkg)
       | assignment :: rest ->
           if String.equal (assignment_pkg assignment) pkg then
@@ -399,7 +401,8 @@ let satisfier_search = fun solution incompat ->
     loop None chronological
   in
   let find_package_previous_satisfier pkg term satisfier_ranges =
-    let rec loop accumulated = function
+    let rec loop accumulated = fun __tmp1 ->
+      match __tmp1 with
       | [] -> panic ("No previous satisfier found for package " ^ pkg)
       | assignment :: rest ->
           if String.equal (assignment_pkg assignment) pkg then

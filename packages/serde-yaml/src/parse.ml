@@ -13,7 +13,8 @@ let fail_line = fun line_number message ->
 
 type line = { number: int; indent: int; text: string }
 
-let is_ws = function
+let is_ws = fun __tmp1 ->
+  match __tmp1 with
   | ' '
   | '\t'
   | '\r'
@@ -157,7 +158,8 @@ let parse_escape = fun text line_number index ->
         if index + 4 >= String.length text then
           fail_line line_number "unterminated unicode escape"
         else
-          let hex_value = function
+          let hex_value = fun __tmp1 ->
+            match __tmp1 with
             | '0' .. '9' as c -> Char.code c - Char.code '0'
             | 'a' .. 'f' as c -> 10 + Char.code c - Char.code 'a'
             | 'A' .. 'F' as c -> 10 + Char.code c - Char.code 'A'

@@ -8,8 +8,8 @@ type t = {
 type create_error =
   | HomeDirectoryUnavailable
 
-let create_error_message = function
-  | HomeDirectoryUnavailable -> "failed to determine home directory for pkgs.ml cache"
+let create_error_message = fun HomeDirectoryUnavailable ->
+  "failed to determine home directory for pkgs.ml cache"
 
 let create = fun ?riot_home ~registry_name () ->
   match riot_home with

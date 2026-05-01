@@ -149,11 +149,10 @@ let test_command_output_handles_parallel_shell_commands = fun _ctx ->
         Error (String.concat "; " (List.reverse failures))
     else
       match Runtime.receive
-        ~selector:(
-          function
+        ~selector:(fun __tmp1 ->
+          match __tmp1 with
           | Parallel_command_finished (_index, result) -> Select result
-          | _ -> Skip
-        )
+          | _ -> Skip)
         ~timeout:5.0
         () with
       | Ok () -> collect (pending - 1) failures
@@ -202,11 +201,10 @@ let test_command_output_handles_parallel_fast_exit_commands = fun _ctx ->
         Error (String.concat "; " (List.reverse failures))
     else
       match Runtime.receive
-        ~selector:(
-          function
+        ~selector:(fun __tmp1 ->
+          match __tmp1 with
           | Parallel_command_finished (_index, result) -> Select result
-          | _ -> Skip
-        )
+          | _ -> Skip)
         ~timeout:5.0
         () with
       | Ok () -> collect (pending - 1) failures
@@ -248,7 +246,8 @@ let capture_stdout_lines_main = fun () ->
   Ok ()
 
 let meta_main = fun ~args ->
-  let normalize_args = function
+  let normalize_args = fun __tmp1 ->
+    match __tmp1 with
     | [] -> [ "std_command_tests"; "run-tests" ]
     | [ exe ] -> [ exe; "run-tests" ]
     | args -> args

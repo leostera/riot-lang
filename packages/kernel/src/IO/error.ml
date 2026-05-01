@@ -12,7 +12,8 @@ type t =
   | Commit_out_of_bounds of { writable_bytes: int; requested: int }
   | Consume_out_of_bounds of { readable_bytes: int; requested: int }
 
-let message = function
+let message = fun __tmp1 ->
+  match __tmp1 with
   | Negative_size size -> "negative size: " ^ Int.to_string size
   | Negative_offset offset -> "negative offset: " ^ Int.to_string offset
   | Negative_length len -> "negative length: " ^ Int.to_string len

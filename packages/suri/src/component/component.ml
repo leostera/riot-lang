@@ -407,12 +407,14 @@ let self_closing_tags = [
 let is_self_closing = fun tag -> List.contains self_closing_tags ~value:tag
 
 let is_valid_tag_name = fun tag ->
-  let is_first_char = function
+  let is_first_char = fun __tmp1 ->
+    match __tmp1 with
     | 'a' .. 'z'
     | 'A' .. 'Z' -> true
     | _ -> false
   in
-  let is_name_char = function
+  let is_name_char = fun __tmp1 ->
+    match __tmp1 with
     | 'a' .. 'z'
     | 'A' .. 'Z'
     | '0' .. '9'
@@ -431,7 +433,8 @@ let is_valid_tag_name = fun tag ->
   String.length tag > 0 && is_first_char (String.get_unchecked tag ~at:0) && go 1
 
 let is_valid_attr_name = fun name ->
-  let is_name_char = function
+  let is_name_char = fun __tmp1 ->
+    match __tmp1 with
     | 'a' .. 'z'
     | 'A' .. 'Z'
     | '0' .. '9'
@@ -488,29 +491,27 @@ and to_raw_text_html = fun t ->
 and attrs_to_string = fun attrs ->
   attrs
   |> List.filter_map
-    ~fn:(
-      function
+    ~fn:(fun __tmp1 ->
+      match __tmp1 with
       | Attr (k, v) ->
           if is_valid_attr_name k then
             Some (k ^ "=\"" ^ escape_attr v ^ "\"")
           else
             None
-      | Event _ -> None
-    )
+      | Event _ -> None)
   |> String.concat " "
 
 and escape_text = fun str ->
   let buf = IO.Buffer.create ~size:(String.length str) in
   String.iter
-    (
-      function
+    (fun __tmp1 ->
+      match __tmp1 with
       | '&' -> IO.Buffer.add_string buf "&amp;"
       | '<' -> IO.Buffer.add_string buf "&lt;"
       | '>' -> IO.Buffer.add_string buf "&gt;"
       | '"' -> IO.Buffer.add_string buf "&quot;"
       | '\'' -> IO.Buffer.add_string buf "&#39;"
-      | c -> IO.Buffer.add_char buf c
-    )
+      | c -> IO.Buffer.add_char buf c)
     str;
   IO.Buffer.contents buf
 
@@ -518,15 +519,14 @@ and escape_attr = fun str ->
   (* HTML attribute escaping *)
   let buf = IO.Buffer.create ~size:(String.length str) in
   String.iter
-    (
-      function
+    (fun __tmp1 ->
+      match __tmp1 with
       | '"' -> IO.Buffer.add_string buf "&quot;"
       | '&' -> IO.Buffer.add_string buf "&amp;"
       | '<' -> IO.Buffer.add_string buf "&lt;"
       | '>' -> IO.Buffer.add_string buf "&gt;"
       | '\'' -> IO.Buffer.add_string buf "&#39;"
-      | c -> IO.Buffer.add_char buf c
-    )
+      | c -> IO.Buffer.add_char buf c)
     str;
   IO.Buffer.contents buf
 
@@ -547,19 +547,19 @@ and map_attr = fun f attr ->
 
 let extract_handlers = fun t ->
   let rec go = fun acc ->
-    function
-    | Text _ -> acc
-    | Fragment children -> List.fold_left children ~init:acc ~fn:go
-    | El { attrs; children; _ } ->
-        let attr_handlers =
-          List.filter_map
-            ~fn:(
-              function
-              | Event (name, handler) -> Some (name, handler)
-              | Attr _ -> None
-            )
-            attrs
-        in
-        List.fold_left children ~init:(attr_handlers @ acc) ~fn:go
+    fun __tmp1 ->
+      match __tmp1 with
+      | Text _ -> acc
+      | Fragment children -> List.fold_left children ~init:acc ~fn:go
+      | El { attrs; children; _ } ->
+          let attr_handlers =
+            List.filter_map
+              ~fn:(fun __tmp1 ->
+                match __tmp1 with
+                | Event (name, handler) -> Some (name, handler)
+                | Attr _ -> None)
+              attrs
+          in
+          List.fold_left children ~init:(attr_handlers @ acc) ~fn:go
   in
   go [] t

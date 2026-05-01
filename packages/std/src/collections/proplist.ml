@@ -4,7 +4,8 @@ type ('key, 'value) t = ('key * 'value) list
 
 let empty = []
 
-let is_empty = function
+let is_empty = fun __tmp1 ->
+  match __tmp1 with
   | [] -> true
   | _ -> false
 
@@ -17,7 +18,8 @@ let of_list = from_list
 let to_list entries = entries
 
 let get entries ~key =
-  let rec loop = function
+  let rec loop = fun __tmp1 ->
+    match __tmp1 with
     | [] -> None
     | (entry_key, value) :: _ when entry_key = key -> Some value
     | _ :: rest -> loop rest
@@ -25,7 +27,8 @@ let get entries ~key =
   loop entries
 
 let get_all entries ~key =
-  let rec loop acc = function
+  let rec loop acc = fun __tmp1 ->
+    match __tmp1 with
     | [] -> List.reverse acc
     | (entry_key, value) :: rest when entry_key = key -> loop (value :: acc) rest
     | _ :: rest -> loop acc rest
@@ -37,7 +40,8 @@ let contains_key entries ~key = Option.is_some (get entries ~key)
 let add entries ~key ~value = (key, value) :: entries
 
 let set entries ~key ~value =
-  let rec loop acc found = function
+  let rec loop acc found = fun __tmp1 ->
+    match __tmp1 with
     | [] ->
         if found then
           List.reverse acc
@@ -53,7 +57,8 @@ let set entries ~key ~value =
   loop [] false entries
 
 let remove entries ~key =
-  let rec loop acc = function
+  let rec loop acc = fun __tmp1 ->
+    match __tmp1 with
     | [] -> List.reverse acc
     | ((entry_key, _) as entry) :: rest ->
         if entry_key = key then
@@ -64,21 +69,24 @@ let remove entries ~key =
   loop [] entries
 
 let keys entries =
-  let rec loop acc = function
+  let rec loop acc = fun __tmp1 ->
+    match __tmp1 with
     | [] -> List.reverse acc
     | (key, _) :: rest -> loop (key :: acc) rest
   in
   loop [] entries
 
 let values entries =
-  let rec loop acc = function
+  let rec loop acc = fun __tmp1 ->
+    match __tmp1 with
     | [] -> List.reverse acc
     | (_, value) :: rest -> loop (value :: acc) rest
   in
   loop [] entries
 
 let for_each entries ~fn =
-  let rec loop = function
+  let rec loop = fun __tmp1 ->
+    match __tmp1 with
     | [] -> ()
     | (key, value) :: rest ->
         fn key value;
@@ -87,7 +95,8 @@ let for_each entries ~fn =
   loop entries
 
 let fold_left entries ~init ~fn =
-  let rec loop acc = function
+  let rec loop acc = fun __tmp1 ->
+    match __tmp1 with
     | [] -> acc
     | (key, value) :: rest -> loop (fn acc key value) rest
   in
@@ -99,7 +108,8 @@ let iter: type key value. (key, value) t -> (key * value) Iter.Iterator.t = fun 
 
     type item = key * value
 
-    let next = function
+    let next = fun __tmp1 ->
+      match __tmp1 with
       | [] -> (None, [])
       | entry :: rest -> (Some entry, rest)
 

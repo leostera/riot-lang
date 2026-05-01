@@ -27,17 +27,18 @@ let of_kernel_tm = fun (tm: Kernel.Time.tm) ->
     tm_isdst = tm.tm_isdst;
   }
 
-let to_kernel_tm = fun tm -> ({
-  tm_sec = tm.tm_sec;
-  tm_min = tm.tm_min;
-  tm_hour = tm.tm_hour;
-  tm_mday = tm.tm_mday;
-  tm_mon = tm.tm_mon;
-  tm_year = tm.tm_year;
-  tm_wday = tm.tm_wday;
-  tm_yday = tm.tm_yday;
-  tm_isdst = tm.tm_isdst;
-}: Kernel.Time.tm)
+let to_kernel_tm = fun tm ->
+  ({
+    tm_sec = tm.tm_sec;
+    tm_min = tm.tm_min;
+    tm_hour = tm.tm_hour;
+    tm_mday = tm.tm_mday;
+    tm_mon = tm.tm_mon;
+    tm_year = tm.tm_year;
+    tm_wday = tm.tm_wday;
+    tm_yday = tm.tm_yday;
+    tm_isdst = tm.tm_isdst;
+  }: Kernel.Time.tm)
 
 let localtime = fun timestamp -> of_kernel_tm (Kernel.Time.localtime timestamp)
 

@@ -62,7 +62,8 @@ external close_encoder_raw: encoder -> unit = "std_gzip_close_encoder"
 
 external close_decoder_raw: decoder -> unit = "std_gzip_close_decoder"
 
-let error_of_code = function
+let error_of_code = fun __tmp1 ->
+  match __tmp1 with
   | 0 -> None
   | 1 -> Some Invalid_data
   | 2 -> Some Need_dictionary
@@ -70,13 +71,15 @@ let error_of_code = function
   | 4 -> Some Out_of_memory
   | code -> Some (Unknown_error ("unknown gzip error code " ^ Int.to_string code))
 
-let status_of_code = function
+let status_of_code = fun __tmp1 ->
+  match __tmp1 with
   | 0 -> Need_input
   | 1 -> Need_output
   | 2 -> Finished
   | code -> panic ("invalid gzip status code " ^ Int.to_string code)
 
-let flush_to_code = function
+let flush_to_code = fun __tmp1 ->
+  match __tmp1 with
   | No_flush -> 0
   | Sync_flush -> 1
   | Finish -> 2

@@ -116,13 +116,15 @@ let blink_error_message = fun err ->
   | Blink.Error.Eof -> "unexpected eof"
   | Blink.Error.Closed -> "connection closed"
 
-let exn_message = function
+let exn_message = fun __tmp1 ->
+  match __tmp1 with
   | Failure message -> message
   | exn -> Exception.to_string exn
 
 let configured_riot_agent = ref None
 
-let normalize_riot_agent = function
+let normalize_riot_agent = fun __tmp1 ->
+  match __tmp1 with
   | None -> None
   | Some value ->
       let trimmed = String.trim value in
@@ -498,7 +500,8 @@ let search_results_of_json = fun json ->
   | Data.Json.Object fields -> (
       match object_field ~context:"search response" ~field:"results" fields with
       | Ok (Data.Json.Array values) ->
-          let rec loop acc = function
+          let rec loop acc = fun __tmp1 ->
+            match __tmp1 with
             | [] -> Ok (List.reverse acc)
             | value :: rest ->
                 let* result = search_result_of_json value in
@@ -737,7 +740,8 @@ let write_release_files = fun ~root (release: release_source) ->
           ^ "': "
           ^ IO.error_message err)
       | Ok () ->
-          let rec loop = function
+          let rec loop = fun __tmp1 ->
+            match __tmp1 with
             | [] -> Ok ()
             | (file: release_file) :: rest ->
                 let file_path = Path.(root / file.path) in
@@ -765,7 +769,8 @@ let write_release_files = fun ~root (release: release_source) ->
           loop release.files
     )
 
-let tar_entry_kind_to_string = function
+let tar_entry_kind_to_string = fun __tmp1 ->
+  match __tmp1 with
   | Archive.Tar.File -> "file"
   | Archive.Tar.Directory -> "directory"
   | Archive.Tar.Symlink -> "symlink"
@@ -774,12 +779,14 @@ let tar_entry_kind_to_string = function
 
 let tar_error_message = Archive.Tar.error_to_string
 
-let tar_extract_file_error_message = function
+let tar_extract_file_error_message = fun __tmp1 ->
+  match __tmp1 with
   | Archive.Tar.Extract_source_error err -> IO.error_message err
   | Archive.Tar.Extract_fs_error err -> IO.error_message err
   | Archive.Tar.Extract_error err -> tar_error_message err
 
-let gzip_tar_extract_error_message = function
+let gzip_tar_extract_error_message = fun __tmp1 ->
+  match __tmp1 with
   | Archive.Tar.Extract_source_error err -> IO.error_message err
   | Archive.Tar.Extract_fs_error err -> IO.error_message err
   | Archive.Tar.Extract_error err -> tar_error_message err
@@ -861,7 +868,8 @@ let read_dir_entries = fun dir ->
 
 let move_directory_contents = fun ~src ~dst ->
   let* entries = read_dir_entries src in
-  let rec loop = function
+  let rec loop = fun __tmp1 ->
+    match __tmp1 with
     | [] -> Ok ()
     | entry :: rest ->
         let from_path = Path.(src / entry) in
@@ -908,7 +916,8 @@ let normalize_legacy_package_root = fun ~root ~(release:Sparse_index.release) ->
             | Error err -> Some (Error err))
       in
       let* top_level_dirs =
-        let rec collect acc = function
+        let rec collect acc = fun __tmp1 ->
+          match __tmp1 with
           | [] -> Ok (List.reverse acc)
           | (Ok path) :: rest -> collect (path :: acc) rest
           | (Error _ as err) :: _ -> err

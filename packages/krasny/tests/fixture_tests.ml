@@ -35,7 +35,8 @@ let tracked_fixtures = fun () ->
     |> String.split_on_char '\n'
     |> List.map ~fn:String.trim
   in
-  let rec loop = function
+  let rec loop = fun __tmp1 ->
+    match __tmp1 with
     | [] -> tracked
     | line :: rest ->
         if String.equal line "" || String.starts_with ~prefix:"#" line then

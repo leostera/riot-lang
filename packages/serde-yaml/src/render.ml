@@ -3,7 +3,8 @@ open Yaml_value
 
 external format_float: string -> float -> string = "caml_format_float"
 
-let hex_digit = function
+let hex_digit = fun __tmp1 ->
+  match __tmp1 with
   | 0 -> '0'
   | 1 -> '1'
   | 2 -> '2'
@@ -32,8 +33,8 @@ let add_unicode_escape = fun buffer code ->
 let add_quoted_string = fun buffer value ->
   IO.Buffer.add_char buffer '"';
   String.iter
-    (
-      function
+    (fun __tmp1 ->
+      match __tmp1 with
       | '"' -> IO.Buffer.add_string buffer "\\\""
       | '\\' -> IO.Buffer.add_string buffer "\\\\"
       | '\b' -> IO.Buffer.add_string buffer "\\b"
@@ -42,8 +43,7 @@ let add_quoted_string = fun buffer value ->
       | '\r' -> IO.Buffer.add_string buffer "\\r"
       | '\t' -> IO.Buffer.add_string buffer "\\t"
       | c when Char.code c < 0x20 -> add_unicode_escape buffer (Char.code c)
-      | c -> IO.Buffer.add_char buffer c
-    )
+      | c -> IO.Buffer.add_char buffer c)
     value;
   IO.Buffer.add_char buffer '"'
 
@@ -86,7 +86,8 @@ let add_indent = fun buffer indent ->
     IO.Buffer.add_char buffer ' '
   done
 
-let is_inline_value = function
+let is_inline_value = fun __tmp1 ->
+  match __tmp1 with
   | Null
   | Bool _
   | Int _

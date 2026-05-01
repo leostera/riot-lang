@@ -22,7 +22,8 @@ type error =
       error: IO.error;
     }
 
-let error_message = function
+let error_message = fun __tmp1 ->
+  match __tmp1 with
   | StatFailed { path; error } ->
       "failed to check lockfile '" ^ Path.to_string path ^ "': " ^ IO.error_message error
   | ReadFailed { path; error } ->

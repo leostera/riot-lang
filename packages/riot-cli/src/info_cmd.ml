@@ -40,17 +40,20 @@ let target_of_matches: ArgParser.matches -> target = fun matches ->
   | Some "workspace" -> Workspace_target
   | Some target -> Package_target target
 
-let path_error_message = function
+let path_error_message = fun __tmp1 ->
+  match __tmp1 with
   | Path.InvalidUtf8 { path } -> "invalid UTF-8 path: " ^ path
   | Path.SystemInvalidUtf8 { syscall; path } ->
       "system call '" ^ syscall ^ "' returned invalid UTF-8 path: " ^ path
   | Path.SystemError error -> error
 
-let workspace_scan_error_message = function
+let workspace_scan_error_message = fun __tmp1 ->
+  match __tmp1 with
   | CurrentDirReadFailed error -> "failed to read current directory: " ^ path_error_message error
   | WorkspaceScanFailed error -> Workspace_manager.scan_error_message error
 
-let rec toml_json = function
+let rec toml_json = fun __tmp1 ->
+  match __tmp1 with
   | Data.Toml.String value -> Data.Json.String value
   | Data.Toml.Int value -> Data.Json.Int value
   | Data.Toml.Array values -> Data.Json.Array (List.map values ~fn:toml_json)
@@ -70,11 +73,13 @@ let workspace_kind = fun
     )
   | Error _ -> Workspace
 
-let workspace_kind_string = function
+let workspace_kind_string = fun __tmp1 ->
+  match __tmp1 with
   | Workspace -> "workspace"
   | Standalone_package -> "package"
 
-let json_string_or_null = function
+let json_string_or_null = fun __tmp1 ->
+  match __tmp1 with
   | Some value -> Data.Json.String value
   | None -> Data.Json.Null
 

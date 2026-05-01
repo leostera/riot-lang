@@ -70,7 +70,8 @@ type error =
     }
   | UnknownProvenanceKind of { value: string }
 
-let container_name = function
+let container_name = fun __tmp1 ->
+  match __tmp1 with
   | Lockfile -> "lockfile"
   | Package -> "lockfile package"
   | PackageId -> "lockfile package id"
@@ -78,7 +79,8 @@ let container_name = function
   | DependencyList -> "lockfile dependency list"
   | Provenance -> "lockfile provenance"
 
-let error_message = function
+let error_message = fun __tmp1 ->
+  match __tmp1 with
   | ExpectedTable { container } -> container_name container ^ " must be a table"
   | ExpectedArray { container } -> container_name container ^ " must be an array"
   | MissingField { container; field } ->
@@ -305,9 +307,9 @@ let dependency_list_to_toml = fun deps -> Toml.Array (List.map deps ~fn:dependen
 
 let dependency_list_of_toml = fun value ->
   let* items = require_array DependencyList value in
-  let rec loop acc = function
-    | [] ->
-        Ok (List.reverse acc)
+  let rec loop acc = fun __tmp1 ->
+    match __tmp1 with
+    | [] -> Ok (List.reverse acc)
     | item :: rest -> (
         match dependency_of_toml item with
         | Ok dep -> loop (dep :: acc) rest
@@ -400,9 +402,9 @@ let of_toml = fun value ->
   let* format_version = required_int_field Lockfile ~field:"format_version" fields in
   let* dependency_hash = required_string_field Lockfile ~field:"dependency_hash" fields in
   let* packages = required_array_field Lockfile ~field:"packages" fields in
-  let rec loop acc = function
-    | [] ->
-        Ok { format_version; dependency_hash; packages = List.reverse acc }
+  let rec loop acc = fun __tmp1 ->
+    match __tmp1 with
+    | [] -> Ok { format_version; dependency_hash; packages = List.reverse acc }
     | pkg :: rest -> (
         match package_of_toml pkg with
         | Ok pkg -> loop (pkg :: acc) rest

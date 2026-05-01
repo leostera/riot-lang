@@ -354,11 +354,10 @@ let test_library_builds_do_not_emit_shared_library_actions = fun _ctx ->
       let shared_actions =
         List.filter
           (Riot_planner.Action_graph.to_action_list action_graph)
-          ~fn:(
-            function
+          ~fn:(fun __tmp1 ->
+            match __tmp1 with
             | Riot_planner.Action.CreateSharedLibrary _ -> true
-            | _ -> false
-          )
+            | _ -> false)
       in
       if List.is_empty shared_actions then
         Ok ()
@@ -452,11 +451,10 @@ let test_library_actions_exclude_ml_object_files = fun _ctx ->
       in
       match List.find
         (Riot_planner.Action_graph.to_action_list action_graph)
-        ~fn:(
-          function
+        ~fn:(fun __tmp1 ->
+          match __tmp1 with
           | Riot_planner.Action.CreateLibrary _ -> true
-          | _ -> false
-        ) with
+          | _ -> false) with
       | Some (Riot_planner.Action.CreateLibrary { objects; _ }) ->
           let has_demo_cmx = List.any objects ~fn:(Path.equal (Path.v "Demo.cmx")) in
           let has_demo_o = List.any objects ~fn:(Path.equal (Path.v "Demo.o")) in
@@ -530,11 +528,10 @@ let test_release_profile_flags_flow_into_compile_actions = fun _ctx ->
       in
       match List.find
         (Riot_planner.Action_graph.to_action_list action_graph)
-        ~fn:(
-          function
+        ~fn:(fun __tmp1 ->
+          match __tmp1 with
           | Riot_planner.Action.CompileImplementation _ -> true
-          | _ -> false
-        ) with
+          | _ -> false) with
       | Some (Riot_planner.Action.CompileImplementation { flags; _ }) ->
           let has_flag expected = List.any flags ~fn:(fun flag -> flag = expected) in
           if not (has_flag (Riot_toolchain.Ocamlc.Inline 100)) then
@@ -740,31 +737,28 @@ let test_library_actions_exclude_unreachable_modules = fun _ctx ->
           let compiles_orphan =
             List.any
               actions
-              ~fn:(
-                function
+              ~fn:(fun __tmp1 ->
+                match __tmp1 with
                 | Riot_planner.Action.CompileImplementation { source; _ } ->
                     Path.equal source (Path.v "src/orphan.ml")
-                | _ -> false
-              )
+                | _ -> false)
           in
           let compiled_sources =
             List.filter_map
               actions
-              ~fn:(
-                function
+              ~fn:(fun __tmp1 ->
+                match __tmp1 with
                 | Riot_planner.Action.CompileImplementation { source; _ } ->
                     Some (Path.to_string source)
-                | _ -> None
-              )
+                | _ -> None)
           in
           let create_library =
             List.find
               actions
-              ~fn:(
-                function
+              ~fn:(fun __tmp1 ->
+                match __tmp1 with
                 | Riot_planner.Action.CreateLibrary _ -> true
-                | _ -> false
-              )
+                | _ -> false)
           in
           match create_library with
           | Some (Riot_planner.Action.CreateLibrary { objects; _ }) ->
@@ -800,12 +794,11 @@ let test_library_actions_exclude_unreachable_modules = fun _ctx ->
 let find_compile_implementation = fun actions source ->
   List.find
     actions
-    ~fn:(
-      function
+    ~fn:(fun __tmp1 ->
+      match __tmp1 with
       | Riot_planner.Action.CompileImplementation { source = action_source; _ } ->
           Path.equal action_source source
-      | _ -> false
-    )
+      | _ -> false)
 
 let find_compile_cmx = fun actions source ->
   match find_compile_implementation actions source with
@@ -816,42 +809,39 @@ let find_compile_cmx = fun actions source ->
 let compile_sources = fun actions ->
   List.filter_map
     actions
-    ~fn:(
-      function
+    ~fn:(fun __tmp1 ->
+      match __tmp1 with
       | Riot_planner.Action.CompileImplementation { source; _ } -> Some source
-      | _ -> None
-    )
+      | _ -> None)
 
 let find_create_library = fun actions ->
   List.find
     actions
-    ~fn:(
-      function
+    ~fn:(fun __tmp1 ->
+      match __tmp1 with
       | Riot_planner.Action.CreateLibrary _ -> true
-      | _ -> false
-    )
+      | _ -> false)
 
 let find_create_executable = fun actions ->
   List.find
     actions
-    ~fn:(
-      function
+    ~fn:(fun __tmp1 ->
+      match __tmp1 with
       | Riot_planner.Action.CreateExecutable _ -> true
-      | _ -> false
-    )
+      | _ -> false)
 
 let find_create_executable_named = fun actions name ->
   List.find
     actions
-    ~fn:(
-      function
+    ~fn:(fun __tmp1 ->
+      match __tmp1 with
       | Riot_planner.Action.CreateExecutable { outputs; _ } ->
           List.any outputs ~fn:(Path.equal (Path.v name))
-      | _ -> false
-    )
+      | _ -> false)
 
 let index_of_path = fun paths target ->
-  let rec loop index = function
+  let rec loop index = fun __tmp1 ->
+    match __tmp1 with
     | [] -> None
     | path :: rest ->
         if Path.equal path target then

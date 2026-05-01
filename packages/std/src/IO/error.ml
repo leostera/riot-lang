@@ -72,7 +72,8 @@ type t =
   | Invalid_data
   | Unknown_error of string
 
-let of_system_error = function
+let of_system_error = fun __tmp1 ->
+  match __tmp1 with
   | Kernel.SystemError.EndOfFile -> End_of_file
   | Kernel.SystemError.PermissionDenied -> Permission_denied
   | Kernel.SystemError.NoSuchFileOrDirectory -> No_such_file_or_directory
@@ -105,12 +106,14 @@ let of_system_error = function
 
 let of_system_error_code = fun code -> of_system_error (Kernel.SystemError.from_code code)
 
-let of_async_error = function
+let of_async_error = fun __tmp1 ->
+  match __tmp1 with
   | Kernel.Async.InvalidTimeoutNs _ -> Invalid_argument
   | Kernel.Async.InvalidMaxEvents _ -> Invalid_argument
   | Kernel.Async.System err -> of_system_error err
 
-let message = function
+let message = fun __tmp1 ->
+  match __tmp1 with
   | End_of_file -> "End of file"
   | Unexpected_end_of_file -> "Unexpected end of file"
   | Timeout -> "Timeout"

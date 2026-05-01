@@ -124,7 +124,8 @@ let resolve_binary = fun ~(workspace:Riot_model.Workspace.t) ~package_name ~bina
       | None -> Error (BinaryNotFound { binary_name })
     )
 
-let run_error_message = function
+let run_error_message = fun __tmp1 ->
+  match __tmp1 with
   | BinaryNotFound { binary_name } -> "binary '" ^ binary_name ^ "' not found"
   | BinaryNotFoundInPackage { package_name; binary_name } ->
       "binary '"
@@ -139,7 +140,8 @@ let run_error_message = function
   | ExternalTargetLoadFailed { target; error } ->
       "failed to load external target '" ^ target ^ "': " ^ Riot_deps.package_error_message error
 
-let run_event_to_json = function
+let run_event_to_json = fun __tmp1 ->
+  match __tmp1 with
   | Build event -> Riot_build.Event.to_json event
   | RunningBinary { package; binary; args } ->
       Some (Data.Json.Object [

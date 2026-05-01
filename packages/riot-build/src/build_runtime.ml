@@ -4,14 +4,12 @@ open Std.Result.Syntax
 type toolchain_install_error =
   | ToolchainDownloadFailed of { message: string }
 
-let toolchain_install_error_message = function
-  | ToolchainDownloadFailed { message } -> message
+let toolchain_install_error_message = fun (ToolchainDownloadFailed { message }) -> message
 
 type toolchain_initialization_error =
   | ToolchainInitFailed of { message: string }
 
-let toolchain_initialization_error_message = function
-  | ToolchainInitFailed { message } -> message
+let toolchain_initialization_error_message = fun (ToolchainInitFailed { message }) -> message
 
 let toolchain_install_error = fun message -> ToolchainDownloadFailed { message }
 
@@ -103,7 +101,8 @@ let emit_returning_results = fun context ~result_count ~had_partial_failure ->
     context
     (Event.ReturningResults { result_count; had_partial_failure })
 
-let error_message = function
+let error_message = fun __tmp1 ->
+  match __tmp1 with
   | ToolchainInstallFailed { target; error } ->
       "Failed to install toolchain for "
       ^ Riot_model.Target.to_string target
@@ -123,10 +122,8 @@ let error_message = function
           "build failed:\n"
           ^ String.concat "\n" (List.map failures ~fn:Build_result.failure_message)
     )
-  | PlanningFailed error ->
-      Build_lane.error_message (Build_lane.PlanningFailed error)
-  | UnexpectedError { reason } ->
-      reason
+  | PlanningFailed error -> Build_lane.error_message (Build_lane.PlanningFailed error)
+  | UnexpectedError { reason } -> reason
 
 let make_context = fun ~allow_partial_failures ?(record_cache_generation = true) build spec ->
   Ok {
@@ -149,9 +146,9 @@ let ensure_toolchains_for_targets = fun context targets ->
         | Riot_toolchain.Incomplete _ -> true
         | Riot_toolchain.Installed _ -> false)
   in
-  let rec loop = function
-    | [] ->
-        Ok ()
+  let rec loop = fun __tmp1 ->
+    match __tmp1 with
+    | [] -> Ok ()
     | target :: rest -> (
         match Riot_toolchain.download_and_install_toolchain
           context.build.toolchain_config.version
@@ -168,9 +165,9 @@ let ensure_toolchains_for_targets = fun context targets ->
 
 let validate_target_toolchains = fun context targets ->
   let targets = Riot_model.Target.Set.to_list targets in
-  let rec loop = function
-    | [] ->
-        Ok ()
+  let rec loop = fun __tmp1 ->
+    match __tmp1 with
+    | [] -> Ok ()
     | target :: rest -> (
         match Riot_toolchain.init_for_target ~config:context.build.toolchain_config ~target with
         | Ok _ -> loop rest
@@ -186,7 +183,8 @@ let validate_target_toolchains = fun context targets ->
   Ok ()
 
 let sort_uniq_strings = fun values ->
-  let rec dedupe acc = function
+  let rec dedupe acc = fun __tmp1 ->
+    match __tmp1 with
     | [] -> List.reverse acc
     | [ value ] -> List.reverse (value :: acc)
     | left :: ((right :: _) as rest) ->
@@ -291,7 +289,8 @@ let failed_results = fun results ->
 
 let map_lane_error = fun error -> UnexpectedError { reason = error.Build_work.reason }
 
-let map_prepare_error = function
+let map_prepare_error = fun __tmp1 ->
+  match __tmp1 with
   | Build_lane.PlanningFailed error -> PlanningFailed error
   | Build_lane.Failure reason -> UnexpectedError { reason }
 

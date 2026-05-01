@@ -100,7 +100,8 @@ let exec = fun pool sql params ->
   | Ok rows -> Ok rows
   | Error pool_err -> Error (PoolError pool_err)
 
-let show_pool_error = function
+let show_pool_error = fun __tmp1 ->
+  match __tmp1 with
   | Pool.Exhausted { waiting; max_connections; timeout } ->
       "Pool exhausted: "
       ^ string_of_int waiting
@@ -119,7 +120,8 @@ let with_transaction = fun pool f ->
 
 let shutdown = fun pool -> Pool.shutdown pool
 
-let show_error = function
+let show_error = fun __tmp1 ->
+  match __tmp1 with
   | PoolError pool_err -> show_pool_error pool_err
   | InvalidValue {
       field;

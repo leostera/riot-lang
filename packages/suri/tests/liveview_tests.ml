@@ -255,7 +255,8 @@ module TestLiveViewComponent = struct
 
   let serialize_args () = Data.Json.Null
 
-  let deserialize_args = function
+  let deserialize_args = fun __tmp1 ->
+    match __tmp1 with
     | Data.Json.Null -> Ok ()
     | json -> Error json
 

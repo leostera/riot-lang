@@ -35,7 +35,8 @@ module ValueScopes = struct
 
   let create () = Root empty_scope
 
-  let root = function
+  let root = fun __tmp1 ->
+    match __tmp1 with
     | Root scope -> scope
     | Scope { root; _ } -> root
 
@@ -46,7 +47,8 @@ module ValueScopes = struct
 
   let push t = Scope { root = root t; current = empty_scope; parent = t }
 
-  let pop = function
+  let pop = fun __tmp1 ->
+    match __tmp1 with
     | Root _ as t -> t
     | Scope { parent; _ } -> parent
 
@@ -193,11 +195,13 @@ module ModuleScopes = struct
 
   let create () = Root (empty_frame ())
 
-  let root = function
+  let root = fun __tmp1 ->
+    match __tmp1 with
     | Root frame -> frame
     | Scope { root; _ } -> root
 
-  let current = function
+  let current = fun __tmp1 ->
+    match __tmp1 with
     | Root frame -> frame
     | Scope { current; _ } -> current
 
@@ -421,7 +425,8 @@ module ExportIter = struct
 
   type item = ident * TypeScheme.t
 
-  let next = function
+  let next = fun __tmp1 ->
+    match __tmp1 with
     | [] -> (None, [])
     | item :: rest -> (Some item, rest)
 
@@ -446,7 +451,8 @@ module TypeExportIter = struct
 
   type item = ident * type_declaration
 
-  let next = function
+  let next = fun __tmp1 ->
+    match __tmp1 with
     | [] -> (None, [])
     | item :: rest -> (Some item, rest)
 
@@ -471,7 +477,8 @@ module ModuleExportIter = struct
 
   type item = ident * module_summary
 
-  let next = function
+  let next = fun __tmp1 ->
+    match __tmp1 with
     | [] -> (None, [])
     | item :: rest -> (Some item, rest)
 

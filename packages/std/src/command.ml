@@ -49,7 +49,8 @@ let pipe_read_retry_interval = Time.Duration.from_millis 1
 
 let pipe_drain_retries_after_process_exit = 50
 
-let is_file_would_block = function
+let is_file_would_block = fun __tmp1 ->
+  match __tmp1 with
   | Kernel.Fs.File.System error -> Kernel.SystemError.would_block error
   | Kernel.Fs.File.InvalidSlice _ -> false
 
@@ -63,7 +64,8 @@ let make = fun ?cwd ?(env = []) ?(args = []) cmd ->
     state = Pending;
   }
 
-let is_shell_safe_char = function
+let is_shell_safe_char = fun __tmp1 ->
+  match __tmp1 with
   | 'a' .. 'z'
   | 'A' .. 'Z'
   | '0' .. '9'
@@ -127,7 +129,8 @@ let stdio_of_config = fun stdin stdout stderr ->
   in
   Kernel.Process.{ stdin = stdin_config; stdout = stdout_config; stderr = stderr_config }
 
-let kernel_status_code = function
+let kernel_status_code = fun __tmp1 ->
+  match __tmp1 with
   | Kernel.Process.Running -> 0
   | Kernel.Process.Exited code -> code
   | Kernel.Process.Signaled n -> 128 + n

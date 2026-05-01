@@ -41,7 +41,8 @@ type error =
   | InvalidRequestedParallelism of int
   | UnexpectedError of { reason: string }
 
-let error_message = function
+let error_message = fun __tmp1 ->
+  match __tmp1 with
   | TargetSelectionFailed { pattern; available_targets } ->
       "No targets match pattern '"
       ^ pattern
@@ -87,13 +88,13 @@ let error_message = function
       "another riot build is already running (" ^ Path.to_string lock_path ^ ")"
   | InvalidRequestedParallelism value ->
       "invalid requested parallelism (" ^ Int.to_string value ^ "): jobs must be >= 1"
-  | UnexpectedError { reason } ->
-      reason
+  | UnexpectedError { reason } -> reason
 
-let map_context_error = function
-  | Build_context.InvalidRequestedParallelism requested -> InvalidRequestedParallelism requested
+let map_context_error = fun (Build_context.InvalidRequestedParallelism requested) ->
+  InvalidRequestedParallelism requested
 
-let map_resolved_error = function
+let map_resolved_error = fun __tmp1 ->
+  match __tmp1 with
   | Resolved_build.TargetSelectionFailed error -> TargetSelectionFailed error
   | Resolved_build.PackageNotFound { package_name; available_packages } ->
       PackageNotFound { package_name; available_packages }
@@ -108,7 +109,8 @@ let resolve = fun context request ->
   Resolved_build.resolve context request
   |> Result.map_err ~fn:map_resolved_error
 
-let map_runtime_error = function
+let map_runtime_error = fun __tmp1 ->
+  match __tmp1 with
   | Build_runtime.ToolchainInstallFailed { target; error } ->
       ToolchainInstallFailed { target; error }
   | Build_runtime.ToolchainInitializationFailed { target; error } ->

@@ -41,7 +41,8 @@ let with_field = fun state name fn ->
   state.context <- prev;
   result
 
-let current_key = function
+let current_key = fun __tmp1 ->
+  match __tmp1 with
   | Top_level -> None
   | Field key -> Some key
 

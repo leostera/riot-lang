@@ -55,12 +55,11 @@ let test_mutex_serializes_contended_access =
         else
           match await
             ~what:"mutex workers"
-            (
-              function
+            (fun __tmp1 ->
+              match __tmp1 with
               | Mutex_worker_done idx -> Select (Worker_done idx)
               | Mutex_overlap_detected idx -> Select (Overlap idx)
-              | _ -> Skip
-            ) with
+              | _ -> Skip) with
           | Error _ as err -> err
           | Ok (Worker_done _) -> collect (remaining - 1)
           | Ok (Overlap idx) ->
@@ -86,11 +85,10 @@ let test_mutex_try_lock_reports_held_and_free_states =
             Sync.Mutex.lock lock;
             send parent Mutex_holder_locked;
             receive
-              ~selector:(
-                function
+              ~selector:(fun __tmp1 ->
+                match __tmp1 with
                 | Mutex_holder_release -> Select ()
-                | _ -> Skip
-              )
+                | _ -> Skip)
               ();
             Sync.Mutex.unlock lock;
             send parent Mutex_holder_released;
@@ -98,11 +96,10 @@ let test_mutex_try_lock_reports_held_and_free_states =
       in
       match await
         ~what:"mutex holder lock"
-        (
-          function
+        (fun __tmp1 ->
+          match __tmp1 with
           | Mutex_holder_locked -> Select ()
-          | _ -> Skip
-        ) with
+          | _ -> Skip) with
       | Error _ as err -> err
       | Ok () ->
           if Sync.Mutex.try_lock lock then
@@ -111,11 +108,10 @@ let test_mutex_try_lock_reports_held_and_free_states =
             send holder Mutex_holder_release;
             match await
               ~what:"mutex holder release"
-              (
-                function
+              (fun __tmp1 ->
+                match __tmp1 with
                 | Mutex_holder_released -> Select ()
-                | _ -> Skip
-              ) with
+                | _ -> Skip) with
             | Error _ as err -> err
             | Ok () ->
                 if not (Sync.Mutex.try_lock lock) then
@@ -138,11 +134,10 @@ let test_mutex_unlock_requires_ownership =
             Sync.Mutex.lock lock;
             send parent Mutex_holder_locked;
             receive
-              ~selector:(
-                function
+              ~selector:(fun __tmp1 ->
+                match __tmp1 with
                 | Mutex_holder_release -> Select ()
-                | _ -> Skip
-              )
+                | _ -> Skip)
               ();
             Sync.Mutex.unlock lock;
             send parent Mutex_holder_released;
@@ -150,11 +145,10 @@ let test_mutex_unlock_requires_ownership =
       in
       match await
         ~what:"mutex holder lock"
-        (
-          function
+        (fun __tmp1 ->
+          match __tmp1 with
           | Mutex_holder_locked -> Select ()
-          | _ -> Skip
-        ) with
+          | _ -> Skip) with
       | Error _ as err -> err
       | Ok () ->
           ignore
@@ -178,23 +172,21 @@ let test_mutex_unlock_requires_ownership =
           let result =
             await
               ~what:"non-owner mutex unlock result"
-              (
-                function
+              (fun __tmp1 ->
+                match __tmp1 with
                 | Mutex_unlock_failed reason -> Select (Unlock_failed reason)
                 | Mutex_unlock_returned -> Select Unlock_returned
-                | _ -> Skip
-              )
+                | _ -> Skip)
           in
           send holder Mutex_holder_release;
           ignore
             (
               await
                 ~what:"mutex holder cleanup"
-                (
-                  function
+                (fun __tmp1 ->
+                  match __tmp1 with
                   | Mutex_holder_released -> Select ()
-                  | _ -> Skip
-                )
+                  | _ -> Skip)
             );
           match result with
           | Error _ as err -> err
@@ -214,33 +206,30 @@ let test_mutex_owner_exit_releases_lock =
             Sync.Mutex.lock lock;
             send parent Mutex_owner_ready;
             receive
-              ~selector:(
-                function
+              ~selector:(fun __tmp1 ->
+                match __tmp1 with
                 | Mutex_owner_exit -> Select ()
-                | _ -> Skip
-              )
+                | _ -> Skip)
               ();
             Ok ())
       in
       let _monitor = Runtime.Actor.monitor owner in
       match await
         ~what:"mutex owner ready"
-        (
-          function
+        (fun __tmp1 ->
+          match __tmp1 with
           | Mutex_owner_ready -> Select ()
-          | _ -> Skip
-        ) with
+          | _ -> Skip) with
       | Error _ as err -> err
       | Ok () ->
           send owner Mutex_owner_exit;
           (
             match await
               ~what:"mutex owner exit"
-              (
-                function
+              (fun __tmp1 ->
+                match __tmp1 with
                 | Runtime.Actor.DOWN { pid; _ } when Runtime.Pid.equal pid owner -> Select ()
-                | _ -> Skip
-              ) with
+                | _ -> Skip) with
             | Error _ as err -> err
             | Ok () ->
                 if not (Sync.Mutex.try_lock lock) then

@@ -47,7 +47,8 @@ module Node = struct
 
   let span t =
     match t.kind with
-    | SourceFile source_file -> source_file.origin.span
+    | SourceFile (Ast.Implementation implementation) -> implementation.origin.span
+    | SourceFile (Ast.Interface interface) -> interface.origin.span
     | StructureItem item -> item.origin.span
     | SignatureItem item -> item.origin.span
     | LetDeclaration declaration -> declaration.origin.span
@@ -116,9 +117,11 @@ let rec find_source_file = fun query parent source_file ->
     parent
     (Node.SourceFile source_file)
     ~children:(fun node ->
-      match source_file.kind with
-      | Ast.Implementation items -> find_first items ~fn:(find_structure_item query (Some node))
-      | Ast.Interface items -> find_first items ~fn:(find_signature_item query (Some node)))
+      match source_file with
+      | Ast.Implementation implementation ->
+          find_first implementation.items ~fn:(find_structure_item query (Some node))
+      | Ast.Interface interface ->
+          find_first interface.items ~fn:(find_signature_item query (Some node)))
 
 and find_structure_item = fun query parent item ->
   find_node

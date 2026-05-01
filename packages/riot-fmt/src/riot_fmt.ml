@@ -82,7 +82,8 @@ type fmt_scope = {
   packages: package_scope list;
 }
 
-let resolve_root = function
+let resolve_root = fun __tmp1 ->
+  match __tmp1 with
   | Some workspace -> workspace.Workspace.root
   | None ->
       Env.current_dir ()
@@ -93,7 +94,8 @@ let resolve_search_roots = fun workspace ->
   | Some workspace -> workspace_roots workspace
   | None -> [ resolve_root None ]
 
-let load_fmt_scope = function
+let load_fmt_scope = fun __tmp1 ->
+  match __tmp1 with
   | Some workspace ->
       let workspace_toml = Path.(workspace.Workspace.root / Path.v "riot.toml") in
       let packages =
@@ -142,7 +144,8 @@ let find_package_scope = fun scope file ->
       | Error _ -> None)
   |> List.sort ~compare:(fun (left_len, _) (right_len, _) -> Int.compare right_len left_len)
   |> List.map ~fn:(fun (_, package_scope) -> package_scope)
-  |> function
+  |> fun __tmp1 ->
+    match __tmp1 with
     | package_scope :: _ -> Some package_scope
     | [] -> None
 

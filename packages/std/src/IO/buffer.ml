@@ -9,10 +9,11 @@ type t = KernelBuffer.t
 type error = Kernel.IO.Error.t
 
 let panic_result = fun fn ->
-  function
-  | Ok value -> value
-  | Error error ->
-      Kernel.SystemError.panic ("IO.Buffer." ^ fn ^ ": " ^ Kernel.IO.Error.message error)
+  fun __tmp1 ->
+    match __tmp1 with
+    | Ok value -> value
+    | Error error ->
+        Kernel.SystemError.panic ("IO.Buffer." ^ fn ^ ": " ^ Kernel.IO.Error.message error)
 
 let panic_invalid_range = fun fn ~offset ~length ~total ->
   Kernel.SystemError.panic

@@ -46,7 +46,8 @@ let start_applications = fun apps ->
   | Error _ids -> Error (Failure "Circular dependency detected in applications")
   | Ok sorted_nodes ->
       let started = Vector.create () in
-      let rec start_all = function
+      let rec start_all = fun __tmp1 ->
+        match __tmp1 with
         | [] ->
             Ok (
               Vector.iter started

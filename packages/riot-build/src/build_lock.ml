@@ -190,7 +190,8 @@ let acquire = fun ~on_waiting ~target_dir_root ~profile ~target fn ->
             raise exn
 
 let acquire_existing_lanes = fun ~on_waiting ~target_dir_root fn ->
-  let rec loop = function
+  let rec loop = fun __tmp1 ->
+    match __tmp1 with
     | [] -> fn ()
     | lane :: rest ->
         acquire

@@ -30,7 +30,8 @@ let source_slice = fun source ->
   IO.IoVec.IoSlice.from_string source
   |> Result.expect ~msg:"failed to create infer test source slice"
 
-let render_diagnostic = function
+let render_diagnostic = fun __tmp1 ->
+  match __tmp1 with
   | Typ.Diagnostics.Diagnostic.UnsupportedSyntax { summary; _ } -> "unsupported syntax: " ^ summary
   | Typ.Diagnostics.Diagnostic.UnsupportedType { summary; _ } -> "unsupported type: " ^ summary
   | diagnostic -> Typ.Diagnostics.Diagnostic.to_string diagnostic
@@ -91,7 +92,8 @@ let infer_test = fun (ctx: Test.FixtureRunner.ctx) ->
     | Ok ast ->
         Typ.Infer.check ast
         |> render_result
-        |> function
+        |> fun __tmp1 ->
+          match __tmp1 with
           | Interface source -> validate_interface_source source
           | Diagnostics diagnostics -> Ok diagnostics
   in

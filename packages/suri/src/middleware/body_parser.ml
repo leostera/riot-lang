@@ -41,7 +41,8 @@ let default_config = fun () -> {
   max_body_size = 10 * 1_024 * 1_024;
 }
 
-let rec json_root_kind = function
+let rec json_root_kind = fun __tmp1 ->
+  match __tmp1 with
   | Std.Data.Json.Null -> JsonNull
   | Bool _ -> JsonBool
   | Int _ -> JsonInt
@@ -51,7 +52,8 @@ let rec json_root_kind = function
   | Object _ -> JsonObject
   | Embed json -> json_root_kind json
 
-let json_root_kind_to_string = function
+let json_root_kind_to_string = fun __tmp1 ->
+  match __tmp1 with
   | JsonNull -> "null"
   | JsonBool -> "bool"
   | JsonInt -> "int"
@@ -60,7 +62,8 @@ let json_root_kind_to_string = function
   | JsonArray -> "array"
   | JsonObject -> "object"
 
-let parse_error_to_string = function
+let parse_error_to_string = fun __tmp1 ->
+  match __tmp1 with
   | BodyTooLarge { size; max_size } ->
       "Request body is too large ("
       ^ Int.to_string size

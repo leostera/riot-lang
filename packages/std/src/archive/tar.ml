@@ -37,14 +37,16 @@ type error =
   | Unsupported_entry_kind of entry_kind
   | Duplicate_entry of Path.t
 
-let entry_kind_to_string = function
+let entry_kind_to_string = fun __tmp1 ->
+  match __tmp1 with
   | File -> "file"
   | Directory -> "directory"
   | Symlink -> "symlink"
   | Hardlink -> "hardlink"
   | Other kind -> kind
 
-let engine_error_to_string = function
+let engine_error_to_string = fun __tmp1 ->
+  match __tmp1 with
   | Engine.Invalid_header msg -> "invalid tar header: " ^ msg
   | Engine.Entry_in_progress -> "tar entry is already being read"
   | Engine.Invalid_state msg -> "invalid tar reader state: " ^ msg
@@ -52,7 +54,8 @@ let engine_error_to_string = function
   | Engine.Out_of_memory -> "tar reader out of memory"
   | Engine.Unknown_error msg -> msg
 
-let error_to_string = function
+let error_to_string = fun __tmp1 ->
+  match __tmp1 with
   | Engine_error err -> engine_error_to_string err
   | Invalid_path path -> "invalid archive path '" ^ path ^ "'"
   | Unsafe_path path -> "unsafe archive path '" ^ path ^ "'"
@@ -78,7 +81,8 @@ let source_buffer_size = 32 * 1_024
 
 let make_source = fun reader -> { reader; buffer = Buffer.create ~size:source_buffer_size }
 
-let entry_kind_of_engine = function
+let entry_kind_of_engine = fun __tmp1 ->
+  match __tmp1 with
   | Engine.File -> File
   | Engine.Directory -> Directory
   | Engine.Symlink -> Symlink
@@ -246,7 +250,8 @@ let register_target = fun seen path ->
     let _ = HashSet.insert seen ~value:path in
     Ok ()
 
-let should_skip_metadata_entry = function
+let should_skip_metadata_entry = fun __tmp1 ->
+  match __tmp1 with
   | Other "x"
   | Other "g" -> true
   | _ -> false
@@ -262,7 +267,8 @@ let set_permissions = fun path permissions ->
   | None -> Ok ()
   | Some perms -> Fs.set_permissions path perms
 
-let fs_error_of_file_error = function
+let fs_error_of_file_error = fun __tmp1 ->
+  match __tmp1 with
   | Kernel.Fs.File.InvalidSlice _ -> IO.Invalid_argument
   | Kernel.Fs.File.System error -> IO.of_system_error error
 

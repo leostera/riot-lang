@@ -92,7 +92,8 @@ module Diagnostic = struct
       if idx >= String.length line then
         let chars = List.reverse acc in
         let out = IO.Bytes.create ~size:(List.length chars) in
-        let rec fill index = function
+        let rec fill index = fun __tmp1 ->
+          match __tmp1 with
           | [] -> IO.Bytes.to_string out
           | ch :: rest ->
               IO.Bytes.set_unchecked out ~at:index ~char:ch;
@@ -242,7 +243,8 @@ module Diagnostic = struct
     | _ -> None
 
   let classify = fun lines ->
-    let rec loop = function
+    let rec loop = fun __tmp1 ->
+      match __tmp1 with
       | [] -> (Unknown, None)
       | line :: rest ->
           let trimmed =
@@ -269,7 +271,8 @@ module Diagnostic = struct
 
   let make_raw = fun lines -> Raw (String.concat "\n" lines)
 
-  let parse_block = function
+  let parse_block = fun __tmp1 ->
+    match __tmp1 with
     | [] -> None
     | first :: body ->
         let lines = first :: body in
@@ -315,7 +318,8 @@ module Diagnostic = struct
         | Some diag -> acc @ [ diag ]
         | None -> acc
       in
-      let rec loop acc current = function
+      let rec loop acc current = fun __tmp1 ->
+        match __tmp1 with
         | [] -> flush_block acc current
         | line :: rest ->
             if starts_with_ocaml_header line || starts_with_c_header line then
@@ -363,11 +367,13 @@ module Diagnostic = struct
           )
       )
 
-  let location = function
+  let location = fun __tmp1 ->
+    match __tmp1 with
     | Raw _ -> None
     | Parsed parsed -> parsed.location
 
-  let severity = function
+  let severity = fun __tmp1 ->
+    match __tmp1 with
     | Raw _ -> Unknown
     | Parsed parsed -> parsed.severity
 
@@ -424,7 +430,8 @@ let base_command = fun t -> Path.to_string t
 
 let default_disabled_warnings = [ NoCmiFile ]
 
-let warning_code = function
+let warning_code = fun __tmp1 ->
+  match __tmp1 with
   | All -> "a"
   | warning ->
       Riot_model.Ocaml_compiler.warning_to_number warning
@@ -568,11 +575,10 @@ let compile_interface = fun t ~cwd ~includes ~flags ~output source ->
   let has_impl_flag =
     List.any
       flags
-      ~fn:(
-        function
+      ~fn:(fun __tmp1 ->
+        match __tmp1 with
         | Impl _ -> true
-        | _ -> false
-      )
+        | _ -> false)
   in
   let args =
     (((([ "-bin-annot"; "-c" ] @ warning_baseline_flags source) @ flags_to_string flags)
@@ -592,11 +598,10 @@ let compile_impl = fun t ~cwd ~includes ~flags ~output source ->
   let has_impl_flag =
     List.any
       flags
-      ~fn:(
-        function
+      ~fn:(fun __tmp1 ->
+        match __tmp1 with
         | Impl _ -> true
-        | _ -> false
-      )
+        | _ -> false)
   in
   let args =
     (((([ "-bin-annot"; "-c" ] @ warning_baseline_flags source) @ flags_to_string flags)
@@ -753,11 +758,13 @@ let run = fun invocation ->
     )
   | Error (Command.SystemError msg) -> Failed { message = msg; diagnostics = [] }
 
-let is_success = function
+let is_success = fun __tmp1 ->
+  match __tmp1 with
   | Success _ -> true
   | Failed _ -> false
 
-let get_output = function
+let get_output = fun __tmp1 ->
+  match __tmp1 with
   | Success { message; _ } -> message
   | Failed { message; diagnostics } ->
       let rendered = Diagnostic.render_all diagnostics in
@@ -766,7 +773,8 @@ let get_output = function
       else
         message ^ ": " ^ rendered
 
-let get_ocamlc_warnings = function
+let get_ocamlc_warnings = fun __tmp1 ->
+  match __tmp1 with
   | Success { diagnostics; _ } ->
       diagnostics
       |> List.filter ~fn:Diagnostic.is_warning

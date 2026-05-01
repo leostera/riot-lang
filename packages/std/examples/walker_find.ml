@@ -37,20 +37,21 @@ let print_usage = fun () ->
   eprintln "ignores: .git and .worktrees"
 
 let rec parse_args = fun config ->
-  function
-  | [] -> Config config
-  | "--count-only" :: rest -> parse_args { config with count_only = true } rest
-  | "--sort" :: rest -> parse_args { config with sort = true } rest
-  | "--help" :: _
-  | "-h" :: _ -> Help
-  | root :: rest ->
-      let roots =
-        if config.roots = default_config.roots then
-          [ Path.v root ]
-        else
-          config.roots @ [ Path.v root ]
-      in
-      parse_args { config with roots } rest
+  fun __tmp1 ->
+    match __tmp1 with
+    | [] -> Config config
+    | "--count-only" :: rest -> parse_args { config with count_only = true } rest
+    | "--sort" :: rest -> parse_args { config with sort = true } rest
+    | "--help" :: _
+    | "-h" :: _ -> Help
+    | root :: rest ->
+        let roots =
+          if config.roots = default_config.roots then
+            [ Path.v root ]
+          else
+            config.roots @ [ Path.v root ]
+        in
+        parse_args { config with roots } rest
 
 let main ~args =
   let args =

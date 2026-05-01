@@ -108,7 +108,8 @@ let cell_to_string = fun cell ->
       Ansi_formatter.format_string formats cell.char
 
 let index_commands = fun commands ->
-  let rec loop index acc = function
+  let rec loop index acc = fun __tmp1 ->
+    match __tmp1 with
     | [] -> List.rev acc
     | command :: rest -> loop (index + 1) ((index, command) :: acc) rest
   in
@@ -339,15 +340,16 @@ let render_to_string = fun commands ->
     done
   in
   let rec render_row_segments = fun buffer row cursor ->
-    function
-    | [] -> render_grid_segment buffer row cursor !max_col
-    | segment :: rest ->
-        let segment_col = Int.max 0 segment.col in
-        if segment_col > cursor then
-          render_grid_segment buffer row cursor segment_col;
-        Buffer.add_string buffer segment.data;
-        let next_cursor = Int.max cursor (segment_col + Tty.Escape_seq.width segment.data) in
-        render_row_segments buffer row next_cursor rest
+    fun __tmp1 ->
+      match __tmp1 with
+      | [] -> render_grid_segment buffer row cursor !max_col
+      | segment :: rest ->
+          let segment_col = Int.max 0 segment.col in
+          if segment_col > cursor then
+            render_grid_segment buffer row cursor segment_col;
+          Buffer.add_string buffer segment.data;
+          let next_cursor = Int.max cursor (segment_col + Tty.Escape_seq.width segment.data) in
+          render_row_segments buffer row next_cursor rest
   in
   let buf = Buffer.create ~size:(!max_row * !max_col * 2) in
   for row = 0 to !max_row - 1 do

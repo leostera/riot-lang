@@ -146,11 +146,10 @@ let collect_interfaces = fun ~workspace ~store ~release (package: Riot_model.Pac
   Ok (
     G.map plan.module_graph ~fn:(fun (_id, node) -> interface_source_of_node ~package node)
     |> List.filter_map
-      ~fn:(
-        function
+      ~fn:(fun __tmp1 ->
+        match __tmp1 with
         | Some source -> Some source
-        | None -> None
-      )
+        | None -> None)
     |> List.unique
       ~compare:(fun left right ->
         String.compare
@@ -198,9 +197,9 @@ let candidate_module_paths = fun ~current_path target_path ->
       [ rooted_segments; segments ]
 
 let resolve_module_path = fun lookup ~current_path ~target_path ->
-  let rec first_match = function
-    | [] ->
-        None
+  let rec first_match = fun __tmp1 ->
+    match __tmp1 with
+    | [] -> None
     | module_path :: rest -> (
         match find_by_module_path lookup module_path with
         | Some source -> Some source

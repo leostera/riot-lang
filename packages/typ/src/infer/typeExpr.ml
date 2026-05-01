@@ -9,7 +9,8 @@ module HashMap = Std.Collections.HashMap
    what unification compares. This conversion is pure because labels carry no
    source-local state after lowering.
 *)
-let arrow_label_to_type_label = function
+let arrow_label_to_type_label = fun __tmp1 ->
+  match __tmp1 with
   | NoLabel -> Type.Label.NoLabel
   | Labelled label -> Type.Label.Labelled label
   | Optional label -> Type.Label.Optional label

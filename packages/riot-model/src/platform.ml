@@ -7,13 +7,15 @@ type t =
   | Windows
   | Unknown of string
 
-let to_string = function
+let to_string = fun __tmp1 ->
+  match __tmp1 with
   | MacOS -> "macos"
   | Linux -> "linux"
   | Windows -> "windows"
   | Unknown s -> s
 
-let of_string = function
+let of_string = fun __tmp1 ->
+  match __tmp1 with
   | "macos" -> MacOS
   | "linux" -> Linux
   | "windows" -> Windows

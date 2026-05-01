@@ -180,25 +180,30 @@ type error =
       frame_type: Frame.frame_type;
     }
 
-let window_scope_to_string = function
+let window_scope_to_string = fun __tmp1 ->
+  match __tmp1 with
   | StreamWindow { stream_id } -> "stream " ^ Int.to_string stream_id
   | ConnectionWindow -> "connection"
 
-let role_to_string = function
+let role_to_string = fun __tmp1 ->
+  match __tmp1 with
   | Client -> "client"
   | Server -> "server"
 
-let stream_initiator_to_string = function
+let stream_initiator_to_string = fun __tmp1 ->
+  match __tmp1 with
   | LocalInitiated -> "local"
   | PeerInitiated -> "peer"
 
-let state_to_string = function
+let state_to_string = fun __tmp1 ->
+  match __tmp1 with
   | Idle -> "idle"
   | Active -> "active"
   | GoingAway -> "going away"
   | Closed -> "closed"
 
-let stream_state_to_string = function
+let stream_state_to_string = fun __tmp1 ->
+  match __tmp1 with
   | StreamIdle -> "idle"
   | StreamOpen -> "open"
   | StreamReservedLocal -> "reserved local"
@@ -207,7 +212,8 @@ let stream_state_to_string = function
   | StreamHalfClosedRemote -> "half-closed remote"
   | StreamClosed -> "closed"
 
-let error_to_string = function
+let error_to_string = fun __tmp1 ->
+  match __tmp1 with
   | ConnectionNotActive -> "HTTP/2 connection is not active"
   | StreamNotFound { stream_id } -> "HTTP/2 stream not found: " ^ Int.to_string stream_id
   | FlowControlWindowExceeded { scope; data_size; window_size } ->
@@ -595,9 +601,9 @@ let transition_recv_data = fun ~stream_id state ~end_stream ->
 
 let serialize_frames = fun frames ->
   let buf = Buffer.create ~size:256 in
-  let rec loop = function
-    | [] ->
-        Ok (Buffer.contents buf)
+  let rec loop = fun __tmp1 ->
+    match __tmp1 with
+    | [] -> Ok (Buffer.contents buf)
     | frame :: rest -> (
         match serialize_frame frame with
         | Error error -> Error error
@@ -655,7 +661,8 @@ let send_headers = fun conn ~stream_id ~headers ~end_stream ->
                     let headers_frame =
                       Frame.headers ~stream_id ~end_stream ~end_headers:(rest = []) first
                     in
-                    let rec continuations acc = function
+                    let rec continuations acc = fun __tmp1 ->
+                      match __tmp1 with
                       | [] -> List.reverse acc
                       | [ last ] ->
                           List.reverse (Frame.continuation ~stream_id ~end_headers:true last :: acc)
@@ -700,7 +707,8 @@ let send_data = fun conn ~stream_id ~data ~end_stream ->
         | Ok next_state ->
             let max_frame_size = Cell.get conn.remote_settings.max_frame_size in
             let chunks = split_string_chunks ~max_size:max_frame_size (Bytes.to_string data) in
-            let rec build_frames acc = function
+            let rec build_frames acc = fun __tmp1 ->
+              match __tmp1 with
               | [] -> List.reverse acc
               | [ last ] ->
                   build_frames
@@ -933,9 +941,9 @@ let process_settings_frame = fun conn settings_list flags ->
       in
       ()
     in
-    let rec apply_settings = function
-      | [] ->
-          Ok [ SettingsReceived settings_list ]
+    let rec apply_settings = fun __tmp1 ->
+      match __tmp1 with
+      | [] -> Ok [ SettingsReceived settings_list ]
       | setting :: rest -> (
           match setting with
           | Frame.HeaderTableSize size -> (
@@ -1236,9 +1244,8 @@ let process_frame = fun conn frame ->
       )
   | PrefaceComplete -> process_frame_after_preface conn frame
 
-let parser_config = fun conn -> ({
-  Parser.max_frame_size = Cell.get conn.local_settings.max_frame_size;
-}: Parser.config)
+let parser_config = fun conn ->
+  ({ Parser.max_frame_size = Cell.get conn.local_settings.max_frame_size }: Parser.config)
 
 let find_preface_mismatch = fun combined ->
   let available = String.length combined in

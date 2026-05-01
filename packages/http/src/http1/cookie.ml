@@ -71,22 +71,26 @@ and same_site_error =
 
 let character_code = fun character -> Int.to_string (Char.to_int character)
 
-let value_character_error_to_string = function
+let value_character_error_to_string = fun __tmp1 ->
+  match __tmp1 with
   | ControlCharacter -> "control character"
   | DeleteCharacter -> "delete character"
   | Semicolon -> "semicolon"
   | Comma -> "comma"
 
-let attribute_to_string = function
+let attribute_to_string = fun __tmp1 ->
+  match __tmp1 with
   | Expires -> "Expires"
   | Domain -> "Domain"
   | Path -> "Path"
 
-let attribute_character_error_to_string = function
+let attribute_character_error_to_string = fun __tmp1 ->
+  match __tmp1 with
   | AttributeControlCharacter -> "control character"
   | AttributeSemicolon -> "semicolon"
 
-let validation_error_to_string = function
+let validation_error_to_string = fun __tmp1 ->
+  match __tmp1 with
   | EmptyName -> "Cookie name is empty"
   | InvalidNameCharacter { index; character } ->
       "Cookie name contains invalid character code "
@@ -120,18 +124,21 @@ let validation_error_to_string = function
   | HostPrefixRequiresNoDomain -> "Cookie __Host- prefix must not set Domain"
   | HostPrefixRequiresRootPath -> "Cookie __Host- prefix requires Path=/"
 
-let max_age_error_to_string = function
+let max_age_error_to_string = fun __tmp1 ->
+  match __tmp1 with
   | EmptyMaxAge -> "empty value"
   | NegativeMaxAge -> "negative value"
   | MaxAgeOverflow -> "value exceeds the maximum integer"
   | InvalidMaxAgeCharacter { code; index } ->
       "invalid character code " ^ Int.to_string code ^ " at index " ^ Int.to_string index
 
-let same_site_error_to_string = function
+let same_site_error_to_string = fun __tmp1 ->
+  match __tmp1 with
   | EmptySameSite -> "empty value"
   | UnknownSameSite { value } -> "unknown value: " ^ value
 
-let parse_set_cookie_error_to_string = function
+let parse_set_cookie_error_to_string = fun __tmp1 ->
+  match __tmp1 with
   | EmptyHeader -> "Set-Cookie header is empty"
   | MissingNameValueSeparator -> "Set-Cookie header must start with name=value"
   | InvalidMaxAge error -> "Set-Cookie Max-Age is invalid: " ^ max_age_error_to_string error
@@ -188,7 +195,8 @@ let parse_max_age = fun value ->
     loop 0 0
 
 (** Serialize SameSite to string *)
-let same_site_to_string = function
+let same_site_to_string = fun __tmp1 ->
+  match __tmp1 with
   | Strict -> "Strict"
   | Lax -> "Lax"
   | None -> "None"

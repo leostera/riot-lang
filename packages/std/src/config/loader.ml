@@ -13,7 +13,8 @@ let detect_env = fun () ->
   | Some "production" -> Prod
   | _ -> Dev
 
-let env_to_string = function
+let env_to_string = fun __tmp1 ->
+  match __tmp1 with
   | Dev -> "dev"
   | Test -> "test"
   | Prod -> "prod"

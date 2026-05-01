@@ -23,24 +23,28 @@ type start_error =
   | InvalidAcceptors of int
   | InvalidBufferSize of int
 
-let start_error_of_web_server_error = function
+let start_error_of_web_server_error = fun __tmp1 ->
+  match __tmp1 with
   | Web_server.InvalidAddress error -> InvalidAddress error
   | Web_server.BindFailed error -> BindFailed error
   | Web_server.InvalidAcceptors acceptors -> InvalidAcceptors acceptors
   | Web_server.InvalidBufferSize buffer_size -> InvalidBufferSize buffer_size
 
-let addr_error_to_string = function
+let addr_error_to_string = fun __tmp1 ->
+  match __tmp1 with
   | Std.Net.Addr.System_error error -> Std.IO.error_message error
   | Std.Net.Addr.Invalid_port_number value ->
       Std.String.concat "" [ "invalid port number: "; value; ]
   | Std.Net.Addr.Invalid_format value -> Std.String.concat "" [ "invalid address format: "; value; ]
 
-let listener_error_to_string = function
+let listener_error_to_string = fun __tmp1 ->
+  match __tmp1 with
   | Std.Net.TcpListener.Connection_refused -> "connection refused"
   | Std.Net.TcpListener.Closed -> "listener is closed"
   | Std.Net.TcpListener.System_error error -> Std.IO.error_message error
 
-let start_error_to_string = function
+let start_error_to_string = fun __tmp1 ->
+  match __tmp1 with
   | InvalidConfig errors -> Config.errors_to_string errors
   | InvalidAddress error -> addr_error_to_string error
   | BindFailed error -> listener_error_to_string error

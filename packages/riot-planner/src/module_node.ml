@@ -90,7 +90,8 @@ let make_binary = fun ~name ~source ~libraries ~includes ->
 
 let set_open_modules = fun t modules -> t.open_modules <- modules
 
-let kind_to_string = function
+let kind_to_string = fun __tmp1 ->
+  match __tmp1 with
   | ML mod_ ->
       "ML(" ^ (
         Module.module_name mod_

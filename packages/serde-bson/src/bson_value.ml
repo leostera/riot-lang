@@ -8,6 +8,7 @@ type t =
   | Array of t list
   | Document of (string * t) list
 
-let rec is_document = function
+let rec is_document = fun __tmp1 ->
+  match __tmp1 with
   | Document _ -> true
   | _ -> false

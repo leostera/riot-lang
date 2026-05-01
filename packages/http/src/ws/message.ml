@@ -45,16 +45,19 @@ type error =
   | MessagePayloadTooLarge of { payload_length: int; max_message_size: int }
   | InvalidTextMessageUtf8 of { payload_length: int }
 
-let data_opcode_to_string = function
+let data_opcode_to_string = fun __tmp1 ->
+  match __tmp1 with
   | Text -> "text"
   | Binary -> "binary"
 
-let control_opcode_to_string = function
+let control_opcode_to_string = fun __tmp1 ->
+  match __tmp1 with
   | Close -> "close"
   | Ping -> "ping"
   | Pong -> "pong"
 
-let error_to_string = function
+let error_to_string = fun __tmp1 ->
+  match __tmp1 with
   | InvalidMessageSizeLimit { max_message_size } ->
       "Invalid WebSocket message size limit: " ^ Int.to_string max_message_size
   | ContinuationWithoutFragment -> "WebSocket continuation frame arrived without a fragmented message"
@@ -84,7 +87,8 @@ let create = fun ?(max_message_size = Int.max_int) () ->
   else
     Ok { max_message_size; fragment = None }
 
-let frame_data_opcode = function
+let frame_data_opcode = fun __tmp1 ->
+  match __tmp1 with
   | Frame.Text -> Some Text
   | Frame.Binary -> Some Binary
   | Frame.Continuation
@@ -92,7 +96,8 @@ let frame_data_opcode = function
   | Frame.Ping
   | Frame.Pong -> None
 
-let frame_control_opcode = function
+let frame_control_opcode = fun __tmp1 ->
+  match __tmp1 with
   | Frame.Close -> Some Close
   | Frame.Ping -> Some Ping
   | Frame.Pong -> Some Pong
