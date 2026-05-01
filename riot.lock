@@ -1,6 +1,6 @@
 format_version = 1
 
-dependency_hash = "1a5200a15048774e"
+dependency_hash = "cf5337b65b99654d"
 
 [[packages]]
 name = "blink"
