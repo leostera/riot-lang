@@ -71,7 +71,7 @@ let summarize_large_record {
   last_name;
   email;
   city;
-  country
+  country;
 } = first_name ^ last_name ^ email ^ city ^ country
 
 let classify_many = function

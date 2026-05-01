@@ -516,6 +516,24 @@ type row={left:int;right:string}
 type row = { left: int; right: string }
 |ocaml}
 
+let test_write_keeps_heavy_record_types_vertical = fun ctx ->
+  let source =
+    {ocaml|type constructor_description=unit and constructor_binding={description:constructor_description;ordinal:int}
+|ocaml}
+  in
+  let parsed = parse_mli source in
+  let actual = capture_write parsed in
+  Test.Snapshot.assert_inline_text
+    ~ctx
+    ~actual
+    ~expected:{ocaml|type constructor_description = unit
+
+and constructor_binding = {
+  description: constructor_description;
+  ordinal: int;
+}
+|ocaml}
+
 let test_write_preserves_terminal_record_field_docstrings = fun ctx ->
   let source =
     {ocaml|type cookie={name:string;value:string;same_site:same_site option;
@@ -692,6 +710,28 @@ Array.make ~count:steps ~value:start
     ~ctx
     ~actual
     ~expected:{ocaml|let make ~start ~finish ~steps : color array = Array.make ~count:steps ~value:start
+|ocaml}
+
+let test_write_breaks_long_let_binding_parameters = fun ctx ->
+  let source =
+    {ocaml|let inline_record_constructor_description name type_ (owner:Ast.type_declaration) (constructor:Ast.type_constructor) (field:Ast.record_field_declaration):Env.constructor_description={description;ordinal}
+|ocaml}
+  in
+  let parsed = parse_ml source in
+  let actual = capture_write parsed in
+  Test.Snapshot.assert_inline_text
+    ~ctx
+    ~actual
+    ~expected:{ocaml|let inline_record_constructor_description
+  name
+  type_
+  (owner: Ast.type_declaration)
+  (constructor: Ast.type_constructor)
+  (field: Ast.record_field_declaration)
+  : Env.constructor_description = {
+  description;
+  ordinal;
+}
 |ocaml}
 
 let test_write_preserves_assignment_operators = fun ctx ->
@@ -1463,6 +1503,30 @@ let test_write_keeps_paired_parenthesized_if_branches = fun ctx ->
     emit first;
     emit second
   )
+|ocaml}
+
+let test_write_keeps_parenthesized_then_blocks_attached = fun ctx ->
+  let source =
+    {ocaml|let render result=if Vector.is_empty result.diagnostics.items then(let intf=render_interface result.intf in let source=if String.equal intf "" then "" else intf in Interface source)else Interface ""
+|ocaml}
+  in
+  let parsed = parse_ml source in
+  let actual = capture_write parsed in
+  Test.Snapshot.assert_inline_text
+    ~ctx
+    ~actual
+    ~expected:{ocaml|let render result =
+  if Vector.is_empty result.diagnostics.items then (
+    let intf = render_interface result.intf in
+    let source =
+      if String.equal intf "" then
+        ""
+      else
+        intf
+    in
+    Interface source
+  ) else
+    Interface ""
 |ocaml}
 
 let test_write_keeps_match_case_keyword_body_sequences_unwrapped = fun ctx ->
@@ -2519,10 +2583,47 @@ let test_write_breaks_after_multiline_constructor_record_match_patterns = fun ct
       attribute = Cookie.Path;
       index = 4;
       character = ';';
-      reason = Cookie.AttributeSemicolon
+      reason = Cookie.AttributeSemicolon;
     }
   ) ->
       Result.Ok ()
+|ocaml}
+
+let test_write_breaks_deep_record_list_patterns = fun ctx ->
+  let source =
+    {ocaml|let test ast=match ast.kind with|Implementation[{kind=Let{bindings=[{expr={kind=Constructor{ident;payload=Some{kind=Literal Int;_}};_};_}];_};_}]->assert_path_string ~expected:"Some" ident|_->()
+|ocaml}
+  in
+  let parsed = parse_ml source in
+  let actual = capture_write parsed in
+  Test.Snapshot.assert_inline_text
+    ~ctx
+    ~actual
+    ~expected:{ocaml|let test ast =
+  match ast.kind with
+  | Implementation [
+    {
+      kind =
+        Let {
+          bindings = [
+            {
+              expr = {
+                kind =
+                  Constructor {
+                    ident;
+                    payload = Some { kind = Literal Int; _ };
+                  };
+                _;
+              };
+              _;
+            };
+          ];
+          _;
+        };
+      _;
+    };
+  ] -> assert_path_string ~expected:"Some" ident
+  | _ -> ()
 |ocaml}
 
 let test_write_keeps_fitting_constructor_or_patterns_inline = fun ctx ->
@@ -4569,8 +4670,7 @@ let test_json_file_events_include_structured_diagnostics_for_parse_failures = fu
               |> Data.Json.of_string
               |> Result.expect ~msg:"parse event json"
             in
-            let expected =
-              Some (Data.Json.Array (List.map diagnostics ~fn:Syn.Diagnostic.to_json))
+            let expected = Some (Data.Json.Array (List.map diagnostics ~fn:Syn.Diagnostic.to_json))
             in
             Test.assert_equal ~expected ~actual:(Data.Json.get_field "diagnostics" json);
           Ok ()
@@ -4692,6 +4792,7 @@ let tests =
       "write preserves variant constructor docstrings in interfaces"
       test_write_preserves_variant_constructor_docstrings_in_interfaces;
     case "write renders short record types inline" test_write_renders_short_record_types_inline;
+    case "write keeps heavy record types vertical" test_write_keeps_heavy_record_types_vertical;
     case
       "write preserves terminal record field docstrings"
       test_write_preserves_terminal_record_field_docstrings;
@@ -4726,6 +4827,7 @@ let tests =
     case
       "write preserves labeled binding return annotation"
       test_write_preserves_labeled_binding_return_annotation;
+    case "write breaks long let binding parameters" test_write_breaks_long_let_binding_parameters;
     case "write preserves assignment operators" test_write_preserves_assignment_operators;
     case
       "write preserves labeled wildcard function parameters"
@@ -4819,6 +4921,9 @@ let tests =
     case
       "write keeps paired parenthesized if branches"
       test_write_keeps_paired_parenthesized_if_branches;
+    case
+      "write keeps parenthesized then blocks attached"
+      test_write_keeps_parenthesized_then_blocks_attached;
     case
       "write keeps match case keyword body sequences unwrapped"
       test_write_keeps_match_case_keyword_body_sequences_unwrapped;
@@ -4968,6 +5073,7 @@ let tests =
     case
       "write breaks after multiline constructor record match patterns"
       test_write_breaks_after_multiline_constructor_record_match_patterns;
+    case "write breaks deep record list patterns" test_write_breaks_deep_record_list_patterns;
     case
       "write keeps fitting constructor or patterns inline"
       test_write_keeps_fitting_constructor_or_patterns_inline;

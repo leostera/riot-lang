@@ -80,7 +80,7 @@ let test_layout_trace_snapshots_let_rhs_width_vetoes_inline_body = fun ctx ->
       ~is_assignment:false
       ~inline_body:true
       ~inline_body_handles_width_overflow:false
-      ~single_constructor_payload:true
+      ~single_constructor_payload:false
       ~known_width_overflow:true
       ~is_multiline:false
   in

@@ -402,12 +402,12 @@ let decide_let_binding_rhs = fun
       { mode = Block; reasons = [ Pipeline_body ] }
     else if is_assignment then
       { mode = Block; reasons = [ Assignment_body ] }
+    else if single_constructor_payload then
+      { mode = Inline; reasons = [ Single_constructor_payload ] }
     else if known_width_overflow && not inline_body_handles_width_overflow then
       { mode = Block; reasons = [ Known_width_overflow ] }
     else if inline_body then
       { mode = Inline; reasons = [ Inline_rhs_body ] }
-    else if single_constructor_payload then
-      { mode = Inline; reasons = [ Single_constructor_payload ] }
     else if is_multiline then
       { mode = Block; reasons = [ Child_is_block ] }
     else
