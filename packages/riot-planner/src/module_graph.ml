@@ -1065,11 +1065,12 @@ let add_direct_dependency_root = fun t ~package_name ~root_module ->
       |> add_ocaml_stdlib_exports ~root_module
     )
 
-let dependency_export_source_path = fun (Export_from_ml { source_path; _ }
-| Export_from_mli { source_path; _ }) -> source_path
+let dependency_export_source_path = fun
+  (Export_from_ml { source_path; _ } | Export_from_mli { source_path; _ }) -> source_path
 
-let dependency_export_public_root_name = fun (Export_from_ml { public_root_name; _ }
-| Export_from_mli { public_root_name; _ }) -> public_root_name
+let dependency_export_public_root_name = fun
+  (Export_from_ml { public_root_name; _ } | Export_from_mli { public_root_name; _ }) ->
+  public_root_name
 
 let qualified_name_segments = fun qualified_name ->
   String.split qualified_name ~by:"__"

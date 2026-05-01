@@ -112,7 +112,8 @@ let exn_message = fun exn ->
   | Failure message -> message
   | exn -> Exception.to_string exn
 
-let registry_initialization_error_message = fun (Riot_deps.RegistryFilesystemInitializationFailed error) ->
+let registry_initialization_error_message = fun
+  (Riot_deps.RegistryFilesystemInitializationFailed error) ->
   Pkgs_ml.Registry_cache.create_error_message
     error
 

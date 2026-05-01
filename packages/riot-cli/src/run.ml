@@ -422,10 +422,10 @@ let run_with_workspace_info = fun ~workspace ~workspace_error matches ->
         in
         match result with
         | Ok () -> Ok ()
-        | Error `Cli message ->
+        | Error (`Cli message) ->
             write_workspace_error ~mode:output_mode message;
             Error (Failure message)
-        | Error `Run err ->
+        | Error (`Run err) ->
             write_run_error ~mode:output_mode err;
             Error (Failure (Run_runtime.run_error_message err))
 

@@ -327,10 +327,9 @@ type satisfier_info = {
 
 let satisfier_search = fun solution incompat ->
   let chronological = List.reverse solution.assignments in
-  let assignment_pkg = fun (Decision (pkg, _, _, _) | Derivation (pkg, _, _, _, _, _)) -> pkg
-  in
-  let assignment_global_index = fun (Decision (_, _, _, global_index)
-  | Derivation (_, _, _, _, _, global_index)) -> global_index
+  let assignment_pkg = fun (Decision (pkg, _, _, _) | Derivation (pkg, _, _, _, _, _)) -> pkg in
+  let assignment_global_index = fun
+    (Decision (_, _, _, global_index) | Derivation (_, _, _, _, _, global_index)) -> global_index
   in
   let assignment_level = fun (Decision (_, _, level, _) | Derivation (_, _, _, _, level, _)) ->
     level

@@ -371,7 +371,7 @@ let test_writes_to_writer = fun _ctx ->
 let test_rejects_nested_record_values = fun _ctx ->
   let value = { title = "Sunny"; address = { city = "Wano" } } in
   match Serde_urlencoded.to_string nested_encode value with
-  | Error `Msg message when String.contains message "record" -> Ok ()
+  | Error (`Msg message) when String.contains message "record" -> Ok ()
   | Error err ->
       Error ("expected nested record encode to fail clearly, got " ^ Serde.Error.to_string err)
   | Ok encoded -> Error ("expected nested record encode to fail, got " ^ encoded)
@@ -388,14 +388,14 @@ let test_rejects_payload_variant_values = fun _ctx ->
         )
     )
     (Dog "Chouchou") with
-  | Error `Msg message when String.contains message "payload variant" -> Ok ()
+  | Error (`Msg message) when String.contains message "payload variant" -> Ok ()
   | Error err ->
       Error ("expected payload variant encode to fail clearly, got " ^ Serde.Error.to_string err)
   | Ok encoded -> Error ("expected payload variant encode to fail, got " ^ encoded)
 
 let test_rejects_top_level_scalars = fun _ctx ->
   match Serde_urlencoded.to_string Ser.int 42 with
-  | Error `Msg message when String.contains message "top-level" -> Ok ()
+  | Error (`Msg message) when String.contains message "top-level" -> Ok ()
   | Error err ->
       Error ("expected top-level scalar encode to fail clearly, got " ^ Serde.Error.to_string err)
   | Ok encoded -> Error ("expected top-level scalar encode to fail, got " ^ encoded)

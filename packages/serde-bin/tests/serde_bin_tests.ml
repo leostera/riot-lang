@@ -307,7 +307,7 @@ let test_encode_into_bytes = fun _ctx ->
 let test_short_destination_errors = fun _ctx ->
   let dst = IO.Bytes.create ~size:2 in
   match Serde_bin.encode_into_bytes pet_encode dst (Dog "Chouchou") with
-  | Error `Msg msg when String.starts_with ~prefix:"serde-bin destination buffer is too small" msg ->
+  | Error (`Msg msg) when String.starts_with ~prefix:"serde-bin destination buffer is too small" msg ->
       Ok ()
   | Error err -> Error ("expected short destination error, got " ^ Serde.Error.to_string err)
   | Ok _ -> Error "expected encode_into_bytes to fail for too-small destinations"
@@ -326,13 +326,13 @@ let test_decode_prefix_reports_consumed_bytes = fun _ctx ->
 
 let test_rejects_invalid_bool = fun _ctx ->
   match Serde_bin.of_string De.bool "\002" with
-  | Error `Msg msg when String.starts_with ~prefix:"invalid bool value" msg -> Ok ()
+  | Error (`Msg msg) when String.starts_with ~prefix:"invalid bool value" msg -> Ok ()
   | Error err -> Error ("expected invalid bool error, got " ^ Serde.Error.to_string err)
   | Ok _ -> Error "expected invalid bool input to fail"
 
 let test_rejects_truncated_string = fun _ctx ->
   match Serde_bin.of_string De.string "\005\000\000\000ab" with
-  | Error `Msg msg when String.starts_with
+  | Error (`Msg msg) when String.starts_with
     ~prefix:"unexpected end of input while decoding string"
     msg -> Ok ()
   | Error err -> Error ("expected truncated string error, got " ^ Serde.Error.to_string err)
@@ -340,7 +340,7 @@ let test_rejects_truncated_string = fun _ctx ->
 
 let test_rejects_trailing_bytes = fun _ctx ->
   match Serde_bin.of_string De.bool "\001\000" with
-  | Error `Msg msg when String.starts_with ~prefix:"extra input after binary value" msg -> Ok ()
+  | Error (`Msg msg) when String.starts_with ~prefix:"extra input after binary value" msg -> Ok ()
   | Error err -> Error ("expected trailing-byte error, got " ^ Serde.Error.to_string err)
   | Ok _ -> Error "expected trailing bytes to fail strict decoding"
 

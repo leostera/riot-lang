@@ -32,12 +32,8 @@ type entry =
    in a directory before descending into subdirectories.
 *)
 let compare_entries = fun e1 e2 ->
-  let get_name = fun (ML (n, _)
-  | MLI (n, _)
-  | C (n, _)
-  | H (n, _)
-  | Other (n, _, _)
-  | Dir (n, _, _)) -> n
+  let get_name = fun
+    (ML (n, _) | MLI (n, _) | C (n, _) | H (n, _) | Other (n, _, _) | Dir (n, _, _)) -> n
   in
   let get_priority = fun __tmp1 ->
     match __tmp1 with

@@ -21,7 +21,8 @@ let source_dependency_load_error_message = fun __tmp1 ->
   | Riot_deps.SourceDependencyManifestDecodeFailed error ->
       Riot_model.Package.manifest_error_message error
 
-let registry_initialization_error_message = fun (Riot_deps.RegistryFilesystemInitializationFailed error) ->
+let registry_initialization_error_message = fun
+  (Riot_deps.RegistryFilesystemInitializationFailed error) ->
   Pkgs_ml.Registry_cache.create_error_message
     error
 

@@ -485,7 +485,8 @@ let run = fun ~config ~on_event ~graph ~execute ->
     let _ = spawn init_run in
     let rec await () =
       let selector:
-        ([`Event of 'event | `Completed of ('work, 'result, 'error) run_result | `Failed of exn]) selector = fun __tmp1 ->
+        ([`Event of 'event | `Completed of ('work, 'result, 'error) run_result | `Failed of exn]) selector = fun
+        __tmp1 ->
         match __tmp1 with
         | GraphRunEvent { event; event_ref = ref } -> (
             match Ref.cast ref event_ref event with

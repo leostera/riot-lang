@@ -474,10 +474,12 @@ let test_package_scheduler_keeps_multi_lane_results_isolated = fun _ctx ->
         let lane_count_events_ok =
           events
           |> List.filter_map
-            ~fn:(fun (Package_scheduler.PlanningStarted { lane_count; _ }
-            | Package_scheduler.PlanningFinished { lane_count; _ }
-            | Package_scheduler.ExecutionStarted { lane_count; _ }
-            | Package_scheduler.ExecutionFinished { lane_count; _ }) -> Some lane_count)
+            ~fn:(fun
+              (Package_scheduler.PlanningStarted { lane_count; _ }
+              | Package_scheduler.PlanningFinished { lane_count; _ }
+              | Package_scheduler.ExecutionStarted { lane_count; _ }
+              | Package_scheduler.ExecutionFinished { lane_count; _ }) ->
+              Some lane_count)
           |> List.all ~fn:(fun lane_count -> lane_count = 2)
         in
         if actual_targets != expected_targets then

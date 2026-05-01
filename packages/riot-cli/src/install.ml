@@ -267,10 +267,10 @@ let run_with_workspace_info = fun ~workspace ~workspace_error matches ->
   in
   match result with
   | Ok () -> Ok ()
-  | Error `Cli message ->
+  | Error (`Cli message) ->
       write_workspace_error message;
       Error (Failure message)
-  | Error `Install err ->
+  | Error (`Install err) ->
       write_install_error err;
       Error (Failure (Install_runtime.install_error_message err))
 

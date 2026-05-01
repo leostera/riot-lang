@@ -12,7 +12,8 @@ type error =
 let status_to_string = fun status ->
   Net.Http.Status.to_string status ^ " " ^ Net.Http.Status.reason_phrase status
 
-let error_to_string = function
+let error_to_string = fun __tmp1 ->
+  match __tmp1 with
   | StatusMismatch { expected; actual } ->
       "expected status " ^ status_to_string expected ^ ", got " ^ status_to_string actual
   | BodyMismatch { expected; actual } -> "expected body " ^ expected ^ ", got " ^ actual

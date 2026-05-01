@@ -734,7 +734,7 @@ let test_parser_rebuilds_nested_tables_inside_array_items = fun _ctx ->
       | _ -> Error "expected parser to rebuild [[crew]] as an array-of-tables"
     )
   | Ok _ -> Error "expected parser to return a top-level table"
-  | Error `Msg message -> Error ("array-item parser regression failed: " ^ message)
+  | Error (`Msg message) -> Error ("array-item parser regression failed: " ^ message)
 
 let test_roundtrips_rosters = fun _ctx ->
   let* encoded =
@@ -785,7 +785,7 @@ let test_roundtrips_rosters = fun _ctx ->
         | _ -> Error "expected parser to rebuild crew as an array-of-tables"
       )
     | Ok _ -> Error "expected parser to return a top-level table"
-    | Error `Msg message -> Error ("roster parse failed: " ^ message)
+    | Error (`Msg message) -> Error ("roster parse failed: " ^ message)
   in
   match Serde_toml.from_string roster_decode encoded with
   | Ok actual when vec_to_list actual.crew = vec_to_list roster_value.crew -> Ok ()
@@ -864,7 +864,7 @@ let test_roundtrips_over_io = fun _ctx ->
 
 let test_rejects_top_level_scalars = fun _ctx ->
   match Serde_toml.to_string Ser.int 42 with
-  | Error `Msg message when String.contains message "table-shaped" -> Ok ()
+  | Error (`Msg message) when String.contains message "table-shaped" -> Ok ()
   | Error err ->
       Error ("expected top-level scalar encode to fail clearly, got " ^ Serde.Error.to_string err)
   | Ok encoded -> Error ("expected top-level scalar encode to fail, got " ^ encoded)

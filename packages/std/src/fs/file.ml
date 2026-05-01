@@ -23,7 +23,8 @@ let error_to_string = Kernel.Fs.File.error_to_string
 
 let kernel_path = fun path -> Kernel.Path.from_string (Path.to_string path)
 
-let wrap_result: type value error. (value, error) Kernel.Result.t -> (value, error) result = fun __tmp1 ->
+let wrap_result: type value error. (value, error) Kernel.Result.t -> (value, error) result = fun
+  __tmp1 ->
   match __tmp1 with
   | Ok value -> Ok value
   | Error error -> Error error

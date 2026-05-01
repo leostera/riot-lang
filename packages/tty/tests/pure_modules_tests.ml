@@ -308,26 +308,26 @@ let test_input_parse_focus_events = fun _ctx ->
 
 let test_input_parse_mouse_press = fun _ctx ->
   match Tty.Input.parse_escape "\x1b[<0;10;20M" with
-  | Some `Mouse {
+  | Some (`Mouse {
     button = Tty.Input.Left;
     action = Tty.Input.Mouse_press;
     x = 10;
     y = 20;
     modifiers = [];
-  } ->
+  }) ->
       Ok ()
   | Some event -> Error ("Expected left mouse press, got " ^ Tty.Input.event_to_string event)
   | None -> Error "Expected parsed mouse press event"
 
 let test_input_parse_mouse_release_with_modifiers = fun _ctx ->
   match Tty.Input.parse_escape "\x1b[<20;7;9m" with
-  | Some `Mouse {
+  | Some (`Mouse {
     button = Tty.Input.Left;
     action = Tty.Input.Mouse_release;
     x = 7;
     y = 9;
     modifiers = [ Tty.Input.Shift; Tty.Input.Ctrl ];
-  } ->
+  }) ->
       Ok ()
   | Some event -> Error ("Expected modified mouse release, got " ^ Tty.Input.event_to_string event)
   | None -> Error "Expected parsed mouse release event"
