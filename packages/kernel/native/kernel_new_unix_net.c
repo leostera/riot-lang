@@ -50,6 +50,111 @@ static int kernel_new_net_configure_socket(int fd) {
   return 0;
 }
 
+static char *kernel_new_net_copy_ocaml_bytes_slice(value bytes_val, int pos, int len) {
+  char *copy = NULL;
+
+  if (len > 0) {
+    copy = malloc((size_t)len);
+    if (copy == NULL) {
+      caml_raise_out_of_memory();
+    }
+
+    memcpy(copy, Bytes_val(bytes_val) + pos, (size_t)len);
+  }
+
+  return copy;
+}
+
+static ssize_t kernel_new_net_recv_into_heap_bytes(int fd, value buffer_val, int pos, int len) {
+  char *copy = NULL;
+  ssize_t result;
+
+  if (len > 0) {
+    copy = malloc((size_t)len);
+    if (copy == NULL) {
+      caml_raise_out_of_memory();
+    }
+  }
+
+  caml_enter_blocking_section();
+  result = recv(fd, copy, (size_t)len, 0);
+  caml_leave_blocking_section();
+
+  if (result > 0) {
+    memcpy(Bytes_val(buffer_val) + pos, copy, (size_t)result);
+  }
+
+  int saved_errno = errno;
+  free(copy);
+  errno = saved_errno;
+  return result;
+}
+
+static ssize_t kernel_new_net_send_from_heap_bytes(int fd, value buffer_val, int pos, int len) {
+  char *copy = kernel_new_net_copy_ocaml_bytes_slice(buffer_val, pos, len);
+  ssize_t result;
+
+  caml_enter_blocking_section();
+  result = send(fd, copy, (size_t)len, 0);
+  caml_leave_blocking_section();
+
+  int saved_errno = errno;
+  free(copy);
+  errno = saved_errno;
+  return result;
+}
+
+static ssize_t kernel_new_net_recvfrom_into_heap_bytes(
+  int fd,
+  value buffer_val,
+  int pos,
+  int len,
+  struct sockaddr *addr,
+  socklen_t *addr_len) {
+  char *copy = NULL;
+  ssize_t result;
+
+  if (len > 0) {
+    copy = malloc((size_t)len);
+    if (copy == NULL) {
+      caml_raise_out_of_memory();
+    }
+  }
+
+  caml_enter_blocking_section();
+  result = recvfrom(fd, copy, (size_t)len, 0, addr, addr_len);
+  caml_leave_blocking_section();
+
+  if (result > 0) {
+    memcpy(Bytes_val(buffer_val) + pos, copy, (size_t)result);
+  }
+
+  int saved_errno = errno;
+  free(copy);
+  errno = saved_errno;
+  return result;
+}
+
+static ssize_t kernel_new_net_sendto_from_heap_bytes(
+  int fd,
+  value buffer_val,
+  int pos,
+  int len,
+  const struct sockaddr *addr,
+  socklen_t addr_len) {
+  char *copy = kernel_new_net_copy_ocaml_bytes_slice(buffer_val, pos, len);
+  ssize_t result;
+
+  caml_enter_blocking_section();
+  result = sendto(fd, copy, (size_t)len, 0, addr, addr_len);
+  caml_leave_blocking_section();
+
+  int saved_errno = errno;
+  free(copy);
+  errno = saved_errno;
+  return result;
+}
+
 static int kernel_new_net_sockaddr_of_parts(
   const char *ip,
   int port,
@@ -409,14 +514,11 @@ CAMLprim value kernel_new_net_tcp_stream_connect(value ip_val, value port_val) {
 CAMLprim value kernel_new_net_tcp_stream_read(value fd_val, value buffer_val, value pos_val, value len_val) {
   CAMLparam4(fd_val, buffer_val, pos_val, len_val);
 
-  ssize_t result;
-  caml_enter_blocking_section();
-  result = recv(
+  ssize_t result = kernel_new_net_recv_into_heap_bytes(
     Int_val(fd_val),
-    Bytes_val(buffer_val) + Int_val(pos_val),
-    (size_t)Int_val(len_val),
-    0);
-  caml_leave_blocking_section();
+    buffer_val,
+    Int_val(pos_val),
+    Int_val(len_val));
 
   if (result == -1) {
     CAMLreturn(kernel_new_result_errno());
@@ -428,14 +530,11 @@ CAMLprim value kernel_new_net_tcp_stream_read(value fd_val, value buffer_val, va
 CAMLprim value kernel_new_net_tcp_stream_write(value fd_val, value buffer_val, value pos_val, value len_val) {
   CAMLparam4(fd_val, buffer_val, pos_val, len_val);
 
-  ssize_t result;
-  caml_enter_blocking_section();
-  result = send(
+  ssize_t result = kernel_new_net_send_from_heap_bytes(
     Int_val(fd_val),
-    Bytes_val(buffer_val) + Int_val(pos_val),
-    (size_t)Int_val(len_val),
-    0);
-  caml_leave_blocking_section();
+    buffer_val,
+    Int_val(pos_val),
+    Int_val(len_val));
 
   if (result == -1) {
     CAMLreturn(kernel_new_result_errno());
@@ -654,14 +753,11 @@ CAMLprim value kernel_new_net_udp_socket_connect(value socket_val, value ip_val,
 CAMLprim value kernel_new_net_udp_socket_recv(value socket_val, value buffer_val, value pos_val, value len_val) {
   CAMLparam4(socket_val, buffer_val, pos_val, len_val);
 
-  ssize_t result;
-  caml_enter_blocking_section();
-  result = recv(
+  ssize_t result = kernel_new_net_recv_into_heap_bytes(
     Int_val(socket_val),
-    Bytes_val(buffer_val) + Int_val(pos_val),
-    (size_t)Int_val(len_val),
-    0);
-  caml_leave_blocking_section();
+    buffer_val,
+    Int_val(pos_val),
+    Int_val(len_val));
 
   if (result == -1) {
     CAMLreturn(kernel_new_result_errno());
@@ -683,15 +779,13 @@ CAMLprim value kernel_new_net_udp_socket_recv_from(
   socklen_t addr_len = sizeof(storage);
   ssize_t bytes_read;
 
-  caml_enter_blocking_section();
-  bytes_read = recvfrom(
+  bytes_read = kernel_new_net_recvfrom_into_heap_bytes(
     Int_val(socket_val),
-    Bytes_val(buffer_val) + Int_val(pos_val),
-    (size_t)Int_val(len_val),
-    0,
+    buffer_val,
+    Int_val(pos_val),
+    Int_val(len_val),
     (struct sockaddr *)&storage,
     &addr_len);
-  caml_leave_blocking_section();
 
   if (bytes_read == -1) {
     CAMLreturn(kernel_new_result_errno());
@@ -715,14 +809,11 @@ CAMLprim value kernel_new_net_udp_socket_recv_from(
 CAMLprim value kernel_new_net_udp_socket_send(value socket_val, value buffer_val, value pos_val, value len_val) {
   CAMLparam4(socket_val, buffer_val, pos_val, len_val);
 
-  ssize_t result;
-  caml_enter_blocking_section();
-  result = send(
+  ssize_t result = kernel_new_net_send_from_heap_bytes(
     Int_val(socket_val),
-    Bytes_val(buffer_val) + Int_val(pos_val),
-    (size_t)Int_val(len_val),
-    0);
-  caml_leave_blocking_section();
+    buffer_val,
+    Int_val(pos_val),
+    Int_val(len_val));
 
   if (result == -1) {
     CAMLreturn(kernel_new_result_errno());
@@ -749,15 +840,13 @@ CAMLprim value kernel_new_net_udp_socket_send_to(
   }
 
   ssize_t result;
-  caml_enter_blocking_section();
-  result = sendto(
+  result = kernel_new_net_sendto_from_heap_bytes(
     Int_val(socket_val),
-    Bytes_val(buffer_val) + pos,
-    (size_t)len,
-    0,
+    buffer_val,
+    pos,
+    len,
     (struct sockaddr *)&storage,
     addr_len);
-  caml_leave_blocking_section();
 
   if (result == -1) {
     CAMLreturn(kernel_new_result_errno());

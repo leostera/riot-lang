@@ -179,6 +179,60 @@ static char *kernel_new_copy_ocaml_string_bytes(value string_val, mlsize_t *len_
   return copy;
 }
 
+static char *kernel_new_copy_ocaml_bytes_slice(value bytes_val, int pos, int len) {
+  char *copy = NULL;
+
+  if (len > 0) {
+    copy = malloc((size_t)len);
+    if (copy == NULL) {
+      caml_raise_out_of_memory();
+    }
+
+    memcpy(copy, Bytes_val(bytes_val) + pos, (size_t)len);
+  }
+
+  return copy;
+}
+
+static ssize_t kernel_new_file_read_into_heap_bytes(int fd, value buffer_val, int pos, int len) {
+  char *copy = NULL;
+  ssize_t result;
+
+  if (len > 0) {
+    copy = malloc((size_t)len);
+    if (copy == NULL) {
+      caml_raise_out_of_memory();
+    }
+  }
+
+  caml_enter_blocking_section();
+  result = read(fd, copy, (size_t)len);
+  caml_leave_blocking_section();
+
+  if (result > 0) {
+    memcpy(Bytes_val(buffer_val) + pos, copy, (size_t)result);
+  }
+
+  int saved_errno = errno;
+  free(copy);
+  errno = saved_errno;
+  return result;
+}
+
+static ssize_t kernel_new_file_write_from_heap_bytes(int fd, value buffer_val, int pos, int len) {
+  char *copy = kernel_new_copy_ocaml_bytes_slice(buffer_val, pos, len);
+  ssize_t result;
+
+  caml_enter_blocking_section();
+  result = write(fd, copy, (size_t)len);
+  caml_leave_blocking_section();
+
+  int saved_errno = errno;
+  free(copy);
+  errno = saved_errno;
+  return result;
+}
+
 CAMLprim value kernel_new_iovec_slice_create(value vlength) {
   CAMLparam1(vlength);
   intnat length = Long_val(vlength);
@@ -373,13 +427,11 @@ CAMLprim value kernel_new_fs_file_unlock(value fd_val) {
 CAMLprim value kernel_new_fs_file_read(value fd_val, value buffer_val, value pos_val, value len_val) {
   CAMLparam4(fd_val, buffer_val, pos_val, len_val);
 
-  ssize_t result;
-  caml_enter_blocking_section();
-  result = read(
+  ssize_t result = kernel_new_file_read_into_heap_bytes(
     Int_val(fd_val),
-    Bytes_val(buffer_val) + Int_val(pos_val),
-    (size_t)Int_val(len_val));
-  caml_leave_blocking_section();
+    buffer_val,
+    Int_val(pos_val),
+    Int_val(len_val));
 
   if (result == -1) {
     CAMLreturn(kernel_new_result_errno());
@@ -391,13 +443,11 @@ CAMLprim value kernel_new_fs_file_read(value fd_val, value buffer_val, value pos
 CAMLprim value kernel_new_fs_file_write(value fd_val, value buffer_val, value pos_val, value len_val) {
   CAMLparam4(fd_val, buffer_val, pos_val, len_val);
 
-  ssize_t result;
-  caml_enter_blocking_section();
-  result = write(
+  ssize_t result = kernel_new_file_write_from_heap_bytes(
     Int_val(fd_val),
-    Bytes_val(buffer_val) + Int_val(pos_val),
-    (size_t)Int_val(len_val));
-  caml_leave_blocking_section();
+    buffer_val,
+    Int_val(pos_val),
+    Int_val(len_val));
 
   if (result == -1) {
     CAMLreturn(kernel_new_result_errno());
@@ -452,13 +502,11 @@ CAMLprim value kernel_new_stdio_println(value fd_val, value message_val) {
 CAMLprim value kernel_new_fs_file_write_raw(value fd_val, value buffer_val, value pos_val, value len_val) {
   CAMLparam4(fd_val, buffer_val, pos_val, len_val);
 
-  ssize_t result;
-  caml_enter_blocking_section();
-  result = write(
+  ssize_t result = kernel_new_file_write_from_heap_bytes(
     Int_val(fd_val),
-    Bytes_val(buffer_val) + Int_val(pos_val),
-    (size_t)Int_val(len_val));
-  caml_leave_blocking_section();
+    buffer_val,
+    Int_val(pos_val),
+    Int_val(len_val));
 
   if (result == -1) {
     CAMLreturn(Val_int(-errno));
@@ -477,29 +525,31 @@ CAMLprim value kernel_new_fs_file_write_all_raw(
   int fd = Int_val(fd_val);
   int pos = Int_val(pos_val);
   int remaining = Int_val(len_val);
+  char *copy = kernel_new_copy_ocaml_bytes_slice(buffer_val, pos, remaining);
+  char *cursor = copy;
 
   while (remaining > 0) {
     ssize_t result;
 
     caml_enter_blocking_section();
-    result = write(
-      fd,
-      Bytes_val(buffer_val) + pos,
-      (size_t)remaining);
+    result = write(fd, cursor, (size_t)remaining);
     caml_leave_blocking_section();
 
     if (result == -1) {
+      free(copy);
       CAMLreturn(Val_int(-errno));
     }
 
     if (result == 0) {
+      free(copy);
       CAMLreturn(Val_int(0));
     }
 
-    pos += (int)result;
+    cursor += (int)result;
     remaining -= (int)result;
   }
 
+  free(copy);
   CAMLreturn(len_val);
 }
 
