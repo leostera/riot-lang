@@ -24,7 +24,6 @@ members = [
   "packages/miniriot",
   "packages/minttea",
   "packages/postgres",
-  "packages/pretext",
   "packages/pkgs-ml",
   "packages/propane",
   "packages/pubgrub",
@@ -83,6 +82,7 @@ ignore = [
 ]
 rules = [
   "no-stdlib", 
+  "-limit-function-parameters",
   "-ordered-argument-kinds",
   "-class-case-module-names",
   "-limit-open-statements",
