@@ -18,6 +18,7 @@ type plan_input = {
   workspace: Workspace.t;
   source_groups: Module_graph.source_group list;
   depset: Dependency.t list;
+  dependency_packages: Package.t list;
   store: Riot_store.Store.t;
 }
 (**

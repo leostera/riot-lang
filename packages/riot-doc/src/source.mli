@@ -13,6 +13,7 @@ type lookup
 val collect_interfaces:
   workspace:Riot_model.Workspace.t ->
   store:Riot_store.Store.t ->
+  dependency_packages:Riot_model.Package.t list ->
   release:bool ->
   Riot_model.Package.t ->
   (interface_source list, string) result

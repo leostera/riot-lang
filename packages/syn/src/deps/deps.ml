@@ -262,12 +262,7 @@ let add_path = fun env deps segments ->
   | [] -> deps
   | head :: _ when is_module_head head ->
       let names =
-        let use_open_fallback =
-          match segments with
-          | [ _ ] -> true
-          | _ -> false
-        in
-        match Env.lookup_free ~use_open_fallback segments env with
+        match Env.lookup_free ~use_open_fallback:true segments env with
         | Some names -> names
         | None -> Env.singleton_name head
       in

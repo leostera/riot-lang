@@ -532,6 +532,24 @@ let get_dependencies_for_node = fun pg (node: package_node G.node) ->
       | Some dep_node -> Some dep_node.value
       | None -> None)
 
+let direct_runtime_dependencies = fun pg package_name ->
+  let key = package_key ~package_name:(Package_name.to_string package_name) Runtime in
+  match get_node_by_key pg key with
+  | None -> []
+  | Some node ->
+      get_dependencies_for_node pg node
+      |> List.filter_map
+        ~fn:(fun dependency ->
+          match get_scope dependency with
+          | Runtime ->
+              let dependency_package = get_package dependency in
+              if Package_name.equal dependency_package.name package_name then
+                None
+              else
+                Some dependency_package
+          | Build
+          | Dev -> None)
+
 let get_dependencies = fun graph (package: Package.t) ->
   let filtered_graph = filter_for_package graph package.name in
   match HashMap.get

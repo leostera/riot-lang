@@ -103,7 +103,8 @@ let interface_source_of_node = fun
       }
   | _ -> None
 
-let collect_interfaces = fun ~workspace ~store ~release (package: Riot_model.Package.t) ->
+let collect_interfaces = fun
+  ~workspace ~store ~dependency_packages ~release (package: Riot_model.Package.t) ->
   let profile = profile_for release in
   let ctx = Build_ctx.make ~session_id:(Session_id.make ()) ~profile () in
   let toolchain_config = Toolchain_config.from_root ~root:workspace.Riot_model.Workspace.root in
@@ -136,6 +137,7 @@ let collect_interfaces = fun ~workspace ~store ~release (package: Riot_model.Pac
         };
       ];
     depset = [];
+    dependency_packages;
     store;
   }
   in

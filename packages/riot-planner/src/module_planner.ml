@@ -16,6 +16,7 @@ type plan_input = {
   workspace: Workspace.t;
   source_groups: Module_graph.source_group list;
   depset: Dependency.t list;
+  dependency_packages: Package.t list;
   store: Riot_store.Store.t;
 }
 
@@ -41,6 +42,14 @@ let dependency_package_by_name = fun depset package_name ->
   |> List.find ~fn:(fun (dep: Dependency.t) -> Package_name.equal dep.package.name package_name)
   |> Option.map ~fn:(fun (dep: Dependency.t) -> dep.package)
 
+let input_dependency_package_by_name = fun (input: plan_input) package_name ->
+  match dependency_package_by_name input.depset package_name with
+  | Some package -> Some package
+  | None ->
+      List.find
+        input.dependency_packages
+        ~fn:(fun (package: Package.t) -> Package_name.equal package.name package_name)
+
 let direct_dependency_roots = fun (input: plan_input) ->
   let seen = HashSet.create () in
   let roots = ref [] in
@@ -57,7 +66,7 @@ let direct_dependency_roots = fun (input: plan_input) ->
         if Package.is_builtin_dependency dep then
           None
         else
-          dependency_package_by_name input.depset dep.name
+          input_dependency_package_by_name input dep.name
       in
       let root_module =
         match package with

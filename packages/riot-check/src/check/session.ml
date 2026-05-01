@@ -26,7 +26,10 @@ type package_typ_source = {
   source: Typ_source.t;
 }
 
-type planned_typ_source = { generated: bool; source: package_typ_source }
+type planned_typ_source = {
+  generated: bool;
+  source: package_typ_source;
+}
 
 type checked_group = {
   checked_files: State.checked_file list;
@@ -480,9 +483,9 @@ let local_module_segments_of_module = fun (pkg: Package.t) (mod_: Riot_model.Mod
     | root :: rest when String.equal root package_namespace -> rest @ [ simple_name ]
     | _ -> namespace @ [ simple_name ]
   in
-  let rec collapse_adjacent_duplicates acc = function
-    | [] ->
-        List.rev acc
+  let rec collapse_adjacent_duplicates acc = fun __tmp1 ->
+    match __tmp1 with
+    | [] -> List.rev acc
     | segment :: rest -> (
         match acc with
         | previous :: _ when String.equal previous segment -> collapse_adjacent_duplicates acc rest
@@ -575,6 +578,7 @@ let package_typ_sources_from_planner = fun
                   planner_source_group planner_pkg planning_root allowed_source_files;
                 ];
                 depset = [];
+                dependency_packages = [];
                 store;
               }
             in
@@ -840,15 +844,14 @@ let missing_requirements_reason = fun missing ->
   let details =
     Typ.Session.MissingRequirements.requirements missing
     |> List.map
-      (
-        function
+      (fun __tmp1 ->
+        match __tmp1 with
         | Typ.Session.MissingRequirements.MissingRootSource { source_id } ->
             "root:" ^ Int.to_string (Typ.Model.SourceId.to_int source_id)
         | Typ.Session.MissingRequirements.MissingModuleSummary { module_name; _ } ->
             "module:" ^ module_name
         | Typ.Session.MissingRequirements.LocalModuleCycle { module_names; _ } ->
-            "cycle:" ^ String.concat " -> " module_names
-      )
+            "cycle:" ^ String.concat " -> " module_names)
     |> String.concat ", "
   in
   if String.equal details "" then
@@ -856,7 +859,8 @@ let missing_requirements_reason = fun missing ->
   else
     "missing type requirements: " ^ details
 
-let incremental_check_error_reason = function
+let incremental_check_error_reason = fun __tmp1 ->
+  match __tmp1 with
   | Typ.Check.MissingRequirements { module_name; requirements } ->
       "while checking "
       ^ Typ_local_modules.InternalName.to_string module_name
@@ -903,7 +907,13 @@ let workspace_dependency_packages = fun ~include_dev (workspace: Workspace.t) (p
     (fun (left: Package.t) (right: Package.t) -> String.compare left.name right.name)
 
 let workspace_module_typings_for_package =
-  let rec load cache typ_store (workspace: Workspace.t) ?on_event ?(visiting = []) (pkg: Package.t) =
+  let rec load
+    cache
+    typ_store
+    (workspace: Workspace.t)
+    ?on_event
+    ?(visiting = [])
+    (pkg: Package.t) =
     match List.assoc_opt pkg.name !cache with
     | Some entry -> entry
     | None when List.mem pkg.name visiting ->

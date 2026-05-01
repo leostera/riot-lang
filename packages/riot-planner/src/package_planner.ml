@@ -785,6 +785,9 @@ let plan_package = fun
                         workspace;
                         source_groups = planning_groups_for_package package;
                         depset;
+                        dependency_packages = List.map
+                          (Dependency.transitive_closure depset)
+                          ~fn:(fun (dep: Dependency.t) -> dep.package);
                         store;
                       }
                     in
@@ -913,6 +916,9 @@ let plan_package = fun
                   workspace;
                   source_groups = planning_groups_for_package package;
                   depset;
+                  dependency_packages = List.map
+                    (Dependency.transitive_closure depset)
+                    ~fn:(fun (dep: Dependency.t) -> dep.package);
                   store;
                 }
               in

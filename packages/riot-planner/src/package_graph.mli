@@ -165,6 +165,9 @@ val get_dependencies: t -> Package.t -> package_node list
 (** Get direct dependency package_node values of a specific scoped node *)
 val get_dependencies_for_node: t -> package_node Graph.SimpleGraph.node -> package_node list
 
+(** Return direct runtime dependency packages for a package name. *)
+val direct_runtime_dependencies: t -> Riot_model.Package_name.t -> Package.t list
+
 (** Lookup a graph node by id *)
 val get_graph_node: t -> Graph.SimpleGraph.Node_id.t -> package_node Graph.SimpleGraph.node option
 
