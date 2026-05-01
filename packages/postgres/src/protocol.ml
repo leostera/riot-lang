@@ -247,7 +247,8 @@ module Sqlstate = struct
 
   (* Convert sqlstate back to string for display *)
 
-  let to_string = function
+  let to_string = fun __tmp1 ->
+    match __tmp1 with
     | SuccessfulCompletion -> "successful_completion"
     | Warning -> "warning"
     | DynamicResultSetsReturned -> "dynamic_result_sets_returned"
@@ -595,7 +596,8 @@ module TypeOid = struct
     | Jsonb
     | Unknown of int
 
-  let of_int = function
+  let of_int = fun __tmp1 ->
+    match __tmp1 with
     | 16 -> Bool
     | 17 -> Bytea
     | 18 -> Char
@@ -618,7 +620,8 @@ module TypeOid = struct
     | 3_802 -> Jsonb
     | n -> Unknown n
 
-  let to_int = function
+  let to_int = fun __tmp1 ->
+    match __tmp1 with
     | Bool -> 16
     | Bytea -> 17
     | Char -> 18
@@ -641,7 +644,8 @@ module TypeOid = struct
     | Jsonb -> 3_802
     | Unknown n -> n
 
-  let to_string = function
+  let to_string = fun __tmp1 ->
+    match __tmp1 with
     | Bool -> "bool"
     | Bytea -> "bytea"
     | Char -> "char"
@@ -701,18 +705,21 @@ module ColumnAttr = struct
 
   (* 1..n - column position in table *)
 
-  let of_int = function
+  let of_int = fun __tmp1 ->
+    match __tmp1 with
     | 0 -> NotFromTable
     | n when n > 0 -> Position n
     | n -> Position n
 
   (* Defensive: treat negative as position *)
 
-  let to_int = function
+  let to_int = fun __tmp1 ->
+    match __tmp1 with
     | NotFromTable -> 0
     | Position n -> n
 
-  let to_string = function
+  let to_string = fun __tmp1 ->
+    match __tmp1 with
     | NotFromTable -> "not_from_table"
     | Position n -> "col_" ^ string_of_int n
 end
@@ -739,7 +746,8 @@ module TypeSize = struct
 
   (* >0: fixed number of bytes *)
 
-  let of_int = function
+  let of_int = fun __tmp1 ->
+    match __tmp1 with
     | -1 -> VariableLength
     | -2 -> NullTerminated
     | n when n > 0 -> Fixed n
@@ -747,12 +755,14 @@ module TypeSize = struct
 
   (* Defensive: treat other negatives as fixed *)
 
-  let to_int = function
+  let to_int = fun __tmp1 ->
+    match __tmp1 with
     | VariableLength -> (-1)
     | NullTerminated -> (-2)
     | Fixed n -> n
 
-  let to_string = function
+  let to_string = fun __tmp1 ->
+    match __tmp1 with
     | VariableLength -> "variable"
     | NullTerminated -> "null_terminated"
     | Fixed n -> string_of_int n ^ "_bytes"
@@ -778,15 +788,18 @@ module TypeModifier = struct
 
   (* Type-specific encoded value *)
 
-  let of_int = function
+  let of_int = fun __tmp1 ->
+    match __tmp1 with
     | -1 -> NoModifier
     | n -> Modifier n
 
-  let to_int = function
+  let to_int = fun __tmp1 ->
+    match __tmp1 with
     | NoModifier -> (-1)
     | Modifier n -> n
 
-  let to_string = function
+  let to_string = fun __tmp1 ->
+    match __tmp1 with
     | NoModifier -> "no_modifier"
     | Modifier n -> "mod_" ^ string_of_int n
 end
@@ -798,18 +811,21 @@ module Format = struct
     | Text
     | Binary
 
-  let of_int = function
+  let of_int = fun __tmp1 ->
+    match __tmp1 with
     | 0 -> Text
     | 1 -> Binary
     | _ -> Text
 
   (* Default to text for unknown values *)
 
-  let to_int = function
+  let to_int = fun __tmp1 ->
+    match __tmp1 with
     | Text -> 0
     | Binary -> 1
 
-  let to_string = function
+  let to_string = fun __tmp1 ->
+    match __tmp1 with
     | Text -> "text"
     | Binary -> "binary"
 end
