@@ -12,6 +12,6 @@ let choose ~left ~right flag =
   else
     right
 
-let pick_left = choose ~left:0
+let pick_left = choose ~left:0 ~right:1
 
 let answer = pick_left true
