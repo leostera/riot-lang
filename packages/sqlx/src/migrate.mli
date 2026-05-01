@@ -7,6 +7,18 @@ open Std
    resolve ordered SQL files, validate applied migration checksums, reject
    dirty databases, and apply only pending migrations. Backend-specific
    behavior, such as PostgreSQL advisory locks, is explicit in {!locking}.
+
+   Directory sources resolve SQL files named with a numeric version prefix:
+   - [1_create_users.sql] for a simple forward-only migration;
+   - [2_add_orders.up.sql] for the forward side of a reversible migration;
+   - [2_add_orders.down.sql] for the rollback side of a reversible migration.
+
+   The version is parsed from the prefix before the first underscore. The
+   description is derived from the remaining filename with underscores rendered
+   as spaces. Files are sorted by numeric version before execution.
+
+   Put [-- no-transaction] at the start of a migration file only when the
+   database requires the migration body to run outside a transaction.
 *)
 module Version: sig
   type t

@@ -3,8 +3,9 @@
 High-level SQL API for Riot.
 
 `sqlx` gives you a database-facing API with connection pooling, transactions,
-queries, and typed value/row abstractions. It does not tie you to one backend:
-you provide a concrete driver such as `sqlite` or `postgres`.
+queries, typed value/row abstractions, and migration management. It does not tie
+you to one backend: you provide a concrete driver such as `sqlite` or
+`postgres`.
 
 ## Install
 
@@ -17,21 +18,86 @@ riot add sqlx
 - connection pool management;
 - query and exec helpers over a shared value model;
 - transaction support;
+- SQL migration resolution and execution;
 - a backend-neutral surface that works with multiple drivers.
 
-## Minimal shape
+## Minimal query shape
 
 ```ocaml
 open Sqlx
 
-let pool =
-  Sqlx.connect
-    ~driver:(module Sqlite.Driver)
-    (Sqlite.Config.in_memory ())
+let start = fun database_url ->
+  match Postgres.Config.from_string database_url with
+  | Error message -> Error message
+  | Ok config -> (
+      match Sqlx.connect ~driver:(module Postgres.Driver) config with
+      | Error error -> Error (Sqlx.show_error error)
+      | Ok pool -> Ok pool
+    )
 ```
 
 From there you can call `Sqlx.query`, `Sqlx.exec`, and
 `Sqlx.with_transaction`.
+
+## Migrations
+
+Application schema should live in SQL migration files, not inline strings inside
+runtime modules. By default, `Sqlx.migrate pool ()` resolves files from
+`./migrations`, relative to the process working directory:
+
+```ocaml
+let start = fun database_url ->
+  match Postgres.Config.from_string database_url with
+  | Error message -> Error message
+  | Ok config -> (
+      match Sqlx.connect ~driver:(module Postgres.Driver) config with
+      | Error error -> Error (Sqlx.show_error error)
+      | Ok pool -> (
+          let migration_config = Sqlx.Migrate.Config.for_postgres () in
+          match Sqlx.migrate ~config:migration_config pool () with
+          | Ok () -> Ok pool
+          | Error error ->
+              Sqlx.shutdown pool;
+              Error (Sqlx.Migrate.error_to_string error)
+        )
+    )
+```
+
+Migration filenames follow the same shape as `sqlx-rs`:
+
+- `1_create_users.sql` for a simple forward-only migration;
+- `2_add_orders.up.sql` for the forward side of a reversible migration;
+- `2_add_orders.down.sql` for the rollback side of a reversible migration.
+
+Descriptions are derived from the filename after the version prefix, with
+underscores rendered as spaces. Migrations are sorted by numeric version before
+execution.
+
+Use `-- no-transaction` as the first line when a migration must run outside a
+transaction. Prefer transactional migrations whenever the database supports
+them.
+
+Use `Sqlx.Migrate.run` instead of `Sqlx.migrate` when you need the full report
+of applied migrations and already-applied versions:
+
+```ocaml
+let source = Sqlx.Migrate.Source.from_directory (Path.v "migrations")
+let config = Sqlx.Migrate.Config.for_postgres ()
+let result = Sqlx.Migrate.run ~config pool source
+```
+
+If your application starts from a different working directory, pass an explicit
+source:
+
+```ocaml
+let source = Sqlx.Migrate.Source.from_directory (Path.v "/opt/app/migrations")
+let result = Sqlx.migrate ~source pool ()
+```
+
+The migrator stores applied versions, checksums, and execution durations in
+`_sqlx_migrations` by default. On startup it rejects dirty databases, missing
+applied migrations, and modified applied migrations unless the migration config
+explicitly opts out of the missing-file check.
 
 ## Which driver should you use?
 
@@ -41,4 +107,6 @@ From there you can call `Sqlx.query`, `Sqlx.exec`, and
 ## Where to start
 
 - `src/sqlx.mli` is the main public API.
-- `tests/test_sqlx.ml` and `tests/test_pool.ml` show the expected behavior.
+- `src/migrate.mli` documents migration resolution and execution.
+- `tests/sqlx_tests.ml`, `tests/pool_tests.ml`, and `tests/migrate_tests.ml`
+  show the expected behavior.
