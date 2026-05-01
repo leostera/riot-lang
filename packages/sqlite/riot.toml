@@ -1,6 +1,6 @@
 [package]
 name = "sqlite"
-version = "0.0.28"
+version = "0.0.29"
 description = "SQLite adapter for sqlx"
 license = "Apache-2.0"
 public = true

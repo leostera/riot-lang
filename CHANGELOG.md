@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.0.29 - 2026-05-01
+
+### riot
+- `riot build --all` now builds test, bench, and example artifacts only for workspace packages. Downstream dependencies are still built as normal libraries, but their development artifacts are no longer pulled into unrelated workspace builds.
+
+### kernel
+- Blocking file and socket IO now copies OCaml heap-backed buffers before entering blocking sections, and copies read data back after returning. This prevents the GC from moving heap buffers while native read/write calls are in progress.
+
+### postgres
+- PostgreSQL connection writes are now serialized through the driver, preventing concurrent operations from interleaving wire-protocol messages on the same connection.
+
+### pubgrub
+- Restored the published `Pubgrub.mli` interface as valid source text, so dependency analysis and downstream builds can parse the package interface normally.
+
+### sqlx
+- Added `Sqlx.Migrate`, a migration API for discovering, applying, and tracking database migrations from SQLx applications.
+- Expanded SQLx documentation around connections, pools, transactions, and migrations so users have concrete guidance for wiring migration workflows into applications.
+
+### std
+- `Std.Fs.File.write_string`, `write_all`, and file-backed writers now route string data through `IO.Buffer` and vectored IO. High-level file writes use the same off-heap safe path as the rest of the IO stack while preserving writable retry behavior.
+
 ## 0.0.28 - 2026-05-01
 
 ### riot
