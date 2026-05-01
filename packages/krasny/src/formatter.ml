@@ -4359,6 +4359,10 @@ and render_pattern_atom = fun state (pattern: Ast.Pattern.t) ->
       emit_text state ")"
   | Tuple -> render_pattern state pattern
   | ConstructorIdent { argument = None } -> render_pattern state pattern
+  | PolyVariant when Int.(Vector.length (collect_child_patterns (Ast.Pattern.as_node pattern)) > 0) ->
+      emit_text state "(";
+      render_pattern state pattern;
+      emit_text state ")"
   | Or _ when not (parenthesized_pattern_should_break state pattern) ->
       emit_text state "(";
       render_or_pattern_inline state pattern;

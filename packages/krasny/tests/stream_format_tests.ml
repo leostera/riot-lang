@@ -414,6 +414,12 @@ let test_stream_formatter_desugars_single_case_function_to_fun_pattern = fun _ct
     ~expected:"let message = fun (Error msg) -> msg\n"
     "let message = function | Error msg -> msg\n"
 
+let test_stream_formatter_parenthesizes_single_case_poly_variant_payload_function = fun _ctx ->
+  assert_format_ml
+    ~expected:
+      "let rgb_tuple_of = fun (`rgb (r, g, b)) -> (r, g, b)\n\nlet ansi_value = fun (`ansi actual) -> actual\n"
+    "let rgb_tuple_of = function | `rgb (r, g, b) -> (r, g, b)\nlet ansi_value = function | `ansi actual -> actual\n"
+
 let test_stream_formatter_formats_function_expressions_with_return_annotations = fun _ctx ->
   assert_format_ml
     ~expected:"let boxed = fun (value: int): int -> value\n"
@@ -1199,6 +1205,9 @@ let tests =
     case
       "stream formatter desugars single-case function to fun pattern"
       test_stream_formatter_desugars_single_case_function_to_fun_pattern;
+    case
+      "stream formatter parenthesizes single-case poly variant payload function"
+      test_stream_formatter_parenthesizes_single_case_poly_variant_payload_function;
     case
       "stream formatter formats function expressions with return annotations"
       test_stream_formatter_formats_function_expressions_with_return_annotations;

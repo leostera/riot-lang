@@ -711,6 +711,22 @@ let test_write_desugars_single_case_function_to_fun_pattern = fun ctx ->
     ~expected:{ocaml|let message = fun (Error msg) -> msg
 |ocaml}
 
+let test_write_parenthesizes_single_case_poly_variant_payload_function = fun ctx ->
+  let source =
+    {ocaml|let rgb_tuple_of=function|`rgb(r,g,b)->(r,g,b)
+let ansi_value=function|`ansi actual->actual
+|ocaml}
+  in
+  let parsed = parse_ml source in
+  let actual = capture_write parsed in
+  Test.Snapshot.assert_inline_text
+    ~ctx
+    ~actual
+    ~expected:{ocaml|let rgb_tuple_of = fun (`rgb (r, g, b)) -> (r, g, b)
+
+let ansi_value = fun (`ansi actual) -> actual
+|ocaml}
+
 let test_write_desugars_function_application_arguments = fun ctx ->
   let source = {ocaml|let values=List.map(function|Some value->value|None->0) options
 |ocaml}
@@ -4988,6 +5004,9 @@ let tests =
     case
       "write desugars single-case function to fun pattern"
       test_write_desugars_single_case_function_to_fun_pattern;
+    case
+      "write parenthesizes single-case poly variant payload function"
+      test_write_parenthesizes_single_case_poly_variant_payload_function;
     case
       "write desugars function application arguments"
       test_write_desugars_function_application_arguments;
