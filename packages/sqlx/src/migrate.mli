@@ -1,0 +1,148 @@
+open Std
+
+(**
+   SQL migration management.
+
+   This module follows the same operational model as sqlx-rs migrations:
+   resolve ordered SQL files, validate applied migration checksums, reject
+   dirty databases, and apply only pending migrations. Backend-specific
+   behavior, such as PostgreSQL advisory locks, is explicit in {!locking}.
+*)
+module Version: sig
+  type t
+
+  val from_int: int -> (t, string) result
+
+  val from_int64: int64 -> (t, string) result
+
+  val from_string: string -> (t, string) result
+
+  val from_int64_unchecked: int64 -> t
+
+  val to_int64: t -> int64
+
+  val to_string: t -> string
+
+  val equal: t -> t -> bool
+
+  val compare: t -> t -> Order.t
+end
+
+module TableName: sig
+  type t
+
+  val default: t
+
+  val from_string: string -> (t, string) result
+
+  val from_string_unchecked: string -> t
+
+  val to_string: t -> string
+end
+
+type migration_type =
+  | Simple
+  | ReversibleUp
+  | ReversibleDown
+
+val migration_type_to_string: migration_type -> string
+
+module Migration: sig
+  type t = private {
+    version: Version.t;
+    description: string;
+    migration_type: migration_type;
+    sql: string;
+    checksum: string;
+    no_tx: bool;
+  }
+
+  val make:
+    ?no_tx:bool ->
+    ?checksum:string ->
+    version:Version.t ->
+    description:string ->
+    migration_type:migration_type ->
+    sql:string ->
+    unit ->
+    t
+end
+
+module AppliedMigration: sig
+  type t = {
+    version: Version.t;
+    checksum: string;
+  }
+end
+
+type locking =
+  | NoLock
+  | PostgresAdvisory of {
+      key: int64;
+    }
+
+module Config: sig
+  type t = {
+    table_name: TableName.t;
+    ignore_missing: bool;
+    locking: locking;
+    create_schemas: string Collections.Vector.t;
+  }
+
+  val default: t
+
+  val for_postgres: ?lock_key:int64 -> unit -> t
+end
+
+type applied = {
+  migration: Migration.t;
+  elapsed: Time.Duration.t;
+}
+type run_report = {
+  applied: applied Collections.Vector.t;
+  already_applied: AppliedMigration.t Collections.Vector.t;
+}
+type error =
+  | SourceError of string
+  | InvalidVersion of string
+  | InvalidTableName of string
+  | InvalidSchemaName of string
+  | PoolError of Pool.error
+  | ConnectionError of Connection.error
+  | MigrationExecutionError of {
+      version: Version.t;
+      error: Connection.error;
+    }
+  | Dirty of Version.t
+  | VersionMissing of Version.t
+  | VersionMismatch of Version.t
+  | VersionNotPresent of Version.t
+
+module Source: sig
+  type resolve_config = {
+    ignored_checksum_chars: char Collections.Vector.t;
+  }
+
+  val default_resolve_config: resolve_config
+
+  type t
+
+  val from_directory: Path.t -> t
+
+  val from_migrations: Migration.t Collections.Vector.t -> t
+
+  val resolve: ?config:resolve_config -> t -> (Migration.t Collections.Vector.t, error) result
+end
+
+val error_to_string: error -> string
+
+val list_applied:
+  ?config:Config.t ->
+  Pool.t ->
+  (AppliedMigration.t Collections.Vector.t, error) result
+
+val run: ?config:Config.t -> Pool.t -> Source.t -> (run_report, error) result
+
+val run_to: ?config:Config.t -> Pool.t -> Source.t -> target:Version.t -> (run_report, error) result
+
+val undo: ?config:Config.t -> Pool.t -> Source.t -> target:Version.t -> (run_report, error) result

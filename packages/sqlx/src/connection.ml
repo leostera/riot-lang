@@ -95,6 +95,29 @@ let close = fun (Connection t) ->
   let module D = (val t.driver) in
   D.close t.driver_conn
 
+let wrap_driver_result = fun
+  (type err) (module D : Sqlx_driver.Driver.Intf with type error = err) result ->
+  match result with
+  | Ok value -> Ok value
+  | Error error ->
+      Error (DriverError { error; to_string = D.error_to_string; to_json = D.error_to_json })
+
+let begin_transaction = fun (Connection t) ->
+  let module D = (val t.driver) in
+  wrap_driver_result (module D) (D.begin_transaction t.driver_conn)
+
+let commit = fun (Connection t) ->
+  let module D = (val t.driver) in
+  wrap_driver_result (module D) (D.commit t.driver_conn)
+
+let rollback = fun (Connection t) ->
+  let module D = (val t.driver) in
+  wrap_driver_result (module D) (D.rollback t.driver_conn)
+
+let set_isolation_level = fun (Connection t) level ->
+  let module D = (val t.driver) in
+  wrap_driver_result (module D) (D.set_isolation_level t.driver_conn level)
+
 let id = fun (Connection t) -> t.id
 
 let created_at = fun (Connection t) -> t.created_at

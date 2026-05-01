@@ -1,17 +1,16 @@
 [package]
 name = "sqlx"
-version = "0.0.28"
+version = "0.0.27"
 description = "High-level SQL API"
 license = "Apache-2.0"
-public = true
 
 [lib]
 path = "src/sqlx.ml"
 
 [dependencies]
-std = { path = "../std", version = "*" }
-kernel = { path = "../kernel" , version = "*"}
-sqlx-driver = { path = "../sqlx-driver", version = "*" }
+std = "*"
+kernel = "*"
+sqlx-driver = "*"
 
 # TODO: Use these for sqltool example when dev-dependencies are implemented
 # [dev-dependencies]

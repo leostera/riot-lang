@@ -19,6 +19,7 @@ type config =
       max_lifetime: Time.Duration.t option;
     } -> config
 type t
+
 val create: config -> (t, Connection.error) result
 
 val acquire: t -> (Connection.t, error) result

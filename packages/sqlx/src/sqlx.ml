@@ -74,6 +74,7 @@ module Value = Sqlx_driver.Value
 module Transaction = Transaction
 module Driver = Sqlx_driver.Driver
 module Pool = Pool
+module Migrate = Migrate
 
 let connect = fun ?(config = Config.default) ~driver driver_config ->
   let pool_config = Pool.Config {
@@ -99,6 +100,16 @@ let exec = fun pool sql params ->
   match Pool.with_connection pool (fun conn -> Connection.execute conn sql params) with
   | Ok rows -> Ok rows
   | Error pool_err -> Error (PoolError pool_err)
+
+let migrate = fun ?config ?source pool () ->
+  let source =
+    match source with
+    | Some source -> source
+    | None -> Migrate.Source.from_directory (Path.v "migrations")
+  in
+  match Migrate.run ?config pool source with
+  | Ok _report -> Ok ()
+  | Error error -> Error error
 
 let show_pool_error = fun __tmp1 ->
   match __tmp1 with

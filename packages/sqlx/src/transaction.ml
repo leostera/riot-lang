@@ -6,13 +6,14 @@ type t = {
 
 type isolation_level = [`Read_uncommitted | `Read_committed | `Repeatable_read | `Serializable]
 
-(* TODO(@leostera): Implement actual transaction support by adding transaction messages to Connection *)
+let begin_transaction = fun conn ->
+  match Connection.begin_transaction conn with
+  | Error _ as error -> error
+  | Ok () -> Ok { connection = conn }
 
-let begin_transaction = fun conn -> Ok { connection = conn }
+let commit = fun t -> Connection.commit t.connection
 
-let commit = fun _t -> Ok ()
-
-let rollback = fun _t -> Ok ()
+let rollback = fun t -> Connection.rollback t.connection
 
 let with_transaction = fun conn f ->
   match begin_transaction conn with
@@ -31,4 +32,4 @@ let with_transaction = fun conn f ->
           Error e
     )
 
-let set_isolation_level = fun _conn _level -> Ok ()
+let set_isolation_level = fun conn level -> Connection.set_isolation_level conn level
