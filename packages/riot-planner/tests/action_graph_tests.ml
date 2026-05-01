@@ -1209,6 +1209,105 @@ let test_nested_generated_library_interface_depends_on_public_child_modules = fu
   | Ok result -> result
   | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
 
+let test_nested_concrete_library_implementation_keeps_alias_child_dependency = fun _ctx ->
+  match Fs.with_tempdir
+    ~prefix:"planner_nested_concrete_alias_child_dep"
+    (fun tmpdir ->
+      match plan_action_graph_for_package
+        ~tmpdir
+        ~package_name:"kernelish"
+        ~library:{ path = Path.v "src/kernelish.ml" }
+        ~files:[
+          ("src/kernelish.ml", {ocaml|module Prelude = Prelude
+module Regex = Regex
+|ocaml});
+          ("src/prelude.mli", {ocaml|type 'a result =
+  | Ok of 'a
+  | Error of string
+|ocaml});
+          ("src/prelude.ml", {ocaml|type 'a result =
+  | Ok of 'a
+  | Error of string
+|ocaml});
+          ("src/regex/regex.mli", {ocaml|type t
+val value: int
+|ocaml});
+          (
+            "src/regex/regex.ml",
+            {ocaml|open Prelude
+
+type t = Regex_stubs.compiled
+let value = Regex_stubs.value
+|ocaml}
+          );
+          ("src/regex/regex_stubs.ml", {ocaml|type compiled = int
+let value = 1
+|ocaml});
+        ]
+        () with
+      | Error _ as err -> err
+      | Ok (_package, action_graph) -> (
+          match find_compile_action_node_by_source action_graph (Path.v "src/regex/regex.ml") with
+          | None -> Error "expected compile action for src/regex/regex.ml"
+          | Some regex_node ->
+              let dep_outputs = dependency_output_names_flat action_graph regex_node in
+              let has output = List.any dep_outputs ~fn:(String.equal output) in
+              if not (has "Kernelish__Regex__Regex_stubs.cmi") then
+                Error ("expected regex.ml to depend on Regex_stubs.cmi through the implicit alias open; deps: ["
+                ^ String.concat ", " dep_outputs
+                ^ "]")
+              else if not (has "Kernelish__Regex__Regex_stubs.cmt") then
+                Error ("expected action graph to compile Regex_stubs before regex.ml; deps: ["
+                ^ String.concat ", " dep_outputs
+                ^ "]")
+              else
+                Ok ()
+        )) with
+  | Ok result -> result
+  | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
+
+let test_nested_concrete_library_implementation_keeps_generated_child_root_dependency = fun _ctx ->
+  match Fs.with_tempdir
+    ~prefix:"planner_nested_concrete_generated_child_root_dep"
+    (fun tmpdir ->
+      match plan_action_graph_for_package
+        ~tmpdir
+        ~package_name:"stdish"
+        ~library:{ path = Path.v "src/stdish.ml" }
+        ~files:[
+          ("src/stdish.ml", {ocaml|module Crypto = Crypto
+|ocaml});
+          ("src/crypto/crypto.mli", {ocaml|module Sha1: sig
+  val value: int
+end
+|ocaml});
+          ("src/crypto/crypto.ml", {ocaml|module Sha1 = Algo.Sha1
+|ocaml});
+          ("src/crypto/algo/sha1.ml", {ocaml|let value = 1
+|ocaml});
+        ]
+        () with
+      | Error _ as err -> err
+      | Ok (_package, action_graph) -> (
+          match find_compile_action_node_by_source action_graph (Path.v "src/crypto/crypto.ml") with
+          | None -> Error "expected compile action for src/crypto/crypto.ml"
+          | Some crypto_node ->
+              let dep_outputs = dependency_output_names_flat action_graph crypto_node in
+              let has output = List.any dep_outputs ~fn:(String.equal output) in
+              if not (has "Stdish__Crypto__Algo.cmi") then
+                Error ("expected crypto.ml to depend on generated Algo.cmi; deps: ["
+                ^ String.concat ", " dep_outputs
+                ^ "]")
+              else if not (has "Stdish__Crypto__Algo.cmt") then
+                Error ("expected crypto.ml to depend on generated Algo.cmt; deps: ["
+                ^ String.concat ", " dep_outputs
+                ^ "]")
+              else
+                Ok ()
+        )) with
+  | Ok result -> result
+  | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
+
 let test_real_kernel_unix_addr_interface_keeps_sibling_modules = fun _ctx ->
   let package_root = Path.v "packages/kernel" in
   let package =
@@ -2117,6 +2216,12 @@ let tests =
     case
       "nested generated library interfaces depend on public child modules"
       test_nested_generated_library_interface_depends_on_public_child_modules;
+    case
+      "nested concrete library implementations keep alias child dependencies"
+      test_nested_concrete_library_implementation_keeps_alias_child_dependency;
+    case
+      "nested concrete library implementations keep generated child root dependencies"
+      test_nested_concrete_library_implementation_keeps_generated_child_root_dependency;
     case
       ~size:Large
       "real kernel unix addr interface keeps sibling modules"

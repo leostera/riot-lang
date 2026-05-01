@@ -1205,11 +1205,6 @@ let wire_dependencies = fun t ->
     | Module_node.MLI mod_ -> Some mod_
     | _ -> None
   in
-  let module_node_path (node: Module_node.t G.node) =
-    match node.value.file with
-    | Module_node.Concrete path -> Some path
-    | Module_node.Generated _ -> None
-  in
   let preferred_dependency_nodes dep_node_ids =
     let rec collect acc has_ml = fun __tmp1 ->
       match __tmp1 with
@@ -1289,25 +1284,21 @@ let wire_dependencies = fun t ->
         || String.equal path_str prefix
         || String.starts_with ~prefix:(prefix ^ "/") path_str)
   in
-  let add_loose_source_module_paths env =
+  let add_local_source_module_paths env =
     List.fold_left
       sorted_nodes
       ~init:env
       ~fn:(fun env (_node_id, (node: Module_node.t G.node)) ->
-        match (module_node_module node, module_node_path node) with
-        | (Some mod_, Some path) -> (
-            match group_for_path path with
-            | Some { root_mode = Loose_sources; _ } ->
-                let simple_name =
-                  Module.module_name mod_
-                  |> Module_name.to_string
-                in
-                Syn.Deps.Env.add_path env ~path:[ simple_name ] ~free_names:[ simple_name ]
-            | _ -> env
-          )
-        | _ -> env)
+        match module_node_module node with
+        | Some mod_ ->
+            let simple_name =
+              Module.module_name mod_
+              |> Module_name.to_string
+            in
+            Syn.Deps.Env.add_path env ~path:[ simple_name ] ~free_names:[ simple_name ]
+        | None -> env)
   in
-  let () = Cell.set t.deps_env (add_loose_source_module_paths (Cell.get t.deps_env)) in
+  let () = Cell.set t.deps_env (add_local_source_module_paths (Cell.get t.deps_env)) in
   let stringify_dependency_error = fun path ->
     fun (Syn.Deps.Parse_diagnostics diagnostics) ->
       let messages = List.map diagnostics ~fn:Syn.Diagnostic.to_string in
