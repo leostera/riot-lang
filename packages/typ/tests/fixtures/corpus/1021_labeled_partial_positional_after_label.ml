@@ -1,9 +1,9 @@
 (* oracle corpus fixture
-   category: 07_labeled_optional
-   title: labeled_partial_int_bool
-   complexity: 3
+   category: 14_schema_expansion
+   title: labeled_partial_positional_after_label
+   complexity: 4
    min_ocaml: 4.08
-   tags: labeled_args, partial_application
+   tags: schema, labeled_args, partial_application
 *)
 
 let choose ~left ~right flag =

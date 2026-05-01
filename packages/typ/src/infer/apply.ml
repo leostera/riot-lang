@@ -59,38 +59,44 @@ let infer_argument infer_expression state (arg: argument) =
    Apply one positional argument.
 
    Optional parameters can be omitted once the caller supplies a later
-   positional argument. For example, applying `()` to
-   `?value:bool -> unit -> bool` consumes the `unit` arrow and returns `bool`;
-   the optional arrow is not rebuilt because it has been omitted at this call
-   site.
+   positional argument. Required labeled parameters are different: they may be
+   supplied after the positional argument, so they are skipped while searching
+   and then rebuilt around the result.
+
+   For example, applying `true` to `right:int -> bool -> int` consumes the
+   `bool` arrow and keeps `right:int -> int`.
 *)
-let rec apply_positional_argument state callee arg arg_type =
-  match Unifier.resolve callee with
-  | Type.Arrow arrow when Type.Label.equal arrow.label Type.Label.NoLabel ->
-      Constraint.unify
-        state
-        ~expected:arrow.parameter
-        ~actual:arg_type
-        ~on_error:(Constraint.argument_constraint_diagnostic arg);
-      arrow.result
-  | Type.Arrow arrow when is_optional_label arrow.label ->
-      apply_positional_argument state arrow.result arg arg_type
-  | Type.Var _ ->
-      let result = State.fresh_var state in
-      Constraint.unify
-        state
-        ~expected:(Ast.Type.arrow arg_type result)
-        ~actual:callee
-        ~on_error:(Constraint.argument_constraint_diagnostic arg);
-      result
-  | _ ->
-      let result = State.fresh_var state in
-      Constraint.unify
-        state
-        ~expected:(Ast.Type.arrow arg_type result)
-        ~actual:callee
-        ~on_error:(Constraint.argument_constraint_diagnostic arg);
-      result
+let apply_positional_argument state callee arg arg_type =
+  let rec search skipped type_ =
+    match Unifier.resolve type_ with
+    | Type.Arrow arrow when Type.Label.equal arrow.label Type.Label.NoLabel ->
+        Constraint.unify
+          state
+          ~expected:arrow.parameter
+          ~actual:arg_type
+          ~on_error:(Constraint.argument_constraint_diagnostic arg);
+        rebuild_skipped_arrows skipped arrow.result
+    | Type.Arrow arrow when is_optional_label arrow.label ->
+        search skipped arrow.result
+    | Type.Arrow arrow -> search (arrow :: skipped) arrow.result
+    | Type.Var _ ->
+        let result = State.fresh_var state in
+        Constraint.unify
+          state
+          ~expected:type_
+          ~actual:(Ast.Type.arrow arg_type result)
+          ~on_error:(Constraint.argument_constraint_diagnostic arg);
+        rebuild_skipped_arrows skipped result
+    | _ ->
+        let result = State.fresh_var state in
+        Constraint.unify
+          state
+          ~expected:type_
+          ~actual:(Ast.Type.arrow arg_type result)
+          ~on_error:(Constraint.argument_constraint_diagnostic arg);
+        rebuild_skipped_arrows skipped result
+  in
+  search [] callee
 
 (**
    Apply one labeled argument.
@@ -116,16 +122,16 @@ let apply_labeled_argument state callee arg label arg_type =
         let result = State.fresh_var state in
         Constraint.unify
           state
-          ~expected:(Ast.Type.arrow ~label arg_type result)
-          ~actual:type_
+          ~expected:type_
+          ~actual:(Ast.Type.arrow ~label arg_type result)
           ~on_error:(Constraint.argument_constraint_diagnostic arg);
         rebuild_skipped_arrows skipped result
     | _ ->
         let result = State.fresh_var state in
         Constraint.unify
           state
-          ~expected:(Ast.Type.arrow ~label arg_type result)
-          ~actual:type_
+          ~expected:type_
+          ~actual:(Ast.Type.arrow ~label arg_type result)
           ~on_error:(Constraint.argument_constraint_diagnostic arg);
         rebuild_skipped_arrows skipped result
   in
