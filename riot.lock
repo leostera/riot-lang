@@ -1,6 +1,6 @@
 format_version = 1
 
-dependency_hash = "a8d287405da6b072"
+dependency_hash = "7c15c98ccdcffe6f"
 
 [[packages]]
 name = "blink"
@@ -129,14 +129,6 @@ provenance = { kind = "workspace" }
 dependencies = [{ name = "colors", package = { name = "colors" } }, { name = "gooey", package = { name = "gooey" } }, { name = "std", package = { name = "std" } }, { name = "tty", package = { name = "tty" } }]
 build_dependencies = [{ name = "std", package = { name = "std" } }]
 dev_dependencies = []
-
-[[packages]]
-name = "parquet"
-root = "packages/parquet"
-provenance = { kind = "workspace" }
-dependencies = [{ name = "std", package = { name = "std" } }]
-build_dependencies = []
-dev_dependencies = [{ name = "propane", package = { name = "propane" } }]
 
 [[packages]]
 name = "postgres"
