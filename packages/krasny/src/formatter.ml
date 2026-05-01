@@ -3679,7 +3679,7 @@ let parameter_colon_has_leading_space = fun (parameter: Ast.Parameter.t) ->
   | Some colon -> Ast.Token.has_leading_whitespace colon
   | None -> false
 
-let parenthesized_pattern_should_break = fun state (pattern: Ast.Pattern.t) ->
+let parenthesized_pattern_should_break = fun ?(suffix_width = 0) state (pattern: Ast.Pattern.t) ->
   let previous = ref None in
   let width = ref 0 in
   iter_fold
@@ -3691,9 +3691,15 @@ let parenthesized_pattern_should_break = fun state (pattern: Ast.Pattern.t) ->
         | Some previous when token_wants_space_before previous token -> 1
         | _ -> 0
       in
-      width := Int.add !width (Int.add extra_space (token_flat_width token));
+      let brace_padding =
+        match Ast.Token.kind token with
+        | Kind.LBRACE
+        | Kind.RBRACE -> 1
+        | _ -> 0
+      in
+      width := Int.add !width (Int.add extra_space (Int.add brace_padding (token_flat_width token)));
       previous := Some token);
-  Int.(state.column + !width + 2 > state.width)
+  Int.(state.column + !width + 2 + suffix_width > state.width)
 
 let rec render_pattern = fun ?(role = Pattern_default) state (pattern: Ast.Pattern.t) ->
   let node = Ast.Pattern.as_node pattern in
@@ -3985,15 +3991,16 @@ and render_or_pattern_inline = fun state pattern ->
       emit_space state)
     ~fn:(render_pattern state)
 
-and render_tuple_pattern = fun state pattern ->
-  if parenthesized_pattern_should_break state pattern then (
+and render_tuple_pattern = fun ?(suffix_width = 0) state pattern ->
+  if parenthesized_pattern_should_break ~suffix_width state pattern then (
     let items = collect_tuple_pattern_items pattern in
     let length = Vector.length items in
+    let opening_indent = state.column in
     emit_text state "(";
     emit_line state;
-    with_indent
+    with_absolute_indent
       state
-      2
+      (Int.add opening_indent 2)
       (fun () ->
         let rec loop index =
           if Int.(index < length) then (
@@ -4011,12 +4018,19 @@ and render_tuple_pattern = fun state pattern ->
         in
         loop 0);
     emit_line state;
-    emit_text state ")"
+    with_absolute_indent state opening_indent (fun () -> emit_text state ")")
   ) else (
     emit_text state "(";
     render_tuple_pattern_contents state pattern;
     emit_text state ")"
   )
+
+and render_match_case_pattern = fun state pattern ->
+  match PatternView.view pattern with
+  | Tuple -> render_tuple_pattern ~suffix_width:3 state pattern
+  | Parenthesized { inner = Some inner } when pattern_is_tuple inner ->
+      render_tuple_pattern ~suffix_width:3 state inner
+  | _ -> render_pattern state pattern
 
 and render_tuple_pattern_contents = fun state pattern ->
   let items = collect_tuple_pattern_items pattern in
@@ -6980,7 +6994,7 @@ and render_match_case_with_body_break = fun state case force_body_break ->
         ~fallback:"|";
       emit_space state;
       let pattern_start_line = state.line_count in
-      render_pattern state pattern;
+      render_match_case_pattern state pattern;
       let pattern_rendered_multiline = Int.(state.line_count > pattern_start_line) in
       let pattern_forces_body_break =
         pattern_rendered_multiline

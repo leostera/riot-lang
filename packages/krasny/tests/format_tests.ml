@@ -2846,6 +2846,25 @@ let test_write_parenthesizes_tuple_scrutinees_and_tuple_patterns = fun ctx ->
   | _ -> fallback
 |ocaml}
 
+let test_write_breaks_tuple_patterns_before_match_arrows = fun ctx ->
+  let source =
+    {ocaml|let test=fun result_a result_b->match(result_a,result_b)with|(Some{status=Action_scheduler.Executed;_},Some{status=Action_scheduler.Executed;_})->Ok()|_->Error()
+|ocaml}
+  in
+  let parsed = parse_ml source in
+  let actual = capture_write parsed in
+  Test.Snapshot.assert_inline_text
+    ~ctx
+    ~actual
+    ~expected:{ocaml|let test = fun result_a result_b ->
+  match (result_a, result_b) with
+  | (
+      Some { status = Action_scheduler.Executed; _ },
+      Some { status = Action_scheduler.Executed; _ }
+    ) -> Ok ()
+  | _ -> Error ()
+|ocaml}
+
 let test_write_preserves_tuple_pattern_application_payloads = fun ctx ->
   let source = {ocaml|let value=fun x->match x with|Some(a,b)->a|None->b
 |ocaml}
@@ -5174,6 +5193,9 @@ let tests =
     case
       "write parenthesizes tuple scrutinees and tuple patterns"
       test_write_parenthesizes_tuple_scrutinees_and_tuple_patterns;
+    case
+      "write breaks tuple patterns before match arrows"
+      test_write_breaks_tuple_patterns_before_match_arrows;
     case
       "write preserves tuple pattern application payloads"
       test_write_preserves_tuple_pattern_application_payloads;
