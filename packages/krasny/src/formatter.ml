@@ -1981,7 +1981,7 @@ module ExprView = struct
       }
     | FieldAccess of {
         target: Ast.Expr.t option;
-        field: Ast.Token.t option;
+        field: Ast.Ident.t option;
       }
     | Assign of {
         target: Ast.Expr.t option;
@@ -2124,8 +2124,12 @@ module ExprView = struct
             Ast.cast_result_to_option (Ast.Expr.cast node)
             |> Option.and_then ~fn:Ast.Expr.literal_token;
         }
-    | Kind.FIELD_ACCESS_EXPR ->
-        FieldAccess { target = nth_child_expr node 0; field = first_ident_token node }
+    | Kind.FIELD_ACCESS_EXPR -> (
+        match Ast.Expr.view expr with
+        | Ast.Expr.FieldAccess { target; field } ->
+            FieldAccess { target = Some target; field = Some field }
+        | _ -> FieldAccess { target = nth_child_expr node 0; field = None }
+      )
     | Kind.ASSIGN_EXPR ->
         Assign {
           target = nth_child_expr node 0;
@@ -4638,9 +4642,10 @@ and expr_flat_width_with_budget = fun budget expr ->
     | Literal { token = Some token } -> Some (token_flat_width token)
     | Literal { token = None } -> None
     | FieldAccess { target = Some target; field = Some field } -> (
-        match expr_postfix_target_flat_width next_budget target with
-        | Some target_width -> Some Int.(target_width + 1 + token_flat_width field)
-        | None -> None
+        match (expr_postfix_target_flat_width next_budget target, ident_flat_width field) with
+        | (Some target_width, Some field_width) -> Some Int.(target_width + 1 + field_width)
+        | (Some _, None)
+        | (None, _) -> None
       )
     | FieldAccess _ -> None
     | Prefix { operator = Some operator; operand = Some operand } -> (
@@ -5384,7 +5389,7 @@ let rec render_expr = fun ?(role = Layout.Top_expr) state (expr: Ast.Expr.t) ->
   | FieldAccess { target = Some target; field = Some field } ->
       render_expr_postfix_target state target;
       emit_text state ".";
-      emit_token state field
+      render_ident state field
   | FieldAccess _ -> unsupported_node "incomplete field access" node
   | Assign { target = Some target; operator = Some operator; value = Some value } ->
       render_expr_atom state target;

@@ -1299,6 +1299,40 @@ let constrained = fun state -> `Constrained state.ranges
 let events = fun state events -> (`Paste state.paste_buffer) :: events
 |ocaml}
 
+let test_write_keeps_qualified_record_field_accesses = fun ctx ->
+  let source =
+    {ocaml|let root=tree.Syntax_tree.root
+let body=leaf.Syntax_tree.body_raw
+let span=first.Raw_token.span
+|ocaml}
+  in
+  let parsed = parse_ml source in
+  let actual = capture_write parsed in
+  Test.Snapshot.assert_inline_text
+    ~ctx
+    ~actual
+    ~expected:{ocaml|let root = tree.Syntax_tree.root
+
+let body = leaf.Syntax_tree.body_raw
+
+let span = first.Raw_token.span
+|ocaml}
+
+let test_write_keeps_qualified_record_fields_in_patterns = fun ctx ->
+  let source =
+    {ocaml|let get_root=fun syntax->match syntax with|{Syntax_tree.root;Raw_token.span=span}->{root;span}
+|ocaml}
+  in
+  let parsed = parse_ml source in
+  let actual = capture_write parsed in
+  Test.Snapshot.assert_inline_text
+    ~ctx
+    ~actual
+    ~expected:{ocaml|let get_root = fun syntax ->
+  match syntax with
+  | { Syntax_tree.root; Raw_token.span = span } -> { root; span }
+|ocaml}
+
 let test_write_keeps_cons_chains_right_associative = fun ctx ->
   let source =
     {ocaml|let fields=timestamp_field()::("type",Data.Json.String"file")::fields
@@ -4760,6 +4794,12 @@ let tests =
     case
       "write keeps field access bound to polyvariant payloads"
       test_write_keeps_field_access_bound_to_polyvariant_payloads;
+    case
+      "write keeps qualified record field accesses"
+      test_write_keeps_qualified_record_field_accesses;
+    case
+      "write keeps qualified record fields in patterns"
+      test_write_keeps_qualified_record_fields_in_patterns;
     case "write keeps cons chains right associative" test_write_keeps_cons_chains_right_associative;
     case
       "write keeps infix precedence parens minimal"
