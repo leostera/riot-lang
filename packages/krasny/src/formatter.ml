@@ -1965,6 +1965,10 @@ module PatternView = struct
   let view = fun (pattern: Ast.Pattern.t) -> view_node (Ast.Pattern.as_node pattern)
 end
 
+type pattern_role =
+  | Pattern_default
+  | Pattern_record_field_value
+
 module ExprView = struct
   type view =
     | Ident of {
@@ -3681,7 +3685,7 @@ let parenthesized_pattern_should_break = fun state (pattern: Ast.Pattern.t) ->
       previous := Some token);
   Int.(state.column + !width + 2 > state.width)
 
-let rec render_pattern = fun state (pattern: Ast.Pattern.t) ->
+let rec render_pattern = fun ?(role = Pattern_default) state (pattern: Ast.Pattern.t) ->
   let node = Ast.Pattern.as_node pattern in
   match PatternView.view pattern with
   | Wildcard -> emit_text state "_"
@@ -3785,7 +3789,11 @@ let rec render_pattern = fun state (pattern: Ast.Pattern.t) ->
               )
             in
             loop 0);
-        emit_text state "]"
+        (
+          match role with
+          | Pattern_default -> with_indent state 2 (fun () -> emit_text state "]")
+          | Pattern_record_field_value -> emit_text state "]"
+        )
       ) else (
         emit_text state "[ ";
         emit_joined_vector
@@ -3824,7 +3832,11 @@ let rec render_pattern = fun state (pattern: Ast.Pattern.t) ->
               )
             in
             loop 0);
-        emit_text state "|]"
+        (
+          match role with
+          | Pattern_default -> with_indent state 2 (fun () -> emit_text state "|]")
+          | Pattern_record_field_value -> emit_text state "|]"
+        )
       ) else (
         emit_text state "[|";
         emit_joined_vector
@@ -4221,7 +4233,7 @@ and render_record_pattern = fun ?(force_multiline = false) state pattern ->
   let render_field_pattern pattern =
     match PatternView.view pattern with
     | Record -> render_record_pattern ~force_multiline:true state pattern
-    | _ -> render_pattern state pattern
+    | _ -> render_pattern ~role:Pattern_record_field_value state pattern
   in
   let render_field ~multiline (field: Ast.record_pattern_field_view) =
     match field with

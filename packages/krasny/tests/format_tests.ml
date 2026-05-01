@@ -2618,7 +2618,7 @@ let test_write_breaks_deep_record_list_patterns = fun ctx ->
           };
         _;
       };
-  ] -> assert_path_string ~expected:"Some" ident
+    ] -> assert_path_string ~expected:"Some" ident
   | _ -> ()
 |ocaml}
 
@@ -2633,6 +2633,36 @@ let test_write_keeps_small_record_list_patterns_inline = fun ctx ->
     ~actual
     ~expected:{ocaml|let test = function
   | Ok [ { Hpack.name = "x"; value = "y" } ] -> Ok ()
+  | _ -> Error ()
+|ocaml}
+
+let test_write_aligns_multiline_list_pattern_closing_delimiter = fun ctx ->
+  let source =
+    {ocaml|let test=function|[({Render.width={left=1;right=1;top=1;bottom=1};color=`rgb(50,50,50);_},_,_)]->Ok()|_->Error()
+|ocaml}
+  in
+  let parsed = parse_ml source in
+  let actual = capture_write parsed in
+  Test.Snapshot.assert_inline_text
+    ~ctx
+    ~actual
+    ~expected:{ocaml|let test = function
+  | [
+      (
+        {
+          Render.width = {
+            left = 1;
+            right = 1;
+            top = 1;
+            bottom = 1;
+          };
+          color = `rgb (50, 50, 50);
+          _;
+        },
+        _,
+        _
+      );
+    ] -> Ok ()
   | _ -> Error ()
 |ocaml}
 
@@ -5087,6 +5117,9 @@ let tests =
     case
       "write keeps small record list patterns inline"
       test_write_keeps_small_record_list_patterns_inline;
+    case
+      "write aligns multiline list pattern closing delimiter"
+      test_write_aligns_multiline_list_pattern_closing_delimiter;
     case
       "write keeps fitting constructor or patterns inline"
       test_write_keeps_fitting_constructor_or_patterns_inline;
