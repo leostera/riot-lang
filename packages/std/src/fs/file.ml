@@ -157,26 +157,47 @@ let write = fun file buffer ~offset ~len ->
   in
   loop ()
 
-let write_string = fun file str ->
-  write
-    file
-    (Kernel.Bytes.from_string str)
-    ~offset:0
-    ~len:(String.length str)
+let write_vectored = fun file iovec ->
+  let source = Kernel.Fs.File.to_source file in
+  let rec loop () =
+    match Kernel.Fs.File.write_vectored file iovec with
+    | Ok bytes_written -> Ok bytes_written
+    | Error err when is_would_block err ->
+        Runtime.syscall
+          ~name:"Fs.File.write_vectored"
+          ~interest:Kernel.Async.Interest.writable
+          ~source
+          loop
+    | Error err -> Error err
+  in
+  loop ()
 
-let write_all = fun file str ->
-  let buffer = Kernel.Bytes.from_string str in
-  let len = String.length str in
-  let rec loop pos remaining =
-    if remaining = 0 then
+let write_all_vectored = fun file iovec ->
+  let rec loop remaining =
+    let remaining_len = IoVec.length remaining in
+    if remaining_len = 0 then
       Ok ()
     else
-      match write file buffer ~offset:pos ~len:remaining with
+      match write_vectored file remaining with
       | Ok 0 -> Ok ()
-      | Ok n -> loop (pos + n) (remaining - n)
+      | Ok written -> (
+          match IoVec.sub remaining ~pos:written ~len:(remaining_len - written) with
+          | Ok next -> loop next
+          | Error error ->
+              Kernel.SystemError.panic
+                ("Fs.File.write_all_vectored: " ^ Kernel.IO.Error.message error)
+        )
       | Error err -> Error err
   in
-  loop 0 len
+  loop iovec
+
+let write_string = fun file str ->
+  let buffer = IO.Buffer.from_string str in
+  write_vectored file (IO.Buffer.to_iovec buffer)
+
+let write_all = fun file str ->
+  let buffer = IO.Buffer.from_string str in
+  write_all_vectored file (IO.Buffer.to_iovec buffer)
 
 let metadata = fun file -> wrap_result (Kernel.Fs.File.fstat file)
 
@@ -219,12 +240,12 @@ let to_writer = fun file ->
     type nonrec t = t
 
     let write = fun file ~from ->
-      match Kernel.Fs.File.write_vectored file (IO.Buffer.to_iovec from) with
+      match write_vectored file (IO.Buffer.to_iovec from) with
       | Ok count -> Ok count
       | Error err -> Error (io_error_of_file_error err)
 
     let write_vectored = fun file ~from ->
-      match Kernel.Fs.File.write_vectored file from with
+      match write_vectored file from with
       | Ok count -> Ok count
       | Error err -> Error (io_error_of_file_error err)
 
