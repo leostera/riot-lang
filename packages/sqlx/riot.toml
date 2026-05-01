@@ -3,6 +3,7 @@ name = "sqlx"
 version = "0.0.29"
 description = "High-level SQL API"
 license = "Apache-2.0"
+public = true
 
 [lib]
 path = "src/sqlx.ml"
