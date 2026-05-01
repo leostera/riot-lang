@@ -603,14 +603,14 @@ let from_json = fun json ->
         parse_string_list "cclib_flags" json
       ) with
       | (
-        Some outs,
-        Some objects,
-        Some libraries,
-        Some includes,
-        Some cclibs,
-        Some ccopt_flags,
-        Some cclib_flags
-      ) ->
+          Some outs,
+          Some objects,
+          Some libraries,
+          Some includes,
+          Some cclibs,
+          Some ccopt_flags,
+          Some cclib_flags
+        ) ->
           Ok (
             CreateExecutable {
               outputs = outs;
@@ -635,14 +635,14 @@ let from_json = fun json ->
         parse_string_list "cclib_flags" json
       ) with
       | (
-        Some outs,
-        Some objects,
-        Some libraries,
-        Some includes,
-        Some cclibs,
-        Some ccopt_flags,
-        Some cclib_flags
-      ) ->
+          Some outs,
+          Some objects,
+          Some libraries,
+          Some includes,
+          Some cclibs,
+          Some ccopt_flags,
+          Some cclib_flags
+        ) ->
           Ok (
             CreateSharedLibrary {
               outputs = outs;

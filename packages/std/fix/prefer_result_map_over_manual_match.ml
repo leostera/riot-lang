@@ -70,19 +70,19 @@ let matches_result_map_shape = fun expr ->
         result_case_kind second_case
       ) with
       | (
-        Case { body = first_body; _ },
-        Case { body = second_body; _ },
-        `OkCase _ok_name,
-        `ErrorCase error_name
-      ) ->
+          Case { body = first_body; _ },
+          Case { body = second_body; _ },
+          `OkCase _ok_name,
+          `ErrorCase error_name
+        ) ->
           is_ok_expression first_body
           && is_constructor_with_path_name "Error" error_name second_body
       | (
-        Case { body = first_body; _ },
-        Case { body = second_body; _ },
-        `ErrorCase error_name,
-        `OkCase _ok_name
-      ) ->
+          Case { body = first_body; _ },
+          Case { body = second_body; _ },
+          `ErrorCase error_name,
+          `OkCase _ok_name
+        ) ->
           is_constructor_with_path_name "Error" error_name first_body
           && is_ok_expression second_body
       | _ -> false

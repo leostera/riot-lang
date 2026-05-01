@@ -200,11 +200,11 @@ let test_execute_reuses_cache_for_equivalent_graph = fun _ctx ->
         content2
       ) with
       | (
-        Some { status = Action_scheduler.Executed; _ },
-        Some { status = Action_scheduler.Cached _; _ },
-        Ok first_content,
-        Ok second_content
-      ) ->
+          Some { status = Action_scheduler.Executed; _ },
+          Some { status = Action_scheduler.Cached _; _ },
+          Ok first_content,
+          Ok second_content
+        ) ->
           if
             exists1
             && exists2
@@ -239,10 +239,10 @@ let test_execute_cache_misses_when_action_changes = fun _ctx ->
         content2
       ) with
       | (
-        Some { status = Action_scheduler.Executed; _ },
-        Some { status = Action_scheduler.Executed; _ },
-        Ok second_content
-      ) ->
+          Some { status = Action_scheduler.Executed; _ },
+          Some { status = Action_scheduler.Executed; _ },
+          Ok second_content
+        ) ->
           if exists1 && exists2 && String.equal second_content "v2" then
             Ok ()
           else

@@ -1870,10 +1870,10 @@ let kind_from_json = fun json ->
                     Fields.get "resolved_edges" data_fields
                   ) with
                   | (
-                    Some (Json.Int duration_ms),
-                    Some (Json.Int resolved_packages),
-                    Some (Json.Int resolved_edges)
-                  ) ->
+                      Some (Json.Int duration_ms),
+                      Some (Json.Int resolved_packages),
+                      Some (Json.Int resolved_edges)
+                    ) ->
                       Ok (DependencyResolutionFinished {
                         duration_ms;
                         resolved_packages;
@@ -1926,11 +1926,11 @@ let kind_from_json = fun json ->
                     Fields.get "duration_ms" data_fields
                   ) with
                   | (
-                    Some (Json.Int runtime_packages),
-                    Some (Json.Int build_packages),
-                    Some (Json.Int dev_packages),
-                    Some (Json.Int duration_ms)
-                  ) ->
+                      Some (Json.Int runtime_packages),
+                      Some (Json.Int build_packages),
+                      Some (Json.Int dev_packages),
+                      Some (Json.Int duration_ms)
+                    ) ->
                       Ok (
                         DependencyUniverseBuilt {
                           runtime_packages;
@@ -2054,11 +2054,11 @@ let kind_from_json = fun json ->
                     Fields.get "dependency" data_fields
                   ) with
                   | (
-                    Some (Json.String path),
-                    Some (Json.String section),
-                    Some operation_json,
-                    Some (Json.String dependency)
-                  ) -> (
+                      Some (Json.String path),
+                      Some (Json.String section),
+                      Some operation_json,
+                      Some (Json.String dependency)
+                    ) -> (
                       match manifest_operation_of_json operation_json with
                       | Some operation ->
                           Ok (
@@ -2104,10 +2104,10 @@ let kind_from_json = fun json ->
                     Fields.get "to_version" data_fields
                   ) with
                   | (
-                    Some package_json,
-                    Some (Json.String from_version),
-                    Some (Json.String to_version)
-                  ) ->
+                      Some package_json,
+                      Some (Json.String from_version),
+                      Some (Json.String to_version)
+                    ) ->
                       let* package = package_name_of_json package_json in
                       Ok (PackageVersionUpdated { package; from_version; to_version })
                   | _ -> Error "Invalid PackageVersionUpdated data"
@@ -2184,11 +2184,11 @@ let kind_from_json = fun json ->
                     Fields.get "duration_ms" data_fields
                   ) with
                   | (
-                    Some package_json,
-                    Some (Json.String version),
-                    Some (Json.String path),
-                    Some (Json.Int duration_ms)
-                  ) ->
+                      Some package_json,
+                      Some (Json.String version),
+                      Some (Json.String path),
+                      Some (Json.Int duration_ms)
+                    ) ->
                       let* package = package_name_of_json package_json in
                       Ok (
                         PackageDownloadFinished {
@@ -2212,11 +2212,11 @@ let kind_from_json = fun json ->
                     Fields.get "error" data_fields
                   ) with
                   | (
-                    Some package_json,
-                    Some (Json.String version),
-                    Some (Json.String path),
-                    Some error_json
-                  ) -> (
+                      Some package_json,
+                      Some (Json.String version),
+                      Some (Json.String path),
+                      Some error_json
+                    ) -> (
                       let* package = package_name_of_json package_json in
                       match Pm_error.of_json error_json with
                       | Ok error ->
@@ -2244,11 +2244,11 @@ let kind_from_json = fun json ->
                     Fields.get "reason" data_fields
                   ) with
                   | (
-                    Some package_json,
-                    Some (Json.String version),
-                    Some (Json.String path),
-                    Some (Json.String reason)
-                  ) ->
+                      Some package_json,
+                      Some (Json.String version),
+                      Some (Json.String path),
+                      Some (Json.String reason)
+                    ) ->
                       let* package = package_name_of_json package_json in
                       Ok (
                         PackageDownloadSkipped {
@@ -2302,11 +2302,11 @@ let kind_from_json = fun json ->
                     Fields.get "duration_ms" data_fields
                   ) with
                   | (
-                    Some package_json,
-                    Some (Json.String version),
-                    Some (Json.String path),
-                    Some (Json.Int duration_ms)
-                  ) ->
+                      Some package_json,
+                      Some (Json.String version),
+                      Some (Json.String path),
+                      Some (Json.Int duration_ms)
+                    ) ->
                       let* package = package_name_of_json package_json in
                       Ok (
                         PackageMaterializationFinished {
@@ -2330,11 +2330,11 @@ let kind_from_json = fun json ->
                     Fields.get "error" data_fields
                   ) with
                   | (
-                    Some package_json,
-                    Some (Json.String version),
-                    Some (Json.String path),
-                    Some error_json
-                  ) -> (
+                      Some package_json,
+                      Some (Json.String version),
+                      Some (Json.String path),
+                      Some error_json
+                    ) -> (
                       let* package = package_name_of_json package_json in
                       match Pm_error.of_json error_json with
                       | Ok error ->

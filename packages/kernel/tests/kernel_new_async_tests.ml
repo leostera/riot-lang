@@ -406,9 +406,9 @@ let test_poll_rejects_invalid_limits = fun _ctx ->
     (fun poll ->
       match (Kernel.Async.Poll.poll ~timeout:(-1L) poll, Kernel.Async.Poll.poll ~max_events:0 poll) with
       | (
-        Kernel.Result.Error (Kernel.Async.InvalidTimeoutNs { timeout_ns }),
-        Kernel.Result.Error (Kernel.Async.InvalidMaxEvents { max_events })
-      ) when timeout_ns = (-1L) && max_events = 0 -> Ok ()
+          Kernel.Result.Error (Kernel.Async.InvalidTimeoutNs { timeout_ns }),
+          Kernel.Result.Error (Kernel.Async.InvalidMaxEvents { max_events })
+        ) when timeout_ns = (-1L) && max_events = 0 -> Ok ()
       | (Kernel.Result.Error error, _) -> Error (Kernel.Async.error_to_string error)
       | (_, Kernel.Result.Error error) -> Error (Kernel.Async.error_to_string error)
       | _ -> Error "expected async poll to reject invalid timeout and max_events")

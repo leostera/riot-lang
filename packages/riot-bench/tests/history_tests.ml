@@ -209,12 +209,12 @@ let test_save_suite_run_writes_self_contained_json = fun _ctx ->
             field "suite_run" fields
           ) with
           | (
-            Some (Data.Json.Int 1),
-            Some (Data.Json.String _),
-            Some (Data.Json.Object suite_fields),
-            Some (Data.Json.Object selection_fields),
-            Some (Data.Json.Object suite_run_fields)
-          ) ->
+              Some (Data.Json.Int 1),
+              Some (Data.Json.String _),
+              Some (Data.Json.Object suite_fields),
+              Some (Data.Json.Object selection_fields),
+              Some (Data.Json.Object suite_run_fields)
+            ) ->
               let suite_name_ok =
                 field "name" suite_fields = Some (Data.Json.String "http1_parser_bench")
               in

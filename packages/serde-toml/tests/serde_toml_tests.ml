@@ -439,19 +439,19 @@ let crew_member_decode =
         builder.pose
       ) with
       | (
-        Some name,
-        Some bounty,
-        Some active,
-        Some cabins,
-        Some small,
-        Some ratio,
-        Some skills,
-        Some checkpoints,
-        Some role,
-        Some pet,
-        Some flag,
-        Some pose
-      ) ->
+          Some name,
+          Some bounty,
+          Some active,
+          Some cabins,
+          Some small,
+          Some ratio,
+          Some skills,
+          Some checkpoints,
+          Some role,
+          Some pet,
+          Some flag,
+          Some pose
+        ) ->
           let nickname =
             match builder.nickname with
             | Some nickname -> nickname

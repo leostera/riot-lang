@@ -410,11 +410,11 @@ let rec of_json = function
             Fields.get "error" fields
           ) with
           | (
-            Some (Json.String dependency_name),
-            Some (Json.String source_locator),
-            ref_json_opt,
-            Some (Json.String error)
-          ) ->
+              Some (Json.String dependency_name),
+              Some (Json.String source_locator),
+              ref_json_opt,
+              Some (Json.String error)
+            ) ->
               let ref_ =
                 match ref_json_opt with
                 | Some (Json.String ref_) -> Ok (Some ref_)
@@ -460,11 +460,11 @@ let rec of_json = function
             Fields.get "required_by" fields
           ) with
           | (
-            Some (Json.String package),
-            Some (Json.String registry),
-            Some (Json.String version),
-            required_by_json_opt
-          ) ->
+              Some (Json.String package),
+              Some (Json.String registry),
+              Some (Json.String version),
+              required_by_json_opt
+            ) ->
               let required_by =
                 match required_by_json_opt with
                 | Some Json.Null
@@ -544,12 +544,12 @@ let rec of_json = function
             Fields.get "required_by" fields
           ) with
           | (
-            Some (Json.String package),
-            Some (Json.String registry),
-            Some (Json.String requirement),
-            Some (Json.Array available_versions),
-            required_by_json_opt
-          ) ->
+              Some (Json.String package),
+              Some (Json.String registry),
+              Some (Json.String requirement),
+              Some (Json.Array available_versions),
+              required_by_json_opt
+            ) ->
               let available_versions =
                 let rec loop acc = function
                   | [] -> Ok (List.reverse acc)

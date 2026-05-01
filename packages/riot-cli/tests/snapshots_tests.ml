@@ -304,14 +304,14 @@ let test_review_pending_snapshots_with_decider =
         "snapshots_review"
         (fun workspace_root ->
           let (
-            fixture_pending,
-            fixture_approved,
-            custom_pending,
-            custom_approved,
-            workspace_pending,
-            workspace_approved,
-            _
-          ) = pending_paths workspace_root
+                fixture_pending,
+                fixture_approved,
+                custom_pending,
+                custom_approved,
+                workspace_pending,
+                workspace_approved,
+                _
+              ) = pending_paths workspace_root
           in
           let setup_result =
             match write_file fixture_pending "fixture pending\n" with

@@ -124,9 +124,9 @@ let test_current_dir_roundtrips = fun _ctx ->
 let test_invalid_var_name_is_rejected = fun _ctx ->
   match (Kernel.Env.set ~var:"bad=name" ~value:"x", Kernel.Env.remove ~var:"") with
   | (
-    Kernel.Result.Error (Kernel.Env.InvalidVarName { name = "bad=name" }),
-    Kernel.Result.Error (Kernel.Env.InvalidVarName { name = "" })
-  ) -> Ok ()
+      Kernel.Result.Error (Kernel.Env.InvalidVarName { name = "bad=name" }),
+      Kernel.Result.Error (Kernel.Env.InvalidVarName { name = "" })
+    ) -> Ok ()
   | (Kernel.Result.Error error, _) -> Error (Kernel.Env.error_to_string error)
   | (_, Kernel.Result.Error error) -> Error (Kernel.Env.error_to_string error)
   | _ -> Error "expected invalid env variable names to be rejected in kernel-new"

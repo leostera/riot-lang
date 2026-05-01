@@ -272,20 +272,20 @@ let sample_decode =
         builder.scores
       ) with
       | (
-        Some ready,
-        Some count,
-        Some small,
-        Some big,
-        Some ratio,
-        Some label,
-        Some alias,
-        Some mode,
-        Some companion,
-        Some marker,
-        Some home,
-        Some tags,
-        Some scores
-      ) ->
+          Some ready,
+          Some count,
+          Some small,
+          Some big,
+          Some ratio,
+          Some label,
+          Some alias,
+          Some mode,
+          Some companion,
+          Some marker,
+          Some home,
+          Some tags,
+          Some scores
+        ) ->
           ({
             ready;
             count;

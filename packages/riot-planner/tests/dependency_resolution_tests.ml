@@ -831,12 +831,12 @@ let test_module_graph_implicit_alias_opens_resolve_nested_leaf_modules = fun _ct
             find_analyzed_module "src/net/addr/unix.mli"
           ) with
           | (
-            Ok unix_node,
-            Ok result_node,
-            Ok system_error_node,
-            Ok socket_addr_node,
-            Some analyzed_unix
-          ) -> (
+              Ok unix_node,
+              Ok result_node,
+              Ok system_error_node,
+              Ok socket_addr_node,
+              Some analyzed_unix
+            ) -> (
               match analyzed_unix.deps with
               | Error err -> Error ("dependency analysis failed: " ^ deps_error_to_string err)
               | Ok deps ->
@@ -992,12 +992,12 @@ let test_module_graph_implicit_root_alias_resolves_public_child_root = fun _ctx 
             find_analyzed_module "src/process/process.mli"
           ) with
           | (
-            Ok process_node,
-            Ok fs_node,
-            Ok fs_file_node,
-            Ok system_error_node,
-            Some analyzed_process
-          ) -> (
+              Ok process_node,
+              Ok fs_node,
+              Ok fs_file_node,
+              Ok system_error_node,
+              Some analyzed_process
+            ) -> (
               match analyzed_process.deps with
               | Error err -> Error ("dependency analysis failed: " ^ deps_error_to_string err)
               | Ok deps ->
@@ -1130,15 +1130,15 @@ let test_module_graph_resolves_deeply_nested_modules_namespace_first = fun _ctx 
             G.topo_sort graph
           ) with
           | (
-            Ok user_node,
-            Ok report_node,
-            Ok testing_shared_node,
-            Ok admin_shared_node,
-            Ok root_shared_node,
-            Ok models_helpers_node,
-            Ok root_helpers_node,
-            Ok _
-          ) ->
+              Ok user_node,
+              Ok report_node,
+              Ok testing_shared_node,
+              Ok admin_shared_node,
+              Ok root_shared_node,
+              Ok models_helpers_node,
+              Ok root_helpers_node,
+              Ok _
+            ) ->
               let user_depends_on_testing_shared = depends_on user_node testing_shared_node in
               let user_depends_on_admin_shared = depends_on user_node admin_shared_node in
               let user_depends_on_root_shared = depends_on user_node root_shared_node in

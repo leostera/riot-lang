@@ -23,11 +23,11 @@ let test_parse_normalizes_request_aliases = fun _ctx ->
     Riot_model.Target.parse "linux"
   ) with
   | (
-    Riot_model.Target.Host,
-    Riot_model.Target.Host,
-    Riot_model.Target.All,
-    Riot_model.Target.Pattern "linux"
-  ) -> Ok ()
+      Riot_model.Target.Host,
+      Riot_model.Target.Host,
+      Riot_model.Target.All,
+      Riot_model.Target.Pattern "linux"
+    ) -> Ok ()
   | _ -> Error "expected target request aliases and patterns to normalize case"
 
 let test_parse_uses_exact_for_valid_target_triples = fun _ctx ->

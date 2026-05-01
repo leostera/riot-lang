@@ -312,21 +312,21 @@ let sample_decode =
         builder.mirrors
       ) with
       | (
-        Some title,
-        Some active,
-        Some count,
-        Some small,
-        Some big,
-        Some ratio,
-        Some status,
-        Some pet,
-        Some marker,
-        Some pose,
-        Some tags,
-        Some scores,
-        Some stops,
-        Some mirrors
-      ) ->
+          Some title,
+          Some active,
+          Some count,
+          Some small,
+          Some big,
+          Some ratio,
+          Some status,
+          Some pet,
+          Some marker,
+          Some pose,
+          Some tags,
+          Some scores,
+          Some stops,
+          Some mirrors
+        ) ->
           let nickname =
             match builder.nickname with
             | Some nickname -> nickname

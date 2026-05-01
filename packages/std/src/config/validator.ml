@@ -50,9 +50,9 @@ let rec value_equal = fun (v1: Spec.value) (v2: Spec.value) ->
       in
       list_equal l1 l2
   | (
-    Spec.DiscriminatedUnion { discriminant = d1; variant = v1; fields = f1 },
-    Spec.DiscriminatedUnion { discriminant = d2; variant = v2; fields = f2 }
-  ) ->
+      Spec.DiscriminatedUnion { discriminant = d1; variant = v1; fields = f1 },
+      Spec.DiscriminatedUnion { discriminant = d2; variant = v2; fields = f2 }
+    ) ->
       String.equal d1 d2 && String.equal v1 v2 && let rec map_equal l1 l2 =
         match (l1, l2) with
         | ([], []) -> true

@@ -644,16 +644,16 @@ let rewrite_create_library_objects_json = fun json ~rewrite ->
           get_field "dependencies" node_json
         ) with
         | (
-          Some id,
-          Some (Array actions),
-          Some outputs,
-          Some sources,
-          Some package,
-          Some package_path,
-          Some package_relative_path,
-          Some hash,
-          Some dependencies
-        ) ->
+            Some id,
+            Some (Array actions),
+            Some outputs,
+            Some sources,
+            Some package,
+            Some package_path,
+            Some package_relative_path,
+            Some hash,
+            Some dependencies
+          ) ->
             Object [
               ("id", id);
               ("actions", Array (List.map actions ~fn:rewrite_action));
@@ -786,10 +786,10 @@ let test_dev_scope_test_binaries_include_private_helpers = fun _ctx ->
           let test_cmx = find_compile_cmx actions test_source in
           match (find_create_executable_named action_graph "foo_tests", helper_cmx, test_cmx) with
           | (
-            Some (Riot_planner.Action.CreateExecutable { objects; _ }),
-            Some helper_cmx,
-            Some test_cmx
-          ) ->
+              Some (Riot_planner.Action.CreateExecutable { objects; _ }),
+              Some helper_cmx,
+              Some test_cmx
+            ) ->
               let has object_ = List.any objects ~fn:(Path.equal object_) in
               if not (has helper_cmx && has test_cmx) then
                 Error "expected test executable to link both helper and root objects"
@@ -827,10 +827,10 @@ let test_dev_scope_no_library_tests_include_package_named_helpers = fun _ctx ->
             test_cmx
           ) with
           | (
-            Some (Riot_planner.Action.CreateExecutable { objects; libraries; _ }),
-            Some helper_cmx,
-            Some test_cmx
-          ) ->
+              Some (Riot_planner.Action.CreateExecutable { objects; libraries; _ }),
+              Some helper_cmx,
+              Some test_cmx
+            ) ->
               let has object_ = List.any objects ~fn:(Path.equal object_) in
               if not (has helper_cmx && has test_cmx) then
                 Error ("expected test executable to link package-named helper and test root objects; objects: "
@@ -907,10 +907,10 @@ let test_dev_scope_example_binaries_include_private_helpers = fun _ctx ->
           let example_cmx = find_compile_cmx actions example_source in
           match (find_create_executable_named action_graph "demo", helper_cmx, example_cmx) with
           | (
-            Some (Riot_planner.Action.CreateExecutable { objects; _ }),
-            Some helper_cmx,
-            Some example_cmx
-          ) ->
+              Some (Riot_planner.Action.CreateExecutable { objects; _ }),
+              Some helper_cmx,
+              Some example_cmx
+            ) ->
               let has object_ = List.any objects ~fn:(Path.equal object_) in
               if not (has helper_cmx && has example_cmx) then
                 Error "expected example executable to link both helper and root objects"
@@ -942,10 +942,10 @@ let test_dev_scope_bench_binaries_include_private_helpers = fun _ctx ->
           let bench_cmx = find_compile_cmx actions bench_source in
           match (find_create_executable_named action_graph "foo_bench", helper_cmx, bench_cmx) with
           | (
-            Some (Riot_planner.Action.CreateExecutable { objects; _ }),
-            Some helper_cmx,
-            Some bench_cmx
-          ) ->
+              Some (Riot_planner.Action.CreateExecutable { objects; _ }),
+              Some helper_cmx,
+              Some bench_cmx
+            ) ->
               let has object_ = List.any objects ~fn:(Path.equal object_) in
               if not (has helper_cmx && has bench_cmx) then
                 Error "expected bench executable to link both helper and root objects"
@@ -997,16 +997,16 @@ let test_dev_scope_keeps_private_helpers_separated_by_root = fun _ctx ->
             bench_root
           ) with
           | (
-            Some (Riot_planner.Action.CreateExecutable { objects = test_objects; _ }),
-            Some (Riot_planner.Action.CreateExecutable { objects = example_objects; _ }),
-            Some (Riot_planner.Action.CreateExecutable { objects = bench_objects; _ }),
-            Some test_helper,
-            Some test_root,
-            Some example_helper,
-            Some example_root,
-            Some bench_helper,
-            Some bench_root
-          ) ->
+              Some (Riot_planner.Action.CreateExecutable { objects = test_objects; _ }),
+              Some (Riot_planner.Action.CreateExecutable { objects = example_objects; _ }),
+              Some (Riot_planner.Action.CreateExecutable { objects = bench_objects; _ }),
+              Some test_helper,
+              Some test_root,
+              Some example_helper,
+              Some example_root,
+              Some bench_helper,
+              Some bench_root
+            ) ->
               let has object_ objects = List.any objects ~fn:(Path.equal object_) in
               if not (has test_helper test_objects && has test_root test_objects) then
                 Error "expected test executable to link only its own helper closure"

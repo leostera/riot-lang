@@ -215,11 +215,11 @@ let test_info_package_json_omits_registry_for_workspace_package = fun _ctx ->
           let public = Data.Json.get_field "public" json in
           match (registry_json, workspace_root, package_path, public) with
           | (
-            Some Data.Json.Null,
-            Some (Data.Json.String _),
-            Some (Data.Json.String "demo/riot.toml"),
-            Some (Data.Json.Bool false)
-          ) -> Ok ()
+              Some Data.Json.Null,
+              Some (Data.Json.String _),
+              Some (Data.Json.String "demo/riot.toml"),
+              Some (Data.Json.Bool false)
+            ) -> Ok ()
           | _ ->
               Error "expected workspace package json to omit registry paths and include workspace path metadata")
 

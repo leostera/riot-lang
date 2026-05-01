@@ -191,18 +191,18 @@ let payload_decode =
         builder.status
       ) with
       | (
-        Some name,
-        Some role,
-        Some crew,
-        Some age,
-        Some active,
-        Some small,
-        Some big,
-        Some ratio,
-        Some tags,
-        Some scores,
-        Some status
-      ) ->
+          Some name,
+          Some role,
+          Some crew,
+          Some age,
+          Some active,
+          Some small,
+          Some big,
+          Some ratio,
+          Some tags,
+          Some scores,
+          Some status
+        ) ->
           let nickname =
             match builder.nickname with
             | Some nickname -> nickname

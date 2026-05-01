@@ -587,13 +587,13 @@ let test_remove_missing_paths_report_no_such_file = fun _ctx ->
       let missing_dir = Kernel.Path.(tempdir / "missing-dir") in
       match (Kernel.Fs.File.remove_file missing_file, Kernel.Fs.File.remove_dir missing_dir) with
       | (
-        Kernel.Result.Error (
-          Kernel.Fs.File.System Kernel.SystemError.NoSuchFileOrDirectory
-        ),
-        Kernel.Result.Error (
-          Kernel.Fs.File.System Kernel.SystemError.NoSuchFileOrDirectory
-        )
-      ) -> Ok ()
+          Kernel.Result.Error (
+            Kernel.Fs.File.System Kernel.SystemError.NoSuchFileOrDirectory
+          ),
+          Kernel.Result.Error (
+            Kernel.Fs.File.System Kernel.SystemError.NoSuchFileOrDirectory
+          )
+        ) -> Ok ()
       | _ -> Error "expected removing missing file and dir to report no-such-file")
 
 let test_repeated_pipe_open_and_close_stays_healthy = fun _ctx ->

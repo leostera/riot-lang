@@ -2247,9 +2247,10 @@ let from_json: Json.t -> (t, string) result = fun json ->
                                               Fields.get "path" bin_fields
                                             ) with
                                             | (
-                                              Some (Json.String bin_name),
-                                              Some (Json.String bin_path)
-                                            ) -> Some { name = bin_name; path = Path.v bin_path }
+                                                Some (Json.String bin_name),
+                                                Some (Json.String bin_path)
+                                              ) ->
+                                                Some { name = bin_name; path = Path.v bin_path }
                                             | _ -> None
                                           )
                                         | _ ->

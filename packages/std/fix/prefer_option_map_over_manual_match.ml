@@ -72,17 +72,17 @@ let matches_option_map_shape = fun expr ->
         option_case_kind second_case
       ) with
       | (
-        Case { body = first_body; _ },
-        Case { body = second_body; _ },
-        `SomeCase _bound_name,
-        `NoneCase
-      ) -> is_some_expression first_body && is_none_expression second_body
+          Case { body = first_body; _ },
+          Case { body = second_body; _ },
+          `SomeCase _bound_name,
+          `NoneCase
+        ) -> is_some_expression first_body && is_none_expression second_body
       | (
-        Case { body = first_body; _ },
-        Case { body = second_body; _ },
-        `NoneCase,
-        `SomeCase _bound_name
-      ) -> is_none_expression first_body && is_some_expression second_body
+          Case { body = first_body; _ },
+          Case { body = second_body; _ },
+          `NoneCase,
+          `SomeCase _bound_name
+        ) -> is_none_expression first_body && is_some_expression second_body
       | _ -> false
     )
   | _ -> false

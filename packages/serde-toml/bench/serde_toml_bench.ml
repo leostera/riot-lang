@@ -262,16 +262,16 @@ let manifest_decode =
         builder.mirrors
       ) with
       | (
-        Some ship,
-        Some emergency,
-        Some crew_count,
-        Some status,
-        Some home,
-        Some tags,
-        Some scores,
-        Some stops,
-        Some mirrors
-      ) -> ({
+          Some ship,
+          Some emergency,
+          Some crew_count,
+          Some status,
+          Some home,
+          Some tags,
+          Some scores,
+          Some stops,
+          Some mirrors
+        ) -> ({
         ship;
         emergency;
         crew_count;

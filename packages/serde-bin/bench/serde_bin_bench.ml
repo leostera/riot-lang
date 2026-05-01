@@ -263,16 +263,16 @@ let primitive_decode =
         builder.unit_value
       ) with
       | (
-        Some ready,
-        Some count,
-        Some small,
-        Some big,
-        Some ratio,
-        Some label,
-        Some alias,
-        Some mode,
-        Some unit_value
-      ) -> ({
+          Some ready,
+          Some count,
+          Some small,
+          Some big,
+          Some ratio,
+          Some label,
+          Some alias,
+          Some mode,
+          Some unit_value
+        ) -> ({
         ready;
         count;
         small;

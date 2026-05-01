@@ -1360,14 +1360,14 @@ let test_binary_actions_include_target_private_modules = fun _ctx ->
             main_cmx
           ) with
           | (
-            Some (Riot_planner.Action.CreateLibrary { objects = library_objects; _ }),
-            Some (
-              Riot_planner.Action.CreateExecutable { objects = binary_objects; libraries; _ }
-            ),
-            Some b_cmx,
-            Some a_cmx,
-            Some main_cmx
-          ) ->
+              Some (Riot_planner.Action.CreateLibrary { objects = library_objects; _ }),
+              Some (
+                Riot_planner.Action.CreateExecutable { objects = binary_objects; libraries; _ }
+              ),
+              Some b_cmx,
+              Some a_cmx,
+              Some main_cmx
+            ) ->
               let has object_ objects = List.any objects ~fn:(Path.equal object_) in
               let object_names objects =
                 List.map objects ~fn:Path.to_string
@@ -1459,12 +1459,12 @@ let test_binary_actions_follow_transitive_private_reachability = fun _ctx ->
             main_cmx
           ) with
           | (
-            Some (Riot_planner.Action.CreateLibrary { objects = library_objects; _ }),
-            Some (Riot_planner.Action.CreateExecutable { objects = binary_objects; _ }),
-            Some c_cmx,
-            Some b_cmx,
-            Some main_cmx
-          ) ->
+              Some (Riot_planner.Action.CreateLibrary { objects = library_objects; _ }),
+              Some (Riot_planner.Action.CreateExecutable { objects = binary_objects; _ }),
+              Some c_cmx,
+              Some b_cmx,
+              Some main_cmx
+            ) ->
               let has object_ objects = List.any objects ~fn:(Path.equal object_) in
               let object_names objects =
                 List.map objects ~fn:Path.to_string
@@ -1524,11 +1524,11 @@ let test_executable_actions_do_not_duplicate_library_owned_modules = fun _ctx ->
           let main_cmx = find_compile_cmx actions main_source in
           match (find_create_library actions, find_create_executable actions, shared_cmx, main_cmx) with
           | (
-            Some (Riot_planner.Action.CreateLibrary { objects = library_objects; _ }),
-            Some (Riot_planner.Action.CreateExecutable { objects = binary_objects; _ }),
-            Some shared_cmx,
-            Some main_cmx
-          ) ->
+              Some (Riot_planner.Action.CreateLibrary { objects = library_objects; _ }),
+              Some (Riot_planner.Action.CreateExecutable { objects = binary_objects; _ }),
+              Some shared_cmx,
+              Some main_cmx
+            ) ->
               let has object_ objects = List.any objects ~fn:(Path.equal object_) in
               let object_names objects =
                 List.map objects ~fn:Path.to_string
@@ -1574,13 +1574,13 @@ let test_executable_actions_allow_private_helpers_without_a_library = fun _ctx -
           let compiles_orphan = List.any (compile_sources actions) ~fn:(Path.equal orphan_source) in
           match (find_create_library actions, find_create_executable actions, helper_cmx, main_cmx) with
           | (
-            None,
-            Some (
-              Riot_planner.Action.CreateExecutable { objects = binary_objects; libraries; _ }
-            ),
-            Some helper_cmx,
-            Some main_cmx
-          ) ->
+              None,
+              Some (
+                Riot_planner.Action.CreateExecutable { objects = binary_objects; libraries; _ }
+              ),
+              Some helper_cmx,
+              Some main_cmx
+            ) ->
               let has object_ objects = List.any objects ~fn:(Path.equal object_) in
               let object_names objects =
                 List.map objects ~fn:Path.to_string
@@ -1629,13 +1629,13 @@ let test_binary_actions_without_private_helpers = fun _ctx ->
             main_cmx
           ) with
           | (
-            Some (Riot_planner.Action.CreateLibrary { objects = library_objects; _ }),
-            Some (
-              Riot_planner.Action.CreateExecutable { objects = binary_objects; libraries; _ }
-            ),
-            Some shared_cmx,
-            Some main_cmx
-          ) ->
+              Some (Riot_planner.Action.CreateLibrary { objects = library_objects; _ }),
+              Some (
+                Riot_planner.Action.CreateExecutable { objects = binary_objects; libraries; _ }
+              ),
+              Some shared_cmx,
+              Some main_cmx
+            ) ->
               let has object_ objects = List.any objects ~fn:(Path.equal object_) in
               let object_names objects =
                 List.map objects ~fn:Path.to_string
@@ -1699,12 +1699,12 @@ let test_binary_actions_include_multiple_private_helpers = fun _ctx ->
             main_cmx
           ) with
           | (
-            Some (Riot_planner.Action.CreateLibrary { objects = library_objects; _ }),
-            Some (Riot_planner.Action.CreateExecutable { objects = binary_objects; _ }),
-            Some a_cmx,
-            Some b_cmx,
-            Some main_cmx
-          ) ->
+              Some (Riot_planner.Action.CreateLibrary { objects = library_objects; _ }),
+              Some (Riot_planner.Action.CreateExecutable { objects = binary_objects; _ }),
+              Some a_cmx,
+              Some b_cmx,
+              Some main_cmx
+            ) ->
               let has object_ objects = List.any objects ~fn:(Path.equal object_) in
               let object_names objects =
                 List.map objects ~fn:Path.to_string
@@ -1759,13 +1759,13 @@ let test_multiple_binaries_share_private_helper = fun _ctx ->
             tool_cmx
           ) with
           | (
-            None,
-            Some (Riot_planner.Action.CreateExecutable { objects = main_objects; _ }),
-            Some (Riot_planner.Action.CreateExecutable { objects = tool_objects; _ }),
-            Some shared_cmx,
-            Some main_cmx,
-            Some tool_cmx
-          ) ->
+              None,
+              Some (Riot_planner.Action.CreateExecutable { objects = main_objects; _ }),
+              Some (Riot_planner.Action.CreateExecutable { objects = tool_objects; _ }),
+              Some shared_cmx,
+              Some main_cmx,
+              Some tool_cmx
+            ) ->
               let has object_ objects = List.any objects ~fn:(Path.equal object_) in
               let object_names objects =
                 List.map objects ~fn:Path.to_string
@@ -1820,13 +1820,13 @@ let test_multiple_binaries_keep_private_helpers_separate = fun _ctx ->
             tool_cmx
           ) with
           | (
-            Some (Riot_planner.Action.CreateExecutable { objects = main_objects; _ }),
-            Some (Riot_planner.Action.CreateExecutable { objects = tool_objects; _ }),
-            Some a_cmx,
-            Some b_cmx,
-            Some main_cmx,
-            Some tool_cmx
-          ) ->
+              Some (Riot_planner.Action.CreateExecutable { objects = main_objects; _ }),
+              Some (Riot_planner.Action.CreateExecutable { objects = tool_objects; _ }),
+              Some a_cmx,
+              Some b_cmx,
+              Some main_cmx,
+              Some tool_cmx
+            ) ->
               let has object_ objects = List.any objects ~fn:(Path.equal object_) in
               let object_names objects =
                 List.map objects ~fn:Path.to_string
@@ -1877,11 +1877,11 @@ let test_binary_only_package_links_package_named_private_helper = fun _ctx ->
             main_cmx
           ) with
           | (
-            None,
-            Some (Riot_planner.Action.CreateExecutable { objects; _ }),
-            Some helper_cmx,
-            Some main_cmx
-          ) ->
+              None,
+              Some (Riot_planner.Action.CreateExecutable { objects; _ }),
+              Some helper_cmx,
+              Some main_cmx
+            ) ->
               let has object_ objects = List.any objects ~fn:(Path.equal object_) in
               let object_names objects =
                 List.map objects ~fn:Path.to_string
@@ -1929,14 +1929,14 @@ let test_private_helper_can_depend_on_library_owned_module = fun _ctx ->
             main_cmx
           ) with
           | (
-            Some (Riot_planner.Action.CreateLibrary { objects = library_objects; _ }),
-            Some (
-              Riot_planner.Action.CreateExecutable { objects = binary_objects; libraries; _ }
-            ),
-            Some a_cmx,
-            Some b_cmx,
-            Some main_cmx
-          ) ->
+              Some (Riot_planner.Action.CreateLibrary { objects = library_objects; _ }),
+              Some (
+                Riot_planner.Action.CreateExecutable { objects = binary_objects; libraries; _ }
+              ),
+              Some a_cmx,
+              Some b_cmx,
+              Some main_cmx
+            ) ->
               let has object_ objects = List.any objects ~fn:(Path.equal object_) in
               let object_names objects =
                 List.map objects ~fn:Path.to_string
@@ -2002,12 +2002,12 @@ let test_private_helper_links_only_into_reaching_binary = fun _ctx ->
             tool_cmx
           ) with
           | (
-            Some (Riot_planner.Action.CreateExecutable { objects = main_objects; _ }),
-            Some (Riot_planner.Action.CreateExecutable { objects = tool_objects; _ }),
-            Some shared_cmx,
-            Some main_cmx,
-            Some tool_cmx
-          ) ->
+              Some (Riot_planner.Action.CreateExecutable { objects = main_objects; _ }),
+              Some (Riot_planner.Action.CreateExecutable { objects = tool_objects; _ }),
+              Some shared_cmx,
+              Some main_cmx,
+              Some tool_cmx
+            ) ->
               let has object_ objects = List.any objects ~fn:(Path.equal object_) in
               let object_names objects =
                 List.map objects ~fn:Path.to_string

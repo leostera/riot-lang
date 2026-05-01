@@ -591,9 +591,9 @@ let from_module_graph
             | Some dep_node -> (
                 match (dep_node.value.kind, dep_node.value.file) with
                 | (
-                  (Module_node.ML _ | Module_node.MLI _),
-                  (Module_node.Concrete _ | Module_node.Generated _)
-                ) -> true
+                    (Module_node.ML _ | Module_node.MLI _),
+                    (Module_node.Concrete _ | Module_node.Generated _)
+                  ) -> true
                 | _ -> false
               )
             | None -> false)
@@ -1120,16 +1120,16 @@ let from_json = fun json ->
                 get_field "dependencies" node_json
               ) with
               | (
-                Some (String pkg_name),
-                pkg_path_json,
-                pkg_rel_path_json,
-                Some actions_json,
-                Some outputs_json,
-                Some sources_json,
-                Some hash_json,
-                Some (Int legacy_id),
-                Some deps_json
-              ) -> (
+                  Some (String pkg_name),
+                  pkg_path_json,
+                  pkg_rel_path_json,
+                  Some actions_json,
+                  Some outputs_json,
+                  Some sources_json,
+                  Some hash_json,
+                  Some (Int legacy_id),
+                  Some deps_json
+                ) -> (
                   match parse_actions actions_json with
                   | Error err -> Error err
                   | Ok actions -> (

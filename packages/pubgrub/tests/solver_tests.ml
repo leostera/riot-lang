@@ -184,7 +184,10 @@ let assert_count_versions = fun ~expected result ->
 let rec equal_dependencies = fun expected actual ->
   match (expected, actual) with
   | ([], []) -> true
-  | ((expected_pkg, expected_ranges) :: expected_rest, (actual_pkg, actual_ranges) :: actual_rest) ->
+  | (
+      (expected_pkg, expected_ranges) :: expected_rest,
+      (actual_pkg, actual_ranges) :: actual_rest
+    ) ->
       String.equal expected_pkg actual_pkg
       && ranges_equal expected_ranges actual_ranges
       && equal_dependencies expected_rest actual_rest

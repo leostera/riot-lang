@@ -1069,14 +1069,14 @@ let bench = fun ?(on_event = no_event) (request: bench_request) ->
                             ^ reason;
                           })
                       | Ok (
-                        stdout,
-                        started_at_us,
-                        completed_at_us,
-                        duration_us,
-                        results,
-                        comparisons,
-                        summary
-                      ) ->
+                             stdout,
+                             started_at_us,
+                             completed_at_us,
+                             duration_us,
+                             results,
+                             comparisons,
+                             summary
+                           ) ->
                           total := !total + summary.total;
                           completed := !completed + summary.completed;
                           skipped := !skipped + summary.skipped;
