@@ -4,6 +4,10 @@ open Result.Syntax
 
 module Error = Protocol.Error
 
+module Internal = struct
+  module Protocol = Protocol
+end
+
 module Config = struct
   type ssl_mode =
     | Disable
@@ -136,6 +140,7 @@ module Driver = struct
     | ProtocolError of Protocol.Error.t
     | ConnectionClosed
     | AuthenticationNotSupported of string
+    | TlsNotSupported of string
     | UnexpectedMessage of string
 
   type connection = {
@@ -169,6 +174,7 @@ module Driver = struct
     | ProtocolError proto_err -> Protocol.Error.to_string proto_err
     | ConnectionClosed -> "Connection is closed"
     | AuthenticationNotSupported method_ -> "Authentication method not supported: " ^ method_
+    | TlsNotSupported mode -> "PostgreSQL TLS mode is not supported yet: " ^ mode
     | UnexpectedMessage msg -> "Unexpected message: " ^ msg
 
   let error_to_json = fun __tmp1 ->
@@ -207,6 +213,13 @@ module Driver = struct
             ("type", Data.Json.string "authentication_not_supported");
             ("method", Data.Json.string method_);
             ("message", Data.Json.string ("Authentication method not supported: " ^ method_));
+          ]
+    | TlsNotSupported mode ->
+        Data.Json.obj
+          [
+            ("type", Data.Json.string "tls_not_supported");
+            ("mode", Data.Json.string mode);
+            ("message", Data.Json.string ("PostgreSQL TLS mode is not supported yet: " ^ mode));
           ]
     | UnexpectedMessage msg ->
         Data.Json.obj
@@ -365,6 +378,8 @@ module Driver = struct
     in
     loop 0 len
 
+  let max_backend_message_body_length = 64 * 1_024 * 1_024
+
   let read_message = fun stream ->
     let header = Bytes.create ~size:5 in
     match read_exact stream header 5 with
@@ -377,13 +392,26 @@ module Driver = struct
         let b4 = Char.code (Option.unwrap (Bytes.get header ~at:4)) in
         let length = (b1 lsl 24) lor (b2 lsl 16) lor (b3 lsl 8) lor b4 in
         let body_len = length - 4 in
-        if body_len > 0 then
+        if length < 4 then
+          Error (UnexpectedMessage ("Invalid PostgreSQL backend message length: "
+          ^ Int.to_string length))
+        else if body_len > max_backend_message_body_length then
+          Error (UnexpectedMessage ("PostgreSQL backend message exceeds maximum supported body length: "
+          ^ Int.to_string body_len))
+        else if body_len > 0 then
           let body = Bytes.create ~size:body_len in
           match read_exact stream body body_len with
           | Error err -> Error (TransportError err)
           | Ok () -> Ok (msg_type, length, body)
         else
           Ok (msg_type, length, Bytes.create ~size:0)
+
+  let parse_backend_message = fun msg_type length body ->
+    match Protocol.Reader.parse_backend_message_result msg_type length body with
+    | Ok message -> Ok message
+    | Error error ->
+        Error (UnexpectedMessage ("Invalid PostgreSQL backend message: "
+        ^ Protocol.Reader.parse_error_to_string error))
 
   let authenticate_cleartext = fun stream (cfg: Config.t) ->
     write_message
@@ -411,8 +439,9 @@ module Driver = struct
           match read_message stream with
           | Error error -> Error error
           | Ok (msg_type, length, body) -> (
-              match Protocol.Reader.parse_backend_message msg_type length body with
-              | Protocol.AuthenticationSASLContinue server_first -> (
+              match parse_backend_message msg_type length body with
+              | Error error -> Error error
+              | Ok (Protocol.AuthenticationSASLContinue server_first) -> (
                   match scram_client_final cfg client_first_bare server_first with
                   | Error error -> Error error
                   | Ok (client_final, server_signature) -> (
@@ -422,17 +451,18 @@ module Driver = struct
                           match read_message stream with
                           | Error error -> Error error
                           | Ok (msg_type, length, body) -> (
-                              match Protocol.Reader.parse_backend_message msg_type length body with
-                              | Protocol.AuthenticationSASLFinal server_final ->
+                              match parse_backend_message msg_type length body with
+                              | Error error -> Error error
+                              | Ok (Protocol.AuthenticationSASLFinal server_final) ->
                                   verify_scram_final server_signature server_final
-                              | Protocol.ErrorResponse err -> Error (ProtocolError err)
-                              | _ -> Error (UnexpectedMessage "Expected SCRAM final message")
+                              | Ok (Protocol.ErrorResponse err) -> Error (ProtocolError err)
+                              | Ok _ -> Error (UnexpectedMessage "Expected SCRAM final message")
                             )
                         )
                     )
                 )
-              | Protocol.ErrorResponse err -> Error (ProtocolError err)
-              | _ -> Error (UnexpectedMessage "Expected SCRAM continue message")
+              | Ok (Protocol.ErrorResponse err) -> Error (ProtocolError err)
+              | Ok _ -> Error (UnexpectedMessage "Expected SCRAM continue message")
             )
         )
 
@@ -450,42 +480,45 @@ module Driver = struct
           match read_message stream with
           | Error e -> Error e
           | Ok (msg_type, length, body) -> (
-              let backend_msg = Protocol.Reader.parse_backend_message msg_type length body in
-              match backend_msg with
-              | Protocol.AuthenticationOk -> read_until_ready ()
-              | Protocol.AuthenticationCleartextPassword ->
-                  authenticate_cleartext stream cfg
-                  |> Result.and_then ~fn:read_until_ready
-              | Protocol.AuthenticationMD5Password salt ->
-                  authenticate_md5 stream cfg salt
-                  |> Result.and_then ~fn:read_until_ready
-              | Protocol.AuthenticationSASL mechanisms ->
-                  authenticate_scram_sha256 stream cfg mechanisms
-                  |> Result.and_then ~fn:read_until_ready
-              | Protocol.AuthenticationSASLContinue _ ->
-                  Error (UnexpectedMessage "SCRAM continue without SASL start")
-              | Protocol.AuthenticationSASLFinal _ ->
-                  Error (UnexpectedMessage "SCRAM final without SASL start")
-              | Protocol.ParameterStatus { name; value } ->
-                  Log.debug ("PostgreSQL parameter: " ^ name ^ " = " ^ value);
-                  read_until_ready ()
-              | Protocol.BackendKeyData { process_id; secret_key } ->
-                  Log.debug
-                    ("Backend key data: pid="
-                    ^ string_of_int process_id
-                    ^ " secret="
-                    ^ string_of_int secret_key);
-                  read_until_ready ()
-              | Protocol.ReadyForQuery status ->
-                  Log.debug ("Ready for query, status: " ^ String.make ~len:1 ~char:status);
-                  Ok ()
-              | Protocol.ErrorResponse err -> Error (ProtocolError err)
-              | Protocol.NoticeResponse err ->
-                  Log.info ("PostgreSQL notice: " ^ Protocol.Error.message err);
-                  read_until_ready ()
-              | _ ->
-                  Error (UnexpectedMessage ("During handshake: "
-                  ^ String.make ~len:1 ~char:(Char.chr msg_type)))
+              match parse_backend_message msg_type length body with
+              | Error error -> Error error
+              | Ok backend_msg -> (
+                  match backend_msg with
+                  | Protocol.AuthenticationOk -> read_until_ready ()
+                  | Protocol.AuthenticationCleartextPassword ->
+                      authenticate_cleartext stream cfg
+                      |> Result.and_then ~fn:read_until_ready
+                  | Protocol.AuthenticationMD5Password salt ->
+                      authenticate_md5 stream cfg salt
+                      |> Result.and_then ~fn:read_until_ready
+                  | Protocol.AuthenticationSASL mechanisms ->
+                      authenticate_scram_sha256 stream cfg mechanisms
+                      |> Result.and_then ~fn:read_until_ready
+                  | Protocol.AuthenticationSASLContinue _ ->
+                      Error (UnexpectedMessage "SCRAM continue without SASL start")
+                  | Protocol.AuthenticationSASLFinal _ ->
+                      Error (UnexpectedMessage "SCRAM final without SASL start")
+                  | Protocol.ParameterStatus { name; value } ->
+                      Log.debug ("PostgreSQL parameter: " ^ name ^ " = " ^ value);
+                      read_until_ready ()
+                  | Protocol.BackendKeyData { process_id; secret_key } ->
+                      Log.debug
+                        ("Backend key data: pid="
+                        ^ string_of_int process_id
+                        ^ " secret="
+                        ^ string_of_int secret_key);
+                      read_until_ready ()
+                  | Protocol.ReadyForQuery status ->
+                      Log.debug ("Ready for query, status: " ^ String.make ~len:1 ~char:status);
+                      Ok ()
+                  | Protocol.ErrorResponse err -> Error (ProtocolError err)
+                  | Protocol.NoticeResponse err ->
+                      Log.info ("PostgreSQL notice: " ^ Protocol.Error.message err);
+                      read_until_ready ()
+                  | _ ->
+                      Error (UnexpectedMessage ("During handshake: "
+                      ^ String.make ~len:1 ~char:(Char.chr msg_type)))
+                )
             )
         in
         read_until_ready ()
@@ -501,11 +534,14 @@ module Driver = struct
       match read_message stream with
       | Error e -> Error e
       | Ok (msg_type, length, body) -> (
-          let backend_msg = Protocol.Reader.parse_backend_message msg_type length body in
-          match backend_msg with
-          | Protocol.ReadyForQuery _ -> Ok ()
-          | Protocol.ErrorResponse err -> Error (ProtocolError err)
-          | _ -> drain_responses ()
+          match parse_backend_message msg_type length body with
+          | Error error -> Error error
+          | Ok backend_msg -> (
+              match backend_msg with
+              | Protocol.ReadyForQuery _ -> Ok ()
+              | Protocol.ErrorResponse err -> Error (ProtocolError err)
+              | _ -> drain_responses ()
+            )
         )
     in
     match write_message stream datestyle_msg with
@@ -531,35 +567,40 @@ module Driver = struct
           )
       )
     in
-    match Net.Addr.of_host_and_port ~host:cfg.host ~port:cfg.port with
-    | Error (Net.Addr.System_error _err) ->
-        (* Host resolution failure - treat as connection refused *)
-        Error (TransportError Net.TcpStream.Connection_refused)
-    | Error (Net.Addr.Invalid_port_number _ | Net.Addr.Invalid_format _) ->
-        (* Invalid address format - treat as connection refused *)
-        Error (TransportError Net.TcpStream.Connection_refused)
-    | Ok addr -> (
-        match Net.TcpStream.connect addr with
-        | Error err -> Error (TransportError err)
-        | Ok stream -> (
-            match perform_handshake stream cfg with
-            | Error e ->
-                Net.TcpStream.close stream;
-                Error e
-            | Ok () -> (
-                match initialize_connection stream with
+    match cfg.ssl_mode with
+    | Require -> Error (TlsNotSupported "require")
+    | Disable
+    | Prefer -> (
+        match Net.Addr.of_host_and_port ~host:cfg.host ~port:cfg.port with
+        | Error (Net.Addr.System_error _err) ->
+            (* Host resolution failure - treat as connection refused *)
+            Error (TransportError Net.TcpStream.Connection_refused)
+        | Error (Net.Addr.Invalid_port_number _ | Net.Addr.Invalid_format _) ->
+            (* Invalid address format - treat as connection refused *)
+            Error (TransportError Net.TcpStream.Connection_refused)
+        | Ok addr -> (
+            match Net.TcpStream.connect addr with
+            | Error err -> Error (TransportError err)
+            | Ok stream -> (
+                match perform_handshake stream cfg with
                 | Error e ->
                     Net.TcpStream.close stream;
                     Error e
-                | Ok () ->
-                    Ok {
-                      id;
-                      stream = Some stream;
-                      config = cfg;
-                      transaction_status = 'I';
-                      closed = false;
-                      prepared_statements = Collections.HashMap.create ();
-                    }
+                | Ok () -> (
+                    match initialize_connection stream with
+                    | Error e ->
+                        Net.TcpStream.close stream;
+                        Error e
+                    | Ok () ->
+                        Ok {
+                          id;
+                          stream = Some stream;
+                          config = cfg;
+                          transaction_status = 'I';
+                          closed = false;
+                          prepared_statements = Collections.HashMap.create ();
+                        }
+                  )
               )
           )
       )
@@ -703,32 +744,32 @@ module Driver = struct
 
   let encode_param = fun (value: Sqlx_driver.Value.t) ->
     match value with
-    | Null -> ""
-    | Int n -> string_of_int n
-    | Int64 n -> Int64.to_string n
-    | Int16 n -> string_of_int n
-    | Float f -> string_of_float f
-    | String s -> s
-    | Bool true -> "t"
-    | Bool false -> "f"
-    | Bytes b -> Bytes.to_string b
-    | Timestamp dt -> datetime_to_pg_format dt
-    | TimestampWithTimezone dt -> datetime_to_pg_format dt
+    | Null -> None
+    | Int n -> Some (string_of_int n)
+    | Int64 n -> Some (Int64.to_string n)
+    | Int16 n -> Some (string_of_int n)
+    | Float f -> Some (string_of_float f)
+    | String s -> Some s
+    | Bool true -> Some "t"
+    | Bool false -> Some "f"
+    | Bytes b -> Some (Bytes.to_string b)
+    | Timestamp dt -> Some (datetime_to_pg_format dt)
+    | TimestampWithTimezone dt -> Some (datetime_to_pg_format dt)
     | Date (y, m, d) ->
         let pad n width =
           let s = string_of_int n in
           String.make ~len:(max 0 (width - String.length s)) ~char:'0' ^ s
         in
-        pad y 4 ^ "-" ^ pad m 2 ^ "-" ^ pad d 2
+        Some (pad y 4 ^ "-" ^ pad m 2 ^ "-" ^ pad d 2)
     | Time (h, min, s, us) ->
         let pad n width =
           let s = string_of_int n in
           String.make ~len:(max 0 (width - String.length s)) ~char:'0' ^ s
         in
-        pad h 2 ^ ":" ^ pad min 2 ^ ":" ^ pad s 2 ^ "." ^ pad us 6
-    | Uuid u -> u
-    | Json j -> j
-    | Numeric n -> n
+        Some (pad h 2 ^ ":" ^ pad min 2 ^ ":" ^ pad s 2 ^ "." ^ pad us 6)
+    | Uuid u -> Some u
+    | Json j -> Some j
+    | Numeric n -> Some n
 
   let prepare = fun conn sql ->
     if conn.closed then
@@ -788,61 +829,64 @@ module Driver = struct
                   match read_message stream with
                   | Error e -> Error e
                   | Ok (msg_type, length, body) -> (
-                      let backend_msg =
-                        Protocol.Reader.parse_backend_message msg_type length body
-                      in
-                      match backend_msg with
-                      | Protocol.ParseComplete -> read_extended_results ()
-                      | Protocol.BindComplete -> read_extended_results ()
-                      | Protocol.RowDescription row_desc ->
-                          column_info := row_desc;
-                          read_extended_results ()
-                      | Protocol.DataRow cols ->
-                          let row =
-                            if List.length !column_info = List.length cols then
-                              List.zip !column_info cols
-                              |> List.map
-                                ~fn:(fun ((field: Protocol.Row.field), row_val) ->
-                                  let decoded_value =
-                                    match row_val with
-                                    | Protocol.Row.Null -> Sqlx_driver.Value.null
-                                    | Protocol.Row.Value value -> decode_value field value
-                                  in
-                                  (field.name, decoded_value))
-                            else
-                              List.enumerate cols
-                              |> List.map
-                                ~fn:(fun (index, row_val) ->
-                                  let value =
-                                    match row_val with
-                                    | Protocol.Row.Null -> Sqlx_driver.Value.null
-                                    | Protocol.Row.Value v -> Sqlx_driver.Value.string v
-                                  in
-                                  ("col_" ^ string_of_int index, value))
-                          in
-                          Collections.Queue.push result_set.rows ~value:row;
-                          read_extended_results ()
-                      | Protocol.CommandComplete tag ->
-                          Log.debug ("Command complete: " ^ tag);
-                          let parts = String.split_on_char ' ' tag in
-                          (
-                            match List.rev parts with
-                            | n :: _ -> (
-                                match Int.parse n with
-                                | Some count -> result_set.rows_affected <- count
-                                | None -> ()
-                              )
-                            | [] -> ()
-                          );
-                          read_extended_results ()
-                      | Protocol.ReadyForQuery _status -> Ok result_set
-                      | Protocol.ErrorResponse err -> Error (ProtocolError err)
-                      | Protocol.NoticeResponse err ->
-                          Log.info ("PostgreSQL notice: " ^ Protocol.Error.message err);
-                          read_extended_results ()
-                      | Protocol.NoData -> read_extended_results ()
-                      | Protocol.EmptyQueryResponse -> Ok result_set
-                      | _ -> read_extended_results ()
+                      match parse_backend_message msg_type length body with
+                      | Error error -> Error error
+                      | Ok backend_msg -> (
+                          match backend_msg with
+                          | Protocol.ParseComplete -> read_extended_results ()
+                          | Protocol.BindComplete -> read_extended_results ()
+                          | Protocol.RowDescription row_desc ->
+                              column_info := row_desc;
+                              read_extended_results ()
+                          | Protocol.DataRow cols ->
+                              let row =
+                                if List.length !column_info = List.length cols then
+                                  List.zip !column_info cols
+                                  |> List.map
+                                    ~fn:(fun ((field: Protocol.Row.field), row_val) ->
+                                      let decoded_value =
+                                        match row_val with
+                                        | Protocol.Row.Null -> Sqlx_driver.Value.null
+                                        | Protocol.Row.Value value -> decode_value field value
+                                      in
+                                      (field.name, decoded_value))
+                                else
+                                  List.enumerate cols
+                                  |> List.map
+                                    ~fn:(fun (index, row_val) ->
+                                      let value =
+                                        match row_val with
+                                        | Protocol.Row.Null -> Sqlx_driver.Value.null
+                                        | Protocol.Row.Value v -> Sqlx_driver.Value.string v
+                                      in
+                                      ("col_" ^ string_of_int index, value))
+                              in
+                              Collections.Queue.push result_set.rows ~value:row;
+                              read_extended_results ()
+                          | Protocol.CommandComplete tag ->
+                              Log.debug ("Command complete: " ^ tag);
+                              let parts = String.split_on_char ' ' tag in
+                              (
+                                match List.rev parts with
+                                | n :: _ -> (
+                                    match Int.parse n with
+                                    | Some count -> result_set.rows_affected <- count
+                                    | None -> ()
+                                  )
+                                | [] -> ()
+                              );
+                              read_extended_results ()
+                          | Protocol.ReadyForQuery status ->
+                              stmt.conn.transaction_status <- status;
+                              Ok result_set
+                          | Protocol.ErrorResponse err -> Error (ProtocolError err)
+                          | Protocol.NoticeResponse err ->
+                              Log.info ("PostgreSQL notice: " ^ Protocol.Error.message err);
+                              read_extended_results ()
+                          | Protocol.NoData -> read_extended_results ()
+                          | Protocol.EmptyQueryResponse -> Ok result_set
+                          | _ -> read_extended_results ()
+                        )
                     )
                 in
                 read_extended_results ()
@@ -857,59 +901,62 @@ module Driver = struct
                   match read_message stream with
                   | Error e -> Error e
                   | Ok (msg_type, length, body) -> (
-                      let backend_msg =
-                        Protocol.Reader.parse_backend_message msg_type length body
-                      in
-                      match backend_msg with
-                      | Protocol.RowDescription row_desc ->
-                          column_info := row_desc;
-                          read_query_results ()
-                      | Protocol.DataRow cols ->
-                          let row =
-                            if List.length !column_info = List.length cols then
-                              List.zip !column_info cols
-                              |> List.map
-                                ~fn:(fun ((field: Protocol.Row.field), row_val) ->
-                                  let decoded_value =
-                                    match row_val with
-                                    | Protocol.Row.Null -> Sqlx_driver.Value.null
-                                    | Protocol.Row.Value value -> decode_value field value
-                                  in
-                                  (field.name, decoded_value))
-                            else
-                              List.enumerate cols
-                              |> List.map
-                                ~fn:(fun (index, row_val) ->
-                                  let value =
-                                    match row_val with
-                                    | Protocol.Row.Null -> Sqlx_driver.Value.null
-                                    | Protocol.Row.Value v -> Sqlx_driver.Value.string v
-                                  in
-                                  ("col_" ^ string_of_int index, value))
-                          in
-                          Collections.Queue.push result_set.rows ~value:row;
-                          read_query_results ()
-                      | Protocol.CommandComplete tag ->
-                          Log.debug ("Command complete: " ^ tag);
-                          let parts = String.split_on_char ' ' tag in
-                          (
-                            match List.rev parts with
-                            | n :: _ -> (
-                                match Int.parse n with
-                                | Some count -> result_set.rows_affected <- count
-                                | None -> ()
-                              )
-                            | [] -> ()
-                          );
-                          read_query_results ()
-                      | Protocol.ReadyForQuery _status -> Ok result_set
-                      | Protocol.ErrorResponse err -> Error (ProtocolError err)
-                      | Protocol.NoticeResponse err ->
-                          Log.info ("PostgreSQL notice: " ^ Protocol.Error.message err);
-                          read_query_results ()
-                      | _ ->
-                          Error (UnexpectedMessage ("During query: "
-                          ^ String.make ~len:1 ~char:(Char.chr msg_type)))
+                      match parse_backend_message msg_type length body with
+                      | Error error -> Error error
+                      | Ok backend_msg -> (
+                          match backend_msg with
+                          | Protocol.RowDescription row_desc ->
+                              column_info := row_desc;
+                              read_query_results ()
+                          | Protocol.DataRow cols ->
+                              let row =
+                                if List.length !column_info = List.length cols then
+                                  List.zip !column_info cols
+                                  |> List.map
+                                    ~fn:(fun ((field: Protocol.Row.field), row_val) ->
+                                      let decoded_value =
+                                        match row_val with
+                                        | Protocol.Row.Null -> Sqlx_driver.Value.null
+                                        | Protocol.Row.Value value -> decode_value field value
+                                      in
+                                      (field.name, decoded_value))
+                                else
+                                  List.enumerate cols
+                                  |> List.map
+                                    ~fn:(fun (index, row_val) ->
+                                      let value =
+                                        match row_val with
+                                        | Protocol.Row.Null -> Sqlx_driver.Value.null
+                                        | Protocol.Row.Value v -> Sqlx_driver.Value.string v
+                                      in
+                                      ("col_" ^ string_of_int index, value))
+                              in
+                              Collections.Queue.push result_set.rows ~value:row;
+                              read_query_results ()
+                          | Protocol.CommandComplete tag ->
+                              Log.debug ("Command complete: " ^ tag);
+                              let parts = String.split_on_char ' ' tag in
+                              (
+                                match List.rev parts with
+                                | n :: _ -> (
+                                    match Int.parse n with
+                                    | Some count -> result_set.rows_affected <- count
+                                    | None -> ()
+                                  )
+                                | [] -> ()
+                              );
+                              read_query_results ()
+                          | Protocol.ReadyForQuery status ->
+                              stmt.conn.transaction_status <- status;
+                              Ok result_set
+                          | Protocol.ErrorResponse err -> Error (ProtocolError err)
+                          | Protocol.NoticeResponse err ->
+                              Log.info ("PostgreSQL notice: " ^ Protocol.Error.message err);
+                              read_query_results ()
+                          | _ ->
+                              Error (UnexpectedMessage ("During query: "
+                              ^ String.make ~len:1 ~char:(Char.chr msg_type)))
+                        )
                     )
                 in
                 read_query_results ()
@@ -919,39 +966,55 @@ module Driver = struct
 
   let rows_affected = fun result_set -> result_set.rows_affected
 
+  let execute_simple_command = fun conn sql ->
+    match prepare conn sql with
+    | Error error -> Error error
+    | Ok stmt -> (
+        match execute stmt [] with
+        | Error error -> Error error
+        | Ok _ -> Ok ()
+      )
+
   let begin_transaction = fun conn ->
     if conn.closed then
       Error ConnectionClosed
-    else (
-      conn.transaction_status <- 'T';
-      Ok ()
-    )
+    else if conn.transaction_status != 'I' then
+      Error (UnexpectedMessage "Transaction already in progress")
+    else
+      execute_simple_command conn "BEGIN"
 
   let commit = fun conn ->
     if conn.closed then
       Error ConnectionClosed
     else if conn.transaction_status != 'T' then
       Error (UnexpectedMessage "No transaction in progress")
-    else (
-      conn.transaction_status <- 'I';
-      Ok ()
-    )
+    else
+      execute_simple_command conn "COMMIT"
 
   let rollback = fun conn ->
     if conn.closed then
       Error ConnectionClosed
     else if conn.transaction_status != 'T' then
       Error (UnexpectedMessage "No transaction in progress")
-    else (
-      conn.transaction_status <- 'I';
-      Ok ()
-    )
+    else
+      execute_simple_command conn "ROLLBACK"
 
-  let set_isolation_level = fun _conn ->
-    fun __tmp1 ->
-      match __tmp1 with
-      | `Read_uncommitted -> Ok ()
-      | `Read_committed -> Ok ()
-      | `Repeatable_read -> Ok ()
-      | `Serializable -> Ok ()
+  let isolation_level_sql = fun __tmp1 ->
+    match __tmp1 with
+    | `Read_uncommitted -> "READ UNCOMMITTED"
+    | `Read_committed -> "READ COMMITTED"
+    | `Repeatable_read -> "REPEATABLE READ"
+    | `Serializable -> "SERIALIZABLE"
+
+  let set_isolation_level = fun conn level ->
+    if conn.closed then
+      Error ConnectionClosed
+    else
+      let sql =
+        if conn.transaction_status = 'T' then
+          "SET TRANSACTION ISOLATION LEVEL " ^ isolation_level_sql level
+        else
+          "SET SESSION CHARACTERISTICS AS TRANSACTION ISOLATION LEVEL " ^ isolation_level_sql level
+      in
+      execute_simple_command conn sql
 end

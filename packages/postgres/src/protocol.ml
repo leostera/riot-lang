@@ -966,8 +966,11 @@ module Writer = struct
     List.for_each
       params
       ~fn:(fun param ->
-        write_int32 buf (String.length param);
-        Buffer.add_string buf param);
+        match param with
+        | None -> write_int32 buf (-1)
+        | Some param ->
+            write_int32 buf (String.length param);
+            Buffer.add_string buf param);
     write_int16 buf 0;
     let content = Buffer.contents buf in
     let length = String.length content + 4 in
@@ -1015,11 +1018,87 @@ module Writer = struct
 end
 
 module Reader = struct
-  let read_cstrings = fun reader ->
+  type parse_error = { message_type: int; length: int; offset: int; message: string }
+
+  let parse_error_to_string = fun error ->
+    "backend message "
+    ^ String.make ~len:1 ~char:(Char.chr error.message_type)
+    ^ " length "
+    ^ Int.to_string error.length
+    ^ " at offset "
+    ^ Int.to_string error.offset
+    ^ ": "
+    ^ error.message
+
+  let fail = fun msg_type length reader message ->
+    Error {
+      message_type = msg_type;
+      length;
+      offset = Binary_reader.position reader;
+      message;
+    }
+
+  let expect = fun msg_type length reader message value ->
+    match value with
+    | Some value -> Ok value
+    | None -> fail msg_type length reader message
+
+  let ( let* ) = fun value fn ->
+    match value with
+    | Ok value -> fn value
+    | Error _ as error -> error
+
+  let read_byte = fun msg_type length reader field ->
+    expect
+      msg_type
+      length
+      reader
+      ("expected " ^ field)
+      (Binary_reader.read_byte reader)
+
+  let read_int16 = fun msg_type length reader field ->
+    expect
+      msg_type
+      length
+      reader
+      ("expected " ^ field)
+      (Binary_reader.read_int16 reader)
+
+  let read_int32 = fun msg_type length reader field ->
+    expect
+      msg_type
+      length
+      reader
+      ("expected " ^ field)
+      (Binary_reader.read_int32 reader)
+
+  let read_bytes = fun msg_type length reader field count ->
+    expect
+      msg_type
+      length
+      reader
+      ("expected " ^ field)
+      (Binary_reader.read_bytes reader count)
+
+  let read_string = fun msg_type length reader field ->
+    expect
+      msg_type
+      length
+      reader
+      ("expected " ^ field)
+      (Binary_reader.read_string reader)
+
+  let finish = fun msg_type length reader message ->
+    if Binary_reader.is_eof reader then
+      Ok message
+    else
+      fail msg_type length reader "unexpected trailing bytes"
+
+  let read_cstrings = fun msg_type length reader ->
     let rec loop acc =
       match Binary_reader.read_string reader with
-      | None -> List.rev acc
-      | Some "" -> List.rev acc
+      | None -> fail msg_type length reader "expected null-terminated string list"
+      | Some "" -> Ok (List.rev acc)
       | Some value -> loop (value :: acc)
     in
     loop []
@@ -1030,249 +1109,234 @@ module Reader = struct
     | Some bytes -> Bytes.to_string bytes
     | None -> ""
 
-  let parse_backend_message = fun msg_type _length bytes ->
+  let parse_backend_message_result = fun msg_type length bytes ->
     let reader = Binary_reader.create bytes in
-    let msg_char = Char.chr msg_type in
-    match msg_char with
-    | 'R' -> (
-        let auth_type =
-          Binary_reader.read_int32 reader
-          |> Option.expect ~msg:"Protocol error: expected auth_type in Authentication message"
-        in
-        match auth_type with
-        | 0 -> AuthenticationOk
-        | 3 -> AuthenticationCleartextPassword
-        | 5 ->
-            let salt =
-              Binary_reader.read_bytes reader 4
-              |> Option.expect
-                ~msg:"Protocol error: expected salt in \
-                      AuthenticationMD5Password"
-            in
-            AuthenticationMD5Password salt
-        | 10 -> AuthenticationSASL (read_cstrings reader)
-        | 11 -> AuthenticationSASLContinue (read_remaining_string reader)
-        | 12 -> AuthenticationSASLFinal (read_remaining_string reader)
-        | n -> panic ("Unknown authentication type: " ^ string_of_int n)
-      )
-    | 'K' ->
-        let process_id =
-          Binary_reader.read_int32 reader
-          |> Option.expect ~msg:"Protocol error: expected process_id in BackendKeyData"
-        in
-        let secret_key =
-          Binary_reader.read_int32 reader
-          |> Option.expect ~msg:"Protocol error: expected secret_key in BackendKeyData"
-        in
-        BackendKeyData { process_id; secret_key }
-    | 'S' ->
-        let name =
-          Binary_reader.read_string reader
-          |> Option.expect ~msg:"Protocol error: expected name in ParameterStatus"
-        in
-        let value =
-          Binary_reader.read_string reader
-          |> Option.expect ~msg:"Protocol error: expected value in ParameterStatus"
-        in
-        ParameterStatus { name; value }
-    | 'Z' ->
-        let status =
-          Binary_reader.read_byte reader
-          |> Option.expect ~msg:"Protocol error: expected status in ReadyForQuery"
-        in
-        ReadyForQuery (Char.chr status)
-    | 'T' ->
-        let field_count =
-          Binary_reader.read_int16 reader
-          |> Option.expect ~msg:"Protocol error: expected field_count in RowDescription"
-        in
-        let rec read_fields n acc =
-          if n = 0 then
-            List.rev acc
-          else
-            let name =
-              Binary_reader.read_string reader
-              |> Option.expect
-                ~msg:("Protocol error: expected field name (field "
-                ^ string_of_int (field_count - n + 1))
-            in
-            let table_oid =
-              Binary_reader.read_int32 reader
-              |> Option.expect ~msg:("Protocol error: expected table_oid (field " ^ name ^ ")")
-              |> Oid.of_int
-            in
-            let column_attr =
-              Binary_reader.read_int16 reader
-              |> Option.expect ~msg:("Protocol error: expected column_attr (field " ^ name ^ ")")
-              |> ColumnAttr.of_int
-            in
-            let type_oid =
-              Binary_reader.read_int32 reader
-              |> Option.expect ~msg:("Protocol error: expected type_oid (field " ^ name ^ ")")
-              |> TypeOid.of_int
-            in
-            let type_size =
-              Binary_reader.read_int16 reader
-              |> Option.expect ~msg:("Protocol error: expected type_size (field " ^ name ^ ")")
-              |> TypeSize.of_int
-            in
-            let type_modifier =
-              Binary_reader.read_int32 reader
-              |> Option.expect ~msg:("Protocol error: expected type_modifier (field " ^ name ^ ")")
-              |> TypeModifier.of_int
-            in
-            let format =
-              Binary_reader.read_int16 reader
-              |> Option.expect ~msg:("Protocol error: expected format (field " ^ name ^ ")")
-              |> Format.of_int
-            in
-            let field: Row.field = {
-              Row.name;
-              table_oid;
-              column_attr;
-              type_size;
-              type_oid;
-              type_modifier;
-              format;
-            }
-            in
-            read_fields (n - 1) (field :: acc)
-        in
-        RowDescription (read_fields field_count [])
-    | 'D' ->
-        let col_count =
-          Binary_reader.read_int16 reader
-          |> Option.expect ~msg:"Protocol error: expected column_count in DataRow"
-        in
-        let rec read_columns n acc =
-          if n = 0 then
-            List.rev acc
-          else
-            let col_len =
-              Binary_reader.read_int32 reader
-              |> Option.expect
-                ~msg:("Protocol error: expected column_length (col "
-                ^ string_of_int (col_count - n + 1)
-                ^ ")")
-            in
-            if col_len = (-1) then
-              read_columns (n - 1) (Row.Null :: acc)
+    let expected_body_length = length - 4 in
+    if length < 4 then
+      fail msg_type length reader "message length must include the 4-byte length field"
+    else if expected_body_length != Bytes.length bytes then
+      fail
+        msg_type
+        length
+        reader
+        ("message length/body mismatch: expected "
+        ^ Int.to_string expected_body_length
+        ^ " body bytes, got "
+        ^ Int.to_string (Bytes.length bytes))
+    else
+      let msg_char = Char.chr msg_type in
+      match msg_char with
+      | 'R' -> (
+          let* auth_type = read_int32 msg_type length reader "auth_type in Authentication message" in
+          match auth_type with
+          | 0 -> finish msg_type length reader AuthenticationOk
+          | 3 -> finish msg_type length reader AuthenticationCleartextPassword
+          | 5 ->
+              let* salt = read_bytes msg_type length reader "salt in AuthenticationMD5Password" 4 in
+              finish msg_type length reader (AuthenticationMD5Password salt)
+          | 10 ->
+              let* mechanisms = read_cstrings msg_type length reader in
+              finish msg_type length reader (AuthenticationSASL mechanisms)
+          | 11 ->
+              finish
+                msg_type
+                length
+                reader
+                (AuthenticationSASLContinue (read_remaining_string reader))
+          | 12 ->
+              finish msg_type length reader (AuthenticationSASLFinal (read_remaining_string reader))
+          | n -> fail msg_type length reader ("unknown authentication type: " ^ string_of_int n)
+        )
+      | 'K' ->
+          let* process_id = read_int32 msg_type length reader "process_id in BackendKeyData" in
+          let* secret_key = read_int32 msg_type length reader "secret_key in BackendKeyData" in
+          finish msg_type length reader (BackendKeyData { process_id; secret_key })
+      | 'S' ->
+          let* name = read_string msg_type length reader "name in ParameterStatus" in
+          let* value = read_string msg_type length reader "value in ParameterStatus" in
+          finish msg_type length reader (ParameterStatus { name; value })
+      | 'Z' ->
+          let* status = read_byte msg_type length reader "status in ReadyForQuery" in
+          finish msg_type length reader (ReadyForQuery (Char.chr status))
+      | 'T' ->
+          let* field_count = read_int16 msg_type length reader "field_count in RowDescription" in
+          let rec read_fields n acc =
+            if n = 0 then
+              Ok (List.rev acc)
             else
-              let value =
-                Binary_reader.read_cstring reader col_len
-                |> Option.expect
-                  ~msg:("Protocol error: expected column_value (col "
-                  ^ string_of_int (col_count - n + 1)
-                  ^ ", len="
-                  ^ string_of_int col_len
-                  ^ "). Buffer underrun - possible network issue.")
+              let index = field_count - n + 1 in
+              let* name =
+                read_string
+                  msg_type
+                  length
+                  reader
+                  ("field name in RowDescription field " ^ string_of_int index)
               in
-              read_columns (n - 1) (Row.Value value :: acc)
-        in
-        DataRow (read_columns col_count [])
-    | 'C' ->
-        let tag =
-          Binary_reader.read_string reader
-          |> Option.expect ~msg:"Protocol error: expected tag in CommandComplete"
-        in
-        CommandComplete tag
-    | 'E'
-    | 'N' ->
-        (* Build error record by reading all fields *)
-        let rec read_fields err =
-          if Binary_reader.is_eof reader then
-            err
-          else
-            match Binary_reader.read_byte reader with
-            | None -> err
-            | Some 0 -> err
-            | Some field_code -> (
-                let field_char = Char.chr field_code in
-                match Binary_reader.read_string reader with
-                | None -> err
-                | Some value ->
-                    let err =
-                      match field_char with
-                      | 'S' -> { err with Error.severity = Some value }
-                      | 'C' -> { err with Error.sqlstate = Some (Sqlstate.of_string value) }
-                      | 'M' -> { err with Error.message = value }
-                      | 'D' -> { err with Error.detail = Some value }
-                      | 'H' -> { err with Error.hint = Some value }
-                      | 'P' -> { err with Error.position = Int.parse value }
-                      | 'p' -> { err with Error.internal_position = Int.parse value }
-                      | 'q' -> { err with Error.internal_query = Some value }
-                      | 'W' -> { err with Error.where_context = Some value }
-                      | 's' -> { err with Error.schema_name = Some value }
-                      | 't' -> { err with Error.table_name = Some value }
-                      | 'c' -> { err with Error.column_name = Some value }
-                      | 'd' -> { err with Error.datatype_name = Some value }
-                      | 'n' -> { err with Error.constraint_name = Some value }
-                      | 'F' -> { err with Error.source_file = Some value }
-                      | 'L' -> { err with Error.source_line = Int.parse value }
-                      | 'R' -> { err with Error.source_routine = Some value }
-                      | _ -> err
-                    in
-                    read_fields err
-              )
-        in
-        let empty_error: Error.t = {
-          Error.severity = None;
-          sqlstate = None;
-          message = "Unknown error";
-          detail = None;
-          hint = None;
-          position = None;
-          internal_position = None;
-          internal_query = None;
-          where_context = None;
-          schema_name = None;
-          table_name = None;
-          column_name = None;
-          datatype_name = None;
-          constraint_name = None;
-          source_file = None;
-          source_line = None;
-          source_routine = None;
-        }
-        in
-        let error = read_fields empty_error in
-        if msg_char = 'E' then
-          ErrorResponse error
-        else
-          NoticeResponse error
-    | '1' -> ParseComplete
-    | '2' -> BindComplete
-    | '3' -> CloseComplete
-    | 'n' -> NoData
-    | 'I' -> EmptyQueryResponse
-    | 't' ->
-        let param_count =
-          Binary_reader.read_int16 reader
-          |> Option.expect ~msg:"Protocol error: expected param_count in ParameterDescription"
-        in
-        let rec read_oids n acc =
-          if n = 0 then
-            List.rev acc
-          else
-            let oid =
-              Binary_reader.read_int32 reader
-              |> Option.expect ~msg:"Protocol error: expected OID in ParameterDescription"
-              |> TypeOid.of_int
-            in
-            read_oids (n - 1) (oid :: acc)
-        in
-        ParameterDescription (read_oids param_count [])
-    | c ->
-        let hex =
-          let h = msg_type lsr 4 in
-          let l = msg_type land 0xf in
-          let to_hex_char n =
-            if n < 10 then
-              Char.chr (48 + n)
-            else
-              Char.chr (87 + n)
+              let* table_oid = read_int32 msg_type length reader ("table_oid for field " ^ name) in
+              let* column_attr = read_int16 msg_type length reader ("column_attr for field " ^ name) in
+              let* type_oid = read_int32 msg_type length reader ("type_oid for field " ^ name) in
+              let* type_size = read_int16 msg_type length reader ("type_size for field " ^ name) in
+              let* type_modifier =
+                read_int32 msg_type length reader ("type_modifier for field " ^ name)
+              in
+              let* format = read_int16 msg_type length reader ("format for field " ^ name) in
+              let field: Row.field = {
+                Row.name;
+                table_oid = Oid.of_int table_oid;
+                column_attr = ColumnAttr.of_int column_attr;
+                type_size = TypeSize.of_int type_size;
+                type_oid = TypeOid.of_int type_oid;
+                type_modifier = TypeModifier.of_int type_modifier;
+                format = Format.of_int format;
+              }
+              in
+              read_fields (n - 1) (field :: acc)
           in
-          String.make ~len:1 ~char:(to_hex_char h) ^ String.make ~len:1 ~char:(to_hex_char l)
-        in
-        panic ("Unknown message type: '" ^ String.make ~len:1 ~char:c ^ "' (0x" ^ hex ^ ")")
+          let* fields = read_fields field_count [] in
+          finish msg_type length reader (RowDescription fields)
+      | 'D' ->
+          let* col_count = read_int16 msg_type length reader "column_count in DataRow" in
+          let rec read_columns n acc =
+            if n = 0 then
+              Ok (List.rev acc)
+            else
+              let index = col_count - n + 1 in
+              let* col_len =
+                read_int32
+                  msg_type
+                  length
+                  reader
+                  ("column_length in DataRow column " ^ string_of_int index)
+              in
+              if col_len = (-1) then
+                read_columns (n - 1) (Row.Null :: acc)
+              else if col_len < (-1) then
+                fail
+                  msg_type
+                  length
+                  reader
+                  ("invalid negative column length in DataRow column " ^ string_of_int index)
+              else
+                let* value =
+                  expect
+                    msg_type
+                    length
+                    reader
+                    ("column_value in DataRow column "
+                    ^ string_of_int index
+                    ^ " with length "
+                    ^ string_of_int col_len)
+                    (Binary_reader.read_cstring reader col_len)
+                in
+                read_columns (n - 1) (Row.Value value :: acc)
+          in
+          let* columns = read_columns col_count [] in
+          finish msg_type length reader (DataRow columns)
+      | 'C' ->
+          let* tag = read_string msg_type length reader "tag in CommandComplete" in
+          finish msg_type length reader (CommandComplete tag)
+      | 'E'
+      | 'N' ->
+          (* Build error record by reading all fields *)
+          let rec read_fields err =
+            if Binary_reader.is_eof reader then
+              fail msg_type length reader "expected error response terminator"
+            else
+              match Binary_reader.read_byte reader with
+              | None -> fail msg_type length reader "expected error field code"
+              | Some 0 -> Ok err
+              | Some field_code -> (
+                  let field_char = Char.chr field_code in
+                  match Binary_reader.read_string reader with
+                  | None -> fail msg_type length reader "expected error field value"
+                  | Some value ->
+                      let err =
+                        match field_char with
+                        | 'S' -> { err with Error.severity = Some value }
+                        | 'C' -> { err with Error.sqlstate = Some (Sqlstate.of_string value) }
+                        | 'M' -> { err with Error.message = value }
+                        | 'D' -> { err with Error.detail = Some value }
+                        | 'H' -> { err with Error.hint = Some value }
+                        | 'P' -> { err with Error.position = Int.parse value }
+                        | 'p' -> { err with Error.internal_position = Int.parse value }
+                        | 'q' -> { err with Error.internal_query = Some value }
+                        | 'W' -> { err with Error.where_context = Some value }
+                        | 's' -> { err with Error.schema_name = Some value }
+                        | 't' -> { err with Error.table_name = Some value }
+                        | 'c' -> { err with Error.column_name = Some value }
+                        | 'd' -> { err with Error.datatype_name = Some value }
+                        | 'n' -> { err with Error.constraint_name = Some value }
+                        | 'F' -> { err with Error.source_file = Some value }
+                        | 'L' -> { err with Error.source_line = Int.parse value }
+                        | 'R' -> { err with Error.source_routine = Some value }
+                        | _ -> err
+                      in
+                      read_fields err
+                )
+          in
+          let empty_error: Error.t = {
+            Error.severity = None;
+            sqlstate = None;
+            message = "Unknown error";
+            detail = None;
+            hint = None;
+            position = None;
+            internal_position = None;
+            internal_query = None;
+            where_context = None;
+            schema_name = None;
+            table_name = None;
+            column_name = None;
+            datatype_name = None;
+            constraint_name = None;
+            source_file = None;
+            source_line = None;
+            source_routine = None;
+          }
+          in
+          let* error = read_fields empty_error in
+          finish
+            msg_type
+            length
+            reader
+            (
+              if msg_char = 'E' then
+                ErrorResponse error
+              else
+                NoticeResponse error
+            )
+      | '1' -> finish msg_type length reader ParseComplete
+      | '2' -> finish msg_type length reader BindComplete
+      | '3' -> finish msg_type length reader CloseComplete
+      | 'n' -> finish msg_type length reader NoData
+      | 'I' -> finish msg_type length reader EmptyQueryResponse
+      | 't' ->
+          let* param_count = read_int16 msg_type length reader "param_count in ParameterDescription" in
+          let rec read_oids n acc =
+            if n = 0 then
+              Ok (List.rev acc)
+            else
+              let* oid = read_int32 msg_type length reader "OID in ParameterDescription" in
+              read_oids (n - 1) (TypeOid.of_int oid :: acc)
+          in
+          let* oids = read_oids param_count [] in
+          finish msg_type length reader (ParameterDescription oids)
+      | _ ->
+          let hex =
+            let h = msg_type lsr 4 in
+            let l = msg_type land 0xf in
+            let to_hex_char n =
+              if n < 10 then
+                Char.chr (48 + n)
+              else
+                Char.chr (87 + n)
+            in
+            String.make ~len:1 ~char:(to_hex_char h) ^ String.make ~len:1 ~char:(to_hex_char l)
+          in
+          fail msg_type length reader ("unknown message type 0x" ^ hex)
+
+  let parse_backend_message = fun msg_type length bytes ->
+    match parse_backend_message_result msg_type length bytes with
+    | Ok message -> message
+    | Error error -> panic (parse_error_to_string error)
 end

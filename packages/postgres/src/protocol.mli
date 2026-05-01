@@ -339,7 +339,17 @@ module Writer: sig
 
   val parse_message: statement_name:string -> query:string -> param_types:int list -> string
 
-  val bind_message: portal_name:string -> statement_name:string -> params:string list -> string
+  (**
+     Build a PostgreSQL extended-query Bind message.
+
+     [None] encodes a SQL NULL parameter with a [-1] value length. [Some ""]
+     encodes an empty but present value with a [0] value length.
+  *)
+  val bind_message:
+    portal_name:string ->
+    statement_name:string ->
+    params:string option list ->
+    string
 
   val execute_message: portal_name:string -> max_rows:int -> string
 
@@ -353,5 +363,34 @@ module Writer: sig
 end
 
 module Reader: sig
+  (** Structured backend frame parsing failure. *)
+  type parse_error = {
+    (** Backend message tag byte. *)
+    message_type: int;
+    (** Declared PostgreSQL message length, including the 4-byte length field. *)
+    length: int;
+    (** Byte offset within the backend message body where parsing failed. *)
+    offset: int;
+    (** Human-readable parse failure. *)
+    message: string;
+  }
+
+  (** Render a backend parse error for logs and driver diagnostics. *)
+  val parse_error_to_string: parse_error -> string
+
+  (**
+     Parse a backend message without raising.
+
+     Use this in networked code so malformed or truncated server frames become
+     driver errors instead of process crashes.
+  *)
+  val parse_backend_message_result: int -> int -> bytes -> (backend_message, parse_error) result
+
+  (**
+     Compatibility wrapper around [parse_backend_message_result].
+
+     This raises on malformed input and should only be used in tests or code
+     that intentionally wants fail-fast behavior.
+  *)
   val parse_backend_message: int -> int -> bytes -> backend_message
 end

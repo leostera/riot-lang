@@ -48,13 +48,29 @@ module Config: sig
     user: string;
     (** Password used during authentication. *)
     password: string;
-    (** TLS policy used for the connection. *)
+    (**
+       TLS policy used for the connection.
+
+       Current implementation note: TLS negotiation is not implemented yet.
+       [Require] fails with a structured driver error. [Prefer] currently uses
+       the plaintext path.
+    *)
     ssl_mode: ssl_mode;
     (** Optional application name reported to PostgreSQL. *)
     application_name: string option;
-    (** Maximum time allowed for establishing the connection. *)
+    (**
+       Maximum time allowed for establishing the connection.
+
+       Reserved for the connection path; not enforced by the current TCP
+       implementation yet.
+    *)
     connect_timeout: Time.Duration.t;
-    (** Optional idle timeout before TCP keepalive probes are sent. *)
+    (**
+       Optional idle timeout before TCP keepalive probes are sent.
+
+       Reserved for the connection path; not enforced by the current TCP
+       implementation yet.
+    *)
     keepalives_idle: Time.Duration.t option;
   }
 
@@ -84,6 +100,11 @@ module Config: sig
      command-line flags, or secrets storage.
   *)
   val from_string: string -> (t, string) Result.t
+end
+
+(** Internal protocol modules exposed for package-level regression tests. *)
+module Internal: sig
+  module Protocol: module type of Protocol
 end
 
 (** [Sqlx_driver] implementation backed by PostgreSQL. *)
