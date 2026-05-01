@@ -528,6 +528,7 @@ let test_expression_field_access_splits_value_paths = fun _ctx ->
 let module_value_field = Hello.record.field
 let field_chain = obj.field1.field2
 let qualified_field = point.Point.y
+let mixed_field = hello.Module.field
 |ocaml}
     |> Result.expect ~msg:"expected parse source file"
   in
@@ -548,7 +549,7 @@ let qualified_field = point.Point.y
   (
     match Ast.Expr.view (body 1) with
     | Ast.Expr.FieldAccess { target; field } ->
-        Test.assert_equal ~expected:"field" ~actual:(Ast.Token.text field);
+        Test.assert_equal ~expected:"field" ~actual:(Ast.Ident.text field);
         (
           match Ast.Expr.view target with
           | Ast.Expr.Ident { ident } ->
@@ -559,11 +560,11 @@ let qualified_field = point.Point.y
   );
   match Ast.Expr.view (body 2) with
   | Ast.Expr.FieldAccess { target; field } ->
-      Test.assert_equal ~expected:"field2" ~actual:(Ast.Token.text field);
+      Test.assert_equal ~expected:"field2" ~actual:(Ast.Ident.text field);
       (
         match Ast.Expr.view target with
         | Ast.Expr.FieldAccess { target; field } ->
-            Test.assert_equal ~expected:"field1" ~actual:(Ast.Token.text field);
+            Test.assert_equal ~expected:"field1" ~actual:(Ast.Ident.text field);
             (
               match Ast.Expr.view target with
               | Ast.Expr.Ident { ident } ->
@@ -575,20 +576,26 @@ let qualified_field = point.Point.y
       (
         match Ast.Expr.view (body 3) with
         | Ast.Expr.FieldAccess { target; field } ->
-            Test.assert_equal ~expected:"y" ~actual:(Ast.Token.text field);
+            Test.assert_equal ~expected:"Point.y" ~actual:(Ast.Ident.text field);
             (
               match Ast.Expr.view target with
-              | Ast.Expr.FieldAccess { target; field } ->
-                  Test.assert_equal ~expected:"Point" ~actual:(Ast.Token.text field);
-                  (
-                    match Ast.Expr.view target with
-                    | Ast.Expr.Ident { ident } ->
-                        Test.assert_equal ~expected:"point" ~actual:(Ast.Ident.text ident)
-                    | _ -> panic "expected qualified field root identifier"
-                  )
-              | _ -> panic "expected qualified field access target"
+              | Ast.Expr.Ident { ident } ->
+                  Test.assert_equal ~expected:"point" ~actual:(Ast.Ident.text ident)
+              | _ -> panic "expected qualified field root identifier"
             )
         | _ -> panic "expected qualified record field access"
+      );
+      (
+        match Ast.Expr.view (body 4) with
+        | Ast.Expr.FieldAccess { target; field } ->
+            Test.assert_equal ~expected:"Module.field" ~actual:(Ast.Ident.text field);
+            (
+              match Ast.Expr.view target with
+              | Ast.Expr.Ident { ident } ->
+                  Test.assert_equal ~expected:"hello" ~actual:(Ast.Ident.text ident)
+              | _ -> panic "expected mixed field root identifier"
+            )
+        | _ -> panic "expected mixed qualified record field access"
       );
       Ok ()
   | _ -> Error "expected lowercase field access chain"
@@ -613,7 +620,7 @@ let test_expression_poly_variant_payload_keeps_field_access = fun _ctx ->
       (
         match Ast.Expr.view payload with
         | Ast.Expr.FieldAccess { target; field } ->
-            Test.assert_equal ~expected:"paste_buffer" ~actual:(Ast.Token.text field);
+            Test.assert_equal ~expected:"paste_buffer" ~actual:(Ast.Ident.text field);
             (
               match Ast.Expr.view target with
               | Ast.Expr.Ident { ident } ->
@@ -624,6 +631,43 @@ let test_expression_poly_variant_payload_keeps_field_access = fun _ctx ->
       );
       Ok ()
   | _ -> Error "expected polymorphic variant payload"
+
+let test_assert_and_lazy_parse_as_regular_applications = fun _ctx ->
+  let root =
+    parse_ml
+      {ocaml|let checked = assert ready
+let delayed = lazy compute
+|ocaml}
+    |> Result.expect ~msg:"expected parse source file"
+  in
+  let body index =
+    nth_structure_item root index
+    |> require_some ~msg:"expected structure item"
+    |> binding_of_structure_item
+    |> Result.expect ~msg:"expected let binding"
+    |> body_of_binding
+    |> Result.expect ~msg:"expected let binding body"
+  in
+  let assert_application index ~callee_text ~argument_text =
+    match Ast.Expr.view (body index) with
+    | Ast.Expr.Apply { callee; argument } ->
+        (
+          match Ast.Expr.view callee with
+          | Ast.Expr.Ident { ident } ->
+              Test.assert_equal ~expected:callee_text ~actual:(Ast.Ident.text ident)
+          | _ -> panic "expected keyword-form callee identifier"
+        );
+        (
+          match Ast.Expr.view argument with
+          | Ast.Expr.Ident { ident } ->
+              Test.assert_equal ~expected:argument_text ~actual:(Ast.Ident.text ident)
+          | _ -> panic "expected keyword-form operand identifier"
+        )
+    | _ -> panic "expected keyword form to use regular apply view"
+  in
+  assert_application 0 ~callee_text:"assert" ~argument_text:"ready";
+  assert_application 1 ~callee_text:"lazy" ~argument_text:"compute";
+  Ok ()
 
 let test_assignment_operator_views = fun _ctx ->
   let root =
@@ -988,6 +1032,32 @@ val scoped_unit: M.unit
       )
   | _ -> Error "expected scoped unit value declaration"
 
+let test_type_expression_alias_view = fun _ctx ->
+  let root =
+    parse_mli {ocaml|val aliased: (int as 'a)
+|ocaml}
+    |> Result.expect ~msg:"expected parse interface"
+  in
+  let value_item =
+    nth_signature_item root 0
+    |> require_some ~msg:"expected value signature item"
+  in
+  match Ast.SignatureItem.view value_item with
+  | Ast.SignatureItem.Value decl ->
+      let annotation =
+        Ast.ValueDeclaration.type_annotation decl
+        |> require_some ~msg:"expected aliased type annotation"
+      in
+      (
+        match Ast.TypeExpr.view annotation with
+        | Ast.TypeExpr.Alias { typ; name } ->
+            assert_type_ident_last_segment typ "int";
+            Test.assert_equal ~expected:"a" ~actual:(Ast.Token.text name);
+            Ok ()
+        | _ -> Error "expected type alias annotation"
+      )
+  | _ -> Error "expected value declaration"
+
 let test_type_tuple_separator_views = fun _ctx ->
   let root =
     parse_mli "type ('a, 'e) result_like = ('a, 'e) result\ntype pair = int * string\n"
@@ -1068,7 +1138,7 @@ let test_poly_labeled_and_signed_views = fun _ctx ->
   in
   (
     match Ast.TypeExpr.view annotation with
-    | Ast.TypeExpr.Poly { names; body } ->
+    | Ast.TypeExpr.Forall { names; body } ->
         Test.assert_equal
           ~expected:[ "socket"; "err" ]
           ~actual:(List.map (vector_to_list names) ~fn:Ast.Token.text);
@@ -1134,7 +1204,7 @@ let test_quoted_poly_let_annotation_views = fun _ctx ->
   in
   (
     match Ast.TypeExpr.view annotation with
-    | Ast.TypeExpr.Poly { names; body } ->
+    | Ast.TypeExpr.Forall { names; body } ->
         Test.assert_equal
           ~expected:[ "field"; "builder"; "value" ]
           ~actual:(List.map (vector_to_list names) ~fn:Ast.Token.text);
@@ -3939,6 +4009,9 @@ let tests =
     case "ast exposes separated docstring trivia parts" test_token_leading_docstring_trivia_parts;
     case "ast node spans exclude leading trivia" test_node_span_excludes_leading_trivia;
     case "ast exposes if and match expression views" test_expression_views;
+    case
+      "ast parses assert and lazy as regular applications"
+      test_assert_and_lazy_parse_as_regular_applications;
     case "ast exposes assignment operator tokens" test_assignment_operator_views;
     case
       "ast preserves trailing sequence bodies before and-bindings"
@@ -3960,6 +4033,7 @@ let tests =
     case "ast exposes signature declaration views" test_signature_and_type_views;
     case "ast parses package type value annotations" test_package_type_value_annotation_views;
     case "ast exposes type expression views" test_type_expression_views;
+    case "ast exposes type expression aliases" test_type_expression_alias_view;
     case "ast exposes type tuple separators" test_type_tuple_separator_views;
     case
       "ast exposes poly labeled types and signed literal patterns"

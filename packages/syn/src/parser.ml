@@ -763,8 +763,6 @@ let can_start_atom = function
   | Syntax_kind.FUN_KW
   | Syntax_kind.FUNCTION_KW
   | Syntax_kind.TRY_KW
-  | Syntax_kind.ASSERT_KW
-  | Syntax_kind.LAZY_KW
   | Syntax_kind.WHILE_KW
   | Syntax_kind.FOR_KW
   | Syntax_kind.BACKTICK
@@ -838,7 +836,6 @@ let can_start_pattern_atom = function
   | Syntax_kind.MINUS
   | Syntax_kind.PLUSDOT
   | Syntax_kind.MINUSDOT
-  | Syntax_kind.LAZY_KW
   | Syntax_kind.EXCEPTION_KW -> true
   | _ -> false
 
@@ -1402,7 +1399,10 @@ let rec parse_expression = fun
         | Syntax_kind.IDENT ->
             let marker = precede p lhs in
             bump p;
+            let field_starts_uppercase = ident_at_starts_uppercase p 0 in
             expect p Syntax_kind.IDENT (invalid_expression p);
+            if field_starts_uppercase then
+              consume_path_segments p;
             loop (complete p marker Syntax_kind.FIELD_ACCESS_EXPR)
         | Syntax_kind.BANG ->
             loop (parse_dot_bang_expr p lhs ~signature ~stop_at_item ~stop_at_semi ~stop_at_comma)
@@ -1531,22 +1531,6 @@ and parse_prefix_or_atom = fun p ~signature ~stop_at_item ~stop_at_semi ~stop_at
   | Syntax_kind.FUNCTION_KW ->
       parse_function_expr p ~signature ~stop_at_item ~stop_at_semi ~stop_at_comma
   | Syntax_kind.TRY_KW -> parse_try_expr p ~signature ~stop_at_item ~stop_at_semi ~stop_at_comma
-  | Syntax_kind.ASSERT_KW ->
-      parse_unary_keyword_expr
-        p
-        ~signature
-        ~stop_at_item
-        ~stop_at_semi
-        ~stop_at_comma
-        Syntax_kind.ASSERT_EXPR
-  | Syntax_kind.LAZY_KW ->
-      parse_unary_keyword_expr
-        p
-        ~signature
-        ~stop_at_item
-        ~stop_at_semi
-        ~stop_at_comma
-        Syntax_kind.LAZY_EXPR
   | Syntax_kind.WHILE_KW -> parse_while_expr p ~signature ~stop_at_item ~stop_at_semi ~stop_at_comma
   | Syntax_kind.FOR_KW -> parse_for_expr p ~signature ~stop_at_item ~stop_at_semi ~stop_at_comma
   | Syntax_kind.IDENT -> parse_path_expr p
@@ -2185,12 +2169,6 @@ and parse_function_expr = fun p ~signature ~stop_at_item ~stop_at_semi ~stop_at_
   parse_match_cases p ~signature ~stop_at_item ~stop_at_semi ~stop_at_comma;
   complete p marker Syntax_kind.FUNCTION_EXPR
 
-and parse_unary_keyword_expr = fun p ~signature ~stop_at_item ~stop_at_semi ~stop_at_comma kind ->
-  let marker = start_node p in
-  bump p;
-  ignore (parse_expression p ~signature ~stop_at_item ~stop_at_semi ~stop_at_comma 70);
-  complete p marker kind
-
 and parse_while_expr = fun p ~signature ~stop_at_item ~stop_at_semi ~stop_at_comma ->
   let marker = start_node p in
   bump p;
@@ -2399,7 +2377,6 @@ and parse_pattern_atom = fun p ~stop_type_at_arrow ->
   | Syntax_kind.QUESTION -> parse_label_pattern p ~stop_type_at_arrow Syntax_kind.OPTIONAL_PARAM
   | Syntax_kind.BACKTICK -> parse_poly_variant_pattern p ~stop_type_at_arrow
   | Syntax_kind.HASH -> parse_poly_variant_inherit_pattern p
-  | Syntax_kind.LAZY_KW -> parse_unary_pattern p ~stop_type_at_arrow Syntax_kind.LAZY_PATTERN
   | Syntax_kind.EXCEPTION_KW ->
       parse_unary_pattern p ~stop_type_at_arrow Syntax_kind.EXCEPTION_PATTERN
   | _ -> parse_error_pattern p

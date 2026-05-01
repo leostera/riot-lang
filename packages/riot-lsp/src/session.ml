@@ -568,7 +568,7 @@ and binding_name_tokens_of_pattern = fun pattern ->
 let rec value_like_type_is_function = fun type_ ->
   match Syn.Ast.TypeExpr.view type_ with
   | Syn.Ast.TypeExpr.Arrow _ -> true
-  | Syn.Ast.TypeExpr.Poly { body; _ } -> value_like_type_is_function body
+  | Syn.Ast.TypeExpr.Forall { body; _ } -> value_like_type_is_function body
   | _ -> false
 
 let symbol_kind_of_type_member = fun member ->

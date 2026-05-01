@@ -20,7 +20,6 @@ type t =
   | And
   | As
   | Asr
-  | Assert
   | Begin
   | Constraint
   | Do
@@ -39,7 +38,6 @@ type t =
   | In
   | Include
   | Land
-  | Lazy
   | Let
   | Lor
   | Lsl

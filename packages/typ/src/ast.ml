@@ -1045,13 +1045,14 @@ let rec build_core_type = fun context (type_expr: Syn.Ast.TypeExpr.t) ->
           |> Iter.Iterator.to_list
         in
         make_core_type origin (Tuple parts)
-    | Syn.Ast.TypeExpr.Poly { body } ->
+    | Syn.Ast.TypeExpr.Forall { body } ->
         make_core_type
           origin
           (ForAll {
             parameters = poly_type_parameters type_expr;
             body = build_core_type context body;
           })
+    | Syn.Ast.TypeExpr.Alias { typ; _ } -> build_core_type context typ
     | Syn.Ast.TypeExpr.Unknown node -> (
         match poly_variant_type_fields_from_node origin node with
         | _ :: _ as fields -> make_core_type origin (PolyVariant fields)
@@ -1591,10 +1592,10 @@ and build_expression = fun context (syntax_expression: Syn.Ast.Expr.t) ->
         let receiver = build_expression context target in
         let origin = {
           origin with
-          span = Syn.Span.union receiver.origin.span (Syn.Ast.Token.span field);
+          span = Syn.Span.union receiver.origin.span (Syn.Ast.Ident.span field);
         }
         in
-        make_expression origin (FieldAccess { receiver; field = ident_from_token field })
+        make_expression origin (FieldAccess { receiver; field = ident_from_syn_ident field })
     | Syn.Ast.Expr.Assign { target; value; _ } ->
         make_expression
           origin

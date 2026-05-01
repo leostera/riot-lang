@@ -1567,9 +1567,13 @@ module TypeExpr = struct
         arg: t;
         ret: t;
       }
-    | Poly of {
+    | Forall of {
         names: Token.t Vector.t;
         body: t;
+      }
+    | Alias of {
+        typ: t;
+        name: Token.t;
       }
     | Tuple of {
         parts: t Vector.t;
@@ -1728,6 +1732,21 @@ module TypeExpr = struct
     for_each_poly_type_name type_expr ~fn:(fun name -> Vector.push names ~value:name);
     names
 
+  let alias_parts = fun type_expr ->
+    let typ =
+      first_child_node_matching type_expr ~matches:is_type_expr_kind
+      |> normalize_type_expr_option
+    in
+    let name =
+      first_child_node_matching
+        type_expr
+        ~matches:(fun kind -> Syntax_kind.(kind = VAR_TYPE))
+      |> Option.and_then ~fn:Ident.last_token
+    in
+    match (typ, name) with
+    | (Some typ, Some name) -> Some (typ, name)
+    | _ -> None
+
   let rec view = fun (type_expr: type_expr) ->
     match Node.kind type_expr with
     | Syntax_kind.TYPE_EXPR -> (
@@ -1772,7 +1791,7 @@ module TypeExpr = struct
     | Syntax_kind.POLY_TYPE -> (
         match normalize_type_expr_option
           (first_child_node_matching type_expr ~matches:is_type_expr_kind) with
-        | Some body -> Poly { names = poly_type_names type_expr; body }
+        | Some body -> Forall { names = poly_type_names type_expr; body }
         | None -> Unknown type_expr
       )
     | Syntax_kind.LABELED_TYPE -> Unknown type_expr
@@ -1789,7 +1808,11 @@ module TypeExpr = struct
         | Some inner -> view inner
         | None -> Unknown type_expr
       )
-    | Syntax_kind.OPAQUE_TYPE -> Unknown type_expr
+    | Syntax_kind.OPAQUE_TYPE -> (
+        match alias_parts type_expr with
+        | Some (typ, name) -> Alias { typ; name }
+        | None -> Unknown type_expr
+      )
     | Syntax_kind.ERROR -> Error type_expr
     | _ -> Unknown type_expr
 
@@ -2504,7 +2527,7 @@ module Expr: sig
     | Infix of { left: t; operator: token; right: t }
     | Prefix of { operator: token; operand: t }
     | Assign of { target: t; operator: token; value: t }
-    | FieldAccess of { target: t; field: token }
+    | FieldAccess of { target: t; field: Ident.t }
     | PolyVariant of {
         tag: token;
         payload: t option;
@@ -2607,7 +2630,7 @@ end = struct
     | Infix of { left: t; operator: token; right: t }
     | Prefix of { operator: token; operand: t }
     | Assign of { target: t; operator: token; value: t }
-    | FieldAccess of { target: t; field: token }
+    | FieldAccess of { target: t; field: Ident.t }
     | PolyVariant of {
         tag: token;
         payload: t option;
@@ -2774,6 +2797,24 @@ end = struct
           | 'A' .. 'Z' -> true
           | _ -> false
 
+  let field_access_ident = fun expr ->
+    let child_count = Node.child_count expr in
+    let rec first_dot index =
+      if Int.(index >= child_count) then
+        None
+      else
+        match child_token_at expr index with
+        | Some token when token_kind_is token Syntax_kind.DOT -> Some index
+        | _ -> first_dot Int.(index + 1)
+    in
+    match first_dot 0 with
+    | Some dot_index ->
+        Ident.from_child_range_option
+          expr
+          ~start_index:Int.(dot_index + 1)
+          ~stop_index:child_count
+    | None -> None
+
   let rec view = fun (expr: expr) ->
     match Node.kind expr with
     | Syntax_kind.PAREN_EXPR -> (
@@ -2925,7 +2966,7 @@ end = struct
         | _ -> Unknown expr
       )
     | Syntax_kind.FIELD_ACCESS_EXPR -> (
-        match (normalize_expr_option (nth_expr_child expr 0), Ident.last_token expr) with
+        match (normalize_expr_option (nth_expr_child expr 0), field_access_ident expr) with
         | (Some target, Some field) -> FieldAccess { target; field }
         | _ -> Unknown expr
       )

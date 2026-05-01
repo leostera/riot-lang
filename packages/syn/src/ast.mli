@@ -264,9 +264,13 @@ module TypeExpr: sig
         arg: t;
         ret: t;
       }
-    | Poly of {
+    | Forall of {
         names: Token.t Vector.t;
         body: t;
+      }
+    | Alias of {
+        typ: t;
+        name: Token.t;
       }
     | Tuple of {
         parts: t Vector.t;
@@ -802,7 +806,7 @@ module Expr: sig
       }
     | FieldAccess of {
         target: t;
-        field: Token.t;
+        field: Ident.t;
       }
     | PolyVariant of {
         tag: Token.t;

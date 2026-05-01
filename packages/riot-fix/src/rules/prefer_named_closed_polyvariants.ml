@@ -48,8 +48,10 @@ let rec check_type_expr = fun ctx diagnostics ~allow_named_alias_root type_expr 
     | Ast.TypeExpr.Arrow { arg; ret; _ } ->
         check_type_expr ctx diagnostics ~allow_named_alias_root:false arg;
         check_type_expr ctx diagnostics ~allow_named_alias_root:false ret
-    | Ast.TypeExpr.Poly { body; _ } ->
+    | Ast.TypeExpr.Forall { body; _ } ->
         check_type_expr ctx diagnostics ~allow_named_alias_root:false body
+    | Ast.TypeExpr.Alias { typ; _ } ->
+        check_type_expr ctx diagnostics ~allow_named_alias_root:false typ
     | Ast.TypeExpr.Tuple { parts } ->
         Vector.for_each parts ~fn:(check_type_expr ctx diagnostics ~allow_named_alias_root:false)
     | Ast.TypeExpr.Apply { args; _ } ->

@@ -39,19 +39,27 @@ let diagnostic = fun ~span ?fix () ->
     ?fix
     ()
 
-let field_access_replacement = fun ctx base module_token field ->
-  Ast.Token.text module_token
+let split_last = fun segments ->
+  let rec loop before = function
+    | [] -> None
+    | [ last ] -> Some (List.reverse before, last)
+    | segment :: rest -> loop (segment :: before) rest
+  in
+  loop [] segments
+
+let field_access_replacement = fun ctx base module_segments field ->
+  String.concat "." module_segments
   ^ ".("
   ^ (
     H.node_source ctx (Ast.Expr.as_node base)
     |> String.trim
   )
   ^ "."
-  ^ Ast.Token.text field
+  ^ field
   ^ ")"
 
-let field_access_diagnostic = fun ctx expr base module_token field ->
-  let replacement = field_access_replacement ctx base module_token field in
+let field_access_diagnostic = fun ctx expr base module_segments field ->
+  let replacement = field_access_replacement ctx base module_segments field in
   diagnostic
     ~span:(H.span_of_node (Ast.Expr.as_node expr))
     ~fix:(Fix.make
@@ -78,13 +86,18 @@ let path_field_access_diagnostic = fun expr replacement ->
     ()
 
 let check_field_access = fun ctx diagnostics expr target field ->
-  let field_name = Ast.Token.text field in
-  if starts_with_lowercase field_name then
-    match Ast.Expr.view target with
-    | Ast.Expr.FieldAccess { target = base; field = module_token } when starts_with_uppercase
-      (Ast.Token.text module_token) ->
-        H.push_diagnostic diagnostics (field_access_diagnostic ctx expr base module_token field)
-    | _ -> ()
+  let segments =
+    Ast.Ident.text field
+    |> String.split ~by:"."
+  in
+  match split_last segments with
+  | Some (module_segments, field_name) when starts_with_lowercase field_name -> (
+      match module_segments with
+      | module_head :: _ when starts_with_uppercase module_head ->
+          H.push_diagnostic diagnostics (field_access_diagnostic ctx expr target module_segments field_name)
+      | _ -> ()
+    )
+  | _ -> ()
 
 let check_path_access = fun ctx diagnostics expr ident ->
   match ident_segments ctx ident with

@@ -4,7 +4,6 @@ type t =
   | And
   | As
   | Asr
-  | Assert
   | Begin
   | Constraint
   | Do
@@ -23,7 +22,6 @@ type t =
   | In
   | Include
   | Land
-  | Lazy
   | Let
   | Lor
   | Lsl
@@ -56,7 +54,6 @@ let of_string = function
   | "and" -> Some And
   | "as" -> Some As
   | "asr" -> Some Asr
-  | "assert" -> Some Assert
   | "begin" -> Some Begin
   | "constraint" -> Some Constraint
   | "do" -> Some Do
@@ -75,7 +72,6 @@ let of_string = function
   | "in" -> Some In
   | "include" -> Some Include
   | "land" -> Some Land
-  | "lazy" -> Some Lazy
   | "let" -> Some Let
   | "lor" -> Some Lor
   | "lsl" -> Some Lsl
@@ -109,7 +105,6 @@ let to_string = function
   | And -> "and"
   | As -> "as"
   | Asr -> "asr"
-  | Assert -> "assert"
   | Begin -> "begin"
   | Constraint -> "constraint"
   | Do -> "do"
@@ -128,7 +123,6 @@ let to_string = function
   | In -> "in"
   | Include -> "include"
   | Land -> "land"
-  | Lazy -> "lazy"
   | Let -> "let"
   | Lor -> "lor"
   | Lsl -> "lsl"

@@ -84,7 +84,6 @@ let keyword_kind = function
   | Keyword.And -> Syntax_kind.AND_KW
   | Keyword.As -> Syntax_kind.AS_KW
   | Keyword.Asr -> Syntax_kind.OPERATOR_KW
-  | Keyword.Assert -> Syntax_kind.ASSERT_KW
   | Keyword.Begin -> Syntax_kind.BEGIN_KW
   | Keyword.Constraint -> Syntax_kind.CONSTRAINT_KW
   | Keyword.Do -> Syntax_kind.DO_KW
@@ -103,7 +102,6 @@ let keyword_kind = function
   | Keyword.In -> Syntax_kind.IN_KW
   | Keyword.Include -> Syntax_kind.INCLUDE_KW
   | Keyword.Land -> Syntax_kind.OPERATOR_KW
-  | Keyword.Lazy -> Syntax_kind.LAZY_KW
   | Keyword.Let -> Syntax_kind.LET_KW
   | Keyword.Lor -> Syntax_kind.OPERATOR_KW
   | Keyword.Lsl -> Syntax_kind.OPERATOR_KW
