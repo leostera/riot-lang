@@ -514,13 +514,12 @@ let hash = fun t ->
             / Path.v "unix"
             / Path.v "unix.cmxa");
           ];
-        if not (Riot_model.Target.equal t.target (get_host_triple ())) then
-          (
-            match first_existing (sysroot_candidates ~toolchain_path ~target:t.target) with
-            | Some sysroot ->
-                write_legacy_path_fingerprint (bundled_sysroot_marker_paths sysroot t.target)
-            | None -> ()
-          )
+        if not (Riot_model.Target.equal t.target (get_host_triple ())) then (
+          match first_existing (sysroot_candidates ~toolchain_path ~target:t.target) with
+          | Some sysroot ->
+              write_legacy_path_fingerprint (bundled_sysroot_marker_paths sysroot t.target)
+          | None -> ()
+        )
     | Version _
     | Url _ -> (
         match read_manifest_fingerprint toolchain_path with
@@ -586,56 +585,54 @@ let init_for_target = fun ~config ~target ->
     )
   | _ ->
       (* Try local compiler if native build *)
-      if Riot_model.Target.equal host target then
-        (
-          match Fs.is_dir local_compiler with
-          | Ok true ->
-              (* Create symlink *)
-              (
-                match Path.parent toolchain_path with
-                | Some parent ->
-                    let _ = Fs.create_dir_all parent in
-                    ()
-                | None -> ()
-              );
-              (
-                match Fs.exists toolchain_path with
-                | Ok true ->
-                    let toolchain = make_toolchain version source ~target in
-                    Ok toolchain
-                | _ ->
-                    let cwd =
-                      Env.current_dir ()
-                      |> Result.expect ~msg:"Failed to get cwd"
-                    in
-                    let abs_local =
-                      if Path.is_absolute local_compiler then
-                        local_compiler
-                      else
-                        Path.(cwd / local_compiler)
-                    in
-                    (
-                      match Fs.symlink ~src:abs_local ~dst:toolchain_path with
-                      | Ok () ->
-                          let toolchain = make_toolchain version source ~target in
-                          Ok toolchain
-                      | Error err -> Error ("Failed to create symlink: " ^ IO.error_message err)
-                    )
-              )
-          | _ -> (
-              match download_and_install_toolchain version ~host ~target with
-              | Ok () ->
+      if Riot_model.Target.equal host target then (
+        match Fs.is_dir local_compiler with
+        | Ok true ->
+            (* Create symlink *)
+            (
+              match Path.parent toolchain_path with
+              | Some parent ->
+                  let _ = Fs.create_dir_all parent in
+                  ()
+              | None -> ()
+            );
+            (
+              match Fs.exists toolchain_path with
+              | Ok true ->
                   let toolchain = make_toolchain version source ~target in
+                  Ok toolchain
+              | _ ->
+                  let cwd =
+                    Env.current_dir ()
+                    |> Result.expect ~msg:"Failed to get cwd"
+                  in
+                  let abs_local =
+                    if Path.is_absolute local_compiler then
+                      local_compiler
+                    else
+                      Path.(cwd / local_compiler)
+                  in
                   (
-                    match check_binaries_exist toolchain with
-                    | Ok () -> Ok toolchain
-                    | Error msg -> Error ("Downloaded but incomplete: " ^ msg)
+                    match Fs.symlink ~src:abs_local ~dst:toolchain_path with
+                    | Ok () ->
+                        let toolchain = make_toolchain version source ~target in
+                        Ok toolchain
+                    | Error err -> Error ("Failed to create symlink: " ^ IO.error_message err)
                   )
-              | Error msg ->
-                  Error ("Failed to download toolchain for " ^ target_to_string target ^ ": " ^ msg)
             )
-        )
-      else
+        | _ -> (
+            match download_and_install_toolchain version ~host ~target with
+            | Ok () ->
+                let toolchain = make_toolchain version source ~target in
+                (
+                  match check_binaries_exist toolchain with
+                  | Ok () -> Ok toolchain
+                  | Error msg -> Error ("Downloaded but incomplete: " ^ msg)
+                )
+            | Error msg ->
+                Error ("Failed to download toolchain for " ^ target_to_string target ^ ": " ^ msg)
+          )
+      ) else
         (* Cross-compilation - download cross-toolchain *)
         refresh ()
 

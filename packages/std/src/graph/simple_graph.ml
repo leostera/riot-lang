@@ -133,71 +133,69 @@ let topo_sort = fun graph ->
           Queue.push queue ~value:dependent_id)
   done;
   (* Check for cycles *)
-  if !processed != HashMap.length graph.nodes then
-    (
-      (* Find actual cycle using DFS from a node involved in the cycle *)
-      let find_cycle () =
-        let start_node =
-          HashMap.fold_left
-            in_degree
-            ~init:None
-            ~fn:(fun acc id count ->
-              match acc with
-              | Some _ -> acc
-              | None ->
-                  if count > 0 then
-                    Some id
-                  else
-                    None)
-        in
-        match start_node with
-        | None -> []
-        | Some start_id ->
-            (* DFS to find cycle path *)
-            let visited = HashMap.with_capacity ~size:(HashMap.length graph.nodes) in
-            let rec_stack = HashMap.with_capacity ~size:(HashMap.length graph.nodes) in
-            let rec dfs node_id path =
-              if HashMap.has_key rec_stack ~key:node_id then
-                let rec extract_cycle = fun acc ->
-                  function
-                  | [] -> acc
-                  | id :: rest ->
-                      if Node_id.eq id node_id then
-                        (node_id :: (List.reverse acc)) @ [ node_id ]
-                      else
-                        extract_cycle (id :: acc) rest
-                in
-                Some (extract_cycle [] path)
-              else if HashMap.has_key visited ~key:node_id then
-                None
-              else
-                (
-                  let _ = HashMap.insert visited ~key:node_id ~value:() in
-                  let _ = HashMap.insert rec_stack ~key:node_id ~value:() in
-                  let node =
-                    HashMap.get graph.nodes ~key:node_id
-                    |> Option.unwrap
-                  in
-                  let result =
-                    List.fold_left
-                      node.deps
-                      ~init:None
-                      ~fn:(fun acc dep_id ->
-                        match acc with
-                        | Some _ -> acc
-                        | None -> dfs dep_id (node_id :: path))
-                  in
-                  let _ = HashMap.remove rec_stack ~key:node_id in
-                  result
-                )
-            in
-            match dfs start_id [] with
-            | Some cycle -> cycle
-            | None -> [ start_id ]
+  if !processed != HashMap.length graph.nodes then (
+    (* Find actual cycle using DFS from a node involved in the cycle *)
+    let find_cycle () =
+      let start_node =
+        HashMap.fold_left
+          in_degree
+          ~init:None
+          ~fn:(fun acc id count ->
+            match acc with
+            | Some _ -> acc
+            | None ->
+                if count > 0 then
+                  Some id
+                else
+                  None)
       in
-      Error (find_cycle ())
-    )
-  else
+      match start_node with
+      | None -> []
+      | Some start_id ->
+          (* DFS to find cycle path *)
+          let visited = HashMap.with_capacity ~size:(HashMap.length graph.nodes) in
+          let rec_stack = HashMap.with_capacity ~size:(HashMap.length graph.nodes) in
+          let rec dfs node_id path =
+            if HashMap.has_key rec_stack ~key:node_id then
+              let rec extract_cycle = fun acc ->
+                function
+                | [] -> acc
+                | id :: rest ->
+                    if Node_id.eq id node_id then
+                      (node_id :: (List.reverse acc)) @ [ node_id ]
+                    else
+                      extract_cycle (id :: acc) rest
+              in
+              Some (extract_cycle [] path)
+            else if HashMap.has_key visited ~key:node_id then
+              None
+            else
+              (
+                let _ = HashMap.insert visited ~key:node_id ~value:() in
+                let _ = HashMap.insert rec_stack ~key:node_id ~value:() in
+                let node =
+                  HashMap.get graph.nodes ~key:node_id
+                  |> Option.unwrap
+                in
+                let result =
+                  List.fold_left
+                    node.deps
+                    ~init:None
+                    ~fn:(fun acc dep_id ->
+                      match acc with
+                      | Some _ -> acc
+                      | None -> dfs dep_id (node_id :: path))
+                in
+                let _ = HashMap.remove rec_stack ~key:node_id in
+                result
+              )
+          in
+          match dfs start_id [] with
+          | Some cycle -> cycle
+          | None -> [ start_id ]
+    in
+    Error (find_cycle ())
+  ) else
     Ok (List.reverse !sorted)
 
 let iter = fun graph ~fn ->
@@ -212,15 +210,14 @@ let map = fun graph ~fn ->
 let reachable_from = fun graph start_nodes ->
   let visited = HashMap.with_capacity ~size:(HashMap.length graph.nodes) in
   let rec visit node_id =
-    if not (HashMap.has_key visited ~key:node_id) then
-      (
-        let _ = HashMap.insert visited ~key:node_id ~value:() in
-        let node =
-          HashMap.get graph.nodes ~key:node_id
-          |> Option.unwrap
-        in
-        List.for_each node.deps ~fn:visit
-      )
+    if not (HashMap.has_key visited ~key:node_id) then (
+      let _ = HashMap.insert visited ~key:node_id ~value:() in
+      let node =
+        HashMap.get graph.nodes ~key:node_id
+        |> Option.unwrap
+      in
+      List.for_each node.deps ~fn:visit
+    )
   in
   List.for_each start_nodes ~fn:(fun node -> visit node.id);
   HashMap.fold_left visited ~init:[] ~fn:(fun acc node_id () -> node_id :: acc)

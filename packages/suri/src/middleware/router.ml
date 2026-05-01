@@ -7,7 +7,11 @@ type route_method =
   | AnyMethod
 
 type route =
-  | Route of { meth: route_method; path: string; handler: handler }
+  | Route of {
+      meth: route_method;
+      path: string;
+      handler: handler;
+    }
   | Scope of {
       prefix: string;
       routes: route list;

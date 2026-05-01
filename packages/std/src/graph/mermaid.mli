@@ -113,7 +113,11 @@ type node_shape =
   (** [/text/] - Parallelogram *)
   | Trapezoid
 (** [\text/] - Trapezoid *)
-type node = { id: string; label: string; shape: node_shape }
+type node = {
+  id: string;
+  label: string;
+  shape: node_shape;
+}
 (** Node with label and shape. *)
 type edge_style =
   | Solid

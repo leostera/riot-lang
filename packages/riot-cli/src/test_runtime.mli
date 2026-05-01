@@ -49,7 +49,12 @@ type listed_test_suite = {
   source_path: Path.t option;
   tests: listed_test_case list;
 }
-type failed_test = { suite: suite_binary; name: string; message: string; duration_us: int }
+type failed_test = {
+  suite: suite_binary;
+  name: string;
+  message: string;
+  duration_us: int;
+}
 type test_suite_summary = {
   total: int;
   passed: int;
@@ -119,8 +124,14 @@ type test_event =
     }
 type test_error =
   | BuildFailed of Riot_build.error
-  | SuiteArtifactNotFound of { suite: suite_binary; reason: string }
-  | SuiteExecutionError of { suite: suite_binary; reason: string }
+  | SuiteArtifactNotFound of {
+      suite: suite_binary;
+      reason: string;
+    }
+  | SuiteExecutionError of {
+      suite: suite_binary;
+      reason: string;
+    }
   | SuitesFailed of int
 val collect_suite_binaries:
   Workspace.t ->

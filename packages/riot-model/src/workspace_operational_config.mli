@@ -1,12 +1,18 @@
 open Std
 
 (** Repository-local operational config loaded from [.riot/config.toml]. *)
-type cache_policy = { keep_generations: int; max_size_bytes: int64 }
+type cache_policy = {
+  keep_generations: int;
+  max_size_bytes: int64;
+}
 type test_policy = {
   small_test_timeout: Time.Duration.t option;
   flaky_max_retries: int;
 }
-type t = { cache: cache_policy; test: test_policy }
+type t = {
+  cache: cache_policy;
+  test: test_policy;
+}
 type value_error =
   | MissingNumberPrefix
   | UnsupportedUnit of string

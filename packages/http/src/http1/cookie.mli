@@ -107,7 +107,11 @@ type attribute_character_error =
 type validation_error =
   | EmptyName
   | InvalidNameCharacter of { index: int; character: char }
-  | InvalidValueCharacter of { index: int; character: char; reason: value_character_error }
+  | InvalidValueCharacter of {
+      index: int;
+      character: char;
+      reason: value_character_error;
+    }
   | InvalidAttributeCharacter of {
       attribute: attribute;
       index: int;

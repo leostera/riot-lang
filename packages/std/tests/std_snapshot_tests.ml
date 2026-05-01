@@ -382,8 +382,10 @@ let test_json_snapshot_emits_json_progress =
                   | Error msg -> Error msg
                   | Ok () ->
                       match List.reverse !events with
-                      | [ Test.Context.SnapshotAssertionStarted { format = Test.Context.Json; _ }; Test.Context.SnapshotAssertionMatched { format = Test.Context.Json; _ } ] ->
-                          Ok ()
+                      | [
+                          Test.Context.SnapshotAssertionStarted { format = Test.Context.Json; _ };
+                          Test.Context.SnapshotAssertionMatched { format = Test.Context.Json; _ };
+                        ] -> Ok ()
                       | _ ->
                           Error "expected external JSON snapshot progress events to use json format"
             )))
@@ -409,8 +411,10 @@ let test_inline_json_snapshot_emits_json_progress =
           | Error msg -> Error msg
           | Ok () ->
               match List.reverse !events with
-              | [ Test.Context.SnapshotAssertionStarted { format = Test.Context.Json; _ }; Test.Context.SnapshotAssertionMatched { format = Test.Context.Json; _ } ] ->
-                  Ok ()
+              | [
+                  Test.Context.SnapshotAssertionStarted { format = Test.Context.Json; _ };
+                  Test.Context.SnapshotAssertionMatched { format = Test.Context.Json; _ };
+                ] -> Ok ()
               | _ -> Error "expected inline JSON snapshot progress events to use json format"))
 
 let test_fixture_snapshot_uses_explicit_snapshot_path =

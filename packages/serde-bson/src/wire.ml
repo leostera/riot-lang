@@ -234,13 +234,11 @@ let read_cstring = fun input ->
   let rec loop index =
     if index >= input.length then
       Error `no_more_data
-    else if Char.equal (String.unsafe_get input.source index) '\x00' then
-      (
-        let value = String.sub input.source ~offset:start ~len:(index - start) in
-        input.pos <- index + 1;
-        Ok value
-      )
-    else
+    else if Char.equal (String.unsafe_get input.source index) '\x00' then (
+      let value = String.sub input.source ~offset:start ~len:(index - start) in
+      input.pos <- index + 1;
+      Ok value
+    ) else
       loop (index + 1)
   in
   loop input.pos

@@ -27,7 +27,10 @@ and error =
   | PayloadLengthTooLarge of { most_significant_byte: int; max_payload_length: int }
   | PayloadLengthExceedsLimit of { payload_length: int; max_payload_length: int }
   | InvalidPayloadLengthLimit of { max_payload_length: int }
-  | NonMinimalPayloadLength of { encoding: payload_length_encoding; payload_length: int }
+  | NonMinimalPayloadLength of {
+      encoding: payload_length_encoding;
+      payload_length: int;
+    }
   | InvalidTextPayloadUtf8 of { payload_length: int }
   | ClosePayloadTooShort of { payload_length: int }
   | InvalidCloseCode of { code: int }

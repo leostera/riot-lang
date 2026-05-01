@@ -73,9 +73,31 @@ let zero = { x = 42; y = 1 }
   in
   let context = parse_and_check source in
   match Query.node_at context (span_of source "42") with
-  | Some { Query.Node.kind = Expression { kind = Literal Int; _ }; parent = Some { kind = RecordExpressionField field; parent = Some { kind = Expression { kind = Record _; _ }; parent = Some { kind = LetBinding _; parent = Some { kind = LetDeclaration _; parent = Some { kind = StructureItem _; parent = Some { kind = SourceFile _; parent = None } } } } } } } when Typ.Model.Surface_path.to_string
-    field.name
-  = "x" -> Ok ()
+  | Some {
+      Query.Node.kind = Expression { kind = Literal Int; _ };
+      parent =
+        Some {
+          kind = RecordExpressionField field;
+          parent =
+            Some {
+              kind = Expression { kind = Record _; _ };
+              parent =
+                Some {
+                  kind = LetBinding _;
+                  parent =
+                    Some {
+                      kind = LetDeclaration _;
+                      parent =
+                        Some {
+                          kind = StructureItem _;
+                          parent = Some { kind = SourceFile _; parent = None };
+                        };
+                    };
+                };
+            };
+        };
+    } when Typ.Model.Surface_path.to_string field.name = "x" ->
+      Ok ()
   | Some _ -> Error "expected literal expression under x record field path"
   | None -> Error "expected node at integer literal"
 
@@ -112,8 +134,32 @@ let test_path_at_returns_root_to_leaf_path _ctx =
   let context = parse_and_check source in
   let path = Query.path_at context (span_of source "true") in
   match path with
-  | [ { Query.Node.kind = SourceFile _; _ }; { kind = StructureItem _; _ }; { kind = LetDeclaration _; _ }; { kind = LetBinding _; _ }; { kind = Expression { kind = Tuple _; _ }; _ }; { kind = Expression { kind = Literal Bool; _ }; _ } ] ->
-      Ok ()
+  | [
+      {
+        Query.Node.kind = SourceFile _;
+        _;
+      };
+      {
+        kind = StructureItem _;
+        _;
+      };
+      {
+        kind = LetDeclaration _;
+        _;
+      };
+      {
+        kind = LetBinding _;
+        _;
+      };
+      {
+        kind = Expression { kind = Tuple _; _ };
+        _;
+      };
+      {
+        kind = Expression { kind = Literal Bool; _ };
+        _;
+      };
+    ] -> Ok ()
   | _ -> Error "expected root-to-leaf path for tuple boolean literal"
 
 let tests =

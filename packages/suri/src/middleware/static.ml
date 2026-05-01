@@ -224,15 +224,12 @@ module Security = struct
               resolved = None;
             }
           )
-        else if config.symlinks = DenySymlinks then
-          (
-            match first_symlink root_canonical requested_path with
-            | Some symlink ->
-                Error (SymlinkDenied { root = root_canonical; requested = requested_path; symlink })
-            | None ->
-                canonicalize_candidate ~root:root_canonical ~requested:requested_path ~candidate
-          )
-        else
+        else if config.symlinks = DenySymlinks then (
+          match first_symlink root_canonical requested_path with
+          | Some symlink ->
+              Error (SymlinkDenied { root = root_canonical; requested = requested_path; symlink })
+          | None -> canonicalize_candidate ~root:root_canonical ~requested:requested_path ~candidate
+        ) else
           canonicalize_candidate ~root:root_canonical ~requested:requested_path ~candidate
 
   let is_safe_path = fun config root path ->
@@ -272,14 +269,12 @@ module Cache = struct
 
   let to_hex = fun n ->
     let rec loop acc n =
-      if n = 0 then
-        (
-          if acc = "" then
-            "0"
-          else
-            acc
-        )
-      else
+      if n = 0 then (
+        if acc = "" then
+          "0"
+        else
+          acc
+      ) else
         let digit = n land 0xf in
         let char =
           if digit < 10 then

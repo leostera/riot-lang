@@ -95,13 +95,11 @@ let decode_bytes: string -> (bytes, decode_error) Global.result = fun str ->
     let result = Bytes.create ~size:output_len in
     let output_pos = cell 0 in
     let rec decode_block i =
-      if i >= len then
-        (
-          match Bytes.sub result ~offset:0 ~len:!output_pos with
-          | Ok bytes -> Ok bytes
-          | Error _ -> Error InvalidBase32
-        )
-      else
+      if i >= len then (
+        match Bytes.sub result ~offset:0 ~len:!output_pos with
+        | Ok bytes -> Ok bytes
+        | Error _ -> Error InvalidBase32
+      ) else
         match (
           decode_char (String.get_unchecked str ~at:i),
           decode_char (String.get_unchecked str ~at:(i + 1)),
@@ -116,30 +114,26 @@ let decode_bytes: string -> (bytes, decode_error) Global.result = fun str ->
             let b0 = (c0 lsl 3) lor (c1 lsr 2) in
             set_result (Bytes.set result ~at:!output_pos ~char:(Char.from_int_unchecked b0));
             Cell.incr output_pos;
-            if String.get_unchecked str ~at:(i + 2) != '=' then
-              (
-                let b1 = ((c1 land 0x03) lsl 6) lor (c2 lsl 1) lor (c3 lsr 4) in
-                set_result (Bytes.set result ~at:!output_pos ~char:(Char.from_int_unchecked b1));
-                Cell.incr output_pos
-              );
-            if String.get_unchecked str ~at:(i + 4) != '=' then
-              (
-                let b2 = ((c3 land 0x0f) lsl 4) lor (c4 lsr 1) in
-                set_result (Bytes.set result ~at:!output_pos ~char:(Char.from_int_unchecked b2));
-                Cell.incr output_pos
-              );
-            if String.get_unchecked str ~at:(i + 5) != '=' then
-              (
-                let b3 = ((c4 land 0x01) lsl 7) lor (c5 lsl 2) lor (c6 lsr 3) in
-                set_result (Bytes.set result ~at:!output_pos ~char:(Char.from_int_unchecked b3));
-                Cell.incr output_pos
-              );
-            if String.get_unchecked str ~at:(i + 7) != '=' then
-              (
-                let b4 = ((c6 land 0x07) lsl 5) lor c7 in
-                set_result (Bytes.set result ~at:!output_pos ~char:(Char.from_int_unchecked b4));
-                Cell.incr output_pos
-              );
+            if String.get_unchecked str ~at:(i + 2) != '=' then (
+              let b1 = ((c1 land 0x03) lsl 6) lor (c2 lsl 1) lor (c3 lsr 4) in
+              set_result (Bytes.set result ~at:!output_pos ~char:(Char.from_int_unchecked b1));
+              Cell.incr output_pos
+            );
+            if String.get_unchecked str ~at:(i + 4) != '=' then (
+              let b2 = ((c3 land 0x0f) lsl 4) lor (c4 lsr 1) in
+              set_result (Bytes.set result ~at:!output_pos ~char:(Char.from_int_unchecked b2));
+              Cell.incr output_pos
+            );
+            if String.get_unchecked str ~at:(i + 5) != '=' then (
+              let b3 = ((c4 land 0x01) lsl 7) lor (c5 lsl 2) lor (c6 lsr 3) in
+              set_result (Bytes.set result ~at:!output_pos ~char:(Char.from_int_unchecked b3));
+              Cell.incr output_pos
+            );
+            if String.get_unchecked str ~at:(i + 7) != '=' then (
+              let b4 = ((c6 land 0x07) lsl 5) lor c7 in
+              set_result (Bytes.set result ~at:!output_pos ~char:(Char.from_int_unchecked b4));
+              Cell.incr output_pos
+            );
             decode_block (i + 8)
         | _ -> Error InvalidBase32
     in

@@ -19,19 +19,17 @@ module MutIter = struct
   type item = Unicode.Rune.t
 
   let next = fun state ->
-    if state.current_pos < length state.source then
-      (
-        let utf_decoded =
-          match get_utf_8_rune state.source ~at:state.current_pos with
-          | Some utf_decoded -> utf_decoded
-          | None -> Kernel.SystemError.panic "Std.String: invalid utf-8 input"
-        in
-        let char_size = Rune.utf_decode_length utf_decoded in
-        let item = Rune.utf_decode_rune utf_decoded in
-        state.current_pos <- state.current_pos + char_size;
-        Some item
-      )
-    else
+    if state.current_pos < length state.source then (
+      let utf_decoded =
+        match get_utf_8_rune state.source ~at:state.current_pos with
+        | Some utf_decoded -> utf_decoded
+        | None -> Kernel.SystemError.panic "Std.String: invalid utf-8 input"
+      in
+      let char_size = Rune.utf_decode_length utf_decoded in
+      let item = Rune.utf_decode_rune utf_decoded in
+      state.current_pos <- state.current_pos + char_size;
+      Some item
+    ) else
       None
 
   let size = fun { current_pos; source } -> length source - current_pos
@@ -326,13 +324,11 @@ module Read = struct
       Ok 0
     else
       let available =
-        if IO.Buffer.writable_bytes into = 0 then
-          (
-            match IO.Buffer.ensure_free into state.chunk_size with
-            | Ok () -> IO.Buffer.writable_bytes into
-            | Error error -> panic_buffer_error "ensure_free" error
-          )
-        else
+        if IO.Buffer.writable_bytes into = 0 then (
+          match IO.Buffer.ensure_free into state.chunk_size with
+          | Ok () -> IO.Buffer.writable_bytes into
+          | Error error -> panic_buffer_error "ensure_free" error
+        ) else
           IO.Buffer.writable_bytes into
       in
       let to_read = min state.chunk_size (min remaining available) in
@@ -348,27 +344,26 @@ module Read = struct
     let progress = { total = 0; continue_ = true } in
     IO.IoVec.for_each
       ~fn:(fun segment ->
-        if progress.continue_ then
-          (
-            let remaining = state.source_length - state.offset in
-            if Int.equal remaining 0 then
-              progress.continue_ <- false
-            else
-              let segment_length = IO.IoVec.IoSlice.length segment in
-              let to_read = min state.chunk_size (min remaining segment_length) in
-              IO.IoVec.IoSlice.blit_from_bytes_unchecked
-                state.source_bytes
-                ~src_off:state.offset
-                segment
-                ~dst_off:0
-                ~len:to_read;
-            state.offset <- state.offset + to_read;
-            progress.total <- progress.total + to_read;
-            if to_read < segment_length then
-              progress.continue_ <- false
-            else
-              ()
-          ))
+        if progress.continue_ then (
+          let remaining = state.source_length - state.offset in
+          if Int.equal remaining 0 then
+            progress.continue_ <- false
+          else
+            let segment_length = IO.IoVec.IoSlice.length segment in
+            let to_read = min state.chunk_size (min remaining segment_length) in
+            IO.IoVec.IoSlice.blit_from_bytes_unchecked
+              state.source_bytes
+              ~src_off:state.offset
+              segment
+              ~dst_off:0
+              ~len:to_read;
+          state.offset <- state.offset + to_read;
+          progress.total <- progress.total + to_read;
+          if to_read < segment_length then
+            progress.continue_ <- false
+          else
+            ()
+        ))
       bufs;
     Ok progress.total
 

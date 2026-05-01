@@ -11,7 +11,10 @@ type progress_phase =
       diagnostics: int;
     }
 
-type progress_event = { timestamp_ms: int; phase: progress_phase }
+type progress_event = {
+  timestamp_ms: int;
+  phase: progress_phase;
+}
 
 type result = {
   tree: Rule.syntax_tree;

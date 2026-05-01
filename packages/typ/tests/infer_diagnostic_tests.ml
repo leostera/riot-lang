@@ -32,7 +32,10 @@ let source_slice = fun source ->
   |> Result.expect ~msg:"failed to create typ diagnostic test source slice"
 
 let diagnostics_to_json diagnostics =
-  Json.Array (diagnostics |> List.map ~fn:Typ.Diagnostics.Diagnostic.to_json)
+  Json.Array (
+    diagnostics
+    |> List.map ~fn:Typ.Diagnostics.Diagnostic.to_json
+  )
 
 let infer_diagnostics_to_json = fun (diagnostics: Typ.Diagnostics.t) ->
   diagnostics.items

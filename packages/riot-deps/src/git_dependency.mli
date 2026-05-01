@@ -28,7 +28,10 @@ type command_spawn_error =
   | CommandError of Command.error
   | IoError of IO.error
 type error =
-  | InvalidSourceSpec of { source: string; reason: invalid_source_spec }
+  | InvalidSourceSpec of {
+      source: string;
+      reason: invalid_source_spec;
+    }
   | UnsupportedSourceHost of { source: string; host: string }
   | CachedRepositoryInvalid of {
       path: Path.t;
@@ -37,7 +40,10 @@ type error =
       path: Path.t;
     }
   | GitCommandFailed of { command: string; status: int; stdout: string; stderr: string }
-  | GitCommandSpawnFailed of { command: string; error: command_spawn_error }
+  | GitCommandSpawnFailed of {
+      command: string;
+      error: command_spawn_error;
+    }
 val message: error -> string
 
 val looks_like_remote_spec: string -> bool

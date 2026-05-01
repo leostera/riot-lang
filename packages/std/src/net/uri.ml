@@ -315,9 +315,8 @@ let parse_origin_form_slice = fun value ->
           match scan_query query_start with
           | Error () -> parse_with slice_ops value
           | Ok query_end ->
-              let query =
-                Some (Slice.to_string
-                  (Slice.sub_unchecked value ~off:query_start ~len:(query_end - query_start)))
+              let query = Some (Slice.to_string
+                (Slice.sub_unchecked value ~off:query_start ~len:(query_end - query_start)))
               in
               let fragment =
                 if query_end >= len then

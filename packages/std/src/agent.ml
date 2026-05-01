@@ -62,11 +62,11 @@ let rec loop: type state. state Ref.t -> state -> (unit, exn) result = fun state
   in
   match receive ~selector () with
   | Get {
-    reply_to;
-    fn;
-    state_ref = sr;
-    reply_ref
-  } ->
+      reply_to;
+      fn;
+      state_ref = sr;
+      reply_ref;
+    } ->
       (
           match Ref.type_equal state_ref sr with
           | Some Type.Equal ->
@@ -86,11 +86,11 @@ let rec loop: type state. state Ref.t -> state -> (unit, exn) result = fun state
       | None -> loop state_ref state
     )
   | GetAndUpdate {
-    reply_to;
-    fn;
-    state_ref = sr;
-    reply_ref
-  } ->
+      reply_to;
+      fn;
+      state_ref = sr;
+      reply_ref;
+    } ->
       (
           match Ref.type_equal state_ref sr with
           | Some Type.Equal ->

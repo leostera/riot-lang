@@ -33,7 +33,11 @@ type bench_case_status =
   | Failed of string
   | Skipped
 
-type bench_case_result = { index: int; name: string; result: bench_case_status }
+type bench_case_result = {
+  index: int;
+  name: string;
+  result: bench_case_status;
+}
 
 type listed_bench_item_kind =
   | Benchmark
@@ -55,7 +59,10 @@ type listed_bench_suite = {
   benchmarks: listed_bench_item list;
 }
 
-type bench_comparison_case_result = { name: string; statistics: bench_statistics }
+type bench_comparison_case_result = {
+  name: string;
+  statistics: bench_statistics;
+}
 
 type bench_comparison_result = {
   description: string;
@@ -100,8 +107,14 @@ type bench_event =
 
 type bench_error =
   | BuildFailed of Riot_build.error
-  | SuiteArtifactNotFound of { suite: suite_binary; reason: string }
-  | SuiteExecutionError of { suite: suite_binary; reason: string }
+  | SuiteArtifactNotFound of {
+      suite: suite_binary;
+      reason: string;
+    }
+  | SuiteExecutionError of {
+      suite: suite_binary;
+      reason: string;
+    }
   | SuitesFailed of int
 
 type Message.t +=
@@ -568,11 +581,11 @@ let bench_event_to_json = function
         ("suite", Data.Json.String suite_name);
       ])
   | SuiteHeartbeat {
-    suite;
-    binary_path;
-    elapsed_us;
-    active_case
-  } ->
+      suite;
+      binary_path;
+      elapsed_us;
+      active_case;
+    } ->
       let active_case_fields =
         match active_case with
         | Some case ->
@@ -596,17 +609,17 @@ let bench_event_to_json = function
       ]))
   | SuiteProgress { suite; event } -> Some (bench_progress_json suite event)
   | SuiteCompleted {
-    suite;
-    status;
-    stdout;
-    stderr;
-    started_at_us;
-    completed_at_us;
-    duration_us;
-    results;
-    comparisons;
-    summary
-  } ->
+      suite;
+      status;
+      stdout;
+      stderr;
+      started_at_us;
+      completed_at_us;
+      duration_us;
+      results;
+      comparisons;
+      summary;
+    } ->
       let statistics_to_json (stats: bench_statistics) =
         Data.Json.Object [
           ("min_nanos", Data.Json.Int (Int64.to_int (Time.Duration.to_nanos stats.min)));
@@ -704,11 +717,11 @@ let bench_event_to_json = function
         ]
       )
   | Summary {
-    total;
-    completed;
-    skipped;
-    failed
-  } ->
+      total;
+      completed;
+      skipped;
+      failed;
+    } ->
       Some (Data.Json.Object [
         ("type", Data.Json.String "BenchSummary");
         ("total", Data.Json.Int total);

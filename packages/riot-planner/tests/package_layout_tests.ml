@@ -94,7 +94,11 @@ let test_undeclared_package_module_suggests_available_module_name = fun _ctx ->
     ~module_graph:graph
     ~analyzed_modules:[ (node_id, analyzed) ] with
   | Error (
-    Riot_planner.Planning_error.SourceDependsOnUndeclaredPackageModule { requested_module; suggested_modules; _ }
+    Riot_planner.Planning_error.SourceDependsOnUndeclaredPackageModule {
+      requested_module;
+      suggested_modules;
+      _;
+    }
   ) ->
       Test.assert_equal ~expected:"SurfacePath" ~actual:requested_module;
       Test.assert_equal ~expected:[ "Surface_path" ] ~actual:suggested_modules;
@@ -147,7 +151,7 @@ let assert_target_cannot_use_internal_library_module_directly = fun
       source;
       requested_module;
       internal_module;
-      public_module = actual_public_module
+      public_module = actual_public_module;
     }
   ) ->
       Test.assert_equal ~expected:target_name ~actual:actual_target_name;
@@ -184,7 +188,7 @@ let assert_target_cannot_use_namespaced_internal_library_module = fun
       source;
       requested_module;
       internal_module;
-      public_module = actual_public_module
+      public_module = actual_public_module;
     }
   ) ->
       Test.assert_equal ~expected:target_name ~actual:actual_target_name;
@@ -313,7 +317,7 @@ let test_same_package_binary_cannot_use_internal_library_module_directly = fun _
       source;
       requested_module;
       internal_module;
-      public_module
+      public_module;
     }
   ) ->
       Test.assert_equal ~expected:"berrybot" ~actual:target_name;
@@ -348,7 +352,7 @@ let test_same_package_binary_cannot_use_namespaced_internal_library_module = fun
       source;
       requested_module;
       internal_module;
-      public_module
+      public_module;
     }
   ) ->
       Test.assert_equal ~expected:"berrybot" ~actual:target_name;
@@ -388,7 +392,7 @@ let test_binary_private_helper_cannot_use_internal_library_module_directly = fun
       source;
       requested_module;
       internal_module;
-      public_module
+      public_module;
     }
   ) ->
       Test.assert_equal ~expected:"berrybot" ~actual:target_name;
@@ -428,7 +432,7 @@ let test_binary_private_helper_cannot_use_namespaced_internal_library_module = f
       source;
       requested_module;
       internal_module;
-      public_module
+      public_module;
     }
   ) ->
       Test.assert_equal ~expected:"berrybot" ~actual:target_name;
@@ -559,7 +563,7 @@ let test_same_package_binary_cannot_use_other_binary_root_directly = fun _ctx ->
       requested_module;
       other_target_name;
       other_target_module;
-      public_module
+      public_module;
     }
   ) ->
       Test.assert_equal ~expected:"berrybot" ~actual:target_name;
@@ -598,7 +602,7 @@ let test_same_package_binary_cannot_use_namespaced_other_binary_root = fun _ctx 
       requested_module;
       other_target_name;
       other_target_module;
-      public_module
+      public_module;
     }
   ) ->
       Test.assert_equal ~expected:"berrybot" ~actual:target_name;
@@ -639,7 +643,7 @@ let test_binary_private_helper_cannot_use_other_binary_root = fun _ctx ->
       requested_module;
       other_target_name;
       other_target_module;
-      public_module
+      public_module;
     }
   ) ->
       Test.assert_equal ~expected:"berrybot" ~actual:target_name;

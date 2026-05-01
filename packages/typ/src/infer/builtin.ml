@@ -13,6 +13,7 @@ let ident name =
   |> Result.expect ~msg:("expected builtin identifier " ^ name)
 
 (* These identifiers are canonical names, not special type constructors. *)
+
 let int_ident = ident "int"
 
 let bool_ident = ident "bool"

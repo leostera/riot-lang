@@ -17,7 +17,10 @@ type dependency_error =
       error: Std.Version.parse_error;
     }
   | DependencyCannotUseWorkspaceFlag of { dependency_name: string }
-  | DependencyFieldMustBeString of { dependency_name: string; field: dependency_field }
+  | DependencyFieldMustBeString of {
+      dependency_name: string;
+      field: dependency_field;
+    }
   | DependencyCannotSpecifySourceAndGithub of { dependency_name: string }
   | DependencyRefRequiresSource of { dependency_name: string }
   | BuiltinDependencyDoesNotSupportOverrides of { dependency_name: string }

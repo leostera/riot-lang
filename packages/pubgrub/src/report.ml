@@ -15,11 +15,11 @@ let rec build_derivation_tree = fun incompat ->
   match incompat with
   | Incompatibility.External { terms; cause } -> External (cause, terms)
   | Incompatibility.Derived {
-    terms;
-    cause1;
-    cause2;
-    shared_id
-  } ->
+      terms;
+      cause1;
+      cause2;
+      shared_id;
+    } ->
       Derived {
         terms;
         cause1 = build_derivation_tree cause1;
@@ -95,11 +95,11 @@ let rec format_derivation_tree = fun tree ->
   match tree with
   | External (cause, _terms) -> format_external_cause cause
   | Derived {
-    terms;
-    cause1;
-    cause2;
-    shared_id = _
-  } ->
+      terms;
+      cause1;
+      cause2;
+      shared_id = _;
+    } ->
       let c1_str =
         format_derivation_tree cause1
         |> ensure_trailing_period

@@ -28,7 +28,11 @@ type bench_result =
   | Failed of string
   | Skipped
 
-type t = { index: int; name: string; result: bench_result }
+type t = {
+  index: int;
+  name: string;
+  result: bench_result;
+}
 
 let zero_gc_stats: gc_stats = { minor_collections = 0; major_collections = 0; compactions = 0 }
 
@@ -96,7 +100,10 @@ let make_summary = fun results ->
 
 (* Comparison results *)
 
-type case_result = { name: string; statistics: statistics }
+type case_result = {
+  name: string;
+  statistics: statistics;
+}
 
 type comparison_result = {
   description: string;

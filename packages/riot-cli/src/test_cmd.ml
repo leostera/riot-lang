@@ -681,12 +681,12 @@ let write_test_event = fun
           let _ = Collections.HashSet.insert state.streamed_suites ~value:key in
           print_test_result ~suite result)
   | Test_runtime.SuiteCompleted {
-    suite;
-    stdout;
-    stderr;
-    summary;
-    _
-  } ->
+      suite;
+      stdout;
+      stderr;
+      summary;
+      _;
+    } ->
       if summary.total > 0 then (
         record_suite_timing
           ~small_only
@@ -703,12 +703,12 @@ let write_test_event = fun
       if verbose > 0 then
         print_command_output Command.{ stdout; stderr; status = 0 }
   | Test_runtime.Summary {
-    total;
-    passed;
-    failed;
-    skipped;
-    failed_tests = _
-  } ->
+      total;
+      passed;
+      failed;
+      skipped;
+      failed_tests = _;
+    } ->
       print_summary
         ~small_only
         ~large_only
@@ -722,11 +722,10 @@ let write_test_event = fun
 let write_test_error = fun err -> println ("error: " ^ Test_runtime.test_error_message err)
 
 let write_test_error_json = fun ~command_started_at err ->
-  let event_json =
-    Data.Json.Object [
-      ("type", Data.Json.String "test.error");
-      ("message", Data.Json.String (Test_runtime.test_error_message err));
-    ]
+  let event_json = Data.Json.Object [
+    ("type", Data.Json.String "test.error");
+    ("message", Data.Json.String (Test_runtime.test_error_message err));
+  ]
   in
   print
     (

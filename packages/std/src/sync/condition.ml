@@ -25,8 +25,13 @@ type request =
 
 type Runtime.Message.t +=
   | Sync_condition_request of request
-  | Sync_condition_signaled of { request_id: request_id }
-  | Sync_condition_failed of { request_id: request_id; reason: string }
+  | Sync_condition_signaled of {
+      request_id: request_id;
+    }
+  | Sync_condition_failed of {
+      request_id: request_id;
+      reason: string;
+    }
 
 let request_ids = Atomic.make 0
 

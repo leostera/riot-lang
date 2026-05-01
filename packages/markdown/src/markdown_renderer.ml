@@ -189,12 +189,12 @@ and render_block = fun block ->
   | Paragraph { inlines; _ } -> "<p>" ^ render_inlines inlines ^ "</p>\n"
   | Block_quote { blocks; _ } -> "<blockquote>\n" ^ render_children blocks ^ "</blockquote>\n"
   | List {
-    ordered;
-    start;
-    tight;
-    items;
-    _
-  } ->
+      ordered;
+      start;
+      tight;
+      items;
+      _;
+    } ->
       let (open_tag, close_tag) =
         if ordered then
           if start = 1 then

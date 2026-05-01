@@ -442,11 +442,11 @@ let parse_head_owned = fun
   | Slice_need_more -> Slice_need_more
   | Slice_error error -> Slice_error error
   | Slice_done {
-    parsed_method;
-    parsed_uri;
-    parsed_version;
-    next_cursor
-  } ->
+      parsed_method;
+      parsed_uri;
+      parsed_version;
+      next_cursor;
+    } ->
       (
           match parse_headers_owned
             ~max_count:max_headers
@@ -480,12 +480,12 @@ let parse_head_slice = fun
   | Slice_need_more -> Common.Need_more
   | Slice_error error -> Common.Error error
   | Slice_done {
-    head_method;
-    head_uri;
-    head_version;
-    head_headers;
-    body_cursor
-  } ->
+      head_method;
+      head_uri;
+      head_version;
+      head_headers;
+      body_cursor;
+    } ->
       let request = request_of_parts head_method head_uri head_version head_headers Slice.empty in
       Common.Done {
         value = request;
@@ -527,12 +527,12 @@ let parse_slice = fun
   | Slice_need_more -> Common.Need_more
   | Slice_error error -> Common.Error error
   | Slice_done {
-    head_method;
-    head_uri;
-    head_version;
-    head_headers;
-    body_cursor
-  } ->
+      head_method;
+      head_uri;
+      head_version;
+      head_headers;
+      body_cursor;
+    } ->
       (
           let body_bytes = SliceCursor.remaining body_cursor in
           match parse_body_framing head_headers with

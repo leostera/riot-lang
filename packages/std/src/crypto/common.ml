@@ -48,12 +48,11 @@ let bytes_of_bool = fun value ->
 let bytes_of_int = fun value ->
   let out = Bytes.create ~size:8 in
   let rec loop index =
-    if index < 8 then
-      (
-        let byte = (value lsr (index * 8)) land 0xff in
-        let _ = Bytes.set out ~at:index ~char:(Char.from_int_unchecked byte) in
-        loop (index + 1)
-      )
+    if index < 8 then (
+      let byte = (value lsr (index * 8)) land 0xff in
+      let _ = Bytes.set out ~at:index ~char:(Char.from_int_unchecked byte) in
+      loop (index + 1)
+    )
   in
   loop 0;
   out
@@ -62,12 +61,11 @@ let bytes_of_int32 = fun value ->
   let value = int32_to_int value in
   let out = Bytes.create ~size:4 in
   let rec loop index =
-    if index < 4 then
-      (
-        let byte = (value lsr (index * 8)) land 0xff in
-        let _ = Bytes.set out ~at:index ~char:(Char.from_int_unchecked byte) in
-        loop (index + 1)
-      )
+    if index < 4 then (
+      let byte = (value lsr (index * 8)) land 0xff in
+      let _ = Bytes.set out ~at:index ~char:(Char.from_int_unchecked byte) in
+      loop (index + 1)
+    )
   in
   loop 0;
   out
@@ -76,13 +74,12 @@ let bytes_of_int64 = fun value ->
   let out = Bytes.create ~size:8 in
   let mask = 0xffL in
   let rec loop index =
-    if index < 8 then
-      (
-        let shifted = int64_shift_right_logical value (index * 8) in
-        let byte = Int64.to_int (int64_logand shifted mask) in
-        let _ = Bytes.set out ~at:index ~char:(Char.from_int_unchecked byte) in
-        loop (index + 1)
-      )
+    if index < 8 then (
+      let shifted = int64_shift_right_logical value (index * 8) in
+      let byte = Int64.to_int (int64_logand shifted mask) in
+      let _ = Bytes.set out ~at:index ~char:(Char.from_int_unchecked byte) in
+      loop (index + 1)
+    )
   in
   loop 0;
   out

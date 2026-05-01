@@ -37,11 +37,23 @@ type request =
 
 type Runtime.Message.t +=
   | Sync_mutex_request of request
-  | Sync_mutex_acquired of { request_id: request_id }
-  | Sync_mutex_try_result of { request_id: request_id; acquired: bool }
-  | Sync_mutex_released of { request_id: request_id }
-  | Sync_mutex_suspended of { request_id: request_id }
-  | Sync_mutex_failed of { request_id: request_id; reason: string }
+  | Sync_mutex_acquired of {
+      request_id: request_id;
+    }
+  | Sync_mutex_try_result of {
+      request_id: request_id;
+      acquired: bool;
+    }
+  | Sync_mutex_released of {
+      request_id: request_id;
+    }
+  | Sync_mutex_suspended of {
+      request_id: request_id;
+    }
+  | Sync_mutex_failed of {
+      request_id: request_id;
+      reason: string;
+    }
 
 type server_event =
   | Server_request of request

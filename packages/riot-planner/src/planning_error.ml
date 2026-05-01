@@ -54,7 +54,9 @@ type t =
       file: Path.t;
       error: executable_main_error;
     }
-  | Exception of { exn: exn }
+  | Exception of {
+      exn: exn;
+    }
 
 let executable_main_error_to_string = function
   | MissingMain -> "it does not define a top-level `let main ~args = ...` binding"
@@ -77,12 +79,12 @@ let to_string = function
   | DependencyAnalysisFailed { reason } -> "Dependency analysis failed: " ^ reason
   | GraphBuildFailed { reason } -> "Graph build failed: " ^ reason
   | TargetDependsOnInternalLibraryModule {
-    target_name;
-    source;
-    requested_module;
-    internal_module;
-    public_module
-  } ->
+      target_name;
+      source;
+      requested_module;
+      internal_module;
+      public_module;
+    } ->
       "Target '"
       ^ target_name
       ^ "' source '"
@@ -99,12 +101,12 @@ let to_string = function
       ^ requested_module
       ^ "' instead."
   | TargetDependsOnNamespacedInternalLibraryModule {
-    target_name;
-    source;
-    requested_module;
-    internal_module;
-    public_module
-  } ->
+      target_name;
+      source;
+      requested_module;
+      internal_module;
+      public_module;
+    } ->
       "Target '"
       ^ target_name
       ^ "' source '"
@@ -125,13 +127,13 @@ let to_string = function
       )
       ^ "' instead."
   | TargetDependsOnOtherTargetRoot {
-    target_name;
-    source;
-    requested_module;
-    other_target_name;
-    other_target_module;
-    public_module
-  } ->
+      target_name;
+      source;
+      requested_module;
+      other_target_name;
+      other_target_module;
+      public_module;
+    } ->
       "Target '"
       ^ target_name
       ^ "' source '"
@@ -146,12 +148,12 @@ let to_string = function
       ^ public_module
       ^ "' or a shared helper module."
   | SourceDependsOnUndeclaredPackageModule {
-    package_name;
-    source;
-    requested_module;
-    allowed_modules;
-    suggested_modules
-  } ->
+      package_name;
+      source;
+      requested_module;
+      allowed_modules;
+      suggested_modules;
+    } ->
       let suggestion =
         match suggested_modules with
         | [] -> ""
@@ -169,12 +171,12 @@ let to_string = function
       ^ "."
       ^ suggestion
   | InvalidExecutableMain {
-    package_name;
-    target_name;
-    source;
-    file;
-    error
-  } ->
+      package_name;
+      target_name;
+      source;
+      file;
+      error;
+    } ->
       "Package '"
       ^ package_name
       ^ "' executable target '"
@@ -224,12 +226,12 @@ let to_json = function
       Data.Json.obj
         [ ("type", Data.Json.string "graph_build_failed"); ("reason", Data.Json.string reason); ]
   | TargetDependsOnInternalLibraryModule {
-    target_name;
-    source;
-    requested_module;
-    internal_module;
-    public_module
-  } ->
+      target_name;
+      source;
+      requested_module;
+      internal_module;
+      public_module;
+    } ->
       Data.Json.obj
         [
           ("type", Data.Json.string "target_depends_on_internal_library_module");
@@ -240,12 +242,12 @@ let to_json = function
           ("public_module", Data.Json.string public_module);
         ]
   | TargetDependsOnNamespacedInternalLibraryModule {
-    target_name;
-    source;
-    requested_module;
-    internal_module;
-    public_module
-  } ->
+      target_name;
+      source;
+      requested_module;
+      internal_module;
+      public_module;
+    } ->
       Data.Json.obj
         [
           ("type", Data.Json.string "target_depends_on_namespaced_internal_library_module");
@@ -256,13 +258,13 @@ let to_json = function
           ("public_module", Data.Json.string public_module);
         ]
   | TargetDependsOnOtherTargetRoot {
-    target_name;
-    source;
-    requested_module;
-    other_target_name;
-    other_target_module;
-    public_module
-  } ->
+      target_name;
+      source;
+      requested_module;
+      other_target_name;
+      other_target_module;
+      public_module;
+    } ->
       Data.Json.obj
         [
           ("type", Data.Json.string "target_depends_on_other_target_root");
@@ -274,12 +276,12 @@ let to_json = function
           ("public_module", Data.Json.string public_module);
         ]
   | SourceDependsOnUndeclaredPackageModule {
-    package_name;
-    source;
-    requested_module;
-    allowed_modules;
-    suggested_modules
-  } ->
+      package_name;
+      source;
+      requested_module;
+      allowed_modules;
+      suggested_modules;
+    } ->
       Data.Json.obj
         [
           ("type", Data.Json.string "source_depends_on_undeclared_package_module");
@@ -290,12 +292,12 @@ let to_json = function
           ("suggested_modules", Data.Json.array (List.map suggested_modules ~fn:Data.Json.string));
         ]
   | InvalidExecutableMain {
-    package_name;
-    target_name;
-    source;
-    file;
-    error
-  } ->
+      package_name;
+      target_name;
+      source;
+      file;
+      error;
+    } ->
       Data.Json.obj
         [
           ("type", Data.Json.string "invalid_executable_main");

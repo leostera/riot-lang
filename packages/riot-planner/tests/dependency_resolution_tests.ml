@@ -1114,8 +1114,9 @@ let test_module_graph_resolves_deeply_nested_modules_namespace_first = fun _ctx 
             | Some (_node_id, node) -> Ok node
             | None -> Error ("expected module not found: " ^ qualified_name)
           in
-          let depends_on (node: Riot_planner.Module_node.t G.node) (dependency:
-            Riot_planner.Module_node.t G.node) =
+          let depends_on
+            (node: Riot_planner.Module_node.t G.node)
+            (dependency: Riot_planner.Module_node.t G.node) =
             List.any node.deps ~fn:(G.Node_id.eq dependency.id)
           in
           match (
@@ -1996,7 +1997,11 @@ let test_module_graph_rejects_non_direct_dependency_root = fun _ctx ->
             ~module_graph:(Riot_planner.Module_graph.graph graph_builder)
             ~analyzed_modules:(Riot_planner.Module_graph.analyzed_modules graph_builder) with
           | Error (
-            Riot_planner.Planning_error.SourceDependsOnUndeclaredPackageModule { requested_module; allowed_modules; _ }
+            Riot_planner.Planning_error.SourceDependsOnUndeclaredPackageModule {
+              requested_module;
+              allowed_modules;
+              _;
+            }
           ) ->
               if requested_module = "Kernel" && allowed_modules = [ "App"; "Std" ] then
                 Ok ()

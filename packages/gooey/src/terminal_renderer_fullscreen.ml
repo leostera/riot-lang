@@ -53,37 +53,33 @@ let render_to_string = fun commands ->
           let col_end = Utils.rect_col_end command.bounding_box in
           if width.top > 0 then
             for col = col_start to col_end - 1 do
-              if Utils.is_inside_scissor ~col ~row:row_start !scissor_box then
-                begin
-                  let ch =
-                    if col = col_start && width.left > 0 then
-                      "┌"
-                    else if col = col_end - 1 && width.right > 0 then
-                      "┐"
-                    else
-                      "─"
-                  in
-                  Buffer.add_string
-                    buf
-                    (Tty.Escape_seq.cursor_position_seq (row_start + 1) (col + 1));
-                  Buffer.add_string buf (Ansi_formatter.format_string fmt ch)
-                end
+              if Utils.is_inside_scissor ~col ~row:row_start !scissor_box then (
+                let ch =
+                  if col = col_start && width.left > 0 then
+                    "┌"
+                  else if col = col_end - 1 && width.right > 0 then
+                    "┐"
+                  else
+                    "─"
+                in
+                Buffer.add_string buf (Tty.Escape_seq.cursor_position_seq (row_start + 1) (col + 1));
+                Buffer.add_string buf (Ansi_formatter.format_string fmt ch)
+              )
             done;
           if width.bottom > 0 then
             for col = col_start to col_end - 1 do
-              if Utils.is_inside_scissor ~col ~row:(row_end - 1) !scissor_box then
-                begin
-                  let ch =
-                    if col = col_start && width.left > 0 then
-                      "└"
-                    else if col = col_end - 1 && width.right > 0 then
-                      "┘"
-                    else
-                      "─"
-                  in
-                  Buffer.add_string buf (Tty.Escape_seq.cursor_position_seq row_end (col + 1));
-                  Buffer.add_string buf (Ansi_formatter.format_string fmt ch)
-                end
+              if Utils.is_inside_scissor ~col ~row:(row_end - 1) !scissor_box then (
+                let ch =
+                  if col = col_start && width.left > 0 then
+                    "└"
+                  else if col = col_end - 1 && width.right > 0 then
+                    "┘"
+                  else
+                    "─"
+                in
+                Buffer.add_string buf (Tty.Escape_seq.cursor_position_seq row_end (col + 1));
+                Buffer.add_string buf (Ansi_formatter.format_string fmt ch)
+              )
             done;
           for row = row_start + 1 to row_end - 2 do
             if width.left > 0 && Utils.is_inside_scissor ~col:col_start ~row !scissor_box then (
@@ -96,12 +92,12 @@ let render_to_string = fun commands ->
             )
           done
       | Render.Text {
-        content;
-        color;
-        weight;
-        decoration;
-        _
-      } ->
+          content;
+          color;
+          weight;
+          decoration;
+          _;
+        } ->
           let lines = String.split_on_char '\n' content in
           lines
           |> List.enumerate

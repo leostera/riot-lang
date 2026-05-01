@@ -738,8 +738,9 @@ let test_solver_randomized_small_graphs_match_bruteforce =
                               dep.package,
                               fuzz_ranges_of_versions dep.allowed_versions
                             )));
-                        let add_version (package: fuzz_package_spec) (version_spec:
-                          fuzz_version_spec) =
+                        let add_version
+                          (package: fuzz_package_spec)
+                          (version_spec: fuzz_version_spec) =
                           Pubgrub.add_package
                             provider
                             package.name

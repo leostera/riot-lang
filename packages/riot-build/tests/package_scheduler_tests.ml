@@ -169,16 +169,16 @@ let planning_phase_counts = fun events ->
     ~fn:(
       function
       | Package_scheduler.PlanningFinished {
-        package_count;
-        deferred_count;
-        execution_required_count;
-        finalized_count;
-        cached_count;
-        skipped_count;
-        failed_count;
-        error_count;
-        _
-      } ->
+          package_count;
+          deferred_count;
+          execution_required_count;
+          finalized_count;
+          cached_count;
+          skipped_count;
+          failed_count;
+          error_count;
+          _;
+        } ->
           Some (
             package_count,
             deferred_count,
@@ -198,13 +198,13 @@ let execution_phase_counts = fun events ->
     ~fn:(
       function
       | Package_scheduler.ExecutionFinished {
-        package_count;
-        finalized_count;
-        built_count;
-        failed_count;
-        error_count;
-        _
-      } ->
+          package_count;
+          finalized_count;
+          built_count;
+          failed_count;
+          error_count;
+          _;
+        } ->
           Some (package_count, finalized_count, built_count, failed_count, error_count)
       | _ -> None
     )

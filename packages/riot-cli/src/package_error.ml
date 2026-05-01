@@ -53,11 +53,11 @@ let message = function
       ^ "': "
       ^ path_dependency_load_error_message error
   | Riot_deps.SourceDependencyLoadFailed {
-    dependency;
-    source_locator;
-    ref_;
-    error
-  } ->
+      dependency;
+      source_locator;
+      ref_;
+      error;
+    } ->
       let suffix =
         match ref_ with
         | Some ref_ -> "#" ^ ref_
@@ -83,11 +83,11 @@ let message = function
       ^ "': "
       ^ registry_lookup_error_message error
   | Riot_deps.RegistryMaterializationFailed {
-    package;
-    version;
-    registry;
-    error
-  } ->
+      package;
+      version;
+      registry;
+      error;
+    } ->
       "failed to materialize package '"
       ^ package
       ^ "@"

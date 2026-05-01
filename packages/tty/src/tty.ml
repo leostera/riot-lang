@@ -72,11 +72,10 @@ let make = fun ?fd ?stdin ?stdout ?stderr ?size ?(mode = LineBuffered) () ->
   | Ok tty_fd -> (
       match Platform.get_attributes tty_fd with
       | Error error ->
-          if owns_fd then
-            (
-              let _ = Platform.close tty_fd in
-              ()
-            );
+          if owns_fd then (
+            let _ = Platform.close tty_fd in
+            ()
+          );
           Error (error_of_io_error error)
       | Ok original_attrs ->
           let detected_size =
@@ -107,11 +106,10 @@ let make = fun ?fd ?stdin ?stdout ?stderr ?size ?(mode = LineBuffered) () ->
                   terminal.mode <- Immediate;
                   Ok terminal
               | Error error ->
-                  if owns_fd then
-                    (
-                      let _ = Platform.close tty_fd in
-                      ()
-                    );
+                  if owns_fd then (
+                    let _ = Platform.close tty_fd in
+                    ()
+                  );
                   Error (error_of_io_error error)
             )
     )

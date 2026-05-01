@@ -103,12 +103,12 @@ let to_string = function
       else
         "KeyDown(" ^ mod_str ^ "+" ^ key_str ^ ")"
   | Mouse {
-    button;
-    event_type;
-    x;
-    y;
-    _
-  } ->
+      button;
+      event_type;
+      x;
+      y;
+      _;
+    } ->
       let btn =
         match button with
         | Left -> "left"

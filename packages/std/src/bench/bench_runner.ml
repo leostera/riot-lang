@@ -8,7 +8,10 @@ type config = {
 
 type run_summary = Bench_result.summary
 
-let gc_delta ~(before:Kernel.Gc.quick_stat) ~(after_:Kernel.Gc.quick_stat) : Bench_result.gc_stats = {
+let gc_delta
+  ~(before:Kernel.Gc.quick_stat)
+  ~(after_:Kernel.Gc.quick_stat)
+  : Bench_result.gc_stats = {
   minor_collections = Int.max 0 (after_.minor_collections - before.minor_collections);
   major_collections = Int.max 0 (after_.major_collections - before.major_collections);
   compactions = Int.max 0 (after_.compactions - before.compactions);
@@ -82,12 +85,10 @@ let run_comparison = fun index (module R : Reporter.Intf.Intf) (comp: Bench_comp
   in
   let valid_results = List.filter_map case_results ~fn:(fun x -> x) in
   (* Create and report comparison summary *)
-  if List.length valid_results >= 2 then
-    begin
-      let comp_result = Bench_result.make_comparison_result comp.description valid_results in
-      R.on_comparison_summary comp_result
-    end
-  else
+  if List.length valid_results >= 2 then (
+    let comp_result = Bench_result.make_comparison_result comp.description valid_results in
+    R.on_comparison_summary comp_result
+  ) else
     println "  (not enough valid results for comparison)"
 
 type bench_item =

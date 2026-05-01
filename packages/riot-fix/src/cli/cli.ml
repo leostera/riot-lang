@@ -90,12 +90,12 @@ let run_request_direct = fun ~on_event ~output_mode (request: Request.t) ->
   | Request.ListDiagnostics { format } -> Catalog.list_diagnostics format
   | Request.ExplainRule { rule_id } -> Catalog.explain_rule rule_id
   | Request.Run {
-    mode;
-    limit;
-    target;
-    output_mode = _;
-    use_generated_runner = _
-  } ->
+      mode;
+      limit;
+      target;
+      output_mode = _;
+      use_generated_runner = _;
+    } ->
       Execution.run_with_coordinator
         ~on_event
         ~output_mode
@@ -115,12 +115,12 @@ let run_matches = fun ~build_package ?(on_event = Types.no_event) ?output_mode m
       | Request.ListDiagnostics { format } -> Catalog.list_diagnostics format
       | Request.ExplainRule { rule_id } -> Catalog.explain_rule rule_id
       | Request.Run {
-        mode;
-        limit;
-        target;
-        use_generated_runner;
-        output_mode = _
-      } ->
+          mode;
+          limit;
+          target;
+          use_generated_runner;
+          output_mode = _;
+        } ->
           (
               match (request.scope, use_generated_runner) with
               | (Some scope, true) ->

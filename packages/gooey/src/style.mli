@@ -41,7 +41,10 @@ type v_align =
   | Middle
   | Bottom
 (** Alignment configuration *)
-type alignment = { x: h_align; y: v_align }
+type alignment = {
+  x: h_align;
+  y: v_align;
+}
 (** Padding *)
 type padding = { left: int; right: int; top: int; bottom: int }
 (** Margin *)

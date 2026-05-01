@@ -52,7 +52,9 @@ type t =
       file: Path.t;
       error: executable_main_error;
     }
-  | Exception of { exn: exn }
+  | Exception of {
+      exn: exn;
+    }
 val to_string: t -> string
 
 val to_json: t -> Std.Data.Json.t

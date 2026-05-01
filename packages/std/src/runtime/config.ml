@@ -6,7 +6,10 @@ type timer_resolution =
   | Microsecond
   | Nanosecond
 
-type t = { timer_resolution: timer_resolution; scheduler_count: int }
+type t = {
+  timer_resolution: timer_resolution;
+  scheduler_count: int;
+}
 
 let default_scheduler_count = Int.max 1 (Thread.available_parallelism - 1)
 

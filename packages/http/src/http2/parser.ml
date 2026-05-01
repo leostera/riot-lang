@@ -26,7 +26,11 @@ and error =
   | MalformedPriorityPayload
   | SettingsAckWithPayload of { length: int }
   | SettingsLengthNotMultipleOfSix of { length: int }
-  | InvalidSettingValue of { setting: setting_id; value: int; expected: setting_value_rule }
+  | InvalidSettingValue of {
+      setting: setting_id;
+      value: int;
+      expected: setting_value_rule;
+    }
   | WindowUpdateIncrementZero
   | InvalidPriorityDependency of { stream_id: int; stream_dependency: int }
 

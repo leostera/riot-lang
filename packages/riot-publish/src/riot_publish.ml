@@ -6,7 +6,10 @@ type publish_selection =
   | Workspace
   | Package of Package_name.t
 
-type publish_request = { selection: publish_selection; skip_check: bool }
+type publish_request = {
+  selection: publish_selection;
+  skip_check: bool;
+}
 
 type publish_mode =
   | DryRun
@@ -287,12 +290,12 @@ let fix_request_for_publish = fun ~cwd ~target ->
   let request = Riot_fix.check_request ~cwd ~target in
   match request.action with
   | Riot_fix.Run {
-    mode;
-    limit;
-    target;
-    output_mode = _;
-    use_generated_runner
-  } ->
+      mode;
+      limit;
+      target;
+      output_mode = _;
+      use_generated_runner;
+    } ->
       let output_mode =
         if use_generated_runner then
           Riot_fix.Report Riot_fix.Reporter.Text
@@ -564,11 +567,15 @@ module For_test = struct
         | (Publish, Some api_token) -> (
             match deps.publish_prepared ~registry ~api_token prepared with
             | Error (PublishFailed { error; _ }) when publish_error_is_already_published error ->
-                let event: publish_event =
-                  SkippedAlreadyPublished { package = package.name; version = prepared.version }
+                let event: publish_event = SkippedAlreadyPublished {
+                  package = package.name;
+                  version = prepared.version;
+                }
                 in
-                let outcome: publish_outcome =
-                  Skipped { package = package.name; version = prepared.version }
+                let outcome: publish_outcome = Skipped {
+                  package = package.name;
+                  version = prepared.version;
+                }
                 in
                 emit event;
                 run_packages

@@ -88,7 +88,7 @@ let test_make_rejects_path_semicolon = fun _ctx ->
       attribute = Cookie.Path;
       index = 4;
       character = ';';
-      reason = Cookie.AttributeSemicolon
+      reason = Cookie.AttributeSemicolon;
     }
   ) ->
       Result.Ok ()

@@ -148,13 +148,12 @@ let make_bench_materialize_exports = fun root ->
 let make_bench_save_plan_bundle = fun root ->
   let store_root = Path.(root / Path.v "save-plan") in
   let store = create_store store_root in
-  let plan =
-    Data.Json.Object [
-      ("version", Data.Json.Int 1);
-      ("package", Data.Json.String "pkg");
-      ("module_graph", Data.Json.Object [ ("nodes", Data.Json.Array []); ]);
-      ("action_graph", Data.Json.Object [ ("nodes", Data.Json.Array []); ]);
-    ]
+  let plan = Data.Json.Object [
+    ("version", Data.Json.Int 1);
+    ("package", Data.Json.String "pkg");
+    ("module_graph", Data.Json.Object [ ("nodes", Data.Json.Array []); ]);
+    ("action_graph", Data.Json.Object [ ("nodes", Data.Json.Array []); ]);
+  ]
   in
   let counter = ref 0 in
   fun () ->
@@ -171,13 +170,12 @@ let make_bench_load_plan_bundle = fun root ->
   let store_root = Path.(root / Path.v "load-plan") in
   let store = create_store store_root in
   let hash = Crypto.hash_string "riot-store:plan-load" in
-  let plan =
-    Data.Json.Object [
-      ("version", Data.Json.Int 1);
-      ("package", Data.Json.String "pkg");
-      ("module_graph", Data.Json.Object [ ("nodes", Data.Json.Array []); ]);
-      ("action_graph", Data.Json.Object [ ("nodes", Data.Json.Array []); ]);
-    ]
+  let plan = Data.Json.Object [
+    ("version", Data.Json.Int 1);
+    ("package", Data.Json.String "pkg");
+    ("module_graph", Data.Json.Object [ ("nodes", Data.Json.Array []); ]);
+    ("action_graph", Data.Json.Object [ ("nodes", Data.Json.Array []); ]);
+  ]
   in
   let _ =
     Riot_store.Store.save_plan_bundle store ~hash ~plan

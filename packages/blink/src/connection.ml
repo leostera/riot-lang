@@ -172,17 +172,15 @@ let stream = fun (Conn conn as c) ->
         (* Body complete but buffer empty *)
         conn.state <- Complete;
         Ok [ Done ]
-      ) else if available >= remaining then
-        (
-          (* We have enough data in buffer to complete the body *)
-          let body_data = String.sub data ~offset:0 ~len:remaining in
-          let leftover = String.sub data ~offset:remaining ~len:(available - remaining) in
-          Buffer.clear conn.buffer;
-          Buffer.add_string conn.buffer leftover;
-          conn.state <- Complete;
-          Ok [ Data body_data; Done ]
-        )
-      else if available > 0 then (
+      ) else if available >= remaining then (
+        (* We have enough data in buffer to complete the body *)
+        let body_data = String.sub data ~offset:0 ~len:remaining in
+        let leftover = String.sub data ~offset:remaining ~len:(available - remaining) in
+        Buffer.clear conn.buffer;
+        Buffer.add_string conn.buffer leftover;
+        conn.state <- Complete;
+        Ok [ Data body_data; Done ]
+      ) else if available > 0 then (
         (* Partial data available, consume it and continue *)
         Buffer.clear conn.buffer;
         conn.state <- ReadingFixedBody { length; received = received + available };

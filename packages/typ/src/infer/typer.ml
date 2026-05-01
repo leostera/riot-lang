@@ -78,7 +78,11 @@ and inline_record_find_field inline_record name =
     inline_record.InferenceEnv.fields
     ~fn:(fun field -> SurfacePath.equal field.InferenceEnv.declaration.name name)
 
-and bind_inline_record_pattern state (payload_pattern: pattern) (fields: record_pattern_field list) inline_record =
+and bind_inline_record_pattern
+  state
+  (payload_pattern: pattern)
+  (fields: record_pattern_field list)
+  inline_record =
   payload_pattern.type_ <- Some inline_record.State.InferenceEnv.payload_type;
   List.for_each
     fields
@@ -353,16 +357,21 @@ and infer_inline_record_field_type inline_record (field: record_expression_field
   | None -> None
   | Some expected_field -> Some expected_field.type_
 
-and infer_inline_record_payload state payload_expr (fields: record_expression_field list) (inline_record:
-  InferenceEnv.inline_record) =
+and infer_inline_record_payload
+  state
+  payload_expr
+  (fields: record_expression_field list)
+  (inline_record: InferenceEnv.inline_record) =
   payload_expr.type_ <- Some inline_record.payload_type;
-  infer_record_fields
-    state
-    fields
-    ~field_type:(infer_inline_record_field_type inline_record)
+  infer_record_fields state fields ~field_type:(infer_inline_record_field_type inline_record)
 
-and infer_inline_record_constructor state (expr: expression) (payload_expr: expression) (fields:
-  record_expression_field list) (constructor: InferenceEnv.constructor_description) inline_record =
+and infer_inline_record_constructor
+  state
+  (expr: expression)
+  (payload_expr: expression)
+  (fields: record_expression_field list)
+  (constructor: InferenceEnv.constructor_description)
+  inline_record =
   let result = State.fresh_var state in
   unify
     state
@@ -501,7 +510,8 @@ and infer_function state fn_decl =
   List.fold_right
     params
     ~init:body
-    ~fn:(fun (label, parameter) result -> Ast.Type.arrow ~label parameter result)
+    ~fn:(fun (label, parameter) result ->
+      Ast.Type.arrow ~label parameter result)
 
 let register_constructor state (decl: type_declaration) (ctr: type_constructor) =
   let description = ConstructorDescription.from_type_constructor state decl ctr in

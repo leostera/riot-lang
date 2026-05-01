@@ -150,20 +150,20 @@ let get_hash = function
 let get_planned_data = function
   | Unplanned _ -> None
   | Planned {
-    package;
-    module_graph;
-    action_graph;
-    hash;
-    _
-  } ->
+      package;
+      module_graph;
+      action_graph;
+      hash;
+      _;
+    } ->
       Some (package, module_graph, action_graph, hash)
   | Built {
-    package;
-    module_graph;
-    action_graph;
-    hash;
-    _
-  } ->
+      package;
+      module_graph;
+      action_graph;
+      hash;
+      _;
+    } ->
       Some (package, module_graph, action_graph, hash)
   | Cached _ -> None
   | Failed _ -> None
@@ -208,8 +208,10 @@ let empty_breakdown = {
   edge_wiring_duration = Time.Duration.zero;
 }
 
-let create_with_breakdown ~scope ?(dev_artifacts = {tests = true; examples = true; benches = true}) (workspace:
-  Workspace.t) =
+let create_with_breakdown
+  ~scope
+  ?(dev_artifacts = {tests = true; examples = true; benches = true})
+  (workspace: Workspace.t) =
   let started_at = Time.Instant.now () in
   let graph = G.make () in
   let name_to_node = HashMap.create () in

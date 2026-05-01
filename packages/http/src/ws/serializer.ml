@@ -111,7 +111,7 @@ let serialize = fun ?rng ?(role = Server) frame ->
         rsv3;
         opcode;
         masked;
-        payload
+        payload;
       } = frame
       in
       let payload_len = String.length payload in

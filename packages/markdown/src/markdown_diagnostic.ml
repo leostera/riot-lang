@@ -5,11 +5,25 @@ module Error = Markdown_error
 type found_token = { kind: string; text: string }
 
 type kind =
-  | Invalid_markdown of { found: found_token }
-  | Unsupported_feature of { found: found_token; feature: string }
-  | Unclosed_fenced_code_block of { found: found_token; opener: string }
-  | Unexpected_control_character of { found: found_token; code: int }
-  | Parser_internal of { message: string; found: found_token }
+  | Invalid_markdown of {
+      found: found_token;
+    }
+  | Unsupported_feature of {
+      found: found_token;
+      feature: string;
+    }
+  | Unclosed_fenced_code_block of {
+      found: found_token;
+      opener: string;
+    }
+  | Unexpected_control_character of {
+      found: found_token;
+      code: int;
+    }
+  | Parser_internal of {
+      message: string;
+      found: found_token;
+    }
 
 type t = {
   kind: kind;

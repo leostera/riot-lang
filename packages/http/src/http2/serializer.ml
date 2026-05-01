@@ -46,7 +46,11 @@ type error =
   | InvalidStreamIdRange of { stream_id: int }
   | InvalidPromisedStreamId of { promised_stream_id: int }
   | InvalidLastStreamId of { last_stream_id: int }
-  | InvalidSettingValue of { setting: setting_id; value: int; expected: setting_value_rule }
+  | InvalidSettingValue of {
+      setting: setting_id;
+      value: int;
+      expected: setting_value_rule;
+    }
   | InvalidErrorCode of { code: int }
 
 let frame_type_to_string = function
@@ -338,12 +342,12 @@ let serialize_data_payload = fun payload ->
 let serialize_headers_payload = fun ~stream_id payload ->
   match payload with
   | Frame.HeadersPayload {
-    pad_length;
-    stream_dependency;
-    weight;
-    exclusive;
-    header_block_fragment
-  } ->
+      pad_length;
+      stream_dependency;
+      weight;
+      exclusive;
+      header_block_fragment;
+    } ->
       (
           match validate_padding Frame.Headers pad_length with
           | Error error -> Error error

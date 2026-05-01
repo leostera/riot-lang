@@ -43,7 +43,11 @@ type error =
   | InvalidStreamIdRange of { stream_id: int }
   | InvalidPromisedStreamId of { promised_stream_id: int }
   | InvalidLastStreamId of { last_stream_id: int }
-  | InvalidSettingValue of { setting: setting_id; value: int; expected: setting_value_rule }
+  | InvalidSettingValue of {
+      setting: setting_id;
+      value: int;
+      expected: setting_value_rule;
+    }
   | InvalidErrorCode of { code: int }
 val error_to_string: error -> string
 

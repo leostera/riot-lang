@@ -14,10 +14,7 @@ val unify:
   unit
 
 (** Diagnostic adapter for a source type annotation. *)
-val annotation_diagnostic:
-  Ast.core_type ->
-  Unifier.error ->
-  Diagnostics.Diagnostic.t
+val annotation_diagnostic: Ast.core_type -> Unifier.error -> Diagnostics.Diagnostic.t
 
 (** Diagnostic adapter for an expression type hint. *)
 val expression_hint_diagnostic:
@@ -27,19 +24,10 @@ val expression_hint_diagnostic:
   Diagnostics.Diagnostic.t
 
 (** Diagnostic adapter for an expression-originated constraint. *)
-val expression_constraint_diagnostic:
-  Ast.expression ->
-  Unifier.error ->
-  Diagnostics.Diagnostic.t
+val expression_constraint_diagnostic: Ast.expression -> Unifier.error -> Diagnostics.Diagnostic.t
 
 (** Diagnostic adapter for an application argument constraint. *)
-val argument_constraint_diagnostic:
-  Ast.argument ->
-  Unifier.error ->
-  Diagnostics.Diagnostic.t
+val argument_constraint_diagnostic: Ast.argument -> Unifier.error -> Diagnostics.Diagnostic.t
 
 (** Diagnostic adapter for a pattern-originated constraint. *)
-val pattern_constraint_diagnostic:
-  Ast.pattern ->
-  Unifier.error ->
-  Diagnostics.Diagnostic.t
+val pattern_constraint_diagnostic: Ast.pattern -> Unifier.error -> Diagnostics.Diagnostic.t

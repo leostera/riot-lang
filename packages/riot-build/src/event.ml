@@ -78,16 +78,16 @@ let runtime_phase_fields = function
   | PackageExecutionStarted { lane_count; package_count } ->
       [ ("lane_count", Data.Json.Int lane_count); ("package_count", Data.Json.Int package_count); ]
   | PackagePlanningFinished {
-    lane_count;
-    package_count;
-    deferred_count;
-    execution_required_count;
-    finalized_count;
-    cached_count;
-    skipped_count;
-    failed_count;
-    error_count
-  } ->
+      lane_count;
+      package_count;
+      deferred_count;
+      execution_required_count;
+      finalized_count;
+      cached_count;
+      skipped_count;
+      failed_count;
+      error_count;
+    } ->
       [
         ("lane_count", Data.Json.Int lane_count);
         ("package_count", Data.Json.Int package_count);
@@ -100,13 +100,13 @@ let runtime_phase_fields = function
         ("error_count", Data.Json.Int error_count);
       ]
   | PackageExecutionFinished {
-    lane_count;
-    package_count;
-    finalized_count;
-    built_count;
-    failed_count;
-    error_count
-  } ->
+      lane_count;
+      package_count;
+      finalized_count;
+      built_count;
+      failed_count;
+      error_count;
+    } ->
       [
         ("lane_count", Data.Json.Int lane_count);
         ("package_count", Data.Json.Int package_count);

@@ -73,12 +73,11 @@ let on_comparison_summary = fun (result: Bench_result.comparison_result) ->
   List.for_each
     result.speedup_ratios
     ~fn:(fun (name, ratio) ->
-      if not (String.equal name fastest_name) then
-        (
-          let speedup_str = Float.to_string ~precision:2 ratio in
-          let pct_slower = (ratio -. 1.0) *. 100.0 in
-          let pct_str = Float.to_string ~precision:1 pct_slower in
-          println ("    " ^ fastest_name ^ " ran " ^ speedup_str ^ "x faster than " ^ name);
-          println ("      (" ^ pct_str ^ "% slower)")
-        ));
+      if not (String.equal name fastest_name) then (
+        let speedup_str = Float.to_string ~precision:2 ratio in
+        let pct_slower = (ratio -. 1.0) *. 100.0 in
+        let pct_str = Float.to_string ~precision:1 pct_slower in
+        println ("    " ^ fastest_name ^ " ran " ^ speedup_str ^ "x faster than " ^ name);
+        println ("      (" ^ pct_str ^ "% slower)")
+      ));
   println ""

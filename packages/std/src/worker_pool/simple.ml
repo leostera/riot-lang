@@ -83,17 +83,15 @@ let rec loop: type task res. (task, res) state -> (unit, Actor.exit_reason) resu
           loop state
       | None ->
           (* Only send Completed when queue is empty AND no tasks in flight *)
-          if state.tasks_in_flight = 0 then
-            (
-              let results =
-                List.sort
-                  state.results
-                  ~compare:(fun (left_idx, _) (right_idx, _) -> Int.compare left_idx right_idx)
-              in
-              send state.owner (Completed { results; result_ref = state.result_ref });
-              Ok ()
-            )
-          else
+          if state.tasks_in_flight = 0 then (
+            let results =
+              List.sort
+                state.results
+                ~compare:(fun (left_idx, _) (right_idx, _) -> Int.compare left_idx right_idx)
+            in
+            send state.owner (Completed { results; result_ref = state.result_ref });
+            Ok ()
+          ) else
             loop state
     )
 

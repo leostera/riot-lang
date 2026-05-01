@@ -3,7 +3,10 @@ open Std
 type publish_selection =
   | Workspace
   | Package of Riot_model.Package_name.t
-type publish_request = { selection: publish_selection; skip_check: bool }
+type publish_request = {
+  selection: publish_selection;
+  skip_check: bool;
+}
 type publish_mode =
   | DryRun
   | Publish

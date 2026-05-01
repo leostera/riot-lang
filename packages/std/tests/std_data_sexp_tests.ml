@@ -25,7 +25,10 @@ let test_parse_list_with_atoms = fun _ctx ->
 
 let test_parse_nested_list = fun _ctx ->
   match Sexp.of_string "((inner))" with
-  | Ok (Sexp.List [ Sexp.List [ Sexp.Atom "inner" ] ]) -> Ok ()
+  | Ok (Sexp.List [
+      Sexp.List [ Sexp.Atom "inner" ];
+    ]) ->
+      Ok ()
   | _ -> Error "Failed to parse nested list"
 
 let test_parse_complex_nested = fun _ctx ->

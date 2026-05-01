@@ -13,10 +13,7 @@ val arrow_label_to_type_label: Ast.arrow_label -> Ast.Type.Label.t
 val core_type_to_type: State.t -> Ast.core_type -> Ast.Type.t
 
 (** Build the nominal type represented by a declaration. *)
-val type_declaration_to_type:
-  ?arguments:Ast.Type.t list ->
-  Ast.type_declaration ->
-  Ast.Type.t
+val type_declaration_to_type: ?arguments:Ast.Type.t list -> Ast.type_declaration -> Ast.Type.t
 
 (**
    Create fresh solver variables for a declaration's type parameters.

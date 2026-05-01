@@ -115,7 +115,9 @@ type Message.t +=
   | Supervisor_count_children of {
       reply_to: Pid.t;
     }
-  | Supervisor_count_children_reply of { count: child_count }
+  | Supervisor_count_children_reply of {
+      count: child_count;
+    }
   | Supervisor_delete_child of {
       reply_to: Pid.t;
       id: string;
@@ -700,7 +702,9 @@ module Dynamic = struct
     | Dynamic_count_children of {
         reply_to: Pid.t;
       }
-    | Dynamic_count_children_reply of { count: child_count }
+    | Dynamic_count_children_reply of {
+        count: child_count;
+      }
 
   let rec dynamic_loop = fun state ->
     let selector msg =
@@ -727,39 +731,37 @@ module Dynamic = struct
                 child_type = Worker;
                 significant = false;
               }
-              reason then
-              (
-                (* Add restart record *)
-                let timestamp = Time.Instant.now () in
-                let restarts = Cell.get state.restarts in
-                Cell.set state.restarts ((timestamp, pid) :: restarts);
-                (* Check intensity *)
-                let current_time = Time.Instant.now () in
-                let cutoff = Time.Instant.sub current_time state.intensity.window in
-                let recent =
-                  List.filter
-                    (Cell.get state.restarts)
-                    ~fn:(fun (ts, _) ->
-                      match Time.Instant.compare ts cutoff with
-                      | Order.LT -> false
-                      | Order.EQ
-                      | Order.GT -> true)
-                in
-                Cell.set state.restarts recent;
-                if List.length recent > state.intensity.max_restarts then
-                  Error (Failure "Max restart intensity reached")
-                else
-                  dynamic_loop state
-              )
-            else
+              reason then (
+              (* Add restart record *)
+              let timestamp = Time.Instant.now () in
+              let restarts = Cell.get state.restarts in
+              Cell.set state.restarts ((timestamp, pid) :: restarts);
+              (* Check intensity *)
+              let current_time = Time.Instant.now () in
+              let cutoff = Time.Instant.sub current_time state.intensity.window in
+              let recent =
+                List.filter
+                  (Cell.get state.restarts)
+                  ~fn:(fun (ts, _) ->
+                    match Time.Instant.compare ts cutoff with
+                    | Order.LT -> false
+                    | Order.EQ
+                    | Order.GT -> true)
+              in
+              Cell.set state.restarts recent;
+              if List.length recent > state.intensity.max_restarts then
+                Error (Failure "Max restart intensity reached")
+              else
+                dynamic_loop state
+            ) else
               dynamic_loop state
       )
     | Dynamic_start_child {
-      reply_to;
-      start;
-      restart;
-      shutdown
-    } ->
+        reply_to;
+        start;
+        restart;
+        shutdown;
+      } ->
         (
             match state.max_children with
             | Some max when HashMap.length state.children >= max ->

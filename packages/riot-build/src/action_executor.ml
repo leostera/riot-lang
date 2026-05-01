@@ -73,11 +73,11 @@ let run_ocamlc_invocation = fun ~session_id ~package ~node ~sandbox_dir invocati
 let run_action = fun ~session_id ~package ~node ?c_compiler ocamlc sandbox_dir action ->
   match action with
   | Action.CompileInterface {
-    source;
-    outputs = output :: _;
-    includes;
-    flags
-  } ->
+      source;
+      outputs = output :: _;
+      includes;
+      flags;
+    } ->
       let abs_source = Path.join sandbox_dir source in
       let abs_output = Path.join sandbox_dir output in
       let abs_includes = resolve_include_paths sandbox_dir includes in
@@ -93,11 +93,11 @@ let run_action = fun ~session_id ~package ~node ?c_compiler ocamlc sandbox_dir a
       in
       run_ocamlc_invocation ~session_id ~package ~node ~sandbox_dir invocation
   | Action.CompileImplementation {
-    source;
-    outputs = output :: _;
-    includes;
-    flags
-  } ->
+      source;
+      outputs = output :: _;
+      includes;
+      flags;
+    } ->
       let abs_source = Path.join sandbox_dir source in
       let abs_output = Path.join sandbox_dir output in
       let abs_includes = resolve_include_paths sandbox_dir includes in
@@ -113,11 +113,11 @@ let run_action = fun ~session_id ~package ~node ?c_compiler ocamlc sandbox_dir a
       in
       run_ocamlc_invocation ~session_id ~package ~node ~sandbox_dir invocation
   | Action.GenerateInterface {
-    source;
-    outputs = output :: _;
-    includes;
-    flags
-  } ->
+      source;
+      outputs = output :: _;
+      includes;
+      flags;
+    } ->
       let abs_source = Path.join sandbox_dir source in
       let abs_output = Path.join sandbox_dir output in
       let abs_includes = resolve_include_paths sandbox_dir includes in
@@ -166,14 +166,14 @@ let run_action = fun ~session_id ~package ~node ?c_compiler ocamlc sandbox_dir a
       in
       run_ocamlc_invocation ~session_id ~package ~node ~sandbox_dir invocation
   | Action.CreateExecutable {
-    outputs = output :: _;
-    objects;
-    libraries;
-    includes;
-    cclibs;
-    ccopt_flags;
-    cclib_flags
-  } ->
+      outputs = output :: _;
+      objects;
+      libraries;
+      includes;
+      cclibs;
+      ccopt_flags;
+      cclib_flags;
+    } ->
       (
           Log.debug
             ("[ACTION_EXECUTOR] CreateExecutable: output="
@@ -225,14 +225,14 @@ let run_action = fun ~session_id ~package ~node ?c_compiler ocamlc sandbox_dir a
           | _ -> result
         )
   | Action.CreateSharedLibrary {
-    outputs = output :: _;
-    objects;
-    libraries;
-    includes;
-    cclibs;
-    ccopt_flags;
-    cclib_flags
-  } ->
+      outputs = output :: _;
+      objects;
+      libraries;
+      includes;
+      cclibs;
+      ccopt_flags;
+      cclib_flags;
+    } ->
       (
           Log.debug
             ("[ACTION_EXECUTOR] CreateSharedLibrary: output="
@@ -309,12 +309,12 @@ let run_action = fun ~session_id ~package ~node ?c_compiler ocamlc sandbox_dir a
           ocamlc_failed ("Write failed: " ^ Path.to_string destination ^ " - " ^ msg)
     )
   | Action.BuildForeignDependency {
-    name;
-    path;
-    build_cmd;
-    outputs;
-    env
-  } ->
+      name;
+      path;
+      build_cmd;
+      outputs;
+      env;
+    } ->
       (
           let build_cmd_str = String.concat " " build_cmd in
           Log.info ("   \027[1;32mCompiling\027[0m " ^ name ^ " (" ^ build_cmd_str ^ ")");
@@ -413,7 +413,7 @@ let has_failed_dependencies = fun completed (node: Action_node.t) ->
     ~fn:(fun dep_id ->
       match HashMap.get completed ~key:dep_id with
       | Some { status = Failed _
-      | Skipped; _ } ->
+        | Skipped; _ } ->
           true
       | _ -> false)
 

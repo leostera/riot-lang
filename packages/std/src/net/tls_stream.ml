@@ -237,15 +237,13 @@ let to_reader: type src. src t -> IO.Reader.t = fun tls_stream ->
 
     let read = fun (tls: t) ~into ->
       let writable =
-        if IO.Buffer.writable_bytes into = 0 then
-          (
-            match IO.Buffer.ensure_free into 4_096 with
-            | Ok () -> IO.Buffer.writable into
-            | Error error ->
-                Kernel.SystemError.panic
-                  ("Net.TlsStream.to_reader.ensure_free: " ^ Kernel.IO.Error.message error)
-          )
-        else
+        if IO.Buffer.writable_bytes into = 0 then (
+          match IO.Buffer.ensure_free into 4_096 with
+          | Ok () -> IO.Buffer.writable into
+          | Error error ->
+              Kernel.SystemError.panic
+                ("Net.TlsStream.to_reader.ensure_free: " ^ Kernel.IO.Error.message error)
+        ) else
           IO.Buffer.writable into
       in
       let scratch = Bytes.create ~size:(IO.IoSlice.length writable) in

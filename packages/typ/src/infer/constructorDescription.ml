@@ -71,6 +71,7 @@ let instantiate state (description: InferenceEnv.constructor_description) =
        instantiation, memoized by `fresh_for_generic`.
     *)
     | Type.Generic id -> fresh_for_generic id
+
     (*
        Plain solver variables are already local to this checking run. Do not
        clone them here; cloning would hide constraints already learned before
@@ -154,8 +155,10 @@ let from_type_constructor state (decl: type_declaration) (ctr: type_constructor)
                a nominal payload type so expressions and patterns can unify
                against a stable owner.
             *)
-            let payload_type =
-              Type.Apply { ident = inline_record_payload_ident decl ctr; arguments }
+            let payload_type = Type.Apply {
+              ident = inline_record_payload_ident decl ctr;
+              arguments;
+            }
             in
             let inline_record: InferenceEnv.inline_record = {
               owner = decl;

@@ -42,11 +42,22 @@ type last_day_of_month = int
 
 type week_number = int
 
-type date = { year: year; month: int; day: day }
+type date = {
+  year: year;
+  month: int;
+  day: day;
+}
 
-type time = { hour: hour; minute: minute; second: second }
+type time = {
+  hour: hour;
+  minute: minute;
+  second: second;
+}
 
-type year_and_week = { year: year; week: week_number }
+type year_and_week = {
+  year: year;
+  week: week_number;
+}
 
 let month_of_int = fun month ->
   match month with

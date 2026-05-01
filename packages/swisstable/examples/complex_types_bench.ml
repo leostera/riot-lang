@@ -45,7 +45,11 @@ type order = {
 
 (* Nested customer structure *)
 
-type customer = { user: user; address: address; order_count: int }
+type customer = {
+  user: user;
+  address: address;
+  order_count: int;
+}
 
 (* ========================================================================
    * Benchmark Configuration

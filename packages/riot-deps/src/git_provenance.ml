@@ -53,11 +53,11 @@ let message = function
       ^ "'"
   | UnsupportedRemoteUrl { url } -> "unsupported git remote URL for publish provenance: " ^ url
   | GitCommandFailed {
-    command;
-    status;
-    stdout;
-    stderr
-  } ->
+      command;
+      status;
+      stdout;
+      stderr;
+    } ->
       let detail =
         if String.equal stderr "" then
           stdout

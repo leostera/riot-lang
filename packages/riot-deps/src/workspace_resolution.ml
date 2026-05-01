@@ -123,8 +123,10 @@ let ensure_lock = fun
           });
         Ok ()
     | Error err ->
-        let err =
-          Error.LockfileWriteFailed { path = lock_path; error = Lockfile_store.error_message err }
+        let err = Error.LockfileWriteFailed {
+          path = lock_path;
+          error = Lockfile_store.error_message err;
+        }
         in
         emit (Riot_model.Event.LockfileWriteFailed { path = lock_path_str; error = err });
         Error err
@@ -141,8 +143,10 @@ let ensure_lock = fun
   in
   match Lockfile_store.read ~workspace_root with
   | Error err ->
-      let err =
-        Error.LockfileReadFailed { path = lock_path; error = Lockfile_store.error_message err }
+      let err = Error.LockfileReadFailed {
+        path = lock_path;
+        error = Lockfile_store.error_message err;
+      }
       in
       emit (Riot_model.Event.LockfileReadFailed { path = lock_path_str; error = err });
       Error err
@@ -256,11 +260,10 @@ let ensure_lock = fun
                     ~workspace_root
                     ~manifest_paths with
                   | Error err ->
-                      let err =
-                        Error.LockRefreshCheckFailed {
-                          workspace_root;
-                          error = Lock_refresh.error_message err;
-                        }
+                      let err = Error.LockRefreshCheckFailed {
+                        workspace_root;
+                        error = Lock_refresh.error_message err;
+                      }
                       in
                       emit (Riot_model.Event.DependencyResolutionFailed { error = err });
                       Error err

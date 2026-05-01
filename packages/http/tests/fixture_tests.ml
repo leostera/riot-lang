@@ -448,12 +448,12 @@ let payload_json = function
           ("pad_length", json_of_option Json.int pad_length);
         ]
   | Http2.Frame.HeadersPayload {
-    pad_length;
-    stream_dependency;
-    weight;
-    exclusive;
-    header_block_fragment
-  } ->
+      pad_length;
+      stream_dependency;
+      weight;
+      exclusive;
+      header_block_fragment;
+    } ->
       Json.obj
         [
           ("type", Json.string "HeadersPayload");

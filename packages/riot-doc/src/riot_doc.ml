@@ -54,11 +54,11 @@ let event_to_json = function
         ("output_dir", Data.Json.String (Path.to_string output_dir));
       ])
   | PackageGenerationFailed {
-    package;
-    version;
-    output_dir;
-    error
-  } ->
+      package;
+      version;
+      output_dir;
+      error;
+    } ->
       Some (Data.Json.Object [
         ("type", Data.Json.String "doc.package_generation_failed");
         ("package", Data.Json.String (Package_name.to_string package));

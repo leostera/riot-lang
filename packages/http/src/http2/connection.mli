@@ -108,7 +108,11 @@ type payload_error = {
 type error =
   | ConnectionNotActive
   | StreamNotFound of { stream_id: int }
-  | FlowControlWindowExceeded of { scope: window_scope; data_size: int; window_size: int }
+  | FlowControlWindowExceeded of {
+      scope: window_scope;
+      data_size: int;
+      window_size: int;
+    }
   | FlowControlWindowOverflow of {
       scope: window_scope;
       increment: int;
@@ -132,9 +136,15 @@ type error =
     }
   | UnexpectedContinuation of { stream_id: int }
   | ContinuationStreamMismatch of { expected_stream_id: int; actual_stream_id: int }
-  | InvalidPeerStreamId of { role: role; stream_id: int }
+  | InvalidPeerStreamId of {
+      role: role;
+      stream_id: int;
+    }
   | PeerStreamIdNotIncreasing of { stream_id: int; last_stream_id: int }
-  | NewStreamRejected of { state: state; stream_id: int }
+  | NewStreamRejected of {
+      state: state;
+      stream_id: int;
+    }
   | DataBeforeHeaders of { stream_id: int }
   | FrameForIdleStream of {
       stream_id: int;

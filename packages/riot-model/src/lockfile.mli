@@ -39,10 +39,21 @@ type container =
   | DependencyList
   | Provenance
 type error =
-  | ExpectedTable of { container: container }
-  | ExpectedArray of { container: container }
-  | MissingField of { container: container; field: string }
-  | InvalidFieldType of { container: container; field: string; expected: string }
+  | ExpectedTable of {
+      container: container;
+    }
+  | ExpectedArray of {
+      container: container;
+    }
+  | MissingField of {
+      container: container;
+      field: string;
+    }
+  | InvalidFieldType of {
+      container: container;
+      field: string;
+      expected: string;
+    }
   | InvalidPackageName of {
       container: container;
       field: string;

@@ -15,10 +15,20 @@ type error =
   | Entropy of Kernel.Random.Source.error
   | InvalidIntBound of { bound: int }
   | InvalidIntRange of { min: int; max: int }
-  | InvalidInt32Bound of { bound: int32 }
-  | InvalidInt32Range of { min: int32; max: int32 }
-  | InvalidInt64Bound of { bound: int64 }
-  | InvalidInt64Range of { min: int64; max: int64 }
+  | InvalidInt32Bound of {
+      bound: int32;
+    }
+  | InvalidInt32Range of {
+      min: int32;
+      max: int32;
+    }
+  | InvalidInt64Bound of {
+      bound: int64;
+    }
+  | InvalidInt64Range of {
+      min: int64;
+      max: int64;
+    }
   | InvalidFloatRange of { min: float; max: float }
   | InvalidProbability of { probability: float }
   | EmptyPopulation

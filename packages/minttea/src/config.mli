@@ -14,5 +14,9 @@ type output_target =
    - fps: 60
    - output: Stdout
 *)
-type t = { render_mode: render_mode; fps: int; output: output_target }
+type t = {
+  render_mode: render_mode;
+  fps: int;
+  output: output_target;
+}
 val make: ?render_mode:render_mode -> ?fps:int -> ?output:output_target -> unit -> t

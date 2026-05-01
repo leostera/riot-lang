@@ -35,7 +35,11 @@ type attribute_character_error =
 type validation_error =
   | EmptyName
   | InvalidNameCharacter of { index: int; character: char }
-  | InvalidValueCharacter of { index: int; character: char; reason: value_character_error }
+  | InvalidValueCharacter of {
+      index: int;
+      character: char;
+      reason: value_character_error;
+    }
   | InvalidAttributeCharacter of {
       attribute: attribute;
       index: int;
@@ -97,11 +101,11 @@ let validation_error_to_string = function
       ^ " at index "
       ^ Int.to_string index
   | InvalidAttributeCharacter {
-    attribute;
-    index;
-    character;
-    reason
-  } ->
+      attribute;
+      index;
+      character;
+      reason;
+    } ->
       "Cookie "
       ^ attribute_to_string attribute
       ^ " contains "

@@ -103,7 +103,12 @@ let test_diff_array_element_changed =
     let a2 = Json.array [ Json.int 1; Json.int 99; Json.int 3 ] in
     let diff = Json.diff a1 a2 in
     match diff with
-    | [ { path = [ Index 1 ]; kind = Changed (Json.Int 2, Json.Int 99) } ] -> Ok ()
+    | [
+        {
+          path = [ Index 1 ];
+          kind = Changed (Json.Int 2, Json.Int 99);
+        };
+      ] -> Ok ()
     | _ -> Error ("Expected change at index 1, got " ^ Int.to_string (List.length diff) ^ " diffs")
 
 let test_diff_array_shorter =
@@ -148,7 +153,12 @@ let test_diff_nested_arrays =
     in
     let diff = Json.diff a1 a2 in
     match diff with
-    | [ { path = [ Index 1; Index 1 ]; kind = Changed (Json.Int 4, Json.Int 99) } ] -> Ok ()
+    | [
+        {
+          path = [ Index 1; Index 1 ];
+          kind = Changed (Json.Int 4, Json.Int 99);
+        };
+      ] -> Ok ()
     | _ ->
         Error ("Expected nested change at [1][1], got "
         ^ Int.to_string (List.length diff)
@@ -178,7 +188,12 @@ let test_diff_object_field_added =
     let diff = Json.diff o1 o2 in
     let added = additions diff in
     match added with
-    | [ { path = [ Key "age" ]; kind = Added (Json.Int 30) } ] -> Ok ()
+    | [
+        {
+          path = [ Key "age" ];
+          kind = Added (Json.Int 30);
+        };
+      ] -> Ok ()
     | _ -> Error ("Expected 1 addition at 'age', got " ^ Int.to_string (List.length added))
 
 let test_diff_object_field_removed =
@@ -188,7 +203,12 @@ let test_diff_object_field_removed =
     let diff = Json.diff o1 o2 in
     let removed = removals diff in
     match removed with
-    | [ { path = [ Key "age" ]; kind = Removed (Json.Int 30) } ] -> Ok ()
+    | [
+        {
+          path = [ Key "age" ];
+          kind = Removed (Json.Int 30);
+        };
+      ] -> Ok ()
     | _ -> Error ("Expected 1 removal at 'age', got " ^ Int.to_string (List.length removed))
 
 let test_diff_object_field_changed =
@@ -197,7 +217,12 @@ let test_diff_object_field_changed =
     let o2 = Json.obj [ ("name", Json.string "Alice"); ("age", Json.int 31); ] in
     let diff = Json.diff o1 o2 in
     match diff with
-    | [ { path = [ Key "age" ]; kind = Changed (Json.Int 30, Json.Int 31) } ] -> Ok ()
+    | [
+        {
+          path = [ Key "age" ];
+          kind = Changed (Json.Int 30, Json.Int 31);
+        };
+      ] -> Ok ()
     | _ ->
         Error ("Expected change in age field, got " ^ Int.to_string (List.length diff) ^ " diffs")
 
@@ -242,10 +267,12 @@ let test_diff_nested_objects =
     in
     let diff = Json.diff o1 o2 in
     match diff with
-    | [ { path = [ Key "user"; Key "address"; Key "city" ]; kind = Changed (
-      Json.String "NYC",
-      Json.String "SF"
-    ) } ] -> Ok ()
+    | [
+        {
+          path = [ Key "user"; Key "address"; Key "city" ];
+          kind = Changed (Json.String "NYC", Json.String "SF");
+        };
+      ] -> Ok ()
     | _ ->
         Error ("Expected nested change at user.address.city, got "
         ^ Int.to_string (List.length diff)
@@ -257,8 +284,12 @@ let test_diff_object_with_array =
     let o2 = Json.obj [ ("tags", Json.array [ Json.string "foo"; Json.string "baz" ]); ] in
     let diff = Json.diff o1 o2 in
     match diff with
-    | [ { path = [ Key "tags"; Index 1 ]; kind = Changed (Json.String "bar", Json.String "baz") } ] ->
-        Ok ()
+    | [
+        {
+          path = [ Key "tags"; Index 1 ];
+          kind = Changed (Json.String "bar", Json.String "baz");
+        };
+      ] -> Ok ()
     | _ ->
         Error ("Expected change in tags array at index 1, got "
         ^ Int.to_string (List.length diff)

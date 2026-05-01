@@ -1008,13 +1008,13 @@ let write_bench_event = fun
               state.active_case <- Some active_case;
               state.active_case_line_open <- true))
   | Bench_runtime.SuiteCompleted {
-    suite;
-    stdout;
-    stderr;
-    results;
-    comparisons;
-    _
-  } ->
+      suite;
+      stdout;
+      stderr;
+      results;
+      comparisons;
+      _;
+    } ->
       let should_print_suite =
         not (results = [])
         || not (comparisons = [])
@@ -1056,22 +1056,21 @@ let write_bench_event = fun
       );
       reset_suite_render state
   | Bench_runtime.Summary {
-    total;
-    completed;
-    skipped;
-    failed
-  } ->
+      total;
+      completed;
+      skipped;
+      failed;
+    } ->
       reset_suite_render state;
       print_summary ~total ~completed ~skipped ~failed
 
 let write_bench_error = fun err -> println ("error: " ^ Bench_runtime.bench_error_message err)
 
 let write_bench_error_json = fun ~command_started_at err ->
-  let event_json =
-    Data.Json.Object [
-      ("type", Data.Json.String "bench.error");
-      ("message", Data.Json.String (Bench_runtime.bench_error_message err));
-    ]
+  let event_json = Data.Json.Object [
+    ("type", Data.Json.String "bench.error");
+    ("message", Data.Json.String (Bench_runtime.bench_error_message err));
+  ]
   in
   print
     (
@@ -1335,16 +1334,16 @@ let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
       | Bench_runtime.Build build_event ->
           Build.write_build_event ~mode:output_mode ~seen_registry_updates build_event
       | Bench_runtime.SuiteCompleted {
-        suite;
-        status;
-        started_at_us;
-        completed_at_us;
-        duration_us;
-        results;
-        comparisons;
-        summary;
-        _
-      } ->
+          suite;
+          status;
+          started_at_us;
+          completed_at_us;
+          duration_us;
+          results;
+          comparisons;
+          summary;
+          _;
+        } ->
           let history_comparison =
             match (compare_limit, history_context) with
             | (Some compare_limit, Some history_context) ->

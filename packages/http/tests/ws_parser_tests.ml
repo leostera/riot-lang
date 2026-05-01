@@ -23,7 +23,15 @@ let test_parse_preserves_remaining_frame = fun _ctx ->
   match Parser.parse ~role:Parser.Client "\x89\x00\x8a\x00" with
   | Parser.Done { value = { Frame.opcode = Frame.Ping; _ }; remaining } when remaining = "\x8a\x00" -> (
       match Parser.parse ~role:Parser.Client remaining with
-      | Parser.Done { value = { Frame.opcode = Frame.Pong; fin = true; payload = ""; _ }; remaining = "" } ->
+      | Parser.Done {
+          value = {
+            Frame.opcode = Frame.Pong;
+            fin = true;
+            payload = "";
+            _;
+          };
+          remaining = "";
+        } ->
           Result.Ok ()
       | Parser.Done _ -> Result.Error "remaining frame parsed with the wrong shape"
       | Parser.Need_more -> Result.Error "remaining frame unexpectedly needed more data"
@@ -36,13 +44,16 @@ let test_parse_preserves_remaining_frame = fun _ctx ->
 
 let test_parse_valid_masked_client_ping = fun _ctx ->
   match Parser.parse ~role:Parser.Server "\x89\x80\x00\x00\x00\x00" with
-  | Parser.Done { value = {
-    Frame.opcode = Frame.Ping;
-    fin = true;
-    masked = true;
-    payload = "";
-    _
-  }; remaining = "" } ->
+  | Parser.Done {
+      value = {
+        Frame.opcode = Frame.Ping;
+        fin = true;
+        masked = true;
+        payload = "";
+        _;
+      };
+      remaining = "";
+    } ->
       Result.Ok ()
   | Parser.Done _ -> Result.Error "masked PING frame parsed with the wrong shape"
   | Parser.Need_more -> Result.Error "masked PING frame unexpectedly needed more data"

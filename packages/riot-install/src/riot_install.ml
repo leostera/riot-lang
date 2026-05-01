@@ -19,7 +19,10 @@ type request =
       binary_name: string;
       destination: destination;
     }
-  | External of { spec: external_spec; binary_name: string }
+  | External of {
+      spec: external_spec;
+      binary_name: string;
+    }
 
 type install_event =
   | Build of Riot_build.Event.t
@@ -85,11 +88,11 @@ let install_error_message = function
       ^ "': "
       ^ reason
   | PromotionFailed {
-    binary_name;
-    destination;
-    mode;
-    reason
-  } ->
+      binary_name;
+      destination;
+      mode;
+      reason;
+    } ->
       "failed to promote "
       ^ binary_name
       ^ " to "
@@ -120,11 +123,11 @@ let install_event_to_json = function
         ("mode", Data.Json.String (destination_name mode));
       ])
   | InstalledBinary {
-    binary;
-    duration_ms;
-    destination;
-    mode
-  } ->
+      binary;
+      duration_ms;
+      destination;
+      mode;
+    } ->
       Some (Data.Json.Object [
         ("type", Data.Json.String "InstalledBinary");
         ("binary", Data.Json.String binary);
@@ -359,10 +362,10 @@ let install_external = fun ~on_event ~spec ~binary_name ->
 let install = fun ?(on_event = no_event) (request: request) ->
   match request with
   | Workspace {
-    workspace;
-    package_name;
-    binary_name;
-    destination
-  } ->
+      workspace;
+      package_name;
+      binary_name;
+      destination;
+    } ->
       install_workspace ~on_event ~workspace ~package_name ~binary_name ~destination
   | External { spec; binary_name } -> install_external ~on_event ~spec ~binary_name

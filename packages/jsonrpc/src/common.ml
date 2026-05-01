@@ -14,7 +14,10 @@ type params =
   | Named of (string * Json.t) list
   | NoParams
 
-type prerequest = { method_: string; params: params }
+type prerequest = {
+  method_: string;
+  params: params;
+}
 
 type request = {
   jsonrpc: string;
@@ -30,7 +33,11 @@ type error =
       reason: string;
     }
   | MethodNotFound of { method_name: string }
-  | InvalidParams of { method_name: string; params: params; reason: string }
+  | InvalidParams of {
+      method_name: string;
+      params: params;
+      reason: string;
+    }
   | InternalError of { context: string; details: string }
   | UnknownServerError of {
       code: int;
@@ -38,7 +45,11 @@ type error =
       data: Json.t option;
     }
 
-type 'res response = { jsonrpc: string; result: 'res; id: id }
+type 'res response = {
+  jsonrpc: string;
+  result: 'res;
+  id: id;
+}
 
 type batch_request = request list
 

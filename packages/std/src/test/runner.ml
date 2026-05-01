@@ -309,15 +309,13 @@ let run_single_attempt = fun ~ctx ~on_event ~test_info (test: Test_case.t) ~atte
           else
             Time.Duration.min remaining heartbeat_interval
     in
-    if Time.Duration.is_zero wait_timeout then
-      (
-        match timeout with
-        | Some timeout ->
-            Runtime.Actor.kill child ~reason:(Test_timeout timeout);
-            wait_for_exit child ()
-        | None -> wait_for_exit child ()
-      )
-    else
+    if Time.Duration.is_zero wait_timeout then (
+      match timeout with
+      | Some timeout ->
+          Runtime.Actor.kill child ~reason:(Test_timeout timeout);
+          wait_for_exit child ()
+      | None -> wait_for_exit child ()
+    ) else
       try wait_for_exit child ~timeout:wait_timeout () with
       | Receive_timeout ->
           on_event
@@ -543,26 +541,24 @@ let run_tests = fun ~config tests ->
   R.init config.suite_info (List.length tests_to_run);
   config.event_handler
     (SuiteStarted { suite_name = config.suite_info.name; total = List.length tests_to_run });
-  if config.concurrency <= 1 || List.length tests_to_run <= 1 then
-    (
-      let rec run_all index = function
-        | [] -> []
-        | test :: rest ->
-            let result =
-              run_single_test
-                ~suite_info:config.suite_info
-                ~policy:config.policy
-                ~on_event:config.event_handler
-                index
-                test
-            in
-            R.on_result index result;
-            result :: run_all (index + 1) rest
-      in
-      let results = run_all 1 tests_to_run in
-      let summary = Test_result.make_summary results in
-      R.finalize summary;
-      summary
-    )
-  else
+  if config.concurrency <= 1 || List.length tests_to_run <= 1 then (
+    let rec run_all index = function
+      | [] -> []
+      | test :: rest ->
+          let result =
+            run_single_test
+              ~suite_info:config.suite_info
+              ~policy:config.policy
+              ~on_event:config.event_handler
+              index
+              test
+          in
+          R.on_result index result;
+          result :: run_all (index + 1) rest
+    in
+    let results = run_all 1 tests_to_run in
+    let summary = Test_result.make_summary results in
+    R.finalize summary;
+    summary
+  ) else
     run_tests_parallel ~config tests_to_run

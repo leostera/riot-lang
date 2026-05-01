@@ -70,12 +70,12 @@ module Handler = struct
     | Ready _ as handler ->
         Continue handler
     | Pending {
-      pending_init;
-      pending_handle_frame;
-      pending_handle_message;
-      pending_error_to_string;
-      pending_args
-    } ->
+        pending_init;
+        pending_handle_frame;
+        pending_handle_message;
+        pending_error_to_string;
+        pending_args;
+      } ->
         (
             match pending_init pending_args with
             | Continue state ->
@@ -117,11 +117,11 @@ module Handler = struct
         | Error err -> Error err
       )
     | Ready {
-      ready_handle_frame;
-      ready_handle_message;
-      ready_error_to_string;
-      ready_state
-    } ->
+        ready_handle_frame;
+        ready_handle_message;
+        ready_error_to_string;
+        ready_state;
+      } ->
         (
             match ready_handle_frame frame conn ready_state with
             | Continue state ->
@@ -155,11 +155,11 @@ module Handler = struct
         | Error err -> Error err
       )
     | Ready {
-      ready_handle_frame;
-      ready_handle_message;
-      ready_error_to_string;
-      ready_state
-    } ->
+        ready_handle_frame;
+        ready_handle_message;
+        ready_error_to_string;
+        ready_state;
+      } ->
         (
             match ready_handle_message msg ready_state with
             | Continue state ->

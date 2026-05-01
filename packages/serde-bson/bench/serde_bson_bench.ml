@@ -90,7 +90,11 @@ type fixture_spec = {
   string_repeat: int;
 }
 
-type fixture = { label: string; value: manifest; encoded: string }
+type fixture = {
+  label: string;
+  value: manifest;
+  encoded: string;
+}
 
 let small_bench_config: Bench.bench_config = { iterations = 100; warmup = 5 }
 
@@ -407,7 +411,7 @@ let build_fixture = fun
     tag_count;
     score_count;
     stop_count;
-    string_repeat
+    string_repeat;
   }: fixture_spec) ->
   let value: manifest = {
     ship = repeat "thousand-sunny-logbook-" string_repeat;

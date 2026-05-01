@@ -22,15 +22,25 @@ type t = {
 }
 
 type event =
-  | DataMessage of { opcode: data_opcode; payload: string }
+  | DataMessage of {
+      opcode: data_opcode;
+      payload: string;
+    }
   | ControlFrame of Frame.t
 
 type error =
   | InvalidMessageSizeLimit of { max_message_size: int }
   | ContinuationWithoutFragment
-  | DataFrameWhileFragmented of { opcode: data_opcode }
-  | FragmentedControlFrame of { opcode: control_opcode }
-  | ControlFramePayloadTooLarge of { opcode: control_opcode; payload_length: int }
+  | DataFrameWhileFragmented of {
+      opcode: data_opcode;
+    }
+  | FragmentedControlFrame of {
+      opcode: control_opcode;
+    }
+  | ControlFramePayloadTooLarge of {
+      opcode: control_opcode;
+      payload_length: int;
+    }
   | InvalidClosePayload of Frame.close_payload_error
   | MessagePayloadTooLarge of { payload_length: int; max_message_size: int }
   | InvalidTextMessageUtf8 of { payload_length: int }

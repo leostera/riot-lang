@@ -267,18 +267,16 @@ let new_entry_count_of_lane_results = fun context lane_results ->
 
 let record_cache_generation_if_needed = fun context lane_results had_partial_failure ->
   let new_entry_count = new_entry_count_of_lane_results context lane_results in
-  if context.record_cache_generation && not had_partial_failure then
-    (
-      let lane_count = List.length lane_results in
-      let emit_cache_generation_events = new_entry_count > 0 in
-      if emit_cache_generation_events then
-        emit_cache_generation_recording_started context ~lane_count ~new_entry_count;
-      let* () = record_successful_build_cache_generation context lane_results in
-      if emit_cache_generation_events then
-        emit_cache_generation_recorded context ~lane_count ~new_entry_count;
-      Ok ()
-    )
-  else
+  if context.record_cache_generation && not had_partial_failure then (
+    let lane_count = List.length lane_results in
+    let emit_cache_generation_events = new_entry_count > 0 in
+    if emit_cache_generation_events then
+      emit_cache_generation_recording_started context ~lane_count ~new_entry_count;
+    let* () = record_successful_build_cache_generation context lane_results in
+    if emit_cache_generation_events then
+      emit_cache_generation_recorded context ~lane_count ~new_entry_count;
+    Ok ()
+  ) else
     Ok ()
 
 let failed_results = fun results ->

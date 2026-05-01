@@ -3,12 +3,18 @@ open Std
 type package = string
 type version = Version.t
 type event =
-  | Iteration of { iteration: int; next_package: package }
+  | Iteration of {
+      iteration: int;
+      next_package: package;
+    }
   | PickedPackage of {
       package: package;
       ranges: version Ranges.t;
     }
-  | ChoseVersion of { package: package; version: version }
+  | ChoseVersion of {
+      package: package;
+      version: version;
+    }
   | NoVersionAvailable of {
       package: package;
       ranges: version Ranges.t;

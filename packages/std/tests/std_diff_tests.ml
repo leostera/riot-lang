@@ -97,8 +97,16 @@ let test_additions_filter =
     in
     let added = Diff.additions changes in
     match added with
-    | [ { path = [ Diff.Key "a" ]; kind = Diff.Added 1 }; { path = [ Diff.Key "d" ]; kind = Diff.Added 5 } ] ->
-        Ok ()
+    | [
+        {
+          path = [ Diff.Key "a" ];
+          kind = Diff.Added 1;
+        };
+        {
+          path = [ Diff.Key "d" ];
+          kind = Diff.Added 5;
+        };
+      ] -> Ok ()
     | _ -> Error ("Expected 2 specific additions, got " ^ Int.to_string (List.length added))
 
 let test_removals_filter =
@@ -111,8 +119,16 @@ let test_removals_filter =
     in
     let removed = Diff.removals changes in
     match removed with
-    | [ { path = [ Diff.Key "b" ]; kind = Diff.Removed 2 }; { path = [ Diff.Key "c" ]; kind = Diff.Removed 3 } ] ->
-        Ok ()
+    | [
+        {
+          path = [ Diff.Key "b" ];
+          kind = Diff.Removed 2;
+        };
+        {
+          path = [ Diff.Key "c" ];
+          kind = Diff.Removed 3;
+        };
+      ] -> Ok ()
     | _ -> Error ("Expected 2 specific removals, got " ^ Int.to_string (List.length removed))
 
 let test_changes_filter =
@@ -132,10 +148,16 @@ let test_changes_filter =
     in
     let changed = Diff.changes changes in
     match changed with
-    | [ { path = [ Diff.Key "b" ]; kind = Diff.Changed (2, 3) }; { path = [ Diff.Key "d" ]; kind = Diff.Changed (
-      5,
-      6
-    ) } ] -> Ok ()
+    | [
+        {
+          path = [ Diff.Key "b" ];
+          kind = Diff.Changed (2, 3);
+        };
+        {
+          path = [ Diff.Key "d" ];
+          kind = Diff.Changed (5, 6);
+        };
+      ] -> Ok ()
     | _ -> Error ("Expected 2 specific changes, got " ^ Int.to_string (List.length changed))
 
 let test_at_path_exact_match =
@@ -148,7 +170,12 @@ let test_at_path_exact_match =
     in
     let at_user_name = Diff.at_path [ Diff.Key "user"; Diff.Key "name" ] diffs in
     match at_user_name with
-    | [ { path = [ Diff.Key "user"; Diff.Key "name" ]; kind = Diff.Added "Alice" } ] -> Ok ()
+    | [
+        {
+          path = [ Diff.Key "user"; Diff.Key "name" ];
+          kind = Diff.Added "Alice";
+        };
+      ] -> Ok ()
     | _ -> Error ("Expected 1 match at user.name, got " ^ Int.to_string (List.length at_user_name))
 
 let test_at_path_no_match =

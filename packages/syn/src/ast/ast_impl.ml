@@ -399,7 +399,9 @@ type record_expr_field_view =
       value: expr option;
       node: record_expr_field;
     }
-  | UnknownRecordExprField of { node: record_expr_field }
+  | UnknownRecordExprField of {
+      node: record_expr_field;
+    }
 
 type record_pattern_field_view =
   | RecordPatternField of {
@@ -407,7 +409,9 @@ type record_pattern_field_view =
       pattern: pattern option;
       node: pattern;
     }
-  | UnknownRecordPatternField of { node: pattern }
+  | UnknownRecordPatternField of {
+      node: pattern;
+    }
 
 type first_class_module_pattern_ascription =
   | NoAscription
@@ -750,14 +754,13 @@ let fold_child_node_matching = fun (node: node) ~matches ~init ~fn ->
       function
       | Syntax_tree.Node id when not !returned ->
           let child = wrap_node node.tree id in
-          if node_matches child matches then
-            (
-              match fn child !acc with
-              | Continue next -> acc := next
-              | Return value ->
-                  acc := value;
-                  returned := true
-            )
+          if node_matches child matches then (
+            match fn child !acc with
+            | Continue next -> acc := next
+            | Return value ->
+                acc := value;
+                returned := true
+          )
       | Syntax_tree.Node _
       | Syntax_tree.Token _
       | Syntax_tree.Missing _ -> ()
@@ -1738,9 +1741,7 @@ module TypeExpr = struct
       |> normalize_type_expr_option
     in
     let name =
-      first_child_node_matching
-        type_expr
-        ~matches:(fun kind -> Syntax_kind.(kind = VAR_TYPE))
+      first_child_node_matching type_expr ~matches:(fun kind -> Syntax_kind.(kind = VAR_TYPE))
       |> Option.and_then ~fn:Ident.last_token
     in
     match (typ, name) with
@@ -1866,9 +1867,9 @@ module TypeExpr = struct
 
   let last_non_attribute_suffix_child_index = fun node ->
     let rec loop index =
-      if Int.(index < 0) then
+      if Int.(index < 0) then (
         (-1)
-      else
+      ) else
         match attribute_suffix_start_at node index with
         | Some start -> loop Int.(start - 1)
         | None -> index
@@ -2208,7 +2209,9 @@ module ModuleTypeExpr = struct
     | Ident of {
         ident: Ident.t;
       }
-    | Signature of { body: node }
+    | Signature of {
+        body: node;
+      }
     | With of {
         body: node;
         base: t option;
@@ -2217,7 +2220,9 @@ module ModuleTypeExpr = struct
     | Typeof of {
         body: module_expr option;
       }
-    | Functor of { body: node }
+    | Functor of {
+        body: node;
+      }
     | Error of node
     | Unknown of node
 
@@ -2326,36 +2331,34 @@ module ModuleTypeExpr = struct
           ~fn:(
             function
             | Syntax_tree.Token id ->
-                if not !returned then
-                  (
-                    let token = wrap_token node.tree id in
-                    if token_kind_is token Syntax_kind.SIG_KW then
-                      inside := true
-                    else if token_kind_is token Syntax_kind.END_KW then
-                      inside := false
-                    else if !inside then
-                      match fn token !acc with
-                      | Continue next -> acc := next
-                      | Return value ->
-                          acc := value;
-                          returned := true
-                  )
+                if not !returned then (
+                  let token = wrap_token node.tree id in
+                  if token_kind_is token Syntax_kind.SIG_KW then
+                    inside := true
+                  else if token_kind_is token Syntax_kind.END_KW then
+                    inside := false
+                  else if !inside then
+                    match fn token !acc with
+                    | Continue next -> acc := next
+                    | Return value ->
+                        acc := value;
+                        returned := true
+                )
             | Syntax_tree.Node id ->
-                if !inside && not !returned then
-                  (
-                    let next =
-                      Node.fold_token
-                        (wrap_node node.tree id)
-                        ~init:!acc
-                        ~fn:(fun token acc ->
-                          match fn token acc with
-                          | Continue next -> Continue next
-                          | Return value ->
-                              returned := true;
-                              Return value)
-                    in
-                    acc := next
-                  )
+                if !inside && not !returned then (
+                  let next =
+                    Node.fold_token
+                      (wrap_node node.tree id)
+                      ~init:!acc
+                      ~fn:(fun token acc ->
+                        match fn token acc with
+                        | Continue next -> Continue next
+                        | Return value ->
+                            returned := true;
+                            Return value)
+                  in
+                  acc := next
+                )
             | Syntax_tree.Missing _ -> ()
           );
         !acc
@@ -2386,8 +2389,12 @@ module ModuleExpr = struct
     | Ident of {
         ident: Ident.t;
       }
-    | Structure of { body: node }
-    | Functor of { body: node }
+    | Structure of {
+        body: node;
+      }
+    | Functor of {
+        body: node;
+      }
     | Apply of {
         body: node;
         callee: t option;
@@ -2498,10 +2505,15 @@ module Expr: sig
   type t = expr
   type fun_body =
     | Body_expr of t
-    | Body_cases of { first_case: match_case }
+    | Body_cases of {
+        first_case: match_case;
+      }
   type view =
     | Unit
-    | Let of { first_binding: let_binding; body: t }
+    | Let of {
+        first_binding: let_binding;
+        body: t;
+      }
     | LocalOpen of { body: t }
     | LetModule of { body: t }
     | LetException of { body: t }
@@ -2510,24 +2522,49 @@ module Expr: sig
         then_branch: t;
         else_branch: t option;
       }
-    | Match of { scrutinee: t; first_case: match_case }
+    | Match of {
+        scrutinee: t;
+        first_case: match_case;
+      }
     | Fun of {
         parameters: parameter Vector.t;
         return_annotation: type_expr option;
         body: fun_body;
       }
-    | Try of { body: t; first_case: match_case }
+    | Try of {
+        body: t;
+        first_case: match_case;
+      }
     | While of { condition: t; body: t }
-    | For of { pattern: pattern; start_: t; stop: t; body: t }
+    | For of {
+        pattern: pattern;
+        start_: t;
+        stop: t;
+        body: t;
+      }
     | Sequence of {
         left: t;
         right: t option;
       }
     | Apply of { callee: t; argument: t }
-    | Infix of { left: t; operator: token; right: t }
-    | Prefix of { operator: token; operand: t }
-    | Assign of { target: t; operator: token; value: t }
-    | FieldAccess of { target: t; field: Ident.t }
+    | Infix of {
+        left: t;
+        operator: token;
+        right: t;
+      }
+    | Prefix of {
+        operator: token;
+        operand: t;
+      }
+    | Assign of {
+        target: t;
+        operator: token;
+        value: t;
+      }
+    | FieldAccess of {
+        target: t;
+        field: Ident.t;
+      }
     | PolyVariant of {
         tag: token;
         payload: t option;
@@ -2539,7 +2576,9 @@ module Expr: sig
     | Ident of {
         ident: Ident.t;
       }
-    | Literal of { token: token }
+    | Literal of {
+        token: token;
+      }
     | Tuple of {
         items: t Vector.t;
       }
@@ -2553,7 +2592,10 @@ module Expr: sig
         base: t option;
         fields: record_expr_field_view Vector.t;
       }
-    | Annotated of { expr: t; annotation: type_expr }
+    | Annotated of {
+        expr: t;
+        annotation: type_expr;
+      }
     | Error of Node.t
     | Unknown of Node.t
   val cast: Node.t -> t cast_result
@@ -2600,11 +2642,16 @@ end = struct
 
   type fun_body =
     | Body_expr of t
-    | Body_cases of { first_case: match_case }
+    | Body_cases of {
+        first_case: match_case;
+      }
 
   type view =
     | Unit
-    | Let of { first_binding: let_binding; body: t }
+    | Let of {
+        first_binding: let_binding;
+        body: t;
+      }
     | LocalOpen of { body: t }
     | LetModule of { body: t }
     | LetException of { body: t }
@@ -2613,24 +2660,49 @@ end = struct
         then_branch: t;
         else_branch: t option;
       }
-    | Match of { scrutinee: t; first_case: match_case }
+    | Match of {
+        scrutinee: t;
+        first_case: match_case;
+      }
     | Fun of {
         parameters: parameter Vector.t;
         return_annotation: type_expr option;
         body: fun_body;
       }
-    | Try of { body: t; first_case: match_case }
+    | Try of {
+        body: t;
+        first_case: match_case;
+      }
     | While of { condition: t; body: t }
-    | For of { pattern: pattern; start_: t; stop: t; body: t }
+    | For of {
+        pattern: pattern;
+        start_: t;
+        stop: t;
+        body: t;
+      }
     | Sequence of {
         left: t;
         right: t option;
       }
     | Apply of { callee: t; argument: t }
-    | Infix of { left: t; operator: token; right: t }
-    | Prefix of { operator: token; operand: t }
-    | Assign of { target: t; operator: token; value: t }
-    | FieldAccess of { target: t; field: Ident.t }
+    | Infix of {
+        left: t;
+        operator: token;
+        right: t;
+      }
+    | Prefix of {
+        operator: token;
+        operand: t;
+      }
+    | Assign of {
+        target: t;
+        operator: token;
+        value: t;
+      }
+    | FieldAccess of {
+        target: t;
+        field: Ident.t;
+      }
     | PolyVariant of {
         tag: token;
         payload: t option;
@@ -2642,7 +2714,9 @@ end = struct
     | Ident of {
         ident: Ident.t;
       }
-    | Literal of { token: token }
+    | Literal of {
+        token: token;
+      }
     | Tuple of {
         items: t Vector.t;
       }
@@ -2656,7 +2730,10 @@ end = struct
         base: t option;
         fields: record_expr_field_view Vector.t;
       }
-    | Annotated of { expr: t; annotation: type_expr }
+    | Annotated of {
+        expr: t;
+        annotation: type_expr;
+      }
     | Error of Node.t
     | Unknown of Node.t
 
@@ -2809,10 +2886,7 @@ end = struct
     in
     match first_dot 0 with
     | Some dot_index ->
-        Ident.from_child_range_option
-          expr
-          ~start_index:Int.(dot_index + 1)
-          ~stop_index:child_count
+        Ident.from_child_range_option expr ~start_index:Int.(dot_index + 1) ~stop_index:child_count
     | None -> None
 
   let rec view = fun (expr: expr) ->
@@ -3904,7 +3978,9 @@ module Pattern: sig
         constructor: Ident.t;
         payload: t option;
       }
-    | Literal of { token: token }
+    | Literal of {
+        token: token;
+      }
     | Tuple of {
         parts: t Vector.t;
       }
@@ -3928,7 +4004,10 @@ module Pattern: sig
         ascription_ident: Ident.t option;
       }
     | Interval of { left: t; right: t }
-    | Constraint of { pattern: t; annotation: type_expr }
+    | Constraint of {
+        pattern: t;
+        annotation: type_expr;
+      }
     | Alias of { pattern: t; alias: t }
     | Or of { left: t; right: t }
     | Cons of { head: t; tail: t }
@@ -3982,7 +4061,9 @@ end = struct
         constructor: Ident.t;
         payload: t option;
       }
-    | Literal of { token: token }
+    | Literal of {
+        token: token;
+      }
     | Tuple of {
         parts: t Vector.t;
       }
@@ -4006,7 +4087,10 @@ end = struct
         ascription_ident: Ident.t option;
       }
     | Interval of { left: t; right: t }
-    | Constraint of { pattern: t; annotation: type_expr }
+    | Constraint of {
+        pattern: t;
+        annotation: type_expr;
+      }
     | Alias of { pattern: t; alias: t }
     | Or of { left: t; right: t }
     | Cons of { head: t; tail: t }
@@ -4819,7 +4903,10 @@ end
 module LetBinding: sig
   type t = let_binding
   type view =
-    | Binding of { pattern: pattern; body: expr }
+    | Binding of {
+        pattern: pattern;
+        body: expr;
+      }
     | Unknown of Node.t
   val cast: Node.t -> t cast_result
 
@@ -4858,7 +4945,10 @@ end = struct
   let width = Node.width
 
   type view =
-    | Binding of { pattern: pattern; body: expr }
+    | Binding of {
+        pattern: pattern;
+        body: expr;
+      }
     | Unknown of Node.t
 
   let cast = fun (node: node) ->
@@ -5029,7 +5119,12 @@ module TypeDeclaration = struct
 
   let width = Node.width
 
-  type member = { declaration: type_declaration; node: node; start_index: int; stop_index: int }
+  type member = {
+    declaration: type_declaration;
+    node: node;
+    start_index: int;
+    stop_index: int;
+  }
 
   type parameter =
     | Named of {
@@ -5818,9 +5913,9 @@ let attribute_suffix_start_at = fun node close_index ->
 
 let last_non_attribute_suffix_token_index = fun node ->
   let rec loop index =
-    if Int.(index < 0) then
+    if Int.(index < 0) then (
       (-1)
-    else
+    ) else
       match attribute_suffix_start_at node index with
       | Some start -> loop Int.(start - 1)
       | None -> index
@@ -5838,11 +5933,20 @@ module ModuleDeclaration = struct
 
   let width = Node.width
 
-  type member = { declaration: module_declaration; node: node; start_index: int; stop_index: int }
+  type member = {
+    declaration: module_declaration;
+    node: node;
+    start_index: int;
+    stop_index: int;
+  }
 
   type body =
-    | Expr of { body: module_expr }
-    | Type of { body: module_type_expr }
+    | Expr of {
+        body: module_expr;
+      }
+    | Type of {
+        body: module_type_expr;
+      }
     | Unsupported of {
         body: node option;
       }
@@ -6274,14 +6378,13 @@ module ModuleDeclaration = struct
                   inside := true
                 else if token_kind_is token Syntax_kind.END_KW then
                   inside := false
-                else if !inside then
-                  (
-                    match fn token !acc with
-                    | Continue next -> acc := next
-                    | Return value ->
-                        acc := value;
-                        returned := true
-                  )
+                else if !inside then (
+                  match fn token !acc with
+                  | Continue next -> acc := next
+                  | Return value ->
+                      acc := value;
+                      returned := true
+                )
             | Syntax_tree.Node id ->
                 if !inside && not !returned then
                   acc := Node.fold_token
@@ -6321,7 +6424,9 @@ module ModuleTypeDeclaration = struct
 
   type body =
     | Abstract
-    | Manifest of { body: module_type_expr }
+    | Manifest of {
+        body: module_type_expr;
+      }
     | Unsupported of {
         body: node option;
       }
@@ -6448,14 +6553,13 @@ module ModuleTypeDeclaration = struct
                   inside := true
                 else if token_kind_is token Syntax_kind.END_KW then
                   inside := false
-                else if !inside then
-                  (
-                    match fn token !acc with
-                    | Continue next -> acc := next
-                    | Return value ->
-                        acc := value;
-                        returned := true
-                  )
+                else if !inside then (
+                  match fn token !acc with
+                  | Continue next -> acc := next
+                  | Return value ->
+                      acc := value;
+                      returned := true
+                )
             | Syntax_tree.Node id ->
                 if !inside && not !returned then
                   acc := Node.fold_token
@@ -6648,17 +6752,15 @@ module IncludeDeclaration = struct
             let node = wrap_node decl.tree id in
             if
               node_matches node (fun kind -> is_module_expr_kind kind || is_module_type_kind kind)
-            then
-              (
-                match Node.kind node with
-                | Syntax_kind.MODULE_EXPR ->
-                    first_child_node_matching node ~matches:is_module_expr_kind
-                | Syntax_kind.MODULE_TYPE_EXPR ->
-                    first_child_node_matching node ~matches:is_module_type_kind
-                | kind when is_module_expr_kind kind || is_module_type_kind kind -> Some node
-                | _ -> None
-              )
-            else
+            then (
+              match Node.kind node with
+              | Syntax_kind.MODULE_EXPR ->
+                  first_child_node_matching node ~matches:is_module_expr_kind
+              | Syntax_kind.MODULE_TYPE_EXPR ->
+                  first_child_node_matching node ~matches:is_module_type_kind
+              | kind when is_module_expr_kind kind || is_module_type_kind kind -> Some node
+              | _ -> None
+            ) else
               find_body (index + 1)
         | Some (Syntax_tree.Token _)
         | Some (Syntax_tree.Missing _)
@@ -6966,7 +7068,10 @@ module ExceptionDeclaration = struct
         equals_token: token;
         ident: Ident.t;
       }
-    | Payload of { of_token: token; payload: payload }
+    | Payload of {
+        of_token: token;
+        payload: payload;
+      }
     | Unknown of node
 
   let cast = fun (node: node) -> cast_kind node Syntax_kind.EXCEPTION_DECL

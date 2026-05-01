@@ -123,11 +123,11 @@ let rec parse = fun state reader ->
                 parse state reader
     )
   | ReadingFramePayload {
-    header_bytes;
-    buffer;
-    bytes_read;
-    total_length
-  } ->
+      header_bytes;
+      buffer;
+      bytes_read;
+      total_length;
+    } ->
       (
           let needed = total_length - bytes_read in
           match read_n_bytes reader buffer needed with

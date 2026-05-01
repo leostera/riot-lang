@@ -147,16 +147,14 @@ let topo_sort = fun graph ->
       rev_deps
   done;
   (* Check for cycles *)
-  if !processed != Hashtbl.length graph.nodes then
-    (
-      (* Find nodes that are part of cycles (those with in-degree > 0) *)
-      let cycle_nodes = ref [] in
-      Hashtbl.iter
-        (fun id count ->
-          if count > 0 then
-            cycle_nodes := id :: !cycle_nodes)
-        in_degree;
-      raise (Cycle !cycle_nodes)
-    )
-  else
+  if !processed != Hashtbl.length graph.nodes then (
+    (* Find nodes that are part of cycles (those with in-degree > 0) *)
+    let cycle_nodes = ref [] in
+    Hashtbl.iter
+      (fun id count ->
+        if count > 0 then
+          cycle_nodes := id :: !cycle_nodes)
+      in_degree;
+    raise (Cycle !cycle_nodes)
+  ) else
     List.rev !sorted

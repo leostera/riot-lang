@@ -47,19 +47,34 @@ let test_diff_empty_hashmaps = fun _ctx ->
 let test_diff_added_keys = fun _ctx ->
   let diffs = diff_hashmaps (make_map [ ("a", 1); ]) (make_map [ ("a", 1); ("b", 2); ]) in
   match Diff.additions diffs with
-  | [ { path = [ Diff.Key "b" ]; kind = Diff.Added 2 } ] -> Ok ()
+  | [
+      {
+        path = [ Diff.Key "b" ];
+        kind = Diff.Added 2;
+      };
+    ] -> Ok ()
   | _ -> Error "Expected one added key"
 
 let test_diff_removed_keys = fun _ctx ->
   let diffs = diff_hashmaps (make_map [ ("a", 1); ("b", 2); ]) (make_map [ ("a", 1); ]) in
   match Diff.removals diffs with
-  | [ { path = [ Diff.Key "b" ]; kind = Diff.Removed 2 } ] -> Ok ()
+  | [
+      {
+        path = [ Diff.Key "b" ];
+        kind = Diff.Removed 2;
+      };
+    ] -> Ok ()
   | _ -> Error "Expected one removed key"
 
 let test_diff_changed_values = fun _ctx ->
   let diffs = diff_hashmaps (make_map [ ("a", 1); ]) (make_map [ ("a", 2); ]) in
   match Diff.changes diffs with
-  | [ { path = [ Diff.Key "a" ]; kind = Diff.Changed (1, 2) } ] -> Ok ()
+  | [
+      {
+        path = [ Diff.Key "a" ];
+        kind = Diff.Changed (1, 2);
+      };
+    ] -> Ok ()
   | _ -> Error "Expected one changed value"
 
 let test_diff_mixed_changes = fun _ctx ->

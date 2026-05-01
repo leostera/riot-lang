@@ -144,12 +144,12 @@ module Make (Order: Std_order.Ordered) = struct
       match left with
       | Empty -> panic "balance expected a left branch"
       | Node {
-        left = left_left;
-        key = left_key;
-        value = left_value;
-        right = left_right;
-        _
-      } ->
+          left = left_left;
+          key = left_key;
+          value = left_value;
+          right = left_right;
+          _;
+        } ->
           if height left_left >= height left_right then
             make_node
               left_left
@@ -160,12 +160,12 @@ module Make (Order: Std_order.Ordered) = struct
             match left_right with
             | Empty -> panic "balance expected a left-right branch"
             | Node {
-              left = left_right_left;
-              key = pivot_key;
-              value = pivot_value;
-              right = left_right_right;
-              _
-            } ->
+                left = left_right_left;
+                key = pivot_key;
+                value = pivot_value;
+                right = left_right_right;
+                _;
+              } ->
                 make_node
                   (make_node left_left ~key:left_key ~value:left_value left_right_left)
                   ~key:pivot_key
@@ -175,12 +175,12 @@ module Make (Order: Std_order.Ordered) = struct
       match right with
       | Empty -> panic "balance expected a right branch"
       | Node {
-        left = right_left;
-        key = right_key;
-        value = right_value;
-        right = right_right;
-        _
-      } ->
+          left = right_left;
+          key = right_key;
+          value = right_value;
+          right = right_right;
+          _;
+        } ->
           if height right_right >= height right_left then
             make_node
               (make_node left ~key ~value right_left)
@@ -191,12 +191,12 @@ module Make (Order: Std_order.Ordered) = struct
             match right_left with
             | Empty -> panic "balance expected a right-left branch"
             | Node {
-              left = right_left_left;
-              key = pivot_key;
-              value = pivot_value;
-              right = right_left_right;
-              _
-            } ->
+                left = right_left_left;
+                key = pivot_key;
+                value = pivot_value;
+                right = right_left_right;
+                _;
+              } ->
                 make_node
                   (make_node left ~key ~value right_left_left)
                   ~key:pivot_key
@@ -224,7 +224,7 @@ module Make (Order: Std_order.Ordered) = struct
       key = current_key;
       value = current_value;
       right;
-      height
+      height;
     } as node) ->
         (
             match Order.compare key current_key with
@@ -259,7 +259,7 @@ module Make (Order: Std_order.Ordered) = struct
       key = current_key;
       value = current_value;
       right;
-      height
+      height;
     } as node) ->
         (
             match Order.compare key current_key with
@@ -300,12 +300,12 @@ module Make (Order: Std_order.Ordered) = struct
     | Empty -> panic "remove_minimum called on an empty map"
     | Node { left = Empty; right; _ } -> right
     | Node {
-      left;
-      key;
-      value;
-      right;
-      _
-    } ->
+        left;
+        key;
+        value;
+        right;
+        _;
+      } ->
         balance (remove_minimum left) ~key ~value right
 
   and join = fun left ~key ~value right ->
@@ -318,14 +318,14 @@ module Make (Order: Std_order.Ordered) = struct
         key = left_key;
         value = left_value;
         right = left_right;
-        height = left_height
+        height = left_height;
       },
       Node {
         left = right_left;
         key = right_key;
         value = right_value;
         right = right_right;
-        height = right_height
+        height = right_height;
       }
     ) ->
         if left_height > right_height + 2 then
@@ -347,12 +347,12 @@ module Make (Order: Std_order.Ordered) = struct
     match map with
     | Empty -> singleton ~key ~value
     | Node {
-      left;
-      key = current_key;
-      value = current_value;
-      right;
-      _
-    } ->
+        left;
+        key = current_key;
+        value = current_value;
+        right;
+        _;
+      } ->
         balance
           (add_minimum ~key ~value left)
           ~key:current_key
@@ -363,12 +363,12 @@ module Make (Order: Std_order.Ordered) = struct
     match map with
     | Empty -> singleton ~key ~value
     | Node {
-      left;
-      key = current_key;
-      value = current_value;
-      right;
-      _
-    } ->
+        left;
+        key = current_key;
+        value = current_value;
+        right;
+        _;
+      } ->
         balance
           left
           ~key:current_key
@@ -414,12 +414,12 @@ module Make (Order: Std_order.Ordered) = struct
     match map with
     | Empty -> Empty
     | Node {
-      left;
-      key = current_key;
-      value;
-      right;
-      _
-    } ->
+        left;
+        key = current_key;
+        value;
+        right;
+        _;
+      } ->
         (
             match Order.compare key current_key with
             | Kernel.Order.EQ -> merge_branches left right
@@ -441,12 +441,12 @@ module Make (Order: Std_order.Ordered) = struct
     match map with
     | Empty -> (Empty, None, Empty)
     | Node {
-      left;
-      key = current_key;
-      value;
-      right;
-      _
-    } ->
+        left;
+        key = current_key;
+        value;
+        right;
+        _;
+      } ->
         (
             match Order.compare key current_key with
             | Kernel.Order.EQ -> (left, Some value, right)
@@ -467,12 +467,12 @@ module Make (Order: Std_order.Ordered) = struct
     match (left, right) with
     | (Empty, Empty) -> Empty
     | (Node {
-      left = left_left;
-      key;
-      value;
-      right = left_right;
-      height = left_height
-    }, _) when left_height >= height right ->
+         left = left_left;
+         key;
+         value;
+         right = left_right;
+         height = left_height;
+       }, _) when left_height >= height right ->
         let (right_left, right_value, right_right) = split right ~key in
         concat_or_join
           (merge ~left:left_left ~right:right_left ~fn)
@@ -480,12 +480,12 @@ module Make (Order: Std_order.Ordered) = struct
           ~value:(fn ~key ~left:(Some value) ~right:right_value)
           (merge ~left:left_right ~right:right_right ~fn)
     | (_, Node {
-      left = right_left;
-      key;
-      value;
-      right = right_right;
-      _
-    }) ->
+            left = right_left;
+            key;
+            value;
+            right = right_right;
+            _;
+          }) ->
         let (left_left, left_value, left_right) = split left ~key in
         concat_or_join
           (merge ~left:left_left ~right:right_left ~fn)
@@ -504,14 +504,14 @@ module Make (Order: Std_order.Ordered) = struct
         key = left_key;
         value = left_value;
         right = left_right;
-        height = left_height
+        height = left_height;
       },
       Node {
         left = right_left;
         key = right_key;
         value = right_value;
         right = right_right;
-        height = right_height
+        height = right_height;
       }
     ) ->
         if left_height >= right_height then
@@ -543,12 +543,12 @@ module Make (Order: Std_order.Ordered) = struct
     match map with
     | Empty -> None
     | Node {
-      left;
-      key = current_key;
-      value;
-      right;
-      _
-    } ->
+        left;
+        key = current_key;
+        value;
+        right;
+        _;
+      } ->
         (
             match Order.compare key current_key with
             | Kernel.Order.EQ -> Some value
@@ -565,12 +565,12 @@ module Make (Order: Std_order.Ordered) = struct
     match map with
     | Empty -> None
     | Node {
-      left;
-      key;
-      value;
-      right;
-      _
-    } ->
+        left;
+        key;
+        value;
+        right;
+        _;
+      } ->
         if fn key then
           match get_first left ~fn with
           | Some _ as result -> result
@@ -587,12 +587,12 @@ module Make (Order: Std_order.Ordered) = struct
     match map with
     | Empty -> None
     | Node {
-      left;
-      key;
-      value;
-      right;
-      _
-    } ->
+        left;
+        key;
+        value;
+        right;
+        _;
+      } ->
         if fn key then
           match get_last right ~fn with
           | Some _ as result -> result
@@ -614,12 +614,12 @@ module Make (Order: Std_order.Ordered) = struct
     match map with
     | Empty -> ()
     | Node {
-      left;
-      key;
-      value;
-      right;
-      _
-    } ->
+        left;
+        key;
+        value;
+        right;
+        _;
+      } ->
         for_each left ~fn;
         fn key value;
         for_each right ~fn
@@ -628,12 +628,12 @@ module Make (Order: Std_order.Ordered) = struct
     match map with
     | Empty -> init
     | Node {
-      left;
-      key;
-      value;
-      right;
-      _
-    } ->
+        left;
+        key;
+        value;
+        right;
+        _;
+      } ->
         let acc = fold_left left ~init ~fn in
         let acc = fn acc key value in
         fold_left right ~init:acc ~fn
@@ -642,12 +642,12 @@ module Make (Order: Std_order.Ordered) = struct
     match values with
     | Empty -> Empty
     | Node {
-      left;
-      key;
-      value;
-      right;
-      height
-    } ->
+        left;
+        key;
+        value;
+        right;
+        height;
+      } ->
         Node {
           left = map left ~fn;
           key;
@@ -660,12 +660,12 @@ module Make (Order: Std_order.Ordered) = struct
     match values with
     | Empty -> Empty
     | Node {
-      left;
-      key;
-      value;
-      right;
-      height
-    } ->
+        left;
+        key;
+        value;
+        right;
+        height;
+      } ->
         Node {
           left = map_with_key left ~fn;
           key;
@@ -678,12 +678,12 @@ module Make (Order: Std_order.Ordered) = struct
     match values with
     | Empty -> Empty
     | Node {
-      left;
-      key;
-      value;
-      right;
-      _
-    } ->
+        left;
+        key;
+        value;
+        right;
+        _;
+      } ->
         let next_left = filter left ~fn in
         let keep = fn key value in
         let next_right = filter right ~fn in
@@ -696,12 +696,12 @@ module Make (Order: Std_order.Ordered) = struct
     match values with
     | Empty -> Empty
     | Node {
-      left;
-      key;
-      value;
-      right;
-      _
-    } ->
+        left;
+        key;
+        value;
+        right;
+        _;
+      } ->
         let next_left = filter_map left ~fn in
         let mapped = fn key value in
         let next_right = filter_map right ~fn in
@@ -713,12 +713,12 @@ module Make (Order: Std_order.Ordered) = struct
     match values with
     | Empty -> (Empty, Empty)
     | Node {
-      left;
-      key;
-      value;
-      right;
-      _
-    } ->
+        left;
+        key;
+        value;
+        right;
+        _;
+      } ->
         let (left_true, left_false) = partition left ~fn in
         let keep = fn key value in
         let (right_true, right_false) = partition right ~fn in
@@ -735,12 +735,12 @@ module Make (Order: Std_order.Ordered) = struct
     match map with
     | Empty -> enumeration
     | Node {
-      left;
-      key;
-      value;
-      right;
-      _
-    } ->
+        left;
+        key;
+        value;
+        right;
+        _;
+      } ->
         push_left left (More (key, value, right, enumeration))
 
   let compare = fun ~left ~right ~fn ->
@@ -798,12 +798,12 @@ module Make (Order: Std_order.Ordered) = struct
     let rec loop acc = function
       | Empty -> acc
       | Node {
-        left;
-        key;
-        value;
-        right;
-        _
-      } ->
+          left;
+          key;
+          value;
+          right;
+          _;
+        } ->
           loop ((key, value) :: loop acc right) left
     in
     fun map -> loop [] map

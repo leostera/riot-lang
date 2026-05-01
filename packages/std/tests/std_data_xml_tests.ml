@@ -11,7 +11,12 @@ let test_create_element = fun _ctx ->
 let test_create_element_with_attrs = fun _ctx ->
   let elem = Xml.element "div" ~attrs:[ ("class", "test"); ] [] in
   match elem with
-  | Xml.Element { name = "div"; attrs = [ ("class", "test") ]; _ } -> Ok ()
+  | Xml.Element {
+      name = "div";
+      attrs = [ ("class", "test") ];
+      _;
+    } ->
+      Ok ()
   | _ -> Error "Failed to create element with attributes"
 
 let test_create_text = fun _ctx ->
@@ -28,14 +33,24 @@ let test_element_with_children = fun _ctx ->
   let child = Xml.text "content" in
   let parent = Xml.element "p" [ child ] in
   match parent with
-  | Xml.Element { name = "p"; children = [ Xml.Text "content" ]; _ } -> Ok ()
+  | Xml.Element {
+      name = "p";
+      children = [ Xml.Text "content" ];
+      _;
+    } ->
+      Ok ()
   | _ -> Error "Failed to create element with children"
 
 let test_nested_elements = fun _ctx ->
   let inner = Xml.element "span" [ Xml.text "inner" ] in
   let outer = Xml.element "div" [ inner ] in
   match outer with
-  | Xml.Element { name = "div"; children = [ Xml.Element { name = "span"; _ } ]; _ } -> Ok ()
+  | Xml.Element {
+      name = "div";
+      children = [ Xml.Element { name = "span"; _ } ];
+      _;
+    } ->
+      Ok ()
   | _ -> Error "Failed to create nested elements"
 
 let test_serialize_simple_element = fun _ctx ->

@@ -177,11 +177,30 @@ let skipped_reason = fun failed_packages ->
   "needs " ^ String.concat ", " failed_names
 
 let dependency_failed_state = function
-  | Finalized { detailed_result = { result = { status = Package_builder.Failed _
-  | Package_builder.Skipped _; package; _ }; _ }; _ } ->
+  | Finalized {
+      detailed_result = {
+        result = {
+          status = Package_builder.Failed _
+          | Package_builder.Skipped _;
+          package;
+          _;
+        };
+        _;
+      };
+      _;
+    } ->
       Some package
-  | Finalized { detailed_result = { result = { status = Package_builder.Built _
-  | Package_builder.Cached _; _ }; _ }; _ }
+  | Finalized {
+      detailed_result = {
+        result = {
+          status = Package_builder.Built _
+          | Package_builder.Cached _;
+          _;
+        };
+        _;
+      };
+      _;
+    }
   | AwaitingPlan
   | AwaitingFinalization _ -> None
 
@@ -473,11 +492,11 @@ let make_graph = fun state lanes ->
       ~apply_mutation:(fun _ mutation ->
         match mutation with
         | Apply_graph_update {
-          lane;
-          package_key;
-          package;
-          graph_update
-        } ->
+            lane;
+            package_key;
+            package;
+            graph_update;
+          } ->
             Package_builder.apply_graph_update
               (Build_lane.package_graph lane)
               package_key
@@ -486,11 +505,11 @@ let make_graph = fun state lanes ->
         | Set_package_state { lane; package_key; state = next_state } ->
             remember_package_state state.package_states lane package_key next_state
         | Remember_action_result {
-          lane;
-          package_key;
-          action_id;
-          result
-        } ->
+            lane;
+            package_key;
+            action_id;
+            result;
+          } ->
             remember_action_result state.package_states lane package_key action_id result)
       ()
   in
@@ -819,23 +838,22 @@ let run = fun ~parallelism ?(on_event = fun (_:event) -> ()) lanes ->
           error_count = planning_counts.error_count;
         }
       );
-    if planning_counts.execution_required_count > 0 then
-      (
-        let execution_counts = summarize_execution_results results in
-        on_event
-          (ExecutionStarted { lane_count; package_count = planning_counts.execution_required_count });
-        on_event
-          (
-            ExecutionFinished {
-              lane_count;
-              package_count = planning_counts.execution_required_count;
-              finalized_count = execution_counts.finalized_count;
-              built_count = execution_counts.built_count;
-              failed_count = execution_counts.failed_count;
-              error_count = execution_counts.error_count;
-            }
-          )
-      );
+    if planning_counts.execution_required_count > 0 then (
+      let execution_counts = summarize_execution_results results in
+      on_event
+        (ExecutionStarted { lane_count; package_count = planning_counts.execution_required_count });
+      on_event
+        (
+          ExecutionFinished {
+            lane_count;
+            package_count = planning_counts.execution_required_count;
+            finalized_count = execution_counts.finalized_count;
+            built_count = execution_counts.built_count;
+            failed_count = execution_counts.failed_count;
+            error_count = execution_counts.error_count;
+          }
+        )
+    );
     cleanup_pending_execution state.package_states;
     let errors = collect_errors results in
     let pending = pending_counts lanes state.package_states in

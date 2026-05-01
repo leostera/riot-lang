@@ -119,7 +119,10 @@ type update_stats = {
   reparsed_full: bool;
 }
 
-type update_result = { parsed: parsed; stats: update_stats }
+type update_result = {
+  parsed: parsed;
+  stats: update_stats;
+}
 
 type parsed_fragment = {
   nodes: syntax_node list;
@@ -664,26 +667,22 @@ let parse_reference_definition_prefix_end = fun text ->
                 Some base_end
               else if Char.equal (char_at text space_index) '\n' then
                 let after_gap = skip_spaces_tabs text (space_index + 1) in
-                if after_gap < len && is_title_opener (char_at text after_gap) then
-                  (
-                    match parse_reference_title_piece text after_gap with
-                    | Some after_title -> (
-                        match title_end after_title with
-                        | Some end_index -> Some end_index
-                        | None -> Some base_end
-                      )
-                    | None -> Some base_end
-                  )
-                else
+                if after_gap < len && is_title_opener (char_at text after_gap) then (
+                  match parse_reference_title_piece text after_gap with
+                  | Some after_title -> (
+                      match title_end after_title with
+                      | Some end_index -> Some end_index
+                      | None -> Some base_end
+                    )
+                  | None -> Some base_end
+                ) else
                   Some base_end
               else if space_index > after_destination then
-                if is_title_opener (char_at text space_index) then
-                  (
-                    match parse_reference_title_piece text space_index with
-                    | Some after_title -> title_end after_title
-                    | None -> None
-                  )
-                else
+                if is_title_opener (char_at text space_index) then (
+                  match parse_reference_title_piece text space_index with
+                  | Some after_title -> title_end after_title
+                  | None -> None
+                ) else
                   None
               else
                 None
@@ -1208,35 +1207,33 @@ let parse_list_marker = fun text ->
         let digit_len = digits_end - indent_offset in
         if digit_len <= 0 || digit_len > 9 || digits_end >= len then
           None
-        else if (char_at text digits_end) = '.' || (char_at text digits_end) = ')' then
-          (
-            match substring text indent_offset digit_len
-            |> Int.parse with
-            | None -> None
-            | Some start_number ->
-                let (marker_after, marker_after_columns) =
-                  if digits_end + 1 >= len then
-                    (digits_end + 1, indent + digit_len + 2)
-                  else if is_space (char_at text (digits_end + 1)) then
-                    consume_list_padding text (digits_end + 1) (indent + digit_len + 1)
-                  else
-                    (digits_end, (-1))
-                in
-                if marker_after_columns < 0 then
-                  None
+        else if (char_at text digits_end) = '.' || (char_at text digits_end) = ')' then (
+          match substring text indent_offset digit_len
+          |> Int.parse with
+          | None -> None
+          | Some start_number ->
+              let (marker_after, marker_after_columns) =
+                if digits_end + 1 >= len then
+                  (digits_end + 1, indent + digit_len + 2)
+                else if is_space (char_at text (digits_end + 1)) then
+                  consume_list_padding text (digits_end + 1) (indent + digit_len + 1)
                 else
-                  Some {
-                    indent;
-                    indent_offset;
-                    marker_char = char_at text digits_end;
-                    marker_len = digit_len + 1;
-                    marker_after;
-                    marker_after_columns;
-                    ordered = true;
-                    start_number;
-                  }
-          )
-        else
+                  (digits_end, (-1))
+              in
+              if marker_after_columns < 0 then
+                None
+              else
+                Some {
+                  indent;
+                  indent_offset;
+                  marker_char = char_at text digits_end;
+                  marker_len = digit_len + 1;
+                  marker_after;
+                  marker_after_columns;
+                  ordered = true;
+                  start_number;
+                }
+        ) else
           None
 
 let list_interrupts_paragraph = fun text ->
@@ -1946,7 +1943,14 @@ and parse_list = fun flavor lines start ->
                 has_content
                 && Option.is_some (drop_indent_columns (array_at lines index).text continuation_min)
         in
-        let rec collect_item_body continuation_min sibling_marker index acc had_blank paragraph_open has_content =
+        let rec collect_item_body
+          continuation_min
+          sibling_marker
+          index
+          acc
+          had_blank
+          paragraph_open
+          has_content =
           if index >= Array.length lines then
             (index, List.reverse acc, had_blank)
           else

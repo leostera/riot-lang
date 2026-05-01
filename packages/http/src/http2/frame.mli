@@ -80,7 +80,11 @@ type payload =
     }
   | PingPayload of string
   (** 8 bytes *)
-  | GoawayPayload of { last_stream_id: int; error_code: error_code; debug_data: string }
+  | GoawayPayload of {
+      last_stream_id: int;
+      error_code: error_code;
+      debug_data: string;
+    }
   | WindowUpdatePayload of int
   (** Window size increment *)
   | ContinuationPayload of string

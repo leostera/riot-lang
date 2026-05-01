@@ -233,27 +233,26 @@ let view = fun t ->
       |> List.enumerate
       |> List.for_each
         ~fn:(fun (idx, item) ->
-          if idx >= start_idx && idx <= end_idx then
-            begin
-              let is_selected = idx = t.selected in
-              let prefix =
-                if is_selected then
-                  t.cursor_char
-                else
-                  String.make ~len:(String.length t.cursor_char) ~char:' '
-              in
-              let text = t.render item in
-              let line =
-                if t.width > 0 && String.length text > t.width then
-                  String.sub text ~offset:0 ~len:t.width
-                else
-                  text
-              in
-              if idx > start_idx then
-                add_char buf '\n';
-              add_string buf prefix;
-              add_string buf line
-            end)
+          if idx >= start_idx && idx <= end_idx then (
+            let is_selected = idx = t.selected in
+            let prefix =
+              if is_selected then
+                t.cursor_char
+              else
+                String.make ~len:(String.length t.cursor_char) ~char:' '
+            in
+            let text = t.render item in
+            let line =
+              if t.width > 0 && String.length text > t.width then
+                String.sub text ~offset:0 ~len:t.width
+              else
+                text
+            in
+            if idx > start_idx then
+              add_char buf '\n';
+            add_string buf prefix;
+            add_string buf line
+          ))
     end;
   (* Show filter input at bottom if active *)
   if t.filtering_active then (

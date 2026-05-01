@@ -66,21 +66,20 @@ let rec loop = fun state ->
         let events = Ansi_parser.parse_string state.parser input in
         List.for_each events ~fn:(fun event -> send state.parent (Input event));
         (* If no events were generated and it's a simple character *)
-        if List.length events = 0 && String.length input = 1 then
-          (
-            let c =
-              String.get input ~at:0
-              |> Option.unwrap
-            in
-            let event =
-              if c = '\027' then
-                Event.KeyDown (Event.Escape, Event.NoModifier)
-              else
-                (* Regular character *)
-                Event.KeyDown (Ansi_parser.parse_char c, Event.NoModifier)
-            in
-            send state.parent (Input event)
-          );
+        if List.length events = 0 && String.length input = 1 then (
+          let c =
+            String.get input ~at:0
+            |> Option.unwrap
+          in
+          let event =
+            if c = '\027' then
+              Event.KeyDown (Event.Escape, Event.NoModifier)
+            else
+              (* Regular character *)
+              Event.KeyDown (Ansi_parser.parse_char c, Event.NoModifier)
+          in
+          send state.parent (Input event)
+        );
         loop state
     | End -> send state.parent ShutdownComplete
     | Malformed _err -> loop state

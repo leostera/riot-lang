@@ -131,7 +131,10 @@ module Type = struct
         | Arrow { label; parameter; result } ->
             Label.to_string label ^ arrow_parameter_to_string parameter ^ " -> " ^ loop result
         | Apply { ident; arguments = [] } -> SurfacePath.to_string ident
-        | Apply { ident; arguments = [ argument ] } ->
+        | Apply {
+            ident;
+            arguments = [ argument ];
+          } ->
             constructor_argument_to_string argument ^ " " ^ SurfacePath.to_string ident
         | Apply { ident; arguments } ->
             "("
@@ -228,7 +231,11 @@ and type_application = {
   arguments: core_type list;
 }
 
-and arrow_type = { label: arrow_label; parameter: core_type; result: core_type }
+and arrow_type = {
+  label: arrow_label;
+  parameter: core_type;
+  result: core_type;
+}
 
 and forall_type = {
   parameters: string list;
@@ -248,7 +255,11 @@ and package_type = {
   constraints: package_type_constraint list;
 }
 
-and package_type_constraint = { origin: origin; type_name: ident; manifest: core_type }
+and package_type_constraint = {
+  origin: origin;
+  type_name: ident;
+  manifest: core_type;
+}
 
 type type_parameter = string option
 
@@ -270,7 +281,10 @@ and record_field_declaration = {
   type_annotation: core_type;
 }
 
-type type_definition = { origin: origin; kind: type_definition_kind }
+type type_definition = {
+  origin: origin;
+  kind: type_definition_kind;
+}
 
 and type_definition_kind =
   | Abstract
@@ -332,13 +346,25 @@ and constructor_pattern = {
   payload: pattern option;
 }
 
-and or_pattern = { left: pattern; right: pattern }
+and or_pattern = {
+  left: pattern;
+  right: pattern;
+}
 
-and cons_pattern = { head: pattern; tail: pattern }
+and cons_pattern = {
+  head: pattern;
+  tail: pattern;
+}
 
-and constrained_pattern = { pattern: pattern; annotation: core_type }
+and constrained_pattern = {
+  pattern: pattern;
+  annotation: core_type;
+}
 
-and alias_pattern = { pattern: pattern; alias: pattern }
+and alias_pattern = {
+  pattern: pattern;
+  alias: pattern;
+}
 
 and first_class_module_pattern = {
   binder: ident option;
@@ -361,7 +387,10 @@ and expression_type_hint_kind =
   | Annotation
   | Coercion
 
-and expression_type_hint = { kind: expression_type_hint_kind; type_: core_type }
+and expression_type_hint = {
+  kind: expression_type_hint_kind;
+  type_: core_type;
+}
 
 and expression = {
   origin: origin;
@@ -413,7 +442,10 @@ and expression_kind =
   | FirstClassModule of first_class_module
   | Assert of expression
 
-and constructor_expression = { ident: ident; payload: expression option }
+and constructor_expression = {
+  ident: ident;
+  payload: expression option;
+}
 
 and poly_variant_expression = {
   tag: string;
@@ -431,13 +463,26 @@ and match_case = {
   body: expression;
 }
 
-and record_expression_field = { origin: origin; name: ident; value: expression }
+and record_expression_field = {
+  origin: origin;
+  name: ident;
+  value: expression;
+}
 
-and field_access = { receiver: expression; field: ident }
+and field_access = {
+  receiver: expression;
+  field: ident;
+}
 
-and assignment = { target: expression; value: expression }
+and assignment = {
+  target: expression;
+  value: expression;
+}
 
-and sequence = { left: expression; right: expression }
+and sequence = {
+  left: expression;
+  right: expression;
+}
 
 and conditional = {
   condition: expression;
@@ -455,16 +500,28 @@ and try_expression = {
   cases: match_case list;
 }
 
-and while_loop = { condition: expression; body: expression }
+and while_loop = {
+  condition: expression;
+  body: expression;
+}
 
-and for_loop = { pattern: pattern; start_: expression; stop: expression; body: expression }
+and for_loop = {
+  pattern: pattern;
+  start_: expression;
+  stop: expression;
+  body: expression;
+}
 
 and application = {
   callee: expression;
   arguments: argument list;
 }
 
-and infix_operation = { left: expression; operator: ident; right: expression }
+and infix_operation = {
+  left: expression;
+  operator: ident;
+  right: expression;
+}
 
 and let_expression = {
   recursive: bool;
@@ -480,14 +537,20 @@ and let_module = {
   body: expression;
 }
 
-and local_open = { module_: ident; body: expression }
+and local_open = {
+  module_: ident;
+  body: expression;
+}
 
 and first_class_module = {
   module_: ident;
   package_type: package_type option;
 }
 
-and argument = { origin: origin; kind: argument_kind }
+and argument = {
+  origin: origin;
+  kind: argument_kind;
+}
 
 and argument_kind =
   | Positional of expression
@@ -505,7 +568,11 @@ and let_declaration = {
   bindings: let_binding list;
 }
 
-and value_declaration = { origin: origin; name: ident; type_annotation: core_type }
+and value_declaration = {
+  origin: origin;
+  name: ident;
+  type_annotation: core_type;
+}
 
 and external_declaration = {
   origin: origin;
@@ -543,7 +610,10 @@ and functor_parameter = {
   module_type: ident option;
 }
 
-and module_application = { callee: ident; argument: ident }
+and module_application = {
+  callee: ident;
+  argument: ident;
+}
 
 and module_type_declaration = {
   origin: origin;
@@ -551,7 +621,10 @@ and module_type_declaration = {
   items: signature_item list;
 }
 
-and structure_item = { origin: origin; kind: structure_item_kind }
+and structure_item = {
+  origin: origin;
+  kind: structure_item_kind;
+}
 
 and structure_item_kind =
   | Let of let_declaration
@@ -564,7 +637,10 @@ and structure_item_kind =
   | ModuleType of module_type_declaration
   | Include of ident
 
-and signature_item = { origin: origin; kind: signature_item_kind }
+and signature_item = {
+  origin: origin;
+  kind: signature_item_kind;
+}
 
 and signature_item_kind =
   | Value of value_declaration
@@ -573,7 +649,10 @@ and signature_item_kind =
   | External of external_declaration
   | Exception of exception_declaration
 
-type t = { origin: origin; kind: source_file_kind }
+type t = {
+  origin: origin;
+  kind: source_file_kind;
+}
 
 and source_file_kind =
   | Implementation of structure_item list
@@ -1508,7 +1587,9 @@ and build_expression = fun context (syntax_expression: Syn.Ast.Expr.t) ->
         make_expression origin (Literal (literal_from_token origin token))
     | Syn.Ast.Expr.Ident { ident } -> make_expression origin (Ident (ident_from_syn_ident ident))
     | Syn.Ast.Expr.Constructor { constructor; payload = None } ->
-        make_expression origin (Constructor { ident = ident_from_syn_ident constructor; payload = None })
+        make_expression
+          origin
+          (Constructor { ident = ident_from_syn_ident constructor; payload = None })
     | Syn.Ast.Expr.Constructor { constructor; payload = Some payload } ->
         make_expression
           origin
@@ -1642,11 +1723,11 @@ and build_expression = fun context (syntax_expression: Syn.Ast.Expr.t) ->
             body = build_expression context body;
           })
     | Syn.Ast.Expr.For {
-      pattern;
-      start_;
-      stop;
-      body
-    } ->
+        pattern;
+        start_;
+        stop;
+        body;
+      } ->
         make_expression
           origin
           (

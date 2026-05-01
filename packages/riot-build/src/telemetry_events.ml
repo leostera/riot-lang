@@ -430,12 +430,12 @@ let to_json: Telemetry.event -> Data.Json.t option = function
         ("workspace_package_count", Data.Json.Int workspace_package_count);
       ])
   | WorkspacePlanCompleted {
-    session_id;
-    target;
-    workspace_package_count;
-    planned_package_count;
-    duration
-  } ->
+      session_id;
+      target;
+      workspace_package_count;
+      planned_package_count;
+      duration;
+    } ->
       Some (Data.Json.Object [
         ("type", Data.Json.String "WorkspacePlanCompleted");
         ("session_id", Data.Json.String (Session_id.to_string session_id));
@@ -445,11 +445,11 @@ let to_json: Telemetry.event -> Data.Json.t option = function
         ("duration_ms", Data.Json.Int (Time.Duration.to_millis duration));
       ])
   | WorkspaceManifestFilterCompleted {
-    session_id;
-    target;
-    filtered_workspace_package_count;
-    duration
-  } ->
+      session_id;
+      target;
+      filtered_workspace_package_count;
+      duration;
+    } ->
       Some (Data.Json.Object [
         ("type", Data.Json.String "WorkspaceManifestFilterCompleted");
         ("session_id", Data.Json.String (Session_id.to_string session_id));
@@ -458,12 +458,12 @@ let to_json: Telemetry.event -> Data.Json.t option = function
         ("duration_ms", Data.Json.Int (Time.Duration.to_millis duration));
       ])
   | WorkspaceGraphCreated {
-    session_id;
-    target;
-    node_count;
-    breakdown;
-    duration
-  } ->
+      session_id;
+      target;
+      node_count;
+      breakdown;
+      duration;
+    } ->
       Some (Data.Json.Object [
         ("type", Data.Json.String "WorkspaceGraphCreated");
         ("session_id", Data.Json.String (Session_id.to_string session_id));
@@ -473,11 +473,11 @@ let to_json: Telemetry.event -> Data.Json.t option = function
         ("duration_ms", Data.Json.Int (Time.Duration.to_millis duration));
       ])
   | WorkspaceTargetGraphFiltered {
-    session_id;
-    target;
-    node_count;
-    duration
-  } ->
+      session_id;
+      target;
+      node_count;
+      duration;
+    } ->
       Some (Data.Json.Object [
         ("type", Data.Json.String "WorkspaceTargetGraphFiltered");
         ("session_id", Data.Json.String (Session_id.to_string session_id));
@@ -486,11 +486,11 @@ let to_json: Telemetry.event -> Data.Json.t option = function
         ("duration_ms", Data.Json.Int (Time.Duration.to_millis duration));
       ])
   | WorkspaceTopologicalSortCompleted {
-    session_id;
-    target;
-    sorted_package_count;
-    duration
-  } ->
+      session_id;
+      target;
+      sorted_package_count;
+      duration;
+    } ->
       Some (Data.Json.Object [
         ("type", Data.Json.String "WorkspaceTopologicalSortCompleted");
         ("session_id", Data.Json.String (Session_id.to_string session_id));
@@ -506,13 +506,13 @@ let to_json: Telemetry.event -> Data.Json.t option = function
         ("package_count", Data.Json.Int package_count);
       ])
   | PlanningWorkspaceCompleted {
-    session_id;
-    target;
-    duration;
-    planned_count;
-    missing_count;
-    failed_count
-  } ->
+      session_id;
+      target;
+      duration;
+      planned_count;
+      missing_count;
+      failed_count;
+    } ->
       Some (Data.Json.Object [
         ("type", Data.Json.String "PlanningWorkspaceCompleted");
         ("session_id", Data.Json.String (Session_id.to_string session_id));
@@ -523,13 +523,13 @@ let to_json: Telemetry.event -> Data.Json.t option = function
         ("failed_count", Data.Json.Int failed_count);
       ])
   | PackagePlanningResult {
-    session_id;
-    package;
-    target;
-    status;
-    duration;
-    reason
-  } ->
+      session_id;
+      package;
+      target;
+      status;
+      duration;
+      reason;
+    } ->
       Some (
         Data.Json.Object (
           [
@@ -545,11 +545,11 @@ let to_json: Telemetry.event -> Data.Json.t option = function
         )
       )
   | PackagePlanningBreakdown {
-    session_id;
-    package;
-    target;
-    breakdown
-  } ->
+      session_id;
+      package;
+      target;
+      breakdown;
+    } ->
       Some (Data.Json.Object [
         ("type", Data.Json.String "PackagePlanningBreakdown");
         ("session_id", Data.Json.String (Session_id.to_string session_id));
@@ -558,11 +558,11 @@ let to_json: Telemetry.event -> Data.Json.t option = function
         ("breakdown", planning_breakdown_to_json breakdown);
       ])
   | CompilationStarted {
-    session_id;
-    package;
-    target;
-    build_target
-  } ->
+      session_id;
+      package;
+      target;
+      build_target;
+    } ->
       Some (Data.Json.Object [
         ("type", Data.Json.String "CompilationStarted");
         ("session_id", Data.Json.String (Session_id.to_string session_id));
@@ -571,13 +571,13 @@ let to_json: Telemetry.event -> Data.Json.t option = function
         ("build_target", build_target_to_json build_target);
       ])
   | PackageOcamlcWarnings {
-    session_id;
-    package;
-    target;
-    build_target;
-    source;
-    messages
-  } ->
+      session_id;
+      package;
+      target;
+      build_target;
+      source;
+      messages;
+    } ->
       Some (Data.Json.Object [
         ("type", Data.Json.String "PackageOcamlcWarnings");
         ("session_id", Data.Json.String (Session_id.to_string session_id));
@@ -588,13 +588,13 @@ let to_json: Telemetry.event -> Data.Json.t option = function
         ("messages", Data.Json.Array (List.map messages ~fn:(fun msg -> Data.Json.String msg)));
       ])
   | BuildCompleted {
-    session_id;
-    package;
-    target;
-    build_target;
-    status;
-    duration
-  } ->
+      session_id;
+      package;
+      target;
+      build_target;
+      status;
+      duration;
+    } ->
       Some (
         Data.Json.Object [
           ("type", Data.Json.String "BuildCompleted");
@@ -611,12 +611,12 @@ let to_json: Telemetry.event -> Data.Json.t option = function
         ]
       )
   | BuildFailed {
-    session_id;
-    package;
-    target;
-    build_target;
-    error
-  } ->
+      session_id;
+      package;
+      target;
+      build_target;
+      error;
+    } ->
       let error_json =
         match error with
         | PlanningFailed planning_err ->
@@ -657,12 +657,12 @@ let to_json: Telemetry.event -> Data.Json.t option = function
         ("error", error_json);
       ])
   | BuildSkipped {
-    session_id;
-    package;
-    target;
-    build_target;
-    reason
-  } ->
+      session_id;
+      package;
+      target;
+      build_target;
+      reason;
+    } ->
       Some (Data.Json.Object [
         ("type", Data.Json.String "BuildSkipped");
         ("session_id", Data.Json.String (Session_id.to_string session_id));
@@ -679,11 +679,11 @@ let to_json: Telemetry.event -> Data.Json.t option = function
         ("action", action_to_json action);
       ])
   | ActionCommandStarted {
-    session_id;
-    package;
-    action;
-    command
-  } ->
+      session_id;
+      package;
+      action;
+      command;
+    } ->
       Some (Data.Json.Object [
         ("type", Data.Json.String "ActionCommandStarted");
         ("session_id", Data.Json.String (Session_id.to_string session_id));
@@ -692,15 +692,16 @@ let to_json: Telemetry.event -> Data.Json.t option = function
         ("command", Data.Json.String command);
       ])
   | ActionCompleted {
-    session_id;
-    package;
-    action;
-    artifact;
-    status;
-    duration
-  } ->
-      let artifact_files =
-        Data.Json.Array (List.map artifact.files ~fn:(fun p -> Data.Json.String (Path.to_string p)))
+      session_id;
+      package;
+      action;
+      artifact;
+      status;
+      duration;
+    } ->
+      let artifact_files = Data.Json.Array (List.map
+        artifact.files
+        ~fn:(fun p -> Data.Json.String (Path.to_string p)))
       in
       Some (
         Data.Json.Object [
@@ -718,11 +719,11 @@ let to_json: Telemetry.event -> Data.Json.t option = function
         ]
       )
   | ActionFailed {
-    session_id;
-    package;
-    action;
-    error
-  } ->
+      session_id;
+      package;
+      action;
+      error;
+    } ->
       Some (Data.Json.Object [
         ("type", Data.Json.String "ActionFailed");
         ("session_id", Data.Json.String (Session_id.to_string session_id));
@@ -731,11 +732,11 @@ let to_json: Telemetry.event -> Data.Json.t option = function
         ("error", Data.Json.String error);
       ])
   | CacheHit {
-    session_id;
-    package;
-    action;
-    hash
-  } ->
+      session_id;
+      package;
+      action;
+      hash;
+    } ->
       Some (Data.Json.Object [
         ("type", Data.Json.String "CacheHit");
         ("session_id", Data.Json.String (Session_id.to_string session_id));
@@ -744,11 +745,11 @@ let to_json: Telemetry.event -> Data.Json.t option = function
         ("hash", Data.Json.String (Crypto.Digest.hex hash));
       ])
   | CacheMiss {
-    session_id;
-    package;
-    action;
-    hash
-  } ->
+      session_id;
+      package;
+      action;
+      hash;
+    } ->
       Some (Data.Json.Object [
         ("type", Data.Json.String "CacheMiss");
         ("session_id", Data.Json.String (Session_id.to_string session_id));
@@ -764,13 +765,13 @@ let to_json: Telemetry.event -> Data.Json.t option = function
         ("package_count", Data.Json.Int package_count);
       ])
   | WorkspaceCompleted {
-    session_id;
-    target;
-    total_duration;
-    cached_count;
-    built_count;
-    failed_count
-  } ->
+      session_id;
+      target;
+      total_duration;
+      cached_count;
+      built_count;
+      failed_count;
+    } ->
       Some (Data.Json.Object [
         ("type", Data.Json.String "WorkspaceCompleted");
         ("session_id", Data.Json.String (Session_id.to_string session_id));

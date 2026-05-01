@@ -102,15 +102,13 @@ let to_reader = fun stream ->
 
     let read = fun t ~into ->
       let writable =
-        if IO.Buffer.writable_bytes into = 0 then
-          (
-            match IO.Buffer.ensure_free into 4_096 with
-            | Ok () -> IO.Buffer.writable into
-            | Error error ->
-                Kernel.SystemError.panic
-                  ("Net.TcpStream.to_reader.ensure_free: " ^ Kernel.IO.Error.message error)
-          )
-        else
+        if IO.Buffer.writable_bytes into = 0 then (
+          match IO.Buffer.ensure_free into 4_096 with
+          | Ok () -> IO.Buffer.writable into
+          | Error error ->
+              Kernel.SystemError.panic
+                ("Net.TcpStream.to_reader.ensure_free: " ^ Kernel.IO.Error.message error)
+        ) else
           IO.Buffer.writable into
       in
       let source = Kernel.Net.TcpStream.to_source t in

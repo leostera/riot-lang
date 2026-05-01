@@ -131,11 +131,11 @@ let message = function
       ^ package
       ^ "' must declare a version or publishable source"
   | RuntimeDependencyRegistryLookupFailed {
-    package;
-    dependency;
-    registry;
-    error
-  } ->
+      package;
+      dependency;
+      registry;
+      error;
+    } ->
       "failed to verify runtime dependency '"
       ^ dependency
       ^ "' for package '"
@@ -166,11 +166,11 @@ let message = function
   | ArtifactReadFailed { path; error } ->
       "failed to read publish artifact '" ^ Path.to_string path ^ "': " ^ IO.error_message error
   | TarCommandFailed {
-    command;
-    status;
-    stdout;
-    stderr
-  } ->
+      command;
+      status;
+      stdout;
+      stderr;
+    } ->
       let detail =
         if String.equal stderr "" then
           stdout

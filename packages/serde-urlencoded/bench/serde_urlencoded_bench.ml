@@ -56,7 +56,11 @@ type payload_builder = {
 
 type fixture_spec = { label: string; tag_count: int; score_count: int; string_repeat: int }
 
-type fixture = { label: string; value: payload; encoded: string }
+type fixture = {
+  label: string;
+  value: payload;
+  encoded: string;
+}
 
 let small_bench_config: Bench.bench_config = { iterations = 100; warmup = 5 }
 
@@ -244,7 +248,7 @@ let build_fixture = fun ({
   label;
   tag_count;
   score_count;
-  string_repeat
+  string_repeat;
 }: fixture_spec) ->
   let value: payload = {
     name = "Monkey D. Luffy";

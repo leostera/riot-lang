@@ -55,37 +55,67 @@ let test_diff_one_empty = fun _ctx ->
 let test_diff_char_by_char = fun _ctx ->
   let diffs = diff_strings "abc" "axc" in
   match Diff.changes diffs with
-  | [ { path = [ Diff.Index 1 ]; kind = Diff.Changed ('b', 'x') } ] -> Ok ()
+  | [
+      {
+        path = [ Diff.Index 1 ];
+        kind = Diff.Changed ('b', 'x');
+      };
+    ] -> Ok ()
   | _ -> Error "Expected a change at the middle character"
 
 let test_diff_inserted_chars = fun _ctx ->
   let diffs = diff_strings "ab" "abc" in
   match Diff.additions diffs with
-  | [ { path = [ Diff.Index 2 ]; kind = Diff.Added 'c' } ] -> Ok ()
+  | [
+      {
+        path = [ Diff.Index 2 ];
+        kind = Diff.Added 'c';
+      };
+    ] -> Ok ()
   | _ -> Error "Expected one inserted character"
 
 let test_diff_deleted_chars = fun _ctx ->
   let diffs = diff_strings "abc" "ab" in
   match Diff.removals diffs with
-  | [ { path = [ Diff.Index 2 ]; kind = Diff.Removed 'c' } ] -> Ok ()
+  | [
+      {
+        path = [ Diff.Index 2 ];
+        kind = Diff.Removed 'c';
+      };
+    ] -> Ok ()
   | _ -> Error "Expected one deleted character"
 
 let test_diff_replaced_chars = fun _ctx ->
   let diffs = diff_strings "cat" "cut" in
   match Diff.changes diffs with
-  | [ { path = [ Diff.Index 1 ]; kind = Diff.Changed ('a', 'u') } ] -> Ok ()
+  | [
+      {
+        path = [ Diff.Index 1 ];
+        kind = Diff.Changed ('a', 'u');
+      };
+    ] -> Ok ()
   | _ -> Error "Expected one replaced character"
 
 let test_diff_case_change = fun _ctx ->
   let diffs = diff_strings "Riot" "riot" in
   match Diff.changes diffs with
-  | [ { path = [ Diff.Index 0 ]; kind = Diff.Changed ('R', 'r') } ] -> Ok ()
+  | [
+      {
+        path = [ Diff.Index 0 ];
+        kind = Diff.Changed ('R', 'r');
+      };
+    ] -> Ok ()
   | _ -> Error "Expected one case-only change"
 
 let test_diff_whitespace_changes = fun _ctx ->
   let diffs = diff_strings "a b" "a\tb" in
   match Diff.changes diffs with
-  | [ { path = [ Diff.Index 1 ]; kind = Diff.Changed (' ', '\t') } ] -> Ok ()
+  | [
+      {
+        path = [ Diff.Index 1 ];
+        kind = Diff.Changed (' ', '\t');
+      };
+    ] -> Ok ()
   | _ -> Error "Expected whitespace change at index 1"
 
 let tests =

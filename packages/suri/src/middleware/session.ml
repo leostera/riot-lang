@@ -360,30 +360,28 @@ let middleware = fun
         (* Call next handler *)
         let conn' = next conn in
         (* If session was modified, set cookie in response *)
-        if is_modified session then
-          begin
-            let cookie_value = to_cookie_value session in
-            let cookie =
-              Http.Http1.Cookie.make
-                ~name:cookie_name
-                ~value:cookie_value
-                ~max_age
-                ~path:"/"
-                ~secure
-                ~http_only:true
-                ~same_site
-                ()
-            in
-            match cookie with
-            | Ok cookie ->
-                let set_cookie_header = Http.Http1.Cookie.to_set_cookie cookie in
-                Conn.with_header "set-cookie" set_cookie_header conn'
-            | Error error ->
-                conn'
-                |> Conn.respond
-                  ~status:Net.Http.Status.InternalServerError
-                  ~body:(Http.Http1.Cookie.validation_error_to_string error)
-                |> Conn.send
-          end
-        else
+        if is_modified session then (
+          let cookie_value = to_cookie_value session in
+          let cookie =
+            Http.Http1.Cookie.make
+              ~name:cookie_name
+              ~value:cookie_value
+              ~max_age
+              ~path:"/"
+              ~secure
+              ~http_only:true
+              ~same_site
+              ()
+          in
+          match cookie with
+          | Ok cookie ->
+              let set_cookie_header = Http.Http1.Cookie.to_set_cookie cookie in
+              Conn.with_header "set-cookie" set_cookie_header conn'
+          | Error error ->
+              conn'
+              |> Conn.respond
+                ~status:Net.Http.Status.InternalServerError
+                ~body:(Http.Http1.Cookie.validation_error_to_string error)
+              |> Conn.send
+        ) else
           conn')

@@ -125,7 +125,11 @@ type payload_error = {
 type error =
   | ConnectionNotActive
   | StreamNotFound of { stream_id: int }
-  | FlowControlWindowExceeded of { scope: window_scope; data_size: int; window_size: int }
+  | FlowControlWindowExceeded of {
+      scope: window_scope;
+      data_size: int;
+      window_size: int;
+    }
   | FlowControlWindowOverflow of {
       scope: window_scope;
       increment: int;
@@ -149,9 +153,15 @@ type error =
     }
   | UnexpectedContinuation of { stream_id: int }
   | ContinuationStreamMismatch of { expected_stream_id: int; actual_stream_id: int }
-  | InvalidPeerStreamId of { role: role; stream_id: int }
+  | InvalidPeerStreamId of {
+      role: role;
+      stream_id: int;
+    }
   | PeerStreamIdNotIncreasing of { stream_id: int; last_stream_id: int }
-  | NewStreamRejected of { state: state; stream_id: int }
+  | NewStreamRejected of {
+      state: state;
+      stream_id: int;
+    }
   | DataBeforeHeaders of { stream_id: int }
   | FrameForIdleStream of {
       stream_id: int;
@@ -208,11 +218,11 @@ let error_to_string = function
       ^ " flow-control window "
       ^ Int.to_string window_size
   | FlowControlWindowOverflow {
-    scope;
-    increment;
-    window_size;
-    max_size
-  } ->
+      scope;
+      increment;
+      window_size;
+      max_size;
+    } ->
       "HTTP/2 WINDOW_UPDATE increment "
       ^ Int.to_string increment
       ^ " would overflow "
@@ -222,11 +232,11 @@ let error_to_string = function
       ^ " beyond "
       ^ Int.to_string max_size
   | MaxConcurrentStreamsExceeded {
-    initiator;
-    stream_id;
-    current;
-    limit
-  } ->
+      initiator;
+      stream_id;
+      current;
+      limit;
+    } ->
       "HTTP/2 "
       ^ stream_initiator_to_string initiator
       ^ " stream "

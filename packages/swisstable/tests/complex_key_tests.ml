@@ -43,7 +43,11 @@ type status =
 
 (* Nested types *)
 
-type customer = { user: user; location: point; status: status }
+type customer = {
+  user: user;
+  location: point;
+  status: status;
+}
 
 (** {1 Custom Generators} *)
 

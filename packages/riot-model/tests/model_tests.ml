@@ -764,12 +764,17 @@ std = ">= 1.2.3"
     |> Result.expect ~msg:"expected package manifest to parse"
   in
   match pkg.dependencies with
-  | [ { Riot_model.Package.source = {
-    workspace = false;
-    builtin = false;
-    path = None;
-    version = Some requirement
-  }; _ } ] ->
+  | [
+      {
+        Riot_model.Package.source = {
+          workspace = false;
+          builtin = false;
+          path = None;
+          version = Some requirement;
+        };
+        _;
+      };
+    ] ->
       Test.assert_equal ~expected:">= 1.2.3" ~actual:(Std.Version.requirement_to_string requirement);
       Ok ()
   | _ -> Error "expected a parsed registry dependency requirement"
@@ -820,12 +825,17 @@ std = "*"
     |> Result.expect ~msg:"expected package manifest to parse"
   in
   match pkg.dependencies with
-  | [ { Riot_model.Package.source = {
-    workspace = false;
-    builtin = false;
-    path = None;
-    version = Some requirement
-  }; _ } ] ->
+  | [
+      {
+        Riot_model.Package.source = {
+          workspace = false;
+          builtin = false;
+          path = None;
+          version = Some requirement;
+        };
+        _;
+      };
+    ] ->
       Test.assert_equal ~expected:"*" ~actual:(Std.Version.requirement_to_string requirement);
       Ok ()
   | _ -> Error "expected '*' package dependency to become an unconstrained registry dependency"
@@ -901,12 +911,17 @@ let test_package_json_roundtrips_registry_requirement = fun _ctx ->
     |> Result.expect ~msg:"expected package JSON to roundtrip"
   in
   match decoded.dependencies with
-  | [ { Riot_model.Package.source = {
-    workspace = false;
-    builtin = false;
-    path = None;
-    version = Some requirement
-  }; _ } ] ->
+  | [
+      {
+        Riot_model.Package.source = {
+          workspace = false;
+          builtin = false;
+          path = None;
+          version = Some requirement;
+        };
+        _;
+      };
+    ] ->
       Test.assert_equal ~expected:">= 1.2.3" ~actual:(Std.Version.requirement_to_string requirement);
       Ok ()
   | _ -> Error "expected registry dependency after JSON roundtrip"
@@ -927,12 +942,17 @@ std = ">= 1.2.3"
     |> Result.expect ~msg:"expected workspace manifest to parse"
   in
   match workspace_manifest.dependencies with
-  | [ { Riot_model.Package.source = {
-    workspace = false;
-    builtin = false;
-    path = None;
-    version = Some requirement
-  }; _ } ] ->
+  | [
+      {
+        Riot_model.Package.source = {
+          workspace = false;
+          builtin = false;
+          path = None;
+          version = Some requirement;
+        };
+        _;
+      };
+    ] ->
       Test.assert_equal ~expected:">= 1.2.3" ~actual:(Std.Version.requirement_to_string requirement);
       Ok ()
   | _ -> Error "expected a parsed workspace registry dependency requirement"
@@ -953,12 +973,17 @@ std = "*"
     |> Result.expect ~msg:"expected workspace manifest to parse"
   in
   match workspace_manifest.dependencies with
-  | [ { Riot_model.Package.source = {
-    workspace = false;
-    builtin = false;
-    path = None;
-    version = Some requirement
-  }; _ } ] ->
+  | [
+      {
+        Riot_model.Package.source = {
+          workspace = false;
+          builtin = false;
+          path = None;
+          version = Some requirement;
+        };
+        _;
+      };
+    ] ->
       Test.assert_equal ~expected:"*" ~actual:(Std.Version.requirement_to_string requirement);
       Ok ()
   | _ -> Error "expected '*' workspace dependency to become an unconstrained registry dependency"
@@ -977,7 +1002,10 @@ std = { version = 123 }
   match Riot_model.Workspace_manifest.of_toml manifest with
   | Error (
     Riot_model.Workspace_manifest.DependencyError (
-      Riot_model.Workspace_manifest.DependencyFieldMustBeString { dependency_name = "std"; field = Riot_model.Workspace_manifest.Version }
+      Riot_model.Workspace_manifest.DependencyFieldMustBeString {
+        dependency_name = "std";
+        field = Riot_model.Workspace_manifest.Version;
+      }
     )
   ) ->
       Ok ()
@@ -1083,9 +1111,20 @@ minttea = "not-a-version"
       | Error err -> Error (Riot_model.Workspace_manager.scan_error_message err)
       | Ok (_workspace, errors) -> (
           match errors with
-          | [ Riot_model.Workspace_manager.PackageFromTomlFailed { package; error = Riot_model.Package.InvalidDependency (
-            Riot_model.Package.InvalidDependencyRequirement { dependency_name; requirement; _ }
-          ); _ } ] when String.equal package "app"
+          | [
+              Riot_model.Workspace_manager.PackageFromTomlFailed {
+                package;
+                error =
+                  Riot_model.Package.InvalidDependency (
+                    Riot_model.Package.InvalidDependencyRequirement {
+                      dependency_name;
+                      requirement;
+                      _;
+                    }
+                  );
+                _;
+              };
+            ] when String.equal package "app"
           && String.equal dependency_name "minttea"
           && String.equal requirement "not-a-version" -> Ok ()
           | [ Riot_model.Workspace_manager.PackageFromTomlFailed { error; _ } ] ->
@@ -1400,7 +1439,10 @@ api_url = 42
   in
   match Riot_model.User_config.of_toml toml with
   | Error (
-    Riot_model.User_config.InvalidRegistryConfig { registry_name; error = Riot_model.User_config.FieldMustBeString Riot_model.User_config.Api_url }
+    Riot_model.User_config.InvalidRegistryConfig {
+      registry_name;
+      error = Riot_model.User_config.FieldMustBeString Riot_model.User_config.Api_url;
+    }
   ) when String.equal registry_name "pkgs.ml" ->
       Ok ()
   | Error err ->
@@ -1490,9 +1532,10 @@ max_size = "3 frogs"
         ~msg:"Failed to write .riot/config.toml";
       match Riot_model.Workspace_operational_config.load ~workspace_root:tmpdir with
       | Error (
-        Riot_model.Workspace_operational_config.InvalidConfig { error = CacheConfig (
-          InvalidMaxSize (UnsupportedUnit unit_name)
-        ); _ }
+        Riot_model.Workspace_operational_config.InvalidConfig {
+          error = CacheConfig (InvalidMaxSize (UnsupportedUnit unit_name));
+          _;
+        }
       ) when String.equal unit_name "frogs" ->
           Ok ()
       | Error err ->

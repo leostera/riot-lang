@@ -42,19 +42,34 @@ let test_diff_empty_vectors = fun _ctx ->
 let test_diff_added_elements = fun _ctx ->
   let diffs = diff_vectors (make_vec [ 1 ]) (make_vec [ 1; 2 ]) in
   match Diff.additions diffs with
-  | [ { path = [ Diff.Index 1 ]; kind = Diff.Added 2 } ] -> Ok ()
+  | [
+      {
+        path = [ Diff.Index 1 ];
+        kind = Diff.Added 2;
+      };
+    ] -> Ok ()
   | _ -> Error "Expected one added element"
 
 let test_diff_removed_elements = fun _ctx ->
   let diffs = diff_vectors (make_vec [ 1; 2 ]) (make_vec [ 1 ]) in
   match Diff.removals diffs with
-  | [ { path = [ Diff.Index 1 ]; kind = Diff.Removed 2 } ] -> Ok ()
+  | [
+      {
+        path = [ Diff.Index 1 ];
+        kind = Diff.Removed 2;
+      };
+    ] -> Ok ()
   | _ -> Error "Expected one removed element"
 
 let test_diff_changed_elements = fun _ctx ->
   let diffs = diff_vectors (make_vec [ 1; 2 ]) (make_vec [ 1; 3 ]) in
   match Diff.changes diffs with
-  | [ { path = [ Diff.Index 1 ]; kind = Diff.Changed (2, 3) } ] -> Ok ()
+  | [
+      {
+        path = [ Diff.Index 1 ];
+        kind = Diff.Changed (2, 3);
+      };
+    ] -> Ok ()
   | _ -> Error "Expected one changed element"
 
 let test_diff_different_lengths = fun _ctx ->

@@ -222,7 +222,11 @@ let test_serialize_rejects_invalid_initial_window_setting = fun _ctx ->
   let frame = Frame.settings [ Frame.InitialWindowSize 2_147_483_648; ] in
   match Serializer.serialize_frame frame with
   | Error (
-    Serializer.InvalidSettingValue { setting = Serializer.InitialWindowSize; value = 2_147_483_648; expected = Serializer.InitialWindowSizeRange }
+    Serializer.InvalidSettingValue {
+      setting = Serializer.InitialWindowSize;
+      value = 2_147_483_648;
+      expected = Serializer.InitialWindowSizeRange;
+    }
   ) ->
       Result.Ok ()
   | Error error -> Result.Error ("Wrong serializer error: " ^ Serializer.error_to_string error)
@@ -232,7 +236,11 @@ let test_serialize_rejects_invalid_max_frame_size_setting = fun _ctx ->
   let frame = Frame.settings [ Frame.MaxFrameSize 16_383; ] in
   match Serializer.serialize_frame frame with
   | Error (
-    Serializer.InvalidSettingValue { setting = Serializer.MaxFrameSize; value = 16_383; expected = Serializer.MaxFrameSizeRange }
+    Serializer.InvalidSettingValue {
+      setting = Serializer.MaxFrameSize;
+      value = 16_383;
+      expected = Serializer.MaxFrameSizeRange;
+    }
   ) ->
       Result.Ok ()
   | Error error -> Result.Error ("Wrong serializer error: " ^ Serializer.error_to_string error)
@@ -242,7 +250,11 @@ let test_serialize_rejects_negative_uint32_setting = fun _ctx ->
   let frame = Frame.settings [ Frame.MaxHeaderListSize (-1); ] in
   match Serializer.serialize_frame frame with
   | Error (
-    Serializer.InvalidSettingValue { setting = Serializer.MaxHeaderListSize; value = -1; expected = Serializer.Unsigned32 }
+    Serializer.InvalidSettingValue {
+      setting = Serializer.MaxHeaderListSize;
+      value = -1;
+      expected = Serializer.Unsigned32;
+    }
   ) ->
       Result.Ok ()
   | Error error -> Result.Error ("Wrong serializer error: " ^ Serializer.error_to_string error)
@@ -350,7 +362,11 @@ let test_serialize_rejects_zero_stream_data_frame = fun _ctx ->
   let frame = Frame.data ~stream_id:0 "hello" in
   match Serializer.serialize_frame frame with
   | Error (
-    Serializer.InvalidStreamId { frame_type = Frame.Data; stream_id = 0; expected = Serializer.MustBeNonZero }
+    Serializer.InvalidStreamId {
+      frame_type = Frame.Data;
+      stream_id = 0;
+      expected = Serializer.MustBeNonZero;
+    }
   ) ->
       Result.Ok ()
   | Error error -> Result.Error ("Wrong serializer error: " ^ Serializer.error_to_string error)
@@ -367,7 +383,11 @@ let test_serialize_rejects_nonzero_stream_settings_frame = fun _ctx ->
   in
   match Serializer.serialize_frame frame with
   | Error (
-    Serializer.InvalidStreamId { frame_type = Frame.Settings; stream_id = 1; expected = Serializer.MustBeZero }
+    Serializer.InvalidStreamId {
+      frame_type = Frame.Settings;
+      stream_id = 1;
+      expected = Serializer.MustBeZero;
+    }
   ) ->
       Result.Ok ()
   | Error error -> Result.Error ("Wrong serializer error: " ^ Serializer.error_to_string error)
@@ -593,8 +613,13 @@ let test_server_preface_disables_push_by_default = fun _ctx ->
   match Parser.parse_frame preface with
   | Parser.Done { value = { Frame.payload = Frame.SettingsPayload settings; _ }; remaining = "" } -> (
       match settings with
-      | [ Frame.HeaderTableSize _; Frame.EnablePush false; Frame.MaxConcurrentStreams _; Frame.InitialWindowSize _; Frame.MaxFrameSize _ ] ->
-          Result.Ok ()
+      | [
+          Frame.HeaderTableSize _;
+          Frame.EnablePush false;
+          Frame.MaxConcurrentStreams _;
+          Frame.InitialWindowSize _;
+          Frame.MaxFrameSize _;
+        ] -> Result.Ok ()
       | _ -> Result.Error "server preface did not advertise EnablePush false"
     )
   | Parser.Done _ -> Result.Error "server preface left trailing bytes or wrong payload"
@@ -660,8 +685,9 @@ let test_process_data_buffers_split_frame_header = fun _ctx ->
       Result.Error "split frame header should not emit events before the frame is complete"
   | Ok _ -> (
       match Connection.process_data conn (Std.IO.Bytes.from_string rest) with
-      | Ok [ Connection.SettingsReceived [ Frame.HeaderTableSize size ] ] when Int.equal size 1_024 ->
-          Result.Ok ()
+      | Ok [
+          Connection.SettingsReceived [ Frame.HeaderTableSize size ];
+        ] when Int.equal size 1_024 -> Result.Ok ()
       | Ok _ -> Result.Error "split frame header did not emit the expected settings event"
       | Error err -> Result.Error (Connection.error_to_string err)
     )
@@ -678,10 +704,12 @@ let test_process_data_buffers_split_frame_payload = fun _ctx ->
       Result.Error "split frame payload should not emit events before the frame is complete"
   | Ok _ -> (
       match Connection.process_data conn (Std.IO.Bytes.from_string rest) with
-      | Ok [ Connection.SettingsReceived [ Frame.HeaderTableSize table_size; Frame.MaxFrameSize frame_size ] ] when Int.equal
-        table_size
-        1_024
-      && Int.equal frame_size 16_384 -> Result.Ok ()
+      | Ok [
+          Connection.SettingsReceived [
+              Frame.HeaderTableSize table_size;
+              Frame.MaxFrameSize frame_size;
+            ];
+        ] when Int.equal table_size 1_024 && Int.equal frame_size 16_384 -> Result.Ok ()
       | Ok _ -> Result.Error "split frame payload did not emit the expected settings event"
       | Error err -> Result.Error (Connection.error_to_string err)
     )
@@ -698,7 +726,9 @@ let test_process_data_buffers_frame_one_byte_at_a_time = fun _ctx ->
       match Connection.process_data conn (Std.IO.Bytes.from_string byte) with
       | Error err -> Result.Error (Connection.error_to_string err)
       | Ok [] -> loop (index + 1)
-      | Ok [ Connection.SettingsReceived [ Frame.HeaderTableSize size ] ] when Int.equal size 2_048 ->
+      | Ok [
+          Connection.SettingsReceived [ Frame.HeaderTableSize size ];
+        ] when Int.equal size 2_048 ->
           if index = String.length bytes - 1 then
             Result.Ok ()
           else
@@ -729,8 +759,13 @@ let test_process_data_buffers_split_continuation_payload = fun _ctx ->
           Result.Error "partial CONTINUATION should not emit events"
       | Ok _ -> (
           match Connection.process_data conn (Std.IO.Bytes.from_string rest) with
-          | Ok [ Connection.HeadersReceived { stream_id = 1; headers = [ { Hpack.name = "x-split-continuation"; value = "payload" } ]; end_stream = false } ] ->
-              Result.Ok ()
+          | Ok [
+              Connection.HeadersReceived {
+                stream_id = 1;
+                headers = [ { Hpack.name = "x-split-continuation"; value = "payload" } ];
+                end_stream = false;
+              };
+            ] -> Result.Ok ()
           | Ok _ -> Result.Error "split CONTINUATION did not emit expected headers"
           | Error err ->
               Result.Error ("split CONTINUATION failed: " ^ Connection.error_to_string err)
@@ -752,14 +787,18 @@ let test_process_data_clears_pending_input_after_parse_error = fun _ctx ->
       match Connection.process_data conn (Std.IO.Bytes.from_string rest) with
       | Error (
         Connection.ParserError (
-          Parser.InvalidPayloadLength { frame_type = Frame.Ping; expected = Parser.Exactly 8; actual = 7 }
+          Parser.InvalidPayloadLength {
+            frame_type = Frame.Ping;
+            expected = Parser.Exactly 8;
+            actual = 7;
+          }
         )
       ) ->
           (
               match Connection.process_data conn (Std.IO.Bytes.from_string valid_settings) with
-              | Ok [ Connection.SettingsReceived [ Frame.HeaderTableSize size ] ] when Int.equal
-                size
-                1_024 -> Result.Ok ()
+              | Ok [
+                  Connection.SettingsReceived [ Frame.HeaderTableSize size ];
+                ] when Int.equal size 1_024 -> Result.Ok ()
               | Ok _ -> Result.Error "valid frame after parse error emitted unexpected events"
               | Error err ->
                   Result.Error ("pending input was not cleared after parse error: "
@@ -775,7 +814,12 @@ let test_reader_parser_parses_full_data_frame = fun _ctx ->
   let parser = ParserReader.create () in
   let reader = Std.IO.Reader.from_string bytes in
   match ParserReader.parse parser reader with
-  | ParserReader.Frame { Frame.frame_type = Frame.Data; stream_id = 1; payload = Frame.DataPayload { data = "hello"; pad_length = None }; _ } ->
+  | ParserReader.Frame {
+      Frame.frame_type = Frame.Data;
+      stream_id = 1;
+      payload = Frame.DataPayload { data = "hello"; pad_length = None };
+      _;
+    } ->
       Result.Ok ()
   | ParserReader.Frame _ -> Result.Error "reader parser returned the wrong DATA frame"
   | ParserReader.Need_more -> Result.Error "reader parser unexpectedly needed more data"
@@ -869,7 +913,11 @@ let test_parse_settings_rejects_initial_window_overflow = fun _ctx ->
   let bytes = settings_frame_with_payload "\x00\x04\x80\x00\x00\x00" in
   match Parser.parse_frame bytes with
   | Parser.Error (
-    Parser.InvalidSettingValue { setting = Parser.InitialWindowSize; value = 2_147_483_648; expected = Parser.InitialWindowSizeRange }
+    Parser.InvalidSettingValue {
+      setting = Parser.InitialWindowSize;
+      value = 2_147_483_648;
+      expected = Parser.InitialWindowSizeRange;
+    }
   ) ->
       Result.Ok ()
   | Parser.Error err -> Result.Error ("Wrong parse error: " ^ Parser.error_to_string err)
@@ -880,7 +928,11 @@ let test_parse_settings_rejects_small_max_frame_size = fun _ctx ->
   let bytes = settings_frame_with_payload "\x00\x05\x00\x00\x3f\xff" in
   match Parser.parse_frame bytes with
   | Parser.Error (
-    Parser.InvalidSettingValue { setting = Parser.MaxFrameSize; value = 16_383; expected = Parser.MaxFrameSizeRange }
+    Parser.InvalidSettingValue {
+      setting = Parser.MaxFrameSize;
+      value = 16_383;
+      expected = Parser.MaxFrameSizeRange;
+    }
   ) ->
       Result.Ok ()
   | Parser.Error err -> Result.Error ("Wrong parse error: " ^ Parser.error_to_string err)
@@ -891,7 +943,11 @@ let test_parse_settings_rejects_large_max_frame_size = fun _ctx ->
   let bytes = settings_frame_with_payload "\x00\x05\x01\x00\x00\x00" in
   match Parser.parse_frame bytes with
   | Parser.Error (
-    Parser.InvalidSettingValue { setting = Parser.MaxFrameSize; value = 16_777_216; expected = Parser.MaxFrameSizeRange }
+    Parser.InvalidSettingValue {
+      setting = Parser.MaxFrameSize;
+      value = 16_777_216;
+      expected = Parser.MaxFrameSizeRange;
+    }
   ) ->
       Result.Ok ()
   | Parser.Error err -> Result.Error ("Wrong parse error: " ^ Parser.error_to_string err)
@@ -987,9 +1043,13 @@ let test_parse_headers_rejects_self_priority_dependency = fun _ctx ->
 
 let test_parse_rst_stream_preserves_unknown_error_code = fun _ctx ->
   match Parser.parse_frame "\x00\x00\x04\x03\x00\x00\x00\x00\x01\xfe\xed\xbe\xef" with
-  | Parser.Done { value = { Frame.payload = Frame.RstStreamPayload (
-    Frame.UnknownErrorCode code
-  ); _ }; remaining = "" } when Int.equal code 0xfeed_beef ->
+  | Parser.Done {
+      value = {
+        Frame.payload = Frame.RstStreamPayload (Frame.UnknownErrorCode code);
+        _;
+      };
+      remaining = "";
+    } when Int.equal code 0xfeed_beef ->
       Result.Ok ()
   | Parser.Done _ -> Result.Error "RST_STREAM unknown error code was not preserved"
   | Parser.Need_more -> Result.Error "RST_STREAM unexpectedly needed more data"
@@ -997,9 +1057,14 @@ let test_parse_rst_stream_preserves_unknown_error_code = fun _ctx ->
 
 let test_parse_goaway_preserves_unknown_error_code = fun _ctx ->
   match Parser.parse_frame "\x00\x00\x08\x07\x00\x00\x00\x00\x00\x00\x00\x00\x00\xfe\xed\xbe\xef" with
-  | Parser.Done { value = { Frame.payload = Frame.GoawayPayload { error_code = Frame.UnknownErrorCode code; _ }; _ }; remaining = "" } when Int.equal
-    code
-    0xfeed_beef -> Result.Ok ()
+  | Parser.Done {
+      value = {
+        Frame.payload = Frame.GoawayPayload { error_code = Frame.UnknownErrorCode code; _ };
+        _;
+      };
+      remaining = "";
+    } when Int.equal code 0xfeed_beef ->
+      Result.Ok ()
   | Parser.Done _ -> Result.Error "GOAWAY unknown error code was not preserved"
   | Parser.Need_more -> Result.Error "GOAWAY unexpectedly needed more data"
   | Parser.Error err -> Result.Error ("GOAWAY parse failed: " ^ Parser.error_to_string err)
@@ -1015,7 +1080,15 @@ let test_parse_window_update_allows_stream_zero = fun _ctx ->
 
 let test_parse_unknown_frame_preserves_payload = fun _ctx ->
   match Parser.parse_frame "\x00\x00\x03\x0b\x00\x00\x00\x00\x00abc" with
-  | Parser.Done { value = { Frame.frame_type = Frame.Unknown 0x0b; stream_id = 0; payload = Frame.UnknownPayload "abc"; _ }; remaining = "" } ->
+  | Parser.Done {
+      value = {
+        Frame.frame_type = Frame.Unknown 0x0b;
+        stream_id = 0;
+        payload = Frame.UnknownPayload "abc";
+        _;
+      };
+      remaining = "";
+    } ->
       Result.Ok ()
   | Parser.Done _ -> Result.Error "Unknown frame parsed with the wrong payload"
   | Parser.Need_more -> Result.Error "Unknown frame unexpectedly needed more data"
@@ -1036,7 +1109,10 @@ let test_process_data_rejects_push_promise = fun _ctx ->
   let frame = Frame.push_promise ~stream_id:2 ~promised_stream_id:4 "abc" in
   match Connection.process_data conn (Std.IO.Bytes.from_string (serialize_frame frame)) with
   | Error (
-    Connection.UnsupportedFrameReceived { frame_type = Frame.PushPromise; payload = Frame.PushPromisePayload { promised_stream_id = 4; header_block_fragment = "abc"; _ } }
+    Connection.UnsupportedFrameReceived {
+      frame_type = Frame.PushPromise;
+      payload = Frame.PushPromisePayload { promised_stream_id = 4; header_block_fragment = "abc"; _ };
+    }
   ) ->
       Result.Ok ()
   | Error err -> Result.Error ("Wrong connection error: " ^ Connection.error_to_string err)
@@ -1086,9 +1162,14 @@ let test_process_data_accepts_split_header_block = fun _ctx ->
     conn
     (Std.IO.Bytes.from_string
       (serialize_frame headers ^ serialize_frame continuation ^ serialize_frame data)) with
-  | Ok [ Connection.HeadersReceived { stream_id = 1; headers = [ { Hpack.name = ":method"; value = "GET" } ]; end_stream = false }; Connection.DataReceived { stream_id = 1; data; end_stream = false } ] when Std.IO.Bytes.to_string
-    data
-  = "ok" -> Result.Ok ()
+  | Ok [
+      Connection.HeadersReceived {
+        stream_id = 1;
+        headers = [ { Hpack.name = ":method"; value = "GET" } ];
+        end_stream = false;
+      };
+      Connection.DataReceived { stream_id = 1; data; end_stream = false };
+    ] when Std.IO.Bytes.to_string data = "ok" -> Result.Ok ()
   | Ok _ -> Result.Error "Split header block did not emit the expected headers and data events"
   | Error err -> Result.Error ("Split header block failed: " ^ Connection.error_to_string err)
 
@@ -1108,9 +1189,14 @@ let test_process_data_accepts_data_after_headers = fun _ctx ->
   match Connection.process_data
     conn
     (Std.IO.Bytes.from_string (serialize_frame headers ^ serialize_frame data)) with
-  | Ok [ Connection.HeadersReceived { stream_id = 1; headers = [ { Hpack.name = ":method"; value = "GET" } ]; end_stream = false }; Connection.DataReceived { stream_id = 1; data; end_stream = false } ] when Std.IO.Bytes.to_string
-    data
-  = "hello" -> Result.Ok ()
+  | Ok [
+      Connection.HeadersReceived {
+        stream_id = 1;
+        headers = [ { Hpack.name = ":method"; value = "GET" } ];
+        end_stream = false;
+      };
+      Connection.DataReceived { stream_id = 1; data; end_stream = false };
+    ] when Std.IO.Bytes.to_string data = "hello" -> Result.Ok ()
   | Ok _ -> Result.Error "DATA after HEADERS did not emit the expected events"
   | Error err -> Result.Error ("DATA after HEADERS failed: " ^ Connection.error_to_string err)
 
@@ -1148,7 +1234,11 @@ let test_process_data_rejects_stream_flow_control_excess = fun _ctx ->
     conn
     (Std.IO.Bytes.from_string (serialize_frame headers ^ serialize_frame data)) with
   | Error (
-    Connection.FlowControlWindowExceeded { scope = Connection.StreamWindow { stream_id = 1 }; data_size = 4; window_size = 3 }
+    Connection.FlowControlWindowExceeded {
+      scope = Connection.StreamWindow { stream_id = 1 };
+      data_size = 4;
+      window_size = 3;
+    }
   ) ->
       Result.Ok ()
   | Error err -> Result.Error ("Wrong connection error: " ^ Connection.error_to_string err)
@@ -1198,8 +1288,13 @@ let test_process_data_accepts_response_on_existing_client_stream = fun _ctx ->
       let headers = Frame.headers ~stream_id:1 ~end_headers:true header_block in
       (
         match Connection.process_data conn (Std.IO.Bytes.from_string (serialize_frame headers)) with
-        | Ok [ Connection.HeadersReceived { stream_id = 1; headers = [ { Hpack.name = ":status"; value = "200" } ]; end_stream = false } ] ->
-            Result.Ok ()
+        | Ok [
+            Connection.HeadersReceived {
+              stream_id = 1;
+              headers = [ { Hpack.name = ":status"; value = "200" } ];
+              end_stream = false;
+            };
+          ] -> Result.Ok ()
         | Ok _ -> Result.Error "Client response HEADERS emitted unexpected events"
         | Error err ->
             Result.Error ("Client response HEADERS failed: " ^ Connection.error_to_string err)
@@ -1221,7 +1316,7 @@ let test_process_data_rejects_peer_stream_over_max_concurrent = fun _ctx ->
           initiator = Connection.PeerInitiated;
           stream_id = 3;
           current = 1;
-          limit = 1
+          limit = 1;
         }
       ) ->
           Result.Ok ()
@@ -1240,8 +1335,11 @@ let test_process_data_frees_peer_capacity_after_rst_stream = fun _ctx ->
     conn
     (Std.IO.Bytes.from_string
       (serialize_frame first_headers ^ serialize_frame rst_stream ^ serialize_frame second_headers)) with
-  | Ok [ Connection.HeadersReceived { stream_id = 1; _ }; Connection.RstStreamReceived { stream_id = 1; error_code = Frame.Cancel }; Connection.HeadersReceived { stream_id = 3; _ } ] ->
-      Result.Ok ()
+  | Ok [
+      Connection.HeadersReceived { stream_id = 1; _ };
+      Connection.RstStreamReceived { stream_id = 1; error_code = Frame.Cancel };
+      Connection.HeadersReceived { stream_id = 3; _ };
+    ] -> Result.Ok ()
   | Ok _ -> Result.Error "RST_STREAM did not free peer stream capacity as expected"
   | Error err ->
       Result.Error ("Peer stream after RST_STREAM failed: " ^ Connection.error_to_string err)
@@ -1261,7 +1359,7 @@ let test_create_stream_obeys_remote_max_concurrent = fun _ctx ->
               initiator = Connection.LocalInitiated;
               stream_id = 3;
               current = 1;
-              limit = 1
+              limit = 1;
             }
           ) ->
               Result.Ok ()
@@ -1347,9 +1445,11 @@ let test_process_data_allows_existing_stream_after_goaway = fun _ctx ->
     conn
     (Std.IO.Bytes.from_string
       (serialize_frame headers ^ serialize_frame goaway ^ serialize_frame data)) with
-  | Ok [ Connection.HeadersReceived { stream_id = 1; _ }; Connection.GoawayReceived { last_stream_id = 1; error_code = Frame.NoError; _ }; Connection.DataReceived { stream_id = 1; data; _ } ] when Std.IO.Bytes.to_string
-    data
-  = "ok" -> Result.Ok ()
+  | Ok [
+      Connection.HeadersReceived { stream_id = 1; _ };
+      Connection.GoawayReceived { last_stream_id = 1; error_code = Frame.NoError; _ };
+      Connection.DataReceived { stream_id = 1; data; _ };
+    ] when Std.IO.Bytes.to_string data = "ok" -> Result.Ok ()
   | Ok _ -> Result.Error "Existing stream after GOAWAY emitted unexpected events"
   | Error err ->
       Result.Error ("Existing stream after GOAWAY failed: " ^ Connection.error_to_string err)
@@ -1389,7 +1489,7 @@ let test_process_data_rejects_connection_window_overflow = fun _ctx ->
           scope = Connection.ConnectionWindow;
           increment = 2_147_483_647;
           window_size = 65_535;
-          max_size = 2_147_483_647
+          max_size = 2_147_483_647;
         }
       ) ->
           Result.Ok ()
@@ -1413,7 +1513,7 @@ let test_process_data_rejects_stream_window_overflow = fun _ctx ->
           scope = Connection.StreamWindow { stream_id = 1 };
           increment = 2_147_483_647;
           window_size = 65_535;
-          max_size = 2_147_483_647
+          max_size = 2_147_483_647;
         }
       ) ->
           Result.Ok ()
@@ -1452,7 +1552,11 @@ let test_process_data_rejects_data_after_headers_end_stream = fun _ctx ->
     conn
     (Std.IO.Bytes.from_string (serialize_frame headers ^ serialize_frame data)) with
   | Error (
-    Connection.FrameAfterStreamEnd { stream_id = 1; frame_type = Frame.Data; state = Connection.StreamHalfClosedRemote }
+    Connection.FrameAfterStreamEnd {
+      stream_id = 1;
+      frame_type = Frame.Data;
+      state = Connection.StreamHalfClosedRemote;
+    }
   ) ->
       Result.Ok ()
   | Error err -> Result.Error ("Wrong connection error: " ^ Connection.error_to_string err)
@@ -1469,7 +1573,11 @@ let test_process_data_rejects_data_after_data_end_stream = fun _ctx ->
     (Std.IO.Bytes.from_string
       (serialize_frame headers ^ serialize_frame end_data ^ serialize_frame late_data)) with
   | Error (
-    Connection.FrameAfterStreamEnd { stream_id = 1; frame_type = Frame.Data; state = Connection.StreamHalfClosedRemote }
+    Connection.FrameAfterStreamEnd {
+      stream_id = 1;
+      frame_type = Frame.Data;
+      state = Connection.StreamHalfClosedRemote;
+    }
   ) ->
       Result.Ok ()
   | Error err -> Result.Error ("Wrong connection error: " ^ Connection.error_to_string err)
@@ -1486,7 +1594,11 @@ let test_process_data_rejects_headers_after_rst_stream = fun _ctx ->
     (Std.IO.Bytes.from_string
       (serialize_frame headers ^ serialize_frame rst_stream ^ serialize_frame late_headers)) with
   | Error (
-    Connection.FrameAfterStreamEnd { stream_id = 1; frame_type = Frame.Headers; state = Connection.StreamClosed }
+    Connection.FrameAfterStreamEnd {
+      stream_id = 1;
+      frame_type = Frame.Headers;
+      state = Connection.StreamClosed;
+    }
   ) ->
       Result.Ok ()
   | Error err -> Result.Error ("Wrong connection error: " ^ Connection.error_to_string err)
@@ -1501,7 +1613,11 @@ let test_process_data_rejects_headers_after_headers_end_stream = fun _ctx ->
     conn
     (Std.IO.Bytes.from_string (serialize_frame headers ^ serialize_frame late_headers)) with
   | Error (
-    Connection.FrameAfterStreamEnd { stream_id = 1; frame_type = Frame.Headers; state = Connection.StreamHalfClosedRemote }
+    Connection.FrameAfterStreamEnd {
+      stream_id = 1;
+      frame_type = Frame.Headers;
+      state = Connection.StreamHalfClosedRemote;
+    }
   ) ->
       Result.Ok ()
   | Error err -> Result.Error ("Wrong connection error: " ^ Connection.error_to_string err)

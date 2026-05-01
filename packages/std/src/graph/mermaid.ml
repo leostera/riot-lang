@@ -32,7 +32,11 @@ type node_shape =
 
 (* [\text/] *)
 
-type node = { id: string; label: string; shape: node_shape }
+type node = {
+  id: string;
+  label: string;
+  shape: node_shape;
+}
 
 type edge_style =
   | Solid

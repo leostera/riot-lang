@@ -204,25 +204,24 @@ let view = fun tbl ->
       |> List.enumerate
       |> List.for_each
         ~fn:(fun (idx, row_data) ->
-          if idx >= start_idx && idx <= end_idx then
-            begin
-              (* Pad row to match column count *)
-              let padded_row =
-                let col_count = List.length tbl.columns in
-                let row_len = List.length row_data in
-                if row_len < col_count then
-                  let padding = Array.to_list (Array.make ~count:(col_count - row_len) ~value:"") in
-                  row_data @ padding
-                else if row_len > col_count then
-                  List.take row_data ~len:col_count
-                else
-                  row_data
-              in
-              if not !first_row then
-                B.add_char buf '\n';
-              first_row := false;
-              let is_selected = tbl.focused && idx = tbl.cursor in
-              B.add_string buf (render_row tbl.columns padded_row is_selected tbl.cursor_char)
-            end)
+          if idx >= start_idx && idx <= end_idx then (
+            (* Pad row to match column count *)
+            let padded_row =
+              let col_count = List.length tbl.columns in
+              let row_len = List.length row_data in
+              if row_len < col_count then
+                let padding = Array.to_list (Array.make ~count:(col_count - row_len) ~value:"") in
+                row_data @ padding
+              else if row_len > col_count then
+                List.take row_data ~len:col_count
+              else
+                row_data
+            in
+            if not !first_row then
+              B.add_char buf '\n';
+            first_row := false;
+            let is_selected = tbl.focused && idx = tbl.cursor in
+            B.add_string buf (render_row tbl.columns padded_row is_selected tbl.cursor_char)
+          ))
     end;
   B.contents buf

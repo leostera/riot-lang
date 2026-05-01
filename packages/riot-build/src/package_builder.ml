@@ -170,11 +170,11 @@ let apply_graph_update = fun package_graph package_key package graph_update ->
             hash;
           }
       | Some (Cached_package {
-        hash;
-        artifact;
-        depset;
-        exports
-      }) ->
+                hash;
+                artifact;
+                depset;
+                exports;
+              }) ->
           node.value <- Riot_planner.Package_graph.Cached {
             package;
             scope;
@@ -184,13 +184,13 @@ let apply_graph_update = fun package_graph package_key package graph_update ->
             exports;
           }
       | Some (Built_package {
-        hash;
-        artifact;
-        depset;
-        module_graph;
-        action_graph;
-        status
-      }) ->
+                hash;
+                artifact;
+                depset;
+                module_graph;
+                action_graph;
+                status;
+              }) ->
           node.value <- Riot_planner.Package_graph.Built {
             package;
             scope;
@@ -453,7 +453,7 @@ let plan_detailed = fun
       hash = package_hash;
       artifact;
       depset;
-      exports
+      exports;
     }
   ) ->
       let duration = Instant.duration_since ~earlier:start (Instant.now ()) in
@@ -506,7 +506,7 @@ let plan_detailed = fun
       hash = package_hash;
       depset;
       module_graph;
-      action_graph
+      action_graph;
     }
   ) ->
       (

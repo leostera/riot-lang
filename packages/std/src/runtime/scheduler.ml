@@ -355,15 +355,13 @@ let enqueue_on_worker = fun t worker_id slot ->
      process" across wakeups, local reschedules, and steals.
   *)
   if is_valid_worker_id t worker_id then
-    if try_mark_slot_queued slot then
-      (
-        let worker = worker_by_id t worker_id in
-        Runtime_mutex.lock worker.lock;
-        Queue.push worker.queue ~value:slot;
-        Runtime_condition.signal worker.cond;
-        Runtime_mutex.unlock worker.lock
-      )
-    else if Runtime_process.is_runnable (slot_process slot) then (
+    if try_mark_slot_queued slot then (
+      let worker = worker_by_id t worker_id in
+      Runtime_mutex.lock worker.lock;
+      Queue.push worker.queue ~value:slot;
+      Runtime_condition.signal worker.cond;
+      Runtime_mutex.unlock worker.lock
+    ) else if Runtime_process.is_runnable (slot_process slot) then (
       increment t.counters.duplicate_enqueue_races;
       trace
         (Kernel.String.concat
@@ -449,11 +447,10 @@ let add_process_slot = fun t slot ->
     pid
     (fun shard ->
       let replaced = Runtime_hashmap.insert shard.processes ~key:pid ~value:slot in
-      if Option.is_none replaced then
-        (
-          let _ = Atomic.fetch_and_add t.processes.size 1 in
-          ()
-        ))
+      if Option.is_none replaced then (
+        let _ = Atomic.fetch_and_add t.processes.size 1 in
+        ()
+      ))
 
 let remove_process_slot = fun t pid ->
   with_process_shard
@@ -461,11 +458,10 @@ let remove_process_slot = fun t pid ->
     pid
     (fun shard ->
       let removed = Runtime_hashmap.remove shard.processes ~key:pid in
-      if Option.is_some removed then
-        (
-          let _ = Atomic.fetch_and_add t.processes.size (-1) in
-          ()
-        ))
+      if Option.is_some removed then (
+        let _ = Atomic.fetch_and_add t.processes.size (-1) in
+        ()
+      ))
 
 let process_count = fun t -> Atomic.get t.processes.size
 
@@ -808,11 +804,11 @@ let perform = fun t proc ->
     | Receive { selector; timeout } -> handle_receive k t proc ~selector ~timeout
     | Yield -> k Yield
     | Syscall {
-      name;
-      interest;
-      source;
-      timeout
-    } ->
+        name;
+        interest;
+        source;
+        timeout;
+      } ->
         handle_syscall k t proc name interest source timeout
     | _ -> k Suspend
   in
@@ -872,16 +868,14 @@ let handle_exit_proc = fun t proc reason ->
   clear_receive_timeout t proc;
   remove_process_slot t pid;
   Runtime_process.mark_as_finalized proc;
-  if Runtime_process.is_main proc then
-    (
-      let status =
-        match reason with
-        | Ok () -> 0
-        | Error _ -> 1
-      in
-      request_shutdown t ~status
-    )
-  else
+  if Runtime_process.is_main proc then (
+    let status =
+      match reason with
+      | Ok () -> 0
+      | Error _ -> 1
+    in
+    request_shutdown t ~status
+  ) else
     maybe_shutdown_if_empty t
 
 let handle_run_proc = fun t ctx slot ->
@@ -1167,12 +1161,11 @@ let process_timers = fun t ->
                       ^ Runtime_pid.to_string (Runtime_process.pid proc))
                 | _ -> ()
               );
-              if Runtime_process.is_alive proc then
-                (
-                  match get_process_slot t (Runtime_process.pid proc) with
-                  | None -> ()
-                  | Some slot -> wake_process t slot
-                )
+              if Runtime_process.is_alive proc then (
+                match get_process_slot t (Runtime_process.pid proc) with
+                | None -> ()
+                | Some slot -> wake_process t slot
+              )
           | Runtime_timer.Send_message (target_pid, msg) -> send_internal t target_pid msg
         );
         match timer.mode with
@@ -1182,21 +1175,21 @@ let process_timers = fun t ->
 let handle_reactor_command = fun t cmd ->
   match cmd with
   | Add_timer {
-    now;
-    duration_nanos;
-    mode;
-    action;
-    reply
-  } ->
+      now;
+      duration_nanos;
+      mode;
+      action;
+      reply;
+    } ->
       let timer_id = Timer_wheel.add_timer t.timer_wheel ~now ~duration_nanos ~mode ~action in
       resolve_response reply timer_id
   | Cancel_timer timer_id -> Timer_wheel.cancel_timer t.timer_wheel timer_id
   | Register_io {
-    token;
-    interest;
-    source;
-    reply
-  } ->
+      token;
+      interest;
+      source;
+      reply;
+    } ->
       resolve_response
         reply
         (

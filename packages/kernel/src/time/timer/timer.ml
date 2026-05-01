@@ -1,9 +1,17 @@
 open Prelude
 
 type error =
-  | InvalidTimeoutNs of { timeout_ns: int64 }
+  | InvalidTimeoutNs of {
+      timeout_ns: int64;
+    }
 
-type t = { id: int; timeout_ns: int64; timeout_secs: int; timeout_nanos: int; repeat: bool }
+type t = {
+  id: int;
+  timeout_ns: int64;
+  timeout_secs: int;
+  timeout_nanos: int;
+  repeat: bool;
+}
 
 type next_id = { mutable value: int }
 

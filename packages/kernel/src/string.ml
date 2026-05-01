@@ -182,9 +182,9 @@ let trim = fun value ->
       index
   in
   let rec find_end index =
-    if index < 0 then
+    if index < 0 then (
       (-1)
-    else if is_trim_char (unsafe_get value index) then
+    ) else if is_trim_char (unsafe_get value index) then
       find_end (index - 1)
     else
       index

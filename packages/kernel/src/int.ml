@@ -80,18 +80,17 @@ let to_string = fun value ->
     in
     let out = Caml_runtime.bytes_create width in
     let rec fill index current =
-      if current != 0 then
-        (
-          let digit = current mod 10 in
-          let digit =
-            if digit < 0 then
-              -digit
-            else
-              digit
-          in
-          Caml_runtime.bytes_set out index (Caml_runtime.char_of_int (48 + digit));
-          fill (index - 1) (current / 10)
-        )
+      if current != 0 then (
+        let digit = current mod 10 in
+        let digit =
+          if digit < 0 then
+            -digit
+          else
+            digit
+        in
+        Caml_runtime.bytes_set out index (Caml_runtime.char_of_int (48 + digit));
+        fill (index - 1) (current / 10)
+      )
     in
     if negative then
       Caml_runtime.bytes_set out 0 '-';

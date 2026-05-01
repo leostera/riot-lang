@@ -634,8 +634,7 @@ let test_expression_poly_variant_payload_keeps_field_access = fun _ctx ->
 
 let test_assert_and_lazy_parse_as_regular_applications = fun _ctx ->
   let root =
-    parse_ml
-      {ocaml|let checked = assert ready
+    parse_ml {ocaml|let checked = assert ready
 let delayed = lazy compute
 |ocaml}
     |> Result.expect ~msg:"expected parse source file"
@@ -1218,7 +1217,11 @@ let test_quoted_poly_let_annotation_views = fun _ctx ->
               );
               (
                 match Ast.TypeExpr.view ret with
-                | Ast.TypeExpr.Arrow { label = Some { name = Some label; _ }; arg = labeled_annotation; ret = _ } ->
+                | Ast.TypeExpr.Arrow {
+                    label = Some { name = Some label; _ };
+                    arg = labeled_annotation;
+                    ret = _;
+                  } ->
                     Test.assert_equal ~expected:"fields" ~actual:(Ast.Token.text label);
                     (
                       match Ast.TypeExpr.view labeled_annotation with
@@ -1408,12 +1411,16 @@ let test_type_declaration_body_group_views = fun _ctx ->
             let payload_shape =
               match rhs with
               | Ast.VariantConstructor.Plain -> "none"
-              | Ast.VariantConstructor.Payload { payload = Ast.VariantConstructor.TypeExpr payload; _ } -> (
-                  match Ast.TypeExpr.view payload with
-                  | Ast.TypeExpr.Ident _ -> "ident"
-                  | Ast.TypeExpr.Tuple _ -> "tuple"
-                  | _ -> "other"
-                )
+              | Ast.VariantConstructor.Payload {
+                  payload = Ast.VariantConstructor.TypeExpr payload;
+                  _;
+                } ->
+                  (
+                      match Ast.TypeExpr.view payload with
+                      | Ast.TypeExpr.Ident _ -> "ident"
+                      | Ast.TypeExpr.Tuple _ -> "tuple"
+                      | _ -> "other"
+                    )
               | Ast.VariantConstructor.Payload { payload = Ast.VariantConstructor.Record _; _ }
               | Ast.VariantConstructor.Gadt _ -> "other"
             in
@@ -1457,11 +1464,11 @@ let test_type_declaration_body_group_views = fun _ctx ->
         ~fn:(fun field ->
           match Ast.RecordField.view field with
           | Ast.RecordField.Field {
-            mutable_token;
-            name;
-            colon_token;
-            annotation
-          } ->
+              mutable_token;
+              name;
+              colon_token;
+              annotation;
+            } ->
               Test.assert_equal ~expected:":" ~actual:(Ast.Token.text colon_token);
               Vector.push names ~value:(Ast.Ident.text name);
               Vector.push mutable_flags ~value:(Option.is_some mutable_token);
@@ -1613,12 +1620,12 @@ let test_simple_declaration_token_views = fun _ctx ->
         let (name, primitives) =
           match Ast.ExternalDeclaration.view decl with
           | Ast.ExternalDeclaration.External {
-            name;
-            colon_token;
-            equals_token;
-            primitives;
-            _
-          } ->
+              name;
+              colon_token;
+              equals_token;
+              primitives;
+              _;
+            } ->
               Test.assert_equal ~expected:":" ~actual:(Ast.Token.text colon_token);
               Test.assert_equal ~expected:"=" ~actual:(Ast.Token.text equals_token);
               (name, primitives)
@@ -1741,7 +1748,10 @@ let test_type_extension_and_exception_views = fun _ctx ->
         Test.assert_equal ~expected:"Parse_error" ~actual:(Ast.Ident.text name);
         (
           match Ast.ExceptionDeclaration.view decl with
-          | Ast.ExceptionDeclaration.Payload { of_token; payload = Ast.ExceptionDeclaration.TypeExpr payload } ->
+          | Ast.ExceptionDeclaration.Payload {
+              of_token;
+              payload = Ast.ExceptionDeclaration.TypeExpr payload;
+            } ->
               Test.assert_equal ~expected:"of" ~actual:(Ast.Token.text of_token);
               assert_type_ident_last_segment payload "string";
               Ok ()
@@ -1793,7 +1803,10 @@ let test_exception_after_function_binding_views = fun _ctx ->
         Test.assert_equal ~expected:"Parse_exception" ~actual:(Ast.Ident.text name);
         (
           match Ast.ExceptionDeclaration.view decl with
-          | Ast.ExceptionDeclaration.Payload { of_token; payload = Ast.ExceptionDeclaration.TypeExpr payload } ->
+          | Ast.ExceptionDeclaration.Payload {
+              of_token;
+              payload = Ast.ExceptionDeclaration.TypeExpr payload;
+            } ->
               Test.assert_equal ~expected:"of" ~actual:(Ast.Token.text of_token);
               assert_type_ident_last_segment payload "string";
               Ok ()
@@ -2718,13 +2731,13 @@ let test_local_open_views = fun _ctx ->
   (
     match Ast.LocalOpenExpr.view local_open with
     | Ast.LocalOpenExpr.LetOpen {
-      let_token;
-      open_token;
-      module_ident;
-      in_token;
-      body;
-      _
-    } ->
+        let_token;
+        open_token;
+        module_ident;
+        in_token;
+        body;
+        _;
+      } ->
         Test.assert_equal ~expected:"let" ~actual:(Ast.Token.text let_token);
         Test.assert_equal ~expected:"open" ~actual:(Ast.Token.text open_token);
         Test.assert_equal ~expected:"Bar" ~actual:(last_ident_text module_ident);
@@ -2841,12 +2854,12 @@ let test_local_open_argument_views = fun _ctx ->
       (
         match Ast.LocalOpenExpr.view local_open with
         | Ast.LocalOpenExpr.Delimited {
-          module_ident;
-          opening_token;
-          body = inner_body;
-          closing_token;
-          _
-        } ->
+            module_ident;
+            opening_token;
+            body = inner_body;
+            closing_token;
+            _;
+          } ->
             Test.assert_equal ~expected:"Server" ~actual:(last_ident_text module_ident);
             Test.assert_equal ~expected:"(" ~actual:(Ast.Token.text opening_token);
             Test.assert_equal ~expected:")" ~actual:(Ast.Token.text closing_token);
@@ -3469,7 +3482,10 @@ let test_typed_labeled_parameter_view = fun _ctx ->
   match List.reverse !parameters with
   | [ _locally_abstract; _iter; labeled ] -> (
       match Ast.Parameter.view labeled with
-      | Ast.Parameter.Param { label = Ast.Parameter.Labeled { name = Some label }; pattern = Some pattern } ->
+      | Ast.Parameter.Param {
+          label = Ast.Parameter.Labeled { name = Some label };
+          pattern = Some pattern;
+        } ->
           Test.assert_equal ~expected:"fn" ~actual:(Ast.Token.text label);
           (
             match Ast.Pattern.view pattern with
@@ -3510,7 +3526,10 @@ let test_optional_default_labeled_parameter_view = fun _ctx ->
   match List.reverse !parameters with
   | [ optional; _types ] -> (
       match Ast.Parameter.view optional with
-      | Ast.Parameter.Param { label = Ast.Parameter.Optional { name = Some label; default = Some default }; pattern = Some pattern } ->
+      | Ast.Parameter.Param {
+          label = Ast.Parameter.Optional { name = Some label; default = Some default };
+          pattern = Some pattern;
+        } ->
           Test.assert_equal ~expected:"config" ~actual:(Ast.Token.text label);
           (
             match Ast.Pattern.view pattern with
@@ -3558,7 +3577,10 @@ let test_let_binding_parameters_are_parameter_views = fun _ctx ->
   );
   (
     match Ast.Parameter.view (Vector.get_unchecked parameters ~at:1) with
-    | Ast.Parameter.Param { label = Ast.Parameter.Labeled { name = Some label }; pattern = Some pattern } ->
+    | Ast.Parameter.Param {
+        label = Ast.Parameter.Labeled { name = Some label };
+        pattern = Some pattern;
+      } ->
         Test.assert_equal ~expected:"mode" ~actual:(Ast.Token.text label);
         (
           match Ast.Pattern.view pattern with
@@ -3569,7 +3591,10 @@ let test_let_binding_parameters_are_parameter_views = fun _ctx ->
     | _ -> panic "expected labeled parameter view"
   );
   match Ast.Parameter.view (Vector.get_unchecked parameters ~at:2) with
-  | Ast.Parameter.Param { label = Ast.Parameter.Optional { name = Some label; default = Some default }; pattern = Some pattern } ->
+  | Ast.Parameter.Param {
+      label = Ast.Parameter.Optional { name = Some label; default = Some default };
+      pattern = Some pattern;
+    } ->
       Test.assert_equal ~expected:"config" ~actual:(Ast.Token.text label);
       (
         match Ast.Pattern.view pattern with
@@ -3676,11 +3701,18 @@ let test_fun_expression_view_exposes_parameters_and_return_annotation = fun _ctx
     |> Result.expect ~msg:"expected function body"
   in
   match Ast.Expr.view body with
-  | Ast.Expr.Fun { parameters; return_annotation = Some return_annotation; body = Ast.Expr.Body_expr expr_body } ->
+  | Ast.Expr.Fun {
+      parameters;
+      return_annotation = Some return_annotation;
+      body = Ast.Expr.Body_expr expr_body;
+    } ->
       Test.assert_equal ~expected:4 ~actual:(Vector.length parameters);
       (
         match Ast.Parameter.view (Vector.get_unchecked parameters ~at:0) with
-        | Ast.Parameter.Param { label = Ast.Parameter.Optional { name = Some label; default = Some default }; pattern = Some pattern } ->
+        | Ast.Parameter.Param {
+            label = Ast.Parameter.Optional { name = Some label; default = Some default };
+            pattern = Some pattern;
+          } ->
             Test.assert_equal ~expected:"files" ~actual:(Ast.Token.text label);
             (
               match Ast.Pattern.view pattern with

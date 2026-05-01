@@ -211,11 +211,11 @@ let parse_head_owned = fun
   | Cursor_need_more -> Cursor_need_more
   | Cursor_error error -> Cursor_error error
   | Cursor_done { value = {
-    version;
-    status_code;
-    reason = _;
-    remaining
-  }; _ } ->
+      version;
+      status_code;
+      reason = _;
+      remaining;
+    }; _ } ->
       (
           match Request.parse_headers
             ~max_count:max_headers
@@ -256,11 +256,11 @@ let parse_head_slice = fun
   | Cursor_need_more -> Need_more
   | Cursor_error error -> Error error
   | Cursor_done { value = {
-    head_status_code;
-    head_version;
-    head_headers;
-    body_start
-  }; _ } ->
+      head_status_code;
+      head_version;
+      head_headers;
+      body_start;
+    }; _ } ->
       let response = response_of_parts head_status_code head_version head_headers "" in
       Done { value = response; remaining = body_start }
 
@@ -299,11 +299,11 @@ let parse_slice = fun
   | Cursor_need_more -> Need_more
   | Cursor_error error -> Error error
   | Cursor_done { value = {
-    head_status_code;
-    head_version;
-    head_headers;
-    body_start
-  }; _ } ->
+      head_status_code;
+      head_version;
+      head_headers;
+      body_start;
+    }; _ } ->
       if status_has_no_body head_status_code then
         let response = response_of_parts head_status_code head_version head_headers "" in
         Done { value = response; remaining = body_start }

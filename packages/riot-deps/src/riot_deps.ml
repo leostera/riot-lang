@@ -104,7 +104,10 @@ type package_error = Package_management.error =
   | PackageNotFound of {
       package: Riot_model.Package_name.t;
     }
-  | DependencySpecInvalid of { dependency: string; error: dependency_spec_error }
+  | DependencySpecInvalid of {
+      dependency: string;
+      error: dependency_spec_error;
+    }
   | PathDependencyMustBeRelative of { dependency: string }
   | PathDependencyLoadFailed of {
       dependency: string;
@@ -117,15 +120,26 @@ type package_error = Package_management.error =
       ref_: string option;
       error: source_dependency_load_error;
     }
-  | RegistryInitializationFailed of { registry: string; error: registry_initialization_error }
-  | RegistryLookupFailed of { package: string; registry: string; error: registry_lookup_error }
+  | RegistryInitializationFailed of {
+      registry: string;
+      error: registry_initialization_error;
+    }
+  | RegistryLookupFailed of {
+      package: string;
+      registry: string;
+      error: registry_lookup_error;
+    }
   | RegistryMaterializationFailed of {
       package: string;
       version: string;
       registry: string;
       error: registry_materialization_error;
     }
-  | RegistrySearchFailed of { query: string; registry: string; error: registry_search_error }
+  | RegistrySearchFailed of {
+      query: string;
+      registry: string;
+      error: registry_search_error;
+    }
   | RegistryPackageNotFound of {
       package: string;
       registry: string;

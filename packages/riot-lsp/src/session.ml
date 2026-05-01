@@ -80,12 +80,13 @@ let response_error = fun ~id ~code ~message ?data () ->
     ~id
     Lsp.{ code; message; data }
 
-let ok = fun ?(debug_events=[]) state ?exit_code outbound -> {
-  state;
-  outbound;
-  exit_code;
-  debug_events;
-}
+let ok = fun ?(debug_events = []) state ?exit_code outbound ->
+  {
+    state;
+    outbound;
+    exit_code;
+    debug_events;
+  }
 
 let filename_of_uri = fun uri ->
   match Lsp.Uri.to_path uri with
@@ -217,7 +218,7 @@ let typ_config_for_document = fun _state -> fun (_document: document) -> ()
 
 let typ_snapshot_for_document = fun _state -> fun (_document: document) -> None
 
-let typ_query_context_for_document = fun ?(allow_parse_diagnostics=false) _state ->
+let typ_query_context_for_document = fun ?(allow_parse_diagnostics = false) _state ->
   fun document ->
     let parse_result =
       Syn.parse ~filename:(filename_of_document document) (source_slice document.text)
@@ -230,10 +231,7 @@ let typ_query_context_for_document = fun ?(allow_parse_diagnostics=false) _state
       | Error _diagnostics -> None
       | Ok source_file ->
           let infer_result = Typ.Infer.check source_file in
-          Some {
-            text = document.text;
-            context = Typ.Query.create ~source_file ~infer_result;
-          }
+          Some { text = document.text; context = Typ.Query.create ~source_file ~infer_result }
 
 let refresh_document_typ_context = fun state document ->
   match typ_query_context_for_document ~allow_parse_diagnostics:true state document with
@@ -294,11 +292,12 @@ let typ_diagnostic_to_lsp = fun text ->
         ~start_offset:span.start
         ~end_offset:span.end_;
       severity = Some (typ_diagnostic_severity diagnostic);
-      code = Some (
-        diagnostic
-        |> Typ.Diagnostics.Diagnostic.id
-        |> Typ.Diagnostics.Error.id_to_string
-      );
+      code =
+        Some (
+          diagnostic
+          |> Typ.Diagnostics.Diagnostic.id
+          |> Typ.Diagnostics.Error.id_to_string
+        );
       source = Some "typ";
       message = Typ.Diagnostics.Diagnostic.to_string diagnostic;
       tags = None;
@@ -987,11 +986,11 @@ and hover_expression = fun offset (expression: Typ.Ast.expression) ->
     | Typ.Ast.While { condition; body } ->
         [ hover_expression offset condition; hover_expression offset body ]
     | Typ.Ast.For {
-      pattern;
-      start_;
-      stop;
-      body
-    } ->
+        pattern;
+        start_;
+        stop;
+        body;
+      } ->
         [
           hover_pattern offset pattern;
           hover_expression offset start_;
@@ -1172,15 +1171,9 @@ let module_completion_items_for_interface = fun (intf: Typ.Infer.ModuleInterface
   |> Iter.Iterator.to_list
 
 let expression_completion_items_for_interface = fun intf ->
-  let values =
-    value_completion_items_for_interface intf
-  in
-  let constructors =
-    constructor_completion_items_for_interface intf
-  in
-  let modules =
-    module_completion_items_for_interface intf
-  in
+  let values = value_completion_items_for_interface intf in
+  let constructors = constructor_completion_items_for_interface intf in
+  let modules = module_completion_items_for_interface intf in
   (values @ constructors) @ modules
 
 let type_position_completion_items_for_interface = fun intf ->
@@ -1235,7 +1228,10 @@ let last = fun values ->
 
 let find_record_expression_for_completion = fun path ->
   match last path with
-  | Some { Typ.Query.Node.kind = Typ.Query.Node.Expression ({ kind = Typ.Ast.Record _; _ } as expression); _ } ->
+  | Some {
+      Typ.Query.Node.kind = Typ.Query.Node.Expression ({ kind = Typ.Ast.Record _; _ } as expression);
+      _;
+    } ->
       Some expression
   | Some { Typ.Query.Node.kind = Typ.Query.Node.RecordExpressionField _; parent = Some parent; _ } -> (
       match Typ.Query.Node.kind parent with
@@ -1271,8 +1267,8 @@ let rec expression_of_query_node = fun node ->
 let receiver_expression_for_dot_completion = fun offset node ->
   match expression_of_query_node node with
   | None -> None
-  | Some ({ Typ.Ast.kind = Typ.Ast.FieldAccess access; _ }) when offset >= access.receiver.origin.span.end_ ->
-      Some access.receiver
+  | Some { Typ.Ast.kind = Typ.Ast.FieldAccess access; _ } when offset
+  >= access.receiver.origin.span.end_ -> Some access.receiver
   | Some expression -> Some expression
 
 let node_at_cursor_or_previous_byte = fun context offset ->
@@ -1306,14 +1302,14 @@ let completion_after_dot = fun text offset context intf ->
   match dot_offset_for_completion text offset with
   | None -> None
   | Some dot_offset -> (
-        match node_at_cursor_or_previous_byte context dot_offset with
-        | None -> Some []
-        | Some node -> (
-            match receiver_expression_for_dot_completion dot_offset node with
-            | None -> Some []
-            | Some receiver -> Some (record_fields_for_receiver_expression intf receiver)
-          )
-      )
+      match node_at_cursor_or_previous_byte context dot_offset with
+      | None -> Some []
+      | Some node -> (
+          match receiver_expression_for_dot_completion dot_offset node with
+          | None -> Some []
+          | Some receiver -> Some (record_fields_for_receiver_expression intf receiver)
+        )
+    )
 
 let completion_path_is_type_position = fun path ->
   List.exists
@@ -1353,9 +1349,15 @@ let completion_for_document = fun state ->
       | Some offset -> (
           match typ_query_context_for_document ~allow_parse_diagnostics:true state document with
           | None ->
-              Option.map document.typ_context ~fn:(fun context ->
-                completion_items_for_query_context document.text context.context offset)
-          | Some context -> Some (completion_items_for_query_context document.text context.context offset)
+              Option.map
+                document.typ_context
+                ~fn:(fun context ->
+                  completion_items_for_query_context
+                    document.text
+                    context.context
+                    offset)
+          | Some context ->
+              Some (completion_items_for_query_context document.text context.context offset)
         )
 
 let line_text_at = fun text requested_line ->
@@ -1423,8 +1425,8 @@ let inlay_hint_is_stable = fun ctx origin ->
 
 let inlay_hint_for_pattern = fun ctx (pattern: Typ.Ast.pattern) ->
   match (pattern.kind, pattern.type_) with
-  | (Typ.Ast.Bind _, Some type_)
-    when inlay_hint_in_range ctx pattern.origin && inlay_hint_is_stable ctx pattern.origin ->
+  | (Typ.Ast.Bind _, Some type_) when inlay_hint_in_range ctx pattern.origin
+  && inlay_hint_is_stable ctx pattern.origin ->
       Some {
         Lsp.Inlay_hint.position = position_of_offset ctx.source_text pattern.origin.span.end_;
         label = ": " ^ Typ.Ast.Type.Printer.to_string ctx.type_printer type_;
@@ -1437,8 +1439,8 @@ let inlay_hint_for_pattern = fun ctx (pattern: Typ.Ast.pattern) ->
 
 let inlay_hint_for_expression = fun ctx (expression: Typ.Ast.expression) ->
   match (expression.kind, expression.type_) with
-  | (Typ.Ast.Record _, Some type_)
-    when inlay_hint_in_range ctx expression.origin && inlay_hint_is_stable ctx expression.origin ->
+  | (Typ.Ast.Record _, Some type_) when inlay_hint_in_range ctx expression.origin
+  && inlay_hint_is_stable ctx expression.origin ->
       Some {
         Lsp.Inlay_hint.position = position_of_offset ctx.source_text expression.origin.span.end_;
         label = ": " ^ Typ.Ast.Type.Printer.to_string ctx.type_printer type_;
@@ -1563,11 +1565,11 @@ and inlay_hints_expression = fun ctx (expression: Typ.Ast.expression) ->
     | Typ.Ast.While { condition; body } ->
         inlay_hints_expression ctx condition @ inlay_hints_expression ctx body
     | Typ.Ast.For {
-      pattern;
-      start_;
-      stop;
-      body
-    } ->
+        pattern;
+        start_;
+        stop;
+        body;
+      } ->
         inlay_hints_pattern ctx pattern
         @ inlay_hints_expression ctx start_
         @ inlay_hints_expression ctx stop
@@ -1651,9 +1653,11 @@ let inlay_hints_for_document = fun state ->
             match typ_query_context_for_document state document with
             | Some context -> Some (hints_for_context context)
             | None ->
-                Option.map document.typ_context ~fn:(fun context ->
-                  let stable_until = first_changed_offset context.text document.text in
-                  hints_for_context ?stable_until context)
+                Option.map
+                  document.typ_context
+                  ~fn:(fun context ->
+                    let stable_until = first_changed_offset context.text document.text in
+                    hints_for_context ?stable_until context)
           )
       | _ -> None
 
@@ -1942,12 +1946,7 @@ let handle_completion = fun state ->
                 ^ Int.to_string item_count;
               ]
               state
-              [
-                Lsp.response_to_json
-                  ~id
-                  Lsp.Text_document_methods.Completion.request
-                  result;
-              ]
+              [ Lsp.response_to_json ~id Lsp.Text_document_methods.Completion.request result; ]
       )
 
 let handle_inlay_hint = fun state ->

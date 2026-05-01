@@ -16,11 +16,25 @@ type replacement =
   | Text of string
 (** One syntax-directed edit operation. *)
 type operation =
-  | Delete of { target: target }
-  | Replace of { target: target; replacement: replacement }
-  | InsertBefore of { anchor: target; content: replacement }
-  | InsertAfter of { anchor: target; content: replacement }
-  | Swap of { left: target; right: target }
+  | Delete of {
+      target: target;
+    }
+  | Replace of {
+      target: target;
+      replacement: replacement;
+    }
+  | InsertBefore of {
+      anchor: target;
+      content: replacement;
+    }
+  | InsertAfter of {
+      anchor: target;
+      content: replacement;
+    }
+  | Swap of {
+      left: target;
+      right: target;
+    }
 (** A named fix composed of one or more edit operations. *)
 type fix = {
   (** Human-readable fix title shown to users. *)

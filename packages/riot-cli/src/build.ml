@@ -221,12 +221,12 @@ let planning_error_lines = function
       ]
       @ labeled_multiline_lines ~label:"reason" reason
   | Riot_planner.Planning_error.SourceDependsOnUndeclaredPackageModule {
-    package_name;
-    source;
-    requested_module;
-    allowed_modules;
-    suggested_modules
-  } ->
+      package_name;
+      source;
+      requested_module;
+      allowed_modules;
+      suggested_modules;
+    } ->
       let allowed_modules =
         match allowed_modules with
         | [] -> "<none>"
@@ -255,12 +255,12 @@ let planning_error_lines = function
         "  - or depend through one of the exposed modules above if that is the public API you meant";
       ]
   | Riot_planner.Planning_error.TargetDependsOnInternalLibraryModule {
-    target_name;
-    source;
-    requested_module;
-    internal_module;
-    public_module
-  } ->
+      target_name;
+      source;
+      requested_module;
+      internal_module;
+      public_module;
+    } ->
       [
         error_line ("target " ^ target_name ^ " imports private module " ^ requested_module);
         "The target source reaches "
@@ -276,12 +276,12 @@ let planning_error_lines = function
         "  - move shared target code behind " ^ public_module ^ " or a shared helper module";
       ]
   | Riot_planner.Planning_error.TargetDependsOnNamespacedInternalLibraryModule {
-    target_name;
-    source;
-    requested_module;
-    internal_module;
-    public_module
-  } ->
+      target_name;
+      source;
+      requested_module;
+      internal_module;
+      public_module;
+    } ->
       let public_leaf =
         internal_module
         |> String.split ~by:"__"
@@ -304,13 +304,13 @@ let planning_error_lines = function
         "  - move shared target code behind " ^ public_module ^ " or a shared helper module";
       ]
   | Riot_planner.Planning_error.TargetDependsOnOtherTargetRoot {
-    target_name;
-    source;
-    requested_module;
-    other_target_name;
-    other_target_module;
-    public_module
-  } ->
+      target_name;
+      source;
+      requested_module;
+      other_target_name;
+      other_target_module;
+      public_module;
+    } ->
       [
         error_line ("target " ^ target_name ^ " imports target entrypoint " ^ other_target_module);
         "The target source reaches another target root. Target entrypoints are private and are not reusable modules.";
@@ -325,12 +325,12 @@ let planning_error_lines = function
         "  - move shared code into a helper module that both targets can import";
       ]
   | Riot_planner.Planning_error.InvalidExecutableMain {
-    package_name;
-    target_name;
-    file;
-    error;
-    _
-  } ->
+      package_name;
+      target_name;
+      file;
+      error;
+      _;
+    } ->
       let file = display_planner_file file in
       let (headline, reason_lines) =
         match error with
@@ -498,7 +498,12 @@ let write_build_telemetry_event = fun ?render_state ~mode event ->
             ^ display_build_package_name ?render_state ~build_target package
             ^ ": "
             ^ reason)
-      | Build_telemetry.BuildFailed { package; build_target; error = PlanningFailed planning_error; _ } ->
+      | Build_telemetry.BuildFailed {
+          package;
+          build_target;
+          error = PlanningFailed planning_error;
+          _;
+        } ->
           out
             ("      \027[1;31mFailed\027[0m "
             ^ display_build_package_name ?render_state ~build_target package);
@@ -564,13 +569,13 @@ let write_build_phase_event = fun ?render_state ~mode phase ->
       | Riot_build.Event.PackagePlanningStarted { package_count; _ } ->
           out ("    Planning " ^ Int.to_string package_count ^ " package(s)")
       | Riot_build.Event.PackagePlanningFinished {
-        execution_required_count;
-        cached_count;
-        skipped_count;
-        failed_count;
-        error_count;
-        _
-      } ->
+          execution_required_count;
+          cached_count;
+          skipped_count;
+          failed_count;
+          error_count;
+          _;
+        } ->
           let parts =
             [
               Some (Int.to_string execution_required_count ^ " to build");
@@ -659,11 +664,11 @@ let format_pm_event = fun ~seen_registry_updates kind ->
         )
       )
   | Riot_model.Event.DependencyManifestUpdated {
-    path;
-    section;
-    operation;
-    dependency
-  } ->
+      path;
+      section;
+      operation;
+      dependency;
+    } ->
       let verb =
         match operation with
         | `Add -> "Added"
@@ -944,18 +949,17 @@ let cache_gc_progress = ref None
 let max_cache_gc_progress_dots = 40
 
 let start_cache_gc_progress = fun total_entries ->
-  if total_entries > 0 then
-    (
-      let step =
-        let raw = (total_entries + max_cache_gc_progress_dots - 1) / max_cache_gc_progress_dots in
-        if raw > 0 then
-          raw
-        else
-          1
-      in
-      eprint "    Removing cache entries ";
-      cache_gc_progress := Some { total_entries; step; removed_entries = 0 }
-    )
+  if total_entries > 0 then (
+    let step =
+      let raw = (total_entries + max_cache_gc_progress_dots - 1) / max_cache_gc_progress_dots in
+      if raw > 0 then
+        raw
+      else
+        1
+    in
+    eprint "    Removing cache entries ";
+    cache_gc_progress := Some { total_entries; step; removed_entries = 0 }
+  )
 
 let tick_cache_gc_progress = fun () ->
   match !cache_gc_progress with
@@ -993,7 +997,11 @@ let write_cache_gc_event = fun ~mode event ->
       | Riot_store.Cache_gc.GcCacheEntryScanned { trigger = Riot_store.Cache_gc.Manual; _ } -> ()
       | Riot_store.Cache_gc.GcCacheEntryScanned { trigger = Riot_store.Cache_gc.Post_build; _ } ->
           ()
-      | Riot_store.Cache_gc.GcCacheScanCompleted { trigger = Riot_store.Cache_gc.Manual; entry_count; total_size_bytes } ->
+      | Riot_store.Cache_gc.GcCacheScanCompleted {
+          trigger = Riot_store.Cache_gc.Manual;
+          entry_count;
+          total_size_bytes;
+        } ->
           out
             ("    Found "
             ^ Int.to_string entry_count
@@ -1003,11 +1011,11 @@ let write_cache_gc_event = fun ~mode event ->
       | Riot_store.Cache_gc.GcCacheScanCompleted { trigger = Riot_store.Cache_gc.Post_build; _ } ->
           ()
       | Riot_store.Cache_gc.GcPlanComputed {
-        trigger = Riot_store.Cache_gc.Manual;
-        deleted_entries;
-        deleted_generations;
-        reclaimable_bytes
-      } ->
+          trigger = Riot_store.Cache_gc.Manual;
+          deleted_entries;
+          deleted_generations;
+          reclaimable_bytes;
+        } ->
           out
             ("    Removing "
             ^ Int.to_string deleted_entries
@@ -1378,42 +1386,41 @@ let run_request = fun (request: request) ->
         write_build_error ~mode:request.output_mode err;
         Failure (Riot_build.error_message err))
   in
-  if request.show_finished_summary && !attempted_build then
-    (
-      match request.output_mode with
-      | Json -> ()
-      | Human ->
-          let duration = Time.Instant.duration_since ~earlier:start_time (Time.Instant.now ()) in
-          let formatted_duration = Time.Duration.to_secs_string ~precision:2 duration in
-          let total_count = progress.built_count + progress.cached_count in
-          if progress.failed_count = 0 && progress.skipped_count = 0 then
-            out
-              ("    \027[1;32mFinished\027[0m in "
-              ^ formatted_duration
-              ^ "s ("
-              ^ Int.to_string total_count
-              ^ " built)")
-          else if progress.failed_count > 0 then
-            out
-              ("    \027[1;31mFinished\027[0m in "
-              ^ formatted_duration
-              ^ "s ("
-              ^ Int.to_string total_count
-              ^ " built, "
-              ^ Int.to_string progress.failed_count
-              ^ " failed, "
-              ^ Int.to_string progress.skipped_count
-              ^ " skipped)")
-          else
-            out
-              ("    \027[1;33mFinished\027[0m in "
-              ^ formatted_duration
-              ^ "s ("
-              ^ Int.to_string total_count
-              ^ " built, "
-              ^ Int.to_string progress.skipped_count
-              ^ " skipped)")
-    );
+  if request.show_finished_summary && !attempted_build then (
+    match request.output_mode with
+    | Json -> ()
+    | Human ->
+        let duration = Time.Instant.duration_since ~earlier:start_time (Time.Instant.now ()) in
+        let formatted_duration = Time.Duration.to_secs_string ~precision:2 duration in
+        let total_count = progress.built_count + progress.cached_count in
+        if progress.failed_count = 0 && progress.skipped_count = 0 then
+          out
+            ("    \027[1;32mFinished\027[0m in "
+            ^ formatted_duration
+            ^ "s ("
+            ^ Int.to_string total_count
+            ^ " built)")
+        else if progress.failed_count > 0 then
+          out
+            ("    \027[1;31mFinished\027[0m in "
+            ^ formatted_duration
+            ^ "s ("
+            ^ Int.to_string total_count
+            ^ " built, "
+            ^ Int.to_string progress.failed_count
+            ^ " failed, "
+            ^ Int.to_string progress.skipped_count
+            ^ " skipped)")
+        else
+          out
+            ("    \027[1;33mFinished\027[0m in "
+            ^ formatted_duration
+            ^ "s ("
+            ^ Int.to_string total_count
+            ^ " built, "
+            ^ Int.to_string progress.skipped_count
+            ^ " skipped)")
+  );
   if request.show_finished_summary && !attempted_build then
     trace_build_probe ~started_at:start_time "summary-finished";
   match result with

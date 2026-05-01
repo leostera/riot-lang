@@ -22,7 +22,11 @@ end
 
 type status = int
 
-type output = { stdout: string; stderr: string; status: status }
+type output = {
+  stdout: string;
+  stderr: string;
+  status: status;
+}
 
 type state =
   | Pending

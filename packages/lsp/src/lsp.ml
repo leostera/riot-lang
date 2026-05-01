@@ -305,7 +305,7 @@ module Inlay_hint = struct
     kind;
     tooltip;
     padding_left;
-    padding_right
+    padding_right;
   } ->
     let fields = [ ("position", Position.to_json position); ("label", Json.string label); ] in
     let fields = Encode.field_opt "kind" Kind.to_json kind fields in
@@ -438,7 +438,7 @@ module Completion_item = struct
     kind;
     detail;
     documentation;
-    insert_text
+    insert_text;
   } ->
     let fields = [ ("label", Json.string label); ] in
     let fields = Encode.field_opt "kind" Kind.to_json kind fields in
@@ -578,7 +578,7 @@ module Document_symbol_item = struct
     kind;
     range;
     selection_range;
-    children
+    children;
   } ->
     let fields = [
       ("name", Json.string name);
@@ -673,7 +673,7 @@ module Diagnostic = struct
     source;
     message;
     tags;
-    data
+    data;
   } ->
     let fields = [ ("range", Range.to_json range); ("message", Json.string message); ] in
     let fields =
@@ -873,7 +873,7 @@ module Code_action = struct
     is_preferred;
     edit;
     command;
-    data
+    data;
   } ->
     let fields = [ ("title", Json.string title); ] in
     let fields = Encode.field_opt "kind" Action_kind.to_json kind fields in
@@ -1092,7 +1092,7 @@ module Text_document = struct
       uri;
       language_id;
       version;
-      text
+      text;
     }: item) ->
       Json.obj
         [

@@ -178,32 +178,30 @@ let test_different_hashes_isolated = fun _ctx ->
             ~outs:[ output ])
           ~msg:"Save v2 failed"
       in
-      if Riot_store.Store.exists store hash1 && Riot_store.Store.exists store hash2 then
-        (
-          let target1 = Path.(tmpdir / Path.v "out1") in
-          let target2 = Path.(tmpdir / Path.v "out2") in
+      if Riot_store.Store.exists store hash1 && Riot_store.Store.exists store hash2 then (
+        let target1 = Path.(tmpdir / Path.v "out1") in
+        let target2 = Path.(tmpdir / Path.v "out2") in
+        Result.expect
+          (Riot_store.Store.promote store hash1 ~target_dir:target1)
+          ~msg:"Promote v1 failed";
+        Result.expect
+          (Riot_store.Store.promote store hash2 ~target_dir:target2)
+          ~msg:"Promote v2 failed";
+        let content1 =
           Result.expect
-            (Riot_store.Store.promote store hash1 ~target_dir:target1)
-            ~msg:"Promote v1 failed";
+            (Fs.read_to_string Path.(target1 / Path.v "output.txt"))
+            ~msg:"Read v1 failed"
+        in
+        let content2 =
           Result.expect
-            (Riot_store.Store.promote store hash2 ~target_dir:target2)
-            ~msg:"Promote v2 failed";
-          let content1 =
-            Result.expect
-              (Fs.read_to_string Path.(target1 / Path.v "output.txt"))
-              ~msg:"Read v1 failed"
-          in
-          let content2 =
-            Result.expect
-              (Fs.read_to_string Path.(target2 / Path.v "output.txt"))
-              ~msg:"Read v2 failed"
-          in
-          if String.equal content1 "version1" && String.equal content2 "version2" then
-            Ok ()
-          else
-            Error "Hash isolation broken - content mismatch"
-        )
-      else
+            (Fs.read_to_string Path.(target2 / Path.v "output.txt"))
+            ~msg:"Read v2 failed"
+        in
+        if String.equal content1 "version1" && String.equal content2 "version2" then
+          Ok ()
+        else
+          Error "Hash isolation broken - content mismatch"
+      ) else
         Error "Both hashes should exist in cache") with
   | Ok r -> r
   | Error _ -> Error "Tempdir creation failed"

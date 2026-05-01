@@ -28,15 +28,13 @@ module CountingReader = struct
     t.reads <- t.reads + 1;
     let remaining = Bytes.length t.data - t.offset in
     let writable =
-      if IO.Buffer.writable_bytes into = 0 then
-        (
-          match IO.Buffer.ensure_free into 4 with
-          | Ok () -> IO.Buffer.writable into
-          | Error error ->
-              Kernel.SystemError.panic
-                ("CountingReader.read.ensure_free: " ^ Kernel.IO.Error.message error)
-        )
-      else
+      if IO.Buffer.writable_bytes into = 0 then (
+        match IO.Buffer.ensure_free into 4 with
+        | Ok () -> IO.Buffer.writable into
+        | Error error ->
+            Kernel.SystemError.panic
+              ("CountingReader.read.ensure_free: " ^ Kernel.IO.Error.message error)
+      ) else
         IO.Buffer.writable into
     in
     let len = min remaining (IO.IoSlice.length writable) in
@@ -59,18 +57,17 @@ module CountingReader = struct
     IoVec.for_each
       bufs
       ~fn:(fun segment ->
-        if state.written < total then
-          (
-            let length = IoVec.IoSlice.length segment in
-            let chunk_len = min length (total - state.written) in
-            IoVec.IoSlice.blit_from_bytes_unchecked
-              t.data
-              ~src_off:(t.offset + state.written)
-              segment
-              ~dst_off:0
-              ~len:chunk_len;
-            state.written <- state.written + chunk_len
-          ));
+        if state.written < total then (
+          let length = IoVec.IoSlice.length segment in
+          let chunk_len = min length (total - state.written) in
+          IoVec.IoSlice.blit_from_bytes_unchecked
+            t.data
+            ~src_off:(t.offset + state.written)
+            segment
+            ~dst_off:0
+            ~len:chunk_len;
+          state.written <- state.written + chunk_len
+        ));
     t.offset <- t.offset + total;
     Ok total
 

@@ -45,7 +45,10 @@ type error =
       error: IO.error;
     }
   | InvalidConfig of config_error
-  | InvalidRegistryConfig of { registry_name: string; error: registry_error }
+  | InvalidRegistryConfig of {
+      registry_name: string;
+      error: registry_error;
+    }
 
 let ( let* ) result fn = Result.and_then result ~fn
 

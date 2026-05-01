@@ -456,15 +456,22 @@ let test_compare_suite_run_aligns_case_history = fun _ctx ->
         |> Result.expect ~msg:"failed to compare suite history"
       in
       match history.benchmarks with
-      | [ {
-        name = "manual decode from parsed tree (1MB)";
-        history = manual_history;
-        baseline = manual_baseline;
-        stability = manual_stability;
-        current_cv = Some manual_current_cv;
-        baseline_cv = Some manual_baseline_cv;
-        _
-      }; { name = "serde decode total (1MB)"; history = serde_history; _ } ] ->
+      | [
+          {
+            name = "manual decode from parsed tree (1MB)";
+            history = manual_history;
+            baseline = manual_baseline;
+            stability = manual_stability;
+            current_cv = Some manual_current_cv;
+            baseline_cv = Some manual_baseline_cv;
+            _;
+          };
+          {
+            name = "serde decode total (1MB)";
+            history = serde_history;
+            _;
+          };
+        ] ->
           if not (Int.equal (List.length manual_history) 2) then
             Error "expected manual decode case to compare against two prior runs"
           else if not (Int.equal (List.length serde_history) 2) then
@@ -589,7 +596,14 @@ let test_compare_suite_run_marks_noisy_cases = fun _ctx ->
         |> Result.expect ~msg:"failed to compare suite history"
       in
       match history.benchmarks with
-      | [ { stability = Riot_bench.History.Noisy; current_cv = Some current_cv; baseline_cv = Some baseline_cv; _ } ] ->
+      | [
+          {
+            stability = Riot_bench.History.Noisy;
+            current_cv = Some current_cv;
+            baseline_cv = Some baseline_cv;
+            _;
+          };
+        ] ->
           if Float.compare current_cv 0.05 != Order.GT then
             Error "expected current CV to exceed the noisy threshold"
           else if Float.compare baseline_cv 0.05 != Order.LT then

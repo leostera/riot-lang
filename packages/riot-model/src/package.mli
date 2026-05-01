@@ -109,7 +109,10 @@ type publish_metadata_error =
       version: string;
       error: Std.Version.parse_error;
     }
-  | NonStringPublishField of { package_name: string; field: publish_field }
+  | NonStringPublishField of {
+      package_name: string;
+      field: publish_field;
+    }
   | NonBooleanPublicFlag of { package_name: string }
 type dependency_error =
   | InvalidDependencyName of {
@@ -122,7 +125,10 @@ type dependency_error =
       error: Std.Version.parse_error;
     }
   | NonBooleanWorkspaceFlag of { dependency_name: string }
-  | NonStringDependencyField of { dependency_name: string; field: dependency_field }
+  | NonStringDependencyField of {
+      dependency_name: string;
+      field: dependency_field;
+    }
   | DependencyCannotSpecifySourceAndGithub of { dependency_name: string }
   | WorkspaceDependencyCannotSpecifyOverrides of { dependency_name: string }
   | DependencyRefRequiresSource of { dependency_name: string }

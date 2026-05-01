@@ -196,11 +196,9 @@ let unmask_token = fun masked_b64 ->
   | Error error -> Error error
   | Result.Ok decoded ->
       let len = String.length decoded in
-      if not (len = 64) then
-        begin
-          Error (InvalidMaskedTokenLength { expected = 64; actual = len })
-        end
-      else
+      if not (len = 64) then (
+        Error (InvalidMaskedTokenLength { expected = 64; actual = len })
+      ) else
         (* Split into pad and masked parts (32 bytes each) *)
         let pad = String.sub decoded ~offset:0 ~len:32 in
         let masked = String.sub decoded ~offset:32 ~len:32 in

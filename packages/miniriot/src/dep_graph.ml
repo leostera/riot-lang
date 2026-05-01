@@ -225,12 +225,11 @@ end = struct
       (fun _mod_name entry ->
         List.iter
           (fun src ->
-            if Io.file_exists src then
-              (
-                let dst = Filename.concat sandbox_dir (Filename.basename src) in
-                Io.copy_file src dst;
-                printf "  Copied dependency: %s\n" (Filename.basename src)
-              ))
+            if Io.file_exists src then (
+              let dst = Filename.concat sandbox_dir (Filename.basename src) in
+              Io.copy_file src dst;
+              printf "  Copied dependency: %s\n" (Filename.basename src)
+            ))
           entry.outputs)
       t.packages
 
@@ -659,7 +658,7 @@ and handle_ocaml_module = fun ~t ~ctx file ->
     ns;
     aliases;
     parent_impl;
-    parent_intf
+    parent_intf;
   } = ctx
   in
   let mod_ = Module.of_path ~ns file.path in
@@ -734,7 +733,7 @@ and handle_library = fun ~t ~ctx { path; name; children } ->
     ns;
     aliases;
     parent_impl;
-    parent_intf
+    parent_intf;
   } = ctx
   in
   (* For the root library (when ns is empty), use package name; otherwise use the dir path *)
@@ -759,7 +758,7 @@ and handle_library = fun ~t ~ctx { path; name; children } ->
       (fun child ->
         match child with
         | File_scanner.File { ext = ".ml"
-        | ".mli"; _ } ->
+          | ".mli"; _ } ->
             (Some (Module.of_path ~ns (File_scanner.path child)), child)
         | _ -> (None, child))
       children
@@ -850,7 +849,7 @@ and handle_library = fun ~t ~ctx { path; name; children } ->
       (fun (mod_opt, child) ->
         match (mod_opt, child) with
         | (Some mod_, File_scanner.File { ext = ".mli"
-        | ".ml"; _ }) -> Some mod_
+                      | ".ml"; _ }) -> Some mod_
         | _ -> None)
       children_without_lib_files
   in
@@ -1300,25 +1299,22 @@ let scan_native_dir = fun t ->
           ()
         else
           let ext = Filename.extension filename in
-          if ext = Const.c_ext then
-            (
-              (* Path relative to package root: packages/kernel/native/file.c *)
-              let relative_path = t.root ^ "/" ^ Const.native_dir ^ "/" ^ filename in
-              printf "    Found C file: %s\n" relative_path;
-              (* Add as a standalone node - it will be picked up during iteration *)
-              let node = { file = Concrete relative_path; open_modules = []; kind = C } in
-              let _c_node = Graph.add_node t.graph node in
-              ()
-            )
-          else if ext = Const.h_ext then
-            (
-              (* Path relative to package root: packages/kernel/native/file.h *)
-              let relative_path = t.root ^ "/" ^ Const.native_dir ^ "/" ^ filename in
-              printf "    Found H file: %s\n" relative_path;
-              let node = { file = Concrete relative_path; open_modules = []; kind = H } in
-              let _h_node = Graph.add_node t.graph node in
-              ()
-            ))
+          if ext = Const.c_ext then (
+            (* Path relative to package root: packages/kernel/native/file.c *)
+            let relative_path = t.root ^ "/" ^ Const.native_dir ^ "/" ^ filename in
+            printf "    Found C file: %s\n" relative_path;
+            (* Add as a standalone node - it will be picked up during iteration *)
+            let node = { file = Concrete relative_path; open_modules = []; kind = C } in
+            let _c_node = Graph.add_node t.graph node in
+            ()
+          ) else if ext = Const.h_ext then (
+            (* Path relative to package root: packages/kernel/native/file.h *)
+            let relative_path = t.root ^ "/" ^ Const.native_dir ^ "/" ^ filename in
+            printf "    Found H file: %s\n" relative_path;
+            let node = { file = Concrete relative_path; open_modules = []; kind = H } in
+            let _h_node = Graph.add_node t.graph node in
+            ()
+          ))
       files
   )
 

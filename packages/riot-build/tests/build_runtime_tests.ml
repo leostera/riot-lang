@@ -721,7 +721,11 @@ let test_execute_allows_multi_target_partial_failures = fun _ctx ->
             ) ->
                 started_targets := Riot_model.Target.to_string target :: !started_targets
             | Riot_build.Event.Phase (
-              Riot_build.Event.TargetBuildFinished { target; result_count; had_partial_failure = partial }
+              Riot_build.Event.TargetBuildFinished {
+                target;
+                result_count;
+                had_partial_failure = partial;
+              }
             ) ->
                 finished_targets := Riot_model.Target.to_string target :: !finished_targets;
                 finished_counts := result_count :: !finished_counts;

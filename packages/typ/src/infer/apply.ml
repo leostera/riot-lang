@@ -27,8 +27,7 @@ let label_matches supplied expected =
   | (Type.Label.NoLabel, Type.Label.NoLabel) -> true
   | (Type.Label.Labelled supplied, Type.Label.Labelled expected)
   | (Type.Label.Optional supplied, Type.Label.Optional expected)
-  | (Type.Label.Labelled supplied, Type.Label.Optional expected) ->
-      String.equal supplied expected
+  | (Type.Label.Labelled supplied, Type.Label.Optional expected) -> String.equal supplied expected
   | _ -> false
 
 let is_optional_label = function
@@ -45,10 +44,7 @@ let is_optional_label = function
    original order.
 *)
 let rebuild_skipped_arrows skipped result =
-  List.fold_left
-    skipped
-    ~init:result
-    ~fn:(fun result arrow -> Type.Arrow { arrow with result })
+  List.fold_left skipped ~init:result ~fn:(fun result arrow -> Type.Arrow { arrow with result })
 
 let infer_argument infer_expression state (arg: argument) =
   match argument_value arg.kind with
@@ -76,8 +72,7 @@ let apply_positional_argument state callee arg arg_type =
           ~actual:arg_type
           ~on_error:(Constraint.argument_constraint_diagnostic arg);
         rebuild_skipped_arrows skipped arrow.result
-    | Type.Arrow arrow when is_optional_label arrow.label ->
-        search skipped arrow.result
+    | Type.Arrow arrow when is_optional_label arrow.label -> search skipped arrow.result
     | Type.Arrow arrow -> search (arrow :: skipped) arrow.result
     | Type.Var _ ->
         let result = State.fresh_var state in

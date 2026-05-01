@@ -164,13 +164,12 @@ let render_to_string = fun commands ->
                 Utils.is_inside_scissor ~col:col_start ~row !scissor_box
                 || (col_end > col_start
                 && Utils.is_inside_scissor ~col:(col_end - 1) ~row !scissor_box)
-              then
-                begin
-                  for col = col_start to col_end - 1 do
-                    if Utils.is_inside_scissor ~col ~row !scissor_box then
-                      write_background_cell (get_cell grid ~row ~col) tty_color
-                  done
-                end
+              then (
+                for col = col_start to col_end - 1 do
+                  if Utils.is_inside_scissor ~col ~row !scissor_box then
+                    write_background_cell (get_cell grid ~row ~col) tty_color
+                done
+              )
             done
         | Render.Border { width; color; _ } ->
             let tty_color = Utils.rgb_to_color color in
@@ -178,42 +177,40 @@ let render_to_string = fun commands ->
             let row_end = Int.min !max_row (Utils.rect_row_end command.bounding_box) in
             let col_start = Utils.rect_col_start command.bounding_box in
             let col_end = Int.min !max_col (Utils.rect_col_end command.bounding_box) in
-            if width.top > 0 && row_start < row_end then
-              begin
-                for col = col_start to col_end - 1 do
-                  if Utils.is_inside_scissor ~col ~row:row_start !scissor_box then
-                    let ch =
-                      if col = col_start && width.left > 0 then
-                        "┌"
-                      else if col = col_end - 1 && width.right > 0 then
-                        "┐"
-                      else
-                        "─"
-                    in
-                    write_border_cell
-                      (get_cell grid ~row:row_start ~col)
-                      tty_color
-                      ch
-                done
-              end;
-            if width.bottom > 0 && row_end - 1 >= row_start then
-              begin
-                for col = col_start to col_end - 1 do
-                  if Utils.is_inside_scissor ~col ~row:(row_end - 1) !scissor_box then
-                    let ch =
-                      if col = col_start && width.left > 0 then
-                        "└"
-                      else if col = col_end - 1 && width.right > 0 then
-                        "┘"
-                      else
-                        "─"
-                    in
-                    write_border_cell
-                      (get_cell grid ~row:(row_end - 1) ~col)
-                      tty_color
-                      ch
-                done
-              end;
+            if width.top > 0 && row_start < row_end then (
+              for col = col_start to col_end - 1 do
+                if Utils.is_inside_scissor ~col ~row:row_start !scissor_box then
+                  let ch =
+                    if col = col_start && width.left > 0 then
+                      "┌"
+                    else if col = col_end - 1 && width.right > 0 then
+                      "┐"
+                    else
+                      "─"
+                  in
+                  write_border_cell
+                    (get_cell grid ~row:row_start ~col)
+                    tty_color
+                    ch
+              done
+            );
+            if width.bottom > 0 && row_end - 1 >= row_start then (
+              for col = col_start to col_end - 1 do
+                if Utils.is_inside_scissor ~col ~row:(row_end - 1) !scissor_box then
+                  let ch =
+                    if col = col_start && width.left > 0 then
+                      "└"
+                    else if col = col_end - 1 && width.right > 0 then
+                      "┘"
+                    else
+                      "─"
+                  in
+                  write_border_cell
+                    (get_cell grid ~row:(row_end - 1) ~col)
+                    tty_color
+                    ch
+              done
+            );
             for row = row_start + 1 to row_end - 2 do
               if width.left > 0 && col_start < col_end then
                 if Utils.is_inside_scissor ~col:col_start ~row !scissor_box then
@@ -229,12 +226,12 @@ let render_to_string = fun commands ->
                     "│"
             done
         | Render.Text {
-          content;
-          color;
-          weight;
-          decoration;
-          _
-        } ->
+            content;
+            color;
+            weight;
+            decoration;
+            _;
+          } ->
             let tty_color = Utils.rgb_to_color color in
             let row_start = Utils.rect_row_start command.bounding_box in
             let row_end = Int.min !max_row (Utils.rect_row_end command.bounding_box) in

@@ -175,11 +175,11 @@ let module_kind_to_json = fun (kind: Module_node.kind) ->
         ("includes", Array (List.map includes ~fn:(fun p -> String (Path.to_string p))));
       ]
   | Module_node.Binary {
-    name;
-    source;
-    libraries;
-    includes
-  } ->
+      name;
+      source;
+      libraries;
+      includes;
+    } ->
       Object [
         ("kind", String "binary");
         ("name", String name);
@@ -789,11 +789,11 @@ let plan_package = fun
                     match Module_planner.plan_node plan_input with
                     | Error err -> Error err
                     | Ok {
-                      sources;
-                      module_graph;
-                      analyzed_modules = _;
-                      action_graph
-                    } ->
+                        sources;
+                        module_graph;
+                        analyzed_modules = _;
+                        action_graph;
+                      } ->
                         (* Add foreign dependency build actions and make all other nodes depend on them *)
                         let foreign_nodes =
                           List.map
@@ -805,14 +805,13 @@ let plan_package = fun
                                 ^ " with "
                                 ^ Int.to_string (List.length fdep.inputs)
                                 ^ " input files");
-                              let foreign_action =
-                                Action.BuildForeignDependency {
-                                  name = fdep.name;
-                                  path = fdep.path;
-                                  build_cmd = fdep.build_cmd;
-                                  outputs = fdep.outputs;
-                                  env = fdep.env;
-                                }
+                              let foreign_action = Action.BuildForeignDependency {
+                                name = fdep.name;
+                                path = fdep.path;
+                                build_cmd = fdep.build_cmd;
+                                outputs = fdep.outputs;
+                                env = fdep.env;
+                              }
                               in
                               let foreign_node =
                                 Action_node.make
@@ -827,40 +826,37 @@ let plan_package = fun
                               Action_graph.add_node action_graph foreign_node)
                         in
                         (* Make all existing nodes depend on foreign dependency nodes *)
-                        if List.length foreign_nodes > 0 then
-                          (
-                            let foreign_node_ids =
-                              List.map foreign_nodes ~fn:(fun (node: Action_node.t) -> node.id)
-                            in
-                            Log.info
-                              ("[PACKAGE_PLANNER] Making all action nodes depend on "
-                              ^ Int.to_string (List.length foreign_nodes)
-                              ^ " foreign dependencies");
-                            let all_nodes = Action_graph.nodes action_graph in
-                            Log.info
-                              ("[PACKAGE_PLANNER] Total action nodes (including foreign): "
-                              ^ Int.to_string (List.length all_nodes));
-                            let dep_count = ref 0 in
-                            List.for_each
-                              all_nodes
-                              ~fn:(fun (node: Action_node.t) ->
-                                let is_foreign_node =
-                                  List.contains foreign_node_ids ~value:node.id
-                                in
-                                if not is_foreign_node then
-                                  List.for_each
-                                    foreign_nodes
-                                    ~fn:(fun foreign_node ->
-                                      Action_graph.add_dependency
-                                        action_graph
-                                        node
-                                        ~depends_on:foreign_node;
-                                      dep_count := !dep_count + 1));
-                            Log.info
-                              ("[PACKAGE_PLANNER] Added "
-                              ^ Int.to_string !dep_count
-                              ^ " dependency edges to foreign nodes")
-                          );
+                        if List.length foreign_nodes > 0 then (
+                          let foreign_node_ids =
+                            List.map foreign_nodes ~fn:(fun (node: Action_node.t) -> node.id)
+                          in
+                          Log.info
+                            ("[PACKAGE_PLANNER] Making all action nodes depend on "
+                            ^ Int.to_string (List.length foreign_nodes)
+                            ^ " foreign dependencies");
+                          let all_nodes = Action_graph.nodes action_graph in
+                          Log.info
+                            ("[PACKAGE_PLANNER] Total action nodes (including foreign): "
+                            ^ Int.to_string (List.length all_nodes));
+                          let dep_count = ref 0 in
+                          List.for_each
+                            all_nodes
+                            ~fn:(fun (node: Action_node.t) ->
+                              let is_foreign_node = List.contains foreign_node_ids ~value:node.id in
+                              if not is_foreign_node then
+                                List.for_each
+                                  foreign_nodes
+                                  ~fn:(fun foreign_node ->
+                                    Action_graph.add_dependency
+                                      action_graph
+                                      node
+                                      ~depends_on:foreign_node;
+                                    dep_count := !dep_count + 1));
+                          Log.info
+                            ("[PACKAGE_PLANNER] Added "
+                            ^ Int.to_string !dep_count
+                            ^ " dependency edges to foreign nodes")
+                        );
                         let _ =
                           Riot_store.Store.save_plan_bundle
                             store
@@ -921,11 +917,11 @@ let plan_package = fun
               match Module_planner.plan_node plan_input with
               | Error err -> Error err
               | Ok {
-                sources;
-                module_graph;
-                analyzed_modules = _;
-                action_graph
-              } ->
+                  sources;
+                  module_graph;
+                  analyzed_modules = _;
+                  action_graph;
+                } ->
                   (* Add foreign dependency build actions and make all other nodes depend on them *)
                   let foreign_nodes =
                     List.map
@@ -937,14 +933,13 @@ let plan_package = fun
                           ^ " with "
                           ^ Int.to_string (List.length fdep.inputs)
                           ^ " input files");
-                        let foreign_action =
-                          Action.BuildForeignDependency {
-                            name = fdep.name;
-                            path = fdep.path;
-                            build_cmd = fdep.build_cmd;
-                            outputs = fdep.outputs;
-                            env = fdep.env;
-                          }
+                        let foreign_action = Action.BuildForeignDependency {
+                          name = fdep.name;
+                          path = fdep.path;
+                          build_cmd = fdep.build_cmd;
+                          outputs = fdep.outputs;
+                          env = fdep.env;
+                        }
                         in
                         let foreign_node =
                           Action_node.make
@@ -959,42 +954,37 @@ let plan_package = fun
                         Action_graph.add_node action_graph foreign_node)
                   in
                   (* Make all existing nodes depend on foreign dependency nodes *)
-                  if List.length foreign_nodes > 0 then
-                    (
-                      let foreign_node_ids =
-                        List.map foreign_nodes ~fn:(fun (node: Action_node.t) -> node.id)
-                      in
-                      Log.info
-                        ("[PACKAGE_PLANNER] Making all action nodes depend on "
-                        ^ Int.to_string (List.length foreign_nodes)
-                        ^ " foreign dependencies");
-                      let all_nodes = Action_graph.nodes action_graph in
-                      Log.info
-                        ("[PACKAGE_PLANNER] Total action nodes (including foreign): "
-                        ^ Int.to_string (List.length all_nodes));
-                      let dep_count = ref 0 in
-                      List.for_each
-                        all_nodes
-                        ~fn:(fun (node: Action_node.t) ->
-                          (* Skip foreign dependency nodes themselves *)
-                          let is_foreign_node = List.contains foreign_node_ids ~value:node.id in
-                          if not is_foreign_node then
-                            (
-                              (* Make this node depend on all foreign nodes *)
-                              List.for_each
-                                foreign_nodes
-                                ~fn:(fun foreign_node ->
-                                  Action_graph.add_dependency
-                                    action_graph
-                                    node
-                                    ~depends_on:foreign_node;
-                                  dep_count := !dep_count + 1)
-                            ));
-                      Log.info
-                        ("[PACKAGE_PLANNER] Added "
-                        ^ Int.to_string !dep_count
-                        ^ " dependency edges to foreign nodes")
-                    );
+                  if List.length foreign_nodes > 0 then (
+                    let foreign_node_ids =
+                      List.map foreign_nodes ~fn:(fun (node: Action_node.t) -> node.id)
+                    in
+                    Log.info
+                      ("[PACKAGE_PLANNER] Making all action nodes depend on "
+                      ^ Int.to_string (List.length foreign_nodes)
+                      ^ " foreign dependencies");
+                    let all_nodes = Action_graph.nodes action_graph in
+                    Log.info
+                      ("[PACKAGE_PLANNER] Total action nodes (including foreign): "
+                      ^ Int.to_string (List.length all_nodes));
+                    let dep_count = ref 0 in
+                    List.for_each
+                      all_nodes
+                      ~fn:(fun (node: Action_node.t) ->
+                        (* Skip foreign dependency nodes themselves *)
+                        let is_foreign_node = List.contains foreign_node_ids ~value:node.id in
+                        if not is_foreign_node then (
+                          (* Make this node depend on all foreign nodes *)
+                          List.for_each
+                            foreign_nodes
+                            ~fn:(fun foreign_node ->
+                              Action_graph.add_dependency action_graph node ~depends_on:foreign_node;
+                              dep_count := !dep_count + 1)
+                        ));
+                    Log.info
+                      ("[PACKAGE_PLANNER] Added "
+                      ^ Int.to_string !dep_count
+                      ^ " dependency edges to foreign nodes")
+                  );
                   let _ =
                     Riot_store.Store.save_plan_bundle
                       store

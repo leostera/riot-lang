@@ -455,12 +455,11 @@ and resolve_registry_dependency = fun
                 ctx.registry
                 ~package_name:raw_package_name with
               | Error err ->
-                  let error =
-                    Error.PackageMetadataReadFailed {
-                      package = raw_package_name;
-                      registry = registry_name;
-                      error = err;
-                    }
+                  let error = Error.PackageMetadataReadFailed {
+                    package = raw_package_name;
+                    registry = registry_name;
+                    error = err;
+                  }
                   in
                   ctx.emit
                     (Riot_model.Event.PackageMetadataFetchFailed {
@@ -470,12 +469,11 @@ and resolve_registry_dependency = fun
                     });
                   Error error
               | Ok None ->
-                  let error =
-                    Error.PackageNotFound {
-                      package = raw_package_name;
-                      registry = registry_name;
-                      required_by;
-                    }
+                  let error = Error.PackageNotFound {
+                    package = raw_package_name;
+                    registry = registry_name;
+                    required_by;
+                  }
                   in
                   ctx.emit
                     (Riot_model.Event.PackageMetadataFetchFailed {
@@ -507,10 +505,11 @@ and resolve_registry_dependency = fun
                         }
                       in
                       let state = add_resolving ~state ~key ~package_id in
-                      let rec resolve_release_dependencies ~(state:resolution_state) (acc_packages:
-                        Riot_model.Lockfile.package list) (acc_dependencies:
-                        Riot_model.Lockfile.dependency list) (release_dependencies:
-                        Pkgs_ml.Sparse_index.dependency list) =
+                      let rec resolve_release_dependencies
+                        ~(state:resolution_state)
+                        (acc_packages: Riot_model.Lockfile.package list)
+                        (acc_dependencies: Riot_model.Lockfile.dependency list)
+                        (release_dependencies: Pkgs_ml.Sparse_index.dependency list) =
                         match release_dependencies with
                         | [] -> Ok (List.reverse acc_dependencies, acc_packages, state)
                         | (dep: Pkgs_ml.Sparse_index.dependency) :: rest ->
@@ -1093,15 +1092,14 @@ let load_registry_package_manifest = fun (catalog: catalog) ~package_name ~versi
                 });
               Ok manifest
           | Error err ->
-              let error =
-                Error.Unexpected {
-                  error = "failed to decode registry package manifest '"
-                  ^ package_name
-                  ^ "@"
-                  ^ version
-                  ^ "': "
-                  ^ Riot_model.Package_manifest.error_message err;
-                }
+              let error = Error.Unexpected {
+                error = "failed to decode registry package manifest '"
+                ^ package_name
+                ^ "@"
+                ^ version
+                ^ "': "
+                ^ Riot_model.Package_manifest.error_message err;
+              }
               in
               catalog.ctx.emit
                 (Riot_model.Event.PackageManifestFetchFailed {
@@ -1459,12 +1457,11 @@ let read_registry_document = fun (catalog: catalog) ~package_name ->
       (
         match Pkgs_ml.Registry.read_package_document catalog.ctx.registry ~package_name with
         | Error err ->
-            let error =
-              Error.PackageMetadataReadFailed {
-                package = package_name;
-                registry = registry_name;
-                error = err;
-              }
+            let error = Error.PackageMetadataReadFailed {
+              package = package_name;
+              registry = registry_name;
+              error = err;
+            }
             in
             catalog.ctx.emit
               (Riot_model.Event.PackageMetadataFetchFailed {
@@ -1492,12 +1489,11 @@ let read_registry_document = fun (catalog: catalog) ~package_name ->
                     );
                   Ok document_opt
               | None ->
-                  let error =
-                    Error.PackageNotFound {
-                      package = package_name;
-                      registry = registry_name;
-                      required_by = required_by_for_package catalog package_name;
-                    }
+                  let error = Error.PackageNotFound {
+                    package = package_name;
+                    registry = registry_name;
+                    required_by = required_by_for_package catalog package_name;
+                  }
                   in
                   catalog.ctx.emit
                     (Riot_model.Event.PackageMetadataFetchFailed {
@@ -1855,10 +1851,10 @@ let lock_package_of_local_entry = fun (catalog: catalog) ~selected_versions (ent
 let pm_error_of_pubgrub_failure = fun (catalog: catalog) incompat ->
   let registry_name = Pkgs_ml.Registry.name catalog.ctx.registry in
   let rec find_no_versions = function
-    | Pubgrub.Incompatibility.External { cause = Pubgrub.Incompatibility.NoVersions (
-      package_name,
-      _
-    ); _ } ->
+    | Pubgrub.Incompatibility.External {
+        cause = Pubgrub.Incompatibility.NoVersions (package_name, _);
+        _;
+      } ->
         if String.equal package_name pubgrub_root_package || match HashMap.get
           catalog.local_by_name
           ~key:package_name with

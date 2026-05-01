@@ -7,8 +7,13 @@ type format_style =
   | Compact
 
 type handler_config =
-  | Stdout of { format: format_style }
-  | File of { path: string; format: format_style }
+  | Stdout of {
+      format: format_style;
+    }
+  | File of {
+      path: string;
+      format: format_style;
+    }
 
 type t = {
   handlers: handler_config list;

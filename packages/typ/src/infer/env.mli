@@ -27,7 +27,6 @@ type record_field_info = {
   owner: Ast.type_declaration;
   field: Ast.record_field_declaration;
 }
-
 (**
    Field metadata for an inline-record constructor payload.
 
@@ -39,7 +38,6 @@ type inline_record_field = {
   declaration: Ast.record_field_declaration;
   type_: Ast.Type.t;
 }
-
 (**
    Hidden record payload attached to a variant constructor.
 
@@ -52,12 +50,10 @@ type inline_record = {
   payload_type: Ast.Type.t;
   fields: inline_record_field list;
 }
-
 (** Typed constructor argument metadata. *)
 type constructor_arguments =
   | Tuple of Ast.Type.t list
   | InlineRecord of inline_record
-
 (**
    Rich constructor lookup payload.
 

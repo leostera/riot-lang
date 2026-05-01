@@ -66,13 +66,13 @@ let update = fun event model ->
       (* Bounce off walls *)
       let (final_x, vel_x) =
         if new_x <= 0.0 || new_x >= float_of_int (model.width - 10) then
-          (model.box_x, -.model.velocity_x)
+          (model.box_x, -.(model.velocity_x))
         else
           (new_x, model.velocity_x)
       in
       let (final_y, vel_y) =
         if new_y <= 0.0 || new_y >= float_of_int (model.height - 5) then
-          (model.box_y, -.model.velocity_y)
+          (model.box_y, -.(model.velocity_y))
         else
           (new_y, model.velocity_y)
       in

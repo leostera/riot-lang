@@ -122,29 +122,25 @@ let consume = fun value ~len ->
     | Error error -> panic_buffer_error "consume" error
 
 let rec read = fun value ~into ->
-  if Buffer.readable_bytes value.buffer > 0 then
-    (
-      let readable = Buffer.readable value.buffer in
-      let writable =
-        if Buffer.writable_bytes into = 0 then
-          (
-            match Buffer.ensure_free into value.size with
-            | Ok () -> Buffer.writable into
-            | Error error -> panic_buffer_error "read.ensure_free" error
-          )
-        else
-          Buffer.writable into
-      in
-      let count = Int.min (IoSlice.length readable) (IoSlice.length writable) in
-      match Buffer.append_subslice into readable ~off:0 ~len:count with
-      | Ok () -> (
-          match Buffer.consume value.buffer ~len:count with
-          | Ok () -> Ok count
-          | Error error -> panic_buffer_error "read.consume" error
-        )
-      | Error error -> panic_buffer_error "read.append" error
-    )
-  else
+  if Buffer.readable_bytes value.buffer > 0 then (
+    let readable = Buffer.readable value.buffer in
+    let writable =
+      if Buffer.writable_bytes into = 0 then (
+        match Buffer.ensure_free into value.size with
+        | Ok () -> Buffer.writable into
+        | Error error -> panic_buffer_error "read.ensure_free" error
+      ) else
+        Buffer.writable into
+    in
+    let count = Int.min (IoSlice.length readable) (IoSlice.length writable) in
+    match Buffer.append_subslice into readable ~off:0 ~len:count with
+    | Ok () -> (
+        match Buffer.consume value.buffer ~len:count with
+        | Ok () -> Ok count
+        | Error error -> panic_buffer_error "read.consume" error
+      )
+    | Error error -> panic_buffer_error "read.append" error
+  ) else
     match fill_once value with
     | Ok 0 -> Error Error.End_of_file
     | Ok _ -> read value ~into

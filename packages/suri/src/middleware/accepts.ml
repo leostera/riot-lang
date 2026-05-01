@@ -36,7 +36,10 @@ type accept_parse_error =
   | QualityOutOfRange of float
 
 type accept_rejection =
-  | MalformedAcceptHeader of { value: string; error: accept_parse_error }
+  | MalformedAcceptHeader of {
+      value: string;
+      error: accept_parse_error;
+    }
   | UnsupportedAcceptHeader of { value: string }
 
 type content_type_rejection =

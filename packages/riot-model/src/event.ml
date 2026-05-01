@@ -585,11 +585,11 @@ let display = function
   | DependencyUniverseBuilding { packages } ->
       "Building dependency universe for " ^ Int.to_string (List.length packages) ^ " packages"
   | DependencyUniverseBuilt {
-    runtime_packages;
-    build_packages;
-    dev_packages;
-    duration_ms
-  } ->
+      runtime_packages;
+      build_packages;
+      dev_packages;
+      duration_ms;
+    } ->
       "Built dependency universe in "
       ^ Int.to_string duration_ms
       ^ "ms (runtime="
@@ -602,11 +602,11 @@ let display = function
   | PackageMetadataFetchStarted { registry; package } ->
       "Fetching package metadata for " ^ Package_name.to_string package ^ " from " ^ registry
   | PackageMetadataFetchFinished {
-    registry;
-    package;
-    version;
-    duration_ms
-  } ->
+      registry;
+      package;
+      version;
+      duration_ms;
+    } ->
       (
           match version with
           | Some version ->
@@ -641,11 +641,11 @@ let display = function
       | None -> "Materializing source dependency " ^ source_locator
     )
   | SourceDependencyMaterializationFinished {
-    source_locator = _;
-    ref_ = _;
-    package;
-    version
-  } ->
+      source_locator = _;
+      ref_ = _;
+      package;
+      version;
+    } ->
       (
           match version with
           | Some version ->
@@ -653,11 +653,11 @@ let display = function
           | None -> "Discovered source dependency " ^ Package_name.to_string package
         )
   | DependencyManifestUpdated {
-    path;
-    section;
-    operation;
-    dependency
-  } ->
+      path;
+      section;
+      operation;
+      dependency;
+    } ->
       let verb =
         match operation with
         | `Add -> "Added"
@@ -700,11 +700,11 @@ let display = function
   | PackageDownloadStarted { package; version; _ } ->
       "Downloading " ^ Package_name.to_string package ^ "@" ^ version
   | PackageDownloadFinished {
-    package;
-    version;
-    path;
-    duration_ms
-  } ->
+      package;
+      version;
+      path;
+      duration_ms;
+    } ->
       "Downloaded "
       ^ Package_name.to_string package
       ^ "@"
@@ -728,11 +728,11 @@ let display = function
   | PackageMaterializationStarted { package; version; _ } ->
       "Materializing " ^ Package_name.to_string package ^ "@" ^ version
   | PackageMaterializationFinished {
-    package;
-    version;
-    path;
-    duration_ms
-  } ->
+      package;
+      version;
+      path;
+      duration_ms;
+    } ->
       "Materialized "
       ^ Package_name.to_string package
       ^ "@"
@@ -750,11 +750,11 @@ let display = function
       ^ ": "
       ^ Pm_error.message error
   | PackageResolvedForBuild {
-    package;
-    version;
-    path;
-    workspace
-  } ->
+      package;
+      version;
+      path;
+      workspace;
+    } ->
       (
           match version with
           | Some version ->
@@ -915,11 +915,11 @@ let manifest_operation_of_json = function
 (** Convert kind to JSON *)
 let kind_to_json = function
   | BuildComplete {
-    duration_ms;
-    results;
-    succeeded;
-    failed
-  } ->
+      duration_ms;
+      results;
+      succeeded;
+      failed;
+    } ->
       Json.Object [
         ("duration_ms", Json.Int duration_ms);
         ("succeeded", package_names_json succeeded);
@@ -940,14 +940,14 @@ let kind_to_json = function
       Json.Object [ ("package", package_name_json package); ("hash", Json.String hash); ]
   | PackageStarted { package } -> Json.Object [ ("package", package_name_json package); ]
   | PackageComplete {
-    package;
-    success;
-    duration_ms;
-    modules_compiled;
-    cache_hits;
-    cache_misses;
-    _
-  } ->
+      package;
+      success;
+      duration_ms;
+      modules_compiled;
+      cache_hits;
+      cache_misses;
+      _;
+    } ->
       Json.Object [
         ("package", package_name_json package);
         ("success", Json.Bool success);
@@ -1095,11 +1095,11 @@ let kind_to_json = function
   | DependencyUniverseBuilding { packages } ->
       Json.Object [ ("packages", package_names_json packages); ]
   | DependencyUniverseBuilt {
-    runtime_packages;
-    build_packages;
-    dev_packages;
-    duration_ms
-  } ->
+      runtime_packages;
+      build_packages;
+      dev_packages;
+      duration_ms;
+    } ->
       Json.Object [
         ("runtime_packages", Json.Int runtime_packages);
         ("build_packages", Json.Int build_packages);
@@ -1109,11 +1109,11 @@ let kind_to_json = function
   | PackageMetadataFetchStarted { registry; package } ->
       Json.Object [ ("registry", Json.String registry); ("package", package_name_json package); ]
   | PackageMetadataFetchFinished {
-    registry;
-    package;
-    version;
-    duration_ms
-  } ->
+      registry;
+      package;
+      version;
+      duration_ms;
+    } ->
       Json.Object [
         ("registry", Json.String registry);
         ("package", package_name_json package);
@@ -1132,11 +1132,11 @@ let kind_to_json = function
         ("ref", json_of_string_option ref_);
       ]
   | SourceDependencyMaterializationFinished {
-    source_locator;
-    ref_;
-    package;
-    version
-  } ->
+      source_locator;
+      ref_;
+      package;
+      version;
+    } ->
       Json.Object [
         ("source_locator", Json.String source_locator);
         ("ref", json_of_string_option ref_);
@@ -1144,11 +1144,11 @@ let kind_to_json = function
         ("version", json_of_string_option version);
       ]
   | DependencyManifestUpdated {
-    path;
-    section;
-    operation;
-    dependency
-  } ->
+      path;
+      section;
+      operation;
+      dependency;
+    } ->
       Json.Object [
         ("path", Json.String path);
         ("section", Json.String section);
@@ -1185,11 +1185,11 @@ let kind_to_json = function
         ("path", Json.String path);
       ]
   | PackageDownloadFinished {
-    package;
-    version;
-    path;
-    duration_ms
-  } ->
+      package;
+      version;
+      path;
+      duration_ms;
+    } ->
       Json.Object [
         ("package", package_name_json package);
         ("version", Json.String version);
@@ -1197,11 +1197,11 @@ let kind_to_json = function
         ("duration_ms", Json.Int duration_ms);
       ]
   | PackageDownloadFailed {
-    package;
-    version;
-    path;
-    error
-  } ->
+      package;
+      version;
+      path;
+      error;
+    } ->
       Json.Object [
         ("package", package_name_json package);
         ("version", Json.String version);
@@ -1209,11 +1209,11 @@ let kind_to_json = function
         ("error", Pm_error.to_json error);
       ]
   | PackageDownloadSkipped {
-    package;
-    version;
-    path;
-    reason
-  } ->
+      package;
+      version;
+      path;
+      reason;
+    } ->
       Json.Object [
         ("package", package_name_json package);
         ("version", Json.String version);
@@ -1233,11 +1233,11 @@ let kind_to_json = function
         ("path", Json.String path);
       ]
   | PackageMaterializationFinished {
-    package;
-    version;
-    path;
-    duration_ms
-  } ->
+      package;
+      version;
+      path;
+      duration_ms;
+    } ->
       Json.Object [
         ("package", package_name_json package);
         ("version", Json.String version);
@@ -1245,11 +1245,11 @@ let kind_to_json = function
         ("duration_ms", Json.Int duration_ms);
       ]
   | PackageMaterializationFailed {
-    package;
-    version;
-    path;
-    error
-  } ->
+      package;
+      version;
+      path;
+      error;
+    } ->
       Json.Object [
         ("package", package_name_json package);
         ("version", Json.String version);
@@ -1257,11 +1257,11 @@ let kind_to_json = function
         ("error", Pm_error.to_json error);
       ]
   | PackageResolvedForBuild {
-    package;
-    version;
-    path;
-    workspace
-  } ->
+      package;
+      version;
+      path;
+      workspace;
+    } ->
       Json.Object [
         ("package", package_name_json package);
         ("version", json_of_string_option version);
@@ -2496,11 +2496,11 @@ module Tests = struct
     in
     match from_json (to_json event) with
     | Ok { kind = PackageResolvedForBuild {
-      package;
-      version;
-      path;
-      workspace
-    }; _ } ->
+                    package;
+                    version;
+                    path;
+                    workspace;
+                  }; _ } ->
         if
           Package_name.equal package (package_name "std")
           && version = Some "0.1.0"
@@ -2529,11 +2529,11 @@ module Tests = struct
     in
     match from_json (to_json event) with
     | Ok { kind = DependencyManifestUpdated {
-      path;
-      section;
-      operation = `Add;
-      dependency
-    }; _ } ->
+                    path;
+                    section;
+                    operation = `Add;
+                    dependency;
+                  }; _ } ->
         if
           String.equal path "/tmp/workspace/riot.toml"
           && String.equal section "dependencies"

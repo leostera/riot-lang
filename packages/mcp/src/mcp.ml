@@ -94,7 +94,10 @@ type message_content =
   | Text of string
   | Resource of resource_contents
 
-type message = { role: string; content: message_content }
+type message = {
+  role: string;
+  content: message_content;
+}
 
 (** Protocol Messages *)
 type request_method =
@@ -125,7 +128,9 @@ type request_params =
       arguments: json option;
     }
   | ListResourcesParams
-  | ReadResourceParams of { uri: resource_uri }
+  | ReadResourceParams of {
+      uri: resource_uri;
+    }
   | ListPromptsParams
   | GetPromptParams of {
       name: string;
@@ -192,8 +197,16 @@ type response_result =
   | CustomResult of json
 
 type response =
-  | SuccessResponse of { jsonrpc: string; id: request_id; result: response_result }
-  | ErrorResponse of { jsonrpc: string; id: request_id; error: error }
+  | SuccessResponse of {
+      jsonrpc: string;
+      id: request_id;
+      result: response_result;
+    }
+  | ErrorResponse of {
+      jsonrpc: string;
+      id: request_id;
+      error: error;
+    }
 
 type notification_method =
   | ResourceListChanged
@@ -461,11 +474,11 @@ let request_params_to_json = function
 
 let response_result_to_json = function
   | InitializeResult {
-    protocol_version;
-    capabilities;
-    server_info;
-    instructions
-  } ->
+      protocol_version;
+      capabilities;
+      server_info;
+      instructions;
+    } ->
       Json.Object [
         ("protocolVersion", Json.String protocol_version);
         ("capabilities", capabilities_to_json capabilities);
@@ -573,11 +586,11 @@ let notification_params_to_json = function
         ("total", option_to_json (fun f -> Json.Float f) total);
       ]
   | LogMessageParams {
-    level;
-    logger;
-    data;
-    message
-  } ->
+      level;
+      logger;
+      data;
+      message;
+    } ->
       Json.Object [
         ("level", Json.String level);
         ("logger", option_to_json (fun s -> Json.String s) logger);
@@ -828,11 +841,11 @@ module MakeProtocol (T: ToolProtocol): McpApplicationProtocol with type tool_req
 
   let response_to_json = function
     | InitializeResult {
-      protocol_version;
-      capabilities;
-      server_info;
-      instructions
-    } ->
+        protocol_version;
+        capabilities;
+        server_info;
+        instructions;
+      } ->
         Json.Object [
           ("protocolVersion", Json.String protocol_version);
           (

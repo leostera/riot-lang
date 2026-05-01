@@ -163,19 +163,17 @@ let wait = fun ~on_waiting ~target_dir_root ~profile ~target ->
 
 let acquire = fun ~on_waiting ~target_dir_root ~profile ~target fn ->
   let lock_path = path ~target_dir_root ~profile ~target in
-  if has_in_process_lock lock_path then
-    (
-      let _ = increment_in_process_lock_count lock_path in
-      try
-        let result = fn () in
+  if has_in_process_lock lock_path then (
+    let _ = increment_in_process_lock_count lock_path in
+    try
+      let result = fn () in
+      let _ = decrement_in_process_lock_count lock_path in
+      result
+    with
+    | exn ->
         let _ = decrement_in_process_lock_count lock_path in
-        result
-      with
-      | exn ->
-          let _ = decrement_in_process_lock_count lock_path in
-          raise exn
-    )
-  else
+        raise exn
+  ) else
     match wait ~on_waiting ~target_dir_root ~profile ~target with
     | Error err -> Error err
     | Ok t ->

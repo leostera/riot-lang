@@ -110,7 +110,10 @@ module Internal = struct
   (* Named white references and validation for custom references. *)
 
   module White_points = struct
-    type named_reference = { xyz: xyz; uv: uv }
+    type named_reference = {
+      xyz: xyz;
+      uv: uv;
+    }
 
     let make = fun ~x ~y ~z ~u ~v ->
       {

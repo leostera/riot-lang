@@ -16,7 +16,10 @@ type request =
       binary_name: string;
       destination: destination;
     }
-  | External of { spec: external_spec; binary_name: string }
+  | External of {
+      spec: external_spec;
+      binary_name: string;
+    }
 type install_event =
   | Build of Riot_build.Event.t
   | InstallingBinary of {

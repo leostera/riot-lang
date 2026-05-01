@@ -30,16 +30,16 @@ let runtime_phase_of_package_scheduler_event = function
   | Package_scheduler.PlanningStarted { lane_count; package_count } ->
       Event.PackagePlanningStarted { lane_count; package_count }
   | Package_scheduler.PlanningFinished {
-    lane_count;
-    package_count;
-    deferred_count;
-    execution_required_count;
-    finalized_count;
-    cached_count;
-    skipped_count;
-    failed_count;
-    error_count
-  } ->
+      lane_count;
+      package_count;
+      deferred_count;
+      execution_required_count;
+      finalized_count;
+      cached_count;
+      skipped_count;
+      failed_count;
+      error_count;
+    } ->
       Event.PackagePlanningFinished {
         lane_count;
         package_count;
@@ -54,13 +54,13 @@ let runtime_phase_of_package_scheduler_event = function
   | Package_scheduler.ExecutionStarted { lane_count; package_count } ->
       Event.PackageExecutionStarted { lane_count; package_count }
   | Package_scheduler.ExecutionFinished {
-    lane_count;
-    package_count;
-    finalized_count;
-    built_count;
-    failed_count;
-    error_count
-  } ->
+      lane_count;
+      package_count;
+      finalized_count;
+      built_count;
+      failed_count;
+      error_count;
+    } ->
       Event.PackageExecutionFinished {
         lane_count;
         package_count;

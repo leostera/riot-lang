@@ -1418,7 +1418,7 @@ let test_lock_deps_reports_missing_registry_version_with_available_versions = fu
       registry;
       requirement;
       available_versions;
-      required_by = Some required_by
+      required_by = Some required_by;
     }
   ) ->
       if
@@ -2346,7 +2346,11 @@ version = "0.2.0"
                                 !events
                                 ~fn:(
                                   function
-                                  | Riot_model.Event.PackageVersionUpdated { package; from_version; to_version } ->
+                                  | Riot_model.Event.PackageVersionUpdated {
+                                      package;
+                                      from_version;
+                                      to_version;
+                                    } ->
                                       has_name "std" package
                                       && String.equal from_version "0.1.0"
                                       && String.equal to_version "0.2.0"
@@ -2911,7 +2915,11 @@ version = "0.0.1"
               }
               () with
             | Error (
-              Riot_deps.PathDependencyLoadFailed { dependency; path; error = Riot_deps.PathDependencyManifestReadFailed _ }
+              Riot_deps.PathDependencyLoadFailed {
+                dependency;
+                path;
+                error = Riot_deps.PathDependencyManifestReadFailed _;
+              }
             ) ->
                 if
                   String.equal dependency "../missing"
@@ -2936,7 +2944,10 @@ let test_git_dependency_parse_spec_normalizes_github_source = fun _ctx ->
 let test_git_dependency_parse_spec_reports_multiple_ref_suffixes = fun _ctx ->
   match Riot_deps.Git_dependency.parse_spec "github.com/riot/tests#main#extra" with
   | Error (
-    Riot_deps.Git_dependency.InvalidSourceSpec { source; reason = Riot_deps.Git_dependency.TooManyRefSuffixes }
+    Riot_deps.Git_dependency.InvalidSourceSpec {
+      source;
+      reason = Riot_deps.Git_dependency.TooManyRefSuffixes;
+    }
   ) ->
       if String.equal source "github.com/riot/tests#main#extra" then
         Ok ()
@@ -2949,7 +2960,10 @@ let test_git_dependency_parse_spec_reports_multiple_ref_suffixes = fun _ctx ->
 let test_git_dependency_parse_source_locator_reports_invalid_shape = fun _ctx ->
   match Riot_deps.Git_dependency.parse_source_locator "github.com/riot" with
   | Error (
-    Riot_deps.Git_dependency.InvalidSourceSpec { source; reason = Riot_deps.Git_dependency.InvalidLocatorShape }
+    Riot_deps.Git_dependency.InvalidSourceSpec {
+      source;
+      reason = Riot_deps.Git_dependency.InvalidLocatorShape;
+    }
   ) ->
       if String.equal source "github.com/riot" then
         Ok ()
@@ -3073,9 +3087,13 @@ version = "0.0.1"
               () with
             | Ok () -> Error "expected unsupported non-github source dependency add to fail"
             | Error (
-              Riot_deps.DependencySpecInvalid { dependency; error = Riot_deps.SourceDependencySpecError (
-                Riot_deps.Git_dependency.UnsupportedSourceHost { host; _ }
-              ) }
+              Riot_deps.DependencySpecInvalid {
+                dependency;
+                error =
+                  Riot_deps.SourceDependencySpecError (
+                    Riot_deps.Git_dependency.UnsupportedSourceHost { host; _ }
+                  );
+              }
             ) ->
                 if
                   String.equal dependency "https://gitlab.com/leostera/widgets"
@@ -4672,7 +4690,11 @@ let test_registry_package_spec_reports_invalid_shape = fun _ctx ->
 let test_registry_package_spec_reports_invalid_package_name = fun _ctx ->
   match Riot_deps.Registry_package_spec.from_string "Demo@1.0.0" with
   | Error (
-    Riot_deps.Registry_package_spec.InvalidPackageName { spec; name; error = Riot_model.Package_name.InvalidLeadingCharacter _ }
+    Riot_deps.Registry_package_spec.InvalidPackageName {
+      spec;
+      name;
+      error = Riot_model.Package_name.InvalidLeadingCharacter _;
+    }
   ) ->
       if String.equal spec "Demo@1.0.0" && String.equal name "Demo" then
         Ok ()

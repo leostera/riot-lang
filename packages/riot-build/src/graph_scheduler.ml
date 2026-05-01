@@ -18,7 +18,10 @@ module Run_config = struct
     | Fail_fast
     | Continue_on_failure
 
-  type t = { parallelism: int; mode: mode }
+  type t = {
+    parallelism: int;
+    mode: mode;
+  }
 
   let make = fun ~parallelism ~mode () -> { parallelism = Int.max 1 parallelism; mode }
 
@@ -73,11 +76,10 @@ module Graph = struct
     let dependent = find_node graph node in
     let dependency = find_node graph depends_on in
     let inserted = HashSet.insert dependent.deps ~value:depends_on in
-    if inserted then
-      (
-        let _ = HashSet.insert dependency.dependents ~value:node in
-        ()
-      );
+    if inserted then (
+      let _ = HashSet.insert dependency.dependents ~value:node in
+      ()
+    );
     inserted
 
   let add_dependency = fun graph ~node ~depends_on ->
@@ -298,29 +300,27 @@ let apply_command = fun state locals touched ->
   | Add_dependency { node; depends_on } ->
       let node = resolve_node_ref locals node in
       let depends_on = resolve_node_ref locals depends_on in
-      if Graph.add_dependency_internal state.graph ~node ~depends_on then
+      if Graph.add_dependency_internal state.graph ~node ~depends_on then (
+        let runtime_node = find_runtime_node state node in
         (
-          let runtime_node = find_runtime_node state node in
-          (
-            match runtime_node.status with
-            | `Pending -> ()
-            | `Running
-            | `Completed _ ->
-                panic
-                  ("graph scheduler: cannot add dependencies to active node "
-                  ^ Int.to_string (Node_id.to_int node))
-          );
-          let dependency = find_runtime_node state depends_on in
-          (
-            match dependency.status with
-            | `Completed _ -> ()
-            | `Pending
-            | `Running ->
-                runtime_node.unresolved_dependencies <- runtime_node.unresolved_dependencies + 1
-          );
-          node :: touched
-        )
-      else
+          match runtime_node.status with
+          | `Pending -> ()
+          | `Running
+          | `Completed _ ->
+              panic
+                ("graph scheduler: cannot add dependencies to active node "
+                ^ Int.to_string (Node_id.to_int node))
+        );
+        let dependency = find_runtime_node state depends_on in
+        (
+          match dependency.status with
+          | `Completed _ -> ()
+          | `Pending
+          | `Running ->
+              runtime_node.unresolved_dependencies <- runtime_node.unresolved_dependencies + 1
+        );
+        node :: touched
+      ) else
         touched
   | Record_mutation mutation ->
       state.graph.apply_mutation state.graph mutation;

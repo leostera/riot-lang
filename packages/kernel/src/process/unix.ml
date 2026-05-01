@@ -44,7 +44,11 @@ type output_stdio = Stdout.t
 
 type error_stdio = Stderr.t
 
-type stdio_config = { stdin: input_stdio; stdout: output_stdio; stderr: error_stdio }
+type stdio_config = {
+  stdin: input_stdio;
+  stdout: output_stdio;
+  stderr: error_stdio;
+}
 
 type t = {
   pid: int;

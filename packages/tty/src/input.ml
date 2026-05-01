@@ -206,7 +206,7 @@ let event_to_string = function
     action;
     x;
     y;
-    modifiers = _
+    modifiers = _;
   } ->
       let act =
         match action with

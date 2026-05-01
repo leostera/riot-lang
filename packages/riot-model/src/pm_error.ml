@@ -97,11 +97,11 @@ let rec headline = function
       ^ ": "
       ^ error
   | SourceDependencyLoadFailed {
-    dependency_name;
-    source_locator;
-    ref_;
-    error
-  } ->
+      dependency_name;
+      source_locator;
+      ref_;
+      error;
+    } ->
       let suffix =
         match ref_ with
         | Some ref_ -> "#" ^ ref_
@@ -128,23 +128,23 @@ let rec headline = function
       ^ latest_version
       ^ "' but that release is missing from the sparse index document"
   | RegistryReleaseYanked {
-    package;
-    registry;
-    version;
-    required_by = _
-  } ->
+      package;
+      registry;
+      version;
+      required_by = _;
+    } ->
       "package `" ^ package ^ "@" ^ version ^ "` was yanked from registry `" ^ registry ^ "`"
   | PackageMetadataReadFailed { package; error; _ } ->
       "failed to read package document for '" ^ package ^ "': " ^ error
   | PackageNotFound { package; registry; required_by = _ } ->
       "package `" ^ package ^ "` was not found in registry `" ^ registry ^ "`"
   | RegistryVersionNotFound {
-    package;
-    registry;
-    requirement;
-    required_by = _;
-    _
-  } ->
+      package;
+      registry;
+      requirement;
+      required_by = _;
+      _;
+    } ->
       "package `"
       ^ package
       ^ "` has no release matching `"
@@ -236,11 +236,11 @@ let rec to_json = function
         ("error", Json.String error);
       ]
   | SourceDependencyLoadFailed {
-    dependency_name;
-    source_locator;
-    ref_;
-    error
-  } ->
+      dependency_name;
+      source_locator;
+      ref_;
+      error;
+    } ->
       Json.Object [
         ("kind", Json.String "SourceDependencyLoadFailed");
         ("dependency_name", Json.String dependency_name);
@@ -264,11 +264,11 @@ let rec to_json = function
         ("latest_version", Json.String latest_version);
       ]
   | RegistryReleaseYanked {
-    package;
-    registry;
-    version;
-    required_by
-  } ->
+      package;
+      registry;
+      version;
+      required_by;
+    } ->
       Json.Object [
         ("kind", Json.String "RegistryReleaseYanked");
         ("package", Json.String package);
@@ -307,12 +307,12 @@ let rec to_json = function
             ]);
       ]
   | RegistryVersionNotFound {
-    package;
-    registry;
-    requirement;
-    available_versions;
-    required_by
-  } ->
+      package;
+      registry;
+      requirement;
+      available_versions;
+      required_by;
+    } ->
       Json.Object [
         ("kind", Json.String "RegistryVersionNotFound");
         ("package", Json.String package);

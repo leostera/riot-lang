@@ -4,7 +4,11 @@ type package = string
 
 type version_ranges = Version.t Ranges.t
 
-type t = { package: package; ranges: version_ranges; positive: bool }
+type t = {
+  package: package;
+  ranges: version_ranges;
+  positive: bool;
+}
 
 let version_compare = Version.compare
 

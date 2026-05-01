@@ -398,45 +398,44 @@ let build = fun ~source ~token_stream ~events ->
   in
   let pop_node () =
     let depth = Vector.length frame_stack in
-    if Int.(depth > 0) then
-      (
-        let frame = Vector.get_unchecked frame_stack ~at:Int.(depth - 1) in
-        truncate_vector frame_stack ~len:Int.(depth - 1);
-        let pending_limit = Vector.length pending_children in
-        let first_child = Vector.length children_store in
-        copy_pending_children frame.first_pending_child pending_limit;
-        let child_count = Int.(pending_limit - frame.first_pending_child) in
-        truncate_vector pending_children ~len:frame.first_pending_child;
-        let (raw_lo, raw_hi, full_width) =
-          if frame.has_range then
-            let width =
-              if Int.(frame.frame_raw_hi <= frame.frame_raw_lo) then
-                0
-              else
-                Int.(raw_end raw_tokens (frame.frame_raw_hi - 1)
-                - raw_start raw_tokens frame.frame_raw_lo)
-            in
-            (frame.frame_raw_lo, frame.frame_raw_hi, width)
-          else
-            (0, 0, 0)
-        in
-        let node = {
-          kind = frame.kind;
-          first_child;
-          child_count;
-          raw_lo;
-          raw_hi;
-          full_width;
-          token_width = frame.frame_token_width;
-        }
-        in
-        let node_id = Vector.length nodes in
-        Vector.push nodes ~value:node;
-        if Int.(Vector.length frame_stack > 0) then
-          push_child (Node node_id)
+    if Int.(depth > 0) then (
+      let frame = Vector.get_unchecked frame_stack ~at:Int.(depth - 1) in
+      truncate_vector frame_stack ~len:Int.(depth - 1);
+      let pending_limit = Vector.length pending_children in
+      let first_child = Vector.length children_store in
+      copy_pending_children frame.first_pending_child pending_limit;
+      let child_count = Int.(pending_limit - frame.first_pending_child) in
+      truncate_vector pending_children ~len:frame.first_pending_child;
+      let (raw_lo, raw_hi, full_width) =
+        if frame.has_range then
+          let width =
+            if Int.(frame.frame_raw_hi <= frame.frame_raw_lo) then
+              0
+            else
+              Int.(raw_end raw_tokens (frame.frame_raw_hi - 1)
+              - raw_start raw_tokens frame.frame_raw_lo)
+          in
+          (frame.frame_raw_lo, frame.frame_raw_hi, width)
         else
-          root := Some node_id
-      )
+          (0, 0, 0)
+      in
+      let node = {
+        kind = frame.kind;
+        first_child;
+        child_count;
+        raw_lo;
+        raw_hi;
+        full_width;
+        token_width = frame.frame_token_width;
+      }
+      in
+      let node_id = Vector.length nodes in
+      Vector.push nodes ~value:node;
+      if Int.(Vector.length frame_stack > 0) then
+        push_child (Node node_id)
+      else
+        root := Some node_id
+    )
   in
   let push_token raw_index =
     if Int.(raw_index >= 0) && Int.(raw_index < Vector.length raw_tokens) then

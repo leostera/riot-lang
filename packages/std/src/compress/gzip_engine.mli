@@ -12,7 +12,11 @@ type status =
   | Need_input
   | Need_output
   | Finished
-type step = { consumed: int; produced: int; status: status }
+type step = {
+  consumed: int;
+  produced: int;
+  status: status;
+}
 type flush =
   | No_flush
   | Sync_flush

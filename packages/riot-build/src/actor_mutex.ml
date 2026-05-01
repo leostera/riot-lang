@@ -25,9 +25,16 @@ type request =
 
 type Message.t +=
   | Riot_build_actor_mutex_request of request
-  | Riot_build_actor_mutex_acquired of { request_id: request_id }
-  | Riot_build_actor_mutex_released of { request_id: request_id }
-  | Riot_build_actor_mutex_failed of { request_id: request_id; reason: string }
+  | Riot_build_actor_mutex_acquired of {
+      request_id: request_id;
+    }
+  | Riot_build_actor_mutex_released of {
+      request_id: request_id;
+    }
+  | Riot_build_actor_mutex_failed of {
+      request_id: request_id;
+      reason: string;
+    }
 
 let request_ids = Sync.Atomic.make 0
 

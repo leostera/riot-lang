@@ -90,15 +90,14 @@ let pending_snapshot_roots = fun ~workspace_root ->
   let roots = Vector.with_capacity ~size:16 in
   add_scan_root roots Path.(workspace_root / Path.v ".riot" / Path.v "snapshots");
   let packages_root = Path.(workspace_root / Path.v "packages") in
-  if Path.is_directory packages_root then
-    (
-      match Fs.read_dir packages_root with
-      | Error _ -> ()
-      | Ok packages ->
-          Iter.MutIterator.for_each
-            packages
-            ~fn:(fun package -> add_scan_root roots Path.(packages_root / package / Path.v "tests"))
-    );
+  if Path.is_directory packages_root then (
+    match Fs.read_dir packages_root with
+    | Error _ -> ()
+    | Ok packages ->
+        Iter.MutIterator.for_each
+          packages
+          ~fn:(fun package -> add_scan_root roots Path.(packages_root / package / Path.v "tests"))
+  );
   roots
   |> Vector.to_array
   |> Array.to_list
@@ -387,7 +386,10 @@ let review_pending_snapshots_interactively = fun ~workspace_root snapshots ->
 
 type snapshot_action_summary = { processed_count: int }
 
-type streaming_review_state = { reviewed_count: int; summary: review_summary }
+type streaming_review_state = {
+  reviewed_count: int;
+  summary: review_summary;
+}
 
 let empty_snapshot_action_summary = { processed_count = 0 }
 

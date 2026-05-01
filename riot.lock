@@ -1,6 +1,6 @@
 format_version = 1
 
-dependency_hash = "7c15c98ccdcffe6f"
+dependency_hash = "8544cf53dac03a15"
 
 [[packages]]
 name = "blink"
@@ -135,14 +135,6 @@ name = "postgres"
 root = "packages/postgres"
 provenance = { kind = "workspace" }
 dependencies = [{ name = "kernel", package = { name = "kernel" } }, { name = "sqlx-driver", package = { name = "sqlx-driver" } }, { name = "std", package = { name = "std" } }]
-build_dependencies = []
-dev_dependencies = []
-
-[[packages]]
-name = "pretext"
-root = "packages/pretext"
-provenance = { kind = "workspace" }
-dependencies = [{ name = "std", package = { name = "std" } }]
 build_dependencies = []
 dev_dependencies = []
 

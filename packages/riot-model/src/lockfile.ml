@@ -47,10 +47,21 @@ type container =
   | Provenance
 
 type error =
-  | ExpectedTable of { container: container }
-  | ExpectedArray of { container: container }
-  | MissingField of { container: container; field: string }
-  | InvalidFieldType of { container: container; field: string; expected: string }
+  | ExpectedTable of {
+      container: container;
+    }
+  | ExpectedArray of {
+      container: container;
+    }
+  | MissingField of {
+      container: container;
+      field: string;
+    }
+  | InvalidFieldType of {
+      container: container;
+      field: string;
+      expected: string;
+    }
   | InvalidPackageName of {
       container: container;
       field: string;
@@ -75,11 +86,11 @@ let error_message = function
   | InvalidFieldType { container; field; expected } ->
       container_name container ^ " field '" ^ field ^ "' must be " ^ expected
   | InvalidPackageName {
-    container;
-    field;
-    value;
-    error
-  } ->
+      container;
+      field;
+      value;
+      error;
+    } ->
       container_name container
       ^ " field '"
       ^ field

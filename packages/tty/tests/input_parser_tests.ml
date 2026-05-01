@@ -60,13 +60,15 @@ let test_parser_chunked_mouse = fun _ctx ->
   let parser = Tty.Input.Parser.create () in
   let (_, events) = feed_chunks parser (byte_chunks "\x1b[<0;10;20M") in
   match events with
-  | [ `Mouse {
-    button = Tty.Input.Left;
-    action = Tty.Input.Mouse_press;
-    x = 10;
-    y = 20;
-    modifiers = []
-  } ] -> Ok ()
+  | [
+      `Mouse {
+        button = Tty.Input.Left;
+        action = Tty.Input.Mouse_press;
+        x = 10;
+        y = 20;
+        modifiers = [];
+      };
+    ] -> Ok ()
   | _ -> Error "Expected chunked SGR mouse press to parse correctly"
 
 let test_parser_bracketed_paste_one_byte_at_a_time = fun _ctx ->
@@ -212,52 +214,60 @@ let test_parser_scroll_mouse = fun _ctx ->
   let parser = Tty.Input.Parser.create () in
   let (_, events) = feed_chunks parser (byte_chunks "\x1b[<64;12;7M") in
   match events with
-  | [ `Mouse {
-    button = Tty.Input.ScrollUp;
-    action = Tty.Input.Mouse_press;
-    x = 12;
-    y = 7;
-    modifiers = []
-  } ] -> Ok ()
+  | [
+      `Mouse {
+        button = Tty.Input.ScrollUp;
+        action = Tty.Input.Mouse_press;
+        x = 12;
+        y = 7;
+        modifiers = [];
+      };
+    ] -> Ok ()
   | _ -> Error "Expected scroll-up mouse sequence to parse"
 
 let test_parser_scroll_down_mouse = fun _ctx ->
   let parser = Tty.Input.Parser.create () in
   let (_, events) = feed_chunks parser (byte_chunks "\x1b[<65;12;7M") in
   match events with
-  | [ `Mouse {
-    button = Tty.Input.ScrollDown;
-    action = Tty.Input.Mouse_press;
-    x = 12;
-    y = 7;
-    modifiers = []
-  } ] -> Ok ()
+  | [
+      `Mouse {
+        button = Tty.Input.ScrollDown;
+        action = Tty.Input.Mouse_press;
+        x = 12;
+        y = 7;
+        modifiers = [];
+      };
+    ] -> Ok ()
   | _ -> Error "Expected scroll-down mouse sequence to parse"
 
 let test_parser_mouse_drag = fun _ctx ->
   let parser = Tty.Input.Parser.create () in
   let (_, events) = feed_chunks parser (byte_chunks "\x1b[<32;10;20M") in
   match events with
-  | [ `Mouse {
-    button = Tty.Input.Left;
-    action = Tty.Input.Mouse_drag;
-    x = 10;
-    y = 20;
-    modifiers = []
-  } ] -> Ok ()
+  | [
+      `Mouse {
+        button = Tty.Input.Left;
+        action = Tty.Input.Mouse_drag;
+        x = 10;
+        y = 20;
+        modifiers = [];
+      };
+    ] -> Ok ()
   | _ -> Error "Expected SGR drag sequence to parse"
 
 let test_parser_mouse_move = fun _ctx ->
   let parser = Tty.Input.Parser.create () in
   let (_, events) = feed_chunks parser (byte_chunks "\x1b[<35;10;20M") in
   match events with
-  | [ `Mouse {
-    button = Tty.Input.Left;
-    action = Tty.Input.Mouse_move;
-    x = 10;
-    y = 20;
-    modifiers = []
-  } ] -> Ok ()
+  | [
+      `Mouse {
+        button = Tty.Input.Left;
+        action = Tty.Input.Mouse_move;
+        x = 10;
+        y = 20;
+        modifiers = [];
+      };
+    ] -> Ok ()
   | _ -> Error "Expected SGR move sequence to parse"
 
 let test_parser_unknown_sequence_emitted_once = fun _ctx ->

@@ -3,7 +3,10 @@ open Std
 type rule_state =
   | Enabled
   | Disabled
-type rule_override = { name: string; state: rule_state }
+type rule_override = {
+  name: string;
+  state: rule_state;
+}
 type fix_config = {
   ignore_patterns: string list;
   rules: rule_override list;

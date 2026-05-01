@@ -27,10 +27,14 @@ module Server = struct
     | StdoutHandler of message
 
   type Message.t +=
-    | StdoutHandler_ready of { request_id: request_id }
+    | StdoutHandler_ready of {
+        request_id: request_id;
+      }
 
   type Message.t +=
-    | StdoutHandler_flushed of { request_id: request_id }
+    | StdoutHandler_flushed of {
+        request_id: request_id;
+      }
 
   let format_event = fun event style ->
     match style with

@@ -90,7 +90,10 @@ end
 
 (** Random state for HashMap/HashSet - provides seeded hashing *)
 module RandomState = struct
-  type t = { seed1: int64; seed2: int64 }
+  type t = {
+    seed1: int64;
+    seed2: int64;
+  }
 
   let seed_material = fun label ->
     let pid = Int.to_string (Process.current_pid ()) in

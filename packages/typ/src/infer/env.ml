@@ -25,7 +25,11 @@ module ValueScopes = struct
 
   type t =
     | Root of scope
-    | Scope of { root: scope; current: scope; parent: t }
+    | Scope of {
+        root: scope;
+        current: scope;
+        parent: t;
+      }
 
   let empty_scope = { values = IdentMap.empty }
 
@@ -76,7 +80,10 @@ end
    lookup through parent modules is handled by `ModuleScopes`.
 *)
 module TypeScopes = struct
-  type binding = { declaration: type_declaration; ordinal: int }
+  type binding = {
+    declaration: type_declaration;
+    ordinal: int;
+  }
 
   type t = binding IdentMap.t
 
@@ -100,11 +107,20 @@ type module_summary = {
   modules: module_binding IdentMap.t;
 }
 
-and module_binding = { summary: module_summary; ordinal: int }
+and module_binding = {
+  summary: module_summary;
+  ordinal: int;
+}
 
-and record_field_info = { owner: type_declaration; field: record_field_declaration }
+and record_field_info = {
+  owner: type_declaration;
+  field: record_field_declaration;
+}
 
-and record_field_binding = { info: record_field_info; ordinal: int }
+and record_field_binding = {
+  info: record_field_info;
+  ordinal: int;
+}
 
 and inline_record_field = {
   declaration: record_field_declaration;
@@ -160,7 +176,11 @@ module ModuleScopes = struct
 
   type t =
     | Root of frame
-    | Scope of { root: frame; current: frame; parent: t }
+    | Scope of {
+        root: frame;
+        current: frame;
+        parent: t;
+      }
 
   let empty_frame ?name () = {
     name;
@@ -378,8 +398,7 @@ let module_get_value (summary: module_summary) ~name =
 let module_has_value summary ~name = Option.is_some (module_get_value summary ~name)
 
 let module_get_constructor (summary: module_summary) ~name =
-  Option.map (IdentMap.get summary.constructors ~key:name) ~fn:(fun binding ->
-    binding.description)
+  Option.map (IdentMap.get summary.constructors ~key:name) ~fn:(fun binding -> binding.description)
 
 let module_has_constructor summary ~name = Option.is_some (module_get_constructor summary ~name)
 

@@ -849,12 +849,11 @@ let parse_number_text_reader_slow = fun state reader ->
         )
     | _ -> ()
   );
-  if not (is_value_delimiter (reader_current_char reader)) then
-    (
-      match reader_current_char reader with
-      | Some actual -> unexpected_character state actual "number delimiter"
-      | None -> ()
-    );
+  if not (is_value_delimiter (reader_current_char reader)) then (
+    match reader_current_char reader with
+    | Some actual -> unexpected_character state actual "number delimiter"
+    | None -> ()
+  );
   { text = IO.Buffer.contents state.scratch; is_float = !is_float }
 
 let parse_number_text_reader = fun state reader ->
@@ -1090,12 +1089,11 @@ let parse_number_text_generic = fun state ->
         )
     | _ -> ()
   );
-  if not (is_value_delimiter (current ())) then
-    (
-      match current () with
-      | Some actual -> unexpected_character state actual "number delimiter"
-      | None -> ()
-    );
+  if not (is_value_delimiter (current ())) then (
+    match current () with
+    | Some actual -> unexpected_character state actual "number delimiter"
+    | None -> ()
+  );
   Input.set_position state.input !pos;
   { text = String.sub input ~offset:start ~len:(!pos - start); is_float = !is_float }
 
@@ -1183,12 +1181,11 @@ let parse_int_generic = fun state ->
           ("unexpected '" ^ String.make ~len:1 ~char:actual ^ "' while parsing number")
     | None -> unexpected_end state "number"
   );
-  if not (is_value_delimiter (current ())) then
-    (
-      match current () with
-      | Some actual -> unexpected_character state actual "number delimiter"
-      | None -> ()
-    );
+  if not (is_value_delimiter (current ())) then (
+    match current () with
+    | Some actual -> unexpected_character state actual "number delimiter"
+    | None -> ()
+  );
   Input.set_position state.input !pos;
   if negative then
     !acc
@@ -1289,12 +1286,11 @@ let parse_int_reader = fun state reader ->
             ("unexpected '" ^ String.make ~len:1 ~char:actual ^ "' while parsing number")
       | None -> unexpected_end state "number"
     );
-    if not (is_value_delimiter (current ())) then
-      (
-        match current () with
-        | Some actual -> unexpected_character state actual "number delimiter"
-        | None -> ()
-      );
+    if not (is_value_delimiter (current ())) then (
+      match current () with
+      | Some actual -> unexpected_character state actual "number delimiter"
+      | None -> ()
+    );
     reader.Input.pos <- !pos;
     if negative then
       !acc

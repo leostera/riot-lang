@@ -7,10 +7,7 @@
 *)
 
 (** Hidden nominal type name for an inline-record constructor payload. *)
-val inline_record_payload_ident:
-  Ast.type_declaration ->
-  Ast.type_constructor ->
-  Ast.ident
+val inline_record_payload_ident: Ast.type_declaration -> Ast.type_constructor -> Ast.ident
 
 (** Replace generalized variables in a constructor description with fresh vars. *)
 val instantiate:

@@ -94,7 +94,9 @@ let check_field_access = fun ctx diagnostics expr target field ->
   | Some (module_segments, field_name) when starts_with_lowercase field_name -> (
       match module_segments with
       | module_head :: _ when starts_with_uppercase module_head ->
-          H.push_diagnostic diagnostics (field_access_diagnostic ctx expr target module_segments field_name)
+          H.push_diagnostic
+            diagnostics
+            (field_access_diagnostic ctx expr target module_segments field_name)
       | _ -> ()
     )
   | _ -> ()

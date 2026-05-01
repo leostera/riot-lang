@@ -63,7 +63,11 @@ type payload =
       header_block_fragment: string;
     }
   | PingPayload of string
-  | GoawayPayload of { last_stream_id: int; error_code: error_code; debug_data: string }
+  | GoawayPayload of {
+      last_stream_id: int;
+      error_code: error_code;
+      debug_data: string;
+    }
   | WindowUpdatePayload of int
   | ContinuationPayload of string
   | UnknownPayload of string

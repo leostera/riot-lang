@@ -138,7 +138,10 @@ type publish_metadata_error =
       version: string;
       error: Std.Version.parse_error;
     }
-  | NonStringPublishField of { package_name: string; field: publish_field }
+  | NonStringPublishField of {
+      package_name: string;
+      field: publish_field;
+    }
   | NonBooleanPublicFlag of { package_name: string }
 
 type dependency_error =
@@ -152,7 +155,10 @@ type dependency_error =
       error: Std.Version.parse_error;
     }
   | NonBooleanWorkspaceFlag of { dependency_name: string }
-  | NonStringDependencyField of { dependency_name: string; field: dependency_field }
+  | NonStringDependencyField of {
+      dependency_name: string;
+      field: dependency_field;
+    }
   | DependencyCannotSpecifySourceAndGithub of { dependency_name: string }
   | WorkspaceDependencyCannotSpecifyOverrides of { dependency_name: string }
   | DependencyRefRequiresSource of { dependency_name: string }
@@ -1630,7 +1636,11 @@ let scan_roots_for_intent = fun ~(intent:realization_intent) ~(package_path:Path
   in
   List.filter roots ~fn:Path.exists
 
-let scan_sources_for_intent ~(intent:realization_intent) ~(package_path:Path.t) ?(excluded_relpaths = []) () =
+let scan_sources_for_intent
+  ~(intent:realization_intent)
+  ~(package_path:Path.t)
+  ?(excluded_relpaths = [])
+  () =
   let started_at = Time.Instant.now () in
   let excluded_relpath_strings =
     excluded_relpaths
@@ -1712,22 +1722,21 @@ let scan_sources_for_intent ~(intent:realization_intent) ~(package_path:Path.t) 
                             (should_skip_source_entry rel_path
                             || should_skip_test_support_path rel_path
                             || List.contains excluded_relpath_strings ~value:rel_path_string)
-                        then
-                          (
-                            match bucket_of_rel_path rel_path_components with
-                            | Some bucket when not (source_bucket_enabled enabled_buckets bucket) ->
-                                ()
-                            | Some Src
-                            | Some Tests
-                            | Some Examples
-                            | Some Bench when not (is_ocaml_module_file rel_path) -> ()
-                            | Some Src -> src := rel_path :: !src
-                            | Some Tests -> tests := rel_path :: !tests
-                            | Some Native -> native := rel_path :: !native
-                            | Some Examples -> examples := rel_path :: !examples
-                            | Some Bench -> bench := rel_path :: !bench
-                            | None -> ()
-                          )
+                        then (
+                          match bucket_of_rel_path rel_path_components with
+                          | Some bucket when not (source_bucket_enabled enabled_buckets bucket) ->
+                              ()
+                          | Some Src
+                          | Some Tests
+                          | Some Examples
+                          | Some Bench when not (is_ocaml_module_file rel_path) -> ()
+                          | Some Src -> src := rel_path :: !src
+                          | Some Tests -> tests := rel_path :: !tests
+                          | Some Native -> native := rel_path :: !native
+                          | Some Examples -> examples := rel_path :: !examples
+                          | Some Bench -> bench := rel_path :: !bench
+                          | None -> ()
+                        )
                     | Symlink
                     | Other -> ()
                   ));
@@ -2106,41 +2115,37 @@ let from_toml:
   |> Result.map ~fn:(realize_manifest_spec ~intent:Dev)
 
 let to_json: t -> Json.t = fun pkg ->
-  let dependencies_json =
-    Json.Array (List.map
-      pkg.dependencies
-      ~fn:(fun (dep: dependency) ->
-        Json.Object [
-          ("name", Json.String (Package_name.to_string dep.name));
-          ("source", dependency_source_to_json dep.source);
-        ]))
+  let dependencies_json = Json.Array (List.map
+    pkg.dependencies
+    ~fn:(fun (dep: dependency) ->
+      Json.Object [
+        ("name", Json.String (Package_name.to_string dep.name));
+        ("source", dependency_source_to_json dep.source);
+      ]))
   in
-  let dev_dependencies_json =
-    Json.Array (List.map
-      pkg.dev_dependencies
-      ~fn:(fun (dep: dependency) ->
-        Json.Object [
-          ("name", Json.String (Package_name.to_string dep.name));
-          ("source", dependency_source_to_json dep.source);
-        ]))
+  let dev_dependencies_json = Json.Array (List.map
+    pkg.dev_dependencies
+    ~fn:(fun (dep: dependency) ->
+      Json.Object [
+        ("name", Json.String (Package_name.to_string dep.name));
+        ("source", dependency_source_to_json dep.source);
+      ]))
   in
-  let build_dependencies_json =
-    Json.Array (List.map
-      pkg.build_dependencies
-      ~fn:(fun (dep: dependency) ->
-        Json.Object [
-          ("name", Json.String (Package_name.to_string dep.name));
-          ("source", dependency_source_to_json dep.source);
-        ]))
+  let build_dependencies_json = Json.Array (List.map
+    pkg.build_dependencies
+    ~fn:(fun (dep: dependency) ->
+      Json.Object [
+        ("name", Json.String (Package_name.to_string dep.name));
+        ("source", dependency_source_to_json dep.source);
+      ]))
   in
-  let binaries_json =
-    Json.Array (List.map
-      pkg.binaries
-      ~fn:(fun (bin: binary) ->
-        Json.Object [
-          ("name", Json.String bin.name);
-          ("path", Json.String (Path.to_string bin.path));
-        ]))
+  let binaries_json = Json.Array (List.map
+    pkg.binaries
+    ~fn:(fun (bin: binary) ->
+      Json.Object [
+        ("name", Json.String bin.name);
+        ("path", Json.String (Path.to_string bin.path));
+      ]))
   in
   let library_json =
     match pkg.library with
@@ -2700,14 +2705,19 @@ std = ">= 1.2.3"
       |> Result.expect ~msg:"expected package manifest"
     in
     match pkg.dependencies with
-    | [ { source = {
-      workspace = false;
-      builtin = false;
-      path = None;
-      source_locator = None;
-      ref_ = None;
-      version = Some requirement
-    }; _ } ] ->
+    | [
+        {
+          source = {
+            workspace = false;
+            builtin = false;
+            path = None;
+            source_locator = None;
+            ref_ = None;
+            version = Some requirement;
+          };
+          _;
+        };
+      ] ->
         if String.equal (Version.requirement_to_string requirement) ">= 1.2.3" then
           Ok ()
         else
@@ -2797,9 +2807,16 @@ widgets = { source = "https://github.com/riot-tests/monorepo/packages/widgets", 
       |> Result.expect ~msg:"expected package manifest"
     in
     match pkg.dependencies with
-    | [ { name; source = { source_locator = Some "github.com/riot-tests/monorepo/packages/widgets"; ref_ = Some "main"; _ } } ] when Package_name.equal
-      name
-      (package_name "widgets") -> Ok ()
+    | [
+        {
+          name;
+          source = {
+            source_locator = Some "github.com/riot-tests/monorepo/packages/widgets";
+            ref_ = Some "main";
+            _;
+          };
+        };
+      ] when Package_name.equal name (package_name "widgets") -> Ok ()
     | _ -> Error "expected source dependency to preserve locator and ref" [@test]
 
   let test_builtin_dependency_rejects_version_constraints () =
@@ -2882,14 +2899,19 @@ std = "definitely-not-semver"
     | Ok decoded ->
         (
           match decoded.dependencies with
-          | [ { source = {
-            workspace = false;
-            builtin = false;
-            path = None;
-            source_locator = None;
-            ref_ = None;
-            version = Some decoded_requirement
-          }; _ } ] ->
+          | [
+              {
+                source = {
+                  workspace = false;
+                  builtin = false;
+                  path = None;
+                  source_locator = None;
+                  ref_ = None;
+                  version = Some decoded_requirement;
+                };
+                _;
+              };
+            ] ->
               if String.equal (Version.requirement_to_string decoded_requirement) ">= 1.2.3" then
                 Ok ()
               else
@@ -2928,9 +2950,20 @@ std = "definitely-not-semver"
     }
     in
     match from_json (to_json package) with
-    | Ok { dependencies = [ { name; source = { source_locator = Some "github.com/riot-tests/widgets"; ref_ = Some "main"; _ } } ]; _ } when Package_name.equal
-      name
-      (package_name "widgets") -> Ok ()
+    | Ok {
+        dependencies = [
+            {
+              name;
+              source = {
+                source_locator = Some "github.com/riot-tests/widgets";
+                ref_ = Some "main";
+                _;
+              };
+            };
+        ];
+        _;
+      } when Package_name.equal name (package_name "widgets") ->
+        Ok ()
     | Ok _ -> Error "expected source dependency to survive package json roundtrip"
     | Error err -> Error err [@test]
 

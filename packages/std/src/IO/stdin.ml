@@ -34,8 +34,14 @@ type request =
 
 type Runtime.Message.t +=
   | IO_stdin_request of request
-  | IO_stdin_read_result of { request_id: request_id; count: int }
-  | IO_stdin_error of { request_id: request_id; error: error }
+  | IO_stdin_read_result of {
+      request_id: request_id;
+      count: int;
+    }
+  | IO_stdin_error of {
+      request_id: request_id;
+      error: error;
+    }
 
 type state = {
   chunk_size: int;
@@ -141,12 +147,12 @@ let rec loop = fun state ->
   in
   match Runtime.receive ~selector () with
   | Read {
-    reply_to;
-    request_id;
-    buffer;
-    offset;
-    len
-  } ->
+      reply_to;
+      request_id;
+      buffer;
+      offset;
+      len;
+    } ->
       send_count_result
         reply_to
         request_id
@@ -245,12 +251,11 @@ let commit_into = fun into count ->
   | Error error -> Kernel.SystemError.panic ("IO.Stdin.read: " ^ Kernel.IO.Error.message error)
 
 let read = fun (t: t) ~into ->
-  if Buffer.writable_bytes into = 0 then
-    (
-      match Buffer.ensure_free into default_chunk_size with
-      | Ok () -> ()
-      | Error error -> Kernel.SystemError.panic ("IO.Stdin.read: " ^ Kernel.IO.Error.message error)
-    );
+  if Buffer.writable_bytes into = 0 then (
+    match Buffer.ensure_free into default_chunk_size with
+    | Ok () -> ()
+    | Error error -> Kernel.SystemError.panic ("IO.Stdin.read: " ^ Kernel.IO.Error.message error)
+  );
   let writable = Buffer.writable into in
   let bufs = IoVec.from_slices [|writable|] in
   match read_vectored t ~into:bufs with

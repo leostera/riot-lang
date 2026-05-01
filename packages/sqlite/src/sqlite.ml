@@ -39,7 +39,10 @@ module Driver = struct
     mutable closed: bool;
   }
 
-  type statement = { sql: string; conn: connection }
+  type statement = {
+    sql: string;
+    conn: connection;
+  }
 
   type result_set = {
     rows: Sqlx_driver.Row.t list;

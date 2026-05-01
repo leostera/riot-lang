@@ -26,18 +26,17 @@ let clear = fun heap -> heap.size <- 0
 
 let ensure_capacity = fun heap ->
   let len = Array.length heap.data in
-  if heap.size >= len then
-    (
-      let new_len =
-        if len = 0 then
-          8
-        else
-          len * 2
-      in
-      let new_data = Array.make ~count:new_len ~value:(Array.get_unchecked heap.data ~at:0) in
-      Array.blit heap.data ~src_offset:0 ~dst:new_data ~dst_offset:0 ~len:heap.size;
-      heap.data <- new_data
-    )
+  if heap.size >= len then (
+    let new_len =
+      if len = 0 then
+        8
+      else
+        len * 2
+    in
+    let new_data = Array.make ~count:new_len ~value:(Array.get_unchecked heap.data ~at:0) in
+    Array.blit heap.data ~src_offset:0 ~dst:new_data ~dst_offset:0 ~len:heap.size;
+    heap.data <- new_data
+  )
 
 let parent = fun i -> (i - 1) / 2
 
@@ -67,24 +66,22 @@ let rec sift_down = fun heap i ->
   let l = left i in
   let r = right i in
   let smallest = box i in
-  if l < heap.size then
-    (
-      match heap.compare
-        (Array.get_unchecked heap.data ~at:l)
-        (Array.get_unchecked heap.data ~at:smallest.value) with
-      | Order.LT -> smallest.value <- l
-      | Order.EQ
-      | Order.GT -> ()
-    );
-  if r < heap.size then
-    (
-      match heap.compare
-        (Array.get_unchecked heap.data ~at:r)
-        (Array.get_unchecked heap.data ~at:smallest.value) with
-      | Order.LT -> smallest.value <- r
-      | Order.EQ
-      | Order.GT -> ()
-    );
+  if l < heap.size then (
+    match heap.compare
+      (Array.get_unchecked heap.data ~at:l)
+      (Array.get_unchecked heap.data ~at:smallest.value) with
+    | Order.LT -> smallest.value <- l
+    | Order.EQ
+    | Order.GT -> ()
+  );
+  if r < heap.size then (
+    match heap.compare
+      (Array.get_unchecked heap.data ~at:r)
+      (Array.get_unchecked heap.data ~at:smallest.value) with
+    | Order.LT -> smallest.value <- r
+    | Order.EQ
+    | Order.GT -> ()
+  );
   let smallest_val = smallest.value in
   if smallest_val != i then (
     swap heap i smallest_val;

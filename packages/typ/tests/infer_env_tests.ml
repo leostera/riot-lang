@@ -79,7 +79,9 @@ let inline_record_constructor_description
       owner;
       constructor;
       payload_type = nominal (name ^ "_payload");
-      fields = [ ({ declaration = field; type_ = int_type () }: Env.inline_record_field) ];
+      fields = [
+        ({ declaration = field; type_ = int_type () }: Env.inline_record_field);
+      ];
     };
 }
 
@@ -264,7 +266,12 @@ let test_inline_record_fields_stay_on_constructor_description _ctx =
     Env.add_constructor
       env
       ~name:constructor_name
-      ~description:(inline_record_constructor_description "Payload" (nominal "t") owner constructor field)
+      ~description:(inline_record_constructor_description
+        "Payload"
+        (nominal "t")
+        owner
+        constructor
+        field)
   in
   let* () = assert_no_record_field (Env.get_record_field env ~name:field_name) in
   match Env.get_constructor env ~name:constructor_name with
@@ -273,9 +280,10 @@ let test_inline_record_fields_stay_on_constructor_description _ctx =
         ~msg:"constructor description should retain inline field metadata"
         (List.exists
           (fun (field: Env.inline_record_field) ->
-            SurfacePath.equal field.declaration.Ast.name field_name)
-          inline_record.fields
-        )
+            SurfacePath.equal
+              field.declaration.Ast.name
+              field_name)
+          inline_record.fields)
   | Some _ -> Error "expected inline record constructor arguments"
   | None -> Error "expected Payload constructor"
 

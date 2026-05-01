@@ -165,7 +165,9 @@ type request_params =
       arguments: json option;
     }
   | ListResourcesParams
-  | ReadResourceParams of { uri: resource_uri }
+  | ReadResourceParams of {
+      uri: resource_uri;
+    }
   | ListPromptsParams
   | GetPromptParams of {
       name: string;

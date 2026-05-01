@@ -31,54 +31,53 @@ let base64 = fun hash ->
   let len = Bytes.length bytes in
   let out = Bytes.create ~size:(((len + 2) / 3) * 4) in
   let rec encode input_index output_index =
-    if input_index < len then
-      (
-        let b1 =
-          Bytes.get_unchecked bytes ~at:input_index
+    if input_index < len then (
+      let b1 =
+        Bytes.get_unchecked bytes ~at:input_index
+        |> Char.code
+      in
+      let b2 =
+        if input_index + 1 < len then
+          Bytes.get_unchecked bytes ~at:(input_index + 1)
           |> Char.code
-        in
-        let b2 =
+        else
+          0
+      in
+      let b3 =
+        if input_index + 2 < len then
+          Bytes.get_unchecked bytes ~at:(input_index + 2)
+          |> Char.code
+        else
+          0
+      in
+      Bytes.set_unchecked
+        out
+        ~at:output_index
+        ~char:(String.get_unchecked b64_chars ~at:(b1 lsr 2));
+      Bytes.set_unchecked
+        out
+        ~at:(output_index + 1)
+        ~char:(String.get_unchecked b64_chars ~at:(((b1 land 0x03) lsl 4) lor (b2 lsr 4)));
+      Bytes.set_unchecked
+        out
+        ~at:(output_index + 2)
+        ~char:(
           if input_index + 1 < len then
-            Bytes.get_unchecked bytes ~at:(input_index + 1)
-            |> Char.code
+            String.get_unchecked b64_chars ~at:(((b2 land 0x0f) lsl 2) lor (b3 lsr 6))
           else
-            0
-        in
-        let b3 =
+            '='
+        );
+      Bytes.set_unchecked
+        out
+        ~at:(output_index + 3)
+        ~char:(
           if input_index + 2 < len then
-            Bytes.get_unchecked bytes ~at:(input_index + 2)
-            |> Char.code
+            String.get_unchecked b64_chars ~at:(b3 land 0x3f)
           else
-            0
-        in
-        Bytes.set_unchecked
-          out
-          ~at:output_index
-          ~char:(String.get_unchecked b64_chars ~at:(b1 lsr 2));
-        Bytes.set_unchecked
-          out
-          ~at:(output_index + 1)
-          ~char:(String.get_unchecked b64_chars ~at:(((b1 land 0x03) lsl 4) lor (b2 lsr 4)));
-        Bytes.set_unchecked
-          out
-          ~at:(output_index + 2)
-          ~char:(
-            if input_index + 1 < len then
-              String.get_unchecked b64_chars ~at:(((b2 land 0x0f) lsl 2) lor (b3 lsr 6))
-            else
-              '='
-          );
-        Bytes.set_unchecked
-          out
-          ~at:(output_index + 3)
-          ~char:(
-            if input_index + 2 < len then
-              String.get_unchecked b64_chars ~at:(b3 land 0x3f)
-            else
-              '='
-          );
-        encode (input_index + 3) (output_index + 4)
-      )
+            '='
+        );
+      encode (input_index + 3) (output_index + 4)
+    )
   in
   encode 0 0;
   Bytes.to_string out
@@ -88,19 +87,18 @@ let base64_url = fun hash ->
   let out = Bytes.from_string (base64 hash) in
   let len = Bytes.length out in
   let rec loop index =
-    if index < len then
-      (
-        match Bytes.get_unchecked out ~at:index with
-        | '+' ->
-            Bytes.set_unchecked out ~at:index ~char:'-';
-            loop (index + 1)
-        | '/' ->
-            Bytes.set_unchecked out ~at:index ~char:'_';
-            loop (index + 1)
-        | _ ->
-            ();
-            loop (index + 1)
-      )
+    if index < len then (
+      match Bytes.get_unchecked out ~at:index with
+      | '+' ->
+          Bytes.set_unchecked out ~at:index ~char:'-';
+          loop (index + 1)
+      | '/' ->
+          Bytes.set_unchecked out ~at:index ~char:'_';
+          loop (index + 1)
+      | _ ->
+          ();
+          loop (index + 1)
+    )
   in
   loop 0;
   Bytes.to_string out

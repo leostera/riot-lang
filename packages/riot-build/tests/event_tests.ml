@@ -107,12 +107,11 @@ let test_telemetry_event_to_json = fun _ctx ->
       ~library:{ path = Path.v "src/lib.ml" }
       ()
   in
-  let telemetry_event =
-    Telemetry_events.BuildStarted {
-      session_id;
-      package;
-      target = Riot_planner.Workspace_planner.Package package.name;
-    }
+  let telemetry_event = Telemetry_events.BuildStarted {
+    session_id;
+    package;
+    target = Riot_planner.Workspace_planner.Package package.name;
+  }
   in
   let actual = Riot_build.Event.to_json (Riot_build.Event.Telemetry telemetry_event) in
   let expected = Telemetry_events.to_json telemetry_event in

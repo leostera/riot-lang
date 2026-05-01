@@ -612,9 +612,18 @@ let test_registry_search_packages = fun _ctx ->
       in
       let registry = Pkgs_ml.Registry.filesystem ~fetch cache in
       match Pkgs_ml.Registry.search_packages registry ~query:"ker" ~limit:3 () with
-      | Ok [ { package_name = "kernel"; latest_version = "0.0.1"; description = Some "Core primitives" }; { package_name = "kernel-tools"; latest_version = "0.1.0"; description = None } ] when List.map
-        (List.reverse !requests)
-        ~fn:(fun request -> request.url)
+      | Ok [
+          {
+            package_name = "kernel";
+            latest_version = "0.0.1";
+            description = Some "Core primitives";
+          };
+          {
+            package_name = "kernel-tools";
+            latest_version = "0.1.0";
+            description = None;
+          };
+        ] when List.map (List.reverse !requests) ~fn:(fun request -> request.url)
       = [ "https://api.pkgs.ml/v1/search?q=ker&limit=3" ] -> Ok ()
       | Ok _ -> Error "expected search results to decode from the registry search api"
       | Error err -> Error err) with

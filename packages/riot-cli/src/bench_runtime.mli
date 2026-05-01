@@ -140,8 +140,14 @@ type bench_event =
   | Summary of { total: int; completed: int; skipped: int; failed: int }
 type bench_error =
   | BuildFailed of Riot_build.error
-  | SuiteArtifactNotFound of { suite: suite_binary; reason: string }
-  | SuiteExecutionError of { suite: suite_binary; reason: string }
+  | SuiteArtifactNotFound of {
+      suite: suite_binary;
+      reason: string;
+    }
+  | SuiteExecutionError of {
+      suite: suite_binary;
+      reason: string;
+    }
   | SuitesFailed of int
 
 (**

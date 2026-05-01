@@ -76,16 +76,15 @@ module Driver = Sqlx_driver.Driver
 module Pool = Pool
 
 let connect = fun ?(config = Config.default) ~driver driver_config ->
-  let pool_config =
-    Pool.Config {
-      driver;
-      driver_config;
-      min_connections = max 1 (config.pool_size / 4);
-      max_connections = config.pool_size;
-      acquire_timeout = config.acquire_timeout;
-      idle_timeout = config.max_idle_time;
-      max_lifetime = config.max_lifetime;
-    }
+  let pool_config = Pool.Config {
+    driver;
+    driver_config;
+    min_connections = max 1 (config.pool_size / 4);
+    max_connections = config.pool_size;
+    acquire_timeout = config.acquire_timeout;
+    idle_timeout = config.max_idle_time;
+    max_lifetime = config.max_lifetime;
+  }
   in
   match Pool.create pool_config with
   | Ok pool -> Ok pool
@@ -123,11 +122,11 @@ let shutdown = fun pool -> Pool.shutdown pool
 let show_error = function
   | PoolError pool_err -> show_pool_error pool_err
   | InvalidValue {
-    field;
-    value;
-    expected_type;
-    reason
-  } ->
+      field;
+      value;
+      expected_type;
+      reason;
+    } ->
       "Invalid value for '" ^ field ^ "': got '" ^ value ^ "', expected " ^ expected_type ^ (
         match reason with
         | Some r -> " (" ^ r ^ ")"

@@ -34,7 +34,10 @@ type command_spawn_error =
   | IoError of IO.error
 
 type error =
-  | InvalidSourceSpec of { source: string; reason: invalid_source_spec }
+  | InvalidSourceSpec of {
+      source: string;
+      reason: invalid_source_spec;
+    }
   | UnsupportedSourceHost of { source: string; host: string }
   | CachedRepositoryInvalid of {
       path: Path.t;
@@ -43,7 +46,10 @@ type error =
       path: Path.t;
     }
   | GitCommandFailed of { command: string; status: int; stdout: string; stderr: string }
-  | GitCommandSpawnFailed of { command: string; error: command_spawn_error }
+  | GitCommandSpawnFailed of {
+      command: string;
+      error: command_spawn_error;
+    }
 
 let ( let* ) value fn = Result.and_then value ~fn
 
@@ -68,11 +74,11 @@ let message = function
   | PackageRootMissing { path } ->
       "materialized source dependency is missing package root '" ^ Path.to_string path ^ "'"
   | GitCommandFailed {
-    command;
-    status;
-    stdout;
-    stderr
-  } ->
+      command;
+      status;
+      stdout;
+      stderr;
+    } ->
       let detail =
         if String.equal (String.trim stderr) "" then
           String.trim stdout

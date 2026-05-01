@@ -355,11 +355,11 @@ module BorrowedParser = struct
     | Need_more -> Need_more
     | Error error -> Error error
     | Done { value = {
-      method_;
-      path;
-      version;
-      remaining = next_cursor
-    }; _ } ->
+        method_;
+        path;
+        version;
+        remaining = next_cursor;
+      }; _ } ->
         (
             match parse_headers ~max_count:max_headers ~max_length:max_header_length next_cursor with
             | Need_more -> Need_more

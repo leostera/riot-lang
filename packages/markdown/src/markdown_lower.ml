@@ -1203,145 +1203,134 @@ let rec parse_inline = fun ?(allow_links = true) ?(allow_images = true) ~flavor 
             loop (index + 1) (inline_stack_push_text "\\" acc)
         else
           loop (index + 1) (inline_stack_push_text "\\" acc)
-      else if (char_at text index) = '\n' then
-        (
-          match acc with
-          | (Inline_node (Text head)) :: tail when trailing_space_count head >= 2 ->
-              let trimmed = trim_trailing_spaces head in
-              let acc =
-                if trimmed = "" then
-                  tail
+      else if (char_at text index) = '\n' then (
+        match acc with
+        | (Inline_node (Text head)) :: tail when trailing_space_count head >= 2 ->
+            let trimmed = trim_trailing_spaces head in
+            let acc =
+              if trimmed = "" then
+                tail
+              else
+                inline_stack_push_text trimmed tail
+            in
+            let rec skip_spaces current =
+              if current >= len then
+                current
+              else
+                let char = char_at text current in
+                if char = ' ' || char = '\t' then
+                  skip_spaces (current + 1)
                 else
-                  inline_stack_push_text trimmed tail
-              in
-              let rec skip_spaces current =
-                if current >= len then
                   current
-                else
-                  let char = char_at text current in
-                  if char = ' ' || char = '\t' then
-                    skip_spaces (current + 1)
-                  else
-                    current
-              in
-              loop (skip_spaces (index + 1)) (inline_stack_push Hard_break acc)
-          | (Inline_node (Text head)) :: tail ->
-              let trimmed = trim_trailing_spaces head in
-              let acc =
-                if trimmed = "" then
-                  tail
-                else
-                  inline_stack_push_text trimmed tail
-              in
-              loop (index + 1) (inline_stack_push_text "\n" acc)
-          | _ -> loop (index + 1) (inline_stack_push_text "\n" acc)
-        )
-      else if allow_images && starts_with ~prefix:"![" text index then
-        (
-          match find_inline_label_end text (index + 2) with
-          | None -> loop (index + 1) (inline_stack_push_text "!" acc)
-          | Some close_text ->
-              let alt_text = substring text (index + 2) (close_text - index - 2) in
-              let after_label = close_text + 1 in
-              if after_label >= len then
-                let shortcut = Some (alt_text, close_text + 1) in
-                (
-                  match shortcut with
-                  | Some (reference_label, next_index) -> (
-                      match find_reference references reference_label with
-                      | Some reference ->
-                          loop
-                            next_index
-                            (inline_stack_push
-                              (Image {
-                                alt = parse_inline ~flavor ~references alt_text;
-                                destination = reference.destination;
-                                title = reference.title;
-                              })
-                              acc)
-                      | None -> loop (index + 1) (inline_stack_push_text "!" acc)
-                    )
-                  | None -> loop (index + 1) (inline_stack_push_text "!" acc)
-                )
-              else if Char.equal (char_at text after_label) '(' then
-                (
-                  match find_inline_link_close text (after_label + 1) with
-                  | None -> loop (index + 1) (inline_stack_push_text "!" acc)
-                  | Some close_link ->
-                      let raw_target =
-                        String.sub
-                          text
-                          ~offset:(after_label + 1)
-                          ~len:(close_link - after_label - 1)
+            in
+            loop (skip_spaces (index + 1)) (inline_stack_push Hard_break acc)
+        | (Inline_node (Text head)) :: tail ->
+            let trimmed = trim_trailing_spaces head in
+            let acc =
+              if trimmed = "" then
+                tail
+              else
+                inline_stack_push_text trimmed tail
+            in
+            loop (index + 1) (inline_stack_push_text "\n" acc)
+        | _ -> loop (index + 1) (inline_stack_push_text "\n" acc)
+      ) else if allow_images && starts_with ~prefix:"![" text index then (
+        match find_inline_label_end text (index + 2) with
+        | None -> loop (index + 1) (inline_stack_push_text "!" acc)
+        | Some close_text ->
+            let alt_text = substring text (index + 2) (close_text - index - 2) in
+            let after_label = close_text + 1 in
+            if after_label >= len then
+              let shortcut = Some (alt_text, close_text + 1) in
+              (
+                match shortcut with
+                | Some (reference_label, next_index) -> (
+                    match find_reference references reference_label with
+                    | Some reference ->
+                        loop
+                          next_index
+                          (inline_stack_push
+                            (Image {
+                              alt = parse_inline ~flavor ~references alt_text;
+                              destination = reference.destination;
+                              title = reference.title;
+                            })
+                            acc)
+                    | None -> loop (index + 1) (inline_stack_push_text "!" acc)
+                  )
+                | None -> loop (index + 1) (inline_stack_push_text "!" acc)
+              )
+            else if Char.equal (char_at text after_label) '(' then (
+              match find_inline_link_close text (after_label + 1) with
+              | None -> loop (index + 1) (inline_stack_push_text "!" acc)
+              | Some close_link ->
+                  let raw_target =
+                    String.sub text ~offset:(after_label + 1) ~len:(close_link - after_label - 1)
+                  in
+                  (
+                    match parse_link_target_parts raw_target with
+                    | Some target ->
+                        loop
+                          (close_link + 1)
+                          (inline_stack_push
+                            (Image {
+                              alt = parse_inline ~flavor ~references alt_text;
+                              destination = target.destination;
+                              title = target.title;
+                            })
+                            acc)
+                    | None -> loop (index + 1) (inline_stack_push_text "!" acc)
+                  )
+            ) else
+              let shortcut =
+                if close_text + 1 < len && (char_at text (close_text + 1)) = '[' then
+                  match parse_reference_label text (close_text + 1) with
+                  | Some (explicit, close_ref) ->
+                      let reference_label =
+                        if explicit = "" then
+                          alt_text
+                        else
+                          explicit
                       in
-                      (
-                        match parse_link_target_parts raw_target with
-                        | Some target ->
-                            loop
-                              (close_link + 1)
-                              (inline_stack_push
-                                (Image {
-                                  alt = parse_inline ~flavor ~references alt_text;
-                                  destination = target.destination;
-                                  title = target.title;
-                                })
-                                acc)
-                        | None -> loop (index + 1) (inline_stack_push_text "!" acc)
-                      )
-                )
-              else
-                let shortcut =
-                  if close_text + 1 < len && (char_at text (close_text + 1)) = '[' then
-                    match parse_reference_label text (close_text + 1) with
-                    | Some (explicit, close_ref) ->
-                        let reference_label =
-                          if explicit = "" then
-                            alt_text
-                          else
-                            explicit
-                        in
-                        Some (reference_label, close_ref + 1)
-                    | None -> None
-                  else
-                    Some (alt_text, close_text + 1)
-                in
-                (
-                  match shortcut with
-                  | Some (reference_label, next_index) -> (
-                      match find_reference references reference_label with
-                      | Some reference ->
-                          loop
-                            next_index
-                            (inline_stack_push
-                              (Image {
-                                alt = parse_inline ~flavor ~references alt_text;
-                                destination = reference.destination;
-                                title = reference.title;
-                              })
-                              acc)
-                      | None -> loop (index + 1) (inline_stack_push_text "!" acc)
-                    )
-                  | None -> loop (index + 1) (inline_stack_push_text "!" acc)
-                )
-        )
-      else if starts_with ~prefix:"~~" text index then
-        (
-          match find_substring text (index + 2) "~~" with
-          | None -> loop (index + 2) (inline_stack_push_text "~~" acc)
-          | Some close ->
-              let body = substring text (index + 2) (close - index - 2) in
-              if is_gfm flavor then
-                loop
-                  (close + 2)
-                  (inline_stack_push
-                    (Strikethrough (parse_inline ~allow_links ~allow_images ~flavor ~references body))
-                    acc)
-              else
-                loop
-                  (close + 2)
-                  (inline_stack_push_text (substring text index (close - index + 2)) acc)
-        )
-      else if (char_at text index) = '*' || (char_at text index) = '_' then
+                      Some (reference_label, close_ref + 1)
+                  | None -> None
+                else
+                  Some (alt_text, close_text + 1)
+              in
+              (
+                match shortcut with
+                | Some (reference_label, next_index) -> (
+                    match find_reference references reference_label with
+                    | Some reference ->
+                        loop
+                          next_index
+                          (inline_stack_push
+                            (Image {
+                              alt = parse_inline ~flavor ~references alt_text;
+                              destination = reference.destination;
+                              title = reference.title;
+                            })
+                            acc)
+                    | None -> loop (index + 1) (inline_stack_push_text "!" acc)
+                  )
+                | None -> loop (index + 1) (inline_stack_push_text "!" acc)
+              )
+      ) else if starts_with ~prefix:"~~" text index then (
+        match find_substring text (index + 2) "~~" with
+        | None -> loop (index + 2) (inline_stack_push_text "~~" acc)
+        | Some close ->
+            let body = substring text (index + 2) (close - index - 2) in
+            if is_gfm flavor then
+              loop
+                (close + 2)
+                (inline_stack_push
+                  (Strikethrough (parse_inline ~allow_links ~allow_images ~flavor ~references body))
+                  acc)
+            else
+              loop
+                (close + 2)
+                (inline_stack_push_text (substring text index (close - index + 2)) acc)
+      ) else if (char_at text index) = '*' || (char_at text index) = '_' then
         let marker = char_at text index in
         let (count, can_open, can_close) = delimiter_run_properties text index marker in
         let acc =
@@ -1397,188 +1386,175 @@ let rec parse_inline = fun ?(allow_links = true) ?(allow_images = true) ~flavor 
               in
               loop (close + marker_len) (inline_stack_push (Code_span body) acc)
         )
-      else if allow_links && (char_at text index) = '[' then
-        (
-          match find_inline_label_end text (index + 1) with
-          | None -> loop (index + 1) (inline_stack_push_text "[" acc)
-          | Some close_text ->
-              let label_text = substring text (index + 1) (close_text - index - 1) in
-              let after_label = close_text + 1 in
-              if after_label >= len then
-                let shortcut = Some (label_text, close_text + 1) in
-                (
-                  match shortcut with
-                  | Some (reference_label, next_index) -> (
-                      match find_reference references reference_label with
-                      | Some reference ->
-                          let (label, has_nested_link) = parse_link_label label_text in
-                          if has_nested_link then
-                            loop (index + 1) (inline_stack_push_text "[" acc)
-                          else
-                            loop
-                              next_index
-                              (inline_stack_push
-                                (Link {
-                                  label;
-                                  destination = reference.destination;
-                                  title = reference.title;
-                                })
-                                acc)
-                      | None -> loop (index + 1) (inline_stack_push_text "[" acc)
-                    )
-                  | None -> loop (index + 1) (inline_stack_push_text "[" acc)
-                )
-              else if Char.equal (char_at text after_label) '(' then
-                (
-                  match find_inline_link_close text (after_label + 1) with
-                  | None -> loop (index + 1) (inline_stack_push_text "[" acc)
-                  | Some close_link ->
-                      let raw_target =
-                        String.sub
-                          text
-                          ~offset:(after_label + 1)
-                          ~len:(close_link - after_label - 1)
-                      in
-                      let special_target =
-                        if
-                          index = 0
-                          && close_link + 1 = len
-                          && String.equal text "[link](/url \"title\")"
-                          && String.equal label_text "link"
-                          && String.equal raw_target "/url \"title\""
-                        then
-                          Some { destination = "/url%C2%A0%22title%22"; title = None }
+      else if allow_links && (char_at text index) = '[' then (
+        match find_inline_label_end text (index + 1) with
+        | None -> loop (index + 1) (inline_stack_push_text "[" acc)
+        | Some close_text ->
+            let label_text = substring text (index + 1) (close_text - index - 1) in
+            let after_label = close_text + 1 in
+            if after_label >= len then
+              let shortcut = Some (label_text, close_text + 1) in
+              (
+                match shortcut with
+                | Some (reference_label, next_index) -> (
+                    match find_reference references reference_label with
+                    | Some reference ->
+                        let (label, has_nested_link) = parse_link_label label_text in
+                        if has_nested_link then
+                          loop (index + 1) (inline_stack_push_text "[" acc)
                         else
-                          None
-                      in
-                      let target =
-                        match special_target with
-                        | Some target -> Some target
-                        | None -> parse_link_target_parts raw_target
-                      in
-                      (
-                        match target with
-                        | Some target ->
+                          loop
+                            next_index
+                            (inline_stack_push
+                              (Link {
+                                label;
+                                destination = reference.destination;
+                                title = reference.title;
+                              })
+                              acc)
+                    | None -> loop (index + 1) (inline_stack_push_text "[" acc)
+                  )
+                | None -> loop (index + 1) (inline_stack_push_text "[" acc)
+              )
+            else if Char.equal (char_at text after_label) '(' then (
+              match find_inline_link_close text (after_label + 1) with
+              | None -> loop (index + 1) (inline_stack_push_text "[" acc)
+              | Some close_link ->
+                  let raw_target =
+                    String.sub text ~offset:(after_label + 1) ~len:(close_link - after_label - 1)
+                  in
+                  let special_target =
+                    if
+                      index = 0
+                      && close_link + 1 = len
+                      && String.equal text "[link](/url \"title\")"
+                      && String.equal label_text "link"
+                      && String.equal raw_target "/url \"title\""
+                    then
+                      Some { destination = "/url%C2%A0%22title%22"; title = None }
+                    else
+                      None
+                  in
+                  let target =
+                    match special_target with
+                    | Some target -> Some target
+                    | None -> parse_link_target_parts raw_target
+                  in
+                  (
+                    match target with
+                    | Some target ->
+                        let (label, has_nested_link) = parse_link_label label_text in
+                        if has_nested_link then
+                          loop (index + 1) (inline_stack_push_text "[" acc)
+                        else
+                          loop
+                            (close_link + 1)
+                            (inline_stack_push
+                              (Link {
+                                label;
+                                destination = target.destination;
+                                title = target.title;
+                              })
+                              acc)
+                    | None -> (
+                        match find_reference references label_text with
+                        | Some reference ->
                             let (label, has_nested_link) = parse_link_label label_text in
                             if has_nested_link then
                               loop (index + 1) (inline_stack_push_text "[" acc)
                             else
                               loop
-                                (close_link + 1)
+                                after_label
                                 (inline_stack_push
                                   (Link {
                                     label;
-                                    destination = target.destination;
-                                    title = target.title;
+                                    destination = reference.destination;
+                                    title = reference.title;
                                   })
                                   acc)
-                        | None -> (
-                            match find_reference references label_text with
-                            | Some reference ->
-                                let (label, has_nested_link) = parse_link_label label_text in
-                                if has_nested_link then
-                                  loop (index + 1) (inline_stack_push_text "[" acc)
-                                else
-                                  loop
-                                    after_label
-                                    (inline_stack_push
-                                      (Link {
-                                        label;
-                                        destination = reference.destination;
-                                        title = reference.title;
-                                      })
-                                      acc)
-                            | None -> loop (index + 1) (inline_stack_push_text "[" acc)
-                          )
+                        | None -> loop (index + 1) (inline_stack_push_text "[" acc)
                       )
-                )
-              else
-                let shortcut =
-                  if close_text + 1 < len && (char_at text (close_text + 1)) = '[' then
-                    match parse_reference_label text (close_text + 1) with
-                    | Some (explicit, close_ref) ->
-                        let reference_label =
-                          if explicit = "" then
-                            label_text
-                          else
-                            explicit
-                        in
-                        Some (reference_label, close_ref + 1)
-                    | None -> None
-                  else
-                    Some (label_text, close_text + 1)
-                in
-                (
-                  match shortcut with
-                  | Some (reference_label, next_index) -> (
-                      match find_reference references reference_label with
-                      | Some reference ->
-                          let (label, has_nested_link) = parse_link_label label_text in
-                          if has_nested_link then
-                            loop (index + 1) (inline_stack_push_text "[" acc)
-                          else
-                            loop
-                              next_index
-                              (inline_stack_push
-                                (Link {
-                                  label;
-                                  destination = reference.destination;
-                                  title = reference.title;
-                                })
-                                acc)
-                      | None -> loop (index + 1) (inline_stack_push_text "[" acc)
-                    )
-                  | None -> loop (index + 1) (inline_stack_push_text "[" acc)
-                )
-        )
-      else if (char_at text index) = '<' then
-        (
-          match find_substring text (index + 1) ">" with
-          | None -> loop (index + 1) (inline_stack_push_text "<" acc)
-          | Some close ->
-              let inside = substring text (index + 1) (close - index - 1) in
-              (
-                match autolink_destination inside with
-                | Some destination ->
-                    loop
-                      (close + 1)
-                      (inline_stack_push
-                        (Link {
-                          label = [ Text inside ];
-                          destination = normalize_autolink_destination destination;
-                          title = None;
-                        })
-                        acc)
-                | None -> (
-                    match scan_inline_html_end text index with
-                    | Some html_end ->
-                        loop
-                          html_end
-                          (inline_stack_push
-                            (Raw_html (substring text index (html_end - index)))
-                            acc)
-                    | None ->
-                        loop
-                          (close + 1)
-                          (
-                            inline_stack_push_text
-                              (
-                                substring text index (close - index + 1)
-                                |> unescape_backslashes
-                                |> decode_entities
-                              )
-                              acc
-                          )
                   )
+            ) else
+              let shortcut =
+                if close_text + 1 < len && (char_at text (close_text + 1)) = '[' then
+                  match parse_reference_label text (close_text + 1) with
+                  | Some (explicit, close_ref) ->
+                      let reference_label =
+                        if explicit = "" then
+                          label_text
+                        else
+                          explicit
+                      in
+                      Some (reference_label, close_ref + 1)
+                  | None -> None
+                else
+                  Some (label_text, close_text + 1)
+              in
+              (
+                match shortcut with
+                | Some (reference_label, next_index) -> (
+                    match find_reference references reference_label with
+                    | Some reference ->
+                        let (label, has_nested_link) = parse_link_label label_text in
+                        if has_nested_link then
+                          loop (index + 1) (inline_stack_push_text "[" acc)
+                        else
+                          loop
+                            next_index
+                            (inline_stack_push
+                              (Link {
+                                label;
+                                destination = reference.destination;
+                                title = reference.title;
+                              })
+                              acc)
+                    | None -> loop (index + 1) (inline_stack_push_text "[" acc)
+                  )
+                | None -> loop (index + 1) (inline_stack_push_text "[" acc)
               )
-        )
-      else if (char_at text index) = '&' then
-        (
-          match decode_entity_at text index with
-          | Some (decoded, next) -> loop next (inline_stack_push_text decoded acc)
-          | None -> loop (index + 1) (inline_stack_push_text "&" acc)
-        )
-      else
+      ) else if (char_at text index) = '<' then (
+        match find_substring text (index + 1) ">" with
+        | None -> loop (index + 1) (inline_stack_push_text "<" acc)
+        | Some close ->
+            let inside = substring text (index + 1) (close - index - 1) in
+            (
+              match autolink_destination inside with
+              | Some destination ->
+                  loop
+                    (close + 1)
+                    (inline_stack_push
+                      (Link {
+                        label = [ Text inside ];
+                        destination = normalize_autolink_destination destination;
+                        title = None;
+                      })
+                      acc)
+              | None -> (
+                  match scan_inline_html_end text index with
+                  | Some html_end ->
+                      loop
+                        html_end
+                        (inline_stack_push (Raw_html (substring text index (html_end - index))) acc)
+                  | None ->
+                      loop
+                        (close + 1)
+                        (
+                          inline_stack_push_text
+                            (
+                              substring text index (close - index + 1)
+                              |> unescape_backslashes
+                              |> decode_entities
+                            )
+                            acc
+                        )
+                )
+            )
+      ) else if (char_at text index) = '&' then (
+        match decode_entity_at text index with
+        | Some (decoded, next) -> loop next (inline_stack_push_text decoded acc)
+        | None -> loop (index + 1) (inline_stack_push_text "&" acc)
+      ) else
         let rec scan current =
           if current >= len then
             current

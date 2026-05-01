@@ -232,15 +232,13 @@ module Value = struct
                             ~offset:(idx + 1)
                             ~len:(String.length trimmed - idx - 1))
                       in
-                      if String.equal key "q" then
-                        (
-                          match Float.parse value with
-                          | Some parsed ->
-                              quality := Some parsed;
-                              acc
-                          | None -> (key, value) :: acc
-                        )
-                      else
+                      if String.equal key "q" then (
+                        match Float.parse value with
+                        | Some parsed ->
+                            quality := Some parsed;
+                            acc
+                        | None -> (key, value) :: acc
+                      ) else
                         (key, value) :: acc)
             in
             (media_type, !quality, List.reverse params) :: acc)

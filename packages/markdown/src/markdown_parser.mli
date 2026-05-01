@@ -135,7 +135,10 @@ type update_stats = {
   reused_suffix_blocks: int;
   reparsed_full: bool;
 }
-type update_result = { parsed: parsed; stats: update_stats }
+type update_result = {
+  parsed: parsed;
+  stats: update_stats;
+}
 
 (**
    Parse markdown source into tokens, a syntax tree, and diagnostics.

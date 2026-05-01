@@ -346,24 +346,22 @@ let handle_data = fun data conn state ->
   let buffer_data = Cell.get state.buffer in
   (* Verify preface if not yet done *)
   if not (Cell.get state.preface_verified) then (
-    if String.length buffer_data >= 24 then
-      begin
-        if verify_preface buffer_data then (
-          Cell.set state.preface_verified true;
-          (* Remove preface from buffer *)
-          Cell.set
-            state.buffer
-            (String.sub buffer_data ~offset:24 ~len:(String.length buffer_data - 24));
-          (* Send SETTINGS *)
-          match send_settings conn with
-          | Error e -> Socket_pool.Handler.Error (state, e)
-          | Ok () ->
-              Cell.set state.settings_sent true;
-              Socket_pool.Handler.Continue state
-        ) else
-          Socket_pool.Handler.Error (state, ProtocolError InvalidPreface)
-      end
-    else
+    if String.length buffer_data >= 24 then (
+      if verify_preface buffer_data then (
+        Cell.set state.preface_verified true;
+        (* Remove preface from buffer *)
+        Cell.set
+          state.buffer
+          (String.sub buffer_data ~offset:24 ~len:(String.length buffer_data - 24));
+        (* Send SETTINGS *)
+        match send_settings conn with
+        | Error e -> Socket_pool.Handler.Error (state, e)
+        | Ok () ->
+            Cell.set state.settings_sent true;
+            Socket_pool.Handler.Continue state
+      ) else
+        Socket_pool.Handler.Error (state, ProtocolError InvalidPreface)
+    ) else
       (* Need more data for preface *)
       Socket_pool.Handler.Continue state
   ) else (

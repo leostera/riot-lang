@@ -56,11 +56,11 @@ let load_ignore_file = fun path ->
   | Ok rules -> Ok rules
   | Error (Gitignore.File_system cause) -> Error (File_system { path = Some path; cause })
   | Error (Gitignore.Invalid_glob {
-    line;
-    input;
-    message;
-    offset
-  }) ->
+             line;
+             input;
+             message;
+             offset;
+           }) ->
       Error (
         Invalid_glob {
           path;
@@ -198,11 +198,11 @@ let create = fun
   in
   match Gitignore.of_lines ~root ~syntax:Gitignore.Override overrides with
   | Error {
-    line;
-    input;
-    message;
-    offset
-  } ->
+      line;
+      input;
+      message;
+      offset;
+    } ->
       Error (Glob.Invalid_glob {
         input = "line " ^ Int.to_string line ^ ": " ^ input;
         message;

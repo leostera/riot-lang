@@ -14,7 +14,11 @@ module Config: sig
   type output_target =
     | Stdout
     | Stderr
-  type t = { render_mode: render_mode; fps: int; output: output_target }
+  type t = {
+    render_mode: render_mode;
+    fps: int;
+    output: output_target;
+  }
   val make: ?render_mode:render_mode -> ?fps:int -> ?output:output_target -> unit -> t
 end
 

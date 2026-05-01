@@ -75,7 +75,10 @@ type sample_builder = {
 
 type address = { city: string }
 
-type nested = { title: string; address: address }
+type nested = {
+  title: string;
+  address: address;
+}
 
 type pet =
   | Cat

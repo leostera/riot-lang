@@ -146,7 +146,11 @@ module Driver = struct
     prepared_statements: (string, statement) Collections.HashMap.t;
   }
 
-  and statement = { name: string; sql: string; conn: connection }
+  and statement = {
+    name: string;
+    sql: string;
+    conn: connection;
+  }
 
   type result_set = {
     rows: Sqlx_driver.Row.t Collections.Queue.t;

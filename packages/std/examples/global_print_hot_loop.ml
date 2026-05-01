@@ -17,7 +17,12 @@ type message_kind =
   | Small
   | Medium
 
-type config = { iterations: int; warmup: int; mode: mode; message_kind: message_kind }
+type config = {
+  iterations: int;
+  warmup: int;
+  mode: mode;
+  message_kind: message_kind;
+}
 
 let default_config = {
   iterations = 1_000_000;

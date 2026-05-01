@@ -483,7 +483,7 @@ let build_fixture = fun
     tag_count;
     score_count;
     stop_count;
-    string_repeat
+    string_repeat;
   }: fixture_spec) ->
   let value: manifest = {
     ship = repeat "thousand-sunny-logbook-" string_repeat;

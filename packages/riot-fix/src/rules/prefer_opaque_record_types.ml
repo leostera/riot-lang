@@ -105,34 +105,33 @@ let collect_record = fun records member record_type ->
 
 let check_tree = fun ctx root ->
   let diagnostics = H.diagnostics_for_root root in
-  if is_interface_file ctx then
-    (
-      let records = Vector.with_capacity ~size:(Ast.Node.child_count root) in
-      let hooks = {
-        Syn.Visitor.empty_hooks with
-        enter_type_declaration =
-          Some (fun visitor declaration ->
-            H.iter_fold
-              Ast.TypeDeclaration.fold_member
-              declaration
-              ~fn:(fun member ->
-                match Ast.TypeDeclaration.Member.record_type member with
-                | Some record_type -> collect_record records member record_type
-                | None -> ());
-            (visitor, Syn.Visitor.Continue));
-        enter_value_declaration =
-          Some (fun visitor value_declaration ->
-            Vector.for_each
-              records
-              ~fn:(fun record ->
-                if value_declaration_targets_record value_declaration record then
-                  H.push_diagnostic diagnostics (diagnostic_for_record record));
-            (visitor, Syn.Visitor.Continue));
-      }
-      in
-      Syn.Visitor.make ~ctx:() ~hooks
-      |> fun visitor -> ignore (Syn.Visitor.visit_node visitor root)
-    );
+  if is_interface_file ctx then (
+    let records = Vector.with_capacity ~size:(Ast.Node.child_count root) in
+    let hooks = {
+      Syn.Visitor.empty_hooks with
+      enter_type_declaration =
+        Some (fun visitor declaration ->
+          H.iter_fold
+            Ast.TypeDeclaration.fold_member
+            declaration
+            ~fn:(fun member ->
+              match Ast.TypeDeclaration.Member.record_type member with
+              | Some record_type -> collect_record records member record_type
+              | None -> ());
+          (visitor, Syn.Visitor.Continue));
+      enter_value_declaration =
+        Some (fun visitor value_declaration ->
+          Vector.for_each
+            records
+            ~fn:(fun record ->
+              if value_declaration_targets_record value_declaration record then
+                H.push_diagnostic diagnostics (diagnostic_for_record record));
+          (visitor, Syn.Visitor.Continue));
+    }
+    in
+    Syn.Visitor.make ~ctx:() ~hooks
+    |> fun visitor -> ignore (Syn.Visitor.visit_node visitor root)
+  );
   H.vector_to_list diagnostics
 
 let make = fun () ->

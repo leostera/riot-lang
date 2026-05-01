@@ -10,11 +10,25 @@ type replacement =
   | Text of string
 
 type operation =
-  | Delete of { target: target }
-  | Replace of { target: target; replacement: replacement }
-  | InsertBefore of { anchor: target; content: replacement }
-  | InsertAfter of { anchor: target; content: replacement }
-  | Swap of { left: target; right: target }
+  | Delete of {
+      target: target;
+    }
+  | Replace of {
+      target: target;
+      replacement: replacement;
+    }
+  | InsertBefore of {
+      anchor: target;
+      content: replacement;
+    }
+  | InsertAfter of {
+      anchor: target;
+      content: replacement;
+    }
+  | Swap of {
+      left: target;
+      right: target;
+    }
 
 type fix = {
   title: string;

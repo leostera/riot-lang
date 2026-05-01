@@ -75,7 +75,10 @@ let is_terminal = fun incompat root_pkg root_ver ->
   | Derived { terms = []; _ } ->
       (* Empty incompatibility is always terminal (fundamental contradiction) *)
       true
-  | External { terms = [ term ]; cause = NotRoot (pkg, ver) } ->
+  | External {
+      terms = [ term ];
+      cause = NotRoot (pkg, ver);
+    } ->
       pkg = root_pkg
       && ver = root_ver
       && not (Term.is_positive term)

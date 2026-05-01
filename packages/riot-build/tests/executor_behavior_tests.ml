@@ -130,7 +130,10 @@ let test_execute_runs_independent_actions = fun _ctx ->
       let result_b = find_result result node_b in
       let _ = Sandbox.cleanup sandbox in
       match (result_a, result_b) with
-      | (Some { status = Action_scheduler.Executed; _ }, Some { status = Action_scheduler.Executed; _ }) ->
+      | (
+        Some { status = Action_scheduler.Executed; _ },
+        Some { status = Action_scheduler.Executed; _ }
+      ) ->
           if output_a && output_b then
             Ok ()
           else

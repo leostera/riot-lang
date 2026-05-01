@@ -107,14 +107,18 @@ type record_expr_field_view =
       value: expr option;
       node: record_expr_field;
     }
-  | UnknownRecordExprField of { node: record_expr_field }
+  | UnknownRecordExprField of {
+      node: record_expr_field;
+    }
 type record_pattern_field_view =
   | RecordPatternField of {
       ident: Ident.t;
       pattern: pattern option;
       node: pattern;
     }
-  | UnknownRecordPatternField of { node: pattern }
+  | UnknownRecordPatternField of {
+      node: pattern;
+    }
 type first_class_module_pattern_ascription =
   | NoAscription
   | IdentAscription
@@ -485,7 +489,10 @@ module Pattern: sig
         ascription_ident: Ident.t option;
       }
     | Interval of { left: t; right: t }
-    | Constraint of { pattern: t; annotation: type_expr }
+    | Constraint of {
+        pattern: t;
+        annotation: type_expr;
+      }
     | Alias of { pattern: t; alias: t }
     | Or of { left: t; right: t }
     | Cons of { head: t; tail: t }
@@ -733,7 +740,10 @@ end
 module LetBinding: sig
   type t = let_binding
   type view =
-    | Binding of { pattern: pattern; body: expr }
+    | Binding of {
+        pattern: pattern;
+        body: expr;
+      }
     | Unknown of Node.t
   val cast: Node.t -> t cast_result
 
@@ -764,10 +774,15 @@ module Expr: sig
   type t = expr
   type fun_body =
     | Body_expr of t
-    | Body_cases of { first_case: match_case }
+    | Body_cases of {
+        first_case: match_case;
+      }
   type view =
     | Unit
-    | Let of { first_binding: let_binding; body: t }
+    | Let of {
+        first_binding: let_binding;
+        body: t;
+      }
     | LocalOpen of { body: t }
     | LetModule of { body: t }
     | LetException of { body: t }
@@ -776,15 +791,26 @@ module Expr: sig
         then_branch: t;
         else_branch: t option;
       }
-    | Match of { scrutinee: t; first_case: match_case }
+    | Match of {
+        scrutinee: t;
+        first_case: match_case;
+      }
     | Fun of {
         parameters: parameter Vector.t;
         return_annotation: type_expr option;
         body: fun_body;
       }
-    | Try of { body: t; first_case: match_case }
+    | Try of {
+        body: t;
+        first_case: match_case;
+      }
     | While of { condition: t; body: t }
-    | For of { pattern: pattern; start_: t; stop: t; body: t }
+    | For of {
+        pattern: pattern;
+        start_: t;
+        stop: t;
+        body: t;
+      }
     | Sequence of {
         left: t;
         right: t option;
@@ -835,7 +861,10 @@ module Expr: sig
         base: t option;
         fields: record_expr_field_view Vector.t;
       }
-    | Annotated of { expr: t; annotation: type_expr }
+    | Annotated of {
+        expr: t;
+        annotation: type_expr;
+      }
     | Error of Node.t
     | Unknown of Node.t
   val cast: Node.t -> t cast_result
@@ -1438,8 +1467,12 @@ module ModuleDeclaration: sig
   end
 
   type body =
-    | Expr of { body: module_expr }
-    | Type of { body: module_type_expr }
+    | Expr of {
+        body: module_expr;
+      }
+    | Type of {
+        body: module_type_expr;
+      }
     | Unsupported of {
         body: Node.t option;
       }
@@ -1498,7 +1531,9 @@ module ModuleTypeDeclaration: sig
   type t = module_type_declaration
   type body =
     | Abstract
-    | Manifest of { body: module_type_expr }
+    | Manifest of {
+        body: module_type_expr;
+      }
     | Unsupported of {
         body: Node.t option;
       }

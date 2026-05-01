@@ -30,7 +30,9 @@ type trigger =
   | Post_build
 
 type event =
-  | GcStarted of { trigger: trigger }
+  | GcStarted of {
+      trigger: trigger;
+    }
   | GcCacheScanStarted of {
       trigger: trigger;
       build_root: Path.t;
@@ -46,7 +48,11 @@ type event =
       path: Path.t;
       size_bytes: int64;
     }
-  | GcCacheScanCompleted of { trigger: trigger; entry_count: int; total_size_bytes: int64 }
+  | GcCacheScanCompleted of {
+      trigger: trigger;
+      entry_count: int;
+      total_size_bytes: int64;
+    }
   | GcPlanComputed of {
       trigger: trigger;
       deleted_entries: int;
@@ -63,9 +69,18 @@ type event =
       trigger: trigger;
       path: Path.t;
     }
-  | GcSkipped of { trigger: trigger; summary: summary }
-  | GcCompleted of { trigger: trigger; summary: summary }
-  | GcFailed of { trigger: trigger; error: string }
+  | GcSkipped of {
+      trigger: trigger;
+      summary: summary;
+    }
+  | GcCompleted of {
+      trigger: trigger;
+      summary: summary;
+    }
+  | GcFailed of {
+      trigger: trigger;
+      error: string;
+    }
   | ForceCleanStarted of {
       build_root: Path.t;
     }
@@ -235,11 +250,11 @@ let event_to_json = function
         ("path", Data.Json.String (Path.to_string path));
       ]
   | GcCacheEntryScanned {
-    trigger;
-    hash;
-    path;
-    size_bytes
-  } ->
+      trigger;
+      hash;
+      path;
+      size_bytes;
+    } ->
       Data.Json.Object [
         ("type", Data.Json.String "CacheGcEntryScanned");
         ("trigger", Data.Json.String (trigger_to_string trigger));
@@ -255,11 +270,11 @@ let event_to_json = function
         ("total_size_bytes", Data.Json.String (Int64.to_string total_size_bytes));
       ]
   | GcPlanComputed {
-    trigger;
-    deleted_entries;
-    deleted_generations;
-    reclaimable_bytes
-  } ->
+      trigger;
+      deleted_entries;
+      deleted_generations;
+      reclaimable_bytes;
+    } ->
       Data.Json.Object [
         ("type", Data.Json.String "CacheGcPlanComputed");
         ("trigger", Data.Json.String (trigger_to_string trigger));
@@ -268,11 +283,11 @@ let event_to_json = function
         ("reclaimable_bytes", Data.Json.String (Int64.to_string reclaimable_bytes));
       ]
   | GcCacheEntryDeleteStarted {
-    trigger;
-    hash;
-    path;
-    size_bytes
-  } ->
+      trigger;
+      hash;
+      path;
+      size_bytes;
+    } ->
       Data.Json.Object [
         ("type", Data.Json.String "CacheGcEntryDeleteStarted");
         ("trigger", Data.Json.String (trigger_to_string trigger));
@@ -655,12 +670,10 @@ let preserve_generation_recency = fun ~preferred ~discovered ->
         set)
   in
   let add_if_available = fun (seen, acc) hash ->
-    if HashSet.contains discovered_set ~value:hash && not (HashSet.contains seen ~value:hash) then
-      (
-        let _ = HashSet.insert seen ~value:hash in
-        (seen, hash :: acc)
-      )
-    else
+    if HashSet.contains discovered_set ~value:hash && not (HashSet.contains seen ~value:hash) then (
+      let _ = HashSet.insert seen ~value:hash in
+      (seen, hash :: acc)
+    ) else
       (seen, acc)
   in
   let (seen, acc) = List.fold_left preferred ~init:(HashSet.create (), []) ~fn:add_if_available in

@@ -428,11 +428,11 @@ and find_expression_kind = fun query parent kind ->
       | None -> find_expression query parent body
     )
   | Ast.For {
-    pattern;
-    start_;
-    stop;
-    body
-  } ->
+      pattern;
+      start_;
+      stop;
+      body;
+    } ->
       (
           match find_pattern query parent pattern with
           | Some _ as found -> found

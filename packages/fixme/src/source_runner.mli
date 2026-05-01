@@ -12,7 +12,10 @@ type progress_phase =
       diagnostics: int;
     }
 (** Timestamped progress event emitted by [run] or [run_rule]. *)
-type progress_event = { timestamp_ms: int; phase: progress_phase }
+type progress_event = {
+  timestamp_ms: int;
+  phase: progress_phase;
+}
 (** Result of running rules against one source file. *)
 type result = {
   (** Syntax tree produced from the parsed source. *)

@@ -88,7 +88,10 @@ type error =
   | PackageNotFound of {
       package: Package_name.t;
     }
-  | DependencySpecInvalid of { dependency: string; error: dependency_spec_error }
+  | DependencySpecInvalid of {
+      dependency: string;
+      error: dependency_spec_error;
+    }
   | PathDependencyMustBeRelative of { dependency: string }
   | PathDependencyLoadFailed of {
       dependency: string;
@@ -101,15 +104,26 @@ type error =
       ref_: string option;
       error: source_dependency_load_error;
     }
-  | RegistryInitializationFailed of { registry: string; error: registry_initialization_error }
-  | RegistryLookupFailed of { package: string; registry: string; error: registry_lookup_error }
+  | RegistryInitializationFailed of {
+      registry: string;
+      error: registry_initialization_error;
+    }
+  | RegistryLookupFailed of {
+      package: string;
+      registry: string;
+      error: registry_lookup_error;
+    }
   | RegistryMaterializationFailed of {
       package: string;
       version: string;
       registry: string;
       error: registry_materialization_error;
     }
-  | RegistrySearchFailed of { query: string; registry: string; error: registry_search_error }
+  | RegistrySearchFailed of {
+      query: string;
+      registry: string;
+      error: registry_search_error;
+    }
   | RegistryPackageNotFound of {
       package: string;
       registry: string;
@@ -236,11 +250,11 @@ let error_message = function
       ^ "': "
       ^ path_dependency_load_error_message error
   | SourceDependencyLoadFailed {
-    dependency;
-    source_locator;
-    ref_;
-    error
-  } ->
+      dependency;
+      source_locator;
+      ref_;
+      error;
+    } ->
       let suffix =
         match ref_ with
         | Some ref_ -> "#" ^ ref_
@@ -266,11 +280,11 @@ let error_message = function
       ^ "': "
       ^ registry_lookup_error_message error
   | RegistryMaterializationFailed {
-    package;
-    version;
-    registry;
-    error
-  } ->
+      package;
+      version;
+      registry;
+      error;
+    } ->
       "failed to materialize package '"
       ^ package
       ^ "@"
@@ -1142,8 +1156,9 @@ let load_registry_workspace = fun ?(emit = no_emit) ?registry ~workspace_manager
 let upsert_dependency = fun
   (dependencies: Riot_model.Package.dependency list)
   ((dependency: Riot_model.Package.dependency) as replacement) ->
-  let rec loop (acc: Riot_model.Package.dependency list) (remaining:
-    Riot_model.Package.dependency list) =
+  let rec loop
+    (acc: Riot_model.Package.dependency list)
+    (remaining: Riot_model.Package.dependency list) =
     match remaining with
     | [] -> List.reverse (replacement :: acc)
     | current :: rest when Riot_model.Package_name.equal current.name dependency.name ->

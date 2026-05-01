@@ -1,5 +1,7 @@
 type error = Adapter.error =
-  | InvalidTimeoutNs of { timeout_ns: int64 }
+  | InvalidTimeoutNs of {
+      timeout_ns: int64;
+    }
   | InvalidMaxEvents of { max_events: int }
   | System of System_error.t
 

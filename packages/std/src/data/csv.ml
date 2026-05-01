@@ -190,22 +190,20 @@ let to_string = fun ?(config = default_config) ?headers data ->
     || String.contains field "\r"
   in
   let escape_field field =
-    if needs_quoting field then
-      (
-        let buffer = Buffer.create ~size:(String.length field + 2) in
-        Buffer.add_char buffer config.quote;
-        String.for_each
-          ~fn:(fun c ->
-            if c = config.quote then (
-              Buffer.add_char buffer config.escape;
-              Buffer.add_char buffer config.quote
-            ) else
-              Buffer.add_char buffer c)
-          field;
-        Buffer.add_char buffer config.quote;
-        Buffer.contents buffer
-      )
-    else
+    if needs_quoting field then (
+      let buffer = Buffer.create ~size:(String.length field + 2) in
+      Buffer.add_char buffer config.quote;
+      String.for_each
+        ~fn:(fun c ->
+          if c = config.quote then (
+            Buffer.add_char buffer config.escape;
+            Buffer.add_char buffer config.quote
+          ) else
+            Buffer.add_char buffer c)
+        field;
+      Buffer.add_char buffer config.quote;
+      Buffer.contents buffer
+    ) else
       field
   in
   let all_rows =

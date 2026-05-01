@@ -45,7 +45,10 @@ type dependency_error =
       error: Version.parse_error;
     }
   | DependencyCannotUseWorkspaceFlag of { dependency_name: string }
-  | DependencyFieldMustBeString of { dependency_name: string; field: dependency_field }
+  | DependencyFieldMustBeString of {
+      dependency_name: string;
+      field: dependency_field;
+    }
   | DependencyCannotSpecifySourceAndGithub of { dependency_name: string }
   | DependencyRefRequiresSource of { dependency_name: string }
   | BuiltinDependencyDoesNotSupportOverrides of { dependency_name: string }
@@ -416,7 +419,16 @@ let resolve_target_dir_root = fun ~root ?target_dir () ->
   else
     Path.(root / target_dir_path)
 
-let make ?name ~root ~packages ?(dependencies = []) ?(dev_dependencies = []) ?(build_dependencies = []) ?(profile_overrides = []) ?target_dir () = {
+let make
+  ?name
+  ~root
+  ~packages
+  ?(dependencies = [])
+  ?(dev_dependencies = [])
+  ?(build_dependencies = [])
+  ?(profile_overrides = [])
+  ?target_dir
+  () = {
   name;
   root;
   target_dir_root = resolve_target_dir_root ~root ?target_dir ();
@@ -427,7 +439,16 @@ let make ?name ~root ~packages ?(dependencies = []) ?(dev_dependencies = []) ?(b
   profile_overrides;
 }
 
-let make_realized ?name ~root ~packages ?(dependencies = []) ?(dev_dependencies = []) ?(build_dependencies = []) ?(profile_overrides = []) ?target_dir () =
+let make_realized
+  ?name
+  ~root
+  ~packages
+  ?(dependencies = [])
+  ?(dev_dependencies = [])
+  ?(build_dependencies = [])
+  ?(profile_overrides = [])
+  ?target_dir
+  () =
   make
     ?name
     ~root
@@ -577,14 +598,19 @@ std = ">= 1.2.3"
     | Ok manifest ->
         (
           match manifest.dependencies with
-          | [ { Package.source = {
-            workspace = false;
-            builtin = false;
-            path = None;
-            source_locator = None;
-            ref_ = None;
-            version = Some requirement
-          }; _ } ] ->
+          | [
+              {
+                Package.source = {
+                  workspace = false;
+                  builtin = false;
+                  path = None;
+                  source_locator = None;
+                  ref_ = None;
+                  version = Some requirement;
+                };
+                _;
+              };
+            ] ->
               if String.equal (Version.requirement_to_string requirement) ">= 1.2.3" then
                 Ok ()
               else

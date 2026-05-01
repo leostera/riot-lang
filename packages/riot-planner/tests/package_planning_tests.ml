@@ -1145,7 +1145,7 @@ let test_build_scope_excludes_runtime_and_dev_roots = fun _ctx ->
           action_graph;
           hash;
           package = helper_package;
-          _
+          _;
         }
       ) ->
           let _ =
@@ -1218,7 +1218,10 @@ let test_binary_entrypoint_rejects_fun_labeled_args_main = fun _ctx ->
     (fun tmpdir ->
       match plan_single_binary_source ~tmpdir "let main = fun ~args -> Ok ()\n" with
       | Error (
-        Riot_planner.Planning_error.InvalidExecutableMain { error = Riot_planner.Planning_error.InvalidMainParameters { parameters }; _ }
+        Riot_planner.Planning_error.InvalidExecutableMain {
+          error = Riot_planner.Planning_error.InvalidMainParameters { parameters };
+          _;
+        }
       ) ->
           if parameters = [] then
             Ok ()
@@ -1237,7 +1240,11 @@ let test_binary_entrypoint_requires_main_binding = fun _ctx ->
     (fun tmpdir ->
       match plan_single_binary_source ~tmpdir "let () = print_endline \"hello\"\n" with
       | Error (
-        Riot_planner.Planning_error.InvalidExecutableMain { target_name; source; error = Riot_planner.Planning_error.MissingMain }
+        Riot_planner.Planning_error.InvalidExecutableMain {
+          target_name;
+          source;
+          error = Riot_planner.Planning_error.MissingMain;
+        }
       ) ->
           if not (String.equal target_name "entry-demo") then
             Error ("expected target entry-demo, got " ^ target_name)
@@ -1259,7 +1266,10 @@ let test_binary_entrypoint_rejects_multiple_main_bindings = fun _ctx ->
       let source = "let main ~args:_ = Ok ()\nlet main ~args:_ = Ok ()\n" in
       match plan_single_binary_source ~tmpdir source with
       | Error (
-        Riot_planner.Planning_error.InvalidExecutableMain { error = Riot_planner.Planning_error.MultipleMainDefinitions { count }; _ }
+        Riot_planner.Planning_error.InvalidExecutableMain {
+          error = Riot_planner.Planning_error.MultipleMainDefinitions { count };
+          _;
+        }
       ) ->
           if count = 2 then
             Ok ()
@@ -1278,7 +1288,10 @@ let test_binary_entrypoint_rejects_positional_args_parameter = fun _ctx ->
     (fun tmpdir ->
       match plan_single_binary_source ~tmpdir "let main args = Ok ()\n" with
       | Error (
-        Riot_planner.Planning_error.InvalidExecutableMain { error = Riot_planner.Planning_error.InvalidMainParameters { parameters }; _ }
+        Riot_planner.Planning_error.InvalidExecutableMain {
+          error = Riot_planner.Planning_error.InvalidMainParameters { parameters };
+          _;
+        }
       ) ->
           if parameters = [ "args" ] then
             Ok ()
@@ -1297,7 +1310,10 @@ let test_binary_entrypoint_rejects_extra_parameters = fun _ctx ->
     (fun tmpdir ->
       match plan_single_binary_source ~tmpdir "let main ~args () = Ok ()\n" with
       | Error (
-        Riot_planner.Planning_error.InvalidExecutableMain { error = Riot_planner.Planning_error.InvalidMainParameters { parameters }; _ }
+        Riot_planner.Planning_error.InvalidExecutableMain {
+          error = Riot_planner.Planning_error.InvalidMainParameters { parameters };
+          _;
+        }
       ) ->
           if parameters = [ "~args"; "<positional>" ] then
             Ok ()
@@ -1439,7 +1455,7 @@ let plan_kernel_runtime_graphs = fun ~workspace ~store ~build_ctx ->
                 action_graph;
                 hash;
                 depset;
-                _
+                _;
               }
             ) ->
                 Ok (package, module_graph, action_graph, hash, depset)
@@ -1469,8 +1485,10 @@ let test_plan_bundle_cache_hit_restores_module_and_action_graphs = fun _ctx ->
       in
       let action_graph_json =
         let ag = Riot_planner.Action_graph.create () in
-        let action =
-          Riot_planner.Action.WriteFile { destination = Path.v "out.txt"; content = "cached" }
+        let action = Riot_planner.Action.WriteFile {
+          destination = Path.v "out.txt";
+          content = "cached";
+        }
         in
         let spec =
           Riot_planner.Action_node.make
@@ -1485,35 +1503,33 @@ let test_plan_bundle_cache_hit_restores_module_and_action_graphs = fun _ctx ->
         let _ = Riot_planner.Action_graph.add_node ag spec in
         Riot_planner.Action_graph.to_json ag
       in
-      let module_graph_json =
-        Std.Data.Json.Object [
-          (
-            "nodes",
-            Std.Data.Json.Array [
-              Std.Data.Json.Object [
-                ("id", Std.Data.Json.Int 1);
-                (
-                  "file",
-                  Std.Data.Json.Object [
-                    ("kind", Std.Data.Json.String "concrete");
-                    ("path", Std.Data.Json.String "");
-                  ]
-                );
-                ("kind", Std.Data.Json.Object [ ("kind", Std.Data.Json.String "root"); ]);
-                ("deps", Std.Data.Json.Array []);
-                ("opens", Std.Data.Json.Array []);
-              ];
-            ]
-          );
-        ]
+      let module_graph_json = Std.Data.Json.Object [
+        (
+          "nodes",
+          Std.Data.Json.Array [
+            Std.Data.Json.Object [
+              ("id", Std.Data.Json.Int 1);
+              (
+                "file",
+                Std.Data.Json.Object [
+                  ("kind", Std.Data.Json.String "concrete");
+                  ("path", Std.Data.Json.String "");
+                ]
+              );
+              ("kind", Std.Data.Json.Object [ ("kind", Std.Data.Json.String "root"); ]);
+              ("deps", Std.Data.Json.Array []);
+              ("opens", Std.Data.Json.Array []);
+            ];
+          ]
+        );
+      ]
       in
-      let bundle =
-        Std.Data.Json.Object [
-          ("version", Std.Data.Json.Int 1);
-          ("package", Std.Data.Json.String (Package_name.to_string package.name));
-          ("module_graph", module_graph_json);
-          ("action_graph", action_graph_json);
-        ]
+      let bundle = Std.Data.Json.Object [
+        ("version", Std.Data.Json.Int 1);
+        ("package", Std.Data.Json.String (Package_name.to_string package.name));
+        ("module_graph", module_graph_json);
+        ("action_graph", action_graph_json);
+      ]
       in
       let _ =
         Riot_store.Store.save_plan_bundle store ~hash:input_hash ~plan:bundle
@@ -1630,7 +1646,12 @@ let test_cached_artifact_and_exports_short_circuit_without_plan_bundle = fun _ct
             Error ("expected cached plan result, got planner error: "
             ^ Riot_planner.Planning_error.to_string err)
         | Ok (
-          Riot_planner.Package_planner.Cached { hash; artifact = cached_artifact; exports = cached_exports; _ }
+          Riot_planner.Package_planner.Cached {
+            hash;
+            artifact = cached_artifact;
+            exports = cached_exports;
+            _;
+          }
         ) ->
             if Std.Crypto.Hash.compare hash input_hash != Std.Order.EQ then
               Error "expected cached plan hash to match input hash"
@@ -1694,8 +1715,10 @@ let test_stale_plan_bundle_version_rebuilds_plan_graphs = fun _ctx ->
       in
       let stale_action_graph_json =
         let ag = Riot_planner.Action_graph.create () in
-        let action =
-          Riot_planner.Action.WriteFile { destination = Path.v "out.txt"; content = "stale" }
+        let action = Riot_planner.Action.WriteFile {
+          destination = Path.v "out.txt";
+          content = "stale";
+        }
         in
         let spec =
           Riot_planner.Action_node.make
@@ -1710,35 +1733,33 @@ let test_stale_plan_bundle_version_rebuilds_plan_graphs = fun _ctx ->
         let _ = Riot_planner.Action_graph.add_node ag spec in
         Riot_planner.Action_graph.to_json ag
       in
-      let stale_module_graph_json =
-        Std.Data.Json.Object [
-          (
-            "nodes",
-            Std.Data.Json.Array [
-              Std.Data.Json.Object [
-                ("id", Std.Data.Json.Int 1);
-                (
-                  "file",
-                  Std.Data.Json.Object [
-                    ("kind", Std.Data.Json.String "concrete");
-                    ("path", Std.Data.Json.String "");
-                  ]
-                );
-                ("kind", Std.Data.Json.Object [ ("kind", Std.Data.Json.String "root"); ]);
-                ("deps", Std.Data.Json.Array []);
-                ("opens", Std.Data.Json.Array []);
-              ];
-            ]
-          );
-        ]
+      let stale_module_graph_json = Std.Data.Json.Object [
+        (
+          "nodes",
+          Std.Data.Json.Array [
+            Std.Data.Json.Object [
+              ("id", Std.Data.Json.Int 1);
+              (
+                "file",
+                Std.Data.Json.Object [
+                  ("kind", Std.Data.Json.String "concrete");
+                  ("path", Std.Data.Json.String "");
+                ]
+              );
+              ("kind", Std.Data.Json.Object [ ("kind", Std.Data.Json.String "root"); ]);
+              ("deps", Std.Data.Json.Array []);
+              ("opens", Std.Data.Json.Array []);
+            ];
+          ]
+        );
+      ]
       in
-      let stale_bundle =
-        Std.Data.Json.Object [
-          ("version", Std.Data.Json.Int 1);
-          ("package", Std.Data.Json.String (Package_name.to_string package.name));
-          ("module_graph", stale_module_graph_json);
-          ("action_graph", stale_action_graph_json);
-        ]
+      let stale_bundle = Std.Data.Json.Object [
+        ("version", Std.Data.Json.Int 1);
+        ("package", Std.Data.Json.String (Package_name.to_string package.name));
+        ("module_graph", stale_module_graph_json);
+        ("action_graph", stale_action_graph_json);
+      ]
       in
       let _ =
         Riot_store.Store.save_plan_bundle store ~hash:stale_input_hash ~plan:stale_bundle
@@ -1817,101 +1838,100 @@ let test_plan_bundle_cache_hit_preserves_module_dependency_order = fun _ctx ->
           ~toolchain:test_toolchain
           ()
       in
-      let module_graph_json =
-        Std.Data.Json.Object [
-          (
-            "nodes",
-            Std.Data.Json.Array [
-              Std.Data.Json.Object [
-                ("id", Std.Data.Json.Int 1);
-                (
-                  "file",
-                  Std.Data.Json.Object [
-                    ("kind", Std.Data.Json.String "concrete");
-                    ("path", Std.Data.Json.String "src/a.ml");
-                  ]
-                );
-                (
-                  "kind",
-                  Std.Data.Json.Object [
-                    ("kind", Std.Data.Json.String "ml");
-                    ("filename", Std.Data.Json.String "src/a.ml");
-                    ("namespace", Std.Data.Json.Array []);
-                  ]
-                );
-                ("deps", Std.Data.Json.Array []);
-                ("opens", Std.Data.Json.Array []);
-              ];
-              Std.Data.Json.Object [
-                ("id", Std.Data.Json.Int 2);
-                (
-                  "file",
-                  Std.Data.Json.Object [
-                    ("kind", Std.Data.Json.String "concrete");
-                    ("path", Std.Data.Json.String "src/b.ml");
-                  ]
-                );
-                (
-                  "kind",
-                  Std.Data.Json.Object [
-                    ("kind", Std.Data.Json.String "ml");
-                    ("filename", Std.Data.Json.String "src/b.ml");
-                    ("namespace", Std.Data.Json.Array []);
-                  ]
-                );
-                ("deps", Std.Data.Json.Array []);
-                ("opens", Std.Data.Json.Array []);
-              ];
-              Std.Data.Json.Object [
-                ("id", Std.Data.Json.Int 3);
-                (
-                  "file",
-                  Std.Data.Json.Object [
-                    ("kind", Std.Data.Json.String "concrete");
-                    ("path", Std.Data.Json.String "src/c.ml");
-                  ]
-                );
-                (
-                  "kind",
-                  Std.Data.Json.Object [
-                    ("kind", Std.Data.Json.String "ml");
-                    ("filename", Std.Data.Json.String "src/c.ml");
-                    ("namespace", Std.Data.Json.Array []);
-                  ]
-                );
-                ("deps", Std.Data.Json.Array []);
-                ("opens", Std.Data.Json.Array []);
-              ];
-              Std.Data.Json.Object [
-                ("id", Std.Data.Json.Int 4);
-                (
-                  "file",
-                  Std.Data.Json.Object [
-                    ("kind", Std.Data.Json.String "concrete");
-                    ("path", Std.Data.Json.String "");
-                  ]
-                );
-                (
-                  "kind",
-                  Std.Data.Json.Object [
-                    ("kind", Std.Data.Json.String "library");
-                    ("name", Std.Data.Json.String (Package_name.to_string package.name));
-                    ("includes", Std.Data.Json.Array []);
-                  ]
-                );
-                (
-                  "deps",
-                  Std.Data.Json.Array [
-                    Std.Data.Json.Int 1;
-                    Std.Data.Json.Int 2;
-                    Std.Data.Json.Int 3;
-                  ]
-                );
-                ("opens", Std.Data.Json.Array []);
-              ];
-            ]
-          );
-        ]
+      let module_graph_json = Std.Data.Json.Object [
+        (
+          "nodes",
+          Std.Data.Json.Array [
+            Std.Data.Json.Object [
+              ("id", Std.Data.Json.Int 1);
+              (
+                "file",
+                Std.Data.Json.Object [
+                  ("kind", Std.Data.Json.String "concrete");
+                  ("path", Std.Data.Json.String "src/a.ml");
+                ]
+              );
+              (
+                "kind",
+                Std.Data.Json.Object [
+                  ("kind", Std.Data.Json.String "ml");
+                  ("filename", Std.Data.Json.String "src/a.ml");
+                  ("namespace", Std.Data.Json.Array []);
+                ]
+              );
+              ("deps", Std.Data.Json.Array []);
+              ("opens", Std.Data.Json.Array []);
+            ];
+            Std.Data.Json.Object [
+              ("id", Std.Data.Json.Int 2);
+              (
+                "file",
+                Std.Data.Json.Object [
+                  ("kind", Std.Data.Json.String "concrete");
+                  ("path", Std.Data.Json.String "src/b.ml");
+                ]
+              );
+              (
+                "kind",
+                Std.Data.Json.Object [
+                  ("kind", Std.Data.Json.String "ml");
+                  ("filename", Std.Data.Json.String "src/b.ml");
+                  ("namespace", Std.Data.Json.Array []);
+                ]
+              );
+              ("deps", Std.Data.Json.Array []);
+              ("opens", Std.Data.Json.Array []);
+            ];
+            Std.Data.Json.Object [
+              ("id", Std.Data.Json.Int 3);
+              (
+                "file",
+                Std.Data.Json.Object [
+                  ("kind", Std.Data.Json.String "concrete");
+                  ("path", Std.Data.Json.String "src/c.ml");
+                ]
+              );
+              (
+                "kind",
+                Std.Data.Json.Object [
+                  ("kind", Std.Data.Json.String "ml");
+                  ("filename", Std.Data.Json.String "src/c.ml");
+                  ("namespace", Std.Data.Json.Array []);
+                ]
+              );
+              ("deps", Std.Data.Json.Array []);
+              ("opens", Std.Data.Json.Array []);
+            ];
+            Std.Data.Json.Object [
+              ("id", Std.Data.Json.Int 4);
+              (
+                "file",
+                Std.Data.Json.Object [
+                  ("kind", Std.Data.Json.String "concrete");
+                  ("path", Std.Data.Json.String "");
+                ]
+              );
+              (
+                "kind",
+                Std.Data.Json.Object [
+                  ("kind", Std.Data.Json.String "library");
+                  ("name", Std.Data.Json.String (Package_name.to_string package.name));
+                  ("includes", Std.Data.Json.Array []);
+                ]
+              );
+              (
+                "deps",
+                Std.Data.Json.Array [
+                  Std.Data.Json.Int 1;
+                  Std.Data.Json.Int 2;
+                  Std.Data.Json.Int 3;
+                ]
+              );
+              ("opens", Std.Data.Json.Array []);
+            ];
+          ]
+        );
+      ]
       in
       let action_graph_json =
         let graph = Riot_planner.Action_graph.create () in
@@ -1930,13 +1950,12 @@ let test_plan_bundle_cache_hit_preserves_module_dependency_order = fun _ctx ->
         let _ = Riot_planner.Action_graph.add_node graph spec in
         Riot_planner.Action_graph.to_json graph
       in
-      let bundle =
-        Std.Data.Json.Object [
-          ("version", Std.Data.Json.Int 1);
-          ("package", Std.Data.Json.String (Package_name.to_string package.name));
-          ("module_graph", module_graph_json);
-          ("action_graph", action_graph_json);
-        ]
+      let bundle = Std.Data.Json.Object [
+        ("version", Std.Data.Json.Int 1);
+        ("package", Std.Data.Json.String (Package_name.to_string package.name));
+        ("module_graph", module_graph_json);
+        ("action_graph", action_graph_json);
+      ]
       in
       let _ =
         Riot_store.Store.save_plan_bundle store ~hash:input_hash ~plan:bundle
@@ -2116,7 +2135,7 @@ let test_planner_rejects_direct_internal_library_access = fun _ctx ->
           source;
           requested_module;
           internal_module;
-          public_module
+          public_module;
         }
       ) ->
           if not (String.equal target_name "berrybot") then
@@ -2175,7 +2194,7 @@ let test_planner_rejects_namespaced_internal_library_access = fun _ctx ->
           source;
           requested_module;
           internal_module;
-          public_module
+          public_module;
         }
       ) ->
           if not (String.equal target_name "berrybot") then
@@ -2239,7 +2258,7 @@ let test_planner_rejects_direct_other_binary_root_access = fun _ctx ->
           requested_module;
           other_target_name;
           other_target_module;
-          public_module
+          public_module;
         }
       ) ->
           if not (String.equal target_name "berrybot") then
@@ -2305,7 +2324,7 @@ let test_planner_rejects_namespaced_other_binary_root_access = fun _ctx ->
           requested_module;
           other_target_name;
           other_target_module;
-          public_module
+          public_module;
         }
       ) ->
           if not (String.equal target_name "berrybot") then
@@ -2485,8 +2504,10 @@ let test_legacy_nested_sibling_plan_bundle_is_ignored_after_version_bump = fun _
       in
       let stale_action_graph_json =
         let ag = Riot_planner.Action_graph.create () in
-        let action =
-          Riot_planner.Action.WriteFile { destination = Path.v "out.txt"; content = "stale" }
+        let action = Riot_planner.Action.WriteFile {
+          destination = Path.v "out.txt";
+          content = "stale";
+        }
         in
         let spec =
           Riot_planner.Action_node.make
@@ -2501,35 +2522,33 @@ let test_legacy_nested_sibling_plan_bundle_is_ignored_after_version_bump = fun _
         let _ = Riot_planner.Action_graph.add_node ag spec in
         Riot_planner.Action_graph.to_json ag
       in
-      let stale_module_graph_json =
-        Std.Data.Json.Object [
-          (
-            "nodes",
-            Std.Data.Json.Array [
-              Std.Data.Json.Object [
-                ("id", Std.Data.Json.Int 1);
-                (
-                  "file",
-                  Std.Data.Json.Object [
-                    ("kind", Std.Data.Json.String "concrete");
-                    ("path", Std.Data.Json.String "");
-                  ]
-                );
-                ("kind", Std.Data.Json.Object [ ("kind", Std.Data.Json.String "root"); ]);
-                ("deps", Std.Data.Json.Array []);
-                ("opens", Std.Data.Json.Array []);
-              ];
-            ]
-          );
-        ]
+      let stale_module_graph_json = Std.Data.Json.Object [
+        (
+          "nodes",
+          Std.Data.Json.Array [
+            Std.Data.Json.Object [
+              ("id", Std.Data.Json.Int 1);
+              (
+                "file",
+                Std.Data.Json.Object [
+                  ("kind", Std.Data.Json.String "concrete");
+                  ("path", Std.Data.Json.String "");
+                ]
+              );
+              ("kind", Std.Data.Json.Object [ ("kind", Std.Data.Json.String "root"); ]);
+              ("deps", Std.Data.Json.Array []);
+              ("opens", Std.Data.Json.Array []);
+            ];
+          ]
+        );
+      ]
       in
-      let stale_bundle =
-        Std.Data.Json.Object [
-          ("version", Std.Data.Json.Int 1);
-          ("package", Std.Data.Json.String (Package_name.to_string package.name));
-          ("module_graph", stale_module_graph_json);
-          ("action_graph", stale_action_graph_json);
-        ]
+      let stale_bundle = Std.Data.Json.Object [
+        ("version", Std.Data.Json.Int 1);
+        ("package", Std.Data.Json.String (Package_name.to_string package.name));
+        ("module_graph", stale_module_graph_json);
+        ("action_graph", stale_action_graph_json);
+      ]
       in
       let _ =
         Riot_store.Store.save_plan_bundle store ~hash:stale_input_hash ~plan:stale_bundle

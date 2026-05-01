@@ -95,7 +95,13 @@ type callee_class =
 
 type style = { continuation_indent: int; long_infix_chain_terms: int }
 
-type context = { width: int; column: int; indent: int; role: role; style: style }
+type context = {
+  width: int;
+  column: int;
+  indent: int;
+  role: role;
+  style: style;
+}
 
 type decision = {
   mode: mode;

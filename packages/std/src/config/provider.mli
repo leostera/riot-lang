@@ -4,7 +4,9 @@ type env = Loader.env
 (** Load config from environment-based path (./config/{dev,test,prod}.toml) *)
 type t =
   | Empty
-  | Env of { env: env }
+  | Env of {
+      env: env;
+    }
   | Path of {
       path: Path.t;
     }

@@ -39,9 +39,15 @@ module Server = struct
     | AttachHandler of handler
     | DetachHandler of handler_id
     | DetachAll
-    | ListHandlers of { reply_to: reply_to; request_id: request_id }
+    | ListHandlers of {
+        reply_to: reply_to;
+        request_id: request_id;
+      }
     | Emit of event
-    | Stop of { reply_to: reply_to; request_id: request_id }
+    | Stop of {
+        reply_to: reply_to;
+        request_id: request_id;
+      }
 
   type Message.t +=
     | Telemetry of message
@@ -53,7 +59,9 @@ module Server = struct
       }
 
   type Message.t +=
-    | Stopped of { request_id: request_id }
+    | Stopped of {
+        request_id: request_id;
+      }
 
   let rec loop = fun state ->
     let selector msg =

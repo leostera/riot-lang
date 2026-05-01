@@ -65,8 +65,15 @@ module Http1: sig
   type header_value_error =
     | InvalidHeaderValueChar of { char: char; index: int }
   type serialization_error =
-    | InvalidHeaderName of { name: string; reason: header_name_error }
-    | InvalidHeaderValue of { name: string; value: string; reason: header_value_error }
+    | InvalidHeaderName of {
+        name: string;
+        reason: header_name_error;
+      }
+    | InvalidHeaderValue of {
+        name: string;
+        value: string;
+        reason: header_value_error;
+      }
   type websocket_key_error =
     | InvalidBase64
     | InvalidLength of { actual: int; expected: int }
@@ -79,7 +86,10 @@ module Http1: sig
     | MissingWebSocketVersion
     | UnsupportedWebSocketVersion of { value: string; expected: string }
     | MissingWebSocketKey
-    | InvalidWebSocketKey of { value: string; reason: websocket_key_error }
+    | InvalidWebSocketKey of {
+        value: string;
+        reason: websocket_key_error;
+      }
   type websocket_frame_limit_error =
     | WebSocketFrameTooLarge of { size: int; limit: int }
     | WebSocketMessageTooLarge of { size: int; limit: int }
@@ -87,7 +97,10 @@ module Http1: sig
     | InvalidInteger
     | NegativeLength of int
   type request_body_header_error =
-    | InvalidContentLength of { value: string; reason: content_length_error }
+    | InvalidContentLength of {
+        value: string;
+        reason: content_length_error;
+      }
     | ConflictingContentLength of {
         values: string list;
       }

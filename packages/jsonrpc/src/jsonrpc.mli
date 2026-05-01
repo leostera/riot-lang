@@ -58,7 +58,11 @@ type error =
   (** Malformed JSON-RPC request or response. *)
   | MethodNotFound of { method_name: string }
   (** Requested method does not exist. *)
-  | InvalidParams of { method_name: string; params: params; reason: string }
+  | InvalidParams of {
+      method_name: string;
+      params: params;
+      reason: string;
+    }
   (** Method parameters could not be decoded. *)
   | InternalError of { context: string; details: string }
   (** Internal client error such as transport or serialization failure. *)

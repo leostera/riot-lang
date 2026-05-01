@@ -145,7 +145,16 @@ let create_error_message = function
       ^ Int.to_string max_depth
       ^ ")"
 
-let create ~roots ?(sort = false) ?(follow_symlinks = false) ?(follow_root_links = true) ?(max_open = 10) ?(min_depth = 0) ?(max_depth = Int.max_int) ?(contents_first = false) () =
+let create
+  ~roots
+  ?(sort = false)
+  ?(follow_symlinks = false)
+  ?(follow_root_links = true)
+  ?(max_open = 10)
+  ?(min_depth = 0)
+  ?(max_depth = Int.max_int)
+  ?(contents_first = false)
+  () =
   let max_open =
     if max_open <= 0 then
       1

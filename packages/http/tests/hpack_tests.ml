@@ -134,8 +134,16 @@ let test_literal_with_indexing_updates_decoder_table = fun _ctx ->
   | Error err -> Result.Error err
   | Ok encoded ->
       match Hpack.decode decoder encoded with
-      | Ok [ { Hpack.name = "x-request-id"; value = "req-123" }; { Hpack.name = "x-request-id"; value = "req-123" } ] ->
-          Result.Ok ()
+      | Ok [
+          {
+            Hpack.name = "x-request-id";
+            value = "req-123";
+          };
+          {
+            Hpack.name = "x-request-id";
+            value = "req-123";
+          };
+        ] -> Result.Ok ()
       | Ok _ -> Result.Error "Decoder dynamic table did not preserve repeated indexed header"
       | Error err -> Result.Error ("Decode failed: " ^ Hpack.decode_error_to_string err)
 

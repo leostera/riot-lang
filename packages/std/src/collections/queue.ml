@@ -38,12 +38,10 @@ let push = fun t ~value ->
     if Ptr.equal tail (Atomic.get t.tail) then
       match next with
       | None ->
-          if Atomic.compare_and_set tail.next None (Some new_node) then
-            (
-              let _ = Atomic.compare_and_set t.tail tail new_node in
-              Atomic.incr t.size
-            )
-          else
+          if Atomic.compare_and_set tail.next None (Some new_node) then (
+            let _ = Atomic.compare_and_set t.tail tail new_node in
+            Atomic.incr t.size
+          ) else
             loop ()
       | Some next_node ->
           let _ = Atomic.compare_and_set t.tail tail next_node in
@@ -62,12 +60,10 @@ let pop = fun t ->
       match next with
       | None -> None
       | Some next_node ->
-          if Ptr.equal head tail then
-            (
-              let _ = Atomic.compare_and_set t.tail tail next_node in
-              loop ()
-            )
-          else if Atomic.compare_and_set t.head head next_node then (
+          if Ptr.equal head tail then (
+            let _ = Atomic.compare_and_set t.tail tail next_node in
+            loop ()
+          ) else if Atomic.compare_and_set t.head head next_node then (
             Atomic.decr t.size;
             match next_node.value with
             | None -> loop ()

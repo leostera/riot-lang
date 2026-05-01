@@ -8,8 +8,11 @@ let test_process_id_is_positive = fun _ctx ->
 
 let test_process_default_stdio_inherits = fun _ctx ->
   match Process.default_stdio with
-  | { stdin = Process.Stdin.Inherit; stdout = Process.Stdout.Inherit; stderr = Process.Stderr.Inherit } ->
-      Ok ()
+  | {
+    stdin = Process.Stdin.Inherit;
+    stdout = Process.Stdout.Inherit;
+    stderr = Process.Stderr.Inherit;
+  } -> Ok ()
   | _ -> Error "expected Process.default_stdio to inherit all stdio streams"
 
 let tests =

@@ -26,12 +26,11 @@ let flush_output = fun state ->
   match state.target with
   | Buffer_target -> ()
   | Writer_target writer ->
-      if IO.Buffer.length state.output > 0 then
-        (
-          match IO.write_all writer ~from:state.output with
-          | Ok () -> IO.Buffer.clear state.output
-          | Error err -> raise_io_error err
-        )
+      if IO.Buffer.length state.output > 0 then (
+        match IO.write_all writer ~from:state.output with
+        | Ok () -> IO.Buffer.clear state.output
+        | Error err -> raise_io_error err
+      )
 
 let maybe_flush_output = fun state ->
   match state.target with

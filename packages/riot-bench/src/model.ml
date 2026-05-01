@@ -19,9 +19,16 @@ type bench_case_status =
   | Failed of string
   | Skipped
 
-type bench_case_result = { index: int; name: string; result: bench_case_status }
+type bench_case_result = {
+  index: int;
+  name: string;
+  result: bench_case_status;
+}
 
-type bench_comparison_case_result = { name: string; statistics: bench_statistics }
+type bench_comparison_case_result = {
+  name: string;
+  statistics: bench_statistics;
+}
 
 type bench_comparison_result = {
   description: string;
@@ -56,7 +63,11 @@ type stored_suite_run = {
   suite_run: suite_run;
 }
 
-type history_sample = { run_id: string; partial: bool; statistics: bench_statistics }
+type history_sample = {
+  run_id: string;
+  partial: bool;
+  statistics: bench_statistics;
+}
 
 type stability =
   | Stable

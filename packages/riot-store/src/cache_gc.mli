@@ -24,7 +24,9 @@ type trigger =
   | Manual
   | Post_build
 type event =
-  | GcStarted of { trigger: trigger }
+  | GcStarted of {
+      trigger: trigger;
+    }
   | GcCacheScanStarted of {
       trigger: trigger;
       build_root: Path.t;
@@ -40,7 +42,11 @@ type event =
       path: Path.t;
       size_bytes: int64;
     }
-  | GcCacheScanCompleted of { trigger: trigger; entry_count: int; total_size_bytes: int64 }
+  | GcCacheScanCompleted of {
+      trigger: trigger;
+      entry_count: int;
+      total_size_bytes: int64;
+    }
   | GcPlanComputed of {
       trigger: trigger;
       deleted_entries: int;
@@ -57,9 +63,18 @@ type event =
       trigger: trigger;
       path: Path.t;
     }
-  | GcSkipped of { trigger: trigger; summary: summary }
-  | GcCompleted of { trigger: trigger; summary: summary }
-  | GcFailed of { trigger: trigger; error: string }
+  | GcSkipped of {
+      trigger: trigger;
+      summary: summary;
+    }
+  | GcCompleted of {
+      trigger: trigger;
+      summary: summary;
+    }
+  | GcFailed of {
+      trigger: trigger;
+      error: string;
+    }
   | ForceCleanStarted of {
       build_root: Path.t;
     }

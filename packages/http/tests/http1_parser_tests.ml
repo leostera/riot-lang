@@ -1362,33 +1362,39 @@ let test_sse_line_does_not_skip_leading_whitespace = fun _ctx ->
 let test_sse_parse_multiline_event = fun _ctx ->
   let input = "event: message\r\ndata: hello\r\ndata: world\r\nid: 42\r\nretry: 1000\r\n\r\n" in
   match Http1.Sse.parse input with
-  | [ {
-    data = "hello\nworld";
-    event_type = Some "message";
-    id = Some "42";
-    retry = Some 1_000
-  } ] -> Result.Ok ()
+  | [
+      {
+        data = "hello\nworld";
+        event_type = Some "message";
+        id = Some "42";
+        retry = Some 1_000;
+      };
+    ] -> Result.Ok ()
   | _ -> Result.Error "SSE parser did not accumulate a multiline event"
 
 let test_sse_parse_ignores_comments_and_invalid_retry = fun _ctx ->
   let input = ": ignored\r\nretry: nope\r\ndata: ok\r\n\r\n" in
   match Http1.Sse.parse input with
-  | [ {
-    data = "ok";
-    event_type = None;
-    id = None;
-    retry = None
-  } ] -> Result.Ok ()
+  | [
+      {
+        data = "ok";
+        event_type = None;
+        id = None;
+        retry = None;
+      };
+    ] -> Result.Ok ()
   | _ -> Result.Error "SSE parser did not ignore comments or invalid retry"
 
 let test_sse_parse_dispatches_trailing_event = fun _ctx ->
   match Http1.Sse.parse "data: final" with
-  | [ {
-    data = "final";
-    event_type = None;
-    id = None;
-    retry = None
-  } ] -> Result.Ok ()
+  | [
+      {
+        data = "final";
+        event_type = None;
+        id = None;
+        retry = None;
+      };
+    ] -> Result.Ok ()
   | _ -> Result.Error "SSE parser did not dispatch the trailing event"
 
 let test_sse_parse_does_not_dispatch_event_without_data = fun _ctx ->

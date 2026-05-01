@@ -4,7 +4,9 @@ type env = Loader.env
 
 type t =
   | Empty
-  | Env of { env: env }
+  | Env of {
+      env: env;
+    }
   | Path of {
       path: Path.t;
     }

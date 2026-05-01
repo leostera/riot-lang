@@ -73,21 +73,21 @@ let render_dependency = fun (dep: Riot_model.Package.dependency) ->
     source_locator = None;
     ref_ = None;
     version = Some requirement;
-    _
+    _;
   } -> name ^ " = " ^ quoted (Std.Version.requirement_to_string requirement)
   | {
     path = None;
     source_locator = None;
     ref_ = None;
     version = None;
-    _
+    _;
   } -> name ^ " = " ^ quoted "*"
   | {
     path;
     source_locator;
     ref_;
     version;
-    _
+    _;
   } ->
       let fields = [] in
       let fields =

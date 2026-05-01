@@ -143,12 +143,11 @@ let overwrite_cache_state = fun
     Fs.create_dir_all cache_dir
     |> Result.expect ~msg:"create cache state parent should succeed"
   in
-  let json =
-    Data.Json.Object [
-      ("schema_version", Data.Json.Int 2);
-      ("tracked_size_bytes", Data.Json.String tracked_size);
-      ("generation_hashes", Data.Json.Array (List.map generation_hashes ~fn:Data.Json.string));
-    ]
+  let json = Data.Json.Object [
+    ("schema_version", Data.Json.Int 2);
+    ("tracked_size_bytes", Data.Json.String tracked_size);
+    ("generation_hashes", Data.Json.Array (List.map generation_hashes ~fn:Data.Json.string));
+  ]
   in
   Fs.write (Data.Json.to_string_pretty json) Path.(cache_dir / Path.v "state.json")
   |> Result.expect ~msg:"overwrite cache state should succeed"
@@ -384,12 +383,11 @@ let test_plan_bundle_round_trip = fun _ctx ->
       let workspace = make_test_workspace tmpdir in
       let store = Riot_store.Store.create ~workspace in
       let hash = Crypto.hash_string "plan-bundle" in
-      let plan =
-        Std.Data.Json.Object [
-          ("version", Std.Data.Json.Int 1);
-          ("package", Std.Data.Json.String "pkg");
-          ("action_graph", Std.Data.Json.Object [ ("nodes", Std.Data.Json.Array []); ]);
-        ]
+      let plan = Std.Data.Json.Object [
+        ("version", Std.Data.Json.Int 1);
+        ("package", Std.Data.Json.String "pkg");
+        ("action_graph", Std.Data.Json.Object [ ("nodes", Std.Data.Json.Array []); ]);
+      ]
       in
       let _ =
         Riot_store.Store.save_plan_bundle store ~hash ~plan
@@ -1421,7 +1419,11 @@ let test_cache_gc_rebuilds_stale_zero_state_for_sharded_entries = fun _ctx ->
           events
           ~fn:(
             function
-            | Riot_store.Cache_gc.GcCacheEntryDeleteStarted { trigger = Riot_store.Cache_gc.Manual; _ } -> true
+            | Riot_store.Cache_gc.GcCacheEntryDeleteStarted {
+                trigger = Riot_store.Cache_gc.Manual;
+                _;
+              } ->
+                true
             | _ -> false
           )
       in
@@ -1430,7 +1432,13 @@ let test_cache_gc_rebuilds_stale_zero_state_for_sharded_entries = fun _ctx ->
           events
           ~fn:(
             function
-            | Riot_store.Cache_gc.GcPlanComputed { trigger = Riot_store.Cache_gc.Manual; deleted_entries = 1; reclaimable_bytes = 16L; _ } -> true
+            | Riot_store.Cache_gc.GcPlanComputed {
+                trigger = Riot_store.Cache_gc.Manual;
+                deleted_entries = 1;
+                reclaimable_bytes = 16L;
+                _;
+              } ->
+                true
             | _ -> false
           )
       in

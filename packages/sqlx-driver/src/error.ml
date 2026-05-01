@@ -32,8 +32,13 @@ type t =
       sql: string option;
       cause: db_error;
     }
-  | Preparation_error of { sql: string; cause: db_error }
-  | Execution_error of { cause: db_error }
+  | Preparation_error of {
+      sql: string;
+      cause: db_error;
+    }
+  | Execution_error of {
+      cause: db_error;
+    }
   | Transaction_error of {
       message: string;
       cause: db_error option;

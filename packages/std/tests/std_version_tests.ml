@@ -11,12 +11,12 @@ let parse_requirement = fun source ->
 let test_parse_plain_version = fun _ctx ->
   match Version.parse "1.2.3" with
   | Ok {
-    major = 1;
-    minor = 2;
-    patch = 3;
-    pre = [];
-    build = None
-  } ->
+      major = 1;
+      minor = 2;
+      patch = 3;
+      pre = [];
+      build = None;
+    } ->
       Ok ()
   | Ok _ -> Error "expected Version.parse 1.2.3 to return a plain semver"
   | Error _ -> Error "expected Version.parse 1.2.3 to succeed"
@@ -24,12 +24,12 @@ let test_parse_plain_version = fun _ctx ->
 let test_parse_zero_version = fun _ctx ->
   match Version.parse "0.0.0" with
   | Ok {
-    major = 0;
-    minor = 0;
-    patch = 0;
-    pre = [];
-    build = None
-  } ->
+      major = 0;
+      minor = 0;
+      patch = 0;
+      pre = [];
+      build = None;
+    } ->
       Ok ()
   | Ok _ -> Error "expected Version.parse 0.0.0 to return the zero version"
   | Error _ -> Error "expected Version.parse 0.0.0 to succeed"
@@ -54,7 +54,12 @@ let test_parse_build_metadata = fun _ctx ->
 
 let test_parse_prerelease_and_build = fun _ctx ->
   match Version.parse "1.2.3-alpha+build.5" with
-  | Ok { pre = [ Version.Alphanumeric "alpha" ]; build = Some "build.5"; _ } -> Ok ()
+  | Ok {
+      pre = [ Version.Alphanumeric "alpha" ];
+      build = Some "build.5";
+      _;
+    } ->
+      Ok ()
   | Ok _ -> Error "expected Version.parse to capture both pre-release and build metadata"
   | Error _ -> Error "expected Version.parse 1.2.3-alpha+build.5 to succeed"
 

@@ -61,7 +61,12 @@ type listed_test_suite = {
   tests: listed_test_case list;
 }
 
-type failed_test = { suite: suite_binary; name: string; message: string; duration_us: int }
+type failed_test = {
+  suite: suite_binary;
+  name: string;
+  message: string;
+  duration_us: int;
+}
 
 type test_suite_summary = {
   total: int;
@@ -145,8 +150,14 @@ type test_event =
 
 type test_error =
   | BuildFailed of Riot_build.error
-  | SuiteArtifactNotFound of { suite: suite_binary; reason: string }
-  | SuiteExecutionError of { suite: suite_binary; reason: string }
+  | SuiteArtifactNotFound of {
+      suite: suite_binary;
+      reason: string;
+    }
+  | SuiteExecutionError of {
+      suite: suite_binary;
+      reason: string;
+    }
   | SuitesFailed of int
 
 type Message.t +=
@@ -680,12 +691,12 @@ let test_event_to_json = function
       ]
       @ suite_event_fields suite))
   | SuiteBinaryFinished {
-    suite;
-    binary_path;
-    status;
-    stdout_bytes;
-    stderr_bytes
-  } ->
+      suite;
+      binary_path;
+      status;
+      stdout_bytes;
+      stderr_bytes;
+    } ->
       Some (Data.Json.Object ([
         ("type", Data.Json.String "SuiteBinaryFinished");
         ("binary_path", Data.Json.String (Path.to_string binary_path));
@@ -702,15 +713,15 @@ let test_event_to_json = function
       ]
       @ suite_event_fields suite))
   | SuiteCompleted {
-    suite;
-    status;
-    stdout;
-    stderr;
-    started_at_us;
-    completed_at_us;
-    duration_us;
-    summary
-  } ->
+      suite;
+      status;
+      stdout;
+      stderr;
+      started_at_us;
+      completed_at_us;
+      duration_us;
+      summary;
+    } ->
       let test_results =
         summary.results
         |> List.map
@@ -789,12 +800,12 @@ let test_event_to_json = function
         ]
       )
   | Summary {
-    total;
-    passed;
-    failed;
-    skipped;
-    failed_tests
-  } ->
+      total;
+      passed;
+      failed;
+      skipped;
+      failed_tests;
+    } ->
       let failed_tests =
         failed_tests
         |> List.map

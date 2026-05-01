@@ -40,28 +40,21 @@ let print_text_result = fun mode result ->
           ^ " parse issues)");
         print_parse_diagnostics result
       );
-      if not (List.is_empty result.diagnostics) then
-        (
-          let prefix =
-            match mode with
-            | Runner.Check -> "\027[1;31m✗\027[0m "
-            | Runner.Apply -> "\027[1;33m!\027[0m "
-          in
-          let suffix =
-            match mode with
-            | Runner.Check -> "issues found"
-            | Runner.Apply -> "issues remain"
-          in
-          println
-            (prefix
-            ^ rel
-            ^ " ("
-            ^ Int.to_string (List.length result.diagnostics)
-            ^ " "
-            ^ suffix
-            ^ ")");
-          print_diagnostics result
-        )
+      if not (List.is_empty result.diagnostics) then (
+        let prefix =
+          match mode with
+          | Runner.Check -> "\027[1;31m✗\027[0m "
+          | Runner.Apply -> "\027[1;33m!\027[0m "
+        in
+        let suffix =
+          match mode with
+          | Runner.Check -> "issues found"
+          | Runner.Apply -> "issues remain"
+        in
+        println
+          (prefix ^ rel ^ " (" ^ Int.to_string (List.length result.diagnostics) ^ " " ^ suffix ^ ")");
+        print_diagnostics result
+      )
 
 let print_text_summary = fun mode summary ->
   println "";

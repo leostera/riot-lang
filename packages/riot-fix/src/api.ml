@@ -90,12 +90,12 @@ let fix = fun
       explain_rule_output rule_id
       |> Result.map ~fn:(fun output -> ExplainedRule { rule_id; output })
   | Run {
-    mode;
-    limit;
-    target;
-    use_generated_runner;
-    output_mode = _
-  } ->
+      mode;
+      limit;
+      target;
+      use_generated_runner;
+      output_mode = _;
+    } ->
       (
         match (request.scope, use_generated_runner) with
         | (Some scope, true) ->

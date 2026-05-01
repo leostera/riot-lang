@@ -131,8 +131,18 @@ let profile_compile_flags = fun (profile: Profile.t) ->
     @ List.map profile.ocamlc_flags ~fn:(fun flag -> Riot_toolchain.Ocamlc.Raw flag))
     ~compare:compare_compiler_flag
 
-let module_to_actions ~package ~profile ~ctx ~dep_includes ~get_dep_outputs ~get_dep_kind ~depset ~needs_unix ~needs_dynlink (module_node:
-  Module_node.t) (deps: G.Node_id.t list) =
+let module_to_actions
+  ~package
+  ~profile
+  ~ctx
+  ~dep_includes
+  ~get_dep_outputs
+  ~get_dep_kind
+  ~depset
+  ~needs_unix
+  ~needs_dynlink
+  (module_node: Module_node.t)
+  (deps: G.Node_id.t list) =
   let base_compile_flags = stdlib_flags package @ profile_compile_flags profile in
   match module_node with
   | { kind = MLI mod_; file = Concrete path; open_modules; _ } ->
@@ -140,13 +150,12 @@ let module_to_actions ~package ~profile ~ctx ~dep_includes ~get_dep_outputs ~get
       let cmti_output = Module.cmti mod_ in
       let outputs = [ cmti_output; cmi_output ] in
       let sources = [ path ] in
-      let compile =
-        Action.CompileInterface {
-          source = path;
-          outputs;
-          includes = Path.v "." :: dep_includes;
-          flags = base_compile_flags @ opens open_modules;
-        }
+      let compile = Action.CompileInterface {
+        source = path;
+        outputs;
+        includes = Path.v "." :: dep_includes;
+        flags = base_compile_flags @ opens open_modules;
+      }
       in
       ([ compile ], outputs, sources)
   | { kind = ML mod_; file = Concrete path; open_modules; _ } ->
@@ -156,13 +165,12 @@ let module_to_actions ~package ~profile ~ctx ~dep_includes ~get_dep_outputs ~get
       let cmt_output = Module.cmt mod_ in
       let outputs = [ cmt_output; cmi_output; cmx_output; native_object_output; ] in
       let sources = [ path ] in
-      let compile =
-        Action.CompileImplementation {
-          source = path;
-          outputs;
-          includes = Path.v "." :: dep_includes;
-          flags = base_compile_flags @ opens open_modules;
-        }
+      let compile = Action.CompileImplementation {
+        source = path;
+        outputs;
+        includes = Path.v "." :: dep_includes;
+        flags = base_compile_flags @ opens open_modules;
+      }
       in
       ([ compile ], outputs, sources)
   | { kind = ML mod_; file = Generated { path; contents }; open_modules; _ } ->
@@ -183,13 +191,12 @@ let module_to_actions ~package ~profile ~ctx ~dep_includes ~get_dep_outputs ~get
         else
           base_compile_flags @ opens open_modules
       in
-      let compile_action =
-        Action.CompileImplementation {
-          source = path;
-          outputs;
-          includes = Path.v "." :: dep_includes;
-          flags;
-        }
+      let compile_action = Action.CompileImplementation {
+        source = path;
+        outputs;
+        includes = Path.v "." :: dep_includes;
+        flags;
+      }
       in
       ([ write_action; compile_action ], outputs, sources)
   | { kind = MLI mod_; file = Generated { path; contents }; open_modules; _ } ->
@@ -198,13 +205,12 @@ let module_to_actions ~package ~profile ~ctx ~dep_includes ~get_dep_outputs ~get
       let cmti_output = Module.cmti mod_ in
       let outputs = [ cmti_output; cmi_output ] in
       let sources = [] in
-      let compile_action =
-        Action.CompileInterface {
-          source = path;
-          outputs;
-          includes = Path.v "." :: dep_includes;
-          flags = base_compile_flags @ opens open_modules;
-        }
+      let compile_action = Action.CompileInterface {
+        source = path;
+        outputs;
+        includes = Path.v "." :: dep_includes;
+        flags = base_compile_flags @ opens open_modules;
+      }
       in
       ([ write_action; compile_action ], outputs, sources)
   | { kind = Native { files }; _ } ->
@@ -293,17 +299,20 @@ let module_to_actions ~package ~profile ~ctx ~dep_includes ~get_dep_outputs ~get
               None)
       in
       (* Create static library metadata (.cmxa). *)
-      let create_lib =
-        Action.CreateLibrary { outputs = [ library_name; archive_name ]; objects; includes }
+      let create_lib = Action.CreateLibrary {
+        outputs = [ library_name; archive_name ];
+        objects;
+        includes;
+      }
       in
       let all_outputs = [ library_name; archive_name ] in
       ([ create_lib ], all_outputs, sources)
   | { kind = Binary {
-    name;
-    source;
-    libraries;
-    includes
-  }; _ } ->
+               name;
+               source;
+               libraries;
+               includes;
+             }; _ } ->
       let sources = [ source ] in
       let objects_with_duplicates =
         List.map
@@ -410,21 +419,29 @@ let module_to_actions ~package ~profile ~ctx ~dep_includes ~get_dep_outputs ~get
       (* Keep ccopt_flags and cclib_flags separate *)
       let ccopt_flags = ccflags in
       let cclib_flags = ldflags in
-      let link_action =
-        Action.CreateExecutable {
-          outputs = [ binary_output ];
-          objects;
-          libraries;
-          includes;
-          cclibs;
-          ccopt_flags;
-          cclib_flags;
-        }
+      let link_action = Action.CreateExecutable {
+        outputs = [ binary_output ];
+        objects;
+        libraries;
+        includes;
+        cclibs;
+        ccopt_flags;
+        cclib_flags;
+      }
       in
       ([ link_action ], [ binary_output ], sources)
 
-let from_module_graph ?analyzed_modules ~package ~profile ~ctx ~toolchain ~store ~depset ~needs_unix ~needs_dynlink (module_graph:
-  Module_node.t G.t) =
+let from_module_graph
+  ?analyzed_modules
+  ~package
+  ~profile
+  ~ctx
+  ~toolchain
+  ~store
+  ~depset
+  ~needs_unix
+  ~needs_dynlink
+  (module_graph: Module_node.t G.t) =
   let transitive_deps = Dependency.transitive_closure depset in
   (* Extract dependency cache include paths - no file copying needed! *)
   let dep_cache_includes =

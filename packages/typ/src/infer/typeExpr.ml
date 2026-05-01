@@ -47,6 +47,7 @@ let rec core_type_to_type (state: State.t) (annotation: core_type) =
           parameter = core_type_to_type state parameter;
           result = core_type_to_type state result;
         }
+
     (* Tuple syntax is already semantic enough for the current solver. *)
     | Tuple parts -> Type.Tuple (List.map parts ~fn:(core_type_to_type state))
     | Parenthesized inner ->

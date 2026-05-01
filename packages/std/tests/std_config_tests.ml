@@ -103,13 +103,12 @@ let test_nested_validation = fun _ctx ->
             ]);
       ]
   in
-  let toml =
-    Data.Toml.Table [
-      (
-        "server",
-        Data.Toml.Table [ ("host", Data.Toml.String "0.0.0.0"); ("port", Data.Toml.String "8080"); ]
-      );
-    ]
+  let toml = Data.Toml.Table [
+    (
+      "server",
+      Data.Toml.Table [ ("host", Data.Toml.String "0.0.0.0"); ("port", Data.Toml.String "8080"); ]
+    );
+  ]
   in
   match Config.Validator.validate spec toml with
   | Error err -> Error ("Nested validation failed: " ^ err)
@@ -262,17 +261,12 @@ let test_list_of_strings = fun _ctx ->
         "tags"
         ~default:[] ]
   in
-  let toml =
-    Data.Toml.Table [
-      (
-        "tags",
-        Data.Toml.Array [
-          Data.Toml.String "tag1";
-          Data.Toml.String "tag2";
-          Data.Toml.String "tag3";
-        ]
-      );
-    ]
+  let toml = Data.Toml.Table [
+    (
+      "tags",
+      Data.Toml.Array [ Data.Toml.String "tag1"; Data.Toml.String "tag2"; Data.Toml.String "tag3"; ]
+    );
+  ]
   in
   match Config.Validator.validate spec toml with
   | Error err -> Error ("Validation failed: " ^ err)
@@ -323,16 +317,15 @@ let test_list_of_maps = fun _ctx ->
           ~default:[];
       ]
   in
-  let toml =
-    Data.Toml.Table [
-      (
-        "users",
-        Data.Toml.Array [
-          Data.Toml.Table [ ("name", Data.Toml.String "Alice"); ("age", Data.Toml.String "30"); ];
-          Data.Toml.Table [ ("name", Data.Toml.String "Bob"); ("age", Data.Toml.String "25"); ];
-        ]
-      );
-    ]
+  let toml = Data.Toml.Table [
+    (
+      "users",
+      Data.Toml.Array [
+        Data.Toml.Table [ ("name", Data.Toml.String "Alice"); ("age", Data.Toml.String "30"); ];
+        Data.Toml.Table [ ("name", Data.Toml.String "Bob"); ("age", Data.Toml.String "25"); ];
+      ]
+    );
+  ]
   in
   match Config.Validator.validate spec toml with
   | Error err -> Error ("Validation failed: " ^ err)
@@ -373,17 +366,16 @@ let test_discriminated_union_console = fun _ctx ->
             ]);
       ]
   in
-  let toml =
-    Data.Toml.Table [
-      (
-        "handler",
-        Data.Toml.Table [
-          ("type", Data.Toml.String "console");
-          ("id", Data.Toml.String "main");
-          ("format", Data.Toml.String "json");
-        ]
-      );
-    ]
+  let toml = Data.Toml.Table [
+    (
+      "handler",
+      Data.Toml.Table [
+        ("type", Data.Toml.String "console");
+        ("id", Data.Toml.String "main");
+        ("format", Data.Toml.String "json");
+      ]
+    );
+  ]
   in
   match Config.Validator.validate spec toml with
   | Error err -> Error ("Validation failed: " ^ err)
@@ -413,13 +405,12 @@ let test_discriminated_union_unknown = fun _ctx ->
             ]);
       ]
   in
-  let toml =
-    Data.Toml.Table [
-      (
-        "handler",
-        Data.Toml.Table [ ("type", Data.Toml.String "syslog"); ("id", Data.Toml.String "remote"); ]
-      );
-    ]
+  let toml = Data.Toml.Table [
+    (
+      "handler",
+      Data.Toml.Table [ ("type", Data.Toml.String "syslog"); ("id", Data.Toml.String "remote"); ]
+    );
+  ]
   in
   match Config.Validator.validate spec toml with
   | Error _err -> Ok ()
@@ -455,42 +446,39 @@ let test_list_of_discriminated_unions = fun _ctx ->
           ~default:[];
       ]
   in
-  let toml =
-    Data.Toml.Table [
-      (
-        "handlers",
-        Data.Toml.Array [
-          Data.Toml.Table [
-            ("type", Data.Toml.String "console");
-            ("id", Data.Toml.String "main");
-            ("levels", Data.Toml.Array [ Data.Toml.String "info"; Data.Toml.String "debug" ]);
-          ];
-          Data.Toml.Table [
-            ("type", Data.Toml.String "file");
-            ("id", Data.Toml.String "errors");
-            ("path", Data.Toml.String "error.log");
-          ];
-        ]
-      );
-    ]
+  let toml = Data.Toml.Table [
+    (
+      "handlers",
+      Data.Toml.Array [
+        Data.Toml.Table [
+          ("type", Data.Toml.String "console");
+          ("id", Data.Toml.String "main");
+          ("levels", Data.Toml.Array [ Data.Toml.String "info"; Data.Toml.String "debug" ]);
+        ];
+        Data.Toml.Table [
+          ("type", Data.Toml.String "file");
+          ("id", Data.Toml.String "errors");
+          ("path", Data.Toml.String "error.log");
+        ];
+      ]
+    );
+  ]
   in
   match Config.Validator.validate spec toml with
   | Error err -> Error ("Validation failed: " ^ err)
   | Ok (Config.Spec.Map validated) -> (
       match assoc_value validated "handlers" with
       | Some (Config.Spec.List items) ->
-          if Collections.List.length items = 2 then
-            (
-              match Collections.List.get items ~at:0 with
-              | Some handler ->
-                  let (_, variant, _) = Config.as_discriminated_union handler in
-                  if variant = "console" then
-                    Ok ()
-                  else
-                    Error ("Expected console, got " ^ variant)
-              | None -> Error "First handler not found"
-            )
-          else
+          if Collections.List.length items = 2 then (
+            match Collections.List.get items ~at:0 with
+            | Some handler ->
+                let (_, variant, _) = Config.as_discriminated_union handler in
+                if variant = "console" then
+                  Ok ()
+                else
+                  Error ("Expected console, got " ^ variant)
+            | None -> Error "First handler not found"
+          ) else
             Error ("Expected 2 handlers, got " ^ Int.to_string (Collections.List.length items))
       | _ -> Error "Handlers list not validated correctly"
     )
@@ -550,8 +538,10 @@ let test_int_values_both_forms = fun _ctx ->
       [ Config.Spec.int "port" ~default:8_080; Config.Spec.int "timeout" ~default:30 ]
   in
   (* Test with Data.Toml.Int (native TOML integers) *)
-  let toml_native =
-    Data.Toml.Table [ ("port", Data.Toml.Int 2_112); ("timeout", Data.Toml.Int 60); ]
+  let toml_native = Data.Toml.Table [
+    ("port", Data.Toml.Int 2_112);
+    ("timeout", Data.Toml.Int 60);
+  ]
   in
   match Config.Validator.validate spec toml_native with
   | Error err -> Error ("Native int validation failed: " ^ err)
@@ -559,11 +549,10 @@ let test_int_values_both_forms = fun _ctx ->
       match assoc_value validated "port" with
       | Some (Config.Spec.Int 2_112) -> (
           (* Test with Data.Toml.String (backward compatibility) *)
-          let toml_string =
-            Data.Toml.Table [
-              ("port", Data.Toml.String "3000");
-              ("timeout", Data.Toml.String "45");
-            ]
+          let toml_string = Data.Toml.Table [
+            ("port", Data.Toml.String "3000");
+            ("timeout", Data.Toml.String "45");
+          ]
           in
           match Config.Validator.validate spec toml_string with
           | Error err -> Error ("String int validation failed: " ^ err)

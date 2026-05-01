@@ -45,7 +45,10 @@ packages = []
   let* toml = parse_toml source in
   match Riot_model.Lockfile.of_toml toml with
   | Error (
-    Riot_model.Lockfile.MissingField { container = Riot_model.Lockfile.Lockfile; field = "dependency_hash" }
+    Riot_model.Lockfile.MissingField {
+      container = Riot_model.Lockfile.Lockfile;
+      field = "dependency_hash";
+    }
   ) ->
       Ok ()
   | Error err ->
@@ -70,7 +73,12 @@ dev_dependencies = []
   let* toml = parse_toml source in
   match Riot_model.Lockfile.of_toml toml with
   | Error (
-    Riot_model.Lockfile.InvalidPackageName { container = Riot_model.Lockfile.Dependency; field = "name"; value = "Std"; _ }
+    Riot_model.Lockfile.InvalidPackageName {
+      container = Riot_model.Lockfile.Dependency;
+      field = "name";
+      value = "Std";
+      _;
+    }
   ) ->
       Ok ()
   | Error err ->

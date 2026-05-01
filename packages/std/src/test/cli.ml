@@ -64,11 +64,11 @@ let progress_fields = function
         ("size_value", Data.Json.Int size);
       ]
   | Test_context.PropertyAssumptionRejected {
-    current;
-    total;
-    size;
-    rejected_count
-  } ->
+      current;
+      total;
+      size;
+      rejected_count;
+    } ->
       [
         ("progress_type", Data.Json.String "property_assumption_rejected");
         ("current", Data.Json.Int current);
@@ -84,11 +84,11 @@ let progress_fields = function
         ("size_value", Data.Json.Int size);
       ]
   | Test_context.PropertyShrinkStep {
-    current;
-    total;
-    step;
-    max_steps
-  } ->
+      current;
+      total;
+      step;
+      max_steps;
+    } ->
       [
         ("progress_type", Data.Json.String "property_shrink_step");
         ("current", Data.Json.Int current);
@@ -97,11 +97,11 @@ let progress_fields = function
         ("max_steps", Data.Json.Int max_steps);
       ]
   | Test_context.SnapshotAssertionStarted {
-    mode;
-    format;
-    approved_path;
-    pending_path
-  } ->
+      mode;
+      format;
+      approved_path;
+      pending_path;
+    } ->
       ([
         ("progress_type", Data.Json.String "snapshot_assertion_started");
         ("snapshot_mode", snapshot_mode_to_json mode);
@@ -117,12 +117,12 @@ let progress_fields = function
       ]
       @ optional_path_fields "approved_path" approved_path
   | Test_context.SnapshotAssertionMismatch {
-    mode;
-    format;
-    approved_path;
-    pending_path;
-    reason
-  } ->
+      mode;
+      format;
+      approved_path;
+      pending_path;
+      reason;
+    } ->
       ([
         ("progress_type", Data.Json.String "snapshot_assertion_mismatch");
         ("snapshot_mode", snapshot_mode_to_json mode);
@@ -199,11 +199,11 @@ let event_to_json = function
       ]
       @ descriptor_fields test)
   | Runner.TestAttemptFinished {
-    test;
-    attempt;
-    result;
-    duration
-  } ->
+      test;
+      attempt;
+      result;
+      duration;
+    } ->
       Data.Json.Object (([
         ("type", Data.Json.String "TestCaseAttemptFinished");
         ("attempt", Data.Json.Int attempt);

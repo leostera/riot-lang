@@ -191,9 +191,8 @@ let run = fun matches ->
               List.for_each
                 (Shell_completions.list_benchmarks workspace)
                 ~fn:(fun bench -> println bench);
-            if has_commands then
-              (
-                let command_lines = Shell_completions.list_commands workspace in
-                List.for_each command_lines ~fn:println
-              );
+            if has_commands then (
+              let command_lines = Shell_completions.list_commands workspace in
+              List.for_each command_lines ~fn:println
+            );
             Ok ()

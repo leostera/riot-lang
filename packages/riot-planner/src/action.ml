@@ -103,11 +103,11 @@ let hash = fun action ->
   in
   match action with
   | CompileInterface {
-    source;
-    outputs;
-    includes;
-    flags
-  } ->
+      source;
+      outputs;
+      includes;
+      flags;
+    } ->
       Sha256.write hasher "CompileInterface";
       Sha256.write hasher (Path.to_string source);
       write_sorted_paths hasher outputs;
@@ -115,11 +115,11 @@ let hash = fun action ->
       write_sorted_flags hasher flags;
       Sha256.finish hasher
   | CompileImplementation {
-    source;
-    outputs;
-    includes;
-    flags
-  } ->
+      source;
+      outputs;
+      includes;
+      flags;
+    } ->
       Sha256.write hasher "CompileImplementation";
       Sha256.write hasher (Path.to_string source);
       write_sorted_paths hasher outputs;
@@ -127,11 +127,11 @@ let hash = fun action ->
       write_sorted_flags hasher flags;
       Sha256.finish hasher
   | GenerateInterface {
-    source;
-    outputs;
-    includes;
-    flags
-  } ->
+      source;
+      outputs;
+      includes;
+      flags;
+    } ->
       Sha256.write hasher "GenerateInterface";
       Sha256.write hasher (Path.to_string source);
       write_sorted_paths hasher outputs;
@@ -151,14 +151,14 @@ let hash = fun action ->
       write_sorted_paths hasher includes;
       Sha256.finish hasher
   | CreateExecutable {
-    outputs;
-    objects;
-    libraries;
-    includes;
-    cclibs;
-    ccopt_flags;
-    cclib_flags
-  } ->
+      outputs;
+      objects;
+      libraries;
+      includes;
+      cclibs;
+      ccopt_flags;
+      cclib_flags;
+    } ->
       Sha256.write hasher "CreateExecutable";
       write_sorted_paths hasher outputs;
       write_paths_in_order hasher objects;
@@ -169,14 +169,14 @@ let hash = fun action ->
       write_strings_in_order hasher cclib_flags;
       Sha256.finish hasher
   | CreateSharedLibrary {
-    outputs;
-    objects;
-    libraries;
-    includes;
-    cclibs;
-    ccopt_flags;
-    cclib_flags
-  } ->
+      outputs;
+      objects;
+      libraries;
+      includes;
+      cclibs;
+      ccopt_flags;
+      cclib_flags;
+    } ->
       Sha256.write hasher "CreateSharedLibrary";
       write_sorted_paths hasher outputs;
       write_paths_in_order hasher objects;
@@ -197,12 +197,12 @@ let hash = fun action ->
       Sha256.write hasher content;
       Sha256.finish hasher
   | BuildForeignDependency {
-    name;
-    path;
-    build_cmd;
-    outputs;
-    env
-  } ->
+      name;
+      path;
+      build_cmd;
+      outputs;
+      env;
+    } ->
       Sha256.write hasher "BuildForeignDependency";
       Sha256.write hasher name;
       Sha256.write hasher (Path.to_string path);
@@ -215,11 +215,11 @@ let hash = fun action ->
 
 let to_string = function
   | CompileInterface {
-    source;
-    outputs;
-    includes;
-    flags
-  } ->
+      source;
+      outputs;
+      includes;
+      flags;
+    } ->
       "CompileInterface("
       ^ Path.to_string source
       ^ "->"
@@ -230,11 +230,11 @@ let to_string = function
       ^ String.concat " " (Riot_toolchain.Ocamlc.flags_to_string flags)
       ^ ")"
   | CompileImplementation {
-    source;
-    outputs;
-    includes;
-    flags
-  } ->
+      source;
+      outputs;
+      includes;
+      flags;
+    } ->
       "CompileImplementation("
       ^ Path.to_string source
       ^ "->"
@@ -245,11 +245,11 @@ let to_string = function
       ^ String.concat " " (Riot_toolchain.Ocamlc.flags_to_string flags)
       ^ ")"
   | GenerateInterface {
-    source;
-    outputs;
-    includes;
-    flags
-  } ->
+      source;
+      outputs;
+      includes;
+      flags;
+    } ->
       "GenerateInterface("
       ^ Path.to_string source
       ^ "->"
@@ -276,14 +276,14 @@ let to_string = function
       ^ String.concat "," (List.map includes ~fn:Path.to_string)
       ^ ")"
   | CreateExecutable {
-    outputs;
-    objects;
-    libraries;
-    includes;
-    cclibs;
-    ccopt_flags;
-    cclib_flags
-  } ->
+      outputs;
+      objects;
+      libraries;
+      includes;
+      cclibs;
+      ccopt_flags;
+      cclib_flags;
+    } ->
       "CreateExecutable("
       ^ String.concat "," (List.map outputs ~fn:Path.to_string)
       ^ ",objects="
@@ -300,14 +300,14 @@ let to_string = function
       ^ String.concat " " cclib_flags
       ^ ")"
   | CreateSharedLibrary {
-    outputs;
-    objects;
-    libraries;
-    includes;
-    cclibs;
-    ccopt_flags;
-    cclib_flags
-  } ->
+      outputs;
+      objects;
+      libraries;
+      includes;
+      cclibs;
+      ccopt_flags;
+      cclib_flags;
+    } ->
       "CreateSharedLibrary("
       ^ String.concat "," (List.map outputs ~fn:Path.to_string)
       ^ ",objects="
@@ -332,12 +332,12 @@ let to_string = function
       ^ Int.to_string (String.length content)
       ^ " bytes)"
   | BuildForeignDependency {
-    name;
-    path;
-    build_cmd;
-    outputs;
-    _
-  } ->
+      name;
+      path;
+      build_cmd;
+      outputs;
+      _;
+    } ->
       "BuildForeignDependency("
       ^ name
       ^ ",path="
@@ -352,11 +352,11 @@ let to_json = fun action ->
   let open Data.Json in
   match action with
   | CompileInterface {
-    source;
-    outputs;
-    includes;
-    flags
-  } ->
+      source;
+      outputs;
+      includes;
+      flags;
+    } ->
       obj
         [
           ("type", string "CompileInterface");
@@ -366,11 +366,11 @@ let to_json = fun action ->
           ("flags", array (List.map (Riot_toolchain.Ocamlc.flags_to_string flags) ~fn:string));
         ]
   | CompileImplementation {
-    source;
-    outputs;
-    includes;
-    flags
-  } ->
+      source;
+      outputs;
+      includes;
+      flags;
+    } ->
       obj
         [
           ("type", string "CompileImplementation");
@@ -380,11 +380,11 @@ let to_json = fun action ->
           ("flags", array (List.map (Riot_toolchain.Ocamlc.flags_to_string flags) ~fn:string));
         ]
   | GenerateInterface {
-    source;
-    outputs;
-    includes;
-    flags
-  } ->
+      source;
+      outputs;
+      includes;
+      flags;
+    } ->
       obj
         [
           ("type", string "GenerateInterface");
@@ -410,14 +410,14 @@ let to_json = fun action ->
           ("includes", array (List.map includes ~fn:(fun p -> string (Path.to_string p))));
         ]
   | CreateExecutable {
-    outputs;
-    objects;
-    libraries;
-    includes;
-    cclibs;
-    ccopt_flags;
-    cclib_flags
-  } ->
+      outputs;
+      objects;
+      libraries;
+      includes;
+      cclibs;
+      ccopt_flags;
+      cclib_flags;
+    } ->
       obj
         [
           ("outputs", array (List.map outputs ~fn:(fun p -> string (Path.to_string p))));
@@ -430,14 +430,14 @@ let to_json = fun action ->
           ("cclib_flags", array (List.map cclib_flags ~fn:string));
         ]
   | CreateSharedLibrary {
-    outputs;
-    objects;
-    libraries;
-    includes;
-    cclibs;
-    ccopt_flags;
-    cclib_flags
-  } ->
+      outputs;
+      objects;
+      libraries;
+      includes;
+      cclibs;
+      ccopt_flags;
+      cclib_flags;
+    } ->
       obj
         [
           ("outputs", array (List.map outputs ~fn:(fun p -> string (Path.to_string p))));
@@ -464,12 +464,12 @@ let to_json = fun action ->
           ("content", string content);
         ]
   | BuildForeignDependency {
-    name;
-    path;
-    build_cmd;
-    outputs;
-    env
-  } ->
+      name;
+      path;
+      build_cmd;
+      outputs;
+      env;
+    } ->
       obj
         [
           ("type", string "BuildForeignDependency");

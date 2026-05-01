@@ -547,44 +547,41 @@ let choose_version = fun stats provider state pkg ranges ->
         terms
         ~fn:(fun term ->
           let term_pkg = Term.package term in
-          if not (String.equal term_pkg pkg) then
+          if not (String.equal term_pkg pkg) then (
+            let constraint_status = Partial_solution.get_constraint state.solution term_pkg in
             (
-              let constraint_status = Partial_solution.get_constraint state.solution term_pkg in
-              (
-                match constraint_status with
-                | `Undecided -> Log.info ("      Term pkg=" ^ term_pkg ^ " is Undecided")
-                | `Decided v ->
-                    Log.info ("      Term pkg=" ^ term_pkg ^ " is Decided@" ^ Version.to_string v)
-                | `Constrained _ -> Log.info ("      Term pkg=" ^ term_pkg ^ " is Constrained")
-              );
               match constraint_status with
-              | `Undecided -> all_other_satisfied := false
-              | `Decided ver ->
-                  let in_range =
-                    Ranges.contains ~compare_v:version_compare (Term.ranges term) ver
-                  in
-                  let term_satisfied =
-                    (Term.is_positive term && in_range) || ((not (Term.is_positive term))
-                    && not in_range)
-                  in
-                  if not term_satisfied then
-                    all_other_satisfied := false
-              | `Constrained constrained_ranges ->
-                  let term_satisfied =
-                    if Term.is_positive term then
-                      Ranges.subset_of
-                        ~compare_v:version_compare
-                        constrained_ranges
-                        (Term.ranges term)
-                    else
-                      Ranges.is_disjoint
-                        ~compare_v:version_compare
-                        constrained_ranges
-                        (Term.ranges term)
-                  in
-                  if not term_satisfied then
-                    all_other_satisfied := false
-            ));
+              | `Undecided -> Log.info ("      Term pkg=" ^ term_pkg ^ " is Undecided")
+              | `Decided v ->
+                  Log.info ("      Term pkg=" ^ term_pkg ^ " is Decided@" ^ Version.to_string v)
+              | `Constrained _ -> Log.info ("      Term pkg=" ^ term_pkg ^ " is Constrained")
+            );
+            match constraint_status with
+            | `Undecided -> all_other_satisfied := false
+            | `Decided ver ->
+                let in_range = Ranges.contains ~compare_v:version_compare (Term.ranges term) ver in
+                let term_satisfied =
+                  (Term.is_positive term && in_range) || ((not (Term.is_positive term))
+                  && not in_range)
+                in
+                if not term_satisfied then
+                  all_other_satisfied := false
+            | `Constrained constrained_ranges ->
+                let term_satisfied =
+                  if Term.is_positive term then
+                    Ranges.subset_of
+                      ~compare_v:version_compare
+                      constrained_ranges
+                      (Term.ranges term)
+                  else
+                    Ranges.is_disjoint
+                      ~compare_v:version_compare
+                      constrained_ranges
+                      (Term.ranges term)
+                in
+                if not term_satisfied then
+                  all_other_satisfied := false
+          ));
       (* If all other terms satisfied, constrain by this incompatibility *)
       if !all_other_satisfied then (
         Log.info ("    ✨ All other terms satisfied for " ^ pkg ^ "!");

@@ -52,17 +52,19 @@ let test_text_command_preserves_style_metadata = fun _ctx ->
       "Test"
   in
   match find_text_commands (layout ~config:(make_config ()) ui) with
-  | [ (
-    {
-      Render.content = "Test";
-      color = `rgb (255, 0, 0);
-      weight = Style.Bold;
-      decoration = Style.Underline;
-      _
-    },
-    _,
-    _
-  ) ] -> Ok ()
+  | [
+      (
+        {
+          Render.content = "Test";
+          color = `rgb (255, 0, 0);
+          weight = Style.Bold;
+          decoration = Style.Underline;
+          _;
+        },
+        _,
+        _
+      );
+    ] -> Ok ()
   | _ -> Error "Text commands should carry color, weight, and decoration"
 
 let test_text_command_preserves_text_size_metadata = fun _ctx ->
@@ -100,16 +102,22 @@ let test_border_width_is_clamped_to_terminal_thickness = fun _ctx ->
       []
   in
   match find_borders (layout ~config:(make_config ()) ui) with
-  | [ (
-    { Render.width = {
-      left = 1;
-      right = 1;
-      top = 1;
-      bottom = 1
-    }; color = `rgb (50, 50, 50); _ },
-    _,
-    _
-  ) ] -> Ok ()
+  | [
+      (
+        {
+          Render.width = {
+            left = 1;
+            right = 1;
+            top = 1;
+            bottom = 1;
+          };
+          color = `rgb (50, 50, 50);
+          _;
+        },
+        _,
+        _
+      );
+    ] -> Ok ()
   | _ -> Error "Terminal borders should clamp border_width to a single cell"
 
 let test_background_and_border_both_emit = fun _ctx ->
