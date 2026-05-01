@@ -1,5 +1,41 @@
 # Changelog
 
+## 0.0.27 - 2026-05-01
+
+### riot
+- `riot-lsp` now exposes typed hover, inlay hints, semantic completion, and editor-facing diagnostic handling backed by the new Typ inference work. Editors can show richer type information and completion results without depending on the old syntax-view path.
+- `riot.nvim` now wires completion and LSP logging through the Riot LSP integration, making editor debugging and completion behavior easier to inspect.
+- `riot-planner` now suggests similar available module names when dependency graph verification finds a missing module such as a casing or underscore mismatch. The error path does a little extra work to make module-name mistakes actionable.
+- `riot-fix` now reports nested match depth only after the third nested match, so shallow two- and three-level matches no longer trigger the lint.
+- `riot-store` preserves cache generation recency more accurately, avoiding cache bookkeeping that can make recently used entries look stale.
+- The workspace release set no longer includes the obsolete `parquet` and `pretext` packages. They were removed from the active workspace so release builds and package planning only cover maintained packages.
+
+### krasny
+- Formatter policy is more stable for field access, including qualified record fields such as `Module.record.field`, dereference field access, and constructor-like field expressions.
+- Match-case comments are preserved before their cases, preventing formatter runs from dropping meaningful comments inside pattern matches.
+- Pattern layout was tightened for multiline lists, constructor records, inline records, and complex syntax. Closing delimiters now align with their opening syntax, constructor record payloads align under the constructor, and small readable record/list patterns stay inline when they fit.
+- Let right-hand-side layout now retries after width overflow and keeps value delimiters such as `{`, `[`, and `[|` attached to value bindings while function bodies still break after `->`.
+
+### syn
+- Syn now uses its own `Span.t` instead of depending on Ceibo for source spans, reducing parser dependencies and keeping source locations in the parser package.
+- The semantic Ast views were tightened around explicit identifiers, required fields, local spans, and typed view modules. Downstream tools can rely on stronger `Syn.Ast` handles instead of token-list identifiers or generic nodes.
+- The Ast implementation was split into a library directory so identifiers, tokens, nodes, type expressions, and related view helpers can be maintained in smaller focused modules.
+- Dotted field access is parsed as field access rather than as a plain identifier, including qualified forms such as `Hello.record.field`.
+
+### markdown
+- Markdown no longer depends on Ceibo, which narrows the parser stack and leaves Ceibo out of the active release path.
+
+### std
+- Snapshot tests now recreate pending `.expected.new` files on every failing run, even when a pending file already exists. This keeps snapshot failures fresh while iterating.
+- Snapshot diffs now prefer colored diff output, making review of expected/actual changes easier in terminals.
+- Fixture discovery no longer sorts eagerly when ordering is not semantically relevant, reducing unnecessary latency before tests start running.
+
+### typ
+- Typ gained a source-backed diagnostic fixture runner, JSON diagnostics, and source-rendered diagnostic output so editor and CLI integrations can consume type-analysis errors more directly.
+- The experimental inference engine now handles functions, lets, tuples, arrays, lists, records, record updates, field access, constructors, constructor payloads, pattern matching, modules, module aliases, includes, functors, polymorphic variants, GADTs, and inline record constructors across a broader fixture corpus.
+- Typ now tracks expression types and query context for LSP features such as hover, completion, and stable inlay hints.
+- Type rendering and inference environment internals were refactored around explicit scopes, constructor descriptions, record field inference, and source-backed Ast views, making future checker work less dependent on ad hoc syntax lowering.
+
 ## 0.0.26 - 2026-04-28
 
 ### riot
