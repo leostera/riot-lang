@@ -48,7 +48,7 @@ let rec expr_name = fun expr ->
   | Ident { ident } -> Some (ident_text ident)
   | FieldAccess { target; field } -> (
       match expr_name target with
-      | Some target_name -> Some (target_name ^ "." ^ Ast.Token.text field)
+      | Some target_name -> Some (target_name ^ "." ^ Ast.Ident.text field)
       | None -> None
     )
   | _ -> None
