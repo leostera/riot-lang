@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.0.28 - 2026-05-01
+
+### riot
+- Fixed `riot-planner` dependency wiring for nested local modules in published packages. Downstream workspaces can now build `kernel` and `std` from the registry again when modules refer to sibling nested modules such as `Regex_stubs` or generated child roots such as `Algo` after an `open`.
+- Fixed `riot build --all` in downstream workspaces that depend on packages with published `riot-fix` providers. Riot now builds fix provider runners only for workspace-member packages, so dependency-provided rules no longer create a synthetic `fixme-runner -> riot-fix` edge that the downstream workspace cannot satisfy.
+
 ## 0.0.27 - 2026-05-01
 
 ### riot
