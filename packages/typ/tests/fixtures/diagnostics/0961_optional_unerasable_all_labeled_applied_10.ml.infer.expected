@@ -1,0 +1,7 @@
+File "0961_optional_unerasable_all_labeled_applied_10.ml", line 1:
+Warning 24 [bad-module-name]: bad source file name: 0961_optional_unerasable_all_labeled_applied_10 is not a valid module name.
+
+File "0961_optional_unerasable_all_labeled_applied_10.ml", line 1, characters 18-23:
+1 | let build ~left ?(right = 'a') = (left, right)
+                      ^^^^^
+Warning 16 [unerasable-optional-argument]: this optional argument cannot be erased.
