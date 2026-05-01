@@ -125,6 +125,58 @@ let to_string diagnostic =
       ^ label
       ^ " cannot be erased"
 
+let severity_to_string = function
+  | Error -> "error"
+  | Warning -> "warning"
+
+let span_to_json = fun (span: Syn.Span.t) ->
+  Data.Json.Object [ ("start", Data.Json.Int span.start); ("end", Data.Json.Int span.end_); ]
+
+let to_json = fun diagnostic ->
+  let message = to_string diagnostic in
+  let hint = hint diagnostic in
+  let open Data.Json in
+  let error_id = id diagnostic in
+  let details =
+    match diagnostic with
+    | UnsupportedSyntax { kind; summary; _ } ->
+        [ ("syntax_kind", String (Syn.SyntaxKind.to_string kind)); ("summary", String summary); ]
+    | UnsupportedType { summary; _ } -> [ ("summary", String summary); ]
+    | AnnotationMismatch { annotation_span; expected; actual; _ } ->
+        [
+          ("annotation_span", span_to_json annotation_span);
+          ("expected", String expected);
+          ("actual", String actual);
+        ]
+    | InfiniteSubstitution { var; type_; _ } ->
+        [ ("var", String var); ("type", String type_); ]
+    | TypeMismatch { expected; actual; _ } ->
+        [ ("expected", String expected); ("actual", String actual); ]
+    | UnerasableOptionalArgument { label; _ } -> [ ("label", String label); ]
+  in
+  let fix_fields =
+    match fix diagnostic with
+    | Some fix -> [ ("fix", String fix); ]
+    | None -> []
+  in
+  Object [
+    (
+      "kind",
+      Object (
+        [
+          ("id", String (Error.id_to_string error_id));
+          ("name", String (Error.name error_id));
+          ("severity", String (severity_to_string (severity diagnostic)));
+          ("message", String message);
+        ]
+        @ details
+        @ fix_fields
+        @ [ ("hint", String hint); ]
+      )
+    );
+    ("span", span_to_json (span diagnostic));
+  ]
+
 let span_serializer = Serde.Ser.record
   (Serde.Ser.fields
     [

@@ -141,5 +141,11 @@ val fix : t -> string option
 (** Human-readable diagnostic summary for tests and debugging. *)
 val to_string : t -> string
 
+(** Structured JSON representation for diagnostic fixtures and tooling.
+
+    The shape intentionally mirrors `Syn.Diagnostic.to_json`: each diagnostic
+    is an object with a `kind` payload and a source `span`. *)
+val to_json : t -> Std.Data.Json.t
+
 (** Serializer used by snapshots and future machine-readable reports. *)
 val serializer : t Serde.Ser.t

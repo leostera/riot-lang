@@ -1,7 +1,17 @@
-warning[T0006]: Optional argument ?right cannot be erased
- --> packages/typ/tests/fixtures/diagnostics/0961_optional_unerasable_all_labeled_applied_10.ml:1:16-30
-  |
-1 | let build ~left ?(right = 'a') = (left, right)
-  |                 ^^^^^^^^^^^^^^
-  = hint: Optional arguments need a later positional argument before their default can be erased.
-  = fix: consider adding a `()` positional argument as your last function argument
+[
+  {
+    "kind": {
+      "fix": "consider adding a `()` positional argument as your last function argument",
+      "hint": "Optional arguments need a later positional argument before their default can be erased.",
+      "id": "T0006",
+      "label": "right",
+      "message": "Optional argument ?right cannot be erased",
+      "name": "unerasable-optional-argument",
+      "severity": "warning"
+    },
+    "span": {
+      "end": 30,
+      "start": 16
+    }
+  }
+]

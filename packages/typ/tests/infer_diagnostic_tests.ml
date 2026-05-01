@@ -1,5 +1,6 @@
 open Std
 open Std.Collections
+open Std.Data
 open Std.Iter
 open Std.Result.Syntax
 
@@ -30,100 +31,14 @@ let source_slice = fun source ->
   IO.IoVec.IoSlice.from_string source
   |> Result.expect ~msg:"failed to create typ diagnostic test source slice"
 
-type source_location = {
-  line: int;
-  line_start: int;
-  line_end: int;
-  column_start: int;
-  column_end: int;
-  line_text: string;
-}
+let diagnostics_to_json diagnostics =
+  Json.Array (diagnostics |> List.map ~fn:Typ.Diagnostics.Diagnostic.to_json)
 
-let source_location = fun ~source (span: Syn.Span.t) ->
-  let source_length = String.length source in
-  let target = max 0 (min span.start source_length) in
-  let rec find_line index line line_start =
-    if index >= target then
-      (line, line_start)
-    else if Char.equal (String.get_unchecked source ~at:index) '\n' then
-      find_line (index + 1) (line + 1) (index + 1)
-    else
-      find_line (index + 1) line line_start
-  in
-  let rec find_line_end index =
-    if index >= source_length then
-      index
-    else if Char.equal (String.get_unchecked source ~at:index) '\n' then
-      index
-    else
-      find_line_end (index + 1)
-  in
-  let (line, line_start) = find_line 0 1 0 in
-  let line_end = find_line_end line_start in
-  let line_text = String.sub source ~offset:line_start ~len:(line_end - line_start) in
-  let column_start = target - line_start in
-  let end_offset = max span.end_ (span.start + 1) in
-  let column_end = max (column_start + 1) (min end_offset line_end - line_start) in
-  { line; line_start; line_end; column_start; column_end; line_text }
-
-let severity_to_string = fun diagnostic ->
-  match Typ.Diagnostics.Diagnostic.severity diagnostic with
-  | Typ.Diagnostics.Diagnostic.Error -> "error"
-  | Typ.Diagnostics.Diagnostic.Warning -> "warning"
-
-let render_diagnostic_report = fun ~path ~source diagnostic ->
-  let span = Typ.Diagnostics.Diagnostic.span diagnostic in
-  let location = source_location ~source span in
-  let id =
-    diagnostic
-    |> Typ.Diagnostics.Diagnostic.id
-    |> Typ.Diagnostics.Error.id_to_string
-  in
-  let marker_width = max 1 (location.column_end - location.column_start) in
-  let line_number = Int.to_string location.line in
-  let gutter = String.make ~len:(String.length line_number) ~char:' ' in
-  let pointer =
-    String.make ~len:location.column_start ~char:' '
-    ^ String.make ~len:marker_width ~char:'^'
-  in
-  let fix =
-    match Typ.Diagnostics.Diagnostic.fix diagnostic with
-    | Some fix -> [ "  = fix: " ^ fix ]
-    | None -> []
-  in
-  String.concat
-    "\n"
-    ([
-      severity_to_string diagnostic
-      ^ "["
-      ^ id
-      ^ "]: "
-      ^ Typ.Diagnostics.Diagnostic.to_string diagnostic;
-      " --> "
-      ^ Path.to_string path
-      ^ ":"
-      ^ line_number
-      ^ ":"
-      ^ Int.to_string location.column_start
-      ^ "-"
-      ^ Int.to_string location.column_end;
-      gutter ^ " |";
-      line_number ^ " | " ^ location.line_text;
-      gutter ^ " | " ^ pointer;
-      "  = hint: " ^ Typ.Diagnostics.Diagnostic.hint diagnostic;
-    ]
-    @ fix)
-
-let render_diagnostics ~path ~source diagnostics =
-  diagnostics
-  |> List.map ~fn:(render_diagnostic_report ~path ~source)
-  |> String.concat "\n\n"
-
-let render_infer_diagnostics = fun ~path ~source (diagnostics: Typ.Diagnostics.t) ->
+let infer_diagnostics_to_json = fun (diagnostics: Typ.Diagnostics.t) ->
   diagnostics.items
   |> Vector.iter
   |> Iterator.to_list
-  |> render_diagnostics ~path ~source
+  |> diagnostics_to_json
 
 let render_interface = fun (intf: Typ.Infer.ModuleInterface.t) ->
   Typ.SignatureGenerator.from_exports
@@ -137,20 +52,20 @@ let render_interface = fun (intf: Typ.Infer.ModuleInterface.t) ->
 
 type rendered_result =
   | Interface of string
-  | Diagnostics of string
+  | Diagnostics of Json.t
 
-let render_result = fun ~path ~source (result: Typ.Infer.infer_result) ->
+let render_result = fun (result: Typ.Infer.infer_result) ->
   if Vector.is_empty result.diagnostics.items then (
     let intf = render_interface result.intf in
-    let suffix =
+    let source =
       if String.equal intf "" then
         ""
       else
-        "\n\nInferred interface:\n" ^ intf
+        intf
     in
-    Diagnostics ("No Typ diagnostics emitted." ^ suffix)
+    Interface source
   ) else
-    let diagnostics = render_infer_diagnostics ~path ~source result.diagnostics in
+    let diagnostics = infer_diagnostics_to_json result.diagnostics in
     Diagnostics diagnostics
 
 let validate_interface_source = fun source ->
@@ -164,41 +79,30 @@ let validate_interface_source = fun source ->
   else
     Error "generated interface did not parse cleanly"
 
-let ensure_trailing_newline = fun text ->
-  if String.ends_with ~suffix:"\n" text then
-    text
-  else
-    text ^ "\n"
-
-let parse_typ_ast ~filename ~report_path source =
+let parse_typ_ast ~filename source =
   let parse_result = Syn.parse ~filename (source_slice source) in
   let model_source = Typ.Model.Source.make ~text:source in
   Typ.Ast.from_parse_result ~source:model_source parse_result
-  |> Result.map_err ~fn:(render_diagnostics ~path:report_path ~source)
+  |> Result.map_err ~fn:diagnostics_to_json
 
 let infer_test = fun (ctx: Test.FixtureRunner.ctx) ->
   let* source =
     Fs.read ctx.fixture_path
     |> Result.map_err ~fn:IO.error_message
   in
-  let report_path =
-    match ctx.test.workspace_root with
-    | Some root ->
-        Path.strip_prefix ctx.fixture_path ~prefix:root
-        |> Result.unwrap_or ~default:ctx.fixture_path
-    | None -> ctx.fixture_path
-  in
-  let* actual =
-    match parse_typ_ast ~filename:ctx.fixture_path ~report_path source with
+  let* actual_json =
+    match parse_typ_ast ~filename:ctx.fixture_path source with
     | Error diagnostics -> Ok diagnostics
     | Ok ast ->
         Typ.Infer.check ast
-        |> render_result ~path:report_path ~source
+        |> render_result
         |> function
-          | Interface source -> validate_interface_source source
+          | Interface source ->
+              let* _ = validate_interface_source source in
+              Ok (Json.Array [])
           | Diagnostics diagnostics -> Ok diagnostics
   in
-  Test.Snapshot.assert_text ~ctx:ctx.test ~actual:(ensure_trailing_newline actual)
+  Test.Snapshot.assert_json ~ctx:ctx.test ~actual:actual_json
 
 let tests =
   Test.FixtureRunner.cases
