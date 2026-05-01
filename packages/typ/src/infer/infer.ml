@@ -13,6 +13,7 @@ type infer_result = {
 
 let check (ast: Ast.t) =
   let state = State.create () in
+  Builtin.install state;
   Typer.type_ast state ast;
   let intf = ModuleInterface.from_env (State.env state) in
   let diagnostics = State.diagnostics state in
