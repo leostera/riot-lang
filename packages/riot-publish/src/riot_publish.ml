@@ -8,6 +8,7 @@ type publish_selection =
 
 type publish_request = {
   selection: publish_selection;
+  skip_fmt: bool;
   skip_check: bool;
 }
 
@@ -450,11 +451,14 @@ module For_test = struct
     ~publishing_workspace_packages
     (package: Package.t) ->
     let* () =
-      run_check
-        ~emit
-        ~package_name:package.name
-        ~version:package.publish.version
-        ~stage:`fmt (fun () -> deps.run_fmt_check ~emit ~workspace ~package)
+      if request.skip_fmt then
+        Ok ()
+      else
+        run_check
+          ~emit
+          ~package_name:package.name
+          ~version:package.publish.version
+          ~stage:`fmt (fun () -> deps.run_fmt_check ~emit ~workspace ~package)
     in
     let* () =
       if request.skip_check then

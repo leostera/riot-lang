@@ -160,7 +160,11 @@ let test_dry_run_emits_preflight_events_in_order = fun _ctx ->
     ~on_event:(fun event -> events := event_name event :: !events)
     ~deps:(make_deps ~call_log ())
     ~workspace
-    ~request:Riot_publish.{ selection = Package (package_name "demo"); skip_check = false }
+    ~request:Riot_publish.{
+      selection = Package (package_name "demo");
+      skip_fmt = false;
+      skip_check = false;
+    }
     ~mode:DryRun
     () with
   | Error err ->
@@ -204,7 +208,11 @@ let test_skip_check_skips_fix_stage = fun _ctx ->
     ~on_event:(fun event -> events := event_name event :: !events)
     ~deps:(make_deps ~call_log ())
     ~workspace
-    ~request:Riot_publish.{ selection = Package (package_name "demo"); skip_check = true }
+    ~request:Riot_publish.{
+      selection = Package (package_name "demo");
+      skip_fmt = false;
+      skip_check = true;
+    }
     ~mode:DryRun
     () with
   | Error err ->
@@ -221,6 +229,37 @@ let test_skip_check_skips_fix_stage = fun _ctx ->
       else
         Ok ()
 
+let test_skip_fmt_skips_format_stage = fun _ctx ->
+  let workspace_root = Path.v "/workspace" in
+  let package = make_package ~workspace_root "demo" in
+  let workspace = make_workspace [ package ] in
+  let call_log = ref [] in
+  let events = ref [] in
+  match Riot_publish.For_test.publish_with
+    ~on_event:(fun event -> events := event_name event :: !events)
+    ~deps:(make_deps ~call_log ())
+    ~workspace
+    ~request:Riot_publish.{
+      selection = Package (package_name "demo");
+      skip_fmt = true;
+      skip_check = false;
+    }
+    ~mode:DryRun
+    () with
+  | Error err ->
+      Error ("expected skip-fmt dry run to succeed, got error: "
+      ^ Riot_publish.publish_error_message err)
+  | Ok _ ->
+      let actual_events = List.reverse !events in
+      let actual_calls = List.reverse !call_log in
+      let fmt_events = List.filter actual_events ~fn:(fun name -> String.contains name "fmt") in
+      if not (actual_calls = [ "fix"; "build"; "metadata"; "prepare"; ]) then
+        Error ("unexpected call order: " ^ String.concat ", " actual_calls)
+      else if not (List.is_empty fmt_events) then
+        Error ("expected skip-fmt to omit fmt events, got: " ^ String.concat ", " fmt_events)
+      else
+        Ok ()
+
 let test_publish_mode_uses_token_and_emits_published = fun _ctx ->
   let workspace_root = Path.v "/workspace" in
   let package = make_package ~workspace_root "demo" in
@@ -231,7 +270,11 @@ let test_publish_mode_uses_token_and_emits_published = fun _ctx ->
     ~on_event:(fun event -> events := event_name event :: !events)
     ~deps:(make_deps ~call_log ())
     ~workspace
-    ~request:Riot_publish.{ selection = Package (package_name "demo"); skip_check = false }
+    ~request:Riot_publish.{
+      selection = Package (package_name "demo");
+      skip_fmt = false;
+      skip_check = false;
+    }
     ~mode:Publish
     () with
   | Error err ->
@@ -267,7 +310,11 @@ let test_already_published_package_is_skipped_before_checks = fun _ctx ->
     ~on_event:(fun event -> events := event_name event :: !events)
     ~deps
     ~workspace
-    ~request:Riot_publish.{ selection = Package (package_name "demo"); skip_check = false }
+    ~request:Riot_publish.{
+      selection = Package (package_name "demo");
+      skip_fmt = false;
+      skip_check = false;
+    }
     ~mode:DryRun
     () with
   | Error err ->
@@ -301,6 +348,7 @@ let tests =
       "publish flow: dry run emits preflight events in order"
       test_dry_run_emits_preflight_events_in_order;
     case "publish flow: skip-check skips the fix stage" test_skip_check_skips_fix_stage;
+    case "publish flow: skip-fmt skips the format stage" test_skip_fmt_skips_format_stage;
     case
       "publish flow: publish mode uses token and emits published"
       test_publish_mode_uses_token_and_emits_published;

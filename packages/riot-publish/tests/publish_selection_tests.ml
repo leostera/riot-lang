@@ -111,7 +111,7 @@ let test_workspace_without_packages_errors = fun _ctx ->
   match Riot_publish.For_test.publish_with
     ~deps:(make_deps ())
     ~workspace
-    ~request:Riot_publish.{ selection = Workspace; skip_check = false }
+    ~request:Riot_publish.{ selection = Workspace; skip_fmt = false; skip_check = false }
     ~mode:DryRun
     () with
   | Error Riot_publish.NoWorkspacePackages -> Ok ()
@@ -123,7 +123,11 @@ let test_missing_package_errors = fun _ctx ->
   match Riot_publish.For_test.publish_with
     ~deps:(make_deps ())
     ~workspace
-    ~request:Riot_publish.{ selection = Package (package_name "missing"); skip_check = false }
+    ~request:Riot_publish.{
+      selection = Package (package_name "missing");
+      skip_fmt = false;
+      skip_check = false;
+    }
     ~mode:DryRun
     () with
   | Error (Riot_publish.PackageNotFound { package }) when Riot_model.Package_name.equal
@@ -141,7 +145,11 @@ let test_private_package_is_skipped = fun _ctx ->
     ~on_event:(fun event -> events := event_name event :: !events)
     ~deps:(make_deps ())
     ~workspace
-    ~request:Riot_publish.{ selection = Package (package_name "private-lib"); skip_check = false }
+    ~request:Riot_publish.{
+      selection = Package (package_name "private-lib");
+      skip_fmt = false;
+      skip_check = false;
+    }
     ~mode:DryRun
     () with
   | Error err ->
@@ -173,7 +181,7 @@ let test_workspace_selection_orders_public_packages_only = fun _ctx ->
   match Riot_publish.For_test.publish_with
     ~deps
     ~workspace
-    ~request:Riot_publish.{ selection = Workspace; skip_check = false }
+    ~request:Riot_publish.{ selection = Workspace; skip_fmt = false; skip_check = false }
     ~mode:DryRun
     () with
   | Error err ->
@@ -215,7 +223,11 @@ let test_publish_selection_emits_availability_before_registry_lookup = fun _ctx 
     ~on_event:(fun event -> events := event_name event :: !events)
     ~deps
     ~workspace
-    ~request:Riot_publish.{ selection = Package (package_name "demo"); skip_check = true }
+    ~request:Riot_publish.{
+      selection = Package (package_name "demo");
+      skip_fmt = false;
+      skip_check = true;
+    }
     ~mode:DryRun
     () with
   | Error err ->

@@ -33,6 +33,9 @@ let command =
       flag "skip-check"
       |> long "skip-check"
       |> help "Skip the `riot fix --check` preflight step";
+      flag "skip-fmt"
+      |> long "skip-fmt"
+      |> help "Skip the `riot fmt --check` preflight step";
       flag "json"
       |> long "json"
       |> help "Emit machine-readable JSONL events";
@@ -53,13 +56,13 @@ let resolve_request = fun ~package_name ~workspace_mode ->
   | (Some package, false) -> Ok (Package package)
   | (None, _) -> Ok Workspace
 
-let publish_request = fun ~skip_check request ->
+let publish_request = fun ~skip_fmt ~skip_check request ->
   let selection =
     match request with
     | Workspace -> Riot_publish.Workspace
     | Package package -> Riot_publish.Package package
   in
-  Riot_publish.{ selection; skip_check }
+  Riot_publish.{ selection; skip_fmt; skip_check }
 
 let relative_or_absolute = fun ~root path ->
   match Path.strip_prefix path ~prefix:root with
@@ -434,7 +437,10 @@ let run = fun (workspace: Workspace.t) matches ->
               ~progress
         )
         ~workspace
-        ~request:(publish_request ~skip_check:(ArgParser.get_flag matches "skip-check") request)
+        ~request:(publish_request
+          ~skip_fmt:(ArgParser.get_flag matches "skip-fmt")
+          ~skip_check:(ArgParser.get_flag matches "skip-check")
+          request)
         ~mode
         () with
       | Error err ->

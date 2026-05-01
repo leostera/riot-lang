@@ -5,6 +5,7 @@ type publish_selection =
   | Package of Riot_model.Package_name.t
 type publish_request = {
   selection: publish_selection;
+  skip_fmt: bool;
   skip_check: bool;
 }
 type publish_mode =
@@ -94,6 +95,7 @@ type publish_error =
       package: Riot_model.Package_name.t;
       error: Riot_deps.Publisher.error;
     }
+
 val publish_error_message: publish_error -> string
 
 module For_test: sig
@@ -141,6 +143,7 @@ module For_test: sig
       Riot_deps.Publisher.prepared_publish ->
       (Pkgs_ml.Registry.published_release, publish_error) result;
   }
+
   val default_deps: deps
 
   val publish_with:

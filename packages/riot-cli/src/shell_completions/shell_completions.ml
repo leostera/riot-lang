@@ -365,6 +365,7 @@ _riot() {
                 '(-p --package)'{-p,--package}'[Publish a specific workspace package]:package:->packages' \
                 '--workspace[Publish workspace packages in dependency order]' \
                 '--dry-run[Run local publish checks without uploading]' \
+                '--skip-fmt[Skip the fmt preflight step]' \
                 '--skip-check[Skip the fix preflight step]' \
                 '--json[Emit machine-readable JSONL events]'
 

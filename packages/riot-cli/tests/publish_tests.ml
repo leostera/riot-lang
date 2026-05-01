@@ -45,6 +45,15 @@ let test_publish_accepts_skip_check_flag = fun _ctx ->
       else
         Error "expected --skip-check flag to be parsed"
 
+let test_publish_accepts_skip_fmt_flag = fun _ctx ->
+  match parse_publish [ "publish"; "--skip-fmt" ] with
+  | Error err -> Error ("expected publish args to parse: " ^ err)
+  | Ok matches ->
+      if ArgParser.get_flag matches "skip-fmt" then
+        Ok ()
+      else
+        Error "expected --skip-fmt flag to be parsed"
+
 let test_publish_accepts_json_flag = fun _ctx ->
   match parse_publish [ "publish"; "--json" ] with
   | Error err -> Error ("expected publish args to parse: " ^ err)
@@ -67,6 +76,7 @@ let tests =
     case "publish: parse -p option" test_publish_accepts_package_option;
     case "publish: parse --workspace flag" test_publish_accepts_workspace_flag;
     case "publish: parse --dry-run flag" test_publish_accepts_dry_run_flag;
+    case "publish: parse --skip-fmt flag" test_publish_accepts_skip_fmt_flag;
     case "publish: parse --skip-check flag" test_publish_accepts_skip_check_flag;
     case "publish: parse --json flag" test_publish_accepts_json_flag;
     case "publish: conflicting selection fails" test_publish_conflicting_selection_fails;
