@@ -2773,6 +2773,22 @@ let test_write_keeps_fitting_constructor_or_patterns_inline = fun ctx ->
   state.suppress_leading_token <- Some token.Ast.id
 |ocaml}
 
+let test_write_keeps_fitting_or_pattern_fun_parameters_inline = fun ctx ->
+  let source =
+    {ocaml|let close_all=fun pool->List.for_each pool ~fn:(fun(Available conn|InUse(conn,_,_))->Connection.close conn)
+|ocaml}
+  in
+  let parsed = parse_ml source in
+  let actual = capture_write parsed in
+  Test.Snapshot.assert_inline_text
+    ~ctx
+    ~actual
+    ~expected:{ocaml|let close_all = fun pool ->
+  List.for_each
+    pool
+    ~fn:(fun (Available conn | InUse (conn, _, _)) -> Connection.close conn)
+|ocaml}
+
 let test_write_keeps_parenthesized_match_case_bodies_attached_to_arrows = fun ctx ->
   let source =
     {ocaml|let get=fun value->match value with|Some x->(match x with|Some y->y|None->0)|None->0
@@ -5275,6 +5291,9 @@ let tests =
     case
       "write keeps fitting constructor or patterns inline"
       test_write_keeps_fitting_constructor_or_patterns_inline;
+    case
+      "write keeps fitting or-pattern fun parameters inline"
+      test_write_keeps_fitting_or_pattern_fun_parameters_inline;
     case
       "write keeps parenthesized match case bodies attached to arrows"
       test_write_keeps_parenthesized_match_case_bodies_attached_to_arrows;

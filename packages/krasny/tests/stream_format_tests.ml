@@ -416,8 +416,7 @@ let test_stream_formatter_desugars_single_case_function_to_fun_pattern = fun _ct
 
 let test_stream_formatter_parenthesizes_single_case_poly_variant_payload_function = fun _ctx ->
   assert_format_ml
-    ~expected:
-      "let rgb_tuple_of = fun (`rgb (r, g, b)) -> (r, g, b)\n\nlet ansi_value = fun (`ansi actual) -> actual\n"
+    ~expected:"let rgb_tuple_of = fun (`rgb (r, g, b)) -> (r, g, b)\n\nlet ansi_value = fun (`ansi actual) -> actual\n"
     "let rgb_tuple_of = function | `rgb (r, g, b) -> (r, g, b)\nlet ansi_value = function | `ansi actual -> actual\n"
 
 let test_stream_formatter_formats_function_expressions_with_return_annotations = fun _ctx ->

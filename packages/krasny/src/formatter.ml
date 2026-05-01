@@ -4059,7 +4059,12 @@ and render_parameter_pattern = fun state parameter pattern ->
   in
   if needs_parens then (
     emit_text state "(";
-    render_pattern state pattern;
+    (
+      match PatternView.view pattern with
+      | Or _ when not (parenthesized_pattern_should_break state pattern) ->
+          render_or_pattern_inline state pattern
+      | _ -> render_pattern state pattern
+    );
     emit_text state ")"
   ) else
     render_pattern state pattern
