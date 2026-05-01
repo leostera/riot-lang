@@ -1,5 +1,6 @@
 open Std
 open Std.Collections
+module Error = Error
 module Diagnostic = Diagnostic
 
 type t = {

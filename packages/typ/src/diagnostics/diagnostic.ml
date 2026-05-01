@@ -59,6 +59,24 @@ let type_mismatch ~span ~expected ~actual =
 let unerasable_optional_argument ~span ~label =
   UnerasableOptionalArgument { span; label }
 
+let id diagnostic =
+  match diagnostic with
+  | UnsupportedSyntax _ -> Error.T0001_UnsupportedSyntax
+  | UnsupportedType _ -> Error.T0002_UnsupportedType
+  | AnnotationMismatch _ -> Error.T0003_AnnotationMismatch
+  | InfiniteSubstitution _ -> Error.T0004_InfiniteSubstitution
+  | TypeMismatch _ -> Error.T0005_TypeMismatch
+  | UnerasableOptionalArgument _ -> Error.T0006_UnerasableOptionalArgument
+
+let span diagnostic =
+  match diagnostic with
+  | UnsupportedSyntax { span; _ }
+  | UnsupportedType { span; _ }
+  | AnnotationMismatch { span; _ }
+  | InfiniteSubstitution { span; _ }
+  | TypeMismatch { span; _ }
+  | UnerasableOptionalArgument { span; _ } -> span
+
 let severity diagnostic =
   match diagnostic with
   | UnsupportedSyntax _
@@ -67,6 +85,21 @@ let severity diagnostic =
   | InfiniteSubstitution _
   | TypeMismatch _ -> Error
   | UnerasableOptionalArgument _ -> Warning
+
+let hint diagnostic =
+  diagnostic
+  |> id
+  |> Error.explain
+
+let fix diagnostic =
+  match diagnostic with
+  | UnerasableOptionalArgument _ ->
+      Some "consider adding a `()` positional argument as your last function argument"
+  | UnsupportedSyntax _
+  | UnsupportedType _
+  | AnnotationMismatch _
+  | InfiniteSubstitution _
+  | TypeMismatch _ -> None
 
 let to_string diagnostic =
   match diagnostic with
@@ -88,7 +121,7 @@ let to_string diagnostic =
       ^ " but got "
       ^ actual
   | UnerasableOptionalArgument { label; _ } ->
-      "Warning: optional argument ?"
+      "Optional argument ?"
       ^ label
       ^ " cannot be erased"
 

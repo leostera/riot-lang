@@ -287,45 +287,20 @@ let typ_diagnostic_severity = fun diagnostic ->
 
 let typ_diagnostic_to_lsp = fun text ->
   fun (diagnostic: Typ.Diagnostics.Diagnostic.t) ->
-    let (span, message) =
-      match diagnostic with
-      | Typ.Diagnostics.Diagnostic.UnsupportedSyntax unsupported -> (
-        unsupported.span,
-        "Unsupported syntax: "
-        ^ Syn.SyntaxKind.to_string unsupported.kind
-        ^ " - "
-        ^ unsupported.summary
-      )
-      | Typ.Diagnostics.Diagnostic.UnsupportedType unsupported -> (
-        unsupported.span,
-        "Unsupported type: " ^ unsupported.summary
-      )
-      | Typ.Diagnostics.Diagnostic.AnnotationMismatch mismatch -> (
-        mismatch.span,
-        Typ.Diagnostics.Diagnostic.to_string diagnostic
-      )
-      | Typ.Diagnostics.Diagnostic.InfiniteSubstitution substitution -> (
-        substitution.span,
-        Typ.Diagnostics.Diagnostic.to_string diagnostic
-      )
-      | Typ.Diagnostics.Diagnostic.TypeMismatch mismatch -> (
-        mismatch.span,
-        Typ.Diagnostics.Diagnostic.to_string diagnostic
-      )
-      | Typ.Diagnostics.Diagnostic.UnerasableOptionalArgument warning -> (
-        warning.span,
-        Typ.Diagnostics.Diagnostic.to_string diagnostic
-      )
-    in
+    let span = Typ.Diagnostics.Diagnostic.span diagnostic in
     {
       Lsp.Diagnostic.range = Lsp.Utf16.range_of_offsets
         text
         ~start_offset:span.start
         ~end_offset:span.end_;
       severity = Some (typ_diagnostic_severity diagnostic);
-      code = Some "typ";
+      code = Some (
+        diagnostic
+        |> Typ.Diagnostics.Diagnostic.id
+        |> Typ.Diagnostics.Error.id_to_string
+      );
       source = Some "typ";
-      message;
+      message = Typ.Diagnostics.Diagnostic.to_string diagnostic;
       tags = None;
       data = None;
     }

@@ -123,8 +123,20 @@ val unerasable_optional_argument :
   label:string ->
   t
 
+(** Stable diagnostic identifier for a diagnostic. *)
+val id : t -> Error.id
+
+(** Source span covered by the diagnostic. *)
+val span : t -> Syn.Span.t
+
 (** Severity for a diagnostic. *)
 val severity : t -> severity
+
+(** Short actionable hint shown by human-readable renderers. *)
+val hint : t -> string
+
+(** Optional concrete fix suggestion. *)
+val fix : t -> string option
 
 (** Human-readable diagnostic summary for tests and debugging. *)
 val to_string : t -> string
