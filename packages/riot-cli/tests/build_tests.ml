@@ -1056,6 +1056,53 @@ let make_workspace_with_packages = fun packages ->
     ~packages
     ()
 
+let make_fix_provider = fun package_name ->
+  Riot_model.Fix_provider.{
+    name = Riot_model.Package_name.to_string package_name;
+    package_name;
+    package_path = Path.(Path.v "/workspace"
+    / Path.v "packages"
+    / Path.v (Riot_model.Package_name.to_string package_name));
+    source_path = Path.(Path.v "/workspace"
+    / Path.v "packages"
+    / Path.v (Riot_model.Package_name.to_string package_name)
+    / Path.v "fix"
+    / Path.v "riot_fix_rules.ml");
+    rules = [ Riot_model.Package_name.to_string package_name ^ ":demo-rule" ];
+  }
+
+let test_build_fix_providers_ignore_dependency_packages = fun _ctx ->
+  let app_name = package_name "app" in
+  let std_name = package_name "std" in
+  let app =
+    Riot_model.Package.make
+      ~name:app_name
+      ~path:(Path.v "/workspace/packages/app")
+      ~relative_path:(Path.v "packages/app")
+      ~fix_providers:[ make_fix_provider app_name ]
+      ()
+  in
+  let std =
+    Riot_model.Package.make
+      ~name:std_name
+      ~path:(Path.v "/registry/std")
+      ~relative_path:(Path.v "../registry/std")
+      ~fix_providers:[ make_fix_provider std_name ]
+      ()
+  in
+  let providers =
+    Riot_cli.Build.workspace_fix_providers (make_workspace_with_packages [ app; std ])
+  in
+  let provider_names =
+    providers
+    |> List.map
+      ~fn:(fun (provider: Riot_model.Fix_provider.t) ->
+        Riot_model.Package_name.to_string
+          provider.package_name)
+  in
+  Test.assert_equal ~expected:[ "app" ] ~actual:provider_names;
+  Ok ()
+
 let test_run_build_scope_uses_runtime_for_runtime_binaries = fun _ctx ->
   let workspace =
     make_workspace [ Riot_model.Package.{ name = "demo"; path = Path.v "src/demo.ml" } ]
@@ -1395,6 +1442,9 @@ let tests =
     case
       "run: package with no binaries suggests creating one"
       test_run_reports_package_without_binaries_with_creation_hint;
+    case
+      "build: fix providers ignore dependency packages"
+      test_build_fix_providers_ignore_dependency_packages;
     case
       "build: pm events hide workspace resolved packages"
       test_pm_event_hides_workspace_resolved_packages;

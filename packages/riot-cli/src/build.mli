@@ -28,6 +28,7 @@ type build_progress = {
   mutable skipped_count: int;
 }
 type render_state
+
 val create_render_state: unit -> render_state
 
 (** Command definition for [riot build]. *)
@@ -70,6 +71,9 @@ val workspace_planning_error_lines: Riot_planner.Workspace_planner.plan_error ->
 
 (** Render one package failure from the final build error summary. *)
 val build_failure_detail_lines: Riot_build.Build_result.failure -> string list
+
+(** Package-provided fix providers that belong to workspace members. *)
+val workspace_fix_providers: Riot_model.Workspace.t -> Riot_model.Fix_provider.t list
 
 (** Render a build event in the selected output mode. *)
 val write_build_event:

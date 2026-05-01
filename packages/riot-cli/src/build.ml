@@ -1284,8 +1284,14 @@ let should_build_fix_provider_runner = fun (request: request) ->
   | Dev ->
       request.dev_artifacts.tests && request.dev_artifacts.examples && request.dev_artifacts.benches
 
+let workspace_fix_providers = fun (workspace: Riot_model.Workspace.t) ->
+  workspace.packages
+  |> List.filter ~fn:Riot_model.Package_manifest.is_workspace_member
+  |> List.map ~fn:(fun (pkg: Riot_model.Package_manifest.t) -> pkg.fix_providers)
+  |> List.concat
+
 let selected_fix_providers = fun (request: request) ->
-  let providers = Riot_model.Workspace.discover_fix_providers request.workspace in
+  let providers = workspace_fix_providers request.workspace in
   match request.packages with
   | [] -> providers
   | selected ->
