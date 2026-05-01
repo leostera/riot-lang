@@ -25,11 +25,26 @@ let dependency = fun name ->
   }
 
 let make_package = fun
-  ?(dependencies = []) ?(dev_dependencies = []) ?(build_dependencies = []) name ->
+  ?(workspace_member = true)
+  ?(dependencies = [])
+  ?(dev_dependencies = [])
+  ?(build_dependencies = [])
+  name ->
+  let relative_path =
+    if workspace_member then
+      Path.v ("packages/" ^ name)
+    else
+      Path.v ("../deps/" ^ name)
+  in
   Package.make
     ~name:(package_name name)
-    ~path:(Path.v ("packages/" ^ name))
-    ~relative_path:(Path.v ("packages/" ^ name))
+    ~path:(
+      if workspace_member then
+        Path.v ("packages/" ^ name)
+      else
+        Path.v ("/tmp/deps/" ^ name)
+    )
+    ~relative_path
     ~dependencies:(List.map dependencies ~fn:dependency)
     ~dev_dependencies:(List.map dev_dependencies ~fn:dependency)
     ~build_dependencies:(List.map build_dependencies ~fn:dependency)
@@ -250,6 +265,30 @@ let plan_targeted_runtime_ignores_unrelated_missing_dependencies = fun _ctx ->
       Test.assert_equal ~expected:(List.map [ "app"; "std" ] ~fn:package_name) ~actual:names;
       Ok ()
 
+let plan_all_dev_keeps_dependency_packages_runtime_scoped = fun _ctx ->
+  let workspace =
+    make_workspace
+      [
+        make_package ~workspace_member:false ~dev_dependencies:[ "propane" ] "std";
+        make_package ~dependencies:[ "std" ] "app";
+      ]
+  in
+  match plan_workspace workspace All Dev with
+  | Error (MissingDependencies { missing }) ->
+      Error ("expected dependency dev dependencies to stay out of the build plan, got missing: "
+      ^ String.concat
+        ", "
+        (List.map
+          missing
+          ~fn:(fun (item: Riot_planner.Package_graph.missing_dependency) ->
+            item.package ^ "->" ^ item.dependency)))
+  | Error _ -> Error "expected successful dev all plan"
+  | Ok plan ->
+      Test.assert_equal
+        ~expected:[ "std:runtime"; "app:runtime"; "app:dev" ]
+        ~actual:(package_keys plan);
+      Ok ()
+
 let tests =
   Test.[
     case
@@ -276,6 +315,9 @@ let tests =
     case
       "targeted runtime ignores unrelated missing dependencies"
       plan_targeted_runtime_ignores_unrelated_missing_dependencies;
+    case
+      "plan all dev keeps dependency packages runtime scoped"
+      plan_all_dev_keeps_dependency_packages_runtime_scoped;
   ]
 
 let name = "riot-planner:workspace-planner-targets"

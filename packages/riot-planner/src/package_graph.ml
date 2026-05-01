@@ -217,12 +217,22 @@ let empty_breakdown = {
 let create_with_breakdown
   ~scope
   ?(dev_artifacts = {tests = true; examples = true; benches = true})
+  ?dev_roots
   (workspace: Workspace.t) =
   let started_at = Time.Instant.now () in
   let graph = G.make () in
   let name_to_node = HashMap.create () in
   let missing = vec [] in
   let breakdown = ref empty_breakdown in
+  let should_create_dev_node =
+    match dev_roots with
+    | None -> fun (_pkg: Package_manifest.t) -> true
+    | Some roots ->
+        fun (pkg: Package_manifest.t) ->
+          List.any
+            roots
+            ~fn:(fun root -> Package_name.equal root pkg.name)
+  in
   let insert_node package scope =
     let node = G.add_node graph (Unplanned { package; scope }) in
     let _ =
@@ -303,7 +313,9 @@ let create_with_breakdown
     | Dev ->
         List.for_each
           workspace.packages
-          ~fn:(fun (pkg: Package_manifest.t) -> realize_and_insert_node Dev pkg)
+          ~fn:(fun (pkg: Package_manifest.t) ->
+            if should_create_dev_node pkg then
+              realize_and_insert_node Dev pkg)
     | Build
     | Runtime -> ()
   );
@@ -424,8 +436,8 @@ let create_with_breakdown
   in
   result
 
-let create ~scope ?dev_artifacts workspace =
-  create_with_breakdown ~scope ?dev_artifacts workspace
+let create ~scope ?dev_artifacts ?dev_roots workspace =
+  create_with_breakdown ~scope ?dev_artifacts ?dev_roots workspace
   |> Result.map ~fn:(fun (graph, _breakdown) -> graph)
 
 let get_node = fun pg package ->

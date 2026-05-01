@@ -80,15 +80,18 @@ type create_breakdown = {
   dev_node_realization_duration: Time.Duration.t;
   edge_wiring_duration: Time.Duration.t;
 }
+
 val create:
   scope:build_scope ->
   ?dev_artifacts:dev_artifacts ->
+  ?dev_roots:Package_name.t list ->
   Workspace.t ->
   (t, create_error) result
 
 val create_with_breakdown:
   scope:build_scope ->
   ?dev_artifacts:dev_artifacts ->
+  ?dev_roots:Package_name.t list ->
   Workspace.t ->
   (t * create_breakdown, create_error) result
 

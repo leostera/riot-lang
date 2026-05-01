@@ -69,6 +69,28 @@ let make_package = fun ~root ~name ~value ->
     }
     ()
 
+let make_external_package = fun ~root ~name ~value ->
+  let pkg_dir = Path.(root / Path.v "_deps" / Path.v name) in
+  let package_name = package_name name in
+  let src_dir = Path.(pkg_dir / Path.v "src") in
+  Fs.create_dir_all src_dir
+  |> Result.expect ~msg:"Create external src failed";
+  Fs.write ("let value = " ^ value ^ "\n") Path.(src_dir / Path.v "lib.ml")
+  |> Result.expect ~msg:"Write external ml failed";
+  Riot_model.Package.make
+    ~name:package_name
+    ~path:pkg_dir
+    ~relative_path:(Path.v ("../_deps/" ^ name))
+    ~library:{ path = Path.v "src/lib.ml" }
+    ~sources:{
+      src = [ Path.v "src/lib.ml" ];
+      native = [];
+      tests = [];
+      examples = [];
+      bench = [];
+    }
+    ()
+
 let map_with_index = fun items ~fn ->
   let rec loop index acc = fun __tmp1 ->
     match __tmp1 with
@@ -441,6 +463,29 @@ let test_build_uses_all_packages_when_none_are_requested = fun _ctx ->
               |> sort_package_names
             );
           Ok ()) with
+  | Ok result -> result
+  | Error err -> Error ("tempdir failed: " ^ IO.error_message err)
+
+let test_default_build_resolution_targets_workspace_members_only = fun _ctx ->
+  match Fs.with_tempdir
+    ~prefix:"riot_build_resolve_workspace_members"
+    (fun tmpdir ->
+      let app = make_package ~root:tmpdir ~name:"app" ~value:"1" in
+      let std = make_external_package ~root:tmpdir ~name:"std" ~value:"2" in
+      let workspace = Riot_model.Workspace.make_realized ~root:tmpdir ~packages:[ app; std ] () in
+      let request = make_request ~workspace ~packages:[] ~scope:Riot_build.Request.Dev () in
+      let context =
+        Riot_build.Internal.Build_context.make request
+        |> Result.expect ~msg:"expected valid build context"
+      in
+      let resolved =
+        Riot_build.Internal.Resolved_build.resolve context request
+        |> Result.expect ~msg:"expected build request to resolve"
+      in
+      Test.assert_equal
+        ~expected:[ package_name "app" ]
+        ~actual:(Riot_build.Internal.Resolved_build.package_names resolved);
+      Ok ()) with
   | Ok result -> result
   | Error err -> Error ("tempdir failed: " ^ IO.error_message err)
 
@@ -1043,6 +1088,9 @@ let tests = let open Test in
     ~size:Large
     "build core: build uses all packages when none are requested"
     test_build_uses_all_packages_when_none_are_requested;
+  case
+    "build core: default build resolution targets workspace members only"
+    test_default_build_resolution_targets_workspace_members_only;
   case
     "build core: build returns outputs for requested packages"
     test_build_returns_outputs_for_requested_packages;

@@ -42,6 +42,7 @@ let dev_artifacts = fun t -> t.dev_artifacts
 
 let available_package_names = fun workspace ->
   workspace.Riot_model.Workspace.packages
+  |> List.filter ~fn:Riot_model.Package_manifest.is_workspace_member
   |> List.map ~fn:(fun (pkg: Riot_model.Package_manifest.t) -> pkg.name)
   |> List.sort ~compare:Riot_model.Package_name.compare
 

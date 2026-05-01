@@ -68,18 +68,29 @@ let package_manifest_table = fun (workspace: Workspace.t) ->
       ());
   table
 
+let workspace_member_package_names = fun (workspace: Workspace.t) ->
+  workspace.packages
+  |> List.filter ~fn:Package_manifest.is_workspace_member
+  |> List.map ~fn:(fun (pkg: Package_manifest.t) -> pkg.name)
+
 let target_package_names = fun __tmp1 ->
   match __tmp1 with
   | All -> []
   | Package name -> [ name ]
   | Packages names -> names
 
+let target_root_package_names = fun ~(workspace:Workspace.t) target ->
+  match target with
+  | All -> workspace_member_package_names workspace
+  | Package name -> [ name ]
+  | Packages names -> names
+
 let target_missing_package_names = fun ~(workspace:Workspace.t) target ->
   let available_set = HashSet.create () in
   List.for_each
-    workspace.packages
-    ~fn:(fun (pkg: Package_manifest.t) ->
-      let _ = HashSet.insert available_set ~value:pkg.name in
+    (workspace_member_package_names workspace)
+    ~fn:(fun name ->
+      let _ = HashSet.insert available_set ~value:name in
       ());
   target_package_names target
   |> List.filter ~fn:(fun pkg_name -> not (HashSet.contains available_set ~value:pkg_name))
@@ -89,9 +100,19 @@ let target_missing_package_names = fun ~(workspace:Workspace.t) target ->
 let filter_workspace_for_target = fun
   ~(workspace:Workspace.t) ~target ~(scope:Package_graph.build_scope) ->
   match target with
-  | All -> workspace
+  | All
   | Package _
   | Packages _ ->
+      let root_package_names =
+        target_root_package_names ~workspace target
+        |> List.unique ~compare:Package_name.compare
+      in
+      let root_set = HashSet.create () in
+      List.for_each
+        root_package_names
+        ~fn:(fun pkg_name ->
+          let _ = HashSet.insert root_set ~value:pkg_name in
+          ());
       let manifests_by_name = package_manifest_table workspace in
       let seen = HashSet.create () in
       let rec visit = fun __tmp1 ->
@@ -103,15 +124,18 @@ let filter_workspace_for_target = fun
             let deps =
               match HashMap.get manifests_by_name ~key:pkg_name with
               | None -> []
-              | Some pkg -> manifest_dependency_names_for_scope scope pkg
+              | Some pkg ->
+                  let dependency_scope =
+                    match scope with
+                    | Package_graph.Dev when not (HashSet.contains root_set ~value:pkg_name) ->
+                        Package_graph.Runtime
+                    | _ -> scope
+                  in
+                  manifest_dependency_names_for_scope dependency_scope pkg
             in
             visit (deps @ rest)
       in
-      let initial_targets =
-        target_package_names target
-        |> List.unique ~compare:Package_name.compare
-      in
-      let () = visit initial_targets in
+      let () = visit root_package_names in
       {
         workspace with
         packages = List.filter
@@ -129,7 +153,7 @@ let plan_workspace = fun
   if List.length load_errors > 0 then
     Error (PackageLoadFailed { errors = load_errors })
   else
-    let available = List.map workspace.packages ~fn:(fun (p: Package_manifest.t) -> p.name) in
+    let available = workspace_member_package_names workspace in
     let missing_targets = target_missing_package_names ~workspace target in
     if not (List.is_empty missing_targets) then
       match missing_targets with
@@ -143,7 +167,13 @@ let plan_workspace = fun
       in
       (
         let package_graph_started_at = Time.Instant.now () in
-        match Package_graph.create_with_breakdown ~scope ~dev_artifacts workspace with
+        let dev_roots =
+          match scope with
+          | Package_graph.Dev -> Some (target_root_package_names ~workspace target)
+          | Package_graph.Build
+          | Package_graph.Runtime -> None
+        in
+        match Package_graph.create_with_breakdown ~scope ~dev_artifacts ?dev_roots workspace with
         | Error (Package_graph.MissingPackages { missing }) ->
             Error (MissingDependencies { missing })
         | Ok (package_graph, package_graph_create_breakdown) ->
@@ -168,7 +198,7 @@ let plan_workspace = fun
                 | names -> Error (PackagesNotFound { names; available })
               in
               match target with
-              | All -> Ok package_graph
+              | All -> filter_packages (workspace_member_package_names workspace)
               | Package pkg_name -> filter_packages [ pkg_name ]
               | Packages pkg_names -> filter_packages pkg_names
             in
