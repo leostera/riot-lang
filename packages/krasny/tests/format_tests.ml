@@ -2666,6 +2666,33 @@ let test_write_aligns_multiline_list_pattern_closing_delimiter = fun ctx ->
   | _ -> Error ()
 |ocaml}
 
+let test_write_aligns_constructor_record_pattern_payloads = fun ctx ->
+  let source =
+    {ocaml|let message=function|Io{op;path;related_path=None;detail}->op^" failed for "^Path.to_string path^": "^io_detail_message detail|Io{op;path;related_path=Some related_path;detail}->op
+|ocaml}
+  in
+  let parsed = parse_ml source in
+  let actual = capture_write parsed in
+  Test.Snapshot.assert_inline_text
+    ~ctx
+    ~actual
+    ~expected:{ocaml|let message = function
+  | Io {
+      op;
+      path;
+      related_path = None;
+      detail;
+    } ->
+      op ^ " failed for " ^ Path.to_string path ^ ": " ^ io_detail_message detail
+  | Io {
+      op;
+      path;
+      related_path = Some related_path;
+      detail;
+    } ->
+      op
+|ocaml}
+
 let test_write_keeps_fitting_constructor_or_patterns_inline = fun ctx ->
   let source =
     {ocaml|let test=function|Some(Leading_ordinary_comment|Leading_docstring)->state.suppress_leading_token<-Some token.Ast.id
@@ -5120,6 +5147,9 @@ let tests =
     case
       "write aligns multiline list pattern closing delimiter"
       test_write_aligns_multiline_list_pattern_closing_delimiter;
+    case
+      "write aligns constructor record pattern payloads"
+      test_write_aligns_constructor_record_pattern_payloads;
     case
       "write keeps fitting constructor or patterns inline"
       test_write_keeps_fitting_constructor_or_patterns_inline;

@@ -544,6 +544,16 @@ let with_indent = fun state extra fn ->
   if state.line_start then
     state.column <- state.indent
 
+let with_absolute_indent = fun state indent fn ->
+  let previous = state.indent in
+  state.indent <- indent;
+  if state.line_start then
+    state.column <- state.indent;
+  fn ();
+  state.indent <- previous;
+  if state.line_start then
+    state.column <- state.indent
+
 let with_delimited_expr = fun state fn ->
   let previous = state.delimited_expr_depth in
   state.delimited_expr_depth <- Int.succ previous;
@@ -3700,14 +3710,16 @@ let rec render_pattern = fun ?(role = Pattern_default) state (pattern: Ast.Patte
   | Literal { token = None } -> unsupported_node "literal pattern without token" node
   | ConstructorIdent { constructor; argument = None } -> render_pattern_ident state constructor
   | ConstructorIdent { constructor; argument = Some argument } ->
+      let constructor_indent = state.column in
       render_pattern_ident state constructor;
       emit_space state;
-      render_constructor_pattern_argument state pattern argument
+      render_constructor_pattern_argument state ~constructor_indent pattern argument
   | Constructor { callee = Some callee; argument = None } -> render_pattern state callee
   | Constructor { callee = Some callee; argument = Some argument } ->
+      let constructor_indent = state.column in
       render_pattern state callee;
       emit_space state;
-      render_constructor_pattern_argument state pattern argument
+      render_constructor_pattern_argument state ~constructor_indent pattern argument
   | Constructor _ -> unsupported_node "incomplete constructor pattern" node
   | Parenthesized { inner = Some inner } when pattern_is_tuple inner ->
       render_tuple_pattern state inner
@@ -3936,20 +3948,30 @@ and pattern_exceeds_width = fun state pattern ->
 and constructor_pattern_argument_should_break = fun state pattern argument ->
   pattern_is_constructor_with_payload argument && pattern_exceeds_width state pattern
 
+and pattern_is_record_like = fun pattern ->
+  match PatternView.view pattern with
+  | Parenthesized { inner = Some inner }
+  | Constraint { pattern = Some inner; _ }
+  | Attribute { inner = Some inner } -> pattern_is_record_like inner
+  | Record -> true
+  | _ -> false
+
 and render_constructor_pattern_argument_body = fun state argument ->
   match PatternView.view argument with
   | Parenthesized { inner = Some inner } when not (same_pattern_node argument inner) ->
       render_pattern state inner
   | _ -> render_pattern state argument
 
-and render_constructor_pattern_argument = fun state pattern argument ->
+and render_constructor_pattern_argument = fun state ~constructor_indent pattern argument ->
   if constructor_pattern_argument_should_break state pattern argument then (
     emit_text state "(";
     emit_line state;
     with_indent state 2 (fun () -> render_constructor_pattern_argument_body state argument);
     emit_line state;
     emit_text state ")"
-  ) else
+  ) else if pattern_is_record_like argument then
+    with_absolute_indent state constructor_indent (fun () -> render_pattern_atom state argument)
+  else
     render_pattern_atom state argument
 
 and render_or_pattern_inline = fun state pattern ->
@@ -4056,15 +4078,15 @@ and render_parameter = fun state (parameter: Ast.Parameter.t) ->
   | Ast.Parameter.Param { label = Ast.Parameter.Labeled _; _ } ->
       unsupported_node "labeled parameter without label" node
   | Ast.Parameter.Param {
-    label = Ast.Parameter.Optional { name = Some label; default = None };
-    pattern = None;
-  } ->
+      label = Ast.Parameter.Optional { name = Some label; default = None };
+      pattern = None;
+    } ->
       emit_text state "?";
       emit_token state label
   | Ast.Parameter.Param {
-    label = Ast.Parameter.Optional { name = Some label; default = None };
-    pattern = Some pattern;
-  } ->
+      label = Ast.Parameter.Optional { name = Some label; default = None };
+      pattern = Some pattern;
+    } ->
       render_named_parameter state ~sigil:"?" parameter label pattern
   | Ast.Parameter.Param { label = Ast.Parameter.Optional { default = Some _; _ }; _ } ->
       emit_parameter_token_stream state parameter
@@ -4084,9 +4106,9 @@ and loose_parameter_binding_annotation = fun (parameter: Ast.Parameter.t) ->
   | OptionalParam parameter -> (
       match Ast.Parameter.view parameter with
       | Ast.Parameter.Param {
-        label = Ast.Parameter.Optional { default = None; _ };
-        pattern = Some annotation;
-      } when (not (Ast.Parameter.has_explicit_pattern_parens parameter))
+          label = Ast.Parameter.Optional { default = None; _ };
+          pattern = Some annotation;
+        } when (not (Ast.Parameter.has_explicit_pattern_parens parameter))
       && parameter_colon_has_leading_space parameter ->
           Some annotation
       | _ -> None
@@ -4141,12 +4163,12 @@ and pattern_ends_with_named_parameter = fun pattern ->
 and render_local_open_pattern = fun state pattern ->
   match Ast.LocalOpenPattern.view pattern with
   | Delimited {
-    module_ident;
-    dot_token;
-    opening_token = opening;
-    pattern = body;
-    closing_token = closing;
-  } ->
+      module_ident;
+      dot_token;
+      opening_token = opening;
+      pattern = body;
+      closing_token = closing;
+    } ->
       render_ident state module_ident;
       emit_token state dot_token;
       if token_kind_is opening Kind.LPAREN then (
@@ -5180,12 +5202,12 @@ and local_open_expr_flat_width = fun budget expr ->
   match Ast.LocalOpenExpr.view expr with
   | LetOpen _ -> None
   | Delimited {
-    module_ident;
-    dot_token;
-    opening_token;
-    body;
-    closing_token;
-  } ->
+      module_ident;
+      dot_token;
+      opening_token;
+      body;
+      closing_token;
+    } ->
       (
           match (ident_flat_width module_ident, expr_flat_width_with_budget budget body) with
           | (Some module_width, Some _) ->
@@ -5750,11 +5772,11 @@ let rec render_expr = fun ?(role = Layout.Top_expr) state (expr: Ast.Expr.t) ->
       unsupported_node "attribute expression without inner expression" node
   | Extension -> render_extension_expr state expr
   | For {
-    pattern = Some pattern;
-    start_ = Some start_;
-    stop = Some stop;
-    body = Some body;
-  } ->
+      pattern = Some pattern;
+      start_ = Some start_;
+      stop = Some stop;
+      body = Some body;
+    } ->
       render_for_expr state expr pattern start_ stop body
   | For _ -> unsupported_node "incomplete for expression" node
   | Unreachable -> render_unreachable_expr state expr
@@ -7120,12 +7142,12 @@ and render_local_open_expr = fun state expr ->
         render_expr state body
       )
   | Delimited {
-    module_ident;
-    dot_token;
-    opening_token = opening;
-    body;
-    closing_token = closing;
-  } ->
+      module_ident;
+      dot_token;
+      opening_token = opening;
+      body;
+      closing_token = closing;
+    } ->
       render_ident state module_ident;
       emit_token state dot_token;
       if token_kind_is opening Kind.LBRACKET then
@@ -8415,11 +8437,11 @@ and render_record_type_field = fun state ~last (field: Ast.RecordField.t) ->
   emit_node_leading_comments_as_lines state (Ast.RecordField.as_node field);
   match Ast.RecordField.view field with
   | Ast.RecordField.Field {
-    mutable_token;
-    name;
-    colon_token;
-    annotation;
-  } ->
+      mutable_token;
+      name;
+      colon_token;
+      annotation;
+    } ->
       (
         match mutable_token with
         | Some token ->
@@ -8717,13 +8739,13 @@ and render_external_primitive_body_after_equals = fun
 and render_external_declaration = fun state decl ->
   match Ast.ExternalDeclaration.view decl with
   | Ast.ExternalDeclaration.External {
-    name;
-    colon_token;
-    annotation;
-    equals_token;
-    primitives = primitive_strings;
-    attributes = attribute_tokens;
-  } ->
+      name;
+      colon_token;
+      annotation;
+      equals_token;
+      primitives = primitive_strings;
+      attributes = attribute_tokens;
+    } ->
       emit_text state "external";
       emit_space state;
       render_ident state name;
@@ -8834,11 +8856,11 @@ and render_variant_constructor_rhs = fun state rhs ->
       emit_space state;
       render_variant_constructor_payload state payload
   | Ast.VariantConstructor.Gadt {
-    colon_token;
-    record_payload;
-    arrow_token;
-    result;
-  } ->
+      colon_token;
+      record_payload;
+      arrow_token;
+      result;
+    } ->
       render_variant_constructor_gadt_rhs state ~colon_token ~record_payload ~arrow_token ~result
 
 and render_variant_constructor = fun state ~private_token constructor ->
@@ -8908,11 +8930,11 @@ and render_variant_type = fun state ~private_token variant_type ->
 and render_type_parameter = fun state parameter ->
   match parameter with
   | Ast.TypeDeclaration.Named {
-    name;
-    quote;
-    variance;
-    injective;
-  } ->
+      name;
+      quote;
+      variance;
+      injective;
+    } ->
       emit_optional_token state variance;
       emit_optional_token state injective;
       emit_optional_token state quote;
