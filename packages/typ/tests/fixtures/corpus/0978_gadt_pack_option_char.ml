@@ -6,6 +6,10 @@
    tags: schema, gadt, existential
 *)
 
+type 'a option =
+  | Some of 'a
+  | None
+
 type packed = Pack : 'a * ('a -> 'a) -> packed
 
 let run (Pack (x, f)) = Pack (f x, f)

@@ -6,6 +6,10 @@
    tags: schema, module, nested
 *)
 
+type 'a option =
+  | Some of 'a
+  | None
+
 module Outer = struct
   module Inner = struct
     type t = int option

@@ -6,6 +6,10 @@
    tags: basics, annotation, value
 *)
 
+type 'a option =
+  | Some of 'a
+  | None
+
 let value : char option = Some 'x'
 
 let answer = value

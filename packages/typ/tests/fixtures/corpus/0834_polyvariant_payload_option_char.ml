@@ -6,6 +6,10 @@
    tags: schema, polyvariant, payload
 *)
 
+type 'a option =
+  | Some of 'a
+  | None
+
 let id = function
   | `Payload x -> `Payload x
 

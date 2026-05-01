@@ -6,6 +6,10 @@
    tags: schema, functions, pair
 *)
 
+type 'a option =
+  | Some of 'a
+  | None
+
 let duplicate x = (x, x)
 
 let answer = duplicate (Some 0)

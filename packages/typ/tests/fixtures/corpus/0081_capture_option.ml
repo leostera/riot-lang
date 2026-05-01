@@ -6,6 +6,10 @@
    tags: functions, closure, capture
 *)
 
+type 'a option =
+  | Some of 'a
+  | None
+
 let seed = Some 0
 
 let make () =

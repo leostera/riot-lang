@@ -6,6 +6,10 @@
    tags: schema, labeled_args, optional_args
 *)
 
+type 'a option =
+  | Some of 'a
+  | None
+
 let build ~left ?(right = (Some 'x')) () = (left, right)
 
 let answer = build ~left:(None) ()

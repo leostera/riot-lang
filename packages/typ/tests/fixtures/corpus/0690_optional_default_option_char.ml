@@ -6,6 +6,10 @@
    tags: schema, optional_args
 *)
 
+type 'a option =
+  | Some of 'a
+  | None
+
 let build ?(value = (Some 'x')) () = value
 
 let answer = build ()

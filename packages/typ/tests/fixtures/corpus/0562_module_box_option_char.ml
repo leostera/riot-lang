@@ -6,6 +6,10 @@
    tags: schema, module, box
 *)
 
+type 'a option =
+  | Some of 'a
+  | None
+
 module M = struct
   type t = char option
   let value : t = (Some 'x')

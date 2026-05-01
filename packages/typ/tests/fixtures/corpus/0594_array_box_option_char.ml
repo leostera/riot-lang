@@ -6,6 +6,10 @@
    tags: schema, array, mutation
 *)
 
+type 'a option =
+  | Some of 'a
+  | None
+
 let touch array =
   let before = array.(0) in
   array.(0) <- (None);

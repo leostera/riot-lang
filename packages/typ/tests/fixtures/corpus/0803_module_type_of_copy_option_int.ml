@@ -6,6 +6,10 @@
    tags: schema, module, module_type_of
 *)
 
+type 'a option =
+  | Some of 'a
+  | None
+
 module Original = struct
   let value = (Some 0)
   let id x = x

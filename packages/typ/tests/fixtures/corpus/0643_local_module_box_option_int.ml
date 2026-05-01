@@ -6,6 +6,10 @@
    tags: schema, module, local_module
 *)
 
+type 'a option =
+  | Some of 'a
+  | None
+
 let answer =
   let module M = struct
     type t = int option

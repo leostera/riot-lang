@@ -6,6 +6,10 @@
    tags: schema, gadt, module
 *)
 
+type 'a option =
+  | Some of 'a
+  | None
+
 module M = struct
   type _ t = Value : 'a -> 'a t
   let unwrap : type a. a t -> a = function

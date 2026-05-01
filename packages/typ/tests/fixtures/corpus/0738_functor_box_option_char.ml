@@ -6,6 +6,10 @@
    tags: schema, module, functor
 *)
 
+type 'a option =
+  | Some of 'a
+  | None
+
 module type BOX = sig
   type t
   val value : t

@@ -6,6 +6,10 @@
    tags: schema, module, alias
 *)
 
+type 'a option =
+  | Some of 'a
+  | None
+
 module Source = struct
   type t = int option
   let value : t = (Some 0)

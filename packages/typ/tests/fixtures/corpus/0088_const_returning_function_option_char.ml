@@ -6,6 +6,10 @@
    tags: functions, const, higher_order, partial_application
 *)
 
+type 'a option =
+  | Some of 'a
+  | None
+
 let const x _ = x
 
 let keep = const (fun value -> value)

@@ -1,5 +1,5 @@
 (**
-   Built-in nominal types known by the prototype inferencer.
+   Built-in nominal types known by the inferencer.
 
    These are still ordinary `Ast.Type.Apply` values. The module only centralizes
    the canonical surface identifiers used by the checker while the real
@@ -27,15 +27,6 @@ val unit_ident: Ast.ident
 (** Built-in `list` type identifier. *)
 val list_ident: Ast.ident
 
-(** Built-in `option` type identifier. *)
-val option_ident: Ast.ident
-
-(** Built-in `Some` constructor identifier. *)
-val some_ident: Ast.ident
-
-(** Built-in `None` constructor identifier. *)
-val none_ident: Ast.ident
-
 (** Built-in `int` type. *)
 val int: Ast.Type.t
 
@@ -57,16 +48,5 @@ val unit: Ast.Type.t
 (** Build a `list` type application. *)
 val list: Ast.Type.t -> Ast.Type.t
 
-(** Build an `option` type application. *)
-val option: Ast.Type.t -> Ast.Type.t
-
 (** True when the identifier is the canonical `unit` type/constructor name. *)
 val is_unit: Ast.ident -> bool
-
-(**
-   Register built-in constructors in an inference state.
-
-   These registrations are prelude-like inputs to inference. They are not
-   exported through the checked module interface.
-*)
-val install: State.t -> unit

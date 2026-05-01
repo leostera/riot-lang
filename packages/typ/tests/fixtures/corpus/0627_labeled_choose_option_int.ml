@@ -6,6 +6,10 @@
    tags: schema, labeled_args
 *)
 
+type 'a option =
+  | Some of 'a
+  | None
+
 let choose ~left ~right flag =
   if flag then
     left

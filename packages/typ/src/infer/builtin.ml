@@ -27,12 +27,6 @@ let unit_ident = ident "unit"
 
 let list_ident = ident "list"
 
-let option_ident = ident "option"
-
-let some_ident = ident "Some"
-
-let none_ident = ident "None"
-
 (**
    Built-ins are represented as nominal applications with zero or more type
    arguments. That keeps them on the same path as user-defined abstract types:
@@ -54,41 +48,8 @@ let unit = make unit_ident
 
 let list el = make list_ident ~arguments:[ el ]
 
-let option el = make option_ident ~arguments:[ el ]
-
 (**
    Unit is special only because the source language exposes `()` as syntax, and
    earlier lowering represents that constructor through this canonical name.
 *)
 let is_unit ident = Model.Surface_path.equal ident unit_ident
-
-(**
-   Built-in option constructors are registered as ordinary constructor
-   descriptions.
-
-   The type variable is generic from the start because these descriptions live
-   in the initial environment and are instantiated at every use. This gives
-   `Some 'x` type `char option` and `None` type `'a option` without adding a
-   special option branch to expression inference.
-*)
-let option_parameter = Ast.Type.Generic Ast.TypeVar.first
-
-let option_result = option option_parameter
-
-let none_description: State.InferenceEnv.constructor_description = {
-  name = none_ident;
-  scheme = TypeScheme.monomorphic option_result;
-  result = option_result;
-  arguments = State.InferenceEnv.Tuple [];
-}
-
-let some_description: State.InferenceEnv.constructor_description = {
-  name = some_ident;
-  scheme = TypeScheme.monomorphic (Ast.Type.arrow option_parameter option_result);
-  result = option_result;
-  arguments = State.InferenceEnv.Tuple [ option_parameter ];
-}
-
-let install state =
-  State.add_constructor state ~name:none_ident ~description:none_description;
-  State.add_constructor state ~name:some_ident ~description:some_description

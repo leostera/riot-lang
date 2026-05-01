@@ -6,6 +6,10 @@
    tags: schema, exceptions, primitives
 *)
 
+type 'a option =
+  | Some of 'a
+  | None
+
 module Prim = struct
   external raise_ : exn -> 'a = "%raise"
 end

@@ -6,6 +6,10 @@
    tags: schema, functions, closure
 *)
 
+type 'a option =
+  | Some of 'a
+  | None
+
 let make seed =
   fun value -> (seed, value)
 
