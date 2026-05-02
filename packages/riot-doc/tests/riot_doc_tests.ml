@@ -334,6 +334,81 @@ type binding = {
   | Ok result -> result
   | Error err -> Error (IO.error_message err)
 
+let test_doc_preserves_fenced_code_block_relative_indentation = fun _ctx ->
+  match Fs.with_tempdir
+    ~prefix:"riot_doc_code_fence_indentation"
+    (fun tmpdir ->
+      let pkg_root = Path.(tmpdir / Path.v "dotenv") in
+      let pkg_src = Path.(pkg_root / Path.v "src") in
+      let output_root = Path.(tmpdir / Path.v "docs") in
+      create_dir pkg_src;
+      write
+        Path.(pkg_src / Path.v "dotenv.ml")
+        {ocaml|type binding = string
+
+let error_to_string = fun value -> value
+
+let parse = fun _source -> Ok []
+|ocaml};
+      write
+        Path.(pkg_src / Path.v "dotenv.mli")
+        {ocaml|(** Dotenv parser. *)
+
+type binding
+
+val error_to_string: string -> string
+
+(** Parse dotenv text.
+
+    ```ocaml
+    let bindings =
+      match Dotenv.parse "HOST=localhost\nURL=http://$HOST:8080" with
+      | Ok bindings -> bindings
+      | Error error ->
+          Std.eprintln (Dotenv.error_to_string error);
+          []
+    ```
+*)
+val parse: string -> (binding list, string) result
+|ocaml};
+      let pkg =
+        Package.make
+          ~name:(package_name "dotenv")
+          ~path:pkg_root
+          ~relative_path:(Path.v "dotenv")
+          ~library:{ path = Path.v "src/dotenv.ml" }
+          ~sources:(sources [ Path.v "src/dotenv.ml"; Path.v "src/dotenv.mli" ])
+          ()
+      in
+      let workspace =
+        Workspace.make_realized ~root:tmpdir ~packages:[ pkg ] ~target_dir:"target" ()
+      in
+      let request = make_doc_request ~workspace ~output_dir:output_root "dotenv" in
+      let* summaries = Riot_doc.run request in
+      let* summary =
+        match summaries with
+        | [ summary ] -> Ok summary
+        | _ -> Error "expected one generated docs summary"
+      in
+      let* root_page =
+        read_file Path.(summary.Riot_doc.output_dir / Path.v "Dotenv" / Path.v "index.html")
+      in
+      let* () =
+        assert_contains
+          ~label:"root module page"
+          root_page
+          "<pre><code class=\"language-ocaml\">let bindings =\n  match Dotenv.parse"
+      in
+      let* () =
+        assert_contains
+          ~label:"root module page"
+          root_page
+          "| Error error -&gt;\n      Std.eprintln"
+      in
+      assert_contains ~label:"root module page" root_page "      []") with
+  | Ok result -> result
+  | Error err -> Error (IO.error_message err)
+
 let test_doc_ignores_binary_sources_when_collecting_interfaces = fun _ctx ->
   match Fs.with_tempdir
     ~prefix:"riot_doc_binary_sources"
@@ -400,6 +475,9 @@ let tests =
     case
       "doc extracts record field docstrings from signatures"
       test_doc_extracts_record_field_docstrings_from_signatures;
+    case
+      "doc preserves fenced code block relative indentation"
+      test_doc_preserves_fenced_code_block_relative_indentation;
     case
       "doc ignores binary sources when collecting interfaces"
       test_doc_ignores_binary_sources_when_collecting_interfaces;

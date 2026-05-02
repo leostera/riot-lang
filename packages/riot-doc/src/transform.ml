@@ -28,24 +28,131 @@ let strip_suffix = fun suffix text ->
   else
     text
 
+let is_blank_line = fun line -> String.equal (String.trim line) ""
+
+let trim_outer_blank_lines = fun lines ->
+  let rec drop_front = fun __tmp1 ->
+    match __tmp1 with
+    | [] -> []
+    | line :: rest when is_blank_line line -> drop_front rest
+    | lines -> lines
+  in
+  lines
+  |> drop_front
+  |> List.reverse
+  |> drop_front
+  |> List.reverse
+
+let leading_indent = fun line ->
+  let length = String.length line in
+  let rec loop index =
+    if index >= length then
+      index
+    else
+      match String.get_unchecked line ~at:index with
+      | ' '
+      | '\t' -> loop (index + 1)
+      | _ -> index
+  in
+  loop 0
+
+let remove_indent = fun count line ->
+  let length = String.length line in
+  let rec loop index remaining =
+    if index >= length || remaining <= 0 then
+      index
+    else
+      match String.get_unchecked line ~at:index with
+      | ' '
+      | '\t' -> loop (index + 1) (remaining - 1)
+      | _ -> index
+  in
+  let offset = loop 0 count in
+  String.sub line ~offset ~len:(length - offset)
+
+let common_indent = fun lines ->
+  lines
+  |> List.filter ~fn:(fun line -> not (is_blank_line line))
+  |> List.fold_left
+    ~init:None
+    ~fn:(fun acc line ->
+      let indent = leading_indent line in
+      match acc with
+      | None -> Some indent
+      | Some existing -> Some (Int.min existing indent))
+  |> Option.unwrap_or ~default:0
+
+let strip_doc_star_prefix = fun line ->
+  let length = String.length line in
+  let indent = leading_indent line in
+  if indent < length && Char.equal (String.get_unchecked line ~at:indent) '*' then
+    let offset =
+      if indent + 1 < length && Char.equal (String.get_unchecked line ~at:(indent + 1)) ' ' then
+        indent + 2
+      else
+        indent + 1
+    in
+    String.sub line ~offset ~len:(length - offset)
+  else
+    line
+
+let has_doc_star_prefix = fun line ->
+  let length = String.length line in
+  let indent = leading_indent line in
+  indent < length && Char.equal (String.get_unchecked line ~at:indent) '*'
+
+let strip_doc_star_prefixes = fun lines ->
+  let nonblank = List.filter lines ~fn:(fun line -> not (is_blank_line line)) in
+  if not (List.is_empty nonblank) && List.all nonblank ~fn:has_doc_star_prefix then
+    List.map
+      lines
+      ~fn:(fun line ->
+        if is_blank_line line then
+          line
+        else
+          strip_doc_star_prefix line)
+  else
+    lines
+
+let strip_doc_opening = fun line ->
+  let trimmed = String.trim line in
+  if String.starts_with ~prefix:"(**" trimmed then
+    strip_prefix "(**" trimmed
+  else
+    line
+
+let strip_doc_closing = fun line ->
+  let trimmed = String.trim line in
+  if String.ends_with ~suffix:"*)" trimmed then
+    strip_suffix "*)" trimmed
+  else
+    line
+
 let clean_docstring = fun raw ->
   raw
   |> String.split ~by:"\n"
-  |> List.map
-    ~fn:(fun line ->
-      let trimmed =
-        line
-        |> String.trim
-        |> strip_prefix "(**"
-        |> strip_suffix "*)"
-        |> String.trim
-      in
-      if String.starts_with ~prefix:"*" trimmed then
-        trimmed
-        |> strip_prefix "*"
-        |> String.trim
-      else
-        trimmed)
+  |> (fun lines ->
+    match lines with
+    | [] -> []
+    | first :: rest -> (
+        match List.reverse rest with
+        | [] ->
+            [
+              first
+              |> strip_doc_opening
+              |> strip_doc_closing
+              |> String.trim;
+            ]
+        | last :: middle ->
+            let first = strip_doc_opening first in
+            let last = strip_doc_closing last in
+            first :: (List.reverse middle @ [ last ])
+      ))
+  |> trim_outer_blank_lines
+  |> (fun lines ->
+    let indent = common_indent lines in
+    List.map lines ~fn:(remove_indent indent))
+  |> strip_doc_star_prefixes
   |> String.concat "\n"
   |> String.trim
 
