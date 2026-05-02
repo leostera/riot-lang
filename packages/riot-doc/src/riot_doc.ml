@@ -2,7 +2,7 @@ open Std
 open Riot_model
 open Std.Result.Syntax
 
-let generator_signature = "riot-doc:v23"
+let generator_signature = "riot-doc:v24"
 
 type request = {
   workspace: Riot_model.Workspace.t;
@@ -262,32 +262,6 @@ let dependency_signature = fun dependency_map ->
       Crypto.Sha256.write state version);
   Crypto.Digest.hex (Crypto.Sha256.finish state)
 
-let package_module_name = fun package_name ->
-  package_name
-  |> String.map
-    ~fn:(fun ch ->
-      match ch with
-      | '-' -> '_'
-      | _ -> ch)
-  |> String.capitalize_ascii
-
-let is_root_module_for_package = fun package_name (module_doc: Doctree.module_doc) ->
-  List.length module_doc.path = 1 && String.equal module_doc.name (package_module_name package_name)
-
-let render_root_module_alias = fun () ->
-  "<!doctype html>\n"
-  ^ "<html>\n"
-  ^ "<head>\n"
-  ^ "  <meta charset=\"utf-8\" />\n"
-  ^ "  <meta http-equiv=\"refresh\" content=\"0; url=../index.html\" />\n"
-  ^ "  <title>Redirecting...</title>\n"
-  ^ "</head>\n"
-  ^ "<body>\n"
-  ^ "  <script>location.replace('../index.html' + location.hash);</script>\n"
-  ^ "  <p><a href=\"../index.html\">Open package docs</a></p>\n"
-  ^ "</body>\n"
-  ^ "</html>\n"
-
 let cache_key = fun
   ~request
   ~(package:Riot_model.Package.t)
@@ -485,12 +459,7 @@ let write_pages = fun ~output_dir package_doc ->
       | Ok paths ->
           let path = Doctree.module_output_path ~output_dir module_doc in
           let source_path = Doctree.module_source_output_path ~output_dir module_doc in
-          let body =
-            if is_root_module_for_package package_doc.package module_doc then
-              render_root_module_alias ()
-            else
-              Html.render_module package_doc module_doc
-          in
+          let body = Html.render_module package_doc module_doc in
           let source_body = Html.render_module_source package_doc module_doc in
           let* () = write_output ~path body in
           let* () = write_output ~path:source_path source_body in

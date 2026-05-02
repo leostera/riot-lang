@@ -38,6 +38,33 @@ let create_dir = fun path ->
   Fs.create_dir_all path
   |> Result.expect ~msg:("expected dir creation to succeed: " ^ Path.to_string path)
 
+let read_file = fun path ->
+  Fs.read path
+  |> Result.map_err ~fn:IO.error_message
+
+let assert_contains = fun ~label text expected ->
+  if String.contains text expected then
+    Ok ()
+  else
+    Error ("expected " ^ label ^ " to contain: " ^ expected)
+
+let assert_not_contains = fun ~label text unexpected ->
+  if String.contains text unexpected then
+    Error ("expected " ^ label ^ " not to contain: " ^ unexpected)
+  else
+    Ok ()
+
+let make_doc_request = fun ~workspace ~output_dir package_name ->
+  Riot_doc.{
+    workspace;
+    package_name = Some package_name;
+    all = false;
+    release = false;
+    output_root = Some output_dir;
+    force = true;
+    no_cache = true;
+  }
+
 let test_doc_resolves_qualified_child_modules_from_opened_dependency = fun _ctx ->
   match Fs.with_tempdir
     ~prefix:"riot_doc_opened_dependency"
@@ -92,23 +119,147 @@ let value = A.B.make ()
       let workspace =
         Workspace.make_realized ~root:tmpdir ~packages:[ pkg; app ] ~target_dir:"target" ()
       in
-      let request =
-        Riot_doc.{
-          workspace;
-          package_name = Some "app";
-          all = false;
-          release = false;
-          output_root = Some Path.(tmpdir / Path.v "docs");
-          force = true;
-          no_cache = true;
-        }
-      in
+      let request = make_doc_request ~workspace ~output_dir:Path.(tmpdir / Path.v "docs") "app" in
       let* summaries = Riot_doc.run request in
       match summaries with
       | [ summary ] when Package_name.equal summary.Riot_doc.package app.name -> Ok ()
       | [ summary ] ->
           Error ("expected app docs, got " ^ Package_name.to_string summary.Riot_doc.package)
       | _ -> Error "expected exactly one generated docs summary") with
+  | Ok result -> result
+  | Error err -> Error (IO.error_message err)
+
+let test_doc_generates_root_module_detail_page = fun _ctx ->
+  match Fs.with_tempdir
+    ~prefix:"riot_doc_root_module_page"
+    (fun tmpdir ->
+      let pkg_root = Path.(tmpdir / Path.v "pretext") in
+      let pkg_src = Path.(pkg_root / Path.v "src") in
+      let output_root = Path.(tmpdir / Path.v "docs") in
+      create_dir pkg_src;
+      write Path.(pkg_src / Path.v "pretext.ml") {ocaml|let format = fun value -> value
+|ocaml};
+      write
+        Path.(pkg_src / Path.v "pretext.mli")
+        {ocaml|(** Tiny text documents. *)
+
+(** Format a document to text. *)
+val format: string -> string
+|ocaml};
+      let pkg =
+        Package.make
+          ~name:(package_name "pretext")
+          ~path:pkg_root
+          ~relative_path:(Path.v "pretext")
+          ~library:{ path = Path.v "src/pretext.ml" }
+          ~sources:(sources [ Path.v "src/pretext.ml"; Path.v "src/pretext.mli" ])
+          ()
+      in
+      let workspace =
+        Workspace.make_realized ~root:tmpdir ~packages:[ pkg ] ~target_dir:"target" ()
+      in
+      let request = make_doc_request ~workspace ~output_dir:output_root "pretext" in
+      let* summaries = Riot_doc.run request in
+      let* summary =
+        match summaries with
+        | [ summary ] -> Ok summary
+        | _ -> Error "expected one generated docs summary"
+      in
+      let* index = read_file Path.(summary.Riot_doc.output_dir / Path.v "index.html") in
+      let* root_page =
+        read_file Path.(summary.Riot_doc.output_dir / Path.v "Pretext" / Path.v "index.html")
+      in
+      let* () = assert_contains ~label:"package index" index "href=\"Pretext/index.html\"" in
+      let* () =
+        assert_contains ~label:"package index" index "href=\"Pretext/index.html#function_format\""
+      in
+      let* () = assert_not_contains ~label:"root module page" root_page "Redirecting..." in
+      let* () =
+        assert_contains
+          ~label:"root module page"
+          root_page
+          "<article class=\"item-detail\" id=\"function_format\">"
+      in
+      let* () =
+        assert_contains ~label:"root module page" root_page "val format: string -&gt; string"
+      in
+      assert_contains ~label:"root module page" root_page "Format a document to text.") with
+  | Ok result -> result
+  | Error err -> Error (IO.error_message err)
+
+let test_doc_uses_nested_module_source_for_item_snippets = fun _ctx ->
+  match Fs.with_tempdir
+    ~prefix:"riot_doc_split_module_snippets"
+    (fun tmpdir ->
+      let pkg_root = Path.(tmpdir / Path.v "parquet") in
+      let pkg_src = Path.(pkg_root / Path.v "src") in
+      let output_root = Path.(tmpdir / Path.v "docs") in
+      create_dir pkg_src;
+      write Path.(pkg_src / Path.v "parquet.ml") {ocaml|module Reader = Reader
+|ocaml};
+      write
+        Path.(pkg_src / Path.v "reader.ml")
+        {ocaml|type t = string
+
+let from_string = fun value -> value
+|ocaml};
+      write
+        Path.(pkg_src / Path.v "parquet.mli")
+        {ocaml|(** Parquet facade. *)
+module Reader: module type of Reader
+|ocaml};
+      write
+        Path.(pkg_src / Path.v "reader.mli")
+        {ocaml|(** Reader API. *)
+type t
+
+(** Decode a reader from a string. *)
+val from_string: string -> t
+|ocaml};
+      let pkg =
+        Package.make
+          ~name:(package_name "parquet")
+          ~path:pkg_root
+          ~relative_path:(Path.v "parquet")
+          ~library:{ path = Path.v "src/parquet.ml" }
+          ~sources:(sources
+            [
+              Path.v "src/parquet.ml";
+              Path.v "src/parquet.mli";
+              Path.v "src/reader.ml";
+              Path.v "src/reader.mli";
+            ])
+          ()
+      in
+      let workspace =
+        Workspace.make_realized ~root:tmpdir ~packages:[ pkg ] ~target_dir:"target" ()
+      in
+      let request = make_doc_request ~workspace ~output_dir:output_root "parquet" in
+      let* summaries = Riot_doc.run request in
+      let* summary =
+        match summaries with
+        | [ summary ] -> Ok summary
+        | _ -> Error "expected one generated docs summary"
+      in
+      let reader_dir = Path.(summary.Riot_doc.output_dir / Path.v "Parquet" / Path.v "Reader") in
+      let* reader_page = read_file Path.(reader_dir / Path.v "index.html") in
+      let* reader_source = read_file Path.(reader_dir / Path.v "source.html") in
+      let* () =
+        assert_contains
+          ~label:"nested module page"
+          reader_page
+          "<article class=\"item-detail\" id=\"function_from_string\">"
+      in
+      let* () =
+        assert_contains ~label:"nested module page" reader_page "val from_string: string -&gt; t"
+      in
+      let* () =
+        assert_contains
+          ~label:"nested module source"
+          reader_source
+          "val from_string: string -&gt; t"
+      in
+      assert_not_contains ~label:"nested module source" reader_source "module Reader") with
   | Ok result -> result
   | Error err -> Error (IO.error_message err)
 
@@ -119,6 +270,10 @@ let tests =
     case
       "doc resolves qualified child modules from opened dependency"
       test_doc_resolves_qualified_child_modules_from_opened_dependency;
+    case "doc generates root module detail page" test_doc_generates_root_module_detail_page;
+    case
+      "doc uses nested module source for item snippets"
+      test_doc_uses_nested_module_source_for_item_snippets;
   ]
 
 let main ~args = Test.Cli.main ~name ~tests ~args ()

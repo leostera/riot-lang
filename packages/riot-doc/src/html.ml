@@ -480,7 +480,7 @@ let render_index = fun (package_doc: Doctree.package_doc) ->
   let (sidebar_modules, module_rows) =
     match summary_module with
     | Some summary_module ->
-        let children = summary_module.modules in
+        let children = summary_module :: summary_module.modules in
         (
           children
           |> List.map
