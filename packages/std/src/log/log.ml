@@ -22,6 +22,24 @@ let set_level = fun level -> current_level := level
 
 let get_level = fun () -> !current_level
 
+let level_of_string = fun value ->
+  match String.lowercase_ascii (String.trim value) with
+  | "trace" -> Some Level.Trace
+  | "debug" -> Some Level.Debug
+  | "info" -> Some Level.Info
+  | "warn" -> Some Level.Warn
+  | "error" -> Some Level.Error
+  | _ -> None
+
+let configure_from_env = fun () ->
+  match Env.get Env.String ~var:"RIOT_LOG" with
+  | Some value -> (
+      match level_of_string value with
+      | Some level -> set_level level
+      | None -> ()
+    )
+  | None -> ()
+
 let should_log = fun level -> Level.to_int level >= Level.to_int !current_level
 
 (** Core logging function *)
@@ -53,6 +71,7 @@ let list_handlers = Handler.list
 let flush = StdoutHandler.flush
 
 let start_link = fun () ->
+  configure_from_env ();
   let sup =
     Supervisor.start_link ~strategy:OneForOne ~children:[ StdoutHandler.child_spec () ] ()
   in

@@ -56,6 +56,13 @@ val flush: unit -> unit
 (** Wait until the stdout log handler has drained events emitted before this call. *)
 (** {1 Supervision} *)
 
+(**
+   Starts the logging infrastructure.
+
+   If `RIOT_LOG` is set, its case-insensitive value configures the minimum log
+   level before handlers start. Accepted values are `trace`, `debug`, `info`,
+   `warn`, and `error`. Invalid values are ignored.
+*)
 val start_link: unit -> Pid.t
 
 (** Get the supervisor child spec for the logging infrastructure *)
