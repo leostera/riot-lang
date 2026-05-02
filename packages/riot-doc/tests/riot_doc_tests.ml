@@ -334,6 +334,58 @@ type binding = {
   | Ok result -> result
   | Error err -> Error (IO.error_message err)
 
+let test_doc_ignores_binary_sources_when_collecting_interfaces = fun _ctx ->
+  match Fs.with_tempdir
+    ~prefix:"riot_doc_binary_sources"
+    (fun tmpdir ->
+      let pkg_root = Path.(tmpdir / Path.v "synlike") in
+      let pkg_src = Path.(pkg_root / Path.v "src") in
+      let output_root = Path.(tmpdir / Path.v "docs") in
+      create_dir pkg_src;
+      write Path.(pkg_src / Path.v "synlike.ml") {ocaml|let parse = fun value -> value
+|ocaml};
+      write
+        Path.(pkg_src / Path.v "synlike.mli")
+        {ocaml|(** Synlike facade. *)
+
+(** Parse a value. *)
+val parse: string -> string
+|ocaml};
+      write
+        Path.(pkg_src / Path.v "main.ml")
+        {ocaml|let main ~args:_ =
+  let _ = Synlike.parse "ok" in
+  ()
+|ocaml};
+      let pkg =
+        Package.make
+          ~name:(package_name "synlike")
+          ~path:pkg_root
+          ~relative_path:(Path.v "synlike")
+          ~binaries:[ { name = "synlike"; path = Path.v "src/main.ml" } ]
+          ~library:{ path = Path.v "src/synlike.ml" }
+          ~sources:(sources
+            [ Path.v "src/synlike.ml"; Path.v "src/synlike.mli"; Path.v "src/main.ml"; ])
+          ()
+      in
+      let workspace =
+        Workspace.make_realized ~root:tmpdir ~packages:[ pkg ] ~target_dir:"target" ()
+      in
+      let request = make_doc_request ~workspace ~output_dir:output_root "synlike" in
+      let* summaries = Riot_doc.run request in
+      let* summary =
+        match summaries with
+        | [ summary ] -> Ok summary
+        | _ -> Error "expected one generated docs summary"
+      in
+      let* root_page =
+        read_file Path.(summary.Riot_doc.output_dir / Path.v "Synlike" / Path.v "index.html")
+      in
+      let* () = assert_contains ~label:"root module page" root_page "val parse: string" in
+      assert_not_contains ~label:"root module page" root_page "Synlike/Main/index.html") with
+  | Ok result -> result
+  | Error err -> Error (IO.error_message err)
+
 let name = "riot-doc"
 
 let tests =
@@ -348,6 +400,9 @@ let tests =
     case
       "doc extracts record field docstrings from signatures"
       test_doc_extracts_record_field_docstrings_from_signatures;
+    case
+      "doc ignores binary sources when collecting interfaces"
+      test_doc_ignores_binary_sources_when_collecting_interfaces;
   ]
 
 let main ~args = Test.Cli.main ~name ~tests ~args ()

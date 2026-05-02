@@ -415,6 +415,59 @@ path = "src/demo.ml"
       else
         Error "expected test realization to load test modules but ignore support fixtures")
 
+let test_manifest_realize_doc_excludes_executable_sources = fun _ctx ->
+  with_tempdir
+    "riot_model_package_manifest_doc"
+    (fun tmpdir ->
+      let src_dir = Path.(tmpdir / Path.v "src") in
+      Result.expect (Fs.create_dir_all src_dir) ~msg:"Failed to create src directory";
+      Result.expect
+        (Fs.write "let parse = fun value -> value\n" Path.(src_dir / Path.v "synlike.ml"))
+        ~msg:"Failed to write library source";
+      Result.expect
+        (Fs.write "val parse: string -> string\n" Path.(src_dir / Path.v "synlike.mli"))
+        ~msg:"Failed to write library interface";
+      Result.expect
+        (Fs.write "let main ~args:_ = Synlike.parse \"ok\"\n" Path.(src_dir / Path.v "main.ml"))
+        ~msg:"Failed to write binary source";
+      Result.expect
+        (Fs.write "let main ~args:_ = ()\n" Path.(src_dir / Path.v "demo_cmd.ml"))
+        ~msg:"Failed to write command source";
+      let manifest =
+        parse_manifest
+          ~path:tmpdir
+          ~relative_path:(Path.v "packages/synlike")
+          {|
+[package]
+name = "synlike"
+version = "0.1.0"
+
+[lib]
+path = "src/synlike.ml"
+
+[[bin]]
+name = "synlike"
+path = "src/main.ml"
+
+[[command]]
+name = "demo"
+help = "Run the demo"
+path = "src/demo_cmd.ml"
+|}
+      in
+      let pkg =
+        Riot_model.Package_manifest.realize ~intent:Riot_model.Package_manifest.Doc manifest
+      in
+      let src = sort_paths pkg.sources.src in
+      if
+        src = [ Path.v "src/synlike.ml"; Path.v "src/synlike.mli" ]
+        && pkg.binaries = []
+        && pkg.commands = []
+      then
+        Ok ()
+      else
+        Error "expected doc realization to keep library sources but exclude binary and command sources")
+
 let test_manifest_to_package_preserves_declared_binaries_without_loading_sources = fun _ctx ->
   with_tempdir
     "riot_model_package_manifest_package"
@@ -482,6 +535,9 @@ let tests = [
   Test.case
     "package manifest: test realization ignores fixture support entries"
     test_manifest_realize_test_discovers_test_binaries_without_fixtures;
+  Test.case
+    "package manifest: doc realization excludes executable sources"
+    test_manifest_realize_doc_excludes_executable_sources;
   Test.case
     "package manifest: to package preserves declared binaries without loading sources"
     test_manifest_to_package_preserves_declared_binaries_without_loading_sources;

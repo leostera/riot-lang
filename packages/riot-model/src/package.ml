@@ -1956,6 +1956,60 @@ let merge_binaries: declared:binary list -> autodiscovered:binary list -> binary
   in
   declared @ List.reverse discovered
 
+let commands_for_intent = fun ~(intent:realization_intent) commands ->
+  match intent with
+  | Doc -> []
+  | Build
+  | Runtime
+  | Dev
+  | Run
+  | Test
+  | Bench
+  | Check -> commands
+
+let relative_to_package = fun ~package_path path ->
+  let relative =
+    if Path.is_absolute path then
+      match Path.strip_prefix path ~prefix:package_path with
+      | Ok path -> path
+      | Error _ -> path
+    else
+      path
+  in
+  Path.normalize relative
+
+let executable_source_excluded_relpaths_for_intent = fun
+  ~(intent:realization_intent) ~package_path ~declared_binaries ~commands ->
+  match intent with
+  | Doc ->
+      let declared_binary_sources =
+        declared_binaries
+        |> List.map ~fn:(fun (binary: binary) -> relative_to_package ~package_path binary.path)
+      in
+      let command_sources =
+        commands
+        |> List.map
+          ~fn:(fun (command: Package_command.t) ->
+            relative_to_package
+              ~package_path
+              command.command_source)
+      in
+      let default_runtime_binary_sources =
+        if has_declared_binary_in_bucket declared_binaries Src then
+          []
+        else
+          [ Path.v "src/main.ml" ]
+      in
+      (declared_binary_sources @ command_sources) @ default_runtime_binary_sources
+      |> List.unique ~compare:Path.compare
+  | Build
+  | Runtime
+  | Dev
+  | Run
+  | Test
+  | Bench
+  | Check -> []
+
 let parse_manifest_spec:
   Toml.value ->
   workspace_deps:dependency list ->
@@ -2057,6 +2111,11 @@ let parse_manifest_spec:
 let realize_manifest_spec = fun ~(intent:realization_intent) (manifest: manifest_spec) ->
   let excluded_relpaths =
     provider_excluded_relpaths ~package_path:manifest.path manifest.fix_providers
+    @ executable_source_excluded_relpaths_for_intent
+      ~intent
+      ~package_path:manifest.path
+      ~declared_binaries:manifest.declared_binaries
+      ~commands:manifest.commands
   in
   let sources = scan_sources_for_intent ~intent ~package_path:manifest.path ~excluded_relpaths () in
   let declared_binaries = declared_binaries_for_intent ~intent manifest.declared_binaries in
@@ -2081,7 +2140,7 @@ let realize_manifest_spec = fun ~(intent:realization_intent) (manifest: manifest
     ?library:manifest.library
     ~sources
     ~compiler:manifest.compiler
-    ~commands:manifest.commands
+    ~commands:(commands_for_intent ~intent manifest.commands)
     ~fix_providers:manifest.fix_providers
     ~publish:manifest.publish
     ()
