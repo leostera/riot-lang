@@ -68,6 +68,7 @@ install_riot() {
     RIOT_HOME="${HOME}/.riot"
     RIOT_REPO="leostera/riot"
     VERSION="${RIOT_VERSION:-latest}"
+    RIOT_INSTALL_AGENT="${RIOT_INSTALL_AGENT:-riot-install@1}"
     
     print_info "Installing Riot ($VERSION) for $PLATFORM..."
     
@@ -94,13 +95,13 @@ install_riot() {
     
     # Try to download
     if command -v curl >/dev/null 2>&1; then
-        HTTP_CODE=$(curl -sSL -w "%{http_code}" -o "$TMPDIR/riot.tar.gz" "$DOWNLOAD_URL")
+        HTTP_CODE=$(curl -sSL -H "X-Riot-Agent: $RIOT_INSTALL_AGENT" -w "%{http_code}" -o "$TMPDIR/riot.tar.gz" "$DOWNLOAD_URL")
         if [ "$HTTP_CODE" != "200" ]; then
             handle_download_error "$HTTP_CODE"
         fi
         tar xzf "$TMPDIR/riot.tar.gz" -C "$TMPDIR"
     elif command -v wget >/dev/null 2>&1; then
-        if ! wget -q -O "$TMPDIR/riot.tar.gz" "$DOWNLOAD_URL"; then
+        if ! wget -q --header="X-Riot-Agent: $RIOT_INSTALL_AGENT" -O "$TMPDIR/riot.tar.gz" "$DOWNLOAD_URL"; then
             handle_download_error "wget_failed"
         fi
         tar xzf "$TMPDIR/riot.tar.gz" -C "$TMPDIR"

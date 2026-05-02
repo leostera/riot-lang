@@ -203,7 +203,7 @@ describe("riot cdn worker", () => {
     const riotResponse = await worker.fetch(
       new Request("https://cdn.pkgs.ml/riot/riot-latest-aarch64-apple-darwin.tar.gz", {
         headers: {
-          "X-Riot-Agent": "riot-cli@0.0.5",
+          "X-Riot-Agent": "riot-install@1",
         },
       }),
       env,
@@ -236,7 +236,7 @@ describe("riot cdn worker", () => {
       {
         binary_name: "riot",
         object_key: "riot/riot-latest-aarch64-apple-darwin.tar.gz",
-        riot_agent: "riot-cli@0.0.5",
+        riot_agent: "riot-install@1",
       },
     ]);
   });
