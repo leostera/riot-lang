@@ -263,6 +263,66 @@ val from_string: string -> t
   | Ok result -> result
   | Error err -> Error (IO.error_message err)
 
+let test_doc_extracts_record_field_docstrings_from_signatures = fun _ctx ->
+  match Fs.with_tempdir
+    ~prefix:"riot_doc_record_field_docstrings"
+    (fun tmpdir ->
+      let pkg_root = Path.(tmpdir / Path.v "dotenv") in
+      let pkg_src = Path.(pkg_root / Path.v "src") in
+      let output_root = Path.(tmpdir / Path.v "docs") in
+      create_dir pkg_src;
+      write
+        Path.(pkg_src / Path.v "dotenv.ml")
+        {ocaml|type binding = {
+  key: string;
+  value: string;
+  line: int;
+}
+|ocaml};
+      write
+        Path.(pkg_src / Path.v "dotenv.mli")
+        {ocaml|(** Dotenv parser. *)
+
+(** A parsed dotenv assignment. *)
+type binding = {
+  (** Environment variable name, such as `DATABASE_URL`. *)
+  key: string;
+
+  (** Parsed value after unescaping and substitution. *)
+  value: string;
+
+  (** 1-based source line where the assignment started. *)
+  line: int;
+}
+|ocaml};
+      let pkg =
+        Package.make
+          ~name:(package_name "dotenv")
+          ~path:pkg_root
+          ~relative_path:(Path.v "dotenv")
+          ~library:{ path = Path.v "src/dotenv.ml" }
+          ~sources:(sources [ Path.v "src/dotenv.ml"; Path.v "src/dotenv.mli" ])
+          ()
+      in
+      let workspace =
+        Workspace.make_realized ~root:tmpdir ~packages:[ pkg ] ~target_dir:"target" ()
+      in
+      let request = make_doc_request ~workspace ~output_dir:output_root "dotenv" in
+      let* summaries = Riot_doc.run request in
+      let* summary =
+        match summaries with
+        | [ summary ] -> Ok summary
+        | _ -> Error "expected one generated docs summary"
+      in
+      let* root_page =
+        read_file Path.(summary.Riot_doc.output_dir / Path.v "Dotenv" / Path.v "index.html")
+      in
+      let* () = assert_contains ~label:"root module page" root_page "key: string" in
+      let* () = assert_contains ~label:"root module page" root_page "Environment variable name" in
+      assert_not_contains ~label:"root module page" root_page "(** Environment variable name") with
+  | Ok result -> result
+  | Error err -> Error (IO.error_message err)
+
 let name = "riot-doc"
 
 let tests =
@@ -274,6 +334,9 @@ let tests =
     case
       "doc uses nested module source for item snippets"
       test_doc_uses_nested_module_source_for_item_snippets;
+    case
+      "doc extracts record field docstrings from signatures"
+      test_doc_extracts_record_field_docstrings_from_signatures;
   ]
 
 let main ~args = Test.Cli.main ~name ~tests ~args ()

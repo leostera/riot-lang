@@ -329,10 +329,15 @@ let variant_constructor_details = fun variant ->
       if not (String.equal name "") then
         Vector.push
           details
-          ~value:(make_detail
-            ?docstring:(leading_docstring (Syn.Ast.VariantConstructor.as_node constructor))
-            ~name
-            (snippet_of_node (Syn.Ast.VariantConstructor.as_node constructor))));
+          ~value:(
+            make_detail
+              ?docstring:(leading_docstring (Syn.Ast.VariantConstructor.as_node constructor))
+              ~name
+              (
+                snippet_of_node (Syn.Ast.VariantConstructor.as_node constructor)
+                |> strip_comments
+              )
+          ));
   vector_to_list details
 
 let record_field_details = fun record ->
@@ -345,10 +350,15 @@ let record_field_details = fun record ->
       if not (String.equal name "") then
         Vector.push
           details
-          ~value:(make_detail
-            ?docstring:(leading_docstring (Syn.Ast.RecordField.as_node field))
-            ~name
-            (snippet_of_node (Syn.Ast.RecordField.as_node field))));
+          ~value:(
+            make_detail
+              ?docstring:(leading_docstring (Syn.Ast.RecordField.as_node field))
+              ~name
+              (
+                snippet_of_node (Syn.Ast.RecordField.as_node field)
+                |> strip_comments
+              )
+          ));
   vector_to_list details
 
 let detail_groups_of_type_member = fun member ->
