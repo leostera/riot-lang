@@ -9,7 +9,7 @@
 3. Changes here have wide blast radius. Prefer additive evolution and stable signatures.
 4. If a utility is only useful for one package, keep it out of `std`.
 5. `std` owns its package-provided `riot-fix` rules under `fix/`; keep those diagnostics aligned with the scheduler and `std` ownership rationale.
-6. `Std.Test.Cli` owns the portable test-binary contract (`list-tests`, `run-tests`, `--json`, query filtering, and shared selectors such as `--small`, `--large`, and `--flaky`). Keep individual test binaries on that runner.
+6. `Std.Test.Cli` owns the portable test-binary contract (`list-tests`, `run-tests`, `--json`, query filtering, shared selectors such as `--small`, `--large`, and `--flaky`, and suite-level `~setup` / `~teardown` hooks). Keep individual test binaries on that runner.
 7. Archive and compression APIs should compose with `IO.Reader` and `IO.Writer`. Keep path-based helpers as thin wrappers around the streaming APIs.
 8. Binary/text codecs belong under `Std.Encoding`. Keep `Std.Data` focused on structured data formats like JSON, TOML, CSV, XML, and S-expressions.
 9. `Std.Test` owns the shared test-binary contract. Per-test callbacks now receive a `Std.Test.ctx`; future snapshot and fixture helpers should extend that context.

@@ -14,5 +14,7 @@ module type Intf = sig
 
   val on_result: int -> Test_result.t -> unit
 
+  val warn: string -> unit
+
   val finalize: Test_result.summary -> unit
 end

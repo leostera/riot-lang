@@ -3,6 +3,8 @@ open Propane
 
 module Test = Std.Test
 
+let ( let* ) = fun value fn -> Result.and_then value ~fn
+
 let flaky_counter = Sync.Atomic.make 0
 
 let make_overlap_probe = fun counter name ->
@@ -105,6 +107,40 @@ let failure_tests = [
   Test.case "failure_probe" (fun _ctx -> Error "intentional failure");
 ]
 
+let hook_log_env = "STD_TEST_HOOK_LOG"
+
+let hook_log_path = fun () ->
+  Env.get Env.String ~var:hook_log_env
+  |> Option.map ~fn:Path.v
+
+let append_hook_log = fun line ->
+  match hook_log_path () with
+  | None -> Error ("missing " ^ hook_log_env)
+  | Some path -> (
+      match Fs.File.open_append path with
+      | Error err -> Error (Fs.File.error_to_string err)
+      | Ok file ->
+          let result =
+            Fs.File.write_all file (line ^ "\n")
+            |> Result.map_err ~fn:Fs.File.error_to_string
+          in
+          let _ = Fs.File.close file in
+          result
+    )
+
+let hooked_tests = [
+  Test.case "hooked_probe" (fun _ctx -> append_hook_log "test");
+]
+
+let hooked_failure_tests = [
+  Test.case
+    "hooked_failure_probe"
+    (fun _ctx ->
+      match append_hook_log "test" with
+      | Ok () -> Error "intentional hook failure sample failure"
+      | Error message -> Error message);
+]
+
 let self_executable = fun () ->
   match Env.args with
   | exe :: _ -> exe
@@ -125,6 +161,11 @@ let parse_json_lines = fun stdout ->
     ~fn:(fun line ->
       Data.Json.of_string line
       |> Result.expect ~msg:"failed to parse jsonl line")
+
+let with_tempdir = fun prefix fn ->
+  match Fs.with_tempdir ~prefix fn with
+  | Ok result -> result
+  | Error err -> Error (IO.error_message err)
 
 let json_type = fun json ->
   match Data.Json.get_field "type" json with
@@ -189,6 +230,16 @@ let run_linear_sample_capture = fun args ->
   in
   Command.output cmd
   |> Result.expect ~msg:"failed to run linear sample test cli"
+
+let run_hook_sample_capture = fun sample log_path args ->
+  let cmd =
+    Command.make
+      (self_executable ())
+      ~env:[ ("PROPANE_TESTS", "7"); (hook_log_env, Path.to_string log_path); ]
+      ~args:(sample :: args)
+  in
+  Command.output cmd
+  |> Result.expect ~msg:"failed to run hook sample test cli"
 
 let ansi_reset = "\027[0m"
 
@@ -719,6 +770,90 @@ let test_run_tests_linear_suite_forces_serial_execution = fun _ctx ->
     else
       Error ("unexpected linear probe names: " ^ String.concat ", " names)
 
+let read_hook_log = fun path ->
+  Fs.read path
+  |> Result.map ~fn:split_lines
+  |> Result.map_err ~fn:IO.error_message
+
+let with_hook_log = fun prefix fn ->
+  with_tempdir
+    prefix
+    (fun tempdir ->
+      let log_path = Path.(tempdir / Path.v "hook.log") in
+      let* () =
+        Fs.write "" log_path
+        |> Result.map_err ~fn:IO.error_message
+      in
+      fn log_path)
+
+let test_run_tests_runs_suite_setup_and_teardown = fun _ctx ->
+  with_hook_log
+    "std_test_hooks"
+    (fun log_path ->
+      let output = run_hook_sample_capture "sample-hooks" log_path [ "run-tests"; "--json" ] in
+      if not (Int.equal output.status 0) then
+        Error ("expected hooked sample to succeed, got " ^ Int.to_string output.status)
+      else
+        let* lines = read_hook_log log_path in
+        if lines = [ "setup"; "test"; "teardown" ] then
+          Ok ()
+        else
+          Error ("unexpected hook order: " ^ String.concat ", " lines))
+
+let test_run_tests_setup_failure_fails_suite_without_tests = fun _ctx ->
+  with_hook_log
+    "std_test_setup_failure"
+    (fun log_path ->
+      let output =
+        run_hook_sample_capture "sample-hooks-setup-fail" log_path [ "run-tests"; "--json" ]
+      in
+      if Int.equal output.status 0 then
+        Error "expected setup failure sample to fail"
+      else
+        let names = test_names_from_json output.stdout in
+        let* lines = read_hook_log log_path in
+        if names = [ "suite setup" ] && lines = [ "setup" ] then
+          Ok ()
+        else
+          Error ("unexpected setup failure behavior, names="
+          ^ String.concat ", " names
+          ^ " lines="
+          ^ String.concat ", " lines))
+
+let test_run_tests_teardown_runs_after_failure = fun _ctx ->
+  with_hook_log
+    "std_test_teardown_after_failure"
+    (fun log_path ->
+      let output =
+        run_hook_sample_capture "sample-hooks-test-fail" log_path [ "run-tests"; "--json" ]
+      in
+      if Int.equal output.status 0 then
+        Error "expected failing hooked sample to fail"
+      else
+        let* lines = read_hook_log log_path in
+        if lines = [ "setup"; "test"; "teardown" ] then
+          Ok ()
+        else
+          Error ("unexpected hook order after failure: " ^ String.concat ", " lines))
+
+let test_run_tests_teardown_failure_warns_without_failing = fun _ctx ->
+  with_hook_log
+    "std_test_teardown_warning"
+    (fun log_path ->
+      let output =
+        run_hook_sample_capture "sample-hooks-teardown-fail" log_path [ "run-tests"; "--json" ]
+      in
+      if not (Int.equal output.status 0) then
+        Error ("expected teardown warning sample to pass, got " ^ Int.to_string output.status)
+      else if not (String.contains output.stderr "warning: test suite teardown failed") then
+        Error "expected teardown failure warning on stderr"
+      else
+        let* lines = read_hook_log log_path in
+        if lines = [ "setup"; "test"; "teardown" ] then
+          Ok ()
+        else
+          Error ("unexpected hook order after teardown warning: " ^ String.concat ", " lines))
+
 let meta_tests = [
   Test.case ~size:Large "list-tests lists all sample cases" test_list_tests_lists_all_cases;
   Test.case ~size:Large "list-tests --json includes metadata" test_list_tests_json_includes_metadata;
@@ -816,6 +951,22 @@ let meta_tests = [
     ~size:Large
     "run-tests linear suites force serial execution"
     test_run_tests_linear_suite_forces_serial_execution;
+  Test.case
+    ~size:Large
+    "run-tests runs suite setup and teardown"
+    test_run_tests_runs_suite_setup_and_teardown;
+  Test.case
+    ~size:Large
+    "run-tests setup failure fails suite without tests"
+    test_run_tests_setup_failure_fails_suite_without_tests;
+  Test.case
+    ~size:Large
+    "run-tests teardown runs after failure"
+    test_run_tests_teardown_runs_after_failure;
+  Test.case
+    ~size:Large
+    "run-tests teardown failure warns without failing"
+    test_run_tests_teardown_failure_warns_without_failing;
 ]
 
 let sample_main = fun ~args ->
@@ -841,6 +992,58 @@ let failure_sample_main = fun ~args ->
       Test.Cli.main ~name:"sample_fail" ~tests:failure_tests ~args:(exe :: rest) ()
   | _ -> Error (Failure "expected sample-fail subcommand arguments")
 
+let hook_sample_main = fun ~args ->
+  match args with
+  | exe :: _sample :: rest ->
+      Test.Cli.main
+        ~name:"sample_hooks"
+        ~setup:(fun () -> append_hook_log "setup")
+        ~teardown:(fun () -> append_hook_log "teardown")
+        ~tests:hooked_tests
+        ~args:(exe :: rest)
+        ()
+  | _ -> Error (Failure "expected sample-hooks subcommand arguments")
+
+let hook_setup_fail_sample_main = fun ~args ->
+  match args with
+  | exe :: _sample :: rest ->
+      Test.Cli.main
+        ~name:"sample_hooks_setup_fail"
+        ~setup:(fun () ->
+          let* () = append_hook_log "setup" in
+          Error "setup failed")
+        ~teardown:(fun () -> append_hook_log "teardown")
+        ~tests:hooked_tests
+        ~args:(exe :: rest)
+        ()
+  | _ -> Error (Failure "expected sample-hooks-setup-fail subcommand arguments")
+
+let hook_test_fail_sample_main = fun ~args ->
+  match args with
+  | exe :: _sample :: rest ->
+      Test.Cli.main
+        ~name:"sample_hooks_test_fail"
+        ~setup:(fun () -> append_hook_log "setup")
+        ~teardown:(fun () -> append_hook_log "teardown")
+        ~tests:hooked_failure_tests
+        ~args:(exe :: rest)
+        ()
+  | _ -> Error (Failure "expected sample-hooks-test-fail subcommand arguments")
+
+let hook_teardown_fail_sample_main = fun ~args ->
+  match args with
+  | exe :: _sample :: rest ->
+      Test.Cli.main
+        ~name:"sample_hooks_teardown_fail"
+        ~setup:(fun () -> append_hook_log "setup")
+        ~teardown:(fun () ->
+          let* () = append_hook_log "teardown" in
+          Error "teardown failed")
+        ~tests:hooked_tests
+        ~args:(exe :: rest)
+        ()
+  | _ -> Error (Failure "expected sample-hooks-teardown-fail subcommand arguments")
+
 let meta_main = fun ~args ->
   let normalize_args = fun __tmp1 ->
     match __tmp1 with
@@ -855,6 +1058,10 @@ let main ~args =
   | _ :: "sample" :: _ -> sample_main ~args
   | _ :: "sample-fail" :: _ -> failure_sample_main ~args
   | _ :: "sample-linear" :: _ -> linear_sample_main ~args
+  | _ :: "sample-hooks" :: _ -> hook_sample_main ~args
+  | _ :: "sample-hooks-setup-fail" :: _ -> hook_setup_fail_sample_main ~args
+  | _ :: "sample-hooks-test-fail" :: _ -> hook_test_fail_sample_main ~args
+  | _ :: "sample-hooks-teardown-fail" :: _ -> hook_teardown_fail_sample_main ~args
   | _ -> meta_main ~args
 
 let () = Runtime.run ~main ~args:Env.args ()

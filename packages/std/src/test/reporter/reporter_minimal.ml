@@ -10,6 +10,8 @@ let on_result = fun _idx (result: Test_result.t) ->
   | Test_result.Timed_out _ -> print "T"
   | Test_result.Skipped -> print "S"
 
+let warn = fun message -> eprintln ("warning: " ^ message)
+
 let finalize = fun (summary: Test_result.summary) ->
   println "";
   println

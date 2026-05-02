@@ -26,6 +26,8 @@ type suite_info = {
 
      let on_result _index _result = ()
 
+     let warn message = Log.warn message
+
      let finalize _summary = ()
    end
    ```
@@ -36,6 +38,9 @@ module type Intf = sig
 
   (** Called when a single test result is available. *)
   val on_result: int -> Test_result.t -> unit
+
+  (** Called for non-fatal suite-level warnings. *)
+  val warn: string -> unit
 
   (** Called once after all tests have completed. *)
   val finalize: Test_result.summary -> unit

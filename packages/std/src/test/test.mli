@@ -152,9 +152,12 @@ module Cli: sig
   type execution_mode = Cli.execution_mode =
     | Concurrent
     | Linear
+  type suite_hook = Cli.suite_hook
 
   val main:
     ?execution_mode:execution_mode ->
+    ?setup:suite_hook ->
+    ?teardown:suite_hook ->
     name:string ->
     tests:test_case list ->
     args:string list ->

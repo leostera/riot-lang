@@ -126,6 +126,8 @@ let on_result = fun _idx (result: Test_result.t) ->
         ^ " ... skipped"
         ^ duration_suffix result.size result.duration)
 
+let warn = fun message -> eprintln (ansi_bold_yellow ^ "warning" ^ ansi_reset ^ ": " ^ message)
+
 let finalize = fun (summary: Test_result.summary) ->
   println "";
   let status =

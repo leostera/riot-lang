@@ -6,6 +6,8 @@ type execution_mode =
   | Concurrent
   | Linear
 
+type suite_hook = unit -> (unit, string) result
+
 let test_type_fields = fun __tmp1 ->
   match __tmp1 with
   | Test_case.UnitTest -> [ ("type", Data.Json.String "test"); ]
@@ -463,7 +465,75 @@ let get_suite_info name args: Reporter.suite_info =
     built_binaries = suite_ctx.built_binaries;
   }
 
-let main = fun ?(execution_mode = Concurrent) ~name ~tests ~args () ->
+let render_hook_exception = fun hook_name exn ->
+  let exn = Exception.to_string exn in
+  let bt = Exception.raw_backtrace_to_string (Exception.get_raw_backtrace ()) in
+  hook_name ^ " hook raised: " ^ exn ^ "\n\n" ^ bt
+
+let run_suite_hook = fun hook_name hook ->
+  match hook with
+  | None -> Ok ()
+  | Some hook -> (
+      match hook () with
+      | Ok () -> Ok ()
+      | Error message -> Error message
+      | exception exn -> Error (render_hook_exception hook_name exn)
+    )
+
+let suite_setup_failure_result = fun message ->
+  Test_result.{
+    index = 1;
+    name = "suite setup";
+    test_type = Test_case.UnitTest;
+    size = Test_case.Small;
+    reliability = Test_case.Stable;
+    attempts = 1;
+    result = Failed message;
+    duration = Time.Duration.zero;
+  }
+
+let report_setup_failure = fun ~(reporter:(module Reporter.Intf)) ~suite_info message ->
+  let module R = (val reporter : Reporter.Intf) in
+  let result = suite_setup_failure_result message in
+  let summary = Test_result.make_summary [ result ] in
+  R.init suite_info 1;
+  R.on_result 1 result;
+  R.finalize summary;
+  summary
+
+let report_teardown_failure = fun ~(reporter:(module Reporter.Intf)) message ->
+  let module R = (val reporter : Reporter.Intf) in
+  R.warn ("test suite teardown failed: " ^ message)
+
+let run_tests_with_hooks = fun ?setup ?teardown ~(config:Runner.config) tests ->
+  let selected_tests = Runner.filter_tests config.target tests in
+  if List.is_empty selected_tests then
+    Runner.run_tests ~config tests
+  else
+    match run_suite_hook "setup" setup with
+    | Error message ->
+        report_setup_failure ~reporter:config.reporter ~suite_info:config.suite_info message
+    | Ok () ->
+        let teardown_ran = ref false in
+        let run_teardown_once () =
+          if not !teardown_ran then (
+            teardown_ran := true;
+            match run_suite_hook "teardown" teardown with
+            | Ok () -> ()
+            | Error message -> report_teardown_failure ~reporter:config.reporter message
+          )
+        in
+        let summary =
+          match Runner.run_tests ~config tests with
+          | summary -> summary
+          | exception exn ->
+              run_teardown_once ();
+              raise exn
+        in
+        run_teardown_once ();
+        summary
+
+let main = fun ?(execution_mode = Concurrent) ?setup ?teardown ~name ~tests ~args () ->
   let suite_info = get_suite_info name args in
   let cmd =
     command name
@@ -561,7 +631,7 @@ let main = fun ?(execution_mode = Concurrent) ~name ~tests ~args () ->
                         Runner.no_event_handler;
                   }
                 in
-                let summary = Runner.run_tests ~config tests in
+                let summary = run_tests_with_hooks ?setup ?teardown ~config tests in
                 if summary.failed > 0 then
                   System.exit 1;
               Ok ()
@@ -589,7 +659,7 @@ let main = fun ?(execution_mode = Concurrent) ~name ~tests ~args () ->
               event_handler = Runner.no_event_handler;
             }
           in
-          let summary = Runner.run_tests ~config tests in
+          let summary = run_tests_with_hooks ?setup ?teardown ~config tests in
           if summary.failed > 0 then
             System.exit 1;
           Ok ()

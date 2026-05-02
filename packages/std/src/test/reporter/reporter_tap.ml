@@ -29,4 +29,6 @@ let on_result = fun idx (result: Test_result.t) ->
       println "  ..."
   | Test_result.Skipped -> println ("ok " ^ idx_str ^ " - " ^ name_with_type ^ " # SKIP")
 
+let warn = fun message -> eprintln ("warning: " ^ message)
+
 let finalize = fun _summary -> ()

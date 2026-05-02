@@ -5,6 +5,8 @@ let init = fun (_suite: Intf.suite_info) _total -> ()
 
 let on_result = fun _idx _result -> ()
 
+let warn = fun message -> eprintln ("warning: " ^ message)
+
 let finalize = fun (summary: Test_result.summary) ->
   let open Data.Xml in
   let testcases =
