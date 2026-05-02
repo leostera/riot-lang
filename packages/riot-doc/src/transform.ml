@@ -124,10 +124,22 @@ let strip_comments = fun text ->
   |> String.concat ""
   |> String.trim
 
+let collapse_blank_lines = fun text ->
+  text
+  |> String.split ~by:"\n"
+  |> List.filter ~fn:(fun line -> not (String.equal (String.trim line) ""))
+  |> String.concat "\n"
+  |> String.trim
+
+let clean_signature = fun text ->
+  text
+  |> strip_comments
+  |> collapse_blank_lines
+
 let clean_member_signature = fun text ->
   text
   |> String.trim
-  |> strip_prefix "|"
+  |> clean_signature
   |> String.trim
   |> strip_suffix ";"
   |> String.trim
@@ -329,15 +341,10 @@ let variant_constructor_details = fun variant ->
       if not (String.equal name "") then
         Vector.push
           details
-          ~value:(
-            make_detail
-              ?docstring:(leading_docstring (Syn.Ast.VariantConstructor.as_node constructor))
-              ~name
-              (
-                snippet_of_node (Syn.Ast.VariantConstructor.as_node constructor)
-                |> strip_comments
-              )
-          ));
+          ~value:(make_detail
+            ?docstring:(leading_docstring (Syn.Ast.VariantConstructor.as_node constructor))
+            ~name
+            (snippet_of_node (Syn.Ast.VariantConstructor.as_node constructor))));
   vector_to_list details
 
 let record_field_details = fun record ->
@@ -350,15 +357,10 @@ let record_field_details = fun record ->
       if not (String.equal name "") then
         Vector.push
           details
-          ~value:(
-            make_detail
-              ?docstring:(leading_docstring (Syn.Ast.RecordField.as_node field))
-              ~name
-              (
-                snippet_of_node (Syn.Ast.RecordField.as_node field)
-                |> strip_comments
-              )
-          ));
+          ~value:(make_detail
+            ?docstring:(leading_docstring (Syn.Ast.RecordField.as_node field))
+            ~name
+            (snippet_of_node (Syn.Ast.RecordField.as_node field))));
   vector_to_list details
 
 let detail_groups_of_type_member = fun member ->
@@ -386,7 +388,7 @@ let detail_groups_of_type_member = fun member ->
 
 let items_of_type_declaration = fun ?docstring decl ->
   let raw_snippet = snippet_of_node (Syn.Ast.TypeDeclaration.as_node decl) in
-  let snippet = strip_comments raw_snippet in
+  let snippet = clean_signature raw_snippet in
   let fallback_name = ident_text (Syn.Ast.TypeDeclaration.name decl) in
   let items = Vector.with_capacity ~size:2 in
   iter_fold
@@ -410,22 +412,24 @@ let items_of_type_declaration = fun ?docstring decl ->
   vector_to_list items @ macro_items_of_snippet ?docstring raw_snippet
 
 let value_item_of_declaration = fun ?docstring decl ->
-  let snippet = snippet_of_node (Syn.Ast.ValueDeclaration.as_node decl) in
+  let raw_snippet = snippet_of_node (Syn.Ast.ValueDeclaration.as_node decl) in
+  let snippet = clean_signature raw_snippet in
   let name = ident_text (Syn.Ast.ValueDeclaration.name decl) in
   if String.equal name "" then
-    macro_items_of_snippet ?docstring snippet
+    macro_items_of_snippet ?docstring raw_snippet
   else
     make_item ?docstring ~kind:Doctree.Function_item ~name snippet
-    :: macro_items_of_snippet ?docstring snippet
+    :: macro_items_of_snippet ?docstring raw_snippet
 
 let external_item_of_declaration = fun ?docstring decl ->
-  let snippet = snippet_of_node (Syn.Ast.ExternalDeclaration.as_node decl) in
+  let raw_snippet = snippet_of_node (Syn.Ast.ExternalDeclaration.as_node decl) in
+  let snippet = clean_signature raw_snippet in
   let name = ident_text (Syn.Ast.ExternalDeclaration.name decl) in
   if String.equal name "" then
-    macro_items_of_snippet ?docstring snippet
+    macro_items_of_snippet ?docstring raw_snippet
   else
     make_item ?docstring ~kind:Doctree.Function_item ~name snippet
-    :: macro_items_of_snippet ?docstring snippet
+    :: macro_items_of_snippet ?docstring raw_snippet
 
 let module_path_segments = fun decl ->
   let body_ident =

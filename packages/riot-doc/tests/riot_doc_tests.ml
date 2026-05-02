@@ -178,11 +178,16 @@ val format: string -> string
         assert_contains
           ~label:"root module page"
           root_page
-          "<article class=\"item-detail\" id=\"function_format\">"
+          "<article class=\"item-detail\" data-kind=\"fn\" id=\"function_format\">"
       in
+      let* () =
+        assert_contains ~label:"root module page" root_page "<h1 class=\"page-title\">Pretext</h1>"
+      in
+      let* () = assert_contains ~label:"root module page" root_page "data-filterable" in
       let* () =
         assert_contains ~label:"root module page" root_page "val format: string -&gt; string"
       in
+      let* () = assert_not_contains ~label:"root module page" root_page "(** Format" in
       assert_contains ~label:"root module page" root_page "Format a document to text.") with
   | Ok result -> result
   | Error err -> Error (IO.error_message err)
@@ -248,7 +253,7 @@ val from_string: string -> t
         assert_contains
           ~label:"nested module page"
           reader_page
-          "<article class=\"item-detail\" id=\"function_from_string\">"
+          "<article class=\"item-detail\" data-kind=\"fn\" id=\"function_from_string\">"
       in
       let* () =
         assert_contains ~label:"nested module page" reader_page "val from_string: string -&gt; t"
@@ -319,6 +324,12 @@ type binding = {
       in
       let* () = assert_contains ~label:"root module page" root_page "key: string" in
       let* () = assert_contains ~label:"root module page" root_page "Environment variable name" in
+      let* () =
+        assert_contains
+          ~label:"root module page"
+          root_page
+          "<article class=\"item-detail\" data-kind=\"record\" id=\"type_binding\">"
+      in
       assert_not_contains ~label:"root module page" root_page "(** Environment variable name") with
   | Ok result -> result
   | Error err -> Error (IO.error_message err)
