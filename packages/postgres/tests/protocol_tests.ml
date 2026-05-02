@@ -26,14 +26,14 @@ let int32_at = fun text offset ->
     unsigned
 
 let add_int16 = fun buffer value ->
-  Buffer.add_char buffer (Char.chr ((value lsr 8) land 0xff));
-  Buffer.add_char buffer (Char.chr (value land 0xff))
+  Buffer.add_char buffer (Char.from_int_unchecked ((value lsr 8) land 0xff));
+  Buffer.add_char buffer (Char.from_int_unchecked (value land 0xff))
 
 let add_int32 = fun buffer value ->
-  Buffer.add_char buffer (Char.chr ((value lsr 24) land 0xff));
-  Buffer.add_char buffer (Char.chr ((value lsr 16) land 0xff));
-  Buffer.add_char buffer (Char.chr ((value lsr 8) land 0xff));
-  Buffer.add_char buffer (Char.chr (value land 0xff))
+  Buffer.add_char buffer (Char.from_int_unchecked ((value lsr 24) land 0xff));
+  Buffer.add_char buffer (Char.from_int_unchecked ((value lsr 16) land 0xff));
+  Buffer.add_char buffer (Char.from_int_unchecked ((value lsr 8) land 0xff));
+  Buffer.add_char buffer (Char.from_int_unchecked (value land 0xff))
 
 let add_cstring = fun buffer value ->
   Buffer.add_string buffer value;

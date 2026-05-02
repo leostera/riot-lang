@@ -2,28 +2,28 @@ open Std
 open Bson_value
 open Std.Result.Syntax
 
-let type_double = Char.chr 0x01
+let type_double = Char.from_int_unchecked 0x01
 
-let type_string = Char.chr 0x02
+let type_string = Char.from_int_unchecked 0x02
 
-let type_document = Char.chr 0x03
+let type_document = Char.from_int_unchecked 0x03
 
-let type_array = Char.chr 0x04
+let type_array = Char.from_int_unchecked 0x04
 
-let type_bool = Char.chr 0x08
+let type_bool = Char.from_int_unchecked 0x08
 
-let type_null = Char.chr 0x0a
+let type_null = Char.from_int_unchecked 0x0a
 
-let type_int32 = Char.chr 0x10
+let type_int32 = Char.from_int_unchecked 0x10
 
-let type_int64 = Char.chr 0x12
+let type_int64 = Char.from_int_unchecked 0x12
 
 let error = fun message -> Error (`Msg message)
 
 let hex_char = fun __tmp1 ->
   match __tmp1 with
-  | value when value < 10 -> Char.chr (Char.code '0' + value)
-  | value -> Char.chr (Char.code 'A' + value - 10)
+  | value when value < 10 -> Char.from_int_unchecked (Char.code '0' + value)
+  | value -> Char.from_int_unchecked (Char.code 'A' + value - 10)
 
 let hex_byte = fun value ->
   String.init
@@ -69,7 +69,9 @@ let int32_of_length = fun kind value ->
 let add_int32_le = fun buffer value ->
   let open Int32 in
   let add_byte shift =
-    IO.Buffer.add_char buffer (Char.chr (to_int (logand (shift_right_logical value shift) 0xffl)))
+    IO.Buffer.add_char
+      buffer
+      (Char.from_int_unchecked (to_int (logand (shift_right_logical value shift) 0xffl)))
   in
   add_byte 0;
   add_byte 8;
@@ -79,7 +81,9 @@ let add_int32_le = fun buffer value ->
 let add_int64_le = fun buffer value ->
   let open Int64 in
   let add_byte shift =
-    IO.Buffer.add_char buffer (Char.chr (to_int (logand (shift_right_logical value shift) 0xffL)))
+    IO.Buffer.add_char
+      buffer
+      (Char.from_int_unchecked (to_int (logand (shift_right_logical value shift) 0xffL)))
   in
   add_byte 0;
   add_byte 8;

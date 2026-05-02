@@ -67,7 +67,7 @@ let percent_decode = fun s ->
       let hex = String.sub s ~offset:(i + 1) ~len:2 in
       match Int.of_string_opt ("0x" ^ hex) with
       | Some code ->
-          Buffer.add_char buf (Char.chr code);
+          Buffer.add_char buf (Char.from_int_unchecked code);
           decode (i + 3)
       | None ->
           Buffer.add_char buf (String.get_unchecked s ~at:i);
@@ -412,7 +412,7 @@ let quoted_printable_decode = fun s ->
         let hex = String.sub s ~offset:(i + 1) ~len:2 in
         match Int.of_string_opt ("0x" ^ hex) with
         | Some code ->
-            Buffer.add_char buf (Char.chr code);
+            Buffer.add_char buf (Char.from_int_unchecked code);
             decode (i + 3)
         | None ->
             Buffer.add_char buf (String.get_unchecked s ~at:i);
@@ -461,11 +461,11 @@ let base64_decode = fun s ->
           Error "Invalid base64 character"
         else (
           if v1 >= 0 && v2 >= 0 then
-            Buffer.add_char buf (Char.chr ((v1 lsl 2) lor (v2 lsr 4) land 0xff));
+            Buffer.add_char buf (Char.from_int_unchecked ((v1 lsl 2) lor (v2 lsr 4) land 0xff));
           if v2 >= 0 && v3 >= 0 then
-            Buffer.add_char buf (Char.chr ((v2 lsl 4) lor (v3 lsr 2) land 0xff));
+            Buffer.add_char buf (Char.from_int_unchecked ((v2 lsl 4) lor (v3 lsr 2) land 0xff));
           if v3 >= 0 && v4 >= 0 then
-            Buffer.add_char buf (Char.chr ((v3 lsl 6) lor v4 land 0xff));
+            Buffer.add_char buf (Char.from_int_unchecked ((v3 lsl 6) lor v4 land 0xff));
           decode_chunk (i + 4)
         )
       else

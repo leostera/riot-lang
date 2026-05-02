@@ -14,11 +14,6 @@ let from_int = fun value ->
   else
     Some (from_int_unchecked value)
 
-let chr = fun value ->
-  match from_int value with
-  | Some value -> value
-  | None -> System_error.panic ("Char.chr received an out-of-range value: " ^ Int.to_string value)
-
 let to_int = Caml_runtime.int_of_char
 
 let code = to_int

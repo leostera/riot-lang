@@ -101,7 +101,7 @@ let random_bytes_with_rng = fun rng length ->
     else
       match Random.int ~rng 256 with
       | Ok byte ->
-          IO.Bytes.set_unchecked bytes ~at:index ~char:(Char.chr byte);
+          IO.Bytes.set_unchecked bytes ~at:index ~char:(Char.from_int_unchecked byte);
           fill (index + 1)
       | Error error -> Error (RandomByteFailed { index; error })
   in
@@ -153,7 +153,7 @@ let hex_to_bytes = fun hex ->
           hex_value (String.get_unchecked hex ~at:(i * 2 + 1))
         ) with
         | (Option.Some hi, Option.Some lo) ->
-            IO.Bytes.set_unchecked bytes ~at:i ~char:(Char.chr ((hi lsl 4) lor lo))
+            IO.Bytes.set_unchecked bytes ~at:i ~char:(Char.from_int_unchecked ((hi lsl 4) lor lo))
         | _ -> valid := false
     done;
   if !valid then
@@ -183,7 +183,10 @@ let mask_token = fun raw_token_hex ->
           for i = 0 to 31 do
             let pad_byte = Char.code (String.get_unchecked pad ~at:i) in
             let raw_byte = Char.code (String.get_unchecked raw_bytes ~at:i) in
-            IO.Bytes.set_unchecked masked ~at:i ~char:(Char.chr (pad_byte lxor raw_byte))
+            IO.Bytes.set_unchecked
+              masked
+              ~at:i
+              ~char:(Char.from_int_unchecked (pad_byte lxor raw_byte))
           done;
           (* Combine pad + masked (64 bytes total) and base64 encode *)
           let combined = pad ^ IO.Bytes.to_string masked in
@@ -211,7 +214,10 @@ let unmask_token = fun masked_b64 ->
         for i = 0 to 31 do
           let pad_byte = Char.code (String.get_unchecked pad ~at:i) in
           let masked_byte = Char.code (String.get_unchecked masked ~at:i) in
-          IO.Bytes.set_unchecked raw_bytes ~at:i ~char:(Char.chr (pad_byte lxor masked_byte))
+          IO.Bytes.set_unchecked
+            raw_bytes
+            ~at:i
+            ~char:(Char.from_int_unchecked (pad_byte lxor masked_byte))
         done;
       (* Convert back to hex *)
       let unmasked_hex = bytes_to_hex (IO.Bytes.to_string raw_bytes) in

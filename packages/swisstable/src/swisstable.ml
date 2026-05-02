@@ -252,10 +252,13 @@ module RawTable = struct
       ((bucket_mask + 1) / 8) * 7
 
   let set_ctrl = fun table idx tag ->
-    Kernel.Bytes.unsafe_set table.ctrl idx (Kernel.Char.chr tag);
+    Kernel.Bytes.unsafe_set table.ctrl idx (Kernel.Char.from_int_unchecked tag);
     (* Mirror the first Group.width bytes at the end for wrap-around *)
     if idx < Group.width then
-      Kernel.Bytes.unsafe_set table.ctrl ((table.bucket_mask + 1) + idx) (Kernel.Char.chr tag)
+      Kernel.Bytes.unsafe_set
+        table.ctrl
+        ((table.bucket_mask + 1) + idx)
+        (Kernel.Char.from_int_unchecked tag)
 
   (* Create empty table with given capacity *)
 
@@ -263,7 +266,11 @@ module RawTable = struct
     let buckets = capacity_to_buckets capacity in
     let bucket_mask = buckets - 1 in
     let ctrl = Kernel.Bytes.create ~size:(buckets + Group.width) in
-    Kernel.Bytes.fill ctrl ~offset:0 ~len:(buckets + Group.width) ~char:(Kernel.Char.chr Tag.empty);
+    Kernel.Bytes.fill
+      ctrl
+      ~offset:0
+      ~len:(buckets + Group.width)
+      ~char:(Kernel.Char.from_int_unchecked Tag.empty);
     {
       buckets = Array.make ~count:buckets ~value:None;
       ctrl;
@@ -324,7 +331,7 @@ module RawTable = struct
       ctrl
       ~offset:0
       ~len:(new_buckets + Group.width)
-      ~char:(Kernel.Char.chr Tag.empty);
+      ~char:(Kernel.Char.from_int_unchecked Tag.empty);
     (* Replace table contents *)
     table.buckets <- Array.make ~count:new_buckets ~value:None;
     table.ctrl <- ctrl;
@@ -409,7 +416,7 @@ module RawTable = struct
       table.ctrl
       ~offset:0
       ~len:(Kernel.Bytes.length table.ctrl)
-      ~char:(Kernel.Char.chr Tag.empty);
+      ~char:(Kernel.Char.from_int_unchecked Tag.empty);
     table.len <- 0
 
   (* Iterate over all key-value pairs *)

@@ -18,7 +18,7 @@ let major_other = 7
 
 let error = fun message -> Error (`Msg message)
 
-let add_byte = fun buffer value -> IO.Buffer.add_char buffer (Char.chr value)
+let add_byte = fun buffer value -> IO.Buffer.add_char buffer (Char.from_int_unchecked value)
 
 let add_uint16_be = fun buffer value ->
   add_byte buffer ((value lsr 8) land 0xff);

@@ -110,9 +110,9 @@ let is_macho_symbol_char = fun char ->
 
 let hex_digit = fun value ->
   if value < 10 then
-    Char.chr (Char.code '0' + value)
+    Char.from_int_unchecked (Char.code '0' + value)
   else
-    Char.chr (Char.code 'a' + (value - 10))
+    Char.from_int_unchecked (Char.code 'a' + (value - 10))
 
 let hex_escape = fun code ->
   String.init ~len:2

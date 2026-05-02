@@ -193,7 +193,7 @@ and variant_backend: 'value. state -> 'value Serde.Ser.variant_cases -> 'value -
       | Serde.Ser.Unit (_tag, matches) ->
           if matches value then
             if compact_tag then
-              write_char state (Char.chr index)
+              write_char state (Char.from_int_unchecked index)
             else
               write_uint32_le state (encode_u32 "variant" index)
           else
@@ -202,7 +202,7 @@ and variant_backend: 'value. state -> 'value Serde.Ser.variant_cases -> 'value -
           match unwrap value with
           | Some payload ->
               if compact_tag then
-                write_char state (Char.chr index)
+                write_char state (Char.from_int_unchecked index)
               else
                 write_uint32_le state (encode_u32 "variant" index);
               encode.run backend state payload

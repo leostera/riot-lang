@@ -59,7 +59,7 @@ module Binary = struct
     payload: string;
   }
 
-  let byte = fun value -> String.make ~len:1 ~char:(Char.chr value)
+  let byte = fun value -> String.make ~len:1 ~char:(Char.from_int_unchecked value)
 
   let bytes = fun values ->
     String.concat "" (List.map values ~fn:byte)

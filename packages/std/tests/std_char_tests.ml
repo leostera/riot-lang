@@ -31,12 +31,6 @@ let test_from_int_unchecked = fun _ctx ->
   else
     Error "expected unchecked 97 = 'a'"
 
-let test_chr_alias = fun _ctx ->
-  if Char.equal (Char.chr 97) 'a' then
-    Ok ()
-  else
-    Error "expected Char.chr 97 = 'a'"
-
 let test_to_int = fun _ctx ->
   if Int.equal (Char.to_int 'A') 65 then
     Ok ()
@@ -81,7 +75,6 @@ let tests =
     case "Char.from_int -1" test_from_int_negative;
     case "Char.from_int 256" test_from_int_too_large;
     case "Char.from_int_unchecked 97" test_from_int_unchecked;
-    case "Char.chr 97" test_chr_alias;
     case "Char.to_int 'A'" test_to_int;
     case "Char.code newline" test_code;
     case "Char.lowercase_ascii uppercases only letters" test_lowercase_ascii;

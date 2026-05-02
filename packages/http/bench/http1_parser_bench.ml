@@ -403,7 +403,7 @@ let build_cookie_header = fun ~count ~value_len ->
       "cookie_"
       ^ Int.to_string index
       ^ "="
-      ^ String.make ~len:value_len ~char:(Char.chr (97 + (index mod 26))))
+      ^ String.make ~len:value_len ~char:(Char.from_int_unchecked (97 + (index mod 26))))
   |> String.concat "; "
 
 let small_request =

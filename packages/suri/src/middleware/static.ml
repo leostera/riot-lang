@@ -278,9 +278,9 @@ module Cache = struct
         let digit = n land 0xf in
         let char =
           if digit < 10 then
-            Char.chr (Char.code '0' + digit)
+            Char.from_int_unchecked (Char.code '0' + digit)
           else
-            Char.chr (Char.code 'a' + (digit - 10))
+            Char.from_int_unchecked (Char.code 'a' + (digit - 10))
         in
         loop (String.make ~len:1 ~char ^ acc) (n lsr 4)
     in

@@ -166,7 +166,7 @@ let csi_to_event = fun p ->
 (* Main parsing function *)
 
 let parse_byte = fun p byte ->
-  let c = Char.chr byte in
+  let c = Char.from_int_unchecked byte in
   match (p.state, c) with
   | (Ground, '\027') ->
       p.state <- Escape;
@@ -272,6 +272,6 @@ let parse_char = fun c ->
   | '\t' -> Event.Tab
   | c when Char.code c >= 1 && Char.code c <= 26 ->
       (* Ctrl+A through Ctrl+Z *)
-      let letter = Char.chr (Char.code c + 96) in
+      let letter = Char.from_int_unchecked (Char.code c + 96) in
       Event.Key (String.make ~len:1 ~char:letter)
   | c -> Event.Key (String.make ~len:1 ~char:c)

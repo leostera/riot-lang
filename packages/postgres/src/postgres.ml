@@ -258,16 +258,16 @@ module Driver = struct
     for index = 0 to len - 1 do
       let l = Char.code (String.get_unchecked left ~at:index) in
       let r = Char.code (String.get_unchecked right ~at:index) in
-      Bytes.set_unchecked bytes ~at:index ~char:(Char.chr (l lxor r))
+      Bytes.set_unchecked bytes ~at:index ~char:(Char.from_int_unchecked (l lxor r))
     done;
     Bytes.to_string bytes
 
   let int32_be = fun value ->
     let bytes = Bytes.create ~size:4 in
-    Bytes.set_unchecked bytes ~at:0 ~char:(Char.chr ((value lsr 24) land 0xff));
-    Bytes.set_unchecked bytes ~at:1 ~char:(Char.chr ((value lsr 16) land 0xff));
-    Bytes.set_unchecked bytes ~at:2 ~char:(Char.chr ((value lsr 8) land 0xff));
-    Bytes.set_unchecked bytes ~at:3 ~char:(Char.chr (value land 0xff));
+    Bytes.set_unchecked bytes ~at:0 ~char:(Char.from_int_unchecked ((value lsr 24) land 0xff));
+    Bytes.set_unchecked bytes ~at:1 ~char:(Char.from_int_unchecked ((value lsr 16) land 0xff));
+    Bytes.set_unchecked bytes ~at:2 ~char:(Char.from_int_unchecked ((value lsr 8) land 0xff));
+    Bytes.set_unchecked bytes ~at:3 ~char:(Char.from_int_unchecked (value land 0xff));
     Bytes.to_string bytes
 
   let pbkdf2_sha256 = fun ~password ~salt ~iterations ->
@@ -281,7 +281,7 @@ module Driver = struct
         for index = 0 to String.length next - 1 do
           let current = Char.code (Bytes.get_unchecked output ~at:index) in
           let update = Char.code (String.get_unchecked next ~at:index) in
-          Bytes.set_unchecked output ~at:index ~char:(Char.chr (current lxor update))
+          Bytes.set_unchecked output ~at:index ~char:(Char.from_int_unchecked (current lxor update))
         done;
       loop (remaining - 1) next
     in
@@ -517,7 +517,7 @@ module Driver = struct
                       read_until_ready ()
                   | _ ->
                       Error (UnexpectedMessage ("During handshake: "
-                      ^ String.make ~len:1 ~char:(Char.chr msg_type)))
+                      ^ String.make ~len:1 ~char:(Char.from_int_unchecked msg_type)))
                 )
             )
         in
@@ -955,7 +955,7 @@ module Driver = struct
                               read_query_results ()
                           | _ ->
                               Error (UnexpectedMessage ("During query: "
-                              ^ String.make ~len:1 ~char:(Char.chr msg_type)))
+                              ^ String.make ~len:1 ~char:(Char.from_int_unchecked msg_type)))
                         )
                     )
                 in

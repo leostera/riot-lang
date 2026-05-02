@@ -141,9 +141,9 @@ let chunk_size_gen = Generator.int_range 0 100
 let int_to_hex = fun n ->
   let digit value =
     if value < 10 then
-      Char.chr (Char.code '0' + value)
+      Char.from_int_unchecked (Char.code '0' + value)
     else
-      Char.chr (Char.code 'a' + value - 10)
+      Char.from_int_unchecked (Char.code 'a' + value - 10)
   in
   let rec loop acc value =
     if value < 16 then

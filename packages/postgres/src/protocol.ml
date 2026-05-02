@@ -874,14 +874,14 @@ type backend_message =
 
 module Writer = struct
   let write_int32 = fun buf n ->
-    Buffer.add_char buf (Char.chr ((n lsr 24) land 0xff));
-    Buffer.add_char buf (Char.chr ((n lsr 16) land 0xff));
-    Buffer.add_char buf (Char.chr ((n lsr 8) land 0xff));
-    Buffer.add_char buf (Char.chr (n land 0xff))
+    Buffer.add_char buf (Char.from_int_unchecked ((n lsr 24) land 0xff));
+    Buffer.add_char buf (Char.from_int_unchecked ((n lsr 16) land 0xff));
+    Buffer.add_char buf (Char.from_int_unchecked ((n lsr 8) land 0xff));
+    Buffer.add_char buf (Char.from_int_unchecked (n land 0xff))
 
   let write_int16 = fun buf n ->
-    Buffer.add_char buf (Char.chr ((n lsr 8) land 0xff));
-    Buffer.add_char buf (Char.chr (n land 0xff))
+    Buffer.add_char buf (Char.from_int_unchecked ((n lsr 8) land 0xff));
+    Buffer.add_char buf (Char.from_int_unchecked (n land 0xff))
 
   let write_string = fun buf s ->
     Buffer.add_string buf s;
@@ -1022,7 +1022,7 @@ module Reader = struct
 
   let parse_error_to_string = fun error ->
     "backend message "
-    ^ String.make ~len:1 ~char:(Char.chr error.message_type)
+    ^ String.make ~len:1 ~char:(Char.from_int_unchecked error.message_type)
     ^ " length "
     ^ Int.to_string error.length
     ^ " at offset "
@@ -1124,7 +1124,7 @@ module Reader = struct
         ^ " body bytes, got "
         ^ Int.to_string (Bytes.length bytes))
     else
-      let msg_char = Char.chr msg_type in
+      let msg_char = Char.from_int_unchecked msg_type in
       match msg_char with
       | 'R' -> (
           let* auth_type = read_int32 msg_type length reader "auth_type in Authentication message" in
@@ -1157,7 +1157,7 @@ module Reader = struct
           finish msg_type length reader (ParameterStatus { name; value })
       | 'Z' ->
           let* status = read_byte msg_type length reader "status in ReadyForQuery" in
-          finish msg_type length reader (ReadyForQuery (Char.chr status))
+          finish msg_type length reader (ReadyForQuery (Char.from_int_unchecked status))
       | 'T' ->
           let* field_count = read_int16 msg_type length reader "field_count in RowDescription" in
           let rec read_fields n acc =
@@ -1246,7 +1246,7 @@ module Reader = struct
               | None -> fail msg_type length reader "expected error field code"
               | Some 0 -> Ok err
               | Some field_code -> (
-                  let field_char = Char.chr field_code in
+                  let field_char = Char.from_int_unchecked field_code in
                   match Binary_reader.read_string reader with
                   | None -> fail msg_type length reader "expected error field value"
                   | Some value ->
@@ -1327,9 +1327,9 @@ module Reader = struct
             let l = msg_type land 0xf in
             let to_hex_char n =
               if n < 10 then
-                Char.chr (48 + n)
+                Char.from_int_unchecked (48 + n)
               else
-                Char.chr (87 + n)
+                Char.from_int_unchecked (87 + n)
             in
             String.make ~len:1 ~char:(to_hex_char h) ^ String.make ~len:1 ~char:(to_hex_char l)
           in
