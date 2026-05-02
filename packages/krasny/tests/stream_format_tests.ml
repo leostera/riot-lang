@@ -1100,6 +1100,17 @@ type t
 type t
 |ocaml}
 
+let test_stream_formatter_keeps_comments_between_docstrings_and_signature_items_tight = fun _ctx ->
+  assert_format_mli
+    ~expected:{ocaml|(** docstring *)
+(* comment *)
+val chr: int -> t
+|ocaml}
+    {ocaml|(** docstring *)
+(* comment *)
+val chr:int->t
+|ocaml}
+
 let test_stream_formatter_keeps_section_headings_tight_to_following_signature_docs = fun _ctx ->
   assert_format_mli
     ~expected:{ocaml|type t = { value: int }
@@ -1425,6 +1436,9 @@ let tests =
     case
       "stream formatter keeps adjacent leading docstrings visually separated"
       test_stream_formatter_keeps_adjacent_leading_docstrings_visually_separated;
+    case
+      "stream formatter keeps comments between docstrings and signature items tight"
+      test_stream_formatter_keeps_comments_between_docstrings_and_signature_items_tight;
     case
       "stream formatter keeps section headings tight to following signature docs"
       test_stream_formatter_keeps_section_headings_tight_to_following_signature_docs;

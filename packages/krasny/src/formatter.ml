@@ -781,6 +781,23 @@ let emit_top_level_leading = fun
     )
   | None -> ()
 
+let emit_signature_item_leading = fun
+  ?(drop_initial_docstring = false) ?(compact_final_section_docstring = false) state node ->
+  match Ast.Node.first_descendant_token node with
+  | Some token -> (
+      match state.suppress_leading_token with
+      | Some id when Int.equal id token.Ast.id -> ()
+      | Some _
+      | None ->
+          if Ast.Token.has_leading_comment token then
+            emit_top_level_leading_comments_as_lines
+              ~drop_initial_docstring
+              ~compact_final_section_docstring
+              state
+              token
+    )
+  | None -> ()
+
 let emit_node_leading_comments_as_lines = fun state node ->
   match Ast.Node.first_descendant_token node with
   | Some token when Ast.Token.has_leading_comment token ->
@@ -10307,7 +10324,7 @@ and signature_item_should_compact_leading_section = fun previous item ->
 
 and render_signature_item = fun
   ?(drop_initial_docstring = false) ?(compact_final_section_docstring = false) state item ->
-  emit_top_level_leading
+  emit_signature_item_leading
     ~drop_initial_docstring
     ~compact_final_section_docstring
     state
