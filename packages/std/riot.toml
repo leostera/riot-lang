@@ -1,6 +1,6 @@
 [package]
 name = "std"
-version = "0.0.29"
+version = "0.0.30"
 description = "Standard library for Riot"
 license = "Apache-2.0"
 public = true

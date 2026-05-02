@@ -1,6 +1,6 @@
 [package]
 name = "swisstable"
-version = "0.0.29"
+version = "0.0.30"
 description = "SwissTable-inspired hash maps for OCaml"
 license = "Apache-2.0"
 public = true

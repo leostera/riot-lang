@@ -1,6 +1,6 @@
 [package]
 name = "sqlx"
-version = "0.0.29"
+version = "0.0.30"
 description = "High-level SQL API"
 license = "Apache-2.0"
 public = true

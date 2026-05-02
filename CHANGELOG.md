@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.0.30 - 2026-05-02
+
+### riot
+- `riot doc` now renders root modules as real detail pages, excludes executable entrypoints from documentation packages, and improves module-page structure so top-level items have working links, signatures, summaries, and detail sections.
+- `riot doc` now extracts record field docstrings without duplicating raw comment syntax in rendered signatures, and fenced Markdown code blocks preserve their relative indentation after only the shared doc-comment padding is stripped. This keeps rendered examples readable, including nested `match` branches and indented error handling.
+- The installer now tags Riot binary downloads with `X-Riot-Agent: riot-install@1`, so CDN download metrics can distinguish install-script traffic from CLI or other pipeline downloads. The 0.0.30 binary release re-uploads `install.sh` with this behavior.
+
+### blink
+- Removed Blink's built-in managed circuit breaker from the HTTP client surface. Applications should own circuit-breaker policy at their API boundary, where they have the context to choose failure thresholds and reset behavior.
+
+### krasny
+- Signature comments now stay attached to the value or type item that follows them. Formatting no longer inserts an unwanted blank line between a docstring/comment block and the signature item it documents.
+
+### postgres
+- PostgreSQL protocol parsing is more defensive and better documented, with broader coverage for invalid or partial wire messages. Driver behavior is clearer around malformed server input while preserving typed error reporting.
+
+### sqlx
+- SQLx is marked public again in the release manifest, so it is included in the published package set and remains available through the registry.
+
+### std
+- `Std.Log.start_link` now reads `RIOT_LOG` and configures the default log level automatically, removing the need for every application to reimplement the same environment parsing boilerplate.
+- `Std.Test` suites now support optional `setup` and `teardown` hooks. Setup failures fail the suite before tests run, while teardown failures are reported after the suite completes.
+- The Riot standard library no longer exposes the old `Char.chr` spelling. Use the explicit `from_int` / unchecked conversion APIs instead.
+
 ## 0.0.29 - 2026-05-01
 
 ### riot
