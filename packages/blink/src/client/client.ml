@@ -4,7 +4,6 @@ module Request = Super.Request
 module Response = Super.Response
 module Budget = Super.Budget
 module RetryPolicy = Super.Retry_policy
-module CircuitBreaker = Super.Circuit_breaker
 module Telemetry = Super.Telemetry
 module Config = Super.Config
 
@@ -34,7 +33,6 @@ type message = Connection.message
 type t = {
   config: Config.t;
   budget: Budget.t;
-  breaker: CircuitBreaker.t;
   mutable idle: pooled_connection list;
 }
 
@@ -196,19 +194,12 @@ let transport = fun client request ->
 
 let make = fun ?(config = Config.make ()) () ->
   let started = config.now () in
-  {
-    config;
-    budget = Budget.create_with_policy config.budget_policy started;
-    breaker = CircuitBreaker.create ~policy:config.circuit_breaker_policy ();
-    idle = [];
-  }
+  { config; budget = Budget.create_with_policy config.budget_policy started; idle = [] }
 
 let budget_remaining = fun client -> Budget.remaining client.budget
 
-let circuit_state = fun client -> CircuitBreaker.state client.breaker
-
 let make_telemetry = fun
-  client request ~started_at ~attempts ?final_status ?final_error_class ~budget ~breaker () ->
+  client request ~started_at ~attempts ?final_status ?final_error_class ~budget () ->
   let completed_at = client.config.now () in
   Telemetry.make
     ~request
@@ -220,7 +211,6 @@ let make_telemetry = fun
     ~connection_policy:(Config.connection_policy_to_string client.config.connection_policy)
     ~close_behavior:(Config.close_behavior client.config.connection_policy)
     ~budget_remaining:(Budget.remaining budget)
-    ~circuit_state:(CircuitBreaker.state breaker)
     ()
 
 let fail = fun client class_ message telemetry ->
@@ -234,7 +224,6 @@ let succeed = fun client response telemetry ->
 let execute = fun client (request: Request.t) ->
   let started_at = client.config.now () in
   let budget = client.budget in
-  let breaker = client.breaker in
   if not (Budget.allow ~now:started_at budget) then
     let telemetry =
       let attempt =
@@ -254,33 +243,9 @@ let execute = fun client (request: Request.t) ->
         ~attempts:[ attempt ]
         ~final_error_class:Response.RateLimitedByBudget
         ~budget
-        ~breaker
         ()
     in
     fail client Response.RateLimitedByBudget "request budget exhausted" telemetry
-  else if not (CircuitBreaker.allow_request ~now:started_at breaker) then
-    let telemetry =
-      let attempt =
-        Telemetry.attempt
-          ~attempt:0
-          ~started_at
-          ~completed_at:started_at
-          ~lifecycle:Telemetry.Blocked
-          ~error_class:Response.CircuitOpen
-          ~error_message:"circuit breaker open"
-          ()
-      in
-      make_telemetry
-        client
-        request
-        ~started_at
-        ~attempts:[ attempt ]
-        ~final_error_class:Response.CircuitOpen
-        ~budget
-        ~breaker
-        ()
-    in
-    fail client Response.CircuitOpen "circuit breaker open" telemetry
   else
     let rec loop attempt attempts =
       let attempt_started_at = client.config.now () in
@@ -288,7 +253,6 @@ let execute = fun client (request: Request.t) ->
       | Ok response ->
           let completed_at = client.config.now () in
           if Response.is_success response then (
-            CircuitBreaker.record_success breaker;
             let attempt_record =
               Telemetry.attempt
                 ~attempt
@@ -306,7 +270,6 @@ let execute = fun client (request: Request.t) ->
                 ~attempts:(attempt_record :: attempts)
                 ~final_status:response.status
                 ~budget
-                ~breaker
                 ()
             in
             succeed client response telemetry
@@ -326,38 +289,37 @@ let execute = fun client (request: Request.t) ->
             in
             client.config.sleep backoff;
             loop (attempt + 1) (attempt_record :: attempts)
-          else (
-            CircuitBreaker.record_failure ~now:completed_at breaker;
-            let class_ =
-              match Response.status_class response.status with
-              | Response.RateLimited -> Response.RateLimitedByBudget
-              | _ -> Response.ServerRejected
-            in
-            let attempt_record =
-              Telemetry.attempt
-                ~attempt
-                ~started_at:attempt_started_at
-                ~completed_at
-                ~lifecycle:Telemetry.Failed
-                ~status:response.status
-                ~error_class:class_
-                ~error_message:("HTTP status " ^ Int.to_string response.status)
-                ()
-            in
-            let telemetry =
-              make_telemetry
-                client
-                request
-                ~started_at
-                ~attempts:(attempt_record :: attempts)
-                ~final_status:response.status
-                ~final_error_class:class_
-                ~budget
-                ~breaker
-                ()
-            in
-            fail client class_ ("HTTP status " ^ Int.to_string response.status) telemetry
-          )
+          else
+            (
+              let class_ =
+                match Response.status_class response.status with
+                | Response.RateLimited -> Response.RateLimitedByBudget
+                | _ -> Response.ServerRejected
+              in
+              let attempt_record =
+                Telemetry.attempt
+                  ~attempt
+                  ~started_at:attempt_started_at
+                  ~completed_at
+                  ~lifecycle:Telemetry.Failed
+                  ~status:response.status
+                  ~error_class:class_
+                  ~error_message:("HTTP status " ^ Int.to_string response.status)
+                  ()
+              in
+              let telemetry =
+                make_telemetry
+                  client
+                  request
+                  ~started_at
+                  ~attempts:(attempt_record :: attempts)
+                  ~final_status:response.status
+                  ~final_error_class:class_
+                  ~budget
+                  ()
+              in
+              fail client class_ ("HTTP status " ^ Int.to_string response.status) telemetry
+            )
       | Error message ->
           let completed_at = client.config.now () in
           let class_ = Response.error_class_of_transport_error message in
@@ -376,31 +338,30 @@ let execute = fun client (request: Request.t) ->
             in
             client.config.sleep backoff;
             loop (attempt + 1) (attempt_record :: attempts)
-          else (
-            CircuitBreaker.record_failure ~now:completed_at breaker;
-            let attempt_record =
-              Telemetry.attempt
-                ~attempt
-                ~started_at:attempt_started_at
-                ~completed_at
-                ~lifecycle:Telemetry.Failed
-                ~error_class:class_
-                ~error_message:message
-                ()
-            in
-            let telemetry =
-              make_telemetry
-                client
-                request
-                ~started_at
-                ~attempts:(attempt_record :: attempts)
-                ~final_error_class:class_
-                ~budget
-                ~breaker
-                ()
-            in
-            fail client class_ message telemetry
-          )
+          else
+            (
+              let attempt_record =
+                Telemetry.attempt
+                  ~attempt
+                  ~started_at:attempt_started_at
+                  ~completed_at
+                  ~lifecycle:Telemetry.Failed
+                  ~error_class:class_
+                  ~error_message:message
+                  ()
+              in
+              let telemetry =
+                make_telemetry
+                  client
+                  request
+                  ~started_at
+                  ~attempts:(attempt_record :: attempts)
+                  ~final_error_class:class_
+                  ~budget
+                  ()
+              in
+              fail client class_ message telemetry
+            )
     in
     loop 1 []
 
@@ -423,29 +384,21 @@ let error_class_of_blink_error = fun ~default value ->
 let with_blink_policy = fun client ~failure_class ~retry operation ->
   let started_at = client.config.now () in
   let budget = client.budget in
-  let breaker = client.breaker in
   if not (Budget.allow ~now:started_at budget) then
     Error (Error.ProtocolError "blink client request budget exhausted")
-  else if not (CircuitBreaker.allow_request ~now:started_at breaker) then
-    Error (Error.ProtocolError "blink client circuit breaker open")
   else
     let rec loop attempt =
       match operation () with
-      | Ok value ->
-          CircuitBreaker.record_success breaker;
-          Ok value
+      | Ok value -> Ok value
       | Error error ->
-          let completed_at = client.config.now () in
           let class_ = error_class_of_blink_error ~default:failure_class error in
           if
             retry && RetryPolicy.should_retry_error client.config.retry_policy ~attempt class_
           then (
             client.config.sleep (RetryPolicy.delay_for_attempt client.config.retry_policy ~attempt);
             loop (attempt + 1)
-          ) else (
-            CircuitBreaker.record_failure ~now:completed_at breaker;
+          ) else
             Error error
-          )
     in
     loop 1
 

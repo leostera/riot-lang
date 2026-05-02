@@ -98,34 +98,6 @@ let test_rate_budget_blocks = fun _ctx ->
           Test.assert_equal ~expected:H.Response.RateLimitedByBudget ~actual:error.class_;
           Ok ())
 
-let test_circuit_breaker_blocks_after_failures = fun _ctx ->
-  let client =
-    let config =
-      H.Config.make
-        ~retry_policy:(H.RetryPolicy.make ~max_attempts:1 ())
-        ~transport:(fun _request -> Error "response failed: closed")
-        ()
-    in
-    H.make ~config ()
-  in
-  let req = request () in
-  let rec fail_n remaining =
-    if remaining <= 0 then
-      Ok ()
-    else
-      match H.execute client req with
-      | Ok _ -> Error "expected transport failure"
-      | Error _ -> fail_n (remaining - 1)
-  in
-  fail_n 3
-  |> Result.and_then
-    ~fn:(fun () ->
-      match H.execute client req with
-      | Ok _ -> Error "expected open circuit"
-      | Error error ->
-          Test.assert_equal ~expected:H.Response.CircuitOpen ~actual:error.class_;
-          Ok ())
-
 let test_connection_policy_telemetry = fun _ctx ->
   let observed = ref None in
   let config =
@@ -248,7 +220,6 @@ let tests =
     case "status classification" test_status_classification;
     case "retries retryable statuses" test_retries_retryable_statuses;
     case "rate budget blocks" test_rate_budget_blocks;
-    case "circuit breaker blocks after failures" test_circuit_breaker_blocks_after_failures;
     case "connection policy telemetry" test_connection_policy_telemetry;
     case "failure telemetry callback" test_failure_telemetry_callback;
     case "budget remaining tracks execute" test_budget_remaining_tracks_execute;

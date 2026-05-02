@@ -29,7 +29,6 @@ type t = {
   connection_policy: string;
   close_behavior: string;
   budget_remaining: int option;
-  circuit_state: Circuit_breaker.state;
 }
 
 val lifecycle_to_string: lifecycle -> string
@@ -56,6 +55,5 @@ val make:
   connection_policy:string ->
   close_behavior:string ->
   ?budget_remaining:int ->
-  circuit_state:Circuit_breaker.state ->
   unit ->
   t

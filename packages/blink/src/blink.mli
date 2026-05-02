@@ -18,7 +18,7 @@ module Error: module type of Error
 (** Server-Sent Events support exposed by Blink. *)
 module SSE: module type of Sse
 
-(** Configurable HTTP client with retry, budget, circuit-breaker, and pooling policies. *)
+(** Configurable HTTP client with retry, budget, telemetry, and pooling policies. *)
 module Client: module type of Client
 
 (** Retry policy helpers used by [Blink.Client]. *)

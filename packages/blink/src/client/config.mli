@@ -18,7 +18,6 @@ type t = {
   transport: transport option;
   connection_policy: connection_policy;
   budget_policy: Budget.policy;
-  circuit_breaker_policy: Circuit_breaker.policy;
   telemetry: Telemetry.t -> unit;
 }
 
@@ -37,7 +36,6 @@ val make:
   ?transport:transport ->
   ?connection_policy:connection_policy ->
   ?budget_policy:Budget.policy ->
-  ?circuit_breaker_policy:Circuit_breaker.policy ->
   ?telemetry:(Telemetry.t -> unit) ->
   unit ->
   t

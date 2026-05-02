@@ -40,7 +40,6 @@ let should_retry_error = fun policy ~attempt error_class ->
     | Response.UnknownError -> true
     | Response.InvalidRequest
     | Response.DeadlineExceeded
-    | Response.CircuitOpen
     | Response.RateLimitedByBudget
     | Response.ServerRejected -> false
 

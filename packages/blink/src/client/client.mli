@@ -10,9 +10,6 @@ module Budget: module type of Budget
 (** Retry policies for managed requests. *)
 module RetryPolicy: module type of Retry_policy
 
-(** Client circuit breaker state. *)
-module CircuitBreaker: module type of Circuit_breaker
-
 (** Request telemetry emitted after each terminal result. *)
 module Telemetry: module type of Telemetry
 
@@ -62,8 +59,6 @@ val close: t -> connection -> unit
 val error_to_string: error -> string
 
 val budget_remaining: t -> int
-
-val circuit_state: t -> CircuitBreaker.state
 
 module SSE: sig
   type event = Sse.event = {

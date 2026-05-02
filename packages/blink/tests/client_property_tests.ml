@@ -78,28 +78,6 @@ let property_budget_allows_capacity_per_window = fun _ctx ->
   done;
   Ok ()
 
-let property_circuit_breaker_transitions_are_threshold_based = fun _ctx ->
-  let now = Time.Instant.now () in
-  let reset_after = Time.Duration.from_millis 50 in
-  for failure_threshold = 1 to 5 do
-    let policy = H.CircuitBreaker.policy ~failure_threshold ~reset_after () in
-    let breaker = H.CircuitBreaker.create ~policy () in
-    for _failure = 1 to failure_threshold - 1 do
-      H.CircuitBreaker.record_failure ~now breaker;
-      Test.assert_equal ~expected:H.CircuitBreaker.Closed ~actual:(H.CircuitBreaker.state breaker);
-      Test.assert_true (H.CircuitBreaker.allow_request ~now breaker)
-    done;
-    H.CircuitBreaker.record_failure ~now breaker;
-    Test.assert_equal ~expected:H.CircuitBreaker.Open ~actual:(H.CircuitBreaker.state breaker);
-    Test.assert_false (H.CircuitBreaker.allow_request ~now breaker);
-    let reset_at = Time.Instant.add now reset_after in
-    Test.assert_true (H.CircuitBreaker.allow_request ~now:reset_at breaker);
-    Test.assert_equal ~expected:H.CircuitBreaker.HalfOpen ~actual:(H.CircuitBreaker.state breaker);
-    H.CircuitBreaker.record_success breaker;
-    Test.assert_equal ~expected:H.CircuitBreaker.Closed ~actual:(H.CircuitBreaker.state breaker)
-  done;
-  Ok ()
-
 let property_request_descriptions_include_method_and_url = fun _ctx ->
   let url = "https://example.test/resource" in
   let methods = [
@@ -125,9 +103,6 @@ let tests =
       property_retryable_statuses_match_status_class;
     case "property: retry delay is monotonic until max" property_retry_delay_is_monotonic_until_max;
     case "property: budget allows capacity per window" property_budget_allows_capacity_per_window;
-    case
-      "property: circuit breaker transitions are threshold based"
-      property_circuit_breaker_transitions_are_threshold_based;
     case
       "property: request descriptions include method and url"
       property_request_descriptions_include_method_and_url;

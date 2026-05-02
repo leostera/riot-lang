@@ -2,7 +2,6 @@ open Std
 
 module Request = Request
 module Response = Response
-module CircuitBreaker = Circuit_breaker
 
 type lifecycle =
   | Started
@@ -35,7 +34,6 @@ type t = {
   connection_policy: string;
   close_behavior: string;
   budget_remaining: int option;
-  circuit_state: CircuitBreaker.state;
 }
 
 let lifecycle_to_string = fun value ->
@@ -79,7 +77,6 @@ let make = fun
   ~connection_policy
   ~close_behavior
   ?budget_remaining
-  ~circuit_state
   () ->
   {
     request;
@@ -92,5 +89,4 @@ let make = fun
     connection_policy;
     close_behavior;
     budget_remaining;
-    circuit_state;
   }

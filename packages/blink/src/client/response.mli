@@ -14,7 +14,6 @@ type error_class =
   | RequestFailed
   | ResponseFailed
   | DeadlineExceeded
-  | CircuitOpen
   | RateLimitedByBudget
   | ServerRejected
   | UnknownError

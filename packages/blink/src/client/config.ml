@@ -4,7 +4,6 @@ module Request = Super.Request
 module Response = Super.Response
 module RetryPolicy = Super.Retry_policy
 module Budget = Super.Budget
-module CircuitBreaker = Super.Circuit_breaker
 module Telemetry = Super.Telemetry
 
 type transport = Request.t -> (Response.t, string) result
@@ -26,7 +25,6 @@ type t = {
   transport: transport option;
   connection_policy: connection_policy;
   budget_policy: Budget.policy;
-  circuit_breaker_policy: CircuitBreaker.policy;
   telemetry: Telemetry.t -> unit;
 }
 
@@ -56,7 +54,6 @@ let make = fun
   ?transport
   ?(connection_policy = CloseAfterRequest)
   ?(budget_policy = default_budget_policy)
-  ?(circuit_breaker_policy = CircuitBreaker.default_policy)
   ?(telemetry = fun _ -> ())
   () ->
   {
@@ -66,6 +63,5 @@ let make = fun
     transport;
     connection_policy;
     budget_policy;
-    circuit_breaker_policy;
     telemetry;
   }

@@ -15,7 +15,6 @@ type error_class =
   | RequestFailed
   | ResponseFailed
   | DeadlineExceeded
-  | CircuitOpen
   | RateLimitedByBudget
   | ServerRejected
   | UnknownError
@@ -61,7 +60,6 @@ let error_class_to_string = fun value ->
   | RequestFailed -> "request_failed"
   | ResponseFailed -> "response_failed"
   | DeadlineExceeded -> "deadline_exceeded"
-  | CircuitOpen -> "circuit_open"
   | RateLimitedByBudget -> "rate_limited_by_budget"
   | ServerRejected -> "server_rejected"
   | UnknownError -> "unknown_error"
