@@ -251,6 +251,29 @@ let clean_member_signature = fun text ->
   |> strip_suffix ";"
   |> String.trim
 
+let rec type_expr_is_function = fun type_expr ->
+  match Syn.Ast.TypeExpr.view type_expr with
+  | Syn.Ast.TypeExpr.Arrow _ -> true
+  | Syn.Ast.TypeExpr.Forall { body; _ } -> type_expr_is_function body
+  | _ -> false
+
+let value_item_kind = fun annotation ->
+  if type_expr_is_function annotation then
+    Doctree.Function_item
+  else
+    Doctree.Value_item
+
+let signature_of_value_annotation = fun name annotation ->
+  let annotation =
+    Syn.Ast.TypeExpr.as_node annotation
+    |> snippet_of_node
+    |> clean_member_signature
+  in
+  if String.equal annotation "" then
+    name
+  else
+    name ^ " : " ^ annotation
+
 let module_docstring = fun outer_doc inner_doc ->
   match (outer_doc, inner_doc) with
   | (Some outer, Some inner) when not (String.equal outer "") && not (String.equal inner "") ->
@@ -352,12 +375,12 @@ let macro_items_of_snippet = fun ?docstring snippet ->
         detail_groups = [];
       })
 
-let make_item = fun ?docstring ?(detail_groups = []) ~kind ~name snippet ->
+let make_item = fun ?docstring ?(detail_groups = []) ?signature ~kind ~name snippet ->
   {
     Doctree.kind;
     name;
     anchor = slugify (Doctree.item_kind_label kind ^ "_" ^ name);
-    signature = first_nonempty_line snippet;
+    signature = Option.unwrap_or ~default:(first_nonempty_line snippet) signature;
     snippet;
     docstring;
     detail_groups;
@@ -520,23 +543,33 @@ let items_of_type_declaration = fun ?docstring decl ->
 
 let value_item_of_declaration = fun ?docstring decl ->
   let raw_snippet = snippet_of_node (Syn.Ast.ValueDeclaration.as_node decl) in
-  let snippet = clean_signature raw_snippet in
   let name = ident_text (Syn.Ast.ValueDeclaration.name decl) in
-  if String.equal name "" then
-    macro_items_of_snippet ?docstring raw_snippet
-  else
-    make_item ?docstring ~kind:Doctree.Function_item ~name snippet
-    :: macro_items_of_snippet ?docstring raw_snippet
+  match Syn.Ast.ValueDeclaration.type_annotation decl with
+  | None -> macro_items_of_snippet ?docstring raw_snippet
+  | Some annotation ->
+      if String.equal name "" then
+        macro_items_of_snippet ?docstring raw_snippet
+      else
+        let snippet = clean_signature raw_snippet in
+        let signature = signature_of_value_annotation name annotation in
+        let kind = value_item_kind annotation in
+        make_item ?docstring ~kind ~name ~signature snippet
+        :: macro_items_of_snippet ?docstring raw_snippet
 
 let external_item_of_declaration = fun ?docstring decl ->
   let raw_snippet = snippet_of_node (Syn.Ast.ExternalDeclaration.as_node decl) in
-  let snippet = clean_signature raw_snippet in
   let name = ident_text (Syn.Ast.ExternalDeclaration.name decl) in
-  if String.equal name "" then
-    macro_items_of_snippet ?docstring raw_snippet
-  else
-    make_item ?docstring ~kind:Doctree.Function_item ~name snippet
-    :: macro_items_of_snippet ?docstring raw_snippet
+  match Syn.Ast.ExternalDeclaration.type_annotation decl with
+  | None -> macro_items_of_snippet ?docstring raw_snippet
+  | Some annotation ->
+      if String.equal name "" then
+        macro_items_of_snippet ?docstring raw_snippet
+      else
+        let snippet = clean_signature raw_snippet in
+        let signature = signature_of_value_annotation name annotation in
+        let kind = value_item_kind annotation in
+        make_item ?docstring ~kind ~name ~signature snippet
+        :: macro_items_of_snippet ?docstring raw_snippet
 
 let module_path_segments = fun decl ->
   let body_ident =

@@ -38,6 +38,7 @@ let default_css =
   --k-type: #b81f36;
   --k-record: #b58cff;
   --k-variant: #0f7354;
+  --k-val: #7a4f05;
   --k-fn: #0d459f;
   --k-module: #247e45;
   --k-macro: #d92640;
@@ -405,9 +406,15 @@ li code,
 .kind-type { color: var(--k-type); }
 .kind-record { color: var(--k-record); }
 .kind-variant { color: var(--k-variant); }
+.kind-val { color: var(--k-val); }
 .kind-fn { color: var(--k-fn); }
 .kind-module { color: var(--k-module); }
 .kind-macro { color: var(--k-macro); }
+
+.item-detail-signature {
+  color: var(--ink-2);
+  font-weight: 500;
+}
 
 .item-snippet {
   background: var(--code-bg);
@@ -574,11 +581,13 @@ let item_kind_name = fun __tmp1 ->
   match __tmp1 with
   | Doctree.Module_item -> "Module"
   | Doctree.Type_item -> "Type"
+  | Doctree.Value_item -> "Value"
   | Doctree.Function_item -> "Function"
   | Doctree.Macro_item -> "Macro"
 
 let item_detail_kind = fun (item: Doctree.item) definition ->
   match item.kind with
+  | Doctree.Value_item -> "val"
   | Doctree.Function_item -> "fn"
   | Doctree.Module_item -> "module"
   | Doctree.Macro_item -> "macro"
@@ -595,6 +604,37 @@ let item_detail_kind = fun (item: Doctree.item) definition ->
         "variant"
       else
         "type"
+
+let item_uses_inline_signature = fun item ->
+  match item.Doctree.kind with
+  | Doctree.Value_item
+  | Doctree.Function_item -> true
+  | Doctree.Module_item
+  | Doctree.Type_item
+  | Doctree.Macro_item -> false
+
+let item_inline_signature = fun (item: Doctree.item) ->
+  if not (item_uses_inline_signature item) then
+    ""
+  else
+    let signature = String.trim item.signature in
+    if String.equal signature "" then
+      ""
+    else
+      let name = item.name in
+      if String.starts_with ~prefix:name signature then
+        String.sub
+          signature
+          ~offset:(String.length name)
+          ~len:(String.length signature - String.length name)
+        |> String.trim
+      else
+        signature
+
+let render_item_inline_signature = fun item ->
+  match item_inline_signature item with
+  | "" -> ""
+  | signature -> "<span class=\"item-detail-signature\">" ^ escape_html signature ^ "</span>"
 
 let render_item_row = fun ~href ~name ~kind_label ~meta ~signature ~snippet ~docstring ~anchor ->
   let summary = summary_text ~meta ~signature ~docstring in
@@ -751,11 +791,16 @@ let render_item_detail = fun (item: Doctree.item) ->
   ^ escape_html item.anchor
   ^ "\">"
   ^ escape_html item.name
-  ^ "</a><a class=\"anchor\" href=\"#"
+  ^ "</a>"
+  ^ render_item_inline_signature item
+  ^ "<a class=\"anchor\" href=\"#"
   ^ escape_html item.anchor
-  ^ "\" title=\"Permalink\">#</a></h3>\n"
-  ^ render_code_block definition
-  ^ render_docstring_block ~class_name:"item-docstring" item.docstring ^ (
+  ^ "\" title=\"Permalink\">#</a></h3>\n" ^ (
+    if item_uses_inline_signature item then
+      ""
+    else
+      render_code_block definition
+  ) ^ render_docstring_block ~class_name:"item-docstring" item.docstring ^ (
     match item.detail_groups with
     | [] -> ""
     | groups ->
@@ -1031,11 +1076,13 @@ let render_module = fun (package_doc: Doctree.package_doc) (module_doc: Doctree.
     [
       ("#modules", "Modules");
       ("#types", "Types");
+      ("#values", "Values");
       ("#functions", "Functions");
       ("#macros", "Macros");
     ]
   ^ render_sidebar_group ~title:"Modules" sidebar_modules
   ^ render_sidebar_group ~filterable:true ~title:"Types" (sidebar_items Doctree.Type_item)
+  ^ render_sidebar_group ~filterable:true ~title:"Values" (sidebar_items Doctree.Value_item)
   ^ render_sidebar_group ~filterable:true ~title:"Functions" (sidebar_items Doctree.Function_item)
   ^ render_sidebar_group ~filterable:true ~title:"Macros" (sidebar_items Doctree.Macro_item)
   ^ "    </aside>\n"
@@ -1061,6 +1108,7 @@ let render_module = fun (package_doc: Doctree.package_doc) (module_doc: Doctree.
     ~note:(Doctree.module_full_name module_doc)
     (render_module_rows ~from_module:(Some module_doc) module_doc.modules)
   ^ render_item_section Doctree.Type_item
+  ^ render_item_section Doctree.Value_item
   ^ render_item_section Doctree.Function_item
   ^ render_item_section Doctree.Macro_item
   ^ "    </main>\n"

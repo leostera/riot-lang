@@ -3,6 +3,7 @@ open Std
 type item_kind =
   | Module_item
   | Type_item
+  | Value_item
   | Function_item
   | Macro_item
 
@@ -65,6 +66,7 @@ let item_kind_slug = fun __tmp1 ->
   match __tmp1 with
   | Module_item -> "modules"
   | Type_item -> "types"
+  | Value_item -> "values"
   | Function_item -> "functions"
   | Macro_item -> "macros"
 
@@ -72,6 +74,7 @@ let item_kind_title = fun __tmp1 ->
   match __tmp1 with
   | Module_item -> "Modules"
   | Type_item -> "Types"
+  | Value_item -> "Values"
   | Function_item -> "Functions"
   | Macro_item -> "Macros"
 
@@ -79,6 +82,7 @@ let item_kind_label = fun __tmp1 ->
   match __tmp1 with
   | Module_item -> "module"
   | Type_item -> "type"
+  | Value_item -> "value"
   | Function_item -> "function"
   | Macro_item -> "macro"
 
@@ -139,6 +143,7 @@ let item_kind_file_prefix = fun __tmp1 ->
   match __tmp1 with
   | Module_item -> "module"
   | Type_item -> "type"
+  | Value_item -> "val"
   | Function_item -> "fn"
   | Macro_item -> "macro"
 
@@ -194,6 +199,7 @@ let module_summary = fun (module_doc: module_doc) ->
   let counts = [
     (item_kind_title Module_item, List.length module_doc.modules);
     (item_kind_title Type_item, List.length (items_of_kind Type_item module_doc.items));
+    (item_kind_title Value_item, List.length (items_of_kind Value_item module_doc.items));
     (item_kind_title Function_item, List.length (items_of_kind Function_item module_doc.items));
     (item_kind_title Macro_item, List.length (items_of_kind Macro_item module_doc.items));
   ]

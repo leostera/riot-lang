@@ -139,11 +139,18 @@ let test_doc_generates_root_module_detail_page = fun _ctx ->
       let output_root = Path.(tmpdir / Path.v "docs") in
       create_dir pkg_src;
       create_dir pkg_examples;
-      write Path.(pkg_src / Path.v "pretext.ml") {ocaml|let format = fun value -> value
+      write
+        Path.(pkg_src / Path.v "pretext.ml")
+        {ocaml|let max = 80
+
+let format = fun value -> value
 |ocaml};
       write
         Path.(pkg_src / Path.v "pretext.mli")
         {ocaml|(** Tiny text documents. *)
+
+(** Maximum default width. *)
+val max: int
 
 (** Format a document to text. *)
 val format: string -> string
@@ -230,9 +237,21 @@ val format: string -> string
       let* () =
         assert_contains ~label:"docs manifest" manifest "\"schema\": \"riot-doc.manifest.v1\""
       in
-      let* () = assert_contains ~label:"docs manifest" manifest "\"generator\": \"riot-doc:v25\"" in
+      let* () = assert_contains ~label:"docs manifest" manifest "\"generator\": \"riot-doc:v26\"" in
       let* () = assert_contains ~label:"docs manifest" manifest "\"manifest.json\"" in
       let* () = assert_not_contains ~label:"root module page" root_page "Redirecting..." in
+      let* () =
+        assert_contains
+          ~label:"root module page"
+          root_page
+          "<article class=\"item-detail\" data-kind=\"val\" id=\"value_max\">"
+      in
+      let* () =
+        assert_contains
+          ~label:"root module page"
+          root_page
+          "<span class=\"item-detail-signature\">: int</span>"
+      in
       let* () =
         assert_contains
           ~label:"root module page"
@@ -244,8 +263,12 @@ val format: string -> string
       in
       let* () = assert_contains ~label:"root module page" root_page "data-filterable" in
       let* () =
-        assert_contains ~label:"root module page" root_page "val format: string -&gt; string"
+        assert_contains
+          ~label:"root module page"
+          root_page
+          "<span class=\"item-detail-signature\">: string -&gt; string</span>"
       in
+      let* () = assert_not_contains ~label:"root module page" root_page "val format:" in
       let* () = assert_not_contains ~label:"root module page" root_page "(** Format" in
       assert_contains ~label:"root module page" root_page "Format a document to text.") with
   | Ok result -> result
@@ -315,7 +338,10 @@ val from_string: string -> t
           "<article class=\"item-detail\" data-kind=\"fn\" id=\"function_from_string\">"
       in
       let* () =
-        assert_contains ~label:"nested module page" reader_page "val from_string: string -&gt; t"
+        assert_contains
+          ~label:"nested module page"
+          reader_page
+          "<span class=\"item-detail-signature\">: string -&gt; t</span>"
       in
       let* () =
         assert_contains
@@ -515,7 +541,12 @@ val parse: string -> string
       let* root_page =
         read_file Path.(summary.Riot_doc.output_dir / Path.v "Synlike" / Path.v "index.html")
       in
-      let* () = assert_contains ~label:"root module page" root_page "val parse: string" in
+      let* () =
+        assert_contains
+          ~label:"root module page"
+          root_page
+          "<span class=\"item-detail-signature\">: string -&gt; string</span>"
+      in
       assert_not_contains ~label:"root module page" root_page "Synlike/Main/index.html") with
   | Ok result -> result
   | Error err -> Error (IO.error_message err)

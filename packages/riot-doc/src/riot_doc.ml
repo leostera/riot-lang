@@ -2,7 +2,7 @@ open Std
 open Riot_model
 open Std.Result.Syntax
 
-let generator_signature = "riot-doc:v25"
+let generator_signature = "riot-doc:v26"
 
 type request = {
   workspace: Riot_model.Workspace.t;

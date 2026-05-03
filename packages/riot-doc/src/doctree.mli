@@ -3,6 +3,7 @@ open Std
 type item_kind =
   | Module_item
   | Type_item
+  | Value_item
   | Function_item
   | Macro_item
 type item_detail = {
