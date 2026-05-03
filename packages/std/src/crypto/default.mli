@@ -1,5 +1,5 @@
 (**
-   # Default - Default hash algorithm and DoS-resistant hashing
+   Default hash algorithms and randomized hash state.
 
    Provides the default hash algorithm and randomized hashing for collections
    to prevent denial-of-service attacks via hash collision.
@@ -27,24 +27,22 @@
      Hash collision attacks
 *)
 
-module DefaultHasher: Hasher.Intf
-
 (** Default hasher using kernel's default hash algorithm. *)
+module DefaultHasher: Hasher.Intf
 
 (** Random state for HashMap/HashSet - provides seeded hashing. *)
 module RandomState: sig
   type t
 
+  (** Create a new random state with random seeds *)
   val create: unit -> t
 
-  (** Create a new random state with random seeds *)
+  (** Hash with this random state for DoS resistance *)
   val hash_with_seed: t -> string -> int64 -> int64 -> Hash.t
 
-  (** Hash with this random state for DoS resistance *)
+  (** Hash with this random state *)
   val hash_with: t -> string -> Hash.t
 
-  (** Hash with this random state *)
-  val to_int64: t -> Hash.t -> int64
-
   (** Convert hash to int64 mixed with seed for consistency *)
+  val to_int64: t -> Hash.t -> int64
 end

@@ -1,5 +1,5 @@
 (**
-   # Crypto - Cryptographic hashing
+   Cryptographic hashing algorithms and digest helpers.
 
    Unified interface for cryptographic hash algorithms with support for
    multiple algorithms, digest formats, and DoS-resistant hashing.
@@ -39,20 +39,16 @@
    - Password hashing (use proper KDFs like Argon2, not these!)
 *)
 
-(** ## Core Types *)
-
 (** Universal hash type produced by all hash algorithms. *)
 type hash = Hash.t
-(** ## Modules *)
+
 module Hash = Hash
 
+(** Hasher interface and utilities *)
 module Hasher = Hasher
 
-(** Hasher interface and utilities *)
-module Digest = Digest
-
 (** Digest formatting functions *)
-(** ## Algorithms *)
+module Digest = Digest
 
 module Sha1: Hasher.Intf
 
@@ -62,19 +58,15 @@ module Sha512: Hasher.Intf
 
 module Md5: Hasher.Intf
 
-(** ## Defaults *)
-
+(** Default hasher for general use *)
 module DefaultHasher = Default.DefaultHasher
 
-(** Default hasher for general use *)
+(** Random state for HashMap/HashSet *)
 module RandomState = Default.RandomState
 
-(** Random state for HashMap/HashSet *)
-(** ## Convenience Functions *)
-
+(** Hash a string directly. *)
 val hash_string: string -> hash
 
-(** Hash a string directly. *)
 val hash_bytes: bytes -> hash
 
 val hash_unit: unit -> hash

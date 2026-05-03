@@ -1,5 +1,5 @@
 (**
-   # Digest - Hash digest formatting
+   Hash digest formatting helpers.
 
    Convert cryptographic hash values to various output formats for different
    use cases.
