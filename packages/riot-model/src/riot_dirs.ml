@@ -1,12 +1,19 @@
 open Std
 
+let user_riot_dir = fun () ->
+  match Env.get Env.String ~var:"RIOT_DIR" with
+  | Some path when not (String.equal path "") -> Ok (Path.v path)
+  | Some _
+  | None -> (
+      match Env.home_dir () with
+      | Some home -> Ok Path.(home / Path.v ".riot")
+      | None -> Error "failed to determine home directory"
+    )
+
 let dot_riot =
-  let home =
-    match Env.home_dir () with
-    | Some h -> h
-    | None -> panic "Failed to get home directory"
-  in
-  Path.(home / Path.v ".riot")
+  match user_riot_dir () with
+  | Ok path -> path
+  | Error message -> panic message
 
 let config_path = fun () -> Path.(dot_riot / Path.v "config.toml")
 

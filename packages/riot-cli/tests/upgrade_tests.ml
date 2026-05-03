@@ -287,6 +287,38 @@ let test_version_string_uses_installed_metadata = fun _ctx ->
             ~actual:(Riot_cli.Version_info.version_string ());
           Ok ()))
 
+let test_version_string_uses_riot_dir_metadata = fun _ctx ->
+  with_tempdir_result
+    "upgrade-version-riot-dir"
+    (fun tempdir ->
+      let home_dir = Path.(tempdir / Path.v "home") in
+      let riot_dir = Path.(tempdir / Path.v "custom-riot") in
+      let metadata =
+        make_metadata
+          ~release_id:"v4.5.6"
+          ~build_sha:"facefeed1234"
+          ~issues_url:"https://github.com/leostera/riot/issues"
+          ()
+      in
+      with_env
+        ~name:"HOME"
+        ~value:(Path.to_string home_dir)
+        (fun () ->
+          with_env
+            ~name:"RIOT_DIR"
+            ~value:(Path.to_string riot_dir)
+            (fun () ->
+              let* () = Riot_cli.Version_info.write_installed metadata in
+              let* metadata_exists =
+                Fs.exists Path.(riot_dir / Path.v "release.json")
+                |> Result.map_err ~fn:IO.error_message
+              in
+              Test.assert_equal ~expected:true ~actual:metadata_exists;
+              Test.assert_equal
+                ~expected:"riot v4.5.6 (build facefeed1234)"
+                ~actual:(Riot_cli.Version_info.version_string ());
+              Ok ())))
+
 let test_version_string_roundtrips_into_metadata = fun _ctx ->
   let expected = make_metadata ~release_id:"v7.8.9" ~build_sha:"beaded123456" () in
   match Riot_cli.Version_info.of_version_string "riot v7.8.9 (build beaded123456)" with
@@ -304,6 +336,9 @@ let tests =
     case
       "upgrade: version string uses installed metadata"
       test_version_string_uses_installed_metadata;
+    case
+      "upgrade: version string uses RIOT_DIR metadata"
+      test_version_string_uses_riot_dir_metadata;
     case
       "upgrade: version string roundtrips into metadata"
       test_version_string_roundtrips_into_metadata;

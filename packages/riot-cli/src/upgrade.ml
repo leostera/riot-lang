@@ -57,13 +57,8 @@ let metadata_url = fun ?version ~base_url () ->
   | Some version -> base_url ^ "/riot/riot-" ^ version ^ ".json"
   | None -> base_url ^ "/riot/latest.json"
 
-let riot_home_dir = fun () ->
-  match Env.home_dir () with
-  | Some home -> Ok Path.(home / Path.v ".riot")
-  | None -> Error "failed to determine home directory"
-
 let installed_binary_path = fun () ->
-  let* riot_home = riot_home_dir () in
+  let* riot_home = Riot_model.Riot_dirs.user_riot_dir () in
   Ok Path.(riot_home / Path.v "bin" / Path.v "riot")
 
 let install_temp_path = fun dst ->
@@ -284,7 +279,7 @@ let resolve_archive_source = fun ?version ~target () ->
       Ok (Remote (archive_url ?version ~target ~base_url ()))
 
 let ensure_install_dir = fun () ->
-  let* riot_home = riot_home_dir () in
+  let* riot_home = Riot_model.Riot_dirs.user_riot_dir () in
   let* () =
     Fs.create_dir_all riot_home
     |> Result.map_err ~fn:IO.error_message

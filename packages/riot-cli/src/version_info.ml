@@ -12,13 +12,8 @@ type t = {
 
 let release_label = fun t -> t.release_id
 
-let riot_home_dir = fun () ->
-  match Env.home_dir () with
-  | Some home -> Ok Path.(home / Path.v ".riot")
-  | None -> Error "failed to determine home directory"
-
 let metadata_path = fun () ->
-  let* riot_home = riot_home_dir () in
+  let* riot_home = Riot_model.Riot_dirs.user_riot_dir () in
   Ok Path.(riot_home / Path.v "release.json")
 
 let json_of_metadata = fun t ->
