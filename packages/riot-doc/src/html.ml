@@ -19,28 +19,33 @@ let default_css =
   {css|
 :root {
   --bg: #f7f6f1;
-  --bg-2: #efece2;
-  --surface: #fbfaf5;
+  --bg-2: #f5ecdc;
+  --surface: #fffdf7;
   --code-bg: #15171b;
+  --code-text: #e6e2d6;
+  --code-muted: rgba(230, 226, 214, 0.68);
   --ink: #15171b;
   --ink-2: #2c2f37;
-  --muted: #6a6e78;
+  --muted: #5b5462;
   --muted-2: #9aa0aa;
-  --rule: #dfdbcc;
-  --rule-soft: #ebe7d8;
-  --accent: #b14a14;
-  --accent-soft: #f4e7d8;
-  --accent-deep: #8a3a10;
-  --k-type: #8a4a14;
-  --k-record: #6a3a86;
-  --k-variant: #146b6e;
-  --k-fn: #1f4d8f;
-  --k-module: #2a6a3e;
-  --k-macro: #99461c;
-  --sidebar-w: 260px;
-  --content-max: 880px;
-  --sans: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
-  --mono: "JetBrains Mono", "IBM Plex Mono", "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+  --rule: #e8dcc8;
+  --rule-soft: #f5ecdc;
+  --brand: #ef233c;
+  --brand-soft: rgba(239, 35, 60, 0.10);
+  --accent: #ef233c;
+  --accent-soft: rgba(239, 35, 60, 0.10);
+  --accent-deep: #b81f36;
+  --k-type: #b81f36;
+  --k-record: #b58cff;
+  --k-variant: #0f7354;
+  --k-fn: #0d459f;
+  --k-module: #247e45;
+  --k-macro: #d92640;
+  --sidebar-w: 280px;
+  --content-max: 900px;
+  --sans: "Atkinson Hyperlegible", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --display: "Martian Mono", "JetBrains Mono", "SFMono-Regular", ui-monospace, Menlo, Consolas, monospace;
+  --mono: "JetBrains Mono", "SFMono-Regular", ui-monospace, Menlo, Consolas, monospace;
 }
 
 * { box-sizing: border-box; }
@@ -51,7 +56,8 @@ body {
   color: var(--ink);
   font-family: var(--sans);
   font-size: 15px;
-  line-height: 1.55;
+  line-height: 1.58;
+  -moz-osx-font-smoothing: grayscale;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
@@ -74,7 +80,7 @@ code, pre { font-family: var(--mono); }
   align-self: start;
   max-height: 100vh;
   overflow-y: auto;
-  padding: 1.25rem 1rem 2rem 1.25rem;
+  padding: 1.5rem 1rem 2rem 1.5rem;
   border-right: 1px solid var(--rule);
   font-size: 13px;
   scrollbar-width: thin;
@@ -86,29 +92,32 @@ code, pre { font-family: var(--mono); }
 .sidebar-brand {
   display: inline-flex;
   align-items: center;
-  gap: 0.4em;
+  gap: 0.5rem;
   color: var(--muted);
-  font-size: 12px;
-  letter-spacing: 0.02em;
-  margin-bottom: 1rem;
+  font-family: var(--display);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0;
+  margin-bottom: 1.1rem;
 }
 .sidebar-brand::before { content: "\2190"; transition: transform 180ms cubic-bezier(.2,.7,.3,1); }
 .sidebar-brand:hover { color: var(--accent); text-decoration: none; }
 .sidebar-brand:hover::before { transform: translateX(-3px); }
 
 .sidebar-title {
-  font-family: var(--mono);
-  font-weight: 600;
-  font-size: 16px;
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 18px;
   color: var(--ink);
-  letter-spacing: -0.01em;
+  letter-spacing: 0;
+  line-height: 1.18;
   margin-bottom: 1px;
 }
 .sidebar-meta {
-  font-family: var(--mono);
+  font-family: var(--display);
   font-size: 11px;
   color: var(--muted-2);
-  letter-spacing: 0.01em;
+  letter-spacing: 0;
   padding-bottom: 0.85rem;
   margin-bottom: 0.75rem;
   border-bottom: 1px solid var(--rule-soft);
@@ -123,10 +132,10 @@ code, pre { font-family: var(--mono); }
   color: var(--ink);
   background: var(--surface);
   border: 1px solid var(--rule);
-  border-radius: 3px;
+  border-radius: 0;
   outline: none;
 }
-.sidebar-filter input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.sidebar-filter input:focus { border-color: var(--brand); box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--brand); }
 .sidebar-filter input::placeholder { color: var(--muted-2); }
 .sidebar-filter::before {
   content: "/";
@@ -149,16 +158,17 @@ code, pre { font-family: var(--mono); }
   color: var(--muted-2);
   background: var(--bg-2);
   border: 1px solid var(--rule);
-  border-radius: 2px;
+  border-radius: 0;
   padding: 1px 5px;
   pointer-events: none;
 }
 
 .sidebar-group { margin-bottom: 1.1rem; }
 .sidebar-group h2 {
+  font-family: var(--display);
   font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.16em;
+  font-weight: 800;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--muted-2);
   margin: 0 0 0.4rem;
@@ -170,19 +180,19 @@ code, pre { font-family: var(--mono); }
   gap: 0.5rem;
   padding: 3px 0.5rem 3px 0.6rem;
   color: var(--ink-2);
-  font-family: var(--mono);
-  font-size: 12.5px;
+  font-family: var(--display);
+  font-size: 11px;
   border-left: 2px solid transparent;
-  border-radius: 0 2px 2px 0;
+  border-radius: 0;
   margin-left: -2px;
 }
 .sidebar-group a:hover,
 .sidebar-group a.is-active {
-  background: var(--accent-soft);
+  background: var(--brand-soft);
   color: var(--accent-deep);
   text-decoration: none;
 }
-.sidebar-group a.is-active { border-left-color: var(--accent); }
+.sidebar-group a.is-active { border-left-color: var(--brand); }
 .sidebar-group a.is-hidden { display: none; }
 .sidebar-group .empty-result {
   display: none;
@@ -219,11 +229,11 @@ code, pre { font-family: var(--mono); }
 }
 .eyebrow { display: none; }
 .page-title {
-  font-family: var(--mono);
-  font-weight: 600;
-  font-size: 28px;
-  letter-spacing: -0.015em;
-  line-height: 1.1;
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 36px;
+  letter-spacing: 0;
+  line-height: 1.12;
   color: var(--ink);
   margin: 0;
 }
@@ -246,15 +256,15 @@ code, pre { font-family: var(--mono); }
 
 .module-docstring { max-width: 72ch; }
 .module-docstring h1 {
-  font-family: var(--sans);
-  font-weight: 600;
+  font-family: var(--display);
+  font-weight: 800;
   font-size: 18px;
   color: var(--ink);
   margin: 0 0 0.6rem;
 }
 .module-docstring h2 {
-  font-family: var(--sans);
-  font-weight: 600;
+  font-family: var(--display);
+  font-weight: 800;
   font-size: 14px;
   color: var(--ink);
   margin: 1.5rem 0 0.5rem;
@@ -276,10 +286,9 @@ code, pre { font-family: var(--mono); }
 .module-docstring pre,
 .item-docstring pre,
 .item-subitem-docstring pre {
-  background: var(--surface);
-  border: 1px solid var(--rule);
-  border-left: 2px solid var(--accent);
-  border-radius: 2px;
+  background: var(--code-bg);
+  border: 1px solid var(--ink);
+  border-radius: 0;
   padding: 0.55rem 0.75rem;
   margin: 0.5rem 0 0.7rem;
   overflow-x: auto;
@@ -289,7 +298,7 @@ code, pre { font-family: var(--mono); }
 .item-subitem-docstring pre code {
   font-size: 12px;
   line-height: 1.55;
-  color: var(--ink);
+  color: var(--code-text);
   background: transparent;
   border: 0;
   padding: 0;
@@ -304,7 +313,7 @@ li code,
   color: var(--accent-deep);
   background: var(--bg-2);
   border: 1px solid var(--rule-soft);
-  border-radius: 2px;
+  border-radius: 0;
   padding: 0.05em 0.35em;
 }
 
@@ -315,10 +324,10 @@ li code,
   border-bottom: 1px solid var(--ink);
 }
 .section-card > .section-header h2 {
-  font-family: var(--sans);
-  font-weight: 600;
-  font-size: 13px;
-  letter-spacing: 0.16em;
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 12px;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
   margin: 0;
   color: var(--ink);
@@ -344,7 +353,7 @@ li code,
 .item-row .item-name {
   font-family: var(--mono);
   font-size: 13.5px;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--accent);
 }
 .item-row .item-summary {
@@ -362,7 +371,7 @@ li code,
 .item-detail:first-child { border-top: 0; padding-top: 0; }
 .item-detail-title {
   font-family: var(--mono);
-  font-weight: 500;
+  font-weight: 600;
   font-size: 14.5px;
   margin: 0 0 0.55rem;
   display: flex;
@@ -382,13 +391,13 @@ li code,
 .item-detail:hover .anchor { opacity: 1; }
 .anchor:hover { color: var(--accent); text-decoration: none; }
 .kind {
-  font-family: var(--mono);
+  font-family: var(--display);
   font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
+  font-weight: 800;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
   padding: 1px 6px;
-  border-radius: 2px;
+  border-radius: 0;
   background: var(--surface);
   border: 1px solid currentColor;
   line-height: 1.4;
@@ -402,17 +411,18 @@ li code,
 
 .item-snippet {
   background: var(--code-bg);
-  border-radius: 4px;
+  border: 1px solid var(--ink);
+  border-radius: 0;
   padding: 0.7rem 0.95rem;
   margin: 0 0 0.6rem;
   overflow-x: auto;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+  box-shadow: 3px 3px 0 var(--ink);
 }
 .item-snippet code {
   display: block;
   font-size: 12.5px;
   line-height: 1.55;
-  color: #e6e2d6;
+  color: var(--code-text);
   background: transparent;
   padding: 0;
   border: 0;
@@ -435,10 +445,10 @@ li code,
 }
 .item-subsection + .item-subsection { margin-top: 0.85rem; }
 .item-subsection h4 {
-  font-family: var(--mono);
+  font-family: var(--display);
   font-size: 10.5px;
-  font-weight: 500;
-  letter-spacing: 0.16em;
+  font-weight: 800;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--muted);
   margin: 0 0 0.5rem;
@@ -448,7 +458,7 @@ li code,
   padding: 0.45rem 0.65rem;
   background: var(--surface);
   border: 1px solid var(--rule-soft);
-  border-radius: 2px;
+  border-radius: 0;
 }
 .item-subitem-signature {
   font-family: var(--mono);
@@ -475,7 +485,7 @@ li code,
 .item-subitem-docstring li { font-size: 13px; color: var(--muted); }
 
 .empty-state {
-  font-family: var(--mono);
+  font-family: var(--display);
   font-size: 12.5px;
   color: var(--muted-2);
   padding: 0.5rem 0;
@@ -498,7 +508,7 @@ li code,
   .item-row { grid-template-columns: 1fr; gap: 0.2rem; }
 }
 
-::selection { background: var(--accent); color: #fbfaf5; }
+::selection { background: var(--brand); color: white; }
 |css}
 
 let assets = [ ("assets/doc.css", String.trim default_css); ]
@@ -802,7 +812,7 @@ let render_common_head = fun css_href title ->
   ^ "</title>\n"
   ^ "  <link rel=\"preconnect\" href=\"https://fonts.googleapis.com\" />\n"
   ^ "  <link rel=\"preconnect\" href=\"https://fonts.gstatic.com\" crossorigin />\n"
-  ^ "  <link href=\"https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;1,400&display=swap\" rel=\"stylesheet\" />\n"
+  ^ "  <link href=\"https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@400;500;600;700&family=Martian+Mono:wght@400;500;600;700;800&display=swap\" rel=\"stylesheet\" />\n"
   ^ "  <link rel=\"stylesheet\" href=\""
   ^ css_href
   ^ "\" />\n"
