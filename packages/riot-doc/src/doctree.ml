@@ -43,10 +43,21 @@ type dependency_link = {
   url: string;
 }
 
+type package_entry = {
+  name: string;
+  summary: string option;
+  meta: string option;
+  href: string option;
+}
+
 type package_doc = {
   package: string;
   version: string;
   modules: module_doc list;
+  commands: package_entry list;
+  executables: package_entry list;
+  lint_rules: package_entry list;
+  examples: package_entry list;
   dependencies: dependency_link list;
 }
 

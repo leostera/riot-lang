@@ -27,6 +27,11 @@ let binary_names = fun binaries ->
   |> List.map ~fn:(fun (bin: Riot_model.Package.binary) -> bin.name)
   |> List.sort ~compare:String.compare
 
+let command_names = fun commands ->
+  commands
+  |> List.map ~fn:(fun (command: Riot_model.Package_command.t) -> command.name)
+  |> List.sort ~compare:String.compare
+
 let sort_paths = fun paths -> List.sort paths ~compare:Path.compare
 
 let test_manifest_from_toml_keeps_declared_metadata_only = fun _ctx ->
@@ -420,7 +425,9 @@ let test_manifest_realize_doc_excludes_executable_sources = fun _ctx ->
     "riot_model_package_manifest_doc"
     (fun tmpdir ->
       let src_dir = Path.(tmpdir / Path.v "src") in
+      let examples_dir = Path.(tmpdir / Path.v "examples") in
       Result.expect (Fs.create_dir_all src_dir) ~msg:"Failed to create src directory";
+      Result.expect (Fs.create_dir_all examples_dir) ~msg:"Failed to create examples directory";
       Result.expect
         (Fs.write "let parse = fun value -> value\n" Path.(src_dir / Path.v "synlike.ml"))
         ~msg:"Failed to write library source";
@@ -433,6 +440,9 @@ let test_manifest_realize_doc_excludes_executable_sources = fun _ctx ->
       Result.expect
         (Fs.write "let main ~args:_ = ()\n" Path.(src_dir / Path.v "demo_cmd.ml"))
         ~msg:"Failed to write command source";
+      Result.expect
+        (Fs.write "let value = Synlike.parse \"ok\"\n" Path.(examples_dir / Path.v "basic.ml"))
+        ~msg:"Failed to write example source";
       let manifest =
         parse_manifest
           ~path:tmpdir
@@ -461,12 +471,13 @@ path = "src/demo_cmd.ml"
       let src = sort_paths pkg.sources.src in
       if
         src = [ Path.v "src/synlike.ml"; Path.v "src/synlike.mli" ]
-        && pkg.binaries = []
-        && pkg.commands = []
+        && pkg.sources.examples = [ Path.v "examples/basic.ml" ]
+        && binary_names pkg.binaries = [ "synlike" ]
+        && command_names pkg.commands = [ "demo" ]
       then
         Ok ()
       else
-        Error "expected doc realization to keep library sources but exclude binary and command sources")
+        Error "expected doc realization to exclude executable source files while keeping package metadata")
 
 let test_manifest_to_package_preserves_declared_binaries_without_loading_sources = fun _ctx ->
   with_tempdir
@@ -536,7 +547,7 @@ let tests = [
     "package manifest: test realization ignores fixture support entries"
     test_manifest_realize_test_discovers_test_binaries_without_fixtures;
   Test.case
-    "package manifest: doc realization excludes executable sources"
+    "package manifest: doc realization excludes executable sources but keeps metadata"
     test_manifest_realize_doc_excludes_executable_sources;
   Test.case
     "package manifest: to package preserves declared binaries without loading sources"

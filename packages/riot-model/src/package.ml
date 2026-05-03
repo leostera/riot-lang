@@ -1602,7 +1602,7 @@ let source_buckets_for_intent = fun __tmp1 ->
   | Run -> [ Src; Native; Examples ]
   | Test -> [ Src; Native; Tests ]
   | Bench -> [ Src; Native; Bench ]
-  | Doc -> [ Src ]
+  | Doc -> [ Src; Examples ]
   | Check -> [ Src; Native; Tests; Examples; Bench; ]
 
 let source_bucket_enabled buckets bucket = List.contains buckets ~value:bucket
@@ -1887,7 +1887,7 @@ let declared_binaries_for_intent = fun ~(intent:realization_intent) binaries ->
     | Run -> bucket = Src || bucket = Examples
     | Test -> bucket = Tests
     | Bench -> bucket = Bench
-    | Doc
+    | Doc -> bucket = Src
     | Check -> false
   in
   List.filter
@@ -1934,7 +1934,7 @@ let autodiscovered_binaries_for_intent = fun
   | Run -> runtime_binaries @ example_binaries
   | Test -> test_binaries
   | Bench -> bench_binaries
-  | Doc
+  | Doc -> runtime_binaries
   | Check -> []
 
 let merge_binaries: declared:binary list -> autodiscovered:binary list -> binary list = fun
@@ -1958,7 +1958,7 @@ let merge_binaries: declared:binary list -> autodiscovered:binary list -> binary
 
 let commands_for_intent = fun ~(intent:realization_intent) commands ->
   match intent with
-  | Doc -> []
+  | Doc -> commands
   | Build
   | Runtime
   | Dev

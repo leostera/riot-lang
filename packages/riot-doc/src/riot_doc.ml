@@ -2,7 +2,7 @@ open Std
 open Riot_model
 open Std.Result.Syntax
 
-let generator_signature = "riot-doc:v24"
+let generator_signature = "riot-doc:v25"
 
 type request = {
   workspace: Riot_model.Workspace.t;
@@ -471,15 +471,137 @@ let write_index = fun ~output_dir package_doc ->
   let* () = write_output ~path body in
   Ok path
 
+let relative_output_path = fun ~output_dir path ->
+  match Path.strip_prefix path ~prefix:output_dir with
+  | Ok relative -> Path.to_string relative
+  | Error _ -> Path.to_string path
+
+let manifest_json = fun
+  ~profile ~package ~version ~cache_key ~source_signature ~dependency_signature ~outputs ->
+  Data.Json.Object [
+    ("schema", Data.Json.String "riot-doc.manifest.v1");
+    ("generator", Data.Json.String generator_signature);
+    ("package", Data.Json.String (Package_name.to_string package));
+    ("version", Data.Json.String version);
+    ("profile", Data.Json.String profile);
+    ("cache_key", Data.Json.String cache_key);
+    ("source_signature", Data.Json.String source_signature);
+    ("dependency_signature", Data.Json.String dependency_signature);
+    ("outputs", Data.Json.Array (
+      outputs
+      |> List.map ~fn:(fun path -> Data.Json.String path)
+    ));
+  ]
+
+let write_manifest = fun
+  ~output_dir
+  ~profile
+  ~package
+  ~version
+  ~cache_key
+  ~source_signature
+  ~dependency_signature
+  ~outputs ->
+  let path = Path.(output_dir / Path.v "manifest.json") in
+  let relative_outputs =
+    (path :: outputs)
+    |> List.map ~fn:(relative_output_path ~output_dir)
+    |> List.sort ~compare:String.compare
+  in
+  let content =
+    manifest_json
+      ~profile
+      ~package
+      ~version
+      ~cache_key
+      ~source_signature
+      ~dependency_signature
+      ~outputs:relative_outputs
+    |> Data.Json.to_string_pretty
+    |> fun json -> json ^ "\n"
+  in
+  let* () = write_output ~path content in
+  Ok path
+
+let path_entry_name = fun path ->
+  Path.basename path
+  |> Path.v
+  |> Path.remove_extension
+  |> Path.to_string
+
+let executable_entry = fun (binary: Package.binary) ->
+  Doctree.{
+    name = binary.name;
+    summary = None;
+    meta = Some (Path.to_string binary.path);
+    href = None;
+  }
+
+let is_runtime_binary = fun (binary: Package.binary) ->
+  let path = Path.to_string binary.path in
+  not
+    (String.starts_with ~prefix:"tests/" path
+    || String.starts_with ~prefix:"examples/" path
+    || String.starts_with ~prefix:"bench/" path)
+
+let command_entry = fun (command: Package_command.t) ->
+  Doctree.{
+    name = command.name;
+    summary = Some command.description;
+    meta = Some ("module " ^ command.command_module);
+    href = None;
+  }
+
+let lint_rule_entries = fun (providers: Fix_provider.t list) ->
+  providers
+  |> List.fold_left
+    ~init:[]
+    ~fn:(fun acc (provider: Fix_provider.t) ->
+      provider.rules
+      |> List.fold_left
+        ~init:acc
+        ~fn:(fun acc rule ->
+          Doctree.{
+            name = rule;
+            summary = None;
+            meta = Some ("provider " ^ provider.name);
+            href = None;
+          }
+          :: acc))
+  |> List.sort ~compare:(fun left right -> String.compare left.Doctree.name right.Doctree.name)
+
+let example_entry = fun path ->
+  Doctree.{
+    name = path_entry_name path;
+    summary = None;
+    meta = Some (Path.to_string path);
+    href = None;
+  }
+
+let package_doc_metadata = fun (package: Riot_model.Package.t) -> (
+  List.map package.commands ~fn:command_entry,
+  package.binaries
+  |> List.filter ~fn:is_runtime_binary
+  |> List.map ~fn:executable_entry,
+  lint_rule_entries package.fix_providers,
+  List.map package.sources.examples ~fn:example_entry
+)
+
 let package_doc_of_sources = fun ~package ~version ~dependencies sources ->
+  let package_name = Package_name.to_string package.Package.name in
+  let (commands, executables, lint_rules, examples) = package_doc_metadata package in
   let lookup = Source.build_lookup sources in
-  match Source.find_root_interface ~package_name:package sources with
+  match Source.find_root_interface ~package_name sources with
   | Some root_source ->
       let* module_doc = Transform.of_interface_source ~lookup root_source in
       Ok {
-        Doctree.package = package;
+        Doctree.package = package_name;
         version;
         modules = [ module_doc ];
+        commands;
+        executables;
+        lint_rules;
+        examples;
         dependencies;
       }
   | None ->
@@ -487,9 +609,13 @@ let package_doc_of_sources = fun ~package ~version ~dependencies sources ->
         match __tmp1 with
         | [] ->
             Ok {
-              Doctree.package = package;
+              Doctree.package = package_name;
               version;
               modules = List.reverse acc;
+              commands;
+              executables;
+              lint_rules;
+              examples;
               dependencies;
             }
         | source :: rest ->
@@ -543,13 +669,7 @@ let run_for_package = fun
         cache_key ~request ~package ~package_version:version ~source_signature ~dependency_signature
       in
       let* dependencies = map_dependencies ~release:request.release ~dependency_map package in
-      let* package_doc =
-        package_doc_of_sources
-          ~package:(Package_name.to_string package.name)
-          ~version
-          ~dependencies
-          sources
-      in
+      let* package_doc = package_doc_of_sources ~package ~version ~dependencies sources in
       let cache_hit_ref = ref false in
       let* () =
         if cache_allowed && not request.force then
@@ -583,18 +703,27 @@ let run_for_package = fun
         let* index_path = write_index ~output_dir package_doc in
         let* page_paths = write_pages ~output_dir package_doc in
         let* () = write_assets output_dir in
+        let asset_paths = [ Path.(output_dir / Path.v "assets" / Path.v "doc.css") ] in
+        let output_paths = ([ index_path ] @ page_paths) @ asset_paths in
+        let* manifest_path =
+          write_manifest
+            ~output_dir
+            ~profile:(resolve_profile request.release)
+            ~package:package.name
+            ~version
+            ~cache_key
+            ~source_signature
+            ~dependency_signature
+            ~outputs:output_paths
+        in
         let* () =
           if cache_allowed then
-            let outs =
-              ([ index_path ] @ page_paths)
-              @ [ Path.(output_dir / Path.v "assets" / Path.v "doc.css") ]
-            in
             Riot_store.Store.save
               ~package:(Package_name.to_string package.name)
               ~input_hash:(Crypto.hash_string cache_key)
               store
               ~sandbox_dir:output_dir
-              ~outs
+              ~outs:(manifest_path :: output_paths)
             |> Result.map_err
               ~fn:(fun err -> "failed to save cached docs: " ^ Riot_store.Store.error_message err)
             |> Result.map ~fn:(fun _ -> ())

@@ -21,12 +21,12 @@ let source = fun ?(workspace = false) () ->
 let dependency = fun name ->
   Package.{ name = package_name name; source = source ~workspace:true () }
 
-let sources = fun src ->
+let sources = fun ?(examples = []) src ->
   Package.{
     src;
     native = [];
     tests = [];
-    examples = [];
+    examples;
     bench = [];
   }
 
@@ -135,8 +135,10 @@ let test_doc_generates_root_module_detail_page = fun _ctx ->
     (fun tmpdir ->
       let pkg_root = Path.(tmpdir / Path.v "pretext") in
       let pkg_src = Path.(pkg_root / Path.v "src") in
+      let pkg_examples = Path.(pkg_root / Path.v "examples") in
       let output_root = Path.(tmpdir / Path.v "docs") in
       create_dir pkg_src;
+      create_dir pkg_examples;
       write Path.(pkg_src / Path.v "pretext.ml") {ocaml|let format = fun value -> value
 |ocaml};
       write
@@ -146,13 +148,53 @@ let test_doc_generates_root_module_detail_page = fun _ctx ->
 (** Format a document to text. *)
 val format: string -> string
 |ocaml};
+      write Path.(pkg_src / Path.v "main.ml") {ocaml|let main ~args:_ = ()
+|ocaml};
+      write Path.(pkg_src / Path.v "serve_cmd.ml") {ocaml|let main ~args:_ = ()
+|ocaml};
+      write Path.(pkg_src / Path.v "pretext_rules.ml") {ocaml|let rules = []
+|ocaml};
+      write
+        Path.(pkg_examples / Path.v "basic.ml")
+        {ocaml|let value = Pretext.format "hello"
+|ocaml};
+      let pkg_name = package_name "pretext" in
       let pkg =
         Package.make
-          ~name:(package_name "pretext")
+          ~name:pkg_name
           ~path:pkg_root
           ~relative_path:(Path.v "pretext")
+          ~binaries:[ { name = "pretext"; path = Path.v "src/main.ml" } ]
+          ~commands:[
+            Package_command.{
+              name = "serve";
+              description = "Serve Pretext documents.";
+              package_name = pkg_name;
+              package_path = pkg_root;
+              command_module = "Serve_cmd";
+              command_source = Path.v "src/serve_cmd.ml";
+              command_binary = Path.v "_build/out/pretext/Serve_cmd";
+            };
+          ]
+          ~fix_providers:[
+            Fix_provider.{
+              name = "pretext-rules";
+              package_name = pkg_name;
+              package_path = pkg_root;
+              source_path = Path.v "src/pretext_rules.ml";
+              rules = [ "pretext/no-empty"; ];
+            };
+          ]
           ~library:{ path = Path.v "src/pretext.ml" }
-          ~sources:(sources [ Path.v "src/pretext.ml"; Path.v "src/pretext.mli" ])
+          ~sources:(sources
+            ~examples:[ Path.v "examples/basic.ml" ]
+            [
+              Path.v "src/pretext.ml";
+              Path.v "src/pretext.mli";
+              Path.v "src/main.ml";
+              Path.v "src/serve_cmd.ml";
+              Path.v "src/pretext_rules.ml";
+            ])
           ()
       in
       let workspace =
@@ -166,13 +208,30 @@ val format: string -> string
         | _ -> Error "expected one generated docs summary"
       in
       let* index = read_file Path.(summary.Riot_doc.output_dir / Path.v "index.html") in
+      let* manifest = read_file Path.(summary.Riot_doc.output_dir / Path.v "manifest.json") in
       let* root_page =
         read_file Path.(summary.Riot_doc.output_dir / Path.v "Pretext" / Path.v "index.html")
       in
       let* () = assert_contains ~label:"package index" index "href=\"Pretext/index.html\"" in
       let* () =
-        assert_contains ~label:"package index" index "href=\"Pretext/index.html#function_format\""
+        assert_not_contains
+          ~label:"package index"
+          index
+          "href=\"Pretext/index.html#function_format\""
       in
+      let* () = assert_contains ~label:"package index" index "id=\"commands\"" in
+      let* () = assert_contains ~label:"package index" index "Serve Pretext documents." in
+      let* () = assert_contains ~label:"package index" index "id=\"executables\"" in
+      let* () = assert_contains ~label:"package index" index "src/main.ml" in
+      let* () = assert_contains ~label:"package index" index "id=\"lint-rules\"" in
+      let* () = assert_contains ~label:"package index" index "pretext/no-empty" in
+      let* () = assert_contains ~label:"package index" index "id=\"examples\"" in
+      let* () = assert_contains ~label:"package index" index "examples/basic.ml" in
+      let* () =
+        assert_contains ~label:"docs manifest" manifest "\"schema\": \"riot-doc.manifest.v1\""
+      in
+      let* () = assert_contains ~label:"docs manifest" manifest "\"generator\": \"riot-doc:v25\"" in
+      let* () = assert_contains ~label:"docs manifest" manifest "\"manifest.json\"" in
       let* () = assert_not_contains ~label:"root module page" root_page "Redirecting..." in
       let* () =
         assert_contains

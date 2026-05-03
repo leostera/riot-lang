@@ -662,6 +662,34 @@ let render_dependency_section = fun dependencies ->
   in
   render_kind_section ~section_id:"dependencies" ~title:"Dependencies" ~note:"" rows
 
+let render_package_entry_row = fun (entry: Doctree.package_entry) ->
+  let summary =
+    match (entry.summary, entry.meta) with
+    | (Some summary, _) when not (String.equal summary "") -> summary
+    | (_, Some meta) when not (String.equal meta "") -> meta
+    | _ -> ""
+  in
+  "<li class=\"item-row\">\n" ^ (
+    match entry.href with
+    | Some href ->
+        "  <a class=\"item-name\" href=\""
+        ^ escape_html href
+        ^ "\">"
+        ^ escape_html entry.name
+        ^ "</a>\n"
+    | None -> "  <span class=\"item-name\">" ^ escape_html entry.name ^ "</span>\n"
+  ) ^ (
+    if String.equal summary "" then
+      ""
+    else
+      "  <div class=\"item-summary\">" ^ escape_html summary ^ "</div>\n"
+  ) ^ "</li>"
+
+let render_package_entry_section = fun ~section_id ~title entries ->
+  entries
+  |> List.map ~fn:render_package_entry_row
+  |> render_kind_section ~section_id ~title ~note:""
+
 let render_module_rows = fun ~from_module modules ->
   modules
   |> List.map
@@ -889,84 +917,30 @@ let render_common_scripts = fun () ->
 
 let render_index = fun (package_doc: Doctree.package_doc) ->
   let summary_module = package_summary_module package_doc in
-  let section_links =
+  let section_links = [
+    ("#modules", "Modules");
+    ("#commands", "Commands");
+    ("#executables", "Executables");
+    ("#lint-rules", "Lint Rules");
+    ("#examples", "Examples");
+    ("#dependencies", "Dependencies");
+  ]
+  in
+  let package_modules =
     match summary_module with
-    | Some summary_module ->
-        let links = [ ("#modules", "Modules"); ] in
-        let links =
-          if Doctree.items_of_kind Doctree.Type_item summary_module.items = [] then
-            links
-          else
-            links @ [ ("#types", "Types"); ]
-        in
-        let links =
-          if Doctree.items_of_kind Doctree.Function_item summary_module.items = [] then
-            links
-          else
-            links @ [ ("#functions", "Functions"); ]
-        in
-        let links =
-          if Doctree.items_of_kind Doctree.Macro_item summary_module.items = [] then
-            links
-          else
-            links @ [ ("#macros", "Macros"); ]
-        in
-        if package_doc.dependencies = [] then
-          links
-        else
-          links @ [ ("#dependencies", "Dependencies"); ]
-    | None ->
-        if package_doc.dependencies = [] then
-          [ ("#modules", "Modules"); ]
-        else
-          [ ("#modules", "Modules"); ("#dependencies", "Dependencies"); ]
+    | Some module_doc -> [ module_doc ]
+    | None -> []
   in
   let (sidebar_modules, module_rows) =
-    match summary_module with
-    | Some summary_module ->
-        let children = summary_module :: summary_module.modules in
-        (
-          children
-          |> List.map
-            ~fn:(fun (module_doc: Doctree.module_doc) -> (
-              Doctree.module_href module_doc,
-              module_doc.name
-            )),
-          render_module_rows ~from_module:None children
-        )
-    | None -> (
-      package_doc.modules
+    (
+      package_modules
       |> List.map
         ~fn:(fun (module_doc: Doctree.module_doc) -> (
           Doctree.module_href module_doc,
           module_doc.name
         )),
-      render_module_rows ~from_module:None package_doc.modules
+      render_module_rows ~from_module:None package_modules
     )
-  in
-  let render_item_section kind =
-    match summary_module with
-    | None -> ""
-    | Some summary_module ->
-        let rows =
-          Doctree.items_of_kind kind summary_module.items
-          |> List.map
-            ~fn:(fun (item: Doctree.item) ->
-              render_item_row
-                ~href:(Doctree.module_href summary_module ^ "#" ^ item.anchor)
-                ~name:item.name
-                ~kind_label:(Doctree.item_kind_label item.kind)
-                ~meta:""
-                ~signature:item.signature
-                ~snippet:""
-                ~docstring:item.docstring
-                ~anchor:None)
-        in
-        render_kind_section
-          ~section_id:(Doctree.item_kind_slug kind)
-          ~title:(Doctree.item_kind_title kind)
-          ~note:""
-          rows
   in
   render_common_head "assets/doc.css" (package_doc.package ^ " — docs")
   ^ "<body>\n"
@@ -994,8 +968,19 @@ let render_index = fun (package_doc: Doctree.package_doc) ->
     ~section_id:"modules"
     ~title:"Modules"
     ~note:""
-    module_rows ^ render_item_section Doctree.Type_item ^ render_item_section Doctree.Function_item ^ render_item_section
-    Doctree.Macro_item ^ render_dependency_section package_doc.dependencies ^ "    </main>\n" ^ "  </div>\n" ^ render_common_scripts
+    module_rows ^ render_package_entry_section
+    ~section_id:"commands"
+    ~title:"Commands"
+    package_doc.commands ^ render_package_entry_section
+    ~section_id:"executables"
+    ~title:"Executables"
+    package_doc.executables ^ render_package_entry_section
+    ~section_id:"lint-rules"
+    ~title:"Lint Rules"
+    package_doc.lint_rules ^ render_package_entry_section
+    ~section_id:"examples"
+    ~title:"Examples"
+    package_doc.examples ^ render_dependency_section package_doc.dependencies ^ "    </main>\n" ^ "  </div>\n" ^ render_common_scripts
     () ^ "</body>\n" ^ "</html>\n"
 
 let render_module = fun (package_doc: Doctree.package_doc) (module_doc: Doctree.module_doc) ->
