@@ -1,8 +1,8 @@
 (**
-   # Mermaid - Mermaid.js diagram generation
+   Mermaid flowchart document builder.
 
-   Generate Mermaid diagram format for rendering in browsers, Markdown,
-   and documentation tools.
+   Generate Mermaid diagram format for rendering in browsers, Markdown, and
+   documentation tools.
 
    ## Examples
 

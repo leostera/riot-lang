@@ -1,8 +1,8 @@
 (**
-   # Dot - Graphviz DOT format generation
+   Graphviz DOT document builder.
 
-   Generate DOT format strings for rendering with Graphviz tools
-   (dot, neato, fdp, etc.).
+   Generate DOT format strings for rendering with Graphviz tools such as
+   `dot`, `neato`, and `fdp`.
 
    ## Examples
 

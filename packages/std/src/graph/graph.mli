@@ -1,8 +1,8 @@
 (**
-   # Graph - Graph data structures and visualization
+   Graph construction, manipulation, and export to visualization formats.
 
-   Graph construction, manipulation, and export to visualization formats
-   (DOT for Graphviz, Mermaid for Mermaid.js).
+   Use `Graph` for DOT and Mermaid rendering helpers plus simple dependency
+   graphs with topological sorting.
 
    ## Examples
 
