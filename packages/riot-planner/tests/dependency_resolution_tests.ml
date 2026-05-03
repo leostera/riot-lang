@@ -1936,6 +1936,214 @@ let test_module_graph_resolves_direct_dependency_nested_public_export = fun _ctx
   | Ok x -> x
   | Error _ -> Error "tempdir creation failed"
 
+let test_module_graph_resolves_self_named_reference_to_dependency_root = fun _ctx ->
+  match Fs.with_tempdir
+    ~prefix:"module_graph_self_named_reference"
+    (fun tmpdir ->
+      let package_root = Path.(tmpdir / Path.v "app") in
+      let src_dir = Path.(package_root / Path.v "src") in
+      let create_dir path =
+        Fs.create_dir_all path
+        |> Result.expect ~msg:("expected dir creation to succeed: " ^ Path.to_string path)
+      in
+      let write path contents =
+        Fs.write contents path
+        |> Result.expect ~msg:("expected file write to succeed: " ^ Path.to_string path)
+      in
+      let _ = create_dir src_dir in
+      let _ = write Path.(src_dir / Path.v "app.ml") "let value = 1\n" in
+      let _ = write Path.(src_dir / Path.v "config.ml") "let value = Config.default\n" in
+      let package =
+        Riot_model.Package.make
+          ~name:(
+            Package_name.from_string "app"
+            |> Result.expect ~msg:"expected valid package name"
+          )
+          ~path:package_root
+          ~relative_path:(Path.v "app")
+          ~library:{ path = Path.v "src/app.ml" }
+          ~sources:{
+            src = [ Path.v "src/app.ml"; Path.v "src/config.ml" ];
+            native = [];
+            tests = [];
+            examples = [];
+            bench = [];
+          }
+          ()
+      in
+      let workspace =
+        Riot_model.Workspace.make_realized
+          ~root:tmpdir
+          ~packages:[ package ]
+          ~target_dir:"target"
+          ()
+      in
+      let toolchain =
+        Riot_toolchain.init ~config:Riot_model.Toolchain_config.default
+        |> Result.expect ~msg:"expected toolchain init to succeed"
+      in
+      let graph_builder = make_src_graph_builder ~package_root ~package ~toolchain ~workspace in
+      let config_package_name =
+        Package_name.from_string "config"
+        |> Result.expect ~msg:"expected valid package name"
+      in
+      Riot_planner.Module_graph.add_direct_dependency_root
+        graph_builder
+        ~package_name:config_package_name
+        ~root_module:"Config";
+      match Riot_planner.Module_graph.wire_dependencies graph_builder with
+      | Error err -> Error (Riot_planner.Planning_error.to_string err)
+      | Ok () -> (
+          match Riot_planner.Package_layout_validator.validate
+            ~direct_dependency_modules:[ "Config" ]
+            ~package
+            ~module_graph:(Riot_planner.Module_graph.graph graph_builder)
+            ~analyzed_modules:(Riot_planner.Module_graph.analyzed_modules graph_builder) with
+          | Error err ->
+              Error ("expected self-named dependency root to resolve, got: "
+              ^ Riot_planner.Planning_error.to_string err)
+          | Ok () ->
+              let graph = Riot_planner.Module_graph.graph graph_builder in
+              let analyzed_modules = Riot_planner.Module_graph.analyzed_modules graph_builder in
+              let find_local_config_node () =
+                G.map graph ~fn:(fun x -> x)
+                |> List.find
+                  ~fn:(fun (_node_id, (node: Riot_planner.Module_node.t G.node)) ->
+                    match node.value.kind with
+                    | Riot_planner.Module_node.ML mod_ ->
+                        String.equal (Riot_model.Module.namespaced_name mod_) "App__Config"
+                    | _ -> false)
+              in
+              let find_dependency_config_node () =
+                G.map graph ~fn:(fun x -> x)
+                |> List.find
+                  ~fn:(fun (_node_id, (node: Riot_planner.Module_node.t G.node)) ->
+                    match node.value.kind with
+                    | Riot_planner.Module_node.PackageDependency { root_module; _ } ->
+                        String.equal root_module "Config"
+                    | _ -> false)
+              in
+              match (find_local_config_node (), find_dependency_config_node ()) with
+              | (Some (config_id, config_node), Some (_dep_id, dependency_node)) -> (
+                  match List.find
+                    analyzed_modules
+                    ~fn:(fun (node_id, _analyzed) -> G.Node_id.eq node_id config_id) with
+                  | None -> Error "expected analyzed App__Config module"
+                  | Some (_node_id, analyzed) ->
+                      let requested_modules =
+                        match analyzed.Riot_planner.Module_graph.deps with
+                        | Ok deps -> Syn.Deps.modules deps
+                        | Error _ -> []
+                      in
+                      let depends_on_self =
+                        List.any config_node.deps ~fn:(G.Node_id.eq config_node.id)
+                      in
+                      let depends_on_dependency =
+                        List.any config_node.deps ~fn:(G.Node_id.eq dependency_node.id)
+                      in
+                      if
+                        requested_modules = [ "Config" ]
+                        && analyzed.Riot_planner.Module_graph.unresolved_deps = []
+                        && depends_on_dependency
+                        && not depends_on_self
+                      then
+                        Ok ()
+                      else
+                        Error ("expected App__Config to resolve Config through dependency root; modules=["
+                        ^ String.concat ", " requested_modules
+                        ^ "], unresolved=["
+                        ^ String.concat ", " analyzed.Riot_planner.Module_graph.unresolved_deps
+                        ^ "], depends_on_dependency="
+                        ^ Bool.to_string depends_on_dependency
+                        ^ ", depends_on_self="
+                        ^ Bool.to_string depends_on_self)
+                )
+              | (None, _) -> Error "expected App__Config module node"
+              | (_, None) -> Error "expected Config package dependency node"
+        )) with
+  | Ok x -> x
+  | Error _ -> Error "tempdir creation failed"
+
+let test_module_graph_rejects_self_named_reference_without_dependency_root = fun _ctx ->
+  match Fs.with_tempdir
+    ~prefix:"module_graph_self_named_reference_without_dependency"
+    (fun tmpdir ->
+      let package_root = Path.(tmpdir / Path.v "app") in
+      let src_dir = Path.(package_root / Path.v "src") in
+      let create_dir path =
+        Fs.create_dir_all path
+        |> Result.expect ~msg:("expected dir creation to succeed: " ^ Path.to_string path)
+      in
+      let write path contents =
+        Fs.write contents path
+        |> Result.expect ~msg:("expected file write to succeed: " ^ Path.to_string path)
+      in
+      let _ = create_dir src_dir in
+      let _ = write Path.(src_dir / Path.v "app.ml") "let value = 1\n" in
+      let _ = write Path.(src_dir / Path.v "config.ml") "let value = Config.default\n" in
+      let package =
+        Riot_model.Package.make
+          ~name:(
+            Package_name.from_string "app"
+            |> Result.expect ~msg:"expected valid package name"
+          )
+          ~path:package_root
+          ~relative_path:(Path.v "app")
+          ~library:{ path = Path.v "src/app.ml" }
+          ~sources:{
+            src = [ Path.v "src/app.ml"; Path.v "src/config.ml" ];
+            native = [];
+            tests = [];
+            examples = [];
+            bench = [];
+          }
+          ()
+      in
+      let workspace =
+        Riot_model.Workspace.make_realized
+          ~root:tmpdir
+          ~packages:[ package ]
+          ~target_dir:"target"
+          ()
+      in
+      let toolchain =
+        Riot_toolchain.init ~config:Riot_model.Toolchain_config.default
+        |> Result.expect ~msg:"expected toolchain init to succeed"
+      in
+      let graph_builder = make_src_graph_builder ~package_root ~package ~toolchain ~workspace in
+      match Riot_planner.Module_graph.wire_dependencies graph_builder with
+      | Error err -> Error (Riot_planner.Planning_error.to_string err)
+      | Ok () -> (
+          let analyzed_modules = Riot_planner.Module_graph.analyzed_modules graph_builder in
+          let config_analysis =
+            List.find
+              analyzed_modules
+              ~fn:(fun (_node_id, module_) ->
+                Path.equal
+                  module_.Riot_planner.Module_graph.display_path
+                  Path.(package_root / Path.v "src/config.ml"))
+          in
+          match config_analysis with
+          | None -> Error "expected analyzed config.ml module"
+          | Some (_node_id, analyzed) -> (
+              match Riot_planner.Package_layout_validator.validate
+                ~direct_dependency_modules:[]
+                ~package
+                ~module_graph:(Riot_planner.Module_graph.graph graph_builder)
+                ~analyzed_modules with
+              | Ok () -> Error "expected self-named module reference to remain unresolved"
+              | Error _ ->
+                  if analyzed.Riot_planner.Module_graph.unresolved_deps = [ "Config" ] then
+                    Ok ()
+                  else
+                    Error ("expected unresolved dependency [Config], got ["
+                    ^ String.concat ", " analyzed.Riot_planner.Module_graph.unresolved_deps
+                    ^ "]")
+            )
+        )) with
+  | Ok x -> x
+  | Error _ -> Error "tempdir creation failed"
+
 let test_module_graph_rejects_non_direct_dependency_root = fun _ctx ->
   match Fs.with_tempdir
     ~prefix:"module_graph_non_direct_dependency_root"
@@ -2070,6 +2278,12 @@ let tests =
     case
       "module graph resolves direct dependency nested public export"
       test_module_graph_resolves_direct_dependency_nested_public_export;
+    case
+      "module graph resolves self named reference to dependency root"
+      test_module_graph_resolves_self_named_reference_to_dependency_root;
+    case
+      "module graph rejects self named reference without dependency root"
+      test_module_graph_rejects_self_named_reference_without_dependency_root;
     case
       "module graph rejects non-direct dependency root"
       test_module_graph_rejects_non_direct_dependency_root;

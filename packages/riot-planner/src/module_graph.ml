@@ -1230,7 +1230,7 @@ let wire_dependencies = fun t ->
     else
       resolved_nodes
   in
-  let resolve_dependency_node_ids dep_mod_name =
+  let resolve_dependency_nodes_for_node (node: Module_node.t G.node) dep_mod_name =
     let simple_name = Module_name.to_string dep_mod_name in
     let namespace_parts =
       Module_name.namespace dep_mod_name
@@ -1241,7 +1241,22 @@ let wire_dependencies = fun t ->
       match __tmp1 with
       | [] -> raise Not_found
       | candidate_name :: rest -> (
-          try Module_registry.get_by_qualified_name t.registry candidate_name with
+          try
+            let dep_node_ids = Module_registry.get_by_qualified_name t.registry candidate_name in
+            let preferred_ids =
+              preferred_dependency_nodes dep_node_ids
+              |> List.filter_map
+                ~fn:(fun (dep_node_id, dep_node) ->
+                  if G.Node_id.eq dep_node_id node.id then
+                    None
+                  else
+                    Some (dep_node_id, dep_node))
+            in
+            if List.is_empty preferred_ids then
+              try_candidates rest
+            else
+              preferred_ids
+          with
           | Not_found -> try_candidates rest
         )
     in
@@ -1420,15 +1435,9 @@ let wire_dependencies = fun t ->
             ~init:([], [])
             ~fn:(fun (resolved_ids, unresolved) (requested_module, dep_mod_name) ->
               try
-                let dep_node_ids = resolve_dependency_node_ids dep_mod_name in
                 let preferred_ids =
-                  preferred_dependency_nodes dep_node_ids
-                  |> List.filter_map
-                    ~fn:(fun (dep_node_id, _dep_node) ->
-                      if G.Node_id.eq dep_node_id node.id then
-                        None
-                      else
-                        Some dep_node_id)
+                  resolve_dependency_nodes_for_node node dep_mod_name
+                  |> List.map ~fn:(fun (dep_node_id, _dep_node) -> dep_node_id)
                 in
                 (List.reverse preferred_ids @ resolved_ids, unresolved)
               with
@@ -1618,20 +1627,9 @@ let wire_dependencies = fun t ->
           List.for_each
             module_deps
             ~fn:(fun dep_mod_name ->
-              try
-                let dep_node_ids = resolve_dependency_node_ids dep_mod_name in
-                List.for_each
-                  (preferred_dependency_nodes dep_node_ids)
-                  ~fn:(fun (dep_node_id, dep_node) ->
-                    (* Skip self-references: a module can't depend on itself.
-                       This happens when dependency analysis reports "A" as a dependency of A.ml,
-                       which actually refers to a different module A (e.g., Bar.A when using 'open Bar').
-                    *)
-                    if G.Node_id.eq dep_node_id node.id then
-                      ()
-                    else
-                      G.add_edge node ~depends_on:dep_node)
-              with
+              try List.for_each
+                (resolve_dependency_nodes_for_node node dep_mod_name)
+                ~fn:(fun (dep_node_id, dep_node) -> G.add_edge node ~depends_on:dep_node) with
               | Not_found -> ()));
       Ok ()
 

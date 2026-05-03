@@ -8,7 +8,7 @@ let test_toolchain =
   Riot_toolchain.init ~config:Riot_model.Toolchain_config.default
   |> Result.expect ~msg:"Failed to initialize toolchain"
 
-let planner_artifacts_version = "planner-artifacts:v20"
+let planner_artifacts_version = "planner-artifacts:v22"
 
 let legacy_planner_artifacts_version = "planner-artifacts:v19"
 
@@ -1659,6 +1659,82 @@ let test_cached_artifact_and_exports_short_circuit_without_plan_bundle = fun _ct
   | Ok x -> x
   | Error _ -> Error "tempdir creation failed"
 
+let test_stale_cached_artifact_version_rebuilds_plan_graphs = fun _ctx ->
+  match Fs.with_tempdir
+    ~prefix:"planner_cached_artifact_stale_version_test"
+    (fun tmpdir ->
+      let package = make_package tmpdir "pkg" in
+      let workspace = make_test_workspace tmpdir [ package ] in
+      let store = Riot_store.Store.create ~workspace in
+      let session_id = Riot_model.Session_id.make () in
+      let profile = Riot_model.Profile.debug in
+      let build_ctx = Riot_model.Build_ctx.make ~session_id ~profile () in
+      let stale_input_hash =
+        Riot_planner.Package_planner.compute_input_hash
+          ~planner_version:legacy_planner_artifacts_version
+          ~package
+          ~depset:[]
+          ~workspace
+          ~profile
+          ~build_ctx
+          ~toolchain:test_toolchain
+          ()
+      in
+      let sandbox_dir = Path.(tmpdir / Path.v "sandbox") in
+      let output = Path.(sandbox_dir / Path.v "pkg.cma") in
+      let _ =
+        Fs.create_dir_all sandbox_dir
+        |> Result.expect ~msg:"sandbox dir creation should succeed"
+      in
+      let _ =
+        Fs.write "stale artifact" output
+        |> Result.expect ~msg:"artifact output write should succeed"
+      in
+      let exports = [
+        Riot_store.Store.{
+          name = "pkg.cma";
+          path = Path.v "pkg.cma";
+          action_hash = Std.Crypto.Digest.hex stale_input_hash;
+        };
+      ]
+      in
+      let _artifact =
+        Riot_store.Store.save
+          store
+          ~package:(Package_name.to_string package.name)
+          ~exports
+          ~hash:stale_input_hash
+          ~sandbox_dir
+          ~outs:[ output ]
+        |> Result.expect ~msg:"stale artifact save should succeed"
+      in
+      let package_graph =
+        Riot_planner.Package_graph.create ~scope:Riot_planner.Package_graph.Runtime workspace
+        |> Result.expect ~msg:"package graph should build"
+      in
+      let package_key =
+        Riot_planner.Package_graph.package_key
+          ~package_name:(Package_name.to_string package.name)
+          Riot_planner.Package_graph.Runtime
+      in
+      match Riot_planner.Package_planner.plan_package
+        ~workspace
+        ~toolchain:test_toolchain
+        ~store
+        ~package_graph
+        ~package_key
+        ~package
+        ~build_ctx with
+      | Error err ->
+          Error ("expected stale artifact miss to replan package, got planner error: "
+          ^ Riot_planner.Planning_error.to_string err)
+      | Ok (Riot_planner.Package_planner.Planned _) -> Ok ()
+      | Ok (Riot_planner.Package_planner.Cached _) ->
+          Error "expected stale cached artifact to be ignored after planner version bump"
+      | Ok _ -> Error "expected Planned result") with
+  | Ok x -> x
+  | Error _ -> Error "tempdir creation failed"
+
 let test_stale_plan_bundle_version_rebuilds_plan_graphs = fun _ctx ->
   match Fs.with_tempdir
     ~prefix:"planner_bundle_stale_version_test"
@@ -2719,6 +2795,75 @@ let test_kernel_create_library_dependencies_are_unique = fun _ctx ->
   | Ok result -> result
   | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
 
+let test_kernel_create_library_depends_on_object_producers = fun _ctx ->
+  let check tempdir =
+    match load_repo_workspace () with
+    | Error _ as err -> err
+    | Ok repo_workspace ->
+        let workspace =
+          clone_workspace_with_target repo_workspace ~target_dir:Path.(tempdir / Path.v "target")
+        in
+        let store = Riot_store.Store.create ~workspace in
+        let session_id = Riot_model.Session_id.make () in
+        let profile = Riot_model.Profile.debug in
+        let build_ctx = Riot_model.Build_ctx.make ~session_id ~profile () in
+        match plan_kernel_runtime_graphs ~workspace ~store ~build_ctx with
+        | Error _ as err -> err
+        | Ok (_, _, action_graph, _, _) ->
+            match find_create_library_node action_graph with
+            | None -> Error "missing kernel CreateLibrary action node"
+            | Some create_node ->
+                let producer_by_output = Collections.HashMap.create () in
+                let () =
+                  Riot_planner.Action_graph.nodes action_graph
+                  |> List.for_each
+                    ~fn:(fun (node: Riot_planner.Action_node.t) ->
+                      List.for_each
+                        node.value.outs
+                        ~fn:(fun output ->
+                          let _ =
+                            Collections.HashMap.insert
+                              producer_by_output
+                              ~key:(Path.to_string output)
+                              ~value:node.id
+                          in
+                          ()))
+                in
+                let create_library_objects =
+                  create_node.value.actions
+                  |> List.filter_map
+                    ~fn:(fun __tmp1 ->
+                      match __tmp1 with
+                      | Riot_planner.Action.CreateLibrary { objects; _ } -> Some objects
+                      | _ -> None)
+                  |> List.concat
+                in
+                let missing_edges =
+                  List.filter_map
+                    create_library_objects
+                    ~fn:(fun object_path ->
+                      let object_name = Path.to_string object_path in
+                      match Collections.HashMap.get producer_by_output ~key:object_name with
+                      | None -> Some (object_name ^ " has no producer")
+                      | Some producer_id ->
+                          if List.any create_node.deps ~fn:(G.Node_id.eq producer_id) then
+                            None
+                          else
+                            Some (object_name
+                            ^ " produced by "
+                            ^ G.Node_id.to_string producer_id
+                            ^ " is not a CreateLibrary dependency"))
+                in
+                match missing_edges with
+                | [] -> Ok ()
+                | _ ->
+                    Error ("expected CreateLibrary to depend on every object producer; missing: "
+                    ^ String.concat ", " missing_edges)
+  in
+  match Fs.with_tempdir ~prefix:"planner_kernel_object_producers" check with
+  | Ok result -> result
+  | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
+
 let test_kernel_unix_addr_interface_depends_on_sibling_modules = fun _ctx ->
   let check tempdir =
     match load_repo_workspace () with
@@ -3043,6 +3188,9 @@ let tests =
       "cached artifact and exports short-circuit without plan bundle"
       test_cached_artifact_and_exports_short_circuit_without_plan_bundle;
     case
+      "stale cached artifact version rebuilds plan graphs"
+      test_stale_cached_artifact_version_rebuilds_plan_graphs;
+    case
       "stale plan bundle version rebuilds plan graphs"
       test_stale_plan_bundle_version_rebuilds_plan_graphs;
     case
@@ -3093,6 +3241,10 @@ let tests =
       ~size:Large
       "kernel CreateLibrary dependencies are unique"
       test_kernel_create_library_dependencies_are_unique;
+    case
+      ~size:Large
+      "kernel CreateLibrary depends on object producers"
+      test_kernel_create_library_depends_on_object_producers;
     case
       ~size:Large
       "kernel unix addr interface depends on sibling modules"

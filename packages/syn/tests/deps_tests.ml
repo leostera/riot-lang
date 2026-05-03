@@ -183,6 +183,24 @@ let length = fun values -> Array.length values
   | Ok modules -> Error ("expected deps [Std], got [" ^ String.concat ", " modules ^ "]")
   | Error err -> Error err
 
+let test_deps_opened_child_named_like_current_file_stays_on_opened_root = fun _ctx ->
+  let env =
+    Syn.Deps.Env.empty
+    |> Syn.Deps.Env.add_scoped_binding
+      ~path:[ "Std" ]
+      ~free_names:[ "Std" ]
+      ~exports:(alias_exports [ "Config" ])
+  in
+  let source = {ocaml|open Std
+
+let load = fun path -> Config.load_file path
+|ocaml}
+  in
+  match parse_modules ~env ~filename:"config.ml" source with
+  | Ok modules when modules = [ "Std" ] -> Ok ()
+  | Ok modules -> Error ("expected deps [Std], got [" ^ String.concat ", " modules ^ "]")
+  | Error err -> Error err
+
 let test_deps_keep_unknown_qualified_roots_after_open = fun _ctx ->
   let source =
     {ocaml|open Prelude
@@ -448,6 +466,9 @@ let tests =
     case
       "deps open scoped root keeps child modules on opened root"
       test_deps_open_scoped_root_keeps_child_modules_on_opened_root;
+    case
+      "deps opened child named like current file stays on opened root"
+      test_deps_opened_child_named_like_current_file_stays_on_opened_root;
     case
       "deps keep unknown qualified roots after open"
       test_deps_keep_unknown_qualified_roots_after_open;
