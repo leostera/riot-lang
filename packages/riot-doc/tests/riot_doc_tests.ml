@@ -54,6 +54,12 @@ let assert_not_contains = fun ~label text unexpected ->
   else
     Ok ()
 
+let assert_string_equal = fun ~label ~expected actual ->
+  if String.equal expected actual then
+    Ok ()
+  else
+    Error ("expected " ^ label ^ " to equal " ^ expected ^ ", got " ^ actual)
+
 let make_doc_request = fun ~workspace ~output_dir package_name ->
   Riot_doc.{
     workspace;
@@ -62,6 +68,17 @@ let make_doc_request = fun ~workspace ~output_dir package_name ->
     release = false;
     output_root = Some output_dir;
     force = true;
+    no_cache = true;
+  }
+
+let make_cached_doc_request = fun ~workspace ~output_dir package_name ->
+  Riot_doc.{
+    workspace;
+    package_name = Some package_name;
+    all = false;
+    release = false;
+    output_root = Some output_dir;
+    force = false;
     no_cache = true;
   }
 
@@ -237,7 +254,7 @@ val format: string -> string
       let* () =
         assert_contains ~label:"docs manifest" manifest "\"schema\": \"riot-doc.manifest.v1\""
       in
-      let* () = assert_contains ~label:"docs manifest" manifest "\"generator\": \"riot-doc:v26\"" in
+      let* () = assert_contains ~label:"docs manifest" manifest "\"generator\": \"riot-doc:v27\"" in
       let* () = assert_contains ~label:"docs manifest" manifest "\"manifest.json\"" in
       let* () = assert_not_contains ~label:"root module page" root_page "Redirecting..." in
       let* () =
@@ -271,6 +288,92 @@ val format: string -> string
       let* () = assert_not_contains ~label:"root module page" root_page "val format:" in
       let* () = assert_not_contains ~label:"root module page" root_page "(** Format" in
       assert_contains ~label:"root module page" root_page "Format a document to text.") with
+  | Ok result -> result
+  | Error err -> Error (IO.error_message err)
+
+let test_doc_reuses_current_output_when_manifest_matches = fun _ctx ->
+  match Fs.with_tempdir
+    ~prefix:"riot_doc_manifest_reuse"
+    (fun tmpdir ->
+      let pkg_root = Path.(tmpdir / Path.v "pretext") in
+      let pkg_src = Path.(pkg_root / Path.v "src") in
+      let output_root = Path.(tmpdir / Path.v "docs") in
+      create_dir pkg_src;
+      write Path.(pkg_src / Path.v "pretext.ml") {ocaml|let value = 1
+|ocaml};
+      let interface_path = Path.(pkg_src / Path.v "pretext.mli") in
+      write
+        interface_path
+        {ocaml|(** Tiny text documents. *)
+
+(** Initial value. *)
+val value: int
+|ocaml};
+      let pkg =
+        Package.make
+          ~name:(package_name "pretext")
+          ~path:pkg_root
+          ~relative_path:(Path.v "pretext")
+          ~library:{ path = Path.v "src/pretext.ml" }
+          ~sources:(sources [ Path.v "src/pretext.ml"; Path.v "src/pretext.mli" ])
+          ()
+      in
+      let workspace =
+        Workspace.make_realized ~root:tmpdir ~packages:[ pkg ] ~target_dir:"target" ()
+      in
+      let request = make_cached_doc_request ~workspace ~output_dir:output_root "pretext" in
+      let* first =
+        match Riot_doc.run request with
+        | Ok [ summary ] -> Ok summary
+        | Ok _ -> Error "expected one generated docs summary"
+        | Error error -> Error error
+      in
+      let root_page_path =
+        Path.(first.Riot_doc.output_dir / Path.v "Pretext" / Path.v "index.html")
+      in
+      let* () =
+        if first.Riot_doc.cache_hit then
+          Error "expected first generation to miss the local manifest"
+        else
+          Ok ()
+      in
+      write root_page_path "sentinel";
+      let* second =
+        match Riot_doc.run request with
+        | Ok [ summary ] -> Ok summary
+        | Ok _ -> Error "expected one generated docs summary"
+        | Error error -> Error error
+      in
+      let* () =
+        if not second.Riot_doc.cache_hit then
+          Error "expected unchanged docs to hit the local manifest"
+        else
+          Ok ()
+      in
+      let* preserved = read_file root_page_path in
+      let* () = assert_string_equal ~label:"manifest-preserved page" ~expected:"sentinel" preserved in
+      write
+        interface_path
+        {ocaml|(** Tiny text documents. *)
+
+(** Updated value. *)
+val value: string
+|ocaml};
+      let* third =
+        match Riot_doc.run request with
+        | Ok [ summary ] -> Ok summary
+        | Ok _ -> Error "expected one generated docs summary"
+        | Error error -> Error error
+      in
+      if third.Riot_doc.cache_hit then
+        Error "expected changed sources to invalidate the local manifest"
+      else
+        let* regenerated = read_file root_page_path in
+        let* () = assert_contains ~label:"regenerated root page" regenerated "Updated value." in
+        assert_contains
+          ~label:"regenerated root page"
+          regenerated
+          "<span class=\"item-detail-signature\">: string</span>") with
   | Ok result -> result
   | Error err -> Error (IO.error_message err)
 
@@ -562,6 +665,9 @@ let tests =
     case
       "doc uses nested module source for item snippets"
       test_doc_uses_nested_module_source_for_item_snippets;
+    case
+      "doc reuses current output when manifest matches"
+      test_doc_reuses_current_output_when_manifest_matches;
     case
       "doc extracts record field docstrings from signatures"
       test_doc_extracts_record_field_docstrings_from_signatures;

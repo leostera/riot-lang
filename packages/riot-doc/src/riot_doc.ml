@@ -2,7 +2,7 @@ open Std
 open Riot_model
 open Std.Result.Syntax
 
-let generator_signature = "riot-doc:v26"
+let generator_signature = "riot-doc:v27"
 
 type request = {
   workspace: Riot_model.Workspace.t;
@@ -476,6 +476,78 @@ let relative_output_path = fun ~output_dir path ->
   | Ok relative -> Path.to_string relative
   | Error _ -> Path.to_string path
 
+type existing_manifest = {
+  manifest_cache_key: string;
+  manifest_outputs: string list;
+}
+
+let manifest_path = fun output_dir -> Path.(output_dir / Path.v "manifest.json")
+
+let json_string_field = fun name json ->
+  match Data.Json.get_field name json with
+  | Some (Data.Json.String value) -> Some value
+  | _ -> None
+
+let json_string_array_field = fun name json ->
+  let rec loop acc = fun __tmp1 ->
+    match __tmp1 with
+    | [] -> Some (List.reverse acc)
+    | (Data.Json.String value) :: rest -> loop (value :: acc) rest
+    | _ -> None
+  in
+  match Data.Json.get_field name json with
+  | Some (Data.Json.Array values) -> loop [] values
+  | _ -> None
+
+let existing_manifest_of_json = fun json ->
+  match (
+    json_string_field "schema" json,
+    json_string_field "generator" json,
+    json_string_field "cache_key" json,
+    json_string_array_field "outputs" json
+  ) with
+  | (Some "riot-doc.manifest.v1", Some generator, Some manifest_cache_key, Some manifest_outputs) ->
+      if String.equal generator generator_signature then
+        Some { manifest_cache_key; manifest_outputs }
+      else
+        None
+  | _ -> None
+
+let read_existing_manifest = fun output_dir ->
+  let path = manifest_path output_dir in
+  match Fs.exists path with
+  | Ok true -> (
+      match Fs.read path with
+      | Ok content -> (
+          match Data.Json.of_string content with
+          | Ok json -> existing_manifest_of_json json
+          | Error _ -> None
+        )
+      | Error _ -> None
+    )
+  | Ok false
+  | Error _ -> None
+
+let existing_manifest_outputs_exist = fun ~output_dir outputs ->
+  let rec loop = fun __tmp1 ->
+    match __tmp1 with
+    | [] -> true
+    | relative_path :: rest -> (
+        match Fs.exists Path.(output_dir / Path.v relative_path) with
+        | Ok true -> loop rest
+        | Ok false
+        | Error _ -> false
+      )
+  in
+  loop outputs
+
+let existing_output_matches = fun ~output_dir ~cache_key ->
+  match read_existing_manifest output_dir with
+  | Some manifest ->
+      String.equal manifest.manifest_cache_key cache_key
+      && existing_manifest_outputs_exist ~output_dir manifest.manifest_outputs
+  | None -> false
+
 let manifest_json = fun
   ~profile ~package ~version ~cache_key ~source_signature ~dependency_signature ~outputs ->
   Data.Json.Object [
@@ -502,7 +574,7 @@ let write_manifest = fun
   ~source_signature
   ~dependency_signature
   ~outputs ->
-  let path = Path.(output_dir / Path.v "manifest.json") in
+  let path = manifest_path output_dir in
   let relative_outputs =
     (path :: outputs)
     |> List.map ~fn:(relative_output_path ~output_dir)
@@ -668,11 +740,12 @@ let run_for_package = fun
       let cache_key =
         cache_key ~request ~package ~package_version:version ~source_signature ~dependency_signature
       in
-      let* dependencies = map_dependencies ~release:request.release ~dependency_map package in
-      let* package_doc = package_doc_of_sources ~package ~version ~dependencies sources in
       let cache_hit_ref = ref false in
       let* () =
-        if cache_allowed && not request.force then
+        if not request.force && existing_output_matches ~output_dir ~cache_key then (
+          cache_hit_ref := true;
+          Ok ()
+        ) else if cache_allowed && not request.force then
           match Riot_store.Store.get store (Crypto.hash_string cache_key) with
           | Some _ ->
               let* () =
@@ -699,6 +772,8 @@ let run_for_package = fun
         let () = emit ~on_event (PackageGenerationCompleted summary) in
         Ok summary
       else
+        let* dependencies = map_dependencies ~release:request.release ~dependency_map package in
+        let* package_doc = package_doc_of_sources ~package ~version ~dependencies sources in
         let* () = sanitize_output_path output_dir in
         let* index_path = write_index ~output_dir package_doc in
         let* page_paths = write_pages ~output_dir package_doc in
