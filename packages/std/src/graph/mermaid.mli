@@ -79,73 +79,72 @@
 
 (** Direction of graph layout *)
 type direction =
-  | TD
   (** Top to Down *)
-  | TB
+  | TD
   (** Top to Bottom (same as TD) *)
-  | BT
+  | TB
   (** Bottom to Top *)
-  | RL
+  | BT
   (** Right to Left *)
+  | RL
+  (** Left to Right *)
   | LR
-
-(** Left to Right *)
-
 (** Node shapes available in Mermaid *)
 type node_shape =
-  | Rectangle
   (** [text] - Default rectangle *)
-  | Round
+  | Rectangle
   (** (text) - Rounded edges *)
-  | Stadium
+  | Round
   (** ([text]) - Stadium-shaped *)
-  | Subroutine
+  | Stadium
   (** [[text]] - Subroutine shape *)
-  | Cylindrical
+  | Subroutine
   (** [(text)] - Cylindrical/database shape *)
-  | Circle
+  | Cylindrical
   (** ((text)) - Circle *)
-  | Diamond
+  | Circle
   (** {text} - Diamond/rhombus *)
-  | Hexagon
+  | Diamond
   (** {{text}} - Hexagon *)
-  | Parallelogram
+  | Hexagon
   (** [/text/] - Parallelogram *)
+  | Parallelogram
+  (** [\text/] - Trapezoid *)
   | Trapezoid
-(** [\text/] - Trapezoid *)
+(** Node with label and shape. *)
 type node = {
   id: string;
   label: string;
   shape: node_shape;
 }
-(** Node with label and shape. *)
 type edge_style =
-  | Solid
   (** --> Normal arrow *)
-  | Dotted
+  | Solid
   (** -.-> Dotted arrow *)
+  | Dotted
+  (** ==> Thick arrow *)
   | Thick
-(** ==> Thick arrow *)
+(** Edge with optional label and style. *)
 type edge = {
   from_node: string;
   to_node: string;
   label: string option;
   style: edge_style;
 }
-(** Edge with optional label and style. *)
+(** Mermaid diagram representation. *)
 type t = {
   direction: direction;
   nodes: node list;
   edges: edge list;
 }
 
-(** Mermaid diagram representation. *)
+(** Create a new Mermaid graph with optional direction (default: TD). *)
 val create: ?direction:direction -> unit -> t
 
-(** Create a new Mermaid graph with optional direction (default: TD). *)
+(** Add a node to the graph. *)
 val add_node: t -> id:string -> label:string -> ?shape:node_shape -> unit -> t
 
-(** Add a node to the graph. *)
+(** Add an edge between two nodes. *)
 val add_edge:
   t ->
   from_node:string ->
@@ -155,7 +154,5 @@ val add_edge:
   unit ->
   t
 
-(** Add an edge between two nodes. *)
-val to_string: t -> string
-
 (** Convert to Mermaid diagram string. *)
+val to_string: t -> string

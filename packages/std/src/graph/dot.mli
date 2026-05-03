@@ -60,23 +60,24 @@
    - Any graph visualization with Graphviz
 *)
 
+(** Graph style - directed (->) or undirected (--). *)
 type graph_style =
   | Directed
   | Undirected
-(** Graph style - directed (->) or undirected (--). *)
+(** Node with optional label and Graphviz attributes. *)
 type node = {
   id: string;
   label: string option;
   attrs: (string * string) list;
 }
-(** Node with optional label and Graphviz attributes. *)
+(** Edge with optional label and Graphviz attributes. *)
 type edge = {
   from_node: string;
   to_node: string;
   label: string option;
   attrs: (string * string) list;
 }
-(** Edge with optional label and Graphviz attributes. *)
+(** DOT graph representation. *)
 type t = {
   name: string;
   style: graph_style;
@@ -85,13 +86,13 @@ type t = {
   graph_attrs: (string * string) list;
 }
 
-(** DOT graph representation. *)
+(** Create an empty graph. *)
 val create: name:string -> style:graph_style -> t
 
-(** Create an empty graph. *)
+(** Add a node to the graph. *)
 val add_node: t -> id:string -> ?label:string -> ?attrs:(string * string) list -> unit -> t
 
-(** Add a node to the graph. *)
+(** Add an edge to the graph. *)
 val add_edge:
   t ->
   from_node:string ->
@@ -101,7 +102,5 @@ val add_edge:
   unit ->
   t
 
-(** Add an edge to the graph. *)
-val to_string: t -> string
-
 (** Convert graph to DOT format string. *)
+val to_string: t -> string

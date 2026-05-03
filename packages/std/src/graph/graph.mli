@@ -56,12 +56,11 @@
    - Any directed/undirected graph visualization
 *)
 
+(** DOT format generation for Graphviz. *)
 module Dot = Dot
 
-(** DOT format generation for Graphviz. *)
+(** Mermaid diagram format generation. *)
 module Mermaid = Mermaid
 
-(** Mermaid diagram format generation. *)
-module SimpleGraph = Simple_graph
-
 (** Simple dependency graph with topological sorting. *)
+module SimpleGraph = Simple_graph
