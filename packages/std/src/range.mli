@@ -1,5 +1,5 @@
 (**
-   # Range - Order-aware intervals
+   Order-aware intervals.
 
    [Range] represents intervals over any ordered value type.
 
@@ -29,7 +29,6 @@
    both input ranges were built with compatible ordering semantics. The left
    range's comparator is used for those operations.
 *)
-
 open Global
 
 (**

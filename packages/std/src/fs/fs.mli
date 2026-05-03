@@ -212,8 +212,6 @@ module File = File
 
 module Walker = Walker
 
-(** # Path Operations *)
-
 (**
    Returns the canonical, absolute form of a path.
 
@@ -563,8 +561,6 @@ val symlink: src:Path.t -> dst:Path.t -> (unit, error) Result.t
 *)
 val write: string -> Path.t -> (unit, error) Result.t
 
-(** # Metadata Queries *)
-
 (**
    Gets file metadata, following symbolic links.
 
@@ -599,8 +595,6 @@ val metadata: Path.t -> (Metadata.t, error) Result.t
 *)
 val symlink_metadata: Path.t -> (Metadata.t, error) Result.t
 
-(** # Convenience Queries *)
-
 (**
    Checks if path is a regular file (not directory or symlink).
 
@@ -631,8 +625,6 @@ val is_file: Path.t -> (bool, error) Result.t
    iter | Error _ -> 0 ```
 *)
 val is_dir: Path.t -> (bool, error) Result.t
-
-(** # Utilities *)
 
 (**
    Creates a temporary directory, runs a function, then cleans up.

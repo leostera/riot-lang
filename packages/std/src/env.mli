@@ -1,5 +1,5 @@
 (**
-   # Env - Environment and system information
+   Environment and system information.
 
    This module provides access to environment variables, command-line
    arguments, and system directories.
@@ -25,9 +25,6 @@
    Unlike traditional string-based APIs, this module provides type-safe
    environment variable access with automatic parsing.
 *)
-
-(** # Command Line *)
-
 val args: string list
 
 (**
@@ -47,8 +44,6 @@ val args: string list
    let files = List.filter (fun s -> not (String.starts_with ~prefix:"-" s) )
    (List.tl Env.args) ```
 *)
-(** # Working Directory *)
-
 val current_dir: unit -> (Path.t, Path.error) Result.t
 
 (**
@@ -107,7 +102,6 @@ val home_dir: unit -> Path.t option
 
    Returns [`None`] if the home directory cannot be determined.
 *)
-(** # Environment Variables *)
 
 (** Type specifications for environment variable parsing *)
 type 't var_type =

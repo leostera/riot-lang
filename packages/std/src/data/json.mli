@@ -1,7 +1,7 @@
 open Global
 
 (**
-   # Data.Json - JSON parsing and serialization
+   JSON parsing and serialization.
 
    A simple JSON library for parsing, generating, and manipulating JSON data.
    Designed for RPC communication and configuration files.
@@ -79,8 +79,6 @@ open Global
    ```
 *)
 
-(** {1 Types} *)
-
 (**
    JSON value representation. Supports all standard JSON types: null,
    booleans, numbers (int/float), strings, arrays, and objects.
@@ -116,7 +114,7 @@ type error =
   | Unexpected_character of { position: int; character: char; expected: string }
   | Extra_input_after_value of { position: int }
   | Unknown_error of string
-(** {1 Parsing and Serialization} *)
+
 (**
    Parses a JSON string into a [t] value.
 
@@ -191,8 +189,6 @@ val to_string_pretty: ?depth:int -> t -> string
 *)
 val error_to_string: error -> string
 
-(** {1 Constructors} *)
-
 (**
    Creates a JSON null value.
 
@@ -265,8 +261,6 @@ val array: t list -> t
 *)
 val obj: (string * t) list -> t
 
-(** {1 Extractors} *)
-
 (**
    Extracts a field from a JSON object by key name. Returns [None] if the value
    is not an object or the field doesn't exist.
@@ -337,8 +331,6 @@ val get_array: t -> t list option
    Json.get_object (Json.array []) (* None *) ```
 *)
 val get_object: t -> (string * t) list option
-
-(** {1 Diffing} *)
 
 (**
    Computes deep differences between two JSON values.

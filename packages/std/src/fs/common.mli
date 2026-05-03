@@ -1,7 +1,7 @@
 open Global
 
 (**
-   # Common - Filesystem error types
+   Filesystem error types.
 
    Common error types and conversion utilities for filesystem operations.
 

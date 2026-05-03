@@ -58,8 +58,6 @@ type t
 (** Convert supervisor to Pid. *)
 val to_pid: t -> Pid.t
 
-(** {1 Supervision Strategies} *)
-
 type strategy =
   | OneForOne
   (** If one child fails, only that child is restarted *)
@@ -71,41 +69,29 @@ type strategy =
      are terminated and restarted
   *)
   | SimpleOneForOne
-
 (**
    Simplified supervisor where all children use the same child_spec.
    Children are added dynamically.
 *)
-(** {1 Restart Policies} *)
-
 type restart =
   | Permanent
   (** Always restart the child, regardless of exit reason *)
   | Temporary
   (** Never restart the child *)
   | Transient
-
 (** Restart only if the child terminates abnormally (with error) *)
-(** {1 Shutdown Behavior} *)
-
 type shutdown =
   | BrutalKill
   (** Terminate immediately with no cleanup *)
   | Timeout of Time.Duration.t
   (** Wait for duration for graceful shutdown, then kill *)
   | Infinity
-
 (** Wait forever for graceful shutdown (use for supervisors) *)
-(** {1 Child Types} *)
-
 type child_type =
   | Worker
   (** A regular worker process *)
   | Supervisor
-
 (** A nested supervisor *)
-(** {1 Child Specification} *)
-
 type child_spec = {
   id: string;
   (** Unique identifier for this child *)
@@ -149,8 +135,6 @@ val child_spec:
   unit ->
   child_spec
 
-(** {1 Intensity (Restart Limits)} *)
-
 (**
    Maximum restarts within a time window.
 
@@ -165,7 +149,7 @@ type intensity = {
   max_restarts: int;
   window: Time.Duration.t;
 }
-(** {1 Starting Supervisors} *)
+
 (**
    Start a supervisor linked to the current process.
 
@@ -189,8 +173,6 @@ val start_link: strategy:strategy -> ?intensity:intensity -> children:child_spec
    The supervisor continues running even if the caller exits.
 *)
 val start: strategy:strategy -> ?intensity:intensity -> children:child_spec list -> unit -> t
-
-(** {1 Child Management} *)
 
 type child_info = {
   id: string;
@@ -294,8 +276,6 @@ val restart_child: t -> id:string -> (Pid.t, string) Kernel.result
 *)
 val terminate_child: t -> id:string -> (unit, string) Kernel.result
 
-(** {1 Stopping Supervisors} *)
-
 (**
    Stop the supervisor and all children gracefully.
 
@@ -303,8 +283,6 @@ val terminate_child: t -> id:string -> (unit, string) Kernel.result
    Each child is stopped according to its shutdown specification.
 *)
 val stop: t -> unit
-
-(** {1 Dynamic Supervision} *)
 
 module Dynamic: sig
   (**

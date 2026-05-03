@@ -1,7 +1,7 @@
 (**
-   TextInput - Single-line text editor component.
+   Single-line text editor component.
 
-   A text input field for forms, search boxes, command input, and any
+   Provides a text input field for forms, search boxes, command input, and any
    single-line text entry. Supports cursor movement, editing, validation,
    password masking, and placeholder text.
 
@@ -47,17 +47,15 @@
 *)
 open Std
 
-(** ## Types *)
-
+(** A text input instance. *)
 type t
-(** A text input instance *)
 type echo_mode =
   | Normal
   (* Display text as-is *)
   | Password
   (* Mask with echo character *)
   | None
-(** ## Creation *)
+
 val make: unit -> t
 
 (**
@@ -70,8 +68,6 @@ val make: unit -> t
    - focused: false
    - echo_mode: Normal
 *)
-(** ## Content *)
-
 val value: t -> string
 
 (** `value input` returns the current input value. *)
@@ -84,8 +80,6 @@ val clear: t -> t
 val is_empty: t -> bool
 
 (** `is_empty input` returns true if value is empty string. *)
-(** ## Display *)
-
 val set_prompt: t -> prompt:string -> t
 
 (** `set_prompt input prompt` sets the text shown before the input (e.g. "> "). *)
@@ -107,8 +101,6 @@ val set_char_limit: t -> limit:int -> t
 
    Prevents typing beyond this limit. Set to 0 for unlimited.
 *)
-(** ## Echo Mode *)
-
 val set_echo_mode: t -> mode:echo_mode -> t
 
 (**
@@ -121,8 +113,6 @@ val set_echo_mode: t -> mode:echo_mode -> t
 val set_echo_char: t -> char:char -> t
 
 (** `set_echo_char input c` sets the character used in Password mode (default: '*'). *)
-(** ## Focus *)
-
 val focus: t -> t
 
 (** `focus input` gives focus to the input (enables editing, shows cursor). *)
@@ -132,16 +122,12 @@ val blur: t -> t
 val is_focused: t -> bool
 
 (** `is_focused input` returns true if input has focus. *)
-(** ## Cursor *)
-
 val cursor_position: t -> int
 
 (** `cursor_position input` returns the cursor position (0-based index). *)
 val set_cursor_position: t -> pos:int -> t
 
 (** `set_cursor_position input pos` moves cursor to position (clamped to valid range). *)
-(** ## Validation *)
-
 val set_validator: t -> validator:(string -> (unit, string) result) option -> t
 
 (**
@@ -156,8 +142,6 @@ val is_valid: t -> bool
 val validation_error: t -> string option
 
 (** `validation_error input` returns the validation error message, if any. *)
-(** ## Input Handling *)
-
 val handle_key: t -> Event.key -> Event.modifier -> t
 
 (**
@@ -182,8 +166,6 @@ val handle_paste: t -> string -> t
 
    Respects char_limit. Only works if focused.
 *)
-(** ## Rendering *)
-
 val view: t -> string
 
 (**

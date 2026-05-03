@@ -1,7 +1,7 @@
 open Global
 
 (**
-   # Data.Toml - TOML parsing and serialization
+   TOML parsing and serialization.
 
    A small TOML parser for configuration text. It supports strings, integers,
    booleans, arrays, tables, and inline tables.
@@ -86,8 +86,6 @@ open Global
    For full TOML 1.0 support, consider using a more complete parser.
 *)
 
-(** {1 Types} *)
-
 (**
    TOML value representation supporting strings, integers, booleans, arrays,
    and tables.
@@ -106,7 +104,7 @@ type error =
   | Unterminated_string of { position: int }
   | Unterminated_array of { position: int }
   | Unexpected_char of { position: int; found: char; expected: string }
-(** {1 Parsing} *)
+
 (**
    Parses TOML source text and returns the root table.
 
@@ -139,8 +137,6 @@ val parse: string -> (value, error) result
    Printf.printf "Error: %s\n" (Toml.error_to_string err) ```
 *)
 val error_to_string: error -> string
-
-(** {1 Extractors} *)
 
 (**
    Extracts a string value. Returns [None] if not a string.

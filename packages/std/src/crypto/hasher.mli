@@ -1,5 +1,5 @@
 (**
-   # Hasher - Hash algorithm interface
+   Hash algorithm interface.
 
    Module signature that all hash algorithms implement, providing stateful
    hashing with incremental updates.

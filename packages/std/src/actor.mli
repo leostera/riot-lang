@@ -1,5 +1,5 @@
 (**
-   # Actor - Actor runtime primitives
+   Actor runtime primitives.
 
    Actor management helpers layered on top of the std-owned runtime.
 
@@ -14,7 +14,6 @@
    ignore child
    ```
 *)
-
 open Global
 
 (** Returns the current actor identifier. *)

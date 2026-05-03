@@ -1,5 +1,5 @@
 (**
-   # Config.Spec - Configuration Schema DSL
+   Configuration schema DSL.
 
    Type-safe schema definitions for configuration validation with support for
    defaults, required fields, nested maps, and comprehensive documentation.
@@ -74,10 +74,7 @@
    - **Defaults**: Applied when fields are missing
    - **Nested maps**: Recursively validated
 *)
-
 open Global
-
-(** {1 Configuration Values} *)
 
 type value =
   | String of string
@@ -113,7 +110,6 @@ type value =
   | Map of (string * value) list
 
 (** Nested configuration object *)
-(** {1 Schema Definition} *)
 
 (** A field specification with type, defaults, and constraints *)
 type field_spec
@@ -141,8 +137,6 @@ type t
    @return A registered configuration spec
 *)
 val for_app: app:string -> field_spec list -> t
-
-(** {1 Field Types} *)
 
 (**
    Define a string field.
@@ -536,8 +530,6 @@ val map: field_spec list -> field_spec
    @return A named field spec
 *)
 val key: string -> field_spec -> field_spec
-
-(** {1 Introspection} *)
 
 (**
    Get the application name from a spec.

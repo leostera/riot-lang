@@ -1,7 +1,7 @@
-(** UI element tree *)
+(** UI element tree. *)
 open Std
 
-(** Element type - represents a UI element in the tree *)
+(** Represents a UI element in the tree. *)
 type t =
   | Text of {
       style: Style.t;
@@ -23,8 +23,6 @@ type t =
    The measure function tells the layout engine how big this element wants to be.
    The render function receives the final bounding box and returns render commands.
 *)
-(** {1 Element Constructors} *)
-
 val text: ?style:Style.t -> string -> t
 
 (** Create a text element *)
@@ -42,8 +40,6 @@ val custom:
   t
 
 (** Create a custom element *)
-(** {1 Common Layouts} *)
-
 val row: ?style:Style.t -> t list -> t
 
 (** Container with LeftToRight direction *)

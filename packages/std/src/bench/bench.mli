@@ -1,7 +1,7 @@
 open Global
 
 (**
-   # Std.Bench - Simple Benchmarking Framework
+   Simple benchmarking framework.
 
    A low-level benchmarking framework that mirrors {!Test.case} in design,
    allowing benchmarks to be written as simple test-like cases.

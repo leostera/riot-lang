@@ -1,5 +1,5 @@
 (**
-   # Iterator - Immutable iteration protocol
+   Immutable iteration protocol.
 
    Immutable iterator protocol for lazy sequence processing. Each call
    to [next] returns a new iterator, leaving the original unchanged.
@@ -32,7 +32,6 @@
    let items = Iterator.to_list iter
    ```
 *)
-
 module type Intf = sig
   type state
   type item

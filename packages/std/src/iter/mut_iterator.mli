@@ -1,10 +1,9 @@
 (**
-   # MutIterator - Mutable iteration protocol
+   Mutable iteration protocol.
 
    Mutable iterator protocol for efficient sequence processing. Calling
    [next] mutates the internal state.
 *)
-
 module type Intf = sig
   type state
   type item

@@ -1,7 +1,7 @@
 open Global
 
 (**
-   # Data.JsonStream - JSON parsing over IoSlice
+   JSON parsing over IoSlice.
 
    `JsonStream` is an additive parser surface that reuses {!Json.t} and
    {!Json.error}, but parses from `Std.IO.IoSlice` instead of
@@ -11,7 +11,6 @@ open Global
    source input into a fresh heap string before parsing. `from_string` stays as
    the convenience adapter for ordinary callers.
 *)
-
 type t = Json.t
 type error = Json.error
 

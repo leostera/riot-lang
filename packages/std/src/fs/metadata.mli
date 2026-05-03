@@ -1,5 +1,5 @@
 (**
-   # Fs.Metadata - File metadata and attributes
+   File metadata and attributes.
 
    File metadata including type, size, permissions, and timestamps. Obtained
    from filesystem stat operations.
@@ -47,7 +47,7 @@ type file_type =
   | Fifo
   | Socket
   | Unknown
-(** ## File Properties *)
+
 (**
    Returns the file type.
 
@@ -113,8 +113,6 @@ val len: t -> int
 *)
 val permissions: t -> Permissions.t
 
-(** ## Timestamps *)
-
 (**
    Returns last access time (atime) as seconds since Unix epoch.
 
@@ -154,8 +152,6 @@ val modified: t -> float
    - **Windows**: Returns creation time
 *)
 val created: t -> float option
-
-(** ## Unix-specific *)
 
 (**
    Returns Unix mode bits (permissions + file type).

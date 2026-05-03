@@ -1,18 +1,18 @@
 (** Configuration for layout computation *)
 open Std
 
+(** Available content-box space provided during measurement. *)
 type constraints = {
   available_width: float option;
   available_height: float option;
 }
-(** Available content-box space provided during measurement. *)
+(** Measured text size plus the wrapped lines that should be rendered. *)
 type text_measurement = {
   size: Viewport.t;
   lines: string list;
 }
-(** Measured text size plus the wrapped lines that should be rendered. *)
-type text_measurer = constraints:constraints -> string -> Style.t -> text_measurement
 (** Function type for measuring text dimensions. *)
+type text_measurer = constraints:constraints -> string -> Style.t -> text_measurement
 type t = {
   viewport: Viewport.t;
   text_measurer: text_measurer;

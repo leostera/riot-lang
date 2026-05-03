@@ -1,5 +1,5 @@
 (**
-   # Data.Xml - XML construction and rendering
+   XML construction and rendering.
 
    A small XML tree builder and serializer for generating XML documents.
    Supports elements, escaped text nodes, and CDATA sections.
@@ -14,8 +14,6 @@
    ```
 *)
 
-(** {1 Types} *)
-
 (** XML node representation. *)
 type t =
   | Element of {
@@ -25,7 +23,7 @@ type t =
     }
   | Text of string
   | CData of string
-(** {1 Constructors} *)
+
 (**
    Creates an XML element with optional attributes and child nodes.
 
@@ -62,8 +60,6 @@ val text: string -> t
    ```
 *)
 val cdata: string -> t
-
-(** {1 Rendering} *)
 
 (**
    Serializes an XML node using two-space indentation.

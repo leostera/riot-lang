@@ -1,5 +1,5 @@
 (**
-   # Time.Duration - Spans of time
+   Spans of time.
 
    A type representing a span of time with nanosecond precision, typically used
    for timeouts, delays, and measuring elapsed time.
@@ -53,7 +53,7 @@
 
 (** A span of time stored as seconds + nanoseconds. Always non-negative. *)
 type t
-(** {1 Constants} *)
+
 (**
    A duration of zero time.
 
@@ -74,8 +74,6 @@ val zero: t
    ```
 *)
 val max_duration: t
-
-(** {1 Creation} *)
 
 (**
    Creates a duration from seconds and nanoseconds.
@@ -177,8 +175,6 @@ val from_weeks: int -> t
 *)
 val from_secs_float: float -> t
 
-(** {1 Conversion} *)
-
 (**
    Extracts the whole seconds component, discarding fractional part.
 
@@ -238,8 +234,6 @@ val to_micros: t -> int
 *)
 val to_nanos: t -> int64
 
-(** {1 Subsecond Components} *)
-
 (**
    Returns only the fractional milliseconds (0-999).
 
@@ -270,8 +264,6 @@ val subsec_micros: t -> int
 *)
 val subsec_nanos: t -> int
 
-(** {1 Predicates} *)
-
 (**
    Returns [true] if duration is zero.
 
@@ -282,8 +274,6 @@ val subsec_nanos: t -> int
    (* false *) ```
 *)
 val is_zero: t -> bool
-
-(** {1 Arithmetic Operations} *)
 
 (**
    Adds two durations. Panics on overflow.
@@ -330,8 +320,6 @@ val mul: t -> int -> t
 *)
 val div: t -> int -> t
 
-(** {1 Checked Operations} *)
-
 (**
    Returns [Some result] if addition doesn't overflow, [None] otherwise.
 
@@ -373,8 +361,6 @@ val checked_mul: t -> int -> t option
 *)
 val checked_div: t -> int -> t option
 
-(** {1 Saturating Operations} *)
-
 (**
    Adds durations, clamping to [max_duration] on overflow.
 
@@ -406,8 +392,6 @@ val saturating_sub: t -> t -> t
 *)
 val saturating_mul: t -> int -> t
 
-(** {1 Floating Point Operations} *)
-
 (**
    Multiplies duration by a floating-point factor.
 
@@ -427,8 +411,6 @@ val mul_f64: t -> float -> t
    (* 4 *) ```
 *)
 val div_f64: t -> float -> t
-
-(** {1 Utility} *)
 
 (**
    Returns the absolute difference between two durations.

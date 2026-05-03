@@ -1,5 +1,5 @@
 (**
-   # Date - Civil Gregorian dates
+   Civil Gregorian dates.
 
    A date without time-of-day or timezone information.
 
@@ -24,7 +24,6 @@
    - {!Std.DateTime} for timezone-aware calendar datetimes
    - {!Std.Time.SystemTime} for wall-clock timestamps
 *)
-
 open Global
 
 type t = Calendar.date = { year: int; month: int; day: int }

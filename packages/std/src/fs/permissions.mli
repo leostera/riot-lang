@@ -1,5 +1,5 @@
 (**
-   # Fs.Permissions - File permission bits
+   File permission bits.
 
    Unix-style file permissions with owner, group, and other read/write/execute
    bits.
@@ -44,7 +44,7 @@
 
 (** Unix permission bits for owner, group, and others. *)
 type t
-(** ## Conversion *)
+
 (**
    Creates permissions from Unix mode bits (octal).
 
@@ -64,8 +64,6 @@ val of_mode: int -> t
    0o644 *) ```
 *)
 val to_mode: t -> int
-
-(** ## Readonly Checks *)
 
 (**
    Returns [true] if no write bits are set (owner, group, or others).
@@ -103,8 +101,6 @@ val readonly: t -> bool
 *)
 val set_readonly: t -> bool -> t
 
-(** ## Permission Bits *)
-
 (** Checks if owner has read permission. *)
 val user_read: t -> bool
 
@@ -131,8 +127,6 @@ val other_write: t -> bool
 
 (** Checks if others have execute permission. *)
 val other_execute: t -> bool
-
-(** ## Common Modes *)
 
 (**
    `rw-r--r--` (0644) - Owner read/write, group/others read-only.

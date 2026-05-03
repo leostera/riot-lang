@@ -82,8 +82,6 @@ type summary = {
 *)
 val make_summary: t list -> summary
 
-(** {1 Comparison Results} *)
-
 (** Result of a single case in a comparison benchmark. *)
 type case_result = {
   (** Case name. *)

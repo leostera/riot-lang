@@ -75,10 +75,10 @@ val flags_of_string: string list -> flag list
 (** Compilation kind *)
 type compilation_kind =
   | Bytecode
-  (** ocamlc - fast compilation, slower runtime *)
+  (** `ocamlc`: fast compilation with slower runtime. *)
   | Native
 
-(** ocamlopt - slower compilation, optimized runtime *)
+(** `ocamlopt`: slower compilation with optimized runtime. *)
 val compilation_kind_to_string: compilation_kind -> string
 
 val compilation_kind_of_string: string -> compilation_kind option

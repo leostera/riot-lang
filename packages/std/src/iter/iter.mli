@@ -1,5 +1,5 @@
 (**
-   # Iter - Iteration and Cursor Utilities
+   Iteration and cursor utilities.
 
    This module provides iteration and cursor abstractions for traversing
    sequences and IO slices.
@@ -49,7 +49,6 @@
    {!MutIterator} | | Lazy sequences | {!Iterator}, {!MutIterator} | | Slice
    parsing | {!Cursor}, {!MutCursor} |
 *)
-
 module Iterator: module type of Iterator
 
 module MutIterator: sig

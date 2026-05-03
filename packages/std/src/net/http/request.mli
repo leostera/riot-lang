@@ -1,5 +1,5 @@
 (**
-   # Net.Http.Request - HTTP request representation
+   HTTP request representation.
 
    HTTP request type with builder pattern for constructing requests.
    Immutable by default with functional update methods.
@@ -63,7 +63,7 @@
 
 (** An HTTP request with method, URI, headers, and optional body. *)
 type t
-(** ## Construction *)
+
 (**
    Creates a new HTTP request with the given method and URI.
 
@@ -73,8 +73,6 @@ type t
    let req = Request.create Method.Get uri ```
 *)
 val create: Method.t -> Uri.t -> t
-
-(** ## Access *)
 
 (**
    Returns the HTTP method.
@@ -129,8 +127,6 @@ val body: t -> Body.t option
 
 (** Returns the request body materialized as a string if present. *)
 val body_string: t -> string option
-
-(** ## Modification *)
 
 (**
    Returns a new request with the given method.
@@ -245,8 +241,6 @@ val get_header: t -> Header.name -> Header.value option
 *)
 val has_header: t -> Header.name -> bool
 
-(** ## Builder Pattern *)
-
 module Builder: sig
   (**
      Fluent builder for constructing HTTP requests.
@@ -300,8 +294,6 @@ module Builder: sig
 
   (** Builds the final request. *)
 end
-
-(** ## Convenience Constructors *)
 
 (**
    Creates a GET request.

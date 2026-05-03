@@ -1,4 +1,4 @@
-(** Application - Supervision tree management with dependency resolution *)
+(** Supervision tree management with dependency resolution. *)
 open Global
 
 (**

@@ -1,5 +1,5 @@
 (**
-   # Net.Http.Status - HTTP status codes
+   HTTP status codes.
 
    HTTP status code types and utilities following RFC 7231. Includes all
    standard status codes from 1xx through 5xx ranges.
@@ -40,7 +40,6 @@
    - **4xx Client Error**: Request contains bad syntax or cannot be fulfilled
    - **5xx Server Error**: Server failed to fulfill valid request
 *)
-
 open Global
 
 type t =

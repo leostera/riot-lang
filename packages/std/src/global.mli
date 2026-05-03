@@ -1,5 +1,5 @@
 (**
-   # Global - Commonly used utility functions
+   Commonly used utility functions.
 
    Global utility functions available throughout `std`. This module owns
    runtime-facing process helpers plus a small amount of formatting, printing,
@@ -37,7 +37,6 @@
    ```ocaml let counter = cell 0 in Sync.Cell.set counter 1; Sync.Cell.get counter (* 1
    *) ```
 *)
-
 module Format = Format
 
 type format = Format.t
@@ -142,8 +141,6 @@ val raise: exn -> 'value
 val raise_notrace: exn -> 'value
 
 val ignore: 'value -> unit
-
-(** {1 Process Management} *)
 
 exception Receive_timeout
 

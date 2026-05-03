@@ -1,5 +1,5 @@
 (**
-   # Net.Http.Version - HTTP protocol versions
+   HTTP protocol versions.
 
    HTTP protocol version representation supporting HTTP/0.9 through HTTP/3.
 
@@ -25,7 +25,6 @@
    - HTTP/2 - Binary protocol with multiplexing
    - HTTP/3 - QUIC-based protocol
 *)
-
 open Global
 
 type t =

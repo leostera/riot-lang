@@ -1,5 +1,5 @@
 (**
-   # Net.Http.Method - HTTP request methods
+   HTTP request methods.
 
    HTTP request method types and utilities following RFC 7231.
 
@@ -37,7 +37,6 @@
    ✓ | ✓ | | POST | ✗ | ✗ | ✗ | | PUT | ✗ | ✓ | ✗ | | DELETE | ✗ | ✓ | ✗ | |
    PATCH | ✗ | ✗ | ✗ | | OPTIONS | ✓ | ✓ | ✗ | | TRACE | ✓ | ✓ | ✗ |
 *)
-
 type t =
   | Get
   (** GET - Retrieve resource *)

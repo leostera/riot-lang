@@ -1,5 +1,5 @@
 (**
-   # Version - Semantic versioning
+   Semantic versioning.
 
    Semantic versioning (SemVer 2.0) parsing, comparison, and requirement
    matching for dependency management and version constraints.
@@ -83,9 +83,6 @@
 
    - SemVer 2.0 specification: https://semver.org/
 *)
-
-(** {1 Types} *)
-
 open Global
 
 type pre_release_segment =
@@ -143,8 +140,6 @@ type parse_error =
   | Invalid_pre_release_segment of string
 
 (** Version parsing errors *)
-(** {1 Parsing} *)
-
 val parse: string -> (t, parse_error) result
 
 (**
@@ -158,8 +153,6 @@ val parse: string -> (t, parse_error) result
 val to_string: t -> string
 
 (** Convert a version to its string representation *)
-(** {1 Comparison} *)
-
 val compare: t -> t -> Order.t
 
 (**
@@ -185,8 +178,6 @@ val gt: t -> t -> bool
 val gte: t -> t -> bool
 
 (** Greater than or equal *)
-(** {1 Requirements} *)
-
 val parse_requirement: string -> (requirement, parse_error) result
 
 (**
@@ -216,8 +207,6 @@ val view_requirement: requirement -> requirement_view
 val matches: requirement -> t -> bool
 
 (** Check if a version satisfies a requirement *)
-(** {1 Constructors} *)
-
 val make:
   major:int ->
   minor:int ->

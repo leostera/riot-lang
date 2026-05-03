@@ -1,12 +1,6 @@
-(**
-   Minttea - Elm-style terminal UI framework
-
-
-   Build interactive terminal applications using the Model-View-Update pattern.
-*)
+(** Elm-style terminal UI framework for interactive terminal applications. *)
 open Std
 
-(** Configuration *)
 module Config: sig
   type render_mode =
     | Clear

@@ -1,5 +1,5 @@
 (**
-   # Option - Optional values
+   Optional values.
 
    Type `Option` represents an optional value: every `Option` is either
    [`Some`] and contains a value, or [`None`], and does not. `Option` types are
@@ -50,13 +50,11 @@
    OCaml's `option` is a regular variant type with two constructors. It has no
    runtime overhead compared to manually checking for null or special values.
 *)
-
 type 'a t = 'a option =
   | None
   | Some of 'a
 
 (** The Option type - either [`Some`] value or [`None`] *)
-(** # Constructors *)
 
 (**
    Creates a [`Some`] value.
@@ -75,8 +73,6 @@ val some: 'a -> 'a t
    ```ocaml let x : int option = Option.none in assert (x = None) ```
 *)
 val none: 'a t
-
-(** # Querying *)
 
 (**
    Returns `true` if two options are equal using the provided equality function.
@@ -139,8 +135,6 @@ val is_some_and: 'a t -> fn:('a -> bool) -> bool
    (Some 20))) ```
 *)
 val is_none_or: 'a t -> fn:('a -> bool) -> bool
-
-(** # Transforming *)
 
 (**
    Maps an `Option<'a>` to `Option<'b>` by applying a function to the contained
@@ -205,8 +199,6 @@ val map_or: 'a t -> default:'b -> fn:('a -> 'b) -> 'b
 val map_or_default: 'a t -> default:(unit -> 'b) -> fn:('a -> 'b) -> 'b
 
 val map_or_else: 'a t -> default:(unit -> 'b) -> fn:('a -> 'b) -> 'b
-
-(** # Chaining *)
 
 (**
    Returns [`None`] if the first option is [`None`], otherwise returns the
@@ -289,8 +281,6 @@ val or_else: 'a t -> fn:(unit -> 'a t) -> 'a t
    let x = None in let y = None in assert (Option.xor x y = None) ```
 *)
 val xor: 'a t -> 'a t -> 'a t
-
-(** # Extracting values *)
 
 (**
    Returns the contained [`Some`] value, consuming the option.
@@ -380,17 +370,11 @@ val expect: msg:string -> 'a t -> 'a
 
 val unwrap_none: 'a t -> unit
 
-(** # Inspecting *)
-
 (** Calls function on Some value if present, returns unchanged option *)
 val inspect: 'a t -> fn:('a -> unit) -> 'a t
 
-(** {1 Iterating} *)
-
 (** Calls function on Some value if present *)
 val for_each: 'a t -> fn:('a -> unit) -> unit
-
-(** {1 Converting} *)
 
 (** Convert Some to Ok, None to Error *)
 val ok_or: error:'e -> 'a t -> ('a, 'e) Result.t
@@ -407,17 +391,11 @@ val to_list: 'a t -> 'a list
 (** Transpose Option of Result to Result of Option *)
 val transpose: ('a, 'e) Result.t t -> ('a t, 'e) Result.t
 
-(** {1 Filtering} *)
-
 (** Returns Some if the value matches predicate, otherwise None *)
 val filter: 'a t -> fn:('a -> bool) -> 'a t
 
-(** {1 Flattening} *)
-
 (** Flatten nested Options *)
 val flatten: 'a t t -> 'a t
-
-(** {1 Zipping} *)
 
 (** Combine two options into an option of a tuple *)
 val zip: 'a t -> 'b t -> ('a * 'b) t
@@ -427,8 +405,6 @@ val zip_with: 'a t -> 'b t -> fn:('a -> 'b -> 'c) -> 'c t
 
 (** Unzip an option of a tuple into a tuple of options *)
 val unzip: ('a * 'b) t -> 'a t * 'b t
-
-(** {1 Collecting} *)
 
 (** Convert list of Options to Option of list, returns None if any is None *)
 val all: 'a t list -> 'a list t

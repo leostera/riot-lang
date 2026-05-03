@@ -1,5 +1,5 @@
 (**
-   # Net - Network I/O for actors
+   Network I/O for actors.
 
    Actor-friendly networking operations that integrate with Std.Runtime's
    scheduler. All blocking operations properly suspend the calling process

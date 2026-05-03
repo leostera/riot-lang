@@ -1,5 +1,5 @@
 (**
-   # Net.Http.Response - HTTP response representation
+   HTTP response representation.
 
    HTTP response type with builder pattern for constructing responses.
    Immutable by default with functional update methods.
@@ -56,7 +56,7 @@
 
 (** An HTTP response with status, headers, and optional body. *)
 type t
-(** ## Construction *)
+
 (**
    Creates a new HTTP response with the given status code.
 
@@ -65,8 +65,6 @@ type t
    ```ocaml let resp = Response.create Status.Ok ```
 *)
 val create: Status.t -> t
-
-(** ## Access *)
 
 (**
    Returns the HTTP status code.
@@ -112,8 +110,6 @@ val body: t -> Body.t option
 
 (** Returns the response body materialized as a string if present. *)
 val body_string: t -> string option
-
-(** ## Modification *)
 
 (**
    Returns a new response with the given status.
@@ -218,8 +214,6 @@ val get_header: t -> Header.name -> Header.value option
 *)
 val has_header: t -> Header.name -> bool
 
-(** ## Builder Pattern *)
-
 module Builder: sig
   (**
      Fluent builder for constructing HTTP responses.
@@ -269,8 +263,6 @@ module Builder: sig
 
   (** Builds the final response. *)
 end
-
-(** ## Convenience Constructors *)
 
 (**
    Creates a 200 OK response with body.

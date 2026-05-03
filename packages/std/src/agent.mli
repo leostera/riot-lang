@@ -1,5 +1,5 @@
 (**
-   # Agent - Lightweight parametric state server
+   Lightweight state server for concurrent access.
 
    Agents provide a simple wrapper around state that can be accessed
    concurrently from different processes. This version uses parametric

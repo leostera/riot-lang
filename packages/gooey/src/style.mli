@@ -109,8 +109,6 @@ type t = {
 (** Empty/default style *)
 val empty: t
 
-(** {1 Builder Functions} *)
-
 val row: t -> t
 
 (** Set direction to LeftToRight *)
@@ -185,8 +183,6 @@ val z_index: int -> t -> t
 
 val strikethrough: t -> t
 
-(** {1 Padding Helpers} *)
-
 module Padding: sig
   val make: ?left:int -> ?right:int -> ?top:int -> ?bottom:int -> unit -> padding
 
@@ -197,8 +193,6 @@ module Padding: sig
   val empty: padding
 end
 
-(** {1 Margin Helpers} *)
-
 module Margin: sig
   val make: ?left:int -> ?right:int -> ?top:int -> ?bottom:int -> unit -> margin
 
@@ -208,8 +202,6 @@ module Margin: sig
 
   val empty: margin
 end
-
-(** {1 Corner Radius Helpers} *)
 
 module CornerRadius: sig
   val make:
@@ -224,8 +216,6 @@ module CornerRadius: sig
 
   val zero: corner_radius
 end
-
-(** {1 Color Helpers} *)
 
 val color: string -> color
 

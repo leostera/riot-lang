@@ -1,5 +1,5 @@
 (**
-   # Config - Unified Configuration Management
+   Unified configuration management.
 
    Type-safe, validated configuration loading for Riot applications with automatic
    registration and fail-fast semantics.
@@ -69,10 +69,7 @@
 
    The environment is auto-detected from `RIOT_ENV` (or defaults to `dev`).
 *)
-
 open Global
-
-(** {1 Types} *)
 
 type error =
   | NotFound of { app: string }
@@ -87,8 +84,6 @@ type error =
   | FileNotFound of { path: string }
 
 (** Configuration file not found *)
-(** {1 Configuration Providers} *)
-
 module Provider: sig
   type t
 
@@ -131,8 +126,6 @@ module Provider: sig
   *)
 end
 
-(** {1 Configuration Schema} *)
-
 module Spec = Spec
 
 (** Configuration schema DSL. See {!Spec} for the complete API. *)
@@ -163,8 +156,6 @@ end
    end
    ```
 *)
-(** {1 Core API} *)
-
 val load: ?provider:Provider.t -> unit -> unit
 
 (**

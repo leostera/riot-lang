@@ -1,7 +1,7 @@
 open Global
 
 (**
-   # Net.Uri - URL/URI parsing and manipulation
+   URL/URI parsing and manipulation.
 
    URL and URI parsing with support for all standard components: scheme,
    authority, path, query, and fragment. Provides builder pattern and query
@@ -67,7 +67,6 @@ type error =
   | TooLong
 
 (** URL exceeds maximum length *)
-(** ## Creation and Parsing *)
 
 (** Parse a string into a URL *)
 val of_string: string -> (t, error) Kernel.result
@@ -77,8 +76,6 @@ val from_slice: IO.IoVec.IoSlice.t -> (t, error) Kernel.result
 
 (** Convert a URL back to string representation *)
 val to_string: t -> string
-
-(** ## Components Access *)
 
 (** Get the scheme (e.g., "http", "https") *)
 val scheme: t -> string option
@@ -103,8 +100,6 @@ val fragment: t -> string option
 
 (** Get combined path and query (e.g., "/path?query") *)
 val path_and_query: t -> string
-
-(** ## Percent Encoding/Decoding *)
 
 (**
    Encode string per RFC 3986, encoding all except unreserved characters.
@@ -166,8 +161,6 @@ val form_encode: string -> string
 *)
 val form_decode: string -> string
 
-(** ## Component Types *)
-
 module Scheme: sig
   type t = string
 
@@ -210,8 +203,6 @@ module PathAndQuery: sig
   val to_string: t -> string
 end
 
-(** ## URL Builder *)
-
 module Builder: sig
   type t
 
@@ -234,8 +225,6 @@ module Builder: sig
   val build: t -> (url, error) Kernel.result
 end
 
-(** ## Utilities *)
-
 (** Check if URL is absolute (has scheme) *)
 val is_absolute: t -> bool
 
@@ -250,8 +239,6 @@ val equal: t -> t -> bool
 
 (** Compare two URLs *)
 val compare: t -> t -> Order.t
-
-(** ## Query Parameter Utilities *)
 
 module Query: sig
   type param = string * string

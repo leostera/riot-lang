@@ -1,5 +1,5 @@
 (**
-   # Path - Type-safe filesystem paths
+   Type-safe filesystem paths.
 
    This module provides a type-safe wrapper for filesystem paths, ensuring all
    paths are valid UTF-8 strings. Similar to Rust's `std::path::Path`, but
@@ -101,8 +101,6 @@ val v: string -> t
 *)
 val to_string: t -> string
 
-(** # Path Operations *)
-
 (**
    Joins two paths together with a path separator.
 
@@ -179,8 +177,6 @@ val basename: t -> string
    let root = Path.v "/" in assert (Path.dirname root = Path.v "/") ```
 *)
 val dirname: t -> t
-
-(** # Extensions and Properties *)
 
 (**
    Returns the file extension, if any.
@@ -271,8 +267,6 @@ val is_absolute: t -> bool
 *)
 val is_relative: t -> bool
 
-(** # Path Analysis *)
-
 (**
    Splits a path into its components.
 
@@ -309,8 +303,6 @@ val components: t -> t list
    (Path.normalize above_root = Path.v "/") ```
 *)
 val normalize: t -> t
-
-(** # Filesystem Queries *)
 
 (**
    Checks if the path exists on the filesystem.
@@ -358,8 +350,6 @@ val is_directory: t -> bool
    ```
 *)
 val is_file: t -> bool
-
-(** # Comparison and Manipulation *)
 
 (**
    Compares two paths for equality.

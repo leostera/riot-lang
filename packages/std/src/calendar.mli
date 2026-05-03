@@ -1,5 +1,5 @@
 (**
-   # Calendar - Pure Gregorian calendar computations
+   Pure Gregorian calendar computations.
 
    Pure mathematical functions for working with the Gregorian calendar.
    Provides date validation, conversions, day-of-week calculations, ISO week
@@ -75,9 +75,6 @@
    - {!Std.Time.Duration} - Time spans
    - {!Std.Time.SystemTime} - System clock measurements
 *)
-
-(** {1 Types} *)
-
 open Global
 
 (** Day of week: 1 (Monday) .. 7 (Sunday), following ISO 8601 *)
@@ -108,7 +105,7 @@ type date = { year: int; month: int; day: int }
 type time = { hour: int; minute: int; second: int }
 (** Year and ISO week number *)
 type year_and_week = { year: int; week: int }
-(** {1 Constants} *)
+
 (** 60 seconds per minute *)
 val seconds_per_minute: int
 
@@ -126,8 +123,6 @@ val days_per_leap_year: int
 
 (** 719528 days from year 0 to Unix epoch (1970-01-01) *)
 val days_from_0_to_1970: int
-
-(** {1 Leap Years and Month Information} *)
 
 (**
    Returns [true] if the year is a leap year.
@@ -165,8 +160,6 @@ val is_leap_year: year:int -> bool
 *)
 val last_day_of_month: year:int -> month:int -> int
 
-(** {1 Date Validation} *)
-
 (**
    Validates if a date is valid in the Gregorian calendar.
 
@@ -186,8 +179,6 @@ val last_day_of_month: year:int -> month:int -> int
    ```
 *)
 val is_valid_date: date -> bool
-
-(** {1 Gregorian Days Conversions} *)
 
 (**
    Converts a date to the number of days since year 0, January 1st.
@@ -231,8 +222,6 @@ val date_to_gregorian_days: date -> int
 *)
 val gregorian_days_to_date: int -> date
 
-(** {1 Gregorian Seconds Conversions} *)
-
 (**
    Converts a date and time to seconds since year 0, midnight.
 
@@ -264,8 +253,6 @@ val naive_to_gregorian_seconds: date -> time -> int
 *)
 val gregorian_seconds_to_naive: int -> date * time
 
-(** {1 Day of Week} *)
-
 (**
    Returns the day of week: 1=Monday, 2=Tuesday, ..., 7=Sunday.
 
@@ -282,8 +269,6 @@ val gregorian_seconds_to_naive: int -> date * time
    @raise Invalid_argument if the date is invalid
 *)
 val day_of_week: date -> weekday
-
-(** {1 ISO Week Number} *)
 
 (**
    Calculates the ISO 8601 week number.
@@ -311,8 +296,6 @@ val day_of_week: date -> weekday
    @raise Invalid_argument if the date is invalid
 *)
 val iso_week_number: date -> year_and_week
-
-(** {1 Time Conversions} *)
 
 (**
    Converts time to seconds since midnight (0-86399).
@@ -362,8 +345,6 @@ val seconds_to_time: int -> time
    ```
 *)
 val seconds_to_daystime: int -> int * time
-
-(** {1 Date/Time Arithmetic} *)
 
 (**
    Computes the difference between two date/time pairs.

@@ -1,6 +1,6 @@
 (* FIXME: move this module into Std.Process.Command *)
 (**
-   # Command - Process spawning and management
+   Process spawning and management.
 
    This module provides a safe, composable API for spawning and managing
    external processes. Similar to Rust's `std::process::Command`.
@@ -36,9 +36,6 @@
    non-zero status are NOT considered errors - only system-level failures
    (command not found, permission denied, etc.) return [`Error`].
 *)
-
-(** # Types *)
-
 open Global
 
 (**
@@ -69,7 +66,7 @@ type t
 *)
 type error =
   | SystemError of string
-(** # Building Commands *)
+
 (**
    Creates a new command configuration.
 
@@ -111,8 +108,6 @@ val make: ?cwd:string -> ?env:(string * string) list -> ?args:string list -> str
    structured command value and does not invoke a shell.
 *)
 val to_string: t -> string
-
-(** # Execution *)
 
 (**
    Executes command and captures its output.

@@ -1,5 +1,5 @@
 (**
-   # Net.Http.Header - HTTP headers
+   HTTP headers.
 
    HTTP header manipulation with case-insensitive names and support for
    multiple values per header name.
@@ -46,7 +46,6 @@
    media_type = "application/json" *) (* params = [("charset", "utf-8")] *) |
    Error InvalidContentType -> () ```
 *)
-
 open Kernel
 open Global
 
@@ -56,7 +55,7 @@ type name = string
 type value = string
 (** Collection of HTTP headers *)
 type t
-(** {1 Construction} *)
+
 (**
    Creates an empty header collection.
 
@@ -85,8 +84,6 @@ val of_list: (name * value) list -> t
    Header.to_list headers (* [("host", "example.com")] *) ```
 *)
 val to_list: t -> (name * value) list
-
-(** {1 Modification} *)
 
 (**
    Adds a header, allowing multiple values for the same name.
@@ -125,8 +122,6 @@ val set: t -> name -> value -> t
 *)
 val remove: t -> name -> t
 
-(** {1 Access} *)
-
 (**
    Returns the first value for the given header name.
 
@@ -162,8 +157,6 @@ val get_all: t -> name -> value list
 *)
 val has: t -> name -> bool
 
-(** {1 Iteration} *)
-
 (**
    Applies function to each header name-value pair.
 
@@ -182,8 +175,6 @@ val iter: (name -> value -> unit) -> t -> unit
    ```ocaml let count = Header.fold (fun _ _ acc -> acc + 1) headers 0 in ```
 *)
 val fold: (name -> value -> 'a -> 'a) -> t -> 'a -> 'a
-
-(** {1 Properties} *)
 
 (**
    Returns the number of header entries (including duplicates).
@@ -205,8 +196,6 @@ val length: t -> int
    ```ocaml Header.is_empty Header.empty (* true *) ```
 *)
 val is_empty: t -> bool
-
-(** {1 Common Header Names} *)
 
 module Name: sig
   (**
@@ -297,8 +286,6 @@ module Name: sig
 
   (** "X-Real-IP" - Original client IP (nginx) *)
 end
-
-(** {1 Header Value Parsing} *)
 
 module Value: sig
   type content_type_error =

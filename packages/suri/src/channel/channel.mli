@@ -1,5 +1,5 @@
 (**
-   # Channel - WebSocket Communication Layer
+   WebSocket communication layer.
 
    Channel provides WebSocket frame handling and bidirectional real-time
    communication between server and clients. It's the foundation for building
@@ -53,7 +53,6 @@
    - **Close** - Graceful shutdown
    - **Continuation** - Fragmented message continuation
 *)
-
 open Std
 
 type topic = string

@@ -1,7 +1,7 @@
 (**
-   List - Navigable list component with filtering.
+   Navigable list component with filtering.
 
-   A vertical list of items that can be navigated with keyboard controls.
+   Displays a vertical list of items that can be navigated with keyboard controls.
    Supports selection, filtering, and custom item rendering.
 
    ## Example: Simple List
@@ -50,13 +50,9 @@
 *)
 open Std
 
-(** ## Types *)
-
 type 'a t
 
 (** A list instance containing items of type `'a` *)
-(** ## Creation *)
-
 val make: ?render:('a -> string) -> 'a list -> 'a t
 
 (**
@@ -65,8 +61,6 @@ val make: ?render:('a -> string) -> 'a list -> 'a t
    - `render` - Optional custom rendering function. Default uses `to_string`.
    - `items` - List of items to display
 *)
-(** ## Configuration *)
-
 val set_height: 'a t -> height:int -> 'a t
 
 (**
@@ -95,8 +89,6 @@ val set_filter_enabled: 'a t -> enabled:bool -> 'a t
 
    When enabled, pressing '/' enters filter mode.
 *)
-(** ## Items *)
-
 val items: 'a t -> 'a list
 
 (** `items list` returns all items (unfiltered). *)
@@ -112,8 +104,6 @@ val selected_item: 'a t -> 'a option
 val selected_index: 'a t -> int option
 
 (** `selected_index list` returns the index of the selected item in visible items. *)
-(** ## Selection *)
-
 val select: 'a t -> int -> 'a t
 
 (**
@@ -133,8 +123,6 @@ val select_first: 'a t -> 'a t
 val select_last: 'a t -> 'a t
 
 (** `select_last list` selects the last visible item. *)
-(** ## Filtering *)
-
 val filter_query: 'a t -> string
 
 (** `filter_query list` returns the current filter query string. *)
@@ -158,8 +146,6 @@ val start_filtering: 'a t -> 'a t
 val stop_filtering: 'a t -> 'a t
 
 (** `stop_filtering list` exits filter input mode, keeps current filter. *)
-(** ## Input Handling *)
-
 val handle_key: 'a t -> Event.key -> Event.modifier -> 'a t
 
 (**
@@ -176,8 +162,6 @@ val handle_key: 'a t -> Event.key -> Event.modifier -> 'a t
 
    Returns updated list.
 *)
-(** ## Rendering *)
-
 val view: 'a t -> string
 
 (**

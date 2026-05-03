@@ -1,5 +1,5 @@
 (**
-   # Arg_Parser - Command-line argument parsing
+   Command-line argument parsing.
 
    Type-safe, declarative command-line argument parser with support for
    flags, options, positional arguments, subcommands, and validation.
@@ -82,7 +82,6 @@
 
    For simple scripts, manual argv parsing might be sufficient.
 *)
-
 open Global
 
 (** How an argument's value should be set. *)

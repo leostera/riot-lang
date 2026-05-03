@@ -30,12 +30,12 @@ type t =
     }
 (** A compiled regular expression. *)
 type regex
-(** Regex compile errors are surfaced directly from {!Kernel.Regex}. *)
+(** Regex compile errors are surfaced directly from `Kernel.Regex`. *)
 type compile_error = Kernel.Regex.compile_error = {
   message: string;
   offset: int option;
 }
-(** The first match span returned by {!find}. *)
+(** The first match span returned by `find`. *)
 type match_ = Kernel.Regex.match_ = { start: int; stop: int }
 
 (** Empty regex fragment. *)

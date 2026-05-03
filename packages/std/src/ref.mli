@@ -1,7 +1,7 @@
 open Global
 
 (**
-   # Ref - Unique type identifiers
+   Unique runtime type identifiers.
 
    References with unique identifiers for type-safe runtime type checking
    and witness patterns. Each reference has a globally unique ID that can

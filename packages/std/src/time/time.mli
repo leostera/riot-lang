@@ -1,5 +1,5 @@
 (**
-   # Time - Time and duration modules
+   Time and duration modules.
 
    Time measurement and duration utilities for timing operations, benchmarking,
    and working with timestamps.
@@ -30,7 +30,6 @@
    Timeouts/delays | [Duration] | | Timestamps/logging | [SystemTime] | |
    Benchmarking | [Instant] | | Calendar operations | [DateTime] (separate module) |
 *)
-
 module Duration = Duration
 
 (** Spans of time with nanosecond precision. See [Duration]. *)

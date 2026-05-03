@@ -1,6 +1,6 @@
 open Std
 
-(** # SSE - Server-Sent Events Parser *)
+(** Server-Sent Events parser. *)
 
 (** SSE event type *)
 type event = {

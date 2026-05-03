@@ -1,6 +1,6 @@
 open Std
 
-(** Syn - OCaml lexer, streaming parser, diagnostics, and Ast views. *)
+(** OCaml lexer, streaming parser, diagnostics, and Ast views. *)
 
 (** Source-text spans used by tokens, diagnostics, and Ast views. *)
 module Span = Span

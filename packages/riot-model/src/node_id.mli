@@ -1,4 +1,4 @@
-(** Node identifier - ensures single source of truth for build nodes *)
+(** Single source of truth for build node identifiers. *)
 
 (** Abstract node identifier type *)
 

@@ -1,5 +1,5 @@
 (**
-   # Time.SystemTime - Wall-clock time
+   Wall-clock time.
 
    A measurement of the system's real-world clock, suitable for timestamps and
    calendar operations. Unlike [Instant], SystemTime can go backwards due to
@@ -73,8 +73,6 @@ type t
 
 val epoch: t
 
-(** {1 Accessors} *)
-
 (**
    Returns seconds since Unix epoch as an int
 
@@ -138,8 +136,6 @@ val from_seconds: float -> t
 *)
 val from_nanos: int64 -> t
 
-(** {1 Creation} *)
-
 (**
    Returns the current system time from the real-time clock.
 
@@ -160,8 +156,6 @@ val from_nanos: int64 -> t
    This can go backwards if the system clock is adjusted.
 *)
 val now: unit -> t
-
-(** {1 Duration Operations} *)
 
 val duration_since_epoch: unit -> Duration.t
 
@@ -201,8 +195,6 @@ val duration_since: earlier:t -> t -> Duration.t
 *)
 val elapsed: t -> Duration.t
 
-(** {1 Arithmetic Operations} *)
-
 (**
    Adds a duration to a system time, returning a future time.
 
@@ -222,8 +214,6 @@ val add: t -> Duration.t -> t
    (Duration.from_days 1) ```
 *)
 val sub: t -> Duration.t -> t
-
-(** {1 Checked Operations} *)
 
 (**
    Adds a duration if the result can be represented, returns [None] on
@@ -246,8 +236,6 @@ val checked_add: t -> Duration.t -> t option
    | Some past -> (* OK *) | None -> (* Would be before epoch *) ```
 *)
 val checked_sub: t -> Duration.t -> t option
-
-(** {1 Comparison} *)
 
 (**
    Compares two system times. Returns negative if first < second, 0 if equal,
@@ -286,8 +274,6 @@ val min: t -> t -> t
    ```ocaml let latest = SystemTime.max time1 time2 ```
 *)
 val max: t -> t -> t
-
-(** {1 Unix Timestamp Conversion} *)
 
 (**
    Converts a system time to a Unix timestamp (seconds since epoch).

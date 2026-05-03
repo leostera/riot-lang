@@ -1,5 +1,5 @@
 (**
-   # Diff - Difference computation for data structures
+   Difference computation for data structures.
 
    This module provides a protocol for computing differences between values of
    the same type, with deep comparison support for nested structures.
@@ -41,9 +41,6 @@
    - Object field names for object differences: `["user"; "name"]`
    - Array indices as strings for array differences: `["users"; "0"; "name"]`
 *)
-
-(** {1 Types} *)
-
 type path_component =
   | Key of string
   | Index of int
@@ -59,7 +56,7 @@ type 'value change = {
 type 'value diff =
   | Equal
   | Diff of 'value change list
-(** {1 Helper Functions} *)
+
 val has_changes: 'a change list -> bool
 
 val additions: 'a change list -> 'a change list

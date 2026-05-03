@@ -97,7 +97,7 @@ type error =
 type mode =
   | Client of string
   | Server of Path.t * Path.t
-(** {2 Create TLS Streams} *)
+
 (**
    Create TLS client from any reader/writer pair.
 
@@ -129,8 +129,6 @@ val from_server_io:
   unit ->
   (Tcp_stream.t t, error) Kernel.result
 
-(** {2 Convenience TCP Wrappers} *)
-
 (**
    Create TLS stream from TCP socket.
 
@@ -159,8 +157,6 @@ val from_tcp_server:
   key_path:Path.t ->
   Tcp_stream.t ->
   (Tcp_stream.t t, error) Kernel.result
-
-(** {2 Generic IO Interface} *)
 
 (**
    Convert TLS stream to a generic Reader.
@@ -200,8 +196,6 @@ val to_reader: 'src t -> IO.Reader.t
    ]}
 *)
 val to_writer: 'src t -> IO.Writer.t
-
-(** {2 TLS Information} *)
 
 (**
    Get negotiated ALPN protocol (e.g., "h2", "http/1.1").

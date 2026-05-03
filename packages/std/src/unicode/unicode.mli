@@ -1,5 +1,5 @@
 (**
-   Unicode - Unicode text processing support.
+   Unicode text processing support.
 
    This module provides comprehensive Unicode support including:
    - Rune (code point) operations
@@ -36,8 +36,6 @@
    - {b Display width}: Number of terminal cells a string occupies
      (ASCII=1, CJK=2, emoji=2, combining=0)
 *)
-(** {1 Rune - Unicode Code Points} *)
-
 module Rune: sig
   type t = Kernel.Unicode.Rune.t
 
@@ -186,8 +184,6 @@ module Rune: sig
   *)
 end
 
-(** {1 Grapheme - User-Perceived Characters} *)
-
 module Grapheme: sig
   type t = Rune.t list
 
@@ -218,8 +214,6 @@ module Grapheme: sig
   (** [to_string g] encodes grapheme cluster [g] as a UTF-8 string. *)
 end
 
-(** {1 UTF-8 Encoding} *)
-
 module Utf8: sig
   val decode_rune: string -> int -> (Rune.t * int) option
 
@@ -247,8 +241,6 @@ module Utf8: sig
      Returns 1-4 for valid start bytes, 0 for continuation bytes or invalid bytes.
   *)
 end
-
-(** {1 UTF-16 Offsets} *)
 
 module Utf16: sig
   type position = { line: int; character: int }
@@ -280,8 +272,6 @@ module Utf16: sig
      beyond the end of the line, or the position would split a surrogate pair.
   *)
 end
-
-(** {1 Text Segmentation} *)
 
 type line_break =
   | Must_break
@@ -341,8 +331,6 @@ module Segmentation: sig
      Handles mandatory breaks (newlines) and forced breaks when no opportunities exist.
   *)
 end
-
-(** {1 Configuration} *)
 
 module Config: sig
   val set_east_asian_width: bool -> unit

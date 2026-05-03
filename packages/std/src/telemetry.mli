@@ -1,5 +1,5 @@
 (**
-   Telemetry - Process-based dynamic event dispatching system
+   Process-based dynamic event dispatching.
 
    Inspired by https://hexdocs.pm/telemetry/readme.html
 

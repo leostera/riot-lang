@@ -1,7 +1,7 @@
 open Std
 open Riot_model
 
-(** OCamldep wrapper - handles dependency analysis *)
+(** OCamldep wrapper for dependency analysis. *)
 type t
 
 val make: Path.t -> t
@@ -13,7 +13,7 @@ val sort: t -> cwd:Path.t -> files:Path.t list -> Path.t list
 (** Sort ML/MLI files in dependency order *)
 val deps: t -> cwd:Path.t -> file:Path.t -> package_namespace:Namespace.t -> Module_name.t list
 
-(** Get dependencies for a single file - returns Module_name.t list *)
+(** Return dependencies for a single file. *)
 val deps_with_flags:
   t ->
   cwd:Path.t ->

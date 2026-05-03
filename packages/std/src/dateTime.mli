@@ -1,5 +1,5 @@
 (**
-   # DateTime - Calendar date and time operations
+   Calendar date and time operations.
 
    Date and time utilities for working with calendar dates, timestamps, and
    time zones. Provides conversions between different representations.
@@ -53,9 +53,6 @@
    - [Time.Instant] for monotonic time measurements
    - [Time.Duration] for time spans
 *)
-
-(** {1 Time Zones} *)
-
 module Tz: sig
   type t =
     | Etc_UTC
@@ -72,8 +69,6 @@ module Tz: sig
      "Local" *) ```
   *)
 end
-
-(** {1 Types} *)
 
 open Global
 
@@ -131,8 +126,6 @@ type naive = {
 
    To work with actual wall-clock times, convert to {!t} using {!from_naive}.
 *)
-(** {1 Creation} *)
-
 val epoch: t
 
 (**
@@ -213,8 +206,6 @@ val from_system_time: Time.SystemTime.t -> t
 
    The resulting datetime is in UTC timezone.
 *)
-(** {1 Conversion} *)
-
 val to_system_time: t -> Time.SystemTime.t
 
 (**
@@ -313,8 +304,6 @@ val to_iso8601: t -> string
    - API responses
    - Interoperability with other systems
 *)
-(** {1 Comparison} *)
-
 val equal: t -> t -> bool
 
 (**
@@ -338,8 +327,6 @@ val equal: t -> t -> bool
    Two datetimes with different timezone offsets but representing the
    same moment will be equal.
 *)
-(** {1 Parsing} *)
-
 type error =
   | Invalid_format of string
   (** The input string doesn't match expected ISO 8601 format *)

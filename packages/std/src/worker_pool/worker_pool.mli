@@ -1,5 +1,5 @@
 (**
-   # WorkerPool - Controlled parallel execution
+   Controlled parallel execution.
 
    A worker pool pattern where a fixed number of worker processes execute tasks
    concurrently. This prevents resource exhaustion from spawning too many
@@ -62,7 +62,6 @@
    - Overhead: Fixed pool of N workers, minimal scheduling overhead
    - Memory: O(N) for N workers + task queue
 *)
-
 open Global
 
 module DynamicWorkerPool: sig

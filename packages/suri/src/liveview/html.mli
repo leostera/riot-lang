@@ -1,5 +1,5 @@
 (**
-   # Html - Type-safe HTML DSL for LiveView
+   Type-safe HTML DSL for LiveView.
 
    Html provides a type-safe DSL for building HTML elements with event handlers.
    The DSL is parameterized by a message type, ensuring type-safe event handling
@@ -46,7 +46,6 @@
    (* "<div><h1>Hello</h1></div>" *)
    ```
 *)
-
 type 'msg attr =
   | Attr of string * string
   (** Static HTML attribute like id, class, etc. *)
@@ -202,7 +201,7 @@ val on_click: (string -> 'msg) -> 'msg attr
 (**
    Create a click event handler.
 
-   Shorthand for [event "click" handler].
+   Shorthand for `event "click" handler`.
 
    Example:
    ```ocaml
@@ -214,7 +213,7 @@ val string: string -> 'msg t
 (**
    Create a text node from a string.
 
-   Text nodes are HTML-escaped when rendered with [to_string].
+   Text nodes are HTML-escaped when rendered with `to_string`.
 
    Example:
    ```ocaml
@@ -238,7 +237,7 @@ val to_string: 'msg t -> string
 
    This converts your HTML tree into an HTML string that can be sent to the client.
    Text and attribute values are escaped, while invalid dynamic tag and
-   attribute names are omitted from output. [script] contents are trusted
+   attribute names are omitted from output. `script` contents are trusted
    raw-text content.
 
    Example:
@@ -253,7 +252,7 @@ val attrs_to_string: 'msg attr list -> string
 (**
    Convert attributes to HTML attribute string (internal use).
 
-   Example output: {v id="main" class="container" v}
+   Example output: `id="main" class="container"`
 *)
 val event_handlers: 'msg attr list -> (string * (string -> 'msg)) list
 

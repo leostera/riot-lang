@@ -1,7 +1,7 @@
 (**
-   Table - Tabular data display component.
+   Tabular data display component.
 
-   A table for displaying structured data with columns and rows.
+   Displays structured data with columns and rows.
    Supports navigation, selection, scrolling, and customizable styling.
 
    ## Example: Basic Table
@@ -54,16 +54,12 @@
 *)
 open Std
 
-(** ## Types *)
-
+(** A table instance. *)
 type t
-(** A table instance *)
+(** A column definition with title and width. *)
 type column
-(** A column definition with title and width *)
+(** A row is a list of cell values, one per column. *)
 type row = string list
-
-(** A row is a list of cell values (one per column) *)
-(** ## Column Definition *)
 
 val column: title:string -> width:int -> column
 
@@ -73,8 +69,6 @@ val column: title:string -> width:int -> column
    - `title` - The column header text
    - `width` - The column width in characters
 *)
-(** ## Creation *)
-
 val make: column list -> row list -> t
 
 (**
@@ -85,8 +79,6 @@ val make: column list -> row list -> t
 
    Note: Each row should have the same number of cells as columns.
 *)
-(** ## Configuration *)
-
 val set_height: t -> height:int -> t
 
 (**
@@ -107,8 +99,6 @@ val set_show_header: t -> show:bool -> t
 val set_cursor_char: t -> char:string -> t
 
 (** `set_cursor_char table char` sets the selection indicator. Default: "> " *)
-(** ## Data *)
-
 val columns: t -> column list
 
 (** `columns table` returns the column definitions. *)
@@ -121,8 +111,6 @@ val set_columns: t -> columns:column list -> t
 val set_rows: t -> rows:row list -> t
 
 (** `set_rows table rows` replaces all rows. Resets selection to first row. *)
-(** ## Selection *)
-
 val selected_row: t -> row option
 
 (** `selected_row table` returns the currently selected row, if any. *)
@@ -146,9 +134,7 @@ val goto_top: t -> t
 (** `goto_top table` selects the first row. *)
 val goto_bottom: t -> t
 
-(** [goto_bottom table] selects the last row. *)
-(** ## Focus *)
-
+(** `goto_bottom table` selects the last row. *)
 val focus: t -> t
 
 (** `focus table` enables keyboard navigation and shows selection. *)
@@ -158,8 +144,6 @@ val blur: t -> t
 val is_focused: t -> bool
 
 (** `is_focused table` returns true if table has focus. *)
-(** ## Input Handling *)
-
 val handle_key: t -> Event.key -> Event.modifier -> t
 
 (**
@@ -177,8 +161,6 @@ val handle_key: t -> Event.key -> Event.modifier -> t
 
    Returns updated table. No-op if not focused.
 *)
-(** ## Rendering *)
-
 val view: t -> string
 
 (**

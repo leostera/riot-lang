@@ -1,5 +1,4 @@
-(** # MutCursor - Mutable slice cursor for parsing *)
-
+(** Mutable slice cursor for parsing. *)
 module IoSlice = Kernel.IO.IoVec.IoSlice
 
 type t

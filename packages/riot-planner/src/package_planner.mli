@@ -1,4 +1,4 @@
-(** Package Planner - Plans individual packages with dependency-aware hashing *)
+(** Dependency-aware package planning and hashing. *)
 open Std
 open Riot_model
 

@@ -1,5 +1,4 @@
-(** # Log - Structured logging with handlers *)
-
+(** Structured logging with handlers. *)
 open Global
 
 module Level = Level
@@ -18,14 +17,12 @@ type level = Level.t =
   | Info
   | Warn
   | Error
-(** {1 Configuration} *)
+
 (** Sets the minimum log level *)
 val set_level: Level.t -> unit
 
 (** Returns the current log level *)
 val get_level: unit -> Level.t
-
-(** {1 Logging Functions} *)
 
 val trace: ?meta:Metadata.t -> string -> unit
 
@@ -36,8 +33,6 @@ val info: ?meta:Metadata.t -> string -> unit
 val warn: ?meta:Metadata.t -> string -> unit
 
 val error: ?meta:Metadata.t -> string -> unit
-
-(** {1 Handler Management} *)
 
 (** Attach a custom handler *)
 val attach: string -> (Event.t -> unit) -> unit
@@ -54,7 +49,6 @@ val list_handlers: unit -> string list
 val flush: unit -> unit
 
 (** Wait until the stdout log handler has drained events emitted before this call. *)
-(** {1 Supervision} *)
 
 (**
    Starts the logging infrastructure.

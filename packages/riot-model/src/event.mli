@@ -1,4 +1,4 @@
-(** Event system for riot - pure data types for events *)
+(** Pure data types for Riot progress events. *)
 open Std
 open Std.Data
 

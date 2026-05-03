@@ -1,5 +1,5 @@
 (**
-   # Pid - Process identifiers
+   Process identifiers.
 
    Process identifiers used throughout the actors runtime.
 

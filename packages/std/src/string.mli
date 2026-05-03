@@ -1,5 +1,5 @@
 (**
-   # String - UTF-8 string manipulation
+   UTF-8 string manipulation.
 
    This module extends OCaml's standard String module with UTF-8 aware
    iteration support. Strings in OCaml are sequences of bytes, and this module
@@ -35,7 +35,6 @@
 
    (* Join strings *) let csv = String.concat "," ["a"; "b"; "c"] ```
 *)
-
 open Iter
 
 type t = string
@@ -129,8 +128,6 @@ val unsafe_from_bytes: bytes -> t
 (** Use `to_bytes value` to copy `value` into fresh mutable bytes. *)
 val to_bytes: t -> bytes
 
-(** # UTF-8 Iteration *)
-
 (**
    Creates a mutable iterator over UTF-8 characters.
 
@@ -179,8 +176,6 @@ val into_mut_iter: string -> Unicode.Rune.t MutIterator.t
    validation, check bytes before iteration.
 *)
 val into_iter: string -> Unicode.Rune.t Iterator.t
-
-(** # Unicode-Aware Operations *)
 
 (**
    Calculate display width for monospace fonts/terminals.

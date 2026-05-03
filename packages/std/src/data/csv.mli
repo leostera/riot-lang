@@ -1,7 +1,7 @@
 open Global
 
 (**
-   # Data.CSV - CSV parsing and serialization
+   CSV parsing and serialization.
 
    A CSV (Comma-Separated Values) parser and serializer for reading and writing
    tabular data. Supports standard CSV format with customizable delimiters and
@@ -75,8 +75,6 @@ open Global
    (function Ok row -> Some row | Error _ -> None) in ```
 *)
 
-(** {1 Types} *)
-
 (** A CSV row is a list of field values. *)
 type row = string list
 (** A CSV document is a list of rows. *)
@@ -84,10 +82,10 @@ type t = row list
 (**
    Configuration for CSV parsing and serialization.
 
-   - [delimiter]: Character separating fields (default: ',')
-   - [quote]: Character for quoting fields (default: '"')
-   - [escape]: Character for escaping quotes (default: '"')
-   - [trim_fields]: Whether to trim whitespace from fields (default: false).
+   - `delimiter`: Character separating fields (default: ',')
+   - `quote`: Character for quoting fields (default: '"')
+   - `escape`: Character for escaping quotes (default: '"')
+   - `trim_fields`: Whether to trim whitespace from fields (default: false).
 *)
 type config = { delimiter: char; quote: char; escape: char; trim_fields: bool }
 (** CSV parsing errors with position information. *)
@@ -96,7 +94,7 @@ type error =
   | Invalid_escape_sequence of { line: int; column: int }
   | Empty_input
   | Unknown_error of string
-(** {1 Configuration} *)
+
 (**
    Default CSV configuration:
    - delimiter: ','
@@ -115,8 +113,6 @@ val default_config: config
    Csv.config ~delimiter:',' ~trim_fields:true () ```
 *)
 val config: ?delimiter:char -> ?quote:char -> ?escape:char -> ?trim_fields:bool -> unit -> config
-
-(** {1 Reading CSV Data} *)
 
 (**
    Parses CSV data from a Reader incrementally, returning a mutable iterator over rows.
@@ -194,8 +190,6 @@ val of_string: ?config:config -> string -> (row, error) result Iter.MutIterator.
    Log.error "CSV parse failed: %s" (Csv.error_to_string err) ```
 *)
 val error_to_string: error -> string
-
-(** {1 Writing CSV Data} *)
 
 (**
    Writes CSV rows to a Writer. Fields containing delimiters, quotes, or newlines

@@ -1,9 +1,7 @@
 open Std
 
 (**
-   Tokens - Lexical Elements
-
-   This module defines all token types produced by the lexer.
+   Lexical elements produced by the lexer.
 
    Tokens represent atomic lexical elements from the source: keywords,
    identifiers, literals, operators, delimiters, and trivia
@@ -19,7 +17,6 @@ open Std
    The text of the token is not stored directly - use the span to extract it
    from the original source when needed.
 *)
-(** # Types *)
 
 (** Keyword type from the `Keyword` module. *)
 type keyword = Keyword.t
@@ -185,7 +182,7 @@ type t = {
   span: Span.t;
   leading_trivia: trivia list;
 }
-(** # Utilities *)
+
 (**
    `delimiter_of_keyword kw` returns the delimiter type for keywords that act
    as opening delimiters.

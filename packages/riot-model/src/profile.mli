@@ -1,6 +1,6 @@
 open Std
 
-(** Override behavior - either inherit from base or override with new value *)
+(** Controls whether a profile field inherits its base value or supplies an override. *)
 type 'a override =
   | Inherit
   (** Keep the value from the base profile *)
@@ -8,7 +8,7 @@ type 'a override =
 
 (** Replace with this value *)
 
-(** Profile override - partially specified profile fields *)
+(** Partially specified profile fields. *)
 type profile_override = {
   kind: Ocaml_compiler.compilation_kind override;
   inline: int option override;

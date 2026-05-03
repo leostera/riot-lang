@@ -1,5 +1,5 @@
 (**
-   # ReadDir - Directory iteration
+   Directory iteration.
 
    Iterator for reading directory entries. Automatically skips `.` and `..`
    entries.
@@ -23,7 +23,6 @@
 
    See [Fs.read_dir] for a simpler API that returns all entries at once.
 *)
-
 open Global
 open Common
 

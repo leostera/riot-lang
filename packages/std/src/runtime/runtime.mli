@@ -1,5 +1,5 @@
 (**
-   # Runtime - Std-owned actor runtime
+   Std-owned actor runtime.
 
    `Std.Runtime` owns Riot's actor runtime implementation: scheduling,
    mailboxes, timers, async I/O suspension, and process lifecycle.
@@ -7,7 +7,6 @@
    The separate `actors` package is now a compatibility facade over this
    module.
 *)
-
 open Kernel
 
 module Exception: sig

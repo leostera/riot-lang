@@ -23,8 +23,6 @@
    (* Returns "\027[1mVery lo...\027[0m" - preserves bold *)
    ```
 *)
-(** ## Width Calculation *)
-
 val width: string -> int
 
 (**
@@ -51,8 +49,6 @@ val strip: string -> string
    - Comparing content
    - Length calculations when you need raw string length
 *)
-(** ## Truncation *)
-
 val truncate: width:int -> ?ellipsis:string -> string -> string
 
 (**
@@ -69,8 +65,6 @@ val truncate: width:int -> ?ellipsis:string -> string -> string
    (* Returns "\027[31mVery lo…\027[0m" *)
    ```
 *)
-(** ## Padding *)
-
 val pad_right: width:int -> char -> string -> string
 
 (**
@@ -85,8 +79,6 @@ val pad_left: width:int -> char -> string -> string
 val pad_center: width:int -> char -> string -> string
 
 (** `pad_center ~width c str` centers `str` and pads with `c` to reach `width`. *)
-(** ## Line Operations *)
-
 val split_lines: string -> string list
 
 (**
@@ -112,8 +104,6 @@ val word_wrap: width:int -> string -> string list
    (* Returns ["This is a"; "very long"; "line"] *)
    ```
 *)
-(** ## Low-level Parsing *)
-
 type ansi_state = {
   bold: bool;
   italic: bool;

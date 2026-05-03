@@ -207,15 +207,11 @@ val take_receive_timeout_fired: t -> bool
 (** Atomically read and clear the syscall-timeout fired state. *)
 val take_syscall_timeout_fired: t -> bool
 
-(** {1 Process Flags} *)
-
 (** Set the process flags. *)
 val set_flags: t -> flag list -> unit
 
 (** Return the current [trap_exit] flag. *)
 val get_trap_exit: t -> bool
-
-(** {1 Process Links and Monitors} *)
 
 (** Create a bidirectional link between this process and the target PID. *)
 val link: t -> Pid.t -> unit

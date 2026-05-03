@@ -1,10 +1,9 @@
 (**
-   # Process - Operating system process primitives
+   Operating system process primitives.
 
    Use `Process` for spawned operating system processes such as child
    commands. For actor runtime lifecycle and monitoring, use `Actor`.
 *)
-
 open Kernel
 
 type t

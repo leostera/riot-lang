@@ -1,6 +1,6 @@
 open Std
 
-(** Session ID module - provides opaque session identifiers *)
+(** Opaque session identifiers. *)
 type t
 
 val make: unit -> t

@@ -1,7 +1,7 @@
 open Global
 
 (**
-   # SimpleGraph - Dependency graph with topological sorting
+   Dependency graph with topological sorting.
 
    A simple directed graph implementation focused on dependency tracking and
    topological sorting. Detects cycles.
@@ -45,7 +45,6 @@ open Global
    - Module dependency analysis
    - Any DAG (Directed Acyclic Graph) operations
 *)
-
 module Node_id: sig
   (** Unique node identifier. *)
   type t
