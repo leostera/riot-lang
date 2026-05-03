@@ -1,6 +1,6 @@
 [package]
 name = "contentstore"
-version = "0.0.30"
+version = "0.0.31"
 description = "Generic content-addressable storage primitives"
 license = "Apache-2.0"
 public = true

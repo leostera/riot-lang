@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.0.31 - 2026-05-03
+
+### riot
+- Riot's build cache now keys package actions by the output hashes of dependency artifacts, not only by the inputs used to plan the action. This prevents stale library artifacts from being reused after an upstream dependency rebuilt to a different `.cmi`/`.cmx` shape, fixing inconsistent-assumption failures such as mismatched generated alias modules.
+- `riot-store` now fails loudly when an action declares outputs that were not produced. Incomplete or broken action sandboxes are no longer saved as if they were valid cache entries, which makes cache corruption and cross-target output bugs visible at the point they happen.
+- `riot-planner` rejects empty library plan bundles and bumps the planner artifact version, forcing old build-cache entries through the corrected dependency-output hashing path.
+- Module dependency analysis now treats a reference from `Config.ml` to `Config` as an external or opened dependency when one is available, instead of always interpreting it as a circular self-reference. This lets modules such as application `Config.ml` use `Std.Config` after `open Std`.
+
+### krasny
+- Inline snapshot assertions now compile cleanly under warning-as-error release builds. Snapshot-heavy formatter tests no longer trigger warning 10 from a non-unit expression in generated test code.
+
 ## 0.0.30 - 2026-05-02
 
 ### riot
