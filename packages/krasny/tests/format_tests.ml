@@ -3776,17 +3776,20 @@ let test_format_simple_apply_rhs_by_shape_not_comment_scans = fun ctx ->
     |> Krasny.format
     |> Result.expect ~msg:"simple apply rhs layout should not depend on scanning raw token trivia"
   in
-  Test.Snapshot.assert_inline_text
+  match Test.Snapshot.assert_inline_text
     ~ctx
     ~actual
     ~expected:{ocaml|let run x =
   let value = f
     (* keep *)
-    x in
+    x
+  in
   value
-|ocaml};
-  assert_idempotent ~source ~msg:"comment-bearing simple apply rhs should stay stable";
-  Ok ()
+|ocaml} with
+  | Ok () ->
+      assert_idempotent ~source ~msg:"comment-bearing simple apply rhs should stay stable";
+      Ok ()
+  | Error _ as error -> error
 
 let test_format_binding_operator_equals_policy_with_explicit_fun_and_multiline_values = fun ctx ->
   let source =
