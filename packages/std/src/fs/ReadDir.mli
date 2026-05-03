@@ -50,9 +50,10 @@ type entry = {
   path: Path.t;
   kind: entry_kind;
 }
-(** Open a directory for reading. *)
+(** Directory entry item returned by the iterator surface. *)
 type item = entry
 
+(** Open a directory for reading. *)
 val open_dir: Path.t -> (t, error) result
 
 (**

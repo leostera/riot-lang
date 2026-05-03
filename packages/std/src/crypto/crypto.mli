@@ -41,11 +41,9 @@
 
 (** ## Core Types *)
 
-type hash = Hash.t
-
 (** Universal hash type produced by all hash algorithms. *)
+type hash = Hash.t
 (** ## Modules *)
-
 module Hash = Hash
 
 module Hasher = Hasher

@@ -41,7 +41,6 @@
 
 open Global
 
-type status = int
 (**
    Process exit status code.
 
@@ -50,6 +49,8 @@ type status = int
    - Non-zero indicates failure
    - Specific codes may have special meanings per command
 *)
+type status = int
+(** Output from a completed process including streams and exit status *)
 type output = {
   stdout: string;
   (** Standard output captured as string *)
@@ -58,22 +59,17 @@ type output = {
   status: status;
   (** Exit status code *)
 }
-(** Output from a completed process including streams and exit status *)
-type t
 (** The type of a command configuration, ready to be executed *)
-type error =
-  | SystemError of string
-
+type t
 (**
    System-level errors when spawning or running commands.
 
    Note: A command exiting with non-zero status is NOT an error. Only
    failures to start the process return [`Error`].
 *)
+type error =
+  | SystemError of string
 (** # Building Commands *)
-
-val make: ?cwd:string -> ?env:(string * string) list -> ?args:string list -> string -> t
-
 (**
    Creates a new command configuration.
 
@@ -106,7 +102,7 @@ val make: ?cwd:string -> ?env:(string * string) list -> ?args:string list -> str
    The command is resolved using the system's PATH environment variable unless
    an absolute path is provided.
 *)
-val to_string: t -> string
+val make: ?cwd:string -> ?env:(string * string) list -> ?args:string list -> string -> t
 
 (**
    Render a command as a shell-style string for logging and debugging.
@@ -114,14 +110,9 @@ val to_string: t -> string
    This is intended for observability only. Execution still goes through the
    structured command value and does not invoke a shell.
 *)
-(** # Execution *)
+val to_string: t -> string
 
-val output:
-  ?on_stdout_line:(string -> unit) ->
-  ?on_idle:(Time.Duration.t -> unit) ->
-  ?idle_interval:Time.Duration.t ->
-  t ->
-  (output, error) result
+(** # Execution *)
 
 (**
    Executes command and captures its output.
@@ -152,7 +143,12 @@ val output:
    Output is expected to be UTF-8. Invalid UTF-8 bytes may be replaced with
    replacement characters.
 *)
-val status: t -> (status, error) result
+val output:
+  ?on_stdout_line:(string -> unit) ->
+  ?on_idle:(Time.Duration.t -> unit) ->
+  ?idle_interval:Time.Duration.t ->
+  t ->
+  (output, error) result
 
 (**
    Executes command and returns only its exit status.
@@ -187,3 +183,4 @@ val status: t -> (status, error) result
 
    - [`output`] - When you need to capture stdout/stderr
 *)
+val status: t -> (status, error) result

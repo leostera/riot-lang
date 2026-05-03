@@ -85,19 +85,19 @@
 
 open Global
 
+(** How an argument's value should be set. *)
 type action =
   | Set
   | SetTrue
   | SetFalse
   | Append
   | Count
-(** How an argument's value should be set. *)
-type 'a arg
 (** Command-line argument definition. *)
-type command
+type 'a arg
 (** Command definition with arguments and subcommands. *)
-type matches
+type command
 (** Parsed argument matches. *)
+type matches
 type error =
   | UnknownArgument of string
   | MissingRequired of string

@@ -115,12 +115,10 @@ type value =
 (** Nested configuration object *)
 (** {1 Schema Definition} *)
 
-type field_spec
 (** A field specification with type, defaults, and constraints *)
-type t
-
+type field_spec
 (** A complete configuration specification for an application *)
-val for_app: app:string -> field_spec list -> t
+type t
 
 (**
    Create and **automatically register** a configuration spec for an application.
@@ -142,9 +140,9 @@ val for_app: app:string -> field_spec list -> t
    @param fields List of field specifications
    @return A registered configuration spec
 *)
-(** {1 Field Types} *)
+val for_app: app:string -> field_spec list -> t
 
-val string: ?default:string -> ?required:bool -> ?help:string -> string -> field_spec
+(** {1 Field Types} *)
 
 (**
    Define a string field.
@@ -163,7 +161,7 @@ val string: ?default:string -> ?required:bool -> ?help:string -> string -> field
    @param help Human-readable description for documentation
    @param name Field name in the configuration
 *)
-val char: ?default:char -> ?required:bool -> ?help:string -> string -> field_spec
+val string: ?default:string -> ?required:bool -> ?help:string -> string -> field_spec
 
 (**
    Define a single character field.
@@ -180,7 +178,7 @@ val char: ?default:char -> ?required:bool -> ?help:string -> string -> field_spe
    @param help Human-readable description
    @param name Field name
 *)
-val int: ?default:int -> ?required:bool -> ?help:string -> string -> field_spec
+val char: ?default:char -> ?required:bool -> ?help:string -> string -> field_spec
 
 (**
    Define an integer field (native int: 31-bit on 32-bit systems, 63-bit on 64-bit).
@@ -197,7 +195,7 @@ val int: ?default:int -> ?required:bool -> ?help:string -> string -> field_spec
    @param help Human-readable description
    @param name Field name
 *)
-val int32: ?default:int32 -> ?required:bool -> ?help:string -> string -> field_spec
+val int: ?default:int -> ?required:bool -> ?help:string -> string -> field_spec
 
 (**
    Define a 32-bit signed integer field.
@@ -216,7 +214,7 @@ val int32: ?default:int32 -> ?required:bool -> ?help:string -> string -> field_s
    @param help Human-readable description
    @param name Field name
 *)
-val int64: ?default:int64 -> ?required:bool -> ?help:string -> string -> field_spec
+val int32: ?default:int32 -> ?required:bool -> ?help:string -> string -> field_spec
 
 (**
    Define a 64-bit signed integer field.
@@ -235,7 +233,7 @@ val int64: ?default:int64 -> ?required:bool -> ?help:string -> string -> field_s
    @param help Human-readable description
    @param name Field name
 *)
-val bool: ?default:bool -> ?required:bool -> ?help:string -> string -> field_spec
+val int64: ?default:int64 -> ?required:bool -> ?help:string -> string -> field_spec
 
 (**
    Define a boolean field.
@@ -252,7 +250,7 @@ val bool: ?default:bool -> ?required:bool -> ?help:string -> string -> field_spe
    @param help Human-readable description
    @param name Field name
 *)
-val float: ?default:float -> ?required:bool -> ?help:string -> string -> field_spec
+val bool: ?default:bool -> ?required:bool -> ?help:string -> string -> field_spec
 
 (**
    Define a floating-point field (IEEE 754 double-precision).
@@ -269,7 +267,7 @@ val float: ?default:float -> ?required:bool -> ?help:string -> string -> field_s
    @param help Human-readable description
    @param name Field name
 *)
-val uri: ?default:Net.Uri.t -> ?required:bool -> ?help:string -> string -> field_spec
+val float: ?default:float -> ?required:bool -> ?help:string -> string -> field_spec
 
 (**
    Define a URI field.
@@ -288,7 +286,7 @@ val uri: ?default:Net.Uri.t -> ?required:bool -> ?help:string -> string -> field
    @param help Human-readable description
    @param name Field name
 *)
-val datetime: ?default:DateTime.t -> ?required:bool -> ?help:string -> string -> field_spec
+val uri: ?default:Net.Uri.t -> ?required:bool -> ?help:string -> string -> field_spec
 
 (**
    Define a datetime field.
@@ -307,7 +305,7 @@ val datetime: ?default:DateTime.t -> ?required:bool -> ?help:string -> string ->
    @param help Human-readable description
    @param name Field name
 *)
-val path: ?default:Path.t -> ?required:bool -> ?help:string -> string -> field_spec
+val datetime: ?default:DateTime.t -> ?required:bool -> ?help:string -> string -> field_spec
 
 (**
    Define a file system path field.
@@ -328,7 +326,7 @@ val path: ?default:Path.t -> ?required:bool -> ?help:string -> string -> field_s
    @param help Human-readable description
    @param name Field name
 *)
-val uuid: ?default:Uuid.t -> ?required:bool -> ?help:string -> string -> field_spec
+val path: ?default:Path.t -> ?required:bool -> ?help:string -> string -> field_spec
 
 (**
    Define a UUID field.
@@ -347,13 +345,7 @@ val uuid: ?default:Uuid.t -> ?required:bool -> ?help:string -> string -> field_s
    @param help Human-readable description
    @param name Field name
 *)
-val list:
-  field_spec ->
-  ?default:value list ->
-  ?required:bool ->
-  ?help:string ->
-  string ->
-  field_spec
+val uuid: ?default:Uuid.t -> ?required:bool -> ?help:string -> string -> field_spec
 
 (**
    Define an array field where all items have the same structure.
@@ -399,7 +391,13 @@ val list:
    @param help Human-readable description
    @param name Field name in the configuration
 *)
-val discriminated_union: discriminant:string -> cases:(string * field_spec list) list -> field_spec
+val list:
+  field_spec ->
+  ?default:value list ->
+  ?required:bool ->
+  ?help:string ->
+  string ->
+  field_spec
 
 (**
    Define a discriminated union where structure depends on a discriminant field.
@@ -455,7 +453,7 @@ val discriminated_union: discriminant:string -> cases:(string * field_spec list)
    @param cases List of (variant_value, field_specs) pairs
    @return A field spec for discriminated unions (typically wrapped with {!key})
 *)
-val enum: field_spec -> value list -> field_spec
+val discriminated_union: discriminant:string -> cases:(string * field_spec list) list -> field_spec
 
 (**
    Restrict a field to a set of allowed values (enum combinator).
@@ -490,7 +488,7 @@ val enum: field_spec -> value list -> field_spec
    @param choices List of allowed values (must match the field's type)
    @return A field spec with enum restrictions applied
 *)
-val map: field_spec list -> field_spec
+val enum: field_spec -> value list -> field_spec
 
 (**
    Define a nested configuration object.
@@ -518,7 +516,7 @@ val map: field_spec list -> field_spec
    @param fields List of field specifications for the nested object
    @return A map field spec (usually wrapped with {!key})
 *)
-val key: string -> field_spec -> field_spec
+val map: field_spec list -> field_spec
 
 (**
    Name a field (typically a map).
@@ -537,9 +535,9 @@ val key: string -> field_spec -> field_spec
    @param spec The field specification to name
    @return A named field spec
 *)
-(** {1 Introspection} *)
+val key: string -> field_spec -> field_spec
 
-val app_name: t -> string
+(** {1 Introspection} *)
 
 (**
    Get the application name from a spec.
@@ -549,7 +547,7 @@ val app_name: t -> string
    let name = Config.Spec.app_name my_spec  (* "myapp" *)
    ```
 *)
-val all_specs: unit -> t list
+val app_name: t -> string
 
 (**
    Get all registered specs.
@@ -559,6 +557,8 @@ val all_specs: unit -> t list
 
    @return List of all specs registered via {!for_app}
 *)
+val all_specs: unit -> t list
+
 (**
    {1 Internal Types}
 
@@ -566,6 +566,7 @@ val all_specs: unit -> t list
    used directly in application code.
 *)
 
+(** Internal representation of field types with default values *)
 type field_type =
   | String of {
       default: string option;
@@ -610,7 +611,7 @@ type field_type =
     }
   | Map of field list
 
-(** Internal representation of field types with default values *)
+(** Internal representation of a field with all metadata *)
 and field = {
   name: string;
   (** Field name *)
@@ -624,25 +625,23 @@ and field = {
   (** Optional list of allowed values (enum restriction) *)
 }
 
-(** Internal representation of a field with all metadata *)
-val get_fields: t -> field list
-
 (**
    Get the list of fields from a spec.
 
    Used internally by the validator.
 *)
-val field_name: field_spec -> string
+val get_fields: t -> field list
 
 (**
    Get the name of a field.
 
    Used internally by the validator.
 *)
-val field_type: field_spec -> field_type
+val field_name: field_spec -> string
 
 (**
    Get the type of a field.
 
    Used internally by the validator.
 *)
+val field_type: field_spec -> field_type

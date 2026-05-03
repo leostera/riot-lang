@@ -52,12 +52,12 @@
 *)
 open Global
 
+(** A supervisor process. *)
 type t
 
-(** A supervisor process *)
+(** Convert supervisor to Pid. *)
 val to_pid: t -> Pid.t
 
-(** Convert supervisor to Pid *)
 (** {1 Supervision Strategies} *)
 
 type strategy =
@@ -121,16 +121,6 @@ type child_spec = {
   (** If true, supervisor terminates when this child terminates *)
 }
 
-val child_spec:
-  id:string ->
-  start:(unit -> Pid.t) ->
-  ?restart:restart ->
-  ?shutdown:shutdown ->
-  ?child_type:child_type ->
-  ?significant:bool ->
-  unit ->
-  child_spec
-
 (**
    Create a child specification with sensible defaults.
 
@@ -149,12 +139,17 @@ val child_spec:
        ()
    ```
 *)
-(** {1 Intensity (Restart Limits)} *)
+val child_spec:
+  id:string ->
+  start:(unit -> Pid.t) ->
+  ?restart:restart ->
+  ?shutdown:shutdown ->
+  ?child_type:child_type ->
+  ?significant:bool ->
+  unit ->
+  child_spec
 
-type intensity = {
-  max_restarts: int;
-  window: Time.Duration.t;
-}
+(** {1 Intensity (Restart Limits)} *)
 
 (**
    Maximum restarts within a time window.
@@ -166,10 +161,11 @@ type intensity = {
 
    If this limit is exceeded, the supervisor terminates.
 *)
+type intensity = {
+  max_restarts: int;
+  window: Time.Duration.t;
+}
 (** {1 Starting Supervisors} *)
-
-val start_link: strategy:strategy -> ?intensity:intensity -> children:child_spec list -> unit -> t
-
 (**
    Start a supervisor linked to the current process.
 
@@ -185,13 +181,15 @@ val start_link: strategy:strategy -> ?intensity:intensity -> children:child_spec
      ()
    ```
 *)
-val start: strategy:strategy -> ?intensity:intensity -> children:child_spec list -> unit -> t
+val start_link: strategy:strategy -> ?intensity:intensity -> children:child_spec list -> unit -> t
 
 (**
    Start a supervisor without linking.
 
    The supervisor continues running even if the caller exits.
 *)
+val start: strategy:strategy -> ?intensity:intensity -> children:child_spec list -> unit -> t
+
 (** {1 Child Management} *)
 
 type child_info = {
@@ -201,8 +199,6 @@ type child_info = {
   child_type: child_type;
   restart: restart;
 }
-
-val which_children: t -> child_info list
 
 (**
    Get list of all children (running or not).
@@ -217,6 +213,8 @@ val which_children: t -> child_info list
    ) children
    ```
 *)
+val which_children: t -> child_info list
+
 type child_count = {
   specs: int;
   (** Total number of child specs *)
@@ -227,10 +225,8 @@ type child_count = {
   workers: int;
   (** Number of worker children *)
 }
-type count = child_count
-
 (** Alias for compatibility *)
-val count_children: t -> child_count
+type count = child_count
 
 (**
    Count children by type and status.
@@ -242,7 +238,7 @@ val count_children: t -> child_count
      count.active count.specs count.supervisors
    ```
 *)
-val delete_child: t -> id:string -> (unit, string) Kernel.result
+val count_children: t -> child_count
 
 (**
    Remove a child specification.
@@ -261,7 +257,7 @@ val delete_child: t -> id:string -> (unit, string) Kernel.result
    | Error msg -> println "Failed: %s" msg
    ```
 *)
-val restart_child: t -> id:string -> (Pid.t, string) Kernel.result
+val delete_child: t -> id:string -> (unit, string) Kernel.result
 
 (**
    Restart a child that is not currently running.
@@ -278,7 +274,7 @@ val restart_child: t -> id:string -> (Pid.t, string) Kernel.result
    | Error msg -> println "Failed: %s" msg
    ```
 *)
-val terminate_child: t -> id:string -> (unit, string) Kernel.result
+val restart_child: t -> id:string -> (Pid.t, string) Kernel.result
 
 (**
    Terminate a running child according to its shutdown spec.
@@ -296,9 +292,9 @@ val terminate_child: t -> id:string -> (unit, string) Kernel.result
    | Error msg -> println "Failed: %s" msg
    ```
 *)
-(** {1 Stopping Supervisors} *)
+val terminate_child: t -> id:string -> (unit, string) Kernel.result
 
-val stop: t -> unit
+(** {1 Stopping Supervisors} *)
 
 (**
    Stop the supervisor and all children gracefully.
@@ -306,6 +302,8 @@ val stop: t -> unit
    Children are stopped in reverse order of startup.
    Each child is stopped according to its shutdown specification.
 *)
+val stop: t -> unit
+
 (** {1 Dynamic Supervision} *)
 
 module Dynamic: sig
@@ -331,10 +329,8 @@ module Dynamic: sig
   *)
   type t
 
-  (** A dynamic supervisor *)
+  (** Convert dynamic supervisor to Pid. *)
   val to_pid: t -> Pid.t
-
-  val start_link: ?intensity:intensity -> ?max_children:int -> unit -> t
 
   (**
      Start a dynamic supervisor.
@@ -349,16 +345,10 @@ module Dynamic: sig
        ()
      ```
   *)
-  val start: ?intensity:intensity -> ?max_children:int -> unit -> t
+  val start_link: ?intensity:intensity -> ?max_children:int -> unit -> t
 
-  (** Start a dynamic supervisor without linking *)
-  val start_child:
-    t ->
-    start:(unit -> Pid.t) ->
-    ?restart:restart ->
-    ?shutdown:shutdown ->
-    unit ->
-    (Pid.t, string) Kernel.result
+  (** Start a dynamic supervisor without linking. *)
+  val start: ?intensity:intensity -> ?max_children:int -> unit -> t
 
   (**
      Start a new child process.
@@ -375,7 +365,13 @@ module Dynamic: sig
      | Error "max_children_reached" -> (* too many children *)
      ```
   *)
-  val terminate_child: t -> Pid.t -> (unit, string) Kernel.result
+  val start_child:
+    t ->
+    start:(unit -> Pid.t) ->
+    ?restart:restart ->
+    ?shutdown:shutdown ->
+    unit ->
+    (Pid.t, string) Kernel.result
 
   (**
      Terminate a child by PID.
@@ -384,10 +380,11 @@ module Dynamic: sig
 
      Returns [Error "not_found"] if PID is not a child.
   *)
+  val terminate_child: t -> Pid.t -> (unit, string) Kernel.result
+
+  (** Get list of all running child PIDs. *)
   val which_children: t -> Pid.t list
 
-  (** Get list of all running child PIDs *)
+  (** Count running children. *)
   val count_children: t -> child_count
-
-  (** Count running children *)
 end

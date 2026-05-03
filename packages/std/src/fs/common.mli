@@ -23,12 +23,12 @@ open Global
    matching for error handling.
 *)
 
+(** Filesystem error type - preserves structured error info. *)
 type error = IO.error
 
-(** Filesystem error type - preserves structured error info. *)
+(** Convert a filesystem error to a human-readable message. *)
 val error_message: error -> string
 
-(** Convert a filesystem error to a human-readable message. *)
 val of_file_error: Kernel.Fs.File.error -> error
 
 val of_read_dir_error: Kernel.Fs.ReadDir.error -> error

@@ -47,56 +47,54 @@ open Global
 *)
 
 module Node_id: sig
+  (** Unique node identifier. *)
   type t
 
-  (** Unique node identifier. *)
+  (** Generate a new unique node ID. *)
   val next: unit -> t
 
-  (** Generate a new unique node ID. *)
+  (** Check node ID equality. *)
   val eq: t -> t -> bool
 
-  (** Check node ID equality. *)
+  (** Convert to integer. *)
   val to_int: t -> int
 
-  (** Convert to integer. *)
-  val to_string: t -> string
-
   (** Convert to string. *)
+  val to_string: t -> string
 end
 
+(** Graph node with value and dependencies. *)
 type 'value node = {
   id: Node_id.t;
   mutable deps: Node_id.t list;
   mutable value: 'value;
 }
-(** Graph node with value and dependencies. *)
+(** Graph type. *)
 type 'value t
 
-(** Graph type. *)
+(** Create an empty graph. *)
 val make: unit -> 'a t
 
-(** Create an empty graph. *)
+(** Add a node with the given value. *)
 val add_node: 'a t -> 'a -> 'a node
 
-(** Add a node with the given value. *)
+(** Retrieve a node by ID. Returns None if not found. *)
 val get_node: 'a t -> Node_id.t -> 'a node option
 
-(** Retrieve a node by ID. Returns None if not found. *)
+(** Add a dependency edge (from depends on to). *)
 val add_edge: 'a node -> depends_on:'b node -> unit
 
-(** Add a dependency edge (from depends on to). *)
+(** Iterate over all nodes. *)
 val iter: 'a t -> fn:(Node_id.t -> 'a node -> unit) -> unit
 
-(** Iterate over all nodes. *)
+(** Map over all nodes. *)
 val map: 'a t -> fn:(Node_id.t * 'a node -> 'b) -> 'b list
 
-(** Map over all nodes. *)
-val topo_sort: 'a t -> ('a node list, Node_id.t list) result
-
 (** Topological sort. Returns Ok with sorted nodes, or Error with cycle node IDs if graph has cycles. *)
-val reachable_from: 'a t -> 'a node list -> Node_id.t list
+val topo_sort: 'a t -> ('a node list, Node_id.t list) result
 
 (**
    Get all nodes reachable from a given starting set through their
    dependency edges. Returns a list of node IDs that can be reached.
 *)
+val reachable_from: 'a t -> 'a node list -> Node_id.t list

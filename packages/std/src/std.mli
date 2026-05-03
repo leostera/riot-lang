@@ -6,9 +6,6 @@
 *)
 
 (** Module Declarations *)
-module Agent = Agent
-
-module Archive = Archive
 
 (**
    **When to use:** Simple concurrent state access
@@ -24,7 +21,14 @@ module Archive = Archive
    - Request counter / rate limiter
    - User session storage
 *)
-module ArgParser = Arg_parser
+module Agent = Agent
+
+(**
+   **When to use:** Reading and writing archive containers
+
+   Use Archive for tar archives and related reader/writer archive helpers.
+*)
+module Archive = Archive
 
 (**
    **When to use:** Parsing command-line arguments
@@ -36,14 +40,14 @@ module ArgParser = Arg_parser
    - Developer utilities
    - System administration scripts
 *)
-module Array = Collections.Array
+module ArgParser = Arg_parser
 
 (**
    **When to use:** Fixed-size arrays
 
    Use Array for index-addressed collections where the size is known up front.
 *)
-module Bench = Bench
+module Array = Collections.Array
 
 (**
    **When to use:** Microbenchmarking performance
@@ -58,14 +62,14 @@ module Bench = Bench
 
    **See also:** {!Test} for unit testing
 *)
-module Bool = Bool
+module Bench = Bench
 
 (**
    **When to use:** Boolean operations
 
    Extended bool operations with parsing, formatting, and utilities.
 *)
-module Char = Char
+module Bool = Bool
 
 (**
    **When to use:** Character classification and conversion
@@ -74,7 +78,7 @@ module Char = Char
 
    **See also:** {!Unicode.Rune} for Unicode code points
 *)
-module Collections = Collections
+module Char = Char
 
 (**
    **When to use:** Working with data structures
@@ -91,7 +95,7 @@ module Collections = Collections
    - Functional lists → List
    - Duplicate-friendly key/value lists → Proplist
 *)
-module Compress = Compress
+module Collections = Collections
 
 (**
    **When to use:** Streaming compression/decompression
@@ -100,7 +104,7 @@ module Compress = Compress
 
    **See also:** {!Archive} for tar archives layered on top of readers.
 *)
-module Command = Command
+module Compress = Compress
 
 (**
    **When to use:** Running external programs
@@ -115,7 +119,7 @@ module Command = Command
 
    **See also:** {!System} for system information
 *)
-module Config = Config
+module Command = Command
 
 (**
    **When to use:** Application configuration management
@@ -134,7 +138,7 @@ module Config = Config
    - Environment detection
    - Deep merging
 *)
-module Crypto = Crypto
+module Config = Config
 
 (**
    **When to use:** Cryptographic hashing
@@ -151,7 +155,7 @@ module Crypto = Crypto
 
    **Algorithms:** SHA-256 (recommended), SHA-512, MD5 (legacy only)
 *)
-module Data = Data
+module Crypto = Crypto
 
 (**
    **When to use:** Parsing/generating data formats
@@ -165,7 +169,7 @@ module Data = Data
    - Legacy systems → Xml
    - Lisp-like data → Sexp
 *)
-module Encoding = Encoding
+module Data = Data
 
 (**
    **When to use:** Binary/text and numeric encodings
@@ -178,6 +182,13 @@ module Encoding = Encoding
    - Binary-in-text payloads → Base64
    - Compact text encodings → Base85
    - Octal numeric fields → Octal
+*)
+module Encoding = Encoding
+
+(**
+   **When to use:** Low-level Gregorian calendar math
+
+   Use Calendar when implementing date/time primitives that need calendar arithmetic.
 *)
 module Calendar = Calendar
 
@@ -193,8 +204,6 @@ module Calendar = Calendar
 *)
 module Date = Date
 
-module DateTime = DateTime
-
 (**
    **When to use:** Calendar dates and times
 
@@ -208,7 +217,7 @@ module DateTime = DateTime
 
    **See also:** {!Time.SystemTime} for timestamps, {!Time.Instant} for elapsed time
 *)
-module Diff = Diff
+module DateTime = DateTime
 
 (**
    **When to use:** Computing differences between data structures
@@ -221,15 +230,7 @@ module Diff = Diff
    - API response comparison
    - Undo/redo systems
 *)
-module Env = Env
-
-(**
-   **When to use:** Exception rendering and backtrace capture
-
-   Use Exception from packages above `std` when you need exception text or
-   raw backtrace formatting without reaching into `Kernel`.
-*)
-module Exception = Exception
+module Diff = Diff
 
 (**
    **When to use:** Environment variables and system info
@@ -242,13 +243,22 @@ module Exception = Exception
    - Platform-specific behavior
    - Container orchestration config
 *)
-module Float = Float
+module Env = Env
+
+(**
+   **When to use:** Exception rendering and backtrace capture
+
+   Use Exception from packages above `std` when you need exception text or
+   raw backtrace formatting without reaching into `Kernel`.
+*)
+module Exception = Exception
 
 (**
    **When to use:** Floating-point operations
 
    Extended float operations with parsing and formatting.
 *)
+module Float = Float
 
 (**
    **When to use:** Filesystem operations
@@ -266,6 +276,11 @@ module Float = Float
 *)
 module Fs = Fs
 
+(**
+   **When to use:** Matching paths or names against glob patterns
+
+   Use Glob when users provide gitignore-style or shell-style path patterns.
+*)
 module Glob = Glob
 
 (**
@@ -298,24 +313,22 @@ module IO = IO
 *)
 module StringBuilder = StringBuilder
 
-module Int = Int
-
 (**
    **When to use:** Integer operations
 
    Extended int operations with parsing, formatting, and utilities.
 *)
-module Int32 = Int32
+module Int = Int
 
 (** **When to use:** 32-bit integer operations *)
-module Int64 = Int64
+module Int32 = Int32
 
 (**
    **When to use:** 64-bit integer operations
 
    Use Int64 for timestamps, large numbers, file sizes.
 *)
-module Iter = Iter
+module Int64 = Int64
 
 (**
    **When to use:** Iteration and parsing utilities
@@ -327,7 +340,7 @@ module Iter = Iter
    **Use Cursor when:** You're parsing borrowed slices with backtracking
    **Use MutCursor when:** You need fast, single-pass slice parsing
 *)
-module List = Collections.List
+module Iter = Iter
 
 (**
    **When to use:** Immutable linked lists
@@ -336,7 +349,7 @@ module List = Collections.List
 
    **Prefer Vector when:** You need random access or frequent appends
 *)
-module Log = Log
+module List = Collections.List
 
 (**
    **When to use:** Structured logging
@@ -349,14 +362,14 @@ module Log = Log
    - Debugging
    - Audit trails
 *)
-module Message = Message
+module Log = Log
 
 (**
    **When to use:** Defining extensible message types
 
    Use Message for building type-safe actor communication protocols.
 *)
-module Net = Net
+module Message = Message
 
 (**
    **When to use:** Network I/O
@@ -370,9 +383,7 @@ module Net = Net
    - TLS/SSL → TlsStream
    - URLs → Uri
 *)
-module Option = Option
-
-module Order = Order
+module Net = Net
 
 (**
    **When to use:** A value might not exist
@@ -387,7 +398,14 @@ module Order = Order
 
    **Prefer Result when:** Absence indicates an error you want to handle
 *)
-module Path = Path
+module Option = Option
+
+(**
+   **When to use:** Comparing values with explicit order results
+
+   Use Order when APIs need Less/Equal/Greater style comparison outcomes.
+*)
+module Order = Order
 
 (**
    **When to use:** Working with filesystem paths
@@ -398,14 +416,14 @@ module Path = Path
 
    **See also:** {!Fs} for filesystem operations
 *)
-module Pid = Pid
+module Path = Path
 
 (**
    **When to use:** Process identifiers
 
    Use Pid for actor/process identification and messaging.
 *)
-module Actor = Actor
+module Pid = Pid
 
 (**
    **When to use:** Actor lifecycle and monitoring
@@ -413,7 +431,7 @@ module Actor = Actor
    Use Actor for spawning, linking, monitoring, and managing actors running on
    the std runtime.
 *)
-module Process = Process
+module Actor = Actor
 
 (**
    **When to use:** Compatibility actor/process surface plus operating system
@@ -429,6 +447,7 @@ module Process = Process
    - Checking if process is alive
    - Getting process info
 *)
+module Process = Process
 
 (**
    **When to use:** Physical equality and pointer operations
@@ -461,18 +480,12 @@ module Range = Range
 *)
 module Ref = Ref
 
-module Regex = Regex
-
-module Result = Result
-
 (**
-   **When to use:** Accessing the actor runtime surface that backs `std`
+   **When to use:** Regex syntax trees and compiled regular expressions
 
-   Use Runtime when you need direct scheduler, mailbox, timer, or low-level
-   actor runtime primitives that sit below the higher-level `Std.Process`,
-   `Std.Global`, and `Std.Timer` helpers.
+   Use Regex for pure pattern construction and matching through Kernel.Regex.
 *)
-module Runtime = Runtime
+module Regex = Regex
 
 (**
    **When to use:** Explicit error handling
@@ -489,7 +502,16 @@ module Runtime = Runtime
 
    **See also:** {!Option} for missing values without error context
 *)
-module String = String
+module Result = Result
+
+(**
+   **When to use:** Accessing the actor runtime surface that backs `std`
+
+   Use Runtime when you need direct scheduler, mailbox, timer, or low-level
+   actor runtime primitives that sit below the higher-level `Std.Process`,
+   `Std.Global`, and `Std.Timer` helpers.
+*)
+module Runtime = Runtime
 
 (**
    **When to use:** UTF-8 string processing
@@ -498,7 +520,7 @@ module String = String
 
    **See also:** {!Unicode} for advanced text processing
 *)
-module Supervisor = Supervisor
+module String = String
 
 (**
    **When to use:** Building fault-tolerant process trees
@@ -519,7 +541,7 @@ module Supervisor = Supervisor
    - Worker pools
    - Per-user sessions
 *)
-module Sync = Sync
+module Supervisor = Supervisor
 
 (**
    **When to use:** Synchronization primitives
@@ -530,14 +552,14 @@ module Sync = Sync
 
    **See also:** {!Agent} for concurrent state with actor patterns
 *)
-module System = System
+module Sync = Sync
 
 (**
    **When to use:** System information queries
 
    Use System for OS detection, resource limits, system paths.
 *)
-module Task = Task
+module System = System
 
 (**
    **When to use:** Asynchronous task execution
@@ -551,7 +573,7 @@ module Task = Task
 
    **See also:** {!WorkerPool} for distributing work across workers
 *)
-module Telemetry = Telemetry
+module Task = Task
 
 (**
    **When to use:** Instrumentation and metrics
@@ -564,6 +586,7 @@ module Telemetry = Telemetry
    - Custom events
    - Performance monitoring
 *)
+module Telemetry = Telemetry
 
 (**
    **When to use:** Writing unit tests
@@ -642,10 +665,8 @@ module Time = Time
 *)
 module Timer = Timer
 
-module Type = Type
-
 (** **When to use:** Type-level programming utilities *)
-module Unicode = Unicode
+module Type = Type
 
 (**
    **When to use:** Unicode text processing
@@ -659,7 +680,7 @@ module Unicode = Unicode
    - Utf16 → UTF-16 line/column conversion
    - Segmentation → Word/sentence/line breaking
 *)
-module UUID = Uuid
+module Unicode = Unicode
 
 (**
    **When to use:** Globally unique identifiers
@@ -672,7 +693,7 @@ module UUID = Uuid
    - Session tokens
    - Distributed system coordination
 *)
-module Version = Version
+module UUID = Uuid
 
 (**
    **When to use:** Semantic versioning
@@ -685,7 +706,7 @@ module Version = Version
    - Feature flags based on version
    - Migration scripts
 *)
-module WorkerPool = Worker_pool
+module Version = Version
 
 (**
    **When to use:** Parallel work distribution
@@ -698,12 +719,12 @@ module WorkerPool = Worker_pool
    - Batch analytics
    - Parallel map operations
 *)
+module WorkerPool = Worker_pool
 
 (** Re-exported from Global *)
 include module type of Global
 
 (** Application Management *)
-module Application = Application
 
 (**
    **When to use:** Multi-application systems with dependencies
@@ -716,7 +737,7 @@ module Application = Application
    - Microservices with shared infrastructure
    - Plugin systems
 *)
-val start: apps:Application.t list -> unit
+module Application = Application
 
 (**
    Start the runtime with applications.
@@ -729,9 +750,9 @@ val start: apps:Application.t list -> unit
    let () = Std.start ~apps:[database_app; web_app]
    ```
 *)
+val start: apps:Application.t list -> unit
 
 (** Helper Functions from Global *)
-val panic: string -> 'a
 
 (**
    Panic with a message - raises an uncatchable exception.
@@ -739,113 +760,114 @@ val panic: string -> 'a
    **When to use:** Unrecoverable errors, invariant violations.
    **Don't use for:** Expected errors → use Result instead
 *)
-val cell: 'a -> 'a Sync.Cell.t
+val panic: string -> 'a
 
 (**
    Create a mutable cell with the given value.
 
    **Example:** `let counter = cell 0 in Cell.update counter (fun n -> n + 1)`
 *)
-val print: string -> unit
+val cell: 'a -> 'a Sync.Cell.t
 
 (** Print to stdout with immediate flush (no newline) *)
-val println: string -> unit
+val print: string -> unit
 
 (** Print to stdout with newline and immediate flush *)
-val eprint: string -> unit
+val println: string -> unit
 
 (** Print to stderr with immediate flush (no newline) *)
-val eprintln: string -> unit
+val eprint: string -> unit
 
 (** Print to stderr with newline and immediate flush *)
-val todo: string -> 'a
+val eprintln: string -> unit
 
 (**
    Mark code as TODO with a message - panics when called.
 
    **Use for:** Placeholder implementations during development
 *)
-val unimplemented: unit -> 'a
+val todo: string -> 'a
 
 (** Mark code as unimplemented - panics when called *)
+val unimplemented: unit -> 'a
 
 (** Collection Type Aliases and Constructors *)
-type 'a vec = 'a Collections.Vector.t
-(** Vector type alias - dynamically-sized array *)
-type 'a queue = 'a Collections.Queue.t
-(** Queue type alias - FIFO queue *)
-type 'a set = 'a Collections.HashSet.t
-(** Set type alias - hash-based set *)
-type ('k, 'v) map = ('k, 'v) Collections.HashMap.t
 
+(** Vector type alias - dynamically-sized array *)
+type 'a vec = 'a Collections.Vector.t
+(** Queue type alias - FIFO queue *)
+type 'a queue = 'a Collections.Queue.t
+(** Set type alias - hash-based set *)
+type 'a set = 'a Collections.HashSet.t
 (** Map type alias - hash-based map *)
-val vec: 'a list -> 'a vec
+type ('k, 'v) map = ('k, 'v) Collections.HashMap.t
 
 (**
    Create a vector from a list.
 
    **Example:** `let v = vec [1; 2; 3] in Vector.push v 4`
 *)
-val queue: 'a list -> 'a queue
+val vec: 'a list -> 'a vec
 
 (**
    Create a queue from a list.
 
    **Example:** `let q = queue [1; 2; 3] in Queue.dequeue q`
 *)
-val set: 'a list -> 'a set
+val queue: 'a list -> 'a queue
 
 (**
    Create a set from a list.
 
    **Example:** `let s = set [1; 2; 3; 2; 1] in HashSet.len s (* 3 *)`
 *)
-val map: ('k * 'v) list -> ('k, 'v) map
+val set: 'a list -> 'a set
 
 (**
    Create a map from a list of key-value pairs.
 
    **Example:** `let m = map [("a", 1); ("b", 2)] in HashMap.get m "a"`
 *)
+val map: ('k * 'v) list -> ('k, 'v) map
 
 (** Actor Runtime Management *)
-exception Receive_timeout
 
 (** Raised when a receive operation times out *)
-exception Syscall_timeout
+exception Receive_timeout
 
 (** Raised when a syscall operation times out *)
+exception Syscall_timeout
+
+(** Message selector result type *)
 type 'msg selection = 'msg Runtime.selection =
   | Select of 'msg
   | Skip
-(** Message selector result type *)
+(** Message selector type *)
 type 'msg selector = 'msg Runtime.selector
 
-(** Message selector type *)
+(** Get the PID of the currently running actor *)
 val self: unit -> Pid.t
 
-(** Get the PID of the currently running actor *)
+(** Spawn a new actor *)
 val spawn: (unit -> (unit, Actor.exit_reason) Kernel.result) -> Pid.t
 
-(** Spawn a new actor *)
+(** Spawn a new actor linked to the current actor *)
 val spawn_link: (unit -> (unit, Actor.exit_reason) Kernel.result) -> Pid.t
 
-(** Spawn a new actor linked to the current actor *)
+(** Send a message to an actor *)
 val send: Pid.t -> Message.t -> unit
 
-(** Send a message to an actor *)
+(** Receive a message using a selector *)
 val receive: selector:'value selector -> ?timeout:Time.Duration.t -> unit -> 'value
 
-(** Receive a message using a selector *)
+(** Receive any message *)
 val receive_any: ?timeout:Time.Duration.t -> unit -> Message.t
 
-(** Receive any message *)
+(** Sleeps the current actor for at least the specified duration *)
 val sleep: Time.Duration.t -> unit
 
-(** Sleeps the current actor for at least the specified duration *)
+(** Yield control to the scheduler *)
 val yield: unit -> unit
 
-(** Yield control to the scheduler *)
-val shutdown: status:int -> unit
-
 (** Shutdown the runtime with the given exit status *)
+val shutdown: status:int -> unit
