@@ -32,9 +32,9 @@ let default_css =
   --rule-soft: #f5ecdc;
   --brand: #ef233c;
   --brand-soft: rgba(239, 35, 60, 0.10);
-  --accent: #ef233c;
+  --accent: #b81f36;
   --accent-soft: rgba(239, 35, 60, 0.10);
-  --accent-deep: #b81f36;
+  --accent-deep: #8f1b2d;
   --k-type: #b81f36;
   --k-record: #b58cff;
   --k-variant: #0f7354;
