@@ -225,6 +225,35 @@ let test_get_preserves_relative_paths = fun _ctx ->
   | Ok x -> x
   | Error _ -> Error "tempdir creation failed"
 
+let test_save_fails_when_declared_output_is_missing = fun _ctx ->
+  match Fs.with_tempdir
+    ~prefix:"store_missing_declared_output_test"
+    (fun tmpdir ->
+      let workspace = make_test_workspace tmpdir in
+      let store = Riot_store.Store.create ~workspace in
+      let sandbox = Path.(tmpdir / Path.v "sandbox") in
+      let _ =
+        Fs.create_dir_all sandbox
+        |> Result.expect ~msg:"create sandbox should succeed"
+      in
+      let declared_output = Path.(sandbox / Path.v "missing.cmx") in
+      let hash = Crypto.hash_string "missing-declared-output" in
+      match Riot_store.Store.save
+        store
+        ~package:"pkg"
+        ~input_hash:hash
+        ~sandbox_dir:sandbox
+        ~outs:[ declared_output ] with
+      | Ok _ -> Error "store save should reject missing declared outputs"
+      | Error (Riot_store.Store.DeclaredOutputMissing { path }) ->
+          if Path.equal path declared_output then
+            Ok ()
+          else
+            Error ("missing output path should be reported, got " ^ Path.to_string path)
+      | Error err -> Error ("unexpected store error: " ^ Riot_store.Store.error_message err)) with
+  | Ok x -> x
+  | Error _ -> Error "tempdir creation failed"
+
 let test_save_and_promote_self_host_style_outputs = fun _ctx ->
   match Fs.with_tempdir
     ~prefix:"store_self_host_output_test"
@@ -1560,6 +1589,9 @@ let tests =
     case "save/promote nested outputs" test_save_and_promote_nested_outputs;
     case "save/promote self-host-style outputs" test_save_and_promote_self_host_style_outputs;
     case "get preserves relative paths" test_get_preserves_relative_paths;
+    case
+      "save fails when declared output is missing"
+      test_save_fails_when_declared_output_is_missing;
     case "exists requires manifest" test_exists_requires_manifest_file;
     case "put-if-absent keeps first writer" test_put_if_absent_keeps_first_writer;
     case

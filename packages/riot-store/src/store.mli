@@ -49,6 +49,9 @@ type error =
       path: Std.Path.t;
       cause: Std.Fs.error;
     }
+  | DeclaredOutputMissing of {
+      path: Std.Path.t;
+    }
   | MetadataReadFailed of {
       path: Std.Path.t;
       cause: Std.Fs.error;

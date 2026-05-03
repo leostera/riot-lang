@@ -61,6 +61,9 @@ type error =
       path: Path.t;
       cause: Fs.error;
     }
+  | DeclaredOutputMissing of {
+      path: Path.t;
+    }
   | MetadataReadFailed of {
       path: Path.t;
       cause: Fs.error;
@@ -143,6 +146,7 @@ let error_message = fun __tmp1 ->
       ^ ")"
   | CheckSourceExistsFailed { path; cause } ->
       "Failed to check source path: " ^ Path.to_string path ^ " (" ^ IO.error_message cause ^ ")"
+  | DeclaredOutputMissing { path } -> "Declared output was not created: " ^ Path.to_string path
   | MetadataReadFailed { path; cause } ->
       "Failed to get metadata for " ^ Path.to_string path ^ " (" ^ IO.error_message cause ^ ")"
   | SaveManifestFailed { path; cause } ->
@@ -353,7 +357,7 @@ let store_artifacts = fun
   let copy_output output_file =
     let src = Path.(sandbox_dir / Path.v output_file) in
     match Fs.exists src with
-    | Ok false -> Ok None
+    | Ok false -> Error (DeclaredOutputMissing { path = src })
     | Error cause -> Error (CheckSourceExistsFailed { path = src; cause })
     | Ok true ->
         let dst = Path.(temp_dir / Path.v output_file) in
