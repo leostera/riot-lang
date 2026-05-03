@@ -1,7 +1,7 @@
 open Std
 
 (**
-   HPACK: Header Compression for HTTP/2 (RFC 7541)
+   HPACK header compression for HTTP/2.
 
    This module implements the HPACK header compression algorithm used by HTTP/2
    to reduce the size of HTTP headers transmitted over the wire.
@@ -12,9 +12,8 @@ open Std
    - Plain HPACK string literals. Huffman-encoded strings are rejected until
      the RFC 7541 Appendix B decoder is implemented.
 *)
-(** {1 Types} *)
 
-(** A header field is a name-value pair *)
+(** A header field is a name-value pair. *)
 type header = { name: string; value: string }
 type table_size_error =
   | InvalidTableSize of { size: int }
@@ -39,23 +38,21 @@ type encode_error =
 
 val encode_error_to_string: encode_error -> string
 
-(** Encoding representation for a header field *)
+(** Encoding representation for a header field. *)
 type encoding_type =
+  (** Fully indexed; both name and value come from a table. *)
   | Indexed
-  (** Fully indexed - both name and value from table *)
+  (** Literal with indexing; add to dynamic table after encoding. *)
   | LiteralWithIndexing
-  (** Literal with indexing - add to dynamic table after encoding *)
+  (** Literal without indexing; do not add to table. *)
   | LiteralWithoutIndexing
-  (** Literal without indexing - don't add to table *)
+  (** Literal never indexed; must not be added to a table. *)
   | LiteralNeverIndexed
-
-(** Literal never indexed - MUST NOT be added to table (e.g., sensitive data) *)
-
-(** Encoder context maintains the dynamic table state *)
+(** Encoder context maintains the dynamic table state. *)
 type encoder
-(** Decoder context maintains the dynamic table state *)
+(** Decoder context maintains the dynamic table state. *)
 type decoder
-(** {1 Encoder} *)
+
 (**
    Create a new encoder with the given dynamic table size limit.
    Default is 4096 bytes per RFC 7541.
@@ -101,8 +98,6 @@ val encoder_dynamic_table_size: encoder -> int
 (** Current encoder dynamic table byte limit. *)
 val encoder_dynamic_table_max_size: encoder -> int
 
-(** {1 Decoder} *)
-
 (**
    Create a new decoder with the given dynamic table size limit.
    Default is 4096 bytes per RFC 7541.
@@ -132,8 +127,6 @@ val decoder_dynamic_table_size: decoder -> int
 (** Current decoder dynamic table byte limit. *)
 val decoder_dynamic_table_max_size: decoder -> int
 
-(** {1 Static Table} *)
-
 (**
    Lookup a header in the static table by index (1-61).
    Returns None if index is out of range.
@@ -151,8 +144,6 @@ val static_table_find: name:string -> value:string -> int option
    Returns None if not found.
 *)
 val static_table_find_name: string -> int option
-
-(** {1 Utilities} *)
 
 (**
    Check if a header name should never be indexed (security-sensitive).

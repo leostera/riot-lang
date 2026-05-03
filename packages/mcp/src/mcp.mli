@@ -6,15 +6,10 @@
 *)
 open Std
 
-(** {1 Core Types} *)
-
 (** MCP protocol version string, for example `"2024-11-05"`. *)
 type protocol_version = string
 (** JSON payload type used by MCP messages. *)
 type json = Data.Json.t
-
-(** {1 JSON-RPC Base Types} *)
-
 (** JSON-RPC request identifier used by MCP. *)
 type request_id =
   | String of string
@@ -30,16 +25,10 @@ type error = {
   (** Optional structured error data. *)
   data: json option;
 }
-
-(** {1 Peer Identity} *)
-
 (** Information about the connecting client. *)
 type client_info = { name: string; version: string }
 (** Information about the server. *)
 type server_info = { name: string; version: string }
-
-(** {1 Capabilities} *)
-
 (**
    Tool capability marker.
 
@@ -71,9 +60,6 @@ type server_capabilities = {
   resources: resource_capability option;
   prompts: prompt_capability option;
 }
-
-(** {1 Tools} *)
-
 (** JSON Schema describing tool input parameters. *)
 type tool_input_schema = json
 (** Tool definition exposed by an MCP server. *)
@@ -85,9 +71,6 @@ type tool = {
   (** Input schema describing accepted tool arguments. *)
   input_schema: tool_input_schema;
 }
-
-(** {1 Resources} *)
-
 (** Resource URI. *)
 type resource_uri = string
 (** Resource payload returned by the server. *)
@@ -104,9 +87,6 @@ type resource = {
   description: string option;
   mime_type: string option;
 }
-
-(** {1 Prompts} *)
-
 (** Prompt argument definition. *)
 type prompt_argument = {
   name: string;
@@ -119,9 +99,6 @@ type prompt = {
   description: string option;
   arguments: prompt_argument list option;
 }
-
-(** {1 Messages} *)
-
 (** Content carried by a chat-style MCP message. *)
 type message_content =
   | Text of string
@@ -133,9 +110,6 @@ type message = {
   (** Message payload. *)
   content: message_content;
 }
-
-(** {1 Requests} *)
-
 (** Well-known MCP request methods plus a custom escape hatch. *)
 type request_method =
   | Initialize
@@ -193,9 +167,6 @@ type request = {
   method_name: string;
   params: request_params option;
 }
-
-(** {1 Responses} *)
-
 (** Successful response payload for each supported request type. *)
 type response_result =
   | InitializeResult of {
@@ -250,9 +221,6 @@ type response =
       id: request_id;
       error: error;
     }
-
-(** {1 Notifications} *)
-
 (** Well-known notification methods plus a custom escape hatch. *)
 type notification_method =
   | ResourceListChanged
@@ -285,7 +253,7 @@ type notification = {
   method_name: string;
   params: notification_params option;
 }
-(** {1 Serialization} *)
+
 (** Encode a request as JSON. *)
 val request_to_json: request -> json
 
@@ -303,8 +271,6 @@ val notification_to_json: notification -> json
 
 (** Decode a notification from JSON. *)
 val notification_of_json: json -> (notification, string) result
-
-(** {1 Helpers} *)
 
 (** Build a request envelope from a method tag and optional params. *)
 val make_request: ?params:request_params -> request_id -> request_method -> request

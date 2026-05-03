@@ -2,13 +2,15 @@ open Std
 open Riot_model
 
 (**
-   Workspace-level planner - builds package dependency graph and orders
-   packages for execution
+   Workspace-level package graph planner.
+
+   Builds package dependency graphs and orders packages for execution.
 *)
 type target =
   | All
   | Package of Package_name.t
   | Packages of Package_name.t list
+(** Timing and size counters captured while planning a workspace. *)
 type planning_breakdown = {
   manifest_filter_duration: Time.Duration.t;
   filtered_workspace_package_count: int;
@@ -20,6 +22,7 @@ type planning_breakdown = {
   topological_sort_duration: Time.Duration.t;
   sorted_package_count: int;
 }
+(** Fully planned package graph for one workspace target. *)
 type package_plan = {
   packages: Package.t list;
   nodes: Package_graph.package_node list;
@@ -64,8 +67,8 @@ val plan_workspace:
   dev_artifacts:Package_graph.dev_artifacts ->
   (package_plan, plan_error) result
 
-(** Get the list of packages in the plan (topologically sorted) *)
+(** Return the list of packages in the plan, topologically sorted. *)
 val packages_in_plan: package_plan -> Package.t list
 
-(** Get the planning breakdown for the plan. *)
+(** Return the timing and size counters for the plan. *)
 val planning_breakdown: package_plan -> planning_breakdown

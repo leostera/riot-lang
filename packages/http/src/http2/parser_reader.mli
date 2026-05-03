@@ -1,56 +1,54 @@
 open Std
 
 (**
-   HTTP/2 Frame Parser using IO.Reader (Reentrant)
+   Reentrant HTTP/2 frame parser over `IO.Reader`.
 
    This parser is designed for streaming, non-blocking I/O:
-   - Uses IO.Reader.t instead of bytes directly
-   - Maintains state between calls (reentrant)
-   - Returns Need_more when data is incomplete
+   - Uses `IO.Reader.t` instead of bytes directly
+   - Maintains state between calls
+   - Returns `Need_more` when data is incomplete
    - Never blocks or allocates large buffers upfront
 *)
 
-(** Parser configuration *)
+(** Parser configuration. *)
 type config = {
+  (** Maximum frame size. Default: `16384`. *)
   max_frame_size: int;
-  (** Maximum frame size (default: 16384) *)
 }
 
-(** Default configuration *)
+(** Default configuration. *)
 val default_config: config
 
-(** Parser state - opaque, tracks position in frame parsing *)
+(** Opaque parser state that tracks position in frame parsing. *)
 type state
 
-(** Create a new parser state *)
+(** Create a new parser state. *)
 val create: ?config:config -> unit -> state
 
-(** Parse errors *)
+(** Parse errors. *)
 type parse_error =
+  (** Reader returned an IO error while reading frame bytes. *)
   | ReadFailed of IO.error
-  (** Reader returned an IO error while reading frame bytes *)
   | FrameParseFailed of Parser.error
 
 val parse_error_to_string: parse_error -> string
 
-(** Parse result *)
+(** Parse result. *)
 type parse_result =
+  (** Successfully parsed a complete frame. *)
   | Frame of Frame.t
-  (** Successfully parsed a complete frame *)
+  (** Need more data. Call again with more bytes in reader. *)
   | Need_more
-  (** Need more data - call again with more bytes in reader *)
   | Error of parse_error
-
-(** Parse error *)
 
 (**
    Parse the next frame from the reader.
 
-   This function is reentrant - you can call it multiple times as data arrives.
+   This function is reentrant; you can call it multiple times as data arrives.
    The parser state tracks where it left off.
 
    Example usage:
-   {[
+   ```ocaml
      let parser = Parser_reader.create () in
      let reader = IO.Reader.from_source source stream in
 
@@ -67,16 +65,12 @@ type parse_result =
        | Error e ->
            (* Handle error *)
            handle_error e
-   ]}
-
-   @param state The parser state
-   @param reader The IO reader to read from
-   @return Parse result
+   ```
 *)
 val parse: state -> IO.Reader.t -> parse_result
 
-(** Reset parser state to initial (for connection reuse) *)
+(** Reset parser state to initial state for connection reuse. *)
 val reset: state -> unit
 
-(** Get bytes buffered in parser state (for debugging) *)
+(** Return bytes buffered in parser state for debugging. *)
 val buffered_bytes: state -> int

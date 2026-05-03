@@ -1,29 +1,29 @@
 open Std
 
-(** Database-agnostic error type that preserves structured error information *)
+(** Database-agnostic error values with structured driver details. *)
 
-(** Structured database error with detailed information *)
+(** Structured database error with detailed information. *)
 type db_error = {
-  code: string option;
   (** Driver-specific error code (e.g., SQLSTATE for PostgreSQL) *)
-  message: string;
+  code: string option;
   (** Primary error message *)
-  detail: string option;
+  message: string;
   (** Additional detail about the error *)
-  hint: string option;
+  detail: string option;
   (** Hint for fixing the error *)
-  constraint_name: string option;
+  hint: string option;
   (** Name of violated constraint *)
-  table_name: string option;
+  constraint_name: string option;
   (** Table involved in the error *)
-  column_name: string option;
+  table_name: string option;
   (** Column involved in the error *)
-  position: int option;
+  column_name: string option;
   (** Character position in query where error occurred *)
-  context: string option;
+  position: int option;
   (** Additional context information *)
+  context: string option;
 }
-(** Main error type representing different categories of database errors *)
+(** Main error type representing different categories of database errors. *)
 type t =
   | Connection_error of {
       message: string;
@@ -46,50 +46,45 @@ type t =
     }
   | Pool_error of string
   | Generic_error of string
-(** {1 Constructors} *)
+
+(** Create a generic error from a string message. *)
 val of_string: string -> t
 
-(** Create a generic error from a string message *)
+(** Create a connection error. *)
 val connection_error: message:string -> ?cause:db_error -> unit -> t
 
-(** Create a connection error *)
+(** Create a query error with the SQL that caused it. *)
 val query_error: sql:string -> db_error -> t
 
-(** Create a query error with the SQL that caused it *)
+(** Create a statement preparation error. *)
 val preparation_error: sql:string -> db_error -> t
 
-(** Create a statement preparation error *)
+(** Create a statement execution error. *)
 val execution_error: db_error -> t
 
-(** Create a statement execution error *)
+(** Create a transaction error. *)
 val transaction_error: message:string -> ?cause:db_error -> unit -> t
 
-(** Create a transaction error *)
+(** Create a connection pool error. *)
 val pool_error: string -> t
 
-(** Create a connection pool error *)
-(** {1 Formatting} *)
-
+(** Format a `db_error` record into a human-readable string. *)
 val format_db_error: db_error -> string
 
-(** Format a db_error record into a human-readable string *)
+(** Convert error to a full human-readable string. *)
 val to_string: t -> string
 
-(** Convert error to a full human-readable string *)
-(** {1 Error Inspection} *)
-
+(** Extract the underlying `db_error` if available. *)
 val get_db_error: t -> db_error option
 
-(** Extract the underlying db_error if available *)
+(** Check if error is a specific constraint violation by name. *)
 val is_constraint_violation: name:string -> t -> bool
 
-(** Check if error is a specific constraint violation by name *)
+(** Check if error is a unique constraint violation. *)
 val is_unique_violation: t -> bool
 
-(** Check if error is a unique constraint violation *)
+(** Check if error is a foreign key constraint violation. *)
 val is_foreign_key_violation: t -> bool
 
-(** Check if error is a foreign key constraint violation *)
+(** Check if error is a not-null constraint violation. *)
 val is_not_null_violation: t -> bool
-
-(** Check if error is a not-null constraint violation *)

@@ -1,15 +1,15 @@
 (**
-   Build Planner - Orchestrates build graph creation, wiring, and action
-   generation
+   Package-level build graph planner.
 
-   This module provides a high-level interface for planning package builds: 1.
-   Creates module dependency graph from source files 2. Wires dependencies
-   using syntactic dependency analysis 3. Generates action graph for parallel
-   execution
+   This module provides a high-level interface for planning package builds:
+   1. Creates module dependency graph from source files
+   2. Wires dependencies using syntactic dependency analysis
+   3. Generates action graph for parallel execution
 *)
 open Std
 open Riot_model
 
+(** Inputs required to plan one package build. *)
 type plan_input = {
   package: Package.t;
   profile: Profile.t;

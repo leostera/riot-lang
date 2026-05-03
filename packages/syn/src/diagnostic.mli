@@ -1,7 +1,7 @@
 open Std
 
 (**
-   Parse Diagnostics - Structured Error Information
+   Structured parser diagnostics for recoverable OCaml syntax errors.
 
    This module defines structured representations of parse errors.
 
@@ -11,8 +11,7 @@ open Std
    - Filtered/sorted by severity or category
    - Used by IDEs for inline error display
 
-   # Philosophy
-
+   Parser recovery model:
    The parser **never fails**. When it encounters malformed code, it:
    1. Creates ERROR/MISSING nodes in the syntax tree
    2. Records a diagnostic describing the problem
@@ -23,13 +22,11 @@ open Std
    - Producing usable trees from incomplete code
    - Better IDE support (errors don't block analysis)
 *)
-(** # Types *)
-
 type found_token = {
-  kind: string;
   (** Token kind description like "trivia", "keyword" *)
-  text: string;
+  kind: string;
   (** Actual text from source *)
+  text: string;
 }
 (** A diagnostic with structured error information and source location. *)
 type kind =
@@ -204,11 +201,12 @@ type kind =
   | InvalidModuleName of {
       found: found_token;
     }
+(** A structured parser diagnostic with its source span. *)
 type t = {
   kind: kind;
   span: Span.t;
 }
-(** # Construction *)
+
 (**
    `make ~kind ~span` creates a diagnostic.
 
@@ -220,12 +218,6 @@ type t = {
    ```
 *)
 val make: kind:kind -> span:Span.t -> t
-
-(**
-   ## Diagnostic Constructors
-
-   These helpers create specific diagnostic types with helpful hints.
-*)
 
 (**
    Create a "malformed type variable" diagnostic.
@@ -394,8 +386,6 @@ val record_field_missing_type: field_name:string -> found:Token.t -> text:string
 val poly_type_missing_var_name: found:Token.t -> text:string -> span:Span.t -> t
 
 val poly_type_missing_dot: found:Token.t -> text:string -> span:Span.t -> t
-
-(** # Serialization *)
 
 (** `error_id diag` returns the error ID for this diagnostic. *)
 val error_id: t -> Error.id

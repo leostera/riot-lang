@@ -1,82 +1,83 @@
 open Std
 
 (**
-   Riot-Fix - OCaml Linter and Code Fixer
+   OCaml linting and safe-fix pipeline.
 
    A pipeline-based linter and code fixer for OCaml, built on top of the syn parser.
 *)
+
+(** Typed rule identifiers shared across lint surfaces. *)
 module Rule_id: module type of Rule_id
 
-(** Typed rule identifiers shared across lint surfaces *)
+(** Structured diagnostic information for lint errors. *)
 module Diagnostic: module type of Diagnostic
 
-(** Structured diagnostic information for lint errors *)
+(** Types for code fixes and transformations. *)
 module Fix: module type of Fix
 
-(** Types for code fixes and transformations *)
+(** Linting pipeline orchestration. *)
 module Pipeline: module type of Pipeline
 
-(** Linting pipeline orchestration *)
+(** Package-provided riot-fix rule surface. *)
 module Provider: module type of Provider
 
-(** Package-provided riot-fix rule surface *)
+(** Runtime registry for package-provided rules and explanations. *)
 module Provider_registry: module type of Provider_registry
 
-(** Runtime registry for package-provided rules and explanations *)
+(** Diagnostic output formatting. *)
 module Reporter: module type of Reporter
 
-(** Diagnostic output formatting *)
+(** Lint rule abstraction. *)
 module Rule: module type of Rule
 
-(** Lint rule abstraction *)
+(** Synchronous lint/apply runner for files and directories. *)
 module Runner: module type of Runner
 
-(** Structured `riot fix` event payloads and JSON serialization *)
+(** Structured `riot fix` event payloads and JSON serialization. *)
 module Event: module type of Event
 
-(** Synchronous lint/apply runner for files and directories *)
+(** CLI surface shared by the standalone binary and `riot fix`. *)
 module Cli: module type of Cli
 
-(** CLI surface shared by the standalone binary and `riot fix` *)
+(** Built-in lint rules. *)
 module Rules: module type of Rules
 
-(** Built-in lint rules *)
+(** Ast traversal helpers. *)
 module Traversal: module type of Traversal
 
-(** Ast traversal helpers *)
+(** Pure rule execution and safe-fix application on source strings. *)
 module Source_runner: module type of Fixme.Source_runner
 
-(** Pure rule execution and safe-fix application on source strings *)
+(** Test helper for running rules, applying fixes, and rerunning on updated source. *)
 module Rule_test: module type of Fixme.Rule_test
 
-(** Test helper for running rules, applying fixes, and rerunning on updated source *)
+(** Rule-oriented Ast query helpers. *)
 module Rule_query: module type of Rule_query
 
-(** Rule-oriented Ast query helpers *)
+(** File system scanner for finding OCaml source files. *)
 module File_scanner: module type of File_scanner
 
-(** File system scanner for finding OCaml source files *)
+(** Shared message types for coordinator and worker communication. *)
 module Messages: module type of Messages
 
-(** Shared message types for coordinator and worker communication *)
+(** Worker actor for linting individual files. *)
 module Worker: module type of Worker
 
-(** Worker actor for linting individual files *)
+(** Coordinator actor for managing lint workers. *)
 module Coordinator: module type of Coordinator
 
-(** Coordinator actor for managing lint workers *)
+(** Workspace and package-local configuration resolution for `riot fix`. *)
 module Config: module type of Fix_config
 
-(** Workspace and package-local configuration resolution for `riot fix` *)
+(** Shared explanation entry type used by built-in and provider rules. *)
 module Explanation: module type of Explanation
 
-(** Shared explanation entry type used by built-in and provider rules *)
+(** Explanation lookup for loaded built-in and provider rules. *)
 module Explanations: module type of Explanations
 
-(** Explanation lookup for loaded built-in and provider rules *)
+(** Build-time fixme runner planning for package-provided rules. *)
 module Fixme_runner: module type of Fixme_runner
 
-(** Build-time fixme runner planning for package-provided rules *)
 type build_package = Api.build_package
 type fix_output_mode = Api.fix_output_mode =
   | Silent

@@ -1,5 +1,7 @@
 open Std
 
+(** MIME parsing and rendering helpers. *)
+
 (** MIME content type. *)
 type content_type = {
   (** Top-level media type, such as `"text"` or `"multipart"`. *)
