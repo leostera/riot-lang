@@ -403,6 +403,25 @@ let plan_bundle_to_json = fun
     ("action_graph", Action_graph.to_json action_graph);
   ]
 
+let validate_plan_bundle = fun ~(package:Package.t) action_graph ->
+  let package_has_library =
+    match package.library with
+    | Some _ -> true
+    | None -> false
+  in
+  let has_empty_create_library =
+    Action_graph.to_action_list action_graph
+    |> List.any
+      ~fn:(fun action ->
+        match action with
+        | Action.CreateLibrary { objects = []; _ } -> true
+        | _ -> false)
+  in
+  if package_has_library && has_empty_create_library then
+    Error "plan bundle has a CreateLibrary action with no object inputs"
+  else
+    Ok ()
+
 let plan_bundle_of_json = fun ~(package:Package.t) json ->
   let open Std.Data.Json in
   match json with
@@ -417,7 +436,11 @@ let plan_bundle_of_json = fun ~(package:Package.t) json ->
         pkg_name
         (Package_name.to_string package.name) -> (
           match (module_graph_of_json module_graph_json, Action_graph.from_json action_graph_json) with
-          | (Ok module_graph, Ok action_graph) -> Ok (module_graph, action_graph)
+          | (Ok module_graph, Ok action_graph) -> (
+              match validate_plan_bundle ~package action_graph with
+              | Ok () -> Ok (module_graph, action_graph)
+              | Error _ as err -> err
+            )
           | (Error e, _)
           | (_, Error e) -> Error e
         )
@@ -442,7 +465,7 @@ let plan_bundle_of_json = fun ~(package:Package.t) json ->
    If input_hash hasn't changed, we know the full hash is the same!
 *)
 let compute_input_hash = fun
-  ?(planner_version = "planner-artifacts:v22")
+  ?(planner_version = "planner-artifacts:v23")
   ~package
   ~depset
   ~workspace

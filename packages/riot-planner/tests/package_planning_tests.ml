@@ -8,7 +8,7 @@ let test_toolchain =
   Riot_toolchain.init ~config:Riot_model.Toolchain_config.default
   |> Result.expect ~msg:"Failed to initialize toolchain"
 
-let planner_artifacts_version = "planner-artifacts:v22"
+let planner_artifacts_version = "planner-artifacts:v23"
 
 let legacy_planner_artifacts_version = "planner-artifacts:v19"
 
@@ -1918,6 +1918,150 @@ let test_stale_plan_bundle_version_rebuilds_plan_graphs = fun _ctx ->
   | Ok x -> x
   | Error _ -> Error "tempdir creation failed"
 
+let test_runtime_plan_keeps_direct_src_files_as_library_objects = fun _ctx ->
+  match Fs.with_tempdir
+    ~prefix:"planner_runtime_src_root_test"
+    (fun tmpdir ->
+      let package_dir = Path.(tmpdir / Path.v "pkg") in
+      let source_dir = Path.(package_dir / Path.v "src") in
+      let _ =
+        Fs.create_dir_all source_dir
+        |> Result.expect ~msg:"expected source dir creation to succeed"
+      in
+      let _ =
+        Fs.write "let value = 1\n" Path.(source_dir / Path.v "pkg.ml")
+        |> Result.expect ~msg:"expected source write to succeed"
+      in
+      let package =
+        Riot_model.Package.make
+          ~name:(
+            Package_name.from_string "pkg"
+            |> Result.expect ~msg:"expected valid package name"
+          )
+          ~path:package_dir
+          ~relative_path:(Path.v "pkg")
+          ~library:{ path = Path.v "src/pkg.ml" }
+          ()
+      in
+      let workspace = make_test_workspace tmpdir [ package ] in
+      let store = Riot_store.Store.create ~workspace in
+      let session_id = Riot_model.Session_id.make () in
+      let profile = Riot_model.Profile.debug in
+      let build_ctx = Riot_model.Build_ctx.make ~session_id ~profile () in
+      let package_graph =
+        Riot_planner.Package_graph.create ~scope:Riot_planner.Package_graph.Runtime workspace
+        |> Result.expect ~msg:"package graph should build"
+      in
+      let package_key =
+        Riot_planner.Package_graph.package_key
+          ~package_name:"pkg"
+          Riot_planner.Package_graph.Runtime
+      in
+      match plan_graph_package ~workspace ~store ~package_graph ~package_key ~build_ctx with
+      | Error err -> Error err
+      | Ok (Riot_planner.Package_planner.Planned { action_graph; _ }) -> (
+          match find_create_library_objects action_graph with
+          | Error err -> Error err
+          | Ok objects ->
+              if List.contains objects ~value:"Pkg.cmx" then
+                Ok ()
+              else
+                Error ("expected runtime library to link Pkg.cmx, got ["
+                ^ String.concat ", " objects
+                ^ "]")
+        )
+      | Ok other -> Error ("expected Planned result, got " ^ describe_plan_result other)) with
+  | Ok x -> x
+  | Error _ -> Error "tempdir creation failed"
+
+let test_plan_bundle_with_empty_library_objects_rebuilds_plan_graphs = fun _ctx ->
+  match Fs.with_tempdir
+    ~prefix:"planner_empty_library_bundle_test"
+    (fun tmpdir ->
+      let package =
+        make_package_with_files
+          ~library:(Some { path = Path.v "src/pkg.ml" })
+          ~tmpdir
+          ~package_name:"pkg"
+          ~files:[ ("src/pkg.ml", "let value = 1\n") ]
+          ~binaries:[]
+      in
+      let workspace = make_test_workspace tmpdir [ package ] in
+      let store = Riot_store.Store.create ~workspace in
+      let session_id = Riot_model.Session_id.make () in
+      let profile = Riot_model.Profile.debug in
+      let build_ctx = Riot_model.Build_ctx.make ~session_id ~profile () in
+      let package_graph =
+        Riot_planner.Package_graph.create ~scope:Riot_planner.Package_graph.Runtime workspace
+        |> Result.expect ~msg:"package graph should build"
+      in
+      let package_key =
+        Riot_planner.Package_graph.package_key
+          ~package_name:"pkg"
+          Riot_planner.Package_graph.Runtime
+      in
+      let package =
+        match Riot_planner.Package_graph.get_node_by_key package_graph package_key with
+        | Some node -> Riot_planner.Package_graph.get_package node.value
+        | None -> package
+      in
+      let input_hash =
+        Riot_planner.Package_planner.compute_input_hash
+          ~package
+          ~depset:[]
+          ~workspace
+          ~profile
+          ~build_ctx
+          ~toolchain:test_toolchain
+          ()
+      in
+      match plan_graph_package ~workspace ~store ~package_graph ~package_key ~build_ctx with
+      | Error err -> Error err
+      | Ok (Riot_planner.Package_planner.Planned { action_graph; _ }) -> (
+          match find_create_library_objects action_graph with
+          | Error err -> Error err
+          | Ok live_objects ->
+              if not (List.contains live_objects ~value:"Pkg.cmx") then
+                Error ("expected live plan to link Pkg.cmx, got ["
+                ^ String.concat ", " live_objects
+                ^ "]")
+              else
+                match Riot_store.Store.load_plan_bundle store ~hash:input_hash with
+                | None -> Error "expected live plan to save a plan bundle"
+                | Some bundle ->
+                    let bad_bundle =
+                      rewrite_plan_bundle_action_graph bundle ~rewrite:(fun _objects -> [])
+                    in
+                    let _ =
+                      Riot_store.Store.save_plan_bundle store ~hash:input_hash ~plan:bad_bundle
+                      |> Result.expect ~msg:"expected bad plan bundle save to succeed"
+                    in
+                    match plan_graph_package
+                      ~workspace
+                      ~store
+                      ~package_graph
+                      ~package_key
+                      ~build_ctx with
+                    | Error err -> Error err
+                    | Ok (Riot_planner.Package_planner.Planned { action_graph; _ }) -> (
+                        match find_create_library_objects action_graph with
+                        | Error err -> Error err
+                        | Ok replanned_objects ->
+                            if List.contains replanned_objects ~value:"Pkg.cmx" then
+                              Ok ()
+                            else
+                              Error ("expected bad plan bundle to be ignored, got ["
+                              ^ String.concat ", " replanned_objects
+                              ^ "]")
+                      )
+                    | Ok other ->
+                        Error ("expected bad plan bundle to replan, got "
+                        ^ describe_plan_result other)
+        )
+      | Ok other -> Error ("expected Planned result, got " ^ describe_plan_result other)) with
+  | Ok x -> x
+  | Error _ -> Error "tempdir creation failed"
+
 let test_plan_bundle_cache_hit_preserves_module_dependency_order = fun _ctx ->
   match Fs.with_tempdir
     ~prefix:"planner_bundle_order_test"
@@ -3244,6 +3388,12 @@ let tests =
     case
       "stale plan bundle version rebuilds plan graphs"
       test_stale_plan_bundle_version_rebuilds_plan_graphs;
+    case
+      "runtime plan keeps direct src files as library objects"
+      test_runtime_plan_keeps_direct_src_files_as_library_objects;
+    case
+      "plan bundle with empty library objects rebuilds plan graphs"
+      test_plan_bundle_with_empty_library_objects_rebuilds_plan_graphs;
     case
       "plan bundle cache hit preserves module dependency order"
       test_plan_bundle_cache_hit_preserves_module_dependency_order;
