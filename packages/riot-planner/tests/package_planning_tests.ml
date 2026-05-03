@@ -128,11 +128,59 @@ let persist_dummy_artifact = fun
   Riot_store.Store.save
     store
     ~package:(Package_name.to_string package.name)
-    ~hash
+    ~input_hash:hash
     ~sandbox_dir
     ~outs:[ output ]
   |> Result.map ~fn:(fun _artifact -> ())
   |> Result.map_err ~fn:Riot_store.Store.error_message
+
+let test_package_input_hash_tracks_dependency_output_hash = fun _ctx ->
+  match Fs.with_tempdir
+    ~prefix:"planner_dependency_output_hash_test"
+    (fun tmpdir ->
+      let package = make_package tmpdir "app" in
+      let dep_package = make_package tmpdir "dep" in
+      let workspace = make_test_workspace tmpdir [ dep_package; package ] in
+      let session_id = Riot_model.Session_id.make () in
+      let profile = Riot_model.Profile.debug in
+      let build_ctx = Riot_model.Build_ctx.make ~session_id ~profile () in
+      let make_dep = fun output_hash ->
+        Riot_planner.Dependency.{
+          package = dep_package;
+          artifact_dir = Path.v "/cache/dep";
+          depset = [];
+          input_hash = Crypto.hash_string "same-dep-input";
+          output_hash;
+        }
+      in
+      let first =
+        Riot_planner.Package_planner.compute_input_hash
+          ~planner_version:planner_artifacts_version
+          ~package
+          ~depset:[ make_dep (Crypto.hash_string "dep-output-a") ]
+          ~workspace
+          ~profile
+          ~build_ctx
+          ~toolchain:test_toolchain
+          ()
+      in
+      let second =
+        Riot_planner.Package_planner.compute_input_hash
+          ~planner_version:planner_artifacts_version
+          ~package
+          ~depset:[ make_dep (Crypto.hash_string "dep-output-b") ]
+          ~workspace
+          ~profile
+          ~build_ctx
+          ~toolchain:test_toolchain
+          ()
+      in
+      if Crypto.Hash.equal first second then
+        Error "package input hash should change when dependency output hash changes"
+      else
+        Ok ()) with
+  | Ok x -> x
+  | Error _ -> Error "tempdir creation failed"
 
 let source_buckets_of_files = fun files ->
   List.fold_left
@@ -1611,7 +1659,7 @@ let test_cached_artifact_and_exports_short_circuit_without_plan_bundle = fun _ct
           store
           ~package:(Package_name.to_string package.name)
           ~exports
-          ~hash:input_hash
+          ~input_hash:input_hash
           ~sandbox_dir
           ~outs:[ output ]
         |> Result.expect ~msg:"artifact save should succeed"
@@ -1703,7 +1751,7 @@ let test_stale_cached_artifact_version_rebuilds_plan_graphs = fun _ctx ->
           store
           ~package:(Package_name.to_string package.name)
           ~exports
-          ~hash:stale_input_hash
+          ~input_hash:stale_input_hash
           ~sandbox_dir
           ~outs:[ output ]
         |> Result.expect ~msg:"stale artifact save should succeed"
@@ -3187,6 +3235,9 @@ let tests =
     case
       "cached artifact and exports short-circuit without plan bundle"
       test_cached_artifact_and_exports_short_circuit_without_plan_bundle;
+    case
+      "package input hash tracks dependency output hash"
+      test_package_input_hash_tracks_dependency_output_hash;
     case
       "stale cached artifact version rebuilds plan graphs"
       test_stale_cached_artifact_version_rebuilds_plan_graphs;

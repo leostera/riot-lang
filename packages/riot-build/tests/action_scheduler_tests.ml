@@ -148,7 +148,7 @@ let test_action_scheduler_reports_first_failure_and_keeps_other_results = fun _c
       | (
           Some { status = Action_scheduler.Failed _; _ },
           Some { status = Action_scheduler.Skipped; _ },
-          Some { status = Action_scheduler.Executed; _ },
+          Some { status = Action_scheduler.Executed _; _ },
           Some (Action_scheduler.ExecutionFailed _)
         ) ->
           if success_exists then

@@ -278,8 +278,21 @@ let summarize_package_names = fun names ->
       in
       shown_str ^ ", and " ^ hidden_label
 
-let compute_export_entries: Action_graph.t -> Riot_store.Store.export_entry list = fun
-  action_graph ->
+let action_result_artifact = fun completed (node: Action_node.t) ->
+  match HashMap.get completed ~key:node.id with
+  | Some {
+      Action_executor.status = Action_executor.Cached artifact
+      | Action_executor.Executed artifact;
+      _;
+    } ->
+      Some artifact
+  | Some _
+  | None -> None
+
+let compute_export_entries:
+  Action_graph.t ->
+  completed:(Graph.SimpleGraph.Node_id.t, Action_executor.execution_result) HashMap.t ->
+  Riot_store.Store.export_entry list = fun action_graph ~completed ->
   let entries =
     Action_graph.nodes action_graph
     |> List.flat_map
@@ -303,15 +316,18 @@ let compute_export_entries: Action_graph.t -> Riot_store.Store.export_entry list
         if not is_package_export then
           []
         else
-          let action_hash_hex = Crypto.Digest.hex (Action_node.get_hash node) in
-          List.map
-            node.value.outs
-            ~fn:(fun out_path ->
-              Riot_store.Store.{
-                name = Path.basename out_path;
-                path = out_path;
-                action_hash = action_hash_hex;
-              }))
+          match action_result_artifact completed node with
+          | None -> []
+          | Some artifact ->
+              let action_hash_hex = Crypto.Digest.hex artifact.Riot_store.Artifact.input_hash in
+              List.map
+                node.value.outs
+                ~fn:(fun out_path ->
+                  Riot_store.Store.{
+                    name = Path.basename out_path;
+                    path = out_path;
+                    action_hash = action_hash_hex;
+                  }))
   in
   let seen = HashSet.create () in
   List.filter_map
@@ -675,7 +691,7 @@ let finalize_execution = fun
             ~graph_error:(package_error_to_string error))
     | None ->
         let outputs = execution_outputs execution_plan in
-        let export_entries = compute_export_entries execution_plan.action_graph in
+        let export_entries = compute_export_entries execution_plan.action_graph ~completed in
         let package_outputs = collect_package_artifact_outputs ~sandbox_dir ~outputs in
         let ocamlc_warnings = action_result.Action_scheduler.ocamlc_warnings in
         Riot_store.Store.materialize_package_exports store ~exports:export_entries ~target_dir
@@ -686,7 +702,7 @@ let finalize_execution = fun
             ~package:package_name_string
             ~ocamlc_warnings
             ~exports:export_entries
-            ~hash:execution_plan.hash
+            ~input_hash:execution_plan.hash
             ~sandbox_dir
             ~outs:package_outputs
           |> Result.expect ~msg:("Failed to save package hash artifact for " ^ package_name_string)

@@ -102,7 +102,7 @@ let test_execute_node_writes_file = fun _ctx ->
           node
       in
       match result.status with
-      | Action_executor.Executed -> (
+      | Action_executor.Executed _ -> (
           let output_path = Path.(sandbox / output) in
           match Fs.read_to_string output_path with
           | Ok content when String.equal content "hello" -> Ok ()
@@ -151,7 +151,7 @@ let test_execute_node_copies_file = fun _ctx ->
           node
       in
       match result.status with
-      | Action_executor.Executed -> (
+      | Action_executor.Executed _ -> (
           let destination_path = Path.(sandbox / destination) in
           match Fs.read_to_string destination_path with
           | Ok content when String.equal content "copy me" -> Ok ()
@@ -205,7 +205,7 @@ let test_execute_node_fails_when_declared_output_is_missing = fun _ctx ->
             Error "expected missing declared output to be reported"
       | Action_executor.Failed _ -> Error "expected output verification failure"
       | Action_executor.Cached _
-      | Action_executor.Executed
+      | Action_executor.Executed _
       | Action_executor.Skipped -> Error "expected missing output failure") with
   | Ok result -> result
   | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
@@ -263,13 +263,33 @@ let test_execute_node_skips_when_dependency_failed = fun _ctx ->
       match result.status with
       | Action_executor.Skipped -> Ok ()
       | Action_executor.Cached _
-      | Action_executor.Executed
+      | Action_executor.Executed _
       | Action_executor.Failed _ -> Error "expected node to be skipped") with
   | Ok result -> result
   | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
 
+let test_action_input_hash_tracks_dependency_output_hashes = fun _ctx ->
+  let planned_hash = Crypto.hash_string "planned-action" in
+  let first =
+    Action_executor.compute_action_input_hash
+      ~planned_hash
+      ~dependency_output_hashes:[ Crypto.hash_string "dep-output-a" ]
+  in
+  let second =
+    Action_executor.compute_action_input_hash
+      ~planned_hash
+      ~dependency_output_hashes:[ Crypto.hash_string "dep-output-b" ]
+  in
+  if Crypto.Hash.equal first second then
+    Error "action input hash should change when dependency output hash changes"
+  else
+    Ok ()
+
 let tests =
   Test.[
+    case
+      "action input hash tracks dependency output hashes"
+      test_action_input_hash_tracks_dependency_output_hashes;
     case "execute_node writes declared output" test_execute_node_writes_file;
     case "execute_node copies file action outputs" test_execute_node_copies_file;
     case

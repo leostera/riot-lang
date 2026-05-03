@@ -131,8 +131,8 @@ let test_execute_runs_independent_actions = fun _ctx ->
       let _ = Sandbox.cleanup sandbox in
       match (result_a, result_b) with
       | (
-          Some { status = Action_scheduler.Executed; _ },
-          Some { status = Action_scheduler.Executed; _ }
+          Some { status = Action_scheduler.Executed _; _ },
+          Some { status = Action_scheduler.Executed _; _ }
         ) ->
           if output_a && output_b then
             Ok ()
@@ -214,7 +214,7 @@ let test_execute_skips_dependent_action_after_failure = fun _ctx ->
       | (
           Some { status = Action_scheduler.Failed _; _ },
           Some { status = Action_scheduler.Skipped; _ },
-          Some { status = Action_scheduler.Executed; _ }
+          Some { status = Action_scheduler.Executed _; _ }
         ) ->
           if success_exists then
             Ok ()

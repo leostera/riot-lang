@@ -16,3 +16,4 @@
 10. Keep `riot-store` Riot-specific. Generic content-addressable directory and bundle primitives belong in `contentstore`; `riot-store` should layer package artifacts, manifests, and lane policy on top.
 11. Post-build generation recording must stay cheap on repeated warm builds. `state.json` is the authoritative generation-recency index.
 12. Inside `riot-store`, lane targets should stay typed as `Riot_model.Target.t`. Only stringify them when encoding JSON receipts/state or deriving on-disk lane paths.
+13. Artifact manifests record both `input_hash` and `output_hash`: use `input_hash` as the cache lookup/materialization key, and `output_hash` as the produced-content fingerprint that downstream planners consume.

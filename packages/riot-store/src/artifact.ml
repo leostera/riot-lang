@@ -3,8 +3,9 @@ open Std.Data
 open Std.Collections
 
 type t = {
-  hash: Std.Crypto.hash;
-  files: Std.Path.t list;
+  input_hash: Std.Crypto.hash;
+  output_hash: Std.Crypto.hash;
+  files: Manifest.file_entry list;
   ocamlc_warnings: string list;
   exports: Manifest.export_entry list;
 }
@@ -18,8 +19,19 @@ let to_json = fun artifact ->
     ]
   in
   Json.Object [
-    ("hash", Json.String (Crypto.Digest.hex artifact.hash));
-    ("files", Json.Array (List.map artifact.files ~fn:(fun p -> Json.String (Path.to_string p))));
+    ("input_hash", Json.String (Crypto.Digest.hex artifact.input_hash));
+    ("output_hash", Json.String (Crypto.Digest.hex artifact.output_hash));
+    (
+      "files",
+      Json.Array (List.map
+        artifact.files
+        ~fn:(fun entry ->
+          Json.Object [
+            ("path", Json.String (Path.to_string entry.Manifest.path));
+            ("hash", Json.String entry.Manifest.hash);
+            ("size", Json.Int entry.Manifest.size);
+          ]))
+    );
     (
       "ocamlc_warnings",
       Json.Array (List.map artifact.ocamlc_warnings ~fn:(fun msg -> Json.String msg))

@@ -708,7 +708,7 @@ let to_json: Telemetry.event -> Data.Json.t option = fun __tmp1 ->
     } ->
       let artifact_files = Data.Json.Array (List.map
         artifact.files
-        ~fn:(fun p -> Data.Json.String (Path.to_string p)))
+        ~fn:(fun entry -> Data.Json.String (Path.to_string entry.Riot_store.Manifest.path)))
       in
       Some (
         Data.Json.Object [

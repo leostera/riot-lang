@@ -200,7 +200,7 @@ let test_execute_reuses_cache_for_equivalent_graph = fun _ctx ->
         content2
       ) with
       | (
-          Some { status = Action_scheduler.Executed; _ },
+          Some { status = Action_scheduler.Executed _; _ },
           Some { status = Action_scheduler.Cached _; _ },
           Ok first_content,
           Ok second_content
@@ -239,8 +239,8 @@ let test_execute_cache_misses_when_action_changes = fun _ctx ->
         content2
       ) with
       | (
-          Some { status = Action_scheduler.Executed; _ },
-          Some { status = Action_scheduler.Executed; _ },
+          Some { status = Action_scheduler.Executed _; _ },
+          Some { status = Action_scheduler.Executed _; _ },
           Ok second_content
         ) ->
           if exists1 && exists2 && String.equal second_content "v2" then
@@ -329,7 +329,7 @@ let test_dependency_change_invalidates_cached_compile_actions = fun _ctx ->
                           ~fn:(fun count status ->
                             match status with
                             | Action_scheduler.Cached _ -> count + 1
-                            | Action_scheduler.Executed
+                            | Action_scheduler.Executed _
                             | Action_scheduler.Failed _
                             | Action_scheduler.Skipped -> count)
                       in

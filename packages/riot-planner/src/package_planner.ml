@@ -495,12 +495,12 @@ let compute_input_hash = fun
       | { Package.builtin = true; _ } -> ()
       | _ -> ());
   (* Dependency hashes *)
-  let dep_hashes =
+  let dep_output_hashes =
     depset
-    |> List.map ~fn:(fun (dep: Dependency.t) -> dep.hash)
+    |> List.map ~fn:(fun (dep: Dependency.t) -> dep.output_hash)
     |> List.sort ~compare:Std.Crypto.Hash.compare
   in
-  List.for_each dep_hashes ~fn:(fun hash -> H.write_hash state hash);
+  List.for_each dep_output_hashes ~fn:(fun hash -> H.write_hash state hash);
   H.finish state
 
 let check_dependencies_built = fun ~store ~package_graph ~package_key ->
@@ -538,34 +538,41 @@ let check_dependencies_built = fun ~store ~package_graph ~package_key ->
     | Package_graph.Planned { package; hash; _ } ->
         if is_ordering_only_self_dependency then
           None
-        else if Riot_store.Store.exists store hash then
-          let dep_nodes =
-            match Package_graph.get_node_by_key package_graph (Package_graph.get_key node_value) with
-            | Some node -> Package_graph.get_dependencies_for_node package_graph node
-            | None -> []
-          in
-          let dep_depset = List.filter_map dep_nodes ~fn:summarize_dependency in
-          Some Dependency.{
-            package;
-            artifact_dir = Riot_store.Store.hash_dir_of store hash;
-            depset = dep_depset;
-            hash;
-          }
-        else (
-          unplanned := pkg :: !unplanned;
-          None
-        )
-    | Package_graph.Cached { package; hash; depset; _ } ->
+        else
+          (
+            match Riot_store.Store.get store hash with
+            | Some artifact ->
+                let dep_nodes =
+                  match Package_graph.get_node_by_key
+                    package_graph
+                    (Package_graph.get_key node_value) with
+                  | Some node -> Package_graph.get_dependencies_for_node package_graph node
+                  | None -> []
+                in
+                let dep_depset = List.filter_map dep_nodes ~fn:summarize_dependency in
+                Some Dependency.{
+                  package;
+                  artifact_dir = Riot_store.Store.hash_dir_of store artifact.input_hash;
+                  depset = dep_depset;
+                  input_hash = artifact.input_hash;
+                  output_hash = artifact.output_hash;
+                }
+            | None ->
+                unplanned := pkg :: !unplanned;
+                None
+          )
+    | Package_graph.Cached { package; artifact; depset; _ } ->
         if is_ordering_only_self_dependency then
           None
         else
           Some Dependency.{
             package;
-            artifact_dir = Riot_store.Store.hash_dir_of store hash;
+            artifact_dir = Riot_store.Store.hash_dir_of store artifact.input_hash;
             depset;
-            hash;
+            input_hash = artifact.input_hash;
+            output_hash = artifact.output_hash;
           }
-    | Package_graph.Built { package; hash; _ } ->
+    | Package_graph.Built { package; artifact; _ } ->
         if is_ordering_only_self_dependency then
           None
         else
@@ -577,9 +584,10 @@ let check_dependencies_built = fun ~store ~package_graph ~package_key ->
           let dep_depset = List.filter_map dep_nodes ~fn:summarize_dependency in
           Some Dependency.{
             package;
-            artifact_dir = Riot_store.Store.hash_dir_of store hash;
+            artifact_dir = Riot_store.Store.hash_dir_of store artifact.input_hash;
             depset = dep_depset;
-            hash;
+            input_hash = artifact.input_hash;
+            output_hash = artifact.output_hash;
           }
     | Package_graph.Failed _ ->
         (* Dependency failed to build *)

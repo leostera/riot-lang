@@ -11,8 +11,8 @@ type action_error = Action_executor.action_error =
       failed: Graph.SimpleGraph.Node_id.t list;
     }
 type action_status = Action_executor.action_status =
-  | Cached of Std.Crypto.hash
-  | Executed
+  | Cached of Riot_store.Artifact.t
+  | Executed of Riot_store.Artifact.t
   | Failed of action_error
   | Skipped
 type execution_result = Action_executor.execution_result = {

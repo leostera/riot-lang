@@ -1,8 +1,9 @@
 open Std
 
 type t = {
-  hash: Crypto.hash;
-  files: Path.t list;
+  input_hash: Crypto.hash;
+  output_hash: Crypto.hash;
+  files: Manifest.file_entry list;
   ocamlc_warnings: string list;
   exports: Manifest.export_entry list;
 }

@@ -106,7 +106,7 @@ let make_execute_node_write_miss_bench = fun root ~size ->
     in
     cleanup_dir sandbox;
     match result.status with
-    | Action_executor.Executed -> ()
+    | Action_executor.Executed _ -> ()
     | Action_executor.Cached _
     | Action_executor.Failed _
     | Action_executor.Skipped -> panic "execute_node write miss bench expected executed result"
@@ -146,7 +146,7 @@ let make_execute_node_cache_hit_bench = fun root ~size ->
   in
   (
     match warm_result.status with
-    | Action_executor.Executed -> ()
+    | Action_executor.Executed _ -> ()
     | Action_executor.Cached _
     | Action_executor.Failed _
     | Action_executor.Skipped -> panic "execute_node cache fixture expected executed result"
@@ -175,7 +175,7 @@ let make_execute_node_cache_hit_bench = fun root ~size ->
     cleanup_dir sandbox;
     match result.status with
     | Action_executor.Cached _ -> ()
-    | Action_executor.Executed
+    | Action_executor.Executed _
     | Action_executor.Failed _
     | Action_executor.Skipped -> panic "execute_node cache hit bench expected cached result"
 

@@ -151,7 +151,7 @@ let summarize_execution_failures = fun ~sandbox_dir result ->
             ^ "\nfailed deps: "
             ^ String.concat ", " (List.map failed ~fn:G.Node_id.to_string))
         | Action_scheduler.Cached _
-        | Action_scheduler.Executed
+        | Action_scheduler.Executed _
         | Action_scheduler.Skipped -> None)
   in
   "sandbox: " ^ Path.to_string sandbox_dir ^ "\nfailures:\n" ^ String.concat "\n\n" failures
@@ -205,7 +205,7 @@ let execute_kernel_runtime_graph = fun ~concurrency ->
                     match completed_action.Action_scheduler.result.status with
                     | Action_scheduler.Failed _ -> true
                     | Action_scheduler.Cached _
-                    | Action_scheduler.Executed
+                    | Action_scheduler.Executed _
                     | Action_scheduler.Skipped -> false)
               in
               if List.is_empty failures then

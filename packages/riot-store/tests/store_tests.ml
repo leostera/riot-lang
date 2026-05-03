@@ -170,7 +170,7 @@ let test_save_and_promote_nested_outputs = fun _ctx ->
         Riot_store.Store.save
           store
           ~package:"pkg"
-          ~hash
+          ~input_hash:hash
           ~sandbox_dir:sandbox
           ~outs:[ nested_obj; nested_bin ]
         |> Result.expect ~msg:"save should succeed"
@@ -203,14 +203,21 @@ let test_get_preserves_relative_paths = fun _ctx ->
       let _ = Fs.write "cmxa" output in
       let hash = Crypto.hash_string "manifest-relative-paths" in
       let _ =
-        Riot_store.Store.save store ~package:"pkg" ~hash ~sandbox_dir:sandbox ~outs:[ output ]
+        Riot_store.Store.save
+          store
+          ~package:"pkg"
+          ~input_hash:hash
+          ~sandbox_dir:sandbox
+          ~outs:[ output ]
         |> Result.expect ~msg:"save should succeed"
       in
       match Riot_store.Store.get store hash with
       | None -> Error "expected cached artifact"
       | Some artifact ->
           if
-            List.any artifact.files ~fn:(fun path -> Path.equal path (Path.v "deep/dir/x.cmxa"))
+            List.any
+              artifact.files
+              ~fn:(fun entry -> Path.equal entry.Riot_store.Manifest.path (Path.v "deep/dir/x.cmxa"))
           then
             Ok ()
           else
@@ -248,7 +255,12 @@ let test_save_and_promote_self_host_style_outputs = fun _ctx ->
       in
       let hash = Crypto.hash_string "self-host-style-artifacts" in
       let _ =
-        Riot_store.Store.save store ~package:"kernel" ~hash ~sandbox_dir:sandbox ~outs:out_paths
+        Riot_store.Store.save
+          store
+          ~package:"kernel"
+          ~input_hash:hash
+          ~sandbox_dir:sandbox
+          ~outs:out_paths
         |> Result.expect ~msg:"save should succeed for self-host-style outputs"
       in
       let target = Path.(tmpdir / Path.v "out") in
@@ -298,12 +310,22 @@ let test_put_if_absent_keeps_first_writer = fun _ctx ->
       let hash = Crypto.hash_string "same-hash" in
       let _ = Fs.write "first" output in
       let _ =
-        Riot_store.Store.save store ~package:"pkg" ~hash ~sandbox_dir:sandbox ~outs:[ output ]
+        Riot_store.Store.save
+          store
+          ~package:"pkg"
+          ~input_hash:hash
+          ~sandbox_dir:sandbox
+          ~outs:[ output ]
         |> Result.expect ~msg:"first save should succeed"
       in
       let _ = Fs.write "second" output in
       let _ =
-        Riot_store.Store.save store ~package:"pkg" ~hash ~sandbox_dir:sandbox ~outs:[ output ]
+        Riot_store.Store.save
+          store
+          ~package:"pkg"
+          ~input_hash:hash
+          ~sandbox_dir:sandbox
+          ~outs:[ output ]
         |> Result.expect ~msg:"second save should succeed"
       in
       let target = Path.(tmpdir / Path.v "out") in
@@ -340,7 +362,12 @@ let test_concurrent_same_hash_saves_share_cache_safely = fun _ctx ->
             in
             let _ = receive ~selector () in
             let result =
-              Riot_store.Store.save store ~package:"pkg" ~hash ~sandbox_dir:sandbox ~outs:[ output ]
+              Riot_store.Store.save
+                store
+                ~package:"pkg"
+                ~input_hash:hash
+                ~sandbox_dir:sandbox
+                ~outs:[ output ]
               |> Result.map ~fn:(fun _ -> ())
             in
             send parent (ConcurrentSaveComplete (name, result));
@@ -432,7 +459,7 @@ let test_hash_manifest_round_trip_preserves_exports = fun _ctx ->
           store
           ~package:"pkg"
           ~exports
-          ~hash
+          ~input_hash:hash
           ~sandbox_dir:sandbox
           ~outs:[ output ]
         |> Result.expect ~msg:"save should succeed"
@@ -474,7 +501,7 @@ let test_artifact_round_trip_preserves_ocamlc_warnings = fun _ctx ->
           ~package:"pkg"
           ~ocamlc_warnings:warnings
           ~exports
-          ~hash
+          ~input_hash:hash
           ~sandbox_dir:sandbox
           ~outs:[ output ]
         |> Result.expect ~msg:"save should succeed"
@@ -486,6 +513,57 @@ let test_artifact_round_trip_preserves_ocamlc_warnings = fun _ctx ->
             Ok ()
           else
             Error "expected hash manifest payload to round-trip through the store") with
+  | Ok x -> x
+  | Error _ -> Error "tempdir creation failed"
+
+let test_output_hash_tracks_artifact_contents_not_input_hash = fun _ctx ->
+  match Fs.with_tempdir
+    ~prefix:"store_output_hash_test"
+    (fun tmpdir ->
+      let workspace = make_test_workspace tmpdir in
+      let store = Riot_store.Store.create ~workspace in
+      let sandbox = Path.(tmpdir / Path.v "sandbox") in
+      let output = write_output sandbox (Path.v "pkg.cmx") "same contents" in
+      let first_input = Crypto.hash_string "first-input" in
+      let second_input = Crypto.hash_string "second-input" in
+      let first =
+        Riot_store.Store.save
+          store
+          ~package:"pkg"
+          ~input_hash:first_input
+          ~sandbox_dir:sandbox
+          ~outs:[ output ]
+        |> Result.expect ~msg:"first save should succeed"
+      in
+      let second =
+        Riot_store.Store.save
+          store
+          ~package:"pkg"
+          ~input_hash:second_input
+          ~sandbox_dir:sandbox
+          ~outs:[ output ]
+        |> Result.expect ~msg:"second save should succeed"
+      in
+      let changed_output = write_output sandbox (Path.v "pkg.cmx") "changed contents" in
+      let third =
+        Riot_store.Store.save
+          store
+          ~package:"pkg"
+          ~input_hash:(Crypto.hash_string "third-input")
+          ~sandbox_dir:sandbox
+          ~outs:[ changed_output ]
+        |> Result.expect ~msg:"third save should succeed"
+      in
+      if not (Crypto.Hash.equal first.input_hash second.input_hash) then
+        if Crypto.Hash.equal first.output_hash second.output_hash then
+          if Crypto.Hash.equal first.output_hash third.output_hash then
+            Error "output hash should change when artifact contents change"
+          else
+            Ok ()
+        else
+          Error "output hash should ignore lookup input hash when outputs are unchanged"
+      else
+        Error "test setup expected distinct input hashes") with
   | Ok x -> x
   | Error _ -> Error "tempdir creation failed"
 
@@ -513,7 +591,7 @@ let test_export_source_path_round_trip = fun _ctx ->
           store
           ~package:"pkg"
           ~exports
-          ~hash
+          ~input_hash:hash
           ~sandbox_dir:sandbox
           ~outs:[ Path.(sandbox / rel_path) ]
         |> Result.expect ~msg:"save should succeed"
@@ -564,7 +642,7 @@ let test_export_source_path_rejects_absolute_export_paths = fun _ctx ->
           store
           ~package:"pkg"
           ~exports
-          ~hash
+          ~input_hash:hash
           ~sandbox_dir:sandbox
           ~outs:[ output ]
         |> Result.expect ~msg:"save should succeed"
@@ -618,7 +696,7 @@ let test_materialize_package_exports_from_action_artifact = fun _ctx ->
         Riot_store.Store.save
           store
           ~package:"pkg"
-          ~hash:action_hash
+          ~input_hash:action_hash
           ~sandbox_dir:sandbox
           ~outs:[ output ]
         |> Result.expect ~msg:"save action artifact should succeed"
@@ -688,7 +766,12 @@ let test_promote_overwrites_existing_target_files = fun _ctx ->
       in
       let hash = Crypto.hash_string "promote-overwrite" in
       let _ =
-        Riot_store.Store.save store ~package:"kernel" ~hash ~sandbox_dir:sandbox ~outs:[ output ]
+        Riot_store.Store.save
+          store
+          ~package:"kernel"
+          ~input_hash:hash
+          ~sandbox_dir:sandbox
+          ~outs:[ output ]
         |> Result.expect ~msg:"save should succeed"
       in
       let target_dir = Path.(tmpdir / Path.v "sandbox-target") in
@@ -734,7 +817,12 @@ let test_save_and_promote_preserves_executable_permissions = fun _ctx ->
       in
       let hash = Crypto.hash_string "promote-preserves-executable-permissions" in
       let _ =
-        Riot_store.Store.save store ~package:"kernel" ~hash ~sandbox_dir:sandbox ~outs:[ output ]
+        Riot_store.Store.save
+          store
+          ~package:"kernel"
+          ~input_hash:hash
+          ~sandbox_dir:sandbox
+          ~outs:[ output ]
         |> Result.expect ~msg:"save should succeed"
       in
       let target_dir = Path.(tmpdir / Path.v "sandbox-target") in
@@ -782,7 +870,12 @@ let test_save_preserves_executable_permissions_in_cache = fun _ctx ->
       in
       let hash = Crypto.hash_string "save-preserves-executable-permissions-in-cache" in
       let _ =
-        Riot_store.Store.save store ~package:"std" ~hash ~sandbox_dir:sandbox ~outs:[ output ]
+        Riot_store.Store.save
+          store
+          ~package:"std"
+          ~input_hash:hash
+          ~sandbox_dir:sandbox
+          ~outs:[ output ]
         |> Result.expect ~msg:"save should succeed"
       in
       let cached =
@@ -827,7 +920,7 @@ let test_get_returns_none_when_export_source_missing = fun _ctx ->
         Riot_store.Store.save
           store
           ~package:"pkg"
-          ~hash:action_hash
+          ~input_hash:action_hash
           ~sandbox_dir:sandbox
           ~outs:[ output ]
         |> Result.expect ~msg:"save action artifact should succeed"
@@ -845,7 +938,7 @@ let test_get_returns_none_when_export_source_missing = fun _ctx ->
           store
           ~package:"pkg"
           ~exports
-          ~hash:package_hash
+          ~input_hash:package_hash
           ~sandbox_dir:sandbox
           ~outs:[ output ]
         |> Result.expect ~msg:"save package artifact should succeed"
@@ -1479,6 +1572,9 @@ let tests =
     case
       "artifact round trip preserves manifest payload"
       test_artifact_round_trip_preserves_ocamlc_warnings;
+    case
+      "output hash tracks artifact contents not input hash"
+      test_output_hash_tracks_artifact_contents_not_input_hash;
     case "export source path round trip" test_export_source_path_round_trip;
     case
       "export source path rejects absolute paths"

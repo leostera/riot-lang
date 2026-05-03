@@ -254,8 +254,15 @@ let expect_subsequence = fun ~haystack ~needle ->
 
 let make_artifact = fun ?(exports = []) name ->
   {
-    Riot_store.Artifact.hash = Crypto.hash_string name;
-    files = [ Path.v (name ^ ".cmx") ];
+    Riot_store.Artifact.input_hash = Crypto.hash_string (name ^ ":input");
+    output_hash = Crypto.hash_string (name ^ ":output");
+    files = [
+      Riot_store.Manifest.{
+        path = Path.v (name ^ ".cmx");
+        hash = name ^ "-file-hash";
+        size = 0;
+      };
+    ];
     ocamlc_warnings = [];
     exports;
   }
@@ -342,8 +349,11 @@ let test_output_exposes_artifacts_and_exports = fun _ctx ->
     (fun tmpdir ->
       let package = make_package ~root:tmpdir ~name:"demo" ~value:"1" in
       let artifact = {
-        Riot_store.Artifact.hash = Crypto.hash_string "demo";
-        files = [ Path.v "demo.exe" ];
+        Riot_store.Artifact.input_hash = Crypto.hash_string "demo-input";
+        output_hash = Crypto.hash_string "demo-output";
+        files = [
+          Riot_store.Manifest.{ path = Path.v "demo.exe"; hash = "demo-file-hash"; size = 0 };
+        ];
         ocamlc_warnings = [];
         exports = [
           { Riot_store.Manifest.name = "demo"; path = "demo.exe"; action_hash = "abc123" };
@@ -363,8 +373,8 @@ let test_output_exposes_artifacts_and_exports = fun _ctx ->
               if
                 not
                   (String.equal
-                    (Crypto.Digest.hex found_artifact.hash)
-                    (Crypto.Digest.hex artifact.hash))
+                    (Crypto.Digest.hex found_artifact.input_hash)
+                    (Crypto.Digest.hex artifact.input_hash))
               then
                 Error "expected built package artifact hash to be preserved"
               else
@@ -414,8 +424,8 @@ let test_output_prefers_dev_scope_and_merges_exports = fun _ctx ->
           let* () =
             match Riot_build.Build_result.package_status package_output with
             | Riot_build.Build_result.Built artifact when Crypto.Hash.equal
-              artifact.hash
-              dev_artifact.hash -> Ok ()
+              artifact.input_hash
+              dev_artifact.input_hash -> Ok ()
             | _ -> Error "expected dev-scoped artifact to win merged package status"
           in
           match Riot_build.Build_result.find_export package_output "build_core_tests" with

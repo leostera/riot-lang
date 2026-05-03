@@ -12,8 +12,8 @@ type action_error = Action_executor.action_error =
     }
 
 type action_status = Action_executor.action_status =
-  | Cached of Std.Crypto.hash
-  | Executed
+  | Cached of Riot_store.Artifact.t
+  | Executed of Riot_store.Artifact.t
   | Failed of action_error
   | Skipped
 
@@ -99,7 +99,7 @@ let first_failure_of_completed_actions = fun completed_actions ->
       match completed_action.result.status with
       | Failed err -> Some err
       | Cached _
-      | Executed
+      | Executed _
       | Skipped -> None)
 
 let ocamlc_warnings_of_completed_actions = fun completed_actions ->

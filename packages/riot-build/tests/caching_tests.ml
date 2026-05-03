@@ -40,7 +40,7 @@ let test_cache_store_creation_is_lazy_until_first_save = fun _ctx ->
               (Riot_store.Store.save
                 store
                 ~package:"test"
-                ~hash
+                ~input_hash:hash
                 ~sandbox_dir:sandbox
                 ~outs:[ output ])
               ~msg:"Save failed"
@@ -67,7 +67,12 @@ let test_simple_file_caching = fun _ctx ->
       let content = "test content" in
       Result.expect (Fs.write content output) ~msg:"Write failed";
       let hash = Crypto.hash_string "test_action" in
-      match Riot_store.Store.save store ~package:"test" ~hash ~sandbox_dir:sandbox ~outs:[ output ] with
+      match Riot_store.Store.save
+        store
+        ~package:"test"
+        ~input_hash:hash
+        ~sandbox_dir:sandbox
+        ~outs:[ output ] with
       | Ok artifact ->
           if Riot_store.Store.exists store hash then
             Ok ()
@@ -90,12 +95,17 @@ let test_cache_hit_retrieval = fun _ctx ->
       let hash = Crypto.hash_string "compile_action" in
       let _ =
         Result.expect
-          (Riot_store.Store.save store ~package:"pkg" ~hash ~sandbox_dir:sandbox ~outs:[ output ])
+          (Riot_store.Store.save
+            store
+            ~package:"pkg"
+            ~input_hash:hash
+            ~sandbox_dir:sandbox
+            ~outs:[ output ])
           ~msg:"Save failed"
       in
       match Riot_store.Store.get store hash with
       | Some artifact ->
-          if Crypto.Digest.hex artifact.hash = Crypto.Digest.hex hash then
+          if Crypto.Digest.hex artifact.input_hash = Crypto.Digest.hex hash then
             Ok ()
           else
             Error "Retrieved artifact hash mismatch"
@@ -121,7 +131,7 @@ let test_cache_promotion_workflow = fun _ctx ->
           (Riot_store.Store.save
             store
             ~package:"mylib"
-            ~hash
+            ~input_hash:hash
             ~sandbox_dir:sandbox
             ~outs:[ out1; out2 ])
           ~msg:"Save failed"
@@ -161,7 +171,7 @@ let test_different_hashes_isolated = fun _ctx ->
           (Riot_store.Store.save
             store
             ~package:"test"
-            ~hash:hash1
+            ~input_hash:hash1
             ~sandbox_dir:sandbox
             ~outs:[ output ])
           ~msg:"Save v1 failed"
@@ -173,7 +183,7 @@ let test_different_hashes_isolated = fun _ctx ->
           (Riot_store.Store.save
             store
             ~package:"test"
-            ~hash:hash2
+            ~input_hash:hash2
             ~sandbox_dir:sandbox
             ~outs:[ output ])
           ~msg:"Save v2 failed"

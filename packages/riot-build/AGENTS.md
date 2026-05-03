@@ -16,3 +16,4 @@
 10. Build events and detailed telemetry should flow through the same `Std.Telemetry` path before invoking external callbacks. Render progress from events.
 11. Actor-owned helpers should defer actor creation until runtime use so test binaries and embedded callers can boot their runtime first.
 12. Keep planner failures typed through the public build error path so `riot-cli` can render useful structured diagnostics.
+13. Cached action/package results carry full `Riot_store.Artifact.t` values. Use `artifact.input_hash` for store paths and export materialization; use `artifact.output_hash` only when strengthening downstream invalidation.

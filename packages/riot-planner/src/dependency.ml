@@ -7,7 +7,8 @@ type t = {
   package: Package.t;
   artifact_dir: Path.t;
   depset: t list;
-  hash: Crypto.hash;
+  input_hash: Crypto.hash;
+  output_hash: Crypto.hash;
 }
 
 let library_cmxa: t -> Path.t = fun dep ->

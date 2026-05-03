@@ -303,8 +303,8 @@ let exists = fun store hash ->
   | Error _ -> false
 
 (** Promote artifacts from store to target directory *)
-let promote = fun store hash ~target_dir ->
-  let hash_dir = get_hash_dir store hash in
+let promote = fun store input_hash ~target_dir ->
+  let hash_dir = get_hash_dir store input_hash in
   let manifest_path = manifest_path hash_dir in
   let* manifest =
     match Manifest.load ~path:manifest_path with
@@ -313,7 +313,7 @@ let promote = fun store hash ~target_dir ->
         match Fs.exists manifest_path with
         | Ok true -> Error (LoadManifestFailed { path = manifest_path; cause })
         | Ok false
-        | Error _ -> Error (HashNotFound { hash })
+        | Error _ -> Error (HashNotFound { hash = input_hash })
       )
   in
   let* () =
@@ -342,9 +342,9 @@ let promote = fun store hash ~target_dir ->
 
 (** Store artifacts from sandbox to content-addressable store *)
 let store_artifacts = fun
-  store ~package ?(ocamlc_warnings = []) ?(exports = []) hash sandbox_dir declared_outputs ->
-  let hash_dir = get_hash_dir store hash in
-  let temp_dir = artifact_temp_dir store hash in
+  store ~package ?(ocamlc_warnings = []) ?(exports = []) input_hash sandbox_dir declared_outputs ->
+  let hash_dir = get_hash_dir store input_hash in
+  let temp_dir = artifact_temp_dir store input_hash in
   let* () =
     Fs.create_dir_all temp_dir
     |> Result.map_err ~fn:(fun cause -> CreateTempDirFailed { path = temp_dir; cause })
@@ -394,7 +394,7 @@ let store_artifacts = fun
         ~exports
         ()
         ~package
-        ~build_hash:(Std.Crypto.Digest.hex hash)
+        ~input_hash:(Std.Crypto.Digest.hex input_hash)
         ~files:(List.reverse stored_files_with_sizes)
     in
     let manifest_path = manifest_path temp_dir in
@@ -403,7 +403,7 @@ let store_artifacts = fun
       |> Result.map_err ~fn:(fun cause -> SaveManifestFailed { path = manifest_path; cause })
     in
     let* () =
-      ContentStore.commit_dir store.content_store ~hash ~source_dir:temp_dir
+      ContentStore.commit_dir store.content_store ~hash:input_hash ~source_dir:temp_dir
       |> Result.map_err
         ~fn:(fun cause ->
           CommitArtifactsFailed {
@@ -412,10 +412,14 @@ let store_artifacts = fun
             cause = ContentStore.error_message cause;
           })
     in
-    let stored_files = List.map stored_files_with_sizes ~fn:(fun (path, _) -> path) in
+    let output_hash =
+      hash_of_hex manifest.Manifest.output_hash
+      |> Option.expect ~msg:"store manifest output_hash should be valid hex"
+    in
     Ok Artifact.{
-      hash;
-      files = List.reverse stored_files;
+      input_hash;
+      output_hash;
+      files = manifest.Manifest.files;
       ocamlc_warnings;
       exports;
     }
@@ -453,10 +457,14 @@ let get = fun store hash ->
   match load_manifest store ~hash with
   | Some manifest ->
       if manifest_exports_exist store manifest then
-        let files = List.map manifest.files ~fn:(fun (entry: Manifest.file_entry) -> entry.path) in
+        let output_hash =
+          hash_of_hex manifest.output_hash
+          |> Option.expect ~msg:"store manifest output_hash should be valid hex"
+        in
         Some Artifact.{
-          hash;
-          files;
+          input_hash = hash;
+          output_hash;
+          files = manifest.files;
           ocamlc_warnings = manifest.ocamlc_warnings;
           exports = manifest.exports;
         }
@@ -465,7 +473,8 @@ let get = fun store hash ->
   | None -> None
 
 (** Save build outputs to the store *)
-let save = fun ?(ocamlc_warnings = []) ?(exports = []) store ~package ~hash ~sandbox_dir ~outs ->
+let save = fun
+  ?(ocamlc_warnings = []) ?(exports = []) store ~package ~input_hash ~sandbox_dir ~outs ->
   let sandbox_str = Path.to_string sandbox_dir in
   let sandbox_len = String.length sandbox_str in
   let outs_str =
@@ -479,22 +488,22 @@ let save = fun ?(ocamlc_warnings = []) ?(exports = []) store ~package ~hash ~san
         else
           Path.to_string out_path)
   in
-  store_artifacts store ~package ~ocamlc_warnings ~exports hash sandbox_dir outs_str
+  store_artifacts store ~package ~ocamlc_warnings ~exports input_hash sandbox_dir outs_str
 
 (** Promote cached artifacts to target directory *)
 let promote_artifact = fun store artifact ~target_dir ->
   promote
     store
-    Artifact.(artifact.hash)
+    Artifact.(artifact.input_hash)
     ~target_dir
 
 (** Get absolute paths to artifact files in immutable cache *)
 let get_artifact_paths = fun store artifact ->
-  let hash_dir = get_hash_dir store Artifact.(artifact.hash) in
-  List.map Artifact.(artifact.files) ~fn:(fun rel_path -> Path.(hash_dir / rel_path))
+  let hash_dir = get_hash_dir store Artifact.(artifact.input_hash) in
+  List.map Artifact.(artifact.files) ~fn:(fun entry -> Path.(hash_dir / entry.Manifest.path))
 
 (** Get the cache directory containing an artifact's files *)
-let get_artifact_dir = fun store artifact -> get_hash_dir store Artifact.(artifact.hash)
+let get_artifact_dir = fun store artifact -> get_hash_dir store Artifact.(artifact.input_hash)
 
 let hash_dir_of = fun store hash -> get_hash_dir store hash
 

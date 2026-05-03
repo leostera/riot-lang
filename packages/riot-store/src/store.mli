@@ -116,7 +116,7 @@ val save:
   ?exports:export_entry list ->
   t ->
   package:string ->
-  hash:Std.Crypto.hash ->
+  input_hash:Std.Crypto.hash ->
   sandbox_dir:Std.Path.t ->
   outs:Std.Path.t list ->
   (Artifact.t, error) result

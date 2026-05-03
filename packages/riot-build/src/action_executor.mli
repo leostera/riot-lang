@@ -15,8 +15,8 @@ type action_error =
     }
 (** Status of an executed action *)
 type action_status =
-  | Cached of Crypto.hash
-  | Executed
+  | Cached of Riot_store.Artifact.t
+  | Executed of Riot_store.Artifact.t
   | Failed of action_error
   | Skipped
 (** Result of executing a single action *)
@@ -50,3 +50,8 @@ val execute_node:
   Path.t ->
   Action_node.t ->
   execution_result
+
+val compute_action_input_hash:
+  planned_hash:Crypto.hash ->
+  dependency_output_hashes:Crypto.hash list ->
+  Crypto.hash

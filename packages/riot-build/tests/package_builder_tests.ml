@@ -99,7 +99,8 @@ let test_build_result_status_variants = fun _ctx ->
   in
   let artifact =
     Riot_store.Artifact.{
-      hash = Crypto.hash_string "test";
+      input_hash = Crypto.hash_string "test-input";
+      output_hash = Crypto.hash_string "test-output";
       files = [];
       ocamlc_warnings = [];
       exports = [];
@@ -213,7 +214,7 @@ let test_build_writes_hash_manifest_with_exports = fun _ctx ->
       | Package_builder.Skipped { reason } -> Error ("build skipped: " ^ reason)
       | Package_builder.Built artifact
       | Package_builder.Cached artifact ->
-          match Riot_store.Store.load_manifest store ~hash:artifact.hash with
+          match Riot_store.Store.load_manifest store ~hash:artifact.input_hash with
           | None -> Error "expected package hash manifest to be saved"
           | Some manifest ->
               if List.length manifest.Riot_store.Manifest.exports > 0 then
@@ -307,7 +308,7 @@ let test_dependency_source_change_rebuilds_dependent_package = fun _ctx ->
           Package_builder.Built _,
           Package_builder.Built second_app_artifact
         ) ->
-          if Crypto.Hash.equal first_app_artifact.hash second_app_artifact.hash then
+          if Crypto.Hash.equal first_app_artifact.input_hash second_app_artifact.input_hash then
             Error "expected dependent package artifact hash to change after dependency source edit"
           else
             Ok ()

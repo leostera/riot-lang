@@ -47,7 +47,12 @@ let make_bench_save_single_output = fun root ~size ->
     write_file output (payload ~size ~seed:iteration);
     let hash = Crypto.hash_string ("riot-store:save-single:" ^ Int.to_string iteration) in
     let _ =
-      Riot_store.Store.save store ~package:"pkg" ~hash ~sandbox_dir:sandbox ~outs:[ output ]
+      Riot_store.Store.save
+        store
+        ~package:"pkg"
+        ~input_hash:hash
+        ~sandbox_dir:sandbox
+        ~outs:[ output ]
       |> Result.expect ~msg:"save single output bench should succeed"
     in
     ()
@@ -73,7 +78,7 @@ let make_bench_save_nested_outputs = fun root ~size ->
         write_file path (payload ~size ~seed:(iteration + String.length name)));
     let hash = Crypto.hash_string ("riot-store:save-nested:" ^ Int.to_string iteration) in
     let _ =
-      Riot_store.Store.save store ~package:"pkg" ~hash ~sandbox_dir:sandbox ~outs:outputs
+      Riot_store.Store.save store ~package:"pkg" ~input_hash:hash ~sandbox_dir:sandbox ~outs:outputs
       |> Result.expect ~msg:"save nested outputs bench should succeed"
     in
     ()
@@ -93,7 +98,7 @@ let prepare_promote_fixture = fun root ->
     ~fn:(fun (index, path) -> write_file path (payload ~size:(1_024 + (index * 256)) ~seed:index));
   let hash = Crypto.hash_string "riot-store:promote-fixture" in
   let _ =
-    Riot_store.Store.save store ~package:"pkg" ~hash ~sandbox_dir:sandbox ~outs:outputs
+    Riot_store.Store.save store ~package:"pkg" ~input_hash:hash ~sandbox_dir:sandbox ~outs:outputs
     |> Result.expect ~msg:"prepare promote fixture should succeed"
   in
   (store, hash, store_root)
@@ -127,7 +132,13 @@ let prepare_export_fixture = fun root ->
   ]
   in
   let _ =
-    Riot_store.Store.save store ~package:"pkg" ~hash ~exports ~sandbox_dir:sandbox ~outs:[ output ]
+    Riot_store.Store.save
+      store
+      ~package:"pkg"
+      ~input_hash:hash
+      ~exports
+      ~sandbox_dir:sandbox
+      ~outs:[ output ]
     |> Result.expect ~msg:"prepare export fixture should succeed"
   in
   (store, exports, store_root)

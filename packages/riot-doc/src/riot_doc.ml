@@ -591,7 +591,7 @@ let run_for_package = fun
             in
             Riot_store.Store.save
               ~package:(Package_name.to_string package.name)
-              ~hash:(Crypto.hash_string cache_key)
+              ~input_hash:(Crypto.hash_string cache_key)
               store
               ~sandbox_dir:output_dir
               ~outs

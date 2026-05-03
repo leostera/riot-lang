@@ -106,7 +106,7 @@ let test_execute_node_copies_package_relative_sources = fun _ctx ->
               node
           in
           match result.status with
-          | Action_executor.Executed -> (
+          | Action_executor.Executed _ -> (
               let copied = Path.(sandbox / Path.v "src/lib.ml") in
               match Fs.exists copied with
               | Ok true -> Ok ()
@@ -138,7 +138,7 @@ let test_execute_node_copies_workspace_relative_sources = fun _ctx ->
               node
           in
           match result.status with
-          | Action_executor.Executed -> (
+          | Action_executor.Executed _ -> (
               let copied = Path.(sandbox / Path.v "packages/kernel/src/lib.ml") in
               match Fs.exists copied with
               | Ok true -> Ok ()
@@ -168,7 +168,7 @@ let test_execute_node_cache_hit_materializes_outputs = fun _ctx ->
         Action_executor.execute_node ~completed ~store ~session_id toolchain sandbox node
       in
       match first.status with
-      | Action_executor.Executed ->
+      | Action_executor.Executed _ ->
           let output = Path.(sandbox / Path.v "out.txt") in
           let _ =
             Fs.remove_file output

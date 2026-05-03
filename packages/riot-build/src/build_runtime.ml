@@ -198,7 +198,7 @@ let sort_uniq_strings = fun values ->
   |> dedupe []
 
 let referenced_hashes_of_artifact = fun (artifact: Riot_store.Artifact.t) ->
-  Std.Crypto.Digest.hex artifact.hash
+  Std.Crypto.Digest.hex artifact.input_hash
   :: List.map
     artifact.exports
     ~fn:(fun (entry: Riot_store.Manifest.export_entry) -> entry.action_hash)
@@ -227,7 +227,7 @@ let new_entries_of_results = fun ~profile ~target results ->
           Some Riot_store.Cache_gc.{
             profile;
             target;
-            hash = Std.Crypto.Digest.hex artifact.Riot_store.Artifact.hash;
+            hash = Std.Crypto.Digest.hex artifact.Riot_store.Artifact.input_hash;
           }
       | Package_builder.Cached _
       | Package_builder.Skipped _

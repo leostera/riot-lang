@@ -103,7 +103,10 @@ let merge_artifacts = fun current incoming ->
       if
         List.any
           acc
-          ~fn:(fun existing -> Crypto.Hash.equal existing.Riot_store.Artifact.hash artifact.hash)
+          ~fn:(fun existing ->
+            Crypto.Hash.equal
+              existing.Riot_store.Artifact.input_hash
+              artifact.Riot_store.Artifact.input_hash)
       then
         acc
       else

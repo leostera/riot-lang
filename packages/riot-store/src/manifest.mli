@@ -2,8 +2,7 @@
 open Std
 
 type version =
-  | V0
-  | V1
+  | V2
 type file_entry = {
   path: Path.t;
   hash: string;
@@ -17,7 +16,8 @@ type export_entry = {
 type t = {
   version: version;
   package: string;
-  build_hash: string;
+  input_hash: string;
+  output_hash: string;
   timestamp: Std.Time.SystemTime.t;
   files: file_entry list;
   ocamlc_warnings: string list;
@@ -30,7 +30,7 @@ val create:
   ?exports:export_entry list ->
   unit ->
   package:string ->
-  build_hash:string ->
+  input_hash:string ->
   files:(Path.t * int) list ->
   t
 

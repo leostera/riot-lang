@@ -16,8 +16,8 @@ type action_error =
     }
 
 type action_status =
-  | Cached of Crypto.hash
-  | Executed
+  | Cached of Riot_store.Artifact.t
+  | Executed of Riot_store.Artifact.t
   | Failed of action_error
   | Skipped
 
@@ -402,10 +402,45 @@ let verify_outputs = fun outputs ->
   else
     Ok ()
 
-let save_action_artifact = fun
-  ~store ~package ~action_hash ~ocamlc_warnings ~sandbox_dir ~outputs ->
-  Riot_store.Store.save store ~package ~ocamlc_warnings ~hash:action_hash ~sandbox_dir ~outs:outputs
+let save_action_artifact = fun ~store ~package ~input_hash ~ocamlc_warnings ~sandbox_dir ~outputs ->
+  Riot_store.Store.save store ~package ~ocamlc_warnings ~input_hash ~sandbox_dir ~outs:outputs
   |> Result.map_err ~fn:Riot_store.Store.error_message
+
+let successful_artifact = fun (result: execution_result) ->
+  match result.status with
+  | Cached artifact
+  | Executed artifact -> Some artifact
+  | Failed _
+  | Skipped -> None
+
+let compute_action_input_hash = fun ~planned_hash ~dependency_output_hashes ->
+  let hasher = Crypto.Sha256.create () in
+  Crypto.Sha256.write hasher "riot-action-input:v1";
+  Crypto.Sha256.write_hash hasher planned_hash;
+  List.for_each dependency_output_hashes ~fn:(Crypto.Sha256.write_hash hasher);
+  Crypto.Sha256.finish hasher
+
+let dependency_output_hashes = fun completed (node: Action_node.t) ->
+  let sorted_deps =
+    List.sort
+      node.deps
+      ~compare:(fun left right -> Int.compare (G.Node_id.to_int left) (G.Node_id.to_int right))
+  in
+  (* Action graphs can carry ordering dependencies that do not materialize an
+     artifact in the action scheduler. The planned action hash still covers the
+     graph shape; completed producer artifacts strengthen the runtime cache key
+     when they are available. Package dependencies are mandatory and flow
+     through the package input hash.
+  *)
+  List.filter_map
+    sorted_deps
+    ~fn:(fun dep_id ->
+      match HashMap.get completed ~key:dep_id with
+      | Some result ->
+          Option.map
+            (successful_artifact result)
+            ~fn:(fun artifact -> artifact.Riot_store.Artifact.output_hash)
+      | None -> None)
 
 let has_failed_dependencies = fun completed (node: Action_node.t) ->
   List.any
@@ -482,221 +517,231 @@ let execute_node = fun ~completed ~store ~session_id toolchain sandbox_dir (node
       completed_at = now;
     }
   ) else (
-    let action_hash = Action_node.get_hash node in
-    match Riot_store.Store.get store action_hash with
-    | Some artifact ->
-        Telemetry.emit
-          (
-            Telemetry_events.CacheHit {
+    let planned_hash = Action_node.get_hash node in
+    let action_input_hash =
+      compute_action_input_hash
+        ~planned_hash
+        ~dependency_output_hashes:(dependency_output_hashes completed node)
+    in
+    (
+      match Riot_store.Store.get store action_input_hash with
+      | Some artifact ->
+          Telemetry.emit
+            (
+              Telemetry_events.CacheHit {
+                session_id;
+                package = node.value.package;
+                action = node;
+                hash = action_input_hash;
+              }
+            );
+          let _ =
+            Riot_store.Store.promote
+              store
+              artifact.Riot_store.Artifact.input_hash
+              ~target_dir:sandbox_dir
+            |> Result.expect
+              ~msg:("Failed to materialize cached action artifact: " ^ G.Node_id.to_string node.id)
+          in
+          let completed_at = Instant.now () in
+          let duration = Instant.duration_since ~earlier:start completed_at in
+          Telemetry.emit
+            (
+              Telemetry_events.ActionCompleted {
+                session_id;
+                package = node.value.package;
+                action = node;
+                artifact;
+                status = `Cached;
+                duration;
+              }
+            );
+          {
+            node_id = node.id;
+            status = Cached artifact;
+            ocamlc_warnings = artifact.Riot_store.Artifact.ocamlc_warnings;
+            duration;
+            started_at = start;
+            completed_at;
+          }
+      | None ->
+          Telemetry.emit
+            (
+              Telemetry_events.CacheMiss {
+                session_id;
+                package = node.value.package;
+                action = node;
+                hash = action_input_hash;
+              }
+            );
+          let actions = node.value.actions in
+          let outputs = node.value.outs in
+          let sources = node.value.srcs in
+          Telemetry.emit
+            (Telemetry_events.ActionStarted {
               session_id;
               package = node.value.package;
               action = node;
-              hash = action_hash;
-            }
-          );
-        let _ =
-          Riot_store.Store.promote store artifact.Riot_store.Artifact.hash ~target_dir:sandbox_dir
-          |> Result.expect
-            ~msg:("Failed to materialize cached action artifact: " ^ G.Node_id.to_string node.id)
-        in
-        let completed_at = Instant.now () in
-        let duration = Instant.duration_since ~earlier:start completed_at in
-        Telemetry.emit
-          (
-            Telemetry_events.ActionCompleted {
-              session_id;
-              package = node.value.package;
-              action = node;
-              artifact;
-              status = `Cached;
-              duration;
-            }
-          );
-        {
-          node_id = node.id;
-          status = Cached action_hash;
-          ocamlc_warnings = artifact.Riot_store.Artifact.ocamlc_warnings;
-          duration;
-          started_at = start;
-          completed_at;
-        }
-    | None ->
-        Telemetry.emit
-          (
-            Telemetry_events.CacheMiss {
-              session_id;
-              package = node.value.package;
-              action = node;
-              hash = action_hash;
-            }
-          );
-        let actions = node.value.actions in
-        let outputs = node.value.outs in
-        let sources = node.value.srcs in
-        Telemetry.emit
-          (Telemetry_events.ActionStarted {
-            session_id;
-            package = node.value.package;
-            action = node;
-          });
-        let copy_result: (unit, string) Result.t =
-          List.fold_left
-            sources
-            ~init:(Ok ())
-            ~fn:(fun acc src_path ->
-              match acc with
-              | Error _ -> acc
-              | Ok () ->
-                  match resolve_source_for_copy ~package:node.value.package ~src_path with
-                  | Error msg -> Error msg
-                  | Ok abs_src ->
-                      let abs_dst = Path.join sandbox_dir src_path in
-                      Log.debug
-                        ("[EXECUTOR] Copying source: "
-                        ^ Path.to_string src_path
-                        ^ " from "
-                        ^ Path.to_string abs_src);
-                      (
-                        match Path.parent abs_dst with
-                        | Some dst_dir -> (
-                            match Fs.create_dir_all dst_dir with
-                            | Ok ()
-                            | Error _ -> ()
-                          )
-                        | None -> ()
-                      );
-                      (
-                        match Fs.copy ~src:abs_src ~dst:abs_dst with
-                        | Ok () -> Ok ()
-                        | Error err -> Error (IO.error_message err)
-                      ))
-        in
-        let completed_at = Instant.now () in
-        let duration = Instant.duration_since ~earlier:start completed_at in
-        match copy_result with
-        | Error msg ->
-            {
-              node_id = node.id;
-              status = Failed (ExecutionFailed { message = "Failed to copy sources: " ^ msg });
-              ocamlc_warnings = [];
-              duration;
-              started_at = start;
-              completed_at;
-            }
-        | Ok () -> (
-            match execute_actions ~session_id ~node toolchain sandbox_dir actions with
-            | Error msg ->
-                Telemetry.emit
-                  (
-                    Telemetry_events.ActionFailed {
-                      session_id;
-                      package = node.value.package;
-                      action = node;
-                      error = msg;
-                    }
-                  );
-                {
-                  node_id = node.id;
-                  status = Failed (ExecutionFailed { message = msg });
-                  ocamlc_warnings = [];
-                  duration;
-                  started_at = start;
-                  completed_at;
-                }
-            | Ok ocamlc_warnings ->
-                let needs_output_verification =
-                  List.any
-                    actions
-                    ~fn:(fun __tmp1 ->
-                      match __tmp1 with
-                      | Action.BuildForeignDependency _ -> false
-                      | _ -> true)
-                in
-                if not needs_output_verification then
-                  match save_action_artifact
-                    ~store
-                    ~package:(Riot_model.Package_name.to_string node.value.package.name)
-                    ~action_hash
-                    ~ocamlc_warnings
-                    ~sandbox_dir
-                    ~outputs:(List.map outputs ~fn:(Path.join sandbox_dir)) with
-                  | Error message ->
-                      {
-                        node_id = node.id;
-                        status = Failed (ExecutionFailed { message });
-                        ocamlc_warnings = [];
-                        duration;
-                        started_at = start;
-                        completed_at;
-                      }
-                  | Ok artifact ->
-                      Telemetry.emit
+            });
+          let copy_result: (unit, string) Result.t =
+            List.fold_left
+              sources
+              ~init:(Ok ())
+              ~fn:(fun acc src_path ->
+                match acc with
+                | Error _ -> acc
+                | Ok () ->
+                    match resolve_source_for_copy ~package:node.value.package ~src_path with
+                    | Error msg -> Error msg
+                    | Ok abs_src ->
+                        let abs_dst = Path.join sandbox_dir src_path in
+                        Log.debug
+                          ("[EXECUTOR] Copying source: "
+                          ^ Path.to_string src_path
+                          ^ " from "
+                          ^ Path.to_string abs_src);
                         (
-                          Telemetry_events.ActionCompleted {
-                            session_id;
-                            package = node.value.package;
-                            action = node;
-                            artifact;
-                            status = `Fresh;
-                            duration;
-                          }
+                          match Path.parent abs_dst with
+                          | Some dst_dir -> (
+                              match Fs.create_dir_all dst_dir with
+                              | Ok ()
+                              | Error _ -> ()
+                            )
+                          | None -> ()
                         );
-                      {
-                        node_id = node.id;
-                        status = Executed;
-                        ocamlc_warnings;
-                        duration;
-                        started_at = start;
-                        completed_at;
+                        (
+                          match Fs.copy ~src:abs_src ~dst:abs_dst with
+                          | Ok () -> Ok ()
+                          | Error err -> Error (IO.error_message err)
+                        ))
+          in
+          let completed_at = Instant.now () in
+          let duration = Instant.duration_since ~earlier:start completed_at in
+          match copy_result with
+          | Error msg ->
+              {
+                node_id = node.id;
+                status = Failed (ExecutionFailed { message = "Failed to copy sources: " ^ msg });
+                ocamlc_warnings = [];
+                duration;
+                started_at = start;
+                completed_at;
+              }
+          | Ok () -> (
+              match execute_actions ~session_id ~node toolchain sandbox_dir actions with
+              | Error msg ->
+                  Telemetry.emit
+                    (
+                      Telemetry_events.ActionFailed {
+                        session_id;
+                        package = node.value.package;
+                        action = node;
+                        error = msg;
                       }
-                else
-                  let abs_outputs = List.map outputs ~fn:(Path.join sandbox_dir) in
-                  match verify_outputs abs_outputs with
-                  | Error missing ->
-                      {
-                        node_id = node.id;
-                        status = Failed (OutputsNotCreated { missing });
-                        ocamlc_warnings = [];
-                        duration;
-                        started_at = start;
-                        completed_at;
-                      }
-                  | Ok () ->
-                      match save_action_artifact
-                        ~store
-                        ~package:(Riot_model.Package_name.to_string node.value.package.name)
-                        ~action_hash
-                        ~ocamlc_warnings
-                        ~sandbox_dir
-                        ~outputs:abs_outputs with
-                      | Error message ->
-                          {
-                            node_id = node.id;
-                            status = Failed (ExecutionFailed { message });
-                            ocamlc_warnings = [];
-                            duration;
-                            started_at = start;
-                            completed_at;
-                          }
-                      | Ok artifact ->
-                          Telemetry.emit
-                            (
-                              Telemetry_events.ActionCompleted {
-                                session_id;
-                                package = node.value.package;
-                                action = node;
-                                artifact;
-                                status = `Fresh;
-                                duration;
-                              }
-                            );
-                          {
-                            node_id = node.id;
-                            status = Executed;
-                            ocamlc_warnings;
-                            duration;
-                            started_at = start;
-                            completed_at;
-                          }
-          )
+                    );
+                  {
+                    node_id = node.id;
+                    status = Failed (ExecutionFailed { message = msg });
+                    ocamlc_warnings = [];
+                    duration;
+                    started_at = start;
+                    completed_at;
+                  }
+              | Ok ocamlc_warnings ->
+                  let needs_output_verification =
+                    List.any
+                      actions
+                      ~fn:(fun __tmp1 ->
+                        match __tmp1 with
+                        | Action.BuildForeignDependency _ -> false
+                        | _ -> true)
+                  in
+                  if not needs_output_verification then
+                    match save_action_artifact
+                      ~store
+                      ~package:(Riot_model.Package_name.to_string node.value.package.name)
+                      ~input_hash:action_input_hash
+                      ~ocamlc_warnings
+                      ~sandbox_dir
+                      ~outputs:(List.map outputs ~fn:(Path.join sandbox_dir)) with
+                    | Error message ->
+                        {
+                          node_id = node.id;
+                          status = Failed (ExecutionFailed { message });
+                          ocamlc_warnings = [];
+                          duration;
+                          started_at = start;
+                          completed_at;
+                        }
+                    | Ok artifact ->
+                        Telemetry.emit
+                          (
+                            Telemetry_events.ActionCompleted {
+                              session_id;
+                              package = node.value.package;
+                              action = node;
+                              artifact;
+                              status = `Fresh;
+                              duration;
+                            }
+                          );
+                        {
+                          node_id = node.id;
+                          status = Executed artifact;
+                          ocamlc_warnings;
+                          duration;
+                          started_at = start;
+                          completed_at;
+                        }
+                  else
+                    let abs_outputs = List.map outputs ~fn:(Path.join sandbox_dir) in
+                    match verify_outputs abs_outputs with
+                    | Error missing ->
+                        {
+                          node_id = node.id;
+                          status = Failed (OutputsNotCreated { missing });
+                          ocamlc_warnings = [];
+                          duration;
+                          started_at = start;
+                          completed_at;
+                        }
+                    | Ok () ->
+                        match save_action_artifact
+                          ~store
+                          ~package:(Riot_model.Package_name.to_string node.value.package.name)
+                          ~input_hash:action_input_hash
+                          ~ocamlc_warnings
+                          ~sandbox_dir
+                          ~outputs:abs_outputs with
+                        | Error message ->
+                            {
+                              node_id = node.id;
+                              status = Failed (ExecutionFailed { message });
+                              ocamlc_warnings = [];
+                              duration;
+                              started_at = start;
+                              completed_at;
+                            }
+                        | Ok artifact ->
+                            Telemetry.emit
+                              (
+                                Telemetry_events.ActionCompleted {
+                                  session_id;
+                                  package = node.value.package;
+                                  action = node;
+                                  artifact;
+                                  status = `Fresh;
+                                  duration;
+                                }
+                              );
+                            {
+                              node_id = node.id;
+                              status = Executed artifact;
+                              ocamlc_warnings;
+                              duration;
+                              started_at = start;
+                              completed_at;
+                            }
+            )
+    )
   )

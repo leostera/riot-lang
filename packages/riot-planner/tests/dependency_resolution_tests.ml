@@ -58,7 +58,8 @@ let test_transitive_closure_dependency_first_order = fun _ctx ->
       package = make_package "c";
       artifact_dir = Path.v "/cache/c";
       depset = [];
-      hash = Crypto.hash_string "c";
+      input_hash = Crypto.hash_string "c-input";
+      output_hash = Crypto.hash_string "c-output";
     }
   in
   let dep_b =
@@ -66,7 +67,8 @@ let test_transitive_closure_dependency_first_order = fun _ctx ->
       package = make_package "b";
       artifact_dir = Path.v "/cache/b";
       depset = [ dep_c ];
-      hash = Crypto.hash_string "b";
+      input_hash = Crypto.hash_string "b-input";
+      output_hash = Crypto.hash_string "b-output";
     }
   in
   let dep_a =
@@ -74,7 +76,8 @@ let test_transitive_closure_dependency_first_order = fun _ctx ->
       package = make_package "a";
       artifact_dir = Path.v "/cache/a";
       depset = [ dep_b; dep_c ];
-      hash = Crypto.hash_string "a";
+      input_hash = Crypto.hash_string "a-input";
+      output_hash = Crypto.hash_string "a-output";
     }
   in
   let names =
@@ -97,7 +100,8 @@ let test_library_cmxa_uses_store_location = fun _ctx ->
       package = make_package "std";
       artifact_dir = Path.v "/tmp/cache/abcd";
       depset = [];
-      hash = Crypto.hash_string "std";
+      input_hash = Crypto.hash_string "std-input";
+      output_hash = Crypto.hash_string "std-output";
     }
   in
   let expected =

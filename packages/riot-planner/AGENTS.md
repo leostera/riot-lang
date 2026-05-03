@@ -20,3 +20,4 @@
 14. Source-root selection is scope-owned behavior. Runtime nodes only analyze runtime roots, dev nodes analyze dev roots, and build nodes stay empty until an explicit build-time source model exists. Derive planner source groups from the already projected package for that scope.
 15. Package-layout validation runs after reachability has produced the actual planned closure. Reject target code that reaches library-internal modules or another target's root module; shared helper modules are fine, target entrypoints are not.
 16. Executable target entry files are validated during dependency wiring. Binary, test, example, and bench entry modules must define exactly one top-level `let main ~args = ...` binding.
+17. Package input hashes must consume dependency `output_hash` values, not dependency lookup keys. This keeps downstream packages rebuilding when a cached dependency artifact changes under the same planned input.

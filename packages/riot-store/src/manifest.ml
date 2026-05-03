@@ -4,8 +4,7 @@ open Std.Data
 open Std.Collections
 
 type version =
-  | V0
-  | V1
+  | V2
 
 type file_entry = {
   path: Path.t;
@@ -23,8 +22,8 @@ type export_entry = {
 type t = {
   version: version;
   package: string;
-  build_hash: string;
-  (* The build hash *)
+  input_hash: string;
+  output_hash: string;
   timestamp: Time.SystemTime.t;
   files: file_entry list;
   ocamlc_warnings: string list;
@@ -35,8 +34,7 @@ type t = {
 let to_json manifest =
   let version_to_string = fun __tmp1 ->
     match __tmp1 with
-    | V0 -> "v0"
-    | V1 -> "v1"
+    | V2 -> "v2"
   in
   let file_entry_to_json (entry: file_entry) =
     Data.Json.Object [
@@ -55,7 +53,8 @@ let to_json manifest =
   Data.Json.Object [
     ("version", Data.Json.String (version_to_string manifest.version));
     ("package", Data.Json.String manifest.package);
-    ("build_hash", Data.Json.String manifest.build_hash);
+    ("input_hash", Data.Json.String manifest.input_hash);
+    ("output_hash", Data.Json.String manifest.output_hash);
     ("timestamp", Data.Json.Int (Time.SystemTime.to_unix_timestamp manifest.timestamp));
     ("files", Data.Json.Array (List.map manifest.files ~fn:file_entry_to_json));
     (
@@ -78,8 +77,7 @@ let of_json = fun json ->
         in
         let version =
           match get_field "version" with
-          | Some (String "v0") -> Ok V0
-          | Some (String "v1") -> Ok V1
+          | Some (String "v2") -> Ok V2
           | _ -> Error "Invalid or missing version"
         in
         let package =
@@ -87,10 +85,15 @@ let of_json = fun json ->
           | Some (String p) -> Ok p
           | _ -> Error "Invalid or missing package"
         in
-        let build_hash =
-          match get_field "build_hash" with
+        let input_hash =
+          match get_field "input_hash" with
           | Some (String h) -> Ok h
-          | _ -> Error "Invalid or missing build_hash"
+          | _ -> Error "Invalid or missing input_hash"
+        in
+        let output_hash =
+          match get_field "output_hash" with
+          | Some (String h) -> Ok h
+          | _ -> Error "Invalid or missing output_hash"
         in
         let timestamp =
           match get_field "timestamp" with
@@ -177,24 +180,35 @@ let of_json = fun json ->
               |> Result.map ~fn:List.reverse
           | Some _ -> Error "Invalid exports"
         in
-        match (version, package, build_hash, timestamp, files, ocamlc_warnings, exports) with
-        | (Ok v, Ok p, Ok h, Ok t, Ok f, Ok warnings, Ok exports) ->
+        match (
+          version,
+          package,
+          input_hash,
+          output_hash,
+          timestamp,
+          files,
+          ocamlc_warnings,
+          exports
+        ) with
+        | (Ok v, Ok p, Ok input_hash, Ok output_hash, Ok t, Ok f, Ok warnings, Ok exports) ->
             Ok {
               version = v;
               package = p;
-              build_hash = h;
+              input_hash;
+              output_hash;
               timestamp = t;
               files = f;
               ocamlc_warnings = warnings;
               exports;
             }
-        | (Error e, _, _, _, _, _, _)
-        | (_, Error e, _, _, _, _, _)
-        | (_, _, Error e, _, _, _, _)
-        | (_, _, _, Error e, _, _, _)
-        | (_, _, _, _, Error e, _, _)
-        | (_, _, _, _, _, Error e, _)
-        | (_, _, _, _, _, _, Error e) -> Error e
+        | (Error e, _, _, _, _, _, _, _)
+        | (_, Error e, _, _, _, _, _, _)
+        | (_, _, Error e, _, _, _, _, _)
+        | (_, _, _, Error e, _, _, _, _)
+        | (_, _, _, _, Error e, _, _, _)
+        | (_, _, _, _, _, Error e, _, _)
+        | (_, _, _, _, _, _, Error e, _)
+        | (_, _, _, _, _, _, _, Error e) -> Error e
       )
     | _ -> Error "Manifest must be a JSON object"
   with
@@ -220,7 +234,43 @@ let load = fun ~path ->
   | Error _ -> Error "Failed to read manifest file"
 
 (** Create a manifest for stored files *)
-let create = fun ?base_dir ?(ocamlc_warnings = []) ?(exports = []) () ~package ~build_hash ~files ->
+let compute_output_hash = fun ~package ~files ~exports ->
+  let hasher = Std.Crypto.Sha256.create () in
+  let write = Std.Crypto.Sha256.write hasher in
+  write "riot-output:v1";
+  write package;
+  let sorted_files =
+    List.sort
+      files
+      ~compare:(fun (left: file_entry) (right: file_entry) ->
+        String.compare
+          (Path.to_string left.path)
+          (Path.to_string right.path))
+  in
+  List.for_each
+    sorted_files
+    ~fn:(fun (entry: file_entry) ->
+      write (Path.to_string entry.path);
+      write entry.hash;
+      write (Int.to_string entry.size));
+  let sorted_exports =
+    List.sort
+      exports
+      ~compare:(fun (left: export_entry) (right: export_entry) ->
+        match String.compare left.name right.name with
+        | Order.EQ -> String.compare (Path.to_string left.path) (Path.to_string right.path)
+        | order -> order)
+  in
+  List.for_each
+    sorted_exports
+    ~fn:(fun (entry: export_entry) ->
+      write entry.name;
+      write (Path.to_string entry.path);
+      write entry.action_hash);
+  Std.Crypto.Sha256.finish hasher
+
+(** Create a manifest for stored files *)
+let create = fun ?base_dir ?(ocamlc_warnings = []) ?(exports = []) () ~package ~input_hash ~files ->
   let timestamp = Time.SystemTime.now () in
   let file_entries =
     List.filter_map
@@ -241,10 +291,12 @@ let create = fun ?base_dir ?(ocamlc_warnings = []) ?(exports = []) () ~package ~
             Some { path; hash; size }
         | Error _ -> None)
   in
+  let output_hash = compute_output_hash ~package ~files:file_entries ~exports in
   {
-    version = V1;
+    version = V2;
     package;
-    build_hash;
+    input_hash;
+    output_hash = Std.Crypto.Digest.hex output_hash;
     timestamp;
     files = file_entries;
     ocamlc_warnings;
