@@ -46,6 +46,10 @@ the source of truth for packaging, upload, manifests, and publish order.
 - Use the installed `riot` for normal repo validation and publish commands
   unless the task specifically depends on just-built CLI behavior.
 - Require a clean worktree before tagging or publishing.
+- Never create a clean worktree by stashing, dropping, resetting, restoring, or
+  otherwise moving changes you did not make. If unrelated dirty files are
+  present, stop and ask the owner to clear them, or perform release preparation
+  from a separate worktree.
 - Treat these files as the main release inputs:
   - `packages/riot-cli/riot.toml`
   - `ocaml-toolchain.toml`

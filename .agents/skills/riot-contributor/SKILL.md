@@ -20,6 +20,14 @@ For a user project outside this repo, use `riot-ml` instead.
 5. Update affected `AGENTS.md` files when package behavior, public contracts, or workflow expectations change.
 6. Commit with conventional commits when the user asks to commit or when the slice is ready.
 
+## Dirty Worktree Rule
+
+- Never stash, drop, reset, restore, or otherwise move code you did not touch.
+- If unrelated dirty files block a command, stop and report the blocker. Let the
+  owner decide whether to commit, stash, move, or discard their own work.
+- If a clean tree is required for validation or release work, ask for one or use
+  a separate worktree that does not disturb the shared workspace.
+
 ## References
 
 - Read [workflow](references/workflow.md) for the day-to-day contributor process.
