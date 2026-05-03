@@ -39,7 +39,6 @@
 
 (** # Types *)
 
-
 open Global
 
 type status = int

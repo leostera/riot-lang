@@ -360,7 +360,6 @@ val close: t -> unit
 (** {1 Utilities} *)
 
 (** Default connection configuration *)
-
 val default_config: config
 
 (**

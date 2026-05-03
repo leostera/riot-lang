@@ -4,7 +4,6 @@ type 'a t = 'a eff = ..
 
    exception Unhandled : 'a t -> exn
 *)
-
 exception Continuation_already_resumed
 
 external perform: 'a t -> 'a = "%perform"

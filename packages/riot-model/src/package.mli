@@ -54,7 +54,6 @@ type realization_intent =
 type target_platform = string
 (* "macos", "linux", "windows", etc. *)
 (** Re-export from Profile for convenience *)
-
 type 'a override = 'a Profile.override
 type profile_override = Profile.profile_override
 (** Target-specific override *)

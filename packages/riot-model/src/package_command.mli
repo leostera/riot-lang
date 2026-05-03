@@ -37,7 +37,6 @@ val parse_from_toml: Toml.value list -> package_name:Package_name.t -> package_p
    path = "src/demo_cmd.ml"
 *)
 (* Note: discover_all and find_by_name are in Workspace module to avoid circular dependency *)
-
 val to_json: t -> Json.t
 
 (** Serialize for caching/debugging *)

@@ -12,7 +12,6 @@ module type Intf = sig
   (* Error conversion - optional but recommended *)
 
   (* Error conversion - optional but recommended *)
-
   val error_to_string: error -> string
 
   val error_to_json: error -> Data.Json.t

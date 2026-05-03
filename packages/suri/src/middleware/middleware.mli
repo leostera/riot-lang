@@ -1182,7 +1182,6 @@ module Remote_ip = Remote_ip
    See {!Remote_ip} for full documentation.
 *)
 (* No convenience function - use Remote_ip.middleware ~proxies:[...] directly *)
-
 module Etag = Etag
 
 (**

@@ -50,7 +50,6 @@ val plan_package_with_graph:
 *)
 
 (** Sub-modules *)
-
 module Action = Action
 
 module Action_graph = Action_graph

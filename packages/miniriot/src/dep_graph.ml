@@ -140,7 +140,6 @@ module Build_results: sig
   (* Register a package with it's module interface *)
 
   (* Register a package with it's module interface *)
-
   val register:
     t ->
     Package.t ->
@@ -319,7 +318,6 @@ module Module_registry: sig
   val get_by_name: t -> Module_name.t -> Graph.Node_id.t list
 
   (* Returns list of nodes *)
-
   val print: t -> unit
 end = struct
   type t = {

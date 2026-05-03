@@ -12,7 +12,6 @@ module type Intf = sig
   (* Comparison reporting *)
 
   (* Comparison reporting *)
-
   val on_comparison_start: int -> string -> int -> unit
 
   val on_comparison_case_result: int -> string -> Bench_result.statistics -> unit

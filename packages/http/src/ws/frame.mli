@@ -37,7 +37,6 @@ val close_payload_error_to_string: close_payload_error -> string
 val validate_close_payload: string -> (unit, close_payload_error) result
 
 (* Frame constructors *)
-
 val text: ?fin:bool -> string -> t
 
 val binary: ?fin:bool -> string -> t

@@ -50,7 +50,6 @@
    A child marked as `significant:true` will cause the supervisor to
    terminate if that child terminates, regardless of the supervision strategy.
 *)
-
 open Global
 
 type t

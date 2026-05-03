@@ -5,7 +5,6 @@ type t
 val empty: t
 
 (* Error API *)
-
 type error =
   | App_not_found of { app: string }
   | Load_failed of { message: string }
@@ -17,7 +16,6 @@ val error_to_json: error -> Data.Json.t
 val error_to_string: error -> string
 
 (* Server API *)
-
 val init: provider:Provider.t -> t
 
 val get: t -> app:string -> Spec.value option
