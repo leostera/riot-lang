@@ -465,7 +465,7 @@ let plan_bundle_of_json = fun ~(package:Package.t) json ->
    If input_hash hasn't changed, we know the full hash is the same!
 *)
 let compute_input_hash = fun
-  ?(planner_version = "planner-artifacts:v23")
+  ?(planner_version = "planner-artifacts:v24")
   ~package
   ~depset
   ~workspace

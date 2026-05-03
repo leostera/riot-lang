@@ -8,7 +8,7 @@ let test_toolchain =
   Riot_toolchain.init ~config:Riot_model.Toolchain_config.default
   |> Result.expect ~msg:"Failed to initialize toolchain"
 
-let planner_artifacts_version = "planner-artifacts:v23"
+let planner_artifacts_version = "planner-artifacts:v24"
 
 let legacy_planner_artifacts_version = "planner-artifacts:v19"
 
