@@ -257,6 +257,8 @@ val key_compare: key -> key -> Order.t
 
 val dependencies_for_scope: dependency_scope -> t -> dependency list
 
+val for_binary: binary_name:string -> t -> t option
+
 val scope_of_binary_name: t -> binary_name:string -> dependency_scope option
 
 val binaries_for_scope: ?dev_artifacts:dev_artifacts -> dependency_scope -> t -> binary list

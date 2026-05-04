@@ -540,6 +540,50 @@ let for_scope = fun ?(dev_artifacts = all_dev_artifacts) scope (pkg: t) ->
           sources = sources_for_scope Build pkg;
         }
 
+let sources_for_binary = fun (bin: binary) (pkg: t) ->
+  let path = Path.to_string bin.path in
+  if String.starts_with ~prefix:"tests/" path then
+    { empty_sources with tests = pkg.sources.tests }
+  else if String.starts_with ~prefix:"examples/" path then
+    { empty_sources with examples = pkg.sources.examples }
+  else if String.starts_with ~prefix:"bench/" path then
+    { empty_sources with bench = pkg.sources.bench }
+  else
+    (
+      if Option.is_some pkg.library then
+        { empty_sources with src = [ bin.path ] }
+      else
+        { empty_sources with src = pkg.sources.src; native = pkg.sources.native }
+    )
+
+let for_binary = fun ~binary_name (pkg: t) ->
+  List.find pkg.binaries ~fn:(fun (bin: binary) -> String.equal bin.name binary_name)
+  |> Option.map
+    ~fn:(fun bin ->
+      let dependency_scope = binary_scope bin in
+      let dependencies =
+        match dependency_scope with
+        | Normal
+        | Dev -> pkg.dependencies
+        | Build -> []
+      in
+      let dev_dependencies =
+        match dependency_scope with
+        | Normal -> []
+        | Dev -> pkg.dev_dependencies
+        | Build -> []
+      in
+      canonicalize
+        {
+          pkg with
+          library = None;
+          dependencies;
+          dev_dependencies;
+          binaries = [ bin ];
+          commands = [];
+          sources = sources_for_binary bin pkg;
+        })
+
 let build_graph_dependencies = fun (pkg: t) -> pkg.dependencies @ pkg.dev_dependencies
 
 let all_dependencies = fun (pkg: t) ->
@@ -2667,7 +2711,7 @@ let hash_with = fun (type s) (module H : Hash_writer with type state = s) state 
   in
   let hash_source_file file_path =
     let path_str = Path.to_string file_path in
-    if HashSet.insert seen_source_files ~value:path_str then
+    if HashSet.insert seen_source_files ~value:path_str then (
       let abs_path =
         if Path.is_absolute file_path then
           file_path
@@ -2677,6 +2721,7 @@ let hash_with = fun (type s) (module H : Hash_writer with type state = s) state 
       let path_str = Path.to_string file_path in
       H.write state path_str;
       ignore (hash_file_content abs_path)
+    )
   in
   List.for_each pkg.sources.src ~fn:hash_source_file;
   List.for_each pkg.sources.native ~fn:hash_source_file;

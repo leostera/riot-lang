@@ -62,6 +62,22 @@ let make_workspace = fun packages ->
     ~packages
     ()
 
+let write_file = fun path contents ->
+  Fs.create_dir_all (Path.dirname path)
+  |> Result.expect ~msg:"expected test directory to be created";
+  Fs.write contents path
+  |> Result.expect ~msg:"expected test file to be written"
+
+let manifest_package = fun ~root name ->
+  let package_dir = Path.(root / Path.v ("packages/" ^ name)) in
+  Package.make
+    ~name:(package_name name)
+    ~path:package_dir
+    ~relative_path:(Path.v ("packages/" ^ name))
+    ~library:Package.{ path = Path.v "src/app.ml" }
+    ()
+  |> Package_manifest.from_package
+
 let linux_target =
   Target.from_string "x86_64-unknown-linux-gnu"
   |> Result.expect ~msg:"expected linux target"
@@ -681,6 +697,54 @@ let dependency_edges_only_reference_graph_nodes = fun _ctx ->
             (Option.is_some (Build_unit_graph.find graph dependency))));
   Ok ()
 
+let unit_package = fun graph key ->
+  Build_unit_graph.find graph key
+  |> Option.map ~fn:(fun node -> (Build_unit_graph.node_value node).Build_unit.package)
+  |> Option.expect ~msg:("missing build unit: " ^ Build_unit.key_to_string key)
+
+let assert_paths_equal = fun ~expected ~actual ->
+  Test.assert_equal
+    ~expected:(List.map expected ~fn:Path.to_string)
+    ~actual:(List.map actual ~fn:Path.to_string)
+
+let build_units_store_execution_projected_packages = fun _ctx ->
+  match Fs.with_tempdir
+    ~prefix:"build_unit_projected_packages"
+    (fun root ->
+      let package_dir = Path.(root / Path.v "packages/app") in
+      write_file Path.(package_dir / Path.v "src/app.ml") "let value = 1\n";
+      write_file Path.(package_dir / Path.v "src/main.ml") "let main ~args:_ = ()\n";
+      write_file Path.(package_dir / Path.v "tests/app_tests.ml") "let main ~args:_ = ()\n";
+      let workspace = Workspace.make ~root ~packages:[ manifest_package ~root "app" ] () in
+      let graph =
+        graph
+          workspace
+          (request
+            ~roots:[ package_name "app" ]
+            ~kind:(Build_unit_graph.Dev default_dev_artifacts)
+            ())
+      in
+      let library_package = unit_package graph (library_key "app") in
+      Test.assert_true (Option.is_some library_package.library);
+      assert_paths_equal
+        ~expected:[ Path.v "src/app.ml"; Path.v "src/main.ml" ]
+        ~actual:library_package.sources.src;
+      Test.assert_equal ~expected:[] ~actual:library_package.sources.tests;
+      let runtime_package = unit_package graph (runtime_binary_key "app" "app") in
+      Test.assert_true (Option.is_none runtime_package.library);
+      Test.assert_equal ~expected:1 ~actual:(List.length runtime_package.binaries);
+      assert_paths_equal ~expected:[ Path.v "src/main.ml" ] ~actual:runtime_package.sources.src;
+      let test_package = unit_package graph (test_binary_key "app" "app_tests") in
+      Test.assert_true (Option.is_none test_package.library);
+      Test.assert_equal ~expected:1 ~actual:(List.length test_package.binaries);
+      assert_paths_equal ~expected:[] ~actual:test_package.sources.src;
+      assert_paths_equal
+        ~expected:[ Path.v "tests/app_tests.ml" ]
+        ~actual:test_package.sources.tests;
+      Ok ()) with
+  | Ok result -> result
+  | Error err -> Error ("tempdir failed: " ^ IO.error_message err)
+
 let tests =
   Test.[
     case
@@ -746,6 +810,9 @@ let tests =
     case
       "build unit dependency edges only reference graph nodes"
       dependency_edges_only_reference_graph_nodes;
+    case
+      "build unit graph stores execution projected packages"
+      build_units_store_execution_projected_packages;
   ]
 
 let name = "riot-planner:build-unit-graph"

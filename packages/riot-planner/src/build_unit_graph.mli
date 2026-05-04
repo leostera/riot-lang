@@ -37,6 +37,8 @@ val keys: t -> Build_unit.key list
 
 val find: t -> Build_unit.key -> node option
 
+val node_value: node -> Build_unit.t
+
 val dependencies: t -> Build_unit.key -> Build_unit.key list
 
 val topological_sort: t -> (Build_unit.t list, Build_unit.key list) result

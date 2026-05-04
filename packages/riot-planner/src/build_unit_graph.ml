@@ -55,6 +55,8 @@ let keys = fun t ->
 
 let find = fun t key -> HashMap.get t.nodes ~key:(Build_unit.package_key key)
 
+let node_value = fun node -> node.G.value
+
 let dependencies = fun t key ->
   match find t key with
   | None -> []
@@ -109,6 +111,26 @@ let target_key = fun ~package ~artifact ~target ~profile ->
     profile;
   }
 
+let package_for_library = fun workspace (manifest: Package_manifest.t) ->
+  Workspace.realize_package ~intent:Package.Runtime manifest
+  |> Package.for_scope Package.Normal
+
+let package_for_artifact = fun workspace (manifest: Package_manifest.t) artifact ->
+  match artifact with
+  | Build_unit.Library -> Some (package_for_library workspace manifest)
+  | RuntimeBinary { name } ->
+      Workspace.realize_package ~intent:Package.Runtime manifest
+      |> Package.for_binary ~binary_name:name
+  | TestBinary { name }
+  | ExampleBinary { name }
+  | BenchBinary { name } ->
+      Workspace.realize_package ~intent:Package.Dev manifest
+      |> Package.for_binary ~binary_name:name
+  | SyntheticTool _ ->
+      Workspace.realize_package ~intent:Package.Runtime manifest
+      |> Package.for_scope Package.Normal
+      |> Option.some
+
 let add_unit = fun t ~(package:Package.t) ~artifact ~target ~profile ->
   let key = target_key ~package:package.name ~artifact ~target ~profile in
   let package_key = Build_unit.package_key key in
@@ -119,9 +141,11 @@ let add_unit = fun t ~(package:Package.t) ~artifact ~target ~profile ->
       ignore (HashMap.insert t.nodes ~key:package_key ~value:node);
       node
 
-let add_package_artifact = fun t ~(manifest:Package_manifest.t) ~artifact ~target ~profile ->
-  let package = Package.from_manifest_spec manifest in
-  add_unit t ~package ~artifact ~target ~profile
+let add_package_artifact = fun
+  t ~workspace ~(manifest:Package_manifest.t) ~artifact ~target ~profile ->
+  match package_for_artifact workspace manifest artifact with
+  | Some package -> Some (add_unit t ~package ~artifact ~target ~profile)
+  | None -> None
 
 let edge_key = fun from_key to_key ->
   Package.key_of_string
@@ -153,7 +177,11 @@ let dev_artifact_enabled = fun (dev_artifacts: Package.dev_artifacts) artifact -
   | SyntheticTool _ -> false
 
 let root_artifacts = fun request_kind (manifest: Package_manifest.t) ->
-  let package = Package.from_manifest_spec manifest in
+  let package =
+    match request_kind with
+    | Runtime -> Package_manifest.realize ~intent:Package.Runtime manifest
+    | Dev _ -> Package_manifest.realize ~intent:Package.Dev manifest
+  in
   let artifacts = Vector.with_capacity ~size:(1 + List.length package.binaries) in
   (
     match package.library with
@@ -239,9 +267,8 @@ let create workspace request =
           report_missing (Root package_name);
           None
         )
-    | Some manifest ->
-        let package = Package.from_manifest_spec manifest in
-        match package.library with
+    | Some manifest -> (
+        match manifest.library with
         | None -> None
         | Some _ ->
             let key =
@@ -254,35 +281,40 @@ let create workspace request =
             let node =
               add_package_artifact
                 t
+                ~workspace
                 ~manifest
                 ~artifact:Build_unit.Library
                 ~target
                 ~profile:request.profile
             in
-            let processed_key = Build_unit.package_key key in
-            if HashSet.insert t.processed_libraries ~value:processed_key then (
-              List.for_each
-                manifest.dependencies
-                ~fn:(fun dependency ->
-                  match lookup_dependency ~package:manifest.name dependency.name with
-                  | None -> ()
-                  | Some _ ->
-                      require_library dependency.name target
-                      |> Option.for_each
-                        ~fn:(fun dependency_node ->
-                          add_edge t node ~depends_on:dependency_node));
-              List.for_each
-                manifest.build_dependencies
-                ~fn:(fun dependency ->
-                  match lookup_dependency ~package:manifest.name dependency.name with
-                  | None -> ()
-                  | Some _ ->
-                      require_library dependency.name host_target
-                      |> Option.for_each
-                        ~fn:(fun dependency_node ->
-                          add_edge t node ~depends_on:dependency_node))
-            );
-            Some node
+            match node with
+            | None -> None
+            | Some node ->
+                let processed_key = Build_unit.package_key key in
+                if HashSet.insert t.processed_libraries ~value:processed_key then (
+                  List.for_each
+                    manifest.dependencies
+                    ~fn:(fun dependency ->
+                      match lookup_dependency ~package:manifest.name dependency.name with
+                      | None -> ()
+                      | Some _ ->
+                          require_library dependency.name target
+                          |> Option.for_each
+                            ~fn:(fun dependency_node ->
+                              add_edge t node ~depends_on:dependency_node));
+                  List.for_each
+                    manifest.build_dependencies
+                    ~fn:(fun dependency ->
+                      match lookup_dependency ~package:manifest.name dependency.name with
+                      | None -> ()
+                      | Some _ ->
+                          require_library dependency.name host_target
+                          |> Option.for_each
+                            ~fn:(fun dependency_node ->
+                              add_edge t node ~depends_on:dependency_node))
+                );
+                Some node
+      )
   in
   let add_dependency_edges = fun node (manifest: Package_manifest.t) target dependency_names ->
     List.for_each
@@ -316,21 +348,27 @@ let create workspace request =
     | ExampleBinary _
     | BenchBinary _
     | SyntheticTool _ ->
-        let node = add_package_artifact t ~manifest ~artifact ~target ~profile:request.profile in
-        require_library manifest.name target
-        |> Option.for_each ~fn:(fun library_node -> add_edge t node ~depends_on:library_node);
-        add_dependency_edges node manifest target (dependency_names manifest.dependencies);
-        (
-          match artifact with
-          | TestBinary _
-          | ExampleBinary _
-          | BenchBinary _ ->
-              add_dependency_edges node manifest target (dependency_names manifest.dev_dependencies)
-          | RuntimeBinary _
-          | Library
-          | SyntheticTool _ -> ()
-        );
-        add_build_dependency_edges node manifest
+        match add_package_artifact t ~workspace ~manifest ~artifact ~target ~profile:request.profile with
+        | None -> ()
+        | Some node ->
+            require_library manifest.name target
+            |> Option.for_each ~fn:(fun library_node -> add_edge t node ~depends_on:library_node);
+            add_dependency_edges node manifest target (dependency_names manifest.dependencies);
+            (
+              match artifact with
+              | TestBinary _
+              | ExampleBinary _
+              | BenchBinary _ ->
+                  add_dependency_edges
+                    node
+                    manifest
+                    target
+                    (dependency_names manifest.dev_dependencies)
+              | RuntimeBinary _
+              | Library
+              | SyntheticTool _ -> ()
+            );
+            add_build_dependency_edges node manifest
   in
   let require_synthetic_tool = fun (synthetic: synthetic_tool) ->
     match lookup_root synthetic.package with
@@ -339,15 +377,19 @@ let create workspace request =
         let node =
           add_package_artifact
             t
+            ~workspace
             ~manifest
             ~artifact:(Build_unit.SyntheticTool { name = synthetic.name })
             ~target:host_target
             ~profile:request.profile
         in
-        require_library synthetic.package host_target
-        |> Option.for_each ~fn:(fun library_node -> add_edge t node ~depends_on:library_node);
-        add_dependency_edges node manifest host_target (dependency_names manifest.dependencies);
-        add_build_dependency_edges node manifest
+        match node with
+        | None -> ()
+        | Some node ->
+            require_library synthetic.package host_target
+            |> Option.for_each ~fn:(fun library_node -> add_edge t node ~depends_on:library_node);
+            add_dependency_edges node manifest host_target (dependency_names manifest.dependencies);
+            add_build_dependency_edges node manifest
   in
   let roots = selected_roots workspace request.roots in
   List.for_each
