@@ -360,8 +360,7 @@ let runtime_binary_without_library_depends_on_runtime_dependencies = fun _ctx ->
     ~actual:(dependencies graph (runtime_binary_key "app" "app"));
   Ok ()
 
-let build_dependencies_are_host_library_requirements = fun _ctx ->
-  let host_target = Target.host () in
+let runtime_libraries_do_not_include_build_dependencies = fun _ctx ->
   let workspace =
     make_workspace
       [
@@ -374,45 +373,49 @@ let build_dependencies_are_host_library_requirements = fun _ctx ->
     graph workspace (request ~roots:[ package_name "app" ] ~targets:[ linux_target ] ())
   in
   assert_keys_equal
-    ~expected:[
-      library_key ~target:linux_target "app";
-      library_key ~target:host_target "codegen";
-      library_key ~target:host_target "std";
-    ]
+    ~expected:[ library_key ~target:linux_target "app" ]
     ~actual:(Build_unit_graph.keys graph);
   assert_keys_equal
-    ~expected:[ library_key ~target:host_target "codegen" ]
+    ~expected:[]
     ~actual:(dependencies graph (library_key ~target:linux_target "app"));
-  assert_keys_equal
-    ~expected:[ library_key ~target:host_target "std" ]
-    ~actual:(dependencies graph (library_key ~target:host_target "codegen"));
   Ok ()
 
-let build_dependencies_connect_target_islands_to_shared_host_requirements = fun _ctx ->
+let build_dependencies_are_synthetic_tool_requirements = fun _ctx ->
   let host_target = Target.host () in
   let workspace =
-    make_workspace [ make_package "codegen"; make_package ~build_dependencies:[ "codegen" ] "app"; ]
+    make_workspace
+      [
+        make_package "std";
+        make_package ~dependencies:[ "std" ] "codegen";
+        make_package ~build_dependencies:[ "codegen" ] "app";
+      ]
   in
   let graph =
     graph
       workspace
-      (request ~roots:[ package_name "app" ] ~targets:[ macos_target; linux_target ] ())
+      (request
+        ~roots:[ package_name "app" ]
+        ~targets:[ macos_target; linux_target ]
+        ~synthetic_tools:[
+          Build_unit_graph.{ package = package_name "app"; name = "fixme-runner" };
+        ]
+        ())
   in
   assert_keys_equal
     ~expected:[
       library_key ~target:macos_target "app";
       library_key ~target:linux_target "app";
+      synthetic_key "app" "fixme-runner";
       library_key ~target:host_target "codegen";
+      library_key ~target:host_target "std";
     ]
     ~actual:(Build_unit_graph.keys graph);
   assert_keys_equal
-    ~expected:[ library_key ~target:host_target "codegen" ]
+    ~expected:[]
     ~actual:(dependencies graph (library_key ~target:macos_target "app"));
   assert_keys_equal
-    ~expected:[ library_key ~target:host_target "codegen" ]
-    ~actual:(dependencies graph (library_key ~target:linux_target "app"));
-  Test.assert_false
-    (Option.is_some (Build_unit_graph.find graph (library_key ~target:linux_target "codegen")));
+    ~expected:[ library_key ~target:host_target "app"; library_key ~target:host_target "codegen" ]
+    ~actual:(dependencies graph (synthetic_key "app" "fixme-runner"));
   Ok ()
 
 let synthetic_tools_are_host_only_build_units = fun _ctx ->
@@ -767,11 +770,11 @@ let tests =
       "build unit runtime binary without library depends on runtime dependencies"
       runtime_binary_without_library_depends_on_runtime_dependencies;
     case
-      "build unit build dependencies are host library requirements"
-      build_dependencies_are_host_library_requirements;
+      "build unit runtime libraries do not include build dependencies"
+      runtime_libraries_do_not_include_build_dependencies;
     case
-      "build unit build dependencies connect target islands to shared host requirements"
-      build_dependencies_connect_target_islands_to_shared_host_requirements;
+      "build unit build dependencies are synthetic tool requirements"
+      build_dependencies_are_synthetic_tool_requirements;
     case
       "build unit synthetic tools are host only build units"
       synthetic_tools_are_host_only_build_units;

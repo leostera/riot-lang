@@ -302,16 +302,7 @@ let create workspace request =
                           |> Option.for_each
                             ~fn:(fun dependency_node ->
                               add_edge t node ~depends_on:dependency_node));
-                  List.for_each
-                    manifest.build_dependencies
-                    ~fn:(fun dependency ->
-                      match lookup_dependency ~package:manifest.name dependency.name with
-                      | None -> ()
-                      | Some _ ->
-                          require_library dependency.name host_target
-                          |> Option.for_each
-                            ~fn:(fun dependency_node ->
-                              add_edge t node ~depends_on:dependency_node))
+                  ()
                 );
                 Some node
       )
@@ -368,7 +359,6 @@ let create workspace request =
               | Library
               | SyntheticTool _ -> ()
             );
-            add_build_dependency_edges node manifest
   in
   let require_synthetic_tool = fun (synthetic: synthetic_tool) ->
     match lookup_root synthetic.package with
