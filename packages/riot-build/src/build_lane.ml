@@ -3,6 +3,7 @@ open Std.Result.Syntax
 
 type error =
   | PlanningFailed of Riot_planner.Workspace_planner.plan_error
+  | BuildUnitPlanningFailed of Build_unit_plan.error
   | Failure of string
 
 type unresolved
@@ -15,6 +16,7 @@ type workspace_plan = {
   planner_target: Riot_planner.Workspace_planner.target;
   package_plan: Riot_planner.Workspace_planner.package_plan;
   package_graph: Riot_planner.Package_graph.t;
+  build_unit_plan: Build_unit_plan.t;
 }
 
 type 'stage t = {
@@ -32,6 +34,7 @@ type 'stage t = {
   planner_target: Riot_planner.Workspace_planner.target;
   package_plan: Riot_planner.Workspace_planner.package_plan;
   package_graph: Riot_planner.Package_graph.t;
+  build_unit_plan: Build_unit_plan.t;
 }
 
 let sort_unique_packages = fun package_names ->
@@ -119,9 +122,28 @@ let workspace_plan_error_to_string = fun __tmp1 ->
       in
       "package load failed: " ^ String.concat "; " (List.map errors ~fn:format_load_error)
 
+let build_unit_plan_error_to_string = fun __tmp1 ->
+  match __tmp1 with
+  | Build_unit_plan.MissingPackages { missing } ->
+      let format_missing = fun __tmp1 ->
+        match __tmp1 with
+        | Riot_planner.Build_unit_graph.Root package ->
+            "root:" ^ Riot_model.Package_name.to_string package
+        | Dependency { package; dependency } ->
+            "dependency:"
+            ^ Riot_model.Package_name.to_string package
+            ^ "->"
+            ^ Riot_model.Package_name.to_string dependency
+      in
+      "missing build unit packages: " ^ String.concat "; " (List.map missing ~fn:format_missing)
+  | CycleDetected { cycle } ->
+      "build unit cycle detected: "
+      ^ String.concat " -> " (List.map cycle ~fn:Riot_planner.Build_unit.key_to_string)
+
 let error_message = fun __tmp1 ->
   match __tmp1 with
   | PlanningFailed error -> workspace_plan_error_to_string error
+  | BuildUnitPlanningFailed error -> build_unit_plan_error_to_string error
   | Failure reason -> reason
 
 let make_lane_plan = fun lane_target workspace scope ~dev_artifacts ->
@@ -130,10 +152,8 @@ let make_lane_plan = fun lane_target workspace scope ~dev_artifacts ->
 
 let emit_phase = fun context phase -> Build_context.emit_phase context phase
 
-let plan_workspace:
-  Build_context.t ->
-  Resolved_build.t ->
-  (workspace_plan, error) result = fun context spec ->
+let plan_workspace: Build_context.t -> Resolved_build.t -> (workspace_plan, error) result = fun
+  context spec ->
   let workspace = context.Build_context.workspace in
   let package_names =
     Resolved_build.package_names spec
@@ -144,6 +164,10 @@ let plan_workspace:
   let planner_scope = planner_scope scope in
   let dev_artifacts = Resolved_build.dev_artifacts spec in
   let plan_started_at = Time.Instant.now () in
+  let* build_unit_plan =
+    Build_unit_plan.create context spec
+    |> Result.map_err ~fn:(fun error -> BuildUnitPlanningFailed error)
+  in
   let* package_plan = make_lane_plan planner_target workspace planner_scope ~dev_artifacts in
   let plan_completed_at = Time.Instant.now () in
   emit_phase
@@ -164,6 +188,7 @@ let plan_workspace:
     planner_target;
     package_plan;
     package_graph = package_plan.package_graph;
+    build_unit_plan;
   }
 
 let clone_workspace_plan = fun (plan: workspace_plan) ->
@@ -287,6 +312,7 @@ let prepare:
         planner_target = plan.planner_target;
         package_plan = plan.package_plan;
         package_graph = plan.package_graph;
+        build_unit_plan = plan.build_unit_plan;
       }
     with
     | exn -> Error (Failure (Exception.to_string exn))
@@ -318,6 +344,8 @@ let planner_target = fun (lane: 'a t) -> lane.planner_target
 let package_plan = fun (lane: 'a t) -> lane.package_plan
 
 let package_graph = fun (lane: 'a t) -> lane.package_graph
+
+let build_unit_plan = fun (lane: 'a t) -> lane.build_unit_plan
 
 let package_keys = fun (lane: 'a t) ->
   List.map

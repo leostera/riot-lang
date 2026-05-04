@@ -124,7 +124,10 @@ let stamp_json_event = fun ?timestamp (json: Data.Json.t) ->
       let fields =
         match timestamp with
         | Some (name, instant) ->
-            if Option.is_some (List.find fields ~fn:(fun (field_name, _) -> String.equal field_name name)) then
+            if
+              Option.is_some
+                (List.find fields ~fn:(fun (field_name, _) -> String.equal field_name name))
+            then
               fields
             else
               fields @ [ (name, Data.Json.Int (elapsed_us_since_json_origin instant)); ]
@@ -732,8 +735,7 @@ let build_dashboard_package_label = fun state ~build_target package ->
 let build_dashboard_get_package = fun state ~build_target package ->
   let key = build_dashboard_package_key state ~build_target package in
   match HashMap.get state.active ~key with
-  | Some row ->
-      row
+  | Some row -> row
   | None ->
       let row = {
         key;
@@ -782,7 +784,8 @@ let build_dashboard_set_action_count = fun state ~build_target package ~action_c
   }
 
 let build_dashboard_action_key = fun (action: Riot_planner.Action_node.t) ->
-  Graph.SimpleGraph.Node_id.to_string action.id
+  Graph.SimpleGraph.Node_id.to_string
+    action.id
 
 let build_dashboard_any_running_action = fun row ->
   match row.current_action_key with
@@ -817,7 +820,8 @@ let build_dashboard_running_action_label = fun row ->
         label
   | None -> ""
 
-let build_dashboard_mark_action_started = fun state ~build_target (action:Riot_planner.Action_node.t) ->
+let build_dashboard_mark_action_started = fun
+  state ~build_target (action: Riot_planner.Action_node.t) ->
   match build_dashboard_find_package state ~build_target action.value.package with
   | Some row ->
       let key = build_dashboard_action_key action in
@@ -831,11 +835,10 @@ let build_dashboard_mark_action_completed = fun state ~build_target package acti
   match build_dashboard_find_package state ~build_target package with
   | Some row ->
       let previous_completed_actions = row.completed_actions in
-      row.completed_actions <-
-        if row.action_count > 0 then
-          Int.min row.action_count (row.completed_actions + 1)
-        else
-          row.completed_actions + 1;
+      row.completed_actions <- if row.action_count > 0 then
+        Int.min row.action_count (row.completed_actions + 1)
+      else
+        row.completed_actions + 1;
       let action_key = build_dashboard_action_key action in
       let _ = HashMap.remove row.running_actions ~key:action_key in
       (
@@ -845,17 +848,16 @@ let build_dashboard_mark_action_completed = fun state ~build_target package acti
         | None -> ()
       );
       if HashMap.is_empty row.running_actions then
-        row.status <-
-          if row.action_count > 0 && row.completed_actions >= row.action_count then
-            Finalizing
-          else if row.completed_actions = 0 then
-            Queued
-          else
-            Queued;
+        row.status <- if row.action_count > 0 && row.completed_actions >= row.action_count then
+          Finalizing
+        else if row.completed_actions = 0 then
+          Queued
+        else
+          Queued;
       {
         state with
-        completed_action_count =
-          state.completed_action_count + row.completed_actions - previous_completed_actions;
+        completed_action_count = state.completed_action_count + row.completed_actions
+        - previous_completed_actions;
       }
   | None -> state
 
@@ -865,10 +867,7 @@ let build_dashboard_complete_package_actions = fun state ~build_target package -
       let remaining_actions = row.action_count - row.completed_actions in
       row.completed_actions <- row.action_count;
       row.status <- Finalizing;
-      {
-        state with
-        completed_action_count = state.completed_action_count + remaining_actions;
-      }
+      { state with completed_action_count = state.completed_action_count + remaining_actions }
   | Some _
   | None -> state
 
@@ -887,33 +886,31 @@ let build_dashboard_update = fun state event ->
   match event with
   | Riot_build.Event.Phase (Riot_build.Event.TargetsResolved { target_count }) ->
       { state with target_count = Some target_count }
-  | Riot_build.Event.Phase (
-    Riot_build.Event.PackagePlanningStarted { package_count; _ }
-    | Riot_build.Event.PackagePlanningFinished { package_count; _ }
-    | Riot_build.Event.PackageExecutionStarted { package_count; _ }
-  ) ->
+  | Riot_build.Event.Phase (Riot_build.Event.PackagePlanningStarted { package_count; _ }
+  | Riot_build.Event.PackagePlanningFinished { package_count; _ }
+  | Riot_build.Event.PackageExecutionStarted { package_count; _ }) ->
       { state with package_count }
   | Riot_build.Event.Telemetry (
     Build_telemetry.CompilationStarted { package; build_target; action_count; _ }
   ) ->
       build_dashboard_set_action_count state ~build_target package ~action_count
-  | Riot_build.Event.Telemetry (
-    Build_telemetry.SandboxCreated { package; build_target; _ }
-    | Build_telemetry.SandboxInputsCopied { package; build_target; _ }
-    | Build_telemetry.SandboxDependenciesCopied { package; build_target; _ }
-  ) -> (
-      match build_dashboard_find_package state ~build_target package with
-      | Some row -> row.status <- Preparing
-      | None -> ()
-    );
+  | Riot_build.Event.Telemetry (Build_telemetry.SandboxCreated { package; build_target; _ }
+  | Build_telemetry.SandboxInputsCopied { package; build_target; _ }
+  | Build_telemetry.SandboxDependenciesCopied { package; build_target; _ }) ->
+      (
+        match build_dashboard_find_package state ~build_target package with
+        | Some row -> row.status <- Preparing
+        | None -> ()
+      );
       state
   | Riot_build.Event.Telemetry (
     Build_telemetry.PackageExecutionPrepared { package; build_target; _ }
-  ) -> (
-      match build_dashboard_find_package state ~build_target package with
-      | Some row -> row.status <- Queued
-      | None -> ()
-    );
+  ) ->
+      (
+        match build_dashboard_find_package state ~build_target package with
+        | Some row -> row.status <- Queued
+        | None -> ()
+      );
       state
   | Riot_build.Event.Phase (
     Riot_build.Event.PackageActionGraphPlanned { package; build_target; action_count; _ }
@@ -977,8 +974,7 @@ let build_dashboard_row_view = fun state (row: build_dashboard_package) ->
   }
 
 let build_dashboard_row_is_active = fun (row: build_dashboard_package) ->
-  not (HashMap.is_empty row.running_actions)
-  || match row.status with
+  not (HashMap.is_empty row.running_actions) || match row.status with
   | Preparing
   | Finalizing -> true
   | Queued
@@ -990,19 +986,19 @@ let build_dashboard_render_state = fun state ->
   if package_done_count = 0 && state.total_action_count = 0 && HashMap.length state.active = 0 then
     Empty
   else
-  let rows = ref [] in
-  let seen = HashSet.create () in
-  Vector.for_each
-    state.active_order
-    ~fn:(fun key ->
-      if not (HashSet.contains seen ~value:key) then (
-        let _ = HashSet.insert seen ~value:key in
-        match HashMap.get state.active ~key with
-        | Some row when build_dashboard_row_is_active row ->
-            rows := build_dashboard_row_view state row :: !rows
-        | Some _
-        | None -> ()
-      ));
+    let rows = ref [] in
+    let seen = HashSet.create () in
+    Vector.for_each
+      state.active_order
+      ~fn:(fun key ->
+        if not (HashSet.contains seen ~value:key) then (
+          let _ = HashSet.insert seen ~value:key in
+          match HashMap.get state.active ~key with
+          | Some row when build_dashboard_row_is_active row ->
+              rows := build_dashboard_row_view state row :: !rows
+          | Some _
+          | None -> ()
+        ));
   Board {
     completed_action_count = state.completed_action_count;
     total_action_count = state.total_action_count;
@@ -1056,9 +1052,7 @@ let build_dashboard_row_line = fun ~is_last row ->
     else
       "├── "
   in
-  build_dashboard_truncate
-    ~width:120
-    (branch ^ row.label ^ " " ^ progress ^ " " ^ row.status)
+  build_dashboard_truncate ~width:120 (branch ^ row.label ^ " " ^ progress ^ " " ^ row.status)
 
 let build_dashboard_push_row_lines = fun lines rows ->
   let rec loop = fun __tmp1 ->
@@ -1103,30 +1097,27 @@ let build_dashboard_draw = fun ?(force = false) dashboard ->
     else
       ()
   else
-  let view_matches =
-    match dashboard.last_view with
-    | Some previous -> build_dashboard_views_equal previous view
-    | None -> false
-  in
-  if (not force)
-     && (view_matches || not (build_dashboard_throttle_allows_render dashboard))
-  then
-    ()
-  else (
-  build_dashboard_clear dashboard;
-  Vector.for_each lines ~fn:(fun line -> eprint (line ^ "\n"));
-  dashboard.last_line_count <- Vector.length lines;
-  dashboard.last_view <- Some view;
-  dashboard.last_rendered_at <- Some (Time.Instant.now ())
-  )
+    let view_matches =
+      match dashboard.last_view with
+      | Some previous -> build_dashboard_views_equal previous view
+      | None -> false
+    in
+    if (not force) && (view_matches || not (build_dashboard_throttle_allows_render dashboard)) then
+      ()
+    else (
+      build_dashboard_clear dashboard;
+      Vector.for_each lines ~fn:(fun line -> eprint (line ^ "\n"));
+      dashboard.last_line_count <- Vector.length lines;
+      dashboard.last_view <- Some view;
+      dashboard.last_rendered_at <- Some (Time.Instant.now ())
+    )
 
 let human_renderer_clear = fun __tmp1 ->
   match __tmp1 with
   | LoggedBuildEvents -> ()
   | BuildDashboard dashboard -> build_dashboard_clear dashboard
 
-let write_build_telemetry_event = fun
-  ?render_state ?profile ?human_renderer ~mode event ->
+let write_build_telemetry_event = fun ?render_state ?profile ?human_renderer ~mode event ->
   match mode with
   | Json -> write_build_event_json (Riot_build.Event.Telemetry event)
   | Human -> (
@@ -1240,8 +1231,7 @@ let write_build_telemetry_event = fun
         )
     )
 
-let write_build_phase_event_with_renderer = fun
-  ?render_state ?human_renderer ~mode phase ->
+let write_build_phase_event_with_renderer = fun ?render_state ?human_renderer ~mode phase ->
   (
     match (render_state, phase) with
     | (Some (state: render_state), Riot_build.Event.TargetsResolved { target_count }) ->
@@ -1788,21 +1778,19 @@ let write_build_event_with_renderer = fun
     human_renderer
     ~fn:(fun renderer ->
       match renderer with
-      | BuildDashboard dashboard ->
-          dashboard.state <- build_dashboard_update dashboard.state event
+      | BuildDashboard dashboard -> dashboard.state <- build_dashboard_update dashboard.state event
       | LoggedBuildEvents -> ());
   match event with
   | Riot_build.Event.Pm event ->
       Option.for_each human_renderer ~fn:human_renderer_clear;
       write_pm_event ~mode ~seen_registry_updates event
-  | Riot_build.Event.BuildingTarget { target; host } ->
-      (
-        match (mode, human_renderer) with
-        | (Human, Some (BuildDashboard _)) -> ()
-        | _ ->
-            Option.for_each human_renderer ~fn:human_renderer_clear;
-            write_building_target_event ~mode ~target ~host
-      )
+  | Riot_build.Event.BuildingTarget { target; host } -> (
+      match (mode, human_renderer) with
+      | (Human, Some (BuildDashboard _)) -> ()
+      | _ ->
+          Option.for_each human_renderer ~fn:human_renderer_clear;
+          write_building_target_event ~mode ~target ~host
+    )
   | Riot_build.Event.CacheGc event ->
       Option.for_each human_renderer ~fn:human_renderer_clear;
       write_cache_gc_event ~mode event
@@ -1997,6 +1985,12 @@ let write_build_error = fun ~mode err ->
         workspace_planning_error_lines planning_error
         |> List.for_each ~fn:(fun line -> out ("  " ^ line))
       )
+  | Riot_build.BuildUnitPlanningFailed _ ->
+      write_command_error
+        ~mode
+        "BuildUnitPlanningFailed"
+        [ ("reason", Data.Json.String (Riot_build.error_message err)); ]
+        (Riot_build.error_message err)
   | Riot_build.CycleDetected { cycle_nodes } ->
       write_command_error
         ~mode

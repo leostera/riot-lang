@@ -23,6 +23,7 @@ type build_error =
       errors: Package_builder.build_result list;
     }
   | PlanningFailed of Riot_planner.Workspace_planner.plan_error
+  | BuildUnitPlanningFailed of Build_unit_plan.error
   | UnexpectedError of { reason: string }
 
 val error_message: build_error -> string

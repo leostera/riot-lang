@@ -2,6 +2,7 @@ open Std
 
 type error =
   | PlanningFailed of Riot_planner.Workspace_planner.plan_error
+  | BuildUnitPlanningFailed of Build_unit_plan.error
   | Failure of string
 type unresolved
 type locked
@@ -36,12 +37,11 @@ val package_plan: 'a t -> Riot_planner.Workspace_planner.package_plan
 
 val package_graph: 'a t -> Riot_planner.Package_graph.t
 
+val build_unit_plan: 'a t -> Build_unit_plan.t
+
 val package_keys: 'a t -> Riot_model.Package.key list
 
-val plan_workspace:
-  Build_context.t ->
-  Resolved_build.t ->
-  (workspace_plan, error) result
+val plan_workspace: Build_context.t -> Resolved_build.t -> (workspace_plan, error) result
 
 val clone_workspace_plan: workspace_plan -> workspace_plan
 

@@ -2,6 +2,9 @@ open Std
 
 module Test = Std.Test
 module Build_context = Riot_build.Internal.Build_context
+module Build_lane = Riot_build.Internal.Build_lane
+module Build_unit = Riot_planner.Build_unit
+module Build_unit_plan = Riot_build.Internal.Build_unit_plan
 module Build_work = Riot_build.Internal.Build_work
 module Resolved_build = Riot_build.Internal.Resolved_build
 module Package_graph = Riot_planner.Package_graph
@@ -108,6 +111,11 @@ let initial_plan_targets = fun lane ->
   Build_work.initial_plan_packages lane
   |> List.map ~fn:Build_work.plan_package_target
 
+let build_unit_key_strings = fun lane ->
+  Build_lane.build_unit_plan lane
+  |> Build_unit_plan.units
+  |> List.map ~fn:(fun unit -> Build_unit.key_to_string unit.Build_unit.key)
+
 let test_initial_plan_packages_follow_topological_order = fun _ctx ->
   match Fs.with_tempdir
     ~prefix:"riot_build_prepare_topological"
@@ -193,6 +201,36 @@ let test_initial_plan_packages_include_all_workspace_packages_when_unfiltered = 
   | Ok result -> result
   | Error err -> Error ("tempdir failed: " ^ IO.error_message err)
 
+let test_prepared_lanes_carry_build_unit_plan = fun _ctx ->
+  match Fs.with_tempdir
+    ~prefix:"riot_build_prepare_build_units"
+    (fun tmpdir ->
+      let lib = make_package ~root:tmpdir ~name:"lib" ~source:"let value = 1\n" () in
+      let app =
+        make_package
+          ~root:tmpdir
+          ~name:"app"
+          ~dependencies:[ package_dependency "lib" ]
+          ~source:"let value = Lib.value\n"
+          ()
+      in
+      let workspace = make_workspace ~root:tmpdir ~packages:[ lib; app ] in
+      with_prepared_lanes
+        (make_request ~workspace ~packages:[ package_name "app" ])
+        (fun lanes ->
+          match lanes with
+          | [ lane ] ->
+              let keys = build_unit_key_strings lane in
+              Test.assert_true
+                (List.any keys ~fn:(fun key -> String.starts_with ~prefix:"lib:library:" key));
+              Test.assert_true
+                (List.any keys ~fn:(fun key -> String.starts_with ~prefix:"app:library:" key));
+              Ok ()
+          | items ->
+              Error ("expected one initial host lane, got " ^ Int.to_string (List.length items)))) with
+  | Ok result -> result
+  | Error err -> Error ("tempdir failed: " ^ IO.error_message err)
+
 let tests = let open Test in
 [
   case
@@ -201,6 +239,9 @@ let tests = let open Test in
   case
     "build work prepare: initial plan packages include all workspace packages when unfiltered"
     test_initial_plan_packages_include_all_workspace_packages_when_unfiltered;
+  case
+    "build work prepare: prepared lanes carry build unit plan"
+    test_prepared_lanes_carry_build_unit_plan;
 ]
 
 let name = "Riot Build Work Prepare Tests"

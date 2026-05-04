@@ -32,6 +32,7 @@ type error =
       errors: Build_result.failure list;
     }
   | PlanningFailed of Riot_planner.Workspace_planner.plan_error
+  | BuildUnitPlanningFailed of Build_unit_plan.error
   | CycleDetected of {
       cycle_nodes: string list;
     }
@@ -82,6 +83,8 @@ let error_message = fun __tmp1 ->
     )
   | PlanningFailed error ->
       "planning failed: " ^ Build_lane.error_message (Build_lane.PlanningFailed error)
+  | BuildUnitPlanningFailed error ->
+      "planning failed: " ^ Build_lane.error_message (Build_lane.BuildUnitPlanningFailed error)
   | CycleDetected { cycle_nodes } ->
       "cyclic dependency detected: " ^ String.concat " -> " cycle_nodes
   | BuildAlreadyRunning { lock_path } ->
@@ -118,6 +121,7 @@ let map_runtime_error = fun __tmp1 ->
   | Build_runtime.BuildFailed { errors } ->
       BuildFailed { errors = Build_result.failures_of_build_results errors }
   | Build_runtime.PlanningFailed error -> PlanningFailed error
+  | Build_runtime.BuildUnitPlanningFailed error -> BuildUnitPlanningFailed error
   | Build_runtime.UnexpectedError { reason } -> UnexpectedError { reason }
 
 let execute_raw = fun

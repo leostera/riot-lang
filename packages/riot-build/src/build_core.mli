@@ -32,6 +32,7 @@ type error =
       errors: Build_result.failure list;
     }
   | PlanningFailed of Riot_planner.Workspace_planner.plan_error
+  | BuildUnitPlanningFailed of Build_unit_plan.error
   | CycleDetected of {
       cycle_nodes: string list;
     }

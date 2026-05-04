@@ -28,6 +28,7 @@ type build_error =
       errors: Package_builder.build_result list;
     }
   | PlanningFailed of Riot_planner.Workspace_planner.plan_error
+  | BuildUnitPlanningFailed of Build_unit_plan.error
   | UnexpectedError of { reason: string }
 
 type build_context = {
@@ -133,6 +134,8 @@ let error_message = fun __tmp1 ->
           ^ String.concat "\n" (List.map failures ~fn:Build_result.failure_message)
     )
   | PlanningFailed error -> Build_lane.error_message (Build_lane.PlanningFailed error)
+  | BuildUnitPlanningFailed error ->
+      Build_lane.error_message (Build_lane.BuildUnitPlanningFailed error)
   | UnexpectedError { reason } -> reason
 
 let make_context = fun ~allow_partial_failures ?(record_cache_generation = true) build spec ->
@@ -303,6 +306,7 @@ let map_lane_error = fun error -> UnexpectedError { reason = error.Build_work.re
 let map_prepare_error = fun __tmp1 ->
   match __tmp1 with
   | Build_lane.PlanningFailed error -> PlanningFailed error
+  | Build_lane.BuildUnitPlanningFailed error -> BuildUnitPlanningFailed error
   | Build_lane.Failure reason -> UnexpectedError { reason }
 
 let run_lanes = fun context ~toolchain ->
