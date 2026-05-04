@@ -29,7 +29,7 @@ type build_progress = {
 }
 type render_state
 
-val create_render_state: unit -> render_state
+val create_render_state: ?profile:string -> unit -> render_state
 
 (** Command definition for [riot build]. *)
 val command: Std.ArgParser.command
@@ -58,6 +58,7 @@ val write_build_event_json: Riot_build.Event.t -> unit
    are appended when requested by the caller.
 *)
 val display_package_name:
+  ?profile:string ->
   ?build_target:Riot_model.Target.t ->
   ?show_target:bool ->
   Riot_model.Package.t ->
@@ -78,6 +79,7 @@ val workspace_fix_providers: Riot_model.Workspace.t -> Riot_model.Fix_provider.t
 (** Render a build event in the selected output mode. *)
 val write_build_event:
   ?render_state:render_state ->
+  ?profile:string ->
   mode:output_mode ->
   seen_registry_updates:string Std.Collections.HashSet.t ->
   Riot_build.Event.t ->

@@ -832,7 +832,7 @@ let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
           let on_event (event: Test_runtime.test_event) =
             match event with
             | Test_runtime.Build build_event ->
-                Build.write_build_event ~mode:output_mode ~seen_registry_updates build_event
+                Build.write_build_event ~mode:output_mode ~profile ~seen_registry_updates build_event
             | _ -> ()
           in
           match Test_runtime.list_tests
@@ -895,7 +895,7 @@ let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
           let on_event (event: Test_runtime.test_event) =
             match event with
             | Test_runtime.Build build_event ->
-                Build.write_build_event ~mode:output_mode ~seen_registry_updates build_event
+                Build.write_build_event ~mode:output_mode ~profile ~seen_registry_updates build_event
             | _ -> (
                 match output_mode with
                 | Build.Json -> write_test_event_json ~command_started_at event

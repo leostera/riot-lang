@@ -366,7 +366,7 @@ let run_with_workspace_info = fun ~workspace ~workspace_error matches ->
     let on_event (event: Run_runtime.run_event) =
       match event with
       | Run_runtime.Build build_event ->
-          Build.write_build_event ~mode:output_mode ~seen_registry_updates build_event
+          Build.write_build_event ~mode:output_mode ~profile ~seen_registry_updates build_event
       | _ -> write_run_event ~mode:output_mode event
     in
     let resolved_target =

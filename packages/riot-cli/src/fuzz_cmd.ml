@@ -101,6 +101,7 @@ let render_discovery_event = fun ~mode ~seen_registry_updates event ->
   | Riot_test.Test_runtime.Build build_event ->
       Build.write_build_event
         ~mode:(build_output_mode mode)
+        ~profile:"fuzz"
         ~seen_registry_updates
         build_event
   | _ -> ()

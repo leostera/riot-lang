@@ -1337,7 +1337,7 @@ let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
     let on_event (event: Bench_runtime.bench_event) =
       match event with
       | Bench_runtime.Build build_event ->
-          Build.write_build_event ~mode:output_mode ~seen_registry_updates build_event
+          Build.write_build_event ~mode:output_mode ~profile ~seen_registry_updates build_event
       | Bench_runtime.SuiteCompleted {
           suite;
           status;

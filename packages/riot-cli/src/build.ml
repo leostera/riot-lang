@@ -31,9 +31,10 @@ type build_progress = {
 
 type render_state = {
   mutable target_count: int option;
+  profile_name: string option;
 }
 
-let create_render_state = fun () -> { target_count = None }
+let create_render_state = fun ?profile () -> { target_count = None; profile_name = profile }
 
 type request = {
   workspace: Workspace.t;
@@ -143,8 +144,14 @@ let workspace_artifact_labels = fun (package: Riot_model.Package.t) ->
         else
           None)
 
+let profile_details = fun profile ->
+  match profile with
+  | Some profile when not (String.equal profile "debug") -> [ "profile=" ^ profile ]
+  | Some _
+  | None -> []
+
 let display_package_name = fun
-  ?build_target ?(show_target = false) (package: Riot_model.Package.t) ->
+  ?profile ?build_target ?(show_target = false) (package: Riot_model.Package.t) ->
   let name = Riot_model.Package_name.to_string package.name in
   let version_details =
     if Riot_model.Package.is_workspace_member package then
@@ -159,7 +166,10 @@ let display_package_name = fun
     | Some target when show_target -> [ Riot_model.Target.to_string target ]
     | _ -> []
   in
-  let details = (version_details @ workspace_artifact_labels package) @ target_details in
+  let details =
+    ((profile_details profile @ version_details) @ workspace_artifact_labels package)
+    @ target_details
+  in
   match details with
   | [] -> name
   | details -> name ^ " (" ^ String.concat ", " details ^ ")"
@@ -474,13 +484,23 @@ let show_target_in_package_labels = fun __tmp1 ->
   | Some { target_count = None }
   | None -> false
 
-let display_build_package_name = fun ?render_state ~build_target package ->
+let render_profile = fun ?render_state ?profile () ->
+  match profile with
+  | Some _ -> profile
+  | None -> (
+      match render_state with
+      | Some state -> state.profile_name
+      | None -> None
+    )
+
+let display_build_package_name = fun ?render_state ?profile ~build_target package ->
   display_package_name
+    ?profile:(render_profile ?render_state ?profile ())
     ~build_target
     ~show_target:(show_target_in_package_labels render_state)
     package
 
-let write_build_telemetry_event = fun ?render_state ~mode event ->
+let write_build_telemetry_event = fun ?render_state ?profile ~mode event ->
   match mode with
   | Json -> write_build_event_json (Riot_build.Event.Telemetry event)
   | Human -> (
@@ -488,19 +508,19 @@ let write_build_telemetry_event = fun ?render_state ~mode event ->
       | Build_telemetry.CompilationStarted { package; build_target; _ } ->
           out
             ("    \027[1;32mBuilding\027[0m "
-            ^ display_build_package_name ?render_state ~build_target package)
+            ^ display_build_package_name ?render_state ?profile ~build_target package)
       | Build_telemetry.BuildCompleted { package; build_target; status = `Fresh; _ } ->
           out
             ("       \027[1;32mBuilt\027[0m "
-            ^ display_build_package_name ?render_state ~build_target package)
+            ^ display_build_package_name ?render_state ?profile ~build_target package)
       | Build_telemetry.BuildCompleted { package; build_target; status = `Cached; _ } ->
           out
             ("      \027[1;34mCached\027[0m "
-            ^ display_build_package_name ?render_state ~build_target package)
+            ^ display_build_package_name ?render_state ?profile ~build_target package)
       | Build_telemetry.BuildSkipped { package; build_target; reason; _ } ->
           out
             ("      \027[1;33mSkipped\027[0m "
-            ^ display_build_package_name ?render_state ~build_target package
+            ^ display_build_package_name ?render_state ?profile ~build_target package
             ^ ": "
             ^ reason)
       | Build_telemetry.BuildFailed {
@@ -511,13 +531,13 @@ let write_build_telemetry_event = fun ?render_state ~mode event ->
         } ->
           out
             ("      \027[1;31mFailed\027[0m "
-            ^ display_build_package_name ?render_state ~build_target package);
+            ^ display_build_package_name ?render_state ?profile ~build_target package);
           planning_error_lines planning_error
           |> List.for_each ~fn:(fun line -> out ("        " ^ line))
       | Build_telemetry.BuildFailed { package; build_target; error; _ } ->
           out
             ("      \027[1;31mFailed\027[0m "
-            ^ display_build_package_name ?render_state ~build_target package
+            ^ display_build_package_name ?render_state ?profile ~build_target package
             ^ ": "
             ^ telemetry_package_error_message error)
       | Build_telemetry.PackageOcamlcWarnings { package; build_target; messages; _ } ->
@@ -526,7 +546,7 @@ let write_build_telemetry_event = fun ?render_state ~mode event ->
             ~fn:(fun message ->
               out_prefixed_payload
                 ~prefix:("     \027[1;33mWarning\027[0m "
-                ^ display_build_package_name ?render_state ~build_target package
+                ^ display_build_package_name ?render_state ?profile ~build_target package
                 ^ ": ")
                 message)
       | Build_telemetry.BuildStarted _
@@ -1066,13 +1086,13 @@ let write_cache_gc_event = fun ~mode event ->
             ^ error)
     )
 
-let write_build_event = fun ?render_state ~mode ~seen_registry_updates event ->
+let write_build_event = fun ?render_state ?profile ~mode ~seen_registry_updates event ->
   match event with
   | Riot_build.Event.Pm event -> write_pm_event ~mode ~seen_registry_updates event
   | Riot_build.Event.BuildingTarget { target; host } ->
       write_building_target_event ~mode ~target ~host
   | Riot_build.Event.CacheGc event -> write_cache_gc_event ~mode event
-  | Riot_build.Event.Telemetry event -> write_build_telemetry_event ?render_state ~mode event
+  | Riot_build.Event.Telemetry event -> write_build_telemetry_event ?render_state ?profile ~mode event
   | Riot_build.Event.Phase phase -> write_build_phase_event ?render_state ~mode phase
 
 let write_package_not_found_error = fun ~mode ~package_name ~available_packages ->
@@ -1325,7 +1345,7 @@ let run_request = fun (request: request) ->
     skipped_count = 0;
   }
   in
-  let render_state = create_render_state () in
+  let render_state = create_render_state ~profile:request.profile.name () in
   let attempted_build = ref false in
   let pm_session_id = Riot_model.Session_id.make () in
   let emit_pm_kind kind =
@@ -1500,6 +1520,7 @@ let build_command = fun
         ~profile:(
           match profile with
           | "release" -> Riot_model.Profile.release
+          | "fuzz" -> Riot_model.Profile.fuzz
           | _ -> Riot_model.Profile.debug
         )
         ~mode

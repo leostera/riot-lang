@@ -260,6 +260,20 @@ let test_display_package_name_keeps_workspace_package_bare = fun _ctx ->
   Test.assert_equal ~expected:"demo" ~actual:(Riot_cli.Build.display_package_name package);
   Ok ()
 
+let test_display_package_name_hides_debug_profile = fun _ctx ->
+  let package = make_package "demo" in
+  Test.assert_equal
+    ~expected:"demo"
+    ~actual:(Riot_cli.Build.display_package_name ~profile:"debug" package);
+  Ok ()
+
+let test_display_package_name_shows_non_debug_profile = fun _ctx ->
+  let package = make_package "demo" in
+  Test.assert_equal
+    ~expected:"demo (profile=fuzz)"
+    ~actual:(Riot_cli.Build.display_package_name ~profile:"fuzz" package);
+  Ok ()
+
 let test_display_package_name_shows_external_package_version = fun _ctx ->
   let package = make_package ~workspace_member:false ~version:(version "1.2.3") "serde-json" in
   Test.assert_equal
@@ -287,8 +301,9 @@ let test_display_package_name_shows_workspace_test_and_target = fun _ctx ->
       "serde-json"
   in
   Test.assert_equal
-    ~expected:"serde-json (test, aarch64-apple-darwin)"
+    ~expected:"serde-json (profile=fuzz, test, aarch64-apple-darwin)"
     ~actual:(Riot_cli.Build.display_package_name
+      ~profile:"fuzz"
       ~build_target:(target "aarch64-apple-darwin")
       ~show_target:true
       package);
@@ -1328,6 +1343,12 @@ let tests =
     case
       "build: workspace package labels stay bare"
       test_display_package_name_keeps_workspace_package_bare;
+    case
+      "build: debug profile package labels stay bare"
+      test_display_package_name_hides_debug_profile;
+    case
+      "build: non-debug profile package labels are explicit"
+      test_display_package_name_shows_non_debug_profile;
     case
       "build: external package labels show version"
       test_display_package_name_shows_external_package_version;
