@@ -9,6 +9,14 @@ type unresolved
 
 type locked
 
+type workspace_plan = {
+  package_names: Riot_model.Package_name.t list;
+  scope: Resolved_build.scope;
+  planner_target: Riot_planner.Workspace_planner.target;
+  package_plan: Riot_planner.Workspace_planner.package_plan;
+  package_graph: Riot_planner.Package_graph.t;
+}
+
 type 'stage t = {
   target: Riot_model.Target.t;
   workspace: Riot_model.Workspace.t;
@@ -120,6 +128,56 @@ let make_lane_plan = fun lane_target workspace scope ~dev_artifacts ->
   Riot_planner.plan_workspace ~workspace ~target:lane_target ~scope ~load_errors:[] ~dev_artifacts
   |> Result.map_err ~fn:(fun error -> PlanningFailed error)
 
+let emit_phase = fun context phase -> Build_context.emit_phase context phase
+
+let plan_workspace:
+  Build_context.t ->
+  Resolved_build.t ->
+  (workspace_plan, error) result = fun context spec ->
+  let workspace = context.Build_context.workspace in
+  let package_names =
+    Resolved_build.package_names spec
+    |> sort_unique_packages
+  in
+  let scope = Resolved_build.scope spec in
+  let planner_target = planner_target package_names in
+  let planner_scope = planner_scope scope in
+  let dev_artifacts = Resolved_build.dev_artifacts spec in
+  let plan_started_at = Time.Instant.now () in
+  let* package_plan = make_lane_plan planner_target workspace planner_scope ~dev_artifacts in
+  let plan_completed_at = Time.Instant.now () in
+  emit_phase
+    context
+    (Event.BuildWorkspacePlanned {
+      package_count = List.length package_plan.nodes;
+      planned_at = plan_completed_at;
+      duration = Time.Instant.duration_since ~earlier:plan_started_at plan_completed_at;
+    });
+  emit_phase
+    context
+    (Event.BuildWorkspacePlanBreakdown {
+      breakdown = Riot_planner.Workspace_planner.planning_breakdown package_plan;
+    });
+  Ok {
+    package_names;
+    scope;
+    planner_target;
+    package_plan;
+    package_graph = package_plan.package_graph;
+  }
+
+let clone_workspace_plan = fun (plan: workspace_plan) ->
+  let package_graph = Riot_planner.Package_graph.clone plan.package_graph in
+  let package_nodes = Riot_planner.Package_graph.topological_sort package_graph in
+  let package_plan = {
+    plan.package_plan with
+    package_graph;
+    nodes = package_nodes;
+    packages = List.map package_nodes ~fn:Riot_planner.Package_graph.get_package;
+  }
+  in
+  { plan with package_plan; package_graph }
+
 let release_on_error: 'value. Build_lock.t -> ('value, error) result -> ('value, error) result = fun
   lock result ->
   match result with
@@ -130,20 +188,19 @@ let release_on_error: 'value. Build_lock.t -> ('value, error) result -> ('value,
 
 let prepare:
   Build_context.t ->
-  Resolved_build.t ->
+  workspace_plan ->
   target:Riot_model.Target.t ->
   toolchain:Riot_toolchain.t ->
-  (locked t, error) result = fun context spec ~target ~toolchain ->
+  (locked t, error) result = fun context plan ~target ~toolchain ->
   let workspace = context.workspace in
-  let package_names = Resolved_build.package_names spec in
-  let scope = Resolved_build.scope spec in
+  let package_names = plan.package_names in
+  let scope = plan.scope in
   let profile = context.profile in
   let session_id = context.session_id in
   let host = context.host in
-  let package_names = sort_unique_packages package_names in
-  let planner_target = planner_target package_names in
-  let planner_scope = planner_scope scope in
-  let dev_artifacts = Resolved_build.dev_artifacts spec in
+  let lane_started_at = Time.Instant.now () in
+  emit_phase context (Event.BuildLanePreparationStarted { target; started_at = lane_started_at });
+  let lock_started_at = Time.Instant.now () in
   let* lock =
     Build_lock.wait
       ~on_waiting:(fun lock_path ->
@@ -155,8 +212,17 @@ let prepare:
       ~target
     |> Result.map_err ~fn:(fun exn -> Failure (Exception.to_string exn))
   in
+  let lock_acquired_at = Time.Instant.now () in
+  emit_phase
+    context
+    (Event.BuildLaneLockAcquired {
+      target;
+      acquired_at = lock_acquired_at;
+      duration = Time.Instant.duration_since ~earlier:lock_started_at lock_acquired_at;
+    });
   let lane =
     try
+      let toolchain_started_at = Time.Instant.now () in
       let* lane_toolchain =
         if Riot_model.Target.equal target host then
           Ok toolchain
@@ -169,7 +235,16 @@ let prepare:
               ^ ": "
               ^ reason))
       in
-      let* plan = make_lane_plan planner_target workspace planner_scope ~dev_artifacts in
+      let toolchain_initialized_at = Time.Instant.now () in
+      emit_phase
+        context
+        (Event.BuildLaneToolchainInitialized {
+          target;
+          initialized_at = toolchain_initialized_at;
+          duration = Time.Instant.duration_since
+            ~earlier:toolchain_started_at
+            toolchain_initialized_at;
+        });
       let build_ctx =
         make_build_ctx
           ~host
@@ -179,7 +254,24 @@ let prepare:
           ~profile
           ~parallelism:context.parallelism
       in
+      let store_started_at = Time.Instant.now () in
       let store = Riot_store.Store.create_for_lane ~workspace ~profile:profile.name ~target in
+      let store_created_at = Time.Instant.now () in
+      emit_phase
+        context
+        (Event.BuildLaneStoreCreated {
+          target;
+          created_at = store_created_at;
+          duration = Time.Instant.duration_since ~earlier:store_started_at store_created_at;
+        });
+      let lane_prepared_at = Time.Instant.now () in
+      emit_phase
+        context
+        (Event.BuildLanePreparationFinished {
+          target;
+          completed_at = lane_prepared_at;
+          duration = Time.Instant.duration_since ~earlier:lane_started_at lane_prepared_at;
+        });
       Ok {
         target;
         workspace;
@@ -192,8 +284,8 @@ let prepare:
         toolchain = lane_toolchain;
         store;
         lock;
-        planner_target;
-        package_plan = plan;
+        planner_target = plan.planner_target;
+        package_plan = plan.package_plan;
         package_graph = plan.package_graph;
       }
     with
@@ -229,7 +321,7 @@ let package_graph = fun (lane: 'a t) -> lane.package_graph
 
 let package_keys = fun (lane: 'a t) ->
   List.map
-    lane.package_plan.nodes
+    (Riot_planner.Package_graph.topological_sort lane.package_graph)
     ~fn:Riot_planner.Package_graph.get_key
 
 let release: locked t -> unit = fun lane -> Build_lock.release lane.lock

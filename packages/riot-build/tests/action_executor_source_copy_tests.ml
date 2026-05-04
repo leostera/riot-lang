@@ -14,6 +14,8 @@ let test_toolchain = fun () ->
   Riot_toolchain.init ~config:Riot_model.Toolchain_config.default
   |> Result.expect ~msg:"failed to initialize toolchain"
 
+let test_build_target = Riot_model.Target.current
+
 let make_workspace = fun root ->
   Riot_model.Workspace.{
     name = None;
@@ -101,6 +103,7 @@ let test_execute_node_copies_package_relative_sources = fun _ctx ->
               ~completed
               ~store
               ~session_id:(Riot_model.Session_id.make ())
+              ~build_target:test_build_target
               (test_toolchain ())
               sandbox
               node
@@ -133,6 +136,7 @@ let test_execute_node_copies_workspace_relative_sources = fun _ctx ->
               ~completed
               ~store
               ~session_id:(Riot_model.Session_id.make ())
+              ~build_target:test_build_target
               (test_toolchain ())
               sandbox
               node
@@ -165,7 +169,14 @@ let test_execute_node_cache_hit_materializes_outputs = fun _ctx ->
       let session_id = Riot_model.Session_id.make () in
       let toolchain = test_toolchain () in
       let first =
-        Action_executor.execute_node ~completed ~store ~session_id toolchain sandbox node
+        Action_executor.execute_node
+          ~completed
+          ~store
+          ~session_id
+          ~build_target:test_build_target
+          toolchain
+          sandbox
+          node
       in
       match first.status with
       | Action_executor.Executed _ ->
@@ -175,7 +186,14 @@ let test_execute_node_cache_hit_materializes_outputs = fun _ctx ->
             |> Result.expect ~msg:"remove cached output failed"
           in
           let second =
-            Action_executor.execute_node ~completed ~store ~session_id toolchain sandbox node
+            Action_executor.execute_node
+              ~completed
+              ~store
+              ~session_id
+              ~build_target:test_build_target
+              toolchain
+              sandbox
+              node
           in
           (
             match second.status with

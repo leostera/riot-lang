@@ -5,6 +5,7 @@ type error =
   | Failure of string
 type unresolved
 type locked
+type workspace_plan
 type 'stage t
 
 val error_message: error -> string
@@ -37,9 +38,16 @@ val package_graph: 'a t -> Riot_planner.Package_graph.t
 
 val package_keys: 'a t -> Riot_model.Package.key list
 
-val prepare:
+val plan_workspace:
   Build_context.t ->
   Resolved_build.t ->
+  (workspace_plan, error) result
+
+val clone_workspace_plan: workspace_plan -> workspace_plan
+
+val prepare:
+  Build_context.t ->
+  workspace_plan ->
   target:Riot_model.Target.t ->
   toolchain:Riot_toolchain.t ->
   (locked t, error) result

@@ -15,6 +15,8 @@ let test_toolchain = fun () ->
   Riot_toolchain.init ~config:Riot_model.Toolchain_config.default
   |> Result.expect ~msg:"failed to initialize toolchain"
 
+let test_build_target = Riot_model.Target.current
+
 let make_workspace = fun root ->
   Riot_model.Workspace.{
     name = None;
@@ -62,6 +64,7 @@ let test_action_scheduler_returns_empty_results_for_empty_graph = fun _ctx ->
           ~sandbox
           ~store:(Riot_store.Store.create ~workspace)
           ~session_id:(Riot_model.Session_id.make ())
+          ~build_target:test_build_target
           (test_toolchain ())
           ~concurrency:2
       in
@@ -131,6 +134,7 @@ let test_action_scheduler_reports_first_failure_and_keeps_other_results = fun _c
           ~sandbox
           ~store
           ~session_id:(Riot_model.Session_id.make ())
+          ~build_target:test_build_target
           (test_toolchain ())
           ~concurrency:2
       in

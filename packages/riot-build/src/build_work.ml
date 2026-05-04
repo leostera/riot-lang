@@ -52,6 +52,18 @@ let runtime_phase_of_package_scheduler_event = fun __tmp1 ->
         failed_count;
         error_count;
       }
+  | Package_scheduler.PackageActionGraphPlanned {
+      package;
+      build_target;
+      action_count;
+      planned_at;
+    } ->
+      Event.PackageActionGraphPlanned {
+        package;
+        build_target;
+        action_count;
+        planned_at;
+      }
   | Package_scheduler.ExecutionStarted { lane_count; package_count } ->
       Event.PackageExecutionStarted { lane_count; package_count }
   | Package_scheduler.ExecutionFinished {
@@ -81,10 +93,10 @@ let plan_package_key = fun (plan_package: plan_package) -> plan_package.package_
 
 let plan_package_target = fun (plan_package: plan_package) -> Build_lane.target plan_package.lane
 
-let prepare_lane = fun context spec ~toolchain target ->
+let prepare_lane = fun context workspace_plan ~toolchain target ->
   Build_lane.prepare
     context
-    spec
+    workspace_plan
     ~target
     ~toolchain
 
@@ -95,18 +107,47 @@ let prepare_lanes = fun context spec ~toolchain ->
     Riot_model.Target.Set.to_list (Resolved_build.targets spec)
     |> List.sort ~compare:Riot_model.Target.compare
   in
-  let rec loop prepared = fun __tmp1 ->
+  let* workspace_plan =
+    try
+      Build_lane.plan_workspace context spec
+    with
+    | exn -> Error (Build_lane.Failure (Exception.to_string exn))
+  in
+  let lane_inputs =
+    targets
+    |> List.map ~fn:(fun target -> (target, Build_lane.clone_workspace_plan workspace_plan))
+  in
+  let results =
+    WorkerPool.SimpleWorkerPool.run
+      ~concurrency:context.Build_context.parallelism
+      ~tasks:lane_inputs
+      ~fn:(fun (target, lane_plan) ->
+        try
+          prepare_lane context lane_plan ~toolchain target
+        with
+        | exn -> Error (Build_lane.Failure (Exception.to_string exn)))
+      ()
+    |> List.map ~fn:(fun (_index, result) -> result)
+  in
+  let rec collect prepared first_error = fun __tmp1 ->
     match __tmp1 with
-    | [] -> Ok (List.reverse prepared)
-    | target :: rest -> (
-        match prepare_lane context spec ~toolchain target with
-        | Ok lane -> loop (lane :: prepared) rest
-        | Error _ as error ->
+    | [] -> (
+        match first_error with
+        | None -> Ok (List.reverse prepared)
+        | Some error ->
             release_lanes prepared;
             error
       )
+    | (Ok lane) :: rest -> collect (lane :: prepared) first_error rest
+    | (Error _ as error) :: rest ->
+        let first_error =
+          match first_error with
+          | Some existing_error -> Some existing_error
+          | None -> Some error
+        in
+        collect prepared first_error rest
   in
-  loop [] targets
+  collect [] None results
 
 let run = fun context lanes ->
   try

@@ -598,7 +598,14 @@ let prepare_execution = fun ~workspace ~toolchain ~store ~execution_plan ~build_
   let package_name_string = Package_name.to_string package_name in
   if execution_plan.emit_visible_progress then
     Telemetry.emit
-      (BuildStarted { session_id; package; target = Workspace_planner.Package package_name });
+      (
+        PackageStarted {
+          session_id;
+          package;
+          target = Workspace_planner.Package package_name;
+          started_at = Instant.now ();
+        }
+      );
   Log.info ("Package " ^ package_name_string ^ ": executing action graph");
   Log.info
     ("Package "
@@ -617,10 +624,14 @@ let prepare_execution = fun ~workspace ~toolchain ~store ~execution_plan ~build_
           package;
           target = Workspace_planner.Package package_name;
           build_target = target_triplet;
+          action_count = List.length (Action_graph.nodes execution_plan.action_graph);
+          started_at = Instant.now ();
         }
       );
   let inputs = execution_inputs execution_plan in
+  let prepare_started_at = Instant.now () in
   try
+    let sandbox_create_started_at = Instant.now () in
     let sandbox =
       Sandbox.create
         ~workspace
@@ -629,7 +640,79 @@ let prepare_execution = fun ~workspace ~toolchain ~store ~execution_plan ~build_
         ()
         ~package_name:package.Package.name
     in
-    Sandbox.prepare ~sandbox ~package ~inputs ~depset:execution_plan.depset ~store;
+    if execution_plan.emit_visible_progress then (
+      let created_at = Instant.now () in
+      Telemetry.emit
+        (
+          SandboxCreated {
+            session_id;
+            package;
+            target = Workspace_planner.Package package_name;
+            build_target = target_triplet;
+            path = Sandbox.get_dir sandbox;
+            created_at;
+            duration = Instant.duration_since ~earlier:sandbox_create_started_at created_at;
+          }
+        )
+    );
+    let input_copy_started_at = Instant.now () in
+    let input_count = Sandbox.copy_inputs ~sandbox ~package ~inputs in
+    if execution_plan.emit_visible_progress then (
+      let copied_at = Instant.now () in
+      Telemetry.emit
+        (
+          SandboxInputsCopied {
+            session_id;
+            package;
+            target = Workspace_planner.Package package_name;
+            build_target = target_triplet;
+            input_count;
+            copied_at;
+            duration = Instant.duration_since ~earlier:input_copy_started_at copied_at;
+          }
+        )
+    );
+    let dependency_copy_started_at = Instant.now () in
+    let dependency_stats =
+      Sandbox.copy_dependency_object_files
+        ~store
+        ~sandbox
+        ~package
+        ~depset:execution_plan.depset
+    in
+    if execution_plan.emit_visible_progress then (
+      let copied_at = Instant.now () in
+      Telemetry.emit
+        (
+          SandboxDependenciesCopied {
+            session_id;
+            package;
+            target = Workspace_planner.Package package_name;
+            build_target = target_triplet;
+            dependency_count = dependency_stats.dependency_count;
+            object_count = dependency_stats.object_count;
+            copied_at;
+            duration = Instant.duration_since ~earlier:dependency_copy_started_at copied_at;
+          }
+        )
+    );
+    if execution_plan.emit_visible_progress then (
+      let prepared_at = Instant.now () in
+      Telemetry.emit
+        (
+          PackageExecutionPrepared {
+            session_id;
+            package;
+            target = Workspace_planner.Package package_name;
+            build_target = target_triplet;
+            input_count;
+            dependency_count = dependency_stats.dependency_count;
+            dependency_object_count = dependency_stats.object_count;
+            prepared_at;
+            duration = Instant.duration_since ~earlier:prepare_started_at prepared_at;
+          }
+        )
+    );
     Ok { execution_plan; sandbox; toolchain }
   with
   | exn ->
@@ -648,6 +731,7 @@ let execute_action = fun
     ~completed
     ~store
     ~session_id:build_ctx.Build_ctx.session_id
+    ~build_target:(Build_ctx.target_triplet build_ctx)
     prepared_execution.toolchain
     (Sandbox.get_dir prepared_execution.sandbox)
     action
@@ -767,6 +851,7 @@ let finalize_execution = fun
           ~graph_error:error_msg)
 
 let execute_detailed = fun ~workspace ~toolchain ~store ~execution_plan ~build_ctx ->
+  let target_triplet = Build_ctx.target_triplet build_ctx in
   match prepare_execution ~workspace ~toolchain ~store ~execution_plan ~build_ctx with
   | Error detailed_result -> detailed_result
   | Ok prepared_execution ->
@@ -776,6 +861,7 @@ let execute_detailed = fun ~workspace ~toolchain ~store ~execution_plan ~build_c
           ~sandbox:prepared_execution.sandbox
           ~store
           ~session_id:build_ctx.Build_ctx.session_id
+          ~build_target:target_triplet
           prepared_execution.toolchain
           ~concurrency:build_ctx.Build_ctx.parallelism
       in

@@ -14,6 +14,8 @@ let test_toolchain = fun () ->
   Riot_toolchain.init ~config:Riot_model.Toolchain_config.default
   |> Result.expect ~msg:"failed to initialize toolchain"
 
+let test_build_target = Riot_model.Target.current
+
 let make_workspace = fun root ->
   Riot_model.Workspace.{
     name = None;
@@ -97,6 +99,7 @@ let test_execute_node_writes_file = fun _ctx ->
           ~completed
           ~store
           ~session_id:(Riot_model.Session_id.make ())
+          ~build_target:test_build_target
           (test_toolchain ())
           sandbox
           node
@@ -146,6 +149,7 @@ let test_execute_node_copies_file = fun _ctx ->
           ~completed
           ~store
           ~session_id:(Riot_model.Session_id.make ())
+          ~build_target:test_build_target
           (test_toolchain ())
           sandbox
           node
@@ -192,6 +196,7 @@ let test_execute_node_fails_when_declared_output_is_missing = fun _ctx ->
           ~completed
           ~store
           ~session_id:(Riot_model.Session_id.make ())
+          ~build_target:test_build_target
           (test_toolchain ())
           sandbox
           node
@@ -256,6 +261,7 @@ let test_execute_node_skips_when_dependency_failed = fun _ctx ->
           ~completed
           ~store
           ~session_id:(Riot_model.Session_id.make ())
+          ~build_target:test_build_target
           (test_toolchain ())
           sandbox
           node

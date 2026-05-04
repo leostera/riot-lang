@@ -185,7 +185,7 @@ let execute_kernel_runtime_graph = fun ~concurrency ->
                   ()
                   ~package_name:package.name
               in
-              Sandbox.prepare ~sandbox ~package ~inputs ~depset ~store;
+              let _ = Sandbox.prepare ~sandbox ~package ~inputs ~depset ~store in
               let sandbox_dir = Sandbox.get_dir sandbox in
               let result =
                 Action_scheduler.run
@@ -193,6 +193,7 @@ let execute_kernel_runtime_graph = fun ~concurrency ->
                   ~sandbox
                   ~store
                   ~session_id
+                  ~build_target:Riot_model.Target.current
                   test_toolchain
                   ~concurrency
               in

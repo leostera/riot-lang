@@ -28,6 +28,12 @@ type event =
       failed_count: int;
       error_count: int;
     }
+  | PackageActionGraphPlanned of {
+      package: Riot_model.Package.t;
+      build_target: Riot_model.Target.t;
+      action_count: int;
+      planned_at: Time.Instant.t;
+    }
   | ExecutionStarted of { lane_count: int; package_count: int }
   | ExecutionFinished of {
       lane_count: int;

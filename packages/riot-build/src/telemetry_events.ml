@@ -43,10 +43,11 @@ type workspace_graph_breakdown = {
 type warning_source = [ | `Fresh | `Cached]
 
 type Telemetry.event +=
-  | BuildStarted of {
+  | PackageStarted of {
       session_id: Session_id.t;
       package: Package.t;
       target: Workspace_planner.target;
+      started_at: Time.Instant.t;
     }
   | WorkspacePlanStarted of {
       session_id: Session_id.t;
@@ -117,6 +118,47 @@ type Telemetry.event +=
       package: Package.t;
       target: Workspace_planner.target;
       build_target: Target.t;
+      action_count: int;
+      started_at: Time.Instant.t;
+    }
+  | SandboxCreated of {
+      session_id: Session_id.t;
+      package: Package.t;
+      target: Workspace_planner.target;
+      build_target: Target.t;
+      path: Path.t;
+      created_at: Time.Instant.t;
+      duration: Time.Duration.t;
+    }
+  | SandboxInputsCopied of {
+      session_id: Session_id.t;
+      package: Package.t;
+      target: Workspace_planner.target;
+      build_target: Target.t;
+      input_count: int;
+      copied_at: Time.Instant.t;
+      duration: Time.Duration.t;
+    }
+  | SandboxDependenciesCopied of {
+      session_id: Session_id.t;
+      package: Package.t;
+      target: Workspace_planner.target;
+      build_target: Target.t;
+      dependency_count: int;
+      object_count: int;
+      copied_at: Time.Instant.t;
+      duration: Time.Duration.t;
+    }
+  | PackageExecutionPrepared of {
+      session_id: Session_id.t;
+      package: Package.t;
+      target: Workspace_planner.target;
+      build_target: Target.t;
+      input_count: int;
+      dependency_count: int;
+      dependency_object_count: int;
+      prepared_at: Time.Instant.t;
+      duration: Time.Duration.t;
     }
   | PackageOcamlcWarnings of {
       session_id: Session_id.t;
@@ -151,18 +193,24 @@ type Telemetry.event +=
   | ActionStarted of {
       session_id: Session_id.t;
       package: Package.t;
+      build_target: Target.t;
       action: Action_node.t;
+      started_at: Time.Instant.t;
     }
   | ActionCommandStarted of {
       session_id: Session_id.t;
       package: Package.t;
+      build_target: Target.t;
       action: Action_node.t;
+      started_at: Time.Instant.t;
       command: string;
     }
   | ActionCompleted of {
       session_id: Session_id.t;
       package: Package.t;
+      build_target: Target.t;
       action: Action_node.t;
+      completed_at: Time.Instant.t;
       artifact: Artifact.t;
       status: [`Fresh | `Cached];
       duration: Time.Duration.t;
@@ -170,7 +218,9 @@ type Telemetry.event +=
   | ActionFailed of {
       session_id: Session_id.t;
       package: Package.t;
+      build_target: Target.t;
       action: Action_node.t;
+      failed_at: Time.Instant.t;
       error: string;
     }
   | CacheHit of {
@@ -422,9 +472,14 @@ let workspace_graph_breakdown_of_json = fun __tmp1 ->
 
 let to_json: Telemetry.event -> Data.Json.t option = fun __tmp1 ->
   match __tmp1 with
-  | BuildStarted { session_id; package; target } ->
+  | PackageStarted {
+      session_id;
+      package;
+      target;
+      started_at = _;
+    } ->
       Some (Data.Json.Object [
-        ("type", Data.Json.String "BuildStarted");
+        ("type", Data.Json.String "PackageStarted");
         ("session_id", Data.Json.String (Session_id.to_string session_id));
         ("package", Package.to_json package);
         ("target", target_to_json target);
@@ -569,6 +624,8 @@ let to_json: Telemetry.event -> Data.Json.t option = fun __tmp1 ->
       package;
       target;
       build_target;
+      action_count;
+      started_at = _;
     } ->
       Some (Data.Json.Object [
         ("type", Data.Json.String "CompilationStarted");
@@ -576,6 +633,85 @@ let to_json: Telemetry.event -> Data.Json.t option = fun __tmp1 ->
         ("package", Package.to_json package);
         ("target", target_to_json target);
         ("build_target", build_target_to_json build_target);
+        ("action_count", Data.Json.Int action_count);
+      ])
+  | SandboxCreated {
+      session_id;
+      package;
+      target;
+      build_target;
+      path;
+      created_at = _;
+      duration;
+    } ->
+      Some (Data.Json.Object [
+        ("type", Data.Json.String "SandboxCreated");
+        ("session_id", Data.Json.String (Session_id.to_string session_id));
+        ("package", Package.to_json package);
+        ("target", target_to_json target);
+        ("build_target", build_target_to_json build_target);
+        ("path", Data.Json.String (Path.to_string path));
+        ("duration_ms", Data.Json.Int (Time.Duration.to_millis duration));
+      ])
+  | SandboxInputsCopied {
+      session_id;
+      package;
+      target;
+      build_target;
+      input_count;
+      copied_at = _;
+      duration;
+    } ->
+      Some (Data.Json.Object [
+        ("type", Data.Json.String "SandboxInputsCopied");
+        ("session_id", Data.Json.String (Session_id.to_string session_id));
+        ("package", Package.to_json package);
+        ("target", target_to_json target);
+        ("build_target", build_target_to_json build_target);
+        ("input_count", Data.Json.Int input_count);
+        ("duration_ms", Data.Json.Int (Time.Duration.to_millis duration));
+      ])
+  | SandboxDependenciesCopied {
+      session_id;
+      package;
+      target;
+      build_target;
+      dependency_count;
+      object_count;
+      copied_at = _;
+      duration;
+    } ->
+      Some (Data.Json.Object [
+        ("type", Data.Json.String "SandboxDependenciesCopied");
+        ("session_id", Data.Json.String (Session_id.to_string session_id));
+        ("package", Package.to_json package);
+        ("target", target_to_json target);
+        ("build_target", build_target_to_json build_target);
+        ("dependency_count", Data.Json.Int dependency_count);
+        ("object_count", Data.Json.Int object_count);
+        ("duration_ms", Data.Json.Int (Time.Duration.to_millis duration));
+      ])
+  | PackageExecutionPrepared {
+      session_id;
+      package;
+      target;
+      build_target;
+      input_count;
+      dependency_count;
+      dependency_object_count;
+      prepared_at = _;
+      duration;
+    } ->
+      Some (Data.Json.Object [
+        ("type", Data.Json.String "PackageExecutionPrepared");
+        ("session_id", Data.Json.String (Session_id.to_string session_id));
+        ("package", Package.to_json package);
+        ("target", target_to_json target);
+        ("build_target", build_target_to_json build_target);
+        ("input_count", Data.Json.Int input_count);
+        ("dependency_count", Data.Json.Int dependency_count);
+        ("dependency_object_count", Data.Json.Int dependency_object_count);
+        ("duration_ms", Data.Json.Int (Time.Duration.to_millis duration));
       ])
   | PackageOcamlcWarnings {
       session_id;
@@ -678,30 +814,42 @@ let to_json: Telemetry.event -> Data.Json.t option = fun __tmp1 ->
         ("build_target", build_target_to_json build_target);
         ("reason", Data.Json.String reason);
       ])
-  | ActionStarted { session_id; package; action } ->
+  | ActionStarted {
+      session_id;
+      package;
+      build_target;
+      action;
+      started_at = _;
+    } ->
       Some (Data.Json.Object [
         ("type", Data.Json.String "ActionStarted");
         ("session_id", Data.Json.String (Session_id.to_string session_id));
         ("package", Package.to_json package);
+        ("build_target", build_target_to_json build_target);
         ("action", action_to_json action);
       ])
   | ActionCommandStarted {
       session_id;
       package;
+      build_target;
       action;
+      started_at = _;
       command;
     } ->
       Some (Data.Json.Object [
         ("type", Data.Json.String "ActionCommandStarted");
         ("session_id", Data.Json.String (Session_id.to_string session_id));
         ("package", Package.to_json package);
+        ("build_target", build_target_to_json build_target);
         ("action", action_to_json action);
         ("command", Data.Json.String command);
       ])
   | ActionCompleted {
       session_id;
       package;
+      build_target;
       action;
+      completed_at = _;
       artifact;
       status;
       duration;
@@ -715,6 +863,7 @@ let to_json: Telemetry.event -> Data.Json.t option = fun __tmp1 ->
           ("type", Data.Json.String "ActionCompleted");
           ("session_id", Data.Json.String (Session_id.to_string session_id));
           ("package", Package.to_json package);
+          ("build_target", build_target_to_json build_target);
           ("action", action_to_json action);
           ("artifact_files", artifact_files);
           ("status", Data.Json.String (
@@ -728,13 +877,16 @@ let to_json: Telemetry.event -> Data.Json.t option = fun __tmp1 ->
   | ActionFailed {
       session_id;
       package;
+      build_target;
       action;
+      failed_at = _;
       error;
     } ->
       Some (Data.Json.Object [
         ("type", Data.Json.String "ActionFailed");
         ("session_id", Data.Json.String (Session_id.to_string session_id));
         ("package", Package.to_json package);
+        ("build_target", build_target_to_json build_target);
         ("action", action_to_json action);
         ("error", Data.Json.String error);
       ])
@@ -792,7 +944,7 @@ let to_json: Telemetry.event -> Data.Json.t option = fun __tmp1 ->
 
 let event_session_id: Telemetry.event -> Session_id.t option = fun __tmp1 ->
   match __tmp1 with
-  | BuildStarted { session_id; _ }
+  | PackageStarted { session_id; _ }
   | WorkspacePlanStarted { session_id; _ }
   | WorkspacePlanCompleted { session_id; _ }
   | WorkspaceManifestFilterCompleted { session_id; _ }
@@ -804,6 +956,10 @@ let event_session_id: Telemetry.event -> Session_id.t option = fun __tmp1 ->
   | PackagePlanningResult { session_id; _ }
   | PackagePlanningBreakdown { session_id; _ }
   | CompilationStarted { session_id; _ }
+  | SandboxCreated { session_id; _ }
+  | SandboxInputsCopied { session_id; _ }
+  | SandboxDependenciesCopied { session_id; _ }
+  | PackageExecutionPrepared { session_id; _ }
   | PackageOcamlcWarnings { session_id; _ }
   | BuildCompleted { session_id; _ }
   | BuildFailed { session_id; _ }
@@ -818,6 +974,20 @@ let event_session_id: Telemetry.event -> Session_id.t option = fun __tmp1 ->
   | WorkspaceCompleted { session_id; _ } -> Some session_id
   | _ -> None
 
+let event_timestamp: Telemetry.event -> (string * Time.Instant.t) option = fun __tmp1 ->
+  match __tmp1 with
+  | PackageStarted { started_at; _ }
+  | CompilationStarted { started_at; _ }
+  | ActionStarted { started_at; _ }
+  | ActionCommandStarted { started_at; _ } -> Some ("started_at_us", started_at)
+  | SandboxCreated { created_at; _ } -> Some ("created_at_us", created_at)
+  | SandboxInputsCopied { copied_at; _ }
+  | SandboxDependenciesCopied { copied_at; _ } -> Some ("copied_at_us", copied_at)
+  | PackageExecutionPrepared { prepared_at; _ } -> Some ("prepared_at_us", prepared_at)
+  | ActionCompleted { completed_at; _ } -> Some ("completed_at_us", completed_at)
+  | ActionFailed { failed_at; _ } -> Some ("failed_at_us", failed_at)
+  | _ -> None
+
 let from_json: Data.Json.t -> (Telemetry.event, Data.Json.t) result = fun json ->
   let get_field fields ~name =
     List.find fields ~fn:(fun (field_name, _) -> String.equal field_name name)
@@ -828,10 +998,15 @@ let from_json: Data.Json.t -> (Telemetry.event, Data.Json.t) result = fun json -
     | Some (Data.Json.String sid) -> Session_id.from_string sid
     | _ -> Session_id.from_string "unknown"
   in
+  let int_field_or_default fields ~name ~default =
+    match get_field fields ~name with
+    | Some (Data.Json.Int value) -> value
+    | _ -> default
+  in
   match json with
   | Data.Json.Object fields -> (
       match get_field fields ~name:"type" with
-      | Some (Data.Json.String "BuildStarted") -> (
+      | Some (Data.Json.String "PackageStarted") -> (
           match (
             get_field fields ~name:"session_id",
             get_field fields ~name:"package",
@@ -843,12 +1018,20 @@ let from_json: Data.Json.t -> (Telemetry.event, Data.Json.t) result = fun json -
                   let session_id = Session_id.from_string session_id_str in
                   (
                     match target_of_json target_json with
-                    | Ok target -> Ok (BuildStarted { session_id; package; target })
+                    | Ok target ->
+                        Ok (
+                          PackageStarted {
+                            session_id;
+                            package;
+                            target;
+                            started_at = Time.Instant.now ();
+                          }
+                        )
                     | Error e -> Error e
                   )
               | Error e -> Error (Data.Json.String e)
             )
-          | _ -> Error (Data.Json.String "Invalid BuildStarted event")
+          | _ -> Error (Data.Json.String "Invalid PackageStarted event")
         )
       | Some (Data.Json.String "WorkspacePlanStarted") -> (
           match (get_field fields ~name:"target", get_field fields ~name:"workspace_package_count") with
@@ -1134,6 +1317,11 @@ let from_json: Data.Json.t -> (Telemetry.event, Data.Json.t) result = fun json -
                             package;
                             target;
                             build_target;
+                            action_count = int_field_or_default
+                              fields
+                              ~name:"action_count"
+                              ~default:0;
+                            started_at = Time.Instant.now ();
                           }
                         )
                     | (Error e, _) -> Error e
@@ -1142,6 +1330,173 @@ let from_json: Data.Json.t -> (Telemetry.event, Data.Json.t) result = fun json -
               | Error e -> Error (Data.Json.String e)
             )
           | _ -> Error (Data.Json.String "Invalid CompilationStarted event")
+        )
+      | Some (Data.Json.String "SandboxCreated") -> (
+          match (
+            get_field fields ~name:"session_id",
+            get_field fields ~name:"package",
+            get_field fields ~name:"target",
+            get_field fields ~name:"path",
+            get_field fields ~name:"duration_ms"
+          ) with
+          | (
+              Some (Data.Json.String session_id_str),
+              Some package_json,
+              Some target_json,
+              Some (Data.Json.String path),
+              Some (Data.Json.Int duration_ms)
+            ) -> (
+              match Package.from_json package_json with
+              | Ok package -> (
+                  let session_id = Session_id.from_string session_id_str in
+                  match (target_of_json target_json, build_target_from_fields fields) with
+                  | (Ok target, Ok build_target) ->
+                      Ok (
+                        SandboxCreated {
+                          session_id;
+                          package;
+                          target;
+                          build_target;
+                          path = Path.v path;
+                          created_at = Time.Instant.now ();
+                          duration = Time.Duration.from_millis duration_ms;
+                        }
+                      )
+                  | (Error e, _) -> Error e
+                  | (_, Error e) -> Error e
+                )
+              | Error e -> Error (Data.Json.String e)
+            )
+          | _ -> Error (Data.Json.String "Invalid SandboxCreated event")
+        )
+      | Some (Data.Json.String "SandboxInputsCopied") -> (
+          match (
+            get_field fields ~name:"session_id",
+            get_field fields ~name:"package",
+            get_field fields ~name:"target",
+            get_field fields ~name:"duration_ms"
+          ) with
+          | (
+              Some (Data.Json.String session_id_str),
+              Some package_json,
+              Some target_json,
+              Some (Data.Json.Int duration_ms)
+            ) -> (
+              match Package.from_json package_json with
+              | Ok package -> (
+                  let session_id = Session_id.from_string session_id_str in
+                  match (target_of_json target_json, build_target_from_fields fields) with
+                  | (Ok target, Ok build_target) ->
+                      Ok (
+                        SandboxInputsCopied {
+                          session_id;
+                          package;
+                          target;
+                          build_target;
+                          input_count = int_field_or_default
+                            fields
+                            ~name:"input_count"
+                            ~default:0;
+                          copied_at = Time.Instant.now ();
+                          duration = Time.Duration.from_millis duration_ms;
+                        }
+                      )
+                  | (Error e, _) -> Error e
+                  | (_, Error e) -> Error e
+                )
+              | Error e -> Error (Data.Json.String e)
+            )
+          | _ -> Error (Data.Json.String "Invalid SandboxInputsCopied event")
+        )
+      | Some (Data.Json.String "SandboxDependenciesCopied") -> (
+          match (
+            get_field fields ~name:"session_id",
+            get_field fields ~name:"package",
+            get_field fields ~name:"target",
+            get_field fields ~name:"duration_ms"
+          ) with
+          | (
+              Some (Data.Json.String session_id_str),
+              Some package_json,
+              Some target_json,
+              Some (Data.Json.Int duration_ms)
+            ) -> (
+              match Package.from_json package_json with
+              | Ok package -> (
+                  let session_id = Session_id.from_string session_id_str in
+                  match (target_of_json target_json, build_target_from_fields fields) with
+                  | (Ok target, Ok build_target) ->
+                      Ok (
+                        SandboxDependenciesCopied {
+                          session_id;
+                          package;
+                          target;
+                          build_target;
+                          dependency_count = int_field_or_default
+                            fields
+                            ~name:"dependency_count"
+                            ~default:0;
+                          object_count = int_field_or_default
+                            fields
+                            ~name:"object_count"
+                            ~default:0;
+                          copied_at = Time.Instant.now ();
+                          duration = Time.Duration.from_millis duration_ms;
+                        }
+                      )
+                  | (Error e, _) -> Error e
+                  | (_, Error e) -> Error e
+                )
+              | Error e -> Error (Data.Json.String e)
+            )
+          | _ -> Error (Data.Json.String "Invalid SandboxDependenciesCopied event")
+        )
+      | Some (Data.Json.String "PackageExecutionPrepared") -> (
+          match (
+            get_field fields ~name:"session_id",
+            get_field fields ~name:"package",
+            get_field fields ~name:"target",
+            get_field fields ~name:"duration_ms"
+          ) with
+          | (
+              Some (Data.Json.String session_id_str),
+              Some package_json,
+              Some target_json,
+              Some (Data.Json.Int duration_ms)
+            ) -> (
+              match Package.from_json package_json with
+              | Ok package -> (
+                  let session_id = Session_id.from_string session_id_str in
+                  match (target_of_json target_json, build_target_from_fields fields) with
+                  | (Ok target, Ok build_target) ->
+                      Ok (
+                        PackageExecutionPrepared {
+                          session_id;
+                          package;
+                          target;
+                          build_target;
+                          input_count = int_field_or_default
+                            fields
+                            ~name:"input_count"
+                            ~default:0;
+                          dependency_count = int_field_or_default
+                            fields
+                            ~name:"dependency_count"
+                            ~default:0;
+                          dependency_object_count = int_field_or_default
+                            fields
+                            ~name:"dependency_object_count"
+                            ~default:0;
+                          prepared_at = Time.Instant.now ();
+                          duration = Time.Duration.from_millis duration_ms;
+                        }
+                      )
+                  | (Error e, _) -> Error e
+                  | (_, Error e) -> Error e
+                )
+              | Error e -> Error (Data.Json.String e)
+            )
+          | _ -> Error (Data.Json.String "Invalid PackageExecutionPrepared event")
         )
       | Some (Data.Json.String "PackageOcamlcWarnings") -> (
           match (

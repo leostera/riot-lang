@@ -101,6 +101,7 @@ let test_build_result_status_variants = fun _ctx ->
     Riot_store.Artifact.{
       input_hash = Crypto.hash_string "test-input";
       output_hash = Crypto.hash_string "test-output";
+      size_bytes = 0L;
       files = [];
       ocamlc_warnings = [];
       exports = [];

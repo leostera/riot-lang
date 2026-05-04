@@ -225,8 +225,21 @@ let phase_name = fun __tmp1 ->
   | Riot_build.Event.RuntimeStarting -> "runtime_starting"
   | Riot_build.Event.RuntimeStarted -> "runtime_started"
   | Riot_build.Event.BuildLockWaiting _ -> "build_lock_waiting"
+  | Riot_build.Event.BuildLanesPreparationStarted _ -> "build_lanes_preparation_started"
+  | Riot_build.Event.BuildLanesPreparationFinished _ -> "build_lanes_preparation_finished"
+  | Riot_build.Event.BuildWorkspacePlanned _ -> "build_workspace_planned"
+  | Riot_build.Event.BuildWorkspacePlanBreakdown _ -> "build_workspace_plan_breakdown"
+  | Riot_build.Event.BuildLanePreparationStarted _ -> "build_lane_preparation_started"
+  | Riot_build.Event.BuildLaneLockAcquired _ -> "build_lane_lock_acquired"
+  | Riot_build.Event.BuildLaneToolchainInitialized _ -> "build_lane_toolchain_initialized"
+  | Riot_build.Event.BuildLaneWorkspacePlanned _ -> "build_lane_workspace_planned"
+  | Riot_build.Event.BuildLaneWorkspacePlanBreakdown _ ->
+      "build_lane_workspace_plan_breakdown"
+  | Riot_build.Event.BuildLaneStoreCreated _ -> "build_lane_store_created"
+  | Riot_build.Event.BuildLanePreparationFinished _ -> "build_lane_preparation_finished"
   | Riot_build.Event.PackagePlanningStarted _ -> "package_planning_started"
   | Riot_build.Event.PackagePlanningFinished _ -> "package_planning_finished"
+  | Riot_build.Event.PackageActionGraphPlanned _ -> "package_action_graph_planned"
   | Riot_build.Event.PackageExecutionStarted _ -> "package_execution_started"
   | Riot_build.Event.PackageExecutionFinished _ -> "package_execution_finished"
   | Riot_build.Event.TargetBuildStarted _ -> "target_build_started"
@@ -256,6 +269,7 @@ let make_artifact = fun ?(exports = []) name ->
   {
     Riot_store.Artifact.input_hash = Crypto.hash_string (name ^ ":input");
     output_hash = Crypto.hash_string (name ^ ":output");
+    size_bytes = 0L;
     files = [
       Riot_store.Manifest.{
         path = Path.v (name ^ ".cmx");
@@ -351,6 +365,7 @@ let test_output_exposes_artifacts_and_exports = fun _ctx ->
       let artifact = {
         Riot_store.Artifact.input_hash = Crypto.hash_string "demo-input";
         output_hash = Crypto.hash_string "demo-output";
+        size_bytes = 0L;
         files = [
           Riot_store.Manifest.{ path = Path.v "demo.exe"; hash = "demo-file-hash"; size = 0 };
         ];
@@ -670,6 +685,15 @@ let test_build_emits_runtime_phases_in_order = fun _ctx ->
               "toolchains_validated";
               "runtime_starting";
               "runtime_started";
+              "build_lanes_preparation_started";
+              "build_workspace_planned";
+              "build_workspace_plan_breakdown";
+              "build_lane_preparation_started";
+              "build_lane_lock_acquired";
+              "build_lane_toolchain_initialized";
+              "build_lane_store_created";
+              "build_lane_preparation_finished";
+              "build_lanes_preparation_finished";
               "target_build_started";
               "package_planning_started";
               "package_planning_finished";
@@ -692,7 +716,7 @@ let test_build_emits_detailed_build_telemetry = fun _ctx ->
           match __tmp1 with
           | Riot_build.Event.Telemetry event -> (
               match event with
-              | Telemetry_events.BuildStarted _ -> seen := !seen @ [ "build_started" ]
+              | Telemetry_events.PackageStarted _ -> seen := !seen @ [ "package_started" ]
               | Telemetry_events.CompilationStarted _ -> seen := !seen @ [ "compilation_started" ]
               | Telemetry_events.BuildCompleted _ -> seen := !seen @ [ "build_completed" ]
               | _ -> ()
@@ -703,7 +727,7 @@ let test_build_emits_detailed_build_telemetry = fun _ctx ->
       | Ok _ ->
           expect_subsequence
             ~haystack:!seen
-            ~needle:[ "build_started"; "compilation_started"; "build_completed" ]) with
+            ~needle:[ "package_started"; "compilation_started"; "build_completed" ]) with
   | Ok result -> result
   | Error err -> Error ("tempdir failed: " ^ IO.error_message err)
 

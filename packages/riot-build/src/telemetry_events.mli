@@ -44,10 +44,11 @@ type warning_source = [ | `Fresh | `Cached]
    and failures.
 *)
 type Telemetry.event +=
-  | BuildStarted of {
+  | PackageStarted of {
       session_id: Session_id.t;
       package: Package.t;
       target: Workspace_planner.target;
+      started_at: Time.Instant.t;
     }
   | WorkspacePlanStarted of {
       session_id: Session_id.t;
@@ -118,6 +119,47 @@ type Telemetry.event +=
       package: Package.t;
       target: Workspace_planner.target;
       build_target: Target.t;
+      action_count: int;
+      started_at: Time.Instant.t;
+    }
+  | SandboxCreated of {
+      session_id: Session_id.t;
+      package: Package.t;
+      target: Workspace_planner.target;
+      build_target: Target.t;
+      path: Path.t;
+      created_at: Time.Instant.t;
+      duration: Time.Duration.t;
+    }
+  | SandboxInputsCopied of {
+      session_id: Session_id.t;
+      package: Package.t;
+      target: Workspace_planner.target;
+      build_target: Target.t;
+      input_count: int;
+      copied_at: Time.Instant.t;
+      duration: Time.Duration.t;
+    }
+  | SandboxDependenciesCopied of {
+      session_id: Session_id.t;
+      package: Package.t;
+      target: Workspace_planner.target;
+      build_target: Target.t;
+      dependency_count: int;
+      object_count: int;
+      copied_at: Time.Instant.t;
+      duration: Time.Duration.t;
+    }
+  | PackageExecutionPrepared of {
+      session_id: Session_id.t;
+      package: Package.t;
+      target: Workspace_planner.target;
+      build_target: Target.t;
+      input_count: int;
+      dependency_count: int;
+      dependency_object_count: int;
+      prepared_at: Time.Instant.t;
+      duration: Time.Duration.t;
     }
   | PackageOcamlcWarnings of {
       session_id: Session_id.t;
@@ -152,18 +194,24 @@ type Telemetry.event +=
   | ActionStarted of {
       session_id: Session_id.t;
       package: Package.t;
+      build_target: Target.t;
       action: Action_node.t;
+      started_at: Time.Instant.t;
     }
   | ActionCommandStarted of {
       session_id: Session_id.t;
       package: Package.t;
+      build_target: Target.t;
       action: Action_node.t;
+      started_at: Time.Instant.t;
       command: string;
     }
   | ActionCompleted of {
       session_id: Session_id.t;
       package: Package.t;
+      build_target: Target.t;
       action: Action_node.t;
+      completed_at: Time.Instant.t;
       artifact: Artifact.t;
       status: [`Fresh | `Cached];
       duration: Time.Duration.t;
@@ -171,7 +219,9 @@ type Telemetry.event +=
   | ActionFailed of {
       session_id: Session_id.t;
       package: Package.t;
+      build_target: Target.t;
       action: Action_node.t;
+      failed_at: Time.Instant.t;
       error: string;
     }
   | CacheHit of {
@@ -210,6 +260,9 @@ val to_json: Telemetry.event -> Data.Json.t option
 
 (** Return the session id for build telemetry events. *)
 val event_session_id: Telemetry.event -> Riot_model.Session_id.t option
+
+(** Return the semantic timestamp for build telemetry events that carry one. *)
+val event_timestamp: Telemetry.event -> (string * Time.Instant.t) option
 
 (**
    Parse a telemetry event from JSON.

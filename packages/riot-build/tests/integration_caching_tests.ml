@@ -16,6 +16,8 @@ let test_toolchain = fun () ->
   Riot_toolchain.init ~config:Riot_model.Toolchain_config.default
   |> Result.expect ~msg:"failed to initialize toolchain"
 
+let test_build_target = Riot_model.Target.current
+
 let make_test_build_ctx = fun () ->
   let session_id = Riot_model.Session_id.make () in
   Riot_model.Build_ctx.make ~session_id ~profile:Riot_model.Profile.debug ()
@@ -115,6 +117,7 @@ let execute_graph = fun ~workspace ~store ~package ~graph ->
       ~sandbox
       ~store
       ~session_id:(Riot_model.Session_id.make ())
+      ~build_target:test_build_target
       (test_toolchain ())
       ~concurrency:1
   in
@@ -172,6 +175,7 @@ let execute_planned_package = fun ~workspace ~store ~package ~package_graph ->
           ~sandbox
           ~store
           ~session_id:(Riot_model.Session_id.make ())
+          ~build_target:test_build_target
           (test_toolchain ())
           ~concurrency:1
       in

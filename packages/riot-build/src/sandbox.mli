@@ -5,6 +5,17 @@ open Riot_planner
 (** A sandbox directory for building packages *)
 type t
 
+type dependency_copy_stats = {
+  dependency_count: int;
+  object_count: int;
+}
+
+type prepare_stats = {
+  input_count: int;
+  dependency_count: int;
+  dependency_object_count: int;
+}
+
 (** Create a sandbox directory for a package build. *)
 val create:
   workspace:Workspace.t ->
@@ -13,6 +24,17 @@ val create:
   unit ->
   package_name:Package_name.t ->
   t
+
+(** Copy package source inputs into a sandbox. *)
+val copy_inputs: sandbox:t -> package:Package.t -> inputs:Path.t list -> int
+
+(** Copy dependency object files required by linker actions into a sandbox. *)
+val copy_dependency_object_files:
+  store:Riot_store.Store.t ->
+  sandbox:t ->
+  package:Package.t ->
+  depset:Dependency.t list ->
+  dependency_copy_stats
 
 (**
    Prepare an existing sandbox by copying package inputs and dependency object
@@ -24,7 +46,7 @@ val prepare:
   inputs:Path.t list ->
   depset:Dependency.t list ->
   store:Riot_store.Store.t ->
-  unit
+  prepare_stats
 
 (** Get the directory path of the sandbox *)
 val get_dir: t -> Path.t

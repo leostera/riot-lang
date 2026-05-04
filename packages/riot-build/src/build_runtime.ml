@@ -81,6 +81,16 @@ let emit_target_build_started = fun context target ->
   Build_context.emit_building_target context.build ~target ~host;
   emit_runtime_phase context (Event.TargetBuildStarted { target; host })
 
+let emit_build_lanes_preparation_started = fun context ~target_count ~started_at ->
+  emit_runtime_phase
+    context
+    (Event.BuildLanesPreparationStarted { target_count; started_at })
+
+let emit_build_lanes_preparation_finished = fun context ~lane_count ~completed_at ~duration ->
+  emit_runtime_phase
+    context
+    (Event.BuildLanesPreparationFinished { lane_count; completed_at; duration })
+
 let emit_target_build_finished = fun context ~target ~result_count ~had_partial_failure ->
   emit_runtime_phase
     context
@@ -228,6 +238,7 @@ let new_entries_of_results = fun ~profile ~target results ->
             profile;
             target;
             hash = Std.Crypto.Digest.hex artifact.Riot_store.Artifact.input_hash;
+            size_bytes = artifact.Riot_store.Artifact.size_bytes;
           }
       | Package_builder.Cached _
       | Package_builder.Skipped _
@@ -295,10 +306,22 @@ let map_prepare_error = fun __tmp1 ->
   | Build_lane.Failure reason -> UnexpectedError { reason }
 
 let run_lanes = fun context ~toolchain ->
+  let prepare_started_at = Time.Instant.now () in
+  let target_count =
+    Riot_model.Target.Set.to_list (Resolved_build.targets context.resolved)
+    |> List.length
+  in
+  emit_build_lanes_preparation_started context ~target_count ~started_at:prepare_started_at;
   let* lanes =
     Build_work.prepare_lanes context.build context.resolved ~toolchain
     |> Result.map_err ~fn:map_prepare_error
   in
+  let prepare_completed_at = Time.Instant.now () in
+  emit_build_lanes_preparation_finished
+    context
+    ~lane_count:(List.length lanes)
+    ~completed_at:prepare_completed_at
+    ~duration:(Time.Instant.duration_since ~earlier:prepare_started_at prepare_completed_at);
   List.for_each lanes ~fn:(fun lane -> emit_target_build_started context (Build_lane.target lane));
   let results = Build_work.run context.build lanes in
   let summary = Build_work.summarize results in

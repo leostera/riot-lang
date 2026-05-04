@@ -16,6 +16,8 @@ let test_toolchain =
   Riot_toolchain.init ~config:Riot_model.Toolchain_config.default
   |> Result.expect ~msg:"riot-build bench toolchain init should succeed"
 
+let test_build_target = Riot_model.Target.current
+
 let cleanup_dir = fun path ->
   match Fs.remove_dir_all path with
   | Ok () -> ()
@@ -100,6 +102,7 @@ let make_execute_node_write_miss_bench = fun root ~size ->
         ~completed:(HashMap.create ())
         ~store
         ~session_id
+        ~build_target:test_build_target
         test_toolchain
         sandbox
         node
@@ -140,6 +143,7 @@ let make_execute_node_cache_hit_bench = fun root ~size ->
       ~completed:(HashMap.create ())
       ~store
       ~session_id
+      ~build_target:test_build_target
       test_toolchain
       warm_sandbox
       node
@@ -168,6 +172,7 @@ let make_execute_node_cache_hit_bench = fun root ~size ->
         ~completed:(HashMap.create ())
         ~store
         ~session_id
+        ~build_target:test_build_target
         test_toolchain
         sandbox
         node
@@ -215,6 +220,7 @@ let make_execute_graph_miss_bench = fun root ~count ~concurrency ->
         ~sandbox
         ~store
         ~session_id
+        ~build_target:test_build_target
         test_toolchain
         ~concurrency
     in
@@ -240,6 +246,7 @@ let make_execute_graph_cache_hit_bench = fun root ~count ~concurrency ->
       ~sandbox:warm_sandbox
       ~store
       ~session_id
+      ~build_target:test_build_target
       test_toolchain
       ~concurrency
   in
@@ -255,6 +262,7 @@ let make_execute_graph_cache_hit_bench = fun root ~count ~concurrency ->
         ~sandbox
         ~store
         ~session_id
+        ~build_target:test_build_target
         test_toolchain
         ~concurrency
     in

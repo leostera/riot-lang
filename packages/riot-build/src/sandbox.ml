@@ -7,6 +7,17 @@ type t = {
   workspace: Workspace.t;
 }
 
+type dependency_copy_stats = {
+  dependency_count: int;
+  object_count: int;
+}
+
+type prepare_stats = {
+  input_count: int;
+  dependency_count: int;
+  dependency_object_count: int;
+}
+
 let sandbox_id = fun ~package_name ->
   let nanos =
     Time.SystemTime.duration_since_epoch ()
@@ -43,32 +54,40 @@ let create = fun
 
 let get_dir = fun t -> t.dir
 
-let copy_object_files = fun ~store ~sandbox ~package ~depset ->
+let copy_dependency_object_files = fun ~store ~sandbox ~package ~depset ->
   let _ = store in
   let _ = package in
   let depset = Riot_planner.Dependency.transitive_closure depset in
-  List.for_each
+  let object_count =
+    List.fold_left
     depset
-    ~fn:(fun dep ->
+    ~init:0
+    ~fn:(fun copied dep ->
       match Fs.read_dir dep.Riot_planner.Dependency.artifact_dir with
-      | Error _ -> ()
+      | Error _ -> copied
       | Ok reader ->
           let entries = Std.Iter.MutIterator.to_list reader in
           entries
-          |> List.filter ~fn:(fun path -> String.ends_with ~suffix:".o" (Path.to_string path))
-          |> List.for_each
-            ~fn:(fun entry ->
-              let src =
-                if Path.is_absolute entry then
-                  entry
-                else
-                  Path.(dep.Riot_planner.Dependency.artifact_dir / entry)
-              in
-              let dest = Path.(sandbox.dir / v (Path.basename entry)) in
-              match Fs.copy ~src ~dst:dest with
-              | Ok () -> ()
-              | Error _ ->
-                  Log.warn ("Skipping unavailable dependency object file " ^ Path.to_string src)))
+          |> List.fold_left
+            ~init:copied
+            ~fn:(fun copied entry ->
+              if String.ends_with ~suffix:".o" (Path.to_string entry) then (
+                let src =
+                  if Path.is_absolute entry then
+                    entry
+                  else
+                    Path.(dep.Riot_planner.Dependency.artifact_dir / entry)
+                in
+                let dest = Path.(sandbox.dir / v (Path.basename entry)) in
+                match Fs.copy ~src ~dst:dest with
+                | Ok () -> copied + 1
+                | Error _ ->
+                    Log.warn ("Skipping unavailable dependency object file " ^ Path.to_string src);
+                    copied
+              ) else
+                copied))
+  in
+  { dependency_count = List.length depset; object_count }
 
 let copy_inputs = fun ~sandbox ~package ~inputs ->
   List.for_each
@@ -83,15 +102,21 @@ let copy_inputs = fun ~sandbox ~package ~inputs ->
       |> Result.expect ~msg:("Failed to create parent dir: " ^ (Path.to_string dest_parent));
       Fs.copy ~src ~dst:dest
       |> Result.expect
-        ~msg:("Failed to copy input " ^ Path.to_string src ^ " to " ^ (Path.to_string dest)))
+        ~msg:("Failed to copy input " ^ Path.to_string src ^ " to " ^ (Path.to_string dest)));
+  List.length inputs
 
 let prepare = fun ~sandbox ~package ~inputs ~depset ~store ->
   (* No longer copy dependencies wholesale - dependencies are resolved via
      include directories in immutable cache paths, with only required object
      files copied into the sandbox for linker compatibility.
   *)
-  copy_inputs ~sandbox ~package ~inputs;
-  copy_object_files ~store ~sandbox ~package ~depset
+  let input_count = copy_inputs ~sandbox ~package ~inputs in
+  let dependency_stats = copy_dependency_object_files ~store ~sandbox ~package ~depset in
+  {
+    input_count;
+    dependency_count = dependency_stats.dependency_count;
+    dependency_object_count = dependency_stats.object_count;
+  }
 
 let cleanup = fun sandbox ->
   let _ = Fs.remove_dir_all sandbox.dir in
@@ -109,6 +134,6 @@ let with_sandbox = fun
   f ->
   let sandbox = create ~workspace ~profile ~target () ~package_name:package.Package.name in
   let _ = expected_outputs in
-  prepare ~sandbox ~package ~inputs ~depset ~store;
+  let _ = prepare ~sandbox ~package ~inputs ~depset ~store in
   let result = f sandbox in
   result

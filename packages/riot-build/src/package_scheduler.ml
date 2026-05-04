@@ -116,6 +116,12 @@ type event =
       failed_count: int;
       error_count: int;
     }
+  | PackageActionGraphPlanned of {
+      package: Riot_model.Package.t;
+      build_target: Riot_model.Target.t;
+      action_count: int;
+      planned_at: Time.Instant.t;
+    }
   | ExecutionStarted of { lane_count: int; package_count: int }
   | ExecutionFinished of {
       lane_count: int;
@@ -372,6 +378,18 @@ let plan_package_work = fun ~package_states ~node_ids ~graph lane package_key ->
               finalize_result graph ~source:Planned lane detailed_result;
               Ok (Planned (PlanningFinalized { lane; detailed_result }))
           | Package_builder.Execution_required execution_plan ->
+              let action_count = List.length (Action_graph.nodes execution_plan.action_graph) in
+              if execution_plan.emit_visible_progress && action_count > 0 then
+                Graph_scheduler.Handle.emit_event
+                  graph
+                  (
+                    PackageActionGraphPlanned {
+                      package;
+                      build_target = Build_lane.target lane;
+                      action_count;
+                      planned_at = Time.Instant.now ();
+                    }
+                  );
               record_graph_update
                 graph
                 lane
@@ -802,7 +820,7 @@ let run = fun ~parallelism ?(on_event = fun (_:event) -> ()) lanes ->
           ~parallelism
           ~mode:Graph_scheduler.Run_config.Continue_on_failure
           ())
-        ~on_event:(fun () -> ())
+        ~on_event
         ~graph
         ~execute:(fun ~graph ~node:_ ~payload ->
           match payload with

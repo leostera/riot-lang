@@ -43,6 +43,7 @@ val run:
   sandbox:Sandbox.t ->
   store:Riot_store.Store.t ->
   session_id:Riot_model.Session_id.t ->
+  build_target:Riot_model.Target.t ->
   Riot_toolchain.t ->
   concurrency:int ->
   t

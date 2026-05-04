@@ -50,13 +50,15 @@ let resolve_include_paths = fun sandbox_dir includes ->
       else
         Path.join sandbox_dir inc)
 
-let emit_action_command = fun ~session_id ~package ~node command ->
+let emit_action_command = fun ~session_id ~package ~build_target ~node command ->
   Telemetry.emit
     (
       Telemetry_events.ActionCommandStarted {
         session_id;
         package;
+        build_target;
         action = node;
+        started_at = Instant.now ();
         command;
       }
     )
@@ -65,12 +67,18 @@ let ocamlc_success = fun message -> Riot_toolchain.Ocamlc.Success { message; dia
 
 let ocamlc_failed = fun message -> Riot_toolchain.Ocamlc.Failed { message; diagnostics = [] }
 
-let run_ocamlc_invocation = fun ~session_id ~package ~node ~sandbox_dir invocation ->
-  emit_action_command ~session_id ~package ~node (Riot_toolchain.Ocamlc.to_string invocation);
+let run_ocamlc_invocation = fun ~session_id ~package ~build_target ~node ~sandbox_dir invocation ->
+  emit_action_command
+    ~session_id
+    ~package
+    ~build_target
+    ~node
+    (Riot_toolchain.Ocamlc.to_string invocation);
   Riot_toolchain.Ocamlc.run invocation
   |> Diagnostic_rewrite.rewrite_ocamlc_result ~package ~sandbox_dir
 
-let run_action = fun ~session_id ~package ~node ?c_compiler ocamlc sandbox_dir action ->
+let run_action = fun
+  ~session_id ~package ~build_target ~node ?c_compiler ocamlc sandbox_dir action ->
   match action with
   | Action.CompileInterface {
       source;
@@ -91,7 +99,7 @@ let run_action = fun ~session_id ~package ~node ?c_compiler ocamlc sandbox_dir a
           ~output:abs_output
           abs_source
       in
-      run_ocamlc_invocation ~session_id ~package ~node ~sandbox_dir invocation
+      run_ocamlc_invocation ~session_id ~package ~build_target ~node ~sandbox_dir invocation
   | Action.CompileImplementation {
       source;
       outputs = output :: _;
@@ -111,7 +119,7 @@ let run_action = fun ~session_id ~package ~node ?c_compiler ocamlc sandbox_dir a
           ~output:abs_output
           abs_source
       in
-      run_ocamlc_invocation ~session_id ~package ~node ~sandbox_dir invocation
+      run_ocamlc_invocation ~session_id ~package ~build_target ~node ~sandbox_dir invocation
   | Action.GenerateInterface {
       source;
       outputs = output :: _;
@@ -131,7 +139,7 @@ let run_action = fun ~session_id ~package ~node ?c_compiler ocamlc sandbox_dir a
           ~output:abs_output
           abs_source
       in
-      run_ocamlc_invocation ~session_id ~package ~node ~sandbox_dir invocation
+      run_ocamlc_invocation ~session_id ~package ~build_target ~node ~sandbox_dir invocation
   | Action.CompileC { source; outputs = output :: _; ccflags } ->
       let abs_source = Path.join sandbox_dir source in
       let abs_output = Path.join sandbox_dir output in
@@ -151,7 +159,7 @@ let run_action = fun ~session_id ~package ~node ?c_compiler ocamlc sandbox_dir a
           ~output:abs_output
           abs_source
       in
-      run_ocamlc_invocation ~session_id ~package ~node ~sandbox_dir invocation
+      run_ocamlc_invocation ~session_id ~package ~build_target ~node ~sandbox_dir invocation
   | Action.CreateLibrary { outputs = output :: _; objects; includes } ->
       let abs_output = Path.join sandbox_dir output in
       let rel_objects = objects in
@@ -164,7 +172,7 @@ let run_action = fun ~session_id ~package ~node ?c_compiler ocamlc sandbox_dir a
           ~output:abs_output
           rel_objects
       in
-      run_ocamlc_invocation ~session_id ~package ~node ~sandbox_dir invocation
+      run_ocamlc_invocation ~session_id ~package ~build_target ~node ~sandbox_dir invocation
   | Action.CreateExecutable {
       outputs = output :: _;
       objects;
@@ -209,7 +217,9 @@ let run_action = fun ~session_id ~package ~node ?c_compiler ocamlc sandbox_dir a
               ~output:abs_output
               abs_objects
           in
-          let result = run_ocamlc_invocation ~session_id ~package ~node ~sandbox_dir invocation in
+          let result =
+            run_ocamlc_invocation ~session_id ~package ~build_target ~node ~sandbox_dir invocation
+          in
           match result with
           | Riot_toolchain.Ocamlc.Success _ -> (
               match Fs.set_permissions abs_output (Fs.Permissions.from_mode 0o755) with
@@ -268,7 +278,7 @@ let run_action = fun ~session_id ~package ~node ?c_compiler ocamlc sandbox_dir a
               ~output:abs_output
               abs_objects
           in
-          run_ocamlc_invocation ~session_id ~package ~node ~sandbox_dir invocation
+          run_ocamlc_invocation ~session_id ~package ~build_target ~node ~sandbox_dir invocation
         )
   | Action.CompileInterface { outputs = []; _ }
   | Action.CompileImplementation { outputs = []; _ }
@@ -326,7 +336,7 @@ let run_action = fun ~session_id ~package ~node ?c_compiler ocamlc sandbox_dir a
                 Command.make ~cwd:(Path.to_string normalized_path) ~env ~args:cmd_args cmd_name
               in
               let cmd_str = Command.to_string cmd in
-              emit_action_command ~session_id ~package ~node cmd_str;
+              emit_action_command ~session_id ~package ~build_target ~node cmd_str;
               Log.debug ("Executing: " ^ cmd_str);
               match Command.output cmd with
               | Ok output when output.Command.status = 0 ->
@@ -369,7 +379,7 @@ let run_action = fun ~session_id ~package ~node ?c_compiler ocamlc sandbox_dir a
                   ocamlc_failed ("Failed to execute foreign build command: " ^ msg)
         )
 
-let execute_actions = fun ~session_id ~(node:Action_node.t) toolchain sandbox_dir actions ->
+let execute_actions = fun ~session_id ~build_target ~(node:Action_node.t) toolchain sandbox_dir actions ->
   let ocamlc = Riot_toolchain.ocamlc toolchain in
   let c_compiler = Riot_toolchain.c_compiler toolchain in
   let package = node.value.package in
@@ -377,7 +387,9 @@ let execute_actions = fun ~session_id ~(node:Action_node.t) toolchain sandbox_di
     match __tmp1 with
     | [] -> Ok ocamlc_warnings
     | action :: rest -> (
-        let result = run_action ~session_id ~package ~node ?c_compiler ocamlc sandbox_dir action in
+        let result =
+          run_action ~session_id ~package ~build_target ~node ?c_compiler ocamlc sandbox_dir action
+        in
         match result with
         | Riot_toolchain.Ocamlc.Success _ ->
             let action_warnings = Riot_toolchain.Ocamlc.get_ocamlc_warnings result in
@@ -504,7 +516,8 @@ let resolve_source_for_copy = fun ~(package:Riot_model.Package.t) ~src_path ->
       ^ String.concat ", " (List.map candidates ~fn:Path.to_string)
       ^ ")")
 
-let execute_node = fun ~completed ~store ~session_id toolchain sandbox_dir (node: Action_node.t) ->
+let execute_node = fun
+  ~completed ~store ~session_id ~build_target toolchain sandbox_dir (node: Action_node.t) ->
   let start = Instant.now () in
   if has_failed_dependencies completed node then (
     let now = Instant.now () in
@@ -517,6 +530,14 @@ let execute_node = fun ~completed ~store ~session_id toolchain sandbox_dir (node
       completed_at = now;
     }
   ) else (
+    Telemetry.emit
+      (Telemetry_events.ActionStarted {
+        session_id;
+        package = node.value.package;
+        build_target;
+        action = node;
+        started_at = start;
+      });
     let planned_hash = Action_node.get_hash node in
     let action_input_hash =
       compute_action_input_hash
@@ -550,7 +571,9 @@ let execute_node = fun ~completed ~store ~session_id toolchain sandbox_dir (node
               Telemetry_events.ActionCompleted {
                 session_id;
                 package = node.value.package;
+                build_target;
                 action = node;
+                completed_at;
                 artifact;
                 status = `Cached;
                 duration;
@@ -577,12 +600,6 @@ let execute_node = fun ~completed ~store ~session_id toolchain sandbox_dir (node
           let actions = node.value.actions in
           let outputs = node.value.outs in
           let sources = node.value.srcs in
-          Telemetry.emit
-            (Telemetry_events.ActionStarted {
-              session_id;
-              package = node.value.package;
-              action = node;
-            });
           let copy_result: (unit, string) Result.t =
             List.fold_left
               sources
@@ -628,14 +645,16 @@ let execute_node = fun ~completed ~store ~session_id toolchain sandbox_dir (node
                 completed_at;
               }
           | Ok () -> (
-              match execute_actions ~session_id ~node toolchain sandbox_dir actions with
+              match execute_actions ~session_id ~build_target ~node toolchain sandbox_dir actions with
               | Error msg ->
                   Telemetry.emit
                     (
                       Telemetry_events.ActionFailed {
                         session_id;
                         package = node.value.package;
+                        build_target;
                         action = node;
+                        failed_at = Instant.now ();
                         error = msg;
                       }
                     );
@@ -679,7 +698,9 @@ let execute_node = fun ~completed ~store ~session_id toolchain sandbox_dir (node
                             Telemetry_events.ActionCompleted {
                               session_id;
                               package = node.value.package;
+                              build_target;
                               action = node;
+                              completed_at;
                               artifact;
                               status = `Fresh;
                               duration;
@@ -728,7 +749,9 @@ let execute_node = fun ~completed ~store ~session_id toolchain sandbox_dir (node
                                 Telemetry_events.ActionCompleted {
                                   session_id;
                                   package = node.value.package;
+                                  build_target;
                                   action = node;
+                                  completed_at;
                                   artifact;
                                   status = `Fresh;
                                   duration;
