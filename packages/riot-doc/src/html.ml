@@ -262,6 +262,7 @@ code, pre { font-family: var(--mono); }
   position: sticky;
   top: 0;
   align-self: start;
+  height: 100vh;
   max-height: 100vh;
   overflow-y: auto;
   padding: var(--jr-space-5) var(--jr-space-4) var(--jr-space-8) var(--jr-space-5);
@@ -709,6 +710,7 @@ li code,
   .docs-shell { grid-template-columns: 1fr; }
   .sidebar {
     position: relative;
+    height: auto;
     max-height: none;
     border-right: var(--jr-space-0);
     border-bottom: var(--jr-border-default);

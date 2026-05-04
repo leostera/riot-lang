@@ -264,6 +264,7 @@ val format: string -> string
       let* () = assert_contains ~label:"doc css" doc_css "--jr-color-bg:" in
       let* () = assert_contains ~label:"doc css" doc_css "--jr-docs-sidebar-width:" in
       let* () = assert_contains ~label:"doc css" doc_css "background: var(--jr-docs-sidebar-bg)" in
+      let* () = assert_contains ~label:"doc css" doc_css "height: 100vh;" in
       let* () = assert_not_contains ~label:"root module page" root_page "Redirecting..." in
       let* () =
         assert_contains
