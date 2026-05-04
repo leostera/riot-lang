@@ -14,13 +14,19 @@ Use this skill when the user wants to:
 
 ## User workflow
 1. Confirm the project type and intent (`build`, `test`, `bench`, `run`, or maintenance).
-2. Use the default commands first:
+2. When creating a package, scaffold it with `riot new` instead of hand-writing
+   the package layout:
+   - Library package in a workspace: `riot new --lib ./packages/<name>`
+   - Binary package in a workspace: `riot new --bin ./packages/<name>`
+   - Standalone package outside a workspace: `riot new --lib <path>` or
+     `riot new --bin <path>`
+3. Use the default commands first:
    - `riot build`
    - `riot test`
    - `riot bench`
    - `riot run`
-3. Prefer machine-readable flow whenever available by adding `--json`.
-4. If dependency or package behavior is unclear, check the official docs:
+4. Prefer machine-readable flow whenever available by adding `--json`.
+5. If dependency or package behavior is unclear, check the official docs:
    - `docs.riot.ml` for command and ecosystem guidance
    - `docs.pkg.ml/p/<pkg>/<version>/` for package docs
 
@@ -68,6 +74,8 @@ For benchmark grouping, regression checks, and comparison workflow, read:
 - [Riot benchmarking workflow](references/benchmarking.md)
 
 ## Common Riot commands
+- `riot new --lib ./packages/<name>` : create a new library package in a workspace.
+- `riot new --bin ./packages/<name>` : create a new binary package in a workspace.
 - `riot build --json` : compile packages and dependencies.
 - `riot test --json` : run project tests.
 - `riot fuzz --list --json` : list fuzz cases.

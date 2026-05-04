@@ -8,6 +8,7 @@ Use this file as the route map for package-specific guidance. General contributo
 - `packages/std/AGENTS.md`: shared standard library surface used by the rest of the repo
 - `packages/colors/AGENTS.md`: ANSI palette mapping, sRGB/XYZ/LUV conversions, and perceptual color blending
 - `packages/ignore/AGENTS.md`: ignore-aware recursive walking, gitignore-style precedence, and subtree pruning
+- `packages/jollyroger/AGENTS.md`: terminal design-system primitives for Riot CLI layout, colors, and status labels
 - `packages/http/AGENTS.md`: HTTP protocol implementation and wire-level behavior
 - `packages/blink/AGENTS.md`: streaming HTTP client built on actors
 - `packages/suri/AGENTS.md`: web framework, middleware, routing, liveview, server integration

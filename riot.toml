@@ -15,6 +15,7 @@ members = [
   #"packages/hello-foreign",
   "packages/http",
   "packages/ignore",
+  "packages/jollyroger",
   "packages/jsonrpc",
   "packages/kernel",
   "packages/krasny",

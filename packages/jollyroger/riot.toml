@@ -1,0 +1,13 @@
+[package]
+name = "jollyroger"
+version = "0.0.32"
+description = "Terminal design-system primitives for Riot CLI output"
+license = "Apache-2.0"
+public = false
+
+[lib]
+path = "src/jollyroger.ml"
+
+[dependencies]
+std = { path = "../std", version = "*" }
+tty = { path = "../tty", version = "*" }
