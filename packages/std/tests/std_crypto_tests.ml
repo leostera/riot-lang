@@ -101,6 +101,27 @@ let test_sha256_incremental_matches_one_shot = fun _ctx ->
   else
     Error "Sha256 incremental hashing should match one-shot hashing"
 
+let test_sha256_iovec_write_matches_one_shot = fun _ctx ->
+  let state = Crypto.Sha256.create () in
+  let left = IO.Buffer.from_string "ab" in
+  let right = IO.Buffer.from_string "c" in
+  Crypto.Sha256.write_iovec state (IO.Buffer.to_iovec left);
+  Crypto.Sha256.write_iovec state (IO.Buffer.to_iovec right);
+  if Crypto.Hash.equal (Crypto.Sha256.finish state) (Crypto.Sha256.hash_string "abc") then
+    Ok ()
+  else
+    Error "Sha256 iovec writes should match one-shot hashing"
+
+let test_sha256_finish_keeps_state_open_for_writes = fun _ctx ->
+  let state = Crypto.Sha256.create () in
+  Crypto.Sha256.write state "ab";
+  let _ = Crypto.Sha256.finish state in
+  Crypto.Sha256.write state "c";
+  if Crypto.Hash.equal (Crypto.Sha256.finish state) (Crypto.Sha256.hash_string "abc") then
+    Ok ()
+  else
+    Error "Sha256 finish should not close the incremental state"
+
 let test_sha1_incremental_matches_one_shot = fun _ctx ->
   let state = Crypto.Sha1.create () in
   Crypto.Sha1.write state "ab";
@@ -214,6 +235,10 @@ let tests =
       "Crypto.hash_bytes matches hash_string for the same content"
       test_crypto_hash_bytes_matches_hash_string_for_same_content;
     case "Sha256 incremental hashing matches one-shot" test_sha256_incremental_matches_one_shot;
+    case "Sha256 iovec writes match one-shot" test_sha256_iovec_write_matches_one_shot;
+    case
+      "Sha256 finish keeps state open for writes"
+      test_sha256_finish_keeps_state_open_for_writes;
     case "Sha1 incremental hashing matches one-shot" test_sha1_incremental_matches_one_shot;
     case "Sha512 incremental hashing matches one-shot" test_sha512_incremental_matches_one_shot;
     case "Md5 incremental hashing matches one-shot" test_md5_incremental_matches_one_shot;

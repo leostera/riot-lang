@@ -12,6 +12,19 @@ external sha256_bytes: bytes -> bytes = "std_crypto_sha256"
 
 external sha256_iovec_bytes: IO.IoVec.t -> bytes = "std_crypto_sha256_iovec"
 
+type sha256_state
+
+external sha256_create: unit -> sha256_state = "std_crypto_sha256_create"
+
+external sha256_update: sha256_state -> string -> unit = "std_crypto_sha256_update"
+
+external sha256_update_bytes: sha256_state -> bytes -> unit = "std_crypto_sha256_update"
+
+external sha256_update_iovec: sha256_state -> IO.IoVec.t -> unit =
+  "std_crypto_sha256_update_iovec"
+
+external sha256_finish_bytes: sha256_state -> bytes = "std_crypto_sha256_finish"
+
 external sha512_bytes: bytes -> bytes = "std_crypto_sha512"
 
 external sha512_iovec_bytes: IO.IoVec.t -> bytes = "std_crypto_sha512_iovec"
@@ -33,6 +46,8 @@ let sha1_iovec = fun iov -> Hash.from_bytes (sha1_iovec_bytes iov)
 let sha256 = fun data -> Hash.from_bytes (sha256_bytes (Bytes.from_string data))
 
 let sha256_iovec = fun iov -> Hash.from_bytes (sha256_iovec_bytes iov)
+
+let sha256_finish = fun state -> Hash.from_bytes (sha256_finish_bytes state)
 
 let sha512 = fun data -> Hash.from_bytes (sha512_bytes (Bytes.from_string data))
 

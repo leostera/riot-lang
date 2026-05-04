@@ -39,6 +39,9 @@ module type Intf = sig
   (** Write immutable string data to the state. *)
   val write: state -> string -> unit
 
+  (** Write borrowed I/O slices to the state. *)
+  val write_iovec: state -> Kernel.IO.IoVec.t -> unit
+
   (** Write an existing digest/hash value into the state. *)
   val write_hash: state -> Hash.t -> unit
 

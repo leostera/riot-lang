@@ -26,6 +26,14 @@ let write_string = fun state value ->
   if String.length value > 0 then
     push_bytes state (Bytes.from_string value)
 
+let write_iovec = fun state iovec ->
+  IoVec.for_each
+    iovec
+    ~fn:(fun slice ->
+      let len = IO.IoVec.IoSlice.length slice in
+      if len > 0 then
+        push_bytes state (IO.IoVec.IoSlice.to_bytes slice))
+
 let write_hash = fun state hash -> push_bytes state (Hash.to_bytes hash)
 
 let bytes_of_unit = fun () -> Bytes.create ~size:1

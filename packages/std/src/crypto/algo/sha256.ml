@@ -1,25 +1,27 @@
 (** SHA-256 cryptographic hash implementation *)
 open Kernel
 
-type state = Common.state
+type state = Ffi.sha256_state
 
-let create = Common.create_state
+let create = Ffi.sha256_create
 
-let write = Common.write_string
+let write = Ffi.sha256_update
 
-let write_hash = Common.write_hash
+let write_iovec = Ffi.sha256_update_iovec
+
+let write_hash = fun state hash -> Ffi.sha256_update_bytes state (Hash.to_bytes hash)
 
 let write_unit = fun state () -> ()
 
-let write_int = fun state value -> Common.push_bytes state (Common.bytes_of_int value)
+let write_int = fun state value -> Ffi.sha256_update_bytes state (Common.bytes_of_int value)
 
-let write_int32 = fun state value -> Common.push_bytes state (Common.bytes_of_int32 value)
+let write_int32 = fun state value -> Ffi.sha256_update_bytes state (Common.bytes_of_int32 value)
 
-let write_int64 = fun state value -> Common.push_bytes state (Common.bytes_of_int64 value)
+let write_int64 = fun state value -> Ffi.sha256_update_bytes state (Common.bytes_of_int64 value)
 
-let write_float = fun state value -> Common.push_bytes state (Common.bytes_of_float value)
+let write_float = fun state value -> Ffi.sha256_update_bytes state (Common.bytes_of_float value)
 
-let write_bool = fun state value -> Common.push_bytes state (Common.bytes_of_bool value)
+let write_bool = fun state value -> Ffi.sha256_update_bytes state (Common.bytes_of_bool value)
 
 let write_list = fun writer state lst ->
   write_int state (Common.list_length lst);
@@ -29,7 +31,7 @@ let write_array = fun writer state arr ->
   write_int state (Array.length arr);
   Array.for_each arr ~fn:(writer state)
 
-let finish = fun state -> Common.finish_iovec Ffi.sha256_iovec state
+let finish = Ffi.sha256_finish
 
 let hash_string = Common.hash_string_with Ffi.sha256_iovec
 

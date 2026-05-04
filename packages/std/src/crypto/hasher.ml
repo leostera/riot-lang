@@ -12,6 +12,8 @@ module type Intf = sig
   (** Write immutable string data to the hasher - mutates state *)
   val write: state -> string -> unit
 
+  val write_iovec: state -> Kernel.IO.IoVec.t -> unit
+
   val write_hash: state -> Hash.t -> unit
 
   val write_unit: state -> unit -> unit

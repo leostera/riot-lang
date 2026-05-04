@@ -7,6 +7,8 @@ let create = Common.create_state
 
 let write = Common.write_string
 
+let write_iovec = Common.write_iovec
+
 let write_hash = Common.write_hash
 
 let write_unit = fun state () -> Common.push_bytes state (Common.bytes_of_unit ())

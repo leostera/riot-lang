@@ -31,6 +31,25 @@ static void std_crypto_sha256_update_cc(const unsigned char *data, size_t len, v
     CC_SHA256_Update((CC_SHA256_CTX *) ctx, data, len);
 }
 
+typedef struct {
+    CC_SHA256_CTX ctx;
+} std_crypto_sha256_state;
+
+static std_crypto_sha256_state *std_crypto_sha256_state_val(value v_state) {
+    return (std_crypto_sha256_state *)Data_custom_val(v_state);
+}
+
+static struct custom_operations std_crypto_sha256_state_ops = {
+    "riot.std.crypto.sha256_state",
+    custom_finalize_default,
+    custom_compare_default,
+    custom_hash_default,
+    custom_serialize_default,
+    custom_deserialize_default,
+    custom_compare_ext_default,
+    custom_fixed_length_default
+};
+
 static void std_crypto_sha512_update_cc(const unsigned char *data, size_t len, void *ctx) {
     CC_SHA512_Update((CC_SHA512_CTX *) ctx, data, len);
 }
@@ -106,6 +125,50 @@ CAMLprim value std_crypto_sha256_iovec(value v_iovs) {
 
     CC_SHA256_Init(&ctx);
     std_crypto_for_each_iovec(v_iovs, std_crypto_sha256_update_cc, &ctx);
+    CC_SHA256_Final(hash, &ctx);
+
+    result = caml_alloc_string(CC_SHA256_DIGEST_LENGTH);
+    memcpy(Bytes_val(result), hash, CC_SHA256_DIGEST_LENGTH);
+
+    CAMLreturn(result);
+}
+
+CAMLprim value std_crypto_sha256_create(value unit) {
+    CAMLparam1(unit);
+    CAMLlocal1(result);
+
+    result = caml_alloc_custom(&std_crypto_sha256_state_ops, sizeof(std_crypto_sha256_state), 0, 1);
+    std_crypto_sha256_state *state = std_crypto_sha256_state_val(result);
+    CC_SHA256_Init(&state->ctx);
+
+    CAMLreturn(result);
+}
+
+CAMLprim value std_crypto_sha256_update(value v_state, value data) {
+    CAMLparam2(v_state, data);
+
+    std_crypto_sha256_state *state = std_crypto_sha256_state_val(v_state);
+    CC_SHA256_Update(&state->ctx, Bytes_val(data), caml_string_length(data));
+
+    CAMLreturn(Val_unit);
+}
+
+CAMLprim value std_crypto_sha256_update_iovec(value v_state, value v_iovs) {
+    CAMLparam2(v_state, v_iovs);
+
+    std_crypto_sha256_state *state = std_crypto_sha256_state_val(v_state);
+    std_crypto_for_each_iovec(v_iovs, std_crypto_sha256_update_cc, &state->ctx);
+
+    CAMLreturn(Val_unit);
+}
+
+CAMLprim value std_crypto_sha256_finish(value v_state) {
+    CAMLparam1(v_state);
+    CAMLlocal1(result);
+
+    unsigned char hash[CC_SHA256_DIGEST_LENGTH];
+    std_crypto_sha256_state *state = std_crypto_sha256_state_val(v_state);
+    CC_SHA256_CTX ctx = state->ctx;
     CC_SHA256_Final(hash, &ctx);
 
     result = caml_alloc_string(CC_SHA256_DIGEST_LENGTH);
@@ -191,6 +254,33 @@ CAMLprim value std_crypto_md5_iovec(value v_iovs) {
 
 #else
 #include <openssl/evp.h>
+
+typedef struct {
+    EVP_MD_CTX *ctx;
+} std_crypto_sha256_state;
+
+static std_crypto_sha256_state *std_crypto_sha256_state_val(value v_state) {
+    return (std_crypto_sha256_state *)Data_custom_val(v_state);
+}
+
+static void std_crypto_sha256_state_finalize(value v_state) {
+    std_crypto_sha256_state *state = std_crypto_sha256_state_val(v_state);
+    if (state->ctx != NULL) {
+        EVP_MD_CTX_free(state->ctx);
+        state->ctx = NULL;
+    }
+}
+
+static struct custom_operations std_crypto_sha256_state_ops = {
+    "riot.std.crypto.sha256_state",
+    std_crypto_sha256_state_finalize,
+    custom_compare_default,
+    custom_hash_default,
+    custom_serialize_default,
+    custom_deserialize_default,
+    custom_compare_ext_default,
+    custom_fixed_length_default
+};
 
 static void std_crypto_update_iovec_evp(EVP_MD_CTX *ctx, value v_iovs) {
     mlsize_t n_iovs = Wosize_val(v_iovs);
@@ -295,6 +385,76 @@ CAMLprim value std_crypto_sha256_iovec(value v_iovs) {
     }
 
     std_crypto_update_iovec_evp(ctx, v_iovs);
+
+    if (EVP_DigestFinal_ex(ctx, hash, &hash_len) != 1) {
+        EVP_MD_CTX_free(ctx);
+        caml_failwith("EVP_DigestFinal_ex failed");
+    }
+
+    EVP_MD_CTX_free(ctx);
+
+    result = caml_alloc_string(EVP_MD_size(EVP_sha256()));
+    memcpy(Bytes_val(result), hash, EVP_MD_size(EVP_sha256()));
+
+    CAMLreturn(result);
+}
+
+CAMLprim value std_crypto_sha256_create(value unit) {
+    CAMLparam1(unit);
+    CAMLlocal1(result);
+
+    result = caml_alloc_custom(&std_crypto_sha256_state_ops, sizeof(std_crypto_sha256_state), 0, 1);
+    std_crypto_sha256_state *state = std_crypto_sha256_state_val(result);
+    state->ctx = EVP_MD_CTX_new();
+    if (state->ctx == NULL) {
+        caml_failwith("EVP_MD_CTX_new failed");
+    }
+
+    if (EVP_DigestInit_ex(state->ctx, EVP_sha256(), NULL) != 1) {
+        EVP_MD_CTX_free(state->ctx);
+        state->ctx = NULL;
+        caml_failwith("EVP_DigestInit_ex failed");
+    }
+
+    CAMLreturn(result);
+}
+
+CAMLprim value std_crypto_sha256_update(value v_state, value data) {
+    CAMLparam2(v_state, data);
+
+    std_crypto_sha256_state *state = std_crypto_sha256_state_val(v_state);
+    if (EVP_DigestUpdate(state->ctx, Bytes_val(data), caml_string_length(data)) != 1) {
+        caml_failwith("EVP_DigestUpdate failed");
+    }
+
+    CAMLreturn(Val_unit);
+}
+
+CAMLprim value std_crypto_sha256_update_iovec(value v_state, value v_iovs) {
+    CAMLparam2(v_state, v_iovs);
+
+    std_crypto_sha256_state *state = std_crypto_sha256_state_val(v_state);
+    std_crypto_update_iovec_evp(state->ctx, v_iovs);
+
+    CAMLreturn(Val_unit);
+}
+
+CAMLprim value std_crypto_sha256_finish(value v_state) {
+    CAMLparam1(v_state);
+    CAMLlocal1(result);
+
+    unsigned char hash[EVP_MAX_MD_SIZE];
+    unsigned int hash_len = 0;
+    std_crypto_sha256_state *state = std_crypto_sha256_state_val(v_state);
+    EVP_MD_CTX *ctx = EVP_MD_CTX_new();
+    if (ctx == NULL) {
+        caml_failwith("EVP_MD_CTX_new failed");
+    }
+
+    if (EVP_MD_CTX_copy_ex(ctx, state->ctx) != 1) {
+        EVP_MD_CTX_free(ctx);
+        caml_failwith("EVP_MD_CTX_copy_ex failed");
+    }
 
     if (EVP_DigestFinal_ex(ctx, hash, &hash_len) != 1) {
         EVP_MD_CTX_free(ctx);
