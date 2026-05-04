@@ -11,6 +11,12 @@ Start by checking whether the release inventory is coherent:
 
 ## Core preflight
 
+`git status --short` is an inspection step, not a demand for a globally clean
+tree. Releasing from a dirty workspace is fine when all changes under
+`./packages`, every real `riot.toml` release manifest, and the release inputs
+being published are committed. Leave unrelated dirty files outside the release
+scope alone.
+
 ```bash
 git status --short
 riot fmt

@@ -45,11 +45,17 @@ the source of truth for packaging, upload, manifests, and publish order.
   workspace-built Riot CLI itself.
 - Use the installed `riot` for normal repo validation and publish commands
   unless the task specifically depends on just-built CLI behavior.
-- Require a clean worktree before tagging or publishing.
+- A release does not require a globally clean worktree. It is okay to tag and
+  publish with unrelated dirty files present as long as:
+  - every change under `./packages` is committed
+  - every real `riot.toml` release manifest is committed
+  - release inputs such as `CHANGELOG.md` and release scripts are committed
 - Never create a clean worktree by stashing, dropping, resetting, restoring, or
   otherwise moving changes you did not make. If unrelated dirty files are
-  present, stop and ask the owner to clear them, or perform release preparation
-  from a separate worktree.
+  present outside the release scope, leave them alone and continue from the
+  committed package/release state.
+- Do not create a separate release worktree unless the user explicitly asks for
+  one. The normal release flow runs from the current workspace.
 - Treat these files as the main release inputs:
   - `packages/riot-cli/riot.toml`
   - `ocaml-toolchain.toml`

@@ -67,8 +67,12 @@ Use the last reachable semver tag as the diff anchor:
 git describe --tags --abbrev=0 --match '[0-9]*.[0-9]*.[0-9]*'
 ```
 
-If you want the scripted patch-release flow, `./scripts/release.sh` already
-codifies this process and expects a clean `main` branch.
+Manual release work does not require a globally clean tree. Dirty files outside
+the release scope may remain as long as all changes under `./packages`, every
+real `riot.toml` release manifest, and the release inputs being published are
+committed. If the higher-level `./scripts/release.sh` wrapper has a stricter
+clean-tree preflight, use the lower-level publish/release commands from the
+release commit instead of moving unrelated work.
 
 ### Commit and tag
 

@@ -15,6 +15,11 @@ set:
 
 ## Package publish
 
+Publishing does not require a globally clean workspace. Before publishing, make
+sure the release point has committed all package changes, every real
+`riot.toml` release manifest, and release inputs such as `CHANGELOG.md`. Dirty
+files outside that scope can stay in the current workspace.
+
 The workspace publish flow is:
 
 ```bash
