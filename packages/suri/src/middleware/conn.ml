@@ -49,7 +49,7 @@ let make = fun socket_conn req ->
   let peer = { ip = Net.Addr.ip peer_addr; port = Net.Addr.port peer_addr } in
   make_from_request ~socket_conn ~req ~peer ()
 
-let of_request = fun
+let from_request = fun
   ?(peer = {ip = "127.0.0.1"; port = 0}) ?(params = []) ?(body_params = []) req ->
   make_from_request
     ~req

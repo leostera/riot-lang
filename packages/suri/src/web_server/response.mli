@@ -1,114 +1,38 @@
 (**
-   {1 HTTP Response Construction}
+   HTTP response builders for status codes, headers, versions, and bodies.
 
-   Builder interface for HTTP responses with status codes, headers, and bodies.
-   Provides convenient functions for all standard HTTP status codes.
+   ```ocaml
+   Response.ok ~body:"Success" ()
+   Response.created ~body:"Created" ()
+   Response.bad_request ~body:"Invalid input" ()
+   Response.internal_server_error ~body:"Error" ()
+   ```
 
-   {2 Quick Reference}
+   ```ocaml
+   Response.ok
+     ~headers:[
+       ("Content-Type", "application/json");
+       ("Cache-Control", "no-cache");
+     ]
+     ~body:{json|{"status":"ok"}|json}
+     ()
+   ```
 
-   {3 Most Common}
-   {[
-     Response.ok ~body:"Success" ()                    (* 200 *)
-     Response.created ~body:"Created" ()               (* 201 *)
-     Response.redirect ~location:"/home" ()            (* 302 *)
-     Response.bad_request ~body:"Invalid input" ()     (* 400 *)
-     Response.unauthorized ~body:"Login required" ()   (* 401 *)
-     Response.not_found ~body:"Not found" ()           (* 404 *)
-     Response.internal_server_error ~body:"Error" ()   (* 500 *)
-   ]}
-
-   {3 With Headers}
-   {[
-     Response.ok
-       ~headers:[
-         ("Content-Type", "application/json");
-         ("Cache-Control", "no-cache");
-       ]
-       ~body:{|{"status":"ok"}|}
-       ()
-   ]}
-
-   {3 Custom Status}
-   {[
-     Response.make Net.Http.Status.ImATeapot
-       ~body:"I'm a teapot"
-       ()
-   ]}
-
-   {2 Examples}
-
-   {3 JSON Response}
-   {[
-     let json_response data =
-       let json = Data.Json.to_string data in
-       Response.ok
-         ~headers:[("Content-Type", "application/json")]
-         ~body:json
-         ()
-   ]}
-
-   {3 Redirect}
-   {[
-     let handler _conn req =
-       match Request.path req with
-       | "/old-path" ->
-           Response.moved_permanently
-             ~headers:[("Location", "/new-path")]
-             ()
-       | _ ->
-           Response.not_found ~body:"404" ()
-   ]}
-
-   {3 Error Handling}
-   {[
-     type process_error =
-       | InvalidInput of string
-       | ResourceMissing
-       | UnexpectedFailure
-
-     let handler _conn req =
-       match process_request req with
-       | Ok result ->
-         Response.ok ~body:result ()
-       | Error (InvalidInput msg) ->
-           Response.bad_request ~body:("Invalid: " ^ msg) ()
-       | Error ResourceMissing ->
-           Response.not_found ~body:"Resource not found" ()
-       | Error UnexpectedFailure ->
-           Response.internal_server_error ~body:"Server error" ()
-   ]}
-
-   ---
-
-   {1 API Reference}
+   ```ocaml
+   let handler _conn req =
+     match Request.path req with
+     | "/old-path" ->
+         Response.moved_permanently ~headers:[ ("Location", "/new-path") ] ()
+     | _ ->
+         Response.not_found ~body:"404" ()
+   ```
 *)
-
 open Std
 
 (**
    HTTP response record.
 
    Contains status code, headers, HTTP version, and response body.
-*)
-
-(**
-   Create a custom HTTP response.
-
-   Use this for non-standard status codes or when you need full control.
-   For standard responses, use the convenience functions below.
-
-   @param status HTTP status code (e.g., [Ok], [NotFound])
-   @param headers Optional list of (name, value) header pairs
-   @param version HTTP version (default: [Http11])
-   @param body Response body (default: empty string)
-
-   Example:
-   {[
-     make Net.Http.Status.Ok
-       ~headers:[("Content-Type", "text/plain")]
-       ~body:"Hello"
-       ()
-   ]}
 *)
 type t = {
   status: Net.Http.Status.t;
@@ -117,6 +41,20 @@ type t = {
   body: string;
 }
 
+(**
+   Create a custom HTTP response.
+
+   Use this for non-standard status codes or when you need full control.
+   For standard responses, use the convenience functions below.
+
+   ```ocaml
+   make
+     Net.Http.Status.Ok
+     ~headers:[ ("Content-Type", "text/plain") ]
+     ~body:"Hello"
+     ()
+   ```
+*)
 val make:
   Net.Http.Status.t ->
   ?headers:(string * string) list ->
@@ -136,22 +74,16 @@ type response =
   ?body:string ->
   unit ->
   t
-(**
-   {1 Success Responses (2xx)}
 
-   Successful responses indicating the request was received and processed.
-*)
 (**
    [200 OK] - Standard success response.
 
    Most common response for successful requests.
 
-   Example:
-   {[ ok ~body:"Success" () ]}
+   ```ocaml
+   ok ~body:"Success" ()
+   ```
 *)
-val ok: response
-
-(** `200 OK` *)
 val ok: response
 
 (**
@@ -159,15 +91,14 @@ val ok: response
 
    Use for POST requests that create new resources.
 
-   Example:
-   {[
-     post "/users" (fun _conn req ->
-       let user = create_user (Request.body req) in
-       created
-         ~headers:[("Location", "/users/" ^ user.id)]
-         ~body:(user_to_json user)
-         ())
-   ]}
+   ```ocaml
+   post "/users" (fun _conn req ->
+     let user = create_user (Request.body req) in
+     created
+       ~headers:[ ("Location", "/users/" ^ user.id) ]
+       ~body:(user_to_json user)
+       ())
+   ```
 *)
 val created: response
 
@@ -176,8 +107,9 @@ val created: response
 
    Use when processing will happen asynchronously.
 
-   Example:
-   {[ accepted ~body:"Processing started" () ]}
+   ```ocaml
+   accepted ~body:"Processing started" ()
+   ```
 *)
 val accepted: response
 
@@ -189,12 +121,11 @@ val non_authoritative_information: response
 
    Common for DELETE requests or updates without return data.
 
-   Example:
-   {[
-     delete "/users/:id" (fun _conn _req ->
-       delete_user id;
-       no_content ())
-   ]}
+   ```ocaml
+   delete "/users/:id" (fun _conn _req ->
+     delete_user id;
+     no_content ())
+   ```
 *)
 val no_content: response
 
@@ -213,12 +144,6 @@ val already_reported: response
 (** `226 IM Used` *)
 val im_used: response
 
-(**
-   {1 Redirection Responses (3xx)}
-
-   Redirects indicating the client should take additional action.
-*)
-
 (** [300 Multiple Choices] - Multiple redirect options available. *)
 val multiple_choices: response
 
@@ -227,24 +152,22 @@ val multiple_choices: response
 
    Search engines update their indexes.
 
-   Example:
-   {[
-     moved_permanently
-       ~headers:[("Location", "/new-location")]
-       ()
-   ]}
+   ```ocaml
+   moved_permanently
+     ~headers:[ ("Location", "/new-location") ]
+     ()
+   ```
 *)
 val moved_permanently: response
 
 (**
    [302 Found] - Temporary redirect.
 
-   Most common redirect status. Also see {!see_other}.
+   Most common redirect status. Also see `see_other`.
 
-   Example:
-   {[
-     found ~headers:[("Location", "/login")] ()
-   ]}
+   ```ocaml
+   found ~headers:[ ("Location", "/login") ] ()
+   ```
 *)
 val found: response
 
@@ -253,14 +176,13 @@ val found: response
 
    Use after successful POST to redirect to GET.
 
-   Example:
-   {[
-     post "/users" (fun _conn req ->
-       let user = create_user req in
-       see_other
-         ~headers:[("Location", "/users/" ^ user.id)]
-         ())
-   ]}
+   ```ocaml
+   post "/users" (fun _conn req ->
+     let user = create_user req in
+     see_other
+       ~headers:[ ("Location", "/users/" ^ user.id) ]
+       ())
+   ```
 *)
 val see_other: response
 
@@ -280,22 +202,15 @@ val temporary_redirect: response
 val permanent_redirect: response
 
 (**
-   {1 Client Error Responses (4xx)}
-
-   Errors caused by invalid client requests.
-*)
-
-(**
    [400 Bad Request] - Invalid request syntax or parameters.
 
    Use for validation errors or malformed requests.
 
-   Example:
-   {[
-     match validate_input req with
-     | Ok data -> ok ~body:(process data) ()
-     | Error msg -> bad_request ~body:("Invalid: " ^ msg) ()
-   ]}
+   ```ocaml
+   match validate_input req with
+   | Ok data -> ok ~body:(process data) ()
+   | Error msg -> bad_request ~body:("Invalid: " ^ msg) ()
+   ```
 *)
 val bad_request: response
 
@@ -304,16 +219,16 @@ val bad_request: response
 
    Use when user must log in.
 
-   Example:
-   {[
-     match get_auth_token req with
-     | None ->
-         unauthorized
-           ~headers:[("WWW-Authenticate", "Bearer")]
-           ~body:"Login required"
-           ()
-     | Some token -> (* ... *)
-   ]}
+   ```ocaml
+   match get_auth_token req with
+   | None ->
+       unauthorized
+         ~headers:[ ("WWW-Authenticate", "Bearer") ]
+         ~body:"Login required"
+         ()
+   | Some token ->
+       use_token token
+   ```
 *)
 val unauthorized: response
 
@@ -325,13 +240,12 @@ val payment_required: response
 
    User is logged in but doesn't have permission.
 
-   Example:
-   {[
-     if not (has_permission user resource) then
-       forbidden ~body:"Access denied" ()
-     else
-       ok ~body:resource ()
-   ]}
+   ```ocaml
+   if not (has_permission user resource) then
+     forbidden ~body:"Access denied" ()
+   else
+     ok ~body:resource ()
+   ```
 *)
 val forbidden: response
 
@@ -340,12 +254,11 @@ val forbidden: response
 
    Most common error response.
 
-   Example:
-   {[
-     match find_user id with
-     | Some user -> ok ~body:(user_to_json user) ()
-     | None -> not_found ~body:"User not found" ()
-   ]}
+   ```ocaml
+   match find_user id with
+   | Some user -> ok ~body:(user_to_json user) ()
+   | None -> not_found ~body:"User not found" ()
+   ```
 *)
 val not_found: response
 
@@ -354,13 +267,12 @@ val not_found: response
 
    Include [Allow] header with supported methods.
 
-   Example:
-   {[
-     method_not_allowed
-       ~headers:[("Allow", "GET, POST")]
-       ~body:"Method not allowed"
-       ()
-   ]}
+   ```ocaml
+   method_not_allowed
+     ~headers:[ ("Allow", "GET, POST") ]
+     ~body:"Method not allowed"
+     ()
+   ```
 *)
 val method_not_allowed: response
 
@@ -434,34 +346,26 @@ val blocked_by_windows_parental_controls: response
 val client_closed_request: response
 
 (**
-   {1 Server Error Responses (5xx)}
-
-   Errors caused by server failures.
-*)
-
-(**
    [500 Internal Server Error] - Generic server error.
 
    Use when an unexpected error occurs.
 
-   Example:
-   {[
-     try
-       process_request req
-     with exn ->
-       Log.error "Request failed: %s" (Printexc.to_string exn);
-       internal_server_error ~body:"Internal server error" ()
-   ]}
+   ```ocaml
+   try
+     process_request req
+   with exn ->
+     Log.error (Exception.to_string exn);
+     internal_server_error ~body:"Internal server error" ()
+   ```
 *)
 val internal_server_error: response
 
 (**
    [501 Not Implemented] - Feature not implemented.
 
-   Example:
-   {[
-     not_implemented ~body:"This feature is coming soon" ()
-   ]}
+   ```ocaml
+   not_implemented ~body:"This feature is coming soon" ()
+   ```
 *)
 val not_implemented: response
 
@@ -473,16 +377,15 @@ val bad_gateway: response
 
    Use during maintenance or when overloaded.
 
-   Example:
-   {[
-     if is_maintenance_mode () then
-       service_unavailable
-         ~headers:[("Retry-After", "3600")]
-         ~body:"Under maintenance"
-         ()
-     else
-       process_request req
-   ]}
+   ```ocaml
+   if is_maintenance_mode () then
+     service_unavailable
+       ~headers:[ ("Retry-After", "3600") ]
+       ~body:"Under maintenance"
+       ()
+   else
+     process_request req
+   ```
 *)
 val service_unavailable: response
 
@@ -509,8 +412,6 @@ val not_extended: response
 
 (** `511 Network Authentication Required` *)
 val network_authentication_required: response
-
-(** ## Unofficial Status Codes *)
 
 (** `103 Checkpoint` *)
 val checkpoint: response

@@ -1,17 +1,11 @@
-(**
-   # HTTP Request Representation
-
-   Wraps the parsed HTTP request with body data and metadata.
-*)
-
+(** HTTP request plus body data and remaining body metadata. *)
 open Std
 
-(** HTTP request with parsed headers and body *)
-
-(** Create a request from parsed HTTP data *)
+(** HTTP request with parsed headers and body. *)
 type t
 
-val of_http: body:string -> Net.Http.Request.t -> t
+(** Create a request from parsed HTTP data. *)
+val from_http: body:string -> Net.Http.Request.t -> t
 
 (** Returns the HTTP method *)
 val method_: t -> Net.Http.Method.t

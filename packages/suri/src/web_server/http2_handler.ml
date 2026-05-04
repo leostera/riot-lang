@@ -228,7 +228,7 @@ let request_of_header_pairs = fun headers body ->
                     let request = Net.Http.Request.create method_ uri in
                     Net.Http.Request.with_headers request (Net.Http.Header.of_list headers)
                   in
-                  Ok (Request.of_http ~body http_request)
+                  Ok (Request.from_http ~body http_request)
             )
         )
     )

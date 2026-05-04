@@ -117,13 +117,13 @@ let to_http = fun request ->
 let to_web_request = fun request ->
   match to_http request with
   | Error error -> Error error
-  | Ok http_request -> Ok (Web_server.Request.of_http ~body:request.body http_request)
+  | Ok http_request -> Ok (Web_server.Request.from_http ~body:request.body http_request)
 
 let to_conn = fun request ->
   match to_web_request request with
   | Error error -> Error error
   | Ok web_request ->
-      Ok (Middleware.Conn.of_request
+      Ok (Middleware.Conn.from_request
         ~peer:request.peer
         ~params:request.params
         ~body_params:request.body_params

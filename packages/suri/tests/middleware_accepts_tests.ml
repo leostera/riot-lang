@@ -45,7 +45,7 @@ let websocket_request = fun
           ~fn:(fun req (name, value) ->
             Net.Http.Request.with_header req name value)
   in
-  Suri.Request.of_http ~body:"" http_req
+  Suri.Request.from_http ~body:"" http_req
 
 let http_request = fun
   ?(method_ = Net.Http.Method.Get) ?(version = Net.Http.Version.Http11) ?(headers = []) () ->

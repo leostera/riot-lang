@@ -1,312 +1,49 @@
+(**
+   Experimental actor-based web framework for HTTP servers, middleware, components, and LiveView.
+
+   Suri applications are middleware pipelines. Each middleware receives a
+   `Conn.t`, updates request or response state, and returns the next connection.
+
+   ```ocaml
+   open Std
+   open Suri
+
+   let app = [
+     (fun conn -> Conn.respond ~status:Net.Http.Status.Ok ~body:"Hello, World!" conn);
+   ]
+
+   let main ~args:_ =
+     match Suri.start_link app with
+     | Ok _supervisor ->
+         let rec loop () =
+           sleep (Time.Duration.from_secs 100);
+           loop ()
+         in
+         loop ()
+     | Error error ->
+         Error (Failure (Suri.start_error_to_string error))
+
+   let () = Runtime.run ~main ~args:Env.args ()
+   ```
+
+   Configure the server before starting it:
+
+   ```ocaml
+   match Suri.config ~port:8080 () with
+   | Error errors ->
+       Error (Failure (Suri.Config.errors_to_string errors))
+   | Ok config ->
+       Suri.start_link ~config app
+   ```
+*)
 open Std
 
 (**
-   {1 Suri - High-Performance Web Framework for OCaml}
-
-   Suri is an experimental, actor-based web framework built on {!Std} and
-   {!Runtime}. It provides the framework pieces for building typed HTTP
-   applications while protocol, security, and operational hardening continue.
-
-   {2 Table of Contents}
-
-   - {{!section-why}Why Suri?}
-   - {{!section-quickstart}Quick Start}
-   - {{!section-modules}Module Overview}
-   - {{!section-examples}Examples}
-   - {{!section-architecture}Architecture}
-
-   {2:why Why Suri?}
-
-   {b ✅ Actor-Based Concurrency}
-   - Built on Std.Runtime's lightweight processes
-   - Supervised connection pools with automatic restart
-   - Handle thousands of concurrent connections efficiently
-
-   {b ✅ Type-Safe Components}
-   - React-style component system for building UIs
-   - Static HTML rendering with experimental LiveView integration
-   - No inline JavaScript required
-
-   {b ✅ Composable Middleware}
-   - Router with parameter extraction
-   - Pipeline-based request processing
-   - Easy to write custom middleware
-
-   {b Current Status}
-   - HTTP/1.1 server foundation with keep-alive support
-   - WebSocket support via Channel API is experimental
-   - LiveView, sessions, CSRF, and HTTP/2 are still being hardened
-   - Do not treat Suri as production-ready yet
-
-   {2:quickstart Quick Start}
-
-   {3 Hello World}
-
-   The simplest possible Suri server - just a list of middleware!
-
-   {[
-     open Std
-     open Suri
-
-     let app = [
-       (fun conn -> Conn.respond conn ~status:Ok ~body:"Hello, World!")
-     ]
-
-     let main ~args:_ =
-       match Suri.start_link app with
-       | Ok _ ->
-           Log.info "Server running on http://0.0.0.0:4000";
-           let rec loop () = sleep (Time.Duration.from_secs 100); loop () in
-           loop ()
-       | Error error ->
-           Error (Failure (Suri.start_error_to_string error))
-
-     let () = Runtime.run ~main ~args:Env.args ()
-   ]}
-
-   {3 With Custom Port}
-
-   {[
-     match Suri.config ~port:8080 () with
-     | Error errors ->
-         Error (Failure (Suri.Config.errors_to_string errors))
-     | Ok config ->
-         Suri.start_link ~config app
-   ]}
-
-   {3 With Routing and Middleware}
-
-   Compose middleware as a simple list:
-
-   {[
-     open Std
-     open Suri
-
-     (* Custom middleware *)
-     let logger conn =
-       Log.info ("Request: " ^ Conn.uri conn);
-       conn
-
-     let cors conn =
-       Conn.with_header conn "Access-Control-Allow-Origin" "*"
-
-     (* Routes *)
-     let routes = Middleware.Router.[
-       get "/" (fun conn -> Conn.respond conn ~status:Ok ~body:"Home");
-       get "/about" (fun conn -> Conn.respond conn ~status:Ok ~body:"About");
-     ]
-
-     (* App is just a list! *)
-     let app = [
-       logger;
-       cors;
-       Middleware.Router.middleware routes;
-     ]
-
-     let main ~args:_ =
-       match Suri.start_link app with
-       | Ok _ ->
-           Log.info "Server running";
-           let rec loop () = sleep (Time.Duration.from_secs 100); loop () in
-           loop ()
-       | Error error ->
-           Error (Failure (Suri.start_error_to_string error))
-
-     let () = Runtime.run ~main ~args:Env.args ()
-   ]}
-
-   {3 Custom Port}
-
-   Override defaults with optional parameters:
-
-   {[
-     match Suri.config ~port:8080 () with
-     | Error errors ->
-         Error (Failure (Suri.Config.errors_to_string errors))
-     | Ok config ->
-         Suri.start_link ~config app
-   ]}
-
-   {3 With Routing}
-
-   Use middleware for routing - it's just a list of functions!
-
-   {[
-     open Std
-     open Suri
-
-     (* Define your middleware *)
-     let logger conn =
-       Log.info ("Request: " ^ Middleware.Conn.uri conn);
-       conn
-
-     let routes = Middleware.Router.[
-       get "/" (fun conn -> Middleware.Conn.respond conn ~status:Ok ~body:"Home");
-       get "/about" (fun conn -> Middleware.Conn.respond conn ~status:Ok ~body:"About");
-     ]
-
-     (* Pipeline is just a list! *)
-     let app = [
-       logger;
-       Middleware.Router.middleware routes;
-     ]
-
-     (* Handler runs the pipeline *)
-     let handler socket_conn req =
-       let conn = Middleware.Conn.make socket_conn req in
-       let conn = Middleware.Pipeline.run conn app in
-       close (Middleware.Conn.to_response conn)
-
-     let main ~args:_ =
-       match Suri.start_link app with
-       | Ok _ ->
-           Log.info "Server with routing on http://0.0.0.0:4000";
-           let rec loop () = sleep (Time.Duration.from_secs 100); loop () in
-           loop ()
-       | Error error ->
-           Error (Failure (Suri.start_error_to_string error))
-
-     let () = Runtime.run ~main ~args:Env.args ()
-   ]}
-
-   {3 Type-Safe Components}
-
-   {[
-     open Std
-     open Suri
-     open Suri.Component
-
-     let welcome_page : unit t =
-       html [
-         head [
-           title_ [text "Welcome"];
-           meta ~attrs:[attr "charset" "UTF-8"] ();
-         ];
-         body [
-           div ~attrs:[class_ "container"] [
-             h1 [text "Welcome to Suri"];
-             p [text "Build type-safe web apps with OCaml"];
-             button ~attrs:[class_ "btn"] [text "Get Started"];
-           ];
-         ];
-       ]
-
-     let handler _conn _req =
-       let html = to_html welcome_page in
-       WebServer.Response.ok
-         ~headers:(Http.Header.of_list [("Content-Type", "text/html")])
-         ~body:html
-         ()
-   ]}
-
-   {2:modules Module Overview}
-
-   {3 Core Server Modules}
-
-   - {!SocketPool} - Low-level TCP connection pool with protocol abstraction
-   - {!WebServer} - HTTP/1.1 server with request/response handling
-   - {!Middleware} - Composable middleware pipeline and routing
-   - {!Channel} - WebSocket handler abstraction
-
-   {3 UI & Component Modules}
-
-   - {!Component} - Type-safe HTML component system (static + LiveView)
-
-   {2:examples Examples}
-
-   All examples are available in [packages/suri/examples/].
-
-   {3 Available Examples}
-
-   - [hello_world.ml] - Minimal HTTP server
-   - [routing.ml] - Router with middleware pipeline
-   - [json_api.ml] - RESTful JSON API with parameter extraction
-   - [basic_component.ml] - Full-page component example with forms
-   - [design_system.ml] - Reusable component library pattern
-   - [liveview_migration.ml] - Static HTML → LiveView migration guide
-
-   {b Run an example:}
-   {[
-     riot run suri:hello_world
-     riot run suri:routing
-     riot run suri:basic_component
-   ]}
-
-   {2:architecture Architecture}
-
-   {3 Supervision Tree}
-
-   {v
-     WebServer.Supervisor
-       ├── SocketPool.Supervisor
-       │   ├── Acceptor 1
-       │   ├── Acceptor 2
-       │   └── ... (configurable)
-       └── Connection Handlers (dynamic)
-   v}
-
-   {3 Request Flow}
-
-   {v
-     TCP Accept → Parse HTTP → Middleware Pipeline → Handler → Send Response
-         ↓            ↓              ↓                   ↓
-     SocketPool   WebServer     Router/Logger      User Code
-   v}
-
-   {3 Component Rendering}
-
-   {v
-     Component Tree → to_html → Static HTML (events ignored)
-                   ↓
-                 LiveView → Interactive (events → server)
-   v}
-
-   {2 Performance Tips}
-
-   {3 Tune Connection Pool}
-
-   Increase acceptors for high concurrency:
-   {[
-     let config = WebServer.Config.make ~acceptors:200 ()
-   ]}
-
-   {3 Adjust Buffer Sizes}
-
-   Larger buffers for big requests/responses:
-   {[
-     let config = WebServer.Config.make ~buffer_size:8192 ()
-   ]}
-
-   {3 Monitor Health}
-
-   Use supervision API to monitor active connections:
-   {[
-     let count = Supervisor.Dynamic.count_children supervisor in
-     Log.info "Active connections: %d" count.active
-   ]}
-
-   {2 Next Steps}
-
-   - Read the examples in [packages/suri/examples/]
-   - Explore the {!Component} module for UI building
-   - Check out {!Middleware.Router} for routing patterns
-   - See {!WebServer.Response} for response helpers
-
-   ---
-
-   {1 API Reference}
+   Server configuration including network settings, HTTP limits, and LiveView
+   session security.
 *)
-
-(** {2 Top-Level API} *)
-
 module Config: sig
-  (**
-     Server Configuration
-
-     Compound configuration for the entire Suri server including
-     network settings, HTTP limits, protocol-specific options, and
-     LiveView session security.
-  *)
+  (** Runtime environment. *)
   type env =
     | Development
     | Test
@@ -332,8 +69,6 @@ module Config: sig
     (** Secret key for signing LiveView session tokens (min 32 characters) *)
   }
 
-  val default: t
-
   (**
      Default configuration:
      - host: "0.0.0.0" (all interfaces)
@@ -353,6 +88,7 @@ module Config: sig
      - buffer_size: 4096
      - liveview_secret: "INSECURE-CHANGE-ME-TO-AT-LEAST-32-CHARS" (MUST change in production!)
   *)
+  val default: t
 
   (** Configuration via Std.Config - see Config.mli for full documentation *)
   val spec: Std.Config.Spec.t
@@ -397,6 +133,7 @@ module Config: sig
   val get: Std.Config.Spec.value -> (t, Std.Config.error) result
 end
 
+(** Create server configuration with optional parameters. *)
 val config:
   ?env:Config.env ->
   ?host:string ->
@@ -418,13 +155,10 @@ val config:
   unit ->
   (Config.t, Config.error list) result
 
-(** Create server configuration with optional parameters. *)
-(** {2 Core Types} *)
-
+(** A middleware function: `Conn.t -> Conn.t`. *)
 type middleware = Middleware.Pipeline.middleware
-(** A middleware function: [Conn.t -> Conn.t] *)
+(** A handler is a middleware pipeline. *)
 type handler = Middleware.Pipeline.t
-(** A handler is just a list of middleware functions *)
 type start_error =
   | InvalidConfig of Config.error list
   | InvalidAddress of Std.Net.Addr.error
@@ -434,49 +168,40 @@ type start_error =
 
 val start_error_to_string: start_error -> string
 
-(** {2 Starting the Server} *)
-
-val start_link: ?config:Config.t -> handler -> (Supervisor.Dynamic.t, start_error) result
-
 (**
    Start a Suri web server with a middleware pipeline.
 
-   Your application is simply a list of [Conn.t -> Conn.t] functions.
+   Your application is simply a list of `Conn.t -> Conn.t` functions.
    Each middleware can transform the connection, set response data,
    or halt the pipeline.
 
-   Examples:
+   ```ocaml
+   let app = [
+     (fun conn -> Conn.respond conn ~status:Ok ~body:"Hello!");
+   ]
 
-   {[
-     (* Minimal *)
-     let app = [
-       (fun conn -> Conn.respond conn ~status:Ok ~body:"Hello!")
-     ]
-     Suri.start_link app
+   Suri.start_link app
+   ```
 
-     (* With middleware *)
-     let app = [
-       logger;
-       auth;
-       router;
-     ]
-     Suri.start_link app
+   ```ocaml
+   let app = [
+     logger;
+     auth;
+     router;
+   ]
 
-     (* Custom config *)
-     match Suri.config ~port:8080 () with
-     | Error errors ->
-         Error (Failure (Suri.Config.errors_to_string errors))
-     | Ok config ->
-         Suri.start_link ~config app
-   ]}
+   Suri.start_link app
+   ```
 
-   @param config Server configuration (defaults to {!Config.default})
-   @param handler Middleware pipeline (list of Conn.t -> Conn.t)
-   @return Ok supervisor_pid if successful, Error _ if startup fails
+   ```ocaml
+   match Suri.config ~port:8080 () with
+   | Error errors ->
+       Error (Failure (Suri.Config.errors_to_string errors))
+   | Ok config ->
+       Suri.start_link ~config app
+   ```
 *)
-(** {2 User-Facing Modules} *)
-
-module Conn = Middleware.Conn
+val start_link: ?config:Config.t -> handler -> (Supervisor.Dynamic.t, start_error) result
 
 (**
    Connection type and transformations.
@@ -484,50 +209,48 @@ module Conn = Middleware.Conn
    This is your primary API for handling requests in middleware.
 
    Core functions:
-   - [respond ~status ~body] - Set response
-   - [with_header key value] - Add header
-   - [with_body body] - Set body
-   - [send] - Mark as sent (halts pipeline)
-   - [uri], [method_], [headers] - Request accessors
-   - [params] - Get route parameters
+   - `respond ~status ~body` sets response data.
+   - `with_header key value` adds a response header.
+   - `with_body body` sets the response body.
+   - `send` marks the connection as sent and halts the pipeline.
+   - `uri`, `method_`, and `headers` expose request metadata.
+   - `params` returns route parameters.
 
-   See {!Middleware.Conn} for full API.
+   See `Middleware.Conn` for the full API.
 *)
-module Response = Web_server.Response
+module Conn = Middleware.Conn
 
 (**
    HTTP Response builders.
 
-   Most users should use [Conn.respond] in middleware, but [Response]
+   Most users should use `Conn.respond` in middleware, but `Response`
    is useful for building responses directly.
 
-   See {!Web_server.Response} for full documentation.
+   See `Web_server.Response` for full documentation.
 *)
-module Request = Web_server.Request
+module Response = Web_server.Response
 
 (**
    HTTP Request accessors.
 
-   Most users should use [Conn] methods in middleware, but [Request]
+   Most users should use `Conn` methods in middleware, but `Request`
    is useful for extracting request data.
 
-   See {!Web_server.Request} for full documentation.
+   See `Web_server.Request` for full documentation.
 *)
-(** {2 Framework Modules} *)
-
-module Middleware = Middleware
+module Request = Web_server.Request
 
 (**
    Composable middleware framework.
 
    Includes:
-   - {!Middleware.Conn} - Connection context
-   - {!Middleware.Pipeline} - Middleware composition
-   - {!Middleware.Router} - Pattern-based routing
+   - `Middleware.Conn`: connection context.
+   - `Middleware.Pipeline`: middleware composition.
+   - `Middleware.Router`: pattern-based routing.
 
-   See {!Middleware} for complete documentation.
+   See `Middleware` for complete documentation.
 *)
-module Component = Component
+module Middleware = Middleware
 
 (**
    Type-safe HTML component system.
@@ -541,9 +264,9 @@ module Component = Component
    - 15+ event handlers for LiveView
    - Conditional rendering helpers
 
-   See {!Component} for complete documentation.
+   See `Component` for complete documentation.
 *)
-module LiveView = Liveview
+module Component = Component
 
 (**
    Server-rendered components with live updates.
@@ -552,13 +275,14 @@ module LiveView = Liveview
    sent to the server over WebSocket and DOM patches are
    sent back to the client.
 
-   See {!LiveView} for complete documentation.
+   See `LiveView` for complete documentation.
 *)
-module Testing = Testing
+module LiveView = Liveview
 
 (**
    Helpers for exercising real Suri applications and middleware in tests.
 
-   See {!Testing} for request builders, app runners, middleware helpers, and
+   See `Testing` for request builders, app runners, middleware helpers, and
    response expectations.
 *)
+module Testing = Testing

@@ -769,7 +769,7 @@ let handle_data_waiting_headers = fun full_data conn state ->
               let body_received = String.length remaining in
               if body_received >= expected_length then
                 let (body, remaining_data) = split_request_body remaining expected_length in
-                let req = Request.of_http ~body http_req in
+                let req = Request.from_http ~body http_req in
                 handle_request
                   {
                     state with
@@ -804,7 +804,7 @@ let handle_data_waiting_body = fun data conn state http_req expected_length accu
   if body_length >= expected_length then
     let (complete_body, remaining_data) = split_request_body new_body expected_length in
     (* Process the request with complete body *)
-    let req = Request.of_http ~body:complete_body http_req in
+    let req = Request.from_http ~body:complete_body http_req in
     let result =
       handle_request
         {

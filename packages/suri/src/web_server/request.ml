@@ -6,7 +6,7 @@ type t = {
   remaining: int;
 }
 
-let of_http = fun ~body http_request ->
+let from_http = fun ~body http_request ->
   let remaining =
     match Net.Http.Request.get_header http_request "content-length" with
     | Some len_str -> (

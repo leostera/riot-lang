@@ -44,7 +44,7 @@ let websocket_request = fun
           ~fn:(fun req (name, value) ->
             Net.Http.Request.with_header req name value)
   in
-  Suri.Request.of_http ~body:"" http_req
+  Suri.Request.from_http ~body:"" http_req
 
 let http_request = fun
   ?(method_ = Net.Http.Method.Get) ?(version = Net.Http.Version.Http11) ?(headers = []) () ->
@@ -338,7 +338,7 @@ let test_http1_request_headers_allow_http10_without_host = fun _ctx ->
 let test_http1_keep_alive_defaults_for_http11 = fun _ctx ->
   let req =
     http_request ~version:Net.Http.Version.Http11 ()
-    |> Suri.Request.of_http ~body:""
+    |> Suri.Request.from_http ~body:""
   in
   Test.assert_true (Http1.should_keep_alive req);
   Ok ()
@@ -349,7 +349,7 @@ let test_http1_keep_alive_parses_close_token_case_insensitively = fun _ctx ->
       ~version:Net.Http.Version.Http11
       ~headers:[ ("connection", "keep-alive, CLOSE"); ]
       ()
-    |> Suri.Request.of_http ~body:""
+    |> Suri.Request.from_http ~body:""
   in
   Test.assert_false (Http1.should_keep_alive req);
   Ok ()
@@ -360,7 +360,7 @@ let test_http1_keep_alive_parses_http10_keep_alive_token = fun _ctx ->
       ~version:Net.Http.Version.Http10
       ~headers:[ ("connection", "Upgrade, Keep-Alive"); ]
       ()
-    |> Suri.Request.of_http ~body:""
+    |> Suri.Request.from_http ~body:""
   in
   Test.assert_true (Http1.should_keep_alive req);
   Ok ()
@@ -368,7 +368,7 @@ let test_http1_keep_alive_parses_http10_keep_alive_token = fun _ctx ->
 let test_http1_keep_alive_limit_allows_before_final_request = fun _ctx ->
   let req =
     http_request ~version:Net.Http.Version.Http11 ()
-    |> Suri.Request.of_http ~body:""
+    |> Suri.Request.from_http ~body:""
   in
   Test.assert_true
     (Http1.should_continue_keep_alive ~max_keep_alive_requests:2 ~requests_processed:1 req);
@@ -377,7 +377,7 @@ let test_http1_keep_alive_limit_allows_before_final_request = fun _ctx ->
 let test_http1_keep_alive_limit_closes_after_final_request = fun _ctx ->
   let req =
     http_request ~version:Net.Http.Version.Http11 ()
-    |> Suri.Request.of_http ~body:""
+    |> Suri.Request.from_http ~body:""
   in
   Test.assert_false
     (Http1.should_continue_keep_alive ~max_keep_alive_requests:2 ~requests_processed:2 req);
