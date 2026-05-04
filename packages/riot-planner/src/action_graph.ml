@@ -27,6 +27,30 @@ let nodes = fun t -> topo_sort t
 
 let graph = fun t -> t.graph
 
+let clone = fun t ->
+  let cloned = create () in
+  let node_by_id = HashMap.with_capacity ~size:(List.length (nodes t)) in
+  G.iter
+    t.graph
+    ~fn:(fun _id node ->
+      let cloned_node = add_node cloned node.value in
+      let _ = HashMap.insert node_by_id ~key:node.id ~value:cloned_node in
+      ());
+  G.iter
+    t.graph
+    ~fn:(fun _id node ->
+      match HashMap.get node_by_id ~key:node.id with
+      | None -> ()
+      | Some cloned_node ->
+          List.for_each
+            node.deps
+            ~fn:(fun dep_id ->
+              match HashMap.get node_by_id ~key:dep_id with
+              | None -> ()
+              | Some cloned_dep_node -> add_dependency cloned cloned_node ~depends_on:cloned_dep_node)
+    );
+  cloned
+
 let to_action_list = fun t ->
   let sorted = topo_sort t in
   sorted

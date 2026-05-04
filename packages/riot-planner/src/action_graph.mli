@@ -63,6 +63,9 @@ val nodes: t -> Action_node.t list
 (** Returns all nodes in deterministic topological order *)
 val graph: t -> Action_node.action_spec G.t
 
+(** Clone the action graph so callers can mutate graph topology independently. *)
+val clone: t -> t
+
 val to_action_list: t -> Action.t list
 
 (**

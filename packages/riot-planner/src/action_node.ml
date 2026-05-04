@@ -61,9 +61,27 @@ let resolve_source_for_hash = fun ~(package:Package.t) ~src_path ->
 
 let hash_file = fun ~(package:Package.t) path ->
   let readable_path = resolve_source_for_hash ~package ~src_path:path in
-  match Fs.read readable_path with
-  | Ok contents -> Crypto.hash_string contents
+  match Fs.File.open_read readable_path with
   | Error _ -> Crypto.hash_string (Path.to_string path)
+  | Ok file ->
+      let state = Crypto.Sha256.create () in
+      let reader = Fs.File.to_reader file in
+      let buffer = IO.Buffer.create ~size:16_384 in
+      let rec loop () =
+        IO.Buffer.clear buffer;
+        match IO.Reader.read reader ~into:buffer with
+        | Ok 0 -> true
+        | Ok _ ->
+            Crypto.Sha256.write_iovec state (IO.Buffer.to_iovec buffer);
+            loop ()
+        | Error _ -> false
+      in
+      let success = loop () in
+      let _ = Fs.File.close file in
+      if success then
+        Crypto.Sha256.finish state
+      else
+        Crypto.hash_string (Path.to_string path)
 
 let make = fun ~actions ~outs ~srcs ~(package:Package.t) ~toolchain ~dependency_hashes ~deps ->
   let open Crypto in

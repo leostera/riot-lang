@@ -42,6 +42,14 @@ type dev_artifacts = Riot_model.Package.dev_artifacts = {
 
 type package_scope = build_scope
 
+type realized_node = {
+  realized_package: Package.t;
+  realized_scope: package_scope;
+  realization_duration: Time.Duration.t;
+}
+
+type realization_task = package_scope list * Package_manifest.t
+
 type package_node =
   | Unplanned of {
       package: Package.t;
@@ -214,6 +222,87 @@ let empty_breakdown = {
   edge_wiring_duration = Time.Duration.zero;
 }
 
+let add_realized_node_to_breakdown = fun breakdown realized ->
+  match realized.realized_scope with
+  | Build ->
+      {
+        breakdown with
+        build_node_realization_count = breakdown.build_node_realization_count + 1;
+        build_node_realization_duration = Time.Duration.add
+          breakdown.build_node_realization_duration
+          realized.realization_duration;
+      }
+  | Runtime ->
+      {
+        breakdown with
+        runtime_node_realization_count = breakdown.runtime_node_realization_count + 1;
+        runtime_node_realization_duration = Time.Duration.add
+          breakdown.runtime_node_realization_duration
+          realized.realization_duration;
+      }
+  | Dev ->
+      {
+        breakdown with
+        dev_node_realization_count = breakdown.dev_node_realization_count + 1;
+        dev_node_realization_duration = Time.Duration.add
+          breakdown.dev_node_realization_duration
+          realized.realization_duration;
+      }
+
+let realized_node = fun ~scope ~package ~realization_duration ->
+  {
+    realized_package = package;
+    realized_scope = scope;
+    realization_duration;
+  }
+
+let scope_requested = fun scope scopes ->
+  List.any scopes ~fn:(fun requested -> requested = scope)
+
+let duration_since = fun started_at ->
+  Time.Instant.duration_since ~earlier:started_at (Time.Instant.now ())
+
+let realize_task = fun ~dev_artifacts workspace (scopes, pkg) ->
+  let nodes = Vector.with_capacity ~size:(List.length scopes) in
+  if scope_requested Build scopes then (
+    let realization_started_at = Time.Instant.now () in
+    let package = realize_projected_package workspace Build pkg in
+    Vector.push
+      nodes
+      ~value:(realized_node
+        ~scope:Build
+        ~package
+        ~realization_duration:(duration_since realization_started_at))
+  );
+  if scope_requested Dev scopes then (
+    let realization_started_at = Time.Instant.now () in
+    let package = Workspace.realize_package ~intent:Package.Dev pkg in
+    let realization_duration = duration_since realization_started_at in
+    if scope_requested Runtime scopes then
+      Vector.push
+        nodes
+        ~value:(realized_node
+          ~scope:Runtime
+          ~package:(projected_package Runtime package)
+          ~realization_duration:Time.Duration.zero);
+    Vector.push
+      nodes
+      ~value:(realized_node
+        ~scope:Dev
+        ~package:(projected_package ~dev_artifacts Dev package)
+        ~realization_duration)
+  ) else if scope_requested Runtime scopes then (
+    let realization_started_at = Time.Instant.now () in
+    let package = realize_projected_package workspace Runtime pkg in
+    Vector.push
+      nodes
+      ~value:(realized_node
+        ~scope:Runtime
+        ~package
+        ~realization_duration:(duration_since realization_started_at))
+  );
+  Array.to_list (Vector.to_array nodes)
+
 let create_with_breakdown
   ~scope
   ?(dev_artifacts = {tests = true; examples = true; benches = true})
@@ -223,7 +312,6 @@ let create_with_breakdown
   let graph = G.make () in
   let name_to_node = HashMap.create () in
   let missing = vec [] in
-  let breakdown = ref empty_breakdown in
   let should_create_dev_node =
     match dev_roots with
     | None -> fun (_pkg: Package_manifest.t) -> true
@@ -243,82 +331,47 @@ let create_with_breakdown
     in
     ()
   in
-  let realize_and_insert_node scope (pkg: Package_manifest.t) =
-    let realization_started_at = Time.Instant.now () in
-    let package =
-      match scope with
-      | Dev ->
-          Workspace.realize_package ~intent:Package.Dev pkg
-          |> projected_package ~dev_artifacts scope
-      | Build
-      | Runtime -> realize_projected_package workspace scope pkg
-    in
-    let realization_duration =
-      Time.Instant.duration_since ~earlier:realization_started_at (Time.Instant.now ())
-    in
-    breakdown := (
-      match scope with
-      | Build ->
-          {
-            (!breakdown) with
-            build_node_realization_count = (!breakdown).build_node_realization_count + 1;
-            build_node_realization_duration = Time.Duration.add
-              (!breakdown).build_node_realization_duration
-              realization_duration;
-          }
-      | Runtime ->
-          {
-            (!breakdown) with
-            runtime_node_realization_count = (!breakdown).runtime_node_realization_count + 1;
-            runtime_node_realization_duration = Time.Duration.add
-              (!breakdown).runtime_node_realization_duration
-              realization_duration;
-          }
-      | Dev ->
-          {
-            (!breakdown) with
-            dev_node_realization_count = (!breakdown).dev_node_realization_count + 1;
-            dev_node_realization_duration = Time.Duration.add
-              (!breakdown).dev_node_realization_duration
-              realization_duration;
-          }
-    );
-    insert_node package scope
-  in
-  (
+  let task_scopes =
     match scope with
-    | Build ->
-        List.for_each
-          workspace.packages
-          ~fn:(fun (pkg: Package_manifest.t) -> realize_and_insert_node Build pkg)
-    | Runtime
+    | Build -> fun (_pkg: Package_manifest.t) -> [ Build ]
+    | Runtime ->
+        fun pkg ->
+          if needs_build_scope_node pkg then
+            [ Build; Runtime ]
+          else
+            [ Runtime ]
     | Dev ->
-        List.for_each
-          workspace.packages
-          ~fn:(fun (pkg: Package_manifest.t) ->
-            if needs_build_scope_node pkg then
-              realize_and_insert_node Build pkg)
-  );
-  (
-    match scope with
-    | Build -> ()
-    | Runtime
-    | Dev ->
-        List.for_each
-          workspace.packages
-          ~fn:(fun (pkg: Package_manifest.t) -> realize_and_insert_node Runtime pkg)
-  );
-  (
-    match scope with
-    | Dev ->
-        List.for_each
-          workspace.packages
-          ~fn:(fun (pkg: Package_manifest.t) ->
+        fun pkg ->
+          let scopes =
             if should_create_dev_node pkg then
-              realize_and_insert_node Dev pkg)
-    | Build
-    | Runtime -> ()
-  );
+              [ Runtime; Dev ]
+            else
+              [ Runtime ]
+          in
+          if needs_build_scope_node pkg then
+            Build :: scopes
+          else
+            scopes
+  in
+  let realized_nodes =
+    WorkerPool.SimpleWorkerPool.run
+      ~tasks:(List.map workspace.packages ~fn:(fun pkg -> (task_scopes pkg, pkg)))
+      ~fn:(realize_task ~dev_artifacts workspace)
+      ()
+    |> List.sort ~compare:(fun (left_index, _) (right_index, _) ->
+      Int.compare left_index right_index)
+    |> List.map ~fn:(fun (_index, realized) -> realized)
+    |> List.concat
+  in
+  let breakdown =
+    List.fold_left
+      realized_nodes
+      ~init:empty_breakdown
+      ~fn:add_realized_node_to_breakdown
+  in
+  List.for_each
+    realized_nodes
+    ~fn:(fun realized -> insert_node realized.realized_package realized.realized_scope);
   let edge_wiring_started_at = Time.Instant.now () in
   List.for_each
     workspace.packages
@@ -410,7 +463,7 @@ let create_with_breakdown
   let edge_wiring_duration =
     Time.Instant.duration_since ~earlier:edge_wiring_started_at (Time.Instant.now ())
   in
-  breakdown := { (!breakdown) with edge_wiring_duration };
+  let breakdown = { breakdown with edge_wiring_duration } in
   let missing =
     Vector.iter missing
     |> Iterator.to_list
@@ -419,7 +472,7 @@ let create_with_breakdown
     if List.length missing > 0 then
       Error (MissingPackages { missing })
     else
-      Ok ({ graph; name_to_node }, !breakdown)
+      Ok ({ graph; name_to_node }, breakdown)
   in
   let () =
     trace_package_graph
@@ -439,6 +492,130 @@ let create_with_breakdown
 let create ~scope ?dev_artifacts ?dev_roots workspace =
   create_with_breakdown ~scope ?dev_artifacts ?dev_roots workspace
   |> Result.map ~fn:(fun (graph, _breakdown) -> graph)
+
+let clone_module_graph = fun (module_graph: Module_node.t G.t) ->
+  let cloned_graph = G.make () in
+  let node_by_id = HashMap.create () in
+  G.iter
+    module_graph
+    ~fn:(fun _id node ->
+      let cloned_value = { node.value with Module_node.open_modules = [] } in
+      let cloned_node = G.add_node cloned_graph cloned_value in
+      let _ = HashMap.insert node_by_id ~key:node.id ~value:cloned_node in
+      ());
+  G.iter
+    module_graph
+    ~fn:(fun _id node ->
+      match HashMap.get node_by_id ~key:node.id with
+      | None -> ()
+      | Some cloned_node ->
+          let cloned_open_modules =
+            List.filter_map
+              node.value.open_modules
+              ~fn:(fun open_node -> HashMap.get node_by_id ~key:open_node.id)
+          in
+          Module_node.set_open_modules cloned_node.value cloned_open_modules;
+          List.for_each
+            node.deps
+            ~fn:(fun dep_id ->
+              match HashMap.get node_by_id ~key:dep_id with
+              | None -> ()
+              | Some cloned_dep_node -> G.add_edge cloned_node ~depends_on:cloned_dep_node)
+    );
+  cloned_graph
+
+let clone_node_value = fun __tmp1 ->
+  match __tmp1 with
+  | Unplanned { package; scope } -> Unplanned { package; scope }
+  | Planned {
+      package;
+      scope;
+      module_graph;
+      action_graph;
+      hash;
+    } ->
+      Planned {
+        package;
+        scope;
+        module_graph = clone_module_graph module_graph;
+        action_graph = Action_graph.clone action_graph;
+        hash;
+      }
+  | Cached {
+      package;
+      scope;
+      hash;
+      artifact;
+      depset;
+      exports;
+    } ->
+      Cached {
+        package;
+        scope;
+        hash;
+        artifact;
+        depset;
+        exports;
+      }
+  | Built {
+      package;
+      scope;
+      module_graph;
+      action_graph;
+      hash;
+      artifact;
+      status;
+      depset;
+    } ->
+      Built {
+        package;
+        scope;
+        module_graph = clone_module_graph module_graph;
+        action_graph = Action_graph.clone action_graph;
+        hash;
+        artifact;
+        status;
+        depset;
+      }
+  | Failed {
+      package;
+      scope;
+      hash;
+      error;
+    } ->
+      Failed {
+        package;
+        scope;
+        hash;
+        error;
+      }
+  | Skipped { package; scope; reason } -> Skipped { package; scope; reason }
+
+let clone = fun pg ->
+  let graph = G.make () in
+  let name_to_node = HashMap.with_capacity ~size:(HashMap.length pg.name_to_node) in
+  let node_by_id = HashMap.with_capacity ~size:(HashMap.length pg.name_to_node) in
+  G.iter
+    pg.graph
+    ~fn:(fun id node ->
+      let cloned = G.add_node graph (clone_node_value node.value) in
+      let _ = HashMap.insert node_by_id ~key:id ~value:cloned in
+      let _ = HashMap.insert name_to_node ~key:(get_key node.value) ~value:cloned in
+      ());
+  G.iter
+    pg.graph
+    ~fn:(fun id node ->
+      match HashMap.get node_by_id ~key:id with
+      | None -> ()
+      | Some cloned_node ->
+          List.for_each
+            node.deps
+            ~fn:(fun dep_id ->
+              match HashMap.get node_by_id ~key:dep_id with
+              | None -> ()
+              | Some cloned_dep_node -> G.add_edge cloned_node ~depends_on:cloned_dep_node)
+    );
+  { graph; name_to_node }
 
 let get_node = fun pg package ->
   HashMap.get
@@ -503,11 +680,13 @@ let filter_for_packages = fun pg pkg_names ->
           ());
       let filtered_graph = G.make () in
       let filtered_name_to_node = HashMap.create () in
+      let filtered_node_by_id = HashMap.create () in
       G.iter
         pg.graph
         ~fn:(fun id node ->
           if HashSet.contains reachable_set ~value:id then
-            let new_node = G.add_node filtered_graph node.value in
+            let new_node = G.add_node filtered_graph (clone_node_value node.value) in
+            let _ = HashMap.insert filtered_node_by_id ~key:id ~value:new_node in
             let _ =
               HashMap.insert filtered_name_to_node ~key:(get_key node.value) ~value:new_node
             in
@@ -516,20 +695,17 @@ let filter_for_packages = fun pg pkg_names ->
         pg.graph
         ~fn:(fun id node ->
           if HashSet.contains reachable_set ~value:id then
-            match HashMap.get filtered_name_to_node ~key:(get_key node.value) with
+            match HashMap.get filtered_node_by_id ~key:id with
             | None -> ()
             | Some new_node ->
                 List.for_each
                   node.deps
                   ~fn:(fun dep_id ->
                     if HashSet.contains reachable_set ~value:dep_id then
-                      match G.get_node pg.graph dep_id with
-                      | Some dep_node -> (
-                          match HashMap.get filtered_name_to_node ~key:(get_key dep_node.value) with
-                          | Some new_dep_node -> G.add_edge new_node ~depends_on:new_dep_node
-                          | None -> ()
-                        )
-                      | None -> ()));
+                      match HashMap.get filtered_node_by_id ~key:dep_id with
+                      | Some new_dep_node -> G.add_edge new_node ~depends_on:new_dep_node
+                      | None -> ());
+      );
       { graph = filtered_graph; name_to_node = filtered_name_to_node }
 
 let filter_for_package = fun pg pkg_name -> filter_for_packages pg [ pkg_name ]

@@ -95,6 +95,9 @@ val create_with_breakdown:
   Workspace.t ->
   (t * create_breakdown, create_error) result
 
+(** Clone a package graph so callers can mutate package status independently. *)
+val clone: t -> t
+
 (** Extract the Package.t from a package_node *)
 val get_package: package_node -> Package.t
 

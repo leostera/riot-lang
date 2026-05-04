@@ -42,6 +42,10 @@ let make_workspace = fun packages ->
     ~packages
     ()
 
+let test_toolchain =
+  Riot_toolchain.init ~config:Riot_model.Toolchain_config.default
+  |> Result.expect ~msg:"expected test toolchain"
+
 let node_for = fun graph package_name scope ->
   Package_graph.package_key ~package_name scope
   |> Package_graph.get_node_by_key graph
@@ -61,6 +65,36 @@ let assert_same_keys = fun ~expected ~actual ->
   Test.assert_equal
     ~expected:(List.sort expected ~compare:Package.key_compare)
     ~actual:(List.sort actual ~compare:Package.key_compare)
+
+let module_for_package = fun package path ->
+  Riot_model.Module.make
+    ~namespace:(Namespace.from_list [ Package.root_module_name package ])
+    ~filename:(Path.v path)
+
+let module_node_for_path = fun module_graph path ->
+  let found = ref None in
+  Graph.SimpleGraph.iter
+    module_graph
+    ~fn:(fun _id node ->
+      match node.value.Riot_planner.Module_node.file with
+      | Concrete node_path when Path.equal node_path (Path.v path) -> found := Some node
+      | Concrete _
+      | Generated _ -> ());
+  !found
+  |> Option.expect ~msg:("expected module graph node for " ^ path)
+
+let add_write_action = fun action_graph package path content ->
+  let spec =
+    Riot_planner.Action_node.make
+      ~actions:[ Riot_planner.Action.WriteFile { destination = Path.v path; content } ]
+      ~outs:[ Path.v path ]
+      ~srcs:[]
+      ~package
+      ~toolchain:test_toolchain
+      ~dependency_hashes:(fun _ -> Crypto.hash_string "")
+      ~deps:[]
+  in
+  Riot_planner.Action_graph.add_node action_graph spec
 
 let runtime_scope_wires_workspace_like_graph = fun _ctx ->
   let packages = [
@@ -228,6 +262,37 @@ let scope_node_counts_match_expected_projection = fun _ctx ->
   Test.assert_equal ~expected:6 ~actual:(Package_graph.size dev_graph);
   Ok ()
 
+let dev_filter_keeps_self_runtime_dependency = fun _ctx ->
+  let app = make_package "app" in
+  let workspace = make_workspace [ app ] in
+  let graph =
+    Package_graph.create ~scope:Dev workspace
+    |> Result.expect ~msg:"expected dev graph"
+  in
+  let filtered = Package_graph.filter_for_package graph (package_name "app") in
+  let app_dev = node_for filtered "app" Dev in
+  assert_same_keys
+    ~expected:(package_keys_for_scope Runtime [ "app" ])
+    ~actual:(dependency_keys_for_node filtered app_dev);
+  Ok ()
+
+let clone_keeps_dev_self_runtime_dependency = fun _ctx ->
+  let app = make_package "app" in
+  let workspace = make_workspace [ app ] in
+  let graph =
+    Package_graph.create ~scope:Dev workspace
+    |> Result.expect ~msg:"expected dev graph"
+  in
+  let cloned =
+    Package_graph.filter_for_package graph (package_name "app")
+    |> Package_graph.clone
+  in
+  let app_dev = node_for cloned "app" Dev in
+  assert_same_keys
+    ~expected:(package_keys_for_scope Runtime [ "app" ])
+    ~actual:(dependency_keys_for_node cloned app_dev);
+  Ok ()
+
 let filter_for_unknown_package_returns_empty_graph = fun _ctx ->
   let packages = [ make_package "std"; make_package ~dependencies:[ "std" ] "app" ] in
   let workspace = make_workspace packages in
@@ -261,6 +326,115 @@ let get_unplanned_dependencies_only_reports_unplanned_runtime_dependencies = fun
     ~actual:(List.map unplanned ~fn:(fun (pkg: Package.t) -> pkg.name));
   Ok ()
 
+let clone_preserves_edges_with_independent_node_status = fun _ctx ->
+  let std = make_package "std" in
+  let app = make_package ~dependencies:[ "std" ] "app" in
+  let workspace = make_workspace [ std; app ] in
+  let original =
+    Package_graph.create ~scope:Runtime workspace
+    |> Result.expect ~msg:"expected runtime graph"
+  in
+  let cloned = Package_graph.clone original in
+  let std_runtime_key = Package_graph.package_key ~package_name:"std" Runtime in
+  Package_graph.mark_planned
+    cloned
+    std_runtime_key
+    ~module_graph:(Graph.SimpleGraph.make ())
+    ~action_graph:(Riot_planner.Action_graph.create ())
+    ~hash:(Crypto.hash_string "std-runtime");
+  let original_std =
+    Package_graph.get_node_by_key original std_runtime_key
+    |> Option.expect ~msg:"expected original std node"
+  in
+  let cloned_std =
+    Package_graph.get_node_by_key cloned std_runtime_key
+    |> Option.expect ~msg:"expected cloned std node"
+  in
+  (
+    match original_std.value with
+    | Package_graph.Unplanned _ -> ()
+    | _ -> panic "expected original graph to remain unplanned"
+  );
+  (
+    match cloned_std.value with
+    | Package_graph.Planned _ -> ()
+    | _ -> panic "expected cloned graph to be planned independently"
+  );
+  let cloned_app = node_for cloned "app" Runtime in
+  assert_same_keys
+    ~expected:(package_keys_for_scope Runtime [ "std" ])
+    ~actual:(dependency_keys_for_node cloned cloned_app);
+  Ok ()
+
+let clone_reconstructs_planned_nested_graphs = fun _ctx ->
+  let std = make_package "std" in
+  let workspace = make_workspace [ std ] in
+  let original =
+    Package_graph.create ~scope:Runtime workspace
+    |> Result.expect ~msg:"expected runtime graph"
+  in
+  let module_graph = Graph.SimpleGraph.make () in
+  let root_module =
+    Graph.SimpleGraph.add_node
+      module_graph
+      (Riot_planner.Module_node.make_ml
+        (module_for_package std "src/std.ml")
+        (Concrete (Path.v "src/std.ml")))
+  in
+  let child_module =
+    Graph.SimpleGraph.add_node
+      module_graph
+      (Riot_planner.Module_node.make_ml
+        (module_for_package std "src/child.ml")
+        (Concrete (Path.v "src/child.ml")))
+  in
+  Riot_planner.Module_node.set_open_modules root_module.value [ child_module ];
+  Graph.SimpleGraph.add_edge root_module ~depends_on:child_module;
+  let action_graph = Riot_planner.Action_graph.create () in
+  let std_runtime_key = Package_graph.package_key ~package_name:"std" Runtime in
+  Package_graph.mark_planned
+    original
+    std_runtime_key
+    ~module_graph
+    ~action_graph
+    ~hash:(Crypto.hash_string "std-runtime");
+  let cloned = Package_graph.clone original in
+  let original_planned =
+    Package_graph.get_node_by_key original std_runtime_key
+    |> Option.expect ~msg:"expected original std node"
+  in
+  let cloned_planned =
+    Package_graph.get_node_by_key cloned std_runtime_key
+    |> Option.expect ~msg:"expected cloned std node"
+  in
+  match (original_planned.value, cloned_planned.value) with
+  | (
+      Package_graph.Planned {
+        module_graph = original_module_graph;
+        action_graph = original_action_graph;
+        _;
+      },
+      Package_graph.Planned {
+        module_graph = cloned_module_graph;
+        action_graph = cloned_action_graph;
+        _;
+      }
+    ) ->
+      let cloned_root = module_node_for_path cloned_module_graph "src/std.ml" in
+      Riot_planner.Module_node.set_open_modules cloned_root.value [];
+      let _ = add_write_action cloned_action_graph std "generated.txt" "generated" in
+      let original_root = module_node_for_path original_module_graph "src/std.ml" in
+      Test.assert_equal ~expected:1 ~actual:(List.length original_root.value.open_modules);
+      Test.assert_equal ~expected:0 ~actual:(List.length cloned_root.value.open_modules);
+      Test.assert_equal
+        ~expected:0
+        ~actual:(List.length (Riot_planner.Action_graph.nodes original_action_graph));
+      Test.assert_equal
+        ~expected:1
+        ~actual:(List.length (Riot_planner.Action_graph.nodes cloned_action_graph));
+      Ok ()
+  | _ -> Error "expected both package graph nodes to be planned"
+
 let build_scope_wires_declared_build_dependencies = fun _ctx ->
   let packages = [ make_package "codegen"; make_package ~build_dependencies:[ "codegen" ] "app" ] in
   let workspace = make_workspace packages in
@@ -291,12 +465,20 @@ let tests =
       "runtime nodes with build dependencies depend on their own build nodes"
       runtime_nodes_with_build_dependencies_depend_on_their_build_nodes;
     case "scope node counts match expected projection" scope_node_counts_match_expected_projection;
+    case "dev filter keeps self runtime dependency" dev_filter_keeps_self_runtime_dependency;
+    case "clone keeps dev self runtime dependency" clone_keeps_dev_self_runtime_dependency;
     case
       "filter_for_unknown_package returns empty graph"
       filter_for_unknown_package_returns_empty_graph;
     case
       "get_unplanned_dependencies only reports unplanned runtime dependencies"
       get_unplanned_dependencies_only_reports_unplanned_runtime_dependencies;
+    case
+      "clone preserves edges with independent node status"
+      clone_preserves_edges_with_independent_node_status;
+    case
+      "clone reconstructs planned nested graphs"
+      clone_reconstructs_planned_nested_graphs;
     case
       "build scope wires declared build dependencies"
       build_scope_wires_declared_build_dependencies;

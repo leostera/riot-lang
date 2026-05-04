@@ -60,6 +60,41 @@ let empty_breakdown = {
   module_plan_duration = Time.Duration.zero;
 }
 
+let planner_trace_enabled = fun () ->
+  match Env.get Env.String ~var:"RIOT_PLANNER_TRACE" with
+  | Some ("1" | "true" | "yes") -> true
+  | _ -> false
+
+let duration_us = fun duration -> Time.Duration.to_micros duration
+
+let trace_breakdown = fun ~package ~status breakdown ->
+  if planner_trace_enabled () then
+    eprintln
+      (
+        "riot-planner package="
+        ^ Package_name.to_string package.Package.name
+        ^ " status="
+        ^ status
+        ^ " deps="
+        ^ Int.to_string breakdown.dependency_count
+        ^ " dep_check_us="
+        ^ Int.to_string (duration_us breakdown.dependency_check_duration)
+        ^ " input_hash_us="
+        ^ Int.to_string (duration_us breakdown.input_hash_duration)
+        ^ " artifact_lookup_us="
+        ^ Int.to_string (duration_us breakdown.artifact_lookup_duration)
+        ^ " artifact_hit="
+        ^ Bool.to_string breakdown.artifact_cache_hit
+        ^ " plan_bundle_lookup_us="
+        ^ Int.to_string (duration_us breakdown.plan_bundle_lookup_duration)
+        ^ " plan_bundle_decode_us="
+        ^ Int.to_string (duration_us breakdown.plan_bundle_decode_duration)
+        ^ " plan_bundle_hit="
+        ^ Bool.to_string breakdown.plan_bundle_cache_hit
+        ^ " module_plan_us="
+        ^ Int.to_string (duration_us breakdown.module_plan_duration)
+      )
+
 let group_namespace = fun root ->
   if Path.equal root (Path.v "src") then
     Namespace.empty
@@ -638,27 +673,33 @@ let plan_package = fun
       let dependency_check_duration =
         Time.Instant.duration_since ~earlier:dependency_check_started_at (Time.Instant.now ())
       in
+      let breakdown = {
+        empty_breakdown with
+        dependency_count = List.length failed;
+        dependency_check_duration;
+      }
+      in
+      trace_breakdown ~package ~status:"failed-dependencies" breakdown;
       Ok (FailedDependencies {
         package;
         failed;
-        breakdown = {
-          empty_breakdown with
-          dependency_count = List.length failed;
-          dependency_check_duration;
-        };
+        breakdown;
       })
   | Error (Missing missing) ->
       let dependency_check_duration =
         Time.Instant.duration_since ~earlier:dependency_check_started_at (Time.Instant.now ())
       in
+      let breakdown = {
+        empty_breakdown with
+        dependency_count = List.length missing;
+        dependency_check_duration;
+      }
+      in
+      trace_breakdown ~package ~status:"missing-dependencies" breakdown;
       Ok (MissingDependencies {
         package;
         missing;
-        breakdown = {
-          empty_breakdown with
-          dependency_count = List.length missing;
-          dependency_check_duration;
-        };
+        breakdown;
       })
   | Ok depset ->
       let dependency_check_duration =
@@ -730,6 +771,17 @@ let plan_package = fun
             ("Package "
             ^ Package_name.to_string package.name
             ^ ": cache hit via artifact + export metadata");
+          let breakdown =
+            {
+              empty_breakdown with
+              dependency_count = List.length depset;
+              dependency_check_duration;
+              input_hash_duration;
+              artifact_lookup_duration;
+              artifact_cache_hit = true;
+            }
+          in
+          trace_breakdown ~package ~status:"cached" breakdown;
           Ok (
             Cached {
               package_key;
@@ -738,15 +790,7 @@ let plan_package = fun
               artifact;
               depset;
               exports;
-              breakdown =
-                {
-                  empty_breakdown with
-                  dependency_count = List.length depset;
-                  dependency_check_duration;
-                  input_hash_duration;
-                  artifact_lookup_duration;
-                  artifact_cache_hit = true;
-                };
+              breakdown;
             }
           )
       | None -> (
