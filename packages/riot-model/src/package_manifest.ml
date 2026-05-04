@@ -46,7 +46,7 @@ type t = Package.manifest_spec = {
   publish: publish_metadata;
 }
 
-let of_package = fun (pkg: Package.t) ->
+let from_package = fun (pkg: Package.t) ->
   {
     name = pkg.name;
     path = pkg.path;

@@ -141,7 +141,7 @@ let validate_preflight = fun ~methods ~headers ~request_method ~request_headers 
   if String.equal request_method "" then
     Error MissingRequestMethod
   else
-    let method_ = Net.Http.Method.of_string request_method in
+    let method_ = Net.Http.Method.from_string request_method in
     let allowed_methods =
       simple_methods @ methods
       |> List.unique ~compare:Net.Http.Method.compare

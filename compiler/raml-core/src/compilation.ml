@@ -91,7 +91,7 @@ let create = fun ~targeting ~source ~typing ~core_ir ~frontend_diagnostics ~lowe
     codegen = selected_codegen ~backend ~target codegen;
   }
 
-let of_pipeline_json = fun pipeline ->
+let from_pipeline_json = fun pipeline ->
   let targeting = json_field "targeting" pipeline |> Option.unwrap_or ~default:Json.null in
   let source = json_field "source" pipeline |> Option.unwrap_or ~default:Json.null in
   let typing = json_field "typing" pipeline |> Option.unwrap_or ~default:Json.null in

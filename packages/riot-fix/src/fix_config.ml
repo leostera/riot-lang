@@ -294,7 +294,7 @@ let pipeline_for_file = fun scope file ->
     |> List.filter_map
       ~fn:(fun (name, enabled) ->
         if enabled then
-          Some (Rule_id.of_string name)
+          Some (Rule_id.from_string name)
         else
           None)
   in

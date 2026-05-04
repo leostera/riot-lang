@@ -47,12 +47,12 @@ let int_of_int64 = fun value ->
 
 let int32_of_int64 = fun value ->
   if (
-    match Int64.compare value (Int64.of_int32 Int32.min_int) with
+    match Int64.compare value (Int64.from_int32 Int32.min_int) with
     | Order.LT -> true
     | Order.EQ
     | Order.GT -> false
   ) || (
-    match Int64.compare value (Int64.of_int32 Int32.max_int) with
+    match Int64.compare value (Int64.from_int32 Int32.max_int) with
     | Order.GT -> true
     | Order.LT
     | Order.EQ -> false

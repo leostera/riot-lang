@@ -33,7 +33,7 @@ let modified_since_error_to_string = fun __tmp1 ->
       "invalid Last-Modified response date: " ^ date_parse_error_to_string error
 
 let parse_int_field = fun error value ->
-  match Int.of_string_opt value with
+  match Int.from_string_opt value with
   | Some parsed -> Ok parsed
   | None -> Error (error value)
 
@@ -119,7 +119,7 @@ let parse_http_date = fun date_str ->
                                     + (minutes * 60)
                                     + seconds
                                   in
-                                  Ok (Float.of_int total_seconds)
+                                  Ok (Float.from_int total_seconds)
                             )
                         )
                     )

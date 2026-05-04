@@ -314,17 +314,17 @@ let parse_workspace_dependencies: Toml.value -> Package.dependency list = fun to
   Log.debug ("[WORKSPACE] parse_workspacE_dependencies has items: " ^ Toml.to_string toml);
   parse_dependency_section "dependencies" toml
   |> Result.map_err ~fn:error_message
-  |> Result.expect ~msg:"workspace dependencies should be parsed through of_toml"
+  |> Result.expect ~msg:"workspace dependencies should be parsed through from_toml"
 
 let parse_workspace_dev_dependencies: Toml.value -> Package.dependency list = fun toml ->
   parse_dependency_section "dev-dependencies" toml
   |> Result.map_err ~fn:error_message
-  |> Result.expect ~msg:"workspace dev dependencies should be parsed through of_toml"
+  |> Result.expect ~msg:"workspace dev dependencies should be parsed through from_toml"
 
 let parse_workspace_build_dependencies: Toml.value -> Package.dependency list = fun toml ->
   parse_dependency_section "build-dependencies" toml
   |> Result.map_err ~fn:error_message
-  |> Result.expect ~msg:"workspace build dependencies should be parsed through of_toml"
+  |> Result.expect ~msg:"workspace build dependencies should be parsed through from_toml"
 
 let parse_profile_overrides: Toml.value -> (string * Profile.profile_override) list = fun toml ->
   Log.debug "[WORKSPACE] parse_profile_overrides called";
@@ -385,7 +385,7 @@ let parse_target_dir: Toml.value -> string option = fun toml ->
     )
   | _ -> None
 
-let of_toml: Toml.value -> (manifest, error) result = fun toml ->
+let from_toml: Toml.value -> (manifest, error) result = fun toml ->
   let members = parse_members toml in
   let name = parse_workspace_name toml in
   match parse_dependency_section "dependencies" toml with
@@ -456,7 +456,7 @@ let make_realized
   make
     ?name
     ~root
-    ~packages:(List.map packages ~fn:Package_manifest.of_package)
+    ~packages:(List.map packages ~fn:Package_manifest.from_package)
     ~dependencies
     ~dev_dependencies
     ~build_dependencies
@@ -554,7 +554,7 @@ target_dir = "build-out"
       |> Result.expect ~msg:"expected test toml to parse"
     in
     let manifest =
-      of_toml toml
+      from_toml toml
       |> Result.expect ~msg:"expected workspace manifest"
     in
     if manifest.target_dir = Some "build-out" then
@@ -572,7 +572,7 @@ members = ["packages/foo"]
       |> Result.expect ~msg:"expected test toml to parse"
     in
     let manifest =
-      of_toml toml
+      from_toml toml
       |> Result.expect ~msg:"expected workspace manifest"
     in
     if manifest.name = Some "riot" then
@@ -598,7 +598,7 @@ std = ">= 1.2.3"
 |}
       |> Result.expect ~msg:"expected workspace toml to parse"
     in
-    match of_toml toml with
+    match from_toml toml with
     | Error err -> Error (error_message err)
     | Ok manifest ->
         (
@@ -634,7 +634,7 @@ std = { version = 123 }
 |}
       |> Result.expect ~msg:"expected workspace toml to parse"
     in
-    match of_toml toml with
+    match from_toml toml with
     | Error (
       DependencyError (
         DependencyFieldMustBeString { dependency_name = "std"; field = Version }
@@ -707,7 +707,7 @@ fixme = { path = "packages/fixme" }
       |> Result.expect ~msg:"expected test toml to parse"
     in
     let manifest =
-      of_toml toml
+      from_toml toml
       |> Result.expect ~msg:"expected workspace manifest"
     in
     if

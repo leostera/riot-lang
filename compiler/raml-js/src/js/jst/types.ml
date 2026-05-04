@@ -11,7 +11,7 @@ module Binder = struct
   let make = fun ?name binding_id ->
     { binding_id; name = Option.unwrap_or ~default:(Core.Binding_id.name binding_id) name }
 
-  let entity_id = fun binder -> Core.Entity_id.of_binding_id binder.binding_id
+  let entity_id = fun binder -> Core.Entity_id.from_binding_id binder.binding_id
 
   let rename = fun binder name -> { binder with name }
 

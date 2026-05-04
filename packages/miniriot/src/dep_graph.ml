@@ -5,9 +5,9 @@ open Printf
 module Module_name: sig
   type t
 
-  val of_string: string -> t
+  val from_string: string -> t
 
-  val of_path: string -> t
+  val from_path: string -> t
 
   val to_string: t -> string
 
@@ -15,7 +15,7 @@ module Module_name: sig
 end = struct
   type t = string
 
-  let of_string = fun str ->
+  let from_string = fun str ->
     (* Replace hyphens with underscores for valid OCaml module names *)
     let str =
       String.map
@@ -41,13 +41,13 @@ end = struct
 
   let to_string = fun str -> str
 
-  let of_path = fun path ->
+  let from_path = fun path ->
     let basename = Filename.basename path in
     let name_without_ext =
       try Filename.chop_extension basename with
       | Invalid_argument _ -> basename
     in
-    of_string name_without_ext
+    from_string name_without_ext
 
   let cma = fun t -> t ^ ".cma"
 end
@@ -57,7 +57,7 @@ module Namespace: sig
 
   val empty: t
 
-  val of_parts: Module_name.t list -> t
+  val from_parts: Module_name.t list -> t
 
   val to_string: t -> string
 
@@ -71,7 +71,7 @@ end = struct
 
   let empty = []
 
-  let of_parts = fun t -> t
+  let from_parts = fun t -> t
 
   let to_string = fun t -> String.concat separator (List.map Module_name.to_string t)
 
@@ -83,7 +83,7 @@ end
 module Module: sig
   type t
 
-  val of_path: ns:Namespace.t -> string -> t
+  val from_path: ns:Namespace.t -> string -> t
 
   val module_name: t -> Module_name.t
 
@@ -109,8 +109,8 @@ end = struct
 
   let eq = fun a b -> String.equal a.file_path b.file_path
 
-  let of_path = fun ~ns path ->
-    let module_name = Module_name.of_path path in
+  let from_path = fun ~ns path ->
+    let module_name = Module_name.from_path path in
     { file_path = path; module_name; namespaced_name = Namespace.add ns module_name }
 
   let module_name = fun t -> t.module_name
@@ -245,7 +245,7 @@ end = struct
     let all_flags = ref [] in
     List.iter
       (fun pkg_name ->
-        let mod_name = Module_name.of_string pkg_name in
+        let mod_name = Module_name.from_string pkg_name in
         match Hashtbl.find_opt t.packages mod_name with
         | Some entry -> all_flags := !all_flags @ entry.cc_flags
         | None -> ())
@@ -257,7 +257,7 @@ end = struct
     let all_flags = ref [] in
     List.iter
       (fun pkg_name ->
-        let mod_name = Module_name.of_string pkg_name in
+        let mod_name = Module_name.from_string pkg_name in
         match Hashtbl.find_opt t.packages mod_name with
         | Some entry -> all_flags := !all_flags @ entry.ld_flags
         | None -> ())
@@ -268,7 +268,7 @@ end = struct
     (* Check if any dependency package uses stdlib *)
     List.exists
       (fun pkg_name ->
-        let mod_name = Module_name.of_string pkg_name in
+        let mod_name = Module_name.from_string pkg_name in
         match Hashtbl.find_opt t.packages mod_name with
         | Some entry -> entry.uses_stdlib
         | None -> false)
@@ -278,7 +278,7 @@ end = struct
     (* Check if any dependency package uses unix *)
     List.exists
       (fun pkg_name ->
-        let mod_name = Module_name.of_string pkg_name in
+        let mod_name = Module_name.from_string pkg_name in
         match Hashtbl.find_opt t.packages mod_name with
         | Some entry -> entry.uses_unix
         | None -> false)
@@ -288,7 +288,7 @@ end = struct
     (* Check if any dependency package uses dynlink *)
     List.exists
       (fun pkg_name ->
-        let mod_name = Module_name.of_string pkg_name in
+        let mod_name = Module_name.from_string pkg_name in
         match Hashtbl.find_opt t.packages mod_name with
         | Some entry -> entry.uses_dynlink
         | None -> false)
@@ -433,7 +433,7 @@ let make = fun ~root ~package ~build_results ->
     src_root;
     file_tree;
     graph = Graph.make ();
-    package_name = Module_name.of_string package.Package.name;
+    package_name = Module_name.from_string package.Package.name;
     registry = Module_registry.create ();
     build_results;
     package;
@@ -512,7 +512,7 @@ module Alias_module = struct
     String.concat "\n" ((header :: body) @ super_body)
 
   let make_node = fun (ns: Namespace.t) (modules: Module.t list) ->
-    let mod_ = Module.of_path ~ns "aliases" in
+    let mod_ = Module.from_path ~ns "aliases" in
     let path = Module.namespaced_name mod_ ^ ".ml.gen" in
     let file = Generated { path; contents = template modules } in
     let kind = ML mod_ in
@@ -664,7 +664,7 @@ and handle_ocaml_module = fun ~t ~ctx file ->
     parent_intf;
   } = ctx
   in
-  let mod_ = Module.of_path ~ns file.path in
+  let mod_ = Module.from_path ~ns file.path in
   (* Debug output for event files *)
   let basename = Filename.basename file.path in
   if String.contains basename 'e' && String.contains basename 'v' then
@@ -748,9 +748,9 @@ and handle_library = fun ~t ~ctx { path; name; children } ->
       path ^ "/" ^ name
   in
   let intf_file = base_path ^ ".mli" in
-  let intf_mod = Module.of_path ~ns intf_file in
+  let intf_mod = Module.from_path ~ns intf_file in
   let impl_file = base_path ^ ".ml" in
-  let impl_mod = Module.of_path ~ns impl_file in
+  let impl_mod = Module.from_path ~ns impl_file in
   (*
      printf "Handling library %S at %s\n" (Module.namespaced_name impl_mod) path;
   *)
@@ -762,7 +762,7 @@ and handle_library = fun ~t ~ctx { path; name; children } ->
         match child with
         | File_scanner.File { ext = ".ml"
           | ".mli"; _ } ->
-            (Some (Module.of_path ~ns (File_scanner.path child)), child)
+            (Some (Module.from_path ~ns (File_scanner.path child)), child)
         | _ -> (None, child))
       children
   in
@@ -871,14 +871,14 @@ and handle_library = fun ~t ~ctx { path; name; children } ->
       (fun (mod_opt, child) ->
         match (mod_opt, child) with
         | (None, File_scanner.Dir { name; path; _ }) ->
-            let module_name = Module_name.of_string name in
+            let module_name = Module_name.from_string name in
             if List.mem (Module_name.to_string module_name) existing_module_names then
               None
               (* Skip directories that have corresponding .ml/.mli files *)
             else
               (* For directories, create a module from the directory name with .ml extension *)
               (* This is just for the alias generation - the directory itself doesn't become a module *)
-              Some (Module.of_path ~ns (path ^ "/" ^ name ^ ".ml"))
+              Some (Module.from_path ~ns (path ^ "/" ^ name ^ ".ml"))
         | _ -> None)
       children_without_lib_files
   in
@@ -998,7 +998,7 @@ and handle_library = fun ~t ~ctx { path; name; children } ->
       | File_scanner.Dir { name; _ } ->
           (* After processing this directory, look up its library interface node *)
           do_scan ~t ~ctx child;
-          let subdir_mod_name = Module_name.of_string name in
+          let subdir_mod_name = Module_name.from_string name in
           let subdir_namespaced_name =
             Namespace.add ns subdir_mod_name
             |> Namespace.to_string
@@ -1123,7 +1123,7 @@ let handle_dep = fun t (node: dep Graph.node) ->
       List.iter
         (fun dep ->
           (* printf "- %s\n" dep; *)
-          let dep_name = Module_name.of_string dep in
+          let dep_name = Module_name.from_string dep in
           (* Debug IO dependencies *)
           if Module_name.to_string dep_name = "IO" then
             Printf.printf

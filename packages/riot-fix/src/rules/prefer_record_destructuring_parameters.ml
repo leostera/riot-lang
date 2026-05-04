@@ -4,7 +4,7 @@ open Std.Collections
 module H = Rule_helpers
 module Ast = Syn.Ast
 
-let rule_id = Rule_id.of_string "prefer-record-destructuring-parameters"
+let rule_id = Rule_id.from_string "prefer-record-destructuring-parameters"
 
 let rule_description =
   "Functions that immediately destructure a record argument should destructure it in the parameter"

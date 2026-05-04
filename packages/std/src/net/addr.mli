@@ -6,7 +6,7 @@ open Global
    ## Example
 
    ```ocaml
-   let addr = Addr.of_host_and_port ~host:"127.0.0.1" ~port:8080 |> Result.unwrap
+   let addr = Addr.from_host_and_port ~host:"127.0.0.1" ~port:8080 |> Result.unwrap
    let host = Addr.ip addr
    let port = Addr.port addr
    ```
@@ -36,10 +36,10 @@ val tcp: tcp_addr -> int -> stream_addr
 val udp: tcp_addr -> int -> datagram_addr
 
 (** Build a stream address from a host string and port number. *)
-val of_host_and_port: host:string -> port:int -> (stream_addr, error) Kernel.result
+val from_host_and_port: host:string -> port:int -> (stream_addr, error) Kernel.result
 
 (** Build a datagram address from a host string and port number. *)
-val of_host_and_port_datagram: host:string -> port:int -> (datagram_addr, error) Kernel.result
+val from_host_and_port_datagram: host:string -> port:int -> (datagram_addr, error) Kernel.result
 
 (** Parse a string like ["127.0.0.1:8080"] into a stream address. *)
 val parse: string -> (stream_addr, error) Kernel.result

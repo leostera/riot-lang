@@ -56,7 +56,9 @@ let substitute_fixture_tokens = fun line ->
     |> Result.unwrap_or ~default:(Path.v ".")
   in
   line
-  |> replace_all ~pattern:"__REPO_ROOT_URI__" ~with_:(Lsp.Uri.to_string (Lsp.Uri.of_path repo_root))
+  |> replace_all
+    ~pattern:"__REPO_ROOT_URI__"
+    ~with_:(Lsp.Uri.to_string (Lsp.Uri.from_path repo_root))
   |> replace_all ~pattern:"__REPO_ROOT__" ~with_:(Path.to_string repo_root)
 
 let normalize_snapshot_tokens = fun text ->
@@ -65,7 +67,9 @@ let normalize_snapshot_tokens = fun text ->
     |> Result.unwrap_or ~default:(Path.v ".")
   in
   text
-  |> replace_all ~pattern:(Lsp.Uri.to_string (Lsp.Uri.of_path repo_root)) ~with_:"__REPO_ROOT_URI__"
+  |> replace_all
+    ~pattern:(Lsp.Uri.to_string (Lsp.Uri.from_path repo_root))
+    ~with_:"__REPO_ROOT_URI__"
   |> replace_all ~pattern:(Path.to_string repo_root) ~with_:"__REPO_ROOT__"
 
 let read_lines = fun path ->

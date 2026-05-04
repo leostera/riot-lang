@@ -12,11 +12,11 @@
    open Std.Net.Http
 
    (* Simple GET request *)
-   let uri = Uri.of_string "https://api.example.com/users" |> Result.unwrap in
+   let uri = Uri.from_string "https://api.example.com/users" |> Result.unwrap in
    let req = Request.get uri in
 
    (* POST with body *)
-   let uri = Uri.of_string "https://api.example.com/users" |> Result.unwrap in
+   let uri = Uri.from_string "https://api.example.com/users" |> Result.unwrap in
    let body = {|{"name":"Alice","email":"alice@example.com"}|} in
    let req = Request.post uri body
      |> Request.with_header "Content-Type" "application/json" in
@@ -25,7 +25,7 @@
    Using the builder pattern:
 
    ```ocaml
-   let uri = Uri.of_string "https://api.example.com/data" |> Result.unwrap in
+   let uri = Uri.from_string "https://api.example.com/data" |> Result.unwrap in
    let req = Request.Builder.create Method.Post uri
      |> Request.Builder.header "Authorization" "Bearer token123"
      |> Request.Builder.header "Content-Type" "application/json"
@@ -69,7 +69,7 @@ type t
 
    ## Examples
 
-   ```ocaml let uri = Uri.of_string "https://example.com" |> Result.unwrap in
+   ```ocaml let uri = Uri.from_string "https://example.com" |> Result.unwrap in
    let req = Request.create Method.Get uri ```
 *)
 val create: Method.t -> Uri.t -> t
@@ -142,7 +142,7 @@ val with_method: t -> Method.t -> t
 
    ## Examples
 
-   ```ocaml let new_uri = Uri.of_string "https://api.v2.example.com" |>
+   ```ocaml let new_uri = Uri.from_string "https://api.v2.example.com" |>
    Result.unwrap in Request.with_uri req new_uri ```
 *)
 val with_uri: t -> Uri.t -> t
@@ -248,7 +248,7 @@ module Builder: sig
      ## Examples
 
      ```ocaml
-     let uri = Uri.of_string "https://api.example.com/data" |> Result.unwrap in
+     let uri = Uri.from_string "https://api.example.com/data" |> Result.unwrap in
      let req = Request.Builder.create Method.Post uri
        |> Request.Builder.header "Authorization" "Bearer token"
        |> Request.Builder.header "Content-Type" "application/json"
@@ -300,7 +300,7 @@ end
 
    ## Examples
 
-   ```ocaml let uri = Uri.of_string "https://api.example.com/users" |>
+   ```ocaml let uri = Uri.from_string "https://api.example.com/users" |>
    Result.unwrap in let req = Request.get uri ```
 *)
 val get: Uri.t -> t
@@ -311,7 +311,7 @@ val get: Uri.t -> t
    ## Examples
 
    ```ocaml
-   let uri = Uri.of_string "https://api.example.com/users" |> Result.unwrap in
+   let uri = Uri.from_string "https://api.example.com/users" |> Result.unwrap in
    let body = {|{"name":"Alice"}|} in
    let req = Request.post uri body
      |> Request.with_header "Content-Type" "application/json"

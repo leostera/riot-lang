@@ -13,7 +13,7 @@ open Global
 
    ```ocaml open Std.Net
 
-   match Uri.of_string "https://api.example.com:443/v1/users?page=1#top" with |
+   match Uri.from_string "https://api.example.com:443/v1/users?page=1#top" with |
    Ok uri -> Uri.scheme uri (* Some "https" *) Uri.host uri (* Some
    "api.example.com" *) Uri.port uri (* Some 443 *) Uri.path uri (* "/v1/users"
    *) Uri.query uri (* Some "page=1" *) Uri.fragment uri (* Some "top" *) |
@@ -40,7 +40,7 @@ open Global
 
    Joining paths:
 
-   ```ocaml let base = Uri.of_string "https://example.com/api" |> Result.unwrap
+   ```ocaml let base = Uri.from_string "https://example.com/api" |> Result.unwrap
    in let full = Uri.join base "v1/users" |> Result.unwrap in Uri.to_string
    full (* "https://example.com/api/v1/users" *) ```
 *)
@@ -69,7 +69,7 @@ type error =
 (** URL exceeds maximum length *)
 
 (** Parse a string into a URL *)
-val of_string: string -> (t, error) Kernel.result
+val from_string: string -> (t, error) Kernel.result
 
 (** Parse a borrowed slice into a URL without first materializing the full input string. *)
 val from_slice: IO.IoVec.IoSlice.t -> (t, error) Kernel.result
@@ -172,7 +172,7 @@ module Scheme: sig
 
   val file: t
 
-  val of_string: string -> (t, error) Kernel.result
+  val from_string: string -> (t, error) Kernel.result
 
   val to_string: t -> string
 end
@@ -186,7 +186,7 @@ module Authority: sig
 
   val userinfo: t -> string option
 
-  val of_string: string -> (t, error) Kernel.result
+  val from_string: string -> (t, error) Kernel.result
 
   val to_string: t -> string
 end
@@ -198,7 +198,7 @@ module PathAndQuery: sig
 
   val query: t -> string option
 
-  val of_string: string -> (t, error) Kernel.result
+  val from_string: string -> (t, error) Kernel.result
 
   val to_string: t -> string
 end

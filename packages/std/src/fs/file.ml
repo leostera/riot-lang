@@ -89,7 +89,7 @@ let is_would_block = fun __tmp1 ->
 
 let io_error_of_file_error = fun __tmp1 ->
   match __tmp1 with
-  | Kernel.Fs.File.System error -> IO.of_system_error error
+  | Kernel.Fs.File.System error -> IO.from_system_error error
   | Kernel.Fs.File.InvalidSlice _ -> IO.Invalid_argument
 
 let read = fun file buffer ~offset ~len ->

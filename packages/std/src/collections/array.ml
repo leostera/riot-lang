@@ -38,8 +38,6 @@ let fold_right = fun values ~init ~fn -> Kernel.Array.fold_right values ~acc:ini
 
 let from_list = Kernel.Array.from_list
 
-let of_list = from_list
-
 let to_list = fun values ->
   let rec loop index acc =
     if index < 0 then

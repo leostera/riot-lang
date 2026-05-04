@@ -17,7 +17,7 @@ let io_error_of_listener_error = fun __tmp1 ->
   | Kernel.Net.TcpListener.AddressInUse -> IO.Address_already_in_use
   | Kernel.Net.TcpListener.AddressNotAvailable -> IO.Cannot_assign_requested_address
   | Kernel.Net.TcpListener.ConnectionAborted -> IO.Software_caused_connection_abort
-  | Kernel.Net.TcpListener.System error -> IO.of_system_error error
+  | Kernel.Net.TcpListener.System error -> IO.from_system_error error
 
 let bind = fun ?(reuse_addr = true) ?(reuse_port = false) ?(backlog = 128) addr ->
   match Kernel.Net.TcpListener.bind ~reuse_addr ~reuse_port ~backlog addr with

@@ -63,7 +63,7 @@ let parse_unit_id = fun json ->
   let* relpath =
     Result.map_error
       (fun _ -> format Format.[ str scope; str ".relpath must be a valid path" ])
-      (Path.of_string relpath)
+      (Path.from_string relpath)
   in
   let* unit_name = string_field scope "unit_name" json in
   let* kind = parse_source_kind scope json in
@@ -110,7 +110,7 @@ let parse_constant = fun json ->
 
 let parse_surface_path = fun scope json ->
   match Json.get_string json with
-  | Some value -> Ok (Core_ir.Surface_path.of_string value)
+  | Some value -> Ok (Core_ir.Surface_path.from_string value)
   | None -> invalid_field scope "surface_path" "a string"
 
 let parse_binding_id = fun json ->
@@ -144,7 +144,7 @@ let parse_binding_id = fun json ->
 
 let parse_entity_id = fun json ->
   match Json.get_string json with
-  | Some value -> Ok (Core_ir.Entity_id.of_string value)
+  | Some value -> Ok (Core_ir.Entity_id.from_string value)
   | None ->
       let scope = "entity_id" in
       let* kind = string_field scope "kind" json in
@@ -152,7 +152,7 @@ let parse_entity_id = fun json ->
       let* surface_path = parse_surface_path scope surface_path_json in
       match kind with
       | "unresolved" ->
-          Ok (Core_ir.Entity_id.of_surface_path surface_path)
+          Ok (Core_ir.Entity_id.from_surface_path surface_path)
       | "resolved" ->
           let* binding_id_json = field scope "binding_id" json in
           let* binding_id = parse_binding_id binding_id_json in
@@ -229,7 +229,7 @@ and parse_lambda = fun json ->
     map_results params
       (fun json ->
         match Json.get_string json with
-        | Some value -> Ok Core_ir.Expr.{ entity_id = Core_ir.Entity_id.of_name value; name = value }
+        | Some value -> Ok Core_ir.Expr.{ entity_id = Core_ir.Entity_id.from_name value; name = value }
         | None ->
             let entry_scope = "lambda.param" in
             let* entity_id =
@@ -237,7 +237,7 @@ and parse_lambda = fun json ->
               | Some entity_id_json -> parse_entity_id entity_id_json
               | None ->
                   let* name = string_field entry_scope "name" json in
-                  Ok (Core_ir.Entity_id.of_name name)
+                  Ok (Core_ir.Entity_id.from_name name)
             in
             let* name = string_field entry_scope "name" json in
             Ok Core_ir.Expr.{ entity_id; name })
@@ -253,7 +253,7 @@ and parse_expr_binding = fun json ->
     | Some entity_id_json -> parse_entity_id entity_id_json
     | None ->
         let* name = string_field scope "name" json in
-        Ok (Core_ir.Entity_id.of_name name)
+        Ok (Core_ir.Entity_id.from_name name)
   in
   let* name = string_field scope "name" json in
   let* expr_json = field scope "expr" json in
@@ -320,7 +320,7 @@ and parse_primitive = fun json ->
     | "%trace" -> "trace"
     | other -> other
   in
-  match Core_ir.Primitive.of_string normalized_name with
+  match Core_ir.Primitive.from_string normalized_name with
   | Some primitive -> Ok Core_ir.Expr.{ primitive; arguments }
   | None -> invalid_field scope "name" "a known Core IR primitive name"
 
@@ -331,7 +331,7 @@ let parse_binding = fun json ->
     | Some entity_id_json -> parse_entity_id entity_id_json
     | None ->
         let* name = string_field scope "name" json in
-        Ok (Core_ir.Entity_id.of_name name)
+        Ok (Core_ir.Entity_id.from_name name)
   in
   let* name = string_field scope "name" json in
   let* expr_json = field scope "expr" json in

@@ -14,7 +14,7 @@ let decode_fixture_json = fun path ->
     Fs.read path
     |> Result.map_err ~fn:IO.error_message
   in
-  Json.of_string source
+  Json.from_string source
   |> Result.map_err ~fn:Json.error_to_string
 
 let render_json = fun json -> Json.to_string_pretty json ^ "\n"

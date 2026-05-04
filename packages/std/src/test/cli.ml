@@ -318,7 +318,7 @@ let suite_ctx_of_json = fun value ->
       )
     | _ -> None
   in
-  match Data.Json.of_string value with
+  match Data.Json.from_string value with
   | Ok (Data.Json.Object fields) ->
       let path_field name =
         match List.find fields ~fn:(fun (field_name, _) -> String.equal field_name name) with

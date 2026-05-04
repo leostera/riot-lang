@@ -507,7 +507,7 @@ let test_system_time_rejects_negative_nanoseconds = fun _ctx ->
   ) ->
       Ok ()
   | Kernel.Result.Error error -> Error (Kernel.Time.SystemTime.error_to_string error)
-  | Kernel.Result.Ok _ -> Error "expected SystemTime.of_parts to reject negative nanoseconds"
+  | Kernel.Result.Ok _ -> Error "expected SystemTime.from_parts to reject negative nanoseconds"
 
 let test_system_time_rejects_upper_bound_nanoseconds = fun _ctx ->
   match Kernel.Time.SystemTime.from_parts ~secs:1 ~nanos:1_000_000_000 with
@@ -517,7 +517,7 @@ let test_system_time_rejects_upper_bound_nanoseconds = fun _ctx ->
       Ok ()
   | Kernel.Result.Error error -> Error (Kernel.Time.SystemTime.error_to_string error)
   | Kernel.Result.Ok _ ->
-      Error "expected SystemTime.of_parts to keep the nanosecond upper bound exclusive"
+      Error "expected SystemTime.from_parts to keep the nanosecond upper bound exclusive"
 
 let test_system_time_accessors_match_the_constructor = fun _ctx ->
   let* value = lift_system_time (Kernel.Time.SystemTime.from_parts ~secs:17 ~nanos:123_456_789) in
@@ -632,7 +632,7 @@ let test_reregistering_one_shot_before_fire_resets_the_deadline = fun _ctx ->
                 Error "expected the rearmed one-shot timer to fire after the reset deadline"))
 
 let tests = [
-  Test.case "Time.SystemTime of_parts roundtrips" test_of_parts_roundtrips;
+  Test.case "Time.SystemTime from_parts roundtrips" test_of_parts_roundtrips;
   Test.case "Time.SystemTime now is at or after epoch" test_now_is_at_or_after_epoch;
   Test.case "Time.SystemTime now has normalized nanoseconds" test_now_has_valid_nanoseconds;
   Test.case "Time.SystemTime diff_ns matches raw parts" test_system_time_diff_ns_matches_parts;
@@ -674,10 +674,10 @@ let tests = [
     "Time.Timer after_ns latency stays within a reasonable tolerance"
     test_timer_after_ns_elapsed_time_is_reasonable;
   Test.case
-    "SystemTime.of_parts rejects negative nanoseconds"
+    "SystemTime.from_parts rejects negative nanoseconds"
     test_system_time_rejects_negative_nanoseconds;
   Test.case
-    "SystemTime.of_parts rejects the exclusive upper nanosecond bound"
+    "SystemTime.from_parts rejects the exclusive upper nanosecond bound"
     test_system_time_rejects_upper_bound_nanoseconds;
   Test.case
     "SystemTime accessors match the constructor"

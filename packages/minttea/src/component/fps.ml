@@ -16,9 +16,9 @@ let make = fun frame_rate ->
   let now = Time.Instant.now () in
   { frame_rate; next_frame = now }
 
-let of_int = fun i -> make (1.0 /. float_of_int i)
+let from_int = fun i -> make (1.0 /. float_of_int i)
 
-let of_float = fun f -> make (1.0 /. f)
+let from_float = fun f -> make (1.0 /. f)
 
 let tick = fun ?(now = Time.Instant.now ()) t ->
   if Time.Instant.compare now t.next_frame != Order.LT then (

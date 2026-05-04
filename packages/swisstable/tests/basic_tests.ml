@@ -81,25 +81,25 @@ let tests = [
       Test.assert_equal ~expected:None ~actual:(Swisstable.get map "a");
       Ok ());
   Test.case
-    "of_list"
+    "from_list"
     (fun _ctx ->
-      let map = Swisstable.of_list [ ("a", 1); ("b", 2); ("c", 3); ] in
+      let map = Swisstable.from_list [ ("a", 1); ("b", 2); ("c", 3); ] in
       Test.assert_equal ~expected:3 ~actual:(Swisstable.len map);
       Test.assert_equal ~expected:(Some 1) ~actual:(Swisstable.get map "a");
       Test.assert_equal ~expected:(Some 2) ~actual:(Swisstable.get map "b");
       Test.assert_equal ~expected:(Some 3) ~actual:(Swisstable.get map "c");
       Ok ());
   Test.case
-    "of_list with duplicates"
+    "from_list with duplicates"
     (fun _ctx ->
-      let map = Swisstable.of_list [ ("a", 1); ("b", 2); ("a", 3); ] in
+      let map = Swisstable.from_list [ ("a", 1); ("b", 2); ("a", 3); ] in
       Test.assert_equal ~expected:2 ~actual:(Swisstable.len map);
       Test.assert_equal ~expected:(Some 3) ~actual:(Swisstable.get map "a");
       Ok ());
   Test.case
     "keys"
     (fun _ctx ->
-      let map = Swisstable.of_list [ ("a", 1); ("b", 2); ("c", 3); ] in
+      let map = Swisstable.from_list [ ("a", 1); ("b", 2); ("c", 3); ] in
       let keys = Swisstable.keys map in
       Test.assert_equal ~expected:3 ~actual:(List.length keys);
       Test.assert_true (List.contains keys ~value:"a");
@@ -109,7 +109,7 @@ let tests = [
   Test.case
     "values"
     (fun _ctx ->
-      let map = Swisstable.of_list [ ("a", 1); ("b", 2); ("c", 3); ] in
+      let map = Swisstable.from_list [ ("a", 1); ("b", 2); ("c", 3); ] in
       let values = Swisstable.values map in
       Test.assert_equal ~expected:3 ~actual:(List.length values);
       Test.assert_true (List.contains values ~value:1);
@@ -119,7 +119,7 @@ let tests = [
   Test.case
     "iter"
     (fun _ctx ->
-      let map = Swisstable.of_list [ ("a", 1); ("b", 2); ("c", 3); ] in
+      let map = Swisstable.from_list [ ("a", 1); ("b", 2); ("c", 3); ] in
       let sum = Sync.Cell.create 0 in
       Swisstable.iter (fun _ v -> Sync.Cell.set sum (Sync.Cell.get sum + v)) map;
       Test.assert_equal ~expected:6 ~actual:(Sync.Cell.get sum);
@@ -127,14 +127,14 @@ let tests = [
   Test.case
     "fold"
     (fun _ctx ->
-      let map = Swisstable.of_list [ ("a", 1); ("b", 2); ("c", 3); ] in
+      let map = Swisstable.from_list [ ("a", 1); ("b", 2); ("c", 3); ] in
       let sum = Swisstable.fold (fun _ v acc -> acc + v) map 0 in
       Test.assert_equal ~expected:6 ~actual:sum;
       Ok ());
   Test.case
     "to_list"
     (fun _ctx ->
-      let map = Swisstable.of_list [ ("a", 1); ("b", 2); ] in
+      let map = Swisstable.from_list [ ("a", 1); ("b", 2); ] in
       let list = Swisstable.to_list map in
       Test.assert_equal ~expected:2 ~actual:(List.length list);
       Test.assert_true (List.contains list ~value:("a", 1));

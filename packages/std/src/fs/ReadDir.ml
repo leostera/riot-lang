@@ -37,7 +37,7 @@ let open_dir = fun path ->
         handle;
         closed = false;
       }
-  | Error error -> Error (of_read_dir_error error)
+  | Error error -> Error (from_read_dir_error error)
 
 let close = fun dir ->
   if dir.closed then
@@ -46,7 +46,7 @@ let close = fun dir ->
     dir.closed <- true;
     match Kernel.Fs.ReadDir.close dir.handle with
     | Ok () -> Ok ()
-    | Error error -> Error (of_read_dir_error error)
+    | Error error -> Error (from_read_dir_error error)
   )
 
 let next = fun dir ->

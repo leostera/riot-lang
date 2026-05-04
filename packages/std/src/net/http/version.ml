@@ -12,7 +12,7 @@ type t =
 type error =
   | InvalidVersion
 
-let of_string = fun __tmp1 ->
+let from_string = fun __tmp1 ->
   match __tmp1 with
   | "HTTP/0.9" -> Ok Http09
   | "HTTP/1.0" -> Ok Http10

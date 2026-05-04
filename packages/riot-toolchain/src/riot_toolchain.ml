@@ -148,7 +148,7 @@ let read_manifest_fingerprint = fun toolchain_path ->
   | Ok true -> (
       match Fs.read manifest_path with
       | Ok raw -> (
-          match Data.Json.of_string raw with
+          match Data.Json.from_string raw with
           | Ok manifest -> parse_fingerprint manifest
           | Error _ -> None
         )
@@ -928,7 +928,7 @@ let parse_available_toolchain = fun json ->
     )
 
 let parse_available_toolchains_manifest = fun raw ->
-  match Data.Json.of_string raw with
+  match Data.Json.from_string raw with
   | Error err -> Error ("Failed to parse toolchain manifest JSON: " ^ Data.Json.error_to_string err)
   | Ok json -> (
       match require_json_field "toolchains" json with

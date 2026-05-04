@@ -3,11 +3,11 @@ open Std
 let parse_interface ~source tokens =
   parse ~cst_kind:`Interface ~parse_item:parse_signature_item ~source ~tokens
 
-let of_tcp_client ~hostname tcp =
-  of_tcp_socket ~mode:(`Client hostname) tcp
+let from_tcp_client ~hostname tcp =
+  from_tcp_socket ~mode:(`Client hostname) tcp
 
-let of_tcp_server ~cert_file ~key_file tcp =
-  of_tcp_socket ~mode:(`Server (cert_file, key_file)) tcp
+let from_tcp_server ~cert_file ~key_file tcp =
+  from_tcp_socket ~mode:(`Server (cert_file, key_file)) tcp
 
 let color_escape color =
   Color.to_escape_seq ~mode:`fg color

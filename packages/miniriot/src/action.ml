@@ -310,7 +310,9 @@ let execute_action = fun
           (* Dependencies should have been copied to our sandbox already *)
           let dep_archives =
             List.map
-              (fun dep_name -> Dep_graph.Module_name.cma (Dep_graph.Module_name.of_string dep_name))
+              (fun dep_name ->
+                Dep_graph.Module_name.cma
+                  (Dep_graph.Module_name.from_string dep_name))
               dependencies
           in
           (* Link unix.cma if package uses unix (including transitively) *)

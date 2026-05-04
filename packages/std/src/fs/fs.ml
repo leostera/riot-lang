@@ -34,7 +34,7 @@ let rmdir = fun path ->
 let canonicalize = fun path ->
   match Kernel.Fs.File.canonicalize (kernel_path path) with
   | Ok abs_path -> Ok (path_of_kernel abs_path)
-  | Error error -> Error (of_file_error error)
+  | Error error -> Error (from_file_error error)
 
 let copy = fun ~src ~dst ->
   Kernel.Fs.File.copy ~src:(kernel_path src) ~dst:(kernel_path dst)
@@ -46,7 +46,7 @@ let create_dir_all = fun path ->
     | None -> Ok ()
     | Some parent ->
         match Kernel.Fs.File.exists (kernel_path parent) with
-        | Error error -> Error (of_file_error error)
+        | Error error -> Error (from_file_error error)
         | Ok true -> Ok ()
         | Ok false -> (
             match create_parents parent with
@@ -55,7 +55,7 @@ let create_dir_all = fun path ->
                 match Kernel.Fs.File.create_dir (kernel_path parent) ~perm:0o755 with
                 | Ok () -> Ok ()
                 | Error (Kernel.Fs.File.System Kernel.SystemError.AlreadyExists) -> Ok ()
-                | Error error -> Error (of_file_error error)
+                | Error error -> Error (from_file_error error)
               )
           )
   in
@@ -65,7 +65,7 @@ let create_dir_all = fun path ->
       match Kernel.Fs.File.create_dir (kernel_path path) ~perm:0o755 with
       | Ok () -> Ok ()
       | Error (Kernel.Fs.File.System Kernel.SystemError.AlreadyExists) -> Ok ()
-      | Error error -> Error (of_file_error error)
+      | Error error -> Error (from_file_error error)
     )
 
 let exists = fun path ->
@@ -86,12 +86,12 @@ let symlink_metadata = fun path ->
 
 let read_to_string = fun path ->
   match File.open_read path with
-  | Error error -> Error (of_file_error error)
+  | Error error -> Error (from_file_error error)
   | Ok file -> (
       match File.read_to_end file with
       | Error error ->
           let _ = File.close file in
-          Error (of_file_error error)
+          Error (from_file_error error)
       | Ok content ->
           let _ = File.close file in
           Ok content
@@ -155,23 +155,23 @@ let set_permissions = fun path perm ->
 
 let write = fun content path ->
   match File.create path with
-  | Error error -> Error (of_file_error error)
+  | Error error -> Error (from_file_error error)
   | Ok file -> (
       match File.write_all file content with
       | Error error ->
           let _ = File.close file in
-          Error (of_file_error error)
+          Error (from_file_error error)
       | Ok () -> (
           match File.close file with
           | Ok () -> Ok ()
-          | Error error -> Error (of_file_error error)
+          | Error error -> Error (from_file_error error)
         )
     )
 
 let read_link = fun path ->
   match Kernel.Fs.File.read_link (kernel_path path) with
   | Ok target -> Ok (path_of_kernel target)
-  | Error error -> Error (of_file_error error)
+  | Error error -> Error (from_file_error error)
 
 let create_dir = fun path ->
   Kernel.Fs.File.create_dir (kernel_path path) ~perm:0o755
@@ -201,7 +201,7 @@ let mkdir_safe = fun path perm ->
   match Kernel.Fs.File.create_dir (kernel_path path) ~perm with
   | Ok () -> Ok ()
   | Error (Kernel.Fs.File.System Kernel.SystemError.AlreadyExists) -> Ok ()
-  | Error error -> Error (of_file_error error)
+  | Error error -> Error (from_file_error error)
 
 let rec mkdirp = fun path -> create_dir_all path
 
@@ -242,7 +242,7 @@ let rec remove_dir = fun path ->
 let file_size = fun path ->
   match Kernel.Fs.File.metadata (kernel_path path) with
   | Ok stats -> Ok (Kernel.Int64.to_int (Kernel.Fs.File.Metadata.len stats))
-  | Error error -> Error (of_file_error error)
+  | Error error -> Error (from_file_error error)
 
 let path_separator = fun () ->
   if Kernel.System.unix then
@@ -266,12 +266,12 @@ let join = fun paths ->
 
 let read = fun path ->
   match File.open_read path with
-  | Error error -> Error (of_file_error error)
+  | Error error -> Error (from_file_error error)
   | Ok file -> (
       match File.read_to_end file with
       | Error error ->
           let _ = File.close file in
-          Error (of_file_error error)
+          Error (from_file_error error)
       | Ok content ->
           let _ = File.close file in
           Ok content

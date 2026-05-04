@@ -37,7 +37,7 @@ let main ~args =
     println ("Starting HTTPS request: " ^ method_str ^ " " ^ url_str);
 
     (* Parse the URL *)
-    let uri = Net.Uri.of_string url_str
+    let uri = Net.Uri.from_string url_str
       |> Result.expect ~msg:"Failed to parse URL" in
 
     (* Parse the HTTP method *)

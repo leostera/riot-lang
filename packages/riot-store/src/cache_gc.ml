@@ -584,7 +584,7 @@ let read_state = fun ~(workspace:Workspace.t) ->
       |> Result.map_err ~fn:(fun err -> "failed to read cache state: " ^ IO.error_message err)
     in
     let* json =
-      Data.Json.of_string content
+      Data.Json.from_string content
       |> Result.map_err
         ~fn:(fun err -> "failed to parse cache state JSON: " ^ Data.Json.error_to_string err)
     in
@@ -615,7 +615,7 @@ let read_receipt_file = fun path ->
     |> Result.map_err ~fn:(fun err -> "failed to read generation receipt: " ^ IO.error_message err)
   in
   let* json =
-    Data.Json.of_string content
+    Data.Json.from_string content
     |> Result.map_err
       ~fn:(fun err -> "failed to parse generation receipt JSON: " ^ Data.Json.error_to_string err)
   in

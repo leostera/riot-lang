@@ -16,7 +16,7 @@ let read_json = fun path ->
     Fs.read_to_string path
     |> Result.expect ~msg:"failed to read written history file"
   in
-  Data.Json.of_string content
+  Data.Json.from_string content
   |> Result.expect ~msg:"failed to parse written history json"
 
 let field = fun name fields ->

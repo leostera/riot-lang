@@ -16,7 +16,7 @@
    let blue = Color.make "#00F"
 
    (* From RGB tuples *)
-   let green = Color.of_rgb (0, 255, 0)
+   let green = Color.from_rgb (0, 255, 0)
 
    (* ANSI basic colors (0-15) *)
    let yellow = Color.ansi 3
@@ -71,15 +71,15 @@ val make: string -> t
 
    @raise Invalid_color if string format is invalid
 *)
-val of_rgb: int * int * int -> t
+val from_rgb: int * int * int -> t
 
 (**
    Create RGB color from (red, green, blue) tuple.
 
    Components are clamped to 0-255 range.
 
-   Examples: ```ocaml Color.of_rgb (255, 0, 0) (* Red *) Color.of_rgb (0, 255,
-   0) (* Green *) Color.of_rgb (300, -10, 128) (* Clamped to (255, 0, 128) *)
+   Examples: ```ocaml Color.from_rgb (255, 0, 0) (* Red *) Color.from_rgb (0, 255,
+   0) (* Green *) Color.from_rgb (300, -10, 128) (* Clamped to (255, 0, 128) *)
    ```
 *)
 val ansi: int -> t

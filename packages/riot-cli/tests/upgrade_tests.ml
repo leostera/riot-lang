@@ -321,7 +321,7 @@ let test_version_string_uses_riot_dir_metadata = fun _ctx ->
 
 let test_version_string_roundtrips_into_metadata = fun _ctx ->
   let expected = make_metadata ~release_id:"v7.8.9" ~build_sha:"beaded123456" () in
-  match Riot_cli.Version_info.of_version_string "riot v7.8.9 (build beaded123456)" with
+  match Riot_cli.Version_info.from_version_string "riot v7.8.9 (build beaded123456)" with
   | Some actual when actual = expected -> Ok ()
   | Some actual ->
       Error ("unexpected parsed version metadata: expected "

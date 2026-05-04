@@ -3,7 +3,7 @@ open Std
 module H = Rule_helpers
 module Ast = Syn.Ast
 
-let rule_id = Rule_id.of_string "snake-case-record-fields"
+let rule_id = Rule_id.from_string "snake-case-record-fields"
 
 let rule_description = "Record field names should use snake_case instead of camelCase"
 

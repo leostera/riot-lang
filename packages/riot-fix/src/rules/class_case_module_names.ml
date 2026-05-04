@@ -3,7 +3,7 @@ open Std
 module H = Rule_helpers
 module Ast = Syn.Ast
 
-let rule_id = Rule_id.of_string "class-case-module-names"
+let rule_id = Rule_id.from_string "class-case-module-names"
 
 let rule_description = "Module names should use ClassCase instead of underscores"
 

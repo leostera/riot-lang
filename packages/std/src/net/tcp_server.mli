@@ -12,7 +12,7 @@ open Global
      ignore req;
      ignore stream
 
-   let addr = Kernel.Net.Addr.of_string "127.0.0.1:9000" |> Result.unwrap in
+   let addr = Kernel.Net.Addr.from_string "127.0.0.1:9000" |> Result.unwrap in
    let _ = Tcp_server.listen addr ~handler in
    ()
    ```

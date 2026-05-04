@@ -32,7 +32,7 @@ let parse_override_method = fun str ->
   if String.equal upper "" then
     Error MissingOverrideMethod
   else
-    let method_ = Net.Http.Method.of_string upper in
+    let method_ = Net.Http.Method.from_string upper in
     if List.contains allowed_override_methods ~value:method_ then
       Ok method_
     else

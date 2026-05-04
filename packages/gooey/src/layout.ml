@@ -94,17 +94,17 @@ module Box_model = struct
 
   let horizontal_inset = fun (style: Style.t) ->
     let border = border_thickness style in
-    Float.of_int (style.padding.left + style.padding.right + border + border)
+    Float.from_int (style.padding.left + style.padding.right + border + border)
 
   let vertical_inset = fun (style: Style.t) ->
     let border = border_thickness style in
-    Float.of_int (style.padding.top + style.padding.bottom + border + border)
+    Float.from_int (style.padding.top + style.padding.bottom + border + border)
 
   let content_origin = fun (rect: Geometry.Rect.t) (style: Style.t) ->
-    let border = Float.of_int (border_thickness style) in
+    let border = Float.from_int (border_thickness style) in
     Geometry.Point.make
-      ~x:(rect.x +. border +. Float.of_int style.padding.left)
-      ~y:(rect.y +. border +. Float.of_int style.padding.top)
+      ~x:(rect.x +. border +. Float.from_int style.padding.left)
+      ~y:(rect.y +. border +. Float.from_int style.padding.top)
 
   let content_box = fun (rect: Geometry.Rect.t) (style: Style.t) ->
     let inset_x = horizontal_inset style in
@@ -116,9 +116,9 @@ module Box_model = struct
       ~width:(Math.clamp_non_negative (rect.width -. inset_x))
       ~height:(Math.clamp_non_negative (rect.height -. inset_y))
 
-  let margin_horizontal = fun (margin: Style.margin) -> Float.of_int (margin.left + margin.right)
+  let margin_horizontal = fun (margin: Style.margin) -> Float.from_int (margin.left + margin.right)
 
-  let margin_vertical = fun (margin: Style.margin) -> Float.of_int (margin.top + margin.bottom)
+  let margin_vertical = fun (margin: Style.margin) -> Float.from_int (margin.top + margin.bottom)
 
   let outer_width = fun node -> node.computed_size.width +. margin_horizontal node.style.margin
 
@@ -397,7 +397,7 @@ and measure_children_for_final_size:
   unit = fun node ~parent_inner_width ~parent_inner_height config ->
   let direction = node.style.direction in
   let gap_count = Math.list_last_index node.children in
-  let gap_space = Float.of_int (node.style.child_gap * gap_count) in
+  let gap_space = Float.from_int (node.style.child_gap * gap_count) in
   List.for_each
     node.children
     ~fn:(fun child ->
@@ -533,7 +533,7 @@ and container_intrinsic_size: layout_node -> float * float = fun node ->
         in
         (total_main +. child_main, Math.float_max max_cross child_cross))
   in
-  let gap_space = Float.of_int (node.style.child_gap * Math.list_last_index node.children) in
+  let gap_space = Float.from_int (node.style.child_gap * Math.list_last_index node.children) in
   match direction with
   | Style.LeftToRight -> (total_main +. gap_space, max_cross)
   | Style.TopToBottom -> (max_cross, total_main +. gap_space)
@@ -568,7 +568,7 @@ and arrange_children: layout_node -> unit = fun node ->
           match style.direction with
           | Style.LeftToRight -> Box_model.outer_width child
           | Style.TopToBottom -> Box_model.outer_height child
-        )) +. Float.of_int (style.child_gap * Math.list_last_index node.children)
+        )) +. Float.from_int (style.child_gap * Math.list_last_index node.children)
   in
   let main_offset =
     container_main_offset
@@ -595,19 +595,19 @@ and arrange_children: layout_node -> unit = fun node ->
         match style.direction with
         | Style.LeftToRight ->
             Geometry.Point.make
-              ~x:(content_rect.x +. !cursor +. Float.of_int child.style.margin.left)
-              ~y:(content_rect.y +. cross_offset +. Float.of_int child.style.margin.top)
+              ~x:(content_rect.x +. !cursor +. Float.from_int child.style.margin.left)
+              ~y:(content_rect.y +. cross_offset +. Float.from_int child.style.margin.top)
         | Style.TopToBottom ->
             Geometry.Point.make
-              ~x:(content_rect.x +. cross_offset +. Float.of_int child.style.margin.left)
-              ~y:(content_rect.y +. !cursor +. Float.of_int child.style.margin.top)
+              ~x:(content_rect.x +. cross_offset +. Float.from_int child.style.margin.left)
+              ~y:(content_rect.y +. !cursor +. Float.from_int child.style.margin.top)
       in
       arrange_node child child_origin;
       cursor := !cursor +. (
         match style.direction with
         | Style.LeftToRight -> Box_model.outer_width child
         | Style.TopToBottom -> Box_model.outer_height child
-      ) +. Float.of_int style.child_gap)
+      ) +. Float.from_int style.child_gap)
 
 let rect_equal = fun (left: Geometry.Rect.t) (right: Geometry.Rect.t) ->
   Float.compare left.x right.x = Order.EQ
@@ -726,7 +726,7 @@ let push_text = fun node commands ~clip_stack content ->
       | [] -> ()
       | _ when line_index >= max_lines -> ()
       | line :: rest ->
-          let line_width = Float.of_int (String.width line) in
+          let line_width = Float.from_int (String.width line) in
           let visible_width = Math.float_min line_width text_rect.width in
           let line_x =
             text_rect.x
@@ -739,7 +739,7 @@ let push_text = fun node commands ~clip_stack content ->
               {
                 Render.bounding_box = Geometry.Rect.make
                   ~x:line_x
-                  ~y:(text_rect.y +. Float.of_int line_index)
+                  ~y:(text_rect.y +. Float.from_int line_index)
                   ~width:visible_width
                   ~height:1.0;
                 command_type =

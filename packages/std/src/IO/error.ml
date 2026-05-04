@@ -72,7 +72,7 @@ type t =
   | Invalid_data
   | Unknown_error of string
 
-let of_system_error = fun __tmp1 ->
+let from_system_error = fun __tmp1 ->
   match __tmp1 with
   | Kernel.SystemError.EndOfFile -> End_of_file
   | Kernel.SystemError.PermissionDenied -> Permission_denied
@@ -104,13 +104,13 @@ let of_system_error = fun __tmp1 ->
   | Kernel.SystemError.Unknown code ->
       Unknown_error ("Unknown system error code " ^ Kernel.Int.to_string code)
 
-let of_system_error_code = fun code -> of_system_error (Kernel.SystemError.from_code code)
+let from_system_error_code = fun code -> from_system_error (Kernel.SystemError.from_code code)
 
-let of_async_error = fun __tmp1 ->
+let from_async_error = fun __tmp1 ->
   match __tmp1 with
   | Kernel.Async.InvalidTimeoutNs _ -> Invalid_argument
   | Kernel.Async.InvalidMaxEvents _ -> Invalid_argument
-  | Kernel.Async.System err -> of_system_error err
+  | Kernel.Async.System err -> from_system_error err
 
 let message = fun __tmp1 ->
   match __tmp1 with

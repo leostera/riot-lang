@@ -17,7 +17,7 @@ module Set: sig
 
   val singleton: elt -> t
 
-  val of_list: elt list -> t
+  val from_list: elt list -> t
 
   val insert: t -> elt -> unit
 

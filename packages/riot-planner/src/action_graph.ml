@@ -266,11 +266,11 @@ let module_to_actions
   | { kind = Other _; _ } -> ([], [], [])
   | { kind = Library { name; includes }; _ } ->
       let library_name =
-        Module_name.(of_string name
+        Module_name.(from_string name
         |> cmxa)
       in
       let archive_name =
-        Module_name.(of_string name
+        Module_name.(from_string name
         |> a)
       in
       let sources = [] in
@@ -1031,7 +1031,7 @@ let from_json = fun json ->
           let out = Byte_buf.create ~size:(len / 2) in
           let rec fill i =
             if i >= len then
-              Ok (Crypto.Hash.of_bytes out)
+              Ok (Crypto.Hash.from_bytes out)
             else
               match (
                 hex

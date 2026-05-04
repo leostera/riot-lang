@@ -25,7 +25,7 @@ val with_capacity: int -> ('k, 'v) t
    Creates a hash map from a list of key-value pairs.
    If duplicate keys exist, later values override earlier ones.
 *)
-val of_list: ('k * 'v) list -> ('k, 'v) t
+val from_list: ('k * 'v) list -> ('k, 'v) t
 
 (**
    `insert map key value` inserts a key-value pair into the map.

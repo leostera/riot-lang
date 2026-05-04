@@ -163,7 +163,7 @@ let workspace_package = fun ~workspace_root (pkg: Package.t) ->
         ()
   | Error _ -> pkg
 
-let manifests_of_packages = fun packages -> List.map packages ~fn:Package_manifest.of_package
+let manifests_of_packages = fun packages -> List.map packages ~fn:Package_manifest.from_package
 
 let make_workspace_manifest = fun
   ?(workspace_root = Path.v "/workspace")

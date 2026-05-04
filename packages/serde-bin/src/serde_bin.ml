@@ -8,6 +8,6 @@ let to_writer = Encode.to_writer
 
 let decode_prefix = Decode.decode_prefix
 
-let of_string = Decode.of_string
+let from_string = Decode.from_string
 
-let of_reader = Decode.of_reader
+let from_reader = Decode.from_reader

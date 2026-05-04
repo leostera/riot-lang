@@ -112,13 +112,13 @@ let consume_leftover_vectored = fun state bufs ->
 let read_kernel = fun buffer ~offset ~len ->
   match Kernel.IO.Stdin.read ~pos:offset ~len buffer with
   | Ok value -> Ok value
-  | Error (Kernel.IO.Stdin.System error) -> Error (Error.of_system_error error)
+  | Error (Kernel.IO.Stdin.System error) -> Error (Error.from_system_error error)
   | Error (Kernel.IO.Stdin.InvalidSlice _) -> Error Error.Invalid_argument
 
 let read_kernel_vectored = fun bufs ->
   match Kernel.IO.Stdin.read_vectored bufs with
   | Ok value -> Ok value
-  | Error (Kernel.IO.Stdin.System error) -> Error (Error.of_system_error error)
+  | Error (Kernel.IO.Stdin.System error) -> Error (Error.from_system_error error)
   | Error (Kernel.IO.Stdin.InvalidSlice _) -> Error Error.Invalid_argument
 
 let handle_read = fun state buffer ~offset ~len ->

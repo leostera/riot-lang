@@ -81,7 +81,7 @@ let rewrite_procedure = fun profile (procedure: Lir.Procedure.t) ->
   { procedure with body = List.flat_map procedure.body ~fn:(legalize_instruction profile) }
 
 let program = fun ~ctx (program: Lir.Program.t) ->
-  match Target_profile.of_context ctx with
+  match Target_profile.from_context ctx with
   | None -> program
   | Some profile -> {
     program

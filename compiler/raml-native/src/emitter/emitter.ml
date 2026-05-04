@@ -25,7 +25,7 @@ let error_to_json = fun error ->
     ]
 
 let emit_program = fun ~host:_ ~target program ->
-  match Target_profile.of_target target with
+  match Target_profile.from_target target with
   | Some { kind=Target_profile.Aarch64_apple_darwin; _ } ->
       Result.map_err
         (Aarch64_apple_darwin.emit_program program)

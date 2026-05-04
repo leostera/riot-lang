@@ -23,7 +23,7 @@
 
    let make () =
      {
-       lines = Vector.of_list [[]];
+       lines = Vector.from_list [[]];
        row = 0;
        col = 0;
        last_char_offset = 0;
@@ -52,10 +52,10 @@
      t
 
    (* Helper: char list to string *)
-   let chars_to_string chars = String.of_seq (List.to_seq chars)
+   let chars_to_string chars = String.from_seq (List.to_seq chars)
 
    (* Helper: string to char list *)
-   let string_to_chars s = List.of_seq (String.to_seq s)
+   let string_to_chars s = List.from_seq (String.to_seq s)
 
    (* Content access *)
    let lines t =
@@ -242,11 +242,11 @@
      insert_chars t chars
 
    let set_value t ~value:s =
-     let t = { t with lines = Vector.of_list [[]]; row = 0; col = 0; last_char_offset = 0 } in
+     let t = { t with lines = Vector.from_list [[]]; row = 0; col = 0; last_char_offset = 0 } in
      insert_string t s
 
    let clear t =
-     { t with lines = Vector.of_list [[]]; row = 0; col = 0; last_char_offset = 0 }
+     { t with lines = Vector.from_list [[]]; row = 0; col = 0; last_char_offset = 0 }
 
    let reset t = clear t
 

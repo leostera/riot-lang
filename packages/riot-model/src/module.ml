@@ -9,7 +9,7 @@ type t = {
 }
 
 let make = fun ~namespace ~filename ->
-  let mod_name = Module_name.of_filename ~namespace filename in
+  let mod_name = Module_name.from_filename ~namespace filename in
   let kind =
     match Path.extension filename with
     | Some ".mli" -> `interface

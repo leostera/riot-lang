@@ -65,7 +65,7 @@ let percent_decode = fun s ->
       Buffer.contents buf
     else if String.get_unchecked s ~at:i = '%' && i + 2 < len then (
       let hex = String.sub s ~offset:(i + 1) ~len:2 in
-      match Int.of_string_opt ("0x" ^ hex) with
+      match Int.from_string_opt ("0x" ^ hex) with
       | Some code ->
           Buffer.add_char buf (Char.from_int_unchecked code);
           decode (i + 3)
@@ -197,7 +197,7 @@ and combine_rfc2231_params = fun raw_params ->
             else
               suffix
           in
-          match Int.of_string_opt num_str with
+          match Int.from_string_opt num_str with
           | Some num -> `Continuation (name, num, is_encoded, value)
           | None -> `Regular (key, value)
   in
@@ -410,7 +410,7 @@ let quoted_printable_decode = fun s ->
         decode (i + 3)
       else if i + 2 < len then (
         let hex = String.sub s ~offset:(i + 1) ~len:2 in
-        match Int.of_string_opt ("0x" ^ hex) with
+        match Int.from_string_opt ("0x" ^ hex) with
         | Some code ->
             Buffer.add_char buf (Char.from_int_unchecked code);
             decode (i + 3)

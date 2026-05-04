@@ -3,7 +3,7 @@ open Std
 
 type t = Package_name.t
 
-let of_package = fun (package: Package.t) -> package.name
+let from_package = fun (package: Package.t) -> package.name
 
 let to_string = Package_name.to_string
 

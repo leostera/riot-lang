@@ -95,7 +95,7 @@ let error_to_string = fun (InvalidUri { value; reason }) ->
   "invalid testing URI `" ^ value ^ "`: " ^ uri_error_to_string reason
 
 let to_http = fun request ->
-  match Net.Uri.of_string request.uri with
+  match Net.Uri.from_string request.uri with
   | Error reason -> Error (InvalidUri { value = request.uri; reason })
   | Ok uri ->
       Net.Http.Request.create request.method_ uri

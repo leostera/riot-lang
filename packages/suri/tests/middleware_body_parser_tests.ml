@@ -30,7 +30,7 @@ let websocket_request = fun
   ?(headers = [("upgrade", "websocket"); ("connection", "keep-alive, Upgrade"); ("sec-websocket-version", "13"); ("sec-websocket-key", valid_websocket_key);])
   () ->
   let uri =
-    Net.Uri.of_string "/"
+    Net.Uri.from_string "/"
     |> Result.unwrap
   in
   let http_req =
@@ -49,7 +49,7 @@ let websocket_request = fun
 let http_request = fun
   ?(method_ = Net.Http.Method.Get) ?(version = Net.Http.Version.Http11) ?(headers = []) () ->
   let uri =
-    Net.Uri.of_string "/"
+    Net.Uri.from_string "/"
     |> Result.unwrap
   in
   Net.Http.Request.create method_ uri

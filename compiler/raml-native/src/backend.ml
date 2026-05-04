@@ -51,7 +51,7 @@ let compile = fun ~config ~(frontend:Frontend_pipeline.t) ->
               ~target:(Compilation_context.target context)
               program with
             | Ok output -> (
-                match Artifact_store.of_config config with
+                match Artifact_store.from_config config with
                 | None -> Pipeline_stage.ok ~key:"output" ~render:Std.Data.Json.string output
                 | Some store ->
                     let unit_name = compilation_unit.unit_id.unit_name in

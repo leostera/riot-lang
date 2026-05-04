@@ -249,7 +249,7 @@ let create = fun ~config ->
       let workers =
         Array.init
           ~count:worker_count
-          ~fn:(fun index -> create_worker (Runtime_scheduler_id.of_int index))
+          ~fn:(fun index -> create_worker (Runtime_scheduler_id.from_int index))
       in
       {
         stop = Atomic.make false;
@@ -299,7 +299,7 @@ let pick_spawn_worker = fun t ->
   if total = 1 then
     Runtime_scheduler_id.zero
   else
-    Runtime_scheduler_id.of_int (Atomic.get t.processes.size mod total)
+    Runtime_scheduler_id.from_int (Atomic.get t.processes.size mod total)
 
 let with_relations_lock = fun t f ->
   Runtime_mutex.lock t.relations_lock;

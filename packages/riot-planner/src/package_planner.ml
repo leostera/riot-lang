@@ -68,7 +68,7 @@ let group_namespace = fun root ->
     |> String.split ~by:"/"
     |> List.filter ~fn:(fun part -> not (String.is_empty part))
     |> List.map ~fn:String.capitalize_ascii
-    |> Namespace.of_list
+    |> Namespace.from_list
 
 let planning_groups_for_package = fun (package: Package.t) ->
   let groups = [
@@ -213,7 +213,7 @@ let module_kind_of_json = fun json ->
               match parse_string_array namespace_json with
               | Ok ns ->
                   let mod_ =
-                    Module.make ~namespace:(Namespace.of_list ns) ~filename:(Path.v filename)
+                    Module.make ~namespace:(Namespace.from_list ns) ~filename:(Path.v filename)
                   in
                   Ok (Module_node.ML mod_)
               | Error e -> Error e
@@ -226,7 +226,7 @@ let module_kind_of_json = fun json ->
               match parse_string_array namespace_json with
               | Ok ns ->
                   let mod_ =
-                    Module.make ~namespace:(Namespace.of_list ns) ~filename:(Path.v filename)
+                    Module.make ~namespace:(Namespace.from_list ns) ~filename:(Path.v filename)
                   in
                   Ok (Module_node.MLI mod_)
               | Error e -> Error e

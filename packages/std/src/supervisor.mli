@@ -24,7 +24,7 @@
    let supervisor =
      Supervisor.start_link
        ~strategy:OneForOne
-       ~intensity:{ max_restarts = 5; window = Duration.of_sec 10 }
+       ~intensity:{ max_restarts = 5; window = Duration.from_sec 10 }
        ~children:[
          worker_spec 1;
          worker_spec 2;
@@ -160,7 +160,7 @@ type intensity = {
    ```ocaml
    let sup = Supervisor.start_link
      ~strategy:OneForOne
-     ~intensity:{ max_restarts = 3; window = Duration.of_sec 5 }
+     ~intensity:{ max_restarts = 3; window = Duration.from_sec 5 }
      ~children:[worker1; worker2]
      ()
    ```
@@ -313,7 +313,7 @@ module Dynamic: sig
   (**
      Start a dynamic supervisor.
 
-     - [intensity]: Default [{ max_restarts = 3; window = Duration.of_sec 5 }]
+     - [intensity]: Default [{ max_restarts = 3; window = Duration.from_sec 5 }]
      - [max_children]: Optional limit on number of children
 
      Example:

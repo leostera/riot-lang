@@ -7,6 +7,6 @@ let () =
   range 1 10
   |> Seq.filter (fun x -> x mod 2 = 0)
   |> Seq.map (fun x -> x * x)
-  |> List.of_seq
+  |> List.from_seq
   |> List.iter (fun x -> Printf.printf "%d " x);
   print_newline ()

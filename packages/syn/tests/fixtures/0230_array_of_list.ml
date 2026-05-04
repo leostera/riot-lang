@@ -1,1 +1,1 @@
-let x = Array.of_list [ 1; 2; 3 ]
+let x = Array.from_list [ 1; 2; 3 ]

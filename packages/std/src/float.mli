@@ -16,7 +16,7 @@ val compare: t -> t -> Order.t
 
 val from_int: int -> t
 
-val of_int: int -> t
+val from_int: int -> t
 
 val to_int: t -> int
 
@@ -24,9 +24,9 @@ val parse: string -> t option
 
 val parse_unchecked: string -> t
 
-val of_string: string -> t
+val from_string: string -> t
 
-val of_string_opt: string -> t option
+val from_string_opt: string -> t option
 
 val add: t -> t -> t
 

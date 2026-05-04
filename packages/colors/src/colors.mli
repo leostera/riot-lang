@@ -287,7 +287,7 @@ module RGB: sig
      Accepts either `#RRGGBB` or `RRGGBB`, ignores ASCII case, and returns
      [Error _] for invalid lengths or digits.
   *)
-  val of_hex: string -> (rgb, string) Std.result
+  val from_hex: string -> (rgb, string) Std.result
 
   (**
      Render RGB as a canonical lowercase hex string.

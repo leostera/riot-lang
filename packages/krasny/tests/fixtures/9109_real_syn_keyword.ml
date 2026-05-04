@@ -52,7 +52,7 @@ type t =
   | While
   | With
 
-let of_string = function
+let from_string = function
   | "and" -> Some And
   | "as" -> Some As
   | "asr" -> Some Asr

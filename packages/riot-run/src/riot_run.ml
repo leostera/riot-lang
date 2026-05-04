@@ -182,7 +182,7 @@ let find_built_binary_path = fun
         if mode land 0o111 != 0 then
           Ok path
         else
-          Fs.set_permissions path (Fs.Permissions.of_mode (mode lor 0o111))
+          Fs.set_permissions path (Fs.Permissions.from_mode (mode lor 0o111))
           |> Result.map ~fn:(fun () -> path)
           |> Result.map_err
             ~fn:(fun err -> "failed to mark binary executable: " ^ IO.error_message err)

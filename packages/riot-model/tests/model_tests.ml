@@ -705,7 +705,7 @@ ignore = ["fixtures", "generated"]
 |}
     |> Result.expect ~msg:"expected workspace TOML to parse"
   in
-  let config = Riot_model.Fmt_config.of_toml toml in
+  let config = Riot_model.Fmt_config.from_toml toml in
   Test.assert_equal ~expected:[ "fixtures"; "generated" ] ~actual:config.ignore_patterns;
   Ok ()
 
@@ -737,7 +737,7 @@ ignore = ["fixtures"]
 |}
     |> Result.expect ~msg:"expected legacy fmt TOML to parse"
   in
-  let config = Riot_model.Fmt_config.of_toml toml in
+  let config = Riot_model.Fmt_config.from_toml toml in
   Test.assert_equal ~expected:[ "fixtures" ] ~actual:config.ignore_patterns;
   Ok ()
 
@@ -939,7 +939,7 @@ std = ">= 1.2.3"
     |> Result.expect ~msg:"expected workspace TOML to parse"
   in
   let workspace_manifest =
-    Riot_model.Workspace_manifest.of_toml manifest
+    Riot_model.Workspace_manifest.from_toml manifest
     |> Result.expect ~msg:"expected workspace manifest to parse"
   in
   match workspace_manifest.dependencies with
@@ -970,7 +970,7 @@ std = "*"
     |> Result.expect ~msg:"expected workspace TOML to parse"
   in
   let workspace_manifest =
-    Riot_model.Workspace_manifest.of_toml manifest
+    Riot_model.Workspace_manifest.from_toml manifest
     |> Result.expect ~msg:"expected workspace manifest to parse"
   in
   match workspace_manifest.dependencies with
@@ -1000,7 +1000,7 @@ std = { version = 123 }
 |}
     |> Result.expect ~msg:"expected workspace TOML to parse"
   in
-  match Riot_model.Workspace_manifest.of_toml manifest with
+  match Riot_model.Workspace_manifest.from_toml manifest with
   | Error (
     Riot_model.Workspace_manifest.DependencyError (
       Riot_model.Workspace_manifest.DependencyFieldMustBeString {
@@ -1343,7 +1343,7 @@ api_token = "root-secret"
 |}
     |> Result.expect ~msg:"expected user config TOML to parse"
   in
-  match Riot_model.User_config.of_toml toml with
+  match Riot_model.User_config.from_toml toml with
   | Error err -> Error (Riot_model.User_config.message err)
   | Ok config -> (
       match Riot_model.User_config.api_token config ~registry_name:"pkgs.ml" with
@@ -1376,7 +1376,7 @@ let test_user_config_parses_empty_registry_entry = fun _ctx ->
 |}
     |> Result.expect ~msg:"expected user config TOML to parse"
   in
-  match Riot_model.User_config.of_toml toml with
+  match Riot_model.User_config.from_toml toml with
   | Error err -> Error (Riot_model.User_config.message err)
   | Ok config -> (
       match Riot_model.User_config.api_token config ~registry_name:"pkgs.ml" with
@@ -1395,7 +1395,7 @@ api_token = "publish-token"
 |}
     |> Result.expect ~msg:"expected user config TOML to parse"
   in
-  match Riot_model.User_config.of_toml toml with
+  match Riot_model.User_config.from_toml toml with
   | Error err -> Error (Riot_model.User_config.message err)
   | Ok config -> (
       match List.find
@@ -1438,7 +1438,7 @@ api_url = 42
 |}
     |> Result.expect ~msg:"expected user config TOML to parse"
   in
-  match Riot_model.User_config.of_toml toml with
+  match Riot_model.User_config.from_toml toml with
   | Error (
     Riot_model.User_config.InvalidRegistryConfig {
       registry_name;

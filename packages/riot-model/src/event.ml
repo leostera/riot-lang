@@ -1758,7 +1758,7 @@ let kind_from_json = fun json ->
               | Json.Object data_fields -> (
                   match (Fields.get "path" data_fields, Fields.get "error" data_fields) with
                   | (Some (Json.String path), Some error_json) -> (
-                      match Pm_error.of_json error_json with
+                      match Pm_error.from_json error_json with
                       | Ok error -> Ok (LockfileReadFailed { path; error })
                       | Error err -> Error ("Invalid LockfileReadFailed data: " ^ err)
                     )
@@ -1790,7 +1790,7 @@ let kind_from_json = fun json ->
               | Json.Object data_fields -> (
                   match (Fields.get "path" data_fields, Fields.get "error" data_fields) with
                   | (Some (Json.String path), Some error_json) -> (
-                      match Pm_error.of_json error_json with
+                      match Pm_error.from_json error_json with
                       | Ok error -> Ok (LockfileWriteFailed { path; error })
                       | Error err -> Error ("Invalid LockfileWriteFailed data: " ^ err)
                     )
@@ -1874,7 +1874,7 @@ let kind_from_json = fun json ->
               | Json.Object data_fields -> (
                   match Fields.get "error" data_fields with
                   | Some error_json -> (
-                      match Pm_error.of_json error_json with
+                      match Pm_error.from_json error_json with
                       | Ok error -> Ok (DependencyResolutionFailed { error })
                       | Error err -> Error ("Invalid DependencyResolutionFailed data: " ^ err)
                     )
@@ -1979,7 +1979,7 @@ let kind_from_json = fun json ->
                   ) with
                   | (Some (Json.String registry), Some package_json, Some error_json) -> (
                       let* package = package_name_of_json package_json in
-                      match Pm_error.of_json error_json with
+                      match Pm_error.from_json error_json with
                       | Ok error -> Ok (PackageMetadataFetchFailed { registry; package; error })
                       | Error err -> Error ("Invalid PackageMetadataFetchFailed data: " ^ err)
                     )
@@ -2137,7 +2137,7 @@ let kind_from_json = fun json ->
                         | None -> None
                       in
                       let* package = package_name_of_json package_json in
-                      match Pm_error.of_json error_json with
+                      match Pm_error.from_json error_json with
                       | Ok error -> Ok (PackageManifestFetchFailed { package; version; error })
                       | Error err -> Error ("Invalid PackageManifestFetchFailed data: " ^ err)
                     )
@@ -2204,7 +2204,7 @@ let kind_from_json = fun json ->
                       Some error_json
                     ) -> (
                       let* package = package_name_of_json package_json in
-                      match Pm_error.of_json error_json with
+                      match Pm_error.from_json error_json with
                       | Ok error ->
                           Ok (
                             PackageDownloadFailed {
@@ -2322,7 +2322,7 @@ let kind_from_json = fun json ->
                       Some error_json
                     ) -> (
                       let* package = package_name_of_json package_json in
-                      match Pm_error.of_json error_json with
+                      match Pm_error.from_json error_json with
                       | Ok error ->
                           Ok (
                             PackageMaterializationFailed {
@@ -2399,7 +2399,7 @@ let from_json = fun json ->
       in
       let session_id =
         match Fields.get "session_id" fields with
-        | Some (Json.String s) -> Session_id.of_string s
+        | Some (Json.String s) -> Session_id.from_string s
         | _ -> Session_id.make ()
       in
       let level =
@@ -2432,7 +2432,7 @@ module Tests = struct
   let test_lockfile_event_json_roundtrip () =
     let event =
       create
-        ~session_id:(Session_id.of_string "test-session")
+        ~session_id:(Session_id.from_string "test-session")
         ~level:Info
         (LockfileReadFinished { path = "/tmp/workspace/riot.lock"; duration_ms = 12 })
     in
@@ -2448,7 +2448,7 @@ module Tests = struct
   let test_resolution_event_json_roundtrip () =
     let event =
       create
-        ~session_id:(Session_id.of_string "test-session")
+        ~session_id:(Session_id.from_string "test-session")
         ~level:Info
         (
           DependencyResolutionStarted {
@@ -2469,7 +2469,7 @@ module Tests = struct
   let test_package_resolved_event_json_roundtrip () =
     let event =
       create
-        ~session_id:(Session_id.of_string "test-session")
+        ~session_id:(Session_id.from_string "test-session")
         ~level:Info
         (
           PackageResolvedForBuild {
@@ -2502,7 +2502,7 @@ module Tests = struct
   let test_manifest_update_event_json_roundtrip () =
     let event =
       create
-        ~session_id:(Session_id.of_string "test-session")
+        ~session_id:(Session_id.from_string "test-session")
         ~level:Info
         (
           DependencyManifestUpdated {
@@ -2534,7 +2534,7 @@ module Tests = struct
   let test_package_locked_event_json_roundtrip () =
     let event =
       create
-        ~session_id:(Session_id.of_string "test-session")
+        ~session_id:(Session_id.from_string "test-session")
         ~level:Info
         (PackageVersionLocked { package = package_name "std"; version = "0.2.0" })
     in
@@ -2550,7 +2550,7 @@ module Tests = struct
   let test_package_versions_unchanged_event_json_roundtrip () =
     let event =
       create
-        ~session_id:(Session_id.of_string "test-session")
+        ~session_id:(Session_id.from_string "test-session")
         ~level:Info
         (PackageVersionsUnchanged { packages = 3 })
     in

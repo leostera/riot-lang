@@ -24,10 +24,10 @@ type t = {
 val metadata_path: unit -> (Path.t, string) result
 
 (** Load version metadata from a JSON file. *)
-val of_path: Path.t -> (t, string) result
+val from_path: Path.t -> (t, string) result
 
 (** Parse version metadata from a JSON string. *)
-val of_json_string: string -> (t, string) result
+val from_json_string: string -> (t, string) result
 
 (**
    Parse a plain version string into release metadata when possible.
@@ -35,7 +35,7 @@ val of_json_string: string -> (t, string) result
    Use this for lightweight version inputs that do not come from a full JSON
    metadata file.
 *)
-val of_version_string: string -> t option
+val from_version_string: string -> t option
 
 (** Write version metadata to [path]. *)
 val write_path: path:Path.t -> t -> (unit, string) result

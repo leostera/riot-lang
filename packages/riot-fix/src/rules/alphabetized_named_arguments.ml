@@ -4,7 +4,7 @@ open Std.Collections
 module H = Rule_helpers
 module Ast = Syn.Ast
 
-let rule_id = Rule_id.of_string "alphabetized-named-arguments"
+let rule_id = Rule_id.from_string "alphabetized-named-arguments"
 
 let rule_description = "Labeled and optional arguments should be alphabetized within their groups"
 

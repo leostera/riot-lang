@@ -50,7 +50,7 @@ let delay_for_attempt = fun policy ~attempt ->
     if policy.jitter_nanos <= 0L then
       Time.Duration.zero
     else
-      let bounded = Int64.rem (Int64.of_int (attempt * 7_919)) policy.jitter_nanos in
+      let bounded = Int64.rem (Int64.from_int (attempt * 7_919)) policy.jitter_nanos in
       Time.Duration.from_nanos (Int64.to_int bounded)
   in
   Time.Duration.min policy.max_delay (Time.Duration.add base jitter)

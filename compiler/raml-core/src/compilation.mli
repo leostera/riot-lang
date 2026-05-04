@@ -15,7 +15,7 @@ val create:
   codegen_fields:(string * Json.t) list ->
   t
 
-val of_pipeline_json: Json.t -> t
+val from_pipeline_json: Json.t -> t
 
 val to_json: t -> Json.t
 

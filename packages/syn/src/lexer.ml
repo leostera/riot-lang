@@ -350,7 +350,7 @@ let lex_ident = fun cursor delim_stack token_start ->
     if ident = "_" then
       Token.Underscore
     else
-      match Keyword.of_string ident with
+      match Keyword.from_string ident with
       | Some kw -> (
           if Keyword.is_opening kw then
             let delim =

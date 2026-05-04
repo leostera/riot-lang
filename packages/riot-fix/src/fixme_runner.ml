@@ -448,7 +448,7 @@ let attach_to_workspace = fun workspace plan ->
   in
   {
     workspace with
-    packages = other_packages @ [ Riot_model.Package_manifest.of_package plan.package ];
+    packages = other_packages @ [ Riot_model.Package_manifest.from_package plan.package ];
   }
 
 let materialize = fun ~workspace_root ~target_dir_root providers ->

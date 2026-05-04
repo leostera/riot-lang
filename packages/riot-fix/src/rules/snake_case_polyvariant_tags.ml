@@ -4,7 +4,7 @@ module H = Rule_helpers
 module Ast = Syn.Ast
 module Kind = Syn.SyntaxKind
 
-let rule_id = Rule_id.of_string "snake-case-polyvariant-tags"
+let rule_id = Rule_id.from_string "snake-case-polyvariant-tags"
 
 let rule_description = "Polymorphic variant tags should use snake_case instead of camelCase"
 

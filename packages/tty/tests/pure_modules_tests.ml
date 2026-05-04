@@ -81,7 +81,7 @@ let test_color_ansi256_accepts_bounds = fun _ctx ->
   | _ -> Error "Expected ansi256 bounds 0 and 255 to be accepted"
 
 let test_color_of_rgb_clamps = fun _ctx ->
-  match Tty.Color.of_rgb (300, (-10), 128) with
+  match Tty.Color.from_rgb (300, (-10), 128) with
   | Tty.Color.RGB (255, 0, 128) -> Ok ()
   | value -> Error ("Expected clamped RGB(255,0,128), got " ^ Tty.Color.to_string value)
 
@@ -133,11 +133,11 @@ let test_color_to_escape_seq_basic_ansi = fun _ctx ->
 
 let test_color_to_escape_seq_rgb_modes = fun _ctx ->
   let fg =
-    Tty.Color.of_rgb (1, 2, 3)
+    Tty.Color.from_rgb (1, 2, 3)
     |> Tty.Color.to_escape_seq ~mode:`fg
   in
   let bg =
-    Tty.Color.of_rgb (1, 2, 3)
+    Tty.Color.from_rgb (1, 2, 3)
     |> Tty.Color.to_escape_seq ~mode:`bg
   in
   if fg = "38;2;1;2;3" && bg = "48;2;1;2;3" then

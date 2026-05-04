@@ -1,6 +1,6 @@
 open Std
 
-val of_interface_source:
+val from_interface_source:
   lookup:Source.lookup ->
   ?path:string list ->
   ?docstring:string ->

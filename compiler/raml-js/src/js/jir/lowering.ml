@@ -60,7 +60,7 @@ let binding_id_of_entity = fun ~fallback_name entity_id ->
   match Core.Entity_id.binding_id entity_id with
   | Some binding_id -> binding_id
   | None ->
-      let path = Core.Surface_path.of_segments [ "__raml_js"; "binding"; fallback_name ] in
+      let path = Core.Surface_path.from_segments [ "__raml_js"; "binding"; fallback_name ] in
       Core.Binding_id.persistent path
 
 let binder_of_entity = fun ~fallback_name entity_id ->

@@ -34,9 +34,9 @@ val min_int: t
 
 val from_float: float -> t
 
-val of_string: string -> t
+val from_string: string -> t
 
-val of_string_opt: string -> t option
+val from_string_opt: string -> t option
 
 val parse: string -> t option
 

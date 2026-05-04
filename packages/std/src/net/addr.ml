@@ -30,16 +30,16 @@ let udp = fun ip port ->
 
 let io_error_of_resolver_error = fun __tmp1 ->
   match __tmp1 with
-  | Kernel.Net.Addr.System err -> IO.of_system_error err
+  | Kernel.Net.Addr.System err -> IO.from_system_error err
   | error -> IO.Unknown_error (Kernel.Net.Addr.error_to_string error)
 
-let of_host_and_port = fun ~host ~port ->
+let from_host_and_port = fun ~host ~port ->
   match Kernel.Net.Addr.resolve_first_stream ~host ~port with
   | Ok addr -> Ok addr
   | Error (Kernel.Net.Addr.InvalidPort { port }) -> Error (Invalid_port_number (Int.to_string port))
   | Error err -> Error (System_error (io_error_of_resolver_error err))
 
-let of_host_and_port_datagram = fun ~host ~port ->
+let from_host_and_port_datagram = fun ~host ~port ->
   match Kernel.Net.Addr.resolve_first_datagram ~host ~port with
   | Ok addr -> Ok addr
   | Error (Kernel.Net.Addr.InvalidPort { port }) -> Error (Invalid_port_number (Int.to_string port))
@@ -82,7 +82,7 @@ let parse = fun s ->
   | Some (host, port_text) -> (
       match parse_port port_text with
       | Error err -> Error err
-      | Ok port -> of_host_and_port ~host ~port
+      | Ok port -> from_host_and_port ~host ~port
     )
 
 let parse_datagram = fun s ->
@@ -91,7 +91,7 @@ let parse_datagram = fun s ->
   | Some (host, port_text) -> (
       match parse_port port_text with
       | Error err -> Error err
-      | Ok port -> of_host_and_port_datagram ~host ~port
+      | Ok port -> from_host_and_port_datagram ~host ~port
     )
 
 let ip = fun addr -> Kernel.Net.IpAddr.to_string (Kernel.Net.SocketAddr.ip addr)

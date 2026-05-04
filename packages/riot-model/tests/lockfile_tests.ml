@@ -23,7 +23,7 @@ dev_dependencies = []
 |}
   in
   let* toml = parse_toml source in
-  match Riot_model.Lockfile.of_toml toml with
+  match Riot_model.Lockfile.from_toml toml with
   | Ok lockfile ->
       if
         lockfile.format_version = 1
@@ -43,7 +43,7 @@ packages = []
 |}
   in
   let* toml = parse_toml source in
-  match Riot_model.Lockfile.of_toml toml with
+  match Riot_model.Lockfile.from_toml toml with
   | Error (
     Riot_model.Lockfile.MissingField {
       container = Riot_model.Lockfile.Lockfile;
@@ -71,7 +71,7 @@ dev_dependencies = []
 |}
   in
   let* toml = parse_toml source in
-  match Riot_model.Lockfile.of_toml toml with
+  match Riot_model.Lockfile.from_toml toml with
   | Error (
     Riot_model.Lockfile.InvalidPackageName {
       container = Riot_model.Lockfile.Dependency;
@@ -102,7 +102,7 @@ dev_dependencies = []
 |}
   in
   let* toml = parse_toml source in
-  match Riot_model.Lockfile.of_toml toml with
+  match Riot_model.Lockfile.from_toml toml with
   | Error (Riot_model.Lockfile.UnknownProvenanceKind { value = "banana" }) -> Ok ()
   | Error err ->
       Error ("expected unknown provenance kind, got: " ^ Riot_model.Lockfile.error_message err)
@@ -110,15 +110,15 @@ dev_dependencies = []
 
 let tests =
   Test.[
-    case "Lockfile.of_toml accepts minimal lockfiles" test_of_toml_accepts_minimal_lockfile;
+    case "Lockfile.from_toml accepts minimal lockfiles" test_of_toml_accepts_minimal_lockfile;
     case
-      "Lockfile.of_toml reports missing dependency_hash"
+      "Lockfile.from_toml reports missing dependency_hash"
       test_of_toml_reports_missing_dependency_hash;
     case
-      "Lockfile.of_toml reports invalid dependency names"
+      "Lockfile.from_toml reports invalid dependency names"
       test_of_toml_reports_invalid_dependency_name;
     case
-      "Lockfile.of_toml reports unknown provenance kinds"
+      "Lockfile.from_toml reports unknown provenance kinds"
       test_of_toml_reports_unknown_provenance_kind;
   ]
 

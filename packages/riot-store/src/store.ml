@@ -272,7 +272,7 @@ let hash_of_hex = fun hex ->
     let bytes = IO.Bytes.create ~size:(len / 2) in
     let rec loop index =
       if index >= len then
-        Some (Crypto.Hash.of_bytes bytes)
+        Some (Crypto.Hash.from_bytes bytes)
       else
         match (
           hex_nibble (String.get_unchecked hex ~at:index),
@@ -523,7 +523,7 @@ let load_plan_bundle = fun store ~hash ->
       match read_opened_file file with
       | Error _ -> None
       | Ok content ->
-          Data.Json.of_string content
+          Data.Json.from_string content
           |> Result.to_option
     )
 

@@ -42,7 +42,7 @@ let start_link = fun
   match validate_start_options ~acceptors ~buffer_size with
   | Error error -> Error error
   | Ok () ->
-      match Net.Addr.of_host_and_port ~host ~port with
+      match Net.Addr.from_host_and_port ~host ~port with
       | Error error -> Error (InvalidAddress error)
       | Ok addr -> (
           match Net.TcpListener.bind ~reuse_addr:true ~reuse_port:false addr with

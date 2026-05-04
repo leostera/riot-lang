@@ -50,16 +50,16 @@ let test_from_float = fun _ctx ->
 
 let test_parse_and_of_string = fun _ctx ->
   if
-    Int.equal (Int.of_string "42") 42
+    Int.equal (Int.from_string "42") 42
     && Int.parse "42" = Some 42
-    && Int.of_string_opt "42" = Some 42
+    && Int.from_string_opt "42" = Some 42
   then
     Ok ()
   else
     Error "expected Int string parsers to parse decimal strings"
 
 let test_parse_invalid = fun _ctx ->
-  if Int.parse "abc" = None && Int.of_string_opt "abc" = None then
+  if Int.parse "abc" = None && Int.from_string_opt "abc" = None then
     Ok ()
   else
     Error "expected invalid int strings to return None"

@@ -13,7 +13,7 @@ timeout 300 riot bench std:std_data_json_bench --json
 ```
 
 Notes:
-- `Json.of_string` is the current baseline parser.
+- `Json.from_string` is the current baseline parser.
 - `JsonStream.from_string` exercises the new cursor-based parser after one
   explicit copy into `IoSlice`.
 - `JsonStream.from_slice` removes that front-door copy and parses directly from
@@ -21,7 +21,7 @@ Notes:
 
 ## JSON Parsing
 
-| Shape | `Json.of_string` | `JsonStream.from_string` | `JsonStream.from_slice` |
+| Shape | `Json.from_string` | `JsonStream.from_string` | `JsonStream.from_slice` |
 | --- | ---: | ---: | ---: |
 | `small object` | `1.73 us` | `2.70 us` | `2.72 us` |
 | `1 KiB numeric array` | `89.30 us` | `147.48 us` | `137.36 us` |
@@ -37,6 +37,6 @@ Notes:
 - On larger inputs, `JsonStream.from_slice` and `JsonStream.from_string` are
   effectively tied. The parser cost dominates, not the initial slice
   materialization.
-- `Json.of_string` remains the fastest path on every current JSON benchmark.
+- `Json.from_string` remains the fastest path on every current JSON benchmark.
 - The experiment is still useful as a substrate check, but it does not justify
   replacing `Std.Data.Json` yet.

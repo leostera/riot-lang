@@ -48,7 +48,7 @@ type t =
   | Generic_error of string
 
 (** Create a generic error from a string message. *)
-val of_string: string -> t
+val from_string: string -> t
 
 (** Create a connection error. *)
 val connection_error: message:string -> ?cause:db_error -> unit -> t

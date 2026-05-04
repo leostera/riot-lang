@@ -61,7 +61,7 @@ open Global
    Parsing from string (for testing or small data):
 
    ```ocaml let csv_str = "name,age\nAlice,30\nBob,25" in let iter =
-   Csv.of_string csv_str in
+   Csv.from_string csv_str in
 
    match Iter.MutIterator.next iter with | Some (Ok row) -> (* process row *) |
    _ -> () ```
@@ -129,7 +129,7 @@ val config: ?delimiter:char -> ?quote:char -> ?escape:char -> ?trim_fields:bool 
 
    ```ocaml
    let file = Fs.File.open_read (Path.v "data.csv") |> Result.unwrap in
-   let reader = IO.Reader.of_file file in
+   let reader = IO.Reader.from_file file in
    let iter = Csv.parse reader in
 
    let rec process () = match Iter.MutIterator.next iter with
@@ -142,7 +142,7 @@ val config: ?delimiter:char -> ?quote:char -> ?escape:char -> ?trim_fields:bool 
    Reading from a string:
 
    ```ocaml
-   let reader = IO.Reader.of_string "name,age\nAlice,30\nBob,25" in
+   let reader = IO.Reader.from_string "name,age\nAlice,30\nBob,25" in
    let iter = Csv.parse reader in
    ```
 
@@ -150,7 +150,7 @@ val config: ?delimiter:char -> ?quote:char -> ?escape:char -> ?trim_fields:bool 
 
    ```ocaml
    let config = Csv.config ~delimiter:'\t' () in
-   let reader = IO.Reader.of_string "a\tb\tc\n1\t2\t3" in
+   let reader = IO.Reader.from_string "a\tb\tc\n1\t2\t3" in
    let iter = Csv.parse ~config reader in
    ```
 
@@ -169,7 +169,7 @@ val parse: ?config:config -> IO.Reader.t -> (row, error) result Iter.MutIterator
    ## Examples
 
    ```ocaml let csv_str = "name,age\nAlice,30\nBob,25" in let iter =
-   Csv.of_string csv_str in
+   Csv.from_string csv_str in
 
    match Iter.MutIterator.next iter with | Some (Ok row) -> (* ["name"; "age"]
    *) | _ -> () ```
@@ -177,16 +177,16 @@ val parse: ?config:config -> IO.Reader.t -> (row, error) result Iter.MutIterator
    With custom config:
 
    ```ocaml let config = Csv.config ~delimiter:';' () in let iter =
-   Csv.of_string ~config "a;b;c\n1;2;3" in ```
+   Csv.from_string ~config "a;b;c\n1;2;3" in ```
 *)
-val of_string: ?config:config -> string -> (row, error) result Iter.MutIterator.t
+val from_string: ?config:config -> string -> (row, error) result Iter.MutIterator.t
 
 (**
    Converts a parse error to a human-readable message.
 
    ## Examples
 
-   ```ocaml match Csv.of_string bad_input with | Ok _ -> () | Error err ->
+   ```ocaml match Csv.from_string bad_input with | Ok _ -> () | Error err ->
    Log.error "CSV parse failed: %s" (Csv.error_to_string err) ```
 *)
 val error_to_string: error -> string
@@ -202,7 +202,7 @@ val error_to_string: error -> string
    ```ocaml
    let data = [ ["Alice"; "30"; "NYC"]; ["Bob"; "25"; "SF"] ] in
    let file = Fs.File.create (Path.v "output.csv") |> Result.unwrap in
-   let writer = IO.Writer.of_file file in
+   let writer = IO.Writer.from_file file in
    Csv.write ~data writer |> Result.unwrap
    ```
 

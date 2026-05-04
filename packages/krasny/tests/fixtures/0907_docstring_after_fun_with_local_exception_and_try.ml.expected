@@ -1,4 +1,4 @@
-let of_string = fun str ->
+let from_string = fun str ->
   let len = String.length str in
   let pos = cell 0 in
   let exception Json_parse_error of error in

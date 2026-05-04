@@ -99,7 +99,7 @@ let error_to_json = fun error ->
 let lower_binding = fun ~name ~scope_path ->
   match scope_path with
   | "" -> {
-    export = Some Core.Export.{ name; symbol = Core.Entity_id.of_name name };
+    export = Some Core.Export.{ name; symbol = Core.Entity_id.from_name name };
     item = Core.Init_item.Eval (Core.Expr.Constant Core.Constant.Unit)
   }
   | _ -> { export = None; item = Core.Init_item.Eval (Core.Expr.Constant Core.Constant.Unit) }
@@ -124,7 +124,7 @@ let lower_file = fun ~(source_unit:Source_unit.t) (_semantic_tree: unit) ->
   match source_unit.kind with
   | Source_unit.Interface -> unsupported_file source_unit
   | Source_unit.Implementation -> Ok Core.Compilation_unit.{
-    unit_id = Core.Unit_id.of_source_unit source_unit;
+    unit_id = Core.Unit_id.from_source_unit source_unit;
     exports = [];
     init = []
   }

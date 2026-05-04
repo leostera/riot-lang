@@ -69,7 +69,7 @@ module Document = struct
 
   let empty = []
 
-  let of_items = fun items -> items
+  let from_items = fun items -> items
 
   let append = fun document item -> document @ [ item ]
 

@@ -218,7 +218,7 @@ module MyDesign = struct
       ]
 
   let progress = fun ?(value = 0) ?(max = 100) () ->
-    let percentage = (Float.of_int value /. Float.of_int max) *. 100.0 in
+    let percentage = (Float.from_int value /. Float.from_int max) *. 100.0 in
     div
       ~attrs:[
         class_ "progress";

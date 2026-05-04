@@ -11,7 +11,7 @@ let main ~args:_ =
     test_uris
     ~fn:(fun uri_str ->
       println ("Testing: " ^ uri_str);
-      match Net.Uri.of_string uri_str with
+      match Net.Uri.from_string uri_str with
       | Ok uri ->
           println "  OK - Parsed successfully";
           println ("  scheme: " ^ (Option.unwrap_or ~default:"none" (Net.Uri.scheme uri)));

@@ -220,7 +220,7 @@ let test_decodes_record_and_skips_unknown_fields = fun _ctx ->
     pet = Dog "Chouchou";
   }
   in
-  match Serde_json.of_string person_decode input with
+  match Serde_json.from_string person_decode input with
   | Ok actual ->
       if equal_person actual expected then
         Ok ()
@@ -241,7 +241,7 @@ let test_decodes_unit_variant = fun _ctx ->
     pet = Cat;
   }
   in
-  match Serde_json.of_string person_decode input with
+  match Serde_json.from_string person_decode input with
   | Ok actual ->
       if equal_person actual expected then
         Ok ()
@@ -262,7 +262,7 @@ let test_decodes_from_reader = fun _ctx ->
     pet = Cat;
   }
   in
-  match Serde_json.of_reader person_decode (String.to_reader ~chunk_size:1 input) with
+  match Serde_json.from_reader person_decode (String.to_reader ~chunk_size:1 input) with
   | Ok actual ->
       if equal_person actual expected then
         Ok ()
@@ -278,7 +278,7 @@ let test_decodes_from_reader = fun _ctx ->
 let test_matches_shared_prefix_fields = fun _ctx ->
   let input = {|{"help":1,"hello":2,"hellsinborg":3}|} in
   let expected: prefix_record = { help = 1; hello = 2; hellsinborg = 3 } in
-  match Serde_json.of_string prefix_decode input with
+  match Serde_json.from_string prefix_decode input with
   | Ok actual ->
       expect_equal
         ~expected
@@ -288,7 +288,7 @@ let test_matches_shared_prefix_fields = fun _ctx ->
 
 let test_decodes_numeric_scalars = fun _ctx ->
   let expect_ok decode input expected message =
-    match Serde_json.of_string decode input with
+    match Serde_json.from_string decode input with
     | Ok actual when actual = expected -> Ok ()
     | Ok _ -> Error message
     | Error err -> Error ("numeric decode failed: " ^ Serde.Error.to_string err)
@@ -379,7 +379,7 @@ let test_roundtrips_record = fun _ctx ->
     | Ok encoded -> Ok encoded
     | Error err -> Error ("roundtrip encode failed: " ^ Serde.Error.to_string err)
   in
-  match Serde_json.of_string person_decode encoded with
+  match Serde_json.from_string person_decode encoded with
   | Ok actual ->
       if equal_person actual person then
         Ok ()
@@ -394,7 +394,7 @@ let test_roundtrips_arrays = fun _ctx ->
     | Ok encoded -> Ok encoded
     | Error err -> Error ("array encode failed: " ^ Serde.Error.to_string err)
   in
-  match Serde_json.of_string (De.array De.int) encoded with
+  match Serde_json.from_string (De.array De.int) encoded with
   | Ok actual when actual = values -> Ok ()
   | Ok _ -> Error "expected serde-json array roundtrip to preserve elements"
   | Error err -> Error ("array decode failed: " ^ Serde.Error.to_string err)
@@ -406,7 +406,7 @@ let test_roundtrips_large_float = fun _ctx ->
     | Ok encoded -> Ok encoded
     | Error err -> Error ("float encode failed: " ^ Serde.Error.to_string err)
   in
-  match Serde_json.of_string De.float encoded with
+  match Serde_json.from_string De.float encoded with
   | Ok actual when Float.equal actual value -> Ok ()
   | Ok actual ->
       Error ("expected serde-json to preserve large floats, got "
@@ -416,7 +416,7 @@ let test_roundtrips_large_float = fun _ctx ->
   | Error err -> Error ("float decode failed: " ^ Serde.Error.to_string err)
 
 let test_decodes_negative_int64_across_reader_chunk_boundary = fun _ctx ->
-  match Serde_json.of_reader De.int64 (String.to_reader ~chunk_size:1 "-1689690667") with
+  match Serde_json.from_reader De.int64 (String.to_reader ~chunk_size:1 "-1689690667") with
   | Ok actual ->
       expect_equal
         ~expected:(-1_689_690_667L)

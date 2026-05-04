@@ -119,7 +119,7 @@ module Group = struct
   (* Helper: replicate a byte across all 8 bytes of int64 *)
 
   let repeat = fun byte ->
-    let b = I64.of_int byte in
+    let b = I64.from_int byte in
     let b = I64.logor b (I64.shift_left b 8) in
     let b = I64.logor b (I64.shift_left b 16) in
     I64.logor b (I64.shift_left b 32)
@@ -462,7 +462,7 @@ let create = fun () -> RawTable.create 0
 
 let with_capacity = fun capacity -> RawTable.create capacity
 
-let of_list = fun pairs ->
+let from_list = fun pairs ->
   let map = create () in
   List.for_each
     pairs

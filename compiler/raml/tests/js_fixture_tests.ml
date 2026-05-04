@@ -12,7 +12,7 @@ let logical_corpus_dir = Path.v "corpus"
 
 let append_snapshot_suffix = fun path suffix ->
   format Format.[ str (Path.to_string (Path.remove_extension path)); str suffix ]
-  |> Path.of_string
+  |> Path.from_string
   |> Result.expect ~msg:"snapshot path should stay valid UTF-8"
 
 let fixture_stem = fun path -> path |> Path.remove_extension |> Path.basename
@@ -46,7 +46,7 @@ let logical_fixture_relpath = fun path ->
     | [] -> []
     | basename :: rest -> List.rev (strip_ordering_prefix basename :: rest)
   in
-  String.concat "/" logical_parts |> Path.of_string |> Result.expect ~msg:"logical fixture path should stay valid UTF-8"
+  String.concat "/" logical_parts |> Path.from_string |> Result.expect ~msg:"logical fixture path should stay valid UTF-8"
 
 let keep_named_source_fixture = fun ~names path ->
   match Path.extension path with
@@ -133,7 +133,7 @@ let check_source_text = fun ~filename text ->
       let origin = Typ.Model.Source.Path filename in
       let implicit_opens = [] in
       let source = Typ.Model.Source.make_prepared
-        ~source_id:(Typ.Model.SourceId.of_int 0)
+        ~source_id:(Typ.Model.SourceId.from_int 0)
         ~kind:Typ.Model.Source.File
         ~module_name:(Typ.Model.Source.infer_module_name origin)
         ~implicit_opens
@@ -178,7 +178,7 @@ let compile_core_ir = fun (ctx: Test.FixtureRunner.ctx) ->
   let filename = stable_fixture_filename ctx in
   let report = check_source_text ~filename source in
   let semantic_tree = report.semantic_tree |> Option.expect ~msg:"expected semantic tree" in
-  let source_unit = Raml.Source_unit.of_source ~relpath:filename ~source |> Result.expect ~msg:"fixture should produce a supported source unit" in
+  let source_unit = Raml.Source_unit.from_source ~relpath:filename ~source |> Result.expect ~msg:"fixture should produce a supported source unit" in
   match Raml.Typ_lowering.lower_file ~source_unit semantic_tree with
   | Ok compilation_unit -> compilation_unit
   | Error errors -> panic

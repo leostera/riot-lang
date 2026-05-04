@@ -3,7 +3,7 @@ open Std
 module H = Rule_helpers
 module Ast = Syn.Ast
 
-let rule_id = Rule_id.of_string "no-open-bang"
+let rule_id = Rule_id.from_string "no-open-bang"
 
 let rule_description = "Avoid open! and prefer plain open or explicit qualification"
 

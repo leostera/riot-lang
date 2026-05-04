@@ -32,7 +32,7 @@ end
 
 val create: Contentstore.t -> target:Raml_core.Target.t -> unit -> t
 
-val of_config: Raml_core.Config.t -> t option
+val from_config: Raml_core.Config.t -> t option
 
 val target: t -> Raml_core.Target.t
 

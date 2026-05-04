@@ -24,14 +24,14 @@ let request () =
 let test_connection_await_keeps_fixed_length_body = fun _ctx ->
   let response = "HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: keep-alive\r\n\r\nok" in
   let uri =
-    Net.Uri.of_string "http://example.test/data"
+    Net.Uri.from_string "http://example.test/data"
     |> Result.expect ~msg:"invalid test uri"
   in
   let conn =
     Blink.Connection.make
       ~reader:(IO.Reader.from_string response)
       ~writer:discard_writer
-      ~of_io_error:Blink.Error.of_io_error
+      ~from_io_error:Blink.Error.from_io_error
       ~uri
   in
   match Blink.Connection.await conn with
@@ -184,7 +184,7 @@ let budgetless_client = fun () ->
 
 let test_connect_budget_blocks = fun _ctx ->
   let uri =
-    Net.Uri.of_string "https://example.test"
+    Net.Uri.from_string "https://example.test"
     |> Result.expect ~msg:"invalid test uri"
   in
   let client = budgetless_client () in
@@ -199,7 +199,7 @@ let test_connect_budget_blocks = fun _ctx ->
 
 let test_websocket_connect_budget_blocks = fun _ctx ->
   let uri =
-    Net.Uri.of_string "wss://example.test/ws"
+    Net.Uri.from_string "wss://example.test/ws"
     |> Result.expect ~msg:"invalid test uri"
   in
   let client = budgetless_client () in

@@ -10,7 +10,7 @@ let test_of_string_copies_input = fun _ctx ->
   if Kernel.String.equal source "riot" then
     Ok ()
   else
-    Error "expected Bytes.of_string to keep the original string immutable"
+    Error "expected Bytes.from_string to keep the original string immutable"
 
 let test_to_string_copies_bytes = fun _ctx ->
   let bytes = Kernel.Bytes.from_string "riot" in
@@ -41,7 +41,7 @@ let test_sub_string_returns_selected_slice = fun _ctx ->
     Error "expected Bytes.sub_string to return the selected immutable slice"
 
 let tests = [
-  Test.case "Bytes.of_string copies its input" test_of_string_copies_input;
+  Test.case "Bytes.from_string copies its input" test_of_string_copies_input;
   Test.case "Bytes.to_string copies its input" test_to_string_copies_bytes;
   Test.case "Bytes.sub copies the selected slice" test_sub_copies_selected_slice;
   Test.case "Bytes.sub_string returns the selected slice" test_sub_string_returns_selected_slice;

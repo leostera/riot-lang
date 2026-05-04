@@ -81,7 +81,7 @@ let type_declaration_name = fun declaration ->
   | None -> ""
 
 let assert_explanation_contains = fun ~rule_id ~snippet ->
-  let rule_id = Riot_fix.Rule_id.of_string rule_id in
+  let rule_id = Riot_fix.Rule_id.from_string rule_id in
   match Riot_fix.Explanations.explain rule_id with
   | None -> Error ("Expected explanation for " ^ Riot_fix.Rule_id.to_string rule_id)
   | Some entry ->
@@ -3021,7 +3021,7 @@ let render w x y z =
           ~fn:(fun rule ->
             Riot_fix.Rule_id.equal
               (Riot_fix.Rule.id rule)
-              (Riot_fix.Rule_id.of_string "std:prefer-result-map-over-manual-match"))
+              (Riot_fix.Rule_id.from_string "std:prefer-result-map-over-manual-match"))
       in
       let pipeline = Riot_fix.Pipeline.make ~rules () in
       let result = Riot_fix.Pipeline.run pipeline source in

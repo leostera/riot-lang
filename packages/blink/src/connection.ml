@@ -23,15 +23,15 @@ type t =
       mutable buffer: Buffer.t;
       mutable state: response_state;
       mutable response: Net.Http.Response.t option;
-      of_io_error: IO.error -> Error.t;
+      from_io_error: IO.error -> Error.t;
     } -> t
 
 let make:
   reader:IO.Reader.t ->
   writer:IO.Writer.t ->
-  of_io_error:(IO.error -> Error.t) ->
+  from_io_error:(IO.error -> Error.t) ->
   uri:Net.Uri.t ->
-  t = fun ~reader ~writer ~of_io_error ~uri ->
+  t = fun ~reader ~writer ~from_io_error ~uri ->
   Conn {
     protocol = (module Protocol.Http1);
     reader;
@@ -40,7 +40,7 @@ let make:
     buffer = Buffer.create ~size:4_096;
     state = WaitingForHeaders;
     response = None;
-    of_io_error;
+    from_io_error;
   }
 
 let request = fun (Conn conn) req ?body () ->
@@ -100,7 +100,7 @@ let request = fun (Conn conn) req ?body () ->
       conn.response <- None;
       Buffer.clear conn.buffer;
       Ok ()
-  | Error e -> Error (conn.of_io_error e)
+  | Error e -> Error (conn.from_io_error e)
 
 let read_more = fun (Conn conn) ->
   let chunk = IO.Buffer.create ~size:4_096 in
@@ -113,7 +113,7 @@ let read_more = fun (Conn conn) ->
         |> Result.expect ~msg:"failed to append response chunk"
       in
       Ok ()
-  | Error e -> Error (conn.of_io_error e)
+  | Error e -> Error (conn.from_io_error e)
 
 let status_has_no_body = fun status ->
   let code = Net.Http.Status.to_int status in
@@ -236,7 +236,7 @@ let await = fun ?(on_message = fun _ -> ()) (Conn conn as c) ->
   | Ok msgs ->
       let response =
         conn.response
-        |> Option.unwrap_or ~default:(Net.Http.Response.create (Net.Http.Status.of_int 500))
+        |> Option.unwrap_or ~default:(Net.Http.Response.create (Net.Http.Status.from_int 500))
       in
       let body_chunks =
         List.filter_map

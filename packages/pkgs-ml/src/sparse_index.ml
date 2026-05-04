@@ -219,7 +219,7 @@ let config_of_json = fun json ->
   | _ -> Error "sparse index config must be an object"
 
 let config_of_string = fun source ->
-  match Data.Json.of_string source with
+  match Data.Json.from_string source with
   | Ok json -> config_of_json json
   | Error err ->
       Error ("failed to parse sparse index config JSON: " ^ Data.Json.error_to_string err)
@@ -243,7 +243,7 @@ let package_document_of_json = fun json ->
   | _ -> Error "package index document must be an object"
 
 let package_document_of_string = fun source ->
-  match Data.Json.of_string source with
+  match Data.Json.from_string source with
   | Ok json -> package_document_of_json json
   | Error err -> Error ("failed to parse package index JSON: " ^ Data.Json.error_to_string err)
 
@@ -271,13 +271,13 @@ let ensure_dir_url = fun url ->
 
 let bootstrap_config_url = fun ~registry_name ->
   let url = "https://cdn." ^ registry_name ^ "/index/v1/config.json" in
-  match Net.Uri.of_string url with
+  match Net.Uri.from_string url with
   | Ok uri -> Ok uri
   | Error _ -> Error ("failed to build sparse index config url '" ^ url ^ "'")
 
 let package_document_url = fun config ~package_name ->
   let base_url = ensure_dir_url config.index_base_url in
-  match Net.Uri.of_string base_url with
+  match Net.Uri.from_string base_url with
   | Error _ -> Error ("failed to parse sparse index base url '" ^ base_url ^ "'")
   | Ok base ->
       Net.Uri.join base (Path.to_string (package_relpath package_name))
@@ -286,7 +286,7 @@ let package_document_url = fun config ~package_name ->
 
 let release_source_url = fun config (release: release) ->
   let base_url = ensure_dir_url config.artifact_base_url in
-  match Net.Uri.of_string base_url with
+  match Net.Uri.from_string base_url with
   | Error _ -> Error ("failed to parse sparse index artifact base url '" ^ base_url ^ "'")
   | Ok base ->
       Net.Uri.join base release.source_key

@@ -627,7 +627,7 @@ let rec module_of_signature_items = fun
                 | target_path -> (
                     match Source.resolve_module_path lookup ~current_path:path ~target_path with
                     | Some child_source ->
-                        of_interface_source
+                        from_interface_source
                           ~lookup
                           ~path:child_path
                           ?docstring:attached_doc
@@ -678,7 +678,7 @@ let rec module_of_signature_items = fun
   in
   loop items
 
-and of_interface_source = fun ~lookup ?path ?docstring (source_file: Source.interface_source) ->
+and from_interface_source = fun ~lookup ?path ?docstring (source_file: Source.interface_source) ->
   let* source_slice =
     IO.IoVec.IoSlice.from_string source_file.content
     |> Result.map_err

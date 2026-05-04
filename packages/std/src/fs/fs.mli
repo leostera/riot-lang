@@ -67,7 +67,7 @@ module Permissions: sig
   type t
 
   (** Create from Unix mode bits *)
-  val of_mode: int -> t
+  val from_mode: int -> t
 
   (** Convert to Unix mode bits *)
   val to_mode: t -> int

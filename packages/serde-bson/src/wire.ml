@@ -64,7 +64,7 @@ let int32_of_length = fun kind value ->
   if value > Int32.to_int Int32.max_int then
     length_error kind
   else
-    Ok (Int32.of_int value)
+    Ok (Int32.from_int value)
 
 let add_int32_le = fun buffer value ->
   let open Int32 in
@@ -202,10 +202,10 @@ let read_int32_le = fun input ->
   let* b2 = read_byte input in
   let* b3 = read_byte input in
   Ok Int32.(logor
-    (of_int b0)
+    (from_int b0)
     (logor
-      (shift_left (of_int b1) 8)
-      (logor (shift_left (of_int b2) 16) (shift_left (of_int b3) 24))))
+      (shift_left (from_int b1) 8)
+      (logor (shift_left (from_int b2) 16) (shift_left (from_int b3) 24))))
 
 let read_int64_le = fun input ->
   let open Int64 in
@@ -218,18 +218,18 @@ let read_int64_le = fun input ->
   let* b6 = read_byte input in
   let* b7 = read_byte input in
   Ok (logor
-    (of_int b0)
+    (from_int b0)
     (logor
-      (shift_left (of_int b1) 8)
+      (shift_left (from_int b1) 8)
       (logor
-        (shift_left (of_int b2) 16)
+        (shift_left (from_int b2) 16)
         (logor
-          (shift_left (of_int b3) 24)
+          (shift_left (from_int b3) 24)
           (logor
-            (shift_left (of_int b4) 32)
+            (shift_left (from_int b4) 32)
             (logor
-              (shift_left (of_int b5) 40)
-              (logor (shift_left (of_int b6) 48) (shift_left (of_int b7) 56))))))))
+              (shift_left (from_int b5) 40)
+              (logor (shift_left (from_int b6) 48) (shift_left (from_int b7) 56))))))))
 
 let read_double_le = fun input ->
   let* bits = read_int64_le input in

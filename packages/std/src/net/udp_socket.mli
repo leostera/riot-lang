@@ -14,10 +14,10 @@
      |> Result.expect ~msg:"bind failed"
    in
    let remote =
-     Net.Addr.of_host_and_port_datagram ~host:"127.0.0.1" ~port:9000
+     Net.Addr.from_host_and_port_datagram ~host:"127.0.0.1" ~port:9000
      |> Result.expect ~msg:"invalid remote address"
    in
-   let payload = Bytes.of_string "ping" in
+   let payload = Bytes.from_string "ping" in
    ignore (Net.UdpSocket.send_to socket remote payload ());
    Net.UdpSocket.close socket
    ```

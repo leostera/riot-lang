@@ -342,7 +342,7 @@ let ensure_workspace = fun
     ~packages:(List.map
       resolved_packages
       ~fn:(fun (pkg: Riot_model.Package.resolved) ->
-        Riot_model.Package_manifest.of_package
+        Riot_model.Package_manifest.from_package
           pkg.package))
     ~dependencies:workspace.dependencies
     ~dev_dependencies:workspace.dev_dependencies

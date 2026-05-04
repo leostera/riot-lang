@@ -43,7 +43,8 @@ let rule_id_of_fixture = fun path ->
     | None -> basename
   in
   match split_on_double_underscore stem with
-  | Some (rule_id, _) when not (String.equal rule_id "") -> Ok (Riot_fix.Rule_id.of_string rule_id)
+  | Some (rule_id, _) when not (String.equal rule_id "") ->
+      Ok (Riot_fix.Rule_id.from_string rule_id)
   | _ -> Error ("invalid autofix fixture name: " ^ basename)
 
 let find_rule = fun rule_id ->

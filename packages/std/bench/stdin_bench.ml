@@ -478,8 +478,8 @@ let parse_worker_args = fun __tmp1 ->
   match __tmp1 with
   | mode :: "--expected-bytes" :: expected_bytes :: "--expected-lines" :: expected_lines :: [] -> (
     mode_of_string mode,
-    Int.of_string expected_bytes,
-    Int.of_string expected_lines
+    Int.from_string expected_bytes,
+    Int.from_string expected_lines
   )
   | args ->
       panic

@@ -840,7 +840,7 @@ let test_write_preserves_renamed_labeled_function_parameters = fun ctx ->
 
 let test_write_preserves_let_binding_annotations_exactly_once = fun ctx ->
   let source =
-    {ocaml|let make:reader:IO.Reader.t->writer:IO.Writer.t->of_io_error:(IO.error->Error.t)->uri:Net.Uri.t->t=fun ~reader ~writer ~of_io_error ~uri->Ok ()
+    {ocaml|let make:reader:IO.Reader.t->writer:IO.Writer.t->from_io_error:(IO.error->Error.t)->uri:Net.Uri.t->t=fun ~reader ~writer ~from_io_error ~uri->Ok ()
 |ocaml}
   in
   let parsed = parse_ml source in
@@ -851,9 +851,9 @@ let test_write_preserves_let_binding_annotations_exactly_once = fun ctx ->
     ~expected:{ocaml|let make:
   reader:IO.Reader.t ->
   writer:IO.Writer.t ->
-  of_io_error:(IO.error -> Error.t) ->
+  from_io_error:(IO.error -> Error.t) ->
   uri:Net.Uri.t ->
-  t = fun ~reader ~writer ~of_io_error ~uri -> Ok ()
+  t = fun ~reader ~writer ~from_io_error ~uri -> Ok ()
 |ocaml}
 
 let test_write_preserves_comments_before_else_tokens = fun ctx ->
@@ -4754,7 +4754,7 @@ let test_runner_reports_formatting_status_and_emits_json_events = fun _ctx ->
       in
       let json =
         capture_json_event ~root:tmpdir (Krasny.Report.File needs_result)
-        |> Data.Json.of_string
+        |> Data.Json.from_string
         |> Result.expect ~msg:"parse event json"
       in
       let open Data.Json in
@@ -4795,7 +4795,7 @@ let test_verify_reports_files_that_would_reformat_safely = fun _ctx ->
       in
       let json =
         capture_json_event ~root:tmpdir (Krasny.Report.File needs_result)
-        |> Data.Json.of_string
+        |> Data.Json.from_string
         |> Result.expect ~msg:"parse event json"
       in
       let open Data.Json in
@@ -4833,7 +4833,7 @@ let test_format_rewrites_files_in_place_and_reports_formatted_status = fun _ctx 
       in
       let json =
         capture_json_event ~root:tmpdir (Krasny.Report.File file_result)
-        |> Data.Json.of_string
+        |> Data.Json.from_string
         |> Result.expect ~msg:"parse event json"
       in
       let open Data.Json in
@@ -4866,7 +4866,7 @@ let test_json_file_events_include_structured_diagnostics_for_parse_failures = fu
           else
             let json =
               capture_json_event ~root:tmpdir (Krasny.Report.File file_result)
-              |> Data.Json.of_string
+              |> Data.Json.from_string
               |> Result.expect ~msg:"parse event json"
             in
             let expected = Some (Data.Json.Array (List.map diagnostics ~fn:Syn.Diagnostic.to_json))
@@ -4938,7 +4938,7 @@ let test_streaming_runner_scans_roots_and_streams_file_results = fun _ctx ->
         capture_json_event
           ~root:tmpdir
           (Krasny.Report.Start { mode = Krasny.Runner.Check; concurrency = 3 })
-        |> Data.Json.of_string
+        |> Data.Json.from_string
         |> Result.expect ~msg:"parse start json"
       in
       let open Data.Json in

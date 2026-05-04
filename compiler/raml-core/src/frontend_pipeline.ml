@@ -166,7 +166,7 @@ let typing_state = fun ~config:_ ~filename ~source ->
   | Error error -> typing_state_of_parse_failure parse_result error
 
 let compile_source = fun ~config ~relpath ~source ->
-  Result.map (Source_unit.of_source ~relpath ~source)
+  Result.map (Source_unit.from_source ~relpath ~source)
     ~fn:(fun source_unit ->
       let typing = typing_state ~config ~filename:relpath ~source in
       let core_ir =

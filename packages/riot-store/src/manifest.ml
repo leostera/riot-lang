@@ -65,7 +65,7 @@ let to_json manifest =
   ]
 
 (** Parse manifest from JSON *)
-let of_json = fun json ->
+let from_json = fun json ->
   let open Result in
   let open Data.Json in
   try
@@ -227,8 +227,8 @@ let save = fun manifest ~path ->
 let load = fun ~path ->
   match Std.Fs.read path with
   | Ok content -> (
-      match Data.Json.of_string content with
-      | Ok json -> of_json json
+      match Data.Json.from_string content with
+      | Ok json -> from_json json
       | Error _ -> Error "Failed to parse JSON"
     )
   | Error _ -> Error "Failed to read manifest file"

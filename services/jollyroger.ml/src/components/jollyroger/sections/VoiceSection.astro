@@ -1,0 +1,111 @@
+---
+import CodeBlock from "../CodeBlock.astro";
+---
+
+<section class="jr-section" id="voice">
+  <div class="jr-section-body">
+    <div class="jr-intro">
+      <p class="jr-kicker">Voice and writing</p>
+      <h2 class="jr-heading">Direct, useful, joyful.</h2>
+      <p class="jr-copy">
+        Riot’s Jolly Roger sounds direct, opinionated, useful, technical, and
+        joyful. It does not sound corporate, academic, generic, or clever when
+        a clear label helps more.
+      </p>
+    </div>
+
+    <div class="guideline-rows">
+      <article class="guideline-row" id="voice-direct">
+        <p class="jr-label">Direct</p>
+        <h3 class="jr-subheading">Say the thing.</h3>
+        <p class="jr-copy">
+          Do not wrap every claim in hedging language. Do not make the reader
+          decode vague platform words. Do not hide the action behind narrative.
+        </p>
+      </article>
+
+      <article class="guideline-row" id="voice-useful">
+        <p class="jr-label">Useful</p>
+        <h3 class="jr-subheading">Every sentence should help.</h3>
+        <p class="jr-copy">
+          A page can be joyful, opinionated, or expressive, but it still has to
+          help the reader install Riot, find a package, fix an error,
+          understand a module, compare options, or keep moving.
+        </p>
+      </article>
+
+      <article class="guideline-row" id="voice-joyful">
+        <p class="jr-label">Joyful</p>
+        <h3 class="jr-subheading">Joy means momentum.</h3>
+        <p class="jr-copy">
+          Joy does not mean childish. The writing should make the reader feel
+          that Riot is on their side: beautiful code, fast feedback, good
+          defaults, visible power, and the pleasure of building useful software.
+        </p>
+      </article>
+
+      <article class="guideline-row" id="voice-errors">
+        <p class="jr-label">Errors</p>
+        <h3 class="jr-subheading">Clear, structured, recoverable.</h3>
+        <div class="guideline-prose">
+          <p>
+            Error copy starts with the problem. Name what failed before
+            explaining how the system works, then give the reader enough
+            context to recover without guessing.
+          </p>
+          <p>
+            A useful Riot error names the package, source, requested thing,
+            expected or available thing, and the reason it happened when that
+            reason is known. It ends with one concrete command, edit, or docs
+            link. The same diagnostic should still make sense as plain text.
+          </p>
+        </div>
+      </article>
+
+      <article class="guideline-row" id="voice-agents">
+        <p class="jr-label">Agents</p>
+        <h3 class="jr-subheading">Stable labels. No guessing.</h3>
+        <div class="guideline-prose">
+          <p>
+            Agent-ready voice is still human voice. It just refuses to hide
+            important state in loose prose. When a surface describes a package,
+            command, file, error, or generated report, name the stable facts
+            directly so a person can scan them and a tool can parse them.
+          </p>
+          <p>
+            Prefer labels such as package, source, wanted, found, and fix when
+            those facts matter. Make examples reusable without hidden setup.
+            Avoid copy that forces the reader to infer the package, file,
+            requested symbol, or next command.
+          </p>
+        </div>
+      </article>
+    </div>
+
+    <div class="guideline-example-set" id="voice-example">
+      <p class="jr-label">Example</p>
+      <p class="jr-copy">
+        Vague copy names no object, no source, and no recovery path. It leaves
+        both humans and agents guessing.
+      </p>
+      <CodeBlock label="Vague">Something went wrong while resolving dependencies.</CodeBlock>
+
+      <p class="jr-copy">
+        Better copy names the package, explains the failure, and gives the next
+        command.
+      </p>
+      <CodeBlock label="Better">Riot could not resolve Krasny because riot-cli does not depend on the package that exposes it.
+
+Run riot add krasny.</CodeBlock>
+
+      <p class="jr-copy">
+        When the output is meant for tools too, expose the same facts as stable
+        fields.
+      </p>
+      <CodeBlock label="Preferred structure">package: riot-cli
+source:  src/publish.ri
+wanted:  Krasny
+fix:     riot add krasny</CodeBlock>
+    </div>
+  </div>
+</section>

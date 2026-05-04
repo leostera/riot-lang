@@ -44,12 +44,12 @@ let entity_reference = fun entity_id ->
           if is_module_segment head then
             { root = Namespace (sibling_unit head); properties = tail }
           else
-            { root = Identifier (Core.Entity_id.of_name head); properties = tail }
+            { root = Identifier (Core.Entity_id.from_name head); properties = tail }
       | [] ->
           if Option.is_some (Core.Entity_id.binding_id entity_id) then
             { root = Identifier entity_id; properties = [] }
           else
-            { root = Identifier (Core.Entity_id.of_name head); properties = tail }
+            { root = Identifier (Core.Entity_id.from_name head); properties = tail }
 
 let namespace_binder = Types.Modules.namespace_binder
 

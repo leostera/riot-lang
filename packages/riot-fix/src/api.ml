@@ -51,7 +51,7 @@ let unavailable_build_package = fun
 
 let check_request = Cli.Request.check_request
 
-let fix_request_of_matches = Cli.Request.of_matches
+let fix_request_of_matches = Cli.Request.from_matches
 
 let output_mode_of_request = fun request ->
   match request.action with

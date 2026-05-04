@@ -9,7 +9,7 @@ type t =
 
 val to_string: t -> string
 
-val of_string: string -> t
+val from_string: string -> t
 
 (** Detect the current platform *)
 val detect: unit -> t

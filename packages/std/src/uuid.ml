@@ -15,7 +15,7 @@ external v7_native: unit -> bytes = "std_uuid_v7"
 
 external to_string_native: bytes -> string = "std_uuid_to_string"
 
-external of_string_native: string -> bytes = "std_uuid_of_string"
+external unsafe_from_string_native: string -> bytes = "std_uuid_of_string"
 
 external compare_native: bytes -> bytes -> int = "std_uuid_compare"
 
@@ -69,11 +69,11 @@ let ns_x500 = Bytes.from_string "\x6b\xa7\xb8\x14\x9d\xad\x11\xd1\x80\xb4\x00\xc
 
 (** {1 Parsing} *)
 
-let of_string = fun value ->
-  try Ok (of_string_native value) with
+let from_string = fun value ->
+  try Ok (unsafe_from_string_native value) with
   | Invalid_argument msg -> Error (InvalidUuid msg)
 
-let of_bytes = fun value ->
+let from_bytes = fun value ->
   if Bytes.length value = 16 then
     Ok (Bytes.sub_unchecked value ~offset:0 ~len:16)
   else

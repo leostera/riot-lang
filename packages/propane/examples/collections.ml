@@ -81,7 +81,7 @@ let deque_lifo_prop =
       let popped = pop_all [] in
       popped = items)
 
-(* Property: Array length after of_list *)
+(* Property: Array length after from_list *)
 
 let array_length_prop =
   property

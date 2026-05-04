@@ -4,7 +4,7 @@ open Std.Collections
 module H = Rule_helpers
 module Ast = Syn.Ast
 
-let rule_id = Rule_id.of_string "limit-open-statements"
+let rule_id = Rule_id.from_string "limit-open-statements"
 
 let rule_description = "Prefer no more than two open statements per file"
 
@@ -17,7 +17,7 @@ imported.
 
 Past a small number, the convenience stops paying for the ambiguity. The remaining
 modules are usually better referenced explicitly as `Http.Response`, `Json.decode`,
-or `Uri.of_string`. If the scope is genuinely tiny, a local open is easier to audit
+or `Uri.from_string`. If the scope is genuinely tiny, a local open is easier to audit
 than another file-wide one.
 
 Two well-chosen opens usually remain readable. A pile of them usually means the file

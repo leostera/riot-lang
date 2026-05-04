@@ -7,7 +7,7 @@ module H = Ast_rule_helpers
 
 let package_name = "std"
 
-let package_rule_id = Api.Rule_id.of_string (package_name ^ ":upgrade-test-ctx-callbacks")
+let package_rule_id = Api.Rule_id.from_string (package_name ^ ":upgrade-test-ctx-callbacks")
 
 let explanation =
   Api.Explanation.{

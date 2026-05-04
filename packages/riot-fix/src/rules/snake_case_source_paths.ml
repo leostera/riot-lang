@@ -1,6 +1,6 @@
 open Std
 
-let rule_id = Rule_id.of_string "snake-case-source-paths"
+let rule_id = Rule_id.from_string "snake-case-source-paths"
 
 let rule_description = "Source filenames and subdirectories should use snake_case"
 

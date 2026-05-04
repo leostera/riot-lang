@@ -44,7 +44,7 @@ let test_parse_uses_exact_for_valid_target_triples = fun _ctx ->
 
 let test_set_deduplicates_targets = fun _ctx ->
   let set =
-    Riot_model.Target.Set.of_list
+    Riot_model.Target.Set.from_list
       [
         target "x86_64-unknown-linux-gnu";
         target "x86_64-unknown-linux-gnu";

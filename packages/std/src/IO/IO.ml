@@ -99,11 +99,11 @@ type file_kind =
   | Fifo
   | Socket
 
-let of_system_error = Error.of_system_error
+let from_system_error = Error.from_system_error
 
-let of_system_error_code = Error.of_system_error_code
+let from_system_error_code = Error.from_system_error_code
 
-let of_async_error = Error.of_async_error
+let from_async_error = Error.from_async_error
 
 let error_message = Error.message
 

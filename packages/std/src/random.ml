@@ -270,7 +270,7 @@ module Rng = struct
           in
           Ok out
 
-    let of_seed_bytes = fun seed ->
+    let from_seed_bytes = fun seed ->
       let words = Array.make ~count:16 ~value:0l in
       for index = 0 to 3 do
         Array.set_unchecked
@@ -298,7 +298,7 @@ module Rng = struct
 
     let create = fun ?seed () ->
       let* seed = seed_bytes ?seed () in
-      Ok (make ~state:(of_seed_bytes seed) ~fill_bytes)
+      Ok (make ~state:(from_seed_bytes seed) ~fill_bytes)
   end
 
   let standard = Standard.create

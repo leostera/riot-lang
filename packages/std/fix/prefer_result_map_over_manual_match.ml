@@ -6,7 +6,8 @@ module H = Ast_rule_helpers
 
 let package_name = "std"
 
-let package_rule_id = Api.Rule_id.of_string (package_name ^ ":prefer-result-map-over-manual-match")
+let package_rule_id =
+  Api.Rule_id.from_string (package_name ^ ":prefer-result-map-over-manual-match")
 
 let explanation =
   Api.Explanation.{

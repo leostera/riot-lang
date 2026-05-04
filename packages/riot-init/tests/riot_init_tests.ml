@@ -96,7 +96,7 @@ let test_init_scaffolds_library_workspace = fun _ctx ->
       let workspace_root = Path.(tempdir / Path.v "demo-app") in
       let* () = run_init [ "init"; Path.to_string workspace_root ] in
       let module_name =
-        Riot_model.Module_name.(of_string "demo-app"
+        Riot_model.Module_name.(from_string "demo-app"
         |> to_string)
       in
       let test_file = String.lowercase_ascii module_name ^ "_tests.ml" in
@@ -199,7 +199,7 @@ let test_init_scaffolds_binary_workspace = fun _ctx ->
       let workspace_root = Path.(tempdir / Path.v "demo-bin") in
       let* () = run_init [ "init"; Path.to_string workspace_root; "--bin" ] in
       let module_name =
-        Riot_model.Module_name.(of_string "demo-bin"
+        Riot_model.Module_name.(from_string "demo-bin"
         |> to_string)
       in
       let test_file = String.lowercase_ascii module_name ^ "_tests.ml" in
@@ -319,7 +319,7 @@ let test_init_dot_scaffolds_current_directory = fun _ctx ->
         with_current_dir_result workspace_root (fun () -> run_init_with_events [ "init"; "." ])
       in
       let module_name =
-        Riot_model.Module_name.(of_string "agents-ml"
+        Riot_model.Module_name.(from_string "agents-ml"
         |> to_string)
       in
       let test_file = String.lowercase_ascii module_name ^ "_tests.ml" in
@@ -374,7 +374,7 @@ let test_init_without_path_defaults_to_current_directory = fun _ctx ->
         with_current_dir_result workspace_root (fun () -> run_init_with_events [ "init" ])
       in
       let module_name =
-        Riot_model.Module_name.(of_string "default-dot"
+        Riot_model.Module_name.(from_string "default-dot"
         |> to_string)
       in
       let test_file = String.lowercase_ascii module_name ^ "_tests.ml" in
@@ -406,7 +406,7 @@ let test_init_preserves_dotted_workspace_names = fun _ctx ->
       let workspace_root = Path.(tempdir / Path.v "arewedown.dev") in
       let* () = run_init [ "init"; Path.to_string workspace_root; "--bin" ] in
       let module_name =
-        Riot_model.Module_name.(of_string "arewedown-dev"
+        Riot_model.Module_name.(from_string "arewedown-dev"
         |> to_string)
       in
       let test_file = String.lowercase_ascii module_name ^ "_tests.ml" in

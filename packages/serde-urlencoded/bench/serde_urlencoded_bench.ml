@@ -316,11 +316,11 @@ let bench_encode_writer = fun fixture () ->
 
 let bench_decode_in_memory = fun fixture () ->
   ignore
-    (Serde_urlencoded.of_string payload_decode fixture.encoded)
+    (Serde_urlencoded.from_string payload_decode fixture.encoded)
 
 let bench_decode_reader = fun fixture () ->
   ignore
-    (Serde_urlencoded.of_reader
+    (Serde_urlencoded.from_reader
       payload_decode
       (String.to_reader ~chunk_size:io_chunk_size fixture.encoded))
 

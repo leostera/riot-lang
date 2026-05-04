@@ -29,7 +29,7 @@ type package_status =
 type package_result
 type t
 
-val of_build_results: Package_builder.build_result list -> t
+val from_build_results: Package_builder.build_result list -> t
 
 val packages: t -> package_result list
 

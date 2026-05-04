@@ -19,7 +19,7 @@ let make_package = fun ?library ?(binaries = []) name ->
       ~fn:(fun (binary_name, path) -> Package.{ name = binary_name; path = Path.v path }))
     ()
 
-let public_namespace = fun package -> Namespace.of_list [ Package.root_module_name package ]
+let public_namespace = fun package -> Namespace.from_list [ Package.root_module_name package ]
 
 let make_module = fun ~namespace path -> Module.make ~namespace ~filename:(Path.v path)
 

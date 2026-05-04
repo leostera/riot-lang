@@ -48,7 +48,7 @@ type t =
 
 (* Create a simple error from just a message *)
 
-let of_string = fun msg -> Generic_error msg
+let from_string = fun msg -> Generic_error msg
 
 (* Create connection error *)
 

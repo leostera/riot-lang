@@ -20,7 +20,7 @@ let io_error_of_addr_error = fun __tmp1 ->
   | Addr.Invalid_format value -> IO.Unknown_error ("invalid address: " ^ value)
 
 let connect = fun ~host ~port ->
-  match Addr.of_host_and_port ~host ~port with
+  match Addr.from_host_and_port ~host ~port with
   | Error err -> Error (System_error (io_error_of_addr_error err))
   | Ok addr -> (
       match Tcp_stream.connect addr with

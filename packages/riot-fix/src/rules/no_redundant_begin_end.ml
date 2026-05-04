@@ -3,7 +3,7 @@ open Std
 module H = Rule_helpers
 module Ast = Syn.Ast
 
-let rule_id = Rule_id.of_string "no-redundant-begin-end"
+let rule_id = Rule_id.from_string "no-redundant-begin-end"
 
 let rule_description = "begin/end blocks should be replaced by ordinary grouping or removed"
 

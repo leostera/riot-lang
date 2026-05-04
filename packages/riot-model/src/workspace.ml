@@ -56,7 +56,7 @@ let make_realized
   make
     ?name
     ~root
-    ~packages:(List.map packages ~fn:Package_manifest.of_package)
+    ~packages:(List.map packages ~fn:Package_manifest.from_package)
     ~dependencies
     ~dev_dependencies
     ~build_dependencies

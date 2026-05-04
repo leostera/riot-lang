@@ -3,7 +3,7 @@ open Std
 module H = Rule_helpers
 module Ast = Syn.Ast
 
-let rule_id = Rule_id.of_string "no-exn-suffix-functions"
+let rule_id = Rule_id.from_string "no-exn-suffix-functions"
 
 let rule_description = "Function names should not end with _exn"
 

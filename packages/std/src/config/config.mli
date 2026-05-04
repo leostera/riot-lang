@@ -106,8 +106,8 @@ module Provider: sig
 
      Example:
      ```ocaml
-     Provider.file (Path.of_string "./my-custom-config.toml" |> Result.expect "invalid path")
-     Provider.file (Path.of_string "/etc/myapp/config.toml" |> Result.expect "invalid path")
+     Provider.file (Path.from_string "./my-custom-config.toml" |> Result.expect "invalid path")
+     Provider.file (Path.from_string "/etc/myapp/config.toml" |> Result.expect "invalid path")
      ```
   *)
   val static: string -> t
@@ -177,7 +177,7 @@ val load: ?provider:Provider.t -> unit -> unit
    Config.load ()  (* Uses RIOT_ENV - loads ./config/dev.toml *)
 
    (* Or load from custom path *)
-   let path = Path.of_string "/etc/myapp/config.toml" |> Result.expect "path" in
+   let path = Path.from_string "/etc/myapp/config.toml" |> Result.expect "path" in
    Config.load ~provider:(Config.Provider.file path) ()
    ```
 *)
@@ -205,7 +205,7 @@ val load_file: Path.t -> unit
 
    Example:
    ```ocaml
-   let path = Path.of_string "./my-config.toml" |> Result.expect "path" in
+   let path = Path.from_string "./my-config.toml" |> Result.expect "path" in
    Config.load_file path
    ```
 *)

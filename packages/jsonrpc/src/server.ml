@@ -32,7 +32,7 @@ let handle_message = fun
   Log.trace ("[JSONRPC SERVER] Processing request in cwd: " ^ cwd);
   (* Parse the incoming message *)
   Log.trace ("[JSONRPC SERVER] Parsing message: " ^ message);
-  match Json.of_string message with
+  match Json.from_string message with
   | Error e ->
       (* Parse error - can't send typed response, just log/ignore *)
       Log.trace ("[JSONRPC SERVER] JSON parse error: " ^ Json.error_to_string e);

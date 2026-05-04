@@ -101,11 +101,11 @@ let default_text_measurer = fun ~constraints text style ->
   in
   let width =
     List.fold_left lines ~init:0 ~fn:(fun acc line -> Int.max acc (String.width line))
-    |> Float.of_int
+    |> Float.from_int
   in
   let height =
     Int.max 1 (List.length lines)
-    |> Float.of_int
+    |> Float.from_int
   in
   { size = Viewport.make ~width ~height; lines }
 

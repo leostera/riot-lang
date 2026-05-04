@@ -58,7 +58,7 @@ val dependency_error_message: dependency_error -> string
 
 val error_message: error -> string
 
-val of_toml: Std.Data.Toml.value -> (manifest, error) result
+val from_toml: Std.Data.Toml.value -> (manifest, error) result
 
 val make:
   ?name:string ->

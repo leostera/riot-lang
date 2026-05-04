@@ -334,7 +334,7 @@ module Cache = struct
       let parts = String.split_on_char ' ' date_str in
       match parts with
       | [ _day; day_str; month_str; year_str; time_str; "GMT" ] ->
-          let day = Int.of_string day_str in
+          let day = Int.from_string day_str in
           let month =
             match month_str with
             | "Jan" -> 0
@@ -351,11 +351,11 @@ module Cache = struct
             | "Dec" -> 11
             | _ -> 0
           in
-          let year = Int.of_string year_str in
+          let year = Int.from_string year_str in
           let time_parts = String.split_on_char ':' time_str in
           let (hour, min, sec) =
             match time_parts with
-            | [ h; m; s ] -> (Int.of_string h, Int.of_string m, Int.of_string s)
+            | [ h; m; s ] -> (Int.from_string h, Int.from_string m, Int.from_string s)
             | _ -> (0, 0, 0)
           in
           let tm: Time.tm = {

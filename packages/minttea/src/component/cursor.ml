@@ -17,7 +17,7 @@ let default_style =
   Style.(default
   |> reverse true)
 
-let default_fps = Fps.of_float 2.5
+let default_fps = Fps.from_float 2.5
 
 let make = fun ?(style = default_style) ?(blink = true) ?(fps = default_fps) () ->
   {

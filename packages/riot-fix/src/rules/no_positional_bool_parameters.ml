@@ -3,7 +3,7 @@ open Std
 module H = Rule_helpers
 module Ast = Syn.Ast
 
-let rule_id = Rule_id.of_string "no-positional-bool-parameters"
+let rule_id = Rule_id.from_string "no-positional-bool-parameters"
 
 let rule_description = "Boolean parameters should be named"
 

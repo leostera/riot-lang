@@ -430,7 +430,7 @@ let test_package_scheduler_keeps_multi_lane_results_isolated = fun _ctx ->
         else
           target "x86_64-unknown-linux-gnu"
       in
-      let requested_targets = Riot_model.Target.Set.of_list [ host_target; secondary_target ] in
+      let requested_targets = Riot_model.Target.Set.from_list [ host_target; secondary_target ] in
       let workspace =
         make_workspace
           ~root:tmpdir
@@ -558,7 +558,7 @@ let test_package_scheduler_cached_rerun_preserves_multi_lane_isolation = fun _ct
         else
           target "x86_64-unknown-linux-gnu"
       in
-      let requested_targets = Riot_model.Target.Set.of_list [ host_target; secondary_target ] in
+      let requested_targets = Riot_model.Target.Set.from_list [ host_target; secondary_target ] in
       let demo = make_package ~root:tmpdir ~name:"demo" ~source:"let value = 42\n" () in
       let workspace =
         make_workspace

@@ -3,7 +3,7 @@ open Std
 module H = Rule_helpers
 module Ast = Syn.Ast
 
-let rule_id = Rule_id.of_string "limit-function-parameters"
+let rule_id = Rule_id.from_string "limit-function-parameters"
 
 let rule_description = "Functions should keep parameter counts small so call sites stay readable"
 

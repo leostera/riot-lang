@@ -223,7 +223,7 @@ let rec to_string_pretty = fun ?(depth = 0) json ->
   | Embed t -> to_string_pretty t
 
 (** Parse JSON from string *)
-let of_string = fun str ->
+let from_string = fun str ->
   let len = String.length str in
   let pos = cell 0 in
   let peek () = String.get str ~at:!pos in

@@ -2,7 +2,7 @@ open Global
 
 type t = int
 
-let of_mode = fun mode -> mode
+let from_mode = fun mode -> mode
 
 let to_mode = fun t -> t
 

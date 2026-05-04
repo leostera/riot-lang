@@ -78,7 +78,7 @@
         "start": 14,
         "end": 21
       },
-      "text": "of_list",
+      "text": "from_list",
       "leading_trivia": []
     },
     {
@@ -303,7 +303,7 @@
                   {
                     "type": "token",
                     "kind": "IDENT_EXPR",
-                    "text": "of_list",
+                    "text": "from_list",
                     "width": 7,
                     "full_width": 7,
                     "leading_trivia": []

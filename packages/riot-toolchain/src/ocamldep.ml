@@ -84,7 +84,7 @@ let deps = fun t ~cwd ~file ~package_namespace ->
             String.split ~by:" " deps
             |> List.map ~fn:String.trim
             |> List.map
-              ~fn:(fun modname -> Module_name.of_string ~namespace:package_namespace modname)
+              ~fn:(fun modname -> Module_name.from_string ~namespace:package_namespace modname)
           in
           Log.trace
             ("[OCAMLDEP] Parsed "
@@ -144,7 +144,7 @@ let deps_with_flags = fun t ~cwd ~file ~flags ~package_namespace ->
           String.split ~by:" " deps
           |> List.map ~fn:String.trim
           |> List.map
-            ~fn:(fun modname -> Module_name.of_string ~namespace:package_namespace modname)
+            ~fn:(fun modname -> Module_name.from_string ~namespace:package_namespace modname)
     | _ -> []
 
 (**
@@ -194,7 +194,7 @@ let batch_deps = fun t ~cwd ~files ~package_namespace ->
                   |> List.map ~fn:String.trim
                   |> List.filter ~fn:(fun s -> not (String.equal s ""))
                   |> List.map
-                    ~fn:(fun modname -> Module_name.of_string ~namespace:package_namespace modname)
+                    ~fn:(fun modname -> Module_name.from_string ~namespace:package_namespace modname)
               in
               Some (file, dep_list)
           | _ -> None)

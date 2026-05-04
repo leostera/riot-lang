@@ -544,7 +544,7 @@ let gc_per_iteration = fun count iterations ->
   if Int.(iterations <= 0) then
     None
   else
-    Some (Float.of_int count /. Float.of_int iterations)
+    Some (Float.from_int count /. Float.from_int iterations)
 
 let render_gc_rate = fun value ->
   match value with

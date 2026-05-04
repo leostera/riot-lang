@@ -54,27 +54,29 @@ let read_int64 = fun reader ->
   if remaining reader < 8 then
     None
   else
-    let b1 = Int64.of_int (Char.code (Option.unwrap (Bytes.get reader.bytes ~at:reader.offset))) in
+    let b1 =
+      Int64.from_int (Char.code (Option.unwrap (Bytes.get reader.bytes ~at:reader.offset)))
+    in
     let b2 =
-      Int64.of_int (Char.code (Option.unwrap (Bytes.get reader.bytes ~at:(reader.offset + 1))))
+      Int64.from_int (Char.code (Option.unwrap (Bytes.get reader.bytes ~at:(reader.offset + 1))))
     in
     let b3 =
-      Int64.of_int (Char.code (Option.unwrap (Bytes.get reader.bytes ~at:(reader.offset + 2))))
+      Int64.from_int (Char.code (Option.unwrap (Bytes.get reader.bytes ~at:(reader.offset + 2))))
     in
     let b4 =
-      Int64.of_int (Char.code (Option.unwrap (Bytes.get reader.bytes ~at:(reader.offset + 3))))
+      Int64.from_int (Char.code (Option.unwrap (Bytes.get reader.bytes ~at:(reader.offset + 3))))
     in
     let b5 =
-      Int64.of_int (Char.code (Option.unwrap (Bytes.get reader.bytes ~at:(reader.offset + 4))))
+      Int64.from_int (Char.code (Option.unwrap (Bytes.get reader.bytes ~at:(reader.offset + 4))))
     in
     let b6 =
-      Int64.of_int (Char.code (Option.unwrap (Bytes.get reader.bytes ~at:(reader.offset + 5))))
+      Int64.from_int (Char.code (Option.unwrap (Bytes.get reader.bytes ~at:(reader.offset + 5))))
     in
     let b7 =
-      Int64.of_int (Char.code (Option.unwrap (Bytes.get reader.bytes ~at:(reader.offset + 6))))
+      Int64.from_int (Char.code (Option.unwrap (Bytes.get reader.bytes ~at:(reader.offset + 6))))
     in
     let b8 =
-      Int64.of_int (Char.code (Option.unwrap (Bytes.get reader.bytes ~at:(reader.offset + 7))))
+      Int64.from_int (Char.code (Option.unwrap (Bytes.get reader.bytes ~at:(reader.offset + 7))))
     in
     reader.offset <- reader.offset + 8;
   let result =
@@ -94,7 +96,7 @@ let read_float64 = fun reader ->
 let read_float32 = fun reader ->
   match read_int32 reader with
   | None -> None
-  | Some bits -> Some (Int32.float_of_bits (Int32.of_int bits))
+  | Some bits -> Some (Int32.float_of_bits (Int32.from_int bits))
 
 let read_string = fun reader ->
   let buf = Buffer.create ~size:64 in

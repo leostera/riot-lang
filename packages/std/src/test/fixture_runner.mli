@@ -34,7 +34,7 @@ open Global
    ```ocaml
    let append_snapshot_suffix path suffix =
      Std.Path.to_string path ^ suffix
-     |> Std.Path.of_string
+     |> Std.Path.from_string
      |> Result.expect ~msg:"snapshot path should stay valid UTF-8"
 
    let tests =

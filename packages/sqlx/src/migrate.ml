@@ -16,7 +16,7 @@ module Version = struct
   let from_int = fun value -> from_int64 (Int64.from_int value)
 
   let from_string = fun value ->
-    match Int64.of_string_opt (String.trim value) with
+    match Int64.from_string_opt (String.trim value) with
     | Some version -> from_int64 version
     | None -> Error ("invalid migration version: " ^ value)
 

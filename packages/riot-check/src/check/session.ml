@@ -119,17 +119,17 @@ let report_of_analysis = fun path (analysis: Typ_source_analysis.t) ->
 
 let checked_file_of_analysis = fun path (analysis: Typ_source_analysis.t) ->
   let report = report_of_analysis path analysis in
-  let diagnostics = Diagnostic.of_report report in
+  let diagnostics = Diagnostic.from_report report in
   State.Typed { path; report; diagnostics }
 
 let typ_check_prepared_source_of_package_source = fun (source: package_typ_source) ->
   {
     Typ.Check.display_path = source.display_path;
-    internal_module_name = Typ_local_modules.InternalName.of_string source.internal_module_name;
-    local_module_name = Typ_local_modules.AmbientName.of_string source.local_module_name;
+    internal_module_name = Typ_local_modules.InternalName.from_string source.internal_module_name;
+    local_module_name = Typ_local_modules.AmbientName.from_string source.local_module_name;
     public_module_name =
       source.public_module_name
-      |> Option.map Typ_local_modules.AmbientName.of_string;
+      |> Option.map Typ_local_modules.AmbientName.from_string;
     source = source.source;
   }
 
@@ -255,7 +255,7 @@ let planner_source_group = fun (pkg: Package.t) planning_root allowed_source_fil
       |> String.split ~by:"/"
       |> List.filter ~fn:(fun part -> not (String.is_empty part))
       |> List.map ~fn:String.capitalize_ascii
-      |> Namespace.of_list
+      |> Namespace.from_list
   in
   Riot_planner.Module_graph.{
     source_dir = planning_root;
@@ -336,13 +336,13 @@ let merge_module_typings = fun preferred fallback ->
 
 let merge_loaded_module_typings = fun preferred fallback ->
   Typ_loaded_modules.merge
-    ~preferred:(Typ_loaded_modules.of_list preferred)
-    ~fallback:(Typ_loaded_modules.of_list fallback)
+    ~preferred:(Typ_loaded_modules.from_list preferred)
+    ~fallback:(Typ_loaded_modules.from_list fallback)
     ~combine:merge_module_typings
 
 let merge_loaded_module_index = fun preferred fallback ->
   Typ_loaded_modules.merge
-    ~preferred:(Typ_loaded_modules.of_list preferred)
+    ~preferred:(Typ_loaded_modules.from_list preferred)
     ~fallback
     ~combine:merge_module_typings
 
@@ -622,7 +622,7 @@ let package_typ_sources_from_planner = fun
                                   match analyzed.cst with
                                   | Error _ -> None
                                   | Ok cst ->
-                                      let source_id = Typ_source_id.of_int !next_source_id in
+                                      let source_id = Typ_source_id.from_int !next_source_id in
                                       let () =
                                         next_source_id := !next_source_id + 1
                                       in
@@ -634,7 +634,7 @@ let package_typ_sources_from_planner = fun
                                       let source =
                                         let implicit_opens =
                                           analyzed.implicit_opens
-                                          |> List.map Typ.Model.SurfacePath.of_string
+                                          |> List.map Typ.Model.SurfacePath.from_string
                                         in
                                         Typ_source.make_prepared
                                           ~source_id
@@ -730,8 +730,8 @@ let qualify_typings_type_decls = fun module_name type_decls ->
     type_decls
 
 let relative_module_name = fun ~current_local_module_name module_name ->
-  let module_path = Typ.Model.SurfacePath.of_string module_name in
-  let current_module_path = Typ.Model.SurfacePath.of_string current_local_module_name in
+  let module_path = Typ.Model.SurfacePath.from_string module_name in
+  let current_module_path = Typ.Model.SurfacePath.from_string current_local_module_name in
   let current_scope_path =
     current_module_path
     |> Typ.Model.SurfacePath.split_last
@@ -889,7 +889,7 @@ let load_package_module_typings_from_store = fun store (pkg: Package.t) ->
   | Some bundle ->
       Some {
         fingerprint = bundle.fingerprint;
-        typings = Typ_loaded_modules.of_list bundle.typings;
+        typings = Typ_loaded_modules.from_list bundle.typings;
       }
   | None -> None
 

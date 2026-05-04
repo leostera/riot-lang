@@ -81,8 +81,8 @@ and encode_variant: 'value. state -> 'value Ser.variant_cases -> 'value -> unit 
 and backend: state Ser.backend = {
   bool = (fun state value -> set state (Cbor_value.Bool value));
   string = (fun state value -> set state (Cbor_value.Text value));
-  int = (fun state value -> set state (Cbor_value.Int (Int64.of_int value)));
-  int32 = (fun state value -> set state (Cbor_value.Int (Int64.of_int32 value)));
+  int = (fun state value -> set state (Cbor_value.Int (Int64.from_int value)));
+  int32 = (fun state value -> set state (Cbor_value.Int (Int64.from_int32 value)));
   int64 = (fun state value -> set state (Cbor_value.Int value));
   float = (fun state value -> set state (Cbor_value.Float value));
   null = (fun state -> set state Cbor_value.Null);

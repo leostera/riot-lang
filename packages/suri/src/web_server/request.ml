@@ -10,7 +10,7 @@ let from_http = fun ~body http_request ->
   let remaining =
     match Net.Http.Request.get_header http_request "content-length" with
     | Some len_str -> (
-        match Int.of_string_opt len_str with
+        match Int.from_string_opt len_str with
         | Some len -> len - String.length body
         | None -> 0
       )

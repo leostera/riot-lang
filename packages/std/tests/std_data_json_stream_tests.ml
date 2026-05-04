@@ -2,7 +2,7 @@ open Std
 open Std.Data
 
 let compare_with_baseline = fun input actual ->
-  let expected = Json.of_string input in
+  let expected = Json.from_string input in
   match (expected, actual) with
   | (Ok left, Ok right) when left = right -> Ok ()
   | (Error left, Error right) when left = right -> Ok ()

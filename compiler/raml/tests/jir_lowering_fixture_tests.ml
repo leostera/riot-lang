@@ -11,7 +11,7 @@ let snapshots_dir = Path.v "compiler/raml/tests/fixtures/js"
 
 let append_snapshot_suffix = fun path suffix ->
   format Format.[ str (Path.to_string (Path.remove_extension path)); str suffix ]
-  |> Path.of_string
+  |> Path.from_string
   |> Result.expect ~msg:"snapshot path should stay valid UTF-8"
 
 let snapshot_path = fun ~(ctx:Test.FixtureRunner.ctx) ->
@@ -42,7 +42,7 @@ let lowering_result_to_json = fun result ->
 
 let test_fixture = fun ~(ctx:Test.FixtureRunner.ctx) ->
   let* source = Result.map_error IO.error_message (Fs.read ctx.fixture_path) in
-  let* json = Result.map_error Json.error_to_string (Json.of_string source) in
+  let* json = Result.map_error Json.error_to_string (Json.from_string source) in
   let* compilation_unit = Raml.TestingHelpers.Core_ir_fixture_support.parse_compilation_unit json in
   let actual = Jir_lowering.lower_compilation_unit compilation_unit |> lowering_result_to_json in
   Test.Snapshot.assert_json ~ctx:(with_snapshot_path (snapshot_path ~ctx) ctx.test) ~actual

@@ -53,13 +53,13 @@ type error =
 
    ```ocaml
    (* Safe construction with error handling *)
-   match Path.of_string "/home/user" with
+   match Path.from_string "/home/user" with
    | Ok path -> println "Valid path: %s" (Path.to_string path)
    | Error (InvalidUtf8 {path}) -> println "Invalid UTF-8 in: %s" path
 
    (* Handle user input *)
    let parse_path input =
-     Path.of_string input
+     Path.from_string input
      |> Result.map_err (fun _ -> "Invalid path provided")
    ```
 *)

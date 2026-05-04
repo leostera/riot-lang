@@ -40,7 +40,7 @@ module Config = struct
     }
 
   let from_string = fun str ->
-    match Net.Uri.of_string str with
+    match Net.Uri.from_string str with
     | Ok uri when Net.Uri.scheme uri = Some "postgresql" || Net.Uri.scheme uri = Some "postgres" -> (
         let hostname =
           Net.Uri.host uri
@@ -51,7 +51,7 @@ module Config = struct
           |> Option.unwrap_or ~default:5_432
         in
         let host =
-          match Net.Addr.of_host_and_port ~host:hostname ~port with
+          match Net.Addr.from_host_and_port ~host:hostname ~port with
           | Ok addr ->
               let resolved_ip = Net.Addr.ip addr in
               if resolved_ip = "::1" then
@@ -571,7 +571,7 @@ module Driver = struct
     | Require -> Error (TlsNotSupported "require")
     | Disable
     | Prefer -> (
-        match Net.Addr.of_host_and_port ~host:cfg.host ~port:cfg.port with
+        match Net.Addr.from_host_and_port ~host:cfg.host ~port:cfg.port with
         | Error (Net.Addr.System_error _err) ->
             (* Host resolution failure - treat as connection refused *)
             Error (TransportError Net.TcpStream.Connection_refused)
@@ -685,7 +685,7 @@ module Driver = struct
         | None -> Sqlx_driver.Value.string value
       )
     | Protocol.TypeOid.Int8 -> (
-        match Int64.of_string_opt value with
+        match Int64.from_string_opt value with
         | Some n -> Sqlx_driver.Value.int64 n
         | None -> Sqlx_driver.Value.string value
       )

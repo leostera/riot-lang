@@ -552,7 +552,7 @@ let scan: t -> Path.t -> (Workspace_manifest.t * load_error list, scan_error) re
                 | Error err -> Error (WorkspaceTomlLoadFailed { path = toml_path; error = err })
                 | Ok toml -> (
                     let workspace_of_toml_started_at = Time.Instant.now () in
-                    match Workspace_manifest.of_toml toml with
+                    match Workspace_manifest.from_toml toml with
                     | Error err ->
                         Error (WorkspaceManifestDecodeFailed { path = toml_path; error = err })
                     | Ok workspace_manifest ->

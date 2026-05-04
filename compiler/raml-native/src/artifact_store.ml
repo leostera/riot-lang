@@ -55,7 +55,7 @@ module Assembly_artifact = struct
         ("payload", artifact.payload);
       ]
 
-  let of_json = fun json ->
+  let from_json = fun json ->
     let ( let* ) value fn = Result.and_then value ~fn in
     let* id =
       match json_string_field "id" json with
@@ -115,7 +115,7 @@ module Link_plan_artifact = struct
         ("payload", artifact.payload);
       ]
 
-  let of_json = fun json ->
+  let from_json = fun json ->
     let ( let* ) value fn = Result.and_then value ~fn in
     let* id =
       match json_string_field "id" json with
@@ -142,7 +142,7 @@ end
 
 let create = fun store ~target () -> { store; target }
 
-let of_config = fun config ->
+let from_config = fun config ->
   match Compiler_config.content_store config with
   | None -> None
   | Some store -> Some (create store ~target:(Compiler_config.target config) ())
@@ -191,7 +191,7 @@ let load_named_json = fun store ~namespace ~key ->
       match Fs.File.read_to_end file with
       | Error _ -> None
       | Ok content ->
-          Data.Json.of_string content |> Result.to_option
+          Data.Json.from_string content |> Result.to_option
     )
 
 let save_assembly = fun store ~unit_name ~assembly ->
@@ -215,7 +215,7 @@ let load_assembly = fun store ~id ->
   match load_named_json store ~namespace:(assembly_namespace store) ~key:id with
   | None -> None
   | Some json -> (
-      match Assembly_artifact.of_json json with
+      match Assembly_artifact.from_json json with
       | Ok artifact -> Some artifact
       | Error _ -> None
     )
@@ -242,7 +242,7 @@ let load_link_plan = fun store ~id ->
   match load_named_json store ~namespace:(link_plan_namespace store) ~key:id with
   | None -> None
   | Some json -> (
-      match Link_plan_artifact.of_json json with
+      match Link_plan_artifact.from_json json with
       | Ok artifact -> Some artifact
       | Error _ -> None
     )

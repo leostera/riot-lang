@@ -15,7 +15,7 @@ open Global
 
    (* Parse JSON *)
    let json_str = {|{"name": "Alice", "age": 30, "active": true}|} in
-   match Json.of_string json_str with
+   match Json.from_string json_str with
    | Ok json ->
        (* Extract fields *)
        let name = Json.get_field "name" json
@@ -52,7 +52,7 @@ open Global
    Working with arrays:
 
    ```ocaml
-   let json = Json.of_string {|[1, 2, 3, 4, 5]|} |> Result.unwrap in
+   let json = Json.from_string {|[1, 2, 3, 4, 5]|} |> Result.unwrap in
    match Json.get_array json with
    | Some items ->
        let sum = List.fold_left (fun acc item ->
@@ -69,7 +69,7 @@ open Global
    Parse errors include position information for debugging:
 
    ```ocaml
-   match Json.of_string {|{"bad": json}|} with
+   match Json.from_string {|{"bad": json}|} with
    | Ok _ -> ()
    | Error (Invalid_literal { expected; position; found }) ->
        Printf.printf "Expected %s at position %d, found: %s\n"
@@ -121,10 +121,10 @@ type error =
    ## Examples
 
    ```ocaml
-   Json.of_string {|{"key": "value"}|}  (* Ok (Object [...]) *)
-   Json.of_string {|[1, 2, 3]|}  (* Ok (Array [...]) *)
-   Json.of_string {|true|}  (* Ok (Bool true) *)
-   Json.of_string {|invalid}|}  (* Error (Invalid_literal {...}) *)
+   Json.from_string {|{"key": "value"}|}  (* Ok (Object [...]) *)
+   Json.from_string {|[1, 2, 3]|}  (* Ok (Array [...]) *)
+   Json.from_string {|true|}  (* Ok (Bool true) *)
+   Json.from_string {|invalid}|}  (* Error (Invalid_literal {...}) *)
    ```
 
    ## Error Cases
@@ -135,7 +135,7 @@ type error =
    - Invalid escape sequences in strings
    - Invalid number formats
 *)
-val of_string: string -> (t, error) result
+val from_string: string -> (t, error) result
 
 (**
    Serializes a JSON value to a compact string (no pretty-printing).
@@ -184,7 +184,7 @@ val to_string_pretty: ?depth:int -> t -> string
 
    ## Examples
 
-   ```ocaml match Json.of_string bad_input with | Ok _ -> () | Error err ->
+   ```ocaml match Json.from_string bad_input with | Ok _ -> () | Error err ->
    Log.error "JSON parse failed: %s" (Json.error_to_string err) ```
 *)
 val error_to_string: error -> string

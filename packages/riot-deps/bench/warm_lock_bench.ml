@@ -258,7 +258,7 @@ let bench_projection_warm = fun (fixture: fixture) () ->
     Riot_deps.Projection.resolve_packages
       ~registry:fixture.registry
       ~workspace_root:fixture.workspace.root
-      ~packages:[ Package_manifest.of_package fixture.app_package ]
+      ~packages:[ Package_manifest.from_package fixture.app_package ]
       ~lockfile:fixture.lockfile
       ()
     |> Result.expect ~msg:"expected warm projection benchmark to succeed"

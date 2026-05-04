@@ -42,7 +42,7 @@ type register_policy = {
 }
 
 let register_policy_of_context = fun ~ctx ->
-  match Target_profile.of_context ctx with
+  match Target_profile.from_context ctx with
   | None -> {
     caller_saved_registers = [];
     callee_saved_registers = [];

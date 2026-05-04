@@ -85,8 +85,8 @@ and encode_variant: 'value. state -> 'value Serde.Ser.variant_cases -> 'value ->
 and backend: state Ser.backend = {
   bool = (fun state value -> set state (Toml_value.Bool value));
   string = (fun state value -> set state (Toml_value.String value));
-  int = (fun state value -> set state (Toml_value.Int (Int64.of_int value)));
-  int32 = (fun state value -> set state (Toml_value.Int (Int64.of_int32 value)));
+  int = (fun state value -> set state (Toml_value.Int (Int64.from_int value)));
+  int32 = (fun state value -> set state (Toml_value.Int (Int64.from_int32 value)));
   int64 = (fun state value -> set state (Toml_value.Int value));
   float = (fun state value -> set state (Toml_value.Float value));
   null = (fun state -> set state (Toml_value.Table []));

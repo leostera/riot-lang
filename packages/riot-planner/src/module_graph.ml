@@ -504,7 +504,7 @@ and handle_ocaml_module = fun ~t ~ctx path ->
 *)
 and handle_library = fun ~t ~ctx dir name children ->
   let { ns; aliases } = ctx in
-  let lib_module_name = Module_name.of_string name in
+  let lib_module_name = Module_name.from_string name in
   let intf_file = Module_name.canonical_mli lib_module_name in
   let impl_file = Module_name.canonical_ml lib_module_name in
   let intf_mod = Module.make ~namespace:ns ~filename:intf_file in
@@ -763,7 +763,7 @@ let rec build_deps_env_for_library = fun
       ~binaries
       children
   in
-  let library_module_name = Module_name.of_string ~namespace library_name in
+  let library_module_name = Module_name.from_string ~namespace library_name in
   let qualified_root_name = Module_name.qualified_name library_module_name in
   let env =
     Syn.Deps.Env.add_path
@@ -868,7 +868,7 @@ let rec build_deps_env_for_library = fun
         match __tmp1 with
         | Module_scanner.Dir (name, _, nested_children) ->
             let child_name =
-              Module_name.of_string name
+              Module_name.from_string name
               |> Module_name.to_string
             in
             if HashSet.contains child_dir_names ~value:child_name then
@@ -891,7 +891,7 @@ let build_deps_env_for_group = fun
   | Loose_sources -> (env, root_export_sources)
   | Library_root { library_name } ->
       let public_root_name =
-        Module_name.of_string library_name
+        Module_name.from_string library_name
         |> Module_name.to_string
       in
       build_deps_env_for_library
@@ -917,7 +917,7 @@ let group_namespace = fun root ->
     |> String.split ~by:"/"
     |> List.filter ~fn:(fun part -> not (String.is_empty part))
     |> List.map ~fn:String.capitalize_ascii
-    |> Namespace.of_list
+    |> Namespace.from_list
 
 let dependency_source_groups = fun (package: Package.t) ->
   let groups = [
@@ -957,7 +957,7 @@ let dependency_root_export_env = fun config env (group: source_group) group_entr
   | Loose_sources -> env
   | Library_root { library_name } ->
       let public_root_name =
-        Module_name.of_string library_name
+        Module_name.from_string library_name
         |> Module_name.to_string
       in
       let lib_def =
@@ -996,7 +996,7 @@ let dependency_root_export_env = fun config env (group: source_group) group_entr
             | Error _ -> env
             | Ok source ->
                 let library_module_name =
-                  Module_name.of_string ~namespace:group.namespace library_name
+                  Module_name.from_string ~namespace:group.namespace library_name
                 in
                 let alias_namespace =
                   Namespace.append group.namespace (Module_name.to_string library_module_name)
@@ -1171,7 +1171,7 @@ let wire_dependencies = fun t ->
     | [] -> [ simple_name ]
     | _ ->
         let qualified_name =
-          Namespace.of_list namespace_parts
+          Namespace.from_list namespace_parts
           |> fun ns ->
             Namespace.append ns simple_name
             |> Namespace.to_string
@@ -1360,9 +1360,9 @@ let wire_dependencies = fun t ->
         let base_namespace =
           match group.root_mode with
           | Library_root { library_name } ->
-              Module_name.of_string library_name
+              Module_name.from_string library_name
               |> Module_name.to_string
-              |> fun name -> Namespace.of_list [ name ]
+              |> fun name -> Namespace.from_list [ name ]
           | Loose_sources -> group.namespace
         in
         let file_str = Path.to_string (Path.normalize path) in
@@ -1427,7 +1427,7 @@ let wire_dependencies = fun t ->
         let resolved_deps =
           requested_deps
           |> List.map
-            ~fn:(fun modname -> Module_name.of_string ~namespace:(file_namespace path) modname)
+            ~fn:(fun modname -> Module_name.from_string ~namespace:(file_namespace path) modname)
         in
         let (resolved_dep_ids, unresolved_deps) =
           List.fold_left

@@ -50,7 +50,7 @@ module Module_summary = struct
 
   let to_json = Artifacts.Module_summary.to_json
 
-  let of_json = fun json ->
+  let from_json = fun json ->
     let json_string_list name =
       match json_array_field name json with
       | None -> Error ("missing or invalid '" ^ name ^ "'")
@@ -111,7 +111,7 @@ module Object_artifact = struct
     payload: Json.t;
   }
 
-  let of_object = fun (object_: Artifacts.Object.t) ->
+  let from_object = fun (object_: Artifacts.Object.t) ->
     let payload = Artifacts.Object.to_json object_ in
     let id = payload |> Json.to_string |> Crypto.hash_string |> Crypto.Digest.hex in
     { id; unit_name = object_.unit_name; summary = object_.summary; payload }
@@ -126,7 +126,7 @@ module Object_artifact = struct
         ("payload", artifact.payload);
       ]
 
-  let of_json = fun json ->
+  let from_json = fun json ->
     let ( let* ) value fn = Result.and_then value ~fn in
     let* id =
       match json_string_field "id" json with
@@ -140,7 +140,7 @@ module Object_artifact = struct
     in
     let* summary =
       match Json.get_field "summary" json with
-      | Some value -> Module_summary.of_json value
+      | Some value -> Module_summary.from_json value
       | None -> Error "missing 'summary'"
     in
     let* payload =
@@ -161,7 +161,7 @@ module Linked_program_artifact = struct
     payload: Json.t;
   }
 
-  let of_linked_program = fun (linked_program: Artifacts.Linked_program.t) ->
+  let from_linked_program = fun (linked_program: Artifacts.Linked_program.t) ->
     let payload = Artifacts.Linked_program.to_json linked_program in
     let id = payload |> Json.to_string |> Crypto.hash_string |> Crypto.Digest.hex in
     {
@@ -189,7 +189,7 @@ module Linked_program_artifact = struct
         ("payload", artifact.payload);
       ]
 
-  let of_json = fun json ->
+  let from_json = fun json ->
     let json_string_list name =
       match json_array_field name json with
       | None -> Error ("missing or invalid '" ^ name ^ "'")
@@ -245,7 +245,7 @@ module Module_artifact = struct
     payload: Json.t;
   }
 
-  let of_codegen_artifact = fun ?unit_name (artifact: Codegen.artifact) ->
+  let from_codegen_artifact = fun ?unit_name (artifact: Codegen.artifact) ->
     let payload = Codegen.artifact_to_json artifact in
     let id = payload |> Json.to_string |> Crypto.hash_string |> Crypto.Digest.hex in
     {
@@ -274,7 +274,7 @@ module Module_artifact = struct
         ("payload", artifact.payload);
       ]
 
-  let of_json = fun json ->
+  let from_json = fun json ->
     let ( let* ) value fn = Result.and_then value ~fn in
     let* id =
       match json_string_field "id" json with
@@ -320,7 +320,7 @@ end
 
 let create = fun store ~target () -> { store; target }
 
-let of_config = fun config ->
+let from_config = fun config ->
   match Compiler_config.content_store config with
   | None -> None
   | Some store -> Some (create store ~target:(Compiler_config.target config) ())
@@ -376,11 +376,11 @@ let load_named_json = fun store ~namespace ~key ->
   | Ok file -> (
       match Fs.File.read_to_end file with
       | Error _ -> None
-      | Ok content -> Data.Json.of_string content |> Result.to_option
+      | Ok content -> Data.Json.from_string content |> Result.to_option
     )
 
 let save_object = fun store ~(object_:Artifacts.Object.t) ->
-  let artifact = Object_artifact.of_object object_ in
+  let artifact = Object_artifact.from_object object_ in
   let* () = save_named_json
     store
     ~namespace:(objects_namespace store)
@@ -400,7 +400,7 @@ let decode = fun decode json ->
 
 let load_object = fun store ~id ->
   match load_named_json store ~namespace:(objects_namespace store) ~key:id with
-  | Some json -> decode Object_artifact.of_json json
+  | Some json -> decode Object_artifact.from_json json
   | None -> None
 
 let find_object_by_unit_name = fun store ~unit_name ->
@@ -413,7 +413,7 @@ let find_object_by_unit_name = fun store ~unit_name ->
   | None -> None
 
 let save_linked_program = fun store ~(linked_program:Artifacts.Linked_program.t) ->
-  let artifact = Linked_program_artifact.of_linked_program linked_program in
+  let artifact = Linked_program_artifact.from_linked_program linked_program in
   let* () = save_named_json
     store
     ~namespace:(linked_programs_namespace store)
@@ -433,7 +433,7 @@ let save_linked_program = fun store ~(linked_program:Artifacts.Linked_program.t)
 
 let load_linked_program = fun store ~id ->
   match load_named_json store ~namespace:(linked_programs_namespace store) ~key:id with
-  | Some json -> decode Linked_program_artifact.of_json json
+  | Some json -> decode Linked_program_artifact.from_json json
   | None -> None
 
 let find_linked_program_by_unit_name = fun store ~unit_name ->
@@ -446,7 +446,7 @@ let find_linked_program_by_unit_name = fun store ~unit_name ->
   | None -> None
 
 let save_module = fun store ?unit_name (artifact: Codegen.artifact) ->
-  let artifact = Module_artifact.of_codegen_artifact ?unit_name artifact in
+  let artifact = Module_artifact.from_codegen_artifact ?unit_name artifact in
   let* () = save_named_json
     store
     ~namespace:(modules_namespace store)
@@ -465,7 +465,7 @@ let save_module = fun store ?unit_name (artifact: Codegen.artifact) ->
 
 let load_module = fun store ~id ->
   match load_named_json store ~namespace:(modules_namespace store) ~key:id with
-  | Some json -> decode Module_artifact.of_json json
+  | Some json -> decode Module_artifact.from_json json
   | None -> None
 
 let find_module_by_unit_name = fun store ~unit_name ->

@@ -15,7 +15,7 @@ type t = {
 
 let make = fun ~architecture ~vendor ~system ?abi () -> { architecture; vendor; system; abi }
 
-let of_string = fun value ->
+let from_string = fun value ->
   let invalid_target message = Error ("invalid target '" ^ value ^ "': " ^ message ^ " (expected <architecture>-<vendor>-<system>[-<abi>])") in
   let valid_part part = not (String.equal part "") in
   match String.split_on_char '-' value with

@@ -1,7 +1,7 @@
 open Std
 
 let main ~args:_ =
-  match Net.Uri.of_string "https://example.com/search?q=hello+world&filter=name%3DJohn" with
+  match Net.Uri.from_string "https://example.com/search?q=hello+world&filter=name%3DJohn" with
   | Ok uri ->
       (
         match Net.Uri.query uri with

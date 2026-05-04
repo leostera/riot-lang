@@ -175,7 +175,7 @@ let send_on_connection = fun conn uri (request: Request.t) ->
     )
 
 let low_level_transport = fun client (request: Request.t) ->
-  match Net.Uri.of_string request.url with
+  match Net.Uri.from_string request.url with
   | Error _ -> Error ("invalid request uri: " ^ request.url)
   | Ok uri -> (
       let key = endpoint_key request in

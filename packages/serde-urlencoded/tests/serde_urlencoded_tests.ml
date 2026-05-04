@@ -322,7 +322,7 @@ let test_encodes_records = fun _ctx ->
 
 let test_decodes_records = fun _ctx ->
   let input = "unused=ignored&" ^ encoded_sample_without_nickname in
-  match Serde_urlencoded.of_string sample_decode input with
+  match Serde_urlencoded.from_string sample_decode input with
   | Ok actual ->
       if equal_sample actual sample_value then
         Ok ()
@@ -336,7 +336,7 @@ let test_roundtrips_records = fun _ctx ->
     | Ok encoded -> Ok encoded
     | Error err -> Error ("roundtrip encode failed: " ^ Serde.Error.to_string err)
   in
-  match Serde_urlencoded.of_string sample_decode encoded with
+  match Serde_urlencoded.from_string sample_decode encoded with
   | Ok actual ->
       if equal_sample actual sample_value_with_nickname then
         Ok ()
@@ -345,7 +345,7 @@ let test_roundtrips_records = fun _ctx ->
   | Error err -> Error ("roundtrip decode failed: " ^ Serde.Error.to_string err)
 
 let test_decodes_from_reader = fun _ctx ->
-  match Serde_urlencoded.of_reader
+  match Serde_urlencoded.from_reader
     sample_decode
     (String.to_reader ~chunk_size:2 encoded_sample_with_nickname) with
   | Ok actual ->

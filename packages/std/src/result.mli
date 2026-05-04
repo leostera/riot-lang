@@ -39,7 +39,7 @@
    ## Working with Results
 
    ```ocaml (* Provide a default value *) let port = Env.get "PORT" |>
-   Result.and_then Int.of_string |> Result.unwrap_or ~default:8080
+   Result.and_then Int.from_string |> Result.unwrap_or ~default:8080
 
    (* Transform errors *) let config = Fs.read (Path.v "config.json") |>
    Result.map_err (fun _ -> "Config file not found") |> Result.and_then
@@ -463,14 +463,14 @@ val to_option: ('a, 'e) t -> 'a option
 
    ## Examples
 
-   ```ocaml let x = Some "value" in assert (Result.of_option ~error:"no value"
+   ```ocaml let x = Some "value" in assert (Result.from_option ~error:"no value"
    x = Ok "value");
 
-   let y = None in assert (Result.of_option ~error:"no value" y = Error "no
+   let y = None in assert (Result.from_option ~error:"no value" y = Error "no
    value")
 
    (* Common pattern with environment variables *) let port = Sys.getenv_opt
-   "PORT" |> Result.of_option ~error:"PORT not set" |> Result.and_then (fun s
+   "PORT" |> Result.from_option ~error:"PORT not set" |> Result.and_then (fun s
    -> try Ok (int_of_string s) with _ -> Error "PORT must be a number") ```
 *)
 val from_option: error:'e -> 'a option -> ('a, 'e) t

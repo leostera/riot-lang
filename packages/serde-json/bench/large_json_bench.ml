@@ -146,7 +146,7 @@ let expect_int = fun __tmp1 ->
 let expect_float = fun __tmp1 ->
   match __tmp1 with
   | Json.Float value -> Ok value
-  | Json.Int value -> Ok (Float.of_int value)
+  | Json.Int value -> Ok (Float.from_int value)
   | _ -> Error "expected float"
 
 let expect_bool = fun __tmp1 ->
@@ -426,7 +426,7 @@ let dataset_to_json = fun (value: dataset) ->
   ]
 
 let parse_json = fun text ->
-  Json.of_string text
+  Json.from_string text
   |> Result.expect ~msg:"expected benchmark payload to parse as JSON"
 
 let read_fixture_text = fun () ->
@@ -544,24 +544,24 @@ let ensure_large_fixture_text = fun base_fixture ->
   | Error err -> panic ("expected benchmark fixture path to be accessible: " ^ IO.error_message err)
 
 let decode_serde = fun text ->
-  Serde_json.of_string dataset_decode text
+  Serde_json.from_string dataset_decode text
   |> Result.expect ~msg:"expected fast serde benchmark decode to succeed"
 
 let decode_serde_reader = fun text ->
-  match Serde_json.of_reader dataset_decode (String.to_reader text) with
+  match Serde_json.from_reader dataset_decode (String.to_reader text) with
   | Ok value -> value
   | Error err ->
       panic ("expected serde reader benchmark decode to succeed: " ^ Serde.Error.to_string err)
 
 let decode_serde_reader_buffered = fun ~chunk_size text ->
-  match Serde_json.of_reader dataset_decode (String.to_reader ~chunk_size text) with
+  match Serde_json.from_reader dataset_decode (String.to_reader ~chunk_size text) with
   | Ok value -> value
   | Error err ->
       panic
         ("expected buffered serde reader benchmark decode to succeed: " ^ Serde.Error.to_string err)
 
 let decode_serde_reader_chunked = fun text ->
-  match Serde_json.of_reader dataset_decode (String.to_reader ~chunk_size:1 text) with
+  match Serde_json.from_reader dataset_decode (String.to_reader ~chunk_size:1 text) with
   | Ok value -> value
   | Error err ->
       panic

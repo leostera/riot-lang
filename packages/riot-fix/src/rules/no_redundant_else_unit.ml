@@ -3,7 +3,7 @@ open Std
 module H = Rule_helpers
 module Ast = Syn.Ast
 
-let rule_id = Rule_id.of_string "no-redundant-else-unit"
+let rule_id = Rule_id.from_string "no-redundant-else-unit"
 
 let rule_description = "Else branches that only return unit should be removed"
 

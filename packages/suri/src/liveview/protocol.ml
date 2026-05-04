@@ -134,7 +134,7 @@ let deserialize_client_msg = fun json_str ->
     Ok Mount
   else
     (* Parse as JSON *)
-    match Data.Json.of_string json_str with
+    match Data.Json.from_string json_str with
     | Error error -> Error (InvalidJson error)
     | Ok json ->
         (* Check for Event *)

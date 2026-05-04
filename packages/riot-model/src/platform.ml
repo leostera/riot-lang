@@ -14,7 +14,7 @@ let to_string = fun __tmp1 ->
   | Windows -> "windows"
   | Unknown s -> s
 
-let of_string = fun __tmp1 ->
+let from_string = fun __tmp1 ->
   match __tmp1 with
   | "macos" -> MacOS
   | "linux" -> Linux

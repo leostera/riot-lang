@@ -360,7 +360,7 @@ let rec to_json = fun __tmp1 ->
   | Unexpected { error } ->
       Json.Object [ ("kind", Json.String "Unexpected"); ("error", Json.String error); ]
 
-let rec of_json = fun __tmp1 ->
+let rec from_json = fun __tmp1 ->
   match __tmp1 with
   | Json.Object fields -> (
       match Fields.get "kind" fields with
@@ -385,7 +385,7 @@ let rec of_json = fun __tmp1 ->
             Fields.get "error" fields
           ) with
           | (Some (Json.String dependency_name), Some path_json, Some error_json) -> (
-              match (path_of_json path_json, of_json error_json) with
+              match (path_of_json path_json, from_json error_json) with
               | (Ok dependency_path, Ok error) ->
                   Ok (PathDependencyLoadFailed { dependency_name; dependency_path; error })
               | (Error err, _)

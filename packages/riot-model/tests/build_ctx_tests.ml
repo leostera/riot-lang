@@ -1,6 +1,6 @@
 open Std
 
-let session_id = Riot_model.Session_id.of_string
+let session_id = Riot_model.Session_id.from_string
 
 let test_host_only_uses_the_host_target = fun _ctx ->
   let ctx =

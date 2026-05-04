@@ -200,7 +200,7 @@ let get_int = fun __tmp1 ->
 let get_float = fun __tmp1 ->
   match __tmp1 with
   | Data.Json.Float value -> Ok value
-  | Data.Json.Int value -> Ok (Float.of_int value)
+  | Data.Json.Int value -> Ok (Float.from_int value)
   | other -> error_expected "float" other
 
 let get_array = fun __tmp1 ->
@@ -426,7 +426,7 @@ let read_stored_suite_run = fun path ->
   let* content = Result.map_err (Fs.read_to_string path) ~fn:IO.error_message in
   let* json =
     Result.map_err
-      (Data.Json.of_string content)
+      (Data.Json.from_string content)
       ~fn:(fun error ->
         "invalid json in " ^ Path.to_string path ^ ": " ^ Data.Json.error_to_string error)
   in

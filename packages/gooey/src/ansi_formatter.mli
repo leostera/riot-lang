@@ -25,7 +25,7 @@ val format_string: format list -> string -> string
 
    Example:
    {[
-     let red = Tty.Color.of_rgb (255, 0, 0) in
+     let red = Tty.Color.from_rgb (255, 0, 0) in
      format_string [Foreground red; Bold] "Hello"
    ]}
 *)

@@ -79,7 +79,7 @@ let workspace_build_dir_name = fun ~workspace_root ->
       match Data.Toml.parse content with
       | Error _ -> build_dir_name
       | Ok toml -> (
-          match Workspace_manifest.of_toml toml with
+          match Workspace_manifest.from_toml toml with
           | Ok manifest -> (
               match manifest.target_dir with
               | Some target_dir -> target_dir

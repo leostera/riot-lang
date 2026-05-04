@@ -8,7 +8,7 @@ let main ~args =
     |> Option.unwrap_or ~default:"wss://echo.websocket.events"
   in
   let uri =
-    Net.Uri.of_string url
+    Net.Uri.from_string url
     |> Result.expect ~msg:"invalid WebSocket URL"
   in
   let client = Client.make () in

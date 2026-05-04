@@ -4,7 +4,7 @@ open Std.Collections
 module Toml = Data.Toml
 module H = Rule_helpers
 
-let rule_id = Rule_id.of_string "package-name-style"
+let rule_id = Rule_id.from_string "package-name-style"
 
 let rule_description =
   "Package names should start with a letter, use kebab-case, and avoid trailing separators"

@@ -38,7 +38,7 @@ let parse_jsonl = fun output ->
   |> List.filter ~fn:(fun line -> not (String.equal line ""))
   |> List.map
     ~fn:(fun line ->
-      Data.Json.of_string line
+      Data.Json.from_string line
       |> Result.expect ~msg:"parse json line")
 
 let parse_package_manifest = fun ~path ~relative_path toml ->

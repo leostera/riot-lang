@@ -56,7 +56,7 @@ let tests =
     case "make rejects an invalid civil date" test_make_invalid_date;
     case "ISO 8601 parsing roundtrips" test_iso8601_roundtrip;
     case "add_days and diff_days agree across month boundaries" test_add_and_diff_days;
-    case "of_date_time keeps the civil date only" test_of_date_time_discards_time_fields;
+    case "from_date_time keeps the civil date only" test_of_date_time_discards_time_fields;
     case "today_utc matches DateTime.now_utc" test_today_utc_matches_datetime_now_utc;
   ]
 

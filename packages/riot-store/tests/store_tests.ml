@@ -73,7 +73,7 @@ let read_cache_state_generation_hashes = fun ~(workspace:Riot_model.Workspace.t)
     |> Result.expect ~msg:"failed to read cache state"
   in
   let json =
-    Data.Json.of_string content
+    Data.Json.from_string content
     |> Result.expect ~msg:"failed to parse cache state json"
   in
   match Data.Json.get_field "generation_hashes" json with
@@ -97,7 +97,7 @@ let read_generation_lane_hashes = fun ~(workspace:Riot_model.Workspace.t) genera
     |> Result.expect ~msg:"failed to read generation payload"
   in
   let json =
-    Data.Json.of_string content
+    Data.Json.from_string content
     |> Result.expect ~msg:"failed to parse generation payload"
   in
   match Data.Json.get_field "lanes" json with

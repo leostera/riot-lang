@@ -81,7 +81,7 @@ let parse_error_to_string = fun __tmp1 ->
 let parse_urlencoded = fun body -> Net.Uri.Query.parse body
 
 let parse_json = fun body ->
-  match Std.Data.Json.of_string body with
+  match Std.Data.Json.from_string body with
   | Error error -> Error (InvalidJson error)
   | Ok (Std.Data.Json.Object fields) ->
       let json = Std.Data.Json.Object fields in

@@ -9,7 +9,7 @@ type error =
 
 (** {2 Create TLS Streams} *)
 
-val of_client_io :
+val from_client_io :
   reader:(Tcp_stream.t, error) IO.Reader.t ->
   writer:(Tcp_stream.t, error) IO.Writer.t ->
   hostname:string ->

@@ -35,7 +35,7 @@ val push_significant: stream -> t -> int
    structural whitespace token for formatter-facing views, while comment and
    docstring trivia keep their source spans.
 *)
-val of_lexer_tokens: source:IO.IoVec.IoSlice.t -> Token.t list -> stream
+val from_lexer_tokens: source:IO.IoVec.IoSlice.t -> Token.t list -> stream
 
 val is_trivia: t -> bool
 

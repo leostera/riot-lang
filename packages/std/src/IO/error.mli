@@ -72,10 +72,10 @@ type t =
   | Invalid_data
   | Unknown_error of string
 
-val of_system_error: Kernel.SystemError.t -> t
+val from_system_error: Kernel.SystemError.t -> t
 
-val of_system_error_code: int -> t
+val from_system_error_code: int -> t
 
-val of_async_error: Kernel.Async.error -> t
+val from_async_error: Kernel.Async.error -> t
 
 val message: t -> string

@@ -66,8 +66,8 @@ let specs = [
     paths = riot_module "Int" "to_string" @ riot_module "Float" "to_string"
   };
   { callee = Math_sqrt; paths = riot_module "Float" "sqrt" };
-  { callee = Primitive Core.Primitive.Int_of_string; paths = riot_module "Int" "of_string" };
-  { callee = Primitive Core.Primitive.Float_of_string; paths = riot_module "Float" "of_string" };
+  { callee = Primitive Core.Primitive.Int_of_string; paths = riot_module "Int" "from_string" };
+  { callee = Primitive Core.Primitive.Float_of_string; paths = riot_module "Float" "from_string" };
   { callee = Unary_operator Types.Operator.Not; paths = [ [ "not" ] ] };
   { callee = Boolean_and; paths = [ [ "&&" ] ] };
   { callee = Boolean_or; paths = [ [ "||" ] ] };

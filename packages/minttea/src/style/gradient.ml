@@ -21,9 +21,9 @@ let make ~start ~finish ~steps : color array =
       if steps = 1 then
         0.5
       else
-        Float.of_int i /. Float.of_int (steps - 1)
+        Float.from_int i /. Float.from_int (steps - 1)
     in
     let (`rgb (r, g, b)) = Colors.RGB.blend start finish ~mix:p in
-    Array.set colors ~at:i ~value:(Tty.Color.of_rgb (r, g, b))
+    Array.set colors ~at:i ~value:(Tty.Color.from_rgb (r, g, b))
   done;
   colors

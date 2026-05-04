@@ -127,7 +127,7 @@ let execute_raw = fun
 
 let execute = fun context spec ->
   execute_raw context spec
-  |> Result.map ~fn:Build_result.of_build_results
+  |> Result.map ~fn:Build_result.from_build_results
 
 let build = fun ?on_event request ->
   let open Std.Result.Syntax in

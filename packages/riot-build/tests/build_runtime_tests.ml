@@ -603,7 +603,7 @@ let test_execute_partial_failures_by_default = fun _ctx ->
       match Riot_build.Internal.Build_runtime.execute context spec with
       | Ok _ -> Error "expected default build to fail when any package fails"
       | Error (Build_runtime.BuildFailed { errors }) ->
-          let output = Riot_build.Build_result.of_build_results errors in
+          let output = Riot_build.Build_result.from_build_results errors in
           let bad_output = Riot_build.Build_result.find_package output bad in
           let has_bad_failure =
             match bad_output with
@@ -654,7 +654,7 @@ let test_execute_allows_partial_failures = fun _ctx ->
       | Error err ->
           Error ("expected partial failures to be returned, got: " ^ Build_runtime.error_message err)
       | Ok results ->
-          let build_output = Riot_build.Build_result.of_build_results results in
+          let build_output = Riot_build.Build_result.from_build_results results in
           let good_result = Riot_build.Build_result.find_package build_output good in
           let bad_result = Riot_build.Build_result.find_package build_output bad in
           match good_result with
@@ -689,7 +689,7 @@ let test_execute_allows_multi_target_partial_failures = fun _ctx ->
         else
           target "x86_64-unknown-linux-gnu"
       in
-      let requested_targets = Riot_model.Target.Set.of_list [ host_target; secondary_target ] in
+      let requested_targets = Riot_model.Target.Set.from_list [ host_target; secondary_target ] in
       let expected_targets =
         requested_targets
         |> Riot_model.Target.Set.to_list
@@ -766,7 +766,7 @@ let test_execute_allows_multi_target_partial_failures = fun _ctx ->
             else if not (equal_target_lists expected_targets finished_sorted) then
               Error ("expected target finishes to include " ^ String.concat ", " expected_targets)
             else
-              let build_output = Riot_build.Build_result.of_build_results results in
+              let build_output = Riot_build.Build_result.from_build_results results in
               let good_output = Riot_build.Build_result.find_package build_output good in
               let bad_output = Riot_build.Build_result.find_package build_output bad in
               let good_ok =
@@ -808,7 +808,7 @@ let test_execute_multi_target_reports_global_returning_results = fun _ctx ->
         else
           target "x86_64-unknown-linux-gnu"
       in
-      let requested_targets = Riot_model.Target.Set.of_list [ host_target; secondary_target ] in
+      let requested_targets = Riot_model.Target.Set.from_list [ host_target; secondary_target ] in
       let target_count = List.length (Riot_model.Target.Set.to_list requested_targets) in
       let expected_return_count = target_count * 2 in
       let returning_event = ref None in
@@ -867,7 +867,7 @@ let test_execute_multi_target_all_success_reports_aggregated_results = fun _ctx 
         else
           target "x86_64-unknown-linux-gnu"
       in
-      let requested_targets = Riot_model.Target.Set.of_list [ host_target; secondary_target ] in
+      let requested_targets = Riot_model.Target.Set.from_list [ host_target; secondary_target ] in
       let expected_return_count =
         (List.length (Riot_model.Target.Set.to_list requested_targets)) * 2
       in
@@ -926,7 +926,7 @@ let test_execute_multi_target_partial_failures_skip_cache_recording = fun _ctx -
         else
           target "x86_64-unknown-linux-gnu"
       in
-      let requested_targets = Riot_model.Target.Set.of_list [ host_target; secondary_target ] in
+      let requested_targets = Riot_model.Target.Set.from_list [ host_target; secondary_target ] in
       let workspace =
         make_workspace_with_sources
           ~root:tmpdir
@@ -978,7 +978,7 @@ let test_execute_multi_target_success_records_cache_generation = fun _ctx ->
         else
           target "x86_64-unknown-linux-gnu"
       in
-      let requested_targets = Riot_model.Target.Set.of_list [ host_target; secondary_target ] in
+      let requested_targets = Riot_model.Target.Set.from_list [ host_target; secondary_target ] in
       let workspace =
         make_workspace_with_sources
           ~root:tmpdir

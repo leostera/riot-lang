@@ -4,7 +4,7 @@ open Std.Collections
 module H = Rule_helpers
 module Ast = Syn.Ast
 
-let rule_id = Rule_id.of_string "no-unnecessary-rec"
+let rule_id = Rule_id.from_string "no-unnecessary-rec"
 
 let rule_description = "Recursive bindings should use rec only when needed"
 

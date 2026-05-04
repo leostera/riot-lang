@@ -25,4 +25,4 @@ type t = {
 
 val check_request: cwd:Path.t -> target:Path.t -> t
 
-val of_matches: ArgParser.matches -> (t, exn) result
+val from_matches: ArgParser.matches -> (t, exn) result

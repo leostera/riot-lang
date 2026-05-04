@@ -4,7 +4,7 @@ open Std.Collections
 module H = Rule_helpers
 module Ast = Syn.Ast
 
-let rule_id = Rule_id.of_string "prefer-if-over-bool-match"
+let rule_id = Rule_id.from_string "prefer-if-over-bool-match"
 
 let rule_description = "Boolean matches should be written as if expressions"
 

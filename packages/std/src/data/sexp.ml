@@ -171,7 +171,7 @@ module Parser = struct
 end
 
 (** Parse a string into an S-expression *)
-let of_string = fun str ->
+let from_string = fun str ->
   let state = Parser.create str in
   try
     let result = Parser.parse_sexp state in
@@ -186,7 +186,7 @@ let of_string = fun str ->
 
 (** Parse a string, raising exception on error *)
 let parse_exn = fun str ->
-  match of_string str with
+  match from_string str with
   | Ok sexp -> sexp
   | Error msg -> raise (Parse_error msg)
 
@@ -265,7 +265,7 @@ module Csexp = struct
         "(" ^ contents ^ ")"
 
   (** Parse canonical S-expression from string *)
-  let of_string = fun str ->
+  let from_string = fun str ->
     let len = String.length str in
     let pos = Cell.create 0 in
     let peek () =

@@ -22,7 +22,7 @@ module Set = struct
     let _ = Collections.HashSet.insert set ~value:target in
     set
 
-  let of_list = Collections.HashSet.from_list
+  let from_list = Collections.HashSet.from_list
 
   let insert = fun set target ->
     let _ = Collections.HashSet.insert set ~value:target in
@@ -68,7 +68,7 @@ let compare = fun left right -> String.compare (to_string left) (to_string right
 
 let host = fun () -> current
 
-let make_set = Set.of_list
+let make_set = Set.from_list
 
 let normalize_pattern = fun value ->
   String.trim value
@@ -89,7 +89,7 @@ let configured_targets = fun ~host (config: Toolchain_config.t) ->
   match config.targets with
   | [] -> Set.singleton host
   | targets ->
-      let set = Set.of_list targets in
+      let set = Set.from_list targets in
       if Set.is_empty set then
         Set.singleton host
       else
@@ -118,7 +118,7 @@ let resolve = fun ~host ~configured_targets request ->
               if List.is_empty matches then
                 Error { pattern = normalized; available_targets = Set.to_list configured_targets }
               else
-                Ok (Set.of_list matches)
+                Ok (Set.from_list matches)
         )
     )
 

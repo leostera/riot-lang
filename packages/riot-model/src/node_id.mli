@@ -5,7 +5,7 @@
 (** Create a node ID from a package *)
 type t
 
-val of_package: Package.t -> t
+val from_package: Package.t -> t
 
 (** Convert to string representation *)
 val to_string: t -> string

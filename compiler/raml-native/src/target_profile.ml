@@ -61,16 +61,16 @@ let aarch64_apple_darwin = fun target ->
     clang_arch = "arm64";
   }
 
-let of_target = fun target ->
+let from_target = fun target ->
   if is_aarch64_apple_darwin target then
     Some (aarch64_apple_darwin target)
   else
     None
 
-let of_context = fun ctx -> of_target (Compilation_context.target ctx)
+let from_context = fun ctx -> from_target (Compilation_context.target ctx)
 
 let matches_target = fun profile target ->
-  match (profile.kind, of_target target) with
+  match (profile.kind, from_target target) with
   | (Aarch64_apple_darwin, Some { kind=Aarch64_apple_darwin; _ }) -> true
   | _ -> false
 

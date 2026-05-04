@@ -61,10 +61,10 @@ let default = {
         "pkgs.ml",
         {
           api_url =
-            Net.Uri.of_string "https://api.pkgs.ml"
+            Net.Uri.from_string "https://api.pkgs.ml"
             |> Result.unwrap;
           cdn_url =
-            Net.Uri.of_string "https://cdn.pkgs.ml"
+            Net.Uri.from_string "https://cdn.pkgs.ml"
             |> Result.unwrap;
           api_token = None;
         }
@@ -112,7 +112,7 @@ let message = fun __tmp1 ->
       "invalid registry config for '" ^ registry_name ^ "': " ^ registry_error_message error
 
 let default_api_url = fun ~registry_name ->
-  Net.Uri.of_string ("https://api." ^ registry_name)
+  Net.Uri.from_string ("https://api." ^ registry_name)
   |> Result.map_err
     ~fn:(fun error ->
       InvalidRegistryConfig {
@@ -121,7 +121,7 @@ let default_api_url = fun ~registry_name ->
       })
 
 let default_cdn_url = fun ~registry_name ->
-  Net.Uri.of_string ("https://cdn." ^ registry_name)
+  Net.Uri.from_string ("https://cdn." ^ registry_name)
   |> Result.map_err
     ~fn:(fun error ->
       InvalidRegistryConfig {
@@ -142,7 +142,7 @@ let registry_of_toml = fun ~registry_name value ->
         match Fields.get "api_url" fields with
         | None -> Ok defaults.api_url
         | Some (Toml.String url) ->
-            Net.Uri.of_string url
+            Net.Uri.from_string url
             |> Result.map_err
               ~fn:(fun error ->
                 InvalidRegistryConfig {
@@ -156,7 +156,7 @@ let registry_of_toml = fun ~registry_name value ->
         match Fields.get "cdn_url" fields with
         | None -> Ok defaults.cdn_url
         | Some (Toml.String url) ->
-            Net.Uri.of_string url
+            Net.Uri.from_string url
             |> Result.map_err
               ~fn:(fun error ->
                 InvalidRegistryConfig {
@@ -220,7 +220,7 @@ let rec collect_registries = fun ~path acc fields ->
     in
     loop acc fields
 
-let of_toml = fun value ->
+let from_toml = fun value ->
   match value with
   | Toml.Table fields -> (
       match Fields.get "registry" fields with
@@ -239,7 +239,7 @@ let load = fun path ->
       match Toml.parse source with
       | Error parse_error -> Error (ParseFailed { path; error = parse_error })
       | Ok toml -> (
-          match of_toml toml with
+          match from_toml toml with
           | Ok config -> Ok config
           | Error (InvalidConfig _ as err) -> Error err
           | Error _ as err -> err

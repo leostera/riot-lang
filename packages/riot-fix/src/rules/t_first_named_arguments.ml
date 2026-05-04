@@ -4,7 +4,7 @@ open Std.Collections
 module H = Rule_helpers
 module Ast = Syn.Ast
 
-let rule_id = Rule_id.of_string "t-first-named-arguments"
+let rule_id = Rule_id.from_string "t-first-named-arguments"
 
 let rule_description = "When named arguments are present, keep t as the first positional argument"
 

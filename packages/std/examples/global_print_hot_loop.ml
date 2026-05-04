@@ -82,8 +82,8 @@ let parse_args = fun args ->
     match __tmp1 with
     | [] -> Ok config
     | "--iterations" :: value :: rest ->
-        loop { config with iterations = Int.of_string value } rest
-    | "--warmup" :: value :: rest -> loop { config with warmup = Int.of_string value } rest
+        loop { config with iterations = Int.from_string value } rest
+    | "--warmup" :: value :: rest -> loop { config with warmup = Int.from_string value } rest
     | "--mode" :: value :: rest -> loop { config with mode = mode_of_string value } rest
     | "--message" :: value :: rest ->
         loop { config with message_kind = message_kind_of_string value } rest
@@ -221,7 +221,7 @@ let main ~args =
       let total_nanos = Time.Duration.to_nanos duration in
       let per_iteration_nanos =
         if config.iterations > 0 then
-          Int64.div total_nanos (Int64.of_int config.iterations)
+          Int64.div total_nanos (Int64.from_int config.iterations)
         else
           0L
       in

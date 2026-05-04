@@ -31,9 +31,9 @@ let fixtures = [
 ]
 
 let bench_json = fun payload ->
-  match Json.of_string payload with
+  match Json.from_string payload with
   | Ok _ -> ()
-  | Error error -> panic ("Json.of_string failed during benchmark: " ^ Json.error_to_string error)
+  | Error error -> panic ("Json.from_string failed during benchmark: " ^ Json.error_to_string error)
 
 let bench_json_stream_string = fun payload ->
   match JsonStream.from_string payload with
@@ -64,7 +64,7 @@ let benchmarks =
         ~config:(config_for fixture)
         ("json parse: " ^ fixture.name)
         [
-          Bench.make_case "Json.of_string" (fun () -> bench_json fixture.payload);
+          Bench.make_case "Json.from_string" (fun () -> bench_json fixture.payload);
           Bench.make_case
             "JsonStream.from_string"
             (fun () -> bench_json_stream_string fixture.payload);

@@ -312,7 +312,7 @@ let parse_test_policy = fun ~path fields ->
   | (Error error, _)
   | (_, Error error) -> Error (InvalidConfig { path; error = TestConfig error })
 
-let of_toml = fun ~path toml ->
+let from_toml = fun ~path toml ->
   match toml with
   | Toml.Table fields -> (
       match Fields.get "riot" fields with
@@ -352,6 +352,6 @@ let load = fun ~workspace_root ->
       | Ok source -> (
           match Toml.parse source with
           | Error err -> Error (ParseFailed { path; error = err })
-          | Ok toml -> of_toml ~path toml
+          | Ok toml -> from_toml ~path toml
         )
     )

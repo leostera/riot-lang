@@ -1,0 +1,255 @@
+---
+import CodeBlock from "../CodeBlock.astro";
+import CopyStrip from "../CopyStrip.astro";
+import FlagMark from "../FlagMark.astro";
+import TokenCard from "../TokenCard.astro";
+
+const colorTokens = [
+  { name: "Paper", value: "#FFF8ED", className: "jr-swatch__chip--paper", role: "Default reading surface" },
+  { name: "Paper-2", value: "#F5ECDC", className: "jr-swatch__chip--paper-2", role: "Recessed surface" },
+  { name: "Ink", value: "#151317", className: "jr-swatch__chip--ink", role: "Text, borders, structure" },
+  { name: "Coal", value: "#0E0D10", className: "jr-swatch__chip--coal", role: "Terminal and code gravity" },
+  { name: "Riot", value: "#EF233C", className: "jr-swatch__chip--riot", role: "Flag, identity, primary action" },
+  { name: "Mint", value: "#24C08D", className: "jr-swatch__chip--mint", role: "Success state" },
+  { name: "Amber", value: "#F0B429", className: "jr-swatch__chip--amber", role: "Warning state" },
+  { name: "Blue", value: "#2777FF", className: "jr-swatch__chip--blue", role: "References and links" },
+];
+
+const spacingTokens = [
+  { name: "u1", value: "5px", className: "jr-space-bar--u1" },
+  { name: "u2", value: "10px", className: "jr-space-bar--u2" },
+  { name: "u3", value: "15px", className: "jr-space-bar--u3" },
+  { name: "u4", value: "20px", className: "jr-space-bar--u4" },
+  { name: "u5", value: "25px", className: "jr-space-bar--u5" },
+  { name: "u6", value: "30px", className: "jr-space-bar--u6" },
+  { name: "u8", value: "40px", className: "jr-space-bar--u8" },
+  { name: "u10", value: "50px", className: "jr-space-bar--u10" },
+];
+---
+
+<section class="jr-section" id="foundations">
+  <div class="jr-section-body">
+    <div class="jr-intro">
+      <p class="jr-kicker">Foundations</p>
+      <h2 class="jr-heading">Visible decisions, not decoration.</h2>
+      <p class="jr-copy">
+        These are the tangibles: mark, color, typography, spacing, edges,
+        density, layout, code, and terminal output. They follow the principles.
+        They are not arbitrary styling choices.
+      </p>
+    </div>
+
+    <div class="token-list">
+      <TokenCard
+        id="foundation-mark"
+        label="/01 · Mark and flag"
+        title="A black flag with a white λ."
+        description="The Jolly Roger is the flag of Riot: simple, reproducible, and useful as a clear signature across the stack."
+      >
+        <div class="identity-token">
+          <FlagMark size="huge" label="Jolly Roger flag mark" />
+          <div class="layout-spec">
+            <div><b>Use as identity</b><span>Let the mark sign a surface. Do not use it as repeated decoration.</span></div>
+            <div><b>High contrast</b><span>Prefer simple placements where the mark survives at small sizes.</span></div>
+          </div>
+        </div>
+      </TokenCard>
+
+      <TokenCard
+        id="foundation-color"
+        label="/02 · Color"
+        title="Cream, coal, ink, and one red."
+        description="Riot Red is identity and action. Paper is reading. Coal is terminal and gravity. Ink is text. Mint, amber, and blue are functional colors."
+      >
+        <div class="jr-explainer">
+          <p>
+            Color clarifies what kind of information the reader is looking at.
+            Paper carries reading, ink carries structure, coal carries code and
+            terminal gravity, and Riot Red marks identity or action.
+          </p>
+        </div>
+        <div class="jr-swatch-grid">
+          {
+            colorTokens.map((token) => (
+              <div class="jr-swatch">
+                <span class:list={["jr-swatch__chip", token.className]}></span>
+                <div>
+                  <b>{token.name}</b>
+                  <span>{token.value} · {token.role}</span>
+                </div>
+              </div>
+            ))
+          }
+        </div>
+        <div class="layout-spec guideline-token-rules">
+          <div><b>Primary</b><span>Riot Red, paper, ink, and coal define identity, reading, structure, and terminal gravity.</span></div>
+          <div><b>Secondary</b><span>Mint, amber, and blue are functional state colors for success, caution, and references.</span></div>
+          <div><b>Deliberate red</b><span>Use Riot Red for identity, action, danger, and real emphasis.</span></div>
+          <div><b>Never color alone</b><span>State must also have labels, text, or structure.</span></div>
+        </div>
+      </TokenCard>
+
+      <TokenCard
+        id="foundation-typography"
+        label="/03 · Typography"
+        title="Technical, authored, readable."
+        description="Use Martian Mono for headings, navigation, labels, and data chrome; a readable sans for explanations; and a regular mono for code and terminal output."
+      >
+        <div class="jr-explainer">
+          <p>
+            Typography has three jobs. Display type gives Riot its authored
+            voice. Body type makes longer explanations comfortable. Code type
+            keeps commands, paths, signatures, and numeric metadata precise.
+          </p>
+        </div>
+        <div class="jr-type-row">
+          <div class="jr-type-meta"><b>Display</b>Martian Mono · 900</div>
+          <div>
+            <div class="jr-type-display">Hoist the <span class="jr-red">λ</span></div>
+            <p class="jr-meta">Programming ecosystem. Headings, navigation, labels, data chrome.</p>
+          </div>
+        </div>
+        <div class="jr-type-row">
+          <div class="jr-type-meta"><b>Body</b>Atkinson Hyperlegible · 400</div>
+          <div>
+            <p class="jr-type-body">
+              Long explanations should be comfortable enough to read without
+              making dense technical pages feel padded.
+            </p>
+            <p class="jr-meta">Human explanation. Long docs prose. Editorial surfaces.</p>
+          </div>
+        </div>
+        <div class="jr-type-row">
+          <div class="jr-type-meta"><b>Code</b>Monospace stack · 500</div>
+          <div>
+            <div class="jr-mono">$ riot add std<br />→ resolved 12 packages in 84ms</div>
+            <p class="jr-meta">Code is product UI. Commands, paths, signatures, table numerics.</p>
+          </div>
+        </div>
+        <div class="layout-spec">
+          <div><b>Sizes</b><span>Use the token scale for headings, labels, body text, compact metadata, and code.</span></div>
+          <div><b>Rule</b><span>Do not use display mono for long code snippets.</span></div>
+        </div>
+      </TokenCard>
+
+      <TokenCard
+        id="foundation-spacing"
+        label="/04 · Spacing"
+        title="5px base unit. Memorable scale."
+        description="Use 5px increments for spacing and component rhythm. The common scale is 5, 10, 15, 20, 25, 30, 40, 50."
+      >
+        <div class="jr-explainer">
+          <p>
+            The 5px unit is small enough to tune dense interfaces without
+            inventing one-off values, and large enough to stay memorable.
+          </p>
+          <p>
+            It keeps Riot surfaces rhythmic: rows, gutters, controls, and
+            examples snap to the same cadence, so dense pages feel authored
+            instead of arbitrary.
+          </p>
+          <p>
+            Typography can still be optical. The grid does its work in spacing,
+            sizing, rhythm, and repeated structure.
+          </p>
+        </div>
+        <div class="jr-space-grid">
+          {
+            spacingTokens.map((token) => (
+              <div class="jr-space-row">
+                <b>{token.name}</b>
+                <span>{token.value}</span>
+                <span class:list={["jr-space-bar", token.className]}></span>
+              </div>
+            ))
+          }
+        </div>
+        <div class="layout-spec guideline-token-rules">
+          <div><b>Unit</b><span>The base spacing unit is 5px.</span></div>
+          <div><b>Sizes</b><span>Controls, rows, icons, and marks follow named size tokens.</span></div>
+          <div><b>Spacers</b><span>The common rhythm is 5, 10, 15, 20, 25, 30, 40, and 50.</span></div>
+          <div><b>Borders</b><span>Use 1px borders. Borders do not need to become grid units.</span></div>
+        </div>
+      </TokenCard>
+
+      <TokenCard
+        id="foundation-edges"
+        label="/05 · Edges"
+        title="Crisp, not inflated."
+        description="Use small radii, quiet borders, and restrained shadows. Riot should feel scrappy and precise, not boxed-in or aggressively stamped."
+      >
+        <div class="jr-edge-list">
+          <div class="jr-edge-row">
+            <div class="jr-edge-demo">crisp</div>
+            <p class="jr-copy">Default geometry keeps docs, tables, panels, and command surfaces clean without turning every block into a sign.</p>
+          </div>
+          <div class="jr-edge-row">
+            <div class="jr-edge-demo jr-edge-demo--radius">5px</div>
+            <p class="jr-copy">Small radius softens controls and shells while staying inside the 5px rhythm.</p>
+          </div>
+          <div class="jr-edge-row">
+            <div class="jr-edge-demo jr-edge-demo--shadow">lift</div>
+            <p class="jr-copy">Soft lift is enough for emphasis. The page should not look like a stack of posters.</p>
+          </div>
+          <div class="jr-edge-row">
+            <div class="jr-edge-demo jr-edge-demo--shadow-lg">focus</div>
+            <p class="jr-copy">Use stronger emphasis only when a surface needs focus or hierarchy.</p>
+          </div>
+        </div>
+        <div class="layout-spec guideline-token-rules">
+          <div><b>Default</b><span>Use crisp 5px corners for cards, tables, docs shells, commands, and controls.</span></div>
+          <div><b>Rule</b><span>Use borders for structure and shadows for focus, not decoration.</span></div>
+        </div>
+      </TokenCard>
+
+      <TokenCard
+        id="foundation-density"
+        label="/06 · Density"
+        title="Clean compression."
+        description="Riot surfaces carry packages, modules, types, versions, dependencies, diagnostics, reports, and docs. Density is a feature when hierarchy is clear."
+      >
+        <div class="layout-spec">
+          <div><b>Use tables</b><span>Comparison belongs in rows, not decorative cards.</span></div>
+          <div><b>Use sidebars</b><span>Long references need orientation and anchors.</span></div>
+          <div><b>Keep metadata close</b><span>Versions, dates, owners, and docs status sit near the thing they describe.</span></div>
+          <div><b>Hierarchy first</b><span>Reach for labels, rules, alignment, and type before adding empty air.</span></div>
+        </div>
+      </TokenCard>
+
+      <TokenCard
+        id="foundation-layout"
+        label="/07 · Layout"
+        title="Chapter, body, anchors."
+        description="Use the shell to orient the reader, chapters to create long-page structure, and compact metadata to keep decisions local."
+      >
+        <div class="layout-spec">
+          <div><b>Shell</b><span>Page frame plus flexible main column.</span></div>
+          <div><b>Content</b><span>Readable width with tokenized gutters.</span></div>
+          <div><b>Chapter</b><span>Marker column plus body column.</span></div>
+          <div><b>Section</b><span>Tokenized vertical padding and rule.</span></div>
+        </div>
+      </TokenCard>
+
+      <TokenCard
+        id="foundation-code"
+        label="/08 · Code and terminal"
+        title="Code is product UI."
+        description="Commands, output, signatures, diagnostics, and copy affordances are first-class surfaces."
+      >
+        <div class="jr-explainer">
+          <p>
+            The terminal is not a screenshot. It is where install, build, test,
+            publish, debug, and recovery happen. Code and output need the same
+            care as navigation and prose.
+          </p>
+        </div>
+        <div class="jr-stack">
+          <CodeBlock label="Terminal">λ riot fmt --check
+ok 128 files formatted
+json: &#123;"event":"fmt.checked","files":128&#125;</CodeBlock>
+          <CopyStrip command="riot add krasny http postgres" />
+        </div>
+      </TokenCard>
+    </div>
+  </div>
+</section>

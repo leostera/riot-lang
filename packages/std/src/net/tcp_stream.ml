@@ -23,7 +23,7 @@ let io_error_of_tcp_error = fun __tmp1 ->
   | Kernel.Net.TcpStream.NotConnected -> IO.Transport_endpoint_not_connected
   | Kernel.Net.TcpStream.ConnectionAborted -> IO.Software_caused_connection_abort
   | Kernel.Net.TcpStream.NetworkUnreachable -> IO.Network_is_unreachable
-  | Kernel.Net.TcpStream.System error -> IO.of_system_error error
+  | Kernel.Net.TcpStream.System error -> IO.from_system_error error
 
 let connect = fun addr ->
   let rec finish_connect stream =

@@ -8,7 +8,7 @@ val length: ('key, 'value) t -> int
 
 val from_list: ('key * 'value) list -> ('key, 'value) t
 
-val of_list: ('key * 'value) list -> ('key, 'value) t
+val from_list: ('key * 'value) list -> ('key, 'value) t
 
 val to_list: ('key, 'value) t -> ('key * 'value) list
 

@@ -29,9 +29,9 @@ type error = IO.error
 (** Convert a filesystem error to a human-readable message. *)
 val error_message: error -> string
 
-val of_file_error: Kernel.Fs.File.error -> error
+val from_file_error: Kernel.Fs.File.error -> error
 
-val of_read_dir_error: Kernel.Fs.ReadDir.error -> error
+val from_read_dir_error: Kernel.Fs.ReadDir.error -> error
 
 val convert_kernel_result: ('a, Kernel.Fs.File.error) Kernel.Result.t -> ('a, error) result
 

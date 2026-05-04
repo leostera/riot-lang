@@ -26,7 +26,7 @@ let duration_median = fun durations ->
 
 let int_median = fun values ->
   values
-  |> List.map ~fn:Float.of_int
+  |> List.map ~fn:Float.from_int
   |> float_median
   |> Option.map ~fn:Float.to_int
 
@@ -71,7 +71,7 @@ let baseline_statistics = fun (history: history_sample list) ->
   in
   let gc_field project name =
     project statistics
-    |> List.map ~fn:Float.of_int
+    |> List.map ~fn:Float.from_int
     |> float_median
     |> Option.map ~fn:Float.to_int
     |> Option.expect ~msg:("expected non-empty history for " ^ name)

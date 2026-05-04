@@ -23,6 +23,6 @@ val to_writer: 'value Serde.Ser.t -> IO.Writer.t -> 'value -> (unit, Serde.error
 
 val decode_prefix: 'value Serde.De.t -> string -> ('value * int, Serde.error) result
 
-val of_string: 'value Serde.De.t -> string -> ('value, Serde.error) result
+val from_string: 'value Serde.De.t -> string -> ('value, Serde.error) result
 
-val of_reader: 'value Serde.De.t -> IO.Reader.t -> ('value, Serde.error) result
+val from_reader: 'value Serde.De.t -> IO.Reader.t -> ('value, Serde.error) result

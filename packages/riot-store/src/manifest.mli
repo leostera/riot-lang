@@ -47,6 +47,6 @@ val load: path:Path.t -> (t, string) result
 val to_json: t -> Std.Data.Json.t
 
 (** Convert manifest to JSON *)
-val of_json: Std.Data.Json.t -> (t, string) result
+val from_json: Std.Data.Json.t -> (t, string) result
 
 (** Parse manifest from JSON *)

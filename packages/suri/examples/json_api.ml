@@ -60,7 +60,7 @@ let user_handler = fun conn req ->
   match Std.Collections.Proplist.get params ~key:"id" with
   | Some id_str -> (
       try
-        let id = Int.of_string id_str in
+        let id = Int.from_string id_str in
         match List.find users ~fn:(fun u -> u.id = id) with
         | Some user ->
             let json = user_to_json user in

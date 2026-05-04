@@ -30,7 +30,7 @@ Current baseline medians from a recent validated Unix run:
   - `env vars snapshot`: `7us`
   - `env get existing var`: below timer resolution on this runner
 - foundation:
-  - `foundation bytes of_string: 4KiB`, `foundation bytes to_string: 4KiB`, `foundation string to_bytes: 4KiB`, and `foundation string of_bytes: 4KiB` are all at or below timer resolution on this runner
+  - `foundation bytes from_string: 4KiB`, `foundation bytes to_string: 4KiB`, `foundation string to_bytes: 4KiB`, and `foundation string from_bytes: 4KiB` are all at or below timer resolution on this runner
 - file:
   - `file scalar write: 4KiB`: `310us`
   - `file partial write: 2KiB@512`: `293us`

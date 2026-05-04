@@ -27,9 +27,9 @@ type t = {
   callee_saved_allocatable_registers: string list;
   clang_arch: string;
 }
-val of_target: Compiler_target.t -> t option
+val from_target: Compiler_target.t -> t option
 
-val of_context: Compilation_context.t -> t option
+val from_context: Compilation_context.t -> t option
 
 val matches_target: t -> Compiler_target.t -> bool
 

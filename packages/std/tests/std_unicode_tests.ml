@@ -847,8 +847,8 @@ let tests =
     case "utf8 is valid" test_utf8_valid;
     case "utf8 decode rune" test_utf8_decode;
     case "utf8 encode rune" test_utf8_encode;
-    case "rune of_int valid" test_rune_of_int_valid;
-    case "rune of_int invalid" test_rune_of_int_invalid;
+    case "rune from_int valid" test_rune_of_int_valid;
+    case "rune from_int invalid" test_rune_of_int_invalid;
     case "rune to_int" test_rune_to_int;
     case "word boundaries simple" test_word_boundaries_simple;
     case "word split simple" test_word_split_simple;
@@ -887,7 +887,7 @@ let tests =
     case "lowercase roundtrip" test_lowercase_roundtrip;
     case "greek roundtrip" test_greek_roundtrip;
     case "utf8 encode decode roundtrip" test_utf8_encode_decode_roundtrip;
-    case "rune to_int of_int roundtrip" test_rune_to_int_of_int_roundtrip;
+    case "rune to_int from_int roundtrip" test_rune_to_int_of_int_roundtrip;
     case "ascii roundtrip regression" test_ascii_roundtrip_regression;
     case "greek letter classification" test_greek_letter_classification;
     case "greek lowercase detection" test_greek_lowercase;

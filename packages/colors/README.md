@@ -86,11 +86,11 @@ let nearest = ANSI.nearest (`rgb (250, 10, 10))
 ### Hex RGB
 
 ```ocaml
-let accent = RGB.of_hex "#ff8000"
+let accent = RGB.from_hex "#ff8000"
 let css = RGB.to_hex (`rgb (255, 128, 0))
 ```
 
-`RGB.of_hex` accepts `#RRGGBB` and `RRGGBB`, case-insensitively.
+`RGB.from_hex` accepts `#RRGGBB` and `RRGGBB`, case-insensitively.
 
 ### Explicit Conversions
 

@@ -6,7 +6,7 @@ type t = string list
 
 let empty = []
 
-let of_string = fun s ->
+let from_string = fun s ->
   if s = "" then
     []
   else
@@ -28,7 +28,7 @@ let of_string = fun s ->
           pair parts
       | parts -> parts
 
-let of_list = fun l -> l
+let from_list = fun l -> l
 
 let append = fun ns component -> ns @ [ component ]
 

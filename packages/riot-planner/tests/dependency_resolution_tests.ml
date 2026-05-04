@@ -25,7 +25,7 @@ let make_src_graph_builder = fun
   let namespace =
     match package.library with
     | Some _ -> Namespace.empty
-    | None -> Namespace.of_list [ Package.root_module_name package ]
+    | None -> Namespace.from_list [ Package.root_module_name package ]
   in
   Riot_planner.Module_graph.create
     Riot_planner.Module_graph.{
@@ -106,7 +106,7 @@ let test_library_cmxa_uses_store_location = fun _ctx ->
   in
   let expected =
     Path.(dep.artifact_dir
-    / Riot_model.Module_name.(of_string (Package_name.to_string dep.package.name)
+    / Riot_model.Module_name.(from_string (Package_name.to_string dep.package.name)
     |> cmxa))
   in
   let got = Riot_planner.Dependency.library_cmxa dep in

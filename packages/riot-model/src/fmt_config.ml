@@ -16,7 +16,7 @@ let parse_fmt_table = fun __tmp1 ->
     )
   | _ -> empty
 
-let of_toml = fun __tmp1 ->
+let from_toml = fun __tmp1 ->
   match __tmp1 with
   | Toml.Table items -> (
       match Fields.get "riot" items with
@@ -42,6 +42,6 @@ let load = fun path ->
   | Error _ -> empty
   | Ok content -> (
       match Toml.parse content with
-      | Ok toml -> of_toml toml
+      | Ok toml -> from_toml toml
       | Error _ -> empty
     )

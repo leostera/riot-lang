@@ -274,7 +274,7 @@ let test_failed_named_overwrite_preserves_previous_value = fun _ctx ->
         / Path.v (String.sub key_hash ~offset:0 ~len:2))
       in
       let _ =
-        Fs.set_permissions parent_dir (Fs.Permissions.of_mode 0o555)
+        Fs.set_permissions parent_dir (Fs.Permissions.from_mode 0o555)
         |> Result.expect ~msg:"chmod shard dir should succeed"
       in
       let result =

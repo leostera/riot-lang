@@ -4,7 +4,7 @@ open Std.Collections
 module H = Rule_helpers
 module Ast = Syn.Ast
 
-let rule_id = Rule_id.of_string "prefer-t-for-single-type-modules"
+let rule_id = Rule_id.from_string "prefer-t-for-single-type-modules"
 
 let rule_description = "Modules with a single primary type should name it `t`"
 

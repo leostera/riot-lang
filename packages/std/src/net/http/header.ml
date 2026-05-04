@@ -9,7 +9,7 @@ type t = (name * value) list
 
 let empty = []
 
-let of_list = fun headers -> headers
+let from_list = fun headers -> headers
 
 let to_list = fun headers -> headers
 

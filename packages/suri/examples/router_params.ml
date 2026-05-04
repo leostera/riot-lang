@@ -20,7 +20,7 @@ let article_handler = fun conn req ->
   match Std.Collections.Proplist.get params ~key:"id" with
   | Some id_str -> (
       try
-        let id = Int.of_string id_str in
+        let id = Int.from_string id_str in
         match List.find articles ~fn:(fun a -> a.id = id) with
         | Some article ->
             let json =

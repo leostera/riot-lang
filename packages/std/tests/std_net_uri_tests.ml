@@ -430,7 +430,7 @@ let test_percent_decode_multiple_spaces = fun _ctx ->
 (* ==================== URI Parsing with Percent-Encoded Paths ==================== *)
 
 let test_uri_parse_path_with_percent_encoding = fun _ctx ->
-  match Uri.of_string "/browse/assets/Screenshot%202025-11-05%20at%2018.19.04.png" with
+  match Uri.from_string "/browse/assets/Screenshot%202025-11-05%20at%2018.19.04.png" with
   | Ok uri ->
       let path = Uri.path uri in
       if path = "/browse/assets/Screenshot%202025-11-05%20at%2018.19.04.png" then
@@ -440,7 +440,7 @@ let test_uri_parse_path_with_percent_encoding = fun _ctx ->
   | Error _ -> Error "Failed to parse URI with percent-encoded path"
 
 let test_uri_parse_path_preserves_encoding = fun _ctx ->
-  match Uri.of_string "/path/with%20spaces/file%2Bname.txt" with
+  match Uri.from_string "/path/with%20spaces/file%2Bname.txt" with
   | Ok uri ->
       let reconstructed = Uri.to_string uri in
       if reconstructed = "/path/with%20spaces/file%2Bname.txt" then
@@ -451,7 +451,7 @@ let test_uri_parse_path_preserves_encoding = fun _ctx ->
 
 let test_uri_parse_and_decode_path = fun _ctx ->
   (* Test the full workflow: parse URI -> get path -> decode *)
-  match Uri.of_string "/files/my%20document.pdf" with
+  match Uri.from_string "/files/my%20document.pdf" with
   | Ok uri ->
       let encoded_path = Uri.path uri in
       let decoded_path = Uri.percent_decode encoded_path in
@@ -463,7 +463,7 @@ let test_uri_parse_and_decode_path = fun _ctx ->
 
 let test_uri_roundtrip_with_encoded_path = fun _ctx ->
   let original = "/api/users/John%20Doe/profile" in
-  match Uri.of_string original with
+  match Uri.from_string original with
   | Ok uri ->
       let reconstructed = Uri.to_string uri in
       if reconstructed = original then
@@ -475,7 +475,7 @@ let test_uri_roundtrip_with_encoded_path = fun _ctx ->
 (* ==================== Integration Tests ==================== *)
 
 let test_uri_with_encoded_query = fun _ctx ->
-  match Uri.of_string "https://example.com/search?q=hello+world&filter=name%3DJohn" with
+  match Uri.from_string "https://example.com/search?q=hello+world&filter=name%3DJohn" with
   | Ok uri -> (
       match Uri.query uri with
       | Some query_str ->
@@ -565,7 +565,7 @@ let test_full_roundtrip = fun _ctx ->
   let params = [ ("name", "John Doe"); ("page", "1"); ] in
   let query_str = Uri.Query.to_string params in
   let uri_str = "https://example.com/api?" ^ query_str in
-  match Uri.of_string uri_str with
+  match Uri.from_string uri_str with
   | Ok uri -> (
       match Uri.query uri with
       | Some q ->

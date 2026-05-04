@@ -32,7 +32,7 @@ let parse_json_output = fun stdout ->
     |> List.get ~at:0
     |> Option.unwrap_or ~default:stdout
   in
-  Data.Json.of_string line
+  Data.Json.from_string line
   |> Result.expect ~msg:"failed to parse json output"
 
 let assoc_value = fun key entries ->
@@ -238,7 +238,7 @@ let test_run_benchmarks_json_emits_case_started_progress = fun _ctx ->
       json_output_lines output.stdout
       |> List.filter_map
         ~fn:(fun line ->
-          match Data.Json.of_string line with
+          match Data.Json.from_string line with
           | Ok (Data.Json.Object _ as json) -> Some json
           | Ok _
           | Error _ -> None)

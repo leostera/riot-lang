@@ -421,8 +421,8 @@ let build_primitive_record = fun batch_index item_index ->
   ({
     ready = seed land 1 = 0;
     count = seed;
-    small = Int32.of_int ((batch_index lsl 8) lxor item_index);
-    big = Int64.of_int ((seed * 65_537) + batch_index);
+    small = Int32.from_int ((batch_index lsl 8) lxor item_index);
+    big = Int64.from_int ((seed * 65_537) + batch_index);
     ratio = (float seed /. 9.0) +. 0.375;
     label = "record-" ^ Int.to_string batch_index ^ "-" ^ Int.to_string item_index;
     alias =
@@ -505,7 +505,7 @@ let build_fixture = fun spec ->
   in
   let marshal_bytes = Marshal.to_string dataset [] in
   let decoded: dataset =
-    Serde_bin.of_string dataset_decode serde_bytes
+    Serde_bin.from_string dataset_decode serde_bytes
     |> Result.expect ~msg:"expected serde-bin fixture decoding to succeed"
   in
   let _marshal_roundtrip: dataset = Marshal.from_string marshal_bytes 0 in
@@ -533,11 +533,11 @@ let bench_encode_marshal = fun fixture () -> ignore (Marshal.to_string fixture.d
 
 let bench_decode_serde_in_memory = fun fixture () ->
   ignore
-    (Serde_bin.of_string dataset_decode fixture.serde_bytes)
+    (Serde_bin.from_string dataset_decode fixture.serde_bytes)
 
 let bench_decode_serde_reader = fun fixture () ->
   ignore
-    (Serde_bin.of_reader
+    (Serde_bin.from_reader
       dataset_decode
       (String.to_reader ~chunk_size:io_chunk_size fixture.serde_bytes))
 

@@ -105,7 +105,7 @@ let from_root = fun ~root ->
                                 else
                                   "custom"
                               in
-                              match Net.Uri.of_string url_str with
+                              match Net.Uri.from_string url_str with
                               | Ok uri -> { version = version_name; source = Url uri; targets }
                               | Error _ -> default
                             )

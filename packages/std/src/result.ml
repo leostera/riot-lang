@@ -171,13 +171,11 @@ let to_option = fun __tmp1 ->
   | Ok x -> Some x
   | Error _ -> None
 
-let of_option = fun ~error ->
+let from_option = fun ~error ->
   fun __tmp1 ->
     match __tmp1 with
     | Some x -> Ok x
     | None -> Error error
-
-let from_option = of_option
 
 let transpose = fun __tmp1 ->
   match __tmp1 with

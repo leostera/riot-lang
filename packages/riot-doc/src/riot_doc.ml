@@ -526,7 +526,7 @@ let read_existing_manifest = fun output_dir ->
   | Ok true -> (
       match Fs.read path with
       | Ok content -> (
-          match Data.Json.of_string content with
+          match Data.Json.from_string content with
           | Ok json -> existing_manifest_of_json json
           | Error _ -> None
         )
@@ -672,7 +672,7 @@ let package_doc_of_sources = fun ~package ~version ~dependencies sources ->
   let lookup = Source.build_lookup sources in
   match Source.find_root_interface ~package_name sources with
   | Some root_source ->
-      let* module_doc = Transform.of_interface_source ~lookup root_source in
+      let* module_doc = Transform.from_interface_source ~lookup root_source in
       Ok {
         Doctree.package = package_name;
         version;
@@ -698,7 +698,7 @@ let package_doc_of_sources = fun ~package ~version ~dependencies sources ->
               dependencies;
             }
         | source :: rest ->
-            let* module_doc = Transform.of_interface_source ~lookup source in
+            let* module_doc = Transform.from_interface_source ~lookup source in
             loop (module_doc :: acc) rest
       in
       loop [] sources

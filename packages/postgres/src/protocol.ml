@@ -143,7 +143,7 @@ module Sqlstate = struct
 
   (* Parse SQLSTATE string into typed variant *)
 
-  let of_string = fun code ->
+  let from_string = fun code ->
     match code with
     | "00000" -> SuccessfulCompletion
     | "01000" -> Warning
@@ -428,7 +428,7 @@ module Error = struct
       sqlstate =
         (
           match get_string "sqlstate" with
-          | Some s -> Some (Sqlstate.of_string s)
+          | Some s -> Some (Sqlstate.from_string s)
           | None -> None
         );
       message =
@@ -596,7 +596,7 @@ module TypeOid = struct
     | Jsonb
     | Unknown of int
 
-  let of_int = fun __tmp1 ->
+  let from_int = fun __tmp1 ->
     match __tmp1 with
     | 16 -> Bool
     | 17 -> Bytea
@@ -674,7 +674,7 @@ module Oid = struct
 
   type t = int
 
-  let of_int = fun n -> n
+  let from_int = fun n -> n
 
   let to_int = fun t -> t
 
@@ -705,7 +705,7 @@ module ColumnAttr = struct
 
   (* 1..n - column position in table *)
 
-  let of_int = fun __tmp1 ->
+  let from_int = fun __tmp1 ->
     match __tmp1 with
     | 0 -> NotFromTable
     | n when n > 0 -> Position n
@@ -746,7 +746,7 @@ module TypeSize = struct
 
   (* >0: fixed number of bytes *)
 
-  let of_int = fun __tmp1 ->
+  let from_int = fun __tmp1 ->
     match __tmp1 with
     | -1 -> VariableLength
     | -2 -> NullTerminated
@@ -788,7 +788,7 @@ module TypeModifier = struct
 
   (* Type-specific encoded value *)
 
-  let of_int = fun __tmp1 ->
+  let from_int = fun __tmp1 ->
     match __tmp1 with
     | -1 -> NoModifier
     | n -> Modifier n
@@ -811,7 +811,7 @@ module Format = struct
     | Text
     | Binary
 
-  let of_int = fun __tmp1 ->
+  let from_int = fun __tmp1 ->
     match __tmp1 with
     | 0 -> Text
     | 1 -> Binary
@@ -1182,12 +1182,12 @@ module Reader = struct
               let* format = read_int16 msg_type length reader ("format for field " ^ name) in
               let field: Row.field = {
                 Row.name;
-                table_oid = Oid.of_int table_oid;
-                column_attr = ColumnAttr.of_int column_attr;
-                type_size = TypeSize.of_int type_size;
-                type_oid = TypeOid.of_int type_oid;
-                type_modifier = TypeModifier.of_int type_modifier;
-                format = Format.of_int format;
+                table_oid = Oid.from_int table_oid;
+                column_attr = ColumnAttr.from_int column_attr;
+                type_size = TypeSize.from_int type_size;
+                type_oid = TypeOid.from_int type_oid;
+                type_modifier = TypeModifier.from_int type_modifier;
+                format = Format.from_int format;
               }
               in
               read_fields (n - 1) (field :: acc)
@@ -1253,7 +1253,7 @@ module Reader = struct
                       let err =
                         match field_char with
                         | 'S' -> { err with Error.severity = Some value }
-                        | 'C' -> { err with Error.sqlstate = Some (Sqlstate.of_string value) }
+                        | 'C' -> { err with Error.sqlstate = Some (Sqlstate.from_string value) }
                         | 'M' -> { err with Error.message = value }
                         | 'D' -> { err with Error.detail = Some value }
                         | 'H' -> { err with Error.hint = Some value }
@@ -1317,7 +1317,7 @@ module Reader = struct
               Ok (List.rev acc)
             else
               let* oid = read_int32 msg_type length reader "OID in ParameterDescription" in
-              read_oids (n - 1) (TypeOid.of_int oid :: acc)
+              read_oids (n - 1) (TypeOid.from_int oid :: acc)
           in
           let* oids = read_oids param_count [] in
           finish msg_type length reader (ParameterDescription oids)

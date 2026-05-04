@@ -49,7 +49,7 @@ let read_file = fun path ->
 let read_expected_json = fun fixture_path ->
   let* expected_path = expected_path fixture_path in
   let* source = read_file expected_path in
-  Json.of_string source
+  Json.from_string source
   |> Result.map_err ~fn:Json.error_to_string
 
 let json_of_option = fun to_json value ->
@@ -598,7 +598,7 @@ let authority_userinfo = fun uri ->
   Uri.authority uri
   |> Option.and_then
     ~fn:(fun authority ->
-      Uri.Authority.of_string authority
+      Uri.Authority.from_string authority
       |> Result.to_option
       |> Option.and_then ~fn:Uri.Authority.userinfo)
 
@@ -660,7 +660,7 @@ let fixture_json = fun relpath source ->
     | Ws.Parser.Need_more -> Error "incomplete WebSocket frame fixture"
     | Ws.Parser.Error error -> Error (Ws.Parser.error_to_string error)
   else if String.starts_with ~prefix:"uri/" relpath then
-    match Uri.of_string source with
+    match Uri.from_string source with
     | Ok uri -> Ok (uri_json uri)
     | Error error -> Error (Http1.Common.error_to_string (Http1.Common.InvalidRequestTarget error))
   else

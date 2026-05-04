@@ -14,7 +14,7 @@
    rw-r--r-- / 0644 *) let perms = Permissions.executable in (* rwxr-xr-x /
    0755 *) let perms = Permissions.private_read_write in (* rw------- / 0600 *)
 
-   (* From Unix mode *) let perms = Permissions.of_mode 0o755 in
+   (* From Unix mode *) let perms = Permissions.from_mode 0o755 in
    Permissions.to_mode perms (* 0o755 *) ```
 
    Checking permissions:
@@ -50,10 +50,10 @@ type t
 
    ## Examples
 
-   ```ocaml Permissions.of_mode 0o644 (* rw-r--r-- *) Permissions.of_mode 0o755
-   (* rwxr-xr-x *) Permissions.of_mode 0o600 (* rw------- *) ```
+   ```ocaml Permissions.from_mode 0o644 (* rw-r--r-- *) Permissions.from_mode 0o755
+   (* rwxr-xr-x *) Permissions.from_mode 0o600 (* rw------- *) ```
 *)
-val of_mode: int -> t
+val from_mode: int -> t
 
 (**
    Converts to Unix mode bits.
@@ -70,10 +70,10 @@ val to_mode: t -> int
 
    ## Examples
 
-   ```ocaml let perms = Permissions.of_mode 0o444 in (* r--r--r-- *)
+   ```ocaml let perms = Permissions.from_mode 0o444 in (* r--r--r-- *)
    Permissions.readonly perms (* true *)
 
-   let perms = Permissions.of_mode 0o644 in (* rw-r--r-- *)
+   let perms = Permissions.from_mode 0o644 in (* rw-r--r-- *)
    Permissions.readonly perms (* false - owner can write *) ```
 
    ## Note
@@ -90,7 +90,7 @@ val readonly: t -> bool
 
    ## Examples
 
-   ```ocaml let perms = Permissions.of_mode 0o755 in let readonly =
+   ```ocaml let perms = Permissions.from_mode 0o755 in let readonly =
    Permissions.set_readonly perms true in Permissions.to_mode readonly (* 0o555
    \- r-xr-xr-x *) ```
 

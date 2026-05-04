@@ -13,7 +13,7 @@ let all = fun () -> builtin_entries () @ package_entries ()
 
 let normalize_rule_id = fun rule_id ->
   if String.equal (Rule_id.package_name ~default_package:"riot" rule_id) "riot" then
-    Rule_id.of_string (Rule_id.local_id rule_id)
+    Rule_id.from_string (Rule_id.local_id rule_id)
   else
     rule_id
 

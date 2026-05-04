@@ -217,7 +217,7 @@ val manifest_error_message: manifest_error -> string
 
 val realize_manifest_spec: intent:realization_intent -> manifest_spec -> t
 
-val of_manifest_spec: manifest_spec -> t
+val from_manifest_spec: manifest_spec -> t
 
 val to_json: t -> Std.Data.Json.t
 

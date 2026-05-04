@@ -3,7 +3,7 @@ open Std
 module H = Rule_helpers
 module Ast = Syn.Ast
 
-let rule_id = Rule_id.of_string "no-inline-parameter-type-annotations"
+let rule_id = Rule_id.from_string "no-inline-parameter-type-annotations"
 
 let rule_description =
   "Function parameter type annotations should live in the function signature, not inline on each parameter"

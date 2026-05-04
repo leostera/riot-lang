@@ -100,7 +100,7 @@ let workspace_target_files_for_package = fun
   |> List.concat_map (target_files_for_package ~workspace ~include_dev)
   |> dedupe_paths
 
-let of_workspace = fun (workspace: Workspace.t) ->
+let from_workspace = fun (workspace: Workspace.t) ->
   let scope_of_package (pkg: Package.t) =
     let path = Workspace.package_root workspace pkg in
     let package_toml = Path.(path / Path.v "riot.toml") in
@@ -212,7 +212,7 @@ let validate_explicit_targets = fun ~workspace roots ->
   loop roots []
 
 let resolve_targets = fun ~workspace ?package_filter ?(include_dev = false) paths ->
-  let scope = of_workspace workspace in
+  let scope = from_workspace workspace in
   let collect_ordered_files roots =
     let (explicit_files, directory_roots) =
       roots

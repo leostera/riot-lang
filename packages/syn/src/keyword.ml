@@ -50,7 +50,7 @@ type t =
   | While
   | With
 
-let of_string = fun __tmp1 ->
+let from_string = fun __tmp1 ->
   match __tmp1 with
   | "and" -> Some And
   | "as" -> Some As

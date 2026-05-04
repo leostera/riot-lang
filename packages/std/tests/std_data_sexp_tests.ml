@@ -4,27 +4,27 @@ open Std.Result
 open Std.Collections
 
 let test_parse_atom = fun _ctx ->
-  match Sexp.of_string "hello" with
+  match Sexp.from_string "hello" with
   | Ok (Sexp.Atom "hello") -> Ok ()
   | _ -> Error "Failed to parse atom"
 
 let test_parse_atom_with_numbers = fun _ctx ->
-  match Sexp.of_string "abc123" with
+  match Sexp.from_string "abc123" with
   | Ok (Sexp.Atom "abc123") -> Ok ()
   | _ -> Error "Failed to parse atom with numbers"
 
 let test_parse_empty_list = fun _ctx ->
-  match Sexp.of_string "()" with
+  match Sexp.from_string "()" with
   | Ok (Sexp.List []) -> Ok ()
   | _ -> Error "Failed to parse empty list"
 
 let test_parse_list_with_atoms = fun _ctx ->
-  match Sexp.of_string "(hello world)" with
+  match Sexp.from_string "(hello world)" with
   | Ok (Sexp.List [ Sexp.Atom "hello"; Sexp.Atom "world" ]) -> Ok ()
   | _ -> Error "Failed to parse list with atoms"
 
 let test_parse_nested_list = fun _ctx ->
-  match Sexp.of_string "((inner))" with
+  match Sexp.from_string "((inner))" with
   | Ok (Sexp.List [
       Sexp.List [ Sexp.Atom "inner" ];
     ]) ->
@@ -32,7 +32,7 @@ let test_parse_nested_list = fun _ctx ->
   | _ -> Error "Failed to parse nested list"
 
 let test_parse_complex_nested = fun _ctx ->
-  match Sexp.of_string "(outer (inner value))" with
+  match Sexp.from_string "(outer (inner value))" with
   | Ok (Sexp.List [ Sexp.Atom "outer"; Sexp.List _ ]) -> Ok ()
   | _ -> Error "Failed to parse complex nested list"
 
@@ -42,7 +42,7 @@ let test_parse_multiple_sexps = fun _ctx ->
   | _ -> Error "Failed to parse multiple s-expressions"
 
 let test_parse_whitespace = fun _ctx ->
-  match Sexp.of_string "  ( hello   world  )  " with
+  match Sexp.from_string "  ( hello   world  )  " with
   | Ok (Sexp.List [ Sexp.Atom "hello"; Sexp.Atom "world" ]) -> Ok ()
   | _ -> Error "Failed to parse with whitespace"
 
@@ -80,7 +80,7 @@ let test_to_string_nested = fun _ctx ->
 let test_roundtrip = fun _ctx ->
   let original = Sexp.list [ Sexp.atom "test"; Sexp.list [ Sexp.atom "nested" ] ] in
   let serialized = Sexp.to_string original in
-  match Sexp.of_string serialized with
+  match Sexp.from_string serialized with
   | Ok parsed when parsed = original -> Ok ()
   | _ -> Error "Roundtrip failed"
 
@@ -132,14 +132,14 @@ let test_csexp_list = fun _ctx ->
     Error "Csexp list serialization failed"
 
 let test_csexp_parse_atom = fun _ctx ->
-  match Sexp.Csexp.of_string "5:hello" with
+  match Sexp.Csexp.from_string "5:hello" with
   | Ok (Sexp.Atom "hello") -> Ok ()
   | _ -> Error "Csexp atom parsing failed"
 
 let test_csexp_roundtrip = fun _ctx ->
   let original = Sexp.list [ Sexp.atom "test"; Sexp.atom "data" ] in
   let serialized = Sexp.Csexp.to_string original in
-  match Sexp.Csexp.of_string serialized with
+  match Sexp.Csexp.from_string serialized with
   | Ok parsed when parsed = original -> Ok ()
   | _ -> Error "Csexp roundtrip failed"
 

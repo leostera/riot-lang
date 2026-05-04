@@ -137,13 +137,3 @@ let from_iso8601 = fun value ->
 let to_calendar_date = fun date -> date
 
 let from_calendar_date = fun date -> make ~year:date.year ~month:date.month ~day:date.day
-
-(* Backward-compatible aliases used internally in legacy call sites *)
-
-let of_date_time = from_date_time
-
-let of_gregorian_days = from_gregorian_days
-
-let of_iso8601 = from_iso8601
-
-let of_calendar_date = from_calendar_date

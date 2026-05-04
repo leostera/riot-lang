@@ -14,7 +14,7 @@ type t =
   | Patch
   | Extension of string
 
-let of_string = fun __tmp1 ->
+let from_string = fun __tmp1 ->
   match __tmp1 with
   | "GET" -> Get
   | "HEAD" -> Head

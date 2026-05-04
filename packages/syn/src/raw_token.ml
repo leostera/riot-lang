@@ -235,7 +235,7 @@ let raw_of_token = fun (token: Token.t) ->
     has_newline = false;
   }
 
-let of_lexer_tokens = fun ~source tokens ->
+let from_lexer_tokens = fun ~source tokens ->
   let token_count = List.length tokens in
   let stream = create_stream_with_capacity ~raw:(token_count * 2) ~significant:token_count in
   let raw_of_trivia (trivia: Token.trivia) = {

@@ -11,7 +11,7 @@ module Error: sig
   val to_string: id -> string
 
   (** Wrap a string as an error identifier. *)
-  val of_string: string -> id
+  val from_string: string -> id
 
   (** Encode an error identifier as JSON. *)
   val to_json: id -> Data.Json.t

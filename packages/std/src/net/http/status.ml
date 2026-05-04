@@ -141,7 +141,7 @@ let to_int = fun __tmp1 ->
   | NetworkAuthenticationRequired -> 511
   | Extension code -> code
 
-let of_int = fun __tmp1 ->
+let from_int = fun __tmp1 ->
   match __tmp1 with
   | 100 -> Continue
   | 101 -> SwitchingProtocols
@@ -207,9 +207,9 @@ let of_int = fun __tmp1 ->
   | 511 -> NetworkAuthenticationRequired
   | code -> Extension code
 
-let of_string: string -> (t, error) Kernel.result = fun s ->
+let from_string: string -> (t, error) Kernel.result = fun s ->
   match Int.parse s with
-  | Some code -> Ok (of_int code)
+  | Some code -> Ok (from_int code)
   | None -> Error InvalidStatus
 
 let to_string = fun status -> Int.to_string (to_int status)

@@ -36,7 +36,7 @@ module Builder = struct
     let _ = HashMap.insert table.values ~key ~value in
     ()
 
-  let rec of_toml = fun (value: Toml_value.t): value ->
+  let rec from_toml = fun (value: Toml_value.t): value ->
     match value with
     | Toml_value.String value -> String value
     | Toml_value.Int value -> Int value
@@ -45,7 +45,7 @@ module Builder = struct
     | Toml_value.Array values ->
         let items =
           values
-          |> List.map ~fn:of_toml
+          |> List.map ~fn:from_toml
           |> Vector.from_list
         in
         let ok = ref true in
@@ -62,7 +62,7 @@ module Builder = struct
           Array items
     | Toml_value.Table items ->
         let table = create_table () in
-        List.for_each items ~fn:(fun (key, value) -> set_field table key (of_toml value));
+        List.for_each items ~fn:(fun (key, value) -> set_field table key (from_toml value));
         Table table
 
   let rec to_toml = fun (value: value): Toml_value.t ->
@@ -363,11 +363,11 @@ let find_non_ws = fun text ~start ->
   loop start
 
 let int64_of_decimal_string = fun token ->
-  try Some (Int64.of_string token) with
+  try Some (Int64.from_string token) with
   | _ -> None
 
 let float_of_decimal_string = fun token ->
-  try Some (Float.of_string token) with
+  try Some (Float.from_string token) with
   | _ -> None
 
 let token_has_float_marker = fun token ->
@@ -727,7 +727,7 @@ let parse_value_text = fun input ->
     | "-inf"
     | "nan"
     | "+nan"
-    | "-nan" -> Builder.Float (Float.of_string token)
+    | "-nan" -> Builder.Float (Float.from_string token)
     | _ ->
         if token_has_float_marker token then
           match float_of_decimal_string token with

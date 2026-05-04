@@ -37,7 +37,7 @@ let test_body_from_slice = fun _ctx ->
 
 let test_request_with_body_slice = fun _ctx ->
   let uri =
-    Uri.of_string "/upload"
+    Uri.from_string "/upload"
     |> Result.unwrap
   in
   let slice =

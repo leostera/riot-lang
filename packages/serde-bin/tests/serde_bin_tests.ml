@@ -200,14 +200,14 @@ let test_roundtrips_record = fun _ctx ->
     | Ok encoded -> Ok encoded
     | Error err -> Error ("roundtrip encode failed: " ^ Serde.Error.to_string err)
   in
-  match Serde_bin.of_string person_decode encoded with
+  match Serde_bin.from_string person_decode encoded with
   | Ok actual when equal_person actual person -> Ok ()
   | Ok _ -> Error "expected serde-bin roundtrip to preserve person values"
   | Error err -> Error ("roundtrip decode failed: " ^ Serde.Error.to_string err)
 
 let test_decodes_from_reader = fun _ctx ->
   let encoded = "\004\000\000\000riot" in
-  match Serde_bin.of_reader De.string (String.to_reader ~chunk_size:2 encoded) with
+  match Serde_bin.from_reader De.string (String.to_reader ~chunk_size:2 encoded) with
   | Ok "riot" -> Ok ()
   | Ok actual -> Error ("expected reader decode to return the string payload, got " ^ actual)
   | Error err -> Error ("reader decode failed: " ^ Serde.Error.to_string err)
@@ -231,7 +231,7 @@ let test_int_uses_raw_little_endian_bytes = fun _ctx ->
   | Error err -> Error ("int encode failed: " ^ Serde.Error.to_string err)
 
 let test_int32_roundtrips_negative_values = fun _ctx ->
-  match Serde_bin.of_string De.int32 "\255\255\255\255" with
+  match Serde_bin.from_string De.int32 "\255\255\255\255" with
   | Ok value when Int32.equal value (-1l) -> Ok ()
   | Ok value -> Error ("expected int32 decode to preserve raw bits, got " ^ Int32.to_string value)
   | Error err -> Error ("int32 decode failed: " ^ Serde.Error.to_string err)
@@ -325,13 +325,13 @@ let test_decode_prefix_reports_consumed_bytes = fun _ctx ->
   | Error err -> Error ("decode_prefix failed: " ^ Serde.Error.to_string err)
 
 let test_rejects_invalid_bool = fun _ctx ->
-  match Serde_bin.of_string De.bool "\002" with
+  match Serde_bin.from_string De.bool "\002" with
   | Error (`Msg msg) when String.starts_with ~prefix:"invalid bool value" msg -> Ok ()
   | Error err -> Error ("expected invalid bool error, got " ^ Serde.Error.to_string err)
   | Ok _ -> Error "expected invalid bool input to fail"
 
 let test_rejects_truncated_string = fun _ctx ->
-  match Serde_bin.of_string De.string "\005\000\000\000ab" with
+  match Serde_bin.from_string De.string "\005\000\000\000ab" with
   | Error (`Msg msg) when String.starts_with
     ~prefix:"unexpected end of input while decoding string"
     msg -> Ok ()
@@ -339,7 +339,7 @@ let test_rejects_truncated_string = fun _ctx ->
   | Ok _ -> Error "expected truncated string input to fail"
 
 let test_rejects_trailing_bytes = fun _ctx ->
-  match Serde_bin.of_string De.bool "\001\000" with
+  match Serde_bin.from_string De.bool "\001\000" with
   | Error (`Msg msg) when String.starts_with ~prefix:"extra input after binary value" msg -> Ok ()
   | Error err -> Error ("expected trailing-byte error, got " ^ Serde.Error.to_string err)
   | Ok _ -> Error "expected trailing bytes to fail strict decoding"
@@ -351,7 +351,7 @@ let test_roundtrips_arrays = fun _ctx ->
     | Ok encoded -> Ok encoded
     | Error err -> Error ("array encode failed: " ^ Serde.Error.to_string err)
   in
-  match Serde_bin.of_string (De.array De.int) encoded with
+  match Serde_bin.from_string (De.array De.int) encoded with
   | Ok actual when actual = values -> Ok ()
   | Ok _ -> Error "expected serde-bin array roundtrip to preserve elements"
   | Error err -> Error ("array decode failed: " ^ Serde.Error.to_string err)

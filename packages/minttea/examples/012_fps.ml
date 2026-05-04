@@ -179,7 +179,7 @@ let app = App.make ~init ~update ~view ()
 
 let main ~args:_ =
   let initial_model = {
-    fps = Fps.of_int 60;
+    fps = Fps.from_int 60;
     box_x = 10.0;
     box_y = 5.0;
     velocity_x = 1.0;

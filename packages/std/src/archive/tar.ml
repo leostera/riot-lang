@@ -107,7 +107,7 @@ let entry_of_header = fun (header: Engine.header) ->
     path;
     kind = entry_kind_of_engine header.kind;
     size = header.size;
-    mode = Option.map header.mode ~fn:Fs.Permissions.of_mode;
+    mode = Option.map header.mode ~fn:Fs.Permissions.from_mode;
     link_target;
   }
 
@@ -270,7 +270,7 @@ let set_permissions = fun path permissions ->
 let fs_error_of_file_error = fun __tmp1 ->
   match __tmp1 with
   | Kernel.Fs.File.InvalidSlice _ -> IO.Invalid_argument
-  | Kernel.Fs.File.System error -> IO.of_system_error error
+  | Kernel.Fs.File.System error -> IO.from_system_error error
 
 let write_entry_file = fun source tar_reader file ->
   let chunk = Bytes.create ~size:source_buffer_size in

@@ -38,7 +38,7 @@ type checkpoint = {
 let create = fun source ->
   let token_stream =
     Lexer.tokenize source
-    |> Raw_token.of_lexer_tokens ~source
+    |> Raw_token.from_lexer_tokens ~source
   in
   let raw_tokens = token_stream.Raw_token.raw in
   let significant_tokens = token_stream.Raw_token.significant in

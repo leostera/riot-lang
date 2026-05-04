@@ -58,7 +58,7 @@ let check_request = fun ~cwd ~target ->
       };
   }
 
-let of_matches = fun matches ->
+let from_matches = fun matches ->
   let cwd = Common.current_dir () in
   let scope = Fix_config.load_scope ~cwd in
   let apply = ArgParser.get_flag matches "apply" in
@@ -78,7 +78,7 @@ let of_matches = fun matches ->
           ) with
           | (true, _, _) -> ListRules { format }
           | (false, true, _) -> ListDiagnostics { format }
-          | (false, false, Some rule_id) -> ExplainRule { rule_id = Rule_id.of_string rule_id }
+          | (false, false, Some rule_id) -> ExplainRule { rule_id = Rule_id.from_string rule_id }
           | (false, false, None) ->
               let mode =
                 if apply then

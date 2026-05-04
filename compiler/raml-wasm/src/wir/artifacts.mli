@@ -24,7 +24,7 @@ module Module_summary: sig
     has_indirect_calls: bool;
     needs_closure_runtime: bool;
   }
-  val of_compilation_unit: Wasm_types.Compilation_unit.t -> t
+  val from_compilation_unit: Wasm_types.Compilation_unit.t -> t
 
   val to_json: t -> Std.Data.Json.t
 end
@@ -35,7 +35,7 @@ module Object: sig
     summary: Module_summary.t;
     program: Wasm_types.Compilation_unit.t;
   }
-  val of_compilation_unit: Wasm_types.Compilation_unit.t -> t
+  val from_compilation_unit: Wasm_types.Compilation_unit.t -> t
 
   val to_json: t -> Std.Data.Json.t
 end

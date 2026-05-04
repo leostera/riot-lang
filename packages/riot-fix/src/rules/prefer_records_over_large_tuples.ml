@@ -4,7 +4,7 @@ open Std.Collections
 module H = Rule_helpers
 module Ast = Syn.Ast
 
-let rule_id = Rule_id.of_string "prefer-records-over-large-tuples"
+let rule_id = Rule_id.from_string "prefer-records-over-large-tuples"
 
 let rule_description = "Large tuples should be records"
 

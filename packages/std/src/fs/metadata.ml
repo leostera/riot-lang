@@ -31,7 +31,7 @@ let is_symlink = Kernel.Fs.File.Metadata.is_symlink
 
 let len = fun t -> Kernel.Int64.to_int (Kernel.Fs.File.Metadata.len t)
 
-let permissions = fun t -> Permissions.of_mode (Kernel.Fs.File.Metadata.permissions t)
+let permissions = fun t -> Permissions.from_mode (Kernel.Fs.File.Metadata.permissions t)
 
 let accessed = fun t ->
   Kernel.Int64.to_float (Kernel.Fs.File.Metadata.accessed_ns t) /. 1_000_000_000.0

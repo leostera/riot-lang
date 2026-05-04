@@ -17,7 +17,7 @@ let home_handler = fun conn _req ->
       let count =
         match Middleware.Session.get_value "count" session with
         | Option.Some n ->
-            Int.of_string_opt n
+            Int.from_string_opt n
             |> Option.unwrap_or ~default:0
         | Option.None -> 0
       in

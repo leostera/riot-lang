@@ -8,7 +8,7 @@ type t =
   | Lowering of Typ_diagnostic.t
   | Typing of Typ_diagnostic.t
 
-let of_report = fun (report: Typ_check_result.t) ->
+let from_report = fun (report: Typ_check_result.t) ->
   List.concat
     [
       report.parse_diagnostics

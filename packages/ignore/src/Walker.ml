@@ -200,7 +200,7 @@ let create = fun
     | [] -> Path.v "."
     | root :: _ -> root
   in
-  match Gitignore.of_lines ~root ~syntax:Gitignore.Override overrides with
+  match Gitignore.from_lines ~root ~syntax:Gitignore.Override overrides with
   | Error {
       line;
       input;

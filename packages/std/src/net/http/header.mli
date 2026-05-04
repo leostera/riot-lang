@@ -70,17 +70,17 @@ val empty: t
 
    ## Examples
 
-   ```ocaml let headers = Header.of_list
+   ```ocaml let headers = Header.from_list
    [ ("Content-Type", "text/html"); ("Accept", "text/html") ] ```
 *)
-val of_list: (name * value) list -> t
+val from_list: (name * value) list -> t
 
 (**
    Converts headers to a list of name-value pairs.
 
    ## Examples
 
-   ```ocaml let headers = Header.of_list [("Host", "example.com")] in
+   ```ocaml let headers = Header.from_list [("Host", "example.com")] in
    Header.to_list headers (* [("host", "example.com")] *) ```
 *)
 val to_list: t -> (name * value) list

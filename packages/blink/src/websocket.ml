@@ -69,7 +69,7 @@ let connect_transport = fun uri host ->
     Net.Uri.port uri
     |> Option.unwrap_or ~default:default_port
   in
-  match Net.Addr.of_host_and_port ~host ~port with
+  match Net.Addr.from_host_and_port ~host ~port with
   | Error (Net.Addr.System_error io_err) -> Error (Error.NetError (Net.System_error io_err))
   | Error (Net.Addr.Invalid_port_number _ | Net.Addr.Invalid_format _) ->
       Error (Error.NetError (Net.System_error IO.Invalid_argument))
@@ -108,14 +108,14 @@ let host_header = fun uri host ->
 let write_all = fun conn text ->
   match IO.write_all conn.writer ~from:(IO.Buffer.from_string text) with
   | Ok () -> Ok ()
-  | Error error -> Error (Error.of_io_error error)
+  | Error error -> Error (Error.from_io_error error)
 
 let read_handshake_response = fun conn ->
   let response_buffer = Buffer.create ~size:1_024 in
   let rec read_response () =
     let chunk = IO.Buffer.create ~size:4_096 in
     match IO.read conn.reader ~into:chunk with
-    | Error error -> Error (Error.of_io_error error)
+    | Error error -> Error (Error.from_io_error error)
     | Ok 0 -> Error (Error.HandshakeFailed "Connection closed during handshake")
     | Ok _ ->
         let readable = IO.Buffer.readable chunk in
@@ -286,7 +286,7 @@ let receive = fun conn ->
       | Http.Ws.Parser.Need_more -> (
           let chunk = IO.Buffer.create ~size:4_096 in
           match IO.read conn.reader ~into:chunk with
-          | Error error -> Error (Error.of_io_error error)
+          | Error error -> Error (Error.from_io_error error)
           | Ok 0 -> Error Error.Eof
           | Ok _ ->
               let readable = IO.Buffer.readable chunk in

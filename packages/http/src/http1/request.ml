@@ -13,7 +13,7 @@ module SliceCursor = struct
 
   let create = fun source -> { source; pos = 0; length = Slice.length source }
 
-  let of_cursor = fun cursor ->
+  let from_cursor = fun cursor ->
     let source = Cursor.source cursor in
     { source; pos = Cursor.position cursor; length = Slice.length source }
 
@@ -404,7 +404,7 @@ let rec parse_headers_owned = fun
 
 let parse_headers = fun
   ?(max_count = 100) ?(max_length = 8_192) ?(max_total_length = 65_536) ?(acc = []) cursor ->
-  let cursor = SliceCursor.of_cursor cursor in
+  let cursor = SliceCursor.from_cursor cursor in
   match parse_headers_owned
     ~max_count
     ~max_length
@@ -421,7 +421,7 @@ let parse_headers = fun
       }
 
 let request_of_parts = fun method_ uri version headers_list body ->
-  let headers = Std.Net.Http.Header.of_list headers_list in
+  let headers = Std.Net.Http.Header.from_list headers_list in
   let request =
     let request = Std.Net.Http.Request.create method_ uri in
     let request = Std.Net.Http.Request.with_version request version in

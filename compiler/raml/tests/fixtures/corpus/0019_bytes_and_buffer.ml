@@ -1,6 +1,6 @@
 (* Mutable bytes and buffer accumulation. *)
 let () =
-  let b = Bytes.of_string "abcde" in
+  let b = Bytes.from_string "abcde" in
   Bytes.set b 1 'X';
   Bytes.set b 2 'Y';
   Bytes.set b 3 'Z';

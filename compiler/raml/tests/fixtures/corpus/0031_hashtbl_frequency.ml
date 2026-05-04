@@ -16,7 +16,7 @@ let () =
   let tbl = frequencies [ "a"; "b"; "a"; "c"; "b"; "a" ] in
   let xs =
     Hashtbl.to_seq tbl
-    |> List.of_seq
+    |> List.from_seq
     |> List.sort compare
   in
   List.iter (fun (k, v) -> Printf.printf "%s:%d " k v) xs;

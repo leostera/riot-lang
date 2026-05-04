@@ -182,7 +182,7 @@ type analysis = {
 }
 
 let analyze_procedure = fun (procedure: Lir.Procedure.t) ->
-  let instructions = Array.of_list procedure.body in
+  let instructions = Array.from_list procedure.body in
   let instruction_count = Array.length instructions in
   let label_indices = label_index_map instructions in
   let live_before =

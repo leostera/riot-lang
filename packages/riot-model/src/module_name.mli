@@ -9,13 +9,13 @@ type t
 val make: filename:Path.t -> namespace:Namespace.t -> name:string -> t
 
 (** Create from a filename, optionally with namespace *)
-val of_filename: ?namespace:Namespace.t -> Path.t -> t
+val from_filename: ?namespace:Namespace.t -> Path.t -> t
 
 (** Create from a string name, optionally with namespace *)
-val of_string: ?namespace:Namespace.t -> string -> t
+val from_string: ?namespace:Namespace.t -> string -> t
 
 (** Create from a file path, extracting the module name *)
-val of_path: Path.t -> t
+val from_path: Path.t -> t
 
 (** Get the original filename *)
 val filename: t -> Path.t

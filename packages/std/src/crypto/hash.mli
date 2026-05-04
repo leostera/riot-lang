@@ -1,6 +1,6 @@
 type t
 
-val of_bytes: bytes -> t
+val from_bytes: bytes -> t
 
 val to_bytes: t -> bytes
 

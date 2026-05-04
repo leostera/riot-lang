@@ -20,10 +20,10 @@ let compile = fun ~config ~(frontend:Frontend_pipeline.t) ->
   | None -> Backend_result.blocked_wasm ~blocked_on:"core_ir" core_ir.errors
   | Some compilation_unit ->
       let trace = Wir.Lowering.lower_compilation_unit_with_trace compilation_unit in
-      let object_ = Wir.Artifacts.Object.of_compilation_unit trace.final in
+      let object_ = Wir.Artifacts.Object.from_compilation_unit trace.final in
       let linked_program = Wir.Artifacts.Linked_program.link [ object_ ] in
       let persisted_object, wasm =
-        match Artifact_store.of_config config with
+        match Artifact_store.from_config config with
         | None -> (
           None,
           Pipeline_stage.ok_with_json
@@ -68,7 +68,7 @@ let compile = fun ~config ~(frontend:Frontend_pipeline.t) ->
         | Some _ -> (
             match Codegen.emit_linked_program linked_program with
             | Ok artifact -> (
-                match Artifact_store.of_config config with
+                match Artifact_store.from_config config with
                 | None -> Pipeline_stage.ok_with_json ~json:(Codegen.artifact_to_json artifact) artifact
                 | Some store -> (
                     let unit_name =

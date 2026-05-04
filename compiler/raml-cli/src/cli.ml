@@ -110,12 +110,12 @@ let path_error_message = function
   | Path.SystemError error -> error
 
 let path_of_string = fun ~kind value ->
-  Path.of_string value
+  Path.from_string value
   |> Result.map_error
     (fun error -> "invalid " ^ kind ^ " path '" ^ value ^ "': " ^ path_error_message error)
 
 let target_of_string = fun value ->
-  Raml.Target.of_string value |> Result.map_error (fun error -> "invalid target: " ^ error)
+  Raml.Target.from_string value |> Result.map_error (fun error -> "invalid target: " ^ error)
 
 let default_output_extension = fun target ->
   match Raml.Target.backend target with

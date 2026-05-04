@@ -2240,7 +2240,7 @@ let handle_notification = fun state ->
 
 let handle_payload = fun state ->
   fun payload ->
-    match Json.of_string payload with
+    match Json.from_string payload with
     | Error error ->
         ok
           state

@@ -32,7 +32,7 @@ let position_of_offset = fun text offset -> Std.Unicode.Utf16.position_of_offset
 let make_source_layout = fun source ->
   let lines =
     String.split_on_char '\n' source
-    |> Array.of_list
+    |> Array.from_list
   in
   let line_starts = Array.make (Array.length lines) 0 in
   let offset = ref 0 in

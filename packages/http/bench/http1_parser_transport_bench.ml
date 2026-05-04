@@ -176,20 +176,20 @@ module BaselineParser = struct
         | Need_more -> Need_more
         | Error error -> Error error
         | Done { value = (headers_list, body); _ } ->
-            let method_ = Std.Net.Http.Method.of_string method_ in
+            let method_ = Std.Net.Http.Method.from_string method_ in
             let uri =
-              Std.Net.Uri.of_string path
+              Std.Net.Uri.from_string path
               |> Result.unwrap_or
                 ~default:(
-                  Std.Net.Uri.of_string "/"
+                  Std.Net.Uri.from_string "/"
                   |> Result.unwrap
                 )
             in
             let version =
-              Std.Net.Http.Version.of_string version
+              Std.Net.Http.Version.from_string version
               |> Result.unwrap_or ~default:Std.Net.Http.Version.Http11
             in
-            let headers = Std.Net.Http.Header.of_list headers_list in
+            let headers = Std.Net.Http.Header.from_list headers_list in
             let request =
               let request = Std.Net.Http.Request.create method_ uri in
               let request = Std.Net.Http.Request.with_version request version in

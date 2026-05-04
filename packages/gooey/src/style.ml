@@ -324,17 +324,17 @@ let color = fun hex_str ->
       let r = String.make ~len:2 ~char:(String.unsafe_get hex 0) in
       let g = String.make ~len:2 ~char:(String.unsafe_get hex 1) in
       let b = String.make ~len:2 ~char:(String.unsafe_get hex 2) in
-      let r_val = Int.of_string ("0x" ^ r) in
-      let g_val = Int.of_string ("0x" ^ g) in
-      let b_val = Int.of_string ("0x" ^ b) in
+      let r_val = Int.from_string ("0x" ^ r) in
+      let g_val = Int.from_string ("0x" ^ g) in
+      let b_val = Int.from_string ("0x" ^ b) in
       `rgb (r_val, g_val, b_val)
   | 6 ->
       (* Full form like "FF0000" *)
       let r = String.sub hex ~offset:0 ~len:2 in
       let g = String.sub hex ~offset:2 ~len:2 in
       let b = String.sub hex ~offset:4 ~len:2 in
-      let r_val = Int.of_string ("0x" ^ r) in
-      let g_val = Int.of_string ("0x" ^ g) in
-      let b_val = Int.of_string ("0x" ^ b) in
+      let r_val = Int.from_string ("0x" ^ r) in
+      let g_val = Int.from_string ("0x" ^ g) in
+      let b_val = Int.from_string ("0x" ^ b) in
       `rgb (r_val, g_val, b_val)
   | _ -> raise (Invalid_argument ("Invalid hex color: " ^ hex_str ^ " (expected #RGB or #RRGGBB)"))

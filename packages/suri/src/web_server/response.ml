@@ -11,7 +11,7 @@ let make = fun status ?(headers = []) ?(version = Net.Http.Version.Http11) ?(bod
   {
     status;
     version;
-    headers = Net.Http.Header.of_list headers;
+    headers = Net.Http.Header.from_list headers;
     body;
   }
 

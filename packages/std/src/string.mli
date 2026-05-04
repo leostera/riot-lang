@@ -164,7 +164,7 @@ val into_mut_iter: string -> Unicode.Rune.t MutIterator.t
 
    (* Filter non-ASCII characters *) let ascii_only = String.into_iter text |>
    Iterator.filter (fun rune -> Unicode.Rune.to_int rune < 128) |> Iterator.to_list |>
-   List.map Kernel.Unicode.Rune.to_char |> String.of_list in (* ascii_only = "Caf " *)
+   List.map Kernel.Unicode.Rune.to_char |> String.from_list in (* ascii_only = "Caf " *)
 
    (* Count emoji *) let emoji_count = String.into_iter text |> Iterator.filter
    (fun rune -> let code = Unicode.Rune.to_int rune in code >= 0x1F600 && code <= 0x1F64F)

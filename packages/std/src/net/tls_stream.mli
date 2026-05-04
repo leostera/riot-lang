@@ -17,7 +17,7 @@
        let host = Net.Uri.host uri |> Option.expect ~msg:"No host" in
        let port = Net.Uri.port uri |> Option.unwrap_or ~default:443 in
 
-       let addr = Net.Addr.of_host_and_port ~host ~port
+       let addr = Net.Addr.from_host_and_port ~host ~port
                   |> Result.expect ~msg:"Invalid address" in
 
        (* Connect TCP *)

@@ -3,7 +3,7 @@ open Std
 module H = Rule_helpers
 module Ast = Syn.Ast
 
-let rule_id = Rule_id.of_string "prefer-multiline-string-literals"
+let rule_id = Rule_id.from_string "prefer-multiline-string-literals"
 
 let rule_description =
   "String literal chains should use multiline string literals instead of repeated concatenation"

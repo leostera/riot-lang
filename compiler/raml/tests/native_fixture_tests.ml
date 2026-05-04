@@ -9,7 +9,7 @@ let logical_corpus_dir = Path.v "corpus"
 
 let append_snapshot_suffix = fun path suffix ->
   format Format.[ str (Path.to_string (Path.remove_extension path)); str suffix ]
-  |> Path.of_string
+  |> Path.from_string
   |> Result.expect ~msg:"snapshot path should stay valid UTF-8"
 
 let fixture_stem = fun path -> path |> Path.remove_extension |> Path.basename
@@ -43,7 +43,7 @@ let logical_fixture_relpath = fun path ->
     | [] -> []
     | basename :: rest -> List.rev (strip_ordering_prefix basename :: rest)
   in
-  String.concat "/" logical_parts |> Path.of_string |> Result.expect ~msg:"logical fixture path should stay valid UTF-8"
+  String.concat "/" logical_parts |> Path.from_string |> Result.expect ~msg:"logical fixture path should stay valid UTF-8"
 
 let keep_named_source_fixture = fun ~names path ->
   match Path.extension path with

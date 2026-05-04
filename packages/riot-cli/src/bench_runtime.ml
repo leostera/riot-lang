@@ -142,7 +142,7 @@ let suite_progress_event_of_line = fun line ->
   if String.equal trimmed "" then
     None
   else
-    match Data.Json.of_string trimmed with
+    match Data.Json.from_string trimmed with
     | Ok (Data.Json.Object _ as json) -> (
         match json_event_type json with
         | Some _ -> Some json
@@ -549,7 +549,7 @@ let bench_summary_of_json = fun json ->
 let parse_bench_suite_output = fun stdout ->
   let* (prefix_stdout, json_line) = split_json_stdout stdout in
   let* json =
-    Data.Json.of_string json_line
+    Data.Json.from_string json_line
     |> Result.map_err ~fn:Data.Json.error_to_string
   in
   let* fields = get_object json in
@@ -756,7 +756,7 @@ let ensure_executable_binary_path = fun ~kind path ->
       if mode land 0o111 != 0 then
         Ok path
       else
-        Fs.set_permissions path (Fs.Permissions.of_mode (mode lor 0o111))
+        Fs.set_permissions path (Fs.Permissions.from_mode (mode lor 0o111))
         |> Result.map ~fn:(fun () -> path)
         |> Result.map_err
           ~fn:(fun err -> "failed to mark " ^ kind ^ " executable: " ^ IO.error_message err)
@@ -852,7 +852,7 @@ let list_suite_binary_capture = fun ~suite ~extra_args binary_path ->
 let parse_listed_benchmarks_output = fun stdout ->
   let* (_prefix_stdout, json_line) = split_json_stdout stdout in
   let* json =
-    Data.Json.of_string json_line
+    Data.Json.from_string json_line
     |> Result.map_err ~fn:Data.Json.error_to_string
   in
   let* fields = get_object json in

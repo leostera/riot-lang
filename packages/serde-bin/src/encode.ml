@@ -146,7 +146,7 @@ let encode_u32 = fun kind value ->
   if int_lt value 0 then
     raise_length_out_of_range kind value
   else
-    let value64 = Int64.of_int value in
+    let value64 = Int64.from_int value in
     if (
       match Int64.compare value64 0xffff_ffffL with
       | Order.GT -> true

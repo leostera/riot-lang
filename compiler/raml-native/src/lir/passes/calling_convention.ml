@@ -99,7 +99,7 @@ let rewrite_procedure = fun profile (procedure: Lir.Procedure.t) ->
   { procedure with body = rewrite_body profile procedure }
 
 let program = fun ~ctx (program: Lir.Program.t) ->
-  match Target_profile.of_context ctx with
+  match Target_profile.from_context ctx with
   | None -> program
   | Some profile -> {
     program

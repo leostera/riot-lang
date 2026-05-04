@@ -327,7 +327,7 @@ let test_library_builds_do_not_emit_shared_library_actions = fun _ctx ->
       in
       let ctx =
         Riot_model.Build_ctx.make
-          ~session_id:(Riot_model.Session_id.of_string "test-session")
+          ~session_id:(Riot_model.Session_id.from_string "test-session")
           ~profile:Riot_model.Profile.release
           ()
       in
@@ -406,7 +406,7 @@ let test_library_actions_exclude_ml_object_files = fun _ctx ->
       in
       let ctx =
         Riot_model.Build_ctx.make
-          ~session_id:(Riot_model.Session_id.of_string "test-session")
+          ~session_id:(Riot_model.Session_id.from_string "test-session")
           ~profile:Riot_model.Profile.release
           ()
       in
@@ -497,7 +497,7 @@ let test_release_profile_flags_flow_into_compile_actions = fun _ctx ->
       in
       let ctx =
         Riot_model.Build_ctx.make
-          ~session_id:(Riot_model.Session_id.of_string "test-session")
+          ~session_id:(Riot_model.Session_id.from_string "test-session")
           ~profile:Riot_model.Profile.release
           ()
       in
@@ -576,7 +576,7 @@ let test_create_library_preserves_module_dependency_order = fun _ctx ->
       in
       let ctx =
         Riot_model.Build_ctx.make
-          ~session_id:(Riot_model.Session_id.of_string "test-session")
+          ~session_id:(Riot_model.Session_id.from_string "test-session")
           ~profile:Riot_model.Profile.release
           ()
       in
@@ -688,7 +688,7 @@ let test_library_actions_exclude_unreachable_modules = fun _ctx ->
       in
       let build_ctx =
         Riot_model.Build_ctx.make
-          ~session_id:(Riot_model.Session_id.of_string "test-session")
+          ~session_id:(Riot_model.Session_id.from_string "test-session")
           ~profile:Riot_model.Profile.release
           ()
       in
@@ -904,7 +904,7 @@ let plan_actions_for_package = fun ~tmpdir ~package_name ~files ?(binaries = [])
   let store = Riot_store.Store.create ~workspace in
   let build_ctx =
     Riot_model.Build_ctx.make
-      ~session_id:(Riot_model.Session_id.of_string "test-session")
+      ~session_id:(Riot_model.Session_id.from_string "test-session")
       ~profile:Riot_model.Profile.release
       ()
   in
@@ -950,7 +950,7 @@ let plan_actions_for_package = fun ~tmpdir ~package_name ~files ?(binaries = [])
         match package.library with
         | Some _ ->
             [
-              Riot_model.Module_name.(of_string (Package_name.to_string package.name)
+              Riot_model.Module_name.(from_string (Package_name.to_string package.name)
               |> cmxa);
             ]
         | None -> []
@@ -1032,7 +1032,7 @@ let plan_action_graph_for_package = fun ~tmpdir ~package_name ~files ?(binaries 
   let store = Riot_store.Store.create ~workspace in
   let build_ctx =
     Riot_model.Build_ctx.make
-      ~session_id:(Riot_model.Session_id.of_string "test-session")
+      ~session_id:(Riot_model.Session_id.from_string "test-session")
       ~profile:Riot_model.Profile.release
       ()
   in
@@ -1078,7 +1078,7 @@ let plan_action_graph_for_package = fun ~tmpdir ~package_name ~files ?(binaries 
         match package.library with
         | Some _ ->
             [
-              Riot_model.Module_name.(of_string (Package_name.to_string package.name)
+              Riot_model.Module_name.(from_string (Package_name.to_string package.name)
               |> cmxa);
             ]
         | None -> []
@@ -1350,7 +1350,7 @@ let test_real_kernel_unix_addr_interface_keeps_sibling_modules = fun _ctx ->
   let store = Riot_store.Store.create ~workspace in
   let build_ctx =
     Riot_model.Build_ctx.make
-      ~session_id:(Riot_model.Session_id.of_string "test-session")
+      ~session_id:(Riot_model.Session_id.from_string "test-session")
       ~profile:Riot_model.Profile.release
       ()
   in
@@ -1488,7 +1488,7 @@ let test_binary_actions_include_target_private_modules = fun _ctx ->
                     libraries
                     ~fn:(
                       Path.equal
-                        Riot_model.Module_name.(of_string "splitdemo"
+                        Riot_model.Module_name.(from_string "splitdemo"
                         |> cmxa)
                     )
                 ) then
@@ -1744,7 +1744,7 @@ let test_binary_actions_without_private_helpers = fun _ctx ->
                     libraries
                     ~fn:(
                       Path.equal
-                        Riot_model.Module_name.(of_string "nohelperdemo"
+                        Riot_model.Module_name.(from_string "nohelperdemo"
                         |> cmxa)
                     )
                 ) then
@@ -2049,7 +2049,7 @@ let test_private_helper_can_depend_on_library_owned_module = fun _ctx ->
                     libraries
                     ~fn:(
                       Path.equal
-                        Riot_model.Module_name.(of_string "librarymixdemo"
+                        Riot_model.Module_name.(from_string "librarymixdemo"
                         |> cmxa)
                     )
                 ) then

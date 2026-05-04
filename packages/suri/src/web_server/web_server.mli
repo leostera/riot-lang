@@ -84,7 +84,7 @@
          ("message", Data.Json.string "Hello from Suri");
        ] in
        WebServer.Response.ok
-         ~headers:(Http.Header.of_list [("Content-Type", "application/json")])
+         ~headers:(Http.Header.from_list [("Content-Type", "application/json")])
          ~body:(Data.Json.to_string json)
          ()
    ]}
@@ -232,7 +232,7 @@ module Response = Response
            Handler.close (Response.redirect ~location:"/home" ())
        | "/json" ->
            Handler.close (Response.ok
-             ~headers:(Http.Header.of_list [("Content-Type", "application/json")])
+             ~headers:(Http.Header.from_list [("Content-Type", "application/json")])
              ~body:{|{"status":"ok"}|}
              ())
        | _ ->

@@ -4,7 +4,7 @@ open Std.Collections
 module H = Rule_helpers
 module Ast = Syn.Ast
 
-let rule_id = Rule_id.of_string "prefer-opaque-record-types"
+let rule_id = Rule_id.from_string "prefer-opaque-record-types"
 
 let rule_description = "Public records should be exposed as opaque types"
 

@@ -182,8 +182,8 @@ let status_has_no_body = fun status_code ->
   (status_code >= 100 && status_code < 200) || status_code = 204 || status_code = 304
 
 let response_of_parts = fun status_code version headers_list body ->
-  let status = Std.Net.Http.Status.of_int status_code in
-  let headers = Std.Net.Http.Header.of_list headers_list in
+  let status = Std.Net.Http.Status.from_int status_code in
+  let headers = Std.Net.Http.Header.from_list headers_list in
   let response =
     Std.Net.Http.Response.create status
     |> fun res ->

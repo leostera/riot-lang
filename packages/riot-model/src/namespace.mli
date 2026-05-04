@@ -8,10 +8,10 @@ type t
 val empty: t
 
 (** Create namespace from string (splits on __) *)
-val of_string: string -> t
+val from_string: string -> t
 
 (** Create namespace from list of components *)
-val of_list: string list -> t
+val from_list: string list -> t
 
 (** Append a component to namespace *)
 val append: t -> string -> t

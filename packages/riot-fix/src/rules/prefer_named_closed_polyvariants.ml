@@ -4,7 +4,7 @@ open Std.Collections
 module H = Rule_helpers
 module Ast = Syn.Ast
 
-let rule_id = Rule_id.of_string "prefer-named-closed-polyvariants"
+let rule_id = Rule_id.from_string "prefer-named-closed-polyvariants"
 
 let rule_description = "Closed polyvariants should be named"
 

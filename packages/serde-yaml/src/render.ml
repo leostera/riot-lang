@@ -62,14 +62,14 @@ let float_to_string = fun value ->
       ".inf"
   else
     let text12 = format_float "%.12g" value in
-    if Float.equal value (Float.of_string text12) then
+    if Float.equal value (Float.from_string text12) then
       if String.ends_with ~suffix:"." text12 then
         text12 ^ "0"
       else
         text12
     else
       let text15 = format_float "%.15g" value in
-      if Float.equal value (Float.of_string text15) then
+      if Float.equal value (Float.from_string text15) then
         if String.ends_with ~suffix:"." text15 then
           text15 ^ "0"
         else

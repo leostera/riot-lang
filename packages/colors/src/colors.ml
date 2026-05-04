@@ -270,7 +270,7 @@ module Internal = struct
       | (Error message, _) -> Error message
       | (_, Error message) -> Error message
 
-    let of_string = fun value ->
+    let from_string = fun value ->
       let trimmed = String.trim value in
       let normalized =
         if String.starts_with ~prefix:"#" trimmed then
@@ -515,7 +515,7 @@ module RGB = struct
     else
       (right_luminance +. 0.05) /. (left_luminance +. 0.05)
 
-  let of_hex = Internal.Hex_rgb.of_string
+  let from_hex = Internal.Hex_rgb.from_string
 
   let to_hex = Internal.Hex_rgb.to_string
 

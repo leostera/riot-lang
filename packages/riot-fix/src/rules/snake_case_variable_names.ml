@@ -3,7 +3,7 @@ open Std
 module H = Rule_helpers
 module Ast = Syn.Ast
 
-let rule_id = Rule_id.of_string "snake-case-variable-names"
+let rule_id = Rule_id.from_string "snake-case-variable-names"
 
 let rule_description = "Variable names should use snake_case instead of camelCase"
 

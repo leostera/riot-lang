@@ -5,7 +5,7 @@ type t
 val zero: t
 
 (** Build a scheduler identifier from an integer. *)
-val of_int: int -> t
+val from_int: int -> t
 
 (** Convert a scheduler identifier to its integer representation. *)
 val to_int: t -> int

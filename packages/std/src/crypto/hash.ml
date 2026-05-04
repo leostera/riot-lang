@@ -2,7 +2,7 @@ open Kernel
 
 type t = bytes
 
-let of_bytes = fun bytes -> Bytes.sub_unchecked bytes ~offset:0 ~len:(Bytes.length bytes)
+let from_bytes = fun bytes -> Bytes.sub_unchecked bytes ~offset:0 ~len:(Bytes.length bytes)
 
 let to_bytes = fun hash -> Bytes.sub_unchecked hash ~offset:0 ~len:(Bytes.length hash)
 

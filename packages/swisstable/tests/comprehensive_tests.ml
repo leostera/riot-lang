@@ -139,9 +139,9 @@ let tests = [
       Test.assert_true (List.contains values ~value:30);
       Ok ());
   Test.case
-    "from_iter (of_list)"
+    "from_iter (from_list)"
     (fun _ctx ->
-      let map = Swisstable.of_list [ (1, 10); (2, 20); (3, 30); ] in
+      let map = Swisstable.from_list [ (1, 10); (2, 20); (3, 30); ] in
       Test.assert_equal ~expected:3 ~actual:(Swisstable.len map);
       Test.assert_equal ~expected:(Some 10) ~actual:(Swisstable.get map 1);
       Test.assert_equal ~expected:(Some 20) ~actual:(Swisstable.get map 2);

@@ -35,7 +35,7 @@
        Config.Spec.bool "ssl" ~default:false;
      ]);
 
-     Config.Spec.path "log_dir" ~default:(Path.of_string "./logs" |> Result.get_ok);
+     Config.Spec.path "log_dir" ~default:(Path.from_string "./logs" |> Result.get_ok);
      Config.Spec.string "log_level" ~default:"info";
    ]
    ```
@@ -311,7 +311,7 @@ val datetime: ?default:DateTime.t -> ?required:bool -> ?help:string -> string ->
 
    Example:
    ```ocaml
-   path "data_dir" ~default:(Path.of_string "./data" |> Result.get_ok)
+   path "data_dir" ~default:(Path.from_string "./data" |> Result.get_ok)
      ~help:"Data storage directory"
    ```
 

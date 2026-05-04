@@ -825,8 +825,8 @@ let from_json: Data.Json.t -> (Telemetry.event, Data.Json.t) result = fun json -
   in
   let get_session_id fields =
     match get_field fields ~name:"session_id" with
-    | Some (Data.Json.String sid) -> Session_id.of_string sid
-    | _ -> Session_id.of_string "unknown"
+    | Some (Data.Json.String sid) -> Session_id.from_string sid
+    | _ -> Session_id.from_string "unknown"
   in
   match json with
   | Data.Json.Object fields -> (
@@ -840,7 +840,7 @@ let from_json: Data.Json.t -> (Telemetry.event, Data.Json.t) result = fun json -
           | (Some (Data.Json.String session_id_str), Some package_json, Some target_json) -> (
               match Package.from_json package_json with
               | Ok package ->
-                  let session_id = Session_id.of_string session_id_str in
+                  let session_id = Session_id.from_string session_id_str in
                   (
                     match target_of_json target_json with
                     | Ok target -> Ok (BuildStarted { session_id; package; target })
@@ -1124,7 +1124,7 @@ let from_json: Data.Json.t -> (Telemetry.event, Data.Json.t) result = fun json -
           | (Some (Data.Json.String session_id_str), Some package_json, Some target_json) -> (
               match Package.from_json package_json with
               | Ok package ->
-                  let session_id = Session_id.of_string session_id_str in
+                  let session_id = Session_id.from_string session_id_str in
                   (
                     match (target_of_json target_json, build_target_from_fields fields) with
                     | (Ok target, Ok build_target) ->
@@ -1175,7 +1175,7 @@ let from_json: Data.Json.t -> (Telemetry.event, Data.Json.t) result = fun json -
                       (
                         match collect_messages [] messages_json with
                         | Ok messages ->
-                            let session_id = Session_id.of_string session_id_str in
+                            let session_id = Session_id.from_string session_id_str in
                             Ok (
                               PackageOcamlcWarnings {
                                 session_id;

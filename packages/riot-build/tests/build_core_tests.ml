@@ -16,7 +16,7 @@ let target = fun value ->
 let target_set_of_strings = fun values ->
   values
   |> List.map ~fn:target
-  |> Riot_model.Target.Set.of_list
+  |> Riot_model.Target.Set.from_list
 
 let write_workspace_manifest = fun ~root ~members ->
   let members =
@@ -134,7 +134,7 @@ let make_two_targets = fun () ->
     else
       target "x86_64-unknown-linux-gnu"
   in
-  Riot_model.Target.Set.of_list [ host_target; secondary_target ]
+  Riot_model.Target.Set.from_list [ host_target; secondary_target ]
 
 let make_broken_workspace = fun ?target_dir tmpdir ->
   let pkg_dir = Path.(tmpdir / Path.v "demo") in
@@ -292,7 +292,7 @@ let test_output_maps_build_result_statuses = fun _ctx ->
       let skipped_pkg = make_package ~root:tmpdir ~name:"skipped" ~value:"3" in
       let failed_pkg = make_package ~root:tmpdir ~name:"failed" ~value:"4" in
       let output =
-        Riot_build.Build_result.of_build_results
+        Riot_build.Build_result.from_build_results
           [
             make_build_result
               ~scope:"runtime"
@@ -361,7 +361,7 @@ let test_output_exposes_artifacts_and_exports = fun _ctx ->
       }
       in
       let output =
-        Riot_build.Build_result.of_build_results
+        Riot_build.Build_result.from_build_results
           [ make_runtime_build_result ~package ~status:(Package_builder.Built artifact) ]
       in
       match Riot_build.Build_result.find_package output (package_name "demo") with
@@ -405,7 +405,7 @@ let test_output_prefers_dev_scope_and_merges_exports = fun _ctx ->
           "demo_dev"
       in
       let output =
-        Riot_build.Build_result.of_build_results
+        Riot_build.Build_result.from_build_results
           [
             make_build_result ~scope:"build" ~package ~status:(Package_builder.Built build_artifact);
             make_build_result
@@ -779,7 +779,7 @@ let test_build_multi_target_outputs_and_events = fun _ctx ->
         else
           target "x86_64-unknown-linux-gnu"
       in
-      let requested_targets = Riot_model.Target.Set.of_list [ host_target; secondary_target ] in
+      let requested_targets = Riot_model.Target.Set.from_list [ host_target; secondary_target ] in
       let expected_targets = Riot_model.Target.Set.to_list requested_targets in
       let expected_target_count = List.length expected_targets in
       let expected_target_names =

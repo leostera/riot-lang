@@ -3,16 +3,16 @@ open Std
 module Test = Std.Test
 module Bytes = Kernel.Bytes
 
-let raw_hash = fun s -> Crypto.Hash.of_bytes (Bytes.from_string s)
+let raw_hash = fun s -> Crypto.Hash.from_bytes (Bytes.from_string s)
 
 let test_hash_of_bytes_copies_the_input_buffer = fun _ctx ->
   let buffer = Bytes.from_string "abc" in
-  let hash = Crypto.Hash.of_bytes buffer in
+  let hash = Crypto.Hash.from_bytes buffer in
   Bytes.set_unchecked buffer ~at:0 ~char:'z';
   if String.equal (Bytes.to_string (Crypto.Hash.to_bytes hash)) "abc" then
     Ok ()
   else
-    Error "Hash.of_bytes should copy the source buffer"
+    Error "Hash.from_bytes should copy the source buffer"
 
 let test_hash_to_bytes_returns_a_copy = fun _ctx ->
   let hash = raw_hash "abc" in
@@ -193,7 +193,7 @@ let test_hash_array_is_order_sensitive = fun _ctx ->
 
 let tests =
   Test.[
-    case "Hash.of_bytes copies the input buffer" test_hash_of_bytes_copies_the_input_buffer;
+    case "Hash.from_bytes copies the input buffer" test_hash_of_bytes_copies_the_input_buffer;
     case "Hash.to_bytes returns a copy" test_hash_to_bytes_returns_a_copy;
     case "Hash.length reports byte length" test_hash_length_reports_the_byte_length;
     case "Hash.equal reports identical hashes" test_hash_equal_reports_identical_hashes;

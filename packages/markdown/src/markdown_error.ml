@@ -6,7 +6,7 @@ type id = t
 
 let to_string = fun value -> value
 
-let of_string = fun value -> value
+let from_string = fun value -> value
 
 let to_json = Data.Json.string
 

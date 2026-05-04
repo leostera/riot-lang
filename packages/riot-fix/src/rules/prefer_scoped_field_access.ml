@@ -4,7 +4,7 @@ open Std.Collections
 module H = Rule_helpers
 module Ast = Syn.Ast
 
-let rule_id = Rule_id.of_string "prefer-scoped-field-access"
+let rule_id = Rule_id.from_string "prefer-scoped-field-access"
 
 let rule_description = "Module-qualified field access should use scoped qualification syntax"
 

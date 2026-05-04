@@ -38,7 +38,7 @@ module Document: sig
   type 'instruction t
   val empty: 'instruction t
 
-  val of_items: 'instruction Item.t list -> 'instruction t
+  val from_items: 'instruction Item.t list -> 'instruction t
 
   val append: 'instruction t -> 'instruction Item.t -> 'instruction t
 

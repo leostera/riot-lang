@@ -53,7 +53,7 @@ let read = fun ~workspace_root ->
           match Std.Data.Toml.parse source with
           | Error err -> Error (TomlParseFailed { path = lock_path; error = err })
           | Ok toml -> (
-              match Riot_model.Lockfile.of_toml toml with
+              match Riot_model.Lockfile.from_toml toml with
               | Ok lockfile -> Ok (Some lockfile)
               | Error err -> Error (DecodeFailed { path = lock_path; error = err })
             )

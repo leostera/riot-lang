@@ -3,7 +3,6 @@ open Std
 let test_flush_without_log_config = fun _ctx ->
   Config.load_string "";
   let _ = Log.start_link () in
-  yield ();
   Log.flush ();
   Ok ()
 
@@ -62,7 +61,10 @@ let test_start_link_reads_riot_log_level = fun _ctx ->
 
 let tests =
   Test.[
-    case "Log.flush returns when no log config section exists" test_flush_without_log_config;
+    case
+      ~size:Large
+      "Log.flush returns when no log config section exists"
+      test_flush_without_log_config;
     case "Log.start_link reads RIOT_LOG level" test_start_link_reads_riot_log_level;
   ]
 

@@ -72,7 +72,7 @@ let decode = fun ~secret ~token ->
           | Error error -> Error error
           | Ok json_str ->
               (* 4. Parse JSON *)
-              match Data.Json.of_string json_str with
+              match Data.Json.from_string json_str with
               | Error err -> Error (InvalidJson err)
               | Ok json -> Ok json
         )

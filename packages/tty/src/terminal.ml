@@ -25,7 +25,7 @@ type t = {
   input_buffer: input_buffer;
 }
 
-let io_error_of_system_error = fun error -> IO.of_system_error error
+let io_error_of_system_error = fun error -> IO.from_system_error error
 
 let write_with = fun write bytes ->
   let rec loop offset remaining =

@@ -1,0 +1,119 @@
+---
+const principles = [
+  {
+    id: "principle-joy",
+    title: "Optimize for Developer Joy",
+    paragraphs: [
+      "I get joy out of building good software. Especially when it works, but even more so when it looks beautiful and runs fast.",
+      "Every interaction with Riot should make information clear, feedback actionable, and iteration fast. Put commands near claims, examples near explanations, and recovery paths near failures.",
+      "Joy does not mean everything is soft, friendly, or simplified until it becomes useless. Riot can be sharp. It can be loud. It can be opinionated. It can say no.",
+    ],
+    examples: [
+      "Package tables keep version, docs state, owner, and freshness close to the package name.",
+      "Command examples sit next to the prose that explains them.",
+      "Errors end with a concrete fix instead of a vague suggestion.",
+    ],
+  },
+  {
+    id: "principle-platform",
+    title: "Design as One Piece",
+    paragraphs: [
+      "Riot is one piece, not many. The compiler, runtime, actor model, package manager, docs generator, registry, test runner, formatter, diagnostics, install scripts, standard library, and website should feel like parts of the same whole.",
+      "Make the preferred path obvious. A golden path is not a prison; it is the route designed, tested, documented, and supported end to end. The design system should make those paths visible: install this, run this, add this package, read these docs, fix this error, publish this way.",
+      "The core model is not up for committee redesign. Riot does not need formatter knobs, old-tool compatibility as identity, or every surface assembled from unrelated options.",
+    ],
+    examples: [
+      "The same tokens drive the design-system page, component demos, docs mock, registry mock, and CLI surfaces.",
+      "The table of contents follows the same section order as the document.",
+      "The hero, footer, docs, and registry examples all use one voice and one visual grammar.",
+    ],
+  },
+  {
+    id: "principle-shipping",
+    title: "Build for Shipping",
+    paragraphs: [
+      "Riot exists so you can ship real software. The design system should help people understand, install, try, build, test, publish, debug, and keep going.",
+      "The Riot path is: make it work, learn whether it is the right thing, make it beautiful, make it fast where it needs to be fast, and keep shipping.",
+      "Do not reward performative complexity, academic posturing, elaborate setup rituals, or pages that brand and decorate without moving the builder forward.",
+    ],
+    examples: [
+      "Buttons use imperative labels like Install, Read, Add, and Publish.",
+      "Copyable commands stay close to install, fix, and publish explanations.",
+      "Application rules name the task, required information, traps to avoid, and primary components.",
+    ],
+  },
+  {
+    id: "principle-agent",
+    title: "Human-led, agent-ready",
+    paragraphs: [
+      "Riot is designed by humans. Taste matters. Authority matters. Judgment matters.",
+      "Use stable anchors, stable headings, stable field labels, package names, source paths, version numbers, error codes, copyable commands, structured metadata, explicit next steps, and short examples that agents can reuse safely.",
+      "AI-friendly does not mean vague chat UX, autopilot magic, generated slop, or letting the AI own the taste. The captain is human.",
+    ],
+    examples: [
+      "The page rail exposes durable section anchors, not every tiny component variant.",
+      "Tables include captions and labels so the content degrades cleanly into text.",
+      "Agent-ready voice examples use stable fields like package, source, wanted, and fix.",
+    ],
+  },
+  {
+    id: "principle-crew",
+    title: "Trust Builders With Power",
+    paragraphs: [
+      "Riot trusts you with powerful tools. The stack should be approachable, but it should not be timid.",
+      "Make power legible: show code, signatures, generated artifacts, runtime behavior, unsafe boundaries, platform caveats, what the tool did, and how to go deeper.",
+      "Do not hide powerful concepts behind soft language. Power tools need visible edges.",
+    ],
+    examples: [
+      "Code blocks show real commands and structured output instead of decorative terminal chrome.",
+      "Callouts use explicit warning, danger, success, and note variants when the reader needs a stronger signal.",
+      "Docs examples expose signatures and module context instead of hiding the machinery.",
+    ],
+  },
+];
+
+const whyRiot = [
+  "I wanted an ML-family language and ecosystem that felt beautiful and practical: actor-based, multi-core ready, type safe, and delightful to use end to end. Something built for shipping.",
+  "Riot is my take on what an ML stack should feel like in 2026: opinionated unified tooling, a modern packaging story with built-in docs, actor-oriented by default, a standard library for 80% of everything you'll ever need, and one flag over the whole thing.",
+  "Riot is about building software that works, shipping it quickly, making it beautiful when it proves itself useful, and enjoying the work along the way.",
+  "It is the most fun I've had programming in my entire career.",
+  "Jolly Roger is Riot’s design system, in many ways our very own pirate flag, and it describes the values this stack, and all the supporting systems around it, lives and dies by.",
+];
+
+---
+
+<section class="jr-section" id="principles">
+  <div class="jr-section-body">
+      <div class="jr-intro principle-opening">
+        <p class="jr-kicker">Why Riot?</p>
+        <div class="principle-opening__copy" id="why-this-exists">
+          <p class="jr-manifesto-line">
+            <span>There are many OCaml stacks.</span>
+            <span>This one is mine.</span>
+          </p>
+          {whyRiot.map((paragraph) => <p>{paragraph}</p>)}
+        </div>
+      </div>
+
+      <div class="principle-list">
+        {
+          principles.map((principle, index) => (
+            <article class="principle-card" id={principle.id}>
+              <div class="principle-card__body">
+                <h2>#{String(index + 1).padStart(2, "0")} - {principle.title}</h2>
+                <div class="principle-copy">
+                  {principle.paragraphs.map((paragraph) => <p>{paragraph}</p>)}
+                </div>
+                <div class="principle-examples">
+                  <p class="jr-label">Where it shows up</p>
+                  <ul class="jr-list jr-list--rule">
+                    {principle.examples.map((example) => <li>{example}</li>)}
+                  </ul>
+                </div>
+              </div>
+            </article>
+          ))
+        }
+      </div>
+  </div>
+</section>

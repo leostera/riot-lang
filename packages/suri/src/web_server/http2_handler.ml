@@ -217,16 +217,16 @@ let request_of_header_pairs = fun headers body ->
           match require_pseudo_header Path headers with
           | Error error -> Error error
           | Ok path -> (
-              let method_ = Net.Http.Method.of_string method_value in
+              let method_ = Net.Http.Method.from_string method_value in
               let headers =
                 List.filter ~fn:(fun (k, _) -> not (String.starts_with ~prefix:":" k)) headers
               in
-              match Net.Uri.of_string path with
+              match Net.Uri.from_string path with
               | Error reason -> Error (InvalidPath { value = path; reason })
               | Ok uri ->
                   let http_request =
                     let request = Net.Http.Request.create method_ uri in
-                    Net.Http.Request.with_headers request (Net.Http.Header.of_list headers)
+                    Net.Http.Request.with_headers request (Net.Http.Header.from_list headers)
                   in
                   Ok (Request.from_http ~body http_request)
             )

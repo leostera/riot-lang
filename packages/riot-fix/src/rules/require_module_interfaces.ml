@@ -1,6 +1,6 @@
 open Std
 
-let rule_id = Rule_id.of_string "require-module-interfaces"
+let rule_id = Rule_id.from_string "require-module-interfaces"
 
 let rule_description = "Library source modules should usually have a matching .mli file"
 

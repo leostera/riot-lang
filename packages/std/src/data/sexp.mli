@@ -13,7 +13,7 @@ open Global
 
    ```ocaml open Std.Data
 
-   (* Parse from string *) match Sexp.of_string "(name Alice (age 30))" with |
+   (* Parse from string *) match Sexp.from_string "(name Alice (age 30))" with |
    Ok sexp -> Sexp.to_string sexp (* "(name Alice (age 30))" *) | Error msg ->
    Log.error "Parse error: %s" msg
 
@@ -24,7 +24,7 @@ open Global
 
    Extracting data:
 
-   ```ocaml let config = Sexp.of_string "(config (debug true) (port 8080))" |>
+   ```ocaml let config = Sexp.from_string "(config (debug true) (port 8080))" |>
    Result.unwrap in
 
    match Sexp.to_list config with | Some (Atom "config" :: fields) -> (* Look
@@ -70,9 +70,9 @@ exception Parse_error of string
    ## Examples
 
    ```ocaml
-   Sexp.of_string "(hello world)"  (* Ok (List [Atom "hello"; Atom "world"]) *)
-   Sexp.of_string "atom"  (* Ok (Atom "atom") *)
-   Sexp.of_string "(unclosed"  (* Error "..." *)
+   Sexp.from_string "(hello world)"  (* Ok (List [Atom "hello"; Atom "world"]) *)
+   Sexp.from_string "atom"  (* Ok (Atom "atom") *)
+   Sexp.from_string "(unclosed"  (* Error "..." *)
    ```
 
    ## Syntax
@@ -81,7 +81,7 @@ exception Parse_error of string
    - Lists: Enclosed in parentheses [(...].
    - Whitespace: Separates atoms, ignored otherwise.
 *)
-val of_string: string -> (t, string) result
+val from_string: string -> (t, string) result
 
 (**
    Parses a string, raising [Parse_error] on failure.
@@ -272,9 +272,9 @@ module Csexp: sig
      ## Examples
 
      ```ocaml
-     Csexp.of_string "5:hello"  (* Ok (Atom "hello") *)
-     Csexp.of_string "(1:a1:b)"  (* Ok (List [Atom "a"; Atom "b"]) *)
+     Csexp.from_string "5:hello"  (* Ok (Atom "hello") *)
+     Csexp.from_string "(1:a1:b)"  (* Ok (List [Atom "a"; Atom "b"]) *)
      ```
   *)
-  val of_string: string -> (t, string) result
+  val from_string: string -> (t, string) result
 end

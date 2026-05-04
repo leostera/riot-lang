@@ -52,7 +52,7 @@ let no_color = No_color
 
 let cap_rgb = fun x -> Int.(min (max 0 x) 255)
 
-let of_rgb = fun (r, g, b) -> RGB (cap_rgb r, cap_rgb g, cap_rgb b)
+let from_rgb = fun (r, g, b) -> RGB (cap_rgb r, cap_rgb g, cap_rgb b)
 
 let make = fun str ->
   if String.starts_with ~prefix:"#" str then

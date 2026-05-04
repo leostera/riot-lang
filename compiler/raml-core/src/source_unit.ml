@@ -37,7 +37,7 @@ let split_source_lines = fun source ->
     else
       parts
 
-let of_source = fun ~relpath ~source ->
+let from_source = fun ~relpath ~source ->
   match kind_of_relpath relpath with
   | Error _ as error -> error
   | Ok kind ->

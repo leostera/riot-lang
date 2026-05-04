@@ -17,4 +17,4 @@ let make = fun () ->
 
 let to_string = fun t -> t
 
-let of_string = fun s -> s
+let from_string = fun s -> s

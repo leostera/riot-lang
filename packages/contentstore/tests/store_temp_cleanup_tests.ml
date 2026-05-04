@@ -51,7 +51,7 @@ let test_failed_save_object_cleans_immutable_temp_files = fun _ctx ->
         |> Result.expect ~msg:"create blocked dir should succeed"
       in
       let _ =
-        Fs.set_permissions blocked_dir (Fs.Permissions.of_mode 0o555)
+        Fs.set_permissions blocked_dir (Fs.Permissions.from_mode 0o555)
         |> Result.expect ~msg:"chmod blocked dir should succeed"
       in
       let result =
@@ -81,7 +81,7 @@ let test_failed_save_named_object_cleans_mutable_temp_files = fun _ctx ->
         |> Result.expect ~msg:"create blocked dir should succeed"
       in
       let _ =
-        Fs.set_permissions blocked_dir (Fs.Permissions.of_mode 0o555)
+        Fs.set_permissions blocked_dir (Fs.Permissions.from_mode 0o555)
         |> Result.expect ~msg:"chmod blocked dir should succeed"
       in
       let result =
@@ -116,7 +116,7 @@ let test_failed_save_file_cleans_immutable_temp_files = fun _ctx ->
         |> Result.expect ~msg:"create blocked dir should succeed"
       in
       let _ =
-        Fs.set_permissions blocked_dir (Fs.Permissions.of_mode 0o555)
+        Fs.set_permissions blocked_dir (Fs.Permissions.from_mode 0o555)
         |> Result.expect ~msg:"chmod blocked dir should succeed"
       in
       let result =

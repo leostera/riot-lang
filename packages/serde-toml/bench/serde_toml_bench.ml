@@ -442,7 +442,7 @@ let manifest_of_toml = fun value ->
       field table "scores"
       |> array_of_toml
       |> List.map ~fn:int_of_toml
-      |> Array.of_list;
+      |> Array.from_list;
     stops =
       field table "stops"
       |> array_of_toml
@@ -452,7 +452,7 @@ let manifest_of_toml = fun value ->
       field table "mirrors"
       |> array_of_toml
       |> List.map ~fn:stop_of_toml
-      |> Array.of_list;
+      |> Array.from_list;
   }: manifest)
 
 let equal_stop = fun (left: stop) (right: stop) ->

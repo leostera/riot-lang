@@ -13,7 +13,7 @@ type t = {
 
 let library_cmxa: t -> Path.t = fun dep ->
   let cmxa =
-    Module_name.(of_string (Package_name.to_string dep.package.name)
+    Module_name.(from_string (Package_name.to_string dep.package.name)
     |> cmxa)
   in
   Path.(dep.artifact_dir / cmxa)

@@ -13,7 +13,7 @@ type message =
 val make:
   reader:IO.Reader.t ->
   writer:IO.Writer.t ->
-  of_io_error:(IO.error -> Error.t) ->
+  from_io_error:(IO.error -> Error.t) ->
   uri:Net.Uri.t ->
   t
 

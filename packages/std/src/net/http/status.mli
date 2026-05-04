@@ -13,7 +13,7 @@
    let status = Status.Ok in Status.to_int status (* 200 *)
    Status.reason_phrase status (* "OK" *)
 
-   let status = Status.of_int 404 in (* Status.NotFound *) ```
+   let status = Status.from_int 404 in (* Status.NotFound *) ```
 
    Checking status categories:
 
@@ -183,10 +183,10 @@ type error =
 
    ## Examples
 
-   ```ocaml Status.of_int 200 (* Ok *) Status.of_int 404 (* NotFound *)
-   Status.of_int 999 (* Extension 999 *) ```
+   ```ocaml Status.from_int 200 (* Ok *) Status.from_int 404 (* NotFound *)
+   Status.from_int 999 (* Extension 999 *) ```
 *)
-val of_int: int -> t
+val from_int: int -> t
 
 (**
    Converts status code to integer value.
@@ -203,10 +203,10 @@ val to_int: t -> int
 
    ## Examples
 
-   ```ocaml Status.of_string "200" (* Ok (Ok) *) Status.of_string "404" (* Ok
-   (NotFound) *) Status.of_string "abc" (* Error InvalidStatus *) ```
+   ```ocaml Status.from_string "200" (* Ok (Ok) *) Status.from_string "404" (* Ok
+   (NotFound) *) Status.from_string "abc" (* Error InvalidStatus *) ```
 *)
-val of_string: string -> (t, error) Kernel.result
+val from_string: string -> (t, error) Kernel.result
 
 (**
    Converts status code to string representation of the integer.

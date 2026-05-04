@@ -127,7 +127,7 @@ let session_key: t Conn.assign_key = Conn.assign_key ()
 let create_validated = fun ~cookie_name ~secret () ->
   let now =
     Time.SystemTime.secs (Time.SystemTime.now ())
-    |> Int64.of_int
+    |> Int64.from_int
   in
   let data = { values = HashMap.create (); created_at = now; expires_at = Option.none } in
   {
@@ -170,7 +170,7 @@ let is_expired = fun session ->
   | Option.Some exp ->
       let now =
         Time.SystemTime.secs (Time.SystemTime.now ())
-        |> Int64.of_int
+        |> Int64.from_int
       in
       Int64.compare now exp = Order.GT
   | Option.None -> false
@@ -220,21 +220,21 @@ let from_json = fun json ->
         match get_field "created_at" json with
         | Option.Some v -> (
             match get_int v with
-            | Option.Some n -> Int64.of_int n
+            | Option.Some n -> Int64.from_int n
             | Option.None ->
                 Time.SystemTime.secs (Time.SystemTime.now ())
-                |> Int64.of_int
+                |> Int64.from_int
           )
         | Option.None ->
             Time.SystemTime.secs (Time.SystemTime.now ())
-            |> Int64.of_int
+            |> Int64.from_int
       in
       let expires_at =
         match get_field "expires_at" json with
         | Option.Some Null -> Option.none
         | Option.Some v -> (
             match get_int v with
-            | Option.Some n -> Option.some (Int64.of_int n)
+            | Option.Some n -> Option.some (Int64.from_int n)
             | Option.None -> Option.none
           )
         | Option.None -> Option.none
@@ -298,7 +298,7 @@ let from_cookie_value = fun ~cookie_name ~secret cookie_value ->
         (
           match decode_payload payload with
           | Result.Ok json_str -> (
-              match Data.Json.of_string json_str with
+              match Data.Json.from_string json_str with
               | Result.Ok json -> (
                   match from_json json with
                   | Option.Some data ->

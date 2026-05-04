@@ -322,7 +322,7 @@ let non_empty_int_array_arb = fun ~max_count ->
 
 let iovec_into_string_roundtrips =
   property
-    "IO.IoVec of_string_array flattens with preserved order"
+    "IO.IoVec from_string_array flattens with preserved order"
     Arbitrary.(array string)
     (fun values ->
       let iov =
@@ -373,7 +373,7 @@ let array_map_preserves_order =
 
 let char_of_int_roundtrips_valid_bytes =
   property
-    "Char.of_int roundtrips valid byte values"
+    "Char.from_int roundtrips valid byte values"
     Arbitrary.int
     (fun raw ->
       let value = Int.abs raw mod 256 in
@@ -400,7 +400,7 @@ let result_map_error_preserves_ok =
 
 let bytes_string_roundtrip =
   property
-    "Bytes.of_string and Bytes.to_string roundtrip arbitrary strings"
+    "Bytes.from_string and Bytes.to_string roundtrip arbitrary strings"
     Arbitrary.string
     (fun value ->
       Kernel.String.equal
@@ -423,7 +423,7 @@ let bytes_sub_string_matches_string_sub =
 
 let string_bytes_roundtrip =
   property
-    "String.to_bytes and String.of_bytes roundtrip arbitrary strings"
+    "String.to_bytes and String.from_bytes roundtrip arbitrary strings"
     Arbitrary.string
     (fun value ->
       Kernel.String.equal
@@ -468,7 +468,7 @@ let path_join_is_associative_for_simple_segments =
 
 let path_of_string_roundtrips =
   property
-    "Path.of_string and Path.to_string roundtrip arbitrary text"
+    "Path.from_string and Path.to_string roundtrip arbitrary text"
     Arbitrary.string
     (fun value -> Kernel.String.equal (Kernel.Path.to_string (Kernel.Path.from_string value)) value)
 

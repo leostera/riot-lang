@@ -16,7 +16,7 @@ module Module_summary = struct
     needs_closure_runtime: bool;
   }
 
-  let of_compilation_unit = fun (compilation_unit: Wasm_types.Compilation_unit.t) ->
+  let from_compilation_unit = fun (compilation_unit: Wasm_types.Compilation_unit.t) ->
     {
       unit_name = compilation_unit.unit_id.unit_name;
       imports = List.map compilation_unit.imports ~fn:Wasm_types.Import.key;
@@ -51,10 +51,10 @@ module Object = struct
     program: Wasm_types.Compilation_unit.t;
   }
 
-  let of_compilation_unit = fun (program: Wasm_types.Compilation_unit.t) ->
+  let from_compilation_unit = fun (program: Wasm_types.Compilation_unit.t) ->
     {
       unit_name = program.unit_id.unit_name;
-      summary = Module_summary.of_compilation_unit program;
+      summary = Module_summary.from_compilation_unit program;
       program
     }
 

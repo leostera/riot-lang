@@ -31,7 +31,7 @@ let websocket_request = fun
   ?(headers = [("upgrade", "websocket"); ("connection", "keep-alive, Upgrade"); ("sec-websocket-version", "13"); ("sec-websocket-key", valid_websocket_key);])
   () ->
   let uri =
-    Net.Uri.of_string "/"
+    Net.Uri.from_string "/"
     |> Result.unwrap
   in
   let http_req =
@@ -50,7 +50,7 @@ let websocket_request = fun
 let http_request = fun
   ?(method_ = Net.Http.Method.Get) ?(version = Net.Http.Version.Http11) ?(headers = []) () ->
   let uri =
-    Net.Uri.of_string "/"
+    Net.Uri.from_string "/"
     |> Result.unwrap
   in
   Net.Http.Request.create method_ uri
@@ -141,15 +141,15 @@ let test_accepts_only_requires_content_type_for_declared_body = fun _ctx ->
   Test.assert_false
     (Accepts.request_declares_body
       ~method_:Net.Http.Method.Post
-      ~headers:(Net.Http.Header.of_list [ ("content-length", "0"); ]));
+      ~headers:(Net.Http.Header.from_list [ ("content-length", "0"); ]));
   Test.assert_true
     (Accepts.request_declares_body
       ~method_:Net.Http.Method.Post
-      ~headers:(Net.Http.Header.of_list [ ("content-length", "12"); ]));
+      ~headers:(Net.Http.Header.from_list [ ("content-length", "12"); ]));
   Test.assert_true
     (Accepts.request_declares_body
       ~method_:Net.Http.Method.Patch
-      ~headers:(Net.Http.Header.of_list [ ("transfer-encoding", "chunked"); ]));
+      ~headers:(Net.Http.Header.from_list [ ("transfer-encoding", "chunked"); ]));
   Ok ()
 
 let test_accepts_validate_reports_malformed_accept = fun _ctx ->

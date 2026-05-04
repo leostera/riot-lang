@@ -13,8 +13,6 @@ let length = List.length
 
 let from_list entries = entries
 
-let of_list = from_list
-
 let to_list entries = entries
 
 let get entries ~key =

@@ -3,7 +3,7 @@ open Std
 module H = Rule_helpers
 module Ast = Syn.Ast
 
-let rule_id = Rule_id.of_string "prefer-sequences-over-let-unit"
+let rule_id = Rule_id.from_string "prefer-sequences-over-let-unit"
 
 let rule_description = "Use sequences instead of `let () = ... in ...`"
 

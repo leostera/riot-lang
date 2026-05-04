@@ -13,6 +13,6 @@ type t = {
   nonempty_lines: int;
   has_trailing_newline: bool;
 }
-val of_source: relpath:Path.t -> source:string -> (t, string) result
+val from_source: relpath:Path.t -> source:string -> (t, string) result
 
 val to_json: t -> Json.t

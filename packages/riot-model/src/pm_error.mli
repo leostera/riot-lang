@@ -79,4 +79,4 @@ val message: t -> string
 
 val to_json: t -> Json.t
 
-val of_json: Json.t -> (t, string) result
+val from_json: Json.t -> (t, string) result

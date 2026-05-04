@@ -24,7 +24,7 @@
    Parse and validate:
 
    ```ocaml
-   match UUID.of_string "550e8400-e29b-41d4-a716-446655440000" with
+   match UUID.from_string "550e8400-e29b-41d4-a716-446655440000" with
    | Ok uuid ->
        UUID.version uuid  (* Some 4 *)
        UUID.is_nil uuid   (* false *)
@@ -47,7 +47,7 @@
    let cache = Collections.HashMap.create () in
    Collections.HashMap.insert cache id "some data" |> ignore;
 
-   let ids = Collections.HashSet.of_list [id1; id2; id3] in
+   let ids = Collections.HashSet.from_list [id1; id2; id3] in
    ```
 
    ## UUID Versions
@@ -254,17 +254,17 @@ val ns_x500: t
    ## Examples
 
    ```ocaml
-   UUID.of_string "550e8400-e29b-41d4-a716-446655440000"
+   UUID.from_string "550e8400-e29b-41d4-a716-446655440000"
    (* Ok uuid *)
 
-   UUID.of_string "550E8400-E29B-41D4-A716-446655440000"
+   UUID.from_string "550E8400-E29B-41D4-A716-446655440000"
    (* Ok uuid - uppercase works *)
 
-   UUID.of_string "not-a-uuid"
+   UUID.from_string "not-a-uuid"
    (* Error (InvalidUuid "...") *)
    ```
 *)
-val of_string: string -> (t, error) result
+val from_string: string -> (t, error) result
 
 (**
    Creates a UUID from 16-byte binary representation.
@@ -273,12 +273,12 @@ val of_string: string -> (t, error) result
 
    ```ocaml
    let bytes = Bytes.create 16 in
-   match UUID.of_bytes bytes with
+   match UUID.from_bytes bytes with
    | Ok uuid -> ()
    | Error _ -> ()
    ```
 *)
-val of_bytes: bytes -> (t, error) result
+val from_bytes: bytes -> (t, error) result
 
 (**
    Converts UUID to string format.

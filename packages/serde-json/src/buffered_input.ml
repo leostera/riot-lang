@@ -19,9 +19,9 @@ type scan_result = [`Stop of int * char | `Boundary of int | `Eof of int]
 
 let default_capacity = 131_072
 
-let of_string = fun input -> String_input { input; pos = 0 }
+let from_string = fun input -> String_input { input; pos = 0 }
 
-let of_reader = fun reader ->
+let from_reader = fun reader ->
   Reader_input {
     reader;
     buffer = IO.Buffer.create ~size:default_capacity;

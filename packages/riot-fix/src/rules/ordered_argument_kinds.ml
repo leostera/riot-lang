@@ -3,7 +3,7 @@ open Std
 module H = Rule_helpers
 module Ast = Syn.Ast
 
-let rule_id = Rule_id.of_string "ordered-argument-kinds"
+let rule_id = Rule_id.from_string "ordered-argument-kinds"
 
 let rule_description =
   "Function parameters should be ordered as labeled, then optional, then positional"

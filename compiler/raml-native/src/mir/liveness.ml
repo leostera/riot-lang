@@ -25,27 +25,27 @@ let remove = fun live name ->
 let union = fun left right ->
   HashSet.union left right
 
-let of_operand = fun operand ->
+let from_operand = fun operand ->
   match operand with
   | Operand.Register name -> HashSet.from_list [ name ]
   | Operand.Global _
   | Operand.Symbol_address _
   | Operand.Literal _ -> empty ()
 
-let of_callee = fun callee ->
+let from_callee = fun callee ->
   match callee with
   | Callee.Direct _ -> empty ()
-  | Callee.Indirect operand -> of_operand operand
+  | Callee.Indirect operand -> from_operand operand
 
-let of_operands = fun operands ->
-  List.fold_left operands ~init:(empty ()) ~fn:(fun live operand -> union live (of_operand operand))
+let from_operands = fun operands ->
+  List.fold_left operands ~init:(empty ()) ~fn:(fun live operand -> union live (from_operand operand))
 
 let rec before_instruction = fun ~after instruction ->
   match instruction with
   | Instruction.Move { dst; src } ->
-      union (remove after dst) (of_operand src)
+      union (remove after dst) (from_operand src)
   | Instruction.Store_global { src; _ } ->
-      union after (of_operand src)
+      union after (from_operand src)
   | Instruction.Call { dst; callee; arguments } ->
       union
         (
@@ -55,18 +55,18 @@ let rec before_instruction = fun ~after instruction ->
               | Some dst -> remove after dst
               | None -> after
             )
-            (of_callee callee)
+            (from_callee callee)
         )
-        (of_operands arguments)
+        (from_operands arguments)
   | Instruction.If_then_else if_then_else ->
       union
         (union
           (before_instructions ~after if_then_else.then_)
           (before_instructions ~after if_then_else.else_))
-        (of_operand if_then_else.condition)
+        (from_operand if_then_else.condition)
   | Instruction.Return operand -> (
       match operand with
-      | Some operand -> of_operand operand
+      | Some operand -> from_operand operand
       | None -> empty ()
     )
   | Instruction.Comment _ ->

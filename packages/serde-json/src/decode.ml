@@ -1310,7 +1310,7 @@ let parse_int64 = fun state ->
   if number.is_float then
     invalid_field_type ()
   else
-    match Int64.of_string_opt number.text with
+    match Int64.from_string_opt number.text with
     | Some value -> value
     | None -> invalid_field_type ()
 
@@ -1324,7 +1324,7 @@ let parse_int32 = fun state ->
   if number.is_float then
     invalid_field_type ()
   else
-    match Int32.of_string_opt number.text with
+    match Int32.from_string_opt number.text with
     | Some value -> value
     | None -> invalid_field_type ()
 
@@ -1770,11 +1770,11 @@ let finish = fun state value ->
       Error (`Msg ("extra input after JSON value at position "
       ^ Int.to_string (Input.position state.input)))
 
-let of_input = fun decode input ->
+let from_input = fun decode input ->
   let state = { input; scratch = IO.Buffer.create ~size:64 } in
   let* value = De.run decode backend state in
   finish state value
 
-let of_string = fun decode input -> of_input decode (Input.of_string input)
+let from_string = fun decode input -> from_input decode (Input.from_string input)
 
-let of_reader = fun decode reader -> of_input decode (Input.of_reader reader)
+let from_reader = fun decode reader -> from_input decode (Input.from_reader reader)

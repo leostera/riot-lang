@@ -3,7 +3,7 @@ open Std
 module H = Rule_helpers
 module Ast = Syn.Ast
 
-let rule_id = Rule_id.of_string "descriptive-type-variables"
+let rule_id = Rule_id.from_string "descriptive-type-variables"
 
 let rule_description =
   "Type variables in type definitions should use descriptive names instead of short placeholders"

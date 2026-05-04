@@ -216,7 +216,7 @@ let rec validate_field (field: Spec.field) toml_opt: (Spec.value, string) result
     | Uri { default } -> (
         match toml_opt with
         | Some (Data.Toml.String s) -> (
-            match Net.Uri.of_string s with
+            match Net.Uri.from_string s with
             | Ok uri -> Ok (Spec.Uri uri)
             | Error _ -> Error (field_name ^ ": invalid URI: " ^ s)
           )
@@ -264,7 +264,7 @@ let rec validate_field (field: Spec.field) toml_opt: (Spec.value, string) result
     | Uuid { default } -> (
         match toml_opt with
         | Some (Data.Toml.String s) -> (
-            match Uuid.of_string s with
+            match Uuid.from_string s with
             | Ok uuid -> Ok (Spec.Uuid uuid)
             | Error _ -> Error (field_name ^ ": invalid UUID: " ^ s)
           )

@@ -5,4 +5,4 @@
     diverge further, for example `js-unknown-ecma` vs `js-unknown-commonjs`. *)
 type t =
   | Esm
-val of_context: Raml_core.Compilation_context.t -> t
+val from_context: Raml_core.Compilation_context.t -> t

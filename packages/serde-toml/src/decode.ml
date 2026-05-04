@@ -36,12 +36,12 @@ let int_of_int64 = fun value ->
 
 let int32_of_int64 = fun value ->
   if (
-    match Int64.compare value (Int64.of_int32 Int32.min_int) with
+    match Int64.compare value (Int64.from_int32 Int32.min_int) with
     | Order.LT -> true
     | Order.EQ
     | Order.GT -> false
   ) || (
-    match Int64.compare value (Int64.of_int32 Int32.max_int) with
+    match Int64.compare value (Int64.from_int32 Int32.max_int) with
     | Order.GT -> true
     | Order.LT
     | Order.EQ -> false
@@ -82,7 +82,7 @@ and array_backend: 'value. state -> 'value De.t -> 'value array = fun state deco
   Document.array_iter
     (fun value -> items := with_current state value (fun () -> decode.run backend state) :: !items)
     values;
-  Array.of_list (List.rev !items)
+  Array.from_list (List.rev !items)
 
 and record_backend:
   'field 'acc 'value. state ->

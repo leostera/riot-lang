@@ -27,7 +27,7 @@ let io_error_of_udp_error = fun __tmp1 ->
   | Kernel.Net.UdpSocket.DestinationAddressRequired -> IO.Destination_address_required
   | Kernel.Net.UdpSocket.AddressInUse -> IO.Address_already_in_use
   | Kernel.Net.UdpSocket.AddressNotAvailable -> IO.Cannot_assign_requested_address
-  | Kernel.Net.UdpSocket.System error -> IO.of_system_error error
+  | Kernel.Net.UdpSocket.System error -> IO.from_system_error error
 
 let bind = fun ?(reuse_addr = true) ?(reuse_port = false) addr ->
   match Kernel.Net.UdpSocket.bind ~reuse_addr ~reuse_port addr with

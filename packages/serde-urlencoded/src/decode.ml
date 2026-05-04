@@ -92,19 +92,19 @@ let parse_bool = fun __tmp1 ->
   | _ -> invalid_field_type ()
 
 let parse_int = fun value ->
-  try Int.of_string value with
+  try Int.from_string value with
   | _ -> invalid_field_type ()
 
 let parse_int32 = fun value ->
-  try Int32.of_string value with
+  try Int32.from_string value with
   | _ -> invalid_field_type ()
 
 let parse_int64 = fun value ->
-  try Int64.of_string value with
+  try Int64.from_string value with
   | _ -> invalid_field_type ()
 
 let parse_float = fun value ->
-  try Float.of_string value with
+  try Float.from_string value with
   | _ -> invalid_field_type ()
 
 let rec backend: state De.backend = {
@@ -210,13 +210,13 @@ let finish_decode = fun state result ->
       else
         Error (`Msg "unsupported top-level value for application/x-www-form-urlencoded input")
 
-let of_string = fun decode input ->
+let from_string = fun decode input ->
   let state = { fields = parse_fields input; root_consumed = false; context = Top_level } in
   De.run decode backend state
   |> finish_decode state
 
-let of_reader = fun decode reader ->
+let from_reader = fun decode reader ->
   let buffer = IO.Buffer.create ~size:128 in
   match IO.read_to_end reader ~into:buffer with
-  | Ok _ -> of_string decode (IO.Buffer.contents buffer)
+  | Ok _ -> from_string decode (IO.Buffer.contents buffer)
   | Error err -> Error (`Io_error err)

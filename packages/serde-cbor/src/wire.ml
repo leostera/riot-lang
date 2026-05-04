@@ -84,7 +84,7 @@ let add_float64 = fun buffer value ->
   add_uint64_be buffer (Int64.bits_of_float value)
 
 let add_text = fun buffer value ->
-  add_header buffer major_text (Int64.of_int (String.length value));
+  add_header buffer major_text (Int64.from_int (String.length value));
   IO.Buffer.add_string buffer value
 
 let rec encode_value = fun buffer value ->
@@ -105,10 +105,10 @@ let rec encode_value = fun buffer value ->
   | Float value -> add_float64 buffer value
   | Text value -> add_text buffer value
   | Array values ->
-      add_header buffer major_array (Int64.of_int (List.length values));
+      add_header buffer major_array (Int64.from_int (List.length values));
       List.for_each values ~fn:(encode_value buffer)
   | Map items ->
-      add_header buffer major_map (Int64.of_int (List.length items));
+      add_header buffer major_map (Int64.from_int (List.length items));
       List.for_each
         items
         ~fn:(fun (key, value) ->
@@ -156,8 +156,8 @@ let read_uint32_be = fun input ->
   let* b2 = read_byte input in
   let* b3 = read_byte input in
   Ok Int64.(logor
-    (shift_left (of_int b0) 24)
-    (logor (shift_left (of_int b1) 16) (logor (shift_left (of_int b2) 8) (of_int b3))))
+    (shift_left (from_int b0) 24)
+    (logor (shift_left (from_int b1) 16) (logor (shift_left (from_int b2) 8) (from_int b3))))
 
 let read_uint64_be = fun input ->
   let open Int64 in
@@ -170,16 +170,16 @@ let read_uint64_be = fun input ->
   let* b6 = read_byte input in
   let* b7 = read_byte input in
   Ok (logor
-    (shift_left (of_int b0) 56)
+    (shift_left (from_int b0) 56)
     (logor
-      (shift_left (of_int b1) 48)
+      (shift_left (from_int b1) 48)
       (logor
-        (shift_left (of_int b2) 40)
+        (shift_left (from_int b2) 40)
         (logor
-          (shift_left (of_int b3) 32)
+          (shift_left (from_int b3) 32)
           (logor
-            (shift_left (of_int b4) 24)
-            (logor (shift_left (of_int b5) 16) (logor (shift_left (of_int b6) 8) (of_int b7))))))))
+            (shift_left (from_int b4) 24)
+            (logor (shift_left (from_int b5) 16) (logor (shift_left (from_int b6) 8) (from_int b7))))))))
 
 let decode_half = fun bits ->
   let sign =
@@ -194,24 +194,24 @@ let decode_half = fun bits ->
     if Int.equal fraction 0 then
       sign *. 0.0
     else
-      sign *. (2. ** (-14.0)) *. (Float.of_int fraction /. 1_024.0)
+      sign *. (2. ** (-14.0)) *. (Float.from_int fraction /. 1_024.0)
   else if Int.equal exponent 0x1f then
     if Int.equal fraction 0 then
       sign *. Float.infinity
     else
       Float.nan
   else
-    sign *. (2. ** Float.of_int (exponent - 15)) *. (1.0 +. (Float.of_int fraction /. 1_024.0))
+    sign *. (2. ** Float.from_int (exponent - 15)) *. (1.0 +. (Float.from_int fraction /. 1_024.0))
 
 let read_argument = fun input minor ->
   match minor with
-  | n when n < 24 -> Ok (Int64.of_int n)
+  | n when n < 24 -> Ok (Int64.from_int n)
   | 24 ->
       read_byte input
-      |> Result.map ~fn:Int64.of_int
+      |> Result.map ~fn:Int64.from_int
   | 25 ->
       read_uint16_be input
-      |> Result.map ~fn:Int64.of_int
+      |> Result.map ~fn:Int64.from_int
   | 26 -> read_uint32_be input
   | 27 -> read_uint64_be input
   | 31 -> error "serde-cbor does not support indefinite-length items"
@@ -220,7 +220,7 @@ let read_argument = fun input minor ->
 let read_count = fun input minor kind ->
   let* value = read_argument input minor in
   if (
-    match Int64.compare value (Int64.of_int Int.max_int) with
+    match Int64.compare value (Int64.from_int Int.max_int) with
     | Order.GT -> true
     | Order.LT
     | Order.EQ -> false

@@ -152,7 +152,7 @@ let color_of_rgb_clamps_components =
   Property.for_all
     Arbitrary.(triple int int int)
     (fun (red, green, blue) ->
-      match Tty.Color.of_rgb (red, green, blue) with
+      match Tty.Color.from_rgb (red, green, blue) with
       | Tty.Color.RGB (red, green, blue) ->
           Int.(red >= 0 && red <= 255 && green >= 0 && green <= 255 && blue >= 0 && blue <= 255)
       | _ -> false)
@@ -254,9 +254,9 @@ let tests = [
         "styled output does not inject newline or nul"
         styled_does_not_inject_newline_or_nul);
   Test.property
-    "color.of_rgb clamps components"
+    "color.from_rgb clamps components"
     ~examples
-    (fun _ctx -> assert_property "color.of_rgb clamps components" color_of_rgb_clamps_components);
+    (fun _ctx -> assert_property "color.from_rgb clamps components" color_of_rgb_clamps_components);
   Test.property
     "ansi foreground is not malformed"
     ~examples

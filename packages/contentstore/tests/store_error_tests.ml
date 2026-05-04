@@ -45,7 +45,7 @@ let test_save_object_into_unwritable_namespace_is_structured = fun _ctx ->
         |> Result.expect ~msg:"create blocked dir should succeed"
       in
       let _ =
-        Fs.set_permissions blocked_dir (Fs.Permissions.of_mode 0o555)
+        Fs.set_permissions blocked_dir (Fs.Permissions.from_mode 0o555)
         |> Result.expect ~msg:"chmod blocked dir should succeed"
       in
       let result =
@@ -69,7 +69,7 @@ let test_save_named_object_into_unwritable_namespace_is_structured = fun _ctx ->
         |> Result.expect ~msg:"create blocked dir should succeed"
       in
       let _ =
-        Fs.set_permissions blocked_dir (Fs.Permissions.of_mode 0o555)
+        Fs.set_permissions blocked_dir (Fs.Permissions.from_mode 0o555)
         |> Result.expect ~msg:"chmod blocked dir should succeed"
       in
       let result =
@@ -93,7 +93,7 @@ let test_open_object_permission_error_is_not_missing = fun _ctx ->
       in
       let path = Path.(object_parent_dir store hash / Path.v (Crypto.Digest.hex hash)) in
       let _ =
-        Fs.set_permissions path (Fs.Permissions.of_mode 0o000)
+        Fs.set_permissions path (Fs.Permissions.from_mode 0o000)
         |> Result.expect ~msg:"chmod object should succeed"
       in
       match Contentstore.open_object store ~hash with
@@ -119,7 +119,7 @@ let test_open_named_object_permission_error_is_not_missing = fun _ctx ->
       in
       let path = Path.(named_parent_dir store key / Path.v key_hash) in
       let _ =
-        Fs.set_permissions path (Fs.Permissions.of_mode 0o000)
+        Fs.set_permissions path (Fs.Permissions.from_mode 0o000)
         |> Result.expect ~msg:"chmod named object should succeed"
       in
       match Contentstore.open_named_object store ~key with
@@ -150,7 +150,7 @@ let test_commit_dir_failure_reports_context = fun _ctx ->
         |> Result.expect ~msg:"create trees root should succeed"
       in
       let _ =
-        Fs.set_permissions trees_root (Fs.Permissions.of_mode 0o555)
+        Fs.set_permissions trees_root (Fs.Permissions.from_mode 0o555)
         |> Result.expect ~msg:"chmod trees root should succeed"
       in
       let result =

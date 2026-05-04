@@ -58,7 +58,7 @@ let receive_response: type req res. (req, res) t -> (res Common.response, Common
   match receive_raw_response client with
   | Error e -> Error (Common.InternalError { context = "receive_response"; details = e })
   | Ok str -> (
-      match Json.of_string str with
+      match Json.from_string str with
       | Error e ->
           Error (Common.ParseError { raw_input = str; parse_error = Json.error_to_string e })
       | Ok json -> (
@@ -150,7 +150,7 @@ let call (type req res) (client: (req, res) t) ~method_ ?params () =
       match receive_raw_response client with
       | Error e -> Error (Common.InternalError { context = "call_receive"; details = e })
       | Ok str -> (
-          match Json.of_string str with
+          match Json.from_string str with
           | Error e ->
               Error (Common.ParseError { raw_input = str; parse_error = Json.error_to_string e })
           | Ok json -> (
@@ -235,7 +235,7 @@ let call_batch:
       | Error e -> Error (Common.InternalError { context = "call_batch_receive"; details = e })
       | Ok str ->
           let* json =
-            Json.of_string str
+            Json.from_string str
             |> Result.map_err
               ~fn:(fun e ->
                 Common.ParseError { raw_input = str; parse_error = Json.error_to_string e })

@@ -25,7 +25,7 @@ let parse_json_lines = fun ~cmd (output: command_output) ->
     match __tmp1 with
     | [] -> Ok (List.reverse acc)
     | line :: rest -> (
-        match Data.Json.of_string line with
+        match Data.Json.from_string line with
         | Ok json -> loop (json :: acc) rest
         | Error error ->
             Error (cmd

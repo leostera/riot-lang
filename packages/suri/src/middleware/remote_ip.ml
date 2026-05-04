@@ -26,7 +26,7 @@ let is_valid_ipv4_octet = fun value ->
   if len = 0 || len > 3 || not (String.for_all value ~fn:is_digit) then
     false
   else
-    match Int.of_string_opt value with
+    match Int.from_string_opt value with
     | Some octet -> octet >= 0 && octet <= 255
     | None -> false
 

@@ -22,24 +22,24 @@ external simple_hash_iovec_bytes: IO.IoVec.t -> bytes = "std_crypto_simple_hash_
 
 external hmac_sha256_bytes: string -> string -> bytes = "std_crypto_hmac_sha256"
 
-let md5 = fun data -> Hash.of_bytes (md5_bytes (Bytes.from_string data))
+let md5 = fun data -> Hash.from_bytes (md5_bytes (Bytes.from_string data))
 
-let md5_iovec = fun iov -> Hash.of_bytes (md5_iovec_bytes iov)
+let md5_iovec = fun iov -> Hash.from_bytes (md5_iovec_bytes iov)
 
-let sha1 = fun data -> Hash.of_bytes (sha1_bytes (Bytes.from_string data))
+let sha1 = fun data -> Hash.from_bytes (sha1_bytes (Bytes.from_string data))
 
-let sha1_iovec = fun iov -> Hash.of_bytes (sha1_iovec_bytes iov)
+let sha1_iovec = fun iov -> Hash.from_bytes (sha1_iovec_bytes iov)
 
-let sha256 = fun data -> Hash.of_bytes (sha256_bytes (Bytes.from_string data))
+let sha256 = fun data -> Hash.from_bytes (sha256_bytes (Bytes.from_string data))
 
-let sha256_iovec = fun iov -> Hash.of_bytes (sha256_iovec_bytes iov)
+let sha256_iovec = fun iov -> Hash.from_bytes (sha256_iovec_bytes iov)
 
-let sha512 = fun data -> Hash.of_bytes (sha512_bytes (Bytes.from_string data))
+let sha512 = fun data -> Hash.from_bytes (sha512_bytes (Bytes.from_string data))
 
-let sha512_iovec = fun iov -> Hash.of_bytes (sha512_iovec_bytes iov)
+let sha512_iovec = fun iov -> Hash.from_bytes (sha512_iovec_bytes iov)
 
 let hmac_sha256 = fun ~key ~data -> hmac_sha256_bytes key data
 
-let default_hash = fun data -> Hash.of_bytes (simple_hash_bytes (Bytes.from_string data))
+let default_hash = fun data -> Hash.from_bytes (simple_hash_bytes (Bytes.from_string data))
 
-let default_hash_iovec = fun iov -> Hash.of_bytes (simple_hash_iovec_bytes iov)
+let default_hash_iovec = fun iov -> Hash.from_bytes (simple_hash_iovec_bytes iov)

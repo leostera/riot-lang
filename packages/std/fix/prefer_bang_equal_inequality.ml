@@ -5,7 +5,7 @@ module Api = Fixme
 
 let package_name = "std"
 
-let package_rule_id = Api.Rule_id.of_string (package_name ^ ":prefer-bang-equal-inequality")
+let package_rule_id = Api.Rule_id.from_string (package_name ^ ":prefer-bang-equal-inequality")
 
 let explanation =
   Api.Explanation.{

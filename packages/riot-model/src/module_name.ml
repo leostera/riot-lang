@@ -18,7 +18,7 @@ let sanitize_name = fun name ->
         c)
     name
 
-let of_filename = fun ?(namespace = Namespace.empty) filename ->
+let from_filename = fun ?(namespace = Namespace.empty) filename ->
   let name =
     Path.remove_extension filename
     |> Path.basename
@@ -27,7 +27,7 @@ let of_filename = fun ?(namespace = Namespace.empty) filename ->
   in
   { filename; namespace; name }
 
-let of_string = fun ?(namespace = Namespace.empty) s ->
+let from_string = fun ?(namespace = Namespace.empty) s ->
   let name =
     sanitize_name s
     |> String.capitalize_ascii
@@ -35,7 +35,7 @@ let of_string = fun ?(namespace = Namespace.empty) s ->
   let filename = Path.v s in
   { filename; namespace; name }
 
-let of_path = fun path ->
+let from_path = fun path ->
   let name =
     Path.remove_extension path
     |> Path.basename

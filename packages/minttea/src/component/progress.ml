@@ -43,7 +43,7 @@ let make = fun
       (
         match color with
         | `Plain c -> `Plain c
-        | `Gradient Style.((No_color, No_color)) -> `Plain (Tty.Color.of_rgb (127, 127, 127))
+        | `Gradient Style.((No_color, No_color)) -> `Plain (Tty.Color.from_rgb (127, 127, 127))
         | `Gradient Style.((No_color, c)) -> `Plain c
         | `Gradient Style.((c, No_color)) -> `Plain c
         | `Gradient (start, finish) -> `Gradient (Style.gradient ~start ~finish ~steps:width)
@@ -86,7 +86,7 @@ let view = fun t ->
     else
       t.percent
   in
-  let full_size = Int.from_float (Float.floor (Float.of_int t.width *. t.percent)) in
+  let full_size = Int.from_float (Float.floor (Float.from_int t.width *. t.percent)) in
   (* Build progress bar as a pre-rendered string with ANSI codes using old Style module *)
   let color char =
     match t.color with

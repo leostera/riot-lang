@@ -4,7 +4,7 @@ open Std.Collections
 module H = Rule_helpers
 module Ast = Syn.Ast
 
-let rule_id = Rule_id.of_string "prefer-pipelines-for-nested-calls"
+let rule_id = Rule_id.from_string "prefer-pipelines-for-nested-calls"
 
 let rule_description = "Deeply nested function calls should usually be written as pipelines"
 

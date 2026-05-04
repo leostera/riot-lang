@@ -13,7 +13,7 @@ module Unit_id = struct
     kind: Source_unit.kind;
   }
 
-  let of_source_unit = fun (source_unit: Source_unit.t) ->
+  let from_source_unit = fun (source_unit: Source_unit.t) ->
     { relpath = source_unit.relpath; unit_name = source_unit.unit_name; kind = source_unit.kind }
 
   let to_json = fun unit_id ->
@@ -62,15 +62,15 @@ module Surface_path = struct
 
   let is_empty = Typ.Model.Surface_path.is_empty
 
-  let of_name = Typ.Model.Surface_path.of_name
+  let from_name = Typ.Model.Surface_path.from_name
 
-  let of_segments = Typ.Model.Surface_path.of_segments
+  let from_segments = Typ.Model.Surface_path.from_segments
 
-  let of_string = fun value ->
+  let from_string = fun value ->
     value
     |> String.split_on_char '.'
     |> List.filter ~fn:(fun segment -> not (String.equal segment ""))
-    |> of_segments
+    |> from_segments
 
   let to_segments = Typ.Model.Surface_path.to_segments
 
@@ -130,7 +130,7 @@ module Binding_id = struct
     | None -> Json.obj
       [
         ("kind", Json.string "persistent");
-        ("surface_path", Surface_path.to_json (Surface_path.of_string (to_string binding_id)));
+        ("surface_path", Surface_path.to_json (Surface_path.from_string (to_string binding_id)));
       ]
     | Some stamp ->
         let kind =
@@ -154,12 +154,12 @@ module Entity_id = struct
 
   let resolved = fun ~binding_id ~surface_path -> Resolved { binding_id; surface_path }
 
-  let of_binding_id = fun binding_id ->
-    resolved ~binding_id ~surface_path:(Surface_path.of_string (Binding_id.name binding_id))
+  let from_binding_id = fun binding_id ->
+    resolved ~binding_id ~surface_path:(Surface_path.from_string (Binding_id.name binding_id))
 
-  let of_surface_path = fun surface_path -> Unresolved surface_path
+  let from_surface_path = fun surface_path -> Unresolved surface_path
 
-  let of_name = fun name -> of_surface_path (Surface_path.of_name name)
+  let from_name = fun name -> from_surface_path (Surface_path.from_name name)
 
   let binding_id = fun entity ->
     match entity with
@@ -275,7 +275,7 @@ module Primitive = struct
     | Tuple_get -> "tuple_get"
     | Trace -> "trace"
 
-  let of_string = fun value ->
+  let from_string = fun value ->
     match value with
     | "add_float" -> Some Add_float
     | "subtract_float" -> Some Subtract_float

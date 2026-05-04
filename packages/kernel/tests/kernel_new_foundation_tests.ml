@@ -15,7 +15,7 @@ let test_bool_to_string_uses_stable_lowercase_literals = fun _ctx ->
 let test_char_of_int_checks_bounds = fun _ctx ->
   match (Kernel.Char.from_int 65, Kernel.Char.from_int (-1), Kernel.Char.from_int 256) with
   | (Some value, None, None) when Kernel.Char.to_int value = 65 -> Ok ()
-  | _ -> Error "expected Char.of_int to accept only byte-sized values"
+  | _ -> Error "expected Char.from_int to accept only byte-sized values"
 
 let test_array_init_builds_in_index_order = fun _ctx ->
   let seen = Kernel.Array.make ~count:4 ~value:(-1) in
@@ -248,7 +248,7 @@ let test_iovec_of_bytes_array_copies_source_buffers = fun _ctx ->
   if Kernel.IO.IoVec.to_string iov = "riot" then
     Ok ()
   else
-    Error "expected IoVec.of_bytes_array to copy source buffers into owned storage"
+    Error "expected IoVec.from_bytes_array to copy source buffers into owned storage"
 
 let test_iovec_into_bytes_returns_a_fresh_copy = fun _ctx ->
   let source = Kernel.Bytes.from_string "riot" in
@@ -300,7 +300,7 @@ let tests = [
   Test.case
     "Bool.to_string uses stable lowercase literals"
     test_bool_to_string_uses_stable_lowercase_literals;
-  Test.case "Char.of_int checks bounds" test_char_of_int_checks_bounds;
+  Test.case "Char.from_int checks bounds" test_char_of_int_checks_bounds;
   Test.case "Array.init builds in index order" test_array_init_builds_in_index_order;
   Test.case "Option.map leaves None unforced" test_option_map_leaves_none_unforced;
   Test.case "Result.and_then short-circuits errors" test_result_and_then_short_circuits_errors;
@@ -335,7 +335,7 @@ let tests = [
     "IoVec.create distributes remainder deterministically"
     test_iovec_create_distributes_remainder_deterministically;
   Test.case
-    "IoVec.of_bytes_array copies its source buffers"
+    "IoVec.from_bytes_array copies its source buffers"
     test_iovec_of_bytes_array_copies_source_buffers;
   Test.case "IoVec.into_bytes returns a fresh copy" test_iovec_into_bytes_returns_a_fresh_copy;
   Test.case

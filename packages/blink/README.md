@@ -23,7 +23,7 @@ let () = start ~apps:[] @@ fun () ->
   let open Result.Syntax in
 
   (* Parse URI *)
-  let* uri = Net.Uri.of_string "http://example.com" in
+  let* uri = Net.Uri.from_string "http://example.com" in
 
   (* Connect *)
   let* conn = Blink.connect uri in
@@ -50,7 +50,7 @@ Process chunks as they arrive without buffering the entire response:
 let () = start ~apps:[] @@ fun () ->
   let open Result.Syntax in
 
-  let* uri = Net.Uri.of_string "http://example.com/large-file" in
+  let* uri = Net.Uri.from_string "http://example.com/large-file" in
   let* conn = Blink.connect uri in
 
   let req = Net.Http.Request.create Net.Http.Method.Get uri in
@@ -88,7 +88,7 @@ let () = start ~apps:[] @@ fun () ->
 let download_with_progress url =
   let open Result.Syntax in
 
-  let* uri = Net.Uri.of_string url in
+  let* uri = Net.Uri.from_string url in
   let* conn = Blink.connect uri in
 
   let req = Net.Http.Request.create Net.Http.Method.Get uri in
@@ -116,7 +116,7 @@ let download_with_progress url =
 let post_json url data =
   let open Result.Syntax in
 
-  let* uri = Net.Uri.of_string url in
+  let* uri = Net.Uri.from_string url in
   let* conn = Blink.connect uri in
 
   let body = Data.Json.to_string data in
@@ -190,7 +190,7 @@ Establish TCP connection to the URI's host and port.
 
 **Example:**
 ```ocaml
-let* uri = Net.Uri.of_string "http://api.example.com:8080" in
+let* uri = Net.Uri.from_string "http://api.example.com:8080" in
 let* conn = Blink.connect uri in
 (* conn is ready for requests *)
 ```

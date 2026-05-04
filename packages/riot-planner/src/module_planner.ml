@@ -34,7 +34,7 @@ type direct_dependency_root = {
 }
 
 let root_module_name_of_package_name = fun package_name ->
-  Module_name.(of_string (Package_name.to_string package_name)
+  Module_name.(from_string (Package_name.to_string package_name)
   |> to_string)
 
 let dependency_package_by_name = fun depset package_name ->
@@ -210,7 +210,7 @@ let plan_node = fun (input: plan_input) ->
             match input.package.library with
             | Some _ ->
                 [
-                  Module_name.(of_string (Package_name.to_string input.package.name)
+                  Module_name.(from_string (Package_name.to_string input.package.name)
                   |> cmxa);
                 ]
             | None -> []

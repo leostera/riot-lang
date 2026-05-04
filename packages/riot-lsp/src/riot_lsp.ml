@@ -52,7 +52,7 @@ let log = fun logger ~level message ->
   | Some logger -> File_log.write logger ~level message
 
 let payload_summary = fun payload ->
-  match Json.of_string payload with
+  match Json.from_string payload with
   | Error error -> "invalid-json payload: " ^ Json.error_to_string error
   | Ok json -> (
       match Jsonrpc.request_of_json json with

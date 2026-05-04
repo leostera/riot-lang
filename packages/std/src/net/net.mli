@@ -11,13 +11,13 @@
 
    ```ocaml open Std
 
-   let client_process () = let addr = Net.Addr.of_host_and_port
+   let client_process () = let addr = Net.Addr.from_host_and_port
    ~host:"example.com" ~port:80 |> Result.expect ~msg:"Invalid address" in
 
    let stream = Net.TcpStream.connect addr |> Result.expect ~msg:"Connection
    failed" in
 
-   let request = "GET / HTTP/1.0\r\n\r\n" in let buf = Bytes.of_string request
+   let request = "GET / HTTP/1.0\r\n\r\n" in let buf = Bytes.from_string request
    in Net.TcpStream.write stream buf () |> ignore;
 
    let response = Bytes.create 4096 in match Net.TcpStream.read stream response

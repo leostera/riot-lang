@@ -64,7 +64,7 @@ let initialize_request workspace =
       [
         ("capabilities", Json.obj []);
         ("processId", Json.int 123);
-        ("rootUri", Lsp.Uri.to_json (Lsp.Uri.of_path workspace));
+        ("rootUri", Lsp.Uri.to_json (Lsp.Uri.from_path workspace));
       ])
     ()
 
@@ -122,7 +122,7 @@ let read_message reader =
   match payload with
   | None -> Error "expected LSP response, got EOF"
   | Some payload ->
-      Json.of_string payload
+      Json.from_string payload
       |> Result.map_err
         ~fn:(fun error -> "invalid LSP JSON response: " ^ Json.error_to_string error)
 
@@ -242,7 +242,7 @@ let test_server_starts_on_workspace_and_serves_hover _ctx =
     _ctx
     (fun ~process ~stdin ~stdout ~workspace ->
       let source = "let luffy = 56\n" in
-      let uri = Lsp.Uri.of_path (app_path workspace) in
+      let uri = Lsp.Uri.from_path (app_path workspace) in
       let* () = write_message stdin (initialize_request workspace) in
       let* initialize_response = read_message stdout in
       let* () = expect_response_id 1 initialize_response in

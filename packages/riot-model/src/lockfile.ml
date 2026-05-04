@@ -397,7 +397,7 @@ let to_toml = fun (lockfile: t) ->
   in
   Toml.Table (List.reverse fields)
 
-let of_toml = fun value ->
+let from_toml = fun value ->
   let* fields = require_table Lockfile value in
   let* format_version = required_int_field Lockfile ~field:"format_version" fields in
   let* dependency_hash = required_string_field Lockfile ~field:"dependency_hash" fields in

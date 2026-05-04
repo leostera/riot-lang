@@ -21,7 +21,7 @@ let test_large_json_response = fun _ctx ->
   in
   (* Build URI *)
   let uri =
-    Net.Uri.of_string "http://127.0.0.1:1234/v1/chat/completions"
+    Net.Uri.from_string "http://127.0.0.1:1234/v1/chat/completions"
     |> Result.expect ~msg:"Invalid URI"
   in
   (* Connect *)
@@ -58,7 +58,7 @@ let test_large_json_response = fun _ctx ->
                 ^ (Option.unwrap_or ~default:"missing" content_length_hdr))
               (* Try to parse as JSON - this will fail if truncated *)
               else
-                match Data.Json.of_string body with
+                match Data.Json.from_string body with
                 | Error err ->
                     Error ("JSON parse failed (body may be truncated): "
                     ^ Data.Json.error_to_string err
@@ -90,7 +90,7 @@ let test_streamed_response = fun _ctx ->
   in
   (* Build URI *)
   let uri =
-    Net.Uri.of_string "http://127.0.0.1:1234/v1/chat/completions"
+    Net.Uri.from_string "http://127.0.0.1:1234/v1/chat/completions"
     |> Result.expect ~msg:"Invalid URI"
   in
   (* Connect *)
@@ -158,7 +158,7 @@ let test_sse_parsing = fun _ctx ->
     {|{"stream":true,"max_tokens":50,"temperature":0.7,"model":"qwen/qwen3-coder-30b","messages":[{"role":"user","content":"Count from 1 to 3"}]}|}
   in
   let uri =
-    Net.Uri.of_string "http://127.0.0.1:1234/v1/chat/completions"
+    Net.Uri.from_string "http://127.0.0.1:1234/v1/chat/completions"
     |> Result.expect ~msg:"Invalid URI"
   in
   match Blink.connect uri with
@@ -214,7 +214,7 @@ let test_sse_parsing = fun _ctx ->
             let all_valid_json =
               List.for_all
                 (fun event ->
-                  match Blink.SSE.(Data.Json.of_string event.data) with
+                  match Blink.SSE.(Data.Json.from_string event.data) with
                   | Ok _ -> true
                   | Error _ -> false)
                 events

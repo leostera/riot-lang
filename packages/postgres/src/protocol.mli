@@ -128,7 +128,7 @@ module Sqlstate: sig
     (* Other/Unknown *)
     | UnknownSqlstate of string
 
-  val of_string: string -> t
+  val from_string: string -> t
 
   val to_string: t -> string
 end
@@ -219,7 +219,7 @@ module TypeOid: sig
     | Jsonb
     | Unknown of int
 
-  val of_int: int -> t
+  val from_int: int -> t
 
   val to_int: t -> int
 
@@ -229,7 +229,7 @@ end
 module Oid: sig
   type t = int
 
-  val of_int: int -> t
+  val from_int: int -> t
 
   val to_int: t -> int
 
@@ -243,7 +243,7 @@ module ColumnAttr: sig
     | NotFromTable
     | Position of int
 
-  val of_int: int -> t
+  val from_int: int -> t
 
   val to_int: t -> int
 
@@ -256,7 +256,7 @@ module TypeSize: sig
     | NullTerminated
     | Fixed of int
 
-  val of_int: int -> t
+  val from_int: int -> t
 
   val to_int: t -> int
 
@@ -268,7 +268,7 @@ module TypeModifier: sig
     | NoModifier
     | Modifier of int
 
-  val of_int: int -> t
+  val from_int: int -> t
 
   val to_int: t -> int
 
@@ -280,7 +280,7 @@ module Format: sig
     | Text
     | Binary
 
-  val of_int: int -> t
+  val from_int: int -> t
 
   val to_int: t -> int
 

@@ -132,7 +132,7 @@
         "start": 24,
         "end": 36
       },
-      "text": "of_addr_info",
+      "text": "from_addr_info",
       "leading_trivia": [
         {
           "span": {
@@ -417,7 +417,7 @@
               {
                 "type": "token",
                 "kind": "IDENT_EXPR",
-                "text": "of_addr_info",
+                "text": "from_addr_info",
                 "width": 12,
                 "full_width": 13,
                 "leading_trivia": [

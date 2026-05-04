@@ -11,7 +11,7 @@
 
    let v1 = Version.Http11 in Version.to_string v1 (* "HTTP/1.1" *)
 
-   match Version.of_string "HTTP/2" with | Ok v2 -> Version.compare v1 v2 (* <
+   match Version.from_string "HTTP/2" with | Ok v2 -> Version.compare v1 v2 (* <
    0, HTTP/1.1 < HTTP/2 *) | Error InvalidVersion -> ()
 
    Version.is_supported Version.Http11 (* true *) Version.is_supported
@@ -42,15 +42,15 @@ type error =
 
    ## Examples
 
-   ```ocaml Version.of_string "HTTP/1.1" (* Ok Http11 *) Version.of_string
-   "HTTP/2" (* Ok Http2 *) Version.of_string "HTTP/9.9" (* Error
+   ```ocaml Version.from_string "HTTP/1.1" (* Ok Http11 *) Version.from_string
+   "HTTP/2" (* Ok Http2 *) Version.from_string "HTTP/9.9" (* Error
    InvalidVersion *) ```
 
    Accepted formats:
    - "HTTP/0.9", "HTTP/1.0", "HTTP/1.1"
    - "HTTP/2", "HTTP/3"
 *)
-val of_string: string -> (t, error) Kernel.result
+val from_string: string -> (t, error) Kernel.result
 
 (** Parses an HTTP version from a borrowed slice without materializing a string first. *)
 val from_slice: IO.IoVec.IoSlice.t -> (t, error) Kernel.result

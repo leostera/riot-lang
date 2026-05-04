@@ -170,7 +170,7 @@ let load_external_package = fun
           |> Result.map
             ~fn:(fun manifest ->
               emit_finished ();
-              Riot_model.Package.of_manifest_spec manifest)
+              Riot_model.Package.from_manifest_spec manifest)
           |> Result.map_err
             ~fn:(fun err ->
               let err = Error.ProjectionFailed {
@@ -190,7 +190,7 @@ let load_package_for_lock_package = fun
   match lock_package.provenance with
   | Riot_model.Lockfile.Workspace -> (
       match find_workspace_package_by_id ~package_id:lock_package.id ~packages with
-      | Some package -> Ok (Riot_model.Package.of_manifest_spec package)
+      | Some package -> Ok (Riot_model.Package.from_manifest_spec package)
       | None ->
           Error (Error.ProjectionFailed {
             error = "workspace package '"

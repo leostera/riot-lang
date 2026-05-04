@@ -126,7 +126,7 @@ let parse_line = fun ~syntax ~line_number input ->
             offset = None;
           }
 
-let of_lines = fun ~root ~syntax lines ->
+let from_lines = fun ~root ~syntax lines ->
   let rec loop line_number acc = fun __tmp1 ->
     match __tmp1 with
     | [] ->
@@ -146,7 +146,7 @@ let of_lines = fun ~root ~syntax lines ->
   in
   loop 1 [] lines
 
-let of_string = fun ~root ~syntax text -> of_lines
+let from_string = fun ~root ~syntax text -> from_lines
   ~root
   ~syntax
   (String.split ~by:"\n" text)
@@ -158,7 +158,7 @@ let from_file = fun ~syntax path ->
   | Ok true -> (
       match Fs.read path with
       | Ok text ->
-          of_string ~root:(Path.dirname path) ~syntax text
+          from_string ~root:(Path.dirname path) ~syntax text
           |> fun result ->
             Result.map result ~fn:Option.some
             |> fun result -> Result.map_err result ~fn:(fun err -> Invalid_glob err)

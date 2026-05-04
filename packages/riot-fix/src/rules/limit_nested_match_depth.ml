@@ -3,7 +3,7 @@ open Std
 module H = Rule_helpers
 module Ast = Syn.Ast
 
-let rule_id = Rule_id.of_string "limit-nested-match-depth"
+let rule_id = Rule_id.from_string "limit-nested-match-depth"
 
 let rule_description = "Deep towers of nested match expressions should be flattened"
 

@@ -14,7 +14,7 @@ type tm = {
   tm_isdst: bool;
 }
 
-let of_kernel_tm = fun (tm: Kernel.Time.tm) ->
+let from_kernel_tm = fun (tm: Kernel.Time.tm) ->
   {
     tm_sec = tm.tm_sec;
     tm_min = tm.tm_min;
@@ -40,10 +40,10 @@ let to_kernel_tm = fun tm ->
     tm_isdst = tm.tm_isdst;
   }: Kernel.Time.tm)
 
-let localtime = fun timestamp -> of_kernel_tm (Kernel.Time.localtime timestamp)
+let localtime = fun timestamp -> from_kernel_tm (Kernel.Time.localtime timestamp)
 
-let gmtime = fun timestamp -> of_kernel_tm (Kernel.Time.gmtime timestamp)
+let gmtime = fun timestamp -> from_kernel_tm (Kernel.Time.gmtime timestamp)
 
 let mktime = fun tm ->
   let (timestamp, normalized) = Kernel.Time.mktime (to_kernel_tm tm) in
-  (timestamp, of_kernel_tm normalized)
+  (timestamp, from_kernel_tm normalized)

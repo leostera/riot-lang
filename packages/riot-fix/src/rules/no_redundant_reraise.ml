@@ -4,7 +4,7 @@ open Std.Collections
 module H = Rule_helpers
 module Ast = Syn.Ast
 
-let rule_id = Rule_id.of_string "no-redundant-reraise"
+let rule_id = Rule_id.from_string "no-redundant-reraise"
 
 let rule_description = "Exception handlers that only re-raise should be removed"
 

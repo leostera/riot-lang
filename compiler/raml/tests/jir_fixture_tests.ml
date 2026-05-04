@@ -11,7 +11,7 @@ let snapshots_dir = Path.v "compiler/raml/tests/fixtures/js"
 
 let append_snapshot_suffix = fun path suffix ->
   format Format.[ str (Path.to_string (Path.remove_extension path)); str suffix ]
-  |> Path.of_string
+  |> Path.from_string
   |> Result.expect ~msg:"snapshot path should stay valid UTF-8"
 
 let snapshot_path = fun ~(ctx:Test.FixtureRunner.ctx) ->
@@ -57,7 +57,7 @@ let string_field = fun scope name json ->
   | None -> invalid_field scope name "a string"
 
 let binder_of_name = fun name ->
-  let path = Core.Surface_path.of_segments [ "__jir_fixture"; name ] in
+  let path = Core.Surface_path.from_segments [ "__jir_fixture"; name ] in
   Jir.Binder.make ~name (Core.Binding_id.persistent path)
 
 let entity_of_name = fun name -> binder_of_name name |> Jir.Binder.entity_id
@@ -353,7 +353,7 @@ let parse_program = fun json ->
 
 let test_fixture = fun ~(ctx:Test.FixtureRunner.ctx) ->
   let* source = Result.map_error IO.error_message (Fs.read ctx.fixture_path) in
-  let* json = Result.map_error Json.error_to_string (Json.of_string source) in
+  let* json = Result.map_error Json.error_to_string (Json.from_string source) in
   let* program = parse_program json in
   Test.Snapshot.assert_json
     ~ctx:(with_snapshot_path (snapshot_path ~ctx) ctx.test)

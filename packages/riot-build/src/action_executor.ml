@@ -212,7 +212,7 @@ let run_action = fun ~session_id ~package ~node ?c_compiler ocamlc sandbox_dir a
           let result = run_ocamlc_invocation ~session_id ~package ~node ~sandbox_dir invocation in
           match result with
           | Riot_toolchain.Ocamlc.Success _ -> (
-              match Fs.set_permissions abs_output (Fs.Permissions.of_mode 0o755) with
+              match Fs.set_permissions abs_output (Fs.Permissions.from_mode 0o755) with
               | Ok () -> result
               | Error err ->
                   Log.warn

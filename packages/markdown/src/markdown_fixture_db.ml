@@ -98,7 +98,7 @@ let parse_fixture_entry = fun json ->
         }
 
 let parse_fixtures_json = fun source ->
-  match Data.Json.of_string source with
+  match Data.Json.from_string source with
   | Error _ -> []
   | Ok json -> (
       match Data.Json.get_array json with

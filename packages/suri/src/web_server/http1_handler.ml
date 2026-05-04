@@ -493,7 +493,7 @@ let validate_request_body_headers = fun ?max_body_size http_req ->
       | value :: _ when not (all_equal content_lengths) ->
           Error (ConflictingContentLength { values = content_lengths })
       | value :: _ -> (
-          match Int.of_string_opt (String.trim value) with
+          match Int.from_string_opt (String.trim value) with
           | Some len when len >= 0 -> check_limit len
           | Some len -> Error (InvalidContentLength { value; reason = NegativeLength len })
           | None -> Error (InvalidContentLength { value; reason = InvalidInteger })

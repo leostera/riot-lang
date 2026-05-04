@@ -50,7 +50,7 @@ val default: t
 
 val message: error -> string
 
-val of_toml: Std.Data.Toml.value -> (t, error) result
+val from_toml: Std.Data.Toml.value -> (t, error) result
 
 val load: Path.t -> (t, error) result
 

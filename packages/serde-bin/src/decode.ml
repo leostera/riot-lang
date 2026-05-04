@@ -349,7 +349,7 @@ let finish = fun state value ->
   | Some _ ->
       Error (`Msg ("extra input after binary value at byte " ^ Int.to_string (position state.input)))
 
-let of_input = fun decode input ->
+let from_input = fun decode input ->
   let state = { input; scratch = IO.Buffer.create ~size:64; bytes = IO.Bytes.create ~size:8 } in
   match De.run decode backend state with
   | Error err -> Error err
@@ -366,9 +366,9 @@ let decode_prefix = fun decode input ->
   | Error err -> Error err
   | Ok value -> Ok (value, position state.input)
 
-let of_string = fun decode input -> of_input decode (String_input { input; pos = 0 })
+let from_string = fun decode input -> from_input decode (String_input { input; pos = 0 })
 
-let of_reader = fun decode reader ->
+let from_reader = fun decode reader ->
   let buf = IO.Bytes.create ~size:buffer_capacity in
   let input = Reader_input {
     reader;
@@ -380,4 +380,4 @@ let of_reader = fun decode reader ->
     eof = false;
   }
   in
-  of_input decode input
+  from_input decode input

@@ -46,7 +46,7 @@ Handle terminal colors with support for RGB, ANSI, and ANSI256 color modes.
 ```ocaml
 (* Create colors *)
 let red = Color.make "#FF0000"
-let green = Color.of_rgb (0, 255, 0)
+let green = Color.from_rgb (0, 255, 0)
 let blue = Color.ansi 4
 let cyan = Color.ansi256 51
 

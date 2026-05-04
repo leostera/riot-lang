@@ -12,15 +12,15 @@ type t =
   | Eof
   | Closed
 
-let of_net_error = fun e -> NetError e
+let from_net_error = fun e -> NetError e
 
-let of_io_error = fun __tmp1 ->
+let from_io_error = fun __tmp1 ->
   match __tmp1 with
   | IO.Connection_refused -> NetError Net.Connection_refused
   | IO.Closed -> NetError Net.Closed
   | error -> NetError (Net.System_error error)
 
-let of_tls_error = fun e -> TlsError e
+let from_tls_error = fun e -> TlsError e
 
 let to_string = fun value ->
   match value with

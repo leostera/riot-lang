@@ -2,7 +2,7 @@ open Std
 
 type t = string
 
-let of_string = fun value -> value
+let from_string = fun value -> value
 
 let to_string = fun value -> value
 

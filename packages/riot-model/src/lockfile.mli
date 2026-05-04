@@ -64,7 +64,7 @@ type error =
 
 val error_message: error -> string
 
-val of_toml: Std.Data.Toml.value -> (t, error) result
+val from_toml: Std.Data.Toml.value -> (t, error) result
 
 val to_toml: t -> Std.Data.Toml.value
 

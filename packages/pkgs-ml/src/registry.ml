@@ -249,7 +249,7 @@ let in_memory = fun ?config ~cache ?(releases = []) ~packages () ->
   { cache; fetch = default_fetch; source = In_memory { config; packages; releases } }
 
 let http_status_message = fun status_code ->
-  let status = Net.Http.Status.of_int status_code in
+  let status = Net.Http.Status.from_int status_code in
   Int.to_string status_code ^ " " ^ Net.Http.Status.reason_phrase status
 
 let protect_fetch = fun ~uri f ->
@@ -283,7 +283,7 @@ let post_required = fun registry uri ~headers ~body ->
   match protect_fetch ~uri (fun () -> registry.fetch.post uri ~headers ~body) with
   | Ok { status_code = 200; body } -> Ok body
   | Ok { status_code; body } -> (
-      match Data.Json.of_string body with
+      match Data.Json.from_string body with
       | Ok (Data.Json.Object fields) -> (
           match assoc_value fields ~key:"message" with
           | Some (Data.Json.String message) -> Error message
@@ -455,7 +455,7 @@ let yanked_release_of_json = fun json ->
 
 let publish_artifact_url = fun ~registry_name ->
   let url = "https://api." ^ registry_name ^ "/v1/publish" in
-  match Net.Uri.of_string url with
+  match Net.Uri.from_string url with
   | Ok uri -> Ok uri
   | Error _ -> Error ("failed to build publish url '" ^ url ^ "'")
 
@@ -469,7 +469,7 @@ let yank_release_url = fun ~registry_name ~package_name ~version ->
     ^ version
     ^ "/yank"
   in
-  match Net.Uri.of_string url with
+  match Net.Uri.from_string url with
   | Ok uri -> Ok uri
   | Error _ -> Error ("failed to build yank url '" ^ url ^ "'")
 
@@ -482,7 +482,7 @@ let search_url = fun ~registry_name ~query ~limit ->
     ^ "&limit="
     ^ Int.to_string limit
   in
-  match Net.Uri.of_string url with
+  match Net.Uri.from_string url with
   | Ok uri -> Ok uri
   | Error _ -> Error ("failed to build search url '" ^ url ^ "'")
 
@@ -641,7 +641,7 @@ let search_packages = fun registry ~query ?(limit = 5) () ->
             match fetch_required registry uri with
             | Error _ as err -> err
             | Ok source -> (
-                match Data.Json.of_string source with
+                match Data.Json.from_string source with
                 | Error err ->
                     Error ("failed to decode search response from '"
                     ^ Net.Uri.to_string uri
@@ -1168,7 +1168,7 @@ let publish_response = fun registry uri ~api_token ~artifact ->
     ~body:artifact with
   | Error _ as err -> err
   | Ok body -> (
-      match Data.Json.of_string body with
+      match Data.Json.from_string body with
       | Error err ->
           Error ("failed to parse publish response JSON: " ^ Data.Json.error_to_string err)
       | Ok json -> published_release_of_json json
@@ -1183,7 +1183,7 @@ let yank_response = fun registry uri ~api_token ->
   match post_required registry uri ~headers:[ ("authorization", "Bearer " ^ api_token); ] ~body:"" with
   | Error _ as err -> err
   | Ok body -> (
-      match Data.Json.of_string body with
+      match Data.Json.from_string body with
       | Error err -> Error ("failed to parse yank response JSON: " ^ Data.Json.error_to_string err)
       | Ok json -> yanked_release_of_json json
     )

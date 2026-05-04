@@ -19,7 +19,7 @@ let keep_source_fixture = fun path ->
 
 let test_fixture = fun ~(ctx:Test.FixtureRunner.ctx) ->
   let* source = Result.map_error IO.error_message (Fs.read ctx.fixture_path) in
-  let* unit_ = Raml.Source_unit.of_source ~relpath:ctx.fixture_relpath ~source in
+  let* unit_ = Raml.Source_unit.from_source ~relpath:ctx.fixture_relpath ~source in
   Test.Snapshot.assert_json ~ctx:ctx.test ~actual:(Raml.Source_unit.to_json unit_)
 
 let () =

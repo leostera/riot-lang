@@ -30,7 +30,7 @@ let websocket_request = fun
   ?(headers = [("upgrade", "websocket"); ("connection", "keep-alive, Upgrade"); ("sec-websocket-version", "13"); ("sec-websocket-key", valid_websocket_key);])
   () ->
   let uri =
-    Net.Uri.of_string "/"
+    Net.Uri.from_string "/"
     |> Result.unwrap
   in
   let http_req =
@@ -49,7 +49,7 @@ let websocket_request = fun
 let http_request = fun
   ?(method_ = Net.Http.Method.Get) ?(version = Net.Http.Version.Http11) ?(headers = []) () ->
   let uri =
-    Net.Uri.of_string "/"
+    Net.Uri.from_string "/"
     |> Result.unwrap
   in
   Net.Http.Request.create method_ uri
@@ -192,7 +192,7 @@ let test_liveview_protocol_serializes_server_errors_structurally = fun _ctx ->
     })))
     |> LiveViewProtocol.serialize_server_msg
   in
-  match Data.Json.of_string message with
+  match Data.Json.from_string message with
   | Error error -> Error (Data.Json.error_to_string error)
   | Ok json ->
       let error_type =
@@ -224,7 +224,7 @@ let test_liveview_protocol_serializes_event_payload_errors = fun _ctx ->
     LiveViewProtocol.Error (LiveViewProtocol.ClientMessageDecodeFailed (LiveViewProtocol.InvalidEventPayload payload))
     |> LiveViewProtocol.serialize_server_msg
   in
-  match Data.Json.of_string message with
+  match Data.Json.from_string message with
   | Error error -> Error (Data.Json.error_to_string error)
   | Ok json ->
       let client_error_type =

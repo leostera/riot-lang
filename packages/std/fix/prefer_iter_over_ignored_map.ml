@@ -6,7 +6,7 @@ module H = Ast_rule_helpers
 
 let package_name = "std"
 
-let package_rule_id = Api.Rule_id.of_string (package_name ^ ":prefer-iter-over-ignored-map")
+let package_rule_id = Api.Rule_id.from_string (package_name ^ ":prefer-iter-over-ignored-map")
 
 let explanation =
   Api.Explanation.{

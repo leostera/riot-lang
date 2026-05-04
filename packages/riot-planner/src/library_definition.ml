@@ -99,7 +99,7 @@ let is_binary_module = fun ~package_path ~binaries path ->
 let from_entries = fun
   ~namespace ~library_name ~package_path ~concrete_library_path ~binaries children ->
   let library_module_name =
-    Module_name.of_string library_name
+    Module_name.from_string library_name
     |> Module_name.to_string
   in
   let explicit_concrete_ml_path =
@@ -148,7 +148,7 @@ let from_entries = fun
             let file_module_name =
               Path.remove_extension (Path.v n)
               |> Path.to_string
-              |> Module_name.of_string
+              |> Module_name.from_string
               |> Module_name.to_string
             in
             if is_library_source_file ~file_module_name ~path:p then
@@ -165,7 +165,7 @@ let from_entries = fun
       ~fn:(fun e ->
         match e with
         | Module_scanner.Dir (n, p, _) ->
-            let module_name = Module_name.of_string n in
+            let module_name = Module_name.from_string n in
             let module_name_str = Module_name.to_string module_name in
             let has_file =
               List.any
@@ -188,7 +188,7 @@ let from_entries = fun
             let file_module_name =
               Path.remove_extension (Path.v n)
               |> Path.to_string
-              |> Module_name.of_string
+              |> Module_name.from_string
               |> Module_name.to_string
             in
             (
@@ -209,7 +209,7 @@ let from_entries = fun
             let file_module_name =
               Path.remove_extension (Path.v n)
               |> Path.to_string
-              |> Module_name.of_string
+              |> Module_name.from_string
               |> Module_name.to_string
             in
             (
@@ -233,7 +233,7 @@ let from_entries = fun
             let file_module_name =
               Path.remove_extension (Path.v n)
               |> Path.to_string
-              |> Module_name.of_string
+              |> Module_name.from_string
               |> Module_name.to_string
             in
             not (is_library_source_file ~file_module_name ~path:p)

@@ -40,7 +40,7 @@ let config = fun ?(delimiter = ',') ?(quote = '"') ?(escape = '"') ?(trim_fields
     trim_fields;
   }
 
-let of_string = fun ?(config = default_config) str ->
+let from_string = fun ?(config = default_config) str ->
   let cursor = Iter.MutCursor.create str in
   let line = Cell.create 1 in
   let column = Cell.create 1 in
@@ -181,7 +181,7 @@ let parse = fun ?(config = default_config) reader ->
     |> Result.expect ~msg:"Failed to read from Reader"
   in
   let content = Buffer.contents buf in
-  of_string ~config content
+  from_string ~config content
 
 let to_string = fun ?(config = default_config) ?headers data ->
   let needs_quoting field =

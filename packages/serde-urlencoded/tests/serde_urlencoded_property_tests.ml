@@ -393,7 +393,7 @@ let run_property = fun ?(examples = primitive_examples) name arb predicate ->
 let roundtrip_in_memory = fun encode decode equal value ->
   match Serde_urlencoded.to_string encode value with
   | Ok encoded -> (
-      match Serde_urlencoded.of_string decode encoded with
+      match Serde_urlencoded.from_string decode encoded with
       | Ok decoded -> equal decoded value
       | Error err -> fail ("decode failed: " ^ Serde.Error.to_string err)
     )
@@ -403,7 +403,7 @@ let roundtrip_io = fun encode decode equal value ->
   let buffer = IO.Buffer.create ~size:64 in
   match Serde_urlencoded.to_writer encode (io_writer_of_buffer buffer) value with
   | Ok () -> (
-      match Serde_urlencoded.of_reader
+      match Serde_urlencoded.from_reader
         decode
         (String.to_reader ~chunk_size:io_chunk_size (IO.Buffer.contents buffer)) with
       | Ok decoded -> equal decoded value

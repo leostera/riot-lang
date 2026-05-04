@@ -367,7 +367,7 @@ let emit_module_item = fun ~module_format env item ->
   | Types.Module_item.Export exports -> (emit_exports ~module_format env exports, env)
 
 let emit_program = fun ~context (program: Types.Program.t) ->
-  let module_format = Module_format.of_context context in
+  let module_format = Module_format.from_context context in
   let (sections_rev, _) =
     List.fold_left program.items ~init:([], Binding_map.empty)
       ~fn:(fun (sections_rev, env) item ->

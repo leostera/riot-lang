@@ -3,7 +3,7 @@ open Std
 module H = Rule_helpers
 module Ast = Syn.Ast
 
-let rule_id = Rule_id.of_string "no-useless-let-return"
+let rule_id = Rule_id.from_string "no-useless-let-return"
 
 let rule_description = "Bindings that immediately return the bound name should be collapsed"
 

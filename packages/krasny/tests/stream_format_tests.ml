@@ -373,8 +373,8 @@ let test_stream_formatter_formats_quoted_poly_let_annotations = fun _ctx ->
 
 let test_stream_formatter_keeps_locally_abstract_type_binding_prefixes = fun _ctx ->
   assert_format_ml
-    ~expected:"let make:\n  type socket err. reader:(socket, err) reader ->\n  writer:(socket, err) writer ->\n  of_io_error:(err -> error) ->\n  uri:uri ->\n  t = fun ~reader ~writer ~of_io_error ~uri -> make_conn reader writer of_io_error uri\n"
-    "let make : type socket err. reader:(socket, err) reader -> writer:(socket, err) writer -> of_io_error:(err -> error) -> uri:uri -> t = fun ~reader ~writer ~of_io_error ~uri -> make_conn reader writer of_io_error uri\n"
+    ~expected:"let make:\n  type socket err. reader:(socket, err) reader ->\n  writer:(socket, err) writer ->\n  from_io_error:(err -> error) ->\n  uri:uri ->\n  t = fun ~reader ~writer ~from_io_error ~uri -> make_conn reader writer from_io_error uri\n"
+    "let make : type socket err. reader:(socket, err) reader -> writer:(socket, err) writer -> from_io_error:(err -> error) -> uri:uri -> t = fun ~reader ~writer ~from_io_error ~uri -> make_conn reader writer from_io_error uri\n"
 
 let test_stream_formatter_breaks_non_polymorphic_typed_let_annotations_vertically_after_the_colon = fun
   _ctx ->
@@ -382,11 +382,11 @@ let test_stream_formatter_breaks_non_polymorphic_typed_let_annotations_verticall
     ~expected:{ocaml|let make:
   reader:IO.Reader.t ->
   writer:IO.Writer.t ->
-  of_io_error:(IO.error -> Error.t) ->
+  from_io_error:(IO.error -> Error.t) ->
   uri:Net.Uri.t ->
-  t = fun ~reader ~writer ~of_io_error ~uri -> body
+  t = fun ~reader ~writer ~from_io_error ~uri -> body
 |ocaml}
-    {ocaml|let make : reader:IO.Reader.t -> writer:IO.Writer.t -> of_io_error:(IO.error -> Error.t) -> uri:Net.Uri.t -> t = fun ~reader ~writer ~of_io_error ~uri -> body
+    {ocaml|let make : reader:IO.Reader.t -> writer:IO.Writer.t -> from_io_error:(IO.error -> Error.t) -> uri:Net.Uri.t -> t = fun ~reader ~writer ~from_io_error ~uri -> body
 |ocaml}
 
 let test_stream_formatter_formats_mutual_recursive_let_bindings = fun _ctx ->
@@ -1141,13 +1141,13 @@ let test_stream_formatter_formats_module_struct_bodies_from_nested_items = fun _
     | Ok sock ->
         let reader = Net.TcpStream.to_reader sock in
         let writer = Net.TcpStream.to_writer sock in
-        Ok (Connection.make ~reader ~writer ~of_io_error:Error.of_io_error ~uri)
+        Ok (Connection.make ~reader ~writer ~from_io_error:Error.from_io_error ~uri)
     | Error _ -> Error value
 end
 |ocaml}
     {ocaml|module Tcp: Intf = struct
 let name = "tcp"
-let connect = fun addr uri -> match Net.TcpStream.connect addr with | Ok sock -> let reader = Net.TcpStream.to_reader sock in let writer = Net.TcpStream.to_writer sock in Ok (Connection.make ~reader ~writer ~of_io_error:Error.of_io_error ~uri) | Error _ -> Error value
+let connect = fun addr uri -> match Net.TcpStream.connect addr with | Ok sock -> let reader = Net.TcpStream.to_reader sock in let writer = Net.TcpStream.to_writer sock in Ok (Connection.make ~reader ~writer ~from_io_error:Error.from_io_error ~uri) | Error _ -> Error value
 end
 |ocaml}
 

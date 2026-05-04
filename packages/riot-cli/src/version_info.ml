@@ -60,14 +60,14 @@ let metadata_of_json = fun __tmp1 ->
       }
   | _ -> Error "release metadata must be a JSON object"
 
-let of_json_string = fun content ->
+let from_json_string = fun content ->
   let* json =
-    Data.Json.of_string content
+    Data.Json.from_string content
     |> Result.map_err ~fn:Data.Json.error_to_string
   in
   metadata_of_json json
 
-let of_version_string = fun version ->
+let from_version_string = fun version ->
   let prefix = "riot " in
   let build_marker = " (build " in
   let suffix = ")" in
@@ -118,12 +118,12 @@ let of_version_string = fun version ->
             issues_url = None;
           }
 
-let of_path = fun path ->
+let from_path = fun path ->
   let* content =
     Fs.read path
     |> Result.map_err ~fn:IO.error_message
   in
-  of_json_string content
+  from_json_string content
 
 let write_path = fun ~path t ->
   let* () =
@@ -145,7 +145,7 @@ let read_installed = fun () ->
       | Ok false
       | Error _ -> None
       | Ok true ->
-          of_path path
+          from_path path
           |> Result.to_option
     )
 

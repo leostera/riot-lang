@@ -449,7 +449,7 @@ val to_json: t -> Data.Json.t
 
    This is the inverse of [to_json], used for reading diagnostic test fixtures.
 
-   Example: ```ocaml match Data.Json.of_string json_str with | Ok json -> (
+   Example: ```ocaml match Data.Json.from_string json_str with | Ok json -> (
    match Diagnostic.from_json json with | Ok diag -> (* use diagnostic *) |
    Error msg -> (* handle parse error *) ) | Error _ -> (* handle JSON parse
    error *) ```

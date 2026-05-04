@@ -22,7 +22,7 @@ let write = fun ~from ->
           ~interest:Kernel.Async.Interest.writable
           ~source
           loop
-    | Error (Kernel.IO.Stderr.System error) -> Error (Error.of_system_error error)
+    | Error (Kernel.IO.Stderr.System error) -> Error (Error.from_system_error error)
     | Error (Kernel.IO.Stderr.InvalidSlice _) -> Error Error.Invalid_argument
   in
   loop ()
@@ -41,7 +41,7 @@ let write_vectored = fun ~from ->
             ~interest:Kernel.Async.Interest.writable
             ~source
             loop
-      | Error (Kernel.IO.Stderr.System error) -> Error (Error.of_system_error error)
+      | Error (Kernel.IO.Stderr.System error) -> Error (Error.from_system_error error)
       | Error (Kernel.IO.Stderr.InvalidSlice _) -> Error Error.Invalid_argument
     in
     loop ()
@@ -57,7 +57,7 @@ let flush = fun () ->
           ~interest:Kernel.Async.Interest.writable
           ~source
           loop
-    | Error (Kernel.IO.Stderr.System error) -> Error (Error.of_system_error error)
+    | Error (Kernel.IO.Stderr.System error) -> Error (Error.from_system_error error)
     | Error (Kernel.IO.Stderr.InvalidSlice _) -> Error Error.Invalid_argument
   in
   loop ()

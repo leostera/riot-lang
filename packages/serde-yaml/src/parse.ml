@@ -127,7 +127,7 @@ let preprocess = fun input ->
     ~fn:(fun line ->
       if String.equal line.text "---" || String.equal line.text "..." then
         fail_line line.number "multiple YAML documents are not supported");
-  Array.of_list lines
+  Array.from_list lines
 
 let skip_spaces = fun text index ->
   let length = String.length text in
@@ -307,7 +307,7 @@ let parse_float = fun line_number value ->
     else
       value
   in
-  try Float.of_string normalized with
+  try Float.from_string normalized with
   | _ -> fail_line line_number ("invalid float literal '" ^ value ^ "'")
 
 let parse_scalar_text = fun text line_number ->
@@ -335,7 +335,7 @@ let parse_scalar_text = fun text line_number ->
     else
       fail_line line_number "unexpected trailing characters after string literal"
   else
-    try Int (Int64.of_string value) with
+    try Int (Int64.from_string value) with
     | _ ->
         if
           String.contains value "."

@@ -3,7 +3,7 @@ open Std
 module H = Rule_helpers
 module Ast = Syn.Ast
 
-let rule_id = Rule_id.of_string "no-boolean-comparisons-in-conditionals"
+let rule_id = Rule_id.from_string "no-boolean-comparisons-in-conditionals"
 
 let rule_description = "Boolean conditions should not compare directly with true or false"
 

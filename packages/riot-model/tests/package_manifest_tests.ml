@@ -511,7 +511,7 @@ name = "demo-tests"
 path = "tests/demo_tests.ml"
 |}
       in
-      let pkg = Riot_model.Package.of_manifest_spec manifest in
+      let pkg = Riot_model.Package.from_manifest_spec manifest in
       if
         binary_names pkg.binaries = [ "demo-example"; "demo-tests" ]
         && pkg.sources.src = []

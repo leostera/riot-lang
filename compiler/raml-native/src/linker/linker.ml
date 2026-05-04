@@ -72,7 +72,7 @@ let make_plan = fun ~profile ~artifact ~input ~output ->
   }
 
 let plan = fun ~host ~target ~artifact ~input ~output ->
-  match (Target_profile.of_target host, Target_profile.of_target target) with
+  match (Target_profile.from_target host, Target_profile.from_target target) with
   | (Some host_profile, Some target_profile) when Target_profile.matches_target host_profile target -> Ok (make_plan
     ~profile:target_profile
     ~artifact

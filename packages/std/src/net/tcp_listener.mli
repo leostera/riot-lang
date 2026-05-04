@@ -6,7 +6,7 @@
    ```ocaml
    open Std
 
-   let addr = Kernel.Net.Addr.of_string "127.0.0.1:9000" |> Result.unwrap in
+   let addr = Kernel.Net.Addr.from_string "127.0.0.1:9000" |> Result.unwrap in
    match Tcp_listener.bind addr with
    | Ok listener ->
        (match Tcp_listener.accept listener with

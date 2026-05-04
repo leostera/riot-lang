@@ -3,25 +3,25 @@ open Std.Data
 open Std.Collections
 
 let test_parse_simple_row = fun _ctx ->
-  let iter = Csv.of_string "a,b,c" in
+  let iter = Csv.from_string "a,b,c" in
   match Iter.MutIterator.next iter with
   | Some (Ok [ "a"; "b"; "c" ]) -> Ok ()
   | _ -> Error "Failed to parse simple row"
 
 let test_parse_empty_string = fun _ctx ->
-  let iter = Csv.of_string "" in
+  let iter = Csv.from_string "" in
   match Iter.MutIterator.next iter with
   | None -> Ok ()
   | _ -> Error "Empty string should produce no rows"
 
 let test_parse_single_field = fun _ctx ->
-  let iter = Csv.of_string "test" in
+  let iter = Csv.from_string "test" in
   match Iter.MutIterator.next iter with
   | Some (Ok [ "test" ]) -> Ok ()
   | _ -> Error "Failed to parse single field"
 
 let test_parse_multiple_rows = fun _ctx ->
-  let iter = Csv.of_string "a,b\nc,d" in
+  let iter = Csv.from_string "a,b\nc,d" in
   let row1 = Iter.MutIterator.next iter in
   let row2 = Iter.MutIterator.next iter in
   match (row1, row2) with
@@ -29,37 +29,37 @@ let test_parse_multiple_rows = fun _ctx ->
   | _ -> Error "Failed to parse multiple rows"
 
 let test_parse_quoted_field = fun _ctx ->
-  let iter = Csv.of_string {|"hello",world|} in
+  let iter = Csv.from_string {|"hello",world|} in
   match Iter.MutIterator.next iter with
   | Some (Ok [ "hello"; "world" ]) -> Ok ()
   | _ -> Error "Failed to parse quoted field"
 
 let test_parse_quoted_comma = fun _ctx ->
-  let iter = Csv.of_string {|"a,b",c|} in
+  let iter = Csv.from_string {|"a,b",c|} in
   match Iter.MutIterator.next iter with
   | Some (Ok [ "a,b"; "c" ]) -> Ok ()
   | _ -> Error "Failed to parse quoted comma"
 
 let test_parse_escaped_quote = fun _ctx ->
-  let iter = Csv.of_string {|"a""b",c|} in
+  let iter = Csv.from_string {|"a""b",c|} in
   match Iter.MutIterator.next iter with
   | Some (Ok [ _; "c" ]) -> Ok ()
   | _ -> Error "Failed to parse escaped quote"
 
 let test_parse_empty_fields = fun _ctx ->
-  let iter = Csv.of_string "a,,c" in
+  let iter = Csv.from_string "a,,c" in
   match Iter.MutIterator.next iter with
   | Some (Ok [ "a"; ""; "c" ]) -> Ok ()
   | _ -> Error "Failed to parse empty fields"
 
 let test_parse_trailing_comma = fun _ctx ->
-  let iter = Csv.of_string "a,b," in
+  let iter = Csv.from_string "a,b," in
   match Iter.MutIterator.next iter with
   | Some (Ok [ "a"; "b"; "" ]) -> Ok ()
   | _ -> Error "Failed to parse trailing comma"
 
 let test_parse_with_newlines = fun _ctx ->
-  let iter = Csv.of_string "a,b\r\nc,d" in
+  let iter = Csv.from_string "a,b\r\nc,d" in
   let rows = Iter.MutIterator.to_list iter in
   if List.length rows = 2 then
     Ok ()
@@ -68,21 +68,21 @@ let test_parse_with_newlines = fun _ctx ->
 
 let test_custom_delimiter = fun _ctx ->
   let config = Csv.config ~delimiter:';' () in
-  let iter = Csv.of_string ~config "a;b;c" in
+  let iter = Csv.from_string ~config "a;b;c" in
   match Iter.MutIterator.next iter with
   | Some (Ok [ "a"; "b"; "c" ]) -> Ok ()
   | _ -> Error "Failed to parse with custom delimiter"
 
 let test_tsv_parsing = fun _ctx ->
   let config = Csv.config ~delimiter:'\t' () in
-  let iter = Csv.of_string ~config "a\tb\tc" in
+  let iter = Csv.from_string ~config "a\tb\tc" in
   match Iter.MutIterator.next iter with
   | Some (Ok [ "a"; "b"; "c" ]) -> Ok ()
   | _ -> Error "Failed to parse TSV"
 
 let test_trim_fields = fun _ctx ->
   let config = Csv.config ~trim_fields:true () in
-  let iter = Csv.of_string ~config " a , b , c " in
+  let iter = Csv.from_string ~config " a , b , c " in
   match Iter.MutIterator.next iter with
   | Some (Ok [ "a"; "b"; "c" ]) -> Ok ()
   | _ -> Error "Failed to trim fields"
@@ -130,7 +130,7 @@ let test_serialize_rows = fun _ctx ->
 let test_roundtrip = fun _ctx ->
   let original = [ [ "a"; "b"; "c" ]; [ "1"; "2"; "3" ] ] in
   let str = Csv.to_string original in
-  let iter = Csv.of_string str in
+  let iter = Csv.from_string str in
   let parsed =
     Iter.MutIterator.to_list iter
     |> List.filter_map ~fn:Result.to_option
@@ -141,7 +141,7 @@ let test_roundtrip = fun _ctx ->
     Error "Roundtrip failed"
 
 let test_headers = fun _ctx ->
-  let iter = Csv.of_string "name,age\nAlice,30\nBob,25" in
+  let iter = Csv.from_string "name,age\nAlice,30\nBob,25" in
   let header = Iter.MutIterator.next iter in
   match header with
   | Some (Ok [ "name"; "age" ]) -> Ok ()

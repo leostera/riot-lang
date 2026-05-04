@@ -21,7 +21,7 @@ module Tcp: Intf = struct
     | Ok sock ->
         let reader = Net.TcpStream.to_reader sock in
         let writer = Net.TcpStream.to_writer sock in
-        Ok (Connection.make ~reader ~writer ~of_io_error:Error.of_io_error ~uri)
+        Ok (Connection.make ~reader ~writer ~from_io_error:Error.from_io_error ~uri)
 end
 
 module Tls: Intf = struct
@@ -42,7 +42,7 @@ module Tls: Intf = struct
         | Ok tls ->
             let reader = Net.TlsStream.to_reader tls in
             let writer = Net.TlsStream.to_writer tls in
-            Ok (Connection.make ~reader ~writer ~of_io_error:Error.of_io_error ~uri)
+            Ok (Connection.make ~reader ~writer ~from_io_error:Error.from_io_error ~uri)
 end
 
 let connect = fun uri ->
@@ -60,7 +60,7 @@ let connect = fun uri ->
     |> Option.unwrap_or ~default:default_port
   in
   Log.info "connecting!";
-  match Net.Addr.of_host_and_port ~host ~port with
+  match Net.Addr.from_host_and_port ~host ~port with
   | Error (Net.Addr.System_error io_err) -> Error (Error.NetError (Net.System_error io_err))
   | Error (Net.Addr.Invalid_port_number _ | Net.Addr.Invalid_format _) ->
       Error (Error.NetError (Net.System_error IO.Invalid_argument))

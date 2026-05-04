@@ -399,7 +399,7 @@ let synthetic = fun ~name ~path ~relative_path -> make ~name ~path ~relative_pat
 let equal = fun a b -> Package_name.equal a.name b.name && a.path = b.path
 
 let root_module_name = fun (pkg: t) ->
-  Module_name.(of_string (Package_name.to_string pkg.name)
+  Module_name.(from_string (Package_name.to_string pkg.name)
   |> to_string)
 
 let key_of_string = fun value -> Key value
@@ -2145,7 +2145,7 @@ let realize_manifest_spec = fun ~(intent:realization_intent) (manifest: manifest
     ~publish:manifest.publish
     ()
 
-let of_manifest_spec = fun (manifest: manifest_spec) ->
+let from_manifest_spec = fun (manifest: manifest_spec) ->
   make
     ~name:manifest.name
     ~path:manifest.path

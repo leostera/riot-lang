@@ -152,14 +152,14 @@ let split_lines = fun output ->
   |> List.filter ~fn:(fun line -> not (String.equal line ""))
 
 let parse_json_output = fun stdout ->
-  Data.Json.of_string stdout
+  Data.Json.from_string stdout
   |> Result.expect ~msg:"failed to parse json output"
 
 let parse_json_lines = fun stdout ->
   split_lines stdout
   |> List.map
     ~fn:(fun line ->
-      Data.Json.of_string line
+      Data.Json.from_string line
       |> Result.expect ~msg:"failed to parse jsonl line")
 
 let with_tempdir = fun prefix fn ->

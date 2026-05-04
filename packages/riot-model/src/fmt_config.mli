@@ -6,6 +6,6 @@ type t = {
 
 val empty: t
 
-val of_toml: Std.Data.Toml.value -> t
+val from_toml: Std.Data.Toml.value -> t
 
 val load: Path.t -> t

@@ -12,10 +12,10 @@ module Binder = struct
     { binding_id; name = Option.unwrap_or ~default:(Core.Binding_id.name binding_id) name }
 
   let generated = fun ~namespace ~name ->
-    let path = Core.Surface_path.of_segments ([ "__raml_js" ] @ namespace @ [ name ]) in
+    let path = Core.Surface_path.from_segments ([ "__raml_js" ] @ namespace @ [ name ]) in
     make ~name (Core.Binding_id.persistent path)
 
-  let entity_id = fun binder -> Core.Entity_id.of_binding_id binder.binding_id
+  let entity_id = fun binder -> Core.Entity_id.from_binding_id binder.binding_id
 
   let rename = fun binder name -> { binder with name }
 

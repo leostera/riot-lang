@@ -46,13 +46,13 @@ let from_float = Caml_runtime.int_of_float
 
 let parse_unchecked = Caml_runtime.int_of_string
 
-let of_string = parse_unchecked
+let from_string = parse_unchecked
 
 let parse = fun value ->
   try Some (parse_unchecked value) with
   | _ -> None
 
-let of_string_opt = parse
+let from_string_opt = parse
 
 let hash = fun value -> value
 

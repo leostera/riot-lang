@@ -11,7 +11,7 @@
 
    let method_ = Method.Get in Method.to_string method_ (* "GET" *)
 
-   let method_ = Method.of_string "POST" in (* Method.Post *) ```
+   let method_ = Method.from_string "POST" in (* Method.Post *) ```
 
    Checking method properties:
 
@@ -65,10 +65,10 @@ type t =
 
    ## Examples
 
-   ```ocaml Method.of_string "GET" (* Get *) Method.of_string "get" (* Get *)
-   Method.of_string "PURGE" (* Extension "PURGE" *) ```
+   ```ocaml Method.from_string "GET" (* Get *) Method.from_string "get" (* Get *)
+   Method.from_string "PURGE" (* Extension "PURGE" *) ```
 *)
-val of_string: string -> t
+val from_string: string -> t
 
 (** Parses an HTTP method from a borrowed slice, copying only non-standard extensions. *)
 val from_slice: IO.IoVec.IoSlice.t -> t

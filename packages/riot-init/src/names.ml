@@ -22,7 +22,7 @@ let starter_package_name = fun workspace_name ->
     workspace_name
 
 let package_name_to_module_name = fun name ->
-  Module_name.of_string name
+  Module_name.from_string name
   |> Module_name.to_string
 
 let module_name_to_test_file_stem = fun module_name -> String.lowercase_ascii module_name ^ "_tests"

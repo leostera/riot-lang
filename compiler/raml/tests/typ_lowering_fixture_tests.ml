@@ -19,7 +19,7 @@ let check_source_text = fun ~filename text ->
       let origin = Typ.Model.Source.Path filename in
       let implicit_opens = [] in
       let source = Typ.Model.Source.make_prepared
-        ~source_id:(Typ.Model.SourceId.of_int 0)
+        ~source_id:(Typ.Model.SourceId.from_int 0)
         ~kind:Typ.Model.Source.File
         ~module_name:(Typ.Model.Source.infer_module_name origin)
         ~implicit_opens
@@ -66,7 +66,7 @@ let test_fixture = fun ~(ctx:Test.FixtureRunner.ctx) ->
   let filename = stable_fixture_filename ctx in
   let report = check_source_text ~filename source in
   let semantic_tree = report.semantic_tree |> Option.expect ~msg:"expected semantic tree" in
-  let source_unit = Raml.Source_unit.of_source ~relpath:filename ~source |> Result.expect ~msg:"fixture should produce a supported source unit" in
+  let source_unit = Raml.Source_unit.from_source ~relpath:filename ~source |> Result.expect ~msg:"fixture should produce a supported source unit" in
   let actual = Raml.Typ_lowering.lower_file ~source_unit semantic_tree |> lowering_result_to_json in
   Test.Snapshot.assert_json ~ctx:ctx.test ~actual
 

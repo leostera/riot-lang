@@ -7,7 +7,7 @@ module HashSet = Collections.HashSet
 module Compiler_target = Raml_core.Target
 module Target_profile = Target_profile
 
-let profile = Target_profile.of_target Compiler_target.aarch64_apple_darwin |> Option.expect ~msg:"missing aarch64-apple-darwin native target profile"
+let profile = Target_profile.from_target Compiler_target.aarch64_apple_darwin |> Option.expect ~msg:"missing aarch64-apple-darwin native target profile"
 
 type error =
   | UnsupportedPhysicalRegisterHome of { name: string }
@@ -154,7 +154,7 @@ let register_of_home = fun home ->
     if String.length name < 2 then
       None
     else if String.get name ~at:0 = Some 'x' then
-      String.sub name ~offset:1 ~len:(String.length name - 1) |> Int.of_string_opt
+      String.sub name ~offset:1 ~len:(String.length name - 1) |> Int.from_string_opt
     else
       None
   in
@@ -220,7 +220,7 @@ let int64_literal_of_literal = fun literal ->
         1L
       else
         0L
-  | Lir.Literal.Int value -> Int64.of_int value
+  | Lir.Literal.Int value -> Int64.from_int value
   | Lir.Literal.Float value -> Int64.bits_of_float value
   | Lir.Literal.String _ -> 0L
 
@@ -702,4 +702,4 @@ let emit_program = fun (program: Lir.Program.t) ->
   let globals = global_symbols_of_program program in
   let* text = emit_text strings program in
   let document = emit_string_constants strings @ emit_global_data globals @ text in
-  Ok (Doc.Document.of_items document |> Asm.to_string)
+  Ok (Doc.Document.from_items document |> Asm.to_string)

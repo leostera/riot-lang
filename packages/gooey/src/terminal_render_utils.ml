@@ -12,7 +12,7 @@ let rect_col_end = fun (rect: Geometry.Rect.t) -> end_cell (rect.x +. rect.width
 
 let rect_row_end = fun (rect: Geometry.Rect.t) -> end_cell (rect.y +. rect.height)
 
-let rgb_to_color = fun (`rgb (r, g, b)) -> Tty.Color.of_rgb (r, g, b)
+let rgb_to_color = fun (`rgb (r, g, b)) -> Tty.Color.from_rgb (r, g, b)
 
 let is_inside_rect = fun ~col ~row rect ->
   col >= rect_col_start rect

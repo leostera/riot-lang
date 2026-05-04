@@ -64,7 +64,7 @@ let test_class_subset_words_are_not_keywords = fun _ctx ->
     match __tmp1 with
     | [] -> Ok ()
     | word :: rest -> (
-        match Syn.Keyword.of_string word with
+        match Syn.Keyword.from_string word with
         | None -> loop rest
         | Some _ -> Error (word ^ " should lex as an identifier")
       )

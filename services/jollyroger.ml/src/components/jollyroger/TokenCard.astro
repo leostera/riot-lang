@@ -1,0 +1,25 @@
+---
+import { Card, CardContent } from "@/components/ui/card";
+
+interface Props {
+  id: string;
+  label: string;
+  title: string;
+  description: string;
+}
+
+const { id, label, title, description } = Astro.props;
+---
+
+<Card className="jr-token-card" id={id}>
+  <div class="jr-token-card__aside">
+    <div class="jr-token-card__title">
+      <p class="jr-label">{label}</p>
+      <h3 class="jr-subheading">{title}</h3>
+    </div>
+    <p class="jr-token-card__summary">{description}</p>
+  </div>
+  <CardContent className="jr-token-card__body">
+    <slot />
+  </CardContent>
+</Card>

@@ -249,7 +249,7 @@ let slice_ops = {
   sub_to_string = (fun value ~off ~len -> Slice.to_string (Slice.sub_unchecked value ~off ~len));
 }
 
-let of_string = fun s -> parse_with string_ops s
+let from_string = fun s -> parse_with string_ops s
 
 let parse_origin_form_slice = fun value ->
   let len = Slice.length value in
@@ -441,7 +441,7 @@ module Scheme = struct
 
   let file = "file"
 
-  let of_string = fun s ->
+  let from_string = fun s ->
     if String.for_all s ~fn:is_scheme_char && String.length s > 0 then
       Ok s
     else
@@ -453,7 +453,7 @@ end
 module Authority = struct
   type t = string
 
-  let of_string = fun s ->
+  let from_string = fun s ->
     if String.for_all s ~fn:is_authority_char then
       Ok s
     else
@@ -491,7 +491,7 @@ module PathAndQuery = struct
     query: string option;
   }
 
-  let of_string = fun s ->
+  let from_string = fun s ->
     match String.index_of s ~char:'?' with
     | None -> Ok { path = s; query = None }
     | Some idx ->
@@ -579,7 +579,7 @@ let is_absolute = fun url -> url.scheme != None
 let is_relative = fun url -> url.scheme = None
 
 let join = fun base relative_path ->
-  match of_string relative_path with
+  match from_string relative_path with
   | Error e -> Error e
   | Ok rel_url ->
       if is_absolute rel_url then

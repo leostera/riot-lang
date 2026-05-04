@@ -3,7 +3,7 @@ open Std
 module H = Rule_helpers
 module Ast = Syn.Ast
 
-let rule_id = Rule_id.of_string "no-custom-operators"
+let rule_id = Rule_id.from_string "no-custom-operators"
 
 let rule_description = "Custom infix operators should be avoided in favor of named functions"
 

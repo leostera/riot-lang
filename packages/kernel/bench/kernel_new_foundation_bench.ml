@@ -26,7 +26,7 @@ let benchmarks =
   Bench.[
     with_config
       ~config:{ iterations = 50; warmup = 10 }
-      "foundation bytes of_string: 4KiB"
+      "foundation bytes from_string: 4KiB"
       bench_bytes_of_string;
     with_config
       ~config:{ iterations = 50; warmup = 10 }
@@ -38,7 +38,7 @@ let benchmarks =
       bench_string_to_bytes;
     with_config
       ~config:{ iterations = 50; warmup = 10 }
-      "foundation string of_bytes: 4KiB"
+      "foundation string from_bytes: 4KiB"
       bench_string_of_bytes;
   ]
 

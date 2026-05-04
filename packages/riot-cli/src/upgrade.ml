@@ -229,7 +229,7 @@ let load_metadata = fun source ->
         |> Result.map_err ~fn:IO.error_message
     | Metadata_remote url -> download_text ~url
   in
-  Version_info.of_json_string content
+  Version_info.from_json_string content
 
 let display_label = fun metadata -> Version_info.release_label metadata
 
@@ -237,14 +237,14 @@ let read_extracted_metadata = fun ~extract_dir ->
   let path = Path.(extract_dir / Path.v "release.json") in
   match Fs.exists path with
   | Ok true ->
-      Version_info.of_path path
+      Version_info.from_path path
       |> Result.map ~fn:Option.some
   | Ok false
   | Error _ -> Ok None
 
 let metadata_from_binary_version = fun path ->
   let* version = binary_version path in
-  match Version_info.of_version_string version with
+  match Version_info.from_version_string version with
   | Some metadata -> Ok metadata
   | None ->
       Ok {
@@ -356,12 +356,12 @@ let run = fun matches ->
           match resolve_metadata_source ?version () with
           | Error message -> Error message
           | Ok (Metadata_local path) ->
-              Version_info.of_path path
+              Version_info.from_path path
               |> Result.map ~fn:Option.some
           | Ok (Metadata_remote url) -> (
               match download_text ~url with
               | Ok content ->
-                  Version_info.of_json_string content
+                  Version_info.from_json_string content
                   |> Result.map ~fn:Option.some
               | Error _ -> Ok None
             )

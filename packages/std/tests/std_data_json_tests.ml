@@ -14,56 +14,56 @@ let rec describe_json = fun __tmp1 ->
   | Json.Embed json -> describe_json json
 
 let test_parse_null = fun _ctx ->
-  match Json.of_string "null" with
+  match Json.from_string "null" with
   | Ok Json.Null -> Ok ()
   | _ -> Error "Failed to parse null"
 
 let test_parse_true = fun _ctx ->
-  match Json.of_string "true" with
+  match Json.from_string "true" with
   | Ok (Json.Bool true) -> Ok ()
   | _ -> Error "Failed to parse true"
 
 let test_parse_false = fun _ctx ->
-  match Json.of_string "false" with
+  match Json.from_string "false" with
   | Ok (Json.Bool false) -> Ok ()
   | _ -> Error "Failed to parse false"
 
 let test_parse_integer = fun _ctx ->
-  match Json.of_string "42" with
+  match Json.from_string "42" with
   | Ok (Json.Int 42) -> Ok ()
   | Ok value -> Error ("Failed to parse integer, got " ^ describe_json value)
   | Error err -> Error ("Parse failed: " ^ Json.error_to_string err)
 
 let test_parse_negative_integer = fun _ctx ->
-  match Json.of_string "-123" with
+  match Json.from_string "-123" with
   | Ok (Json.Int -123) -> Ok ()
   | Ok value -> Error ("Failed to parse negative integer, got " ^ describe_json value)
   | Error err -> Error ("Parse failed: " ^ Json.error_to_string err)
 
 let test_parse_float = fun _ctx ->
-  match Json.of_string "3.14" with
+  match Json.from_string "3.14" with
   | Ok (Json.Float 3.14) -> Ok ()
   | Ok value -> Error ("Failed to parse float, got " ^ describe_json value)
   | Error err -> Error ("Parse failed: " ^ Json.error_to_string err)
 
 let test_parse_scientific_notation = fun _ctx ->
-  match Json.of_string "1.5e10" with
+  match Json.from_string "1.5e10" with
   | Ok (Json.Float _) -> Ok ()
   | Ok value -> Error ("Failed to parse scientific notation, got " ^ describe_json value)
   | Error err -> Error ("Parse failed: " ^ Json.error_to_string err)
 
 let test_parse_simple_string = fun _ctx ->
-  match Json.of_string {|"hello"|} with
+  match Json.from_string {|"hello"|} with
   | Ok (Json.String "hello") -> Ok ()
   | _ -> Error "Failed to parse simple string"
 
 let test_parse_string_with_escapes = fun _ctx ->
-  match Json.of_string {|"hello\nworld"|} with
+  match Json.from_string {|"hello\nworld"|} with
   | Ok (Json.String s) when String.contains s "\n" -> Ok ()
   | _ -> Error "Failed to parse string with escapes"
 
 let test_parse_string_with_unicode_escape = fun _ctx ->
-  match Json.of_string {|"\u0000\t\u001F"|} with
+  match Json.from_string {|"\u0000\t\u001F"|} with
   | Ok (Json.String s) when String.length s = 3
   && Char.code (String.get_unchecked s ~at:0) = 0
   && Char.code (String.get_unchecked s ~at:1) = 9
@@ -71,52 +71,52 @@ let test_parse_string_with_unicode_escape = fun _ctx ->
   | _ -> Error "Failed to parse string with unicode escapes"
 
 let test_parse_empty_string = fun _ctx ->
-  match Json.of_string {|""|} with
+  match Json.from_string {|""|} with
   | Ok (Json.String "") -> Ok ()
   | _ -> Error "Failed to parse empty string"
 
 let test_parse_empty_array = fun _ctx ->
-  match Json.of_string "[]" with
+  match Json.from_string "[]" with
   | Ok (Json.Array []) -> Ok ()
   | _ -> Error "Failed to parse empty array"
 
 let test_parse_array_with_numbers = fun _ctx ->
-  match Json.of_string "[1, 2, 3]" with
+  match Json.from_string "[1, 2, 3]" with
   | Ok (Json.Array [ Json.Int 1; Json.Int 2; Json.Int 3 ]) -> Ok ()
   | _ -> Error "Failed to parse array with numbers"
 
 let test_parse_nested_array = fun _ctx ->
-  match Json.of_string "[[1, 2], [3, 4]]" with
+  match Json.from_string "[[1, 2], [3, 4]]" with
   | Ok (Json.Array [ Json.Array _; Json.Array _ ]) -> Ok ()
   | _ -> Error "Failed to parse nested array"
 
 let test_parse_empty_object = fun _ctx ->
-  match Json.of_string "{}" with
+  match Json.from_string "{}" with
   | Ok (Json.Object []) -> Ok ()
   | _ -> Error "Failed to parse empty object"
 
 let test_parse_simple_object = fun _ctx ->
-  match Json.of_string {|{"name": "Alice"}|} with
+  match Json.from_string {|{"name": "Alice"}|} with
   | Ok (Json.Object [ ("name", Json.String "Alice") ]) -> Ok ()
   | _ -> Error "Failed to parse simple object"
 
 let test_parse_object_multiple_fields = fun _ctx ->
-  match Json.of_string {|{"name": "Bob", "age": 30}|} with
+  match Json.from_string {|{"name": "Bob", "age": 30}|} with
   | Ok (Json.Object fields) when List.length fields = 2 -> Ok ()
   | _ -> Error "Failed to parse object with multiple fields"
 
 let test_parse_nested_object = fun _ctx ->
-  match Json.of_string {|{"user": {"name": "Alice"}}|} with
+  match Json.from_string {|{"user": {"name": "Alice"}}|} with
   | Ok (Json.Object [ ("user", Json.Object _) ]) -> Ok ()
   | _ -> Error "Failed to parse nested object"
 
 let test_parse_object_with_array = fun _ctx ->
-  match Json.of_string {|{"tags": ["foo", "bar"]}|} with
+  match Json.from_string {|{"tags": ["foo", "bar"]}|} with
   | Ok (Json.Object [ ("tags", Json.Array _) ]) -> Ok ()
   | _ -> Error "Failed to parse object with array"
 
 let test_parse_whitespace = fun _ctx ->
-  match Json.of_string "  \n  42  \n  " with
+  match Json.from_string "  \n  42  \n  " with
   | Ok (Json.Int 42) -> Ok ()
   | _ -> Error "Failed to parse with whitespace"
 
@@ -180,14 +180,14 @@ let test_roundtrip = fun _ctx ->
     Json.obj [ ("name", Json.string "Alice"); ("age", Json.int 30); ("active", Json.bool true); ]
   in
   let serialized = Json.to_string original in
-  match Json.of_string serialized with
+  match Json.from_string serialized with
   | Ok parsed when parsed = original -> Ok ()
   | _ -> Error "Roundtrip failed"
 
 let test_roundtrip_control_characters = fun _ctx ->
   let original = Json.obj [ ("stdout", Json.string "\000\t\031"); ] in
   let serialized = Json.to_string original in
-  match Json.of_string serialized with
+  match Json.from_string serialized with
   | Ok parsed when parsed = original -> Ok ()
   | Ok _ -> Error "Roundtrip with control characters produced a different value"
   | Error err -> Error ("Roundtrip with control characters failed: " ^ Json.error_to_string err)

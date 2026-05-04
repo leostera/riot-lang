@@ -144,7 +144,7 @@ let package_result_of_build_result = fun (result: Package_builder.build_result) 
     artifacts = Option.to_list (artifact_of_status status);
   }
 
-let of_build_results = fun results -> {
+let from_build_results = fun results -> {
   packages = List.fold_left
     results
     ~init:[]

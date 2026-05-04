@@ -106,7 +106,7 @@ let run_request_direct = fun ~on_event ~output_mode (request: Request.t) ->
         ()
 
 let run_matches = fun ~build_package ?(on_event = Types.no_event) ?output_mode matches ->
-  match Request.of_matches matches with
+  match Request.from_matches matches with
   | Error _ as err -> err
   | Ok request ->
       let output_mode = resolved_output_mode ?output_mode request in

@@ -8,7 +8,7 @@ let test_of_string_roundtrips_raw_text = fun _ctx ->
   if Kernel.String.equal (Kernel.Path.to_string (Kernel.Path.from_string raw)) raw then
     Ok ()
   else
-    Error "expected Path.of_string and Path.to_string to roundtrip raw path text"
+    Error "expected Path.from_string and Path.to_string to roundtrip raw path text"
 
 let test_join_treats_empty_sides_as_identity = fun _ctx ->
   let raw = "domains/admin" in
@@ -40,7 +40,7 @@ let test_infix_join_matches_function = fun _ctx ->
     Error "expected Path./ to match Path.join"
 
 let tests = [
-  Test.case "Path.of_string roundtrips raw text" test_of_string_roundtrips_raw_text;
+  Test.case "Path.from_string roundtrips raw text" test_of_string_roundtrips_raw_text;
   Test.case "Path.join treats empty sides as identity" test_join_treats_empty_sides_as_identity;
   Test.case "Path.join avoids duplicate separators" test_join_avoids_duplicate_separators;
   Test.case "Path./ matches Path.join" test_infix_join_matches_function;

@@ -646,7 +646,7 @@ and lower_nested_lambda = fun env (lambda: Core.Expr.lambda) ->
         ~fn:(fun (lowered_body: lowered_expr) ->
           Result.map (map_results
             capture_names
-            (fun capture_name -> lower_var env (Core.Entity_id.of_name capture_name)))
+            (fun capture_name -> lower_var env (Core.Entity_id.from_name capture_name)))
             ~fn:(fun lowered_captures ->
               let capture_values, capture_functions = collect_lowered_exprs lowered_captures in
               let closure_param = "__closure__" in
