@@ -10,39 +10,58 @@ description: "Riot Request for Discussion · implemented"
 ## Summary
 [summary]: #summary
 
-Riot package search is now part of `services/api.pkgs.ml`.
-It is exposed at:
+This RFD documents Riot package search as a current-system snapshot. Search is
+a discovery read model exposed from `services/api.pkgs.ml` at
+`GET https://api.pkgs.ml/v1/search?q=<query>` and keeps one searchable row per
+published package.
 
-```text
-GET https://api.pkgs.ml/v1/search?q=<query>
-```
-
-The implementation uses Cloudflare D1 plus SQLite FTS5 and maintains one
-search row per published package.
-
-Search is a discovery read model.
-It only returns packages that are already published, indexed, and installable.
+- search is for discovery, not for installs or publication authority
+- it returns only packages that are already published, indexed, and
+  installable
+- the current implementation uses D1 plus SQLite FTS5 and stores one row per
+  package, not per release
+- ranking is intentionally simple and package-name biased
+- the search API is allowed to evolve independently from the sparse index as
+  long as the install path remains index-driven
 
 ## Motivation
 [motivation]: #motivation
 
-The sparse index is optimized for exact installs, not discovery.
-Without search, users must already know package names.
+The sparse index is optimized for exact installs, not for discovery.
+Without search, users have to know package names already or reach outside Riot
+to find them.
 
-Riot needs a search surface that can answer queries over:
+That creates a gap in the package experience:
 
-- package names
-- descriptions
-- repository owner and repo
-- source subdirectory
-- package metadata such as root module, license, and latest version
+- package discovery has no first-party home
+- users cannot search by description, repository, or other package metadata
+- the install path would be pressured to solve a discovery problem it was not
+  designed to solve
 
-At the same time, search should not become the authority on whether a package
-exists.
-That authority stays in the registry's publish and index data.
+At the same time, Riot does not want search to become the authority on whether
+a package exists. That authority should stay in the publish and index data.
 
-## Final design
+So the current search service exists to answer the discovery question only:
+
+- "what packages should I look at?"
+
+while leaving the install question to the sparse index:
+
+- "which published package artifact should I actually install?"
+
+## Guide-level explanation
 [guide-level-explanation]: #guide-level-explanation
+
+Suppose a user does not know the exact package name yet and searches for
+"json rpc" or a repository owner.
+
+The current mental model is:
+
+- search is how users discover candidate packages
+- the sparse index is how Riot installs a chosen package
+
+So search is intentionally package-oriented and latest-state oriented. It is
+not trying to be a second install index or a second publication database.
 
 ### Service boundary
 

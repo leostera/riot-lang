@@ -10,59 +10,63 @@ description: "Riot Request for Discussion · implemented"
 ## Summary
 [summary]: #summary
 
-This RFD proposes a build-cache retention model and command surface changes for
-build-cache maintenance.
+This RFD proposes a build-cache retention model for Riot plus the command
+surface needed to operate that model. The goal is to stop `_build` from growing
+without bound while still preserving the artifacts recent successful builds
+actually need.
 
-It gives `riot build` the ability to detect and trigger a cache clean up based
-on an explicit policy in `.riot/config.toml`, to make sure the `_build` folder
-doesn't grow forever.
-
-The cache policy lives under:
-
-```toml
-[riot.cache]
-keep_generations = 10
-max_size = "50 GiB"
-```
-
-Each successful build saves a receipt of the hashes it used, and Riot uses
-those receipts to decide which cache entries are still live.
-
-It also gives us a policy-aware `riot clean`, and a destructive `riot clean
---force`.
+- cache policy lives in `.riot/config.toml`, for example through
+  `keep_generations` and `max_size`
+- each successful build writes a receipt describing the cache hashes it used
+- Riot uses those receipts to compute which cache entries are still live
+- `riot build` can trigger selective GC automatically when policy says it
+  should
+- `riot clean` becomes policy-aware, while `riot clean --force` remains the
+  destructive escape hatch
 
 ## Motivation
 [motivation]: #motivation
 
-Because Riot uses a content-addressable cache for built artifacts, the more you
-build the more your build cache grows. This means:
+Because Riot uses a content-addressable cache for build artifacts, the cache
+only grows as contributors and CI keep building.
 
-1. old, stale artifacts quickly use up your disk space, forcing full manual cache deletions
-2. rehydrating large caches of useless artifacts slows down your CI unnecessarily
+That creates two recurring costs:
 
-A generational and size-bound clean-up policy for the build cache that trims
-down the cache automatically leaving only the most recent active artifacts
-would mean you can forget about this problem entirely.
+1. old, stale artifacts consume large amounts of disk space until someone does
+   a manual cleanup
+2. CI caches can keep rehydrating large amounts of useless data that no recent
+   build actually needs
+
+This is not an incidental paper cut. Riot's normal workflow naturally produces
+many generations of cache state, especially in large workspaces and multi-agent
+loops. Without a retention policy, the only real answer is periodic manual or
+out-of-band deletion.
+
+This proposal exists to change that cost profile:
+
+- recent successful builds define the live set Riot should keep
+- old unused entries can be collected automatically
+- repositories can share one explicit policy instead of relying on personal
+  cleanup habits or CI cache-key hacks
 
 ## Guide-level explanation
 [guide-level-explanation]: #guide-level-explanation
 
-The Riot monorepo regularly runs builds for several targets. A single macOS
-native build puts your `_build` folder at ~375MB. If you make a change in
-Kernel or Std, that triggers a whole new workspace-wide build: another ~350MB
-into the cache. Within a days of work you can accumulate several dozen
-gigabytes, especially if working with a few agents that use `riot build` in
-their feedback loop.
+Suppose a contributor builds Riot repeatedly over a few days, or a CI system
+keeps restoring a warm `_build` cache across many runs.
 
-The current workflow will have you run `riot clean` periodically, which is easy
-to do locally. However on CI, typically caches have a caching key that isn't
-always as easy to break, sometimes requiring manual action on a web ui.
+Today the workflow usually ends with "run `riot clean` when things get too
+large" or "go break the CI cache key manually." That works, but it is entirely
+out of band.
 
-The new workflow makes it so that `riot build` makes a check on the build
-cache, and decides whether to do a selective clean up or not, effectively
-making riot self-manage its cache.
+With this proposal, the workflow becomes part of normal `riot build`:
 
-So if we have a `.riot/config.toml` configuring the cache like this:
+- successful builds record which cache hashes they actually used
+- Riot keeps a bounded history of those successful generations
+- when policy says it is time to reevaluate, Riot computes the live set and
+  selectively deletes dead entries
+
+So if a repository configures:
 
 ```toml
 [riot.cache]
@@ -70,16 +74,15 @@ keep_generations = 10
 max_size = "50 GiB"
 ```
 
-Then effectively every 10th successful builds (that's 10 generations) Riot will
-do a check for the cache size, and trigger a clean up if its over 50 GiB.
+then Riot keeps the most recent successful generations, checks whether the
+workspace cache has grown too large, and only removes entries that are no
+longer live from those retained generations.
 
-To make sure that we always preserve _live_ artifacts, every successful build
-saves a manifest of the artifacts it used. In this case, we'd go over the last
-10 manifests, and make sure the set of artifacts used by them (our _live_
-artifacts), are preserved. Everything else can be deleted.
+The mental model is:
 
-This way locally and on CI, calling `riot build` makes sure that only live
-artifacts are preserved.
+- `riot build` produces generations
+- generations describe the live cache state Riot should preserve
+- GC is selective and policy-driven, not "delete everything and start over"
 
 
 ## Reference-level explanation

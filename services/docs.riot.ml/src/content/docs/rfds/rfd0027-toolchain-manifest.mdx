@@ -10,38 +10,63 @@ description: "Riot Request for Discussion · implemented"
 ## Summary
 [summary]: #summary
 
-This RFD makes `riot` require `manifest.json` inside published OCaml
-toolchain tarballs and use it as the authoritative toolchain identity input to
+This RFD makes Riot require `manifest.json` inside published OCaml toolchain
+tarballs and use that manifest as the authoritative toolchain identity input to
 cache hashing.
 
-From this point forward, published toolchains use the Riot toolchain suffixing
-scheme `5.5.0-riot.<N>` (for example `5.5.0-riot.1`) to force explicit rebuild
-epochs. `scripts/toolchain/ocaml.sh` defaults that suffix to `riot.1` when
-packaging is not explicitly overridden, so consumers resolve and download the Riot
-artifact family by default.
-
-The contract is:
-
-- Release toolchains published for `./scripts/toolchain/ocaml.sh` must include
-  `manifest.json`.
-- The file must contain a non-empty `toolchain_fingerprint`.
-- `riot-toolchain` must validate manifest presence on install and reject archives
-  that do not contain it.
-- Planner cache keys for downloaded/non-local toolchains must be derived from that
-  fingerprint instead of probing selected filesystem paths.
-- Local source toolchains (explicit `Path` installs / vendored compiler) remain
-  supported and continue to use path-based fallback hashing.
+- published toolchains must carry a non-empty `toolchain_fingerprint`
+- `riot-toolchain` validates the manifest on install and rejects legacy
+  downloaded archives that do not provide it
+- planner cache keys for downloaded toolchains are derived from the manifest
+  fingerprint rather than probing a few filesystem paths
+- Riot versioned toolchain epochs such as `5.5.0-riot.1` become the normal
+  published family
+- local source toolchains remain supported and continue to use path-based
+  fallback hashing
 
 ## Motivation
 [motivation]: #motivation
 
 Recent cross-compilation failures were traceable to toolchain tarballs drifting
-from the compiler artifact set expected by the build process (missing sysroot
-headers/libs). A manifest fingerprint makes it explicit when a compiler bundle is
-semantically different even if file layout is similar.
+from the compiler artifact set the build expected, especially around missing
+sysroot headers and libraries.
 
-This RFD removes ad-hoc probing as the primary identity and makes cache behavior
-depend on a stable build artifact description carried in the release tarball.
+The old identity model was too weak. If Riot hashed a downloaded toolchain by
+probing selected filesystem paths, it could treat two semantically different
+bundles as if they were the same compiler environment.
+
+That creates recurring risk:
+
+- stale toolchain cache entries can survive semantic changes in the published
+  bundle
+- debugging target-specific failures becomes harder because the archive itself
+  does not carry an explicit identity contract
+- republishing a fixed bundle is less meaningful if Riot still infers identity
+  from ad hoc filesystem probes
+
+This change exists to make downloaded toolchain identity explicit and auditable.
+The tarball itself now carries the fingerprint Riot should trust.
+
+## Guide-level explanation
+[guide-level-explanation]: #guide-level-explanation
+
+Suppose a contributor installs or uses a published cross-compilation toolchain.
+
+Before this change, Riot could only infer toolchain identity indirectly by
+looking at selected files after extraction. That was good enough for some
+cases, but too weak for semantically different bundles with similar layouts.
+
+With this change, the mental model is simpler:
+
+1. a published toolchain tarball contains `manifest.json`
+2. that manifest contains `toolchain_fingerprint`
+3. `riot-toolchain` validates the manifest on install
+4. the planner uses the fingerprint as the cache identity for that downloaded
+   toolchain
+
+So a republished bundle is not just "different bytes somewhere in the
+archive." It is a different named toolchain artifact with an explicit
+fingerprint and, when needed, a new Riot epoch such as `5.5.0-riot.1`.
 
 ## Mechanism
 [mechanism]: #mechanism

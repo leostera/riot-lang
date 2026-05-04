@@ -10,46 +10,67 @@ description: "Riot Request for Discussion · implemented"
 ## Summary
 [summary]: #summary
 
-This RFD proposes a new `riot doc` command and a `riot-doc` code-generation pipeline that build modern, static documentation sites for OCaml packages from source AST/types.
+This RFD proposes a new `riot doc` command plus a `riot-doc` generation
+pipeline that build static documentation sites for OCaml packages from Riot's
+own source and type information.
 
-The local default output is:
-
-- `_build/doc/<package>/<version>/...`
-
-Generated assets are then published by the docs service into `docs.pkgs.ml/p/<package>/<version>/`.
-
-The proposal mirrors docs.rs assumptions for isolation and reproducibility:
-
-1. `riot build` can assume its dependency artifacts are available.
-2. `riot doc` can assume dependency docs are available when linking to other packages.
-3. A package at `docs.pkgs.ml/p/<name>/<version>/` has docs for package `<name>@<version>`.
-4. `riot doc` must be source-cacheable: unchanged source hashes and dependency hashes should yield cache hits and reuse docs from `Riot_store` without rework.
+- local docs are generated under `_build/doc/<package>/<version>/...`
+- published docs are served at `docs.pkgs.ml/p/<package>/<version>/`
+- docs generation is cacheable from source and dependency state, not a purely
+  side-effecting publish-time script
+- Riot's own parser, formatter, and type information become the foundation for
+  docs output instead of an external assumed toolchain
+- this RFD is about Riot's first-party docs pipeline, not about strict link
+  validation or a separate monolithic docs service
 
 ## Motivation
 [motivation]: #motivation
 
-Riot does not currently have a native, first-party API documentation generator. Existing package publication already expects a docs phase (`services/docs.pkgs.ml` stores a `DocsBuildRequest` and currently expects `riot doc`), but there is no concrete implementation path.
+Riot does not currently have a native, first-party API documentation generator,
+even though package publication already expects a docs phase.
 
-This leaves a gap in:
+That creates an obvious gap:
 
-- discoverability: users cannot browse OCaml package docs from the registry web route contract,
-- correctness: current docs for external packages are impossible without external tooling assumptions,
-- consistency: no shared rendering model that is aligned with Riot’s parser/typechecker and formatter pipeline.
+- users cannot browse package docs through Riot's own package web contract
+- publication and docs serving already assume a `riot doc` capability that does
+  not really exist yet
+- external tooling assumptions would force Riot to explain docs generation
+  through a different stack than the one it already owns for parsing, typing,
+  and formatting
 
-Riot already has strong foundations (`syn`, `typ`, `krasny`, `riot-cli`, `riot-publish`), so this is the missing link between package publication and user-facing package docs.
+So Riot keeps paying for missing or fragmented docs in three places at once:
+
+- discoverability for users
+- publication completeness for package infrastructure
+- consistency for contributors building tooling on top of Riot's own syntax and
+  type layers
+
+This proposal exists to close that gap with one first-party docs pipeline that
+matches Riot's own architecture.
 
 ## Guide-level explanation
 [guide-level-explanation]: #guide-level-explanation
 
-Roughly:
+There are two workflows to understand: local docs generation and publish-time
+docs generation.
 
-- `riot doc` becomes a first-class command.
-- It discovers a target package and its public surface.
-- It renders a static docs site from parsed docs/signatures and type information.
-- It writes HTML/CSS/JS to `_build/doc/<package>/<version>/` locally.
-- CI/registry runners upload that output under
-  `docs/<package>/<version>/` so `docs.pkgs.ml` can serve it at
-  `/p/<package>/<version>/`.
+For a local contributor, the model is:
+
+- run `riot doc`
+- Riot discovers the target package and its public surface
+- Riot renders a static site into `_build/doc/<package>/<version>/`
+
+For the publish/docs service path, the model is:
+
+- the same `riot doc` command runs against an unpacked publish artifact
+- generated output is uploaded under `docs/<package>/<version>/`
+- `docs.pkgs.ml` then serves it at `/p/<package>/<version>/`
+
+So the mental model is not "some external doc tool runs later." It is:
+
+- `riot doc` is a first-class Riot command
+- docs output is just another deterministic build product
+- local and publish-time generation use the same core pipeline
 
 ### Default usage
 

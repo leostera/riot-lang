@@ -10,40 +10,87 @@ description: "Riot Request for Discussion · implemented"
 ## Summary
 [summary]: #summary
 
-This RFD documents the current relationship between `kernel` and `std`. It captures how Riot splits its foundational library surface into a low-level systems boundary in `kernel` and a broader application-facing standard library in `std`, with `actors` sitting between them for actor runtime behavior.
+This RFD documents the current relationship between `kernel` and `std` as a
+snapshot RFD. It explains how Riot splits its foundational library surface into
+three layers: a low-level systems boundary in `kernel`, actor-runtime behavior
+in `actors`, and a broader application-facing standard library in `std`.
+
+- `kernel` owns low-level systems primitives, platform boundaries, and
+  FFI-adjacent code
+- `actors` turns part of that substrate into process, mailbox, timer, and
+  scheduler behavior
+- `std` is the default application-facing Riot surface for most code in the
+  repository
+- this split is about package and API boundaries as much as implementation
+  detail
+- this RFD documents the current layering, not a proposal to collapse or
+  redesign it
 
 ## Motivation
 [motivation]: #motivation
 
-`kernel` and `std` are both foundational, but they do different jobs.
+`kernel` and `std` are both foundational, but contributors often meet them as
+just two large packages with overlapping-looking APIs.
 
-Without a snapshot document, it is easy to blur their roles:
+Without one explicit snapshot of the layering, Riot pays for that ambiguity in
+several ways:
 
-- `kernel` can look like just a bag of primitives unless its boundary is described explicitly
-- `std` can look like a generic utilities package instead of the mandatory Riot surface
-- the relationship between `kernel`, `actors`, and `std` can become implicit instead of architectural
+- reviews have to re-explain whether a new API belongs in `kernel`, `actors`,
+  or `std`
+- low-level code can drift upward into `std` because `kernel` looks like "just
+  another utility package" instead of a deliberate systems boundary
+- `std` can be misread as a grab-bag of helpers instead of Riot's main
+  application-facing surface
+- the relationship between package boundaries and runtime boundaries becomes
+  implicit instead of architectural
 
-This RFD records the current design as it exists today:
+These costs are structural because the split is real:
 
-- what belongs in `kernel`
-- what belongs in `std`
-- how `std` re-exports and composes lower layers
-- how applications reach runtime, filesystem, data, networking, and process facilities through `std`
+- `kernel` owns raw systems concerns
+- `actors` owns runtime mechanics built on top of those concerns
+- `std` owns the everyday surface most Riot code should use
+
+This snapshot exists to make that layering teachable so future API work can be
+reviewed against one explicit boundary.
 
 ## Guide-level explanation
 [guide-level-explanation]: #guide-level-explanation
 
-The current layering is:
+Suppose a contributor is adding a new capability and needs to decide where it
+belongs.
+
+The current rule of thumb is:
+
+- if it is raw platform work, file descriptors, sockets, polling, or FFI
+  boundary code, it belongs in `kernel`
+- if it is process scheduling, mailboxes, timers, links, monitors, or receive
+  semantics, it belongs in `actors`
+- if it is the ergonomic surface application code should normally use, it
+  belongs in `std`
+
+That means most Riot application code should feel like:
+
+```ocaml
+open Std
+```
+
+not:
+
+```ocaml
+open Kernel
+```
+
+The mental model is a layered stack:
 
 1. `kernel` provides low-level systems primitives and platform integration
 2. `actors` turns some of those primitives into an actor runtime
 3. `std` becomes the default library surface for almost all Riot code
 
-In practice:
+So if a contributor is writing:
 
-- if code is FFI, raw platform details, or low-level async/polling primitives, it belongs in `kernel`
-- if code is needs actor scheduling, processes, mailboxes, timers, or receive semantics, it belongs in `actors`
-- if code is ergonomic everyday APIs for files, data, networking, application structure, testing, logging, or higher-level process helpers, it belongs in `std`
+- a raw async poll registration API, that is `kernel`
+- a new process helper built on actor semantics, that is `actors`
+- a convenient filesystem, JSON, HTTP, config, or testing API, that is `std`
 
 ### Layer relationship
 

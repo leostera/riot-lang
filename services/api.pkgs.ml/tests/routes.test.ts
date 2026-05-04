@@ -751,6 +751,8 @@ describe("riot package registry routes", () => {
 
   test("owners can yank a release and latest moves to the highest non-yanked version", async () => {
     const { env, db } = makeEnv();
+    const sessionCreatedAt = new Date().toISOString();
+    const sessionExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
     expect((await publishArtifact(env, await makePackageArtifact({
       packageName: "std",
       packageVersion: "0.1.0",
@@ -769,15 +771,15 @@ describe("riot package registry routes", () => {
       github_id: 42,
       github_login: "leostera",
       github_name: "Leo Stera",
-      created_at: "2026-04-06T10:00:00.000Z",
-      updated_at: "2026-04-06T10:00:00.000Z",
+      created_at: sessionCreatedAt,
+      updated_at: sessionCreatedAt,
     });
     await writeSessionRecord(db as unknown as D1Database, {
       session_id: "session-1",
       user_id: "user-1",
       github_login: "leostera",
-      created_at: "2026-04-06T10:00:00.000Z",
-      expires_at: "2026-04-13T10:00:00.000Z",
+      created_at: sessionCreatedAt,
+      expires_at: sessionExpiresAt,
     });
     await writePackageClaim(db as unknown as D1Database, {
       package_name: "std",
@@ -794,8 +796,8 @@ describe("riot package registry routes", () => {
       session_id: "session-1",
       user_id: "user-1",
       github_login: "leostera",
-      created_at: "2026-04-06T10:00:00.000Z",
-      expires_at: "2026-04-13T10:00:00.000Z",
+      created_at: sessionCreatedAt,
+      expires_at: sessionExpiresAt,
     });
 
     const yankResponse = await handleRequest(

@@ -11,59 +11,71 @@ description: "Riot Request for Discussion · presented"
 [summary]: #summary
 
 This RFD proposes a new `macro` package for Riot: a procedural macro system for
-OCaml built on top of `syn` and `ceibo`. The goal is to give Riot a
-syntax-aware, package-managed macro layer similar in spirit to Rust’s
-procedural and declarative macros.
+OCaml built on top of `syn` and `ceibo`. It gives Riot a package-managed,
+syntax-aware expansion layer so code generation can happen inside Riot's own
+tooling stack instead of through external PPX or ad hoc preprocessors.
 
-The core macro contract should be token-stream based. Macros should receive
-token streams, optionally parse them with `syn`, transform them in user-defined
-code, and return generated token streams plus diagnostics. The first version
-should focus on explicit, parser-backed code generation rather than compiler
-plugins, hygiene research, or implicit compile-time magic.
+- the public macro contract is token-stream based: macros receive tokens and
+  return tokens plus diagnostics
+- macro authors may opt into `syn` parsing when they want structured syntax,
+  but raw text preprocessing is not the model
+- macro packages participate in Riot builds as build-time dependencies
+- the first version is about explicit parser-backed code generation, not
+  compiler plugins or implicit compile-time magic
+- this RFD does not try to solve full hygiene research or recreate OCaml's
+  existing PPX ecosystem inside Riot
 
 ## Motivation
 [motivation]: #motivation
 
-Riot now has the missing prerequisite for a real macro story:
+Today Riot has two unsatisfying choices for code generation:
 
-- `syn` can parse the Riot codebase successfully
+- write and maintain boilerplate by hand
+- depend on external macro or preprocessing stories that sit outside Riot's own
+  parser, diagnostics, and build model
+
+That gap matters more now that Riot already owns the core syntax stack:
+
+- `syn` can parse the codebase successfully
 - `syn` produces lossless syntax trees
-- `syn` has a real diagnostics suite
-- `ceibo` provides the red-green tree substrate needed for structural rewriting
+- `syn` has structured diagnostics
+- `ceibo` provides the structural rewrite substrate
 
-That changes macro work from “interesting future idea” into “practical next
-layer”.
+Without an owned macro layer, Riot keeps paying several costs:
 
-The motivating use cases are concrete:
+- package authors who want compile-time code generation have no Riot-native
+  place to put it
+- diagnostics for generated code stay harder to structure and surface well
+- future libraries that naturally want codegen, such as SQL, routing, or
+  derive-style helpers, have to reach outside Riot's build contract
+- macro-like workflows risk fragmenting into one-off generators, scripts, or
+  external tooling integrations
 
-1. A package defines a derive-style macro that expands into ordinary OCaml declarations.
-2. An application uses an attribute-like or function-like macro to reduce
-   boilerplate around actors, messages, SQL, routing, or serialization.
-3. A macro emits rich parser-style diagnostics tied to source spans, instead of
-   failing as a stringly preprocessor.
-4. Macro expansion participates in `riot` builds as a normal package dependency.
-5. Future Riot libraries such as `sqlx`, web routing, or state-machine helpers
-   can offer structured code generation without depending on an external ppx story.
-
-This RFD is motivated by one broad idea: Riot should own its macro story the
-same way it now owns its parser story.
+These costs are structural. The missing piece is not parsing or tree handling
+any more; it is a build-integrated expansion boundary that Riot itself owns.
+This proposal exists to define that boundary.
 
 ## Guide-level explanation
 [guide-level-explanation]: #guide-level-explanation
 
-Contributors should think about `macro` as a new package layer on top of `syn`.
+Suppose a package author wants to remove repetitive boilerplate around a common
+pattern, such as an actor declaration or a derive-style data helper.
 
-The flow is:
+Today that author would either keep writing the generated code by hand or reach
+for tooling that sits outside Riot's parser and build model.
 
-1. User code contains a macro invocation.
-2. `riot` resolves the macro package as a build dependency.
-3. The macro runtime receives token streams, not raw strings.
-4. A macro may parse those tokens with `syn` if it wants structured syntax.
-5. The macro returns generated token streams plus optional diagnostics.
-6. The expanded code continues through the normal build pipeline.
+With this proposal, the mental model changes:
+
+1. user code contains a macro invocation
+2. `riot` resolves the macro package as a build dependency
+3. the macro runtime receives token streams, not raw strings
+4. the macro may parse those tokens with `syn` if it wants structured syntax
+5. the macro returns generated token streams plus diagnostics
+6. the expanded code continues through the normal build pipeline
 
 The user model should feel closer to Rust procedural macros than to textual
-preprocessors.
+preprocessors. The important change is not just "Riot can do code generation."
+It is that macro expansion becomes part of Riot's own syntax and build story.
 
 ### What kinds of macros
 

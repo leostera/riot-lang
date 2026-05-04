@@ -10,63 +10,103 @@ description: "Riot Request for Discussion · implemented"
 ## Summary
 [summary]: #summary
 
-This RFD documents the bootstrap process for `riot`. It explains how the repository gets from source code to a first working `riot` binary without requiring `riot` itself to already exist. The bootstrap path consists of `bootstrap.py`, the generated bootstrap sandbox under `_build/bootstrap`, and the standalone `miniriot` builder that compiles the real `riot-cli`.
+This RFD documents Riot's current bootstrap process as a snapshot RFD. It
+explains how the repository gets from "no working `riot` binary exists yet" to
+a first usable `riot-cli`, using an external bootstrap script plus a smaller
+standalone builder before the steady-state build system can take over.
+
+- bootstrap starts from a plain host environment and an OCaml toolchain, not
+  from an already-working Riot installation
+- `bootstrap.py` owns toolchain provisioning and the generated bootstrap
+  sandbox under `_build/bootstrap`
+- the bootstrap-only `miniriot` builder performs the first real package scan,
+  planning pass, and build of `riot-cli`
+- early package outputs are carried forward so later packages can build on them
+  during bootstrap
+- this RFD is about first-build mechanics only, not the normal post-bootstrap
+  `riot build` path
 
 ## Motivation
 [motivation]: #motivation
 
-The build system is self-hosted, which means it needs an explicit bootstrap path.
+Riot is self-hosted, which means "build Riot from source" is not the same
+problem as "run an existing Riot binary."
 
-That bootstrap path has its own architecture and constraints:
+Without one document for the bootstrap path, contributors have to reconstruct
+that distinction from:
+
+- `bootstrap.py`
+- `packages/miniriot`
+- generated files under `_build/bootstrap`
+- whatever toolchain state happens to exist on the machine already
+
+That creates recurring costs:
+
+- bootstrap failures are harder to diagnose because it is easy to assume the
+  steady-state build rules apply
+- changes to toolchain provisioning, package scanning, or early-package wiring
+  can break first-build behavior even when normal `riot build` still works
+- contributors touching bootstrap code have to rediscover which parts are
+  bootstrap-only and which parts must stay aligned with the main build system
+- reviews end up re-explaining the same constraints: no existing Riot binary,
+  reduced runtime surface, and a different builder implementation
+
+These costs are structural. The bootstrap path really does have different
+constraints:
 
 - it cannot depend on the full mainline `riot` runtime
 - it must be able to start from a plain OCaml toolchain
-- it has to construct enough package/dependency/build logic to compile the first real `riot`
+- it has to construct enough package and build logic to compile the first real
+  `riot`
 - it uses a smaller, separate implementation in `packages/miniriot`
 
-This is a different problem from documenting how steady-state `riot build` works after `riot` is already installed.
-
-The purpose of this RFD is to capture the bootstrap system on its own terms:
-
-- how `bootstrap.py` finds or installs a toolchain
-- how it materializes a standalone `miniriot`
-- how `miniriot` scans packages, plans work, and executes builds
-- how outputs from early packages become inputs for later packages
-- how the first working `riot-cli` binary is produced
+This snapshot exists to make that boundary explicit before more toolchain and
+build-system work lands.
 
 ## Guide-level explanation
 [guide-level-explanation]: #guide-level-explanation
 
-The bootstrap process has two stages.
+Suppose you clone Riot onto a clean machine that does not already have a
+working `riot` binary.
 
-### Stage 1: Build `miniriot`
+The path to a first build is not:
 
-`bootstrap.py` is the external bootstrap script.
+```text
+riot build
+```
 
-It:
+because the tool you would normally use does not exist yet.
 
-1. determines the host platform
-2. ensures an OCaml toolchain exists under `~/.riot/toolchains`
-3. creates a bootstrap sandbox under `_build/bootstrap`
-4. generates a `const.ml` file that tells `miniriot` where its toolchain is
-5. copies the `miniriot` source files into the bootstrap sandbox
-6. compiles those files directly with `ocamlopt` into `./miniriot`
+Instead, the bootstrap workflow begins with:
 
-### Stage 2: Use `miniriot` to build `riot`
+```text
+./bootstrap.py
+```
 
-Once `./miniriot` exists, it becomes the build tool.
+Contributors should think about the current bootstrap path as a two-stage
+bridge.
 
-`miniriot`:
+Stage 1 is external bootstrapping. `bootstrap.py` detects the host, makes sure
+an OCaml toolchain exists, creates `_build/bootstrap`, generates the small bit
+of configuration `miniriot` needs, and compiles a bootstrap-only builder.
 
-1. reads package manifests
-2. scans package source trees
-3. computes a package-local dependency graph
-4. turns that graph into a bootstrap build plan
-5. executes compiler and filesystem actions
-6. promotes the resulting outputs
-7. carries those outputs forward so later packages can depend on earlier ones
+Stage 2 is bootstrap building. Once `./miniriot` exists, it behaves like a
+reduced Riot build system: it reads package manifests, scans sources, plans
+bootstrap work, compiles packages in dependency order, and eventually produces
+the first real `riot-cli`.
 
-Eventually, that sequence builds `riot-cli`, which can then be promoted and used as the real `riot`.
+So the mental model is:
+
+1. `bootstrap.py` gets the repository to a minimal working builder
+2. `miniriot` gets the repository from that minimal builder to the real `riot`
+
+The important boundary is that bootstrap is intentionally narrower than the
+main build system:
+
+- it starts from a plain host environment
+- it owns more toolchain bootstrapping work up front
+- it uses `miniriot`, not the full steady-state Riot runtime
+- it ends as soon as the first real `riot-cli` exists
 
 ### Bootstrap chain
 

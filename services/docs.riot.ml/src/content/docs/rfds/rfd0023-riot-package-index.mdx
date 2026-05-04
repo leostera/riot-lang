@@ -10,50 +10,66 @@ description: "Riot Request for Discussion · implemented"
 ## Summary
 [summary]: #summary
 
-Riot's sparse package index is a Cargo-style sharded JSON index rooted at:
+This RFD documents Riot's sparse package index as a current-system snapshot.
+The index is a Cargo-style sharded JSON read model rooted at
+`https://cdn.pkgs.ml/index/v1/` and exists to make named package installs fast,
+cache-friendly, and independent from the registry control plane at read time.
 
-```text
-https://cdn.pkgs.ml/index/v1/
-```
-
-The sparse index is written by `services/api.pkgs.ml` and served publicly by
-the `services/cdn.pkgs.ml` worker at `cdn.pkgs.ml`.
-That split is intentional: publish blocks until the index has been updated, and
-reads still happen through the CDN hostname clients expect.
-
-The index only contains explicitly published packages with unique public names.
-Direct source dependencies do not appear in the index unless an author later
-publishes them.
+- the index is written synchronously during publish and then served publicly
+  from `cdn.pkgs.ml`
+- it contains only explicitly published, named public packages
+- package documents are sharded so a named install needs one config fetch plus
+  one small package fetch in the common case
+- clients solve versions locally after reading the index document
+- the index is an install read model, not an ownership, authentication, or
+  source-materialization service
 
 ## Motivation
 [motivation]: #motivation
 
-The registry solves publication and provenance, but package installation by
-name needs a much cheaper hot path.
+The registry solves publication and provenance, but named package installation
+needs a much cheaper and more CDN-friendly hot path.
 
-The install fast path for:
+If the install path had to stay on the registry control plane, Riot would keep
+paying for the wrong shape of system:
+
+- control-plane availability would matter too much for ordinary installs
+- package-name lookup would be harder to cache aggressively
+- install UX would mix publication concerns with read-heavy package resolution
+
+The desired named-install workflow is much narrower:
 
 ```text
 riot add kernel
 ```
 
-should be:
+should usually mean:
 
 1. fetch sparse index config once
-2. compute one package shard path
-3. fetch one small package document
-4. solve locally in `riot`
+2. compute one shard path
+3. fetch one package document
+4. solve locally in Riot
 5. download immutable artifacts by SHA
 
-That means the index must be:
+That is why the current index is static, sharded, and deliberately independent
+from GitHub and registry-only control-plane logic at read time.
 
-- static
-- sharded
-- cache-friendly
-- independent from GitHub at read time
-
-## Final design
+## Guide-level explanation
 [guide-level-explanation]: #guide-level-explanation
+
+The easiest way to understand the index is through a named install.
+
+Suppose a contributor runs:
+
+```text
+riot add kernel
+```
+
+The current mental model is:
+
+- the registry made `kernel` publishable
+- the sparse index tells the client what published releases exist
+- Riot solves locally and then downloads the chosen immutable artifact
 
 ### Ownership
 

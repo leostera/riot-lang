@@ -21,6 +21,6 @@
     "@astrojs/check": "^0.9.8",
     "@types/bun": "latest",
     "typescript": "^5",
-    "wrangler": "latest"
+    "wrangler": "^4.87.0"
   }
 }

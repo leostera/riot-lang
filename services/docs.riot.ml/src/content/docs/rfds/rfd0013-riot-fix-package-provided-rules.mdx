@@ -11,63 +11,63 @@ description: "Riot Request for Discussion · implemented"
 [summary]: #summary
 
 This RFD extends `riot-fix` so workspace packages can ship their own lint rules
-and explanations, with those rules compiled at build time into one synthetic
-`fixme-runner`.
+and explanations while still executing the whole workspace through one
+generated in-process runner.
 
-The central design should be:
-
-- do not run one binary per rule
-- do not run one binary per package
-- do parse each file once
-- do run all enabled rules in-process
-
-The resulting system should have these properties:
-
-- packages should declare at most one `[riot.fix.provider]`
-- provider source should default to either:
-  - `fix/riot_fix_rules/riot_fix_rules.ml`
-  - `fix/riot_fix_rules.ml`
-  - and may accept these as compatibility fallbacks:
-    - `src/riot_fix_rules/riot_fix_rules.ml`
-    - `src/riot_fix_rules.ml`
-- rule ids should be automatically namespaced as `<package>:<rule>`
-- diagnostic codes should be automatically namespaced as `<package>:<code>`
-- `riot fix` should generate a `fixme-runner` under `_build`
-- that runner should rebuild like any other `riot` package and use normal
-  caching
-
-`std:no-stdlib` should be a good first concrete package-owned rule using this
-model.
+- rule ownership moves to the package that defines the policy, rather than
+  centralizing unrelated rules in `riot-fix`
+- `riot fix` still parses each file once and runs all enabled rules in-process
+  through one synthetic `fixme-runner`
+- provider entrypoints live in build-oriented rule source files and are exposed
+  through one `[riot.fix.provider]` declaration per package
+- rule ids and diagnostic codes are automatically namespaced as
+  `<package>:<rule>` and `<package>:<code>`
+- this RFD is about package-owned rule integration, not about running one
+  binary per rule or per package
 
 ## Motivation
 [motivation]: #motivation
 
-`riot-fix` already had the right local primitives:
+`riot-fix` already had the right execution primitives:
 
 - parser-backed analysis
 - typed diagnostics
 - fixes and explanations
 - one-process execution
 
-What it lacked was ownership. Rules such as `no-stdlib` are not really generic
-`riot-fix` opinions. They are package-owned policies. `std` should own
-`std:no-stdlib` in the same way `suri`, `sqlx`, or `minttea` should eventually
-own their own lint rules.
+What it lacked was ownership. Rules such as `std:no-stdlib` are not generic
+style opinions; they are package-owned policy. Without a package-owned model,
+Riot keeps paying two costs:
 
-There is also a hard runtime constraint. Riot-sized workspaces are already large
-enough that per-rule or per-package subprocess execution would be the wrong
-shape. The cost is not just CPU time; it is repeated parsing, process startup,
-transport overhead, and poor streaming behavior.
+- rule definitions drift toward one central tool package even when the policy
+  really belongs to `std`, `suri`, `sqlx`, or another domain package
+- every attempt to decentralize rule ownership risks a much worse runtime shape
+  with repeated parsing, repeated process startup, and fragmented streaming
 
-So the requirement is:
+That second cost matters in Riot-sized workspaces. Running one binary per rule
+or one binary per package would turn `riot fix` into a subprocess orchestration
+problem instead of one parser-and-runner pass.
 
-`riot-fix` must let packages own rules without giving up a generated in-process
-`fixme-runner`.
+So the actual requirement is:
+
+- let packages own their rules
+- keep one generated in-process `fixme-runner`
+
+This proposal exists to remove the ownership problem without giving up the
+runtime shape that makes `riot-fix` practical.
 
 ## Guide-level explanation
 [guide-level-explanation]: #guide-level-explanation
 
-A package can expose a fix provider in `riot.toml`:
+Suppose `std` wants to enforce `std:no-stdlib`.
+
+Without this design, Riot has two bad choices:
+
+- put the rule in central `riot-fix` code even though the policy belongs to
+  `std`
+- or try to run separate rule binaries and pay repeated parse and process costs
+
+With this proposal, the package itself declares a provider in `riot.toml`:
 
 ```toml
 [riot.fix.provider]
@@ -82,10 +82,9 @@ preferring build-only `fix/` locations:
 - `src/riot_fix_rules/riot_fix_rules.ml`
 - `src/riot_fix_rules.ml`
 
-The provider source should not be compiled as part of the owning package's
-normal runtime build. Instead, `riot fix` should discover all providers in the
-workspace, generate a synthetic `fixme-runner` package, build it, and run that
-one binary.
+The provider source does not participate in the owning package's normal runtime
+build. Instead, `riot fix` discovers all providers in the workspace, generates
+one synthetic `fixme-runner`, builds it, and runs that one binary.
 
 From the user side, the command surface stays simple:
 
@@ -106,6 +105,13 @@ flowchart TD
   E --> F[parse each file once]
   F --> G[run all enabled rules in-process]
 ```
+
+So the contributor mental model is:
+
+- packages own their lint policy
+- `riot fix` still behaves like one workspace-wide tool
+- the generated runner is an implementation detail that preserves the good
+  runtime shape
 
 ## Reference-level explanation
 [reference-level-explanation]: #reference-level-explanation

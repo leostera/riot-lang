@@ -10,50 +10,87 @@ description: "Riot Request for Discussion · implemented"
 ## Summary
 [summary]: #summary
 
-This RFD documents the steady-state architecture of `riot` once a working
-`riot` binary already exists. It captures the current one-shot local build flow
-across `riot-cli`, `riot-build`, `riot-planner`, `riot-executor`,
-`riot-store`, and `riot-toolchain`.
+This RFD documents Riot's current steady-state build system as a snapshot RFD.
+It explains what happens once a working `riot` binary already exists and a
+contributor runs a normal command such as `riot build`, `riot test`, or
+`riot run`.
+
+- the build system is one-shot and local: one command invocation creates one
+  build session and then exits
+- `riot-cli`, `riot-build`, `riot-planner`, `riot-executor`, `riot-store`, and
+  `riot-toolchain` form distinct layers with different responsibilities
+- planning, execution, caching, and toolchain selection are all part of the
+  same per-command flow
+- streamed build events are part of the current user-facing contract
+- this RFD is about the post-bootstrap steady-state build path, not the
+  bootstrap path itself
 
 ## Motivation
 [motivation]: #motivation
 
-The build system has a clear local execution model, but there is no single
-document that describes the system as it exists today.
+The current build system spans several packages and layers, but contributors
+usually encounter it as one user action:
 
-This RFD exists to capture:
+```text
+riot build
+```
 
-- the CLI entrypoints
-- the local session boundary
-- the runtime orchestration layer
-- workspace and package planning
-- package execution
-- caching
-- toolchain and cross-compilation behavior
+Without a snapshot of the full path, contributors have to jump between CLI
+entrypoints, session code, build orchestration, planner logic, executor code,
+store behavior, and toolchain wrappers just to answer ordinary questions such
+as:
+
+- where the command boundary ends and build orchestration begins
+- where planning stops and execution starts
+- which layer owns caching decisions
+- how toolchain and target information reach the executor
+- why a build failure surfaced from one package instead of another
+
+That costs review time, debugging time, and onboarding time. It also makes
+changes riskier because the build system's boundaries are easy to blur in
+conversation even when the code is explicit.
+
+These costs are structural. Riot's build path really is split across several
+packages, and each package owns a different part of the flow. This snapshot
+exists to make that current boundary legible before more work lands in
+planning, execution, caching, and cross-compilation.
 
 ## Guide-level explanation
 [guide-level-explanation]: #guide-level-explanation
 
-The system currently operates as a one-shot local build tool with a few clear layers:
+Suppose a contributor runs:
 
-1. `riot-cli` parses the command and decides what the user is asking for.
-2. `riot-cli` opens a local session through `Local_session`.
-3. `riot-build` starts an in-process actor that owns workspace, toolchain, store, and package graph state for that command invocation.
-4. a build worker plans the requested packages and executes them.
-5. build events stream back to the CLI while the command is running.
-6. the process exits when the command is done.
+```text
+riot build
+```
 
-The “server” is a local actor-based orchestration layer used within a single command execution.
+The current system should be understood as one local, one-shot build session.
+The command scans the workspace, initializes the toolchain and store state for
+that invocation, plans the requested work, executes it, streams progress, and
+then exits.
 
-The main package responsibilities are:
+The important point is that Riot is not running a long-lived build daemon for
+normal use. The current "server" is an in-process orchestration boundary used
+inside one command execution.
 
-- `riot-model`: shared types and directory conventions
-- `riot-toolchain`: compiler/toolchain discovery, download, and invocation
-- `riot-store`: content-addressed artifact cache
-- `riot-planner`: package graph, module graph, and action graph planning
-- `riot-executor`: per-package build execution and workspace coordination
-- `riot-build`: local orchestration and request handling
-- `riot-cli`: user-facing commands and output
+So the contributor mental model is:
+
+1. `riot-cli` interprets the command and opens a local session
+2. `riot-build` owns the per-command build state
+3. `riot-planner` turns workspace inputs into package and action plans
+4. `riot-executor` runs the planned work
+5. `riot-store` persists and restores cached artifacts
+6. events stream back to the CLI until the command completes
+
+When debugging or extending the build system, that is the boundary to keep in
+mind:
+
+- `riot-cli` is user-facing command flow and output
+- `riot-build` is local orchestration
+- `riot-planner` is graph construction
+- `riot-executor` is sandboxed work execution
+- `riot-store` is durable artifact storage
+- `riot-toolchain` is compiler and tool wrapper resolution
 
 ### End-to-end build flow
 

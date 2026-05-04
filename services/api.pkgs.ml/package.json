@@ -12,11 +12,11 @@
     "test:e2e": "bun test tests/e2e.test.ts"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "latest",
+    "@cloudflare/workers-types": "^4.20260503.1",
     "@types/bun": "latest",
     "@types/semver": "^7.7.1",
     "typescript": "^5",
-    "wrangler": "latest"
+    "wrangler": "^4.87.0"
   },
   "dependencies": {
     "arctic": "^3.7.0",

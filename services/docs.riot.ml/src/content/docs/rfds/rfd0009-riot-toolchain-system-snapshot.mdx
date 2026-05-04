@@ -10,66 +10,83 @@ description: "Riot Request for Discussion · implemented"
 ## Summary
 [summary]: #summary
 
-This RFD documents the current steady-state toolchain system used by `riot`.
-It explains how toolchain configuration is loaded, how compiler bundles are
-provisioned and selected, how target information flows through planning and
-execution, and where the current implementation is broader or narrower than the
-surface types suggest.
+This RFD documents Riot's current toolchain system as a snapshot RFD. It
+explains how workspaces declare toolchains and targets, how compiler bundles
+are provisioned under `~/.riot/toolchains`, and how target information flows
+through planning and execution.
+
+- toolchains are versioned, target-specific OCaml bundles selected from
+  workspace configuration
+- the current build path distinguishes configured targets, build-context
+  targets, and the concrete `Riot_toolchain.t` used by a worker
+- planning and execution are both target-aware, but still single-target per
+  invocation in the common path
+- the toolchain layer owns compiler, formatter, and related command wrappers
+- this RFD documents the current steady-state toolchain path, not a redesign of
+  Riot's compiler story
 
 ## Motivation
 [motivation]: #motivation
 
-The repository already has a high-level build-system snapshot in
-`RFD0003-riot-build-system-snapshot.md`, but the toolchain portion of that
-document is intentionally brief.
+The repository already has a build-system snapshot, but the toolchain portion
+of that story is distributed across configuration loading, install logic,
+planner inputs, executor flags, and wrapper code.
 
-That leaves a gap for contributors trying to answer questions like:
+That makes several recurring questions harder than they should be:
 
-- what exactly lives in a `riot` toolchain
-- where toolchains are stored
-- how `ocaml-toolchain.toml` changes build behavior
-- how target triples affect planning and action execution
-- how toolchains interact with the cache, sandbox, and formatter
-- which parts of the model are active today and which parts are mostly
-  scaffolding
+- what actually counts as a Riot toolchain
+- where toolchains live on disk and how they are selected
+- how `ocaml-toolchain.toml` changes a build
+- what the effective difference is between host builds and target builds
+- which parts of the current model are real behavior and which are still
+  scaffolding for future cross-compilation work
 
-This RFD exists to make the current behavior explicit without changing it.
+Those questions come up whenever contributors debug target-specific failures,
+review cross-compilation changes, or touch toolchain installation behavior.
+
+The confusion is structural because the current model really does have several
+related notions at once: configured targets, build-context targets, and the
+concrete compiler bundle selected by a worker. This snapshot exists to make the
+current behavior explicit before more cross-compilation and bootstrap work
+lands.
 
 ## Guide-level explanation
 [guide-level-explanation]: #guide-level-explanation
 
-The current system treats a toolchain as a versioned, target-specific OCaml
-bundle under `~/.riot/toolchains`, plus a set of thin wrappers used by the rest
-of `riot`.
+Suppose a contributor runs:
 
-At a high level:
+```text
+riot build --target x86_64-unknown-linux-gnu
+```
 
-1. `riot-model` reads `ocaml-toolchain.toml` from the workspace root.
-2. `riot-toolchain` resolves the requested version and target to a directory
-   under `~/.riot/toolchains/<version>/<target>`.
-3. The CLI ensures required toolchains are present before a build starts.
-4. `riot-build` holds a host toolchain in its local-session state.
-5. A build worker may replace that host toolchain with a target-specific one
-   for an explicit `-x` build.
-6. `Build_ctx` carries host-vs-target information through planning.
-7. `riot-planner` uses that context to choose package target overrides and to
-   shape action inputs.
-8. `riot-executor` runs planned actions in a sandbox and turns them into
-   `ocamldep`, compiler, linker, formatter, and foreign-build subprocesses.
+The current toolchain story should be understood as one flow with three related
+pieces of state:
 
-The main packages involved are:
+- workspace configuration from `ocaml-toolchain.toml`
+- a build-context target carried through planning
+- the concrete `Riot_toolchain.t` selected for the worker that runs actions
 
-- `riot-model`: toolchain config, targets, build context, and directory
-  conventions
-- `riot-toolchain`: toolchain discovery, provisioning, validation, and command
-  wrappers
-- `riot-cli`: user-facing target selection and install/list commands
-- `riot-build`: local-session toolchain ownership and per-build target
-  selection
-- `riot-planner`: target-aware planning and compiler/link flag construction
-- `riot-executor`: sandboxed action execution
-- `riot-store`: content-addressed storage for build outputs reused as includes
-  and link inputs
+In the common case, Riot:
+
+1. reads `ocaml-toolchain.toml` from the workspace root
+2. resolves the requested version and target to a directory under
+   `~/.riot/toolchains/<version>/<target>`
+3. ensures that toolchain is installed before the build starts
+4. stores the selected toolchain in the local build session
+5. carries host-vs-target information through `Build_ctx`
+6. lets the planner and executor shape flags, includes, and wrappers from that
+   context
+
+The important contributor mental model is:
+
+- `riot-model` owns configuration and build-context types
+- `riot-toolchain` owns discovery, provisioning, validation, and wrappers
+- `riot-build` owns per-build toolchain selection
+- `riot-planner` and `riot-executor` consume that decision
+
+That means target-specific behavior is not decided in one place only. It is a
+single path that starts in workspace configuration and ends in sandboxed tool
+invocation.
 
 ### Contributor mental model
 

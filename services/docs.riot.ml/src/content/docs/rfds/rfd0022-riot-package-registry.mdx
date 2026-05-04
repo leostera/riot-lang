@@ -10,49 +10,59 @@ description: "Riot Request for Discussion · implemented"
 ## Summary
 [summary]: #summary
 
-Riot's package registry lives in `services/api.pkgs.ml` and is deployed at
-`https://api.pkgs.ml`.
+This RFD documents Riot's package registry as a current-system snapshot. The
+registry lives in `services/api.pkgs.ml` and acts as the control-plane service
+for publication, name claims, and immutable release records, while install hot
+paths are deliberately handled elsewhere.
 
-It is the single control-plane service for:
-
-- explicit authenticated package publication
-- package-name claims
-- immutable published release records
-- synchronous sparse-index updates
-- synchronous search updates
-- derived web-view generation for `pkgs.ml`
-
-The final model is intentionally explicit:
-
-- `riot publish` is the only way to claim a public package name
-- `riot add <package-name>` installs from the sparse index
-- `riot add` never implicitly publishes or claims names
+- `riot publish` is the only way to claim and publish a public package name
+- the registry owns authentication, publish validation, immutable release
+  records, and lifecycle events
+- successful publish updates the sparse index, search data, and derived web
+  views synchronously
+- `riot add <package-name>` installs from the sparse index and artifacts, not
+  by querying the registry as an install-time dependency solver
+- the registry does not own solving, lockfiles, workspace resolution, or build
+  execution
 
 ## Motivation
 [motivation]: #motivation
 
-The design pressure was to make named-package installs feel fast like Bun or
-Cargo while keeping publication explicit and deterministic.
+Riot needs a stable answer to a few ecosystem questions:
 
-The registry therefore focuses on:
+- who is allowed to publish `package-name`
+- what makes a published release valid
+- how does a named package become installable by others
+- where does provenance and publication history live
 
-- authenticated artifact publication
-- stable named install targets
-- immutable release artifacts
-- a sparse install index served from the API layer
+Without a registry control plane, Riot would keep paying for ad hoc or
+implicit publication behavior:
 
-The registry deliberately does not own:
+- package names would not have a single ownership boundary
+- publication rules would be harder to audit and enforce consistently
+- install flows would have to blur publication authority with install-time
+  resolution
+- contributors would have a weaker answer to provenance, release immutability,
+  and lifecycle history
 
-- dependency solving
-- lockfile generation
-- workspace resolution
-- compatibility selection
-- build execution
+At the same time, Riot does not want the registry to become a monolith. Named
+installs should feel fast, but the install hot path should not require the full
+control-plane service for every operation.
 
-Those belong in `riot`.
+That is why the current registry model is intentionally narrow:
 
-## Final user model
+- explicit authenticated publication
+- stable named package claims
+- immutable release records
+- synchronous downstream read-model updates
+
+while still leaving solving, lockfiles, workspace resolution, and build
+execution in Riot itself.
+
+## Guide-level explanation
 [guide-level-explanation]: #guide-level-explanation
+
+There are two workflows to keep separate in your head: publish and install.
 
 ### Named publishes
 
@@ -81,13 +91,22 @@ After a successful publish, the package is immediately available through:
 
 `riot add minttea`
 
-This does not go through GitHub.
-It should eventually use:
+This is not a GitHub fetch and it is not a registry-side dependency solve.
+The user-facing mental model is:
+
+- the registry is the publish authority
+- the sparse index is the install read model
+
+So a named install should use:
 
 1. `GET /v1/search` only for discovery UX, if needed
 2. the sparse index config at `cdn.pkgs.ml/index/v1/config.json`
 3. the package shard document at `cdn.pkgs.ml/index/v1/...`
 4. the immutable artifact URL referenced by the chosen release
+
+That separation is the important guide-level point. The registry makes a
+package publishable and installable, but normal installs do not depend on the
+registry worker staying in the hot path.
 
 ## Authentication model
 

@@ -11,42 +11,56 @@ description: "Riot Request for Discussion · implemented"
 [summary]: #summary
 
 This RFD proposes a shared syntax-consumer support layer on top of the faithful
-`Syn.Cst` introduced in [RFD0015](./RFD0015-syn-typed-cst.md).
+`Syn.Cst` introduced in [RFD0015](./RFD0015-syn-typed-cst.md). The goal is to
+make syntax consumers easier to write without turning the CST itself into a
+bag of convenience shortcuts.
 
-The proposal introduces three layers:
-
-- `Syn.Cst`: the faithful, typed CST
-- `Syn.Matchers`: small unwrap/flatten/extract helpers
-- `Syn.Visit`: an explicit, reentrant visitor with full traversal control
-
-The key design choice is simple:
-
-- explicit traversal control is fundamental
-- `Syn.Visit` is the one shared recursion API
-
-This RFD does not propose pushing more consumer convenience into `Syn.Cst`
-itself. The goal is to keep the CST faithful and move ergonomics into shared
-support modules.
+- `Syn.Cst` remains the faithful typed syntax tree
+- `Syn.Matchers` provides small shape helpers such as unwrap and flatten
+  operations
+- `Syn.Visit` provides the one shared recursive traversal API
+- explicit traversal control stays fundamental rather than being hidden inside
+  auto-walking framework behavior
+- this RFD improves consumer ergonomics without moving interpretive logic into
+  `Syn.Cst` itself
 
 ## Motivation
 [motivation]: #motivation
 
-The CST is already making rules and tools easier to write, but consumers still
-repeat too much structural work:
+The CST already makes rules and tools easier to write, but Riot still pays a
+lot of repeated structural work in every syntax consumer:
 
 - unpacking `SourceFile` manually
-- rebuilding entrypoint plumbing from structure/signature items
+- rebuilding entrypoint plumbing from structure and signature items
 - hand-writing recursive descent over expressions, patterns, and core types
-- mixing traversal concerns with local syntactic matching
+- mixing traversal policy with local syntactic matching
 
-That is a sign that the CST layer is useful but incomplete on its own. Riot
-needs a shared support layer so syntax consumers stop rediscovering the same
-shape knowledge independently.
+That repetition has real costs:
+
+- rules become longer and harder to review
+- different tools rediscover the same shape knowledge independently
+- traversal bugs repeat because there is no shared recursion boundary
+- pressure grows to stuff more convenience into `Syn.Cst`, even when that would
+  weaken its role as a faithful syntax surface
+
+This proposal exists to remove that repeated consumer work while keeping the
+CST itself honest.
 
 ## Guide-level explanation
 [guide-level-explanation]: #guide-level-explanation
 
-Contributors should think of the post-CST syntax stack as three layers:
+Suppose a rule author wants to find nested function applications while ignoring
+trivial parentheses, or a syntax tool wants to walk every expression in a file
+without rewriting the same recursion helpers again.
+
+Today that consumer ends up mixing three jobs in one place:
+
+- local shape matching
+- wrapper removal and flattening
+- recursive traversal policy
+
+With this proposal, contributors should think of the post-CST syntax stack as
+three layers:
 
 1. `Syn.Cst`
 2. `Syn.Matchers`
@@ -91,6 +105,12 @@ The walker also exposes `descend_*` helpers, which perform the standard child
 walk for the current node without going back through the current hook. That
 lets callbacks reuse the default structural walk explicitly instead of relying
 on hidden framework behavior.
+
+So the mental model is:
+
+- `Syn.Cst` tells you what was written
+- `Syn.Matchers` helps you talk about local shapes
+- `Syn.Visit` is how you recurse through the tree on purpose
 
 ## Reference-level explanation
 [reference-level-explanation]: #reference-level-explanation

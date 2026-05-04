@@ -10,68 +10,71 @@ description: "Riot Request for Discussion · implemented"
 ## Summary
 [summary]: #summary
 
-This RFD adds first-class dependency classes to `riot` manifests:
+This RFD adds first-class dependency classes to `riot` manifests and makes
+those classes meaningful in the build graph, not just in manifest syntax.
 
-- `[dependencies]`
-- `[dev-dependencies]`
-- `[build-dependencies]`
-
-But the important requirement is not just new manifest sections. `riot` must
-also treat those classes as distinct dependency graphs:
-
-- a build graph
-- a runtime graph
-- a dev graph
-
-Those graphs should be selected by command target, not collapsed into one
-package graph with labels.
-
-That distinction is required so cases like this are legal:
-
-- `propane` runtime-depends on `std`
-- `std` dev-depends on `propane`
-
-That must not be rejected as a normal build cycle, because `std` does not need
-`propane` to build its checked-in runtime artifact. It only needs `propane`
-when building tests or other dev-only targets.
+- manifests gain separate `[dependencies]`, `[build-dependencies]`, and
+  `[dev-dependencies]` sections
+- Riot treats those sections as distinct dependency graphs selected by command
+  target, not as one package graph with labels attached
+- each package therefore has separate build, runtime, and dev phases
+- false cycles such as `std` needing `propane` only for tests become legal
+  instead of poisoning the runtime build graph
+- this RFD is about graph semantics and command behavior, not merely TOML shape
 
 ## Motivation
 [motivation]: #motivation
 
-There are two concrete pressures on the build model now.
+The old build model was too coarse. It treated package dependencies as if one
+graph could explain every kind of work Riot does.
 
-The first is package-provided `riot-fix` rules.
+That creates real problems in at least two workflows.
 
-`std` wants to own `std:no-stdlib`, and provider authoring wants shared types
-from `fixme`. But `fixme` depends on `syn`, `syn` depends on
-`ceibo`, and `ceibo` depends on `std`. If `std` models `fixme` as a
-normal dependency, the normal package graph gets a false cycle:
+The first is package-provided tooling. `std` wants to own `std:no-stdlib`, and
+provider authoring wants shared types from `fixme`. But `fixme` depends on
+`syn`, `syn` depends on `ceibo`, and `ceibo` depends on `std`. If `std` models
+`fixme` as a normal dependency, the package graph reports a false cycle:
 
 - `std -> fixme -> syn -> ceibo -> std`
 
-That dependency is real for build-time tooling, but not for the runtime `std`
+That edge is real for build-time tooling, but not for the runtime `std`
 library artifact.
 
-The second is test tooling.
+The second is test tooling. `std` should be able to use `propane` in its own
+tests even though `propane` has a normal dependency on `std`. That is a real
+development dependency, not a runtime cycle.
 
-`propane` is a real package dependency for tests, and `std` should be able to
-use it in its own tests. At the same time, `propane` quite reasonably has a
-normal dependency on `std`.
+Without separate dependency classes, Riot keeps paying these costs:
 
-So we need all of the following to be expressible at once:
+- valid build-time and test-time relationships get rejected as if they were
+  runtime cycles
+- package authors have to contort manifests around the planner's coarse graph
+- new build-time features such as providers, macros, or generators have no
+  clean semantic home
 
-- runtime dependencies needed by checked-in package artifacts
-- dev dependencies needed by tests/examples/bench/dev-only outputs
-- build dependencies needed only by generators, providers, macros, and other
-  tooling
+These costs are structural because the commands really do ask for different
+things:
 
-Without separate dependency graphs, the package model remains too coarse and
-produces false cycles.
+- `riot build` wants runtime artifacts
+- `riot test` and `riot bench` want dev-time artifacts
+- generated tooling wants build-time inputs
+
+This proposal exists so the graph matches those realities instead of forcing
+everything through one dependency universe.
 
 ## Guide-level explanation
 [guide-level-explanation]: #guide-level-explanation
 
-Packages can declare three dependency sections:
+Suppose `std` has:
+
+- a runtime dependency on its normal library graph
+- a dev dependency on `propane` for tests
+- a build dependency on `fixme` for package-owned lint rules
+
+Those are not the same kind of edge, so Riot should not treat them as if they
+were one kind of work.
+
+With this proposal, packages declare three dependency sections:
 
 ```toml
 [dependencies]
@@ -115,6 +118,17 @@ std -(dev)-> propane
 ```
 
 because there is no runtime cycle, only a dev-only edge back into `propane`.
+
+The contributor mental model is:
+
+- runtime dependencies describe what a package needs to build its normal
+  artifacts
+- dev dependencies describe what it needs for tests, benches, and examples
+- build dependencies describe what it needs for build-time tooling only
+
+So the shape of the graph changes depending on the command, not because Riot is
+being inconsistent, but because the command is asking for a different phase of
+the same package.
 
 ## Reference-level explanation
 [reference-level-explanation]: #reference-level-explanation

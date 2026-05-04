@@ -14,16 +14,16 @@
   },
   "dependencies": {
     "@astrojs/starlight": "^0.38.2",
-    "@cloudflare/sandbox": "^0.8.4",
+    "@cloudflare/sandbox": "^0.8.14",
     "astro": "^6.0.1",
     "sharp": "^0.34.2",
     "uuid": "^13.0.0"
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.8",
-    "@cloudflare/workers-types": "latest",
+    "@cloudflare/workers-types": "^4.20260503.1",
     "@types/bun": "latest",
     "typescript": "^5",
-    "wrangler": "latest"
+    "wrangler": "^4.87.0"
   }
 }

@@ -10,41 +10,51 @@ description: "Riot Request for Discussion · implemented"
 ## Summary
 [summary]: #summary
 
-This RFD proposes changing the public `fixme` fix authoring surface from
-raw text edits to syntax-directed rewrite operations.
+This RFD changes the public `fixme` fix authoring surface from raw text edits
+to syntax-directed rewrite operations. Rule authors should describe what syntax
+should change, while the runtime remains free to lower those operations into
+text edits internally.
 
-Rules should describe rewrites in terms of CST-backed syntax objects:
-
-- delete this node
-- replace this node with that node
-- insert this syntax before or after that syntax
-- swap these two syntax objects
-
-The runtime may still lower those operations into text edits internally, but
-that lowering should be an implementation detail, not the API that rules write
-against.
+- fixes are expressed in terms of CST-backed syntax objects rather than byte
+  spans plus replacement strings
+- the core operations are delete, replace, insert-before, insert-after, and
+  swap
+- rule authors stay at the level of syntax they already matched
+- internal lowering to text edits remains an implementation detail
+- this RFD is about the public fix authoring model, not about exposing every
+  possible tree transformation primitive on day one
 
 ## Motivation
 [motivation]: #motivation
 
 Today many fixes are authored as spans plus replacement text. That works, but
-it is the wrong abstraction level for rule authors.
+it makes rule authors pay for the wrong abstraction.
 
-Rules do not reason in byte offsets. They reason in syntax:
+Rules do not naturally think in byte offsets. They think in syntax:
 
-- “replace the outer `List.rev (List.rev x)` call with `x`”
-- “replace this operator token with `!=`”
-- “delete this wrapper node”
+- "replace the outer `List.rev (List.rev x)` call with `x`"
+- "replace this operator token with `!=`"
+- "delete this wrapper node"
 
-When a rule has already matched a CST node, forcing it to drop back down into
-manual span plumbing is unnecessary ceremony and a source of bugs. It makes
-rule code longer, more fragile, and less obviously correct.
+When a rule has already matched a CST node, dropping back down into manual span
+plumbing creates recurring costs:
 
-The fix API should reflect the syntax-directed model that the CST already gives
-us.
+- rule code gets longer and harder to review
+- fixes become more fragile because the intent is no longer visible in the API
+- helper layers keep re-encoding syntax intent into text-edit mechanics
+
+Those costs are structural because the CST already gives Riot a syntax-directed
+model. The public fix API should reflect that model instead of forcing rule
+authors back into byte ranges.
 
 ## Guide-level explanation
 [guide-level-explanation]: #guide-level-explanation
+
+Suppose a rule matches `List.rev (List.rev xs)` and wants to rewrite it to
+`xs`.
+
+Today the rule has to fall back to spans and replacement text. With this
+proposal, the rule stays at the level of syntax it already matched.
 
 Rule authors should think of a fix as a small list of syntax operations, not a
 list of hand-written text edits.
@@ -93,6 +103,12 @@ Fix.make
 
 That is much closer to the rule’s actual meaning than “replace span X..Y with
 these bytes.”
+
+The mental model is simple:
+
+- matching happens over syntax
+- fixes are described over syntax
+- only the final application step needs to care about source edits
 
 ## Reference-level explanation
 [reference-level-explanation]: #reference-level-explanation

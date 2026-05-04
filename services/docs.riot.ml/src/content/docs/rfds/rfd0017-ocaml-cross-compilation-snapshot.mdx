@@ -10,77 +10,65 @@ description: "Riot Request for Discussion · implemented"
 ## Summary
 [summary]: #summary
 
-This RFD documents the current cross-compilation state carried by Riot's
-vendored OCaml fork under `vendor/ocaml`.
+This RFD documents Riot's current cross-compilation story as a snapshot RFD.
+The current implementation is split between Riot's vendored OCaml fork under
+`vendor/ocaml` and Riot's own target-aware toolchain and build plumbing.
 
-The current state is centered on one large fork commit,
-`ef81d5fd5 feat(cross): add relocatable cross-compilation tooling`, plus the
-supporting documents in:
-
-- `vendor/ocaml/LINEAR.md`
-- `vendor/ocaml/CROSS_COMPILE_GUIDE.md`
-- `vendor/ocaml/CROSS_MSVC.md`
-- `vendor/ocaml/RELOCATABLE.md`
-- `vendor/ocaml/SUMMARY.md`
-
-At a high level, the fork currently provides:
-
-- relocatable OCaml compiler installs
-- scripted native and cross builds under `vendor/ocaml/cross/`
-- Linux glibc and musl target support
-- MinGW Windows target scripts
-- an exploratory MSVC design document rather than an implemented MSVC pipeline
-
-At a high level, Riot/Riot currently provides:
-
-- workspace-level `toolchain.targets` configuration in `ocaml-toolchain.toml`
-- `riot build --target ...` target selection and single-target execution
-- host and target-specific toolchain installation under `~/.riot/toolchains/`
-- build-context propagation of cross-compilation target metadata into the
-  planner and executor
-- partial consumption of cross target metadata, with stronger support for
-  target-specific OCaml toolchains than for fully configured C toolchain
-  plumbing
-
-This RFD is a snapshot, not a proposal. It exists to make the current shape of
-the fork explicit before Riot integrates it more deeply into its own bootstrap,
-toolchain, and CI flows.
+- most implemented cross-compilation behavior lives in the vendored OCaml fork,
+  especially the scripted build and packaging surface under `vendor/ocaml/cross`
+- the fork currently supports relocatable compiler installs plus a real set of
+  glibc, musl, and MinGW target scripts
+- Riot itself currently provides target configuration, toolchain installation,
+  and single-target build execution on top of that fork
+- the current Windows story is MinGW-based; `CROSS_MSVC.md` is exploratory, not
+  an implemented MSVC pipeline
+- this RFD is about the current split system as it exists today, not a proposal
+  for a fully integrated future cross-compilation workflow
 
 ## Motivation
 [motivation]: #motivation
 
-Riot now vendors its OCaml fork under `vendor/ocaml`, and that fork carries a
-substantial cross-compilation system that is larger than a normal "patch a few
-compiler files" story.
+Riot now vendors an OCaml fork that carries a substantial cross-compilation
+system, but the current story is easy to misread because the implementation is
+split across:
 
-Right now the relevant information is split across:
-
-- fork-local implementation scripts in `vendor/ocaml/cross/`
+- fork-local scripts under `vendor/ocaml/cross/`
 - multiple design and summary documents in the fork root
-- one large fork commit that mixes code, scripts, packaging, and CI
-- Riot-side bootstrap and toolchain code that is beginning to point at the
-  vendored compiler tree
+- one large fork commit that mixes compiler changes, packaging, and CI
+- Riot-side bootstrap and toolchain code that is only beginning to consume the
+  fork directly
 
-That makes it hard to answer questions like:
+That fragmentation creates real confusion for contributors:
 
-- what is actually implemented today
-- which target combinations are scripted today
-- whether Windows support is real or exploratory
-- where relocatability comes from
-- how much of this is in the compiler fork versus Riot's own workflows
+- it is hard to tell which target combinations are implemented today and which
+  are only discussed in docs
+- Windows support is easy to overstate because MinGW is real but MSVC is not
+- relocatability looks like a packaging detail unless you know where the source
+  changes live
+- integration work in Riot can accidentally assume the fork is already fully
+  absorbed into steady-state workflows when it is not
 
-This RFD exists to capture the current state before more integration work lands.
+Those costs are structural because the current system really is split across
+the fork and Riot's own tooling. This snapshot exists so more bootstrap,
+toolchain, and CI work can start from one explicit baseline instead of folklore.
 
 ## Guide-level explanation
 [guide-level-explanation]: #guide-level-explanation
 
-The current cross-compilation story has two layers:
+Suppose a contributor wants to answer one of these questions:
+
+- "Can Riot currently build a Linux target from macOS?"
+- "What does Windows support actually mean in this repository?"
+- "Where does relocatable toolchain behavior come from?"
+
+The first thing to understand is that the current cross-compilation story has
+two layers:
 
 1. a vendored OCaml fork in `vendor/ocaml`
-2. Riot-side tooling that can eventually consume compiler installs produced by
-   that fork
+2. Riot-side tooling that can consume compiler installs produced by that fork
 
-The fork is where almost all of the implemented behavior lives today.
+The fork is where most of the implemented behavior lives today. Riot currently
+consumes that behavior only partially.
 
 ### Contributor mental model
 

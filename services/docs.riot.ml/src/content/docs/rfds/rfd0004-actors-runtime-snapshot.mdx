@@ -10,46 +10,75 @@ description: "Riot Request for Discussion · implemented"
 ## Summary
 [summary]: #summary
 
-This RFD documents the current architecture of `actors`. It captures the single-core actor runtime as it exists today: process lifecycle, scheduler behavior, mailbox delivery, timers, cooperative effect handling, and the public runtime surface that `std` builds on.
+This RFD documents the current `actors` runtime as a snapshot RFD. It explains
+the single-core actor system that `std` currently builds on: its public API,
+its scheduler behavior, and the runtime mechanics behind processes, mailboxes,
+timers, and cooperative I/O.
+
+- one scheduler currently owns the runtime and all processes for a given
+  invocation
+- processes move through explicit lifecycle states and yield cooperatively
+- `receive`, timers, and I/O suspension are all part of the same scheduler loop
+- higher-level packages such as `Std.Agent`, `Std.Supervisor`, and
+  `Std.Telemetry` rely on this runtime contract
+- this RFD documents the current single-core runtime, not a future multicore
+  redesign
 
 ## Motivation
 [motivation]: #motivation
 
-`actors` is one of the pillars of the Riot stack, but its current design lives mostly in code.
+`actors` is one of the core runtime layers in Riot, but most of its behavior is
+currently learned by reading scheduler code.
 
-That makes a few important things harder than they should be:
+That creates recurring costs for contributors:
 
-- understanding where the public runtime ends and the scheduler internals begin
-- understanding how `receive`, `yield`, timers, and I/O polling interact
-- understanding what “single-core actor runtime” means concretely in this repository
-- understanding what higher layers like `Std.Agent`, `Std.Supervisor`, and `Std.Telemetry` are standing on top of
+- debugging actor behavior requires reverse-engineering where the public API
+  ends and scheduler internals begin
+- it is easy to reason about `receive`, `yield`, timers, and I/O polling in
+  isolation even though they only make sense as one scheduler contract
+- "single-core actor runtime" sounds simple, but the repository still has
+  specific semantics around lifecycle, suspension, wakeup, and message
+  selection that are easy to misremember
+- higher-level packages built on top of `actors` inherit assumptions that are
+  hard to review if the base runtime contract is not written down
 
-This RFD captures the runtime in present tense as a system snapshot.
-
-It focuses on:
-
-- the public `Actors` API
-- the scheduler loop
-- process state transitions
-- mailbox and selector-based message reception
-- timer wheel behavior
-- cooperative I/O suspension and wakeup
-- reduction counting through compiler instrumentation hooks
+These costs are structural. `actors` is not just a small helper library; it is
+the runtime boundary that packages above it depend on. This snapshot exists so
+future runtime work can start from one explicit description of the system as it
+exists today.
 
 ## Guide-level explanation
 [guide-level-explanation]: #guide-level-explanation
 
-`actors` is a minimal single-core actor runtime.
+Suppose a contributor writes a small actor program:
 
-The runtime model is:
+```ocaml
+Actors.run ~main:(fun () ->
+  let child = Actors.spawn (fun () -> Actors.receive_any ()) in
+  Actors.send child "hello")
+```
 
-1. a single scheduler owns all processes for a runtime invocation
+The important thing to understand is that this does not create one OS thread
+per actor. Today the whole runtime lives under one scheduler.
+
+That scheduler owns:
+
+- the runnable queue
+- the set of waiting processes
+- timer wakeups
+- I/O wakeups
+- process lifecycle transitions
+
+So the current mental model is:
+
+1. one scheduler owns all processes for one runtime invocation
 2. each process has a PID, mailbox, continuation, and lifecycle state
-3. processes cooperate by yielding, receiving messages, or suspending on I/O
-4. timers and I/O readiness wake suspended processes back into the run queue
-5. the runtime exits when the main process exits or when no runnable, waiting-I/O, or timed work remains
+3. processes advance only when the scheduler steps them
+4. a process gives up control by yielding, waiting for a message, or
+   suspending on I/O
+5. timers and I/O readiness move suspended processes back into the runnable set
 
-The public surface exposed by `Actors` is intentionally compact:
+The public API stays intentionally small:
 
 - `run`
 - `spawn` and `spawn_link`
@@ -61,7 +90,8 @@ The public surface exposed by `Actors` is intentionally compact:
 - `Process` linking and monitoring
 - `Timer.send_after`, `Timer.send_interval`, and `Timer.cancel`
 
-Higher-level behavior lives above this layer. `actors` owns runtime mechanics, not application policy.
+Higher-level behavior such as supervision, agents, or telemetry lives above
+this layer. `actors` owns runtime mechanics, not application policy.
 
 ### Runtime structure
 

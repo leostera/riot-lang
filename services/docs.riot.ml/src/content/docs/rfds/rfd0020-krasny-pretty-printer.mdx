@@ -11,53 +11,66 @@ description: "Riot Request for Discussion · implemented"
 [summary]: #summary
 
 This RFD proposes a new standalone package, `krasny`, as Riot's owned OCaml
-formatter.
+formatter. The goal is to give Riot one canonical syntax-to-source rendering
+pipeline instead of growing separate renderers for formatting and syntax-driven
+rewrites.
 
-`krasny` should:
-
-- accept `Syn.Parser.parse_result` but require a successful `Syn.build_cst`
-  before formatting
-- lower typed `Syn.Cst` plus concrete token access into a formatting document
-  IR
-- solve documents at a fixed width of `100` columns
-- render formatted output through an `Std.IO`-friendly writer API
-- expose one formatting style for everyone, with no user-facing knobs
-
-The formatter should be the only rendering system Riot builds for formatted
-OCaml output. We should not build a separate fix-only fragment printer and then
-later build a real formatter beside it.
+- `krasny` formats from parsed Riot syntax, not from raw text heuristics
+- it lowers typed `Syn.Cst` plus token access into a document IR, then solves
+  and prints that document
+- it exposes one opinionated formatting style with no user-facing knob surface
+- it renders through an `Std.IO`-friendly writer API so `riot fmt` and other
+  tools can use the same engine
+- this RFD is about one owned formatter, not a smaller fix-only fragment
+  printer beside a later real formatter
 
 ## Motivation
 [motivation]: #motivation
 
-Riot is heading toward two adjacent capabilities:
+Riot is heading toward two adjacent needs:
 
-- syntax-directed lint rewrites
+- syntax-directed rewrites that sometimes need fresh source materialization
 - a canonical `riot fmt`
 
-When synthetic rewrites need fresh syntax materialization, Riot will
-need some way to turn structured syntax back into OCaml source. Building one
-"small renderer for fixes" and later a second full formatter would be a bad
-split. Both systems would grow to cover similar syntax and layout concerns, and
-the repo would end up paying for two rendering pipelines.
+Without one owned formatter, Riot keeps facing a bad architectural choice:
 
-The cleaner path is to start the formatter now and let all future rendering
-needs grow from that single subsystem.
+- build a small renderer just for fixes, then later build a second renderer for
+  full formatting
+- or keep avoiding first-party formatting and let rendering concerns leak into
+  unrelated tools
+
+Either way Riot pays duplicated or displaced complexity:
+
+- two rendering pipelines would duplicate syntax and layout work
+- fix tooling would grow formatting behavior by accident
+- contributors would still lack one clear answer to "how does Riot turn syntax
+  back into OCaml source?"
+
+The problem is structural because syntax-directed rewriting and whole-file
+formatting both need the same fundamental thing: an owned, syntax-aware
+rendering pipeline. This proposal exists to define that one pipeline.
 
 ## Guide-level explanation
 [guide-level-explanation]: #guide-level-explanation
 
-Contributors should think of `krasny` as a syntax-to-document pipeline:
+Suppose a contributor runs:
 
-1. `Syn.parse_result`
-2. `Syn.build_cst`
-3. typed CST plus concrete token access
-4. formatting document IR
-5. layout solver
-6. printer
-7. `Std.IO` writer
+```text
+riot fmt
+```
 
-At a high level:
+The important thing to picture is not "some string munging tool." The current
+proposal is a syntax-first formatter.
+
+The workflow is:
+
+1. Riot parses the file with `syn`
+2. Riot builds a typed CST
+3. `krasny` lowers that syntax into a formatting document
+4. the layout solver chooses breaks and indentation
+5. the printer writes formatted output
+
+So contributors should think of `krasny` as a syntax-to-document pipeline:
 
 - `syn` remains responsible for parsing and faithful syntax structure
 - `krasny` is responsible for layout and rendering policy

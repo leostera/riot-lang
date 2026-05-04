@@ -8,7 +8,10 @@ const activeSection =
     (entry) => entry.type === "group" && entry.label === activeSectionLabel,
   ) ?? null;
 
-const rootEntries = Astro.props.entries ?? (activeSection?.type === "group" ? activeSection.entries : []);
+type SidebarEntry = typeof Astro.locals.starlightRoute.sidebar[number];
+
+const rootEntries: SidebarEntry[] =
+  Astro.props.entries ?? (activeSection?.type === "group" ? activeSection.entries : []);
 const nested = Astro.props.nested ?? false;
 ---
 

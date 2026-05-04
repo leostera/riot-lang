@@ -258,7 +258,7 @@ describe("docs.pkgs worker", () => {
 
     const events = await db
       .prepare(
-        "SELECT event_type FROM registry_events WHERE package_name = ? AND package_version = ? ORDER BY event_id",
+        "SELECT event_type FROM registry_events WHERE package_name = ? AND package_version = ? ORDER BY sequence_id",
       )
       .bind("std", "0.1.0")
       .all<{ event_type: string }>();

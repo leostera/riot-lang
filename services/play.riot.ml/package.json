@@ -10,7 +10,7 @@
     "deploy": "astro build && wrangler deploy"
   },
   "dependencies": {
-    "@astrojs/cloudflare": "^13.1.4",
+    "@astrojs/cloudflare": "^13.3.0",
     "@astrojs/react": "^5.0.2",
     "@codingame/monaco-editor-react": "^26.0.0",
     "@codingame/monaco-editor-wrapper": "^27.0.0",
@@ -24,9 +24,9 @@
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.8",
-    "@cloudflare/workers-types": "latest",
+    "@cloudflare/workers-types": "^4.20260503.1",
     "@types/bun": "latest",
     "typescript": "^5",
-    "wrangler": "latest"
+    "wrangler": "^4.87.0"
   }
 }
