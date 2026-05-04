@@ -1,51 +1,63 @@
 open Kernel
 
-module Runtime_mutex = Kernel.Sync.Mutex
 module Runtime_atomic = Kernel.Sync.Atomic
 
+type node = {
+  msg: Message.envelope;
+  next: node option Runtime_atomic.t;
+}
+
 type t = {
-  producer_lock: Runtime_mutex.t;
-  mutable inbox_rev: Message.envelope list;
-  mutable outbox: Message.envelope list;
+  inbox: node option Runtime_atomic.t;
+  mutable outbox: node option;
   size: int Runtime_atomic.t;
 }
 
 let create = fun () ->
   {
-    producer_lock = Runtime_mutex.create ();
-    inbox_rev = [];
-    outbox = [];
-    size = Runtime_atomic.make 0;
+    inbox = Runtime_atomic.make_contended None;
+    outbox = None;
+    size = Runtime_atomic.make_contended 0;
   }
 
 let queue = fun t msg ->
-  Runtime_mutex.lock t.producer_lock;
-  t.inbox_rev <- msg :: t.inbox_rev;
-  let _ = Runtime_atomic.fetch_and_add t.size 1 in
-  Runtime_mutex.unlock t.producer_lock
+  let node = { msg; next = Runtime_atomic.make_contended None } in
+  let rec push () =
+    let head = Runtime_atomic.get t.inbox in
+    Runtime_atomic.set node.next head;
+    if Runtime_atomic.compare_and_set t.inbox head (Some node) then
+      Runtime_atomic.incr t.size
+    else
+      push ()
+  in
+  push ()
 
 let pop_outbox = fun t ->
   match t.outbox with
-  | [] -> None
-  | msg :: rest ->
-      t.outbox <- rest;
-      let _ = Runtime_atomic.fetch_and_add t.size (-1) in
-      Some msg
+  | None -> None
+  | Some node ->
+      t.outbox <- Runtime_atomic.get node.next;
+      Runtime_atomic.decr t.size;
+      Some node.msg
+
+let reverse_nodes = fun head ->
+  let rec loop current previous =
+    match current with
+    | None -> previous
+    | Some node ->
+        let next = Runtime_atomic.get node.next in
+        Runtime_atomic.set node.next previous;
+        loop next current
+  in
+  loop head None
 
 let next = fun t ->
   match pop_outbox t with
   | Some _ as msg -> msg
   | None ->
-      Runtime_mutex.lock t.producer_lock;
-      let drained = t.inbox_rev in
-      t.inbox_rev <- [];
-      Runtime_mutex.unlock t.producer_lock;
-      if List.is_empty drained then
-        None
-      else (
-        t.outbox <- List.reverse drained;
-        pop_outbox t
-      )
+      let drained = Runtime_atomic.exchange t.inbox None in
+      t.outbox <- reverse_nodes drained;
+      pop_outbox t
 
 let size = fun t -> Runtime_atomic.get t.size
 

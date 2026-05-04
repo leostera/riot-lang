@@ -59,7 +59,6 @@ type t = {
      mutates this queue while mailbox sends remain cross-domain MPSC.
   *)
   save_queue: Message.envelope Queue.t;
-  mutable save_queue_size: int;
   mutable ready_tokens: (Async.Token.t * Async.Source.t) list;
   mutable receive_timeout: Timer_id.t option;
   mutable syscall_timeout: Timer_id.t option;
@@ -97,7 +96,6 @@ let make = fun fn ->
     lock = Runtime_mutex.create ();
     mailbox = Mailbox.create ();
     save_queue = Queue.create ();
-    save_queue_size = 0;
     ready_tokens = [];
     receive_timeout = None;
     syscall_timeout = None;
@@ -197,18 +195,15 @@ let try_mark_runnable_from_waiting_message = fun t ->
     Waiting_message
     Runnable
 
-let has_empty_mailbox = fun t ->
-  with_lock
-    t
-    (fun () -> Int.equal t.save_queue_size 0 && Mailbox.is_empty t.mailbox)
+let has_empty_mailbox = fun t -> Queue.is_empty t.save_queue && Mailbox.is_empty t.mailbox
 
 let has_messages = fun t -> not (has_empty_mailbox t)
 
-let message_count = fun t -> with_lock t (fun () -> Mailbox.size t.mailbox + t.save_queue_size)
+let message_count = fun t -> Mailbox.size t.mailbox + Queue.length t.save_queue
 
-let mailbox_count = fun t -> with_lock t (fun () -> Mailbox.size t.mailbox)
+let mailbox_count = fun t -> Mailbox.size t.mailbox
 
-let save_queue_count = fun t -> with_lock t (fun () -> t.save_queue_size)
+let save_queue_count = fun t -> Queue.length t.save_queue
 
 let mark_as_running = fun t ->
   if is_alive t then
@@ -241,12 +236,7 @@ let cont = fun t ->
 
 let set_cont = fun t c -> t.cont <- Some c
 
-let pop_save_queue = fun t ->
-  match Queue.pop t.save_queue with
-  | None -> None
-  | Some msg ->
-      t.save_queue_size <- Int.pred t.save_queue_size;
-      Some msg
+let pop_save_queue = fun t -> Queue.pop t.save_queue
 
 let next_message = fun t ->
   with_lock
@@ -258,14 +248,12 @@ let next_message = fun t ->
 
 let next_saved_message = fun t -> with_lock t (fun () -> pop_save_queue t)
 
-let next_mailbox_message = fun t -> with_lock t (fun () -> Mailbox.next t.mailbox)
+let next_mailbox_message = fun t -> Mailbox.next t.mailbox
 
 let add_to_save_queue = fun t msg ->
   with_lock
     t
-    (fun () ->
-      Queue.push t.save_queue ~value:msg;
-      t.save_queue_size <- Int.succ t.save_queue_size)
+    (fun () -> Queue.push t.save_queue ~value:msg)
 
 let send_message = fun t msg ->
   if is_alive t then
