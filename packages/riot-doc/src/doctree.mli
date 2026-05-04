@@ -5,7 +5,6 @@ type item_kind =
   | Type_item
   | Value_item
   | Function_item
-  | Macro_item
 type item_detail = {
   name: string;
   signature: string;

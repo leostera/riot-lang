@@ -5,7 +5,6 @@ type item_kind =
   | Type_item
   | Value_item
   | Function_item
-  | Macro_item
 
 type item_detail = {
   name: string;
@@ -68,7 +67,6 @@ let item_kind_slug = fun __tmp1 ->
   | Type_item -> "types"
   | Value_item -> "values"
   | Function_item -> "functions"
-  | Macro_item -> "macros"
 
 let item_kind_title = fun __tmp1 ->
   match __tmp1 with
@@ -76,7 +74,6 @@ let item_kind_title = fun __tmp1 ->
   | Type_item -> "Types"
   | Value_item -> "Values"
   | Function_item -> "Functions"
-  | Macro_item -> "Macros"
 
 let item_kind_label = fun __tmp1 ->
   match __tmp1 with
@@ -84,7 +81,6 @@ let item_kind_label = fun __tmp1 ->
   | Type_item -> "type"
   | Value_item -> "value"
   | Function_item -> "function"
-  | Macro_item -> "macro"
 
 let module_display_name = fun (module_doc: module_doc) -> module_doc.name
 
@@ -145,7 +141,6 @@ let item_kind_file_prefix = fun __tmp1 ->
   | Type_item -> "type"
   | Value_item -> "val"
   | Function_item -> "fn"
-  | Macro_item -> "macro"
 
 let is_safe_file_char = fun __tmp1 ->
   match __tmp1 with
@@ -201,7 +196,6 @@ let module_summary = fun (module_doc: module_doc) ->
     (item_kind_title Type_item, List.length (items_of_kind Type_item module_doc.items));
     (item_kind_title Value_item, List.length (items_of_kind Value_item module_doc.items));
     (item_kind_title Function_item, List.length (items_of_kind Function_item module_doc.items));
-    (item_kind_title Macro_item, List.length (items_of_kind Macro_item module_doc.items));
   ]
   in
   counts

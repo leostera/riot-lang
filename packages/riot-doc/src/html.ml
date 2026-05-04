@@ -41,7 +41,6 @@ let default_css =
   --k-val: #7a4f05;
   --k-fn: #0d459f;
   --k-module: #247e45;
-  --k-macro: #d92640;
   --sidebar-w: 280px;
   --content-max: 900px;
   --sans: "Atkinson Hyperlegible", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
@@ -305,6 +304,20 @@ code, pre { font-family: var(--mono); }
   padding: 0;
   white-space: pre;
 }
+.token.keyword,
+.token.boolean,
+.token.builtin { color: #ff7b72; font-weight: 700; }
+.token.function,
+.token.class-name { color: #d2a8ff; }
+.token.string,
+.token.char { color: #a5d6ff; }
+.token.comment { color: var(--code-muted); font-style: italic; }
+.token.number,
+.token.constant { color: #79c0ff; }
+.token.symbol,
+.token.variable { color: #7ee787; }
+.token.operator,
+.token.punctuation { color: var(--code-text); }
 p code,
 li code,
 .item-docstring code,
@@ -409,7 +422,6 @@ li code,
 .kind-val { color: var(--k-val); }
 .kind-fn { color: var(--k-fn); }
 .kind-module { color: var(--k-module); }
-.kind-macro { color: var(--k-macro); }
 
 .item-detail-signature {
   color: var(--ink-2);
@@ -518,7 +530,12 @@ li code,
 ::selection { background: var(--brand); color: white; }
 |css}
 
-let assets = [ ("assets/doc.css", String.trim default_css); ]
+let assets = [
+  ("assets/doc.css", String.trim default_css);
+  ("assets/prism-LICENSE.txt", String.trim Vendor_assets.prism_license);
+  ("assets/prism-core.min.js", String.trim Vendor_assets.prism_core);
+  ("assets/prism-ocaml.min.js", String.trim Vendor_assets.prism_ocaml);
+]
 
 let render_empty_state = fun message ->
   "<div class=\"empty-state\">" ^ escape_html message ^ "</div>"
@@ -583,14 +600,12 @@ let item_kind_name = fun __tmp1 ->
   | Doctree.Type_item -> "Type"
   | Doctree.Value_item -> "Value"
   | Doctree.Function_item -> "Function"
-  | Doctree.Macro_item -> "Macro"
 
 let item_detail_kind = fun (item: Doctree.item) definition ->
   match item.kind with
   | Doctree.Value_item -> "val"
   | Doctree.Function_item -> "fn"
   | Doctree.Module_item -> "module"
-  | Doctree.Macro_item -> "macro"
   | Doctree.Type_item ->
       let compact =
         definition
@@ -610,8 +625,7 @@ let item_uses_inline_signature = fun item ->
   | Doctree.Value_item
   | Doctree.Function_item -> true
   | Doctree.Module_item
-  | Doctree.Type_item
-  | Doctree.Macro_item -> false
+  | Doctree.Type_item -> false
 
 let item_inline_signature = fun (item: Doctree.item) ->
   if not (item_uses_inline_signature item) then
@@ -891,10 +905,19 @@ let render_common_head = fun css_href title ->
   ^ "\" />\n"
   ^ "</head>\n"
 
-let render_common_scripts = fun () ->
-  "  <script>\n"
+let render_common_scripts = fun ~asset_prefix () ->
+  "  <script src=\""
+  ^ asset_prefix
+  ^ "assets/prism-core.min.js\"></script>\n"
+  ^ "  <script src=\""
+  ^ asset_prefix
+  ^ "assets/prism-ocaml.min.js\"></script>\n"
+  ^ "  <script>\n"
   ^ "  (function () {\n"
   ^ "    'use strict';\n"
+  ^ "    function highlightCode() {\n"
+  ^ "      if (window.Prism && window.Prism.highlightAll) window.Prism.highlightAll();\n"
+  ^ "    }\n"
   ^ "    function buildFilter() {\n"
   ^ "      const sidebar = document.querySelector('.sidebar');\n"
   ^ "      if (!sidebar) return;\n"
@@ -956,7 +979,7 @@ let render_common_scripts = fun () ->
   ^ "      }, { rootMargin: '-25% 0px -65% 0px' });\n"
   ^ "      sections.forEach(section => observer.observe(section));\n"
   ^ "    }\n"
-  ^ "    document.addEventListener('DOMContentLoaded', function () { buildFilter(); trackActiveSection(); });\n"
+  ^ "    document.addEventListener('DOMContentLoaded', function () { highlightCode(); buildFilter(); trackActiveSection(); });\n"
   ^ "  })();\n"
   ^ "  </script>\n"
 
@@ -1026,6 +1049,7 @@ let render_index = fun (package_doc: Doctree.package_doc) ->
     ~section_id:"examples"
     ~title:"Examples"
     package_doc.examples ^ render_dependency_section package_doc.dependencies ^ "    </main>\n" ^ "  </div>\n" ^ render_common_scripts
+    ~asset_prefix:""
     () ^ "</body>\n" ^ "</html>\n"
 
 let render_module = fun (package_doc: Doctree.package_doc) (module_doc: Doctree.module_doc) ->
@@ -1078,13 +1102,11 @@ let render_module = fun (package_doc: Doctree.package_doc) (module_doc: Doctree.
       ("#types", "Types");
       ("#values", "Values");
       ("#functions", "Functions");
-      ("#macros", "Macros");
     ]
   ^ render_sidebar_group ~title:"Modules" sidebar_modules
   ^ render_sidebar_group ~filterable:true ~title:"Types" (sidebar_items Doctree.Type_item)
   ^ render_sidebar_group ~filterable:true ~title:"Values" (sidebar_items Doctree.Value_item)
   ^ render_sidebar_group ~filterable:true ~title:"Functions" (sidebar_items Doctree.Function_item)
-  ^ render_sidebar_group ~filterable:true ~title:"Macros" (sidebar_items Doctree.Macro_item)
   ^ "    </aside>\n"
   ^ "    <main class=\"content\">\n"
   ^ "      <header class=\"page-header\">\n"
@@ -1110,10 +1132,9 @@ let render_module = fun (package_doc: Doctree.package_doc) (module_doc: Doctree.
   ^ render_item_section Doctree.Type_item
   ^ render_item_section Doctree.Value_item
   ^ render_item_section Doctree.Function_item
-  ^ render_item_section Doctree.Macro_item
   ^ "    </main>\n"
   ^ "  </div>\n"
-  ^ render_common_scripts ()
+  ^ render_common_scripts ~asset_prefix:(asset_prefix module_doc) ()
   ^ "</body>\n"
   ^ "</html>\n"
 
@@ -1164,6 +1185,6 @@ let render_module_source = fun
   ^ "</section>\n"
   ^ "    </main>\n"
   ^ "  </div>\n"
-  ^ render_common_scripts ()
+  ^ render_common_scripts ~asset_prefix:(asset_prefix module_doc) ()
   ^ "</body>\n"
   ^ "</html>\n"

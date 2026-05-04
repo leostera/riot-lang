@@ -282,99 +282,6 @@ let module_docstring = fun outer_doc inner_doc ->
   | (_, Some inner) when not (String.equal inner "") -> Some inner
   | _ -> None
 
-let is_ident_char = fun __tmp1 ->
-  match __tmp1 with
-  | 'a' .. 'z'
-  | 'A' .. 'Z'
-  | '0' .. '9'
-  | '_'
-  | '\'' -> true
-  | _ -> false
-
-let read_identifier = fun text idx ->
-  if idx >= String.length text then
-    None
-  else if not (is_ident_char (String.get_unchecked text ~at:idx)) then
-    None
-  else
-    let rec loop cursor =
-      if cursor < String.length text && is_ident_char (String.get_unchecked text ~at:cursor) then
-        loop (cursor + 1)
-      else
-        cursor
-    in
-    let finish = loop idx in
-    Some (String.sub text ~offset:idx ~len:(finish - idx), finish)
-
-let extract_percent_macro_names = fun line ->
-  let rec loop idx acc =
-    if idx >= String.length line then
-      List.reverse acc
-    else if String.get_unchecked line ~at:idx = '%' then
-      match read_identifier line (idx + 1) with
-      | Some (name, next_idx) -> loop next_idx (name :: acc)
-      | None -> loop (idx + 1) acc
-    else
-      loop (idx + 1) acc
-  in
-  loop 0 []
-
-let find_substring = fun text pattern ->
-  let text_length = String.length text in
-  let pattern_length = String.length pattern in
-  let rec loop idx =
-    if idx + pattern_length > text_length then
-      None
-    else if String.sub text ~offset:idx ~len:pattern_length = pattern then
-      Some idx
-    else
-      loop (idx + 1)
-  in
-  loop 0
-
-let extract_deriving_macro_names = fun line ->
-  match find_substring line "@@deriving" with
-  | None -> []
-  | Some idx ->
-      let rec loop cursor acc =
-        if cursor >= String.length line then
-          List.reverse acc
-        else
-          match String.get_unchecked line ~at:cursor with
-          | ' '
-          | '\t'
-          | ','
-          | '['
-          | ']'
-          | '('
-          | ')' -> loop (cursor + 1) acc
-          | _ -> (
-              match read_identifier line cursor with
-              | Some (name, next_idx) -> loop next_idx (name :: acc)
-              | None -> List.reverse acc
-            )
-      in
-      loop (idx + String.length "@@deriving") []
-
-let macro_items_of_snippet = fun ?docstring snippet ->
-  let signature = first_nonempty_line snippet in
-  let names =
-    extract_deriving_macro_names snippet @ extract_percent_macro_names snippet
-    |> List.unique ~compare:String.compare
-  in
-  names
-  |> List.map
-    ~fn:(fun name ->
-      {
-        Doctree.kind = Doctree.Macro_item;
-        name;
-        anchor = slugify ("macro_" ^ name);
-        signature;
-        snippet;
-        docstring;
-        detail_groups = [];
-      })
-
 let make_item = fun ?docstring ?(detail_groups = []) ?signature ~kind ~name snippet ->
   {
     Doctree.kind;
@@ -588,37 +495,35 @@ let items_of_type_declaration = fun ?docstring decl ->
     Vector.push
       items
       ~value:(make_item ?docstring ~kind:Doctree.Type_item ~name:fallback_name snippet);
-  vector_to_list items @ macro_items_of_snippet ?docstring raw_snippet
+  vector_to_list items
 
 let value_item_of_declaration = fun ?docstring decl ->
   let raw_snippet = snippet_of_node (Syn.Ast.ValueDeclaration.as_node decl) in
   let name = ident_text (Syn.Ast.ValueDeclaration.name decl) in
   match Syn.Ast.ValueDeclaration.type_annotation decl with
-  | None -> macro_items_of_snippet ?docstring raw_snippet
+  | None -> []
   | Some annotation ->
       if String.equal name "" then
-        macro_items_of_snippet ?docstring raw_snippet
+        []
       else
         let snippet = clean_signature raw_snippet in
         let signature = signature_of_value_annotation name annotation in
         let kind = value_item_kind annotation in
-        make_item ?docstring ~kind ~name ~signature snippet
-        :: macro_items_of_snippet ?docstring raw_snippet
+        [ make_item ?docstring ~kind ~name ~signature snippet; ]
 
 let external_item_of_declaration = fun ?docstring decl ->
   let raw_snippet = snippet_of_node (Syn.Ast.ExternalDeclaration.as_node decl) in
   let name = ident_text (Syn.Ast.ExternalDeclaration.name decl) in
   match Syn.Ast.ExternalDeclaration.type_annotation decl with
-  | None -> macro_items_of_snippet ?docstring raw_snippet
+  | None -> []
   | Some annotation ->
       if String.equal name "" then
-        macro_items_of_snippet ?docstring raw_snippet
+        []
       else
         let snippet = clean_signature raw_snippet in
         let signature = signature_of_value_annotation name annotation in
         let kind = value_item_kind annotation in
-        make_item ?docstring ~kind ~name ~signature snippet
-        :: macro_items_of_snippet ?docstring raw_snippet
+        [ make_item ?docstring ~kind ~name ~signature snippet; ]
 
 let module_path_segments = fun decl ->
   let body_ident =

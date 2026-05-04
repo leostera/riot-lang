@@ -236,6 +236,12 @@ val format: string -> string
       let* root_page =
         read_file Path.(summary.Riot_doc.output_dir / Path.v "Pretext" / Path.v "index.html")
       in
+      let* prism_core =
+        read_file Path.(summary.Riot_doc.output_dir / Path.v "assets" / Path.v "prism-core.min.js")
+      in
+      let* prism_ocaml =
+        read_file Path.(summary.Riot_doc.output_dir / Path.v "assets" / Path.v "prism-ocaml.min.js")
+      in
       let* () = assert_contains ~label:"package index" index "href=\"Pretext/index.html\"" in
       let* () =
         assert_not_contains
@@ -254,7 +260,7 @@ val format: string -> string
       let* () =
         assert_contains ~label:"docs manifest" manifest "\"schema\": \"riot-doc.manifest.v1\""
       in
-      let* () = assert_contains ~label:"docs manifest" manifest "\"generator\": \"riot-doc:v28\"" in
+      let* () = assert_contains ~label:"docs manifest" manifest "\"generator\": \"riot-doc:v29\"" in
       let* () = assert_contains ~label:"docs manifest" manifest "\"manifest.json\"" in
       let* () = assert_not_contains ~label:"root module page" root_page "Redirecting..." in
       let* () =
@@ -285,6 +291,20 @@ val format: string -> string
           root_page
           "<span class=\"item-detail-signature\">: string -&gt; string</span>"
       in
+      let* () =
+        assert_contains
+          ~label:"root module page"
+          root_page
+          "<script src=\"../assets/prism-core.min.js\"></script>"
+      in
+      let* () =
+        assert_contains
+          ~label:"root module page"
+          root_page
+          "<script src=\"../assets/prism-ocaml.min.js\"></script>"
+      in
+      let* () = assert_contains ~label:"prism core asset" prism_core "Prism" in
+      let* () = assert_contains ~label:"prism ocaml asset" prism_ocaml "Prism.languages.ocaml" in
       let* () = assert_not_contains ~label:"root module page" root_page "val format:" in
       let* () = assert_not_contains ~label:"root module page" root_page "(** Format" in
       assert_contains ~label:"root module page" root_page "Format a document to text.") with
@@ -664,6 +684,55 @@ val parse: string -> (binding list, string) result
   | Ok result -> result
   | Error err -> Error (IO.error_message err)
 
+let test_doc_does_not_report_printf_formats_as_macros = fun _ctx ->
+  match Fs.with_tempdir
+    ~prefix:"riot_doc_no_printf_macros"
+    (fun tmpdir ->
+      let pkg_root = Path.(tmpdir / Path.v "logger") in
+      let pkg_src = Path.(pkg_root / Path.v "src") in
+      let output_root = Path.(tmpdir / Path.v "docs") in
+      create_dir pkg_src;
+      write Path.(pkg_src / Path.v "logger.ml") {ocaml|let log_count = fun _count -> ()
+|ocaml};
+      write
+        Path.(pkg_src / Path.v "logger.mli")
+        {ocaml|(** Logging helpers. *)
+
+(** Log a count.
+
+    ```ocaml
+    Printf.printf "Count: %d\n" count
+    ```
+*)
+val log_count: int -> unit
+|ocaml};
+      let pkg =
+        Package.make
+          ~name:(package_name "logger")
+          ~path:pkg_root
+          ~relative_path:(Path.v "logger")
+          ~library:{ path = Path.v "src/logger.ml" }
+          ~sources:(sources [ Path.v "src/logger.ml"; Path.v "src/logger.mli" ])
+          ()
+      in
+      let workspace =
+        Workspace.make_realized ~root:tmpdir ~packages:[ pkg ] ~target_dir:"target" ()
+      in
+      let request = make_doc_request ~workspace ~output_dir:output_root "logger" in
+      let* summaries = Riot_doc.run request in
+      let* summary =
+        match summaries with
+        | [ summary ] -> Ok summary
+        | _ -> Error "expected one generated docs summary"
+      in
+      let* root_page =
+        read_file Path.(summary.Riot_doc.output_dir / Path.v "Logger" / Path.v "index.html")
+      in
+      let* () = assert_not_contains ~label:"root module page" root_page "macro_d" in
+      assert_not_contains ~label:"root module page" root_page "Macros") with
+  | Ok result -> result
+  | Error err -> Error (IO.error_message err)
+
 let test_doc_ignores_binary_sources_when_collecting_interfaces = fun _ctx ->
   match Fs.with_tempdir
     ~prefix:"riot_doc_binary_sources"
@@ -744,6 +813,9 @@ let tests =
     case
       "doc preserves fenced code block relative indentation"
       test_doc_preserves_fenced_code_block_relative_indentation;
+    case
+      "doc does not report printf formats as macros"
+      test_doc_does_not_report_printf_formats_as_macros;
     case
       "doc ignores binary sources when collecting interfaces"
       test_doc_ignores_binary_sources_when_collecting_interfaces;
