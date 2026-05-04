@@ -254,7 +254,7 @@ val format: string -> string
       let* () =
         assert_contains ~label:"docs manifest" manifest "\"schema\": \"riot-doc.manifest.v1\""
       in
-      let* () = assert_contains ~label:"docs manifest" manifest "\"generator\": \"riot-doc:v27\"" in
+      let* () = assert_contains ~label:"docs manifest" manifest "\"generator\": \"riot-doc:v28\"" in
       let* () = assert_contains ~label:"docs manifest" manifest "\"manifest.json\"" in
       let* () = assert_not_contains ~label:"root module page" root_page "Redirecting..." in
       let* () =
@@ -374,6 +374,73 @@ val value: string
           ~label:"regenerated root page"
           regenerated
           "<span class=\"item-detail-signature\">: string</span>") with
+  | Ok result -> result
+  | Error err -> Error (IO.error_message err)
+
+let test_doc_lists_variant_constructors_without_pipes = fun _ctx ->
+  match Fs.with_tempdir
+    ~prefix:"riot_doc_variant_constructors"
+    (fun tmpdir ->
+      let pkg_root = Path.(tmpdir / Path.v "args") in
+      let pkg_src = Path.(pkg_root / Path.v "src") in
+      let output_root = Path.(tmpdir / Path.v "docs") in
+      create_dir pkg_src;
+      write
+        Path.(pkg_src / Path.v "args.ml")
+        {ocaml|type action =
+  | Set
+  | SetTrue
+  | Append of string
+|ocaml};
+      write
+        Path.(pkg_src / Path.v "args.mli")
+        {ocaml|(** Argument helpers. *)
+
+(** How an argument's value should be set. *)
+type action =
+  | Set
+  | SetTrue
+  | Append of string
+|ocaml};
+      let pkg =
+        Package.make
+          ~name:(package_name "args")
+          ~path:pkg_root
+          ~relative_path:(Path.v "args")
+          ~library:{ path = Path.v "src/args.ml" }
+          ~sources:(sources [ Path.v "src/args.ml"; Path.v "src/args.mli" ])
+          ()
+      in
+      let workspace =
+        Workspace.make_realized ~root:tmpdir ~packages:[ pkg ] ~target_dir:"target" ()
+      in
+      let request = make_doc_request ~workspace ~output_dir:output_root "args" in
+      let* summaries = Riot_doc.run request in
+      let* summary =
+        match summaries with
+        | [ summary ] -> Ok summary
+        | _ -> Error "expected one generated docs summary"
+      in
+      let* root_page =
+        read_file Path.(summary.Riot_doc.output_dir / Path.v "Args" / Path.v "index.html")
+      in
+      let* () = assert_contains ~label:"root module page" root_page "Constructors" in
+      let* () =
+        assert_contains
+          ~label:"root module page"
+          root_page
+          "<div class=\"item-subitem-signature\">Set</div>"
+      in
+      let* () =
+        assert_contains
+          ~label:"root module page"
+          root_page
+          "<div class=\"item-subitem-signature\">Append of string</div>"
+      in
+      assert_not_contains
+        ~label:"root module page"
+        root_page
+        "<div class=\"item-subitem-signature\">| Set</div>") with
   | Ok result -> result
   | Error err -> Error (IO.error_message err)
 
@@ -665,6 +732,9 @@ let tests =
     case
       "doc uses nested module source for item snippets"
       test_doc_uses_nested_module_source_for_item_snippets;
+    case
+      "doc lists variant constructors without pipes"
+      test_doc_lists_variant_constructors_without_pipes;
     case
       "doc reuses current output when manifest matches"
       test_doc_reuses_current_output_when_manifest_matches;

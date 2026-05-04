@@ -390,6 +390,51 @@ let make_detail = fun ?docstring ~name signature ->
   ({ name = name; signature = clean_member_signature signature; docstring = docstring }:
     Doctree.item_detail)
 
+let type_expr_signature = fun type_expr ->
+  Syn.Ast.TypeExpr.as_node type_expr
+  |> snippet_of_node
+  |> clean_member_signature
+
+let record_type_signature = fun record ->
+  Syn.Ast.RecordType.as_node record
+  |> snippet_of_node
+  |> clean_member_signature
+
+let constructor_payload_signature = fun __tmp1 ->
+  match __tmp1 with
+  | Syn.Ast.VariantConstructor.TypeExpr type_expr -> type_expr_signature type_expr
+  | Syn.Ast.VariantConstructor.Record record -> record_type_signature record
+
+let constructor_signature = fun name rhs ->
+  match rhs with
+  | Syn.Ast.VariantConstructor.Plain -> name
+  | Syn.Ast.VariantConstructor.Payload { payload; _ } ->
+      let payload_signature = constructor_payload_signature payload in
+      if String.equal payload_signature "" then
+        name
+      else
+        name ^ " of " ^ payload_signature
+  | Syn.Ast.VariantConstructor.Gadt { record_payload; arrow_token; result; _ } -> (
+      let result_signature = type_expr_signature result in
+      match record_payload with
+      | Some record ->
+          let record_signature = record_type_signature record in
+          if String.equal record_signature "" then
+            name ^ " : " ^ result_signature
+          else if Option.is_some arrow_token then
+            name ^ " : " ^ record_signature ^ " -> " ^ result_signature
+          else
+            name ^ " : " ^ record_signature
+      | None ->
+          if String.equal result_signature "" then
+            name
+          else
+            name ^ " : " ^ result_signature
+    )
+
+let make_constructor_detail = fun ?docstring ~name ~signature () ->
+  ({ name = name; signature = signature; docstring = docstring }: Doctree.item_detail)
+
 let token_text = fun __tmp1 ->
   match __tmp1 with
   | Some token -> Syn.Ast.Token.text token
@@ -467,14 +512,18 @@ let variant_constructor_details = fun variant ->
     Syn.Ast.VariantType.fold_constructor
     variant
     ~fn:(fun constructor ->
-      let name = ident_text (Syn.Ast.VariantConstructor.name constructor) in
-      if not (String.equal name "") then
-        Vector.push
-          details
-          ~value:(make_detail
-            ?docstring:(leading_docstring (Syn.Ast.VariantConstructor.as_node constructor))
-            ~name
-            (snippet_of_node (Syn.Ast.VariantConstructor.as_node constructor))));
+      match Syn.Ast.VariantConstructor.view constructor with
+      | Syn.Ast.VariantConstructor.Constructor { name; rhs; _ } ->
+          let name = Syn.Ast.Ident.text name in
+          if not (String.equal name "") then
+            Vector.push
+              details
+              ~value:(make_constructor_detail
+                ?docstring:(leading_docstring (Syn.Ast.VariantConstructor.as_node constructor))
+                ~name
+                ~signature:(constructor_signature name rhs)
+                ())
+      | Syn.Ast.VariantConstructor.Unknown _ -> ());
   vector_to_list details
 
 let record_field_details = fun record ->
