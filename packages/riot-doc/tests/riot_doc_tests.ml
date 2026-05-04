@@ -236,11 +236,9 @@ val format: string -> string
       let* root_page =
         read_file Path.(summary.Riot_doc.output_dir / Path.v "Pretext" / Path.v "index.html")
       in
-      let* prism_core =
-        read_file Path.(summary.Riot_doc.output_dir / Path.v "assets" / Path.v "prism-core.min.js")
-      in
+      let* prism_core = read_file Path.(output_root / Path.v "_shared" / Path.v "prism-core.min.js") in
       let* prism_ocaml =
-        read_file Path.(summary.Riot_doc.output_dir / Path.v "assets" / Path.v "prism-ocaml.min.js")
+        read_file Path.(output_root / Path.v "_shared" / Path.v "prism-ocaml.min.js")
       in
       let* () = assert_contains ~label:"package index" index "href=\"Pretext/index.html\"" in
       let* () =
@@ -260,7 +258,7 @@ val format: string -> string
       let* () =
         assert_contains ~label:"docs manifest" manifest "\"schema\": \"riot-doc.manifest.v1\""
       in
-      let* () = assert_contains ~label:"docs manifest" manifest "\"generator\": \"riot-doc:v29\"" in
+      let* () = assert_contains ~label:"docs manifest" manifest "\"generator\": \"riot-doc:v30\"" in
       let* () = assert_contains ~label:"docs manifest" manifest "\"manifest.json\"" in
       let* () = assert_not_contains ~label:"root module page" root_page "Redirecting..." in
       let* () =
@@ -295,13 +293,13 @@ val format: string -> string
         assert_contains
           ~label:"root module page"
           root_page
-          "<script src=\"../assets/prism-core.min.js\"></script>"
+          "<script src=\"../../../_shared/prism-core.min.js\"></script>"
       in
       let* () =
         assert_contains
           ~label:"root module page"
           root_page
-          "<script src=\"../assets/prism-ocaml.min.js\"></script>"
+          "<script src=\"../../../_shared/prism-ocaml.min.js\"></script>"
       in
       let* () = assert_contains ~label:"prism core asset" prism_core "Prism" in
       let* () = assert_contains ~label:"prism ocaml asset" prism_ocaml "Prism.languages.ocaml" in

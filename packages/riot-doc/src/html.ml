@@ -531,10 +531,10 @@ li code,
 |css}
 
 let assets = [
-  ("assets/doc.css", String.trim default_css);
-  ("assets/prism-LICENSE.txt", String.trim Vendor_assets.prism_license);
-  ("assets/prism-core.min.js", String.trim Vendor_assets.prism_core);
-  ("assets/prism-ocaml.min.js", String.trim Vendor_assets.prism_ocaml);
+  ("doc.css", String.trim default_css);
+  ("prism-LICENSE.txt", String.trim Vendor_assets.prism_license);
+  ("prism-core.min.js", String.trim Vendor_assets.prism_core);
+  ("prism-ocaml.min.js", String.trim Vendor_assets.prism_ocaml);
 ]
 
 let render_empty_state = fun message ->
@@ -888,6 +888,11 @@ let asset_prefix = fun (module_doc: Doctree.module_doc) ->
     (List.length module_doc.Doctree.path)
     ""
 
+let package_shared_asset_prefix = "../../_shared/"
+
+let module_shared_asset_prefix = fun module_doc ->
+  asset_prefix module_doc ^ package_shared_asset_prefix
+
 let render_common_head = fun css_href title ->
   "<!doctype html>\n"
   ^ "<html lang=\"en\">\n"
@@ -908,10 +913,10 @@ let render_common_head = fun css_href title ->
 let render_common_scripts = fun ~asset_prefix () ->
   "  <script src=\""
   ^ asset_prefix
-  ^ "assets/prism-core.min.js\"></script>\n"
+  ^ "prism-core.min.js\"></script>\n"
   ^ "  <script src=\""
   ^ asset_prefix
-  ^ "assets/prism-ocaml.min.js\"></script>\n"
+  ^ "prism-ocaml.min.js\"></script>\n"
   ^ "  <script>\n"
   ^ "  (function () {\n"
   ^ "    'use strict';\n"
@@ -1010,7 +1015,7 @@ let render_index = fun (package_doc: Doctree.package_doc) ->
       render_module_rows ~from_module:None package_modules
     )
   in
-  render_common_head "assets/doc.css" (package_doc.package ^ " — docs")
+  render_common_head (package_shared_asset_prefix ^ "doc.css") (package_doc.package ^ " — docs")
   ^ "<body>\n"
   ^ "  <div class=\"docs-shell\">\n"
   ^ "    <aside class=\"sidebar\">\n"
@@ -1049,7 +1054,7 @@ let render_index = fun (package_doc: Doctree.package_doc) ->
     ~section_id:"examples"
     ~title:"Examples"
     package_doc.examples ^ render_dependency_section package_doc.dependencies ^ "    </main>\n" ^ "  </div>\n" ^ render_common_scripts
-    ~asset_prefix:""
+    ~asset_prefix:package_shared_asset_prefix
     () ^ "</body>\n" ^ "</html>\n"
 
 let render_module = fun (package_doc: Doctree.package_doc) (module_doc: Doctree.module_doc) ->
@@ -1077,7 +1082,7 @@ let render_module = fun (package_doc: Doctree.package_doc) (module_doc: Doctree.
       ))
   in
   render_common_head
-    (asset_prefix module_doc ^ "assets/doc.css")
+    (module_shared_asset_prefix module_doc ^ "doc.css")
     (Doctree.module_full_name module_doc ^ " — docs")
   ^ "<body>\n"
   ^ "  <div class=\"docs-shell\">\n"
@@ -1134,14 +1139,14 @@ let render_module = fun (package_doc: Doctree.package_doc) (module_doc: Doctree.
   ^ render_item_section Doctree.Function_item
   ^ "    </main>\n"
   ^ "  </div>\n"
-  ^ render_common_scripts ~asset_prefix:(asset_prefix module_doc) ()
+  ^ render_common_scripts ~asset_prefix:(module_shared_asset_prefix module_doc) ()
   ^ "</body>\n"
   ^ "</html>\n"
 
 let render_module_source = fun
   (package_doc: Doctree.package_doc) (module_doc: Doctree.module_doc) ->
   render_common_head
-    (asset_prefix module_doc ^ "assets/doc.css")
+    (module_shared_asset_prefix module_doc ^ "doc.css")
     (Doctree.module_full_name module_doc ^ " source")
   ^ "<body>\n"
   ^ "  <div class=\"docs-shell\">\n"
@@ -1185,6 +1190,6 @@ let render_module_source = fun
   ^ "</section>\n"
   ^ "    </main>\n"
   ^ "  </div>\n"
-  ^ render_common_scripts ~asset_prefix:(asset_prefix module_doc) ()
+  ^ render_common_scripts ~asset_prefix:(module_shared_asset_prefix module_doc) ()
   ^ "</body>\n"
   ^ "</html>\n"

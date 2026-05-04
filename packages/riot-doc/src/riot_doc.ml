@@ -2,7 +2,7 @@ open Std
 open Riot_model
 open Std.Result.Syntax
 
-let generator_signature = "riot-doc:v29"
+let generator_signature = "riot-doc:v30"
 
 type request = {
   workspace: Riot_model.Workspace.t;
@@ -92,6 +92,11 @@ let output_version = fun ~release (package: Riot_model.Package.t) ->
 let output_root = fun ~(workspace:Riot_model.Workspace.t) ~release ->
   let _ = release in
   Path.(workspace.target_dir_root / Path.v "doc")
+
+let output_root_for_request = fun (request: request) ->
+  match request.output_root with
+  | Some override_root -> override_root
+  | None -> output_root ~workspace:request.workspace ~release:request.release
 
 let package_output_dir = fun
   ~(workspace:Riot_model.Workspace.t) ~package_name ~version ~release ~output_root_opt ->
@@ -438,7 +443,9 @@ let dependency_packages_for = fun (plan: Riot_planner.workspace_plan_result) (pa
     plan.package_graph
     package.name
 
-let write_assets = fun output_dir ->
+let shared_assets_dir = fun request -> Path.(output_root_for_request request / Path.v "_shared")
+
+let write_shared_assets = fun output_dir ->
   Html.assets
   |> List.fold_left
     ~init:(Ok ())
@@ -777,9 +784,7 @@ let run_for_package = fun
         let* () = sanitize_output_path output_dir in
         let* index_path = write_index ~output_dir package_doc in
         let* page_paths = write_pages ~output_dir package_doc in
-        let* () = write_assets output_dir in
-        let asset_paths = [ Path.(output_dir / Path.v "assets" / Path.v "doc.css") ] in
-        let output_paths = ([ index_path ] @ page_paths) @ asset_paths in
+        let output_paths = [ index_path ] @ page_paths in
         let* manifest_path =
           write_manifest
             ~output_dir
@@ -845,6 +850,7 @@ let run = fun ?on_event (request: request) ->
       ~target:(Riot_dirs.host_target ())
   in
   let cache_allowed = not request.no_cache in
+  let* () = write_shared_assets (shared_assets_dir request) in
   packages
   |> List.fold_left
     ~init:(Ok [])
