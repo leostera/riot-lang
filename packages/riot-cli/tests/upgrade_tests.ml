@@ -336,9 +336,7 @@ let tests =
     case
       "upgrade: version string uses installed metadata"
       test_version_string_uses_installed_metadata;
-    case
-      "upgrade: version string uses RIOT_DIR metadata"
-      test_version_string_uses_riot_dir_metadata;
+    case "upgrade: version string uses RIOT_DIR metadata" test_version_string_uses_riot_dir_metadata;
     case
       "upgrade: version string roundtrips into metadata"
       test_version_string_roundtrips_into_metadata;

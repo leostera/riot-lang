@@ -1,10 +1,11 @@
 open Std
 
-(** Resolve the user-level Riot directory.
+(**
+   Resolve the user-level Riot directory.
 
-    Defaults to [$HOME/.riot]. When [RIOT_DIR] is set, that path is used
-    instead so installed Riot binaries can keep their metadata, registry cache,
-    toolchains, projects, and bin directory outside the default home location.
+   Defaults to [$HOME/.riot]. When [RIOT_DIR] is set, that path is used
+   instead so installed Riot binaries can keep their metadata, registry cache,
+   toolchains, projects, and bin directory outside the default home location.
 *)
 val user_riot_dir: unit -> (Path.t, string) result
 
