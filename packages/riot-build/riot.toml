@@ -66,6 +66,10 @@ name = "build_work_prepare_tests"
 path = "tests/build_work_prepare_tests.ml"
 
 [[bin]]
+name = "build_unit_plan_tests"
+path = "tests/build_unit_plan_tests.ml"
+
+[[bin]]
 name = "caching_tests"
 path = "tests/caching_tests.ml"
 

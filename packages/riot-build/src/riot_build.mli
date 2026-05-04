@@ -29,6 +29,8 @@ module Internal: sig
 
   module Build_core = Build_core
 
+  module Build_unit_plan = Build_unit_plan
+
   module Graph_scheduler = Graph_scheduler
 
   module Package_scheduler = Package_scheduler

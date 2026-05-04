@@ -22,6 +22,7 @@ module Internal = struct
   module Build_lane = Build_lane
   module Build_context = Build_context
   module Build_core = Build_core
+  module Build_unit_plan = Build_unit_plan
   module Graph_scheduler = Graph_scheduler
   module Package_scheduler = Package_scheduler
   module Build_work = Build_work
