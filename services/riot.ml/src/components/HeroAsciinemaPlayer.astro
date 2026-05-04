@@ -10,17 +10,14 @@ const {
 } = Astro.props;
 ---
 
-<div class="mx-auto mt-6 max-w-2xl text-left">
+<div class="asciinema-shell">
   {
     typeof title === "string" && title.length > 0 ? (
-      <p class="mb-3 text-center text-xs uppercase tracking-[0.16em] text-[#c8afb7]">
-        {title}
-      </p>
+      <p class="asciinema-title">{title}</p>
     ) : null
   }
-  <div class="overflow-hidden rounded-[1.125rem] border border-[#32242a] bg-[linear-gradient(180deg,#121720,#0d1117)] px-3 py-3 shadow-[0_20px_80px_rgba(0,0,0,0.45)]">
+  <div class="asciinema-frame">
     <div
-      class="overflow-hidden rounded-[0.95rem] border border-[#32242a] bg-[#0f141b]"
       data-asciinema-player
       data-cast-url={castUrl}
     ></div>

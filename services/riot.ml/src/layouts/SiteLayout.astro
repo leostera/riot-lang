@@ -13,16 +13,110 @@ const {
 ---
 
 <!doctype html>
-<html lang="en" class="scroll-smooth">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/svg+xml" href="/logo.svg" />
+    <link rel="alternate" type="text/plain" href="/llms.txt" title="For agents" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@400;500;600;700&family=Martian+Mono:wght@400;500;600;700;800;900&display=swap"
+      rel="stylesheet"
+    />
+    <script is:inline>
+      (() => {
+        const key = "riot-theme";
+        const root = document.documentElement;
+        const stored = (() => {
+          try {
+            return window.localStorage.getItem(key);
+          } catch {
+            return null;
+          }
+        })();
+        const prefersLight = window.matchMedia?.(
+          "(prefers-color-scheme: light)",
+        )?.matches;
+        const theme =
+          stored === "dark" || stored === "light"
+            ? stored
+            : prefersLight
+              ? "light"
+              : "dark";
+
+        root.dataset.theme = theme;
+      })();
+    </script>
     <title>{title}</title>
     <meta name="description" content={description} />
   </head>
-  <body
-    class="m-0 bg-[#0c0b0d] font-['Source_Sans_3_Variable',sans-serif] text-[#fff6f8] [background:radial-gradient(circle_at_top,rgba(255,53,79,0.18)_0%,transparent_32%),radial-gradient(circle_at_50%_-10%,#26161b_0%,#0c0b0d_52%)] text-[1.0625rem] leading-[1.6] flex flex-col justify-between min-h-[100vh]"
-  >
+  <body>
     <slot />
+    <script>
+      type RiotTheme = "light" | "dark";
+
+      const themeKey = "riot-theme";
+      const root = document.documentElement;
+      const themeToggles =
+        document.querySelectorAll<HTMLButtonElement>("[data-theme-toggle]");
+
+      const setStoredTheme = (theme: RiotTheme) => {
+        try {
+          window.localStorage.setItem(themeKey, theme);
+        } catch {
+          return;
+        }
+      };
+
+      const syncThemeControls = (theme: RiotTheme) => {
+        themeToggles.forEach((toggle) => {
+          const isDark = theme === "dark";
+          toggle.setAttribute("aria-checked", isDark ? "true" : "false");
+          toggle.dataset.state = isDark ? "checked" : "unchecked";
+          toggle.setAttribute(
+            "aria-label",
+            isDark ? "Switch to light mode" : "Switch to dark mode",
+          );
+          const icon = toggle.querySelector("[data-theme-icon]");
+          if (icon) icon.textContent = isDark ? "☾" : "☼";
+        });
+      };
+
+      const setTheme = (theme: RiotTheme, persist = true) => {
+        root.dataset.theme = theme;
+        if (persist) setStoredTheme(theme);
+        syncThemeControls(theme);
+      };
+
+      const initialTheme = (
+        root.dataset.theme ||
+        (window.matchMedia?.("(prefers-color-scheme: light)")?.matches
+          ? "light"
+          : "dark")
+      ) as RiotTheme;
+
+      setTheme(initialTheme, false);
+
+      themeToggles.forEach((toggle) => {
+        toggle.addEventListener("click", () => {
+          setTheme(root.dataset.theme === "dark" ? "light" : "dark");
+        });
+      });
+
+      document.querySelectorAll<HTMLButtonElement>("button[data-copy]").forEach((button) => {
+        button.addEventListener("click", async () => {
+          const text = button.getAttribute("data-copy");
+          if (!text) return;
+          await navigator.clipboard.writeText(text);
+          const previous = button.textContent;
+          button.textContent = "copied";
+          window.setTimeout(() => {
+            button.textContent = previous;
+          }, 1200);
+        });
+      });
+    </script>
   </body>
 </html>

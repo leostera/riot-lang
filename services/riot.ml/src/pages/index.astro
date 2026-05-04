@@ -7,287 +7,265 @@ const introCastUrl = "/riot.cast";
 ---
 
 <SiteLayout
-  title="Riot"
-  description="Riot is a stack for building applications in OCaml."
+  title="Riot · OCaml stack"
+  description="Riot is an opinionated OCaml stack and toolchain for shipping actor-oriented, multi-core ready software."
 >
-  <nav class="fixed top-6 right-6 hidden border-0 bg-transparent p-0 text-right text-sm leading-6 opacity-80 lg:block">
-    <a class="my-0.5 block text-[#c8afb7] transition-colors hover:text-[#ff354f]" href="#what-is-riot">What is Riot</a>
-    <a class="my-0.5 block text-[#c8afb7] transition-colors hover:text-[#ff354f]" href="#a-single-tool">A Single Tool</a>
-    <a class="my-0.5 block text-[#c8afb7] transition-colors hover:text-[#ff354f]" href="#package-management">Modern Package Management</a>
-    <a class="my-0.5 block text-[#c8afb7] transition-colors hover:text-[#ff354f]" href="#actors">Actors</a>
-    <a class="my-0.5 block text-[#c8afb7] transition-colors hover:text-[#ff354f]" href="#std">Standard Library</a>
-    <a class="my-0.5 block text-[#c8afb7] transition-colors hover:text-[#ff354f]" href="#clankers">Clanker-friendly</a>
-    <a class="my-0.5 block text-[#c8afb7] transition-colors hover:text-[#ff354f]" href="#get-involved">Get Involved</a>
-    <span class="block h-2"></span>
-    <a class="my-0.5 block text-[#c8afb7] transition-colors hover:text-[#ff354f]" href="https://github.com/leostera/riot">GitHub</a>
-    <a class="my-0.5 block text-[#c8afb7] transition-colors hover:text-[#ff354f]" href="https://github.com/leostera/riot/tree/main/docs">Docs</a>
-    <a class="my-0.5 block text-[#c8afb7] transition-colors hover:text-[#ff354f]" href="/llms.txt">LLMs</a>
-    <a class="my-0.5 block text-[#c8afb7] transition-colors hover:text-[#ff354f]" href="https://discord.gg/">Discord</a>
-  </nav>
-
-  <main class="mx-auto flex w-full flex-col items-center px-3 py-8 md:py-24">
-    <section class="w-full pt-6 text-center md:pt-16">
-      <img
-        src="/logo.svg"
-        alt="Riot logo"
-        class="mx-auto mb-4 h-auto w-40 opacity-95 md:w-52"
-      />
-      <p class="mx-auto mt-4 max-w-xl text-[1.15rem] font-thin text-[#c8afb7] md:text-[1.35rem]">
-        There are many OCaml stacks,
-        <span class="block sm:inline">this one is mine.</span>
-      </p>
-
-      <div class="mt-6 flex flex-wrap justify-center gap-4 text-base text-[#c8afb7]">
-        <a class="text-[#fff6f8] no-underline transition-colors hover:text-[#ff354f]" href="https://github.com/leostera/riot">GitHub</a>
-        <a class="text-[#fff6f8] no-underline transition-colors hover:text-[#ff354f]" href="/llms.txt">LLMs</a>
-        <a class="text-[#fff6f8] no-underline transition-colors hover:text-[#ff354f]" href="https://discord.gg/">Discord</a>
+  <div class="site-shell">
+    <header class="site-header">
+      <div class="site-brand" aria-label="Riot home">
+        <a href="#top">Riot</a>
+        <small>by <a href="https://x.com/leostera">@leostera</a></small>
       </div>
+      <nav class="site-nav" aria-label="Primary navigation">
+        <a href="#why-riot">Why Riot</a>
+        <a href="#try-riot">Try Riot</a>
+        <a href="#use-cases">Use Cases</a>
+        <a href="https://docs.riot.ml">Docs</a>
+        <a href="https://pkgs.ml">Packages</a>
+      </nav>
+      <button
+        class="theme-toggle"
+        type="button"
+        data-state="unchecked"
+        data-theme-toggle
+        role="switch"
+        aria-checked="false"
+        aria-label="Toggle dark mode"
+      >
+        <span class="theme-toggle__track" aria-hidden="true">
+          <span class="theme-toggle__thumb" data-theme-icon>☼</span>
+        </span>
+      </button>
+    </header>
 
-      <div class="mx-auto mt-8 flex w-full max-w-xl justify-center">
-        <div class="mt-0 flex w-full flex-col gap-3 rounded-2xl border border-[#32242a] bg-[linear-gradient(180deg,#181116_0%,#130f12_100%)] px-4 py-3 shadow-[0_18px_50px_rgba(0,0,0,0.28)] sm:w-fit sm:flex-row sm:items-center sm:gap-4 sm:px-6 sm:py-2">
-          <pre class="m-0 overflow-x-auto text-left text-[0.95rem] text-slate-200"><code>{installCommand}</code></pre>
-          <button
-            type="button"
-            class="rounded-md border border-[#32242a] px-3 py-1.5 text-sm text-[#c8afb7] transition hover:text-[#fff6f8] sm:shrink-0"
-            data-copy={installCommand}
-          >
-            copy
-          </button>
+    <main id="top">
+      <section class="landing-hero" aria-labelledby="hero-title">
+        <div class="landing-hero__copy">
+          <div class="hero-flag" aria-hidden="true">🏴‍☠️</div>
+          <h1 id="hero-title">Riot</h1>
+          <p class="landing-hero__lede">There are many OCaml stacks, this one is mine.</p>
+
+          <div class="command-strip" aria-label="Install Riot command">
+            <code>{installCommand}</code>
+            <button type="button" data-copy={installCommand}>copy</button>
+          </div>
+
+          <HeroAsciinemaPlayer castUrl={introCastUrl} />
+
+          <a class="hero-agent-link" href="/llms.txt">Riot for agents → llms.txt</a>
+        </div>
+      </section>
+
+      <section class="landing-section" id="why-riot" aria-labelledby="why-riot-title">
+        <div class="section-heading">
+          <p class="landing-eyebrow">Why Riot</p>
+          <h2 id="why-riot-title">There are many OCaml stacks. This one is mine.</h2>
+          <p>
+            Riot is my take on what an ML stack should feel like in 2026:
+            beautiful and practical, actor-based, multi-core ready, type-safe,
+            vertically designed, and built for shipping.
+          </p>
+        </div>
+
+        <div class="feature-row">
+          <article class="feature-card">
+            <h3>Optimized for developer joy</h3>
+            <p>
+              Riot gets out of the way and helps you build good software:
+              fast feedback, useful defaults, clear output, recoverable errors,
+              and no setup ritual before the work starts.
+            </p>
+          </article>
+          <article class="feature-card">
+            <h3>One piece, not many</h3>
+            <p>
+              Compiler, runtime, package manager, docs, registry, formatter,
+              tests, diagnostics, and standard library should feel like parts of
+              the same whole.
+            </p>
+          </article>
+          <article class="feature-card">
+            <h3>Built for shipping</h3>
+            <p>
+              Make it work, learn whether it matters, make it beautiful, make it
+              fast where it needs to be fast, and keep shipping.
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <section class="landing-section landing-section--compact" id="try-riot" aria-labelledby="try-riot-title">
+        <div class="section-heading">
+          <p class="landing-eyebrow">Try Riot</p>
+          <h2 id="try-riot-title">The command is <code>riot</code>.</h2>
+          <p>
+            The toolchain should feel like one surface. Riot handles the pieces
+            that usually leak across separate commands, hidden configuration,
+            and project-local folklore.
+          </p>
+        </div>
+
+        <div class="try-surface">
+          <div class="terminal" aria-label="Riot command examples">
+            <div class="terminal__head">
+              <span>~/projects/app</span>
+              <span>riot</span>
+            </div>
+            <pre class="terminal__body"><span class="prompt">λ</span> riot new service
+<span class="ok">created</span> service
+<span class="muted">next:</span> cd service && riot test
+
+<span class="prompt">λ</span> riot add std
+<span class="ok">added</span> std 0.6.0
+
+<span class="prompt">λ</span> riot test --json
+<span class="ok">ok</span> 42 tests passed in 54ms</pre>
+          </div>
+          <div class="try-copy">
+            <h3>It ships the daily loop.</h3>
+            <ul class="compact-list">
+              <li>automatic OCaml toolchain management</li>
+              <li>zero-config formatting optimized for readable diffs</li>
+              <li>linting with automatic fixes</li>
+              <li>unit tests, property tests, snapshots, and benchmarks</li>
+              <li>package search, install, docs, and publish flows</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="landing-section" id="use-cases" aria-labelledby="use-cases-title">
+        <div class="section-heading">
+          <p class="landing-eyebrow">What’s possible with Riot</p>
+          <h2 id="use-cases-title">A stack for systems, services, packages, and tools.</h2>
+          <p>
+            Riot is not just a website and a command. It is the compiler-facing,
+            runtime-facing, docs-facing, registry-facing path through building
+            OCaml software.
+          </p>
+        </div>
+
+        <div class="feature-row feature-row--wrap">
+          <article class="feature-card">
+            <h3>Actor services</h3>
+            <p>
+              Build software from actors that communicate via message passing.
+              Spawn work, supervise it, and let the runtime rebalance across CPUs.
+            </p>
+            <a href="#actors">Runtime model</a>
+          </article>
+          <article class="feature-card">
+            <h3>Modern packages</h3>
+            <p>
+              Publish to <a href="https://pkgs.ml">pkgs.ml</a>, generate docs, track
+              package usage, and make package search useful from web and terminal.
+            </p>
+            <a href="https://pkgs.ml/p/std">Open std</a>
+          </article>
+          <article class="feature-card">
+            <h3>Standard library</h3>
+            <p>
+              <code>std</code> covers core datatypes, collections, IO, time,
+              networking, formats, crypto, actors, logging, telemetry, testing,
+              benchmarking, and more.
+            </p>
+            <a href="https://pkgs.ml/p/std">Browse package</a>
+          </article>
+          <article class="feature-card">
+            <h3>Agent-ready workflows</h3>
+            <p>
+              Commands can run non-interactively, diagnostics have ids, and
+              structured output gives tools enough context to help without guessing.
+            </p>
+            <a href="/llms.txt">Read llms.txt</a>
+          </article>
+        </div>
+      </section>
+
+      <section class="landing-section" id="actors" aria-labelledby="actors-title">
+        <div class="split-section">
+          <div class="section-heading">
+            <p class="landing-eyebrow">Actors</p>
+            <h2 id="actors-title">Concurrency is the default shape.</h2>
+          </div>
+          <div class="riot-prose">
+            <p>
+              Riot runs on an actor-model, multi-core runtime for OCaml. Like
+              Erlang and Elixir, you build software with actors that communicate
+              via message passing. If you need parallelism, call
+              <code>spawn</code> and the runtime does the rest.
+            </p>
+            <p>
+              Spawning actors and sending messages is designed to be cheap enough
+              that supervision, isolation, and concurrency become everyday tools.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="landing-section" id="get-started" aria-labelledby="get-started-title">
+        <div class="section-heading">
+          <p class="landing-eyebrow">Get started with Riot</p>
+          <h2 id="get-started-title">Install it. Break it. Help shape it.</h2>
+          <p>
+            Riot is useful enough to build with and experimental enough that the
+            edges still matter. Try it, publish packages, and report where the
+            stack is sharp in the wrong places.
+          </p>
+        </div>
+
+        <div class="resource-list">
+          <a class="resource-row" href="https://docs.riot.ml">
+            <b>Read the docs</b>
+            <span>Concepts, commands, and workflow guidance.</span>
+          </a>
+          <a class="resource-row" href="https://pkgs.ml">
+            <b>Search packages</b>
+            <span>Find packages, docs, metadata, freshness, and install commands.</span>
+          </a>
+          <a class="resource-row" href="https://github.com/leostera/riot">
+            <b>Open the source</b>
+            <span>Compiler, runtime, packages, services, and design work.</span>
+          </a>
+          <a class="resource-row" href="https://github.com/sponsors/leostera">
+            <b>Sponsor the work</b>
+            <span>Help turn this into the Rails of OCaml.</span>
+          </a>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="site-footer__inner">
+        <div class="site-footer__brand">
+          <h2>Riot</h2>
+          <p>
+            An opinionated OCaml stack for building software that works, shipping it
+            quickly, making it beautiful when it proves useful, and enjoying the work
+            along the way.
+          </p>
+        </div>
+
+        <div class="site-footer__links">
+          <div class="site-footer__group">
+            <b>Riot</b>
+            <a href="https://github.com/leostera/riot">Source</a>
+            <a href="https://docs.riot.ml">Docs</a>
+            <a href="/llms.txt">For agents</a>
+          </div>
+          <div class="site-footer__group">
+            <b>Stack</b>
+            <a href="https://pkgs.ml">pkgs.ml</a>
+            <a href="https://docs.riot.ml">docs.riot.ml</a>
+            <a href="https://get.riot.ml">get.riot.ml</a>
+          </div>
+          <div class="site-footer__group">
+            <b>Author</b>
+            <a href="https://leostera.com">@leostera</a>
+            <a href="https://github.com/sponsors/leostera">Sponsor</a>
+          </div>
         </div>
       </div>
-
-      <HeroAsciinemaPlayer castUrl={introCastUrl} />
-    </section>
-
-    <section id="what-is-riot" class="flex w-full max-w-[42rem] flex-col items-start gap-3 px-5 pb-10 pt-20">
-      <p class="text-xs uppercase font-bold tracking-[0.10em] text-[#f5344d]">what is riot?</p>
-      <div class="flex flex-col gap-4 text-lg font-thin sm:text-xl">
-        <p>
-          Riot is my stack and tooling for building applications in OCaml. It
-          is heavily opinionated, and designed from the ground up to get out of
-          your way and help you ship great software with agents.
-        </p>
-
-        <p>
-          It comes with a single tool for all your needs, a modern package
-          registry, a multi-core ready actor-model runtime, a whole new
-          standard library, and first-class support for clankers.
-        </p>
-      </div>
-
-      <div class="mt-3 flex w-full flex-col justify-start gap-3 sm:flex-row">
-        <a
-          href="https://docs.riot.ml"
-          class="w-fit rounded-md border border-[#32242a] px-3 py-1.5 text-sm text-[#c8afb7] transition hover:text-[#fff6f8]"
-        >
-          Read the Docs
-        </a>
-      </div>
-    </section>
-
-    <section id="a-single-tool" class="w-full max-w-[42rem] px-5 py-10">
-      <p class="mb-3 text-xs uppercase font-bold tracking-[0.10em] text-[#f5344d]">A Single Tool</p>
-      <div class="flex flex-col gap-4 text-lg font-thin sm:text-xl">
-        <p>
-          Riot is also a tool: <code>riot</code> &mdash; and it's the only tool you need in this stack.
-        </p>
-        <p>It ships:</p>
-        <ul class="flex list-disc flex-col gap-2 pl-5">
-          <li><b>automatic toolchain management</b> &mdash; specify what version of OCaml you want, and what targets you want to compile to, and Riot does the rest</li>
-          <li><b>zero-config formatter</b> optimized for readability and minimizing diffs</li>
-          <li>an <b>extensible linter</b> with support for automatic fixes</li>
-          <li>a <b>procedural macros</b> system</li>
-          <li>a unified <b>testing and benchmarking runner</b> with support for unit tests, property tests, and snapshot testing</li>
-          <li>a brand new OCaml parser optimized for helpful diagnostics</li>
-          <li>a new incremental, parallel typechecker and language server</li>
-          <li>...and more!</li>
-        </ul>
-      </div>
-    </section>
-
-    <section id="package-management" class="w-full max-w-[42rem] px-5 pt-10">
-      <p class="mb-3 text-xs uppercase font-bold tracking-[0.10em] text-[#f5344d]">Modern Package Management</p>
-      <div class="flex flex-col gap-4 text-lg font-thin sm:text-xl">
-        <p>
-          Riot ships with a modern package registry: <a href="https://pkgs.ml" class="text-[#f5344d] text-[20px]">pkgs.ml</a> &mdash; allowing you
-          to publish a package in seconds.
-        </p>
-
-        <p>
-          This registry is designed to be fast and friendly, with Github
-          login, and a simple API token system to publish new packages.
-        </p>
-
-        <p>
-          It also gives you tools to understand how your packages are being
-          used (downloads per version, dependants, etc), and to make it
-          discoverable via categories, and search.
-        </p>
-
-      <div class="my-3 flex w-full flex-col gap-3 sm:flex-row sm:flex-wrap sm:justify-center sm:gap-4">
-        <a
-          href="https://pkgs.ml/"
-          class="w-fit rounded-md border border-[#32242a] px-3 py-1.5 text-sm text-[#c8afb7] transition hover:text-[#fff6f8]"
-        >
-          Search packages
-        </a>
-        <a
-          href="https://pkgs.ml/stats"
-          class="w-fit rounded-md border border-[#32242a] px-3 py-1.5 text-sm text-[#c8afb7] transition hover:text-[#fff6f8]"
-        >
-          Open Analytics
-        </a>
-        <a
-            href="https://pkgs.ml/p/std"
-          class="w-fit rounded-md border border-[#32242a] px-3 py-1.5 text-sm text-[#c8afb7] transition hover:text-[#fff6f8]"
-        >
-            See <code class="text-[10px]">std</code> package
-        </a>
-        <a
-            href="https://pkgs.ml/u/leostera"
-          class="w-fit rounded-md border border-[#32242a] px-3 py-1.5 text-sm text-[#c8afb7] transition hover:text-[#fff6f8]"
-        >
-            See my packages
-        </a>
-      </div>
-          
-      <div class="flex flex-col gap-4 text-lg font-thin sm:text-xl">
-        <p>
-            You can also interact with it from your terminal.
-            Call <code>riot add pkg</code> to add new dependencies, <code>riot update</code> to update your dependencies, or even search for packages:
-            <img
-              src="/riot_search.png"
-              alt="Screenshot of riot search results in the terminal"
-              class="mt-4 w-full rounded-xl border border-[#32242a]"
-            />
-        </p>
-      </div>
-    </section>
-
-    <section id="actors" class="w-full max-w-[42rem] px-5 py-10">
-      <p class="mb-3 text-xs uppercase font-bold tracking-[0.10em] text-[#f5344d]">Actors</p>
-      <div class="flex flex-col gap-4 text-lg font-thin sm:text-xl">
-        <p>
-          Riot runs on an <b>actor-model multi-core runtime for OCaml</b>
-          (formerly known as riot!). Like Erlang and Elixir, you build software
-          with actors that communicate via message passing. If you need
-          parallelism, just call <code>spawn</code> and the runtime does the
-          rest.
-        </p>
-
-        <p>
-          Spawning an actor and sending messages is designed to be <i>very
-            cheap</i> (in the order of microseconds), allowing you to spawn
-          hundreds of thousands of actors, and send millions of messages without batting an eye.
-        </p>
-
-        <p>
-          One cool property this runtime has, is <i>symmetric
-            multiprocessing</i>, which is a fancy way of saying the runtime
-          rebalances the work across your CPUs automatically. In practice this
-          means that if you have 10 cores, and spawn 100 actors, eventually
-          each core will be running 10 of them.
-        </p>
-      </div>
-    </section>
-
-    <section id="std" class="w-full max-w-[42rem] px-5 py-10">
-      <p class="mb-3 text-xs uppercase font-bold tracking-[0.10em] text-[#f5344d]">Standard Library</p>
-      <div class="flex flex-col gap-4 text-lg font-thin sm:text-xl">
-        <p>
-          Riot also ships a modern, efficient, and comprehensive standard
-          library designed for building _systems_.
-        </p>
-        <p>
-          Inspired by Elixir, Rust, Ruby, and Go, <code>std</code> has ~80% of
-          everything you'll ever need to build your app: core datatypes,
-          collections and iterators, date & time, file system, networking, data
-          formats, encodings, cryptography, actor management and supervsiion,
-          OS and command running, logging and telemetry, a tiered configuration
-          system, benchmarking, testing, unicode support, and more.
-        </p>
-        <p>
-          <code>std</code> really is foundational to this stack, since it gives
-          all your code not just a similar performance, concurrency, and safety
-          profile, but a <i>cohesive vibe</i>.
-        </p>
-
-      </div>
-    </section>
-
-    <section id="clankers" class="w-full max-w-[42rem] px-5 py-10">
-      <p class="mb-3 text-xs uppercase font-bold tracking-[0.10em] text-[#f5344d]">Clanker-friendly</p>
-      <div class="flex flex-col gap-4 text-lg font-thin sm:text-xl">
-        <p>
-          Everything in Riot is built to be friendly to agents. In fact, almost
-          everything here has been built with agents! 
-        </p>
-        <p>
-          Every command can operate non-interactively, and emit JSONL evevent
-          streams that are easy to process with tools like `jq`.
-        </p>
-        <p>
-          All the diagnostics have ids, and can be expanded or explained by the
-          tools themselves. <code>rust fmt</code> will give you syntax errors
-          with id's, and you can call <code>rust fmt --explain E0007</code> to
-          get context on when it occurs, why it occurs, what people normally
-          mean by it, and how to fix it.
-        </p>
-        <p>
-          To achieve this, I've written a new lossless OCaml parser and
-          concrete syntax tree, and am in the process of writing a new
-          incremental, parallel typechecker that will allow us to get superb
-          typing diagnostics.
-        </p>
-      </div>
-    </section>
-
-    <section id="get-involved" class="py-10 px-5 w-fit max-w-[42rem]">
-      <p class="mb-3 text-xs uppercase font-bold tracking-[0.10em] text-[#f5344d]">Get Involved</p>
-      <div class="text-xl font-thin flex flex-col gap-4">
-        <p>
-          You're welcome to install and use Riot, and publish packages to
-          pkgs.ml, and have fun shipping great software with it. But this is
-          still one <b>big experiment</b>, so I won't make any promises.
-        </p>
-        <p>
-          If you want to encourage me to burn more tokens into this stack and
-          turn it into the Rails of OCaml, consider <a class="text-[#f5344d] text-[20px]" href="https://github.com/sponsors/leostera">sponsoring me on Github</a>.
-        </p>
-      </div>
-    </section>
-
-  </main>
-
-  <footer class="mx-auto mt-10 flex w-full max-w-[60rem] justify-center px-4 pb-16 pt-4 text-center">
-    <p class="font-['Cormorant_Garamond','Times_New_Roman',serif] text-[#fff6f8] leading-tight">
-      <span class="block">Built with ♥️ and 🤖</span>
-      <span class="block">from Stockholm and Prague</span>
-      <span class="block">
-        by <a class="text-[#f5344d] text-[20px]" href="https://leostera.com">@leostera</a>
-      </span>
-    </p>
-  </footer>
-
-  <script>
-    document.querySelectorAll("button[data-copy]").forEach((button) => {
-      button.addEventListener("click", async () => {
-        const text = button.getAttribute("data-copy");
-        if (!text) return;
-        await navigator.clipboard.writeText(text);
-        const previous = button.textContent;
-        button.textContent = "copied";
-        window.setTimeout(() => {
-          button.textContent = previous;
-        }, 1200);
-      });
-    });
-  </script>
-<style>
-  code {
-    font-size: 16px;
-    padding: 0 2px;
-  }
-
-  </style>
+    </footer>
+  </div>
 </SiteLayout>
