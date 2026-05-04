@@ -6,28 +6,85 @@
    duplicating ANSI escape sequences or spacing rules.
 *)
 module Palette: sig
-  (** Brand red used for primary emphasis. *)
+  (** Reading surface: #FFF8ED. *)
+  val paper: Tty.Color.t
+
+  (** Recessed surface: #F5ECDC. *)
+  val paper_2: Tty.Color.t
+
+  (** Text and structure: #151317. *)
+  val ink: Tty.Color.t
+
+  (** Code gravity and terminal surface: #0E0D10. *)
+  val coal: Tty.Color.t
+
+  (** Identity and action red: #EF233C. *)
+  val riot: Tty.Color.t
+
+  (** Success mint: #24C08D. *)
+  val mint: Tty.Color.t
+
+  (** Warning amber: #F0B429. *)
+  val amber: Tty.Color.t
+
+  (** Reference blue: #2777FF. *)
+  val blue: Tty.Color.t
+
+  (** Brand red used for primary emphasis. Alias for [riot]. *)
   val brand: Tty.Color.t
 
-  (** Slightly darker brand red for text links and labels. *)
+  (** Hover red: #C91F38. *)
+  val brand_hover: Tty.Color.t
+
+  (** Active red: #9F172C. *)
+  val brand_active: Tty.Color.t
+
+  (** Slightly darker brand red for text links and labels. Alias for [brand_active]. *)
   val brand_text: Tty.Color.t
 
-  (** Default terminal text color for dark code surfaces. *)
+  (** Default reading background. Alias for [paper]. *)
+  val background: Tty.Color.t
+
+  (** Soft contrast background. Alias for [paper_2]. *)
+  val background_subtle: Tty.Color.t
+
+  (** Terminal surface. Alias for [coal]. *)
+  val terminal: Tty.Color.t
+
+  (** Body text. Alias for [ink]. *)
+  val text: Tty.Color.t
+
+  (** Strong text. Alias for [coal]. *)
+  val text_strong: Tty.Color.t
+
+  (** Muted text: #5B5462. *)
+  val text_muted: Tty.Color.t
+
+  (** Subtle text: #9AA0AA. *)
+  val text_subtle: Tty.Color.t
+
+  (** Inverse text: #FFFDF7. *)
+  val text_inverse: Tty.Color.t
+
+  (** Syntax text for dark code surfaces: #E6E2D6. *)
+  val syntax_text: Tty.Color.t
+
+  (** Default terminal text color for dark code surfaces. Alias for [syntax_text]. *)
   val terminal_text: Tty.Color.t
 
-  (** Muted terminal text for secondary details. *)
+  (** Muted terminal text for secondary details. Alias for [text_subtle]. *)
   val muted: Tty.Color.t
 
-  (** Successful operation color. *)
+  (** Successful operation color. Alias for [mint]. *)
   val success: Tty.Color.t
 
-  (** Warning color. *)
+  (** Warning color. Alias for [amber]. *)
   val warning: Tty.Color.t
 
-  (** Error color. *)
+  (** Error color. Alias for [riot]. *)
   val danger: Tty.Color.t
 
-  (** Informational color. *)
+  (** Informational color. Alias for [blue]. *)
   val info: Tty.Color.t
 
   (** Syntax string color. *)
@@ -41,12 +98,56 @@ module Palette: sig
 
   (** Syntax comment color. *)
   val syntax_comment: Tty.Color.t
+
+  module LightMode: sig
+    (** Action color lifted for paper/light surfaces. *)
+    val action: Tty.Color.t
+
+    (** Success color lifted for paper/light surfaces. *)
+    val success: Tty.Color.t
+
+    (** Warning color lifted for paper/light surfaces. *)
+    val warning: Tty.Color.t
+
+    (** Danger color lifted for paper/light surfaces. *)
+    val danger: Tty.Color.t
+
+    (** Reference color lifted for paper/light surfaces. *)
+    val reference: Tty.Color.t
+
+    (** Muted color for secondary text on paper/light surfaces. *)
+    val muted: Tty.Color.t
+  end
+
+  module DarkMode: sig
+    (** Action color lifted for coal/dark surfaces. *)
+    val action: Tty.Color.t
+
+    (** Success color lifted for coal/dark surfaces. *)
+    val success: Tty.Color.t
+
+    (** Warning color lifted for coal/dark surfaces. *)
+    val warning: Tty.Color.t
+
+    (** Danger color lifted for coal/dark surfaces. *)
+    val danger: Tty.Color.t
+
+    (** Reference color lifted for coal/dark surfaces. *)
+    val reference: Tty.Color.t
+
+    (** Muted color for secondary text on coal/dark surfaces. *)
+    val muted: Tty.Color.t
+  end
 end
 
 module Terminal: sig
+  type color_mode =
+    | LightMode
+    | DarkMode
   type t
   type status =
     | Running
+    | Building
     | Success
     | Warning
     | Error
@@ -54,7 +155,7 @@ module Terminal: sig
     | Cached
     | Skipped
 
-  val make: ?profile:Tty.Profile.t -> ?color:bool -> unit -> t
+  val make: ?profile:Tty.Profile.t -> ?color:bool -> ?color_mode:color_mode -> unit -> t
 
   (** Theme that never emits ANSI escapes. *)
   val plain: t
@@ -89,7 +190,7 @@ module Terminal: sig
   (** Informational text. *)
   val info: t -> string -> string
 
-  (** Square, plain-text-safe status label such as [[built]] or [[error]]. *)
+  (** Plain-text-safe status label such as [built] or [error]. *)
   val status_label: t -> status -> string
 
   (** Status label followed by a message. *)
