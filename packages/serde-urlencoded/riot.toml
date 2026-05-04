@@ -1,6 +1,6 @@
 [package]
 name = "serde-urlencoded"
-version = "0.0.31"
+version = "0.0.32"
 
 [lib]
 path = "src/serde_urlencoded.ml"

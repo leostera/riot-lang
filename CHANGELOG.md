@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.0.32 - 2026-05-04
+
+### riot
+- Added `riot fuzz`, a coverage-guided fuzzing command for `Std.Test.fuzz` cases. Riot can now discover fuzz cases from test binaries, run campaigns with corpus/crash persistence, replay saved inputs, minimize coverage-redundant corpuses, emit JSON events, and serialize fuzzing through a workspace fuzz lock.
+- `riot test` and generated test binaries now understand fuzz cases as first-class test cases. Seed inputs still replay through normal test runs, while `riot fuzz` can drive the same case with generated inputs and mutator/corpus metadata.
+- `riot doc` now reuses a generated manifest to skip unchanged documentation builds, shares generated CSS and JavaScript assets across package docs, restores syntax highlighting for fenced code blocks, distinguishes values from functions, renders package overview metadata, and lists variant constructors without extra pipe markers.
+- The installer now supports explicit version and install-directory selection. Use `curl -sSL https://get.riot.ml | sh -s -- -v 0.0.32` to install a specific Riot version, or pass `--riot-dir <dir>` to install outside `$HOME/.riot`.
+- Release guidance now documents the normal dirty-worktree flow: releases may proceed with unrelated dirty files as long as `./packages`, real `riot.toml` manifests, and release inputs are committed.
+
+### std
+- `Std.Test.fuzz` adds the public test-case surface used by `riot fuzz`, including seed replay, corpus metadata, mutator hints, and `run-fuzz-case` execution support inside generated suite binaries.
+- Conversion helpers continue moving to explicit `from_*` names, with unchecked or panic-capable conversions named accordingly. This keeps public APIs clearer about whether a value is parsed, converted, or assumed valid.
+
+### suri
+- Interface docs were cleaned up so generated documentation attaches summaries and details to the intended public items instead of carrying stale separator or misplaced doc comments.
+
 ## 0.0.31 - 2026-05-03
 
 ### riot

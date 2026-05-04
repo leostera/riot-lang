@@ -1,6 +1,6 @@
 [package]
 name = "tty"
-version = "0.0.31"
+version = "0.0.32"
 description = "Terminal control and rendering helpers"
 license = "Apache-2.0"
 public = true

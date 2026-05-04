@@ -2,7 +2,7 @@
 # Riot installation script
 # Usage:
 #   curl -sSL https://get.riot.ml | sh
-#   curl -sSL https://get.riot.ml | sh -s -- -v 0.0.31
+#   curl -sSL https://get.riot.ml | sh -s -- -v 0.0.32
 #   curl -sSL https://get.riot.ml | sh -s -- --riot-dir "$HOME/.local/share/riot"
 
 set -e
@@ -24,8 +24,8 @@ Riot installer
 
 Usage:
   curl -sSL https://get.riot.ml | sh
-  curl -sSL https://get.riot.ml | sh -s -- -v 0.0.31
-  curl -sSL https://get.riot.ml | sh -s -- --version 0.0.31
+  curl -sSL https://get.riot.ml | sh -s -- -v 0.0.32
+  curl -sSL https://get.riot.ml | sh -s -- --version 0.0.32
   curl -sSL https://get.riot.ml | sh -s -- --riot-dir "$HOME/.local/share/riot"
 
 Options:
