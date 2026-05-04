@@ -111,23 +111,53 @@ let target_key = fun ~package ~artifact ~target ~profile ->
     profile;
   }
 
-let package_for_library = fun workspace (manifest: Package_manifest.t) ->
-  Workspace.realize_package ~intent:Package.Runtime manifest
+type realization_cache = {
+  runtime: (Package_name.t, Package.t) HashMap.t;
+  dev: (Package_name.t, Package.t) HashMap.t;
+}
+
+let create_realization_cache = fun () -> {
+  runtime = HashMap.with_capacity ~size:128;
+  dev = HashMap.with_capacity ~size:128;
+}
+
+let cached_realized_package = fun
+  cache ~(intent:Package.realization_intent) (manifest: Package_manifest.t) ->
+  let table =
+    match intent with
+    | Package.Runtime -> cache.runtime
+    | Package.Dev -> cache.dev
+    | Package.Build
+    | Package.Run
+    | Package.Test
+    | Package.Bench
+    | Package.Doc
+    | Package.Check -> cache.runtime
+  in
+  match HashMap.get table ~key:manifest.name with
+  | Some package -> package
+  | None ->
+      let package = Package_manifest.realize ~intent manifest in
+      ignore (HashMap.insert table ~key:manifest.name ~value:package);
+      package
+
+let package_for_library = fun cache (manifest: Package_manifest.t) ->
+  cached_realized_package cache ~intent:Package.Runtime manifest
   |> Package.for_scope Package.Normal
 
-let package_for_artifact = fun workspace (manifest: Package_manifest.t) artifact ->
+let package_for_artifact = fun cache (manifest: Package_manifest.t) artifact ->
   match artifact with
-  | Build_unit.Library -> Some (package_for_library workspace manifest)
+  | Build_unit.Library -> Some (package_for_library cache manifest)
   | RuntimeBinary { name } ->
-      Workspace.realize_package ~intent:Package.Runtime manifest
+      cached_realized_package cache ~intent:Package.Runtime manifest
       |> Package.for_binary ~binary_name:name
   | TestBinary { name }
   | ExampleBinary { name }
   | BenchBinary { name } ->
-      Workspace.realize_package ~intent:Package.Dev manifest
+      cached_realized_package cache ~intent:Package.Dev manifest
       |> Package.for_binary ~binary_name:name
   | SyntheticTool _ ->
-      Workspace.realize_package ~intent:Package.Runtime manifest
+      cached_realized_package cache ~intent:Package.Runtime manifest
       |> Package.for_scope Package.Normal
       |> Option.some
 
@@ -142,8 +172,8 @@ let add_unit = fun t ~(package:Package.t) ~artifact ~target ~profile ->
       node
 
 let add_package_artifact = fun
-  t ~workspace ~(manifest:Package_manifest.t) ~artifact ~target ~profile ->
-  match package_for_artifact workspace manifest artifact with
+  t ~cache ~(manifest:Package_manifest.t) ~artifact ~target ~profile ->
+  match package_for_artifact cache manifest artifact with
   | Some package -> Some (add_unit t ~package ~artifact ~target ~profile)
   | None -> None
 
@@ -176,11 +206,11 @@ let dev_artifact_enabled = fun (dev_artifacts: Package.dev_artifacts) artifact -
   | Library
   | SyntheticTool _ -> false
 
-let root_artifacts = fun request_kind (manifest: Package_manifest.t) ->
+let root_artifacts = fun cache request_kind (manifest: Package_manifest.t) ->
   let package =
     match request_kind with
-    | Runtime -> Package_manifest.realize ~intent:Package.Runtime manifest
-    | Dev _ -> Package_manifest.realize ~intent:Package.Dev manifest
+    | Runtime -> cached_realized_package cache ~intent:Package.Runtime manifest
+    | Dev _ -> cached_realized_package cache ~intent:Package.Dev manifest
   in
   let artifacts = Vector.with_capacity ~size:(1 + List.length package.binaries) in
   (
@@ -214,6 +244,7 @@ let dependency_names = fun (dependencies: Package.dependency list) ->
 
 let create workspace request =
   let manifests = package_table workspace in
+  let cache = create_realization_cache () in
   let graph = G.make () in
   let nodes = HashMap.with_capacity ~size:128 in
   let edges = HashSet.with_capacity ~size:256 in
@@ -281,7 +312,7 @@ let create workspace request =
             let node =
               add_package_artifact
                 t
-                ~workspace
+                ~cache
                 ~manifest
                 ~artifact:Build_unit.Library
                 ~target
@@ -339,7 +370,7 @@ let create workspace request =
     | ExampleBinary _
     | BenchBinary _
     | SyntheticTool _ ->
-        match add_package_artifact t ~workspace ~manifest ~artifact ~target ~profile:request.profile with
+        match add_package_artifact t ~cache ~manifest ~artifact ~target ~profile:request.profile with
         | None -> ()
         | Some node ->
             require_library manifest.name target
@@ -367,7 +398,7 @@ let create workspace request =
         let node =
           add_package_artifact
             t
-            ~workspace
+            ~cache
             ~manifest
             ~artifact:(Build_unit.SyntheticTool { name = synthetic.name })
             ~target:host_target
@@ -392,7 +423,7 @@ let create workspace request =
             request.targets
             ~fn:(fun target ->
               List.for_each
-                (root_artifacts request.kind manifest)
+                (root_artifacts cache request.kind manifest)
                 ~fn:(require_root_artifact manifest target)));
   List.for_each request.synthetic_tools ~fn:require_synthetic_tool;
   if not (Vector.is_empty missing) then
