@@ -10,8 +10,6 @@
 
 * revisit all cli output -- i'd like it to be more inlined/interactive
 
-* `riot build --all` skips building dependencies in test/bench/example mode!
-
 # Next
 
 * `riot lock` to relock project deps
@@ -60,8 +58,6 @@ ubuntu` that can help us run cross-compiled binaries in a container so can confi
 * lint rule so modules namespaced with <pkg>_*.ml or <subdir>_*.ml we tell the user they don't have o
 
 * modules referencing themselves (A.ml using A inside) aren't circular dependencies! this allows modules like Suri.Config to call the Std.Config module after an `open`
-
-* RIOT_LOG=debug should set the log level of Std.Log to debug -- that way we can just put a bunch of Log calls everywhere!
 
 * bug? how do we support creating projects without a .mli file and just generate it at build time for you?
 
