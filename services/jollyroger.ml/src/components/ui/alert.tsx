@@ -3,13 +3,13 @@ import { cva, type VariantProps } from "class-variance-authority";
 
 import { cn } from "@/lib/utils";
 
-const alertVariants = cva("jr-alert", {
+const alertVariants = cva("callout", {
   variants: {
     variant: {
       default: "",
-      warning: "jr-alert--warning",
-      danger: "jr-alert--danger",
-      success: "jr-alert--success",
+      warning: "warning",
+      danger: "danger",
+      success: "success",
     },
   },
   defaultVariants: {
@@ -36,7 +36,7 @@ function AlertTitle({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="alert-title"
-      className={cn("jr-alert__title", className)}
+      className={cn("callout-title", className)}
       {...props}
     />
   );
@@ -46,7 +46,7 @@ function AlertDescription({ className, ...props }: React.ComponentProps<"div">) 
   return (
     <div
       data-slot="alert-description"
-      className={cn("jr-alert__description", className)}
+      className={cn("callout-description", className)}
       {...props}
     />
   );

@@ -3,14 +3,14 @@ import { cva, type VariantProps } from "class-variance-authority";
 
 import { cn } from "@/lib/utils";
 
-const badgeVariants = cva("jr-pill inline-flex items-center", {
+const badgeVariants = cva("badge inline-flex items-center", {
   variants: {
     variant: {
       default: "",
-      solid: "jr-pill--solid",
-      riot: "jr-pill--riot",
-      mint: "jr-pill--mint",
-      amber: "jr-pill--amber",
+      solid: "solid",
+      riot: "riot",
+      mint: "mint",
+      amber: "amber",
     },
   },
   defaultVariants: {

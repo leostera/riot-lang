@@ -5,18 +5,21 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
-  "jr-button inline-flex items-center justify-center whitespace-nowrap disabled:pointer-events-none disabled:opacity-50",
+  "button inline-flex items-center justify-center whitespace-nowrap disabled:pointer-events-none disabled:opacity-50",
   {
     variants: {
       variant: {
-        default: "",
-        primary: "jr-button--primary",
-        dark: "jr-button--dark",
-        ghost: "jr-button--ghost",
+        default: "secondary",
+        secondary: "secondary",
+        primary: "primary",
+        dark: "dark",
+        ghost: "tertiary",
+        tertiary: "tertiary",
+        link: "link",
       },
       size: {
         default: "",
-        sm: "jr-button--small",
+        sm: "small",
       },
     },
     defaultVariants: {

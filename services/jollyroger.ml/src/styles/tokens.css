@@ -17,6 +17,8 @@
 */
 
 :root {
+  --jr-color-scheme: light;
+
   /* ------------------------------------------------------------------
      Identity
   ------------------------------------------------------------------ */
@@ -121,18 +123,48 @@
      Color semantics
   ------------------------------------------------------------------ */
 
+  --jr-color-action: var(--jr-color-red-400);
+  --jr-color-action-hover: var(--jr-color-red-500);
+  --jr-color-action-active: var(--jr-color-red-600);
+  --jr-color-action-muted: rgba(255, 111, 135, 0.16);
+  --jr-color-action-subtle: rgba(255, 111, 135, 0.08);
+  --jr-color-on-action: var(--jr-color-ink-950);
+
+  --jr-color-reference: var(--jr-color-blue-400);
+  --jr-color-reference-hover: var(--jr-color-blue-600);
+  --jr-color-reference-active: var(--jr-color-blue-700);
+  --jr-color-reference-muted: rgba(77, 152, 255, 0.14);
+  --jr-color-reference-subtle: rgba(77, 152, 255, 0.08);
+
+  --jr-color-success: var(--jr-color-mint-400);
+  --jr-color-success-active: var(--jr-color-mint-700);
+  --jr-color-success-muted: rgba(54, 209, 159, 0.16);
+
+  --jr-color-warning: var(--jr-color-amber-400);
+  --jr-color-warning-active: var(--jr-color-amber-800);
+  --jr-color-warning-muted: rgba(246, 185, 31, 0.18);
+
+  --jr-color-danger: var(--jr-color-red-500);
+  --jr-color-danger-active: var(--jr-color-red-700);
+  --jr-color-danger-muted: rgba(239, 35, 60, 0.12);
+
+  --jr-color-info: var(--jr-color-reference);
+  --jr-color-info-active: var(--jr-color-reference-active);
+  --jr-color-info-muted: var(--jr-color-reference-muted);
+
   --jr-color-brand: var(--jr-color-red-500);
   --jr-color-brand-hover: var(--jr-color-red-600);
   --jr-color-brand-active: var(--jr-color-red-700);
-  --jr-color-brand-muted: rgba(239, 35, 60, 0.10);
-  --jr-color-brand-subtle: rgba(239, 35, 60, 0.06);
+  --jr-color-brand-muted: rgba(239, 35, 60, 0.12);
+  --jr-color-brand-subtle: rgba(239, 35, 60, 0.07);
 
   --jr-color-bg: var(--jr-color-paper-100);
   --jr-color-bg-subtle: var(--jr-color-paper-200);
   --jr-color-bg-raised: rgba(255, 253, 247, 0.62);
   --jr-color-bg-inset: rgba(255, 253, 247, 0.46);
   --jr-color-bg-code: rgba(255, 253, 247, 0.54);
-  --jr-color-bg-terminal: var(--jr-color-ink-950);
+  --jr-color-coal: var(--jr-color-ink-950);
+  --jr-color-bg-terminal: var(--jr-color-coal);
 
   --jr-color-text: var(--jr-color-ink-900);
   --jr-color-text-strong: var(--jr-color-ink-950);
@@ -145,22 +177,13 @@
   --jr-color-link-hover: var(--jr-color-rust-700);
   --jr-color-link-visited: var(--jr-color-rust-700);
 
-  --jr-color-success: var(--jr-color-mint-500);
-  --jr-color-success-muted: rgba(36, 192, 141, 0.14);
-  --jr-color-warning: var(--jr-color-amber-500);
-  --jr-color-warning-muted: rgba(240, 180, 41, 0.18);
-  --jr-color-danger: var(--jr-color-red-500);
-  --jr-color-danger-muted: rgba(239, 35, 60, 0.12);
-  --jr-color-info: var(--jr-color-blue-500);
-  --jr-color-info-muted: rgba(39, 119, 255, 0.12);
-
   --jr-color-border: rgba(21, 19, 23, 0.14);
   --jr-color-border-strong: rgba(21, 19, 23, 0.22);
   --jr-color-border-heavy: rgba(21, 19, 23, 0.34);
   --jr-color-border-inverse: rgba(251, 250, 245, 0.16);
 
   --jr-color-selection-bg: var(--jr-color-brand);
-  --jr-color-selection-text: white;
+  --jr-color-selection-text: var(--jr-color-on-action);
 
   /* ------------------------------------------------------------------
      Syntax and terminal colors
@@ -235,11 +258,11 @@
   ------------------------------------------------------------------ */
 
   --jr-letter-spacing-none: 0;
-  --jr-letter-spacing-tight: -0.01em;
-  --jr-letter-spacing-heading-1: 0.012em;
-  --jr-letter-spacing-heading-2: 0.016em;
-  --jr-letter-spacing-heading-3: 0.018em;
-  --jr-letter-spacing-display: 0.02em;
+  --jr-letter-spacing-tight: 0;
+  --jr-letter-spacing-heading-1: -7px;
+  --jr-letter-spacing-heading-2: -2px;
+  --jr-letter-spacing-heading-3: -1px;
+  --jr-letter-spacing-display: 0;
   --jr-letter-spacing-label: 0.04em;
   --jr-letter-spacing-wide: 0.08em;
 
@@ -254,11 +277,11 @@
   --jr-h1-font-size: clamp(var(--jr-font-size-10), 5vw, var(--jr-font-size-13));
   --jr-h1-font-weight: 900;
   --jr-h1-line-height: var(--jr-line-height-solid);
-  --jr-h1-letter-spacing: var(--jr-letter-spacing-tight);
+  --jr-h1-letter-spacing: var(--jr-letter-spacing-heading-1);
 
   --jr-h2-font-size: clamp(var(--jr-font-size-9), 3vw, var(--jr-font-size-11));
   --jr-h2-line-height: var(--jr-line-height-tight);
-  --jr-h2-letter-spacing: var(--jr-letter-spacing-tight);
+  --jr-h2-letter-spacing: var(--jr-letter-spacing-heading-2);
 
   --jr-h3-font-size: var(--jr-font-size-6);
   --jr-h3-line-height: var(--jr-line-height-heading);
@@ -266,7 +289,7 @@
 
   --jr-h4-font-size: var(--jr-font-size-1);
   --jr-h4-line-height: 1.25;
-  --jr-h4-letter-spacing: var(--jr-letter-spacing-label);
+  --jr-h4-letter-spacing: var(--jr-letter-spacing-heading-4);
 
   --jr-body-font-family: var(--jr-font-sans);
   --jr-body-font-size: var(--jr-font-size-4);
@@ -332,19 +355,19 @@
   --jr-size-mark-lg: 60px;
 
   /* ------------------------------------------------------------------
-     Radius: crisp by default
+     Radius: square by default
   ------------------------------------------------------------------ */
 
   --jr-radius-none: 0;
-  --jr-radius-hairline: 5px;
-  --jr-radius-xs: 5px;
-  --jr-radius-sm: 5px;
-  --jr-radius-md: 5px;
-  --jr-radius-status: 5px;
-  --jr-radius-terminal: 5px;
-  --jr-radius-control: 5px;
-  --jr-radius-card: 5px;
-  --jr-radius-panel: 5px;
+  --jr-radius-hairline: 0;
+  --jr-radius-xs: 0;
+  --jr-radius-sm: 0;
+  --jr-radius-md: 0;
+  --jr-radius-status: 0;
+  --jr-radius-terminal: 0;
+  --jr-radius-control: 0;
+  --jr-radius-card: 0;
+  --jr-radius-panel: 0;
 
   /* ------------------------------------------------------------------
      Borders
@@ -500,9 +523,9 @@
   --jr-button-shadow: var(--jr-shadow-none);
   --jr-button-shadow-hover: var(--jr-shadow-soft-sm);
 
-  --jr-button-primary-bg: var(--jr-color-brand);
-  --jr-button-primary-bg-hover: var(--jr-color-red-600);
-  --jr-button-primary-color: white;
+  --jr-button-primary-bg: var(--jr-color-text-strong);
+  --jr-button-primary-bg-hover: var(--jr-color-ink-700);
+  --jr-button-primary-color: var(--jr-color-bg);
   --jr-button-primary-border-color: transparent;
 
   --jr-button-secondary-bg: var(--jr-color-bg);
@@ -555,16 +578,16 @@
 
   --jr-badge-default-bg: var(--jr-color-bg);
   --jr-badge-default-color: var(--jr-color-text);
-  --jr-badge-brand-bg: var(--jr-color-red-600);
-  --jr-badge-brand-color: white;
+  --jr-badge-brand-bg: var(--jr-color-brand-muted);
+  --jr-badge-brand-color: var(--jr-color-brand-active);
   --jr-badge-success-bg: var(--jr-color-success-muted);
-  --jr-badge-success-color: var(--jr-color-green-700);
+  --jr-badge-success-color: var(--jr-color-success-active);
   --jr-badge-warning-bg: var(--jr-color-warning-muted);
-  --jr-badge-warning-color: var(--jr-color-amber-800);
+  --jr-badge-warning-color: var(--jr-color-warning-active);
   --jr-badge-info-bg: var(--jr-color-info-muted);
-  --jr-badge-info-color: var(--jr-color-blue-700);
+  --jr-badge-info-color: var(--jr-color-info-active);
   --jr-badge-danger-bg: var(--jr-color-danger-muted);
-  --jr-badge-danger-color: var(--jr-color-red-700);
+  --jr-badge-danger-color: var(--jr-color-danger-active);
 
   /* ------------------------------------------------------------------
      Tables
@@ -582,7 +605,7 @@
   --jr-table-cell-padding-x: var(--jr-space-3);
   --jr-table-row-height: var(--jr-size-row-default);
   --jr-table-row-height-dense: var(--jr-size-row-dense);
-  --jr-table-row-hover-bg: var(--jr-color-rust-100);
+  --jr-table-row-hover-bg: var(--jr-color-brand-subtle);
   --jr-table-code-color: var(--jr-color-brand-active);
 
   /* ------------------------------------------------------------------
@@ -648,7 +671,7 @@
   --jr-hero-lead-font-family: var(--jr-font-mono);
   --jr-hero-lead-font-size: var(--jr-font-size-4);
   --jr-hero-lead-line-height: var(--jr-line-height-body);
-  --jr-hero-lead-color: var(--jr-color-ink-700);
+  --jr-hero-lead-color: var(--jr-color-text);
 
   /* ------------------------------------------------------------------
      Code blocks
@@ -662,7 +685,7 @@
   --jr-terminal-header-height: var(--jr-size-control-md);
   --jr-terminal-header-bg: transparent;
   --jr-terminal-header-border: 1px solid rgba(255, 255, 255, 0.11);
-  --jr-terminal-header-color: var(--jr-color-text-inverse-muted);
+  --jr-terminal-header-color: rgba(255, 248, 237, 0.62);
   --jr-terminal-header-font-family: var(--jr-font-display);
   --jr-terminal-header-font-size: var(--jr-font-size-0);
   --jr-terminal-header-letter-spacing: var(--jr-letter-spacing-label);
@@ -853,27 +876,87 @@
 -------------------------------------------------------------------- */
 
 [data-theme="dark"] {
+  --jr-color-scheme: dark;
+
+  --jr-color-action: var(--jr-color-red-300);
+  --jr-color-action-hover: var(--jr-color-red-200);
+  --jr-color-action-active: var(--jr-color-red-300);
+  --jr-color-action-muted: rgba(255, 138, 160, 0.18);
+  --jr-color-action-subtle: rgba(255, 138, 160, 0.10);
+  --jr-color-on-action: var(--jr-color-ink-950);
+
+  --jr-color-reference: var(--jr-color-blue-300);
+  --jr-color-reference-hover: var(--jr-color-blue-200);
+  --jr-color-reference-active: var(--jr-color-blue-300);
+  --jr-color-reference-muted: rgba(123, 184, 255, 0.18);
+  --jr-color-reference-subtle: rgba(123, 184, 255, 0.10);
+
+  --jr-color-success: var(--jr-color-mint-300);
+  --jr-color-success-active: var(--jr-color-mint-300);
+  --jr-color-success-muted: rgba(101, 231, 189, 0.18);
+
+  --jr-color-warning: var(--jr-color-amber-300);
+  --jr-color-warning-active: var(--jr-color-amber-300);
+  --jr-color-warning-muted: rgba(255, 196, 61, 0.20);
+
+  --jr-color-danger: var(--jr-color-red-500);
+  --jr-color-danger-active: var(--jr-color-red-400);
+  --jr-color-danger-muted: rgba(239, 35, 60, 0.18);
+
+  --jr-color-info: var(--jr-color-reference);
+  --jr-color-info-active: var(--jr-color-reference);
+  --jr-color-info-muted: var(--jr-color-reference-muted);
+
+  --jr-color-brand: var(--jr-color-red-500);
+  --jr-color-brand-hover: var(--jr-color-red-400);
+  --jr-color-brand-active: var(--jr-color-red-400);
+  --jr-color-brand-muted: rgba(239, 35, 60, 0.18);
+  --jr-color-brand-subtle: rgba(239, 35, 60, 0.10);
+
   --jr-color-bg: var(--jr-color-ink-950);
   --jr-color-bg-subtle: var(--jr-color-ink-900);
   --jr-color-bg-raised: rgba(255, 248, 237, 0.045);
   --jr-color-bg-inset: rgba(255, 248, 237, 0.06);
   --jr-color-bg-code: rgba(255, 248, 237, 0.08);
+  --jr-color-coal: var(--jr-color-ink-700);
+  --jr-color-bg-terminal: var(--jr-color-coal);
 
   --jr-color-text: var(--jr-color-paper-100);
   --jr-color-text-strong: var(--jr-color-paper-50);
   --jr-color-text-muted: rgba(255, 248, 237, 0.64);
   --jr-color-text-subtle: rgba(255, 248, 237, 0.46);
+  --jr-color-text-inverse: var(--jr-color-ink-950);
+  --jr-color-text-inverse-muted: rgba(14, 13, 16, 0.68);
+
+  --jr-color-link: var(--jr-color-rust-400);
+  --jr-color-link-hover: var(--jr-color-rust-300);
+  --jr-color-link-visited: var(--jr-color-rust-400);
 
   --jr-color-border: rgba(255, 248, 237, 0.14);
   --jr-color-border-strong: rgba(255, 248, 237, 0.28);
   --jr-color-border-heavy: rgba(255, 248, 237, 0.52);
+  --jr-color-border-inverse: rgba(14, 13, 16, 0.28);
+  --jr-color-selection-bg: var(--jr-color-brand);
+  --jr-color-selection-text: var(--jr-color-on-action);
+  --jr-layout-grid-line: rgba(255, 248, 237, 0.08);
 
   --jr-panel-bg: var(--jr-color-bg-raised);
   --jr-card-bg: var(--jr-color-bg-raised);
   --jr-table-header-bg: rgba(255, 248, 237, 0.07);
-  --jr-table-row-hover-bg: rgba(239, 35, 60, 0.12);
+  --jr-table-row-hover-bg: var(--jr-color-brand-subtle);
   --jr-nav-bg: rgba(14, 13, 16, 0.92);
   --jr-topbar-bg: rgba(14, 13, 16, 0.84);
+  --jr-registry-header-bg: rgba(255, 248, 237, 0.05);
+  --jr-input-bg: var(--jr-color-bg-inset);
+  --jr-search-bg: var(--jr-input-bg);
+  --jr-terminal-header-border: var(--jr-border-default);
+  --jr-terminal-header-color: rgba(255, 248, 237, 0.62);
+  --jr-button-primary-bg: var(--jr-color-paper-100);
+  --jr-button-primary-bg-hover: var(--jr-color-paper-50);
+  --jr-button-primary-color: var(--jr-color-ink-950);
+  --jr-button-danger-bg: var(--jr-color-bg-terminal);
+  --jr-button-danger-bg-hover: var(--jr-color-ink-800);
+  --jr-button-danger-color: var(--jr-color-paper-50);
 }
 
 /* --------------------------------------------------------------------

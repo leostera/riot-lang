@@ -14,8 +14,8 @@ const { id, label, title, description } = Astro.props;
 <Card className="jr-token-card" id={id}>
   <div class="jr-token-card__aside">
     <div class="jr-token-card__title">
-      <p class="jr-label">{label}</p>
-      <h3 class="jr-subheading">{title}</h3>
+      <h3 class="jr-token-card__heading">{label}</h3>
+      <p class="jr-token-card__subtitle"><em>{title}</em></p>
     </div>
     <p class="jr-token-card__summary">{description}</p>
   </div>

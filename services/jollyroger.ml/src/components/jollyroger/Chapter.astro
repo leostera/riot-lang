@@ -39,8 +39,8 @@ const { id, number, section, subtitle, links = [], kicker, title, copy, copyId }
     <div class="jr-section-body">
       <div class="jr-intro">
         <p class="jr-kicker">{kicker}</p>
-        <h2 class="jr-heading">{title}</h2>
-        <p class="jr-copy" id={copyId}>{copy}</p>
+        <h2>{title}</h2>
+        <p id={copyId}>{copy}</p>
       </div>
       <slot />
     </div>

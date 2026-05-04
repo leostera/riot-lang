@@ -57,8 +57,8 @@ const packages = [
   <div class="jr-section-body">
       <div class="jr-intro">
         <p class="jr-kicker">In the wild</p>
-        <h2 class="jr-heading">Real surfaces governed by the system.</h2>
-        <p class="jr-copy">
+        <h2>Real surfaces governed by the system.</h2>
+        <p>
           Each application names the surface, the reader's task, the required
           information, the traps to avoid, and the components that carry it.
         </p>
@@ -75,14 +75,14 @@ const packages = [
           <div class="site-mini">
             <div>
               <p class="jr-kicker">riot.ml</p>
-              <h3 class="jr-heading">Many OCaml stacks.<br /><span class="jr-red">/</span> One flies a flag.</h3>
-              <p class="jr-copy">
+              <h3>Many OCaml stacks.<br /><span class="jr-red">/</span> One flies a flag.</h3>
+              <p>
                 The Riot website makes the stack legible fast. Show the
                 command, the stack, and the path to install, learn, and ship.
               </p>
               <div class="home-actions">
                 <Button variant="primary" size="sm">Read docs</Button>
-                <Button variant="ghost" size="sm" className="jr-mono">$ riot init app</Button>
+                <Button variant="ghost" size="sm" className="mono">$ riot init app</Button>
               </div>
             </div>
             <div class="site-mini__packages">
@@ -153,41 +153,64 @@ const packages = [
 
         <MockShell
           id="app-docs"
-          url="https://docs.pkgs.ml/p/kernel/0.0.18/Kernel/Result"
+          url="https://docs.pkgs.ml/p/std/dev/Std/Agent"
           class="docs-mock"
         >
           <div class="surface-rules">
             <div><b>Purpose</b><span>Help readers understand generated API documentation without losing orientation.</span></div>
+            <div><b>Artifact</b><span>Generated docs should vendor <code>/jolly-roger-docs.css</code> into <code>_shared/</code> instead of copying source tokens.</span></div>
             <div><b>Must show</b><span>Package, version, module, breadcrumbs, search, local navigation, signatures, examples, and stability markers.</span></div>
-            <div><b>Avoid</b><span>Decorative chrome around generated reference material.</span></div>
-            <div><b>Primary components</b><span>Tables, cards, code, callouts, and badges.</span></div>
+            <div><b>Dense policy</b><span>Use compact rows, stable anchors, mono labels, terminal-dark code blocks, and no decorative cards for repeated API items.</span></div>
+            <div><b>Avoid</b><span>Decorative chrome around generated reference material and grid backgrounds in generated docs.</span></div>
+            <div><b>Primary components</b><span>Sidebar, module header, item rows, item detail, signatures, search, code snippets, callouts, and square kind labels.</span></div>
           </div>
           <div class="docs-mock__top">
             <a class="jr-brand" href="#applications">
               <FlagMark size="sm" />
               <span>Riot <small>Docs</small></span>
             </a>
-            <span>kernel / Kernel / <b>Result</b></span>
-            <Badge variant="riot">v0.0.18</Badge>
+            <span>std / Std / <b>Agent</b></span>
+            <Badge variant="riot">dev</Badge>
           </div>
           <div class="docs-mock__body">
             <aside>
               <b>Modules</b>
-              <span>Kernel</span>
-              <span>.Core</span>
+              <span>Std</span>
+              <span class="active">.Agent</span>
+              <span>.Array</span>
+              <span>.Result</span>
               <span>.Time</span>
-              <span class="active">.Result</span>
-              <span>.Option</span>
             </aside>
             <main>
-              <p class="jr-kicker">module · Kernel.Result</p>
-              <h3 class="jr-heading">Result</h3>
-              <p class="jr-copy">
-                Errors are values. Results carry them through pipelines, actor
-                boundaries, and logs.
+              <p class="jr-kicker">module · Std.Agent</p>
+              <h3>Agent</h3>
+              <p>
+                Simple concurrent state access. Generated docs should keep
+                module context, item rows, signatures, and anchors close
+                together.
               </p>
-              <CodeBlock label="Signature"><span class="t-key">type</span> ('a, 'e) t = Ok of 'a | Error of 'e
-<span class="t-key">val</span> map : ('a -> 'b) -> ('a, 'e) t -> ('b, 'e) t</CodeBlock>
+              <div class="jr-reference-list" aria-label="Std.Agent generated docs rows">
+                <a class="jr-reference-row" href="#app-docs">
+                  <span class="jr-reference-row__name">start</span>
+                  <span class="jr-reference-row__summary">Start an agent with an initial state.</span>
+                </a>
+                <a class="jr-reference-row" href="#app-docs">
+                  <span class="jr-reference-row__name">get</span>
+                  <span class="jr-reference-row__summary">Read derived state from an agent.</span>
+                </a>
+              </div>
+              <article class="jr-reference-detail">
+                <h4 class="jr-reference-detail__title">
+                  <span class="jr-kind jr-kind--fn">fn</span>
+                  <a href="#app-docs">start</a>
+                  <span class="jr-reference-detail__signature">: fn:(unit -&gt; 'state) -&gt; 'state t</span>
+                  <a class="jr-reference-detail__anchor" href="#app-docs" aria-label="Permalink">#</a>
+                </h4>
+                <p>
+                  The generated detail is quiet and dense: kind, name,
+                  signature, anchor, and prose in one stable shape.
+                </p>
+              </article>
               <Alert>
                 <AlertTitle>Note</AlertTitle>
                 <AlertDescription>
@@ -211,8 +234,8 @@ const packages = [
           <div class="cli-grid">
             <div>
               <p class="jr-kicker">CLI</p>
-              <h3 class="jr-subheading">Plain text still carries the brand.</h3>
-              <p class="jr-copy">
+              <h3>Plain text still carries the brand.</h3>
+              <p>
                 Prompts, aligned labels, diagnostic IDs, and fix commands work
                 without browser chrome.
               </p>
@@ -235,8 +258,8 @@ const packages = [
           <div class="cli-grid">
             <div>
               <p class="jr-kicker">Error pages</p>
-              <h3 class="jr-subheading">Useful dead ends.</h3>
-              <p class="jr-copy">
+              <h3>Useful dead ends.</h3>
+              <p>
                 Error pages are diagnostics in web form. Explain what failed,
                 whether it is local or remote, and what the user can do next.
               </p>

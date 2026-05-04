@@ -17,24 +17,21 @@ const navGroups: TocGroup[] = [
     title: "Principles",
     href: "#principles",
     items: [
-      { href: "#why-this-exists", label: "Why Riot?" },
-      { href: "#principle-joy", label: "#01 - Optimize for Developer Joy" },
-      { href: "#principle-platform", label: "#02 - Design as One Piece" },
-      { href: "#principle-shipping", label: "#03 - Build for Shipping" },
-      { href: "#principle-agent", label: "#04 - Human-led, agent-ready" },
-      { href: "#principle-crew", label: "#05 - Trust Builders With Power" },
+      { href: "#why-this-exists", label: "What is Jolly Roger?" },
+      { href: "#principle-joy", label: "Optimize for Developer Joy" },
+      { href: "#principle-platform", label: "Design as One Piece" },
+      { href: "#principle-shipping", label: "Build for Shipping" },
+      { href: "#principle-agent", label: "Human-led, agent-ready" },
+      { href: "#principle-crew", label: "Trust Builders With Power" },
     ],
   },
   {
     key: "voice",
-    title: "Voice",
+    title: "Voice & Writing",
     href: "#voice",
     items: [
-      { href: "#voice-direct", label: "Direct" },
-      { href: "#voice-useful", label: "Useful" },
-      { href: "#voice-joyful", label: "Joyful" },
-      { href: "#voice-errors", label: "Errors" },
-      { href: "#voice-agents", label: "Agents" },
+      { href: "#voice-agent-ready", label: "Agent-ready" },
+      { href: "#voice-coding", label: "Coding voice" },
     ],
   },
   {
@@ -42,14 +39,9 @@ const navGroups: TocGroup[] = [
     title: "Foundations",
     href: "#foundations",
     items: [
-      { href: "#foundation-mark", label: "Mark" },
-      { href: "#foundation-color", label: "Color" },
+      { href: "#foundation-grid", label: "Grid" },
+      { href: "#foundation-color", label: "Colors" },
       { href: "#foundation-typography", label: "Typography" },
-      { href: "#foundation-spacing", label: "Spacing" },
-      { href: "#foundation-edges", label: "Edges" },
-      { href: "#foundation-density", label: "Density" },
-      { href: "#foundation-layout", label: "Layout" },
-      { href: "#foundation-code", label: "Code and terminal" },
     ],
   },
   {
@@ -59,6 +51,7 @@ const navGroups: TocGroup[] = [
     items: [
       { href: "#component-buttons", label: "Buttons" },
       { href: "#component-tables", label: "Tables" },
+      { href: "#component-reference-rows", label: "Reference rows" },
       { href: "#component-forms", label: "Forms" },
       { href: "#component-inputs", label: "Inputs" },
       { href: "#component-badges", label: "Badges" },
@@ -82,9 +75,24 @@ const navGroups: TocGroup[] = [
 ];
 ---
 
-<nav class="jr-chapter-nav" aria-label="Page navigation">
+<nav class="jr-chapter-nav jr-page-rail" aria-label="Page navigation">
   <div class="jr-chapter-label jr-chapter-label--toc">
     <b>Table of Contents</b>
+    <button
+      class="jr-theme-toggle"
+      type="button"
+      data-state="unchecked"
+      data-theme-toggle
+      role="switch"
+      aria-checked="false"
+      aria-label="Toggle dark mode"
+    >
+      <span class="jr-theme-toggle__track" aria-hidden="true">
+        <span class="jr-theme-toggle__symbol jr-theme-toggle__symbol--light">☼</span>
+        <span class="jr-theme-toggle__symbol jr-theme-toggle__symbol--dark">☾</span>
+        <span class="jr-theme-toggle__thumb" data-theme-icon>☼</span>
+      </span>
+    </button>
   </div>
 
   <div class="jr-chapter-groups">

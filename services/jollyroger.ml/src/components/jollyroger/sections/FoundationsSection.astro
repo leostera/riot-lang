@@ -1,19 +1,7 @@
 ---
-import CodeBlock from "../CodeBlock.astro";
-import CopyStrip from "../CopyStrip.astro";
-import FlagMark from "../FlagMark.astro";
 import TokenCard from "../TokenCard.astro";
 
-const colorTokens = [
-  { name: "Paper", value: "#FFF8ED", className: "jr-swatch__chip--paper", role: "Default reading surface" },
-  { name: "Paper-2", value: "#F5ECDC", className: "jr-swatch__chip--paper-2", role: "Recessed surface" },
-  { name: "Ink", value: "#151317", className: "jr-swatch__chip--ink", role: "Text, borders, structure" },
-  { name: "Coal", value: "#0E0D10", className: "jr-swatch__chip--coal", role: "Terminal and code gravity" },
-  { name: "Riot", value: "#EF233C", className: "jr-swatch__chip--riot", role: "Flag, identity, primary action" },
-  { name: "Mint", value: "#24C08D", className: "jr-swatch__chip--mint", role: "Success state" },
-  { name: "Amber", value: "#F0B429", className: "jr-swatch__chip--amber", role: "Warning state" },
-  { name: "Blue", value: "#2777FF", className: "jr-swatch__chip--blue", role: "References and links" },
-];
+const unitBlocks = Array.from({ length: 9 * 9 });
 
 const spacingTokens = [
   { name: "u1", value: "5px", className: "jr-space-bar--u1" },
@@ -25,135 +13,278 @@ const spacingTokens = [
   { name: "u8", value: "40px", className: "jr-space-bar--u8" },
   { name: "u10", value: "50px", className: "jr-space-bar--u10" },
 ];
+
+const colorTokens = [
+  {
+    name: "Paper",
+    value: "#FFF8ED",
+    className: "jr-swatch__chip--paper",
+    role: "Reading surface",
+    use: "Use it as the default page and prose background.",
+  },
+  {
+    name: "Paper-2",
+    value: "#F5ECDC",
+    className: "jr-swatch__chip--paper-2",
+    role: "Recessed surface",
+    use: "Use it for soft contrast, inset areas, and quiet grouping.",
+  },
+  {
+    name: "Ink",
+    value: "#151317",
+    className: "jr-swatch__chip--ink",
+    role: "Text and structure",
+    use: "Use it for body text, headings, borders, and stable UI structure.",
+  },
+  {
+    name: "Coal",
+    value: "Light #0E0D10 · Dark #2B2630",
+    className: "jr-swatch__chip--coal",
+    role: "Code gravity",
+    use: "Use it for terminal surfaces and the darkest moments of contrast.",
+  },
+  {
+    name: "Action",
+    value: "Light #FF6F87 · Dark #FF8AA0",
+    className: "jr-swatch__chip--riot",
+    role: "Identity and signal",
+    use: "Use it for the flag, danger, and decisive emphasis. Do not make routine buttons red.",
+  },
+  {
+    name: "Link",
+    value: "Light #B14A14 · Dark #C4773A",
+    className: "jr-swatch__chip--rust",
+    role: "Navigation",
+    use: "Use it for prose links, source links, anchors, and quiet utility navigation.",
+  },
+  {
+    name: "Success",
+    value: "Light #36D19F · Dark #65E7BD",
+    className: "jr-swatch__chip--mint",
+    role: "Success",
+    use: "Use it when something completed, resolved, passed, or became safe.",
+  },
+  {
+    name: "Warning",
+    value: "Light #F6B91F · Dark #FFC43D",
+    className: "jr-swatch__chip--amber",
+    role: "Caution",
+    use: "Use it for warnings, partial states, and things that need attention.",
+  },
+  {
+    name: "Reference",
+    value: "Light #4D98FF · Dark #7BB8FF",
+    className: "jr-swatch__chip--blue",
+    role: "Reference",
+    use: "Use it for technical references, syntax-like navigation, and informational states.",
+  },
+];
+
+const typographyUsages = [
+  {
+    name: "Hero",
+    token: "display / page hero",
+    className: "jr-type-spec__sample--hero",
+    sample: "Riot’s Jolly Roger",
+    use: "Use for the first-screen title of a major product, system, or surface. One per page.",
+  },
+  {
+    name: "H1",
+    token: "section title",
+    className: "jr-type-spec__sample--h1",
+    sample: "Foundations",
+    use: "Use for the primary title of a page or long-form document section.",
+  },
+  {
+    name: "H2",
+    token: "major subsection",
+    className: "jr-type-spec__sample--h2",
+    sample: "Grid",
+    use: "Use when a section needs a clear second-level chapter break.",
+  },
+  {
+    name: "H3",
+    token: "component title",
+    className: "jr-type-spec__sample--h3",
+    sample: "Value rhythm",
+    use: "Use for components, examples, principles, and local content groups.",
+  },
+  {
+    name: "H4",
+    token: "small heading",
+    className: "jr-type-spec__sample--h4",
+    sample: "In Practice",
+    use: "Use for compact labels that still need to read as headings.",
+  },
+  {
+    name: "H5",
+    token: "minor heading",
+    className: "jr-type-spec__sample--h5",
+    sample: "Error states",
+    use: "Use inside dense cards, forms, tables, and application examples.",
+  },
+  {
+    name: "H6",
+    token: "micro heading",
+    className: "jr-type-spec__sample--h6",
+    sample: "Package metadata",
+    use: "Use only when hierarchy is already established and space is tight.",
+  },
+  {
+    name: "Subtitle",
+    token: "supporting title text",
+    className: "jr-type-spec__sample--subtitle",
+    sample: "How Riot sounds across every surface.",
+    use: "Use below a title when the reader needs context before the body copy begins.",
+  },
+  {
+    name: "Paragraph",
+    token: "body prose",
+    className: "jr-type-spec__sample--paragraph",
+    sample: "Long explanations should be comfortable to read without making dense technical pages feel padded or generic.",
+    use: "Use for doctrine, docs prose, explanations, and contextual help.",
+  },
+  {
+    name: "Button",
+    token: "action label",
+    className: "jr-type-spec__sample--button",
+    samples: [
+      { label: "Add", variant: "primary", context: "Primary · single word" },
+      { label: "Read", variant: "secondary", context: "Secondary · single word" },
+      { label: "Cancel", variant: "tertiary", context: "Tertiary · quiet command" },
+      { label: "Source", variant: "link", context: "Link · inline action" },
+      { label: "Install Riot", variant: "primary", context: "Primary · short phrase" },
+      { label: "Read the docs", variant: "secondary", context: "Secondary · short phrase" },
+      { label: "Publish package", variant: "secondary", context: "Secondary · longer phrase" },
+      { label: "↗", variant: "icon", context: "Icon only", ariaLabel: "Open external link" },
+    ],
+    use: "Use concise, imperative text for actions. The label should say what happens next.",
+  },
+  {
+    name: "Label",
+    token: "interface label",
+    className: "jr-type-spec__sample--label",
+    samples: [
+      "Package name",
+      "Docs status",
+      "Updated",
+      "Owner",
+      "Error code",
+      "Source path",
+    ],
+    use: "Use for form labels, table captions, callout labels, and local UI structure.",
+  },
+  {
+    name: "Code",
+    token: "code and terminal",
+    className: "jr-type-spec__sample--code",
+    sample: "riot add std",
+    use: "Use for commands, paths, JSON, versions, signatures, and terminal output.",
+  },
+  {
+    name: "Metadata",
+    token: "compact data",
+    className: "jr-type-spec__sample--metadata",
+    sample: "std · v0.6.0 · docs ready",
+    use: "Use for nearby facts that help a reader evaluate an object quickly.",
+  },
+];
 ---
 
 <section class="jr-section" id="foundations">
   <div class="jr-section-body">
     <div class="jr-intro">
-      <p class="jr-kicker">Foundations</p>
-      <h2 class="jr-heading">Visible decisions, not decoration.</h2>
-      <p class="jr-copy">
-        These are the tangibles: mark, color, typography, spacing, edges,
-        density, layout, code, and terminal output. They follow the principles.
-        They are not arbitrary styling choices.
+      <h2>Foundations</h2>
+      <p>
+        Every design system needs a visual foundation to build on. Riot’s Jolly
+        Roger picks one that abides by our principles: it is direct, it has no
+        fluff, it optimizes for readability, and it stays cohesive from top to
+        bottom.
       </p>
     </div>
 
     <div class="token-list">
       <TokenCard
-        id="foundation-mark"
-        label="/01 · Mark and flag"
-        title="A black flag with a white λ."
-        description="The Jolly Roger is the flag of Riot: simple, reproducible, and useful as a clear signature across the stack."
-      >
-        <div class="identity-token">
-          <FlagMark size="huge" label="Jolly Roger flag mark" />
-          <div class="layout-spec">
-            <div><b>Use as identity</b><span>Let the mark sign a surface. Do not use it as repeated decoration.</span></div>
-            <div><b>High contrast</b><span>Prefer simple placements where the mark survives at small sizes.</span></div>
-          </div>
-        </div>
-      </TokenCard>
-
-      <TokenCard
-        id="foundation-color"
-        label="/02 · Color"
-        title="Cream, coal, ink, and one red."
-        description="Riot Red is identity and action. Paper is reading. Coal is terminal and gravity. Ink is text. Mint, amber, and blue are functional colors."
+        id="foundation-grid"
+        label="Grid"
+        title="Five pixels, everywhere."
+        description="The Jolly Roger grid is based around a 5px unit. This unit makes the math easy, and it gives the whole system a consistent sense of rhythm across rows, gaps, controls, examples, and page structure."
       >
         <div class="jr-explainer">
           <p>
-            Color clarifies what kind of information the reader is looking at.
-            Paper carries reading, ink carries structure, coal carries code and
-            terminal gravity, and Riot Red marks identity or action.
+            Five pixels is small enough to tune dense interfaces and large
+            enough to remember. It keeps spacing choices deliberate without
+            forcing every visual decision into a rigid machine.
+          </p>
+          <p>
+            The unit is most visible in repeated structure: compact rows,
+            controls, card padding, nested examples, and the space between
+            labels and the values they describe.
           </p>
         </div>
-        <div class="jr-swatch-grid">
-          {
-            colorTokens.map((token) => (
-              <div class="jr-swatch">
-                <span class:list={["jr-swatch__chip", token.className]}></span>
-                <div>
-                  <b>{token.name}</b>
-                  <span>{token.value} · {token.role}</span>
+
+        <div class="jr-grid-demo" aria-label="5px unit demonstrations">
+          <div class="jr-grid-demo__row">
+            <div class="jr-grid-sample">
+              <span class="jr-unit-block"></span>
+              <b>single block</b>
+            </div>
+            <div class="jr-grid-sample">
+              <span class="jr-unit-trio">
+                <i></i><i></i><i></i>
+              </span>
+              <b>three units</b>
+            </div>
+            <div class="jr-grid-sample jr-grid-sample--values">
+              <div
+                class="jr-value-rhythm jr-value-rhythm--bubble"
+                aria-label="Block layout shaped like a pkgs.ml error bubble"
+              >
+                <div class="jr-bubble-shape">
+                  <span class="jr-value-block jr-value-block--title"></span>
+                  <span class="jr-value-block jr-value-block--body-long"></span>
+                  <span class="jr-value-block jr-value-block--body-medium"></span>
+                  <span class="jr-value-block jr-value-block--body-short"></span>
+                  <div class="jr-bubble-shape__actions">
+                    <span class="jr-value-block jr-value-block--button"></span>
+                    <span class="jr-value-block jr-value-block--link"></span>
+                  </div>
                 </div>
               </div>
-            ))
-          }
-        </div>
-        <div class="layout-spec guideline-token-rules">
-          <div><b>Primary</b><span>Riot Red, paper, ink, and coal define identity, reading, structure, and terminal gravity.</span></div>
-          <div><b>Secondary</b><span>Mint, amber, and blue are functional state colors for success, caution, and references.</span></div>
-          <div><b>Deliberate red</b><span>Use Riot Red for identity, action, danger, and real emphasis.</span></div>
-          <div><b>Never color alone</b><span>State must also have labels, text, or structure.</span></div>
-        </div>
-      </TokenCard>
 
-      <TokenCard
-        id="foundation-typography"
-        label="/03 · Typography"
-        title="Technical, authored, readable."
-        description="Use Martian Mono for headings, navigation, labels, and data chrome; a readable sans for explanations; and a regular mono for code and terminal output."
-      >
-        <div class="jr-explainer">
-          <p>
-            Typography has three jobs. Display type gives Riot its authored
-            voice. Body type makes longer explanations comfortable. Code type
-            keeps commands, paths, signatures, and numeric metadata precise.
-          </p>
-        </div>
-        <div class="jr-type-row">
-          <div class="jr-type-meta"><b>Display</b>Martian Mono · 900</div>
-          <div>
-            <div class="jr-type-display">Hoist the <span class="jr-red">λ</span></div>
-            <p class="jr-meta">Programming ecosystem. Headings, navigation, labels, data chrome.</p>
+              <div
+                class="jr-value-rhythm jr-value-rhythm--build"
+                aria-label="Block layout shaped like a riot build error"
+              >
+                <div class="jr-build-shape">
+                  <span class="jr-value-block jr-value-block--title"></span>
+                  <span class="jr-value-block jr-value-block--rule"></span>
+                  <div class="jr-build-shape__line">
+                    <span class="jr-value-block jr-value-block--gutter"></span>
+                    <span class="jr-value-block jr-value-block--code-long"></span>
+                  </div>
+                  <div class="jr-build-shape__line">
+                    <span class="jr-value-block jr-value-block--gutter"></span>
+                    <span class="jr-value-block jr-value-block--code-medium"></span>
+                  </div>
+                  <div class="jr-build-shape__line jr-build-shape__line--mark">
+                    <span class="jr-value-block jr-value-block--gutter"></span>
+                    <span class="jr-value-block jr-value-block--code-mark"></span>
+                  </div>
+                  <span class="jr-value-block jr-value-block--help"></span>
+                  <span class="jr-value-block jr-value-block--help-short"></span>
+                </div>
+              </div>
+              <b>value rhythm</b>
+            </div>
           </div>
-        </div>
-        <div class="jr-type-row">
-          <div class="jr-type-meta"><b>Body</b>Atkinson Hyperlegible · 400</div>
-          <div>
-            <p class="jr-type-body">
-              Long explanations should be comfortable enough to read without
-              making dense technical pages feel padded.
-            </p>
-            <p class="jr-meta">Human explanation. Long docs prose. Editorial surfaces.</p>
-          </div>
-        </div>
-        <div class="jr-type-row">
-          <div class="jr-type-meta"><b>Code</b>Monospace stack · 500</div>
-          <div>
-            <div class="jr-mono">$ riot add std<br />→ resolved 12 packages in 84ms</div>
-            <p class="jr-meta">Code is product UI. Commands, paths, signatures, table numerics.</p>
-          </div>
-        </div>
-        <div class="layout-spec">
-          <div><b>Sizes</b><span>Use the token scale for headings, labels, body text, compact metadata, and code.</span></div>
-          <div><b>Rule</b><span>Do not use display mono for long code snippets.</span></div>
-        </div>
-      </TokenCard>
 
-      <TokenCard
-        id="foundation-spacing"
-        label="/04 · Spacing"
-        title="5px base unit. Memorable scale."
-        description="Use 5px increments for spacing and component rhythm. The common scale is 5, 10, 15, 20, 25, 30, 40, 50."
-      >
-        <div class="jr-explainer">
-          <p>
-            The 5px unit is small enough to tune dense interfaces without
-            inventing one-off values, and large enough to stay memorable.
-          </p>
-          <p>
-            It keeps Riot surfaces rhythmic: rows, gutters, controls, and
-            examples snap to the same cadence, so dense pages feel authored
-            instead of arbitrary.
-          </p>
-          <p>
-            Typography can still be optical. The grid does its work in spacing,
-            sizing, rhythm, and repeated structure.
-          </p>
+          <div class="jr-unit-matrix" aria-label="9 by 9 block grid">
+            {unitBlocks.map(() => <span></span>)}
+          </div>
         </div>
-        <div class="jr-space-grid">
+
+        <div class="jr-space-grid" aria-label="Standard spacing units">
           {
             spacingTokens.map((token) => (
               <div class="jr-space-row">
@@ -164,90 +295,152 @@ const spacingTokens = [
             ))
           }
         </div>
-        <div class="layout-spec guideline-token-rules">
-          <div><b>Unit</b><span>The base spacing unit is 5px.</span></div>
-          <div><b>Sizes</b><span>Controls, rows, icons, and marks follow named size tokens.</span></div>
-          <div><b>Spacers</b><span>The common rhythm is 5, 10, 15, 20, 25, 30, 40, and 50.</span></div>
-          <div><b>Borders</b><span>Use 1px borders. Borders do not need to become grid units.</span></div>
-        </div>
       </TokenCard>
 
       <TokenCard
-        id="foundation-edges"
-        label="/05 · Edges"
-        title="Crisp, not inflated."
-        description="Use small radii, quiet borders, and restrained shadows. Riot should feel scrappy and precise, not boxed-in or aggressively stamped."
-      >
-        <div class="jr-edge-list">
-          <div class="jr-edge-row">
-            <div class="jr-edge-demo">crisp</div>
-            <p class="jr-copy">Default geometry keeps docs, tables, panels, and command surfaces clean without turning every block into a sign.</p>
-          </div>
-          <div class="jr-edge-row">
-            <div class="jr-edge-demo jr-edge-demo--radius">5px</div>
-            <p class="jr-copy">Small radius softens controls and shells while staying inside the 5px rhythm.</p>
-          </div>
-          <div class="jr-edge-row">
-            <div class="jr-edge-demo jr-edge-demo--shadow">lift</div>
-            <p class="jr-copy">Soft lift is enough for emphasis. The page should not look like a stack of posters.</p>
-          </div>
-          <div class="jr-edge-row">
-            <div class="jr-edge-demo jr-edge-demo--shadow-lg">focus</div>
-            <p class="jr-copy">Use stronger emphasis only when a surface needs focus or hierarchy.</p>
-          </div>
-        </div>
-        <div class="layout-spec guideline-token-rules">
-          <div><b>Default</b><span>Use crisp 5px corners for cards, tables, docs shells, commands, and controls.</span></div>
-          <div><b>Rule</b><span>Use borders for structure and shadows for focus, not decoration.</span></div>
-        </div>
-      </TokenCard>
-
-      <TokenCard
-        id="foundation-density"
-        label="/06 · Density"
-        title="Clean compression."
-        description="Riot surfaces carry packages, modules, types, versions, dependencies, diagnostics, reports, and docs. Density is a feature when hierarchy is clear."
-      >
-        <div class="layout-spec">
-          <div><b>Use tables</b><span>Comparison belongs in rows, not decorative cards.</span></div>
-          <div><b>Use sidebars</b><span>Long references need orientation and anchors.</span></div>
-          <div><b>Keep metadata close</b><span>Versions, dates, owners, and docs status sit near the thing they describe.</span></div>
-          <div><b>Hierarchy first</b><span>Reach for labels, rules, alignment, and type before adding empty air.</span></div>
-        </div>
-      </TokenCard>
-
-      <TokenCard
-        id="foundation-layout"
-        label="/07 · Layout"
-        title="Chapter, body, anchors."
-        description="Use the shell to orient the reader, chapters to create long-page structure, and compact metadata to keep decisions local."
-      >
-        <div class="layout-spec">
-          <div><b>Shell</b><span>Page frame plus flexible main column.</span></div>
-          <div><b>Content</b><span>Readable width with tokenized gutters.</span></div>
-          <div><b>Chapter</b><span>Marker column plus body column.</span></div>
-          <div><b>Section</b><span>Tokenized vertical padding and rule.</span></div>
-        </div>
-      </TokenCard>
-
-      <TokenCard
-        id="foundation-code"
-        label="/08 · Code and terminal"
-        title="Code is product UI."
-        description="Commands, output, signatures, diagnostics, and copy affordances are first-class surfaces."
+        id="foundation-color"
+        label="Colors"
+        title="Legibility first. Signals second. Vibes last."
+        description="Color is as important as spacing for visual rhythm. It helps readers identify information quickly: success mint for completed work, action red for identity and risk, ink and paper for ease of reading."
       >
         <div class="jr-explainer">
           <p>
-            The terminal is not a screenshot. It is where install, build, test,
-            publish, debug, and recovery happen. Code and output need the same
-            care as navigation and prose.
+            Riot’s colors are optimized for legibility and clear signaling of
+            intent. Most surfaces should be paper, ink, and line work. Red,
+            rust, mint, amber, and blue appear when the interface needs to name
+            a link, state, action, reference, or risk.
+          </p>
+          <p>
+            Color never carries meaning alone. A successful action still needs
+            a label. A warning still needs text. A primary action still needs a
+            clear verb.
           </p>
         </div>
-        <div class="jr-stack">
-          <CodeBlock label="Terminal">λ riot fmt --check
-ok 128 files formatted
-json: &#123;"event":"fmt.checked","files":128&#125;</CodeBlock>
-          <CopyStrip command="riot add krasny http postgres" />
+
+        <div class="jr-swatch-grid">
+          {
+            colorTokens.map((token) => (
+              <div class="jr-swatch jr-swatch--detailed">
+                <span class:list={["jr-swatch__chip", token.className]}></span>
+                <div>
+                  <b>{token.name}</b>
+                  <span>{token.value} · {token.role}</span>
+                  <p>{token.use}</p>
+                </div>
+              </div>
+            ))
+          }
+        </div>
+      </TokenCard>
+
+      <TokenCard
+        id="foundation-typography"
+        label="Typography"
+        title="Readable, technical, and still alive."
+        description="Typography carries hierarchy, tone, and long-term maintainability. We choose type that improves readability without losing character."
+      >
+        <div class="jr-explainer">
+          <p>
+            The display face gives Riot’s Jolly Roger its authored voice. The
+            body face makes long explanations sustainable. The coding face
+            keeps commands, paths, signatures, values, and machine-readable
+            examples precise.
+          </p>
+          <p>
+            The system should be recognizable in light and dark contexts, but
+            the rules stay narrow: use display for titles and labels, body for
+            prose, and code for code.
+          </p>
+        </div>
+
+        <div class="jr-type-stack">
+          <div class="jr-type-spec-list" aria-label="Typography use cases">
+            {
+              typographyUsages.map((usage) => {
+                const samples = "samples" in usage ? usage.samples : null;
+
+                return (
+                  <div class="jr-type-spec-row">
+                    <div class="jr-type-spec-row__meta">
+                      <b>{usage.name}</b>
+                      <span>{usage.token}</span>
+                      <p>{usage.use}</p>
+                    </div>
+                    <div class:list={["jr-type-spec__sample", usage.className]}>
+                      {
+                        samples ? (
+                        <div class="jr-type-spec__sample-group">
+                          {
+                            samples.map((sample) =>
+                              typeof sample === "string" ? (
+                                <span>{sample}</span>
+                              ) : (
+                                <div class="jr-type-spec__button-row">
+                                  <b>{sample.context}</b>
+                                  <span
+                                    class:list={[
+                                      "jr-type-spec__button",
+                                      `jr-type-spec__button-${sample.variant}`,
+                                    ]}
+                                    aria-label={sample.ariaLabel}
+                                  >
+                                    {sample.label}
+                                  </span>
+                                </div>
+                              ),
+                            )
+                          }
+                        </div>
+                        ) : (
+                          usage.sample
+                        )
+                      }
+                    </div>
+                  </div>
+                );
+              })
+            }
+          </div>
+
+          <div class="jr-type-surface">
+            <b>Display face</b>
+            <p>
+              Martian Mono carries the authored Riot voice. Use it for titles,
+              navigation, labels, buttons, and interface chrome.
+            </p>
+          </div>
+
+          <div class="jr-type-surface">
+            <b>Body face</b>
+            <p>
+              Atkinson Hyperlegible carries explanations. Use it for paragraphs,
+              doctrine, documentation, and longer help text.
+            </p>
+          </div>
+
+          <div class="jr-type-surface">
+            <b>Code face</b>
+            <p>
+              JetBrains Mono carries machine-readable detail. Use it for code,
+              commands, JSON, signatures, versions, and terminal output.
+            </p>
+          </div>
+
+          <div class="jr-type-surface">
+            <b>Light surfaces</b>
+            <p>
+              Use ink on paper for long reading. Action red is allowed for a
+              title accent, a danger state, or a piece of real emphasis.
+            </p>
+          </div>
+
+          <div class="jr-type-surface jr-type-surface--dark">
+            <b>Dark surfaces</b>
+            <p>
+              Use paper on coal for terminals and code-heavy blocks. Keep red,
+              mint, amber, and blue as syntax or state, not decoration.
+            </p>
+          </div>
         </div>
       </TokenCard>
     </div>

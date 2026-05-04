@@ -13,8 +13,8 @@ const { id, title, description, block = false } = Astro.props;
 
 <Card className="component-row" id={id}>
   <div class="component-row__intro">
-    <h3 class="jr-subheading">{title}</h3>
-    <p class="jr-copy">{description}</p>
+    <h3>{title}</h3>
+    <p>{description}</p>
   </div>
   <div class:list={["component-row__demo", block && "component-row__demo--block"]}>
     <slot />

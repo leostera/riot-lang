@@ -1,5 +1,6 @@
 ---
 import PageRail from "@/components/jollyroger/PageRail.astro";
+import SectionBreak from "@/components/jollyroger/SectionBreak.astro";
 import ApplicationsSection from "@/components/jollyroger/sections/ApplicationsSection.astro";
 import ComponentsSection from "@/components/jollyroger/sections/ComponentsSection.astro";
 import FoundationsSection from "@/components/jollyroger/sections/FoundationsSection.astro";
@@ -14,18 +15,23 @@ import SiteLayout from "../layouts/SiteLayout.astro";
   title="Riot’s Jolly Roger · Design System"
   description="Riot’s Jolly Roger is the flag, voice, and surface system for Riot."
 >
-  <div class="jr-app">
-    <main class="jr-main" id="top">
+  <div class="min-h-screen">
+    <main class="min-w-0" id="top">
+      <HeroSection />
       <div class="jr-content">
-        <HeroSection />
         <div class="jr-page-body">
           <PageRail />
-          <div class="jr-page-sections">
+          <div class="jr-page-main min-w-0 flex-1">
             <PrinciplesSection />
+            <SectionBreak />
             <VoiceSection />
+            <SectionBreak />
             <FoundationsSection />
+            <SectionBreak />
             <ComponentsSection />
+            <SectionBreak />
             <ApplicationsSection />
+            <SectionBreak />
           </div>
         </div>
       </div>

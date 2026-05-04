@@ -5,6 +5,7 @@
 
   html {
     background: var(--jr-color-bg);
+    color-scheme: var(--jr-color-scheme);
     scroll-behavior: smooth;
   }
 

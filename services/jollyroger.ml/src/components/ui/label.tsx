@@ -6,7 +6,7 @@ function Label({ className, ...props }: React.ComponentProps<"label">) {
   return (
     <label
       data-slot="label"
-      className={cn("jr-label-control", className)}
+      className={cn("label", className)}
       {...props}
     />
   );

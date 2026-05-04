@@ -9,9 +9,9 @@ const principles = [
       "Joy does not mean everything is soft, friendly, or simplified until it becomes useless. Riot can be sharp. It can be loud. It can be opinionated. It can say no.",
     ],
     examples: [
-      "Package tables keep version, docs state, owner, and freshness close to the package name.",
-      "Command examples sit next to the prose that explains them.",
-      "Errors end with a concrete fix instead of a vague suggestion.",
+      "When running CLI commands, there is always prompt feedback with the right amount of information to understand what is going on. The output should say what Riot is doing, what changed, what succeeded, and what still needs attention without turning every command into a wall of logs.",
+      "When something goes wrong, there is always a clear next step to take. The user should know how to fix it, where to look deeper, how to report the issue, or what command to run next.",
+      "When searching for things, results should bring back adjacent information that helps the user find exactly what they want faster: package names, versions, docs status, freshness, owners, related modules, and enough context to make the next click obvious.",
     ],
   },
   {
@@ -72,48 +72,47 @@ const principles = [
   },
 ];
 
-const whyRiot = [
-  "I wanted an ML-family language and ecosystem that felt beautiful and practical: actor-based, multi-core ready, type safe, and delightful to use end to end. Something built for shipping.",
-  "Riot is my take on what an ML stack should feel like in 2026: opinionated unified tooling, a modern packaging story with built-in docs, actor-oriented by default, a standard library for 80% of everything you'll ever need, and one flag over the whole thing.",
-  "Riot is about building software that works, shipping it quickly, making it beautiful when it proves itself useful, and enjoying the work along the way.",
-  "It is the most fun I've had programming in my entire career.",
-  "Jolly Roger is Riot’s design system, in many ways our very own pirate flag, and it describes the values this stack, and all the supporting systems around it, lives and dies by.",
-];
-
 ---
 
 <section class="jr-section" id="principles">
   <div class="jr-section-body">
-      <div class="jr-intro principle-opening">
-        <p class="jr-kicker">Why Riot?</p>
-        <div class="principle-opening__copy" id="why-this-exists">
-          <p class="jr-manifesto-line">
-            <span>There are many OCaml stacks.</span>
-            <span>This one is mine.</span>
-          </p>
-          {whyRiot.map((paragraph) => <p>{paragraph}</p>)}
-        </div>
+    <div class="jr-intro principle-opening">
+      <h2 class="principle-opening__title" id="why-this-exists">
+        What is Jolly Roger?
+      </h2>
+      <div class="principle-opening__copy">
+        <p>
+          Jolly Roger is Riot’s design system. In many ways, it is our very own
+          pirate flag: it describes the values this stack, and all the
+          supporting systems around it, lives and dies by.
+        </p>
+        <p>
+          In this document you'll find everything we use to design Riot, from
+          its CLI surface, to the way our docs and pkgs.ml look, to the
+          voice we use to write prose and code.
+        </p>
       </div>
+    </div>
 
-      <div class="principle-list">
-        {
-          principles.map((principle, index) => (
-            <article class="principle-card" id={principle.id}>
-              <div class="principle-card__body">
-                <h2>#{String(index + 1).padStart(2, "0")} - {principle.title}</h2>
-                <div class="principle-copy">
-                  {principle.paragraphs.map((paragraph) => <p>{paragraph}</p>)}
-                </div>
-                <div class="principle-examples">
-                  <p class="jr-label">Where it shows up</p>
-                  <ul class="jr-list jr-list--rule">
-                    {principle.examples.map((example) => <li>{example}</li>)}
-                  </ul>
-                </div>
+    <div class="principle-list">
+      {
+        principles.map((principle) => (
+          <article class="principle-card" id={principle.id}>
+            <div class="principle-card__body">
+              <h3>{principle.title}</h3>
+              <div class="principle-copy">
+                {principle.paragraphs.map((paragraph) => <p>{paragraph}</p>)}
               </div>
-            </article>
-          ))
-        }
-      </div>
+              <div class="principle-examples">
+                <h4>In Practice</h4>
+                <ul class="jr-list jr-list--rule">
+                  {principle.examples.map((example) => <li>{example}</li>)}
+                </ul>
+              </div>
+            </div>
+          </article>
+        ))
+      }
+    </div>
   </div>
 </section>
