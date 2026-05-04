@@ -1,6 +1,8 @@
 open Std
 open Markdown
 
+module Markdown_fixture_db = Tests__Markdown_fixture_db
+
 let normalize_label = fun label ->
   let normalized = String.lowercase_ascii label in
   let transformed =
@@ -42,7 +44,7 @@ let normalize_label = fun label ->
   in
   trim_underscores transformed
 
-let fixture_test_name = fun index fixture ->
+let fixture_test_name = fun index (fixture: Markdown_fixture_db.fixture) ->
   let section =
     Option.unwrap_or ~default:"fixture" fixture.section
   in
@@ -52,7 +54,7 @@ let fixture_test_name = fun index fixture ->
   in
   "markdown/spec/" ^ normalize_label section ^ "/" ^ example ^ "_" ^ Int.to_string index
 
-let test_fixture = fun fixture index ctx ->
+let test_fixture = fun (fixture: Markdown_fixture_db.fixture) index ctx ->
   let actual = Markdown.compile fixture.markdown in
   Test.Snapshot.assert_inline_text
     ~ctx
@@ -60,7 +62,7 @@ let test_fixture = fun fixture index ctx ->
     ~expected:fixture.html
 
 let fixture_cases = fun () ->
-  all_spec_fixtures ()
+  Markdown_fixture_db.all_spec_fixtures ()
   |> List.enumerate
   |> List.map ~fn:(fun (index, fixture) ->
     Test.case

@@ -5,22 +5,6 @@ module Span = Markdown_span
 module Syntax_kind = Markdown_syntax_kind
 module Diagnostic = Markdown_diagnostic
 module Diagnostic_reporter = Markdown_diagnostic_reporter
-module Fixture_db = Markdown_fixture_db
-
-type fixture = {
-  markdown: string;
-  html: string;
-  example: int option;
-  section: string option;
-}
-
-let cast_fixture = fun (fixture: Markdown_fixture_db.fixture) ->
-  {
-    markdown = fixture.markdown;
-    html = fixture.html;
-    example = fixture.example;
-    section = fixture.section;
-  }
 
 type parse_result = {
   root: Markdown_parser.syntax_node;
@@ -59,8 +43,6 @@ let parse = fun source ->
 let parse_gfm = fun source ->
   let parsed = Markdown_parser.parse ~flavor:Markdown_parser.Gfm source in
   parse_result_of_parsed Gfm parsed
-
-let all_spec_fixtures = fun () -> List.map (Fixture_db.all_spec_fixtures ()) ~fn:cast_fixture
 
 let to_html = fun parse_result -> Markdown_renderer.render parse_result.blocks
 

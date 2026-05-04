@@ -9,7 +9,66 @@ let touch_parse_result = fun (result: Markdown.parse_result) ->
 
 let touch_string = fun text -> checksum := !checksum lxor String.length text
 
-let commonmark_fixtures = Markdown.all_spec_fixtures ()
+type commonmark_fixture = { markdown: string }
+
+let json_field = fun fields name ->
+  fields
+  |> List.find ~fn:(fun (field_name, _) -> String.equal field_name name)
+  |> Option.map ~fn:(fun (_, value) -> value)
+
+let fixture_from_json = fun json ->
+  match Data.Json.get_object json with
+  | None -> None
+  | Some fields -> (
+      match json_field fields "markdown" with
+      | Some (Data.Json.String markdown) when not (String.is_empty markdown) -> Some { markdown }
+      | Some _
+      | None -> None
+    )
+
+let locate_commonmark_fixture_file = fun () ->
+  let current_dir =
+    match Env.current_dir () with
+    | Ok path -> path
+    | Error _ -> Path.v "."
+  in
+  let roots =
+    [
+      Env.get Env.String ~var:"RIOT_WORKSPACE_ROOT"
+      |> Option.map ~fn:Path.v;
+      Some current_dir;
+    ]
+    |> List.filter_map ~fn:(fun root -> root)
+  in
+  let candidates =
+    roots
+    |> List.map
+      ~fn:(fun root -> Path.join root (Path.v "packages/markdown/tests/spec_fixtures.json"))
+  in
+  List.find
+    candidates
+    ~fn:(fun path ->
+      Fs.exists path
+      |> Result.unwrap_or ~default:false)
+
+let load_commonmark_fixtures = fun () ->
+  match locate_commonmark_fixture_file () with
+  | None -> []
+  | Some path -> (
+      match Fs.read path with
+      | Error _ -> []
+      | Ok source -> (
+          match Data.Json.from_string source with
+          | Error _ -> []
+          | Ok json -> (
+              match Data.Json.get_array json with
+              | None -> []
+              | Some rows -> List.filter_map rows ~fn:fixture_from_json
+            )
+        )
+    )
+
+let commonmark_fixtures = load_commonmark_fixtures ()
 
 let gfm_sources = [
   "~~gone~~\n";

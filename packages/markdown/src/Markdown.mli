@@ -141,13 +141,6 @@ module Diagnostic_reporter: sig
   val format: file:string -> source:string -> Diagnostic.t list -> string
 end
 
-(** One CommonMark spec fixture. *)
-type fixture = {
-  markdown: string;
-  html: string;
-  example: int option;
-  section: string option;
-}
 (** High-level parse result returned by [parse] and [parse_gfm]. *)
 type parse_result = {
   (** Root markdown syntax tree. *)
@@ -208,6 +201,3 @@ val compile: string -> string
 
 (** Parse and render GitHub-Flavored Markdown to HTML. *)
 val compile_gfm: string -> string
-
-(** Return all bundled CommonMark spec fixtures. *)
-val all_spec_fixtures: unit -> fixture list
