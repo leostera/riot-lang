@@ -146,8 +146,7 @@ let workspace_artifact_labels = fun (package: Riot_model.Package.t) ->
 
 let profile_details = fun profile ->
   match profile with
-  | Some profile when not (String.equal profile "debug") -> [ "profile=" ^ profile ]
-  | Some _
+  | Some profile -> [ profile ]
   | None -> []
 
 let display_package_name = fun
@@ -167,8 +166,7 @@ let display_package_name = fun
     | _ -> []
   in
   let details =
-    ((profile_details profile @ version_details) @ workspace_artifact_labels package)
-    @ target_details
+    ((profile_details profile @ version_details) @ workspace_artifact_labels package) @ target_details
   in
   match details with
   | [] -> name
@@ -1092,7 +1090,8 @@ let write_build_event = fun ?render_state ?profile ~mode ~seen_registry_updates 
   | Riot_build.Event.BuildingTarget { target; host } ->
       write_building_target_event ~mode ~target ~host
   | Riot_build.Event.CacheGc event -> write_cache_gc_event ~mode event
-  | Riot_build.Event.Telemetry event -> write_build_telemetry_event ?render_state ?profile ~mode event
+  | Riot_build.Event.Telemetry event ->
+      write_build_telemetry_event ?render_state ?profile ~mode event
   | Riot_build.Event.Phase phase -> write_build_phase_event ?render_state ~mode phase
 
 let write_package_not_found_error = fun ~mode ~package_name ~available_packages ->
