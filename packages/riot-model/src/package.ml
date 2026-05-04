@@ -1611,9 +1611,14 @@ let elapsed_us_since = fun started_at ->
   Time.Instant.elapsed started_at
   |> Time.Duration.to_micros
 
+let model_trace_enabled = fun () ->
+  match Env.get Env.String ~var:"RIOT_MODEL_TRACE" with
+  | Some ("1" | "true" | "yes") -> true
+  | _ -> false
+
 let trace_package = fun message ->
-  let _ = message in
-  ()
+  if model_trace_enabled () then
+    eprintln ("riot-model package " ^ message)
 
 let string_of_realization_intent = fun __tmp1 ->
   match __tmp1 with
@@ -2433,6 +2438,8 @@ module type Hash_writer = sig
 
   val write: state -> string -> unit
 
+  val write_iovec: state -> IO.IoVec.t -> unit
+
   val write_int: state -> int -> unit
 
   val write_float: state -> float -> unit
@@ -2639,6 +2646,25 @@ let hash_with = fun (type s) (module H : Hash_writer with type state = s) state 
       ));
   (* Source file contents - include explicit [[bin]] entries that may not be in source dirs *)
   let seen_source_files = HashSet.with_capacity ~size:32 in
+  let hash_file_content = fun abs_path ->
+    match Fs.File.open_read abs_path with
+    | Error _ -> false
+    | Ok file ->
+        let reader = Fs.File.to_reader file in
+        let buffer = IO.Buffer.create ~size:16_384 in
+        let rec loop () =
+          IO.Buffer.clear buffer;
+          match IO.Reader.read reader ~into:buffer with
+          | Ok 0 -> true
+          | Ok _ ->
+              H.write_iovec state (IO.Buffer.to_iovec buffer);
+              loop ()
+          | Error _ -> false
+        in
+        let success = loop () in
+        let _ = Fs.File.close file in
+        success
+  in
   let hash_source_file file_path =
     let path_str = Path.to_string file_path in
     if HashSet.insert seen_source_files ~value:path_str then
@@ -2649,13 +2675,8 @@ let hash_with = fun (type s) (module H : Hash_writer with type state = s) state 
           Path.(pkg.path / file_path)
       in
       let path_str = Path.to_string file_path in
-      match Fs.read abs_path with
-      | Ok content ->
-          H.write state path_str;
-          H.write state content
-      | Error _ ->
-          (* File read error - include path only *)
-          H.write state path_str
+      H.write state path_str;
+      ignore (hash_file_content abs_path)
   in
   List.for_each pkg.sources.src ~fn:hash_source_file;
   List.for_each pkg.sources.native ~fn:hash_source_file;
@@ -2680,11 +2701,8 @@ let hash_with = fun (type s) (module H : Hash_writer with type state = s) state 
         fdep.inputs
         ~fn:(fun input_path ->
           let abs_path = Path.(fdep.path / input_path) in
-          match Fs.read abs_path with
-          | Ok content ->
-              H.write state (Path.to_string input_path);
-              H.write state content
-          | Error _ -> H.write state (Path.to_string input_path)))
+          H.write state (Path.to_string input_path);
+          ignore (hash_file_content abs_path)))
 
 let hash = fun state pkg -> hash_with (module Crypto.Sha256) state pkg
 

@@ -67,9 +67,14 @@ let elapsed_us_since = fun started_at ->
   Time.Instant.elapsed started_at
   |> Time.Duration.to_micros
 
+let model_trace_enabled = fun () ->
+  match Env.get Env.String ~var:"RIOT_MODEL_TRACE" with
+  | Some ("1" | "true" | "yes") -> true
+  | _ -> false
+
 let trace_workspace_manager = fun message ->
-  let _ = message in
-  ()
+  if model_trace_enabled () then
+    eprintln ("riot-model workspace " ^ message)
 
 let manifest_load_error_message = fun __tmp1 ->
   match __tmp1 with
