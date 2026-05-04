@@ -236,6 +236,7 @@ val format: string -> string
       let* root_page =
         read_file Path.(summary.Riot_doc.output_dir / Path.v "Pretext" / Path.v "index.html")
       in
+      let* doc_css = read_file Path.(output_root / Path.v "_shared" / Path.v "doc.css") in
       let* prism_core = read_file Path.(output_root / Path.v "_shared" / Path.v "prism-core.min.js") in
       let* prism_ocaml =
         read_file Path.(output_root / Path.v "_shared" / Path.v "prism-ocaml.min.js")
@@ -260,6 +261,9 @@ val format: string -> string
       in
       let* () = assert_contains ~label:"docs manifest" manifest "\"generator\": \"riot-doc:v30\"" in
       let* () = assert_contains ~label:"docs manifest" manifest "\"manifest.json\"" in
+      let* () = assert_contains ~label:"doc css" doc_css "--jr-color-bg:" in
+      let* () = assert_contains ~label:"doc css" doc_css "--jr-docs-sidebar-width:" in
+      let* () = assert_contains ~label:"doc css" doc_css "background: var(--jr-docs-sidebar-bg)" in
       let* () = assert_not_contains ~label:"root module page" root_page "Redirecting..." in
       let* () =
         assert_contains
