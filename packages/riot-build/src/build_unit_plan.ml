@@ -1,9 +1,19 @@
 open Std
+open Std.Result.Syntax
 
-type error = Riot_planner.Build_unit_graph.create_error =
+type error =
   | MissingPackages of {
       missing: Riot_planner.Build_unit_graph.missing_package list;
     }
+  | CycleDetected of {
+      cycle: Riot_planner.Build_unit.key list;
+    }
+
+type t = {
+  request: Riot_planner.Build_unit_graph.request;
+  graph: Riot_planner.Build_unit_graph.t;
+  units: Riot_planner.Build_unit.t list;
+}
 
 let targets_of_resolved = fun resolved ->
   Resolved_build.targets resolved
@@ -27,3 +37,24 @@ let request_of_resolved = fun ?(synthetic_tools = []) context resolved ->
 let create_graph = fun ?synthetic_tools context resolved ->
   let request = request_of_resolved ?synthetic_tools context resolved in
   Riot_planner.Build_unit_graph.create context.Build_context.workspace request
+  |> Result.map_err
+    ~fn:(fun (Riot_planner.Build_unit_graph.MissingPackages { missing }) ->
+      MissingPackages { missing })
+
+let create = fun ?synthetic_tools context resolved ->
+  let request = request_of_resolved ?synthetic_tools context resolved in
+  let* graph =
+    Riot_planner.Build_unit_graph.create context.Build_context.workspace request
+    |> Result.map_err
+      ~fn:(fun (Riot_planner.Build_unit_graph.MissingPackages { missing }) ->
+        MissingPackages { missing })
+  in
+  match Riot_planner.Build_unit_graph.topological_sort graph with
+  | Ok units -> Ok { request; graph; units }
+  | Error cycle -> Error (CycleDetected { cycle })
+
+let request = fun t -> t.request
+
+let graph = fun t -> t.graph
+
+let units = fun t -> t.units

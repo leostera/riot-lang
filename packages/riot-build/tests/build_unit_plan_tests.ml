@@ -148,6 +148,10 @@ let build_graph = fun ?synthetic_tools context resolved ->
   Build_unit_plan.create_graph ?synthetic_tools context resolved
   |> Result.expect ~msg:"expected build unit graph"
 
+let build_plan = fun ?synthetic_tools context resolved ->
+  Build_unit_plan.create ?synthetic_tools context resolved
+  |> Result.expect ~msg:"expected build unit plan"
+
 let runtime_request_uses_resolved_roots_targets_and_profile = fun _ctx ->
   match Fs.with_tempdir
     ~prefix:"riot_build_unit_plan_runtime"
@@ -285,6 +289,42 @@ let synthetic_tools_are_host_units_in_the_same_graph = fun _ctx ->
   | Ok result -> result
   | Error err -> Error ("tempdir failed: " ^ IO.error_message err)
 
+let build_unit_plan_stores_topologically_sorted_units = fun _ctx ->
+  match Fs.with_tempdir
+    ~prefix:"riot_build_unit_plan_sorted"
+    (fun root ->
+      let workspace =
+        make_workspace
+          ~root
+          [
+            make_package "std";
+            make_package
+              ~dependencies:[ "std" ]
+              ~binaries:[ binary ~name:"app" ~path:"src/app.ml" ]
+              "app";
+          ]
+      in
+      let (context, resolved) =
+        request ~workspace ~package_names:[ package_name "app" ] ~targets:[ macos_target ] ()
+        |> context_and_resolved
+      in
+      let plan = build_plan context resolved in
+      let keys =
+        Build_unit_plan.units plan
+        |> List.map ~fn:(fun unit -> unit.Build_unit.key)
+      in
+      let position key =
+        List.enumerate keys
+        |> List.find ~fn:(fun (_, current) -> Build_unit.equal_key current key)
+        |> Option.map ~fn:(fun (index, _) -> index)
+        |> Option.expect ~msg:("missing key: " ^ Build_unit.key_to_string key)
+      in
+      Test.assert_true (position (library_key "std") < position (library_key "app"));
+      Test.assert_true (position (library_key "app") < position (runtime_binary_key "app" "app"));
+      Ok ()) with
+  | Ok result -> result
+  | Error err -> Error ("tempdir failed: " ^ IO.error_message err)
+
 let tests =
   Test.[
     case
@@ -296,6 +336,9 @@ let tests =
     case
       "build unit plan includes synthetic tools in the same graph"
       synthetic_tools_are_host_units_in_the_same_graph;
+    case
+      "build unit plan stores topologically sorted units"
+      build_unit_plan_stores_topologically_sorted_units;
   ]
 
 let name = "Riot Build Unit Plan Tests"
