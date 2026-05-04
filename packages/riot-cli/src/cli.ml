@@ -82,9 +82,15 @@ let cli_elapsed_us = fun () ->
   Time.Instant.elapsed !cli_trace_origin
   |> Time.Duration.to_micros
 
+let cli_trace_enabled = fun () ->
+  match Env.get Env.String ~var:"RIOT_CLI_TRACE" with
+  | Some ("1" | "true" | "yes") -> true
+  | _ -> false
+
 let trace_cli = fun message ->
-  let _ = message in
-  ()
+  if cli_trace_enabled () then
+    eprintln
+      ("riot-cli +" ^ Int.to_string (cli_elapsed_us ()) ^ "us " ^ message)
 
 let normalize_args = fun __tmp1 ->
   match __tmp1 with

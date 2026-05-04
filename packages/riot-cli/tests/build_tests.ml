@@ -100,7 +100,7 @@ let parse_clean = fun args ->
   | Ok matches -> Ok matches
   | Error err -> Error (ArgParser.error_message err)
 
-let error_line = fun message -> "\027[1;31mError\027[0m: " ^ message
+let error_line = fun message -> "error " ^ message
 
 let write_workspace_manifest = fun ~root ~members ->
   let members =
@@ -1315,7 +1315,7 @@ let test_pm_event_shows_installing_with_padding = fun _ctx ->
         ref_ = None;
       })
   in
-  Test.assert_equal ~expected:(Some "  \027[1;34mInstalling\027[0m leostera/hello-world") ~actual;
+  Test.assert_equal ~expected:(Some "run installing leostera/hello-world") ~actual;
   Ok ()
 
 let test_pm_event_shows_locked_package = fun _ctx ->
@@ -1325,7 +1325,7 @@ let test_pm_event_shows_locked_package = fun _ctx ->
       ~seen_registry_updates
       (Riot_model.Event.PackageVersionLocked { package = package_name "std"; version = "0.2.0" })
   in
-  Test.assert_equal ~expected:(Some "      \027[1;32mLocked\027[0m std (0.2.0)") ~actual;
+  Test.assert_equal ~expected:(Some "ok locked std (0.2.0)") ~actual;
   Ok ()
 
 let test_pm_event_shows_up_to_date = fun _ctx ->
@@ -1335,7 +1335,7 @@ let test_pm_event_shows_up_to_date = fun _ctx ->
       ~seen_registry_updates
       (Riot_model.Event.PackageVersionsUnchanged { packages = 3 })
   in
-  Test.assert_equal ~expected:(Some "    Dependencies are already up to date") ~actual;
+  Test.assert_equal ~expected:(Some "ok dependencies are already up to date") ~actual;
   Ok ()
 
 let tests =

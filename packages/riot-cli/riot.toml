@@ -14,6 +14,7 @@ path = "src/main.ml"
 
 [dependencies]
 std = { path = "../std", version = "*" }
+jollyroger = { path = "../jollyroger", version = "*" }
 riot-init = { path = "../riot-init", version = "*" }
 riot-run = { path = "../riot-run", version = "*" }
 riot-install = { path = "../riot-install", version = "*" }

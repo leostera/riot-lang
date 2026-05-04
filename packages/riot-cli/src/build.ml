@@ -18,6 +18,14 @@ type dev_artifacts = Riot_build.Request.dev_artifacts = {
 
 let out = eprintln
 
+module Ui = Jollyroger.Terminal
+
+let terminal = Ui.make ()
+
+let status_line = fun status message -> Ui.status_line terminal status message
+
+let out_status = fun status message -> out (status_line status message)
+
 type output_mode =
   | Human
   | Json
@@ -87,37 +95,58 @@ let json_clock_origin = ref None
 
 let reset_json_clock = fun ~started_at -> json_clock_origin := Some started_at
 
-let event_elapsed_us = fun () ->
+let json_clock_origin_or_set = fun started_at ->
   match !json_clock_origin with
-  | Some origin ->
-      Time.Instant.elapsed origin
-      |> Time.Duration.to_micros
+  | Some origin -> origin
   | None ->
-      let origin = Time.Instant.now () in
-      json_clock_origin := Some origin;
-      0
+      json_clock_origin := Some started_at;
+      started_at
 
-let stamp_json_event = fun (json: Data.Json.t) ->
+let elapsed_us_since_json_origin = fun instant ->
+  let origin = json_clock_origin_or_set instant in
+  Time.Instant.saturating_duration_since ~earlier:origin instant
+  |> Time.Duration.to_micros
+
+let event_elapsed_us = fun () -> elapsed_us_since_json_origin (Time.Instant.now ())
+
+let stamp_json_event = fun ?timestamp (json: Data.Json.t) ->
   match json with
   | Data.Json.Object fields ->
+      let emitted_at_us = event_elapsed_us () in
       let fields =
         if
           Option.is_some (List.find fields ~fn:(fun (name, _) -> String.equal name "emitted_at_us"))
         then
           fields
         else
-          fields @ [ ("emitted_at_us", Data.Json.Int (event_elapsed_us ())); ]
+          fields @ [ ("emitted_at_us", Data.Json.Int emitted_at_us); ]
+      in
+      let fields =
+        match timestamp with
+        | Some (name, instant) ->
+            if Option.is_some (List.find fields ~fn:(fun (field_name, _) -> String.equal field_name name)) then
+              fields
+            else
+              fields @ [ (name, Data.Json.Int (elapsed_us_since_json_origin instant)); ]
+        | None ->
+            if
+              Option.is_some
+                (List.find fields ~fn:(fun (name, _) -> String.equal name "created_at_us"))
+            then
+              fields
+            else
+              fields @ [ ("created_at_us", Data.Json.Int emitted_at_us); ]
       in
       Data.Json.Object fields
   | other -> other
 
-let write_json_event = fun (json: Data.Json.t) ->
+let write_json_event = fun ?timestamp (json: Data.Json.t) ->
   println
-    (Data.Json.to_string (stamp_json_event json))
+    (Data.Json.to_string (stamp_json_event ?timestamp json))
 
 let write_build_event_json = fun event ->
   match Riot_build.Event.to_json event with
-  | Some json -> write_json_event json
+  | Some json -> write_json_event ?timestamp:(Riot_build.Event.timestamp event) json
   | None -> ()
 
 let path_has_prefix = fun ~prefix path -> String.starts_with ~prefix (Path.to_string path)
@@ -184,9 +213,7 @@ let labeled_multiline_lines = fun ~label value ->
           else
             "  " ^ line)
 
-let red_error = "\027[1;31mError\027[0m"
-
-let error_line = fun message -> red_error ^ ": " ^ message
+let error_line = fun message -> status_line Ui.Error message
 
 let display_planner_file = fun path ->
   let path_text = Path.to_string path in
@@ -498,134 +525,800 @@ let display_build_package_name = fun ?render_state ?profile ~build_target packag
     ~show_target:(show_target_in_package_labels render_state)
     package
 
-let write_build_telemetry_event = fun ?render_state ?profile ~mode event ->
+let count_part = fun ?plural count singular ->
+  let label =
+    if count = 1 then
+      singular
+    else
+      match plural with
+      | Some plural -> plural
+      | None -> singular
+  in
+  Int.to_string count ^ " " ^ label
+
+let non_zero_count_part = fun count label ->
+  if count = 0 then
+    None
+  else
+    Some (count_part count label)
+
+let build_count_parts = fun
+  ~built_count ~cached_count ~skipped_count ~failed_count ?(error_count = 0) () ->
+  [
+    non_zero_count_part built_count "built";
+    non_zero_count_part cached_count "cached";
+    non_zero_count_part skipped_count "skipped";
+    non_zero_count_part failed_count "failed";
+    non_zero_count_part error_count "errored";
+  ]
+  |> List.filter_map ~fn:(fun value -> value)
+
+let build_count_summary = fun
+  ~built_count ~cached_count ~skipped_count ~failed_count ?error_count () ->
+  match build_count_parts ~built_count ~cached_count ~skipped_count ~failed_count ?error_count () with
+  | [] -> "nothing to do"
+  | parts -> String.concat ", " parts
+
+let record_build_event_progress = fun progress event ->
+  match event with
+  | Riot_build.Event.Telemetry (
+    Build_telemetry.BuildCompleted { status = `Fresh; _ }
+  ) ->
+      progress.built_count <- progress.built_count + 1
+  | Riot_build.Event.Telemetry (
+    Build_telemetry.BuildCompleted { status = `Cached; _ }
+  ) ->
+      progress.cached_count <- progress.cached_count + 1
+  | Riot_build.Event.Telemetry (Build_telemetry.BuildSkipped _) ->
+      progress.skipped_count <- progress.skipped_count + 1
+  | Riot_build.Event.Telemetry (Build_telemetry.BuildFailed _) ->
+      progress.failed_count <- progress.failed_count + 1
+  | _ -> ()
+
+type build_dashboard_package = {
+  key: string;
+  package: Riot_model.Package.t;
+  build_target: Riot_model.Target.t;
+  mutable action_count: int;
+  mutable completed_actions: int;
+  running_actions: (string, string) HashMap.t;
+  mutable current_action_key: string option;
+  mutable status: build_dashboard_row_status;
+}
+
+and build_dashboard_row_status =
+  | Preparing
+  | Queued
+  | Blocked
+  | Finalizing
+  | Waiting
+
+type build_dashboard_state = {
+  active: (string, build_dashboard_package) HashMap.t;
+  active_order: string Vector.t;
+  profile_name: string option;
+  target_count: int option;
+  package_count: int;
+  total_action_count: int;
+  completed_action_count: int;
+  built_count: int;
+  cached_count: int;
+  failed_count: int;
+  skipped_count: int;
+}
+
+type build_dashboard_row_view = {
+  key: string;
+  label: string;
+  action_count: int;
+  completed_actions: int;
+  running_actions: int;
+  status: string;
+}
+
+type build_dashboard_board_view = {
+  completed_action_count: int;
+  total_action_count: int;
+  summary: string;
+  rows: build_dashboard_row_view list;
+}
+
+type build_dashboard_view =
+  | Empty
+  | Board of build_dashboard_board_view
+
+type build_dashboard = {
+  mutable state: build_dashboard_state;
+  mutable last_view: build_dashboard_view option;
+  mutable last_line_count: int;
+  mutable last_rendered_at: Time.Instant.t option;
+}
+
+type human_build_renderer =
+  | LoggedBuildEvents
+  | BuildDashboard of build_dashboard
+
+let is_interactive_stderr = fun () -> Tty.is_tty (Tty.stderr_fd ())
+
+let build_dashboard_create_state = fun ?profile () ->
+  {
+    active = HashMap.with_capacity ~size:16;
+    active_order = Vector.with_capacity ~size:16;
+    profile_name = profile;
+    target_count = None;
+    package_count = 0;
+    total_action_count = 0;
+    completed_action_count = 0;
+    built_count = 0;
+    cached_count = 0;
+    failed_count = 0;
+    skipped_count = 0;
+  }
+
+let create_build_dashboard = fun ?profile () ->
+  {
+    state = build_dashboard_create_state ?profile ();
+    last_view = None;
+    last_line_count = 0;
+    last_rendered_at = None;
+  }
+
+let create_human_build_renderer = fun ?profile () ->
+  if is_interactive_stderr () then
+    BuildDashboard (create_build_dashboard ?profile ())
+  else
+    LoggedBuildEvents
+
+let build_dashboard_clear = fun dashboard ->
+  if dashboard.last_line_count > 0 then (
+    eprint
+      (Tty.Escape_seq.cursor_up_seq dashboard.last_line_count ^ Tty.Escape_seq.erase_display_seq 0);
+    dashboard.last_line_count <- 0
+  );
+  dashboard.last_view <- None
+
+let build_dashboard_action_label = fun action ->
+  let path_label = fun prefix path -> prefix ^ " " ^ Path.basename path in
+  match action with
+  | Riot_planner.Action.CompileInterface { source; _ } -> path_label "compile" source
+  | Riot_planner.Action.CompileImplementation { source; _ } -> path_label "compile" source
+  | Riot_planner.Action.GenerateInterface { source; _ } -> path_label "interface" source
+  | Riot_planner.Action.CompileC { source; _ } -> path_label "compile" source
+  | Riot_planner.Action.CreateLibrary { outputs; _ } -> (
+      match outputs with
+      | output :: _ -> path_label "archive" output
+      | [] -> "archive"
+    )
+  | Riot_planner.Action.CreateExecutable { outputs; _ } -> (
+      match outputs with
+      | output :: _ -> path_label "link" output
+      | [] -> "link"
+    )
+  | Riot_planner.Action.CreateSharedLibrary { outputs; _ } -> (
+      match outputs with
+      | output :: _ -> path_label "link" output
+      | [] -> "link shared library"
+    )
+  | Riot_planner.Action.CopyFile { source; _ } -> path_label "copy" source
+  | Riot_planner.Action.WriteFile { destination; _ } -> path_label "write" destination
+  | Riot_planner.Action.BuildForeignDependency { name; _ } -> "build " ^ name
+
+let build_dashboard_node_label = fun (action: Riot_planner.Action_node.t) ->
+  match action.value.actions with
+  | first :: _ -> build_dashboard_action_label first
+  | [] -> "build"
+
+let build_dashboard_min_render_interval_ms = 80
+
+let build_dashboard_package_key = fun state ~build_target package ->
+  let profile = Option.unwrap_or ~default:"" state.profile_name in
+  Riot_model.Package_name.to_string package.Riot_model.Package.name
+  ^ "|"
+  ^ profile
+  ^ "|"
+  ^ Riot_model.Target.to_string build_target
+
+let build_dashboard_package_label = fun state ~build_target package ->
+  display_package_name
+    ?profile:state.profile_name
+    ~build_target
+    ~show_target:(
+      match state.target_count with
+      | Some target_count -> target_count > 1
+      | None -> false
+    )
+    package
+
+let build_dashboard_get_package = fun state ~build_target package ->
+  let key = build_dashboard_package_key state ~build_target package in
+  match HashMap.get state.active ~key with
+  | Some row ->
+      row
+  | None ->
+      let row = {
+        key;
+        package;
+        build_target;
+        action_count = 0;
+        completed_actions = 0;
+        running_actions = HashMap.with_capacity ~size:4;
+        current_action_key = None;
+        status = Waiting;
+      }
+      in
+      let _ = HashMap.insert state.active ~key ~value:row in
+      Vector.push state.active_order ~value:key;
+      row
+
+let build_dashboard_find_package = fun state ~build_target package ->
+  let key = build_dashboard_package_key state ~build_target package in
+  HashMap.get state.active ~key
+
+let build_dashboard_remove_package = fun state ~build_target package ->
+  let key = build_dashboard_package_key state ~build_target package in
+  let _ = HashMap.remove state.active ~key in
+  ()
+
+let build_dashboard_count_summary = fun state ->
+  build_count_summary
+    ~built_count:state.built_count
+    ~cached_count:state.cached_count
+    ~skipped_count:state.skipped_count
+    ~failed_count:state.failed_count
+    ()
+
+let build_dashboard_package_progress = fun state ->
+  state.built_count + state.cached_count + state.skipped_count + state.failed_count
+
+let build_dashboard_set_action_count = fun state ~build_target package ~action_count ->
+  let row = build_dashboard_get_package state ~build_target package in
+  let previous_action_count = row.action_count in
+  row.action_count <- action_count;
+  if HashMap.is_empty row.running_actions then
+    row.status <- Preparing;
+  {
+    state with
+    total_action_count = Int.max 0 (state.total_action_count + action_count - previous_action_count);
+  }
+
+let build_dashboard_action_key = fun (action: Riot_planner.Action_node.t) ->
+  Graph.SimpleGraph.Node_id.to_string action.id
+
+let build_dashboard_any_running_action = fun row ->
+  match row.current_action_key with
+  | Some key -> (
+      match HashMap.get row.running_actions ~key with
+      | Some label -> Some label
+      | None -> (
+          match HashMap.to_list row.running_actions with
+          | (key, label) :: _ ->
+              row.current_action_key <- Some key;
+              Some label
+          | [] ->
+              row.current_action_key <- None;
+              None
+        )
+    )
+  | None -> (
+      match HashMap.to_list row.running_actions with
+      | (key, label) :: _ ->
+          row.current_action_key <- Some key;
+          Some label
+      | [] -> None
+    )
+
+let build_dashboard_running_action_label = fun row ->
+  match build_dashboard_any_running_action row with
+  | Some label ->
+      let running_count = HashMap.length row.running_actions in
+      if running_count > 1 then
+        label ^ " (+" ^ Int.to_string (running_count - 1) ^ ")"
+      else
+        label
+  | None -> ""
+
+let build_dashboard_mark_action_started = fun state ~build_target (action:Riot_planner.Action_node.t) ->
+  match build_dashboard_find_package state ~build_target action.value.package with
+  | Some row ->
+      let key = build_dashboard_action_key action in
+      let label = build_dashboard_node_label action in
+      let _ = HashMap.insert row.running_actions ~key ~value:label in
+      row.current_action_key <- Some key;
+      state
+  | None -> state
+
+let build_dashboard_mark_action_completed = fun state ~build_target package action ->
+  match build_dashboard_find_package state ~build_target package with
+  | Some row ->
+      let previous_completed_actions = row.completed_actions in
+      row.completed_actions <-
+        if row.action_count > 0 then
+          Int.min row.action_count (row.completed_actions + 1)
+        else
+          row.completed_actions + 1;
+      let action_key = build_dashboard_action_key action in
+      let _ = HashMap.remove row.running_actions ~key:action_key in
+      (
+        match row.current_action_key with
+        | Some key when String.equal key action_key -> row.current_action_key <- None
+        | Some _
+        | None -> ()
+      );
+      if HashMap.is_empty row.running_actions then
+        row.status <-
+          if row.action_count > 0 && row.completed_actions >= row.action_count then
+            Finalizing
+          else if row.completed_actions = 0 then
+            Queued
+          else
+            Queued;
+      {
+        state with
+        completed_action_count =
+          state.completed_action_count + row.completed_actions - previous_completed_actions;
+      }
+  | None -> state
+
+let build_dashboard_complete_package_actions = fun state ~build_target package ->
+  match build_dashboard_find_package state ~build_target package with
+  | Some row when row.action_count > row.completed_actions ->
+      let remaining_actions = row.action_count - row.completed_actions in
+      row.completed_actions <- row.action_count;
+      row.status <- Finalizing;
+      {
+        state with
+        completed_action_count = state.completed_action_count + remaining_actions;
+      }
+  | Some _
+  | None -> state
+
+let build_dashboard_truncate = fun ~width text ->
+  if String.length text <= width then
+    text
+  else if width <= 1 then
+    String.sub
+      text
+      ~offset:0
+      ~len:(Int.max 0 width)
+  else
+    String.sub text ~offset:0 ~len:(width - 1) ^ "..."
+
+let build_dashboard_update = fun state event ->
+  match event with
+  | Riot_build.Event.Phase (Riot_build.Event.TargetsResolved { target_count }) ->
+      { state with target_count = Some target_count }
+  | Riot_build.Event.Phase (
+    Riot_build.Event.PackagePlanningStarted { package_count; _ }
+    | Riot_build.Event.PackagePlanningFinished { package_count; _ }
+    | Riot_build.Event.PackageExecutionStarted { package_count; _ }
+  ) ->
+      { state with package_count }
+  | Riot_build.Event.Telemetry (
+    Build_telemetry.CompilationStarted { package; build_target; action_count; _ }
+  ) ->
+      build_dashboard_set_action_count state ~build_target package ~action_count
+  | Riot_build.Event.Telemetry (
+    Build_telemetry.SandboxCreated { package; build_target; _ }
+    | Build_telemetry.SandboxInputsCopied { package; build_target; _ }
+    | Build_telemetry.SandboxDependenciesCopied { package; build_target; _ }
+  ) -> (
+      match build_dashboard_find_package state ~build_target package with
+      | Some row -> row.status <- Preparing
+      | None -> ()
+    );
+      state
+  | Riot_build.Event.Telemetry (
+    Build_telemetry.PackageExecutionPrepared { package; build_target; _ }
+  ) -> (
+      match build_dashboard_find_package state ~build_target package with
+      | Some row -> row.status <- Queued
+      | None -> ()
+    );
+      state
+  | Riot_build.Event.Phase (
+    Riot_build.Event.PackageActionGraphPlanned { package; build_target; action_count; _ }
+  ) ->
+      build_dashboard_set_action_count state ~build_target package ~action_count
+  | Riot_build.Event.Telemetry (
+    Build_telemetry.ActionStarted { action; build_target; _ }
+  ) ->
+      build_dashboard_mark_action_started state ~build_target action
+  | Riot_build.Event.Telemetry (
+    Build_telemetry.ActionCompleted { action; build_target; _ }
+  ) ->
+      build_dashboard_mark_action_completed state ~build_target action.value.package action
+  | Riot_build.Event.Telemetry (
+    Build_telemetry.ActionFailed { action; build_target; _ }
+  ) ->
+      build_dashboard_mark_action_completed state ~build_target action.value.package action
+  | Riot_build.Event.Telemetry (
+    Build_telemetry.BuildCompleted { package; build_target; status = `Fresh; _ }
+  ) ->
+      let state = build_dashboard_complete_package_actions state ~build_target package in
+      build_dashboard_remove_package state ~build_target package;
+      { state with built_count = state.built_count + 1 }
+  | Riot_build.Event.Telemetry (
+    Build_telemetry.BuildCompleted { package; build_target; status = `Cached; _ }
+  ) ->
+      build_dashboard_remove_package state ~build_target package;
+      { state with cached_count = state.cached_count + 1 }
+  | Riot_build.Event.Telemetry (
+    Build_telemetry.BuildSkipped { package; build_target; _ }
+  ) ->
+      build_dashboard_remove_package state ~build_target package;
+      { state with skipped_count = state.skipped_count + 1 }
+  | Riot_build.Event.Telemetry (
+    Build_telemetry.BuildFailed { package; build_target; _ }
+  ) ->
+      build_dashboard_remove_package state ~build_target package;
+      { state with failed_count = state.failed_count + 1 }
+  | _ -> state
+
+let build_dashboard_row_view = fun state (row: build_dashboard_package) ->
+  let running_actions = HashMap.length row.running_actions in
+  let status =
+    if not (HashMap.is_empty row.running_actions) then
+      build_dashboard_running_action_label row
+    else
+      match row.status with
+      | Preparing -> "preparing"
+      | Queued -> "queued"
+      | Blocked -> "blocked"
+      | Finalizing -> "finalizing"
+      | Waiting -> "waiting"
+  in
+  {
+    key = row.key;
+    label = build_dashboard_package_label state ~build_target:row.build_target row.package;
+    action_count = row.action_count;
+    completed_actions = row.completed_actions;
+    running_actions;
+    status;
+  }
+
+let build_dashboard_row_is_active = fun (row: build_dashboard_package) ->
+  not (HashMap.is_empty row.running_actions)
+  || match row.status with
+  | Preparing
+  | Finalizing -> true
+  | Queued
+  | Blocked
+  | Waiting -> false
+
+let build_dashboard_render_state = fun state ->
+  let package_done_count = build_dashboard_package_progress state in
+  if package_done_count = 0 && state.total_action_count = 0 && HashMap.length state.active = 0 then
+    Empty
+  else
+  let rows = ref [] in
+  let seen = HashSet.create () in
+  Vector.for_each
+    state.active_order
+    ~fn:(fun key ->
+      if not (HashSet.contains seen ~value:key) then (
+        let _ = HashSet.insert seen ~value:key in
+        match HashMap.get state.active ~key with
+        | Some row when build_dashboard_row_is_active row ->
+            rows := build_dashboard_row_view state row :: !rows
+        | Some _
+        | None -> ()
+      ));
+  Board {
+    completed_action_count = state.completed_action_count;
+    total_action_count = state.total_action_count;
+    summary = build_dashboard_count_summary state;
+    rows = List.reverse !rows;
+  }
+
+let rec build_dashboard_row_views_equal = fun left right ->
+  match (left, right) with
+  | ([], []) -> true
+  | (left :: left_rest, right :: right_rest) ->
+      String.equal left.key right.key
+      && String.equal left.label right.label
+      && left.action_count = right.action_count
+      && left.completed_actions = right.completed_actions
+      && left.running_actions = right.running_actions
+      && String.equal left.status right.status
+      && build_dashboard_row_views_equal left_rest right_rest
+  | ([], _ :: _)
+  | (_ :: _, []) -> false
+
+let build_dashboard_board_views_equal = fun left right ->
+  left.completed_action_count = right.completed_action_count
+  && left.total_action_count = right.total_action_count
+  && String.equal left.summary right.summary
+  && build_dashboard_row_views_equal left.rows right.rows
+
+let build_dashboard_views_equal = fun left right ->
+  match (left, right) with
+  | (Empty, Empty) -> true
+  | (Board left, Board right) -> build_dashboard_board_views_equal left right
+  | (Empty, Board _)
+  | (Board _, Empty) -> false
+
+let build_dashboard_row_line = fun ~is_last row ->
+  let visible_action =
+    if row.action_count > 0 then
+      Int.min row.action_count (row.completed_actions + row.running_actions)
+    else
+      row.completed_actions + row.running_actions
+  in
+  let progress =
+    if row.action_count > 0 then
+      "[" ^ Int.to_string visible_action ^ "/" ^ Int.to_string row.action_count ^ "]"
+    else
+      "[" ^ Int.to_string row.completed_actions ^ "/?]"
+  in
+  let branch =
+    if is_last then
+      "└── "
+    else
+      "├── "
+  in
+  build_dashboard_truncate
+    ~width:120
+    (branch ^ row.label ^ " " ^ progress ^ " " ^ row.status)
+
+let build_dashboard_push_row_lines = fun lines rows ->
+  let rec loop = fun __tmp1 ->
+    match __tmp1 with
+    | [] -> ()
+    | [ row ] -> Vector.push lines ~value:(build_dashboard_row_line ~is_last:true row)
+    | row :: rest ->
+        Vector.push lines ~value:(build_dashboard_row_line ~is_last:false row);
+        loop rest
+  in
+  loop rows
+
+let build_dashboard_view_lines = fun view ->
+  match view with
+  | Empty -> Vector.with_capacity ~size:0
+  | Board board ->
+      let lines = Vector.with_capacity ~size:8 in
+      Vector.push
+        lines
+        ~value:("["
+        ^ Int.to_string board.completed_action_count
+        ^ "/"
+        ^ Int.to_string board.total_action_count
+        ^ "] actions  "
+        ^ board.summary);
+      build_dashboard_push_row_lines lines board.rows;
+      lines
+
+let build_dashboard_throttle_allows_render = fun dashboard ->
+  match dashboard.last_rendered_at with
+  | None -> true
+  | Some rendered_at ->
+      Time.Duration.to_millis (Time.Instant.elapsed rendered_at)
+      >= build_dashboard_min_render_interval_ms
+
+let build_dashboard_draw = fun ?(force = false) dashboard ->
+  let view = build_dashboard_render_state dashboard.state in
+  let lines = build_dashboard_view_lines view in
+  if Vector.is_empty lines then
+    if force then
+      build_dashboard_clear dashboard
+    else
+      ()
+  else
+  let view_matches =
+    match dashboard.last_view with
+    | Some previous -> build_dashboard_views_equal previous view
+    | None -> false
+  in
+  if (not force)
+     && (view_matches || not (build_dashboard_throttle_allows_render dashboard))
+  then
+    ()
+  else (
+  build_dashboard_clear dashboard;
+  Vector.for_each lines ~fn:(fun line -> eprint (line ^ "\n"));
+  dashboard.last_line_count <- Vector.length lines;
+  dashboard.last_view <- Some view;
+  dashboard.last_rendered_at <- Some (Time.Instant.now ())
+  )
+
+let human_renderer_clear = fun __tmp1 ->
+  match __tmp1 with
+  | LoggedBuildEvents -> ()
+  | BuildDashboard dashboard -> build_dashboard_clear dashboard
+
+let write_build_telemetry_event = fun
+  ?render_state ?profile ?human_renderer ~mode event ->
   match mode with
   | Json -> write_build_event_json (Riot_build.Event.Telemetry event)
   | Human -> (
-      match event with
-      | Build_telemetry.CompilationStarted { package; build_target; _ } ->
-          out
-            ("    \027[1;32mBuilding\027[0m "
-            ^ display_build_package_name ?render_state ?profile ~build_target package)
-      | Build_telemetry.BuildCompleted { package; build_target; status = `Fresh; _ } ->
-          out
-            ("       \027[1;32mBuilt\027[0m "
-            ^ display_build_package_name ?render_state ?profile ~build_target package)
-      | Build_telemetry.BuildCompleted { package; build_target; status = `Cached; _ } ->
-          out
-            ("      \027[1;34mCached\027[0m "
-            ^ display_build_package_name ?render_state ?profile ~build_target package)
-      | Build_telemetry.BuildSkipped { package; build_target; reason; _ } ->
-          out
-            ("      \027[1;33mSkipped\027[0m "
-            ^ display_build_package_name ?render_state ?profile ~build_target package
-            ^ ": "
-            ^ reason)
-      | Build_telemetry.BuildFailed {
-          package;
-          build_target;
-          error = PlanningFailed planning_error;
-          _;
-        } ->
-          out
-            ("      \027[1;31mFailed\027[0m "
-            ^ display_build_package_name ?render_state ?profile ~build_target package);
-          planning_error_lines planning_error
-          |> List.for_each ~fn:(fun line -> out ("        " ^ line))
-      | Build_telemetry.BuildFailed { package; build_target; error; _ } ->
-          out
-            ("      \027[1;31mFailed\027[0m "
-            ^ display_build_package_name ?render_state ?profile ~build_target package
-            ^ ": "
-            ^ telemetry_package_error_message error)
-      | Build_telemetry.PackageOcamlcWarnings { package; build_target; messages; _ } ->
-          messages
-          |> List.for_each
-            ~fn:(fun message ->
-              out_prefixed_payload
-                ~prefix:("     \027[1;33mWarning\027[0m "
-                ^ display_build_package_name ?render_state ?profile ~build_target package
-                ^ ": ")
-                message)
-      | Build_telemetry.BuildStarted _
-      | Build_telemetry.WorkspacePlanStarted _
-      | Build_telemetry.WorkspacePlanCompleted _
-      | Build_telemetry.WorkspaceManifestFilterCompleted _
-      | Build_telemetry.WorkspaceGraphCreated _
-      | Build_telemetry.WorkspaceTargetGraphFiltered _
-      | Build_telemetry.WorkspaceTopologicalSortCompleted _
-      | Build_telemetry.PlanningWorkspaceStarted _
-      | Build_telemetry.PlanningWorkspaceCompleted _
-      | Build_telemetry.PackagePlanningResult _
-      | Build_telemetry.PackagePlanningBreakdown _
-      | Build_telemetry.ActionStarted _
-      | Build_telemetry.ActionCommandStarted _
-      | Build_telemetry.ActionCompleted _
-      | Build_telemetry.ActionFailed _
-      | Build_telemetry.CacheHit _
-      | Build_telemetry.CacheMiss _
-      | Build_telemetry.WorkspaceStarted _
-      | Build_telemetry.WorkspaceCompleted _ -> ()
-      | _ -> ()
+      match human_renderer with
+      | Some (BuildDashboard dashboard) -> (
+          match event with
+          | Build_telemetry.BuildFailed {
+              package;
+              build_target;
+              error = PlanningFailed planning_error;
+              _;
+            } ->
+              build_dashboard_clear dashboard;
+              out_status
+                Ui.Error
+                (display_build_package_name ?render_state ?profile ~build_target package);
+              planning_error_lines planning_error
+              |> List.for_each ~fn:(fun line -> out ("  " ^ line))
+          | Build_telemetry.BuildFailed { package; build_target; error; _ } ->
+              build_dashboard_clear dashboard;
+              out_status
+                Ui.Error
+                (display_build_package_name ?render_state ?profile ~build_target package
+                ^ ": "
+                ^ telemetry_package_error_message error)
+          | Build_telemetry.PackageOcamlcWarnings { package; build_target; messages; _ } ->
+              build_dashboard_clear dashboard;
+              messages
+              |> List.for_each
+                ~fn:(fun message ->
+                  out_prefixed_payload
+                    ~prefix:(status_line
+                      Ui.Warning
+                      (display_build_package_name ?render_state ?profile ~build_target package
+                      ^ ": "))
+                    message)
+          | _ -> build_dashboard_draw dashboard
+        )
+      | Some LoggedBuildEvents
+      | None -> (
+          match event with
+          | Build_telemetry.CompilationStarted { package; build_target; _ } ->
+              out_status
+                Ui.Building
+                (display_build_package_name ?render_state ?profile ~build_target package)
+          | Build_telemetry.BuildCompleted { package; build_target; status = `Fresh; _ } ->
+              out_status
+                Ui.Built
+                (display_build_package_name ?render_state ?profile ~build_target package)
+          | Build_telemetry.BuildCompleted { package; build_target; status = `Cached; _ } ->
+              out_status
+                Ui.Cached
+                (display_build_package_name ?render_state ?profile ~build_target package)
+          | Build_telemetry.BuildSkipped { package; build_target; reason; _ } ->
+              out_status
+                Ui.Skipped
+                (display_build_package_name ?render_state ?profile ~build_target package
+                ^ ": "
+                ^ reason)
+          | Build_telemetry.BuildFailed {
+              package;
+              build_target;
+              error = PlanningFailed planning_error;
+              _;
+            } ->
+              out_status
+                Ui.Error
+                (display_build_package_name ?render_state ?profile ~build_target package);
+              planning_error_lines planning_error
+              |> List.for_each ~fn:(fun line -> out ("  " ^ line))
+          | Build_telemetry.BuildFailed { package; build_target; error; _ } ->
+              out_status
+                Ui.Error
+                (display_build_package_name ?render_state ?profile ~build_target package
+                ^ ": "
+                ^ telemetry_package_error_message error)
+          | Build_telemetry.PackageOcamlcWarnings { package; build_target; messages; _ } ->
+              messages
+              |> List.for_each
+                ~fn:(fun message ->
+                  out_prefixed_payload
+                    ~prefix:(status_line
+                      Ui.Warning
+                      (display_build_package_name ?render_state ?profile ~build_target package
+                      ^ ": "))
+                    message)
+          | Build_telemetry.PackageStarted _
+          | Build_telemetry.WorkspacePlanStarted _
+          | Build_telemetry.WorkspacePlanCompleted _
+          | Build_telemetry.WorkspaceManifestFilterCompleted _
+          | Build_telemetry.WorkspaceGraphCreated _
+          | Build_telemetry.WorkspaceTargetGraphFiltered _
+          | Build_telemetry.WorkspaceTopologicalSortCompleted _
+          | Build_telemetry.PlanningWorkspaceStarted _
+          | Build_telemetry.PlanningWorkspaceCompleted _
+          | Build_telemetry.PackagePlanningResult _
+          | Build_telemetry.PackagePlanningBreakdown _
+          | Build_telemetry.SandboxCreated _
+          | Build_telemetry.SandboxInputsCopied _
+          | Build_telemetry.SandboxDependenciesCopied _
+          | Build_telemetry.PackageExecutionPrepared _
+          | Build_telemetry.ActionStarted _
+          | Build_telemetry.ActionCommandStarted _
+          | Build_telemetry.ActionCompleted _
+          | Build_telemetry.ActionFailed _
+          | Build_telemetry.CacheHit _
+          | Build_telemetry.CacheMiss _
+          | Build_telemetry.WorkspaceStarted _
+          | Build_telemetry.WorkspaceCompleted _ -> ()
+          | _ -> ()
+        )
     )
 
-let write_build_phase_event = fun ?render_state ~mode phase ->
+let write_build_phase_event_with_renderer = fun
+  ?render_state ?human_renderer ~mode phase ->
   (
     match (render_state, phase) with
-    | (Some state, Riot_build.Event.TargetsResolved { target_count }) ->
+    | (Some (state: render_state), Riot_build.Event.TargetsResolved { target_count }) ->
         state.target_count <- Some target_count
     | _ -> ()
   );
   match mode with
   | Json -> write_build_event_json (Riot_build.Event.Phase phase)
   | Human -> (
-      match phase with
-      | Riot_build.Event.TargetsResolved { target_count } ->
-          out ("    Resolved " ^ Int.to_string target_count ^ " target(s)")
-      | Riot_build.Event.ToolchainsEnsured { target_count } ->
-          out ("    Ensured toolchains for " ^ Int.to_string target_count ^ " target(s)")
-      | Riot_build.Event.ToolchainsValidated { target_count } ->
-          out ("    Validated toolchains for " ^ Int.to_string target_count ^ " target(s)")
-      | Riot_build.Event.RuntimeStarting -> out "    Starting build runtime"
-      | Riot_build.Event.RuntimeStarted -> out "    Build runtime ready"
-      | Riot_build.Event.BuildLockWaiting _ -> out "    Build lock is taken, waiting..."
-      | Riot_build.Event.PackagePlanningStarted { package_count; _ } ->
-          out ("    Planning " ^ Int.to_string package_count ^ " package(s)")
-      | Riot_build.Event.PackagePlanningFinished {
-          execution_required_count;
-          cached_count;
-          skipped_count;
-          failed_count;
-          error_count;
-          _;
-        } ->
-          let parts =
-            [
-              Some (Int.to_string execution_required_count ^ " to build");
-              Some (Int.to_string cached_count ^ " cached");
-              Some (Int.to_string skipped_count ^ " skipped");
-              Some (Int.to_string failed_count ^ " failed");
-              Some (Int.to_string error_count ^ " errored");
-            ]
-            |> List.filter_map ~fn:(fun value -> value)
-          in
-          out ("    Planned packages (" ^ String.concat ", " parts ^ ")")
-      | Riot_build.Event.PackageExecutionStarted { package_count; _ } ->
-          out ("    Executing " ^ Int.to_string package_count ^ " package(s)")
-      | Riot_build.Event.PackageExecutionFinished { built_count; failed_count; error_count; _ } ->
-          out
-            ("    Package execution finished ("
-            ^ Int.to_string built_count
-            ^ " built, "
-            ^ Int.to_string failed_count
-            ^ " failed, "
-            ^ Int.to_string error_count
-            ^ " errored)")
-      | Riot_build.Event.TargetBuildStarted _
-      | Riot_build.Event.TargetBuildFinished _
-      | Riot_build.Event.CacheGenerationRecordingStarted _
-      | Riot_build.Event.CacheGenerationRecorded _
-      | Riot_build.Event.ReturningResults _ -> ()
+      match human_renderer with
+      | Some (BuildDashboard dashboard) -> (
+          match phase with
+          | Riot_build.Event.BuildLockWaiting _ ->
+              build_dashboard_clear dashboard;
+              out_status Ui.Running "build lock is taken, waiting..."
+          | Riot_build.Event.PackageExecutionFinished { built_count; failed_count; error_count; _ } ->
+              if failed_count > 0 || error_count > 0 then (
+                build_dashboard_clear dashboard;
+                out_status
+                  Ui.Error
+                  ("execution failed: "
+                  ^ build_count_summary
+                    ~built_count
+                    ~cached_count:0
+                    ~skipped_count:0
+                    ~failed_count
+                    ~error_count
+                    ())
+              ) else
+                build_dashboard_draw dashboard
+          | _ -> build_dashboard_draw dashboard
+        )
+      | Some LoggedBuildEvents
+      | None -> (
+          match phase with
+          | Riot_build.Event.TargetsResolved _
+          | Riot_build.Event.ToolchainsEnsured _
+          | Riot_build.Event.ToolchainsValidated _
+          | Riot_build.Event.RuntimeStarting
+          | Riot_build.Event.RuntimeStarted -> ()
+          | Riot_build.Event.BuildLockWaiting _ ->
+              out_status Ui.Running "build lock is taken, waiting..."
+          | Riot_build.Event.PackagePlanningStarted _ -> ()
+          | Riot_build.Event.PackagePlanningFinished _ -> ()
+          | Riot_build.Event.PackageActionGraphPlanned _ -> ()
+          | Riot_build.Event.BuildLanesPreparationStarted _
+          | Riot_build.Event.BuildLanesPreparationFinished _
+          | Riot_build.Event.BuildWorkspacePlanned _
+          | Riot_build.Event.BuildWorkspacePlanBreakdown _
+          | Riot_build.Event.BuildLanePreparationStarted _
+          | Riot_build.Event.BuildLaneLockAcquired _
+          | Riot_build.Event.BuildLaneToolchainInitialized _
+          | Riot_build.Event.BuildLaneWorkspacePlanned _
+          | Riot_build.Event.BuildLaneWorkspacePlanBreakdown _
+          | Riot_build.Event.BuildLaneStoreCreated _
+          | Riot_build.Event.BuildLanePreparationFinished _ -> ()
+          | Riot_build.Event.PackageExecutionStarted { package_count; _ } ->
+              let _ = package_count in
+              ()
+          | Riot_build.Event.PackageExecutionFinished { built_count; failed_count; error_count; _ } ->
+              if failed_count > 0 || error_count > 0 then
+                out_status
+                  Ui.Error
+                  ("execution failed: "
+                  ^ build_count_summary
+                    ~built_count
+                    ~cached_count:0
+                    ~skipped_count:0
+                    ~failed_count
+                    ~error_count
+                    ())
+          | Riot_build.Event.TargetBuildStarted _
+          | Riot_build.Event.TargetBuildFinished _
+          | Riot_build.Event.CacheGenerationRecordingStarted _
+          | Riot_build.Event.CacheGenerationRecorded _
+          | Riot_build.Event.ReturningResults _ -> ()
+        )
     )
 
 let command_error_event_to_json = fun kind details ->
@@ -639,20 +1332,17 @@ let format_pm_event = fun ~seen_registry_updates kind ->
       else
         (
           let _ = HashSet.insert seen_registry_updates ~value:registry in
-          Some ("    \027[1;32mUpdating\027[0m " ^ registry ^ " index")
+          Some (status_line Ui.Running ("updating " ^ registry ^ " index"))
         )
   | Riot_model.Event.PackageResolvedForBuild _ -> None
   | Riot_model.Event.PackageDownloadStarted { package; version; _ } ->
-      Some ("    \027[1;32mFetching\027[0m "
-      ^ Riot_model.Package_name.to_string package
-      ^ " "
-      ^ version)
+      Some (status_line
+        Ui.Running
+        ("fetching " ^ Riot_model.Package_name.to_string package ^ " " ^ version))
   | Riot_model.Event.PackageDownloadQueued { package; version; _ } ->
-      Some ("      \027[1;33mQueued\027[0m "
-      ^ Riot_model.Package_name.to_string package
-      ^ " ("
-      ^ version
-      ^ ")")
+      Some (status_line
+        Ui.Running
+        ("queued " ^ Riot_model.Package_name.to_string package ^ " (" ^ version ^ ")"))
   | Riot_model.Event.DependencyResolutionStarted _
   | Riot_model.Event.DependencyResolutionRefreshingLock _
   | Riot_model.Event.DependencyResolutionFailed _
@@ -680,11 +1370,15 @@ let format_pm_event = fun ~seen_registry_updates kind ->
   | Riot_model.Event.PackageMaterializationFailed _ -> None
   | Riot_model.Event.SourceDependencyMaterializationStarted { source_locator; ref_ } ->
       Some (
-        "  \027[1;34mInstalling\027[0m " ^ (
-          match ref_ with
-          | Some ref_ -> source_locator ^ "#" ^ ref_
-          | None -> source_locator
-        )
+        status_line
+          Ui.Running
+          (
+            "installing " ^ (
+              match ref_ with
+              | Some ref_ -> source_locator ^ "#" ^ ref_
+              | None -> source_locator
+            )
+          )
       )
   | Riot_model.Event.DependencyManifestUpdated {
       path;
@@ -694,25 +1388,25 @@ let format_pm_event = fun ~seen_registry_updates kind ->
     } ->
       let verb =
         match operation with
-        | `Add -> "Added"
-        | `Remove -> "Removed"
+        | `Add -> "added"
+        | `Remove -> "removed"
       in
-      Some ("    \027[1;32m" ^ verb ^ "\027[0m " ^ dependency ^ " (" ^ section ^ ") in " ^ path)
+      Some (status_line Ui.Success (verb ^ " " ^ dependency ^ " (" ^ section ^ ") in " ^ path))
   | Riot_model.Event.PackageVersionLocked { package; version } ->
-      Some ("      \027[1;32mLocked\027[0m "
-      ^ Riot_model.Package_name.to_string package
-      ^ " ("
-      ^ version
-      ^ ")")
-  | Riot_model.Event.PackageVersionsUnchanged _ -> Some "    Dependencies are already up to date"
+      Some (status_line
+        Ui.Success
+        ("locked " ^ Riot_model.Package_name.to_string package ^ " (" ^ version ^ ")"))
+  | Riot_model.Event.PackageVersionsUnchanged _ ->
+      Some (status_line Ui.Success "dependencies are already up to date")
   | Riot_model.Event.PackageVersionUpdated { package; from_version; to_version } ->
-      Some ("    \027[1;32mUpdated\027[0m "
-      ^ Riot_model.Package_name.to_string package
-      ^ " ("
-      ^ from_version
-      ^ " -> "
-      ^ to_version
-      ^ ")")
+      Some (status_line
+        Ui.Success
+        (Riot_model.Package_name.to_string package
+        ^ " updated ("
+        ^ from_version
+        ^ " -> "
+        ^ to_version
+        ^ ")"))
   | kind -> Some (Riot_model.Event.display kind)
 
 let write_pm_event = fun ~mode ~seen_registry_updates event ->
@@ -727,7 +1421,7 @@ let write_pm_event = fun ~mode ~seen_registry_updates event ->
 let write_command_error = fun ~mode kind details human_message ->
   match mode with
   | Json -> write_json_event (command_error_event_to_json kind details)
-  | Human -> out ("\027[1;31mError\027[0m: " ^ human_message)
+  | Human -> out_status Ui.Error human_message
 
 let build_failure_detail_lines = fun (failure: Riot_build.Build_result.failure) ->
   let package_name = Riot_model.Package_name.to_string failure.package_name in
@@ -767,10 +1461,10 @@ let write_build_failed_error = fun ~mode errors ->
           ])
   | Human -> (
       match errors with
-      | [] -> out "\027[1;31mError\027[0m: build failed"
+      | [] -> out_status Ui.Error "build failed"
       | [ failure ] -> write_failure_blocks [ failure ]
       | failures ->
-          out "\027[1;31mError\027[0m: build failed";
+          out_status Ui.Error "build failed";
           write_failure_blocks failures
     )
 
@@ -928,7 +1622,7 @@ let write_building_target_event = fun ~mode ~target ~host ->
   | Json -> write_build_event_json (Riot_build.Event.BuildingTarget { target; host })
   | Human ->
       if not host then
-        out ("🔨 Cross-compiling for " ^ target_name)
+        out_status Ui.Running ("cross-compiling for " ^ target_name)
 
 let scaled_size_string = fun bytes divisor suffix ->
   let whole = Int64.div bytes divisor in
@@ -981,7 +1675,7 @@ let start_cache_gc_progress = fun total_entries ->
       else
         1
     in
-    eprint "    Removing cache entries ";
+    eprint (status_line Ui.Running "removing cache entries ");
     cache_gc_progress := Some { total_entries; step; removed_entries = 0 }
   )
 
@@ -1009,10 +1703,14 @@ let write_cache_gc_event = fun ~mode event ->
   | Human -> (
       match event with
       | Riot_store.Cache_gc.GcStarted { trigger = Riot_store.Cache_gc.Manual } ->
-          out "    Running tracked cache GC (build root kept; use --force to remove it)"
+          out_status
+            Ui.Running
+            "running tracked cache GC (build root kept; use --force to remove it)"
       | Riot_store.Cache_gc.GcStarted { trigger = Riot_store.Cache_gc.Post_build } -> ()
       | Riot_store.Cache_gc.GcCacheScanStarted { trigger = Riot_store.Cache_gc.Manual; build_root } ->
-          out ("    Scanning tracked cache entries under " ^ Path.to_string build_root)
+          out_status
+            Ui.Running
+            ("scanning tracked cache entries under " ^ Path.to_string build_root)
       | Riot_store.Cache_gc.GcCacheScanStarted { trigger = Riot_store.Cache_gc.Post_build; _ } -> ()
       | Riot_store.Cache_gc.GcCacheEntryScanStarted { trigger = Riot_store.Cache_gc.Manual; _ } ->
           ()
@@ -1026,8 +1724,9 @@ let write_cache_gc_event = fun ~mode event ->
           entry_count;
           total_size_bytes;
         } ->
-          out
-            ("    Found "
+          out_status
+            Ui.Success
+            ("found "
             ^ Int.to_string entry_count
             ^ " tracked cache entries ("
             ^ size_to_string total_size_bytes
@@ -1040,8 +1739,9 @@ let write_cache_gc_event = fun ~mode event ->
           deleted_generations;
           reclaimable_bytes;
         } ->
-          out
-            ("    Removing "
+          out_status
+            Ui.Running
+            ("removing "
             ^ Int.to_string deleted_entries
             ^ " cache entries and "
             ^ Int.to_string deleted_generations
@@ -1059,40 +1759,71 @@ let write_cache_gc_event = fun ~mode event ->
           ()
       | Riot_store.Cache_gc.GcSkipped { trigger = Riot_store.Cache_gc.Post_build; _ } -> ()
       | Riot_store.Cache_gc.GcSkipped { summary; _ } ->
-          out
-            ("    Cache GC skipped: tracked cache is already within policy ("
+          out_status
+            Ui.Skipped
+            ("tracked cache is already within policy ("
             ^ size_to_string summary.size_after_bytes
             ^ "). Build root kept; use --force to remove it.")
       | Riot_store.Cache_gc.GcCompleted { summary; _ } ->
           close_cache_gc_progress ();
-          out
-            ("    \027[1;32mCleaned\027[0m tracked cache: "
-            ^ format_cache_gc_cleanup summary
-            ^ ". Build root kept.")
+          out_status
+            Ui.Success
+            ("cleaned tracked cache: " ^ format_cache_gc_cleanup summary ^ ". Build root kept.")
       | Riot_store.Cache_gc.GcFailed { error; _ } ->
           close_cache_gc_progress ();
-          out ("\027[1;31mError\027[0m: cache GC failed: " ^ error)
+          out_status Ui.Error ("cache GC failed: " ^ error)
       | Riot_store.Cache_gc.ForceCleanStarted { build_root } ->
-          out ("    Removing build root " ^ Path.to_string build_root)
+          out_status Ui.Running ("removing build root " ^ Path.to_string build_root)
       | Riot_store.Cache_gc.ForceCleanCompleted { build_root } ->
-          out ("    \027[1;32mRemoved\027[0m build root " ^ Path.to_string build_root)
+          out_status Ui.Success ("removed build root " ^ Path.to_string build_root)
       | Riot_store.Cache_gc.ForceCleanFailed { build_root; error } ->
-          out
-            ("\027[1;31mError\027[0m: failed to remove build root "
-            ^ Path.to_string build_root
-            ^ ": "
-            ^ error)
+          out_status
+            Ui.Error
+            ("failed to remove build root " ^ Path.to_string build_root ^ ": " ^ error)
     )
 
-let write_build_event = fun ?render_state ?profile ~mode ~seen_registry_updates event ->
+let write_build_event_with_renderer = fun
+  ?render_state ?profile ?human_renderer ~mode ~seen_registry_updates event ->
+  Option.for_each
+    human_renderer
+    ~fn:(fun renderer ->
+      match renderer with
+      | BuildDashboard dashboard ->
+          dashboard.state <- build_dashboard_update dashboard.state event
+      | LoggedBuildEvents -> ());
   match event with
-  | Riot_build.Event.Pm event -> write_pm_event ~mode ~seen_registry_updates event
+  | Riot_build.Event.Pm event ->
+      Option.for_each human_renderer ~fn:human_renderer_clear;
+      write_pm_event ~mode ~seen_registry_updates event
   | Riot_build.Event.BuildingTarget { target; host } ->
-      write_building_target_event ~mode ~target ~host
-  | Riot_build.Event.CacheGc event -> write_cache_gc_event ~mode event
+      (
+        match (mode, human_renderer) with
+        | (Human, Some (BuildDashboard _)) -> ()
+        | _ ->
+            Option.for_each human_renderer ~fn:human_renderer_clear;
+            write_building_target_event ~mode ~target ~host
+      )
+  | Riot_build.Event.CacheGc event ->
+      Option.for_each human_renderer ~fn:human_renderer_clear;
+      write_cache_gc_event ~mode event
   | Riot_build.Event.Telemetry event ->
-      write_build_telemetry_event ?render_state ?profile ~mode event
-  | Riot_build.Event.Phase phase -> write_build_phase_event ?render_state ~mode phase
+      write_build_telemetry_event ?render_state ?profile ?human_renderer ~mode event
+  | Riot_build.Event.Phase phase ->
+      write_build_phase_event_with_renderer ?render_state ?human_renderer ~mode phase
+
+let write_build_phase_event = fun ?render_state ~mode phase ->
+  write_build_phase_event_with_renderer
+    ?render_state
+    ~mode
+    phase
+
+let write_build_event = fun ?render_state ?profile ~mode ~seen_registry_updates event ->
+  write_build_event_with_renderer
+    ?render_state
+    ?profile
+    ~mode
+    ~seen_registry_updates
+    event
 
 let write_package_not_found_error = fun ~mode ~package_name ~available_packages ->
   let package_name = Riot_model.Package_name.to_string package_name in
@@ -1109,10 +1840,10 @@ let write_package_not_found_error = fun ~mode ~package_name ~available_packages 
           );
         ])
   else (
-    out ("\027[1;31mError\027[0m: Package '" ^ package_name ^ "' not found");
+    out_status Ui.Error ("package '" ^ package_name ^ "' not found");
     out "";
     out "Available packages:";
-    List.for_each available_packages ~fn:(fun pkg -> out ("  • " ^ pkg))
+    List.for_each available_packages ~fn:(fun pkg -> out (Jollyroger.Layout.bullet ~indent:2 pkg))
   )
 
 let write_packages_not_found_error = fun ~mode ~package_names ~available_packages ->
@@ -1133,10 +1864,10 @@ let write_packages_not_found_error = fun ~mode ~package_names ~available_package
           );
         ])
   else (
-    out ("\027[1;31mError\027[0m: Packages not found: " ^ String.concat ", " package_names);
+    out_status Ui.Error ("packages not found: " ^ String.concat ", " package_names);
     out "";
     out "Available packages:";
-    List.for_each available_packages ~fn:(fun pkg -> out ("  • " ^ pkg))
+    List.for_each available_packages ~fn:(fun pkg -> out (Jollyroger.Layout.bullet ~indent:2 pkg))
   )
 
 let write_build_error = fun ~mode err ->
@@ -1262,7 +1993,7 @@ let write_build_error = fun ~mode err ->
               ]
           )
       else (
-        out "\027[1;31mError\027[0m: planning failed";
+        out_status Ui.Error "planning failed";
         workspace_planning_error_lines planning_error
         |> List.for_each ~fn:(fun line -> out ("  " ^ line))
       )
@@ -1286,16 +2017,6 @@ let write_build_error = fun ~mode err ->
         (Riot_build.error_message err)
   | Riot_build.UnexpectedError { reason } ->
       write_command_error ~mode "UnexpectedError" [ ("reason", Data.Json.String reason); ] reason
-
-let record_output_progress = fun progress output ->
-  Riot_build.Build_result.packages output
-  |> List.for_each
-    ~fn:(fun package_output ->
-      match Riot_build.Build_result.package_status package_output with
-      | Riot_build.Build_result.Built _ -> progress.built_count <- progress.built_count + 1
-      | Riot_build.Build_result.Cached _ -> progress.cached_count <- progress.cached_count + 1
-      | Riot_build.Build_result.Skipped _ -> progress.skipped_count <- progress.skipped_count + 1
-      | Riot_build.Build_result.Failed _ -> progress.failed_count <- progress.failed_count + 1)
 
 let should_build_fix_provider_runner = fun (request: request) ->
   match request.scope with
@@ -1345,9 +2066,15 @@ let run_request = fun (request: request) ->
   }
   in
   let render_state = create_render_state ~profile:request.profile.name () in
+  let human_renderer =
+    match request.output_mode with
+    | Human -> Some (create_human_build_renderer ~profile:request.profile.name ())
+    | Json -> None
+  in
   let attempted_build = ref false in
   let pm_session_id = Riot_model.Session_id.make () in
   let emit_pm_kind kind =
+    Option.for_each human_renderer ~fn:human_renderer_clear;
     write_pm_event
       ~mode:request.output_mode
       ~seen_registry_updates
@@ -1358,7 +2085,13 @@ let run_request = fun (request: request) ->
     | Riot_build.Event.Pm kind -> emit_pm_kind kind.kind
     | _ ->
         attempted_build := true;
-        write_build_event ~render_state ~mode:request.output_mode ~seen_registry_updates event
+        record_build_event_progress progress event;
+        write_build_event_with_renderer
+          ~render_state
+          ?human_renderer
+          ~mode:request.output_mode
+          ~seen_registry_updates
+          event
   in
   let build_request = fun ~workspace ~packages ~targets ~scope ~dev_artifacts ~profile () ->
     Riot_build.build
@@ -1372,10 +2105,7 @@ let run_request = fun (request: request) ->
         ~profile
         ~requested_parallelism:request.requested_parallelism
         ())
-    |> Result.map
-      ~fn:(fun output ->
-        record_output_progress progress output;
-        ())
+    |> Result.map ~fn:(fun _output -> ())
   in
   let build_fix_provider_runner = fun () ->
     let providers = selected_fix_providers request in
@@ -1414,6 +2144,7 @@ let run_request = fun (request: request) ->
           Ok ())
     |> Result.map_err
       ~fn:(fun err ->
+        Option.for_each human_renderer ~fn:human_renderer_clear;
         write_build_error ~mode:request.output_mode err;
         Failure (Riot_build.error_message err))
   in
@@ -1421,36 +2152,48 @@ let run_request = fun (request: request) ->
     match request.output_mode with
     | Json -> ()
     | Human ->
+        Option.for_each human_renderer ~fn:human_renderer_clear;
         let duration = Time.Instant.duration_since ~earlier:start_time (Time.Instant.now ()) in
         let formatted_duration = Time.Duration.to_secs_string ~precision:2 duration in
-        let total_count = progress.built_count + progress.cached_count in
         if progress.failed_count = 0 && progress.skipped_count = 0 then
-          out
-            ("    \027[1;32mFinished\027[0m in "
+          out_status
+            Ui.Success
+            ("finished in "
             ^ formatted_duration
             ^ "s ("
-            ^ Int.to_string total_count
-            ^ " built)")
+            ^ build_count_summary
+              ~built_count:progress.built_count
+              ~cached_count:progress.cached_count
+              ~skipped_count:progress.skipped_count
+              ~failed_count:progress.failed_count
+              ()
+            ^ ")")
         else if progress.failed_count > 0 then
-          out
-            ("    \027[1;31mFinished\027[0m in "
+          out_status
+            Ui.Error
+            ("finished in "
             ^ formatted_duration
             ^ "s ("
-            ^ Int.to_string total_count
-            ^ " built, "
-            ^ Int.to_string progress.failed_count
-            ^ " failed, "
-            ^ Int.to_string progress.skipped_count
-            ^ " skipped)")
+            ^ build_count_summary
+              ~built_count:progress.built_count
+              ~cached_count:progress.cached_count
+              ~skipped_count:progress.skipped_count
+              ~failed_count:progress.failed_count
+              ()
+            ^ ")")
         else
-          out
-            ("    \027[1;33mFinished\027[0m in "
+          out_status
+            Ui.Warning
+            ("finished in "
             ^ formatted_duration
             ^ "s ("
-            ^ Int.to_string total_count
-            ^ " built, "
-            ^ Int.to_string progress.skipped_count
-            ^ " skipped)")
+            ^ build_count_summary
+              ~built_count:progress.built_count
+              ~cached_count:progress.cached_count
+              ~skipped_count:progress.skipped_count
+              ~failed_count:progress.failed_count
+              ()
+            ^ ")")
   );
   if request.show_finished_summary && !attempted_build then
     trace_build_probe ~started_at:start_time "summary-finished";
@@ -1467,7 +2210,7 @@ let run_request = fun (request: request) ->
 let print_workspace_load_errors = fun errors ->
   List.for_each
     errors
-    ~fn:(fun err -> out ("\027[1;31mError\027[0m: " ^ Workspace_manager.load_error_to_string err))
+    ~fn:(fun err -> out_status Ui.Error (Workspace_manager.load_error_to_string err))
 
 type loaded_workspace = {
   workspace: Workspace.t;
