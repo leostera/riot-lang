@@ -12,6 +12,7 @@ type new_cache_entry = {
   profile: string;
   target: Riot_model.Target.t;
   hash: string;
+  size_bytes: int64;
 }
 
 type summary = {
@@ -1087,33 +1088,23 @@ let force_clean = fun ~(workspace:Workspace.t) ->
     ~workspace
     ~on_event:no_event
 
-let new_entry_dir = fun ~(workspace:Workspace.t) (entry: new_cache_entry) ->
-  let cache_dir =
-    Path.(workspace.target_dir_root
-    / Path.v entry.profile
-    / Path.v (Riot_model.Target.to_string entry.target)
-    / Path.v "cache")
-  in
-  Path.(cache_dir
-  / Path.v "trees"
-  / Path.v (String.sub entry.hash ~offset:0 ~len:2)
-  / Path.v entry.hash)
+let new_entry_key = fun (entry: new_cache_entry) ->
+  entry.profile ^ "\000" ^ Riot_model.Target.to_string entry.target ^ "\000" ^ entry.hash
 
-let added_size_for_new_entries = fun ~(workspace:Workspace.t) new_entries ->
+let added_size_for_new_entries = fun new_entries ->
   let seen = HashSet.create () in
   List.fold_left
     new_entries
-    ~init:(Ok 0L)
-    ~fn:(fun acc_result (entry: new_cache_entry) ->
-      let* acc = acc_result in
-      let dir = new_entry_dir ~workspace entry in
-      let key = Path.to_string dir in
+    ~init:0L
+    ~fn:(fun acc (entry: new_cache_entry) ->
+      let key = new_entry_key entry in
       if HashSet.contains seen ~value:key then
-        Ok acc
+        acc
       else
+        (
         let _ = HashSet.insert seen ~value:key in
-        let* size_bytes = path_size_bytes dir in
-        Ok (Int64.add acc size_bytes))
+        Int64.add acc entry.size_bytes
+        ))
 
 let record_successful_build_with_events = fun
   ~(workspace:Workspace.t) ~on_event ~lanes ~new_entries ->
@@ -1133,9 +1124,7 @@ let record_successful_build_with_events = fun
     if tracked_size.rebuilt then
       Ok 0L
     else
-      match added_size_for_new_entries ~workspace new_entries with
-      | Ok added_size_bytes -> Ok added_size_bytes
-      | Error error -> report_error error
+      Ok (added_size_for_new_entries new_entries)
   in
   let tracked_size_bytes = Int64.add tracked_size.tracked_size_bytes added_size_bytes in
   let current_hashes = tracked_size.generation_hashes in

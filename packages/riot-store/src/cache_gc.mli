@@ -10,6 +10,7 @@ type new_cache_entry = {
   profile: string;
   target: Riot_model.Target.t;
   hash: string;
+  size_bytes: int64;
 }
 type summary = {
   ran_gc: bool;

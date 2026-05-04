@@ -19,6 +19,7 @@ type t = {
   input_hash: string;
   output_hash: string;
   timestamp: Std.Time.SystemTime.t;
+  size_bytes: int64;
   files: file_entry list;
   ocamlc_warnings: string list;
   exports: export_entry list;

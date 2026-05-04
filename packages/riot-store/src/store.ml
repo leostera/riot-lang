@@ -423,6 +423,7 @@ let store_artifacts = fun
     Ok Artifact.{
       input_hash;
       output_hash;
+      size_bytes = manifest.Manifest.size_bytes;
       files = manifest.Manifest.files;
       ocamlc_warnings;
       exports;
@@ -456,11 +457,37 @@ let manifest_exports_exist = fun store (manifest: Manifest.t) ->
       | Some path -> path_exists path
       | None -> false)
 
+let store_trace_enabled = fun () ->
+  match Env.get Env.String ~var:"RIOT_STORE_TRACE" with
+  | Some ("1" | "true" | "yes") -> true
+  | _ -> false
+
+let trace_store_get = fun ~hash ~load_duration ~export_check_duration ~hit ->
+  if store_trace_enabled () then
+    eprintln
+      (
+        "riot-store get hash="
+        ^ Crypto.Digest.hex hash
+        ^ " load_us="
+        ^ Int.to_string (Time.Duration.to_micros load_duration)
+        ^ " export_check_us="
+        ^ Int.to_string (Time.Duration.to_micros export_check_duration)
+        ^ " hit="
+        ^ Bool.to_string hit
+      )
+
 (** Simple interface - check if we have cached artifacts for a hash *)
 let get = fun store hash ->
+  let load_started_at = Time.Instant.now () in
   match load_manifest store ~hash with
   | Some manifest ->
+      let load_duration = Time.Instant.duration_since ~earlier:load_started_at (Time.Instant.now ()) in
+      let export_check_started_at = Time.Instant.now () in
       if manifest_exports_exist store manifest then
+        let export_check_duration =
+          Time.Instant.duration_since ~earlier:export_check_started_at (Time.Instant.now ())
+        in
+        let () = trace_store_get ~hash ~load_duration ~export_check_duration ~hit:true in
         let output_hash =
           hash_of_hex manifest.output_hash
           |> Option.expect ~msg:"store manifest output_hash should be valid hex"
@@ -468,13 +495,28 @@ let get = fun store hash ->
         Some Artifact.{
           input_hash = hash;
           output_hash;
+          size_bytes = manifest.size_bytes;
           files = manifest.files;
           ocamlc_warnings = manifest.ocamlc_warnings;
           exports = manifest.exports;
         }
-      else
+      else (
+        let export_check_duration =
+          Time.Instant.duration_since ~earlier:export_check_started_at (Time.Instant.now ())
+        in
+        let () = trace_store_get ~hash ~load_duration ~export_check_duration ~hit:false in
         None
-  | None -> None
+      )
+  | None ->
+      let load_duration = Time.Instant.duration_since ~earlier:load_started_at (Time.Instant.now ()) in
+      let () =
+        trace_store_get
+          ~hash
+          ~load_duration
+          ~export_check_duration:Time.Duration.zero
+          ~hit:false
+      in
+      None
 
 (** Save build outputs to the store *)
 let save = fun

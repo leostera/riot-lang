@@ -5,6 +5,7 @@ open Std.Collections
 type t = {
   input_hash: Std.Crypto.hash;
   output_hash: Std.Crypto.hash;
+  size_bytes: int64;
   files: Manifest.file_entry list;
   ocamlc_warnings: string list;
   exports: Manifest.export_entry list;
@@ -21,6 +22,7 @@ let to_json = fun artifact ->
   Json.Object [
     ("input_hash", Json.String (Crypto.Digest.hex artifact.input_hash));
     ("output_hash", Json.String (Crypto.Digest.hex artifact.output_hash));
+    ("size_bytes", Json.String (Int64.to_string artifact.size_bytes));
     (
       "files",
       Json.Array (List.map

@@ -12,6 +12,8 @@ path = "src/riot_store.ml"
 std = "*"
 contentstore = "*"
 riot-model = "*"
+serde = "*"
+serde-json = "*"
 
 [[bin]]
 name = "store_tests"

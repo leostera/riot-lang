@@ -54,6 +54,9 @@ let make_hash = fun ch -> String.make ~len:64 ~char:ch
 
 let host_target = Riot_model.Riot_dirs.host_target ()
 
+let new_cache_entry = fun ~profile ~target ~hash ~size ->
+  Riot_store.Cache_gc.{ profile; target; hash; size_bytes = Int64.from_int size }
+
 let count_generation_receipts = fun ~(workspace:Riot_model.Workspace.t) ->
   let generations_dir = Path.(workspace.target_dir_root / Path.v "cache" / Path.v "generations") in
   match Fs.read_dir generations_dir with
@@ -538,7 +541,9 @@ let test_artifact_round_trip_preserves_ocamlc_warnings = fun _ctx ->
       match Riot_store.Store.get store hash with
       | None -> Error "expected saved artifact"
       | Some artifact ->
-          if artifact.ocamlc_warnings = warnings && artifact.exports = exports then
+          if artifact.ocamlc_warnings = warnings
+          && artifact.exports = exports
+          && Int64.equal artifact.size_bytes (Int64.from_int (String.length "compiled")) then
             Ok ()
           else
             Error "expected hash manifest payload to round-trip through the store") with
@@ -1005,7 +1010,7 @@ let test_cache_gc_drops_unreferenced_entries_after_generation_overflow = fun _ct
             Riot_store.Cache_gc.{ profile = "debug"; target = host_target; hashes = [ hash_a ] };
           ]
           ~new_entries:[
-            Riot_store.Cache_gc.{ profile = "debug"; target = host_target; hash = hash_a };
+            new_cache_entry ~profile:"debug" ~target:host_target ~hash:hash_a ~size:16;
           ]
         |> Result.expect ~msg:"first generation should record"
       in
@@ -1017,7 +1022,7 @@ let test_cache_gc_drops_unreferenced_entries_after_generation_overflow = fun _ct
               Riot_store.Cache_gc.{ profile = "debug"; target = host_target; hashes = [ hash_b ] };
             ]
             ~new_entries:[
-              Riot_store.Cache_gc.{ profile = "debug"; target = host_target; hash = hash_b };
+              new_cache_entry ~profile:"debug" ~target:host_target ~hash:hash_b ~size:16;
             ]
           |> Result.expect ~msg:"second generation should record"
         in
@@ -1060,7 +1065,7 @@ let test_record_successful_build_tracks_generation_count_in_state = fun _ctx ->
             Riot_store.Cache_gc.{ profile = "debug"; target = host_target; hashes = [ hash_a ] };
           ]
           ~new_entries:[
-            Riot_store.Cache_gc.{ profile = "debug"; target = host_target; hash = hash_a };
+            new_cache_entry ~profile:"debug" ~target:host_target ~hash:hash_a ~size:16;
           ]
         |> Result.expect ~msg:"first generation should record"
       in
@@ -1071,7 +1076,7 @@ let test_record_successful_build_tracks_generation_count_in_state = fun _ctx ->
             Riot_store.Cache_gc.{ profile = "debug"; target = host_target; hashes = [ hash_b ] };
           ]
           ~new_entries:[
-            Riot_store.Cache_gc.{ profile = "debug"; target = host_target; hash = hash_b };
+            new_cache_entry ~profile:"debug" ~target:host_target ~hash:hash_b ~size:16;
           ]
         |> Result.expect ~msg:"second generation should record"
       in
@@ -1102,7 +1107,7 @@ let test_record_successful_build_dedupes_identical_warm_generation = fun _ctx ->
             Riot_store.Cache_gc.{ profile = "debug"; target = host_target; hashes = [ hash_a ] };
           ]
           ~new_entries:[
-            Riot_store.Cache_gc.{ profile = "debug"; target = host_target; hash = hash_a };
+            new_cache_entry ~profile:"debug" ~target:host_target ~hash:hash_a ~size:16;
           ]
         |> Result.expect ~msg:"first generation should record"
       in
@@ -1158,7 +1163,7 @@ let test_record_successful_build_keeps_new_warm_generation_when_closure_changes 
             Riot_store.Cache_gc.{ profile = "debug"; target = host_target; hashes = [ hash_a ] };
           ]
           ~new_entries:[
-            Riot_store.Cache_gc.{ profile = "debug"; target = host_target; hash = hash_a };
+            new_cache_entry ~profile:"debug" ~target:host_target ~hash:hash_a ~size:16;
           ]
         |> Result.expect ~msg:"first generation should record"
       in
@@ -1213,7 +1218,7 @@ let test_record_successful_build_reorders_existing_cached_generation_to_front = 
             Riot_store.Cache_gc.{ profile = "debug"; target = host_target; hashes = [ hash_a ] };
           ]
           ~new_entries:[
-            Riot_store.Cache_gc.{ profile = "debug"; target = host_target; hash = hash_a };
+            new_cache_entry ~profile:"debug" ~target:host_target ~hash:hash_a ~size:16;
           ]
         |> Result.expect ~msg:"generation A should record"
       in
@@ -1332,6 +1337,7 @@ let test_cache_gc_preserves_state_recency_when_rebuilding_size = fun _ctx ->
                         profile = "debug";
                         target = host_target;
                         hash = old_hash;
+                        size_bytes = 16L;
                       };
                     ]
                   |> Result.expect ~msg:"old generation should record"
@@ -1351,6 +1357,7 @@ let test_cache_gc_preserves_state_recency_when_rebuilding_size = fun _ctx ->
                         profile = "debug";
                         target = host_target;
                         hash = new_hash;
+                        size_bytes = 16L;
                       };
                     ]
                   |> Result.expect ~msg:"new generation should record"
@@ -1411,7 +1418,7 @@ let test_cache_gc_shrinks_retained_generations_to_meet_max_size = fun _ctx ->
             Riot_store.Cache_gc.{ profile = "debug"; target = host_target; hashes = [ hash_a ] };
           ]
           ~new_entries:[
-            Riot_store.Cache_gc.{ profile = "debug"; target = host_target; hash = hash_a };
+            new_cache_entry ~profile:"debug" ~target:host_target ~hash:hash_a ~size:64;
           ]
         |> Result.expect ~msg:"generation A should record"
       in
@@ -1425,7 +1432,7 @@ let test_cache_gc_shrinks_retained_generations_to_meet_max_size = fun _ctx ->
             Riot_store.Cache_gc.{ profile = "debug"; target = host_target; hashes = [ hash_b ] };
           ]
           ~new_entries:[
-            Riot_store.Cache_gc.{ profile = "debug"; target = host_target; hash = hash_b };
+            new_cache_entry ~profile:"debug" ~target:host_target ~hash:hash_b ~size:64;
           ]
         |> Result.expect ~msg:"generation B should record"
       in
@@ -1440,7 +1447,7 @@ let test_cache_gc_shrinks_retained_generations_to_meet_max_size = fun _ctx ->
               Riot_store.Cache_gc.{ profile = "debug"; target = host_target; hashes = [ hash_c ] };
             ]
             ~new_entries:[
-              Riot_store.Cache_gc.{ profile = "debug"; target = host_target; hash = hash_c };
+              new_cache_entry ~profile:"debug" ~target:host_target ~hash:hash_c ~size:64;
             ]
           |> Result.expect ~msg:"generation C should record"
         in
@@ -1493,7 +1500,7 @@ let test_cache_gc_rebuilds_stale_zero_state_for_sharded_entries = fun _ctx ->
             Riot_store.Cache_gc.{ profile = "debug"; target = host_target; hashes = [ hash_a ] };
           ]
           ~new_entries:[
-            Riot_store.Cache_gc.{ profile = "debug"; target = host_target; hash = hash_a };
+            new_cache_entry ~profile:"debug" ~target:host_target ~hash:hash_a ~size:16;
           ]
         |> Result.expect ~msg:"first generation should record"
       in
@@ -1504,7 +1511,7 @@ let test_cache_gc_rebuilds_stale_zero_state_for_sharded_entries = fun _ctx ->
             Riot_store.Cache_gc.{ profile = "debug"; target = host_target; hashes = [ hash_b ] };
           ]
           ~new_entries:[
-            Riot_store.Cache_gc.{ profile = "debug"; target = host_target; hash = hash_b };
+            new_cache_entry ~profile:"debug" ~target:host_target ~hash:hash_b ~size:16;
           ]
         |> Result.expect ~msg:"second generation should record"
       in
