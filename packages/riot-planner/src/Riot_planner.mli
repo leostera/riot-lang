@@ -78,6 +78,10 @@ module Package_layout_validator = Package_layout_validator
 
 module Package_graph = Package_graph
 
+module Build_unit = Build_unit
+
+module Build_unit_graph = Build_unit_graph
+
 module Workspace_planner = Workspace_planner
 
 module Module_planner = Module_planner
