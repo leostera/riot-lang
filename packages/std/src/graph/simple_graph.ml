@@ -26,12 +26,12 @@ end = struct
 
   let to_int = fun id -> id
 
-  let to_string = fun id -> Int.to_string id
+  let to_string = Int.to_string
 end
 
 type 'value node = {
   id: Node_id.t;
-  mutable deps: Node_id.t list;
+  deps: Node_id.t IndexSet.t;
   mutable value: 'value;
 }
 
@@ -43,14 +43,24 @@ let make = fun () -> { nodes = HashMap.with_capacity ~size:100 }
 
 let add_node = fun graph value ->
   let id = Node_id.next () in
-  let node = { id; deps = []; value } in
+  let node = { id; deps = IndexSet.with_capacity ~size:4; value } in
   let _ = HashMap.insert graph.nodes ~key:id ~value:node in
   node
+
+let id = fun node -> node.id
+
+let value = fun node -> node.value
+
+let set_value = fun node value -> node.value <- value
+
+let deps = fun node -> IndexSet.to_list node.deps
 
 let get_node = fun t node_id -> HashMap.get t.nodes ~key:node_id
 
 (** Add a dependency edge between two nodes *)
-let add_edge = fun node ~depends_on -> node.deps <- depends_on.id :: node.deps
+let add_edge = fun node ~depends_on ->
+  let _ = IndexSet.insert node.deps ~value:depends_on.id in
+  ()
 
 (** Topological sort using Kahn's algorithm *)
 let topo_sort = fun graph ->
@@ -75,10 +85,10 @@ let topo_sort = fun graph ->
     graph.nodes
     ~fn:(fun my_id node ->
       (* For each dependency I have, I have an incoming edge from it *)
-      let my_in_degree = List.length node.deps in
+      let my_in_degree = IndexSet.length node.deps in
       let _ = HashMap.insert in_degree ~key:my_id ~value:my_in_degree in
       (* Also track reverse dependencies *)
-      List.for_each
+      IndexSet.for_each
         node.deps
         ~fn:(fun dep_id ->
           let current_rev_deps =
@@ -180,7 +190,7 @@ let topo_sort = fun graph ->
                   |> Option.unwrap
                 in
                 let result =
-                  List.fold_left
+                  IndexSet.fold_left
                     node.deps
                     ~init:None
                     ~fn:(fun acc dep_id ->
@@ -218,7 +228,7 @@ let reachable_from = fun graph start_nodes ->
         HashMap.get graph.nodes ~key:node_id
         |> Option.unwrap
       in
-      List.for_each node.deps ~fn:visit
+      IndexSet.for_each node.deps ~fn:visit
     )
   in
   List.for_each start_nodes ~fn:(fun node -> visit node.id);

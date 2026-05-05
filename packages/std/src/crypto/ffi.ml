@@ -20,8 +20,7 @@ external sha256_update: sha256_state -> string -> unit = "std_crypto_sha256_upda
 
 external sha256_update_bytes: sha256_state -> bytes -> unit = "std_crypto_sha256_update"
 
-external sha256_update_iovec: sha256_state -> IO.IoVec.t -> unit =
-  "std_crypto_sha256_update_iovec"
+external sha256_update_iovec: sha256_state -> IO.IoVec.t -> unit = "std_crypto_sha256_update_iovec"
 
 external sha256_finish_bytes: sha256_state -> bytes = "std_crypto_sha256_finish"
 

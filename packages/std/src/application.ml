@@ -54,7 +54,7 @@ let start_applications = fun apps ->
               |> Iterator.to_list
             )
         | node :: rest ->
-            let app = node.Graph.SimpleGraph.value in
+            let app = Graph.SimpleGraph.value node in
             (
               match app.start () with
               | Ok pid ->

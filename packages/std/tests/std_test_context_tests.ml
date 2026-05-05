@@ -74,9 +74,8 @@ let test_ctx_derives_workspace_root =
           if Path.is_file manifest then
             Ok ()
           else
-            Error
-              ("expected workspace root to contain riot.toml, got "
-              ^ Path.to_string workspace_root)
+            Error ("expected workspace root to contain riot.toml, got "
+            ^ Path.to_string workspace_root)
       | None -> Error "expected ctx.workspace_root to be present")
 
 let tests = [

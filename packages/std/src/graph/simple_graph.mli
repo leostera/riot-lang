@@ -63,11 +63,7 @@ module Node_id: sig
 end
 
 (** Graph node with value and dependencies. *)
-type 'value node = {
-  id: Node_id.t;
-  mutable deps: Node_id.t list;
-  mutable value: 'value;
-}
+type 'value node
 (** Graph type. *)
 type 'value t
 
@@ -76,6 +72,18 @@ val make: unit -> 'a t
 
 (** Add a node with the given value. *)
 val add_node: 'a t -> 'a -> 'a node
+
+(** Retrieve a node's unique ID. *)
+val id: 'a node -> Node_id.t
+
+(** Retrieve a node's value. *)
+val value: 'a node -> 'a
+
+(** Replace a node's value. *)
+val set_value: 'a node -> 'a -> unit
+
+(** Retrieve dependency node IDs recorded on this node. *)
+val deps: 'a node -> Node_id.t list
 
 (** Retrieve a node by ID. Returns None if not found. *)
 val get_node: 'a t -> Node_id.t -> 'a node option

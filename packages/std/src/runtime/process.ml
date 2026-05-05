@@ -250,10 +250,7 @@ let next_saved_message = fun t -> with_lock t (fun () -> pop_save_queue t)
 
 let next_mailbox_message = fun t -> Mailbox.next t.mailbox
 
-let add_to_save_queue = fun t msg ->
-  with_lock
-    t
-    (fun () -> Queue.push t.save_queue ~value:msg)
+let add_to_save_queue = fun t msg -> with_lock t (fun () -> Queue.push t.save_queue ~value:msg)
 
 let send_message = fun t msg ->
   if is_alive t then

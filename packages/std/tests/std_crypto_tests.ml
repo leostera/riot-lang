@@ -236,9 +236,7 @@ let tests =
       test_crypto_hash_bytes_matches_hash_string_for_same_content;
     case "Sha256 incremental hashing matches one-shot" test_sha256_incremental_matches_one_shot;
     case "Sha256 iovec writes match one-shot" test_sha256_iovec_write_matches_one_shot;
-    case
-      "Sha256 finish keeps state open for writes"
-      test_sha256_finish_keeps_state_open_for_writes;
+    case "Sha256 finish keeps state open for writes" test_sha256_finish_keeps_state_open_for_writes;
     case "Sha1 incremental hashing matches one-shot" test_sha1_incremental_matches_one_shot;
     case "Sha512 incremental hashing matches one-shot" test_sha512_incremental_matches_one_shot;
     case "Md5 incremental hashing matches one-shot" test_md5_incremental_matches_one_shot;

@@ -50,11 +50,6 @@ val to_list: 'value t -> 'value list
    |> Iterator.collect
    (* [6; 8; 10] *)
    ```
-
-   ## Complexity
-
-   - Time: O(1) to create iterator
-   - Space: O(1)
 *)
 val iter: 'value t -> 'value Iter.Iterator.t
 
@@ -72,11 +67,6 @@ val iter: 'value t -> 'value Iter.Iterator.t
    |> MutIterator.collect
    (* [6; 8; 10] *)
    ```
-
-   ## Complexity
-
-   - Time: O(1) to create iterator
-   - Space: O(1)
 *)
 val mut_iter: 'value t -> 'value Iter.MutIterator.t
 

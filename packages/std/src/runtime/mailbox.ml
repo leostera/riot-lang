@@ -13,12 +13,11 @@ type t = {
   size: int Runtime_atomic.t;
 }
 
-let create = fun () ->
-  {
-    inbox = Runtime_atomic.make_contended None;
-    outbox = None;
-    size = Runtime_atomic.make_contended 0;
-  }
+let create = fun () -> {
+  inbox = Runtime_atomic.make_contended None;
+  outbox = None;
+  size = Runtime_atomic.make_contended 0;
+}
 
 let queue = fun t msg ->
   let node = { msg; next = Runtime_atomic.make_contended None } in
