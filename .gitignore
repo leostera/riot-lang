@@ -1,6 +1,7 @@
 .nvimlog
 .worktrees
 dist
+node_modules
 artifacts
 .wrangler
 *.pone
