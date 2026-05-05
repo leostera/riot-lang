@@ -10,13 +10,33 @@ let package_name = fun value ->
   Package_name.from_string value
   |> Result.expect ~msg:("expected valid package name: " ^ value)
 
-let test_toolchain =
-  Riot_toolchain.init ~config:Riot_model.Toolchain_config.default
-  |> Result.expect ~msg:"Failed to initialize test toolchain"
+let unit_key = fun package ->
+  ({
+    package = package.Riot_model.Package.name;
+    artifact = Riot_planner.Build_unit.Library;
+    target = Riot_model.Target.host ();
+    profile = Riot_model.Profile.debug;
+  }:Riot_planner.Build_unit.key)
 
-let make_test_build_ctx = fun () ->
-  let session_id = Riot_model.Session_id.make () in
-  Riot_model.Build_ctx.make ~session_id ~profile:Riot_model.Profile.debug ()
+let build_workspace_package = fun ~workspace package ->
+  let request =
+    Riot_build.Request.make
+      ~workspace
+      ~packages:[ package.Riot_model.Package.name ]
+      ~targets:Riot_model.Target.Host
+      ~scope:Riot_build.Request.Runtime
+      ~profile:Riot_model.Profile.debug
+      ()
+  in
+  match Riot_build.build request with
+  | Error err -> Error (Riot_build.error_message err)
+  | Ok result -> (
+      match Riot_build.Build_result.find_package result package.name with
+      | Some package_result -> Ok package_result
+      | None ->
+          Error ("expected package result for "
+          ^ Riot_model.Package_name.to_string package.name)
+    )
 
 let workspace_dependency = fun name ->
   Riot_model.Package.{
@@ -109,33 +129,30 @@ let test_build_result_status_variants = fun _ctx ->
   in
   let result_cached =
     Package_builder.{
-      package_key = Riot_planner.Package_graph.package_key
-        ~package_name:(Package_name.to_string package.name)
-        Riot_planner.Package_graph.Runtime;
+      unit_key = unit_key package;
       package;
       status = Cached artifact;
+      depset = [];
       ocamlc_warnings = [];
       duration = Time.Duration.from_millis 5;
     }
   in
   let result_built =
     Package_builder.{
-      package_key = Riot_planner.Package_graph.package_key
-        ~package_name:(Package_name.to_string package.name)
-        Riot_planner.Package_graph.Runtime;
+      unit_key = unit_key package;
       package;
       status = Built artifact;
+      depset = [];
       ocamlc_warnings = [];
       duration = Time.Duration.from_millis 100;
     }
   in
   let result_failed =
     Package_builder.{
-      package_key = Riot_planner.Package_graph.package_key
-        ~package_name:(Package_name.to_string package.name)
-        Riot_planner.Package_graph.Runtime;
+      unit_key = unit_key package;
       package;
       status = Failed (ExecutionFailed { message = "compilation error" });
+      depset = [];
       ocamlc_warnings = [];
       duration = Time.Duration.from_millis 50;
     }
@@ -189,39 +206,23 @@ let test_build_writes_hash_manifest_with_exports = fun _ctx ->
           ()
       in
       let store = Riot_store.Store.create ~workspace in
-      let package_graph =
-        Riot_planner.Package_graph.create ~scope:Riot_planner.Package_graph.Runtime workspace
-        |> Result.unwrap
-      in
-      let build_ctx =
-        let session_id = Riot_model.Session_id.make () in
-        Riot_model.Build_ctx.make ~session_id ~profile:Riot_model.Profile.debug ()
-      in
-      let result =
-        Package_builder.build
-          ~workspace
-          ~toolchain:test_toolchain
-          ~store
-          ~package_graph
-          ~package_key:(Riot_planner.Package_graph.package_key
-            ~package_name:(Package_name.to_string package.name)
-            Riot_planner.Package_graph.Runtime)
-          ~package
-          ~build_ctx
-      in
-      match result.status with
-      | Package_builder.Failed err ->
-          Error ("build failed: " ^ Package_builder.package_error_to_string err)
-      | Package_builder.Skipped { reason } -> Error ("build skipped: " ^ reason)
-      | Package_builder.Built artifact
-      | Package_builder.Cached artifact ->
-          match Riot_store.Store.load_manifest store ~hash:artifact.input_hash with
-          | None -> Error "expected package hash manifest to be saved"
-          | Some manifest ->
-              if List.length manifest.Riot_store.Manifest.exports > 0 then
-                Ok ()
-              else
-                Error "expected hash manifest to include exported outputs") with
+      match build_workspace_package ~workspace package with
+      | Error err -> Error ("build failed: " ^ err)
+      | Ok package_result -> (
+          match Riot_build.Build_result.package_status package_result with
+          | Failed reason -> Error ("build failed: " ^ reason)
+          | Skipped reason -> Error ("build skipped: " ^ reason)
+          | Built artifact
+          | Cached artifact -> (
+              match Riot_store.Store.load_manifest store ~hash:artifact.input_hash with
+              | None -> Error "expected package hash manifest to be saved"
+              | Some manifest ->
+                  if List.length manifest.Riot_store.Manifest.exports > 0 then
+                    Ok ()
+                  else
+                    Error "expected hash manifest to include exported outputs"
+            )
+        )) with
   | Ok r -> r
   | Error _ -> Error "Tempdir creation failed"
 
@@ -271,63 +272,30 @@ let test_dependency_source_change_rebuilds_dependent_package = fun _ctx ->
           ~target_dir:"target"
           ()
       in
-      let store = Riot_store.Store.create ~workspace in
-      let build_ctx = make_test_build_ctx () in
-      let build_package ~package_graph package =
-        Package_builder.build
-          ~workspace
-          ~toolchain:test_toolchain
-          ~store
-          ~package_graph
-          ~package_key:(Riot_planner.Package_graph.package_key
-            ~package_name:(Package_name.to_string package.Riot_model.Package.name)
-            Riot_planner.Package_graph.Runtime)
-          ~package
-          ~build_ctx
-      in
-      let first_graph =
-        Riot_planner.Package_graph.create ~scope:Riot_planner.Package_graph.Runtime workspace
-        |> Result.unwrap
-      in
-      let first_dep = build_package ~package_graph:first_graph dep in
-      let first_app = build_package ~package_graph:first_graph app in
+      let first_app = build_workspace_package ~workspace app in
       let dep_source = Path.(dep.path / Path.v "src" / Path.v "dep.ml") in
       let _ =
         Fs.write "let value = 2\n" dep_source
         |> Result.expect ~msg:"rewrite dep source failed"
       in
-      let second_graph =
-        Riot_planner.Package_graph.create ~scope:Riot_planner.Package_graph.Runtime workspace
-        |> Result.unwrap
+      let second_app = build_workspace_package ~workspace app in
+      let artifact = fun result ->
+        match result with
+        | Error _ as err -> err
+        | Ok package_result -> (
+            match Riot_build.Build_result.package_artifact package_result with
+            | Some artifact -> Ok artifact
+            | None -> Error "expected app build result to carry an artifact"
+          )
       in
-      let second_dep = build_package ~package_graph:second_graph dep in
-      let second_app = build_package ~package_graph:second_graph app in
-      match (first_dep.status, first_app.status, second_dep.status, second_app.status) with
-      | (
-          Package_builder.Built _,
-          Package_builder.Built first_app_artifact,
-          Package_builder.Built _,
-          Package_builder.Built second_app_artifact
-        ) ->
+      match (artifact first_app, artifact second_app) with
+      | (Ok first_app_artifact, Ok second_app_artifact) ->
           if Crypto.Hash.equal first_app_artifact.input_hash second_app_artifact.input_hash then
             Error "expected dependent package artifact hash to change after dependency source edit"
           else
             Ok ()
-      | (
-          Package_builder.Built _,
-          Package_builder.Built _,
-          Package_builder.Built _,
-          Package_builder.Cached _
-        ) -> Error "expected dependent package rebuild after dependency source edit"
-      | (_, _, _, Package_builder.Failed err) ->
-          Error ("dependent rebuild failed: " ^ Package_builder.package_error_to_string err)
-      | (_, Package_builder.Failed err, _, _) ->
-          Error ("initial dependent build failed: " ^ Package_builder.package_error_to_string err)
-      | (Package_builder.Failed err, _, _, _) ->
-          Error ("initial dependency build failed: " ^ Package_builder.package_error_to_string err)
-      | (_, _, Package_builder.Failed err, _) ->
-          Error ("dependency rebuild failed: " ^ Package_builder.package_error_to_string err)
-      | _ -> Error "unexpected build status sequence") with
+      | (Error err, _) -> Error ("initial dependent build failed: " ^ err)
+      | (_, Error err) -> Error ("dependent rebuild failed: " ^ err)) with
   | Ok r -> r
   | Error _ -> Error "Tempdir creation failed"
 

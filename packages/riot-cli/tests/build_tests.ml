@@ -448,11 +448,17 @@ let test_planning_error_lines_describe_invalid_executable_main = fun _ctx ->
 
 let test_workspace_planning_error_lines_describe_missing_dependencies = fun _ctx ->
   let lines =
-    Riot_cli.Build.workspace_planning_error_lines
-      (Riot_planner.Workspace_planner.MissingDependencies {
+    Riot_cli.Build.build_unit_planning_error_lines
+      (Riot_build.Internal.Build_unit_plan.MissingPackages {
         missing = [
-          { package = "demo"; dependency = "std" };
-          { package = "demo"; dependency = "tty" };
+          Riot_planner.Build_unit_graph.Dependency {
+            package = package_name "demo";
+            dependency = package_name "std";
+          };
+          Dependency {
+            package = package_name "demo";
+            dependency = package_name "tty";
+          };
         ];
       })
   in
@@ -490,7 +496,13 @@ let test_planning_error_lines_indent_multiline_reasons = fun _ctx ->
 let test_build_failure_detail_lines_render_planning_errors = fun _ctx ->
   let failure: Riot_build.Build_result.failure = {
     package_name = package_name "demo";
-    package_key = Riot_model.Package.key_of_string "demo:runtime";
+    unit_key =
+      ({
+        package = package_name "demo";
+        artifact = Riot_planner.Build_unit.Library;
+        target = Riot_model.Target.host ();
+        profile = Riot_model.Profile.debug;
+      }:Riot_planner.Build_unit.key);
     reason = Riot_build.Build_result.PackagePlanningFailed (Riot_planner.Planning_error.DependencyAnalysisFailed {
       reason = "failed to parse src/demo.ml\nhint: add end";
     });

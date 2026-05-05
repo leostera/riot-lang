@@ -16,7 +16,10 @@ type key = {
   profile: Profile.t;
 }
 
+type id = Crypto.hash
+
 type t = {
+  id: id;
   key: key;
   package: Package.t;
 }
@@ -79,3 +82,53 @@ let compare_key = fun (left: key) (right: key) ->
 let equal_key = fun (left: key) (right: key) -> compare_key left right = Order.EQ
 
 let package_key = fun (key: key) -> Package.key_of_string (key_to_string key)
+
+let id_of_key = fun key -> Crypto.hash_string (key_to_string key)
+
+let id = fun t -> t.id
+
+let key = fun t -> t.key
+
+let package = fun t -> t.package
+
+let artifact = fun t -> t.key.artifact
+
+let target = fun t -> t.key.target
+
+let profile = fun t -> t.key.profile
+
+let package_name = fun t -> t.key.package
+
+let make = fun ~key ~package -> {
+  id = id_of_key key;
+  key;
+  package;
+}
+
+let from_artifact = fun ~package ~artifact ~target ~profile ->
+  make
+    ~key:{
+      package = package.Package.name;
+      artifact;
+      target;
+      profile;
+    }
+    ~package
+
+let library = fun ~package ~target ~profile ->
+  from_artifact ~package ~artifact:Library ~target ~profile
+
+let executable = fun ~package ~name ~target ~profile ->
+  from_artifact ~package ~artifact:(RuntimeBinary { name }) ~target ~profile
+
+let test = fun ~package ~name ~target ~profile ->
+  from_artifact ~package ~artifact:(TestBinary { name }) ~target ~profile
+
+let example = fun ~package ~name ~target ~profile ->
+  from_artifact ~package ~artifact:(ExampleBinary { name }) ~target ~profile
+
+let bench = fun ~package ~name ~target ~profile ->
+  from_artifact ~package ~artifact:(BenchBinary { name }) ~target ~profile
+
+let synthetic = fun ~package ~name ~target ~profile ->
+  from_artifact ~package ~artifact:(SyntheticTool { name }) ~target ~profile

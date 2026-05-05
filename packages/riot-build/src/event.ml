@@ -28,13 +28,10 @@ and runtime_phase =
       completed_at: Time.Instant.t;
       duration: Time.Duration.t;
     }
-  | BuildWorkspacePlanned of {
-      package_count: int;
+  | BuildUnitPlanCreated of {
+      unit_count: int;
       planned_at: Time.Instant.t;
       duration: Time.Duration.t;
-    }
-  | BuildWorkspacePlanBreakdown of {
-      breakdown: Riot_planner.Workspace_planner.planning_breakdown;
     }
   | BuildLanePreparationStarted of {
       target: Riot_model.Target.t;
@@ -49,16 +46,6 @@ and runtime_phase =
       target: Riot_model.Target.t;
       initialized_at: Time.Instant.t;
       duration: Time.Duration.t;
-    }
-  | BuildLaneWorkspacePlanned of {
-      target: Riot_model.Target.t;
-      package_count: int;
-      planned_at: Time.Instant.t;
-      duration: Time.Duration.t;
-    }
-  | BuildLaneWorkspacePlanBreakdown of {
-      target: Riot_model.Target.t;
-      breakdown: Riot_planner.Workspace_planner.planning_breakdown;
     }
   | BuildLaneStoreCreated of {
       target: Riot_model.Target.t;
@@ -120,13 +107,10 @@ let phase_name_of_runtime_phase = fun __tmp1 ->
   | BuildLockWaiting _ -> "build_lock_waiting"
   | BuildLanesPreparationStarted _ -> "build_lanes_preparation_started"
   | BuildLanesPreparationFinished _ -> "build_lanes_preparation_finished"
-  | BuildWorkspacePlanned _ -> "build_workspace_planned"
-  | BuildWorkspacePlanBreakdown _ -> "build_workspace_plan_breakdown"
+  | BuildUnitPlanCreated _ -> "build_unit_plan_created"
   | BuildLanePreparationStarted _ -> "build_lane_preparation_started"
   | BuildLaneLockAcquired _ -> "build_lane_lock_acquired"
   | BuildLaneToolchainInitialized _ -> "build_lane_toolchain_initialized"
-  | BuildLaneWorkspacePlanned _ -> "build_lane_workspace_planned"
-  | BuildLaneWorkspacePlanBreakdown _ -> "build_lane_workspace_plan_breakdown"
   | BuildLaneStoreCreated _ -> "build_lane_store_created"
   | BuildLanePreparationFinished _ -> "build_lane_preparation_finished"
   | PackagePlanningStarted _ -> "package_planning_started"
@@ -212,47 +196,14 @@ let runtime_phase_fields = fun __tmp1 ->
         ("lane_count", Data.Json.Int lane_count);
         ("duration_ms", Data.Json.Int (Time.Duration.to_millis duration));
       ]
-  | BuildWorkspacePlanned {
-      package_count;
+  | BuildUnitPlanCreated {
+      unit_count;
       planned_at = _;
       duration;
     } ->
       [
-        ("package_count", Data.Json.Int package_count);
+        ("unit_count", Data.Json.Int unit_count);
         ("duration_ms", Data.Json.Int (Time.Duration.to_millis duration));
-      ]
-  | BuildWorkspacePlanBreakdown { breakdown } ->
-      let graph = breakdown.Riot_planner.Workspace_planner.package_graph_create_breakdown in
-      [
-        ("manifest_filter_duration_ms", Data.Json.Int (
-          Time.Duration.to_millis breakdown.Riot_planner.Workspace_planner.manifest_filter_duration
-        ));
-        ("filtered_workspace_package_count", Data.Json.Int breakdown.filtered_workspace_package_count);
-        ("package_graph_duration_ms", Data.Json.Int (
-          Time.Duration.to_millis breakdown.package_graph_duration
-        ));
-        ("package_graph_node_count", Data.Json.Int breakdown.package_graph_node_count);
-        ("build_node_realization_count", Data.Json.Int graph.build_node_realization_count);
-        ("build_node_realization_duration_ms", Data.Json.Int (
-          Time.Duration.to_millis graph.build_node_realization_duration
-        ));
-        ("runtime_node_realization_count", Data.Json.Int graph.runtime_node_realization_count);
-        ("runtime_node_realization_duration_ms", Data.Json.Int (
-          Time.Duration.to_millis graph.runtime_node_realization_duration
-        ));
-        ("dev_node_realization_count", Data.Json.Int graph.dev_node_realization_count);
-        ("dev_node_realization_duration_ms", Data.Json.Int (
-          Time.Duration.to_millis graph.dev_node_realization_duration
-        ));
-        ("edge_wiring_duration_ms", Data.Json.Int (Time.Duration.to_millis graph.edge_wiring_duration));
-        ("target_graph_filter_duration_ms", Data.Json.Int (
-          Time.Duration.to_millis breakdown.target_graph_filter_duration
-        ));
-        ("target_graph_node_count", Data.Json.Int breakdown.target_graph_node_count);
-        ("topological_sort_duration_ms", Data.Json.Int (
-          Time.Duration.to_millis breakdown.topological_sort_duration
-        ));
-        ("sorted_package_count", Data.Json.Int breakdown.sorted_package_count);
       ]
   | BuildLanePreparationStarted { target; started_at = _ } ->
       [ ("target", Data.Json.String (Riot_model.Target.to_string target)); ]
@@ -273,51 +224,6 @@ let runtime_phase_fields = fun __tmp1 ->
       [
         ("target", Data.Json.String (Riot_model.Target.to_string target));
         ("duration_ms", Data.Json.Int (Time.Duration.to_millis duration));
-      ]
-  | BuildLaneWorkspacePlanned {
-      target;
-      package_count;
-      planned_at = _;
-      duration;
-    } ->
-      [
-        ("target", Data.Json.String (Riot_model.Target.to_string target));
-        ("package_count", Data.Json.Int package_count);
-        ("duration_ms", Data.Json.Int (Time.Duration.to_millis duration));
-      ]
-  | BuildLaneWorkspacePlanBreakdown { target; breakdown } ->
-      let graph = breakdown.Riot_planner.Workspace_planner.package_graph_create_breakdown in
-      [
-        ("target", Data.Json.String (Riot_model.Target.to_string target));
-        ("manifest_filter_duration_ms", Data.Json.Int (
-          Time.Duration.to_millis breakdown.Riot_planner.Workspace_planner.manifest_filter_duration
-        ));
-        ("filtered_workspace_package_count", Data.Json.Int breakdown.filtered_workspace_package_count);
-        ("package_graph_duration_ms", Data.Json.Int (
-          Time.Duration.to_millis breakdown.package_graph_duration
-        ));
-        ("package_graph_node_count", Data.Json.Int breakdown.package_graph_node_count);
-        ("build_node_realization_count", Data.Json.Int graph.build_node_realization_count);
-        ("build_node_realization_duration_ms", Data.Json.Int (
-          Time.Duration.to_millis graph.build_node_realization_duration
-        ));
-        ("runtime_node_realization_count", Data.Json.Int graph.runtime_node_realization_count);
-        ("runtime_node_realization_duration_ms", Data.Json.Int (
-          Time.Duration.to_millis graph.runtime_node_realization_duration
-        ));
-        ("dev_node_realization_count", Data.Json.Int graph.dev_node_realization_count);
-        ("dev_node_realization_duration_ms", Data.Json.Int (
-          Time.Duration.to_millis graph.dev_node_realization_duration
-        ));
-        ("edge_wiring_duration_ms", Data.Json.Int (Time.Duration.to_millis graph.edge_wiring_duration));
-        ("target_graph_filter_duration_ms", Data.Json.Int (
-          Time.Duration.to_millis breakdown.target_graph_filter_duration
-        ));
-        ("target_graph_node_count", Data.Json.Int breakdown.target_graph_node_count);
-        ("topological_sort_duration_ms", Data.Json.Int (
-          Time.Duration.to_millis breakdown.topological_sort_duration
-        ));
-        ("sorted_package_count", Data.Json.Int breakdown.sorted_package_count);
       ]
   | BuildLaneStoreCreated {
       target;
@@ -387,14 +293,12 @@ let timestamp = fun __tmp1 ->
   | Phase (BuildLanesPreparationFinished { completed_at; _ })
   | Phase (BuildLanePreparationFinished { completed_at; _ }) ->
       Some ("completed_at_us", completed_at)
-  | Phase (BuildWorkspacePlanned { planned_at; _ }) ->
+  | Phase (BuildUnitPlanCreated { planned_at; _ }) ->
       Some ("planned_at_us", planned_at)
   | Phase (BuildLaneLockAcquired { acquired_at; _ }) ->
       Some ("acquired_at_us", acquired_at)
   | Phase (BuildLaneToolchainInitialized { initialized_at; _ }) ->
       Some ("initialized_at_us", initialized_at)
-  | Phase (BuildLaneWorkspacePlanned { planned_at; _ }) ->
-      Some ("planned_at_us", planned_at)
   | Phase (PackageActionGraphPlanned { planned_at; _ }) ->
       Some ("planned_at_us", planned_at)
   | Phase (BuildLaneStoreCreated { created_at; _ }) ->

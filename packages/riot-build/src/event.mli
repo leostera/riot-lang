@@ -34,13 +34,10 @@ and runtime_phase =
       completed_at: Time.Instant.t;
       duration: Time.Duration.t;
     }
-  | BuildWorkspacePlanned of {
-      package_count: int;
+  | BuildUnitPlanCreated of {
+      unit_count: int;
       planned_at: Time.Instant.t;
       duration: Time.Duration.t;
-    }
-  | BuildWorkspacePlanBreakdown of {
-      breakdown: Riot_planner.Workspace_planner.planning_breakdown;
     }
   | BuildLanePreparationStarted of {
       target: Riot_model.Target.t;
@@ -55,16 +52,6 @@ and runtime_phase =
       target: Riot_model.Target.t;
       initialized_at: Time.Instant.t;
       duration: Time.Duration.t;
-    }
-  | BuildLaneWorkspacePlanned of {
-      target: Riot_model.Target.t;
-      package_count: int;
-      planned_at: Time.Instant.t;
-      duration: Time.Duration.t;
-    }
-  | BuildLaneWorkspacePlanBreakdown of {
-      target: Riot_model.Target.t;
-      breakdown: Riot_planner.Workspace_planner.planning_breakdown;
     }
   | BuildLaneStoreCreated of {
       target: Riot_model.Target.t;

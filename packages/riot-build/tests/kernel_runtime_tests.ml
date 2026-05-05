@@ -57,67 +57,40 @@ let load_repo_workspace = fun () ->
         ^ String.concat "; " (List.map errors ~fn:Riot_model.Workspace_manager.load_error_to_string))
 
 let find_package_by_name = fun (workspace: Riot_model.Workspace.t) name ->
-  Riot_model.Workspace.realize_packages ~intent:Riot_model.Package.Dev workspace
+  Riot_model.Workspace.realize_packages ~intent:Riot_model.Package.Runtime workspace
   |> List.find
     ~fn:(fun (pkg: Riot_model.Package.t) -> Package_name.equal pkg.name (package_name name))
-
-let plan_graph_package = fun ~workspace ~store ~package_graph ~package_key ~build_ctx ->
-  match Riot_planner.Package_graph.get_node_by_key package_graph package_key with
-  | None -> Error ("package graph node not found: " ^ Riot_model.Package.key_to_string package_key)
-  | Some node ->
-      let package = Riot_planner.Package_graph.get_package node.value in
-      Riot_planner.Package_planner.plan_package
-        ~workspace
-        ~toolchain:test_toolchain
-        ~store
-        ~package_graph
-        ~package_key
-        ~package
-        ~build_ctx
-      |> Result.map_err ~fn:Riot_planner.Planning_error.to_string
 
 let plan_kernel_runtime_graphs = fun ~workspace ~store ~build_ctx ->
   match find_package_by_name workspace "kernel" with
   | None -> Error "kernel package not found in workspace"
   | Some package ->
-      let package_graph =
-        Riot_planner.Package_graph.create ~scope:Riot_planner.Package_graph.Runtime workspace
-        |> Result.expect ~msg:"package graph should build"
+      let key =
+        ({
+          package = package.name;
+          artifact = Riot_planner.Build_unit.Library;
+          target = Riot_model.Target.host ();
+          profile = Riot_model.Profile.debug;
+        }:Riot_planner.Build_unit.key)
       in
-      let build_key =
-        Riot_planner.Package_graph.package_key
-          ~package_name:(Package_name.to_string package.name)
-          Riot_planner.Package_graph.Build
+      let unit =
+        Riot_planner.Build_unit.from_artifact
+          ~package
+          ~artifact:key.artifact
+          ~target:key.target
+          ~profile:key.profile
       in
-      let runtime_key =
-        Riot_planner.Package_graph.package_key
-          ~package_name:(Package_name.to_string package.name)
-          Riot_planner.Package_graph.Runtime
-      in
-      match plan_graph_package ~workspace ~store ~package_graph ~package_key:build_key ~build_ctx with
-      | Error err -> Error ("kernel build-scope plan failed: " ^ err)
-      | Ok (Riot_planner.Package_planner.Planned { module_graph; action_graph; hash; _ }) ->
-          let _ =
-            Riot_planner.Package_graph.mark_planned
-              package_graph
-              build_key
-              ~module_graph
-              ~action_graph
-              ~hash
-          in
-          (
-            match plan_graph_package
-              ~workspace
-              ~store
-              ~package_graph
-              ~package_key:runtime_key
-              ~build_ctx with
-            | Error err -> Error ("kernel runtime plan failed: " ^ err)
-            | Ok (Riot_planner.Package_planner.Planned { action_graph; depset; _ }) ->
-                Ok (package, action_graph, depset)
-            | Ok _ -> Error "expected kernel runtime plan to return Planned"
-          )
-      | Ok _ -> Error "expected kernel build-scope plan to return Planned"
+      match Riot_planner.Package_planner.plan_build_unit
+        ~workspace
+        ~toolchain:test_toolchain
+        ~store
+        ~unit
+        ~depset:[]
+        ~build_ctx with
+      | Error err -> Error (Riot_planner.Planning_error.to_string err)
+      | Ok (Riot_planner.Package_planner.Planned { action_graph; depset; _ }) ->
+          Ok (package, action_graph, depset)
+      | Ok (Cached _) -> Error "expected kernel runtime plan to return Planned"
 
 let action_label = fun (node: Riot_planner.Action_node.t) ->
   let actions =

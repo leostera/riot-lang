@@ -452,6 +452,27 @@ let dev_artifact_selected_for_binary = fun (dev_artifacts: dev_artifacts) (bin: 
   else
     false
 
+let source_path_key = fun path -> Path.normalize (Path.to_string path)
+
+let binary_paths_under = fun ~prefix (pkg: t) ->
+  pkg.binaries
+  |> List.filter
+    ~fn:(fun (bin: binary) -> String.starts_with ~prefix (source_path_key bin.path))
+  |> List.map ~fn:(fun (bin: binary) -> source_path_key bin.path)
+  |> HashSet.from_list
+
+let source_is_other_binary = fun ~selected_key binary_paths source ->
+  let source_key = source_path_key source in
+  not (String.equal selected_key source_key)
+  && HashSet.contains binary_paths ~value:source_key
+
+let dev_sources_for_binary = fun ~prefix ~selected sources (pkg: t) ->
+  let binary_paths = binary_paths_under ~prefix pkg in
+  let selected_key = source_path_key selected in
+  List.filter
+    sources
+    ~fn:(fun source -> not (source_is_other_binary ~selected_key binary_paths source))
+
 let scope_of_binary_name = fun (pkg: t) ~binary_name ->
   List.find pkg.binaries ~fn:(fun (bin: binary) -> String.equal bin.name binary_name)
   |> Option.map ~fn:binary_scope
@@ -542,12 +563,28 @@ let for_scope = fun ?(dev_artifacts = all_dev_artifacts) scope (pkg: t) ->
 
 let sources_for_binary = fun (bin: binary) (pkg: t) ->
   let path = Path.to_string bin.path in
+  let dev_sources =
+    if Option.is_some pkg.library then
+      empty_sources
+    else
+      { empty_sources with src = pkg.sources.src; native = pkg.sources.native }
+  in
   if String.starts_with ~prefix:"tests/" path then
-    { empty_sources with tests = pkg.sources.tests }
+    {
+      dev_sources with
+      tests = dev_sources_for_binary ~prefix:"tests/" ~selected:bin.path pkg.sources.tests pkg;
+    }
   else if String.starts_with ~prefix:"examples/" path then
-    { empty_sources with examples = pkg.sources.examples }
+    {
+      dev_sources with
+      examples =
+        dev_sources_for_binary ~prefix:"examples/" ~selected:bin.path pkg.sources.examples pkg;
+    }
   else if String.starts_with ~prefix:"bench/" path then
-    { empty_sources with bench = pkg.sources.bench }
+    {
+      dev_sources with
+      bench = dev_sources_for_binary ~prefix:"bench/" ~selected:bin.path pkg.sources.bench pkg;
+    }
   else
     (
       if Option.is_some pkg.library then

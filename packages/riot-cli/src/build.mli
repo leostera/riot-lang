@@ -67,8 +67,10 @@ val display_package_name:
 (** Render a structured planner error into human-readable detail lines. *)
 val planning_error_lines: Riot_planner.Planning_error.t -> string list
 
-(** Render a structured workspace planning error into human-readable detail lines. *)
-val workspace_planning_error_lines: Riot_planner.Workspace_planner.plan_error -> string list
+(** Render a build-unit graph planning error into human-readable detail lines. *)
+val build_unit_planning_error_lines:
+  Riot_build.Internal.Build_unit_plan.error ->
+  string list
 
 (** Render one package failure from the final build error summary. *)
 val build_failure_detail_lines: Riot_build.Build_result.failure -> string list

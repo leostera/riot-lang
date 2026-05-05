@@ -1789,6 +1789,131 @@ let test_module_graph_wires_direct_dependency_root_edge = fun _ctx ->
   | Ok x -> x
   | Error _ -> Error "tempdir creation failed"
 
+let test_module_graph_resolves_opened_direct_dependency_package_exports = fun _ctx ->
+  match Fs.with_tempdir
+    ~prefix:"module_graph_opened_direct_dependency_package_exports"
+    (fun tmpdir ->
+      let app_root = Path.(tmpdir / Path.v "app") in
+      let app_src_dir = Path.(app_root / Path.v "src") in
+      let std_root = Path.(tmpdir / Path.v "std") in
+      let std_src_dir = Path.(std_root / Path.v "src") in
+      let create_dir path =
+        Fs.create_dir_all path
+        |> Result.expect ~msg:("expected dir creation to succeed: " ^ Path.to_string path)
+      in
+      let write path contents =
+        Fs.write contents path
+        |> Result.expect ~msg:("expected file write to succeed: " ^ Path.to_string path)
+      in
+      let _ = create_dir app_src_dir in
+      let _ = create_dir std_src_dir in
+      let _ = write Path.(app_src_dir / Path.v "app.ml") "open Std\nlet _ = Env.args\n" in
+      let _ = write Path.(std_src_dir / Path.v "std.mli") "module Env: sig val args: string list end\n" in
+      let _ = write Path.(std_src_dir / Path.v "std.ml") "module Env = Env\n" in
+      let _ = write Path.(std_src_dir / Path.v "env.mli") "val args: string list\n" in
+      let _ = write Path.(std_src_dir / Path.v "env.ml") "let args = []\n" in
+      let std_package =
+        Riot_model.Package.make
+          ~name:(
+            Package_name.from_string "std"
+            |> Result.expect ~msg:"expected valid package name"
+          )
+          ~path:std_root
+          ~relative_path:(Path.v "std")
+          ~library:{ path = Path.v "src/std.ml" }
+          ~sources:{
+            src = [
+              Path.v "src/std.mli";
+              Path.v "src/std.ml";
+              Path.v "src/env.mli";
+              Path.v "src/env.ml";
+            ];
+            native = [];
+            tests = [];
+            examples = [];
+            bench = [];
+          }
+          ()
+      in
+      let app_package =
+        Riot_model.Package.make
+          ~name:(
+            Package_name.from_string "app"
+            |> Result.expect ~msg:"expected valid package name"
+          )
+          ~path:app_root
+          ~relative_path:(Path.v "app")
+          ~library:{ path = Path.v "src/app.ml" }
+          ~sources:{
+            src = [ Path.v "src/app.ml" ];
+            native = [];
+            tests = [];
+            examples = [];
+            bench = [];
+          }
+          ()
+      in
+      let workspace =
+        Riot_model.Workspace.make_realized
+          ~root:tmpdir
+          ~packages:[ app_package; std_package ]
+          ~target_dir:"target"
+          ()
+      in
+      let toolchain =
+        Riot_toolchain.init ~config:Riot_model.Toolchain_config.default
+        |> Result.expect ~msg:"expected toolchain init to succeed"
+      in
+      let graph_builder =
+        make_src_graph_builder ~package_root:app_root ~package:app_package ~toolchain ~workspace
+      in
+      Riot_planner.Module_graph.add_direct_dependency_package graph_builder std_package;
+      match Riot_planner.Module_graph.wire_dependencies graph_builder with
+      | Error err -> Error (Riot_planner.Planning_error.to_string err)
+      | Ok () -> (
+          match Riot_planner.Package_layout_validator.validate
+            ~direct_dependency_modules:[ "Std" ]
+            ~package:app_package
+            ~module_graph:(Riot_planner.Module_graph.graph graph_builder)
+            ~analyzed_modules:(Riot_planner.Module_graph.analyzed_modules graph_builder) with
+          | Error err ->
+              Error ("expected opened direct dependency exports to resolve, got: "
+              ^ Riot_planner.Planning_error.to_string err)
+          | Ok () ->
+              let analyzed_modules = Riot_planner.Module_graph.analyzed_modules graph_builder in
+              let app_analysis =
+                List.find
+                  analyzed_modules
+                  ~fn:(fun (_node_id, module_) ->
+                    Path.equal
+                      module_.Riot_planner.Module_graph.display_path
+                      Path.(app_root / Path.v "src/app.ml"))
+              in
+              (
+                match app_analysis with
+                | None -> Error "expected analyzed app.ml module"
+                | Some (_node_id, analyzed) ->
+                    let requested_modules =
+                      match analyzed.Riot_planner.Module_graph.deps with
+                      | Ok deps -> Syn.Deps.modules deps
+                      | Error _ -> []
+                    in
+                    if
+                      requested_modules = [ "Std" ]
+                      && analyzed.Riot_planner.Module_graph.unresolved_deps = []
+                    then
+                      Ok ()
+                    else
+                      Error ("expected App to request only Std and resolve Env through the opened root; modules=["
+                      ^ String.concat ", " requested_modules
+                      ^ "], unresolved=["
+                      ^ String.concat ", " analyzed.Riot_planner.Module_graph.unresolved_deps
+                      ^ "]")
+              )
+        )) with
+  | Ok x -> x
+  | Error _ -> Error "tempdir creation failed"
+
 let test_module_graph_resolves_direct_dependency_nested_public_export = fun _ctx ->
   match Fs.with_tempdir
     ~prefix:"module_graph_direct_dependency_nested_public_export"
@@ -2279,6 +2404,9 @@ let tests =
     case
       "module graph wires direct dependency root edge"
       test_module_graph_wires_direct_dependency_root_edge;
+    case
+      "module graph resolves opened direct dependency package exports"
+      test_module_graph_resolves_opened_direct_dependency_package_exports;
     case
       "module graph resolves direct dependency nested public export"
       test_module_graph_resolves_direct_dependency_nested_public_export;

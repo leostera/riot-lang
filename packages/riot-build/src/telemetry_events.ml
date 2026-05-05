@@ -40,60 +40,65 @@ type workspace_graph_breakdown = {
   edge_wiring_duration: Time.Duration.t;
 }
 
+type subject =
+  | All
+  | Package of Package_name.t
+  | Packages of Package_name.t list
+
 type warning_source = [ | `Fresh | `Cached]
 
 type Telemetry.event +=
   | PackageStarted of {
       session_id: Session_id.t;
       package: Package.t;
-      target: Workspace_planner.target;
+      target: subject;
       started_at: Time.Instant.t;
     }
   | WorkspacePlanStarted of {
       session_id: Session_id.t;
-      target: Workspace_planner.target;
+      target: subject;
       workspace_package_count: int;
     }
   | WorkspacePlanCompleted of {
       session_id: Session_id.t;
-      target: Workspace_planner.target;
+      target: subject;
       workspace_package_count: int;
       planned_package_count: int;
       duration: Time.Duration.t;
     }
   | WorkspaceManifestFilterCompleted of {
       session_id: Session_id.t;
-      target: Workspace_planner.target;
+      target: subject;
       filtered_workspace_package_count: int;
       duration: Time.Duration.t;
     }
   | WorkspaceGraphCreated of {
       session_id: Session_id.t;
-      target: Workspace_planner.target;
+      target: subject;
       node_count: int;
       breakdown: workspace_graph_breakdown;
       duration: Time.Duration.t;
     }
   | WorkspaceTargetGraphFiltered of {
       session_id: Session_id.t;
-      target: Workspace_planner.target;
+      target: subject;
       node_count: int;
       duration: Time.Duration.t;
     }
   | WorkspaceTopologicalSortCompleted of {
       session_id: Session_id.t;
-      target: Workspace_planner.target;
+      target: subject;
       sorted_package_count: int;
       duration: Time.Duration.t;
     }
   | PlanningWorkspaceStarted of {
       session_id: Session_id.t;
-      target: Workspace_planner.target;
+      target: subject;
       package_count: int;
     }
   | PlanningWorkspaceCompleted of {
       session_id: Session_id.t;
-      target: Workspace_planner.target;
+      target: subject;
       duration: Time.Duration.t;
       planned_count: int;
       missing_count: int;
@@ -102,7 +107,7 @@ type Telemetry.event +=
   | PackagePlanningResult of {
       session_id: Session_id.t;
       package: Package.t;
-      target: Workspace_planner.target;
+      target: subject;
       status: package_planning_status;
       duration: Time.Duration.t;
       reason: string option;
@@ -110,13 +115,13 @@ type Telemetry.event +=
   | PackagePlanningBreakdown of {
       session_id: Session_id.t;
       package: Package.t;
-      target: Workspace_planner.target;
+      target: subject;
       breakdown: package_planning_breakdown;
     }
   | CompilationStarted of {
       session_id: Session_id.t;
       package: Package.t;
-      target: Workspace_planner.target;
+      target: subject;
       build_target: Target.t;
       action_count: int;
       started_at: Time.Instant.t;
@@ -124,7 +129,7 @@ type Telemetry.event +=
   | SandboxCreated of {
       session_id: Session_id.t;
       package: Package.t;
-      target: Workspace_planner.target;
+      target: subject;
       build_target: Target.t;
       path: Path.t;
       created_at: Time.Instant.t;
@@ -133,7 +138,7 @@ type Telemetry.event +=
   | SandboxInputsCopied of {
       session_id: Session_id.t;
       package: Package.t;
-      target: Workspace_planner.target;
+      target: subject;
       build_target: Target.t;
       input_count: int;
       copied_at: Time.Instant.t;
@@ -142,7 +147,7 @@ type Telemetry.event +=
   | SandboxDependenciesCopied of {
       session_id: Session_id.t;
       package: Package.t;
-      target: Workspace_planner.target;
+      target: subject;
       build_target: Target.t;
       dependency_count: int;
       object_count: int;
@@ -152,7 +157,7 @@ type Telemetry.event +=
   | PackageExecutionPrepared of {
       session_id: Session_id.t;
       package: Package.t;
-      target: Workspace_planner.target;
+      target: subject;
       build_target: Target.t;
       input_count: int;
       dependency_count: int;
@@ -163,7 +168,7 @@ type Telemetry.event +=
   | PackageOcamlcWarnings of {
       session_id: Session_id.t;
       package: Package.t;
-      target: Workspace_planner.target;
+      target: subject;
       build_target: Target.t;
       source: warning_source;
       messages: string list;
@@ -171,7 +176,7 @@ type Telemetry.event +=
   | BuildCompleted of {
       session_id: Session_id.t;
       package: Package.t;
-      target: Workspace_planner.target;
+      target: subject;
       build_target: Target.t;
       status: [`Fresh | `Cached];
       duration: Time.Duration.t;
@@ -179,14 +184,14 @@ type Telemetry.event +=
   | BuildFailed of {
       session_id: Session_id.t;
       package: Package.t;
-      target: Workspace_planner.target;
+      target: subject;
       build_target: Target.t;
       error: package_error;
     }
   | BuildSkipped of {
       session_id: Session_id.t;
       package: Package.t;
-      target: Workspace_planner.target;
+      target: subject;
       build_target: Target.t;
       reason: string;
     }
@@ -237,12 +242,12 @@ type Telemetry.event +=
     }
   | WorkspaceStarted of {
       session_id: Session_id.t;
-      target: Workspace_planner.target;
+      target: subject;
       package_count: int;
     }
   | WorkspaceCompleted of {
       session_id: Session_id.t;
-      target: Workspace_planner.target;
+      target: subject;
       total_duration: Time.Duration.t;
       cached_count: int;
       built_count: int;
@@ -252,15 +257,15 @@ type Telemetry.event +=
 let target_to_json = fun target ->
   Data.Json.String (
     match target with
-    | Workspace_planner.All -> "all"
-    | Workspace_planner.Package pkg -> Package_name.to_string pkg
-    | Workspace_planner.Packages pkgs ->
+    | All -> "all"
+    | Package pkg -> Package_name.to_string pkg
+    | Packages pkgs ->
         "packages:" ^ String.concat "," (List.map pkgs ~fn:Package_name.to_string)
   )
 
 let target_of_json = fun __tmp1 ->
   match __tmp1 with
-  | Data.Json.String "all" -> Ok Workspace_planner.All
+  | Data.Json.String "all" -> Ok All
   | Data.Json.String target_str when String.starts_with ~prefix:"packages:" target_str ->
       let prefix_len = String.length "packages:" in
       let packages_str =
@@ -285,10 +290,10 @@ let target_of_json = fun __tmp1 ->
           in
           loop (String.split ~by:"," packages_str)
       in
-      Result.map packages ~fn:(fun packages -> Workspace_planner.Packages packages)
+      Result.map packages ~fn:(fun packages -> Packages packages)
   | Data.Json.String pkg ->
       Package_name.from_string pkg
-      |> Result.map ~fn:(fun pkg -> Workspace_planner.Package pkg)
+      |> Result.map ~fn:(fun pkg -> Package pkg)
       |> Result.map_err ~fn:(fun error -> Data.Json.string (Package_name.error_message error))
   | _ -> Error (Data.Json.String "Invalid target")
 

@@ -89,52 +89,52 @@ let context_and_resolved = fun request ->
   (context, resolved)
 
 let library_key = fun ?(target = macos_target) package ->
-  Build_unit.{
+  ({
     package = package_name package;
-    artifact = Library;
+    artifact = Build_unit.Library;
     target;
     profile = Riot_model.Profile.debug;
-  }
+  }:Build_unit.key)
 
 let runtime_binary_key = fun ?(target = macos_target) package name ->
-  Build_unit.{
+  ({
     package = package_name package;
-    artifact = RuntimeBinary { name };
+    artifact = Build_unit.RuntimeBinary { name };
     target;
     profile = Riot_model.Profile.debug;
-  }
+  }:Build_unit.key)
 
 let test_binary_key = fun ?(target = macos_target) package name ->
-  Build_unit.{
+  ({
     package = package_name package;
-    artifact = TestBinary { name };
+    artifact = Build_unit.TestBinary { name };
     target;
     profile = Riot_model.Profile.debug;
-  }
+  }:Build_unit.key)
 
 let example_binary_key = fun ?(target = macos_target) package name ->
-  Build_unit.{
+  ({
     package = package_name package;
-    artifact = ExampleBinary { name };
+    artifact = Build_unit.ExampleBinary { name };
     target;
     profile = Riot_model.Profile.debug;
-  }
+  }:Build_unit.key)
 
 let bench_binary_key = fun ?(target = macos_target) package name ->
-  Build_unit.{
+  ({
     package = package_name package;
-    artifact = BenchBinary { name };
+    artifact = Build_unit.BenchBinary { name };
     target;
     profile = Riot_model.Profile.debug;
-  }
+  }:Build_unit.key)
 
 let synthetic_key = fun ?(target = Riot_model.Target.host ()) package name ->
-  Build_unit.{
+  ({
     package = package_name package;
-    artifact = SyntheticTool { name };
+    artifact = Build_unit.SyntheticTool { name };
     target;
     profile = Riot_model.Profile.debug;
-  }
+  }:Build_unit.key)
 
 let assert_keys_equal = fun ~expected ~actual ->
   let normalize keys =
@@ -311,7 +311,7 @@ let build_unit_plan_stores_topologically_sorted_units = fun _ctx ->
       let plan = build_plan context resolved in
       let keys =
         Build_unit_plan.units plan
-        |> List.map ~fn:(fun unit -> unit.Build_unit.key)
+        |> List.map ~fn:Build_unit.key
       in
       let position key =
         List.enumerate keys

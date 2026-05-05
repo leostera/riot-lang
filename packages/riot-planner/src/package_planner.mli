@@ -5,11 +5,11 @@ open Riot_model
 (**
    Plan a package:
 
-   1. Check if all package dependencies are planned in the package_graph 2. If
-   not → return MissingDependencies 3. Compute package input hash 4. Try the
-   warm cached-artifact + export-manifest fast path 5. Otherwise try to load a
-   cached plan bundle by that hash 6. On miss, build module/action graphs and
-   persist the bundle 7. Return Cached or Planned
+   1. Compute the build-unit input hash from the package, build context, and
+   dependency artifact outputs. 2. Try the warm cached-artifact +
+   export-manifest fast path. 3. Otherwise try to load a cached plan bundle by
+   that hash. 4. On miss, build module/action graphs and persist the bundle. 5.
+   Return Cached or Planned.
 
    The hash includes:
    - Package metadata (name, dependencies, binaries)
@@ -19,7 +19,7 @@ open Riot_model
 *)
 type plan_result =
   | Cached of {
-      package_key: Package.key;
+      unit_key: Build_unit.key;
       package: Package.t;
       hash: Std.Crypto.hash;
       artifact: Riot_store.Artifact.t;
@@ -28,22 +28,12 @@ type plan_result =
       breakdown: planning_breakdown;
     }
   | Planned of {
-      package_key: Package.key;
+      unit_key: Build_unit.key;
       package: Package.t;
       module_graph: Module_node.t Graph.SimpleGraph.t;
       action_graph: Action_graph.t;
       hash: Std.Crypto.hash;
       depset: Dependency.t list;
-      breakdown: planning_breakdown;
-    }
-  | MissingDependencies of {
-      package: Package.t;
-      missing: Package.t list;
-      breakdown: planning_breakdown;
-    }
-  | FailedDependencies of {
-      package: Package.t;
-      failed: Package.t list;
       breakdown: planning_breakdown;
     }
 
@@ -70,12 +60,11 @@ val compute_input_hash:
   unit ->
   Std.Crypto.hash
 
-val plan_package:
+val plan_build_unit:
   workspace:Workspace.t ->
   toolchain:Riot_toolchain.t ->
   store:Riot_store.Store.t ->
-  package_graph:Package_graph.t ->
-  package_key:Package.key ->
-  package:Package.t ->
+  unit:Build_unit.t ->
+  depset:Dependency.t list ->
   build_ctx:Build_ctx.t ->
   (plan_result, Planning_error.t) result

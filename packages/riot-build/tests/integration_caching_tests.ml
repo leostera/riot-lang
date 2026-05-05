@@ -4,7 +4,6 @@ open Std.Collections
 open Riot_model
 
 module Action_scheduler = Riot_build.Internal.Action_scheduler
-module Package_builder = Riot_build.Internal.Package_builder
 module Sandbox = Riot_build.Internal.Sandbox
 module Test = Std.Test
 
@@ -17,10 +16,6 @@ let test_toolchain = fun () ->
   |> Result.expect ~msg:"failed to initialize toolchain"
 
 let test_build_target = Riot_model.Target.current
-
-let make_test_build_ctx = fun () ->
-  let session_id = Riot_model.Session_id.make () in
-  Riot_model.Build_ctx.make ~session_id ~profile:Riot_model.Profile.debug ()
 
 let make_workspace = fun ?(packages = []) root ->
   Riot_model.Workspace.make_realized
@@ -131,56 +126,29 @@ let execute_graph = fun ~workspace ~store ~package ~graph ->
   let _ = Sandbox.cleanup sandbox in
   (result, output_exists, output_content, sandbox_dir)
 
-let build_package = fun ~workspace ~store ~package ~package_graph ->
-  Package_builder.build
-    ~workspace
-    ~toolchain:(test_toolchain ())
-    ~store
-    ~build_ctx:(make_test_build_ctx ())
-    ~package_graph
-    ~package_key:(Riot_planner.Package_graph.package_key
-      ~package_name:(Package_name.to_string package.Riot_model.Package.name)
-      Riot_planner.Package_graph.Runtime)
-    ~package
-
-let execute_planned_package = fun ~workspace ~store ~package ~package_graph ->
-  match Riot_planner.Package_planner.plan_package
-    ~workspace
-    ~toolchain:(test_toolchain ())
-    ~store
-    ~package_graph
-    ~package_key:(Riot_planner.Package_graph.package_key
-      ~package_name:(Package_name.to_string package.Riot_model.Package.name)
-      Riot_planner.Package_graph.Runtime)
-    ~package
-    ~build_ctx:(make_test_build_ctx ()) with
-  | Error err -> Error ("planning failed: " ^ Riot_planner.Planning_error.to_string err)
-  | Ok (Riot_planner.Package_planner.MissingDependencies _)
-  | Ok (Riot_planner.Package_planner.FailedDependencies _) ->
-      Error "expected dependent package to be plannable"
-  | Ok (Riot_planner.Package_planner.Cached _) ->
-      Error "expected direct action execution path to replan package"
-  | Ok (Riot_planner.Package_planner.Planned { action_graph; depset; _ }) ->
-      let sandbox = Sandbox.create ~workspace () ~package_name:package.Riot_model.Package.name in
-      Sandbox.prepare
-        ~sandbox
-        ~package
-        ~inputs:((package.Riot_model.Package.sources.src @ package.Riot_model.Package.sources.native)
-        @ package.Riot_model.Package.sources.tests)
-        ~depset
-        ~store;
-      let result =
-        Action_scheduler.run
-          ~action_graph
-          ~sandbox
-          ~store
-          ~session_id:(Riot_model.Session_id.make ())
-          ~build_target:test_build_target
-          (test_toolchain ())
-          ~concurrency:1
-      in
-      let _ = Sandbox.cleanup sandbox in
-      Ok result
+let build_package_artifact = fun ~workspace package ->
+  let request =
+    Riot_build.Request.make
+      ~workspace
+      ~packages:[ package.Riot_model.Package.name ]
+      ~targets:Riot_model.Target.Host
+      ~scope:Riot_build.Request.Runtime
+      ~profile:Riot_model.Profile.debug
+      ()
+  in
+  match Riot_build.build request with
+  | Error err -> Error (Riot_build.error_message err)
+  | Ok result -> (
+      match Riot_build.Build_result.find_package result package.name with
+      | None ->
+          Error ("expected package result for "
+          ^ Riot_model.Package_name.to_string package.name)
+      | Some package_result -> (
+          match Riot_build.Build_result.package_artifact package_result with
+          | Some artifact -> Ok artifact
+          | None -> Error "expected package result to carry an artifact"
+        )
+    )
 
 let test_execute_reuses_cache_for_equivalent_graph = fun _ctx ->
   match Fs.with_tempdir
@@ -275,76 +243,21 @@ let test_dependency_change_invalidates_cached_compile_actions = fun _ctx ->
           "let value = Dep.value\n"
       in
       let workspace = make_workspace ~packages:[ dep; app ] tmpdir in
-      let store = Riot_store.Store.create ~workspace in
-      let first_graph =
-        Riot_planner.Package_graph.create ~scope:Riot_planner.Package_graph.Runtime workspace
-        |> Result.expect ~msg:"failed to create first package graph"
-      in
-      let first_dep = build_package ~workspace ~store ~package:dep ~package_graph:first_graph in
-      match first_dep.status with
-      | Package_builder.Failed err ->
-          Error ("first dependency build failed: " ^ Package_builder.package_error_to_string err)
-      | Package_builder.Skipped { reason } -> Error ("first dependency build skipped: " ^ reason)
-      | Package_builder.Cached _
-      | Package_builder.Built _ -> (
-          match execute_planned_package ~workspace ~store ~package:app ~package_graph:first_graph with
-          | Error _ as err -> err
-          | Ok _first_app_result ->
-              let dep_source = Path.(dep.path / Path.v "src" / Path.v "dep.ml") in
-              let _ =
-                Fs.write "let value = 2\n" dep_source
-                |> Result.expect ~msg:"failed to rewrite dependency source"
-              in
-              let second_graph =
-                Riot_planner.Package_graph.create
-                  ~scope:Riot_planner.Package_graph.Runtime
-                  workspace
-                |> Result.expect ~msg:"failed to create second package graph"
-              in
-              let second_dep =
-                build_package ~workspace ~store ~package:dep ~package_graph:second_graph
-              in
-              match second_dep.status with
-              | Package_builder.Failed err ->
-                  Error ("second dependency build failed: "
-                  ^ Package_builder.package_error_to_string err)
-              | Package_builder.Skipped { reason } ->
-                  Error ("second dependency build skipped: " ^ reason)
-              | Package_builder.Cached _ ->
-                  Error "expected dependency source edit to miss package cache"
-              | Package_builder.Built _ -> (
-                  match execute_planned_package
-                    ~workspace
-                    ~store
-                    ~package:app
-                    ~package_graph:second_graph with
-                  | Error _ as err -> err
-                  | Ok second_app_result ->
-                      let statuses =
-                        second_app_result.Action_scheduler.completed_actions
-                        |> List.map
-                          ~fn:(fun completed_action ->
-                            completed_action.Action_scheduler.result.status)
-                      in
-                      let cached_count =
-                        List.fold_left
-                          statuses
-                          ~init:0
-                          ~fn:(fun count status ->
-                            match status with
-                            | Action_scheduler.Cached _ -> count + 1
-                            | Action_scheduler.Executed _
-                            | Action_scheduler.Failed _
-                            | Action_scheduler.Skipped -> count)
-                      in
-                      if Int.equal cached_count 0 then
-                        Ok ()
-                      else
-                        Error ("expected dependency change to invalidate all cached app actions, got "
-                        ^ Int.to_string cached_count
-                        ^ " cached actions")
-                )
-        )) with
+      match build_package_artifact ~workspace app with
+      | Error err -> Error ("first app build failed: " ^ err)
+      | Ok first_app_artifact ->
+          let dep_source = Path.(dep.path / Path.v "src" / Path.v "dep.ml") in
+          let _ =
+            Fs.write "let value = 2\n" dep_source
+            |> Result.expect ~msg:"failed to rewrite dependency source"
+          in
+          match build_package_artifact ~workspace app with
+          | Error err -> Error ("second app build failed: " ^ err)
+          | Ok second_app_artifact ->
+              if Crypto.Hash.equal first_app_artifact.input_hash second_app_artifact.input_hash then
+                Error "expected dependency change to invalidate dependent package cache"
+              else
+                Ok ()) with
   | Ok result -> result
   | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
 

@@ -2,7 +2,7 @@ open Std
 
 type plan_package = {
   lane: Build_lane.locked Build_lane.t;
-  package_key: Riot_model.Package.key;
+  unit_key: Riot_planner.Build_unit.key;
 }
 type error = Package_scheduler.error = {
   lane: Build_lane.locked Build_lane.t;
@@ -23,7 +23,7 @@ type run_result = summary
 
 val initial_plan_packages: Build_lane.locked Build_lane.t -> plan_package list
 
-val plan_package_key: plan_package -> Riot_model.Package.key
+val plan_package_key: plan_package -> Riot_planner.Build_unit.key
 
 val plan_package_target: plan_package -> Riot_model.Target.t
 

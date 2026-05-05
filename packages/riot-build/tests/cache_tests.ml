@@ -1,16 +1,11 @@
 open Std
 open Riot_build
 
-module Package_builder = Riot_build.Internal.Package_builder
 module Test = Std.Test
 
 let package_name = fun name ->
   Riot_model.Package_name.from_string name
   |> Result.expect ~msg:("invalid package name: " ^ name)
-
-let make_test_build_ctx = fun () ->
-  let session_id = Riot_model.Session_id.make () in
-  Riot_model.Build_ctx.make ~session_id ~profile:Riot_model.Profile.debug ()
 
 let make_test_workspace = fun tmpdir packages ->
   Riot_model.Workspace.make_realized
@@ -19,13 +14,25 @@ let make_test_workspace = fun tmpdir packages ->
     ~target_dir:(Path.to_string Path.(Path.v "target"))
     ()
 
-let package_error_message = fun err ->
-  match err with
-  | Package_builder.PlanningFailed _ -> "planning"
-  | Package_builder.ExecutionFailed { message } -> message
-  | Package_builder.ActionExecutionFailed { message } -> message
-  | Package_builder.ActionOutputsNotCreated _ -> "outputs not created"
-  | Package_builder.ActionDependenciesFailed _ -> "dependencies failed"
+let build_package = fun ~workspace package ->
+  let request =
+    Riot_build.Request.make
+      ~workspace
+      ~packages:[ package.Riot_model.Package.name ]
+      ~targets:Riot_model.Target.Host
+      ~scope:Riot_build.Request.Runtime
+      ~profile:Riot_model.Profile.debug
+      ()
+  in
+  match Riot_build.build request with
+  | Error err -> Error (Riot_build.error_message err)
+  | Ok result -> (
+      match Riot_build.Build_result.find_package result package.name with
+      | Some package_result -> Ok package_result
+      | None ->
+          Error ("expected package result for "
+          ^ Riot_model.Package_name.to_string package.name)
+    )
 
 let make_package = fun tmpdir name content ->
   let pkg_dir = Path.(tmpdir / Path.v name) in
@@ -68,32 +75,15 @@ let test_fresh_build_no_cache = fun _ctx ->
     (fun tmpdir ->
       let package = make_package tmpdir "test-pkg" "let x = 42" in
       let workspace = make_test_workspace tmpdir [ package ] in
-      let toolchain =
-        Riot_toolchain.init ~config:Riot_model.Toolchain_config.default
-        |> Result.expect ~msg:"Failed to initialize toolchain"
-      in
-      let store = Riot_store.Store.create ~workspace in
-      let package_graph =
-        Riot_planner.Package_graph.create ~scope:Riot_planner.Package_graph.Runtime workspace
-        |> Result.unwrap
-      in
-      let build =
-        Package_builder.build
-          ~workspace
-          ~toolchain
-          ~store
-          ~build_ctx:(make_test_build_ctx ())
-          ~package_graph
-          ~package_key:(Riot_planner.Package_graph.package_key
-            ~package_name:(Riot_model.Package_name.to_string package.name)
-            Riot_planner.Package_graph.Runtime)
-          ~package
-      in
-      match build.status with
-      | Package_builder.Built _ -> Ok ()
-      | Package_builder.Cached _ -> Error "Fresh build should not be cached"
-      | Package_builder.Skipped { reason } -> Error ("Build skipped: " ^ reason)
-      | Package_builder.Failed err -> Error ("Build failed: " ^ package_error_message err)) with
+      match build_package ~workspace package with
+      | Error err -> Error ("Build failed: " ^ err)
+      | Ok package_result -> (
+          match Riot_build.Build_result.package_status package_result with
+          | Riot_build.Build_result.Built _ -> Ok ()
+          | Cached _ -> Error "Fresh build should not be cached"
+          | Skipped reason -> Error ("Build skipped: " ^ reason)
+          | Failed reason -> Error ("Build failed: " ^ reason)
+        )) with
   | Ok r -> r
   | Error _ -> Error "Tempdir creation failed"
 
@@ -103,50 +93,25 @@ let test_second_build_reuses_action_cache_path = fun _ctx ->
     (fun tmpdir ->
       let package = make_package tmpdir "test-pkg" "let x = 42" in
       let workspace = make_test_workspace tmpdir [ package ] in
-      let toolchain =
-        Riot_toolchain.init ~config:Riot_model.Toolchain_config.default
-        |> Result.expect ~msg:"Failed to initialize toolchain"
-      in
-      let store = Riot_store.Store.create ~workspace in
-      let package_graph =
-        Riot_planner.Package_graph.create ~scope:Riot_planner.Package_graph.Runtime workspace
-        |> Result.unwrap
-      in
-      let first_build =
-        Package_builder.build
-          ~workspace
-          ~toolchain
-          ~store
-          ~build_ctx:(make_test_build_ctx ())
-          ~package_graph
-          ~package_key:(Riot_planner.Package_graph.package_key
-            ~package_name:(Riot_model.Package_name.to_string package.name)
-            Riot_planner.Package_graph.Runtime)
-          ~package
-      in
-      match first_build.status with
-      | Built _ -> (
-          let second_build =
-            Package_builder.build
-              ~workspace
-              ~toolchain
-              ~store
-              ~build_ctx:(make_test_build_ctx ())
-              ~package_graph
-              ~package_key:(Riot_planner.Package_graph.package_key
-                ~package_name:(Riot_model.Package_name.to_string package.name)
-                Riot_planner.Package_graph.Runtime)
-              ~package
-          in
-          match second_build.status with
-          | Built _
-          | Cached _ -> Ok ()
-          | Skipped { reason } -> Error ("Second build skipped: " ^ reason)
-          | Failed err -> Error ("Second build failed: " ^ package_error_message err)
+      match build_package ~workspace package with
+      | Ok first_build -> (
+          match Riot_build.Build_result.package_status first_build with
+          | Riot_build.Build_result.Built _ -> (
+              match build_package ~workspace package with
+              | Error err -> Error ("Second build failed: " ^ err)
+              | Ok second_build -> (
+                  match Riot_build.Build_result.package_status second_build with
+                  | Built _
+                  | Cached _ -> Ok ()
+                  | Skipped reason -> Error ("Second build skipped: " ^ reason)
+                  | Failed reason -> Error ("Second build failed: " ^ reason)
+                )
+            )
+          | Skipped reason -> Error ("First build skipped: " ^ reason)
+          | Cached _ -> Error "First build should not be cached"
+          | Failed reason -> Error ("First build failed: " ^ reason)
         )
-      | Skipped { reason } -> Error ("First build skipped: " ^ reason)
-      | Cached _ -> Error "First build should not be cached"
-      | Failed err -> Error ("First build failed: " ^ package_error_message err)) with
+      | Error err -> Error ("First build failed: " ^ err)) with
   | Ok r -> r
   | Error _ -> Error "Tempdir creation failed"
 

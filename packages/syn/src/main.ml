@@ -1,5 +1,6 @@
 open Std
 open Std.Collections
+open Syn
 
 module Iterator = Iter.Iterator
 

@@ -5,8 +5,6 @@ open Riot_model
 
 module Package = Package
 module Workspace = Workspace
-module Package_graph = Riot_planner.Package_graph
-module Workspace_planner = Riot_planner.Workspace_planner
 
 let test_toolchain =
   Riot_toolchain.init ~config:Riot_model.Toolchain_config.default
@@ -42,6 +40,17 @@ let write_file = fun path contents ->
   |> Result.expect ~msg:"write bench file should succeed"
 
 let make_workspace = fun ~root ~packages -> Workspace.make_realized ~root ~packages ()
+
+let all_dev_artifacts = Package.{ tests = true; examples = true; benches = true }
+
+let build_unit_request = fun ?(roots = None) ?(kind = Riot_planner.Build_unit_graph.Runtime) _workspace ->
+  Riot_planner.Build_unit_graph.{
+    roots;
+    targets = [ Target.host () ];
+    profile = Profile.debug;
+    kind;
+    synthetic_tools = [];
+  }
 
 let make_workspace_package = fun ~root ~name ~dependencies ~dev_dependencies ~build_dependencies ->
   Package.make
@@ -88,25 +97,27 @@ let make_workspace_fixture = fun root ~count ->
   in
   make_workspace ~root ~packages:(loop 0 [])
 
-let make_package_graph_runtime_bench = fun root ~count ->
+let make_build_unit_graph_runtime_bench = fun root ~count ->
   let workspace =
     make_workspace_fixture Path.(root / Path.v ("runtime-graph-" ^ Int.to_string count)) ~count
   in
   fun () ->
     let _ =
-      Package_graph.create ~scope:Package_graph.Runtime workspace
-      |> Result.expect ~msg:"runtime package graph bench should succeed"
+      Riot_planner.Build_unit_graph.create workspace (build_unit_request workspace)
+      |> Result.expect ~msg:"runtime build unit graph bench should succeed"
     in
     ()
 
-let make_package_graph_dev_bench = fun root ~count ->
+let make_build_unit_graph_dev_bench = fun root ~count ->
   let workspace =
     make_workspace_fixture Path.(root / Path.v ("dev-graph-" ^ Int.to_string count)) ~count
   in
   fun () ->
     let _ =
-      Package_graph.create ~scope:Package_graph.Dev workspace
-      |> Result.expect ~msg:"dev package graph bench should succeed"
+      Riot_planner.Build_unit_graph.create
+        workspace
+        (build_unit_request ~kind:(Riot_planner.Build_unit_graph.Dev all_dev_artifacts) workspace)
+      |> Result.expect ~msg:"dev build unit graph bench should succeed"
     in
     ()
 
@@ -116,13 +127,12 @@ let make_plan_workspace_all_bench = fun root ~count ->
   in
   fun () ->
     let _ =
-      Riot_planner.plan_workspace
-        ~workspace
-        ~target:Workspace_planner.All
-        ~scope:Package_graph.Runtime
-        ~load_errors:[]
-        ~dev_artifacts:{ tests = true; examples = true; benches = true }
-      |> Result.expect ~msg:"plan workspace all bench should succeed"
+      let graph =
+        Riot_planner.Build_unit_graph.create workspace (build_unit_request workspace)
+        |> Result.expect ~msg:"plan all build unit graph should succeed"
+      in
+      Riot_planner.Build_unit_graph.topological_sort graph
+      |> Result.expect ~msg:"plan all build unit sort should succeed"
     in
     ()
 
@@ -133,18 +143,18 @@ let make_plan_workspace_target_bench = fun root ~count ->
   let target_package = "pkg" ^ Int.to_string (count - 1) in
   fun () ->
     let _ =
-      Riot_planner.plan_workspace
-        ~workspace
-        ~target:(
-          Workspace_planner.Package (
-            Package_name.from_string target_package
-            |> Result.expect ~msg:("expected valid package name: " ^ target_package)
-          )
-        )
-        ~scope:Package_graph.Runtime
-        ~load_errors:[]
-        ~dev_artifacts:{ tests = true; examples = true; benches = true }
-      |> Result.expect ~msg:"plan workspace target bench should succeed"
+      let root =
+        Package_name.from_string target_package
+        |> Result.expect ~msg:("expected valid package name: " ^ target_package)
+      in
+      let graph =
+        Riot_planner.Build_unit_graph.create
+          workspace
+          (build_unit_request ~roots:(Some [ root ]) workspace)
+        |> Result.expect ~msg:"plan target build unit graph should succeed"
+      in
+      Riot_planner.Build_unit_graph.topological_sort graph
+      |> Result.expect ~msg:"plan target build unit sort should succeed"
     in
     ()
 
@@ -153,7 +163,7 @@ type package_fixture = {
   package: Package.t;
   store: Riot_store.Store.t;
   build_ctx: Riot_model.Build_ctx.t;
-  package_key: Package.key;
+  unit_key: Riot_planner.Build_unit.key;
 }
 
 let make_package_sources = fun package_name ->
@@ -224,28 +234,38 @@ let make_package_fixture = fun root label ->
       ~profile:Riot_model.Profile.debug
       ()
   in
-  let package_key = Package_graph.package_key ~package_name Package_graph.Runtime in
+  let runtime_package = Package.for_scope Package.Normal package in
+  let unit_key =
+    ({
+      package = runtime_package.name;
+      artifact = Riot_planner.Build_unit.Library;
+      target = Target.host ();
+      profile = Profile.debug;
+    }:Riot_planner.Build_unit.key)
+  in
   {
     workspace;
-    package;
+    package = runtime_package;
     store;
     build_ctx;
-    package_key;
+    unit_key;
   }
 
 let run_package_plan = fun fixture ->
-  let package_graph =
-    Package_graph.create ~scope:Package_graph.Runtime fixture.workspace
-    |> Result.expect ~msg:"package planning bench graph creation should succeed"
+  let unit =
+    Riot_planner.Build_unit.from_artifact
+      ~package:fixture.package
+      ~artifact:fixture.unit_key.artifact
+      ~target:fixture.unit_key.target
+      ~profile:fixture.unit_key.profile
   in
   let _ =
-    Riot_planner.Package_planner.plan_package
+    Riot_planner.Package_planner.plan_build_unit
       ~workspace:fixture.workspace
       ~toolchain:test_toolchain
       ~store:fixture.store
-      ~package_graph
-      ~package_key:fixture.package_key
-      ~package:fixture.package
+      ~unit
+      ~depset:[]
       ~build_ctx:fixture.build_ctx
     |> Result.expect ~msg:"package planning bench should succeed"
   in
@@ -281,12 +301,12 @@ let benchmark_suite = fun root ->
   Bench.[
     with_config
       ~config:graph_config
-      "riot-planner package graph runtime 64 packages"
-      (make_package_graph_runtime_bench root ~count:64);
+      "riot-planner build unit graph runtime 64 packages"
+      (make_build_unit_graph_runtime_bench root ~count:64);
     with_config
       ~config:graph_config
-      "riot-planner package graph dev 64 packages"
-      (make_package_graph_dev_bench root ~count:64);
+      "riot-planner build unit graph dev 64 packages"
+      (make_build_unit_graph_dev_bench root ~count:64);
     with_config
       ~config:workspace_plan_config
       "riot-planner plan workspace all 128 packages"

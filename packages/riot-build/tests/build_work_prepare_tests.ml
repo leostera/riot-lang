@@ -7,7 +7,6 @@ module Build_unit = Riot_planner.Build_unit
 module Build_unit_plan = Riot_build.Internal.Build_unit_plan
 module Build_work = Riot_build.Internal.Build_work
 module Resolved_build = Riot_build.Internal.Resolved_build
-module Package_graph = Riot_planner.Package_graph
 
 let package_name = fun name ->
   Riot_model.Package_name.from_string name
@@ -98,14 +97,22 @@ let with_prepared_lanes = fun request fn ->
   in
   fn lanes
 
-let package_key_string = fun key -> Riot_model.Package.key_to_string key
+let library_unit_key = fun ~name ~target ->
+  ({
+    package = package_name name;
+    artifact = Build_unit.Library;
+    target;
+    profile = Riot_model.Profile.debug;
+  }:Build_unit.key)
+
+let unit_key_string = fun key -> Build_unit.key_to_string key
 
 let initial_plan_package_keys = fun lane ->
   Build_work.initial_plan_packages lane
   |> List.map
     ~fn:(fun planned ->
       Build_work.plan_package_key planned
-      |> package_key_string)
+      |> unit_key_string)
 
 let initial_plan_targets = fun lane ->
   Build_work.initial_plan_packages lane
@@ -114,7 +121,7 @@ let initial_plan_targets = fun lane ->
 let build_unit_key_strings = fun lane ->
   Build_lane.build_unit_plan lane
   |> Build_unit_plan.units
-  |> List.map ~fn:(fun unit -> Build_unit.key_to_string unit.Build_unit.key)
+  |> List.map ~fn:(fun unit -> Build_unit.key_to_string (Build_unit.key unit))
 
 let test_initial_plan_packages_follow_topological_order = fun _ctx ->
   match Fs.with_tempdir
@@ -136,11 +143,12 @@ let test_initial_plan_packages_follow_topological_order = fun _ctx ->
           match lanes with
           | [ lane ] ->
               let planned_keys = initial_plan_package_keys lane in
+              let target = Build_lane.target lane in
               let expected_keys = [
-                Package_graph.package_key ~package_name:"lib" Package_graph.Runtime
-                |> package_key_string;
-                Package_graph.package_key ~package_name:"app" Package_graph.Runtime
-                |> package_key_string;
+                library_unit_key ~name:"lib" ~target
+                |> unit_key_string;
+                library_unit_key ~name:"app" ~target
+                |> unit_key_string;
               ]
               in
               let host_target = Riot_model.Target.current in
@@ -185,12 +193,12 @@ let test_initial_plan_packages_include_all_workspace_packages_when_unfiltered = 
               in
               let expected_keys =
                 [
-                  Package_graph.package_key ~package_name:"app" Package_graph.Runtime
-                  |> package_key_string;
-                  Package_graph.package_key ~package_name:"lib" Package_graph.Runtime
-                  |> package_key_string;
-                  Package_graph.package_key ~package_name:"util" Package_graph.Runtime
-                  |> package_key_string;
+                  library_unit_key ~name:"app" ~target:(Build_lane.target lane)
+                  |> unit_key_string;
+                  library_unit_key ~name:"lib" ~target:(Build_lane.target lane)
+                  |> unit_key_string;
+                  library_unit_key ~name:"util" ~target:(Build_lane.target lane)
+                  |> unit_key_string;
                 ]
                 |> List.sort ~compare:String.compare
               in

@@ -8,7 +8,7 @@ module G = Std.Graph.SimpleGraph
 
 type plan_result =
   | Cached of {
-      package_key: Package.key;
+      unit_key: Build_unit.key;
       package: Package.t;
       hash: Std.Crypto.hash;
       artifact: Riot_store.Artifact.t;
@@ -17,22 +17,12 @@ type plan_result =
       breakdown: planning_breakdown;
     }
   | Planned of {
-      package_key: Package.key;
+      unit_key: Build_unit.key;
       package: Package.t;
       module_graph: Module_node.t G.t;
       action_graph: Action_graph.t;
       hash: Std.Crypto.hash;
       depset: Dependency.t list;
-      breakdown: planning_breakdown;
-    }
-  | MissingDependencies of {
-      package: Package.t;
-      missing: Package.t list;
-      breakdown: planning_breakdown;
-    }
-  | FailedDependencies of {
-      package: Package.t;
-      failed: Package.t list;
       breakdown: planning_breakdown;
     }
 
@@ -70,30 +60,28 @@ let duration_us = fun duration -> Time.Duration.to_micros duration
 let trace_breakdown = fun ~package ~status breakdown ->
   if planner_trace_enabled () then
     eprintln
-      (
-        "riot-planner package="
-        ^ Package_name.to_string package.Package.name
-        ^ " status="
-        ^ status
-        ^ " deps="
-        ^ Int.to_string breakdown.dependency_count
-        ^ " dep_check_us="
-        ^ Int.to_string (duration_us breakdown.dependency_check_duration)
-        ^ " input_hash_us="
-        ^ Int.to_string (duration_us breakdown.input_hash_duration)
-        ^ " artifact_lookup_us="
-        ^ Int.to_string (duration_us breakdown.artifact_lookup_duration)
-        ^ " artifact_hit="
-        ^ Bool.to_string breakdown.artifact_cache_hit
-        ^ " plan_bundle_lookup_us="
-        ^ Int.to_string (duration_us breakdown.plan_bundle_lookup_duration)
-        ^ " plan_bundle_decode_us="
-        ^ Int.to_string (duration_us breakdown.plan_bundle_decode_duration)
-        ^ " plan_bundle_hit="
-        ^ Bool.to_string breakdown.plan_bundle_cache_hit
-        ^ " module_plan_us="
-        ^ Int.to_string (duration_us breakdown.module_plan_duration)
-      )
+      ("riot-planner package="
+      ^ Package_name.to_string package.Package.name
+      ^ " status="
+      ^ status
+      ^ " deps="
+      ^ Int.to_string breakdown.dependency_count
+      ^ " dep_check_us="
+      ^ Int.to_string (duration_us breakdown.dependency_check_duration)
+      ^ " input_hash_us="
+      ^ Int.to_string (duration_us breakdown.input_hash_duration)
+      ^ " artifact_lookup_us="
+      ^ Int.to_string (duration_us breakdown.artifact_lookup_duration)
+      ^ " artifact_hit="
+      ^ Bool.to_string breakdown.artifact_cache_hit
+      ^ " plan_bundle_lookup_us="
+      ^ Int.to_string (duration_us breakdown.plan_bundle_lookup_duration)
+      ^ " plan_bundle_decode_us="
+      ^ Int.to_string (duration_us breakdown.plan_bundle_decode_duration)
+      ^ " plan_bundle_hit="
+      ^ Bool.to_string breakdown.plan_bundle_cache_hit
+      ^ " module_plan_us="
+      ^ Int.to_string (duration_us breakdown.module_plan_duration))
 
 let group_namespace = fun root ->
   if Path.equal root (Path.v "src") then
@@ -134,10 +122,6 @@ let planning_groups_for_package = fun (package: Package.t) ->
           root_mode;
           namespace = group_namespace source_dir;
         })
-
-type check_deps_error =
-  | Missing of Package.t list
-  | Failed of Package.t list
 
 let file_to_json = fun (file: Module_node.file) ->
   let open Std.Data.Json in
@@ -500,7 +484,7 @@ let plan_bundle_of_json = fun ~(package:Package.t) json ->
    If input_hash hasn't changed, we know the full hash is the same!
 *)
 let compute_input_hash = fun
-  ?(planner_version = "planner-artifacts:v24")
+  ?(planner_version = "planner-artifacts:v25")
   ~package
   ~depset
   ~workspace
@@ -561,272 +545,256 @@ let compute_input_hash = fun
   List.for_each dep_output_hashes ~fn:(fun hash -> H.write_hash state hash);
   H.finish state
 
-let check_dependencies_built = fun ~store ~package_graph ~package_key ->
-  let (current_package_name, current_scope) =
-    match Package_graph.get_node_by_key package_graph package_key with
-    | Some node -> (
-      Package_name.to_string (Package_graph.get_package node.value).Package.name,
-      Package_graph.get_scope node.value
-    )
-    | None -> ("", Package_graph.Runtime)
-  in
-  let deps =
-    match Package_graph.get_node_by_key package_graph package_key with
-    | Some node -> Package_graph.get_dependencies_for_node package_graph node
-    | None -> []
-  in
-  let unplanned = ref [] in
-  let failed = ref [] in
-  let rec summarize_dependency: Package_graph.package_node -> Dependency.t option = fun
-    node_value ->
-    let pkg = Package_graph.get_package node_value in
-    let is_ordering_only_self_dependency =
-      String.equal (Package_name.to_string pkg.Package.name) current_package_name && match (
-        current_scope,
-        Package_graph.get_scope node_value
-      ) with
-      | (Package_graph.Runtime, Package_graph.Build) -> true
-      | _ -> false
-    in
-    match node_value with
-    | Package_graph.Unplanned _ ->
-        (* Not yet planned - unplanned dependency *)
-        unplanned := pkg :: !unplanned;
-        None
-    | Package_graph.Planned { package; hash; _ } ->
-        if is_ordering_only_self_dependency then
-          None
-        else
-          (
-            match Riot_store.Store.get store hash with
-            | Some artifact ->
-                let dep_nodes =
-                  match Package_graph.get_node_by_key
-                    package_graph
-                    (Package_graph.get_key node_value) with
-                  | Some node -> Package_graph.get_dependencies_for_node package_graph node
-                  | None -> []
-                in
-                let dep_depset = List.filter_map dep_nodes ~fn:summarize_dependency in
-                Some Dependency.{
-                  package;
-                  artifact_dir = Riot_store.Store.hash_dir_of store artifact.input_hash;
-                  depset = dep_depset;
-                  input_hash = artifact.input_hash;
-                  output_hash = artifact.output_hash;
-                }
-            | None ->
-                unplanned := pkg :: !unplanned;
-                None
-          )
-    | Package_graph.Cached { package; artifact; depset; _ } ->
-        if is_ordering_only_self_dependency then
-          None
-        else
-          Some Dependency.{
-            package;
-            artifact_dir = Riot_store.Store.hash_dir_of store artifact.input_hash;
-            depset;
-            input_hash = artifact.input_hash;
-            output_hash = artifact.output_hash;
-          }
-    | Package_graph.Built { package; artifact; _ } ->
-        if is_ordering_only_self_dependency then
-          None
-        else
-          let dep_nodes =
-            match Package_graph.get_node_by_key package_graph (Package_graph.get_key node_value) with
-            | Some node -> Package_graph.get_dependencies_for_node package_graph node
-            | None -> []
-          in
-          let dep_depset = List.filter_map dep_nodes ~fn:summarize_dependency in
-          Some Dependency.{
-            package;
-            artifact_dir = Riot_store.Store.hash_dir_of store artifact.input_hash;
-            depset = dep_depset;
-            input_hash = artifact.input_hash;
-            output_hash = artifact.output_hash;
-          }
-    | Package_graph.Failed _ ->
-        (* Dependency failed to build *)
-        failed := pkg :: !failed;
-        None
-    | Package_graph.Skipped _ ->
-        (* Dependency was skipped - treat as failed *)
-        failed := pkg :: !failed;
-        None
-  in
-  let depset = List.filter_map deps ~fn:summarize_dependency in
-  (* Check the sets in order: failed takes precedence *)
-  if !failed != [] then
-    Error (Failed !failed)
-  else if !unplanned != [] then
-    Error (Missing !unplanned)
-  else
-    Ok depset
-
-let plan_package = fun
-  ~workspace ~toolchain ~store ~package_graph ~package_key ~package ~build_ctx ->
-  let dependency_check_started_at = Time.Instant.now () in
-  match check_dependencies_built ~store ~package_graph ~package_key with
-  | Error (Failed failed) ->
-      let dependency_check_duration =
-        Time.Instant.duration_since ~earlier:dependency_check_started_at (Time.Instant.now ())
-      in
-      let breakdown = {
-        empty_breakdown with
-        dependency_count = List.length failed;
-        dependency_check_duration;
-      }
-      in
-      trace_breakdown ~package ~status:"failed-dependencies" breakdown;
-      Ok (FailedDependencies {
-        package;
-        failed;
-        breakdown;
-      })
-  | Error (Missing missing) ->
-      let dependency_check_duration =
-        Time.Instant.duration_since ~earlier:dependency_check_started_at (Time.Instant.now ())
-      in
-      let breakdown = {
-        empty_breakdown with
-        dependency_count = List.length missing;
-        dependency_check_duration;
-      }
-      in
-      trace_breakdown ~package ~status:"missing-dependencies" breakdown;
-      Ok (MissingDependencies {
-        package;
-        missing;
-        breakdown;
-      })
-  | Ok depset ->
-      let dependency_check_duration =
-        Time.Instant.duration_since ~earlier:dependency_check_started_at (Time.Instant.now ())
-      in
-      (* Resolve profile for this package *)
-      let base_profile = build_ctx.Build_ctx.profile in
-      (* Apply package-level profile overrides based on current profile name *)
-      (* Then apply target-specific overrides *)
-      let profile =
-        let profile = Profile.apply_overrides base_profile package.compiler.profile_overrides in
-        let target_platform = Build_ctx.target_platform_name build_ctx in
-        Log.info
-          ("Package "
-          ^ Package_name.to_string package.name
-          ^ ": looking for target."
+let plan_package_after_dependencies = fun
+  ~workspace
+  ~toolchain
+  ~store
+  ~unit_key
+  ~(package:Package.t)
+  ~depset
+  ~dependency_check_duration
+  ~build_ctx ->
+  (* Resolve profile for this package *)
+  let base_profile = build_ctx.Build_ctx.profile in
+  (* Apply package-level profile overrides based on current profile name *)
+  (* Then apply target-specific overrides *)
+  let profile =
+    let profile = Profile.apply_overrides base_profile package.compiler.profile_overrides in
+    let target_platform = Build_ctx.target_platform_name build_ctx in
+    Log.info
+      ("Package "
+      ^ Package_name.to_string package.name
+      ^ ": looking for target."
+      ^ target_platform
+      ^ " overrides");
+    Log.info
+      ("Available targets: ["
+      ^ (String.concat
+        ", "
+        (List.map package.compiler.target_overrides ~fn:(fun (target, _) -> target)))
+      ^ "]");
+    match List.find
+      package.compiler.target_overrides
+      ~fn:(fun (target, _) -> String.equal target target_platform) with
+    | Some (_, target_override) -> (
+        Log.info ("Found target." ^ target_platform ^ " override, applying...");
+        match target_override.profile_override with
+        | Some override ->
+            let result = Profile.apply_override profile override in
+            Log.info
+              ("After applying target override: cc_flags=["
+              ^ (String.concat ", " result.cc_flags)
+              ^ "], ld_flags=["
+              ^ (String.concat ", " result.ld_flags)
+              ^ "]");
+            result
+        | None -> profile
+      )
+    | None ->
+        Log.warn
+          ("No target."
           ^ target_platform
-          ^ " overrides");
-        Log.info
-          ("Available targets: ["
-          ^ (String.concat
-            ", "
-            (List.map package.compiler.target_overrides ~fn:(fun (target, _) -> target)))
-          ^ "]");
-        match List.find
-          package.compiler.target_overrides
-          ~fn:(fun (target, _) -> String.equal target target_platform) with
-        | Some (_, target_override) -> (
-            Log.info ("Found target." ^ target_platform ^ " override, applying...");
-            match target_override.profile_override with
-            | Some override ->
-                let result = Profile.apply_override profile override in
-                Log.info
-                  ("After applying target override: cc_flags=["
-                  ^ (String.concat ", " result.cc_flags)
-                  ^ "], ld_flags=["
-                  ^ (String.concat ", " result.ld_flags)
-                  ^ "]");
-                result
-            | None -> profile
-          )
-        | None ->
-            Log.warn
-              ("No target."
-              ^ target_platform
-              ^ " override found for package "
-              ^ Package_name.to_string package.name);
-            profile
+          ^ " override found for package "
+          ^ Package_name.to_string package.name);
+        profile
+  in
+  let input_hash_started_at = Time.Instant.now () in
+  let input_hash =
+    compute_input_hash ~package ~depset ~workspace ~profile ~build_ctx ~toolchain ()
+  in
+  let input_hash_duration =
+    Time.Instant.duration_since ~earlier:input_hash_started_at (Time.Instant.now ())
+  in
+  let artifact_lookup_started_at = Time.Instant.now () in
+  let cached_artifact =
+    match Riot_store.Store.get store input_hash with
+    | Some artifact -> Some (artifact, artifact.exports)
+    | _ -> None
+  in
+  let artifact_lookup_duration =
+    Time.Instant.duration_since ~earlier:artifact_lookup_started_at (Time.Instant.now ())
+  in
+  match cached_artifact with
+  | Some (artifact, exports) ->
+      Log.info
+        ("Package "
+        ^ Package_name.to_string package.name
+        ^ ": cache hit via artifact + export metadata");
+      let breakdown = {
+        empty_breakdown with
+        dependency_count = List.length depset;
+        dependency_check_duration;
+        input_hash_duration;
+        artifact_lookup_duration;
+        artifact_cache_hit = true;
+      }
       in
-      let input_hash_started_at = Time.Instant.now () in
-      let input_hash =
-        compute_input_hash ~package ~depset ~workspace ~profile ~build_ctx ~toolchain ()
-      in
-      let input_hash_duration =
-        Time.Instant.duration_since ~earlier:input_hash_started_at (Time.Instant.now ())
-      in
-      let artifact_lookup_started_at = Time.Instant.now () in
-      let cached_artifact =
-        match Riot_store.Store.get store input_hash with
-        | Some artifact -> Some (artifact, artifact.exports)
-        | _ -> None
-      in
-      let artifact_lookup_duration =
-        Time.Instant.duration_since ~earlier:artifact_lookup_started_at (Time.Instant.now ())
-      in
-      match cached_artifact with
-      | Some (artifact, exports) ->
-          Log.info
-            ("Package "
-            ^ Package_name.to_string package.name
-            ^ ": cache hit via artifact + export metadata");
-          let breakdown =
-            {
-              empty_breakdown with
-              dependency_count = List.length depset;
-              dependency_check_duration;
-              input_hash_duration;
-              artifact_lookup_duration;
-              artifact_cache_hit = true;
-            }
+      trace_breakdown ~package ~status:"cached" breakdown;
+      Ok (
+        Cached {
+          unit_key;
+          package;
+          hash = input_hash;
+          artifact;
+          depset;
+          exports;
+          breakdown;
+        }
+      )
+  | None -> (
+      let plan_bundle_lookup_started_at = Time.Instant.now () in
+      match Riot_store.Store.load_plan_bundle store ~hash:input_hash with
+      | Some json ->
+          let plan_bundle_lookup_duration =
+            Time.Instant.duration_since ~earlier:plan_bundle_lookup_started_at (Time.Instant.now ())
           in
-          trace_breakdown ~package ~status:"cached" breakdown;
-          Ok (
-            Cached {
-              package_key;
-              package;
-              hash = input_hash;
-              artifact;
-              depset;
-              exports;
-              breakdown;
-            }
-          )
-      | None -> (
-          let plan_bundle_lookup_started_at = Time.Instant.now () in
-          match Riot_store.Store.load_plan_bundle store ~hash:input_hash with
-          | Some json ->
-              let plan_bundle_lookup_duration =
-                Time.Instant.duration_since
-                  ~earlier:plan_bundle_lookup_started_at
-                  (Time.Instant.now ())
-              in
-              let plan_bundle_decode_started_at = Time.Instant.now () in
-              let parsed_bundle =
-                try plan_bundle_of_json ~package json with
-                | exn ->
-                    Log.warn
-                      ("Package "
-                      ^ Package_name.to_string package.name
-                      ^ ": plan bundle decode raised exception, rebuilding plan graph ("
-                      ^ Exception.to_string exn
-                      ^ ")");
-                    Error "plan bundle decode exception"
-              in
-              let plan_bundle_decode_duration =
-                Time.Instant.duration_since
-                  ~earlier:plan_bundle_decode_started_at
-                  (Time.Instant.now ())
-              in
-              (
-                match parsed_bundle with
-                | Ok (module_graph, action_graph) ->
-                    Log.info
-                      ("Package " ^ Package_name.to_string package.name ^ ": plan bundle cache hit");
+          let plan_bundle_decode_started_at = Time.Instant.now () in
+          let parsed_bundle =
+            try plan_bundle_of_json ~package json with
+            | exn ->
+                Log.warn
+                  ("Package "
+                  ^ Package_name.to_string package.name
+                  ^ ": plan bundle decode raised exception, rebuilding plan graph ("
+                  ^ Exception.to_string exn
+                  ^ ")");
+                Error "plan bundle decode exception"
+          in
+          let plan_bundle_decode_duration =
+            Time.Instant.duration_since ~earlier:plan_bundle_decode_started_at (Time.Instant.now ())
+          in
+          (
+            match parsed_bundle with
+            | Ok (module_graph, action_graph) ->
+                Log.info
+                  ("Package " ^ Package_name.to_string package.name ^ ": plan bundle cache hit");
+                Ok (
+                  Planned {
+                    unit_key;
+                    package;
+                    module_graph;
+                    action_graph;
+                    hash = input_hash;
+                    depset;
+                    breakdown =
+                      {
+                        empty_breakdown with
+                        dependency_count = List.length depset;
+                        dependency_check_duration;
+                        input_hash_duration;
+                        artifact_lookup_duration;
+                        plan_bundle_lookup_duration;
+                        plan_bundle_decode_duration;
+                        plan_bundle_cache_hit = true;
+                      };
+                  }
+                )
+            | Error _ ->
+                Log.warn
+                  ("Package "
+                  ^ Package_name.to_string package.name
+                  ^ ": plan bundle parse failed, rebuilding plan graph");
+                let module_plan_started_at = Time.Instant.now () in
+                let plan_input =
+                  Module_planner.{
+                    package;
+                    profile;
+                    ctx = build_ctx;
+                    toolchain;
+                    workspace;
+                    source_groups = planning_groups_for_package package;
+                    depset;
+                    dependency_packages = List.map
+                      (Dependency.transitive_closure depset)
+                      ~fn:(fun (dep: Dependency.t) -> dep.package);
+                    store;
+                  }
+                in
+                match Module_planner.plan_node plan_input with
+                | Error err -> Error err
+                | Ok {
+                    sources;
+                    module_graph;
+                    analyzed_modules = _;
+                    action_graph;
+                  } ->
+                    (* Add foreign dependency build actions and make all other nodes depend on them *)
+                    let foreign_nodes =
+                      List.map
+                        package.foreign_dependencies
+                        ~fn:(fun (fdep: Package.foreign_dependency) ->
+                          Log.info
+                            ("[PACKAGE_PLANNER] Adding foreign dependency: "
+                            ^ fdep.name
+                            ^ " with "
+                            ^ Int.to_string (List.length fdep.inputs)
+                            ^ " input files");
+                          let foreign_action = Action.BuildForeignDependency {
+                            name = fdep.name;
+                            path = fdep.path;
+                            build_cmd = fdep.build_cmd;
+                            outputs = fdep.outputs;
+                            env = fdep.env;
+                          }
+                          in
+                          let foreign_node =
+                            Action_node.make
+                              ~actions:[ foreign_action ]
+                              ~outs:fdep.outputs
+                              ~srcs:[]
+                              ~package
+                              ~toolchain
+                              ~dependency_hashes:(fun _ -> Crypto.hash_string "")
+                              ~deps:[]
+                          in
+                          Action_graph.add_node action_graph foreign_node)
+                    in
+                    (* Make all existing nodes depend on foreign dependency nodes *)
+                    if List.length foreign_nodes > 0 then (
+                      let foreign_node_ids =
+                        List.map foreign_nodes ~fn:(fun (node: Action_node.t) -> node.id)
+                      in
+                      Log.info
+                        ("[PACKAGE_PLANNER] Making all action nodes depend on "
+                        ^ Int.to_string (List.length foreign_nodes)
+                        ^ " foreign dependencies");
+                      let all_nodes = Action_graph.nodes action_graph in
+                      Log.info
+                        ("[PACKAGE_PLANNER] Total action nodes (including foreign): "
+                        ^ Int.to_string (List.length all_nodes));
+                      let dep_count = ref 0 in
+                      List.for_each
+                        all_nodes
+                        ~fn:(fun (node: Action_node.t) ->
+                          let is_foreign_node = List.contains foreign_node_ids ~value:node.id in
+                          if not is_foreign_node then
+                            List.for_each
+                              foreign_nodes
+                              ~fn:(fun foreign_node ->
+                                Action_graph.add_dependency
+                                  action_graph
+                                  node
+                                  ~depends_on:foreign_node;
+                                dep_count := !dep_count + 1));
+                      Log.info
+                        ("[PACKAGE_PLANNER] Added "
+                        ^ Int.to_string !dep_count
+                        ^ " dependency edges to foreign nodes")
+                    );
+                    let _ =
+                      Riot_store.Store.save_plan_bundle
+                        store
+                        ~hash:input_hash
+                        ~plan:(plan_bundle_to_json ~package ~module_graph ~action_graph)
+                    in
+                    let module_plan_duration =
+                      Time.Instant.duration_since
+                        ~earlier:module_plan_started_at
+                        (Time.Instant.now ())
+                    in
                     Ok (
                       Planned {
-                        package_key;
+                        unit_key;
                         package;
                         module_graph;
                         action_graph;
@@ -841,262 +809,146 @@ let plan_package = fun
                             artifact_lookup_duration;
                             plan_bundle_lookup_duration;
                             plan_bundle_decode_duration;
-                            plan_bundle_cache_hit = true;
+                            module_plan_duration;
                           };
                       }
                     )
-                | Error _ ->
-                    Log.warn
-                      ("Package "
-                      ^ Package_name.to_string package.name
-                      ^ ": plan bundle parse failed, rebuilding plan graph");
-                    let module_plan_started_at = Time.Instant.now () in
-                    let plan_input =
-                      Module_planner.{
-                        package;
-                        profile;
-                        ctx = build_ctx;
-                        toolchain;
-                        workspace;
-                        source_groups = planning_groups_for_package package;
-                        depset;
-                        dependency_packages = List.map
-                          (Dependency.transitive_closure depset)
-                          ~fn:(fun (dep: Dependency.t) -> dep.package);
-                        store;
-                      }
-                    in
-                    match Module_planner.plan_node plan_input with
-                    | Error err -> Error err
-                    | Ok {
-                        sources;
-                        module_graph;
-                        analyzed_modules = _;
-                        action_graph;
-                      } ->
-                        (* Add foreign dependency build actions and make all other nodes depend on them *)
-                        let foreign_nodes =
-                          List.map
-                            package.foreign_dependencies
-                            ~fn:(fun (fdep: Package.foreign_dependency) ->
-                              Log.info
-                                ("[PACKAGE_PLANNER] Adding foreign dependency: "
-                                ^ fdep.name
-                                ^ " with "
-                                ^ Int.to_string (List.length fdep.inputs)
-                                ^ " input files");
-                              let foreign_action = Action.BuildForeignDependency {
-                                name = fdep.name;
-                                path = fdep.path;
-                                build_cmd = fdep.build_cmd;
-                                outputs = fdep.outputs;
-                                env = fdep.env;
-                              }
-                              in
-                              let foreign_node =
-                                Action_node.make
-                                  ~actions:[ foreign_action ]
-                                  ~outs:fdep.outputs
-                                  ~srcs:[]
-                                  ~package
-                                  ~toolchain
-                                  ~dependency_hashes:(fun _ -> Crypto.hash_string "")
-                                  ~deps:[]
-                              in
-                              Action_graph.add_node action_graph foreign_node)
-                        in
-                        (* Make all existing nodes depend on foreign dependency nodes *)
-                        if List.length foreign_nodes > 0 then (
-                          let foreign_node_ids =
-                            List.map foreign_nodes ~fn:(fun (node: Action_node.t) -> node.id)
-                          in
-                          Log.info
-                            ("[PACKAGE_PLANNER] Making all action nodes depend on "
-                            ^ Int.to_string (List.length foreign_nodes)
-                            ^ " foreign dependencies");
-                          let all_nodes = Action_graph.nodes action_graph in
-                          Log.info
-                            ("[PACKAGE_PLANNER] Total action nodes (including foreign): "
-                            ^ Int.to_string (List.length all_nodes));
-                          let dep_count = ref 0 in
-                          List.for_each
-                            all_nodes
-                            ~fn:(fun (node: Action_node.t) ->
-                              let is_foreign_node = List.contains foreign_node_ids ~value:node.id in
-                              if not is_foreign_node then
-                                List.for_each
-                                  foreign_nodes
-                                  ~fn:(fun foreign_node ->
-                                    Action_graph.add_dependency
-                                      action_graph
-                                      node
-                                      ~depends_on:foreign_node;
-                                    dep_count := !dep_count + 1));
-                          Log.info
-                            ("[PACKAGE_PLANNER] Added "
-                            ^ Int.to_string !dep_count
-                            ^ " dependency edges to foreign nodes")
-                        );
-                        let _ =
-                          Riot_store.Store.save_plan_bundle
-                            store
-                            ~hash:input_hash
-                            ~plan:(plan_bundle_to_json ~package ~module_graph ~action_graph)
-                        in
-                        let module_plan_duration =
-                          Time.Instant.duration_since
-                            ~earlier:module_plan_started_at
-                            (Time.Instant.now ())
-                        in
-                        Ok (
-                          Planned {
-                            package_key;
-                            package;
-                            module_graph;
-                            action_graph;
-                            hash = input_hash;
-                            depset;
-                            breakdown =
-                              {
-                                empty_breakdown with
-                                dependency_count = List.length depset;
-                                dependency_check_duration;
-                                input_hash_duration;
-                                artifact_lookup_duration;
-                                plan_bundle_lookup_duration;
-                                plan_bundle_decode_duration;
-                                module_plan_duration;
-                              };
-                          }
-                        )
-              )
-          | None ->
-              let plan_bundle_lookup_duration =
-                Time.Instant.duration_since
-                  ~earlier:plan_bundle_lookup_started_at
-                  (Time.Instant.now ())
-              in
-              (* Always produce a concrete plan graph. The old fast path returned dummy
-                 empty graphs keyed off package-level artifact existence, which made
-                 planning correctness depend on execution-time cache state.
-              *)
-              Log.info ("Package " ^ Package_name.to_string package.name ^ ": computing plan graph");
-              let module_plan_started_at = Time.Instant.now () in
-              let plan_input =
-                Module_planner.{
-                  package;
-                  profile;
-                  ctx = build_ctx;
-                  toolchain;
-                  workspace;
-                  source_groups = planning_groups_for_package package;
-                  depset;
-                  dependency_packages = List.map
-                    (Dependency.transitive_closure depset)
-                    ~fn:(fun (dep: Dependency.t) -> dep.package);
-                  store;
-                }
-              in
-              match Module_planner.plan_node plan_input with
-              | Error err -> Error err
-              | Ok {
-                  sources;
-                  module_graph;
-                  analyzed_modules = _;
-                  action_graph;
-                } ->
-                  (* Add foreign dependency build actions and make all other nodes depend on them *)
-                  let foreign_nodes =
-                    List.map
-                      package.foreign_dependencies
-                      ~fn:(fun (fdep: Package.foreign_dependency) ->
-                        Log.info
-                          ("[PACKAGE_PLANNER] Adding foreign dependency: "
-                          ^ fdep.name
-                          ^ " with "
-                          ^ Int.to_string (List.length fdep.inputs)
-                          ^ " input files");
-                        let foreign_action = Action.BuildForeignDependency {
-                          name = fdep.name;
-                          path = fdep.path;
-                          build_cmd = fdep.build_cmd;
-                          outputs = fdep.outputs;
-                          env = fdep.env;
-                        }
-                        in
-                        let foreign_node =
-                          Action_node.make
-                            ~actions:[ foreign_action ]
-                            ~outs:fdep.outputs
-                            ~srcs:[]
-                            ~package
-                            ~toolchain
-                            ~dependency_hashes:(fun _ -> Crypto.hash_string "")
-                            ~deps:[]
-                        in
-                        Action_graph.add_node action_graph foreign_node)
-                  in
-                  (* Make all existing nodes depend on foreign dependency nodes *)
-                  if List.length foreign_nodes > 0 then (
-                    let foreign_node_ids =
-                      List.map foreign_nodes ~fn:(fun (node: Action_node.t) -> node.id)
-                    in
+          )
+      | None ->
+          let plan_bundle_lookup_duration =
+            Time.Instant.duration_since ~earlier:plan_bundle_lookup_started_at (Time.Instant.now ())
+          in
+          (* Always produce a concrete plan graph. The old fast path returned dummy
+             empty graphs keyed off package-level artifact existence, which made
+             planning correctness depend on execution-time cache state.
+          *)
+          Log.info ("Package " ^ Package_name.to_string package.name ^ ": computing plan graph");
+          let module_plan_started_at = Time.Instant.now () in
+          let plan_input =
+            Module_planner.{
+              package;
+              profile;
+              ctx = build_ctx;
+              toolchain;
+              workspace;
+              source_groups = planning_groups_for_package package;
+              depset;
+              dependency_packages = List.map
+                (Dependency.transitive_closure depset)
+                ~fn:(fun (dep: Dependency.t) -> dep.package);
+              store;
+            }
+          in
+          match Module_planner.plan_node plan_input with
+          | Error err -> Error err
+          | Ok {
+              sources;
+              module_graph;
+              analyzed_modules = _;
+              action_graph;
+            } ->
+              (* Add foreign dependency build actions and make all other nodes depend on them *)
+              let foreign_nodes =
+                List.map
+                  package.foreign_dependencies
+                  ~fn:(fun (fdep: Package.foreign_dependency) ->
                     Log.info
-                      ("[PACKAGE_PLANNER] Making all action nodes depend on "
-                      ^ Int.to_string (List.length foreign_nodes)
-                      ^ " foreign dependencies");
-                    let all_nodes = Action_graph.nodes action_graph in
-                    Log.info
-                      ("[PACKAGE_PLANNER] Total action nodes (including foreign): "
-                      ^ Int.to_string (List.length all_nodes));
-                    let dep_count = ref 0 in
-                    List.for_each
-                      all_nodes
-                      ~fn:(fun (node: Action_node.t) ->
-                        (* Skip foreign dependency nodes themselves *)
-                        let is_foreign_node = List.contains foreign_node_ids ~value:node.id in
-                        if not is_foreign_node then (
-                          (* Make this node depend on all foreign nodes *)
-                          List.for_each
-                            foreign_nodes
-                            ~fn:(fun foreign_node ->
-                              Action_graph.add_dependency action_graph node ~depends_on:foreign_node;
-                              dep_count := !dep_count + 1)
-                        ));
-                    Log.info
-                      ("[PACKAGE_PLANNER] Added "
-                      ^ Int.to_string !dep_count
-                      ^ " dependency edges to foreign nodes")
-                  );
-                  let _ =
-                    Riot_store.Store.save_plan_bundle
-                      store
-                      ~hash:input_hash
-                      ~plan:(plan_bundle_to_json ~package ~module_graph ~action_graph)
-                  in
-                  let module_plan_duration =
-                    Time.Instant.duration_since
-                      ~earlier:module_plan_started_at
-                      (Time.Instant.now ())
-                  in
-                  Ok (
-                    Planned {
-                      package_key;
-                      package;
-                      module_graph;
-                      action_graph;
-                      hash = input_hash;
-                      depset;
-                      breakdown =
-                        {
-                          empty_breakdown with
-                          dependency_count = List.length depset;
-                          dependency_check_duration;
-                          input_hash_duration;
-                          artifact_lookup_duration;
-                          plan_bundle_lookup_duration;
-                          module_plan_duration;
-                        };
+                      ("[PACKAGE_PLANNER] Adding foreign dependency: "
+                      ^ fdep.name
+                      ^ " with "
+                      ^ Int.to_string (List.length fdep.inputs)
+                      ^ " input files");
+                    let foreign_action = Action.BuildForeignDependency {
+                      name = fdep.name;
+                      path = fdep.path;
+                      build_cmd = fdep.build_cmd;
+                      outputs = fdep.outputs;
+                      env = fdep.env;
                     }
-                  )
-        )
+                    in
+                    let foreign_node =
+                      Action_node.make
+                        ~actions:[ foreign_action ]
+                        ~outs:fdep.outputs
+                        ~srcs:[]
+                        ~package
+                        ~toolchain
+                        ~dependency_hashes:(fun _ -> Crypto.hash_string "")
+                        ~deps:[]
+                    in
+                    Action_graph.add_node action_graph foreign_node)
+              in
+              (* Make all existing nodes depend on foreign dependency nodes *)
+              if List.length foreign_nodes > 0 then (
+                let foreign_node_ids =
+                  List.map foreign_nodes ~fn:(fun (node: Action_node.t) -> node.id)
+                in
+                Log.info
+                  ("[PACKAGE_PLANNER] Making all action nodes depend on "
+                  ^ Int.to_string (List.length foreign_nodes)
+                  ^ " foreign dependencies");
+                let all_nodes = Action_graph.nodes action_graph in
+                Log.info
+                  ("[PACKAGE_PLANNER] Total action nodes (including foreign): "
+                  ^ Int.to_string (List.length all_nodes));
+                let dep_count = ref 0 in
+                List.for_each
+                  all_nodes
+                  ~fn:(fun (node: Action_node.t) ->
+                    (* Skip foreign dependency nodes themselves *)
+                    let is_foreign_node = List.contains foreign_node_ids ~value:node.id in
+                    if not is_foreign_node then (
+                      (* Make this node depend on all foreign nodes *)
+                      List.for_each
+                        foreign_nodes
+                        ~fn:(fun foreign_node ->
+                          Action_graph.add_dependency action_graph node ~depends_on:foreign_node;
+                          dep_count := !dep_count + 1)
+                    ));
+                Log.info
+                  ("[PACKAGE_PLANNER] Added "
+                  ^ Int.to_string !dep_count
+                  ^ " dependency edges to foreign nodes")
+              );
+              let _ =
+                Riot_store.Store.save_plan_bundle
+                  store
+                  ~hash:input_hash
+                  ~plan:(plan_bundle_to_json ~package ~module_graph ~action_graph)
+              in
+              let module_plan_duration =
+                Time.Instant.duration_since ~earlier:module_plan_started_at (Time.Instant.now ())
+              in
+              Ok (
+                Planned {
+                  unit_key;
+                  package;
+                  module_graph;
+                  action_graph;
+                  hash = input_hash;
+                  depset;
+                  breakdown =
+                    {
+                      empty_breakdown with
+                      dependency_count = List.length depset;
+                      dependency_check_duration;
+                      input_hash_duration;
+                      artifact_lookup_duration;
+                      plan_bundle_lookup_duration;
+                      module_plan_duration;
+                    };
+                }
+              )
+    )
+
+let plan_build_unit = fun
+  ~workspace ~toolchain ~store ~(unit:Build_unit.t) ~depset ~build_ctx ->
+  plan_package_after_dependencies
+    ~workspace
+    ~toolchain
+    ~store
+    ~unit_key:(Build_unit.key unit)
+    ~package:(Build_unit.package unit)
+    ~depset
+    ~dependency_check_duration:Time.Duration.zero
+    ~build_ctx

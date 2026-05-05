@@ -8,7 +8,7 @@ type package_scope =
 
 type failure = {
   package_name: Riot_model.Package_name.t;
-  package_key: Riot_model.Package.key;
+  unit_key: Riot_planner.Build_unit.key;
   reason: failure_reason;
   message: string;
   ocamlc_warnings: string list;
@@ -59,16 +59,14 @@ let artifact_of_status = fun __tmp1 ->
   | Skipped _
   | Failed _ -> None
 
-let scope_of_package_key = fun key ->
-  let value = Riot_model.Package.key_to_string key in
-  if String.ends_with ~suffix:":dev" value then
-    Dev
-  else if String.ends_with ~suffix:":runtime" value then
-    Runtime
-  else if String.ends_with ~suffix:":build" value then
-    Build
-  else
-    Unknown
+let scope_of_unit_key = fun (key: Riot_planner.Build_unit.key) ->
+  match key.artifact with
+  | Riot_planner.Build_unit.SyntheticTool _ -> Build
+  | Library
+  | RuntimeBinary _ -> Runtime
+  | TestBinary _
+  | ExampleBinary _
+  | BenchBinary _ -> Dev
 
 let scope_priority = fun __tmp1 ->
   match __tmp1 with
@@ -139,7 +137,7 @@ let package_result_of_build_result = fun (result: Package_builder.build_result) 
   let status = package_status_of_build_status result.status in
   {
     package_name = result.package.name;
-    scope = scope_of_package_key result.package_key;
+    scope = scope_of_unit_key result.unit_key;
     status;
     artifacts = Option.to_list (artifact_of_status status);
   }
@@ -248,7 +246,7 @@ let failure_of_build_result = fun (result: Package_builder.build_result) ->
   let message = failure_reason_message reason in
   {
     package_name = result.package.name;
-    package_key = result.package_key;
+    unit_key = result.unit_key;
     reason;
     message;
     ocamlc_warnings = result.ocamlc_warnings;
@@ -260,7 +258,7 @@ let failures_of_build_results = fun results -> List.map results ~fn:failure_of_b
 let failure_to_json = fun (failure: failure) ->
   Data.Json.Object [
     ("package_name", Data.Json.String (Riot_model.Package_name.to_string failure.package_name));
-    ("package_key", Data.Json.String (Riot_model.Package.key_to_string failure.package_key));
+    ("unit_key", Data.Json.String (Riot_planner.Build_unit.key_to_string failure.unit_key));
     ("reason", failure_reason_to_json failure.reason);
     ("message", Data.Json.String failure.message);
     ("ocamlc_warnings", Data.Json.Array (List.map failure.ocamlc_warnings ~fn:Data.Json.string));

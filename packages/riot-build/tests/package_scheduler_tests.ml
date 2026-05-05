@@ -8,7 +8,8 @@ module Lane_result = Riot_build.Internal.Lane_result
 module Package_builder = Riot_build.Internal.Package_builder
 module Package_scheduler = Riot_build.Internal.Package_scheduler
 module Resolved_build = Riot_build.Internal.Resolved_build
-module Package_graph = Riot_planner.Package_graph
+module Build_unit = Riot_planner.Build_unit
+module Build_unit_graph = Riot_planner.Build_unit_graph
 
 let package_name = fun name ->
   Riot_model.Package_name.from_string name
@@ -84,6 +85,39 @@ let make_package = fun ~root ~name ~source ?(dependencies = []) () ->
     }
     ()
 
+let make_package_with_runtime_binary = fun ~root ~name ~library_source ~binary_source () ->
+  let pkg_dir = Path.(root / Path.v name) in
+  let src_dir = Path.(pkg_dir / Path.v "src") in
+  let pkg_name = package_name name in
+  Fs.create_dir_all src_dir
+  |> Result.expect ~msg:"create src failed";
+  Fs.write library_source Path.(src_dir / Path.v "lib.ml")
+  |> Result.expect ~msg:"write library source failed";
+  Fs.write binary_source Path.(src_dir / Path.v "main.ml")
+  |> Result.expect ~msg:"write binary source failed";
+  Fs.write
+    ("[package]\nname = \""
+    ^ name
+    ^ "\"\nversion = \"0.0.1\"\n\n[lib]\npath = \"src/lib.ml\"\n\n[[bin]]\nname = \""
+    ^ name
+    ^ "\"\npath = \"src/main.ml\"\n")
+    Path.(pkg_dir / Path.v "riot.toml")
+  |> Result.expect ~msg:"write riot.toml failed";
+  Riot_model.Package.make
+    ~name:pkg_name
+    ~path:pkg_dir
+    ~relative_path:(Path.v name)
+    ~library:{ path = Path.v "src/lib.ml" }
+    ~binaries:[ Riot_model.Package.{ name; path = Path.v "src/main.ml" } ]
+    ~sources:{
+      src = [ Path.v "src/lib.ml"; Path.v "src/main.ml" ];
+      native = [];
+      tests = [];
+      examples = [];
+      bench = [];
+    }
+    ()
+
 let make_workspace = fun ?toolchain_targets ~root ~packages () ->
   write_workspace_manifest
     ~root
@@ -145,7 +179,23 @@ let run_package_scheduler = fun request ->
       in
       (summary, List.reverse !events))
 
-let package_key_string = fun key -> Riot_model.Package.key_to_string key
+let package_key_string = fun key -> Build_unit.key_to_string key
+
+let library_unit_key = fun ~name ~target ->
+  ({
+    package = package_name name;
+    artifact = Build_unit.Library;
+    target;
+    profile = Riot_model.Profile.debug;
+  }:Build_unit.key)
+
+let runtime_binary_unit_key = fun ~name ~target ->
+  ({
+    package = package_name name;
+    artifact = Build_unit.RuntimeBinary { name };
+    target;
+    profile = Riot_model.Profile.debug;
+  }:Build_unit.key)
 
 let lane_result = fun summary ->
   match summary.Package_scheduler.lane_results with
@@ -283,13 +333,13 @@ let test_package_scheduler_succeeds_for_dependency_chain = fun _ctx ->
         let result_keys =
           Lane_result.results lane_result
           |> List.map
-            ~fn:(fun (result: Package_builder.build_result) -> package_key_string result.package_key)
+            ~fn:(fun (result: Package_builder.build_result) -> package_key_string result.unit_key)
         in
         let expected_keys = [
-          Package_graph.package_key ~package_name:"lib" Package_graph.Runtime
-          |> package_key_string;
-          Package_graph.package_key ~package_name:"app" Package_graph.Runtime
-          |> package_key_string;
+          library_unit_key ~name:"lib" ~target:(Lane_result.target lane_result)
+          |> Build_unit.key_to_string;
+          library_unit_key ~name:"app" ~target:(Lane_result.target lane_result)
+          |> Build_unit.key_to_string;
         ]
         in
         let completed_all =
@@ -310,6 +360,52 @@ let test_package_scheduler_succeeds_for_dependency_chain = fun _ctx ->
           Test.assert_equal ~expected:expected_keys ~actual:result_keys;
           Ok ()
         )) with
+  | Ok result -> result
+  | Error err -> Error ("tempdir failed: " ^ IO.error_message err)
+
+let test_package_scheduler_runtime_binary_imports_own_public_root = fun _ctx ->
+  match Fs.with_tempdir
+    ~prefix:"riot_package_scheduler_self_runtime_binary"
+    (fun tmpdir ->
+      let app =
+        make_package_with_runtime_binary
+          ~root:tmpdir
+          ~name:"app"
+          ~library_source:"let value = 1\n"
+          ~binary_source:"let main ~args:_ =\n  let _ = App.value in\n  ()\n"
+          ()
+      in
+      let workspace = make_workspace ~root:tmpdir ~packages:[ app ] () in
+      let (summary, _events) =
+        run_package_scheduler (make_request ~workspace ~packages:[ package_name "app" ] ())
+      in
+      if summary.errors != [] then
+        Error "expected runtime binary self-root planning to avoid scheduler errors"
+      else if summary.had_failure then
+        let lane_result = lane_result summary in
+        let statuses =
+          result_statuses lane_result
+          |> List.map ~fn:status_label
+          |> String.concat ", "
+        in
+        Error ("expected runtime binary to import its public root; statuses: " ^ statuses)
+      else
+        let lane_result = lane_result summary in
+        let target = Lane_result.target lane_result in
+        let result_keys =
+          Lane_result.results lane_result
+          |> List.map
+            ~fn:(fun (result: Package_builder.build_result) -> package_key_string result.unit_key)
+        in
+        let expected_keys = [
+          library_unit_key ~name:"app" ~target
+          |> Build_unit.key_to_string;
+          runtime_binary_unit_key ~name:"app" ~target
+          |> Build_unit.key_to_string;
+        ]
+        in
+        Test.assert_equal ~expected:expected_keys ~actual:result_keys;
+        Ok ()) with
   | Ok result -> result
   | Error err -> Error ("tempdir failed: " ^ IO.error_message err)
 
@@ -479,8 +575,7 @@ let test_package_scheduler_keeps_multi_lane_results_isolated = fun _ctx ->
               | Package_scheduler.PlanningStarted { lane_count; _ }
               | Package_scheduler.PlanningFinished { lane_count; _ }
               | Package_scheduler.ExecutionStarted { lane_count; _ }
-              | Package_scheduler.ExecutionFinished { lane_count; _ } ->
-                  Some lane_count
+              | Package_scheduler.ExecutionFinished { lane_count; _ } -> Some lane_count
               | Package_scheduler.PackageActionGraphPlanned _ -> None)
           |> List.all ~fn:(fun lane_count -> lane_count = 2)
         in
@@ -648,16 +743,17 @@ let test_package_scheduler_reports_stalled_pending_work = fun _ctx ->
         (fun lanes ->
           match lanes with
           | [ lane ] ->
-              let package_graph = Build_lane.package_graph lane in
-              let lib_key = Package_graph.package_key ~package_name:"lib" Package_graph.Runtime in
-              let app_key = Package_graph.package_key ~package_name:"app" Package_graph.Runtime in
+              let build_unit_graph = Build_lane.build_unit_graph lane in
+              let target = Build_lane.target lane in
+              let lib_key = library_unit_key ~name:"lib" ~target in
+              let app_key = library_unit_key ~name:"app" ~target in
               let lib_node =
-                Package_graph.get_node_by_key package_graph lib_key
-                |> Option.expect ~msg:"expected lib node in prepared package graph"
+                Build_unit_graph.find build_unit_graph lib_key
+                |> Option.expect ~msg:"expected lib node in prepared build unit graph"
               in
               let app_node =
-                Package_graph.get_node_by_key package_graph app_key
-                |> Option.expect ~msg:"expected app node in prepared package graph"
+                Build_unit_graph.find build_unit_graph app_key
+                |> Option.expect ~msg:"expected app node in prepared build unit graph"
               in
               Graph.SimpleGraph.add_edge lib_node ~depends_on:app_node;
               let events = ref [] in
@@ -716,6 +812,10 @@ let tests = let open Test in
     ~size:Large
     "package scheduler: succeeds for dependency chain"
     test_package_scheduler_succeeds_for_dependency_chain;
+  case
+    ~size:Large
+    "package scheduler: runtime binary imports own public root"
+    test_package_scheduler_runtime_binary_imports_own_public_root;
   case
     "package scheduler: skips dependents after failed dependency"
     test_package_scheduler_skips_dependents_after_failed_dependency;

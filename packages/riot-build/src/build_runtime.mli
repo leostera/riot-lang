@@ -22,7 +22,6 @@ type build_error =
   | BuildFailed of {
       errors: Package_builder.build_result list;
     }
-  | PlanningFailed of Riot_planner.Workspace_planner.plan_error
   | BuildUnitPlanningFailed of Build_unit_plan.error
   | UnexpectedError of { reason: string }
 

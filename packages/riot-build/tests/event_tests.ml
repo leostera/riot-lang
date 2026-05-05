@@ -146,7 +146,7 @@ let test_telemetry_event_to_json = fun _ctx ->
   let telemetry_event = Telemetry_events.PackageStarted {
     session_id;
     package;
-    target = Riot_planner.Workspace_planner.Package package.name;
+    target = Telemetry_events.Package package.name;
     started_at = Time.Instant.now ();
   }
   in
@@ -166,7 +166,7 @@ let test_telemetry_event_to_json = fun _ctx ->
 let test_telemetry_timestamp_fields_describe_event_instants = fun _ctx ->
   let session_id = Riot_model.Session_id.make () in
   let package = make_demo_package () in
-  let target = Riot_planner.Workspace_planner.Package package.name in
+  let target = Telemetry_events.Package package.name in
   let build_target =
     Result.expect (Riot_model.Target.from_string "aarch64-apple-darwin") ~msg:"target"
   in
@@ -265,7 +265,7 @@ let test_package_execution_prepared_event_round_trips = fun _ctx ->
   let event = Telemetry_events.PackageExecutionPrepared {
     session_id;
     package;
-    target = Riot_planner.Workspace_planner.Package package.name;
+    target = Telemetry_events.Package package.name;
     build_target;
     input_count = 12;
     dependency_count = 4;

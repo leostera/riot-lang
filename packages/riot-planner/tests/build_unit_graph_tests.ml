@@ -104,65 +104,70 @@ let request = fun
   }
 
 let library_key = fun ?(target = macos_target) package ->
-  Build_unit.{
+  ({
     package = package_name package;
-    artifact = Library;
+    artifact = Build_unit.Library;
     target;
     profile = Profile.debug;
-  }
+  }:Build_unit.key)
 
 let runtime_binary_key = fun ?(target = macos_target) package name ->
-  Build_unit.{
+  ({
     package = package_name package;
-    artifact = RuntimeBinary { name };
+    artifact = Build_unit.RuntimeBinary { name };
     target;
     profile = Profile.debug;
-  }
+  }:Build_unit.key)
 
 let test_binary_key = fun ?(target = macos_target) package name ->
-  Build_unit.{
+  ({
     package = package_name package;
-    artifact = TestBinary { name };
+    artifact = Build_unit.TestBinary { name };
     target;
     profile = Profile.debug;
-  }
+  }:Build_unit.key)
 
 let example_binary_key = fun ?(target = macos_target) package name ->
-  Build_unit.{
+  ({
     package = package_name package;
-    artifact = ExampleBinary { name };
+    artifact = Build_unit.ExampleBinary { name };
     target;
     profile = Profile.debug;
-  }
+  }:Build_unit.key)
 
 let bench_binary_key = fun ?(target = macos_target) package name ->
-  Build_unit.{
+  ({
     package = package_name package;
-    artifact = BenchBinary { name };
+    artifact = Build_unit.BenchBinary { name };
     target;
     profile = Profile.debug;
-  }
+  }:Build_unit.key)
 
 let synthetic_key = fun ?(target = Target.host ()) package name ->
-  Build_unit.{
+  ({
     package = package_name package;
-    artifact = SyntheticTool { name };
+    artifact = Build_unit.SyntheticTool { name };
     target;
     profile = Profile.debug;
-  }
+  }:Build_unit.key)
 
 let sort_keys = fun keys -> List.sort keys ~compare:Build_unit.compare_key
 
 let assert_keys_equal = fun ~expected ~actual ->
-  Test.assert_equal
-    ~expected:(
-      sort_keys expected
-      |> List.map ~fn:Build_unit.key_to_string
-    )
-    ~actual:(
-      sort_keys actual
-      |> List.map ~fn:Build_unit.key_to_string
-    )
+  let expected =
+    sort_keys expected
+    |> List.map ~fn:Build_unit.key_to_string
+  in
+  let actual =
+    sort_keys actual
+    |> List.map ~fn:Build_unit.key_to_string
+  in
+  if expected != actual then
+    panic
+      ("expected keys:\n"
+      ^ String.concat "\n" expected
+      ^ "\nactual keys:\n"
+      ^ String.concat "\n" actual)
 
 let graph = fun workspace request ->
   Build_unit_graph.create workspace request
@@ -444,7 +449,7 @@ let synthetic_tools_are_host_only_build_units = fun _ctx ->
     ]
     ~actual:(Build_unit_graph.keys graph);
   assert_keys_equal
-    ~expected:[ library_key ~target:host_target "fixme"; library_key ~target:host_target "std" ]
+    ~expected:[ library_key ~target:host_target "fixme" ]
     ~actual:(dependencies graph (synthetic_key "fixme" "fixme-runner"));
   Ok ()
 
@@ -568,12 +573,12 @@ let profile_participates_in_build_unit_identity = fun _ctx ->
   let workspace = make_workspace [ make_package "app" ] in
   let graph = graph workspace (request ~profile:Profile.release ~roots:[ package_name "app" ] ()) in
   let release_key =
-    Build_unit.{
+    ({
       package = package_name "app";
-      artifact = Library;
+      artifact = Build_unit.Library;
       target = macos_target;
       profile = Profile.release;
-    }
+    }:Build_unit.key)
   in
   assert_keys_equal ~expected:[ release_key ] ~actual:(Build_unit_graph.keys graph);
   Test.assert_equal
@@ -636,7 +641,7 @@ let topological_sort_places_libraries_before_consumers = fun _ctx ->
   let sorted =
     Build_unit_graph.topological_sort graph
     |> Result.expect ~msg:"expected acyclic build unit graph"
-    |> List.map ~fn:(fun unit -> unit.Build_unit.key)
+    |> List.map ~fn:Build_unit.key
   in
   let position key =
     List.enumerate sorted
@@ -702,7 +707,7 @@ let dependency_edges_only_reference_graph_nodes = fun _ctx ->
 
 let unit_package = fun graph key ->
   Build_unit_graph.find graph key
-  |> Option.map ~fn:(fun node -> (Build_unit_graph.node_value node).Build_unit.package)
+  |> Option.map ~fn:(fun node -> Build_unit.package (Build_unit_graph.node_value node))
   |> Option.expect ~msg:("missing build unit: " ^ Build_unit.key_to_string key)
 
 let assert_paths_equal = fun ~expected ~actual ->

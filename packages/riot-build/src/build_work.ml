@@ -3,7 +3,7 @@ open Std.Result.Syntax
 
 type plan_package = {
   lane: Build_lane.locked Build_lane.t;
-  package_key: Riot_model.Package.key;
+  unit_key: Riot_planner.Build_unit.key;
 }
 
 type error = Package_scheduler.error = {
@@ -83,20 +83,20 @@ let runtime_phase_of_package_scheduler_event = fun __tmp1 ->
         error_count;
       }
 
-let plan_package = fun lane package_key -> { lane; package_key }
+let plan_package = fun lane unit_key -> { lane; unit_key }
 
 let initial_plan_packages = fun lane ->
-  Build_lane.package_keys lane
+  Build_lane.build_unit_keys lane
   |> List.map ~fn:(plan_package lane)
 
-let plan_package_key = fun (plan_package: plan_package) -> plan_package.package_key
+let plan_package_key = fun (plan_package: plan_package) -> plan_package.unit_key
 
 let plan_package_target = fun (plan_package: plan_package) -> Build_lane.target plan_package.lane
 
-let prepare_lane = fun context workspace_plan ~toolchain target ->
+let prepare_lane = fun context build_plan ~toolchain target ->
   Build_lane.prepare
     context
-    workspace_plan
+    build_plan
     ~target
     ~toolchain
 
@@ -107,24 +107,20 @@ let prepare_lanes = fun context spec ~toolchain ->
     Riot_model.Target.Set.to_list (Resolved_build.targets spec)
     |> List.sort ~compare:Riot_model.Target.compare
   in
-  let* workspace_plan =
-    try
-      Build_lane.plan_workspace context spec
-    with
+  let* build_plan =
+    try Build_lane.plan_build_units context spec with
     | exn -> Error (Build_lane.Failure (Exception.to_string exn))
   in
   let lane_inputs =
     targets
-    |> List.map ~fn:(fun target -> (target, Build_lane.clone_workspace_plan workspace_plan))
+    |> List.map ~fn:(fun target -> (target, Build_lane.clone_build_plan build_plan))
   in
   let results =
     WorkerPool.SimpleWorkerPool.run
       ~concurrency:context.Build_context.parallelism
       ~tasks:lane_inputs
       ~fn:(fun (target, lane_plan) ->
-        try
-          prepare_lane context lane_plan ~toolchain target
-        with
+        try prepare_lane context lane_plan ~toolchain target with
         | exn -> Error (Build_lane.Failure (Exception.to_string exn)))
       ()
     |> List.map ~fn:(fun (_index, result) -> result)

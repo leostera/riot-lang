@@ -367,81 +367,15 @@ let selected_packages = fun (request: request) ->
       else
         Ok workspace_members
 
-let workspace_plan_error_to_string = fun __tmp1 ->
-  match __tmp1 with
-  | Riot_planner.Workspace_planner.PackageNotFound { name; available } ->
-      "package not found: "
-      ^ Package_name.to_string name
-      ^ ". available packages: "
-      ^ String.concat ", " (List.map available ~fn:Package_name.to_string)
-  | Riot_planner.Workspace_planner.PackagesNotFound { names; available } ->
-      "packages not found: "
-      ^ String.concat ", " (List.map names ~fn:Package_name.to_string)
-      ^ ". available packages: "
-      ^ String.concat ", " (List.map available ~fn:Package_name.to_string)
-  | Riot_planner.Workspace_planner.CycleDetected { cycle } ->
-      "package cycle detected: " ^ String.concat " -> " cycle
-  | Riot_planner.Workspace_planner.MissingDependencies { missing } ->
-      "missing dependencies: "
-      ^ String.concat
-        "; "
-        (List.map
-          missing
-          ~fn:(fun (dep: Riot_planner.Package_graph.missing_dependency) ->
-            dep.package ^ " -> " ^ dep.dependency))
-  | Riot_planner.Workspace_planner.PackageLoadFailed { errors } ->
-      "package load failed: " ^ String.concat
-        "; "
-        (
-          List.map
-            errors
-            ~fn:(fun err ->
-              match err with
-              | Workspace_manager.PackageNotFound { package; path; dependant } -> (
-                  match dependant with
-                  | None -> "missing package: " ^ package ^ " (" ^ path ^ ")"
-                  | Some parent ->
-                      "missing package: " ^ package ^ " required by " ^ parent ^ " (" ^ path ^ ")"
-                )
-              | Workspace_manager.PackageTomlReadFailed { package; path } ->
-                  "failed to read package toml: " ^ package ^ " (" ^ path ^ ")"
-              | Workspace_manager.PackageTomlParseFailed { package; path } ->
-                  "failed to parse package toml: " ^ package ^ " (" ^ path ^ ")"
-              | Workspace_manager.PackageFromTomlFailed { package; path; error } ->
-                  "failed to parse package toml for "
-                  ^ package
-                  ^ " ("
-                  ^ path
-                  ^ "): "
-                  ^ Package_manifest.error_message error)
-        )
-
-let planner_target_for_selected_packages = fun request packages ->
-  match (request.package_name, packages) with
-  | (Some _, [ package ]) -> Ok (Riot_planner.Workspace_planner.Package package.Package.name)
-  | (Some name, _) -> Error ("package not found: " ^ name)
-  | (None, _) -> Ok Riot_planner.Workspace_planner.All
-
-let plan_workspace_for_docs = fun request packages ->
-  let* target = planner_target_for_selected_packages request packages in
-  let dev_artifacts: Riot_planner.Package_graph.dev_artifacts = {
-    tests = false;
-    examples = false;
-    benches = false;
-  }
-  in
-  Riot_planner.plan_workspace
-    ~workspace:request.workspace
-    ~target
-    ~scope:Riot_planner.Package_graph.Runtime
-    ~load_errors:[]
-    ~dev_artifacts
-  |> Result.map_err ~fn:workspace_plan_error_to_string
-
-let dependency_packages_for = fun (plan: Riot_planner.workspace_plan_result) (package: Package.t) ->
-  Riot_planner.Package_graph.direct_runtime_dependencies
-    plan.package_graph
-    package.name
+let dependency_packages_for = fun request (package: Package.t) ->
+  package.dependencies
+  |> List.filter_map
+    ~fn:(fun (dependency: Package.dependency) ->
+      request.workspace.Workspace.packages
+      |> List.find
+        ~fn:(fun (manifest: Package_manifest.t) ->
+          Package_name.equal manifest.name dependency.name)
+      |> Option.map ~fn:(Package_manifest.realize ~intent:Package.Runtime))
 
 let shared_assets_dir = fun request -> Path.(output_root_for_request request / Path.v "_shared")
 
@@ -708,11 +642,10 @@ let run_for_package = fun
   ~store
   ~cache_allowed
   ~request
-  ~workspace_plan
   ~(package:Riot_model.Package.t)
   ~lockfile_opt ->
   let* version = output_version ~release:request.release package in
-  let dependency_packages = dependency_packages_for workspace_plan package in
+  let dependency_packages = dependency_packages_for request package in
   let output_dir =
     package_output_dir
       ~workspace:request.workspace
@@ -842,7 +775,6 @@ let run = fun ?on_event (request: request) ->
   let on_event = Option.unwrap_or ~default:(fun _ -> ()) on_event in
   let* lockfile_opt = read_lockfile request.workspace.root in
   let* packages = selected_packages request in
-  let* workspace_plan = plan_workspace_for_docs request packages in
   let store =
     Riot_store.Store.create_for_lane
       ~workspace:request.workspace
@@ -862,7 +794,6 @@ let run = fun ?on_event (request: request) ->
           ~store
           ~cache_allowed
           ~request
-          ~workspace_plan
           ~package
           ~lockfile_opt
       in

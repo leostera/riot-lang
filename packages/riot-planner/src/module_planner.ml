@@ -74,14 +74,8 @@ let direct_dependency_roots = fun (input: plan_input) ->
         | None -> root_module_name_of_package_name dep.name
       in
       add ~package_name:dep.name ~root_module ~package);
-  let has_dev_sources =
-    not
-      (List.is_empty input.package.sources.tests
-      && List.is_empty input.package.sources.examples
-      && List.is_empty input.package.sources.bench)
-  in
   let () =
-    if Option.is_none input.package.library && has_dev_sources then
+    if Option.is_none input.package.library then
       match Dependency.transitive_closure input.depset
       |> List.find
         ~fn:(fun (dep: Dependency.t) ->

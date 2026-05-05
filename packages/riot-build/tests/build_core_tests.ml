@@ -227,14 +227,10 @@ let phase_name = fun __tmp1 ->
   | Riot_build.Event.BuildLockWaiting _ -> "build_lock_waiting"
   | Riot_build.Event.BuildLanesPreparationStarted _ -> "build_lanes_preparation_started"
   | Riot_build.Event.BuildLanesPreparationFinished _ -> "build_lanes_preparation_finished"
-  | Riot_build.Event.BuildWorkspacePlanned _ -> "build_workspace_planned"
-  | Riot_build.Event.BuildWorkspacePlanBreakdown _ -> "build_workspace_plan_breakdown"
+  | Riot_build.Event.BuildUnitPlanCreated _ -> "build_unit_plan_created"
   | Riot_build.Event.BuildLanePreparationStarted _ -> "build_lane_preparation_started"
   | Riot_build.Event.BuildLaneLockAcquired _ -> "build_lane_lock_acquired"
   | Riot_build.Event.BuildLaneToolchainInitialized _ -> "build_lane_toolchain_initialized"
-  | Riot_build.Event.BuildLaneWorkspacePlanned _ -> "build_lane_workspace_planned"
-  | Riot_build.Event.BuildLaneWorkspacePlanBreakdown _ ->
-      "build_lane_workspace_plan_breakdown"
   | Riot_build.Event.BuildLaneStoreCreated _ -> "build_lane_store_created"
   | Riot_build.Event.BuildLanePreparationFinished _ -> "build_lane_preparation_finished"
   | Riot_build.Event.PackagePlanningStarted _ -> "package_planning_started"
@@ -282,11 +278,23 @@ let make_artifact = fun ?(exports = []) name ->
   }
 
 let make_build_result = fun ~scope ~(package:Riot_model.Package.t) ~status ->
+  let artifact =
+    match scope with
+    | "build" -> Riot_planner.Build_unit.SyntheticTool { name = "build-core-test-tool" }
+    | "dev" -> TestBinary { name = "build_core_tests" }
+    | _ -> Library
+  in
   {
-    Package_builder.package_key = Riot_model.Package.key_of_string
-      (Riot_model.Package_name.to_string package.name ^ ":" ^ scope);
+    Package_builder.unit_key =
+      ({
+        package = package.name;
+        artifact;
+        target = Riot_model.Target.host ();
+        profile = Riot_model.Profile.debug;
+      }:Riot_planner.Build_unit.key);
     package;
     status;
+    depset = [];
     ocamlc_warnings = [];
     duration = Time.Duration.zero;
   }
@@ -686,8 +694,7 @@ let test_build_emits_runtime_phases_in_order = fun _ctx ->
               "runtime_starting";
               "runtime_started";
               "build_lanes_preparation_started";
-              "build_workspace_planned";
-              "build_workspace_plan_breakdown";
+              "build_unit_plan_created";
               "build_lane_preparation_started";
               "build_lane_lock_acquired";
               "build_lane_toolchain_initialized";

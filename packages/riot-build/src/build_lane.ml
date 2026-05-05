@@ -2,7 +2,6 @@ open Std
 open Std.Result.Syntax
 
 type error =
-  | PlanningFailed of Riot_planner.Workspace_planner.plan_error
   | BuildUnitPlanningFailed of Build_unit_plan.error
   | Failure of string
 
@@ -10,12 +9,9 @@ type unresolved
 
 type locked
 
-type workspace_plan = {
+type build_plan = {
   package_names: Riot_model.Package_name.t list;
   scope: Resolved_build.scope;
-  planner_target: Riot_planner.Workspace_planner.target;
-  package_plan: Riot_planner.Workspace_planner.package_plan;
-  package_graph: Riot_planner.Package_graph.t;
   build_unit_plan: Build_unit_plan.t;
 }
 
@@ -31,9 +27,6 @@ type 'stage t = {
   toolchain: Riot_toolchain.t;
   store: Riot_store.Store.t;
   lock: Build_lock.t;
-  planner_target: Riot_planner.Workspace_planner.target;
-  package_plan: Riot_planner.Workspace_planner.package_plan;
-  package_graph: Riot_planner.Package_graph.t;
   build_unit_plan: Build_unit_plan.t;
 }
 
@@ -41,17 +34,6 @@ let sort_unique_packages = fun package_names ->
   package_names
   |> List.unique ~compare:Riot_model.Package_name.compare
   |> List.sort ~compare:Riot_model.Package_name.compare
-
-let planner_scope = fun scope ->
-  match scope with
-  | Resolved_build.Runtime -> Riot_planner.Package_graph.Runtime
-  | Resolved_build.Dev -> Riot_planner.Package_graph.Dev
-
-let planner_target = fun package_names ->
-  match package_names with
-  | [] -> Riot_planner.Workspace_planner.All
-  | [ package_name ] -> Riot_planner.Workspace_planner.Package package_name
-  | _ -> Riot_planner.Workspace_planner.Packages package_names
 
 let make_build_ctx = fun ~host ~target ~toolchain ~session_id ~profile ~parallelism ->
   if Riot_model.Target.equal target host then
@@ -75,53 +57,6 @@ let make_build_ctx = fun ~host ~target ~toolchain ~session_id ~profile ~parallel
       ~parallelism
       ()
 
-let workspace_plan_error_to_string = fun __tmp1 ->
-  match __tmp1 with
-  | Riot_planner.Workspace_planner.PackageNotFound { name; available } ->
-      "package not found: "
-      ^ Riot_model.Package_name.to_string name
-      ^ " (available: "
-      ^ String.concat ", " (List.map available ~fn:Riot_model.Package_name.to_string)
-      ^ ")"
-  | Riot_planner.Workspace_planner.PackagesNotFound { names; available } ->
-      "packages not found: "
-      ^ String.concat ", " (List.map names ~fn:Riot_model.Package_name.to_string)
-      ^ " (available: "
-      ^ String.concat ", " (List.map available ~fn:Riot_model.Package_name.to_string)
-      ^ ")"
-  | Riot_planner.Workspace_planner.CycleDetected { cycle } ->
-      "cycle detected: " ^ String.concat " -> " cycle
-  | Riot_planner.Workspace_planner.MissingDependencies { missing } ->
-      "missing dependencies: "
-      ^ String.concat
-        "; "
-        (List.map
-          missing
-          ~fn:(fun (dep: Riot_planner.Package_graph.missing_dependency) ->
-            dep.package ^ " -> " ^ dep.dependency))
-  | Riot_planner.Workspace_planner.PackageLoadFailed { errors } ->
-      let format_load_error (err: Riot_model.Workspace_manager.load_error) =
-        match err with
-        | Riot_model.Workspace_manager.PackageNotFound { package; path; dependant } -> (
-            match dependant with
-            | None -> "missing package: " ^ package ^ " (" ^ path ^ ")"
-            | Some parent ->
-                "missing package: " ^ package ^ " (required by " ^ parent ^ ", " ^ path ^ ")"
-          )
-        | Riot_model.Workspace_manager.PackageTomlReadFailed { package; path } ->
-            "failed to read package toml: " ^ package ^ " (" ^ path ^ ")"
-        | Riot_model.Workspace_manager.PackageTomlParseFailed { package; path } ->
-            "failed to parse package toml: " ^ package ^ " (" ^ path ^ ")"
-        | Riot_model.Workspace_manager.PackageFromTomlFailed { package; path; error } ->
-            "failed to parse package toml for "
-            ^ package
-            ^ " ("
-            ^ path
-            ^ "): "
-            ^ Riot_model.Package_manifest.error_message error
-      in
-      "package load failed: " ^ String.concat "; " (List.map errors ~fn:format_load_error)
-
 let build_unit_plan_error_to_string = fun __tmp1 ->
   match __tmp1 with
   | Build_unit_plan.MissingPackages { missing } ->
@@ -142,66 +77,34 @@ let build_unit_plan_error_to_string = fun __tmp1 ->
 
 let error_message = fun __tmp1 ->
   match __tmp1 with
-  | PlanningFailed error -> workspace_plan_error_to_string error
   | BuildUnitPlanningFailed error -> build_unit_plan_error_to_string error
   | Failure reason -> reason
 
-let make_lane_plan = fun lane_target workspace scope ~dev_artifacts ->
-  Riot_planner.plan_workspace ~workspace ~target:lane_target ~scope ~load_errors:[] ~dev_artifacts
-  |> Result.map_err ~fn:(fun error -> PlanningFailed error)
-
 let emit_phase = fun context phase -> Build_context.emit_phase context phase
 
-let plan_workspace: Build_context.t -> Resolved_build.t -> (workspace_plan, error) result = fun
+let plan_build_units: Build_context.t -> Resolved_build.t -> (build_plan, error) result = fun
   context spec ->
-  let workspace = context.Build_context.workspace in
   let package_names =
     Resolved_build.package_names spec
     |> sort_unique_packages
   in
   let scope = Resolved_build.scope spec in
-  let planner_target = planner_target package_names in
-  let planner_scope = planner_scope scope in
-  let dev_artifacts = Resolved_build.dev_artifacts spec in
   let plan_started_at = Time.Instant.now () in
   let* build_unit_plan =
     Build_unit_plan.create context spec
     |> Result.map_err ~fn:(fun error -> BuildUnitPlanningFailed error)
   in
-  let* package_plan = make_lane_plan planner_target workspace planner_scope ~dev_artifacts in
   let plan_completed_at = Time.Instant.now () in
   emit_phase
     context
-    (Event.BuildWorkspacePlanned {
-      package_count = List.length package_plan.nodes;
+    (Event.BuildUnitPlanCreated {
+      unit_count = List.length (Build_unit_plan.units build_unit_plan);
       planned_at = plan_completed_at;
       duration = Time.Instant.duration_since ~earlier:plan_started_at plan_completed_at;
     });
-  emit_phase
-    context
-    (Event.BuildWorkspacePlanBreakdown {
-      breakdown = Riot_planner.Workspace_planner.planning_breakdown package_plan;
-    });
-  Ok {
-    package_names;
-    scope;
-    planner_target;
-    package_plan;
-    package_graph = package_plan.package_graph;
-    build_unit_plan;
-  }
+  Ok { package_names; scope; build_unit_plan }
 
-let clone_workspace_plan = fun (plan: workspace_plan) ->
-  let package_graph = Riot_planner.Package_graph.clone plan.package_graph in
-  let package_nodes = Riot_planner.Package_graph.topological_sort package_graph in
-  let package_plan = {
-    plan.package_plan with
-    package_graph;
-    nodes = package_nodes;
-    packages = List.map package_nodes ~fn:Riot_planner.Package_graph.get_package;
-  }
-  in
-  { plan with package_plan; package_graph }
+let clone_build_plan = fun (plan: build_plan) -> plan
 
 let release_on_error: 'value. Build_lock.t -> ('value, error) result -> ('value, error) result = fun
   lock result ->
@@ -213,7 +116,7 @@ let release_on_error: 'value. Build_lock.t -> ('value, error) result -> ('value,
 
 let prepare:
   Build_context.t ->
-  workspace_plan ->
+  build_plan ->
   target:Riot_model.Target.t ->
   toolchain:Riot_toolchain.t ->
   (locked t, error) result = fun context plan ~target ~toolchain ->
@@ -309,9 +212,6 @@ let prepare:
         toolchain = lane_toolchain;
         store;
         lock;
-        planner_target = plan.planner_target;
-        package_plan = plan.package_plan;
-        package_graph = plan.package_graph;
         build_unit_plan = plan.build_unit_plan;
       }
     with
@@ -339,17 +239,29 @@ let toolchain = fun (lane: 'a t) -> lane.toolchain
 
 let store = fun (lane: 'a t) -> lane.store
 
-let planner_target = fun (lane: 'a t) -> lane.planner_target
-
-let package_plan = fun (lane: 'a t) -> lane.package_plan
-
-let package_graph = fun (lane: 'a t) -> lane.package_graph
-
 let build_unit_plan = fun (lane: 'a t) -> lane.build_unit_plan
 
-let package_keys = fun (lane: 'a t) ->
-  List.map
-    (Riot_planner.Package_graph.topological_sort lane.package_graph)
-    ~fn:Riot_planner.Package_graph.get_key
+let build_unit_graph = fun (lane: 'a t) -> Build_unit_plan.graph lane.build_unit_plan
+
+let build_units = fun (lane: 'a t) ->
+  Build_unit_plan.units lane.build_unit_plan
+  |> List.filter
+    ~fn:(fun (unit: Riot_planner.Build_unit.t) ->
+      Riot_model.Target.equal
+        (Riot_planner.Build_unit.target unit)
+        lane.target)
+
+let build_unit_keys = fun lane ->
+  build_units lane
+  |> List.map ~fn:Riot_planner.Build_unit.key
+
+let build_unit = fun lane key ->
+  Riot_planner.Build_unit_graph.find (build_unit_graph lane) key
+  |> Option.map ~fn:Riot_planner.Build_unit_graph.node_value
+
+let build_unit_dependency_keys = fun lane key ->
+  Riot_planner.Build_unit_graph.dependencies (build_unit_graph lane) key
+  |> List.filter
+    ~fn:(fun (key: Riot_planner.Build_unit.key) -> Riot_model.Target.equal key.target lane.target)
 
 let release: locked t -> unit = fun lane -> Build_lock.release lane.lock

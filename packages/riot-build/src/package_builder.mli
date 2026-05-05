@@ -30,46 +30,21 @@ val build_status_to_json: build_status -> Std.Data.Json.t
 
 (** Result of building a package *)
 type build_result = {
-  package_key: Package.key;
+  unit_key: Build_unit.key;
   package: Package.t;
   status: build_status;
+  depset: Dependency.t list;
   ocamlc_warnings: string list;
   duration: Time.Duration.t;
 }
 
 val build_result_to_json: build_result -> Std.Data.Json.t
 
-type graph_update =
-  | Planned_package of {
-      hash: Std.Crypto.hash;
-      module_graph: Module_node.t Graph.SimpleGraph.t;
-      action_graph: Action_graph.t;
-    }
-  | Cached_package of {
-      hash: Std.Crypto.hash;
-      artifact: Riot_store.Artifact.t;
-      depset: Dependency.t list;
-      exports: Riot_store.Store.export_entry list;
-    }
-  | Built_package of {
-      hash: Std.Crypto.hash;
-      artifact: Riot_store.Artifact.t;
-      depset: Dependency.t list;
-      module_graph: Module_node.t Graph.SimpleGraph.t;
-      action_graph: Action_graph.t;
-      status: Package_graph.build_status;
-    }
-  | Failed_package of {
-      hash: Std.Crypto.hash option;
-      error: string;
-    }
-  | Skipped_package of { reason: string }
 type detailed_result = {
   result: build_result;
-  graph_update: graph_update option;
 }
 type execution_plan = {
-  package_key: Package.key;
+  unit_key: Build_unit.key;
   package: Package.t;
   module_graph: Module_node.t Graph.SimpleGraph.t;
   action_graph: Action_graph.t;
@@ -86,10 +61,6 @@ type prepared_execution = {
   sandbox: Sandbox.t;
   toolchain: Riot_toolchain.t;
 }
-
-val apply_graph_update: Package_graph.t -> Package.key -> Package.t -> graph_update option -> unit
-
-val planned_graph_update: execution_plan -> graph_update
 
 (**
    Collect all source files (.ml, .mli, .c, .h) from a package's src directory.
@@ -110,24 +81,14 @@ val collect_source_files: Package.t -> Path.t list
    @param package_graph The dependency graph for all packages
    @param package The package to build
 *)
-val build:
+val plan_build_unit:
   workspace:Workspace.t ->
   toolchain:Riot_toolchain.t ->
   store:Riot_store.Store.t ->
-  package_graph:Package_graph.t ->
-  package_key:Package.key ->
-  package:Package.t ->
+  unit:Build_unit.t ->
+  depset:Dependency.t list ->
   build_ctx:Build_ctx.t ->
-  build_result
-
-val plan_detailed:
-  workspace:Workspace.t ->
-  toolchain:Riot_toolchain.t ->
-  store:Riot_store.Store.t ->
-  package_graph:Package_graph.t ->
-  package_key:Package.key ->
-  package:Package.t ->
-  build_ctx:Build_ctx.t ->
+  emit_visible_progress:bool ->
   plan_outcome
 
 val prepare_execution:

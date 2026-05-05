@@ -74,44 +74,204 @@ let find_package_by_name = fun (workspace: Riot_model.Workspace.t) name ->
           |> Result.expect ~msg:("expected valid package name: " ^ name)
         ))
 
-let plan_graph_package = fun ~workspace ~store ~package_graph ~package_key ~build_ctx ->
-  match Riot_planner.Package_graph.get_node_by_key package_graph package_key with
-  | None -> Error ("package graph node not found: " ^ Riot_model.Package.key_to_string package_key)
-  | Some node ->
-      let package = Riot_planner.Package_graph.get_package node.value in
-      Riot_planner.Package_planner.plan_package
-        ~workspace
-        ~toolchain:test_toolchain
-        ~store
-        ~package_graph
-        ~package_key
-        ~package
-        ~build_ctx
-      |> Result.map_err ~fn:Riot_planner.Planning_error.to_string
+let build_unit_key = fun ?(target = Riot_model.Target.host ()) ?(profile = Riot_model.Profile.debug) package artifact ->
+  ({
+    package = package.Riot_model.Package.name;
+    artifact;
+    target;
+    profile;
+  }:Riot_planner.Build_unit.key)
 
-let plan_package_raw = fun ~workspace ~store ~package_graph ~package_key ~build_ctx ->
-  match Riot_planner.Package_graph.get_node_by_key package_graph package_key with
-  | None ->
-      Error (Riot_planner.Planning_error.GraphBuildFailed {
-        reason = "package graph node not found: " ^ Riot_model.Package.key_to_string package_key;
-      })
-  | Some node ->
-      let package = Riot_planner.Package_graph.get_package node.value in
-      Riot_planner.Package_planner.plan_package
-        ~workspace
-        ~toolchain:test_toolchain
-        ~store
-        ~package_graph
-        ~package_key
-        ~package
-        ~build_ctx
+let library_unit = fun ?target ?profile package ->
+  let package = Riot_model.Package.for_scope Riot_model.Package.Normal package in
+  let key = build_unit_key ?target ?profile package Riot_planner.Build_unit.Library in
+  Riot_planner.Build_unit.from_artifact
+    ~package
+    ~artifact:key.artifact
+    ~target:key.target
+    ~profile:key.profile
+
+let binary_artifact_for_path = fun name path ->
+  let path = Path.to_string path in
+  if String.starts_with ~prefix:"tests/" path then
+    Riot_planner.Build_unit.TestBinary { name }
+  else if String.starts_with ~prefix:"examples/" path then
+    Riot_planner.Build_unit.ExampleBinary { name }
+  else if String.starts_with ~prefix:"bench/" path then
+    Riot_planner.Build_unit.BenchBinary { name }
+  else
+    Riot_planner.Build_unit.RuntimeBinary { name }
+
+let binary_unit = fun ?target ?profile package binary_name ->
+  match List.find package.Riot_model.Package.binaries ~fn:(fun binary -> String.equal binary.name binary_name) with
+  | None -> Error ("binary not found in package: " ^ binary_name)
+  | Some binary -> (
+      match Riot_model.Package.for_binary ~binary_name package with
+      | None -> Error ("package could not be projected for binary: " ^ binary_name)
+      | Some package ->
+          let key =
+            build_unit_key
+              ?target
+              ?profile
+              package
+              (binary_artifact_for_path binary.name binary.path)
+          in
+          Ok (
+            Riot_planner.Build_unit.from_artifact
+              ~package
+              ~artifact:key.artifact
+              ~target:key.target
+              ~profile:key.profile
+          )
+    )
+
+let synthetic_tool_unit = fun ?(target = Riot_model.Target.host ()) ?(profile = Riot_model.Profile.debug) package name ->
+  let package = Riot_model.Package.for_scope Riot_model.Package.Normal package in
+  let key =
+    build_unit_key
+      ~target
+      ~profile
+      package
+      (Riot_planner.Build_unit.SyntheticTool { name })
+  in
+  Riot_planner.Build_unit.from_artifact
+    ~package
+    ~artifact:key.artifact
+    ~target:key.target
+    ~profile:key.profile
+
+let create_unit_graph = fun ?(roots = None) ?(targets = [ Riot_model.Target.host () ]) ?(profile = Riot_model.Profile.debug) ?(kind = Riot_planner.Build_unit_graph.Runtime) ?(synthetic_tools = []) workspace ->
+  Riot_planner.Build_unit_graph.create
+    workspace
+    Riot_planner.Build_unit_graph.{
+      roots;
+      targets;
+      profile;
+      kind;
+      synthetic_tools;
+    }
+
+let all_dev_artifacts = Riot_model.Package.{ tests = true; examples = true; benches = true }
+
+let expect_unit_graph = fun result ->
+  result
+  |> Result.expect ~msg:"build unit graph should build"
+
+let runtime_unit_graph = fun workspace -> create_unit_graph workspace |> expect_unit_graph
+
+let dev_unit_graph = fun workspace ->
+  create_unit_graph
+    ~kind:(Riot_planner.Build_unit_graph.Dev all_dev_artifacts)
+    workspace
+  |> expect_unit_graph
+
+let synthetic_tool_graph = fun workspace package name ->
+  create_unit_graph
+    ~roots:(Some [])
+    ~synthetic_tools:[
+      Riot_planner.Build_unit_graph.{
+        package = package.Riot_model.Package.name;
+        name;
+      };
+    ]
+    workspace
+  |> expect_unit_graph
+
+let unit_from_graph = fun unit_graph unit_key ->
+  Riot_planner.Build_unit_graph.find unit_graph unit_key
+  |> Option.map ~fn:Riot_planner.Build_unit_graph.node_value
+
+let dependency_of_plan_result = fun store result ->
+  match result with
+  | Riot_planner.Package_planner.Cached { package; artifact; depset; _ } ->
+      Some Riot_planner.Dependency.{
+        package;
+        artifact_dir = Riot_store.Store.hash_dir_of store artifact.input_hash;
+        depset;
+        input_hash = artifact.input_hash;
+        output_hash = artifact.output_hash;
+      }
+  | Riot_planner.Package_planner.Planned { package; hash; depset; _ } ->
+      Some Riot_planner.Dependency.{
+        package;
+        artifact_dir = Riot_store.Store.hash_dir_of store hash;
+        depset;
+        input_hash = hash;
+        output_hash = hash;
+      }
+
+let dependency_of_required_plan_result = fun store result ->
+  match dependency_of_plan_result store result with
+  | Some dependency -> dependency
+  | None -> panic "planned package did not produce a dependency summary"
+
+let plan_build_unit_raw = fun ~workspace ~store ~(unit:Riot_planner.Build_unit.t) ~depset ~build_ctx ->
+  Riot_planner.Package_planner.plan_build_unit
+    ~workspace
+    ~toolchain:test_toolchain
+    ~store
+    ~unit
+    ~depset
+    ~build_ctx
+
+let plan_build_unit = fun ~workspace ~store ~unit ~depset ~build_ctx ->
+  plan_build_unit_raw ~workspace ~store ~unit ~depset ~build_ctx
+  |> Result.map_err ~fn:Riot_planner.Planning_error.to_string
+
+let plan_build_unit_from_graph_raw = fun ~workspace ~store ~unit_graph ~unit_key ~build_ctx ->
+  match Riot_planner.Build_unit_graph.topological_sort unit_graph with
+      | Error cycle ->
+          Error (Riot_planner.Planning_error.GraphBuildFailed {
+            reason =
+              "build unit graph contains a cycle: "
+              ^ String.concat
+                  ", "
+                  (List.map cycle ~fn:Riot_planner.Build_unit.key_to_string);
+          })
+      | Ok units ->
+          let planned = Collections.HashMap.create () in
+          let dependency_for_key key =
+            Collections.HashMap.get planned ~key:(Riot_planner.Build_unit.package_key key)
+          in
+          let rec loop units =
+            match units with
+            | [] ->
+                Error (Riot_planner.Planning_error.GraphBuildFailed {
+                  reason = "build unit graph node not found: "
+                  ^ Riot_planner.Build_unit.key_to_string unit_key;
+                })
+            | unit :: rest ->
+                let depset =
+                  Riot_planner.Build_unit_graph.dependencies unit_graph (Riot_planner.Build_unit.key unit)
+                  |> List.filter_map ~fn:dependency_for_key
+                in
+                (
+                  match plan_build_unit_raw ~workspace ~store ~unit ~depset ~build_ctx with
+                  | Error _ as err -> err
+                  | Ok result ->
+                      let dependency = dependency_of_required_plan_result store result in
+                      let _ =
+                        Collections.HashMap.insert
+                          planned
+                          ~key:(Riot_planner.Build_unit.package_key (Riot_planner.Build_unit.key unit))
+                          ~value:dependency
+                      in
+                      if Riot_planner.Build_unit.equal_key (Riot_planner.Build_unit.key unit) unit_key then
+                        Ok result
+                      else
+                        loop rest
+                )
+          in
+          loop units
+
+let plan_build_unit_from_graph = fun ~workspace ~store ~unit_graph ~unit_key ~build_ctx ->
+  plan_build_unit_from_graph_raw ~workspace ~store ~unit_graph ~unit_key ~build_ctx
+  |> Result.map_err ~fn:Riot_planner.Planning_error.to_string
 
 let describe_plan_result = fun __tmp1 ->
   match __tmp1 with
   | Riot_planner.Package_planner.Cached _ -> "Cached"
   | Riot_planner.Package_planner.Planned _ -> "Planned"
-  | Riot_planner.Package_planner.MissingDependencies _ -> "MissingDependencies"
-  | Riot_planner.Package_planner.FailedDependencies _ -> "FailedDependencies"
 
 let persist_dummy_artifact = fun
   ~tmpdir ~store ~(package:Riot_model.Package.t) ~scope_name ~hash ->
@@ -297,22 +457,23 @@ let plan_single_binary_source = fun ~tmpdir source_text ->
   in
   let workspace = make_test_workspace tmpdir [ package ] in
   let store = Riot_store.Store.create ~workspace in
-  let package_graph =
-    Riot_planner.Package_graph.create ~scope:Riot_planner.Package_graph.Runtime workspace
-    |> Result.expect ~msg:"package graph should build"
-  in
-  let package_key =
-    Riot_planner.Package_graph.package_key
-      ~package_name:(Package_name.to_string package.name)
-      Riot_planner.Package_graph.Runtime
-  in
+  let unit_graph = runtime_unit_graph workspace in
   let build_ctx =
     Riot_model.Build_ctx.make
       ~session_id:(Riot_model.Session_id.make ())
       ~profile:Riot_model.Profile.debug
       ()
   in
-  plan_package_raw ~workspace ~store ~package_graph ~package_key ~build_ctx
+  match binary_unit package "entry-demo" with
+  | Error err ->
+      Error (Riot_planner.Planning_error.GraphBuildFailed { reason = err })
+  | Ok unit ->
+      plan_build_unit_from_graph_raw
+        ~workspace
+        ~store
+        ~unit_graph
+        ~unit_key:(Riot_planner.Build_unit.key unit)
+        ~build_ctx
 
 let has_compile_implementation_for_source = fun actions source ->
   List.any
@@ -323,92 +484,48 @@ let has_compile_implementation_for_source = fun actions source ->
           Path.equal compile_source source
       | _ -> false)
 
+let combine_action_graphs = fun graphs ->
+  let combined = Riot_planner.Action_graph.create () in
+  List.for_each
+    graphs
+    ~fn:(fun graph ->
+      Riot_planner.Action_graph.nodes graph
+      |> List.for_each
+        ~fn:(fun (node: Riot_planner.Action_node.t) ->
+          ignore (Riot_planner.Action_graph.add_node combined node.value)));
+  combined
+
 let plan_dev_package_actions_with_library = fun ~library ~tmpdir ~package_name ~files ~binaries ->
   let package = make_package_with_files ~library ~tmpdir ~package_name ~files ~binaries in
   let workspace = make_test_workspace tmpdir [ package ] in
   let store = Riot_store.Store.create ~workspace in
-  let package_graph =
-    Riot_planner.Package_graph.create ~scope:Riot_planner.Package_graph.Dev workspace
-    |> Result.expect ~msg:"package graph should build"
-  in
-  let build_key =
-    Riot_planner.Package_graph.package_key
-      ~package_name:(Package_name.to_string package.name)
-      Riot_planner.Package_graph.Build
-  in
-  let runtime_key =
-    Riot_planner.Package_graph.package_key
-      ~package_name:(Package_name.to_string package.name)
-      Riot_planner.Package_graph.Runtime
-  in
-  let package_key =
-    Riot_planner.Package_graph.package_key
-      ~package_name:(Package_name.to_string package.name)
-      Riot_planner.Package_graph.Dev
-  in
+  let unit_graph = dev_unit_graph workspace in
   let session_id = Riot_model.Session_id.make () in
   let profile = Riot_model.Profile.debug in
   let build_ctx = Riot_model.Build_ctx.make ~session_id ~profile () in
-  let plan_runtime_then_dev () =
-    match plan_graph_package ~workspace ~store ~package_graph ~package_key:runtime_key ~build_ctx with
-    | Error _ as err -> err
-    | Ok (Riot_planner.Package_planner.Planned { module_graph; action_graph; hash; _ }) ->
-        let _ =
-          Riot_planner.Package_graph.mark_planned
-            package_graph
-            runtime_key
-            ~module_graph
-            ~action_graph
-            ~hash
-        in
-        (
-          match persist_dummy_artifact ~tmpdir ~store ~package ~scope_name:"runtime" ~hash with
-          | Error _ as err -> err
-          | Ok () -> (
-              match plan_graph_package ~workspace ~store ~package_graph ~package_key ~build_ctx with
-              | Error _ as err -> err
-              | Ok (Riot_planner.Package_planner.Planned { action_graph; _ }) ->
-                  Ok (package, action_graph)
-              | Ok result ->
-                  Error ("expected dev package plan to return Planned, got "
-                  ^ describe_plan_result result)
-            )
-        )
-    | Ok (Riot_planner.Package_planner.Cached _) -> (
-        match plan_graph_package ~workspace ~store ~package_graph ~package_key ~build_ctx with
+  let rec plan_binaries acc binaries =
+    match binaries with
+    | [] -> Ok (package, combine_action_graphs (List.reverse acc))
+    | (binary_name, _) :: rest -> (
+        match binary_unit package binary_name with
         | Error _ as err -> err
-        | Ok (Riot_planner.Package_planner.Planned { action_graph; _ }) ->
-            Ok (package, action_graph)
-        | Ok result ->
-            Error ("expected dev package plan to return Planned, got " ^ describe_plan_result result)
+        | Ok unit -> (
+            match plan_build_unit_from_graph
+              ~workspace
+              ~store
+              ~unit_graph
+              ~unit_key:(Riot_planner.Build_unit.key unit)
+              ~build_ctx with
+            | Error _ as err -> err
+            | Ok (Riot_planner.Package_planner.Planned { action_graph; _ }) ->
+                plan_binaries (action_graph :: acc) rest
+            | Ok result ->
+                Error ("expected dev binary plan to return Planned, got "
+                ^ describe_plan_result result)
+          )
       )
-    | Ok result ->
-        Error ("expected runtime package plan to return Planned or Cached, got "
-        ^ describe_plan_result result)
   in
-  if Option.is_none (Riot_planner.Package_graph.get_node_by_key package_graph build_key) then
-    plan_runtime_then_dev ()
-  else
-    match plan_graph_package ~workspace ~store ~package_graph ~package_key:build_key ~build_ctx with
-    | Error _ as err -> err
-    | Ok (Riot_planner.Package_planner.Planned { module_graph; action_graph; hash; _ }) ->
-        let _ =
-          Riot_planner.Package_graph.mark_planned
-            package_graph
-            build_key
-            ~module_graph
-            ~action_graph
-            ~hash
-        in
-        (
-          match persist_dummy_artifact ~tmpdir ~store ~package ~scope_name:"build" ~hash with
-          | Error _ as err -> err
-          | Ok () -> plan_runtime_then_dev ()
-        )
-    | Ok (Riot_planner.Package_planner.Cached _) -> plan_runtime_then_dev ()
-    | Ok result ->
-        Error ("expected build package plan to return Planned or Cached, got "
-        ^ describe_plan_result result)
+  plan_binaries [] binaries
 
 let plan_dev_package_actions = fun ~tmpdir ~package_name ~files ~binaries ->
   plan_dev_package_actions_with_library
@@ -422,23 +539,62 @@ let plan_runtime_package_actions = fun ~tmpdir ~package_name ~files ~binaries ->
   let package = make_package_with_files ~library:None ~tmpdir ~package_name ~files ~binaries in
   let workspace = make_test_workspace tmpdir [ package ] in
   let store = Riot_store.Store.create ~workspace in
-  let package_graph =
-    Riot_planner.Package_graph.create ~scope:Riot_planner.Package_graph.Runtime workspace
-    |> Result.expect ~msg:"package graph should build"
-  in
-  let package_key =
-    Riot_planner.Package_graph.package_key
-      ~package_name:(Package_name.to_string package.name)
-      Riot_planner.Package_graph.Runtime
-  in
+  let unit_graph = runtime_unit_graph workspace in
   let session_id = Riot_model.Session_id.make () in
   let profile = Riot_model.Profile.debug in
   let build_ctx = Riot_model.Build_ctx.make ~session_id ~profile () in
-  match plan_graph_package ~workspace ~store ~package_graph ~package_key ~build_ctx with
-  | Error _ as err -> err
-  | Ok (Riot_planner.Package_planner.Planned { action_graph; _ }) -> Ok (package, action_graph)
-  | Ok result ->
-      Error ("expected runtime package plan to return Planned, got " ^ describe_plan_result result)
+  let runtime_binaries =
+    List.filter
+      binaries
+      ~fn:(fun (_, path) ->
+        not (
+          String.starts_with ~prefix:"tests/" path
+          || String.starts_with ~prefix:"examples/" path
+          || String.starts_with ~prefix:"bench/" path
+        ))
+  in
+  let rec plan_binaries acc binaries =
+    match binaries with
+    | [] -> Ok (package, combine_action_graphs (List.reverse acc))
+    | (binary_name, _) :: rest -> (
+        match binary_unit package binary_name with
+        | Error _ as err -> err
+        | Ok unit -> (
+            match plan_build_unit_from_graph
+              ~workspace
+              ~store
+              ~unit_graph
+              ~unit_key:(Riot_planner.Build_unit.key unit)
+              ~build_ctx with
+            | Error _ as err -> err
+            | Ok (Riot_planner.Package_planner.Planned { action_graph; _ }) ->
+                plan_binaries (action_graph :: acc) rest
+            | Ok result ->
+                Error ("expected runtime binary plan to return Planned, got "
+                ^ describe_plan_result result)
+          )
+      )
+  in
+  match package.library with
+  | Some _ -> (
+      let unit = library_unit package in
+      match plan_build_unit_from_graph
+        ~workspace
+        ~store
+        ~unit_graph
+        ~unit_key:(Riot_planner.Build_unit.key unit)
+        ~build_ctx with
+      | Error _ as err -> err
+      | Ok (Riot_planner.Package_planner.Planned { action_graph; _ }) -> (
+          match plan_binaries [ action_graph ] runtime_binaries with
+          | Ok _ as ok -> ok
+          | Error _ as err -> err
+        )
+      | Ok result ->
+          Error ("expected runtime library plan to return Planned, got "
+          ^ describe_plan_result result)
+    )
+  | None -> plan_binaries [] runtime_binaries
 
 let module_node_label = fun (node: Riot_planner.Module_node.t G.node) ->
   match node.value.kind with
@@ -1164,80 +1320,56 @@ let test_build_scope_excludes_runtime_and_dev_roots = fun _ctx ->
       in
       let workspace = make_test_workspace tmpdir [ build_helper; package ] in
       let store = Riot_store.Store.create ~workspace in
-      let package_graph =
-        Riot_planner.Package_graph.create ~scope:Riot_planner.Package_graph.Build workspace
-        |> Result.expect ~msg:"package graph should build"
-      in
-      let helper_key =
-        Riot_planner.Package_graph.package_key
-          ~package_name:"build-helper"
-          Riot_planner.Package_graph.Build
-      in
-      let package_key =
-        Riot_planner.Package_graph.package_key
-          ~package_name:(Package_name.to_string package.name)
-          Riot_planner.Package_graph.Build
-      in
       let session_id = Riot_model.Session_id.make () in
       let profile = Riot_model.Profile.debug in
       let build_ctx = Riot_model.Build_ctx.make ~session_id ~profile () in
-      match plan_graph_package ~workspace ~store ~package_graph ~package_key:helper_key ~build_ctx with
-      | Error _ as err -> err
-      | Ok (
-        Riot_planner.Package_planner.Planned {
-          module_graph;
-          action_graph;
-          hash;
-          package = helper_package;
-          _;
+      let helper_hash = Crypto.hash_string "build-helper" in
+      let helper_dependency =
+        Riot_planner.Dependency.{
+          package = Riot_model.Package.for_scope Riot_model.Package.Normal build_helper;
+          artifact_dir = Path.(tmpdir / Path.v "cache-build-helper");
+          depset = [];
+          input_hash = helper_hash;
+          output_hash = helper_hash;
         }
-      ) ->
-          let _ =
-            Riot_planner.Package_graph.mark_planned
-              package_graph
-              helper_key
-              ~module_graph
-              ~action_graph
-              ~hash
-          in
-          (
-            match persist_dummy_artifact
-              ~tmpdir
-              ~store
-              ~package:helper_package
-              ~scope_name:"build-helper"
-              ~hash with
-            | Error _ as err -> err
-            | Ok () -> (
-                match plan_graph_package ~workspace ~store ~package_graph ~package_key ~build_ctx with
-                | Error _ as err -> err
-                | Ok (Riot_planner.Package_planner.Planned { action_graph; _ }) ->
-                    let actions = Riot_planner.Action_graph.to_action_list action_graph in
-                    if List.any
-                      actions
-                      ~fn:(fun __tmp1 ->
-                        match __tmp1 with
-                        | Riot_planner.Action.CompileInterface _
-                        | Riot_planner.Action.CompileImplementation _ -> true
-                        | _ -> false) then
-                      Error "did not expect build scope to compile runtime or dev source roots"
-                    else if List.any
-                      actions
-                      ~fn:(fun __tmp1 ->
-                        match __tmp1 with
-                        | Riot_planner.Action.CreateLibrary _
-                        | Riot_planner.Action.CreateExecutable _ -> true
-                        | _ -> false) then
-                      Error "did not expect build scope to archive or link projected package sources"
-                    else
-                      Ok ()
-                | Ok result ->
-                    Error ("expected build package plan to return Planned, got "
-                    ^ describe_plan_result result)
-              )
-          )
+      in
+      let build_package = Riot_model.Package.for_scope Riot_model.Package.Build package in
+      let unit_key =
+        build_unit_key
+          build_package
+          (Riot_planner.Build_unit.SyntheticTool { name = "build-scope-demo" })
+      in
+      let unit =
+        Riot_planner.Build_unit.from_artifact
+          ~package:build_package
+          ~artifact:unit_key.artifact
+          ~target:unit_key.target
+          ~profile:unit_key.profile
+      in
+      match plan_build_unit ~workspace ~store ~unit ~depset:[ helper_dependency ] ~build_ctx with
+      | Error _ as err -> err
+      | Ok (Riot_planner.Package_planner.Planned { action_graph; _ }) ->
+          let actions = Riot_planner.Action_graph.to_action_list action_graph in
+          if List.any
+            actions
+            ~fn:(fun __tmp1 ->
+              match __tmp1 with
+              | Riot_planner.Action.CompileInterface _
+              | Riot_planner.Action.CompileImplementation _ -> true
+              | _ -> false) then
+            Error "did not expect build scope to compile runtime or dev source roots"
+          else if List.any
+            actions
+            ~fn:(fun __tmp1 ->
+              match __tmp1 with
+              | Riot_planner.Action.CreateLibrary _
+              | Riot_planner.Action.CreateExecutable _ -> true
+              | _ -> false) then
+            Error "did not expect build scope to archive or link projected package sources"
+          else
+            Ok ()
       | Ok result ->
-          Error ("expected helper build package plan to return Planned, got "
+          Error ("expected build package plan to return Planned, got "
           ^ describe_plan_result result)) with
   | Ok result -> result
   | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
@@ -1384,49 +1516,18 @@ let plan_kernel_package_with_fresh_store = fun () ->
                   ~target_dir:Path.(tempdir / Path.v "target")
               in
               let store = Riot_store.Store.create ~workspace in
-              let package_graph =
-                Riot_planner.Package_graph.create
-                  ~scope:Riot_planner.Package_graph.Runtime
-                  workspace
-                |> Result.expect ~msg:"package graph should build"
-              in
-              let build_key =
-                Riot_planner.Package_graph.package_key
-                  ~package_name:(Package_name.to_string package.name)
-                  Riot_planner.Package_graph.Build
-              in
-              let runtime_key =
-                Riot_planner.Package_graph.package_key
-                  ~package_name:(Package_name.to_string package.name)
-                  Riot_planner.Package_graph.Runtime
-              in
+              let unit_graph = runtime_unit_graph workspace in
+              let unit_key = Riot_planner.Build_unit.key (library_unit package) in
               let session_id = Riot_model.Session_id.make () in
               let profile = Riot_model.Profile.debug in
               let build_ctx = Riot_model.Build_ctx.make ~session_id ~profile () in
               let runtime_result =
-                match plan_graph_package
+                plan_build_unit_from_graph
                   ~workspace
                   ~store
-                  ~package_graph
-                  ~package_key:build_key
-                  ~build_ctx with
-                | Error err -> Error ("kernel build-scope plan failed: " ^ err)
-                | Ok (Riot_planner.Package_planner.Planned { module_graph; action_graph; hash; _ }) ->
-                    let _ =
-                      Riot_planner.Package_graph.mark_planned
-                        package_graph
-                        build_key
-                        ~module_graph
-                        ~action_graph
-                        ~hash
-                    in
-                    plan_graph_package
-                      ~workspace
-                      ~store
-                      ~package_graph
-                      ~package_key:runtime_key
-                      ~build_ctx
-                | Ok _ -> Error "expected kernel build-scope plan to return Planned"
+                  ~unit_graph
+                  ~unit_key
+                  ~build_ctx
               in
               match runtime_result with
               | Error err -> Error ("kernel live plan failed: " ^ err)
@@ -1434,11 +1535,11 @@ let plan_kernel_package_with_fresh_store = fun () ->
                   match find_create_library_objects action_graph with
                   | Error _ as err -> err
                   | Ok live_objects -> (
-                      match plan_graph_package
+                      match plan_build_unit_from_graph
                         ~workspace
                         ~store
-                        ~package_graph
-                        ~package_key:runtime_key
+                        ~unit_graph
+                        ~unit_key
                         ~build_ctx with
                       | Error err -> Error ("kernel cached plan failed: " ^ err)
                       | Ok (Riot_planner.Package_planner.Planned { action_graph; _ }) -> (
@@ -1458,52 +1559,21 @@ let plan_kernel_runtime_graphs = fun ~workspace ~store ~build_ctx ->
   match find_package_by_name workspace "kernel" with
   | None -> Error "kernel package not found in workspace"
   | Some package ->
-      let package_graph =
-        Riot_planner.Package_graph.create ~scope:Riot_planner.Package_graph.Runtime workspace
-        |> Result.expect ~msg:"package graph should build"
-      in
-      let build_key =
-        Riot_planner.Package_graph.package_key
-          ~package_name:(Package_name.to_string package.name)
-          Riot_planner.Package_graph.Build
-      in
-      let runtime_key =
-        Riot_planner.Package_graph.package_key
-          ~package_name:(Package_name.to_string package.name)
-          Riot_planner.Package_graph.Runtime
-      in
-      match plan_graph_package ~workspace ~store ~package_graph ~package_key:build_key ~build_ctx with
-      | Error err -> Error ("kernel build-scope plan failed: " ^ err)
-      | Ok (Riot_planner.Package_planner.Planned { module_graph; action_graph; hash; _ }) ->
-          let _ =
-            Riot_planner.Package_graph.mark_planned
-              package_graph
-              build_key
-              ~module_graph
-              ~action_graph
-              ~hash
-          in
-          (
-            match plan_graph_package
-              ~workspace
-              ~store
-              ~package_graph
-              ~package_key:runtime_key
-              ~build_ctx with
-            | Error err -> Error ("kernel runtime plan failed: " ^ err)
-            | Ok (
-              Riot_planner.Package_planner.Planned {
-                module_graph;
-                action_graph;
-                hash;
-                depset;
-                _;
-              }
-            ) ->
-                Ok (package, module_graph, action_graph, hash, depset)
-            | Ok _ -> Error "expected kernel runtime plan to return Planned"
-          )
-      | Ok _ -> Error "expected kernel build-scope plan to return Planned"
+      let unit_graph = runtime_unit_graph workspace in
+      let unit_key = Riot_planner.Build_unit.key (library_unit package) in
+      match plan_build_unit_from_graph ~workspace ~store ~unit_graph ~unit_key ~build_ctx with
+      | Error err -> Error ("kernel runtime plan failed: " ^ err)
+      | Ok (
+        Riot_planner.Package_planner.Planned {
+          module_graph;
+          action_graph;
+          hash;
+          depset;
+          _;
+        }
+      ) ->
+          Ok (package, module_graph, action_graph, hash, depset)
+      | Ok _ -> Error "expected kernel runtime plan to return Planned"
 
 let test_plan_bundle_cache_hit_restores_module_and_action_graphs = fun _ctx ->
   match Fs.with_tempdir
@@ -1515,6 +1585,8 @@ let test_plan_bundle_cache_hit_restores_module_and_action_graphs = fun _ctx ->
       let session_id = Riot_model.Session_id.make () in
       let profile = Riot_model.Profile.debug in
       let build_ctx = Riot_model.Build_ctx.make ~session_id ~profile () in
+      let unit = library_unit package in
+      let package = Riot_planner.Build_unit.package unit in
       let input_hash =
         Riot_planner.Package_planner.compute_input_hash
           ~package
@@ -1577,26 +1649,10 @@ let test_plan_bundle_cache_hit_restores_module_and_action_graphs = fun _ctx ->
         Riot_store.Store.save_plan_bundle store ~hash:input_hash ~plan:bundle
         |> Result.expect ~msg:"save_plan_bundle should succeed"
       in
-      let package_graph =
-        Riot_planner.Package_graph.create ~scope:Riot_planner.Package_graph.Runtime workspace
-        |> Result.expect ~msg:"package graph should build"
-      in
-      let package_key =
-        Riot_planner.Package_graph.package_key
-          ~package_name:(Package_name.to_string package.name)
-          Riot_planner.Package_graph.Runtime
-      in
-      match Riot_planner.Package_planner.plan_package
-        ~workspace
-        ~toolchain:test_toolchain
-        ~store
-        ~package_graph
-        ~package_key
-        ~package
-        ~build_ctx with
+      match plan_build_unit ~workspace ~store ~unit ~depset:[] ~build_ctx with
       | Error err ->
           Error ("expected cache-hit plan result, got planner error: "
-          ^ Riot_planner.Planning_error.to_string err)
+          ^ err)
       | Ok (Riot_planner.Package_planner.Planned { module_graph; action_graph; _ }) ->
           let module_nodes =
             match G.topo_sort module_graph with
@@ -1626,6 +1682,8 @@ let test_cached_artifact_and_exports_short_circuit_without_plan_bundle = fun _ct
       let session_id = Riot_model.Session_id.make () in
       let profile = Riot_model.Profile.debug in
       let build_ctx = Riot_model.Build_ctx.make ~session_id ~profile () in
+      let unit = library_unit package in
+      let package = Riot_planner.Build_unit.package unit in
       let input_hash =
         Riot_planner.Package_planner.compute_input_hash
           ~package
@@ -1667,26 +1725,10 @@ let test_cached_artifact_and_exports_short_circuit_without_plan_bundle = fun _ct
       if Option.is_some (Riot_store.Store.load_plan_bundle store ~hash:input_hash) then
         Error "expected no plan bundle before cached planner lookup"
       else
-        let package_graph =
-          Riot_planner.Package_graph.create ~scope:Riot_planner.Package_graph.Runtime workspace
-          |> Result.expect ~msg:"package graph should build"
-        in
-        let package_key =
-          Riot_planner.Package_graph.package_key
-            ~package_name:(Package_name.to_string package.name)
-            Riot_planner.Package_graph.Runtime
-        in
-        match Riot_planner.Package_planner.plan_package
-          ~workspace
-          ~toolchain:test_toolchain
-          ~store
-          ~package_graph
-          ~package_key
-          ~package
-          ~build_ctx with
+        match plan_build_unit ~workspace ~store ~unit ~depset:[] ~build_ctx with
         | Error err ->
             Error ("expected cached plan result, got planner error: "
-            ^ Riot_planner.Planning_error.to_string err)
+            ^ err)
         | Ok (
           Riot_planner.Package_planner.Cached {
             hash;
@@ -1717,6 +1759,8 @@ let test_stale_cached_artifact_version_rebuilds_plan_graphs = fun _ctx ->
       let session_id = Riot_model.Session_id.make () in
       let profile = Riot_model.Profile.debug in
       let build_ctx = Riot_model.Build_ctx.make ~session_id ~profile () in
+      let unit = library_unit package in
+      let package = Riot_planner.Build_unit.package unit in
       let stale_input_hash =
         Riot_planner.Package_planner.compute_input_hash
           ~planner_version:legacy_planner_artifacts_version
@@ -1756,30 +1800,14 @@ let test_stale_cached_artifact_version_rebuilds_plan_graphs = fun _ctx ->
           ~outs:[ output ]
         |> Result.expect ~msg:"stale artifact save should succeed"
       in
-      let package_graph =
-        Riot_planner.Package_graph.create ~scope:Riot_planner.Package_graph.Runtime workspace
-        |> Result.expect ~msg:"package graph should build"
-      in
-      let package_key =
-        Riot_planner.Package_graph.package_key
-          ~package_name:(Package_name.to_string package.name)
-          Riot_planner.Package_graph.Runtime
-      in
-      match Riot_planner.Package_planner.plan_package
-        ~workspace
-        ~toolchain:test_toolchain
-        ~store
-        ~package_graph
-        ~package_key
-        ~package
-        ~build_ctx with
+      match plan_build_unit ~workspace ~store ~unit ~depset:[] ~build_ctx with
       | Error err ->
           Error ("expected stale artifact miss to replan package, got planner error: "
-          ^ Riot_planner.Planning_error.to_string err)
+          ^ err)
       | Ok (Riot_planner.Package_planner.Planned _) -> Ok ()
       | Ok (Riot_planner.Package_planner.Cached _) ->
           Error "expected stale cached artifact to be ignored after planner version bump"
-      | Ok _ -> Error "expected Planned result") with
+      ) with
   | Ok x -> x
   | Error _ -> Error "tempdir creation failed"
 
@@ -1820,6 +1848,8 @@ let test_stale_plan_bundle_version_rebuilds_plan_graphs = fun _ctx ->
       let session_id = Riot_model.Session_id.make () in
       let profile = Riot_model.Profile.release in
       let build_ctx = Riot_model.Build_ctx.make ~session_id ~profile () in
+      let unit = library_unit ~profile package in
+      let package = Riot_planner.Build_unit.package unit in
       let stale_input_hash =
         Riot_planner.Package_planner.compute_input_hash
           ~planner_version:"planner-artifacts:v2"
@@ -1883,26 +1913,10 @@ let test_stale_plan_bundle_version_rebuilds_plan_graphs = fun _ctx ->
         Riot_store.Store.save_plan_bundle store ~hash:stale_input_hash ~plan:stale_bundle
         |> Result.expect ~msg:"expected stale plan bundle save to succeed"
       in
-      let package_graph =
-        Riot_planner.Package_graph.create ~scope:Riot_planner.Package_graph.Runtime workspace
-        |> Result.expect ~msg:"package graph should build"
-      in
-      let package_key =
-        Riot_planner.Package_graph.package_key
-          ~package_name:(Package_name.to_string package.name)
-          Riot_planner.Package_graph.Runtime
-      in
-      match Riot_planner.Package_planner.plan_package
-        ~workspace
-        ~toolchain:test_toolchain
-        ~store
-        ~package_graph
-        ~package_key
-        ~package
-        ~build_ctx with
+      match plan_build_unit ~workspace ~store ~unit ~depset:[] ~build_ctx with
       | Error err ->
           Error ("expected stale bundle miss to replan package, got planner error: "
-          ^ Riot_planner.Planning_error.to_string err)
+          ^ err)
       | Ok (Riot_planner.Package_planner.Planned { action_graph; _ }) ->
           let actions = Riot_planner.Action_graph.to_action_list action_graph in
           if List.any
@@ -1948,16 +1962,9 @@ let test_runtime_plan_keeps_direct_src_files_as_library_objects = fun _ctx ->
       let session_id = Riot_model.Session_id.make () in
       let profile = Riot_model.Profile.debug in
       let build_ctx = Riot_model.Build_ctx.make ~session_id ~profile () in
-      let package_graph =
-        Riot_planner.Package_graph.create ~scope:Riot_planner.Package_graph.Runtime workspace
-        |> Result.expect ~msg:"package graph should build"
-      in
-      let package_key =
-        Riot_planner.Package_graph.package_key
-          ~package_name:"pkg"
-          Riot_planner.Package_graph.Runtime
-      in
-      match plan_graph_package ~workspace ~store ~package_graph ~package_key ~build_ctx with
+      let unit_graph = runtime_unit_graph workspace in
+      let unit_key = Riot_planner.Build_unit.key (library_unit package) in
+      match plan_build_unit_from_graph ~workspace ~store ~unit_graph ~unit_key ~build_ctx with
       | Error err -> Error err
       | Ok (Riot_planner.Package_planner.Planned { action_graph; _ }) -> (
           match find_create_library_objects action_graph with
@@ -1991,20 +1998,10 @@ let test_plan_bundle_with_empty_library_objects_rebuilds_plan_graphs = fun _ctx 
       let session_id = Riot_model.Session_id.make () in
       let profile = Riot_model.Profile.debug in
       let build_ctx = Riot_model.Build_ctx.make ~session_id ~profile () in
-      let package_graph =
-        Riot_planner.Package_graph.create ~scope:Riot_planner.Package_graph.Runtime workspace
-        |> Result.expect ~msg:"package graph should build"
-      in
-      let package_key =
-        Riot_planner.Package_graph.package_key
-          ~package_name:"pkg"
-          Riot_planner.Package_graph.Runtime
-      in
-      let package =
-        match Riot_planner.Package_graph.get_node_by_key package_graph package_key with
-        | Some node -> Riot_planner.Package_graph.get_package node.value
-        | None -> package
-      in
+      let unit_graph = runtime_unit_graph workspace in
+      let unit = library_unit package in
+      let unit_key = Riot_planner.Build_unit.key unit in
+      let package = Riot_planner.Build_unit.package unit in
       let input_hash =
         Riot_planner.Package_planner.compute_input_hash
           ~package
@@ -2015,7 +2012,7 @@ let test_plan_bundle_with_empty_library_objects_rebuilds_plan_graphs = fun _ctx 
           ~toolchain:test_toolchain
           ()
       in
-      match plan_graph_package ~workspace ~store ~package_graph ~package_key ~build_ctx with
+      match plan_build_unit_from_graph ~workspace ~store ~unit_graph ~unit_key ~build_ctx with
       | Error err -> Error err
       | Ok (Riot_planner.Package_planner.Planned { action_graph; _ }) -> (
           match find_create_library_objects action_graph with
@@ -2036,11 +2033,11 @@ let test_plan_bundle_with_empty_library_objects_rebuilds_plan_graphs = fun _ctx 
                       Riot_store.Store.save_plan_bundle store ~hash:input_hash ~plan:bad_bundle
                       |> Result.expect ~msg:"expected bad plan bundle save to succeed"
                     in
-                    match plan_graph_package
+                    match plan_build_unit_from_graph
                       ~workspace
                       ~store
-                      ~package_graph
-                      ~package_key
+                      ~unit_graph
+                      ~unit_key
                       ~build_ctx with
                     | Error err -> Error err
                     | Ok (Riot_planner.Package_planner.Planned { action_graph; _ }) -> (
@@ -2222,26 +2219,11 @@ let test_plan_bundle_cache_hit_preserves_module_dependency_order = fun _ctx ->
         Riot_store.Store.save_plan_bundle store ~hash:input_hash ~plan:bundle
         |> Result.expect ~msg:"save_plan_bundle should succeed"
       in
-      let package_graph =
-        Riot_planner.Package_graph.create ~scope:Riot_planner.Package_graph.Runtime workspace
-        |> Result.expect ~msg:"package graph should build"
-      in
-      let package_key =
-        Riot_planner.Package_graph.package_key
-          ~package_name:(Package_name.to_string package.name)
-          Riot_planner.Package_graph.Runtime
-      in
-      match Riot_planner.Package_planner.plan_package
-        ~workspace
-        ~toolchain:test_toolchain
-        ~store
-        ~package_graph
-        ~package_key
-        ~package
-        ~build_ctx with
+      let unit = library_unit package in
+      match plan_build_unit ~workspace ~store ~unit ~depset:[] ~build_ctx with
       | Error err ->
           Error ("expected cache-hit plan result, got planner error: "
-          ^ Riot_planner.Planning_error.to_string err)
+          ^ err)
       | Ok (Riot_planner.Package_planner.Planned { module_graph; _ }) -> (
           match find_library_node module_graph with
           | None -> Error "expected restored library node"
@@ -2323,19 +2305,12 @@ let test_underscore_sibling_module_dependency_is_planned = fun _ctx ->
       in
       let workspace = make_test_workspace tmpdir [ package ] in
       let store = Riot_store.Store.create ~workspace in
-      let package_graph =
-        Riot_planner.Package_graph.create ~scope:Riot_planner.Package_graph.Runtime workspace
-        |> Result.expect ~msg:"package graph should build"
-      in
-      let package_key =
-        Riot_planner.Package_graph.package_key
-          ~package_name:(Package_name.to_string package.name)
-          Riot_planner.Package_graph.Runtime
-      in
+      let unit_graph = runtime_unit_graph workspace in
+      let unit_key = Riot_planner.Build_unit.key (library_unit package) in
       let session_id = Riot_model.Session_id.make () in
       let profile = Riot_model.Profile.debug in
       let build_ctx = Riot_model.Build_ctx.make ~session_id ~profile () in
-      match plan_graph_package ~workspace ~store ~package_graph ~package_key ~build_ctx with
+      match plan_build_unit_from_graph ~workspace ~store ~unit_graph ~unit_key ~build_ctx with
       | Error err -> Error ("expected package plan to succeed, got planner error: " ^ err)
       | Ok (Riot_planner.Package_planner.Planned { module_graph; _ }) -> (
           match find_module_node_by_label module_graph "MLI(Pkg__Udp_server)" with
@@ -2377,19 +2352,12 @@ let test_planner_rejects_direct_internal_library_access = fun _ctx ->
       in
       let workspace = make_test_workspace tmpdir [ package ] in
       let store = Riot_store.Store.create ~workspace in
-      let package_graph =
-        Riot_planner.Package_graph.create ~scope:Riot_planner.Package_graph.Runtime workspace
-        |> Result.expect ~msg:"package graph should build"
-      in
-      let package_key =
-        Riot_planner.Package_graph.package_key
-          ~package_name:(Package_name.to_string package.name)
-          Riot_planner.Package_graph.Runtime
-      in
+      let unit_graph = runtime_unit_graph workspace in
+      let unit_key = Riot_planner.Build_unit.key (library_unit package) in
       let session_id = Riot_model.Session_id.make () in
       let profile = Riot_model.Profile.debug in
       let build_ctx = Riot_model.Build_ctx.make ~session_id ~profile () in
-      match plan_package_raw ~workspace ~store ~package_graph ~package_key ~build_ctx with
+      match plan_build_unit_from_graph_raw ~workspace ~store ~unit_graph ~unit_key ~build_ctx with
       | Error (
         Riot_planner.Planning_error.TargetDependsOnInternalLibraryModule {
           target_name;
@@ -2436,19 +2404,12 @@ let test_planner_rejects_namespaced_internal_library_access = fun _ctx ->
       in
       let workspace = make_test_workspace tmpdir [ package ] in
       let store = Riot_store.Store.create ~workspace in
-      let package_graph =
-        Riot_planner.Package_graph.create ~scope:Riot_planner.Package_graph.Runtime workspace
-        |> Result.expect ~msg:"package graph should build"
-      in
-      let package_key =
-        Riot_planner.Package_graph.package_key
-          ~package_name:(Package_name.to_string package.name)
-          Riot_planner.Package_graph.Runtime
-      in
+      let unit_graph = runtime_unit_graph workspace in
+      let unit_key = Riot_planner.Build_unit.key (library_unit package) in
       let session_id = Riot_model.Session_id.make () in
       let profile = Riot_model.Profile.debug in
       let build_ctx = Riot_model.Build_ctx.make ~session_id ~profile () in
-      match plan_package_raw ~workspace ~store ~package_graph ~package_key ~build_ctx with
+      match plan_build_unit_from_graph_raw ~workspace ~store ~unit_graph ~unit_key ~build_ctx with
       | Error (
         Riot_planner.Planning_error.TargetDependsOnNamespacedInternalLibraryModule {
           target_name;
@@ -2499,19 +2460,12 @@ let test_planner_rejects_direct_other_binary_root_access = fun _ctx ->
       in
       let workspace = make_test_workspace tmpdir [ package ] in
       let store = Riot_store.Store.create ~workspace in
-      let package_graph =
-        Riot_planner.Package_graph.create ~scope:Riot_planner.Package_graph.Runtime workspace
-        |> Result.expect ~msg:"package graph should build"
-      in
-      let package_key =
-        Riot_planner.Package_graph.package_key
-          ~package_name:(Package_name.to_string package.name)
-          Riot_planner.Package_graph.Runtime
-      in
+      let unit_graph = runtime_unit_graph workspace in
+      let unit_key = Riot_planner.Build_unit.key (library_unit package) in
       let session_id = Riot_model.Session_id.make () in
       let profile = Riot_model.Profile.debug in
       let build_ctx = Riot_model.Build_ctx.make ~session_id ~profile () in
-      match plan_package_raw ~workspace ~store ~package_graph ~package_key ~build_ctx with
+      match plan_build_unit_from_graph_raw ~workspace ~store ~unit_graph ~unit_key ~build_ctx with
       | Error (
         Riot_planner.Planning_error.TargetDependsOnOtherTargetRoot {
           target_name;
@@ -2565,19 +2519,12 @@ let test_planner_rejects_namespaced_other_binary_root_access = fun _ctx ->
       in
       let workspace = make_test_workspace tmpdir [ package ] in
       let store = Riot_store.Store.create ~workspace in
-      let package_graph =
-        Riot_planner.Package_graph.create ~scope:Riot_planner.Package_graph.Runtime workspace
-        |> Result.expect ~msg:"package graph should build"
-      in
-      let package_key =
-        Riot_planner.Package_graph.package_key
-          ~package_name:(Package_name.to_string package.name)
-          Riot_planner.Package_graph.Runtime
-      in
+      let unit_graph = runtime_unit_graph workspace in
+      let unit_key = Riot_planner.Build_unit.key (library_unit package) in
       let session_id = Riot_model.Session_id.make () in
       let profile = Riot_model.Profile.debug in
       let build_ctx = Riot_model.Build_ctx.make ~session_id ~profile () in
-      match plan_package_raw ~workspace ~store ~package_graph ~package_key ~build_ctx with
+      match plan_build_unit_from_graph_raw ~workspace ~store ~unit_graph ~unit_key ~build_ctx with
       | Error (
         Riot_planner.Planning_error.TargetDependsOnOtherTargetRoot {
           target_name;
@@ -2648,19 +2595,12 @@ let test_nested_library_interfaces_depend_on_inherited_aliases = fun _ctx ->
       in
       let workspace = make_test_workspace tmpdir [ package ] in
       let store = Riot_store.Store.create ~workspace in
-      let package_graph =
-        Riot_planner.Package_graph.create ~scope:Riot_planner.Package_graph.Runtime workspace
-        |> Result.expect ~msg:"package graph should build"
-      in
-      let package_key =
-        Riot_planner.Package_graph.package_key
-          ~package_name:(Package_name.to_string package.name)
-          Riot_planner.Package_graph.Runtime
-      in
+      let unit_graph = runtime_unit_graph workspace in
+      let unit_key = Riot_planner.Build_unit.key (library_unit package) in
       let session_id = Riot_model.Session_id.make () in
       let profile = Riot_model.Profile.debug in
       let build_ctx = Riot_model.Build_ctx.make ~session_id ~profile () in
-      match plan_graph_package ~workspace ~store ~package_graph ~package_key ~build_ctx with
+      match plan_build_unit_from_graph ~workspace ~store ~unit_graph ~unit_key ~build_ctx with
       | Error err -> Error ("expected package plan to succeed, got planner error: " ^ err)
       | Ok (Riot_planner.Package_planner.Planned { module_graph; _ }) -> (
           match find_module_node_by_label module_graph "MLI(Pkg__Archive)" with
@@ -2815,16 +2755,9 @@ let test_legacy_nested_sibling_plan_bundle_is_ignored_after_version_bump = fun _
         Riot_store.Store.save_plan_bundle store ~hash:stale_input_hash ~plan:stale_bundle
         |> Result.expect ~msg:"expected stale nested plan bundle save to succeed"
       in
-      let package_graph =
-        Riot_planner.Package_graph.create ~scope:Riot_planner.Package_graph.Runtime workspace
-        |> Result.expect ~msg:"package graph should build"
-      in
-      let package_key =
-        Riot_planner.Package_graph.package_key
-          ~package_name:(Package_name.to_string package.name)
-          Riot_planner.Package_graph.Runtime
-      in
-      match plan_graph_package ~workspace ~store ~package_graph ~package_key ~build_ctx with
+      let unit_graph = runtime_unit_graph workspace in
+      let unit_key = Riot_planner.Build_unit.key (library_unit package) in
+      match plan_build_unit_from_graph ~workspace ~store ~unit_graph ~unit_key ~build_ctx with
       | Error err ->
           Error ("expected nested sibling plan bundle to be ignored, got planner error: " ^ err)
       | Ok (Riot_planner.Package_planner.Planned { module_graph; _ }) -> (
@@ -3252,22 +3185,13 @@ let test_legacy_krasny_plan_bundle_with_bad_root_module_is_ignored_after_version
       let session_id = Riot_model.Session_id.make () in
       let profile = Riot_model.Profile.debug in
       let build_ctx = Riot_model.Build_ctx.make ~session_id ~profile () in
-      let package_key =
-        Riot_planner.Package_graph.package_key
-          ~package_name:(Package_name.to_string package.name)
-          Riot_planner.Package_graph.Runtime
-      in
-      let analysis_package_graph =
-        Riot_planner.Package_graph.create
-          ~scope:Riot_planner.Package_graph.Runtime
-          analysis_workspace
-        |> Result.expect ~msg:"analysis package graph should build"
-      in
-      match plan_graph_package
+      let unit_key = Riot_planner.Build_unit.key (library_unit package) in
+      let analysis_unit_graph = runtime_unit_graph analysis_workspace in
+      match plan_build_unit_from_graph
         ~workspace:analysis_workspace
         ~store:analysis_store
-        ~package_graph:analysis_package_graph
-        ~package_key
+        ~unit_graph:analysis_unit_graph
+        ~unit_key
         ~build_ctx with
       | Error _ as err -> err
       | Ok (Riot_planner.Package_planner.Planned { hash = current_input_hash; depset; _ }) -> (
@@ -3295,17 +3219,12 @@ let test_legacy_krasny_plan_bundle_with_bad_root_module_is_ignored_after_version
                   ~plan:stale_bundle
                 |> Result.expect ~msg:"expected legacy krasny plan bundle save to succeed"
               in
-              let test_package_graph =
-                Riot_planner.Package_graph.create
-                  ~scope:Riot_planner.Package_graph.Runtime
-                  test_workspace
-                |> Result.expect ~msg:"test package graph should build"
-              in
-              match plan_graph_package
+              let test_unit_graph = runtime_unit_graph test_workspace in
+              match plan_build_unit_from_graph
                 ~workspace:test_workspace
                 ~store:test_store
-                ~package_graph:test_package_graph
-                ~package_key
+                ~unit_graph:test_unit_graph
+                ~unit_key
                 ~build_ctx with
               | Error _ as err -> err
               | Ok (Riot_planner.Package_planner.Planned { action_graph; _ }) -> (

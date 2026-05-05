@@ -145,6 +145,92 @@ let test_dev_scope_keeps_only_dev_outputs = fun _ctx ->
   else
     Error "dev scope should reuse runtime deps while keeping only dev outputs"
 
+let test_for_binary_keeps_only_selected_dev_source = fun _ctx ->
+  let pkg =
+    Package.make
+      ~name:(package_name "minttea")
+      ~path:(Path.v "packages/minttea")
+      ~relative_path:(Path.v "packages/minttea")
+      ~dependencies:[ { name = package_name "std"; source = source ~workspace:true () } ]
+      ~dev_dependencies:[ { name = package_name "propane"; source = source ~workspace:true () } ]
+      ~build_dependencies:[]
+      ~binaries:[
+        { name = "one_tests"; path = Path.v "tests/one_tests.ml" };
+        { name = "two_tests"; path = Path.v "tests/two_tests.ml" };
+        { name = "demo"; path = Path.v "examples/demo.ml" };
+        { name = "other"; path = Path.v "examples/other.ml" };
+        { name = "throughput"; path = Path.v "bench/throughput.ml" };
+        { name = "latency"; path = Path.v "bench/latency.ml" };
+      ]
+      ~library:{ path = Path.v "src/minttea.ml" }
+      ~sources:{
+        src = [ Path.v "src/minttea.ml" ];
+        native = [];
+        tests = [
+          Path.v "tests/one_tests.ml";
+          Path.v "tests/two_tests.ml";
+          Path.v "tests/support.ml";
+        ];
+        examples = [
+          Path.v "examples/demo.ml";
+          Path.v "examples/other.ml";
+          Path.v "examples/support.ml";
+        ];
+        bench = [
+          Path.v "bench/throughput.ml";
+          Path.v "bench/latency.ml";
+          Path.v "bench/support.ml";
+        ];
+      }
+      ()
+  in
+  let expect_sources binary_name ~tests ~examples ~bench =
+    match Package.for_binary ~binary_name pkg with
+    | None -> Error ("expected binary projection for " ^ binary_name)
+    | Some projected ->
+        if
+          projected.sources.tests = tests
+          && projected.sources.examples = examples
+          && projected.sources.bench = bench
+        then
+          Ok ()
+        else
+          let render_paths = fun paths ->
+            paths
+            |> List.map ~fn:Path.to_string
+            |> String.concat ", "
+          in
+          Error
+            ("unexpected projected sources for "
+            ^ binary_name
+            ^ ": tests=["
+            ^ render_paths projected.sources.tests
+            ^ "] examples=["
+            ^ render_paths projected.sources.examples
+            ^ "] bench=["
+            ^ render_paths projected.sources.bench
+            ^ "]")
+  in
+  let* () =
+    expect_sources
+      "one_tests"
+      ~tests:[ Path.v "tests/one_tests.ml"; Path.v "tests/support.ml" ]
+      ~examples:[]
+      ~bench:[]
+  in
+  let* () =
+    expect_sources
+      "demo"
+      ~tests:[]
+      ~examples:[ Path.v "examples/demo.ml"; Path.v "examples/support.ml" ]
+      ~bench:[]
+  in
+  expect_sources
+    "throughput"
+    ~tests:[]
+    ~examples:[]
+    ~bench:[ Path.v "bench/support.ml"; Path.v "bench/throughput.ml" ]
+
 let test_runtime_scope_keeps_build_dependencies_for_hashing = fun _ctx ->
   let pkg = make_package () in
   let projected = Package.for_scope Package.Normal pkg in
@@ -1601,6 +1687,9 @@ let tests =
       test_build_scope_drops_commands_and_runtime_outputs;
     case "for_scope: runtime keeps commands" test_runtime_scope_keeps_commands;
     case "for_scope: dev keeps only dev outputs" test_dev_scope_keeps_only_dev_outputs;
+    case
+      "for_binary: keeps only selected dev source"
+      test_for_binary_keeps_only_selected_dev_source;
     case
       "for_scope: runtime keeps build dependencies for hashing"
       test_runtime_scope_keeps_build_dependencies_for_hashing;

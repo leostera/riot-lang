@@ -2,7 +2,7 @@ open Std
 
 type failure = {
   package_name: Riot_model.Package_name.t;
-  package_key: Riot_model.Package.key;
+  unit_key: Riot_planner.Build_unit.key;
   reason: failure_reason;
   message: string;
   ocamlc_warnings: string list;

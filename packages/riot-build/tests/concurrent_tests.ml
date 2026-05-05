@@ -1,6 +1,7 @@
 open Std
 open Riot_build
 
+module Action_scheduler = Riot_build.Internal.Action_scheduler
 module Package_builder = Riot_build.Internal.Package_builder
 module Test = Std.Test
 
@@ -11,6 +12,73 @@ let package_name = fun name ->
 let make_test_build_ctx = fun () ->
   let session_id = Riot_model.Session_id.make () in
   Riot_model.Build_ctx.make ~session_id ~profile:Riot_model.Profile.debug ()
+
+let unit_key = fun package ->
+  ({
+    package = package.Riot_model.Package.name;
+    artifact = Riot_planner.Build_unit.Library;
+    target = Riot_model.Target.host ();
+    profile = Riot_model.Profile.debug;
+  }:Riot_planner.Build_unit.key)
+
+let build_package = fun ~workspace ~toolchain ~store package ->
+  let build_ctx = make_test_build_ctx () in
+  let key = unit_key package in
+  let unit =
+    Riot_planner.Build_unit.from_artifact
+      ~package
+      ~artifact:key.artifact
+      ~target:key.target
+      ~profile:key.profile
+  in
+  let detailed_result =
+    match Package_builder.plan_build_unit
+      ~workspace
+      ~toolchain
+      ~store
+      ~unit
+      ~depset:[]
+      ~build_ctx
+      ~emit_visible_progress:false with
+    | Package_builder.Final_result detailed_result -> detailed_result
+    | Execution_required execution_plan -> (
+        match Package_builder.prepare_execution ~workspace ~toolchain ~store ~execution_plan ~build_ctx with
+        | Error detailed_result -> detailed_result
+        | Ok prepared_execution ->
+            let action_result =
+              Action_scheduler.run
+                ~action_graph:execution_plan.action_graph
+                ~sandbox:prepared_execution.sandbox
+                ~store
+                ~session_id:build_ctx.session_id
+                ~build_target:(Riot_model.Target.host ())
+                prepared_execution.toolchain
+                ~concurrency:build_ctx.parallelism
+            in
+            let completed = Std.Collections.HashMap.create () in
+            List.for_each
+              action_result.completed_actions
+              ~fn:(fun completed_action ->
+                let _ =
+                  Std.Collections.HashMap.insert
+                    completed
+                    ~key:completed_action.node.id
+                    ~value:completed_action.result
+                in
+                ());
+            Package_builder.finalize_execution
+              ~workspace
+              ~store
+              ~prepared_execution
+              ~completed
+              ~build_ctx
+      )
+  in
+  match detailed_result.Package_builder.result.status with
+  | Built _
+  | Cached _ -> Ok detailed_result.result
+  | Skipped { reason } -> Error ("skipped: " ^ reason)
+  | Failed err -> Error (Package_builder.package_error_to_string err)
 
 let make_package = fun tmpdir name content ->
   let pkg_dir = Path.(tmpdir / Path.v name) in
@@ -71,74 +139,18 @@ let test_concurrent_builds_different_packages = fun _ctx ->
         |> Result.expect ~msg:"Failed to initialize toolchain"
       in
       let store = Riot_store.Store.create ~workspace in
-      let package_graph =
-        Riot_planner.Package_graph.create ~scope:Riot_planner.Package_graph.Runtime workspace
-        |> Result.unwrap
-      in
       let parent = self () in
       let _worker1 =
         spawn
           (fun () ->
-            let result =
-              Package_builder.build
-                ~workspace
-                ~toolchain
-                ~store
-                ~build_ctx:(make_test_build_ctx ())
-                ~package_graph
-                ~package_key:(Riot_planner.Package_graph.package_key
-                  ~package_name:(Riot_model.Package_name.to_string pkg1.name)
-                  Riot_planner.Package_graph.Runtime)
-                ~package:pkg1
-            in
-            let status =
-              match result.status with
-              | Built _
-              | Cached _ -> Ok ()
-              | Skipped _ -> Error "skipped"
-              | Failed err ->
-                  Error (
-                    match err with
-                    | PlanningFailed _ -> "planning"
-                    | ExecutionFailed { message } -> message
-                    | ActionExecutionFailed { message } -> message
-                    | ActionOutputsNotCreated _ -> "outputs not created"
-                    | ActionDependenciesFailed _ -> "dependencies failed"
-                  )
-            in
+            let status = Result.map (build_package ~workspace ~toolchain ~store pkg1) ~fn:(fun _ -> ()) in
             send parent (BuildComplete ("pkg-1", status));
             Ok ())
       in
       let _worker2 =
         spawn
           (fun () ->
-            let result =
-              Package_builder.build
-                ~workspace
-                ~toolchain
-                ~store
-                ~build_ctx:(make_test_build_ctx ())
-                ~package_graph
-                ~package_key:(Riot_planner.Package_graph.package_key
-                  ~package_name:(Riot_model.Package_name.to_string pkg2.name)
-                  Riot_planner.Package_graph.Runtime)
-                ~package:pkg2
-            in
-            let status =
-              match result.status with
-              | Built _
-              | Cached _ -> Ok ()
-              | Skipped _ -> Error "skipped"
-              | Failed err ->
-                  Error (
-                    match err with
-                    | PlanningFailed _ -> "planning"
-                    | ExecutionFailed { message } -> message
-                    | ActionExecutionFailed { message } -> message
-                    | ActionOutputsNotCreated _ -> "outputs not created"
-                    | ActionDependenciesFailed _ -> "dependencies failed"
-                  )
-            in
+            let status = Result.map (build_package ~workspace ~toolchain ~store pkg2) ~fn:(fun _ -> ()) in
             send parent (BuildComplete ("pkg-2", status));
             Ok ())
       in
@@ -178,74 +190,18 @@ let test_concurrent_builds_same_package = fun _ctx ->
         |> Result.expect ~msg:"Failed to initialize toolchain"
       in
       let store = Riot_store.Store.create ~workspace in
-      let package_graph =
-        Riot_planner.Package_graph.create ~scope:Riot_planner.Package_graph.Runtime workspace
-        |> Result.unwrap
-      in
       let parent = self () in
       let _worker1 =
         spawn
           (fun () ->
-            let result =
-              Package_builder.build
-                ~workspace
-                ~toolchain
-                ~store
-                ~build_ctx:(make_test_build_ctx ())
-                ~package_graph
-                ~package_key:(Riot_planner.Package_graph.package_key
-                  ~package_name:(Riot_model.Package_name.to_string package.name)
-                  Riot_planner.Package_graph.Runtime)
-                ~package
-            in
-            let status =
-              match result.status with
-              | Built _
-              | Cached _ -> Ok ()
-              | Skipped _ -> Error "skipped"
-              | Failed err ->
-                  Error (
-                    match err with
-                    | PlanningFailed _ -> "planning"
-                    | ExecutionFailed { message } -> message
-                    | ActionExecutionFailed { message } -> message
-                    | ActionOutputsNotCreated _ -> "outputs not created"
-                    | ActionDependenciesFailed _ -> "dependencies failed"
-                  )
-            in
+            let status = Result.map (build_package ~workspace ~toolchain ~store package) ~fn:(fun _ -> ()) in
             send parent (BuildComplete ("worker1", status));
             Ok ())
       in
       let _worker2 =
         spawn
           (fun () ->
-            let result =
-              Package_builder.build
-                ~workspace
-                ~toolchain
-                ~store
-                ~build_ctx:(make_test_build_ctx ())
-                ~package_graph
-                ~package_key:(Riot_planner.Package_graph.package_key
-                  ~package_name:(Riot_model.Package_name.to_string package.name)
-                  Riot_planner.Package_graph.Runtime)
-                ~package
-            in
-            let status =
-              match result.status with
-              | Built _
-              | Cached _ -> Ok ()
-              | Skipped _ -> Error "skipped"
-              | Failed err ->
-                  Error (
-                    match err with
-                    | PlanningFailed _ -> "planning"
-                    | ExecutionFailed { message } -> message
-                    | ActionExecutionFailed { message } -> message
-                    | ActionOutputsNotCreated _ -> "outputs not created"
-                    | ActionDependenciesFailed _ -> "dependencies failed"
-                  )
-            in
+            let status = Result.map (build_package ~workspace ~toolchain ~store package) ~fn:(fun _ -> ()) in
             send parent (BuildComplete ("worker2", status));
             Ok ())
       in
@@ -281,61 +237,29 @@ let test_concurrent_builds_with_shared_cache = fun _ctx ->
         |> Result.expect ~msg:"Failed to initialize toolchain"
       in
       let store = Riot_store.Store.create ~workspace in
-      let package_graph =
-        Riot_planner.Package_graph.create ~scope:Riot_planner.Package_graph.Runtime workspace
-        |> Result.unwrap
-      in
-      let first_build =
-        Package_builder.build
-          ~workspace
-          ~toolchain
-          ~store
-          ~build_ctx:(make_test_build_ctx ())
-          ~package_graph
-          ~package_key:(Riot_planner.Package_graph.package_key
-            ~package_name:(Riot_model.Package_name.to_string package.name)
-            Riot_planner.Package_graph.Runtime)
-          ~package
-      in
-      match first_build.status with
-      | Built _ -> (
+      let first_build = build_package ~workspace ~toolchain ~store package in
+      match first_build with
+      | Ok first_result -> (
+          match first_result.Package_builder.status with
+          | Cached _ -> Error "first build should not be cached"
+          | Skipped { reason } -> Error ("first build was unexpectedly skipped: " ^ reason)
+          | Failed err -> Error ("first build failed: " ^ Package_builder.package_error_to_string err)
+          | Built _ ->
           let parent = self () in
           let _worker1 =
             spawn
               (fun () ->
-                let result =
-                  Package_builder.build
-                    ~workspace
-                    ~toolchain
-                    ~store
-                    ~build_ctx:(make_test_build_ctx ())
-                    ~package_graph
-                    ~package_key:(Riot_planner.Package_graph.package_key
-                      ~package_name:(Riot_model.Package_name.to_string package.name)
-                      Riot_planner.Package_graph.Runtime)
-                    ~package
-                in
+                let result = build_package ~workspace ~toolchain ~store package in
                 let cached =
-                  match result.status with
-                  | Cached _ -> true
-                  | Built _ -> false
-                  | Skipped _ -> false
-                  | Failed _ -> false
+                  match Result.map result ~fn:(fun result -> result.Package_builder.status) with
+                  | Ok (Cached _) -> true
+                  | Ok (Built _)
+                  | Ok (Skipped _)
+                  | Ok (Failed _)
+                  | Error _ -> false
                 in
                 let status =
-                  match result.status with
-                  | Cached _
-                  | Built _ -> Ok ()
-                  | Skipped _ -> Error "skipped"
-                  | Failed err ->
-                      Error (
-                        match err with
-                        | PlanningFailed _ -> "planning"
-                        | ExecutionFailed { message } -> message
-                        | ActionExecutionFailed { message } -> message
-                        | ActionOutputsNotCreated _ -> "outputs not created"
-                        | ActionDependenciesFailed _ -> "dependencies failed"
-                      )
+                  Result.map result ~fn:(fun _ -> ())
                 in
                 send parent (BuildCompleteWithCache ("worker1", cached, status));
                 Ok ())
@@ -343,39 +267,17 @@ let test_concurrent_builds_with_shared_cache = fun _ctx ->
           let _worker2 =
             spawn
               (fun () ->
-                let result =
-                  Package_builder.build
-                    ~workspace
-                    ~toolchain
-                    ~store
-                    ~build_ctx:(make_test_build_ctx ())
-                    ~package_graph
-                    ~package_key:(Riot_planner.Package_graph.package_key
-                      ~package_name:(Riot_model.Package_name.to_string package.name)
-                      Riot_planner.Package_graph.Runtime)
-                    ~package
-                in
+                let result = build_package ~workspace ~toolchain ~store package in
                 let cached =
-                  match result.status with
-                  | Cached _ -> true
-                  | Built _ -> false
-                  | Skipped _ -> false
-                  | Failed _ -> false
+                  match Result.map result ~fn:(fun result -> result.Package_builder.status) with
+                  | Ok (Cached _) -> true
+                  | Ok (Built _)
+                  | Ok (Skipped _)
+                  | Ok (Failed _)
+                  | Error _ -> false
                 in
                 let status =
-                  match result.status with
-                  | Cached _
-                  | Built _ -> Ok ()
-                  | Skipped _ -> Error "skipped"
-                  | Failed err ->
-                      Error (
-                        match err with
-                        | PlanningFailed _ -> "planning"
-                        | ExecutionFailed { message } -> message
-                        | ActionExecutionFailed { message } -> message
-                        | ActionOutputsNotCreated _ -> "outputs not created"
-                        | ActionDependenciesFailed _ -> "dependencies failed"
-                      )
+                  Result.map result ~fn:(fun _ -> ())
                 in
                 send parent (BuildCompleteWithCache ("worker2", cached, status));
                 Ok ())
@@ -401,17 +303,7 @@ let test_concurrent_builds_with_shared_cache = fun _ctx ->
               Error (name ^ " build failed: " ^ err)
           | _ -> Error "Unexpected message"
         )
-      | Cached _ -> Error "First build should not be cached"
-      | Skipped _ -> Error "First build was unexpectedly skipped"
-      | Failed err ->
-          Error (
-            "First build failed: " ^ match err with
-            | PlanningFailed _ -> "planning"
-            | ExecutionFailed { message } -> message
-            | ActionExecutionFailed { message } -> message
-            | ActionOutputsNotCreated _ -> "outputs not created"
-            | ActionDependenciesFailed _ -> "dependencies failed"
-          )) with
+      | Error err -> Error ("First build failed: " ^ err)) with
   | Ok r -> r
   | Error _ -> Error "Tempdir creation failed"
 
