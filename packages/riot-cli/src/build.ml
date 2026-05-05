@@ -576,7 +576,7 @@ type build_dashboard_package = {
   mutable action_count: int;
   mutable completed_actions: int;
   running_actions: (string, string) HashMap.t;
-  mutable current_action_key: string option;
+  running_action_order: string Vector.t;
   mutable status: build_dashboard_row_status;
 }
 
@@ -606,8 +606,13 @@ type build_dashboard_row_view = {
   label: string;
   action_count: int;
   completed_actions: int;
-  running_actions: int;
+  actions: build_dashboard_action_view list;
   status: string;
+}
+
+and build_dashboard_action_view = {
+  action_key: string;
+  action_label: string;
 }
 
 type build_dashboard_board_view = {
@@ -735,7 +740,7 @@ let build_dashboard_get_package = fun state ~build_target package ->
         action_count = 0;
         completed_actions = 0;
         running_actions = HashMap.with_capacity ~size:4;
-        current_action_key = None;
+        running_action_order = Vector.with_capacity ~size:4;
         status = Waiting;
       }
       in
@@ -778,38 +783,19 @@ let build_dashboard_action_key = fun (action: Riot_planner.Action_node.t) ->
   Graph.SimpleGraph.Node_id.to_string
     action.id
 
-let build_dashboard_any_running_action = fun row ->
-  match row.current_action_key with
-  | Some key -> (
+let build_dashboard_running_action_views = fun row ->
+  let actions = ref [] in
+  Vector.for_each
+    row.running_action_order
+    ~fn:(fun key ->
       match HashMap.get row.running_actions ~key with
-      | Some label -> Some label
-      | None -> (
-          match HashMap.to_list row.running_actions with
-          | (key, label) :: _ ->
-              row.current_action_key <- Some key;
-              Some label
-          | [] ->
-              row.current_action_key <- None;
-              None
-        )
-    )
-  | None -> (
-      match HashMap.to_list row.running_actions with
-      | (key, label) :: _ ->
-          row.current_action_key <- Some key;
-          Some label
-      | [] -> None
-    )
-
-let build_dashboard_running_action_label = fun row ->
-  match build_dashboard_any_running_action row with
-  | Some label ->
-      let running_count = HashMap.length row.running_actions in
-      if running_count > 1 then
-        label ^ " (+" ^ Int.to_string (running_count - 1) ^ ")"
-      else
-        label
-  | None -> ""
+      | Some label ->
+          actions := {
+            action_key = key;
+            action_label = label;
+          } :: !actions
+      | None -> ());
+  List.reverse !actions
 
 let build_dashboard_mark_action_started = fun
   state ~build_target (action: Riot_planner.Action_node.t) ->
@@ -817,8 +803,9 @@ let build_dashboard_mark_action_started = fun
   | Some row ->
       let key = build_dashboard_action_key action in
       let label = build_dashboard_node_label action in
+      if not (HashMap.has_key row.running_actions ~key) then
+        Vector.push row.running_action_order ~value:key;
       let _ = HashMap.insert row.running_actions ~key ~value:label in
-      row.current_action_key <- Some key;
       state
   | None -> state
 
@@ -832,12 +819,6 @@ let build_dashboard_mark_action_completed = fun state ~build_target package acti
         row.completed_actions + 1;
       let action_key = build_dashboard_action_key action in
       let _ = HashMap.remove row.running_actions ~key:action_key in
-      (
-        match row.current_action_key with
-        | Some key when String.equal key action_key -> row.current_action_key <- None
-        | Some _
-        | None -> ()
-      );
       if HashMap.is_empty row.running_actions then
         row.status <- if row.action_count > 0 && row.completed_actions >= row.action_count then
           Finalizing
@@ -863,15 +844,17 @@ let build_dashboard_complete_package_actions = fun state ~build_target package -
   | None -> state
 
 let build_dashboard_truncate = fun ~width text ->
-  if String.length text <= width then
+  if String.width text <= width then
     text
   else if width <= 1 then
-    String.sub
-      text
-      ~offset:0
-      ~len:(Int.max 0 width)
+    String.truncate_width ~width:(Int.max 0 width) text
   else
-    String.sub text ~offset:0 ~len:(width - 1) ^ "..."
+    String.truncate_width ~width ~tail:"..." text
+
+let build_dashboard_terminal_width = fun () ->
+  match Tty.Size.get () with
+  | Ok { cols; _ } -> Int.max 40 cols
+  | Error _ -> 120
 
 let build_dashboard_update = fun state event ->
   match event with
@@ -943,24 +926,24 @@ let build_dashboard_update = fun state event ->
   | _ -> state
 
 let build_dashboard_row_view = fun state (row: build_dashboard_package) ->
-  let running_actions = HashMap.length row.running_actions in
+  let actions = build_dashboard_running_action_views row in
   let status =
-    if not (HashMap.is_empty row.running_actions) then
-      build_dashboard_running_action_label row
-    else
+    if List.is_empty actions then
       match row.status with
       | Preparing -> "preparing"
       | Queued -> "queued"
       | Blocked -> "blocked"
       | Finalizing -> "finalizing"
       | Waiting -> "waiting"
+    else
+      "running"
   in
   {
     key = row.key;
     label = build_dashboard_package_label state ~build_target:row.build_target row.package;
     action_count = row.action_count;
     completed_actions = row.completed_actions;
-    running_actions;
+    actions;
     status;
   }
 
@@ -1005,7 +988,7 @@ let rec build_dashboard_row_views_equal = fun left right ->
       && String.equal left.label right.label
       && left.action_count = right.action_count
       && left.completed_actions = right.completed_actions
-      && left.running_actions = right.running_actions
+      && left.actions = right.actions
       && String.equal left.status right.status
       && build_dashboard_row_views_equal left_rest right_rest
   | ([], _ :: _)
@@ -1024,12 +1007,13 @@ let build_dashboard_views_equal = fun left right ->
   | (Empty, Board _)
   | (Board _, Empty) -> false
 
-let build_dashboard_row_line = fun ~is_last row ->
+let build_dashboard_row_line = fun ~width ~is_last row ->
+  let running_action_count = List.length row.actions in
   let visible_action =
     if row.action_count > 0 then
-      Int.min row.action_count (row.completed_actions + row.running_actions)
+      Int.min row.action_count (row.completed_actions + running_action_count)
     else
-      row.completed_actions + row.running_actions
+      row.completed_actions + running_action_count
   in
   let progress =
     if row.action_count > 0 then
@@ -1043,15 +1027,63 @@ let build_dashboard_row_line = fun ~is_last row ->
     else
       "├── "
   in
-  build_dashboard_truncate ~width:120 (branch ^ row.label ^ " " ^ progress ^ " " ^ row.status)
+  let suffix =
+    if List.is_empty row.actions then
+      " " ^ row.status
+    else
+      ""
+  in
+  build_dashboard_truncate ~width (branch ^ row.label ^ " " ^ progress ^ suffix)
 
-let build_dashboard_push_row_lines = fun lines rows ->
+let build_dashboard_action_line = fun ~width ~parent_is_last ~is_last action ->
+  let prefix =
+    if parent_is_last then
+      "    "
+    else
+      "│   "
+  in
+  let branch =
+    if is_last then
+      "└── "
+    else
+      "├── "
+  in
+  build_dashboard_truncate ~width (prefix ^ branch ^ action.action_label)
+
+let build_dashboard_push_action_lines = fun ~width ~parent_is_last lines actions ->
   let rec loop = fun __tmp1 ->
     match __tmp1 with
     | [] -> ()
-    | [ row ] -> Vector.push lines ~value:(build_dashboard_row_line ~is_last:true row)
+    | [ action ] ->
+        Vector.push
+          lines
+          ~value:(build_dashboard_action_line ~width ~parent_is_last ~is_last:true action)
+    | action :: rest ->
+        Vector.push
+          lines
+          ~value:(build_dashboard_action_line ~width ~parent_is_last ~is_last:false action);
+        loop rest
+  in
+  loop actions
+
+let build_dashboard_push_row_lines = fun ~width lines rows ->
+  let rec loop = fun __tmp1 ->
+    match __tmp1 with
+    | [] -> ()
+    | [ row ] ->
+        Vector.push lines ~value:(build_dashboard_row_line ~width ~is_last:true row);
+        build_dashboard_push_action_lines
+          ~width
+          ~parent_is_last:true
+          lines
+          row.actions
     | row :: rest ->
-        Vector.push lines ~value:(build_dashboard_row_line ~is_last:false row);
+        Vector.push lines ~value:(build_dashboard_row_line ~width ~is_last:false row);
+        build_dashboard_push_action_lines
+          ~width
+          ~parent_is_last:false
+          lines
+          row.actions;
         loop rest
   in
   loop rows
@@ -1060,16 +1092,17 @@ let build_dashboard_view_lines = fun view ->
   match view with
   | Empty -> Vector.with_capacity ~size:0
   | Board board ->
+      let width = build_dashboard_terminal_width () in
       let lines = Vector.with_capacity ~size:8 in
       Vector.push
         lines
-        ~value:("["
+        ~value:(build_dashboard_truncate ~width ("["
         ^ Int.to_string board.completed_action_count
         ^ "/"
         ^ Int.to_string board.total_action_count
         ^ "] actions  "
-        ^ board.summary);
-      build_dashboard_push_row_lines lines board.rows;
+        ^ board.summary));
+      build_dashboard_push_row_lines ~width lines board.rows;
       lines
 
 let build_dashboard_throttle_allows_render = fun dashboard ->
@@ -1446,49 +1479,52 @@ let write_build_failed_error = fun ~mode errors ->
           write_failure_blocks failures
     )
 
-let command =
+let build_args =
   let open ArgParser in
   let open ArgParser.Arg in
+  [
+    option "package"
+    |> short 'p'
+    |> long "package"
+    |> multiple
+    |> help
+      "Build a specific package. Repeat to build multiple packages; omit to build all packages.";
+    option "target"
+    |> short 'x'
+    |> long "target"
+    |> help "Target architecture (exact triple, pattern like 'linux'/'aarch64', or 'all')";
+    flag "all-targets"
+    |> long "all-targets"
+    |> help "Build for all configured targets";
+    flag "tests"
+    |> long "tests"
+    |> help "Also compile test binaries";
+    flag "examples"
+    |> long "examples"
+    |> help "Also compile example binaries";
+    flag "benches"
+    |> long "benches"
+    |> help "Also compile benchmark binaries";
+    flag "all"
+    |> long "all"
+    |> help "Also compile tests, examples, and benchmark binaries";
+    flag "release"
+    |> long "release"
+    |> help "Use the release build profile";
+    option "jobs"
+    |> short 'j'
+    |> long "jobs"
+    |> help "Limit parallel workers";
+    flag "json"
+    |> long "json"
+    |> help "Emit machine-readable JSONL events";
+  ]
+
+let command =
+  let open ArgParser in
   command "build"
   |> about "Build packages"
-  |> args
-    [
-      option "package"
-      |> short 'p'
-      |> long "package"
-      |> multiple
-      |> help
-        "Build a specific package. Repeat to build multiple packages; omit to build all packages.";
-      option "target"
-      |> short 'x'
-      |> long "target"
-      |> help "Target architecture (exact triple, pattern like 'linux'/'aarch64', or 'all')";
-      flag "all-targets"
-      |> long "all-targets"
-      |> help "Build for all configured targets";
-      flag "tests"
-      |> long "tests"
-      |> help "Also compile test binaries";
-      flag "examples"
-      |> long "examples"
-      |> help "Also compile example binaries";
-      flag "benches"
-      |> long "benches"
-      |> help "Also compile benchmark binaries";
-      flag "all"
-      |> long "all"
-      |> help "Also compile tests, examples, and benchmark binaries";
-      flag "release"
-      |> long "release"
-      |> help "Use the release build profile";
-      option "jobs"
-      |> short 'j'
-      |> long "jobs"
-      |> help "Limit parallel workers";
-      flag "json"
-      |> long "json"
-      |> help "Emit machine-readable JSONL events";
-    ]
+  |> args build_args
 
 let target_request_of_matches = fun matches ->
   if ArgParser.get_flag matches "all-targets" then
