@@ -33,6 +33,33 @@ let test_fs_write_roundtrips_large_binary_payload = fun _ctx ->
       else
         Error "expected Fs.write to persist the full payload")
 
+let test_fs_clone_behaves_like_copy = fun _ctx ->
+  with_tempdir
+    "std_fs_clone"
+    (fun tempdir ->
+      let src = Path.(tempdir / Path.v "source.txt") in
+      let dst = Path.(tempdir / Path.v "destination.txt") in
+      let* () =
+        Fs.write "cloned payload" src
+        |> Result.map_err ~fn:IO.error_message
+      in
+      let* () =
+        Fs.write "stale payload" dst
+        |> Result.map_err ~fn:IO.error_message
+      in
+      let* () =
+        Fs.clone ~src ~dst
+        |> Result.map_err ~fn:IO.error_message
+      in
+      let* actual =
+        Fs.read_to_string dst
+        |> Result.map_err ~fn:IO.error_message
+      in
+      if String.equal actual "cloned payload" then
+        Ok ()
+      else
+        Error "expected Fs.clone to copy source contents over the destination")
+
 let test_with_tempdir_retries_collisions_under_concurrency = fun _ctx ->
   let parent = self () in
   let workers = 16 in
@@ -83,6 +110,7 @@ let test_with_tempdir_retries_collisions_under_concurrency = fun _ctx ->
 
 let tests = [
   Test.case "Fs.write persists complete payloads" test_fs_write_roundtrips_large_binary_payload;
+  Test.case "Fs.clone behaves like copy" test_fs_clone_behaves_like_copy;
   Test.case
     "Fs.with_tempdir retries collisions under concurrency"
     test_with_tempdir_retries_collisions_under_concurrency;

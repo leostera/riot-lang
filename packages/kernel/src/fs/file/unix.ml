@@ -178,6 +178,8 @@ module FFI = struct
 
   external link: string -> string -> (unit, int) Result.t = "kernel_new_fs_file_link"
 
+  external clone: string -> string -> (unit, int) Result.t = "kernel_new_fs_file_clone"
+
   external symlink: string -> string -> (unit, int) Result.t = "kernel_new_fs_file_symlink"
 
   external readlink: string -> (string, int) Result.t = "kernel_new_fs_file_readlink"
@@ -327,6 +329,10 @@ let hard_link = fun ~src ~dst ->
   FFI.link (Path.to_string src) (Path.to_string dst)
   |> Result.map_err ~fn:(fun code -> System (System_error.from_code code))
 
+let native_clone = fun ~src ~dst ->
+  FFI.clone (Path.to_string src) (Path.to_string dst)
+  |> Result.map_err ~fn:(fun code -> System (System_error.from_code code))
+
 let symlink = fun ~src ~dst ->
   FFI.symlink (Path.to_string src) (Path.to_string dst)
   |> Result.map_err ~fn:(fun code -> System (System_error.from_code code))
@@ -418,6 +424,13 @@ let copy = fun ~src ~dst ->
       | (Result.Ok (), Result.Ok ()) ->
           set_permissions dst ~perm:(Metadata.permissions src_metadata)
     )
+
+let clone = fun ~src ~dst ->
+  match native_clone ~src ~dst with
+  | Result.Ok () -> Result.Ok ()
+  | Result.Error (System System_error.NotSupported)
+  | Result.Error (System System_error.AlreadyExists) -> copy ~src ~dst
+  | Result.Error error -> Result.Error error
 
 let is_tty = FFI.is_tty
 

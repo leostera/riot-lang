@@ -58,6 +58,27 @@ and runtime_phase =
       duration: Time.Duration.t;
     }
   | PackagePlanningStarted of { lane_count: int; package_count: int }
+  | PackagePlanStarted of {
+      package: Riot_model.Package.t;
+      build_target: Riot_model.Target.t;
+      source_count: int;
+      started_at: Time.Instant.t;
+    }
+  | PackagePlanSourceStarted of {
+      package: Riot_model.Package.t;
+      build_target: Riot_model.Target.t;
+      source: Path.t;
+      source_index: int;
+      source_count: int;
+      started_at: Time.Instant.t;
+    }
+  | PackagePlanFinished of {
+      package: Riot_model.Package.t;
+      build_target: Riot_model.Target.t;
+      source_count: int;
+      completed_at: Time.Instant.t;
+      duration: Time.Duration.t;
+    }
   | PackagePlanningFinished of {
       lane_count: int;
       package_count: int;
@@ -114,6 +135,9 @@ let phase_name_of_runtime_phase = fun __tmp1 ->
   | BuildLaneStoreCreated _ -> "build_lane_store_created"
   | BuildLanePreparationFinished _ -> "build_lane_preparation_finished"
   | PackagePlanningStarted _ -> "package_planning_started"
+  | PackagePlanStarted _ -> "package_plan_started"
+  | PackagePlanSourceStarted _ -> "package_plan_source_started"
+  | PackagePlanFinished _ -> "package_plan_finished"
   | PackagePlanningFinished _ -> "package_planning_finished"
   | PackageActionGraphPlanned _ -> "package_action_graph_planned"
   | PackageExecutionStarted _ -> "package_execution_started"
@@ -132,6 +156,45 @@ let runtime_phase_fields = fun __tmp1 ->
   | PackagePlanningStarted { lane_count; package_count }
   | PackageExecutionStarted { lane_count; package_count } ->
       [ ("lane_count", Data.Json.Int lane_count); ("package_count", Data.Json.Int package_count); ]
+  | PackagePlanStarted {
+      package;
+      build_target;
+      source_count;
+      started_at = _;
+    } ->
+      [
+        ("package", Data.Json.String (Riot_model.Package_name.to_string package.name));
+        ("target", Data.Json.String (Riot_model.Target.to_string build_target));
+        ("source_count", Data.Json.Int source_count);
+      ]
+  | PackagePlanSourceStarted {
+      package;
+      build_target;
+      source;
+      source_index;
+      source_count;
+      started_at = _;
+    } ->
+      [
+        ("package", Data.Json.String (Riot_model.Package_name.to_string package.name));
+        ("target", Data.Json.String (Riot_model.Target.to_string build_target));
+        ("source", Data.Json.String (Path.to_string source));
+        ("source_index", Data.Json.Int source_index);
+        ("source_count", Data.Json.Int source_count);
+      ]
+  | PackagePlanFinished {
+      package;
+      build_target;
+      source_count;
+      completed_at = _;
+      duration;
+    } ->
+      [
+        ("package", Data.Json.String (Riot_model.Package_name.to_string package.name));
+        ("target", Data.Json.String (Riot_model.Target.to_string build_target));
+        ("source_count", Data.Json.Int source_count);
+        ("duration_ms", Data.Json.Int (Time.Duration.to_millis duration));
+      ]
   | PackagePlanningFinished {
       lane_count;
       package_count;
@@ -288,10 +351,13 @@ let timestamp = fun __tmp1 ->
   match __tmp1 with
   | Telemetry event -> Telemetry_events.event_timestamp event
   | Phase (BuildLanesPreparationStarted { started_at; _ })
-  | Phase (BuildLanePreparationStarted { started_at; _ }) ->
+  | Phase (BuildLanePreparationStarted { started_at; _ })
+  | Phase (PackagePlanStarted { started_at; _ })
+  | Phase (PackagePlanSourceStarted { started_at; _ }) ->
       Some ("started_at_us", started_at)
   | Phase (BuildLanesPreparationFinished { completed_at; _ })
-  | Phase (BuildLanePreparationFinished { completed_at; _ }) ->
+  | Phase (BuildLanePreparationFinished { completed_at; _ })
+  | Phase (PackagePlanFinished { completed_at; _ }) ->
       Some ("completed_at_us", completed_at)
   | Phase (BuildUnitPlanCreated { planned_at; _ }) ->
       Some ("planned_at_us", planned_at)

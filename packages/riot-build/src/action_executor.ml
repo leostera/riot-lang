@@ -295,7 +295,7 @@ let run_action = fun
           Path.join sandbox_dir source
       in
       let dst_path = Path.join sandbox_dir destination in
-      match Fs.copy ~src:src_path ~dst:dst_path with
+      match Fs.clone ~src:src_path ~dst:dst_path with
       | Ok () -> ocamlc_success "Copied"
       | Error _ ->
           ocamlc_failed
@@ -627,7 +627,7 @@ let execute_node = fun
                           | None -> ()
                         );
                         (
-                          match Fs.copy ~src:abs_src ~dst:abs_dst with
+                          match Fs.clone ~src:abs_src ~dst:abs_dst with
                           | Ok () -> Ok ()
                           | Error err -> Error (IO.error_message err)
                         ))

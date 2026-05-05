@@ -106,6 +106,7 @@ module Terminal = struct
   }
 
   type status =
+    | Plan
     | Running
     | Building
     | Success
@@ -223,6 +224,7 @@ module Terminal = struct
 
   let status_text = fun status ->
     match status with
+    | Plan -> "plan"
     | Running -> "run"
     | Building -> "building"
     | Success -> "ok"
@@ -234,6 +236,7 @@ module Terminal = struct
 
   let status_style = fun terminal status ->
     match status with
+    | Plan -> fg (surface_reference terminal)
     | Running -> fg (surface_reference terminal)
     | Building -> fg (surface_reference terminal)
     | Success -> fg_bold (surface_success terminal)

@@ -111,9 +111,14 @@ module Handle = struct
   type ('work, 'mutation, 'event) t = {
     mutable next_local_id: int;
     mutable commands: ('work, 'mutation, 'event) command list;
+    emit: 'event -> unit;
   }
 
-  let create = fun () -> { next_local_id = (-1); commands = [] }
+  let create = fun ~emit_event () -> {
+    next_local_id = (-1);
+    commands = [];
+    emit = emit_event;
+  }
 
   let push = fun handle command -> handle.commands <- command :: handle.commands
 
@@ -130,7 +135,7 @@ module Handle = struct
 
   let record = fun handle mutation -> push handle (Record_mutation mutation)
 
-  let emit_event = fun handle event -> push handle (Emit_event event)
+  let emit_event = fun handle event -> handle.emit event
 end
 
 type ('work, 'result, 'error) node_result = {
@@ -436,9 +441,10 @@ let run = fun ~config ~on_event ~graph ~execute ->
           in
           ());
       let result_ref = Ref.make () in
+      let emit_event = fun event -> send owner (GraphRunEvent { event; event_ref }) in
       let worker_owner = self () in
       let worker_fn ~owner ~task:(node, payload) =
-        let handle = Handle.create () in
+        let handle = Handle.create ~emit_event () in
         let outcome = execute ~graph:handle ~node ~payload in
         let result = {
           node;
@@ -464,7 +470,7 @@ let run = fun ~config ~on_event ~graph ~execute ->
         idle_workers = Queue.create ();
         result_ref;
         runtime_nodes;
-        on_event = (fun event -> send owner (GraphRunEvent { event; event_ref }));
+        on_event = emit_event;
         tasks_in_flight = 0;
         fail_fast_triggered = false;
       }

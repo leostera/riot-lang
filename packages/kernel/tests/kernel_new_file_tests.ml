@@ -393,6 +393,84 @@ let test_copy_and_rename_roundtrip = fun _ctx ->
       else
         Error "expected copy and rename to preserve payload")
 
+let test_clone_copies_payload_and_overwrites_destination = fun _ctx ->
+  with_tempdir
+    "kernel_new_file"
+    (fun tempdir ->
+      let source = Kernel.Path.(tempdir / "source.txt") in
+      let destination = Kernel.Path.(tempdir / "destination.txt") in
+      let* source_file = lift (Kernel.Fs.File.open_write source) in
+      let* () =
+        with_file
+          source_file
+          (fun () ->
+            let* written = lift (Kernel.Fs.File.write source_file (Kernel.Bytes.from_string "new")) in
+            if written = 3 then
+              Ok ()
+            else
+              Error "expected source fixture write to make progress")
+      in
+      let* destination_file = lift (Kernel.Fs.File.open_write destination) in
+      let* () =
+        with_file
+          destination_file
+          (fun () ->
+            let* written =
+              lift (Kernel.Fs.File.write destination_file (Kernel.Bytes.from_string "old-old"))
+            in
+            if written = 7 then
+              Ok ()
+            else
+              Error "expected destination fixture write to make progress")
+      in
+      let* () = lift (Kernel.Fs.File.clone ~src:source ~dst:destination) in
+      let* destination_file = lift (Kernel.Fs.File.open_read destination) in
+      let buffer = Kernel.Bytes.create ~size:16 in
+      let* payload =
+        with_file
+          destination_file
+          (fun () ->
+            let* read = lift (Kernel.Fs.File.read destination_file buffer) in
+            Ok (Kernel.Bytes.sub_string buffer ~offset:0 ~len:read))
+      in
+      if payload = "new" then
+        Ok ()
+      else
+        Error "expected clone to behave like copy for existing destinations")
+
+let test_clone_copies_payload_to_new_destination = fun _ctx ->
+  with_tempdir
+    "kernel_new_file"
+    (fun tempdir ->
+      let source = Kernel.Path.(tempdir / "source.txt") in
+      let destination = Kernel.Path.(tempdir / "destination.txt") in
+      let* source_file = lift (Kernel.Fs.File.open_write source) in
+      let* () =
+        with_file
+          source_file
+          (fun () ->
+            let payload = Kernel.Bytes.from_string "native clone candidate" in
+            let* written = lift (Kernel.Fs.File.write source_file payload) in
+            if written = Kernel.Bytes.length payload then
+              Ok ()
+            else
+              Error "expected source fixture write to write the whole payload")
+      in
+      let* () = lift (Kernel.Fs.File.clone ~src:source ~dst:destination) in
+      let* destination_file = lift (Kernel.Fs.File.open_read destination) in
+      let buffer = Kernel.Bytes.create ~size:64 in
+      let* payload =
+        with_file
+          destination_file
+          (fun () ->
+            let* read = lift (Kernel.Fs.File.read destination_file buffer) in
+            Ok (Kernel.Bytes.sub_string buffer ~offset:0 ~len:read))
+      in
+      if payload = "native clone candidate" then
+        Ok ()
+      else
+        Error "expected clone to copy source contents to a fresh destination")
+
 let test_fstat_matches_path_metadata = fun _ctx ->
   with_temp_path
     "kernel_new_file"
@@ -1657,6 +1735,12 @@ let tests = [
     "Fs.File renaming broken symlinks preserves the link itself"
     test_renaming_broken_symlink_preserves_the_link_itself;
   Test.case "Fs.File copy and rename roundtrips" test_copy_and_rename_roundtrip;
+  Test.case
+    "Fs.File clone copies payloads and overwrites destinations"
+    test_clone_copies_payload_and_overwrites_destination;
+  Test.case
+    "Fs.File clone copies payloads to fresh destinations"
+    test_clone_copies_payload_to_new_destination;
   Test.case "Fs.File fstat matches path metadata" test_fstat_matches_path_metadata;
   Test.case
     "Fs.File hard_link and remove ops update filesystem state"

@@ -77,6 +77,11 @@ type analyzed_module = {
   resolved_dep_ids: G.Node_id.t list;
   unresolved_deps: string list;
 }
+type source_analysis_progress = {
+  source: Path.t;
+  source_index: int;
+  source_count: int;
+}
 
 type root_export_source =
   | Export_from_ml of {
@@ -1158,7 +1163,7 @@ let add_direct_dependency_package = fun t (package: Package.t) ->
    - MLI -> ML dependencies are filtered out to maintain proper compilation
      order
 *)
-let wire_dependencies = fun t ->
+let wire_dependencies = fun ?(on_source_analyzed = fun (_:source_analysis_progress) -> ()) t ->
   let () = HashMap.clear t.analyzed_modules in
   let rec strip_last_namespace = fun __tmp1 ->
     match __tmp1 with
@@ -1283,6 +1288,19 @@ let wire_dependencies = fun t ->
           )
         | _ -> None)
   in
+  let source_count = List.length files_with_nodes in
+  let reported_sources = HashSet.with_capacity ~size:source_count in
+  let report_source_analyzed = fun ~source (node: Module_node.t G.node) ->
+    if HashSet.insert reported_sources ~value:(G.id node) then
+      on_source_analyzed
+        {
+          source;
+          source_index = HashSet.length reported_sources;
+          source_count;
+        }
+    else
+      ()
+  in
   let group_for_path path =
     let normalized_path = Path.normalize path in
     List.find
@@ -1400,6 +1418,7 @@ let wire_dependencies = fun t ->
     match raw_source_text node with
     | Error _ as err -> err
     | Ok (raw_text, display_path) ->
+        report_source_analyzed ~source:display_path node;
         let implicit_opens = implicit_open_modules (G.value node).open_modules in
         let parse_result = Syn.parse ~filename:display_path (source_slice raw_text) in
         let source_file = Syn.Ast.SourceFile.make parse_result.tree in

@@ -259,6 +259,52 @@ let add_edge = fun t node ~depends_on ->
   if HashSet.insert t.edges ~value:key then
     G.add_edge node ~depends_on
 
+let clone = fun t ->
+  let graph = G.make () in
+  let nodes = HashMap.with_capacity ~size:(HashMap.length t.nodes) in
+  let edges = HashSet.with_capacity ~size:(HashSet.length t.edges) in
+  let processed_libraries =
+    HashSet.with_capacity ~size:(HashSet.length t.processed_libraries)
+  in
+  let cloned = {
+    graph;
+    nodes;
+    edges;
+    processed_libraries;
+  }
+  in
+  let nodes_by_original_id = HashMap.with_capacity ~size:(HashMap.length t.nodes) in
+  let original_nodes =
+    match G.topo_sort t.graph with
+    | Ok nodes -> nodes
+    | Error _ -> G.map t.graph ~fn:(fun (_, node) -> node)
+  in
+  List.for_each
+    original_nodes
+    ~fn:(fun original_node ->
+      let unit = G.value original_node in
+      let cloned_node = G.add_node cloned.graph unit in
+      let _ = HashMap.insert cloned.nodes ~key:(Build_unit.id unit) ~value:cloned_node in
+      let _ = HashMap.insert nodes_by_original_id ~key:(G.id original_node) ~value:cloned_node in
+      ());
+  List.for_each
+    original_nodes
+    ~fn:(fun original_node ->
+      let cloned_node =
+        HashMap.get nodes_by_original_id ~key:(G.id original_node)
+        |> Option.expect ~msg:"missing cloned build unit node"
+      in
+      G.deps original_node
+      |> List.for_each
+        ~fn:(fun original_dependency_id ->
+          match HashMap.get nodes_by_original_id ~key:original_dependency_id with
+          | None -> ()
+          | Some cloned_dependency -> add_edge cloned cloned_node ~depends_on:cloned_dependency));
+  HashSet.for_each
+    t.processed_libraries
+    ~fn:(fun key -> ignore (HashSet.insert cloned.processed_libraries ~value:key));
+  cloned
+
 let binary_artifact_kind = fun (binary: Package.binary) ->
   let path = Path.to_string binary.path in
   if String.starts_with ~prefix:"tests/" path then

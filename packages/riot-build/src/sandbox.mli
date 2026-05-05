@@ -10,15 +10,40 @@ type dependency_copy_stats = {
   object_count: int;
 }
 
+type dependency_copy_error =
+  | DependencyArtifactDirUnavailable of {
+      package: Package_name.t;
+      artifact_dir: Path.t;
+      message: string;
+    }
+  | DependencyObjectCopyFailed of {
+      package: Package_name.t;
+      src: Path.t;
+      dst: Path.t;
+      message: string;
+    }
+
 type prepare_stats = {
   input_count: int;
   dependency_count: int;
   dependency_object_count: int;
 }
 
+type prepare_error =
+  | InputCopyFailed of { message: string }
+  | DependencyCopyFailed of dependency_copy_error
+
+val dependency_copy_error_to_string: dependency_copy_error -> string
+
+val prepare_error_to_string: prepare_error -> string
+
 (** Create a sandbox directory for a package build. *)
 val create:
   workspace:Workspace.t ->
+  (** Hash-derived seed for isolating sandboxes of the same package. *)
+  ?id_seed:Crypto.hash ->
+  (** Build session id mixed into seeded sandbox ids to avoid stale reuse across invocations. *)
+  ?session_id:Session_id.t ->
   ?profile:string ->
   ?target:Target.t ->
   unit ->
@@ -34,7 +59,7 @@ val copy_dependency_object_files:
   sandbox:t ->
   package:Package.t ->
   depset:Dependency.t list ->
-  dependency_copy_stats
+  (dependency_copy_stats, dependency_copy_error) result
 
 (**
    Prepare an existing sandbox by copying package inputs and dependency object
@@ -46,7 +71,7 @@ val prepare:
   inputs:Path.t list ->
   depset:Dependency.t list ->
   store:Riot_store.Store.t ->
-  prepare_stats
+  (prepare_stats, prepare_error) result
 
 (** Get the directory path of the sandbox *)
 val get_dir: t -> Path.t
@@ -70,6 +95,10 @@ val cleanup: t -> unit
 *)
 val with_sandbox:
   workspace:Workspace.t ->
+  (** Hash-derived seed for isolating sandboxes of the same package. *)
+  ?id_seed:Crypto.hash ->
+  (** Build session id mixed into seeded sandbox ids to avoid stale reuse across invocations. *)
+  ?session_id:Session_id.t ->
   ?profile:string ->
   ?target:Target.t ->
   package:Package.t ->

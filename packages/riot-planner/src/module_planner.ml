@@ -18,6 +18,7 @@ type plan_input = {
   depset: Dependency.t list;
   dependency_packages: Package.t list;
   store: Riot_store.Store.t;
+  on_source_analyzed: Module_graph.source_analysis_progress -> unit;
 }
 
 type plan_result = {
@@ -37,18 +38,36 @@ let root_module_name_of_package_name = fun package_name ->
   Module_name.(from_string (Package_name.to_string package_name)
   |> to_string)
 
-let dependency_package_by_name = fun depset package_name ->
+let direct_dependency_package_by_name = fun depset package_name ->
+  depset
+  |> List.find ~fn:(fun (dep: Dependency.t) -> Package_name.equal dep.package.name package_name)
+  |> Option.map ~fn:(fun (dep: Dependency.t) -> dep.package)
+
+let transitive_dependency_package_by_name = fun depset package_name ->
   Dependency.transitive_closure depset
   |> List.find ~fn:(fun (dep: Dependency.t) -> Package_name.equal dep.package.name package_name)
   |> Option.map ~fn:(fun (dep: Dependency.t) -> dep.package)
 
+let workspace_dependency_package_by_name = fun (input: plan_input) package_name ->
+  input.workspace.packages
+  |> List.find
+    ~fn:(fun (manifest: Package_manifest.t) ->
+      Package_name.equal manifest.name package_name)
+  |> Option.map ~fn:(Workspace.realize_package ~intent:Package.Runtime input.workspace)
+
 let input_dependency_package_by_name = fun (input: plan_input) package_name ->
-  match dependency_package_by_name input.depset package_name with
+  match direct_dependency_package_by_name input.depset package_name with
   | Some package -> Some package
   | None ->
-      List.find
-        input.dependency_packages
-        ~fn:(fun (package: Package.t) -> Package_name.equal package.name package_name)
+      match transitive_dependency_package_by_name input.depset package_name with
+      | Some package -> Some package
+      | None -> (
+          match List.find
+            input.dependency_packages
+            ~fn:(fun (package: Package.t) -> Package_name.equal package.name package_name) with
+          | Some package -> Some package
+          | None -> workspace_dependency_package_by_name input package_name
+        )
 
 let direct_dependency_roots = fun (input: plan_input) ->
   let seen = HashSet.create () in
@@ -123,7 +142,7 @@ let plan_node = fun (input: plan_input) ->
           let _ = G.add_node (Module_graph.graph graph_builder) native_node in
           ()
     );
-    match Module_graph.wire_dependencies graph_builder with
+    match Module_graph.wire_dependencies ~on_source_analyzed:input.on_source_analyzed graph_builder with
     | Error _ as error -> error
     | Ok () ->
         (

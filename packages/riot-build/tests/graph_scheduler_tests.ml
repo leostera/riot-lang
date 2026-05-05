@@ -207,6 +207,33 @@ let test_graph_scheduler_emits_events_in_completion_order = fun _ctx ->
       Ok ()
   | _ -> Error "expected two graph nodes"
 
+let test_graph_scheduler_emits_events_before_node_completion = fun _ctx ->
+  let events = ref [] in
+  let event_seen_before_completion = ref false in
+  let (graph, _) = make_graph ~apply_mutation:(fun _ (_: mutation) -> ()) [ 1 ] in
+  let _ =
+    Graph_scheduler.run
+      ~config:(Graph_scheduler.Run_config.make
+        ~parallelism:1
+        ~mode:Graph_scheduler.Run_config.Continue_on_failure
+        ())
+      ~graph
+      ~on_event:(fun event -> events := !events @ [ event ])
+      ~execute:(fun ~graph ~node:_ ~payload ->
+        Graph_scheduler.Handle.emit_event graph ("node-" ^ Int.to_string payload);
+        sleep (Time.Duration.from_millis 80);
+        event_seen_before_completion := (
+          match !events with
+          | [ event ] -> String.equal event "node-1"
+          | _ -> false
+        );
+        Ok "ok")
+  in
+  if !event_seen_before_completion then
+    Ok ()
+  else
+    Error "expected event callback to run before the node completed"
+
 let test_graph_scheduler_applies_recorded_mutations = fun _ctx ->
   let applied = ref [] in
   let results =
@@ -273,6 +300,9 @@ let tests = let open Test in
   case
     "graph scheduler: emits events in completion order"
     test_graph_scheduler_emits_events_in_completion_order;
+  case
+    "graph scheduler: emits events before node completion"
+    test_graph_scheduler_emits_events_before_node_completion;
   case "graph scheduler: applies recorded mutations" test_graph_scheduler_applies_recorded_mutations;
   case
     "graph scheduler: empty graphs return no results"

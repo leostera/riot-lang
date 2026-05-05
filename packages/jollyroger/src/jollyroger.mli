@@ -146,6 +146,7 @@ module Terminal: sig
     | DarkMode
   type t
   type status =
+    | Plan
     | Running
     | Building
     | Success

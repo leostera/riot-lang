@@ -8,7 +8,7 @@ let test_toolchain =
   Riot_toolchain.init ~config:Riot_model.Toolchain_config.default
   |> Result.expect ~msg:"Failed to initialize toolchain"
 
-let planner_artifacts_version = "planner-artifacts:v24"
+let planner_artifacts_version = "planner-artifacts:v26"
 
 let legacy_planner_artifacts_version = "planner-artifacts:v19"
 
@@ -207,6 +207,7 @@ let dependency_of_required_plan_result = fun store result ->
 
 let plan_build_unit_raw = fun ~workspace ~store ~(unit:Riot_planner.Build_unit.t) ~depset ~build_ctx ->
   Riot_planner.Package_planner.plan_build_unit
+    ~on_source_analyzed:(fun _ -> ())
     ~workspace
     ~toolchain:test_toolchain
     ~store
@@ -1086,6 +1087,235 @@ let test_dev_scope_tests_can_import_own_runtime_library_root = fun _ctx ->
   | Ok result -> result
   | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
 
+let test_dev_scope_example_can_use_opened_own_runtime_library_exports = fun _ctx ->
+  match Fs.with_tempdir
+    ~prefix:"planner_dev_scope_open_own_runtime_exports"
+    (fun tmpdir ->
+      match plan_dev_package_actions_with_library
+        ~tmpdir
+        ~package_name:"stdish"
+        ~library:(Some Riot_model.Package.{ path = Path.v "src/stdish.ml" })
+        ~binaries:[ ("demo", "examples/demo.ml"); ]
+        ~files:[
+          ("src/stdish.ml", "module Env = struct\n  let args = []\nend\n");
+          (
+            "examples/demo.ml",
+            "open Stdish\nlet main ~args:_ =\n  ignore Env.args;\n  Ok ()\n"
+          );
+        ] with
+      | Error err ->
+          Error ("expected opened own runtime library exports to resolve, got: " ^ err)
+      | Ok (_package, action_graph) -> (
+          match find_create_executable_named action_graph "demo" with
+          | Some (Riot_planner.Action.CreateExecutable { libraries; _ }) ->
+              if
+                List.any
+                  libraries
+                  ~fn:(fun library ->
+                    String.ends_with
+                      ~suffix:"Stdish.cmxa"
+                      (Path.to_string library))
+              then
+                Ok ()
+              else
+                Error ("expected opened self-library example to link Stdish.cmxa; libraries: "
+                ^ path_list_to_string libraries)
+          | _ -> Error "expected CreateExecutable action for examples/demo.ml"
+        )) with
+  | Ok result -> result
+  | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
+
+let test_dev_scope_multiple_binaries_keep_opened_own_runtime_library_exports = fun _ctx ->
+  match Fs.with_tempdir
+    ~prefix:"planner_dev_scope_open_own_runtime_exports_multiple"
+    (fun tmpdir ->
+      match plan_dev_package_actions_with_library
+        ~tmpdir
+        ~package_name:"stdish"
+        ~library:(Some Riot_model.Package.{ path = Path.v "src/stdish.ml" })
+        ~binaries:[
+          ("aaa_tests", "tests/aaa_tests.ml");
+          ("zzz_tests", "tests/zzz_tests.ml");
+        ]
+        ~files:[
+          ("src/stdish.ml", "module Agent = struct\n  let value = 1\nend\n");
+          (
+            "tests/aaa_tests.ml",
+            "open Stdish\nlet main ~args:_ =\n  ignore Agent.value;\n  Ok ()\n"
+          );
+          (
+            "tests/zzz_tests.ml",
+            "open Stdish\nlet main ~args:_ =\n  ignore Agent.value;\n  Ok ()\n"
+          );
+        ] with
+      | Error err ->
+          Error ("expected both dev binaries to resolve opened own runtime exports, got: " ^ err)
+      | Ok (_package, action_graph) ->
+          if Option.is_none (find_create_executable_named action_graph "aaa_tests") then
+            Error "expected CreateExecutable action for tests/aaa_tests.ml"
+          else if Option.is_none (find_create_executable_named action_graph "zzz_tests") then
+            Error "expected CreateExecutable action for tests/zzz_tests.ml"
+          else
+            Ok ()) with
+  | Ok result -> result
+  | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
+
+let test_dev_scope_record_local_open_keeps_opened_runtime_exports = fun _ctx ->
+  match Fs.with_tempdir
+    ~prefix:"planner_dev_scope_record_local_open_runtime_exports"
+    (fun tmpdir ->
+      match plan_dev_package_actions_with_library
+        ~tmpdir
+        ~package_name:"kernelish"
+        ~library:(Some Riot_model.Package.{ path = Path.v "src/kernelish.ml" })
+        ~binaries:[ ("process_tests", "tests/process_tests.ml"); ]
+        ~files:[
+          (
+            "src/kernelish.ml",
+            {ocaml|module Process = struct
+  module Stdin = struct type t = Null end
+  module Stdout = struct type t = Null end
+  module Stderr = struct type t = Null end
+end
+|ocaml}
+          );
+          (
+            "tests/process_tests.ml",
+            {ocaml|open Kernelish
+
+let main ~args:_ =
+  let _stdio =
+    Kernelish.Process.{ stdin = Stdin.Null; stdout = Stdout.Null; stderr = Stderr.Null }
+  in
+  Ok ()
+|ocaml}
+          );
+        ] with
+      | Error err ->
+          Error ("expected record local-open exports to resolve through Kernelish, got: "
+          ^ err)
+      | Ok (_package, action_graph) ->
+          if Option.is_some (find_create_executable_named action_graph "process_tests") then
+            Ok ()
+          else
+            Error "expected CreateExecutable action for tests/process_tests.ml") with
+  | Ok result -> result
+  | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
+
+let test_direct_dependency_exports_prefer_direct_depset_package = fun _ctx ->
+  match Fs.with_tempdir
+    ~prefix:"planner_direct_dependency_exports_prefer_direct"
+    (fun tmpdir ->
+      let stdish =
+        make_package_with_files
+          ~library:(Some Riot_model.Package.{ path = Path.v "src/stdish.ml" })
+          ~tmpdir
+          ~package_name:"stdish"
+          ~files:[
+            ("src/stdish.ml", "module Env = struct\n  let args = []\nend\n");
+          ]
+          ~binaries:[]
+      in
+      let stale_stdish =
+        make_package_with_files
+          ~library:(Some Riot_model.Package.{ path = Path.v "src/stdish.ml" })
+          ~tmpdir
+          ~package_name:"stale-stdish"
+          ~files:[ ("src/stdish.ml", "let unrelated = ()\n"); ]
+          ~binaries:[]
+      in
+      let stale_stdish =
+        Riot_model.Package.make
+          ~name:stdish.name
+          ~path:stale_stdish.path
+          ~relative_path:(Path.v "stale-stdish")
+          ~library:Riot_model.Package.{ path = Path.v "src/stdish.ml" }
+          ~sources:stale_stdish.sources
+          ()
+      in
+      let colors =
+        make_package_with_files
+          ~library:(Some Riot_model.Package.{ path = Path.v "src/colors.ml" })
+          ~tmpdir
+          ~package_name:"colors"
+          ~files:[ ("src/colors.ml", "let marker = ()\n"); ]
+          ~binaries:[]
+      in
+      let app_dir = Path.(tmpdir / Path.v "app") in
+      let () =
+        Fs.create_dir_all app_dir
+        |> Result.expect ~msg:"create app package dir failed"
+      in
+      let () =
+        write_package_files
+          ~package_dir:app_dir
+          [
+            (
+              "tests/app_tests.ml",
+              "open Stdish\nlet main ~args:_ =\n  ignore Env.args;\n  Ok ()\n"
+            );
+          ]
+      in
+      let app =
+        Riot_model.Package.make
+          ~name:(
+            Package_name.from_string "app"
+            |> Result.expect ~msg:"expected valid package name: app"
+          )
+          ~path:app_dir
+          ~relative_path:(Path.v "app")
+          ~dependencies:[ workspace_dependency "colors"; workspace_dependency "stdish"; ]
+          ~binaries:[ Riot_model.Package.{ name = "app_tests"; path = Path.v "tests/app_tests.ml" }; ]
+          ~sources:(source_buckets_of_files [
+            (
+              "tests/app_tests.ml",
+              "open Stdish\nlet main ~args:_ =\n  ignore Env.args;\n  Ok ()\n"
+            );
+          ])
+          ()
+      in
+      let workspace = make_test_workspace tmpdir [ stdish; colors; app ] in
+      let store = Riot_store.Store.create ~workspace in
+      let build_ctx =
+        Riot_model.Build_ctx.make
+          ~session_id:(Riot_model.Session_id.make ())
+          ~profile:Riot_model.Profile.debug
+          ()
+      in
+      let dependency package ~name ?(depset = []) () =
+        Riot_planner.Dependency.{
+          package;
+          artifact_dir = Path.(tmpdir / Path.v ("artifact-" ^ name));
+          depset;
+          input_hash = Crypto.hash_string ("input:" ^ name);
+          output_hash = Crypto.hash_string ("output:" ^ name);
+        }
+      in
+      let stale_stdish_dependency = dependency stale_stdish ~name:"stale-stdish" () in
+      let colors_dependency =
+        dependency colors ~name:"colors" ~depset:[ stale_stdish_dependency ] ()
+      in
+      let stdish_dependency = dependency stdish ~name:"stdish" () in
+      match binary_unit app "app_tests" with
+      | Error err -> Error err
+      | Ok unit -> (
+          match plan_build_unit
+            ~workspace
+            ~store
+            ~unit
+            ~depset:[ colors_dependency; stdish_dependency ]
+            ~build_ctx with
+          | Ok (Riot_planner.Package_planner.Planned _) -> Ok ()
+          | Ok result ->
+              Error ("expected direct dependency exports to plan, got "
+              ^ describe_plan_result result)
+          | Error err ->
+              Error ("expected direct dependency exports to prefer direct depset package, got: "
+              ^ err)
+        )) with
+  | Ok result -> result
+  | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
+
 let test_dev_scope_example_binaries_include_private_helpers = fun _ctx ->
   match Fs.with_tempdir
     ~prefix:"planner_dev_scope_examples_helpers"
@@ -1712,6 +1942,15 @@ let test_cached_artifact_and_exports_short_circuit_without_plan_bundle = fun _ct
         };
       ]
       in
+      let _action_artifact =
+        Riot_store.Store.save_action
+          store
+          ~package:(Package_name.to_string package.name)
+          ~input_hash
+          ~sandbox_dir
+          ~outs:[ output ]
+        |> Result.expect ~msg:"matching action artifact save should succeed"
+      in
       let _artifact =
         Riot_store.Store.save
           store
@@ -1746,6 +1985,95 @@ let test_cached_artifact_and_exports_short_circuit_without_plan_bundle = fun _ct
             else
               Ok ()
         | Ok _ -> Error "expected Cached result") with
+  | Ok x -> x
+  | Error _ -> Error "tempdir creation failed"
+
+let test_cached_artifact_missing_native_objects_rebuilds_plan_graphs = fun _ctx ->
+  match Fs.with_tempdir
+    ~prefix:"planner_cached_artifact_missing_native_objects_test"
+    (fun tmpdir ->
+      let package_dir = Path.(tmpdir / Path.v "pkg") in
+      let src_dir = Path.(package_dir / Path.v "src") in
+      let native_dir = Path.(package_dir / Path.v "native") in
+      let src_path = Path.(src_dir / Path.v "pkg.ml") in
+      let native_path = Path.(native_dir / Path.v "pkg_stubs.c") in
+      let _ =
+        Fs.create_dir_all src_dir
+        |> Result.expect ~msg:"expected src dir creation to succeed"
+      in
+      let _ =
+        Fs.create_dir_all native_dir
+        |> Result.expect ~msg:"expected native dir creation to succeed"
+      in
+      let _ =
+        Fs.write "let value = 1\n" src_path
+        |> Result.expect ~msg:"expected source write to succeed"
+      in
+      let _ =
+        Fs.write "int riot_pkg_stubs_marker(void) { return 0; }\n" native_path
+        |> Result.expect ~msg:"expected native source write to succeed"
+      in
+      let package =
+        Riot_model.Package.make
+          ~name:(
+            Package_name.from_string "pkg"
+            |> Result.expect ~msg:"expected valid package name"
+          )
+          ~path:package_dir
+          ~relative_path:(Path.v "pkg")
+          ~library:{ path = Path.v "src/pkg.ml" }
+          ~sources:{
+            src = [ Path.v "src/pkg.ml" ];
+            native = [ Path.v "native/pkg_stubs.c" ];
+            tests = [];
+            examples = [];
+            bench = [];
+          }
+          ()
+      in
+      let workspace = make_test_workspace tmpdir [ package ] in
+      let store = Riot_store.Store.create ~workspace in
+      let session_id = Riot_model.Session_id.make () in
+      let profile = Riot_model.Profile.debug in
+      let build_ctx = Riot_model.Build_ctx.make ~session_id ~profile () in
+      let unit = library_unit package in
+      let package = Riot_planner.Build_unit.package unit in
+      let input_hash =
+        Riot_planner.Package_planner.compute_input_hash
+          ~package
+          ~depset:[]
+          ~workspace
+          ~profile
+          ~build_ctx
+          ~toolchain:test_toolchain
+          ()
+      in
+      let sandbox_dir = Path.(tmpdir / Path.v "sandbox") in
+      let output = Path.(sandbox_dir / Path.v "pkg.cmxa") in
+      let _ =
+        Fs.create_dir_all sandbox_dir
+        |> Result.expect ~msg:"expected sandbox dir creation to succeed"
+      in
+      let _ =
+        Fs.write "cached without native object" output
+        |> Result.expect ~msg:"expected cached output write to succeed"
+      in
+      let _artifact =
+        Riot_store.Store.save
+          store
+          ~package:(Package_name.to_string package.name)
+          ~input_hash
+          ~sandbox_dir
+          ~outs:[ output ]
+        |> Result.expect ~msg:"expected incomplete artifact save to succeed"
+      in
+      match plan_build_unit ~workspace ~store ~unit ~depset:[] ~build_ctx with
+      | Error err ->
+          Error ("expected incomplete cached artifact miss to replan package, got planner error: "
+          ^ err)
+      | Ok (Riot_planner.Package_planner.Planned _) -> Ok ()
+      | Ok (Riot_planner.Package_planner.Cached _) ->
+          Error "expected cached artifact missing native objects to be ignored") with
   | Ok x -> x
   | Error _ -> Error "tempdir creation failed"
 
@@ -3264,6 +3592,18 @@ let tests =
       "dev scope tests can import own runtime library root"
       test_dev_scope_tests_can_import_own_runtime_library_root;
     case
+      "dev scope example can use opened own runtime library exports"
+      test_dev_scope_example_can_use_opened_own_runtime_library_exports;
+    case
+      "dev scope multiple binaries keep opened own runtime library exports"
+      test_dev_scope_multiple_binaries_keep_opened_own_runtime_library_exports;
+    case
+      "dev scope record local open keeps opened runtime exports"
+      test_dev_scope_record_local_open_keeps_opened_runtime_exports;
+    case
+      "direct dependency exports prefer direct depset package"
+      test_direct_dependency_exports_prefer_direct_depset_package;
+    case
       "dev scope example binaries include private helpers"
       test_dev_scope_example_binaries_include_private_helpers;
     case
@@ -3298,6 +3638,9 @@ let tests =
     case
       "cached artifact and exports short-circuit without plan bundle"
       test_cached_artifact_and_exports_short_circuit_without_plan_bundle;
+    case
+      "cached artifact missing native objects rebuilds plan graphs"
+      test_cached_artifact_missing_native_objects_rebuilds_plan_graphs;
     case
       "package input hash tracks dependency output hash"
       test_package_input_hash_tracks_dependency_output_hash;

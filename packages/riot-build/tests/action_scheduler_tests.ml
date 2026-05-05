@@ -154,6 +154,36 @@ let test_action_scheduler_reports_first_failure_and_keeps_other_results = fun _c
   | Ok result -> result
   | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
 
+let test_action_scheduler_reports_incomplete_action_graph = fun _ctx ->
+  match Fs.with_tempdir
+    ~prefix:"action_scheduler_incomplete"
+    (fun tmpdir ->
+      let package = make_package ~root:tmpdir ~name:"pkg" in
+      let graph = Riot_planner.Action_graph.create () in
+      let _node =
+        make_node_in
+          graph
+          ~package
+          ~actions:[
+            Riot_planner.Action.WriteFile {
+              destination = Path.v "output.txt";
+              content = "output";
+            };
+          ]
+          ~outs:[ Path.v "output.txt" ]
+          ()
+      in
+      let completed_results = HashMap.create () in
+      let result = Action_scheduler.summarize_completed ~action_graph:graph ~completed_results in
+      match result.Action_scheduler.first_failure with
+      | Some (Action_scheduler.ExecutionFailed { message })
+        when String.contains message "incomplete actions" ->
+          Ok ()
+      | Some _ -> Error "expected incomplete action graph to surface as execution failure"
+      | None -> Error "expected incomplete action graph to fail") with
+  | Ok result -> result
+  | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
+
 let tests =
   Test.[
     case
@@ -162,6 +192,9 @@ let tests =
     case
       "action scheduler: failure is surfaced while ready work still completes"
       test_action_scheduler_reports_first_failure_and_keeps_other_results;
+    case
+      "action scheduler: incomplete graph is a failure"
+      test_action_scheduler_reports_incomplete_action_graph;
   ]
 
 let name = "riot-build:action-scheduler"

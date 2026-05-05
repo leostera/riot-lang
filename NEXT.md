@@ -8,6 +8,8 @@
 
 * `riot lsp` doesn't use 200gb of ram
 
+* `riot fmt` should format the riot toml files too!
+
 * revisit all cli output -- i'd like it to be more inlined/interactive
 
 # Next

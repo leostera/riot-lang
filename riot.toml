@@ -64,6 +64,14 @@ members = [
   "packages/riot-fuzz",
   "packages/riot-test",
 ]
+ignore = [
+  "tests/fixtures",
+  "tests/generated",
+  "tests/diagnostics",
+  "tests/deps_fixtures",
+  "tests/autofix_fixtures",
+  "tests/workspace_fixtures",
+]
 
 [dependencies]
 # Shared external dependencies across workspace members

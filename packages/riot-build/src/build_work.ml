@@ -30,6 +30,48 @@ let runtime_phase_of_package_scheduler_event = fun __tmp1 ->
   match __tmp1 with
   | Package_scheduler.PlanningStarted { lane_count; package_count } ->
       Event.PackagePlanningStarted { lane_count; package_count }
+  | Package_scheduler.PackagePlanStarted {
+      package;
+      build_target;
+      source_count;
+      started_at;
+    } ->
+      Event.PackagePlanStarted {
+        package;
+        build_target;
+        source_count;
+        started_at;
+      }
+  | Package_scheduler.PackagePlanSourceStarted {
+      package;
+      build_target;
+      source;
+      source_index;
+      source_count;
+      started_at;
+    } ->
+      Event.PackagePlanSourceStarted {
+        package;
+        build_target;
+        source;
+        source_index;
+        source_count;
+        started_at;
+      }
+  | Package_scheduler.PackagePlanFinished {
+      package;
+      build_target;
+      source_count;
+      completed_at;
+      duration;
+    } ->
+      Event.PackagePlanFinished {
+        package;
+        build_target;
+        source_count;
+        completed_at;
+        duration;
+      }
   | Package_scheduler.PlanningFinished {
       lane_count;
       package_count;
@@ -111,16 +153,12 @@ let prepare_lanes = fun context spec ~toolchain ->
     try Build_lane.plan_build_units context spec with
     | exn -> Error (Build_lane.Failure (Exception.to_string exn))
   in
-  let lane_inputs =
-    targets
-    |> List.map ~fn:(fun target -> (target, Build_lane.clone_build_plan build_plan))
-  in
   let results =
     WorkerPool.SimpleWorkerPool.run
       ~concurrency:context.Build_context.parallelism
-      ~tasks:lane_inputs
-      ~fn:(fun (target, lane_plan) ->
-        try prepare_lane context lane_plan ~toolchain target with
+      ~tasks:targets
+      ~fn:(fun target ->
+        try prepare_lane context build_plan ~toolchain target with
         | exn -> Error (Build_lane.Failure (Exception.to_string exn)))
       ()
     |> List.map ~fn:(fun (_index, result) -> result)

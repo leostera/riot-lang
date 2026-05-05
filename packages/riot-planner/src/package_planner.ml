@@ -484,7 +484,7 @@ let plan_bundle_of_json = fun ~(package:Package.t) json ->
    If input_hash hasn't changed, we know the full hash is the same!
 *)
 let compute_input_hash = fun
-  ?(planner_version = "planner-artifacts:v25")
+  ?(planner_version = "planner-artifacts:v26")
   ~package
   ~depset
   ~workspace
@@ -545,7 +545,41 @@ let compute_input_hash = fun
   List.for_each dep_output_hashes ~fn:(fun hash -> H.write_hash state hash);
   H.finish state
 
+let native_object_output = fun path ->
+  let path_string = Path.to_string path in
+  if String.ends_with ~suffix:".c" path_string then
+    Some (
+      Path.remove_extension path
+      |> Path.add_extension ~ext:"o"
+      |> Path.basename
+      |> Path.v
+    )
+  else
+    None
+
+let artifact_contains_file = fun (artifact: Riot_store.Artifact.t) path ->
+  List.any
+    artifact.files
+    ~fn:(fun (entry: Riot_store.Manifest.file_entry) -> Path.equal entry.path path)
+
+let missing_native_object_outputs = fun package artifact ->
+  package.Package.sources.native
+  |> List.filter_map ~fn:native_object_output
+  |> List.filter ~fn:(fun output -> not (artifact_contains_file artifact output))
+
+let cached_artifact_is_complete = fun package artifact ->
+  match missing_native_object_outputs package artifact with
+  | [] -> true
+  | missing ->
+      Log.warn
+        ("Package "
+        ^ Package_name.to_string package.Package.name
+        ^ ": ignoring cached artifact missing native object outputs: "
+        ^ String.concat ", " (List.map missing ~fn:Path.to_string));
+      false
+
 let plan_package_after_dependencies = fun
+  ~on_source_analyzed
   ~workspace
   ~toolchain
   ~store
@@ -608,7 +642,9 @@ let plan_package_after_dependencies = fun
   let artifact_lookup_started_at = Time.Instant.now () in
   let cached_artifact =
     match Riot_store.Store.get_package store input_hash with
-    | Some artifact -> Some (artifact, artifact.exports)
+    | Some artifact when cached_artifact_is_complete package artifact ->
+        Some (artifact, artifact.exports)
+    | Some _ -> None
     | _ -> None
   in
   let artifact_lookup_duration =
@@ -708,6 +744,7 @@ let plan_package_after_dependencies = fun
                       (Dependency.transitive_closure depset)
                       ~fn:(fun (dep: Dependency.t) -> dep.package);
                     store;
+                    on_source_analyzed;
                   }
                 in
                 match Module_planner.plan_node plan_input with
@@ -837,6 +874,7 @@ let plan_package_after_dependencies = fun
                 (Dependency.transitive_closure depset)
                 ~fn:(fun (dep: Dependency.t) -> dep.package);
               store;
+              on_source_analyzed;
             }
           in
           match Module_planner.plan_node plan_input with
@@ -942,8 +980,9 @@ let plan_package_after_dependencies = fun
     )
 
 let plan_build_unit = fun
-  ~workspace ~toolchain ~store ~(unit:Build_unit.t) ~depset ~build_ctx ->
+  ~on_source_analyzed ~workspace ~toolchain ~store ~(unit:Build_unit.t) ~depset ~build_ctx ->
   plan_package_after_dependencies
+    ~on_source_analyzed
     ~workspace
     ~toolchain
     ~store

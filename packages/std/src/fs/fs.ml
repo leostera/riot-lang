@@ -40,6 +40,10 @@ let copy = fun ~src ~dst ->
   Kernel.Fs.File.copy ~src:(kernel_path src) ~dst:(kernel_path dst)
   |> convert_kernel_result
 
+let clone = fun ~src ~dst ->
+  Kernel.Fs.File.clone ~src:(kernel_path src) ~dst:(kernel_path dst)
+  |> convert_kernel_result
+
 let create_dir_all = fun path ->
   let rec create_parents path =
     match Path.parent path with

@@ -1,7 +1,6 @@
 open Global
 open Collections
 open Sync
-open Sync.Cell
 
 module Node_id: sig
   type t
@@ -16,11 +15,10 @@ module Node_id: sig
 end = struct
   type t = int
 
-  let counter = Cell.create 0
+  let counter = Atomic.make 0
 
   let next = fun () ->
-    Cell.incr counter;
-    !counter
+    Atomic.fetch_and_add counter 1 + 1
 
   let eq = ( = )
 

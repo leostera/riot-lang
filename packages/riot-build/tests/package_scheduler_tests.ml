@@ -85,6 +85,70 @@ let make_package = fun ~root ~name ~source ?(dependencies = []) () ->
     }
     ()
 
+let make_facade_package = fun ~root ~name ~modules () ->
+  let pkg_dir = Path.(root / Path.v name) in
+  let src_dir = Path.(pkg_dir / Path.v "src") in
+  let pkg_name = package_name name in
+  let root_ml = String.lowercase_ascii name ^ ".ml" in
+  let root_mli = String.lowercase_ascii name ^ ".mli" in
+  Fs.create_dir_all src_dir
+  |> Result.expect ~msg:"create src failed";
+  let module_aliases =
+    modules
+    |> List.map ~fn:(fun (module_name, _ml_source, _mli_source) ->
+      "module " ^ module_name ^ " = " ^ module_name)
+    |> String.concat "\n"
+  in
+  let module_sigs =
+    modules
+    |> List.map ~fn:(fun (module_name, _ml_source, _mli_source) ->
+      "module " ^ module_name ^ " : module type of " ^ module_name)
+    |> String.concat "\n"
+  in
+  Fs.write (module_aliases ^ "\n") Path.(src_dir / Path.v root_ml)
+  |> Result.expect ~msg:"write facade ml failed";
+  Fs.write (module_sigs ^ "\n") Path.(src_dir / Path.v root_mli)
+  |> Result.expect ~msg:"write facade mli failed";
+  List.for_each
+    modules
+    ~fn:(fun (module_name, ml_source, mli_source) ->
+      let source_name = String.lowercase_ascii module_name in
+      Fs.write ml_source Path.(src_dir / Path.v (source_name ^ ".ml"))
+      |> Result.expect ~msg:("write module ml failed: " ^ module_name);
+      Fs.write mli_source Path.(src_dir / Path.v (source_name ^ ".mli"))
+      |> Result.expect ~msg:("write module mli failed: " ^ module_name));
+  let source_paths =
+    [
+      Path.v ("src/" ^ root_mli);
+      Path.v ("src/" ^ root_ml);
+    ] @ List.flat_map
+      modules
+      ~fn:(fun (module_name, _ml_source, _mli_source) ->
+        let source_name = String.lowercase_ascii module_name in
+        [ Path.v ("src/" ^ source_name ^ ".mli"); Path.v ("src/" ^ source_name ^ ".ml"); ])
+  in
+  Fs.write
+    ("[package]\nname = \""
+    ^ name
+    ^ "\"\nversion = \"0.0.1\"\n\n[lib]\npath = \"src/"
+    ^ root_ml
+    ^ "\"\n")
+    Path.(pkg_dir / Path.v "riot.toml")
+  |> Result.expect ~msg:"write riot.toml failed";
+  Riot_model.Package.make
+    ~name:pkg_name
+    ~path:pkg_dir
+    ~relative_path:(Path.v name)
+    ~library:{ path = Path.v ("src/" ^ root_ml) }
+    ~sources:{
+      src = source_paths;
+      native = [];
+      tests = [];
+      examples = [];
+      bench = [];
+    }
+    ()
+
 let make_package_with_runtime_binary = fun ~root ~name ~library_source ~binary_source () ->
   let pkg_dir = Path.(root / Path.v name) in
   let src_dir = Path.(pkg_dir / Path.v "src") in
@@ -118,6 +182,85 @@ let make_package_with_runtime_binary = fun ~root ~name ~library_source ~binary_s
     }
     ()
 
+let make_package_with_tests = fun ~root ~name ~library_source ~tests () ->
+  let pkg_dir = Path.(root / Path.v name) in
+  let src_dir = Path.(pkg_dir / Path.v "src") in
+  let tests_dir = Path.(pkg_dir / Path.v "tests") in
+  let pkg_name = package_name name in
+  Fs.create_dir_all src_dir
+  |> Result.expect ~msg:"create src failed";
+  Fs.create_dir_all tests_dir
+  |> Result.expect ~msg:"create tests failed";
+  Fs.write library_source Path.(src_dir / Path.v "lib.ml")
+  |> Result.expect ~msg:"write library source failed";
+  List.for_each
+    tests
+    ~fn:(fun (test_name, source) ->
+      Fs.write source Path.(tests_dir / Path.v (test_name ^ ".ml"))
+      |> Result.expect ~msg:("write test source failed: " ^ test_name));
+  Fs.write
+    ("[package]\nname = \""
+    ^ name
+    ^ "\"\nversion = \"0.0.1\"\n\n[lib]\npath = \"src/lib.ml\"\n")
+    Path.(pkg_dir / Path.v "riot.toml")
+  |> Result.expect ~msg:"write riot.toml failed";
+  Riot_model.Package.make
+    ~name:pkg_name
+    ~path:pkg_dir
+    ~relative_path:(Path.v name)
+    ~library:{ path = Path.v "src/lib.ml" }
+    ~sources:{
+      src = [ Path.v "src/lib.ml" ];
+      native = [];
+      tests = List.map tests ~fn:(fun (test_name, _) -> Path.v ("tests/" ^ test_name ^ ".ml"));
+      examples = [];
+      bench = [];
+    }
+    ()
+
+let make_package_with_examples = fun ~root ~name ~library_source ?(dependencies = []) ~examples () ->
+  let pkg_dir = Path.(root / Path.v name) in
+  let src_dir = Path.(pkg_dir / Path.v "src") in
+  let examples_dir = Path.(pkg_dir / Path.v "examples") in
+  let pkg_name = package_name name in
+  Fs.create_dir_all src_dir
+  |> Result.expect ~msg:"create src failed";
+  Fs.create_dir_all examples_dir
+  |> Result.expect ~msg:"create examples failed";
+  Fs.write library_source Path.(src_dir / Path.v "lib.ml")
+  |> Result.expect ~msg:"write library source failed";
+  List.for_each
+    examples
+    ~fn:(fun (example_name, source) ->
+      Fs.write source Path.(examples_dir / Path.v (example_name ^ ".ml"))
+      |> Result.expect ~msg:("write example source failed: " ^ example_name));
+  Fs.write
+    ("[package]\nname = \""
+    ^ name
+    ^ "\"\nversion = \"0.0.1\"\n\n[lib]\npath = \"src/lib.ml\"\n")
+    Path.(pkg_dir / Path.v "riot.toml")
+  |> Result.expect ~msg:"write riot.toml failed";
+  Riot_model.Package.make
+    ~name:pkg_name
+    ~path:pkg_dir
+    ~relative_path:(Path.v name)
+    ~dependencies
+    ~library:{ path = Path.v "src/lib.ml" }
+    ~binaries:(
+      List.map
+        examples
+        ~fn:(fun (example_name, _) ->
+          Riot_model.Package.{ name = example_name; path = Path.v ("examples/" ^ example_name ^ ".ml") })
+    )
+    ~sources:{
+      src = [ Path.v "src/lib.ml" ];
+      native = [];
+      tests = [];
+      examples = List.map examples ~fn:(fun (example_name, _) -> Path.v ("examples/" ^ example_name ^ ".ml"));
+      bench = [];
+    }
+    ()
+
 let make_workspace = fun ?toolchain_targets ~root ~packages () ->
   write_workspace_manifest
     ~root
@@ -130,12 +273,17 @@ let make_workspace = fun ?toolchain_targets ~root ~packages () ->
   Riot_model.Workspace.make_realized ~root ~packages ()
 
 let make_request = fun
-  ~workspace ~packages ?(targets = Riot_model.Target.Host) ?(requested_parallelism = None) () ->
+  ~workspace
+  ~packages
+  ?(targets = Riot_model.Target.Host)
+  ?(scope = Riot_build.Request.Runtime)
+  ?(requested_parallelism = None)
+  () ->
   Riot_build.Request.make
     ~workspace
     ~packages
     ~targets
-    ~scope:Riot_build.Request.Runtime
+    ~scope
     ~profile:Riot_model.Profile.debug
     ~requested_parallelism
     ()
@@ -166,14 +314,14 @@ let with_prepared_lanes = fun request fn ->
       Build_work.release_lanes lanes;
       raise exn
 
-let run_package_scheduler = fun request ->
+let run_package_scheduler = fun ?(parallelism = 1) request ->
   with_prepared_lanes
     request
     (fun lanes ->
       let events = ref [] in
       let summary =
         Package_scheduler.run
-          ~parallelism:1
+          ~parallelism
           ~on_event:(fun event -> events := event :: !events)
           lanes
       in
@@ -409,6 +557,195 @@ let test_package_scheduler_runtime_binary_imports_own_public_root = fun _ctx ->
   | Ok result -> result
   | Error err -> Error ("tempdir failed: " ^ IO.error_message err)
 
+let test_package_scheduler_parallel_dev_tests_keep_opened_runtime_exports = fun _ctx ->
+  match Fs.with_tempdir
+    ~prefix:"riot_package_scheduler_parallel_dev_open_exports"
+    (fun tmpdir ->
+      let tests =
+        List.init
+          ~count:12
+          ~fn:(fun index ->
+            let name = "agent_" ^ Int.to_string index ^ "_tests" in
+            (
+              name,
+              "open Stdish\nlet main ~args:_ =\n  let _ = Agent.value in\n  ()\n"
+            ))
+      in
+      let package =
+        make_package_with_tests
+          ~root:tmpdir
+          ~name:"stdish"
+          ~library_source:"module Agent = struct\n  let value = 1\nend\n"
+          ~tests
+          ()
+      in
+      let workspace = make_workspace ~root:tmpdir ~packages:[ package ] () in
+      let request =
+        make_request
+          ~workspace
+          ~packages:[ package_name "stdish" ]
+          ~scope:Riot_build.Request.Dev
+          ()
+      in
+      let (summary, _events) = run_package_scheduler ~parallelism:8 request in
+      if summary.Package_scheduler.errors != [] then
+        let reasons =
+          summary.Package_scheduler.errors
+          |> List.map ~fn:(fun (error: Package_scheduler.error) -> error.reason)
+          |> String.concat "\n"
+        in
+        Error ("expected parallel dev test scheduling to avoid internal errors:\n" ^ reasons)
+      else if summary.Package_scheduler.had_failure then
+        let lane_result = lane_result summary in
+        let statuses =
+          result_statuses lane_result
+          |> List.map ~fn:status_label
+          |> String.concat ", "
+        in
+        Error ("expected parallel dev tests to keep opened runtime exports; statuses: " ^ statuses)
+      else
+        let lane_result = lane_result summary in
+        let result_count = List.length (Lane_result.results lane_result) in
+        if result_count = 13 then
+          Ok ()
+        else
+          Error ("expected library plus 12 dev test binaries, got " ^ Int.to_string result_count)) with
+  | Ok result -> result
+  | Error err -> Error ("tempdir failed: " ^ IO.error_message err)
+
+let test_package_scheduler_parallel_dev_examples_keep_opened_dependency_exports = fun _ctx ->
+  match Fs.with_tempdir
+    ~prefix:"riot_package_scheduler_parallel_dev_open_dependency_exports"
+    (fun tmpdir ->
+      let examples =
+        List.init
+          ~count:16
+          ~fn:(fun index ->
+            let name = "demo_" ^ Int.to_string index in
+            (
+              name,
+              "open Stdish\nlet main ~args:_ =\n  let _ = Env.args in\n  ()\n"
+            ))
+      in
+      let stdish =
+        make_package
+          ~root:tmpdir
+          ~name:"stdish"
+          ~source:"module Env = struct\n  let args = []\nend\n"
+          ()
+      in
+      let app =
+        make_package_with_examples
+          ~root:tmpdir
+          ~name:"app"
+          ~dependencies:[ package_dependency "stdish" ]
+          ~library_source:"let value = 1\n"
+          ~examples
+          ()
+      in
+      let workspace = make_workspace ~root:tmpdir ~packages:[ stdish; app ] () in
+      let request =
+        make_request
+          ~workspace
+          ~packages:[ package_name "app" ]
+          ~scope:Riot_build.Request.Dev
+          ()
+      in
+      let (summary, _events) = run_package_scheduler ~parallelism:12 request in
+      if summary.Package_scheduler.errors != [] then
+        let reasons =
+          summary.Package_scheduler.errors
+          |> List.map ~fn:(fun (error: Package_scheduler.error) -> error.reason)
+          |> String.concat "\n"
+        in
+        Error ("expected parallel dev example scheduling to avoid internal errors:\n" ^ reasons)
+      else if summary.Package_scheduler.had_failure then
+        let lane_result = lane_result summary in
+        let statuses =
+          result_statuses lane_result
+          |> List.map ~fn:status_label
+          |> String.concat ", "
+        in
+        Error ("expected parallel dev examples to keep opened dependency exports; statuses: " ^ statuses)
+      else
+        let lane_result = lane_result summary in
+        let result_count = List.length (Lane_result.results lane_result) in
+        if result_count = 18 then
+          Ok ()
+        else
+          Error ("expected 2 libraries plus 16 dev example binaries, got " ^ Int.to_string result_count)) with
+  | Ok result -> result
+  | Error err -> Error ("tempdir failed: " ^ IO.error_message err)
+
+let test_package_scheduler_parallel_dev_examples_keep_facade_dependency_exports = fun _ctx ->
+  match Fs.with_tempdir
+    ~prefix:"riot_package_scheduler_parallel_dev_facade_dependency_exports"
+    (fun tmpdir ->
+      let stdish =
+        make_facade_package
+          ~root:tmpdir
+          ~name:"stdish"
+          ~modules:[
+            ("Env", "let args = []\n", "val args : string list\n");
+          ]
+          ()
+      in
+      let make_app index =
+        let app_name = "app" ^ Int.to_string index in
+        let examples =
+          List.init
+            ~count:4
+            ~fn:(fun example_index ->
+              let name = "demo_" ^ Int.to_string index ^ "_" ^ Int.to_string example_index in
+              (
+                name,
+                "open Stdish\nlet main ~args:_ =\n  let _ = Env.args in\n  ()\n"
+              ))
+        in
+        make_package_with_examples
+          ~root:tmpdir
+          ~name:app_name
+          ~dependencies:[ package_dependency "stdish" ]
+          ~library_source:"let value = 1\n"
+          ~examples
+          ()
+      in
+      let apps = List.init ~count:6 ~fn:make_app in
+      let workspace = make_workspace ~root:tmpdir ~packages:(stdish :: apps) () in
+      let request =
+        make_request
+          ~workspace
+          ~packages:(List.map apps ~fn:(fun (package: Riot_model.Package.t) -> package.name))
+          ~scope:Riot_build.Request.Dev
+          ()
+      in
+      let (summary, _events) = run_package_scheduler ~parallelism:16 request in
+      if summary.Package_scheduler.errors != [] then
+        let reasons =
+          summary.Package_scheduler.errors
+          |> List.map ~fn:(fun (error: Package_scheduler.error) -> error.reason)
+          |> String.concat "\n"
+        in
+        Error ("expected parallel facade dependency scheduling to avoid internal errors:\n" ^ reasons)
+      else if summary.Package_scheduler.had_failure then
+        let lane_result = lane_result summary in
+        let statuses =
+          result_statuses lane_result
+          |> List.map ~fn:status_label
+          |> String.concat ", "
+        in
+        Error ("expected parallel facade dependency examples to keep opened exports; statuses: " ^ statuses)
+      else
+        let lane_result = lane_result summary in
+        let result_count = List.length (Lane_result.results lane_result) in
+        if result_count = 31 then
+          Ok ()
+        else
+          Error ("expected 1 dependency library, 6 app libraries, and 24 examples, got "
+          ^ Int.to_string result_count)) with
+  | Ok result -> result
+  | Error err -> Error ("tempdir failed: " ^ IO.error_message err)
+
 let test_package_scheduler_skips_dependents_after_failed_dependency = fun _ctx ->
   match Fs.with_tempdir
     ~prefix:"riot_package_scheduler_failure"
@@ -576,6 +913,9 @@ let test_package_scheduler_keeps_multi_lane_results_isolated = fun _ctx ->
               | Package_scheduler.PlanningFinished { lane_count; _ }
               | Package_scheduler.ExecutionStarted { lane_count; _ }
               | Package_scheduler.ExecutionFinished { lane_count; _ } -> Some lane_count
+              | Package_scheduler.PackagePlanStarted _
+              | Package_scheduler.PackagePlanSourceStarted _
+              | Package_scheduler.PackagePlanFinished _
               | Package_scheduler.PackageActionGraphPlanned _ -> None)
           |> List.all ~fn:(fun lane_count -> lane_count = 2)
         in
@@ -816,6 +1156,18 @@ let tests = let open Test in
     ~size:Large
     "package scheduler: runtime binary imports own public root"
     test_package_scheduler_runtime_binary_imports_own_public_root;
+  case
+    ~size:Large
+    "package scheduler: parallel dev tests keep opened runtime exports"
+    test_package_scheduler_parallel_dev_tests_keep_opened_runtime_exports;
+  case
+    ~size:Large
+    "package scheduler: parallel dev examples keep opened dependency exports"
+    test_package_scheduler_parallel_dev_examples_keep_opened_dependency_exports;
+  case
+    ~size:Large
+    "package scheduler: parallel dev examples keep facade dependency exports"
+    test_package_scheduler_parallel_dev_examples_keep_facade_dependency_exports;
   case
     "package scheduler: skips dependents after failed dependency"
     test_package_scheduler_skips_dependents_after_failed_dependency;

@@ -261,6 +261,7 @@ let run_package_plan = fun fixture ->
   in
   let _ =
     Riot_planner.Package_planner.plan_build_unit
+      ~on_source_analyzed:(fun _ -> ())
       ~workspace:fixture.workspace
       ~toolchain:test_toolchain
       ~store:fixture.store

@@ -325,6 +325,56 @@ let build_unit_plan_stores_topologically_sorted_units = fun _ctx ->
   | Ok result -> result
   | Error err -> Error ("tempdir failed: " ^ IO.error_message err)
 
+let build_unit_graph_clone_owns_its_nodes = fun _ctx ->
+  match Fs.with_tempdir
+    ~prefix:"riot_build_unit_plan_clone"
+    (fun root ->
+      let workspace =
+        make_workspace
+          ~root
+          [
+            make_package "std";
+            make_package
+              ~dependencies:[ "std" ]
+              ~binaries:[ binary ~name:"app" ~path:"src/app.ml" ]
+              "app";
+          ]
+      in
+      let (context, resolved) =
+        request
+          ~workspace
+          ~package_names:[ package_name "app" ]
+          ~targets:[ macos_target; linux_target ]
+          ()
+        |> context_and_resolved
+      in
+      let plan = build_plan context resolved in
+      let original_graph = Build_unit_plan.graph plan in
+      let cloned_graph = Build_unit_graph.clone original_graph in
+      if Ptr.equal original_graph cloned_graph then
+        Error "expected cloned build unit graph to own a distinct graph"
+      else (
+        assert_keys_equal
+          ~expected:(Build_unit_graph.keys original_graph)
+          ~actual:(Build_unit_graph.keys cloned_graph);
+        Test.assert_equal
+          ~expected:(
+            Build_unit_graph.dependencies
+              original_graph
+              (runtime_binary_key ~target:linux_target "app" "app")
+            |> List.map ~fn:Build_unit.key_to_string
+          )
+          ~actual:(
+            Build_unit_graph.dependencies
+              cloned_graph
+              (runtime_binary_key ~target:linux_target "app" "app")
+            |> List.map ~fn:Build_unit.key_to_string
+          );
+        Ok ()
+      )) with
+  | Ok result -> result
+  | Error err -> Error ("tempdir failed: " ^ IO.error_message err)
+
 let tests =
   Test.[
     case
@@ -339,6 +389,9 @@ let tests =
     case
       "build unit plan stores topologically sorted units"
       build_unit_plan_stores_topologically_sorted_units;
+    case
+      "build unit graph clone owns its nodes"
+      build_unit_graph_clone_owns_its_nodes;
   ]
 
 let name = "Riot Build Unit Plan Tests"

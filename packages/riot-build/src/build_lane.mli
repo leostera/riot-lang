@@ -47,8 +47,6 @@ val build_unit_dependency_keys:
 
 val plan_build_units: Build_context.t -> Resolved_build.t -> (build_plan, error) result
 
-val clone_build_plan: build_plan -> build_plan
-
 val prepare:
   Build_context.t ->
   build_plan ->

@@ -81,6 +81,7 @@ let plan_kernel_runtime_graphs = fun ~workspace ~store ~build_ctx ->
           ~profile:key.profile
       in
       match Riot_planner.Package_planner.plan_build_unit
+        ~on_source_analyzed:(fun _ -> ())
         ~workspace
         ~toolchain:test_toolchain
         ~store
@@ -158,7 +159,10 @@ let execute_kernel_runtime_graph = fun ~concurrency ->
                   ()
                   ~package_name:package.name
               in
-              let _ = Sandbox.prepare ~sandbox ~package ~inputs ~depset ~store in
+              let _ =
+                Sandbox.prepare ~sandbox ~package ~inputs ~depset ~store
+                |> Result.expect ~msg:"sandbox prepare should succeed"
+              in
               let sandbox_dir = Sandbox.get_dir sandbox in
               let result =
                 Action_scheduler.run

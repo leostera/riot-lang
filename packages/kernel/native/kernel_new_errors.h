@@ -61,6 +61,9 @@ static inline int kernel_new_error_of_errno(int error_number) {
 #ifdef EOPNOTSUPP
     case EOPNOTSUPP: return KERNEL_NEW_ERR_NOT_SUPPORTED;
 #endif
+#if defined(ENOTSUP) && (!defined(EOPNOTSUPP) || ENOTSUP != EOPNOTSUPP)
+    case ENOTSUP: return KERNEL_NEW_ERR_NOT_SUPPORTED;
+#endif
     case EADDRINUSE: return KERNEL_NEW_ERR_ADDRESS_IN_USE;
     case EADDRNOTAVAIL: return KERNEL_NEW_ERR_ADDRESS_NOT_AVAILABLE;
     case ECONNREFUSED: return KERNEL_NEW_ERR_CONNECTION_REFUSED;

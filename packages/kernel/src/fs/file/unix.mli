@@ -123,6 +123,8 @@ val read_dir_names: Path.t -> (string array, error) Result.t
 
 val copy: src:Path.t -> dst:Path.t -> (unit, error) Result.t
 
+val clone: src:Path.t -> dst:Path.t -> (unit, error) Result.t
+
 val is_tty: t -> bool
 
 val to_source: t -> Async.Source.t

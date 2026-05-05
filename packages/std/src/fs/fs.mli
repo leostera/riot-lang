@@ -252,6 +252,15 @@ val canonicalize: Path.t -> (Path.t, error) Result.t
 val copy: src:Path.t -> dst:Path.t -> (unit, error) Result.t
 
 (**
+   Clones file contents and permissions from source to destination when the
+   platform supports copy-on-write file clones.
+
+   Falls back to `copy` when native cloning is unavailable or the destination
+   already exists, so callers can use it as a copy-like operation.
+*)
+val clone: src:Path.t -> dst:Path.t -> (unit, error) Result.t
+
+(**
    Creates a single directory.
 
    Fails if parent doesn't exist or directory already exists.

@@ -580,6 +580,7 @@ let package_typ_sources_from_planner = fun
                 depset = [];
                 dependency_packages = [];
                 store;
+                on_source_analyzed = (fun _ -> ());
               }
             in
             match Riot_planner.Module_planner.plan_node input with

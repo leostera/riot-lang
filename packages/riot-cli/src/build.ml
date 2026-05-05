@@ -181,9 +181,8 @@ let profile_details = fun profile ->
   | Some profile -> [ profile ]
   | None -> []
 
-let display_package_name = fun
+let display_package_details = fun
   ?profile ?build_target ?(show_target = false) (package: Riot_model.Package.t) ->
-  let name = Riot_model.Package_name.to_string package.name in
   let version_details =
     if Riot_model.Package.is_workspace_member package then
       []
@@ -197,9 +196,12 @@ let display_package_name = fun
     | Some target when show_target -> [ Riot_model.Target.to_string target ]
     | _ -> []
   in
-  let details =
-    ((profile_details profile @ version_details) @ workspace_artifact_labels package) @ target_details
-  in
+  ((profile_details profile @ version_details) @ workspace_artifact_labels package) @ target_details
+
+let display_package_name = fun
+  ?profile ?build_target ?(show_target = false) (package: Riot_model.Package.t) ->
+  let name = Riot_model.Package_name.to_string package.name in
+  let details = display_package_details ?profile ?build_target ~show_target package in
   match details with
   | [] -> name
   | details -> name ^ " (" ^ String.concat ", " details ^ ")"
@@ -575,12 +577,17 @@ type build_dashboard_package = {
   build_target: Riot_model.Target.t;
   mutable action_count: int;
   mutable completed_actions: int;
+  mutable planning_source_count: int;
+  mutable planned_sources: int;
+  planning_sources: (string, string) HashMap.t;
+  planning_source_order: string Vector.t;
   running_actions: (string, string) HashMap.t;
   running_action_order: string Vector.t;
   mutable status: build_dashboard_row_status;
 }
 
 and build_dashboard_row_status =
+  | Planning
   | Preparing
   | Queued
   | Blocked
@@ -606,8 +613,11 @@ type build_dashboard_row_view = {
   label: string;
   action_count: int;
   completed_actions: int;
+  planning_source_count: int;
+  planned_sources: int;
   actions: build_dashboard_action_view list;
   status: string;
+  status_kind: build_dashboard_row_status;
 }
 
 and build_dashboard_action_view = {
@@ -718,15 +728,16 @@ let build_dashboard_package_key = fun state ~build_target package ->
   ^ Riot_model.Target.to_string build_target
 
 let build_dashboard_package_label = fun state ~build_target package ->
-  display_package_name
-    ?profile:state.profile_name
-    ~build_target
-    ~show_target:(
-      match state.target_count with
-      | Some target_count -> target_count > 1
-      | None -> false
-    )
-    package
+  let show_target =
+    match state.target_count with
+    | Some target_count -> target_count > 1
+    | None -> false
+  in
+  let name = Riot_model.Package_name.to_string package.Riot_model.Package.name in
+  let details = display_package_details ?profile:state.profile_name ~build_target ~show_target package in
+  match details with
+  | [] -> name
+  | details -> name ^ Ui.muted terminal (" (" ^ String.concat ", " details ^ ")")
 
 let build_dashboard_get_package = fun state ~build_target package ->
   let key = build_dashboard_package_key state ~build_target package in
@@ -739,6 +750,10 @@ let build_dashboard_get_package = fun state ~build_target package ->
         build_target;
         action_count = 0;
         completed_actions = 0;
+        planning_source_count = 0;
+        planned_sources = 0;
+        planning_sources = HashMap.with_capacity ~size:4;
+        planning_source_order = Vector.with_capacity ~size:4;
         running_actions = HashMap.with_capacity ~size:4;
         running_action_order = Vector.with_capacity ~size:4;
         status = Waiting;
@@ -772,6 +787,8 @@ let build_dashboard_set_action_count = fun state ~build_target package ~action_c
   let row = build_dashboard_get_package state ~build_target package in
   let previous_action_count = row.action_count in
   row.action_count <- action_count;
+  HashMap.clear row.planning_sources;
+  Vector.clear row.planning_source_order;
   if HashMap.is_empty row.running_actions then
     row.status <- Preparing;
   {
@@ -797,6 +814,29 @@ let build_dashboard_running_action_views = fun row ->
       | None -> ());
   List.reverse !actions
 
+let build_dashboard_planning_source_views = fun row ->
+  let sources = ref [] in
+  Vector.for_each
+    row.planning_source_order
+    ~fn:(fun key ->
+      match HashMap.get row.planning_sources ~key with
+      | Some label ->
+          sources := {
+            action_key = key;
+            action_label = label;
+          } :: !sources
+      | None -> ());
+  List.reverse !sources
+
+let build_dashboard_set_planning_source = fun row source ->
+  let key = Path.to_string source in
+  let label = "plan " ^ Path.basename source in
+  HashMap.clear row.planning_sources;
+  Vector.clear row.planning_source_order;
+  Vector.push row.planning_source_order ~value:key;
+  let _ = HashMap.insert row.planning_sources ~key ~value:label in
+  ()
+
 let build_dashboard_mark_action_started = fun
   state ~build_target (action: Riot_planner.Action_node.t) ->
   match build_dashboard_find_package state ~build_target (Riot_planner.Action_node.value action).package with
@@ -805,6 +845,8 @@ let build_dashboard_mark_action_started = fun
       let label = build_dashboard_node_label action in
       if not (HashMap.has_key row.running_actions ~key) then
         Vector.push row.running_action_order ~value:key;
+      HashMap.clear row.planning_sources;
+      Vector.clear row.planning_source_order;
       let _ = HashMap.insert row.running_actions ~key ~value:label in
       state
   | None -> state
@@ -864,6 +906,46 @@ let build_dashboard_update = fun state event ->
   | Riot_build.Event.PackagePlanningFinished { package_count; _ }
   | Riot_build.Event.PackageExecutionStarted { package_count; _ }) ->
       { state with package_count }
+  | Riot_build.Event.Phase (
+    Riot_build.Event.PackagePlanStarted { package; build_target; source_count; _ }
+  ) ->
+      let row = build_dashboard_get_package state ~build_target package in
+      row.planning_source_count <- source_count;
+      row.planned_sources <- 0;
+      HashMap.clear row.planning_sources;
+      Vector.clear row.planning_source_order;
+      row.status <- Planning;
+      state
+  | Riot_build.Event.Phase (
+    Riot_build.Event.PackagePlanSourceStarted {
+      package;
+      build_target;
+      source;
+      source_index;
+      source_count;
+      _;
+    }
+  ) ->
+      let row = build_dashboard_get_package state ~build_target package in
+      row.planning_source_count <- source_count;
+      row.planned_sources <- source_index;
+      build_dashboard_set_planning_source row source;
+      row.status <- Planning;
+      state
+  | Riot_build.Event.Phase (
+    Riot_build.Event.PackagePlanFinished { package; build_target; source_count; _ }
+  ) ->
+      (
+        match build_dashboard_find_package state ~build_target package with
+        | Some row ->
+            row.planning_source_count <- source_count;
+            row.planned_sources <- source_count;
+            HashMap.clear row.planning_sources;
+            Vector.clear row.planning_source_order;
+            row.status <- Preparing
+        | None -> ()
+      );
+      state
   | Riot_build.Event.Telemetry (
     Build_telemetry.CompilationStarted { package; build_target; action_count; _ }
   ) ->
@@ -926,31 +1008,41 @@ let build_dashboard_update = fun state event ->
   | _ -> state
 
 let build_dashboard_row_view = fun state (row: build_dashboard_package) ->
-  let actions = build_dashboard_running_action_views row in
+  let running_actions = build_dashboard_running_action_views row in
+  let actions =
+    match (row.status, running_actions) with
+    | (Planning, []) -> build_dashboard_planning_source_views row
+    | _ -> running_actions
+  in
   let status =
-    if List.is_empty actions then
-      match row.status with
-      | Preparing -> "preparing"
-      | Queued -> "queued"
-      | Blocked -> "blocked"
-      | Finalizing -> "finalizing"
-      | Waiting -> "waiting"
-    else
-      "running"
+    match (row.status, actions) with
+    | (Planning, _) -> "planning"
+    | (_, _ :: _) -> "running"
+    | (Preparing, []) -> "preparing"
+    | (Queued, []) -> "queued"
+    | (Blocked, []) -> "blocked"
+    | (Finalizing, []) -> "finalizing"
+    | (Waiting, []) -> "waiting"
   in
   {
     key = row.key;
     label = build_dashboard_package_label state ~build_target:row.build_target row.package;
     action_count = row.action_count;
     completed_actions = row.completed_actions;
+    planning_source_count = row.planning_source_count;
+    planned_sources = row.planned_sources;
     actions;
     status;
+    status_kind = row.status;
   }
 
 let build_dashboard_row_is_active = fun (row: build_dashboard_package) ->
-  not (HashMap.is_empty row.running_actions) || match row.status with
-  | Preparing
+  not (HashMap.is_empty row.running_actions)
+  || not (HashMap.is_empty row.planning_sources)
+  || match row.status with
+  | Planning -> true
   | Finalizing -> true
+  | Preparing
   | Queued
   | Blocked
   | Waiting -> false
@@ -973,12 +1065,16 @@ let build_dashboard_render_state = fun state ->
           | Some _
           | None -> ()
         ));
-  Board {
-    completed_action_count = state.completed_action_count;
-    total_action_count = state.total_action_count;
-    summary = build_dashboard_count_summary state;
-    rows = List.reverse !rows;
-  }
+    let rows = List.reverse !rows in
+    if List.is_empty rows && state.completed_action_count = 0 && state.total_action_count = 0 then
+      Empty
+    else
+      Board {
+        completed_action_count = state.completed_action_count;
+        total_action_count = state.total_action_count;
+        summary = build_dashboard_count_summary state;
+        rows;
+      }
 
 let rec build_dashboard_row_views_equal = fun left right ->
   match (left, right) with
@@ -988,8 +1084,11 @@ let rec build_dashboard_row_views_equal = fun left right ->
       && String.equal left.label right.label
       && left.action_count = right.action_count
       && left.completed_actions = right.completed_actions
+      && left.planning_source_count = right.planning_source_count
+      && left.planned_sources = right.planned_sources
       && left.actions = right.actions
       && String.equal left.status right.status
+      && left.status_kind = right.status_kind
       && build_dashboard_row_views_equal left_rest right_rest
   | ([], _ :: _)
   | (_ :: _, []) -> false
@@ -1009,17 +1108,28 @@ let build_dashboard_views_equal = fun left right ->
 
 let build_dashboard_row_line = fun ~width ~is_last row ->
   let running_action_count = List.length row.actions in
-  let visible_action =
-    if row.action_count > 0 then
-      Int.min row.action_count (row.completed_actions + running_action_count)
-    else
-      row.completed_actions + running_action_count
-  in
   let progress =
-    if row.action_count > 0 then
-      "[" ^ Int.to_string visible_action ^ "/" ^ Int.to_string row.action_count ^ "]"
-    else
-      "[" ^ Int.to_string row.completed_actions ^ "/?]"
+    match row.status_kind with
+    | Planning ->
+        if row.planning_source_count > 0 then
+          "[" ^ Int.to_string row.planned_sources ^ "/" ^ Int.to_string row.planning_source_count ^ "]"
+        else
+          "[0/?]"
+    | Preparing
+    | Queued
+    | Blocked
+    | Finalizing
+    | Waiting ->
+        let visible_action =
+          if row.action_count > 0 then
+            Int.min row.action_count (row.completed_actions + running_action_count)
+          else
+            row.completed_actions + running_action_count
+        in
+        if row.action_count > 0 then
+          "[" ^ Int.to_string visible_action ^ "/" ^ Int.to_string row.action_count ^ "]"
+        else
+          "[" ^ Int.to_string row.completed_actions ^ "/?]"
   in
   let branch =
     if is_last then
@@ -1028,10 +1138,10 @@ let build_dashboard_row_line = fun ~width ~is_last row ->
       "├── "
   in
   let suffix =
-    if List.is_empty row.actions then
-      " " ^ row.status
-    else
-      ""
+    match (row.status_kind, row.actions) with
+    | (Planning, _) -> " " ^ Ui.status_label terminal Ui.Plan
+    | (_, []) -> " " ^ row.status
+    | _ -> ""
   in
   build_dashboard_truncate ~width (branch ^ row.label ^ " " ^ progress ^ suffix)
 
@@ -1299,6 +1409,9 @@ let write_build_phase_event_with_renderer = fun ?render_state ?human_renderer ~m
           | Riot_build.Event.BuildLockWaiting _ ->
               out_status Ui.Running "build lock is taken, waiting..."
           | Riot_build.Event.PackagePlanningStarted _ -> ()
+          | Riot_build.Event.PackagePlanStarted _ -> ()
+          | Riot_build.Event.PackagePlanSourceStarted _ -> ()
+          | Riot_build.Event.PackagePlanFinished _ -> ()
           | Riot_build.Event.PackagePlanningFinished _ -> ()
           | Riot_build.Event.PackageActionGraphPlanned _ -> ()
           | Riot_build.Event.BuildLanesPreparationStarted _

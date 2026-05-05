@@ -31,6 +31,8 @@ type node = Build_unit.t Graph.SimpleGraph.node
 
 val create: Workspace.t -> request -> (t, create_error) result
 
+val clone: t -> t
+
 val size: t -> int
 
 val keys: t -> Build_unit.key list

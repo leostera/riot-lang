@@ -33,6 +33,7 @@ let build_package = fun ~workspace ~toolchain ~store package ->
   in
   let detailed_result =
     match Package_builder.plan_build_unit
+      ~on_source_analyzed:(fun _ -> ())
       ~workspace
       ~toolchain
       ~store

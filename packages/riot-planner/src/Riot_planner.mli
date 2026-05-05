@@ -9,6 +9,7 @@ type module_plan_result = Module_planner.plan_result
 type package_plan_result = Package_planner.plan_result
 
 val plan_build_unit:
+  on_source_analyzed:(Module_graph.source_analysis_progress -> unit) ->
   workspace:Workspace.t ->
   toolchain:Riot_toolchain.t ->
   store:Riot_store.Store.t ->

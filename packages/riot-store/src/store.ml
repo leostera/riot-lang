@@ -232,7 +232,7 @@ let copy_with_permissions = fun ~src ~dst ~copy_error ->
     |> Result.map_err ~fn:(fun cause -> ReadSourceMetadataFailed { path = src; cause })
   in
   let* () =
-    Fs.copy ~src ~dst
+    Fs.clone ~src ~dst
     |> Result.map_err ~fn:copy_error
   in
   Fs.set_permissions dst (Fs.Metadata.permissions metadata)
@@ -244,12 +244,10 @@ let cleanup_temp_dir = fun temp_dir ->
   | Ok false
   | Error _ -> Ok ()
 
-let artifact_temp_counter = cell 0L
+let artifact_temp_counter = Sync.Atomic.make 0
 
 let next_artifact_temp_nonce = fun () ->
-  let nonce = Sync.Cell.get artifact_temp_counter in
-  Sync.Cell.set artifact_temp_counter (Int64.add nonce 1L);
-  nonce
+  Sync.Atomic.fetch_and_add artifact_temp_counter 1
 
 let artifact_temp_dir = fun store hash ->
   let nanos =
@@ -262,7 +260,7 @@ let artifact_temp_dir = fun store hash ->
   in
   let nonce =
     next_artifact_temp_nonce ()
-    |> Int64.to_string
+    |> Int.to_string
   in
   let temp_name =
     Std.Crypto.Digest.hex hash ^ ".tmp." ^ pid ^ "." ^ Int64.to_string nanos ^ "." ^ nonce
@@ -371,7 +369,7 @@ let store_artifacts = fun
     in
     let nonce =
       next_artifact_temp_nonce ()
-      |> Int64.to_string
+      |> Int.to_string
     in
     let temp_name =
       Std.Crypto.Digest.hex input_hash

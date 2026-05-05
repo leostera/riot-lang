@@ -17,6 +17,27 @@ type summary = {
 }
 type event =
   | PlanningStarted of { lane_count: int; package_count: int }
+  | PackagePlanStarted of {
+      package: Riot_model.Package.t;
+      build_target: Riot_model.Target.t;
+      source_count: int;
+      started_at: Time.Instant.t;
+    }
+  | PackagePlanSourceStarted of {
+      package: Riot_model.Package.t;
+      build_target: Riot_model.Target.t;
+      source: Path.t;
+      source_index: int;
+      source_count: int;
+      started_at: Time.Instant.t;
+    }
+  | PackagePlanFinished of {
+      package: Riot_model.Package.t;
+      build_target: Riot_model.Target.t;
+      source_count: int;
+      completed_at: Time.Instant.t;
+      duration: Time.Duration.t;
+    }
   | PlanningFinished of {
       lane_count: int;
       package_count: int;

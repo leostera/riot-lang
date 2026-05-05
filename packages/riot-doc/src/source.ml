@@ -139,6 +139,7 @@ let collect_interfaces = fun
     depset = [];
     dependency_packages;
     store;
+    on_source_analyzed = (fun _ -> ());
   }
   in
   let* plan =

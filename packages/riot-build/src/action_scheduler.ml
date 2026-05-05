@@ -136,9 +136,32 @@ let summarize_completed = fun ~action_graph ~completed_results ->
         | Some result -> Some { node; result }
         | None -> None)
   in
+  let missing_actions =
+    Action_graph.nodes action_graph
+    |> List.filter_map
+      ~fn:(fun (node: Action_node.t) ->
+        match HashMap.get completed_results ~key:(Action_node.id node) with
+        | Some _ -> None
+        | None -> Some (Action_node.id node))
+  in
+  let first_failure =
+    match first_failure_of_completed_actions completed_actions with
+    | Some _ as failure -> failure
+    | None when not (List.is_empty missing_actions) ->
+        Some (
+          ExecutionFailed {
+            message =
+              "action graph finished with incomplete actions: "
+              ^ String.concat
+                  ", "
+                  (List.map missing_actions ~fn:Graph.SimpleGraph.Node_id.to_string);
+          }
+        )
+    | None -> None
+  in
   {
     completed_actions;
-    first_failure = first_failure_of_completed_actions completed_actions;
+    first_failure;
     ocamlc_warnings = ocamlc_warnings_of_completed_actions completed_actions;
   }
 

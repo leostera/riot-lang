@@ -519,6 +519,15 @@ let test_artifact_round_trip_preserves_ocamlc_warnings = fun _ctx ->
       in
       let warnings = [ "File \"lib.ml\", line 1, characters 0-1:\nWarning: example" ] in
       let _ =
+        Riot_store.Store.save_action
+          store
+          ~package:"pkg"
+          ~input_hash:hash
+          ~sandbox_dir:sandbox
+          ~outs:[ output ]
+        |> Result.expect ~msg:"save action should succeed"
+      in
+      let _ =
         Riot_store.Store.save
           store
           ~package:"pkg"

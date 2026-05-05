@@ -61,6 +61,7 @@ val compute_input_hash:
   Std.Crypto.hash
 
 val plan_build_unit:
+  on_source_analyzed:(Module_graph.source_analysis_progress -> unit) ->
   workspace:Workspace.t ->
   toolchain:Riot_toolchain.t ->
   store:Riot_store.Store.t ->

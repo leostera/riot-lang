@@ -20,6 +20,7 @@ type plan_input = {
   depset: Dependency.t list;
   dependency_packages: Package.t list;
   store: Riot_store.Store.t;
+  on_source_analyzed: Module_graph.source_analysis_progress -> unit;
 }
 (**
    Plan a complete build for a package.

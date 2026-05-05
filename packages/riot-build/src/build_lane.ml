@@ -28,6 +28,7 @@ type 'stage t = {
   store: Riot_store.Store.t;
   lock: Build_lock.t;
   build_unit_plan: Build_unit_plan.t;
+  build_unit_graph: Riot_planner.Build_unit_graph.t;
 }
 
 let sort_unique_packages = fun package_names ->
@@ -103,8 +104,6 @@ let plan_build_units: Build_context.t -> Resolved_build.t -> (build_plan, error)
       duration = Time.Instant.duration_since ~earlier:plan_started_at plan_completed_at;
     });
   Ok { package_names; scope; build_unit_plan }
-
-let clone_build_plan = fun (plan: build_plan) -> plan
 
 let release_on_error: 'value. Build_lock.t -> ('value, error) result -> ('value, error) result = fun
   lock result ->
@@ -213,6 +212,8 @@ let prepare:
         store;
         lock;
         build_unit_plan = plan.build_unit_plan;
+        build_unit_graph =
+          Riot_planner.Build_unit_graph.clone (Build_unit_plan.graph plan.build_unit_plan);
       }
     with
     | exn -> Error (Failure (Exception.to_string exn))
@@ -241,7 +242,7 @@ let store = fun (lane: 'a t) -> lane.store
 
 let build_unit_plan = fun (lane: 'a t) -> lane.build_unit_plan
 
-let build_unit_graph = fun (lane: 'a t) -> Build_unit_plan.graph lane.build_unit_plan
+let build_unit_graph = fun (lane: 'a t) -> lane.build_unit_graph
 
 let build_units = fun (lane: 'a t) ->
   Build_unit_plan.units lane.build_unit_plan

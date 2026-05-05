@@ -370,6 +370,7 @@ let plan_detailed_from_result = fun
       }
 
 let plan_build_unit = fun
+  ~on_source_analyzed
   ~workspace ~toolchain ~store ~(unit:Build_unit.t) ~depset ~build_ctx ~emit_visible_progress ->
   let package = Build_unit.package unit in
   let start = Instant.now () in
@@ -379,6 +380,7 @@ let plan_build_unit = fun
   let package_name_string = Package_name.to_string package_name in
   Log.info ("Package " ^ package_name_string ^ ": computing content hash with dependencies");
   Riot_planner.plan_build_unit
+    ~on_source_analyzed
     ~workspace
     ~toolchain
     ~store
@@ -486,6 +488,8 @@ let prepare_execution = fun ~workspace ~toolchain ~store ~execution_plan ~build_
     let sandbox =
       Sandbox.create
         ~workspace
+        ~id_seed:execution_plan.hash
+        ~session_id
         ~profile:profile_name
         ~target:target_triplet
         ()
@@ -524,43 +528,54 @@ let prepare_execution = fun ~workspace ~toolchain ~store ~execution_plan ~build_
         )
     );
     let dependency_copy_started_at = Instant.now () in
-    let dependency_stats =
+    match
       Sandbox.copy_dependency_object_files ~store ~sandbox ~package ~depset:execution_plan.depset
-    in
-    if execution_plan.emit_visible_progress then (
-      let copied_at = Instant.now () in
-      Telemetry.emit
-        (
-          SandboxDependenciesCopied {
-            session_id;
-            package;
-            target = Package package_name;
-            build_target = target_triplet;
-            dependency_count = dependency_stats.dependency_count;
-            object_count = dependency_stats.object_count;
-            copied_at;
-            duration = Instant.duration_since ~earlier:dependency_copy_started_at copied_at;
-          }
-        )
-    );
-    if execution_plan.emit_visible_progress then (
-      let prepared_at = Instant.now () in
-      Telemetry.emit
-        (
-          PackageExecutionPrepared {
-            session_id;
-            package;
-            target = Package package_name;
-            build_target = target_triplet;
-            input_count;
-            dependency_count = dependency_stats.dependency_count;
-            dependency_object_count = dependency_stats.object_count;
-            prepared_at;
-            duration = Instant.duration_since ~earlier:prepare_started_at prepared_at;
-          }
-        )
-    );
-    Ok { execution_plan; sandbox; toolchain }
+    with
+    | Error err ->
+        let error_msg = Sandbox.dependency_copy_error_to_string err in
+        let error = ExecutionFailed { message = error_msg } in
+        Sandbox.cleanup sandbox;
+        Error (failed_execution_result
+          ~session_id
+          ~build_target:target_triplet
+          ~execution_plan
+          ~error
+          ~graph_error:error_msg)
+    | Ok dependency_stats ->
+        if execution_plan.emit_visible_progress then (
+          let copied_at = Instant.now () in
+          Telemetry.emit
+            (
+              SandboxDependenciesCopied {
+                session_id;
+                package;
+                target = Package package_name;
+                build_target = target_triplet;
+                dependency_count = dependency_stats.dependency_count;
+                object_count = dependency_stats.object_count;
+                copied_at;
+                duration = Instant.duration_since ~earlier:dependency_copy_started_at copied_at;
+              }
+            )
+        );
+        if execution_plan.emit_visible_progress then (
+          let prepared_at = Instant.now () in
+          Telemetry.emit
+            (
+              PackageExecutionPrepared {
+                session_id;
+                package;
+                target = Package package_name;
+                build_target = target_triplet;
+                input_count;
+                dependency_count = dependency_stats.dependency_count;
+                dependency_object_count = dependency_stats.object_count;
+                prepared_at;
+                duration = Instant.duration_since ~earlier:prepare_started_at prepared_at;
+              }
+            )
+        );
+        Ok { execution_plan; sandbox; toolchain }
   with
   | exn ->
       let error_msg = "Exception: " ^ Exception.to_string exn in
@@ -625,56 +640,89 @@ let finalize_execution = fun
         let export_entries = compute_export_entries execution_plan.action_graph ~completed in
         let package_outputs = collect_package_artifact_outputs ~sandbox_dir ~outputs in
         let ocamlc_warnings = action_result.Action_scheduler.ocamlc_warnings in
-        Riot_store.Store.materialize_package_exports store ~exports:export_entries ~target_dir
-        |> Result.expect ~msg:("Failed to materialize package exports for " ^ package_name_string);
-        let artifact =
-          Riot_store.Store.save_package
-            store
-            ~package:package_name_string
-            ~ocamlc_warnings
-            ~exports:export_entries
-            ~input_hash:execution_plan.hash
-            ~sandbox_dir
-            ~outs:package_outputs
-          |> Result.expect ~msg:("Failed to save package hash artifact for " ^ package_name_string)
-        in
-        if execution_plan.emit_visible_progress && List.length ocamlc_warnings > 0 then
-          Telemetry.emit
-            (
-              PackageOcamlcWarnings {
-                session_id;
-                package;
-                target = Package package_name;
-                build_target = target_triplet;
-                source = `Fresh;
-                messages = ocamlc_warnings;
-              }
-            );
-        let duration = Instant.duration_since ~earlier:execution_plan.started_at (Instant.now ()) in
-        if execution_plan.emit_visible_progress then
-          Telemetry.emit
-            (
-              BuildCompleted {
-                session_id;
-                package;
-                target = Package package_name;
-                build_target = target_triplet;
-                status = `Fresh;
-                duration;
-              }
-            );
-        cleanup_and_return
-          {
-            result =
-              {
-                unit_key = execution_plan.unit_key;
-                package;
-                status = Built artifact;
-                depset = execution_plan.depset;
-                ocamlc_warnings;
-                duration;
-              };
-          }
+        (
+          match Riot_store.Store.materialize_package_exports store ~exports:export_entries ~target_dir with
+          | Error store_error ->
+              let error_msg =
+                "Failed to materialize package exports for "
+                ^ package_name_string
+                ^ ": "
+                ^ Riot_store.Store.error_message store_error
+              in
+              let error = ExecutionFailed { message = error_msg } in
+              cleanup_and_return
+                (failed_execution_result
+                  ~session_id
+                  ~build_target:target_triplet
+                  ~execution_plan
+                  ~error
+                  ~graph_error:error_msg)
+          | Ok () -> (
+              match
+                Riot_store.Store.save_package
+                  store
+                  ~package:package_name_string
+                  ~ocamlc_warnings
+                  ~exports:export_entries
+                  ~input_hash:execution_plan.hash
+                  ~sandbox_dir
+                  ~outs:package_outputs
+              with
+              | Error store_error ->
+                  let error_msg =
+                    "Failed to save package hash artifact for "
+                    ^ package_name_string
+                    ^ ": "
+                    ^ Riot_store.Store.error_message store_error
+                  in
+                  let error = ExecutionFailed { message = error_msg } in
+                  cleanup_and_return
+                    (failed_execution_result
+                      ~session_id
+                      ~build_target:target_triplet
+                      ~execution_plan
+                      ~error
+                      ~graph_error:error_msg)
+              | Ok artifact ->
+                  if execution_plan.emit_visible_progress && List.length ocamlc_warnings > 0 then
+                    Telemetry.emit
+                      (
+                        PackageOcamlcWarnings {
+                          session_id;
+                          package;
+                          target = Package package_name;
+                          build_target = target_triplet;
+                          source = `Fresh;
+                          messages = ocamlc_warnings;
+                        }
+                      );
+                  Sandbox.cleanup prepared_execution.sandbox;
+                  let duration = Instant.duration_since ~earlier:execution_plan.started_at (Instant.now ()) in
+                  if execution_plan.emit_visible_progress then
+                    Telemetry.emit
+                      (
+                        BuildCompleted {
+                          session_id;
+                          package;
+                          target = Package package_name;
+                          build_target = target_triplet;
+                          status = `Fresh;
+                          duration;
+                        }
+                      );
+                  {
+                    result =
+                      {
+                        unit_key = execution_plan.unit_key;
+                        package;
+                        status = Built artifact;
+                        depset = execution_plan.depset;
+                        ocamlc_warnings;
+                        duration;
+                      };
+                  }
+            )
+        )
   with
   | exn ->
       let error_msg = "Exception: " ^ Exception.to_string exn in

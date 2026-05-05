@@ -29,6 +29,11 @@ type analyzed_module = {
   resolved_dep_ids: G.Node_id.t list;
   unresolved_deps: string list;
 }
+type source_analysis_progress = {
+  source: Path.t;
+  source_index: int;
+  source_count: int;
+}
 type t
 
 val create: config -> t
@@ -37,7 +42,10 @@ val add_direct_dependency_root: t -> package_name:Package_name.t -> root_module:
 
 val add_direct_dependency_package: t -> Package.t -> unit
 
-val wire_dependencies: t -> (unit, Planning_error.t) result
+val wire_dependencies:
+  ?on_source_analyzed:(source_analysis_progress -> unit) ->
+  t ->
+  (unit, Planning_error.t) result
 
 val add_library_node: t -> name:string -> includes:Path.t list -> unit
 

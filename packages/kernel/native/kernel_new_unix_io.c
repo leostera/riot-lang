@@ -18,6 +18,10 @@
 #include <stdlib.h>
 #include "kernel_new_errors.h"
 
+#if defined(__APPLE__)
+#include <sys/clonefile.h>
+#endif
+
 #define KERNEL_NEW_FILE_FLAG_READ_ONLY 1
 #define KERNEL_NEW_FILE_FLAG_WRITE_ONLY (1 << 1)
 #define KERNEL_NEW_FILE_FLAG_READ_WRITE (1 << 2)
@@ -178,6 +182,21 @@ static char *kernel_new_copy_ocaml_string_bytes(value string_val, mlsize_t *len_
   *len_out = len;
   return copy;
 }
+
+#if defined(__APPLE__)
+static char *kernel_new_copy_ocaml_cstring(value string_val) {
+  mlsize_t len = caml_string_length(string_val);
+  char *copy = malloc((size_t)len + 1);
+
+  if (copy == NULL) {
+    caml_raise_out_of_memory();
+  }
+
+  memcpy(copy, String_val(string_val), (size_t)len);
+  copy[len] = '\0';
+  return copy;
+}
+#endif
 
 static char *kernel_new_copy_ocaml_bytes_slice(value bytes_val, int pos, int len) {
   char *copy = NULL;
@@ -691,6 +710,38 @@ CAMLprim value kernel_new_fs_file_link(value src_val, value dst_val) {
   }
 
   CAMLreturn(kernel_new_result_ok(Val_unit));
+}
+
+CAMLprim value kernel_new_fs_file_clone(value src_val, value dst_val) {
+  CAMLparam2(src_val, dst_val);
+
+#if defined(__APPLE__)
+  char *src = kernel_new_copy_ocaml_cstring(src_val);
+  char *dst = kernel_new_copy_ocaml_cstring(dst_val);
+  int result;
+
+  caml_enter_blocking_section();
+  result = clonefile(src, dst, 0);
+  caml_leave_blocking_section();
+
+  int saved_errno = errno;
+  free(src);
+  free(dst);
+  errno = saved_errno;
+
+  if (result == -1) {
+#ifdef EXDEV
+    if (saved_errno == EXDEV) {
+      CAMLreturn(kernel_new_result_error(KERNEL_NEW_ERR_NOT_SUPPORTED));
+    }
+#endif
+    CAMLreturn(kernel_new_result_errno());
+  }
+
+  CAMLreturn(kernel_new_result_ok(Val_unit));
+#else
+  CAMLreturn(kernel_new_result_error(KERNEL_NEW_ERR_NOT_SUPPORTED));
+#endif
 }
 
 CAMLprim value kernel_new_fs_file_symlink(value src_val, value dst_val) {
