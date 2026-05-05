@@ -113,10 +113,15 @@ val get: t -> Std.Crypto.hash -> Artifact.t option
 *)
 val get_package: t -> Std.Crypto.hash -> Artifact.t option
 
-(** Check if we have a cached package artifact for this hash. *)
-val get_action: t -> Std.Crypto.hash -> Artifact.t option
+(** Check if we have a cached package artifact for this hash and validate stored files/exports. *)
+(** Load cached package artifact metadata without validating stored files/exports.
+    Use this for planning-only cache checks. Materialization paths should use
+    [get_package] so corrupt cache entries are detected before copying. *)
+val get_package_metadata: t -> Std.Crypto.hash -> Artifact.t option
 
 (** Check if we have a cached action artifact for this hash. *)
+val get_action: t -> Std.Crypto.hash -> Artifact.t option
+
 val load_manifest: t -> hash:Std.Crypto.hash -> Manifest.t option
 
 (** Load the full hash manifest when present. *)

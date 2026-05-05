@@ -371,6 +371,7 @@ let plan_detailed_from_result = fun
 
 let plan_build_unit = fun
   ~on_source_analyzed
+  ~input_hash_cache
   ~workspace ~toolchain ~store ~(unit:Build_unit.t) ~depset ~build_ctx ~emit_visible_progress ->
   let package = Build_unit.package unit in
   let start = Instant.now () in
@@ -379,8 +380,9 @@ let plan_build_unit = fun
   let package_name = package.Package.name in
   let package_name_string = Package_name.to_string package_name in
   Log.info ("Package " ^ package_name_string ^ ": computing content hash with dependencies");
-  Riot_planner.plan_build_unit
+  Riot_planner.Package_planner.plan_build_unit_with_cache
     ~on_source_analyzed
+    ~input_hash_cache
     ~workspace
     ~toolchain
     ~store

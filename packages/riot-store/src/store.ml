@@ -26,6 +26,13 @@ type t = {
   package_store: ContentStore.t;
   action_store: ContentStore.t;
   plan_store: ContentStore.t;
+  package_cache: artifact_cache;
+  action_cache: artifact_cache;
+}
+
+and artifact_cache = {
+  lock: Sync.Mutex.t;
+  artifacts: (string, Artifact.t) HashMap.t;
 }
 
 type error =
@@ -186,6 +193,32 @@ let error_message = fun __tmp1 ->
       ^ Path.to_string path
       ^ " (cache is corrupted; try `riot clean`)"
 
+let create_artifact_cache = fun () -> {
+  lock = Sync.Mutex.create ();
+  artifacts = HashMap.create ();
+}
+
+let artifact_cache_key = fun hash -> Crypto.Digest.hex hash
+
+let cached_artifact = fun cache hash ->
+  let key = artifact_cache_key hash in
+  Sync.Mutex.lock cache.lock;
+  let artifact = HashMap.get cache.artifacts ~key in
+  Sync.Mutex.unlock cache.lock;
+  artifact
+
+let remember_artifact = fun cache (artifact: Artifact.t) ->
+  let key = artifact_cache_key artifact.input_hash in
+  Sync.Mutex.lock cache.lock;
+  ignore (HashMap.insert cache.artifacts ~key ~value:artifact);
+  Sync.Mutex.unlock cache.lock
+
+let forget_artifact = fun cache hash ->
+  let key = artifact_cache_key hash in
+  Sync.Mutex.lock cache.lock;
+  let _ = HashMap.remove cache.artifacts ~key in
+  Sync.Mutex.unlock cache.lock
+
 (** Create a store rooted at a specific build lane *)
 let create_for_lane = fun ~(workspace:Workspace.t) ~profile ~target ->
   let store_dir =
@@ -194,19 +227,30 @@ let create_for_lane = fun ~(workspace:Workspace.t) ~profile ~target ->
     / Path.v (Riot_model.Target.to_string target)
     / Path.v "cache")
   in
-  {
-    package_store = ContentStore.create
+  let package_store =
+    ContentStore.create
       ~root:Path.(store_dir / Path.v "package-artifacts")
       ~ns:package_artifacts_namespace
-      ~policy:Contentstore.Policy.default;
-    action_store = ContentStore.create
+      ~policy:Contentstore.Policy.default
+  in
+  let action_store =
+    ContentStore.create
       ~root:Path.(store_dir / Path.v "action-artifacts")
       ~ns:action_artifacts_namespace
-      ~policy:Contentstore.Policy.default;
-    plan_store = ContentStore.create
+      ~policy:Contentstore.Policy.default
+  in
+  let plan_store =
+    ContentStore.create
       ~root:store_dir
       ~ns:plans_namespace
-      ~policy:Contentstore.Policy.default;
+      ~policy:Contentstore.Policy.default
+  in
+  {
+    package_store;
+    action_store;
+    plan_store;
+    package_cache = create_artifact_cache ();
+    action_cache = create_artifact_cache ();
   }
 
 (** Create a new store for the given workspace *)
@@ -495,6 +539,19 @@ let manifest_files_exist = fun hash_dir (manifest: Manifest.t) ->
     manifest.files
     ~fn:(fun (entry: Manifest.file_entry) -> path_exists Path.(hash_dir / entry.path))
 
+let artifact_files_exist = fun hash_dir (artifact: Artifact.t) ->
+  List.all
+    artifact.files
+    ~fn:(fun (entry: Manifest.file_entry) -> path_exists Path.(hash_dir / entry.path))
+
+let artifact_exports_exist = fun store (artifact: Artifact.t) ->
+  List.all
+    artifact.exports
+    ~fn:(fun (entry: Manifest.export_entry) ->
+      match export_source_path store entry with
+      | Some path -> path_exists path
+      | None -> false)
+
 let store_trace_enabled = fun () ->
   match Env.get Env.String ~var:"RIOT_STORE_TRACE" with
   | Some ("1" | "true" | "yes") -> true
@@ -515,14 +572,41 @@ let trace_store_get = fun ~hash ~load_duration ~export_check_duration ~hit ->
       )
 
 (** Simple interface - check if we have cached artifacts for a hash *)
-let get_from = fun content_store store hash ~check_exports ->
+let get_from = fun content_store artifact_cache store hash ~check_files ~check_exports ->
   let load_started_at = Time.Instant.now () in
-  let hash_dir = ContentStore.hash_dir_of content_store hash in
-  match Manifest.load ~path:(manifest_path hash_dir) with
+  match cached_artifact artifact_cache hash with
+  | Some artifact ->
+      let hash_dir = ContentStore.hash_dir_of content_store hash in
+      let export_check_started_at = Time.Instant.now () in
+      if
+        (not check_files || artifact_files_exist hash_dir artifact)
+        && (not check_exports || artifact_exports_exist store artifact)
+      then (
+        trace_store_get
+          ~hash
+          ~load_duration:(Time.Instant.duration_since ~earlier:load_started_at (Time.Instant.now ()))
+          ~export_check_duration:(Time.Instant.duration_since ~earlier:export_check_started_at (Time.Instant.now ()))
+          ~hit:true;
+        Some artifact
+      ) else (
+        forget_artifact artifact_cache hash;
+        trace_store_get
+          ~hash
+          ~load_duration:(Time.Instant.duration_since ~earlier:load_started_at (Time.Instant.now ()))
+          ~export_check_duration:(Time.Instant.duration_since ~earlier:export_check_started_at (Time.Instant.now ()))
+          ~hit:false;
+        None
+      )
+  | None -> (
+      let hash_dir = ContentStore.hash_dir_of content_store hash in
+      match Manifest.load ~path:(manifest_path hash_dir) with
   | Ok manifest ->
       let load_duration = Time.Instant.duration_since ~earlier:load_started_at (Time.Instant.now ()) in
       let export_check_started_at = Time.Instant.now () in
-      if manifest_files_exist hash_dir manifest && (not check_exports || manifest_exports_exist store manifest) then
+      if
+        (not check_files || manifest_files_exist hash_dir manifest)
+        && (not check_exports || manifest_exports_exist store manifest)
+      then
         let export_check_duration =
           Time.Instant.duration_since ~earlier:export_check_started_at (Time.Instant.now ())
         in
@@ -531,7 +615,7 @@ let get_from = fun content_store store hash ~check_exports ->
           hash_of_hex manifest.output_hash
           |> Option.expect ~msg:"store manifest output_hash should be valid hex"
         in
-        Some Artifact.{
+        let artifact = Artifact.{
           input_hash = hash;
           output_hash;
           size_bytes = manifest.size_bytes;
@@ -539,6 +623,9 @@ let get_from = fun content_store store hash ~check_exports ->
           ocamlc_warnings = manifest.ocamlc_warnings;
           exports = manifest.exports;
         }
+        in
+        remember_artifact artifact_cache artifact;
+        Some artifact
       else (
         let export_check_duration =
           Time.Instant.duration_since ~earlier:export_check_started_at (Time.Instant.now ())
@@ -556,17 +643,56 @@ let get_from = fun content_store store hash ~check_exports ->
           ~hit:false
       in
       None
+    )
 
-let get_package = fun store hash -> get_from store.package_store store hash ~check_exports:true
+let get_package = fun store hash ->
+  get_from store.package_store store.package_cache store hash ~check_files:true ~check_exports:true
 
-let get_action = fun store hash -> get_from store.action_store store hash ~check_exports:false
+let get_package_metadata = fun store hash ->
+  let load_started_at = Time.Instant.now () in
+  let hash_dir = ContentStore.hash_dir_of store.package_store hash in
+  match Manifest.load_metadata ~path:(manifest_path hash_dir) with
+  | Ok metadata -> (
+      let load_duration = Time.Instant.duration_since ~earlier:load_started_at (Time.Instant.now ()) in
+      let () =
+        trace_store_get
+          ~hash
+          ~load_duration
+          ~export_check_duration:Time.Duration.zero
+          ~hit:true
+      in
+      match hash_of_hex metadata.output_hash with
+      | Some output_hash ->
+          Some Artifact.{
+            input_hash = hash;
+            output_hash;
+            size_bytes = metadata.size_bytes;
+            files = [];
+            ocamlc_warnings = metadata.ocamlc_warnings;
+            exports = metadata.exports;
+          }
+      | None -> None
+    )
+  | Error _ ->
+      let load_duration = Time.Instant.duration_since ~earlier:load_started_at (Time.Instant.now ()) in
+      let () =
+        trace_store_get
+          ~hash
+          ~load_duration
+          ~export_check_duration:Time.Duration.zero
+          ~hit:false
+      in
+      None
+
+let get_action = fun store hash ->
+  get_from store.action_store store.action_cache store hash ~check_files:true ~check_exports:false
 
 (** Simple interface - check if we have cached package artifacts for a hash *)
 let get = get_package
 
 (** Save build outputs to the store *)
 let save_to = fun
-  content_store ?(ocamlc_warnings = []) ?(exports = []) store ~package ~input_hash ~sandbox_dir ~outs ->
+  content_store artifact_cache ?(ocamlc_warnings = []) ?(exports = []) store ~package ~input_hash ~sandbox_dir ~outs ->
   let sandbox_str = Path.to_string sandbox_dir in
   let sandbox_len = String.length sandbox_str in
   let outs_str =
@@ -580,7 +706,8 @@ let save_to = fun
         else
           Path.to_string out_path)
   in
-  store_artifacts
+  let* artifact =
+    store_artifacts
     content_store
     store
     ~package
@@ -589,11 +716,15 @@ let save_to = fun
     input_hash
     sandbox_dir
     outs_str
+  in
+  remember_artifact artifact_cache artifact;
+  Ok artifact
 
 let save_package = fun
   ?(ocamlc_warnings = []) ?(exports = []) store ~package ~input_hash ~sandbox_dir ~outs ->
   save_to
     store.package_store
+    store.package_cache
     ~ocamlc_warnings
     ~exports
     store
@@ -605,6 +736,7 @@ let save_package = fun
 let save_action = fun ?(ocamlc_warnings = []) store ~package ~input_hash ~sandbox_dir ~outs ->
   save_to
     store.action_store
+    store.action_cache
     ~ocamlc_warnings
     ~exports:[]
     store

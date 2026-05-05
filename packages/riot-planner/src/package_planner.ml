@@ -38,6 +38,24 @@ and planning_breakdown = {
   module_plan_duration: Time.Duration.t;
 }
 
+type input_hash_cache = {
+  package_hashes_lock: Sync.Mutex.t;
+  package_hashes: (string, package_hash_entry) HashMap.t;
+}
+
+and package_hash_entry =
+  | PackageHashReady of Std.Crypto.hash
+  | PackageHashComputing of Sync.Condition.t
+
+type cached_artifact_lookup =
+  | Full_cached_artifact
+  | Metadata_cached_artifact
+
+let create_input_hash_cache = fun () -> {
+  package_hashes_lock = Sync.Mutex.create ();
+  package_hashes = HashMap.create ();
+}
+
 let empty_breakdown = {
   dependency_count = 0;
   dependency_check_duration = Time.Duration.zero;
@@ -467,6 +485,112 @@ let plan_bundle_of_json = fun ~(package:Package.t) json ->
     )
   | _ -> Error "plan bundle must be a JSON object"
 
+let compute_package_hash = fun package ->
+  let state = Std.Crypto.Sha256.create () in
+  Package.hash state package;
+  Std.Crypto.Sha256.finish state
+
+let compute_package_fingerprint = fun package ->
+  let state = Std.Crypto.Sha256.create () in
+  Package.hash_fingerprint state package;
+  Std.Crypto.Sha256.finish state
+  |> Std.Crypto.Digest.hex
+
+let package_hash_cache_dir = fun (workspace: Workspace.t) ->
+  Path.(workspace.target_dir_root / Path.v "planner" / Path.v "package-hashes")
+
+let package_hash_cache_path = fun workspace fingerprint ->
+  Path.(package_hash_cache_dir workspace / Path.v (fingerprint ^ ".hash"))
+
+let read_persistent_package_hash = fun workspace fingerprint ->
+  match Fs.read (package_hash_cache_path workspace fingerprint) with
+  | Ok hash -> Some (String.trim hash)
+  | Error _ -> None
+
+let write_persistent_package_hash = fun workspace fingerprint hash ->
+  let dir = package_hash_cache_dir workspace in
+  match Fs.create_dir_all dir with
+  | Error _ -> ()
+  | Ok () -> ignore (Fs.write (hash ^ "\n") (package_hash_cache_path workspace fingerprint))
+
+let hash_of_hex = fun hex ->
+  let hex_nibble ch =
+    match ch with
+    | '0' .. '9' -> Some (Char.code ch - Char.code '0')
+    | 'a' .. 'f' -> Some (10 + Char.code ch - Char.code 'a')
+    | 'A' .. 'F' -> Some (10 + Char.code ch - Char.code 'A')
+    | _ -> None
+  in
+  let len = String.length hex in
+  if len = 0 || len mod 2 != 0 then
+    None
+  else
+    let bytes = IO.Bytes.create ~size:(len / 2) in
+    let rec loop index =
+      if index >= len then
+        Some (Std.Crypto.Hash.from_bytes bytes)
+      else
+        match (
+          hex_nibble (String.get_unchecked hex ~at:index),
+          hex_nibble (String.get_unchecked hex ~at:(index + 1))
+        ) with
+        | (Some hi, Some lo) ->
+            IO.Bytes.set_unchecked
+              bytes
+              ~at:(index / 2)
+              ~char:(Char.from_int_unchecked ((hi lsl 4) lor lo));
+            loop (index + 2)
+        | _ -> None
+    in
+    loop 0
+
+let compute_or_load_package_hash = fun workspace package ->
+  let fingerprint = compute_package_fingerprint package in
+  match read_persistent_package_hash workspace fingerprint with
+  | Some hash when not (String.is_empty hash) -> (
+      match hash_of_hex hash with
+      | Some hash -> hash
+      | None -> compute_package_hash package
+    )
+  | _ ->
+      let hash = compute_package_hash package in
+      write_persistent_package_hash workspace fingerprint (Std.Crypto.Digest.hex hash);
+      hash
+
+let rec cached_package_hash = fun cache ~workspace ~key package ->
+  Sync.Mutex.lock cache.package_hashes_lock;
+  match HashMap.get cache.package_hashes ~key with
+  | Some (PackageHashReady hash) ->
+      Sync.Mutex.unlock cache.package_hashes_lock;
+      hash
+  | Some (PackageHashComputing condition) ->
+      Sync.Condition.wait condition cache.package_hashes_lock;
+      Sync.Mutex.unlock cache.package_hashes_lock;
+      cached_package_hash cache ~workspace ~key package
+  | None ->
+      let condition = Sync.Condition.create () in
+      ignore (HashMap.insert cache.package_hashes ~key ~value:(PackageHashComputing condition));
+      Sync.Mutex.unlock cache.package_hashes_lock;
+      let hash = compute_or_load_package_hash workspace package in
+      Sync.Mutex.lock cache.package_hashes_lock;
+      ignore (HashMap.insert cache.package_hashes ~key ~value:(PackageHashReady hash));
+      Sync.Condition.broadcast condition;
+      Sync.Mutex.unlock cache.package_hashes_lock;
+      hash
+
+let package_hash = fun input_hash_cache ~workspace ~key package ->
+  match (input_hash_cache, key) with
+  | (Some cache, Some key) -> cached_package_hash cache ~workspace ~key package
+  | _ -> compute_or_load_package_hash workspace package
+
+let package_hash_key = fun (unit_key: Build_unit.key) ->
+  String.concat
+    ":"
+    [
+      Package_name.to_string unit_key.package;
+      Build_unit.artifact_kind_to_string unit_key.artifact;
+    ]
+
 (**
    Compute input hash - fast path that doesn't require dependency analysis.
 
@@ -483,8 +607,10 @@ let plan_bundle_of_json = fun ~(package:Package.t) json ->
 
    If input_hash hasn't changed, we know the full hash is the same!
 *)
-let compute_input_hash = fun
-  ?(planner_version = "planner-artifacts:v26")
+let compute_input_hash_with_cache = fun
+  ?(planner_version = "planner-artifacts:v27")
+  ?package_hash_key
+  ~input_hash_cache
   ~package
   ~depset
   ~workspace
@@ -507,7 +633,7 @@ let compute_input_hash = fun
   *)
   H.write_hash state (Riot_toolchain.hash toolchain);
   (* Package metadata (includes compiler config overrides) *)
-  Package.hash state package;
+  H.write_hash state (package_hash input_hash_cache ~workspace ~key:package_hash_key package);
   (* Add workspace-specific dependency info not captured in package metadata *)
   let sorted_deps =
     List.sort
@@ -545,6 +671,18 @@ let compute_input_hash = fun
   List.for_each dep_output_hashes ~fn:(fun hash -> H.write_hash state hash);
   H.finish state
 
+let compute_input_hash = fun ?planner_version ~package ~depset ~workspace ~profile ~build_ctx ~toolchain () ->
+    compute_input_hash_with_cache
+    ?planner_version
+    ~input_hash_cache:None
+    ~package
+    ~depset
+    ~workspace
+    ~profile
+    ~build_ctx
+    ~toolchain
+    ()
+
 let native_object_output = fun path ->
   let path_string = Path.to_string path in
   if String.ends_with ~suffix:".c" path_string then
@@ -578,8 +716,19 @@ let cached_artifact_is_complete = fun package artifact ->
         ^ String.concat ", " (List.map missing ~fn:Path.to_string));
       false
 
+let load_cached_artifact = fun lookup store package input_hash ->
+  match lookup with
+  | Full_cached_artifact -> Riot_store.Store.get_package store input_hash
+  | Metadata_cached_artifact ->
+      if List.is_empty package.Package.sources.native then
+        Riot_store.Store.get_package_metadata store input_hash
+      else
+        Riot_store.Store.get_package store input_hash
+
 let plan_package_after_dependencies = fun
   ~on_source_analyzed
+  ~input_hash_cache
+  ~cached_artifact_lookup
   ~workspace
   ~toolchain
   ~store
@@ -634,14 +783,24 @@ let plan_package_after_dependencies = fun
   in
   let input_hash_started_at = Time.Instant.now () in
   let input_hash =
-    compute_input_hash ~package ~depset ~workspace ~profile ~build_ctx ~toolchain ()
+    compute_input_hash_with_cache
+      ~input_hash_cache
+      ~package_hash_key:(package_hash_key unit_key)
+      ~package
+      ~depset
+      ~workspace
+      ~profile
+      ~build_ctx
+      ~toolchain
+      ()
   in
   let input_hash_duration =
     Time.Instant.duration_since ~earlier:input_hash_started_at (Time.Instant.now ())
   in
   let artifact_lookup_started_at = Time.Instant.now () in
   let cached_artifact =
-    match Riot_store.Store.get_package store input_hash with
+    let artifact = load_cached_artifact cached_artifact_lookup store package input_hash in
+    match artifact with
     | Some artifact when cached_artifact_is_complete package artifact ->
         Some (artifact, artifact.exports)
     | Some _ -> None
@@ -979,10 +1138,34 @@ let plan_package_after_dependencies = fun
               )
     )
 
+let plan_build_unit_with_cache = fun
+  ~on_source_analyzed
+  ~input_hash_cache
+  ~workspace
+  ~toolchain
+  ~store
+  ~(unit:Build_unit.t)
+  ~depset
+  ~build_ctx ->
+  plan_package_after_dependencies
+    ~on_source_analyzed
+    ~input_hash_cache:(Some input_hash_cache)
+    ~cached_artifact_lookup:Metadata_cached_artifact
+    ~workspace
+    ~toolchain
+    ~store
+    ~unit_key:(Build_unit.key unit)
+    ~package:(Build_unit.package unit)
+    ~depset
+    ~dependency_check_duration:Time.Duration.zero
+    ~build_ctx
+
 let plan_build_unit = fun
   ~on_source_analyzed ~workspace ~toolchain ~store ~(unit:Build_unit.t) ~depset ~build_ctx ->
   plan_package_after_dependencies
     ~on_source_analyzed
+    ~input_hash_cache:None
+    ~cached_artifact_lookup:Full_cached_artifact
     ~workspace
     ~toolchain
     ~store

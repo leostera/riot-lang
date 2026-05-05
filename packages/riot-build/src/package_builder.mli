@@ -83,6 +83,7 @@ val collect_source_files: Package.t -> Path.t list
 *)
 val plan_build_unit:
   on_source_analyzed:(Module_graph.source_analysis_progress -> unit) ->
+  input_hash_cache:Riot_planner.Package_planner.input_hash_cache ->
   workspace:Workspace.t ->
   toolchain:Riot_toolchain.t ->
   store:Riot_store.Store.t ->

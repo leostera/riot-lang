@@ -24,6 +24,13 @@ type t = {
   ocamlc_warnings: string list;
   exports: export_entry list;
 }
+type metadata = {
+  input_hash: string;
+  output_hash: string;
+  size_bytes: int64;
+  ocamlc_warnings: string list;
+  exports: export_entry list;
+}
 
 val create:
   ?base_dir:Path.t ->
@@ -45,6 +52,9 @@ val save: t -> path:Path.t -> (unit, string) result
 val load: path:Path.t -> (t, string) result
 
 (** Load manifest from a JSON file *)
+val load_metadata: path:Path.t -> (metadata, string) result
+
+(** Load manifest metadata without decoding the stored file list. *)
 val to_json: t -> Std.Data.Json.t
 
 (** Convert manifest to JSON *)

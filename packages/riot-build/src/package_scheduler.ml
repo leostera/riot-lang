@@ -149,6 +149,7 @@ type event =
 
 type graph_state = {
   package_states: package_state_store;
+  input_hash_cache: Riot_planner.Package_planner.input_hash_cache;
 }
 
 and package_state_store = {
@@ -437,7 +438,7 @@ let package_planning_source_count = fun (package: Riot_model.Package.t) ->
   + List.length package.sources.bench
   + List.length package.sources.native
 
-let plan_package_work = fun ~package_states ~node_ids ~graph lane unit_key ->
+let plan_package_work = fun ~package_states ~input_hash_cache ~node_ids ~graph lane unit_key ->
   match Build_lane.build_unit lane unit_key with
   | None ->
       Error { lane; reason = "build unit graph missing node for " ^ package_key_id unit_key }
@@ -484,6 +485,7 @@ let plan_package_work = fun ~package_states ~node_ids ~graph lane unit_key ->
           in
           match Package_builder.plan_build_unit
             ~on_source_analyzed
+            ~input_hash_cache
             ~workspace:(Build_lane.workspace lane)
             ~toolchain:(Build_lane.toolchain lane)
             ~store:(Build_lane.store lane)
@@ -632,6 +634,7 @@ let finalize_package_work = fun ~package_states ~graph lane unit_key ->
 
 let make_state = fun lanes ->
   let package_states = create_package_state_store () in
+  let input_hash_cache = Riot_planner.Package_planner.create_input_hash_cache () in
   List.for_each
     lanes
     ~fn:(fun lane ->
@@ -639,7 +642,7 @@ let make_state = fun lanes ->
       |> List.for_each
         ~fn:(fun unit_key ->
           remember_package_state package_states lane unit_key AwaitingPlan));
-  { package_states }
+  { package_states; input_hash_cache }
 
 let make_graph = fun state lanes ->
   let graph =
@@ -954,7 +957,13 @@ let run = fun ~parallelism ?(on_event = fun (_:event) -> ()) lanes ->
         ~execute:(fun ~graph ~node:_ ~payload ->
           match payload with
           | PlanPackage { lane; unit_key } ->
-              plan_package_work ~package_states:state.package_states ~node_ids ~graph lane unit_key
+              plan_package_work
+                ~package_states:state.package_states
+                ~input_hash_cache:state.input_hash_cache
+                ~node_ids
+                ~graph
+                lane
+                unit_key
           | ExecuteAction { lane; unit_key; action } ->
               execute_action_work ~package_states:state.package_states ~graph lane unit_key action
           | FinalizePackage { lane; unit_key } ->

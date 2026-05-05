@@ -49,6 +49,10 @@ and planning_breakdown = {
   module_plan_duration: Time.Duration.t;
 }
 
+type input_hash_cache
+
+val create_input_hash_cache: unit -> input_hash_cache
+
 val compute_input_hash:
   ?planner_version:string ->
   package:Package.t ->
@@ -62,6 +66,17 @@ val compute_input_hash:
 
 val plan_build_unit:
   on_source_analyzed:(Module_graph.source_analysis_progress -> unit) ->
+  workspace:Workspace.t ->
+  toolchain:Riot_toolchain.t ->
+  store:Riot_store.Store.t ->
+  unit:Build_unit.t ->
+  depset:Dependency.t list ->
+  build_ctx:Build_ctx.t ->
+  (plan_result, Planning_error.t) result
+
+val plan_build_unit_with_cache:
+  on_source_analyzed:(Module_graph.source_analysis_progress -> unit) ->
+  input_hash_cache:input_hash_cache ->
   workspace:Workspace.t ->
   toolchain:Riot_toolchain.t ->
   store:Riot_store.Store.t ->

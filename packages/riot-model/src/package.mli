@@ -296,3 +296,7 @@ val resolve:
 
 (** Hash package metadata into a Sha256 hasher state *)
 val hash: Crypto.Sha256.state -> t -> unit
+
+(** Hash package metadata and source file fingerprints into a Sha256 hasher state.
+    Source file fingerprints use filesystem metadata instead of reading file contents. *)
+val hash_fingerprint: Crypto.Sha256.state -> t -> unit

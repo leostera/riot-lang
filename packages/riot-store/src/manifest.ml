@@ -35,6 +35,14 @@ type t = {
   exports: export_entry list;
 }
 
+type metadata = {
+  input_hash: string;
+  output_hash: string;
+  size_bytes: int64;
+  ocamlc_warnings: string list;
+  exports: export_entry list;
+}
+
 type manifest = t
 
 let file_entries_size_bytes = fun files ->
@@ -161,6 +169,15 @@ let manifest_fields =
     De.field "exports" Manifest_exports;
   ]
 
+let metadata_fields =
+  De.fields [
+    De.field "input_hash" Manifest_input_hash;
+    De.field "output_hash" Manifest_output_hash;
+    De.field "size_bytes" Manifest_size_bytes;
+    De.field "ocamlc_warnings" Manifest_ocamlc_warnings;
+    De.field "exports" Manifest_exports;
+  ]
+
 let file_entry_decode =
   De.record_mut
     ~fields:file_entry_fields
@@ -251,6 +268,41 @@ let manifest_decode =
             ocamlc_warnings = builder.ocamlc_warnings;
             exports = builder.exports;
           }: t)
+      | _ -> De.missing_field ())
+
+let metadata_decode =
+  De.record_mut
+    ~fields:metadata_fields
+    ~create:(fun () -> {
+      version = None;
+      package = None;
+      input_hash = None;
+      output_hash = None;
+      timestamp = None;
+      size_bytes = None;
+      files = None;
+      ocamlc_warnings = [];
+      exports = [];
+    })
+    ~step:(fun reader builder field ->
+      match field with
+      | Some Manifest_input_hash -> builder.input_hash <- Some (De.read reader De.string)
+      | Some Manifest_output_hash -> builder.output_hash <- Some (De.read reader De.string)
+      | Some Manifest_size_bytes -> builder.size_bytes <- Some (De.read reader int64_string_decode)
+      | Some Manifest_ocamlc_warnings ->
+          builder.ocamlc_warnings <- De.read reader (de_list De.string)
+      | Some Manifest_exports -> builder.exports <- De.read reader (de_list export_entry_decode)
+      | _ -> ignore (De.read reader De.skip_any))
+    ~finish:(fun builder ->
+      match (builder.input_hash, builder.output_hash, builder.size_bytes) with
+      | (Some input_hash, Some output_hash, Some size_bytes) ->
+          {
+            input_hash;
+            output_hash;
+            size_bytes;
+            ocamlc_warnings = builder.ocamlc_warnings;
+            exports = builder.exports;
+          }
       | _ -> De.missing_field ())
 
 let file_entry_encode =
@@ -477,6 +529,15 @@ let load = fun ~path ->
   | Ok content -> (
       match Serde_json.from_string manifest_decode content with
       | Ok manifest -> Ok manifest
+      | Error err -> Error (Serde.Error.to_string err)
+    )
+  | Error _ -> Error "Failed to read manifest file"
+
+let load_metadata = fun ~path ->
+  match Std.Fs.read path with
+  | Ok content -> (
+      match Serde_json.from_string metadata_decode content with
+      | Ok metadata -> Ok metadata
       | Error err -> Error (Serde.Error.to_string err)
     )
   | Error _ -> Error "Failed to read manifest file"

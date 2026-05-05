@@ -23,6 +23,7 @@ let unit_key = fun package ->
 
 let build_package = fun ~workspace ~toolchain ~store package ->
   let build_ctx = make_test_build_ctx () in
+  let input_hash_cache = Riot_planner.Package_planner.create_input_hash_cache () in
   let key = unit_key package in
   let unit =
     Riot_planner.Build_unit.from_artifact
@@ -34,6 +35,7 @@ let build_package = fun ~workspace ~toolchain ~store package ->
   let detailed_result =
     match Package_builder.plan_build_unit
       ~on_source_analyzed:(fun _ -> ())
+      ~input_hash_cache
       ~workspace
       ~toolchain
       ~store
