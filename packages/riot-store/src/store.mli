@@ -107,10 +107,16 @@ val create_for_lane: workspace:Workspace.t -> profile:string -> target:Riot_mode
 val get: t -> Std.Crypto.hash -> Artifact.t option
 
 (**
-   Check if we have cached artifacts for this hash. Returns Some artifact if
+   Check if we have cached package artifacts for this hash. Returns Some artifact if
    cached, None if not. The artifact contains the list of files, warnings, and
    package exports.
 *)
+val get_package: t -> Std.Crypto.hash -> Artifact.t option
+
+(** Check if we have a cached package artifact for this hash. *)
+val get_action: t -> Std.Crypto.hash -> Artifact.t option
+
+(** Check if we have a cached action artifact for this hash. *)
 val load_manifest: t -> hash:Std.Crypto.hash -> Manifest.t option
 
 (** Load the full hash manifest when present. *)
@@ -125,17 +131,41 @@ val save:
   (Artifact.t, error) result
 
 (**
-   Save build outputs to the store. Copies the specified output files from
+   Save package build outputs to the store. Copies the specified output files from
    sandbox_dir to the store.
 *)
+val save_package:
+  ?ocamlc_warnings:string list ->
+  ?exports:export_entry list ->
+  t ->
+  package:string ->
+  input_hash:Std.Crypto.hash ->
+  sandbox_dir:Std.Path.t ->
+  outs:Std.Path.t list ->
+  (Artifact.t, error) result
+
+(** Save package build outputs to the package artifact namespace. *)
+val save_action:
+  ?ocamlc_warnings:string list ->
+  t ->
+  package:string ->
+  input_hash:Std.Crypto.hash ->
+  sandbox_dir:Std.Path.t ->
+  outs:Std.Path.t list ->
+  (Artifact.t, error) result
+
+(** Save action outputs to the action artifact namespace. *)
 (** {1 Artifact Operations} *)
 
 val promote: t -> Std.Crypto.hash -> target_dir:Std.Path.t -> (unit, error) result
 
 (**
-   Promote cached artifacts to the target directory. Returns error if hash not
+   Promote cached package artifacts to the target directory. Returns error if hash not
    found.
 *)
+val promote_action: t -> Std.Crypto.hash -> target_dir:Std.Path.t -> (unit, error) result
+
+(** Promote cached action artifacts to the target directory. *)
 val exists: t -> Std.Crypto.hash -> bool
 
 (** Check if artifacts for a given hash exist in the store *)
@@ -160,6 +190,9 @@ val hash_dir_of: t -> Std.Crypto.hash -> Std.Path.t
    This is useful for planning and dependency summaries that need a stable
    output location before execution materializes artifacts.
 *)
+val action_hash_dir_of: t -> Std.Crypto.hash -> Std.Path.t
+
+(** Get the immutable cache directory for an action artifact hash. *)
 val save_plan_bundle: t -> hash:Std.Crypto.hash -> plan:Std.Data.Json.t -> (unit, error) result
 
 (**

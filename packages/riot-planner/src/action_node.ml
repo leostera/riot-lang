@@ -132,14 +132,20 @@ let make = fun ~actions ~outs ~srcs ~(package:Package.t) ~toolchain ~dependency_
     hash;
   }
 
-let get_hash = fun (node: t) -> node.value.hash
+let id = G.id
+
+let value = G.value
+
+let deps = G.deps
+
+let get_hash = fun (node: t) -> (value node).hash
 
 let to_json = fun (node: t) ->
   let open Data.Json in
-  let spec = node.value in
+  let spec = value node in
   obj
     [
-      ("id", int (G.Node_id.to_int node.id));
+      ("id", int (G.Node_id.to_int (id node)));
       ("actions", array (List.map spec.actions ~fn:Action.to_json));
       ("outputs", array (List.map spec.outs ~fn:(fun p -> string (Path.to_string p))));
       ("sources", array (List.map spec.srcs ~fn:(fun p -> string (Path.to_string p))));
@@ -147,12 +153,12 @@ let to_json = fun (node: t) ->
       ("package_path", string (Path.to_string spec.package.Package.path));
       ("package_relative_path", string (Path.to_string spec.package.Package.relative_path));
       ("hash", string (Crypto.Digest.hex spec.hash));
-      ("dependencies", array (List.map node.deps ~fn:(fun dep -> int (G.Node_id.to_int dep))));
+      ("dependencies", array (List.map (deps node) ~fn:(fun dep -> int (G.Node_id.to_int dep))));
     ]
 
 let equal = fun (n1: t) (n2: t) ->
-  let s1 = n1.value in
-  let s2 = n2.value in
+  let s1 = value n1 in
+  let s2 = value n2 in
   Crypto.Digest.hex s1.hash = Crypto.Digest.hex s2.hash
   && Package_name.equal s1.package.Package.name s2.package.Package.name
   && List.compare_lengths ~left:s1.actions ~right:s2.actions = 0

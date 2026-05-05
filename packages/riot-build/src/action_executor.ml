@@ -382,7 +382,7 @@ let run_action = fun
 let execute_actions = fun ~session_id ~build_target ~(node:Action_node.t) toolchain sandbox_dir actions ->
   let ocamlc = Riot_toolchain.ocamlc toolchain in
   let c_compiler = Riot_toolchain.c_compiler toolchain in
-  let package = node.value.package in
+  let package = (Action_node.value node).package in
   let rec execute_next ocamlc_warnings = fun __tmp1 ->
     match __tmp1 with
     | [] -> Ok ocamlc_warnings
@@ -415,7 +415,7 @@ let verify_outputs = fun outputs ->
     Ok ()
 
 let save_action_artifact = fun ~store ~package ~input_hash ~ocamlc_warnings ~sandbox_dir ~outputs ->
-  Riot_store.Store.save store ~package ~ocamlc_warnings ~input_hash ~sandbox_dir ~outs:outputs
+  Riot_store.Store.save_action store ~package ~ocamlc_warnings ~input_hash ~sandbox_dir ~outs:outputs
   |> Result.map_err ~fn:Riot_store.Store.error_message
 
 let successful_artifact = fun (result: execution_result) ->
@@ -435,7 +435,7 @@ let compute_action_input_hash = fun ~planned_hash ~dependency_output_hashes ->
 let dependency_output_hashes = fun completed (node: Action_node.t) ->
   let sorted_deps =
     List.sort
-      node.deps
+      (Action_node.deps node)
       ~compare:(fun left right -> Int.compare (G.Node_id.to_int left) (G.Node_id.to_int right))
   in
   (* Action graphs can carry ordering dependencies that do not materialize an
@@ -456,7 +456,7 @@ let dependency_output_hashes = fun completed (node: Action_node.t) ->
 
 let has_failed_dependencies = fun completed (node: Action_node.t) ->
   List.any
-    node.deps
+    (Action_node.deps node)
     ~fn:(fun dep_id ->
       match HashMap.get completed ~key:dep_id with
       | Some { status = Failed _
@@ -522,7 +522,7 @@ let execute_node = fun
   if has_failed_dependencies completed node then (
     let now = Instant.now () in
     {
-      node_id = node.id;
+      node_id = Action_node.id node;
       status = Skipped;
       ocamlc_warnings = [];
       duration = Instant.duration_since ~earlier:start now;
@@ -533,7 +533,7 @@ let execute_node = fun
     Telemetry.emit
       (Telemetry_events.ActionStarted {
         session_id;
-        package = node.value.package;
+        package = (Action_node.value node).package;
         build_target;
         action = node;
         started_at = start;
@@ -545,24 +545,24 @@ let execute_node = fun
         ~dependency_output_hashes:(dependency_output_hashes completed node)
     in
     (
-      match Riot_store.Store.get store action_input_hash with
+      match Riot_store.Store.get_action store action_input_hash with
       | Some artifact ->
           Telemetry.emit
             (
               Telemetry_events.CacheHit {
                 session_id;
-                package = node.value.package;
+                package = (Action_node.value node).package;
                 action = node;
                 hash = action_input_hash;
               }
             );
           let _ =
-            Riot_store.Store.promote
+            Riot_store.Store.promote_action
               store
               artifact.Riot_store.Artifact.input_hash
               ~target_dir:sandbox_dir
             |> Result.expect
-              ~msg:("Failed to materialize cached action artifact: " ^ G.Node_id.to_string node.id)
+              ~msg:("Failed to materialize cached action artifact: " ^ G.Node_id.to_string (Action_node.id node))
           in
           let completed_at = Instant.now () in
           let duration = Instant.duration_since ~earlier:start completed_at in
@@ -570,7 +570,7 @@ let execute_node = fun
             (
               Telemetry_events.ActionCompleted {
                 session_id;
-                package = node.value.package;
+                package = (Action_node.value node).package;
                 build_target;
                 action = node;
                 completed_at;
@@ -580,7 +580,7 @@ let execute_node = fun
               }
             );
           {
-            node_id = node.id;
+            node_id = Action_node.id node;
             status = Cached artifact;
             ocamlc_warnings = artifact.Riot_store.Artifact.ocamlc_warnings;
             duration;
@@ -592,14 +592,14 @@ let execute_node = fun
             (
               Telemetry_events.CacheMiss {
                 session_id;
-                package = node.value.package;
+                package = (Action_node.value node).package;
                 action = node;
                 hash = action_input_hash;
               }
             );
-          let actions = node.value.actions in
-          let outputs = node.value.outs in
-          let sources = node.value.srcs in
+          let actions = (Action_node.value node).actions in
+          let outputs = (Action_node.value node).outs in
+          let sources = (Action_node.value node).srcs in
           let copy_result: (unit, string) Result.t =
             List.fold_left
               sources
@@ -608,7 +608,7 @@ let execute_node = fun
                 match acc with
                 | Error _ -> acc
                 | Ok () ->
-                    match resolve_source_for_copy ~package:node.value.package ~src_path with
+                    match resolve_source_for_copy ~package:(Action_node.value node).package ~src_path with
                     | Error msg -> Error msg
                     | Ok abs_src ->
                         let abs_dst = Path.join sandbox_dir src_path in
@@ -637,7 +637,7 @@ let execute_node = fun
           match copy_result with
           | Error msg ->
               {
-                node_id = node.id;
+                node_id = Action_node.id node;
                 status = Failed (ExecutionFailed { message = "Failed to copy sources: " ^ msg });
                 ocamlc_warnings = [];
                 duration;
@@ -651,7 +651,7 @@ let execute_node = fun
                     (
                       Telemetry_events.ActionFailed {
                         session_id;
-                        package = node.value.package;
+                        package = (Action_node.value node).package;
                         build_target;
                         action = node;
                         failed_at = Instant.now ();
@@ -659,7 +659,7 @@ let execute_node = fun
                       }
                     );
                   {
-                    node_id = node.id;
+                    node_id = Action_node.id node;
                     status = Failed (ExecutionFailed { message = msg });
                     ocamlc_warnings = [];
                     duration;
@@ -678,14 +678,14 @@ let execute_node = fun
                   if not needs_output_verification then
                     match save_action_artifact
                       ~store
-                      ~package:(Riot_model.Package_name.to_string node.value.package.name)
+                      ~package:(Riot_model.Package_name.to_string (Action_node.value node).package.name)
                       ~input_hash:action_input_hash
                       ~ocamlc_warnings
                       ~sandbox_dir
                       ~outputs:(List.map outputs ~fn:(Path.join sandbox_dir)) with
                     | Error message ->
                         {
-                          node_id = node.id;
+                          node_id = Action_node.id node;
                           status = Failed (ExecutionFailed { message });
                           ocamlc_warnings = [];
                           duration;
@@ -697,7 +697,7 @@ let execute_node = fun
                           (
                             Telemetry_events.ActionCompleted {
                               session_id;
-                              package = node.value.package;
+                              package = (Action_node.value node).package;
                               build_target;
                               action = node;
                               completed_at;
@@ -707,7 +707,7 @@ let execute_node = fun
                             }
                           );
                         {
-                          node_id = node.id;
+                          node_id = Action_node.id node;
                           status = Executed artifact;
                           ocamlc_warnings;
                           duration;
@@ -719,7 +719,7 @@ let execute_node = fun
                     match verify_outputs abs_outputs with
                     | Error missing ->
                         {
-                          node_id = node.id;
+                          node_id = Action_node.id node;
                           status = Failed (OutputsNotCreated { missing });
                           ocamlc_warnings = [];
                           duration;
@@ -729,14 +729,14 @@ let execute_node = fun
                     | Ok () ->
                         match save_action_artifact
                           ~store
-                          ~package:(Riot_model.Package_name.to_string node.value.package.name)
+                          ~package:(Riot_model.Package_name.to_string (Action_node.value node).package.name)
                           ~input_hash:action_input_hash
                           ~ocamlc_warnings
                           ~sandbox_dir
                           ~outputs:abs_outputs with
                         | Error message ->
                             {
-                              node_id = node.id;
+                              node_id = Action_node.id node;
                               status = Failed (ExecutionFailed { message });
                               ocamlc_warnings = [];
                               duration;
@@ -748,7 +748,7 @@ let execute_node = fun
                               (
                                 Telemetry_events.ActionCompleted {
                                   session_id;
-                                  package = node.value.package;
+                                  package = (Action_node.value node).package;
                                   build_target;
                                   action = node;
                                   completed_at;
@@ -758,7 +758,7 @@ let execute_node = fun
                                 }
                               );
                             {
-                              node_id = node.id;
+                              node_id = Action_node.id node;
                               status = Executed artifact;
                               ocamlc_warnings;
                               duration;

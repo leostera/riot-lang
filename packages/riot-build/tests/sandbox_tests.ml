@@ -10,16 +10,7 @@ let package_name = fun value ->
   |> Result.expect ~msg:("expected valid package name: " ^ value)
 
 let make_workspace = fun root ->
-  Riot_model.Workspace.{
-    name = None;
-    root;
-    target_dir_root = Path.(root / Path.v "target");
-    packages = [];
-    dependencies = [];
-    dev_dependencies = [];
-    build_dependencies = [];
-    profile_overrides = [];
-  }
+  Riot_model.Workspace.make ~root ~target_dir:"target" ~packages:[] ()
 
 let make_package = fun ~root ~name ->
   let package_name = package_name name in

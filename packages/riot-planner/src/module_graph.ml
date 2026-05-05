@@ -388,7 +388,7 @@ and handle_ocaml_binary = fun ~t ~ctx path ->
   in
   Module_node.set_open_modules node_val aliases;
   let node = G.add_node t.graph node_val in
-  Module_registry.register t.registry mod_ node.id;
+  Module_registry.register t.registry mod_ (G.id node);
   (
     match Module.kind mod_ with
     | `implementation -> (
@@ -403,7 +403,7 @@ and handle_ocaml_binary = fun ~t ~ctx path ->
             ~fn:(fun intf_node_id ->
               match G.get_node t.graph intf_node_id with
               | Some intf_node -> (
-                  match intf_node.value.kind with
+                  match (G.value intf_node).kind with
                   | MLI intf_mod when (
                     Module.module_name intf_mod
                     |> Module_name.qualified_name
@@ -440,7 +440,7 @@ and handle_ocaml_module = fun ~t ~ctx path ->
   in
   Module_node.set_open_modules node_val aliases;
   let node = G.add_node t.graph node_val in
-  Module_registry.register t.registry mod_ node.id;
+  Module_registry.register t.registry mod_ (G.id node);
   (
     match Module.kind mod_ with
     | `implementation -> (
@@ -455,7 +455,7 @@ and handle_ocaml_module = fun ~t ~ctx path ->
             ~fn:(fun intf_node_id ->
               match G.get_node t.graph intf_node_id with
               | Some intf_node -> (
-                  match intf_node.value.kind with
+                  match (G.value intf_node).kind with
                   | MLI intf_mod when (
                     Module.module_name intf_mod
                     |> Module_name.qualified_name
@@ -546,9 +546,9 @@ and handle_library = fun ~t ~ctx dir name children ->
       let node_value = Alias_module.make_node ns child_modules in
       let node = G.add_node t.graph node_value in
       (
-        match node.value.kind with
+        match (G.value node).kind with
         | Module_node.ML mod_
-        | Module_node.MLI mod_ -> Module_registry.register t.registry mod_ node.id
+        | Module_node.MLI mod_ -> Module_registry.register t.registry mod_ (G.id node)
         | _ -> ()
       );
       node
@@ -578,7 +578,7 @@ and handle_library = fun ~t ~ctx dir name children ->
     in
     let () =
       match intf_node with
-      | Some intf_node -> Module_registry.register t.registry intf_mod intf_node.id
+      | Some intf_node -> Module_registry.register t.registry intf_mod (G.id intf_node)
       | None -> ()
     in
     let impl_node =
@@ -592,7 +592,7 @@ and handle_library = fun ~t ~ctx dir name children ->
       in
       G.add_node t.graph impl
     in
-    Module_registry.register t.registry impl_mod impl_node.id;
+    Module_registry.register t.registry impl_mod (G.id impl_node);
   (
     match intf_node with
     | Some intf_node ->
@@ -1057,7 +1057,7 @@ let create = fun config ->
 let add_direct_dependency_root = fun t ~package_name ~root_module ->
   let node_value = Module_node.make_package_dependency ~package_name ~root_module in
   let node = G.add_node t.graph node_value in
-  Module_registry.register_qualified_name t.registry root_module node.id;
+  Module_registry.register_qualified_name t.registry root_module (G.id node);
   Cell.set
     t.deps_env
     (
@@ -1183,7 +1183,7 @@ let wire_dependencies = fun t ->
     open_modules
     |> List.filter_map
       ~fn:(fun (node: Module_node.t G.node) ->
-        match node.value.kind with
+        match (G.value node).kind with
         | Module_node.ML mod_
         | Module_node.MLI mod_ -> Some (Module.namespaced_name mod_)
         | _ -> None)
@@ -1193,14 +1193,14 @@ let wire_dependencies = fun t ->
       open_modules
       ~init:base_env
       ~fn:(fun env (node: Module_node.t G.node) ->
-        match node.value.kind with
+        match (G.value node).kind with
         | Module_node.ML mod_
         | Module_node.MLI mod_ ->
             Syn.Deps.Env.open_path env ~path:(module_name_segments (Module.module_name mod_))
         | _ -> env)
   in
   let module_node_module (node: Module_node.t G.node) =
-    match node.value.kind with
+    match (G.value node).kind with
     | Module_node.ML mod_
     | Module_node.MLI mod_ -> Some mod_
     | _ -> None
@@ -1212,7 +1212,7 @@ let wire_dependencies = fun t ->
       | dep_node_id :: rest -> (
           match G.get_node t.graph dep_node_id with
           | Some (dep_node: Module_node.t G.node) -> (
-              match dep_node.value.kind with
+              match (G.value dep_node).kind with
               | Module_node.ML _ -> collect ((dep_node_id, dep_node) :: acc) true rest
               | _ -> collect ((dep_node_id, dep_node) :: acc) has_ml rest
             )
@@ -1224,7 +1224,7 @@ let wire_dependencies = fun t ->
       List.filter
         resolved_nodes
         ~fn:(fun (_dep_node_id, (dep_node: Module_node.t G.node)) ->
-          match dep_node.value.kind with
+          match (G.value dep_node).kind with
           | Module_node.ML _ -> true
           | _ -> false)
     else
@@ -1247,7 +1247,7 @@ let wire_dependencies = fun t ->
               preferred_dependency_nodes dep_node_ids
               |> List.filter_map
                 ~fn:(fun (dep_node_id, dep_node) ->
-                  if G.Node_id.eq dep_node_id node.id then
+                  if G.Node_id.eq dep_node_id (G.id node) then
                     None
                   else
                     Some (dep_node_id, dep_node))
@@ -1273,7 +1273,7 @@ let wire_dependencies = fun t ->
     List.filter_map
       sorted_nodes
       ~fn:(fun (_node_id, (node: Module_node.t G.node)) ->
-        let module_node = node.value in
+        let module_node = G.value node in
         match module_node.kind with
         | Module_node.ML _
         | Module_node.MLI _ -> (
@@ -1324,7 +1324,7 @@ let wire_dependencies = fun t ->
   in
   let raw_source_text (node: Module_node.t G.node) =
     let source_result =
-      match node.value.file with
+      match (G.value node).file with
       | Module_node.Concrete path ->
           let display_path =
             if Path.is_absolute path then
@@ -1347,7 +1347,7 @@ let wire_dependencies = fun t ->
     | Error err ->
         Error (Planning_error.DependencyAnalysisFailed {
           reason = "failed to read "
-          ^ Module_node.file_to_string node.value.file
+          ^ Module_node.file_to_string (G.value node).file
           ^ " for dependency analysis: "
           ^ IO.error_message err;
         })
@@ -1400,7 +1400,7 @@ let wire_dependencies = fun t ->
     match raw_source_text node with
     | Error _ as err -> err
     | Ok (raw_text, display_path) ->
-        let implicit_opens = implicit_open_modules node.value.open_modules in
+        let implicit_opens = implicit_open_modules (G.value node).open_modules in
         let parse_result = Syn.parse ~filename:display_path (source_slice raw_text) in
         let source_file = Syn.Ast.SourceFile.make parse_result.tree in
         let executable_main_validation =
@@ -1415,11 +1415,11 @@ let wire_dependencies = fun t ->
                 source_file
           | _ -> Ok ()
         in
-        let deps_env = deps_env_with_implicit_opens (Cell.get t.deps_env) node.value.open_modules in
+        let deps_env = deps_env_with_implicit_opens (Cell.get t.deps_env) (G.value node).open_modules in
         let deps = Syn.Deps.from_parse_result ~env:deps_env parse_result in
         let source_hash = source_hash ~implicit_opens ~source:raw_text in
         let requested_deps =
-          match (deps, node.value.file) with
+          match (deps, (G.value node).file) with
           | (Ok deps, Module_node.Concrete _) -> Syn.Deps.modules deps
           | (Ok _, Module_node.Generated _) -> []
           | (Error _, _) -> []
@@ -1455,7 +1455,7 @@ let wire_dependencies = fun t ->
           unresolved_deps;
         }
         in
-        let _ = HashMap.insert t.analyzed_modules ~key:node.id ~value:analyzed in
+        let _ = HashMap.insert t.analyzed_modules ~key:(G.id node) ~value:analyzed in
         let add_local_export_bindings env mod_ deps =
           let simple_name =
             Module.module_name mod_
@@ -1515,7 +1515,7 @@ let wire_dependencies = fun t ->
           | _ -> env
         in
         let () =
-          match (deps, node.value.kind, node.value.file) with
+          match (deps, (G.value node).kind, (G.value node).file) with
           | (Ok deps, (Module_node.ML mod_ | Module_node.MLI mod_), Module_node.Concrete _) ->
               Cell.set
                 t.deps_env
@@ -1531,7 +1531,7 @@ let wire_dependencies = fun t ->
           match executable_main_validation with
           | Error _ as error -> error
           | Ok () -> (
-              match (deps, node.value.file) with
+              match (deps, (G.value node).file) with
               | (Ok _, Module_node.Concrete _) -> Ok resolved_deps
               | (Error err, Module_node.Concrete _) ->
                   Error (Planning_error.DependencyAnalysisFailed {
@@ -1548,7 +1548,7 @@ let wire_dependencies = fun t ->
   let export_source_node_ids =
     let candidates = HashMap.create () in
     let rank_node (node: Module_node.t G.node) =
-      match (node.value.kind, node.value.file) with
+      match ((G.value node).kind, (G.value node).file) with
       | (Module_node.MLI mod_, Module_node.Concrete _) ->
           Some (Module_name.qualified_name (Module.module_name mod_), 0)
       | (Module_node.ML mod_, Module_node.Concrete _) ->
@@ -1587,7 +1587,7 @@ let wire_dependencies = fun t ->
         match acc with
         | Error _ as error -> error
         | Ok () ->
-            if HashSet.contains export_source_node_ids ~value:node.id then
+            if HashSet.contains export_source_node_ids ~value:(G.id node) then
               match analyze_node path node with
               | Ok _ -> Ok ()
               | Error _ as error -> error
@@ -1641,8 +1641,8 @@ let add_library_node = fun t ~name ~includes ->
      what the library interface actually references.
 
      IMPORTANT: We iterate over topologically sorted nodes to preserve dependency order.
-     This ensures that when we later collect objects from node.deps, they're in the
-     correct order for linking.
+     This ensures that when we later collect objects from dependencies, they're
+     in the correct order for linking.
   *)
   let sorted_nodes =
     match G.topo_sort t.graph with
@@ -1651,13 +1651,13 @@ let add_library_node = fun t ~name ~includes ->
         (* Cycle will be caught later in module planning *)
         []
   in
-  (* Add edges in REVERSE topological order because add_edge prepends to deps list.
-     This ensures lib_node.deps ends up in correct topological order.
+  (* SimpleGraph preserves dependency insertion order, so add edges directly in
+     topological order.
   *)
   List.for_each
-    (List.reverse sorted_nodes)
+    sorted_nodes
     ~fn:(fun (node: Module_node.t G.node) ->
-      match node.value.kind with
+      match (G.value node).kind with
       | Module_node.ML _
       | Module_node.MLI _
       | Module_node.C
@@ -1670,10 +1670,10 @@ let add_binary_node = fun t ~name ~source ~libraries ~includes ->
   G.iter
     t.graph
     ~fn:(fun _node_id node ->
-      match node.value.kind with
+      match (G.value node).kind with
       | Module_node.Library _ -> G.add_edge bin_node ~depends_on:node
       | Module_node.ML _ -> (
-          match node.value.file with
+          match (G.value node).file with
           | Module_node.Concrete path ->
               let source_rel = make_relative ~base:t.config.package.path ~path:source in
               if Path.equal path source_rel || Path.equal path source then

@@ -157,8 +157,9 @@ let create_worker = fun id ->
   {
     id;
     queue = Queue.create ();
-    lock = Runtime_mutex.create ();
-    cond = Runtime_condition.create ();
+    sleep_lock = Runtime_mutex.create ();
+    sleep_cond = Runtime_condition.create ();
+    sleeping = Atomic.make false;
   }
 
 let default_worker_count = fun config ->
@@ -337,9 +338,9 @@ let request_shutdown = fun t ~status ->
   Array.for_each
     t.workers
     ~fn:(fun (worker: worker) ->
-      Runtime_mutex.lock worker.lock;
-      Runtime_condition.broadcast worker.cond;
-      Runtime_mutex.unlock worker.lock);
+      Runtime_mutex.lock worker.sleep_lock;
+      Runtime_condition.broadcast worker.sleep_cond;
+      Runtime_mutex.unlock worker.sleep_lock);
   Runtime_mutex.lock t.blocking_lanes_lock;
   List.for_each
     t.blocking_lanes
@@ -351,6 +352,17 @@ let request_shutdown = fun t ~status ->
 
 let shutdown = fun t ~status -> request_shutdown t ~status
 
+let signal_worker_if_sleeping_locked = fun worker ->
+  if Atomic.get worker.sleeping then
+    Runtime_condition.signal worker.sleep_cond
+
+let signal_worker_if_sleeping = fun worker ->
+  if Atomic.get worker.sleeping then (
+    Runtime_mutex.lock worker.sleep_lock;
+    signal_worker_if_sleeping_locked worker;
+    Runtime_mutex.unlock worker.sleep_lock
+  )
+
 let enqueue_on_worker = fun t worker_id slot ->
   (* The slot-level queued flag enforces "at most one runnable-queue entry per
      process" across wakeups, local reschedules, and steals.
@@ -358,10 +370,8 @@ let enqueue_on_worker = fun t worker_id slot ->
   if is_valid_worker_id t worker_id then
     if try_mark_slot_queued slot then (
       let worker = worker_by_id t worker_id in
-      Runtime_mutex.lock worker.lock;
       Queue.push worker.queue ~value:slot;
-      Runtime_condition.signal worker.cond;
-      Runtime_mutex.unlock worker.lock
+      signal_worker_if_sleeping worker
     ) else if Runtime_process.is_runnable (slot_process slot) then (
       increment t.counters.duplicate_enqueue_races;
       trace
@@ -1014,36 +1024,47 @@ let spawn_blocked = fun t fn ->
   add_blocking_lane t lane;
   slot_pid slot
 
-let pop_local = fun (worker: worker) ->
-  Runtime_mutex.lock worker.lock;
-  let slot = Queue.pop worker.queue in
-  Runtime_mutex.unlock worker.lock;
-  match slot with
+let pop_worker_slot = fun (worker: worker) ->
+  match Queue.pop worker.queue with
   | None -> None
   | Some slot ->
       mark_slot_dequeued slot;
       Some slot
+
+let pop_local = fun worker -> pop_worker_slot worker
 
 let wait_for_local_work = fun t (worker: worker) ->
-  Runtime_mutex.lock worker.lock;
-  while Queue.is_empty worker.queue && not (Atomic.get t.stop) do
-    Runtime_condition.wait worker.cond worker.lock
-  done;
-  let slot =
-    if Atomic.get t.stop then
-      None
-    else
-      Queue.pop worker.queue
-  in
-  Runtime_mutex.unlock worker.lock;
-  match slot with
-  | None -> None
-  | Some slot ->
-      mark_slot_dequeued slot;
-      Some slot
+  match pop_worker_slot worker with
+  | Some _ as slot -> slot
+  | None ->
+      Runtime_mutex.lock worker.sleep_lock;
+      Atomic.set worker.sleeping true;
+      (* Queue operations are lock-free. The sleep lock only protects the
+         condition-variable transition: after publishing [sleeping], the worker
+         rechecks the queue so an enqueue either becomes visible here or signals
+         the parked worker. *)
+      let rec wait () =
+        match Queue.pop worker.queue with
+        | Some slot -> Some slot
+        | None ->
+            if Atomic.get t.stop then
+              None
+            else (
+              Runtime_condition.wait worker.sleep_cond worker.sleep_lock;
+              wait ()
+            )
+      in
+      let slot = wait () in
+      Atomic.set worker.sleeping false;
+      Runtime_mutex.unlock worker.sleep_lock;
+      match slot with
+      | None -> None
+      | Some slot ->
+          mark_slot_dequeued slot;
+          Some slot
 
 let steal_batch = fun (victim: worker) ->
-  Runtime_mutex.lock victim.lock;
+  Runtime_mutex.lock victim.sleep_lock;
   let available = Queue.length victim.queue in
   let steal_goal = min 32 (available / 2) in
   let rec scan remaining wanted stolen kept =
@@ -1060,15 +1081,15 @@ let steal_batch = fun (victim: worker) ->
   in
   let (batch, kept) = scan available steal_goal [] [] in
   List.for_each kept ~fn:(fun slot -> Queue.push victim.queue ~value:slot);
-  Runtime_mutex.unlock victim.lock;
+  if not (List.is_empty kept) then
+    signal_worker_if_sleeping_locked victim;
+  Runtime_mutex.unlock victim.sleep_lock;
   batch
 
 let push_batch = fun (worker: worker) batch ->
   if not (List.is_empty batch) then (
-    Runtime_mutex.lock worker.lock;
     List.for_each batch ~fn:(fun slot -> Queue.push worker.queue ~value:slot);
-    Runtime_condition.signal worker.cond;
-    Runtime_mutex.unlock worker.lock
+    signal_worker_if_sleeping worker
   )
 
 let attempt_steal = fun t (worker: worker) ->

@@ -42,7 +42,7 @@ type t = {
 
 let remember_result = fun completed_results (completed_action: completed_action) ->
   let _ =
-    HashMap.insert completed_results ~key:completed_action.node.id ~value:completed_action.result
+    HashMap.insert completed_results ~key:(Action_node.id completed_action.node) ~value:completed_action.result
   in
   ()
 
@@ -61,18 +61,18 @@ let make_graph = fun completed_results action_graph ->
   |> List.for_each
     ~fn:(fun (node: Action_node.t) ->
       let node_id = Graph_scheduler.Graph.add_node graph ~payload:node in
-      let _ = HashMap.insert node_ids ~key:node.id ~value:node_id in
+      let _ = HashMap.insert node_ids ~key:(Action_node.id node) ~value:node_id in
       ());
   Action_graph.nodes action_graph
   |> List.for_each
     ~fn:(fun (node: Action_node.t) ->
       let node_id =
-        HashMap.get node_ids ~key:node.id
+        HashMap.get node_ids ~key:(Action_node.id node)
         |> Option.expect
-          ~msg:("missing scheduler node for action " ^ Graph.SimpleGraph.Node_id.to_string node.id)
+          ~msg:("missing scheduler node for action " ^ Graph.SimpleGraph.Node_id.to_string (Action_node.id node))
       in
       List.for_each
-        node.deps
+        (Action_node.deps node)
         ~fn:(fun dependency_id ->
           let dependency_node_id =
             HashMap.get node_ids ~key:dependency_id
@@ -122,7 +122,7 @@ let find_result = fun (result: t) (node: Action_node.t) ->
   find_first_map
     result.completed_actions
     ~fn:(fun completed_action ->
-      if Graph.SimpleGraph.Node_id.eq completed_action.node.id node.id then
+      if Graph.SimpleGraph.Node_id.eq (Action_node.id completed_action.node) (Action_node.id node) then
         Some completed_action.result
       else
         None)
@@ -132,7 +132,7 @@ let summarize_completed = fun ~action_graph ~completed_results ->
     Action_graph.nodes action_graph
     |> List.filter_map
       ~fn:(fun (node: Action_node.t) ->
-        match HashMap.get completed_results ~key:node.id with
+        match HashMap.get completed_results ~key:(Action_node.id node) with
         | Some result -> Some { node; result }
         | None -> None)
   in

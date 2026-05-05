@@ -348,5 +348,6 @@ let ensure_workspace = fun
     ~dev_dependencies:workspace.dev_dependencies
     ~build_dependencies:workspace.build_dependencies
     ~profile_overrides:workspace.profile_overrides
+    ~source_ignore_patterns:workspace.source_ignore_patterns
     ~target_dir:(Path.to_string workspace.target_dir_root)
     ())

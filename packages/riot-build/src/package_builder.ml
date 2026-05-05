@@ -188,7 +188,7 @@ let summarize_package_names = fun names ->
       shown_str ^ ", and " ^ hidden_label
 
 let action_result_artifact = fun completed (node: Action_node.t) ->
-  match HashMap.get completed ~key:node.id with
+  match HashMap.get completed ~key:(Action_node.id node) with
   | Some {
       Action_executor.status = Action_executor.Cached artifact
       | Action_executor.Executed artifact;
@@ -208,7 +208,7 @@ let compute_export_entries:
       ~fn:(fun (node: Action_node.t) ->
         let is_package_export =
           List.any
-            node.value.actions
+            (Action_node.value node).actions
             ~fn:(fun __tmp1 ->
               match __tmp1 with
               | Action.CreateLibrary _
@@ -230,7 +230,7 @@ let compute_export_entries:
           | Some artifact ->
               let action_hash_hex = Crypto.Digest.hex artifact.Riot_store.Artifact.input_hash in
               List.map
-                node.value.outs
+                (Action_node.value node).outs
                 ~fn:(fun out_path ->
                   Riot_store.Store.{
                     name = Path.basename out_path;
@@ -407,7 +407,7 @@ let execution_inputs = fun (execution_plan: execution_plan) ->
 
 let execution_outputs = fun (execution_plan: execution_plan) ->
   Action_graph.nodes execution_plan.action_graph
-  |> List.flat_map ~fn:(fun (node: Action_node.t) -> node.value.outs)
+  |> List.flat_map ~fn:(fun (node: Action_node.t) -> (Action_node.value node).outs)
 
 let failed_execution_result = fun
   ~session_id
@@ -628,7 +628,7 @@ let finalize_execution = fun
         Riot_store.Store.materialize_package_exports store ~exports:export_entries ~target_dir
         |> Result.expect ~msg:("Failed to materialize package exports for " ^ package_name_string);
         let artifact =
-          Riot_store.Store.save
+          Riot_store.Store.save_package
             store
             ~package:package_name_string
             ~ocamlc_warnings
@@ -709,7 +709,7 @@ let execute_detailed = fun ~workspace ~toolchain ~store ~execution_plan ~build_c
         action_result.completed_actions
         ~fn:(fun completed_action ->
           let _ =
-            HashMap.insert completed ~key:completed_action.node.id ~value:completed_action.result
+            HashMap.insert completed ~key:(Action_node.id completed_action.node) ~value:completed_action.result
           in
           ());
       finalize_execution ~workspace ~store ~prepared_execution ~completed ~build_ctx

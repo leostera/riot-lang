@@ -286,7 +286,7 @@ let plan_node = fun (input: plan_input) ->
                         | None -> None
                         | Some node ->
                             Some (
-                              match node.value.kind with
+                              match (G.value node).kind with
                               | Module_node.ML m
                               | Module_node.MLI m ->
                                   Module.module_name m
@@ -322,7 +322,7 @@ let plan_node = fun (input: plan_input) ->
                     sorted_modules
                     |> List.map
                       ~fn:(fun (node: Module_node.t G.node) ->
-                        match node.value.kind with
+                        match (G.value node).kind with
                         | Native { files } ->
                             List.map
                               files
@@ -332,7 +332,7 @@ let plan_node = fun (input: plan_input) ->
                                 else
                                   Path.(input.package.path / path))
                         | _ -> (
-                            match node.value.file with
+                            match (G.value node).file with
                             | Concrete path when Path.to_string path != "" ->
                                 let abs_path =
                                   if Path.is_absolute path then

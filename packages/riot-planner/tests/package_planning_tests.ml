@@ -492,7 +492,7 @@ let combine_action_graphs = fun graphs ->
       Riot_planner.Action_graph.nodes graph
       |> List.for_each
         ~fn:(fun (node: Riot_planner.Action_node.t) ->
-          ignore (Riot_planner.Action_graph.add_node combined node.value)));
+          ignore (Riot_planner.Action_graph.add_node combined (G.value node))));
   combined
 
 let plan_dev_package_actions_with_library = fun ~library ~tmpdir ~package_name ~files ~binaries ->
@@ -597,7 +597,7 @@ let plan_runtime_package_actions = fun ~tmpdir ~package_name ~files ~binaries ->
   | None -> plan_binaries [] runtime_binaries
 
 let module_node_label = fun (node: Riot_planner.Module_node.t G.node) ->
-  match node.value.kind with
+  match (G.value node).kind with
   | Riot_planner.Module_node.ML mod_ -> "ML(" ^ Riot_model.Module.namespaced_name mod_ ^ ")"
   | Riot_planner.Module_node.MLI mod_ -> "MLI(" ^ Riot_model.Module.namespaced_name mod_ ^ ")"
   | Riot_planner.Module_node.Library { name; _ } -> "Library(" ^ name ^ ")"
@@ -607,15 +607,15 @@ let module_node_label = fun (node: Riot_planner.Module_node.t G.node) ->
   | Riot_planner.Module_node.PackageDependency { root_module; _ } ->
       "PackageDependency(" ^ root_module ^ ")"
   | Riot_planner.Module_node.C ->
-      "C(" ^ Riot_planner.Module_node.file_to_string node.value.file ^ ")"
+      "C(" ^ Riot_planner.Module_node.file_to_string ((G.value node).file) ^ ")"
   | Riot_planner.Module_node.H ->
-      "H(" ^ Riot_planner.Module_node.file_to_string node.value.file ^ ")"
+      "H(" ^ Riot_planner.Module_node.file_to_string ((G.value node).file) ^ ")"
   | Riot_planner.Module_node.Root -> "Root"
   | Riot_planner.Module_node.Other value -> "Other(" ^ value ^ ")"
 
 let module_dependency_labels = fun graph (node: Riot_planner.Module_node.t G.node) ->
   List.filter_map
-    node.deps
+    (G.deps node)
     ~fn:(fun dep_id ->
       G.get_node graph dep_id
       |> Option.map ~fn:module_node_label)
@@ -637,7 +637,7 @@ let find_library_node = fun graph ->
       List.find
         nodes
         ~fn:(fun (node: Riot_planner.Module_node.t G.node) ->
-          match node.value.kind with
+          match (G.value node).kind with
           | Riot_planner.Module_node.Library _ -> true
           | _ -> false)
   | Error _ -> None
@@ -659,7 +659,7 @@ let find_create_library_node = fun action_graph ->
     (Riot_planner.Action_graph.nodes action_graph)
     ~fn:(fun (node: Riot_planner.Action_node.t) ->
       List.any
-        node.value.actions
+        (G.value node).actions
         ~fn:(fun __tmp1 ->
           match __tmp1 with
           | Riot_planner.Action.CreateLibrary _ -> true
@@ -670,7 +670,7 @@ let find_action_node_by_source = fun action_graph source ->
     (Riot_planner.Action_graph.nodes action_graph)
     ~fn:(fun (node: Riot_planner.Action_node.t) ->
       List.any
-        node.value.actions
+        (G.value node).actions
         ~fn:(fun __tmp1 ->
           match __tmp1 with
           | Riot_planner.Action.CompileInterface { source = action_source; _ }
@@ -680,20 +680,20 @@ let find_action_node_by_source = fun action_graph source ->
 
 let dependency_output_names = fun action_graph (node: Riot_planner.Action_node.t) ->
   List.filter_map
-    node.deps
+    (G.deps node)
     ~fn:(fun dep_id ->
       match G.get_node (Riot_planner.Action_graph.graph action_graph) dep_id with
       | Some dep_node ->
-          List.head dep_node.value.outs
+          List.head ((G.value dep_node).outs)
           |> Option.map ~fn:Path.to_string
       | None -> None)
 
 let dependency_output_names_flat = fun action_graph (node: Riot_planner.Action_node.t) ->
   List.flat_map
-    node.deps
+    (G.deps node)
     ~fn:(fun dep_id ->
       match G.get_node (Riot_planner.Action_graph.graph action_graph) dep_id with
-      | Some dep_node -> List.map dep_node.value.outs ~fn:Path.to_string
+      | Some dep_node -> List.map ((G.value dep_node).outs) ~fn:Path.to_string
       | None -> [])
 
 let require_order = fun items ~before ~after ->
@@ -716,7 +716,7 @@ let require_order = fun items ~before ~after ->
   | (_, None) -> Error ("missing " ^ after ^ " in [" ^ String.concat ", " items ^ "]")
 
 let object_name_of_module_node = fun (node: Riot_planner.Module_node.t G.node) ->
-  match node.value.kind with
+  match (G.value node).kind with
   | Riot_planner.Module_node.ML mod_ -> Some (Path.to_string (Riot_model.Module.cmx mod_))
   | Riot_planner.Module_node.MLI _
   | Riot_planner.Module_node.Library _
@@ -750,7 +750,7 @@ let validate_create_library_topological_order = fun graph objects ->
                 | Some node_index ->
                     let bad_dependencies =
                       List.filter_map
-                        node.deps
+                        (G.deps node)
                         ~fn:(fun dep_id ->
                           match G.get_node graph dep_id with
                           | None -> None
@@ -2903,7 +2903,7 @@ let test_kernel_create_library_dependencies_are_unique = fun _ctx ->
                 let seen = Collections.HashSet.create () in
                 let duplicates =
                   List.filter_map
-                    node.deps
+                    (G.deps node)
                     ~fn:(fun dep_id ->
                       if Collections.HashSet.insert seen ~value:dep_id then
                         None
@@ -2944,18 +2944,18 @@ let test_kernel_create_library_depends_on_object_producers = fun _ctx ->
                   |> List.for_each
                     ~fn:(fun (node: Riot_planner.Action_node.t) ->
                       List.for_each
-                        node.value.outs
+                        (G.value node).outs
                         ~fn:(fun output ->
                           let _ =
                             Collections.HashMap.insert
                               producer_by_output
                               ~key:(Path.to_string output)
-                              ~value:node.id
+                              ~value:(G.id node)
                           in
                           ()))
                 in
                 let create_library_objects =
-                  create_node.value.actions
+                  (G.value create_node).actions
                   |> List.filter_map
                     ~fn:(fun __tmp1 ->
                       match __tmp1 with
@@ -2971,7 +2971,7 @@ let test_kernel_create_library_depends_on_object_producers = fun _ctx ->
                       match Collections.HashMap.get producer_by_output ~key:object_name with
                       | None -> Some (object_name ^ " has no producer")
                       | Some producer_id ->
-                          if List.any create_node.deps ~fn:(G.Node_id.eq producer_id) then
+                          if List.any (G.deps create_node) ~fn:(G.Node_id.eq producer_id) then
                             None
                           else
                             Some (object_name

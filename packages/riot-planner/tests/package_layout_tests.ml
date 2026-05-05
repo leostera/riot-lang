@@ -45,7 +45,7 @@ let add_binary_target = fun graph ~name ~source ->
 let add_dep = fun node ~depends_on -> G.add_edge node ~depends_on
 
 let node_path = fun (node: Riot_planner.Module_node.t G.node) ->
-  match node.value.file with
+  match (G.value node).file with
   | Riot_planner.Module_node.Concrete path -> path
   | Riot_planner.Module_node.Generated { path; _ } -> path
 
@@ -58,7 +58,7 @@ let analyzed_module = fun (node: Riot_planner.Module_node.t G.node) ~source ->
   let parse_result = Syn.parse ~filename:display_path (source_slice source) in
   let deps = Syn.Deps.from_parse_result parse_result in
   (
-    node.id,
+    (G.id node),
     Riot_planner.Module_graph.{
       display_path;
       source_hash = Crypto.hash_string source;
@@ -66,7 +66,7 @@ let analyzed_module = fun (node: Riot_planner.Module_node.t G.node) ~source ->
       parse_result;
       deps;
       resolved_deps = [];
-      resolved_dep_ids = node.deps;
+      resolved_dep_ids = (G.deps node);
       unresolved_deps = [];
     }
   )

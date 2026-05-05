@@ -9,6 +9,7 @@ type t = {
   name: string option;
   root: Path.t;
   target_dir_root: Path.t;
+  source_ignore_patterns: string list;
   packages: Package_manifest.t list;
   dependencies: Package.dependency list;
   dev_dependencies: Package.dependency list;
@@ -20,6 +21,7 @@ type t = {
 type manifest = {
   name: string option;
   members: Path.t list;
+  source_ignore_patterns: string list;
   dependencies: Package.dependency list;
   dev_dependencies: Package.dependency list;
   build_dependencies: Package.dependency list;
@@ -292,6 +294,28 @@ let parse_members: Toml.value -> Path.t list = fun toml ->
     )
   | _ -> []
 
+let parse_workspace_ignore: Toml.value -> string list = fun toml ->
+  match toml with
+  | Toml.Table items -> (
+      match Fields.get "workspace" items with
+      | Some (Toml.Table workspace_items) -> (
+          match Fields.get "ignore" workspace_items with
+          | Some (Toml.Array patterns) ->
+              List.filter_map patterns ~fn:(fun pattern ->
+                match pattern with
+                | Toml.String pattern ->
+                    let pattern = String.trim pattern in
+                    if String.equal pattern "" then
+                      None
+                    else
+                      Some pattern
+                | _ -> None)
+          | _ -> []
+        )
+      | _ -> []
+    )
+  | _ -> []
+
 let parse_workspace_name: Toml.value -> string option = fun toml ->
   match toml with
   | Toml.Table items -> (
@@ -388,6 +412,7 @@ let parse_target_dir: Toml.value -> string option = fun toml ->
 let from_toml: Toml.value -> (manifest, error) result = fun toml ->
   let members = parse_members toml in
   let name = parse_workspace_name toml in
+  let source_ignore_patterns = parse_workspace_ignore toml in
   match parse_dependency_section "dependencies" toml with
   | Error _ as err -> err
   | Ok dependencies -> (
@@ -402,6 +427,7 @@ let from_toml: Toml.value -> (manifest, error) result = fun toml ->
               Ok {
                 name;
                 members;
+                source_ignore_patterns;
                 dependencies;
                 dev_dependencies;
                 build_dependencies;
@@ -431,11 +457,13 @@ let make
   ?(dev_dependencies = [])
   ?(build_dependencies = [])
   ?(profile_overrides = [])
+  ?(source_ignore_patterns = [])
   ?target_dir
   () = {
   name;
   root;
   target_dir_root = resolve_target_dir_root ~root ?target_dir ();
+  source_ignore_patterns;
   packages;
   dependencies;
   dev_dependencies;
@@ -451,6 +479,7 @@ let make_realized
   ?(dev_dependencies = [])
   ?(build_dependencies = [])
   ?(profile_overrides = [])
+  ?(source_ignore_patterns = [])
   ?target_dir
   () =
   make
@@ -461,6 +490,7 @@ let make_realized
     ~dev_dependencies
     ~build_dependencies
     ~profile_overrides
+    ~source_ignore_patterns
     ?target_dir
     ()
 
@@ -496,12 +526,16 @@ let find_package_for_path = fun (workspace: t) ~path ->
     | pkg :: _ -> Some pkg
     | [] -> None
 
-let realize_package = fun ~intent manifest -> Package_manifest.realize ~intent manifest
+let realize_package = fun ~intent (workspace: t) manifest ->
+  Package_manifest.realize
+    ~intent
+    ~source_ignore_patterns:workspace.source_ignore_patterns
+    manifest
 
 let realize_packages = fun ~intent workspace ->
   List.map
     workspace.packages
-    ~fn:(realize_package ~intent)
+    ~fn:(realize_package ~intent workspace)
 
 (** Utility functions *)
 let project_id = fun workspace ->

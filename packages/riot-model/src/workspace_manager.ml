@@ -478,6 +478,7 @@ let build_workspace:
       ?name:workspace_manifest.name
       ~root:workspace_root
       ~packages:all_packages
+      ~source_ignore_patterns:workspace_manifest.source_ignore_patterns
       ~dependencies:workspace_manifest.dependencies
       ~dev_dependencies:workspace_manifest.dev_dependencies
       ~build_dependencies:workspace_manifest.build_dependencies

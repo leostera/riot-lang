@@ -44,8 +44,9 @@ type process_slot = {
 type worker = {
   id: Runtime_scheduler_id.t;
   queue: process_slot Runtime_queue.t;
-  lock: Runtime_mutex.t;
-  cond: Runtime_condition.t;
+  sleep_lock: Runtime_mutex.t;
+  sleep_cond: Runtime_condition.t;
+  sleeping: bool Runtime_atomic.t;
 }
 
 type 'a response = {

@@ -238,7 +238,7 @@ let record_action_result = fun handle lane unit_key (action: Action_node.t) resu
       Remember_action_result {
         lane;
         unit_key;
-        action_id = action.id;
+        action_id = Action_node.id action;
         result;
       }
     )
@@ -315,18 +315,18 @@ let add_action_work = fun graph ~finalize_node_id lane unit_key action_graph ->
       let node_id =
         Graph_scheduler.Handle.add_node graph ~payload:(ExecuteAction { lane; unit_key; action })
       in
-      let _ = HashMap.insert action_node_ids ~key:action.id ~value:node_id in
+      let _ = HashMap.insert action_node_ids ~key:(Action_node.id action) ~value:node_id in
       ());
   Action_graph.nodes action_graph
   |> List.for_each
     ~fn:(fun (action: Action_node.t) ->
       let action_node_id =
-        HashMap.get action_node_ids ~key:action.id
+        HashMap.get action_node_ids ~key:(Action_node.id action)
         |> Option.expect
-          ~msg:("missing scheduler node for action " ^ Graph.SimpleGraph.Node_id.to_string action.id)
+          ~msg:("missing scheduler node for action " ^ Graph.SimpleGraph.Node_id.to_string (Action_node.id action))
       in
       List.for_each
-        action.deps
+        (Action_node.deps action)
         ~fn:(fun dependency_id ->
           let dependency_node_id =
             HashMap.get action_node_ids ~key:dependency_id

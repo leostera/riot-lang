@@ -4,6 +4,7 @@ type t = {
   name: string option;
   root: Path.t;
   target_dir_root: Path.t;
+  source_ignore_patterns: string list;
   packages: Package_manifest.t list;
   dependencies: Package.dependency list;
   dev_dependencies: Package.dependency list;
@@ -19,6 +20,7 @@ val make:
   ?dev_dependencies:Package.dependency list ->
   ?build_dependencies:Package.dependency list ->
   ?profile_overrides:(string * Package.profile_override) list ->
+  ?source_ignore_patterns:string list ->
   ?target_dir:string ->
   unit ->
   t
@@ -31,6 +33,7 @@ val make_realized:
   ?dev_dependencies:Package.dependency list ->
   ?build_dependencies:Package.dependency list ->
   ?profile_overrides:(string * Package.profile_override) list ->
+  ?source_ignore_patterns:string list ->
   ?target_dir:string ->
   unit ->
   t
@@ -41,7 +44,7 @@ val package_root: t -> Package_manifest.t -> Path.t
 
 val find_package_for_path: t -> path:Path.t -> Package_manifest.t option
 
-val realize_package: intent:Package.realization_intent -> Package_manifest.t -> Package.t
+val realize_package: intent:Package.realization_intent -> t -> Package_manifest.t -> Package.t
 
 val realize_packages: intent:Package.realization_intent -> t -> Package.t list
 

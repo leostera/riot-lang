@@ -17,16 +17,7 @@ let test_toolchain = fun () ->
 let test_build_target = Riot_model.Target.current
 
 let make_workspace = fun root ->
-  Riot_model.Workspace.{
-    name = None;
-    root;
-    target_dir_root = Path.(root / Path.v "target");
-    packages = [];
-    dependencies = [];
-    dev_dependencies = [];
-    build_dependencies = [];
-    profile_overrides = [];
-  }
+  Riot_model.Workspace.make ~root ~target_dir:"target" ~packages:[] ()
 
 let read_file = fun path ->
   Fs.read_to_string path

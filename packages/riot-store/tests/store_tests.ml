@@ -7,16 +7,7 @@ type Message.t +=
   | ConcurrentSaveComplete of (string * (unit, Riot_store.Store.error) result)
 
 let make_test_workspace = fun tmpdir ->
-  Riot_model.Workspace.{
-    name = None;
-    root = tmpdir;
-    target_dir_root = Path.(tmpdir / Path.v "target");
-    packages = [];
-    dependencies = [];
-    dev_dependencies = [];
-    build_dependencies = [];
-    profile_overrides = [];
-  }
+  Riot_model.Workspace.make ~root:tmpdir ~target_dir:"target" ~packages:[] ()
 
 let read_file = fun path ->
   Fs.read_to_string path
@@ -619,18 +610,17 @@ let test_export_source_path_round_trip = fun _ctx ->
         Fs.write "tool" Path.(sandbox / rel_path)
         |> Result.expect ~msg:"write export should succeed"
       in
-      let exports = [ Riot_store.Store.{ name = "tool"; path = rel_path; action_hash } ] in
       let _ =
-        Riot_store.Store.save
+        Riot_store.Store.save_action
           store
           ~package:"pkg"
-          ~exports
           ~input_hash:hash
           ~sandbox_dir:sandbox
           ~outs:[ Path.(sandbox / rel_path) ]
         |> Result.expect ~msg:"save should succeed"
       in
-      let expected = Path.(Riot_store.Store.hash_dir_of store hash / rel_path) in
+      let exports = [ Riot_store.Store.{ name = "tool"; path = rel_path; action_hash } ] in
+      let expected = Path.(Riot_store.Store.action_hash_dir_of store hash / rel_path) in
       match Riot_store.Store.export_source_path
         store
         (
@@ -727,7 +717,7 @@ let test_materialize_package_exports_from_action_artifact = fun _ctx ->
       let _ = Fs.write "tool-binary" output in
       let action_hash = Crypto.hash_string "materialize-action" in
       let _ =
-        Riot_store.Store.save
+        Riot_store.Store.save_action
           store
           ~package:"pkg"
           ~input_hash:action_hash
@@ -779,6 +769,40 @@ let test_materialize_package_exports_fails_when_source_missing = fun _ctx ->
       | Ok () -> Error "expected missing export source to fail materialization"
       | Error (Riot_store.Store.ExportSourceMissing _) -> Ok ()
       | Error error -> Error ("unexpected error: " ^ Riot_store.Store.error_message error)) with
+  | Ok x -> x
+  | Error _ -> Error "tempdir creation failed"
+
+let test_package_lookup_rejects_action_artifacts = fun _ctx ->
+  match Fs.with_tempdir
+    ~prefix:"store_package_lookup_rejects_action_test"
+    (fun tmpdir ->
+      let workspace = make_test_workspace tmpdir in
+      let store = Riot_store.Store.create ~workspace in
+      let sandbox = Path.(tmpdir / Path.v "sandbox") in
+      let _ =
+        Fs.create_dir_all sandbox
+        |> Result.expect ~msg:"create sandbox should succeed"
+      in
+      let output = Path.(sandbox / Path.v "Pkg.cmxa") in
+      let _ =
+        Fs.write "library-export" output
+        |> Result.expect ~msg:"write action output should succeed"
+      in
+      let hash = Crypto.hash_string "same-logical-cache-key" in
+      let _ =
+        Riot_store.Store.save_action
+          store
+          ~package:"pkg"
+          ~input_hash:hash
+          ~sandbox_dir:sandbox
+          ~outs:[ output ]
+        |> Result.expect ~msg:"save action artifact should succeed"
+      in
+      match (Riot_store.Store.get_action store hash, Riot_store.Store.get_package store hash) with
+      | (Some _, None) -> Ok ()
+      | (None, _) -> Error "action lookup should find the saved action artifact"
+      | (Some _, Some _) ->
+          Error "package lookup should not resolve an action artifact with the same hash") with
   | Ok x -> x
   | Error _ -> Error "tempdir creation failed"
 
@@ -951,7 +975,7 @@ let test_get_returns_none_when_export_source_missing = fun _ctx ->
         |> Result.expect ~msg:"write output should succeed"
       in
       let _ =
-        Riot_store.Store.save
+        Riot_store.Store.save_action
           store
           ~package:"pkg"
           ~input_hash:action_hash
@@ -977,7 +1001,7 @@ let test_get_returns_none_when_export_source_missing = fun _ctx ->
           ~outs:[ output ]
         |> Result.expect ~msg:"save package artifact should succeed"
       in
-      let action_dir = Riot_store.Store.hash_dir_of store action_hash in
+      let action_dir = Riot_store.Store.action_hash_dir_of store action_hash in
       let _ =
         Fs.remove_dir_all action_dir
         |> Result.expect ~msg:"remove action dir should succeed"
@@ -1627,6 +1651,9 @@ let tests =
     case
       "materialize package exports fails when source missing"
       test_materialize_package_exports_fails_when_source_missing;
+    case
+      "package lookup rejects action artifacts"
+      test_package_lookup_rejects_action_artifacts;
     case "promote overwrites existing target files" test_promote_overwrites_existing_target_files;
     case
       "save preserves executable permissions in cache"

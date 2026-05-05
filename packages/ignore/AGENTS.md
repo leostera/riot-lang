@@ -7,7 +7,7 @@
 1. Keep raw filesystem walking in `Std.Fs.Walker`; `ignore` should own precedence, matching, and pruning decisions.
 2. Keep gitignore-style parsing explicit and local, with public APIs exposing stable parsed patterns.
 3. Keep pruning pre-descent. If a directory is ignored, skip its subtree before scanning children.
-4. Keep higher-level ignore sources configurable through filenames and override globs.
+4. Keep higher-level ignore sources configurable through filenames, caller-supplied `ignore_patterns`, and override globs.
 5. Keep the hot path cheap by reusing compiled glob matchers and constructing `Path.t` values only when needed.
 6. `Ignore.Walker` is parallel by default. Default concurrency should track `Std.System.available_parallelism`, and callers that need deterministic sibling ordering must opt back down to `~concurrency:1`.
 7. Keep `ignore` parallelism actor-native by coordinating directory tasks through `Std.WorkerPool.DynamicWorkerPool`.

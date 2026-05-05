@@ -94,11 +94,11 @@ let plan_kernel_runtime_graphs = fun ~workspace ~store ~build_ctx ->
 
 let action_label = fun (node: Riot_planner.Action_node.t) ->
   let actions =
-    node.value.actions
+    (Riot_planner.Action_node.value node).actions
     |> List.map ~fn:Riot_planner.Action.to_string
     |> String.concat " ; "
   in
-  G.Node_id.to_string node.id ^ " => " ^ actions
+  G.Node_id.to_string (Riot_planner.Action_node.id node) ^ " => " ^ actions
 
 let summarize_execution_failures = fun ~sandbox_dir result ->
   let failures =

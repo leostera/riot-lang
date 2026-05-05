@@ -3,16 +3,7 @@ open Std
 module Test = Std.Test
 
 let make_test_workspace = fun tmpdir ->
-  Riot_model.Workspace.{
-    name = None;
-    root = tmpdir;
-    target_dir_root = Path.(tmpdir / Path.v "target");
-    packages = [];
-    dependencies = [];
-    dev_dependencies = [];
-    build_dependencies = [];
-    profile_overrides = [];
-  }
+  Riot_model.Workspace.make ~root:tmpdir ~target_dir:"target" ~packages:[] ()
 
 let test_cache_store_creation_is_lazy_until_first_save = fun _ctx ->
   match Fs.with_tempdir

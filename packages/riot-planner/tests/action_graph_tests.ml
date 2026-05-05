@@ -43,27 +43,27 @@ let find_action_node_by_output = fun graph output_name ->
   |> List.find
     ~fn:(fun (node: Riot_planner.Action_node.t) ->
       List.any
-        node.value.outs
+        (G.value node).outs
         ~fn:(fun output -> Path.to_string output = output_name))
 
 let dependency_output_names = fun graph (node: Riot_planner.Action_node.t) ->
   List.filter_map
-    node.deps
+    (G.deps node)
     ~fn:(fun dep_id ->
       match G.get_node (Riot_planner.Action_graph.graph graph) dep_id with
       | Some dep_node ->
-          List.head dep_node.value.outs
+          List.head ((G.value dep_node).outs)
           |> Option.map ~fn:Path.to_string
       | None -> None)
 
 let dependency_output_names_flat = fun graph (node: Riot_planner.Action_node.t) ->
   List.filter_map
-    node.deps
+    (G.deps node)
     ~fn:(fun dep_id -> G.get_node (Riot_planner.Action_graph.graph graph) dep_id)
   |> List.map
     ~fn:(fun (dep_node: Riot_planner.Action_node.t) ->
       List.map
-        dep_node.value.outs
+        (G.value dep_node).outs
         ~fn:Path.to_string)
   |> List.concat
 
@@ -72,7 +72,7 @@ let find_compile_action_node_by_source = fun graph source ->
   |> List.find
     ~fn:(fun (node: Riot_planner.Action_node.t) ->
       List.any
-        node.value.actions
+        (G.value node).actions
         ~fn:(fun action ->
           match action with
           | Riot_planner.Action.CompileImplementation { source = action_source; _ } ->
@@ -103,11 +103,11 @@ let test_action_graph_json_round_trip_preserves_dependencies = fun _ctx ->
       ~package
       ~toolchain:test_toolchain
       ~dependency_hashes:(fun dep_id ->
-        if Graph.SimpleGraph.Node_id.eq dep_id node_a.id then
+        if Graph.SimpleGraph.Node_id.eq dep_id (G.id node_a) then
           Riot_planner.Action_node.get_hash node_a
         else
           Crypto.hash_string "missing")
-      ~deps:[ node_a.id ]
+      ~deps:[ (G.id node_a) ]
   in
   let node_b = Riot_planner.Action_graph.add_node graph spec_b in
   Riot_planner.Action_graph.add_dependency graph node_b ~depends_on:node_a;
@@ -169,8 +169,8 @@ let test_action_graph_json_round_trip_preserves_package_paths_and_hashes = fun _
   | Ok decoded -> (
       match Riot_planner.Action_graph.nodes decoded with
       | [ decoded_node ] ->
-          let decoded_path = decoded_node.value.package.Riot_model.Package.path in
-          let decoded_rel = decoded_node.value.package.Riot_model.Package.relative_path in
+          let decoded_path = (G.value decoded_node).package.Riot_model.Package.path in
+          let decoded_rel = (G.value decoded_node).package.Riot_model.Package.relative_path in
           let decoded_hash = Riot_planner.Action_node.get_hash decoded_node in
           if
             Path.equal decoded_path (Path.v "packages/kernel")
@@ -218,13 +218,13 @@ let test_action_graph_json_round_trip_preserves_dependency_order = fun _ctx ->
       ~package
       ~path:(Path.v "d.txt")
       ~content:"d"
-      ~deps:[ node_a.id; node_b.id; node_c.id ]
+      ~deps:[ (G.id node_a); (G.id node_b); (G.id node_c) ]
       ~dependency_hashes:(fun dep_id ->
-        if Graph.SimpleGraph.Node_id.eq dep_id node_a.id then
+        if Graph.SimpleGraph.Node_id.eq dep_id (G.id node_a) then
           Riot_planner.Action_node.get_hash node_a
-        else if Graph.SimpleGraph.Node_id.eq dep_id node_b.id then
+        else if Graph.SimpleGraph.Node_id.eq dep_id (G.id node_b) then
           Riot_planner.Action_node.get_hash node_b
-        else if Graph.SimpleGraph.Node_id.eq dep_id node_c.id then
+        else if Graph.SimpleGraph.Node_id.eq dep_id (G.id node_c) then
           Riot_planner.Action_node.get_hash node_c
         else
           Crypto.hash_string "missing")
@@ -626,7 +626,7 @@ let test_create_library_preserves_module_dependency_order = fun _ctx ->
           | _ -> false) with
       | Some (Riot_planner.Action.CreateLibrary { objects; _ }) ->
           let actual = List.map objects ~fn:Path.to_string in
-          let expected = [ "A.cmx"; "B.cmx"; "C.cmx" ] in
+          let expected = [ "C.cmx"; "B.cmx"; "A.cmx" ] in
           if actual = expected then
             Ok ()
           else

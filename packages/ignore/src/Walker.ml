@@ -33,6 +33,7 @@ type t = {
   ignore: bool;
   git_ignore: bool;
   custom_ignore_filenames: string list;
+  ignore_patterns: Gitignore.t;
   overrides: Gitignore.t;
 }
 
@@ -172,15 +173,20 @@ let decision_for_entry = fun config frames entry ->
   if not (Match.is_none override_match) then
     Ok override_match
   else
-    let ignore_match = match_across_frames config frames path ~is_dir in
-    if Match.is_ignore ignore_match then
-      Ok Match.Ignore
-    else if Match.is_whitelist ignore_match then
-      Ok Match.Whitelist
-    else if config.hidden && Fs.Walker.FileItem.depth entry > 0 && basename_is_hidden entry then
-      Ok Match.Ignore
-    else
-      Ok Match.None_
+    let extra_ignore_match = Gitignore.matched config.ignore_patterns ~path ~is_dir in
+    if not (Match.is_none extra_ignore_match) then
+      Ok extra_ignore_match
+    else (
+      let ignore_match = match_across_frames config frames path ~is_dir in
+      if Match.is_ignore ignore_match then
+        Ok Match.Ignore
+      else if Match.is_whitelist ignore_match then
+        Ok Match.Whitelist
+      else if config.hidden && Fs.Walker.FileItem.depth entry > 0 && basename_is_hidden entry then
+        Ok Match.Ignore
+      else
+        Ok Match.None_
+    )
 
 let create = fun
   ~roots
@@ -192,6 +198,7 @@ let create = fun
   ?(ignore = true)
   ?(git_ignore = true)
   ?(custom_ignore_filenames = [])
+  ?(ignore_patterns = [])
   ?(overrides = [])
   () ->
   let concurrency = Int.max 1 concurrency in
@@ -200,31 +207,33 @@ let create = fun
     | [] -> Path.v "."
     | root :: _ -> root
   in
-  match Gitignore.from_lines ~root ~syntax:Gitignore.Override overrides with
-  | Error {
-      line;
-      input;
-      message;
-      offset;
-    } ->
-      Error (Glob.Invalid_glob {
-        input = "line " ^ Int.to_string line ^ ": " ^ input;
-        message;
-        offset;
-      })
-  | Ok override_matcher ->
-      Ok {
-        roots;
-        concurrency;
-        sort;
-        follow_symlinks;
-        hidden;
-        parents;
-        ignore;
-        git_ignore;
-        custom_ignore_filenames;
-        overrides = override_matcher;
-      }
+  let make_glob_error label (error: Gitignore.parse_error) =
+    Glob.Invalid_glob {
+      input = label ^ " line " ^ Int.to_string error.line ^ ": " ^ error.input;
+      message = error.message;
+      offset = error.offset;
+    }
+  in
+  match Gitignore.from_lines ~root ~syntax:Gitignore.Ignore_file ignore_patterns with
+  | Error error -> Error (make_glob_error "ignore pattern" error)
+  | Ok ignore_pattern_matcher -> (
+      match Gitignore.from_lines ~root ~syntax:Gitignore.Override overrides with
+      | Error error -> Error (make_glob_error "override" error)
+      | Ok override_matcher ->
+          Ok {
+            roots;
+            concurrency;
+            sort;
+            follow_symlinks;
+            hidden;
+            parents;
+            ignore;
+            git_ignore;
+            custom_ignore_filenames;
+            ignore_patterns = ignore_pattern_matcher;
+            overrides = override_matcher;
+          }
+    )
 
 let join_path_string = fun dir_path name ->
   if String.equal dir_path "" then

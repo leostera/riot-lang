@@ -24,6 +24,12 @@ type action_spec = {
 *)
 type t = action_spec G.node
 
+val id: t -> G.Node_id.t
+
+val value: t -> action_spec
+
+val deps: t -> G.Node_id.t list
+
 val make:
   actions:Action.t list ->
   outs:Path.t list ->

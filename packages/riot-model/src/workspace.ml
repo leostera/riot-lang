@@ -4,6 +4,7 @@ type t = {
   name: string option;
   root: Path.t;
   target_dir_root: Path.t;
+  source_ignore_patterns: string list;
   packages: Package_manifest.t list;
   dependencies: Package.dependency list;
   dev_dependencies: Package.dependency list;
@@ -31,11 +32,13 @@ let make
   ?(dev_dependencies = [])
   ?(build_dependencies = [])
   ?(profile_overrides = [])
+  ?(source_ignore_patterns = [])
   ?target_dir
   () = {
   name;
   root;
   target_dir_root = resolve_target_dir_root ~root ?target_dir ();
+  source_ignore_patterns;
   packages;
   dependencies;
   dev_dependencies;
@@ -51,6 +54,7 @@ let make_realized
   ?(dev_dependencies = [])
   ?(build_dependencies = [])
   ?(profile_overrides = [])
+  ?(source_ignore_patterns = [])
   ?target_dir
   () =
   make
@@ -61,6 +65,7 @@ let make_realized
     ~dev_dependencies
     ~build_dependencies
     ~profile_overrides
+    ~source_ignore_patterns
     ?target_dir
     ()
 
@@ -96,12 +101,16 @@ let find_package_for_path = fun (workspace: t) ~path ->
     | pkg :: _ -> Some pkg
     | [] -> None
 
-let realize_package = fun ~intent manifest -> Package_manifest.realize ~intent manifest
+let realize_package = fun ~intent (workspace: t) manifest ->
+  Package_manifest.realize
+    ~intent
+    ~source_ignore_patterns:workspace.source_ignore_patterns
+    manifest
 
 let realize_packages = fun ~intent workspace ->
   List.map
     workspace.packages
-    ~fn:(realize_package ~intent)
+    ~fn:(realize_package ~intent workspace)
 
 let project_id = fun workspace ->
   let root_str = Path.to_string workspace.root in

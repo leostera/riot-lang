@@ -324,10 +324,10 @@ let module_graph_to_json = fun (module_graph: Module_node.t G.t) ->
   in
   let node_to_json (node: Module_node.t G.node) =
     Object [
-      ("id", Int (G.Node_id.to_int node.id));
-      ("file", file_to_json node.value.file);
-      ("kind", module_kind_to_json node.value.kind);
-      ("deps", Array (List.map node.deps ~fn:(fun dep -> Int (G.Node_id.to_int dep))));
+      ("id", Int (G.Node_id.to_int (G.id node)));
+      ("file", file_to_json (G.value node).file);
+      ("kind", module_kind_to_json (G.value node).kind);
+      ("deps", Array (List.map (G.deps node) ~fn:(fun dep -> Int (G.Node_id.to_int dep))));
       ("opens", Array []);
     ]
   in
@@ -402,7 +402,7 @@ let module_graph_of_json = fun json ->
                 |> List.for_each
                   ~fn:(fun (node, dep_ids) ->
                     List.for_each
-                      (List.reverse dep_ids)
+                      dep_ids
                       ~fn:(fun dep_id ->
                         match HashMap.get id_to_node ~key:dep_id with
                         | Some dep_node -> G.add_edge node ~depends_on:dep_node
@@ -607,7 +607,7 @@ let plan_package_after_dependencies = fun
   in
   let artifact_lookup_started_at = Time.Instant.now () in
   let cached_artifact =
-    match Riot_store.Store.get store input_hash with
+    match Riot_store.Store.get_package store input_hash with
     | Some artifact -> Some (artifact, artifact.exports)
     | _ -> None
   in
@@ -752,7 +752,7 @@ let plan_package_after_dependencies = fun
                     (* Make all existing nodes depend on foreign dependency nodes *)
                     if List.length foreign_nodes > 0 then (
                       let foreign_node_ids =
-                        List.map foreign_nodes ~fn:(fun (node: Action_node.t) -> node.id)
+                        List.map foreign_nodes ~fn:(fun (node: Action_node.t) -> G.id node)
                       in
                       Log.info
                         ("[PACKAGE_PLANNER] Making all action nodes depend on "
@@ -766,7 +766,7 @@ let plan_package_after_dependencies = fun
                       List.for_each
                         all_nodes
                         ~fn:(fun (node: Action_node.t) ->
-                          let is_foreign_node = List.contains foreign_node_ids ~value:node.id in
+                          let is_foreign_node = List.contains foreign_node_ids ~value:(G.id node) in
                           if not is_foreign_node then
                             List.for_each
                               foreign_nodes
@@ -881,7 +881,7 @@ let plan_package_after_dependencies = fun
               (* Make all existing nodes depend on foreign dependency nodes *)
               if List.length foreign_nodes > 0 then (
                 let foreign_node_ids =
-                  List.map foreign_nodes ~fn:(fun (node: Action_node.t) -> node.id)
+                  List.map foreign_nodes ~fn:(fun (node: Action_node.t) -> G.id node)
                 in
                 Log.info
                   ("[PACKAGE_PLANNER] Making all action nodes depend on "
@@ -896,7 +896,7 @@ let plan_package_after_dependencies = fun
                   all_nodes
                   ~fn:(fun (node: Action_node.t) ->
                     (* Skip foreign dependency nodes themselves *)
-                    let is_foreign_node = List.contains foreign_node_ids ~value:node.id in
+                    let is_foreign_node = List.contains foreign_node_ids ~value:(G.id node) in
                     if not is_foreign_node then (
                       (* Make this node depend on all foreign nodes *)
                       List.for_each

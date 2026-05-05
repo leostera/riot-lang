@@ -21,6 +21,7 @@ let build_cli = fun () ->
     Logout.command;
     Lsp_cmd.command;
     New.command;
+    Plan.command;
     Publish.command;
     Run.command;
     Search.command;
@@ -368,6 +369,12 @@ let run = fun ~args ->
               let () = trace_cli "build-prepare-done" in
               let () = trace_cli "build-run-start" in
               Build.run ~workspace build_matches
+          | Some ("plan", plan_matches) ->
+              let* workspace = require_clean_workspace (get_workspace_scan ()) in
+              let () = trace_cli "plan-prepare-start" in
+              let* workspace = ensure_workspace workspace in
+              let () = trace_cli "plan-prepare-done" in
+              Plan.run ~workspace plan_matches
           | Some ("run", run_matches) -> (
               let workspace_scan = get_workspace_scan () in
               let (workspace, workspace_error) =

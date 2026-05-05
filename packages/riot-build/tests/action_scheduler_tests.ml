@@ -18,16 +18,7 @@ let test_toolchain = fun () ->
 let test_build_target = Riot_model.Target.current
 
 let make_workspace = fun root ->
-  Riot_model.Workspace.{
-    name = None;
-    root;
-    target_dir_root = Path.(root / Path.v "target");
-    packages = [];
-    dependencies = [];
-    dev_dependencies = [];
-    build_dependencies = [];
-    profile_overrides = [];
-  }
+  Riot_model.Workspace.make ~root ~target_dir:"target" ~packages:[] ()
 
 let make_package = fun ~root ~name ->
   let package_name = package_name name in
@@ -103,7 +94,7 @@ let test_action_scheduler_reports_first_failure_and_keeps_other_results = fun _c
         make_node_in
           graph
           ~package
-          ~deps:[ failing_node.id ]
+          ~deps:[ (Riot_planner.Action_node.id failing_node) ]
           ~actions:[
             Riot_planner.Action.WriteFile {
               destination = Path.v "dependent.txt";

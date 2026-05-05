@@ -62,7 +62,7 @@ let build_package = fun ~workspace ~toolchain ~store package ->
                 let _ =
                   Std.Collections.HashMap.insert
                     completed
-                    ~key:completed_action.node.id
+                    ~key:(Riot_planner.Action_node.id completed_action.node)
                     ~value:completed_action.result
                 in
                 ());

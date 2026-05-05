@@ -613,10 +613,12 @@ let package_typ_sources_from_planner = fun
                       nodes
                       |> List.filter_map
                         (fun (node: Riot_planner.Module_node.t Std.Graph.SimpleGraph.node) ->
-                          match node.value.kind with
+                          let node_value = Std.Graph.SimpleGraph.value node in
+                          let node_id = Std.Graph.SimpleGraph.id node in
+                          match node_value.kind with
                           | Riot_planner.Module_node.ML mod_
                           | Riot_planner.Module_node.MLI mod_ -> (
-                              match HashMap.get analyzed_modules node.id with
+                              match HashMap.get analyzed_modules node_id with
                               | None -> None
                               | Some analyzed -> (
                                   match analyzed.cst with
@@ -639,7 +641,7 @@ let package_typ_sources_from_planner = fun
                                         Typ_source.make_prepared
                                           ~source_id
                                           ~kind:(
-                                            match node.value.file with
+                                            match node_value.file with
                                             | Riot_planner.Module_node.Generated _ ->
                                                 Typ_source.Generated
                                             | Riot_planner.Module_node.Concrete _ -> Typ_source.File
@@ -655,7 +657,7 @@ let package_typ_sources_from_planner = fun
                                       Some {
                                         generated =
                                           (
-                                            match node.value.file with
+                                            match node_value.file with
                                             | Riot_planner.Module_node.Generated _ -> true
                                             | Riot_planner.Module_node.Concrete _ -> false
                                           );

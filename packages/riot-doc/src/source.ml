@@ -47,7 +47,7 @@ let relative_path_for = fun ~package_path source_path ->
 
 let interface_source_of_node = fun
   ~(package:Riot_model.Package.t) (node: Riot_planner.Module_node.t G.node) ->
-  match (node.value.kind, node.value.file) with
+  match ((G.value node).kind, (G.value node).file) with
   | (Riot_planner.Module_node.MLI mod_, Riot_planner.Module_node.Concrete path) when Path.to_string
     path
   != "" ->

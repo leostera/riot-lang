@@ -703,7 +703,7 @@ let build_dashboard_action_label = fun action ->
   | Riot_planner.Action.BuildForeignDependency { name; _ } -> "build " ^ name
 
 let build_dashboard_node_label = fun (action: Riot_planner.Action_node.t) ->
-  match action.value.actions with
+  match (Riot_planner.Action_node.value action).actions with
   | first :: _ -> build_dashboard_action_label first
   | [] -> "build"
 
@@ -781,7 +781,7 @@ let build_dashboard_set_action_count = fun state ~build_target package ~action_c
 
 let build_dashboard_action_key = fun (action: Riot_planner.Action_node.t) ->
   Graph.SimpleGraph.Node_id.to_string
-    action.id
+    (Riot_planner.Action_node.id action)
 
 let build_dashboard_running_action_views = fun row ->
   let actions = ref [] in
@@ -799,7 +799,7 @@ let build_dashboard_running_action_views = fun row ->
 
 let build_dashboard_mark_action_started = fun
   state ~build_target (action: Riot_planner.Action_node.t) ->
-  match build_dashboard_find_package state ~build_target action.value.package with
+  match build_dashboard_find_package state ~build_target (Riot_planner.Action_node.value action).package with
   | Some row ->
       let key = build_dashboard_action_key action in
       let label = build_dashboard_node_label action in
@@ -897,11 +897,11 @@ let build_dashboard_update = fun state event ->
   | Riot_build.Event.Telemetry (
     Build_telemetry.ActionCompleted { action; build_target; _ }
   ) ->
-      build_dashboard_mark_action_completed state ~build_target action.value.package action
+      build_dashboard_mark_action_completed state ~build_target (Riot_planner.Action_node.value action).package action
   | Riot_build.Event.Telemetry (
     Build_telemetry.ActionFailed { action; build_target; _ }
   ) ->
-      build_dashboard_mark_action_completed state ~build_target action.value.package action
+      build_dashboard_mark_action_completed state ~build_target (Riot_planner.Action_node.value action).package action
   | Riot_build.Event.Telemetry (
     Build_telemetry.BuildCompleted { package; build_target; status = `Fresh; _ }
   ) ->

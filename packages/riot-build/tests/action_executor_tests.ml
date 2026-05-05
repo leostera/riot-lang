@@ -17,16 +17,7 @@ let test_toolchain = fun () ->
 let test_build_target = Riot_model.Target.current
 
 let make_workspace = fun root ->
-  Riot_model.Workspace.{
-    name = None;
-    root;
-    target_dir_root = Path.(root / Path.v "target");
-    packages = [];
-    dependencies = [];
-    dev_dependencies = [];
-    build_dependencies = [];
-    profile_overrides = [];
-  }
+  Riot_model.Workspace.make ~root ~target_dir:"target" ~packages:[] ()
 
 let make_package = fun ~root ~name ->
   let package_name = package_name name in
@@ -40,7 +31,7 @@ let make_package = fun ~root ~name ->
 
 let make_node = fun ~package ?(dep_nodes = []) ~actions ~outs () ->
   let graph = Riot_planner.Action_graph.create () in
-  let deps = List.map dep_nodes ~fn:(fun (node: Riot_planner.Action_node.t) -> node.id) in
+  let deps = List.map dep_nodes ~fn:(fun (node: Riot_planner.Action_node.t) -> (Riot_planner.Action_node.id node)) in
   let spec =
     Riot_planner.Action_node.make
       ~actions
@@ -60,7 +51,7 @@ let make_node = fun ~package ?(dep_nodes = []) ~actions ~outs () ->
   in
   node
 
-let node_id = fun (node: Riot_planner.Action_node.t) -> node.id
+let node_id = fun (node: Riot_planner.Action_node.t) -> (Riot_planner.Action_node.id node)
 
 let failed_result = fun node_id ->
   let now = Time.Instant.now () in

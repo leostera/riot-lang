@@ -172,7 +172,7 @@ let test_module_graph_prefers_implementation_when_interface_exists = fun _ctx ->
           let graph = Riot_planner.Module_graph.graph graph_builder in
           let find_node_id expected_kind expected_name =
             let matches (_id, (node: Riot_planner.Module_node.t G.node)) =
-              match node.value.kind with
+              match (G.value node).kind with
               | Riot_planner.Module_node.ML mod_ when expected_kind = `implementation ->
                   String.equal
                     (
@@ -199,8 +199,8 @@ let test_module_graph_prefers_implementation_when_interface_exists = fun _ctx ->
               match G.get_node graph bar_mli_id with
               | None -> Error "expected bar.mli node to exist"
               | Some node ->
-                  let depends_on_impl = List.any node.deps ~fn:(G.Node_id.eq foo_ml_id) in
-                  let depends_on_intf = List.any node.deps ~fn:(G.Node_id.eq foo_mli_id) in
+                  let depends_on_impl = List.any (G.deps node) ~fn:(G.Node_id.eq foo_ml_id) in
+                  let depends_on_intf = List.any (G.deps node) ~fn:(G.Node_id.eq foo_mli_id) in
                   if depends_on_impl && not depends_on_intf then
                     Ok ()
                   else
@@ -295,7 +295,7 @@ let test_module_graph_resolves_nested_local_unix_backend = fun _ctx ->
           let graph = Riot_planner.Module_graph.graph graph_builder in
           let find_ml qualified_name =
             let matches (_id, (node: Riot_planner.Module_node.t G.node)) =
-              match node.value.kind with
+              match (G.value node).kind with
               | Riot_planner.Module_node.ML mod_ ->
                   String.equal (Riot_model.Module.namespaced_name mod_) qualified_name
               | _ -> false
@@ -312,10 +312,10 @@ let test_module_graph_resolves_nested_local_unix_backend = fun _ctx ->
           ) with
           | (Ok file_node, Ok file_unix_node, Ok process_unix_node, Ok _) ->
               let depends_on_file_unix =
-                List.any file_node.deps ~fn:(G.Node_id.eq file_unix_node.id)
+                List.any (G.deps file_node) ~fn:(G.Node_id.eq (G.id file_unix_node))
               in
               let depends_on_process_unix =
-                List.any file_node.deps ~fn:(G.Node_id.eq process_unix_node.id)
+                List.any (G.deps file_node) ~fn:(G.Node_id.eq (G.id process_unix_node))
               in
               if depends_on_file_unix && not depends_on_process_unix then
                 Ok ()
@@ -391,8 +391,8 @@ let test_module_graph_uses_explicit_root_library_path = fun _ctx ->
                 G.map graph ~fn:(fun x -> x)
                 |> List.filter_map
                   ~fn:(fun (_id, (node: Riot_planner.Module_node.t G.node)) ->
-                    match node.value.kind with
-                    | Riot_planner.Module_node.ML mod_ -> Some (mod_, node.value.file)
+                    match (G.value node).kind with
+                    | Riot_planner.Module_node.ML mod_ -> Some (mod_, (G.value node).file)
                     | _ -> None)
               in
               let has_pkg_root =
@@ -485,8 +485,8 @@ let test_module_graph_uses_explicit_root_library_path_case_insensitively = fun _
                 G.map graph ~fn:(fun x -> x)
                 |> List.filter_map
                   ~fn:(fun (_id, (node: Riot_planner.Module_node.t G.node)) ->
-                    match node.value.kind with
-                    | Riot_planner.Module_node.ML mod_ -> Some (mod_, node.value.file)
+                    match (G.value node).kind with
+                    | Riot_planner.Module_node.ML mod_ -> Some (mod_, (G.value node).file)
                     | _ -> None)
               in
               let has_pkg_root =
@@ -572,7 +572,7 @@ let test_module_graph_root_library_alias_depends_on_child_module = fun _ctx ->
           let graph = Riot_planner.Module_graph.graph graph_builder in
           let find_ml qualified_name =
             let matches (_id, (node: Riot_planner.Module_node.t G.node)) =
-              match node.value.kind with
+              match (G.value node).kind with
               | Riot_planner.Module_node.ML mod_ ->
                   String.equal (Riot_model.Module.namespaced_name mod_) qualified_name
               | _ -> false
@@ -583,7 +583,7 @@ let test_module_graph_root_library_alias_depends_on_child_module = fun _ctx ->
           in
           match (find_ml "Lib_with_deps", find_ml "Lib_with_deps__A") with
           | (Ok root_node, Ok a_node) ->
-              if List.any root_node.deps ~fn:(G.Node_id.eq a_node.id) then
+              if List.any (G.deps root_node) ~fn:(G.Node_id.eq (G.id a_node)) then
                 Ok ()
               else
                 Error "expected Lib_with_deps root module to depend on Lib_with_deps__A"
@@ -654,7 +654,7 @@ let test_module_graph_opened_public_root_resolves_children_to_public_module = fu
           let analyzed_modules = Riot_planner.Module_graph.analyzed_modules graph_builder in
           let find_ml qualified_name =
             let matches (_id, (node: Riot_planner.Module_node.t G.node)) =
-              match node.value.kind with
+              match (G.value node).kind with
               | Riot_planner.Module_node.ML mod_ ->
                   String.equal (Riot_model.Module.namespaced_name mod_) qualified_name
               | _ -> false
@@ -684,8 +684,8 @@ let test_module_graph_opened_public_root_resolves_children_to_public_module = fu
               | Error err -> Error ("dependency analysis failed: " ^ deps_error_to_string err)
               | Ok deps ->
                   let modules = Syn.Deps.modules deps in
-                  let depends_on_syn = List.any main_node.deps ~fn:(G.Node_id.eq syn_node.id) in
-                  let depends_on_token = List.any main_node.deps ~fn:(G.Node_id.eq token_node.id) in
+                  let depends_on_syn = List.any (G.deps main_node) ~fn:(G.Node_id.eq (G.id syn_node)) in
+                  let depends_on_token = List.any (G.deps main_node) ~fn:(G.Node_id.eq (G.id token_node)) in
                   if modules = [ "Syn" ] && depends_on_syn && not depends_on_token then
                     Ok ()
                   else
@@ -798,7 +798,7 @@ let test_module_graph_implicit_alias_opens_resolve_nested_leaf_modules = fun _ct
           let analyzed_modules = Riot_planner.Module_graph.analyzed_modules graph_builder in
           let find_ml qualified_name =
             let matches (_id, (node: Riot_planner.Module_node.t G.node)) =
-              match node.value.kind with
+              match (G.value node).kind with
               | Riot_planner.Module_node.ML mod_ ->
                   String.equal (Riot_model.Module.namespaced_name mod_) qualified_name
               | _ -> false
@@ -809,7 +809,7 @@ let test_module_graph_implicit_alias_opens_resolve_nested_leaf_modules = fun _ct
           in
           let find_mli qualified_name =
             let matches (_id, (node: Riot_planner.Module_node.t G.node)) =
-              match node.value.kind with
+              match (G.value node).kind with
               | Riot_planner.Module_node.MLI mod_ ->
                   String.equal (Riot_model.Module.namespaced_name mod_) qualified_name
               | _ -> false
@@ -847,13 +847,13 @@ let test_module_graph_implicit_alias_opens_resolve_nested_leaf_modules = fun _ct
               | Ok deps ->
                   let modules = Syn.Deps.modules deps in
                   let depends_on_result =
-                    List.any unix_node.deps ~fn:(G.Node_id.eq result_node.id)
+                    List.any (G.deps unix_node) ~fn:(G.Node_id.eq (G.id result_node))
                   in
                   let depends_on_system_error =
-                    List.any unix_node.deps ~fn:(G.Node_id.eq system_error_node.id)
+                    List.any (G.deps unix_node) ~fn:(G.Node_id.eq (G.id system_error_node))
                   in
                   let depends_on_socket_addr =
-                    List.any unix_node.deps ~fn:(G.Node_id.eq socket_addr_node.id)
+                    List.any (G.deps unix_node) ~fn:(G.Node_id.eq (G.id socket_addr_node))
                   in
                   if
                     modules = [ "Result"; "Socket_addr"; "System_error" ]
@@ -959,7 +959,7 @@ let test_module_graph_implicit_root_alias_resolves_public_child_root = fun _ctx 
           let analyzed_modules = Riot_planner.Module_graph.analyzed_modules graph_builder in
           let find_ml qualified_name =
             let matches (_id, (node: Riot_planner.Module_node.t G.node)) =
-              match node.value.kind with
+              match (G.value node).kind with
               | Riot_planner.Module_node.ML mod_ ->
                   String.equal (Riot_model.Module.namespaced_name mod_) qualified_name
               | _ -> false
@@ -970,7 +970,7 @@ let test_module_graph_implicit_root_alias_resolves_public_child_root = fun _ctx 
           in
           let find_mli qualified_name =
             let matches (_id, (node: Riot_planner.Module_node.t G.node)) =
-              match node.value.kind with
+              match (G.value node).kind with
               | Riot_planner.Module_node.MLI mod_ ->
                   String.equal (Riot_model.Module.namespaced_name mod_) qualified_name
               | _ -> false
@@ -1007,12 +1007,12 @@ let test_module_graph_implicit_root_alias_resolves_public_child_root = fun _ctx 
               | Error err -> Error ("dependency analysis failed: " ^ deps_error_to_string err)
               | Ok deps ->
                   let modules = Syn.Deps.modules deps in
-                  let depends_on_fs = List.any process_node.deps ~fn:(G.Node_id.eq fs_node.id) in
+                  let depends_on_fs = List.any (G.deps process_node) ~fn:(G.Node_id.eq (G.id fs_node)) in
                   let depends_on_fs_file =
-                    List.any process_node.deps ~fn:(G.Node_id.eq fs_file_node.id)
+                    List.any (G.deps process_node) ~fn:(G.Node_id.eq (G.id fs_file_node))
                   in
                   let depends_on_system_error =
-                    List.any process_node.deps ~fn:(G.Node_id.eq system_error_node.id)
+                    List.any (G.deps process_node) ~fn:(G.Node_id.eq (G.id system_error_node))
                   in
                   if
                     modules = [ "Fs"; "System_error" ]
@@ -1110,7 +1110,7 @@ let test_module_graph_resolves_deeply_nested_modules_namespace_first = fun _ctx 
           let graph = Riot_planner.Module_graph.graph graph_builder in
           let find_ml qualified_name =
             let matches (_id, (node: Riot_planner.Module_node.t G.node)) =
-              match node.value.kind with
+              match (G.value node).kind with
               | Riot_planner.Module_node.ML mod_ ->
                   String.equal (Riot_model.Module.namespaced_name mod_) qualified_name
               | _ -> false
@@ -1122,7 +1122,7 @@ let test_module_graph_resolves_deeply_nested_modules_namespace_first = fun _ctx 
           let depends_on
             (node: Riot_planner.Module_node.t G.node)
             (dependency: Riot_planner.Module_node.t G.node) =
-            List.any node.deps ~fn:(G.Node_id.eq dependency.id)
+            List.any (G.deps node) ~fn:(G.Node_id.eq (G.id dependency))
           in
           match (
             find_ml "Deep_graph__Domains__Admin__Users__Models__Testing__User",
@@ -1292,7 +1292,7 @@ let test_module_graph_keeps_nested_sibling_dependency_across_allowed_source_orde
                 let graph = Riot_planner.Module_graph.graph graph_builder in
                 let find_mli qualified_name =
                   let matches (_id, (node: Riot_planner.Module_node.t G.node)) =
-                    match node.value.kind with
+                    match (G.value node).kind with
                     | Riot_planner.Module_node.MLI mod_ ->
                         String.equal (Riot_model.Module.namespaced_name mod_) qualified_name
                     | _ -> false
@@ -1303,7 +1303,7 @@ let test_module_graph_keeps_nested_sibling_dependency_across_allowed_source_orde
                 in
                 let find_modules qualified_name =
                   let matches (_id, (node: Riot_planner.Module_node.t G.node)) =
-                    match node.value.kind with
+                    match (G.value node).kind with
                     | Riot_planner.Module_node.ML mod_
                     | Riot_planner.Module_node.MLI mod_ ->
                         String.equal (Riot_model.Module.namespaced_name mod_) qualified_name
@@ -1317,11 +1317,11 @@ let test_module_graph_keeps_nested_sibling_dependency_across_allowed_source_orde
                 in
                 let module_dependency_labels (node: Riot_planner.Module_node.t G.node) =
                   List.filter_map
-                    node.deps
+                    (G.deps node)
                     ~fn:(fun dep_id ->
                       match G.get_node graph dep_id with
                       | Some dep_node -> (
-                          match dep_node.value.kind with
+                          match (G.value dep_node).kind with
                           | Riot_planner.Module_node.ML mod_ ->
                               Some ("ML(" ^ Riot_model.Module.namespaced_name mod_ ^ ")")
                           | Riot_planner.Module_node.MLI mod_ ->
@@ -1349,8 +1349,8 @@ let test_module_graph_keeps_nested_sibling_dependency_across_allowed_source_orde
                         udp_socket_nodes
                         ~fn:(fun udp_socket_node ->
                           List.any
-                            udp_server_mli.deps
-                            ~fn:(G.Node_id.eq udp_socket_node.id))
+                            (G.deps udp_server_mli)
+                            ~fn:(G.Node_id.eq (G.id udp_socket_node)))
                     then
                       run rest
                     else
@@ -1647,7 +1647,7 @@ let test_module_graph_resolves_loose_source_local_open_exports = fun _ctx ->
                 G.map graph ~fn:(fun x -> x)
                 |> List.find
                   ~fn:(fun (_node_id, (node: Riot_planner.Module_node.t G.node)) ->
-                    match node.value.kind with
+                    match (G.value node).kind with
                     | Riot_planner.Module_node.ML mod_ ->
                         String.equal (Riot_model.Module.namespaced_name mod_) name
                     | _ -> false)
@@ -1665,7 +1665,7 @@ let test_module_graph_resolves_loose_source_local_open_exports = fun _ctx ->
                         | Ok deps -> Syn.Deps.modules deps
                         | Error _ -> []
                       in
-                      let has_edge = List.any action_node.deps ~fn:(G.Node_id.eq dep_node.id) in
+                      let has_edge = List.any (G.deps action_node) ~fn:(G.Node_id.eq (G.id dep_node)) in
                       if
                         requested_modules = [ "Dep_graph" ]
                         && analyzed.Riot_planner.Module_graph.unresolved_deps = []
@@ -1749,7 +1749,7 @@ let test_module_graph_wires_direct_dependency_root_edge = fun _ctx ->
             G.map graph ~fn:(fun x -> x)
             |> List.find
               ~fn:(fun (_node_id, (node: Riot_planner.Module_node.t G.node)) ->
-                match node.value.kind with
+                match (G.value node).kind with
                 | Riot_planner.Module_node.ML mod_ ->
                     String.equal (Riot_model.Module.namespaced_name mod_) "App"
                 | _ -> false)
@@ -1758,18 +1758,18 @@ let test_module_graph_wires_direct_dependency_root_edge = fun _ctx ->
             G.map graph ~fn:(fun x -> x)
             |> List.find
               ~fn:(fun (_node_id, (node: Riot_planner.Module_node.t G.node)) ->
-                match node.value.kind with
+                match (G.value node).kind with
                 | Riot_planner.Module_node.PackageDependency { root_module; _ } ->
                     String.equal root_module "Std"
                 | _ -> false)
           in
           match (find_app_node (), find_std_node ()) with
           | (Some (_app_id, app_node), Some (_std_id, std_node)) ->
-              let has_edge = List.any app_node.deps ~fn:(G.Node_id.eq std_node.id) in
+              let has_edge = List.any (G.deps app_node) ~fn:(G.Node_id.eq (G.id std_node)) in
               let analyzed_app =
                 List.find
                   analyzed_modules
-                  ~fn:(fun (node_id, _analyzed) -> G.Node_id.eq node_id app_node.id)
+                  ~fn:(fun (node_id, _analyzed) -> G.Node_id.eq node_id (G.id app_node))
               in
               (
                 match analyzed_app with
@@ -2018,7 +2018,7 @@ let test_module_graph_resolves_direct_dependency_nested_public_export = fun _ctx
                 G.map graph ~fn:(fun x -> x)
                 |> List.find
                   ~fn:(fun (_node_id, (node: Riot_planner.Module_node.t G.node)) ->
-                    match node.value.kind with
+                    match (G.value node).kind with
                     | Riot_planner.Module_node.ML mod_ ->
                         String.equal (Riot_model.Module.namespaced_name mod_) "App"
                     | _ -> false)
@@ -2027,7 +2027,7 @@ let test_module_graph_resolves_direct_dependency_nested_public_export = fun _ctx
                 G.map graph ~fn:(fun x -> x)
                 |> List.find
                   ~fn:(fun (_node_id, (node: Riot_planner.Module_node.t G.node)) ->
-                    match node.value.kind with
+                    match (G.value node).kind with
                     | Riot_planner.Module_node.PackageDependency { root_module; _ } ->
                         String.equal root_module "Kernel"
                     | _ -> false)
@@ -2044,7 +2044,7 @@ let test_module_graph_resolves_direct_dependency_nested_public_export = fun _ctx
                         | Ok deps -> Syn.Deps.modules deps
                         | Error _ -> []
                       in
-                      let has_edge = List.any app_node.deps ~fn:(G.Node_id.eq kernel_node.id) in
+                      let has_edge = List.any (G.deps app_node) ~fn:(G.Node_id.eq (G.id kernel_node)) in
                       if
                         requested_modules = [ "Kernel" ]
                         && analyzed.Riot_planner.Module_graph.unresolved_deps = []
@@ -2138,7 +2138,7 @@ let test_module_graph_resolves_self_named_reference_to_dependency_root = fun _ct
                 G.map graph ~fn:(fun x -> x)
                 |> List.find
                   ~fn:(fun (_node_id, (node: Riot_planner.Module_node.t G.node)) ->
-                    match node.value.kind with
+                    match (G.value node).kind with
                     | Riot_planner.Module_node.ML mod_ ->
                         String.equal (Riot_model.Module.namespaced_name mod_) "App__Config"
                     | _ -> false)
@@ -2147,7 +2147,7 @@ let test_module_graph_resolves_self_named_reference_to_dependency_root = fun _ct
                 G.map graph ~fn:(fun x -> x)
                 |> List.find
                   ~fn:(fun (_node_id, (node: Riot_planner.Module_node.t G.node)) ->
-                    match node.value.kind with
+                    match (G.value node).kind with
                     | Riot_planner.Module_node.PackageDependency { root_module; _ } ->
                         String.equal root_module "Config"
                     | _ -> false)
@@ -2165,10 +2165,10 @@ let test_module_graph_resolves_self_named_reference_to_dependency_root = fun _ct
                         | Error _ -> []
                       in
                       let depends_on_self =
-                        List.any config_node.deps ~fn:(G.Node_id.eq config_node.id)
+                        List.any (G.deps config_node) ~fn:(G.Node_id.eq (G.id config_node))
                       in
                       let depends_on_dependency =
-                        List.any config_node.deps ~fn:(G.Node_id.eq dependency_node.id)
+                        List.any (G.deps config_node) ~fn:(G.Node_id.eq (G.id dependency_node))
                       in
                       if
                         requested_modules = [ "Config" ]

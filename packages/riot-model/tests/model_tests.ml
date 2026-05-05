@@ -532,6 +532,13 @@ path = "src/demo.ml"
       in
       let pkg =
         Riot_model.Package.from_toml
+          ~source_ignore_patterns:[
+            "tests/fixtures";
+            "tests/generated";
+            "tests/diagnostics";
+            "tests/autofix_fixtures";
+            "tests/workspace_fixtures";
+          ]
           manifest
           ~workspace_deps:[]
           ~workspace_dev_deps:[]
@@ -588,6 +595,7 @@ path = "src/demo.ml"
       in
       let pkg =
         Riot_model.Package.from_toml
+          ~source_ignore_patterns:[ "tests/fixtures" ]
           manifest
           ~workspace_deps:[]
           ~workspace_dev_deps:[]
@@ -605,6 +613,63 @@ path = "src/demo.ml"
         Ok ()
       else
         Error "expected only exact test support directories to be ignored")
+
+let test_scan_sources_keeps_source_directories_matching_test_support_names = fun _ctx ->
+  with_tempdir
+    "riot_model_source_diagnostics_sources"
+    (fun tmpdir ->
+      let src_dir = Path.(tmpdir / Path.v "src") in
+      let src_diagnostics_dir = Path.(src_dir / Path.v "diagnostics") in
+      let tests_dir = Path.(tmpdir / Path.v "tests") in
+      let tests_diagnostics_dir = Path.(tests_dir / Path.v "diagnostics") in
+      Result.expect
+        (Fs.create_dir_all src_diagnostics_dir)
+        ~msg:"Failed to create source diagnostics directory";
+      Result.expect
+        (Fs.create_dir_all tests_diagnostics_dir)
+        ~msg:"Failed to create test diagnostics directory";
+      Result.expect
+        (Fs.write "let version = 1\n" Path.(src_dir / Path.v "demo.ml"))
+        ~msg:"Failed to write visible source";
+      Result.expect
+        (Fs.write "let check = 1\n" Path.(src_diagnostics_dir / Path.v "check.ml"))
+        ~msg:"Failed to write source diagnostics module";
+      Result.expect
+        (Fs.write "let () = ()\n" Path.(tests_dir / Path.v "demo_tests.ml"))
+        ~msg:"Failed to write test source";
+      Result.expect
+        (Fs.write "let broken = true\n" Path.(tests_diagnostics_dir / Path.v "broken.ml"))
+        ~msg:"Failed to write test diagnostics fixture";
+      let manifest =
+        Std.Data.Toml.parse
+          {|
+[package]
+name = "demo"
+version = "0.1.0"
+
+[lib]
+path = "src/demo.ml"
+|}
+        |> Result.expect ~msg:"Expected package TOML to parse"
+      in
+      let pkg =
+        Riot_model.Package.from_toml
+          ~source_ignore_patterns:[ "tests/diagnostics" ]
+          manifest
+          ~workspace_deps:[]
+          ~workspace_dev_deps:[]
+          ~workspace_build_deps:[]
+          ~path:tmpdir
+          ~relative_path:(Path.v "packages/demo")
+        |> Result.expect ~msg:"Expected package manifest to parse"
+      in
+      if
+        pkg.sources.src = [ Path.v "src/demo.ml"; Path.v "src/diagnostics/check.ml" ]
+        && pkg.sources.tests = [ Path.v "tests/demo_tests.ml" ]
+      then
+        Ok ()
+      else
+        Error "expected scoped test diagnostics ignore to preserve src/diagnostics modules")
 
 let test_scan_sources_respects_package_root_gitignore = fun _ctx ->
   with_tempdir
@@ -762,6 +827,7 @@ path = "src/demo.ml"
       in
       let pkg =
         Riot_model.Package.from_toml
+          ~source_ignore_patterns:[ "tests/deps_fixtures" ]
           manifest
           ~workspace_deps:[]
           ~workspace_dev_deps:[]
@@ -793,6 +859,25 @@ ignore = ["fixtures", "generated"]
   in
   let config = Riot_model.Fmt_config.from_toml toml in
   Test.assert_equal ~expected:[ "fixtures"; "generated" ] ~actual:config.ignore_patterns;
+  Ok ()
+
+let test_workspace_source_ignore_parses = fun _ctx ->
+  let toml =
+    Std.Data.Toml.parse
+      {|
+[workspace]
+members = ["packages/demo"]
+ignore = ["fixtures", "diagnostics"]
+|}
+    |> Result.expect ~msg:"expected workspace TOML to parse"
+  in
+  let manifest =
+    Riot_model.Workspace_manifest.from_toml toml
+    |> Result.expect ~msg:"expected workspace manifest to parse"
+  in
+  Test.assert_equal
+    ~expected:[ "fixtures"; "diagnostics" ]
+    ~actual:manifest.source_ignore_patterns;
   Ok ()
 
 let test_package_fmt_ignore_loads = fun _ctx ->
@@ -1713,6 +1798,9 @@ let tests =
       "package: source scan keeps similarly named test directories"
       test_scan_sources_keeps_similarly_named_test_directories;
     case
+      "package: source scan keeps source directories matching support names"
+      test_scan_sources_keeps_source_directories_matching_test_support_names;
+    case
       "package: source scan respects package-root gitignore"
       test_scan_sources_respects_package_root_gitignore;
     case "package: source scan ignores non-ocaml files" test_scan_sources_ignores_non_ocaml_files;
@@ -1720,6 +1808,7 @@ let tests =
       "package: source scan ignores deps fixture support entries"
       test_scan_sources_ignores_deps_fixture_support_entries;
     case "fmt config: workspace ignore parses" test_workspace_fmt_ignore_parses;
+    case "workspace: source ignore parses" test_workspace_source_ignore_parses;
     case "fmt config: package ignore loads" test_package_fmt_ignore_loads;
     case "fmt config: legacy top-level fmt still loads" test_legacy_fmt_ignore_still_loads;
     case

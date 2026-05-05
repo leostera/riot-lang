@@ -33,7 +33,11 @@ type t
    - `ignore = true`
    - `git_ignore = true`
    - `custom_ignore_filenames = []`
+   - `ignore_patterns = []`
    - `overrides = []`
+
+   Use [`ignore_patterns`] for additional gitignore-style patterns supplied by
+   a caller, such as workspace-level source pruning rules.
 
    Use [`overrides`] to force-include or force-exclude paths independently of
    on-disk ignore files.
@@ -48,6 +52,7 @@ val create:
   ?ignore:bool ->
   ?git_ignore:bool ->
   ?custom_ignore_filenames:string list ->
+  ?ignore_patterns:string list ->
   ?overrides:string list ->
   unit ->
   (t, Glob.glob_error) Result.t

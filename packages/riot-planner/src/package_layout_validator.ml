@@ -28,7 +28,7 @@ let library_root_candidates = fun ~package nodes ->
     List.filter
       nodes
       ~fn:(fun (node: Module_node.t G.node) ->
-        match node.value.kind with
+        match (G.value node).kind with
         | Module_node.ML mod_
         | Module_node.MLI mod_ ->
             String.equal
@@ -46,11 +46,11 @@ let concrete_library_reachable_set = fun library_roots module_graph ->
       match G.get_node module_graph node_id with
       | Some (node: Module_node.t G.node) ->
           List.for_each
-            node.deps
+            (G.deps node)
             ~fn:(fun dep_id ->
               match G.get_node module_graph dep_id with
               | Some (dep_node: Module_node.t G.node) -> (
-                  match dep_node.value.kind with
+                  match (G.value dep_node).kind with
                   | Module_node.Root
                   | Module_node.PackageDependency _
                   | Module_node.Library _
@@ -60,14 +60,14 @@ let concrete_library_reachable_set = fun library_roots module_graph ->
               | None -> ())
       | None -> ()
   in
-  let () = List.for_each library_roots ~fn:(fun (node: Module_node.t G.node) -> visit node.id) in
+  let () = List.for_each library_roots ~fn:(fun (node: Module_node.t G.node) -> visit (G.id node)) in
   reachable
 
 let binary_source_nodes = fun ~source_path nodes ->
   List.filter
     nodes
     ~fn:(fun (node: Module_node.t G.node) ->
-      match (node.value.kind, node.value.file) with
+      match ((G.value node).kind, (G.value node).file) with
       | ((Module_node.ML _ | Module_node.MLI _), Module_node.Concrete path) ->
           Path.equal path source_path
       | _ -> false)
@@ -87,11 +87,11 @@ let target_reachable_set = fun start_nodes module_graph ->
       match G.get_node module_graph node_id with
       | Some (node: Module_node.t G.node) ->
           List.for_each
-            node.deps
+            (G.deps node)
             ~fn:(fun dep_id ->
               match G.get_node module_graph dep_id with
               | Some (dep_node: Module_node.t G.node) -> (
-                  match dep_node.value.kind with
+                  match (G.value dep_node).kind with
                   | Module_node.Root
                   | Module_node.PackageDependency _
                   | Module_node.Library _
@@ -101,7 +101,7 @@ let target_reachable_set = fun start_nodes module_graph ->
               | None -> ())
       | None -> ()
   in
-  let () = List.for_each start_nodes ~fn:(fun (node: Module_node.t G.node) -> visit node.id) in
+  let () = List.for_each start_nodes ~fn:(fun (node: Module_node.t G.node) -> visit (G.id node)) in
   reachable
 
 let requested_modules = fun analyzed_module ->
@@ -116,7 +116,7 @@ let classify_other_target_root_error = fun
   ~other_target_name
   ~public_module
   (dep_node: Module_node.t G.node) ->
-  match dep_node.value.kind with
+  match (G.value dep_node).kind with
   | Module_node.ML mod_
   | Module_node.MLI mod_ ->
       let simple_name =
@@ -144,7 +144,7 @@ let classify_other_target_root_error = fun
 
 let classify_internal_module_error = fun
   ~target_name ~source ~requested_modules (dep_node: Module_node.t G.node) ~public_module ->
-  match dep_node.value.kind with
+  match (G.value dep_node).kind with
   | Module_node.ML mod_
   | Module_node.MLI mod_ ->
       let simple_name =
@@ -190,11 +190,11 @@ let validate_target_source = fun
       ~fn:(fun node_id ->
         match G.get_node module_graph node_id with
         | Some (node: Module_node.t G.node) -> (
-            match (node.value.kind, node.value.file) with
+            match ((G.value node).kind, (G.value node).file) with
             | ((Module_node.ML _ | Module_node.MLI _), Module_node.Concrete _) ->
                 if
-                  G.Node_id.eq node.id source_node.id
-                  || not (HashSet.contains library_reachable_set ~value:node.id)
+                  G.Node_id.eq (G.id node) (G.id source_node)
+                  || not (HashSet.contains library_reachable_set ~value:(G.id node))
                 then
                   Some node
                 else
@@ -210,12 +210,12 @@ let validate_target_source = fun
       match acc with
       | Error _ as err -> err
       | Ok () -> (
-          match HashMap.get analyzed_modules_by_id ~key:node.id with
+          match HashMap.get analyzed_modules_by_id ~key:(G.id node) with
           | None -> Ok ()
           | Some analyzed_module ->
               let requested = requested_modules analyzed_module in
               match List.find
-                node.deps
+                (G.deps node)
                 ~fn:(fun dep_id -> Option.is_some (HashMap.get other_target_root_ids ~key:dep_id)) with
               | Some dep_id -> (
                   match G.get_node module_graph dep_id with
@@ -228,7 +228,7 @@ let validate_target_source = fun
                         classify_other_target_root_error
                           ~target_name
                           ~source:(
-                            node.value.file
+                            (G.value node).file
                             |> fun __tmp1 ->
                               match __tmp1 with
                               | Module_node.Concrete path -> path
@@ -243,7 +243,7 @@ let validate_target_source = fun
                 )
               | None -> (
                   match List.find
-                    node.deps
+                    (G.deps node)
                     ~fn:(fun dep_id ->
                       if HashSet.contains public_root_ids ~value:dep_id then
                         false
@@ -252,7 +252,7 @@ let validate_target_source = fun
                       else
                         match G.get_node module_graph dep_id with
                         | Some (dep_node: Module_node.t G.node) -> (
-                            match (dep_node.value.kind, dep_node.value.file) with
+                            match ((G.value dep_node).kind, (G.value dep_node).file) with
                             | ((Module_node.ML _ | Module_node.MLI _), Module_node.Concrete _) -> true
                             | _ -> false
                           )
@@ -264,7 +264,7 @@ let validate_target_source = fun
                             classify_internal_module_error
                               ~target_name
                               ~source:(
-                                node.value.file
+                                (G.value node).file
                                 |> fun __tmp1 ->
                                   match __tmp1 with
                                   | Module_node.Concrete path -> path
@@ -329,7 +329,7 @@ let suggestion_threshold = fun requested_module ->
     Int.max 2 (Int.div len 3)
 
 let module_node_suggestion_names = fun (node: Module_node.t G.node) ->
-  match node.value.kind with
+  match (G.value node).kind with
   | Module_node.ML mod_
   | Module_node.MLI mod_ ->
       let simple_name =
@@ -415,7 +415,7 @@ let validate = fun ~direct_dependency_modules ~package ~module_graph ~analyzed_m
         List.for_each
           public_roots
           ~fn:(fun (node: Module_node.t G.node) ->
-            let _ = HashSet.insert public_root_ids ~value:node.id in
+            let _ = HashSet.insert public_root_ids ~value:(G.id node) in
             ())
       in
       let library_reachable_set = concrete_library_reachable_set public_roots module_graph in
@@ -428,7 +428,7 @@ let validate = fun ~direct_dependency_modules ~package ~module_graph ~analyzed_m
           match acc with
           | Error _ as err -> err
           | Ok () -> (
-              match node.value.kind with
+              match (G.value node).kind with
               | Module_node.Binary { name; source; _ } ->
                   let source_nodes = binary_source_nodes ~source_path:source nodes in
                   let other_target_root_ids = HashMap.create () in
@@ -440,7 +440,7 @@ let validate = fun ~direct_dependency_modules ~package ~module_graph ~analyzed_m
                           let _ =
                             HashMap.insert
                               other_target_root_ids
-                              ~key:other_target_node.id
+                              ~key:(G.id other_target_node)
                               ~value:other_target_name
                           in
                           ())

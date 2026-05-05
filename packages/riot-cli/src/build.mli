@@ -28,8 +28,22 @@ type build_progress = {
   mutable skipped_count: int;
 }
 type render_state
+type request = {
+  workspace: Riot_model.Workspace.t;
+  packages: Riot_model.Package_name.t list;
+  targets: Riot_model.Target.request;
+  scope: build_scope;
+  dev_artifacts: dev_artifacts;
+  profile: Riot_model.Profile.t;
+  requested_parallelism: int option;
+  output_mode: output_mode;
+  show_finished_summary: bool;
+}
 
 val create_render_state: ?profile:string -> unit -> render_state
+
+(** Shared [riot build]-compatible argument surface. *)
+val build_args: unit Std.ArgParser.arg list
 
 (** Command definition for [riot build]. *)
 val command: Std.ArgParser.command
@@ -109,6 +123,12 @@ val write_cache_gc_event: mode:output_mode -> Riot_store.Cache_gc.event -> unit
 
 (** Run [riot build] in a resolved workspace. *)
 val run: workspace:Riot_model.Workspace.t -> Std.ArgParser.matches -> (unit, exn) result
+
+(** Parse [riot build]-compatible matches into a build request. *)
+val request_of_matches:
+  workspace:Riot_model.Workspace.t ->
+  Std.ArgParser.matches ->
+  (request, exn) result
 
 (**
    Execute a build command programmatically.

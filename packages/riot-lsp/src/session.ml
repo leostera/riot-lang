@@ -148,6 +148,7 @@ let package_scope_for_file = fun state path ->
       | Some manifest ->
           Some (Riot_model.Workspace_manifest.realize_package
             ~intent:Riot_model.Package.Runtime
+            workspace
             manifest)
     )
 

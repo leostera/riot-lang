@@ -285,6 +285,42 @@ let tests = [
           Test.assert_false (contains_path paths "notes.txt");
           Ok ()));
   Test.case
+    "extra ignore patterns prune matching directories"
+    (fun _ctx ->
+      with_tempdir
+        "ignore_extra_patterns"
+        (fun root ->
+          let tests_dir = Path.(root / Path.v "tests") in
+          let fixtures_dir = Path.(tests_dir / Path.v "fixtures") in
+          let fixtures_generated_dir = Path.(tests_dir / Path.v "fixtures-generated") in
+          let visible_file = Path.(tests_dir / Path.v "demo_tests.ml") in
+          let ignored_file = Path.(fixtures_dir / Path.v "ignored.ml") in
+          let kept_file = Path.(fixtures_generated_dir / Path.v "keep.ml") in
+          let* () =
+            Fs.create_dir_all fixtures_dir
+            |> Result.map_err ~fn:IO.error_message
+          in
+          let* () =
+            Fs.create_dir_all fixtures_generated_dir
+            |> Result.map_err ~fn:IO.error_message
+          in
+          let* () = write visible_file "let () = ()\n" in
+          let* () = write ignored_file "let ignored = true\n" in
+          let* () = write kept_file "let keep = true\n" in
+          let* walker =
+            Ignore.Walker.create
+              ~roots:[ root ]
+              ~hidden:false
+              ~ignore_patterns:[ "fixtures" ]
+              ()
+            |> Result.map_err ~fn:(fun _ -> "walker create failed")
+          in
+          let* paths = collect_paths walker in
+          Test.assert_true (contains_path paths "demo_tests.ml");
+          Test.assert_false (contains_path paths "ignored.ml");
+          Test.assert_true (contains_path paths "fixtures-generated/keep.ml");
+          Ok ()));
+  Test.case
     "parallel ignore walker keeps complete multiple-root file set"
     (fun _ctx ->
       with_tempdir

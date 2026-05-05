@@ -162,6 +162,7 @@ type t = private {
   fix_providers: Fix_provider.t list;
   publish: publish_metadata;
 }
+type projection_cache
 type resolved = {
   package: t;
   id: Lockfile.package_id;
@@ -196,6 +197,7 @@ val is_builtin_dependency_name: string -> bool
 val is_builtin_dependency: dependency -> bool
 
 val from_toml:
+  ?source_ignore_patterns:string list ->
   Std.Data.Toml.value ->
   workspace_deps:dependency list ->
   workspace_dev_deps:dependency list ->
@@ -215,7 +217,11 @@ val parse_manifest_spec:
 
 val manifest_error_message: manifest_error -> string
 
-val realize_manifest_spec: intent:realization_intent -> manifest_spec -> t
+val realize_manifest_spec:
+  ?source_ignore_patterns:string list ->
+  intent:realization_intent ->
+  manifest_spec ->
+  t
 
 val from_manifest_spec: manifest_spec -> t
 
@@ -241,7 +247,12 @@ val make:
   unit ->
   t
 
-val scan_sources: package_path:Path.t -> ?excluded_relpaths:Path.t list -> unit -> sources
+val scan_sources:
+  package_path:Path.t ->
+  ?excluded_relpaths:Path.t list ->
+  ?source_ignore_patterns:string list ->
+  unit ->
+  sources
 
 val synthetic: name:Package_name.t -> path:Path.t -> relative_path:Path.t -> t
 
@@ -258,6 +269,13 @@ val key_compare: key -> key -> Order.t
 val dependencies_for_scope: dependency_scope -> t -> dependency list
 
 val for_binary: binary_name:string -> t -> t option
+
+val make_projection_cache: t -> projection_cache
+
+val for_binary_with_projection_cache:
+  projection_cache ->
+  binary_name:string ->
+  t option
 
 val scope_of_binary_name: t -> binary_name:string -> dependency_scope option
 

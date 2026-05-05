@@ -4,6 +4,7 @@ open Riot_model
 module Test = Std.Test
 module Build_unit = Riot_planner.Build_unit
 module Build_unit_graph = Riot_planner.Build_unit_graph
+module G = Graph.SimpleGraph
 module Package = Package
 module Workspace = Workspace
 
@@ -147,8 +148,9 @@ let module_node_for_path = fun module_graph path ->
   let found = ref None in
   Graph.SimpleGraph.iter
     module_graph
-    ~fn:(fun _id node ->
-      match node.value.Riot_planner.Module_node.file with
+    ~fn:(fun _id (node: Riot_planner.Module_node.t G.node) ->
+      let node_value = G.value node in
+      match node_value.file with
       | Concrete node_path when Path.equal node_path (Path.v path) -> found := Some node
       | Concrete _
       | Generated _ -> ());
@@ -443,7 +445,7 @@ let clone_reconstructs_planned_nested_graphs = fun _ctx ->
         (module_for_package std "src/child.ml")
         (Concrete (Path.v "src/child.ml")))
   in
-  Riot_planner.Module_node.set_open_modules root_module.value [ child_module ];
+  Riot_planner.Module_node.set_open_modules (G.value root_module) [ child_module ];
   Graph.SimpleGraph.add_edge root_module ~depends_on:child_module;
   let action_graph = Riot_planner.Action_graph.create () in
   let cloned_module_graph = Graph.SimpleGraph.make () in
@@ -461,15 +463,15 @@ let clone_reconstructs_planned_nested_graphs = fun _ctx ->
         (module_for_package std "src/child.ml")
         (Concrete (Path.v "src/child.ml")))
   in
-  Riot_planner.Module_node.set_open_modules cloned_root_node.value [ cloned_child_node ];
+  Riot_planner.Module_node.set_open_modules (G.value cloned_root_node) [ cloned_child_node ];
   Graph.SimpleGraph.add_edge cloned_root_node ~depends_on:cloned_child_node;
   let cloned_action_graph = Riot_planner.Action_graph.clone action_graph in
   let cloned_root = module_node_for_path cloned_module_graph "src/std.ml" in
-  Riot_planner.Module_node.set_open_modules cloned_root.value [];
+  Riot_planner.Module_node.set_open_modules (G.value cloned_root) [];
   let _ = add_write_action cloned_action_graph std "generated.txt" "generated" in
   let original_root = module_node_for_path module_graph "src/std.ml" in
-  Test.assert_equal ~expected:1 ~actual:(List.length original_root.value.open_modules);
-  Test.assert_equal ~expected:0 ~actual:(List.length cloned_root.value.open_modules);
+  Test.assert_equal ~expected:1 ~actual:(List.length (G.value original_root).open_modules);
+  Test.assert_equal ~expected:0 ~actual:(List.length (G.value cloned_root).open_modules);
   Test.assert_equal
     ~expected:0
     ~actual:(List.length (Riot_planner.Action_graph.nodes action_graph));

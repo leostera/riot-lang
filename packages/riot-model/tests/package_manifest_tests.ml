@@ -407,7 +407,10 @@ path = "src/demo.ml"
 |}
       in
       let pkg =
-        Riot_model.Package_manifest.realize ~intent:Riot_model.Package_manifest.Test manifest
+        Riot_model.Package_manifest.realize
+          ~intent:Riot_model.Package_manifest.Test
+          ~source_ignore_patterns:[ "tests/fixtures" ]
+          manifest
       in
       if
         pkg.sources.src = [ Path.v "src/demo.ml" ]

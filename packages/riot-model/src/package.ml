@@ -196,6 +196,13 @@ type t = {
   publish: publish_metadata;
 }
 
+type projection_cache = {
+  projection_package: t;
+  mutable projection_test_binary_paths: string HashSet.t option;
+  mutable projection_example_binary_paths: string HashSet.t option;
+  mutable projection_bench_binary_paths: string HashSet.t option;
+}
+
 type resolved = {
   package: t;
   id: Lockfile.package_id;
@@ -466,12 +473,59 @@ let source_is_other_binary = fun ~selected_key binary_paths source ->
   not (String.equal selected_key source_key)
   && HashSet.contains binary_paths ~value:source_key
 
-let dev_sources_for_binary = fun ~prefix ~selected sources (pkg: t) ->
-  let binary_paths = binary_paths_under ~prefix pkg in
-  let selected_key = source_path_key selected in
+let filter_dev_sources_for_binary = fun ~selected_key ~binary_paths sources ->
   List.filter
     sources
     ~fn:(fun source -> not (source_is_other_binary ~selected_key binary_paths source))
+
+let dev_sources_for_binary = fun ~prefix ~selected sources (pkg: t) ->
+  let selected_key = source_path_key selected in
+  filter_dev_sources_for_binary
+    ~selected_key
+    ~binary_paths:(binary_paths_under ~prefix pkg)
+    sources
+
+let make_projection_cache = fun pkg -> {
+  projection_package = pkg;
+  projection_test_binary_paths = None;
+  projection_example_binary_paths = None;
+  projection_bench_binary_paths = None;
+}
+
+let projection_binary_paths = fun cache ~prefix ->
+  match prefix with
+  | "tests/" -> (
+      match cache.projection_test_binary_paths with
+      | Some paths -> paths
+      | None ->
+          let paths = binary_paths_under ~prefix cache.projection_package in
+          cache.projection_test_binary_paths <- Some paths;
+          paths
+    )
+  | "examples/" -> (
+      match cache.projection_example_binary_paths with
+      | Some paths -> paths
+      | None ->
+          let paths = binary_paths_under ~prefix cache.projection_package in
+          cache.projection_example_binary_paths <- Some paths;
+          paths
+    )
+  | "bench/" -> (
+      match cache.projection_bench_binary_paths with
+      | Some paths -> paths
+      | None ->
+          let paths = binary_paths_under ~prefix cache.projection_package in
+          cache.projection_bench_binary_paths <- Some paths;
+          paths
+    )
+  | _ -> binary_paths_under ~prefix cache.projection_package
+
+let dev_sources_for_binary_with_projection_cache = fun cache ~prefix ~selected sources ->
+  let selected_key = source_path_key selected in
+  filter_dev_sources_for_binary
+    ~selected_key
+    ~binary_paths:(projection_binary_paths cache ~prefix)
+    sources
 
 let scope_of_binary_name = fun (pkg: t) ~binary_name ->
   List.find pkg.binaries ~fn:(fun (bin: binary) -> String.equal bin.name binary_name)
@@ -532,36 +586,34 @@ let sources_for_scope = fun ?(dev_artifacts = all_dev_artifacts) scope (pkg: t) 
 let for_scope = fun ?(dev_artifacts = all_dev_artifacts) scope (pkg: t) ->
   match scope with
   | Normal ->
-      canonicalize
-        {
-          pkg with
-          dev_dependencies = [];
-          binaries = binaries_for_scope Normal pkg;
-          commands = commands_for_scope Normal pkg;
-          sources = sources_for_scope Normal pkg;
-        }
+      {
+        pkg with
+        dev_dependencies = [];
+        binaries = binaries_for_scope Normal pkg;
+        commands = commands_for_scope Normal pkg;
+        sources = sources_for_scope Normal pkg;
+      }
   | Dev ->
-      canonicalize
-        {
-          pkg with
-          library = None;
-          binaries = binaries_for_scope ~dev_artifacts Dev pkg;
-          commands = commands_for_scope Dev pkg;
-          sources = sources_for_scope ~dev_artifacts Dev pkg;
-        }
+      {
+        pkg with
+        library = None;
+        binaries = binaries_for_scope ~dev_artifacts Dev pkg;
+        commands = commands_for_scope Dev pkg;
+        sources = sources_for_scope ~dev_artifacts Dev pkg;
+      }
   | Build ->
-      canonicalize
-        {
-          pkg with
-          dependencies = [];
-          dev_dependencies = [];
-          library = None;
-          binaries = [];
-          commands = commands_for_scope Build pkg;
-          sources = sources_for_scope Build pkg;
-        }
+      {
+        pkg with
+        dependencies = [];
+        dev_dependencies = [];
+        library = None;
+        binaries = [];
+        commands = commands_for_scope Build pkg;
+        sources = sources_for_scope Build pkg;
+      }
 
-let sources_for_binary = fun (bin: binary) (pkg: t) ->
+let sources_for_binary_with_projection_cache = fun cache (bin: binary) ->
+  let pkg = cache.projection_package in
   let path = Path.to_string bin.path in
   let dev_sources =
     if Option.is_some pkg.library then
@@ -572,18 +624,32 @@ let sources_for_binary = fun (bin: binary) (pkg: t) ->
   if String.starts_with ~prefix:"tests/" path then
     {
       dev_sources with
-      tests = dev_sources_for_binary ~prefix:"tests/" ~selected:bin.path pkg.sources.tests pkg;
+      tests =
+        dev_sources_for_binary_with_projection_cache
+          cache
+          ~prefix:"tests/"
+          ~selected:bin.path
+          pkg.sources.tests;
     }
   else if String.starts_with ~prefix:"examples/" path then
     {
       dev_sources with
       examples =
-        dev_sources_for_binary ~prefix:"examples/" ~selected:bin.path pkg.sources.examples pkg;
+        dev_sources_for_binary_with_projection_cache
+          cache
+          ~prefix:"examples/"
+          ~selected:bin.path
+          pkg.sources.examples;
     }
   else if String.starts_with ~prefix:"bench/" path then
     {
       dev_sources with
-      bench = dev_sources_for_binary ~prefix:"bench/" ~selected:bin.path pkg.sources.bench pkg;
+      bench =
+        dev_sources_for_binary_with_projection_cache
+          cache
+          ~prefix:"bench/"
+          ~selected:bin.path
+          pkg.sources.bench;
     }
   else
     (
@@ -593,7 +659,11 @@ let sources_for_binary = fun (bin: binary) (pkg: t) ->
         { empty_sources with src = pkg.sources.src; native = pkg.sources.native }
     )
 
-let for_binary = fun ~binary_name (pkg: t) ->
+let sources_for_binary = fun (bin: binary) (pkg: t) ->
+  sources_for_binary_with_projection_cache (make_projection_cache pkg) bin
+
+let for_binary_with_projection_cache = fun cache ~binary_name ->
+  let pkg = cache.projection_package in
   List.find pkg.binaries ~fn:(fun (bin: binary) -> String.equal bin.name binary_name)
   |> Option.map
     ~fn:(fun bin ->
@@ -610,16 +680,18 @@ let for_binary = fun ~binary_name (pkg: t) ->
         | Dev -> pkg.dev_dependencies
         | Build -> []
       in
-      canonicalize
-        {
-          pkg with
-          library = None;
-          dependencies;
-          dev_dependencies;
-          binaries = [ bin ];
-          commands = [];
-          sources = sources_for_binary bin pkg;
-        })
+      {
+        pkg with
+        library = None;
+        dependencies;
+        dev_dependencies;
+        binaries = [ bin ];
+        commands = [];
+        sources = sources_for_binary_with_projection_cache cache bin;
+      })
+
+let for_binary = fun ~binary_name (pkg: t) ->
+  for_binary_with_projection_cache (make_projection_cache pkg) ~binary_name
 
 let build_graph_dependencies = fun (pkg: t) -> pkg.dependencies @ pkg.dev_dependencies
 
@@ -1733,6 +1805,7 @@ let scan_sources_for_intent
   ~(intent:realization_intent)
   ~(package_path:Path.t)
   ?(excluded_relpaths = [])
+  ?(source_ignore_patterns = [])
   () =
   let started_at = Time.Instant.now () in
   let excluded_relpath_strings =
@@ -1750,18 +1823,6 @@ let scan_sources_for_intent
     let scan_roots = scan_roots_for_intent ~intent ~package_path in
     let should_skip_source_entry filename =
       String.starts_with ~prefix:"." (Path.basename filename)
-    in
-    let should_skip_test_support_path rel_path =
-      match path_components rel_path with
-      | "tests" :: (
-        "fixtures"
-        | "generated"
-        | "diagnostics"
-        | "deps_fixtures"
-        | "autofix_fixtures"
-        | "workspace_fixtures"
-      ) :: _ -> true
-      | _ -> false
     in
     let is_ocaml_module_file rel_path =
       match Path.extension rel_path with
@@ -1781,7 +1842,10 @@ let scan_sources_for_intent
       let visited_directories = ref 0 in
       let visited_files = ref 0 in
       let walker =
-        match Ignore.Walker.create ~roots:scan_roots () with
+        match Ignore.Walker.create
+          ~roots:scan_roots
+          ~ignore_patterns:source_ignore_patterns
+          () with
         | Ok walker -> walker
         | Error _ -> panic "package walker configuration should be valid"
       in
@@ -1813,7 +1877,6 @@ let scan_sources_for_intent
                         if
                           not
                             (should_skip_source_entry rel_path
-                            || should_skip_test_support_path rel_path
                             || List.contains excluded_relpath_strings ~value:rel_path_string)
                         then (
                           match bucket_of_rel_path rel_path_components with
@@ -1879,8 +1942,17 @@ let scan_sources_for_intent
           in
           empty_sources
 
-let scan_sources ~(package_path:Path.t) ?(excluded_relpaths = []) () =
-  scan_sources_for_intent ~intent:Dev ~package_path ~excluded_relpaths ()
+let scan_sources
+  ~(package_path:Path.t)
+  ?(excluded_relpaths = [])
+  ?(source_ignore_patterns = [])
+  () =
+  scan_sources_for_intent
+    ~intent:Dev
+    ~package_path
+    ~excluded_relpaths
+    ~source_ignore_patterns
+    ()
 
 (** Autodiscover test binaries from test files ending in _tests.ml or -tests.ml *)
 let autodiscover_test_binaries: sources -> package_path:Path.t -> binary list = fun
@@ -2194,7 +2266,10 @@ let parse_manifest_spec:
     )
   | _ -> Error ManifestMustBeTable
 
-let realize_manifest_spec = fun ~(intent:realization_intent) (manifest: manifest_spec) ->
+let realize_manifest_spec = fun
+  ?(source_ignore_patterns = [])
+  ~(intent:realization_intent)
+  (manifest: manifest_spec) ->
   let excluded_relpaths =
     provider_excluded_relpaths ~package_path:manifest.path manifest.fix_providers
     @ executable_source_excluded_relpaths_for_intent
@@ -2203,7 +2278,14 @@ let realize_manifest_spec = fun ~(intent:realization_intent) (manifest: manifest
       ~declared_binaries:manifest.declared_binaries
       ~commands:manifest.commands
   in
-  let sources = scan_sources_for_intent ~intent ~package_path:manifest.path ~excluded_relpaths () in
+  let sources =
+    scan_sources_for_intent
+      ~intent
+      ~package_path:manifest.path
+      ~excluded_relpaths
+      ~source_ignore_patterns
+      ()
+  in
   let declared_binaries = declared_binaries_for_intent ~intent manifest.declared_binaries in
   let autodiscovered =
     autodiscovered_binaries_for_intent
@@ -2249,6 +2331,7 @@ let from_manifest_spec = fun (manifest: manifest_spec) ->
     ()
 
 let from_toml:
+  ?source_ignore_patterns:string list ->
   Toml.value ->
   workspace_deps:dependency list ->
   workspace_dev_deps:dependency list ->
@@ -2256,7 +2339,13 @@ let from_toml:
   path:Path.t ->
   relative_path:Path.t ->
   (t, manifest_error) result = fun
-  toml ~workspace_deps ~workspace_dev_deps ~workspace_build_deps ~path ~relative_path ->
+  ?(source_ignore_patterns = [])
+  toml
+  ~workspace_deps
+  ~workspace_dev_deps
+  ~workspace_build_deps
+  ~path
+  ~relative_path ->
   parse_manifest_spec
     toml
     ~workspace_deps
@@ -2264,7 +2353,7 @@ let from_toml:
     ~workspace_build_deps
     ~path
     ~relative_path
-  |> Result.map ~fn:(realize_manifest_spec ~intent:Dev)
+  |> Result.map ~fn:(realize_manifest_spec ~intent:Dev ~source_ignore_patterns)
 
 let to_json: t -> Json.t = fun pkg ->
   let dependencies_json = Json.Array (List.map
