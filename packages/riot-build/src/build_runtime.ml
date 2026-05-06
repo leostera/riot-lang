@@ -193,27 +193,11 @@ let validate_target_toolchains = fun context targets ->
   emit_toolchains_validated context targets;
   Ok ()
 
-let sort_uniq_strings = fun values ->
-  let rec dedupe acc = fun __tmp1 ->
-    match __tmp1 with
-    | [] -> List.reverse acc
-    | [ value ] -> List.reverse (value :: acc)
-    | left :: ((right :: _) as rest) ->
-        if String.equal left right then
-          dedupe acc rest
-        else
-          dedupe (left :: acc) rest
-  in
-  values
-  |> List.sort ~compare:String.compare
-  |> dedupe []
-
 let referenced_hashes_of_artifact = fun (artifact: Riot_store.Artifact.t) ->
   Std.Crypto.Digest.hex artifact.input_hash
   :: List.map
     artifact.exports
     ~fn:(fun (entry: Riot_store.Manifest.export_entry) -> entry.action_hash)
-  |> sort_uniq_strings
 
 let generation_lane_of_results = fun ~profile ~target results ->
   let hashes =
@@ -225,7 +209,6 @@ let generation_lane_of_results = fun ~profile ~target results ->
         | Package_builder.Cached artifact -> referenced_hashes_of_artifact artifact
         | Package_builder.Skipped _
         | Package_builder.Failed _ -> [])
-    |> sort_uniq_strings
   in
   Riot_store.Cache_gc.{ profile; target; hashes }
 
