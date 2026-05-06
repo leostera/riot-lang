@@ -55,6 +55,10 @@ val load: path:Path.t -> (t, string) result
 val load_metadata: path:Path.t -> (metadata, string) result
 
 (** Load manifest metadata without decoding the stored file list. *)
+val metadata_to_string: metadata -> (string, string) result
+
+val metadata_of_string: string -> (metadata, string) result
+
 val to_json: t -> Std.Data.Json.t
 
 (** Convert manifest to JSON *)

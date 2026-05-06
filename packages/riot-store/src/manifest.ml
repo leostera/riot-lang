@@ -344,6 +344,31 @@ let manifest_encode =
       ]
     )
 
+let metadata_encode =
+  Ser.record
+    (
+      Ser.fields [
+        Ser.field "input_hash" Ser.string (fun (metadata: metadata) -> metadata.input_hash);
+        Ser.field "output_hash" Ser.string (fun (metadata: metadata) -> metadata.output_hash);
+        Ser.field "size_bytes" int64_string_encode (fun (metadata: metadata) -> metadata.size_bytes);
+        Ser.field
+          "ocamlc_warnings"
+          (ser_list Ser.string)
+          (fun (metadata: metadata) -> metadata.ocamlc_warnings);
+        Ser.field "exports" (ser_list export_entry_encode) (fun (metadata: metadata) -> metadata.exports);
+      ]
+    )
+
+let metadata_to_string = fun metadata ->
+  match Serde_json.to_string metadata_encode metadata with
+  | Ok content -> Ok content
+  | Error err -> Error (Serde.Error.to_string err)
+
+let metadata_of_string = fun content ->
+  match Serde_json.from_string metadata_decode content with
+  | Ok metadata -> Ok metadata
+  | Error err -> Error (Serde.Error.to_string err)
+
 (** Convert manifest to JSON *)
 let to_json (manifest: t) =
   let file_entry_to_json (entry: file_entry) =
@@ -536,9 +561,9 @@ let load = fun ~path ->
 let load_metadata = fun ~path ->
   match Std.Fs.read path with
   | Ok content -> (
-      match Serde_json.from_string metadata_decode content with
+      match metadata_of_string content with
       | Ok metadata -> Ok metadata
-      | Error err -> Error (Serde.Error.to_string err)
+      | Error err -> Error err
     )
   | Error _ -> Error "Failed to read manifest file"
 

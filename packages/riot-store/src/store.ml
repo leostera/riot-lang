@@ -219,6 +219,58 @@ let forget_artifact = fun cache hash ->
   let _ = HashMap.remove cache.artifacts ~key in
   Sync.Mutex.unlock cache.lock
 
+let hash_of_hex = fun hex ->
+  let hex_nibble ch =
+    match ch with
+    | '0' .. '9' -> Some (Char.code ch - Char.code '0')
+    | 'a' .. 'f' -> Some (10 + Char.code ch - Char.code 'a')
+    | 'A' .. 'F' -> Some (10 + Char.code ch - Char.code 'A')
+    | _ -> None
+  in
+  let len = String.length hex in
+  if len = 0 || len mod 2 != 0 then
+    None
+  else
+    let bytes = IO.Bytes.create ~size:(len / 2) in
+    let rec loop index =
+      if index >= len then
+        Some (Crypto.Hash.from_bytes bytes)
+      else
+        match (
+          hex_nibble (String.get_unchecked hex ~at:index),
+          hex_nibble (String.get_unchecked hex ~at:(index + 1))
+        ) with
+        | (Some hi, Some lo) ->
+            IO.Bytes.set_unchecked
+              bytes
+              ~at:(index / 2)
+              ~char:(Char.from_int_unchecked ((hi lsl 4) lor lo));
+            loop (index + 2)
+        | _ -> None
+    in
+    loop 0
+
+let artifact_of_metadata = fun metadata ->
+  match (hash_of_hex metadata.Manifest.input_hash, hash_of_hex metadata.output_hash) with
+  | (Some input_hash, Some output_hash) ->
+      Some Artifact.{
+        input_hash;
+        output_hash;
+        size_bytes = metadata.size_bytes;
+        files = [];
+        ocamlc_warnings = metadata.ocamlc_warnings;
+        exports = metadata.exports;
+      }
+  | _ -> None
+
+let metadata_of_artifact = fun (artifact: Artifact.t) -> Manifest.{
+  input_hash = Crypto.Digest.hex artifact.input_hash;
+  output_hash = Crypto.Digest.hex artifact.output_hash;
+  size_bytes = artifact.size_bytes;
+  ocamlc_warnings = artifact.ocamlc_warnings;
+  exports = artifact.exports;
+}
+
 (** Create a store rooted at a specific build lane *)
 let create_for_lane = fun ~(workspace:Workspace.t) ~profile ~target ->
   let store_dir =
@@ -268,6 +320,8 @@ let get_action_hash_dir = fun store hash -> ContentStore.hash_dir_of store.actio
 
 let manifest_path = fun hash_dir -> Path.(hash_dir / Path.v "manifest.json")
 
+let metadata_path = fun hash_dir -> Path.(hash_dir / Path.v "metadata.json")
+
 let manifest_cache_key = fun hash -> Std.Crypto.Digest.hex hash
 
 let copy_with_permissions = fun ~src ~dst ~copy_error ->
@@ -310,37 +364,6 @@ let artifact_temp_dir = fun store hash ->
     Std.Crypto.Digest.hex hash ^ ".tmp." ^ pid ^ "." ^ Int64.to_string nanos ^ "." ^ nonce
   in
   Path.(ContentStore.root store.package_store / Path.v temp_name)
-
-let hash_of_hex = fun hex ->
-  let hex_nibble ch =
-    match ch with
-    | '0' .. '9' -> Some (Char.code ch - Char.code '0')
-    | 'a' .. 'f' -> Some (10 + Char.code ch - Char.code 'a')
-    | 'A' .. 'F' -> Some (10 + Char.code ch - Char.code 'A')
-    | _ -> None
-  in
-  let len = String.length hex in
-  if len = 0 || len mod 2 != 0 then
-    None
-  else
-    let bytes = IO.Bytes.create ~size:(len / 2) in
-    let rec loop index =
-      if index >= len then
-        Some (Crypto.Hash.from_bytes bytes)
-      else
-        match (
-          hex_nibble (String.get_unchecked hex ~at:index),
-          hex_nibble (String.get_unchecked hex ~at:(index + 1))
-        ) with
-        | (Some hi, Some lo) ->
-            IO.Bytes.set_unchecked
-              bytes
-              ~at:(index / 2)
-              ~char:(Char.from_int_unchecked ((hi lsl 4) lor lo));
-            loop (index + 2)
-        | _ -> None
-    in
-    loop 0
 
 let read_opened_file = fun file ->
   let content = Fs.File.read_to_end file in
@@ -483,6 +506,22 @@ let store_artifacts = fun
       Manifest.save manifest ~path:manifest_path
       |> Result.map_err ~fn:(fun cause -> SaveManifestFailed { path = manifest_path; cause })
     in
+    let metadata_path = metadata_path temp_dir in
+    let metadata = Manifest.{
+      input_hash = manifest.input_hash;
+      output_hash = manifest.output_hash;
+      size_bytes = manifest.size_bytes;
+      ocamlc_warnings = manifest.ocamlc_warnings;
+      exports = manifest.exports;
+    }
+    in
+    ignore (
+      Manifest.metadata_to_string metadata
+      |> Result.and_then
+        ~fn:(fun content ->
+          Fs.write content metadata_path
+          |> Result.map_err ~fn:(fun _ -> "failed to write metadata"))
+    );
     let* () =
       ContentStore.commit_dir content_store ~hash:input_hash ~source_dir:temp_dir
       |> Result.map_err
@@ -651,8 +690,26 @@ let get_package = fun store hash ->
 let get_package_metadata = fun store hash ->
   let load_started_at = Time.Instant.now () in
   let hash_dir = ContentStore.hash_dir_of store.package_store hash in
-  match Manifest.load_metadata ~path:(manifest_path hash_dir) with
-  | Ok metadata -> (
+  let load_artifact_metadata path = Manifest.load_metadata ~path |> Result.to_option in
+  let metadata =
+    match load_artifact_metadata (metadata_path hash_dir) with
+    | Some metadata -> Some metadata
+    | None -> (
+        match load_artifact_metadata (manifest_path hash_dir) with
+        | Some metadata ->
+            ignore (
+              Manifest.metadata_to_string metadata
+              |> Result.and_then
+                ~fn:(fun content ->
+                  Fs.write content (metadata_path hash_dir)
+                  |> Result.map_err ~fn:(fun _ -> "failed to write metadata"))
+            );
+            Some metadata
+        | None -> None
+      )
+  in
+  match metadata with
+  | Some metadata -> (
       let load_duration = Time.Instant.duration_since ~earlier:load_started_at (Time.Instant.now ()) in
       let () =
         trace_store_get
@@ -661,19 +718,11 @@ let get_package_metadata = fun store hash ->
           ~export_check_duration:Time.Duration.zero
           ~hit:true
       in
-      match hash_of_hex metadata.output_hash with
-      | Some output_hash ->
-          Some Artifact.{
-            input_hash = hash;
-            output_hash;
-            size_bytes = metadata.size_bytes;
-            files = [];
-            ocamlc_warnings = metadata.ocamlc_warnings;
-            exports = metadata.exports;
-          }
+      match artifact_of_metadata metadata with
+      | Some artifact -> Some artifact
       | None -> None
     )
-  | Error _ ->
+  | None ->
       let load_duration = Time.Instant.duration_since ~earlier:load_started_at (Time.Instant.now ()) in
       let () =
         trace_store_get

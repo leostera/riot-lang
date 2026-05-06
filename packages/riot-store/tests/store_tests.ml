@@ -815,6 +815,63 @@ let test_package_lookup_rejects_action_artifacts = fun _ctx ->
   | Ok x -> x
   | Error _ -> Error "tempdir creation failed"
 
+let test_package_metadata_lookup_uses_sidecar = fun _ctx ->
+  match Fs.with_tempdir
+    ~prefix:"store_package_metadata_sidecar_test"
+    (fun tmpdir ->
+      let workspace = make_test_workspace tmpdir in
+      let store = Riot_store.Store.create ~workspace in
+      let sandbox = Path.(tmpdir / Path.v "sandbox") in
+      let _ =
+        Fs.create_dir_all sandbox
+        |> Result.expect ~msg:"create sandbox should succeed"
+      in
+      let output = write_output sandbox (Path.v "Pkg.cmxa") "library-export" in
+      let action_hash =
+        Crypto.hash_string "metadata-index-action"
+        |> Crypto.Digest.hex
+      in
+      let exports = [
+        Riot_store.Store.{
+          name = "pkg";
+          path = Path.v "Pkg.cmxa";
+          action_hash;
+        };
+      ]
+      in
+      let hash = Crypto.hash_string "metadata-index-package" in
+      let _ =
+        Riot_store.Store.save
+          store
+          ~package:"pkg"
+          ~exports
+          ~input_hash:hash
+          ~sandbox_dir:sandbox
+          ~outs:[ output ]
+        |> Result.expect ~msg:"save package artifact should succeed"
+      in
+      let fresh_store = Riot_store.Store.create ~workspace in
+      let manifest_path = Path.(Riot_store.Store.hash_dir_of fresh_store hash / Path.v "manifest.json") in
+      let _ =
+        Fs.write "{ definitely not a manifest" manifest_path
+        |> Result.expect ~msg:"corrupt manifest should be writable"
+      in
+      match
+        (
+          Riot_store.Store.get_package_metadata fresh_store hash,
+          Riot_store.Store.get_package fresh_store hash
+        )
+      with
+      | (Some artifact, None) ->
+          if List.length artifact.Riot_store.Artifact.exports = 1 then
+            Ok ()
+          else
+            Error "metadata sidecar should preserve exports"
+      | (None, _) -> Error "metadata lookup should use persisted sidecar"
+      | (Some _, Some _) -> Error "full package lookup should still parse and reject the manifest") with
+  | Ok x -> x
+  | Error _ -> Error "tempdir creation failed"
+
 let test_promote_overwrites_existing_target_files = fun _ctx ->
   match Fs.with_tempdir
     ~prefix:"store_promote_overwrite_test"
@@ -1663,6 +1720,9 @@ let tests =
     case
       "package lookup rejects action artifacts"
       test_package_lookup_rejects_action_artifacts;
+    case
+      "package metadata lookup uses persisted sidecar"
+      test_package_metadata_lookup_uses_sidecar;
     case "promote overwrites existing target files" test_promote_overwrites_existing_target_files;
     case
       "save preserves executable permissions in cache"
