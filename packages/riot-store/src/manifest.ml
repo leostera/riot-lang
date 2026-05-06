@@ -1,6 +1,5 @@
 (** Manifest for tracking stored build artifacts *)
 open Std
-open Std.Data
 open Std.Collections
 open Std.Result.Syntax
 
@@ -178,7 +177,7 @@ let metadata_fields =
     De.field "exports" Manifest_exports;
   ]
 
-let file_entry_decode =
+let file_entry_deserializer =
   De.record_mut
     ~fields:file_entry_fields
     ~create:(fun () -> { file_path = None; file_hash = None; file_size = None })
@@ -193,7 +192,7 @@ let file_entry_decode =
       | (Some path, Some hash, Some size) -> { path; hash; size }
       | _ -> De.missing_field ())
 
-let export_entry_decode =
+let export_entry_deserializer =
   De.record_mut
     ~fields:export_entry_fields
     ~create:(fun () -> {
@@ -213,7 +212,7 @@ let export_entry_decode =
       | (Some name, Some path, Some action_hash) -> { name; path; action_hash }
       | _ -> De.missing_field ())
 
-let manifest_decode =
+let deserializer =
   De.record_mut
     ~fields:manifest_fields
     ~create:(fun () -> {
@@ -235,10 +234,10 @@ let manifest_decode =
       | Some Manifest_output_hash -> builder.output_hash <- Some (De.read reader De.string)
       | Some Manifest_timestamp -> builder.timestamp <- Some (De.read reader system_time_decode)
       | Some Manifest_size_bytes -> builder.size_bytes <- Some (De.read reader int64_string_decode)
-      | Some Manifest_files -> builder.files <- Some (De.read reader (de_list file_entry_decode))
+      | Some Manifest_files -> builder.files <- Some (De.read reader (de_list file_entry_deserializer))
       | Some Manifest_ocamlc_warnings ->
           builder.ocamlc_warnings <- De.read reader (de_list De.string)
-      | Some Manifest_exports -> builder.exports <- De.read reader (de_list export_entry_decode)
+      | Some Manifest_exports -> builder.exports <- De.read reader (de_list export_entry_deserializer)
       | None -> ignore (De.read reader De.skip_any))
     ~finish:(fun builder ->
       match
@@ -270,7 +269,7 @@ let manifest_decode =
           }: t)
       | _ -> De.missing_field ())
 
-let metadata_decode =
+let metadata_deserializer =
   De.record_mut
     ~fields:metadata_fields
     ~create:(fun () -> {
@@ -291,7 +290,7 @@ let metadata_decode =
       | Some Manifest_size_bytes -> builder.size_bytes <- Some (De.read reader int64_string_decode)
       | Some Manifest_ocamlc_warnings ->
           builder.ocamlc_warnings <- De.read reader (de_list De.string)
-      | Some Manifest_exports -> builder.exports <- De.read reader (de_list export_entry_decode)
+      | Some Manifest_exports -> builder.exports <- De.read reader (de_list export_entry_deserializer)
       | _ -> ignore (De.read reader De.skip_any))
     ~finish:(fun builder ->
       match (builder.input_hash, builder.output_hash, builder.size_bytes) with
@@ -305,7 +304,7 @@ let metadata_decode =
           }
       | _ -> De.missing_field ())
 
-let file_entry_encode =
+let file_entry_serializer =
   Ser.record
     (
       Ser.fields [
@@ -315,7 +314,7 @@ let file_entry_encode =
       ]
     )
 
-let export_entry_encode =
+let export_entry_serializer =
   Ser.record
     (
       Ser.fields [
@@ -325,7 +324,7 @@ let export_entry_encode =
       ]
     )
 
-let manifest_encode =
+let serializer =
   Ser.record
     (
       Ser.fields [
@@ -335,16 +334,16 @@ let manifest_encode =
         Ser.field "output_hash" Ser.string (fun (manifest: t) -> manifest.output_hash);
         Ser.field "timestamp" system_time_encode (fun (manifest: t) -> manifest.timestamp);
         Ser.field "size_bytes" int64_string_encode (fun (manifest: t) -> manifest.size_bytes);
-        Ser.field "files" (ser_list file_entry_encode) (fun (manifest: t) -> manifest.files);
+        Ser.field "files" (ser_list file_entry_serializer) (fun (manifest: t) -> manifest.files);
         Ser.field
           "ocamlc_warnings"
           (ser_list Ser.string)
           (fun (manifest: t) -> manifest.ocamlc_warnings);
-        Ser.field "exports" (ser_list export_entry_encode) (fun (manifest: t) -> manifest.exports);
+        Ser.field "exports" (ser_list export_entry_serializer) (fun (manifest: t) -> manifest.exports);
       ]
     )
 
-let metadata_encode =
+let metadata_serializer =
   Ser.record
     (
       Ser.fields [
@@ -355,192 +354,23 @@ let metadata_encode =
           "ocamlc_warnings"
           (ser_list Ser.string)
           (fun (metadata: metadata) -> metadata.ocamlc_warnings);
-        Ser.field "exports" (ser_list export_entry_encode) (fun (metadata: metadata) -> metadata.exports);
+        Ser.field "exports" (ser_list export_entry_serializer) (fun (metadata: metadata) -> metadata.exports);
       ]
     )
 
 let metadata_to_string = fun metadata ->
-  match Serde_json.to_string metadata_encode metadata with
+  match Serde_json.to_string metadata_serializer metadata with
   | Ok content -> Ok content
   | Error err -> Error (Serde.Error.to_string err)
 
 let metadata_of_string = fun content ->
-  match Serde_json.from_string metadata_decode content with
+  match Serde_json.from_string metadata_deserializer content with
   | Ok metadata -> Ok metadata
   | Error err -> Error (Serde.Error.to_string err)
 
-(** Convert manifest to JSON *)
-let to_json (manifest: t) =
-  let file_entry_to_json (entry: file_entry) =
-    Data.Json.Object [
-      ("path", Data.Json.String (Path.to_string entry.path));
-      ("hash", Data.Json.String entry.hash);
-      ("size", Data.Json.Int entry.size);
-    ]
-  in
-  let export_entry_to_json (entry: export_entry) =
-    Data.Json.Object [
-      ("name", Data.Json.String entry.name);
-      ("path", Data.Json.String (Path.to_string entry.path));
-      ("action_hash", Data.Json.String entry.action_hash);
-    ]
-  in
-  Data.Json.Object [
-    ("version", Data.Json.String (version_to_string manifest.version));
-    ("package", Data.Json.String manifest.package);
-    ("input_hash", Data.Json.String manifest.input_hash);
-    ("output_hash", Data.Json.String manifest.output_hash);
-    ("timestamp", Data.Json.Int (Time.SystemTime.to_unix_timestamp manifest.timestamp));
-    ("size_bytes", Data.Json.String (Int64.to_string manifest.size_bytes));
-    ("files", Data.Json.Array (List.map manifest.files ~fn:file_entry_to_json));
-    (
-      "ocamlc_warnings",
-      Data.Json.Array (List.map manifest.ocamlc_warnings ~fn:(fun msg -> Data.Json.String msg))
-    );
-    ("exports", Data.Json.Array (List.map manifest.exports ~fn:export_entry_to_json));
-  ]
-
-(** Parse manifest from JSON *)
-let from_json = fun json ->
-  let open Data.Json in
-  try
-    match json with
-    | Object fields ->
-        let get_field name =
-          List.find fields ~fn:(fun (field_name, _) -> String.equal field_name name)
-          |> Option.map ~fn:(fun (_, value) -> value)
-        in
-        let required_string = fun name error ->
-          match get_field name with
-          | Some (String value) -> Ok value
-          | _ -> Error error
-        in
-        let required_int = fun name error ->
-          match get_field name with
-          | Some (Int value) -> Ok value
-          | _ -> Error error
-        in
-        let parse_object_field = fun fields name ->
-          List.find fields ~fn:(fun (field_name, _) -> String.equal field_name name)
-          |> Option.map ~fn:(fun (_, value) -> value)
-        in
-        let parse_list = fun entries ~fn ->
-          List.fold_left
-            entries
-            ~init:(Ok [])
-            ~fn:(fun acc_result entry ->
-              let* acc = acc_result in
-              let* parsed = fn entry in
-              Ok (parsed :: acc))
-          |> Result.map ~fn:List.reverse
-        in
-        let* version =
-          match get_field "version" with
-          | Some (String "v2") -> Ok V2
-          | _ -> Error "Invalid or missing version"
-        in
-        let* package = required_string "package" "Invalid or missing package" in
-        let* input_hash = required_string "input_hash" "Invalid or missing input_hash" in
-        let* output_hash = required_string "output_hash" "Invalid or missing output_hash" in
-        let* timestamp =
-          required_int "timestamp" "Invalid or missing timestamp"
-          |> Result.map ~fn:Time.SystemTime.from_unix_timestamp
-        in
-        let parse_file_entry = fun __tmp1 ->
-          match __tmp1 with
-          | Object entry_fields ->
-              let get_entry_field = parse_object_field entry_fields in
-              let* path =
-                match get_entry_field "path" with
-                | Some (String path) -> Ok path
-                | _ -> Error "Invalid file entry"
-              in
-              let* hash =
-                match get_entry_field "hash" with
-                | Some (String hash) -> Ok hash
-                | _ -> Error "Invalid file entry"
-              in
-              let* size =
-                match get_entry_field "size" with
-                | Some (Int size) -> Ok size
-                | _ -> Error "Invalid file entry"
-              in
-              Ok { path = Path.v path; hash; size }
-          | _ -> Error "File entry must be an object"
-        in
-        let* files =
-          match get_field "files" with
-          | Some (Array entries) -> parse_list entries ~fn:parse_file_entry
-          | _ -> Error "Invalid or missing files"
-        in
-        let parse_warning = fun __tmp1 ->
-          match __tmp1 with
-          | String msg -> Ok msg
-          | _ -> Error "Invalid ocamlc warning entry"
-        in
-        let* ocamlc_warnings =
-          match get_field "ocamlc_warnings" with
-          | None -> Ok []
-          | Some (Array entries) -> parse_list entries ~fn:parse_warning
-          | Some _ -> Error "Invalid ocamlc_warnings"
-        in
-        let parse_export_entry = fun __tmp1 ->
-          match __tmp1 with
-          | Object entry_fields ->
-              let get_entry_field = parse_object_field entry_fields in
-              let* name =
-                match get_entry_field "name" with
-                | Some (String name) -> Ok name
-                | _ -> Error "Invalid export entry"
-              in
-              let* path =
-                match get_entry_field "path" with
-                | Some (String path) -> Ok path
-                | _ -> Error "Invalid export entry"
-              in
-              let* action_hash =
-                match get_entry_field "action_hash" with
-                | Some (String action_hash) -> Ok action_hash
-                | _ -> Error "Invalid export entry"
-              in
-              Ok { name; path = Path.v path; action_hash }
-          | _ -> Error "Export entry must be an object"
-        in
-        let* exports =
-          match get_field "exports" with
-          | None -> Ok []
-          | Some (Array entries) -> parse_list entries ~fn:parse_export_entry
-          | Some _ -> Error "Invalid exports"
-        in
-        let* size_bytes =
-          match get_field "size_bytes" with
-          | Some (String size_bytes) -> (
-              match Int64.parse size_bytes with
-              | Some size_bytes -> Ok size_bytes
-              | None -> Error "Invalid size_bytes"
-            )
-          | None -> Ok (file_entries_size_bytes files)
-          | Some _ -> Error "Invalid size_bytes"
-        in
-        Ok ({
-          version;
-          package;
-          input_hash;
-          output_hash;
-          timestamp;
-          size_bytes;
-          files;
-          ocamlc_warnings;
-          exports;
-        }: manifest)
-    | _ -> Error "Manifest must be a JSON object"
-  with
-  | Not_found -> Error "Missing required field"
-  | _ -> Error "Failed to parse manifest"
-
 (** Write manifest to file *)
 let save = fun (manifest: t) ~path ->
-  match Serde_json.to_string manifest_encode manifest with
+  match Serde_json.to_string serializer manifest with
   | Error err -> Error (Serde.Error.to_string err)
   | Ok content -> (
       match Std.Fs.write content path with
@@ -552,7 +382,7 @@ let save = fun (manifest: t) ~path ->
 let load = fun ~path ->
   match Std.Fs.read path with
   | Ok content -> (
-      match Serde_json.from_string manifest_decode content with
+      match Serde_json.from_string deserializer content with
       | Ok manifest -> Ok manifest
       | Error err -> Error (Serde.Error.to_string err)
     )

@@ -113,6 +113,12 @@ val record_successful_build_with_events:
 
 val summary_message: summary -> string
 
+val summary_serializer: summary Serde.Ser.t
+
+val generation_lane_serializer: generation_lane Serde.Ser.t
+
+val generation_lane_deserializer: generation_lane Serde.De.t
+
 val event_message: event -> string
 
-val event_to_json: event -> Data.Json.t
+val event_serializer: event Serde.Ser.t

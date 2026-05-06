@@ -338,7 +338,7 @@ let to_json = fun __tmp1 ->
         ("target", Data.Json.String (Riot_model.Target.to_string target));
         ("host", Data.Json.Bool host);
       ])
-  | CacheGc event -> Some (Riot_store.Cache_gc.event_to_json event)
+  | CacheGc _ -> None
   | Telemetry event -> Telemetry_events.to_json event
   | Phase phase ->
       Some (Data.Json.Object ([

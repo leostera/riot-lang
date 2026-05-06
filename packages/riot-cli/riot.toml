@@ -35,3 +35,5 @@ riot-publish = { path = "../riot-publish", version = "*" }
 pkgs-ml = { path = "../pkgs-ml", version = "*" }
 tty = { path = "../tty", version = "*" }
 contentstore = { path = "../contentstore", version = "*" }
+serde = { path = "../serde", version = "*" }
+serde-json = { path = "../serde-json", version = "*" }

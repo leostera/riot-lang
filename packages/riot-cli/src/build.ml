@@ -147,6 +147,16 @@ let write_json_event = fun ?timestamp (json: Data.Json.t) ->
   println
     (Data.Json.to_string (stamp_json_event ?timestamp json))
 
+let write_serde_json_event = fun serializer value ->
+  match Serde_json.to_string serializer value with
+  | Ok content -> println content
+  | Error err ->
+      write_json_event
+        (Data.Json.Object [
+          ("type", Data.Json.String "JsonEncodingFailed");
+          ("error", Data.Json.String (Serde.Error.to_string err));
+        ])
+
 let write_build_event_json = fun event ->
   match Riot_build.Event.to_json event with
   | Some json -> write_json_event ?timestamp:(Riot_build.Event.timestamp event) json
@@ -1826,7 +1836,7 @@ let close_cache_gc_progress = fun () ->
 
 let write_cache_gc_event = fun ~mode event ->
   match mode with
-  | Json -> write_json_event (Riot_store.Cache_gc.event_to_json event)
+  | Json -> write_serde_json_event Riot_store.Cache_gc.event_serializer event
   | Human -> (
       match event with
       | Riot_store.Cache_gc.GcStarted { trigger = Riot_store.Cache_gc.Manual } ->

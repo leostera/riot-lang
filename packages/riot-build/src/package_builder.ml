@@ -35,67 +35,11 @@ let package_error_to_string = fun __tmp1 ->
   | ActionDependenciesFailed { failed } ->
       "Dependencies failed: " ^ Int.to_string (List.length failed) ^ " actions"
 
-let package_error_to_json = fun __tmp1 ->
-  match __tmp1 with
-  | PlanningFailed planning_err ->
-      Std.Data.Json.Object [
-        ("type", Std.Data.Json.String "planning_failed");
-        ("error", Riot_planner.Planning_error.to_json planning_err);
-      ]
-  | ExecutionFailed { message } ->
-      Std.Data.Json.Object [
-        ("type", Std.Data.Json.String "execution_failed");
-        ("message", Std.Data.Json.String message);
-      ]
-  | ActionExecutionFailed { message } ->
-      Std.Data.Json.Object [
-        ("type", Std.Data.Json.String "action_failed");
-        ("message", Std.Data.Json.String message);
-      ]
-  | ActionOutputsNotCreated { missing } ->
-      Std.Data.Json.Object [
-        ("type", Std.Data.Json.String "outputs_not_created");
-        (
-          "missing",
-          Std.Data.Json.Array (List.map
-            missing
-            ~fn:(fun p -> Std.Data.Json.String (Path.to_string p)))
-        );
-      ]
-  | ActionDependenciesFailed { failed } ->
-      Std.Data.Json.Object [
-        ("type", Std.Data.Json.String "dependencies_failed");
-        ("failed_count", Std.Data.Json.String (Int.to_string (List.length failed)));
-      ]
-
 type build_status =
   | Cached of Riot_store.Artifact.t
   | Built of Riot_store.Artifact.t
   | Skipped of { reason: string }
   | Failed of package_error
-
-let build_status_to_json = fun __tmp1 ->
-  match __tmp1 with
-  | Cached artifact ->
-      Std.Data.Json.Object [
-        ("type", Std.Data.Json.String "cached");
-        ("artifact", Riot_store.Artifact.to_json artifact);
-      ]
-  | Built artifact ->
-      Std.Data.Json.Object [
-        ("type", Std.Data.Json.String "built");
-        ("artifact", Riot_store.Artifact.to_json artifact);
-      ]
-  | Skipped { reason } ->
-      Std.Data.Json.Object [
-        ("type", Std.Data.Json.String "skipped");
-        ("reason", Std.Data.Json.String reason);
-      ]
-  | Failed err ->
-      Std.Data.Json.Object [
-        ("type", Std.Data.Json.String "failed");
-        ("error", package_error_to_json err);
-      ]
 
 type build_result = {
   unit_key: Build_unit.key;
@@ -124,21 +68,6 @@ type execution_plan = {
 type plan_outcome =
   | Final_result of detailed_result
   | Execution_required of execution_plan
-
-let build_result_to_json = fun (result: build_result) ->
-  Std.Data.Json.Object [
-    ("unit_key", Std.Data.Json.String (Build_unit.key_to_string result.unit_key));
-    ("package", Package.to_json result.package);
-    ("status", build_status_to_json result.status);
-    (
-      "ocamlc_warnings",
-      Std.Data.Json.Array (List.map result.ocamlc_warnings ~fn:(fun msg -> Std.Data.Json.String msg))
-    );
-    (
-      "duration_ms",
-      Std.Data.Json.Int (Int.from_float (Duration.to_secs_float result.duration *. 1_000.0))
-    );
-  ]
 
 let collect_source_files = fun package ->
   let src_dir = Path.(package.Package.path / Path.v "src") in

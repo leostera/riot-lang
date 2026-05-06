@@ -9,4 +9,6 @@ type t = {
   exports: Manifest.export_entry list;
 }
 
-val to_json: t -> Data.Json.t
+val serializer: t Serde.Ser.t
+
+val deserializer: t Serde.De.t

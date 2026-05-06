@@ -59,9 +59,18 @@ val metadata_to_string: metadata -> (string, string) result
 
 val metadata_of_string: string -> (metadata, string) result
 
-val to_json: t -> Std.Data.Json.t
+val file_entry_serializer: file_entry Serde.Ser.t
 
-(** Convert manifest to JSON *)
-val from_json: Std.Data.Json.t -> (t, string) result
+val file_entry_deserializer: file_entry Serde.De.t
 
-(** Parse manifest from JSON *)
+val export_entry_serializer: export_entry Serde.Ser.t
+
+val export_entry_deserializer: export_entry Serde.De.t
+
+val serializer: t Serde.Ser.t
+
+val deserializer: t Serde.De.t
+
+val metadata_serializer: metadata Serde.Ser.t
+
+val metadata_deserializer: metadata Serde.De.t
