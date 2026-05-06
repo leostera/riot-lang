@@ -358,12 +358,22 @@ let metadata_serializer =
       ]
     )
 
-let write_json_file = fun ~path serializer value ->
+let small_cache_file_threshold = 64 * 1024
+
+let encode_to_string = fun serializer value ->
+  Serde_bin.to_string serializer value
+  |> Result.map_err ~fn:Serde.Error.to_string
+
+let decode_from_string = fun deserializer content ->
+  Serde_bin.from_string deserializer content
+  |> Result.map_err ~fn:Serde.Error.to_string
+
+let write_cache_file = fun ~path serializer value ->
   match Std.Fs.File.create path with
   | Error err -> Error (Std.Fs.File.error_to_string err)
   | Ok file ->
       let result =
-        Serde_json.to_writer serializer (Std.Fs.File.to_writer file) value
+        Serde_bin.to_writer serializer (Std.Fs.File.to_writer file) value
         |> Result.map_err ~fn:Serde.Error.to_string
       in
       let close_result = Std.Fs.File.close file in
@@ -374,42 +384,49 @@ let write_json_file = fun ~path serializer value ->
         | (Ok (), Error err) -> Error (Std.Fs.File.error_to_string err)
       )
 
-let read_json_file = fun ~path deserializer ->
-  match Std.Fs.File.open_read path with
-  | Error err -> Error (Std.Fs.File.error_to_string err)
-  | Ok file ->
-      let result =
-        Serde_json.from_reader deserializer (Std.Fs.File.to_reader file)
-        |> Result.map_err ~fn:Serde.Error.to_string
-      in
-      let close_result = Std.Fs.File.close file in
-      (
-        match (result, close_result) with
-        | (Ok value, Ok ()) -> Ok value
-        | (Error err, _) -> Error err
-        | (Ok _, Error err) -> Error (Std.Fs.File.error_to_string err)
-      )
+let read_cache_file = fun ~path deserializer ->
+  let read_small_file = fun () ->
+    let* content =
+      Std.Fs.read path
+      |> Result.map_err ~fn:Std.IO.error_message
+    in
+    decode_from_string deserializer content
+  in
+  let read_large_file = fun () ->
+    match Std.Fs.File.open_read path with
+    | Error err -> Error (Std.Fs.File.error_to_string err)
+    | Ok file ->
+        let result =
+          Serde_bin.from_reader deserializer (Std.Fs.File.to_reader file)
+          |> Result.map_err ~fn:Serde.Error.to_string
+        in
+        let close_result = Std.Fs.File.close file in
+        (
+          match (result, close_result) with
+          | (Ok value, Ok ()) -> Ok value
+          | (Error err, _) -> Error err
+          | (Ok _, Error err) -> Error (Std.Fs.File.error_to_string err)
+        )
+  in
+  match Std.Fs.metadata path with
+  | Ok metadata when Std.Fs.Metadata.len metadata <= small_cache_file_threshold -> read_small_file ()
+  | Ok _ -> read_large_file ()
+  | Error _ -> read_large_file ()
 
-let metadata_to_string = fun metadata ->
-  match Serde_json.to_string metadata_serializer metadata with
-  | Ok content -> Ok content
-  | Error err -> Error (Serde.Error.to_string err)
+let metadata_to_string = fun metadata -> encode_to_string metadata_serializer metadata
 
-let metadata_of_string = fun content ->
-  match Serde_json.from_string metadata_deserializer content with
-  | Ok metadata -> Ok metadata
-  | Error err -> Error (Serde.Error.to_string err)
+let metadata_of_string = fun content -> decode_from_string metadata_deserializer content
 
-let save_metadata = fun metadata ~path -> write_json_file ~path metadata_serializer metadata
+let save_metadata = fun metadata ~path -> write_cache_file ~path metadata_serializer metadata
 
 (** Write manifest to file *)
 let save = fun (manifest: t) ~path ->
-  write_json_file ~path serializer manifest
+  write_cache_file ~path serializer manifest
 
 (** Read manifest from file *)
-let load = fun ~path -> read_json_file ~path deserializer
+let load = fun ~path -> read_cache_file ~path deserializer
 
-let load_metadata = fun ~path -> read_json_file ~path metadata_deserializer
+let load_metadata = fun ~path -> read_cache_file ~path metadata_deserializer
 
 (** Create a manifest for stored files *)
 let compute_output_hash = fun ~package ~files ~exports ->

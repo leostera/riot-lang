@@ -1,6 +1,6 @@
 format_version = 1
 
-dependency_hash = "c94a54f7f14fa041"
+dependency_hash = "28fb3878a5b9d4f8"
 
 [[packages]]
 name = "blink"
@@ -414,7 +414,7 @@ dev_dependencies = []
 name = "riot-store"
 root = "packages/riot-store"
 provenance = { kind = "workspace" }
-dependencies = [{ name = "contentstore", package = { name = "contentstore" } }, { name = "riot-model", package = { name = "riot-model" } }, { name = "serde", package = { name = "serde" } }, { name = "serde-json", package = { name = "serde-json" } }, { name = "std", package = { name = "std" } }]
+dependencies = [{ name = "contentstore", package = { name = "contentstore" } }, { name = "riot-model", package = { name = "riot-model" } }, { name = "serde", package = { name = "serde" } }, { name = "serde-bin", package = { name = "serde-bin" } }, { name = "std", package = { name = "std" } }]
 build_dependencies = []
 dev_dependencies = []
 

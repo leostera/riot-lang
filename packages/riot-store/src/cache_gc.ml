@@ -167,12 +167,14 @@ let serde_error = fun context err -> context ^ ": " ^ Serde.Error.to_string err
 let file_error = fun context path err ->
   context ^ " " ^ Path.to_string path ^ ": " ^ Fs.File.error_to_string err
 
-let write_json_file = fun ~path ~context serializer value ->
+let small_cache_file_threshold = 64 * 1024
+
+let write_cache_file = fun ~path ~context serializer value ->
   match Fs.File.create path with
   | Error err -> Error (file_error "failed to open" path err)
   | Ok file ->
       let write_result =
-        Serde_json.to_writer serializer (Fs.File.to_writer file) value
+        Serde_bin.to_writer serializer (Fs.File.to_writer file) value
         |> Result.map_err ~fn:(serde_error context)
       in
       let close_result = Fs.File.close file in
@@ -183,30 +185,45 @@ let write_json_file = fun ~path ~context serializer value ->
         | (Ok (), Error err) -> Error (file_error "failed to close" path err)
       )
 
-let read_json_file = fun ~path ~context deserializer ->
-  match Fs.File.open_read path with
-  | Error err -> Error (file_error "failed to open" path err)
-  | Ok file ->
-      let read_result =
-        Serde_json.from_reader deserializer (Fs.File.to_reader file)
-        |> Result.map_err ~fn:(serde_error context)
-      in
-      let close_result = Fs.File.close file in
-      (
-        match (read_result, close_result) with
-        | (Ok value, Ok ()) -> Ok value
-        | (Error err, _) -> Error err
-        | (Ok _, Error err) -> Error (file_error "failed to close" path err)
-      )
+let read_cache_file = fun ~path ~context deserializer ->
+  let read_small_file = fun () ->
+    let* content =
+      Fs.read path
+      |> Result.map_err ~fn:(fun err ->
+        "failed to read " ^ Path.to_string path ^ ": " ^ IO.error_message err)
+    in
+    Serde_bin.from_string deserializer content
+    |> Result.map_err ~fn:(serde_error context)
+  in
+  let read_large_file = fun () ->
+    match Fs.File.open_read path with
+    | Error err -> Error (file_error "failed to open" path err)
+    | Ok file ->
+        let read_result =
+          Serde_bin.from_reader deserializer (Fs.File.to_reader file)
+          |> Result.map_err ~fn:(serde_error context)
+        in
+        let close_result = Fs.File.close file in
+        (
+          match (read_result, close_result) with
+          | (Ok value, Ok ()) -> Ok value
+          | (Error err, _) -> Error err
+          | (Ok _, Error err) -> Error (file_error "failed to close" path err)
+        )
+  in
+  match Fs.metadata path with
+  | Ok metadata when Fs.Metadata.len metadata <= small_cache_file_threshold -> read_small_file ()
+  | Ok _ -> read_large_file ()
+  | Error _ -> read_large_file ()
 
 let cache_root = fun ~(workspace:Workspace.t) -> Path.(workspace.target_dir_root / Path.v "cache")
 
 let generations_root = fun ~(workspace:Workspace.t) ->
   Path.(cache_root ~workspace / Path.v "generations")
 
-let state_path = fun ~(workspace:Workspace.t) -> Path.(cache_root ~workspace / Path.v "state.json")
+let state_path = fun ~(workspace:Workspace.t) -> Path.(cache_root ~workspace / Path.v "state.bin")
 
-let receipt_filename = fun hash -> hash ^ ".json"
+let receipt_filename = fun hash -> hash ^ ".bin"
 
 let receipt_path = fun ~(workspace:Workspace.t) hash ->
   Path.(generations_root ~workspace / Path.v (receipt_filename hash))
@@ -805,7 +822,7 @@ let list_subdirectories = fun dir ->
   |> List.filter ~fn:path_is_directory
 
 let is_receipt_file = fun path ->
-  String.ends_with ~suffix:".json" (Path.basename path) && not (path_is_directory path)
+  String.ends_with ~suffix:".bin" (Path.basename path) && not (path_is_directory path)
 
 let is_hex_char = fun __tmp1 ->
   match __tmp1 with
@@ -846,7 +863,7 @@ let ensure_generations_root = fun ~(workspace:Workspace.t) ->
 
 let write_state = fun ~(workspace:Workspace.t) (state: cache_state) ->
   let* () = ensure_cache_root ~workspace in
-  write_json_file
+  write_cache_file
     ~path:(state_path ~workspace)
     ~context:"failed to encode cache state"
     cache_state_serializer
@@ -858,7 +875,7 @@ let read_state = fun ~(workspace:Workspace.t) ->
     Ok None
   else
     let* state =
-      read_json_file
+      read_cache_file
         ~path
         ~context:"failed to parse cache state"
         cache_state_deserializer
@@ -873,7 +890,7 @@ let write_receipt = fun ~(workspace:Workspace.t) receipt ->
   else
     let temp_path = temp_receipt_path ~workspace receipt.hash in
     let* () =
-      write_json_file
+      write_cache_file
         ~path:temp_path
         ~context:"failed to encode generation receipt"
         receipt_serializer
@@ -887,7 +904,7 @@ let write_receipt = fun ~(workspace:Workspace.t) receipt ->
 
 let read_receipt_file = fun path ->
   let* receipt =
-    read_json_file
+    read_cache_file
       ~path
       ~context:"failed to parse generation receipt"
       receipt_deserializer

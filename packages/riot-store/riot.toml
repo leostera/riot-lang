@@ -13,7 +13,7 @@ std = "*"
 contentstore = "*"
 riot-model = "*"
 serde = "*"
-serde-json = "*"
+serde-bin = "*"
 
 [[bin]]
 name = "store_tests"

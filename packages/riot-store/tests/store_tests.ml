@@ -7,7 +7,7 @@ type Message.t +=
   | ConcurrentSaveComplete of (string * (unit, Riot_store.Store.error) result)
 
 let make_test_workspace = fun tmpdir ->
-  Riot_model.Workspace.make ~root:tmpdir ~target_dir:"target" ~packages:[] ()
+  Riot_model.Workspace.make ~root:tmpdir ~target_dir:(Path.v "target") ~packages:[] ()
 
 let read_file = fun path ->
   Fs.read_to_string path
@@ -57,17 +57,17 @@ let count_generation_receipts = fun ~(workspace:Riot_model.Workspace.t) ->
       |> List.filter
         ~fn:(fun path ->
           let basename = Path.basename path in
-          String.ends_with ~suffix:".json" basename)
+          String.ends_with ~suffix:".bin" basename)
       |> List.length
 
 let read_cache_state_generation_hashes = fun ~(workspace:Riot_model.Workspace.t) ->
-  let path = Path.(workspace.target_dir_root / Path.v "cache" / Path.v "state.json") in
+  let path = Path.(workspace.target_dir_root / Path.v "cache" / Path.v "state.bin") in
   let content =
     Fs.read_to_string path
     |> Result.expect ~msg:"failed to read cache state"
   in
   let state =
-    Serde_json.from_string Riot_store.Cache_gc.cache_state_deserializer content
+    Serde_bin.from_string Riot_store.Cache_gc.cache_state_deserializer content
     |> Result.expect ~msg:"failed to parse cache state"
   in
   match state.Riot_store.Cache_gc.generation_hashes with
@@ -79,14 +79,14 @@ let read_generation_lane_hashes = fun ~(workspace:Riot_model.Workspace.t) genera
     Path.(workspace.target_dir_root
     / Path.v "cache"
     / Path.v "generations"
-    / Path.v (generation_hash ^ ".json"))
+    / Path.v (generation_hash ^ ".bin"))
   in
   let content =
     Fs.read_to_string path
     |> Result.expect ~msg:"failed to read generation payload"
   in
   let receipt =
-    Serde_json.from_string Riot_store.Cache_gc.receipt_deserializer content
+    Serde_bin.from_string Riot_store.Cache_gc.receipt_deserializer content
     |> Result.expect ~msg:"failed to parse generation payload"
   in
   List.map receipt.Riot_store.Cache_gc.lanes ~fn:(fun lane -> lane.Riot_store.Cache_gc.hashes)
@@ -130,10 +130,10 @@ let overwrite_cache_state = fun
   }
   in
   let content =
-    Serde_json.to_string Riot_store.Cache_gc.cache_state_serializer state
+    Serde_bin.to_string Riot_store.Cache_gc.cache_state_serializer state
     |> Result.expect ~msg:"cache state should encode"
   in
-  Fs.write content Path.(cache_dir / Path.v "state.json")
+  Fs.write content Path.(cache_dir / Path.v "state.bin")
   |> Result.expect ~msg:"overwrite cache state should succeed"
 
 let test_save_and_promote_nested_outputs = fun _ctx ->
@@ -390,7 +390,7 @@ let test_exists_requires_manifest_file = fun _ctx ->
       let hash_dir = Riot_store.Store.hash_dir_of store hash in
       let _ = Fs.create_dir_all hash_dir in
       if Riot_store.Store.exists store hash then
-        Error "exists should require manifest.json"
+        Error "exists should require manifest.bin"
       else
         Ok ()) with
   | Ok x -> x
@@ -435,6 +435,63 @@ let test_put_if_absent_keeps_first_writer = fun _ctx ->
         Ok ()
       else
         Error "second writer should not replace existing cache entry") with
+  | Ok x -> x
+  | Error _ -> Error "tempdir creation failed"
+
+let test_save_replaces_stale_manifest_layout = fun _ctx ->
+  match Fs.with_tempdir
+    ~prefix:"store_stale_manifest_layout_test"
+    (fun tmpdir ->
+      let workspace = make_test_workspace tmpdir in
+      let store = Riot_store.Store.create ~workspace in
+      let hash = Crypto.hash_string "stale-manifest-layout" in
+      let hash_dir = Riot_store.Store.hash_dir_of store hash in
+      let sandbox = Path.(tmpdir / Path.v "sandbox") in
+      let output = Path.(sandbox / Path.v "x.txt") in
+      let _ =
+        Fs.create_dir_all hash_dir
+        |> Result.expect ~msg:"create stale hash dir should succeed"
+      in
+      let _ =
+        Fs.write "old" Path.(hash_dir / Path.v "x.txt")
+        |> Result.expect ~msg:"write stale output should succeed"
+      in
+      let _ =
+        Fs.write "{}" Path.(hash_dir / Path.v "manifest.json")
+        |> Result.expect ~msg:"write stale manifest should succeed"
+      in
+      let _ =
+        Fs.write "{}" Path.(hash_dir / Path.v "metadata.json")
+        |> Result.expect ~msg:"write stale metadata should succeed"
+      in
+      let _ =
+        Fs.create_dir_all sandbox
+        |> Result.expect ~msg:"create sandbox should succeed"
+      in
+      let _ =
+        Fs.write "new" output
+        |> Result.expect ~msg:"write fresh output should succeed"
+      in
+      let _ =
+        Riot_store.Store.save
+          store
+          ~package:"pkg"
+          ~input_hash:hash
+          ~sandbox_dir:sandbox
+          ~outs:[ output ]
+        |> Result.expect ~msg:"save should replace stale cache layout"
+      in
+      let target = Path.(tmpdir / Path.v "out") in
+      let _ =
+        Riot_store.Store.promote store hash ~target_dir:target
+        |> Result.expect ~msg:"promote should succeed after replacing stale layout"
+      in
+      if not (Riot_store.Store.exists store hash) then
+        Error "newly saved artifact should exist"
+      else if not (String.equal (read_file Path.(target / Path.v "x.txt")) "new") then
+        Error "save should replace stale artifact contents"
+      else
+        Ok ()) with
   | Ok x -> x
   | Error _ -> Error "tempdir creation failed"
 
@@ -753,13 +810,13 @@ let test_load_manifest_returns_none_for_malformed_payload = fun _ctx ->
       let store = Riot_store.Store.create ~workspace in
       let hash = Crypto.hash_string "malformed-manifest" in
       let hash_dir = Riot_store.Store.hash_dir_of store hash in
-      let manifest_path = Path.(hash_dir / Path.v "manifest.json") in
+      let manifest_path = Path.(hash_dir / Path.v "manifest.bin") in
       let _ =
         Fs.create_dir_all hash_dir
         |> Result.expect ~msg:"create hash dir should succeed"
       in
       let _ =
-        Fs.write "not a json manifest" manifest_path
+        Fs.write "not a bin manifest" manifest_path
         |> Result.expect ~msg:"write malformed manifest should succeed"
       in
       match Riot_store.Store.load_manifest store ~hash with
@@ -905,9 +962,9 @@ let test_package_metadata_lookup_uses_sidecar = fun _ctx ->
         |> Result.expect ~msg:"save package artifact should succeed"
       in
       let fresh_store = Riot_store.Store.create ~workspace in
-      let manifest_path = Path.(Riot_store.Store.hash_dir_of fresh_store hash / Path.v "manifest.json") in
+      let manifest_path = Path.(Riot_store.Store.hash_dir_of fresh_store hash / Path.v "manifest.bin") in
       let _ =
-        Fs.write "definitely not a json manifest" manifest_path
+        Fs.write "definitely not a bin manifest" manifest_path
         |> Result.expect ~msg:"corrupt manifest should be writable"
       in
       match
@@ -1337,7 +1394,7 @@ let test_record_successful_build_keeps_new_warm_generation_when_closure_changes 
             ^ " with "
             ^ Int.to_string receipt_count
             ^ " receipts")
-      | _ -> Error "expected state.json to keep exactly two generation hashes in recency order") with
+      | _ -> Error "expected state.bin to keep exactly two generation hashes in recency order") with
   | Ok x -> x
   | Error _ -> Error "tempdir creation failed"
 
@@ -1398,7 +1455,7 @@ let test_record_successful_build_reorders_existing_cached_generation_to_front = 
           else
             Error "expected cached rollback generation to reorder state without writing a third payload"
       | _ ->
-          Error "expected state.json to keep exactly two generation hashes after rollback reorder") with
+          Error "expected state.bin to keep exactly two generation hashes after rollback reorder") with
   | Ok x -> x
   | Error _ -> Error "tempdir creation failed"
 
@@ -1751,6 +1808,9 @@ let tests =
       test_save_rejects_absolute_export_paths;
     case "exists requires manifest" test_exists_requires_manifest_file;
     case "put-if-absent keeps first writer" test_put_if_absent_keeps_first_writer;
+    case
+      "save replaces stale manifest layout"
+      test_save_replaces_stale_manifest_layout;
     case
       "concurrent same-hash saves share cache safely"
       test_concurrent_same_hash_saves_share_cache_safely;

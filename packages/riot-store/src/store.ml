@@ -336,11 +336,67 @@ let get_package_hash_dir = fun store hash -> ContentStore.hash_dir_of store.pack
 (** Get the path for an action artifact hash in the store *)
 let get_action_hash_dir = fun store hash -> ContentStore.hash_dir_of store.action_store hash
 
-let manifest_path = fun hash_dir -> Path.(hash_dir / Path.v "manifest.json")
+let manifest_path = fun hash_dir -> Path.(hash_dir / Path.v "manifest.bin")
 
-let metadata_path = fun hash_dir -> Path.(hash_dir / Path.v "metadata.json")
+let metadata_path = fun hash_dir -> Path.(hash_dir / Path.v "metadata.bin")
 
 let manifest_cache_key = fun hash -> Std.Crypto.Digest.hex hash
+
+let path_exists = fun path ->
+  Fs.exists path
+  |> Result.unwrap_or ~default:false
+
+let export_source_path = fun store (entry: export_entry) ->
+  if Path.is_absolute entry.path then
+    None
+  else
+    match hash_of_hex entry.action_hash with
+    | None -> None
+    | Some action_hash -> Some Path.(get_action_hash_dir store action_hash / entry.path)
+
+let manifest_files_exist = fun hash_dir (manifest: Manifest.t) ->
+  List.all
+    manifest.files
+    ~fn:(fun (entry: Manifest.file_entry) -> path_exists Path.(hash_dir / entry.path))
+
+let manifest_exports_exist = fun store (manifest: Manifest.t) ->
+  List.all
+    manifest.exports
+    ~fn:(fun (entry: Manifest.export_entry) ->
+      match export_source_path store entry with
+      | Some path -> path_exists path
+      | None -> false)
+
+let artifact_dir_is_reusable = fun store hash_dir ->
+  match Manifest.load ~path:(manifest_path hash_dir) with
+  | Ok manifest ->
+      manifest_files_exist hash_dir manifest
+      && manifest_exports_exist store manifest
+  | Error _ -> false
+
+let prepare_artifact_destination = fun store ~hash_dir ~temp_dir ->
+  match Fs.exists hash_dir with
+  | Ok false -> Ok ()
+  | Ok true ->
+      if artifact_dir_is_reusable store hash_dir then
+        Ok ()
+      else
+        Fs.remove_dir_all hash_dir
+        |> Result.map_err
+          ~fn:(fun cause ->
+            CommitArtifactsFailed {
+              source_dir = temp_dir;
+              destination_dir = hash_dir;
+              cause = "failed to remove stale artifact directory: " ^ IO.error_message cause;
+            })
+  | Error cause ->
+      Error (
+        CommitArtifactsFailed {
+          source_dir = temp_dir;
+          destination_dir = hash_dir;
+          cause = "failed to inspect artifact directory: " ^ IO.error_message cause;
+        }
+      )
 
 let copy_with_permissions = fun ~src ~dst ~copy_error ->
   let* metadata =
@@ -391,15 +447,7 @@ let read_opened_file = fun file ->
 (** Check if artifacts for a given hash exist in the store *)
 let exists = fun store hash ->
   let hash_dir = get_package_hash_dir store hash in
-  match Fs.exists hash_dir with
-  | Ok true -> (
-      match Fs.exists (manifest_path hash_dir) with
-      | Ok true -> true
-      | Ok false
-      | Error _ -> false
-    )
-  | Ok false
-  | Error _ -> false
+  artifact_dir_is_reusable store hash_dir
 
 (** Promote artifacts from store to target directory *)
 let promote = fun store input_hash ~target_dir ->
@@ -536,6 +584,7 @@ let store_artifacts = fun
       Manifest.save_metadata metadata ~path:metadata_path
       |> Result.map_err ~fn:(fun cause -> SaveManifestFailed { path = metadata_path; cause })
     in
+    let* () = prepare_artifact_destination store ~hash_dir ~temp_dir in
     let* () =
       ContentStore.commit_dir content_store ~hash:input_hash ~source_dir:temp_dir
       |> Result.map_err
@@ -562,35 +611,10 @@ let store_artifacts = fun
   let _ = cleanup_temp_dir temp_dir in
   result
 
-let export_source_path = fun store (entry: export_entry) ->
-  if Path.is_absolute entry.path then
-    None
-  else
-    match hash_of_hex entry.action_hash with
-    | None -> None
-    | Some action_hash -> Some Path.(get_action_hash_dir store action_hash / entry.path)
-
 let load_manifest = fun store ~hash ->
   match Manifest.load ~path:(manifest_path (get_package_hash_dir store hash)) with
   | Ok manifest -> Some manifest
   | Error _ -> None
-
-let path_exists = fun path ->
-  Fs.exists path
-  |> Result.unwrap_or ~default:false
-
-let manifest_exports_exist = fun store (manifest: Manifest.t) ->
-  List.all
-    manifest.exports
-    ~fn:(fun (entry: Manifest.export_entry) ->
-      match export_source_path store entry with
-      | Some path -> path_exists path
-      | None -> false)
-
-let manifest_files_exist = fun hash_dir (manifest: Manifest.t) ->
-  List.all
-    manifest.files
-    ~fn:(fun (entry: Manifest.file_entry) -> path_exists Path.(hash_dir / entry.path))
 
 let artifact_files_exist = fun hash_dir (artifact: Artifact.t) ->
   List.all
@@ -704,12 +728,20 @@ let get_package = fun store hash ->
 let get_package_metadata = fun store hash ->
   let load_started_at = Time.Instant.now () in
   let hash_dir = ContentStore.hash_dir_of store.package_store hash in
-  let load_artifact_metadata path = Manifest.load_metadata ~path |> Result.to_option in
+  let load_artifact_metadata path =
+    if artifact_dir_is_reusable store hash_dir then
+      Manifest.load_metadata ~path |> Result.to_option
+    else
+      None
+  in
   let load_manifest_metadata () =
-    let* manifest = Manifest.load ~path:(manifest_path hash_dir) in
-    let metadata = metadata_of_manifest manifest in
-    let* () = Manifest.save_metadata metadata ~path:(metadata_path hash_dir) in
-    Ok metadata
+    if artifact_dir_is_reusable store hash_dir then
+      let* manifest = Manifest.load ~path:(manifest_path hash_dir) in
+      let metadata = metadata_of_manifest manifest in
+      let* () = Manifest.save_metadata metadata ~path:(metadata_path hash_dir) in
+      Ok metadata
+    else
+      Error "artifact directory is missing a valid current manifest"
   in
   let metadata =
     match load_artifact_metadata (metadata_path hash_dir) with
