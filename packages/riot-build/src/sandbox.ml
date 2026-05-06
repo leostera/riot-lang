@@ -139,7 +139,7 @@ let copy_dependency_object_files = fun ~store ~sandbox ~package ~depset ->
           if String.ends_with ~suffix:".o" (Path.to_string entry_path) then (
             let src = Path.(artifact_dir / entry_path) in
             let dst = Path.(sandbox.dir / v (Path.basename entry_path)) in
-            match Fs.clone ~src ~dst with
+            match Fs.copy ~src ~dst with
             | Ok () -> Ok (copied + 1)
             | Error err ->
                 Error
@@ -185,7 +185,7 @@ let copy_inputs = fun ~sandbox ~package ~inputs ->
       let dest_parent = Path.dirname dest in
       Fs.create_dir_all dest_parent
       |> Result.expect ~msg:("Failed to create parent dir: " ^ (Path.to_string dest_parent));
-      Fs.clone ~src ~dst:dest
+      Fs.copy ~src ~dst:dest
       |> Result.expect
         ~msg:("Failed to copy input " ^ Path.to_string src ^ " to " ^ (Path.to_string dest)));
   List.length inputs
