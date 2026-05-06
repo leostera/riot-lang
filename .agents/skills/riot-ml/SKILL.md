@@ -74,8 +74,7 @@ For benchmark grouping, regression checks, and comparison workflow, read:
 - [Riot benchmarking workflow](references/benchmarking.md)
 
 ## Profiling
-For profiling Riot commands across operating systems, including macOS `xctrace`
-workflows, read:
+For profiling Riot commands on macOS with `xctrace`, read:
 
 - [Riot profiling workflow](references/profiling.md)
 
