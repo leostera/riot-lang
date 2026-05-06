@@ -255,8 +255,9 @@ val copy: src:Path.t -> dst:Path.t -> (unit, error) Result.t
    Clones file contents and permissions from source to destination when the
    platform supports copy-on-write file clones.
 
-   Falls back to `copy` when native cloning is unavailable or the destination
-   already exists, so callers can use it as a copy-like operation.
+   This is an explicit native clone request. It does not fall back to `copy`;
+   callers that want copy semantics should call `copy`, which may use platform
+   clone/reflink support internally as an optimization.
 *)
 val clone: src:Path.t -> dst:Path.t -> (unit, error) Result.t
 

@@ -272,6 +272,7 @@ val or_else: ('a, 'e) t -> fn:('e -> ('a, 'f) t) -> ('a, 'f) t
    Generally, prefer [`expect`] which provides a more helpful panic message, or
    [`unwrap_or`] / [`unwrap_or_else`] for non-panicking alternatives.
 *)
+val unwrap: ('a, 'e) t -> 'a
 
 (**
    Returns the contained [`Ok`] value or a provided default.
@@ -286,7 +287,7 @@ val or_else: ('a, 'e) t -> fn:('e -> ('a, 'f) t) -> ('a, 'f) t
 
    let y = Error "error" in assert (Result.unwrap_or ~default y = 2) ```
 *)
-val unwrap: ('a, 'e) t -> 'a
+val unwrap_or: ('a, 'e) t -> default:'a -> 'a
 
 (**
    Returns the contained [`Ok`] value or computes it from a closure.
@@ -297,7 +298,7 @@ val unwrap: ('a, 'e) t -> 'a
    ~fn:(fun () -> 2) (Ok 9) = 9); assert (Result.unwrap_or_else ~fn:(fun () ->
    count "foo") (Error "bar") = 3) ```
 *)
-val unwrap_or: ('a, 'e) t -> default:'a -> 'a
+val unwrap_or_else: ('a, 'e) t -> fn:(unit -> 'a) -> 'a
 
 (**
    Returns the contained [`Error`] value, consuming the result.
@@ -315,7 +316,7 @@ val unwrap_or: ('a, 'e) t -> default:'a -> 'a
    (* This will panic: *) let y = Ok 2 in Result.unwrap_err y (* panic: "Called
    Result.unwrap_err on Ok: 2" *) ```
 *)
-val unwrap_or_else: ('a, 'e) t -> fn:(unit -> 'a) -> 'a
+val unwrap_err: ('a, 'e) t -> 'e
 
 (**
    Returns the contained [`Ok`] value, consuming the result.
@@ -341,7 +342,7 @@ val unwrap_or_else: ('a, 'e) t -> fn:(unit -> 'a) -> 'a
    **Hint**: If you're having trouble choosing a message, consider using
    [`unwrap`] instead.
 *)
-val unwrap_err: ('a, 'e) t -> 'e
+val expect: msg:string -> ('a, 'e) t -> 'a
 
 (**
    Returns the contained [`Error`] value, consuming the result.
@@ -356,7 +357,7 @@ val unwrap_err: ('a, 'e) t -> 'e
    ```ocaml let x = Error "emergency failure" in assert (Result.expect_err
    ~msg:"Testing errors" x = "emergency failure") ```
 *)
-val expect: msg:string -> ('a, 'e) t -> 'a
+val expect_err: msg:string -> ('a, 'e) t -> 'e
 
 (**
    Converts from `Result<'a, 'e>` to [`Option<'a>`].
@@ -369,8 +370,6 @@ val expect: msg:string -> ('a, 'e) t -> 'a
 
    let y = Error "Nothing here" in assert (Result.ok_value y = None) ```
 *)
-val expect_err: msg:string -> ('a, 'e) t -> 'e
-
 val ok_value: ('a, 'e) t -> 'a option
 
 (**
