@@ -375,14 +375,24 @@ let apply_commands = fun state commands ->
     ~fn:(apply_command state locals)
 
 let completed_results = fun state ->
-  HashMap.to_list state.runtime_nodes
-  |> List.sort ~compare:(fun (left, _) (right, _) -> Node_id.compare left right)
-  |> List.filter_map
-    ~fn:(fun (node_id, runtime_node) ->
-      match runtime_node.status with
-      | `Completed outcome -> Some { node = node_id; payload = runtime_node.payload; outcome }
-      | `Pending
-      | `Running -> None)
+  let rec loop node_id acc =
+    if node_id >= state.graph.Graph.next_id then
+      List.reverse acc
+    else
+      let acc =
+        match HashMap.get state.runtime_nodes ~key:node_id with
+        | Some runtime_node -> (
+            match runtime_node.status with
+            | `Completed outcome ->
+                { node = node_id; payload = runtime_node.payload; outcome } :: acc
+            | `Pending
+            | `Running -> acc
+          )
+        | None -> acc
+      in
+      loop (node_id + 1) acc
+  in
+  loop 1 []
 
 let is_complete = fun state ->
   state.tasks_in_flight = 0 && (should_block_new_work state || not (has_dispatchable state))
