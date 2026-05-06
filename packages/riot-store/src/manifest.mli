@@ -42,19 +42,18 @@ val create:
   files:(Path.t * int) list ->
   t
 
-(**
-   Create a manifest for stored files. Takes a list of (file_path, size) pairs
-   and calculates hashes.
-*)
+(** Save manifest to a JSON file. *)
 val save: t -> path:Path.t -> (unit, string) result
 
-(** Save manifest to a JSON file *)
+(** Load manifest from a JSON file. *)
 val load: path:Path.t -> (t, string) result
 
-(** Load manifest from a JSON file *)
+(** Load manifest metadata without decoding the stored file list. *)
 val load_metadata: path:Path.t -> (metadata, string) result
 
-(** Load manifest metadata without decoding the stored file list. *)
+(** Save manifest metadata without storing the file list. *)
+val save_metadata: metadata -> path:Path.t -> (unit, string) result
+
 val metadata_to_string: metadata -> (string, string) result
 
 val metadata_of_string: string -> (metadata, string) result

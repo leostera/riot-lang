@@ -52,6 +52,10 @@ type error =
   | DeclaredOutputMissing of {
       path: Std.Path.t;
     }
+  | DeclaredOutputOutsideSandbox of {
+      path: Std.Path.t;
+      sandbox_dir: Std.Path.t;
+    }
   | MetadataReadFailed of {
       path: Std.Path.t;
       cause: Std.Fs.error;

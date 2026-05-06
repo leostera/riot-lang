@@ -76,6 +76,10 @@ type error =
   | DeclaredOutputMissing of {
       path: Path.t;
     }
+  | DeclaredOutputOutsideSandbox of {
+      path: Path.t;
+      sandbox_dir: Path.t;
+    }
   | MetadataReadFailed of {
       path: Path.t;
       cause: Fs.error;
@@ -159,6 +163,12 @@ let error_message = fun __tmp1 ->
   | CheckSourceExistsFailed { path; cause } ->
       "Failed to check source path: " ^ Path.to_string path ^ " (" ^ IO.error_message cause ^ ")"
   | DeclaredOutputMissing { path } -> "Declared output was not created: " ^ Path.to_string path
+  | DeclaredOutputOutsideSandbox { path; sandbox_dir } ->
+      "Declared output is outside the sandbox: "
+      ^ Path.to_string path
+      ^ " (sandbox: "
+      ^ Path.to_string sandbox_dir
+      ^ ")"
   | MetadataReadFailed { path; cause } ->
       "Failed to get metadata for " ^ Path.to_string path ^ " (" ^ IO.error_message cause ^ ")"
   | SaveManifestFailed { path; cause } ->
@@ -271,6 +281,14 @@ let metadata_of_artifact = fun (artifact: Artifact.t) -> Manifest.{
   exports = artifact.exports;
 }
 
+let metadata_of_manifest = fun (manifest: Manifest.t) -> Manifest.{
+  input_hash = manifest.input_hash;
+  output_hash = manifest.output_hash;
+  size_bytes = manifest.size_bytes;
+  ocamlc_warnings = manifest.ocamlc_warnings;
+  exports = manifest.exports;
+}
+
 (** Create a store rooted at a specific build lane *)
 let create_for_lane = fun ~(workspace:Workspace.t) ~profile ~target ->
   let store_dir =
@@ -330,7 +348,7 @@ let copy_with_permissions = fun ~src ~dst ~copy_error ->
     |> Result.map_err ~fn:(fun cause -> ReadSourceMetadataFailed { path = src; cause })
   in
   let* () =
-    Fs.clone ~src ~dst
+    Fs.copy ~src ~dst
     |> Result.map_err ~fn:copy_error
   in
   Fs.set_permissions dst (Fs.Metadata.permissions metadata)
@@ -453,6 +471,11 @@ let store_artifacts = fun
     Fs.create_dir_all temp_dir
     |> Result.map_err ~fn:(fun cause -> CreateTempDirFailed { path = temp_dir; cause })
   in
+  let validate_exports_relative exports =
+    match List.find exports ~fn:(fun (entry: export_entry) -> Path.is_absolute entry.path) with
+    | Some entry -> Error (ExportPathMustBeRelative { path = entry.path })
+    | None -> Ok ()
+  in
   (* Copy declared outputs to store and track what was actually stored *)
   let copy_output output_file =
     let src = Path.(sandbox_dir / Path.v output_file) in
@@ -490,6 +513,7 @@ let store_artifacts = fun
         )
   in
   let result =
+    let* () = validate_exports_relative exports in
     let* stored_files_with_sizes = collect_outputs [] declared_outputs in
     let manifest =
       Manifest.create
@@ -507,21 +531,11 @@ let store_artifacts = fun
       |> Result.map_err ~fn:(fun cause -> SaveManifestFailed { path = manifest_path; cause })
     in
     let metadata_path = metadata_path temp_dir in
-    let metadata = Manifest.{
-      input_hash = manifest.input_hash;
-      output_hash = manifest.output_hash;
-      size_bytes = manifest.size_bytes;
-      ocamlc_warnings = manifest.ocamlc_warnings;
-      exports = manifest.exports;
-    }
+    let metadata = metadata_of_manifest manifest in
+    let* () =
+      Manifest.save_metadata metadata ~path:metadata_path
+      |> Result.map_err ~fn:(fun cause -> SaveManifestFailed { path = metadata_path; cause })
     in
-    ignore (
-      Manifest.metadata_to_string metadata
-      |> Result.and_then
-        ~fn:(fun content ->
-          Fs.write content metadata_path
-          |> Result.map_err ~fn:(fun _ -> "failed to write metadata"))
-    );
     let* () =
       ContentStore.commit_dir content_store ~hash:input_hash ~source_dir:temp_dir
       |> Result.map_err
@@ -691,21 +705,19 @@ let get_package_metadata = fun store hash ->
   let load_started_at = Time.Instant.now () in
   let hash_dir = ContentStore.hash_dir_of store.package_store hash in
   let load_artifact_metadata path = Manifest.load_metadata ~path |> Result.to_option in
+  let load_manifest_metadata () =
+    let* manifest = Manifest.load ~path:(manifest_path hash_dir) in
+    let metadata = metadata_of_manifest manifest in
+    let* () = Manifest.save_metadata metadata ~path:(metadata_path hash_dir) in
+    Ok metadata
+  in
   let metadata =
     match load_artifact_metadata (metadata_path hash_dir) with
     | Some metadata -> Some metadata
     | None -> (
-        match load_artifact_metadata (manifest_path hash_dir) with
-        | Some metadata ->
-            ignore (
-              Manifest.metadata_to_string metadata
-              |> Result.and_then
-                ~fn:(fun content ->
-                  Fs.write content (metadata_path hash_dir)
-                  |> Result.map_err ~fn:(fun _ -> "failed to write metadata"))
-            );
-            Some metadata
-        | None -> None
+        match load_manifest_metadata () with
+        | Ok metadata -> Some metadata
+        | Error _ -> None
       )
   in
   match metadata with
@@ -742,19 +754,24 @@ let get = get_package
 (** Save build outputs to the store *)
 let save_to = fun
   content_store artifact_cache ?(ocamlc_warnings = []) ?(exports = []) store ~package ~input_hash ~sandbox_dir ~outs ->
-  let sandbox_str = Path.to_string sandbox_dir in
-  let sandbox_len = String.length sandbox_str in
-  let outs_str =
-    List.map
-      outs
-      ~fn:(fun out_path ->
-        let out_str = Path.to_string out_path in
-        if String.starts_with ~prefix:sandbox_str out_str then
-          let relative_start = sandbox_len + 1 in
-          String.sub out_str ~offset:relative_start ~len:(String.length out_str - relative_start)
-        else
-          Path.to_string out_path)
+  let sandbox_dir = Path.normalize sandbox_dir in
+  let relative_output_path out_path =
+    let out_path = Path.normalize out_path in
+    if Path.is_absolute out_path then
+      match Path.strip_prefix out_path ~prefix:sandbox_dir with
+      | Ok relative -> Ok relative
+      | Error _ -> Error (DeclaredOutputOutsideSandbox { path = out_path; sandbox_dir })
+    else
+      Ok out_path
   in
+  let rec collect_outs acc = fun __tmp1 ->
+    match __tmp1 with
+    | [] -> Ok (List.reverse acc)
+    | out_path :: rest ->
+        let* relative = relative_output_path out_path in
+        collect_outs (Path.to_string relative :: acc) rest
+  in
+  let* outs_str = collect_outs [] outs in
   let* artifact =
     store_artifacts
     content_store

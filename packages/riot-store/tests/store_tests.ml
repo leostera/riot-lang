@@ -66,18 +66,13 @@ let read_cache_state_generation_hashes = fun ~(workspace:Riot_model.Workspace.t)
     Fs.read_to_string path
     |> Result.expect ~msg:"failed to read cache state"
   in
-  let json =
-    Data.Json.from_string content
-    |> Result.expect ~msg:"failed to parse cache state json"
+  let state =
+    Serde_json.from_string Riot_store.Cache_gc.cache_state_deserializer content
+    |> Result.expect ~msg:"failed to parse cache state"
   in
-  match Data.Json.get_field "generation_hashes" json with
-  | Some (Data.Json.Array hashes) ->
-      List.map
-        hashes
-        ~fn:(fun value ->
-          Data.Json.get_string value
-          |> Option.expect ~msg:"generation hash should be a string")
-  | _ -> []
+  match state.Riot_store.Cache_gc.generation_hashes with
+  | Some hashes -> hashes
+  | None -> []
 
 let read_generation_lane_hashes = fun ~(workspace:Riot_model.Workspace.t) generation_hash ->
   let path =
@@ -90,24 +85,11 @@ let read_generation_lane_hashes = fun ~(workspace:Riot_model.Workspace.t) genera
     Fs.read_to_string path
     |> Result.expect ~msg:"failed to read generation payload"
   in
-  let json =
-    Data.Json.from_string content
+  let receipt =
+    Serde_json.from_string Riot_store.Cache_gc.receipt_deserializer content
     |> Result.expect ~msg:"failed to parse generation payload"
   in
-  match Data.Json.get_field "lanes" json with
-  | Some (Data.Json.Array lanes) ->
-      List.map
-        lanes
-        ~fn:(fun lane ->
-          match Data.Json.get_field "hashes" lane with
-          | Some (Data.Json.Array hashes) ->
-              List.map
-                hashes
-                ~fn:(fun value ->
-                  Data.Json.get_string value
-                  |> Option.expect ~msg:"generation lane hash should be a string")
-          | _ -> panic "generation lane payload is missing hashes")
-  | _ -> panic "generation payload is missing lanes"
+  List.map receipt.Riot_store.Cache_gc.lanes ~fn:(fun lane -> lane.Riot_store.Cache_gc.hashes)
 
 let write_cache_entry = fun ~(workspace:Riot_model.Workspace.t) ~profile ~target ~hash ~size ->
   let entry_dir =
@@ -137,13 +119,21 @@ let overwrite_cache_state = fun
     Fs.create_dir_all cache_dir
     |> Result.expect ~msg:"create cache state parent should succeed"
   in
-  let json = Data.Json.Object [
-    ("schema_version", Data.Json.Int 2);
-    ("tracked_size_bytes", Data.Json.String tracked_size);
-    ("generation_hashes", Data.Json.Array (List.map generation_hashes ~fn:Data.Json.string));
-  ]
+  let tracked_size_bytes =
+    Int64.parse tracked_size
+    |> Option.expect ~msg:"tracked size should be an int64 string"
   in
-  Fs.write (Data.Json.to_string_pretty json) Path.(cache_dir / Path.v "state.json")
+  let state = Riot_store.Cache_gc.{
+    tracked_size_bytes;
+    generation_hashes = Some generation_hashes;
+    receipt_count = None;
+  }
+  in
+  let content =
+    Serde_json.to_string Riot_store.Cache_gc.cache_state_serializer state
+    |> Result.expect ~msg:"cache state should encode"
+  in
+  Fs.write content Path.(cache_dir / Path.v "state.json")
   |> Result.expect ~msg:"overwrite cache state should succeed"
 
 let test_save_and_promote_nested_outputs = fun _ctx ->
@@ -208,14 +198,23 @@ let test_get_preserves_relative_paths = fun _ctx ->
       match Riot_store.Store.get store hash with
       | None -> Error "expected cached artifact"
       | Some artifact ->
-          if
+          let artifact_has_relative_path =
             List.any
               artifact.files
               ~fn:(fun entry -> Path.equal entry.Riot_store.Manifest.path (Path.v "deep/dir/x.cmxa"))
-          then
+          in
+          let manifest_has_only_relative_paths =
+            match Riot_store.Store.load_manifest store ~hash with
+            | None -> false
+            | Some manifest ->
+                List.all
+                  manifest.Riot_store.Manifest.files
+                  ~fn:(fun entry -> Path.is_relative entry.Riot_store.Manifest.path)
+          in
+          if artifact_has_relative_path && manifest_has_only_relative_paths then
             Ok ()
           else
-            Error "artifact paths should keep nested relative paths") with
+            Error "artifact and manifest paths should stay relative") with
   | Ok x -> x
   | Error _ -> Error "tempdir creation failed"
 
@@ -244,6 +243,82 @@ let test_save_fails_when_declared_output_is_missing = fun _ctx ->
             Ok ()
           else
             Error ("missing output path should be reported, got " ^ Path.to_string path)
+      | Error err -> Error ("unexpected store error: " ^ Riot_store.Store.error_message err)) with
+  | Ok x -> x
+  | Error _ -> Error "tempdir creation failed"
+
+let test_save_fails_when_declared_output_is_outside_sandbox = fun _ctx ->
+  match Fs.with_tempdir
+    ~prefix:"store_output_outside_sandbox_test"
+    (fun tmpdir ->
+      let workspace = make_test_workspace tmpdir in
+      let store = Riot_store.Store.create ~workspace in
+      let sandbox = Path.(tmpdir / Path.v "sandbox") in
+      let outside = Path.(tmpdir / Path.v "outside.cmx") in
+      let _ =
+        Fs.create_dir_all sandbox
+        |> Result.expect ~msg:"create sandbox should succeed"
+      in
+      let _ =
+        Fs.write "outside" outside
+        |> Result.expect ~msg:"write outside output should succeed"
+      in
+      let hash = Crypto.hash_string "outside-declared-output" in
+      match Riot_store.Store.save
+        store
+        ~package:"pkg"
+        ~input_hash:hash
+        ~sandbox_dir:sandbox
+        ~outs:[ outside ] with
+      | Ok _ -> Error "store save should reject declared outputs outside the sandbox"
+      | Error (Riot_store.Store.DeclaredOutputOutsideSandbox { path; sandbox_dir }) ->
+          if Path.equal path outside && Path.equal sandbox_dir sandbox then
+            Ok ()
+          else
+            Error "outside output error should report the output path and sandbox"
+      | Error err -> Error ("unexpected store error: " ^ Riot_store.Store.error_message err)) with
+  | Ok x -> x
+  | Error _ -> Error "tempdir creation failed"
+
+let test_save_rejects_absolute_export_paths = fun _ctx ->
+  match Fs.with_tempdir
+    ~prefix:"store_save_absolute_export_test"
+    (fun tmpdir ->
+      let workspace = make_test_workspace tmpdir in
+      let store = Riot_store.Store.create ~workspace in
+      let hash = Crypto.hash_string "save-absolute-export-hash" in
+      let sandbox = Path.(tmpdir / Path.v "sandbox") in
+      let _ =
+        Fs.create_dir_all sandbox
+        |> Result.expect ~msg:"create sandbox should succeed"
+      in
+      let output = Path.(sandbox / Path.v "tool") in
+      let _ =
+        Fs.write "tool" output
+        |> Result.expect ~msg:"write output should succeed"
+      in
+      let absolute_path = Path.v "/tmp/not-allowed" in
+      let exports = [
+        Riot_store.Store.{
+          name = "tool";
+          path = absolute_path;
+          action_hash = "deadbeef";
+        };
+      ]
+      in
+      match Riot_store.Store.save
+        store
+        ~package:"pkg"
+        ~exports
+        ~input_hash:hash
+        ~sandbox_dir:sandbox
+        ~outs:[ output ] with
+      | Ok _ -> Error "store save should reject absolute export paths"
+      | Error (Riot_store.Store.ExportPathMustBeRelative { path }) ->
+          if Path.equal path absolute_path then
+            Ok ()
+          else
+            Error "absolute export error should report the rejected path"
       | Error err -> Error ("unexpected store error: " ^ Riot_store.Store.error_message err)) with
   | Ok x -> x
   | Error _ -> Error "tempdir creation failed"
@@ -651,17 +726,6 @@ let test_export_source_path_rejects_absolute_export_paths = fun _ctx ->
     (fun tmpdir ->
       let workspace = make_test_workspace tmpdir in
       let store = Riot_store.Store.create ~workspace in
-      let hash = Crypto.hash_string "absolute-export-hash" in
-      let sandbox = Path.(tmpdir / Path.v "sandbox") in
-      let _ =
-        Fs.create_dir_all sandbox
-        |> Result.expect ~msg:"create sandbox should succeed"
-      in
-      let output = Path.(sandbox / Path.v "tool") in
-      let _ =
-        Fs.write "tool" output
-        |> Result.expect ~msg:"write output should succeed"
-      in
       let exports = [
         Riot_store.Store.{
           name = "tool";
@@ -669,16 +733,6 @@ let test_export_source_path_rejects_absolute_export_paths = fun _ctx ->
           action_hash = "deadbeef";
         };
       ]
-      in
-      let _ =
-        Riot_store.Store.save
-          store
-          ~package:"pkg"
-          ~exports
-          ~input_hash:hash
-          ~sandbox_dir:sandbox
-          ~outs:[ output ]
-        |> Result.expect ~msg:"save should succeed"
       in
       match Riot_store.Store.export_source_path
         store
@@ -705,7 +759,7 @@ let test_load_manifest_returns_none_for_malformed_payload = fun _ctx ->
         |> Result.expect ~msg:"create hash dir should succeed"
       in
       let _ =
-        Fs.write "{\"version\":\"v1\",\"exports\":\"not-an-array\"}" manifest_path
+        Fs.write "not a json manifest" manifest_path
         |> Result.expect ~msg:"write malformed manifest should succeed"
       in
       match Riot_store.Store.load_manifest store ~hash with
@@ -853,7 +907,7 @@ let test_package_metadata_lookup_uses_sidecar = fun _ctx ->
       let fresh_store = Riot_store.Store.create ~workspace in
       let manifest_path = Path.(Riot_store.Store.hash_dir_of fresh_store hash / Path.v "manifest.json") in
       let _ =
-        Fs.write "{ definitely not a manifest" manifest_path
+        Fs.write "definitely not a json manifest" manifest_path
         |> Result.expect ~msg:"corrupt manifest should be writable"
       in
       match
@@ -1689,6 +1743,12 @@ let tests =
     case
       "save fails when declared output is missing"
       test_save_fails_when_declared_output_is_missing;
+    case
+      "save fails when declared output is outside sandbox"
+      test_save_fails_when_declared_output_is_outside_sandbox;
+    case
+      "save rejects absolute export paths"
+      test_save_rejects_absolute_export_paths;
     case "exists requires manifest" test_exists_requires_manifest_file;
     case "put-if-absent keeps first writer" test_put_if_absent_keeps_first_writer;
     case

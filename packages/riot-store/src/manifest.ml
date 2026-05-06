@@ -358,6 +358,38 @@ let metadata_serializer =
       ]
     )
 
+let write_json_file = fun ~path serializer value ->
+  match Std.Fs.File.create path with
+  | Error err -> Error (Std.Fs.File.error_to_string err)
+  | Ok file ->
+      let result =
+        Serde_json.to_writer serializer (Std.Fs.File.to_writer file) value
+        |> Result.map_err ~fn:Serde.Error.to_string
+      in
+      let close_result = Std.Fs.File.close file in
+      (
+        match (result, close_result) with
+        | (Ok (), Ok ()) -> Ok ()
+        | (Error err, _) -> Error err
+        | (Ok (), Error err) -> Error (Std.Fs.File.error_to_string err)
+      )
+
+let read_json_file = fun ~path deserializer ->
+  match Std.Fs.File.open_read path with
+  | Error err -> Error (Std.Fs.File.error_to_string err)
+  | Ok file ->
+      let result =
+        Serde_json.from_reader deserializer (Std.Fs.File.to_reader file)
+        |> Result.map_err ~fn:Serde.Error.to_string
+      in
+      let close_result = Std.Fs.File.close file in
+      (
+        match (result, close_result) with
+        | (Ok value, Ok ()) -> Ok value
+        | (Error err, _) -> Error err
+        | (Ok _, Error err) -> Error (Std.Fs.File.error_to_string err)
+      )
+
 let metadata_to_string = fun metadata ->
   match Serde_json.to_string metadata_serializer metadata with
   | Ok content -> Ok content
@@ -368,34 +400,16 @@ let metadata_of_string = fun content ->
   | Ok metadata -> Ok metadata
   | Error err -> Error (Serde.Error.to_string err)
 
+let save_metadata = fun metadata ~path -> write_json_file ~path metadata_serializer metadata
+
 (** Write manifest to file *)
 let save = fun (manifest: t) ~path ->
-  match Serde_json.to_string serializer manifest with
-  | Error err -> Error (Serde.Error.to_string err)
-  | Ok content -> (
-      match Std.Fs.write content path with
-      | Ok () -> Ok ()
-      | Error _ -> Error "Failed to write manifest"
-    )
+  write_json_file ~path serializer manifest
 
 (** Read manifest from file *)
-let load = fun ~path ->
-  match Std.Fs.read path with
-  | Ok content -> (
-      match Serde_json.from_string deserializer content with
-      | Ok manifest -> Ok manifest
-      | Error err -> Error (Serde.Error.to_string err)
-    )
-  | Error _ -> Error "Failed to read manifest file"
+let load = fun ~path -> read_json_file ~path deserializer
 
-let load_metadata = fun ~path ->
-  match Std.Fs.read path with
-  | Ok content -> (
-      match metadata_of_string content with
-      | Ok metadata -> Ok metadata
-      | Error err -> Error err
-    )
-  | Error _ -> Error "Failed to read manifest file"
+let load_metadata = fun ~path -> read_json_file ~path metadata_deserializer
 
 (** Create a manifest for stored files *)
 let compute_output_hash = fun ~package ~files ~exports ->

@@ -164,6 +164,41 @@ let target_serializer = Ser.contramap Target.to_string Ser.string
 
 let serde_error = fun context err -> context ^ ": " ^ Serde.Error.to_string err
 
+let file_error = fun context path err ->
+  context ^ " " ^ Path.to_string path ^ ": " ^ Fs.File.error_to_string err
+
+let write_json_file = fun ~path ~context serializer value ->
+  match Fs.File.create path with
+  | Error err -> Error (file_error "failed to open" path err)
+  | Ok file ->
+      let write_result =
+        Serde_json.to_writer serializer (Fs.File.to_writer file) value
+        |> Result.map_err ~fn:(serde_error context)
+      in
+      let close_result = Fs.File.close file in
+      (
+        match (write_result, close_result) with
+        | (Ok (), Ok ()) -> Ok ()
+        | (Error err, _) -> Error err
+        | (Ok (), Error err) -> Error (file_error "failed to close" path err)
+      )
+
+let read_json_file = fun ~path ~context deserializer ->
+  match Fs.File.open_read path with
+  | Error err -> Error (file_error "failed to open" path err)
+  | Ok file ->
+      let read_result =
+        Serde_json.from_reader deserializer (Fs.File.to_reader file)
+        |> Result.map_err ~fn:(serde_error context)
+      in
+      let close_result = Fs.File.close file in
+      (
+        match (read_result, close_result) with
+        | (Ok value, Ok ()) -> Ok value
+        | (Error err, _) -> Error err
+        | (Ok _, Error err) -> Error (file_error "failed to close" path err)
+      )
+
 let cache_root = fun ~(workspace:Workspace.t) -> Path.(workspace.target_dir_root / Path.v "cache")
 
 let generations_root = fun ~(workspace:Workspace.t) ->
@@ -667,7 +702,7 @@ let receipt_deserializer =
     })
     ~step:(fun reader builder field ->
       match field with
-      | Some Receipt_schema_version -> ignore (De.read reader De.skip_any)
+      | Some Receipt_schema_version -> ignore (De.read reader De.int)
       | Some Receipt_hash -> builder.receipt_hash <- Some (De.read reader De.string)
       | Some Receipt_lanes -> builder.receipt_lanes <- Some (De.read reader (de_list generation_lane_deserializer))
       | None -> ignore (De.read reader De.skip_any))
@@ -702,7 +737,7 @@ let cache_state_deserializer =
     })
     ~step:(fun reader builder field ->
       match field with
-      | Some Cache_state_schema_version -> ignore (De.read reader De.skip_any)
+      | Some Cache_state_schema_version -> ignore (De.read reader De.int)
       | Some Cache_state_tracked_size_bytes ->
           builder.cache_state_tracked_size_bytes <- Some (De.read reader int64_string_deserializer)
       | Some Cache_state_generation_hashes ->
@@ -769,7 +804,7 @@ let list_subdirectories = fun dir ->
   list_children dir
   |> List.filter ~fn:path_is_directory
 
-let is_json_file = fun path ->
+let is_receipt_file = fun path ->
   String.ends_with ~suffix:".json" (Path.basename path) && not (path_is_directory path)
 
 let is_hex_char = fun __tmp1 ->
@@ -793,7 +828,7 @@ let is_hash_dir_name = fun name ->
 
 let receipt_paths_desc = fun ~(workspace:Workspace.t) ->
   list_children (generations_root ~workspace)
-  |> List.filter ~fn:is_json_file
+  |> List.filter ~fn:is_receipt_file
   |> List.sort
     ~compare:(fun left right -> String.compare (Path.basename right) (Path.basename left))
 
@@ -811,25 +846,22 @@ let ensure_generations_root = fun ~(workspace:Workspace.t) ->
 
 let write_state = fun ~(workspace:Workspace.t) (state: cache_state) ->
   let* () = ensure_cache_root ~workspace in
-  let* content =
-    Serde_json.to_string cache_state_serializer state
-    |> Result.map_err ~fn:(serde_error "failed to encode cache state")
-  in
-  Fs.write content (state_path ~workspace)
-  |> Result.map_err ~fn:(fun err -> "failed to write cache state: " ^ IO.error_message err)
+  write_json_file
+    ~path:(state_path ~workspace)
+    ~context:"failed to encode cache state"
+    cache_state_serializer
+    state
 
 let read_state = fun ~(workspace:Workspace.t) ->
   let path = state_path ~workspace in
   if not (path_exists path) then
     Ok None
   else
-    let* content =
-      Fs.read_to_string path
-      |> Result.map_err ~fn:(fun err -> "failed to read cache state: " ^ IO.error_message err)
-    in
     let* state =
-      Serde_json.from_string cache_state_deserializer content
-      |> Result.map_err ~fn:(serde_error "failed to parse cache state JSON")
+      read_json_file
+        ~path
+        ~context:"failed to parse cache state"
+        cache_state_deserializer
     in
     Ok (Some state)
 
@@ -840,14 +872,12 @@ let write_receipt = fun ~(workspace:Workspace.t) receipt ->
     Ok ()
   else
     let temp_path = temp_receipt_path ~workspace receipt.hash in
-    let* content =
-      Serde_json.to_string receipt_serializer receipt
-      |> Result.map_err ~fn:(serde_error "failed to encode generation receipt")
-    in
     let* () =
-      Fs.write content temp_path
-      |> Result.map_err
-        ~fn:(fun err -> "failed to write generation receipt: " ^ IO.error_message err)
+      write_json_file
+        ~path:temp_path
+        ~context:"failed to encode generation receipt"
+        receipt_serializer
+        receipt
     in
     match Fs.rename ~src:temp_path ~dst:final_path with
     | Ok () -> Ok ()
@@ -856,13 +886,11 @@ let write_receipt = fun ~(workspace:Workspace.t) receipt ->
         Error ("failed to commit generation receipt: " ^ IO.error_message err)
 
 let read_receipt_file = fun path ->
-  let* content =
-    Fs.read_to_string path
-    |> Result.map_err ~fn:(fun err -> "failed to read generation receipt: " ^ IO.error_message err)
-  in
   let* receipt =
-    Serde_json.from_string receipt_deserializer content
-    |> Result.map_err ~fn:(serde_error "failed to parse generation receipt JSON")
+    read_json_file
+      ~path
+      ~context:"failed to parse generation receipt"
+      receipt_deserializer
   in
   Ok { path; receipt }
 

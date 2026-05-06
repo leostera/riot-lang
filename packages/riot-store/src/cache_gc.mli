@@ -87,6 +87,17 @@ type event =
       error: string;
     }
 
+type receipt = {
+  hash: string;
+  lanes: generation_lane list;
+}
+
+type cache_state = {
+  tracked_size_bytes: int64;
+  generation_hashes: string list option;
+  receipt_count: int option;
+}
+
 val clean: workspace:Workspace.t -> (summary, error) result
 
 val clean_with_events: workspace:Workspace.t -> on_event:(event -> unit) -> (summary, error) result
@@ -118,6 +129,14 @@ val summary_serializer: summary Serde.Ser.t
 val generation_lane_serializer: generation_lane Serde.Ser.t
 
 val generation_lane_deserializer: generation_lane Serde.De.t
+
+val receipt_serializer: receipt Serde.Ser.t
+
+val receipt_deserializer: receipt Serde.De.t
+
+val cache_state_serializer: cache_state Serde.Ser.t
+
+val cache_state_deserializer: cache_state Serde.De.t
 
 val event_message: event -> string
 
