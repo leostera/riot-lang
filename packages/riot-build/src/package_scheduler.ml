@@ -741,20 +741,23 @@ let deferred_package_count = fun lanes ->
       ))
 
 let pending_counts = fun lanes package_states ->
-  lanes
-  |> List.fold_left
-    ~init:{ awaiting_plan = 0; awaiting_finalization = 0; finalized = 0 }
-    ~fn:(fun counts lane ->
-      Build_lane.build_unit_keys lane
+  with_package_states
+    package_states
+    ~fn:(fun package_states ->
+      lanes
       |> List.fold_left
-        ~init:counts
-        ~fn:(fun counts unit_key ->
-          match get_package_state package_states lane unit_key with
-          | Some AwaitingPlan -> { counts with awaiting_plan = counts.awaiting_plan + 1 }
-          | Some (AwaitingFinalization _) ->
-              { counts with awaiting_finalization = counts.awaiting_finalization + 1 }
-          | Some (Finalized _) -> { counts with finalized = counts.finalized + 1 }
-          | None -> counts))
+        ~init:{ awaiting_plan = 0; awaiting_finalization = 0; finalized = 0 }
+        ~fn:(fun counts lane ->
+          Build_lane.build_unit_keys lane
+          |> List.fold_left
+            ~init:counts
+            ~fn:(fun counts unit_key ->
+              match get_package_state_unlocked package_states lane unit_key with
+              | Some AwaitingPlan -> { counts with awaiting_plan = counts.awaiting_plan + 1 }
+              | Some (AwaitingFinalization _) ->
+                  { counts with awaiting_finalization = counts.awaiting_finalization + 1 }
+              | Some (Finalized _) -> { counts with finalized = counts.finalized + 1 }
+              | None -> counts)))
 
 let pending_descriptions = fun lanes package_states ->
   lanes
@@ -873,14 +876,17 @@ let collect_errors = fun results ->
 
 let lane_result_of_states = fun package_states lane ->
   let package_results =
-    Build_lane.build_unit_keys lane
-    |> List.filter_map
-      ~fn:(fun unit_key ->
-        match get_package_state package_states lane unit_key with
-        | Some (Finalized { detailed_result; _ }) -> Some detailed_result.result
-        | Some AwaitingPlan
-        | Some (AwaitingFinalization _)
-        | None -> None)
+    with_package_states
+      package_states
+      ~fn:(fun package_states ->
+        Build_lane.build_unit_keys lane
+        |> List.filter_map
+          ~fn:(fun unit_key ->
+            match get_package_state_unlocked package_states lane unit_key with
+            | Some (Finalized { detailed_result; _ }) -> Some detailed_result.result
+            | Some AwaitingPlan
+            | Some (AwaitingFinalization _)
+            | None -> None))
   in
   if package_results = [] then
     None

@@ -29,6 +29,8 @@ type 'stage t = {
   lock: Build_lock.t;
   build_unit_plan: Build_unit_plan.t;
   build_unit_graph: Riot_planner.Build_unit_graph.t;
+  build_units: Riot_planner.Build_unit.t list;
+  build_unit_keys: Riot_planner.Build_unit.key list;
 }
 
 let sort_unique_packages = fun package_names ->
@@ -191,6 +193,18 @@ let prepare:
           created_at = store_created_at;
           duration = Time.Instant.duration_since ~earlier:store_started_at store_created_at;
         });
+      let build_units =
+        Build_unit_plan.units plan.build_unit_plan
+        |> List.filter
+          ~fn:(fun (unit: Riot_planner.Build_unit.t) ->
+            Riot_model.Target.equal
+              (Riot_planner.Build_unit.target unit)
+              target)
+      in
+      let build_unit_keys =
+        build_units
+        |> List.map ~fn:Riot_planner.Build_unit.key
+      in
       let lane_prepared_at = Time.Instant.now () in
       emit_phase
         context
@@ -214,6 +228,8 @@ let prepare:
         build_unit_plan = plan.build_unit_plan;
         build_unit_graph =
           Riot_planner.Build_unit_graph.clone (Build_unit_plan.graph plan.build_unit_plan);
+        build_units;
+        build_unit_keys;
       }
     with
     | exn -> Error (Failure (Exception.to_string exn))
@@ -244,17 +260,9 @@ let build_unit_plan = fun (lane: 'a t) -> lane.build_unit_plan
 
 let build_unit_graph = fun (lane: 'a t) -> lane.build_unit_graph
 
-let build_units = fun (lane: 'a t) ->
-  Build_unit_plan.units lane.build_unit_plan
-  |> List.filter
-    ~fn:(fun (unit: Riot_planner.Build_unit.t) ->
-      Riot_model.Target.equal
-        (Riot_planner.Build_unit.target unit)
-        lane.target)
+let build_units = fun (lane: 'a t) -> lane.build_units
 
-let build_unit_keys = fun lane ->
-  build_units lane
-  |> List.map ~fn:Riot_planner.Build_unit.key
+let build_unit_keys = fun lane -> lane.build_unit_keys
 
 let build_unit = fun lane key ->
   Riot_planner.Build_unit_graph.find (build_unit_graph lane) key
