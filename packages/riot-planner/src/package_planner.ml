@@ -768,42 +768,16 @@ let plan_package_after_dependencies = fun
   let profile =
     let profile = Profile.apply_overrides base_profile package.compiler.profile_overrides in
     let target_platform = Build_ctx.target_platform_name build_ctx in
-    Log.info
-      ("Package "
-      ^ Package_name.to_string package.name
-      ^ ": looking for target."
-      ^ target_platform
-      ^ " overrides");
-    Log.info
-      ("Available targets: ["
-      ^ (String.concat
-        ", "
-        (List.map package.compiler.target_overrides ~fn:(fun (target, _) -> target)))
-      ^ "]");
     match List.find
       package.compiler.target_overrides
       ~fn:(fun (target, _) -> String.equal target target_platform) with
     | Some (_, target_override) -> (
-        Log.info ("Found target." ^ target_platform ^ " override, applying...");
         match target_override.profile_override with
         | Some override ->
-            let result = Profile.apply_override profile override in
-            Log.info
-              ("After applying target override: cc_flags=["
-              ^ (String.concat ", " result.cc_flags)
-              ^ "], ld_flags=["
-              ^ (String.concat ", " result.ld_flags)
-              ^ "]");
-            result
+            Profile.apply_override profile override
         | None -> profile
       )
-    | None ->
-        Log.warn
-          ("No target."
-          ^ target_platform
-          ^ " override found for package "
-          ^ Package_name.to_string package.name);
-        profile
+    | None -> profile
   in
   let input_hash_started_at = Time.Instant.now () in
   let input_hash =
@@ -835,10 +809,6 @@ let plan_package_after_dependencies = fun
   in
   match cached_artifact with
   | Some (artifact, exports) ->
-      Log.info
-        ("Package "
-        ^ Package_name.to_string package.name
-        ^ ": cache hit via artifact + export metadata");
       let breakdown = {
         empty_breakdown with
         dependency_count = List.length depset;

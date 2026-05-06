@@ -357,7 +357,6 @@ let plan_detailed_from_result = fun
       _;
     }
   ) ->
-      Log.info ("Package " ^ package_name_string ^ ": hash=" ^ Std.Crypto.Digest.hex package_hash);
       Execution_required {
         unit_key = planned_key;
         package;
@@ -379,7 +378,6 @@ let plan_build_unit = fun
   let build_target = Build_ctx.target_triplet build_ctx in
   let package_name = package.Package.name in
   let package_name_string = Package_name.to_string package_name in
-  Log.info ("Package " ^ package_name_string ^ ": computing content hash with dependencies");
   Riot_planner.Package_planner.plan_build_unit_with_cache
     ~on_source_analyzed
     ~input_hash_cache
