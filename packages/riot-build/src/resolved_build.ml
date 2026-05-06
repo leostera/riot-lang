@@ -11,6 +11,7 @@ type t = {
   targets: Riot_model.Target.Set.t;
   scope: scope;
   dev_artifacts: dev_artifacts;
+  synthetic_tools: Riot_planner.Build_unit_graph.synthetic_tool list;
 }
 
 type error =
@@ -24,12 +25,13 @@ type error =
       available_packages: Riot_model.Package_name.t list;
     }
 
-let make = fun ~package_names ~targets ~scope ~dev_artifacts ->
+let make = fun ~package_names ~targets ~scope ~dev_artifacts ~synthetic_tools ->
   {
     package_names;
     targets;
     scope;
     dev_artifacts;
+    synthetic_tools;
   }
 
 let package_names = fun t -> t.package_names
@@ -39,6 +41,8 @@ let targets = fun t -> t.targets
 let scope = fun t -> t.scope
 
 let dev_artifacts = fun t -> t.dev_artifacts
+
+let synthetic_tools = fun t -> t.synthetic_tools
 
 let available_package_names = fun workspace ->
   workspace.Riot_model.Workspace.packages
@@ -98,4 +102,5 @@ let resolve = fun context request ->
     ~package_names
     ~targets
     ~scope:(Request.Internal.scope request)
-    ~dev_artifacts:(Request.Internal.dev_artifacts request))
+    ~dev_artifacts:(Request.Internal.dev_artifacts request)
+    ~synthetic_tools:(Request.Internal.synthetic_tools request))

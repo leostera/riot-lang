@@ -463,8 +463,12 @@ let realize_unit_group = fun (group: unit_ref_group) ->
     | None ->
         let package =
           match artifact with
-          | Build_unit.Library
-          | SyntheticTool _ -> Some (runtime_package ())
+          | Build_unit.Library -> Some (runtime_package ())
+          | SyntheticTool { name } -> (
+              match Package.for_binary_with_projection_cache projection_cache ~binary_name:name with
+              | Some _ as package -> package
+              | None -> Some (runtime_package ())
+            )
           | RuntimeBinary { name }
           | TestBinary { name }
           | ExampleBinary { name }

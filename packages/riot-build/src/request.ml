@@ -17,6 +17,7 @@ type t = {
   scope: scope;
   dev_artifacts: dev_artifacts;
   profile: Riot_model.Profile.t;
+  synthetic_tools: Riot_planner.Build_unit_graph.synthetic_tool list;
   requested_parallelism: int option;
 }
 
@@ -26,6 +27,7 @@ let make = fun
   ~targets
   ~scope
   ~profile
+  ?(synthetic_tools = [])
   ?(dev_artifacts = {tests = true; examples = true; benches = true})
   ?(requested_parallelism = None)
   () ->
@@ -36,6 +38,7 @@ let make = fun
     scope;
     dev_artifacts;
     profile;
+    synthetic_tools;
     requested_parallelism;
   }
 
@@ -51,6 +54,8 @@ module Internal = struct
   let dev_artifacts = fun t -> t.dev_artifacts
 
   let profile = fun t -> t.profile
+
+  let synthetic_tools = fun t -> t.synthetic_tools
 
   let requested_parallelism = fun t -> t.requested_parallelism
 end

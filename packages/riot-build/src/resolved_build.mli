@@ -24,4 +24,6 @@ val scope: t -> scope
 
 val dev_artifacts: t -> dev_artifacts
 
+val synthetic_tools: t -> Riot_planner.Build_unit_graph.synthetic_tool list
+
 val resolve: Build_context.t -> Request.t -> (t, error) result

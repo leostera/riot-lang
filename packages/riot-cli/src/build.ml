@@ -2079,6 +2079,11 @@ let workspace_fix_providers = fun (workspace: Riot_model.Workspace.t) ->
   |> List.map ~fn:(fun (pkg: Riot_model.Package_manifest.t) -> pkg.fix_providers)
   |> List.concat
 
+let workspace_member_package_names = fun (workspace: Riot_model.Workspace.t) ->
+  workspace.packages
+  |> List.filter ~fn:Riot_model.Package_manifest.is_workspace_member
+  |> List.map ~fn:(fun (pkg: Riot_model.Package_manifest.t) -> pkg.name)
+
 let selected_fix_providers = fun (request: request) ->
   let providers = workspace_fix_providers request.workspace in
   match request.packages with
@@ -2142,7 +2147,8 @@ let run_request = fun (request: request) ->
           ~seen_registry_updates
           event
   in
-  let build_request = fun ~workspace ~packages ~targets ~scope ~dev_artifacts ~profile () ->
+  let build_request = fun
+    ?(synthetic_tools = []) ~workspace ~packages ~targets ~scope ~dev_artifacts ~profile () ->
     Riot_build.build
       ~on_event:on_build_event
       (Riot_build.Request.make
@@ -2152,45 +2158,60 @@ let run_request = fun (request: request) ->
         ~scope
         ~dev_artifacts
         ~profile
+        ~synthetic_tools
         ~requested_parallelism:request.requested_parallelism
         ())
     |> Result.map ~fn:(fun _output -> ())
   in
-  let build_fix_provider_runner = fun () ->
+  let fix_provider_runner_plan = fun () ->
     let providers = selected_fix_providers request in
     if List.is_empty providers then
-      Ok ()
+      None
     else
-      let plan =
+      Some (
         Riot_fix.Fixme_runner.materialize
           ~workspace_root:request.workspace.root
           ~target_dir_root:request.workspace.target_dir_root
           providers
-      in
-      build_request
-        ~workspace:(Riot_fix.Fixme_runner.attach_to_workspace request.workspace plan)
-        ~packages:[ plan.package_name ]
-        ~targets:Riot_model.Target.Host
-        ~scope:Runtime
-        ~dev_artifacts:request.dev_artifacts
-        ~profile:request.profile
-        ()
+      )
+  in
+  let runner_plan =
+    if should_build_fix_provider_runner request then
+      fix_provider_runner_plan ()
+    else
+      None
+  in
+  let build_workspace =
+    match runner_plan with
+    | Some plan -> Riot_fix.Fixme_runner.attach_to_workspace request.workspace plan
+    | None -> request.workspace
+  in
+  let build_packages =
+    match (runner_plan, request.packages) with
+    | (Some _, []) -> workspace_member_package_names request.workspace
+    | _ -> request.packages
+  in
+  let synthetic_tools =
+    match runner_plan with
+    | Some plan ->
+        [
+          Riot_planner.Build_unit_graph.{
+            package = plan.package_name;
+            name = plan.binary_name;
+          };
+        ]
+    | None -> []
   in
   let result =
     build_request
-      ~workspace:request.workspace
-      ~packages:request.packages
+      ~workspace:build_workspace
+      ~packages:build_packages
       ~targets:request.targets
       ~scope:request.scope
       ~dev_artifacts:request.dev_artifacts
       ~profile:request.profile
+      ~synthetic_tools
       ()
-    |> Result.and_then
-      ~fn:(fun () ->
-        if should_build_fix_provider_runner request then
-          build_fix_provider_runner ()
-        else
-          Ok ())
     |> Result.map_err
       ~fn:(fun err ->
         Option.for_each human_renderer ~fn:human_renderer_clear;

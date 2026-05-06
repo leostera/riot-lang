@@ -16,6 +16,7 @@ val make:
   targets:Riot_model.Target.request ->
   scope:scope ->
   profile:Riot_model.Profile.t ->
+  ?synthetic_tools:Riot_planner.Build_unit_graph.synthetic_tool list ->
   ?dev_artifacts:dev_artifacts ->
   ?requested_parallelism:int option ->
   unit ->
@@ -33,6 +34,8 @@ module Internal: sig
   val dev_artifacts: t -> dev_artifacts
 
   val profile: t -> Riot_model.Profile.t
+
+  val synthetic_tools: t -> Riot_planner.Build_unit_graph.synthetic_tool list
 
   val requested_parallelism: t -> int option
 end

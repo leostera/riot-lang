@@ -64,6 +64,7 @@ let make_workspace = fun ~root packages -> Riot_model.Workspace.make_realized ~r
 let request = fun
   ?(scope = Riot_build.Request.Runtime)
   ?(dev_artifacts = Riot_model.Package.{tests = true; examples = true; benches = true;})
+  ?(synthetic_tools = [])
   ~workspace
   ~package_names
   ~targets
@@ -75,6 +76,7 @@ let request = fun
     ~scope
     ~dev_artifacts
     ~profile:Riot_model.Profile.debug
+    ~synthetic_tools
     ()
 
 let context_and_resolved = fun request ->
@@ -289,6 +291,50 @@ let synthetic_tools_are_host_units_in_the_same_graph = fun _ctx ->
   | Ok result -> result
   | Error err -> Error ("tempdir failed: " ^ IO.error_message err)
 
+let request_synthetic_tools_are_included_in_the_build_unit_plan = fun _ctx ->
+  match Fs.with_tempdir
+    ~prefix:"riot_build_unit_plan_request_synthetic"
+    (fun root ->
+      let workspace =
+        make_workspace
+          ~root
+          [
+            make_package "std";
+            make_package
+              ~dependencies:[ "std" ]
+              ~binaries:[ binary ~name:"fixme-runner" ~path:"src/main.ml" ]
+              "fixme-runner";
+            make_package ~dependencies:[ "std" ] "app";
+          ]
+      in
+      let (context, resolved) =
+        request
+          ~workspace
+          ~package_names:[ package_name "app" ]
+          ~targets:[ linux_target ]
+          ~synthetic_tools:[
+            Build_unit_graph.{ package = package_name "fixme-runner"; name = "fixme-runner" };
+          ]
+          ()
+        |> context_and_resolved
+      in
+      let graph = build_graph context resolved in
+      assert_keys_equal
+        ~expected:[
+          library_key ~target:linux_target "std";
+          library_key ~target:linux_target "app";
+          library_key ~target:(Riot_model.Target.host ()) "fixme-runner";
+          synthetic_key "fixme-runner" "fixme-runner";
+          library_key ~target:(Riot_model.Target.host ()) "std";
+        ]
+        ~actual:(Build_unit_graph.keys graph);
+      assert_keys_equal
+        ~expected:[ library_key ~target:(Riot_model.Target.host ()) "fixme-runner" ]
+        ~actual:(Build_unit_graph.dependencies graph (synthetic_key "fixme-runner" "fixme-runner"));
+      Ok ()) with
+  | Ok result -> result
+  | Error err -> Error ("tempdir failed: " ^ IO.error_message err)
+
 let build_unit_plan_stores_topologically_sorted_units = fun _ctx ->
   match Fs.with_tempdir
     ~prefix:"riot_build_unit_plan_sorted"
@@ -386,6 +432,9 @@ let tests =
     case
       "build unit plan includes synthetic tools in the same graph"
       synthetic_tools_are_host_units_in_the_same_graph;
+    case
+      "build unit plan includes request synthetic tools"
+      request_synthetic_tools_are_included_in_the_build_unit_plan;
     case
       "build unit plan stores topologically sorted units"
       build_unit_plan_stores_topologically_sorted_units;

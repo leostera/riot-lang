@@ -40,7 +40,7 @@ let request_of_resolved = fun ?(synthetic_tools = []) context resolved ->
     targets = targets_of_resolved resolved;
     profile = context.Build_context.profile;
     kind = kind_of_resolved resolved;
-    synthetic_tools;
+    synthetic_tools = synthetic_tools @ Resolved_build.synthetic_tools resolved;
   }
 
 let create_graph = fun ?synthetic_tools context resolved ->
