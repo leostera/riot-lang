@@ -73,10 +73,18 @@ For benchmark grouping, regression checks, and comparison workflow, read:
 
 - [Riot benchmarking workflow](references/benchmarking.md)
 
+## Profiling
+For profiling Riot commands across operating systems, including macOS `xctrace`
+workflows, read:
+
+- [Riot profiling workflow](references/profiling.md)
+
 ## Common Riot commands
 - `riot new --lib ./packages/<name>` : create a new library package in a workspace.
 - `riot new --bin ./packages/<name>` : create a new binary package in a workspace.
 - `riot build --json` : compile packages and dependencies.
+- `riot plan --all -x all --json` : profile or inspect build planning without executing actions.
+- `riot build --all -x all --json --target-dir /tmp/riot-profile-build` : profile an isolated build target directory.
 - `riot test --json` : run project tests.
 - `riot fuzz --list --json` : list fuzz cases.
 - `riot fuzz -p <package> -f <filter> --duration 10m --json` : run a focused fuzz campaign.
