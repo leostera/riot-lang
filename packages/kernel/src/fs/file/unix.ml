@@ -389,7 +389,7 @@ let is_directory = fun path ->
   | Result.Error (System System_error.NoSuchFileOrDirectory) -> Result.Ok false
   | Result.Error error -> Result.Error error
 
-let copy = fun ~src ~dst ->
+let copy_with_permissions = fun ~src ~dst ->
   let* src_metadata = metadata src in
   let* src_file = open_read src in
   let* dst_file = open_write dst in
@@ -425,12 +425,22 @@ let copy = fun ~src ~dst ->
           set_permissions dst ~perm:(Metadata.permissions src_metadata)
     )
 
-let clone = fun ~src ~dst ->
+let native_clone_unavailable = fun __tmp1 ->
+  match __tmp1 with
+  | System System_error.NotSupported
+  | System System_error.AlreadyExists -> true
+  | _ -> false
+
+let copy = fun ~src ~dst ->
   match native_clone ~src ~dst with
   | Result.Ok () -> Result.Ok ()
-  | Result.Error (System System_error.NotSupported)
-  | Result.Error (System System_error.AlreadyExists) -> copy ~src ~dst
-  | Result.Error error -> Result.Error error
+  | Result.Error error ->
+      if native_clone_unavailable error then
+        copy_with_permissions ~src ~dst
+      else
+        Result.Error error
+
+let clone = fun ~src ~dst -> native_clone ~src ~dst
 
 let is_tty = FFI.is_tty
 

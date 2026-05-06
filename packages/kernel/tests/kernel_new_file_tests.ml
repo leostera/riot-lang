@@ -393,7 +393,7 @@ let test_copy_and_rename_roundtrip = fun _ctx ->
       else
         Error "expected copy and rename to preserve payload")
 
-let test_clone_copies_payload_and_overwrites_destination = fun _ctx ->
+let test_clone_rejects_existing_destination = fun _ctx ->
   with_tempdir
     "kernel_new_file"
     (fun tempdir ->
@@ -423,7 +423,7 @@ let test_clone_copies_payload_and_overwrites_destination = fun _ctx ->
             else
               Error "expected destination fixture write to make progress")
       in
-      let* () = lift (Kernel.Fs.File.clone ~src:source ~dst:destination) in
+      let clone_result = Kernel.Fs.File.clone ~src:source ~dst:destination in
       let* destination_file = lift (Kernel.Fs.File.open_read destination) in
       let buffer = Kernel.Bytes.create ~size:16 in
       let* payload =
@@ -433,10 +433,16 @@ let test_clone_copies_payload_and_overwrites_destination = fun _ctx ->
             let* read = lift (Kernel.Fs.File.read destination_file buffer) in
             Ok (Kernel.Bytes.sub_string buffer ~offset:0 ~len:read))
       in
-      if payload = "new" then
-        Ok ()
-      else
-        Error "expected clone to behave like copy for existing destinations")
+      match clone_result with
+      | Kernel.Result.Ok () -> Error "expected clone to reject existing destinations"
+      | Kernel.Result.Error (Kernel.Fs.File.System Kernel.SystemError.AlreadyExists)
+      | Kernel.Result.Error (Kernel.Fs.File.System Kernel.SystemError.NotSupported) ->
+          if payload = "old-old" then
+            Ok ()
+          else
+            Error "expected failed clone to leave existing destination unchanged"
+      | Kernel.Result.Error err ->
+          Error ("expected clone to reject existing destination, got " ^ Kernel.Fs.File.error_to_string err))
 
 let test_clone_copies_payload_to_new_destination = fun _ctx ->
   with_tempdir
@@ -456,20 +462,24 @@ let test_clone_copies_payload_to_new_destination = fun _ctx ->
             else
               Error "expected source fixture write to write the whole payload")
       in
-      let* () = lift (Kernel.Fs.File.clone ~src:source ~dst:destination) in
-      let* destination_file = lift (Kernel.Fs.File.open_read destination) in
-      let buffer = Kernel.Bytes.create ~size:64 in
-      let* payload =
-        with_file
-          destination_file
-          (fun () ->
-            let* read = lift (Kernel.Fs.File.read destination_file buffer) in
-            Ok (Kernel.Bytes.sub_string buffer ~offset:0 ~len:read))
-      in
-      if payload = "native clone candidate" then
-        Ok ()
-      else
-        Error "expected clone to copy source contents to a fresh destination")
+      match Kernel.Fs.File.clone ~src:source ~dst:destination with
+      | Kernel.Result.Error (Kernel.Fs.File.System Kernel.SystemError.NotSupported) -> Ok ()
+      | Kernel.Result.Error err ->
+          Error ("expected fresh clone to succeed or report unsupported, got " ^ Kernel.Fs.File.error_to_string err)
+      | Kernel.Result.Ok () ->
+          let* destination_file = lift (Kernel.Fs.File.open_read destination) in
+          let buffer = Kernel.Bytes.create ~size:64 in
+          let* payload =
+            with_file
+              destination_file
+              (fun () ->
+                let* read = lift (Kernel.Fs.File.read destination_file buffer) in
+                Ok (Kernel.Bytes.sub_string buffer ~offset:0 ~len:read))
+          in
+          if payload = "native clone candidate" then
+            Ok ()
+          else
+            Error "expected clone to copy source contents to a fresh destination")
 
 let test_fstat_matches_path_metadata = fun _ctx ->
   with_temp_path
@@ -1674,6 +1684,40 @@ let test_copy_preserves_source_permissions = fun _ctx ->
       else
         Error "expected copy to preserve source permissions")
 
+let test_clone_preserves_source_permissions = fun _ctx ->
+  with_tempdir
+    "kernel_new_file"
+    (fun tempdir ->
+      let source = Kernel.Path.(tempdir / "source-clone-mode.sh") in
+      let destination = Kernel.Path.(tempdir / "destination-clone-mode.sh") in
+      let* source_file = lift (Kernel.Fs.File.open_write source) in
+      let* () =
+        with_file
+          source_file
+          (fun () ->
+            let payload = Kernel.Bytes.from_string "#!/bin/sh\nexit 0\n" in
+            let* written = lift (Kernel.Fs.File.write source_file payload) in
+            if written = Kernel.Bytes.length payload then
+              Ok ()
+            else
+              Error "expected clone-permissions fixture write to write the whole payload")
+      in
+      let* () = lift (Kernel.Fs.File.set_permissions source ~perm:0o755) in
+      match Kernel.Fs.File.clone ~src:source ~dst:destination with
+      | Kernel.Result.Error (Kernel.Fs.File.System Kernel.SystemError.NotSupported) -> Ok ()
+      | Kernel.Result.Error err ->
+          Error ("expected clone to succeed or report unsupported, got " ^ Kernel.Fs.File.error_to_string err)
+      | Kernel.Result.Ok () ->
+          let* source_metadata = lift (Kernel.Fs.File.metadata source) in
+          let* destination_metadata = lift (Kernel.Fs.File.metadata destination) in
+          if
+            Kernel.Fs.File.Metadata.permissions source_metadata
+            = Kernel.Fs.File.Metadata.permissions destination_metadata
+          then
+            Ok ()
+          else
+            Error "expected clone to preserve source permissions")
+
 let test_fstat_continues_to_describe_the_open_file_after_rename = fun _ctx ->
   with_tempdir
     "kernel_new_file"
@@ -1736,8 +1780,8 @@ let tests = [
     test_renaming_broken_symlink_preserves_the_link_itself;
   Test.case "Fs.File copy and rename roundtrips" test_copy_and_rename_roundtrip;
   Test.case
-    "Fs.File clone copies payloads and overwrites destinations"
-    test_clone_copies_payload_and_overwrites_destination;
+    "Fs.File clone rejects existing destinations"
+    test_clone_rejects_existing_destination;
   Test.case
     "Fs.File clone copies payloads to fresh destinations"
     test_clone_copies_payload_to_new_destination;
@@ -1830,6 +1874,7 @@ let tests = [
     "Fs.File copy preserves payloads larger than the internal chunk size"
     test_copy_preserves_large_payloads_beyond_the_internal_chunk_size;
   Test.case "Fs.File copy preserves source permissions" test_copy_preserves_source_permissions;
+  Test.case "Fs.File clone preserves source permissions" test_clone_preserves_source_permissions;
   Test.case
     "Fs.File fstat continues to describe the open file after rename"
     test_fstat_continues_to_describe_the_open_file_after_rename;

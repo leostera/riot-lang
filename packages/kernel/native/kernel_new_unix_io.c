@@ -719,12 +719,15 @@ CAMLprim value kernel_new_fs_file_clone(value src_val, value dst_val) {
   char *src = kernel_new_copy_ocaml_cstring(src_val);
   char *dst = kernel_new_copy_ocaml_cstring(dst_val);
   int result;
+  int saved_errno = 0;
 
   caml_enter_blocking_section();
   result = clonefile(src, dst, 0);
+  if (result == -1) {
+    saved_errno = errno;
+  }
   caml_leave_blocking_section();
 
-  int saved_errno = errno;
   free(src);
   free(dst);
   errno = saved_errno;
