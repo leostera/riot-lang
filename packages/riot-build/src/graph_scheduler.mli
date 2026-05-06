@@ -41,15 +41,25 @@ module Graph: sig
 end
 
 module Handle: sig
-  type ('work, 'mutation, 'event) t
+  type ('work, 'mutation, 'event, 'result, 'error) t
 
-  val add_node: ('work, 'mutation, 'event) t -> payload:'work -> Node_id.t
+  val add_node: ('work, 'mutation, 'event, 'result, 'error) t -> payload:'work -> Node_id.t
 
-  val add_dependency: ('work, 'mutation, 'event) t -> node:Node_id.t -> depends_on:Node_id.t -> unit
+  val add_dependency:
+    ('work, 'mutation, 'event, 'result, 'error) t ->
+    node:Node_id.t ->
+    depends_on:Node_id.t ->
+    unit
 
-  val record: ('work, 'mutation, 'event) t -> 'mutation -> unit
+  val record: ('work, 'mutation, 'event, 'result, 'error) t -> 'mutation -> unit
 
-  val emit_event: ('work, 'mutation, 'event) t -> 'event -> unit
+  val emit_event: ('work, 'mutation, 'event, 'result, 'error) t -> 'event -> unit
+
+  val complete_node:
+    ('work, 'mutation, 'event, 'result, 'error) t ->
+    node:Node_id.t ->
+    outcome:('result, 'error) result ->
+    unit
 end
 
 type ('work, 'result, 'error) node_result = {
@@ -65,5 +75,10 @@ val run:
   config:Run_config.t ->
   on_event:('event -> unit) ->
   graph:('work, 'mutation) Graph.t ->
-  execute:(graph:('work, 'mutation, 'event) Handle.t -> node:Node_id.t -> payload:'work -> ('result, 'error) result) ->
+  execute:(
+    graph:('work, 'mutation, 'event, 'result, 'error) Handle.t ->
+    node:Node_id.t ->
+    payload:'work ->
+    ('result, 'error) result
+  ) ->
   ('work, 'result, 'error) run_result

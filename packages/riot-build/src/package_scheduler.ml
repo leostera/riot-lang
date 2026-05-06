@@ -329,6 +329,16 @@ let finalize_result = fun
     unit_key
     (finalized_state ~source detailed_result)
 
+let complete_finalize_from_plan = fun graph node_ids lane unit_key detailed_result ->
+  let finalize_node_id =
+    HashMap.get node_ids ~key:(finalize_node_key lane unit_key)
+    |> Option.expect ~msg:("missing finalize node for " ^ package_state_key lane unit_key)
+  in
+  Graph_scheduler.Handle.complete_node
+    graph
+    ~node:finalize_node_id
+    ~outcome:(Ok (Finalized_package (FinalizedFromPlan { lane; detailed_result })))
+
 let dependency_of_detailed_result = fun store (detailed_result: Package_builder.detailed_result) ->
   match detailed_result.result.status with
   | Package_builder.Cached artifact
@@ -446,6 +456,7 @@ let plan_package_work = fun ~package_states ~input_hash_cache ~node_ids ~graph l
       match skipped_result_if_failed_dependencies package_states lane unit_key build_unit with
       | Some detailed_result ->
           finalize_result graph ~source:Planned lane unit_key detailed_result;
+          complete_finalize_from_plan graph node_ids lane unit_key detailed_result;
           Ok (Planned (PlanningFinalized { lane; detailed_result }))
       | None ->
           let package = Riot_planner.Build_unit.package build_unit in
@@ -509,6 +520,7 @@ let plan_package_work = fun ~package_states ~input_hash_cache ~node_ids ~graph l
                   )
               );
               finalize_result graph ~source:Planned lane unit_key detailed_result;
+              complete_finalize_from_plan graph node_ids lane unit_key detailed_result;
               Ok (Planned (PlanningFinalized { lane; detailed_result }))
           | Package_builder.Execution_required execution_plan ->
               if emit_visible_progress then (
@@ -546,6 +558,7 @@ let plan_package_work = fun ~package_states ~input_hash_cache ~node_ids ~graph l
                   ~build_ctx:(Build_lane.build_ctx lane) with
                 | Error detailed_result ->
                     finalize_result graph ~source:Planned lane unit_key detailed_result;
+                    complete_finalize_from_plan graph node_ids lane unit_key detailed_result;
                     Ok (Planned (PlanningFinalized { lane; detailed_result }))
                 | Ok prepared_execution ->
                     let finalize_node_id =

@@ -257,6 +257,35 @@ let test_graph_scheduler_empty_graph_returns_empty_results = fun _ctx ->
   Test.assert_equal ~expected:[] ~actual:(result_labels results);
   Ok ()
 
+let test_graph_scheduler_completes_gate_nodes_without_executing_them = fun _ctx ->
+  let executed = ref [] in
+  let (graph, node_ids) = make_graph ~apply_mutation:(fun _ (_: mutation) -> ()) [ 1; 2; 3 ] in
+  match node_ids with
+  | [ one; gate; dependent ] ->
+      Graph_scheduler.Graph.add_dependency graph ~node:gate ~depends_on:one;
+      Graph_scheduler.Graph.add_dependency graph ~node:dependent ~depends_on:gate;
+      let results =
+        run_graph
+          ~parallelism:2
+          ~graph
+          ~execute:(fun ~graph ~node:_ ~payload ->
+            executed := payload :: !executed;
+            match payload with
+            | 1 ->
+                Graph_scheduler.Handle.complete_node graph ~node:gate ~outcome:(Ok "cached-gate");
+                Ok "root"
+            | 2 -> Error "gate should have been completed without execution"
+            | 3 -> Ok "dependent"
+            | task -> Error ("unexpected task " ^ Int.to_string task))
+          ()
+      in
+      Test.assert_equal ~expected:[ 3; 1 ] ~actual:!executed;
+      Test.assert_equal
+        ~expected:[ "1:root"; "2:cached-gate"; "3:dependent" ]
+        ~actual:(result_labels results);
+      Ok ()
+  | _ -> Error "expected three graph nodes"
+
 let test_graph_scheduler_ignores_workers_from_previous_runs = fun _ctx ->
   let rec loop run_index =
     if run_index = 20 then
@@ -307,6 +336,9 @@ let tests = let open Test in
   case
     "graph scheduler: empty graphs return no results"
     test_graph_scheduler_empty_graph_returns_empty_results;
+  case
+    "graph scheduler: completes gate nodes without executing them"
+    test_graph_scheduler_completes_gate_nodes_without_executing_them;
   case
     "graph scheduler: ignores ready workers from previous runs"
     test_graph_scheduler_ignores_workers_from_previous_runs;

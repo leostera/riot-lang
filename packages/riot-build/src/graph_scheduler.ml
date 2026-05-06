@@ -95,7 +95,7 @@ module Graph = struct
     HashSet.to_list node.deps
 end
 
-type ('work, 'mutation, 'event) command =
+type ('work, 'mutation, 'event, 'result, 'error) command =
   | Add_node of {
       local_id: Node_id.t;
       payload: 'work;
@@ -106,11 +106,15 @@ type ('work, 'mutation, 'event) command =
     }
   | Record_mutation of 'mutation
   | Emit_event of 'event
+  | Complete_node of {
+      node: Node_id.t;
+      outcome: ('result, 'error) result;
+    }
 
 module Handle = struct
-  type ('work, 'mutation, 'event) t = {
+  type ('work, 'mutation, 'event, 'result, 'error) t = {
     mutable next_local_id: int;
-    mutable commands: ('work, 'mutation, 'event) command list;
+    mutable commands: ('work, 'mutation, 'event, 'result, 'error) command list;
     emit: 'event -> unit;
   }
 
@@ -136,6 +140,9 @@ module Handle = struct
   let record = fun handle mutation -> push handle (Record_mutation mutation)
 
   let emit_event = fun handle event -> handle.emit event
+
+  let complete_node = fun handle ~node ~outcome ->
+    push handle (Complete_node { node; outcome })
 end
 
 type ('work, 'result, 'error) node_result = {
@@ -158,7 +165,7 @@ type (
   node: Node_id.t;
   payload: 'work;
   outcome: ('result, 'error) result;
-  commands: ('work, 'mutation, 'event) command list;
+  commands: ('work, 'mutation, 'event, 'result, 'error) command list;
 }
 
 type ('work, 'result, 'error) runtime_node = {
@@ -286,6 +293,17 @@ let resolve_node_ref = fun locals node_id ->
     | None ->
         panic ("graph scheduler: unresolved local node " ^ Int.to_string (Node_id.to_int node_id))
 
+let mark_dependents_settled = fun state node_id ->
+  let node = Graph.find_node state.graph node_id in
+  HashSet.fold_left
+    node.dependents
+    ~init:[]
+    ~fn:(fun acc dependent_id ->
+      let dependent = find_runtime_node state dependent_id in
+      if dependent.unresolved_dependencies > 0 then
+        dependent.unresolved_dependencies <- dependent.unresolved_dependencies - 1;
+      dependent_id :: acc)
+
 let apply_command = fun state locals touched ->
   fun __tmp1 ->
     match __tmp1 with
@@ -334,6 +352,20 @@ let apply_command = fun state locals touched ->
     | Emit_event event ->
         state.on_event event;
         touched
+    | Complete_node { node; outcome } ->
+        let node = resolve_node_ref locals node in
+        let runtime_node = find_runtime_node state node in
+        (
+          match runtime_node.status with
+          | `Pending ->
+              runtime_node.status <- `Completed outcome;
+              mark_dependents_settled state node @ touched
+          | `Running ->
+              panic
+                ("graph scheduler: cannot complete running node "
+                ^ Int.to_string (Node_id.to_int node))
+          | `Completed _ -> touched
+        )
 
 let apply_commands = fun state commands ->
   let locals: (Node_id.t, Node_id.t) HashMap.t = HashMap.create () in
@@ -341,17 +373,6 @@ let apply_commands = fun state commands ->
     commands
     ~init:[]
     ~fn:(apply_command state locals)
-
-let mark_dependents_settled = fun state node_id ->
-  let node = Graph.find_node state.graph node_id in
-  HashSet.fold_left
-    node.dependents
-    ~init:[]
-    ~fn:(fun acc dependent_id ->
-      let dependent = find_runtime_node state dependent_id in
-      if dependent.unresolved_dependencies > 0 then
-        dependent.unresolved_dependencies <- dependent.unresolved_dependencies - 1;
-      dependent_id :: acc)
 
 let completed_results = fun state ->
   HashMap.to_list state.runtime_nodes
