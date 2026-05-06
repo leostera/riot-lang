@@ -1,4 +1,5 @@
 open Std
+open Std.Collections
 
 type package_scope =
   | Unknown
@@ -82,56 +83,23 @@ let status_priority = fun __tmp1 ->
   | Cached _ -> 2
   | Built _ -> 3
 
-let should_prefer = fun current incoming ->
+let should_prefer_status = fun ~current_scope ~current_status ~incoming_scope ~incoming_status ->
   let scope_comparison =
-    Int.compare (scope_priority incoming.scope) (scope_priority current.scope)
+    Int.compare (scope_priority incoming_scope) (scope_priority current_scope)
   in
   if scope_comparison = Order.GT then
     true
   else if scope_comparison = Order.LT then
     false
   else
-    Int.compare (status_priority incoming.status) (status_priority current.status) = Order.GT
+    Int.compare (status_priority incoming_status) (status_priority current_status) = Order.GT
 
-let merge_artifacts = fun current incoming ->
-  List.fold_left
-    incoming
-    ~init:current
-    ~fn:(fun acc (artifact: Riot_store.Artifact.t) ->
-      if
-        List.any
-          acc
-          ~fn:(fun existing ->
-            Crypto.Hash.equal
-              existing.Riot_store.Artifact.input_hash
-              artifact.Riot_store.Artifact.input_hash)
-      then
-        acc
-      else
-        acc @ [ artifact ])
-
-let merge_package_result = fun current incoming ->
-  let preferred =
-    if should_prefer current incoming then
-      incoming
-    else
-      current
-  in
-  {
-    package_name = current.package_name;
-    scope = preferred.scope;
-    status = preferred.status;
-    artifacts = merge_artifacts current.artifacts incoming.artifacts;
-  }
-
-let rec upsert_package_result = fun packages incoming ->
-  match packages with
-  | [] -> [ incoming ]
-  | current :: rest ->
-      if Riot_model.Package_name.equal current.package_name incoming.package_name then
-        merge_package_result current incoming :: rest
-      else
-        current :: upsert_package_result rest incoming
+let should_prefer = fun current incoming ->
+  should_prefer_status
+    ~current_scope:current.scope
+    ~current_status:current.status
+    ~incoming_scope:incoming.scope
+    ~incoming_status:incoming.status
 
 let package_result_of_build_result = fun (result: Package_builder.build_result) ->
   let status = package_status_of_build_status result.status in
@@ -142,11 +110,70 @@ let package_result_of_build_result = fun (result: Package_builder.build_result) 
     artifacts = Option.to_list (artifact_of_status status);
   }
 
+type package_result_builder = {
+  package_name: Riot_model.Package_name.t;
+  mutable scope: package_scope;
+  mutable status: package_status;
+  artifacts: Riot_store.Artifact.t Vector.t;
+  artifact_hashes: Crypto.Hash.t HashSet.t;
+}
+
+let push_artifact = fun builder artifact ->
+  let key = artifact.Riot_store.Artifact.input_hash in
+  if HashSet.insert builder.artifact_hashes ~value:key then
+    Vector.push builder.artifacts ~value:artifact
+
+let package_result_of_builder = fun builder : package_result -> {
+  package_name = builder.package_name;
+  scope = builder.scope;
+  status = builder.status;
+  artifacts =
+    builder.artifacts
+    |> Vector.to_array
+    |> Array.to_list;
+}
+
 let from_build_results = fun results -> {
-  packages = List.fold_left
-    results
-    ~init:[]
-    ~fn:(fun acc result -> upsert_package_result acc (package_result_of_build_result result));
+  packages = (
+    let builders = HashMap.create () in
+    let order = Vector.with_capacity ~size:(List.length results) in
+    List.for_each
+      results
+      ~fn:(fun result ->
+        let incoming = package_result_of_build_result result in
+        let key = Riot_model.Package_name.to_string incoming.package_name in
+        match HashMap.get builders ~key with
+        | None ->
+            let builder = {
+              package_name = incoming.package_name;
+              scope = incoming.scope;
+              status = incoming.status;
+              artifacts = Vector.with_capacity ~size:1;
+              artifact_hashes = HashSet.with_capacity ~size:1;
+            }
+            in
+            List.for_each incoming.artifacts ~fn:(push_artifact builder);
+            Vector.push order ~value:key;
+            ignore (HashMap.insert builders ~key ~value:builder)
+        | Some builder ->
+            List.for_each incoming.artifacts ~fn:(push_artifact builder);
+            if
+              should_prefer_status
+                ~current_scope:builder.scope
+                ~current_status:builder.status
+                ~incoming_scope:incoming.scope
+                ~incoming_status:incoming.status
+            then (
+              builder.scope <- incoming.scope;
+              builder.status <- incoming.status
+            ));
+    order
+    |> Vector.to_array
+    |> Array.to_list
+    |> List.filter_map ~fn:(fun key ->
+      HashMap.get builders ~key
+      |> Option.map ~fn:package_result_of_builder)
+  );
 }
 
 let packages = fun t -> t.packages
@@ -156,11 +183,11 @@ let find_package = fun t name ->
     t.packages
     ~fn:(fun pkg -> Riot_model.Package_name.equal pkg.package_name name)
 
-let package_name = fun t -> t.package_name
+let package_name = fun (t: package_result) -> t.package_name
 
-let package_status = fun t -> t.status
+let package_status = fun (t: package_result) -> t.status
 
-let package_artifact = fun t -> artifact_of_status t.status
+let package_artifact = fun (t: package_result) -> artifact_of_status t.status
 
 let rec find_export_in_artifacts = fun artifacts export_name ->
   match artifacts with
@@ -173,7 +200,8 @@ let rec find_export_in_artifacts = fun artifacts export_name ->
       | None -> find_export_in_artifacts rest export_name
     )
 
-let find_export = fun t export_name -> find_export_in_artifacts t.artifacts export_name
+let find_export = fun (t: package_result) export_name ->
+  find_export_in_artifacts t.artifacts export_name
 
 let failure_reason_of_package_error = fun __tmp1 ->
   match __tmp1 with
