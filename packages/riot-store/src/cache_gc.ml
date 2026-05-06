@@ -380,9 +380,18 @@ let lane_to_json = fun (lane: generation_lane) ->
   ]
 
 let generation_hash_of_lanes = fun lanes ->
-  Data.Json.Array (List.map lanes ~fn:lane_to_json)
-  |> Data.Json.to_string
-  |> Crypto.hash_string
+  let module H = Crypto.Sha256 in
+  let state = H.create () in
+  H.write state "riot-cache-generation:v2";
+  H.write_int state (List.length lanes);
+  List.for_each
+    lanes
+    ~fn:(fun (lane: generation_lane) ->
+      H.write state lane.profile;
+      H.write state (Riot_model.Target.to_string lane.target);
+      H.write_int state (List.length lane.hashes);
+      List.for_each lane.hashes ~fn:(H.write state));
+  H.finish state
   |> Crypto.Digest.hex
 
 let receipt_to_json = fun receipt ->
