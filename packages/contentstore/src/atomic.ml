@@ -69,7 +69,7 @@ let write_temp_file = fun ~temp ~content ->
 let copy_to_temp = fun ~src ~temp ->
   let* () = validate_source_path ~kind:File src in
   let* () = ensure_parent temp in
-  match Fs.clone ~src ~dst:temp with
+  match Fs.copy ~src ~dst:temp with
   | Ok () -> Ok ()
   | Error detail ->
       cleanup_file temp;
@@ -142,7 +142,7 @@ let rec copy_tree = fun ~src ~dst ->
           if is_directory then
             copy_tree ~src:src_entry ~dst:dst_entry
           else
-            Fs.clone ~src:src_entry ~dst:dst_entry
+            Fs.copy ~src:src_entry ~dst:dst_entry
             |> Result.map_err
               ~fn:(fun detail ->
                 io_error ~op:"copy" ~path:dst_entry ~related_path:src_entry detail)
