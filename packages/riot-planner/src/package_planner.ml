@@ -724,13 +724,33 @@ let artifact_contains_file = fun (artifact: Riot_store.Artifact.t) path ->
     artifact.files
     ~fn:(fun (entry: Riot_store.Manifest.file_entry) -> Path.equal entry.path path)
 
-let missing_native_object_outputs = fun package artifact ->
+let native_object_outputs = fun package ->
   package.Package.sources.native
   |> List.filter_map ~fn:native_object_output
+
+let missing_native_object_outputs_in_artifact = fun artifact outputs ->
+  outputs
   |> List.filter ~fn:(fun output -> not (artifact_contains_file artifact output))
 
-let cached_artifact_is_complete = fun package artifact ->
-  match missing_native_object_outputs package artifact with
+let artifact_path_exists = fun store input_hash path ->
+  Fs.exists Path.(Riot_store.Store.hash_dir_of store input_hash / path)
+  |> Result.unwrap_or ~default:false
+
+let missing_native_object_outputs_in_store = fun store input_hash outputs ->
+  outputs
+  |> List.filter ~fn:(fun output -> not (artifact_path_exists store input_hash output))
+
+let cached_artifact_is_complete = fun store package input_hash artifact ->
+  let expected_outputs = native_object_outputs package in
+  let missing =
+    if List.is_empty expected_outputs then
+      []
+    else if List.is_empty artifact.Riot_store.Artifact.files then
+      missing_native_object_outputs_in_store store input_hash expected_outputs
+    else
+      missing_native_object_outputs_in_artifact artifact expected_outputs
+  in
+  match missing with
   | [] -> true
   | missing ->
       Log.warn
@@ -743,11 +763,7 @@ let cached_artifact_is_complete = fun package artifact ->
 let load_cached_artifact = fun lookup store package input_hash ->
   match lookup with
   | Full_cached_artifact -> Riot_store.Store.get_package store input_hash
-  | Metadata_cached_artifact ->
-      if List.is_empty package.Package.sources.native then
-        Riot_store.Store.get_package_metadata store input_hash
-      else
-        Riot_store.Store.get_package store input_hash
+  | Metadata_cached_artifact -> Riot_store.Store.get_package_metadata store input_hash
 
 let plan_package_after_dependencies = fun
   ~on_source_analyzed
@@ -799,7 +815,7 @@ let plan_package_after_dependencies = fun
   let cached_artifact =
     let artifact = load_cached_artifact cached_artifact_lookup store package input_hash in
     match artifact with
-    | Some artifact when cached_artifact_is_complete package artifact ->
+    | Some artifact when cached_artifact_is_complete store package input_hash artifact ->
         Some (artifact, artifact.exports)
     | Some _ -> None
     | _ -> None
