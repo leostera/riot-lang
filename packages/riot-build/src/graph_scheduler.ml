@@ -255,19 +255,23 @@ let rec has_dispatchable = fun state ->
   if should_block_new_work state then
     false
   else
-    match Queue.pop state.ready_queue with
+    match Queue.front state.ready_queue with
     | None -> false
-    | Some (node_id, payload) ->
+    | Some (node_id, _payload) ->
         let runtime_node = find_runtime_node state node_id in
         if runtime_node.unresolved_dependencies != 0 then
-          has_dispatchable state
+          match Queue.pop state.ready_queue with
+          | Some _ -> has_dispatchable state
+          | None -> false
         else
           match runtime_node.status with
-          | `Pending ->
-              Queue.push state.ready_queue ~value:(node_id, payload);
-              true
+          | `Pending -> true
           | `Running
-          | `Completed _ -> has_dispatchable state
+          | `Completed _ -> (
+              match Queue.pop state.ready_queue with
+              | Some _ -> has_dispatchable state
+              | None -> false
+            )
 
 let dispatch_available = fun state ->
   let rec loop () =
@@ -315,10 +319,10 @@ let apply_command = fun state locals touched ->
             state.runtime_nodes
             ~key:node_id
             ~value:{
-              payload;
-              unresolved_dependencies = 0;
-              status = `Pending;
-            }
+            payload;
+            unresolved_dependencies = 0;
+            status = `Pending;
+          }
         in
         node_id :: touched
     | Add_dependency { node; depends_on } ->
@@ -393,6 +397,23 @@ let completed_results = fun state ->
       loop (node_id + 1) acc
   in
   loop 1 []
+
+let enqueue_initial_ready_nodes = fun state ->
+  let rec loop node_id =
+    if node_id >= state.graph.Graph.next_id then
+      ()
+    else (
+      (
+        match HashMap.get state.runtime_nodes ~key:node_id with
+        | Some runtime_node ->
+            if runtime_node.unresolved_dependencies = 0 then
+              Queue.push state.ready_queue ~value:(node_id, runtime_node.payload)
+        | None -> ()
+      );
+      loop (node_id + 1)
+    )
+  in
+  loop 1
 
 let is_complete = fun state ->
   state.tasks_in_flight = 0 && (should_block_new_work state || not (has_dispatchable state))
@@ -506,11 +527,7 @@ let run = fun ~config ~on_event ~graph ~execute ->
         fail_fast_triggered = false;
       }
       in
-      HashMap.for_each
-        runtime_nodes
-        ~fn:(fun node_id runtime_node ->
-          if runtime_node.unresolved_dependencies = 0 then
-            Queue.push state.ready_queue ~value:(node_id, runtime_node.payload));
+      enqueue_initial_ready_nodes state;
       match loop state with
       | results ->
           send owner (GraphRunCompleted { results; run_ref });
