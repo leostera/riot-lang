@@ -2067,10 +2067,21 @@ let test_cached_artifact_missing_native_objects_rebuilds_plan_graphs = fun _ctx 
           ~outs:[ output ]
         |> Result.expect ~msg:"expected incomplete artifact save to succeed"
       in
-      match plan_build_unit ~workspace ~store ~unit ~depset:[] ~build_ctx with
+      let input_hash_cache = Riot_planner.Package_planner.create_input_hash_cache () in
+      match
+        Riot_planner.Package_planner.plan_build_unit_with_cache
+          ~on_source_analyzed:(fun _ -> ())
+          ~input_hash_cache
+          ~workspace
+          ~toolchain:test_toolchain
+          ~store
+          ~unit
+          ~depset:[]
+          ~build_ctx
+      with
       | Error err ->
           Error ("expected incomplete cached artifact miss to replan package, got planner error: "
-          ^ err)
+          ^ Riot_planner.Planning_error.to_string err)
       | Ok (Riot_planner.Package_planner.Planned _) -> Ok ()
       | Ok (Riot_planner.Package_planner.Cached _) ->
           Error "expected cached artifact missing native objects to be ignored") with
