@@ -180,6 +180,11 @@ type execution_counts = {
   error_count: int;
 }
 
+type dependency_summary = {
+  failed_packages: Riot_model.Package.t list;
+  depset: Riot_planner.Dependency.t list;
+}
+
 let package_key_id = fun unit_key -> Riot_planner.Build_unit.key_to_string unit_key
 
 let dependency_keys = fun lane unit_key -> Build_lane.build_unit_dependency_keys lane unit_key
@@ -350,38 +355,38 @@ let dependency_of_detailed_result = fun store (detailed_result: Package_builder.
   | Skipped _
   | Failed _ -> None
 
-let dependency_depset = fun package_states lane unit_key ->
+let dependency_summary = fun package_states lane unit_key ->
   with_package_states
     package_states
     ~fn:(fun package_states ->
       dependency_keys lane unit_key
-      |> List.filter_map
-        ~fn:(fun dependency_key ->
+      |> List.fold_left
+        ~init:{ failed_packages = []; depset = []; }
+        ~fn:(fun summary dependency_key ->
           match get_package_state_unlocked package_states lane dependency_key with
-          | Some (Finalized { detailed_result; _ }) ->
-              dependency_of_detailed_result (Build_lane.store lane) detailed_result
+          | Some (Finalized { detailed_result; _ }) -> (
+              match detailed_result.result.status with
+              | Package_builder.Failed _
+              | Package_builder.Skipped _ ->
+                  { summary with failed_packages = detailed_result.result.package :: summary.failed_packages }
+              | Package_builder.Built _
+              | Package_builder.Cached _ -> (
+                  match dependency_of_detailed_result (Build_lane.store lane) detailed_result with
+                  | Some dependency -> { summary with depset = dependency :: summary.depset }
+                  | None -> summary
+                )
+            )
           | Some AwaitingPlan
           | Some (AwaitingFinalization _)
-          | None -> None))
+          | None -> summary))
 
 let skipped_result_if_failed_dependencies = fun
-  package_states lane unit_key (build_unit: Riot_planner.Build_unit.t) ->
-  let failed_dependencies =
-    with_package_states
-      package_states
-      ~fn:(fun package_states ->
-        dependency_keys lane unit_key
-        |> List.filter_map
-          ~fn:(fun dependency_key ->
-            match get_package_state_unlocked package_states lane dependency_key with
-            | Some state -> dependency_failed_state state
-            | None -> None))
-  in
-  if failed_dependencies = [] then
+  failed_packages unit_key (build_unit: Riot_planner.Build_unit.t) ->
+  if failed_packages = [] then
     None
   else
     let package = Riot_planner.Build_unit.package build_unit in
-    let reason = skipped_reason failed_dependencies in
+    let reason = skipped_reason failed_packages in
     Some Package_builder.{
       result =
         {
@@ -450,14 +455,15 @@ let plan_package_work = fun ~package_states ~input_hash_cache ~node_ids ~graph l
   | None ->
       Error { lane; reason = "build unit graph missing node for " ^ package_key_id unit_key }
   | Some build_unit -> (
-      match skipped_result_if_failed_dependencies package_states lane unit_key build_unit with
+      let dependency_summary = dependency_summary package_states lane unit_key in
+      match skipped_result_if_failed_dependencies dependency_summary.failed_packages unit_key build_unit with
       | Some detailed_result ->
           finalize_result graph ~source:Planned lane unit_key detailed_result;
           complete_finalize_from_plan graph node_ids lane unit_key detailed_result;
           Ok (Planned (PlanningFinalized { lane; detailed_result }))
       | None ->
           let package = Riot_planner.Build_unit.package build_unit in
-          let depset = dependency_depset package_states lane unit_key in
+          let depset = dependency_summary.depset in
           let emit_visible_progress = build_unit_emits_visible_progress build_unit in
           let build_target = Build_lane.target lane in
           let planning_source_count = package_planning_source_count package in
