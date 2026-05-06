@@ -465,20 +465,42 @@ let plan_package_work = fun ~package_states ~input_hash_cache ~node_ids ~graph l
           let build_target = Build_lane.target lane in
           let planning_source_count = package_planning_source_count package in
           let planning_started_at = Time.Instant.now () in
-          if emit_visible_progress then
-            Graph_scheduler.Handle.emit_event
-              graph
-              (
-                PackagePlanStarted {
-                  package;
-                  build_target;
-                  source_count = planning_source_count;
-                  started_at = planning_started_at;
-                }
-              );
+          let plan_started = ref false in
+          let emit_plan_started = fun () ->
+            if emit_visible_progress && not !plan_started then (
+              plan_started := true;
+              Graph_scheduler.Handle.emit_event
+                graph
+                (
+                  PackagePlanStarted {
+                    package;
+                    build_target;
+                    source_count = planning_source_count;
+                    started_at = planning_started_at;
+                  }
+                )
+            )
+          in
+          let emit_plan_finished = fun () ->
+            if emit_visible_progress && !plan_started then (
+              let completed_at = Time.Instant.now () in
+              Graph_scheduler.Handle.emit_event
+                graph
+                (
+                  PackagePlanFinished {
+                    package;
+                    build_target;
+                    source_count = planning_source_count;
+                    completed_at;
+                    duration = Time.Instant.duration_since ~earlier:planning_started_at completed_at;
+                  }
+                )
+            )
+          in
           let on_source_analyzed =
             if emit_visible_progress then
               fun (progress: Module_graph.source_analysis_progress) ->
+                emit_plan_started ();
                 Graph_scheduler.Handle.emit_event
                   graph
                   (
@@ -505,38 +527,13 @@ let plan_package_work = fun ~package_states ~input_hash_cache ~node_ids ~graph l
             ~build_ctx:(Build_lane.build_ctx lane)
             ~emit_visible_progress with
           | Package_builder.Final_result detailed_result ->
-              if emit_visible_progress then (
-                let completed_at = Time.Instant.now () in
-                Graph_scheduler.Handle.emit_event
-                  graph
-                  (
-                    PackagePlanFinished {
-                      package;
-                      build_target;
-                      source_count = planning_source_count;
-                      completed_at;
-                      duration = Time.Instant.duration_since ~earlier:planning_started_at completed_at;
-                    }
-                  )
-              );
+              emit_plan_finished ();
               finalize_result graph ~source:Planned lane unit_key detailed_result;
               complete_finalize_from_plan graph node_ids lane unit_key detailed_result;
               Ok (Planned (PlanningFinalized { lane; detailed_result }))
           | Package_builder.Execution_required execution_plan ->
-              if emit_visible_progress then (
-                let completed_at = Time.Instant.now () in
-                Graph_scheduler.Handle.emit_event
-                  graph
-                  (
-                    PackagePlanFinished {
-                      package;
-                      build_target;
-                      source_count = planning_source_count;
-                      completed_at;
-                      duration = Time.Instant.duration_since ~earlier:planning_started_at completed_at;
-                    }
-                  )
-              );
+              emit_plan_started ();
+              emit_plan_finished ();
               let action_count = List.length (Action_graph.nodes execution_plan.action_graph) in
               if execution_plan.emit_visible_progress && action_count > 0 then
                 Graph_scheduler.Handle.emit_event
