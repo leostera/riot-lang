@@ -41,6 +41,8 @@ and planning_breakdown = {
 type input_hash_cache = {
   package_hashes_lock: Sync.Mutex.t;
   package_hashes: (string, package_hash_entry) HashMap.t;
+  toolchain_hashes_lock: Sync.Mutex.t;
+  toolchain_hashes: (string, Std.Crypto.hash) HashMap.t;
 }
 
 and package_hash_entry =
@@ -54,6 +56,8 @@ type cached_artifact_lookup =
 let create_input_hash_cache = fun () -> {
   package_hashes_lock = Sync.Mutex.create ();
   package_hashes = HashMap.create ();
+  toolchain_hashes_lock = Sync.Mutex.create ();
+  toolchain_hashes = HashMap.create ();
 }
 
 let empty_breakdown = {
@@ -583,6 +587,26 @@ let package_hash = fun input_hash_cache ~workspace ~key package ->
   | (Some cache, Some key) -> cached_package_hash cache ~workspace ~key package
   | _ -> compute_or_load_package_hash workspace package
 
+let cached_toolchain_hash = fun cache toolchain ->
+  let key = Path.to_string (Riot_toolchain.path toolchain) in
+  Sync.Mutex.lock cache.toolchain_hashes_lock;
+  match HashMap.get cache.toolchain_hashes ~key with
+  | Some hash ->
+      Sync.Mutex.unlock cache.toolchain_hashes_lock;
+      hash
+  | None ->
+      Sync.Mutex.unlock cache.toolchain_hashes_lock;
+      let hash = Riot_toolchain.hash toolchain in
+      Sync.Mutex.lock cache.toolchain_hashes_lock;
+      ignore (HashMap.insert cache.toolchain_hashes ~key ~value:hash);
+      Sync.Mutex.unlock cache.toolchain_hashes_lock;
+      hash
+
+let toolchain_hash = fun input_hash_cache toolchain ->
+  match input_hash_cache with
+  | Some cache -> cached_toolchain_hash cache toolchain
+  | None -> Riot_toolchain.hash toolchain
+
 let package_hash_key = fun (unit_key: Build_unit.key) ->
   String.concat
     ":"
@@ -631,7 +655,7 @@ let compute_input_hash_with_cache = fun
      cross-compiled artifacts are rebuilt when the installed compiler/sysroot
      changes underneath the same target triple.
   *)
-  H.write_hash state (Riot_toolchain.hash toolchain);
+  H.write_hash state (toolchain_hash input_hash_cache toolchain);
   (* Package metadata (includes compiler config overrides) *)
   H.write_hash state (package_hash input_hash_cache ~workspace ~key:package_hash_key package);
   (* Add workspace-specific dependency info not captured in package metadata *)
