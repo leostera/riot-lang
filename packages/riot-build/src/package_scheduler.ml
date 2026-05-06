@@ -150,6 +150,7 @@ type event =
 type graph_state = {
   package_states: package_state_store;
   input_hash_cache: Riot_planner.Package_planner.input_hash_cache;
+  dependency_keys: (Riot_planner.Build_unit.key, Riot_planner.Build_unit.key list) HashMap.t;
 }
 
 and package_state_store = {
@@ -187,7 +188,12 @@ type dependency_summary = {
 
 let package_key_id = fun unit_key -> Riot_planner.Build_unit.key_to_string unit_key
 
-let dependency_keys = fun lane unit_key -> Build_lane.build_unit_dependency_keys lane unit_key
+let compute_dependency_keys = fun lane unit_key -> Build_lane.build_unit_dependency_keys lane unit_key
+
+let dependency_keys = fun state unit_key ->
+  match HashMap.get state.dependency_keys ~key:unit_key with
+  | Some keys -> keys
+  | None -> []
 
 let skipped_reason = fun failed_packages ->
   let failed_names =
@@ -355,11 +361,11 @@ let dependency_of_detailed_result = fun store (detailed_result: Package_builder.
   | Skipped _
   | Failed _ -> None
 
-let dependency_summary = fun package_states lane unit_key ->
+let dependency_summary = fun state lane unit_key ->
   with_package_states
-    package_states
+    state.package_states
     ~fn:(fun package_states ->
-      dependency_keys lane unit_key
+      dependency_keys state unit_key
       |> List.fold_left
         ~init:{ failed_packages = []; depset = []; }
         ~fn:(fun summary dependency_key ->
@@ -450,12 +456,12 @@ let package_planning_source_count = fun (package: Riot_model.Package.t) ->
   + List.length package.sources.bench
   + List.length package.sources.native
 
-let plan_package_work = fun ~package_states ~input_hash_cache ~node_ids ~graph lane unit_key ->
+let plan_package_work = fun ~state ~node_ids ~graph lane unit_key ->
   match Build_lane.build_unit lane unit_key with
   | None ->
       Error { lane; reason = "build unit graph missing node for " ^ package_key_id unit_key }
   | Some build_unit -> (
-      let dependency_summary = dependency_summary package_states lane unit_key in
+      let dependency_summary = dependency_summary state lane unit_key in
       match skipped_result_if_failed_dependencies dependency_summary.failed_packages unit_key build_unit with
       | Some detailed_result ->
           finalize_result graph ~source:Planned lane unit_key detailed_result;
@@ -521,7 +527,7 @@ let plan_package_work = fun ~package_states ~input_hash_cache ~node_ids ~graph l
           in
           match Package_builder.plan_build_unit
             ~on_source_analyzed
-            ~input_hash_cache
+            ~input_hash_cache:state.input_hash_cache
             ~workspace:(Build_lane.workspace lane)
             ~toolchain:(Build_lane.toolchain lane)
             ~store:(Build_lane.store lane)
@@ -648,14 +654,21 @@ let finalize_package_work = fun ~package_states ~graph lane unit_key ->
 let make_state = fun lanes ->
   let package_states = create_package_state_store () in
   let input_hash_cache = Riot_planner.Package_planner.create_input_hash_cache () in
+  let dependency_keys = HashMap.create () in
   List.for_each
     lanes
     ~fn:(fun lane ->
       Build_lane.build_unit_keys lane
       |> List.for_each
         ~fn:(fun unit_key ->
+          ignore (
+            HashMap.insert
+              dependency_keys
+              ~key:unit_key
+              ~value:(compute_dependency_keys lane unit_key)
+          );
           remember_package_state package_states lane unit_key AwaitingPlan));
-  { package_states; input_hash_cache }
+  { package_states; input_hash_cache; dependency_keys }
 
 let make_graph = fun state lanes ->
   let graph =
@@ -713,7 +726,7 @@ let make_graph = fun state lanes ->
             |> Option.expect ~msg:("missing finalize node for " ^ package_key_id unit_key)
           in
           Graph_scheduler.Graph.add_dependency graph ~node:finalize_node_id ~depends_on:plan_node_id;
-          dependency_keys lane unit_key
+          dependency_keys state unit_key
           |> List.for_each
             ~fn:(fun dependency_key ->
               match HashMap.get node_ids.finalize ~key:dependency_key with
@@ -731,7 +744,7 @@ let total_package_count = fun lanes ->
     ~init:0
     ~fn:(fun count lane -> count + List.length (Build_lane.build_unit_keys lane))
 
-let deferred_package_count = fun lanes ->
+let deferred_package_count = fun state lanes ->
   lanes
   |> List.fold_left
     ~init:0
@@ -739,7 +752,7 @@ let deferred_package_count = fun lanes ->
       count
       + (
         Build_lane.build_unit_keys lane
-        |> List.filter ~fn:(fun unit_key -> dependency_keys lane unit_key != [])
+        |> List.filter ~fn:(fun unit_key -> dependency_keys state unit_key != [])
         |> List.length
       ))
 
@@ -977,8 +990,7 @@ let run = fun ~parallelism ?(on_event = fun (_:event) -> ()) lanes ->
           match payload with
           | PlanPackage { lane; unit_key } ->
               plan_package_work
-                ~package_states:state.package_states
-                ~input_hash_cache:state.input_hash_cache
+                ~state
                 ~node_ids
                 ~graph
                 lane
@@ -995,7 +1007,7 @@ let run = fun ~parallelism ?(on_event = fun (_:event) -> ()) lanes ->
         PlanningFinished {
           lane_count;
           package_count;
-          deferred_count = deferred_package_count lanes;
+          deferred_count = deferred_package_count state lanes;
           execution_required_count = planning_counts.execution_required_count;
           finalized_count = planning_counts.finalized_count;
           cached_count = planning_counts.cached_count;
