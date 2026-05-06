@@ -153,19 +153,25 @@ let current_manifest_status = fun () ->
         | Error err -> Error ("failed to read riot.toml status: " ^ IO.error_message err)
       )
 
-let ensure_workspace = fun (workspace: Riot_model.Workspace_manifest.t) ->
+let ensure_workspace = fun ?overrides (workspace: Riot_model.Workspace_manifest.t) ->
   let workspace_manager = Riot_model.Workspace_manager.create () in
   let* registry =
     Pkgs_ml.Registry.create_filesystem ?riot_home:None ~registry_name:"pkgs.ml" ()
     |> Result.map_err ~fn:(fun err -> Failure (Pkgs_ml.Registry_cache.create_error_message err))
   in
   Riot_deps.ensure_workspace
+    ?overrides
     ~workspace_manager
     ~mode:Riot_deps.Dep_solver.Refresh
     ~registry
     ~workspace
     ()
   |> Result.map_err ~fn:(fun err -> Failure (Riot_model.Pm_error.message err))
+
+let workspace_overrides_of_build_matches = fun matches ->
+  match ArgParser.get_one matches "target-dir" with
+  | None -> None
+  | Some target_dir -> Some (Riot_model.Workspace.with_target_dir (Path.v target_dir))
 
 let workspace_load_error_message = fun load_errors ->
   String.concat
@@ -360,19 +366,21 @@ let run = fun ~args ->
           set_verbosity verbose;
           match ArgParser.get_subcommand matches with
           | Some ("build", build_matches) ->
+              let overrides = workspace_overrides_of_build_matches build_matches in
               let* workspace = require_clean_workspace (get_workspace_scan ()) in
               let () = trace_cli "ensure-toolchain-start" in
               let* () = ensure_toolchain workspace in
               let () = trace_cli "ensure-toolchain-done" in
               let () = trace_cli "build-prepare-start" in
-              let* workspace = ensure_workspace workspace in
+              let* workspace = ensure_workspace ?overrides workspace in
               let () = trace_cli "build-prepare-done" in
               let () = trace_cli "build-run-start" in
               Build.run ~workspace build_matches
           | Some ("plan", plan_matches) ->
+              let overrides = workspace_overrides_of_build_matches plan_matches in
               let* workspace = require_clean_workspace (get_workspace_scan ()) in
               let () = trace_cli "plan-prepare-start" in
-              let* workspace = ensure_workspace workspace in
+              let* workspace = ensure_workspace ?overrides workspace in
               let () = trace_cli "plan-prepare-done" in
               Plan.run ~workspace plan_matches
           | Some ("run", run_matches) -> (

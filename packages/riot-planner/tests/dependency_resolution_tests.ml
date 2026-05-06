@@ -158,7 +158,7 @@ let test_module_graph_prefers_implementation_when_interface_exists = fun _ctx ->
         Riot_model.Workspace.make_realized
           ~root:tmpdir
           ~packages:[ package ]
-          ~target_dir:"target"
+          ~target_dir:(Path.v "target")
           ()
       in
       let toolchain =
@@ -281,7 +281,7 @@ let test_module_graph_resolves_nested_local_unix_backend = fun _ctx ->
         Riot_model.Workspace.make_realized
           ~root:tmpdir
           ~packages:[ package ]
-          ~target_dir:"target"
+          ~target_dir:(Path.v "target")
           ()
       in
       let toolchain =
@@ -370,7 +370,7 @@ let test_module_graph_uses_explicit_root_library_path = fun _ctx ->
         Riot_model.Workspace.make_realized
           ~root:tmpdir
           ~packages:[ package ]
-          ~target_dir:"target"
+          ~target_dir:(Path.v "target")
           ()
       in
       let toolchain =
@@ -464,7 +464,7 @@ let test_module_graph_uses_explicit_root_library_path_case_insensitively = fun _
         Riot_model.Workspace.make_realized
           ~root:tmpdir
           ~packages:[ package ]
-          ~target_dir:"target"
+          ~target_dir:(Path.v "target")
           ()
       in
       let toolchain =
@@ -558,7 +558,7 @@ let test_module_graph_root_library_alias_depends_on_child_module = fun _ctx ->
         Riot_model.Workspace.make_realized
           ~root:tmpdir
           ~packages:[ package ]
-          ~target_dir:"target"
+          ~target_dir:(Path.v "target")
           ()
       in
       let toolchain =
@@ -639,7 +639,7 @@ let test_module_graph_opened_public_root_resolves_children_to_public_module = fu
         Riot_model.Workspace.make_realized
           ~root:tmpdir
           ~packages:[ package ]
-          ~target_dir:"target"
+          ~target_dir:(Path.v "target")
           ()
       in
       let toolchain =
@@ -783,7 +783,7 @@ let test_module_graph_implicit_alias_opens_resolve_nested_leaf_modules = fun _ct
         Riot_model.Workspace.make_realized
           ~root:tmpdir
           ~packages:[ package ]
-          ~target_dir:"target"
+          ~target_dir:(Path.v "target")
           ()
       in
       let toolchain =
@@ -944,7 +944,7 @@ let test_module_graph_implicit_root_alias_resolves_public_child_root = fun _ctx 
         Riot_model.Workspace.make_realized
           ~root:tmpdir
           ~packages:[ package ]
-          ~target_dir:"target"
+          ~target_dir:(Path.v "target")
           ()
       in
       let toolchain =
@@ -1096,7 +1096,7 @@ let test_module_graph_resolves_deeply_nested_modules_namespace_first = fun _ctx 
         Riot_model.Workspace.make_realized
           ~root:tmpdir
           ~packages:[ package ]
-          ~target_dir:"target"
+          ~target_dir:(Path.v "target")
           ()
       in
       let toolchain =
@@ -1276,7 +1276,7 @@ let test_module_graph_keeps_nested_sibling_dependency_across_allowed_source_orde
               Riot_model.Workspace.make_realized
                 ~root:tmpdir
                 ~packages:[ package ]
-                ~target_dir:"target"
+                ~target_dir:(Path.v "target")
                 ()
             in
             let graph_builder =
@@ -1410,7 +1410,7 @@ let test_module_graph_resolves_ocaml_stdlib_modules_through_stdlib_root = fun _c
         Riot_model.Workspace.make_realized
           ~root:tmpdir
           ~packages:[ package ]
-          ~target_dir:"target"
+          ~target_dir:(Path.v "target")
           ()
       in
       let toolchain =
@@ -1510,7 +1510,7 @@ let test_module_graph_resolves_package_local_namespace_open_in_interface = fun _
         Riot_model.Workspace.make_realized
           ~root:tmpdir
           ~packages:[ package ]
-          ~target_dir:"target"
+          ~target_dir:(Path.v "target")
           ()
       in
       let toolchain =
@@ -1604,7 +1604,7 @@ let test_module_graph_resolves_loose_source_local_open_exports = fun _ctx ->
         Riot_model.Workspace.make_realized
           ~root:tmpdir
           ~packages:[ package ]
-          ~target_dir:"target"
+          ~target_dir:(Path.v "target")
           ()
       in
       let toolchain =
@@ -1724,7 +1724,7 @@ let test_module_graph_wires_direct_dependency_root_edge = fun _ctx ->
         Riot_model.Workspace.make_realized
           ~root:tmpdir
           ~packages:[ package ]
-          ~target_dir:"target"
+          ~target_dir:(Path.v "target")
           ()
       in
       let toolchain =
@@ -1857,7 +1857,7 @@ let test_module_graph_resolves_opened_direct_dependency_package_exports = fun _c
         Riot_model.Workspace.make_realized
           ~root:tmpdir
           ~packages:[ app_package; std_package ]
-          ~target_dir:"target"
+          ~target_dir:(Path.v "target")
           ()
       in
       let toolchain =
@@ -1989,7 +1989,7 @@ let test_module_graph_resolves_direct_dependency_nested_public_export = fun _ctx
         Riot_model.Workspace.make_realized
           ~root:tmpdir
           ~packages:[ app_package; kernel_package ]
-          ~target_dir:"target"
+          ~target_dir:(Path.v "target")
           ()
       in
       let toolchain =
@@ -2104,7 +2104,7 @@ let test_module_graph_resolves_self_named_reference_to_dependency_root = fun _ct
         Riot_model.Workspace.make_realized
           ~root:tmpdir
           ~packages:[ package ]
-          ~target_dir:"target"
+          ~target_dir:(Path.v "target")
           ()
       in
       let toolchain =
@@ -2232,7 +2232,7 @@ let test_module_graph_rejects_self_named_reference_without_dependency_root = fun
         Riot_model.Workspace.make_realized
           ~root:tmpdir
           ~packages:[ package ]
-          ~target_dir:"target"
+          ~target_dir:(Path.v "target")
           ()
       in
       let toolchain =
@@ -2311,7 +2311,7 @@ let test_module_graph_rejects_non_direct_dependency_root = fun _ctx ->
         Riot_model.Workspace.make_realized
           ~root:tmpdir
           ~packages:[ package ]
-          ~target_dir:"target"
+          ~target_dir:(Path.v "target")
           ()
       in
       let toolchain =

@@ -12,20 +12,43 @@ type t = {
   profile_overrides: (string * Package.profile_override) list;
 }
 
-let resolve_target_dir_root = fun ~root ?target_dir () ->
+type overrides = {
+  target_dir: Path.t option;
+  workspace_root: Path.t option;
+}
+
+let no_overrides = {
+  target_dir = None;
+  workspace_root = None;
+}
+
+let with_target_dir = fun target_dir -> { no_overrides with target_dir = Some target_dir }
+
+let effective_root = fun ~(overrides: overrides) root ->
+  match overrides.workspace_root with
+  | Some root -> root
+  | None -> root
+
+let effective_target_dir = fun ~(overrides: overrides) target_dir ->
+  match overrides.target_dir with
+  | Some target_dir -> Some target_dir
+  | None -> target_dir
+
+let resolve_target_dir_root = fun ~root ?(overrides = no_overrides) ?target_dir () ->
+  let root = effective_root ~overrides root in
   let target_dir =
-    match target_dir with
+    match effective_target_dir ~overrides target_dir with
     | Some target_dir -> target_dir
-    | None -> "_build"
+    | None -> Path.v "_build"
   in
-  let target_dir_path = Path.v target_dir in
-  if Path.is_absolute target_dir_path then
-    target_dir_path
+  if Path.is_absolute target_dir then
+    target_dir
   else
-    Path.(root / target_dir_path)
+    Path.(root / target_dir)
 
 let make
   ?name
+  ?(overrides = no_overrides)
   ~root
   ~packages
   ?(dependencies = [])
@@ -36,8 +59,8 @@ let make
   ?target_dir
   () = {
   name;
-  root;
-  target_dir_root = resolve_target_dir_root ~root ?target_dir ();
+  root = effective_root ~overrides root;
+  target_dir_root = resolve_target_dir_root ~root ~overrides ?target_dir ();
   source_ignore_patterns;
   packages;
   dependencies;
@@ -48,6 +71,7 @@ let make
 
 let make_realized
   ?name
+  ?(overrides = no_overrides)
   ~root
   ~packages
   ?(dependencies = [])
@@ -59,6 +83,7 @@ let make_realized
   () =
   make
     ?name
+    ~overrides
     ~root
     ~packages:(List.map packages ~fn:Package_manifest.from_package)
     ~dependencies

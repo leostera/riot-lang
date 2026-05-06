@@ -1344,7 +1344,7 @@ let test_real_kernel_unix_addr_interface_keeps_sibling_modules = fun _ctx ->
     Riot_model.Workspace.make_realized
       ~root:(Path.v ".")
       ~packages:[ package ]
-      ~target_dir:"target"
+      ~target_dir:(Path.v "target")
       ()
   in
   let store = Riot_store.Store.create ~workspace in

@@ -134,7 +134,7 @@ let test_concurrent_builds_different_packages = fun _ctx ->
         Riot_model.Workspace.make_realized
           ~root:tmpdir
           ~packages:[ pkg1; pkg2 ]
-          ~target_dir:(Path.to_string Path.(Path.v "target"))
+          ~target_dir:(Path.v "target")
           ()
       in
       let toolchain =
@@ -185,7 +185,7 @@ let test_concurrent_builds_same_package = fun _ctx ->
         Riot_model.Workspace.make_realized
           ~root:tmpdir
           ~packages:[ package ]
-          ~target_dir:(Path.to_string Path.(Path.v "target"))
+          ~target_dir:(Path.v "target")
           ()
       in
       let toolchain =
@@ -232,7 +232,7 @@ let test_concurrent_builds_with_shared_cache = fun _ctx ->
         Riot_model.Workspace.make_realized
           ~root:tmpdir
           ~packages:[ package ]
-          ~target_dir:(Path.to_string Path.(Path.v "target"))
+          ~target_dir:(Path.v "target")
           ()
       in
       let toolchain =

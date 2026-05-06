@@ -13,7 +13,7 @@ let package_name = fun value ->
   |> Result.expect ~msg:("expected valid package name: " ^ value)
 
 let make_workspace = fun root ->
-  Riot_model.Workspace.make ~root ~target_dir:"target" ~packages:[] ()
+  Riot_model.Workspace.make ~root ~target_dir:(Path.v "target") ~packages:[] ()
 
 let make_package = fun ~root ~name ->
   let package_name = package_name name in
@@ -231,7 +231,7 @@ let test_sandbox_uses_workspace_target_dir_root = fun _ctx ->
     ~prefix:"sandbox_custom_target"
     (fun tmpdir ->
       let workspace =
-        Riot_model.Workspace.make ~root:tmpdir ~target_dir:"build-out" ~packages:[] ()
+        Riot_model.Workspace.make ~root:tmpdir ~target_dir:(Path.v "build-out") ~packages:[] ()
       in
       let sandbox = Sandbox.create ~workspace () ~package_name:(package_name "pkg") in
       let dir =

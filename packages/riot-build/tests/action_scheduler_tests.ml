@@ -18,7 +18,7 @@ let test_toolchain = fun () ->
 let test_build_target = Riot_model.Target.current
 
 let make_workspace = fun root ->
-  Riot_model.Workspace.make ~root ~target_dir:"target" ~packages:[] ()
+  Riot_model.Workspace.make ~root ~target_dir:(Path.v "target") ~packages:[] ()
 
 let make_package = fun ~root ~name ->
   let package_name = package_name name in

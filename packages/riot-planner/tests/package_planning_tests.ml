@@ -20,7 +20,7 @@ let make_test_workspace = fun tmpdir packages ->
   Riot_model.Workspace.make_realized
     ~root:tmpdir
     ~packages
-    ~target_dir:"target"
+    ~target_dir:(Path.v "target")
     ()
 
 let make_package = fun tmpdir name ->
@@ -60,7 +60,7 @@ let clone_workspace_with_target = fun (workspace: Riot_model.Workspace.t) ~targe
     ~dev_dependencies:workspace.dev_dependencies
     ~build_dependencies:workspace.build_dependencies
     ~profile_overrides:workspace.profile_overrides
-    ~target_dir:(Path.to_string target_dir)
+    ~target_dir
     ()
 
 let find_package_by_name = fun (workspace: Riot_model.Workspace.t) name ->
@@ -932,7 +932,7 @@ let load_repo_workspace = fun () ->
           ~dev_dependencies:workspace_manifest.dev_dependencies
           ~build_dependencies:workspace_manifest.build_dependencies
           ~profile_overrides:workspace_manifest.profile_overrides
-          ~target_dir:(Path.to_string workspace_manifest.target_dir_root)
+          ~target_dir:workspace_manifest.target_dir_root
           ())
       else
         Error ("workspace scan produced load errors: "

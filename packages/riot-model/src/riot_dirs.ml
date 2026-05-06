@@ -65,27 +65,26 @@ let build_dir_name = "_build"
 *)
 
 let resolve_build_dir_root = fun ~workspace_root target_dir ->
-  let target_dir_path = Path.v target_dir in
-  if Path.is_absolute target_dir_path then
-    target_dir_path
+  if Path.is_absolute target_dir then
+    target_dir
   else
-    Path.(workspace_root / target_dir_path)
+    Path.(workspace_root / target_dir)
 
 let workspace_build_dir_name = fun ~workspace_root ->
   let toml_path = Path.(workspace_root / Path.v "riot.toml") in
   match Fs.read_to_string toml_path with
-  | Error _ -> build_dir_name
+  | Error _ -> Path.v build_dir_name
   | Ok content -> (
       match Data.Toml.parse content with
-      | Error _ -> build_dir_name
+      | Error _ -> Path.v build_dir_name
       | Ok toml -> (
           match Workspace_manifest.from_toml toml with
           | Ok manifest -> (
               match manifest.target_dir with
               | Some target_dir -> target_dir
-              | None -> build_dir_name
+              | None -> Path.v build_dir_name
             )
-          | Error _ -> build_dir_name
+          | Error _ -> Path.v build_dir_name
         )
     )
 
@@ -170,7 +169,7 @@ module Tests = struct
 
   let test_workspace_target_dirs_use_custom_target_dir_root () =
     let workspace =
-      Workspace.make ~root:(Path.v "/tmp/workspace") ~target_dir:"build-out" ~packages:[] ()
+      Workspace.make ~root:(Path.v "/tmp/workspace") ~target_dir:(Path.v "build-out") ~packages:[] ()
     in
     let target = host_target () in
     let expected_target_dir = "/tmp/workspace/build-out/release/" ^ Target.to_string target in

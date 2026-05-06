@@ -8,6 +8,7 @@ open Std.Result.Syntax
 type t = {
   name: string option;
   root: Path.t;
+  target_dir: Path.t option;
   target_dir_root: Path.t;
   source_ignore_patterns: string list;
   packages: Package_manifest.t list;
@@ -26,7 +27,7 @@ type manifest = {
   dev_dependencies: Package.dependency list;
   build_dependencies: Package.dependency list;
   profile_overrides: (string * Package.profile_override) list;
-  target_dir: string option;
+  target_dir: Path.t option;
 }
 
 type dependency_field =
@@ -396,13 +397,13 @@ let parse_profile_overrides: Toml.value -> (string * Profile.profile_override) l
       Log.debug "[WORKSPACE] TOML root is not a table";
       []
 
-let parse_target_dir: Toml.value -> string option = fun toml ->
+let parse_target_dir: Toml.value -> Path.t option = fun toml ->
   match toml with
   | Toml.Table items -> (
       match Fields.get "riot" items with
       | Some (Toml.Table riot_items) -> (
           match Fields.get "target_dir" riot_items with
-          | Some (Toml.String target_dir) -> Some target_dir
+          | Some (Toml.String target_dir) -> Some (Path.v target_dir)
           | _ -> None
         )
       | _ -> None
@@ -441,13 +442,12 @@ let resolve_target_dir_root = fun ~root ?target_dir () ->
   let target_dir =
     match target_dir with
     | Some target_dir -> target_dir
-    | None -> "_build"
+    | None -> Path.v "_build"
   in
-  let target_dir_path = Path.v target_dir in
-  if Path.is_absolute target_dir_path then
-    target_dir_path
+  if Path.is_absolute target_dir then
+    target_dir
   else
-    Path.(root / target_dir_path)
+    Path.(root / target_dir)
 
 let make
   ?name
@@ -462,6 +462,7 @@ let make
   () = {
   name;
   root;
+  target_dir;
   target_dir_root = resolve_target_dir_root ~root ?target_dir ();
   source_ignore_patterns;
   packages;
@@ -591,7 +592,7 @@ target_dir = "build-out"
       from_toml toml
       |> Result.expect ~msg:"expected workspace manifest"
     in
-    if manifest.target_dir = Some "build-out" then
+    if manifest.target_dir = Some (Path.v "build-out") then
       Ok ()
     else
       Error "expected [riot].target_dir to be parsed" [@test]
@@ -615,7 +616,9 @@ members = ["packages/foo"]
       Error "expected [workspace].name to be parsed" [@test]
 
   let test_make_uses_custom_target_dir () =
-    let workspace = make ~root:(Path.v "/tmp/example") ~packages:[] ~target_dir:"build-out" () in
+    let workspace =
+      make ~root:(Path.v "/tmp/example") ~packages:[] ~target_dir:(Path.v "build-out") ()
+    in
     if Path.to_string workspace.target_dir_root = "/tmp/example/build-out" then
       Ok ()
     else

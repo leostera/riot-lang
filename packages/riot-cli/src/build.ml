@@ -1638,6 +1638,9 @@ let build_args =
     |> short 'j'
     |> long "jobs"
     |> help "Limit parallel workers";
+    option "target-dir"
+    |> long "target-dir"
+    |> help "Override the workspace target directory for this command";
     flag "json"
     |> long "json"
     |> help "Emit machine-readable JSONL events";

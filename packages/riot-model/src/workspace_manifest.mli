@@ -35,6 +35,7 @@ type error =
 type t = {
   name: string option;
   root: Path.t;
+  target_dir: Path.t option;
   target_dir_root: Path.t;
   source_ignore_patterns: string list;
   packages: Package_manifest.t list;
@@ -51,7 +52,7 @@ type manifest = {
   dev_dependencies: Package.dependency list;
   build_dependencies: Package.dependency list;
   profile_overrides: (string * Package.profile_override) list;
-  target_dir: string option;
+  target_dir: Path.t option;
 }
 
 val dependency_field_name: dependency_field -> string
@@ -71,7 +72,7 @@ val make:
   ?build_dependencies:Package.dependency list ->
   ?profile_overrides:(string * Package.profile_override) list ->
   ?source_ignore_patterns:string list ->
-  ?target_dir:string ->
+  ?target_dir:Path.t ->
   unit ->
   t
 
@@ -84,7 +85,7 @@ val make_realized:
   ?build_dependencies:Package.dependency list ->
   ?profile_overrides:(string * Package.profile_override) list ->
   ?source_ignore_patterns:string list ->
-  ?target_dir:string ->
+  ?target_dir:Path.t ->
   unit ->
   t
 

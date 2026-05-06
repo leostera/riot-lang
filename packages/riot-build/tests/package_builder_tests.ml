@@ -202,7 +202,7 @@ let test_build_writes_hash_manifest_with_exports = fun _ctx ->
         Riot_model.Workspace.make_realized
           ~root:tmpdir
           ~packages:[ package ]
-          ~target_dir:"target"
+          ~target_dir:(Path.v "target")
           ()
       in
       let store = Riot_store.Store.create ~workspace in
@@ -269,7 +269,7 @@ let test_dependency_source_change_rebuilds_dependent_package = fun _ctx ->
         Riot_model.Workspace.make_realized
           ~root:tmpdir
           ~packages:[ dep; app ]
-          ~target_dir:"target"
+          ~target_dir:(Path.v "target")
           ()
       in
       let first_app = build_workspace_package ~workspace app in

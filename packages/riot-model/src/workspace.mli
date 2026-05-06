@@ -12,8 +12,18 @@ type t = {
   profile_overrides: (string * Package.profile_override) list;
 }
 
+type overrides = {
+  target_dir: Path.t option;
+  workspace_root: Path.t option;
+}
+
+val no_overrides: overrides
+
+val with_target_dir: Path.t -> overrides
+
 val make:
   ?name:string ->
+  ?overrides:overrides ->
   root:Path.t ->
   packages:Package_manifest.t list ->
   ?dependencies:Package.dependency list ->
@@ -21,12 +31,13 @@ val make:
   ?build_dependencies:Package.dependency list ->
   ?profile_overrides:(string * Package.profile_override) list ->
   ?source_ignore_patterns:string list ->
-  ?target_dir:string ->
+  ?target_dir:Path.t ->
   unit ->
   t
 
 val make_realized:
   ?name:string ->
+  ?overrides:overrides ->
   root:Path.t ->
   packages:Package.t list ->
   ?dependencies:Package.dependency list ->
@@ -34,7 +45,7 @@ val make_realized:
   ?build_dependencies:Package.dependency list ->
   ?profile_overrides:(string * Package.profile_override) list ->
   ?source_ignore_patterns:string list ->
-  ?target_dir:string ->
+  ?target_dir:Path.t ->
   unit ->
   t
 

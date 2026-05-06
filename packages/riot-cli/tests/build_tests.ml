@@ -563,6 +563,18 @@ let test_build_accepts_jobs_flag = fun _ctx ->
             Error ("unexpected --jobs value: " ^ jobs)
       | None -> Error "expected --jobs flag to be parsed"
 
+let test_build_accepts_target_dir_flag = fun _ctx ->
+  match parse_build [ "build"; "--target-dir"; "_build_bin"; "-p"; "syn"; ] with
+  | Error err -> Error ("expected build args to parse: " ^ err)
+  | Ok matches ->
+      match ArgParser.get_one matches "target-dir" with
+      | Some target_dir ->
+          if String.equal target_dir "_build_bin" then
+            Ok ()
+          else
+            Error ("unexpected --target-dir value: " ^ target_dir)
+      | None -> Error "expected --target-dir flag to be parsed"
+
 let test_build_accepts_tests_flag = fun _ctx ->
   match parse_build [ "build"; "--tests"; "-p"; "syn"; ] with
   | Error err -> Error ("expected build args to parse: " ^ err)
@@ -1404,6 +1416,7 @@ let tests =
     case "build: parse --benches flag" test_build_accepts_benches_flag;
     case "build: parse --all flag" test_build_accepts_all_flag;
     case "build: parse --jobs flag" test_build_accepts_jobs_flag;
+    case "build: parse --target-dir flag" test_build_accepts_target_dir_flag;
     case "build: reject invalid --jobs flag" test_build_rejects_invalid_jobs_flag;
     case "build: accept --jobs flag at runtime" test_build_accepts_jobs_flag_in_run;
     case "build: reject zero --jobs at runtime" test_build_rejects_zero_jobs_runtime;

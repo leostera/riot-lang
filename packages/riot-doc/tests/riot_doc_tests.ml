@@ -134,7 +134,7 @@ let value = A.B.make ()
           ()
       in
       let workspace =
-        Workspace.make_realized ~root:tmpdir ~packages:[ pkg; app ] ~target_dir:"target" ()
+        Workspace.make_realized ~root:tmpdir ~packages:[ pkg; app ] ~target_dir:(Path.v "target") ()
       in
       let request = make_doc_request ~workspace ~output_dir:Path.(tmpdir / Path.v "docs") "app" in
       let* summaries = Riot_doc.run request in
@@ -222,7 +222,7 @@ val format: string -> string
           ()
       in
       let workspace =
-        Workspace.make_realized ~root:tmpdir ~packages:[ pkg ] ~target_dir:"target" ()
+        Workspace.make_realized ~root:tmpdir ~packages:[ pkg ] ~target_dir:(Path.v "target") ()
       in
       let request = make_doc_request ~workspace ~output_dir:output_root "pretext" in
       let* summaries = Riot_doc.run request in
@@ -342,7 +342,7 @@ val value: int
           ()
       in
       let workspace =
-        Workspace.make_realized ~root:tmpdir ~packages:[ pkg ] ~target_dir:"target" ()
+        Workspace.make_realized ~root:tmpdir ~packages:[ pkg ] ~target_dir:(Path.v "target") ()
       in
       let request = make_cached_doc_request ~workspace ~output_dir:output_root "pretext" in
       let* first =
@@ -435,7 +435,7 @@ type action =
           ()
       in
       let workspace =
-        Workspace.make_realized ~root:tmpdir ~packages:[ pkg ] ~target_dir:"target" ()
+        Workspace.make_realized ~root:tmpdir ~packages:[ pkg ] ~target_dir:(Path.v "target") ()
       in
       let request = make_doc_request ~workspace ~output_dir:output_root "args" in
       let* summaries = Riot_doc.run request in
@@ -512,7 +512,7 @@ val from_string: string -> t
           ()
       in
       let workspace =
-        Workspace.make_realized ~root:tmpdir ~packages:[ pkg ] ~target_dir:"target" ()
+        Workspace.make_realized ~root:tmpdir ~packages:[ pkg ] ~target_dir:(Path.v "target") ()
       in
       let request = make_doc_request ~workspace ~output_dir:output_root "parquet" in
       let* summaries = Riot_doc.run request in
@@ -588,7 +588,7 @@ type binding = {
           ()
       in
       let workspace =
-        Workspace.make_realized ~root:tmpdir ~packages:[ pkg ] ~target_dir:"target" ()
+        Workspace.make_realized ~root:tmpdir ~packages:[ pkg ] ~target_dir:(Path.v "target") ()
       in
       let request = make_doc_request ~workspace ~output_dir:output_root "dotenv" in
       let* summaries = Riot_doc.run request in
@@ -659,7 +659,7 @@ val parse: string -> (binding list, string) result
           ()
       in
       let workspace =
-        Workspace.make_realized ~root:tmpdir ~packages:[ pkg ] ~target_dir:"target" ()
+        Workspace.make_realized ~root:tmpdir ~packages:[ pkg ] ~target_dir:(Path.v "target") ()
       in
       let request = make_doc_request ~workspace ~output_dir:output_root "dotenv" in
       let* summaries = Riot_doc.run request in
@@ -719,7 +719,7 @@ val log_count: int -> unit
           ()
       in
       let workspace =
-        Workspace.make_realized ~root:tmpdir ~packages:[ pkg ] ~target_dir:"target" ()
+        Workspace.make_realized ~root:tmpdir ~packages:[ pkg ] ~target_dir:(Path.v "target") ()
       in
       let request = make_doc_request ~workspace ~output_dir:output_root "logger" in
       let* summaries = Riot_doc.run request in
@@ -771,7 +771,7 @@ val parse: string -> string
           ()
       in
       let workspace =
-        Workspace.make_realized ~root:tmpdir ~packages:[ pkg ] ~target_dir:"target" ()
+        Workspace.make_realized ~root:tmpdir ~packages:[ pkg ] ~target_dir:(Path.v "target") ()
       in
       let request = make_doc_request ~workspace ~output_dir:output_root "synlike" in
       let* summaries = Riot_doc.run request in

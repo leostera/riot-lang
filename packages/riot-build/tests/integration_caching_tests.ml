@@ -21,7 +21,7 @@ let make_workspace = fun ?(packages = []) root ->
   Riot_model.Workspace.make_realized
     ~root
     ~packages
-    ~target_dir:"target"
+    ~target_dir:(Path.v "target")
     ()
 
 let workspace_dependency = fun name ->

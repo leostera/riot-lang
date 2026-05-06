@@ -11,7 +11,7 @@ let make_test_workspace = fun tmpdir packages ->
   Riot_model.Workspace.make_realized
     ~root:tmpdir
     ~packages
-    ~target_dir:(Path.to_string Path.(Path.v "target"))
+    ~target_dir:(Path.v "target")
     ()
 
 let build_package = fun ~workspace package ->

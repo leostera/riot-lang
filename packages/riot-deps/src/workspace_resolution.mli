@@ -14,6 +14,7 @@ val ensure_lock:
 
 val ensure_workspace:
   ?emit:event_sink ->
+  ?overrides:Riot_model.Workspace.overrides ->
   workspace_manager:Riot_model.Workspace_manager.t ->
   mode:Dep_solver.mode ->
   registry:Pkgs_ml.Registry.t ->

@@ -15,7 +15,7 @@ let clone_workspace_with_target = fun (workspace: Riot_model.Workspace.t) ~targe
     ~dev_dependencies:workspace.dev_dependencies
     ~build_dependencies:workspace.build_dependencies
     ~profile_overrides:workspace.profile_overrides
-    ~target_dir:(Path.to_string target_dir)
+    ~target_dir
     ()
 
 let load_repo_workspace = fun () ->

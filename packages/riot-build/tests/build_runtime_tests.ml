@@ -274,7 +274,7 @@ let test_build_respects_custom_target_dir = fun _ctx ->
   match Fs.with_tempdir
     ~prefix:"riot_build_custom_target_runtime"
     (fun tmpdir ->
-      let workspace = make_valid_workspace ~target_dir:"build-out" tmpdir in
+      let workspace = make_valid_workspace ~target_dir:(Path.v "build-out") tmpdir in
       let host_target = Riot_model.Riot_dirs.host_target () in
       let release_package_dir =
         Riot_model.Riot_dirs.out_dir_in_workspace ~workspace ~profile:"release" ~target:host_target
