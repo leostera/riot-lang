@@ -154,7 +154,12 @@ type graph_state = {
 
 and package_state_store = {
   lock: Sync.Mutex.t;
-  states: (string, package_state) HashMap.t;
+  states: (Riot_planner.Build_unit.key, package_state) HashMap.t;
+}
+
+type node_ids = {
+  plan: (Riot_planner.Build_unit.key, Graph_scheduler.Node_id.t) HashMap.t;
+  finalize: (Riot_planner.Build_unit.key, Graph_scheduler.Node_id.t) HashMap.t;
 }
 
 type pending_counts = { awaiting_plan: int; awaiting_finalization: int; finalized: int }
@@ -175,15 +180,7 @@ type execution_counts = {
   error_count: int;
 }
 
-let lane_id = fun lane -> Riot_model.Target.to_string (Build_lane.target lane)
-
 let package_key_id = fun unit_key -> Riot_planner.Build_unit.key_to_string unit_key
-
-let package_state_key = fun lane unit_key -> lane_id lane ^ "#" ^ package_key_id unit_key
-
-let plan_node_key = fun lane unit_key -> package_state_key lane unit_key ^ "#plan"
-
-let finalize_node_key = fun lane unit_key -> package_state_key lane unit_key ^ "#finalize"
 
 let dependency_keys = fun lane unit_key -> Build_lane.build_unit_dependency_keys lane unit_key
 
@@ -256,14 +253,14 @@ let with_package_states = fun package_states ~fn ->
       raise exn
 
 let get_package_state_unlocked = fun package_states lane unit_key ->
-  HashMap.get
-    package_states
-    ~key:(package_state_key lane unit_key)
+  let _ = lane in
+  HashMap.get package_states ~key:unit_key
 
 let remember_package_state_unlocked = fun package_states lane unit_key state ->
+  let _ = lane in
   let _ = HashMap.insert
     package_states
-    ~key:(package_state_key lane unit_key)
+    ~key:unit_key
     ~value:state
   in
   ()
@@ -331,8 +328,8 @@ let finalize_result = fun
 
 let complete_finalize_from_plan = fun graph node_ids lane unit_key detailed_result ->
   let finalize_node_id =
-    HashMap.get node_ids ~key:(finalize_node_key lane unit_key)
-    |> Option.expect ~msg:("missing finalize node for " ^ package_state_key lane unit_key)
+    HashMap.get node_ids.finalize ~key:unit_key
+    |> Option.expect ~msg:("missing finalize node for " ^ package_key_id unit_key)
   in
   Graph_scheduler.Handle.complete_node
     graph
@@ -559,9 +556,9 @@ let plan_package_work = fun ~package_states ~input_hash_cache ~node_ids ~graph l
                     Ok (Planned (PlanningFinalized { lane; detailed_result }))
                 | Ok prepared_execution ->
                     let finalize_node_id =
-                      HashMap.get node_ids ~key:(finalize_node_key lane unit_key)
+                      HashMap.get node_ids.finalize ~key:unit_key
                       |> Option.expect
-                        ~msg:("missing finalize node for " ^ package_state_key lane unit_key)
+                        ~msg:("missing finalize node for " ^ package_key_id unit_key)
                     in
                     record_package_state
                       graph
@@ -670,7 +667,11 @@ let make_graph = fun state lanes ->
             remember_action_result state.package_states lane unit_key action_id result)
       ()
   in
-  let node_ids: (string, Graph_scheduler.Node_id.t) HashMap.t = HashMap.create () in
+  let node_ids: node_ids = {
+    plan = HashMap.create ();
+    finalize = HashMap.create ();
+  }
+  in
   List.for_each
     lanes
     ~fn:(fun lane ->
@@ -683,15 +684,11 @@ let make_graph = fun state lanes ->
           let finalize_node_id =
             Graph_scheduler.Graph.add_node graph ~payload:(FinalizePackage { lane; unit_key })
           in
-          let _ = HashMap.insert
-            node_ids
-            ~key:(plan_node_key lane unit_key)
-            ~value:plan_node_id
-          in
+          let _ = HashMap.insert node_ids.plan ~key:unit_key ~value:plan_node_id in
           let _ =
             HashMap.insert
-              node_ids
-              ~key:(finalize_node_key lane unit_key)
+              node_ids.finalize
+              ~key:unit_key
               ~value:finalize_node_id
           in
           ()));
@@ -702,18 +699,18 @@ let make_graph = fun state lanes ->
       |> List.for_each
         ~fn:(fun unit_key ->
           let plan_node_id =
-            HashMap.get node_ids ~key:(plan_node_key lane unit_key)
-            |> Option.expect ~msg:("missing plan node for " ^ package_state_key lane unit_key)
+            HashMap.get node_ids.plan ~key:unit_key
+            |> Option.expect ~msg:("missing plan node for " ^ package_key_id unit_key)
           in
           let finalize_node_id =
-            HashMap.get node_ids ~key:(finalize_node_key lane unit_key)
-            |> Option.expect ~msg:("missing finalize node for " ^ package_state_key lane unit_key)
+            HashMap.get node_ids.finalize ~key:unit_key
+            |> Option.expect ~msg:("missing finalize node for " ^ package_key_id unit_key)
           in
           Graph_scheduler.Graph.add_dependency graph ~node:finalize_node_id ~depends_on:plan_node_id;
           dependency_keys lane unit_key
           |> List.for_each
             ~fn:(fun dependency_key ->
-              match HashMap.get node_ids ~key:(finalize_node_key lane dependency_key) with
+              match HashMap.get node_ids.finalize ~key:dependency_key with
               | Some dependency_finalize_node_id ->
                   Graph_scheduler.Graph.add_dependency
                     graph
