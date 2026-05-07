@@ -12,6 +12,8 @@
 
 * revisit all cli output -- i'd like it to be more inlined/interactive
 
+* riot build external dependencies are cached into .riot/cache/
+
 # Next
 
 * `riot lock` to relock project deps
