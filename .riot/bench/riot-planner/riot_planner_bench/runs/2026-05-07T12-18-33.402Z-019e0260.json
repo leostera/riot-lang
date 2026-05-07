@@ -1,0 +1,160 @@
+{
+  "schema_version": 1,
+  "run_id": "2026-05-07T12-18-33.402Z-019e0260",
+  "suite": {
+    "package": "riot-planner",
+    "name": "riot_planner_bench",
+    "profile": "debug",
+    "target": "aarch64-apple-darwin"
+  },
+  "selection": {
+    "filter": null,
+    "partial": true
+  },
+  "workspace": {
+    "git_head": "5ef984a30e2c73133964866edde50ec8882a1ecc",
+    "git_dirty": true
+  },
+  "command": {
+    "argv": [
+      "riot",
+      "bench",
+      "-p",
+      "riot-planner",
+      "--compare",
+      "5",
+      "--warmup",
+      "20",
+      "--record"
+    ]
+  },
+  "suite_run": {
+    "status": 0,
+    "started_at_us": 0,
+    "completed_at_us": 10543784,
+    "duration_us": 10543784,
+    "summary": {
+      "total": 6,
+      "completed": 6,
+      "skipped": 0,
+      "failed": 0
+    },
+    "benchmarks": [
+      {
+        "index": 1,
+        "name": "riot-planner build unit graph runtime 64 packages",
+        "status": "completed",
+        "statistics": {
+          "min_nanos": 4225000,
+          "max_nanos": 15277000,
+          "mean_nanos": 5878566,
+          "median_nanos": 5727000,
+          "std_dev_nanos": 1182435,
+          "iterations": 120,
+          "total_time_nanos": 705428000,
+          "gc": {
+            "minor_collections": 86,
+            "major_collections": 7,
+            "compactions": 0
+          }
+        }
+      },
+      {
+        "index": 2,
+        "name": "riot-planner build unit graph dev 64 packages",
+        "status": "completed",
+        "statistics": {
+          "min_nanos": 3246000,
+          "max_nanos": 16627000,
+          "mean_nanos": 5674925,
+          "median_nanos": 5421000,
+          "std_dev_nanos": 1832671,
+          "iterations": 120,
+          "total_time_nanos": 680991000,
+          "gc": {
+            "minor_collections": 84,
+            "major_collections": 4,
+            "compactions": 0
+          }
+        }
+      },
+      {
+        "index": 3,
+        "name": "riot-planner plan workspace all 128 packages",
+        "status": "completed",
+        "statistics": {
+          "min_nanos": 6316000,
+          "max_nanos": 13203000,
+          "mean_nanos": 9080975,
+          "median_nanos": 8971000,
+          "std_dev_nanos": 1212633,
+          "iterations": 80,
+          "total_time_nanos": 726478000,
+          "gc": {
+            "minor_collections": 126,
+            "major_collections": 2,
+            "compactions": 0
+          }
+        }
+      },
+      {
+        "index": 4,
+        "name": "riot-planner plan workspace target package 128 packages",
+        "status": "completed",
+        "statistics": {
+          "min_nanos": 45686000,
+          "max_nanos": 123524000,
+          "mean_nanos": 75079787,
+          "median_nanos": 75380000,
+          "std_dev_nanos": 13750300,
+          "iterations": 80,
+          "total_time_nanos": 6006383000,
+          "gc": {
+            "minor_collections": 214,
+            "major_collections": 4,
+            "compactions": 0
+          }
+        }
+      },
+      {
+        "index": 5,
+        "name": "riot-planner plan package cold explicit root library",
+        "status": "completed",
+        "statistics": {
+          "min_nanos": 5551000,
+          "max_nanos": 8196000,
+          "mean_nanos": 6862041,
+          "median_nanos": 6909000,
+          "std_dev_nanos": 663775,
+          "iterations": 24,
+          "total_time_nanos": 164689000,
+          "gc": {
+            "minor_collections": 40,
+            "major_collections": 0,
+            "compactions": 0
+          }
+        }
+      },
+      {
+        "index": 6,
+        "name": "riot-planner plan package warm explicit root library",
+        "status": "completed",
+        "statistics": {
+          "min_nanos": 1627000,
+          "max_nanos": 13383000,
+          "mean_nanos": 2816300,
+          "median_nanos": 2359000,
+          "std_dev_nanos": 1647077,
+          "iterations": 60,
+          "total_time_nanos": 168978000,
+          "gc": {
+            "minor_collections": 52,
+            "major_collections": 0,
+            "compactions": 0
+          }
+        }
+      }
+    ],
+    "comparisons": []
+  }
+}
