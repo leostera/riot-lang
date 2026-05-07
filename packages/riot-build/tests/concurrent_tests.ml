@@ -317,11 +317,11 @@ let tests = let open Test in
     "concurrent: different packages don't interfere"
     test_concurrent_builds_different_packages;
   case ~size:Large "concurrent: same package builds safely" test_concurrent_builds_same_package;
-  case "concurrent: shared cache works correctly" test_concurrent_builds_with_shared_cache;
+  case ~size:Large "concurrent: shared cache works correctly" test_concurrent_builds_with_shared_cache;
 ]
 
 let name = "Concurrent Build Tests"
 
-let main ~args = Test.Cli.main ~name ~tests ~args ()
+let main ~args = Test.Cli.main ~execution_mode:Test.Cli.Linear ~name ~tests ~args ()
 
 let () = Runtime.run ~main ~args:Env.args ()

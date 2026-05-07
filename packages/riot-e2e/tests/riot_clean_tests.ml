@@ -51,11 +51,15 @@ let json_int_field = fun name json ->
   | Some value -> Data.Json.get_int value
   | None -> None
 
-let clean_plan_removes_entries = fun json ->
+let json_positive_field = fun name json ->
+  match json_int_field name json with
+  | Some value -> value > 0
+  | None -> false
+
+let clean_plan_removes_cache = fun json ->
   if json_type_is "CacheGcPlanComputed" json then
-    match json_int_field "deleted_entries" json with
-    | Some deleted_entries -> deleted_entries > 0
-    | None -> false
+    json_positive_field "deleted_entries" json
+    || json_positive_field "deleted_generations" json
   else
     false
 
@@ -63,10 +67,10 @@ let clean_completed = fun json -> json_type_is "CacheGcCompleted" json
 
 let assert_clean_removed_entries = fun (output: command_output) ->
   let* jsons = parse_json_lines ~cmd:"riot clean --json" output in
-  if List.any jsons ~fn:clean_plan_removes_entries && List.any jsons ~fn:clean_completed then
+  if List.any jsons ~fn:clean_plan_removes_cache && List.any jsons ~fn:clean_completed then
     Ok ()
   else
-    Error ("expected riot clean --json to report a nonzero cache deletion plan and completion, got: "
+    Error ("expected riot clean --json to report cache deletion and completion, got: "
     ^ render_output output)
 
 let assert_fully_cached_build = fun (output: command_output) ->

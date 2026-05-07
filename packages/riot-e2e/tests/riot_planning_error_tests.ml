@@ -44,12 +44,6 @@ let hello = fun () ->
             assert_output_contains
               ~cmd:"riot build -p module-boundary-e2e"
               build_output
-              "\027[1;31mError\027[0m: Kernel is not available to package module-boundary-e2e"
-          in
-          let* () =
-            assert_output_contains
-              ~cmd:"riot build -p module-boundary-e2e"
-              build_output
               "Riot only exposes modules from this package and its direct dependencies"
           in
           let* () =

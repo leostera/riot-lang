@@ -729,10 +729,7 @@ let get_package_metadata = fun store hash ->
   let load_started_at = Time.Instant.now () in
   let hash_dir = ContentStore.hash_dir_of store.package_store hash in
   let load_artifact_metadata path =
-    if artifact_dir_is_reusable store hash_dir then
-      Manifest.load_metadata ~path |> Result.to_option
-    else
-      None
+    Manifest.load_metadata ~path |> Result.to_option
   in
   let load_manifest_metadata () =
     if artifact_dir_is_reusable store hash_dir then

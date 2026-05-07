@@ -778,6 +778,146 @@ let dependency_group_entries = fun ~root (group: source_group) ->
   Module_scanner.scan ~root ~source_dir:group.source_dir
   |> filter_entries ~allowed:group.allowed_source_files
 
+let child_module_exports = fun modules ->
+  modules
+  |> List.map
+    ~fn:(fun mod_ ->
+      Module.module_name mod_
+      |> Module_name.to_string)
+  |> List.sort ~compare:String.compare
+  |> List.unique ~compare:String.compare
+  |> List.map ~fn:(fun name -> [ name ])
+
+type dependency_exports = {
+  providers: Dep_analyzer.provider list;
+  root_sources: (Path.t * string list) list;
+}
+
+let empty_dependency_exports = { providers = []; root_sources = [] }
+
+let merge_dependency_exports = fun left right -> {
+  providers = left.providers @ right.providers;
+  root_sources = left.root_sources @ right.root_sources;
+}
+
+let root_export_source_path = fun lib_def ->
+  if Library_definition.has_concrete_mli lib_def then
+    Library_definition.concrete_mli_path lib_def
+  else if Library_definition.has_concrete_ml lib_def then
+    Library_definition.concrete_ml_path lib_def
+  else
+    None
+
+let rec dependency_library_exports = fun
+  ~package ~namespace ~public_root_name ~library_name ~concrete_library_path children ->
+  let lib_def =
+    Library_definition.from_entries
+      ~namespace
+      ~library_name
+      ~package_path:package.Package.path
+      ~concrete_library_path
+      ~binaries:package.binaries
+      children
+  in
+  let library_module_name = Module_name.from_string ~namespace library_name in
+  let provider =
+    Dep_analyzer.{
+      path = module_name_segments library_module_name;
+      free_names = [ public_root_name ];
+      exports = child_module_exports (Library_definition.child_modules lib_def);
+    }
+  in
+  let root_sources =
+    match root_export_source_path lib_def with
+    | Some source -> [ (source, module_name_segments library_module_name) ]
+    | None -> []
+  in
+  let child_namespace = Namespace.append namespace (Module_name.to_string library_module_name) in
+  let child_dir_names =
+    let names = HashSet.create () in
+    Library_definition.child_dirs lib_def
+    |> List.for_each
+      ~fn:(fun child_mod ->
+        let _ =
+          HashSet.insert
+            names
+            ~value:(
+              Module.module_name child_mod
+              |> Module_name.to_string
+            )
+        in
+        ());
+    names
+  in
+  let nested_providers =
+    Library_definition.children_without_lib lib_def
+    |> List.map
+      ~fn:(fun entry ->
+        match entry with
+        | Module_scanner.Dir (name, _, nested_children) ->
+            let child_name =
+              Module_name.from_string name
+              |> Module_name.to_string
+            in
+            if HashSet.contains child_dir_names ~value:child_name then
+              dependency_library_exports
+                ~package
+                ~namespace:child_namespace
+                ~public_root_name
+                ~library_name:name
+                ~concrete_library_path:None
+                nested_children
+            else
+              empty_dependency_exports
+        | _ -> empty_dependency_exports)
+    |> List.fold_left ~init:empty_dependency_exports ~fn:merge_dependency_exports
+  in
+  {
+    providers = provider :: nested_providers.providers;
+    root_sources = root_sources @ nested_providers.root_sources;
+  }
+
+let dependency_group_exports = fun package (group: source_group) group_entries ->
+  match group.root_mode with
+  | Loose_sources -> empty_dependency_exports
+  | Library_root { library_name } ->
+      let public_root_name =
+        Module_name.from_string library_name
+        |> Module_name.to_string
+      in
+      dependency_library_exports
+        ~package
+        ~namespace:group.namespace
+        ~public_root_name
+        ~library_name
+        ~concrete_library_path:(
+          if Namespace.is_empty group.namespace then
+            Option.map package.Package.library ~fn:(fun (library: Package.library) -> library.path)
+          else
+            None
+        )
+        group_entries
+
+let dependency_root_summary = fun package (source_path, module_path) ->
+  let display_path =
+    if Path.is_absolute source_path then
+      source_path
+    else
+      Path.(package.Package.path / source_path)
+  in
+  match Fs.read display_path with
+  | Error _ -> None
+  | Ok raw_text ->
+      let parse_result = Syn.parse ~filename:display_path (source_slice raw_text) in
+      let source_hash = source_hash ~implicit_opens:[] ~source:raw_text in
+      Dep_analyzer.analyze
+        ~module_path
+        ~implicit_opens:[]
+        ~source:display_path
+        ~source_hash
+        parse_result
+      |> Result.to_option
+
 let create = fun config ->
   let scanned_groups =
     List.map
@@ -952,24 +1092,24 @@ let analyze_source_tasks = fun ~on_source_analyzed tasks ->
     ()
   |> List.map ~fn:(fun (_index, result) -> result)
 
-let dependency_summaries = fun config ->
-  let graph_builder = create config in
-  let tasks = sorted_source_tasks config graph_builder.graph in
-  analyze_source_tasks ~on_source_analyzed:(fun (_: source_analysis_progress) -> ()) tasks
-  |> List.filter_map
-    ~fn:(fun result ->
-      match result with
-      | Ok { summary = Ok summary; _ } -> Some summary
-      | Ok { summary = Error _; _ }
-      | Error _ -> None)
-
 let add_direct_dependency_package = fun t (package: Package.t) ->
   let root_module = Package.root_module_name package in
   add_direct_dependency_root t ~package_name:package.name ~root_module;
   let source_groups = dependency_source_groups package in
-  let dependency_config = { t.config with root = package.path; source_groups; package } in
-  let summaries = dependency_summaries dependency_config in
-  Cell.set t.dep_env (Dep_analyzer.Env.add_external_summaries (Cell.get t.dep_env) summaries)
+  let exports =
+    source_groups
+    |> List.map
+      ~fn:(fun group ->
+        dependency_group_entries ~root:package.path group
+        |> dependency_group_exports package group)
+    |> List.fold_left ~init:empty_dependency_exports ~fn:merge_dependency_exports
+  in
+  let env = Dep_analyzer.Env.add_providers (Cell.get t.dep_env) exports.providers in
+  let root_summaries =
+    exports.root_sources
+    |> List.filter_map ~fn:(dependency_root_summary package)
+  in
+  Cell.set t.dep_env (Dep_analyzer.Env.add_external_summaries env root_summaries)
 
 (**
    Wire module dependencies using `Dep_analyzer`.
