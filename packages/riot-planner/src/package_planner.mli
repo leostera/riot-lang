@@ -34,6 +34,7 @@ type plan_result =
       action_graph: Action_graph.t;
       hash: Std.Crypto.hash;
       depset: Dependency.t list;
+      sandbox_files: Sandbox_file.t list;
       breakdown: planning_breakdown;
     }
 

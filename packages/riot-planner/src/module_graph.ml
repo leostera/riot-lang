@@ -72,34 +72,24 @@ type analyzed_module = {
   source_hash: Crypto.hash;
   implicit_opens: string list;
   parse_result: Syn.Parser.parse_result;
-  deps: (Syn.Deps.t, Syn.Deps.parse_error) result;
+  deps: (Dep_analyzer.Resolution.t, Dep_analyzer.resolve_error) result;
   resolved_deps: Module_name.t list;
   resolved_dep_ids: G.Node_id.t list;
   unresolved_deps: string list;
 }
+
 type source_analysis_progress = {
   source: Path.t;
   source_index: int;
   source_count: int;
 }
 
-type root_export_source =
-  | Export_from_ml of {
-      public_root_name: string;
-      source_path: Path.t;
-    }
-  | Export_from_mli of {
-      public_root_name: string;
-      source_path: Path.t;
-    }
-
 type t = {
   config: config;
   graph: Module_node.t G.t;
   registry: Module_registry.t;
   entries: Module_scanner.entry list;
-  deps_env: Syn.Deps.Env.t Cell.t;
-  root_export_sources: (string, root_export_source) HashMap.t;
+  dep_env: Dep_analyzer.Env.t Cell.t;
   analyzed_modules: (G.Node_id.t, analyzed_module) HashMap.t;
 }
 
@@ -728,191 +718,22 @@ let add_ocaml_stdlib_exports = fun env ~root_module ->
   if not (String.equal root_module "Stdlib") then
     env
   else
-    let exports =
-      List.fold_left
-        ocaml_stdlib_module_names
-        ~init:Syn.Deps.Env.empty
-        ~fn:(fun exports module_name ->
-          Syn.Deps.Env.add_path
-            exports
-            ~path:[ module_name ]
-            ~free_names:[ root_module ])
+    let provider =
+      Dep_analyzer.{
+        path = [ root_module ];
+        free_names = [ root_module ];
+        exports = List.map ocaml_stdlib_module_names ~fn:(fun name -> [ name ]);
+      }
     in
-    let env =
-      Syn.Deps.Env.add_binding env ~path:[ root_module ] ~free_names:[ root_module ] ~exports
-    in
+    let env = Dep_analyzer.Env.add_provider env provider in
     List.fold_left
       ocaml_stdlib_module_names
       ~init:env
       ~fn:(fun env module_name ->
-        Syn.Deps.Env.add_path
+        Dep_analyzer.Env.add_path
           env
           ~path:[ module_name ]
           ~free_names:[ root_module ])
-
-let rec build_deps_env_for_library = fun
-  (env, root_export_sources)
-  ~package_path
-  ~binaries
-  ~namespace
-  ~public_root_name
-  ~library_name
-  ~concrete_library_path
-  children ->
-  let lib_def =
-    Library_definition.from_entries
-      ~namespace
-      ~library_name
-      ~package_path
-      ~concrete_library_path
-      ~binaries
-      children
-  in
-  let library_module_name = Module_name.from_string ~namespace library_name in
-  let qualified_root_name = Module_name.qualified_name library_module_name in
-  let env =
-    Syn.Deps.Env.add_path
-      env
-      ~path:(module_name_segments library_module_name)
-      ~free_names:[ public_root_name ]
-  in
-  let alias_namespace = Namespace.append namespace (Module_name.to_string library_module_name) in
-  let alias_module_name =
-    Namespace.to_string alias_namespace
-    |> fun prefix -> prefix ^ "__Aliases"
-  in
-  let alias_module_segments = Namespace.to_list alias_namespace @ [ "Aliases" ] in
-  let alias_exports =
-    List.fold_left
-      (Library_definition.child_modules lib_def)
-      ~init:Syn.Deps.Env.empty
-      ~fn:(fun exports child_mod ->
-        let child_name =
-          Module.module_name child_mod
-          |> Module_name.to_string
-        in
-        Syn.Deps.Env.add_path exports ~path:[ child_name ] ~free_names:[ child_name ])
-  in
-  let alias_exports =
-    if List.is_empty (Library_definition.child_modules lib_def) then
-      alias_exports
-    else
-      Syn.Deps.Env.add_scoped_binding
-        alias_exports
-        ~path:[ "Super" ]
-        ~free_names:[ alias_module_name ]
-        ~exports:alias_exports
-  in
-  let env =
-    Syn.Deps.Env.add_scoped_binding
-      env
-      ~path:alias_module_segments
-      ~free_names:[ alias_module_name ]
-      ~exports:alias_exports
-  in
-  let (env, root_export_sources) =
-    if Library_definition.has_concrete_mli lib_def then
-      match Library_definition.concrete_mli_path lib_def with
-      | Some source_path ->
-          let _ =
-            HashMap.insert
-              root_export_sources
-              ~key:qualified_root_name
-              ~value:(Export_from_mli { public_root_name; source_path })
-          in
-          (env, root_export_sources)
-      | None -> (env, root_export_sources)
-    else if Library_definition.has_concrete_ml lib_def then
-      match Library_definition.concrete_ml_path lib_def with
-      | Some source_path ->
-          let _ =
-            HashMap.insert
-              root_export_sources
-              ~key:qualified_root_name
-              ~value:(Export_from_ml { public_root_name; source_path })
-          in
-          (env, root_export_sources)
-      | None -> (env, root_export_sources)
-    else
-      (
-        List.fold_left
-          (Library_definition.child_modules lib_def)
-          ~init:env
-          ~fn:(fun env child_mod ->
-            Syn.Deps.Env.add_path
-              env
-              ~path:(module_name_segments (Module.module_name child_mod))
-              ~free_names:[ public_root_name ]),
-        root_export_sources
-      )
-  in
-  let child_namespace = Namespace.append namespace (Module_name.to_string library_module_name) in
-  let child_dir_names =
-    let names = HashSet.create () in
-    let () =
-      Library_definition.child_dirs lib_def
-      |> List.for_each
-        ~fn:(fun child_mod ->
-          let _ =
-            HashSet.insert
-              names
-              ~value:(
-                Module.module_name child_mod
-                |> Module_name.to_string
-              )
-          in
-          ())
-    in
-    names
-  in
-  List.fold_left
-    (Library_definition.children_without_lib lib_def)
-    ~init:(env, root_export_sources)
-    ~fn:(fun (env, root_export_sources) ->
-      fun __tmp1 ->
-        match __tmp1 with
-        | Module_scanner.Dir (name, _, nested_children) ->
-            let child_name =
-              Module_name.from_string name
-              |> Module_name.to_string
-            in
-            if HashSet.contains child_dir_names ~value:child_name then
-              build_deps_env_for_library
-                (env, root_export_sources)
-                ~package_path
-                ~binaries
-                ~namespace:child_namespace
-                ~public_root_name
-                ~library_name:name
-                ~concrete_library_path:None
-                nested_children
-            else
-              (env, root_export_sources)
-        | _ -> (env, root_export_sources))
-
-let build_deps_env_for_group = fun
-  config (env, root_export_sources) (group: source_group) group_entries ->
-  match group.root_mode with
-  | Loose_sources -> (env, root_export_sources)
-  | Library_root { library_name } ->
-      let public_root_name =
-        Module_name.from_string library_name
-        |> Module_name.to_string
-      in
-      build_deps_env_for_library
-        (env, root_export_sources)
-        ~package_path:config.package.path
-        ~binaries:config.package.binaries
-        ~namespace:group.namespace
-        ~public_root_name
-        ~library_name
-        ~concrete_library_path:(
-          if Namespace.is_empty group.namespace then
-            Option.map config.package.library ~fn:(fun (library: Package.library) -> library.path)
-          else
-            None
-        )
-        group_entries
 
 let group_namespace = fun root ->
   if Path.equal root (Path.v "src") then
@@ -957,68 +778,6 @@ let dependency_group_entries = fun ~root (group: source_group) ->
   Module_scanner.scan ~root ~source_dir:group.source_dir
   |> filter_entries ~allowed:group.allowed_source_files
 
-let dependency_root_export_env = fun config env (group: source_group) group_entries ->
-  match group.root_mode with
-  | Loose_sources -> env
-  | Library_root { library_name } ->
-      let public_root_name =
-        Module_name.from_string library_name
-        |> Module_name.to_string
-      in
-      let lib_def =
-        Library_definition.from_entries
-          ~namespace:group.namespace
-          ~library_name
-          ~package_path:config.package.path
-          ~concrete_library_path:(
-            if Namespace.is_empty group.namespace then
-              Option.map config.package.library ~fn:(fun (library: Package.library) -> library.path)
-            else
-              None
-          )
-          ~binaries:config.package.binaries
-          group_entries
-      in
-      let root_path =
-        if Library_definition.has_concrete_mli lib_def then
-          Library_definition.concrete_mli_path lib_def
-        else if Library_definition.has_concrete_ml lib_def then
-          Library_definition.concrete_ml_path lib_def
-        else
-          None
-      in
-      (
-        match root_path with
-        | None -> env
-        | Some path ->
-            let display_path =
-              if Path.is_absolute path then
-                path
-              else
-                Path.(config.package.path / path)
-            in
-            match Fs.read display_path with
-            | Error _ -> env
-            | Ok source ->
-                let library_module_name =
-                  Module_name.from_string ~namespace:group.namespace library_name
-                in
-                let alias_namespace =
-                  Namespace.append group.namespace (Module_name.to_string library_module_name)
-                in
-                let alias_module_segments = Namespace.to_list alias_namespace @ [ "Aliases" ] in
-                let parse_env = Syn.Deps.Env.open_path env ~path:alias_module_segments in
-                let parse_result = Syn.parse ~filename:display_path (source_slice source) in
-                match Syn.Deps.from_parse_result ~env:parse_env parse_result with
-                | Error _ -> env
-                | Ok deps ->
-                    Syn.Deps.Env.add_binding
-                      env
-                      ~path:(module_name_segments library_module_name)
-                      ~free_names:[ public_root_name ]
-                      ~exports:(Syn.Deps.exports deps)
-      )
-
 let create = fun config ->
   let scanned_groups =
     List.map
@@ -1035,21 +794,13 @@ let create = fun config ->
   in
   let graph = G.make () in
   let registry = Module_registry.create () in
-  let (deps_env, root_export_sources) =
-    List.fold_left
-      scanned_groups
-      ~init:(Syn.Deps.Env.empty, HashMap.create ())
-      ~fn:(fun acc (group, group_entries) ->
-        build_deps_env_for_group config acc group group_entries)
-  in
   let analyzed_modules = HashMap.with_capacity ~size:64 in
   let t = {
     config;
     graph;
     registry;
     entries;
-    deps_env = Cell.create deps_env;
-    root_export_sources;
+    dep_env = Cell.create Dep_analyzer.Env.empty;
     analyzed_modules;
   }
   in
@@ -1064,104 +815,168 @@ let add_direct_dependency_root = fun t ~package_name ~root_module ->
   let node = G.add_node t.graph node_value in
   Module_registry.register_qualified_name t.registry root_module (G.id node);
   Cell.set
-    t.deps_env
+    t.dep_env
     (
-      Syn.Deps.Env.add_path (Cell.get t.deps_env) ~path:[ root_module ] ~free_names:[ root_module ]
+      Dep_analyzer.Env.add_path
+        (Cell.get t.dep_env)
+        ~path:[ root_module ]
+        ~free_names:[ root_module ]
       |> add_ocaml_stdlib_exports ~root_module
     )
 
-let dependency_export_source_path = fun
-  (Export_from_ml { source_path; _ } | Export_from_mli { source_path; _ }) -> source_path
+type source_analysis_task = {
+  node_id: G.Node_id.t;
+  file: Module_node.file;
+  path: Path.t;
+  display_path: Path.t;
+  module_path: string list option;
+  implicit_opens: string list;
+  implicit_open_paths: string list list;
+}
 
-let dependency_export_public_root_name = fun
-  (Export_from_ml { public_root_name; _ } | Export_from_mli { public_root_name; _ }) ->
-  public_root_name
+type source_analysis = {
+  task: source_analysis_task;
+  parse_result: Syn.Parser.parse_result;
+  source_hash: Crypto.hash;
+  summary: (Dep_analyzer.source_summary, Dep_analyzer.parse_error) result;
+}
 
-let qualified_name_segments = fun qualified_name ->
-  String.split qualified_name ~by:"__"
-  |> List.filter ~fn:(fun segment -> not (String.is_empty segment))
+let module_path_for_node_value = fun (module_node: Module_node.t) ->
+  match module_node.kind with
+  | Module_node.ML mod_
+  | Module_node.MLI mod_ -> Some (module_name_segments (Module.module_name mod_))
+  | _ -> None
 
-let prime_dependency_root_exports = fun dependency_config env root_export_sources ->
-  let sorted_sources =
-    HashMap.to_list root_export_sources
-    |> List.sort
-      ~compare:(fun (left_name, _) (right_name, _) ->
-        let left_segments = qualified_name_segments left_name in
-        let right_segments = qualified_name_segments right_name in
-        match Int.compare (List.length left_segments) (List.length right_segments) with
-        | Order.EQ -> String.compare left_name right_name
-        | order -> order)
+let implicit_open_modules = fun (open_modules: Module_node.t G.node list) ->
+  open_modules
+  |> List.filter_map
+    ~fn:(fun (node: Module_node.t G.node) ->
+      match (G.value node).kind with
+      | Module_node.ML mod_
+      | Module_node.MLI mod_ -> Some (Module.namespaced_name mod_)
+      | _ -> None)
+
+let implicit_open_paths = fun (open_modules: Module_node.t G.node list) ->
+  open_modules
+  |> List.filter_map
+    ~fn:(fun (node: Module_node.t G.node) ->
+      match (G.value node).kind with
+      | Module_node.ML mod_
+      | Module_node.MLI mod_ -> Some (module_name_segments (Module.module_name mod_))
+      | _ -> None)
+
+let source_display_path = fun config file ->
+  match file with
+  | Module_node.Concrete path
+  | Module_node.Generated { path; _ } ->
+      if Path.is_absolute path then
+        path
+      else
+        Path.(config.package.path / path)
+
+let source_task_of_node = fun config (node_id, (node: Module_node.t G.node)) ->
+  let module_node = G.value node in
+  match module_node.kind with
+  | Module_node.ML _
+  | Module_node.MLI _ -> (
+      match module_node.file with
+      | Module_node.Concrete path
+      | Module_node.Generated { path; _ } ->
+          Some {
+            node_id;
+            file = module_node.file;
+            path;
+            display_path = source_display_path config module_node.file;
+            module_path = module_path_for_node_value module_node;
+            implicit_opens = implicit_open_modules module_node.open_modules;
+            implicit_open_paths = implicit_open_paths module_node.open_modules;
+          }
+    )
+  | _ -> None
+
+let sorted_source_tasks = fun config graph ->
+  G.map graph ~fn:(fun (node_id, node) -> (node_id, node))
+  |> List.sort
+    ~compare:(fun (left_id, _) (right_id, _) ->
+      Int.compare
+        (G.Node_id.to_int left_id)
+        (G.Node_id.to_int right_id))
+  |> List.filter_map ~fn:(source_task_of_node config)
+  |> List.sort
+    ~compare:(fun left right ->
+      String.compare
+        (Path.to_string left.path)
+        (Path.to_string right.path))
+
+let read_task_source = fun task ->
+  match task.file with
+  | Module_node.Concrete _ ->
+      Fs.read task.display_path
+      |> Result.map_err
+        ~fn:(fun err ->
+          Planning_error.DependencyAnalysisFailed {
+            reason = "failed to read "
+            ^ Module_node.file_to_string task.file
+            ^ " for dependency analysis: "
+            ^ IO.error_message err;
+          })
+  | Module_node.Generated { contents; _ } -> Ok contents
+
+let analyze_source_task = fun ~on_source_analyzed ~source_count ~completed_sources task ->
+  let* raw_text = read_task_source task in
+  let parse_result = Syn.parse ~filename:task.display_path (source_slice raw_text) in
+  let source_hash = source_hash ~implicit_opens:task.implicit_opens ~source:raw_text in
+  let summary =
+    Dep_analyzer.analyze
+      ?module_path:task.module_path
+      ~implicit_opens:task.implicit_open_paths
+      ~source:task.display_path
+      ~source_hash
+      parse_result
   in
-  List.fold_left
-    sorted_sources
-    ~init:env
-    ~fn:(fun env (qualified_name, source) ->
-      let source_path = dependency_export_source_path source in
-      let display_path =
-        if Path.is_absolute source_path then
-          source_path
-        else
-          Path.(dependency_config.package.path / source_path)
-      in
-      match Fs.read display_path with
-      | Error _ -> env
-      | Ok text ->
-          let module_segments = qualified_name_segments qualified_name in
-          let alias_segments = module_segments @ [ "Aliases" ] in
-          let parse_env = Syn.Deps.Env.open_path env ~path:alias_segments in
-          let parse_result = Syn.parse ~filename:display_path (source_slice text) in
-          match Syn.Deps.from_parse_result ~env:parse_env parse_result with
-          | Error _ -> env
-          | Ok deps ->
-              Syn.Deps.Env.add_binding
-                env
-                ~path:module_segments
-                ~free_names:[ dependency_export_public_root_name source ]
-                ~exports:(Syn.Deps.exports deps))
+  let source_index = Int.succ (Atomic.fetch_and_add completed_sources 1) in
+  on_source_analyzed { source = task.display_path; source_index; source_count };
+  Ok {
+    task;
+    parse_result;
+    source_hash;
+    summary;
+  }
+
+let analyze_source_tasks = fun ~on_source_analyzed tasks ->
+  let source_count = List.length tasks in
+  let completed_sources = Atomic.make 0 in
+  WorkerPool.SimpleWorkerPool.run
+    ~tasks
+    ~fn:(analyze_source_task ~on_source_analyzed ~source_count ~completed_sources)
+    ()
+  |> List.map ~fn:(fun (_index, result) -> result)
+
+let dependency_summaries = fun config ->
+  let graph_builder = create config in
+  let tasks = sorted_source_tasks config graph_builder.graph in
+  analyze_source_tasks ~on_source_analyzed:(fun (_: source_analysis_progress) -> ()) tasks
+  |> List.filter_map
+    ~fn:(fun result ->
+      match result with
+      | Ok { summary = Ok summary; _ } -> Some summary
+      | Ok { summary = Error _; _ }
+      | Error _ -> None)
 
 let add_direct_dependency_package = fun t (package: Package.t) ->
   let root_module = Package.root_module_name package in
   add_direct_dependency_root t ~package_name:package.name ~root_module;
   let source_groups = dependency_source_groups package in
-  let scanned_groups =
-    List.map
-      source_groups
-      ~fn:(fun group -> (group, dependency_group_entries ~root:package.path group))
-  in
   let dependency_config = { t.config with root = package.path; source_groups; package } in
-  let (env, root_export_sources) =
-    List.fold_left
-      scanned_groups
-      ~init:(Cell.get t.deps_env, HashMap.create ())
-      ~fn:(fun acc (group, group_entries) ->
-        build_deps_env_for_group
-          dependency_config
-          acc
-          group
-          group_entries)
-  in
-  let env = prime_dependency_root_exports dependency_config env root_export_sources in
-  Cell.set t.deps_env env
+  let summaries = dependency_summaries dependency_config in
+  Cell.set t.dep_env (Dep_analyzer.Env.add_external_summaries (Cell.get t.dep_env) summaries)
 
 (**
-   Wire module dependencies using `Syn.Deps`.
+   Wire module dependencies using `Dep_analyzer`.
 
-   This function implements Phase 2 of graph construction by analyzing source
-   files in memory to discover which modules reference which other modules
-   (via `open` statements, direct module references, etc.).
-
-   Algorithm: 1. Collect all concrete ML/MLI nodes (skip generated files and
-   non-OCaml files) 2. Parse each file and extract raw module dependencies with
-   `Syn.Deps` 3. Resolve dependency names using the file's namespace 4. Add
-   graph edges to the referenced modules 5. Skip MLI -> ML edges (interfaces
-   shouldn't depend on
-   implementations)
-
-   Edge cases:
-   - Generated files are excluded (they have no `open` statements to analyze)
-   - Missing dependencies are recorded for package-edge validation but not wired
-   - MLI -> ML dependencies are filtered out to maintain proper compilation
-     order
+   This function parses source files in parallel, collects unresolved dependency
+   queries, resolves those queries against dependency and package-local
+   providers, and wires graph edges from the resolved module names.
 *)
 let wire_dependencies = fun ?(on_source_analyzed = fun (_:source_analysis_progress) -> ()) t ->
   let () = HashMap.clear t.analyzed_modules in
@@ -1183,32 +998,6 @@ let wire_dependencies = fun ?(on_source_analyzed = fun (_:source_analysis_progre
         in
         qualified_name
         :: qualified_dependency_names simple_name (strip_last_namespace namespace_parts)
-  in
-  let implicit_open_modules (open_modules: Module_node.t G.node list) =
-    open_modules
-    |> List.filter_map
-      ~fn:(fun (node: Module_node.t G.node) ->
-        match (G.value node).kind with
-        | Module_node.ML mod_
-        | Module_node.MLI mod_ -> Some (Module.namespaced_name mod_)
-        | _ -> None)
-  in
-  let deps_env_with_implicit_opens base_env open_modules =
-    List.fold_left
-      open_modules
-      ~init:base_env
-      ~fn:(fun env (node: Module_node.t G.node) ->
-        match (G.value node).kind with
-        | Module_node.ML mod_
-        | Module_node.MLI mod_ ->
-            Syn.Deps.Env.open_path env ~path:(module_name_segments (Module.module_name mod_))
-        | _ -> env)
-  in
-  let module_node_module (node: Module_node.t G.node) =
-    match (G.value node).kind with
-    | Module_node.ML mod_
-    | Module_node.MLI mod_ -> Some mod_
-    | _ -> None
   in
   let preferred_dependency_nodes dep_node_ids =
     let rec collect acc has_ml = fun __tmp1 ->
@@ -1267,40 +1056,8 @@ let wire_dependencies = fun ?(on_source_analyzed = fun (_:source_analysis_progre
     in
     try_candidates candidate_names
   in
-  let all_nodes = G.map t.graph ~fn:(fun (node_id, node) -> (node_id, node)) in
-  (* Sort nodes by ID to ensure deterministic ordering - G.map uses Hashtbl.to_seq which is non-deterministic *)
-  let sorted_nodes =
-    List.sort
-      all_nodes
-      ~compare:(fun (id1, _) (id2, _) -> Int.compare (G.Node_id.to_int id1) (G.Node_id.to_int id2))
-  in
-  let files_with_nodes =
-    List.filter_map
-      sorted_nodes
-      ~fn:(fun (_node_id, (node: Module_node.t G.node)) ->
-        let module_node = G.value node in
-        match module_node.kind with
-        | Module_node.ML _
-        | Module_node.MLI _ -> (
-            match module_node.file with
-            | Module_node.Concrete path
-            | Module_node.Generated { path; _ } -> Some (path, node)
-          )
-        | _ -> None)
-  in
-  let source_count = List.length files_with_nodes in
-  let reported_sources = HashSet.with_capacity ~size:source_count in
-  let report_source_analyzed = fun ~source (node: Module_node.t G.node) ->
-    if HashSet.insert reported_sources ~value:(G.id node) then
-      on_source_analyzed
-        {
-          source;
-          source_index = HashSet.length reported_sources;
-          source_count;
-        }
-    else
-      ()
-  in
+  let tasks = sorted_source_tasks t.config t.graph in
+  let _source_count = List.length tasks in
   let group_for_path path =
     let normalized_path = Path.normalize path in
     List.find
@@ -1316,60 +1073,6 @@ let wire_dependencies = fun ?(on_source_analyzed = fun (_:source_analysis_progre
         matches_allowed
         || String.equal path_str prefix
         || String.starts_with ~prefix:(prefix ^ "/") path_str)
-  in
-  let add_local_source_module_paths env =
-    List.fold_left
-      sorted_nodes
-      ~init:env
-      ~fn:(fun env (_node_id, (node: Module_node.t G.node)) ->
-        match module_node_module node with
-        | Some mod_ ->
-            let simple_name =
-              Module.module_name mod_
-              |> Module_name.to_string
-            in
-            Syn.Deps.Env.add_path env ~path:[ simple_name ] ~free_names:[ simple_name ]
-        | None -> env)
-  in
-  let () = Cell.set t.deps_env (add_local_source_module_paths (Cell.get t.deps_env)) in
-  let stringify_dependency_error = fun path ->
-    fun (Syn.Deps.Parse_diagnostics diagnostics) ->
-      let messages = List.map diagnostics ~fn:Syn.Diagnostic.to_string in
-      "failed to parse "
-      ^ Path.to_string path
-      ^ " for dependency analysis: "
-      ^ String.concat "; " messages
-  in
-  let raw_source_text (node: Module_node.t G.node) =
-    let source_result =
-      match (G.value node).file with
-      | Module_node.Concrete path ->
-          let display_path =
-            if Path.is_absolute path then
-              path
-            else
-              Path.(t.config.package.path / path)
-          in
-          Fs.read display_path
-          |> Result.map ~fn:(fun text -> (text, display_path))
-      | Module_node.Generated { path; contents } ->
-          let display_path =
-            if Path.is_absolute path then
-              path
-            else
-              Path.(t.config.package.path / path)
-          in
-          Ok (contents, display_path)
-    in
-    match source_result with
-    | Error err ->
-        Error (Planning_error.DependencyAnalysisFailed {
-          reason = "failed to read "
-          ^ Module_node.file_to_string (G.value node).file
-          ^ " for dependency analysis: "
-          ^ IO.error_message err;
-        })
-    | Ok source -> Ok source
   in
   let file_namespace path =
     match group_for_path path with
@@ -1414,242 +1117,117 @@ let wire_dependencies = fun ?(on_source_analyzed = fun (_:source_analysis_progre
         in
         List.fold_left subdir_parts ~init:base_namespace ~fn:Namespace.append
   in
-  let analyze_node path (node: Module_node.t G.node) =
-    match raw_source_text node with
-    | Error _ as err -> err
-    | Ok (raw_text, display_path) ->
-        report_source_analyzed ~source:display_path node;
-        let implicit_opens = implicit_open_modules (G.value node).open_modules in
-        let parse_result = Syn.parse ~filename:display_path (source_slice raw_text) in
-        let source_file = Syn.Ast.SourceFile.make parse_result.tree in
-        let executable_main_validation =
-          match binary_for_path t.config path with
-          | Some binary when Vector.length parse_result.diagnostics = 0 ->
-              let source = make_relative ~base:t.config.package.path ~path:binary.path in
-              validate_executable_main
-                ~package_name:(Package_name.to_string t.config.package.name)
-                ~target_name:binary.name
-                ~source
-                ~file:(package_source_file t.config source)
-                source_file
-          | _ -> Ok ()
-        in
-        let deps_env = deps_env_with_implicit_opens (Cell.get t.deps_env) (G.value node).open_modules in
-        let deps = Syn.Deps.from_parse_result ~env:deps_env parse_result in
-        let source_hash = source_hash ~implicit_opens ~source:raw_text in
-        let requested_deps =
-          match (deps, (G.value node).file) with
-          | (Ok deps, Module_node.Concrete _) -> Syn.Deps.modules deps
-          | (Ok _, Module_node.Generated _) -> []
-          | (Error _, _) -> []
-        in
-        let resolved_deps =
-          requested_deps
-          |> List.map
-            ~fn:(fun modname -> Module_name.from_string ~namespace:(file_namespace path) modname)
-        in
-        let (resolved_dep_ids, unresolved_deps) =
-          List.fold_left
-            (List.zip requested_deps resolved_deps)
-            ~init:([], [])
-            ~fn:(fun (resolved_ids, unresolved) (requested_module, dep_mod_name) ->
-              try
-                let preferred_ids =
-                  resolve_dependency_nodes_for_node node dep_mod_name
-                  |> List.map ~fn:(fun (dep_node_id, _dep_node) -> dep_node_id)
-                in
-                (List.reverse preferred_ids @ resolved_ids, unresolved)
-              with
-              | Not_found -> (resolved_ids, requested_module :: unresolved))
-          |> fun (resolved_ids, unresolved) -> (List.reverse resolved_ids, List.reverse unresolved)
-        in
-        let analyzed = {
-          display_path;
-          source_hash;
-          implicit_opens;
-          parse_result;
-          deps;
-          resolved_deps;
-          resolved_dep_ids;
-          unresolved_deps;
-        }
-        in
-        let _ = HashMap.insert t.analyzed_modules ~key:(G.id node) ~value:analyzed in
-        let add_local_export_bindings env mod_ deps =
-          let simple_name =
-            Module.module_name mod_
-            |> Module_name.to_string
-          in
-          let module_segments = module_name_segments (Module.module_name mod_) in
-          let env =
-            match group_for_path path with
-            | Some { root_mode = Loose_sources; _ } ->
-                Syn.Deps.Env.add_binding
-                  env
-                  ~path:[ simple_name ]
-                  ~free_names:[ simple_name ]
-                  ~exports:(Syn.Deps.exports deps)
-            | _ -> env
-          in
-          match List.reverse module_segments with
-          | []
-          | [ _ ] -> env
-          | simple_name :: parent_segments_rev ->
-              let parent_segments = List.reverse parent_segments_rev in
-              let alias_path = parent_segments @ [ "Aliases" ] in
-              let alias_module =
-                match parent_segments with
-                | [] -> "Aliases"
-                | _ -> String.concat "__" parent_segments ^ "__Aliases"
-              in
-              let alias_exports =
-                Syn.Deps.Env.add_binding
-                  Syn.Deps.Env.empty
-                  ~path:[ simple_name ]
-                  ~free_names:[ simple_name ]
-                  ~exports:(Syn.Deps.exports deps)
-              in
-              Syn.Deps.Env.add_scoped_binding
-                env
-                ~path:alias_path
-                ~free_names:[ alias_module ]
-                ~exports:alias_exports
-        in
-        let add_public_root_export_binding env mod_ deps =
-          match HashMap.get
-            t.root_export_sources
-            ~key:(Module_name.qualified_name (Module.module_name mod_)) with
-          | Some (Export_from_ml { public_root_name; _ }) when Module.kind mod_ = `implementation ->
-              Syn.Deps.Env.add_binding
-                env
-                ~path:(module_name_segments (Module.module_name mod_))
-                ~free_names:[ public_root_name ]
-                ~exports:(Syn.Deps.exports deps)
-          | Some (Export_from_mli { public_root_name; _ }) when Module.kind mod_ = `interface ->
-              Syn.Deps.Env.add_binding
-                env
-                ~path:(module_name_segments (Module.module_name mod_))
-                ~free_names:[ public_root_name ]
-                ~exports:(Syn.Deps.exports deps)
-          | _ -> env
-        in
-        let () =
-          match (deps, (G.value node).kind, (G.value node).file) with
-          | (Ok deps, (Module_node.ML mod_ | Module_node.MLI mod_), Module_node.Concrete _) ->
-              Cell.set
-                t.deps_env
-                (
-                  Cell.get t.deps_env
-                  |> fun env ->
-                    add_local_export_bindings env mod_ deps
-                    |> fun env -> add_public_root_export_binding env mod_ deps
-                )
-          | _ -> ()
-        in
-        (
-          match executable_main_validation with
-          | Error _ as error -> error
-          | Ok () -> (
-              match (deps, (G.value node).file) with
-              | (Ok _, Module_node.Concrete _) -> Ok resolved_deps
-              | (Error err, Module_node.Concrete _) ->
-                  Error (Planning_error.DependencyAnalysisFailed {
-                    reason = stringify_dependency_error path err;
-                  })
-              | (Ok _, Module_node.Generated _) -> Ok []
-              | (Error err, Module_node.Generated _) ->
-                  Error (Planning_error.DependencyAnalysisFailed {
-                    reason = stringify_dependency_error path err;
-                  })
-            )
-        )
+  let stringify_parse_error = fun path ->
+    fun (Dep_analyzer.Parse_diagnostics diagnostics) ->
+      let messages = List.map diagnostics ~fn:Syn.Diagnostic.to_string in
+      "failed to parse "
+      ^ Path.to_string path
+      ^ " for dependency analysis: "
+      ^ String.concat "; " messages
   in
-  let export_source_node_ids =
-    let candidates = HashMap.create () in
-    let rank_node (node: Module_node.t G.node) =
-      match ((G.value node).kind, (G.value node).file) with
-      | (Module_node.MLI mod_, Module_node.Concrete _) ->
-          Some (Module_name.qualified_name (Module.module_name mod_), 0)
-      | (Module_node.ML mod_, Module_node.Concrete _) ->
-          Some (Module_name.qualified_name (Module.module_name mod_), 1)
-      | _ -> None
+  let validate_analysis analysis =
+    let source_file = Syn.Ast.SourceFile.make analysis.parse_result.tree in
+    match binary_for_path t.config analysis.task.path with
+    | Some binary when Vector.length analysis.parse_result.diagnostics = 0 ->
+        let source = make_relative ~base:t.config.package.path ~path:binary.path in
+        validate_executable_main
+          ~package_name:(Package_name.to_string t.config.package.name)
+          ~target_name:binary.name
+          ~source
+          ~file:(package_source_file t.config source)
+          source_file
+    | _ -> Ok ()
+  in
+  let collect_analysis acc result =
+    let* acc = acc in
+    let* analysis = result in
+    let* () = validate_analysis analysis in
+    match analysis.summary with
+    | Ok summary -> Ok ((analysis, summary) :: acc)
+    | Error err ->
+        Error (Planning_error.DependencyAnalysisFailed {
+          reason = stringify_parse_error analysis.task.path err;
+        })
+  in
+  let resolved =
+    let* analyses_and_summaries =
+      analyze_source_tasks ~on_source_analyzed tasks
+      |> List.fold_left ~init:(Ok []) ~fn:collect_analysis
+      |> Result.map ~fn:List.reverse
     in
-    let () =
-      List.for_each
-        sorted_nodes
-        ~fn:(fun (node_id, node) ->
-          match rank_node node with
-          | None -> ()
-          | Some (qualified_name, rank) -> (
-              match HashMap.get candidates ~key:qualified_name with
-              | Some (existing_rank, _) when existing_rank <= rank -> ()
-              | _ ->
-                  let _ = HashMap.insert candidates ~key:qualified_name ~value:(rank, node_id) in
-                  ()
-            ))
-    in
-    let selected = HashSet.create () in
-    let () =
-      HashMap.values candidates
-      |> List.for_each
-        ~fn:(fun (_rank, node_id) ->
-          let _ = HashSet.insert selected ~value:node_id in
-          ())
-    in
-    selected
+    let summaries = List.map analyses_and_summaries ~fn:(fun (_analysis, summary) -> summary) in
+    match Dep_analyzer.resolve (Cell.get t.dep_env) summaries with
+    | Error _ ->
+        Error (Planning_error.DependencyAnalysisFailed { reason = "dependency resolution failed" })
+    | Ok resolved_sources -> Ok (List.zip analyses_and_summaries resolved_sources)
   in
-  let prime_module_exports file_nodes =
-    List.fold_left
-      file_nodes
-      ~init:(Ok ())
-      ~fn:(fun acc (path, (node: Module_node.t G.node)) ->
-        match acc with
-        | Error _ as error -> error
-        | Ok () ->
-            if HashSet.contains export_source_node_ids ~value:(G.id node) then
-              match analyze_node path node with
-              | Ok _ -> Ok ()
-              | Error _ as error -> error
-            else
-              Ok ())
-  in
-  (* Sort files deterministically to ensure consistent hashing *)
-  let sorted_file_nodes =
-    List.sort
-      files_with_nodes
-      ~compare:(fun (left_path, _) (right_path, _) ->
-        String.compare
-          (Path.to_string left_path)
-          (Path.to_string right_path))
-  in
-  let deps =
-    let* () = prime_module_exports sorted_file_nodes in
-    let* () = prime_module_exports sorted_file_nodes in
-    List.fold_left
-      sorted_file_nodes
-      ~init:(Ok [])
-      ~fn:(fun acc (path, node) ->
-        match acc with
-        | Error _ as error -> error
-        | Ok deps -> (
-            match analyze_node path node with
-            | Error _ as error -> error
-            | Ok module_deps -> Ok ((node, module_deps) :: deps)
-          ))
-  in
-  match deps with
+  match resolved with
   | Error _ as error -> error
-  | Ok deps ->
+  | Ok resolved ->
       List.for_each
-        deps
-        ~fn:(fun ((node: Module_node.t G.node), module_deps) ->
-          List.for_each
-            module_deps
-            ~fn:(fun dep_mod_name ->
-              try List.for_each
-                (resolve_dependency_nodes_for_node node dep_mod_name)
-                ~fn:(fun (dep_node_id, dep_node) -> G.add_edge node ~depends_on:dep_node) with
-              | Not_found -> ()));
+        resolved
+        ~fn:(fun ((analysis, _summary), resolved_source) ->
+          let requested_deps =
+            match analysis.task.file with
+            | Module_node.Concrete _ -> Dep_analyzer.ResolvedSource.modules resolved_source
+            | Module_node.Generated _ -> []
+          in
+          let unresolved_deps =
+            match analysis.task.file with
+            | Module_node.Concrete _ -> Dep_analyzer.ResolvedSource.unresolved resolved_source
+            | Module_node.Generated _ -> []
+          in
+          let resolved_deps =
+            requested_deps
+            |> List.map
+              ~fn:(fun modname ->
+                Module_name.from_string
+                  ~namespace:(file_namespace analysis.task.path)
+                  modname)
+          in
+          match G.get_node t.graph analysis.task.node_id with
+          | None -> ()
+          | Some node ->
+              let (resolved_dep_ids, unresolved_deps) =
+                List.fold_left
+                  (List.zip requested_deps resolved_deps)
+                  ~init:([], unresolved_deps)
+                  ~fn:(fun (resolved_ids, unresolved) (requested_module, dep_mod_name) ->
+                    try
+                      let preferred_ids =
+                        resolve_dependency_nodes_for_node node dep_mod_name
+                        |> List.map
+                          ~fn:(fun (dep_node_id, dep_node) ->
+                            G.add_edge node ~depends_on:dep_node;
+                            dep_node_id)
+                      in
+                      (List.reverse preferred_ids @ resolved_ids, unresolved)
+                    with
+                    | Not_found -> (resolved_ids, requested_module :: unresolved))
+                |> fun (resolved_ids, unresolved) -> (
+                  List.reverse resolved_ids,
+                  List.unique (List.sort unresolved ~compare:String.compare) ~compare:String.compare
+                )
+              in
+              let deps = Ok (Dep_analyzer.Resolution.make
+                ~modules:requested_deps
+                ~unresolved:unresolved_deps)
+              in
+              let analyzed = {
+                display_path = analysis.task.display_path;
+                source_hash = analysis.source_hash;
+                implicit_opens = analysis.task.implicit_opens;
+                parse_result = analysis.parse_result;
+                deps;
+                resolved_deps;
+                resolved_dep_ids;
+                unresolved_deps;
+              }
+              in
+              let _ =
+                HashMap.insert t.analyzed_modules ~key:analysis.task.node_id ~value:analyzed
+              in
+              ());
       Ok ()
 
 let add_library_node = fun t ~name ~includes ->

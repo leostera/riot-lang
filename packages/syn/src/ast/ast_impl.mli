@@ -459,6 +459,10 @@ module VariantType: sig
   val fold_constructor: t -> init:'acc -> fn:(variant_constructor -> 'acc -> 'acc control) -> 'acc
 
   val constructor_count: t -> int
+
+  val fold_inherited_type: t -> init:'acc -> fn:(type_expr -> 'acc -> 'acc control) -> 'acc
+
+  val inherited_type_count: t -> int
 end
 
 module Pattern: sig
@@ -1470,6 +1474,10 @@ module ModuleDeclaration: sig
 
   module Member: sig
     type t = member
+    type functor_parameter = {
+      name: Ident.t option;
+      annotation: Ident.t option;
+    }
 
     val declaration: t -> module_declaration
 
@@ -1502,6 +1510,14 @@ module ModuleDeclaration: sig
     val module_expr: t -> Node.t option
 
     val module_type: t -> Node.t option
+
+    val fold_functor_parameter:
+      t ->
+      init:'acc ->
+      fn:(functor_parameter -> 'acc -> 'acc control) ->
+      'acc
+
+    val functor_parameter_count: t -> int
   end
 
   type body =

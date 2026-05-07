@@ -1266,6 +1266,131 @@ let value = 1
   | Ok result -> result
   | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
 
+let test_nested_concrete_library_implementation_keeps_qualified_record_child_dependency = fun _ctx ->
+  match Fs.with_tempdir
+    ~prefix:"planner_nested_concrete_record_child_dep"
+    (fun tmpdir ->
+      match plan_action_graph_for_package
+        ~tmpdir
+        ~package_name:"suri"
+        ~library:{ path = Path.v "src/suri.ml" }
+        ~files:[
+          ("src/suri.ml", "module Socket_pool = Socket_pool\n");
+          (
+            "src/socket_pool/socket_pool.mli",
+            {ocaml|type state
+
+val start: int -> unit
+|ocaml}
+          );
+          (
+            "src/socket_pool/socket_pool.ml",
+            {ocaml|module Connection = Connection
+
+let start = fun listener ->
+  for i = 1 to 10 do
+    let start () =
+      let state =
+        Acceptor.{
+          listener;
+        }
+      in
+      Acceptor.spawn state
+    in
+    start ()
+  done
+|ocaml}
+          );
+          ("src/socket_pool/acceptor.ml", "type t = { listener: int }\nlet spawn _ = ()\n");
+          ("src/socket_pool/connection.ml", "type t = unit\n");
+        ]
+        () with
+      | Error _ as err -> err
+      | Ok (_package, action_graph) -> (
+          match find_compile_action_node_by_source action_graph (Path.v "src/socket_pool/socket_pool.ml") with
+          | None -> Error "expected compile action for src/socket_pool/socket_pool.ml"
+          | Some socket_pool_node ->
+              let dep_outputs = dependency_output_names_flat action_graph socket_pool_node in
+              let has output = List.any dep_outputs ~fn:(String.equal output) in
+              if not (has "Suri__Socket_pool__Acceptor.cmi") then
+                Error ("expected socket_pool.ml to depend on Acceptor.cmi through qualified record expr; deps: ["
+                ^ String.concat ", " dep_outputs
+                ^ "]")
+              else if not (has "Suri__Socket_pool__Acceptor.cmt") then
+                Error ("expected action graph to compile Acceptor before socket_pool.ml; deps: ["
+                ^ String.concat ", " dep_outputs
+                ^ "]")
+              else
+                Ok ()
+        )) with
+  | Ok result -> result
+  | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
+
+let test_create_library_orders_qualified_record_pattern_dependency_first = fun _ctx ->
+  match Fs.with_tempdir
+    ~prefix:"planner_record_pattern_link_order"
+    (fun tmpdir ->
+      match plan_action_graph_for_package
+        ~tmpdir
+        ~package_name:"riot-cli"
+        ~library:{ path = Path.v "src/riot_cli.ml" }
+        ~files:[
+          ("src/riot_cli.ml", "module Install = Install\nmodule Run = Run\n");
+          (
+            "src/install.ml",
+            {ocaml|let target =
+  Result.map value ~fn:(fun Run.{ package_name; binary_name } ->
+    package_name ^ binary_name)
+|ocaml}
+          );
+          ("src/run.ml", "type t = { package_name: string; binary_name: string }\n");
+        ]
+        () with
+      | Error _ as err -> err
+      | Ok (_package, action_graph) -> (
+          match find_action_node_by_output action_graph "Riot_cli.cmxa" with
+          | None -> Error "expected CreateLibrary action for Riot_cli.cmxa"
+          | Some library_node -> (
+              match (G.value library_node).actions with
+              | [ Riot_planner.Action.CreateLibrary { objects; _ } ] ->
+                  let object_names = List.map objects ~fn:Path.to_string in
+                  let find_index value values =
+                    let rec loop index = fun __tmp1 ->
+                      match __tmp1 with
+                      | [] -> None
+                      | item :: _ when String.equal item value -> Some index
+                      | _ :: rest -> loop (index + 1) rest
+                    in
+                    loop 0 values
+                  in
+                  let run_index =
+                    find_index "Riot_cli__Run.cmx" object_names
+                  in
+                  let install_index =
+                    find_index "Riot_cli__Install.cmx" object_names
+                  in
+                  (
+                    match (run_index, install_index) with
+                    | (Some run_index, Some install_index) when run_index < install_index -> Ok ()
+                    | (Some _, Some _) ->
+                        Error ("expected Run.cmx before Install.cmx, got ["
+                        ^ String.concat ", " object_names
+                        ^ "]")
+                    | (None, _) ->
+                        Error ("expected Riot_cli__Run.cmx in CreateLibrary objects, got ["
+                        ^ String.concat ", " object_names
+                        ^ "]")
+                    | (_, None) ->
+                        Error ("expected Riot_cli__Install.cmx in CreateLibrary objects, got ["
+                        ^ String.concat ", " object_names
+                        ^ "]")
+                  )
+              | _ -> Error "expected single CreateLibrary action"
+            )
+        )) with
+  | Ok result -> result
+  | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
+
 let test_nested_concrete_library_implementation_keeps_generated_child_root_dependency = fun _ctx ->
   match Fs.with_tempdir
     ~prefix:"planner_nested_concrete_generated_child_root_dep"
@@ -2219,6 +2344,12 @@ let tests =
     case
       "nested concrete library implementations keep alias child dependencies"
       test_nested_concrete_library_implementation_keeps_alias_child_dependency;
+    case
+      "nested concrete library implementations keep qualified record child dependencies"
+      test_nested_concrete_library_implementation_keeps_qualified_record_child_dependency;
+    case
+      "CreateLibrary orders qualified record pattern dependency first"
+      test_create_library_orders_qualified_record_pattern_dependency_first;
     case
       "nested concrete library implementations keep generated child root dependencies"
       test_nested_concrete_library_implementation_keeps_generated_child_root_dependency;

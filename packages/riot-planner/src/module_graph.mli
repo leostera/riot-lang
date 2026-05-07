@@ -24,7 +24,7 @@ type analyzed_module = {
   source_hash: Crypto.hash;
   implicit_opens: string list;
   parse_result: Syn.Parser.parse_result;
-  deps: (Syn.Deps.t, Syn.Deps.parse_error) result;
+  deps: (Dep_analyzer.Resolution.t, Dep_analyzer.resolve_error) result;
   resolved_deps: Module_name.t list;
   resolved_dep_ids: G.Node_id.t list;
   unresolved_deps: string list;

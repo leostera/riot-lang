@@ -1,0 +1,17 @@
+{
+  "source": "0001_value_path.ml",
+  "source_hash": "3f63f5ebc613e99a",
+  "module_path": null,
+  "kind": "Implementation",
+  "items": [
+    {
+      "Scope": [
+        {
+          "Use": [
+            "Foo"
+          ]
+        }
+      ]
+    }
+  ]
+}

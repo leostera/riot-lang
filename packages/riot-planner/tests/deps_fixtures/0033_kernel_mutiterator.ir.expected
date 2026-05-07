@@ -1,0 +1,397 @@
+{
+  "source": "0033_kernel_mutiterator.ml",
+  "source_hash": "5194e0d5ae57c192",
+  "module_path": null,
+  "kind": "Implementation",
+  "items": [
+    {
+      "Open": {
+        "Use": [
+          "Global0"
+        ]
+      }
+    },
+    {
+      "ModuleType": {
+        "name": "Intf",
+        "body": [
+          {
+            "Scope": []
+          }
+        ]
+      }
+    },
+    {
+      "Scope": [
+        {
+          "Scope": [
+            {
+              "Scope": [
+                {
+                  "Module": {
+                    "name": "Empty",
+                    "signature": [],
+                    "body": []
+                  }
+                },
+                {
+                  "Use": [
+                    "Empty"
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "Scope": [
+        {
+          "Scope": [
+            {
+              "Scope": [
+                {
+                  "Module": {
+                    "name": "Singleton",
+                    "signature": [],
+                    "body": [
+                      {
+                        "Scope": [
+                          {
+                            "Scope": [
+                              {
+                                "Use": [
+                                  "Option"
+                                ]
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                },
+                {
+                  "Use": [
+                    "Singleton"
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "Scope": [
+        {
+          "BindModules": {
+            "modules": [
+              {
+                "name": "Iter",
+                "ascription": []
+              }
+            ],
+            "scope": [
+              {
+                "Use": [
+                  "Iter"
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "Scope": [
+        {
+          "BindModules": {
+            "modules": [
+              {
+                "name": "Iter",
+                "ascription": []
+              }
+            ],
+            "scope": [
+              {
+                "Use": [
+                  "Iter"
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "Scope": [
+        {
+          "BindModules": {
+            "modules": [
+              {
+                "name": "Iter",
+                "ascription": []
+              }
+            ],
+            "scope": [
+              {
+                "Scope": [
+                  {
+                    "Use": [
+                      "Iter"
+                    ]
+                  }
+                ]
+              },
+              {
+                "Use": [
+                  "Iter"
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "Scope": [
+        {
+          "Scope": [
+            {
+              "Scope": [
+                {
+                  "Use": [
+                    "Stdlib",
+                    "List"
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "Scope": [
+        {
+          "Scope": [
+            {
+              "Scope": [
+                {
+                  "Module": {
+                    "name": "MapIter",
+                    "signature": [],
+                    "body": [
+                      {
+                        "Scope": [
+                          {
+                            "Scope": [
+                              {
+                                "Use": [
+                                  "Option"
+                                ]
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                },
+                {
+                  "Use": [
+                    "MapIter"
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "Scope": [
+        {
+          "Scope": [
+            {
+              "Scope": [
+                {
+                  "Module": {
+                    "name": "FilterIter",
+                    "signature": [],
+                    "body": []
+                  }
+                },
+                {
+                  "Use": [
+                    "FilterIter"
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "Scope": [
+        {
+          "Scope": [
+            {
+              "Scope": [
+                {
+                  "Module": {
+                    "name": "FilterMapIter",
+                    "signature": [],
+                    "body": []
+                  }
+                },
+                {
+                  "Use": [
+                    "FilterMapIter"
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "Scope": [
+        {
+          "Scope": [
+            {
+              "Scope": [
+                {
+                  "Module": {
+                    "name": "FlatMapIter",
+                    "signature": [],
+                    "body": [
+                      {
+                        "Scope": [
+                          {
+                            "Scope": [
+                              {
+                                "Use": [
+                                  "Option"
+                                ]
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                },
+                {
+                  "Use": [
+                    "FlatMapIter"
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "Scope": [
+        {
+          "Scope": [
+            {
+              "Scope": [
+                {
+                  "Module": {
+                    "name": "TakeIter",
+                    "signature": [],
+                    "body": []
+                  }
+                },
+                {
+                  "Use": [
+                    "TakeIter"
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "Scope": [
+        {
+          "Scope": [
+            {
+              "Scope": [
+                {
+                  "Module": {
+                    "name": "EnumIter",
+                    "signature": [],
+                    "body": []
+                  }
+                },
+                {
+                  "Use": [
+                    "EnumIter"
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "Scope": [
+        {
+          "Scope": [
+            {
+              "Scope": [
+                {
+                  "Module": {
+                    "name": "ZipIter",
+                    "signature": [],
+                    "body": []
+                  }
+                },
+                {
+                  "Use": [
+                    "ZipIter"
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "Scope": [
+        {
+          "Scope": [
+            {
+              "Scope": [
+                {
+                  "Module": {
+                    "name": "ChainIter",
+                    "signature": [],
+                    "body": []
+                  }
+                },
+                {
+                  "Use": [
+                    "ChainIter"
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

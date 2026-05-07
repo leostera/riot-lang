@@ -85,6 +85,68 @@ let test_sandbox_prepare_copies_package_inputs = fun _ctx ->
   | Ok result -> result
   | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
 
+let test_sandbox_materializes_explicit_file_modes = fun _ctx ->
+  match Fs.with_tempdir
+    ~prefix:"sandbox_file_modes"
+    (fun tmpdir ->
+      let workspace = make_workspace tmpdir in
+      let sandbox = Sandbox.create ~workspace () ~package_name:(package_name "pkg") in
+      let copy_source = Path.(tmpdir / Path.v "copy.ml") in
+      let link_source = Path.(tmpdir / Path.v "runtime.o") in
+      let reference_source = Path.(tmpdir / Path.v "Dep.cmi") in
+      let _ =
+        Fs.write "let x = 1" copy_source
+        |> Result.expect ~msg:"write copy source failed"
+      in
+      let _ =
+        Fs.write "object" link_source
+        |> Result.expect ~msg:"write link source failed"
+      in
+      let _ =
+        Fs.write "interface" reference_source
+        |> Result.expect ~msg:"write reference source failed"
+      in
+      let files =
+        Riot_planner.Sandbox_file.[
+          copy ~source:copy_source ~destination:(Path.v "src/copy.ml");
+          link ~source:link_source ~destination:(Path.v "runtime.o");
+          reference ~source:reference_source ~destination:(Path.v "Dep.cmi");
+        ]
+      in
+      let result =
+        match Sandbox.materialize_files ~sandbox ~files with
+        | Error (Sandbox.SandboxFileMaterializeFailed { message; _ }) -> Error message
+        | Ok stats ->
+            let copied = Path.(Sandbox.get_dir sandbox / Path.v "src/copy.ml") in
+            let linked = Path.(Sandbox.get_dir sandbox / Path.v "runtime.o") in
+            let referenced = Path.(Sandbox.get_dir sandbox / Path.v "Dep.cmi") in
+            let copied_exists = Fs.exists copied |> Result.unwrap_or ~default:false in
+            let linked_is_symlink =
+              match Fs.symlink_metadata linked with
+              | Ok metadata -> Fs.Metadata.is_symlink metadata
+              | Error _ -> false
+            in
+            let reference_exists = Fs.exists referenced |> Result.unwrap_or ~default:true in
+            if not (Int.equal stats.copy_count 1) then
+              Error ("expected one copied file, got " ^ Int.to_string stats.copy_count)
+            else if not (Int.equal stats.link_count 1) then
+              Error ("expected one linked file, got " ^ Int.to_string stats.link_count)
+            else if not (Int.equal stats.reference_count 1) then
+              Error ("expected one referenced file, got " ^ Int.to_string stats.reference_count)
+            else if not copied_exists then
+              Error "expected copied file in sandbox"
+            else if not linked_is_symlink then
+              Error "expected linked file to be a sandbox symlink"
+            else if reference_exists then
+              Error "expected referenced file to stay out of the sandbox"
+            else
+              Ok ()
+      in
+      let _ = Sandbox.cleanup sandbox in
+      result) with
+  | Ok result -> result
+  | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
+
 let make_dependency = fun
   ~package ~artifact_dir ?input_hash ?output_hash () ->
   let input_hash =
@@ -103,7 +165,7 @@ let make_dependency = fun
     output_hash;
   }
 
-let test_sandbox_copies_dependency_object_files = fun _ctx ->
+let test_sandbox_links_dependency_object_files = fun _ctx ->
   match Fs.with_tempdir
     ~prefix:"sandbox_dependency_objects"
     (fun tmpdir ->
@@ -146,24 +208,31 @@ let test_sandbox_copies_dependency_object_files = fun _ctx ->
       in
       let result =
         match
-          Sandbox.copy_dependency_object_files
+          Sandbox.materialize_dependency_objects
             ~store
             ~sandbox
             ~package
             ~depset:[ dependency ]
         with
-        | Error err -> Error (Sandbox.dependency_copy_error_to_string err)
+        | Error err -> Error (Sandbox.dependency_prepare_error_to_string err)
         | Ok stats ->
             let copied_object = Path.(Sandbox.get_dir sandbox / Path.v "dep_runtime.o") in
             let copied_interface = Path.(Sandbox.get_dir sandbox / Path.v "Dep.cmi") in
             let object_exists = Fs.exists copied_object |> Result.unwrap_or ~default:false in
             let interface_exists = Fs.exists copied_interface |> Result.unwrap_or ~default:true in
+            let object_is_symlink =
+              match Fs.symlink_metadata copied_object with
+              | Ok metadata -> Fs.Metadata.is_symlink metadata
+              | Error _ -> false
+            in
             if not (Int.equal stats.dependency_count 1) then
               Error ("expected one dependency, got " ^ Int.to_string stats.dependency_count)
             else if not (Int.equal stats.object_count 1) then
-              Error ("expected one dependency object, got " ^ Int.to_string stats.object_count)
+              Error ("expected one materialized dependency object, got " ^ Int.to_string stats.object_count)
             else if not object_exists then
-              Error "expected dependency object to be copied into sandbox"
+              Error "expected dependency object to be materialized into sandbox"
+            else if not object_is_symlink then
+              Error "expected dependency object materialization to use a symlink"
             else if interface_exists then
               Error "expected non-object dependency files not to be copied into sandbox"
             else
@@ -186,21 +255,21 @@ let test_sandbox_fails_when_dependency_artifact_dir_is_missing = fun _ctx ->
       let dependency = make_dependency ~package:dependency_package ~artifact_dir:missing_artifact_dir () in
       let result =
         match
-          Sandbox.copy_dependency_object_files
+          Sandbox.materialize_dependency_objects
             ~store:(Riot_store.Store.create ~workspace)
             ~sandbox
             ~package
             ~depset:[ dependency ]
         with
         | Ok _ -> Error "expected missing dependency artifact dir to fail sandbox preparation"
-        | Error (Sandbox.DependencyArtifactDirUnavailable { package = failed_package; artifact_dir; _ }) ->
+        | Error (Sandbox.DependencyArtifactUnavailable { package = failed_package; artifact_dir; _ }) ->
             if not (Package_name.equal failed_package dependency_package.Package.name) then
               Error "expected failure to identify dependency package"
             else if not (Path.equal artifact_dir missing_artifact_dir) then
               Error "expected failure to identify missing artifact directory"
             else
               Ok ()
-        | Error err -> Error ("unexpected dependency copy error: " ^ Sandbox.dependency_copy_error_to_string err)
+        | Error err -> Error ("unexpected dependency preparation error: " ^ Sandbox.dependency_prepare_error_to_string err)
       in
       let _ = Sandbox.cleanup sandbox in
       result) with
@@ -356,7 +425,10 @@ let tests =
   Test.[
     case "sandbox create makes a directory" test_sandbox_create_and_get_dir;
     case "sandbox prepare copies package inputs" test_sandbox_prepare_copies_package_inputs;
-    case "sandbox copies dependency object files" test_sandbox_copies_dependency_object_files;
+    case
+      "sandbox materializes explicit file modes"
+      test_sandbox_materializes_explicit_file_modes;
+    case "sandbox links dependency object files" test_sandbox_links_dependency_object_files;
     case
       "sandbox fails when dependency artifact dir is missing"
       test_sandbox_fails_when_dependency_artifact_dir_is_missing;

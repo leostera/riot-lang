@@ -1,0 +1,31 @@
+{
+  "source": "0008_local_module.ml",
+  "source_hash": "829770b6e9cc0b08",
+  "module_path": null,
+  "kind": "Implementation",
+  "items": [
+    {
+      "Scope": [
+        {
+          "Scope": [
+            {
+              "ModuleAlias": {
+                "name": "X",
+                "target": {
+                  "Use": [
+                    "Foo"
+                  ]
+                }
+              }
+            },
+            {
+              "Use": [
+                "X"
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

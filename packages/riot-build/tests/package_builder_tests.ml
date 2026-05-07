@@ -133,6 +133,7 @@ let test_build_result_status_variants = fun _ctx ->
       package;
       status = Cached artifact;
       depset = [];
+      action_artifacts = [];
       ocamlc_warnings = [];
       duration = Time.Duration.from_millis 5;
     }
@@ -143,6 +144,7 @@ let test_build_result_status_variants = fun _ctx ->
       package;
       status = Built artifact;
       depset = [];
+      action_artifacts = [];
       ocamlc_warnings = [];
       duration = Time.Duration.from_millis 100;
     }
@@ -153,6 +155,7 @@ let test_build_result_status_variants = fun _ctx ->
       package;
       status = Failed (ExecutionFailed { message = "compilation error" });
       depset = [];
+      action_artifacts = [];
       ocamlc_warnings = [];
       duration = Time.Duration.from_millis 50;
     }

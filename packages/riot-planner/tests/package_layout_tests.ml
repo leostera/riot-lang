@@ -53,18 +53,100 @@ let source_slice = fun source ->
   IO.IoVec.IoSlice.from_string source
   |> Result.expect ~msg:"failed to create package-layout test source slice"
 
-let analyzed_module = fun (node: Riot_planner.Module_node.t G.node) ~source ->
+let module_segments = fun (node: Riot_planner.Module_node.t G.node) ->
+  match (G.value node).kind with
+  | Riot_planner.Module_node.ML mod_
+  | Riot_planner.Module_node.MLI mod_ ->
+      Some (
+        (
+          Module.module_name mod_
+          |> Module_name.namespace
+          |> Namespace.to_list
+        )
+        @ [
+          Module.module_name mod_
+          |> Module_name.to_string;
+        ]
+      )
+  | _ -> None
+
+let rec suffix_after_prefix = fun path prefix ->
+  match (path, prefix) with
+  | (rest, []) -> Some rest
+  | (head :: rest, prefix_head :: prefix_rest) when String.equal head prefix_head ->
+      suffix_after_prefix rest prefix_rest
+  | ([], _ :: _)
+  | (_ :: _, _ :: _) -> None
+
+let provider_exports = fun graph path ->
+  G.map graph ~fn:(fun (_id, node) -> node)
+  |> List.filter_map
+    ~fn:(fun node ->
+      match module_segments node with
+      | Some child_path -> (
+          match suffix_after_prefix child_path path with
+          | Some [ child ] -> Some [ child ]
+          | _ -> None
+        )
+      | None -> None)
+
+let graph_providers = fun graph ->
+  G.map graph ~fn:(fun (_id, node) -> node)
+  |> List.flat_map
+    ~fn:(fun node ->
+      match module_segments node with
+      | None -> []
+      | Some path -> (
+          match List.reverse path with
+          | [] -> []
+          | simple :: _ ->
+              let exports = provider_exports graph path in
+              let full =
+                Riot_planner.Dep_analyzer.{ path; free_names = [ simple ]; exports }
+              in
+              let short =
+                Riot_planner.Dep_analyzer.{ path = [ simple ]; free_names = [ simple ]; exports }
+              in
+              if path = [ simple ] then
+                [ full ]
+              else
+                [ full; short ]
+        ))
+
+let analyzed_module = fun graph (node: Riot_planner.Module_node.t G.node) ~source ->
   let display_path = node_path node in
   let parse_result = Syn.parse ~filename:display_path (source_slice source) in
-  let deps = Syn.Deps.from_parse_result parse_result in
+  let source_hash = Crypto.hash_string source in
+  let summary =
+    Riot_planner.Dep_analyzer.analyze
+      ?module_path:(module_segments node)
+      ~source:display_path
+      ~source_hash
+      parse_result
+    |> Result.expect ~msg:"expected package layout dependency analysis to succeed"
+  in
+  let resolved =
+    Riot_planner.Dep_analyzer.resolve
+      (Riot_planner.Dep_analyzer.Env.make (graph_providers graph))
+      [ summary ]
+    |> Result.expect ~msg:"expected package layout dependency resolution to succeed"
+  in
+  let resolution =
+    match resolved with
+    | [ resolved ] ->
+        Riot_planner.Dep_analyzer.Resolution.make
+          ~modules:(Riot_planner.Dep_analyzer.ResolvedSource.modules resolved)
+          ~unresolved:(Riot_planner.Dep_analyzer.ResolvedSource.unresolved resolved)
+    | _ -> Riot_planner.Dep_analyzer.Resolution.make ~modules:[] ~unresolved:[]
+  in
   (
     (G.id node),
     Riot_planner.Module_graph.{
       display_path;
-      source_hash = Crypto.hash_string source;
+      source_hash;
       implicit_opens = [];
       parse_result;
-      deps;
+      deps = Ok resolution;
       resolved_deps = [];
       resolved_dep_ids = (G.deps node);
       unresolved_deps = [];
@@ -76,7 +158,7 @@ let validate_layout = fun ~package ~graph ~analyzed ->
     ~direct_dependency_modules:[]
     ~package
     ~module_graph:graph
-    ~analyzed_modules:(List.map analyzed ~fn:(fun (node, source) -> analyzed_module node ~source))
+    ~analyzed_modules:(List.map analyzed ~fn:(fun (node, source) -> analyzed_module graph node ~source))
 
 let test_undeclared_package_module_suggests_available_module_name = fun _ctx ->
   let package = make_package ~library:{ path = Path.v "src/typ.ml" } "typ" in
@@ -86,7 +168,7 @@ let test_undeclared_package_module_suggests_available_module_name = fun _ctx ->
     add_ml_node graph ~namespace:(public_namespace package) ~path:"src/model/surface_path.ml"
   in
   let main = add_ml_node graph ~namespace:(public_namespace package) ~path:"src/main.ml" in
-  let (node_id, analyzed) = analyzed_module main ~source:"let _ = SurfacePath.empty\n" in
+  let (node_id, analyzed) = analyzed_module graph main ~source:"let _ = SurfacePath.empty\n" in
   let analyzed = { analyzed with Riot_planner.Module_graph.unresolved_deps = [ "SurfacePath" ] } in
   match Riot_planner.Package_layout_validator.validate
     ~direct_dependency_modules:[]

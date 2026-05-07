@@ -298,6 +298,7 @@ let make_build_result = fun ~scope ~(package:Riot_model.Package.t) ~status ->
     package;
     status;
     depset = [];
+    action_artifacts = [];
     ocamlc_warnings = [];
     duration = Time.Duration.zero;
   }

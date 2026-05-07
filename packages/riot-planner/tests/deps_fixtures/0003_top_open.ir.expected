@@ -1,0 +1,15 @@
+{
+  "source": "0003_top_open.ml",
+  "source_hash": "b7a9519db81011cb",
+  "module_path": null,
+  "kind": "Implementation",
+  "items": [
+    {
+      "Open": {
+        "Use": [
+          "Foo"
+        ]
+      }
+    }
+  ]
+}

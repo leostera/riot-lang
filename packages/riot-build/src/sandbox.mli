@@ -5,18 +5,18 @@ open Riot_planner
 (** A sandbox directory for building packages *)
 type t
 
-type dependency_copy_stats = {
+type dependency_prepare_stats = {
   dependency_count: int;
   object_count: int;
 }
 
-type dependency_copy_error =
-  | DependencyArtifactDirUnavailable of {
+type dependency_prepare_error =
+  | DependencyArtifactUnavailable of {
       package: Package_name.t;
       artifact_dir: Path.t;
       message: string;
     }
-  | DependencyObjectCopyFailed of {
+  | DependencyObjectMaterializeFailed of {
       package: Package_name.t;
       src: Path.t;
       dst: Path.t;
@@ -29,11 +29,26 @@ type prepare_stats = {
   dependency_object_count: int;
 }
 
+type materialize_stats = {
+  copy_count: int;
+  link_count: int;
+  reference_count: int;
+}
+
+type materialize_error =
+  | SandboxFileMaterializeFailed of {
+      mode: Riot_planner.Sandbox_file.mode;
+      src: Path.t;
+      dst: Path.t;
+      message: string;
+    }
+
 type prepare_error =
   | InputCopyFailed of { message: string }
-  | DependencyCopyFailed of dependency_copy_error
+  | DependencyPreparationFailed of dependency_prepare_error
+  | SandboxMaterializationFailed of materialize_error
 
-val dependency_copy_error_to_string: dependency_copy_error -> string
+val dependency_prepare_error_to_string: dependency_prepare_error -> string
 
 val prepare_error_to_string: prepare_error -> string
 
@@ -53,17 +68,25 @@ val create:
 (** Copy package source inputs into a sandbox. *)
 val copy_inputs: sandbox:t -> package:Package.t -> inputs:Path.t list -> int
 
-(** Copy dependency object files required by linker actions into a sandbox. *)
-val copy_dependency_object_files:
+(** Materialize planner-selected sandbox files. *)
+val materialize_files:
+  sandbox:t ->
+  files:Riot_planner.Sandbox_file.t list ->
+  (materialize_stats, materialize_error) result
+
+(** Materialize dependency native objects needed by linker actions. *)
+val materialize_dependency_objects:
   store:Riot_store.Store.t ->
   sandbox:t ->
   package:Package.t ->
   depset:Dependency.t list ->
-  (dependency_copy_stats, dependency_copy_error) result
+  (dependency_prepare_stats, dependency_prepare_error) result
 
 (**
-   Prepare an existing sandbox by copying package inputs and dependency object
-   files required by the current execution model.
+   Prepare an existing sandbox by copying package inputs and validating
+   dependency artifacts. Dependency include/library outputs are referenced from
+   the store, while native object basenames are linked into the sandbox for
+   `ocamlopt`/linker compatibility.
 *)
 val prepare:
   sandbox:t ->

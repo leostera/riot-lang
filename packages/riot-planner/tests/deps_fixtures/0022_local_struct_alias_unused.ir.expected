@@ -1,0 +1,34 @@
+{
+  "source": "0022_local_struct_alias_unused.ml",
+  "source_hash": "fc00df9a0aec29cf",
+  "module_path": null,
+  "kind": "Implementation",
+  "items": [
+    {
+      "Scope": [
+        {
+          "Scope": [
+            {
+              "Module": {
+                "name": "X",
+                "signature": [],
+                "body": [
+                  {
+                    "ModuleAlias": {
+                      "name": "Y",
+                      "target": {
+                        "Use": [
+                          "Foo"
+                        ]
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

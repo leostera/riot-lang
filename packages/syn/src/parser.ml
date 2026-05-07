@@ -1310,7 +1310,7 @@ let consume_value_name = fun p ~signature ->
   ) else
     consume_parenthesized_operator_name p ~signature
 
-let consume_first_class_module_shell = fun p ->
+let rec consume_first_class_module_shell = fun p ->
   expect p Syntax_kind.MODULE_KW (missing_module_expr p);
   if at p Syntax_kind.RPAREN then
     Event.Buffer.error p.events (missing_module_expr p)
@@ -1324,7 +1324,7 @@ let consume_first_class_module_shell = fun p ->
     not (at p Syntax_kind.COLON || at p Syntax_kind.WITH_KW || at p Syntax_kind.TYPE_KW || is_eof p)
   then
     bump p;
-  let parse_type_constraint () =
+  let rec parse_type_constraint () =
     expect p Syntax_kind.TYPE_KW (missing_type_name p);
     (
       if at p Syntax_kind.IDENT then
@@ -1334,9 +1334,16 @@ let consume_first_class_module_shell = fun p ->
     );
     if at p Syntax_kind.EQ then (
       bump p;
-      consume_balanced_until p ~closer:Syntax_kind.RPAREN 0
+      if type_expr_boundary p ~stop_at_arrow:false then
+        Event.Buffer.missing p.events ~kind:Syntax_kind.IDENT ~offset:(current_offset p)
+      else
+        ignore (parse_type_expr p ~allow_leading_poly_type_after_newline:false ~stop_at_arrow:false)
     ) else
-      Event.Buffer.error p.events (missing_type_decl_equals p)
+      Event.Buffer.error p.events (missing_type_decl_equals p);
+    if at p Syntax_kind.AND_KW then (
+      bump p;
+      parse_type_constraint ()
+    )
   in
   if at p Syntax_kind.COLON then (
     bump p;
@@ -1351,7 +1358,7 @@ let consume_first_class_module_shell = fun p ->
     consume_balanced_until p ~closer:Syntax_kind.RPAREN 0;
   expect_closer p Syntax_kind.RPAREN ~opener:"("
 
-let rec parse_expression = fun
+and parse_expression = fun
   p ~signature ~stop_at_item ?(stop_at_semi = false) ?(stop_at_comma = false) min_bp ->
   let rec loop lhs =
     if expression_boundary p ~stop_at_item ~stop_at_semi ~stop_at_comma ~signature then
@@ -2743,6 +2750,66 @@ and parse_labeled_type = fun p ->
     ignore (parse_type_bp p ~stop_at_arrow:true 0);
   complete p marker Syntax_kind.LABELED_TYPE
 
+and starts_polymorphic_variant_type = fun p ->
+  Syntax_kind.(current_kind p = LBRACKET)
+  && Syntax_kind.(
+    peek_kind p 1 = PIPE
+    || peek_kind p 1 = BACKTICK
+    || peek_kind p 1 = IDENT
+    || peek_kind p 1 = LT
+    || peek_kind p 1 = GT
+  )
+
+and parse_polymorphic_variant_constructor_type = fun p ->
+  let marker = start_node p in
+  ignore (bump_if p Syntax_kind.PIPE);
+  if at p Syntax_kind.BACKTICK then (
+    bump p;
+    expect p Syntax_kind.IDENT (invalid_type_expression p)
+  ) else (
+    Event.Buffer.missing p.events ~kind:Syntax_kind.IDENT ~offset:(current_offset p);
+    Event.Buffer.error p.events (invalid_type_expression p)
+  );
+  if at p Syntax_kind.OF_KW then (
+    bump p;
+    if at p Syntax_kind.PIPE || at p Syntax_kind.RBRACKET || is_eof p then
+      Event.Buffer.missing p.events ~kind:Syntax_kind.IDENT ~offset:(current_offset p)
+    else
+      ignore (parse_type_expr p ~allow_leading_poly_type_after_newline:false ~stop_at_arrow:false)
+  );
+  complete p marker Syntax_kind.VARIANT_CONSTRUCTOR
+
+and parse_polymorphic_variant_inherited_type = fun p ->
+  ignore (bump_if p Syntax_kind.PIPE);
+  if at p Syntax_kind.PIPE || at p Syntax_kind.RBRACKET || is_eof p then
+    Event.Buffer.missing p.events ~kind:Syntax_kind.IDENT ~offset:(current_offset p)
+  else
+    ignore (parse_type_expr p ~allow_leading_poly_type_after_newline:false ~stop_at_arrow:false)
+
+and parse_polymorphic_variant_type = fun p ->
+  let marker = start_node p in
+  expect p Syntax_kind.LBRACKET (invalid_type_expression p);
+  ignore (bump_if p Syntax_kind.LT);
+  ignore (bump_if p Syntax_kind.GT);
+  let rec parse_constructors consumed =
+    if at p Syntax_kind.RBRACKET || is_eof p then
+      consumed
+    else if at p Syntax_kind.PIPE || at p Syntax_kind.BACKTICK then (
+      if Syntax_kind.(current_kind p = BACKTICK || peek_kind p 1 = BACKTICK) then
+        ignore (parse_polymorphic_variant_constructor_type p)
+      else
+        parse_polymorphic_variant_inherited_type p;
+      parse_constructors true
+    ) else if not (type_expr_boundary p ~stop_at_arrow:false) then (
+      parse_polymorphic_variant_inherited_type p;
+      parse_constructors true
+    ) else
+      consumed
+  in
+  ignore (parse_constructors false);
+  expect p Syntax_kind.RBRACKET (invalid_type_expression p);
+  complete p marker Syntax_kind.VARIANT_TYPE
+
 and parse_type_atom = fun p ~stop_at_arrow ->
   match current_kind p with
   | Syntax_kind.TYPE_KW -> parse_poly_type p ~stop_at_arrow
@@ -2774,6 +2841,7 @@ and parse_type_atom = fun p ~stop_at_arrow ->
       bump p;
       consume_first_class_module_shell p;
       complete p marker Syntax_kind.OPAQUE_TYPE
+  | Syntax_kind.LBRACKET when starts_polymorphic_variant_type p -> parse_polymorphic_variant_type p
   | Syntax_kind.LPAREN -> parse_parenthesized_type p ~stop_at_arrow
   | _ -> parse_opaque_type_atom p ~stop_at_arrow
 
@@ -4063,7 +4131,11 @@ and parse_open_decl = fun p ~signature ->
   expect p Syntax_kind.OPEN_KW (invalid_expression p);
   if is_eof p || at_item_boundary p ~signature then
     Event.Buffer.error p.events (missing_module_path p)
-  else
+  else (
+    ignore (bump_if p Syntax_kind.BANG);
+    ignore (parse_module_expr p ~signature)
+  );
+  if not (is_eof p || at_item_boundary p ~signature) then
     consume_until_item_boundary p ~signature;
   ignore (complete p marker Syntax_kind.OPEN_DECL)
 

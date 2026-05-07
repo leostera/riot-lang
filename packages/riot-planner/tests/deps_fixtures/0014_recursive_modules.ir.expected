@@ -1,0 +1,36 @@
+{
+  "source": "0014_recursive_modules.ml",
+  "source_hash": "d42ac1e0f4cbc24c",
+  "module_path": null,
+  "kind": "Implementation",
+  "items": [
+    {
+      "Module": {
+        "name": "A",
+        "signature": [],
+        "body": []
+      }
+    },
+    {
+      "Module": {
+        "name": "B",
+        "signature": [],
+        "body": []
+      }
+    },
+    {
+      "Scope": [
+        {
+          "Use": [
+            "B"
+          ]
+        },
+        {
+          "Use": [
+            "A"
+          ]
+        }
+      ]
+    }
+  ]
+}

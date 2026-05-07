@@ -54,6 +54,9 @@ and 'ctx enter_type_declaration = 'ctx t -> A.TypeDeclaration.t -> 'ctx t * acti
 
 and 'ctx enter_module_declaration = 'ctx t -> A.ModuleDeclaration.t -> 'ctx t * action
 
+and 'ctx enter_module_functor_parameter =
+  'ctx t -> A.ModuleDeclaration.Member.functor_parameter -> 'ctx t * action
+
 and 'ctx enter_module_type_declaration = 'ctx t -> A.ModuleTypeDeclaration.t -> 'ctx t * action
 
 and 'ctx enter_open_declaration = 'ctx t -> A.OpenDeclaration.t -> 'ctx t * action
@@ -80,6 +83,7 @@ and 'ctx hooks = {
   enter_let_binding: 'ctx enter_let_binding option;
   enter_type_declaration: 'ctx enter_type_declaration option;
   enter_module_declaration: 'ctx enter_module_declaration option;
+  enter_module_functor_parameter: 'ctx enter_module_functor_parameter option;
   enter_module_type_declaration: 'ctx enter_module_type_declaration option;
   enter_open_declaration: 'ctx enter_open_declaration option;
   enter_include_declaration: 'ctx enter_include_declaration option;
@@ -166,6 +170,7 @@ let empty_hooks = {
   enter_let_binding = None;
   enter_type_declaration = None;
   enter_module_declaration = None;
+  enter_module_functor_parameter = None;
   enter_module_type_declaration = None;
   enter_open_declaration = None;
   enter_include_declaration = None;
@@ -391,6 +396,42 @@ let enter_typed_hooks = fun visitor node ->
                                                         visitor
                                                         node
 
+let enter_module_functor_parameter_hooks = fun visitor node ->
+  match visitor.hooks.enter_module_functor_parameter with
+  | None -> (visitor, Continue)
+  | Some enter -> (
+      match module_declaration visitor node with
+      | None -> (visitor, Continue)
+      | Some decl ->
+          A.ModuleDeclaration.fold_member
+            decl
+            ~init:(visitor, Continue)
+            ~fn:(fun member (visitor, action) ->
+              match action with
+              | Skip_subtree -> A.Return (visitor, action)
+              | Continue ->
+                  let (visitor, action) =
+                    A.ModuleDeclaration.Member.fold_functor_parameter
+                      member
+                      ~init:(visitor, Continue)
+                      ~fn:(fun parameter (visitor, action) ->
+                        match action with
+                        | Skip_subtree -> A.Return (visitor, action)
+                        | Continue ->
+                            let (visitor, action) = enter visitor parameter in
+                            (
+                              match action with
+                              | Skip_subtree -> A.Return (visitor, action)
+                              | Continue -> A.Continue (visitor, action)
+                            ))
+                  in
+                  (
+                    match action with
+                    | Skip_subtree -> A.Return (visitor, action)
+                    | Continue -> A.Continue (visitor, action)
+                  ))
+    )
+
 let node_of_child = fun (parent: A.Node.t) id: A.Node.t -> { tree = parent.Ast.tree; id }
 
 let token_of_child = fun (parent: A.Node.t) id: A.Token.t -> { tree = parent.Ast.tree; id }
@@ -402,6 +443,11 @@ let rec visit_node: 'ctx. 'ctx t -> A.Node.t -> 'ctx t = fun visitor node ->
     match action with
     | Skip_subtree -> (visitor, Skip_subtree)
     | Continue -> enter_typed_hooks visitor node
+  in
+  let (visitor, action) =
+    match action with
+    | Skip_subtree -> (visitor, Skip_subtree)
+    | Continue -> enter_module_functor_parameter_hooks visitor node
   in
   let visitor =
     match action with

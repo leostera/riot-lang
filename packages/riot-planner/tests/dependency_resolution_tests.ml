@@ -4,11 +4,9 @@ open Riot_model
 
 module Test = Std.Test
 module G = Std.Graph.SimpleGraph
+module Dep_analyzer = Riot_planner.Dep_analyzer
 
-let deps_error_to_string = fun (Syn.Deps.Parse_diagnostics diagnostics) ->
-  String.concat
-    "; "
-    (List.map diagnostics ~fn:Syn.Diagnostic.to_string)
+let deps_error_to_string = fun (Dep_analyzer.Invalid_provider message) -> message
 
 let make_package = fun name ->
   Riot_model.Package.make
@@ -683,7 +681,7 @@ let test_module_graph_opened_public_root_resolves_children_to_public_module = fu
               match analyzed_main.deps with
               | Error err -> Error ("dependency analysis failed: " ^ deps_error_to_string err)
               | Ok deps ->
-                  let modules = Syn.Deps.modules deps in
+                  let modules = Dep_analyzer.Resolution.modules deps in
                   let depends_on_syn = List.any (G.deps main_node) ~fn:(G.Node_id.eq (G.id syn_node)) in
                   let depends_on_token = List.any (G.deps main_node) ~fn:(G.Node_id.eq (G.id token_node)) in
                   if modules = [ "Syn" ] && depends_on_syn && not depends_on_token then
@@ -845,7 +843,7 @@ let test_module_graph_implicit_alias_opens_resolve_nested_leaf_modules = fun _ct
               match analyzed_unix.deps with
               | Error err -> Error ("dependency analysis failed: " ^ deps_error_to_string err)
               | Ok deps ->
-                  let modules = Syn.Deps.modules deps in
+                  let modules = Dep_analyzer.Resolution.modules deps in
                   let depends_on_result =
                     List.any (G.deps unix_node) ~fn:(G.Node_id.eq (G.id result_node))
                   in
@@ -1006,7 +1004,7 @@ let test_module_graph_implicit_root_alias_resolves_public_child_root = fun _ctx 
               match analyzed_process.deps with
               | Error err -> Error ("dependency analysis failed: " ^ deps_error_to_string err)
               | Ok deps ->
-                  let modules = Syn.Deps.modules deps in
+                  let modules = Dep_analyzer.Resolution.modules deps in
                   let depends_on_fs = List.any (G.deps process_node) ~fn:(G.Node_id.eq (G.id fs_node)) in
                   let depends_on_fs_file =
                     List.any (G.deps process_node) ~fn:(G.Node_id.eq (G.id fs_file_node))
@@ -1369,7 +1367,194 @@ let test_module_graph_keeps_nested_sibling_dependency_across_allowed_source_orde
   | Ok x -> x
   | Error _ -> Error "tempdir creation failed"
 
-let test_module_graph_resolves_ocaml_stdlib_modules_through_stdlib_root = fun _ctx ->
+let test_module_graph_keeps_nested_sibling_record_expr_dependency = fun _ctx ->
+  match Fs.with_tempdir
+    ~prefix:"module_graph_nested_record_expr_dep"
+    (fun tmpdir ->
+      let package_root = Path.(tmpdir / Path.v "suri") in
+      let src_dir = Path.(package_root / Path.v "src") in
+      let socket_pool_dir = Path.(src_dir / Path.v "socket_pool") in
+      let create_dir path =
+        Fs.create_dir_all path
+        |> Result.expect ~msg:("expected dir creation to succeed: " ^ Path.to_string path)
+      in
+      let write path contents =
+        Fs.write contents path
+        |> Result.expect ~msg:("expected file write to succeed: " ^ Path.to_string path)
+      in
+      let _ = create_dir socket_pool_dir in
+      let _ = write Path.(src_dir / Path.v "suri.ml") "module Socket_pool = Socket_pool\n" in
+      let _ =
+        write
+          Path.(socket_pool_dir / Path.v "socket_pool.ml")
+          {ocaml|module Connection = Connection
+
+let start = fun listener ->
+  let state =
+    Acceptor.{
+      listener;
+    }
+  in
+  Acceptor.spawn state
+|ocaml}
+      in
+      let _ =
+        write
+          Path.(socket_pool_dir / Path.v "acceptor.ml")
+          "type t = { listener: int }\nlet spawn _ = ()\n"
+      in
+      let _ = write Path.(socket_pool_dir / Path.v "connection.ml") "type t = unit\n" in
+      let package =
+        Riot_model.Package.make
+          ~name:(
+            Package_name.from_string "suri"
+            |> Result.expect ~msg:"expected valid package name"
+          )
+          ~path:package_root
+          ~relative_path:(Path.v "suri")
+          ~library:{ path = Path.v "src/suri.ml" }
+          ~sources:{
+            src = [
+              Path.v "src/suri.ml";
+              Path.v "src/socket_pool/socket_pool.ml";
+              Path.v "src/socket_pool/acceptor.ml";
+              Path.v "src/socket_pool/connection.ml";
+            ];
+            native = [];
+            tests = [];
+            examples = [];
+            bench = [];
+          }
+          ()
+      in
+      let workspace =
+        Riot_model.Workspace.make_realized
+          ~root:tmpdir
+          ~packages:[ package ]
+          ~target_dir:(Path.v "target")
+          ()
+      in
+      let toolchain =
+        Riot_toolchain.init ~config:Riot_model.Toolchain_config.default
+        |> Result.expect ~msg:"expected toolchain init to succeed"
+      in
+      let graph_builder = make_src_graph_builder ~package_root ~package ~toolchain ~workspace in
+      match Riot_planner.Module_graph.wire_dependencies graph_builder with
+      | Error err -> Error (Riot_planner.Planning_error.to_string err)
+      | Ok () ->
+          let graph = Riot_planner.Module_graph.graph graph_builder in
+          let find_ml qualified_name =
+            G.map graph ~fn:(fun x -> x)
+            |> List.find
+              ~fn:(fun (_node_id, (node: Riot_planner.Module_node.t G.node)) ->
+                match (G.value node).kind with
+                | Riot_planner.Module_node.ML mod_ ->
+                    String.equal (Riot_model.Module.namespaced_name mod_) qualified_name
+                | _ -> false)
+          in
+          match (find_ml "Suri__Socket_pool", find_ml "Suri__Socket_pool__Acceptor") with
+          | (Some (_socket_pool_id, socket_pool_node), Some (_acceptor_id, acceptor_node)) ->
+              if List.any (G.deps socket_pool_node) ~fn:(G.Node_id.eq (G.id acceptor_node)) then
+                Ok ()
+              else
+                Error "expected Suri__Socket_pool to depend on Suri__Socket_pool__Acceptor"
+          | (None, _) -> Error "expected Suri__Socket_pool module node"
+          | (_, None) -> Error "expected Suri__Socket_pool__Acceptor module node") with
+  | Ok x -> x
+  | Error _ -> Error "tempdir creation failed"
+
+let test_module_graph_keeps_root_sibling_record_pattern_dependency = fun _ctx ->
+  match Fs.with_tempdir
+    ~prefix:"module_graph_root_record_pattern_dep"
+    (fun tmpdir ->
+      let package_root = Path.(tmpdir / Path.v "riot-cli") in
+      let src_dir = Path.(package_root / Path.v "src") in
+      let create_dir path =
+        Fs.create_dir_all path
+        |> Result.expect ~msg:("expected dir creation to succeed: " ^ Path.to_string path)
+      in
+      let write path contents =
+        Fs.write contents path
+        |> Result.expect ~msg:("expected file write to succeed: " ^ Path.to_string path)
+      in
+      let _ = create_dir src_dir in
+      let _ =
+        write
+          Path.(src_dir / Path.v "riot_cli.ml")
+          "module Install = Install\nmodule Run = Run\n"
+      in
+      let _ =
+        write
+          Path.(src_dir / Path.v "install.ml")
+          {ocaml|let target =
+  fun Run.{ package_name; binary_name } ->
+    package_name ^ binary_name
+|ocaml}
+      in
+      let _ =
+        write
+          Path.(src_dir / Path.v "run.ml")
+          "type t = { package_name: string; binary_name: string }\n"
+      in
+      let package =
+        Riot_model.Package.make
+          ~name:(
+            Package_name.from_string "riot-cli"
+            |> Result.expect ~msg:"expected valid package name"
+          )
+          ~path:package_root
+          ~relative_path:(Path.v "riot-cli")
+          ~library:{ path = Path.v "src/riot_cli.ml" }
+          ~sources:{
+            src = [
+              Path.v "src/riot_cli.ml";
+              Path.v "src/install.ml";
+              Path.v "src/run.ml";
+            ];
+            native = [];
+            tests = [];
+            examples = [];
+            bench = [];
+          }
+          ()
+      in
+      let workspace =
+        Riot_model.Workspace.make_realized
+          ~root:tmpdir
+          ~packages:[ package ]
+          ~target_dir:(Path.v "target")
+          ()
+      in
+      let toolchain =
+        Riot_toolchain.init ~config:Riot_model.Toolchain_config.default
+        |> Result.expect ~msg:"expected toolchain init to succeed"
+      in
+      let graph_builder = make_src_graph_builder ~package_root ~package ~toolchain ~workspace in
+      match Riot_planner.Module_graph.wire_dependencies graph_builder with
+      | Error err -> Error (Riot_planner.Planning_error.to_string err)
+      | Ok () ->
+          let graph = Riot_planner.Module_graph.graph graph_builder in
+          let find_ml qualified_name =
+            G.map graph ~fn:(fun x -> x)
+            |> List.find
+              ~fn:(fun (_node_id, (node: Riot_planner.Module_node.t G.node)) ->
+                match (G.value node).kind with
+                | Riot_planner.Module_node.ML mod_ ->
+                    String.equal (Riot_model.Module.namespaced_name mod_) qualified_name
+                | _ -> false)
+          in
+          match (find_ml "Riot_cli__Install", find_ml "Riot_cli__Run") with
+          | (Some (_install_id, install_node), Some (_run_id, run_node)) ->
+              if List.any (G.deps install_node) ~fn:(G.Node_id.eq (G.id run_node)) then
+                Ok ()
+              else
+                Error "expected Riot_cli__Install to depend on Riot_cli__Run"
+          | (None, _) -> Error "expected Riot_cli__Install module node"
+          | (_, None) -> Error "expected Riot_cli__Run module node") with
+  | Ok x -> x
+  | Error _ -> Error "tempdir creation failed"
+
+let test_module_graph_resolves_explicit_ocaml_stdlib_exports = fun _ctx ->
   match Fs.with_tempdir
     ~prefix:"module_graph_stdlib_exports"
     (fun tmpdir ->
@@ -1428,28 +1613,18 @@ let test_module_graph_resolves_ocaml_stdlib_modules_through_stdlib_root = fun _c
         ~root_module:"Stdlib";
       match Riot_planner.Module_graph.wire_dependencies graph_builder with
       | Error err -> Error (Riot_planner.Planning_error.to_string err)
-      | Ok () -> (
-          match Riot_planner.Package_layout_validator.validate
-            ~direct_dependency_modules:[ "Stdlib" ]
-            ~package
-            ~module_graph:(Riot_planner.Module_graph.graph graph_builder)
-            ~analyzed_modules:(Riot_planner.Module_graph.analyzed_modules graph_builder) with
-          | Error err ->
-              Error ("expected Stdlib modules to resolve, got: "
-              ^ Riot_planner.Planning_error.to_string err)
-          | Ok () ->
-              let unresolved =
-                Riot_planner.Module_graph.analyzed_modules graph_builder
-                |> List.map
-                  ~fn:(fun (_node_id, module_) -> module_.Riot_planner.Module_graph.unresolved_deps)
-                |> List.concat
-              in
-              if List.is_empty unresolved then
-                Ok ()
-              else
-                Error ("expected no unresolved stdlib modules, got: "
-                ^ String.concat ", " unresolved)
-        )) with
+      | Ok () ->
+          let unresolved =
+            Riot_planner.Module_graph.analyzed_modules graph_builder
+            |> List.map
+              ~fn:(fun (_node_id, module_) -> module_.Riot_planner.Module_graph.unresolved_deps)
+            |> List.concat
+          in
+          if List.is_empty unresolved then
+            Ok ()
+          else
+            Error ("expected explicit Stdlib dependency to resolve, got: "
+            ^ String.concat ", " unresolved)) with
   | Ok x -> x
   | Error _ -> Error "tempdir creation failed"
 
@@ -1543,7 +1718,7 @@ let test_module_graph_resolves_package_local_namespace_open_in_interface = fun _
               | Some (_node_id, module_) ->
                   let requested_modules =
                     match module_.Riot_planner.Module_graph.deps with
-                    | Ok deps -> Syn.Deps.modules deps
+                    | Ok deps -> Dep_analyzer.Resolution.modules deps
                     | Error _ -> []
                   in
                   if
@@ -1553,7 +1728,9 @@ let test_module_graph_resolves_package_local_namespace_open_in_interface = fun _
                     Ok ()
                   else
                     Error ("expected string.mli local deps to resolve, got: "
-                    ^ String.concat ", " module_.Riot_planner.Module_graph.unresolved_deps)
+                    ^ String.concat ", " module_.Riot_planner.Module_graph.unresolved_deps
+                    ^ "; requested: "
+                    ^ String.concat ", " requested_modules)
         )) with
   | Ok x -> x
   | Error _ -> Error "tempdir creation failed"
@@ -1662,7 +1839,7 @@ let test_module_graph_resolves_loose_source_local_open_exports = fun _ctx ->
                   | Some (_node_id, analyzed) ->
                       let requested_modules =
                         match analyzed.Riot_planner.Module_graph.deps with
-                        | Ok deps -> Syn.Deps.modules deps
+                        | Ok deps -> Dep_analyzer.Resolution.modules deps
                         | Error _ -> []
                       in
                       let has_edge = List.any (G.deps action_node) ~fn:(G.Node_id.eq (G.id dep_node)) in
@@ -1895,7 +2072,7 @@ let test_module_graph_resolves_opened_direct_dependency_package_exports = fun _c
                 | Some (_node_id, analyzed) ->
                     let requested_modules =
                       match analyzed.Riot_planner.Module_graph.deps with
-                      | Ok deps -> Syn.Deps.modules deps
+                      | Ok deps -> Dep_analyzer.Resolution.modules deps
                       | Error _ -> []
                     in
                     if
@@ -2041,7 +2218,7 @@ let test_module_graph_resolves_direct_dependency_nested_public_export = fun _ctx
                   | Some (_node_id, analyzed) ->
                       let requested_modules =
                         match analyzed.Riot_planner.Module_graph.deps with
-                        | Ok deps -> Syn.Deps.modules deps
+                        | Ok deps -> Dep_analyzer.Resolution.modules deps
                         | Error _ -> []
                       in
                       let has_edge = List.any (G.deps app_node) ~fn:(G.Node_id.eq (G.id kernel_node)) in
@@ -2061,6 +2238,146 @@ let test_module_graph_resolves_direct_dependency_nested_public_export = fun _ctx
                 )
               | (None, _) -> Error "expected App module node"
               | (_, None) -> Error "expected Kernel package dependency node"
+        )) with
+  | Ok x -> x
+  | Error _ -> Error "tempdir creation failed"
+
+let test_module_graph_resolves_direct_dependency_nested_local_open_export = fun _ctx ->
+  match Fs.with_tempdir
+    ~prefix:"module_graph_direct_dependency_nested_local_open_export"
+    (fun tmpdir ->
+      let app_root = Path.(tmpdir / Path.v "app") in
+      let app_src_dir = Path.(app_root / Path.v "src") in
+      let std_root = Path.(tmpdir / Path.v "std") in
+      let std_src_dir = Path.(std_root / Path.v "src") in
+      let std_io_dir = Path.(std_src_dir / Path.v "IO") in
+      let create_dir path =
+        Fs.create_dir_all path
+        |> Result.expect ~msg:("expected dir creation to succeed: " ^ Path.to_string path)
+      in
+      let write path contents =
+        Fs.write contents path
+        |> Result.expect ~msg:("expected file write to succeed: " ^ Path.to_string path)
+      in
+      let _ = create_dir app_src_dir in
+      let _ = create_dir std_io_dir in
+      let _ =
+        write
+          Path.(app_src_dir / Path.v "app.ml")
+          {ocaml|open Std
+open Std.IO
+
+let view = fun () ->
+  let open Buffer in
+  create ~size:128
+|ocaml}
+      in
+      let _ = write Path.(std_src_dir / Path.v "std.ml") "module IO = IO\n" in
+      let _ =
+        write
+          Path.(std_io_dir / Path.v "IO.mli")
+          "module Buffer: sig val create: size:int -> unit end\n"
+      in
+      let _ = write Path.(std_io_dir / Path.v "IO.ml") "module Buffer = Buffer\n" in
+      let _ = write Path.(std_io_dir / Path.v "buffer.ml") "let create ~size:_ = ()\n" in
+      let std_package =
+        Riot_model.Package.make
+          ~name:(
+            Package_name.from_string "std"
+            |> Result.expect ~msg:"expected valid package name"
+          )
+          ~path:std_root
+          ~relative_path:(Path.v "std")
+          ~library:{ path = Path.v "src/std.ml" }
+          ~sources:{
+            src = [
+              Path.v "src/std.ml";
+              Path.v "src/IO/IO.mli";
+              Path.v "src/IO/IO.ml";
+              Path.v "src/IO/buffer.ml";
+            ];
+            native = [];
+            tests = [];
+            examples = [];
+            bench = [];
+          }
+          ()
+      in
+      let app_package =
+        Riot_model.Package.make
+          ~name:(
+            Package_name.from_string "app"
+            |> Result.expect ~msg:"expected valid package name"
+          )
+          ~path:app_root
+          ~relative_path:(Path.v "app")
+          ~library:{ path = Path.v "src/app.ml" }
+          ~sources:{
+            src = [ Path.v "src/app.ml" ];
+            native = [];
+            tests = [];
+            examples = [];
+            bench = [];
+          }
+          ()
+      in
+      let workspace =
+        Riot_model.Workspace.make_realized
+          ~root:tmpdir
+          ~packages:[ app_package; std_package ]
+          ~target_dir:(Path.v "target")
+          ()
+      in
+      let toolchain =
+        Riot_toolchain.init ~config:Riot_model.Toolchain_config.default
+        |> Result.expect ~msg:"expected toolchain init to succeed"
+      in
+      let graph_builder =
+        make_src_graph_builder ~package_root:app_root ~package:app_package ~toolchain ~workspace
+      in
+      Riot_planner.Module_graph.add_direct_dependency_package graph_builder std_package;
+      match Riot_planner.Module_graph.wire_dependencies graph_builder with
+      | Error err -> Error (Riot_planner.Planning_error.to_string err)
+      | Ok () -> (
+          match Riot_planner.Package_layout_validator.validate
+            ~direct_dependency_modules:[ "Std" ]
+            ~package:app_package
+            ~module_graph:(Riot_planner.Module_graph.graph graph_builder)
+            ~analyzed_modules:(Riot_planner.Module_graph.analyzed_modules graph_builder) with
+          | Error err ->
+              Error ("expected direct dependency nested local open export to resolve, got: "
+              ^ Riot_planner.Planning_error.to_string err)
+          | Ok () ->
+              let analyzed_modules = Riot_planner.Module_graph.analyzed_modules graph_builder in
+              let app_analysis =
+                List.find
+                  analyzed_modules
+                  ~fn:(fun (_node_id, analyzed) ->
+                    Path.equal
+                      analyzed.Riot_planner.Module_graph.display_path
+                      Path.(app_root / Path.v "src/app.ml"))
+              in
+              (
+                match app_analysis with
+                | None -> Error "expected analyzed App module"
+                | Some (_node_id, analyzed) ->
+                    let requested_modules =
+                      match analyzed.Riot_planner.Module_graph.deps with
+                      | Ok deps -> Dep_analyzer.Resolution.modules deps
+                      | Error _ -> []
+                    in
+                    if
+                      requested_modules = [ "Std" ]
+                      && analyzed.Riot_planner.Module_graph.unresolved_deps = []
+                    then
+                      Ok ()
+                    else
+                      Error ("expected App to depend on Std only through Std.IO.Buffer; modules=["
+                      ^ String.concat ", " requested_modules
+                      ^ "], unresolved=["
+                      ^ String.concat ", " analyzed.Riot_planner.Module_graph.unresolved_deps
+                      ^ "]")
+              )
         )) with
   | Ok x -> x
   | Error _ -> Error "tempdir creation failed"
@@ -2161,7 +2478,7 @@ let test_module_graph_resolves_self_named_reference_to_dependency_root = fun _ct
                   | Some (_node_id, analyzed) ->
                       let requested_modules =
                         match analyzed.Riot_planner.Module_graph.deps with
-                        | Ok deps -> Syn.Deps.modules deps
+                        | Ok deps -> Dep_analyzer.Resolution.modules deps
                         | Error _ -> []
                       in
                       let depends_on_self =
@@ -2393,8 +2710,14 @@ let tests =
       "module graph keeps nested sibling dependency across allowed source orders"
       test_module_graph_keeps_nested_sibling_dependency_across_allowed_source_orders;
     case
-      "module graph resolves OCaml stdlib modules through Stdlib root"
-      test_module_graph_resolves_ocaml_stdlib_modules_through_stdlib_root;
+      "module graph keeps nested sibling record expr dependency"
+      test_module_graph_keeps_nested_sibling_record_expr_dependency;
+    case
+      "module graph keeps root sibling record pattern dependency"
+      test_module_graph_keeps_root_sibling_record_pattern_dependency;
+    case
+      "module graph resolves explicit OCaml stdlib exports"
+      test_module_graph_resolves_explicit_ocaml_stdlib_exports;
     case
       "module graph resolves package-local namespace open in interface"
       test_module_graph_resolves_package_local_namespace_open_in_interface;
@@ -2410,6 +2733,9 @@ let tests =
     case
       "module graph resolves direct dependency nested public export"
       test_module_graph_resolves_direct_dependency_nested_public_export;
+    case
+      "module graph resolves direct dependency nested local open export"
+      test_module_graph_resolves_direct_dependency_nested_local_open_export;
     case
       "module graph resolves self named reference to dependency root"
       test_module_graph_resolves_self_named_reference_to_dependency_root;

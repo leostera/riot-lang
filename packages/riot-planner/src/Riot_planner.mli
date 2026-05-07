@@ -29,6 +29,10 @@ module Alias_module = Alias_module
 
 module Dependency = Dependency
 
+module Dep_analyzer = Dep_analyzer
+
+module Sandbox_file = Sandbox_file
+
 module Module_graph = Module_graph
 
 module Library_definition = Library_definition

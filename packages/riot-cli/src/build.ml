@@ -590,9 +590,9 @@ type build_dashboard_package = {
   mutable planning_source_count: int;
   mutable planned_sources: int;
   planning_sources: (string, string) HashMap.t;
-  planning_source_order: string Vector.t;
+  planning_source_order: string IndexSet.t;
   running_actions: (string, string) HashMap.t;
-  running_action_order: string Vector.t;
+  running_action_order: string IndexSet.t;
   mutable status: build_dashboard_row_status;
 }
 
@@ -606,7 +606,7 @@ and build_dashboard_row_status =
 
 type build_dashboard_state = {
   active: (string, build_dashboard_package) HashMap.t;
-  active_order: string Vector.t;
+  active_order: string IndexSet.t;
   profile_name: string option;
   target_count: int option;
   package_count: int;
@@ -662,7 +662,7 @@ let is_interactive_stderr = fun () -> Tty.is_tty (Tty.stderr_fd ())
 let build_dashboard_create_state = fun ?profile () ->
   {
     active = HashMap.with_capacity ~size:16;
-    active_order = Vector.with_capacity ~size:16;
+    active_order = IndexSet.with_capacity ~size:16;
     profile_name = profile;
     target_count = None;
     package_count = 0;
@@ -763,14 +763,14 @@ let build_dashboard_get_package = fun state ~build_target package ->
         planning_source_count = 0;
         planned_sources = 0;
         planning_sources = HashMap.with_capacity ~size:4;
-        planning_source_order = Vector.with_capacity ~size:4;
+        planning_source_order = IndexSet.with_capacity ~size:4;
         running_actions = HashMap.with_capacity ~size:4;
-        running_action_order = Vector.with_capacity ~size:4;
+        running_action_order = IndexSet.with_capacity ~size:4;
         status = Waiting;
       }
       in
       let _ = HashMap.insert state.active ~key ~value:row in
-      Vector.push state.active_order ~value:key;
+      let _ = IndexSet.insert state.active_order ~value:key in
       row
 
 let build_dashboard_find_package = fun state ~build_target package ->
@@ -780,6 +780,7 @@ let build_dashboard_find_package = fun state ~build_target package ->
 let build_dashboard_remove_package = fun state ~build_target package ->
   let key = build_dashboard_package_key state ~build_target package in
   let _ = HashMap.remove state.active ~key in
+  let _ = IndexSet.remove state.active_order ~value:key in
   ()
 
 let build_dashboard_count_summary = fun state ->
@@ -798,7 +799,7 @@ let build_dashboard_set_action_count = fun state ~build_target package ~action_c
   let previous_action_count = row.action_count in
   row.action_count <- action_count;
   HashMap.clear row.planning_sources;
-  Vector.clear row.planning_source_order;
+  IndexSet.clear row.planning_source_order;
   if HashMap.is_empty row.running_actions then
     row.status <- Preparing;
   {
@@ -812,7 +813,7 @@ let build_dashboard_action_key = fun (action: Riot_planner.Action_node.t) ->
 
 let build_dashboard_running_action_views = fun row ->
   let actions = ref [] in
-  Vector.for_each
+  IndexSet.for_each
     row.running_action_order
     ~fn:(fun key ->
       match HashMap.get row.running_actions ~key with
@@ -825,25 +826,27 @@ let build_dashboard_running_action_views = fun row ->
   List.reverse !actions
 
 let build_dashboard_planning_source_views = fun row ->
+  let max_visible_sources = Int.max 1 Thread.available_parallelism in
   let sources = ref [] in
-  Vector.for_each
+  let visible_count = ref 0 in
+  IndexSet.for_each
     row.planning_source_order
     ~fn:(fun key ->
-      match HashMap.get row.planning_sources ~key with
-      | Some label ->
-          sources := {
-            action_key = key;
-            action_label = label;
-          } :: !sources
-      | None -> ());
+      if !visible_count < max_visible_sources then
+        match HashMap.get row.planning_sources ~key with
+        | Some label ->
+            visible_count := !visible_count + 1;
+            sources := {
+              action_key = key;
+              action_label = label;
+            } :: !sources
+        | None -> ());
   List.reverse !sources
 
 let build_dashboard_set_planning_source = fun row source ->
   let key = Path.to_string source in
   let label = "plan " ^ Path.basename source in
-  HashMap.clear row.planning_sources;
-  Vector.clear row.planning_source_order;
-  Vector.push row.planning_source_order ~value:key;
+  let _ = IndexSet.insert row.planning_source_order ~value:key in
   let _ = HashMap.insert row.planning_sources ~key ~value:label in
   ()
 
@@ -853,10 +856,9 @@ let build_dashboard_mark_action_started = fun
   | Some row ->
       let key = build_dashboard_action_key action in
       let label = build_dashboard_node_label action in
-      if not (HashMap.has_key row.running_actions ~key) then
-        Vector.push row.running_action_order ~value:key;
+      let _ = IndexSet.insert row.running_action_order ~value:key in
       HashMap.clear row.planning_sources;
-      Vector.clear row.planning_source_order;
+      IndexSet.clear row.planning_source_order;
       let _ = HashMap.insert row.running_actions ~key ~value:label in
       state
   | None -> state
@@ -871,6 +873,7 @@ let build_dashboard_mark_action_completed = fun state ~build_target package acti
         row.completed_actions + 1;
       let action_key = build_dashboard_action_key action in
       let _ = HashMap.remove row.running_actions ~key:action_key in
+      let _ = IndexSet.remove row.running_action_order ~value:action_key in
       if HashMap.is_empty row.running_actions then
         row.status <- if row.action_count > 0 && row.completed_actions >= row.action_count then
           Finalizing
@@ -923,7 +926,7 @@ let build_dashboard_update = fun state event ->
       row.planning_source_count <- source_count;
       row.planned_sources <- 0;
       HashMap.clear row.planning_sources;
-      Vector.clear row.planning_source_order;
+      IndexSet.clear row.planning_source_order;
       row.status <- Planning;
       state
   | Riot_build.Event.Phase (
@@ -951,7 +954,7 @@ let build_dashboard_update = fun state event ->
             row.planning_source_count <- source_count;
             row.planned_sources <- source_count;
             HashMap.clear row.planning_sources;
-            Vector.clear row.planning_source_order;
+            IndexSet.clear row.planning_source_order;
             row.status <- Preparing
         | None -> ()
       );
@@ -1063,18 +1066,14 @@ let build_dashboard_render_state = fun state ->
     Empty
   else
     let rows = ref [] in
-    let seen = HashSet.create () in
-    Vector.for_each
+    IndexSet.for_each
       state.active_order
       ~fn:(fun key ->
-        if not (HashSet.contains seen ~value:key) then (
-          let _ = HashSet.insert seen ~value:key in
-          match HashMap.get state.active ~key with
-          | Some row when build_dashboard_row_is_active row ->
-              rows := build_dashboard_row_view state row :: !rows
-          | Some _
-          | None -> ()
-        ));
+        match HashMap.get state.active ~key with
+        | Some row when build_dashboard_row_is_active row ->
+            rows := build_dashboard_row_view state row :: !rows
+        | Some _
+        | None -> ());
     let rows = List.reverse !rows in
     if List.is_empty rows && state.completed_action_count = 0 && state.total_action_count = 0 then
       Empty

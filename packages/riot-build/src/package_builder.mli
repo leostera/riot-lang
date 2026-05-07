@@ -44,6 +44,7 @@ type execution_plan = {
   action_graph: Action_graph.t;
   hash: Std.Crypto.hash;
   depset: Dependency.t list;
+  sandbox_files: Sandbox_file.t list;
   started_at: Time.Instant.t;
   emit_visible_progress: bool;
 }

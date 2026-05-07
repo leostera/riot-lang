@@ -106,7 +106,7 @@ let target_reachable_set = fun start_nodes module_graph ->
 
 let requested_modules = fun analyzed_module ->
   match analyzed_module.Module_graph.deps with
-  | Ok deps -> Syn.Deps.modules deps
+  | Ok deps -> Dep_analyzer.Resolution.modules deps
   | Error _ -> []
 
 let classify_other_target_root_error = fun

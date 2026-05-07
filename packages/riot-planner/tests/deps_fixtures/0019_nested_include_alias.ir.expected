@@ -1,0 +1,36 @@
+{
+  "source": "0019_nested_include_alias.ml",
+  "source_hash": "f461c2037392a94e",
+  "module_path": null,
+  "kind": "Implementation",
+  "items": [
+    {
+      "Module": {
+        "name": "M",
+        "signature": [],
+        "body": [
+          {
+            "ModuleAlias": {
+              "name": "X",
+              "target": {
+                "Use": [
+                  "Foo"
+                ]
+              }
+            }
+          },
+          {
+            "Include": {
+              "mode": "Structure",
+              "expr": {
+                "Use": [
+                  "X"
+                ]
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "source": "0005_module_alias_before_use.ml",
+  "source_hash": "86666ab2a536f1a2",
+  "module_path": null,
+  "kind": "Implementation",
+  "items": [
+    {
+      "ModuleAlias": {
+        "name": "X",
+        "target": {
+          "Use": [
+            "Foo"
+          ]
+        }
+      }
+    },
+    {
+      "Scope": [
+        {
+          "Use": [
+            "X"
+          ]
+        }
+      ]
+    }
+  ]
+}

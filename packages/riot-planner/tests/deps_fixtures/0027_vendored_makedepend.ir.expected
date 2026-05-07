@@ -1,0 +1,2004 @@
+{
+  "source": "0027_vendored_makedepend.ml",
+  "source_hash": "bdedcebcfaca46e5",
+  "module_path": null,
+  "kind": "Implementation",
+  "items": [
+    {
+      "Open": {
+        "Use": [
+          "Parsetree"
+        ]
+      }
+    },
+    {
+      "ModuleAlias": {
+        "name": "String",
+        "target": {
+          "Use": [
+            "Misc",
+            "Stdlib",
+            "String"
+          ]
+        }
+      }
+    },
+    {
+      "Scope": [
+        {
+          "Use": [
+            "Format"
+          ]
+        }
+      ]
+    },
+    {
+      "Scope": [
+        {
+          "Use": [
+            "String",
+            "Set"
+          ]
+        }
+      ]
+    },
+    {
+      "Scope": [
+        {
+          "Use": [
+            "String",
+            "Map"
+          ]
+        }
+      ]
+    },
+    {
+      "Module": {
+        "name": "Error_occurred",
+        "signature": [
+          {
+            "Scope": []
+          }
+        ],
+        "body": []
+      }
+    },
+    {
+      "Scope": [
+        {
+          "Use": [
+            "Sys"
+          ]
+        },
+        {
+          "Use": [
+            "String"
+          ]
+        }
+      ]
+    },
+    {
+      "Scope": [
+        {
+          "Use": [
+            "String",
+            "Map"
+          ]
+        }
+      ]
+    },
+    {
+      "Scope": [
+        {
+          "Use": [
+            "String",
+            "Map"
+          ]
+        },
+        {
+          "Scope": [
+            {
+              "Scope": [
+                {
+                  "Use": [
+                    "Sys"
+                  ]
+                },
+                {
+                  "Scope": [
+                    {
+                      "Use": [
+                        "Format"
+                      ]
+                    },
+                    {
+                      "Use": [
+                        "Error_occurred"
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "Use": [
+                "String",
+                "Map"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "Scope": [
+        {
+          "Scope": [
+            {
+              "Use": [
+                "Misc"
+              ]
+            },
+            {
+              "Use": [
+                "Config"
+              ]
+            }
+          ]
+        },
+        {
+          "Scope": [
+            {
+              "Use": [
+                "Format"
+              ]
+            },
+            {
+              "Use": [
+                "Error_occurred"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "Scope": [
+        {
+          "Use": [
+            "String"
+          ]
+        },
+        {
+          "Use": [
+            "Format"
+          ]
+        },
+        {
+          "Use": [
+            "Error_occurred"
+          ]
+        }
+      ]
+    },
+    {
+      "Scope": [
+        {
+          "Scope": [
+            {
+              "Use": [
+                "List"
+              ]
+            }
+          ]
+        },
+        {
+          "Scope": [
+            {
+              "Scope": [
+                {
+                  "Use": [
+                    "Unit_info"
+                  ]
+                }
+              ]
+            },
+            {
+              "Use": [
+                "List"
+              ]
+            }
+          ]
+        },
+        {
+          "Scope": [
+            {
+              "Scope": [
+                {
+                  "Scope": [
+                    {
+                      "Scope": [
+                        {
+                          "Use": [
+                            "List"
+                          ]
+                        },
+                        {
+                          "Use": [
+                            "List"
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "Use": [
+                        "Array"
+                      ]
+                    },
+                    {
+                      "Scope": [
+                        {
+                          "Use": [
+                            "Filename"
+                          ]
+                        },
+                        {
+                          "Use": [
+                            "Filename"
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "Scope": [
+        {
+          "Scope": [
+            {
+              "Scope": [
+                {
+                  "Use": [
+                    "Filename"
+                  ]
+                }
+              ]
+            },
+            {
+              "Scope": [
+                {
+                  "Use": [
+                    "List"
+                  ]
+                },
+                {
+                  "Scope": [
+                    {
+                      "Use": [
+                        "Sys"
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "Scope": [
+                {
+                  "Use": [
+                    "List"
+                  ]
+                },
+                {
+                  "Scope": [
+                    {
+                      "Use": [
+                        "Sys"
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "Scope": [
+        {
+          "Scope": [
+            {
+              "Use": [
+                "Clflags"
+              ]
+            }
+          ]
+        },
+        {
+          "Use": [
+            "String"
+          ]
+        },
+        {
+          "Scope": [
+            {
+              "Use": [
+                "String"
+              ]
+            }
+          ]
+        },
+        {
+          "Scope": [
+            {
+              "Use": [
+                "Bytes"
+              ]
+            },
+            {
+              "Use": [
+                "String"
+              ]
+            }
+          ]
+        },
+        {
+          "Scope": [
+            {
+              "Use": [
+                "String"
+              ]
+            },
+            {
+              "Use": [
+                "Bytes"
+              ]
+            },
+            {
+              "Use": [
+                "Bytes"
+              ]
+            },
+            {
+              "Use": [
+                "Bytes"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "Scope": [
+        {
+          "Scope": [
+            {
+              "Use": [
+                "String"
+              ]
+            }
+          ]
+        },
+        {
+          "Scope": [
+            {
+              "Use": [
+                "String"
+              ]
+            }
+          ]
+        },
+        {
+          "Scope": [
+            {
+              "Use": [
+                "String"
+              ]
+            }
+          ]
+        },
+        {
+          "Use": [
+            "List"
+          ]
+        },
+        {
+          "Use": [
+            "String"
+          ]
+        },
+        {
+          "Use": [
+            "List"
+          ]
+        }
+      ]
+    },
+    {
+      "Scope": [
+        {
+          "Use": [
+            "String",
+            "Set"
+          ]
+        },
+        {
+          "Scope": [
+            {
+              "Use": [
+                "String"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "Scope": [
+        {
+          "Use": [
+            "Location"
+          ]
+        }
+      ]
+    },
+    {
+      "Scope": [
+        {
+          "Use": [
+            "Error_occurred"
+          ]
+        }
+      ]
+    },
+    {
+      "Scope": [
+        {
+          "Scope": [
+            {
+              "Use": [
+                "Lexer"
+              ]
+            },
+            {
+              "Scope": [
+                {
+                  "Use": [
+                    "Parser"
+                  ]
+                },
+                {
+                  "Use": [
+                    "Depend"
+                  ]
+                },
+                {
+                  "Use": [
+                    "String",
+                    "Set"
+                  ]
+                },
+                {
+                  "Use": [
+                    "Depend"
+                  ]
+                }
+              ]
+            },
+            {
+              "Scope": [
+                {
+                  "Use": [
+                    "Parser"
+                  ]
+                }
+              ]
+            },
+            {
+              "Scope": [
+                {
+                  "Use": [
+                    "Parser"
+                  ]
+                }
+              ]
+            },
+            {
+              "Scope": [
+                {
+                  "Use": [
+                    "Parser"
+                  ]
+                },
+                {
+                  "Use": [
+                    "Parser"
+                  ]
+                }
+              ]
+            },
+            {
+              "Scope": [
+                {
+                  "Use": [
+                    "Parser"
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "Scope": [
+            {
+              "Use": [
+                "Lexer"
+              ]
+            },
+            {
+              "Scope": [
+                {
+                  "Use": [
+                    "Parser"
+                  ]
+                },
+                {
+                  "Use": [
+                    "Parser"
+                  ]
+                }
+              ]
+            },
+            {
+              "Scope": [
+                {
+                  "Use": [
+                    "Parser"
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "Scope": [
+            {
+              "Use": [
+                "Lexer"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "Scope": [
+        {
+          "Use": [
+            "Depend"
+          ]
+        },
+        {
+          "Use": [
+            "String",
+            "Set"
+          ]
+        },
+        {
+          "Use": [
+            "In_channel"
+          ]
+        },
+        {
+          "Scope": [
+            {
+              "Use": [
+                "Location"
+              ]
+            },
+            {
+              "Scope": [
+                {
+                  "Use": [
+                    "Lexing"
+                  ]
+                }
+              ]
+            },
+            {
+              "Use": [
+                "Location"
+              ]
+            }
+          ]
+        },
+        {
+          "Use": [
+            "Depend"
+          ]
+        }
+      ]
+    },
+    {
+      "Scope": [
+        {
+          "Use": [
+            "Depend"
+          ]
+        },
+        {
+          "Use": [
+            "Depend"
+          ]
+        },
+        {
+          "Use": [
+            "String",
+            "Set"
+          ]
+        },
+        {
+          "Scope": [
+            {
+              "Use": [
+                "Pparse"
+              ]
+            }
+          ]
+        },
+        {
+          "Use": [
+            "Fun"
+          ]
+        },
+        {
+          "Scope": [
+            {
+              "Use": [
+                "Pparse"
+              ]
+            }
+          ]
+        },
+        {
+          "Scope": [
+            {
+              "Scope": [
+                {
+                  "Use": [
+                    "Pparse"
+                  ]
+                }
+              ]
+            },
+            {
+              "Scope": [
+                {
+                  "Use": [
+                    "List"
+                  ]
+                },
+                {
+                  "Scope": [
+                    {
+                      "Scope": [
+                        {
+                          "Scope": [
+                            {
+                              "Use": [
+                                "Lexing"
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "Use": [
+                            "Location"
+                          ]
+                        },
+                        {
+                          "Use": [
+                            "Printf"
+                          ]
+                        },
+                        {
+                          "Use": [
+                            "Parse"
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "Use": [
+                        "Depend"
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "Use": [
+                    "List"
+                  ]
+                },
+                {
+                  "Use": [
+                    "Clflags"
+                  ]
+                }
+              ]
+            },
+            {
+              "Use": [
+                "Depend"
+              ]
+            }
+          ]
+        },
+        {
+          "Scope": [
+            {
+              "Use": [
+                "Error_occurred"
+              ]
+            },
+            {
+              "Use": [
+                "String",
+                "Set"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "Scope": [
+        {
+          "Scope": [
+            {
+              "Use": [
+                "Filename"
+              ]
+            }
+          ]
+        },
+        {
+          "Scope": [
+            {
+              "Use": [
+                "List"
+              ]
+            },
+            {
+              "Scope": [
+                {
+                  "Use": [
+                    "Sys"
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "Scope": [
+            {
+              "Use": [
+                "String",
+                "Set"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "Scope": [
+        {
+          "Scope": [
+            {
+              "Use": [
+                "Filename"
+              ]
+            }
+          ]
+        },
+        {
+          "Scope": [
+            {
+              "Use": [
+                "String",
+                "Set"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "Scope": [
+        {
+          "Scope": [
+            {
+              "Use": [
+                "List"
+              ]
+            },
+            {
+              "Use": [
+                "Parse"
+              ]
+            }
+          ]
+        },
+        {
+          "Scope": [
+            {
+              "Use": [
+                "Depend"
+              ]
+            },
+            {
+              "Use": [
+                "Pparse"
+              ]
+            }
+          ]
+        },
+        {
+          "Use": [
+            "Depend"
+          ]
+        }
+      ]
+    },
+    {
+      "Scope": [
+        {
+          "Scope": [
+            {
+              "Use": [
+                "Parse"
+              ]
+            },
+            {
+              "Use": [
+                "Depend"
+              ]
+            },
+            {
+              "Use": [
+                "Pparse"
+              ]
+            }
+          ]
+        },
+        {
+          "Use": [
+            "Depend"
+          ]
+        }
+      ]
+    },
+    {
+      "Scope": [
+        {
+          "Use": [
+            "Compenv"
+          ]
+        },
+        {
+          "Scope": [
+            {
+              "Use": [
+                "Filename"
+              ]
+            }
+          ]
+        },
+        {
+          "Use": [
+            "List"
+          ]
+        },
+        {
+          "Use": [
+            "Clflags"
+          ]
+        },
+        {
+          "Use": [
+            "Compenv"
+          ]
+        },
+        {
+          "Use": [
+            "Clflags"
+          ]
+        },
+        {
+          "Use": [
+            "Compenv"
+          ]
+        },
+        {
+          "Use": [
+            "Location"
+          ]
+        },
+        {
+          "Use": [
+            "Sys"
+          ]
+        }
+      ]
+    },
+    {
+      "Scope": [
+        {
+          "Use": [
+            "List"
+          ]
+        },
+        {
+          "Use": [
+            "Filename"
+          ]
+        },
+        {
+          "Use": [
+            "List"
+          ]
+        },
+        {
+          "Use": [
+            "Filename"
+          ]
+        }
+      ]
+    },
+    {
+      "Scope": [
+        {
+          "Scope": [
+            {
+              "Use": [
+                "Hashtbl"
+              ]
+            }
+          ]
+        },
+        {
+          "Scope": [
+            {
+              "Use": [
+                "List"
+              ]
+            },
+            {
+              "Scope": [
+                {
+                  "Scope": [
+                    {
+                      "Use": [
+                        "Unit_info"
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "Use": [
+                    "Hashtbl"
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "Use": [
+            "List"
+          ]
+        },
+        {
+          "Scope": [
+            {
+              "Use": [
+                "String",
+                "Set"
+              ]
+            },
+            {
+              "Scope": [
+                {
+                  "Scope": [
+                    {
+                      "Use": [
+                        "Hashtbl"
+                      ]
+                    },
+                    {
+                      "Use": [
+                        "Hashtbl"
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "Scope": [
+                    {
+                      "Use": [
+                        "Hashtbl"
+                      ]
+                    },
+                    {
+                      "Use": [
+                        "Hashtbl"
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "Use": [
+                "Hashtbl"
+              ]
+            }
+          ]
+        },
+        {
+          "Use": [
+            "List"
+          ]
+        },
+        {
+          "Scope": [
+            {
+              "Scope": [
+                {
+                  "Use": [
+                    "Hashtbl"
+                  ]
+                }
+              ]
+            },
+            {
+              "Use": [
+                "List"
+              ]
+            },
+            {
+              "Scope": [
+                {
+                  "Use": [
+                    "Hashtbl"
+                  ]
+                }
+              ]
+            },
+            {
+              "Use": [
+                "Printf"
+              ]
+            },
+            {
+              "Use": [
+                "Hashtbl"
+              ]
+            }
+          ]
+        },
+        {
+          "Use": [
+            "Location"
+          ]
+        },
+        {
+          "Use": [
+            "Location"
+          ]
+        },
+        {
+          "Scope": [
+            {
+              "Use": [
+                "Hashtbl"
+              ]
+            },
+            {
+              "Use": [
+                "List"
+              ]
+            },
+            {
+              "Scope": [
+                {
+                  "Use": [
+                    "String"
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "Use": [
+            "List"
+          ]
+        },
+        {
+          "Scope": [
+            {
+              "Use": [
+                "Format"
+              ]
+            },
+            {
+              "Use": [
+                "List"
+              ]
+            },
+            {
+              "Scope": [
+                {
+                  "Use": [
+                    "Format"
+                  ]
+                }
+              ]
+            },
+            {
+              "Use": [
+                "Format"
+              ]
+            },
+            {
+              "Use": [
+                "Printf"
+              ]
+            }
+          ]
+        },
+        {
+          "Use": [
+            "Error_occurred"
+          ]
+        },
+        {
+          "Use": [
+            "Printf"
+          ]
+        }
+      ]
+    },
+    {
+      "Scope": [
+        {
+          "Scope": [
+            {
+              "Open": {
+                "Use": [
+                  "Depend"
+                ]
+              }
+            },
+            {
+              "Use": [
+                "String",
+                "Map"
+              ]
+            },
+            {
+              "Scope": [
+                {
+                  "Scope": [
+                    {
+                      "Use": [
+                        "String",
+                        "Set"
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "Use": [
+                    "String",
+                    "Set"
+                  ]
+                },
+                {
+                  "Use": [
+                    "Format"
+                  ]
+                },
+                {
+                  "Use": [
+                    "String",
+                    "Set"
+                  ]
+                },
+                {
+                  "Use": [
+                    "Format"
+                  ]
+                },
+                {
+                  "Use": [
+                    "String",
+                    "Set"
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "Scope": [
+        {
+          "Use": [
+            "Parse"
+          ]
+        },
+        {
+          "Use": [
+            "Depend"
+          ]
+        },
+        {
+          "Use": [
+            "String",
+            "Map"
+          ]
+        },
+        {
+          "Use": [
+            "Pparse"
+          ]
+        }
+      ]
+    },
+    {
+      "Scope": [
+        {
+          "Use": [
+            "Parse"
+          ]
+        },
+        {
+          "Use": [
+            "Depend"
+          ]
+        },
+        {
+          "Use": [
+            "String",
+            "Map"
+          ]
+        },
+        {
+          "Use": [
+            "Pparse"
+          ]
+        }
+      ]
+    },
+    {
+      "Scope": [
+        {
+          "Scope": [
+            {
+              "Use": [
+                "Clflags"
+              ]
+            }
+          ]
+        },
+        {
+          "Use": [
+            "Clflags"
+          ]
+        },
+        {
+          "Scope": [
+            {
+              "Use": [
+                "String",
+                "Set"
+              ]
+            },
+            {
+              "Use": [
+                "String",
+                "Map"
+              ]
+            }
+          ]
+        },
+        {
+          "Use": [
+            "Clflags"
+          ]
+        },
+        {
+          "Scope": [
+            {
+              "Use": [
+                "Unit_info"
+              ]
+            }
+          ]
+        },
+        {
+          "Use": [
+            "String",
+            "Map"
+          ]
+        },
+        {
+          "Scope": [
+            {
+              "Use": [
+                "Depend"
+              ]
+            }
+          ]
+        },
+        {
+          "Use": [
+            "Format"
+          ]
+        },
+        {
+          "Scope": [
+            {
+              "Use": [
+                "String",
+                "Set"
+              ]
+            },
+            {
+              "Use": [
+                "Format"
+              ]
+            }
+          ]
+        },
+        {
+          "Use": [
+            "String",
+            "Map"
+          ]
+        },
+        {
+          "Use": [
+            "String",
+            "Map"
+          ]
+        },
+        {
+          "Scope": [
+            {
+              "Use": [
+                "Depend"
+              ]
+            },
+            {
+              "Use": [
+                "String",
+                "Set"
+              ]
+            }
+          ]
+        },
+        {
+          "Use": [
+            "String",
+            "Map"
+          ]
+        }
+      ]
+    },
+    {
+      "Use": [
+        "Misc"
+      ]
+    },
+    {
+      "Use": [
+        "Misc"
+      ]
+    },
+    {
+      "Use": [
+        "Misc"
+      ]
+    },
+    {
+      "Scope": [
+        {
+          "Use": [
+            "List"
+          ]
+        }
+      ]
+    },
+    {
+      "Scope": [
+        {
+          "Use": [
+            "Format"
+          ]
+        },
+        {
+          "Use": [
+            "Sys"
+          ]
+        }
+      ]
+    },
+    {
+      "Scope": [
+        {
+          "Use": [
+            "Format"
+          ]
+        },
+        {
+          "Use": [
+            "Sys"
+          ]
+        }
+      ]
+    },
+    {
+      "Scope": [
+        {
+          "Use": [
+            "Clflags"
+          ]
+        },
+        {
+          "Use": [
+            "Compenv"
+          ]
+        },
+        {
+          "Use": [
+            "Clflags"
+          ]
+        },
+        {
+          "Use": [
+            "Clflags"
+          ]
+        },
+        {
+          "Use": [
+            "Arg"
+          ]
+        },
+        {
+          "Use": [
+            "Arg"
+          ]
+        },
+        {
+          "Use": [
+            "Clflags"
+          ]
+        },
+        {
+          "Use": [
+            "Arg"
+          ]
+        },
+        {
+          "Use": [
+            "Arg"
+          ]
+        },
+        {
+          "Use": [
+            "Clflags"
+          ]
+        },
+        {
+          "Use": [
+            "Arg"
+          ]
+        },
+        {
+          "Use": [
+            "Arg"
+          ]
+        },
+        {
+          "Use": [
+            "Arg"
+          ]
+        },
+        {
+          "Use": [
+            "Arg"
+          ]
+        },
+        {
+          "Use": [
+            "Arg"
+          ]
+        },
+        {
+          "Use": [
+            "Arg"
+          ]
+        },
+        {
+          "Use": [
+            "Clflags"
+          ]
+        },
+        {
+          "Use": [
+            "Arg"
+          ]
+        },
+        {
+          "Use": [
+            "Arg"
+          ]
+        },
+        {
+          "Use": [
+            "Arg"
+          ]
+        },
+        {
+          "Use": [
+            "Arg"
+          ]
+        },
+        {
+          "Use": [
+            "Clflags"
+          ]
+        },
+        {
+          "Use": [
+            "Arg"
+          ]
+        },
+        {
+          "Use": [
+            "Arg"
+          ]
+        },
+        {
+          "Use": [
+            "Clflags"
+          ]
+        },
+        {
+          "Use": [
+            "Arg"
+          ]
+        },
+        {
+          "Use": [
+            "Arg"
+          ]
+        },
+        {
+          "Use": [
+            "Arg"
+          ]
+        },
+        {
+          "Use": [
+            "Arg"
+          ]
+        },
+        {
+          "Use": [
+            "Arg"
+          ]
+        },
+        {
+          "Use": [
+            "Arg"
+          ]
+        },
+        {
+          "Use": [
+            "Arg"
+          ]
+        },
+        {
+          "Use": [
+            "Arg"
+          ]
+        },
+        {
+          "Scope": [
+            {
+              "Use": [
+                "Clflags"
+              ]
+            }
+          ]
+        },
+        {
+          "Use": [
+            "Arg"
+          ]
+        },
+        {
+          "Use": [
+            "Arg"
+          ]
+        },
+        {
+          "Use": [
+            "Arg"
+          ]
+        },
+        {
+          "Use": [
+            "Arg"
+          ]
+        },
+        {
+          "Use": [
+            "Arg"
+          ]
+        },
+        {
+          "Use": [
+            "Arg"
+          ]
+        },
+        {
+          "Use": [
+            "Arg"
+          ]
+        },
+        {
+          "Use": [
+            "Arg"
+          ]
+        },
+        {
+          "Use": [
+            "Arg"
+          ]
+        },
+        {
+          "Use": [
+            "Arg"
+          ]
+        },
+        {
+          "Use": [
+            "Arg"
+          ]
+        },
+        {
+          "Use": [
+            "Arg"
+          ]
+        },
+        {
+          "Use": [
+            "Arg"
+          ]
+        },
+        {
+          "Use": [
+            "Arg"
+          ]
+        },
+        {
+          "Use": [
+            "Arg"
+          ]
+        },
+        {
+          "Use": [
+            "Arg"
+          ]
+        },
+        {
+          "Use": [
+            "Clflags"
+          ]
+        },
+        {
+          "Use": [
+            "Arg"
+          ]
+        },
+        {
+          "Use": [
+            "Arg"
+          ]
+        },
+        {
+          "Scope": [
+            {
+              "Use": [
+                "Clflags"
+              ]
+            }
+          ]
+        },
+        {
+          "Use": [
+            "Arg"
+          ]
+        },
+        {
+          "Use": [
+            "Arg"
+          ]
+        },
+        {
+          "Scope": [
+            {
+              "Use": [
+                "Clflags"
+              ]
+            }
+          ]
+        },
+        {
+          "Use": [
+            "Arg"
+          ]
+        },
+        {
+          "Use": [
+            "Arg"
+          ]
+        },
+        {
+          "Use": [
+            "Compenv"
+          ]
+        },
+        {
+          "Use": [
+            "Arg"
+          ]
+        },
+        {
+          "Use": [
+            "Arg"
+          ]
+        },
+        {
+          "Use": [
+            "Arg"
+          ]
+        },
+        {
+          "Use": [
+            "Arg"
+          ]
+        },
+        {
+          "Use": [
+            "Clflags"
+          ]
+        },
+        {
+          "Use": [
+            "Arg"
+          ]
+        },
+        {
+          "Use": [
+            "Arg"
+          ]
+        },
+        {
+          "Use": [
+            "Clflags"
+          ]
+        },
+        {
+          "Use": [
+            "Arg"
+          ]
+        },
+        {
+          "Use": [
+            "Arg"
+          ]
+        },
+        {
+          "Use": [
+            "Arg"
+          ]
+        },
+        {
+          "Use": [
+            "Arg"
+          ]
+        },
+        {
+          "Use": [
+            "Arg"
+          ]
+        },
+        {
+          "Use": [
+            "Arg"
+          ]
+        },
+        {
+          "Use": [
+            "Arg"
+          ]
+        },
+        {
+          "Use": [
+            "Arg"
+          ]
+        },
+        {
+          "Use": [
+            "Arg"
+          ]
+        },
+        {
+          "Use": [
+            "Arg"
+          ]
+        },
+        {
+          "Use": [
+            "Arg"
+          ]
+        },
+        {
+          "Use": [
+            "Arg"
+          ]
+        },
+        {
+          "Scope": [
+            {
+              "Use": [
+                "Filename"
+              ]
+            },
+            {
+              "Use": [
+                "Sys"
+              ]
+            }
+          ]
+        },
+        {
+          "Use": [
+            "Compenv"
+          ]
+        },
+        {
+          "Use": [
+            "List"
+          ]
+        },
+        {
+          "Use": [
+            "Compenv"
+          ]
+        },
+        {
+          "Use": [
+            "List"
+          ]
+        },
+        {
+          "Use": [
+            "List"
+          ]
+        },
+        {
+          "Use": [
+            "Error_occurred"
+          ]
+        },
+        {
+          "Scope": [
+            {
+              "Use": [
+                "Compenv"
+              ]
+            }
+          ]
+        },
+        {
+          "Scope": [
+            {
+              "Use": [
+                "Location"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "Scope": [
+        {
+          "Use": [
+            "Sys"
+          ]
+        }
+      ]
+    },
+    {
+      "Scope": [
+        {
+          "Use": [
+            "Sys"
+          ]
+        },
+        {
+          "Use": [
+            "Printf"
+          ]
+        },
+        {
+          "Scope": [
+            {
+              "Use": [
+                "Array"
+              ]
+            },
+            {
+              "Use": [
+                "Sys"
+              ]
+            },
+            {
+              "Use": [
+                "Array"
+              ]
+            },
+            {
+              "Use": [
+                "Sys"
+              ]
+            },
+            {
+              "Use": [
+                "Array"
+              ]
+            },
+            {
+              "Use": [
+                "Sys"
+              ]
+            }
+          ]
+        },
+        {
+          "Use": [
+            "Sys"
+          ]
+        }
+      ]
+    }
+  ]
+}

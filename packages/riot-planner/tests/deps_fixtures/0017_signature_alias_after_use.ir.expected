@@ -1,0 +1,23 @@
+{
+  "source": "0017_signature_alias_after_use.mli",
+  "source_hash": "5b26021d303421be",
+  "module_path": null,
+  "kind": "Interface",
+  "items": [
+    {
+      "Use": [
+        "M"
+      ]
+    },
+    {
+      "ModuleAlias": {
+        "name": "M",
+        "target": {
+          "Use": [
+            "Foo"
+          ]
+        }
+      }
+    }
+  ]
+}

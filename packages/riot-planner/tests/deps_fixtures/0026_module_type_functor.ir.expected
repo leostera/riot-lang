@@ -1,0 +1,38 @@
+{
+  "source": "0026_module_type_functor.ml",
+  "source_hash": "59872878ee276177",
+  "module_path": null,
+  "kind": "Implementation",
+  "items": [
+    {
+      "ModuleType": {
+        "name": "S",
+        "body": [
+          {
+            "BindModules": {
+              "modules": [
+                {
+                  "name": "X",
+                  "ascription": [
+                    {
+                      "Use": [
+                        "A"
+                      ]
+                    }
+                  ]
+                }
+              ],
+              "scope": [
+                {
+                  "Use": [
+                    "B"
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

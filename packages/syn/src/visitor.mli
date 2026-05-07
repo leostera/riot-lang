@@ -21,6 +21,8 @@ type 'ctx enter_let_declaration = 'ctx t -> Ast.LetDeclaration.t -> 'ctx t * act
 type 'ctx enter_let_binding = 'ctx t -> Ast.LetBinding.t -> 'ctx t * action
 type 'ctx enter_type_declaration = 'ctx t -> Ast.TypeDeclaration.t -> 'ctx t * action
 type 'ctx enter_module_declaration = 'ctx t -> Ast.ModuleDeclaration.t -> 'ctx t * action
+type 'ctx enter_module_functor_parameter =
+  'ctx t -> Ast.ModuleDeclaration.Member.functor_parameter -> 'ctx t * action
 type 'ctx enter_module_type_declaration = 'ctx t -> Ast.ModuleTypeDeclaration.t -> 'ctx t * action
 type 'ctx enter_open_declaration = 'ctx t -> Ast.OpenDeclaration.t -> 'ctx t * action
 type 'ctx enter_include_declaration = 'ctx t -> Ast.IncludeDeclaration.t -> 'ctx t * action
@@ -39,6 +41,7 @@ type 'ctx hooks = {
   enter_let_binding: 'ctx enter_let_binding option;
   enter_type_declaration: 'ctx enter_type_declaration option;
   enter_module_declaration: 'ctx enter_module_declaration option;
+  enter_module_functor_parameter: 'ctx enter_module_functor_parameter option;
   enter_module_type_declaration: 'ctx enter_module_type_declaration option;
   enter_open_declaration: 'ctx enter_open_declaration option;
   enter_include_declaration: 'ctx enter_include_declaration option;

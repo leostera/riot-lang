@@ -1,0 +1,55 @@
+{
+  "source": "0025_nested_signature_alias.mli",
+  "source_hash": "82224ca5bd0aa9e7",
+  "module_path": null,
+  "kind": "Interface",
+  "items": [
+    {
+      "Module": {
+        "name": "M",
+        "signature": [
+          {
+            "Scope": [
+              {
+                "ModuleAlias": {
+                  "name": "X",
+                  "target": {
+                    "Use": [
+                      "Foo"
+                    ]
+                  }
+                }
+              },
+              {
+                "Use": [
+                  "X"
+                ]
+              }
+            ]
+          }
+        ],
+        "body": [
+          {
+            "Scope": [
+              {
+                "ModuleAlias": {
+                  "name": "X",
+                  "target": {
+                    "Use": [
+                      "Foo"
+                    ]
+                  }
+                }
+              },
+              {
+                "Use": [
+                  "X"
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

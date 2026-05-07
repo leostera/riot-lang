@@ -1,0 +1,327 @@
+{
+  "source": "0031_liveview_counter.ml",
+  "source_hash": "806e63e8e8cab692",
+  "module_path": null,
+  "kind": "Implementation",
+  "items": [
+    {
+      "Open": {
+        "Use": [
+          "Std"
+        ]
+      }
+    },
+    {
+      "Open": {
+        "Use": [
+          "Suri"
+        ]
+      }
+    },
+    {
+      "Module": {
+        "name": "Counter",
+        "signature": [],
+        "body": [
+          {
+            "Scope": [
+              {
+                "Use": [
+                  "LiveView"
+                ]
+              }
+            ]
+          },
+          {
+            "Open": {
+              "Use": [
+                "LiveView"
+              ]
+            }
+          },
+          {
+            "Open": {
+              "Use": [
+                "Component"
+              ]
+            }
+          },
+          {
+            "Scope": [
+              {
+                "Scope": [
+                  {
+                    "Use": [
+                      "Data",
+                      "Json"
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "Scope": [
+              {
+                "Scope": [
+                  {
+                    "Use": [
+                      "Log"
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "Scope": [
+              {
+                "Scope": [
+                  {
+                    "Use": [
+                      "Log"
+                    ]
+                  },
+                  {
+                    "Use": [
+                      "Int"
+                    ]
+                  },
+                  {
+                    "Use": [
+                      "Int"
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "Scope": [
+              {
+                "Scope": [
+                  {
+                    "Use": [
+                      "Int"
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "Scope": [
+        {
+          "Scope": [
+            {
+              "Scope": [
+                {
+                  "Open": {
+                    "Use": [
+                      "Component"
+                    ]
+                  }
+                },
+                {
+                  "Scope": [
+                    {
+                      "Use": [
+                        "LiveView"
+                      ]
+                    },
+                    {
+                      "Use": [
+                        "LiveView"
+                      ]
+                    },
+                    {
+                      "Use": [
+                        "Counter"
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "Use": [
+                    "Conn"
+                  ]
+                },
+                {
+                  "Use": [
+                    "Net",
+                    "Http",
+                    "Status"
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "Scope": [
+        {
+          "Scope": [
+            {
+              "Open": {
+                "Use": [
+                  "Middleware",
+                  "Router"
+                ]
+              }
+            },
+            {
+              "Use": [
+                "LiveView"
+              ]
+            },
+            {
+              "Use": [
+                "Counter"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "Scope": [
+        {
+          "Use": [
+            "Middleware"
+          ]
+        }
+      ]
+    },
+    {
+      "Scope": [
+        {
+          "Use": [
+            "Std",
+            "Config"
+          ]
+        },
+        {
+          "Use": [
+            "Path"
+          ]
+        },
+        {
+          "Scope": [
+            {
+              "Use": [
+                "Std",
+                "Log"
+              ]
+            }
+          ]
+        },
+        {
+          "Scope": [
+            {
+              "Use": [
+                "Suri"
+              ]
+            }
+          ]
+        },
+        {
+          "Use": [
+            "Suri"
+          ]
+        },
+        {
+          "Scope": [
+            {
+              "Use": [
+                "Log"
+              ]
+            },
+            {
+              "Use": [
+                "Log"
+              ]
+            },
+            {
+              "Use": [
+                "Log"
+              ]
+            },
+            {
+              "Use": [
+                "Log"
+              ]
+            },
+            {
+              "Use": [
+                "Log"
+              ]
+            },
+            {
+              "Use": [
+                "Log"
+              ]
+            },
+            {
+              "Scope": [
+                {
+                  "Use": [
+                    "Supervisor",
+                    "Dynamic"
+                  ]
+                }
+              ]
+            },
+            {
+              "Use": [
+                "Log"
+              ]
+            },
+            {
+              "Use": [
+                "Int"
+              ]
+            },
+            {
+              "Scope": [
+                {
+                  "Use": [
+                    "Time",
+                    "Duration"
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "Scope": [
+            {
+              "Use": [
+                "Log"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "Scope": [
+        {
+          "Use": [
+            "Runtime"
+          ]
+        },
+        {
+          "Use": [
+            "Env"
+          ]
+        }
+      ]
+    }
+  ]
+}

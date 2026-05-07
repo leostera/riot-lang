@@ -14,3 +14,5 @@ riot-model = { path = "../riot-model", version = "*" }
 riot-store = { path = "../riot-store", version = "*" }
 riot-toolchain = { path = "../riot-toolchain", version = "*" }
 syn = { path = "../syn", version = "*" }
+serde = { path = "../serde", version = "*" }
+serde-json = { path = "../serde-json", version = "*" }

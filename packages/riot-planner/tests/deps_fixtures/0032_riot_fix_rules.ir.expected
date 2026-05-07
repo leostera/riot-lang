@@ -1,0 +1,104 @@
+{
+  "source": "0032_riot_fix_rules.ml",
+  "source_hash": "e4aded8b4e466025",
+  "module_path": null,
+  "kind": "Implementation",
+  "items": [
+    {
+      "Scope": [
+        {
+          "Scope": [
+            {
+              "Use": [
+                "No_stdlib"
+              ]
+            },
+            {
+              "Use": [
+                "Prefer_bang_equal_inequality"
+              ]
+            },
+            {
+              "Use": [
+                "No_double_list_rev"
+              ]
+            },
+            {
+              "Use": [
+                "Prefer_iter_over_ignored_map"
+              ]
+            },
+            {
+              "Use": [
+                "Prefer_list_is_empty"
+              ]
+            },
+            {
+              "Use": [
+                "Prefer_option_map_over_manual_match"
+              ]
+            },
+            {
+              "Use": [
+                "Prefer_result_map_over_manual_match"
+              ]
+            },
+            {
+              "Use": [
+                "Upgrade_test_ctx_callbacks"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "Scope": [
+        {
+          "Scope": [
+            {
+              "Use": [
+                "No_stdlib"
+              ]
+            },
+            {
+              "Use": [
+                "Prefer_bang_equal_inequality"
+              ]
+            },
+            {
+              "Use": [
+                "No_double_list_rev"
+              ]
+            },
+            {
+              "Use": [
+                "Prefer_iter_over_ignored_map"
+              ]
+            },
+            {
+              "Use": [
+                "Prefer_list_is_empty"
+              ]
+            },
+            {
+              "Use": [
+                "Prefer_option_map_over_manual_match"
+              ]
+            },
+            {
+              "Use": [
+                "Prefer_result_map_over_manual_match"
+              ]
+            },
+            {
+              "Use": [
+                "Upgrade_test_ctx_callbacks"
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

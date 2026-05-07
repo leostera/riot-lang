@@ -1,0 +1,22 @@
+{
+  "source": "0011_module_type_of.ml",
+  "source_hash": "48a9f2c4c23fc7c2",
+  "module_path": null,
+  "kind": "Implementation",
+  "items": [
+    {
+      "ModuleType": {
+        "name": "S",
+        "body": [
+          {
+            "Typeof": {
+              "Use": [
+                "Foo"
+              ]
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

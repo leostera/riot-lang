@@ -1,0 +1,18 @@
+{
+  "source": "0004_include_simple.ml",
+  "source_hash": "5726ba683647ffd3",
+  "module_path": null,
+  "kind": "Implementation",
+  "items": [
+    {
+      "Include": {
+        "mode": "Structure",
+        "expr": {
+          "Use": [
+            "Foo"
+          ]
+        }
+      }
+    }
+  ]
+}

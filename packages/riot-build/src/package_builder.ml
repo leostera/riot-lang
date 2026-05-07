@@ -61,6 +61,7 @@ type execution_plan = {
   action_graph: Action_graph.t;
   hash: Std.Crypto.hash;
   depset: Dependency.t list;
+  sandbox_files: Sandbox_file.t list;
   started_at: Instant.t;
   emit_visible_progress: bool;
 }
@@ -283,6 +284,7 @@ let plan_detailed_from_result = fun
       depset;
       module_graph;
       action_graph;
+      sandbox_files;
       _;
     }
   ) ->
@@ -293,6 +295,7 @@ let plan_detailed_from_result = fun
         action_graph;
         hash = package_hash;
         depset;
+        sandbox_files;
         started_at = start;
         emit_visible_progress;
       }
@@ -331,10 +334,6 @@ type prepared_execution = {
   sandbox: Sandbox.t;
   toolchain: Riot_toolchain.t;
 }
-
-let execution_inputs = fun (execution_plan: execution_plan) ->
-  let package = execution_plan.package in
-  List.concat [ package.sources.src; package.sources.native; package.sources.tests ]
 
 let execution_outputs = fun (execution_plan: execution_plan) ->
   Action_graph.nodes execution_plan.action_graph
@@ -410,7 +409,6 @@ let prepare_execution = fun ~workspace ~toolchain ~store ~execution_plan ~build_
           started_at = Instant.now ();
         }
       );
-  let inputs = execution_inputs execution_plan in
   let prepare_started_at = Instant.now () in
   try
     let sandbox_create_started_at = Instant.now () in
@@ -439,29 +437,10 @@ let prepare_execution = fun ~workspace ~toolchain ~store ~execution_plan ~build_
           }
         )
     );
-    let input_copy_started_at = Instant.now () in
-    let input_count = Sandbox.copy_inputs ~sandbox ~package ~inputs in
-    if execution_plan.emit_visible_progress then (
-      let copied_at = Instant.now () in
-      Telemetry.emit
-        (
-          SandboxInputsCopied {
-            session_id;
-            package;
-            target = Package package_name;
-            build_target = target_triplet;
-            input_count;
-            copied_at;
-            duration = Instant.duration_since ~earlier:input_copy_started_at copied_at;
-          }
-        )
-    );
-    let dependency_copy_started_at = Instant.now () in
-    match
-      Sandbox.copy_dependency_object_files ~store ~sandbox ~package ~depset:execution_plan.depset
-    with
+    let materialize_started_at = Instant.now () in
+    match Sandbox.materialize_files ~sandbox ~files:execution_plan.sandbox_files with
     | Error err ->
-        let error_msg = Sandbox.dependency_copy_error_to_string err in
+        let error_msg = Sandbox.prepare_error_to_string (Sandbox.SandboxMaterializationFailed err) in
         let error = ExecutionFailed { message = error_msg } in
         Sandbox.cleanup sandbox;
         Error (failed_execution_result
@@ -470,9 +449,23 @@ let prepare_execution = fun ~workspace ~toolchain ~store ~execution_plan ~build_
           ~execution_plan
           ~error
           ~graph_error:error_msg)
-    | Ok dependency_stats ->
+    | Ok materialize_stats ->
+        let materialized_at = Instant.now () in
+        let input_count = materialize_stats.copy_count in
+        if execution_plan.emit_visible_progress then
+          Telemetry.emit
+            (
+              SandboxInputsCopied {
+                session_id;
+                package;
+                target = Package package_name;
+                build_target = target_triplet;
+                input_count;
+                copied_at = materialized_at;
+                duration = Instant.duration_since ~earlier:materialize_started_at materialized_at;
+              }
+            );
         if execution_plan.emit_visible_progress then (
-          let copied_at = Instant.now () in
           Telemetry.emit
             (
               SandboxDependenciesCopied {
@@ -480,10 +473,10 @@ let prepare_execution = fun ~workspace ~toolchain ~store ~execution_plan ~build_
                 package;
                 target = Package package_name;
                 build_target = target_triplet;
-                dependency_count = dependency_stats.dependency_count;
-                object_count = dependency_stats.object_count;
-                copied_at;
-                duration = Instant.duration_since ~earlier:dependency_copy_started_at copied_at;
+                dependency_count = List.length execution_plan.depset;
+                object_count = materialize_stats.link_count;
+                copied_at = materialized_at;
+                duration = Instant.duration_since ~earlier:materialize_started_at materialized_at;
               }
             )
         );
@@ -497,8 +490,8 @@ let prepare_execution = fun ~workspace ~toolchain ~store ~execution_plan ~build_
                 target = Package package_name;
                 build_target = target_triplet;
                 input_count;
-                dependency_count = dependency_stats.dependency_count;
-                dependency_object_count = dependency_stats.object_count;
+                dependency_count = List.length execution_plan.depset;
+                dependency_object_count = materialize_stats.link_count;
                 prepared_at;
                 duration = Instant.duration_since ~earlier:prepare_started_at prepared_at;
               }

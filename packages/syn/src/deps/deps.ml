@@ -1125,13 +1125,21 @@ module Ast_deps = struct
       )
 
   and collect_open_decl env deps node =
-    let count = A.Node.child_count node in
-    match direct_path_between node 1 count with
-    | Some (head :: _ as segments) when is_module_head head ->
-        Ok (open_alias ~fallback:true env deps segments)
-    | Some _ -> Ok (deps, env)
+    match A.cast_result_to_option (A.OpenDeclaration.cast node) with
+    | Some decl -> (
+        match A.OpenDeclaration.ident decl with
+        | Some ident -> (
+            match ast_ident_segments ident with
+            | head :: _ as segments when is_module_head head ->
+                Ok (open_alias ~fallback:true env deps segments)
+            | _ -> Ok (deps, env)
+          )
+        | None ->
+            let* deps = collect_child_nodes collect_node env deps node in
+            Ok (deps, env)
+      )
     | None ->
-        let deps = collect_direct_module_refs_between env deps node 1 count in
+        let* deps = collect_child_nodes collect_node env deps node in
         Ok (deps, env)
 
   and collect_include_structure env deps node =

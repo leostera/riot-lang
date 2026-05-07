@@ -2,6 +2,7 @@
 open Std
 open Std.Collections
 open Std.Iter
+open Std.Result.Syntax
 open Riot_model
 
 module G = Std.Graph.SimpleGraph
@@ -23,6 +24,7 @@ type plan_result =
       action_graph: Action_graph.t;
       hash: Std.Crypto.hash;
       depset: Dependency.t list;
+      sandbox_files: Sandbox_file.t list;
       breakdown: planning_breakdown;
     }
 
@@ -632,7 +634,7 @@ let package_hash_key = fun (unit_key: Build_unit.key) ->
    If input_hash hasn't changed, we know the full hash is the same!
 *)
 let compute_input_hash_with_cache = fun
-  ?(planner_version = "planner-artifacts:v27")
+  ?(planner_version = "planner-artifacts:v31")
   ?package_hash_key
   ~input_hash_cache
   ~package
@@ -739,6 +741,69 @@ let artifact_path_exists = fun store input_hash path ->
 let missing_native_object_outputs_in_store = fun store input_hash outputs ->
   outputs
   |> List.filter ~fn:(fun output -> not (artifact_path_exists store input_hash output))
+
+let package_source_sandbox_files = fun (package: Package.t) ->
+  List.concat [ package.sources.src; package.sources.native; package.sources.tests ]
+  |> List.map
+    ~fn:(fun source ->
+      Sandbox_file.copy
+        ~source:Path.(package.path / source)
+        ~destination:source)
+
+let dependency_object_sandbox_files = fun depset ->
+  let dedupe_outputs = fun outputs ->
+    let seen = HashSet.create () in
+    outputs
+    |> List.filter
+      ~fn:(fun output ->
+        let key = Path.to_string output in
+        if HashSet.contains seen ~value:key then
+          false
+        else
+          (
+            let _ = HashSet.insert seen ~value:key in
+            true
+          ))
+  in
+  let object_files_for_dependency = fun (dep: Dependency.t) ->
+    native_object_outputs dep.package
+    |> dedupe_outputs
+    |> List.map
+      ~fn:(fun output ->
+        Sandbox_file.link
+          ~source:Path.(dep.artifact_dir / output)
+          ~destination:(Path.v (Path.basename output)))
+  in
+  Dependency.transitive_closure depset
+  |> List.flat_map ~fn:object_files_for_dependency
+
+let sandbox_files_for_plan = fun ~store ~package ~depset ->
+  let _ = store in
+  let dependency_files = dependency_object_sandbox_files depset in
+  Ok (List.concat [ package_source_sandbox_files package; dependency_files ])
+
+let planned_result = fun
+  ~store
+  ~unit_key
+  ~package
+  ~module_graph
+  ~action_graph
+  ~hash
+  ~depset
+  ~breakdown ->
+  let* sandbox_files = sandbox_files_for_plan ~store ~package ~depset in
+  Ok (
+    Planned {
+      unit_key;
+      package;
+      module_graph;
+      action_graph;
+      hash;
+      depset;
+      sandbox_files;
+      breakdown;
+    }
+  )
 
 let cached_artifact_is_complete = fun store package input_hash artifact ->
   let expected_outputs = native_object_outputs package in
@@ -873,27 +938,25 @@ let plan_package_after_dependencies = fun
             | Ok (module_graph, action_graph) ->
                 Log.info
                   ("Package " ^ Package_name.to_string package.name ^ ": plan bundle cache hit");
-                Ok (
-                  Planned {
-                    unit_key;
-                    package;
-                    module_graph;
-                    action_graph;
-                    hash = input_hash;
-                    depset;
-                    breakdown =
-                      {
-                        empty_breakdown with
-                        dependency_count = List.length depset;
-                        dependency_check_duration;
-                        input_hash_duration;
-                        artifact_lookup_duration;
-                        plan_bundle_lookup_duration;
-                        plan_bundle_decode_duration;
-                        plan_bundle_cache_hit = true;
-                      };
-                  }
-                )
+                planned_result
+                  ~store
+                  ~unit_key
+                  ~package
+                  ~module_graph
+                  ~action_graph
+                  ~hash:input_hash
+                  ~depset
+                  ~breakdown:
+                    {
+                      empty_breakdown with
+                      dependency_count = List.length depset;
+                      dependency_check_duration;
+                      input_hash_duration;
+                      artifact_lookup_duration;
+                      plan_bundle_lookup_duration;
+                      plan_bundle_decode_duration;
+                      plan_bundle_cache_hit = true;
+                    }
             | Error _ ->
                 Log.warn
                   ("Package "
@@ -998,27 +1061,25 @@ let plan_package_after_dependencies = fun
                         ~earlier:module_plan_started_at
                         (Time.Instant.now ())
                     in
-                    Ok (
-                      Planned {
-                        unit_key;
-                        package;
-                        module_graph;
-                        action_graph;
-                        hash = input_hash;
-                        depset;
-                        breakdown =
-                          {
-                            empty_breakdown with
-                            dependency_count = List.length depset;
-                            dependency_check_duration;
-                            input_hash_duration;
-                            artifact_lookup_duration;
-                            plan_bundle_lookup_duration;
-                            plan_bundle_decode_duration;
-                            module_plan_duration;
-                          };
-                      }
-                    )
+                    planned_result
+                      ~store
+                      ~unit_key
+                      ~package
+                      ~module_graph
+                      ~action_graph
+                      ~hash:input_hash
+                      ~depset
+                      ~breakdown:
+                        {
+                          empty_breakdown with
+                          dependency_count = List.length depset;
+                          dependency_check_duration;
+                          input_hash_duration;
+                          artifact_lookup_duration;
+                          plan_bundle_lookup_duration;
+                          plan_bundle_decode_duration;
+                          module_plan_duration;
+                        }
           )
       | None ->
           let plan_bundle_lookup_duration =
@@ -1126,26 +1187,24 @@ let plan_package_after_dependencies = fun
               let module_plan_duration =
                 Time.Instant.duration_since ~earlier:module_plan_started_at (Time.Instant.now ())
               in
-              Ok (
-                Planned {
-                  unit_key;
-                  package;
-                  module_graph;
-                  action_graph;
-                  hash = input_hash;
-                  depset;
-                  breakdown =
-                    {
-                      empty_breakdown with
-                      dependency_count = List.length depset;
-                      dependency_check_duration;
-                      input_hash_duration;
-                      artifact_lookup_duration;
-                      plan_bundle_lookup_duration;
-                      module_plan_duration;
-                    };
-                }
-              )
+              planned_result
+                ~store
+                ~unit_key
+                ~package
+                ~module_graph
+                ~action_graph
+                ~hash:input_hash
+                ~depset
+                ~breakdown:
+                  {
+                    empty_breakdown with
+                    dependency_count = List.length depset;
+                    dependency_check_duration;
+                    input_hash_duration;
+                    artifact_lookup_duration;
+                    plan_bundle_lookup_duration;
+                    module_plan_duration;
+                  }
     )
 
 let plan_build_unit_with_cache = fun

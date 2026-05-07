@@ -515,7 +515,8 @@ let is_type_expr_kind = fun __tmp1 ->
   | Syntax_kind.TUPLE_TYPE
   | Syntax_kind.APPLY_TYPE
   | Syntax_kind.PAREN_TYPE
-  | Syntax_kind.OPAQUE_TYPE -> true
+  | Syntax_kind.OPAQUE_TYPE
+  | Syntax_kind.VARIANT_TYPE -> true
   | _ -> false
 
 let is_record_type_kind = fun __tmp1 ->
@@ -661,6 +662,7 @@ let type_expr_expected_kinds =
     APPLY_TYPE;
     PAREN_TYPE;
     OPAQUE_TYPE;
+    VARIANT_TYPE;
   ]
 
 let module_expr_expected_kinds =
@@ -2215,6 +2217,15 @@ module VariantType = struct
       ~fn
 
   let constructor_count = fun variant_type -> count_fold fold_constructor variant_type
+
+  let fold_inherited_type = fun variant_type ~init ~fn ->
+    fold_child_node_matching
+      variant_type
+      ~matches:is_type_expr_kind
+      ~init
+      ~fn:(fun inherited acc -> fn (normalize_type_expr_node inherited) acc)
+
+  let inherited_type_count = fun variant_type -> count_fold fold_inherited_type variant_type
 
   let for_each_constructor = fun variant_type ~fn ->
     fold_constructor
@@ -4933,14 +4944,59 @@ end = struct
 
   let pattern = first_pattern_child
 
-  let guard_and_body = fun (match_case: match_case) ->
-    let (guard, body) =
-      if has_child_token_kind match_case Syntax_kind.WHEN_KW then
-        (nth_expr_child match_case 0, nth_expr_child match_case 1)
+  let child_token_index = fun match_case kind ->
+    let child_count = Node.child_count match_case in
+    let rec loop index =
+      if Int.(index >= child_count) then
+        None
       else
-        (None, nth_expr_child match_case 0)
+        match child_token_kind_at match_case index with
+        | Some actual when Syntax_kind.(actual = kind) -> Some index
+        | _ -> loop (index + 1)
     in
-    (guard, body)
+    loop 0
+
+  let first_expr_child_between = fun match_case ~start_index ~stop_index ->
+    let rec loop index =
+      if Int.(index >= stop_index) then
+        None
+      else
+        match child_node_at match_case index with
+        | Some child when node_matches child is_expr_kind ->
+            Some (normalize_expr_node child)
+        | _ -> loop (index + 1)
+    in
+    loop start_index
+
+  let guard_and_body = fun (match_case: match_case) ->
+    let child_count = Node.child_count match_case in
+    match child_token_index match_case Syntax_kind.ARROW with
+    | Some arrow_index ->
+        let guard =
+          match child_token_index match_case Syntax_kind.WHEN_KW with
+          | Some when_index when Int.(when_index < arrow_index) ->
+              first_expr_child_between
+                match_case
+                ~start_index:(when_index + 1)
+                ~stop_index:arrow_index
+          | Some _
+          | None -> None
+        in
+        let body =
+          first_expr_child_between
+            match_case
+            ~start_index:(arrow_index + 1)
+            ~stop_index:child_count
+        in
+        (guard, body)
+    | None ->
+        let (guard, body) =
+          if has_child_token_kind match_case Syntax_kind.WHEN_KW then
+            (nth_expr_child match_case 0, nth_expr_child match_case 1)
+          else
+            (None, nth_expr_child match_case 0)
+        in
+        (guard, body)
 
   let guard = fun match_case ->
     let (guard, _) = guard_and_body match_case in
@@ -5401,6 +5457,10 @@ module TypeDeclaration = struct
 
   module Member = struct
     type t = member
+    type functor_parameter = {
+      name: Ident.t option;
+      annotation: Ident.t option;
+    }
 
     let declaration = fun member -> member.declaration
 
@@ -6033,6 +6093,10 @@ module ModuleDeclaration = struct
 
   module Member = struct
     type t = member
+    type functor_parameter = {
+      name: Ident.t option;
+      annotation: Ident.t option;
+    }
 
     let declaration = fun member -> member.declaration
 
@@ -6184,6 +6248,63 @@ module ModuleDeclaration = struct
         ~matches:(fun kind -> is_module_type_kind kind || Syntax_kind.(kind = MODULE_TYPE_EXPR)) with
       | Some node -> first_specific_module_type node
       | None -> None
+
+    let fold_functor_parameter = fun member ~init ~fn ->
+      let count = child_count member in
+      let rec find_close index =
+        if index >= count then
+          count
+        else if child_token_kind_is member index Syntax_kind.RPAREN then
+          index
+        else
+          find_close (index + 1)
+      in
+      let rec find_colon index stop =
+        if index >= stop then
+          None
+        else if child_token_kind_is member index Syntax_kind.COLON then
+          Some index
+        else
+          find_colon (index + 1) stop
+      in
+      let parameter_at start =
+        let stop = find_close (start + 1) in
+        match find_colon (start + 1) stop with
+        | None -> {
+            name =
+              Ident.from_child_range_option
+                member.node
+                ~start_index:(start + 1)
+                ~stop_index:stop;
+            annotation = None;
+          }
+        | Some colon_index -> {
+            name =
+              Ident.from_child_range_option
+                member.node
+                ~start_index:(start + 1)
+                ~stop_index:colon_index;
+            annotation =
+              Ident.from_child_range_option
+                member.node
+                ~start_index:(colon_index + 1)
+                ~stop_index:stop;
+          }
+      in
+      let rec loop index acc =
+        if index >= count then
+          acc
+        else if child_token_kind_is member index Syntax_kind.LPAREN then
+          let parameter = parameter_at index in
+          match fn parameter acc with
+          | Return value -> value
+          | Continue acc -> loop (find_close (index + 1) + 1) acc
+        else
+          loop (index + 1) acc
+      in
+      loop 0 init
+
+    let functor_parameter_count = fun member -> count_fold fold_functor_parameter member
   end
 
   let for_each_member = fun decl ~fn ->

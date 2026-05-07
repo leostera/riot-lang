@@ -1,0 +1,36 @@
+{
+  "source": "0015_recursive_modules_with_outer_dep.ml",
+  "source_hash": "1632a22e0155d8c5",
+  "module_path": null,
+  "kind": "Implementation",
+  "items": [
+    {
+      "Module": {
+        "name": "A",
+        "signature": [],
+        "body": []
+      }
+    },
+    {
+      "Module": {
+        "name": "B",
+        "signature": [],
+        "body": []
+      }
+    },
+    {
+      "Scope": [
+        {
+          "Use": [
+            "Foo"
+          ]
+        },
+        {
+          "Use": [
+            "A"
+          ]
+        }
+      ]
+    }
+  ]
+}

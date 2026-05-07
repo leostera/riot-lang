@@ -8,7 +8,7 @@ let test_toolchain =
   Riot_toolchain.init ~config:Riot_model.Toolchain_config.default
   |> Result.expect ~msg:"Failed to initialize toolchain"
 
-let planner_artifacts_version = "planner-artifacts:v26"
+let planner_artifacts_version = "planner-artifacts:v31"
 
 let legacy_planner_artifacts_version = "planner-artifacts:v19"
 
@@ -340,6 +340,148 @@ let test_package_input_hash_tracks_dependency_output_hash = fun _ctx ->
         Error "package input hash should change when dependency output hash changes"
       else
         Ok ()) with
+  | Ok x -> x
+  | Error _ -> Error "tempdir creation failed"
+
+let test_planned_sandbox_files_link_dependency_native_objects = fun _ctx ->
+  match Fs.with_tempdir
+    ~prefix:"planner_sandbox_files"
+    (fun tmpdir ->
+      let dep_dir = Path.(tmpdir / Path.v "dep") in
+      let package_dir = Path.(tmpdir / Path.v "app") in
+      let _ =
+        Fs.create_dir_all Path.(dep_dir / Path.v "src")
+        |> Result.expect ~msg:"create dep src dir failed"
+      in
+      let _ =
+        Fs.create_dir_all Path.(package_dir / Path.v "src")
+        |> Result.expect ~msg:"create app src dir failed"
+      in
+      let _ =
+        Fs.write "void dep_stubs(void) {}\n" Path.(dep_dir / Path.v "src/dep_stubs.c")
+        |> Result.expect ~msg:"write dependency native source failed"
+      in
+      let _ =
+        Fs.write "let value = 1\n" Path.(package_dir / Path.v "src/app.ml")
+        |> Result.expect ~msg:"write app source failed"
+      in
+      let dep =
+        Riot_model.Package.make
+          ~name:(
+            Package_name.from_string "dep"
+            |> Result.expect ~msg:"expected valid package name: dep"
+          )
+          ~path:dep_dir
+          ~relative_path:(Path.v "dep")
+          ~sources:{
+            src = [];
+            native = [ Path.v "src/dep_stubs.c" ];
+            tests = [];
+            examples = [];
+            bench = [];
+          }
+          ()
+      in
+      let package =
+        Riot_model.Package.make
+          ~name:(
+            Package_name.from_string "app"
+            |> Result.expect ~msg:"expected valid package name: app"
+          )
+          ~path:package_dir
+          ~relative_path:(Path.v "app")
+          ~library:{ path = Path.v "src/app.ml" }
+          ~dependencies:[ workspace_dependency "dep" ]
+          ~sources:{
+            src = [ Path.v "src/app.ml" ];
+            native = [];
+            tests = [];
+            examples = [];
+            bench = [];
+          }
+          ()
+      in
+      let workspace = make_test_workspace tmpdir [ dep; package ] in
+      let store = Riot_store.Store.create ~workspace in
+      let session_id = Riot_model.Session_id.make () in
+      let profile = Riot_model.Profile.debug in
+      let build_ctx = Riot_model.Build_ctx.make ~session_id ~profile () in
+      let dep_hash = Crypto.hash_string "dep-artifact" in
+      let dep_artifact_dir = Riot_store.Store.hash_dir_of store dep_hash in
+      let artifact_sandbox = Path.(tmpdir / Path.v "dep-artifact-sandbox") in
+      let dep_object = Path.(artifact_sandbox / Path.v "dep_stubs.o") in
+      let manifest_only_object = Path.(artifact_sandbox / Path.v "transitive_extra.o") in
+      let _ =
+        Fs.create_dir_all artifact_sandbox
+        |> Result.expect ~msg:"create dependency artifact sandbox failed"
+      in
+      let _ =
+        Fs.write "dep object\n" dep_object
+        |> Result.expect ~msg:"write dependency object failed"
+      in
+      let _ =
+        Fs.write "manifest only object\n" manifest_only_object
+        |> Result.expect ~msg:"write manifest-only object failed"
+      in
+      let _ =
+        Riot_store.Store.save
+          store
+          ~package:"dep"
+          ~input_hash:dep_hash
+          ~sandbox_dir:artifact_sandbox
+          ~outs:[ dep_object; manifest_only_object ]
+        |> Result.expect ~msg:"save dependency artifact failed"
+      in
+      let dependency =
+        Riot_planner.Dependency.{
+          package = dep;
+          artifact_dir = dep_artifact_dir;
+          depset = [];
+          input_hash = dep_hash;
+          output_hash = dep_hash;
+        }
+      in
+      let unit = library_unit package in
+      match plan_build_unit ~workspace ~store ~unit ~depset:[ dependency ] ~build_ctx with
+      | Error err -> Error err
+      | Ok (Riot_planner.Package_planner.Cached _) -> Error "expected package to be planned"
+      | Ok (Riot_planner.Package_planner.Planned { sandbox_files; _ }) ->
+          let copied_app_source =
+            List.any
+              sandbox_files
+              ~fn:(fun (file: Riot_planner.Sandbox_file.t) ->
+                match file.mode with
+                | Copy ->
+                    Path.equal file.source Path.(package_dir / Path.v "src/app.ml")
+                    && Path.equal file.destination (Path.v "src/app.ml")
+                | Link
+                | Reference -> false)
+          in
+          let linked_dep_object =
+            List.any
+              sandbox_files
+              ~fn:(fun (file: Riot_planner.Sandbox_file.t) ->
+                match file.mode with
+                | Link ->
+                    Path.equal file.source Path.(dep_artifact_dir / Path.v "dep_stubs.o")
+                    && Path.equal file.destination (Path.v "dep_stubs.o")
+                | Copy
+                | Reference -> false)
+          in
+          let linked_manifest_only_object =
+            List.any
+              sandbox_files
+              ~fn:(fun (file: Riot_planner.Sandbox_file.t) ->
+                Path.equal file.destination (Path.v "transitive_extra.o"))
+          in
+          if not copied_app_source then
+            Error "expected package source to be marked Copy"
+          else if not linked_dep_object then
+            Error "expected dependency native object to be marked Link"
+          else if linked_manifest_only_object then
+            Error "dependency artifact manifest objects should not be linked unless declared by native sources"
+          else
+            Ok ()) with
   | Ok x -> x
   | Error _ -> Error "tempdir creation failed"
 
@@ -3368,6 +3510,100 @@ let test_kernel_unix_addr_interface_depends_on_sibling_modules = fun _ctx ->
   | Ok result -> result
   | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
 
+let test_suri_socket_pool_implementation_depends_on_acceptor = fun _ctx ->
+  let check tempdir =
+    match load_repo_workspace () with
+    | Error _ as err -> err
+    | Ok repo_workspace ->
+        let workspace =
+          clone_workspace_with_target repo_workspace ~target_dir:Path.(tempdir / Path.v "target")
+        in
+        let store = Riot_store.Store.create ~workspace in
+        let session_id = Riot_model.Session_id.make () in
+        let profile = Riot_model.Profile.debug in
+        let build_ctx = Riot_model.Build_ctx.make ~session_id ~profile () in
+        match find_package_by_name workspace "suri" with
+        | None -> Error "suri package not found in workspace"
+        | Some package ->
+            let unit_graph = runtime_unit_graph workspace in
+            let unit_key = Riot_planner.Build_unit.key (library_unit package) in
+            match plan_build_unit_from_graph ~workspace ~store ~unit_graph ~unit_key ~build_ctx with
+            | Error err -> Error ("suri runtime plan failed: " ^ err)
+            | Ok (Riot_planner.Package_planner.Planned { module_graph; action_graph; _ }) -> (
+                match find_action_node_by_source action_graph (Path.v "src/socket_pool/socket_pool.ml") with
+                | None -> Error "expected compile action for src/socket_pool/socket_pool.ml"
+                | Some socket_pool_node ->
+                    let dep_outputs = dependency_output_names_flat action_graph socket_pool_node in
+                    let module_deps =
+                      match G.topo_sort module_graph with
+                      | Error _ -> [ "module graph cycle" ]
+                      | Ok nodes -> (
+                          match List.find
+                            nodes
+                            ~fn:(fun (node: Riot_planner.Module_node.t G.node) ->
+                              match (G.value node).kind with
+                              | Riot_planner.Module_node.ML mod_ ->
+                                  String.equal
+                                    (Riot_model.Module.namespaced_name mod_)
+                                    "Suri__Socket_pool"
+                              | _ -> false) with
+                          | None -> [ "missing Suri__Socket_pool module node" ]
+                          | Some node -> module_dependency_labels module_graph node
+                        )
+                    in
+                    let has output = List.any dep_outputs ~fn:(String.equal output) in
+                    if not (has "Suri__Socket_pool__Acceptor.cmi") then
+                      Error ("expected socket_pool.ml to depend on Suri__Socket_pool__Acceptor.cmi; deps: ["
+                      ^ String.concat ", " dep_outputs
+                      ^ "]; module deps: ["
+                      ^ String.concat ", " module_deps
+                      ^ "]")
+                    else if not (has "Suri__Socket_pool__Acceptor.cmt") then
+                      Error ("expected socket_pool.ml to compile after Suri__Socket_pool__Acceptor.cmt; deps: ["
+                      ^ String.concat ", " dep_outputs
+                      ^ "]; module deps: ["
+                      ^ String.concat ", " module_deps
+                      ^ "]")
+                    else
+                      Ok ()
+              )
+            | Ok _ -> Error "expected suri runtime plan to return Planned"
+  in
+  match Fs.with_tempdir ~prefix:"planner_suri_socket_pool_acceptor_deps" check with
+  | Ok result -> result
+  | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
+
+let test_riot_cli_create_library_orders_run_before_install = fun _ctx ->
+  let check tempdir =
+    match load_repo_workspace () with
+    | Error _ as err -> err
+    | Ok repo_workspace ->
+        let workspace =
+          clone_workspace_with_target repo_workspace ~target_dir:Path.(tempdir / Path.v "target")
+        in
+        let store = Riot_store.Store.create ~workspace in
+        let session_id = Riot_model.Session_id.make () in
+        let profile = Riot_model.Profile.debug in
+        let build_ctx = Riot_model.Build_ctx.make ~session_id ~profile () in
+        match find_package_by_name workspace "riot-cli" with
+        | None -> Error "riot-cli package not found in workspace"
+        | Some package ->
+            let unit_graph = runtime_unit_graph workspace in
+            let unit_key = Riot_planner.Build_unit.key (library_unit package) in
+            match plan_build_unit_from_graph ~workspace ~store ~unit_graph ~unit_key ~build_ctx with
+            | Error err -> Error ("riot-cli runtime plan failed: " ^ err)
+            | Ok (Riot_planner.Package_planner.Planned { action_graph; _ }) -> (
+                match find_create_library_objects action_graph with
+                | Error _ as err -> err
+                | Ok objects ->
+                    require_order objects ~before:"Riot_cli__Run.cmx" ~after:"Riot_cli__Install.cmx"
+              )
+            | Ok _ -> Error "expected riot-cli runtime plan to return Planned"
+  in
+  match Fs.with_tempdir ~prefix:"planner_riot_cli_run_install_order" check with
+  | Ok result -> result
+  | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
+
 let test_kernel_dependency_walk_snapshot = fun ctx ->
   match plan_kernel_package_with_fresh_store () with
   | Error err -> Error err
@@ -3656,6 +3892,9 @@ let tests =
       "package input hash tracks dependency output hash"
       test_package_input_hash_tracks_dependency_output_hash;
     case
+      "planned sandbox files link dependency native objects"
+      test_planned_sandbox_files_link_dependency_native_objects;
+    case
       "stale cached artifact version rebuilds plan graphs"
       test_stale_cached_artifact_version_rebuilds_plan_graphs;
     case
@@ -3723,6 +3962,14 @@ let tests =
       ~size:Large
       "kernel unix addr interface depends on sibling modules"
       test_kernel_unix_addr_interface_depends_on_sibling_modules;
+    case
+      ~size:Large
+      "suri socket_pool implementation depends on acceptor"
+      test_suri_socket_pool_implementation_depends_on_acceptor;
+    case
+      ~size:Large
+      "riot-cli CreateLibrary orders Run before Install"
+      test_riot_cli_create_library_orders_run_before_install;
     case ~size:Large "kernel dependency walk snapshot" test_kernel_dependency_walk_snapshot;
     case
       ~size:Large
