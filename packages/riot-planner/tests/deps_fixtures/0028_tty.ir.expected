@@ -31,21 +31,6 @@
     },
     {
       "Use": [
-        "Terminal"
-      ]
-    },
-    {
-      "Use": [
-        "Terminal"
-      ]
-    },
-    {
-      "Use": [
-        "IO"
-      ]
-    },
-    {
-      "Use": [
         "IO"
       ]
     },
@@ -66,39 +51,6 @@
     },
     {
       "Use": [
-        "Terminal"
-      ]
-    },
-    {
-      "Use": [
-        "Terminal"
-      ]
-    },
-    {
-      "Use": [
-        "Terminal"
-      ]
-    },
-    {
-      "Use": [
-        "Kernel",
-        "Fd"
-      ]
-    },
-    {
-      "Use": [
-        "Kernel",
-        "Fd"
-      ]
-    },
-    {
-      "Use": [
-        "Kernel",
-        "Fd"
-      ]
-    },
-    {
-      "Use": [
         "Kernel",
         "Fd"
       ]
@@ -118,29 +70,6 @@
     {
       "Use": [
         "Terminal"
-      ]
-    },
-    {
-      "Use": [
-        "Terminal"
-      ]
-    },
-    {
-      "Use": [
-        "Kernel",
-        "Fd"
-      ]
-    },
-    {
-      "Use": [
-        "Kernel",
-        "Fd"
-      ]
-    },
-    {
-      "Use": [
-        "Kernel",
-        "Fd"
       ]
     },
     {
@@ -169,8 +98,62 @@
     },
     {
       "Use": [
+        "Fs",
+        "File"
+      ]
+    },
+    {
+      "Use": [
+        "Path"
+      ]
+    },
+    {
+      "Use": [
+        "Fs",
+        "File"
+      ]
+    },
+    {
+      "Use": [
         "Kernel",
         "Terminal"
+      ]
+    },
+    {
+      "Use": [
+        "Kernel",
+        "Fd"
+      ]
+    },
+    {
+      "Use": [
+        "Kernel",
+        "Terminal"
+      ]
+    },
+    {
+      "Use": [
+        "IO"
+      ]
+    },
+    {
+      "Use": [
+        "IO"
+      ]
+    },
+    {
+      "Use": [
+        "IO"
+      ]
+    },
+    {
+      "Use": [
+        "IO"
+      ]
+    },
+    {
+      "Use": [
+        "Exception"
       ]
     },
     {
@@ -179,25 +162,15 @@
           "Scope": [
             {
               "Use": [
-                "Fs",
-                "File"
-              ]
-            },
-            {
-              "Use": [
-                "Path"
+                "IO"
               ]
             },
             {
               "Scope": [
                 {
-                  "Scope": [
-                    {
-                      "Use": [
-                        "Fs",
-                        "File"
-                      ]
-                    }
+                  "Use": [
+                    "Kernel",
+                    "Terminal"
                   ]
                 },
                 {
@@ -209,13 +182,15 @@
                 {
                   "Use": [
                     "Kernel",
-                    "Fd"
+                    "Terminal"
                   ]
-                }
-              ]
-            },
-            {
-              "Scope": [
+                },
+                {
+                  "Use": [
+                    "Kernel",
+                    "Terminal"
+                  ]
+                },
                 {
                   "Use": [
                     "Kernel",
@@ -229,16 +204,7 @@
                 },
                 {
                   "Use": [
-                    "IO"
-                  ]
-                }
-              ]
-            },
-            {
-              "Scope": [
-                {
-                  "Use": [
-                    "IO"
+                    "Terminal"
                   ]
                 },
                 {
@@ -248,16 +214,7 @@
                 },
                 {
                   "Use": [
-                    "IO"
-                  ]
-                }
-              ]
-            },
-            {
-              "Scope": [
-                {
-                  "Use": [
-                    "IO"
+                    "Terminal"
                   ]
                 },
                 {
@@ -267,156 +224,7 @@
                 },
                 {
                   "Use": [
-                    "IO"
-                  ]
-                },
-                {
-                  "Use": [
-                    "Exception"
-                  ]
-                }
-              ]
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "Scope": [
-        {
-          "Scope": [
-            {
-              "Scope": [
-                {
-                  "Scope": [
-                    {
-                      "Use": [
-                        "IO"
-                      ]
-                    }
-                  ]
-                }
-              ]
-            },
-            {
-              "Scope": [
-                {
-                  "Scope": [
-                    {
-                      "Use": [
-                        "Kernel",
-                        "Terminal"
-                      ]
-                    }
-                  ]
-                },
-                {
-                  "Scope": [
-                    {
-                      "Use": [
-                        "Kernel",
-                        "Terminal"
-                      ]
-                    },
-                    {
-                      "Use": [
-                        "Kernel",
-                        "Terminal"
-                      ]
-                    }
-                  ]
-                },
-                {
-                  "Scope": [
-                    {
-                      "Scope": [
-                        {
-                          "Use": [
-                            "Kernel",
-                            "Terminal"
-                          ]
-                        }
-                      ]
-                    }
-                  ]
-                },
-                {
-                  "Scope": [
-                    {
-                      "Use": [
-                        "Kernel",
-                        "Terminal"
-                      ]
-                    },
-                    {
-                      "Use": [
-                        "IO"
-                      ]
-                    }
-                  ]
-                },
-                {
-                  "Scope": [
-                    {
-                      "Scope": [
-                        {
-                          "Use": [
-                            "Terminal"
-                          ]
-                        },
-                        {
-                          "Use": [
-                            "Terminal"
-                          ]
-                        }
-                      ]
-                    },
-                    {
-                      "Scope": [
-                        {
-                          "Scope": [
-                            {
-                              "Use": [
-                                "IO"
-                              ]
-                            }
-                          ]
-                        },
-                        {
-                          "Use": [
-                            "Terminal"
-                          ]
-                        },
-                        {
-                          "Use": [
-                            "Terminal"
-                          ]
-                        }
-                      ]
-                    },
-                    {
-                      "Scope": [
-                        {
-                          "Scope": [
-                            {
-                              "Use": [
-                                "IO"
-                              ]
-                            }
-                          ]
-                        },
-                        {
-                          "Use": [
-                            "Terminal"
-                          ]
-                        },
-                        {
-                          "Use": [
-                            "Terminal"
-                          ]
-                        }
-                      ]
-                    }
+                    "Terminal"
                   ]
                 },
                 {
@@ -450,121 +258,6 @@
                   ]
                 },
                 {
-                  "Scope": [
-                    {
-                      "Scope": [
-                        {
-                          "Use": [
-                            "Kernel",
-                            "Fd"
-                          ]
-                        }
-                      ]
-                    },
-                    {
-                      "Use": [
-                        "IO"
-                      ]
-                    },
-                    {
-                      "Use": [
-                        "IO"
-                      ]
-                    },
-                    {
-                      "Use": [
-                        "IO"
-                      ]
-                    }
-                  ]
-                },
-                {
-                  "Scope": [
-                    {
-                      "Scope": [
-                        {
-                          "Use": [
-                            "Kernel",
-                            "Fd"
-                          ]
-                        }
-                      ]
-                    },
-                    {
-                      "Use": [
-                        "IO"
-                      ]
-                    },
-                    {
-                      "Use": [
-                        "IO"
-                      ]
-                    },
-                    {
-                      "Use": [
-                        "IO"
-                      ]
-                    },
-                    {
-                      "Use": [
-                        "Exception"
-                      ]
-                    }
-                  ]
-                }
-              ]
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "Scope": [
-        {
-          "Scope": [
-            {
-              "Scope": [
-                {
-                  "Use": [
-                    "Kernel",
-                    "Terminal"
-                  ]
-                },
-                {
-                  "Scope": [
-                    {
-                      "Use": [
-                        "Kernel",
-                        "Terminal"
-                      ]
-                    }
-                  ]
-                },
-                {
-                  "Use": [
-                    "Kernel",
-                    "Terminal"
-                  ]
-                },
-                {
-                  "Use": [
-                    "Kernel",
-                    "Terminal"
-                  ]
-                }
-              ]
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "Scope": [
-        {
-          "Scope": [
-            {
-              "Scope": [
-                {
                   "Use": [
                     "Kernel",
                     "Terminal"
@@ -581,67 +274,32 @@
                     "Kernel",
                     "Terminal"
                   ]
-                }
-              ]
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "Scope": [
-        {
-          "Scope": [
-            {
-              "Use": [
-                "Kernel",
-                "Fd"
-              ]
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "Scope": [
-        {
-          "Scope": [
-            {
-              "Use": [
-                "Kernel",
-                "Terminal"
-              ]
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "Scope": [
-        {
-          "Use": [
-            "Kernel",
-            "Terminal"
-          ]
-        }
-      ]
-    },
-    {
-      "Scope": [
-        {
-          "Scope": [
-            {
-              "Scope": [
+                },
                 {
                   "Use": [
                     "Kernel",
-                    "Terminal"
+                    "Fd"
+                  ]
+                },
+                {
+                  "Use": [
+                    "IO"
                   ]
                 },
                 {
                   "Use": [
                     "Kernel",
-                    "Terminal"
+                    "Fd"
+                  ]
+                },
+                {
+                  "Use": [
+                    "IO"
+                  ]
+                },
+                {
+                  "Use": [
+                    "Exception"
                   ]
                 }
               ]
@@ -651,81 +309,105 @@
       ]
     },
     {
-      "Scope": [
-        {
-          "Scope": [
-            {
-              "Scope": [
-                {
-                  "Use": [
-                    "Terminal"
-                  ]
-                }
-              ]
-            },
-            {
-              "Scope": [
-                {
-                  "Use": [
-                    "Terminal"
-                  ]
-                }
-              ]
-            }
-          ]
-        }
+      "Use": [
+        "Kernel",
+        "Terminal"
       ]
     },
     {
-      "Scope": [
-        {
-          "Scope": [
-            {
-              "Scope": [
-                {
-                  "Use": [
-                    "Terminal"
-                  ]
-                }
-              ]
-            },
-            {
-              "Scope": [
-                {
-                  "Use": [
-                    "Terminal"
-                  ]
-                }
-              ]
-            }
-          ]
-        }
+      "Use": [
+        "Kernel",
+        "Terminal"
       ]
     },
     {
-      "Scope": [
-        {
-          "Scope": [
-            {
-              "Scope": [
-                {
-                  "Use": [
-                    "Terminal"
-                  ]
-                }
-              ]
-            },
-            {
-              "Scope": [
-                {
-                  "Use": [
-                    "Terminal"
-                  ]
-                }
-              ]
-            }
-          ]
-        }
+      "Use": [
+        "Kernel",
+        "Terminal"
+      ]
+    },
+    {
+      "Use": [
+        "Kernel",
+        "Terminal"
+      ]
+    },
+    {
+      "Use": [
+        "Kernel",
+        "Terminal"
+      ]
+    },
+    {
+      "Use": [
+        "Kernel",
+        "Terminal"
+      ]
+    },
+    {
+      "Use": [
+        "Kernel",
+        "Terminal"
+      ]
+    },
+    {
+      "Use": [
+        "Kernel",
+        "Fd"
+      ]
+    },
+    {
+      "Use": [
+        "Kernel",
+        "Terminal"
+      ]
+    },
+    {
+      "Use": [
+        "Kernel",
+        "Terminal"
+      ]
+    },
+    {
+      "Use": [
+        "Kernel",
+        "Terminal"
+      ]
+    },
+    {
+      "Use": [
+        "Kernel",
+        "Terminal"
+      ]
+    },
+    {
+      "Use": [
+        "Terminal"
+      ]
+    },
+    {
+      "Use": [
+        "Terminal"
+      ]
+    },
+    {
+      "Use": [
+        "Terminal"
+      ]
+    },
+    {
+      "Use": [
+        "Terminal"
+      ]
+    },
+    {
+      "Use": [
+        "Terminal"
+      ]
+    },
+    {
+      "Use": [
+        "Terminal"
       ]
     },
     {
@@ -759,13 +441,9 @@
                   ]
                 },
                 {
-                  "Scope": [
-                    {
-                      "Use": [
-                        "Fs",
-                        "File"
-                      ]
-                    }
+                  "Use": [
+                    "Fs",
+                    "File"
                   ]
                 },
                 {
@@ -782,6 +460,16 @@
                 {
                   "Use": [
                     "Bytes"
+                  ]
+                },
+                {
+                  "Use": [
+                    "Terminal"
+                  ]
+                },
+                {
+                  "Use": [
+                    "Terminal"
                   ]
                 },
                 {
@@ -809,166 +497,8 @@
                   }
                 },
                 {
-                  "Scope": [
-                    {
-                      "Use": [
-                        "Char"
-                      ]
-                    },
-                    {
-                      "Use": [
-                        "Bytes"
-                      ]
-                    }
-                  ]
-                },
-                {
-                  "Scope": [
-                    {
-                      "Use": [
-                        "Bytes"
-                      ]
-                    }
-                  ]
-                }
-              ]
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "Scope": [
-        {
-          "Scope": [
-            {
-              "Scope": [
-                {
                   "Use": [
-                    "Terminal"
-                  ]
-                }
-              ]
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "Scope": [
-        {
-          "Scope": [
-            {
-              "Scope": [
-                {
-                  "Use": [
-                    "Terminal"
-                  ]
-                }
-              ]
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "Scope": [
-        {
-          "Scope": [
-            {
-              "Scope": [
-                {
-                  "Use": [
-                    "Terminal"
-                  ]
-                }
-              ]
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "Scope": [
-        {
-          "Scope": [
-            {
-              "Scope": [
-                {
-                  "Use": [
-                    "Fs",
-                    "File"
-                  ]
-                }
-              ]
-            },
-            {
-              "Use": [
-                "Fs",
-                "File"
-              ]
-            },
-            {
-              "Use": [
-                "Bytes"
-              ]
-            },
-            {
-              "Scope": [
-                {
-                  "Use": [
-                    "IO"
-                  ]
-                }
-              ]
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "Scope": [
-        {
-          "Scope": [
-            {
-              "Scope": [
-                {
-                  "Use": [
-                    "Fs",
-                    "File"
-                  ]
-                }
-              ]
-            },
-            {
-              "Scope": [
-                {
-                  "Use": [
-                    "Bytes"
-                  ]
-                }
-              ]
-            },
-            {
-              "Use": [
-                "Fs",
-                "File"
-              ]
-            },
-            {
-              "Scope": [
-                {
-                  "Scope": [
-                    {
-                      "Use": [
-                        "Char"
-                      ]
-                    },
-                    {
-                      "Use": [
-                        "Bytes"
-                      ]
-                    }
+                    "Char"
                   ]
                 },
                 {
@@ -978,8 +508,7 @@
                 },
                 {
                   "Use": [
-                    "Fs",
-                    "File"
+                    "Bytes"
                   ]
                 }
               ]
@@ -989,175 +518,165 @@
       ]
     },
     {
-      "Scope": [
-        {
-          "Scope": [
-            {
-              "Scope": [
-                {
-                  "Use": [
-                    "IO"
-                  ]
-                }
-              ]
-            },
-            {
-              "Scope": [
-                {
-                  "Use": [
-                    "IO"
-                  ]
-                },
-                {
-                  "Use": [
-                    "IO"
-                  ]
-                },
-                {
-                  "Use": [
-                    "IO"
-                  ]
-                }
-              ]
-            },
-            {
-              "Scope": [
-                {
-                  "Use": [
-                    "IO"
-                  ]
-                }
-              ]
-            }
-          ]
-        }
+      "Use": [
+        "Terminal"
       ]
     },
     {
-      "Scope": [
-        {
-          "Scope": [
-            {
-              "Scope": [
-                {
-                  "Use": [
-                    "Buffer"
-                  ]
-                }
-              ]
-            },
-            {
-              "Scope": [
-                {
-                  "Scope": [
-                    {
-                      "Use": [
-                        "Buffer"
-                      ]
-                    },
-                    {
-                      "Use": [
-                        "String"
-                      ]
-                    },
-                    {
-                      "Use": [
-                        "String"
-                      ]
-                    },
-                    {
-                      "Use": [
-                        "Buffer"
-                      ]
-                    }
-                  ]
-                }
-              ]
-            }
-          ]
-        }
+      "Use": [
+        "Terminal"
       ]
     },
     {
-      "Scope": [
-        {
-          "Scope": [
-            {
-              "Use": [
-                "Int"
-              ]
-            },
-            {
-              "Use": [
-                "Int"
-              ]
-            },
-            {
-              "Use": [
-                "Int"
-              ]
-            },
-            {
-              "Use": [
-                "Kernel",
-                "Fd"
-              ]
-            }
-          ]
-        }
+      "Use": [
+        "Terminal"
       ]
     },
     {
-      "Scope": [
-        {
-          "Scope": [
-            {
-              "Use": [
-                "Kernel",
-                "Fd"
-              ]
-            }
-          ]
-        }
+      "Use": [
+        "Fs",
+        "File"
       ]
     },
     {
-      "Scope": [
-        {
-          "Scope": [
-            {
-              "Use": [
-                "IO"
-              ]
-            }
-          ]
-        }
+      "Use": [
+        "Fs",
+        "File"
       ]
     },
     {
-      "Scope": [
-        {
-          "Scope": [
-            {
-              "Use": [
-                "IO"
-              ]
-            }
-          ]
-        }
+      "Use": [
+        "Bytes"
       ]
     },
     {
-      "Scope": [
-        {
-          "Scope": [
-            {
-              "Use": [
-                "IO"
-              ]
-            }
-          ]
-        }
+      "Use": [
+        "IO"
+      ]
+    },
+    {
+      "Use": [
+        "Fs",
+        "File"
+      ]
+    },
+    {
+      "Use": [
+        "Bytes"
+      ]
+    },
+    {
+      "Use": [
+        "Fs",
+        "File"
+      ]
+    },
+    {
+      "Use": [
+        "Char"
+      ]
+    },
+    {
+      "Use": [
+        "Bytes"
+      ]
+    },
+    {
+      "Use": [
+        "Bytes"
+      ]
+    },
+    {
+      "Use": [
+        "Fs",
+        "File"
+      ]
+    },
+    {
+      "Use": [
+        "Bytes"
+      ]
+    },
+    {
+      "Use": [
+        "IO"
+      ]
+    },
+    {
+      "Use": [
+        "IO"
+      ]
+    },
+    {
+      "Use": [
+        "IO"
+      ]
+    },
+    {
+      "Use": [
+        "Buffer"
+      ]
+    },
+    {
+      "Use": [
+        "Buffer"
+      ]
+    },
+    {
+      "Use": [
+        "String"
+      ]
+    },
+    {
+      "Use": [
+        "String"
+      ]
+    },
+    {
+      "Use": [
+        "Buffer"
+      ]
+    },
+    {
+      "Use": [
+        "Int"
+      ]
+    },
+    {
+      "Use": [
+        "Int"
+      ]
+    },
+    {
+      "Use": [
+        "Int"
+      ]
+    },
+    {
+      "Use": [
+        "Kernel",
+        "Fd"
+      ]
+    },
+    {
+      "Use": [
+        "Kernel",
+        "Fd"
+      ]
+    },
+    {
+      "Use": [
+        "IO"
+      ]
+    },
+    {
+      "Use": [
+        "IO"
+      ]
+    },
+    {
+      "Use": [
+        "IO"
       ]
     },
     {

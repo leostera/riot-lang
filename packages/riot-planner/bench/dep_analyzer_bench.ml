@@ -54,8 +54,9 @@ let rec item_weight = fun (item: Item.t) ->
     List.fold_left items ~init:0 ~fn:(fun total item -> total + item_weight item)
   in
   match item with
-  | Item.Use path -> List.length path
+  | Item.Use path -> Item.Ident.length path
   | Item.Open body -> 1 + item_weight body
+  | Item.ImplicitOpen body -> 1 + item_weight body
   | Item.Include (_, body) -> 1 + item_weight body
   | Item.Module { name; signature; body } ->
       String.length name + items_weight signature + items_weight body
@@ -87,60 +88,151 @@ let rec item_weight = fun (item: Item.t) ->
       + items_weight scope
   | Item.Scope body -> items_weight body
 
-let touch_summary = fun (summary: Ir.source_summary) ->
+let touch_ir_summary = fun (summary: Ir.source_summary) ->
   checksum :=
     !checksum
     lxor
     List.fold_left summary.items ~init:0 ~fn:(fun total item -> total + item_weight item)
 
-let analyze_fixture = fun fixture ->
+let touch_syn_deps = fun deps ->
+  checksum :=
+    !checksum
+    lxor
+    List.fold_left
+      (Syn.Deps.modules deps)
+      ~init:0
+      ~fn:(fun total name -> total + String.length name)
+
+let touch_resolved_source = fun resolved ->
+  let modules = Dep_analyzer.ResolvedSource.modules resolved in
+  let unresolved = Dep_analyzer.ResolvedSource.unresolved resolved in
+  checksum :=
+    !checksum
+    lxor
+    List.fold_left modules ~init:0 ~fn:(fun total name -> total + String.length name)
+    lxor
+    List.fold_left unresolved ~init:0 ~fn:(fun total name -> total + String.length name)
+
+let touch_resolved_sources = fun resolved_sources ->
+  List.for_each resolved_sources ~fn:touch_resolved_source
+
+let analyze_ir_fixture = fun fixture ->
   match Ir.analyze
     ~source:fixture.path
     ~source_hash:fixture.source_hash
     fixture.parse_result with
-  | Ok summary -> touch_summary summary
+  | Ok summary -> touch_ir_summary summary
   | Error (Ir.Parse_diagnostics diagnostics) ->
       panic ("dep analyzer IR benchmark parse diagnostics for "
       ^ Path.to_string fixture.path
       ^ ": "
       ^ String.concat "; " (List.map diagnostics ~fn:Syn.Diagnostic.to_string))
 
-let analyze_corpus = fun fixtures ->
-  List.for_each fixtures ~fn:analyze_fixture
+let analyze_dep_analyzer_fixture = fun fixture ->
+  match Dep_analyzer.analyze
+    ~source:fixture.path
+    ~source_hash:fixture.source_hash
+    fixture.parse_result with
+  | Ok summary -> (
+      match Dep_analyzer.resolve Dep_analyzer.Env.empty [ summary ] with
+      | Ok resolved_sources -> touch_resolved_sources resolved_sources
+      | Error (Dep_analyzer.Invalid_provider message) ->
+          panic ("dep analyzer benchmark invalid provider for "
+          ^ Path.to_string fixture.path
+          ^ ": "
+          ^ message)
+    )
+  | Error (Dep_analyzer.Parse_diagnostics diagnostics) ->
+      panic ("dep analyzer benchmark parse diagnostics for "
+      ^ Path.to_string fixture.path
+      ^ ": "
+      ^ String.concat "; " (List.map diagnostics ~fn:Syn.Diagnostic.to_string))
+
+let analyze_syn_deps_fixture = fun fixture ->
+  match Syn.Deps.from_parse_result fixture.parse_result with
+  | Ok deps -> touch_syn_deps deps
+  | Error (Syn.Deps.Parse_diagnostics diagnostics) ->
+      panic ("Syn.Deps benchmark parse diagnostics for "
+      ^ Path.to_string fixture.path
+      ^ ": "
+      ^ String.concat "; " (List.map diagnostics ~fn:Syn.Diagnostic.to_string))
+
+let analyze_ir_corpus = fun fixtures ->
+  List.for_each fixtures ~fn:analyze_ir_fixture
+
+let analyze_dep_analyzer_corpus = fun fixtures ->
+  List.for_each fixtures ~fn:analyze_dep_analyzer_fixture
+
+let analyze_syn_deps_corpus = fun fixtures ->
+  List.for_each fixtures ~fn:analyze_syn_deps_fixture
 
 let large_config: Bench.bench_config = { iterations = 800; warmup = 80 }
 
 let corpus_config: Bench.bench_config = { iterations = 120; warmup = 20 }
 
-let fixture_benchmark = fun ~name path ->
+let fixture_benchmark = fun ~prefix ~analyze ~name path ->
   let fixture = load_fixture path in
   Bench.with_config
     ~config:large_config
-    ("dep_analyzer.ir " ^ name)
-    (fun () -> analyze_fixture fixture)
+    (prefix ^ " " ^ name)
+    (fun () -> analyze fixture)
+
+let ir_fixture_benchmark = fixture_benchmark ~prefix:"dep_analyzer.ir" ~analyze:analyze_ir_fixture
+
+let dep_analyzer_fixture_benchmark =
+  fixture_benchmark ~prefix:"dep_analyzer.full" ~analyze:analyze_dep_analyzer_fixture
+
+let syn_deps_fixture_benchmark =
+  fixture_benchmark ~prefix:"syn.deps" ~analyze:analyze_syn_deps_fixture
 
 let benchmarks = fun () ->
   let corpus = load_fixture_corpus () in
   [
-    fixture_benchmark
+    syn_deps_fixture_benchmark
       ~name:"vendored makedepend"
       (Path.v "packages/riot-planner/tests/deps_fixtures/0027_vendored_makedepend.ml");
-    fixture_benchmark
+    ir_fixture_benchmark
+      ~name:"vendored makedepend"
+      (Path.v "packages/riot-planner/tests/deps_fixtures/0027_vendored_makedepend.ml");
+    dep_analyzer_fixture_benchmark
+      ~name:"vendored makedepend"
+      (Path.v "packages/riot-planner/tests/deps_fixtures/0027_vendored_makedepend.ml");
+    syn_deps_fixture_benchmark
       ~name:"tty"
       (Path.v "packages/riot-planner/tests/deps_fixtures/0028_tty.ml");
-    fixture_benchmark
+    ir_fixture_benchmark
+      ~name:"tty"
+      (Path.v "packages/riot-planner/tests/deps_fixtures/0028_tty.ml");
+    syn_deps_fixture_benchmark
       ~name:"kernel mutiterator"
       (Path.v "packages/riot-planner/tests/deps_fixtures/0033_kernel_mutiterator.ml");
-    fixture_benchmark
+    ir_fixture_benchmark
+      ~name:"kernel mutiterator"
+      (Path.v "packages/riot-planner/tests/deps_fixtures/0033_kernel_mutiterator.ml");
+    syn_deps_fixture_benchmark
       ~name:"liveview counter"
       (Path.v "packages/riot-planner/tests/deps_fixtures/0031_liveview_counter.ml");
-    fixture_benchmark
+    ir_fixture_benchmark
+      ~name:"liveview counter"
+      (Path.v "packages/riot-planner/tests/deps_fixtures/0031_liveview_counter.ml");
+    syn_deps_fixture_benchmark
+      ~name:"std compress gzip interface"
+      (Path.v "packages/riot-planner/tests/deps_fixtures/0034_std_compress_gzip.mli");
+    ir_fixture_benchmark
       ~name:"std compress gzip interface"
       (Path.v "packages/riot-planner/tests/deps_fixtures/0034_std_compress_gzip.mli");
     Bench.with_config
       ~config:corpus_config
+      ("syn.deps fixture corpus (" ^ Int.to_string (List.length corpus) ^ " files)")
+      (fun () -> analyze_syn_deps_corpus corpus);
+    Bench.with_config
+      ~config:corpus_config
       ("dep_analyzer.ir fixture corpus (" ^ Int.to_string (List.length corpus) ^ " files)")
-      (fun () -> analyze_corpus corpus);
+      (fun () -> analyze_ir_corpus corpus);
+    Bench.with_config
+      ~config:corpus_config
+      ("dep_analyzer.full fixture corpus (" ^ Int.to_string (List.length corpus) ^ " files)")
+      (fun () -> analyze_dep_analyzer_corpus corpus);
   ]
 
 let main ~args =

@@ -5,13 +5,9 @@
   "kind": "Implementation",
   "items": [
     {
-      "Scope": [
-        {
-          "Use": [
-            "Foo",
-            "Bar"
-          ]
-        }
+      "Use": [
+        "Foo",
+        "Bar"
       ]
     }
   ]

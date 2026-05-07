@@ -10,13 +10,7 @@
         "args": [
           {
             "name": "X",
-            "ascription": [
-              {
-                "Use": [
-                  "S"
-                ]
-              }
-            ]
+            "ascription": []
           }
         ],
         "body": [
@@ -31,12 +25,8 @@
             }
           },
           {
-            "Scope": [
-              {
-                "Use": [
-                  "Y"
-                ]
-              }
+            "Use": [
+              "Y"
             ]
           }
         ]

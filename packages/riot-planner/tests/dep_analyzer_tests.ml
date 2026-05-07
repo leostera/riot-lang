@@ -120,7 +120,7 @@ let alias_items = fun names ->
     ~fn:(fun name ->
       Item.ModuleAlias {
         name;
-        target = Item.Use [ name ];
+        target = Item.Use (Item.Ident.of_strings [ name ]);
       })
 
 let generated_alias_summary = fun ~module_path ~items ->
@@ -181,6 +181,128 @@ end
 let x = IO.read A.b
 |ocaml}
 
+let local_module_binding_covers_qualified_record_and_type_uses ctx =
+  let _ = ctx in
+  let source = {ocaml|
+open Prelude
+
+module Raw = struct
+  type id = private int
+
+  type 'value state =
+    | Running
+    | Finished of 'value
+
+  type 'value term_sync = {
+    mutable state: 'value state;
+    mut: Sync.Mutex.t;
+    cond: Sync.Condition.t;
+  }
+
+  external get_recommended_domain_count: unit -> int = "caml_recommended_domain_count"
+  external spawn: (unit -> 'value) -> 'value term_sync -> id = "caml_domain_spawn"
+end
+
+let available_parallelism =
+  Raw.get_recommended_domain_count ()
+
+type 'value t = {
+  domain: Raw.id;
+  term_sync: 'value Raw.term_sync;
+}
+
+let spawn = fun () ->
+  let term_sync =
+    Raw.{ state = Running; mut = Sync.Mutex.create (); cond = Sync.Condition.create () }
+  in
+  Raw.spawn (fun () -> ()) term_sync
+
+let join = fun term_sync ->
+  match term_sync.state with
+  | Raw.Running -> ()
+  | Raw.Finished _ -> ()
+|ocaml}
+  in
+  let* () = assert_modules_with_env ~filename:"thread.ml" ~expected:[ "Prelude"; "Sync" ] source in
+  assert_modules_with_env
+    ~module_path:[ "Kernel"; "Thread"; "Thread" ]
+    ~filename:"thread.ml"
+    ~expected:[ "Prelude"; "Sync" ]
+    source
+
+let local_module_binding_survives_generated_alias_implicit_opens ctx =
+  let _ = ctx in
+  let source = {ocaml|
+open Prelude
+
+module Raw = struct
+  type id = private int
+
+  type 'value state =
+    | Running
+    | Finished of 'value
+
+  type 'value term_sync = {
+    mutable state: 'value state;
+    mut: Sync.Mutex.t;
+    cond: Sync.Condition.t;
+  }
+
+  external get_recommended_domain_count: unit -> int = "caml_recommended_domain_count"
+  external spawn: (unit -> 'value) -> 'value term_sync -> id = "caml_domain_spawn"
+end
+
+let available_parallelism =
+  Raw.get_recommended_domain_count ()
+
+type 'value t = {
+  domain: Raw.id;
+  term_sync: 'value Raw.term_sync;
+}
+
+let spawn = fun () ->
+  let term_sync =
+    Raw.{ state = Running; mut = Sync.Mutex.create (); cond = Sync.Condition.create () }
+  in
+  Raw.spawn (fun () -> ()) term_sync
+
+let join = fun term_sync ->
+  match term_sync.state with
+  | Raw.Running -> ()
+  | Raw.Finished _ -> ()
+|ocaml}
+  in
+  let root_alias =
+    generated_alias
+      ~module_path:[ "Kernel"; "Aliases" ]
+      [ "Exception"; "Prelude"; "Sync"; "Thread" ]
+  in
+  let thread_alias =
+    generated_alias
+      ~module_path:[ "Kernel"; "Thread"; "Aliases" ]
+      [ "Thread"; "Unix" ]
+  in
+  let* summary =
+    analyze_source
+      ~implicit_opens:[ [ "Kernel"; "Aliases" ]; [ "Kernel"; "Thread"; "Aliases" ] ]
+      ~module_path:[ "Kernel"; "Thread"; "Thread" ]
+      ~path:(Path.v "thread.ml")
+      source
+  in
+  match Dep_analyzer.resolve Dep_analyzer.Env.empty [ root_alias; thread_alias; summary ] with
+  | Ok [ _; _; resolved ] ->
+      let actual =
+        Dep_analyzer.ResolvedSource.modules resolved
+        @ Dep_analyzer.ResolvedSource.unresolved resolved
+        |> sorted
+      in
+      if List.any actual ~fn:(String.equal "Raw") then
+        Error ("expected generated alias implicit opens not to leak Raw, got [" ^ String.concat ", " actual ^ "]")
+      else
+        Ok ()
+  | Ok _ -> Error "expected three resolved summaries"
+  | Error _ -> Error "expected dependency analyzer resolution"
+
 let qualified_dependency_resolves_to_provider_root ctx =
   let _ = ctx in
   assert_modules ~expected:[ "Std" ] {ocaml|
@@ -205,6 +327,11 @@ let x = IO.read
 |ocaml}
   in
   let parsed = parse source in
+  let use_path = fun __tmp1 ->
+    match __tmp1 with
+    | Dep_analyzer.Item.Use path -> Dep_analyzer.Item.Ident.to_strings path
+    | _ -> []
+  in
   match Dep_analyzer.analyze
     ~source:(Path.v "test.ml")
     ~source_hash:(Crypto.hash_string source)
@@ -213,10 +340,12 @@ let x = IO.read
   | Ok summary -> (
       match summary.Dep_analyzer.items with
       | [
-        Dep_analyzer.Item.Open (Dep_analyzer.Item.Use [ "Std" ]);
-        Dep_analyzer.Item.Open (Dep_analyzer.Item.Use [ "Missing" ]);
-        Dep_analyzer.Item.Scope [ Dep_analyzer.Item.Use [ "IO" ]; ];
-      ] -> Ok ()
+        Dep_analyzer.Item.Open use_std;
+        Dep_analyzer.Item.Open use_missing;
+        use_io;
+      ] when use_path use_std = [ "Std" ]
+        && use_path use_missing = [ "Missing" ]
+        && use_path use_io = [ "IO" ] -> Ok ()
       | _ -> Error "expected dependency IR to preserve open/use order"
     )
 
@@ -474,6 +603,26 @@ let target =
     package_name ^ binary_name)
 |ocaml}
 
+let nested_syntax_open_does_not_shadow_sibling_record_pattern ctx =
+  let _ = ctx in
+  let env =
+    env_of_providers [
+      provider ~path:[ "Std" ] ~free_names:[ "Std" ] ~exports:[ [ "Result"; "Syntax" ] ];
+      provider ~path:[ "Run" ] ~free_names:[ "Run" ] ~exports:[];
+    ]
+  in
+  assert_modules_with_env
+    ~env
+    ~filename:"install.ml"
+    ~expected:[ "Run"; "Std" ]
+    {ocaml|open Std
+open Std.Result.Syntax
+
+let target =
+  Result.map value ~fn:(fun Run.{ package_name; binary_name } ->
+    package_name ^ binary_name)
+|ocaml}
+
 let first_class_module_pattern_binds_local_module ctx =
   let _ = ctx in
   assert_modules ~expected:[] {ocaml|
@@ -643,6 +792,57 @@ let local_namespace_open_exposes_child_exports ctx =
         )
   | Ok _ -> Error "expected local namespace summaries"
   | Error _ -> Error "expected local namespace resolution"
+
+let open_fallback_shadows_sibling_summary_for_local_open ctx =
+  let _ = ctx in
+  let* alias_summary =
+    analyze_source
+      ~module_path:[ "Std"; "Aliases" ]
+      ~path:(Path.v "Std__Aliases.ml-gen")
+      "module IO = Std__IO\n"
+  in
+  let* io_summary =
+    analyze_source
+      ~module_path:[ "Std"; "IO" ]
+      ~path:(Path.v "IO.mli")
+      "module Bytes: module type of Bytes\n"
+  in
+  let bytes_summary =
+    Dep_analyzer.{
+      source = Path.v "IO/bytes.ml";
+      source_hash = Crypto.hash_string "Bytes";
+      module_path = Some [ "Std"; "IO"; "Bytes" ];
+      kind = Implementation;
+      items = [];
+    }
+  in
+  let* uuid_summary =
+    analyze_source
+      ~implicit_opens:[ [ "Std"; "Aliases" ] ]
+      ~module_path:[ "Std"; "Uuid" ]
+      ~path:(Path.v "uuid.ml")
+      {ocaml|open IO
+
+let direct bytes = Bytes.length bytes
+
+let local bytes =
+  let open Bytes in
+  get bytes ~at:0
+|ocaml}
+  in
+  match Dep_analyzer.resolve Dep_analyzer.Env.empty [ alias_summary; io_summary; bytes_summary; uuid_summary ] with
+  | Ok [ _; _; _; resolved_uuid ] ->
+      let actual = Dep_analyzer.ResolvedSource.modules resolved_uuid |> sorted in
+      if actual = [ "IO" ] then
+        Ok ()
+      else
+        Error (
+          "expected Bytes references opened through IO to resolve to IO but got ["
+          ^ String.concat ", " actual
+          ^ "]"
+        )
+  | Ok _ -> Error "expected generated alias, IO, Bytes, and uuid summaries"
+  | Error _ -> Error "expected open fallback shadowing resolution"
 
 let local_child_summary_does_not_pollute_public_root_exports ctx =
   let _ = ctx in
@@ -1002,7 +1202,7 @@ let deps_ignore_local_module_type_in_first_class_module ctx =
   let _ = ctx in
   assert_modules_with_env
     ~filename:"iter.ml"
-    ~expected:[ "External" ]
+    ~expected:[]
     {ocaml|module type Intf = sig
   type state
   type item
@@ -1072,6 +1272,12 @@ let tests =
       "dep analyzer local module binding does not escape as dependency"
       local_module_binding_does_not_escape_as_dependency;
     case
+      "dep analyzer local module binding covers qualified record and type uses"
+      local_module_binding_covers_qualified_record_and_type_uses;
+    case
+      "dep analyzer local module binding survives generated alias implicit opens"
+      local_module_binding_survives_generated_alias_implicit_opens;
+    case
       "dep analyzer qualified dependency resolves to provider root"
       qualified_dependency_resolves_to_provider_root;
     case
@@ -1118,6 +1324,9 @@ let tests =
       "dep analyzer qualified record pattern in labeled callback records module dependency"
       qualified_record_pattern_in_labeled_callback_records_module_dependency;
     case
+      "dep analyzer nested syntax open does not shadow sibling record pattern"
+      nested_syntax_open_does_not_shadow_sibling_record_pattern;
+    case
       "dep analyzer first-class module pattern binds local module"
       first_class_module_pattern_binds_local_module;
     case
@@ -1129,6 +1338,9 @@ let tests =
     case
       "dep analyzer local namespace open exposes child exports"
       local_namespace_open_exposes_child_exports;
+    case
+      "dep analyzer open fallback shadows sibling summary for local open"
+      open_fallback_shadows_sibling_summary_for_local_open;
     case
       "dep analyzer local child summary does not pollute public root exports"
       local_child_summary_does_not_pollute_public_root_exports;

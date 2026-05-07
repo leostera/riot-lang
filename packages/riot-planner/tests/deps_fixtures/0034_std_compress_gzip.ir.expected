@@ -20,18 +20,6 @@
     },
     {
       "Use": [
-        "Kernel",
-        "Compress",
-        "Gzip"
-      ]
-    },
-    {
-      "Use": [
-        "Fs"
-      ]
-    },
-    {
-      "Use": [
         "Fs"
       ]
     },

@@ -72,7 +72,8 @@ end
 
 let add_names = DepSet.add_names
 
-let add_path = fun env deps segments ->
+let add_path = fun env deps ident ->
+  let segments = Item.Ident.to_strings ident in
   match segments with
   | [] -> deps
   | head :: _ when Ir.is_module_head head ->
@@ -85,36 +86,52 @@ let add_path = fun env deps segments ->
   | _ -> deps
 
 module Ast_deps = struct
-  let add_module_segments = fun env deps segments ->
-    match segments with
-    | head :: _ when Ir.is_module_head head -> add_path env deps segments
-    | _ -> deps
+  let add_module_segments = fun env deps ident ->
+    if Item.Ident.is_module_path ident then
+      add_path env deps ident
+    else
+      deps
 
-  let module_alias_for_segments = fun env deps segments ->
-    let deps = add_module_segments env deps segments in
+  let module_alias_for_segments = fun env deps ident ->
+    let deps = add_module_segments env deps ident in
+    let segments = Item.Ident.to_strings ident in
     let binding =
-      match Dep_env.lookup_map segments env with
-      | Some node -> (
-          match Dep_env.top_free node with
-          | [] -> node
-          | free_names -> Dep_env.rebind free_names node
+      match segments with
+      | head :: _ when Ir.is_module_head head -> (
+          match Dep_env.lookup_map segments env with
+          | Some node -> (
+              match Dep_env.top_free node with
+              | [] -> node
+              | free_names -> Dep_env.rebind free_names node
+            )
+          | None -> (
+              match Dep_env.open_fallback_free env with
+              | Some free_names -> Dep_env.rebind free_names Dep_env.bound
+              | None -> (
+                  match segments with
+                  | [ name ] -> Dep_env.make_leaf name
+                  | _ -> Dep_env.bound
+                )
+            )
         )
-      | None -> (
-          match segments with
-          | [ name ] -> Dep_env.make_leaf name
-          | _ -> Dep_env.bound
-        )
+      | _ -> Dep_env.bound
     in
     (deps, binding)
 
   let open_alias_for_segments = fun ?(fallback = false) env deps segments ->
-    let binding_known = Option.is_some (Dep_env.lookup_map segments env) in
+    let path = Item.Ident.to_strings segments in
+    let binding_known = Option.is_some (Dep_env.lookup_map path env) in
     let (deps, binding) = module_alias_for_segments env deps segments in
     let deps = add_names deps (Dep_env.top_free binding) in
     let env = Dep_env.merge_children env binding in
     let env =
-      if fallback && binding_known && not (Dep_env.has_children binding) then
-        match segments with
+      if
+        fallback
+        && binding_known
+        && not (Dep_env.has_children binding)
+        && not (List.is_empty (Dep_env.top_free binding))
+      then
+        match path with
         | head :: _ when Ir.is_module_head head ->
             let free_names =
               match Dep_env.top_free binding with
@@ -133,6 +150,9 @@ module Ast_deps = struct
     | Item.Use segments -> Ok (add_module_segments env deps segments)
     | Item.Open expr ->
         let* (deps, _env) = collect_open_decl env deps expr in
+        Ok deps
+    | Item.ImplicitOpen expr ->
+        let* (deps, _env) = collect_implicit_open_decl env deps expr in
         Ok deps
     | Item.Include (Item.Structure, expr) ->
         let* (deps, _env) = collect_include_structure env deps expr in
@@ -194,6 +214,7 @@ module Ast_deps = struct
         let* deps = collect_signature_nodes env deps body in
         Ok (deps, Dep_env.bound)
     | Item.Open _
+    | Item.ImplicitOpen _
     | Item.Include _
     | Item.BindModules _ ->
         let* deps = collect_node env deps expr in
@@ -217,11 +238,19 @@ module Ast_deps = struct
 
   and collect_open_decl env deps expr =
     match expr with
-    | Item.Use (head :: _ as segments) when Ir.is_module_head head ->
+    | Item.Use segments when Item.Ident.is_module_path segments ->
         Ok (open_alias_for_segments ~fallback:true env deps segments)
     | _ ->
         let* (deps, binding) = module_binding env deps expr in
         let deps = add_names deps (Dep_env.top_free binding) in
+        Ok (deps, Dep_env.merge_children env binding)
+
+  and collect_implicit_open_decl env deps expr =
+    match expr with
+    | Item.Use segments when Item.Ident.is_module_path segments ->
+        Ok (deps, Dep_env.open_path env ~path:(Item.Ident.to_strings segments))
+    | _ ->
+        let* (_deps, binding) = module_binding env deps expr in
         Ok (deps, Dep_env.merge_children env binding)
 
   and collect_include_structure env deps expr =
@@ -292,6 +321,9 @@ module Ast_deps = struct
     | Item.Open expr ->
         let* (deps, env) = collect_open_decl env deps expr in
         Ok (deps, env, bindings)
+    | Item.ImplicitOpen expr ->
+        let* (deps, env) = collect_implicit_open_decl env deps expr in
+        Ok (deps, env, bindings)
     | Item.Include (Item.Structure, expr) ->
         let* (deps, env) = collect_include_structure env deps expr in
         Ok (deps, env, bindings)
@@ -339,6 +371,9 @@ module Ast_deps = struct
         Ok (deps, env, bindings)
     | Item.Open expr ->
         let* (deps, env) = collect_open_decl env deps expr in
+        Ok (deps, env, bindings)
+    | Item.ImplicitOpen expr ->
+        let* (deps, env) = collect_implicit_open_decl env deps expr in
         Ok (deps, env, bindings)
     | Item.Include (Item.Structure, expr) ->
         let* (deps, env) = collect_include_structure env deps expr in
@@ -434,6 +469,7 @@ let alias_summary_exports = fun (summary: Ir.source_summary) ->
             let (_, _) = replay_alias_items env Dep_env.empty body in
             (env, exports)
         | Item.Use _
+        | Item.ImplicitOpen _
         | Item.Open _
         | Item.Include _ -> (env, exports))
   in
@@ -507,14 +543,7 @@ let resolve_summary = fun env (summary: Ir.source_summary) ->
   match Ast_deps.from_parse_result ~env summary with
   | Error _ as error -> error
   | Ok (deps, _env, _exports) ->
-      let modules = DepSet.elements deps in
-      let modules =
-        match summary.module_path with
-        | Some (root :: _) -> List.filter modules ~fn:(fun name -> not (String.equal name root))
-        | Some []
-        | None -> modules
-      in
-      Ok (Resolution.make ~modules ~unresolved:[])
+      Ok (Resolution.make ~modules:(DepSet.elements deps) ~unresolved:[])
 
 let resolve = fun env (summaries: Ir.source_summary list) ->
   let env = with_summaries env summaries in

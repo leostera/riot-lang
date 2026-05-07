@@ -8,9 +8,7 @@
       "Include": {
         "mode": "Signature",
         "expr": {
-          "Use": [
-            "Foo"
-          ]
+          "Scope": []
         }
       }
     }

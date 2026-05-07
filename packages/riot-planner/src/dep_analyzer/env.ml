@@ -47,6 +47,24 @@ let merge = fun left right ->
     ~init:left
     ~fn:(fun env (name, node) -> add name node env)
 
+let rec merge_node = fun (Node (left_free, left_children)) (Node (right_free, right_children)) ->
+  Node (
+    Names.union left_free right_free,
+    merge_preserving_children left_children right_children
+  )
+
+and merge_preserving_children = fun left right ->
+  List.fold_left
+    right
+    ~init:left
+    ~fn:(fun env (name, node) ->
+      let node =
+        match List.find env ~fn:(fun (key, _) -> String.equal key name) with
+        | Some (_, existing) -> merge_node existing node
+        | None -> node
+      in
+      add name node env)
+
 let rec rebind = fun free_names ->
   fun (Node (_, children)) ->
     Node (
@@ -86,7 +104,7 @@ let rec add_binding = fun env ~path ~free_names ~exports ->
         | None -> Node (Names.empty, [])
       in
       let Node (free, children) = existing in
-      let merged_children = merge children (rebind_exports free_names exports) in
+      let merged_children = merge_preserving_children children (rebind_exports free_names exports) in
       add segment (Node (Names.union free free_names, merged_children)) env
   | segment :: rest ->
       let existing =
@@ -108,7 +126,7 @@ let rec add_scoped_binding = fun env ~path ~free_names ~exports ->
         | None -> Node (Names.empty, [])
       in
       let Node (free, children) = existing in
-      let merged_children = merge children exports in
+      let merged_children = merge_preserving_children children exports in
       add segment (Node (Names.union free free_names, merged_children)) env
   | segment :: rest ->
       let existing =
@@ -132,6 +150,8 @@ let rec collect_free = fun (Node (free, children)) ->
 
 let merge_children = fun env node -> merge env (children node)
 
+let merge_children_preserving = fun env node -> merge_preserving_children env (children node)
+
 let find = fun name env ->
   List.find env ~fn:(fun (key, _) -> String.equal key name)
   |> Option.map ~fn:(fun (_, value) -> value)
@@ -151,17 +171,24 @@ let add_open_fallback = fun env ~free_names ->
 
 let has_children = fun (Node (_, children)) -> not (List.is_empty children)
 
+let find_for_lookup = fun ~use_open_fallback segment env ->
+  match find segment env with
+  | Some node -> Some (`Node node)
+  | None when use_open_fallback -> (
+      match open_fallback_free env with
+      | Some free -> Some (`Open_fallback free)
+      | None -> None
+    )
+  | None -> None
+
 let rec lookup_free = fun ~use_open_fallback segments env ->
   match segments with
   | [] -> None
   | segment :: rest ->
-      match find segment env with
-      | None ->
-          if use_open_fallback then
-            open_fallback_free env
-          else
-            None
-      | Some (Node (free, children)) -> (
+      match find_for_lookup ~use_open_fallback segment env with
+      | None -> None
+      | Some (`Open_fallback free) -> Some free
+      | Some (`Node (Node (free, children))) -> (
           match rest with
           | [] -> Some free
           | _ -> (
@@ -182,5 +209,5 @@ let rec lookup_map = fun segments env ->
 
 let open_path = fun env ~path ->
   match lookup_map path env with
-  | Some node -> merge_children env node
+  | Some node -> merge_children_preserving env node
   | None -> env

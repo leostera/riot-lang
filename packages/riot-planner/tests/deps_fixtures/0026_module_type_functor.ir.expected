@@ -13,22 +13,10 @@
               "modules": [
                 {
                   "name": "X",
-                  "ascription": [
-                    {
-                      "Use": [
-                        "A"
-                      ]
-                    }
-                  ]
+                  "ascription": []
                 }
               ],
-              "scope": [
-                {
-                  "Use": [
-                    "B"
-                  ]
-                }
-              ]
+              "scope": []
             }
           }
         ]

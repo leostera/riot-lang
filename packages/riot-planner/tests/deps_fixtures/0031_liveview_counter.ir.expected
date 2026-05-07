@@ -24,12 +24,8 @@
         "signature": [],
         "body": [
           {
-            "Scope": [
-              {
-                "Use": [
-                  "LiveView"
-                ]
-              }
+            "Use": [
+              "LiveView"
             ]
           },
           {
@@ -47,66 +43,34 @@
             }
           },
           {
-            "Scope": [
-              {
-                "Scope": [
-                  {
-                    "Use": [
-                      "Data",
-                      "Json"
-                    ]
-                  }
-                ]
-              }
+            "Use": [
+              "Data",
+              "Json"
             ]
           },
           {
-            "Scope": [
-              {
-                "Scope": [
-                  {
-                    "Use": [
-                      "Log"
-                    ]
-                  }
-                ]
-              }
+            "Use": [
+              "Log"
             ]
           },
           {
-            "Scope": [
-              {
-                "Scope": [
-                  {
-                    "Use": [
-                      "Log"
-                    ]
-                  },
-                  {
-                    "Use": [
-                      "Int"
-                    ]
-                  },
-                  {
-                    "Use": [
-                      "Int"
-                    ]
-                  }
-                ]
-              }
+            "Use": [
+              "Log"
             ]
           },
           {
-            "Scope": [
-              {
-                "Scope": [
-                  {
-                    "Use": [
-                      "Int"
-                    ]
-                  }
-                ]
-              }
+            "Use": [
+              "Int"
+            ]
+          },
+          {
+            "Use": [
+              "Int"
+            ]
+          },
+          {
+            "Use": [
+              "Int"
             ]
           }
         ]
@@ -126,22 +90,13 @@
                   }
                 },
                 {
-                  "Scope": [
-                    {
-                      "Use": [
-                        "LiveView"
-                      ]
-                    },
-                    {
-                      "Use": [
-                        "LiveView"
-                      ]
-                    },
-                    {
-                      "Use": [
-                        "Counter"
-                      ]
-                    }
+                  "Use": [
+                    "LiveView"
+                  ]
+                },
+                {
+                  "Use": [
+                    "LiveView"
                   ]
                 },
                 {
@@ -178,149 +133,108 @@
               "Use": [
                 "LiveView"
               ]
-            },
-            {
-              "Use": [
-                "Counter"
-              ]
             }
           ]
         }
       ]
     },
     {
-      "Scope": [
-        {
-          "Use": [
-            "Middleware"
-          ]
-        }
+      "Use": [
+        "Middleware"
       ]
     },
     {
-      "Scope": [
-        {
-          "Use": [
-            "Std",
-            "Config"
-          ]
-        },
-        {
-          "Use": [
-            "Path"
-          ]
-        },
-        {
-          "Scope": [
-            {
-              "Use": [
-                "Std",
-                "Log"
-              ]
-            }
-          ]
-        },
-        {
-          "Scope": [
-            {
-              "Use": [
-                "Suri"
-              ]
-            }
-          ]
-        },
-        {
-          "Use": [
-            "Suri"
-          ]
-        },
-        {
-          "Scope": [
-            {
-              "Use": [
-                "Log"
-              ]
-            },
-            {
-              "Use": [
-                "Log"
-              ]
-            },
-            {
-              "Use": [
-                "Log"
-              ]
-            },
-            {
-              "Use": [
-                "Log"
-              ]
-            },
-            {
-              "Use": [
-                "Log"
-              ]
-            },
-            {
-              "Use": [
-                "Log"
-              ]
-            },
-            {
-              "Scope": [
-                {
-                  "Use": [
-                    "Supervisor",
-                    "Dynamic"
-                  ]
-                }
-              ]
-            },
-            {
-              "Use": [
-                "Log"
-              ]
-            },
-            {
-              "Use": [
-                "Int"
-              ]
-            },
-            {
-              "Scope": [
-                {
-                  "Use": [
-                    "Time",
-                    "Duration"
-                  ]
-                }
-              ]
-            }
-          ]
-        },
-        {
-          "Scope": [
-            {
-              "Use": [
-                "Log"
-              ]
-            }
-          ]
-        }
+      "Use": [
+        "Std",
+        "Config"
       ]
     },
     {
-      "Scope": [
-        {
-          "Use": [
-            "Runtime"
-          ]
-        },
-        {
-          "Use": [
-            "Env"
-          ]
-        }
+      "Use": [
+        "Path"
+      ]
+    },
+    {
+      "Use": [
+        "Std",
+        "Log"
+      ]
+    },
+    {
+      "Use": [
+        "Suri"
+      ]
+    },
+    {
+      "Use": [
+        "Suri"
+      ]
+    },
+    {
+      "Use": [
+        "Log"
+      ]
+    },
+    {
+      "Use": [
+        "Log"
+      ]
+    },
+    {
+      "Use": [
+        "Log"
+      ]
+    },
+    {
+      "Use": [
+        "Log"
+      ]
+    },
+    {
+      "Use": [
+        "Log"
+      ]
+    },
+    {
+      "Use": [
+        "Log"
+      ]
+    },
+    {
+      "Use": [
+        "Supervisor",
+        "Dynamic"
+      ]
+    },
+    {
+      "Use": [
+        "Log"
+      ]
+    },
+    {
+      "Use": [
+        "Int"
+      ]
+    },
+    {
+      "Use": [
+        "Time",
+        "Duration"
+      ]
+    },
+    {
+      "Use": [
+        "Log"
+      ]
+    },
+    {
+      "Use": [
+        "Runtime"
+      ]
+    },
+    {
+      "Use": [
+        "Env"
       ]
     }
   ]

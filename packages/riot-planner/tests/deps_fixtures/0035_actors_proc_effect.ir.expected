@@ -28,33 +28,6 @@
     },
     {
       "Use": [
-        "Effect"
-      ]
-    },
-    {
-      "Use": [
-        "Effect"
-      ]
-    },
-    {
-      "Use": [
-        "Effect"
-      ]
-    },
-    {
-      "Use": [
-        "Effect"
-      ]
-    },
-    {
-      "Use": [
-        "Kernel",
-        "Async",
-        "Interest"
-      ]
-    },
-    {
-      "Use": [
         "Kernel",
         "Async",
         "Interest"
@@ -65,23 +38,6 @@
         "Kernel",
         "Async",
         "Source"
-      ]
-    },
-    {
-      "Use": [
-        "Kernel",
-        "Async",
-        "Source"
-      ]
-    },
-    {
-      "Use": [
-        "Effect"
-      ]
-    },
-    {
-      "Use": [
-        "Effect"
       ]
     },
     {

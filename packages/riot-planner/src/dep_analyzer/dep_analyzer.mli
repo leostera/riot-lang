@@ -10,7 +10,13 @@ open Std
 
 module Item: sig
   module Ident: sig
-    type t = string list
+    type t
+
+    val of_strings: string list -> t
+
+    val to_strings: t -> string list
+
+    val length: t -> int
   end
 
   type include_mode =
@@ -30,6 +36,7 @@ module Item: sig
   and t =
     | Use of Ident.t
     | Open of t
+    | ImplicitOpen of t
     | Include of include_mode * t
     | Module of {
         name: string;

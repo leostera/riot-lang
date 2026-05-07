@@ -14,11 +14,7 @@
     {
       "ModuleType": {
         "name": "Intf",
-        "body": [
-          {
-            "Scope": []
-          }
-        ]
+        "body": []
       }
     },
     {
@@ -33,11 +29,6 @@
                     "signature": [],
                     "body": []
                   }
-                },
-                {
-                  "Use": [
-                    "Empty"
-                  ]
                 }
               ]
             }
@@ -57,25 +48,12 @@
                     "signature": [],
                     "body": [
                       {
-                        "Scope": [
-                          {
-                            "Scope": [
-                              {
-                                "Use": [
-                                  "Option"
-                                ]
-                              }
-                            ]
-                          }
+                        "Use": [
+                          "Option"
                         ]
                       }
                     ]
                   }
-                },
-                {
-                  "Use": [
-                    "Singleton"
-                  ]
                 }
               ]
             }
@@ -137,15 +115,6 @@
             ],
             "scope": [
               {
-                "Scope": [
-                  {
-                    "Use": [
-                      "Iter"
-                    ]
-                  }
-                ]
-              },
-              {
                 "Use": [
                   "Iter"
                 ]
@@ -156,21 +125,9 @@
       ]
     },
     {
-      "Scope": [
-        {
-          "Scope": [
-            {
-              "Scope": [
-                {
-                  "Use": [
-                    "Stdlib",
-                    "List"
-                  ]
-                }
-              ]
-            }
-          ]
-        }
+      "Use": [
+        "Stdlib",
+        "List"
       ]
     },
     {
@@ -185,25 +142,12 @@
                     "signature": [],
                     "body": [
                       {
-                        "Scope": [
-                          {
-                            "Scope": [
-                              {
-                                "Use": [
-                                  "Option"
-                                ]
-                              }
-                            ]
-                          }
+                        "Use": [
+                          "Option"
                         ]
                       }
                     ]
                   }
-                },
-                {
-                  "Use": [
-                    "MapIter"
-                  ]
                 }
               ]
             }
@@ -223,11 +167,6 @@
                     "signature": [],
                     "body": []
                   }
-                },
-                {
-                  "Use": [
-                    "FilterIter"
-                  ]
                 }
               ]
             }
@@ -247,11 +186,6 @@
                     "signature": [],
                     "body": []
                   }
-                },
-                {
-                  "Use": [
-                    "FilterMapIter"
-                  ]
                 }
               ]
             }
@@ -271,25 +205,12 @@
                     "signature": [],
                     "body": [
                       {
-                        "Scope": [
-                          {
-                            "Scope": [
-                              {
-                                "Use": [
-                                  "Option"
-                                ]
-                              }
-                            ]
-                          }
+                        "Use": [
+                          "Option"
                         ]
                       }
                     ]
                   }
-                },
-                {
-                  "Use": [
-                    "FlatMapIter"
-                  ]
                 }
               ]
             }
@@ -309,11 +230,6 @@
                     "signature": [],
                     "body": []
                   }
-                },
-                {
-                  "Use": [
-                    "TakeIter"
-                  ]
                 }
               ]
             }
@@ -333,11 +249,6 @@
                     "signature": [],
                     "body": []
                   }
-                },
-                {
-                  "Use": [
-                    "EnumIter"
-                  ]
                 }
               ]
             }
@@ -357,11 +268,6 @@
                     "signature": [],
                     "body": []
                   }
-                },
-                {
-                  "Use": [
-                    "ZipIter"
-                  ]
                 }
               ]
             }
@@ -381,11 +287,6 @@
                     "signature": [],
                     "body": []
                   }
-                },
-                {
-                  "Use": [
-                    "ChainIter"
-                  ]
                 }
               ]
             }
