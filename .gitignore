@@ -9,7 +9,7 @@ artifacts
 generated
 *.install
 *.bin
-_build
+_build*
 *.beam
 *.trace
 test/generated/*

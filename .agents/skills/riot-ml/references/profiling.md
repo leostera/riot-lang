@@ -1,14 +1,17 @@
 # Riot Profiling Workflow
 
-Use this reference when profiling Riot commands or generated Riot binaries on
+Use this reference when profiling generated binaries or Riot-managed projects on
 macOS.
 
 ## Default Rules
 
-- Prefer `--json` for profiled Riot commands. It keeps terminal rendering and
-  human-oriented log churn out of the measurement.
-- Use `--target-dir` for isolated build profiles instead of mutating the normal
-  workspace `_build`.
+- Do not assume project binaries support `--json`. That flag is specific to
+  Riot CLI commands and only applies when the profiled command is `riot` itself.
+- Treat trace collection as expensive work. If a long run has finished but
+  `xctrace` is still finalizing, do everything reasonable to let it finish or
+  export usable data before interrupting it.
+- Use `--target-dir` when profiling `riot build` itself. For project binaries,
+  build the binary first, then profile the generated executable directly.
 - Record whether the run is cold, warm, or fully warm:
   - cold: remove the profiling target directory before recording.
   - warm: run once, then record the same command and target directory.
@@ -19,7 +22,31 @@ macOS.
   scheduler, filesystem, or child-process behavior that does not appear in a
   single-process trace.
 
-## xctrace Recording
+## xctrace Recording For Project Binaries
+
+Build the binary first, then profile the executable directly:
+
+```sh
+stamp=$(date +%Y%m%d-%H%M%S)
+app_bin="./_build/debug/$(uname -m)-apple-darwin/out/<package>/<binary>"
+trace_path="/tmp/riot-app-$stamp.trace"
+app_stdout="/tmp/riot-app-$stamp.out"
+
+rm -rf "$trace_path" "$app_stdout"
+
+xcrun xctrace record \
+  --template 'Time Profiler' \
+  --no-prompt \
+  --output "$trace_path" \
+  --target-stdout "$app_stdout" \
+  --launch -- \
+  "$app_bin" <app-args>
+```
+
+Use the actual generated binary path for the project being profiled. Do not add
+`--json` unless that binary explicitly implements such a flag.
+
+## xctrace Recording For Riot CLI Commands
 
 Profile a cold build with Instruments Time Profiler:
 
@@ -40,6 +67,8 @@ xcrun xctrace record \
   --launch -- \
   "$riot_bin" build --all -x all --json --target-dir "$target_dir"
 ```
+
+Only use `--json` in this recipe because the launched program is the Riot CLI.
 
 Profile a warm build by running the command once before `xctrace` and reusing
 the same `target_dir`.
@@ -69,6 +98,65 @@ Inspect the trace:
 open "$trace_path"
 xcrun xctrace export --input "$trace_path" --toc | head
 ```
+
+## Preserve Long Recordings
+
+Long cold builds can spend many minutes collecting data. Do not waste that time
+by killing the recorder as soon as the target command exits.
+
+When a recording appears stuck after the Riot process finished:
+
+1. Confirm what is still running:
+
+   ```sh
+   ps -axo pid,etime,stat,comm,args | rg 'xctrace|riot .*build|riot .*plan'
+   ```
+
+2. Check whether the trace bundle is still being written:
+
+   ```sh
+   du -sh "$trace_path"
+   find "$trace_path" -type f -maxdepth 4 -print0 \
+     | xargs -0 ls -lh \
+     | sort -k5 -h \
+     | tail
+   ```
+
+3. Try a non-destructive export before interrupting anything:
+
+   ```sh
+   xcrun xctrace export --input "$trace_path" --toc > "/tmp/xctrace-toc-$stamp.txt"
+   ```
+
+4. If the table of contents exports, immediately export the Time Profiler table:
+
+   ```sh
+   profile_xml="/tmp/riot-time-profile-$stamp.xml"
+
+   xcrun xctrace export \
+     --input "$trace_path" \
+     --xpath '/trace-toc/run[@number="1"]/data/table[@schema="time-profile"]' \
+     --output "$profile_xml"
+   ```
+
+5. If `xctrace` is still active but making progress, keep waiting. Trace
+   finalization can take a long time for multi-hundred-second builds and large
+   bundles.
+
+6. If the recorder is truly wedged, prefer a graceful interrupt over a hard
+   kill:
+
+   ```sh
+   kill -INT <xctrace-pid>
+   ```
+
+   Re-check `--toc` and export again after the process exits. Use `kill -TERM`
+   only after trying `SIGINT`; avoid `kill -9` unless the trace has already been
+   exported or there is no other option.
+
+Always keep the captured `json_log` even when the Instruments trace cannot be
+exported. Riot JSON events still preserve wall-clock gaps, repeated events, and
+target/build timing.
 
 ## xctrace Call Tables
 

@@ -35,5 +35,6 @@ For a user project outside this repo, use `riot-ml` instead.
 - Read [validation](references/validation.md) for build, test, format, fix, snapshot, and benchmark commands.
 - Read [conventions](references/conventions.md) for repository-wide Riot ML and API conventions.
 - Read [fuzzing](references/fuzzing.md) when adding fuzz cases, running campaigns, triaging crashes, or touching `.riot/fuzzing` artifacts.
+- Read [profiling](references/profiling.md) when profiling Riot CLI/build-system commands from this repository.
 - Read [bootstrap and miniriot](references/bootstrap.md) when touching first-build, toolchain bootstrap, or `packages/miniriot`.
 - Read [package boundaries](references/package-boundaries.md) when deciding whether behavior belongs in `kernel`, `std` runtime, or a higher package.

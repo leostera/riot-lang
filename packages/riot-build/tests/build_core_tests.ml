@@ -288,17 +288,15 @@ let make_build_result = fun ~scope ~(package:Riot_model.Package.t) ~status ->
     | _ -> Library
   in
   {
-    Package_builder.unit_key =
-      ({
-        package = package.name;
-        artifact;
-        target = Riot_model.Target.host ();
-        profile = Riot_model.Profile.debug;
-      }:Riot_planner.Build_unit.key);
+    Package_builder.unit_key = ({
+      package = package.name;
+      artifact;
+      target = Riot_model.Target.host ();
+      profile = Riot_model.Profile.debug;
+    }: Riot_planner.Build_unit.key);
     package;
     status;
     depset = [];
-    action_artifacts = [];
     ocamlc_warnings = [];
     duration = Time.Duration.zero;
   }

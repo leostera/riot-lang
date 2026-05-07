@@ -16,7 +16,7 @@ let unit_key = fun package ->
     artifact = Riot_planner.Build_unit.Library;
     target = Riot_model.Target.host ();
     profile = Riot_model.Profile.debug;
-  }:Riot_planner.Build_unit.key)
+  }: Riot_planner.Build_unit.key)
 
 let build_workspace_package = fun ~workspace package ->
   let request =
@@ -34,8 +34,7 @@ let build_workspace_package = fun ~workspace package ->
       match Riot_build.Build_result.find_package result package.name with
       | Some package_result -> Ok package_result
       | None ->
-          Error ("expected package result for "
-          ^ Riot_model.Package_name.to_string package.name)
+          Error ("expected package result for " ^ Riot_model.Package_name.to_string package.name)
     )
 
 let workspace_dependency = fun name ->
@@ -133,7 +132,6 @@ let test_build_result_status_variants = fun _ctx ->
       package;
       status = Cached artifact;
       depset = [];
-      action_artifacts = [];
       ocamlc_warnings = [];
       duration = Time.Duration.from_millis 5;
     }
@@ -144,7 +142,6 @@ let test_build_result_status_variants = fun _ctx ->
       package;
       status = Built artifact;
       depset = [];
-      action_artifacts = [];
       ocamlc_warnings = [];
       duration = Time.Duration.from_millis 100;
     }
@@ -155,7 +152,6 @@ let test_build_result_status_variants = fun _ctx ->
       package;
       status = Failed (ExecutionFailed { message = "compilation error" });
       depset = [];
-      action_artifacts = [];
       ocamlc_warnings = [];
       duration = Time.Duration.from_millis 50;
     }
