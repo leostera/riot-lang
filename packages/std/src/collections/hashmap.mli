@@ -13,6 +13,10 @@ val with_capacity: size:int -> ('key, 'value) t
 
 val from_list: ('key * 'value) list -> ('key, 'value) t
 
+(**
+   Return the number of backing bucket slots. This may be larger than the
+   requested capacity because the table rounds to SwissTable group boundaries.
+*)
 val bucket_count: ('key, 'value) t -> int
 
 val insert: ('key, 'value) t -> key:'key -> value:'value -> 'value option

@@ -24,10 +24,10 @@ let test_create = fun _ctx ->
 
 let test_with_capacity = fun _ctx ->
   let map = HashMap.with_capacity ~size:32 in
-  if HashMap.is_empty map && Int.equal (HashMap.bucket_count map) 32 then
+  if HashMap.is_empty map && HashMap.bucket_count map >= 32 then
     Ok ()
   else
-    Error "expected HashMap.with_capacity to start empty with requested capacity"
+    Error "expected HashMap.with_capacity to start empty with at least the requested capacity"
 
 let test_from_list_unique = fun _ctx ->
   let map = HashMap.from_list [ (1, "a"); (2, "b"); ] in
