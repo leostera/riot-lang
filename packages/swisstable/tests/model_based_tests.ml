@@ -122,7 +122,7 @@ let contains_equivalence_prop =
           ());
       (* Verify contains_key matches *)
       List.for_all
-        (fun k -> Swisstable.contains_key swiss k = Collections.HashMap.contains_key hash k)
+        (fun k -> Swisstable.contains_key swiss k = Collections.HashMap.has_key hash ~key:k)
         check_keys)
 
 (* Property 5: Clear produces identical results *)
@@ -266,9 +266,15 @@ let or_insert_equivalence_prop =
           let _ = Swisstable.insert swiss k v in
           let _ = Collections.HashMap.insert hash ~key:k ~value:v in
           ());
-      (* Test or_insert *)
+      (* Compare Swisstable.or_insert against the explicit HashMap get/insert flow. *)
       let r1 = Swisstable.or_insert swiss key default in
-      let r2 = Collections.HashMap.or_insert hash ~key ~default in
+      let r2 =
+        match Collections.HashMap.get hash ~key with
+        | Some value -> value
+        | None ->
+            let _ = Collections.HashMap.insert hash ~key ~value:default in
+            default
+      in
       if not (r1 = r2) then
         fail "or_insert return values differ";
       Swisstable.get swiss key = Collections.HashMap.get hash ~key)

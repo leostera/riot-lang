@@ -1,0 +1,810 @@
+{
+  "schema_version": 1,
+  "run_id": "2026-05-08T21-40-09.228Z-019e0988",
+  "suite": {
+    "package": "std",
+    "name": "concurrent_hashmap_bench",
+    "profile": "debug",
+    "target": "aarch64-apple-darwin"
+  },
+  "selection": {
+    "filter": "CHM",
+    "partial": true
+  },
+  "workspace": {
+    "git_head": "8e6823594bfcbdb1524f23eb4f72c37baab99e33",
+    "git_dirty": true
+  },
+  "command": {
+    "argv": [
+      "riot",
+      "bench",
+      "-p",
+      "std",
+      "-f",
+      "CHM",
+      "--iterations",
+      "10",
+      "--warmup",
+      "2",
+      "--record",
+      "--compare",
+      "5"
+    ]
+  },
+  "suite_run": {
+    "status": 0,
+    "started_at_us": 0,
+    "completed_at_us": 965462241,
+    "duration_us": 965462241,
+    "summary": {
+      "total": 40,
+      "completed": 40,
+      "skipped": 0,
+      "failed": 0
+    },
+    "benchmarks": [
+      {
+        "index": 1,
+        "name": "CHM: Grow to 100 items",
+        "status": "completed",
+        "statistics": {
+          "min_nanos": 9000,
+          "max_nanos": 14000,
+          "mean_nanos": 11900,
+          "median_nanos": 12000,
+          "std_dev_nanos": 1445,
+          "iterations": 10,
+          "total_time_nanos": 119000,
+          "gc": {
+            "minor_collections": 0,
+            "major_collections": 0,
+            "compactions": 0
+          }
+        }
+      },
+      {
+        "index": 2,
+        "name": "CHM: Grow to 1k items",
+        "status": "completed",
+        "statistics": {
+          "min_nanos": 297000,
+          "max_nanos": 811000,
+          "mean_nanos": 495300,
+          "median_nanos": 528000,
+          "std_dev_nanos": 142575,
+          "iterations": 10,
+          "total_time_nanos": 4953000,
+          "gc": {
+            "minor_collections": 11,
+            "major_collections": 1,
+            "compactions": 0
+          }
+        }
+      },
+      {
+        "index": 3,
+        "name": "CHM: Grow to 10k items",
+        "status": "completed",
+        "statistics": {
+          "min_nanos": 1769000,
+          "max_nanos": 3063000,
+          "mean_nanos": 2402800,
+          "median_nanos": 2583000,
+          "std_dev_nanos": 490949,
+          "iterations": 10,
+          "total_time_nanos": 24028000,
+          "gc": {
+            "minor_collections": 20,
+            "major_collections": 5,
+            "compactions": 0
+          }
+        }
+      },
+      {
+        "index": 4,
+        "name": "CHM: Grow to 100k items",
+        "status": "completed",
+        "statistics": {
+          "min_nanos": 33881000,
+          "max_nanos": 47301000,
+          "mean_nanos": 38069900,
+          "median_nanos": 37806000,
+          "std_dev_nanos": 3459990,
+          "iterations": 10,
+          "total_time_nanos": 380699000,
+          "gc": {
+            "minor_collections": 157,
+            "major_collections": 21,
+            "compactions": 0
+          }
+        }
+      },
+      {
+        "index": 5,
+        "name": "CHM: Grow to 1M items",
+        "status": "completed",
+        "statistics": {
+          "min_nanos": 620377000,
+          "max_nanos": 648685000,
+          "mean_nanos": 635120800,
+          "median_nanos": 637300000,
+          "std_dev_nanos": 8620360,
+          "iterations": 10,
+          "total_time_nanos": 6351208000,
+          "gc": {
+            "minor_collections": 1290,
+            "major_collections": 32,
+            "compactions": 0
+          }
+        }
+      },
+      {
+        "index": 6,
+        "name": "CHM: Insert 100 ops over bounded keys",
+        "status": "completed",
+        "statistics": {
+          "min_nanos": 7000,
+          "max_nanos": 9000,
+          "mean_nanos": 7600,
+          "median_nanos": 8000,
+          "std_dev_nanos": 663,
+          "iterations": 10,
+          "total_time_nanos": 76000,
+          "gc": {
+            "minor_collections": 0,
+            "major_collections": 0,
+            "compactions": 0
+          }
+        }
+      },
+      {
+        "index": 7,
+        "name": "CHM: Get 100 ops over bounded keys",
+        "status": "completed",
+        "statistics": {
+          "min_nanos": 9000,
+          "max_nanos": 397000,
+          "mean_nanos": 48600,
+          "median_nanos": 10000,
+          "std_dev_nanos": 116136,
+          "iterations": 10,
+          "total_time_nanos": 486000,
+          "gc": {
+            "minor_collections": 0,
+            "major_collections": 0,
+            "compactions": 0
+          }
+        }
+      },
+      {
+        "index": 8,
+        "name": "CHM: Has_key 100 ops over bounded keys",
+        "status": "completed",
+        "statistics": {
+          "min_nanos": 10000,
+          "max_nanos": 356000,
+          "mean_nanos": 44700,
+          "median_nanos": 10000,
+          "std_dev_nanos": 103767,
+          "iterations": 10,
+          "total_time_nanos": 447000,
+          "gc": {
+            "minor_collections": 1,
+            "major_collections": 0,
+            "compactions": 0
+          }
+        }
+      },
+      {
+        "index": 9,
+        "name": "CHM: Compute same key 100 ops",
+        "status": "completed",
+        "statistics": {
+          "min_nanos": 6000,
+          "max_nanos": 7000,
+          "mean_nanos": 6500,
+          "median_nanos": 7000,
+          "std_dev_nanos": 500,
+          "iterations": 10,
+          "total_time_nanos": 65000,
+          "gc": {
+            "minor_collections": 0,
+            "major_collections": 0,
+            "compactions": 0
+          }
+        }
+      },
+      {
+        "index": 10,
+        "name": "CHM: Mixed 100 ops over bounded keys",
+        "status": "completed",
+        "statistics": {
+          "min_nanos": 10000,
+          "max_nanos": 12000,
+          "mean_nanos": 11200,
+          "median_nanos": 11000,
+          "std_dev_nanos": 600,
+          "iterations": 10,
+          "total_time_nanos": 112000,
+          "gc": {
+            "minor_collections": 0,
+            "major_collections": 0,
+            "compactions": 0
+          }
+        }
+      },
+      {
+        "index": 11,
+        "name": "CHM: Insert 1k ops over bounded keys",
+        "status": "completed",
+        "statistics": {
+          "min_nanos": 340000,
+          "max_nanos": 419000,
+          "mean_nanos": 364300,
+          "median_nanos": 356000,
+          "std_dev_nanos": 22658,
+          "iterations": 10,
+          "total_time_nanos": 3643000,
+          "gc": {
+            "minor_collections": 10,
+            "major_collections": 0,
+            "compactions": 0
+          }
+        }
+      },
+      {
+        "index": 12,
+        "name": "CHM: Get 1k ops over bounded keys",
+        "status": "completed",
+        "statistics": {
+          "min_nanos": 355000,
+          "max_nanos": 387000,
+          "mean_nanos": 373600,
+          "median_nanos": 377000,
+          "std_dev_nanos": 9318,
+          "iterations": 10,
+          "total_time_nanos": 3736000,
+          "gc": {
+            "minor_collections": 10,
+            "major_collections": 0,
+            "compactions": 0
+          }
+        }
+      },
+      {
+        "index": 13,
+        "name": "CHM: Has_key 1k ops over bounded keys",
+        "status": "completed",
+        "statistics": {
+          "min_nanos": 363000,
+          "max_nanos": 446000,
+          "mean_nanos": 394500,
+          "median_nanos": 384000,
+          "std_dev_nanos": 24751,
+          "iterations": 10,
+          "total_time_nanos": 3945000,
+          "gc": {
+            "minor_collections": 10,
+            "major_collections": 0,
+            "compactions": 0
+          }
+        }
+      },
+      {
+        "index": 14,
+        "name": "CHM: Compute same key 1k ops",
+        "status": "completed",
+        "statistics": {
+          "min_nanos": 38000,
+          "max_nanos": 279000,
+          "mean_nanos": 79000,
+          "median_nanos": 39000,
+          "std_dev_nanos": 82567,
+          "iterations": 10,
+          "total_time_nanos": 790000,
+          "gc": {
+            "minor_collections": 1,
+            "major_collections": 0,
+            "compactions": 0
+          }
+        }
+      },
+      {
+        "index": 15,
+        "name": "CHM: Mixed 1k ops over bounded keys",
+        "status": "completed",
+        "statistics": {
+          "min_nanos": 367000,
+          "max_nanos": 426000,
+          "mean_nanos": 392900,
+          "median_nanos": 397000,
+          "std_dev_nanos": 16771,
+          "iterations": 10,
+          "total_time_nanos": 3929000,
+          "gc": {
+            "minor_collections": 10,
+            "major_collections": 0,
+            "compactions": 0
+          }
+        }
+      },
+      {
+        "index": 16,
+        "name": "CHM: Insert 10k ops over bounded keys",
+        "status": "completed",
+        "statistics": {
+          "min_nanos": 1168000,
+          "max_nanos": 3376000,
+          "mean_nanos": 2562700,
+          "median_nanos": 2777000,
+          "std_dev_nanos": 691903,
+          "iterations": 10,
+          "total_time_nanos": 25627000,
+          "gc": {
+            "minor_collections": 13,
+            "major_collections": 1,
+            "compactions": 0
+          }
+        }
+      },
+      {
+        "index": 17,
+        "name": "CHM: Get 10k ops over bounded keys",
+        "status": "completed",
+        "statistics": {
+          "min_nanos": 1946000,
+          "max_nanos": 4546000,
+          "mean_nanos": 2529800,
+          "median_nanos": 2354000,
+          "std_dev_nanos": 727129,
+          "iterations": 10,
+          "total_time_nanos": 25298000,
+          "gc": {
+            "minor_collections": 22,
+            "major_collections": 1,
+            "compactions": 0
+          }
+        }
+      },
+      {
+        "index": 18,
+        "name": "CHM: Has_key 10k ops over bounded keys",
+        "status": "completed",
+        "statistics": {
+          "min_nanos": 1894000,
+          "max_nanos": 3437000,
+          "mean_nanos": 2619600,
+          "median_nanos": 2771000,
+          "std_dev_nanos": 530190,
+          "iterations": 10,
+          "total_time_nanos": 26196000,
+          "gc": {
+            "minor_collections": 24,
+            "major_collections": 3,
+            "compactions": 0
+          }
+        }
+      },
+      {
+        "index": 19,
+        "name": "CHM: Compute same key 10k ops",
+        "status": "completed",
+        "statistics": {
+          "min_nanos": 535000,
+          "max_nanos": 696000,
+          "mean_nanos": 598800,
+          "median_nanos": 612000,
+          "std_dev_nanos": 45805,
+          "iterations": 10,
+          "total_time_nanos": 5988000,
+          "gc": {
+            "minor_collections": 10,
+            "major_collections": 0,
+            "compactions": 0
+          }
+        }
+      },
+      {
+        "index": 20,
+        "name": "CHM: Mixed 10k ops over bounded keys",
+        "status": "completed",
+        "statistics": {
+          "min_nanos": 2012000,
+          "max_nanos": 4278000,
+          "mean_nanos": 3068700,
+          "median_nanos": 3206000,
+          "std_dev_nanos": 827999,
+          "iterations": 10,
+          "total_time_nanos": 30687000,
+          "gc": {
+            "minor_collections": 25,
+            "major_collections": 4,
+            "compactions": 0
+          }
+        }
+      },
+      {
+        "index": 21,
+        "name": "CHM: Insert 100k ops over bounded keys",
+        "status": "completed",
+        "statistics": {
+          "min_nanos": 27154000,
+          "max_nanos": 33736000,
+          "mean_nanos": 30512200,
+          "median_nanos": 30873000,
+          "std_dev_nanos": 2105465,
+          "iterations": 10,
+          "total_time_nanos": 305122000,
+          "gc": {
+            "minor_collections": 148,
+            "major_collections": 19,
+            "compactions": 0
+          }
+        }
+      },
+      {
+        "index": 22,
+        "name": "CHM: Get 100k ops over bounded keys",
+        "status": "completed",
+        "statistics": {
+          "min_nanos": 25680000,
+          "max_nanos": 32334000,
+          "mean_nanos": 29533800,
+          "median_nanos": 30620000,
+          "std_dev_nanos": 2107069,
+          "iterations": 10,
+          "total_time_nanos": 295338000,
+          "gc": {
+            "minor_collections": 116,
+            "major_collections": 19,
+            "compactions": 0
+          }
+        }
+      },
+      {
+        "index": 23,
+        "name": "CHM: Has_key 100k ops over bounded keys",
+        "status": "completed",
+        "statistics": {
+          "min_nanos": 25300000,
+          "max_nanos": 31299000,
+          "mean_nanos": 28626800,
+          "median_nanos": 28853000,
+          "std_dev_nanos": 1567829,
+          "iterations": 10,
+          "total_time_nanos": 286268000,
+          "gc": {
+            "minor_collections": 123,
+            "major_collections": 20,
+            "compactions": 0
+          }
+        }
+      },
+      {
+        "index": 24,
+        "name": "CHM: Compute same key 100k ops",
+        "status": "completed",
+        "statistics": {
+          "min_nanos": 5276000,
+          "max_nanos": 5862000,
+          "mean_nanos": 5577600,
+          "median_nanos": 5622000,
+          "std_dev_nanos": 186856,
+          "iterations": 10,
+          "total_time_nanos": 55776000,
+          "gc": {
+            "minor_collections": 95,
+            "major_collections": 0,
+            "compactions": 0
+          }
+        }
+      },
+      {
+        "index": 25,
+        "name": "CHM: Mixed 100k ops over bounded keys",
+        "status": "completed",
+        "statistics": {
+          "min_nanos": 36684000,
+          "max_nanos": 43825000,
+          "mean_nanos": 38721400,
+          "median_nanos": 38617000,
+          "std_dev_nanos": 1895673,
+          "iterations": 10,
+          "total_time_nanos": 387214000,
+          "gc": {
+            "minor_collections": 174,
+            "major_collections": 22,
+            "compactions": 0
+          }
+        }
+      },
+      {
+        "index": 26,
+        "name": "CHM: Insert 1M ops over bounded keys",
+        "status": "completed",
+        "statistics": {
+          "min_nanos": 296141000,
+          "max_nanos": 310564000,
+          "mean_nanos": 303765400,
+          "median_nanos": 304886000,
+          "std_dev_nanos": 4270161,
+          "iterations": 10,
+          "total_time_nanos": 3037654000,
+          "gc": {
+            "minor_collections": 1354,
+            "major_collections": 96,
+            "compactions": 0
+          }
+        }
+      },
+      {
+        "index": 27,
+        "name": "CHM: Get 1M ops over bounded keys",
+        "status": "completed",
+        "statistics": {
+          "min_nanos": 95004000,
+          "max_nanos": 103864000,
+          "mean_nanos": 100693000,
+          "median_nanos": 101581000,
+          "std_dev_nanos": 2544352,
+          "iterations": 10,
+          "total_time_nanos": 1006930000,
+          "gc": {
+            "minor_collections": 176,
+            "major_collections": 15,
+            "compactions": 0
+          }
+        }
+      },
+      {
+        "index": 28,
+        "name": "CHM: Has_key 1M ops over bounded keys",
+        "status": "completed",
+        "statistics": {
+          "min_nanos": 98162000,
+          "max_nanos": 117107000,
+          "mean_nanos": 102781000,
+          "median_nanos": 101618000,
+          "std_dev_nanos": 5110402,
+          "iterations": 10,
+          "total_time_nanos": 1027810000,
+          "gc": {
+            "minor_collections": 177,
+            "major_collections": 15,
+            "compactions": 0
+          }
+        }
+      },
+      {
+        "index": 29,
+        "name": "CHM: Compute same key 1M ops",
+        "status": "completed",
+        "statistics": {
+          "min_nanos": 55180000,
+          "max_nanos": 58894000,
+          "mean_nanos": 56360500,
+          "median_nanos": 56191000,
+          "std_dev_nanos": 1032174,
+          "iterations": 10,
+          "total_time_nanos": 563605000,
+          "gc": {
+            "minor_collections": 953,
+            "major_collections": 0,
+            "compactions": 0
+          }
+        }
+      },
+      {
+        "index": 30,
+        "name": "CHM: Mixed 1M ops over bounded keys",
+        "status": "completed",
+        "statistics": {
+          "min_nanos": 213364000,
+          "max_nanos": 231086000,
+          "mean_nanos": 222544700,
+          "median_nanos": 223003000,
+          "std_dev_nanos": 6204411,
+          "iterations": 10,
+          "total_time_nanos": 2225447000,
+          "gc": {
+            "minor_collections": 737,
+            "major_collections": 54,
+            "compactions": 0
+          }
+        }
+      },
+      {
+        "index": 31,
+        "name": "CHM: Insert 10M ops over bounded keys",
+        "status": "completed",
+        "statistics": {
+          "min_nanos": 3016396000,
+          "max_nanos": 3333288000,
+          "mean_nanos": 3100653700,
+          "median_nanos": 3070882000,
+          "std_dev_nanos": 86393528,
+          "iterations": 10,
+          "total_time_nanos": 31006537000,
+          "gc": {
+            "minor_collections": 13401,
+            "major_collections": 879,
+            "compactions": 0
+          }
+        }
+      },
+      {
+        "index": 32,
+        "name": "CHM: Get 10M ops over bounded keys",
+        "status": "completed",
+        "statistics": {
+          "min_nanos": 716173000,
+          "max_nanos": 828257000,
+          "mean_nanos": 751921500,
+          "median_nanos": 749555000,
+          "std_dev_nanos": 34708455,
+          "iterations": 10,
+          "total_time_nanos": 7519215000,
+          "gc": {
+            "minor_collections": 873,
+            "major_collections": 23,
+            "compactions": 0
+          }
+        }
+      },
+      {
+        "index": 33,
+        "name": "CHM: Has_key 10M ops over bounded keys",
+        "status": "completed",
+        "statistics": {
+          "min_nanos": 715695000,
+          "max_nanos": 871003000,
+          "mean_nanos": 768833600,
+          "median_nanos": 758181000,
+          "std_dev_nanos": 40020838,
+          "iterations": 10,
+          "total_time_nanos": 7688336000,
+          "gc": {
+            "minor_collections": 875,
+            "major_collections": 22,
+            "compactions": 0
+          }
+        }
+      },
+      {
+        "index": 34,
+        "name": "CHM: Compute same key 10M ops",
+        "status": "completed",
+        "statistics": {
+          "min_nanos": 556719000,
+          "max_nanos": 579620000,
+          "mean_nanos": 565445100,
+          "median_nanos": 565559000,
+          "std_dev_nanos": 6613290,
+          "iterations": 10,
+          "total_time_nanos": 5654451000,
+          "gc": {
+            "minor_collections": 9537,
+            "major_collections": 0,
+            "compactions": 0
+          }
+        }
+      },
+      {
+        "index": 35,
+        "name": "CHM: Mixed 10M ops over bounded keys",
+        "status": "completed",
+        "statistics": {
+          "min_nanos": 1998830000,
+          "max_nanos": 2054956000,
+          "mean_nanos": 2023382900,
+          "median_nanos": 2027008000,
+          "std_dev_nanos": 17243438,
+          "iterations": 10,
+          "total_time_nanos": 20233829000,
+          "gc": {
+            "minor_collections": 6383,
+            "major_collections": 390,
+            "compactions": 0
+          }
+        }
+      },
+      {
+        "index": 36,
+        "name": "CHM: Insert 100M ops over bounded keys",
+        "status": "completed",
+        "statistics": {
+          "min_nanos": 30091946000,
+          "max_nanos": 30545622000,
+          "mean_nanos": 30314706300,
+          "median_nanos": 30327275000,
+          "std_dev_nanos": 168333237,
+          "iterations": 10,
+          "total_time_nanos": 303147063000,
+          "gc": {
+            "minor_collections": 133876,
+            "major_collections": 8675,
+            "compactions": 0
+          }
+        }
+      },
+      {
+        "index": 37,
+        "name": "CHM: Get 100M ops over bounded keys",
+        "status": "completed",
+        "statistics": {
+          "min_nanos": 6819933000,
+          "max_nanos": 7518895000,
+          "mean_nanos": 7258770300,
+          "median_nanos": 7362796000,
+          "std_dev_nanos": 215721379,
+          "iterations": 10,
+          "total_time_nanos": 72587703000,
+          "gc": {
+            "minor_collections": 7739,
+            "major_collections": 21,
+            "compactions": 0
+          }
+        }
+      },
+      {
+        "index": 38,
+        "name": "CHM: Has_key 100M ops over bounded keys",
+        "status": "completed",
+        "statistics": {
+          "min_nanos": 6713703000,
+          "max_nanos": 8170228000,
+          "mean_nanos": 7592173800,
+          "median_nanos": 7665957000,
+          "std_dev_nanos": 364505769,
+          "iterations": 10,
+          "total_time_nanos": 75921738000,
+          "gc": {
+            "minor_collections": 7740,
+            "major_collections": 22,
+            "compactions": 0
+          }
+        }
+      },
+      {
+        "index": 39,
+        "name": "CHM: Compute same key 100M ops",
+        "status": "completed",
+        "statistics": {
+          "min_nanos": 5530942000,
+          "max_nanos": 5799350000,
+          "mean_nanos": 5634503700,
+          "median_nanos": 5598597000,
+          "std_dev_nanos": 98376384,
+          "iterations": 10,
+          "total_time_nanos": 56345037000,
+          "gc": {
+            "minor_collections": 95379,
+            "major_collections": 10,
+            "compactions": 0
+          }
+        }
+      },
+      {
+        "index": 40,
+        "name": "CHM: Mixed 100M ops over bounded keys",
+        "status": "completed",
+        "statistics": {
+          "min_nanos": 20100190000,
+          "max_nanos": 21021894000,
+          "mean_nanos": 20618622800,
+          "median_nanos": 20684030000,
+          "std_dev_nanos": 297128946,
+          "iterations": 10,
+          "total_time_nanos": 206186228000,
+          "gc": {
+            "minor_collections": 62864,
+            "major_collections": 3754,
+            "compactions": 0
+          }
+        }
+      }
+    ],
+    "comparisons": []
+  }
+}

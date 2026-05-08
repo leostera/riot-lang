@@ -24,10 +24,10 @@ let test_create = fun _ctx ->
 
 let test_with_capacity = fun _ctx ->
   let map = HashMap.with_capacity ~size:32 in
-  if HashMap.is_empty map then
+  if HashMap.is_empty map && Int.equal (HashMap.bucket_count map) 32 then
     Ok ()
   else
-    Error "expected HashMap.with_capacity to start empty"
+    Error "expected HashMap.with_capacity to start empty with requested capacity"
 
 let test_from_list_unique = fun _ctx ->
   let map = HashMap.from_list [ (1, "a"); (2, "b"); ] in
@@ -164,37 +164,37 @@ let test_entry_existing = fun _ctx ->
   | HashMap.Occupied "a" -> Ok ()
   | _ -> Error "expected existing entry to be Occupied"
 
-let test_or_insert_missing = fun _ctx ->
+let test_compute_insert = fun _ctx ->
   let map = HashMap.create () in
-  let value = HashMap.or_insert map ~key:1 ~default:"a" in
-  if String.equal value "a" && HashMap.get map ~key:1 = Some "a" then
+  let previous = HashMap.compute map ~key:1 ~fn:(fun value -> HashMap.Insert ("a", value)) in
+  if previous = None && HashMap.get map ~key:1 = Some "a" then
     Ok ()
   else
-    Error "expected or_insert missing key to insert default"
+    Error "expected compute insert to return previous value and insert"
 
-let test_or_insert_existing = fun _ctx ->
+let test_compute_remove = fun _ctx ->
   let map = HashMap.from_list [ (1, "a"); ] in
-  let value = HashMap.or_insert map ~key:1 ~default:"b" in
-  if String.equal value "a" && HashMap.get map ~key:1 = Some "a" then
+  let removed =
+    HashMap.compute
+      map
+      ~key:1
+      ~fn:(fun value ->
+        match value with
+        | None -> HashMap.Abort None
+        | Some existing -> HashMap.Remove (Some existing))
+  in
+  if removed = Some "a" && HashMap.get map ~key:1 = None && HashMap.is_empty map then
     Ok ()
   else
-    Error "expected or_insert existing key not to overwrite value"
+    Error "expected compute remove to return removed value and delete"
 
-let test_and_modify_existing = fun _ctx ->
-  let map = HashMap.from_list [ (1, 2); ] in
-  HashMap.and_modify map ~key:1 ~fn:(fun value -> value + 3);
-  if HashMap.get map ~key:1 = Some 5 then
+let test_compute_abort = fun _ctx ->
+  let map = HashMap.from_list [ (1, "a"); ] in
+  let value = HashMap.compute map ~key:1 ~fn:(fun current -> HashMap.Abort current) in
+  if value = Some "a" && HashMap.get map ~key:1 = Some "a" then
     Ok ()
   else
-    Error "expected and_modify existing key to update value"
-
-let test_and_modify_missing = fun _ctx ->
-  let map = HashMap.create () in
-  HashMap.and_modify map ~key:1 ~fn:(fun value -> value + 3);
-  if HashMap.get map ~key:1 = None then
-    Ok ()
-  else
-    Error "expected and_modify missing key to leave map unchanged"
+    Error "expected compute abort to return current value without mutation"
 
 let test_iter = fun _ctx ->
   let items = Iterator.to_list (HashMap.iter (HashMap.from_list [ (1, "a"); (2, "b"); ])) in
@@ -234,10 +234,9 @@ let tests =
     case "HashMap.to_list and from_list roundtrip the mapping" test_to_list_roundtrip;
     case "HashMap.entry missing key is Vacant" test_entry_missing;
     case "HashMap.entry existing key is Occupied" test_entry_existing;
-    case "HashMap.or_insert inserts missing defaults" test_or_insert_missing;
-    case "HashMap.or_insert preserves existing values" test_or_insert_existing;
-    case "HashMap.and_modify updates existing values" test_and_modify_existing;
-    case "HashMap.and_modify leaves missing values alone" test_and_modify_missing;
+    case "HashMap.compute can insert from current value" test_compute_insert;
+    case "HashMap.compute can remove from current value" test_compute_remove;
+    case "HashMap.compute can abort without mutation" test_compute_abort;
     case "HashMap.iter yields every entry once" test_iter;
     case "HashMap.mut_iter yields only live entries" test_mut_iter_after_removals;
   ]

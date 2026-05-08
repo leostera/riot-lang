@@ -57,14 +57,12 @@ let test_remove_drops_all_matching_bindings = fun _ctx ->
   else
     Error "expected Proplist.remove to drop every matching binding"
 
-let test_contains_key = fun _ctx ->
+let test_has_key = fun _ctx ->
   let proplist = [ ("color", "red"); ("size", "l"); ] in
-  if
-    Proplist.contains_key proplist ~key:"color" && not (Proplist.contains_key proplist ~key:"shape")
-  then
+  if Proplist.has_key proplist ~key:"color" && not (Proplist.has_key proplist ~key:"shape") then
     Ok ()
   else
-    Error "expected Proplist.contains_key to reflect key membership"
+    Error "expected Proplist.has_key to reflect key membership"
 
 let test_keys_and_values_preserve_pair_order = fun _ctx ->
   let proplist = [ ("color", "red"); ("size", "l"); ("color", "blue"); ] in
@@ -109,7 +107,7 @@ let tests =
       test_set_replaces_existing_bindings_in_place;
     case "Proplist.set appends a missing binding" test_set_appends_missing_binding;
     case "Proplist.remove drops all matching bindings" test_remove_drops_all_matching_bindings;
-    case "Proplist.contains_key reflects key membership" test_contains_key;
+    case "Proplist.has_key reflects key membership" test_has_key;
     case
       "Proplist.keys and Proplist.values preserve pair order"
       test_keys_and_values_preserve_pair_order;

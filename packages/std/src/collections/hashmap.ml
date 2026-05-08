@@ -11,6 +11,11 @@ type ('key, 'value) entry =
   | Occupied of 'value
   | Vacant
 
+type ('value, 'result) operation =
+  | Insert of 'value * 'result
+  | Remove of 'result
+  | Abort of 'result
+
 let minimum_capacity = 16
 
 let normalize_capacity = fun capacity -> Int.max minimum_capacity capacity
@@ -20,6 +25,8 @@ let create = fun () -> { buckets = Array.make ~count:minimum_capacity ~value:[];
 let with_capacity = fun ~size ->
   let capacity = normalize_capacity size in
   { buckets = Array.make ~count:capacity ~value:[]; size = 0 }
+
+let bucket_count = fun map -> Array.length map.buckets
 
 let length = fun map -> map.size
 
@@ -110,8 +117,6 @@ let has_key = fun map ~key ->
   | Some _ -> true
   | None -> false
 
-let contains_key = fun map key -> has_key map ~key
-
 let clear = fun map ->
   map.buckets <- Array.make ~count:(Array.length map.buckets) ~value:[];
   map.size <- 0
@@ -146,19 +151,16 @@ let entry = fun map ~key ->
   | Some value -> Occupied value
   | None -> Vacant
 
-let or_insert = fun map ~key ~default ->
-  match get map ~key with
-  | Some value -> value
-  | None ->
-      let _ = insert map ~key ~value:default in
-      default
-
-let and_modify = fun map ~key ~fn ->
-  match get map ~key with
-  | Some value ->
-      let _ = insert map ~key ~value:(fn value) in
-      ()
-  | None -> ()
+let compute = fun map ~key ~fn ->
+  let current = get map ~key in
+  match fn current with
+  | Abort result -> result
+  | Insert (value, result) ->
+      let _ = insert map ~key ~value in
+      result
+  | Remove result ->
+      let _ = remove map ~key in
+      result
 
 let from_list = fun pairs ->
   let map = with_capacity ~size:(List.length pairs) in

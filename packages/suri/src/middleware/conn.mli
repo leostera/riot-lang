@@ -339,7 +339,7 @@ val to_response: t -> Web_server.Response.t
    Each key carries a runtime type witness, so values can be recovered without
    unsafe casts.
 *)
-type 'a assign_key = 'a Collections.TypeMap.key
+type 'a assign_key = 'a Collections.TypedKeyHashMap.key
 
 (**
    Create a fresh typed assignment key.

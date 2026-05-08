@@ -33,7 +33,7 @@ let get_all entries ~key =
   in
   loop [] entries
 
-let contains_key entries ~key = Option.is_some (get entries ~key)
+let has_key entries ~key = Option.is_some (get entries ~key)
 
 let add entries ~key ~value = (key, value) :: entries
 

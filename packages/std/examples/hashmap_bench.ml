@@ -88,19 +88,19 @@ let bench_iter_100k = fun () ->
   let map = populate_map 100_000 in
   HashMap.for_each map ~fn:(fun _k _v -> ())
 
-(* Benchmark: Contains key check *)
+(* Benchmark: key membership check *)
 
-let bench_contains_key_from_100 = fun () ->
+let bench_has_key_from_100 = fun () ->
   let map = populate_map 100 in
   let _ = HashMap.has_key map ~key:"key_50" in
   ()
 
-let bench_contains_key_from_10k = fun () ->
+let bench_has_key_from_10k = fun () ->
   let map = populate_map 10_000 in
   let _ = HashMap.has_key map ~key:"key_5000" in
   ()
 
-let bench_contains_key_from_100k = fun () ->
+let bench_has_key_from_100k = fun () ->
   let map = populate_map 100_000 in
   let _ = HashMap.has_key map ~key:"key_50000" in
   ()
@@ -128,15 +128,15 @@ let benchmarks =
     case "iter: 100 items" bench_iter_100;
     with_config ~config:{ iterations = 10; warmup = 2 } "iter: 10k items" bench_iter_10k;
     with_config ~config:{ iterations = 5; warmup = 1 } "iter: 100k items" bench_iter_100k;
-    case "contains_key: from 100 items" bench_contains_key_from_100;
+    case "has_key: from 100 items" bench_has_key_from_100;
     with_config
       ~config:{ iterations = 50; warmup = 5 }
-      "contains_key: from 10k items"
-      bench_contains_key_from_10k;
+      "has_key: from 10k items"
+      bench_has_key_from_10k;
     with_config
       ~config:{ iterations = 20; warmup = 2 }
-      "contains_key: from 100k items"
-      bench_contains_key_from_100k;
+      "has_key: from 100k items"
+      bench_has_key_from_100k;
   ]
 
 let main ~args = Bench.Cli.main ~name:"HashMap Benchmarks" ~benchmarks ~args

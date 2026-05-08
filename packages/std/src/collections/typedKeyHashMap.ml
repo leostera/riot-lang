@@ -58,8 +58,6 @@ let remove = fun map ~key ->
 
 let has_key = fun map ~key -> Hashmap.has_key map.values ~key:(Key key)
 
-let contains_key = fun map key -> has_key map ~key
-
 let length = fun map -> Hashmap.length map.values
 
 let is_empty = fun map -> Hashmap.is_empty map.values
@@ -80,20 +78,6 @@ let entry = fun map ~key ->
   match get map ~key with
   | Some value -> Occupied value
   | None -> Vacant
-
-let or_insert = fun map ~key ~default ->
-  match get map ~key with
-  | Some value -> value
-  | None ->
-      let _ = insert map ~key ~value:default in
-      default
-
-let and_modify = fun map ~key ~fn ->
-  match get map ~key with
-  | Some value ->
-      let _ = insert map ~key ~value:(fn value) in
-      ()
-  | None -> ()
 
 let iter = fun map -> Hashmap.iter map.values
 

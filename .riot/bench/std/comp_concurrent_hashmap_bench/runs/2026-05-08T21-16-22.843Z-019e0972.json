@@ -1,0 +1,748 @@
+{
+  "schema_version": 1,
+  "run_id": "2026-05-08T21-16-22.843Z-019e0972",
+  "suite": {
+    "package": "std",
+    "name": "comp_concurrent_hashmap_bench",
+    "profile": "debug",
+    "target": "aarch64-apple-darwin"
+  },
+  "selection": {
+    "filter": "ConcurrentHashMap",
+    "partial": true
+  },
+  "workspace": {
+    "git_head": "8e6823594bfcbdb1524f23eb4f72c37baab99e33",
+    "git_dirty": true
+  },
+  "command": {
+    "argv": [
+      "riot",
+      "bench",
+      "-p",
+      "std",
+      "-f",
+      "ConcurrentHashMap",
+      "--iterations",
+      "10",
+      "--warmup",
+      "1",
+      "--record"
+    ]
+  },
+  "suite_run": {
+    "status": 0,
+    "started_at_us": 0,
+    "completed_at_us": 41231815,
+    "duration_us": 41231815,
+    "summary": {
+      "total": 0,
+      "completed": 0,
+      "skipped": 0,
+      "failed": 0
+    },
+    "benchmarks": [],
+    "comparisons": [
+      {
+        "description": "Concurrent HashMap+Mutex vs ConcurrentHashMap: Insert 1k ops across 4 actors",
+        "fastest": "CHM: Insert 1k ops across 4 actors",
+        "case_results": [
+          {
+            "name": "HM+M: Insert 1k ops across 4 actors",
+            "statistics": {
+              "min_nanos": 20629000,
+              "max_nanos": 34454000,
+              "mean_nanos": 28315200,
+              "median_nanos": 29259000,
+              "std_dev_nanos": 4475953,
+              "iterations": 10,
+              "total_time_nanos": 283152000,
+              "gc": {
+                "minor_collections": 50,
+                "major_collections": 10,
+                "compactions": 0
+              }
+            }
+          },
+          {
+            "name": "CHM: Insert 1k ops across 4 actors",
+            "statistics": {
+              "min_nanos": 400000,
+              "max_nanos": 1231000,
+              "mean_nanos": 766000,
+              "median_nanos": 869000,
+              "std_dev_nanos": 305510,
+              "iterations": 10,
+              "total_time_nanos": 7660000,
+              "gc": {
+                "minor_collections": 12,
+                "major_collections": 2,
+                "compactions": 0
+              }
+            }
+          }
+        ],
+        "speedup_ratios": [
+          {
+            "name": "HM+M: Insert 1k ops across 4 actors",
+            "ratio": 36.965013
+          },
+          {
+            "name": "CHM: Insert 1k ops across 4 actors",
+            "ratio": 1.000000
+          }
+        ]
+      },
+      {
+        "description": "Concurrent HashMap+Mutex vs ConcurrentHashMap: Get 1k ops across 4 actors",
+        "fastest": "CHM: Get 1k ops across 4 actors",
+        "case_results": [
+          {
+            "name": "HM+M: Get 1k ops across 4 actors",
+            "statistics": {
+              "min_nanos": 41231000,
+              "max_nanos": 72702000,
+              "mean_nanos": 52009400,
+              "median_nanos": 48272000,
+              "std_dev_nanos": 10199389,
+              "iterations": 10,
+              "total_time_nanos": 520094000,
+              "gc": {
+                "minor_collections": 110,
+                "major_collections": 23,
+                "compactions": 0
+              }
+            }
+          },
+          {
+            "name": "CHM: Get 1k ops across 4 actors",
+            "statistics": {
+              "min_nanos": 410000,
+              "max_nanos": 1016000,
+              "mean_nanos": 669600,
+              "median_nanos": 650000,
+              "std_dev_nanos": 188721,
+              "iterations": 10,
+              "total_time_nanos": 6696000,
+              "gc": {
+                "minor_collections": 11,
+                "major_collections": 1,
+                "compactions": 0
+              }
+            }
+          }
+        ],
+        "speedup_ratios": [
+          {
+            "name": "HM+M: Get 1k ops across 4 actors",
+            "ratio": 77.672342
+          },
+          {
+            "name": "CHM: Get 1k ops across 4 actors",
+            "ratio": 1.000000
+          }
+        ]
+      },
+      {
+        "description": "Concurrent HashMap+Mutex vs ConcurrentHashMap: Check 1k ops with has_key across 4 actors",
+        "fastest": "CHM: Check 1k ops with has_key across 4 actors",
+        "case_results": [
+          {
+            "name": "HM+M: Check 1k ops with has_key across 4 actors",
+            "statistics": {
+              "min_nanos": 47886000,
+              "max_nanos": 80435000,
+              "mean_nanos": 63571400,
+              "median_nanos": 65967000,
+              "std_dev_nanos": 8957451,
+              "iterations": 10,
+              "total_time_nanos": 635714000,
+              "gc": {
+                "minor_collections": 113,
+                "major_collections": 23,
+                "compactions": 0
+              }
+            }
+          },
+          {
+            "name": "CHM: Check 1k ops with has_key across 4 actors",
+            "statistics": {
+              "min_nanos": 327000,
+              "max_nanos": 922000,
+              "mean_nanos": 658300,
+              "median_nanos": 775000,
+              "std_dev_nanos": 230874,
+              "iterations": 10,
+              "total_time_nanos": 6583000,
+              "gc": {
+                "minor_collections": 13,
+                "major_collections": 3,
+                "compactions": 0
+              }
+            }
+          }
+        ],
+        "speedup_ratios": [
+          {
+            "name": "HM+M: Check 1k ops with has_key across 4 actors",
+            "ratio": 96.569041
+          },
+          {
+            "name": "CHM: Check 1k ops with has_key across 4 actors",
+            "ratio": 1.000000
+          }
+        ]
+      },
+      {
+        "description": "Concurrent HashMap+Mutex vs ConcurrentHashMap: Remove 1k ops across 4 actors",
+        "fastest": "CHM: Remove 1k ops across 4 actors",
+        "case_results": [
+          {
+            "name": "HM+M: Remove 1k ops across 4 actors",
+            "statistics": {
+              "min_nanos": 38986000,
+              "max_nanos": 84887000,
+              "mean_nanos": 56265000,
+              "median_nanos": 56197000,
+              "std_dev_nanos": 12286941,
+              "iterations": 10,
+              "total_time_nanos": 562650000,
+              "gc": {
+                "minor_collections": 111,
+                "major_collections": 23,
+                "compactions": 0
+              }
+            }
+          },
+          {
+            "name": "CHM: Remove 1k ops across 4 actors",
+            "statistics": {
+              "min_nanos": 356000,
+              "max_nanos": 1372000,
+              "mean_nanos": 785700,
+              "median_nanos": 905000,
+              "std_dev_nanos": 307847,
+              "iterations": 10,
+              "total_time_nanos": 7857000,
+              "gc": {
+                "minor_collections": 12,
+                "major_collections": 2,
+                "compactions": 0
+              }
+            }
+          }
+        ],
+        "speedup_ratios": [
+          {
+            "name": "HM+M: Remove 1k ops across 4 actors",
+            "ratio": 71.611302
+          },
+          {
+            "name": "CHM: Remove 1k ops across 4 actors",
+            "ratio": 1.000000
+          }
+        ]
+      },
+      {
+        "description": "Concurrent HashMap+Mutex vs ConcurrentHashMap: Or_insert 1k ops across 4 actors",
+        "fastest": "CHM: Or_insert 1k ops across 4 actors",
+        "case_results": [
+          {
+            "name": "HM+M: Or_insert 1k ops across 4 actors",
+            "statistics": {
+              "min_nanos": 19863000,
+              "max_nanos": 33730000,
+              "mean_nanos": 28234700,
+              "median_nanos": 32181000,
+              "std_dev_nanos": 5369639,
+              "iterations": 10,
+              "total_time_nanos": 282347000,
+              "gc": {
+                "minor_collections": 44,
+                "major_collections": 10,
+                "compactions": 0
+              }
+            }
+          },
+          {
+            "name": "CHM: Or_insert 1k ops across 4 actors",
+            "statistics": {
+              "min_nanos": 310000,
+              "max_nanos": 2284000,
+              "mean_nanos": 890900,
+              "median_nanos": 971000,
+              "std_dev_nanos": 544803,
+              "iterations": 10,
+              "total_time_nanos": 8909000,
+              "gc": {
+                "minor_collections": 12,
+                "major_collections": 2,
+                "compactions": 0
+              }
+            }
+          }
+        ],
+        "speedup_ratios": [
+          {
+            "name": "HM+M: Or_insert 1k ops across 4 actors",
+            "ratio": 31.692334
+          },
+          {
+            "name": "CHM: Or_insert 1k ops across 4 actors",
+            "ratio": 1.000000
+          }
+        ]
+      },
+      {
+        "description": "Concurrent HashMap+Mutex vs ConcurrentHashMap: And_modify 1k ops across 4 actors",
+        "fastest": "CHM: And_modify 1k ops across 4 actors",
+        "case_results": [
+          {
+            "name": "HM+M: And_modify 1k ops across 4 actors",
+            "statistics": {
+              "min_nanos": 26482000,
+              "max_nanos": 80036000,
+              "mean_nanos": 47731000,
+              "median_nanos": 47743000,
+              "std_dev_nanos": 16978440,
+              "iterations": 10,
+              "total_time_nanos": 477310000,
+              "gc": {
+                "minor_collections": 111,
+                "major_collections": 24,
+                "compactions": 0
+              }
+            }
+          },
+          {
+            "name": "CHM: And_modify 1k ops across 4 actors",
+            "statistics": {
+              "min_nanos": 423000,
+              "max_nanos": 1289000,
+              "mean_nanos": 855100,
+              "median_nanos": 916000,
+              "std_dev_nanos": 314105,
+              "iterations": 10,
+              "total_time_nanos": 8551000,
+              "gc": {
+                "minor_collections": 13,
+                "major_collections": 3,
+                "compactions": 0
+              }
+            }
+          }
+        ],
+        "speedup_ratios": [
+          {
+            "name": "HM+M: And_modify 1k ops across 4 actors",
+            "ratio": 55.819202
+          },
+          {
+            "name": "CHM: And_modify 1k ops across 4 actors",
+            "ratio": 1.000000
+          }
+        ]
+      },
+      {
+        "description": "Concurrent HashMap+Mutex vs ConcurrentHashMap: Compute same key 1k ops across 4 actors",
+        "fastest": "CHM: Compute same key 1k ops across 4 actors",
+        "case_results": [
+          {
+            "name": "HM+M: Compute same key 1k ops across 4 actors",
+            "statistics": {
+              "min_nanos": 23550000,
+              "max_nanos": 31892000,
+              "mean_nanos": 29024700,
+              "median_nanos": 29574000,
+              "std_dev_nanos": 2121653,
+              "iterations": 10,
+              "total_time_nanos": 290247000,
+              "gc": {
+                "minor_collections": 46,
+                "major_collections": 9,
+                "compactions": 0
+              }
+            }
+          },
+          {
+            "name": "CHM: Compute same key 1k ops across 4 actors",
+            "statistics": {
+              "min_nanos": 81000,
+              "max_nanos": 322000,
+              "mean_nanos": 163100,
+              "median_nanos": 142000,
+              "std_dev_nanos": 67978,
+              "iterations": 10,
+              "total_time_nanos": 1631000,
+              "gc": {
+                "minor_collections": 0,
+                "major_collections": 0,
+                "compactions": 0
+              }
+            }
+          }
+        ],
+        "speedup_ratios": [
+          {
+            "name": "HM+M: Compute same key 1k ops across 4 actors",
+            "ratio": 177.956468
+          },
+          {
+            "name": "CHM: Compute same key 1k ops across 4 actors",
+            "ratio": 1.000000
+          }
+        ]
+      },
+      {
+        "description": "Concurrent HashMap+Mutex vs ConcurrentHashMap: Insert 10k ops across 4 actors",
+        "fastest": "CHM: Insert 10k ops across 4 actors",
+        "case_results": [
+          {
+            "name": "HM+M: Insert 10k ops across 4 actors",
+            "statistics": {
+              "min_nanos": 218349000,
+              "max_nanos": 305938000,
+              "mean_nanos": 277135400,
+              "median_nanos": 292138000,
+              "std_dev_nanos": 30386824,
+              "iterations": 10,
+              "total_time_nanos": 2771354000,
+              "gc": {
+                "minor_collections": 464,
+                "major_collections": 99,
+                "compactions": 0
+              }
+            }
+          },
+          {
+            "name": "CHM: Insert 10k ops across 4 actors",
+            "statistics": {
+              "min_nanos": 1801000,
+              "max_nanos": 2526000,
+              "mean_nanos": 2186200,
+              "median_nanos": 2311000,
+              "std_dev_nanos": 236468,
+              "iterations": 10,
+              "total_time_nanos": 21862000,
+              "gc": {
+                "minor_collections": 20,
+                "major_collections": 4,
+                "compactions": 0
+              }
+            }
+          }
+        ],
+        "speedup_ratios": [
+          {
+            "name": "HM+M: Insert 10k ops across 4 actors",
+            "ratio": 126.765804
+          },
+          {
+            "name": "CHM: Insert 10k ops across 4 actors",
+            "ratio": 1.000000
+          }
+        ]
+      },
+      {
+        "description": "Concurrent HashMap+Mutex vs ConcurrentHashMap: Get 10k ops across 4 actors",
+        "fastest": "CHM: Get 10k ops across 4 actors",
+        "case_results": [
+          {
+            "name": "HM+M: Get 10k ops across 4 actors",
+            "statistics": {
+              "min_nanos": 360977000,
+              "max_nanos": 786669000,
+              "mean_nanos": 603872500,
+              "median_nanos": 627953000,
+              "std_dev_nanos": 132698462,
+              "iterations": 10,
+              "total_time_nanos": 6038725000,
+              "gc": {
+                "minor_collections": 1093,
+                "major_collections": 232,
+                "compactions": 0
+              }
+            }
+          },
+          {
+            "name": "CHM: Get 10k ops across 4 actors",
+            "statistics": {
+              "min_nanos": 3224000,
+              "max_nanos": 4990000,
+              "mean_nanos": 3991700,
+              "median_nanos": 4165000,
+              "std_dev_nanos": 623534,
+              "iterations": 10,
+              "total_time_nanos": 39917000,
+              "gc": {
+                "minor_collections": 31,
+                "major_collections": 7,
+                "compactions": 0
+              }
+            }
+          }
+        ],
+        "speedup_ratios": [
+          {
+            "name": "HM+M: Get 10k ops across 4 actors",
+            "ratio": 151.282035
+          },
+          {
+            "name": "CHM: Get 10k ops across 4 actors",
+            "ratio": 1.000000
+          }
+        ]
+      },
+      {
+        "description": "Concurrent HashMap+Mutex vs ConcurrentHashMap: Check 10k ops with has_key across 4 actors",
+        "fastest": "CHM: Check 10k ops with has_key across 4 actors",
+        "case_results": [
+          {
+            "name": "HM+M: Check 10k ops with has_key across 4 actors",
+            "statistics": {
+              "min_nanos": 550402000,
+              "max_nanos": 945394000,
+              "mean_nanos": 696604000,
+              "median_nanos": 691651000,
+              "std_dev_nanos": 110974633,
+              "iterations": 10,
+              "total_time_nanos": 6966040000,
+              "gc": {
+                "minor_collections": 1100,
+                "major_collections": 235,
+                "compactions": 0
+              }
+            }
+          },
+          {
+            "name": "CHM: Check 10k ops with has_key across 4 actors",
+            "statistics": {
+              "min_nanos": 2591000,
+              "max_nanos": 6588000,
+              "mean_nanos": 3838900,
+              "median_nanos": 3597000,
+              "std_dev_nanos": 1077333,
+              "iterations": 10,
+              "total_time_nanos": 38389000,
+              "gc": {
+                "minor_collections": 30,
+                "major_collections": 7,
+                "compactions": 0
+              }
+            }
+          }
+        ],
+        "speedup_ratios": [
+          {
+            "name": "HM+M: Check 10k ops with has_key across 4 actors",
+            "ratio": 181.459272
+          },
+          {
+            "name": "CHM: Check 10k ops with has_key across 4 actors",
+            "ratio": 1.000000
+          }
+        ]
+      },
+      {
+        "description": "Concurrent HashMap+Mutex vs ConcurrentHashMap: Remove 10k ops across 4 actors",
+        "fastest": "CHM: Remove 10k ops across 4 actors",
+        "case_results": [
+          {
+            "name": "HM+M: Remove 10k ops across 4 actors",
+            "statistics": {
+              "min_nanos": 290558000,
+              "max_nanos": 689675000,
+              "mean_nanos": 606931600,
+              "median_nanos": 660806000,
+              "std_dev_nanos": 116146204,
+              "iterations": 10,
+              "total_time_nanos": 6069316000,
+              "gc": {
+                "minor_collections": 1095,
+                "major_collections": 235,
+                "compactions": 0
+              }
+            }
+          },
+          {
+            "name": "CHM: Remove 10k ops across 4 actors",
+            "statistics": {
+              "min_nanos": 2917000,
+              "max_nanos": 14120000,
+              "mean_nanos": 4995700,
+              "median_nanos": 4123000,
+              "std_dev_nanos": 3124383,
+              "iterations": 10,
+              "total_time_nanos": 49957000,
+              "gc": {
+                "minor_collections": 35,
+                "major_collections": 8,
+                "compactions": 0
+              }
+            }
+          }
+        ],
+        "speedup_ratios": [
+          {
+            "name": "HM+M: Remove 10k ops across 4 actors",
+            "ratio": 121.490802
+          },
+          {
+            "name": "CHM: Remove 10k ops across 4 actors",
+            "ratio": 1.000000
+          }
+        ]
+      },
+      {
+        "description": "Concurrent HashMap+Mutex vs ConcurrentHashMap: Or_insert 10k ops across 4 actors",
+        "fastest": "CHM: Or_insert 10k ops across 4 actors",
+        "case_results": [
+          {
+            "name": "HM+M: Or_insert 10k ops across 4 actors",
+            "statistics": {
+              "min_nanos": 210147000,
+              "max_nanos": 325299000,
+              "mean_nanos": 275259900,
+              "median_nanos": 290730000,
+              "std_dev_nanos": 36096263,
+              "iterations": 10,
+              "total_time_nanos": 2752599000,
+              "gc": {
+                "minor_collections": 459,
+                "major_collections": 99,
+                "compactions": 0
+              }
+            }
+          },
+          {
+            "name": "CHM: Or_insert 10k ops across 4 actors",
+            "statistics": {
+              "min_nanos": 1692000,
+              "max_nanos": 2570000,
+              "mean_nanos": 2157100,
+              "median_nanos": 2291000,
+              "std_dev_nanos": 293383,
+              "iterations": 10,
+              "total_time_nanos": 21571000,
+              "gc": {
+                "minor_collections": 22,
+                "major_collections": 4,
+                "compactions": 0
+              }
+            }
+          }
+        ],
+        "speedup_ratios": [
+          {
+            "name": "HM+M: Or_insert 10k ops across 4 actors",
+            "ratio": 127.606462
+          },
+          {
+            "name": "CHM: Or_insert 10k ops across 4 actors",
+            "ratio": 1.000000
+          }
+        ]
+      },
+      {
+        "description": "Concurrent HashMap+Mutex vs ConcurrentHashMap: And_modify 10k ops across 4 actors",
+        "fastest": "CHM: And_modify 10k ops across 4 actors",
+        "case_results": [
+          {
+            "name": "HM+M: And_modify 10k ops across 4 actors",
+            "statistics": {
+              "min_nanos": 611648000,
+              "max_nanos": 792213000,
+              "mean_nanos": 687328600,
+              "median_nanos": 668095000,
+              "std_dev_nanos": 55171914,
+              "iterations": 10,
+              "total_time_nanos": 6873286000,
+              "gc": {
+                "minor_collections": 1106,
+                "major_collections": 234,
+                "compactions": 0
+              }
+            }
+          },
+          {
+            "name": "CHM: And_modify 10k ops across 4 actors",
+            "statistics": {
+              "min_nanos": 2836000,
+              "max_nanos": 6677000,
+              "mean_nanos": 4058600,
+              "median_nanos": 3918000,
+              "std_dev_nanos": 1225103,
+              "iterations": 10,
+              "total_time_nanos": 40586000,
+              "gc": {
+                "minor_collections": 34,
+                "major_collections": 9,
+                "compactions": 0
+              }
+            }
+          }
+        ],
+        "speedup_ratios": [
+          {
+            "name": "HM+M: And_modify 10k ops across 4 actors",
+            "ratio": 169.351156
+          },
+          {
+            "name": "CHM: And_modify 10k ops across 4 actors",
+            "ratio": 1.000000
+          }
+        ]
+      },
+      {
+        "description": "Concurrent HashMap+Mutex vs ConcurrentHashMap: Compute same key 10k ops across 4 actors",
+        "fastest": "CHM: Compute same key 10k ops across 4 actors",
+        "case_results": [
+          {
+            "name": "HM+M: Compute same key 10k ops across 4 actors",
+            "statistics": {
+              "min_nanos": 206114000,
+              "max_nanos": 335838000,
+              "mean_nanos": 277510100,
+              "median_nanos": 284529000,
+              "std_dev_nanos": 38014283,
+              "iterations": 10,
+              "total_time_nanos": 2775101000,
+              "gc": {
+                "minor_collections": 456,
+                "major_collections": 102,
+                "compactions": 0
+              }
+            }
+          },
+          {
+            "name": "CHM: Compute same key 10k ops across 4 actors",
+            "statistics": {
+              "min_nanos": 1362000,
+              "max_nanos": 2821000,
+              "mean_nanos": 1930500,
+              "median_nanos": 1888000,
+              "std_dev_nanos": 497673,
+              "iterations": 10,
+              "total_time_nanos": 19305000,
+              "gc": {
+                "minor_collections": 6,
+                "major_collections": 1,
+                "compactions": 0
+              }
+            }
+          }
+        ],
+        "speedup_ratios": [
+          {
+            "name": "HM+M: Compute same key 10k ops across 4 actors",
+            "ratio": 143.750376
+          },
+          {
+            "name": "CHM: Compute same key 10k ops across 4 actors",
+            "ratio": 1.000000
+          }
+        ]
+      }
+    ]
+  }
+}

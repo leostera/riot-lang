@@ -26,9 +26,6 @@ val remove: t -> key:'a key -> 'a option
 
 val has_key: t -> key:'a key -> bool
 
-(** Use `contains_key map key` as the conventional alias for `has_key map ~key`. *)
-val contains_key: t -> 'a key -> bool
-
 val length: t -> int
 
 val is_empty: t -> bool
@@ -46,10 +43,6 @@ val fold_left: t -> init:'acc -> fn:('acc -> any_key -> binding -> 'acc) -> 'acc
 val to_list: t -> (any_key * binding) list
 
 val entry: t -> key:'a key -> 'a entry
-
-val or_insert: t -> key:'a key -> default:'a -> 'a
-
-val and_modify: t -> key:'a key -> fn:('a -> 'a) -> unit
 
 val iter: t -> (any_key * binding) Iter.Iterator.t
 

@@ -87,7 +87,7 @@ let apply_operation = fun op swiss hash ->
         fail "Clear: maps not empty after clear"
   | ContainsKey k ->
       let r1 = Swisstable.contains_key swiss k in
-      let r2 = Collections.HashMap.contains_key hash k in
+      let r2 = Collections.HashMap.has_key hash ~key:k in
       if not (r1 = r2) then
         fail ("ContainsKey(" ^ Int.to_string k ^ "): results differ")
   | Len ->
@@ -195,7 +195,7 @@ let clear_interleaved_prop =
       Swisstable.len swiss = Collections.HashMap.length hash && List.for_all
         (fun (k, _) ->
           let in_swiss = Swisstable.contains_key swiss k in
-          let in_hash = Collections.HashMap.contains_key hash k in
+          let in_hash = Collections.HashMap.has_key hash ~key:k in
           in_swiss = in_hash)
         before_clear)
 
@@ -213,7 +213,7 @@ let contains_checks_prop =
         (fun (k, v) ->
           apply_operation (Insert (k, v)) swiss hash;
           let c1 = Swisstable.contains_key swiss k in
-          let c2 = Collections.HashMap.contains_key hash k in
+          let c2 = Collections.HashMap.has_key hash ~key:k in
           if not c1 || not c2 || not (c1 = c2) then
             fail ("Contains check failed after insert(" ^ Int.to_string k ^ ")");
           true)

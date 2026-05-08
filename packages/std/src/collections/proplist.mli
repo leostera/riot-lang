@@ -21,7 +21,7 @@ val get: ('key, 'value) t -> key:'key -> 'value option
 (** Returns every value bound to [key], preserving left-to-right binding order. *)
 val get_all: ('key, 'value) t -> key:'key -> 'value list
 
-val contains_key: ('key, 'value) t -> key:'key -> bool
+val has_key: ('key, 'value) t -> key:'key -> bool
 
 (** Prepends a new binding, preserving any existing bindings for [key]. *)
 val add: ('key, 'value) t -> key:'key -> value:'value -> ('key, 'value) t

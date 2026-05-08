@@ -8,7 +8,7 @@ type upgrade_info = {
   handler: Channel.Handler.t;
 }
 
-type 'a assign_key = 'a TypeMap.key
+type 'a assign_key = 'a TypedKeyHashMap.key
 
 type t = {
   socket_conn: Socket_pool.Connection.t option;
@@ -24,7 +24,7 @@ type t = {
   halted: bool;
   sent: bool;
   upgrade: upgrade_info option;
-  assigns: TypeMap.t;
+  assigns: TypedKeyHashMap.t;
 }
 
 let make_from_request = fun ?socket_conn ~req ~peer ?(params = []) ?(body_params = []) () ->
@@ -41,7 +41,7 @@ let make_from_request = fun ?socket_conn ~req ~peer ?(params = []) ?(body_params
     halted = false;
     sent = false;
     upgrade = None;
-    assigns = TypeMap.create ();
+    assigns = TypedKeyHashMap.create ();
   }
 
 let make = fun socket_conn req ->
@@ -212,11 +212,11 @@ let to_response = fun t ->
   else
     Web_server.Response.make t.resp_status ~headers:t.resp_headers ~body:t.resp_body ()
 
-let assign_key = fun () -> TypeMap.key ()
+let assign_key = fun () -> TypedKeyHashMap.key ()
 
 let assign = fun key value t ->
-  let assigns = TypeMap.from_list (TypeMap.values t.assigns) in
-  let _ = TypeMap.insert assigns ~key ~value in
+  let assigns = TypedKeyHashMap.from_list (TypedKeyHashMap.values t.assigns) in
+  let _ = TypedKeyHashMap.insert assigns ~key ~value in
   { t with assigns }
 
-let get_assign = fun key t -> TypeMap.get t.assigns ~key
+let get_assign = fun key t -> TypedKeyHashMap.get t.assigns ~key

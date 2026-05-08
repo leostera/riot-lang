@@ -12,11 +12,13 @@ module Map = Map
 
 module HashMap = Hashmap
 
+module ConcurrentHashMap = ConcurrentHashMap
+
 module HashSet = Hashset
 
 module IndexSet = Indexset
 
-module TypeMap = TypeMap
+module TypedKeyHashMap = TypedKeyHashMap
 
 module Queue = Queue
 
