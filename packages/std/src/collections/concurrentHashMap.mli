@@ -3,10 +3,9 @@
 
    `Std.Collections.ConcurrentHashMap` is safe to share across actors, runtime
    scheduler domains, and kernel threads. The synchronization core is a fixed
-   array of atomic bucket slots. Bucket heads are allocated and installed on
-   first write, then mutating operations retry with CAS when another writer
-   wins the bucket race. `insert`, `remove`, `get`, and `compute` do not take
-   locks.
+   array of atomic bucket heads. Entries are stored in immutable bucket snapshots,
+   and mutating operations retry with CAS when another writer wins the bucket
+   race. `insert`, `remove`, `get`, and `compute` do not take locks.
 
    The table does not resize after construction. Use `with_capacity` when the
    expected key count is known so buckets stay short under contention.
@@ -38,7 +37,8 @@ val create: unit -> ('key, 'value) t
    Create an empty map with enough bucket slots for the expected key count.
 
    The capacity is a construction-time hint. The map does not resize after it is
-   shared. Bucket heads are allocated only for slots that receive writes.
+   shared, and the bucket count is rounded up to a power of two for masked bucket
+   selection.
 *)
 val with_capacity: size:int -> ('key, 'value) t
 

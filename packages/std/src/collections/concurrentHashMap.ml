@@ -4,15 +4,15 @@ external caml_hash: int -> int -> int -> 'value -> int = "caml_hash" [@@ noalloc
 
 type ('key, 'value) bucket = ('key * 'value) list Atomic.t
 
-type ('key, 'value) bucket_slot = ('key, 'value) bucket option Atomic.t
-
 type ('key, 'value) table = {
-  buckets: ('key, 'value) bucket_slot array;
+  buckets: ('key, 'value) bucket array;
   sizes: int Atomic.t array;
+  size_counter_mask: int;
 }
 
 type ('key, 'value) t = {
   capacity: int;
+  capacity_mask: int;
   table: ('key, 'value) table;
 }
 
@@ -42,7 +42,7 @@ let default_capacity = fun () -> normalize_capacity (Thread.available_parallelis
 let make_buckets = fun capacity ->
   Array.init
     ~count:capacity
-    ~fn:(fun _ -> Atomic.make (None: ('key, 'value) bucket option))
+    ~fn:(fun _ -> Atomic.make ([]: ('key * 'value) list))
 
 let make_size_counters = fun capacity ->
   let count = Int.min max_size_counter_count capacity in
@@ -51,9 +51,14 @@ let make_size_counters = fun capacity ->
 let make_table = fun capacity -> {
   buckets = make_buckets capacity;
   sizes = make_size_counters capacity;
+  size_counter_mask = Int.min max_size_counter_count capacity - 1;
 }
 
-let make = fun capacity -> { capacity; table = make_table capacity }
+let make = fun capacity -> {
+  capacity;
+  capacity_mask = capacity - 1;
+  table = make_table capacity;
+}
 
 let create = fun () -> make (default_capacity ())
 
@@ -61,28 +66,23 @@ let with_capacity = fun ~size -> make (normalize_capacity size)
 
 let bucket_count = fun map -> map.capacity
 
-let hash_index = fun map key ->
-  let hash = caml_hash 10 100 0 key in
-  (hash lsr 1) mod map.capacity
+let hash_native = fun key -> caml_hash 10 100 0 key
 
-let bucket_slot_at = fun table index -> Array.get_unchecked table.buckets ~at:index
+let hash_index = fun map key -> hash_native key land map.capacity_mask
+
+let bucket_at = fun table index -> Array.get_unchecked table.buckets ~at:index
 
 let size_counter_at = fun table bucket_index ->
   Array.get_unchecked
     table.sizes
-    ~at:(bucket_index mod Array.length table.sizes)
+    ~at:(bucket_index land table.size_counter_mask)
 
 let add_size = fun table bucket_index delta ->
   if not (Int.equal delta 0) then
     let _ = Atomic.fetch_and_add (size_counter_at table bucket_index) delta in
     ()
 
-let make_bucket = fun bucket -> Atomic.make_contended bucket
-
-let bucket_items = fun bucket_slot ->
-  match Atomic.get bucket_slot with
-  | None -> []
-  | Some bucket_ref -> Atomic.get bucket_ref
+let bucket_items = Atomic.get
 
 let rec find_in_bucket = fun key bucket ->
   match bucket with
@@ -116,51 +116,38 @@ let rec remove_from_bucket = fun key bucket ->
 let insert = fun map ~key ~value ->
   let table = map.table in
   let bucket_index = hash_index map key in
-  let bucket_slot = bucket_slot_at table bucket_index in
+  let bucket_ref = bucket_at table bucket_index in
   let rec loop () =
-    match Atomic.get bucket_slot with
-    | None ->
-        let bucket_ref = make_bucket [ (key, value); ] in
-        if Atomic.compare_and_set bucket_slot None (Some bucket_ref) then (
-          add_size table bucket_index 1;
-          None
-        ) else
-          loop ()
-    | Some bucket_ref ->
-        let rec update_bucket () =
-          let bucket = Atomic.get bucket_ref in
-          let (previous, next_bucket, inserted_new) = replace_in_bucket key value bucket in
-          if Atomic.compare_and_set bucket_ref bucket next_bucket then (
-            if inserted_new then
-              add_size table bucket_index 1;
-            previous
-          ) else
-            update_bucket ()
-        in
-        update_bucket ()
+    let bucket = Atomic.get bucket_ref in
+    let (previous, next_bucket, inserted_new) = replace_in_bucket key value bucket in
+    if Atomic.compare_and_set bucket_ref bucket next_bucket then (
+      if inserted_new then
+        add_size table bucket_index 1;
+      previous
+    ) else
+      loop ()
   in
   loop ()
 
 let get = fun map ~key ->
-  find_in_bucket key (bucket_items (bucket_slot_at map.table (hash_index map key)))
+  find_in_bucket
+    key
+    (bucket_items (bucket_at map.table (hash_index map key)))
 
 let remove = fun map ~key ->
   let table = map.table in
   let bucket_index = hash_index map key in
-  let bucket_slot = bucket_slot_at table bucket_index in
+  let bucket_ref = bucket_at table bucket_index in
   let rec loop () =
-    match Atomic.get bucket_slot with
-    | None -> None
-    | Some bucket_ref ->
-        let bucket = Atomic.get bucket_ref in
-        let (removed, next_bucket, did_remove) = remove_from_bucket key bucket in
-        if not did_remove then
-          None
-        else if Atomic.compare_and_set bucket_ref bucket next_bucket then (
-          add_size table bucket_index (-1);
-          removed
-        ) else
-          loop ()
+    let bucket = Atomic.get bucket_ref in
+    let (removed, next_bucket, did_remove) = remove_from_bucket key bucket in
+    if not did_remove then
+      None
+    else if Atomic.compare_and_set bucket_ref bucket next_bucket then (
+      add_size table bucket_index (-1);
+      removed
+    ) else
+      loop ()
   in
   loop ()
 
@@ -180,20 +167,17 @@ let is_empty = fun map -> Int.equal (length map) 0
 let clear = fun map ->
   let table = map.table in
   for index = 0 to Array.length table.buckets - 1 do
-    match Atomic.get (bucket_slot_at table index) with
-    | None -> ()
-    | Some bucket_ref ->
-        let removed = Atomic.exchange bucket_ref [] in
-        add_size table index (-(List.length removed))
+    let removed = Atomic.exchange (bucket_at table index) [] in
+    add_size table index (-(List.length removed))
   done
 
 let fold_left = fun map ~init ~fn ->
   Array.fold_left
     map.table.buckets
     ~acc:init
-    ~fn:(fun acc bucket_slot ->
+    ~fn:(fun acc bucket_ref ->
       List.fold_left
-        (bucket_items bucket_slot)
+        (bucket_items bucket_ref)
         ~acc:acc
         ~fn:(fun acc (key, value) ->
           fn acc key value))
@@ -220,47 +204,32 @@ let entry = fun map ~key ->
 let compute = fun map ~key ~fn ->
   let table = map.table in
   let bucket_index = hash_index map key in
-  let bucket_slot = bucket_slot_at table bucket_index in
+  let bucket_ref = bucket_at table bucket_index in
   let rec loop () =
-    match Atomic.get bucket_slot with
-    | None -> (
-        match fn None with
-        | Abort result
-        | Remove result -> result
-        | Insert (value, result) ->
-            let bucket_ref = make_bucket [ (key, value); ] in
-            if Atomic.compare_and_set bucket_slot None (Some bucket_ref) then (
-              add_size table bucket_index 1;
+    let bucket = Atomic.get bucket_ref in
+    let current = find_in_bucket key bucket in
+    match fn current with
+    | Abort result -> result
+    | Insert (value, result) ->
+        let (_, next_bucket, inserted_new) = replace_in_bucket key value bucket in
+        if Atomic.compare_and_set bucket_ref bucket next_bucket then (
+          if inserted_new then
+            add_size table bucket_index 1;
+          result
+        ) else
+          loop ()
+    | Remove result -> (
+        match current with
+        | None -> result
+        | Some _ ->
+            let (_, next_bucket, did_remove) = remove_from_bucket key bucket in
+            if not did_remove then
+              result
+            else if Atomic.compare_and_set bucket_ref bucket next_bucket then (
+              add_size table bucket_index (-1);
               result
             ) else
               loop ()
-      )
-    | Some bucket_ref -> (
-        let bucket = Atomic.get bucket_ref in
-        let current = find_in_bucket key bucket in
-        match fn current with
-        | Abort result -> result
-        | Insert (value, result) ->
-            let (_, next_bucket, inserted_new) = replace_in_bucket key value bucket in
-            if Atomic.compare_and_set bucket_ref bucket next_bucket then (
-              if inserted_new then
-                add_size table bucket_index 1;
-              result
-            ) else
-              loop ()
-        | Remove result -> (
-            match current with
-            | None -> result
-            | Some _ ->
-                let (_, next_bucket, did_remove) = remove_from_bucket key bucket in
-                if not did_remove then
-                  result
-                else if Atomic.compare_and_set bucket_ref bucket next_bucket then (
-                  add_size table bucket_index (-1);
-                  result
-                ) else
-                  loop ()
-          )
       )
   in
   loop ()

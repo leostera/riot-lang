@@ -204,6 +204,7 @@
 - `Std.Test` output now reports per-test timings in the human runner while preserving JSON mode for automation.
 - `Vector.concat` and `Vector.extend` support efficient vector concatenation without building temporary lists. `extend` mutates the left vector in place, which is useful in hot parser, formatter, and analysis paths.
 - `Std.Collections.HashMap` now uses a SwissTable-style backing table for denser storage and faster lookup, insertion, removal, and traversal while preserving the existing public API.
+- `Std.Collections.ConcurrentHashMap` now uses single atomic bucket heads plus masked bucket and striped-counter selection, reducing hashing overhead and bucket indirection in core lock-free operations.
 - Queue, Deque, HashMap, HashSet, Heap, TypedKeyHashMap, iterator, mutable iterator, IO reader/writer, buffered reader, and Unicode helpers now have tighter semantics around order, mutation, borrowed slices, and invalid input.
 - `Std.Command.output` remains safe around inherited stdout/stderr pipes and delayed output, preserving idle callbacks and streamed line callbacks for long-running commands.
 
