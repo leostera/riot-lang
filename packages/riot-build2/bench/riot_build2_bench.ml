@@ -16,6 +16,8 @@ let linux = target "x86_64-unknown-linux-gnu"
 
 let kernel_package = package "kernel"
 
+let build2_package = package "riot-build2"
+
 let executor_workspace =
   Riot_model.Workspace.make
     ~root:(Path.v ".")
@@ -100,6 +102,47 @@ let kernel_build_intent = fun () ->
     ~targets:(User_intent.ManyTargets [ Riot_model.Target.current ])
     ~profiles:(User_intent.ManyProfiles [ Riot_model.Profile.debug ])
     ()
+
+let source_package_workspace = fun root ->
+  let package_name = package "sourcepkg" in
+  let package_path = Path.(root / Path.v "sourcepkg") in
+  let source = Path.v "src/sourcepkg.ml" in
+  Fs.create_dir_all Path.(package_path / Path.v "src")
+  |> Result.expect ~msg:"failed to create source package benchmark src dir";
+  Fs.write "let value = 1\n" Path.(package_path / source)
+  |> Result.expect ~msg:"failed to write source package benchmark source";
+  let sources =
+    Riot_model.Package.{
+      src = [ source ];
+      native = [];
+      tests = [];
+      examples = [];
+      bench = [];
+    }
+  in
+  let package =
+    Riot_model.Package.make
+      ~name:package_name
+      ~path:package_path
+      ~relative_path:(Path.v "sourcepkg")
+      ~library:{ path = source }
+      ~sources
+      ()
+    |> Riot_model.Package_manifest.from_package
+  in
+  Riot_model.Workspace.make
+    ~root
+    ~target_dir:Path.(root / Path.v "target")
+    ~packages:[ package ]
+    ()
+
+let source_build = fun () ->
+  Goal.{
+    package = package "sourcepkg";
+    scope = Goal.Runtime;
+    profile = Riot_model.Profile.debug;
+    target = Riot_model.Target.current;
+  }
 
 let expect_no_failures = fun label summary expected_completed ->
   if
@@ -343,6 +386,95 @@ let make_kernel_intent_to_goal_bench = fun () ->
     | Ok _ -> panic "kernel intent expansion benchmark produced unexpected goals"
     | Error error -> panic ("kernel intent expansion benchmark failed: " ^ Error.message error)
 
+let make_module_provider_registry_lookup_bench = fun () ->
+  let workspace = load_repo_workspace () in
+  let catalog = Package_catalog.create workspace in
+  let registry = Module_provider_registry.create ~catalog () in
+  let build =
+    Goal.{
+      package = build2_package;
+      scope = Goal.Runtime;
+      profile = Riot_model.Profile.debug;
+      target = Riot_model.Target.current;
+    }
+  in
+  fun () ->
+    match Module_provider_registry.providers_for_build registry build with
+    | Ok providers when not (List.is_empty providers) -> ()
+    | Ok _ -> panic "module provider registry benchmark produced no providers"
+    | Error error -> panic ("module provider registry benchmark failed: " ^ Error.message error)
+
+let execute_module_plan_to_cache = fun workspace ->
+  let config = Config.make ~workspace ~parallelism:1 () in
+  let services = Build_services.create ~config () in
+  let registry = Work_registry.create () in
+  let node = Work_node.module_plan ~id:(node_id 1) (source_build ()) in
+  let source_keys =
+    match Build_services.execute_node services registry node with
+    | Ok (Work_result.RequeueWithDependencies keys) ->
+        List.filter
+          keys
+          ~fn:(fun __tmp1 ->
+            match __tmp1 with
+            | Work_node.SourceAnalysisKey _ -> true
+            | _ -> false)
+    | Ok _ -> panic "module plan cache setup expected source analysis dependencies"
+    | Error error -> panic ("module plan cache setup failed: " ^ Error.message error)
+  in
+  List.for_each
+    source_keys
+    ~fn:(fun key ->
+      match Work_registry.find registry key with
+      | None -> panic "module plan cache setup missed source analysis node"
+      | Some source_node ->
+          Build_services.execute_node services registry source_node
+          |> Result.expect ~msg:"source analysis cache setup failed"
+          |> ignore);
+  match Build_services.execute_node services registry node with
+  | Ok (Work_result.Complete []) -> ()
+  | Ok _ -> panic "module plan cache setup did not complete module plan"
+  | Error error -> panic ("module plan cache setup failed: " ^ Error.message error)
+
+let make_module_plan_cache_hit_bench = fun () ->
+  let workspace =
+    source_package_workspace
+      Path.(Path.v "_bench" / Path.v ("module-plan-cache-" ^ UUID.to_string (UUID.v4 ())))
+  in
+  execute_module_plan_to_cache workspace;
+  fun () ->
+    let config = Config.make ~workspace ~parallelism:1 () in
+    let services = Build_services.create ~config () in
+    let registry = Work_registry.create () in
+    let node = Work_node.module_plan ~id:(node_id 1) (source_build ()) in
+    match Build_services.execute_node services registry node with
+    | Ok (Work_result.Complete []) -> ()
+    | Ok _ -> panic "module plan cache hit benchmark requested dependencies"
+    | Error error -> panic ("module plan cache hit benchmark failed: " ^ Error.message error)
+
+let make_action_plan_from_cached_module_plan_bench = fun () ->
+  let workspace =
+    source_package_workspace
+      Path.(Path.v "_bench" / Path.v ("action-plan-cache-" ^ UUID.to_string (UUID.v4 ())))
+  in
+  execute_module_plan_to_cache workspace;
+  fun () ->
+    let config = Config.make ~workspace ~parallelism:1 () in
+    let services = Build_services.create ~config () in
+    let registry = Work_registry.create () in
+    let build = source_build () in
+    let module_node = Work_node.module_plan ~id:(node_id 1) build in
+    let action_node = Work_node.action_plan ~id:(node_id 2) build in
+    (
+      match Build_services.execute_node services registry module_node with
+      | Ok (Work_result.Complete []) -> ()
+      | Ok _ -> panic "action plan benchmark module plan cache hit requested dependencies"
+      | Error error -> panic ("action plan benchmark module plan failed: " ^ Error.message error)
+    );
+    match Build_services.execute_node services registry action_node with
+    | Ok (Work_result.Complete []) -> ()
+    | Ok _ -> panic "action plan benchmark requested dependencies"
+    | Error error -> panic ("action plan benchmark failed: " ^ Error.message error)
+
 let kernel_cold_target_dir = fun () ->
   Path.(Path.v "_bench" / Path.v ("kernel-" ^ UUID.to_string (UUID.v4 ())))
 
@@ -390,6 +522,8 @@ let runner_heavy_config: Bench.bench_config = { iterations = 20; warmup = 4 }
 let planning_config: Bench.bench_config = { iterations = 80; warmup = 12 }
 
 let workspace_load_config: Bench.bench_config = { iterations = 20; warmup = 4 }
+
+let stage_config: Bench.bench_config = { iterations = 80; warmup = 12 }
 
 let kernel_cold_build_config: Bench.bench_config = { iterations = 4; warmup = 1 }
 
@@ -441,6 +575,18 @@ let benchmarks = fun () ->
       ~config:planning_config
       "riot-build2 kernel intent expands to concrete package goal"
       (make_kernel_intent_to_goal_bench ());
+    with_config
+      ~config:stage_config
+      "riot-build2 module provider registry cached lookup"
+      (make_module_provider_registry_lookup_bench ());
+    with_config
+      ~config:stage_config
+      "riot-build2 module plan cache hit small package"
+      (make_module_plan_cache_hit_bench ());
+    with_config
+      ~config:stage_config
+      "riot-build2 action plan from cached module plan small package"
+      (make_action_plan_from_cached_module_plan_bench ());
     with_config
       ~config:kernel_cold_build_config
       "riot-build2 kernel cold boot + cold cache graph execution parallelism 4"
