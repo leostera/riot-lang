@@ -8,17 +8,19 @@ type t = {
   catalog: Package_catalog.t;
   store: Riot_store.Store.t;
   package_planning: Package_planning.t;
+  module_providers: Module_provider_registry.t;
   source_analyzer: Source_analyzer.t;
   module_plan_cache: Module_plan_cache.payload Graph_cache.t;
   plans: (Goal.build_package, Module_plan.t) ConcurrentHashMap.t;
 }
 
-let create = fun ~workspace ~catalog ~store ~package_planning ~source_analyzer () ->
+let create = fun ~workspace ~catalog ~store ~package_planning ~module_providers ~source_analyzer () ->
   {
     workspace;
     catalog;
     store;
     package_planning;
+    module_providers;
     source_analyzer;
     module_plan_cache = Module_plan_cache.create_cache ~store;
     plans = ConcurrentHashMap.with_capacity ~size:128;
@@ -100,26 +102,8 @@ let realized_dependency_packages = fun t ~scope ~intent (package: Riot_model.Pac
   in
   loop [] (Riot_model.Package.dependencies_for_scope scope package)
 
-let package_dependency_keys = fun t (build: Goal.build_package) ->
-  let* dependencies =
-    Package_catalog.dependency_names_for_scope
-      t.catalog
-      ~scope:(Goal.dependency_scope build.scope)
-      build.package
-  in
-  Ok (
-    List.map
-      dependencies
-      ~fn:(fun package ->
-        Work_node.GoalKey (
-          Goal.BuildPackage {
-            package;
-            scope = build.scope;
-            profile = build.profile;
-            target = build.target;
-          }
-        ))
-  )
+let package_dependency_keys = fun t build ->
+  Module_provider_registry.dependency_keys_for_build t.module_providers build
 
 let source_dependency_keys = fun t registry (build: Goal.build_package) ->
   let* input = Package_planning.resolve t.package_planning build in

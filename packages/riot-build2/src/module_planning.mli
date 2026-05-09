@@ -7,6 +7,7 @@ val create:
   catalog:Package_catalog.t ->
   store:Riot_store.Store.t ->
   package_planning:Package_planning.t ->
+  module_providers:Module_provider_registry.t ->
   source_analyzer:Source_analyzer.t ->
   unit ->
   t

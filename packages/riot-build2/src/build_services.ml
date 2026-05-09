@@ -4,6 +4,7 @@ open Std.Result.Syntax
 type t = {
   config: Build_config.t;
   catalog: Package_catalog.t;
+  module_providers: Module_provider_registry.t;
   toolchains: Toolchain_service.t;
   package_planning: Package_planning.t;
   source_analyzer: Source_analyzer.t;
@@ -15,6 +16,7 @@ type t = {
 let create = fun ~config () ->
   let workspace = config.Build_config.workspace in
   let catalog = Package_catalog.create workspace in
+  let module_providers = Module_provider_registry.create ~catalog () in
   let store = Riot_store.Store.create ~workspace in
   let session_id = Riot_model.Session_id.make () in
   let toolchains = Toolchain_service.create ~root:workspace.root () in
@@ -30,7 +32,14 @@ let create = fun ~config () ->
   in
   let source_analyzer = Source_analyzer.create ~store () in
   let module_planning =
-    Module_planning.create ~workspace ~catalog ~store ~package_planning ~source_analyzer ()
+    Module_planning.create
+      ~workspace
+      ~catalog
+      ~store
+      ~package_planning
+      ~module_providers
+      ~source_analyzer
+      ()
   in
   let action_executor = Action_executor.create ~store ~toolchains () in
   let package_finalizer =
@@ -46,6 +55,7 @@ let create = fun ~config () ->
   {
     config;
     catalog;
+    module_providers;
     toolchains;
     package_planning;
     source_analyzer;
