@@ -13,8 +13,10 @@ val create:
 
 val find: t -> Goal.build_package -> Module_plan.t option
 
-val execute:
+val plan_dependencies:
   t ->
   Work_registry.t ->
   Goal.build_package ->
-  (Work_result.t, Error.t) result
+  (Work_node.key list, Error.t) result
+
+val execute: t -> Work_registry.t -> Goal.build_package -> (Work_result.t, Error.t) result

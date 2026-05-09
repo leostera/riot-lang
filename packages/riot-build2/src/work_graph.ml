@@ -3,9 +3,10 @@ open Std
 let execute_node = fun _registry node ->
   match Work_node.kind node with
   | Work_node.UserIntent _
-  | Work_node.Goal _ -> Error (Error.ExecutorInvariantViolated {
-      message = "default work graph virtual node reached concrete execution";
-    })
+  | Work_node.Goal _ ->
+      Error (Error.ExecutorInvariantViolated {
+        message = "default work graph virtual node reached concrete execution";
+      })
   | ToolchainReady _
   | SourceAnalysis _
   | ModulePlan _
@@ -16,7 +17,7 @@ let execute_node = fun _registry node ->
 
 let run_intent = fun ~config intent ->
   let catalog = Package_catalog.create config.Build_config.workspace in
-  let dependencies_of_node = fun node ->
+  let plan_dependencies = fun _registry node ->
     match Work_node.kind node with
     | Work_node.UserIntent intent ->
         Intent_planner.expand catalog intent
@@ -33,7 +34,7 @@ let run_intent = fun ~config intent ->
   Executor.Runner.run_with_handlers
     ~config
     ~seeds:[ Work_node.user_intent ~id:(Work_node.Node_id.from_int 1) intent ]
-    ~dependencies:dependencies_of_node
+    ~plan_dependencies
     ~execution_mode:(fun node ->
       match Work_node.kind node with
       | Work_node.UserIntent _

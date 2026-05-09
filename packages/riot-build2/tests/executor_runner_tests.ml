@@ -36,16 +36,10 @@ let run_executor = fun ?parallelism ?on_event ~seeds ~execute () ->
     ()
 
 let run_default_executor = fun
-  ?parallelism
-  ?on_event
-  ?dependencies
-  ?execution_mode
-  ~seeds
-  ~execute
-  () ->
+  ?parallelism ?on_event ?plan_dependencies ?execution_mode ~seeds ~execute () ->
   Executor.Runner.run_with_handlers
     ~config:(executor_config ?parallelism ?on_event ())
-    ?dependencies
+    ?plan_dependencies
     ?execution_mode
     ~seeds
     ~execute
@@ -359,7 +353,7 @@ let test_virtual_node_declares_dependencies_and_completes_without_execution = fu
   let execute_calls = Sync.Atomic.make 0 in
   let child_action = sample_goal "virtual-child" in
   let seed = sample_seed () in
-  let dependencies node =
+  let plan_dependencies _registry node =
     match Work_node.kind node with
     | Work_node.UserIntent _ -> Ok [ goal_key child_action ]
     | Goal _ -> Ok []
@@ -372,7 +366,7 @@ let test_virtual_node_declares_dependencies_and_completes_without_execution = fu
   let summary =
     run_default_executor
       ~parallelism:1
-      ~dependencies
+      ~plan_dependencies
       ~execution_mode:(fun _node -> Work_node.Virtual)
       ~seeds:[ seed ]
       ~execute
@@ -395,7 +389,7 @@ let test_virtual_node_declares_dependencies_and_completes_without_execution = fu
 let test_virtual_parent_fails_when_declared_dependency_fails = fun _ctx ->
   let seed = sample_seed () in
   let linux = target "x86_64-unknown-linux-gnu" in
-  let dependencies node =
+  let plan_dependencies _registry node =
     match Work_node.kind node with
     | Work_node.UserIntent _ -> Ok [ Work_node.ToolchainReadyKey { target = linux } ]
     | ToolchainReady _ -> Ok []
@@ -408,12 +402,7 @@ let test_virtual_parent_fails_when_declared_dependency_fails = fun _ctx ->
     | _ -> unexpected_node node
   in
   let summary =
-    run_default_executor
-      ~parallelism:1
-      ~dependencies
-      ~seeds:[ seed ]
-      ~execute
-      ()
+    run_default_executor ~parallelism:1 ~plan_dependencies ~seeds:[ seed ] ~execute ()
   in
   if
     Int.equal summary.Executor.Summary.failed_count 2
@@ -423,6 +412,51 @@ let test_virtual_parent_fails_when_declared_dependency_fails = fun _ctx ->
     Ok ()
   else
     Error "expected failed declared dependency to fail its virtual parent"
+
+let test_concrete_node_waits_for_planned_dependencies_before_execution = fun _ctx ->
+  let parent_action = sample_goal "planned-parent" in
+  let child_action = sample_goal "planned-child" in
+  let child_runs = Sync.Atomic.make 0 in
+  let parent_runs = Sync.Atomic.make 0 in
+  let plan_dependencies _registry node =
+    match Work_node.kind node with
+    | Work_node.Goal action when action = parent_action -> Ok [ goal_key child_action ]
+    | Work_node.Goal _ -> Ok []
+    | _ -> unexpected_node node
+  in
+  let execute _context node =
+    match Work_node.kind node with
+    | Work_node.Goal action when action = child_action ->
+        ignore (Sync.Atomic.fetch_and_add child_runs 1);
+        Ok (Work_result.Complete [])
+    | Work_node.Goal action when action = parent_action ->
+        ignore (Sync.Atomic.fetch_and_add parent_runs 1);
+        if Int.equal (Sync.Atomic.get child_runs) 1 then
+          Ok (Work_result.Complete [])
+        else
+          Error (Error.ExecutorInvariantViolated {
+            message = "parent executed before planned dependency";
+          })
+    | Work_node.Goal _ -> Ok (Work_result.Complete [])
+    | _ -> unexpected_node node
+  in
+  let summary =
+    run_default_executor
+      ~parallelism:2
+      ~plan_dependencies
+      ~seeds:[ goal_node 10 parent_action ]
+      ~execute
+      ()
+  in
+  if
+    Int.equal (Sync.Atomic.get child_runs) 1
+    && Int.equal (Sync.Atomic.get parent_runs) 1
+    && Int.equal summary.Executor.Summary.completed_count 2
+    && Int.equal summary.failed_count 0
+  then
+    Ok ()
+  else
+    Error "expected concrete node execution to wait for planned dependencies"
 
 let test_requeue_with_dependencies_reruns_after_dependency_completes = fun _ctx ->
   let attempts = Sync.Atomic.make 0 in
@@ -623,7 +657,8 @@ let test_failed_dependency_fails_dependent = fun _ctx ->
   let dependency_action = sample_goal "dependency" in
   let execute _context node =
     match Work_node.kind node with
-    | Work_node.UserIntent _ -> Ok (Work_result.RequeueWithDependencies [ goal_key dependency_action ])
+    | Work_node.UserIntent _ ->
+        Ok (Work_result.RequeueWithDependencies [ goal_key dependency_action ])
     | Work_node.Goal _ -> Error (Error.IntentPlanningFailed { reason = "dependency failed" })
     | _ -> unexpected_node node
   in
@@ -783,6 +818,9 @@ let tests =
     case
       "virtual parent fails when declared dependency fails"
       test_virtual_parent_fails_when_declared_dependency_fails;
+    case
+      "concrete node waits for planned dependencies before execution"
+      test_concrete_node_waits_for_planned_dependencies_before_execution;
     case
       "requeue with dependencies reruns after dependency completes"
       test_requeue_with_dependencies_reruns_after_dependency_completes;

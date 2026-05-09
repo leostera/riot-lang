@@ -70,23 +70,62 @@ let build_ctx = fun t ~(profile:Riot_model.Profile.t) ~target ->
     ~parallelism:t.parallelism
     ()
 
-let package_input_hash = fun t ~(package:Riot_model.Package.t) ~profile ~build_ctx ~toolchain ->
+let package_input_hash = fun
+  t ~(package:Riot_model.Package.t) ~profile ~build_ctx ~toolchain ~depset ->
   Riot_planner.Package_planner.compute_input_hash
     ~planner_version:"riot-build2-package-input:v1"
     ~package
-    ~depset:[]
+    ~depset
     ~workspace:t.workspace
     ~profile
     ~build_ctx
     ~toolchain
     ()
 
-let resolve = fun t (build: Goal.build_package) ->
+let manifest_dependencies_for_scope = fun scope (package: Riot_model.Package_manifest.t) ->
+  match scope with
+  | Riot_model.Package.Normal -> package.dependencies
+  | Riot_model.Package.Dev -> package.dependencies @ package.dev_dependencies
+  | Riot_model.Package.Build -> package.build_dependencies
+
+let package_dependency_names = fun t ~scope (package: Riot_model.Package_manifest.t) ->
+  let rec loop acc = fun __tmp1 ->
+    match __tmp1 with
+    | [] -> Ok (List.reverse acc)
+    | dependency :: rest ->
+        if Riot_model.Package.is_builtin_dependency dependency then
+          loop acc rest
+        else
+          (
+            match Package_catalog.find_manifest t.catalog dependency.name with
+            | Some _ -> loop (dependency.name :: acc) rest
+            | None ->
+                Error (Error.ExternalDependencyUnsupported {
+                  package = package.name;
+                  dependency = dependency.name;
+                })
+          )
+  in
+  loop [] (manifest_dependencies_for_scope scope package)
+
+let dependency_builds = fun t (build: Goal.build_package) ->
+  let* package = Package_catalog.require_manifest t.catalog build.package in
+  let* dependencies = package_dependency_names t ~scope:(Goal.dependency_scope build.scope) package in
+  Ok (
+    List.map
+      dependencies
+      ~fn:(fun package ->
+        Goal.{
+          package;
+          scope = build.scope;
+          profile = build.profile;
+          target = build.target;
+        })
+  )
+
+let resolve = fun ?(depset = []) t (build: Goal.build_package) ->
   let* package =
-    Package_catalog.realize
-      t.catalog
-      ~intent:(Goal.realization_intent build.scope)
-      build.package
+    Package_catalog.realize t.catalog ~intent:(Goal.realization_intent build.scope) build.package
   in
   match Toolchain_service.find t.toolchains build.target with
   | None ->
@@ -98,7 +137,7 @@ let resolve = fun t (build: Goal.build_package) ->
       let base_ctx = build_ctx t ~profile:build.profile ~target:build.target in
       let profile = apply_package_profile ~package ~build_ctx:base_ctx build.profile in
       let build_ctx = build_ctx t ~profile ~target:build.target in
-      let package_hash = package_input_hash t ~package ~profile ~build_ctx ~toolchain in
+      let package_hash = package_input_hash t ~package ~profile ~build_ctx ~toolchain ~depset in
       Ok {
         build;
         package;
@@ -113,8 +152,52 @@ let toolchain_ready = fun t target ->
   Toolchain_service.find t.toolchains target
   |> Option.is_some
 
+let missing_dependency_artifact = fun (build: Goal.build_package) ->
+  Error.ExecutorInvariantViolated {
+    message = "package dependency "
+    ^ Riot_model.Package_name.to_string build.Goal.package
+    ^ " was planned as complete but its package artifact was not in riot-store";
+  }
+
+let rec dependency_of_build = fun t path (build: Goal.build_package) ->
+  if List.any path ~fn:(fun seen -> seen = build) then
+    Error (Error.ExecutorInvariantViolated {
+      message = "cyclic package dependency while computing depset for "
+      ^ Riot_model.Package_name.to_string build.Goal.package;
+    })
+  else
+    let path = build :: path in
+    let* dependency_builds = dependency_builds t build in
+    let* child_depset = depset_of_builds t path dependency_builds in
+    let* input = resolve ~depset:child_depset t build in
+    match Riot_store.Store.get_package_metadata t.store input.package_hash with
+    | None -> Error (missing_dependency_artifact build)
+    | Some artifact ->
+        Ok Riot_planner.Dependency.{
+          package = input.package;
+          artifact_dir = Riot_store.Store.hash_dir_of t.store artifact.input_hash;
+          depset = child_depset;
+          input_hash = artifact.input_hash;
+          output_hash = artifact.output_hash;
+        }
+
+and depset_of_builds = fun t path (builds: Goal.build_package list) ->
+  let rec loop acc = fun __tmp1 ->
+    match __tmp1 with
+    | [] -> Ok (List.reverse acc)
+    | build :: rest ->
+        let* dependency = dependency_of_build t path build in
+        loop (dependency :: acc) rest
+  in
+  loop [] builds
+
+let depset = fun t (build: Goal.build_package) ->
+  let* dependency_builds = dependency_builds t build in
+  depset_of_builds t [ build ] dependency_builds
+
 let cached_artifact = fun t build ->
-  let* input = resolve t build in
+  let* depset = depset t build in
+  let* input = resolve ~depset t build in
   match Riot_store.Store.get_package_metadata t.store input.package_hash with
   | None -> Ok None
   | Some artifact ->

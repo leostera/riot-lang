@@ -221,6 +221,7 @@ let test_run_intent_by_name_preserves_binary_and_args = fun _ctx ->
   User_intent.run
     ~runnable:(User_intent.ByName "server")
     ~args:[ "--port"; "8080" ]
+    ~profile:Riot_model.Profile.debug
     ~target:linux
     ()
   |> run_intent_actions
@@ -241,6 +242,7 @@ let test_run_intent_scoped_package_defaults_binary = fun _ctx ->
   let linux = target "x86_64-unknown-linux-gnu" in
   User_intent.run
     ~runnable:(User_intent.Scoped { package = package "std"; binary = None })
+    ~profile:Riot_model.Profile.debug
     ~target:linux
     ()
   |> run_intent_actions
@@ -262,6 +264,7 @@ let test_run_intent_preserves_binary_and_args = fun _ctx ->
   User_intent.run
     ~runnable:(User_intent.Scoped { package = package "std"; binary = Some "server" })
     ~args:[ "--port"; "8080" ]
+    ~profile:Riot_model.Profile.debug
     ~target:linux
     ()
   |> run_intent_actions
@@ -287,15 +290,11 @@ let tests =
       test_build_intent_defaults_to_workspace_members;
     case "build intent expands profiles" test_build_intent_expands_profiles;
     case "test intent preserves filter" test_test_intent_preserves_filter;
-    case
-      "test intent expands packages individually"
-      test_test_intent_expands_packages_individually;
+    case "test intent expands packages individually" test_test_intent_expands_packages_individually;
     case
       "run intent by name preserves binary and args"
       test_run_intent_by_name_preserves_binary_and_args;
-    case
-      "run intent scoped package defaults binary"
-      test_run_intent_scoped_package_defaults_binary;
+    case "run intent scoped package defaults binary" test_run_intent_scoped_package_defaults_binary;
     case "run intent preserves binary and args" test_run_intent_preserves_binary_and_args;
   ]
 

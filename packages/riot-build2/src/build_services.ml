@@ -60,16 +60,19 @@ let catalog = fun t -> t.catalog
 
 let package_results = fun t -> Package_finalizer.results t.package_finalizer
 
-let compute_dependencies = fun t node ->
+let plan_dependencies = fun t registry node ->
   match Work_node.kind node with
   | Work_node.UserIntent intent ->
       Intent_planner.expand t.catalog intent
       |> Result.map ~fn:(fun goals -> List.map goals ~fn:(fun goal -> Work_node.GoalKey goal))
+  | Goal (BuildPackage build) ->
+      Package_finalizer.plan_dependencies t.package_finalizer registry build
   | Goal _
   | ToolchainReady _
-  | SourceAnalysis _
-  | ModulePlan _
-  | ActionExecution _ -> Ok []
+  | SourceAnalysis _ -> Ok []
+  | ModulePlan build -> Module_planning.plan_dependencies t.module_planning registry build
+  | ActionExecution action ->
+      Ok (List.map action.dependencies ~fn:(fun ref_ -> Work_node.ActionExecutionKey ref_))
 
 let execute_node = fun t registry node ->
   match Work_node.kind node with

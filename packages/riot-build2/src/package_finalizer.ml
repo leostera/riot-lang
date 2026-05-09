@@ -13,18 +13,11 @@ type t = {
   module_planning: Module_planning.t;
   action_executor: Action_executor.t;
   package_results: (Goal.build_package, Build_result.package_result) ConcurrentHashMap.t;
-  registered_package_dependencies: (Goal.build_package, unit) ConcurrentHashMap.t;
   registered_actions: (Goal.build_package, unit) ConcurrentHashMap.t;
 }
 
 let create = fun
-  ~workspace
-  ~catalog
-  ~store
-  ~package_planning
-  ~module_planning
-  ~action_executor
-  () ->
+  ~workspace ~catalog ~store ~package_planning ~module_planning ~action_executor () ->
   {
     workspace;
     catalog;
@@ -33,7 +26,6 @@ let create = fun
     module_planning;
     action_executor;
     package_results = ConcurrentHashMap.with_capacity ~size:128;
-    registered_package_dependencies = ConcurrentHashMap.with_capacity ~size:128;
     registered_actions = ConcurrentHashMap.with_capacity ~size:128;
   }
 
@@ -135,6 +127,15 @@ let collect_package_outputs = fun (plan: Module_plan.t) ->
       else
         None)
 
+let missing_action_results = fun t (plan: Module_plan.t) ->
+  plan.action_nodes
+  |> List.filter_map
+    ~fn:(fun node ->
+      let ref_ = action_ref plan node in
+      match Action_executor.find_result t.action_executor ref_ with
+      | Some _ -> None
+      | None -> Some ref_)
+
 let finalize = fun t (plan: Module_plan.t) ->
   let failed =
     plan.action_nodes
@@ -144,47 +145,58 @@ let finalize = fun t (plan: Module_plan.t) ->
   match failed with
   | reason :: _ -> Error (Error.ActionExecutionFailed { package = plan.package.name; reason })
   | [] ->
-      let exports = compute_export_entries t plan in
-      let target_dir =
-        Path.(Riot_model.Riot_dirs.out_dir_in_workspace
-          ~workspace:t.workspace
-          ~profile:plan.profile.name
-          ~target:plan.target
-        / Path.v (Riot_model.Package_name.to_string plan.package.name))
-      in
-      match Riot_store.Store.materialize_package_exports t.store ~exports ~target_dir with
-      | Error error ->
-          Error (store_error ~package:plan.package.name (Riot_store.Store.error_message error))
-      | Ok () ->
-          let outputs = collect_package_outputs plan in
-          let warnings =
-            plan.action_nodes
-            |> List.filter_map
-              ~fn:(fun node -> Action_executor.find_result t.action_executor (action_ref plan node))
-            |> List.flat_map ~fn:(fun result -> result.Action_execution.ocamlc_warnings)
-          in
-          match Riot_store.Store.save_package
-            t.store
-            ~package:(Riot_model.Package_name.to_string plan.package.name)
-            ~ocamlc_warnings:warnings
-            ~exports
-            ~input_hash:plan.package_hash
-            ~sandbox_dir:plan.sandbox_dir
-            ~outs:outputs with
-          | Error error ->
-              Error (store_error ~package:plan.package.name (Riot_store.Store.error_message error))
-          | Ok artifact ->
-              let result =
-                Build_result.{
-                  package = plan.package.name;
-                  profile = plan.profile;
-                  target = plan.target;
-                  status = Built artifact;
-                  ocamlc_warnings = warnings;
-                }
-              in
-              ignore (ConcurrentHashMap.insert t.package_results ~key:plan.build ~value:result);
-              Ok (Work_result.Complete [])
+      let missing = missing_action_results t plan in
+      if not (List.is_empty missing) then
+        Error (Error.ExecutorInvariantViolated {
+          message = "package finalization for "
+          ^ Riot_model.Package_name.to_string plan.package.name
+          ^ " started before action execution dependencies completed";
+        })
+      else
+        let exports = compute_export_entries t plan in
+        let target_dir =
+          Path.(Riot_model.Riot_dirs.out_dir_in_workspace
+            ~workspace:t.workspace
+            ~profile:plan.profile.name
+            ~target:plan.target
+          / Path.v (Riot_model.Package_name.to_string plan.package.name))
+        in
+        match Riot_store.Store.materialize_package_exports t.store ~exports ~target_dir with
+        | Error error ->
+            Error (store_error ~package:plan.package.name (Riot_store.Store.error_message error))
+        | Ok () ->
+            let outputs = collect_package_outputs plan in
+            let warnings =
+              plan.action_nodes
+              |> List.filter_map
+                ~fn:(fun node ->
+                  Action_executor.find_result
+                    t.action_executor
+                    (action_ref plan node))
+              |> List.flat_map ~fn:(fun result -> result.Action_execution.ocamlc_warnings)
+            in
+            match Riot_store.Store.save_package
+              t.store
+              ~package:(Riot_model.Package_name.to_string plan.package.name)
+              ~ocamlc_warnings:warnings
+              ~exports
+              ~input_hash:plan.package_hash
+              ~sandbox_dir:plan.sandbox_dir
+              ~outs:outputs with
+            | Error error ->
+                Error (store_error ~package:plan.package.name (Riot_store.Store.error_message error))
+            | Ok artifact ->
+                let result =
+                  Build_result.{
+                    package = plan.package.name;
+                    profile = plan.profile;
+                    target = plan.target;
+                    status = Built artifact;
+                    ocamlc_warnings = warnings;
+                  }
+                in
+                ignore (ConcurrentHashMap.insert t.package_results ~key:plan.build ~value:result);
+                Ok (Work_result.Complete [])
 
 let finalize_cached_artifact = fun t (cached: Package_planning.artifact_hit) ->
   let result =
@@ -199,109 +211,92 @@ let finalize_cached_artifact = fun t (cached: Package_planning.artifact_hit) ->
   ignore (ConcurrentHashMap.insert t.package_results ~key:cached.build ~value:result);
   Ok (Work_result.Complete [])
 
-let manifest_dependencies_for_scope = fun scope (package: Riot_model.Package_manifest.t) ->
-  match scope with
-  | Riot_model.Package.Normal -> package.dependencies
-  | Riot_model.Package.Dev -> package.dependencies @ package.dev_dependencies
-  | Riot_model.Package.Build -> package.build_dependencies
-
-let package_dependency_names = fun t ~scope (package: Riot_model.Package_manifest.t) ->
-  let rec loop acc = fun __tmp1 ->
-    match __tmp1 with
-    | [] -> Ok (List.reverse acc)
-    | dependency :: rest ->
-        if Riot_model.Package.is_builtin_dependency dependency then
-          loop acc rest
-        else
-          (
-            match Package_catalog.find_manifest t.catalog dependency.name with
-            | Some _ -> loop (dependency.name :: acc) rest
-            | None ->
-                Error (Error.ExternalDependencyUnsupported {
-                  package = package.name;
-                  dependency = dependency.name;
-                })
-          )
-  in
-  loop [] (manifest_dependencies_for_scope scope package)
-
 let package_dependency_goal_keys = fun t (build: Goal.build_package) ->
-  let open Std.Result.Syntax in
-  let* package = Package_catalog.require_manifest t.catalog build.package in
-  let* dependencies =
-    package_dependency_names t ~scope:(Goal.dependency_scope build.scope) package
+  Package_planning.dependency_builds t.package_planning build
+  |> Result.map
+    ~fn:(fun builds ->
+      List.map
+        builds
+        ~fn:(fun build -> Work_node.GoalKey (Goal.BuildPackage build)))
+
+let has_results t goal =
+  ConcurrentHashMap.get t.package_results ~key:goal
+  |> Option.is_some
+
+let package_dependencies_ready = fun t build ->
+  let* dependency_builds = Package_planning.dependency_builds t.package_planning build in
+  Ok (List.all dependency_builds ~fn:(has_results t))
+
+let register_action_dependency_keys = fun t registry (plan: Module_plan.t) ->
+  let registered =
+    ConcurrentHashMap.compute
+      t.registered_actions
+      ~key:plan.build
+      ~fn:(fun current ->
+        match current with
+        | Some () -> ConcurrentHashMap.Abort true
+        | None -> ConcurrentHashMap.Insert ((), false))
   in
-  Ok (
-    List.map
-      dependencies
-      ~fn:(fun package ->
-        Work_node.GoalKey (
-          Goal.BuildPackage {
-            package;
-            scope = build.scope;
-            profile = build.profile;
-            target = build.target;
-          }
-        ))
-  )
+  let action_refs =
+    if registered then
+      List.map plan.action_nodes ~fn:(action_ref plan)
+    else
+      register_action_nodes t registry plan
+  in
+  action_refs
+  |> List.filter
+    ~fn:(fun ref_ ->
+      match Action_executor.find_result t.action_executor ref_ with
+      | Some _ -> false
+      | None -> true)
+  |> List.map ~fn:action_dependency_key
 
-let dependencies_registered = fun t build ->
-  ConcurrentHashMap.compute
-    t.registered_package_dependencies
-    ~key:build
-    ~fn:(fun current ->
-      match current with
-      | Some () -> ConcurrentHashMap.Abort true
-      | None -> ConcurrentHashMap.Insert ((), false))
-
-let execute_after_package_dependencies = fun t registry build ->
+let plan_after_package_dependencies = fun t registry build ->
   match Module_planning.find t.module_planning build with
-  | None -> Ok (Work_result.RequeueWithDependencies [ Work_node.ModulePlanKey build ])
-  | Some plan ->
-      let registered =
-        ConcurrentHashMap.compute
-          t.registered_actions
-          ~key:build
-          ~fn:(fun current ->
-            match current with
-            | Some () -> ConcurrentHashMap.Abort true
-            | None -> ConcurrentHashMap.Insert ((), false))
-      in
-      if not registered then
-        let action_refs = register_action_nodes t registry plan in
-        Ok (Work_result.RequeueWithDependencies (List.map action_refs ~fn:action_dependency_key))
-      else
-        let missing =
-          plan.action_nodes
-          |> List.filter_map
-            ~fn:(fun node ->
-              let ref_ = action_ref plan node in
-              match Action_executor.find_result t.action_executor ref_ with
-              | Some _ -> None
-              | None -> Some ref_)
-        in
-        if not (List.is_empty missing) then
-          Ok (Work_result.RequeueWithDependencies (List.map missing ~fn:action_dependency_key))
-        else
-          finalize t plan
+  | None -> Ok [ Work_node.ModulePlanKey build ]
+  | Some plan -> Ok (register_action_dependency_keys t registry plan)
 
-let execute = fun t registry (build: Goal.build_package) ->
-  match ConcurrentHashMap.get t.package_results ~key:build with
-  | Some _ -> Ok (Work_result.Complete [])
-  | None ->
-      if not (Package_planning.toolchain_ready t.package_planning build.target) then
-        Ok (Work_result.RequeueWithDependencies [
-          Work_node.ToolchainReadyKey { target = build.target };
-        ])
-      else match Package_planning.cached_artifact t.package_planning build with
+let plan_dependencies = fun t registry build ->
+  if has_results t build then
+    Ok []
+  else
+    let* package_dependency_keys = package_dependency_goal_keys t build in
+    let toolchain_dependency_keys =
+      if Package_planning.toolchain_ready t.package_planning build.target then
+        []
+      else
+        [ Work_node.ToolchainReadyKey { target = build.target } ]
+    in
+    let* package_dependencies_ready = package_dependencies_ready t build in
+    if (not package_dependencies_ready) || not (List.is_empty toolchain_dependency_keys) then
+      Ok (toolchain_dependency_keys @ package_dependency_keys)
+    else
+      match Package_planning.cached_artifact t.package_planning build with
       | Error error -> Error error
-      | Ok (Some cached) -> finalize_cached_artifact t cached
-      | Ok None ->
-          if dependencies_registered t build then
-            execute_after_package_dependencies t registry build
-          else
-            let* dependency_keys = package_dependency_goal_keys t build in
-            if List.is_empty dependency_keys then
-              execute_after_package_dependencies t registry build
-            else
-              Ok (Work_result.RequeueWithDependencies dependency_keys)
+      | Ok (Some _) -> Ok []
+      | Ok None -> plan_after_package_dependencies t registry build
+
+let execute = fun t _registry (build: Goal.build_package) ->
+  if has_results t build then
+    Ok (Work_result.Complete [])
+  else if not (Package_planning.toolchain_ready t.package_planning build.target) then
+    Error (Error.ExecutorInvariantViolated {
+      message = "package finalization started before toolchain dependency completed";
+    })
+  else
+    match Package_planning.cached_artifact t.package_planning build with
+    | Error error -> Error error
+    | Ok (Some cached) -> finalize_cached_artifact t cached
+    | Ok None ->
+        let* package_dependencies_ready = package_dependencies_ready t build in
+        if not package_dependencies_ready then
+          Error (Error.ExecutorInvariantViolated {
+            message = "package finalization started before package dependencies completed";
+          })
+        else
+          match Module_planning.find t.module_planning build with
+          | None ->
+              Error (Error.ExecutorInvariantViolated {
+                message = "package finalization started before module planning completed";
+              })
+          | Some plan -> finalize t plan

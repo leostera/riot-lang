@@ -28,7 +28,15 @@ val create:
   unit ->
   t
 
-val resolve: t -> Goal.build_package -> (input, Error.t) result
+val dependency_builds: t -> Goal.build_package -> (Goal.build_package list, Error.t) result
+
+val depset: t -> Goal.build_package -> (Riot_planner.Dependency.t list, Error.t) result
+
+val resolve:
+  ?depset:Riot_planner.Dependency.t list ->
+  t ->
+  Goal.build_package ->
+  (input, Error.t) result
 
 val toolchain_ready: t -> Riot_model.Target.t -> bool
 

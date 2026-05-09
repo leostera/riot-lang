@@ -28,7 +28,7 @@ type state = {
   result_ref: task_result Ref.t;
   on_event: Event.t -> unit;
   registry: Work_registry.t;
-  dependencies: Work_node.t -> (Work_node.key list, Error.t) result;
+  plan_dependencies: Work_registry.t -> Work_node.t -> (Work_node.key list, Error.t) result;
   execution_mode: Work_node.t -> Work_node.execution_mode;
   execute: Work_registry.t -> Work_node.t -> (Work_result.t, Error.t) result;
   mutable tasks_in_flight: int;
@@ -236,7 +236,7 @@ type dispatch_result =
 let prepare_node_for_dispatch = fun state worker node ->
   match Work_node.status node with
   | Work_node.Pending -> (
-      match state.dependencies node with
+      match state.plan_dependencies state.registry node with
       | Error error ->
           fail_node state node error;
           NotDispatched
@@ -360,7 +360,7 @@ let rec loop = fun state ->
         complete_result state result;
         loop state
 
-let default_dependencies = fun (_: Work_node.t) -> Ok []
+let default_plan_dependencies = fun (_registry: Work_registry.t) (_node: Work_node.t) -> Ok []
 
 let worker_fn registry result_ref execute ~owner ~task:node =
   let result =
@@ -373,7 +373,7 @@ let worker_fn registry result_ref execute ~owner ~task:node =
   send owner (WorkNodeResult { result; result_ref })
 
 let run_with_handlers = fun
-  ?(dependencies = default_dependencies)
+  ?(plan_dependencies = default_plan_dependencies)
   ?(execution_mode = Work_node.execution_mode)
   ~config
   ~seeds
@@ -406,7 +406,7 @@ let run_with_handlers = fun
         result_ref;
         on_event = config.on_event;
         registry;
-        dependencies;
+        plan_dependencies;
         execution_mode;
         execute;
         tasks_in_flight = 0;
@@ -421,7 +421,7 @@ let run_with_handlers = fun
 let run = fun ~services ~seeds () ->
   run_with_handlers
     ~config:(Build_services.config services)
-    ~dependencies:(Build_services.compute_dependencies services)
+    ~plan_dependencies:(Build_services.plan_dependencies services)
     ~execute:(Build_services.execute_node services)
     ~seeds
     ()

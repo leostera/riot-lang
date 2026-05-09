@@ -5,11 +5,11 @@ generic graph/worklist executor independent from Riot-specific planner,
 analysis, toolchain, fetch, and action services.
 
 The initial execution slice is intentionally concrete: selector-shaped user
-intent expands to package-specific goals, and `Goal.BuildPackage` dynamically
-queues toolchain, package dependencies, source-analysis, module-planning, and
-action-execution nodes until the package is finalized. Keep those Riot-specific
-services outside `Executor`; the executor owns work-node scheduling, dependency
-registration, and event emission.
+intent expands to package-specific goals, and `plan_dependencies` grows the
+work graph with toolchain, package, source-analysis, module-planning, and
+action-execution nodes before concrete execution starts. Keep those
+Riot-specific services outside `Executor`; the executor owns work-node
+scheduling, dependency registration, readiness checks, and event emission.
 
 Tests live under `tests/` and are discovered by the workspace test runner. Do
 not add manual `[[bin]]` test entries to `riot.toml`.
