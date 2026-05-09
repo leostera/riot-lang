@@ -119,6 +119,220 @@ let expect_completed_kind = fun summary label fn ->
   else
     Error ("expected completed " ^ label ^ " node; completed kinds: " ^ completed_kind_names summary)
 
+let completed_node = fun summary ~fn ->
+  summary.Executor.Summary.results
+  |> List.find
+    ~fn:(fun result ->
+      result.Executor.Summary.status = Work_node.Completed && fn (Work_node.kind result.node))
+  |> Option.map ~fn:(fun result -> result.Executor.Summary.node)
+
+let require_completed_node = fun summary label fn ->
+  match completed_node summary ~fn with
+  | Some node -> Ok node
+  | None -> Error ("expected completed " ^ label ^ " node; completed kinds: " ^ completed_kind_names summary)
+
+let node_by_id = fun summary id ->
+  summary.Executor.Summary.results
+  |> List.find
+    ~fn:(fun result -> Work_node.Node_id.equal (Work_node.id result.Executor.Summary.node) id)
+  |> Option.map ~fn:(fun result -> result.Executor.Summary.node)
+
+let node_depends_on = fun summary node ~dependency ->
+  Work_node.dependencies node
+  |> List.any
+    ~fn:(fun dependency_id ->
+      match node_by_id summary dependency_id with
+      | Some dependency_node -> dependency (Work_node.kind dependency_node)
+      | None -> false)
+
+let expect_dependency = fun summary ~from_label ~from ~to_label ~dependency ->
+  if node_depends_on summary from ~dependency then
+    Ok ()
+  else
+    Error ("expected " ^ from_label ^ " to depend on " ^ to_label)
+
+let expect_kernel_graph_shape = fun result ->
+  let summary = result.Build_result.summary in
+  let is_kernel_build = fun (build: Goal.build_package) ->
+    Riot_model.Package_name.equal build.package kernel_package
+  in
+  let* intent =
+    require_completed_node
+      summary
+      "UserIntent"
+      (fun __tmp1 ->
+        match __tmp1 with
+        | Work_node.UserIntent _ -> true
+        | _ -> false)
+  in
+  let* goal =
+    require_completed_node
+      summary
+      "Goal"
+      (fun __tmp1 ->
+        match __tmp1 with
+        | Work_node.Goal (Goal.BuildPackage build) -> is_kernel_build build
+        | _ -> false)
+  in
+  let* artifact =
+    require_completed_node
+      summary
+      "PackageArtifact"
+      (fun __tmp1 ->
+        match __tmp1 with
+        | Work_node.PackageArtifact build -> is_kernel_build build
+        | _ -> false)
+  in
+  let* finalize =
+    require_completed_node
+      summary
+      "PackageFinalize"
+      (fun __tmp1 ->
+        match __tmp1 with
+        | Work_node.PackageFinalize build -> is_kernel_build build
+        | _ -> false)
+  in
+  let* action_plan =
+    require_completed_node
+      summary
+      "ActionPlan"
+      (fun __tmp1 ->
+        match __tmp1 with
+        | Work_node.ActionPlan build -> is_kernel_build build
+        | _ -> false)
+  in
+  let* module_plan =
+    require_completed_node
+      summary
+      "ModulePlan"
+      (fun __tmp1 ->
+        match __tmp1 with
+        | Work_node.ModulePlan build -> is_kernel_build build
+        | _ -> false)
+  in
+  let* action =
+    require_completed_node
+      summary
+      "ActionExecution"
+      (fun __tmp1 ->
+        match __tmp1 with
+        | Work_node.ActionExecution action ->
+            Riot_model.Package_name.equal action.ref_.package kernel_package
+        | _ -> false)
+  in
+  let* _toolchain =
+    require_completed_node
+      summary
+      "ToolchainReady"
+      (fun __tmp1 ->
+        match __tmp1 with
+        | Work_node.ToolchainReady toolchain ->
+            Riot_model.Target.equal toolchain.target (current_target ())
+        | _ -> false)
+  in
+  let* () =
+    expect_dependency
+      summary
+      ~from_label:"UserIntent"
+      ~from:intent
+      ~to_label:"Goal.BuildPackage(kernel)"
+      ~dependency:(fun __tmp1 ->
+        match __tmp1 with
+        | Work_node.Goal (Goal.BuildPackage build) -> is_kernel_build build
+        | _ -> false)
+  in
+  let* () =
+    expect_dependency
+      summary
+      ~from_label:"Goal.BuildPackage(kernel)"
+      ~from:goal
+      ~to_label:"PackageArtifact(kernel)"
+      ~dependency:(fun __tmp1 ->
+        match __tmp1 with
+        | Work_node.PackageArtifact build -> is_kernel_build build
+        | _ -> false)
+  in
+  let* () =
+    expect_dependency
+      summary
+      ~from_label:"PackageArtifact(kernel)"
+      ~from:artifact
+      ~to_label:"PackageFinalize(kernel)"
+      ~dependency:(fun __tmp1 ->
+        match __tmp1 with
+        | Work_node.PackageFinalize build -> is_kernel_build build
+        | _ -> false)
+  in
+  let* () =
+    expect_dependency
+      summary
+      ~from_label:"PackageFinalize(kernel)"
+      ~from:finalize
+      ~to_label:"ActionPlan(kernel)"
+      ~dependency:(fun __tmp1 ->
+        match __tmp1 with
+        | Work_node.ActionPlan build -> is_kernel_build build
+        | _ -> false)
+  in
+  let* () =
+    expect_dependency
+      summary
+      ~from_label:"ActionPlan(kernel)"
+      ~from:action_plan
+      ~to_label:"ModulePlan(kernel)"
+      ~dependency:(fun __tmp1 ->
+        match __tmp1 with
+        | Work_node.ModulePlan build -> is_kernel_build build
+        | _ -> false)
+  in
+  let* () =
+    expect_dependency
+      summary
+      ~from_label:"ModulePlan(kernel)"
+      ~from:module_plan
+      ~to_label:"SourceAnalysis(kernel)"
+      ~dependency:(fun __tmp1 ->
+        match __tmp1 with
+        | Work_node.SourceAnalysis source ->
+            Riot_model.Package_name.equal source.key.package kernel_package
+        | _ -> false)
+  in
+  let* () =
+    expect_dependency
+      summary
+      ~from_label:"PackageFinalize(kernel)"
+      ~from:finalize
+      ~to_label:"ActionExecution(kernel)"
+      ~dependency:(fun __tmp1 ->
+        match __tmp1 with
+        | Work_node.ActionExecution action ->
+            Riot_model.Package_name.equal action.ref_.package kernel_package
+        | _ -> false)
+  in
+  if
+    summary.Executor.Summary.results
+    |> List.any
+      ~fn:(fun result ->
+        result.Executor.Summary.status = Work_node.Completed
+        &&
+        match Work_node.kind result.node with
+        | Work_node.ActionExecution action when Riot_model.Package_name.equal
+          action.ref_.package
+          kernel_package ->
+            node_depends_on
+              summary
+              result.node
+              ~dependency:(fun __tmp1 ->
+                match __tmp1 with
+                | Work_node.ToolchainReady toolchain ->
+                    Riot_model.Target.equal toolchain.target (current_target ())
+                | _ -> false)
+        | _ -> false)
+  then
+    Ok ()
+  else
+    Error "expected at least one kernel action execution to depend on current toolchain readiness"
+
 let expect_kernel_package_result = fun result ->
   match Build_result.package_results result
   |> List.find
@@ -295,7 +509,18 @@ let test_kernel_build_is_planned_and_executed = fun _ctx ->
       if Int.equal !event_count 0 then
         Error "expected build2 executor config to receive work events"
       else
-        expect_kernel_work_graph result)
+        let* () = expect_kernel_work_graph result in
+        expect_kernel_graph_shape result)
+
+let test_kernel_cold_build_graph_has_expected_edges = fun _ctx ->
+  with_kernel_workspace_target
+    (relative_target_dir "kernel-graph-shape")
+    (fun workspace ->
+      let* result = build_kernel workspace in
+      if Build_result.has_failures result then
+        Error ("kernel build graph failed:\n" ^ summary_errors result.Build_result.summary)
+      else
+        expect_kernel_graph_shape result)
 
 let test_kernel_repeated_build_uses_package_cache_fast_path = fun _ctx ->
   with_kernel_workspace_target
@@ -347,6 +572,10 @@ let tests =
       ~size:Large
       "kernel build is planned and executed"
       test_kernel_build_is_planned_and_executed;
+    case
+      ~size:Large
+      "kernel cold build graph has expected edges"
+      test_kernel_cold_build_graph_has_expected_edges;
     case
       ~size:Large
       "kernel repeated build uses package cache fast path"
