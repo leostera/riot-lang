@@ -89,6 +89,7 @@ let key_name = fun __tmp1 ->
   | ToolchainReadyKey _ -> "ToolchainReadyKey"
   | SourceAnalysisKey _ -> "SourceAnalysisKey"
   | PackageArtifactKey _ -> "PackageArtifactKey"
+  | PackageFinalizeKey _ -> "PackageFinalizeKey"
   | ModulePlanKey _ -> "ModulePlanKey"
   | ActionExecutionKey _ -> "ActionExecutionKey"
 

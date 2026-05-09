@@ -28,6 +28,14 @@ val plan_artifact_dependencies:
   Goal.build_package ->
   (Work_node.key list, Error.t) result
 
+val plan_finalize_dependencies:
+  t ->
+  Work_registry.t ->
+  Goal.build_package ->
+  (Work_node.key list, Error.t) result
+
 val execute: t -> Work_registry.t -> Goal.build_package -> (Work_result.t, Error.t) result
 
 val execute_artifact: t -> Work_registry.t -> Goal.build_package -> (Work_result.t, Error.t) result
+
+val execute_finalize: t -> Work_registry.t -> Goal.build_package -> (Work_result.t, Error.t) result

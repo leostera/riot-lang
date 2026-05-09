@@ -10,6 +10,7 @@ let execute_node = fun _registry node ->
   | ToolchainReady _
   | SourceAnalysis _
   | PackageArtifact _
+  | PackageFinalize _
   | ModulePlan _
   | ActionExecution _ ->
       Error (Error.ExecutorInvariantViolated {
@@ -27,6 +28,7 @@ let run_intent = fun ~config intent ->
     | ToolchainReady _
     | SourceAnalysis _
     | PackageArtifact _
+    | PackageFinalize _
     | ModulePlan _
     | ActionExecution _ ->
         Error (Error.ExecutorInvariantViolated {
@@ -44,6 +46,7 @@ let run_intent = fun ~config intent ->
       | ToolchainReady _
       | SourceAnalysis _
       | PackageArtifact _
+      | PackageFinalize _
       | ModulePlan _
       | ActionExecution _ -> Work_node.Concrete)
     ~execute:execute_node

@@ -68,6 +68,7 @@ let unsupported_key_error = fun key ->
     | Work_node.ToolchainReadyKey _ -> "toolchain-ready"
     | Work_node.SourceAnalysisKey _ -> "source-analysis"
     | Work_node.PackageArtifactKey _ -> "package-artifact"
+    | Work_node.PackageFinalizeKey _ -> "package-finalize"
     | Work_node.ModulePlanKey _ -> "module-plan"
     | Work_node.ActionExecutionKey _ -> "action-execution"
   in

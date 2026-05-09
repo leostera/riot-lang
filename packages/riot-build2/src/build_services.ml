@@ -72,6 +72,8 @@ let plan_dependencies = fun t registry node ->
   | SourceAnalysis _ -> Ok []
   | PackageArtifact build ->
       Package_finalizer.plan_artifact_dependencies t.package_finalizer registry build
+  | PackageFinalize build ->
+      Package_finalizer.plan_finalize_dependencies t.package_finalizer registry build
   | ModulePlan build -> Module_planning.plan_dependencies t.module_planning registry build
   | ActionExecution action ->
       Ok (List.map action.dependencies ~fn:(fun ref_ -> Work_node.ActionExecutionKey ref_))
@@ -91,5 +93,6 @@ let execute_node = fun t registry node ->
       Source_analyzer.execute t.source_analyzer source
       |> Result.map ~fn:(fun () -> Work_result.Complete [])
   | PackageArtifact build -> Package_finalizer.execute_artifact t.package_finalizer registry build
+  | PackageFinalize build -> Package_finalizer.execute_finalize t.package_finalizer registry build
   | ModulePlan build -> Module_planning.execute t.module_planning registry build
   | ActionExecution action -> Action_executor.execute t.action_executor action

@@ -264,11 +264,15 @@ let register_action_dependency_keys = fun t registry (plan: Module_plan.t) ->
 
 let package_artifact_key = fun build -> Work_node.PackageArtifactKey build
 
+let package_finalize_key = fun build -> Work_node.PackageFinalizeKey build
+
 let plan_dependencies = fun t _registry build ->
   let* package_dependency_keys = package_dependency_goal_keys t build in
   Ok (package_dependency_keys @ [ package_artifact_key build ])
 
 let plan_artifact_dependencies = fun t _registry build -> package_dependency_goal_keys t build
+
+let plan_finalize_dependencies = fun _t _registry build -> Ok [ Work_node.ModulePlanKey build ]
 
 let package_artifact_completed = fun registry build ->
   match Work_registry.find registry (package_artifact_key build) with
@@ -300,10 +304,21 @@ let execute_artifact = fun t registry (build: Goal.build_package) ->
           let* package_dependency_keys = package_dependency_goal_keys t build in
           Ok (Work_result.RequeueWithDependencies package_dependency_keys)
         else
-          match Module_planning.find t.module_planning build with
-          | None -> Ok (Work_result.RequeueWithDependencies [ Work_node.ModulePlanKey build ])
-          | Some plan ->
-              match register_action_dependency_keys t registry plan with
-              | [] -> finalize t plan
-              | action_dependency_keys ->
-                  Ok (Work_result.RequeueWithDependencies action_dependency_keys)
+          Ok (Work_result.RequeueWithDependencies [ package_finalize_key build ])
+
+let execute_finalize = fun t registry (build: Goal.build_package) ->
+  if has_results t build then
+    Ok (Work_result.Complete [])
+  else
+    let* package_dependencies_ready = package_dependencies_ready t build in
+    if not package_dependencies_ready then
+      let* package_dependency_keys = package_dependency_goal_keys t build in
+      Ok (Work_result.RequeueWithDependencies package_dependency_keys)
+    else
+      match Module_planning.find t.module_planning build with
+      | None -> Ok (Work_result.RequeueWithDependencies [ Work_node.ModulePlanKey build ])
+      | Some plan ->
+          match register_action_dependency_keys t registry plan with
+          | [] -> finalize t plan
+          | action_dependency_keys ->
+              Ok (Work_result.RequeueWithDependencies action_dependency_keys)

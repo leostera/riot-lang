@@ -49,6 +49,7 @@ type key =
   | ToolchainReadyKey of Toolchain_ready.key
   | SourceAnalysisKey of Source_analysis.key
   | PackageArtifactKey of Goal.build_package
+  | PackageFinalizeKey of Goal.build_package
   | ModulePlanKey of Goal.build_package
   | ActionExecutionKey of Action_execution.ref_
 
@@ -58,6 +59,7 @@ type kind =
   | ToolchainReady of Toolchain_ready.t
   | SourceAnalysis of Source_analysis.t
   | PackageArtifact of Goal.build_package
+  | PackageFinalize of Goal.build_package
   | ModulePlan of Goal.build_package
   | ActionExecution of Action_execution.t
 
@@ -78,6 +80,7 @@ let key_from_kind = fun __tmp1 ->
   | ToolchainReady toolchain -> ToolchainReadyKey toolchain
   | SourceAnalysis source -> SourceAnalysisKey source.key
   | PackageArtifact build -> PackageArtifactKey build
+  | PackageFinalize build -> PackageFinalizeKey build
   | ModulePlan build -> ModulePlanKey build
   | ActionExecution action -> ActionExecutionKey action.ref_
 
@@ -87,6 +90,7 @@ let kind_from_key = fun __tmp1 ->
   | GoalKey goal -> Some (Goal goal)
   | ToolchainReadyKey toolchain -> Some (ToolchainReady toolchain)
   | PackageArtifactKey build -> Some (PackageArtifact build)
+  | PackageFinalizeKey build -> Some (PackageFinalize build)
   | ModulePlanKey build -> Some (ModulePlan build)
   | Package _
   | Module _
@@ -119,6 +123,8 @@ let source_analysis = fun ~id source -> create ~id (SourceAnalysis source)
 
 let package_artifact = fun ~id build -> create ~id (PackageArtifact build)
 
+let package_finalize = fun ~id build -> create ~id (PackageFinalize build)
+
 let module_plan = fun ~id build -> create ~id (ModulePlan build)
 
 let action_execution = fun ~id action -> create ~id (ActionExecution action)
@@ -136,6 +142,7 @@ let execution_mode_of_kind = fun __tmp1 ->
   | ToolchainReady _
   | SourceAnalysis _
   | PackageArtifact _
+  | PackageFinalize _
   | ModulePlan _
   | ActionExecution _ -> Concrete
 

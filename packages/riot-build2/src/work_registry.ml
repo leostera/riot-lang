@@ -103,6 +103,14 @@ let intern_package_artifact = fun t build ->
     ~key:(package_artifact_key build)
     ~make:(fun () -> Work_node.PackageArtifact build)
 
+let package_finalize_key = fun build -> Work_node.PackageFinalizeKey build
+
+let intern_package_finalize = fun t build ->
+  intern
+    t
+    ~key:(package_finalize_key build)
+    ~make:(fun () -> Work_node.PackageFinalize build)
+
 let module_plan_key = fun build -> Work_node.ModulePlanKey build
 
 let intern_module_plan = fun t build ->
