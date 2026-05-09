@@ -50,8 +50,7 @@ let run_intent_actions = fun intent ->
 let test_executor_drains_spawned_nodes = fun _ctx ->
   let linux = target "x86_64-unknown-linux-gnu" in
   let child = Goal.RunBinary {
-    package = Some (package "std");
-    binary = Some "server";
+    binary = Goal.BinaryInPackage (package "std", "server");
     args = [];
     profile = Riot_model.Profile.debug;
     target = linux;
@@ -61,8 +60,7 @@ let test_executor_drains_spawned_nodes = fun _ctx ->
     match Work_node.kind node with
     | Work_node.UserIntent _ ->
         let second = Goal.RunBinary {
-          package = Some (package "std");
-          binary = Some "server";
+          binary = Goal.BinaryInPackage (package "std", "server");
           args = [ "--debug" ];
           profile = Riot_model.Profile.debug;
           target = linux;
@@ -171,8 +169,75 @@ let test_test_intent_preserves_filter = fun _ctx ->
       expect_actions
         ~expected:[
           Goal.RunTests {
-            packages = [ Goal.Package (package "std") ];
+            package = Goal.Package (package "std");
             filter = Some "parser";
+            profile = Riot_model.Profile.debug;
+            target = linux;
+          };
+        ]
+        actual)
+
+let test_test_intent_expands_packages_individually = fun _ctx ->
+  let linux = target "x86_64-unknown-linux-gnu" in
+  User_intent.test
+    ~packages:(User_intent.NamedPackages [ package "std"; package "kernel" ])
+    ~targets:(User_intent.ManyTargets [ linux ])
+    ()
+  |> run_intent_actions
+  |> Result.and_then
+    ~fn:(fun actual ->
+      expect_actions
+        ~expected:[
+          Goal.RunTests {
+            package = Goal.Package (package "std");
+            filter = None;
+            profile = Riot_model.Profile.debug;
+            target = linux;
+          };
+          Goal.RunTests {
+            package = Goal.Package (package "kernel");
+            filter = None;
+            profile = Riot_model.Profile.debug;
+            target = linux;
+          };
+        ]
+        actual)
+
+let test_run_intent_by_name_preserves_binary_and_args = fun _ctx ->
+  let linux = target "x86_64-unknown-linux-gnu" in
+  User_intent.run
+    ~runnable:(User_intent.ByName "server")
+    ~args:[ "--port"; "8080" ]
+    ~target:linux
+    ()
+  |> run_intent_actions
+  |> Result.and_then
+    ~fn:(fun actual ->
+      expect_actions
+        ~expected:[
+          Goal.RunBinary {
+            binary = Goal.BinaryByName "server";
+            args = [ "--port"; "8080" ];
+            profile = Riot_model.Profile.debug;
+            target = linux;
+          };
+        ]
+        actual)
+
+let test_run_intent_scoped_package_defaults_binary = fun _ctx ->
+  let linux = target "x86_64-unknown-linux-gnu" in
+  User_intent.run
+    ~runnable:(User_intent.Scoped { package = package "std"; binary = None })
+    ~target:linux
+    ()
+  |> run_intent_actions
+  |> Result.and_then
+    ~fn:(fun actual ->
+      expect_actions
+        ~expected:[
+          Goal.RunBinary {
+            binary = Goal.DefaultBinaryInPackage (package "std");
+            args = [];
             profile = Riot_model.Profile.debug;
             target = linux;
           };
@@ -192,8 +257,7 @@ let test_run_intent_preserves_binary_and_args = fun _ctx ->
       expect_actions
         ~expected:[
           Goal.RunBinary {
-            package = Some (package "std");
-            binary = Some "server";
+            binary = Goal.BinaryInPackage (package "std", "server");
             args = [ "--port"; "8080" ];
             profile = Riot_model.Profile.debug;
             target = linux;
@@ -210,6 +274,15 @@ let tests =
       test_build_intent_defaults_to_workspace_members;
     case "build intent expands profiles" test_build_intent_expands_profiles;
     case "test intent preserves filter" test_test_intent_preserves_filter;
+    case
+      "test intent expands packages individually"
+      test_test_intent_expands_packages_individually;
+    case
+      "run intent by name preserves binary and args"
+      test_run_intent_by_name_preserves_binary_and_args;
+    case
+      "run intent scoped package defaults binary"
+      test_run_intent_scoped_package_defaults_binary;
     case "run intent preserves binary and args" test_run_intent_preserves_binary_and_args;
   ]
 

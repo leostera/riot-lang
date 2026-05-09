@@ -53,8 +53,7 @@ let unexpected_node = fun node ->
 
 let sample_goal = fun ?(args = []) name ->
   Goal.RunBinary {
-    package = Some (package "std");
-    binary = Some name;
+    binary = Goal.BinaryInPackage (package "std", name);
     args;
     profile = Riot_model.Profile.debug;
     target = target "x86_64-unknown-linux-gnu";

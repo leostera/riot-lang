@@ -54,39 +54,37 @@ let expand_build = fun (build: Intent.build) ->
   loop_packages [] packages
 
 let expand_test = fun (test: Intent.test) ->
-  let packages = expand_package_targets test.Intent.packages in
+  let package_targets = expand_package_targets test.Intent.packages in
   let targets = expand_targets test.targets in
   let profiles = expand_profiles test.profiles in
-  let rec loop_profiles acc = fun __tmp1 ->
+  let rec loop_packages acc = fun __tmp1 ->
     match __tmp1 with
     | [] -> List.reverse acc
-    | profile :: rest ->
+    | package :: rest ->
       let acc =
         List.fold_left
-          targets
+          profiles
           ~init:acc
-          ~fn:(fun acc target ->
-            Goal.RunTests {
-              packages;
-              filter = test.filter;
-              profile;
-              target;
-            }
-            :: acc)
+          ~fn:(fun acc profile ->
+            List.fold_left
+              targets
+              ~init:acc
+              ~fn:(fun acc target ->
+                Goal.RunTests { package; filter = test.filter; profile; target } :: acc))
       in
-      loop_profiles acc rest
+      loop_packages acc rest
   in
-  loop_profiles [] profiles
+  loop_packages [] package_targets
 
 let expand_run = fun (run: Intent.run) ->
-  let (package, binary) =
+  let binary =
     match run.Intent.runnable with
-    | Intent.ByName binary -> (None, Some binary)
-    | Intent.Scoped { package; binary } -> (Some package, binary)
+    | Intent.ByName binary -> Goal.BinaryByName binary
+    | Intent.Scoped { package; binary = None } -> Goal.DefaultBinaryInPackage package
+    | Intent.Scoped { package; binary = Some binary } -> Goal.BinaryInPackage (package, binary)
   in
   [
     Goal.RunBinary {
-      package;
       binary;
       args = run.args;
       profile = run.profile;
