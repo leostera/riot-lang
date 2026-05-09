@@ -35,7 +35,7 @@ let execute_node = fun _registry node ->
       })
 
 let run_intent = fun ~config intent ->
-  Executor.Runner.run_with_handlers_for_tests
+  Executor.Runner.run_with_handlers
     ~config
     ~seeds:[ Work_node.user_intent ~id:(Work_node.Node_id.from_int 1) intent ]
     ~dependencies:dependencies_of_node

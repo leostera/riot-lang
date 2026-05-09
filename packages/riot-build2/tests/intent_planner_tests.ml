@@ -78,7 +78,7 @@ let test_executor_drains_spawned_nodes = fun _ctx ->
       (User_intent.run ~runnable:(User_intent.ByName "server") ~target:linux ())
   in
   let summary =
-    Executor.Runner.run_with_handlers_for_tests
+    Executor.Runner.run_with_handlers
       ~config:(executor_config ~parallelism:2 ())
       ~execution_mode:(fun _node -> Work_node.Concrete)
       ~seeds:[ seed ]
@@ -128,6 +128,31 @@ let test_build_intent_defaults_to_workspace_members = fun _ctx ->
           Goal.BuildPackage {
             package = Goal.WorkspaceMembers;
             profile = Riot_model.Profile.debug;
+            target = linux;
+          };
+        ]
+        actual)
+
+let test_build_intent_expands_profiles = fun _ctx ->
+  let linux = target "x86_64-unknown-linux-gnu" in
+  User_intent.build
+    ~packages:(User_intent.NamedPackages [ package "std" ])
+    ~profiles:(User_intent.ManyProfiles [ Riot_model.Profile.debug; Riot_model.Profile.release ])
+    ~targets:(User_intent.ManyTargets [ linux ])
+    ()
+  |> run_intent_actions
+  |> Result.and_then
+    ~fn:(fun actual ->
+      expect_actions
+        ~expected:[
+          Goal.BuildPackage {
+            package = Goal.Package (package "std");
+            profile = Riot_model.Profile.debug;
+            target = linux;
+          };
+          Goal.BuildPackage {
+            package = Goal.Package (package "std");
+            profile = Riot_model.Profile.release;
             target = linux;
           };
         ]
@@ -183,6 +208,7 @@ let tests =
     case
       "build intent defaults to workspace members"
       test_build_intent_defaults_to_workspace_members;
+    case "build intent expands profiles" test_build_intent_expands_profiles;
     case "test intent preserves filter" test_test_intent_preserves_filter;
     case "run intent preserves binary and args" test_run_intent_preserves_binary_and_args;
   ]

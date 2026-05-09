@@ -9,16 +9,20 @@ type targets =
   | AllTargets
   | ManyTargets of Riot_model.Target.t list
 
+type profiles =
+  | DefaultProfile
+  | ManyProfiles of Riot_model.Profile.t list
+
 type build = {
   packages: packages;
-  profile: Riot_model.Profile.t;
+  profiles: profiles;
   targets: targets;
 }
 
 type test = {
   packages: packages;
   filter: string option;
-  profile: Riot_model.Profile.t;
+  profiles: profiles;
   targets: targets;
 }
 
@@ -43,7 +47,7 @@ type t =
 
 val build:
   ?packages:packages ->
-  ?profile:Riot_model.Profile.t ->
+  ?profiles:profiles ->
   ?targets:targets ->
   unit ->
   t
@@ -51,7 +55,7 @@ val build:
 val test:
   ?packages:packages ->
   ?filter:string ->
-  ?profile:Riot_model.Profile.t ->
+  ?profiles:profiles ->
   ?targets:targets ->
   unit ->
   t

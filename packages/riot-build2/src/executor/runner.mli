@@ -11,7 +11,7 @@ val run:
   unit ->
   ExecutionSummary.t
 
-val run_with_handlers_for_tests:
+val run_with_handlers:
   ?dependencies:(Work_node.t -> (Work_node.key list, Error.t) result) ->
   ?execution_mode:(Work_node.t -> Work_node.execution_mode) ->
   config:Build_config.t ->

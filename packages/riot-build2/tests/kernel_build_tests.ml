@@ -54,9 +54,10 @@ let current_target = fun () -> Riot_model.Target.current
 
 let expect_kernel_build_work = fun actual ->
   match actual with
-  | [ Package_work.BuildLibrary { package; profile; target } ] when Riot_model.Package_name.equal
+  | [ Package_work.BuildLibrary { package; scope; profile; target } ] when Riot_model.Package_name.equal
     package
     kernel_package
+  && scope = Package_work.Runtime
   && profile = Riot_model.Profile.debug
   && Riot_model.Target.equal target (current_target ()) -> Ok ()
   | _ -> Error "expected kernel build goal to expand to one kernel BuildLibrary work item"
@@ -222,7 +223,7 @@ let build_kernel = fun workspace ->
     User_intent.build
       ~packages:(User_intent.NamedPackages [ kernel_package ])
       ~targets:(User_intent.ManyTargets [ current_target () ])
-      ~profile:Riot_model.Profile.debug
+      ~profiles:(User_intent.ManyProfiles [ Riot_model.Profile.debug ])
       ()
   in
   let config = Config.make ~workspace ~parallelism:4 () in
@@ -241,7 +242,7 @@ let test_kernel_build_is_planned_and_executed = fun _ctx ->
         User_intent.build
           ~packages:(User_intent.NamedPackages [ kernel_package ])
           ~targets:(User_intent.ManyTargets [ current_target () ])
-          ~profile:Riot_model.Profile.debug
+          ~profiles:(User_intent.ManyProfiles [ Riot_model.Profile.debug ])
           ()
       in
       let event_count = ref 0 in

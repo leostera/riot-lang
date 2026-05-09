@@ -78,8 +78,7 @@ let canonical_node_for_key = fun state key ->
   | Some node -> Ok node
   | None -> (
       match Work_node.kind_from_key key with
-      | Some kind ->
-          Ok (Work_registry.intern state.registry ~key ~make:(fun () -> kind))
+      | Some kind -> Ok (Work_registry.intern state.registry ~key ~make:(fun () -> kind))
       | None -> Error (unsupported_key_error key)
     )
 
@@ -109,8 +108,7 @@ let canonical_nodes_for_keys = fun state keys ->
   in
   loop [] keys
 
-let is_complete = fun state ->
-  Int.equal state.tasks_in_flight 0 && Node_queue.is_empty state.ready
+let is_complete = fun state -> Int.equal state.tasks_in_flight 0 && Node_queue.is_empty state.ready
 
 let rec fail_node = fun state node error ->
   match Work_node.status node with
@@ -131,24 +129,23 @@ and settle_dependents = fun state node ->
       | None -> ()
       | Some dependent -> (
           match Work_node.status dependent with
-          | Pending ->
-              (
-                match Work_node.status node with
-                | Failed ->
-                    fail_node
-                      state
-                      dependent
-                      (Error.DependencyFailed {
-                        node = Work_node.id dependent;
-                        dependency = Work_node.id node;
-                      })
-                | Completed ->
-                    let remaining = Work_node.mark_dependency_completed dependent in
-                    if Int.equal remaining 0 then
-                      queue_node state dependent
-                | Pending
-                | Running -> ()
-              )
+          | Pending -> (
+              match Work_node.status node with
+              | Failed ->
+                  fail_node
+                    state
+                    dependent
+                    (Error.DependencyFailed {
+                      node = Work_node.id dependent;
+                      dependency = Work_node.id node;
+                    })
+              | Completed ->
+                  let remaining = Work_node.mark_dependency_completed dependent in
+                  if Int.equal remaining 0 then
+                    queue_node state dependent
+              | Pending
+              | Running -> ()
+            )
           | Running
           | Completed
           | Failed -> ()
@@ -209,29 +206,30 @@ let complete_node = fun state node ->
 let register_dependency_keys = fun state node dependency_keys ->
   if List.is_empty dependency_keys then
     Ok ()
-  else (
-    match canonical_nodes_for_keys state dependency_keys with
-    | Error error -> Error error
-    | Ok dependencies ->
-        let registered = register_dependencies state node dependencies in
-        let failed_dependency = reconcile_registered_dependencies node registered in
-        match failed_dependency with
-        | Some dependency ->
-            Error (Error.DependencyFailed {
-              node = Work_node.id node;
-              dependency = Work_node.id dependency;
-            })
-        | None ->
-            List.for_each
-              dependencies
-              ~fn:(fun dependency ->
-                match Work_node.status dependency with
-                | Pending -> queue_node state dependency
-                | Running
-                | Completed
-                | Failed -> ());
-            Ok ()
-  )
+  else
+    (
+      match canonical_nodes_for_keys state dependency_keys with
+      | Error error -> Error error
+      | Ok dependencies ->
+          let registered = register_dependencies state node dependencies in
+          let failed_dependency = reconcile_registered_dependencies node registered in
+          match failed_dependency with
+          | Some dependency ->
+              Error (Error.DependencyFailed {
+                node = Work_node.id node;
+                dependency = Work_node.id dependency;
+              })
+          | None ->
+              List.for_each
+                dependencies
+                ~fn:(fun dependency ->
+                  match Work_node.status dependency with
+                  | Pending -> queue_node state dependency
+                  | Running
+                  | Completed
+                  | Failed -> ());
+              Ok ()
+    )
 
 type dispatch_result =
   | Dispatched
@@ -331,8 +329,7 @@ let complete_result = fun state result ->
               if Work_node.dependencies_ready result.node then
                 queue_node state result.node
     )
-  | Error error ->
-      fail_node state result.node error
+  | Error error -> fail_node state result.node error
 
 let rec loop = fun state ->
   dispatch_available state;
@@ -367,14 +364,23 @@ let rec loop = fun state ->
 
 let default_dependencies = fun (_: Work_node.t) -> Ok []
 
-let run_with_handlers_for_tests =
-  fun
-    ?(dependencies = default_dependencies)
-    ?(execution_mode = Work_node.execution_mode)
-    ~config
-    ~seeds
-    ~execute
-    () ->
+let worker_fn registry result_ref execute ~owner ~task:node =
+  let result =
+    match execute registry node with
+    | Ok execution -> { node; outcome = Ok execution }
+    | Error error -> { node; outcome = Error error }
+    | exception exn ->
+        { node; outcome = Error (Error.WorkerFailed { message = Exception.to_string exn }) }
+  in
+  send owner (WorkNodeResult { result; result_ref })
+
+let run_with_handlers = fun
+  ?(dependencies = default_dependencies)
+  ?(execution_mode = Work_node.execution_mode)
+  ~config
+  ~seeds
+  ~execute
+  () ->
   match seeds with
   | [] -> { ExecutionSummary.results = []; completed_count = 0; failed_count = 0 }
   | _ ->
@@ -384,29 +390,15 @@ let run_with_handlers_for_tests =
         List.fold_left
           seeds
           ~init:0
-          ~fn:(fun max_id seed ->
-            Int.max max_id (Work_node.Node_id.to_int (Work_node.id seed)))
+          ~fn:(fun max_id seed -> Int.max max_id (Work_node.Node_id.to_int (Work_node.id seed)))
       in
       let registry = Work_registry.create ~next_id:max_seed_id () in
       let seeds = List.map seeds ~fn:(Work_registry.register registry) in
-      let worker_fn = fun ~owner ~task:node ->
-        let result =
-          match execute registry node with
-          | Ok execution -> { node; outcome = Ok execution }
-          | Error error -> { node; outcome = Error error }
-          | exception exn ->
-              {
-                node;
-                outcome = Error (Error.WorkerFailed { message = Exception.to_string exn });
-              }
-        in
-        send owner (WorkNodeResult { result; result_ref })
-      in
       let pool =
         DynamicWorkerPool.start
-          ~concurrency:config.Build_config.parallelism
+          ~concurrency:Build_config.(config.parallelism)
           ~owner
-          ~worker_fn
+          ~worker_fn:(worker_fn registry result_ref execute)
           ()
       in
       let state = {
@@ -429,9 +421,9 @@ let run_with_handlers_for_tests =
       loop state
 
 let run = fun ~services ~seeds () ->
-  run_with_handlers_for_tests
+  run_with_handlers
     ~config:(Build_services.config services)
-    ~dependencies:(Build_services.dependencies_of_node services)
+    ~dependencies:(Build_services.compute_dependencies services)
     ~execute:(Build_services.execute_node services)
     ~seeds
     ()

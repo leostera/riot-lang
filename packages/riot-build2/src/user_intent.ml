@@ -13,16 +13,20 @@ type targets =
   | AllTargets
   | ManyTargets of Target.t list
 
+type profiles =
+  | DefaultProfile
+  | ManyProfiles of Profile.t list
+
 type build = {
   packages: packages;
-  profile: Profile.t;
+  profiles: profiles;
   targets: targets;
 }
 
 type test = {
   packages: packages;
   filter: string option;
-  profile: Profile.t;
+  profiles: profiles;
   targets: targets;
 }
 
@@ -46,15 +50,15 @@ type t =
   | Run of run
 
 let build =
-  fun ?(packages = AllPackages) ?(profile = Profile.debug) ?(targets = HostTarget) () ->
-  Build { packages; profile; targets }
+  fun ?(packages = AllPackages) ?(profiles = DefaultProfile) ?(targets = HostTarget) () ->
+  Build { packages; profiles; targets }
 
 let test =
-  fun ?(packages = AllPackages) ?filter ?(profile = Profile.debug) ?(targets = HostTarget) () ->
+  fun ?(packages = AllPackages) ?filter ?(profiles = DefaultProfile) ?(targets = HostTarget) () ->
   Test {
     packages;
     filter;
-    profile;
+    profiles;
     targets;
   }
 

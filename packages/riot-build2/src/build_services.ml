@@ -87,12 +87,15 @@ let package_dependency_names = fun t ~scope (package: Riot_model.Package_manifes
 
 let package_dependency_work = fun t (build: Package_work.build_library) ->
   let* package = Package_catalog.require_manifest t.catalog build.Package_work.package in
-  let* dependencies = package_dependency_names t ~scope:Riot_model.Package.Normal package in
+  let* dependencies =
+    package_dependency_names t ~scope:(Package_work.dependency_scope build.scope) package
+  in
   Ok (List.map
     dependencies
     ~fn:(fun package ->
       Work_node.PackageWorkKey (Package_work.BuildLibrary {
         package;
+        scope = build.scope;
         profile = build.profile;
         target = build.target;
       })))
@@ -117,10 +120,9 @@ let package_work_dependencies = fun t work ->
 let goal_dependencies = fun t goal ->
   Goal_planner.expand t.catalog goal
   |> Result.map
-    ~fn:(fun package_work ->
-      List.map package_work ~fn:(fun work -> Work_node.PackageWorkKey work))
+    ~fn:(fun package_work -> List.map package_work ~fn:(fun work -> Work_node.PackageWorkKey work))
 
-let dependencies_of_node = fun t node ->
+let compute_dependencies = fun t node ->
   match Work_node.kind node with
   | Work_node.UserIntent intent ->
       Intent_planner.expand intent
@@ -149,6 +151,5 @@ let execute_node = fun t registry node ->
       Source_analyzer.execute t.source_analyzer source
       |> Result.map ~fn:(fun () -> Work_result.Complete [])
   | ModulePlan build -> Module_planning.execute t.module_planning registry build
-  | PackageFinalize build ->
-      Package_finalizer.execute t.package_finalizer registry build
+  | PackageFinalize build -> Package_finalizer.execute t.package_finalizer registry build
   | ActionExecution action -> Action_executor.execute t.action_executor action

@@ -104,7 +104,7 @@ let kernel_build_intent = fun () ->
   User_intent.build
     ~packages:(User_intent.NamedPackages [ kernel_package ])
     ~targets:(User_intent.ManyTargets [ Riot_model.Target.current ])
-    ~profile:Riot_model.Profile.debug
+    ~profiles:(User_intent.ManyProfiles [ Riot_model.Profile.debug ])
     ()
 
 let expect_no_failures = fun label summary expected_completed ->
@@ -208,7 +208,7 @@ let make_executor_independent_actions_bench = fun ~count ~parallelism ->
       |> List.map ~fn:(fun (index, action) -> goal_seed (Int.succ index) action)
     in
     let summary =
-      Executor.Runner.run_with_handlers_for_tests
+      Executor.Runner.run_with_handlers
         ~config:(executor_config parallelism)
         ~execution_mode:concrete_execution_mode
         ~seeds
@@ -221,7 +221,7 @@ let make_executor_spawn_actions_bench = fun ~count ~parallelism ->
   let goal_list = actions count in
   fun () ->
     let summary =
-      Executor.Runner.run_with_handlers_for_tests
+      Executor.Runner.run_with_handlers
         ~config:(executor_config parallelism)
         ~execution_mode:concrete_execution_mode
         ~seeds:[ seed () ]
@@ -241,7 +241,7 @@ let make_executor_dependency_fanout_bench = fun ~count ~parallelism ->
   fun () ->
     let attempts = Sync.Atomic.make 0 in
     let summary =
-      Executor.Runner.run_with_handlers_for_tests
+      Executor.Runner.run_with_handlers
         ~config:(executor_config parallelism)
         ~execution_mode:concrete_execution_mode
         ~seeds:[ seed () ]
@@ -267,7 +267,7 @@ let make_executor_dependency_waves_bench = fun ~waves ->
   fun () ->
     let attempts = Sync.Atomic.make 0 in
     let summary =
-      Executor.Runner.run_with_handlers_for_tests
+      Executor.Runner.run_with_handlers
         ~config:(executor_config 1)
         ~execution_mode:concrete_execution_mode
         ~seeds:[ seed () ]

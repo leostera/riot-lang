@@ -82,7 +82,12 @@ let package_input_hash = fun t ~(package:Riot_model.Package.t) ~profile ~build_c
     ()
 
 let resolve = fun t (build: Package_work.build_library) ->
-  let* package = Package_catalog.realize t.catalog ~intent:Riot_model.Package.Runtime build.package in
+  let* package =
+    Package_catalog.realize
+      t.catalog
+      ~intent:(Package_work.realization_intent build.scope)
+      build.package
+  in
   match Toolchain_service.find t.toolchains build.target with
   | None ->
       Error (Error.ToolchainFailed {

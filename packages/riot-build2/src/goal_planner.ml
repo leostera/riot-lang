@@ -19,7 +19,12 @@ let expand = fun catalog __tmp1 ->
           List.map
             packages
             ~fn:(fun package ->
-              Package_work.BuildLibrary { package; profile = build.profile; target = build.target }))
+              Package_work.BuildLibrary {
+                package;
+                scope = Package_work.Runtime;
+                profile = build.profile;
+                target = build.target;
+              }))
   | Goal.RunTests test ->
       let rec loop acc = fun __tmp1 ->
         match __tmp1 with
@@ -36,6 +41,7 @@ let expand = fun catalog __tmp1 ->
                   ~fn:(fun package ->
                     Package_work.TestPackage {
                       package;
+                      scope = Package_work.Test;
                       filter = test.filter;
                       profile = test.profile;
                       target = test.target;
@@ -51,6 +57,7 @@ let expand = fun catalog __tmp1 ->
                   (
                     Package_work.TestPackage {
                       package;
+                      scope = Package_work.Test;
                       filter = test.filter;
                       profile = test.profile;
                       target = test.target;
@@ -69,6 +76,7 @@ let expand = fun catalog __tmp1 ->
               [
                 Package_work.RunBinary {
                   package;
+                  scope = Package_work.Run;
                   binary = run.binary;
                   args = run.args;
                   profile = run.profile;

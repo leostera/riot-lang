@@ -119,7 +119,7 @@ let plan = fun t registry (build: Package_work.build_library) ->
     let* dependency_packages =
       realized_dependency_packages
         t
-        ~scope:Riot_model.Package.Normal
+        ~scope:(Package_work.dependency_scope build.scope)
         ~intent:Riot_model.Package.Runtime
         package
     in

@@ -28,7 +28,7 @@ let executor_config = fun ?parallelism ?on_event () ->
     ()
 
 let run_executor = fun ?parallelism ?on_event ~seeds ~execute () ->
-  Executor.Runner.run_with_handlers_for_tests
+  Executor.Runner.run_with_handlers
     ~config:(executor_config ?parallelism ?on_event ())
     ~execution_mode:(fun _node -> Work_node.Concrete)
     ~seeds
@@ -36,7 +36,7 @@ let run_executor = fun ?parallelism ?on_event ~seeds ~execute () ->
     ()
 
 let run_default_executor = fun ?parallelism ?on_event ?dependencies ~seeds ~execute () ->
-  Executor.Runner.run_with_handlers_for_tests
+  Executor.Runner.run_with_handlers
     ~config:(executor_config ?parallelism ?on_event ())
     ?dependencies
     ~seeds
