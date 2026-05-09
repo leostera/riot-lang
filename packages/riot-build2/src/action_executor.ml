@@ -60,7 +60,11 @@ let make_flags_absolute = fun sandbox_dir flags ->
     flags
     ~fn:(fun flag ->
       match flag with
-      | Riot_toolchain.Ocamlc.Impl path -> Riot_toolchain.Ocamlc.Impl (Path.join sandbox_dir path)
+      | Riot_toolchain.Ocamlc.Impl path ->
+          if Path.is_absolute path then
+            flag
+          else
+            Riot_toolchain.Ocamlc.Impl (Path.join sandbox_dir path)
       | other -> other)
 
 let ocamlc_success = fun message -> Riot_toolchain.Ocamlc.Success { message; diagnostics = [] }
@@ -89,12 +93,49 @@ let action_node_requires_toolchain = fun node ->
   (Riot_planner.Action_node.value node).actions
   |> List.any ~fn:action_step_requires_toolchain
 
+let requires_toolchain = fun (action: Action_execution.t) ->
+  action_node_requires_toolchain
+    action.action
+
 let with_toolchain = fun ocamlc fn ->
   match ocamlc with
   | None -> ocamlc_failed "toolchain was not ready before compiler action execution"
   | Some ocamlc -> fn ocamlc
 
-let run_action = fun ?c_compiler ocamlc sandbox_dir action ->
+let path_error_message = fun __tmp1 ->
+  match __tmp1 with
+  | Path.InvalidUtf8 { path } -> "invalid utf8 path: " ^ path
+  | Path.SystemInvalidUtf8 { syscall; path } -> syscall ^ " returned invalid utf8 path: " ^ path
+  | Path.SystemError message -> message
+
+let absolute_path = fun path ->
+  if Path.is_absolute path then
+    Ok path
+  else
+    Env.current_dir ()
+    |> Result.map ~fn:(fun cwd -> Path.normalize Path.(cwd / path))
+    |> Result.map_err
+      ~fn:(fun error ->
+        Error.ExecutorInvariantViolated {
+          message = "failed to resolve current directory: " ^ path_error_message error;
+        })
+
+let resolve_source = fun ~package_root ~sandbox_dir source ->
+  if Path.is_absolute source then
+    source
+  else
+    let package_source = Path.join package_root source in
+    match Fs.exists package_source with
+    | Ok true -> package_source
+    | Ok false
+    | Error _ -> Path.join sandbox_dir source
+
+let source_include_dir = fun source ->
+  match Path.parent source with
+  | Some dir -> dir
+  | None -> Path.v "."
+
+let run_action = fun ~(package_root:Path.t) ?c_compiler ocamlc sandbox_dir action ->
   match action with
   | Riot_planner.Action.CompileInterface {
       source;
@@ -105,13 +146,14 @@ let run_action = fun ?c_compiler ocamlc sandbox_dir action ->
       with_toolchain
         ocamlc
         (fun ocamlc ->
+          let source = resolve_source ~package_root ~sandbox_dir source in
           Riot_toolchain.Ocamlc.compile_interface
             ocamlc
             ~cwd:sandbox_dir
             ~includes:(resolve_include_paths sandbox_dir includes)
             ~flags:(make_flags_absolute sandbox_dir flags)
             ~output:(Path.join sandbox_dir output)
-            (Path.join sandbox_dir source)
+            source
           |> Riot_toolchain.Ocamlc.run)
   | CompileImplementation {
       source;
@@ -122,13 +164,14 @@ let run_action = fun ?c_compiler ocamlc sandbox_dir action ->
       with_toolchain
         ocamlc
         (fun ocamlc ->
+          let source = resolve_source ~package_root ~sandbox_dir source in
           Riot_toolchain.Ocamlc.compile_impl
             ocamlc
             ~cwd:sandbox_dir
             ~includes:(resolve_include_paths sandbox_dir includes)
             ~flags:(make_flags_absolute sandbox_dir flags)
             ~output:(Path.join sandbox_dir output)
-            (Path.join sandbox_dir source)
+            source
           |> Riot_toolchain.Ocamlc.run)
   | GenerateInterface {
       source;
@@ -139,23 +182,21 @@ let run_action = fun ?c_compiler ocamlc sandbox_dir action ->
       with_toolchain
         ocamlc
         (fun ocamlc ->
+          let source = resolve_source ~package_root ~sandbox_dir source in
           Riot_toolchain.Ocamlc.generate_interface
             ocamlc
             ~cwd:sandbox_dir
             ~includes:(resolve_include_paths sandbox_dir includes)
             ~flags:(make_flags_absolute sandbox_dir flags)
             ~output:(Path.join sandbox_dir output)
-            (Path.join sandbox_dir source)
+            source
           |> Riot_toolchain.Ocamlc.run)
   | CompileC { source; outputs = output :: _; ccflags } ->
       with_toolchain
         ocamlc
         (fun ocamlc ->
-          let source_dir =
-            match Path.parent source with
-            | Some dir -> [ Path.join sandbox_dir dir ]
-            | None -> [ sandbox_dir ]
-          in
+          let source = resolve_source ~package_root ~sandbox_dir source in
+          let source_dir = [ source_include_dir source ] in
           Riot_toolchain.Ocamlc.compile_c
             ocamlc
             ~cwd:sandbox_dir
@@ -163,7 +204,7 @@ let run_action = fun ?c_compiler ocamlc sandbox_dir action ->
             ?cc:c_compiler
             ~ccflags
             ~output:(Path.join sandbox_dir output)
-            (Path.join sandbox_dir source)
+            source
           |> Riot_toolchain.Ocamlc.run)
   | CreateLibrary { outputs = output :: _; objects; includes } ->
       with_toolchain
@@ -225,12 +266,7 @@ let run_action = fun ?c_compiler ocamlc sandbox_dir action ->
             (List.map objects ~fn:(Path.join sandbox_dir))
           |> Riot_toolchain.Ocamlc.run)
   | CopyFile { source; destination } ->
-      let src =
-        if Path.is_absolute source then
-          source
-        else
-          Path.join sandbox_dir source
-      in
+      let src = resolve_source ~package_root ~sandbox_dir source in
       let dst = Path.join sandbox_dir destination in
       let _ = ensure_parent_dir dst in
       Fs.copy ~src ~dst
@@ -254,34 +290,6 @@ let run_action = fun ?c_compiler ocamlc sandbox_dir action ->
   | CreateExecutable { outputs = []; _ }
   | CreateSharedLibrary { outputs = []; _ } -> ocamlc_failed "action has no outputs"
 
-let resolve_source_for_copy = fun ~(package:Riot_model.Package.t) source ->
-  if Path.is_absolute source then
-    source
-  else
-    Path.join package.path source
-
-let copy_sources = fun ~(package:Riot_model.Package.t) ~sandbox_dir sources ->
-  let rec loop = fun __tmp1 ->
-    match __tmp1 with
-    | [] -> Ok ()
-    | source :: rest ->
-        let src = resolve_source_for_copy ~package source in
-        let dst = Path.join sandbox_dir source in
-        let* () =
-          match Path.parent dst with
-          | Some dir ->
-              Fs.create_dir_all dir
-              |> Result.map_err ~fn:IO.error_message
-          | None -> Ok ()
-        in
-        let* () =
-          Fs.copy ~src ~dst
-          |> Result.map_err ~fn:IO.error_message
-        in
-        loop rest
-  in
-  loop sources
-
 let verify_outputs = fun outputs ->
   let missing =
     List.filter
@@ -303,18 +311,14 @@ let execute_uncached = fun t (action: Action_execution.t) toolchain action_input
   let package = spec.package in
   let sandbox_dir = action.sandbox_dir in
   let _ = Fs.create_dir_all sandbox_dir in
-  let* () =
-    copy_sources ~package ~sandbox_dir spec.srcs
-    |> Result.map_err
-      ~fn:(fun reason -> Error.ActionExecutionFailed { package = package.name; reason })
-  in
+  let* package_root = absolute_path package.path in
   let ocamlc = Option.map toolchain ~fn:Riot_toolchain.ocamlc in
   let c_compiler = Option.and_then toolchain ~fn:Riot_toolchain.c_compiler in
   let rec run_all warnings = fun __tmp1 ->
     match __tmp1 with
     | [] -> Ok warnings
     | action :: rest ->
-        match run_action ?c_compiler ocamlc sandbox_dir action with
+        match run_action ~package_root ?c_compiler ocamlc sandbox_dir action with
         | Riot_toolchain.Ocamlc.Success _ as result ->
             run_all (warnings @ Riot_toolchain.Ocamlc.get_ocamlc_warnings result) rest
         | Riot_toolchain.Ocamlc.Failed _ as result ->

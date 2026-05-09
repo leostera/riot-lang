@@ -88,7 +88,13 @@ let plan_dependencies = fun t registry node ->
   | ActionPlan build ->
       Package_finalizer.plan_action_dependencies t.package_finalizer registry build
   | ActionExecution action ->
-      Ok (List.map action.dependencies ~fn:(fun ref_ -> Work_node.ActionExecutionKey ref_))
+      let action_dependencies =
+        List.map action.dependencies ~fn:(fun ref_ -> Work_node.ActionExecutionKey ref_)
+      in
+      if Action_executor.requires_toolchain action then
+        Ok (Work_node.ToolchainReadyKey { target = action.ref_.target } :: action_dependencies)
+      else
+        Ok action_dependencies
 
 let execute_node = fun t registry node ->
   match Work_node.kind node with

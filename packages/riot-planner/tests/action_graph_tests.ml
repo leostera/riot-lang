@@ -38,6 +38,33 @@ let make_write_spec = fun ~package ~path ~content ~deps ~dependency_hashes ->
     ~dependency_hashes
     ~deps
 
+let test_precomputed_toolchain_hash_preserves_action_hash = fun _ctx ->
+  let package = make_package "pkg" in
+  let path = Path.v "generated.txt" in
+  let default_spec =
+    make_write_spec
+      ~package
+      ~path
+      ~content:"hello"
+      ~deps:[]
+      ~dependency_hashes:(fun _ -> Crypto.hash_string "")
+  in
+  let precomputed_spec =
+    Riot_planner.Action_node.make_with_toolchain_hash
+      ~toolchain_hash:(Riot_toolchain.hash test_toolchain)
+      ~actions:[ Riot_planner.Action.WriteFile { destination = path; content = "hello" } ]
+      ~outs:[ path ]
+      ~srcs:[]
+      ~package
+      ~toolchain:test_toolchain
+      ~dependency_hashes:(fun _ -> Crypto.hash_string "")
+      ~deps:[]
+  in
+  if Crypto.Hash.equal default_spec.hash precomputed_spec.hash then
+    Ok ()
+  else
+    Error "expected precomputed toolchain hash to preserve action node hash"
+
 let find_action_node_by_output = fun graph output_name ->
   Riot_planner.Action_graph.nodes graph
   |> List.find
@@ -2311,6 +2338,9 @@ let test_binary_compile_does_not_reach_internal_library_modules_directly = fun _
 
 let tests =
   Test.[
+    case
+      "precomputed toolchain hash preserves action hash"
+      test_precomputed_toolchain_hash_preserves_action_hash;
     case
       "action graph json round-trip preserves edges"
       test_action_graph_json_round_trip_preserves_dependencies;

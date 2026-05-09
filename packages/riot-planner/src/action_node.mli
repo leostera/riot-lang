@@ -40,6 +40,17 @@ val make:
   deps:G.Node_id.t list ->
   action_spec
 
+val make_with_toolchain_hash:
+  toolchain_hash:Crypto.hash ->
+  actions:Action.t list ->
+  outs:Path.t list ->
+  srcs:Path.t list ->
+  package:Package.t ->
+  toolchain:Riot_toolchain.t ->
+  dependency_hashes:(G.Node_id.t -> Crypto.hash) ->
+  deps:G.Node_id.t list ->
+  action_spec
+
 (**
    Get the pre-computed hash of an action node.
 

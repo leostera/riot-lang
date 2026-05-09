@@ -589,8 +589,8 @@ let benchmarks = fun () ->
       (make_action_plan_from_cached_module_plan_bench ());
     with_config
       ~config:kernel_cold_build_config
-      "riot-build2 kernel cold boot + cold cache graph execution parallelism 4"
-      (make_kernel_build_cold_bench ~parallelism:4);
+      "riot-build2 kernel cold boot + cold cache graph execution available parallelism"
+      (make_kernel_build_cold_bench ~parallelism:Std.Thread.available_parallelism);
     with_config
       ~config:kernel_warm_cache_config
       "riot-build2 kernel cold boot + warm cache graph execution parallelism 4"

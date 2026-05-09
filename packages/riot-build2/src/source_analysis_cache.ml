@@ -1,5 +1,4 @@
 open Std
-open Std.Result.Syntax
 
 module De = Serde.De
 module Ser = Serde.Ser
@@ -108,41 +107,37 @@ let create_cache = fun ~store ->
     ~serialize
     ~deserialize
 
-let read_task_source = fun (task: Riot_planner.Module_graph.source_analysis_task) ->
-  match task.task_file with
-  | Riot_planner.Module_node.Concrete _ ->
-      Fs.read task.task_display_path
-      |> Result.map_err
-        ~fn:(fun error ->
-          Error.SourceAnalysisFailed {
-            source = task.task_display_path;
-            reason = IO.error_message error;
-          })
-  | Riot_planner.Module_node.Generated { contents; _ } -> Ok contents
-
-let write_optional_list = fun hasher items ->
+let write_list = fun hasher items ->
   List.for_each
     items
     ~fn:(fun item ->
       Crypto.Sha256.write hasher item;
       Crypto.Sha256.write hasher "\x1f")
 
-let input_hash = fun ~package (source: Source_analysis.t) ->
-  let* raw_source = read_task_source source.task in
+let write_list_list = fun hasher items ->
+  List.for_each
+    items
+    ~fn:(fun item ->
+      write_list hasher item;
+      Crypto.Sha256.write hasher "\x1e")
+
+let input_hash = fun ~package (analysis: Riot_planner.Module_graph.source_analysis) ->
+  let source = analysis.analysis_task in
   let hasher = Crypto.Sha256.create () in
-  Crypto.Sha256.write hasher "riot-build2-source-analysis:v1";
+  Crypto.Sha256.write hasher "riot-build2-source-analysis:v2";
   Crypto.Sha256.write hasher (Riot_model.Package_name.to_string package);
   Crypto.Sha256.write hasher "\x1f";
-  Crypto.Sha256.write hasher (Path.to_string source.key.path);
+  Crypto.Sha256.write hasher (Path.to_string source.task_path);
   Crypto.Sha256.write hasher "\x1f";
   (
-    match source.key.module_path with
+    match source.task_module_path with
     | None -> ()
-    | Some module_path -> write_optional_list hasher module_path
+    | Some module_path -> write_list hasher module_path
   );
-  write_optional_list hasher source.task.task_implicit_opens;
-  Crypto.Sha256.write hasher raw_source;
-  Ok (Crypto.Sha256.finish hasher)
+  write_list hasher source.task_implicit_opens;
+  write_list_list hasher source.task_implicit_open_paths;
+  Crypto.Sha256.write_hash hasher analysis.analysis_source_hash;
+  Crypto.Sha256.finish hasher
 
 let payload = fun ~package (analysis: Riot_planner.Module_graph.source_analysis) ->
   let summary =

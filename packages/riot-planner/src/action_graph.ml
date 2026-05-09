@@ -487,6 +487,7 @@ let from_module_graph
   in
   let dep_includes = stdlib_includes @ dep_cache_includes in
   let action_graph = create () in
+  let toolchain_hash = Riot_toolchain.hash toolchain in
   let node_mapping = HashMap.create () in
   let action_spec_hashes = HashMap.create () in
   let node_outputs = HashMap.create () in
@@ -997,7 +998,8 @@ let from_module_graph
           ()
         else
           let action_spec =
-            Action_node.make
+            Action_node.make_with_toolchain_hash
+              ~toolchain_hash
               ~actions
               ~outs:outputs
               ~srcs:sources

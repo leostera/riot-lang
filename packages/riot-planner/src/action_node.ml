@@ -83,11 +83,11 @@ let hash_file = fun ~(package:Package.t) path ->
       else
         Crypto.hash_string (Path.to_string path)
 
-let make = fun ~actions ~outs ~srcs ~(package:Package.t) ~toolchain ~dependency_hashes ~deps ->
+let make_with_toolchain_hash = fun
+  ~toolchain_hash ~actions ~outs ~srcs ~(package:Package.t) ~toolchain ~dependency_hashes ~deps ->
   let open Crypto in
   let hasher = Sha256.create () in
   Sha256.write hasher (Package_name.to_string package.Package.name);
-  let toolchain_hash = Riot_toolchain.hash toolchain in
   Sha256.write_hash hasher toolchain_hash;
   let sorted_actions =
     List.sort
@@ -131,6 +131,17 @@ let make = fun ~actions ~outs ~srcs ~(package:Package.t) ~toolchain ~dependency_
     toolchain;
     hash;
   }
+
+let make = fun ~actions ~outs ~srcs ~(package:Package.t) ~toolchain ~dependency_hashes ~deps ->
+  make_with_toolchain_hash
+    ~toolchain_hash:(Riot_toolchain.hash toolchain)
+    ~actions
+    ~outs
+    ~srcs
+    ~package
+    ~toolchain
+    ~dependency_hashes
+    ~deps
 
 let id = G.id
 

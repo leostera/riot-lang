@@ -346,6 +346,14 @@ let write_action_execution = fun root ->
     ~actions:[ Riot_planner.Action.WriteFile { destination = output; content = "hello" } ]
     ~outs:[ output ]
 
+let copy_file_action_execution = fun root ->
+  let source = Path.v "data.txt" in
+  let destination = Path.v "copied.txt" in
+  action_execution
+    root
+    ~actions:[ Riot_planner.Action.CopyFile { source; destination } ]
+    ~outs:[ destination ]
+
 let compile_action_execution = fun root ->
   action_execution
     root
@@ -358,6 +366,50 @@ let compile_action_execution = fun root ->
       };
     ]
     ~outs:[ Path.v "example.cmi" ]
+
+let test_action_execution_plans_toolchain_readiness_for_compiler_action = fun _ctx ->
+  match Fs.with_tempdir
+    ~prefix:"riot_build2_action_planned_toolchain"
+    (fun root ->
+      let workspace =
+        Riot_model.Workspace.make ~root ~target_dir:Path.(root / Path.v "target") ~packages:[] ()
+      in
+      let services = Build_services.create ~config:(Config.make ~workspace ~parallelism:1 ()) () in
+      let registry = Work_registry.create () in
+      let action = compile_action_execution root in
+      let node = Work_node.action_execution ~id:(Work_node.Node_id.from_int 1) action in
+      Build_services.plan_dependencies services registry node
+      |> Result.map_err ~fn:Error.message
+      |> Result.and_then
+        ~fn:(fun keys ->
+          if has_toolchain_key keys action.ref_.target then
+            Ok ()
+          else
+            Error "expected compiler action planning to include toolchain readiness")) with
+  | Ok result -> result
+  | Error error -> Error ("tempdir failed: " ^ IO.error_message error)
+
+let test_action_execution_does_not_plan_toolchain_for_noncompiler_action = fun _ctx ->
+  match Fs.with_tempdir
+    ~prefix:"riot_build2_action_no_planned_toolchain"
+    (fun root ->
+      let workspace =
+        Riot_model.Workspace.make ~root ~target_dir:Path.(root / Path.v "target") ~packages:[] ()
+      in
+      let services = Build_services.create ~config:(Config.make ~workspace ~parallelism:1 ()) () in
+      let registry = Work_registry.create () in
+      let action = write_action_execution root in
+      let node = Work_node.action_execution ~id:(Work_node.Node_id.from_int 1) action in
+      Build_services.plan_dependencies services registry node
+      |> Result.map_err ~fn:Error.message
+      |> Result.and_then
+        ~fn:(fun keys ->
+          if has_toolchain_key keys action.ref_.target then
+            Error "expected noncompiler action planning not to include toolchain readiness"
+          else
+            Ok ())) with
+  | Ok result -> result
+  | Error error -> Error ("tempdir failed: " ^ IO.error_message error)
 
 let test_uncached_noncompiler_action_executes_without_toolchain_readiness = fun _ctx ->
   match Fs.with_tempdir
@@ -380,6 +432,38 @@ let test_uncached_noncompiler_action_executes_without_toolchain_readiness = fun 
           in
           result
       | Ok _ -> Error "expected uncached noncompiler action not to request dependencies"
+      | Error error -> Error (Error.message error)) with
+  | Ok result -> result
+  | Error error -> Error ("tempdir failed: " ^ IO.error_message error)
+
+let test_uncached_action_reads_concrete_package_sources_without_sandbox_copy = fun _ctx ->
+  match Fs.with_tempdir
+    ~prefix:"riot_build2_action_package_source"
+    (fun root ->
+      let package = action_package root in
+      let* () =
+        Fs.create_dir_all package.path
+        |> Result.map_err ~fn:IO.error_message
+      in
+      let* () =
+        Fs.write "package-source\n" Path.(package.path / Path.v "data.txt")
+        |> Result.map_err ~fn:IO.error_message
+      in
+      let workspace =
+        Riot_model.Workspace.make ~root ~target_dir:Path.(root / Path.v "target") ~packages:[] ()
+      in
+      let store = Riot_store.Store.create ~workspace in
+      let toolchains = Toolchain_service.create ~root () in
+      let executor = Action_executor.create ~store ~toolchains () in
+      let action = copy_file_action_execution root in
+      match Action_executor.execute executor action with
+      | Ok (Work_result.Complete []) -> (
+          match Fs.read Path.(action.sandbox_dir / Path.v "copied.txt") with
+          | Ok "package-source\n" -> Ok ()
+          | Ok _ -> Error "expected copied package source content"
+          | Error error -> Error ("expected copied package source: " ^ IO.error_message error)
+        )
+      | Ok _ -> Error "expected package-source copy action not to request dependencies"
       | Error error -> Error (Error.message error)) with
   | Ok result -> result
   | Error error -> Error ("tempdir failed: " ^ IO.error_message error)
@@ -425,8 +509,17 @@ let tests =
       "module plan cache hit skips dynamic source dependencies"
       test_module_plan_cache_hit_skips_dynamic_source_dependencies;
     case
+      "action execution plans toolchain readiness for compiler action"
+      test_action_execution_plans_toolchain_readiness_for_compiler_action;
+    case
+      "action execution does not plan toolchain for noncompiler action"
+      test_action_execution_does_not_plan_toolchain_for_noncompiler_action;
+    case
       "uncached noncompiler action executes without toolchain readiness"
       test_uncached_noncompiler_action_executes_without_toolchain_readiness;
+    case
+      "uncached action reads concrete package sources without sandbox copy"
+      test_uncached_action_reads_concrete_package_sources_without_sandbox_copy;
     case
       "uncached compiler action requests toolchain readiness at execution"
       test_uncached_compiler_action_requests_toolchain_readiness_at_execution;
