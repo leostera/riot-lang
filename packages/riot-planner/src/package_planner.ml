@@ -831,6 +831,7 @@ let load_cached_artifact = fun lookup store package input_hash ->
   | Metadata_cached_artifact -> Riot_store.Store.get_package_metadata store input_hash
 
 let plan_package_after_dependencies = fun
+  ~analyze_sources
   ~on_source_analyzed
   ~input_hash_cache
   ~cached_artifact_lookup
@@ -979,7 +980,7 @@ let plan_package_after_dependencies = fun
                     on_source_analyzed;
                   }
                 in
-                match Module_planner.plan_node plan_input with
+                match Module_planner.plan_node ?analyze_sources plan_input with
                 | Error err -> Error err
                 | Ok {
                     sources;
@@ -1107,7 +1108,7 @@ let plan_package_after_dependencies = fun
               on_source_analyzed;
             }
           in
-          match Module_planner.plan_node plan_input with
+          match Module_planner.plan_node ?analyze_sources plan_input with
           | Error err -> Error err
           | Ok {
               sources;
@@ -1217,6 +1218,31 @@ let plan_build_unit_with_cache = fun
   ~depset
   ~build_ctx ->
   plan_package_after_dependencies
+    ~analyze_sources:None
+    ~on_source_analyzed
+    ~input_hash_cache:(Some input_hash_cache)
+    ~cached_artifact_lookup:Metadata_cached_artifact
+    ~workspace
+    ~toolchain
+    ~store
+    ~unit_key:(Build_unit.key unit)
+    ~package:(Build_unit.package unit)
+    ~depset
+    ~dependency_check_duration:Time.Duration.zero
+    ~build_ctx
+
+let plan_build_unit_with_cache_and_source_analyzer = fun
+  ~analyze_sources
+  ~on_source_analyzed
+  ~input_hash_cache
+  ~workspace
+  ~toolchain
+  ~store
+  ~(unit:Build_unit.t)
+  ~depset
+  ~build_ctx ->
+  plan_package_after_dependencies
+    ~analyze_sources:(Some analyze_sources)
     ~on_source_analyzed
     ~input_hash_cache:(Some input_hash_cache)
     ~cached_artifact_lookup:Metadata_cached_artifact
@@ -1230,8 +1256,15 @@ let plan_build_unit_with_cache = fun
     ~build_ctx
 
 let plan_build_unit = fun
-  ~on_source_analyzed ~workspace ~toolchain ~store ~(unit:Build_unit.t) ~depset ~build_ctx ->
+  ~on_source_analyzed
+  ~workspace
+  ~toolchain
+  ~store
+  ~(unit:Build_unit.t)
+  ~depset
+  ~build_ctx ->
   plan_package_after_dependencies
+    ~analyze_sources:None
     ~on_source_analyzed
     ~input_hash_cache:None
     ~cached_artifact_lookup:Full_cached_artifact

@@ -44,4 +44,7 @@ type plan_result = {
   action_graph: Action_graph.t;
 }
 
-val plan_node: plan_input -> (plan_result, Planning_error.t) result
+val plan_node:
+  ?analyze_sources:Module_graph.source_analyzer ->
+  plan_input ->
+  (plan_result, Planning_error.t) result

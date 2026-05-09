@@ -1,6 +1,6 @@
 format_version = 1
 
-dependency_hash = "d82a76840927e365"
+dependency_hash = "95d8e5470a5a10e4"
 
 [[packages]]
 name = "blink"
@@ -399,6 +399,14 @@ name = "riot-build"
 root = "packages/riot-build"
 provenance = { kind = "workspace" }
 dependencies = [{ name = "pkgs-ml", package = { name = "pkgs-ml" } }, { name = "riot-deps", package = { name = "riot-deps" } }, { name = "riot-model", package = { name = "riot-model" } }, { name = "riot-planner", package = { name = "riot-planner" } }, { name = "riot-store", package = { name = "riot-store" } }, { name = "riot-toolchain", package = { name = "riot-toolchain" } }, { name = "std", package = { name = "std" } }]
+build_dependencies = []
+dev_dependencies = []
+
+[[packages]]
+name = "riot-build2"
+root = "packages/riot-build2"
+provenance = { kind = "workspace" }
+dependencies = [{ name = "riot-model", package = { name = "riot-model" } }, { name = "riot-planner", package = { name = "riot-planner" } }, { name = "riot-store", package = { name = "riot-store" } }, { name = "riot-toolchain", package = { name = "riot-toolchain" } }, { name = "serde-json", package = { name = "serde-json" } }, { name = "std", package = { name = "std" } }]
 build_dependencies = []
 dev_dependencies = []
 

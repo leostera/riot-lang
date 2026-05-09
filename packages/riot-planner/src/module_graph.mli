@@ -34,6 +34,25 @@ type source_analysis_progress = {
   source_index: int;
   source_count: int;
 }
+type source_analysis_task = {
+  task_node_id: G.Node_id.t;
+  task_file: Module_node.file;
+  task_path: Path.t;
+  task_display_path: Path.t;
+  task_module_path: string list option;
+  task_implicit_opens: string list;
+  task_implicit_open_paths: string list list;
+}
+type source_analysis = {
+  analysis_task: source_analysis_task;
+  analysis_parse_result: Syn.Parser.parse_result;
+  analysis_source_hash: Crypto.hash;
+  analysis_summary: (Dep_analyzer.source_summary, Dep_analyzer.parse_error) result;
+}
+type source_analyzer =
+  on_source_analyzed:(source_analysis_progress -> unit) ->
+  source_analysis_task list ->
+  (source_analysis, Planning_error.t) result list
 type t
 
 val create: config -> t
@@ -42,7 +61,14 @@ val add_direct_dependency_root: t -> package_name:Package_name.t -> root_module:
 
 val add_direct_dependency_package: t -> Package.t -> unit
 
+val source_tasks: t -> source_analysis_task list
+
+val analyze_source: source_analysis_task -> (source_analysis, Planning_error.t) result
+
+val analyze_source_tasks: source_analyzer
+
 val wire_dependencies:
+  ?analyze_sources:source_analyzer ->
   ?on_source_analyzed:(source_analysis_progress -> unit) ->
   t ->
   (unit, Planning_error.t) result

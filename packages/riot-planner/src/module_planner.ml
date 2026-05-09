@@ -111,7 +111,7 @@ let direct_dependency_roots = fun (input: plan_input) ->
   in
   List.reverse !roots
 
-let plan_node = fun (input: plan_input) ->
+let plan_node = fun ?analyze_sources (input: plan_input) ->
   let config =
     Module_graph.{
       root = input.package.path;
@@ -142,7 +142,10 @@ let plan_node = fun (input: plan_input) ->
           let _ = G.add_node (Module_graph.graph graph_builder) native_node in
           ()
     );
-    match Module_graph.wire_dependencies ~on_source_analyzed:input.on_source_analyzed graph_builder with
+    match Module_graph.wire_dependencies
+      ?analyze_sources
+      ~on_source_analyzed:input.on_source_analyzed
+      graph_builder with
     | Error _ as error -> error
     | Ok () ->
         (

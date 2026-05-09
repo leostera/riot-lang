@@ -5,7 +5,14 @@ type module_plan_result = Module_planner.plan_result
 
 type package_plan_result = Package_planner.plan_result
 
-let plan_build_unit = fun ~on_source_analyzed ~workspace ~toolchain ~store ~unit ~depset ~build_ctx ->
+let plan_build_unit = fun
+  ~on_source_analyzed
+  ~workspace
+  ~toolchain
+  ~store
+  ~unit
+  ~depset
+  ~build_ctx ->
   Package_planner.plan_build_unit
     ~on_source_analyzed
     ~workspace

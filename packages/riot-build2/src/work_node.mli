@@ -1,0 +1,111 @@
+open Std
+
+module Node_id: sig
+  type t
+
+  val equal: t -> t -> bool
+
+  val compare: t -> t -> Order.t
+
+  val of_int: int -> t
+
+  val to_int: t -> int
+
+  val to_string: t -> string
+end
+
+type status =
+  | Pending
+  | Running
+  | Completed
+  | Failed
+
+type module_ref = {
+  package: Riot_model.Package_name.t option;
+  scope: string option;
+  name: string;
+}
+
+type source_ref = {
+  package: Riot_model.Package_name.t option;
+  path: Path.t;
+}
+
+type key =
+  | Intent of User_intent.t
+  | Package of Riot_model.Package_name.t
+  | Module of module_ref
+  | Source of source_ref
+  | GoalKey of Goal.t
+  | PackageWorkKey of Package_work.t
+  | ToolchainReadyKey of Toolchain_ready.key
+  | SourceAnalysisKey of Source_analysis.key
+  | ModulePlanKey of Package_work.build_library
+  | PackageFinalizeKey of Package_work.build_library
+  | ActionExecutionKey of Action_execution.ref_
+
+type kind =
+  | UserIntent of User_intent.t
+  | Goal of Goal.t
+  | PackageWork of Package_work.t
+  | ToolchainReady of Toolchain_ready.t
+  | SourceAnalysis of Source_analysis.t
+  | ModulePlan of Package_work.build_library
+  | PackageFinalize of Package_work.build_library
+  | ActionExecution of Action_execution.t
+
+type t
+
+val key_of_kind: kind -> key
+
+val kind_of_key: key -> kind option
+
+val create: id:Node_id.t -> ?key:key -> kind -> t
+
+val user_intent: id:Node_id.t -> User_intent.t -> t
+
+val goal: id:Node_id.t -> Goal.t -> t
+
+val package_work: id:Node_id.t -> Package_work.t -> t
+
+val toolchain_ready: id:Node_id.t -> Toolchain_ready.t -> t
+
+val source_analysis: id:Node_id.t -> Source_analysis.t -> t
+
+val module_plan: id:Node_id.t -> Package_work.build_library -> t
+
+val package_finalize: id:Node_id.t -> Package_work.build_library -> t
+
+val action_execution: id:Node_id.t -> Action_execution.t -> t
+
+val id: t -> Node_id.t
+
+val key: t -> key
+
+val kind: t -> kind
+
+val status: t -> status
+
+val dependencies: t -> Node_id.t list
+
+val dependents: t -> Node_id.t list
+
+val pending_dependency_count: t -> int
+
+val dependencies_ready: t -> bool
+
+val set_status: t -> status -> unit
+
+val compare_and_set_status: t -> from:status -> to_:status -> bool
+
+val add_dependency: t -> Node_id.t -> bool
+
+val add_dependent: t -> Node_id.t -> bool
+
+val add_pending_dependencies: t -> int -> unit
+
+val mark_dependency_completed: t -> int
+
+val add_dependencies: t -> Node_id.t list -> unit
+
+val add_dependents: t -> Node_id.t list -> unit

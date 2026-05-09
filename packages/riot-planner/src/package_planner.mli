@@ -85,3 +85,15 @@ val plan_build_unit_with_cache:
   depset:Dependency.t list ->
   build_ctx:Build_ctx.t ->
   (plan_result, Planning_error.t) result
+
+val plan_build_unit_with_cache_and_source_analyzer:
+  analyze_sources:Module_graph.source_analyzer ->
+  on_source_analyzed:(Module_graph.source_analysis_progress -> unit) ->
+  input_hash_cache:input_hash_cache ->
+  workspace:Workspace.t ->
+  toolchain:Riot_toolchain.t ->
+  store:Riot_store.Store.t ->
+  unit:Build_unit.t ->
+  depset:Dependency.t list ->
+  build_ctx:Build_ctx.t ->
+  (plan_result, Planning_error.t) result

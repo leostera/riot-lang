@@ -965,21 +965,26 @@ let add_direct_dependency_root = fun t ~package_name ~root_module ->
     )
 
 type source_analysis_task = {
-  node_id: G.Node_id.t;
-  file: Module_node.file;
-  path: Path.t;
-  display_path: Path.t;
-  module_path: string list option;
-  implicit_opens: string list;
-  implicit_open_paths: string list list;
+  task_node_id: G.Node_id.t;
+  task_file: Module_node.file;
+  task_path: Path.t;
+  task_display_path: Path.t;
+  task_module_path: string list option;
+  task_implicit_opens: string list;
+  task_implicit_open_paths: string list list;
 }
 
 type source_analysis = {
-  task: source_analysis_task;
-  parse_result: Syn.Parser.parse_result;
-  source_hash: Crypto.hash;
-  summary: (Dep_analyzer.source_summary, Dep_analyzer.parse_error) result;
+  analysis_task: source_analysis_task;
+  analysis_parse_result: Syn.Parser.parse_result;
+  analysis_source_hash: Crypto.hash;
+  analysis_summary: (Dep_analyzer.source_summary, Dep_analyzer.parse_error) result;
 }
+
+type source_analyzer =
+  on_source_analyzed:(source_analysis_progress -> unit) ->
+  source_analysis_task list ->
+  (source_analysis, Planning_error.t) result list
 
 let module_path_for_node_value = fun (module_node: Module_node.t) ->
   match module_node.kind with
@@ -1023,13 +1028,13 @@ let source_task_of_node = fun config (node_id, (node: Module_node.t G.node)) ->
       | Module_node.Concrete path
       | Module_node.Generated { path; _ } ->
           Some {
-            node_id;
-            file = module_node.file;
-            path;
-            display_path = source_display_path config module_node.file;
-            module_path = module_path_for_node_value module_node;
-            implicit_opens = implicit_open_modules module_node.open_modules;
-            implicit_open_paths = implicit_open_paths module_node.open_modules;
+            task_node_id = node_id;
+            task_file = module_node.file;
+            task_path = path;
+            task_display_path = source_display_path config module_node.file;
+            task_module_path = module_path_for_node_value module_node;
+            task_implicit_opens = implicit_open_modules module_node.open_modules;
+            task_implicit_open_paths = implicit_open_paths module_node.open_modules;
           }
     )
   | _ -> None
@@ -1045,43 +1050,49 @@ let sorted_source_tasks = fun config graph ->
   |> List.sort
     ~compare:(fun left right ->
       String.compare
-        (Path.to_string left.path)
-        (Path.to_string right.path))
+        (Path.to_string left.task_path)
+        (Path.to_string right.task_path))
 
 let read_task_source = fun task ->
-  match task.file with
+  match task.task_file with
   | Module_node.Concrete _ ->
-      Fs.read task.display_path
+      Fs.read task.task_display_path
       |> Result.map_err
         ~fn:(fun err ->
           Planning_error.DependencyAnalysisFailed {
             reason = "failed to read "
-            ^ Module_node.file_to_string task.file
+            ^ Module_node.file_to_string task.task_file
             ^ " for dependency analysis: "
             ^ IO.error_message err;
           })
   | Module_node.Generated { contents; _ } -> Ok contents
 
-let analyze_source_task = fun ~on_source_analyzed ~source_count ~completed_sources task ->
+let analyze_source = fun task ->
   let* raw_text = read_task_source task in
-  let parse_result = Syn.parse ~filename:task.display_path (source_slice raw_text) in
-  let source_hash = source_hash ~implicit_opens:task.implicit_opens ~source:raw_text in
+  let parse_result = Syn.parse ~filename:task.task_display_path (source_slice raw_text) in
+  let source_hash =
+    source_hash ~implicit_opens:task.task_implicit_opens ~source:raw_text
+  in
   let summary =
     Dep_analyzer.analyze
-      ?module_path:task.module_path
-      ~implicit_opens:task.implicit_open_paths
-      ~source:task.display_path
+      ?module_path:task.task_module_path
+      ~implicit_opens:task.task_implicit_open_paths
+      ~source:task.task_display_path
       ~source_hash
       parse_result
   in
-  let source_index = Int.succ (Atomic.fetch_and_add completed_sources 1) in
-  on_source_analyzed { source = task.display_path; source_index; source_count };
   Ok {
-    task;
-    parse_result;
-    source_hash;
-    summary;
+    analysis_task = task;
+    analysis_parse_result = parse_result;
+    analysis_source_hash = source_hash;
+    analysis_summary = summary;
   }
+
+let analyze_source_task = fun ~on_source_analyzed ~source_count ~completed_sources task ->
+  let* analysis = analyze_source task in
+  let source_index = Int.succ (Atomic.fetch_and_add completed_sources 1) in
+  on_source_analyzed { source = task.task_display_path; source_index; source_count };
+  Ok analysis
 
 let analyze_source_tasks = fun ~on_source_analyzed tasks ->
   let source_count = List.length tasks in
@@ -1091,6 +1102,8 @@ let analyze_source_tasks = fun ~on_source_analyzed tasks ->
     ~fn:(analyze_source_task ~on_source_analyzed ~source_count ~completed_sources)
     ()
   |> List.map ~fn:(fun (_index, result) -> result)
+
+let source_tasks = fun t -> sorted_source_tasks t.config t.graph
 
 let add_direct_dependency_package = fun t (package: Package.t) ->
   let root_module = Package.root_module_name package in
@@ -1118,7 +1131,10 @@ let add_direct_dependency_package = fun t (package: Package.t) ->
    queries, resolves those queries against dependency and package-local
    providers, and wires graph edges from the resolved module names.
 *)
-let wire_dependencies = fun ?(on_source_analyzed = fun (_:source_analysis_progress) -> ()) t ->
+let wire_dependencies = fun
+  ?(analyze_sources:source_analyzer = analyze_source_tasks)
+  ?(on_source_analyzed = fun (_:source_analysis_progress) -> ())
+  t ->
   let () = HashMap.clear t.analyzed_modules in
   let rec strip_last_namespace = fun __tmp1 ->
     match __tmp1 with
@@ -1196,7 +1212,7 @@ let wire_dependencies = fun ?(on_source_analyzed = fun (_:source_analysis_progre
     in
     try_candidates candidate_names
   in
-  let tasks = sorted_source_tasks t.config t.graph in
+  let tasks = source_tasks t in
   let _source_count = List.length tasks in
   let group_for_path path =
     let normalized_path = Path.normalize path in
@@ -1266,9 +1282,9 @@ let wire_dependencies = fun ?(on_source_analyzed = fun (_:source_analysis_progre
       ^ String.concat "; " messages
   in
   let validate_analysis analysis =
-    let source_file = Syn.Ast.SourceFile.make analysis.parse_result.tree in
-    match binary_for_path t.config analysis.task.path with
-    | Some binary when Vector.length analysis.parse_result.diagnostics = 0 ->
+    let source_file = Syn.Ast.SourceFile.make analysis.analysis_parse_result.tree in
+    match binary_for_path t.config analysis.analysis_task.task_path with
+    | Some binary when Vector.length analysis.analysis_parse_result.diagnostics = 0 ->
         let source = make_relative ~base:t.config.package.path ~path:binary.path in
         validate_executable_main
           ~package_name:(Package_name.to_string t.config.package.name)
@@ -1282,16 +1298,16 @@ let wire_dependencies = fun ?(on_source_analyzed = fun (_:source_analysis_progre
     let* acc = acc in
     let* analysis = result in
     let* () = validate_analysis analysis in
-    match analysis.summary with
+    match analysis.analysis_summary with
     | Ok summary -> Ok ((analysis, summary) :: acc)
     | Error err ->
         Error (Planning_error.DependencyAnalysisFailed {
-          reason = stringify_parse_error analysis.task.path err;
+          reason = stringify_parse_error analysis.analysis_task.task_path err;
         })
   in
   let resolved =
     let* analyses_and_summaries =
-      analyze_source_tasks ~on_source_analyzed tasks
+      analyze_sources ~on_source_analyzed tasks
       |> List.fold_left ~init:(Ok []) ~fn:collect_analysis
       |> Result.map ~fn:List.reverse
     in
@@ -1308,12 +1324,12 @@ let wire_dependencies = fun ?(on_source_analyzed = fun (_:source_analysis_progre
         resolved
         ~fn:(fun ((analysis, _summary), resolved_source) ->
           let requested_deps =
-            match analysis.task.file with
+            match analysis.analysis_task.task_file with
             | Module_node.Concrete _ -> Dep_analyzer.ResolvedSource.modules resolved_source
             | Module_node.Generated _ -> []
           in
           let unresolved_deps =
-            match analysis.task.file with
+            match analysis.analysis_task.task_file with
             | Module_node.Concrete _ -> Dep_analyzer.ResolvedSource.unresolved resolved_source
             | Module_node.Generated _ -> []
           in
@@ -1322,10 +1338,10 @@ let wire_dependencies = fun ?(on_source_analyzed = fun (_:source_analysis_progre
             |> List.map
               ~fn:(fun modname ->
                 Module_name.from_string
-                  ~namespace:(file_namespace analysis.task.path)
+                  ~namespace:(file_namespace analysis.analysis_task.task_path)
                   modname)
           in
-          match G.get_node t.graph analysis.task.node_id with
+          match G.get_node t.graph analysis.analysis_task.task_node_id with
           | None -> ()
           | Some node ->
               let (resolved_dep_ids, unresolved_deps) =
@@ -1354,10 +1370,10 @@ let wire_dependencies = fun ?(on_source_analyzed = fun (_:source_analysis_progre
                 ~unresolved:unresolved_deps)
               in
               let analyzed = {
-                display_path = analysis.task.display_path;
-                source_hash = analysis.source_hash;
-                implicit_opens = analysis.task.implicit_opens;
-                parse_result = analysis.parse_result;
+                display_path = analysis.analysis_task.task_display_path;
+                source_hash = analysis.analysis_source_hash;
+                implicit_opens = analysis.analysis_task.task_implicit_opens;
+                parse_result = analysis.analysis_parse_result;
                 deps;
                 resolved_deps;
                 resolved_dep_ids;
@@ -1365,7 +1381,10 @@ let wire_dependencies = fun ?(on_source_analyzed = fun (_:source_analysis_progre
               }
               in
               let _ =
-                HashMap.insert t.analyzed_modules ~key:analysis.task.node_id ~value:analyzed
+                HashMap.insert
+                  t.analyzed_modules
+                  ~key:analysis.analysis_task.task_node_id
+                  ~value:analyzed
               in
               ());
       Ok ()
