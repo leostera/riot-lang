@@ -48,6 +48,7 @@ type key =
   | PackageArtifactKey of Goal.build_package
   | PackageFinalizeKey of Goal.build_package
   | ModulePlanKey of Goal.build_package
+  | ActionPlanKey of Goal.build_package
   | ActionExecutionKey of Action_execution.ref_
 
 type kind =
@@ -58,6 +59,7 @@ type kind =
   | PackageArtifact of Goal.build_package
   | PackageFinalize of Goal.build_package
   | ModulePlan of Goal.build_package
+  | ActionPlan of Goal.build_package
   | ActionExecution of Action_execution.t
 
 type t
@@ -81,6 +83,8 @@ val package_artifact: id:Node_id.t -> Goal.build_package -> t
 val package_finalize: id:Node_id.t -> Goal.build_package -> t
 
 val module_plan: id:Node_id.t -> Goal.build_package -> t
+
+val action_plan: id:Node_id.t -> Goal.build_package -> t
 
 val action_execution: id:Node_id.t -> Action_execution.t -> t
 

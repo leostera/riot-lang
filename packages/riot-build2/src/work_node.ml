@@ -51,6 +51,7 @@ type key =
   | PackageArtifactKey of Goal.build_package
   | PackageFinalizeKey of Goal.build_package
   | ModulePlanKey of Goal.build_package
+  | ActionPlanKey of Goal.build_package
   | ActionExecutionKey of Action_execution.ref_
 
 type kind =
@@ -61,6 +62,7 @@ type kind =
   | PackageArtifact of Goal.build_package
   | PackageFinalize of Goal.build_package
   | ModulePlan of Goal.build_package
+  | ActionPlan of Goal.build_package
   | ActionExecution of Action_execution.t
 
 type t = {
@@ -82,6 +84,7 @@ let key_from_kind = fun __tmp1 ->
   | PackageArtifact build -> PackageArtifactKey build
   | PackageFinalize build -> PackageFinalizeKey build
   | ModulePlan build -> ModulePlanKey build
+  | ActionPlan build -> ActionPlanKey build
   | ActionExecution action -> ActionExecutionKey action.ref_
 
 let kind_from_key = fun __tmp1 ->
@@ -92,6 +95,7 @@ let kind_from_key = fun __tmp1 ->
   | PackageArtifactKey build -> Some (PackageArtifact build)
   | PackageFinalizeKey build -> Some (PackageFinalize build)
   | ModulePlanKey build -> Some (ModulePlan build)
+  | ActionPlanKey build -> Some (ActionPlan build)
   | Package _
   | Module _
   | Source _
@@ -127,6 +131,8 @@ let package_finalize = fun ~id build -> create ~id (PackageFinalize build)
 
 let module_plan = fun ~id build -> create ~id (ModulePlan build)
 
+let action_plan = fun ~id build -> create ~id (ActionPlan build)
+
 let action_execution = fun ~id action -> create ~id (ActionExecution action)
 
 let id = fun node -> node.id
@@ -144,6 +150,7 @@ let execution_mode_of_kind = fun __tmp1 ->
   | PackageArtifact _
   | PackageFinalize _
   | ModulePlan _
+  | ActionPlan _
   | ActionExecution _ -> Concrete
 
 let execution_mode = fun node -> execution_mode_of_kind node.kind

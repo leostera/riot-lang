@@ -12,6 +12,7 @@ let execute_node = fun _registry node ->
   | PackageArtifact _
   | PackageFinalize _
   | ModulePlan _
+  | ActionPlan _
   | ActionExecution _ ->
       Error (Error.ExecutorInvariantViolated {
         message = "default work graph only supports user intent and goal nodes";
@@ -30,6 +31,7 @@ let run_intent = fun ~config intent ->
     | PackageArtifact _
     | PackageFinalize _
     | ModulePlan _
+    | ActionPlan _
     | ActionExecution _ ->
         Error (Error.ExecutorInvariantViolated {
           message = "default work graph only supports user intent and goal nodes";
@@ -48,6 +50,7 @@ let run_intent = fun ~config intent ->
       | PackageArtifact _
       | PackageFinalize _
       | ModulePlan _
+      | ActionPlan _
       | ActionExecution _ -> Work_node.Concrete)
     ~execute:execute_node
     ()

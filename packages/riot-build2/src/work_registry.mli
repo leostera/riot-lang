@@ -45,4 +45,6 @@ val intern_package_finalize: t -> Goal.build_package -> Work_node.t
 
 val intern_module_plan: t -> Goal.build_package -> Work_node.t
 
+val intern_action_plan: t -> Goal.build_package -> Work_node.t
+
 val intern_action_execution: t -> Action_execution.t -> Work_node.t

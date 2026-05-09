@@ -91,6 +91,7 @@ let key_name = fun __tmp1 ->
   | PackageArtifactKey _ -> "PackageArtifactKey"
   | PackageFinalizeKey _ -> "PackageFinalizeKey"
   | ModulePlanKey _ -> "ModulePlanKey"
+  | ActionPlanKey _ -> "ActionPlanKey"
   | ActionExecutionKey _ -> "ActionExecutionKey"
 
 let source_package_workspace = fun root ->

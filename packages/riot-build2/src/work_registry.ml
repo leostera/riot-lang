@@ -119,6 +119,14 @@ let intern_module_plan = fun t build ->
     ~key:(module_plan_key build)
     ~make:(fun () -> Work_node.ModulePlan build)
 
+let action_plan_key = fun build -> Work_node.ActionPlanKey build
+
+let intern_action_plan = fun t build ->
+  intern
+    t
+    ~key:(action_plan_key build)
+    ~make:(fun () -> Work_node.ActionPlan build)
+
 let action_execution_key = fun (action: Action_execution.t) ->
   Work_node.ActionExecutionKey action.ref_
 

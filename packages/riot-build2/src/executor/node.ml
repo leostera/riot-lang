@@ -8,6 +8,7 @@ type kind = Work_node.kind =
   | PackageArtifact of Goal.build_package
   | PackageFinalize of Goal.build_package
   | ModulePlan of Goal.build_package
+  | ActionPlan of Goal.build_package
   | ActionExecution of Action_execution.t
 
 type status = Work_node.status =
