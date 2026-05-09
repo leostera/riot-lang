@@ -6,7 +6,11 @@ val create_cache: store:Riot_store.Store.t -> payload Graph_cache.t
 
 val payload_of_plan: Module_plan.t -> payload
 
-val action_graph:
-  package:Riot_model.Package_name.t ->
+val action_executions:
+  package:Riot_model.Package.t ->
+  profile:Riot_model.Profile.t ->
+  target:Riot_model.Target.t ->
+  toolchain:Riot_toolchain.t ->
+  sandbox_dir:Path.t ->
   payload ->
-  (Riot_planner.Action_graph.t, Error.t) result
+  (Action_execution.t list, Error.t) result

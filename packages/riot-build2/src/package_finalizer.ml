@@ -2,7 +2,6 @@ open Std
 open Std.Result.Syntax
 
 module ConcurrentHashMap = Collections.ConcurrentHashMap
-module HashMap = Collections.HashMap
 module HashSet = Collections.HashSet
 
 type t = {
@@ -49,78 +48,38 @@ let store_error = fun ?package reason -> Error.StoreFailed { package; reason }
 
 let action_dependency_key = fun action_ref -> Work_node.ActionExecutionKey action_ref
 
-let action_ref = fun (plan: Module_plan.t) node ->
-  Action_execution.ref_from_action
-    ~package:plan.package.name
-    ~profile:plan.profile
-    ~target:plan.target
-    node
-
 let register_action_nodes = fun t registry (plan: Module_plan.t) ->
-  let refs_by_id = HashMap.create () in
   List.for_each
-    plan.action_nodes
-    ~fn:(fun action ->
-      let ref_ = action_ref plan action in
-      ignore (HashMap.insert refs_by_id ~key:(Riot_planner.Action_node.id action) ~value:ref_));
+    plan.action_executions
+    ~fn:(fun (action: Action_execution.t) ->
+      ignore
+        (Work_registry.intern_action_execution registry action));
   List.map
-    plan.action_nodes
-    ~fn:(fun action ->
-      let ref_ =
-        HashMap.get refs_by_id ~key:(Riot_planner.Action_node.id action)
-        |> Option.expect ~msg:"action ref should have been registered"
-      in
-      let dependencies =
-        Riot_planner.Action_node.deps action
-        |> List.filter_map ~fn:(fun dep_id -> HashMap.get refs_by_id ~key:dep_id)
-      in
-      let action_execution = {
-        Action_execution.ref_;
-        action;
-        dependencies;
-        sandbox_dir = plan.sandbox_dir;
-      }
-      in
-      ignore (Work_registry.intern_action_execution registry action_execution);
-      ref_)
+    plan.action_executions
+    ~fn:(fun (action: Action_execution.t) -> action.Action_execution.ref_)
 
 let compute_export_entries = fun t (plan: Module_plan.t) ->
-  plan.action_nodes
+  plan.action_executions
   |> List.flat_map
-    ~fn:(fun node ->
-      let is_package_export =
-        List.any
-          (Riot_planner.Action_node.value node).actions
-          ~fn:(fun __tmp1 ->
-            match __tmp1 with
-            | Riot_planner.Action.CreateLibrary _
-            | Riot_planner.Action.CreateExecutable _
-            | Riot_planner.Action.CreateSharedLibrary _ -> true
-            | CompileInterface _
-            | CompileImplementation _
-            | GenerateInterface _
-            | CompileC _
-            | CopyFile _
-            | WriteFile _
-            | BuildForeignDependency _ -> false)
-      in
-      if not is_package_export then
+    ~fn:(fun (action: Action_execution.t) ->
+      let export_outputs = Action.export_outputs action.Action_execution.action in
+      if List.is_empty export_outputs then
         []
       else
-        let ref_ = action_ref plan node in
-        match Action_executor.artifact t.action_executor ref_ with
+        match Action_executor.artifact t.action_executor action.Action_execution.ref_ with
         | None -> []
         | Some artifact ->
             let action_hash = Crypto.Digest.hex artifact.Riot_store.Artifact.input_hash in
             List.map
-              (Riot_planner.Action_node.value node).outs
+              export_outputs
               ~fn:(fun out_path ->
                 Riot_store.Store.{ name = Path.basename out_path; path = out_path; action_hash }))
 
 let collect_package_outputs = fun (plan: Module_plan.t) ->
   let seen = HashSet.create () in
-  plan.action_nodes
-  |> List.flat_map ~fn:(fun node -> (Riot_planner.Action_node.value node).outs)
+  plan.action_executions
+  |> List.flat_map
+    ~fn:(fun (action: Action_execution.t) -> Action.outputs action.Action_execution.action)
   |> List.filter_map
     ~fn:(fun out ->
       let abs = Path.join plan.sandbox_dir out in
@@ -130,19 +89,21 @@ let collect_package_outputs = fun (plan: Module_plan.t) ->
         None)
 
 let missing_action_results = fun t (plan: Module_plan.t) ->
-  plan.action_nodes
+  plan.action_executions
   |> List.filter_map
-    ~fn:(fun node ->
-      let ref_ = action_ref plan node in
-      match Action_executor.find_result t.action_executor ref_ with
+    ~fn:(fun (action: Action_execution.t) ->
+      match Action_executor.find_result t.action_executor action.Action_execution.ref_ with
       | Some _ -> None
-      | None -> Some ref_)
+      | None -> Some action.Action_execution.ref_)
 
 let finalize = fun t (plan: Module_plan.t) ->
   let failed =
-    plan.action_nodes
+    plan.action_executions
     |> List.filter_map
-      ~fn:(fun node -> Action_executor.failure t.action_executor (action_ref plan node))
+      ~fn:(fun (action: Action_execution.t) ->
+        Action_executor.failure
+          t.action_executor
+          action.Action_execution.ref_)
   in
   match failed with
   | reason :: _ -> Error (Error.ActionExecutionFailed { package = plan.package.name; reason })
@@ -169,12 +130,12 @@ let finalize = fun t (plan: Module_plan.t) ->
         | Ok () ->
             let outputs = collect_package_outputs plan in
             let warnings =
-              plan.action_nodes
+              plan.action_executions
               |> List.filter_map
-                ~fn:(fun node ->
+                ~fn:(fun (action: Action_execution.t) ->
                   Action_executor.find_result
                     t.action_executor
-                    (action_ref plan node))
+                    action.Action_execution.ref_)
               |> List.flat_map ~fn:(fun result -> result.Action_execution.ocamlc_warnings)
             in
             match Riot_store.Store.save_package
@@ -252,7 +213,9 @@ let register_action_dependency_keys = fun t registry (plan: Module_plan.t) ->
   in
   let action_refs =
     if registered then
-      List.map plan.action_nodes ~fn:(action_ref plan)
+      List.map
+        plan.action_executions
+        ~fn:(fun (action: Action_execution.t) -> action.Action_execution.ref_)
     else
       register_action_nodes t registry plan
   in

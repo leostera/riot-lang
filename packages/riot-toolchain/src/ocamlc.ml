@@ -651,6 +651,16 @@ let create_library = fun t ~cwd ~includes ~output objects ->
     ~mode:Library
     (List.map objects ~fn:Path.to_string)
 
+let compile_library = fun t ~cwd ~includes ~flags ~output sources ->
+  build_invocation
+    t
+    ~cwd
+    ~includes
+    ~flags
+    ~output:(Some output)
+    ~mode:Library
+    (List.map sources ~fn:Path.to_string)
+
 let create_executable = fun
   t
   ~cwd

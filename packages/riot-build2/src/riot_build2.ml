@@ -2,6 +2,7 @@ open Std
 
 module Executor = Executor
 module Goal = Goal
+module Action = Action
 module Package_catalog = Package_catalog
 module Config = Build_config
 module Build_result = Build_result
@@ -20,6 +21,7 @@ module User_intent = User_intent
 module Source_analyzer = Source_analyzer
 module ExecutionSummary = ExecutionSummary
 module Toolchain_service = Toolchain_service
+module Toolchain_ready = Toolchain_ready
 module Workspace_loader = Workspace_loader
 module Work_graph = Work_graph
 module Work_node = Work_node

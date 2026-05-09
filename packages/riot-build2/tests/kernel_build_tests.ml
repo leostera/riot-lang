@@ -54,9 +54,14 @@ let current_target = fun () -> Riot_model.Target.current
 
 let expect_kernel_build_goal = fun actual ->
   match actual with
-  | [ Goal.BuildPackage { package; scope; profile; target } ] when Riot_model.Package_name.equal
-    package
-    kernel_package
+  | [
+      Goal.BuildPackage {
+        package;
+        scope;
+        profile;
+        target;
+      };
+    ] when Riot_model.Package_name.equal package kernel_package
   && scope = Goal.Runtime
   && profile = Riot_model.Profile.debug
   && Riot_model.Target.equal target (current_target ()) -> Ok ()
@@ -129,7 +134,11 @@ let completed_node = fun summary ~fn ->
 let require_completed_node = fun summary label fn ->
   match completed_node summary ~fn with
   | Some node -> Ok node
-  | None -> Error ("expected completed " ^ label ^ " node; completed kinds: " ^ completed_kind_names summary)
+  | None ->
+      Error ("expected completed "
+      ^ label
+      ^ " node; completed kinds: "
+      ^ completed_kind_names summary)
 
 let node_by_id = fun summary id ->
   summary.Executor.Summary.results
@@ -151,10 +160,45 @@ let expect_dependency = fun summary ~from_label ~from ~to_label ~dependency ->
   else
     Error ("expected " ^ from_label ^ " to depend on " ^ to_label)
 
+let kernel_action_executions = fun summary ->
+  summary.Executor.Summary.results
+  |> List.filter_map
+    ~fn:(fun result ->
+      if result.Executor.Summary.status = Work_node.Completed then
+        match Work_node.kind result.node with
+        | Work_node.ActionExecution action when Riot_model.Package_name.equal
+          action.ref_.package
+          kernel_package -> Some action
+        | _ -> None
+      else
+        None)
+
+let expect_kernel_native_compile_library = fun summary ->
+  let actions = kernel_action_executions summary in
+  let compile_library_count =
+    actions
+    |> List.filter
+      ~fn:(fun action ->
+        match action.Action_execution.action with
+        | Action.CompileLibrary { sources; _ } -> not (List.is_empty sources)
+        | _ -> false)
+    |> List.length
+  in
+  if Int.equal compile_library_count 1 then
+    Ok ()
+  else
+    Error ("expected kernel to execute one native CompileLibrary action, got "
+    ^ Int.to_string compile_library_count
+    ^ " out of "
+    ^ Int.to_string (List.length actions)
+    ^ " kernel actions")
+
 let expect_kernel_graph_shape = fun result ->
   let summary = result.Build_result.summary in
   let is_kernel_build = fun (build: Goal.build_package) ->
-    Riot_model.Package_name.equal build.package kernel_package
+    Riot_model.Package_name.equal
+      build.package
+      kernel_package
   in
   let* intent =
     require_completed_node
@@ -309,26 +353,23 @@ let expect_kernel_graph_shape = fun result ->
             Riot_model.Package_name.equal action.ref_.package kernel_package
         | _ -> false)
   in
-  if
-    summary.Executor.Summary.results
-    |> List.any
-      ~fn:(fun result ->
-        result.Executor.Summary.status = Work_node.Completed
-        &&
-        match Work_node.kind result.node with
-        | Work_node.ActionExecution action when Riot_model.Package_name.equal
-          action.ref_.package
-          kernel_package ->
-            node_depends_on
-              summary
-              result.node
-              ~dependency:(fun __tmp1 ->
-                match __tmp1 with
-                | Work_node.ToolchainReady toolchain ->
-                    Riot_model.Target.equal toolchain.target (current_target ())
-                | _ -> false)
-        | _ -> false)
-  then
+  let* () = expect_kernel_native_compile_library summary in
+  if summary.Executor.Summary.results
+  |> List.any
+    ~fn:(fun result ->
+      result.Executor.Summary.status = Work_node.Completed && match Work_node.kind result.node with
+      | Work_node.ActionExecution action when Riot_model.Package_name.equal
+        action.ref_.package
+        kernel_package ->
+          node_depends_on
+            summary
+            result.node
+            ~dependency:(fun __tmp1 ->
+              match __tmp1 with
+              | Work_node.ToolchainReady toolchain ->
+                  Riot_model.Target.equal toolchain.target (current_target ())
+              | _ -> false)
+      | _ -> false) then
     Ok ()
   else
     Error "expected at least one kernel action execution to depend on current toolchain readiness"
@@ -367,6 +408,7 @@ let expect_kernel_work_graph = fun result ->
   else
     let summary = result.Build_result.summary in
     let* () = expect_kernel_package_result result in
+    let* () = expect_kernel_native_compile_library summary in
     let* () =
       expect_completed_kind
         summary
@@ -412,8 +454,7 @@ let expect_kernel_work_graph = fun result ->
         "ActionPlan"
         (fun __tmp1 ->
           match __tmp1 with
-          | Work_node.ActionPlan build ->
-              Riot_model.Package_name.equal build.package kernel_package
+          | Work_node.ActionPlan build -> Riot_model.Package_name.equal build.package kernel_package
           | _ -> false)
     in
     let* () =

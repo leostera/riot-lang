@@ -83,6 +83,6 @@ let payload_of_plan = fun (plan: Module_plan.t) ->
     package = Riot_model.Package_name.to_string plan.package.name;
     action_hashes =
       List.map
-        plan.action_nodes
-        ~fn:(fun action -> Crypto.Digest.hex (Riot_planner.Action_node.get_hash action));
+        plan.action_executions
+        ~fn:(fun action -> Crypto.Digest.hex action.Action_execution.ref_.hash);
   }: payload)

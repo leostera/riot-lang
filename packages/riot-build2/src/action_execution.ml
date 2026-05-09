@@ -9,7 +9,9 @@ type ref_ = {
 
 type t = {
   ref_: ref_;
-  action: Riot_planner.Action_node.t;
+  package: Riot_model.Package.t;
+  toolchain: Riot_toolchain.t;
+  action: Action.t;
   dependencies: ref_ list;
   sandbox_dir: Path.t;
 }
@@ -25,17 +27,19 @@ type result = {
   ocamlc_warnings: string list;
 }
 
-let ref_from_action = fun ~package ~profile ~target action ->
+let ref_from_action = fun ~package ~profile ~target ~toolchain action ->
   {
-    package;
+    package = package.Riot_model.Package.name;
     profile;
     target;
-    hash = Riot_planner.Action_node.get_hash action;
+    hash = Action.hash ~package ~toolchain action;
   }
 
-let make = fun ~package ~profile ~target ~action ~dependencies ~sandbox_dir ->
+let make = fun ~package ~profile ~target ~toolchain ~action ~dependencies ~sandbox_dir ->
   {
-    ref_ = ref_from_action ~package ~profile ~target action;
+    ref_ = ref_from_action ~package ~profile ~target ~toolchain action;
+    package;
+    toolchain;
     action;
     dependencies;
     sandbox_dir;

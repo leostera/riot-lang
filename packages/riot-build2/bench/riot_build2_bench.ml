@@ -130,11 +130,7 @@ let source_package_workspace = fun root ->
       ()
     |> Riot_model.Package_manifest.from_package
   in
-  Riot_model.Workspace.make
-    ~root
-    ~target_dir:Path.(root / Path.v "target")
-    ~packages:[ package ]
-    ()
+  Riot_model.Workspace.make ~root ~target_dir:Path.(root / Path.v "target") ~packages:[ package ] ()
 
 let source_build = fun () ->
   Goal.{
@@ -143,6 +139,59 @@ let source_build = fun () ->
     profile = Riot_model.Profile.debug;
     target = Riot_model.Target.current;
   }
+
+let native_action_package = fun root ->
+  Riot_model.Package.make
+    ~name:(package "native-action")
+    ~path:Path.(root / Path.v "native-action")
+    ~relative_path:(Path.v "native-action")
+    ()
+
+let native_action_toolchain = fun root target ->
+  Riot_toolchain.from_config_for_target
+    ~config:(Riot_model.Toolchain_config.from_root ~root)
+    ~target
+
+let module_output_paths = fun module_stem -> [
+  Path.v (module_stem ^ ".cmt");
+  Path.v (module_stem ^ ".cmi");
+  Path.v (module_stem ^ ".cmx");
+  Path.v (module_stem ^ ".o");
+]
+
+let native_compile_library_action = fun ~source_count ~revision ->
+  let rec loop index sources outputs =
+    if Int.equal index source_count then
+      let library_outputs = [ Path.v "BenchNative.cmxa"; Path.v "BenchNative.a" ] in
+      Action.CompileLibrary {
+        sources = List.reverse sources;
+        objects = [];
+        outputs = List.reverse outputs @ library_outputs;
+        output = Path.v "BenchNative.cmxa";
+        includes = [ Path.v "." ];
+        flags = [];
+      }
+    else
+      let module_stem = "BenchMod" ^ Int.to_string index in
+      let content = "let value = " ^ Int.to_string (revision + index) ^ "\n" in
+      let source =
+        Action.{
+          source = Path.v ("generated/" ^ module_stem ^ ".ml");
+          staged = Path.v (module_stem ^ ".ml");
+          kind = LibraryImplementation;
+          content = Some content;
+          opens = [];
+        }
+      in
+      let outputs =
+        List.fold_left
+          (module_output_paths module_stem)
+          ~init:outputs
+          ~fn:(fun outputs output -> output :: outputs)
+      in
+      loop (Int.succ index) (source :: sources) outputs
+  in
+  loop 0 [] []
 
 let expect_no_failures = fun label summary expected_completed ->
   if
@@ -475,6 +524,163 @@ let make_action_plan_from_cached_module_plan_bench = fun () ->
     | Ok _ -> panic "action plan benchmark requested dependencies"
     | Error error -> panic ("action plan benchmark failed: " ^ Error.message error)
 
+let make_native_compile_library_action_hash_bench = fun ~source_count ->
+  let root = Path.v "." in
+  let package = native_action_package root in
+  let target = Riot_model.Target.current in
+  let toolchain = native_action_toolchain root target in
+  let action = native_compile_library_action ~source_count ~revision:0 in
+  fun () -> ignore (Action.hash ~package ~toolchain action)
+
+let make_native_compile_library_action_json_roundtrip_bench = fun ~source_count ->
+  let action = native_compile_library_action ~source_count ~revision:0 in
+  fun () ->
+    match Serde_json.to_string Action.serialize action with
+    | Error error ->
+        panic ("compile-library action serialization failed: " ^ Serde.Error.to_string error)
+    | Ok encoded ->
+        match Serde_json.from_string Action.deserialize encoded with
+        | Ok decoded when decoded = action -> ()
+        | Ok _ -> panic "compile-library action json roundtrip changed the action"
+        | Error error ->
+            panic ("compile-library action deserialization failed: " ^ Serde.Error.to_string error)
+
+let make_native_compile_library_execution = fun ~root ~source_count ~revision ~toolchain ->
+  let target = Riot_model.Target.current in
+  let package = native_action_package root in
+  Action_execution.make
+    ~package
+    ~profile:Riot_model.Profile.debug
+    ~target
+    ~toolchain
+    ~action:(native_compile_library_action ~source_count ~revision)
+    ~dependencies:[]
+    ~sandbox_dir:Path.(root / Path.v "sandbox" / Path.v (Int.to_string revision))
+
+let expect_native_compile_library_executed = fun executor action ->
+  match Action_executor.execute executor action with
+  | Ok (Work_result.Complete []) -> (
+      match Action_executor.find_result executor action.Action_execution.ref_ with
+      | Some { Action_execution.status = Action_execution.Executed _; _ } -> ()
+      | Some _ -> panic "native compile-library action benchmark expected executed result"
+      | None -> panic "native compile-library action benchmark missed action result"
+    )
+  | Ok _ -> panic "native compile-library action benchmark requested dependencies"
+  | Error error -> panic ("native compile-library action benchmark failed: " ^ Error.message error)
+
+let expect_native_compile_library_cached = fun executor action ->
+  match Action_executor.execute executor action with
+  | Ok (Work_result.Complete []) -> (
+      match Action_executor.find_result executor action.Action_execution.ref_ with
+      | Some { Action_execution.status = Action_execution.Cached _; _ } -> ()
+      | Some _ -> panic "native compile-library cache benchmark expected cached result"
+      | None -> panic "native compile-library cache benchmark missed action result"
+    )
+  | Ok _ -> panic "native compile-library cache benchmark requested dependencies"
+  | Error error -> panic ("native compile-library cache benchmark failed: " ^ Error.message error)
+
+type native_compile_library_cold_state = {
+  cold_root: Path.t;
+  cold_toolchain: Riot_toolchain.t;
+  cold_executor: Action_executor.t;
+}
+
+let make_native_compile_library_cold_state = fun () ->
+  let root =
+    Path.(Path.v "_bench" / Path.v ("compile-library-cold-" ^ UUID.to_string (UUID.v4 ())))
+  in
+  Fs.create_dir_all root
+  |> Result.expect ~msg:"failed to create native compile-library benchmark root";
+  let workspace =
+    Riot_model.Workspace.make ~root ~target_dir:Path.(root / Path.v "target") ~packages:[] ()
+  in
+  let store = Riot_store.Store.create ~workspace in
+  let toolchains = Toolchain_service.create ~root () in
+  let target = Riot_model.Target.current in
+  Toolchain_service.ensure toolchains (Toolchain_ready.make ~target)
+  |> Result.expect ~msg:"failed to ready native compile-library benchmark toolchain";
+  let toolchain =
+    match Toolchain_service.find toolchains target with
+    | Some toolchain -> toolchain
+    | None -> panic "native compile-library benchmark toolchain was not registered"
+  in
+  {
+    cold_root = root;
+    cold_toolchain = toolchain;
+    cold_executor = Action_executor.create ~store ~toolchains ();
+  }
+
+type native_compile_library_cached_state = {
+  cached_store: Riot_store.Store.t;
+  cached_toolchains: Toolchain_service.t;
+  cached_action: Action_execution.t;
+}
+
+let make_native_compile_library_cached_state = fun ~source_count ->
+  let root =
+    Path.(Path.v "_bench" / Path.v ("compile-library-cached-" ^ UUID.to_string (UUID.v4 ())))
+  in
+  Fs.create_dir_all root
+  |> Result.expect ~msg:"failed to create native compile-library cache benchmark root";
+  let workspace =
+    Riot_model.Workspace.make ~root ~target_dir:Path.(root / Path.v "target") ~packages:[] ()
+  in
+  let store = Riot_store.Store.create ~workspace in
+  let toolchains = Toolchain_service.create ~root () in
+  let target = Riot_model.Target.current in
+  Toolchain_service.ensure toolchains (Toolchain_ready.make ~target)
+  |> Result.expect ~msg:"failed to ready native compile-library cache benchmark toolchain";
+  let toolchain =
+    match Toolchain_service.find toolchains target with
+    | Some toolchain -> toolchain
+    | None -> panic "native compile-library cache benchmark toolchain was not registered"
+  in
+  let action = make_native_compile_library_execution ~root ~source_count ~revision:0 ~toolchain in
+  let seed_executor = Action_executor.create ~store ~toolchains () in
+  expect_native_compile_library_executed seed_executor action;
+  { cached_store = store; cached_toolchains = toolchains; cached_action = action }
+
+let make_native_compile_library_cold_execution_bench = fun ~source_count ->
+  let state = ref None in
+  let state_or_create = fun () ->
+    match !state with
+    | Some state -> state
+    | None ->
+        let created = make_native_compile_library_cold_state () in
+        state := Some created;
+        created
+  in
+  let counter = ref 0 in
+  fun () ->
+    let state = state_or_create () in
+    let revision = !counter in
+    counter := revision + 1;
+    let action =
+      make_native_compile_library_execution
+        ~root:state.cold_root
+        ~source_count
+        ~revision
+        ~toolchain:state.cold_toolchain
+    in
+    expect_native_compile_library_executed state.cold_executor action
+
+let make_native_compile_library_cached_execution_bench = fun ~source_count ->
+  let state = ref None in
+  let state_or_create = fun () ->
+    match !state with
+    | Some state -> state
+    | None ->
+        let created = make_native_compile_library_cached_state ~source_count in
+        state := Some created;
+        created
+  in
+  fun () ->
+    let state = state_or_create () in
+    let executor =
+      Action_executor.create ~store:state.cached_store ~toolchains:state.cached_toolchains ()
+    in
+    expect_native_compile_library_cached executor state.cached_action
+
 let kernel_cold_target_dir = fun () ->
   Path.(Path.v "_bench" / Path.v ("kernel-" ^ UUID.to_string (UUID.v4 ())))
 
@@ -500,14 +706,23 @@ let make_kernel_build_cold_bench = fun ~parallelism ->
     |> expect_kernel_package_result
 
 let make_kernel_build_warm_cache_bench = fun ~parallelism ->
-  let workspace =
-    clone_workspace_with_target
-      (load_repo_workspace ())
-      ~target_dir:(kernel_warm_cache_target_dir ())
+  let workspace_cell = ref None in
+  let workspace_or_create = fun () ->
+    match !workspace_cell with
+    | Some workspace -> workspace
+    | None ->
+        let workspace =
+          clone_workspace_with_target
+            (load_repo_workspace ())
+            ~target_dir:(kernel_warm_cache_target_dir ())
+        in
+        run_kernel_build ~workspace ~parallelism
+        |> expect_kernel_package_result;
+        workspace_cell := Some workspace;
+        workspace
   in
-  run_kernel_build ~workspace ~parallelism
-  |> expect_kernel_package_result;
   fun () ->
+    let workspace = workspace_or_create () in
     run_kernel_build ~workspace ~parallelism
     |> expect_kernel_cached_package_result
 
@@ -524,6 +739,12 @@ let planning_config: Bench.bench_config = { iterations = 80; warmup = 12 }
 let workspace_load_config: Bench.bench_config = { iterations = 20; warmup = 4 }
 
 let stage_config: Bench.bench_config = { iterations = 80; warmup = 12 }
+
+let action_hash_config: Bench.bench_config = { iterations = 120; warmup = 16 }
+
+let action_execute_config: Bench.bench_config = { iterations = 5; warmup = 1 }
+
+let action_cached_config: Bench.bench_config = { iterations = 30; warmup = 4 }
 
 let kernel_cold_build_config: Bench.bench_config = { iterations = 4; warmup = 1 }
 
@@ -587,6 +808,22 @@ let benchmarks = fun () ->
       ~config:stage_config
       "riot-build2 action plan from cached module plan small package"
       (make_action_plan_from_cached_module_plan_bench ());
+    with_config
+      ~config:action_hash_config
+      "riot-build2 native compile-library action hash 64 generated sources"
+      (make_native_compile_library_action_hash_bench ~source_count:64);
+    with_config
+      ~config:action_hash_config
+      "riot-build2 native compile-library action json roundtrip 64 generated sources"
+      (make_native_compile_library_action_json_roundtrip_bench ~source_count:64);
+    with_config
+      ~config:action_execute_config
+      "riot-build2 native compile-library cold action execution 8 generated sources"
+      (make_native_compile_library_cold_execution_bench ~source_count:8);
+    with_config
+      ~config:action_cached_config
+      "riot-build2 native compile-library cached action execution 8 generated sources"
+      (make_native_compile_library_cached_execution_bench ~source_count:8);
     with_config
       ~config:kernel_cold_build_config
       "riot-build2 kernel cold boot + cold cache graph execution available parallelism"

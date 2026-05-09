@@ -160,6 +160,16 @@ val create_library:
   invocation
 
 (** Create a library (.cma) from object files *)
+val compile_library:
+  t ->
+  cwd:Std.Path.t ->
+  includes:Path.t list ->
+  flags:compiler_flag list ->
+  output:Path.t ->
+  Path.t list ->
+  invocation
+
+(** Compile source files and create a library in one compiler invocation. *)
 val create_executable:
   t ->
   cwd:Std.Path.t ->

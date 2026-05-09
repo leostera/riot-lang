@@ -52,8 +52,7 @@ let build_package = fun name ->
     target = Riot_model.Target.current;
   }
 
-let build_goal = fun name ->
-  Goal.BuildPackage (build_package name)
+let build_goal = fun name -> Goal.BuildPackage (build_package name)
 
 let has_goal_key = fun keys goal ->
   List.any
@@ -125,13 +124,11 @@ let source_package_workspace = fun root ->
       ()
     |> Riot_model.Package_manifest.from_package
   in
-  Ok (
-    Riot_model.Workspace.make
-      ~root
-      ~target_dir:Path.(root / Path.v "target")
-      ~packages:[ package ]
-      ()
-  )
+  Ok (Riot_model.Workspace.make
+    ~root
+    ~target_dir:Path.(root / Path.v "target")
+    ~packages:[ package ]
+    ())
 
 let test_build_package_plans_package_dependencies_before_execution = fun _ctx ->
   let services = Build_services.create ~config:(config ()) () in
@@ -189,9 +186,7 @@ let test_module_plan_dependencies_are_stable_without_source_analysis_state = fun
     ~prefix:"riot_build2_module_plan_stability"
     (fun root ->
       let* workspace = source_package_workspace root in
-      let services =
-        Build_services.create ~config:(Config.make ~workspace ~parallelism:1 ()) ()
-      in
+      let services = Build_services.create ~config:(Config.make ~workspace ~parallelism:1 ()) () in
       let registry = Work_registry.create () in
       let build = build_package "sourcepkg" in
       let node = Work_node.module_plan ~id:(Work_node.Node_id.from_int 1) build in
@@ -207,7 +202,10 @@ let test_module_plan_dependencies_are_stable_without_source_analysis_state = fun
             "expected module planning to avoid source analysis during stable dependency planning, got "
             ^ Int.to_string (List.length first)
             ^ ": "
-            ^ (List.map first ~fn:key_name |> String.concat ", ")
+            ^ (
+              List.map first ~fn:key_name
+              |> String.concat ", "
+            )
           )
       in
       let* _ =
@@ -271,7 +269,7 @@ let test_module_plan_cache_hit_skips_dynamic_source_dependencies = fun _ctx ->
       let rec execute_sources = fun __tmp1 ->
         match __tmp1 with
         | [] -> Ok ()
-        | key :: rest -> (
+        | key :: rest ->
             match Work_registry.find registry key with
             | None -> Error "expected source analysis dependency to be registered"
             | Some source_node ->
@@ -280,7 +278,6 @@ let test_module_plan_cache_hit_skips_dynamic_source_dependencies = fun _ctx ->
                   |> Result.map_err ~fn:Error.message
                 in
                 execute_sources rest
-          )
       in
       let* () = execute_sources source_keys in
       let* () =
@@ -294,7 +291,11 @@ let test_module_plan_cache_hit_skips_dynamic_source_dependencies = fun _ctx ->
       let cached_node = Work_node.module_plan ~id:(Work_node.Node_id.from_int 1) build in
       match Build_services.execute_node cached_services cached_registry cached_node with
       | Ok (Work_result.Complete []) ->
-          if List.any source_keys ~fn:(fun key -> Option.is_some (Work_registry.find cached_registry key)) then
+          if
+            List.any
+              source_keys
+              ~fn:(fun key -> Option.is_some (Work_registry.find cached_registry key))
+          then
             Error "expected module plan cache hit not to register source analysis dependencies"
           else
             Ok ()
@@ -311,7 +312,7 @@ let action_package = fun root ->
     ~relative_path:(Path.v "action-pkg")
     ()
 
-let action_execution = fun root ~actions ~outs ->
+let action_execution = fun root ~action ->
   let target = Riot_model.Target.current in
   let package = action_package root in
   let toolchain =
@@ -319,53 +320,32 @@ let action_execution = fun root ~actions ~outs ->
       ~config:(Riot_model.Toolchain_config.from_root ~root)
       ~target
   in
-  let graph = Riot_planner.Action_graph.create () in
-  let spec =
-    Riot_planner.Action_node.make
-      ~actions
-      ~outs
-      ~srcs:[]
-      ~package
-      ~toolchain
-      ~dependency_hashes:(fun _ -> Crypto.hash_string "")
-      ~deps:[]
-  in
-  let action = Riot_planner.Action_graph.add_node graph spec in
   Action_execution.make
-    ~package:package.name
+    ~package
     ~profile:Riot_model.Profile.debug
     ~target
+    ~toolchain
     ~action
     ~dependencies:[]
     ~sandbox_dir:Path.(root / Path.v "sandbox")
 
 let write_action_execution = fun root ->
   let output = Path.v "out.txt" in
-  action_execution
-    root
-    ~actions:[ Riot_planner.Action.WriteFile { destination = output; content = "hello" } ]
-    ~outs:[ output ]
+  action_execution root ~action:(Action.WriteFile { destination = output; content = "hello" })
 
 let copy_file_action_execution = fun root ->
   let source = Path.v "data.txt" in
   let destination = Path.v "copied.txt" in
-  action_execution
-    root
-    ~actions:[ Riot_planner.Action.CopyFile { source; destination } ]
-    ~outs:[ destination ]
+  action_execution root ~action:(Action.CopyFile { source; destination })
 
 let compile_action_execution = fun root ->
   action_execution
     root
-    ~actions:[
-      Riot_planner.Action.CompileInterface {
-        source = Path.v "example.mli";
-        outputs = [ Path.v "example.cmi" ];
-        includes = [];
-        flags = [];
-      };
-    ]
-    ~outs:[ Path.v "example.cmi" ]
+    ~action:(Action.CompileC {
+      source = Path.v "example.c";
+      outputs = [ Path.v "example.o" ];
+      ccflags = [];
+    })
 
 let test_action_execution_plans_toolchain_readiness_for_compiler_action = fun _ctx ->
   match Fs.with_tempdir

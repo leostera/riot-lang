@@ -9,7 +9,9 @@ type ref_ = {
 
 type t = {
   ref_: ref_;
-  action: Riot_planner.Action_node.t;
+  package: Riot_model.Package.t;
+  toolchain: Riot_toolchain.t;
+  action: Action.t;
   dependencies: ref_ list;
   sandbox_dir: Path.t;
 }
@@ -26,17 +28,19 @@ type result = {
 }
 
 val ref_from_action:
-  package:Riot_model.Package_name.t ->
+  package:Riot_model.Package.t ->
   profile:Riot_model.Profile.t ->
   target:Riot_model.Target.t ->
-  Riot_planner.Action_node.t ->
+  toolchain:Riot_toolchain.t ->
+  Action.t ->
   ref_
 
 val make:
-  package:Riot_model.Package_name.t ->
+  package:Riot_model.Package.t ->
   profile:Riot_model.Profile.t ->
   target:Riot_model.Target.t ->
-  action:Riot_planner.Action_node.t ->
+  toolchain:Riot_toolchain.t ->
+  action:Action.t ->
   dependencies:ref_ list ->
   sandbox_dir:Path.t ->
   t

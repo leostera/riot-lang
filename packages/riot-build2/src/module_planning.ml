@@ -14,7 +14,8 @@ type t = {
   plans: (Goal.build_package, Module_plan.t) ConcurrentHashMap.t;
 }
 
-let create = fun ~workspace ~catalog ~store ~package_planning ~module_providers ~source_analyzer () ->
+let create = fun
+  ~workspace ~catalog ~store ~package_planning ~module_providers ~source_analyzer () ->
   {
     workspace;
     catalog;
@@ -103,7 +104,9 @@ let realized_dependency_packages = fun t ~scope ~intent (package: Riot_model.Pac
   loop [] (Riot_model.Package.dependencies_for_scope scope package)
 
 let package_dependency_keys = fun t build ->
-  Module_provider_registry.dependency_keys_for_build t.module_providers build
+  Module_provider_registry.dependency_keys_for_build
+    t.module_providers
+    build
 
 let source_dependency_keys = fun t registry (build: Goal.build_package) ->
   let* input = Package_planning.resolve t.package_planning build in
@@ -133,8 +136,7 @@ let sandbox_dir = fun t (input: Package_planning.input) ->
   / Path.v (Crypto.Digest.hex input.package_hash))
   |> absolute_path
 
-let module_plan_from_action_graph = fun t (input: Package_planning.input) action_graph ->
-  let action_nodes = Riot_planner.Action_graph.nodes action_graph in
+let module_plan_from_actions = fun t (input: Package_planning.input) action_executions ->
   let* sandbox_dir = sandbox_dir t input in
   Ok Module_plan.{
     build = input.build;
@@ -143,8 +145,7 @@ let module_plan_from_action_graph = fun t (input: Package_planning.input) action
     target = input.target;
     toolchain = input.toolchain;
     build_ctx = input.build_ctx;
-    action_graph;
-    action_nodes;
+    action_executions;
     sandbox_dir;
     package_hash = input.package_hash;
   }
@@ -154,12 +155,134 @@ let load_cached_plan = fun t (input: Package_planning.input) ->
   | None -> Ok None
   | Some (Error error) -> Error error
   | Some (Ok payload) ->
-      let* action_graph =
-        Module_plan_cache.action_graph ~package:input.package.name payload
+      let* sandbox_dir = sandbox_dir t input in
+      let* action_executions =
+        Module_plan_cache.action_executions
+          ~package:input.package
+          ~profile:input.profile
+          ~target:input.target
+          ~toolchain:input.toolchain
+          ~sandbox_dir
+          payload
       in
-      let* module_plan = module_plan_from_action_graph t input action_graph in
+      let module_plan =
+        Module_plan.{
+          build = input.build;
+          package = input.package;
+          profile = input.profile;
+          target = input.target;
+          toolchain = input.toolchain;
+          build_ctx = input.build_ctx;
+          action_executions;
+          sandbox_dir;
+          package_hash = input.package_hash;
+        }
+      in
       ignore (ConcurrentHashMap.insert t.plans ~key:input.build ~value:module_plan);
       Ok (Some module_plan)
+
+let root_module_name_of_package_name = fun package_name ->
+  Riot_model.Module_name.(from_string (Riot_model.Package_name.to_string package_name)
+  |> to_string)
+
+let direct_dependency_package_by_name = fun depset package_name ->
+  depset
+  |> List.find
+    ~fn:(fun dep ->
+      Riot_model.Package_name.equal
+        dep.Riot_planner.Dependency.package.name
+        package_name)
+  |> Option.map ~fn:(fun dep -> dep.Riot_planner.Dependency.package)
+
+let transitive_dependency_package_by_name = fun depset package_name ->
+  Riot_planner.Dependency.transitive_closure depset
+  |> List.find
+    ~fn:(fun dep ->
+      Riot_model.Package_name.equal
+        dep.Riot_planner.Dependency.package.name
+        package_name)
+  |> Option.map ~fn:(fun dep -> dep.Riot_planner.Dependency.package)
+
+let dependency_package_by_name = fun t dependency_packages depset package_name ->
+  match direct_dependency_package_by_name depset package_name with
+  | Some package -> Some package
+  | None ->
+      match transitive_dependency_package_by_name depset package_name with
+      | Some package -> Some package
+      | None ->
+          List.find
+            dependency_packages
+            ~fn:(fun package ->
+              Riot_model.Package_name.equal
+                package.Riot_model.Package.name
+                package_name)
+          |> Option.or_else
+            ~fn:(fun () ->
+              match Package_catalog.realize
+                t.catalog
+                ~intent:Riot_model.Package.Runtime
+                package_name with
+              | Ok package -> Some package
+              | Error _ -> None)
+
+let build_module_graph = fun (t: t) (input: Package_planning.input) ~depset ~dependency_packages ->
+  let config =
+    Riot_planner.Module_graph.{
+      root = input.package.path;
+      source_groups = source_groups input.package;
+      package = input.package;
+      toolchain = input.toolchain;
+      workspace = t.workspace;
+    }
+  in
+  let graph_builder = Riot_planner.Module_graph.create config in
+  List.for_each
+    (Riot_model.Package.build_graph_dependencies input.package)
+    ~fn:(fun dependency ->
+      if Riot_model.Package.is_builtin_dependency dependency then
+        Riot_planner.Module_graph.add_direct_dependency_root
+          graph_builder
+          ~package_name:dependency.name
+          ~root_module:(root_module_name_of_package_name dependency.name)
+      else
+        match dependency_package_by_name t dependency_packages depset dependency.name with
+        | Some package ->
+            Riot_planner.Module_graph.add_direct_dependency_package graph_builder package
+        | None ->
+            Riot_planner.Module_graph.add_direct_dependency_root
+              graph_builder
+              ~package_name:dependency.name
+              ~root_module:(root_module_name_of_package_name dependency.name));
+  (
+    match input.package.sources.native with
+    | [] -> ()
+    | files ->
+        let native_node = Riot_planner.Module_node.make_native ~files in
+        let _ =
+          Std.Graph.SimpleGraph.add_node (Riot_planner.Module_graph.graph graph_builder) native_node
+        in
+        ()
+  );
+  match Riot_planner.Module_graph.wire_dependencies
+    ~analyze_sources:(Source_analyzer.analyze_from_cache t.source_analyzer input.package)
+    ~on_source_analyzed:(fun _ -> ())
+    graph_builder with
+  | Error error ->
+      Error (Error.ModulePlanningFailed {
+        package = input.package.name;
+        reason = Riot_planner.Planning_error.to_string error;
+      })
+  | Ok () ->
+      (
+        match input.package.library with
+        | Some _ ->
+            Riot_planner.Module_graph.add_library_node
+              graph_builder
+              ~name:(Riot_model.Package_name.to_string input.package.name)
+              ~includes:[]
+        | None -> ()
+      );
+      Ok (Riot_planner.Module_graph.graph graph_builder)
 
 let plan = fun t _registry (build: Goal.build_package) ->
   let* depset = Package_planning.depset t.package_planning build in
@@ -183,38 +306,30 @@ let plan = fun t _registry (build: Goal.build_package) ->
         ~intent:Riot_model.Package.Runtime
         package
     in
-    let planner_input =
-      Riot_planner.Module_planner.{
-        package;
-        profile = input.profile;
-        ctx = input.build_ctx;
-        toolchain = input.toolchain;
-        workspace = t.workspace;
-        source_groups = source_groups package;
-        depset;
-        dependency_packages;
-        store = t.store;
-        on_source_analyzed = (fun _ -> ());
-      }
+    let* module_graph = build_module_graph t input ~depset ~dependency_packages in
+    let* sandbox_dir = sandbox_dir t input in
+    let* action_executions =
+      Action_planner.plan
+        {
+          Action_planner.package = input.package;
+          profile = input.profile;
+          target = input.target;
+          build_ctx = input.build_ctx;
+          toolchain = input.toolchain;
+          depset;
+          sandbox_dir;
+          module_graph;
+        }
     in
-    match Riot_planner.Module_planner.plan_node
-      ~analyze_sources:(Source_analyzer.analyze_from_cache t.source_analyzer package)
-      planner_input with
-    | Error error ->
-        Error (Error.ModulePlanningFailed {
-          package = package.name;
-          reason = Riot_planner.Planning_error.to_string error;
-        })
-    | Ok planned ->
-        let* module_plan = module_plan_from_action_graph t input planned.action_graph in
-        let* () =
-          Graph_cache.put
-            t.module_plan_cache
-            input.package_hash
-            (Module_plan_cache.payload_of_plan module_plan)
-        in
-        ignore (ConcurrentHashMap.insert t.plans ~key:build ~value:module_plan);
-        Ok (Work_result.Complete [])
+    let* module_plan = module_plan_from_actions t input action_executions in
+    let* () =
+      Graph_cache.put
+        t.module_plan_cache
+        input.package_hash
+        (Module_plan_cache.payload_of_plan module_plan)
+    in
+    let _ = ConcurrentHashMap.insert t.plans ~key:build ~value:module_plan in
+    Ok (Work_result.Complete [])
 
 let execute = fun t registry (build: Goal.build_package) ->
   match find t build with
