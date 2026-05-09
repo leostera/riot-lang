@@ -82,35 +82,13 @@ let package_input_hash = fun
     ~toolchain
     ()
 
-let manifest_dependencies_for_scope = fun scope (package: Riot_model.Package_manifest.t) ->
-  match scope with
-  | Riot_model.Package.Normal -> package.dependencies
-  | Riot_model.Package.Dev -> package.dependencies @ package.dev_dependencies
-  | Riot_model.Package.Build -> package.build_dependencies
-
-let package_dependency_names = fun t ~scope (package: Riot_model.Package_manifest.t) ->
-  let rec loop acc = fun __tmp1 ->
-    match __tmp1 with
-    | [] -> Ok (List.reverse acc)
-    | dependency :: rest ->
-        if Riot_model.Package.is_builtin_dependency dependency then
-          loop acc rest
-        else
-          (
-            match Package_catalog.find_manifest t.catalog dependency.name with
-            | Some _ -> loop (dependency.name :: acc) rest
-            | None ->
-                Error (Error.ExternalDependencyUnsupported {
-                  package = package.name;
-                  dependency = dependency.name;
-                })
-          )
-  in
-  loop [] (manifest_dependencies_for_scope scope package)
-
 let dependency_builds = fun t (build: Goal.build_package) ->
-  let* package = Package_catalog.require_manifest t.catalog build.package in
-  let* dependencies = package_dependency_names t ~scope:(Goal.dependency_scope build.scope) package in
+  let* dependencies =
+    Package_catalog.dependency_names_for_scope
+      t.catalog
+      ~scope:(Goal.dependency_scope build.scope)
+      build.package
+  in
   Ok (
     List.map
       dependencies

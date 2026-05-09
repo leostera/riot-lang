@@ -212,12 +212,23 @@ let finalize_cached_artifact = fun t (cached: Package_planning.artifact_hit) ->
   Ok (Work_result.Complete [])
 
 let package_dependency_goal_keys = fun t (build: Goal.build_package) ->
-  Package_planning.dependency_builds t.package_planning build
+  Package_catalog.dependency_names_for_scope
+    t.catalog
+    ~scope:(Goal.dependency_scope build.scope)
+    build.package
   |> Result.map
-    ~fn:(fun builds ->
+    ~fn:(fun packages ->
       List.map
-        builds
-        ~fn:(fun build -> Work_node.GoalKey (Goal.BuildPackage build)))
+        packages
+        ~fn:(fun package ->
+          Work_node.GoalKey (
+            Goal.BuildPackage {
+              package;
+              scope = build.scope;
+              profile = build.profile;
+              target = build.target;
+            }
+          )))
 
 let has_results t goal =
   ConcurrentHashMap.get t.package_results ~key:goal
@@ -251,24 +262,7 @@ let register_action_dependency_keys = fun t registry (plan: Module_plan.t) ->
       | None -> true)
   |> List.map ~fn:action_dependency_key
 
-let plan_after_package_dependencies = fun t registry build ->
-  match Module_planning.find t.module_planning build with
-  | None -> Ok [ Work_node.ModulePlanKey build ]
-  | Some plan -> Ok (register_action_dependency_keys t registry plan)
-
-let plan_dependencies = fun t registry build ->
-  if has_results t build then
-    Ok []
-  else
-    let* package_dependency_keys = package_dependency_goal_keys t build in
-    let* package_dependencies_ready = package_dependencies_ready t build in
-    if not package_dependencies_ready then
-      Ok package_dependency_keys
-    else
-      match Package_planning.cached_artifact t.package_planning build with
-      | Error error -> Error error
-      | Ok (Some _) -> Ok []
-      | Ok None -> plan_after_package_dependencies t registry build
+let plan_dependencies = fun t _registry build -> package_dependency_goal_keys t build
 
 let execute = fun t registry (build: Goal.build_package) ->
   if has_results t build then

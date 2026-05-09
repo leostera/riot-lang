@@ -98,26 +98,46 @@ let realized_dependency_packages = fun t ~scope ~intent (package: Riot_model.Pac
   in
   loop [] (Riot_model.Package.dependencies_for_scope scope package)
 
+let package_dependency_keys = fun t (build: Goal.build_package) ->
+  let* dependencies =
+    Package_catalog.dependency_names_for_scope
+      t.catalog
+      ~scope:(Goal.dependency_scope build.scope)
+      build.package
+  in
+  Ok (
+    List.map
+      dependencies
+      ~fn:(fun package ->
+        Work_node.GoalKey (
+          Goal.BuildPackage {
+            package;
+            scope = build.scope;
+            profile = build.profile;
+            target = build.target;
+          }
+        ))
+  )
+
 let source_dependency_keys = fun t registry (build: Goal.build_package) ->
-  let* depset = Package_planning.depset t.package_planning build in
-  let* input = Package_planning.resolve ~depset t.package_planning build in
+  let* input = Package_planning.resolve t.package_planning build in
   let package = input.package in
   let tasks =
     package_source_tasks t ~package ~toolchain:input.toolchain ~build_ctx:input.build_ctx
   in
-  let missing = Source_analyzer.missing t.source_analyzer ~package:package.name tasks in
   Ok (
     List.map
-      missing
+      tasks
       ~fn:(fun source ->
+        let source = Source_analysis.make ~package:package.name ~task:source in
         ignore (Work_registry.intern_source_analysis registry source);
         Work_node.SourceAnalysisKey source.Source_analysis.key)
   )
 
 let plan_dependencies = fun t registry build ->
-  match find t build with
-  | Some _ -> Ok []
-  | None -> source_dependency_keys t registry build
+  let* package_dependencies = package_dependency_keys t build in
+  let* source_dependencies = source_dependency_keys t registry build in
+  Ok (package_dependencies @ source_dependencies)
 
 let plan = fun t _registry (build: Goal.build_package) ->
   let* depset = Package_planning.depset t.package_planning build in

@@ -44,6 +44,34 @@ let require_manifest = fun t package_name ->
   | Some package -> Ok package
   | None -> Error (Error.MissingPackage { package = package_name; available = package_names t })
 
+let manifest_dependencies_for_scope = fun scope (package: Riot_model.Package_manifest.t) ->
+  match scope with
+  | Riot_model.Package.Normal -> package.dependencies
+  | Riot_model.Package.Dev -> package.dependencies @ package.dev_dependencies
+  | Riot_model.Package.Build -> package.build_dependencies
+
+let dependency_names_for_scope = fun t ~scope package_name ->
+  let open Std.Result.Syntax in
+  let* package = require_manifest t package_name in
+  let rec loop acc = fun __tmp1 ->
+    match __tmp1 with
+    | [] -> Ok (List.reverse acc)
+    | dependency :: rest ->
+        if Riot_model.Package.is_builtin_dependency dependency then
+          loop acc rest
+        else
+          (
+            match find_manifest t dependency.name with
+            | Some _ -> loop (dependency.name :: acc) rest
+            | None ->
+                Error (Error.ExternalDependencyUnsupported {
+                  package = package.name;
+                  dependency = dependency.name;
+                })
+          )
+  in
+  loop [] (manifest_dependencies_for_scope scope package)
+
 let realize = fun t ~intent package_name ->
   let key = (package_name, intent) in
   match ConcurrentHashMap.get t.realized_packages ~key with
