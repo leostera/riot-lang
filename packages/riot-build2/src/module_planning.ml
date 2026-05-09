@@ -9,6 +9,7 @@ type t = {
   store: Riot_store.Store.t;
   package_planning: Package_planning.t;
   source_analyzer: Source_analyzer.t;
+  module_plan_cache: Module_plan_cache.payload Graph_cache.t;
   plans: (Goal.build_package, Module_plan.t) ConcurrentHashMap.t;
 }
 
@@ -19,6 +20,7 @@ let create = fun ~workspace ~catalog ~store ~package_planning ~source_analyzer (
     store;
     package_planning;
     source_analyzer;
+    module_plan_cache = Module_plan_cache.create_cache ~store;
     plans = ConcurrentHashMap.with_capacity ~size:128;
   }
 
@@ -134,10 +136,46 @@ let source_dependency_keys = fun t registry (build: Goal.build_package) ->
         Work_node.SourceAnalysisKey source.Source_analysis.key)
   )
 
-let plan_dependencies = fun t registry build ->
+let plan_dependencies = fun t _registry build ->
   let* package_dependencies = package_dependency_keys t build in
-  let* source_dependencies = source_dependency_keys t registry build in
-  Ok (package_dependencies @ source_dependencies)
+  Ok package_dependencies
+
+let sandbox_dir = fun t (input: Package_planning.input) ->
+  Path.(Riot_model.Riot_dirs.sandbox_dir_in_workspace
+    ~workspace:t.workspace
+    ~profile:input.Package_planning.profile.name
+    ~target:input.target
+  / Path.v (Riot_model.Package_name.to_string input.package.name)
+  / Path.v (Crypto.Digest.hex input.package_hash))
+  |> absolute_path
+
+let module_plan_from_action_graph = fun t (input: Package_planning.input) action_graph ->
+  let action_nodes = Riot_planner.Action_graph.nodes action_graph in
+  let* sandbox_dir = sandbox_dir t input in
+  Ok Module_plan.{
+    build = input.build;
+    package = input.package;
+    profile = input.profile;
+    target = input.target;
+    toolchain = input.toolchain;
+    build_ctx = input.build_ctx;
+    action_graph;
+    action_nodes;
+    sandbox_dir;
+    package_hash = input.package_hash;
+  }
+
+let load_cached_plan = fun t (input: Package_planning.input) ->
+  match Graph_cache.get t.module_plan_cache input.Package_planning.package_hash with
+  | None -> Ok None
+  | Some (Error error) -> Error error
+  | Some (Ok payload) ->
+      let* action_graph =
+        Module_plan_cache.action_graph ~package:input.package.name payload
+      in
+      let* module_plan = module_plan_from_action_graph t input action_graph in
+      ignore (ConcurrentHashMap.insert t.plans ~key:input.build ~value:module_plan);
+      Ok (Some module_plan)
 
 let plan = fun t _registry (build: Goal.build_package) ->
   let* depset = Package_planning.depset t.package_planning build in
@@ -184,29 +222,12 @@ let plan = fun t _registry (build: Goal.build_package) ->
           reason = Riot_planner.Planning_error.to_string error;
         })
     | Ok planned ->
-        let action_nodes = Riot_planner.Action_graph.nodes planned.action_graph in
-        let sandbox_dir =
-          Path.(Riot_model.Riot_dirs.sandbox_dir_in_workspace
-            ~workspace:t.workspace
-            ~profile:input.profile.name
-            ~target:input.target
-          / Path.v (Riot_model.Package_name.to_string package.name)
-          / Path.v (Crypto.Digest.hex input.package_hash))
-        in
-        let* sandbox_dir = absolute_path sandbox_dir in
-        let module_plan =
-          Module_plan.{
-            build;
-            package;
-            profile = input.profile;
-            target = input.target;
-            toolchain = input.toolchain;
-            build_ctx = input.build_ctx;
-            action_graph = planned.action_graph;
-            action_nodes;
-            sandbox_dir;
-            package_hash = input.package_hash;
-          }
+        let* module_plan = module_plan_from_action_graph t input planned.action_graph in
+        let* () =
+          Graph_cache.put
+            t.module_plan_cache
+            input.package_hash
+            (Module_plan_cache.payload_of_plan module_plan)
         in
         ignore (ConcurrentHashMap.insert t.plans ~key:build ~value:module_plan);
         Ok (Work_result.Complete [])
@@ -214,4 +235,21 @@ let plan = fun t _registry (build: Goal.build_package) ->
 let execute = fun t registry (build: Goal.build_package) ->
   match find t build with
   | Some _ -> Ok (Work_result.Complete [])
-  | None -> plan t registry build
+  | None ->
+      let* depset = Package_planning.depset t.package_planning build in
+      let* input = Package_planning.resolve ~depset t.package_planning build in
+      match load_cached_plan t input with
+      | Error _ as error -> error
+      | Ok (Some _) -> Ok (Work_result.Complete [])
+      | Ok None ->
+          let source_dependencies = source_dependency_keys t registry build in
+          let* source_dependencies = source_dependencies in
+          let package = input.package in
+          let tasks =
+            package_source_tasks t ~package ~toolchain:input.toolchain ~build_ctx:input.build_ctx
+          in
+          let missing = Source_analyzer.missing t.source_analyzer ~package:package.name tasks in
+          if List.is_empty missing then
+            plan t registry build
+          else
+            Ok (Work_result.RequeueWithDependencies source_dependencies)

@@ -34,6 +34,14 @@ type t =
       package: Riot_model.Package_name.t option;
       reason: string;
     }
+  | GraphCacheEncodeFailed of {
+      namespace: Riot_store.Store.node_payload_namespace;
+      reason: string;
+    }
+  | GraphCacheDecodeFailed of {
+      namespace: Riot_store.Store.node_payload_namespace;
+      reason: string;
+    }
   | DependencyFailed of {
       node: Work_node.Node_id.t;
       dependency: Work_node.Node_id.t;

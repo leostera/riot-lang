@@ -28,7 +28,7 @@ let create = fun ~config () ->
       ~toolchains
       ()
   in
-  let source_analyzer = Source_analyzer.create () in
+  let source_analyzer = Source_analyzer.create ~store () in
   let module_planning =
     Module_planning.create ~workspace ~catalog ~store ~package_planning ~source_analyzer ()
   in

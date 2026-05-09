@@ -2,7 +2,7 @@ open Std
 
 type t
 
-val create: unit -> t
+val create: store:Riot_store.Store.t -> unit -> t
 
 val find: t -> Source_analysis.key -> Riot_planner.Module_graph.source_analysis option
 

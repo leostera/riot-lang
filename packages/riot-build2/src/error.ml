@@ -36,6 +36,14 @@ type t =
       package: Riot_model.Package_name.t option;
       reason: string;
     }
+  | GraphCacheEncodeFailed of {
+      namespace: Riot_store.Store.node_payload_namespace;
+      reason: string;
+    }
+  | GraphCacheDecodeFailed of {
+      namespace: Riot_store.Store.node_payload_namespace;
+      reason: string;
+    }
   | DependencyFailed of {
       node: Work_node.Node_id.t;
       dependency: Work_node.Node_id.t;
@@ -79,6 +87,16 @@ let message = fun __tmp1 ->
         | None -> "workspace"
       in
       "store operation failed for " ^ package_label ^ ": " ^ reason
+  | GraphCacheEncodeFailed { namespace; reason } ->
+      "failed to encode "
+      ^ Riot_store.Store.node_payload_namespace_to_string namespace
+      ^ " graph cache payload: "
+      ^ reason
+  | GraphCacheDecodeFailed { namespace; reason } ->
+      "failed to decode "
+      ^ Riot_store.Store.node_payload_namespace_to_string namespace
+      ^ " graph cache payload: "
+      ^ reason
   | DependencyFailed { node; dependency } ->
       "work node "
       ^ Work_node.Node_id.to_string node

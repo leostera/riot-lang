@@ -184,7 +184,7 @@ let test_build_package_does_not_plan_toolchain_readiness = fun _ctx ->
       else
         Ok ())
 
-let test_module_plan_dependencies_are_stable_after_source_analysis = fun _ctx ->
+let test_module_plan_dependencies_are_stable_without_source_analysis_state = fun _ctx ->
   match Fs.with_tempdir
     ~prefix:"riot_build2_module_plan_stability"
     (fun root ->
@@ -200,39 +200,20 @@ let test_module_plan_dependencies_are_stable_after_source_analysis = fun _ctx ->
         |> Result.map_err ~fn:Error.message
       in
       let* () =
-        if
-          (not (List.is_empty first))
-          && List.all
-            first
-            ~fn:(fun __tmp1 ->
-              match __tmp1 with
-              | Work_node.SourceAnalysisKey _ -> true
-              | _ -> false)
-        then
+        if List.is_empty first then
           Ok ()
         else
           Error (
-            "expected source analysis dependencies, got "
+            "expected module planning to avoid source analysis during stable dependency planning, got "
             ^ Int.to_string (List.length first)
             ^ ": "
             ^ (List.map first ~fn:key_name |> String.concat ", ")
           )
       in
-      let rec execute_sources = fun __tmp1 ->
-        match __tmp1 with
-        | [] -> Ok ()
-        | key :: rest -> (
-            match Work_registry.find registry key with
-            | None -> Error "expected source analysis dependency to be registered"
-            | Some source_node ->
-                let* _ =
-                  Build_services.execute_node services registry source_node
-                  |> Result.map_err ~fn:Error.message
-                in
-                execute_sources rest
-          )
+      let* _ =
+        Build_services.execute_node services registry node
+        |> Result.map_err ~fn:Error.message
       in
-      let* () = execute_sources first in
       let* second =
         Build_services.plan_dependencies services registry node
         |> Result.map_err ~fn:Error.message
@@ -258,6 +239,69 @@ let test_module_plan_declares_package_dependency_provider_nodes = fun _ctx ->
         Ok ()
       else
         Error "expected module planning to depend on declared package provider")
+
+let test_module_plan_cache_hit_skips_dynamic_source_dependencies = fun _ctx ->
+  match Fs.with_tempdir
+    ~prefix:"riot_build2_module_plan_cache"
+    (fun root ->
+      let* workspace = source_package_workspace root in
+      let build = build_package "sourcepkg" in
+      let config = Config.make ~workspace ~parallelism:1 () in
+      let services = Build_services.create ~config () in
+      let registry = Work_registry.create () in
+      let node = Work_node.module_plan ~id:(Work_node.Node_id.from_int 1) build in
+      let* source_keys =
+        match Build_services.execute_node services registry node with
+        | Ok (Work_result.RequeueWithDependencies keys) ->
+            let source_keys =
+              List.filter
+                keys
+                ~fn:(fun __tmp1 ->
+                  match __tmp1 with
+                  | Work_node.SourceAnalysisKey _ -> true
+                  | _ -> false)
+            in
+            if List.is_empty source_keys then
+              Error "expected cold module planning to request source analysis dependencies"
+            else
+              Ok source_keys
+        | Ok _ -> Error "expected cold module planning to request source analysis dependencies"
+        | Error error -> Error (Error.message error)
+      in
+      let rec execute_sources = fun __tmp1 ->
+        match __tmp1 with
+        | [] -> Ok ()
+        | key :: rest -> (
+            match Work_registry.find registry key with
+            | None -> Error "expected source analysis dependency to be registered"
+            | Some source_node ->
+                let* _ =
+                  Build_services.execute_node services registry source_node
+                  |> Result.map_err ~fn:Error.message
+                in
+                execute_sources rest
+          )
+      in
+      let* () = execute_sources source_keys in
+      let* () =
+        match Build_services.execute_node services registry node with
+        | Ok (Work_result.Complete []) -> Ok ()
+        | Ok _ -> Error "expected module plan to complete after source analysis"
+        | Error error -> Error (Error.message error)
+      in
+      let cached_services = Build_services.create ~config () in
+      let cached_registry = Work_registry.create () in
+      let cached_node = Work_node.module_plan ~id:(Work_node.Node_id.from_int 1) build in
+      match Build_services.execute_node cached_services cached_registry cached_node with
+      | Ok (Work_result.Complete []) ->
+          if List.any source_keys ~fn:(fun key -> Option.is_some (Work_registry.find cached_registry key)) then
+            Error "expected module plan cache hit not to register source analysis dependencies"
+          else
+            Ok ()
+      | Ok _ -> Error "expected module plan cache hit to complete without dynamic dependencies"
+      | Error error -> Error (Error.message error)) with
+  | Ok result -> result
+  | Error error -> Error ("tempdir failed: " ^ IO.error_message error)
 
 let action_package = fun root ->
   let name = package "action-pkg" in
@@ -372,11 +416,14 @@ let tests =
       "build package does not plan toolchain readiness"
       test_build_package_does_not_plan_toolchain_readiness;
     case
-      "module plan dependencies are stable after source analysis"
-      test_module_plan_dependencies_are_stable_after_source_analysis;
+      "module plan dependencies are stable without source analysis state"
+      test_module_plan_dependencies_are_stable_without_source_analysis_state;
     case
       "module plan declares package dependency provider nodes"
       test_module_plan_declares_package_dependency_provider_nodes;
+    case
+      "module plan cache hit skips dynamic source dependencies"
+      test_module_plan_cache_hit_skips_dynamic_source_dependencies;
     case
       "uncached noncompiler action executes without toolchain readiness"
       test_uncached_noncompiler_action_executes_without_toolchain_readiness;

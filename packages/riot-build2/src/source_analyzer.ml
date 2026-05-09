@@ -3,10 +3,14 @@ open Std
 module ConcurrentHashMap = Collections.ConcurrentHashMap
 
 type t = {
+  source_analysis_cache: Source_analysis_cache.payload Graph_cache.t;
   analyses: (Source_analysis.key, Riot_planner.Module_graph.source_analysis) ConcurrentHashMap.t;
 }
 
-let create = fun () -> { analyses = ConcurrentHashMap.with_capacity ~size:512 }
+let create = fun ~store () -> {
+  source_analysis_cache = Source_analysis_cache.create_cache ~store;
+  analyses = ConcurrentHashMap.with_capacity ~size:512;
+}
 
 let find = fun t key -> ConcurrentHashMap.get t.analyses ~key
 
@@ -23,15 +27,33 @@ let execute = fun t (source: Source_analysis.t) ->
   match find t source.key with
   | Some _ -> Ok ()
   | None ->
-      match Riot_planner.Module_graph.analyze_source source.task with
-      | Ok analysis ->
-          ignore (ConcurrentHashMap.insert t.analyses ~key:source.key ~value:analysis);
-          Ok ()
-      | Error error ->
-          Error (Error.SourceAnalysisFailed {
-            source = source.task.task_display_path;
-            reason = Riot_planner.Planning_error.to_string error;
-          })
+      let open Std.Result.Syntax in
+      let* input_hash =
+        Source_analysis_cache.input_hash ~package:source.key.package source
+      in
+      match Graph_cache.get t.source_analysis_cache input_hash with
+      | Some (Error error) -> Error error
+      | Some (Ok _)
+      | None -> (
+          match Riot_planner.Module_graph.analyze_source source.task with
+          | Ok analysis ->
+              let payload =
+                Source_analysis_cache.payload ~package:source.key.package analysis
+              in
+              let* () =
+                match Graph_cache.get t.source_analysis_cache input_hash with
+                | Some (Ok _) -> Ok ()
+                | Some (Error error) -> Error error
+                | None -> Graph_cache.put t.source_analysis_cache input_hash payload
+              in
+              ignore (ConcurrentHashMap.insert t.analyses ~key:source.key ~value:analysis);
+              Ok ()
+          | Error error ->
+              Error (Error.SourceAnalysisFailed {
+                source = source.task.task_display_path;
+                reason = Riot_planner.Planning_error.to_string error;
+              })
+        )
 
 let analyze_from_cache = fun t package ~on_source_analyzed tasks ->
   let source_count = List.length tasks in

@@ -12,6 +12,7 @@ type t = {
   package_planning: Package_planning.t;
   module_planning: Module_planning.t;
   action_executor: Action_executor.t;
+  action_plan_cache: Action_plan_cache.payload Graph_cache.t;
   package_results: (Goal.build_package, Build_result.package_result) ConcurrentHashMap.t;
   registered_actions: (Goal.build_package, unit) ConcurrentHashMap.t;
 }
@@ -25,6 +26,7 @@ let create = fun
     package_planning;
     module_planning;
     action_executor;
+    action_plan_cache = Action_plan_cache.create_cache ~store;
     package_results = ConcurrentHashMap.with_capacity ~size:128;
     registered_actions = ConcurrentHashMap.with_capacity ~size:128;
   }
@@ -339,5 +341,15 @@ let execute_action_plan = fun t registry (build: Goal.build_package) ->
   match Module_planning.find t.module_planning build with
   | None -> Ok (Work_result.RequeueWithDependencies [ Work_node.ModulePlanKey build ])
   | Some plan ->
+      let* () =
+        match Graph_cache.get t.action_plan_cache plan.package_hash with
+        | Some (Error error) -> Error error
+        | Some (Ok _) -> Ok ()
+        | None ->
+            Graph_cache.put
+              t.action_plan_cache
+              plan.package_hash
+              (Action_plan_cache.payload_of_plan plan)
+      in
       ignore (register_action_dependency_keys t registry plan);
       Ok (Work_result.Complete [])
