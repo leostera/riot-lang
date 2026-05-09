@@ -4,23 +4,37 @@ module Package_name = Riot_model.Package_name
 module Profile = Riot_model.Profile
 module Target = Riot_model.Target
 
+type packages =
+  | AllPackages
+  | NamedPackages of Package_name.t list
+
+type targets =
+  | HostTarget
+  | AllTargets
+  | ManyTargets of Target.t list
+
 type build = {
-  packages: Package_name.t list;
-  all_packages: bool;
+  packages: packages;
   profile: Profile.t;
-  targets: Target.t list;
+  targets: targets;
 }
 
 type test = {
-  packages: Package_name.t list;
+  packages: packages;
   filter: string option;
   profile: Profile.t;
-  targets: Target.t list;
+  targets: targets;
 }
 
+type runnable =
+  | ByName of string
+  | Scoped of {
+      package: Package_name.t;
+      binary: string option;
+    }
+
 type run = {
-  package: Package_name.t option;
-  binary: string option;
+  runnable: runnable;
   args: string list;
   profile: Profile.t;
   target: Target.t;
@@ -32,16 +46,22 @@ type t =
   | Run of run
 
 let build =
-  fun ?(packages = []) ?(all_packages = false) ?(profile = Profile.debug)
-    ?(targets = [ Target.current ]) () ->
-  Build { packages; all_packages; profile; targets }
+  fun ?(packages = AllPackages) ?(profile = Profile.debug) ?(targets = HostTarget) () ->
+  Build { packages; profile; targets }
 
 let test =
-  fun ?(packages = []) ?filter ?(profile = Profile.debug)
-    ?(targets = [ Target.current ]) () ->
-  Test { packages; filter; profile; targets }
+  fun ?(packages = AllPackages) ?filter ?(profile = Profile.debug) ?(targets = HostTarget) () ->
+  Test {
+    packages;
+    filter;
+    profile;
+    targets;
+  }
 
-let run =
-  fun ?package ?binary ?(args = []) ?(profile = Profile.debug)
-    ?(target = Target.current) () ->
-  Run { package; binary; args; profile; target }
+let run = fun ~runnable ?(args = []) ?(profile = Profile.debug) ?(target = Target.current) () ->
+  Run {
+    runnable;
+    args;
+    profile;
+    target;
+  }

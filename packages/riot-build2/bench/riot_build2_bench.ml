@@ -58,7 +58,10 @@ let rec list_nth = fun values index ->
   | (_ :: rest, _) -> list_nth rest (index - 1)
   | ([], _) -> None
 
-let seed = fun () -> Work_node.user_intent ~id:(node_id 1) (User_intent.run ~target:linux ())
+let seed = fun () ->
+  Work_node.user_intent
+    ~id:(node_id 1)
+    (User_intent.run ~runnable:(User_intent.ByName "server") ~target:linux ())
 
 let goal_seed = fun id action -> Work_node.goal ~id:(node_id id) action
 
@@ -122,7 +125,12 @@ let expect_kernel_package_result = fun result ->
 
 let make_intent_expand_build_bench = fun ~package_count ->
   let packages = package_names package_count in
-  let intent = User_intent.build ~packages ~targets:[ linux; Riot_model.Target.current ] () in
+  let intent =
+    User_intent.build
+      ~packages:(User_intent.NamedPackages packages)
+      ~targets:(User_intent.ManyTargets [ linux; Riot_model.Target.current ])
+      ()
+  in
   fun () ->
     let expanded = Intent_planner.expand intent in
     if Int.equal (List.length expanded) (package_count * 2) then

@@ -1,22 +1,36 @@
 open Std
 
+type packages =
+  | AllPackages
+  | NamedPackages of Riot_model.Package_name.t list
+
+type targets =
+  | HostTarget
+  | AllTargets
+  | ManyTargets of Riot_model.Target.t list
+
 type build = {
-  packages: Riot_model.Package_name.t list;
-  all_packages: bool;
+  packages: packages;
   profile: Riot_model.Profile.t;
-  targets: Riot_model.Target.t list;
+  targets: targets;
 }
 
 type test = {
-  packages: Riot_model.Package_name.t list;
+  packages: packages;
   filter: string option;
   profile: Riot_model.Profile.t;
-  targets: Riot_model.Target.t list;
+  targets: targets;
 }
 
+type runnable =
+  | ByName of string
+  | Scoped of {
+      package: Riot_model.Package_name.t;
+      binary: string option;
+    }
+
 type run = {
-  package: Riot_model.Package_name.t option;
-  binary: string option;
+  runnable: runnable;
   args: string list;
   profile: Riot_model.Profile.t;
   target: Riot_model.Target.t;
@@ -28,24 +42,22 @@ type t =
   | Run of run
 
 val build:
-  ?packages:Riot_model.Package_name.t list ->
-  ?all_packages:bool ->
+  ?packages:packages ->
   ?profile:Riot_model.Profile.t ->
-  ?targets:Riot_model.Target.t list ->
+  ?targets:targets ->
   unit ->
   t
 
 val test:
-  ?packages:Riot_model.Package_name.t list ->
+  ?packages:packages ->
   ?filter:string ->
   ?profile:Riot_model.Profile.t ->
-  ?targets:Riot_model.Target.t list ->
+  ?targets:targets ->
   unit ->
   t
 
 val run:
-  ?package:Riot_model.Package_name.t ->
-  ?binary:string ->
+  runnable:runnable ->
   ?args:string list ->
   ?profile:Riot_model.Profile.t ->
   ?target:Riot_model.Target.t ->

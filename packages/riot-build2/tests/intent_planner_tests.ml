@@ -59,7 +59,9 @@ let test_executor_drains_spawned_nodes = fun _ctx ->
     | _ -> unexpected_node node
   in
   let seed =
-    Work_node.user_intent ~id:(Work_node.Node_id.of_int 1) (User_intent.run ~target:linux ())
+    Work_node.user_intent
+      ~id:(Work_node.Node_id.of_int 1)
+      (User_intent.run ~runnable:(User_intent.ByName "server") ~target:linux ())
   in
   let summary = Executor.run ~parallelism:2 ~seeds:[ seed ] ~execute () in
   if Int.equal summary.completed_count 3 && Int.equal summary.failed_count 0 then
@@ -72,7 +74,10 @@ let test_executor_drains_spawned_nodes = fun _ctx ->
 
 let test_build_intent_expands_named_packages = fun _ctx ->
   let linux = target "x86_64-unknown-linux-gnu" in
-  User_intent.build ~packages:[ package "std"; package "riot-cli" ] ~targets:[ linux ] ()
+  User_intent.build
+    ~packages:(User_intent.NamedPackages [ package "std"; package "riot-cli" ])
+    ~targets:(User_intent.ManyTargets [ linux ])
+    ()
   |> run_intent_actions
   |> Result.and_then
     ~fn:(fun actual ->
@@ -93,7 +98,7 @@ let test_build_intent_expands_named_packages = fun _ctx ->
 
 let test_build_intent_defaults_to_workspace_members = fun _ctx ->
   let linux = target "x86_64-unknown-linux-gnu" in
-  User_intent.build ~targets:[ linux ] ()
+  User_intent.build ~targets:(User_intent.ManyTargets [ linux ]) ()
   |> run_intent_actions
   |> Result.and_then
     ~fn:(fun actual ->
@@ -109,7 +114,11 @@ let test_build_intent_defaults_to_workspace_members = fun _ctx ->
 
 let test_test_intent_preserves_filter = fun _ctx ->
   let linux = target "x86_64-unknown-linux-gnu" in
-  User_intent.test ~packages:[ package "std" ] ~filter:"parser" ~targets:[ linux ] ()
+  User_intent.test
+    ~packages:(User_intent.NamedPackages [ package "std" ])
+    ~filter:"parser"
+    ~targets:(User_intent.ManyTargets [ linux ])
+    ()
   |> run_intent_actions
   |> Result.and_then
     ~fn:(fun actual ->
@@ -127,8 +136,7 @@ let test_test_intent_preserves_filter = fun _ctx ->
 let test_run_intent_preserves_binary_and_args = fun _ctx ->
   let linux = target "x86_64-unknown-linux-gnu" in
   User_intent.run
-    ~package:(package "std")
-    ~binary:"server"
+    ~runnable:(User_intent.Scoped { package = package "std"; binary = Some "server" })
     ~args:[ "--port"; "8080" ]
     ~target:linux
     ()

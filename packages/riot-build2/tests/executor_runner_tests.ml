@@ -33,12 +33,18 @@ let sample_goal = fun ?(args = []) name ->
 let sample_seed = fun () ->
   Work_node.user_intent
     ~id:(node_id 1)
-    (User_intent.run ~target:(target "x86_64-unknown-linux-gnu") ())
+    (User_intent.run
+      ~runnable:(User_intent.ByName "server")
+      ~target:(target "x86_64-unknown-linux-gnu")
+      ())
 
 let sample_intent_seed = fun id ->
   Work_node.user_intent
     ~id:(node_id id)
-    (User_intent.run ~target:(target "x86_64-unknown-linux-gnu") ())
+    (User_intent.run
+      ~runnable:(User_intent.ByName "server")
+      ~target:(target "x86_64-unknown-linux-gnu")
+      ())
 
 let goal_node = fun id action -> Work_node.goal ~id:(node_id id) action
 
