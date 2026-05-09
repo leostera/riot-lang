@@ -83,7 +83,7 @@ let canonical_node_for_key = fun state key ->
   match Work_registry.find state.registry key with
   | Some node -> Ok node
   | None -> (
-      match Work_node.kind_of_key key with
+      match Work_node.kind_from_key key with
       | Some kind ->
           Ok (Work_registry.intern state.registry ~key ~make:(fun () -> kind))
       | None -> Error (unsupported_key_error key)
@@ -300,7 +300,7 @@ let rec loop = fun state ->
         complete_result state result;
         loop state
 
-let run = fun ?(parallelism = Thread.available_parallelism) ?(on_event = fun _ -> ()) ~seeds ~execute () ->
+let run = fun ~config ~seeds ~execute () ->
   match seeds with
   | [] -> { Summary.results = []; completed_count = 0; failed_count = 0 }
   | _ ->
@@ -331,7 +331,7 @@ let run = fun ?(parallelism = Thread.available_parallelism) ?(on_event = fun _ -
       in
       let pool =
         DynamicWorkerPool.start
-          ~concurrency:(Int.max 1 parallelism)
+          ~concurrency:config.Build_config.parallelism
           ~owner
           ~worker_fn
           ()
@@ -341,7 +341,7 @@ let run = fun ?(parallelism = Thread.available_parallelism) ?(on_event = fun _ -
         ready = Node_queue.create ();
         idle_workers = Queue.create ();
         result_ref;
-        on_event;
+        on_event = config.on_event;
         registry;
         execute;
         tasks_in_flight = 0;

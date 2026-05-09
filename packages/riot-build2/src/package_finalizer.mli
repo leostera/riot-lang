@@ -5,6 +5,7 @@ type t
 val create:
   workspace:Riot_model.Workspace.t ->
   store:Riot_store.Store.t ->
+  package_planning:Package_planning.t ->
   module_planning:Module_planning.t ->
   action_executor:Action_executor.t ->
   unit ->

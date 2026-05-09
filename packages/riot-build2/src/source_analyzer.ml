@@ -14,7 +14,7 @@ let missing = fun t ~package tasks ->
   tasks
   |> List.filter_map
     ~fn:(fun task ->
-      let key = Source_analysis.key_of_task ~package task in
+      let key = Source_analysis.key_from_task ~package task in
       match find t key with
       | Some _ -> None
       | None -> Some (Source_analysis.make ~package ~task))
@@ -36,7 +36,7 @@ let analyze_from_cache = fun t package ~on_source_analyzed tasks ->
   |> List.enumerate
   |> List.map
     ~fn:(fun (index, task) ->
-      let key = Source_analysis.key_of_task ~package:package.Riot_model.Package.name task in
+      let key = Source_analysis.key_from_task ~package:package.Riot_model.Package.name task in
       let analysis =
         match find t key with
         | Some cached -> Ok { cached with Riot_planner.Module_graph.analysis_task = task }

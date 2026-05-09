@@ -25,7 +25,7 @@ type result = {
   ocamlc_warnings: string list;
 }
 
-val ref_of_action:
+val ref_from_action:
   package:Riot_model.Package_name.t ->
   profile:Riot_model.Profile.t ->
   target:Riot_model.Target.t ->

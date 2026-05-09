@@ -25,7 +25,7 @@ type result = {
   ocamlc_warnings: string list;
 }
 
-let ref_of_action = fun ~package ~profile ~target action ->
+let ref_from_action = fun ~package ~profile ~target action ->
   {
     package;
     profile;
@@ -35,7 +35,7 @@ let ref_of_action = fun ~package ~profile ~target action ->
 
 let make = fun ~package ~profile ~target ~action ~dependencies ~sandbox_dir ->
   {
-    ref_ = ref_of_action ~package ~profile ~target action;
+    ref_ = ref_from_action ~package ~profile ~target action;
     action;
     dependencies;
     sandbox_dir;

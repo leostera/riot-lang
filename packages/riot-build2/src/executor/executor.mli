@@ -23,8 +23,7 @@ type node_result = Summary.node_result
 val has_failures: summary -> bool
 
 val run:
-  ?parallelism:int ->
-  ?on_event:(Event.t -> unit) ->
+  config:Build_config.t ->
   seeds:Work_node.t list ->
   execute:(context -> Work_node.t -> (execution, Error.t) result) ->
   unit ->

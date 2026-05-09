@@ -6,9 +6,7 @@ val create:
   workspace:Riot_model.Workspace.t ->
   catalog:Package_catalog.t ->
   store:Riot_store.Store.t ->
-  session_id:Riot_model.Session_id.t ->
-  parallelism:int ->
-  toolchains:Toolchain_service.t ->
+  package_planning:Package_planning.t ->
   source_analyzer:Source_analyzer.t ->
   unit ->
   t

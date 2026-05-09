@@ -10,7 +10,7 @@ module Node_id = struct
 
   let compare = Int.compare
 
-  let of_int = fun id -> id
+  let from_int = fun id -> id
 
   let to_int = fun id -> id
 
@@ -67,7 +67,7 @@ type t = {
   pending_dependencies: int Atomic.t;
 }
 
-let key_of_kind = fun __tmp1 ->
+let key_from_kind = fun __tmp1 ->
   match __tmp1 with
   | UserIntent intent -> Intent intent
   | Goal goal -> GoalKey goal
@@ -78,7 +78,7 @@ let key_of_kind = fun __tmp1 ->
   | PackageFinalize build -> PackageFinalizeKey build
   | ActionExecution action -> ActionExecutionKey action.ref_
 
-let kind_of_key = fun __tmp1 ->
+let kind_from_key = fun __tmp1 ->
   match __tmp1 with
   | Intent intent -> Some (UserIntent intent)
   | GoalKey goal -> Some (Goal goal)
@@ -95,7 +95,7 @@ let kind_of_key = fun __tmp1 ->
 let create = fun ~id ?key kind ->
   let key =
     key
-    |> Option.unwrap_or_else ~fn:(fun () -> key_of_kind kind)
+    |> Option.unwrap_or_else ~fn:(fun () -> key_from_kind kind)
   in
   {
     id;

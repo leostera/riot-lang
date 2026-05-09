@@ -10,7 +10,7 @@ type t = {
   task: Riot_planner.Module_graph.source_analysis_task;
 }
 
-val key_of_task:
+val key_from_task:
   package:Riot_model.Package_name.t ->
   Riot_planner.Module_graph.source_analysis_task ->
   key

@@ -13,7 +13,28 @@ let target = fun value ->
   Riot_model.Target.from_string value
   |> Result.expect ~msg:("invalid target triple: " ^ value)
 
-let node_id = fun value -> Work_node.Node_id.of_int value
+let executor_workspace =
+  Riot_model.Workspace.make
+    ~root:(Path.v ".")
+    ~target_dir:(Path.v "_build/riot-build2-executor-tests")
+    ~packages:[]
+    ()
+
+let executor_config = fun ?parallelism ?on_event () ->
+  Config.make
+    ~workspace:executor_workspace
+    ?parallelism
+    ?on_event
+    ()
+
+let run_executor = fun ?parallelism ?on_event ~seeds ~execute () ->
+  Executor.run
+    ~config:(executor_config ?parallelism ?on_event ())
+    ~seeds
+    ~execute
+    ()
+
+let node_id = fun value -> Work_node.Node_id.from_int value
 
 let unexpected_node = fun node ->
   Error (Error.ExecutorInvariantViolated {
@@ -115,7 +136,7 @@ let count_goal_runs = fun counter action ->
 
 let test_empty_seeds_returns_empty_summary = fun _ctx ->
   let execute _context _node = Ok (Executor.Complete []) in
-  let summary = Executor.run ~seeds:[] ~execute () in
+  let summary = run_executor ~seeds:[] ~execute () in
   if
     Int.equal summary.Executor.Summary.completed_count 0
     && Int.equal summary.failed_count 0
@@ -172,7 +193,7 @@ let test_registry_finds_packages_and_modules = fun _ctx ->
 let test_seed_node_id_is_preserved = fun _ctx ->
   let seed = sample_intent_seed 42 in
   let execute _context _node = Ok (Executor.Complete []) in
-  let summary = Executor.run ~parallelism:1 ~seeds:[ seed ] ~execute () in
+  let summary = run_executor ~parallelism:1 ~seeds:[ seed ] ~execute () in
   match result_ids summary with
   | [ 42 ] when Work_node.Node_id.to_int (Work_node.id seed) = 42 -> Ok ()
   | _ -> Error "expected seed node id to be preserved in the summary"
@@ -186,7 +207,7 @@ let test_registry_nodes_get_fresh_ids_after_seed_ids = fun _ctx ->
     | Work_node.Goal _ -> Ok (Executor.Complete [])
     | _ -> unexpected_node node
   in
-  let summary = Executor.run ~parallelism:1 ~seeds:[ seed ] ~execute () in
+  let summary = run_executor ~parallelism:1 ~seeds:[ seed ] ~execute () in
   match find_goal_node summary child_action with
   | Some child when Work_node.Node_id.to_int (Work_node.id child) > 100
   && result_ids summary = [ 100; Work_node.Node_id.to_int (Work_node.id child) ] -> Ok ()
@@ -203,7 +224,7 @@ let test_complete_spawned_canonicalizes_returned_nodes = fun _ctx ->
     | _ -> unexpected_node node
   in
   let summary =
-    Executor.run
+    run_executor
       ~parallelism:1
       ~on_event:(fun event -> Queue.push events ~value:event)
       ~seeds:[ sample_seed () ]
@@ -243,7 +264,7 @@ let test_parallel_event_coverage_without_ordering = fun _ctx ->
   let events = Queue.create () in
   let execute _context _node = Ok (Executor.Complete []) in
   let summary =
-    Executor.run
+    run_executor
       ~parallelism:2
       ~on_event:(fun event -> Queue.push events ~value:event)
       ~seeds:[ first; second ]
@@ -270,7 +291,7 @@ let test_parallelism_one_event_sequence_is_deterministic = fun _ctx ->
     | _ -> unexpected_node node
   in
   let _summary =
-    Executor.run
+    run_executor
       ~parallelism:1
       ~on_event:(fun event -> Queue.push events ~value:event)
       ~seeds:[ sample_seed () ]
@@ -305,7 +326,7 @@ let test_requeue_with_dependencies_reruns_after_dependency_completes = fun _ctx 
   in
   let seed = sample_seed () in
   let summary =
-    Executor.run
+    run_executor
       ~parallelism:1
       ~on_event:(fun event -> Queue.push events ~value:event)
       ~seeds:[ seed ]
@@ -384,7 +405,7 @@ let test_multiple_dependencies_wait_for_all_to_complete = fun _ctx ->
     | Work_node.Goal _ -> Ok (Executor.Complete [])
     | _ -> unexpected_node node
   in
-  let summary = Executor.run ~parallelism:2 ~seeds:[ sample_seed () ] ~execute () in
+  let summary = run_executor ~parallelism:2 ~seeds:[ sample_seed () ] ~execute () in
   if
     Int.equal (Sync.Atomic.get attempts) 2
     && Int.equal (Sync.Atomic.get first_runs) 1
@@ -412,7 +433,7 @@ let test_multiple_dependency_waves = fun _ctx ->
     | Work_node.Goal _ -> Ok (Executor.Complete [])
     | _ -> unexpected_node node
   in
-  let summary = Executor.run ~parallelism:1 ~seeds:[ sample_seed () ] ~execute () in
+  let summary = run_executor ~parallelism:1 ~seeds:[ sample_seed () ] ~execute () in
   if
     Int.equal (Sync.Atomic.get attempts) 3
     && Int.equal summary.Executor.Summary.completed_count 3
@@ -438,7 +459,7 @@ let test_completed_dependency_requeues_node_immediately = fun _ctx ->
     | Work_node.Goal _ -> Ok (Executor.Complete [])
     | _ -> unexpected_node node
   in
-  let summary = Executor.run ~parallelism:1 ~seeds:[ sample_seed (); dependency ] ~execute () in
+  let summary = run_executor ~parallelism:1 ~seeds:[ sample_seed (); dependency ] ~execute () in
   if
     Int.equal (Sync.Atomic.get attempts) 2
     && Int.equal summary.Executor.Summary.completed_count 1
@@ -470,7 +491,7 @@ let test_duplicate_dependencies_do_not_duplicate_edges_or_runs = fun _ctx ->
     | _ -> unexpected_node node
   in
   let seed = sample_seed () in
-  let summary = Executor.run ~parallelism:1 ~seeds:[ seed ] ~execute () in
+  let summary = run_executor ~parallelism:1 ~seeds:[ seed ] ~execute () in
   match find_goal_node summary dependency_action with
   | None -> Error "expected dependency to be interned"
   | Some dependency ->
@@ -492,7 +513,7 @@ let test_failed_dependency_fails_dependent = fun _ctx ->
     | _ -> unexpected_node node
   in
   let seed = sample_seed () in
-  let summary = Executor.run ~parallelism:1 ~seeds:[ seed ] ~execute () in
+  let summary = run_executor ~parallelism:1 ~seeds:[ seed ] ~execute () in
   match find_goal_node summary dependency_action with
   | None -> Error "expected dependency to be interned"
   | Some dependency ->
@@ -517,7 +538,7 @@ let test_independent_work_continues_after_failure = fun _ctx ->
         Error (Error.IntentPlanningFailed { reason = "planned failure" })
     | _ -> Ok (Executor.Complete [])
   in
-  let summary = Executor.run ~parallelism:1 ~seeds:[ fail_node; ok_node ] ~execute () in
+  let summary = run_executor ~parallelism:1 ~seeds:[ fail_node; ok_node ] ~execute () in
   if
     Int.equal summary.Executor.Summary.failed_count 1
     && Int.equal summary.completed_count 1
@@ -531,7 +552,7 @@ let test_independent_work_continues_after_failure = fun _ctx ->
 let test_returned_error_is_preserved_in_summary = fun _ctx ->
   let expected = Error.IntentPlanningFailed { reason = "intent failed" } in
   let execute _context _node = Error expected in
-  let summary = Executor.run ~parallelism:1 ~seeds:[ sample_seed () ] ~execute () in
+  let summary = run_executor ~parallelism:1 ~seeds:[ sample_seed () ] ~execute () in
   match summary.Executor.Summary.results with
   | [ result ] when result.Executor.Summary.error = Some expected -> Ok ()
   | _ -> Error "expected returned Error.t to be preserved in summary"
@@ -539,7 +560,7 @@ let test_returned_error_is_preserved_in_summary = fun _ctx ->
 let test_worker_exception_is_materialized_as_error = fun _ctx ->
   let execute _context _node = raise (Failure "boom") in
   let seed = sample_seed () in
-  let summary = Executor.run ~parallelism:1 ~seeds:[ seed ] ~execute () in
+  let summary = run_executor ~parallelism:1 ~seeds:[ seed ] ~execute () in
   match summary.Executor.Summary.results with
   | [ result ] ->
       let error = result.Executor.Summary.error in
@@ -566,7 +587,7 @@ let test_no_node_remains_running_after_return = fun _ctx ->
     | _ -> unexpected_node node
   in
   let seed = sample_seed () in
-  let summary = Executor.run ~parallelism:1 ~seeds:[ seed ] ~execute () in
+  let summary = run_executor ~parallelism:1 ~seeds:[ seed ] ~execute () in
   match find_goal_node summary dependency_action with
   | None -> Error "expected dependency to be interned"
   | Some dependency ->
@@ -586,7 +607,7 @@ let test_non_pending_seed_is_not_executed = fun _ctx ->
     ignore (Sync.Atomic.fetch_and_add calls 1);
     Ok (Executor.Complete [])
   in
-  let summary = Executor.run ~parallelism:1 ~seeds:[ seed ] ~execute () in
+  let summary = run_executor ~parallelism:1 ~seeds:[ seed ] ~execute () in
   if
     Int.equal (Sync.Atomic.get calls) 0
     && Int.equal summary.Executor.Summary.completed_count 0
@@ -604,7 +625,7 @@ let test_unsupported_spawned_key_fails_node = fun _ctx ->
     | Work_node.Goal _ -> Ok (Executor.Complete [])
     | _ -> unexpected_node node
   in
-  let summary = Executor.run ~parallelism:1 ~seeds:[ seed ] ~execute () in
+  let summary = run_executor ~parallelism:1 ~seeds:[ seed ] ~execute () in
   match summary.Executor.Summary.results with
   | [ result ] ->
       let error = result.Executor.Summary.error in

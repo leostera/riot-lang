@@ -12,6 +12,20 @@ let target = fun value ->
   Riot_model.Target.from_string value
   |> Result.expect ~msg:("invalid target triple: " ^ value)
 
+let executor_workspace =
+  Riot_model.Workspace.make
+    ~root:(Path.v ".")
+    ~target_dir:(Path.v "_build/riot-build2-intent-tests")
+    ~packages:[]
+    ()
+
+let executor_config = fun ?parallelism ?on_event () ->
+  Config.make
+    ~workspace:executor_workspace
+    ?parallelism
+    ?on_event
+    ()
+
 let unexpected_node = fun node ->
   Error (Error.ExecutorInvariantViolated {
     message = "unexpected node in intent planner test: "
@@ -25,7 +39,7 @@ let expect_actions = fun ~expected actual ->
     Error "unexpected goals"
 
 let run_intent_actions = fun intent ->
-  let summary = Work_graph.run_intent ~parallelism:1 intent in
+  let summary = Work_graph.run_intent ~config:(executor_config ~parallelism:1 ()) intent in
   if Executor.has_failures summary then
     Error "intent graph failed"
   else
@@ -60,10 +74,16 @@ let test_executor_drains_spawned_nodes = fun _ctx ->
   in
   let seed =
     Work_node.user_intent
-      ~id:(Work_node.Node_id.of_int 1)
+      ~id:(Work_node.Node_id.from_int 1)
       (User_intent.run ~runnable:(User_intent.ByName "server") ~target:linux ())
   in
-  let summary = Executor.run ~parallelism:2 ~seeds:[ seed ] ~execute () in
+  let summary =
+    Executor.run
+      ~config:(executor_config ~parallelism:2 ())
+      ~seeds:[ seed ]
+      ~execute
+      ()
+  in
   if Int.equal summary.completed_count 3 && Int.equal summary.failed_count 0 then
     Ok ()
   else

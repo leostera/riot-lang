@@ -32,7 +32,7 @@ let register = fun t node ->
   let _ = ConcurrentHashMap.insert t.nodes_by_id ~key:(Work_node.id canonical) ~value:canonical in
   canonical
 
-let allocate_id = fun t -> Work_node.Node_id.of_int (Int.succ (Atomic.fetch_and_add t.next_id 1))
+let allocate_id = fun t -> Work_node.Node_id.from_int (Int.succ (Atomic.fetch_and_add t.next_id 1))
 
 let intern = fun t ~key ~make ->
   match find t key with

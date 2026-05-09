@@ -10,11 +10,20 @@ let target = fun value ->
   Riot_model.Target.from_string value
   |> Result.expect ~msg:("invalid target triple: " ^ value)
 
-let node_id = fun value -> Work_node.Node_id.of_int value
+let node_id = fun value -> Work_node.Node_id.from_int value
 
 let linux = target "x86_64-unknown-linux-gnu"
 
 let kernel_package = package "kernel"
+
+let executor_workspace =
+  Riot_model.Workspace.make
+    ~root:(Path.v ".")
+    ~target_dir:(Path.v "_build/riot-build2-bench/executor")
+    ~packages:[]
+    ()
+
+let executor_config = fun parallelism -> Config.make ~workspace:executor_workspace ~parallelism ()
 
 let unexpected_node = fun node ->
   Error (Error.ExecutorInvariantViolated {
@@ -89,6 +98,13 @@ let kernel_goal = fun target ->
     target;
   }
 
+let kernel_build_intent = fun () ->
+  User_intent.build
+    ~packages:(User_intent.NamedPackages [ kernel_package ])
+    ~targets:(User_intent.ManyTargets [ Riot_model.Target.current ])
+    ~profile:Riot_model.Profile.debug
+    ()
+
 let expect_no_failures = fun label summary expected_completed ->
   if
     Int.equal summary.Executor.Summary.failed_count 0
@@ -122,6 +138,31 @@ let expect_kernel_package_result = fun result ->
       | Build_result.Built _
       | Cached _ -> ()
       | Failed error -> panic ("kernel build2 execution benchmark failed: " ^ Error.message error)
+
+let expect_kernel_cached_package_result = fun result ->
+  if Build_result.has_failures result then
+    let errors =
+      result.Build_result.summary.Executor.Summary.results
+      |> List.filter_map
+        ~fn:(fun result ->
+          match result.Executor.Summary.error with
+          | Some error -> Some (Error.message error)
+          | None -> None)
+    in
+    panic
+      ("kernel build2 warm-cache benchmark produced executor failures: " ^ String.concat "; " errors);
+  match Build_result.package_results result
+  |> List.find
+    ~fn:(fun package_result ->
+      Riot_model.Package_name.equal
+        package_result.Build_result.package
+        kernel_package) with
+  | None -> panic "kernel build2 warm-cache benchmark missed kernel package result"
+  | Some package_result ->
+      match package_result.Build_result.status with
+      | Build_result.Cached _ -> ()
+      | Built _ -> panic "kernel build2 warm-cache benchmark rebuilt kernel"
+      | Failed error -> panic ("kernel build2 warm-cache benchmark failed: " ^ Error.message error)
 
 let make_intent_expand_build_bench = fun ~package_count ->
   let packages = package_names package_count in
@@ -165,7 +206,11 @@ let make_executor_independent_actions_bench = fun ~count ~parallelism ->
       |> List.map ~fn:(fun (index, action) -> goal_seed (Int.succ index) action)
     in
     let summary =
-      Executor.run ~parallelism ~seeds ~execute:(fun _context _node -> Ok (Executor.Complete [])) ()
+      Executor.run
+        ~config:(executor_config parallelism)
+        ~seeds
+        ~execute:(fun _context _node -> Ok (Executor.Complete []))
+        ()
     in
     expect_no_failures "independent goals" summary count
 
@@ -174,7 +219,7 @@ let make_executor_spawn_actions_bench = fun ~count ~parallelism ->
   fun () ->
     let summary =
       Executor.run
-        ~parallelism
+        ~config:(executor_config parallelism)
         ~seeds:[ seed () ]
         ~execute:(fun _context node ->
           match Work_node.kind node with
@@ -193,7 +238,7 @@ let make_executor_dependency_fanout_bench = fun ~count ~parallelism ->
     let attempts = Sync.Atomic.make 0 in
     let summary =
       Executor.run
-        ~parallelism
+        ~config:(executor_config parallelism)
         ~seeds:[ seed () ]
         ~execute:(fun _context node ->
           match Work_node.kind node with
@@ -218,7 +263,7 @@ let make_executor_dependency_waves_bench = fun ~waves ->
     let attempts = Sync.Atomic.make 0 in
     let summary =
       Executor.run
-        ~parallelism:1
+        ~config:(executor_config 1)
         ~seeds:[ seed () ]
         ~execute:(fun _context node ->
           match Work_node.kind node with
@@ -287,27 +332,47 @@ let make_kernel_goal_to_package_work_bench = fun () ->
     | Ok _ -> panic "kernel goal expansion benchmark produced unexpected package work"
     | Error error -> panic ("kernel goal expansion benchmark failed: " ^ Error.message error)
 
-let make_kernel_build_warm_bench = fun ~parallelism ->
-  let target_dir = Path.(Path.v "_build" / Path.v "riot-build2-bench" / Path.v "kernel-warm") in
-  let workspace = clone_workspace_with_target (load_repo_workspace ()) ~target_dir in
+let kernel_cold_target_dir = fun () ->
+  Path.(Path.v "_bench" / Path.v ("kernel-" ^ UUID.to_string (UUID.v4 ())))
+
+let kernel_warm_cache_target_dir = fun () ->
+  Path.(Path.v "_build"
+  / Path.v "riot-build2-bench"
+  / Path.v ("kernel-warm-cache-" ^ UUID.to_string (UUID.v4 ())))
+
+let run_kernel_build = fun ~workspace ~parallelism ->
+  let config = Config.make ~workspace ~parallelism () in
+  let executor =
+    Riot_build2.create_executor ~config ()
+    |> Result.expect ~msg:"failed to create riot-build2 executor"
+  in
+  Riot_build2.execute executor (kernel_build_intent ())
+  |> Result.expect ~msg:"failed to execute riot-build2 intent"
+
+let make_kernel_build_cold_bench = fun ~parallelism ->
+  let workspace = load_repo_workspace () in
   fun () ->
-    let request =
-      Build_request.make
-        ~workspace
-        ~packages:[ kernel_package ]
-        ~targets:[ Riot_model.Target.current ]
-        ~profile:Riot_model.Profile.debug
-        ~parallelism
-        ()
-    in
-    Riot_build2.build request
+    let workspace = clone_workspace_with_target workspace ~target_dir:(kernel_cold_target_dir ()) in
+    run_kernel_build ~workspace ~parallelism
     |> expect_kernel_package_result
+
+let make_kernel_build_warm_cache_bench = fun ~parallelism ->
+  let workspace =
+    clone_workspace_with_target
+      (load_repo_workspace ())
+      ~target_dir:(kernel_warm_cache_target_dir ())
+  in
+  run_kernel_build ~workspace ~parallelism
+  |> expect_kernel_package_result;
+  fun () ->
+    run_kernel_build ~workspace ~parallelism
+    |> expect_kernel_cached_package_result
 
 let pure_config: Bench.bench_config = { iterations = 160; warmup = 20 }
 
 let registry_config: Bench.bench_config = { iterations = 120; warmup = 16 }
 
-let runner_config: Bench.bench_config = { iterations = 40; warmup = 8 }
+let executor_bench_config: Bench.bench_config = { iterations = 40; warmup = 8 }
 
 let runner_heavy_config: Bench.bench_config = { iterations = 20; warmup = 4 }
 
@@ -315,7 +380,9 @@ let planning_config: Bench.bench_config = { iterations = 80; warmup = 12 }
 
 let workspace_load_config: Bench.bench_config = { iterations = 20; warmup = 4 }
 
-let kernel_warm_build_config: Bench.bench_config = { iterations = 4; warmup = 1 }
+let kernel_cold_build_config: Bench.bench_config = { iterations = 4; warmup = 1 }
+
+let kernel_warm_cache_config: Bench.bench_config = { iterations = 20; warmup = 4 }
 
 let benchmarks = fun () ->
   Bench.[
@@ -332,15 +399,15 @@ let benchmarks = fun () ->
       "riot-build2 registry find 1000 goal hits"
       (make_registry_find_goal_hits_bench ~count:1_000);
     with_config
-      ~config:runner_config
+      ~config:executor_bench_config
       "riot-build2 executor drain 64 independent goals parallelism 4"
       (make_executor_independent_actions_bench ~count:64 ~parallelism:4);
     with_config
-      ~config:runner_config
+      ~config:executor_bench_config
       "riot-build2 executor spawn 64 actions parallelism 4"
       (make_executor_spawn_actions_bench ~count:64 ~parallelism:4);
     with_config
-      ~config:runner_config
+      ~config:executor_bench_config
       "riot-build2 executor dependency fanout 64 parallelism 4"
       (make_executor_dependency_fanout_bench ~count:64 ~parallelism:4);
     with_config
@@ -364,9 +431,13 @@ let benchmarks = fun () ->
       "riot-build2 kernel goal expands to package work"
       (make_kernel_goal_to_package_work_bench ());
     with_config
-      ~config:kernel_warm_build_config
-      "riot-build2 kernel warm build graph execution parallelism 4"
-      (make_kernel_build_warm_bench ~parallelism:4);
+      ~config:kernel_cold_build_config
+      "riot-build2 kernel cold boot + cold cache graph execution parallelism 4"
+      (make_kernel_build_cold_bench ~parallelism:4);
+    with_config
+      ~config:kernel_warm_cache_config
+      "riot-build2 kernel cold boot + warm cache graph execution parallelism 4"
+      (make_kernel_build_warm_cache_bench ~parallelism:4);
   ]
 
 let main ~args = Bench.Cli.main ~name:"riot-build2 benchmarks" ~benchmarks:(benchmarks ()) ~args

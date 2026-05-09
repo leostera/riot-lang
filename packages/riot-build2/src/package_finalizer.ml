@@ -7,16 +7,18 @@ module HashSet = Collections.HashSet
 type t = {
   workspace: Riot_model.Workspace.t;
   store: Riot_store.Store.t;
+  package_planning: Package_planning.t;
   module_planning: Module_planning.t;
   action_executor: Action_executor.t;
   package_results: (Package_work.build_library, Build_result.package_result) ConcurrentHashMap.t;
   registered_actions: (Package_work.build_library, unit) ConcurrentHashMap.t;
 }
 
-let create = fun ~workspace ~store ~module_planning ~action_executor () ->
+let create = fun ~workspace ~store ~package_planning ~module_planning ~action_executor () ->
   {
     workspace;
     store;
+    package_planning;
     module_planning;
     action_executor;
     package_results = ConcurrentHashMap.with_capacity ~size:128;
@@ -42,7 +44,7 @@ let store_error = fun ?package reason -> Error.StoreFailed { package; reason }
 let action_dependency_key = fun action_ref -> Work_node.ActionExecutionKey action_ref
 
 let action_ref = fun (plan: Module_plan.t) node ->
-  Action_execution.ref_of_action
+  Action_execution.ref_from_action
     ~package:plan.package.name
     ~profile:plan.profile
     ~target:plan.target
@@ -172,36 +174,53 @@ let finalize = fun t (plan: Module_plan.t) ->
               ignore (ConcurrentHashMap.insert t.package_results ~key:plan.build ~value:result);
               Ok (Executor.Complete [])
 
+let finalize_cached_artifact = fun t (cached: Package_planning.artifact_hit) ->
+  let result =
+    Build_result.{
+      package = cached.package.name;
+      profile = cached.profile;
+      target = cached.target;
+      status = Cached cached.artifact;
+      ocamlc_warnings = cached.artifact.Riot_store.Artifact.ocamlc_warnings;
+    }
+  in
+  ignore (ConcurrentHashMap.insert t.package_results ~key:cached.build ~value:result);
+  Ok (Executor.Complete [])
+
 let execute = fun t registry (build: Package_work.build_library) ->
   match ConcurrentHashMap.get t.package_results ~key:build with
   | Some _ -> Ok (Executor.Complete [])
   | None ->
-      match Module_planning.find t.module_planning build with
-      | None -> Ok (Executor.RequeueWithDependencies [ Work_node.ModulePlanKey build ])
-      | Some plan ->
-          let registered =
-            ConcurrentHashMap.compute
-              t.registered_actions
-              ~key:build
-              ~fn:(fun current ->
-                match current with
-                | Some () -> ConcurrentHashMap.Abort true
-                | None -> ConcurrentHashMap.Insert ((), false))
-          in
-          if not registered then
-            let action_refs = register_action_nodes t registry plan in
-            Ok (Executor.RequeueWithDependencies (List.map action_refs ~fn:action_dependency_key))
-          else
-            let missing =
-              plan.action_nodes
-              |> List.filter_map
-                ~fn:(fun node ->
-                  let ref_ = action_ref plan node in
-                  match Action_executor.find_result t.action_executor ref_ with
-                  | Some _ -> None
-                  | None -> Some ref_)
-            in
-            if not (List.is_empty missing) then
-              Ok (Executor.RequeueWithDependencies (List.map missing ~fn:action_dependency_key))
-            else
-              finalize t plan
+      match Package_planning.cached_artifact t.package_planning build with
+      | Error error -> Error error
+      | Ok (Some cached) -> finalize_cached_artifact t cached
+      | Ok None ->
+          match Module_planning.find t.module_planning build with
+          | None -> Ok (Executor.RequeueWithDependencies [ Work_node.ModulePlanKey build ])
+          | Some plan ->
+              let registered =
+                ConcurrentHashMap.compute
+                  t.registered_actions
+                  ~key:build
+                  ~fn:(fun current ->
+                    match current with
+                    | Some () -> ConcurrentHashMap.Abort true
+                    | None -> ConcurrentHashMap.Insert ((), false))
+              in
+              if not registered then
+                let action_refs = register_action_nodes t registry plan in
+                Ok (Executor.RequeueWithDependencies (List.map action_refs ~fn:action_dependency_key))
+              else
+                let missing =
+                  plan.action_nodes
+                  |> List.filter_map
+                    ~fn:(fun node ->
+                      let ref_ = action_ref plan node in
+                      match Action_executor.find_result t.action_executor ref_ with
+                      | Some _ -> None
+                      | None -> Some ref_)
+                in
+                if not (List.is_empty missing) then
+                  Ok (Executor.RequeueWithDependencies (List.map missing ~fn:action_dependency_key))
+                else
+                  finalize t plan

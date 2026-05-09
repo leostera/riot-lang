@@ -20,11 +20,10 @@ let execute_node = fun context node ->
         message = "default work graph only supports user intent and goal nodes";
       })
 
-let run_intent = fun ?parallelism ?on_event intent ->
+let run_intent = fun ~config intent ->
   Executor.run
-    ?parallelism
-    ?on_event
-    ~seeds:[ Work_node.user_intent ~id:(Work_node.Node_id.of_int 1) intent ]
+    ~config
+    ~seeds:[ Work_node.user_intent ~id:(Work_node.Node_id.from_int 1) intent ]
     ~execute:execute_node
     ()
 

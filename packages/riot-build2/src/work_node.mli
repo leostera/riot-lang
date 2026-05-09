@@ -7,7 +7,7 @@ module Node_id: sig
 
   val compare: t -> t -> Order.t
 
-  val of_int: int -> t
+  val from_int: int -> t
 
   val to_int: t -> int
 
@@ -56,9 +56,9 @@ type kind =
 
 type t
 
-val key_of_kind: kind -> key
+val key_from_kind: kind -> key
 
-val kind_of_key: key -> kind option
+val kind_from_key: key -> kind option
 
 val create: id:Node_id.t -> ?key:key -> kind -> t
 

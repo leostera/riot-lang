@@ -2,44 +2,58 @@ open Std
 open Std.Result.Syntax
 
 type t = {
+  config: Build_config.t;
   catalog: Package_catalog.t;
   toolchains: Toolchain_service.t;
+  package_planning: Package_planning.t;
   source_analyzer: Source_analyzer.t;
   module_planning: Module_planning.t;
   action_executor: Action_executor.t;
   package_finalizer: Package_finalizer.t;
 }
 
-let create = fun ~workspace ?(parallelism = Thread.available_parallelism) () ->
-  let parallelism = Int.max 1 parallelism in
+let create = fun ~config () ->
+  let workspace = config.Build_config.workspace in
   let catalog = Package_catalog.create workspace in
   let store = Riot_store.Store.create ~workspace in
   let session_id = Riot_model.Session_id.make () in
   let toolchains = Toolchain_service.create ~root:workspace.root () in
-  let source_analyzer = Source_analyzer.create () in
-  let module_planning =
-    Module_planning.create
+  let package_planning =
+    Package_planning.create
       ~workspace
       ~catalog
       ~store
       ~session_id
-      ~parallelism
+      ~parallelism:config.parallelism
       ~toolchains
-      ~source_analyzer
       ()
+  in
+  let source_analyzer = Source_analyzer.create () in
+  let module_planning =
+    Module_planning.create ~workspace ~catalog ~store ~package_planning ~source_analyzer ()
   in
   let action_executor = Action_executor.create ~store ~toolchains () in
   let package_finalizer =
-    Package_finalizer.create ~workspace ~store ~module_planning ~action_executor ()
+    Package_finalizer.create
+      ~workspace
+      ~store
+      ~package_planning
+      ~module_planning
+      ~action_executor
+      ()
   in
   {
+    config;
     catalog;
     toolchains;
+    package_planning;
     source_analyzer;
     module_planning;
     action_executor;
     package_finalizer;
   }
+
+let config = fun t -> t.config
 
 let catalog = fun t -> t.catalog
 

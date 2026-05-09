@@ -14,8 +14,7 @@ type task_result = {
 }
 
 val run:
-  ?parallelism:int ->
-  ?on_event:(Event.t -> unit) ->
+  config:Build_config.t ->
   seeds:Work_node.t list ->
   execute:(context -> Work_node.t -> (execution, Error.t) result) ->
   unit ->

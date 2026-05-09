@@ -2,7 +2,9 @@ open Std
 
 type t
 
-val create: workspace:Riot_model.Workspace.t -> ?parallelism:int -> unit -> t
+val create: config:Build_config.t -> unit -> t
+
+val config: t -> Build_config.t
 
 val catalog: t -> Package_catalog.t
 

@@ -131,6 +131,20 @@ let expect_kernel_package_result = fun result ->
       | Cached _ -> Ok ()
       | Failed error -> Error ("kernel package failed: " ^ Error.message error)
 
+let expect_cached_kernel_package_result = fun result ->
+  match Build_result.package_results result
+  |> List.find
+    ~fn:(fun package_result ->
+      Riot_model.Package_name.equal
+        package_result.Build_result.package
+        kernel_package) with
+  | None -> Error "expected kernel package result"
+  | Some package_result ->
+      match package_result.Build_result.status with
+      | Build_result.Cached _ -> Ok ()
+      | Built _ -> Error "expected repeated kernel build to return a package cache hit"
+      | Failed error -> Error ("kernel package failed: " ^ Error.message error)
+
 let expect_kernel_work_graph = fun result ->
   if Build_result.has_failures result then
     Error ("kernel build graph failed:\n" ^ summary_errors result.Build_result.summary)
@@ -197,21 +211,100 @@ let expect_kernel_work_graph = fun result ->
     in
     Ok ()
 
+let expect_no_completed_kind = fun summary label fn ->
+  if completed_kind summary ~fn then
+    Error ("expected cached build to skip " ^ label ^ " nodes")
+  else
+    Ok ()
+
+let build_kernel = fun workspace ->
+  let intent =
+    User_intent.build
+      ~packages:(User_intent.NamedPackages [ kernel_package ])
+      ~targets:(User_intent.ManyTargets [ current_target () ])
+      ~profile:Riot_model.Profile.debug
+      ()
+  in
+  let config = Config.make ~workspace ~parallelism:4 () in
+  let* executor =
+    Riot_build2.create_executor ~config ()
+    |> Result.map_err ~fn:Error.message
+  in
+  Riot_build2.execute executor intent
+  |> Result.map_err ~fn:Error.message
+
 let test_kernel_build_is_planned_and_executed = fun _ctx ->
   with_kernel_workspace_target
     (relative_target_dir "kernel-build")
     (fun workspace ->
-      let request =
-        Build_request.make
-          ~workspace
-          ~packages:[ kernel_package ]
-          ~targets:[ current_target () ]
+      let intent =
+        User_intent.build
+          ~packages:(User_intent.NamedPackages [ kernel_package ])
+          ~targets:(User_intent.ManyTargets [ current_target () ])
           ~profile:Riot_model.Profile.debug
-          ~parallelism:4
           ()
       in
-      Riot_build2.build request
-      |> expect_kernel_work_graph)
+      let event_count = ref 0 in
+      let config =
+        Config.make
+          ~workspace
+          ~parallelism:4
+          ~on_event:(fun _event -> event_count := Int.succ !event_count)
+          ()
+      in
+      let* executor =
+        Riot_build2.create_executor ~config ()
+        |> Result.map_err ~fn:Error.message
+      in
+      let* result =
+        Riot_build2.execute executor intent
+        |> Result.map_err ~fn:Error.message
+      in
+      if Int.equal !event_count 0 then
+        Error "expected build2 executor config to receive work events"
+      else
+        expect_kernel_work_graph result)
+
+let test_kernel_repeated_build_uses_package_cache_fast_path = fun _ctx ->
+  with_kernel_workspace_target
+    (relative_target_dir "kernel-warm-cache")
+    (fun workspace ->
+      let* first = build_kernel workspace in
+      let* () = expect_kernel_work_graph first in
+      let* second = build_kernel workspace in
+      if Build_result.has_failures second then
+        Error ("cached kernel build graph failed:\n" ^ summary_errors second.Build_result.summary)
+      else
+        let summary = second.Build_result.summary in
+        let* () = expect_cached_kernel_package_result second in
+        let* () =
+          expect_no_completed_kind
+            summary
+            "SourceAnalysis"
+            (fun __tmp1 ->
+              match __tmp1 with
+              | Work_node.SourceAnalysis source ->
+                  Riot_model.Package_name.equal source.key.package kernel_package
+              | _ -> false)
+        in
+        let* () =
+          expect_no_completed_kind
+            summary
+            "ModulePlan"
+            (fun __tmp1 ->
+              match __tmp1 with
+              | Work_node.ModulePlan build ->
+                  Riot_model.Package_name.equal build.package kernel_package
+              | _ -> false)
+        in
+        expect_no_completed_kind
+          summary
+          "ActionExecution"
+          (fun __tmp1 ->
+            match __tmp1 with
+            | Work_node.ActionExecution action ->
+                Riot_model.Package_name.equal action.ref_.package kernel_package
+            | _ -> false))
 
 let tests =
   Test.[
@@ -220,6 +313,10 @@ let tests =
       ~size:Large
       "kernel build is planned and executed"
       test_kernel_build_is_planned_and_executed;
+    case
+      ~size:Large
+      "kernel repeated build uses package cache fast path"
+      test_kernel_repeated_build_uses_package_cache_fast_path;
   ]
 
 let main ~args = Test.Cli.main ~name:"riot_build2_kernel_build_tests" ~tests ~args ()
