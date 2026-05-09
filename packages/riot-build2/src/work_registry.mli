@@ -35,16 +35,10 @@ val intern_goal: t -> Goal.t -> Work_node.t
 
 val find_goal: t -> Goal.t -> Work_node.t option
 
-val intern_package_work: t -> Package_work.t -> Work_node.t
-
-val find_package_work: t -> Package_work.t -> Work_node.t option
-
 val intern_toolchain_ready: t -> Toolchain_ready.t -> Work_node.t
 
 val intern_source_analysis: t -> Source_analysis.t -> Work_node.t
 
-val intern_module_plan: t -> Package_work.build_library -> Work_node.t
-
-val intern_package_finalize: t -> Package_work.build_library -> Work_node.t
+val intern_module_plan: t -> Goal.build_package -> Work_node.t
 
 val intern_action_execution: t -> Action_execution.t -> Work_node.t

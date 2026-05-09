@@ -5,7 +5,7 @@ module Profile = Riot_model.Profile
 module Target = Riot_model.Target
 
 type packages =
-  | AllPackages
+  | WorkspaceMembers
   | NamedPackages of Package_name.t list
 
 type targets =
@@ -21,6 +21,7 @@ type build = {
   packages: packages;
   profiles: profiles;
   targets: targets;
+  scope: Goal.scope;
 }
 
 type test = {
@@ -49,12 +50,21 @@ type t =
   | Test of test
   | Run of run
 
-let build =
-  fun ?(packages = AllPackages) ?(profiles = DefaultProfile) ?(targets = HostTarget) () ->
-  Build { packages; profiles; targets }
+let build = fun
+  ?(packages = WorkspaceMembers)
+  ?(profiles = DefaultProfile)
+  ?(targets = HostTarget)
+  ?(scope = Goal.Runtime)
+  () ->
+  Build {
+    packages;
+    profiles;
+    targets;
+    scope;
+  }
 
-let test =
-  fun ?(packages = AllPackages) ?filter ?(profiles = DefaultProfile) ?(targets = HostTarget) () ->
+let test = fun
+  ?(packages = WorkspaceMembers) ?filter ?(profiles = DefaultProfile) ?(targets = HostTarget) () ->
   Test {
     packages;
     filter;

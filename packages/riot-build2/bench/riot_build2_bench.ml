@@ -94,7 +94,8 @@ let load_repo_workspace = fun () ->
 
 let kernel_goal = fun target ->
   Goal.BuildPackage {
-    package = Goal.Package kernel_package;
+    package = kernel_package;
+    scope = Goal.Runtime;
     profile = Riot_model.Profile.debug;
     target;
   }
@@ -167,6 +168,7 @@ let expect_kernel_cached_package_result = fun result ->
 
 let make_intent_expand_build_bench = fun ~package_count ->
   let packages = package_names package_count in
+  let catalog = Package_catalog.create executor_workspace in
   let intent =
     User_intent.build
       ~packages:(User_intent.NamedPackages packages)
@@ -174,11 +176,10 @@ let make_intent_expand_build_bench = fun ~package_count ->
       ()
   in
   fun () ->
-    let expanded = Intent_planner.expand intent in
-    if Int.equal (List.length expanded) (package_count * 2) then
-      ()
-    else
-      panic "intent expansion benchmark produced unexpected goal count"
+    match Intent_planner.expand catalog intent with
+    | Ok expanded when Int.equal (List.length expanded) (package_count * 2) -> ()
+    | Ok _ -> panic "intent expansion benchmark produced unexpected goal count"
+    | Error error -> panic ("intent expansion benchmark failed: " ^ Error.message error)
 
 let make_registry_intern_unique_actions_bench = fun ~count ->
   let goal_list = actions count in
@@ -325,17 +326,17 @@ let make_kernel_runtime_realize_bench = fun () ->
     | Ok _ -> panic "kernel runtime realization benchmark produced unexpected package"
     | Error error -> panic ("kernel runtime realization benchmark failed: " ^ Error.message error)
 
-let make_kernel_goal_to_package_work_bench = fun () ->
+let make_kernel_intent_to_goal_bench = fun () ->
   let workspace = load_repo_workspace () in
   let catalog = Package_catalog.create workspace in
-  let goal = kernel_goal Riot_model.Target.current in
+  let intent = kernel_build_intent () in
   fun () ->
-    match Goal_planner.expand catalog goal with
-    | Ok [ Package_work.BuildLibrary build ] when Riot_model.Package_name.equal
+    match Intent_planner.expand catalog intent with
+    | Ok [ Goal.BuildPackage build ] when Riot_model.Package_name.equal
       build.package
       kernel_package -> ()
-    | Ok _ -> panic "kernel goal expansion benchmark produced unexpected package work"
-    | Error error -> panic ("kernel goal expansion benchmark failed: " ^ Error.message error)
+    | Ok _ -> panic "kernel intent expansion benchmark produced unexpected goals"
+    | Error error -> panic ("kernel intent expansion benchmark failed: " ^ Error.message error)
 
 let kernel_cold_target_dir = fun () ->
   Path.(Path.v "_bench" / Path.v ("kernel-" ^ UUID.to_string (UUID.v4 ())))
@@ -433,8 +434,8 @@ let benchmarks = fun () ->
       (make_kernel_runtime_realize_bench ());
     with_config
       ~config:planning_config
-      "riot-build2 kernel goal expands to package work"
-      (make_kernel_goal_to_package_work_bench ());
+      "riot-build2 kernel intent expands to concrete package goal"
+      (make_kernel_intent_to_goal_bench ());
     with_config
       ~config:kernel_cold_build_config
       "riot-build2 kernel cold boot + cold cache graph execution parallelism 4"

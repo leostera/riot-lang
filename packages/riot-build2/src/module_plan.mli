@@ -1,7 +1,7 @@
 open Std
 
 type t = {
-  build: Package_work.build_library;
+  build: Goal.build_package;
   package: Riot_model.Package.t;
   profile: Riot_model.Profile.t;
   target: Riot_model.Target.t;

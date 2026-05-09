@@ -8,7 +8,6 @@ type t =
       available: Riot_model.Package_name.t list;
     }
   | UnsupportedGoal of { goal: Goal.t }
-  | UnsupportedPackageWork of { work: Package_work.t }
   | ExternalDependencyUnsupported of {
       package: Riot_model.Package_name.t;
       dependency: Riot_model.Package_name.t;
@@ -54,7 +53,6 @@ let message = fun __tmp1 ->
       ^ " was not found; available packages: "
       ^ String.concat ", " (List.map available ~fn:Riot_model.Package_name.to_string)
   | UnsupportedGoal _ -> "goal is not supported by this build2 slice"
-  | UnsupportedPackageWork _ -> "package work is not supported by this build2 slice"
   | ExternalDependencyUnsupported { package; dependency } ->
       "package "
       ^ Riot_model.Package_name.to_string package

@@ -41,21 +41,17 @@ type key =
   | Module of module_ref
   | Source of source_ref
   | GoalKey of Goal.t
-  | PackageWorkKey of Package_work.t
   | ToolchainReadyKey of Toolchain_ready.key
   | SourceAnalysisKey of Source_analysis.key
-  | ModulePlanKey of Package_work.build_library
-  | PackageFinalizeKey of Package_work.build_library
+  | ModulePlanKey of Goal.build_package
   | ActionExecutionKey of Action_execution.ref_
 
 type kind =
   | UserIntent of User_intent.t
   | Goal of Goal.t
-  | PackageWork of Package_work.t
   | ToolchainReady of Toolchain_ready.t
   | SourceAnalysis of Source_analysis.t
-  | ModulePlan of Package_work.build_library
-  | PackageFinalize of Package_work.build_library
+  | ModulePlan of Goal.build_package
   | ActionExecution of Action_execution.t
 
 type t
@@ -70,15 +66,11 @@ val user_intent: id:Node_id.t -> User_intent.t -> t
 
 val goal: id:Node_id.t -> Goal.t -> t
 
-val package_work: id:Node_id.t -> Package_work.t -> t
-
 val toolchain_ready: id:Node_id.t -> Toolchain_ready.t -> t
 
 val source_analysis: id:Node_id.t -> Source_analysis.t -> t
 
-val module_plan: id:Node_id.t -> Package_work.build_library -> t
-
-val package_finalize: id:Node_id.t -> Package_work.build_library -> t
+val module_plan: id:Node_id.t -> Goal.build_package -> t
 
 val action_execution: id:Node_id.t -> Action_execution.t -> t
 

@@ -9,7 +9,7 @@ type t = {
   store: Riot_store.Store.t;
   package_planning: Package_planning.t;
   source_analyzer: Source_analyzer.t;
-  plans: (Package_work.build_library, Module_plan.t) ConcurrentHashMap.t;
+  plans: (Goal.build_package, Module_plan.t) ConcurrentHashMap.t;
 }
 
 let create = fun ~workspace ~catalog ~store ~package_planning ~source_analyzer () ->
@@ -98,7 +98,7 @@ let realized_dependency_packages = fun t ~scope ~intent (package: Riot_model.Pac
   in
   loop [] (Riot_model.Package.dependencies_for_scope scope package)
 
-let plan = fun t registry (build: Package_work.build_library) ->
+let plan = fun t registry (build: Goal.build_package) ->
   let* input = Package_planning.resolve t.package_planning build in
   let package = input.package in
   let tasks =
@@ -119,7 +119,7 @@ let plan = fun t registry (build: Package_work.build_library) ->
     let* dependency_packages =
       realized_dependency_packages
         t
-        ~scope:(Package_work.dependency_scope build.scope)
+        ~scope:(Goal.dependency_scope build.scope)
         ~intent:Riot_model.Package.Runtime
         package
     in
@@ -173,7 +173,7 @@ let plan = fun t registry (build: Package_work.build_library) ->
         ignore (ConcurrentHashMap.insert t.plans ~key:build ~value:module_plan);
         Ok (Work_result.Complete [])
 
-let execute = fun t registry (build: Package_work.build_library) ->
+let execute = fun t registry (build: Goal.build_package) ->
   match find t build with
   | Some _ -> Ok (Work_result.Complete [])
   | None ->

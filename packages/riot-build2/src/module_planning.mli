@@ -11,10 +11,10 @@ val create:
   unit ->
   t
 
-val find: t -> Package_work.build_library -> Module_plan.t option
+val find: t -> Goal.build_package -> Module_plan.t option
 
 val execute:
   t ->
   Work_registry.t ->
-  Package_work.build_library ->
+  Goal.build_package ->
   (Work_result.t, Error.t) result

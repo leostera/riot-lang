@@ -1,7 +1,7 @@
 open Std
 
 type packages =
-  | AllPackages
+  | WorkspaceMembers
   | NamedPackages of Riot_model.Package_name.t list
 
 type targets =
@@ -17,6 +17,7 @@ type build = {
   packages: packages;
   profiles: profiles;
   targets: targets;
+  scope: Goal.scope;
 }
 
 type test = {
@@ -49,6 +50,7 @@ val build:
   ?packages:packages ->
   ?profiles:profiles ->
   ?targets:targets ->
+  ?scope:Goal.scope ->
   unit ->
   t
 

@@ -11,7 +11,7 @@ type t = {
 }
 
 type input = {
-  build: Package_work.build_library;
+  build: Goal.build_package;
   package: Riot_model.Package.t;
   profile: Riot_model.Profile.t;
   target: Riot_model.Target.t;
@@ -21,7 +21,7 @@ type input = {
 }
 
 type artifact_hit = {
-  build: Package_work.build_library;
+  build: Goal.build_package;
   package: Riot_model.Package.t;
   profile: Riot_model.Profile.t;
   target: Riot_model.Target.t;
@@ -81,11 +81,11 @@ let package_input_hash = fun t ~(package:Riot_model.Package.t) ~profile ~build_c
     ~toolchain
     ()
 
-let resolve = fun t (build: Package_work.build_library) ->
+let resolve = fun t (build: Goal.build_package) ->
   let* package =
     Package_catalog.realize
       t.catalog
-      ~intent:(Package_work.realization_intent build.scope)
+      ~intent:(Goal.realization_intent build.scope)
       build.package
   in
   match Toolchain_service.find t.toolchains build.target with

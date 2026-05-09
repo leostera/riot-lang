@@ -52,28 +52,28 @@ let relative_target_dir = fun name ->
 
 let current_target = fun () -> Riot_model.Target.current
 
-let expect_kernel_build_work = fun actual ->
+let expect_kernel_build_goal = fun actual ->
   match actual with
-  | [ Package_work.BuildLibrary { package; scope; profile; target } ] when Riot_model.Package_name.equal
+  | [ Goal.BuildPackage { package; scope; profile; target } ] when Riot_model.Package_name.equal
     package
     kernel_package
-  && scope = Package_work.Runtime
+  && scope = Goal.Runtime
   && profile = Riot_model.Profile.debug
   && Riot_model.Target.equal target (current_target ()) -> Ok ()
-  | _ -> Error "expected kernel build goal to expand to one kernel BuildLibrary work item"
+  | _ -> Error "expected kernel build intent to expand to one concrete kernel build goal"
 
-let test_kernel_goal_plans_package_work = fun _ctx ->
+let test_kernel_intent_plans_concrete_package_goal = fun _ctx ->
   with_kernel_workspace
     (fun workspace ->
       let catalog = Package_catalog.create workspace in
-      Goal.BuildPackage {
-        package = Goal.Package kernel_package;
-        profile = Riot_model.Profile.debug;
-        target = current_target ();
-      }
-      |> Goal_planner.expand catalog
+      User_intent.build
+        ~packages:(User_intent.NamedPackages [ kernel_package ])
+        ~targets:(User_intent.ManyTargets [ current_target () ])
+        ~profiles:(User_intent.ManyProfiles [ Riot_model.Profile.debug ])
+        ()
+      |> Intent_planner.expand catalog
       |> Result.map_err ~fn:Error.message
-      |> Result.and_then ~fn:expect_kernel_build_work)
+      |> Result.and_then ~fn:expect_kernel_build_goal)
 
 let summary_errors = fun summary ->
   summary.Executor.Summary.results
@@ -93,11 +93,9 @@ let kind_name = fun __tmp1 ->
   match __tmp1 with
   | Work_node.UserIntent _ -> "UserIntent"
   | Goal _ -> "Goal"
-  | PackageWork _ -> "PackageWork"
   | ToolchainReady _ -> "ToolchainReady"
   | SourceAnalysis _ -> "SourceAnalysis"
   | ModulePlan _ -> "ModulePlan"
-  | PackageFinalize _ -> "PackageFinalize"
   | ActionExecution _ -> "ActionExecution"
 
 let completed_kind_names = fun summary ->
@@ -167,7 +165,7 @@ let expect_kernel_work_graph = fun result ->
         "Goal"
         (fun __tmp1 ->
           match __tmp1 with
-          | Work_node.Goal (Goal.BuildPackage { package = Goal.Package package; _ }) ->
+          | Work_node.Goal (Goal.BuildPackage { package; _ }) ->
               Riot_model.Package_name.equal package kernel_package
           | _ -> false)
     in
@@ -309,7 +307,9 @@ let test_kernel_repeated_build_uses_package_cache_fast_path = fun _ctx ->
 
 let tests =
   Test.[
-    case "kernel build goal plans package work" test_kernel_goal_plans_package_work;
+    case
+      "kernel build intent plans concrete package goal"
+      test_kernel_intent_plans_concrete_package_goal;
     case
       ~size:Large
       "kernel build is planned and executed"

@@ -2,7 +2,7 @@ open Std
 
 type t
 type input = {
-  build: Package_work.build_library;
+  build: Goal.build_package;
   package: Riot_model.Package.t;
   profile: Riot_model.Profile.t;
   target: Riot_model.Target.t;
@@ -11,7 +11,7 @@ type input = {
   package_hash: Crypto.hash;
 }
 type artifact_hit = {
-  build: Package_work.build_library;
+  build: Goal.build_package;
   package: Riot_model.Package.t;
   profile: Riot_model.Profile.t;
   target: Riot_model.Target.t;
@@ -28,8 +28,8 @@ val create:
   unit ->
   t
 
-val resolve: t -> Package_work.build_library -> (input, Error.t) result
+val resolve: t -> Goal.build_package -> (input, Error.t) result
 
 val toolchain_ready: t -> Riot_model.Target.t -> bool
 
-val cached_artifact: t -> Package_work.build_library -> (artifact_hit option, Error.t) result
+val cached_artifact: t -> Goal.build_package -> (artifact_hit option, Error.t) result

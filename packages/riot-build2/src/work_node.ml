@@ -44,21 +44,17 @@ type key =
   | Module of module_ref
   | Source of source_ref
   | GoalKey of Goal.t
-  | PackageWorkKey of Package_work.t
   | ToolchainReadyKey of Toolchain_ready.key
   | SourceAnalysisKey of Source_analysis.key
-  | ModulePlanKey of Package_work.build_library
-  | PackageFinalizeKey of Package_work.build_library
+  | ModulePlanKey of Goal.build_package
   | ActionExecutionKey of Action_execution.ref_
 
 type kind =
   | UserIntent of User_intent.t
   | Goal of Goal.t
-  | PackageWork of Package_work.t
   | ToolchainReady of Toolchain_ready.t
   | SourceAnalysis of Source_analysis.t
-  | ModulePlan of Package_work.build_library
-  | PackageFinalize of Package_work.build_library
+  | ModulePlan of Goal.build_package
   | ActionExecution of Action_execution.t
 
 type t = {
@@ -75,21 +71,17 @@ let key_from_kind = fun __tmp1 ->
   match __tmp1 with
   | UserIntent intent -> Intent intent
   | Goal goal -> GoalKey goal
-  | PackageWork work -> PackageWorkKey work
   | ToolchainReady toolchain -> ToolchainReadyKey toolchain
   | SourceAnalysis source -> SourceAnalysisKey source.key
   | ModulePlan build -> ModulePlanKey build
-  | PackageFinalize build -> PackageFinalizeKey build
   | ActionExecution action -> ActionExecutionKey action.ref_
 
 let kind_from_key = fun __tmp1 ->
   match __tmp1 with
   | Intent intent -> Some (UserIntent intent)
   | GoalKey goal -> Some (Goal goal)
-  | PackageWorkKey work -> Some (PackageWork work)
   | ToolchainReadyKey toolchain -> Some (ToolchainReady toolchain)
   | ModulePlanKey build -> Some (ModulePlan build)
-  | PackageFinalizeKey build -> Some (PackageFinalize build)
   | Package _
   | Module _
   | Source _
@@ -115,15 +107,11 @@ let user_intent = fun ~id intent -> create ~id (UserIntent intent)
 
 let goal = fun ~id goal -> create ~id (Goal goal)
 
-let package_work = fun ~id work -> create ~id (PackageWork work)
-
 let toolchain_ready = fun ~id toolchain -> create ~id (ToolchainReady toolchain)
 
 let source_analysis = fun ~id source -> create ~id (SourceAnalysis source)
 
 let module_plan = fun ~id build -> create ~id (ModulePlan build)
-
-let package_finalize = fun ~id build -> create ~id (PackageFinalize build)
 
 let action_execution = fun ~id action -> create ~id (ActionExecution action)
 
@@ -135,13 +123,11 @@ let kind = fun node -> node.kind
 
 let execution_mode_of_kind = fun __tmp1 ->
   match __tmp1 with
-  | UserIntent _
+  | UserIntent _ -> Virtual
   | Goal _
-  | PackageWork _ -> Virtual
   | ToolchainReady _
   | SourceAnalysis _
   | ModulePlan _
-  | PackageFinalize _
   | ActionExecution _ -> Concrete
 
 let execution_mode = fun node -> execution_mode_of_kind node.kind

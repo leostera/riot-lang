@@ -79,16 +79,6 @@ let intern_goal = fun t action ->
 
 let find_goal = fun t action -> find t (goal_key action)
 
-let package_work_key = fun work -> Work_node.PackageWorkKey work
-
-let intern_package_work = fun t work ->
-  intern
-    t
-    ~key:(package_work_key work)
-    ~make:(fun () -> Work_node.PackageWork work)
-
-let find_package_work = fun t work -> find t (package_work_key work)
-
 let toolchain_ready_key = fun toolchain -> Work_node.ToolchainReadyKey toolchain
 
 let intern_toolchain_ready = fun t toolchain ->
@@ -112,14 +102,6 @@ let intern_module_plan = fun t build ->
     t
     ~key:(module_plan_key build)
     ~make:(fun () -> Work_node.ModulePlan build)
-
-let package_finalize_key = fun build -> Work_node.PackageFinalizeKey build
-
-let intern_package_finalize = fun t build ->
-  intern
-    t
-    ~key:(package_finalize_key build)
-    ~make:(fun () -> Work_node.PackageFinalize build)
 
 let action_execution_key = fun (action: Action_execution.t) ->
   Work_node.ActionExecutionKey action.ref_

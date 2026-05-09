@@ -62,11 +62,9 @@ let unsupported_key_error = fun key ->
     | Work_node.Module _ -> "module"
     | Work_node.Source _ -> "source"
     | Work_node.GoalKey _ -> "goal"
-    | Work_node.PackageWorkKey _ -> "package-work"
     | Work_node.ToolchainReadyKey _ -> "toolchain-ready"
     | Work_node.SourceAnalysisKey _ -> "source-analysis"
     | Work_node.ModulePlanKey _ -> "module-plan"
-    | Work_node.PackageFinalizeKey _ -> "package-finalize"
     | Work_node.ActionExecutionKey _ -> "action-execution"
   in
   Error.ExecutorInvariantViolated {

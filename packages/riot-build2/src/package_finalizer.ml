@@ -1,4 +1,5 @@
 open Std
+open Std.Result.Syntax
 
 module ConcurrentHashMap = Collections.ConcurrentHashMap
 module HashMap = Collections.HashMap
@@ -6,22 +7,33 @@ module HashSet = Collections.HashSet
 
 type t = {
   workspace: Riot_model.Workspace.t;
+  catalog: Package_catalog.t;
   store: Riot_store.Store.t;
   package_planning: Package_planning.t;
   module_planning: Module_planning.t;
   action_executor: Action_executor.t;
-  package_results: (Package_work.build_library, Build_result.package_result) ConcurrentHashMap.t;
-  registered_actions: (Package_work.build_library, unit) ConcurrentHashMap.t;
+  package_results: (Goal.build_package, Build_result.package_result) ConcurrentHashMap.t;
+  registered_package_dependencies: (Goal.build_package, unit) ConcurrentHashMap.t;
+  registered_actions: (Goal.build_package, unit) ConcurrentHashMap.t;
 }
 
-let create = fun ~workspace ~store ~package_planning ~module_planning ~action_executor () ->
+let create = fun
+  ~workspace
+  ~catalog
+  ~store
+  ~package_planning
+  ~module_planning
+  ~action_executor
+  () ->
   {
     workspace;
+    catalog;
     store;
     package_planning;
     module_planning;
     action_executor;
     package_results = ConcurrentHashMap.with_capacity ~size:128;
+    registered_package_dependencies = ConcurrentHashMap.with_capacity ~size:128;
     registered_actions = ConcurrentHashMap.with_capacity ~size:128;
   }
 
@@ -187,7 +199,93 @@ let finalize_cached_artifact = fun t (cached: Package_planning.artifact_hit) ->
   ignore (ConcurrentHashMap.insert t.package_results ~key:cached.build ~value:result);
   Ok (Work_result.Complete [])
 
-let execute = fun t registry (build: Package_work.build_library) ->
+let manifest_dependencies_for_scope = fun scope (package: Riot_model.Package_manifest.t) ->
+  match scope with
+  | Riot_model.Package.Normal -> package.dependencies
+  | Riot_model.Package.Dev -> package.dependencies @ package.dev_dependencies
+  | Riot_model.Package.Build -> package.build_dependencies
+
+let package_dependency_names = fun t ~scope (package: Riot_model.Package_manifest.t) ->
+  let rec loop acc = fun __tmp1 ->
+    match __tmp1 with
+    | [] -> Ok (List.reverse acc)
+    | dependency :: rest ->
+        if Riot_model.Package.is_builtin_dependency dependency then
+          loop acc rest
+        else
+          (
+            match Package_catalog.find_manifest t.catalog dependency.name with
+            | Some _ -> loop (dependency.name :: acc) rest
+            | None ->
+                Error (Error.ExternalDependencyUnsupported {
+                  package = package.name;
+                  dependency = dependency.name;
+                })
+          )
+  in
+  loop [] (manifest_dependencies_for_scope scope package)
+
+let package_dependency_goal_keys = fun t (build: Goal.build_package) ->
+  let open Std.Result.Syntax in
+  let* package = Package_catalog.require_manifest t.catalog build.package in
+  let* dependencies =
+    package_dependency_names t ~scope:(Goal.dependency_scope build.scope) package
+  in
+  Ok (
+    List.map
+      dependencies
+      ~fn:(fun package ->
+        Work_node.GoalKey (
+          Goal.BuildPackage {
+            package;
+            scope = build.scope;
+            profile = build.profile;
+            target = build.target;
+          }
+        ))
+  )
+
+let dependencies_registered = fun t build ->
+  ConcurrentHashMap.compute
+    t.registered_package_dependencies
+    ~key:build
+    ~fn:(fun current ->
+      match current with
+      | Some () -> ConcurrentHashMap.Abort true
+      | None -> ConcurrentHashMap.Insert ((), false))
+
+let execute_after_package_dependencies = fun t registry build ->
+  match Module_planning.find t.module_planning build with
+  | None -> Ok (Work_result.RequeueWithDependencies [ Work_node.ModulePlanKey build ])
+  | Some plan ->
+      let registered =
+        ConcurrentHashMap.compute
+          t.registered_actions
+          ~key:build
+          ~fn:(fun current ->
+            match current with
+            | Some () -> ConcurrentHashMap.Abort true
+            | None -> ConcurrentHashMap.Insert ((), false))
+      in
+      if not registered then
+        let action_refs = register_action_nodes t registry plan in
+        Ok (Work_result.RequeueWithDependencies (List.map action_refs ~fn:action_dependency_key))
+      else
+        let missing =
+          plan.action_nodes
+          |> List.filter_map
+            ~fn:(fun node ->
+              let ref_ = action_ref plan node in
+              match Action_executor.find_result t.action_executor ref_ with
+              | Some _ -> None
+              | None -> Some ref_)
+        in
+        if not (List.is_empty missing) then
+          Ok (Work_result.RequeueWithDependencies (List.map missing ~fn:action_dependency_key))
+        else
+          finalize t plan
+
+let execute = fun t registry (build: Goal.build_package) ->
   match ConcurrentHashMap.get t.package_results ~key:build with
   | Some _ -> Ok (Work_result.Complete [])
   | None ->
@@ -199,32 +297,11 @@ let execute = fun t registry (build: Package_work.build_library) ->
       | Error error -> Error error
       | Ok (Some cached) -> finalize_cached_artifact t cached
       | Ok None ->
-          match Module_planning.find t.module_planning build with
-          | None -> Ok (Work_result.RequeueWithDependencies [ Work_node.ModulePlanKey build ])
-          | Some plan ->
-              let registered =
-                ConcurrentHashMap.compute
-                  t.registered_actions
-                  ~key:build
-                  ~fn:(fun current ->
-                    match current with
-                    | Some () -> ConcurrentHashMap.Abort true
-                    | None -> ConcurrentHashMap.Insert ((), false))
-              in
-              if not registered then
-                let action_refs = register_action_nodes t registry plan in
-                Ok (Work_result.RequeueWithDependencies (List.map action_refs ~fn:action_dependency_key))
-              else
-                let missing =
-                  plan.action_nodes
-                  |> List.filter_map
-                    ~fn:(fun node ->
-                      let ref_ = action_ref plan node in
-                      match Action_executor.find_result t.action_executor ref_ with
-                      | Some _ -> None
-                      | None -> Some ref_)
-                in
-                if not (List.is_empty missing) then
-                  Ok (Work_result.RequeueWithDependencies (List.map missing ~fn:action_dependency_key))
-                else
-                  finalize t plan
+          if dependencies_registered t build then
+            execute_after_package_dependencies t registry build
+          else
+            let* dependency_keys = package_dependency_goal_keys t build in
+            if List.is_empty dependency_keys then
+              execute_after_package_dependencies t registry build
+            else
+              Ok (Work_result.RequeueWithDependencies dependency_keys)

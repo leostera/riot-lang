@@ -35,10 +35,18 @@ let run_executor = fun ?parallelism ?on_event ~seeds ~execute () ->
     ~execute
     ()
 
-let run_default_executor = fun ?parallelism ?on_event ?dependencies ~seeds ~execute () ->
+let run_default_executor = fun
+  ?parallelism
+  ?on_event
+  ?dependencies
+  ?execution_mode
+  ~seeds
+  ~execute
+  () ->
   Executor.Runner.run_with_handlers
     ~config:(executor_config ?parallelism ?on_event ())
     ?dependencies
+    ?execution_mode
     ~seeds
     ~execute
     ()
@@ -365,6 +373,7 @@ let test_virtual_node_declares_dependencies_and_completes_without_execution = fu
     run_default_executor
       ~parallelism:1
       ~dependencies
+      ~execution_mode:(fun _node -> Work_node.Virtual)
       ~seeds:[ seed ]
       ~execute
       ()

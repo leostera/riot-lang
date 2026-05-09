@@ -2,9 +2,7 @@ open Std
 
 module Executor = Executor
 module Goal = Goal
-module Goal_planner = Goal_planner
 module Package_catalog = Package_catalog
-module Package_work = Package_work
 module Config = Build_config
 module Build_result = Build_result
 module Build_services = Build_services

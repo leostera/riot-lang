@@ -1,4 +1,5 @@
 open Std
+open Std.Result.Syntax
 
 module Goal = Goal
 module Intent = User_intent
@@ -13,14 +14,18 @@ let expand_targets = fun __tmp1 ->
       else
         targets
 
-let expand_package_targets = fun __tmp1 ->
+let workspace_package_names = fun catalog ->
+  Package_catalog.manifests catalog
+  |> List.map ~fn:(fun (package: Riot_model.Package_manifest.t) -> package.name)
+
+let expand_package_names = fun catalog __tmp1 ->
   match __tmp1 with
-  | Intent.AllPackages -> [ Goal.WorkspaceMembers ]
+  | Intent.WorkspaceMembers -> Ok (workspace_package_names catalog)
   | Intent.NamedPackages packages ->
       if List.is_empty packages then
-        [ Goal.WorkspaceMembers ]
+        Ok (workspace_package_names catalog)
       else
-        List.map packages ~fn:(fun package -> Goal.Package package)
+        Ok packages
 
 let expand_profiles = fun __tmp1 ->
   match __tmp1 with
@@ -31,8 +36,8 @@ let expand_profiles = fun __tmp1 ->
       else
         profiles
 
-let expand_build = fun (build: Intent.build) ->
-  let packages = expand_package_targets build.Intent.packages in
+let expand_build = fun catalog (build: Intent.build) ->
+  let* packages = expand_package_names catalog build.Intent.packages in
   let targets = expand_targets build.targets in
   let profiles = expand_profiles build.profiles in
   let rec loop_packages acc = fun __tmp1 ->
@@ -47,14 +52,15 @@ let expand_build = fun (build: Intent.build) ->
             List.fold_left
               targets
               ~init:acc
-              ~fn:(fun acc target -> Goal.BuildPackage { package; profile; target } :: acc))
+              ~fn:(fun acc target ->
+                Goal.BuildPackage { package; scope = build.scope; profile; target } :: acc))
       in
       loop_packages acc rest
   in
-  loop_packages [] packages
+  Ok (loop_packages [] packages)
 
-let expand_test = fun (test: Intent.test) ->
-  let package_targets = expand_package_targets test.Intent.packages in
+let expand_test = fun catalog (test: Intent.test) ->
+  let* packages = expand_package_names catalog test.Intent.packages in
   let targets = expand_targets test.targets in
   let profiles = expand_profiles test.profiles in
   let rec loop_packages acc = fun __tmp1 ->
@@ -74,7 +80,7 @@ let expand_test = fun (test: Intent.test) ->
       in
       loop_packages acc rest
   in
-  loop_packages [] package_targets
+  Ok (loop_packages [] packages)
 
 let expand_run = fun (run: Intent.run) ->
   let binary =
@@ -92,8 +98,8 @@ let expand_run = fun (run: Intent.run) ->
     };
   ]
 
-let expand = fun __tmp1 ->
+let expand = fun catalog __tmp1 ->
   match __tmp1 with
-  | Intent.Build build -> expand_build build
-  | Intent.Test test -> expand_test test
-  | Intent.Run run -> expand_run run
+  | Intent.Build build -> expand_build catalog build
+  | Intent.Test test -> expand_test catalog test
+  | Intent.Run run -> Ok (expand_run run)

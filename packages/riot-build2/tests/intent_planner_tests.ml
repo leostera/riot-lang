@@ -12,11 +12,19 @@ let target = fun value ->
   Riot_model.Target.from_string value
   |> Result.expect ~msg:("invalid target triple: " ^ value)
 
+let package_manifest = fun name ->
+  let name = package name in
+  Riot_model.Package.synthetic
+    ~name
+    ~path:Path.(Path.v "." / Path.v (Riot_model.Package_name.to_string name))
+    ~relative_path:(Path.v (Riot_model.Package_name.to_string name))
+  |> Riot_model.Package_manifest.from_package
+
 let executor_workspace =
   Riot_model.Workspace.make
     ~root:(Path.v ".")
     ~target_dir:(Path.v "_build/riot-build2-intent-tests")
-    ~packages:[]
+    ~packages:[ package_manifest "std" ]
     ()
 
 let executor_config = fun ?parallelism ?on_event () ->
@@ -103,12 +111,14 @@ let test_build_intent_expands_named_packages = fun _ctx ->
       expect_actions
         ~expected:[
           Goal.BuildPackage {
-            package = Goal.Package (package "std");
+            package = package "std";
+            scope = Goal.Runtime;
             profile = Riot_model.Profile.debug;
             target = linux;
           };
           Goal.BuildPackage {
-            package = Goal.Package (package "riot-cli");
+            package = package "riot-cli";
+            scope = Goal.Runtime;
             profile = Riot_model.Profile.debug;
             target = linux;
           };
@@ -124,7 +134,8 @@ let test_build_intent_defaults_to_workspace_members = fun _ctx ->
       expect_actions
         ~expected:[
           Goal.BuildPackage {
-            package = Goal.WorkspaceMembers;
+            package = package "std";
+            scope = Goal.Runtime;
             profile = Riot_model.Profile.debug;
             target = linux;
           };
@@ -144,12 +155,14 @@ let test_build_intent_expands_profiles = fun _ctx ->
       expect_actions
         ~expected:[
           Goal.BuildPackage {
-            package = Goal.Package (package "std");
+            package = package "std";
+            scope = Goal.Runtime;
             profile = Riot_model.Profile.debug;
             target = linux;
           };
           Goal.BuildPackage {
-            package = Goal.Package (package "std");
+            package = package "std";
+            scope = Goal.Runtime;
             profile = Riot_model.Profile.release;
             target = linux;
           };
@@ -169,7 +182,7 @@ let test_test_intent_preserves_filter = fun _ctx ->
       expect_actions
         ~expected:[
           Goal.RunTests {
-            package = Goal.Package (package "std");
+            package = package "std";
             filter = Some "parser";
             profile = Riot_model.Profile.debug;
             target = linux;
@@ -189,13 +202,13 @@ let test_test_intent_expands_packages_individually = fun _ctx ->
       expect_actions
         ~expected:[
           Goal.RunTests {
-            package = Goal.Package (package "std");
+            package = package "std";
             filter = None;
             profile = Riot_model.Profile.debug;
             target = linux;
           };
           Goal.RunTests {
-            package = Goal.Package (package "kernel");
+            package = package "kernel";
             filter = None;
             profile = Riot_model.Profile.debug;
             target = linux;
