@@ -4,61 +4,54 @@ module ConcurrentHashMap = Collections.ConcurrentHashMap
 
 type t = {
   workspace: Riot_model.Workspace.t;
-  packages_by_name: (Riot_model.Package_name.t, Riot_model.Package.t) ConcurrentHashMap.t;
-  ordered_packages: Riot_model.Package.t list;
+  manifests_by_name: (Riot_model.Package_name.t, Riot_model.Package_manifest.t) ConcurrentHashMap.t;
+  manifest_list: Riot_model.Package_manifest.t list;
+  realized_packages:
+    (Riot_model.Package_name.t * Riot_model.Package.realization_intent, Riot_model.Package.t) ConcurrentHashMap.t;
 }
 
 let create = fun (workspace: Riot_model.Workspace.t) ->
-  let packages =
-    Riot_model.Workspace.realize_packages ~intent:Riot_model.Package.Runtime workspace
-    |> List.sort
-      ~compare:(fun (left: Riot_model.Package.t) (right: Riot_model.Package.t) ->
-        Riot_model.Package_name.compare
-          left.name
-          right.name)
-  in
-  let packages_by_name = ConcurrentHashMap.with_capacity ~size:(List.length packages) in
+  let manifests = workspace.packages in
+  let manifests_by_name = ConcurrentHashMap.with_capacity ~size:(List.length manifests) in
   List.for_each
-    packages
-    ~fn:(fun (package: Riot_model.Package.t) ->
+    manifests
+    ~fn:(fun (package: Riot_model.Package_manifest.t) ->
       ignore
-        (ConcurrentHashMap.insert packages_by_name ~key:package.name ~value:package));
-  { workspace; packages_by_name; ordered_packages = packages }
+        (ConcurrentHashMap.insert manifests_by_name ~key:package.name ~value:package));
+  {
+    workspace;
+    manifests_by_name;
+    manifest_list = manifests;
+    realized_packages = ConcurrentHashMap.with_capacity ~size:(List.length manifests);
+  }
 
 let workspace = fun t -> t.workspace
 
-let packages = fun t -> t.ordered_packages
+let manifests = fun t -> t.manifest_list
 
 let package_names = fun t ->
   List.map
-    t.ordered_packages
-    ~fn:(fun (package: Riot_model.Package.t) -> package.name)
+    t.manifest_list
+    ~fn:(fun (package: Riot_model.Package_manifest.t) -> package.name)
 
-let find = fun t package_name -> ConcurrentHashMap.get t.packages_by_name ~key:package_name
+let find_manifest = fun t package_name ->
+  ConcurrentHashMap.get
+    t.manifests_by_name
+    ~key:package_name
 
-let require = fun t package_name ->
-  match find t package_name with
+let require_manifest = fun t package_name ->
+  match find_manifest t package_name with
   | Some package -> Ok package
   | None -> Error (Error.MissingPackage { package = package_name; available = package_names t })
 
-let dependencies = fun t (package: Riot_model.Package.t) ->
-  Riot_model.Package.dependencies_for_scope Riot_model.Package.Normal package
-  |> List.filter_map
-    ~fn:(fun (dependency: Riot_model.Package.dependency) ->
-      if Riot_model.Package.is_builtin_dependency dependency then
-        None
-      else
-        match find t dependency.name with
-        | Some dependency_package -> Some dependency_package
-        | None -> None)
-
-let unsupported_external_dependencies = fun t (package: Riot_model.Package.t) ->
-  Riot_model.Package.dependencies_for_scope Riot_model.Package.Normal package
-  |> List.filter_map
-    ~fn:(fun (dependency: Riot_model.Package.dependency) ->
-      if Riot_model.Package.is_builtin_dependency dependency then
-        None
-      else
-        match find t dependency.name with
-        | Some _ -> None
-        | None -> Some dependency.name)
+let realize = fun t ~intent package_name ->
+  let key = (package_name, intent) in
+  match ConcurrentHashMap.get t.realized_packages ~key with
+  | Some package -> Ok package
+  | None ->
+      require_manifest t package_name
+      |> Result.map
+        ~fn:(fun manifest ->
+          let package = Riot_model.Workspace.realize_package ~intent t.workspace manifest in
+          ignore (ConcurrentHashMap.insert t.realized_packages ~key ~value:package);
+          package)

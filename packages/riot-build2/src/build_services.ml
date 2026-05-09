@@ -143,6 +143,53 @@ let action_dependency_key = fun action_ref -> Work_node.ActionExecutionKey actio
 
 let store_error = fun ?package reason -> Error.StoreFailed { package; reason }
 
+let manifest_dependencies_for_scope = fun scope (package: Riot_model.Package_manifest.t) ->
+  match scope with
+  | Riot_model.Package.Normal -> package.dependencies
+  | Riot_model.Package.Dev -> package.dependencies @ package.dev_dependencies
+  | Riot_model.Package.Build -> package.build_dependencies
+
+let package_dependency_names = fun t ~scope (package: Riot_model.Package_manifest.t) ->
+  let rec loop acc = fun __tmp1 ->
+    match __tmp1 with
+    | [] -> Ok (List.reverse acc)
+    | dependency :: rest ->
+        if Riot_model.Package.is_builtin_dependency dependency then
+          loop acc rest
+        else
+          (
+            match Package_catalog.find_manifest t.catalog dependency.name with
+            | Some _ -> loop (dependency.name :: acc) rest
+            | None ->
+                Error (Error.ExternalDependencyUnsupported {
+                  package = package.name;
+                  dependency = dependency.name;
+                })
+          )
+  in
+  loop [] (manifest_dependencies_for_scope scope package)
+
+let realized_dependency_packages = fun t ~scope ~intent (package: Riot_model.Package.t) ->
+  let rec loop acc = fun __tmp1 ->
+    match __tmp1 with
+    | [] -> Ok (List.reverse acc)
+    | dependency :: rest ->
+        if Riot_model.Package.is_builtin_dependency dependency then
+          loop acc rest
+        else
+          (
+            match Package_catalog.realize t.catalog ~intent dependency.name with
+            | Ok dependency_package -> loop (dependency_package :: acc) rest
+            | Error (Error.MissingPackage _) ->
+                Error (Error.ExternalDependencyUnsupported {
+                  package = package.name;
+                  dependency = dependency.name;
+                })
+            | Error error -> Error error
+          )
+  in
+  loop [] (Riot_model.Package.dependencies_for_scope scope package)
+
 let ensure_toolchain = fun t (toolchain: Toolchain_ready.t) ->
   match ConcurrentHashMap.get t.toolchains ~key:toolchain.target with
   | Some _ -> Ok (Executor.Complete [])
@@ -221,7 +268,9 @@ let analyze_sources_from_cache = fun t package ~on_source_analyzed tasks ->
       | Error error -> Error error)
 
 let plan_module_graph = fun t registry (build: Package_work.build_library) ->
-  let* package = Package_catalog.require t.catalog build.Package_work.package in
+  let* package =
+    Package_catalog.realize t.catalog ~intent:Riot_model.Package.Runtime build.Package_work.package
+  in
   match ConcurrentHashMap.get t.toolchains ~key:build.target with
   | None ->
       Error (Error.ToolchainFailed {
@@ -253,7 +302,13 @@ let plan_module_graph = fun t registry (build: Package_work.build_library) ->
           )
         )
       else
-        let dependency_packages = Package_catalog.dependencies t.catalog package in
+        let* dependency_packages =
+          realized_dependency_packages
+            t
+            ~scope:Riot_model.Package.Normal
+            ~intent:Riot_model.Package.Runtime
+            package
+        in
         let input =
           Riot_planner.Module_planner.{
             package;
@@ -856,20 +911,16 @@ let execute_action = fun t (action: Action_execution.t) ->
             | None -> execute_actions t action toolchain action_input_hash
 
 let package_dependency_work = fun t (build: Package_work.build_library) ->
-  let* package = Package_catalog.require t.catalog build.Package_work.package in
-  match Package_catalog.unsupported_external_dependencies t.catalog package with
-  | dependency :: _ ->
-      Error (Error.ExternalDependencyUnsupported { package = package.name; dependency })
-  | [] ->
-      let dependencies = Package_catalog.dependencies t.catalog package in
-      Ok (List.map
-        dependencies
-        ~fn:(fun (dependency: Riot_model.Package.t) ->
-          Work_node.PackageWorkKey (Package_work.BuildLibrary {
-            package = dependency.name;
-            profile = build.profile;
-            target = build.target;
-          })))
+  let* package = Package_catalog.require_manifest t.catalog build.Package_work.package in
+  let* dependencies = package_dependency_names t ~scope:Riot_model.Package.Normal package in
+  Ok (List.map
+    dependencies
+    ~fn:(fun package ->
+      Work_node.PackageWorkKey (Package_work.BuildLibrary {
+        package;
+        profile = build.profile;
+        target = build.target;
+      })))
 
 let execute_build_library_work = fun t build ->
   match ConcurrentHashMap.get t.package_results ~key:build with

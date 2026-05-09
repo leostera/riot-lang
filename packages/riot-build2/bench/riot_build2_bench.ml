@@ -250,9 +250,22 @@ let make_package_catalog_create_bench = fun () ->
   let workspace = load_repo_workspace () in
   fun () ->
     let catalog = Package_catalog.create workspace in
-    match Package_catalog.find catalog kernel_package with
+    match Package_catalog.find_manifest catalog kernel_package with
     | Some _ -> ()
     | None -> panic "catalog benchmark missed kernel package"
+
+let make_kernel_runtime_realize_bench = fun () ->
+  let workspace = load_repo_workspace () in
+  fun () ->
+    let catalog = Package_catalog.create workspace in
+    match Package_catalog.realize catalog ~intent:Riot_model.Package.Runtime kernel_package with
+    | Ok package when Riot_model.Package_name.equal package.name kernel_package ->
+        if List.is_empty package.sources.src then
+          panic "kernel runtime realization benchmark produced no src files"
+        else
+          ()
+    | Ok _ -> panic "kernel runtime realization benchmark produced unexpected package"
+    | Error error -> panic ("kernel runtime realization benchmark failed: " ^ Error.message error)
 
 let make_kernel_goal_to_package_work_bench = fun () ->
   let workspace = load_repo_workspace () in
@@ -332,8 +345,12 @@ let benchmarks = fun () ->
       (make_workspace_load_bench ());
     with_config
       ~config:planning_config
-      "riot-build2 package catalog create runtime workspace"
+      "riot-build2 package catalog create repo manifests"
       (make_package_catalog_create_bench ());
+    with_config
+      ~config:planning_config
+      "riot-build2 kernel runtime package realization"
+      (make_kernel_runtime_realize_bench ());
     with_config
       ~config:planning_config
       "riot-build2 kernel goal expands to package work"

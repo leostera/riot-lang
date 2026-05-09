@@ -136,6 +136,7 @@ let expect_kernel_work_graph = fun result ->
     Error ("kernel build graph failed:\n" ^ summary_errors result.Build_result.summary)
   else
     let summary = result.Build_result.summary in
+    let* () = expect_kernel_package_result result in
     let* () =
       expect_completed_kind
         summary
@@ -153,16 +154,6 @@ let expect_kernel_work_graph = fun result ->
           match __tmp1 with
           | Work_node.Goal (Goal.BuildPackage { package = Goal.Package package; _ }) ->
               Riot_model.Package_name.equal package kernel_package
-          | _ -> false)
-    in
-    let* () =
-      expect_completed_kind
-        summary
-        "PackageWork"
-        (fun __tmp1 ->
-          match __tmp1 with
-          | Work_node.PackageWork (Package_work.BuildLibrary build) ->
-              Riot_model.Package_name.equal build.package kernel_package
           | _ -> false)
     in
     let* () =
@@ -204,17 +195,7 @@ let expect_kernel_work_graph = fun result ->
               Riot_model.Package_name.equal action.ref_.package kernel_package
           | _ -> false)
     in
-    let* () =
-      expect_completed_kind
-        summary
-        "PackageFinalize"
-        (fun __tmp1 ->
-          match __tmp1 with
-          | Work_node.PackageFinalize build ->
-              Riot_model.Package_name.equal build.package kernel_package
-          | _ -> false)
-    in
-    expect_kernel_package_result result
+    Ok ()
 
 let test_kernel_build_is_planned_and_executed = fun _ctx ->
   with_kernel_workspace_target

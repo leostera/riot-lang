@@ -3,12 +3,12 @@ open Std
 let package_targets = fun catalog __tmp1 ->
   match __tmp1 with
   | Goal.WorkspaceMembers ->
-      Package_catalog.packages catalog
-      |> List.map ~fn:(fun (package: Riot_model.Package.t) -> package.name)
+      Package_catalog.manifests catalog
+      |> List.map ~fn:(fun (package: Riot_model.Package_manifest.t) -> package.name)
       |> Result.ok
   | Goal.Package package_name ->
-      Package_catalog.require catalog package_name
-      |> Result.map ~fn:(fun (_package: Riot_model.Package.t) -> [ package_name ])
+      Package_catalog.require_manifest catalog package_name
+      |> Result.map ~fn:(fun (_package: Riot_model.Package_manifest.t) -> [ package_name ])
 
 let expand = fun catalog __tmp1 ->
   match __tmp1 with
@@ -26,8 +26,8 @@ let expand = fun catalog __tmp1 ->
         | [] -> Ok (List.reverse acc)
         | Goal.WorkspaceMembers :: rest ->
             let packages =
-              Package_catalog.packages catalog
-              |> List.map ~fn:(fun (package: Riot_model.Package.t) -> package.name)
+              Package_catalog.manifests catalog
+              |> List.map ~fn:(fun (package: Riot_model.Package_manifest.t) -> package.name)
             in
             loop
               (
@@ -44,9 +44,9 @@ let expand = fun catalog __tmp1 ->
               )
               rest
         | Goal.Package package :: rest ->
-            Package_catalog.require catalog package
+            Package_catalog.require_manifest catalog package
             |> Result.and_then
-              ~fn:(fun (_package: Riot_model.Package.t) ->
+              ~fn:(fun (_package: Riot_model.Package_manifest.t) ->
                 loop
                   (
                     Package_work.TestPackage {
@@ -63,9 +63,9 @@ let expand = fun catalog __tmp1 ->
   | Goal.RunBinary run ->
       match run.package with
       | Some package ->
-          Package_catalog.require catalog package
+          Package_catalog.require_manifest catalog package
           |> Result.map
-            ~fn:(fun (_package: Riot_model.Package.t) ->
+            ~fn:(fun (_package: Riot_model.Package_manifest.t) ->
               [
                 Package_work.RunBinary {
                   package;
