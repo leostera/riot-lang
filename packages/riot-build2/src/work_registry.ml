@@ -95,6 +95,14 @@ let intern_source_analysis = fun t source ->
     ~key:(source_analysis_key source)
     ~make:(fun () -> Work_node.SourceAnalysis source)
 
+let package_artifact_key = fun build -> Work_node.PackageArtifactKey build
+
+let intern_package_artifact = fun t build ->
+  intern
+    t
+    ~key:(package_artifact_key build)
+    ~make:(fun () -> Work_node.PackageArtifact build)
+
 let module_plan_key = fun build -> Work_node.ModulePlanKey build
 
 let intern_module_plan = fun t build ->

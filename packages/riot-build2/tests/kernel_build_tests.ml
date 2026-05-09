@@ -95,6 +95,7 @@ let kind_name = fun __tmp1 ->
   | Goal _ -> "Goal"
   | ToolchainReady _ -> "ToolchainReady"
   | SourceAnalysis _ -> "SourceAnalysis"
+  | PackageArtifact _ -> "PackageArtifact"
   | ModulePlan _ -> "ModulePlan"
   | ActionExecution _ -> "ActionExecution"
 
@@ -167,6 +168,16 @@ let expect_kernel_work_graph = fun result ->
           match __tmp1 with
           | Work_node.Goal (Goal.BuildPackage { package; _ }) ->
               Riot_model.Package_name.equal package kernel_package
+          | _ -> false)
+    in
+    let* () =
+      expect_completed_kind
+        summary
+        "PackageArtifact"
+        (fun __tmp1 ->
+          match __tmp1 with
+          | Work_node.PackageArtifact build ->
+              Riot_model.Package_name.equal build.package kernel_package
           | _ -> false)
     in
     let* () =

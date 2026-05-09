@@ -262,9 +262,32 @@ let register_action_dependency_keys = fun t registry (plan: Module_plan.t) ->
       | None -> true)
   |> List.map ~fn:action_dependency_key
 
-let plan_dependencies = fun t _registry build -> package_dependency_goal_keys t build
+let package_artifact_key = fun build -> Work_node.PackageArtifactKey build
+
+let plan_dependencies = fun t _registry build ->
+  let* package_dependency_keys = package_dependency_goal_keys t build in
+  Ok (package_dependency_keys @ [ package_artifact_key build ])
+
+let plan_artifact_dependencies = fun t _registry build -> package_dependency_goal_keys t build
+
+let package_artifact_completed = fun registry build ->
+  match Work_registry.find registry (package_artifact_key build) with
+  | Some node when Work_node.status node = Work_node.Completed -> true
+  | Some _
+  | None -> false
 
 let execute = fun t registry (build: Goal.build_package) ->
+  if has_results t build then
+    Ok (Work_result.Complete [])
+  else if package_artifact_completed registry build then
+    Error (Error.ExecutorInvariantViolated {
+      message = "package artifact completed without package result for "
+      ^ Riot_model.Package_name.to_string build.package;
+    })
+  else
+    Ok (Work_result.RequeueWithDependencies [ package_artifact_key build ])
+
+let execute_artifact = fun t registry (build: Goal.build_package) ->
   if has_results t build then
     Ok (Work_result.Complete [])
   else

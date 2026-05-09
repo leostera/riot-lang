@@ -45,6 +45,7 @@ type key =
   | GoalKey of Goal.t
   | ToolchainReadyKey of Toolchain_ready.key
   | SourceAnalysisKey of Source_analysis.key
+  | PackageArtifactKey of Goal.build_package
   | ModulePlanKey of Goal.build_package
   | ActionExecutionKey of Action_execution.ref_
 
@@ -53,6 +54,7 @@ type kind =
   | Goal of Goal.t
   | ToolchainReady of Toolchain_ready.t
   | SourceAnalysis of Source_analysis.t
+  | PackageArtifact of Goal.build_package
   | ModulePlan of Goal.build_package
   | ActionExecution of Action_execution.t
 
@@ -71,6 +73,8 @@ val goal: id:Node_id.t -> Goal.t -> t
 val toolchain_ready: id:Node_id.t -> Toolchain_ready.t -> t
 
 val source_analysis: id:Node_id.t -> Source_analysis.t -> t
+
+val package_artifact: id:Node_id.t -> Goal.build_package -> t
 
 val module_plan: id:Node_id.t -> Goal.build_package -> t
 

@@ -71,6 +71,14 @@ let has_toolchain_key = fun keys target ->
       | Work_node.ToolchainReadyKey toolchain -> Riot_model.Target.equal toolchain.target target
       | _ -> false)
 
+let has_package_artifact_key = fun keys build ->
+  List.any
+    keys
+    ~fn:(fun __tmp1 ->
+      match __tmp1 with
+      | Work_node.PackageArtifactKey got -> got = build
+      | _ -> false)
+
 let key_name = fun __tmp1 ->
   match __tmp1 with
   | Work_node.Intent _ -> "Intent"
@@ -80,6 +88,7 @@ let key_name = fun __tmp1 ->
   | GoalKey _ -> "GoalKey"
   | ToolchainReadyKey _ -> "ToolchainReadyKey"
   | SourceAnalysisKey _ -> "SourceAnalysisKey"
+  | PackageArtifactKey _ -> "PackageArtifactKey"
   | ModulePlanKey _ -> "ModulePlanKey"
   | ActionExecutionKey _ -> "ActionExecutionKey"
 
@@ -125,7 +134,8 @@ let source_package_workspace = fun root ->
 let test_build_package_plans_package_dependencies_before_execution = fun _ctx ->
   let services = Build_services.create ~config:(config ()) () in
   let registry = Work_registry.create () in
-  let app_goal = build_goal "app" in
+  let app_build = build_package "app" in
+  let app_goal = Goal.BuildPackage app_build in
   let dep_goal = build_goal "dep" in
   let node = Work_node.goal ~id:(Work_node.Node_id.from_int 1) app_goal in
   Build_services.plan_dependencies services registry node
@@ -133,10 +143,10 @@ let test_build_package_plans_package_dependencies_before_execution = fun _ctx ->
   |> Result.and_then
     ~fn:(fun keys ->
       if has_goal_key keys dep_goal then
-        if List.length keys = 1 then
+        if List.length keys = 2 && has_package_artifact_key keys app_build then
           Ok ()
         else
-          Error "expected app build goal to plan only manifest package dependencies"
+          Error "expected app build goal to plan manifest package deps and package artifact"
       else
         Error "expected app build goal to plan dep build goal before execution")
 
@@ -148,10 +158,10 @@ let test_build_package_without_package_dependencies_plans_no_dependencies = fun 
   |> Result.map_err ~fn:Error.message
   |> Result.and_then
     ~fn:(fun keys ->
-      if List.is_empty keys then
+      if List.length keys = 1 && has_package_artifact_key keys (build_package "dep") then
         Ok ()
       else
-        Error "expected package planning to ignore cache-miss-only module work")
+        Error "expected package planning to include only package artifact for package without deps")
 
 let test_build_package_does_not_plan_toolchain_readiness = fun _ctx ->
   let services = Build_services.create ~config:(config ()) () in

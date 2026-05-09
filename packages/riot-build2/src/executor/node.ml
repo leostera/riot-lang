@@ -5,6 +5,7 @@ type kind = Work_node.kind =
   | Goal of Goal.t
   | ToolchainReady of Toolchain_ready.t
   | SourceAnalysis of Source_analysis.t
+  | PackageArtifact of Goal.build_package
   | ModulePlan of Goal.build_package
   | ActionExecution of Action_execution.t
 

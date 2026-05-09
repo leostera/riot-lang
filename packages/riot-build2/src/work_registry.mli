@@ -39,6 +39,8 @@ val intern_toolchain_ready: t -> Toolchain_ready.t -> Work_node.t
 
 val intern_source_analysis: t -> Source_analysis.t -> Work_node.t
 
+val intern_package_artifact: t -> Goal.build_package -> Work_node.t
+
 val intern_module_plan: t -> Goal.build_package -> Work_node.t
 
 val intern_action_execution: t -> Action_execution.t -> Work_node.t
