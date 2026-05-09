@@ -10,6 +10,8 @@
 
 * `riot fmt` should format the riot toml files too!
 
+* `riot fmt` tends to remove necessary `begin/end`
+
 * revisit all cli output -- i'd like it to be more inlined/interactive
 
 * riot build external dependencies are cached into .riot/cache/

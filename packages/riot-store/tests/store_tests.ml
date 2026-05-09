@@ -585,6 +585,32 @@ let test_plan_bundle_round_trip = fun _ctx ->
   | Ok x -> x
   | Error _ -> Error "tempdir creation failed"
 
+let test_node_payload_round_trip = fun _ctx ->
+  match Fs.with_tempdir
+    ~prefix:"store_node_payload_test"
+    (fun tmpdir ->
+      let workspace = make_test_workspace tmpdir in
+      let store = Riot_store.Store.create ~workspace in
+      let hash = Crypto.hash_string "toolchain-ready-node" in
+      let payload = "{\"version\":1,\"kind\":\"toolchain-ready\"}" in
+      let _ =
+        Riot_store.Store.save_node_payload
+          store
+          ~namespace:Riot_store.Store.ToolchainReady
+          ~hash
+          ~payload
+        |> Result.expect ~msg:"save_node_payload should succeed"
+      in
+      match Riot_store.Store.load_node_payload
+        store
+        ~namespace:Riot_store.Store.ToolchainReady
+        ~hash with
+      | Some loaded when String.equal loaded payload -> Ok ()
+      | Some _ -> Error "loaded node payload should match saved payload"
+      | None -> Error "expected saved node payload") with
+  | Ok x -> x
+  | Error _ -> Error "tempdir creation failed"
+
 let test_hash_manifest_round_trip_preserves_exports = fun _ctx ->
   match Fs.with_tempdir
     ~prefix:"store_manifest_exports_round_trip_test"
@@ -1815,6 +1841,7 @@ let tests =
       "concurrent same-hash saves share cache safely"
       test_concurrent_same_hash_saves_share_cache_safely;
     case "plan bundle round trip" test_plan_bundle_round_trip;
+    case "node payload round trip" test_node_payload_round_trip;
     case
       "hash manifest round trip preserves exports"
       test_hash_manifest_round_trip_preserves_exports;

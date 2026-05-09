@@ -22,10 +22,37 @@ let plans_namespace =
   Contentstore.Namespace.from_parts [ "plans" ]
   |> Result.expect ~msg:"riot-store plans namespace should be valid"
 
+type node_payload_namespace =
+  | DependencyResolution
+  | ExternalDependencyReady
+  | ToolchainReady
+  | SourceAnalysis
+  | ModulePlans
+  | ActionSpecs
+
+let node_payload_namespace_to_string = fun __tmp1 ->
+  match __tmp1 with
+  | DependencyResolution -> "dependency-resolution"
+  | ExternalDependencyReady -> "external-dependency-ready"
+  | ToolchainReady -> "toolchain-ready"
+  | SourceAnalysis -> "source-analysis"
+  | ModulePlans -> "module-plans"
+  | ActionSpecs -> "action-specs"
+
+let node_payload_namespace = fun namespace ->
+  Contentstore.Namespace.from_parts [ node_payload_namespace_to_string namespace ]
+  |> Result.expect ~msg:"riot-store node payload namespace should be valid"
+
 type t = {
   package_store: ContentStore.t;
   action_store: ContentStore.t;
   plan_store: ContentStore.t;
+  dependency_resolution_store: ContentStore.t;
+  external_dependency_store: ContentStore.t;
+  toolchain_ready_store: ContentStore.t;
+  source_analysis_store: ContentStore.t;
+  module_plan_store: ContentStore.t;
+  action_spec_store: ContentStore.t;
   package_cache: artifact_cache;
   action_cache: artifact_cache;
 }
@@ -94,6 +121,11 @@ type error =
       cause: string;
     }
   | SavePlanBundleFailed of {
+      hash: Crypto.hash;
+      cause: string;
+    }
+  | SaveNodePayloadFailed of {
+      namespace: node_payload_namespace;
       hash: Crypto.hash;
       cause: string;
     }
@@ -183,6 +215,14 @@ let error_message = fun __tmp1 ->
       ^ ")"
   | SavePlanBundleFailed { hash; cause } ->
       "Failed to save plan bundle for " ^ Crypto.Digest.hex hash ^ " (" ^ cause ^ ")"
+  | SaveNodePayloadFailed { namespace; hash; cause } ->
+      "Failed to save "
+      ^ node_payload_namespace_to_string namespace
+      ^ " node payload for "
+      ^ Crypto.Digest.hex hash
+      ^ " ("
+      ^ cause
+      ^ ")"
   | ExportPathMustBeRelative { path } -> "Export path must be relative: " ^ Path.to_string path
   | CreatePackageOutputDirFailed { path; cause } ->
       "Failed to create package output directory: "
@@ -315,10 +355,22 @@ let create_for_lane = fun ~(workspace:Workspace.t) ~profile ~target ->
       ~ns:plans_namespace
       ~policy:Contentstore.Policy.default
   in
+  let node_store namespace =
+    ContentStore.create
+      ~root:store_dir
+      ~ns:(node_payload_namespace namespace)
+      ~policy:Contentstore.Policy.default
+  in
   {
     package_store;
     action_store;
     plan_store;
+    dependency_resolution_store = node_store DependencyResolution;
+    external_dependency_store = node_store ExternalDependencyReady;
+    toolchain_ready_store = node_store ToolchainReady;
+    source_analysis_store = node_store SourceAnalysis;
+    module_plan_store = node_store ModulePlans;
+    action_spec_store = node_store ActionSpecs;
     package_cache = create_artifact_cache ();
     action_cache = create_artifact_cache ();
   }
@@ -897,6 +949,30 @@ let get_artifact_dir = fun store artifact -> get_package_hash_dir store Artifact
 let hash_dir_of = fun store hash -> get_package_hash_dir store hash
 
 let action_hash_dir_of = fun store hash -> get_action_hash_dir store hash
+
+let node_payload_store = fun store namespace ->
+  match namespace with
+  | DependencyResolution -> store.dependency_resolution_store
+  | ExternalDependencyReady -> store.external_dependency_store
+  | ToolchainReady -> store.toolchain_ready_store
+  | SourceAnalysis -> store.source_analysis_store
+  | ModulePlans -> store.module_plan_store
+  | ActionSpecs -> store.action_spec_store
+
+let save_node_payload = fun store ~namespace ~hash ~payload ->
+  ContentStore.save_object (node_payload_store store namespace) ~hash ~content:payload
+  |> Result.map_err
+    ~fn:(fun cause ->
+      SaveNodePayloadFailed { namespace; hash; cause = ContentStore.error_message cause })
+
+let load_node_payload = fun store ~namespace ~hash ->
+  match ContentStore.open_object (node_payload_store store namespace) ~hash with
+  | Error _ -> None
+  | Ok file -> (
+      match read_opened_file file with
+      | Error _ -> None
+      | Ok content -> Some content
+    )
 
 let save_plan_bundle = fun store ~hash ~plan ->
   ContentStore.save_object store.plan_store ~hash ~content:(Std.Data.Json.to_string plan)

@@ -127,30 +127,20 @@ let resolve = fun ?(depset = []) t (build: Goal.build_package) ->
   let* package =
     Package_catalog.realize t.catalog ~intent:(Goal.realization_intent build.scope) build.package
   in
-  match Toolchain_service.find t.toolchains build.target with
-  | None ->
-      Error (Error.ToolchainFailed {
-        target = build.target;
-        reason = "toolchain was not ready before package planning";
-      })
-  | Some toolchain ->
-      let base_ctx = build_ctx t ~profile:build.profile ~target:build.target in
-      let profile = apply_package_profile ~package ~build_ctx:base_ctx build.profile in
-      let build_ctx = build_ctx t ~profile ~target:build.target in
-      let package_hash = package_input_hash t ~package ~profile ~build_ctx ~toolchain ~depset in
-      Ok {
-        build;
-        package;
-        profile;
-        target = build.target;
-        toolchain;
-        build_ctx;
-        package_hash;
-      }
-
-let toolchain_ready = fun t target ->
-  Toolchain_service.find t.toolchains target
-  |> Option.is_some
+  let toolchain = Toolchain_service.expected t.toolchains build.target in
+  let base_ctx = build_ctx t ~profile:build.profile ~target:build.target in
+  let profile = apply_package_profile ~package ~build_ctx:base_ctx build.profile in
+  let build_ctx = build_ctx t ~profile ~target:build.target in
+  let package_hash = package_input_hash t ~package ~profile ~build_ctx ~toolchain ~depset in
+  Ok {
+    build;
+    package;
+    profile;
+    target = build.target;
+    toolchain;
+    build_ctx;
+    package_hash;
+  }
 
 let missing_dependency_artifact = fun (build: Goal.build_package) ->
   Error.ExecutorInvariantViolated {

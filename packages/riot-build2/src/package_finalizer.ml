@@ -261,28 +261,18 @@ let plan_dependencies = fun t registry build ->
     Ok []
   else
     let* package_dependency_keys = package_dependency_goal_keys t build in
-    let toolchain_dependency_keys =
-      if Package_planning.toolchain_ready t.package_planning build.target then
-        []
-      else
-        [ Work_node.ToolchainReadyKey { target = build.target } ]
-    in
     let* package_dependencies_ready = package_dependencies_ready t build in
-    if (not package_dependencies_ready) || not (List.is_empty toolchain_dependency_keys) then
-      Ok (toolchain_dependency_keys @ package_dependency_keys)
+    if not package_dependencies_ready then
+      Ok package_dependency_keys
     else
       match Package_planning.cached_artifact t.package_planning build with
       | Error error -> Error error
       | Ok (Some _) -> Ok []
       | Ok None -> plan_after_package_dependencies t registry build
 
-let execute = fun t _registry (build: Goal.build_package) ->
+let execute = fun t registry (build: Goal.build_package) ->
   if has_results t build then
     Ok (Work_result.Complete [])
-  else if not (Package_planning.toolchain_ready t.package_planning build.target) then
-    Error (Error.ExecutorInvariantViolated {
-      message = "package finalization started before toolchain dependency completed";
-    })
   else
     match Package_planning.cached_artifact t.package_planning build with
     | Error error -> Error error
@@ -290,13 +280,13 @@ let execute = fun t _registry (build: Goal.build_package) ->
     | Ok None ->
         let* package_dependencies_ready = package_dependencies_ready t build in
         if not package_dependencies_ready then
-          Error (Error.ExecutorInvariantViolated {
-            message = "package finalization started before package dependencies completed";
-          })
+          let* package_dependency_keys = package_dependency_goal_keys t build in
+          Ok (Work_result.RequeueWithDependencies package_dependency_keys)
         else
           match Module_planning.find t.module_planning build with
-          | None ->
-              Error (Error.ExecutorInvariantViolated {
-                message = "package finalization started before module planning completed";
-              })
-          | Some plan -> finalize t plan
+          | None -> Ok (Work_result.RequeueWithDependencies [ Work_node.ModulePlanKey build ])
+          | Some plan ->
+              match register_action_dependency_keys t registry plan with
+              | [] -> finalize t plan
+              | action_dependency_keys ->
+                  Ok (Work_result.RequeueWithDependencies action_dependency_keys)

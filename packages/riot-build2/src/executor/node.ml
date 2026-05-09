@@ -9,7 +9,9 @@ type kind = Work_node.kind =
   | ActionExecution of Action_execution.t
 
 type status = Work_node.status =
-  | Pending
+  | Unplanned
+  | Waiting
+  | Ready
   | Running
   | Completed
   | Failed

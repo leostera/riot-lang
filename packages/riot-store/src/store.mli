@@ -10,6 +10,16 @@ type t
 
 (** Abstract type representing a store *)
 
+type node_payload_namespace =
+  | DependencyResolution
+  | ExternalDependencyReady
+  | ToolchainReady
+  | SourceAnalysis
+  | ModulePlans
+  | ActionSpecs
+
+val node_payload_namespace_to_string: node_payload_namespace -> string
+
 (** Artifact witness - proof that build outputs have been stored *)
 type error =
   | HashNotFound of {
@@ -70,6 +80,11 @@ type error =
       cause: string;
     }
   | SavePlanBundleFailed of {
+      hash: Std.Crypto.hash;
+      cause: string;
+    }
+  | SaveNodePayloadFailed of {
+      namespace: node_payload_namespace;
       hash: Std.Crypto.hash;
       cause: string;
     }
@@ -202,6 +217,25 @@ val hash_dir_of: t -> Std.Crypto.hash -> Std.Path.t
 val action_hash_dir_of: t -> Std.Crypto.hash -> Std.Path.t
 
 (** Get the immutable cache directory for an action artifact hash. *)
+val save_node_payload:
+  t ->
+  namespace:node_payload_namespace ->
+  hash:Std.Crypto.hash ->
+  payload:string ->
+  (unit, error) result
+
+(**
+   Save an opaque payload for an incremental graph node. The caller owns the
+   payload codec; [riot-store] only provides namespace and hash-addressed
+   persistence.
+*)
+val load_node_payload:
+  t ->
+  namespace:node_payload_namespace ->
+  hash:Std.Crypto.hash ->
+  string option
+
+(** Load an opaque incremental graph node payload by namespace and input hash. *)
 val save_plan_bundle: t -> hash:Std.Crypto.hash -> plan:Std.Data.Json.t -> (unit, error) result
 
 (**

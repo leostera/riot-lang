@@ -1,4 +1,5 @@
 open Std
+open Std.Result.Syntax
 
 module DynamicWorkerPool = WorkerPool.DynamicWorkerPool
 module ConcurrentHashMap = Collections.ConcurrentHashMap
@@ -51,7 +52,9 @@ let record_result = fun state node status error ->
   match status with
   | Work_node.Completed -> state.completed_count <- Int.succ state.completed_count
   | Failed -> state.failed_count <- Int.succ state.failed_count
-  | Pending
+  | Unplanned
+  | Waiting
+  | Ready
   | Running -> ()
 
 let unsupported_key_error = fun key ->
@@ -112,7 +115,9 @@ let rec fail_node = fun state node error ->
   match Work_node.status node with
   | Failed
   | Completed -> ()
-  | Pending
+  | Unplanned
+  | Waiting
+  | Ready
   | Running ->
       Work_node.mark_as_failed node;
       state.on_event (Event.WorkFailed { node; error });
@@ -127,7 +132,7 @@ and settle_dependents = fun state node ->
       | None -> ()
       | Some dependent -> (
           match Work_node.status dependent with
-          | Pending -> (
+          | Waiting -> (
               match Work_node.status node with
               | Failed ->
                   fail_node
@@ -139,11 +144,17 @@ and settle_dependents = fun state node ->
                     })
               | Completed ->
                   let remaining = Work_node.mark_dependency_completed dependent in
-                  if Int.equal remaining 0 then
+                  if Int.equal remaining 0 then (
+                    Work_node.mark_as_ready dependent;
                     queue_node state dependent
-              | Pending
+                  )
+              | Unplanned
+              | Waiting
+              | Ready
               | Running -> ()
             )
+          | Unplanned
+          | Ready
           | Running
           | Completed
           | Failed -> ()
@@ -160,7 +171,9 @@ let register_dependencies = fun state node dependencies ->
       if Work_node.add_dependency node (Work_node.id dependency) then (
         ignore (Work_node.add_dependent dependency node_id);
         match Work_node.status dependency with
-        | Work_node.Pending
+        | Work_node.Unplanned
+        | Waiting
+        | Ready
         | Running ->
             pending_count := Int.succ !pending_count;
             pending_dependencies := dependency :: !pending_dependencies
@@ -194,7 +207,9 @@ let complete_node = fun state node ->
   match Work_node.status node with
   | Work_node.Completed
   | Failed -> ()
-  | Pending
+  | Unplanned
+  | Waiting
+  | Ready
   | Running ->
       Work_node.mark_as_completed node;
       state.on_event (Event.WorkCompleted { node });
@@ -222,7 +237,10 @@ let register_dependency_keys = fun state node dependency_keys ->
                 dependencies
                 ~fn:(fun dependency ->
                   match Work_node.status dependency with
-                  | Pending -> queue_node state dependency
+                  | Unplanned -> queue_node state dependency
+                  | Ready when Work_node.dependencies_ready dependency -> queue_node state dependency
+                  | Waiting
+                  | Ready
                   | Running
                   | Completed
                   | Failed -> ());
@@ -233,34 +251,51 @@ type dispatch_result =
   | Dispatched
   | NotDispatched
 
+let dispatch_ready_node = fun state worker node ->
+  if not (Work_node.dependencies_ready node) then
+    NotDispatched
+  else
+    match state.execution_mode node with
+    | Work_node.Virtual ->
+        complete_node state node;
+        NotDispatched
+    | Work_node.Concrete ->
+        Work_node.mark_as_running node;
+        state.tasks_in_flight <- Int.succ state.tasks_in_flight;
+        state.on_event (Event.WorkStarted { node });
+        DynamicWorkerPool.send_task state.pool worker node;
+        Dispatched
+
+let plan_node = fun state node ->
+  match state.plan_dependencies state.registry node with
+  | Error error -> Error error
+  | Ok dependency_keys ->
+      let* () = register_dependency_keys state node dependency_keys in
+      if Work_node.dependencies_ready node then
+        Work_node.mark_as_ready node
+      else
+        Work_node.mark_as_waiting node;
+      Ok ()
+
 let prepare_node_for_dispatch = fun state worker node ->
   match Work_node.status node with
-  | Work_node.Pending -> (
-      match state.plan_dependencies state.registry node with
+  | Work_node.Unplanned -> (
+      match plan_node state node with
       | Error error ->
           fail_node state node error;
           NotDispatched
-      | Ok dependency_keys -> (
-          match register_dependency_keys state node dependency_keys with
-          | Error error ->
-              fail_node state node error;
-              NotDispatched
-          | Ok () ->
-              if not (Work_node.dependencies_ready node) then
-                NotDispatched
-              else
-                match state.execution_mode node with
-                | Work_node.Virtual ->
-                    complete_node state node;
-                    NotDispatched
-                | Work_node.Concrete ->
-                    Work_node.mark_as_running node;
-                    state.tasks_in_flight <- Int.succ state.tasks_in_flight;
-                    state.on_event (Event.WorkStarted { node });
-                    DynamicWorkerPool.send_task state.pool worker node;
-                    Dispatched
+      | Ok () -> (
+          match Work_node.status node with
+          | Ready -> dispatch_ready_node state worker node
+          | Waiting
+          | Failed -> NotDispatched
+          | Unplanned
+          | Running
+          | Completed -> NotDispatched
         )
     )
+  | Ready -> dispatch_ready_node state worker node
+  | Waiting -> NotDispatched
   | Running
   | Completed
   | Failed -> NotDispatched
@@ -299,33 +334,16 @@ let complete_result = fun state result ->
           settle_dependents state result.node
     )
   | Ok (Work_result.RequeueWithDependencies dependency_keys) -> (
-      match canonical_nodes_for_keys state dependency_keys with
+      match register_dependency_keys state result.node dependency_keys with
       | Error error -> fail_node state result.node error
-      | Ok dependencies ->
-          let registered = register_dependencies state result.node dependencies in
-          Work_node.mark_as_pending result.node;
+      | Ok () ->
           state.on_event (Event.WorkRequeued { node = result.node });
-          let failed_dependency = reconcile_registered_dependencies result.node registered in
-          match failed_dependency with
-          | Some dependency ->
-              fail_node
-                state
-                result.node
-                (Error.DependencyFailed {
-                  node = Work_node.id result.node;
-                  dependency = Work_node.id dependency;
-                })
-          | None ->
-              List.for_each
-                dependencies
-                ~fn:(fun dependency ->
-                  match Work_node.status dependency with
-                  | Pending -> queue_node state dependency
-                  | Running
-                  | Completed
-                  | Failed -> ());
-              if Work_node.dependencies_ready result.node then
-                queue_node state result.node
+          if Work_node.dependencies_ready result.node then (
+            Work_node.mark_as_ready result.node;
+            queue_node state result.node
+          )
+          else
+            Work_node.mark_as_waiting result.node
     )
   | Error error -> fail_node state result.node error
 

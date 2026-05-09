@@ -79,7 +79,9 @@ let sample_intent_seed = fun id ->
 
 let goal_node = fun id action -> Work_node.goal ~id:(node_id id) action
 
-let mark_completed = Work_node.mark_as_completed
+let mark_completed = fun node ->
+  Work_node.mark_as_ready node;
+  Work_node.mark_as_completed node
 
 let event_kind_present = fun events ~fn ->
   events
@@ -203,15 +205,25 @@ let test_registry_finds_packages_and_modules = fun _ctx ->
   | _ -> Error "expected registry package and module lookups to return interned nodes"
 
 let test_work_node_accepts_valid_status_transitions = fun _ctx ->
-  let node = sample_seed () in
-  Work_node.mark_as_running node;
-  Work_node.mark_as_pending node;
-  Work_node.mark_as_running node;
-  Work_node.mark_as_completed node;
-  if Work_node.status node = Work_node.Completed then
+  let ready_node = sample_seed () in
+  let waiting_node = sample_intent_seed 2 in
+  Work_node.mark_as_ready ready_node;
+  Work_node.mark_as_running ready_node;
+  Work_node.mark_as_completed ready_node;
+  Work_node.mark_as_waiting waiting_node;
+  Work_node.mark_as_ready waiting_node;
+  Work_node.mark_as_running waiting_node;
+  Work_node.mark_as_waiting waiting_node;
+  Work_node.mark_as_ready waiting_node;
+  Work_node.mark_as_running waiting_node;
+  Work_node.mark_as_completed waiting_node;
+  if
+    Work_node.status ready_node = Work_node.Completed
+    && Work_node.status waiting_node = Work_node.Completed
+  then
     Ok ()
   else
-    Error "expected node to be completed after valid transition chain"
+    Error "expected nodes to be completed after valid transition chains"
 
 let test_work_node_rejects_invalid_status_transitions = fun _ctx ->
   let node = sample_seed () in
@@ -458,25 +470,42 @@ let test_concrete_node_waits_for_planned_dependencies_before_execution = fun _ct
   else
     Error "expected concrete node execution to wait for planned dependencies"
 
-let test_requeue_with_dependencies_reruns_after_dependency_completes = fun _ctx ->
-  let attempts = Sync.Atomic.make 0 in
+let test_planned_dependency_runs_dependent_after_dependency_completes = fun _ctx ->
+  let parent_plan_calls = Sync.Atomic.make 0 in
+  let parent_runs = Sync.Atomic.make 0 in
+  let dependency_runs = Sync.Atomic.make 0 in
   let events = Queue.create () in
+  let parent_action = sample_goal "dependent" in
   let dependency_action = sample_goal "dependency" in
+  let plan_dependencies _registry node =
+    match Work_node.kind node with
+    | Work_node.Goal action when action = parent_action ->
+        ignore (Sync.Atomic.fetch_and_add parent_plan_calls 1);
+        Ok [ goal_key dependency_action ]
+    | Work_node.Goal _ -> Ok []
+    | _ -> unexpected_node node
+  in
   let execute _context node =
     match Work_node.kind node with
-    | Work_node.UserIntent _ ->
-        let attempt = Sync.Atomic.fetch_and_add attempts 1 in
-        if Int.equal attempt 0 then
-          Ok (Work_result.RequeueWithDependencies [ goal_key dependency_action ])
-        else
+    | Work_node.Goal action when action = dependency_action ->
+        ignore (Sync.Atomic.fetch_and_add dependency_runs 1);
+        Ok (Work_result.Complete [])
+    | Work_node.Goal action when action = parent_action ->
+        ignore (Sync.Atomic.fetch_and_add parent_runs 1);
+        if Int.equal (Sync.Atomic.get dependency_runs) 1 then
           Ok (Work_result.Complete [])
+        else
+          Error (Error.ExecutorInvariantViolated {
+            message = "dependent ran before planned dependency completed";
+          })
     | Work_node.Goal _ -> Ok (Work_result.Complete [])
     | _ -> unexpected_node node
   in
-  let seed = sample_seed () in
+  let seed = goal_node 10 parent_action in
   let summary =
-    run_executor
+    run_default_executor
       ~parallelism:1
+      ~plan_dependencies
       ~on_event:(fun event -> Queue.push events ~value:event)
       ~seeds:[ seed ]
       ~execute
@@ -487,8 +516,12 @@ let test_requeue_with_dependencies_reruns_after_dependency_completes = fun _ctx 
   | Some dependency ->
       let seed_dependencies = Work_node.dependencies seed in
       let dependency_dependents = Work_node.dependents dependency in
-      if not (Int.equal (Sync.Atomic.get attempts) 2) then
-        Error "expected original node to run once, wait, then run again"
+      if not (Int.equal (Sync.Atomic.get parent_plan_calls) 1) then
+        Error "expected dependent dependencies to be planned exactly once"
+      else if not (Int.equal (Sync.Atomic.get parent_runs) 1) then
+        Error "expected dependent to run once after dependency completed"
+      else if not (Int.equal (Sync.Atomic.get dependency_runs) 1) then
+        Error "expected dependency to run once"
       else if
         not
           (List.any
@@ -522,125 +555,152 @@ let test_requeue_with_dependencies_reruns_after_dependency_completes = fun _ctx 
               | _ -> false)
         ) then
         Error "expected dependency registration event"
-      else if not
-        (
-          event_kind_present
-            events
-            ~fn:(fun __tmp1 ->
-              match __tmp1 with
-              | Event.WorkRequeued _ -> true
-              | _ -> false)
-        ) then
-        Error "expected requeue event"
       else
         Ok ()
 
 let test_multiple_dependencies_wait_for_all_to_complete = fun _ctx ->
-  let attempts = Sync.Atomic.make 0 in
+  let parent_action = sample_goal "multi-dependent" in
   let first_action = sample_goal "dep-a" in
   let second_action = sample_goal "dep-b" in
+  let parent_runs = Sync.Atomic.make 0 in
   let first_runs = Sync.Atomic.make 0 in
   let second_runs = Sync.Atomic.make 0 in
+  let plan_dependencies _registry node =
+    match Work_node.kind node with
+    | Work_node.Goal action when action = parent_action ->
+        Ok [ goal_key first_action; goal_key second_action ]
+    | Work_node.Goal _ -> Ok []
+    | _ -> unexpected_node node
+  in
   let execute _context node =
     count_goal_runs first_runs first_action node;
     count_goal_runs second_runs second_action node;
     match Work_node.kind node with
-    | Work_node.UserIntent _ ->
-        let attempt = Sync.Atomic.fetch_and_add attempts 1 in
-        if Int.equal attempt 0 then
-          Ok (Work_result.RequeueWithDependencies [ goal_key first_action; goal_key second_action ])
-        else
+    | Work_node.Goal action when action = parent_action ->
+        ignore (Sync.Atomic.fetch_and_add parent_runs 1);
+        if
+          Int.equal (Sync.Atomic.get first_runs) 1 && Int.equal (Sync.Atomic.get second_runs) 1
+        then
           Ok (Work_result.Complete [])
+        else
+          Error (Error.ExecutorInvariantViolated {
+            message = "parent ran before all planned dependencies completed";
+          })
     | Work_node.Goal _ -> Ok (Work_result.Complete [])
     | _ -> unexpected_node node
   in
-  let summary = run_executor ~parallelism:2 ~seeds:[ sample_seed () ] ~execute () in
+  let summary =
+    run_default_executor
+      ~parallelism:2
+      ~plan_dependencies
+      ~seeds:[ goal_node 10 parent_action ]
+      ~execute
+      ()
+  in
   if
-    Int.equal (Sync.Atomic.get attempts) 2
+    Int.equal (Sync.Atomic.get parent_runs) 1
     && Int.equal (Sync.Atomic.get first_runs) 1
     && Int.equal (Sync.Atomic.get second_runs) 1
     && Int.equal summary.Executor.Summary.completed_count 3
   then
     Ok ()
   else
-    Error "expected original node to rerun only after all dependencies completed"
+    Error "expected parent to run only after all dependencies completed"
 
-let test_multiple_dependency_waves = fun _ctx ->
-  let attempts = Sync.Atomic.make 0 in
-  let first_action = sample_goal "wave-a" in
-  let second_action = sample_goal "wave-b" in
+let test_waiting_node_is_not_planned_again = fun _ctx ->
+  let plan_calls = Sync.Atomic.make 0 in
+  let parent_action = sample_goal "plan-once-parent" in
+  let dependency_action = sample_goal "plan-once-dependency" in
+  let plan_dependencies _registry node =
+    match Work_node.kind node with
+    | Work_node.Goal action when action = parent_action ->
+        ignore (Sync.Atomic.fetch_and_add plan_calls 1);
+        Ok [ goal_key dependency_action ]
+    | Work_node.Goal _ -> Ok []
+    | _ -> unexpected_node node
+  in
   let execute _context node =
     match Work_node.kind node with
-    | Work_node.UserIntent _ ->
-        let attempt = Sync.Atomic.fetch_and_add attempts 1 in
-        if Int.equal attempt 0 then
-          Ok (Work_result.RequeueWithDependencies [ goal_key first_action ])
-        else if Int.equal attempt 1 then
-          Ok (Work_result.RequeueWithDependencies [ goal_key second_action ])
-        else
-          Ok (Work_result.Complete [])
     | Work_node.Goal _ -> Ok (Work_result.Complete [])
     | _ -> unexpected_node node
   in
-  let summary = run_executor ~parallelism:1 ~seeds:[ sample_seed () ] ~execute () in
+  let summary =
+    run_default_executor
+      ~parallelism:1
+      ~plan_dependencies
+      ~seeds:[ goal_node 10 parent_action ]
+      ~execute
+      ()
+  in
   if
-    Int.equal (Sync.Atomic.get attempts) 3
-    && Int.equal summary.Executor.Summary.completed_count 3
+    Int.equal (Sync.Atomic.get plan_calls) 1
+    && Int.equal summary.Executor.Summary.completed_count 2
     && Int.equal summary.failed_count 0
   then
     Ok ()
   else
-    Error "expected multiple dependency waves before final completion"
+    Error "expected waiting node dependencies to be planned exactly once"
 
-let test_completed_dependency_requeues_node_immediately = fun _ctx ->
-  let attempts = Sync.Atomic.make 0 in
+let test_completed_dependency_makes_node_ready_immediately = fun _ctx ->
+  let parent_runs = Sync.Atomic.make 0 in
+  let parent_action = sample_goal "already-done-parent" in
   let dependency_action = sample_goal "already-done" in
   let dependency = goal_node 50 dependency_action in
   mark_completed dependency;
+  let plan_dependencies _registry node =
+    match Work_node.kind node with
+    | Work_node.Goal action when action = parent_action -> Ok [ goal_key dependency_action ]
+    | Work_node.Goal _ -> Ok []
+    | _ -> unexpected_node node
+  in
   let execute _context node =
     match Work_node.kind node with
-    | Work_node.UserIntent _ ->
-        let attempt = Sync.Atomic.fetch_and_add attempts 1 in
-        if Int.equal attempt 0 then
-          Ok (Work_result.RequeueWithDependencies [ goal_key dependency_action ])
-        else
-          Ok (Work_result.Complete [])
+    | Work_node.Goal action when action = parent_action ->
+        ignore (Sync.Atomic.fetch_and_add parent_runs 1);
+        Ok (Work_result.Complete [])
     | Work_node.Goal _ -> Ok (Work_result.Complete [])
     | _ -> unexpected_node node
   in
-  let summary = run_executor ~parallelism:1 ~seeds:[ sample_seed (); dependency ] ~execute () in
+  let summary =
+    run_default_executor
+      ~parallelism:1
+      ~plan_dependencies
+      ~seeds:[ goal_node 10 parent_action; dependency ]
+      ~execute
+      ()
+  in
   if
-    Int.equal (Sync.Atomic.get attempts) 2
+    Int.equal (Sync.Atomic.get parent_runs) 1
     && Int.equal summary.Executor.Summary.completed_count 1
     && Int.equal summary.failed_count 0
   then
     Ok ()
   else
-    Error "expected already-completed dependency to immediately requeue dependent"
+    Error "expected already-completed dependency to make dependent ready immediately"
 
 let test_duplicate_dependencies_do_not_duplicate_edges_or_runs = fun _ctx ->
-  let attempts = Sync.Atomic.make 0 in
+  let parent_action = sample_goal "duplicate-parent" in
   let dependency_runs = Sync.Atomic.make 0 in
   let dependency_action = sample_goal "duplicate-dependency" in
+  let plan_dependencies _registry node =
+    match Work_node.kind node with
+    | Work_node.Goal action when action = parent_action ->
+        Ok [ goal_key dependency_action; goal_key dependency_action ]
+    | Work_node.Goal _ -> Ok []
+    | _ -> unexpected_node node
+  in
   let execute _context node =
     match Work_node.kind node with
-    | Work_node.UserIntent _ ->
-        let attempt = Sync.Atomic.fetch_and_add attempts 1 in
-        if Int.equal attempt 0 then
-          Ok (Work_result.RequeueWithDependencies [
-            goal_key dependency_action;
-            goal_key dependency_action;
-          ])
-        else
-          Ok (Work_result.Complete [])
     | Work_node.Goal action ->
         if action = dependency_action then
           ignore (Sync.Atomic.fetch_and_add dependency_runs 1);
         Ok (Work_result.Complete [])
     | _ -> unexpected_node node
   in
-  let seed = sample_seed () in
-  let summary = run_executor ~parallelism:1 ~seeds:[ seed ] ~execute () in
+  let seed = goal_node 10 parent_action in
+  let summary =
+    run_default_executor ~parallelism:1 ~plan_dependencies ~seeds:[ seed ] ~execute ()
+  in
   match find_goal_node summary dependency_action with
   | None -> Error "expected dependency to be interned"
   | Some dependency ->
@@ -654,16 +714,25 @@ let test_duplicate_dependencies_do_not_duplicate_edges_or_runs = fun _ctx ->
         Error "expected duplicate dependencies to deduplicate edges and execution"
 
 let test_failed_dependency_fails_dependent = fun _ctx ->
+  let parent_action = sample_goal "failed-dependent" in
   let dependency_action = sample_goal "dependency" in
-  let execute _context node =
+  let plan_dependencies _registry node =
     match Work_node.kind node with
-    | Work_node.UserIntent _ ->
-        Ok (Work_result.RequeueWithDependencies [ goal_key dependency_action ])
-    | Work_node.Goal _ -> Error (Error.IntentPlanningFailed { reason = "dependency failed" })
+    | Work_node.Goal action when action = parent_action -> Ok [ goal_key dependency_action ]
+    | Work_node.Goal _ -> Ok []
     | _ -> unexpected_node node
   in
-  let seed = sample_seed () in
-  let summary = run_executor ~parallelism:1 ~seeds:[ seed ] ~execute () in
+  let execute _context node =
+    match Work_node.kind node with
+    | Work_node.Goal action when action = dependency_action ->
+        Error (Error.IntentPlanningFailed { reason = "dependency failed" })
+    | Work_node.Goal _ -> Ok (Work_result.Complete [])
+    | _ -> unexpected_node node
+  in
+  let seed = goal_node 10 parent_action in
+  let summary =
+    run_default_executor ~parallelism:1 ~plan_dependencies ~seeds:[ seed ] ~execute ()
+  in
   match find_goal_node summary dependency_action with
   | None -> Error "expected dependency to be interned"
   | Some dependency ->
@@ -676,6 +745,49 @@ let test_failed_dependency_fails_dependent = fun _ctx ->
         Ok ()
       else
         Error "expected failed dependency to fail the dependent node"
+
+let test_execution_time_dependency_requeue_waits_for_dependencies = fun _ctx ->
+  let attempts = Sync.Atomic.make 0 in
+  let events = Queue.create () in
+  let dependency_action = sample_goal "execution-time-dependency" in
+  let execute _context node =
+    match Work_node.kind node with
+    | Work_node.Goal action when action = dependency_action -> Ok (Work_result.Complete [])
+    | Work_node.Goal _ ->
+        let attempt = Sync.Atomic.fetch_and_add attempts 1 in
+        if Int.equal attempt 0 then
+          Ok (Work_result.RequeueWithDependencies [ goal_key dependency_action ])
+        else
+          Ok (Work_result.Complete [])
+    | _ -> unexpected_node node
+  in
+  let seed = goal_node 10 (sample_goal "execution-time-parent") in
+  let summary =
+    run_executor
+      ~parallelism:1
+      ~on_event:(fun event -> Queue.push events ~value:event)
+      ~seeds:[ seed ]
+      ~execute
+      ()
+  in
+  if not (Int.equal (Sync.Atomic.get attempts) 2) then
+    Error "expected execution-time dependency requeue to run the parent twice"
+  else if not
+    (
+      event_kind_present
+        events
+        ~fn:(fun __tmp1 ->
+          match __tmp1 with
+          | Event.WorkRequeued _ -> true
+          | _ -> false)
+    ) then
+    Error "expected execution-time dependency requeue event"
+  else if
+    Int.equal summary.Executor.Summary.completed_count 2 && Int.equal summary.failed_count 0
+  then
+    Ok ()
+  else
+    Error "expected execution-time dependency requeue to complete parent and dependency"
 
 let test_independent_work_continues_after_failure = fun _ctx ->
   let fail_action = sample_goal "fail" in
@@ -723,21 +835,23 @@ let test_worker_exception_is_materialized_as_error = fun _ctx ->
   | _ -> Error "expected one failed result"
 
 let test_no_node_remains_running_after_return = fun _ctx ->
+  let parent_action = sample_goal "state-parent" in
   let dependency_action = sample_goal "state-dependency" in
-  let attempts = Sync.Atomic.make 0 in
+  let plan_dependencies _registry node =
+    match Work_node.kind node with
+    | Work_node.Goal action when action = parent_action -> Ok [ goal_key dependency_action ]
+    | Work_node.Goal _ -> Ok []
+    | _ -> unexpected_node node
+  in
   let execute _context node =
     match Work_node.kind node with
-    | Work_node.UserIntent _ ->
-        let attempt = Sync.Atomic.fetch_and_add attempts 1 in
-        if Int.equal attempt 0 then
-          Ok (Work_result.RequeueWithDependencies [ goal_key dependency_action ])
-        else
-          Ok (Work_result.Complete [])
     | Work_node.Goal _ -> Ok (Work_result.Complete [])
     | _ -> unexpected_node node
   in
-  let seed = sample_seed () in
-  let summary = run_executor ~parallelism:1 ~seeds:[ seed ] ~execute () in
+  let seed = goal_node 10 parent_action in
+  let summary =
+    run_default_executor ~parallelism:1 ~plan_dependencies ~seeds:[ seed ] ~execute ()
+  in
   match find_goal_node summary dependency_action with
   | None -> Error "expected dependency to be interned"
   | Some dependency ->
@@ -749,7 +863,7 @@ let test_no_node_remains_running_after_return = fun _ctx ->
       else
         Error "expected no node to remain Running after runner returns"
 
-let test_non_pending_seed_is_not_executed = fun _ctx ->
+let test_completed_seed_is_not_executed = fun _ctx ->
   let calls = Sync.Atomic.make 0 in
   let seed = sample_seed () in
   mark_completed seed;
@@ -765,7 +879,7 @@ let test_non_pending_seed_is_not_executed = fun _ctx ->
   then
     Ok ()
   else
-    Error "expected non-pending queued seed not to execute"
+    Error "expected completed queued seed not to execute"
 
 let test_unsupported_spawned_key_fails_node = fun _ctx ->
   let seed = sample_seed () in
@@ -822,24 +936,27 @@ let tests =
       "concrete node waits for planned dependencies before execution"
       test_concrete_node_waits_for_planned_dependencies_before_execution;
     case
-      "requeue with dependencies reruns after dependency completes"
-      test_requeue_with_dependencies_reruns_after_dependency_completes;
+      "planned dependency runs dependent after dependency completes"
+      test_planned_dependency_runs_dependent_after_dependency_completes;
     case
       "multiple dependencies wait for all to complete"
       test_multiple_dependencies_wait_for_all_to_complete;
-    case "multiple dependency waves" test_multiple_dependency_waves;
+    case "waiting node is not planned again" test_waiting_node_is_not_planned_again;
     case
-      "completed dependency requeues node immediately"
-      test_completed_dependency_requeues_node_immediately;
+      "completed dependency makes node ready immediately"
+      test_completed_dependency_makes_node_ready_immediately;
     case
       "duplicate dependencies do not duplicate edges or runs"
       test_duplicate_dependencies_do_not_duplicate_edges_or_runs;
     case "failed dependency fails dependent" test_failed_dependency_fails_dependent;
+    case
+      "execution-time dependency requeue waits for dependencies"
+      test_execution_time_dependency_requeue_waits_for_dependencies;
     case "independent work continues after failure" test_independent_work_continues_after_failure;
     case "returned error is preserved in summary" test_returned_error_is_preserved_in_summary;
     case "worker exception is materialized as error" test_worker_exception_is_materialized_as_error;
     case "no node remains running after return" test_no_node_remains_running_after_return;
-    case "non-pending seed is not executed" test_non_pending_seed_is_not_executed;
+    case "completed seed is not executed" test_completed_seed_is_not_executed;
     case "unsupported spawned key fails node" test_unsupported_spawned_key_fails_node;
   ]
 

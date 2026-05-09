@@ -15,7 +15,9 @@ module Node_id: sig
 end
 
 type status =
-  | Pending
+  | Unplanned
+  | Waiting
+  | Ready
   | Running
   | Completed
   | Failed
@@ -94,9 +96,11 @@ val pending_dependency_count: t -> int
 
 val dependencies_ready: t -> bool
 
-val mark_as_running: t -> unit
+val mark_as_waiting: t -> unit
 
-val mark_as_pending: t -> unit
+val mark_as_ready: t -> unit
+
+val mark_as_running: t -> unit
 
 val mark_as_completed: t -> unit
 

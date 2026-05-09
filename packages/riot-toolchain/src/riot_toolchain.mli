@@ -65,6 +65,15 @@ val hash: t -> Crypto.hash
 val get_host_triple: unit -> Riot_model.Target.t
 
 (** Get the current host architecture triple *)
+(**
+   Build the expected toolchain identity for a target without validating,
+   downloading, or otherwise readying it.
+*)
+val from_config_for_target:
+  config:Riot_model.Toolchain_config.t ->
+  target:Riot_model.Target.t ->
+  t
+
 val init_for_target:
   config:Riot_model.Toolchain_config.t ->
   target:Riot_model.Target.t ->

@@ -18,7 +18,9 @@ module Node_id = struct
 end
 
 type status =
-  | Pending
+  | Unplanned
+  | Waiting
+  | Ready
   | Running
   | Completed
   | Failed
@@ -97,7 +99,7 @@ let create = fun ~id ?key kind ->
     id;
     key;
     kind;
-    status = Atomic.make Pending;
+    status = Atomic.make Unplanned;
     dependencies = ConcurrentHashMap.with_capacity ~size:16;
     dependents = ConcurrentHashMap.with_capacity ~size:16;
     pending_dependencies = Atomic.make 0;
@@ -136,7 +138,9 @@ let status = fun node -> Atomic.get node.status
 
 let status_to_string = fun __tmp1 ->
   match __tmp1 with
-  | Pending -> "Pending"
+  | Unplanned -> "Unplanned"
+  | Waiting -> "Waiting"
+  | Ready -> "Ready"
   | Running -> "Running"
   | Completed -> "Completed"
   | Failed -> "Failed"
@@ -151,11 +155,17 @@ let invalid_transition_message = fun node ~from ~to_ ->
 
 let valid_transition = fun ~from ~to_ ->
   match (from, to_) with
-  | (Pending, Running)
-  | (Running, Pending)
-  | (Pending, Completed)
+  | (Unplanned, Waiting)
+  | (Unplanned, Ready)
+  | (Unplanned, Failed)
+  | (Waiting, Ready)
+  | (Waiting, Failed)
+  | (Ready, Running)
+  | (Ready, Completed)
+  | (Ready, Failed)
+  | (Running, Waiting)
+  | (Running, Ready)
   | (Running, Completed)
-  | (Pending, Failed)
   | (Running, Failed) -> true
   | _ -> false
 
@@ -180,9 +190,11 @@ let pending_dependency_count = fun node -> Atomic.get node.pending_dependencies
 
 let dependencies_ready = fun node -> Int.equal (pending_dependency_count node) 0
 
-let mark_as_running = fun node -> transition node ~to_:Running
+let mark_as_waiting = fun node -> transition node ~to_:Waiting
 
-let mark_as_pending = fun node -> transition node ~to_:Pending
+let mark_as_ready = fun node -> transition node ~to_:Ready
+
+let mark_as_running = fun node -> transition node ~to_:Running
 
 let mark_as_completed = fun node -> transition node ~to_:Completed
 

@@ -14,6 +14,8 @@ let create = fun ~root () -> {
 
 let find = fun t target -> ConcurrentHashMap.get t.toolchains ~key:target
 
+let expected = fun t target -> Riot_toolchain.from_config_for_target ~config:t.config ~target
+
 let ensure = fun t (toolchain: Toolchain_ready.t) ->
   match find t toolchain.target with
   | Some _ -> Ok ()

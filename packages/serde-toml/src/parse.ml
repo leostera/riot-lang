@@ -31,7 +31,7 @@ module Builder = struct
   let create_table = fun () -> { order = Vector.create (); values = HashMap.create () }
 
   let set_field = fun table key value ->
-    if not (HashMap.contains_key table.values key) then
+    if not (HashMap.has_key table.values ~key) then
       Vector.push table.order ~value:key;
     let _ = HashMap.insert table.values ~key ~value in
     ()

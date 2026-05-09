@@ -5,6 +5,7 @@ module Goal = Goal
 module Package_catalog = Package_catalog
 module Config = Build_config
 module Build_result = Build_result
+module Action_execution = Action_execution
 module Build_services = Build_services
 module Action_executor = Action_executor
 module Error = Error
@@ -31,12 +32,7 @@ let create_executor: config:Config.t -> unit -> (t, Error.t) result = fun ~confi
 
 let execute: t -> User_intent.t -> (Build_result.t, Error.t) result = fun t intent ->
   let seed = Work_node.user_intent ~id:(Work_node.Node_id.from_int 1) intent in
-  let summary =
-    Executor.run
-      ~services:t
-      ~seeds:[ seed ]
-      ()
-  in
+  let summary = Executor.run ~services:t ~seeds:[ seed ] () in
   let packages = Build_services.package_results t in
   Ok Build_result.{ packages; summary }
 

@@ -20,15 +20,18 @@ let missing = fun t ~package tasks ->
       | None -> Some (Source_analysis.make ~package ~task))
 
 let execute = fun t (source: Source_analysis.t) ->
-  match Riot_planner.Module_graph.analyze_source source.task with
-  | Ok analysis ->
-      ignore (ConcurrentHashMap.insert t.analyses ~key:source.key ~value:analysis);
-      Ok ()
-  | Error error ->
-      Error (Error.SourceAnalysisFailed {
-        source = source.task.task_display_path;
-        reason = Riot_planner.Planning_error.to_string error;
-      })
+  match find t source.key with
+  | Some _ -> Ok ()
+  | None ->
+      match Riot_planner.Module_graph.analyze_source source.task with
+      | Ok analysis ->
+          ignore (ConcurrentHashMap.insert t.analyses ~key:source.key ~value:analysis);
+          Ok ()
+      | Error error ->
+          Error (Error.SourceAnalysisFailed {
+            source = source.task.task_display_path;
+            reason = Riot_planner.Planning_error.to_string error;
+          })
 
 let analyze_from_cache = fun t package ~on_source_analyzed tasks ->
   let source_count = List.length tasks in

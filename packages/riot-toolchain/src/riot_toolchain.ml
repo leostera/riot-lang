@@ -50,6 +50,23 @@ let get_toolchain_path_for_target = fun version target ->
 
 let local_compiler_path = fun () -> Path.v "./vendor/ocaml/compiler"
 
+let source_from_config = fun (config: Riot_model.Toolchain_config.t) ->
+  match config.source with
+  | Riot_model.Toolchain_config.Version v -> Version v
+  | Riot_model.Toolchain_config.Path p -> Path p
+  | Riot_model.Toolchain_config.Url u -> Url u
+
+let source_for_target = fun ~config ~target ->
+  let source = source_from_config config in
+  let host = get_host_triple () in
+  let local_compiler = local_compiler_path () in
+  if Riot_model.Target.equal target host then
+    match Fs.is_dir local_compiler with
+    | Ok true -> Path local_compiler
+    | _ -> source
+  else
+    source
+
 let make_toolchain = fun version source ~target ->
   let toolchain_path = get_toolchain_path_for_target version target in
   let bin_dir = Path.(toolchain_path / Path.v "bin") in
@@ -62,6 +79,11 @@ let make_toolchain = fun version source ~target ->
     ocamlopt = bin_path "ocamlopt.opt";
     ocamldep = Ocamldep.make (bin_path "ocamldep.opt");
   }
+
+let from_config_for_target = fun ~config ~target ->
+  let version = config.Riot_model.Toolchain_config.version in
+  let source = source_for_target ~config ~target in
+  make_toolchain version source ~target
 
 let ocamlc = fun t -> t.ocamlc
 
@@ -537,22 +559,9 @@ let hash = fun t ->
 (** Initialize toolchain for a specific target architecture *)
 let init_for_target = fun ~config ~target ->
   let version = config.Riot_model.Toolchain_config.version in
-  let source =
-    match config.source with
-    | Riot_model.Toolchain_config.Version v -> Version v
-    | Riot_model.Toolchain_config.Path p -> Path p
-    | Riot_model.Toolchain_config.Url u -> Url u
-  in
+  let source = source_for_target ~config ~target in
   let host = get_host_triple () in
   let local_compiler = local_compiler_path () in
-  let source =
-    if Riot_model.Target.equal target host then
-      match Fs.is_dir local_compiler with
-      | Ok true -> Path local_compiler
-      | _ -> source
-    else
-      source
-  in
   let toolchain_path = get_toolchain_path_for_target version target in
   let bin_dir = Path.(toolchain_path / Path.v "bin") in
   let validate () = validate_toolchain_install ~version ~target ~source in

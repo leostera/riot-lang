@@ -99,23 +99,20 @@ let realized_dependency_packages = fun t ~scope ~intent (package: Riot_model.Pac
   loop [] (Riot_model.Package.dependencies_for_scope scope package)
 
 let source_dependency_keys = fun t registry (build: Goal.build_package) ->
-  if not (Package_planning.toolchain_ready t.package_planning build.target) then
-    Ok [ Work_node.ToolchainReadyKey { target = build.target } ]
-  else
-    let* depset = Package_planning.depset t.package_planning build in
-    let* input = Package_planning.resolve ~depset t.package_planning build in
-    let package = input.package in
-    let tasks =
-      package_source_tasks t ~package ~toolchain:input.toolchain ~build_ctx:input.build_ctx
-    in
-    let missing = Source_analyzer.missing t.source_analyzer ~package:package.name tasks in
-    Ok (
-      List.map
-        missing
-        ~fn:(fun source ->
-          ignore (Work_registry.intern_source_analysis registry source);
-          Work_node.SourceAnalysisKey source.Source_analysis.key)
-    )
+  let* depset = Package_planning.depset t.package_planning build in
+  let* input = Package_planning.resolve ~depset t.package_planning build in
+  let package = input.package in
+  let tasks =
+    package_source_tasks t ~package ~toolchain:input.toolchain ~build_ctx:input.build_ctx
+  in
+  let missing = Source_analyzer.missing t.source_analyzer ~package:package.name tasks in
+  Ok (
+    List.map
+      missing
+      ~fn:(fun source ->
+        ignore (Work_registry.intern_source_analysis registry source);
+        Work_node.SourceAnalysisKey source.Source_analysis.key)
+  )
 
 let plan_dependencies = fun t registry build ->
   match find t build with
@@ -197,10 +194,4 @@ let plan = fun t _registry (build: Goal.build_package) ->
 let execute = fun t registry (build: Goal.build_package) ->
   match find t build with
   | Some _ -> Ok (Work_result.Complete [])
-  | None ->
-      if Package_planning.toolchain_ready t.package_planning build.target then
-        plan t registry build
-      else
-        Error (Error.ExecutorInvariantViolated {
-          message = "module planning started before toolchain dependency completed";
-        })
+  | None -> plan t registry build

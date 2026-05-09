@@ -72,7 +72,7 @@ let test = fun
     targets;
   }
 
-let run = fun ~runnable ?(args = []) ?(profile = Profile.debug) ?(target = Target.current) () ->
+let run = fun ~runnable ?(args = []) ?(profile = Profile.release) ?(target = Target.current) () ->
   Run {
     runnable;
     args;

@@ -38,6 +38,4 @@ val resolve:
   Goal.build_package ->
   (input, Error.t) result
 
-val toolchain_ready: t -> Riot_model.Target.t -> bool
-
 val cached_artifact: t -> Goal.build_package -> (artifact_hit option, Error.t) result

@@ -17,3 +17,4 @@
 11. Post-build generation recording must stay cheap on repeated warm builds. `state.bin` is the authoritative generation-recency index.
 12. Inside `riot-store`, lane targets should stay typed as `Riot_model.Target.t`. Only stringify them when encoding receipts/state or deriving on-disk lane paths.
 13. Artifact manifests record both `input_hash` and `output_hash`: use `input_hash` as the cache lookup/materialization key, and `output_hash` as the produced-content fingerprint that downstream planners consume.
+14. Incremental graph node payload storage is generic and opaque here. Planner/build packages own payload codecs and invalidation semantics; `riot-store` owns namespaced hash-addressed persistence.

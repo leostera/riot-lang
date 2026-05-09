@@ -72,6 +72,28 @@ let ensure_parent_dir = fun path ->
   | Some dir -> Fs.create_dir_all dir
   | None -> Ok ()
 
+let action_step_requires_toolchain = fun action ->
+  match action with
+  | Riot_planner.Action.CompileInterface _
+  | CompileImplementation _
+  | GenerateInterface _
+  | CompileC _
+  | CreateLibrary _
+  | CreateExecutable _
+  | CreateSharedLibrary _ -> true
+  | CopyFile _
+  | WriteFile _
+  | BuildForeignDependency _ -> false
+
+let action_node_requires_toolchain = fun node ->
+  (Riot_planner.Action_node.value node).actions
+  |> List.any ~fn:action_step_requires_toolchain
+
+let with_toolchain = fun ocamlc fn ->
+  match ocamlc with
+  | None -> ocamlc_failed "toolchain was not ready before compiler action execution"
+  | Some ocamlc -> fn ocamlc
+
 let run_action = fun ?c_compiler ocamlc sandbox_dir action ->
   match action with
   | Riot_planner.Action.CompileInterface {
@@ -80,65 +102,80 @@ let run_action = fun ?c_compiler ocamlc sandbox_dir action ->
       includes;
       flags;
     } ->
-      Riot_toolchain.Ocamlc.compile_interface
+      with_toolchain
         ocamlc
-        ~cwd:sandbox_dir
-        ~includes:(resolve_include_paths sandbox_dir includes)
-        ~flags:(make_flags_absolute sandbox_dir flags)
-        ~output:(Path.join sandbox_dir output)
-        (Path.join sandbox_dir source)
-      |> Riot_toolchain.Ocamlc.run
+        (fun ocamlc ->
+          Riot_toolchain.Ocamlc.compile_interface
+            ocamlc
+            ~cwd:sandbox_dir
+            ~includes:(resolve_include_paths sandbox_dir includes)
+            ~flags:(make_flags_absolute sandbox_dir flags)
+            ~output:(Path.join sandbox_dir output)
+            (Path.join sandbox_dir source)
+          |> Riot_toolchain.Ocamlc.run)
   | CompileImplementation {
       source;
       outputs = output :: _;
       includes;
       flags;
     } ->
-      Riot_toolchain.Ocamlc.compile_impl
+      with_toolchain
         ocamlc
-        ~cwd:sandbox_dir
-        ~includes:(resolve_include_paths sandbox_dir includes)
-        ~flags:(make_flags_absolute sandbox_dir flags)
-        ~output:(Path.join sandbox_dir output)
-        (Path.join sandbox_dir source)
-      |> Riot_toolchain.Ocamlc.run
+        (fun ocamlc ->
+          Riot_toolchain.Ocamlc.compile_impl
+            ocamlc
+            ~cwd:sandbox_dir
+            ~includes:(resolve_include_paths sandbox_dir includes)
+            ~flags:(make_flags_absolute sandbox_dir flags)
+            ~output:(Path.join sandbox_dir output)
+            (Path.join sandbox_dir source)
+          |> Riot_toolchain.Ocamlc.run)
   | GenerateInterface {
       source;
       outputs = output :: _;
       includes;
       flags;
     } ->
-      Riot_toolchain.Ocamlc.generate_interface
+      with_toolchain
         ocamlc
-        ~cwd:sandbox_dir
-        ~includes:(resolve_include_paths sandbox_dir includes)
-        ~flags:(make_flags_absolute sandbox_dir flags)
-        ~output:(Path.join sandbox_dir output)
-        (Path.join sandbox_dir source)
-      |> Riot_toolchain.Ocamlc.run
+        (fun ocamlc ->
+          Riot_toolchain.Ocamlc.generate_interface
+            ocamlc
+            ~cwd:sandbox_dir
+            ~includes:(resolve_include_paths sandbox_dir includes)
+            ~flags:(make_flags_absolute sandbox_dir flags)
+            ~output:(Path.join sandbox_dir output)
+            (Path.join sandbox_dir source)
+          |> Riot_toolchain.Ocamlc.run)
   | CompileC { source; outputs = output :: _; ccflags } ->
-      let source_dir =
-        match Path.parent source with
-        | Some dir -> [ Path.join sandbox_dir dir ]
-        | None -> [ sandbox_dir ]
-      in
-      Riot_toolchain.Ocamlc.compile_c
+      with_toolchain
         ocamlc
-        ~cwd:sandbox_dir
-        ~includes:source_dir
-        ?cc:c_compiler
-        ~ccflags
-        ~output:(Path.join sandbox_dir output)
-        (Path.join sandbox_dir source)
-      |> Riot_toolchain.Ocamlc.run
+        (fun ocamlc ->
+          let source_dir =
+            match Path.parent source with
+            | Some dir -> [ Path.join sandbox_dir dir ]
+            | None -> [ sandbox_dir ]
+          in
+          Riot_toolchain.Ocamlc.compile_c
+            ocamlc
+            ~cwd:sandbox_dir
+            ~includes:source_dir
+            ?cc:c_compiler
+            ~ccflags
+            ~output:(Path.join sandbox_dir output)
+            (Path.join sandbox_dir source)
+          |> Riot_toolchain.Ocamlc.run)
   | CreateLibrary { outputs = output :: _; objects; includes } ->
-      Riot_toolchain.Ocamlc.create_library
+      with_toolchain
         ocamlc
-        ~cwd:sandbox_dir
-        ~includes:(resolve_include_paths sandbox_dir includes)
-        ~output:(Path.join sandbox_dir output)
-        objects
-      |> Riot_toolchain.Ocamlc.run
+        (fun ocamlc ->
+          Riot_toolchain.Ocamlc.create_library
+            ocamlc
+            ~cwd:sandbox_dir
+            ~includes:(resolve_include_paths sandbox_dir includes)
+            ~output:(Path.join sandbox_dir output)
+            objects
+          |> Riot_toolchain.Ocamlc.run)
   | CreateExecutable {
       outputs = output :: _;
       objects;
@@ -148,18 +185,21 @@ let run_action = fun ?c_compiler ocamlc sandbox_dir action ->
       ccopt_flags;
       cclib_flags;
     } ->
-      Riot_toolchain.Ocamlc.create_executable
+      with_toolchain
         ocamlc
-        ~cwd:sandbox_dir
-        ~includes:(resolve_include_paths sandbox_dir includes)
-        ~libs:libraries
-        ?cc:c_compiler
-        ~cclibs
-        ~ccopt_flags
-        ~cclib_flags
-        ~output:(Path.join sandbox_dir output)
-        (List.map objects ~fn:(Path.join sandbox_dir))
-      |> Riot_toolchain.Ocamlc.run
+        (fun ocamlc ->
+          Riot_toolchain.Ocamlc.create_executable
+            ocamlc
+            ~cwd:sandbox_dir
+            ~includes:(resolve_include_paths sandbox_dir includes)
+            ~libs:libraries
+            ?cc:c_compiler
+            ~cclibs
+            ~ccopt_flags
+            ~cclib_flags
+            ~output:(Path.join sandbox_dir output)
+            (List.map objects ~fn:(Path.join sandbox_dir))
+          |> Riot_toolchain.Ocamlc.run)
   | CreateSharedLibrary {
       outputs = output :: _;
       objects;
@@ -169,18 +209,21 @@ let run_action = fun ?c_compiler ocamlc sandbox_dir action ->
       ccopt_flags;
       cclib_flags;
     } ->
-      Riot_toolchain.Ocamlc.create_shared_library
+      with_toolchain
         ocamlc
-        ~cwd:sandbox_dir
-        ~includes:(resolve_include_paths sandbox_dir includes)
-        ~libs:libraries
-        ?cc:c_compiler
-        ~cclibs
-        ~ccopt_flags
-        ~cclib_flags
-        ~output:(Path.join sandbox_dir output)
-        (List.map objects ~fn:(Path.join sandbox_dir))
-      |> Riot_toolchain.Ocamlc.run
+        (fun ocamlc ->
+          Riot_toolchain.Ocamlc.create_shared_library
+            ocamlc
+            ~cwd:sandbox_dir
+            ~includes:(resolve_include_paths sandbox_dir includes)
+            ~libs:libraries
+            ?cc:c_compiler
+            ~cclibs
+            ~ccopt_flags
+            ~cclib_flags
+            ~output:(Path.join sandbox_dir output)
+            (List.map objects ~fn:(Path.join sandbox_dir))
+          |> Riot_toolchain.Ocamlc.run)
   | CopyFile { source; destination } ->
       let src =
         if Path.is_absolute source then
@@ -265,8 +308,8 @@ let execute_uncached = fun t (action: Action_execution.t) toolchain action_input
     |> Result.map_err
       ~fn:(fun reason -> Error.ActionExecutionFailed { package = package.name; reason })
   in
-  let ocamlc = Riot_toolchain.ocamlc toolchain in
-  let c_compiler = Riot_toolchain.c_compiler toolchain in
+  let ocamlc = Option.map toolchain ~fn:Riot_toolchain.ocamlc in
+  let c_compiler = Option.and_then toolchain ~fn:Riot_toolchain.c_compiler in
   let rec run_all warnings = fun __tmp1 ->
     match __tmp1 with
     | [] -> Ok warnings
@@ -319,47 +362,55 @@ let promote_cached = fun t (action: Action_execution.t) (artifact: Riot_store.Ar
         };
       Ok (Work_result.Complete [])
 
-let execute = fun t (action: Action_execution.t) ->
-  let missing =
-    action.dependencies
-    |> List.filter ~fn:(fun ref_ -> Option.is_none (find_result t ref_))
-  in
-  if not (List.is_empty missing) then
-    Ok (Work_result.RequeueWithDependencies (List.map missing ~fn:action_dependency_key))
-  else
-    let failed =
-      action.dependencies
-      |> List.filter_map ~fn:(failure t)
-    in
-    match failed with
-    | reason :: _ ->
-        let package = action.ref_.package in
-        store_result
-          t
-          {
-            Action_execution.ref_ = action.ref_;
-            status = Action_execution.Failed reason;
-            ocamlc_warnings = [];
-          };
-        Error (Error.ActionExecutionFailed { package; reason })
-    | [] ->
-        match Toolchain_service.find t.toolchains action.ref_.target with
+let dependency_output_hashes = fun t (action: Action_execution.t) ->
+  let package = action.ref_.package in
+  let rec loop acc = fun __tmp1 ->
+    match __tmp1 with
+    | [] -> Ok (List.reverse acc)
+    | ref_ :: rest ->
+        match find_result t ref_ with
         | None ->
-            Error (Error.ToolchainFailed {
-              target = action.ref_.target;
-              reason = "toolchain was not ready before action execution";
+            Error (Error.ExecutorInvariantViolated {
+              message = "action execution for "
+              ^ Riot_model.Package_name.to_string package
+              ^ " started before planned action dependency completed";
             })
-        | Some toolchain ->
-            let dependency_output_hashes =
-              action.dependencies
-              |> List.filter_map
-                ~fn:(fun ref_ ->
-                  artifact t ref_
-                  |> Option.map ~fn:(fun artifact -> artifact.Riot_store.Artifact.output_hash))
-            in
-            let action_input_hash =
-              compute_action_input_hash ~planned_hash:action.ref_.hash ~dependency_output_hashes
-            in
-            match Riot_store.Store.get_action t.store action_input_hash with
-            | Some artifact -> promote_cached t action artifact
-            | None -> execute_uncached t action toolchain action_input_hash
+        | Some { Action_execution.status = Failed reason; _ } ->
+            Error (Error.ActionExecutionFailed { package; reason })
+        | Some result ->
+            match Action_execution.artifact result with
+            | None ->
+                Error (Error.ExecutorInvariantViolated {
+                  message = "completed action dependency had no artifact";
+                })
+            | Some artifact -> loop (artifact.Riot_store.Artifact.output_hash :: acc) rest
+  in
+  loop [] action.dependencies
+
+let execute = fun t (action: Action_execution.t) ->
+  match find_result t action.ref_ with
+  | Some _ -> Ok (Work_result.Complete [])
+  | None ->
+      let missing =
+        action.dependencies
+        |> List.filter ~fn:(fun ref_ -> Option.is_none (find_result t ref_))
+      in
+      if not (List.is_empty missing) then
+        Ok (Work_result.RequeueWithDependencies (List.map missing ~fn:action_dependency_key))
+      else
+        let* dependency_output_hashes = dependency_output_hashes t action in
+        let action_input_hash =
+          compute_action_input_hash ~planned_hash:action.ref_.hash ~dependency_output_hashes
+        in
+        match Riot_store.Store.get_action t.store action_input_hash with
+        | Some artifact -> promote_cached t action artifact
+        | None ->
+            if action_node_requires_toolchain action.action then
+              match Toolchain_service.find t.toolchains action.ref_.target with
+              | Some toolchain -> execute_uncached t action (Some toolchain) action_input_hash
+              | None ->
+                  Ok (Work_result.RequeueWithDependencies [
+                    Work_node.ToolchainReadyKey { target = action.ref_.target };
+                  ])
+            else
+              execute_uncached t action None action_input_hash

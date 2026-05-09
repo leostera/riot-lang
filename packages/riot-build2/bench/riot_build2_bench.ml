@@ -62,12 +62,6 @@ let actions = fun count ->
   in
   loop 0 []
 
-let rec list_nth = fun values index ->
-  match (values, index) with
-  | (value :: _, 0) -> Some value
-  | (_ :: rest, _) -> list_nth rest (index - 1)
-  | ([], _) -> None
-
 let seed = fun () ->
   Work_node.user_intent
     ~id:(node_id 1)
@@ -239,55 +233,67 @@ let make_executor_spawn_actions_bench = fun ~count ~parallelism ->
 let make_executor_dependency_fanout_bench = fun ~count ~parallelism ->
   let goal_list = actions count in
   fun () ->
-    let attempts = Sync.Atomic.make 0 in
+    let plan_dependencies _registry node =
+      match Work_node.kind node with
+      | Work_node.UserIntent _ ->
+          Ok (List.map goal_list ~fn:(fun action -> Work_node.GoalKey action))
+      | Work_node.Goal _ -> Ok []
+      | _ -> unexpected_node node
+    in
     let summary =
       Executor.Runner.run_with_handlers
         ~config:(executor_config parallelism)
         ~execution_mode:concrete_execution_mode
+        ~plan_dependencies
         ~seeds:[ seed () ]
         ~execute:(fun _context node ->
           match Work_node.kind node with
-          | Work_node.UserIntent _ ->
-              let attempt = Sync.Atomic.fetch_and_add attempts 1 in
-              if Int.equal attempt 0 then
-                let dependencies =
-                  List.map goal_list ~fn:(fun action -> Work_node.GoalKey action)
-                in
-                Ok (Work_result.RequeueWithDependencies dependencies)
-              else
-                Ok (Work_result.Complete [])
+          | Work_node.UserIntent _
           | Work_node.Goal _ -> Ok (Work_result.Complete [])
           | _ -> unexpected_node node)
         ()
     in
     expect_no_failures "dependency fanout" summary (Int.succ count)
 
-let make_executor_dependency_waves_bench = fun ~waves ->
-  let goal_list = actions waves in
+let make_executor_dependency_chain_bench = fun ~count ->
+  let goal_list = actions count in
+  let rec next_dependency = fun action actions ->
+    match actions with
+    | current :: next :: _ when current = action -> Some next
+    | _ :: rest -> next_dependency action rest
+    | [] -> None
+  in
+  let intent_dependencies =
+    match goal_list with
+    | first :: _ -> Ok [ Work_node.GoalKey first ]
+    | [] -> Ok []
+  in
+  let action_dependencies = fun action ->
+    match next_dependency action goal_list with
+    | Some dependency -> Ok [ Work_node.GoalKey dependency ]
+    | None -> Ok []
+  in
   fun () ->
-    let attempts = Sync.Atomic.make 0 in
+    let plan_dependencies _registry node =
+      match Work_node.kind node with
+      | Work_node.UserIntent _ -> intent_dependencies
+      | Work_node.Goal action -> action_dependencies action
+      | _ -> unexpected_node node
+    in
     let summary =
       Executor.Runner.run_with_handlers
         ~config:(executor_config 1)
         ~execution_mode:concrete_execution_mode
+        ~plan_dependencies
         ~seeds:[ seed () ]
         ~execute:(fun _context node ->
           match Work_node.kind node with
-          | Work_node.UserIntent _ ->
-              let attempt = Sync.Atomic.fetch_and_add attempts 1 in
-              if attempt < waves then
-                let action =
-                  list_nth goal_list attempt
-                  |> Option.expect ~msg:"dependency wave action should exist"
-                in
-                Ok (Work_result.RequeueWithDependencies [ Work_node.GoalKey action ])
-              else
-                Ok (Work_result.Complete [])
+          | Work_node.UserIntent _
           | Work_node.Goal _ -> Ok (Work_result.Complete [])
           | _ -> unexpected_node node)
         ()
     in
-    expect_no_failures "dependency waves" summary (Int.succ waves)
+    expect_no_failures "dependency chain" summary (Int.succ count)
 
 let make_workspace_load_bench = fun () ->
   fun () ->
@@ -332,9 +338,8 @@ let make_kernel_intent_to_goal_bench = fun () ->
   let intent = kernel_build_intent () in
   fun () ->
     match Intent_planner.expand catalog intent with
-    | Ok [ Goal.BuildPackage build ] when Riot_model.Package_name.equal
-      build.package
-      kernel_package -> ()
+    | Ok [ Goal.BuildPackage build ] when Riot_model.Package_name.equal build.package kernel_package ->
+        ()
     | Ok _ -> panic "kernel intent expansion benchmark produced unexpected goals"
     | Error error -> panic ("kernel intent expansion benchmark failed: " ^ Error.message error)
 
@@ -418,8 +423,8 @@ let benchmarks = fun () ->
       (make_executor_dependency_fanout_bench ~count:64 ~parallelism:4);
     with_config
       ~config:runner_heavy_config
-      "riot-build2 executor dependency waves 32 parallelism 1"
-      (make_executor_dependency_waves_bench ~waves:32);
+      "riot-build2 executor planned dependency chain 32 parallelism 1"
+      (make_executor_dependency_chain_bench ~count:32);
     with_config
       ~config:workspace_load_config
       "riot-build2 workspace load repo through workspace manager"
@@ -443,7 +448,7 @@ let benchmarks = fun () ->
     with_config
       ~config:kernel_warm_cache_config
       "riot-build2 kernel cold boot + warm cache graph execution parallelism 4"
-      (make_kernel_build_warm_cache_bench ~parallelism:4);
+      (make_kernel_build_warm_cache_bench ~parallelism:Std.Thread.available_parallelism);
   ]
 
 let main ~args = Bench.Cli.main ~name:"riot-build2 benchmarks" ~benchmarks:(benchmarks ()) ~args
