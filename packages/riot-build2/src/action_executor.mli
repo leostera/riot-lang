@@ -10,4 +10,4 @@ val artifact: t -> Action_execution.ref_ -> Riot_store.Artifact.t option
 
 val failure: t -> Action_execution.ref_ -> string option
 
-val execute: t -> Action_execution.t -> (Executor.execution, Error.t) result
+val execute: t -> Action_execution.t -> (Work_result.t, Error.t) result

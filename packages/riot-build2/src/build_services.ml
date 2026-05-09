@@ -99,44 +99,56 @@ let package_dependency_work = fun t (build: Package_work.build_library) ->
 
 let execute_build_library_work = fun t build ->
   match Package_finalizer.find t.package_finalizer build with
-  | Some _ -> Ok (Executor.Complete [])
+  | Some _ -> Ok []
   | None ->
       let* dependency_work = package_dependency_work t build in
-      Ok (Executor.RequeueWithDependencies (dependency_work
+      Ok (dependency_work
       @ [
         Work_node.ToolchainReadyKey { target = build.target };
         Work_node.PackageFinalizeKey build;
-      ]))
+      ])
 
-let execute_package_work = fun t work ->
+let package_work_dependencies = fun t work ->
   match work with
   | Package_work.BuildLibrary build -> execute_build_library_work t build
   | TestPackage _
   | RunBinary _ -> Error (Error.UnsupportedPackageWork { work })
 
-let execute_goal = fun t goal ->
+let goal_dependencies = fun t goal ->
   Goal_planner.expand t.catalog goal
   |> Result.map
     ~fn:(fun package_work ->
-      Executor.Complete (List.map package_work ~fn:(fun work -> Work_node.PackageWorkKey work)))
+      List.map package_work ~fn:(fun work -> Work_node.PackageWorkKey work))
 
-let execute_node = fun t context node ->
+let dependencies_of_node = fun t node ->
   match Work_node.kind node with
   | Work_node.UserIntent intent ->
-      let goals =
-        Intent_planner.expand intent
-        |> List.map ~fn:(fun goal -> Work_node.GoalKey goal)
-      in
-      Ok (Executor.Complete goals)
-  | Goal goal -> execute_goal t goal
-  | PackageWork work -> execute_package_work t work
+      Intent_planner.expand intent
+      |> List.map ~fn:(fun goal -> Work_node.GoalKey goal)
+      |> Result.ok
+  | Goal goal -> goal_dependencies t goal
+  | PackageWork work -> package_work_dependencies t work
+  | ToolchainReady _
+  | SourceAnalysis _
+  | ModulePlan _
+  | PackageFinalize _
+  | ActionExecution _ -> Ok []
+
+let execute_node = fun t registry node ->
+  match Work_node.kind node with
+  | Work_node.UserIntent _
+  | Goal _
+  | PackageWork _ ->
+      Error (Error.ExecutorInvariantViolated {
+        message = "virtual work node reached concrete execution";
+      })
   | ToolchainReady toolchain ->
       Toolchain_service.ensure t.toolchains toolchain
-      |> Result.map ~fn:(fun () -> Executor.Complete [])
+      |> Result.map ~fn:(fun () -> Work_result.Complete [])
   | SourceAnalysis source ->
       Source_analyzer.execute t.source_analyzer source
-      |> Result.map ~fn:(fun () -> Executor.Complete [])
-  | ModulePlan build -> Module_planning.execute t.module_planning context.Executor.registry build
+      |> Result.map ~fn:(fun () -> Work_result.Complete [])
+  | ModulePlan build -> Module_planning.execute t.module_planning registry build
   | PackageFinalize build ->
-      Package_finalizer.execute t.package_finalizer context.Executor.registry build
+      Package_finalizer.execute t.package_finalizer registry build
   | ActionExecution action -> Action_executor.execute t.action_executor action

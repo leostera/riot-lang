@@ -15,7 +15,7 @@ type package_result = {
 
 type t = {
   packages: package_result list;
-  summary: Executor.summary;
+  summary: ExecutionSummary.t;
 }
 
 val has_failures: t -> bool

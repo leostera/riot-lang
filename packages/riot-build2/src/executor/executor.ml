@@ -2,22 +2,14 @@ module Node = Node
 module Node_id = Node_id
 module Node_queue = Node_queue
 module Runner = Runner
-module Summary = Summary
+module Summary = ExecutionSummary
 
 type node = Work_node.t
 
-type context = Runner.context = {
-  registry: Work_registry.t;
-}
+type summary = ExecutionSummary.t
 
-type execution = Runner.execution =
-  | Complete of Work_node.key list
-  | RequeueWithDependencies of Work_node.key list
+type node_result = ExecutionSummary.node_result
 
-type summary = Summary.t
-
-type node_result = Summary.node_result
-
-let has_failures = Summary.has_failures
+let has_failures = ExecutionSummary.has_failures
 
 let run = Runner.run

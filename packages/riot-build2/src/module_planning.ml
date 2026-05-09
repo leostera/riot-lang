@@ -107,7 +107,7 @@ let plan = fun t registry (build: Package_work.build_library) ->
   let missing = Source_analyzer.missing t.source_analyzer ~package:package.name tasks in
   if not (List.is_empty missing) then
     Ok (
-      Executor.RequeueWithDependencies (
+      Work_result.RequeueWithDependencies (
         List.map
           missing
           ~fn:(fun source ->
@@ -171,9 +171,15 @@ let plan = fun t registry (build: Package_work.build_library) ->
           }
         in
         ignore (ConcurrentHashMap.insert t.plans ~key:build ~value:module_plan);
-        Ok (Executor.Complete [])
+        Ok (Work_result.Complete [])
 
 let execute = fun t registry (build: Package_work.build_library) ->
   match find t build with
-  | Some _ -> Ok (Executor.Complete [])
-  | None -> plan t registry build
+  | Some _ -> Ok (Work_result.Complete [])
+  | None ->
+      if Package_planning.toolchain_ready t.package_planning build.target then
+        plan t registry build
+      else
+        Ok (Work_result.RequeueWithDependencies [
+          Work_node.ToolchainReadyKey { target = build.target };
+        ])

@@ -172,7 +172,7 @@ let finalize = fun t (plan: Module_plan.t) ->
                 }
               in
               ignore (ConcurrentHashMap.insert t.package_results ~key:plan.build ~value:result);
-              Ok (Executor.Complete [])
+              Ok (Work_result.Complete [])
 
 let finalize_cached_artifact = fun t (cached: Package_planning.artifact_hit) ->
   let result =
@@ -185,18 +185,22 @@ let finalize_cached_artifact = fun t (cached: Package_planning.artifact_hit) ->
     }
   in
   ignore (ConcurrentHashMap.insert t.package_results ~key:cached.build ~value:result);
-  Ok (Executor.Complete [])
+  Ok (Work_result.Complete [])
 
 let execute = fun t registry (build: Package_work.build_library) ->
   match ConcurrentHashMap.get t.package_results ~key:build with
-  | Some _ -> Ok (Executor.Complete [])
+  | Some _ -> Ok (Work_result.Complete [])
   | None ->
-      match Package_planning.cached_artifact t.package_planning build with
+      if not (Package_planning.toolchain_ready t.package_planning build.target) then
+        Ok (Work_result.RequeueWithDependencies [
+          Work_node.ToolchainReadyKey { target = build.target };
+        ])
+      else match Package_planning.cached_artifact t.package_planning build with
       | Error error -> Error error
       | Ok (Some cached) -> finalize_cached_artifact t cached
       | Ok None ->
           match Module_planning.find t.module_planning build with
-          | None -> Ok (Executor.RequeueWithDependencies [ Work_node.ModulePlanKey build ])
+          | None -> Ok (Work_result.RequeueWithDependencies [ Work_node.ModulePlanKey build ])
           | Some plan ->
               let registered =
                 ConcurrentHashMap.compute
@@ -209,7 +213,7 @@ let execute = fun t registry (build: Package_work.build_library) ->
               in
               if not registered then
                 let action_refs = register_action_nodes t registry plan in
-                Ok (Executor.RequeueWithDependencies (List.map action_refs ~fn:action_dependency_key))
+                Ok (Work_result.RequeueWithDependencies (List.map action_refs ~fn:action_dependency_key))
               else
                 let missing =
                   plan.action_nodes
@@ -221,6 +225,6 @@ let execute = fun t registry (build: Package_work.build_library) ->
                       | None -> Some ref_)
                 in
                 if not (List.is_empty missing) then
-                  Ok (Executor.RequeueWithDependencies (List.map missing ~fn:action_dependency_key))
+                  Ok (Work_result.RequeueWithDependencies (List.map missing ~fn:action_dependency_key))
                 else
                   finalize t plan

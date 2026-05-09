@@ -25,6 +25,8 @@ let executor_workspace =
 
 let executor_config = fun parallelism -> Config.make ~workspace:executor_workspace ~parallelism ()
 
+let concrete_execution_mode = fun _node -> Work_node.Concrete
+
 let unexpected_node = fun node ->
   Error (Error.ExecutorInvariantViolated {
     message = "unexpected node in riot-build2 benchmark: "
@@ -206,10 +208,11 @@ let make_executor_independent_actions_bench = fun ~count ~parallelism ->
       |> List.map ~fn:(fun (index, action) -> goal_seed (Int.succ index) action)
     in
     let summary =
-      Executor.run
+      Executor.Runner.run_with_handlers_for_tests
         ~config:(executor_config parallelism)
+        ~execution_mode:concrete_execution_mode
         ~seeds
-        ~execute:(fun _context _node -> Ok (Executor.Complete []))
+        ~execute:(fun _context _node -> Ok (Work_result.Complete []))
         ()
     in
     expect_no_failures "independent goals" summary count
@@ -218,15 +221,16 @@ let make_executor_spawn_actions_bench = fun ~count ~parallelism ->
   let goal_list = actions count in
   fun () ->
     let summary =
-      Executor.run
+      Executor.Runner.run_with_handlers_for_tests
         ~config:(executor_config parallelism)
+        ~execution_mode:concrete_execution_mode
         ~seeds:[ seed () ]
         ~execute:(fun _context node ->
           match Work_node.kind node with
           | Work_node.UserIntent _ ->
               let spawned = List.map goal_list ~fn:(fun action -> Work_node.GoalKey action) in
-              Ok (Executor.Complete spawned)
-          | Work_node.Goal _ -> Ok (Executor.Complete [])
+              Ok (Work_result.Complete spawned)
+          | Work_node.Goal _ -> Ok (Work_result.Complete [])
           | _ -> unexpected_node node)
         ()
     in
@@ -237,8 +241,9 @@ let make_executor_dependency_fanout_bench = fun ~count ~parallelism ->
   fun () ->
     let attempts = Sync.Atomic.make 0 in
     let summary =
-      Executor.run
+      Executor.Runner.run_with_handlers_for_tests
         ~config:(executor_config parallelism)
+        ~execution_mode:concrete_execution_mode
         ~seeds:[ seed () ]
         ~execute:(fun _context node ->
           match Work_node.kind node with
@@ -248,10 +253,10 @@ let make_executor_dependency_fanout_bench = fun ~count ~parallelism ->
                 let dependencies =
                   List.map goal_list ~fn:(fun action -> Work_node.GoalKey action)
                 in
-                Ok (Executor.RequeueWithDependencies dependencies)
+                Ok (Work_result.RequeueWithDependencies dependencies)
               else
-                Ok (Executor.Complete [])
-          | Work_node.Goal _ -> Ok (Executor.Complete [])
+                Ok (Work_result.Complete [])
+          | Work_node.Goal _ -> Ok (Work_result.Complete [])
           | _ -> unexpected_node node)
         ()
     in
@@ -262,8 +267,9 @@ let make_executor_dependency_waves_bench = fun ~waves ->
   fun () ->
     let attempts = Sync.Atomic.make 0 in
     let summary =
-      Executor.run
+      Executor.Runner.run_with_handlers_for_tests
         ~config:(executor_config 1)
+        ~execution_mode:concrete_execution_mode
         ~seeds:[ seed () ]
         ~execute:(fun _context node ->
           match Work_node.kind node with
@@ -274,10 +280,10 @@ let make_executor_dependency_waves_bench = fun ~waves ->
                   list_nth goal_list attempt
                   |> Option.expect ~msg:"dependency wave action should exist"
                 in
-                Ok (Executor.RequeueWithDependencies [ Work_node.GoalKey action ])
+                Ok (Work_result.RequeueWithDependencies [ Work_node.GoalKey action ])
               else
-                Ok (Executor.Complete [])
-          | Work_node.Goal _ -> Ok (Executor.Complete [])
+                Ok (Work_result.Complete [])
+          | Work_node.Goal _ -> Ok (Work_result.Complete [])
           | _ -> unexpected_node node)
         ()
     in

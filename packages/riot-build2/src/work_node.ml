@@ -23,6 +23,10 @@ type status =
   | Completed
   | Failed
 
+type execution_mode =
+  | Virtual
+  | Concrete
+
 type module_ref = {
   package: Riot_model.Package_name.t option;
   scope: string option;
@@ -129,7 +133,58 @@ let key = fun node -> node.key
 
 let kind = fun node -> node.kind
 
+let execution_mode_of_kind = fun __tmp1 ->
+  match __tmp1 with
+  | UserIntent _
+  | Goal _
+  | PackageWork _ -> Virtual
+  | ToolchainReady _
+  | SourceAnalysis _
+  | ModulePlan _
+  | PackageFinalize _
+  | ActionExecution _ -> Concrete
+
+let execution_mode = fun node -> execution_mode_of_kind node.kind
+
 let status = fun node -> Atomic.get node.status
+
+let status_to_string = fun __tmp1 ->
+  match __tmp1 with
+  | Pending -> "Pending"
+  | Running -> "Running"
+  | Completed -> "Completed"
+  | Failed -> "Failed"
+
+let invalid_transition_message = fun node ~from ~to_ ->
+  "invalid work node transition for node "
+  ^ Node_id.to_string node.id
+  ^ ": "
+  ^ status_to_string from
+  ^ " -> "
+  ^ status_to_string to_
+
+let valid_transition = fun ~from ~to_ ->
+  match (from, to_) with
+  | (Pending, Running)
+  | (Running, Pending)
+  | (Pending, Completed)
+  | (Running, Completed)
+  | (Pending, Failed)
+  | (Running, Failed) -> true
+  | _ -> false
+
+let transition = fun node ~to_ ->
+  let rec loop () =
+    let from = Atomic.get node.status in
+    if valid_transition ~from ~to_ then
+      if Atomic.compare_and_set node.status from to_ then
+        ()
+      else
+        loop ()
+    else
+      panic (invalid_transition_message node ~from ~to_)
+  in
+  loop ()
 
 let dependencies = fun node -> ConcurrentHashMap.keys node.dependencies
 
@@ -139,10 +194,13 @@ let pending_dependency_count = fun node -> Atomic.get node.pending_dependencies
 
 let dependencies_ready = fun node -> Int.equal (pending_dependency_count node) 0
 
-let set_status = fun node status -> Atomic.set node.status status
+let mark_as_running = fun node -> transition node ~to_:Running
 
-let compare_and_set_status = fun node ~from ~to_ ->
-  Atomic.compare_and_set node.status from to_
+let mark_as_pending = fun node -> transition node ~to_:Pending
+
+let mark_as_completed = fun node -> transition node ~to_:Completed
+
+let mark_as_failed = fun node -> transition node ~to_:Failed
 
 let add_id = fun ids id ->
   ConcurrentHashMap.compute

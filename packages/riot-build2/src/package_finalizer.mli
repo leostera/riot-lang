@@ -19,4 +19,4 @@ val execute:
   t ->
   Work_registry.t ->
   Package_work.build_library ->
-  (Executor.execution, Error.t) result
+  (Work_result.t, Error.t) result

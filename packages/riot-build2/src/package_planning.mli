@@ -30,4 +30,6 @@ val create:
 
 val resolve: t -> Package_work.build_library -> (input, Error.t) result
 
+val toolchain_ready: t -> Riot_model.Target.t -> bool
+
 val cached_artifact: t -> Package_work.build_library -> (artifact_hit option, Error.t) result

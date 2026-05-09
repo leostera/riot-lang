@@ -1,7 +1,9 @@
 open Std
 
-val execute_node: Executor.context -> Work_node.t -> (Executor.execution, Error.t) result
+val dependencies_of_node: Work_node.t -> (Work_node.key list, Error.t) result
 
-val run_intent: config:Build_config.t -> User_intent.t -> Executor.summary
+val execute_node: Work_registry.t -> Work_node.t -> (Work_result.t, Error.t) result
 
-val completed_goals: Executor.summary -> Goal.t list
+val run_intent: config:Build_config.t -> User_intent.t -> ExecutionSummary.t
+
+val completed_goals: ExecutionSummary.t -> Goal.t list

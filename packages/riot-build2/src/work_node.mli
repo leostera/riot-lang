@@ -20,6 +20,10 @@ type status =
   | Completed
   | Failed
 
+type execution_mode =
+  | Virtual
+  | Concrete
+
 type module_ref = {
   package: Riot_model.Package_name.t option;
   scope: string option;
@@ -84,6 +88,10 @@ val key: t -> key
 
 val kind: t -> kind
 
+val execution_mode: t -> execution_mode
+
+val execution_mode_of_kind: kind -> execution_mode
+
 val status: t -> status
 
 val dependencies: t -> Node_id.t list
@@ -94,9 +102,13 @@ val pending_dependency_count: t -> int
 
 val dependencies_ready: t -> bool
 
-val set_status: t -> status -> unit
+val mark_as_running: t -> unit
 
-val compare_and_set_status: t -> from:status -> to_:status -> bool
+val mark_as_pending: t -> unit
+
+val mark_as_completed: t -> unit
+
+val mark_as_failed: t -> unit
 
 val add_dependency: t -> Node_id.t -> bool
 

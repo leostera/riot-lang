@@ -15,9 +15,9 @@ type package_result = {
 
 type t = {
   packages: package_result list;
-  summary: Executor.summary;
+  summary: ExecutionSummary.t;
 }
 
-let has_failures = fun t -> Executor.has_failures t.summary
+let has_failures = fun t -> ExecutionSummary.has_failures t.summary
 
 let package_results = fun t -> t.packages

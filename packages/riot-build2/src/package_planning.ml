@@ -104,6 +104,10 @@ let resolve = fun t (build: Package_work.build_library) ->
         package_hash;
       }
 
+let toolchain_ready = fun t target ->
+  Toolchain_service.find t.toolchains target
+  |> Option.is_some
+
 let cached_artifact = fun t build ->
   let* input = resolve t build in
   match Riot_store.Store.get_package_metadata t.store input.package_hash with

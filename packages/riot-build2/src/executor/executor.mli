@@ -8,23 +8,16 @@ module Node_queue = Node_queue
 
 module Runner = Runner
 
-module Summary = Summary
+module Summary = ExecutionSummary
 
 type node = Work_node.t
-type context = Runner.context = {
-  registry: Work_registry.t;
-}
-type execution = Runner.execution =
-  | Complete of Work_node.key list
-  | RequeueWithDependencies of Work_node.key list
-type summary = Summary.t
-type node_result = Summary.node_result
+type summary = ExecutionSummary.t
+type node_result = ExecutionSummary.node_result
 
 val has_failures: summary -> bool
 
 val run:
-  config:Build_config.t ->
+  services:Build_services.t ->
   seeds:Work_node.t list ->
-  execute:(context -> Work_node.t -> (execution, Error.t) result) ->
   unit ->
   summary

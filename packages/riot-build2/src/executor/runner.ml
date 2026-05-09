@@ -4,17 +4,9 @@ module DynamicWorkerPool = WorkerPool.DynamicWorkerPool
 module ConcurrentHashMap = Collections.ConcurrentHashMap
 module Queue = Collections.Queue
 
-type context = {
-  registry: Work_registry.t;
-}
-
-type execution =
-  | Complete of Work_node.key list
-  | RequeueWithDependencies of Work_node.key list
-
 type task_result = {
   node: Work_node.t;
-  outcome: (execution, Error.t) result;
+  outcome: (Work_result.t, Error.t) result;
 }
 
 type worker_result = {
@@ -36,9 +28,11 @@ type state = {
   result_ref: task_result Ref.t;
   on_event: Event.t -> unit;
   registry: Work_registry.t;
-  execute: context -> Work_node.t -> (execution, Error.t) result;
+  dependencies: Work_node.t -> (Work_node.key list, Error.t) result;
+  execution_mode: Work_node.t -> Work_node.execution_mode;
+  execute: Work_registry.t -> Work_node.t -> (Work_result.t, Error.t) result;
   mutable tasks_in_flight: int;
-  mutable results: Summary.node_result list;
+  mutable results: ExecutionSummary.node_result list;
   mutable completed_count: int;
   mutable failed_count: int;
 }
@@ -53,7 +47,7 @@ let queue_node = fun state node ->
   state.on_event (Event.WorkQueued { node })
 
 let record_result = fun state node status error ->
-  state.results <- { Summary.node; status; error } :: state.results;
+  state.results <- { ExecutionSummary.node; status; error } :: state.results;
   match status with
   | Work_node.Completed -> state.completed_count <- Int.succ state.completed_count
   | Failed -> state.failed_count <- Int.succ state.failed_count
@@ -115,27 +109,6 @@ let canonical_nodes_for_keys = fun state keys ->
   in
   loop [] keys
 
-let dispatch_available = fun state ->
-  let rec loop () =
-    match Queue.pop state.idle_workers with
-    | None -> ()
-    | Some worker -> (
-        match Node_queue.pop state.ready with
-        | None -> Queue.push state.idle_workers ~value:worker
-        | Some node ->
-            if Work_node.compare_and_set_status node ~from:Pending ~to_:Running then (
-              state.tasks_in_flight <- Int.succ state.tasks_in_flight;
-              state.on_event (Event.WorkStarted { node });
-              DynamicWorkerPool.send_task state.pool worker node;
-              loop ()
-            ) else (
-              Queue.push state.idle_workers ~value:worker;
-              loop ()
-            )
-      )
-  in
-  loop ()
-
 let is_complete = fun state ->
   Int.equal state.tasks_in_flight 0 && Node_queue.is_empty state.ready
 
@@ -145,7 +118,7 @@ let rec fail_node = fun state node error ->
   | Completed -> ()
   | Pending
   | Running ->
-      Work_node.set_status node Failed;
+      Work_node.mark_as_failed node;
       state.on_event (Event.WorkFailed { node; error });
       record_result state node Failed (Some error);
       settle_dependents state node
@@ -222,14 +195,106 @@ let reconcile_registered_dependencies = fun node registered ->
         ignore (Work_node.mark_dependency_completed node));
   failed_dependency
 
+let complete_node = fun state node ->
+  match Work_node.status node with
+  | Work_node.Completed
+  | Failed -> ()
+  | Pending
+  | Running ->
+      Work_node.mark_as_completed node;
+      state.on_event (Event.WorkCompleted { node });
+      record_result state node Completed None;
+      settle_dependents state node
+
+let register_dependency_keys = fun state node dependency_keys ->
+  if List.is_empty dependency_keys then
+    Ok ()
+  else (
+    match canonical_nodes_for_keys state dependency_keys with
+    | Error error -> Error error
+    | Ok dependencies ->
+        let registered = register_dependencies state node dependencies in
+        let failed_dependency = reconcile_registered_dependencies node registered in
+        match failed_dependency with
+        | Some dependency ->
+            Error (Error.DependencyFailed {
+              node = Work_node.id node;
+              dependency = Work_node.id dependency;
+            })
+        | None ->
+            List.for_each
+              dependencies
+              ~fn:(fun dependency ->
+                match Work_node.status dependency with
+                | Pending -> queue_node state dependency
+                | Running
+                | Completed
+                | Failed -> ());
+            Ok ()
+  )
+
+type dispatch_result =
+  | Dispatched
+  | NotDispatched
+
+let prepare_node_for_dispatch = fun state worker node ->
+  match Work_node.status node with
+  | Work_node.Pending -> (
+      match state.dependencies node with
+      | Error error ->
+          fail_node state node error;
+          NotDispatched
+      | Ok dependency_keys -> (
+          match register_dependency_keys state node dependency_keys with
+          | Error error ->
+              fail_node state node error;
+              NotDispatched
+          | Ok () ->
+              if not (Work_node.dependencies_ready node) then
+                NotDispatched
+              else
+                match state.execution_mode node with
+                | Work_node.Virtual ->
+                    complete_node state node;
+                    NotDispatched
+                | Work_node.Concrete ->
+                    Work_node.mark_as_running node;
+                    state.tasks_in_flight <- Int.succ state.tasks_in_flight;
+                    state.on_event (Event.WorkStarted { node });
+                    DynamicWorkerPool.send_task state.pool worker node;
+                    Dispatched
+        )
+    )
+  | Running
+  | Completed
+  | Failed -> NotDispatched
+
+let dispatch_available = fun state ->
+  let rec loop () =
+    match Queue.pop state.idle_workers with
+    | None -> ()
+    | Some worker -> (
+        match Node_queue.pop state.ready with
+        | None -> Queue.push state.idle_workers ~value:worker
+        | Some node -> (
+            match prepare_node_for_dispatch state worker node with
+            | Dispatched -> loop ()
+            | NotDispatched ->
+                Queue.push state.idle_workers ~value:worker;
+                loop ()
+          )
+      )
+  in
+  loop ()
+
 let complete_result = fun state result ->
   state.tasks_in_flight <- state.tasks_in_flight - 1;
   match result.outcome with
-  | Ok (Complete spawned_keys) -> (
+  | Ok (Work_result.Complete spawned_keys) -> (
       match canonical_nodes_for_keys state spawned_keys with
       | Error error -> fail_node state result.node error
       | Ok spawned ->
-          Work_node.set_status result.node Completed;
+          Work_node.mark_as_completed result.node;
           state.on_event (Event.WorkCompleted { node = result.node });
           if not (List.is_empty spawned) then
             state.on_event (Event.WorkSpawned { node = result.node; spawned });
@@ -237,12 +302,12 @@ let complete_result = fun state result ->
           record_result state result.node Completed None;
           settle_dependents state result.node
     )
-  | Ok (RequeueWithDependencies dependency_keys) -> (
+  | Ok (Work_result.RequeueWithDependencies dependency_keys) -> (
       match canonical_nodes_for_keys state dependency_keys with
       | Error error -> fail_node state result.node error
       | Ok dependencies ->
           let registered = register_dependencies state result.node dependencies in
-          Work_node.set_status result.node Pending;
+          Work_node.mark_as_pending result.node;
           state.on_event (Event.WorkRequeued { node = result.node });
           let failed_dependency = reconcile_registered_dependencies result.node registered in
           match failed_dependency with
@@ -273,7 +338,7 @@ let rec loop = fun state ->
   dispatch_available state;
   if is_complete state then
     {
-      Summary.results = List.reverse state.results;
+      ExecutionSummary.results = List.reverse state.results;
       completed_count = state.completed_count;
       failed_count = state.failed_count;
     }
@@ -300,9 +365,18 @@ let rec loop = fun state ->
         complete_result state result;
         loop state
 
-let run = fun ~config ~seeds ~execute () ->
+let default_dependencies = fun (_: Work_node.t) -> Ok []
+
+let run_with_handlers_for_tests =
+  fun
+    ?(dependencies = default_dependencies)
+    ?(execution_mode = Work_node.execution_mode)
+    ~config
+    ~seeds
+    ~execute
+    () ->
   match seeds with
-  | [] -> { Summary.results = []; completed_count = 0; failed_count = 0 }
+  | [] -> { ExecutionSummary.results = []; completed_count = 0; failed_count = 0 }
   | _ ->
       let owner = self () in
       let result_ref = Ref.make () in
@@ -315,10 +389,9 @@ let run = fun ~config ~seeds ~execute () ->
       in
       let registry = Work_registry.create ~next_id:max_seed_id () in
       let seeds = List.map seeds ~fn:(Work_registry.register registry) in
-      let context = { registry } in
       let worker_fn = fun ~owner ~task:node ->
         let result =
-          match execute context node with
+          match execute registry node with
           | Ok execution -> { node; outcome = Ok execution }
           | Error error -> { node; outcome = Error error }
           | exception exn ->
@@ -343,6 +416,8 @@ let run = fun ~config ~seeds ~execute () ->
         result_ref;
         on_event = config.on_event;
         registry;
+        dependencies;
+        execution_mode;
         execute;
         tasks_in_flight = 0;
         results = [];
@@ -352,3 +427,11 @@ let run = fun ~config ~seeds ~execute () ->
       in
       List.for_each seeds ~fn:(queue_node state);
       loop state
+
+let run = fun ~services ~seeds () ->
+  run_with_handlers_for_tests
+    ~config:(Build_services.config services)
+    ~dependencies:(Build_services.dependencies_of_node services)
+    ~execute:(Build_services.execute_node services)
+    ~seeds
+    ()

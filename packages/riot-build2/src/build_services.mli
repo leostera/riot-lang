@@ -8,6 +8,8 @@ val config: t -> Build_config.t
 
 val catalog: t -> Package_catalog.t
 
-val execute_node: t -> Executor.context -> Work_node.t -> (Executor.execution, Error.t) result
+val dependencies_of_node: t -> Work_node.t -> (Work_node.key list, Error.t) result
+
+val execute_node: t -> Work_registry.t -> Work_node.t -> (Work_result.t, Error.t) result
 
 val package_results: t -> Build_result.package_result list

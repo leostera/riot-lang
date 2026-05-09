@@ -303,7 +303,7 @@ let execute_uncached = fun t (action: Action_execution.t) toolchain action_input
           status = Action_execution.Executed saved_artifact;
           ocamlc_warnings = warnings;
         };
-      Ok (Executor.Complete [])
+      Ok (Work_result.Complete [])
 
 let promote_cached = fun t (action: Action_execution.t) (artifact: Riot_store.Artifact.t) ->
   match Riot_store.Store.promote_action t.store artifact.input_hash ~target_dir:action.sandbox_dir with
@@ -317,7 +317,7 @@ let promote_cached = fun t (action: Action_execution.t) (artifact: Riot_store.Ar
           status = Action_execution.Cached artifact;
           ocamlc_warnings = artifact.ocamlc_warnings;
         };
-      Ok (Executor.Complete [])
+      Ok (Work_result.Complete [])
 
 let execute = fun t (action: Action_execution.t) ->
   let missing =
@@ -325,7 +325,7 @@ let execute = fun t (action: Action_execution.t) ->
     |> List.filter ~fn:(fun ref_ -> Option.is_none (find_result t ref_))
   in
   if not (List.is_empty missing) then
-    Ok (Executor.RequeueWithDependencies (List.map missing ~fn:action_dependency_key))
+    Ok (Work_result.RequeueWithDependencies (List.map missing ~fn:action_dependency_key))
   else
     let failed =
       action.dependencies

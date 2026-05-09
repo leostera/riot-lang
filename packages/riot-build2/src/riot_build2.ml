@@ -18,10 +18,12 @@ module Package_finalizer = Package_finalizer
 module Package_planning = Package_planning
 module User_intent = User_intent
 module Source_analyzer = Source_analyzer
+module ExecutionSummary = ExecutionSummary
 module Toolchain_service = Toolchain_service
 module Workspace_loader = Workspace_loader
 module Work_graph = Work_graph
 module Work_node = Work_node
+module Work_result = Work_result
 module Work_registry = Work_registry
 
 type t = Build_services.t
@@ -30,9 +32,13 @@ let create_executor: config:Config.t -> unit -> (t, Error.t) result = fun ~confi
   Ok (Build_services.create ~config ())
 
 let execute: t -> User_intent.t -> (Build_result.t, Error.t) result = fun t intent ->
-  let config = Build_services.config t in
   let seed = Work_node.user_intent ~id:(Work_node.Node_id.from_int 1) intent in
-  let summary = Executor.run ~config ~seeds:[ seed ] ~execute:(Build_services.execute_node t) () in
+  let summary =
+    Executor.run
+      ~services:t
+      ~seeds:[ seed ]
+      ()
+  in
   let packages = Build_services.package_results t in
   Ok Build_result.{ packages; summary }
 

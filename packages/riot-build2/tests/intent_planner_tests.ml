@@ -68,8 +68,8 @@ let test_executor_drains_spawned_nodes = fun _ctx ->
           target = linux;
         }
         in
-        Ok (Executor.Complete [ Work_node.GoalKey child; Work_node.GoalKey second ])
-    | Work_node.Goal _ -> Ok (Executor.Complete [])
+        Ok (Work_result.Complete [ Work_node.GoalKey child; Work_node.GoalKey second ])
+    | Work_node.Goal _ -> Ok (Work_result.Complete [])
     | _ -> unexpected_node node
   in
   let seed =
@@ -78,8 +78,9 @@ let test_executor_drains_spawned_nodes = fun _ctx ->
       (User_intent.run ~runnable:(User_intent.ByName "server") ~target:linux ())
   in
   let summary =
-    Executor.run
+    Executor.Runner.run_with_handlers_for_tests
       ~config:(executor_config ~parallelism:2 ())
+      ~execution_mode:(fun _node -> Work_node.Concrete)
       ~seeds:[ seed ]
       ~execute
       ()
