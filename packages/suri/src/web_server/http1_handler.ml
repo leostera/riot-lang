@@ -106,8 +106,8 @@ type request_body_header_error =
 type request_header_error =
   | MissingHostHeader
 
-let header_name_error_to_string = fun __tmp1 ->
-  match __tmp1 with
+let header_name_error_to_string = fun error ->
+  match error with
   | EmptyHeaderName -> "header name must not be empty"
   | InvalidHeaderNameChar { char; index } ->
       "invalid header name character code "
@@ -121,8 +121,8 @@ let header_value_error_to_string = fun (InvalidHeaderValueChar { char; index }) 
   ^ " at index "
   ^ Int.to_string index
 
-let serialization_error_to_string = fun __tmp1 ->
-  match __tmp1 with
+let serialization_error_to_string = fun error ->
+  match error with
   | InvalidHeaderName { name; reason } ->
       "Invalid response header name: " ^ name ^ " (" ^ header_name_error_to_string reason ^ ")"
   | InvalidHeaderValue { name; value = _; reason } ->
@@ -132,14 +132,14 @@ let serialization_error_to_string = fun __tmp1 ->
       ^ header_value_error_to_string reason
       ^ ")"
 
-let parse_error_of_upstream_error = fun error -> UpstreamParseError error
+let parse_error_from_upstream_error = fun error -> UpstreamParseError error
 
 let parse_error_to_string = fun (UpstreamParseError error) ->
   Http.Http1.Common.error_to_string
     error
 
-let websocket_upgrade_error_to_string = fun __tmp1 ->
-  match __tmp1 with
+let websocket_upgrade_error_to_string = fun error ->
+  match error with
   | InvalidWebSocketMethod method_ ->
       "WebSocket upgrade requests must use GET, got " ^ Net.Http.Method.to_string method_
   | InvalidWebSocketVersion version ->
@@ -159,8 +159,8 @@ let websocket_upgrade_error_to_string = fun __tmp1 ->
       ^ " bytes, got "
       ^ Int.to_string actual
 
-let websocket_frame_limit_error_to_string = fun __tmp1 ->
-  match __tmp1 with
+let websocket_frame_limit_error_to_string = fun error ->
+  match error with
   | WebSocketFrameTooLarge { size; limit } ->
       "WebSocket frame payload is too large: "
       ^ Int.to_string size
@@ -174,8 +174,8 @@ let websocket_frame_limit_error_to_string = fun __tmp1 ->
       ^ Int.to_string limit
       ^ " bytes"
 
-let websocket_bridge_error_to_string = fun __tmp1 ->
-  match __tmp1 with
+let websocket_bridge_error_to_string = fun error ->
+  match error with
   | WebSocketChannelError error -> Channel.Handler.reported_error_to_string error
   | WebSocketParseFailed error ->
       "WebSocket frame parse error: " ^ Http.Ws.Parser.error_to_string error
@@ -185,8 +185,8 @@ let websocket_bridge_error_to_string = fun __tmp1 ->
       "WebSocket frame serialize error: " ^ Http.Ws.Serializer.error_to_string error
   | WebSocketFrameLimitFailed error -> websocket_frame_limit_error_to_string error
 
-let request_body_header_error_to_string = fun __tmp1 ->
-  match __tmp1 with
+let request_body_header_error_to_string = fun error ->
+  match error with
   | InvalidContentLength { value; reason = InvalidInteger } ->
       "Invalid Content-Length header: " ^ value
   | InvalidContentLength { value; reason = NegativeLength length } ->
@@ -223,8 +223,8 @@ let request_body_header_error_response = fun error ->
 let request_header_error_to_string = fun MissingHostHeader ->
   "HTTP/1.1 requests must include a Host header"
 
-let connection_error_to_string = fun __tmp1 ->
-  match __tmp1 with
+let connection_error_to_string = fun error ->
+  match error with
   | Socket_pool.Connection.Closed -> "Connection closed"
   | Socket_pool.Connection.FileError _ -> "Connection file operation failed"
   | Socket_pool.Connection.InvalidRange { off; len; size } ->
@@ -235,13 +235,13 @@ let connection_error_to_string = fun __tmp1 ->
       ^ ", size="
       ^ Int.to_string size
 
-let io_error_to_string = fun __tmp1 ->
-  match __tmp1 with
+let io_error_to_string = fun error ->
+  match error with
   | ResponseSerializationFailed error -> serialization_error_to_string error
   | ConnectionFailed error -> connection_error_to_string error
 
-let to_string_error = fun __tmp1 ->
-  match __tmp1 with
+let to_string_error = fun error ->
+  match error with
   | ParseError error -> "Parse error: " ^ parse_error_to_string error
   | ExcessBodyRead -> "Excess body read"
   | IoError error -> "I/O error: " ^ io_error_to_string error
@@ -283,8 +283,8 @@ let should_keep_alive = fun (req: Request.t) ->
 let should_continue_keep_alive = fun ~max_keep_alive_requests ~requests_processed req ->
   should_keep_alive req && requests_processed < max_keep_alive_requests
 
-let is_header_name_char = fun __tmp1 ->
-  match __tmp1 with
+let is_header_name_char = fun char ->
+  match char with
   | 'a' .. 'z'
   | 'A' .. 'Z'
   | '0' .. '9'
@@ -335,8 +335,8 @@ let validate_header_value = fun value ->
   go 0
 
 let validate_response_headers = fun headers ->
-  let rec go = fun __tmp1 ->
-    match __tmp1 with
+  let rec go = fun headers ->
+    match headers with
     | [] -> Ok ()
     | (name, value) :: rest ->
         match validate_header_name name with
@@ -424,8 +424,8 @@ let validate_websocket_key = fun key ->
         Error (InvalidLength { actual; expected = 16 })
   | Error error -> Error error
 
-let version_supports_websocket_upgrade = fun __tmp1 ->
-  match __tmp1 with
+let version_supports_websocket_upgrade = fun version ->
+  match version with
   | Net.Http.Version.Http09
   | Net.Http.Version.Http10 -> false
   | Net.Http.Version.Http11
@@ -466,8 +466,8 @@ let validate_websocket_upgrade = fun req ->
         | false -> Error MissingWebSocketConnectionUpgrade
       )
 
-let all_equal = fun __tmp1 ->
-  match __tmp1 with
+let all_equal = fun values ->
+  match values with
   | []
   | [ _ ] -> true
   | first :: rest -> List.all rest ~fn:(String.equal first)
@@ -563,8 +563,8 @@ let send_websocket_frames = fun conn frames state ->
           Socket_pool.Handler.Close state
     )
 
-let websocket_event_to_frame = fun __tmp1 ->
-  match __tmp1 with
+let websocket_event_to_frame = fun message ->
+  match message with
   | Http.Ws.Message.ControlFrame frame -> frame
   | Http.Ws.Message.DataMessage { opcode = Text; payload } -> Http.Ws.Frame.text payload
   | Http.Ws.Message.DataMessage { opcode = Binary; payload } -> Http.Ws.Frame.binary payload
@@ -694,7 +694,7 @@ let handle_websocket_upgrade = fun state socket_conn req ws_handler ->
       let response_bytes = status_line ^ header_lines ^ "\r\n" in
       Log.info
         ("Sending WebSocket upgrade response ("
-        ^ string_of_int (String.length response_bytes)
+        ^ Int.to_string (String.length response_bytes)
         ^ " bytes)");
       match websocket_to_socket_pool_handler ~config:state.config ws_handler with
       | Error error ->
@@ -748,7 +748,7 @@ let handle_request = fun state socket_conn (req: Request.t) ->
       handle_websocket_upgrade state socket_conn req ws_handler
 
 let handle_data_waiting_headers = fun full_data conn state ->
-  match Http.Http1.Request.parse
+  match Http.Http1.Request.parse_head
     ~max_request_line:state.config.max_request_line_length
     ~max_headers:state.config.max_header_count
     ~max_header_length:state.config.max_header_length
@@ -793,7 +793,7 @@ let handle_data_waiting_headers = fun full_data conn state ->
     )
   | Need_more -> Socket_pool.Handler.Continue { state with sniffed_data = full_data }
   | Error upstream_error ->
-      let error = parse_error_of_upstream_error upstream_error in
+      let error = parse_error_from_upstream_error upstream_error in
       let res = Response.bad_request ~body:(parse_error_to_string error) () in
       let _ = send_response conn res in
       Socket_pool.Handler.Close state

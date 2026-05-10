@@ -1,5 +1,7 @@
 open Std
 
+module StdConfig = Std.Config
+
 type env =
   | Development
   | Test
@@ -76,8 +78,8 @@ type error =
   | InvalidBufferSize of int
   | InvalidLiveViewSecret of liveview_secret_error
 
-let env_to_string = fun __tmp1 ->
-  match __tmp1 with
+let env_to_string = fun env ->
+  match env with
   | Development -> "development"
   | Test -> "test"
   | Production -> "production"
@@ -94,14 +96,14 @@ let env_from_string = fun raw ->
   | "prod" -> Ok Production
   | _ -> Error (InvalidEnv { value = raw; normalized; allowed = allowed_envs })
 
-let liveview_secret_error_to_string = fun __tmp1 ->
-  match __tmp1 with
+let liveview_secret_error_to_string = fun error ->
+  match error with
   | Missing -> "liveview_secret must not be empty"
   | TooShort len -> "liveview_secret must be at least 32 characters long, got " ^ Int.to_string len
   | Placeholder -> "liveview_secret must not use the default placeholder in production"
 
-let error_to_string = fun __tmp1 ->
-  match __tmp1 with
+let error_to_string = fun error ->
+  match error with
   | InvalidEnv { value; allowed; _ } ->
       "env must be one of "
       ^ (
@@ -191,88 +193,91 @@ let validate = fun config ->
   | [] -> Ok config
   | errors -> Error errors
 
-(** Configuration spec for Std.Config - automatically registered *)
+(** Configuration spec for `Std.Config`; automatically registered. *)
 let spec =
-  Config.Spec.for_app
+  StdConfig.Spec.for_app
     ~app:"suri"
     [
-      Config.Spec.string
+      StdConfig.Spec.string
         "env"
         ~default:"development"
         ~help:"Runtime environment: development, test, or production";
-      Config.Spec.string "host" ~default:"0.0.0.0" ~help:"Server bind address";
-      Config.Spec.int "port" ~default:4_000 ~help:"Server port number";
-      Config.Spec.int
+      StdConfig.Spec.string "host" ~default:"0.0.0.0" ~help:"Server bind address";
+      StdConfig.Spec.int "port" ~default:4_000 ~help:"Server port number";
+      StdConfig.Spec.int
         "acceptors"
         ~default:Std.Thread.available_parallelism
         ~help:"Number of acceptor processes";
-      Config.Spec.int
+      StdConfig.Spec.int
         "max_request_line_length"
         ~default:8_192
         ~help:"Maximum HTTP request line length in bytes";
-      Config.Spec.int "max_header_count" ~default:100 ~help:"Maximum number of HTTP headers";
-      Config.Spec.int "max_header_length" ~default:8_192 ~help:"Maximum HTTP header length in bytes";
-      Config.Spec.int
+      StdConfig.Spec.int "max_header_count" ~default:100 ~help:"Maximum number of HTTP headers";
+      StdConfig.Spec.int
+        "max_header_length"
+        ~default:8_192
+        ~help:"Maximum HTTP header length in bytes";
+      StdConfig.Spec.int
         "max_body_size"
         ~default:(10 * 1_024 * 1_024)
         ~help:"Maximum HTTP request body size in bytes";
-      Config.Spec.int
+      StdConfig.Spec.int
         "max_keep_alive_requests"
         ~default:100
         ~help:"Maximum requests allowed per keep-alive connection";
-      Config.Spec.int
+      StdConfig.Spec.int
         "max_websocket_frame_size"
         ~default:(1 * 1_024 * 1_024)
         ~help:"Maximum WebSocket frame payload size in bytes";
-      Config.Spec.int
+      StdConfig.Spec.int
         "max_websocket_message_size"
         ~default:(16 * 1_024 * 1_024)
         ~help:"Maximum reassembled WebSocket message size in bytes";
-      Config.Spec.int
+      StdConfig.Spec.int
         "read_header_timeout_ms"
         ~default:5_000
         ~help:"Maximum time to wait for HTTP request headers in milliseconds";
-      Config.Spec.int
+      StdConfig.Spec.int
         "read_body_timeout_ms"
         ~default:30_000
         ~help:"Maximum time to wait for HTTP request bodies in milliseconds";
-      Config.Spec.int
+      StdConfig.Spec.int
         "idle_timeout_ms"
         ~default:60_000
         ~help:"Maximum idle keep-alive time in milliseconds";
-      Config.Spec.int
+      StdConfig.Spec.int
         "write_timeout_ms"
         ~default:30_000
         ~help:"Maximum time to wait for response writes in milliseconds";
-      Config.Spec.int "buffer_size" ~default:4_096 ~help:"Network buffer size in bytes";
-      Config.Spec.string
+      StdConfig.Spec.int "buffer_size" ~default:4_096 ~help:"Network buffer size in bytes";
+      StdConfig.Spec.string
         "liveview_secret"
         ~default:placeholder_liveview_secret
         ~help:"Secret key for signing LiveView session tokens (min 32 characters)";
     ]
 
-(** Extract typed config from validated spec values *)
+(** Extract typed config from validated spec values. *)
 let get = fun conf ->
-  let env_raw = Config.get_string conf "env" in
-  let host = Config.get_string conf "host" in
-  let port = Config.get_int conf "port" in
-  let acceptors = Config.get_int conf "acceptors" in
-  let max_request_line_length = Config.get_int conf "max_request_line_length" in
-  let max_header_count = Config.get_int conf "max_header_count" in
-  let max_header_length = Config.get_int conf "max_header_length" in
-  let max_body_size = Config.get_int conf "max_body_size" in
-  let max_keep_alive_requests = Config.get_int conf "max_keep_alive_requests" in
-  let max_websocket_frame_size = Config.get_int conf "max_websocket_frame_size" in
-  let max_websocket_message_size = Config.get_int conf "max_websocket_message_size" in
-  let read_header_timeout_ms = Config.get_int conf "read_header_timeout_ms" in
-  let read_body_timeout_ms = Config.get_int conf "read_body_timeout_ms" in
-  let idle_timeout_ms = Config.get_int conf "idle_timeout_ms" in
-  let write_timeout_ms = Config.get_int conf "write_timeout_ms" in
-  let buffer_size = Config.get_int conf "buffer_size" in
-  let liveview_secret = Config.get_string conf "liveview_secret" in
+  let env_raw = StdConfig.get_string conf "env" in
+  let host = StdConfig.get_string conf "host" in
+  let port = StdConfig.get_int conf "port" in
+  let acceptors = StdConfig.get_int conf "acceptors" in
+  let max_request_line_length = StdConfig.get_int conf "max_request_line_length" in
+  let max_header_count = StdConfig.get_int conf "max_header_count" in
+  let max_header_length = StdConfig.get_int conf "max_header_length" in
+  let max_body_size = StdConfig.get_int conf "max_body_size" in
+  let max_keep_alive_requests = StdConfig.get_int conf "max_keep_alive_requests" in
+  let max_websocket_frame_size = StdConfig.get_int conf "max_websocket_frame_size" in
+  let max_websocket_message_size = StdConfig.get_int conf "max_websocket_message_size" in
+  let read_header_timeout_ms = StdConfig.get_int conf "read_header_timeout_ms" in
+  let read_body_timeout_ms = StdConfig.get_int conf "read_body_timeout_ms" in
+  let idle_timeout_ms = StdConfig.get_int conf "idle_timeout_ms" in
+  let write_timeout_ms = StdConfig.get_int conf "write_timeout_ms" in
+  let buffer_size = StdConfig.get_int conf "buffer_size" in
+  let liveview_secret = StdConfig.get_string conf "liveview_secret" in
   match env_from_string env_raw with
   | Error error ->
-      Error (Config.ValidationError { app = "suri"; errors = [ error_to_string error ] })
+      Error (StdConfig.ValidationError { app = "suri"; errors = [ error_to_string error ] })
   | Ok env -> (
       let config = {
         env;
@@ -297,7 +302,7 @@ let get = fun conf ->
       match validate config with
       | Ok config -> Ok config
       | Error errors ->
-          Error (Config.ValidationError {
+          Error (StdConfig.ValidationError {
             app = "suri";
             errors = List.map errors ~fn:error_to_string;
           })

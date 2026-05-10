@@ -189,6 +189,68 @@ let test_router_passes_unmatched_paths_to_next_middleware = fun _ctx ->
       Test.assert_equal ~expected:"fallback" ~actual:response.body;
       Ok ()
 
+let forward_app =
+  [
+    Router.middleware
+      [
+        Router.scope
+          "/__suri"
+          [
+            Router.forward
+              "/mailer"
+              [
+                Router.get "" (router_handler "mailer-index");
+                Router.scope
+                  "/messages"
+                  [
+                    Router.get
+                      "/:id"
+                      (fun conn _req ->
+                        let id =
+                          List.find (Conn.params conn) ~fn:(fun (key, _value) -> key = "id")
+                          |> Option.map ~fn:(fun (_key, value) -> value)
+                          |> Option.unwrap_or ~default:"missing"
+                        in
+                        router_handler ("message-" ^ id) conn _req);
+                  ];
+              ];
+          ];
+        Router.get "/__suri/mailer/unknown" (router_handler "outer-unknown");
+        Router.get "/__suri/maileroo" (router_handler "maileroo");
+      ];
+  ]
+
+let test_router_forward_matches_descendant_paths = fun _ctx ->
+  match Testing.App.get forward_app "/__suri/mailer/messages/42" with
+  | Error error -> Error (Testing.response_error_to_string error)
+  | Ok response ->
+      Test.assert_equal ~expected:Net.Http.Status.Ok ~actual:response.status;
+      Test.assert_equal ~expected:"message-42" ~actual:response.body;
+      Ok ()
+
+let test_router_forward_is_path_boundary_aware = fun _ctx ->
+  match Testing.App.get forward_app "/__suri/maileroo" with
+  | Error error -> Error (Testing.response_error_to_string error)
+  | Ok response ->
+      Test.assert_equal ~expected:Net.Http.Status.Ok ~actual:response.status;
+      Test.assert_equal ~expected:"maileroo" ~actual:response.body;
+      Ok ()
+
+let test_router_forward_handles_unknown_descendants = fun _ctx ->
+  match Testing.App.get forward_app "/__suri/mailer/unknown" with
+  | Error error -> Error (Testing.response_error_to_string error)
+  | Ok response ->
+      Test.assert_equal ~expected:Net.Http.Status.NotFound ~actual:response.status;
+      Test.assert_equal ~expected:"Not Found" ~actual:response.body;
+      Ok ()
+
+let test_router_forward_preserves_method_not_allowed = fun _ctx ->
+  match Testing.App.post forward_app "/__suri/mailer/messages/42" with
+  | Error error -> Error (Testing.response_error_to_string error)
+  | Ok response ->
+      Test.assert_equal ~expected:Net.Http.Status.MethodNotAllowed ~actual:response.status;
+      Ok ()
+
 let tests =
   Test.[
     case
@@ -207,6 +269,18 @@ let tests =
     case
       "router passes unmatched paths to next middleware"
       test_router_passes_unmatched_paths_to_next_middleware;
+    case
+      "router forward matches descendant paths"
+      test_router_forward_matches_descendant_paths;
+    case
+      "router forward is path-boundary aware"
+      test_router_forward_is_path_boundary_aware;
+    case
+      "router forward handles unknown descendants"
+      test_router_forward_handles_unknown_descendants;
+    case
+      "router forward preserves method-not-allowed"
+      test_router_forward_preserves_method_not_allowed;
   ]
 
 let main ~args = Test.Cli.main ~name:"suri:middleware-router" ~tests ~args ()

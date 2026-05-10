@@ -16,6 +16,21 @@ type route =
       prefix: string;
       routes: route list;
     }
+  | Forward of {
+      prefix: string;
+      routes: route list;
+    }
+
+type flat_route =
+  | FlatRoute of {
+      meth: route_method;
+      path: string;
+      handler: handler;
+    }
+  | FlatForward of {
+      prefix: string;
+      routes: flat_route list;
+    }
 
 type t = route list
 
@@ -36,6 +51,8 @@ let delete = fun path handler -> route Delete path handler
 let head = fun path handler -> route Head path handler
 
 let scope = fun prefix routes -> Scope { prefix; routes }
+
+let forward = fun prefix routes -> Forward { prefix; routes }
 
 let websocket = fun
   (type a s)
@@ -129,17 +146,72 @@ let method_not_allowed = fun allowed conn ->
   |> Conn.set_header "allow" (render_allow_header allowed)
   |> Conn.send
 
+let not_found = fun conn ->
+  conn
+  |> Conn.respond ~status:Net.Http.Status.NotFound ~body:"Not Found"
+  |> Conn.set_header "content-type" "text/plain; charset=utf-8"
+  |> Conn.send
+
+let path_matches_prefix = fun ~prefix path ->
+  let prefix = normalize_path prefix in
+  let path = normalize_path path in
+  String.equal prefix "/"
+  || String.equal path prefix
+  || String.starts_with ~prefix:(prefix ^ "/") path
+
 let rec flatten_routes = fun prefix routes ->
-  List.flat_map
-    ~fn:(fun route ->
-      match route with
-      | Route { meth; path; handler } ->
-          let full_path = normalize_path (prefix ^ path) in
-          [ (meth, full_path, handler); ]
-      | Scope { prefix = scope_prefix; routes = scope_routes } ->
-          let new_prefix = prefix ^ scope_prefix in
-          flatten_routes new_prefix scope_routes)
+  List.fold_right
     routes
+    ~init:[]
+    ~fn:(fun route acc ->
+      let flattened =
+        match route with
+        | Route { meth; path; handler } ->
+            let full_path = normalize_path (prefix ^ path) in
+            [ FlatRoute { meth; path = full_path; handler }; ]
+        | Scope { prefix = scope_prefix; routes = scope_routes } ->
+            let new_prefix = prefix ^ scope_prefix in
+            flatten_routes new_prefix scope_routes
+        | Forward { prefix = forward_prefix; routes = forward_routes } ->
+            let mount_prefix = normalize_path (prefix ^ forward_prefix) in
+            [
+              FlatForward {
+                prefix = mount_prefix;
+                routes = flatten_routes mount_prefix forward_routes;
+              };
+            ]
+      in
+      flattened @ acc)
+
+let rec dispatch = fun ~on_not_found flat_routes conn ->
+  let meth = Conn.method_ conn in
+  let path = normalize_path (Conn.path conn) in
+  let req = Conn.request conn in
+  let rec try_routes allowed_methods = fun remaining_routes ->
+    match remaining_routes with
+    | [] ->
+        if List.is_empty allowed_methods then
+          on_not_found conn
+        else
+          method_not_allowed allowed_methods conn
+    | FlatRoute { meth = route_meth; path = route_path; handler } :: rest -> (
+        match Matcher.match_path route_path path with
+        | Some params ->
+            if route_method_matches route_meth meth then
+              let conn = Conn.set_params params conn in
+              handler conn req
+            else
+              let allowed_methods = route_method_allowed route_meth allowed_methods in
+              try_routes allowed_methods rest
+        | None -> try_routes allowed_methods rest
+      )
+    | FlatForward { prefix; routes } :: rest ->
+        if path_matches_prefix ~prefix path then
+          dispatch ~on_not_found:not_found routes conn
+        else
+          try_routes allowed_methods rest
+  in
+  try_routes [] flat_routes
 
 let middleware = fun routes ->
   let flat_routes = flatten_routes "" routes in
@@ -147,26 +219,4 @@ let middleware = fun routes ->
     if Conn.sent conn || Conn.halted conn then
       conn
     else
-      let meth = Conn.method_ conn in
-      let path = normalize_path (Conn.path conn) in
-      let req = Conn.request conn in
-      let rec try_routes allowed_methods = fun __tmp1 ->
-        match __tmp1 with
-        | [] ->
-            if List.is_empty allowed_methods then
-              next conn
-            else
-              method_not_allowed allowed_methods conn
-        | (route_meth, route_path, handler) :: rest -> (
-            match Matcher.match_path route_path path with
-            | Some params ->
-                if route_method_matches route_meth meth then
-                  let conn = Conn.set_params params conn in
-                  handler conn req
-                else
-                  let allowed_methods = route_method_allowed route_meth allowed_methods in
-                  try_routes allowed_methods rest
-            | None -> try_routes allowed_methods rest
-          )
-      in
-      try_routes [] flat_routes
+      dispatch ~on_not_found:next flat_routes conn

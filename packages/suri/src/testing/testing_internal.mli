@@ -118,7 +118,8 @@ module Http1: sig
 
   val serialize_response: Web_server.Response.t -> (string, serialization_error) Std.result
 
-  val parse_error_of_upstream_error: Http.Http1.Common.error -> parse_error
+  (** Wrap an upstream HTTP/1 parser error as a Suri parse error. *)
+  val parse_error_from_upstream_error: Http.Http1.Common.error -> parse_error
 
   val compute_websocket_accept: string -> string
 

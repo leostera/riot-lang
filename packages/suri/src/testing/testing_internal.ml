@@ -125,7 +125,7 @@ module Http1 = struct
 
   let serialize_response = Web_server.Http1.serialize_response
 
-  let parse_error_of_upstream_error = Web_server.Http1.parse_error_of_upstream_error
+  let parse_error_from_upstream_error = Web_server.Http1.parse_error_from_upstream_error
 
   let compute_websocket_accept = Web_server.Http1.compute_websocket_accept
 

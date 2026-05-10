@@ -18,12 +18,14 @@ exception Handshake_failed of Connection.error
 type Message.t +=
   | ConnectorMsg of internal_msg
 
-let timeout = Time.Duration.from_millis 1
+let mailbox_poll_timeout = Time.Duration.zero
+
+let read_timeout = Time.Duration.from_secs 1
 
 let rec loop: type s e. Connection.t -> (s, e) Handler.handler -> s -> unit = fun
   conn handler ctx ->
   (* Check for messages before blocking on TCP *)
-  match receive_any ~timeout () with
+  match receive_any ~timeout:mailbox_poll_timeout () with
   | msg ->
       (* Handle the actor message *)
       handle_message_internal msg conn handler ctx
@@ -47,7 +49,7 @@ and handle_message_internal:
 and try_receive: type s e. Connection.t -> (s, e) Handler.handler -> s -> unit = fun
   conn handler ctx ->
   try
-    match Connection.receive conn ~timeout with
+    match Connection.receive conn ~timeout:read_timeout with
     | Ok "" -> handler.handle_close conn ctx
     | Ok data -> handle_data data conn handler ctx
     | Error Connection.Closed -> handler.handle_close conn ctx

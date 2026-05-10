@@ -302,20 +302,20 @@ let test_http1_body_split_keeps_zero_length_body_empty = fun _ctx ->
 let test_http1_wraps_known_upstream_parse_errors = fun _ctx ->
   Test.assert_equal
     ~expected:(Http1.UpstreamParseError (Http.Http1.Common.RequestLineTooLong { max_length = 8_192 }))
-    ~actual:(Http1.parse_error_of_upstream_error
+    ~actual:(Http1.parse_error_from_upstream_error
       (Http.Http1.Common.RequestLineTooLong { max_length = 8_192 }));
   Test.assert_equal
     ~expected:(Http1.UpstreamParseError (Http.Http1.Common.InvalidHeaderFormat Http.Http1.Common.MissingColon))
-    ~actual:(Http1.parse_error_of_upstream_error
+    ~actual:(Http1.parse_error_from_upstream_error
       (Http.Http1.Common.InvalidHeaderFormat Http.Http1.Common.MissingColon));
   Test.assert_equal
     ~expected:(Http1.UpstreamParseError (Http.Http1.Common.HeaderTooLong { max_length = 8_192 }))
-    ~actual:(Http1.parse_error_of_upstream_error
+    ~actual:(Http1.parse_error_from_upstream_error
       (Http.Http1.Common.HeaderTooLong { max_length = 8_192 }));
   Ok ()
 
 let test_http1_preserves_upstream_parse_error_payload = fun _ctx ->
-  match Http1.parse_error_of_upstream_error Http.Http1.Common.InvalidHttpVersion with
+  match Http1.parse_error_from_upstream_error Http.Http1.Common.InvalidHttpVersion with
   | Http1.UpstreamParseError Http.Http1.Common.InvalidHttpVersion -> Ok ()
   | _ -> Error "expected upstream parser error payload to be preserved"
 

@@ -7,16 +7,20 @@
    ## Features
 
    - HTTP/1.1 request parsing with configurable limits
-   - Request body and WebSocket frame limits from {!Config.t}
+   - Request body and WebSocket frame limits from `Config.t`
    - Keep-alive connection management
 
    ## Example
 
-   ```ocaml let handler _conn req = let body = Request.body req in Response.ok
-   ~body:"Hello, World!" ()
+   ```ocaml
+   let handler _conn req =
+     let body = Request.body req in
+     Response.ok ~body:"Hello, World!" ()
 
-   let config = Config.make () in let state = Http1.make_handler ~config
-   ~handler () in (* Use with Socket_pool *) ```
+   let config = Config.make () in
+   let state = Http1.make_handler ~config ~handler () in
+   state
+   ```
 *)
 
 type state
@@ -85,7 +89,8 @@ type error =
 
 val to_string_error: error -> string
 
-val parse_error_of_upstream_error: Http.Http1.Common.error -> parse_error
+(** Wrap an upstream HTTP/1 parser error as a Suri parse error. *)
+val parse_error_from_upstream_error: Http.Http1.Common.error -> parse_error
 
 val serialize_response: Response.t -> (string, serialization_error) Std.result
 
@@ -124,7 +129,7 @@ val should_continue_keep_alive:
   Request.t ->
   bool
 
-(** Create a handler that supports WebSocket upgrades via {!Http_handler.response}. *)
+(** Create a handler that supports WebSocket upgrades via `Http_handler.response`. *)
 val make_handler:
   config:Super.Config.t ->
   handler:Http_handler.t ->
