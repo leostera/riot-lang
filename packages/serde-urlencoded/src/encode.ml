@@ -99,6 +99,19 @@ let rec backend: state Ser.backend = {
               (Array.get_unchecked values ~at:index)
           done
       | None -> unsupported_top_level "array");
+  dict =
+    (fun state encode values ->
+      match state.context with
+      | Top_level ->
+          Vector.for_each
+            values
+            ~fn:(fun (name, value) ->
+              with_field
+                state
+                name
+                (fun () ->
+                  encode.run backend state value))
+      | Field _ -> unsupported_nested "dict");
   record =
     (fun state fields value ->
       match state.context with

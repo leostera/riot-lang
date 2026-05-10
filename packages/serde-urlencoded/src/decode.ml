@@ -150,6 +150,23 @@ let rec backend: state De.backend = {
             ~fn:(fun index ->
               let value = Array.get_unchecked values ~at:index in
               decode.run backend (state_of_value value)));
+  dict =
+    (fun state decode ->
+      match state.context with
+      | Field_values _ -> unsupported_nested "dict"
+      | Top_level ->
+          state.root_consumed <- true;
+          let result = Vector.with_capacity ~size:(Array.length state.fields) in
+          for index = 0 to Array.length state.fields - 1 do
+            let field = Array.get_unchecked state.fields ~at:index in
+            Vector.push
+              result
+              ~value:(
+                field.key,
+                with_values state field.values (fun () -> decode.run backend state)
+              )
+          done;
+          result);
   record =
     (fun state ~fields ~init ~step ~finish ->
       match state.context with
