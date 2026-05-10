@@ -13,7 +13,7 @@ open Std
    PostgreSQL driver errors.
 
    Use this module when a caller needs to render driver failures into logs,
-   JSON responses, or diagnostics.
+   diagnostics, or serde-backed output formats.
 *)
 module Error: sig
   type t
@@ -21,8 +21,8 @@ module Error: sig
   (** Render a driver error as a human-readable string. *)
   val to_string: t -> string
 
-  (** Render a driver error as JSON. *)
-  val to_json: t -> Data.Json.t
+  (** Serialize a driver error through a Serde backend. *)
+  val serializer: t Serde.Ser.t
 end
 
 (**
@@ -73,7 +73,6 @@ module Config: sig
     *)
     keepalives_idle: Time.Duration.t option;
   }
-
   type parse_error =
     | InvalidUserinfoFormat
     | InvalidAuthorityFormat
@@ -82,19 +81,6 @@ module Config: sig
     | InvalidConnectionStringFormat
     | InvalidUri
 
-  (**
-     Build a configuration with development-friendly defaults.
-
-     Example return values:
-     - `host = "localhost"`
-     - `port = 5432`
-     - `database = "postgres"`
-     - `user = "postgres"`
-     - `ssl_mode = Prefer`
-
-     Override at least the database name and credentials before using the
-     result against a real server.
-  *)
   val default: unit -> t
 
   (**
@@ -119,4 +105,4 @@ module Internal: sig
 end
 
 (** `Sqlx_driver` implementation backed by PostgreSQL. *)
-module Driver: Sqlx_driver.Driver.Intf with type config = Config.t
+module Driver: Sqlx_driver.Driver.Intf with type config = Config.t and type error = Error.t

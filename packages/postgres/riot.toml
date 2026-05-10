@@ -1,6 +1,6 @@
 [package]
 name = "postgres"
-version = "0.0.32"
+version = "0.0.33"
 description = "PostgreSQL adapter for sqlx"
 license = "Apache-2.0"
 public = true
@@ -9,6 +9,9 @@ public = true
 std = "*"
 kernel = "*"
 sqlx-driver = "*"
+serde = { path = "../serde", version = "*" }
 
 [dev-dependencies]
 dotenv = { path = "../dotenv", version = "*" }
+propane = { path = "../propane", version = "*" }
+testcontainers = { path = "../testcontainers", version = "*" }

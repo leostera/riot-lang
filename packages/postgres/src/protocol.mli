@@ -190,9 +190,9 @@ module Error: sig
 
   val to_string: t -> string
 
-  val to_json: t -> Data.Json.t
+  val serializer: t Serde.Ser.t
 
-  val from_json: Data.Json.t -> t
+  val deserializer: t Serde.De.t
 end
 
 module TypeOid: sig

@@ -409,106 +409,176 @@ module Error = struct
 
   let source_routine = fun err -> err.source_routine
 
-  (* Parse error from JSON *)
+  module De = Serde.De
+  module Ser = Serde.Ser
 
-  let from_json = fun json ->
-    let open Data.Json in
-    let get_string key =
-      match get_field key json with
-      | Some (String s) -> Some s
-      | _ -> None
-    in
-    let get_int key =
-      match get_field key json with
-      | Some (Int n) -> Some n
-      | _ -> None
-    in
+  type field =
+    | Field_severity
+    | Field_sqlstate
+    | Field_message
+    | Field_detail
+    | Field_hint
+    | Field_position
+    | Field_internal_position
+    | Field_internal_query
+    | Field_context
+    | Field_schema
+    | Field_table
+    | Field_column
+    | Field_datatype
+    | Field_constraint
+    | Field_source_file
+    | Field_source_line
+    | Field_source_routine
+
+  type builder = {
+    mutable b_severity: string option;
+    mutable b_sqlstate: Sqlstate.t option;
+    mutable b_message: string option;
+    mutable b_detail: string option;
+    mutable b_hint: string option;
+    mutable b_position: int option;
+    mutable b_internal_position: int option;
+    mutable b_internal_query: string option;
+    mutable b_where_context: string option;
+    mutable b_schema_name: string option;
+    mutable b_table_name: string option;
+    mutable b_column_name: string option;
+    mutable b_datatype_name: string option;
+    mutable b_constraint_name: string option;
+    mutable b_source_file: string option;
+    mutable b_source_line: int option;
+    mutable b_source_routine: string option;
+  }
+
+  let sqlstate_serializer = Ser.contramap Sqlstate.to_string Ser.string
+
+  let sqlstate_deserializer =
+    De.and_then De.string (fun code -> De.const (Sqlstate.from_string code))
+
+  let fields =
+    De.fields
+      [
+        De.field "severity" Field_severity;
+        De.field "sqlstate" Field_sqlstate;
+        De.field "message" Field_message;
+        De.field "detail" Field_detail;
+        De.field "hint" Field_hint;
+        De.field "position" Field_position;
+        De.field "internal_position" Field_internal_position;
+        De.field "internal_query" Field_internal_query;
+        De.field "context" Field_context;
+        De.field "where_context" Field_context;
+        De.field "schema" Field_schema;
+        De.field "schema_name" Field_schema;
+        De.field "table" Field_table;
+        De.field "table_name" Field_table;
+        De.field "column" Field_column;
+        De.field "column_name" Field_column;
+        De.field "datatype" Field_datatype;
+        De.field "datatype_name" Field_datatype;
+        De.field "constraint" Field_constraint;
+        De.field "constraint_name" Field_constraint;
+        De.field "source_file" Field_source_file;
+        De.field "source_line" Field_source_line;
+        De.field "source_routine" Field_source_routine;
+      ]
+
+  let create_builder = fun () ->
     {
-      severity = get_string "severity";
-      sqlstate =
-        (
-          match get_string "sqlstate" with
-          | Some s -> Some (Sqlstate.from_string s)
-          | None -> None
-        );
-      message =
-        (
-          match get_string "message" with
-          | Some m -> m
-          | None -> "Unknown error"
-        );
-      detail = get_string "detail";
-      hint = get_string "hint";
-      position = get_int "position";
-      internal_position = None;
-      internal_query = None;
-      where_context = get_string "context";
-      schema_name = get_string "schema";
-      table_name = get_string "table";
-      column_name = get_string "column";
-      datatype_name = None;
-      constraint_name = get_string "constraint";
-      source_file = None;
-      source_line = None;
-      source_routine = None;
+      b_severity = None;
+      b_sqlstate = None;
+      b_message = None;
+      b_detail = None;
+      b_hint = None;
+      b_position = None;
+      b_internal_position = None;
+      b_internal_query = None;
+      b_where_context = None;
+      b_schema_name = None;
+      b_table_name = None;
+      b_column_name = None;
+      b_datatype_name = None;
+      b_constraint_name = None;
+      b_source_file = None;
+      b_source_line = None;
+      b_source_routine = None;
     }
 
-  (* Convert error to JSON *)
+  let step = fun reader builder field ->
+    match field with
+    | Some Field_severity -> builder.b_severity <- De.read reader (De.option De.string)
+    | Some Field_sqlstate -> builder.b_sqlstate <- De.read reader (De.option sqlstate_deserializer)
+    | Some Field_message -> builder.b_message <- De.read reader (De.option De.string)
+    | Some Field_detail -> builder.b_detail <- De.read reader (De.option De.string)
+    | Some Field_hint -> builder.b_hint <- De.read reader (De.option De.string)
+    | Some Field_position -> builder.b_position <- De.read reader (De.option De.int)
+    | Some Field_internal_position ->
+        builder.b_internal_position <- De.read reader (De.option De.int)
+    | Some Field_internal_query -> builder.b_internal_query <- De.read reader (De.option De.string)
+    | Some Field_context -> builder.b_where_context <- De.read reader (De.option De.string)
+    | Some Field_schema -> builder.b_schema_name <- De.read reader (De.option De.string)
+    | Some Field_table -> builder.b_table_name <- De.read reader (De.option De.string)
+    | Some Field_column -> builder.b_column_name <- De.read reader (De.option De.string)
+    | Some Field_datatype -> builder.b_datatype_name <- De.read reader (De.option De.string)
+    | Some Field_constraint -> builder.b_constraint_name <- De.read reader (De.option De.string)
+    | Some Field_source_file -> builder.b_source_file <- De.read reader (De.option De.string)
+    | Some Field_source_line -> builder.b_source_line <- De.read reader (De.option De.int)
+    | Some Field_source_routine -> builder.b_source_routine <- De.read reader (De.option De.string)
+    | None -> De.read reader De.skip_any
 
-  let to_json = fun err ->
-    let open Data.Json in
-    let fields = [ ("message", string err.message); ] in
-    let fields =
-      match err.severity with
-      | Some sev -> fields @ [ ("severity", string sev) ]
-      | None -> fields
-    in
-    let fields =
-      match err.sqlstate with
-      | Some code -> fields @ [ ("sqlstate", string (Sqlstate.to_string code)) ]
-      | None -> fields
-    in
-    let fields =
-      match err.detail with
-      | Some d -> fields @ [ ("detail", string d) ]
-      | None -> fields
-    in
-    let fields =
-      match err.hint with
-      | Some h -> fields @ [ ("hint", string h) ]
-      | None -> fields
-    in
-    let fields =
-      match err.position with
-      | Some p -> fields @ [ ("position", int p) ]
-      | None -> fields
-    in
-    let fields =
-      match err.constraint_name with
-      | Some n -> fields @ [ ("constraint", string n) ]
-      | None -> fields
-    in
-    let fields =
-      match err.schema_name with
-      | Some s -> fields @ [ ("schema", string s) ]
-      | None -> fields
-    in
-    let fields =
-      match err.table_name with
-      | Some t -> fields @ [ ("table", string t) ]
-      | None -> fields
-    in
-    let fields =
-      match err.column_name with
-      | Some c -> fields @ [ ("column", string c) ]
-      | None -> fields
-    in
-    let fields =
-      match err.where_context with
-      | Some w -> fields @ [ ("context", string w) ]
-      | None -> fields
-    in
-    obj fields
+  let finish = fun builder ->
+    {
+      severity = builder.b_severity;
+      sqlstate = builder.b_sqlstate;
+      message =
+        (
+          match builder.b_message with
+          | Some message -> message
+          | None -> "Unknown error"
+        );
+      detail = builder.b_detail;
+      hint = builder.b_hint;
+      position = builder.b_position;
+      internal_position = builder.b_internal_position;
+      internal_query = builder.b_internal_query;
+      where_context = builder.b_where_context;
+      schema_name = builder.b_schema_name;
+      table_name = builder.b_table_name;
+      column_name = builder.b_column_name;
+      datatype_name = builder.b_datatype_name;
+      constraint_name = builder.b_constraint_name;
+      source_file = builder.b_source_file;
+      source_line = builder.b_source_line;
+      source_routine = builder.b_source_routine;
+    }
+
+  let deserializer = De.record_mut ~fields ~create:create_builder ~step ~finish
+
+  let serializer =
+    Ser.record
+      (
+        Ser.fields
+          [
+            Ser.field "severity" (Ser.option Ser.string) (fun err -> err.severity);
+            Ser.field "sqlstate" (Ser.option sqlstate_serializer) (fun err -> err.sqlstate);
+            Ser.field "message" Ser.string (fun err -> err.message);
+            Ser.field "detail" (Ser.option Ser.string) (fun err -> err.detail);
+            Ser.field "hint" (Ser.option Ser.string) (fun err -> err.hint);
+            Ser.field "position" (Ser.option Ser.int) (fun err -> err.position);
+            Ser.field "internal_position" (Ser.option Ser.int) (fun err -> err.internal_position);
+            Ser.field "internal_query" (Ser.option Ser.string) (fun err -> err.internal_query);
+            Ser.field "context" (Ser.option Ser.string) (fun err -> err.where_context);
+            Ser.field "schema" (Ser.option Ser.string) (fun err -> err.schema_name);
+            Ser.field "table" (Ser.option Ser.string) (fun err -> err.table_name);
+            Ser.field "column" (Ser.option Ser.string) (fun err -> err.column_name);
+            Ser.field "datatype" (Ser.option Ser.string) (fun err -> err.datatype_name);
+            Ser.field "constraint" (Ser.option Ser.string) (fun err -> err.constraint_name);
+            Ser.field "source_file" (Ser.option Ser.string) (fun err -> err.source_file);
+            Ser.field "source_line" (Ser.option Ser.int) (fun err -> err.source_line);
+            Ser.field "source_routine" (Ser.option Ser.string) (fun err -> err.source_routine);
+          ]
+      )
 
   (* Format error for display *)
 

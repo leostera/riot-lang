@@ -2,6 +2,19 @@
 
 All notable changes to `postgres` are documented here.
 
+## 0.0.33 - 2026-05-10
+
+### Added
+
+- Added testcontainers-backed PostgreSQL e2e coverage with property tests for value roundtrips, CRUD-style workloads, transactions, and generated operation sequences.
+- Added `propane` and `testcontainers` dev dependencies for live container testing.
+
+### Changed
+
+- Split the PostgreSQL adapter into config, driver, and value codec modules behind the existing public facade.
+- Replaced public and protocol error JSON helpers with serde serializers and deserializers.
+- Moved `bytea` text handling onto the shared `Encoding.Base16` helpers.
+
 ## 0.0.32 - 2026-05-10
 
 ### Added
