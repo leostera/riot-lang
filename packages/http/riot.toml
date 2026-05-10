@@ -1,6 +1,6 @@
 [package]
 name = "http"
-version = "0.0.32"
+version = "0.0.34"
 description = "HTTP protocol parsing and wire types"
 license = "Apache-2.0"
 public = true

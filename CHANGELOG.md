@@ -1,5 +1,46 @@
 # Changelog
 
+## 0.0.34 - 2026-05-10
+
+### riot
+- CLI build output now flows through a centralized UI event pipeline. Commands that execute builds, including build, test, run, bench, fuzz, install, and related flows, share the same TUI, line-by-line, and JSON event rendering path.
+- Build, dependency, cache, planner, and test events now use a shared structured event envelope from `riot-model`, so JSON output is more regular and easier for tools to consume.
+- `riot trace` introduces typed telemetry spans and trace path handling for profiling Riot commands and build-system work.
+- Build planning and cache paths continue to move toward graph-native execution, with reused source summaries, better artifact metadata, and faster warm package cache checks.
+
+### blink
+- The HTTP client runtime was simplified around clearer error handling and client lifecycle behavior.
+
+### docker-client
+- Added a Docker Engine client package for integration workflows that need to create, inspect, and manage containers programmatically.
+
+### mysql
+- Added a MySQL driver with hardened protocol parsing and serde-backed structured errors.
+
+### postgres
+- PostgreSQL adapter errors are now structured more consistently, and container-backed coverage was expanded.
+
+### serde
+- Added string-keyed `dict` codecs and renamed the older map backend to match that shape. BSON and URL-encoded codecs now implement the new backend, so generic dictionary serialization works across the release set.
+
+### sqlx
+- SQLx driver contracts, pool behavior, and migration metadata handling were tightened, including support for MySQL migration metadata bytes.
+
+### std
+- Added telemetry spans, ordered index sets, and concurrent hash map work backed by the new swisstable package. Runtime mailbox internals also avoid more locking on hot paths.
+
+### suri
+- Added route forwarding for composing application routes.
+
+### suri-jobs
+- Added supervised job queues and MySQL-backed queue support, with container-backed database coverage.
+
+### suri-mailer
+- Added a mail delivery package for Suri applications.
+
+### testcontainers
+- Added container lifecycle helpers used by database and integration tests.
+
 ## 0.0.32 - 2026-05-04
 
 ### riot
