@@ -3,7 +3,7 @@ open Result.Syntax
 
 type queue = Queue.packed
 
-let current_db: Sqlx.Pool.t option Sync.Cell.t = Sync.Cell.create None
+let current_db: Sqlx_backend.t option Sync.Cell.t = Sync.Cell.create None
 
 let configure db = Sync.Cell.set current_db (Some db)
 
@@ -264,7 +264,8 @@ let request_work scheduler_ref queue_id queue_name locked_by job_ref =
           ~timeout:(Time.Duration.from_secs 300)
           () with
         | Receive_timeout ->
-            Log.debug ("suri-jobs queue " ^ queue_name ^ " timed out waiting for job scheduler response");
+            Log.debug
+              ("suri-jobs queue " ^ queue_name ^ " timed out waiting for job scheduler response");
             None
       )
 
@@ -372,7 +373,10 @@ let start_job_scheduler db (Queue.Packed queue) =
           with
           | exn ->
               let message =
-                "suri-jobs queue " ^ queue_name ^ " job scheduler raised: " ^ exception_to_string exn
+                "suri-jobs queue "
+                ^ queue_name
+                ^ " job scheduler raised: "
+                ^ exception_to_string exn
               in
               safe_stderr message;
               Log.error message;

@@ -6,6 +6,7 @@ module JobId: sig
   type error
 
   val from_string: string -> (t, error) result
+
   val from_string_unchecked: string -> t
 
   val create: unit -> t
@@ -22,6 +23,7 @@ module QueueId: sig
   type error
 
   val from_string: string -> (t, error) result
+
   val from_string_unchecked: string -> t
 
   val to_string: t -> string
@@ -36,6 +38,7 @@ module WorkerId: sig
   type error
 
   val from_string: string -> (t, error) result
+
   val from_string_unchecked: string -> t
 
   val to_string: t -> string
@@ -50,6 +53,7 @@ module FanoutId: sig
   type error
 
   val from_string: string -> (t, error) result
+
   val from_string_unchecked: string -> t
 
   val to_string: t -> string
@@ -64,6 +68,7 @@ module UniqueKey: sig
   type error
 
   val from_string: string -> (t, error) result
+
   val from_string_unchecked: string -> t
 
   val to_string: t -> string
@@ -76,16 +81,12 @@ end
 module Error: sig
   type config_error =
     | Missing_env of string
-    | Invalid_postgres_url of {
-        env: string;
-        message: string;
-      }
+    | Invalid_postgres_url of { env: string; message: string }
+    | Invalid_mysql_url of { env: string; message: string }
     | Unsupported_backend of string
-
   type expected_field =
     | ExpectedText
     | ExpectedInt
-
   type missing_field =
     | FieldMissing of string
     | FieldTypeMismatch of {
@@ -95,7 +96,6 @@ module Error: sig
       }
     | JobRowMissing of JobId.t
     | ActiveUniqueKeyRowMissing of UniqueKey.t
-
   type t =
     | Encode_payload of {
         queue: QueueId.t;
@@ -337,6 +337,49 @@ val submit:
   'job ->
   (JobId.t, Error.t) result
 
+module Schema: sig
+  (** SQL dialects supported by the `suri-jobs` SQL backend. *)
+  type dialect =
+    | Postgres
+    | Mysql
+
+  val create_jobs_sql: string
+
+  (**
+     PostgreSQL migration SQL for the fetch index.
+
+     Prefer `postgres_source` or `source_for` when running migrations.
+  *)
+  val create_fetch_index_sql: string
+
+  (** PostgreSQL migrations used by `source`. *)
+  val migrations: Sqlx.Migrate.Migration.t Collections.Vector.t
+
+  (** PostgreSQL migration source kept for backwards compatibility. *)
+  val source: unit -> Sqlx.Migrate.Source.t
+
+  (** Migration source for PostgreSQL-backed job storage. *)
+  val postgres_source: unit -> Sqlx.Migrate.Source.t
+
+  (** Migration source for MySQL-backed job storage. *)
+  val mysql_source: unit -> Sqlx.Migrate.Source.t
+
+  (** Migration source for a concrete SQL `dialect`. *)
+  val source_for: dialect -> Sqlx.Migrate.Source.t
+
+  (** PostgreSQL migration config kept for backwards compatibility. *)
+  val migration_config: unit -> Sqlx.Migrate.Config.t
+
+  (** Migration config for PostgreSQL-backed job storage. *)
+  val postgres_migration_config: unit -> Sqlx.Migrate.Config.t
+
+  (** Migration config for MySQL-backed job storage. *)
+  val mysql_migration_config: unit -> Sqlx.Migrate.Config.t
+
+  (** Migration config for a concrete SQL `dialect`. *)
+  val migration_config_for: dialect -> Sqlx.Migrate.Config.t
+end
+
 module Config: sig
   type t
 
@@ -348,9 +391,16 @@ module Config: sig
 
   val load: unit -> (t, Std.Config.error) result
 
+  (**
+     Build an explicit SQL-backed jobs config.
+
+     Pass `~dialect:Mysql` with `Mysql.Driver`. When omitted, `make` infers
+     `Mysql` for `Mysql.Driver` and defaults to `Postgres` for other drivers.
+  *)
   val make:
     ?pool_size:int ->
     ?pool_config:Sqlx.Config.t ->
+    ?dialect:Schema.dialect ->
     ?migration_config:Sqlx.Migrate.Config.t ->
     ?migration_source:Sqlx.Migrate.Source.t ->
     driver:(module Sqlx.Driver.Intf with type config = 'config) ->
@@ -360,11 +410,7 @@ end
 
 val child_spec: ?id:string -> queue list -> Std.Supervisor.child_spec
 
-val child_spec_with_config:
-  ?id:string ->
-  config:Config.t ->
-  queue list ->
-  Std.Supervisor.child_spec
+val child_spec_with_config: ?id:string -> config:Config.t -> queue list -> Std.Supervisor.child_spec
 
 val start_link: queue list -> Std.Supervisor.t
 
@@ -376,26 +422,19 @@ module Memory: sig
   val create: unit -> t
 end
 
-module Schema: sig
-  val create_jobs_sql: string
-
-  val create_fetch_index_sql: string
-
-  val migrations: Sqlx.Migrate.Migration.t Collections.Vector.t
-
-  val source: unit -> Sqlx.Migrate.Source.t
-
-  val migration_config: unit -> Sqlx.Migrate.Config.t
-
-  val postgres_migration_config: unit -> Sqlx.Migrate.Config.t
-end
-
 module Sqlx_backend: sig
-  include Database.Intf with type t = Sqlx.Pool.t
+  include Database.Intf
 
+  (**
+     Connect to a SQLx driver-backed job store.
+
+     Pass `~dialect:Mysql` when using `Mysql.Driver`; otherwise migrations
+     and SQL default to PostgreSQL behavior.
+  *)
   val connect:
     ?pool_size:int ->
     ?pool_config:Sqlx.Config.t ->
+    ?dialect:Schema.dialect ->
     driver:(module Sqlx.Driver.Intf with type config = 'config) ->
     'config ->
     (t, Error.t) result
@@ -406,6 +445,13 @@ module Sqlx_backend: sig
     t ->
     (unit, Error.t) result
 
+  (** Return the underlying `Sqlx.Pool.t`. *)
+  val pool: t -> Sqlx.Pool.t
+
+  (** Return the SQL dialect selected for this backend. *)
+  val dialect: t -> Schema.dialect
+
+  (** Close all pooled SQL connections. *)
   val shutdown: t -> unit
 end
 
@@ -416,14 +462,13 @@ module Routes: sig
 
   val unavailable_store: ?error:Error.t -> unit -> store
 
-  val sqlx_store: Sqlx.Pool.t -> store
+  val sqlx_store: Sqlx_backend.t -> store
 
   val routes: store -> Suri.Middleware.Router.route list
 end
 
 module Supervisor: sig
   type t
-
   type start_error =
     | ConfigError of Std.Config.error
     | StartError of Error.t
@@ -436,7 +481,7 @@ module Supervisor: sig
 
   val runtime: t -> Std.Supervisor.t
 
-  val database: t -> Sqlx.Pool.t
+  val database: t -> Sqlx_backend.t
 
   val stop: t -> unit
 

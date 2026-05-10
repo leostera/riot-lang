@@ -4,10 +4,8 @@ module Json = Data.Json
 
 type config_error =
   | Missing_env of string
-  | Invalid_postgres_url of {
-      env: string;
-      message: string;
-    }
+  | Invalid_postgres_url of { env: string; message: string }
+  | Invalid_mysql_url of { env: string; message: string }
   | Unsupported_backend of string
 
 type expected_field =
@@ -51,12 +49,15 @@ let config_error_to_json = fun error ->
           ("env", Json.string env);
           ("message", Json.string message);
         ]
-  | Unsupported_backend backend ->
+  | Invalid_mysql_url { env; message } ->
       Json.obj
         [
-          ("kind", Json.string "unsupported_backend");
-          ("backend", Json.string backend);
+          ("kind", Json.string "invalid_mysql_url");
+          ("env", Json.string env);
+          ("message", Json.string message);
         ]
+  | Unsupported_backend backend ->
+      Json.obj [ ("kind", Json.string "unsupported_backend"); ("backend", Json.string backend); ]
 
 let expected_field_to_string = fun expected ->
   match expected with
@@ -110,7 +111,8 @@ let to_json = fun error ->
   | Missing_field missing ->
       Json.obj [ ("kind", Json.string "missing_field"); ("error", missing_field_to_json missing); ]
   | Not_started -> Json.obj [ ("kind", Json.string "not_started"); ]
-  | Config error -> Json.obj [ ("kind", Json.string "config"); ("error", config_error_to_json error); ]
+  | Config error ->
+      Json.obj [ ("kind", Json.string "config"); ("error", config_error_to_json error); ]
   | Sqlx error ->
       Json.obj [ ("kind", Json.string "sqlx"); ("message", Json.string (Sqlx.show_error error)); ]
   | Migration error ->
@@ -123,22 +125,16 @@ let to_json = fun error ->
 let config_error_to_string = fun error ->
   match error with
   | Missing_env env -> "missing environment variable " ^ env
-  | Invalid_postgres_url { env; message } ->
-      "invalid PostgreSQL URL in " ^ env ^ ": " ^ message
+  | Invalid_postgres_url { env; message } -> "invalid PostgreSQL URL in " ^ env ^ ": " ^ message
+  | Invalid_mysql_url { env; message } -> "invalid MySQL URL in " ^ env ^ ": " ^ message
   | Unsupported_backend backend -> "unsupported suri-jobs backend: " ^ backend
 
 let missing_field_to_string = fun missing ->
   match missing with
   | FieldMissing field -> "missing field: " ^ field
   | FieldTypeMismatch { field; expected; actual } ->
-      "field "
-      ^ field
-      ^ " expected "
-      ^ expected_field_to_string expected
-      ^ ", got "
-      ^ actual
-  | JobRowMissing job_id ->
-      "missing job row for suri_jobs.job_id=" ^ Job_id.to_string job_id
+      "field " ^ field ^ " expected " ^ expected_field_to_string expected ^ ", got " ^ actual
+  | JobRowMissing job_id -> "missing job row for suri_jobs.job_id=" ^ Job_id.to_string job_id
   | ActiveUniqueKeyRowMissing unique_key ->
       "missing active job row for suri_jobs.unique_key=" ^ Unique_key.to_string unique_key
 

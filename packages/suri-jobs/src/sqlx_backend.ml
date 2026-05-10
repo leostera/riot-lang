@@ -1,22 +1,36 @@
 open Std
 open Result.Syntax
 
-type t = Sqlx.Pool.t
+type t = {
+  pool: Sqlx.Pool.t;
+  dialect: Schema.dialect;
+}
 
-let connect ?pool_size ?(pool_config = Sqlx.Config.default) ~driver config =
+let pool db = db.pool
+
+let dialect db = db.dialect
+
+let connect
+  ?pool_size
+  ?(pool_config = Sqlx.Config.default)
+  ?(dialect = Schema.Postgres)
+  ~driver
+  config =
   let sqlx_config =
     match pool_size with
     | None -> pool_config
     | Some pool_size -> { pool_config with Sqlx.Config.pool_size }
   in
   match Sqlx.connect ~config:sqlx_config ~driver config with
-  | Ok pool -> Ok pool
+  | Ok pool -> Ok { pool; dialect }
   | Error error -> Error (Error.Sqlx error)
 
-let shutdown db = Sqlx.shutdown db
+let shutdown db = Sqlx.shutdown db.pool
 
-let migrate_with ?(config = Schema.postgres_migration_config ()) ?(source = Schema.source ()) db =
-  match Sqlx.migrate ~config ~source db () with
+let migrate_with ?config ?source db =
+  let config = Option.unwrap_or ~default:(Schema.migration_config_for db.dialect) config in
+  let source = Option.unwrap_or ~default:(Schema.source_for db.dialect) source in
+  match Sqlx.migrate ~config ~source db.pool () with
   | Ok () -> Ok ()
   | Error error -> Error (Error.Migration error)
 
@@ -38,24 +52,47 @@ let sql_option_map value ~fn =
 
 let sql_timestamp value = Sqlx.Value.string value
 
+let driver_error_json = fun error ->
+  match error with
+  | Sqlx.Connection.DriverError { error; serializer; _ } -> (
+      match Serde_json.to_string serializer error with
+      | Error _ -> None
+      | Ok encoded -> (
+          match Data.Json.from_string encoded with
+          | Ok json -> Some json
+          | Error _ -> None
+        )
+    )
+  | Sqlx.Connection.RuntimeError _ -> None
+
 let driver_error_type = fun error ->
   match error with
-  | Sqlx.Connection.DriverError { error; to_json; _ } ->
-      (
-        match Data.Json.get_field "type" (to_json error) with
-      | Some value -> Data.Json.get_string value
+  | Sqlx.Connection.DriverError _ -> (
+      match driver_error_json error with
+      | Some json -> (
+          match Data.Json.get_field "type" json with
+          | Some value -> Data.Json.get_string value
+          | None -> None
+        )
       | None -> None
-      )
+    )
   | Sqlx.Connection.RuntimeError _ -> Some "runtime_error"
 
 let driver_sqlstate = fun error ->
   match error with
-  | Sqlx.Connection.DriverError { error; to_json; _ } ->
-      (
-        match Data.Json.get_field "sqlstate" (to_json error) with
-      | Some value -> Data.Json.get_string value
+  | Sqlx.Connection.DriverError _ -> (
+      match driver_error_json error with
+      | Some json -> (
+          match Data.Json.get_field "sqlstate" json with
+          | Some value -> Data.Json.get_string value
+          | None -> (
+              match Data.Json.get_field "sql_state" json with
+              | Some value -> Data.Json.get_string value
+              | None -> None
+            )
+        )
       | None -> None
-      )
+    )
   | Sqlx.Connection.RuntimeError _ -> None
 
 let connection_sqlstate_matches values error =
@@ -94,7 +131,7 @@ let retryable_sqlx_error error =
 let unique_violation = fun error ->
   match error with
   | Sqlx.PoolError (Sqlx.Pool.ConnectionError error) ->
-      connection_sqlstate_matches [ "unique_violation"; "23505"; ] error
+      connection_sqlstate_matches [ "unique_violation"; "23505"; "23000"; ] error
   | _ -> false
 
 let with_sqlx_retry operation =
@@ -107,16 +144,16 @@ let with_sqlx_retry operation =
   attempt 5
 
 let exec db sql values =
-  match with_sqlx_retry (fun () -> Sqlx.exec db sql values) with
+  match with_sqlx_retry (fun () -> Sqlx.exec db.pool sql values) with
   | Ok _ -> Ok ()
   | Error error -> Error (Error.Sqlx error)
 
 let query_cursor db sql values consume =
   let run_once () =
-    match Sqlx.Pool.acquire db with
+    match Sqlx.Pool.acquire db.pool with
     | Error error -> Error (Error.Sqlx (Sqlx.PoolError error))
     | Ok conn ->
-        let release () = Sqlx.Pool.release db conn in
+        let release () = Sqlx.Pool.release db.pool conn in
         let result =
           try
             match Sqlx.Connection.query conn sql values with
@@ -306,10 +343,20 @@ let decode_job row =
 let select_columns =
   "job_id, queue_id, worker_id, state, args, meta, tags, attempt, max_attempts, priority, unique_key, fanout_id, parent_job_id, locked_by, locked_at, inserted_at, scheduled_at, attempted_at, completed_at, discarded_at, cancelled_at, last_error"
 
+let placeholder db index =
+  match db.dialect with
+  | Schema.Postgres -> "$" ^ Int.to_string index
+  | Schema.Mysql -> "?"
+
+let timestamp_placeholder db index =
+  match db.dialect with
+  | Schema.Postgres -> "$" ^ Int.to_string index ^ "::timestamptz"
+  | Schema.Mysql -> "?"
+
 let select_by_job_id db job_id =
   match query_many
     db
-    ("select " ^ select_columns ^ " from suri_jobs where job_id = $1 limit 1")
+    ("select " ^ select_columns ^ " from suri_jobs where job_id = " ^ placeholder db 1 ^ " limit 1")
     [ sql_text (Job_id.to_string job_id) ]
     decode_job with
   | Error _ as error -> error
@@ -321,7 +368,9 @@ let select_by_active_unique_key db unique_key =
     db
     ("select "
     ^ select_columns
-    ^ " from suri_jobs where unique_key = $1 and state in ('available', 'scheduled', 'executing', 'retryable') order by inserted_at limit 1")
+    ^ " from suri_jobs where unique_key = "
+    ^ placeholder db 1
+    ^ " and state in ('available', 'scheduled', 'executing', 'retryable') order by inserted_at limit 1")
     [ sql_text (Unique_key.to_string unique_key) ]
     decode_job with
   | Error _ as error -> error
@@ -341,33 +390,100 @@ let recover_empty_insert db request =
       | Some unique_key -> select_by_active_unique_key db unique_key
       | None -> Error id_error
 
-let insert_job db (request: 'payload Job.enqueue) =
-  let state = Job.state_for_enqueue request in
+let insert_params request state inserted_at = [
+  sql_text (Job_id.to_string request.Job.id);
+  sql_text (Queue_id.to_string request.queue);
+  sql_text (Worker_id.to_string request.worker);
+  sql_text (State.to_string state);
+  sql_json request.args;
+  sql_json request.meta;
+  sql_json request.tags;
+  Sqlx.Value.int request.max_attempts;
+  Sqlx.Value.int request.priority;
+  sql_timestamp inserted_at;
+  sql_timestamp request.scheduled_at;
+  sql_option_map request.unique_key ~fn:Unique_key.to_string;
+  sql_option_map request.fanout_id ~fn:Fanout_id.to_string;
+  sql_option_map request.parent_job_id ~fn:Job_id.to_string;
+]
+
+let insert_sql db =
+  let base =
+    "insert into suri_jobs (job_id, queue_id, worker_id, state, args, meta, tags, max_attempts, priority, inserted_at, scheduled_at, unique_key, fanout_id, parent_job_id) values ("
+  in
+  match db.dialect with
+  | Schema.Postgres ->
+      base
+      ^ String.concat
+        ", "
+        [
+          "$1";
+          "$2";
+          "$3";
+          "$4";
+          "$5";
+          "$6";
+          "$7";
+          "$8";
+          "$9";
+          "$10::timestamptz";
+          "$11::timestamptz";
+          "nullif($12, '')";
+          "nullif($13, '')";
+          "nullif($14, '')";
+        ]
+      ^ ") on conflict (job_id) do update set job_id = excluded.job_id returning "
+      ^ select_columns
+  | Schema.Mysql ->
+      base
+      ^ String.concat
+        ", "
+        [
+          "?";
+          "?";
+          "?";
+          "?";
+          "?";
+          "?";
+          "?";
+          "?";
+          "?";
+          "?";
+          "?";
+          "nullif(?, '')";
+          "nullif(?, '')";
+          "nullif(?, '')";
+        ]
+      ^ ") on duplicate key update job_id = job_id"
+
+let insert_job_postgres db request state inserted_at =
   match query_many
     db
-    ("insert into suri_jobs (job_id, queue_id, worker_id, state, args, meta, tags, max_attempts, priority, scheduled_at, unique_key, fanout_id, parent_job_id) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::timestamptz, nullif($11, ''), nullif($12, ''), nullif($13, '')) on conflict (job_id) do update set job_id = excluded.job_id returning "
-    ^ select_columns)
-    [
-      sql_text (Job_id.to_string request.Job.id);
-      sql_text (Queue_id.to_string request.queue);
-      sql_text (Worker_id.to_string request.worker);
-      sql_text (State.to_string state);
-      sql_json request.args;
-      sql_json request.meta;
-      sql_json request.tags;
-      Sqlx.Value.int request.max_attempts;
-      Sqlx.Value.int request.priority;
-      sql_timestamp request.scheduled_at;
-      sql_option_map request.unique_key ~fn:Unique_key.to_string;
-      sql_option_map request.fanout_id ~fn:Fanout_id.to_string;
-      sql_option_map request.parent_job_id ~fn:Job_id.to_string;
-    ]
+    (insert_sql db)
+    (insert_params request state inserted_at)
     decode_job with
   | Error (Error.Sqlx error) when unique_violation error ->
       recover_unique_violation db request error
   | Error _ as error -> error
   | Ok (job :: _) -> Ok job
   | Ok [] -> recover_empty_insert db request
+
+let insert_job_mysql db request state inserted_at =
+  match exec
+    db
+    (insert_sql db)
+    (insert_params request state inserted_at) with
+  | Error (Error.Sqlx error) when unique_violation error ->
+      recover_unique_violation db request error
+  | Error _ as error -> error
+  | Ok () -> recover_empty_insert db request
+
+let insert_job db (request: 'payload Job.enqueue) =
+  let state = Job.state_for_enqueue request in
+  let inserted_at = Clock.now () in
+  match db.dialect with
+  | Schema.Postgres -> insert_job_postgres db request state inserted_at
+  | Schema.Mysql -> insert_job_mysql db request state inserted_at
 
 let enqueue_with_unique db request unique_key =
   match select_by_active_unique_key db unique_key with
@@ -390,20 +506,62 @@ let enqueue_many db (requests: 'payload Job.enqueue list) =
   in
   loop [] requests
 
-let fetch db ?(stale_after_seconds = 900) queue ~limit ~locked_by =
+let fetch_postgres db ~stale_cutoff ~locked_at queue ~limit ~locked_by =
   let* stored =
     query_many
       db
-      ("with picked as (select job_id as picked_job_id from suri_jobs where queue_id = $1 and worker_id = $5 and (((attempt < max_attempts and state in ('available', 'scheduled', 'retryable') and scheduled_at <= now()) or (state = 'executing' and locked_at is not null and locked_at <= now() - ($3::integer * interval '1 second')))) order by priority asc, scheduled_at asc, inserted_at asc limit $2 for update skip locked) update suri_jobs j set state = 'executing', attempt = case when j.state = 'executing' then j.attempt else j.attempt + 1 end, attempted_at = now(), locked_by = $4, locked_at = now(), last_error = null from picked where j.job_id = picked.picked_job_id and j.queue_id = $1 and j.worker_id = $5 returning "
+      ("with picked as (select job_id as picked_job_id from suri_jobs where queue_id = $1 and worker_id = $5 and (((attempt < max_attempts and state in ('available', 'scheduled', 'retryable') and scheduled_at <= $6::timestamptz) or (state = 'executing' and locked_at is not null and locked_at <= $3::timestamptz))) order by priority asc, scheduled_at asc, inserted_at asc limit $2 for update skip locked) update suri_jobs j set state = 'executing', attempt = case when j.state = 'executing' then j.attempt else j.attempt + 1 end, attempted_at = $6::timestamptz, locked_by = $4, locked_at = $6::timestamptz, last_error = null from picked where j.job_id = picked.picked_job_id and j.queue_id = $1 and j.worker_id = $5 returning "
       ^ select_columns)
       [
         sql_text (Queue_id.to_string (Queue.id queue));
         Sqlx.Value.int limit;
-        Sqlx.Value.int stale_after_seconds;
+        sql_timestamp stale_cutoff;
         sql_text (Worker_id.to_string locked_by);
         sql_text (Worker_id.to_string (Queue.worker queue));
+        sql_timestamp locked_at;
       ]
       decode_job
+  in
+  Ok stored
+
+let fetch_mysql db ~stale_cutoff ~locked_at queue ~limit ~locked_by =
+  let locked_by_text = Worker_id.to_string locked_by in
+  let* () =
+    exec
+      db
+      "update suri_jobs set state = 'executing', attempt = case when state = 'executing' then attempt else attempt + 1 end, attempted_at = ?, locked_by = ?, locked_at = ?, last_error = null where queue_id = ? and worker_id = ? and (((attempt < max_attempts and state in ('available', 'scheduled', 'retryable') and scheduled_at <= ?) or (state = 'executing' and locked_at is not null and locked_at <= ?))) order by priority asc, scheduled_at asc, inserted_at asc limit ?"
+      [
+        sql_timestamp locked_at;
+        sql_text locked_by_text;
+        sql_timestamp locked_at;
+        sql_text (Queue_id.to_string (Queue.id queue));
+        sql_text (Worker_id.to_string (Queue.worker queue));
+        sql_timestamp locked_at;
+        sql_timestamp stale_cutoff;
+        Sqlx.Value.int limit;
+      ]
+  in
+  query_many
+    db
+    ("select "
+    ^ select_columns
+    ^ " from suri_jobs where queue_id = ? and worker_id = ? and state = 'executing' and locked_by = ? and locked_at = ? order by priority asc, scheduled_at asc, inserted_at asc limit ?")
+    [
+      sql_text (Queue_id.to_string (Queue.id queue));
+      sql_text (Worker_id.to_string (Queue.worker queue));
+      sql_text locked_by_text;
+      sql_timestamp locked_at;
+      Sqlx.Value.int limit;
+    ]
+    decode_job
+
+let fetch db ?(stale_after_seconds = 900) queue ~limit ~locked_by =
+  let stale_cutoff = Clock.before_seconds stale_after_seconds in
+  let locked_at = Clock.now () in
+  let* stored =
+    match db.dialect with
+    | Schema.Postgres -> fetch_postgres db ~stale_cutoff ~locked_at queue ~limit ~locked_by
+    | Schema.Mysql -> fetch_mysql db ~stale_cutoff ~locked_at queue ~limit ~locked_by
   in
   let rec decode acc = fun jobs ->
     match jobs with
@@ -415,43 +573,79 @@ let fetch db ?(stale_after_seconds = 900) queue ~limit ~locked_by =
   decode [] stored
 
 let recover_executing db queue =
+  let now = Clock.now () in
   exec
     db
-    "update suri_jobs set state = case when attempt >= max_attempts then 'discarded' else 'retryable' end, scheduled_at = case when attempt >= max_attempts then scheduled_at else now() end, discarded_at = case when attempt >= max_attempts then now() else discarded_at end, locked_by = null, locked_at = null, last_error = '{\"kind\":\"worker_shutdown\"}' where queue_id = $1 and worker_id = $2 and state = 'executing'"
+    ("update suri_jobs set state = case when attempt >= max_attempts then 'discarded' else 'retryable' end, scheduled_at = case when attempt >= max_attempts then scheduled_at else "
+    ^ timestamp_placeholder db 1
+    ^ " end, discarded_at = case when attempt >= max_attempts then "
+    ^ timestamp_placeholder db 2
+    ^ " else discarded_at end, locked_by = null, locked_at = null, last_error = '{\"kind\":\"worker_shutdown\"}' where queue_id = "
+    ^ placeholder db 3
+    ^ " and worker_id = "
+    ^ placeholder db 4
+    ^ " and state = 'executing'")
     [
+      sql_timestamp now;
+      sql_timestamp now;
       sql_text (Queue_id.to_string (Queue.id queue));
       sql_text (Worker_id.to_string (Queue.worker queue));
     ]
 
 let complete db (stored: Job.stored) =
+  let now = Clock.now () in
   exec
     db
-    "update suri_jobs set state = 'completed', completed_at = now(), locked_by = null, locked_at = null, last_error = null where job_id = $1"
-    [ sql_text (Job_id.to_string stored.Job.id) ]
+    ("update suri_jobs set state = 'completed', completed_at = "
+    ^ timestamp_placeholder db 1
+    ^ ", locked_by = null, locked_at = null, last_error = null where job_id = "
+    ^ placeholder db 2)
+    [ sql_timestamp now; sql_text (Job_id.to_string stored.Job.id) ]
 
 let fail db (stored: Job.stored) ~error ~backoff_seconds =
+  let now = Clock.now () in
+  let retry_at = Clock.after_seconds backoff_seconds in
   exec
     db
-    "update suri_jobs set state = case when attempt >= max_attempts then 'discarded' else 'retryable' end, scheduled_at = case when attempt >= max_attempts then scheduled_at else now() + ($2::integer * interval '1 second') end, discarded_at = case when attempt >= max_attempts then now() else discarded_at end, last_error = $3, locked_by = null, locked_at = null where job_id = $1"
-    [ sql_text (Job_id.to_string stored.Job.id); Sqlx.Value.int backoff_seconds; sql_text error ]
+    ("update suri_jobs set state = case when attempt >= max_attempts then 'discarded' else 'retryable' end, scheduled_at = case when attempt >= max_attempts then scheduled_at else "
+    ^ timestamp_placeholder db 1
+    ^ " end, discarded_at = case when attempt >= max_attempts then "
+    ^ timestamp_placeholder db 2
+    ^ " else discarded_at end, last_error = "
+    ^ placeholder db 3
+    ^ ", locked_by = null, locked_at = null where job_id = "
+    ^ placeholder db 4)
+    [
+      sql_timestamp retry_at;
+      sql_timestamp now;
+      sql_text error;
+      sql_text (Job_id.to_string stored.Job.id);
+    ]
 
 let cancel db (stored: Job.stored) =
+  let now = Clock.now () in
   exec
     db
-    "update suri_jobs set state = 'cancelled', cancelled_at = now(), locked_by = null, locked_at = null where job_id = $1"
-    [ sql_text (Job_id.to_string stored.Job.id) ]
+    ("update suri_jobs set state = 'cancelled', cancelled_at = "
+    ^ timestamp_placeholder db 1
+    ^ ", locked_by = null, locked_at = null where job_id = "
+    ^ placeholder db 2)
+    [ sql_timestamp now; sql_text (Job_id.to_string stored.Job.id) ]
 
 let list db ~limit =
   query_many
     db
-    ("select " ^ select_columns ^ " from suri_jobs order by inserted_at desc limit $1")
+    ("select "
+    ^ select_columns
+    ^ " from suri_jobs order by inserted_at desc limit "
+    ^ placeholder db 1)
     [ Sqlx.Value.int limit ]
     decode_job
 
 let get db ~job_id =
   match query_many
     db
-    ("select " ^ select_columns ^ " from suri_jobs where job_id = $1 limit 1")
+    ("select " ^ select_columns ^ " from suri_jobs where job_id = " ^ placeholder db 1 ^ " limit 1")
     [ sql_text (Job_id.to_string job_id) ]
     decode_job with
   | Error _ as error -> error
@@ -482,7 +676,9 @@ let fanout_status db ~fanout_id =
   let* counts =
     query_many
       db
-      "select state, count(*) as count from suri_jobs where fanout_id = $1 group by state"
+      ("select state, count(*) as count from suri_jobs where fanout_id = "
+      ^ placeholder db 1
+      ^ " group by state")
       [ sql_text (Fanout_id.to_string fanout_id) ]
       decode_fanout_count
   in

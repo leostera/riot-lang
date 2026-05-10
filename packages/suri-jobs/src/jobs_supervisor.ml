@@ -2,7 +2,7 @@ open Std
 
 type t = {
   runtime: Std.Supervisor.t;
-  db: Sqlx.Pool.t;
+  db: Sqlx_backend.t;
 }
 
 type start_error =

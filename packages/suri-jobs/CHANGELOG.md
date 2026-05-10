@@ -4,9 +4,13 @@ All notable changes to `suri-jobs` are documented here.
 
 ## Unreleased
 
+### Added
+
+- Added MySQL-backed `suri-jobs` storage using `packages/mysql`, with matching migrations and testcontainer coverage.
+
 ### Changed
 
-- Switched PostgreSQL integration tests to `testcontainers` so they start an isolated Postgres container instead of relying on an external database.
+- Switched SQL integration tests to `testcontainers` so they start isolated PostgreSQL and MySQL containers instead of relying on external databases.
 
 ## 0.1.0 - 2026-05-10
 

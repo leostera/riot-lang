@@ -8,7 +8,7 @@ It supports:
 
 - typed queue payloads and typed queue errors;
 - in-memory queues for small tests;
-- SQLx/PostgreSQL-backed durable queues;
+- SQLx-backed durable queues on PostgreSQL or MySQL;
 - uniqueness keys for idempotent enqueueing;
 - delayed jobs, retry backoff, stale execution recovery, and fanout status;
 - `Supervisor.child_spec` integration for application supervision trees.
@@ -87,6 +87,17 @@ the server is reachable by users. The package routes are read-only and do not
 perform authorization by themselves.
 
 By default, `Suri_jobs.start_link` reads `SURI_JOBS_POSTGRES_URL`, runs the
-package migrations into `suri_jobs_schema_migrations`, and stores jobs in the
-`suri_jobs` table. Tests can use `Suri_jobs.Memory` directly, or configure a
-real PostgreSQL database through `Suri_jobs.Config.make`.
+PostgreSQL package migrations into `suri_jobs_schema_migrations`, and stores
+jobs in the `suri_jobs` table. Set the `suri-jobs.backend` config value to
+`mysql` to read `SURI_JOBS_MYSQL_URL` and run the MySQL migrations instead.
+
+Tests can use `Suri_jobs.Memory` directly, or configure a real SQL database
+through `Suri_jobs.Config.make`:
+
+```ocaml
+let config =
+  Suri_jobs.Config.make
+    ~dialect:Suri_jobs.Schema.Mysql
+    ~driver:(module Mysql.Driver)
+    mysql_config
+```

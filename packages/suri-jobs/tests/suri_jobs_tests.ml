@@ -111,9 +111,26 @@ type postgres_runtime =
   | PostgresUnavailable of string
   | PostgresReady of string * Postgres.Config.t
 
+type mysql_runtime =
+  | MysqlSkipped
+  | MysqlUnavailable of string
+  | MysqlReady of string * Mysql.Config.t
+
 let postgres_runtime_status = ref None
 
 let postgres_container = ref None
+
+let mysql_runtime_status = ref None
+
+let mysql_container = ref None
+
+let mysql_container_port = 3_306
+
+let mysql_container_user = "suri_jobs"
+
+let mysql_container_password = "suri_jobs"
+
+let mysql_container_database = "suri_jobs_test"
 
 let postgres_image () =
   Testcontainers.Generic_image.(make "postgres" "16-alpine"
@@ -124,8 +141,23 @@ let postgres_image () =
   |> with_readiness_policy
     ~policy:(ReadinessPolicy.log
       ~message:"database system is ready to accept connections"
-      ~duration:(Duration.of_secs 30)
+      ~duration:(Time.Duration.from_secs 30)
       ~retry:60))
+
+let mysql_image () =
+  Testcontainers.Generic_image.(make "mysql" "8.0"
+  |> with_cmd ~cmd:[ "--default-authentication-plugin=mysql_native_password" ]
+  |> with_env_var ~name:"MYSQL_DATABASE" ~value:mysql_container_database
+  |> with_env_var ~name:"MYSQL_USER" ~value:mysql_container_user
+  |> with_env_var ~name:"MYSQL_PASSWORD" ~value:mysql_container_password
+  |> with_env_var ~name:"MYSQL_ROOT_PASSWORD" ~value:"suri-jobs-root"
+  |> with_exposed_port ~port:mysql_container_port
+  |> with_readiness_policy
+    ~policy:(ReadinessPolicy.log
+      ~message:"port: 3306"
+      ~duration:(Time.Duration.from_secs 90)
+      ~retry:180)
+  |> with_readiness_policy ~policy:(ReadinessPolicy.delay ~duration:(Time.Duration.from_secs 2)))
 
 let url_host = fun host ->
   if String.contains host ":" then
@@ -150,11 +182,56 @@ let postgres_config_from_container container =
         | Ok config -> Ok (postgres_url, config)
       )
 
+let mysql_config_from_container container =
+  match Testcontainers.Container.host_port container ~port:mysql_container_port with
+  | Error error -> Error (Testcontainers.error_to_string error)
+  | Ok address ->
+      let mysql_url =
+        "mysql://"
+        ^ mysql_container_user
+        ^ ":"
+        ^ mysql_container_password
+        ^ "@"
+        ^ url_host (Net.Addr.ip address)
+        ^ ":"
+        ^ Int.to_string (Net.Addr.port address)
+        ^ "/"
+        ^ mysql_container_database
+      in
+      Ok (
+        mysql_url,
+        {
+          (Mysql.Config.default ()) with
+          host = Net.Addr.ip address;
+          port = Net.Addr.port address;
+          database = Some mysql_container_database;
+          user = mysql_container_user;
+          password = mysql_container_password;
+          ssl_mode = Mysql.Config.Disable;
+          connect_timeout = Time.Duration.from_secs 30;
+        }
+      )
+
 let check_postgres_available postgres_url postgres_config =
   match M.Sqlx_backend.connect ~pool_size:1 ~driver:(module Postgres.Driver) postgres_config with
   | Error error ->
       Error ("suri-jobs postgres container at "
       ^ postgres_url
+      ^ " did not accept connections: "
+      ^ M.Error.to_string error)
+  | Ok db ->
+      M.Sqlx_backend.shutdown db;
+      Ok ()
+
+let check_mysql_available mysql_url mysql_config =
+  match M.Sqlx_backend.connect
+    ~dialect:M.Schema.Mysql
+    ~pool_size:1
+    ~driver:(module Mysql.Driver)
+    mysql_config with
+  | Error error ->
+      Error ("suri-jobs mysql container at "
+      ^ mysql_url
       ^ " did not accept connections: "
       ^ M.Error.to_string error)
   | Ok db ->
@@ -173,6 +250,19 @@ let wait_for_postgres_available postgres_url postgres_config =
           loop (attempts - 1) error
   in
   loop 80 ("suri-jobs postgres container at " ^ postgres_url ^ " did not become available")
+
+let wait_for_mysql_available mysql_url mysql_config =
+  let rec loop attempts last_error =
+    if attempts <= 0 then
+      Error last_error
+    else
+      match check_mysql_available mysql_url mysql_config with
+      | Ok () -> Ok ()
+      | Error error ->
+          sleep (Time.Duration.from_millis 250);
+          loop (attempts - 1) error
+  in
+  loop 120 ("suri-jobs mysql container at " ^ mysql_url ^ " did not become available")
 
 let start_postgres_runtime () =
   if not (Testcontainers.docker_available ()) then
@@ -193,12 +283,39 @@ let start_postgres_runtime () =
               | Error error -> PostgresUnavailable error
         )
 
+let start_mysql_runtime () =
+  if not (Testcontainers.docker_available ()) then
+    MysqlSkipped
+  else
+    match Testcontainers.start (mysql_image ()) with
+    | Error error ->
+        MysqlUnavailable ("failed to start mysql test container: "
+        ^ Testcontainers.error_to_string error)
+    | Ok container ->
+        mysql_container := Some container;
+        (
+          match mysql_config_from_container container with
+          | Error error -> MysqlUnavailable error
+          | Ok (mysql_url, config) ->
+              match wait_for_mysql_available mysql_url config with
+              | Ok () -> MysqlReady (mysql_url, config)
+              | Error error -> MysqlUnavailable error
+        )
+
 let postgres_runtime () =
   match !postgres_runtime_status with
   | Some status -> status
   | None ->
       let status = start_postgres_runtime () in
       postgres_runtime_status := Some status;
+      status
+
+let mysql_runtime () =
+  match !mysql_runtime_status with
+  | Some status -> status
+  | None ->
+      let status = start_mysql_runtime () in
+      mysql_runtime_status := Some status;
       status
 
 let teardown_postgres_container = fun () ->
@@ -209,6 +326,21 @@ let teardown_postgres_container = fun () ->
       Testcontainers.Container.remove container
       |> Result.map_err ~fn:Testcontainers.error_to_string
 
+let teardown_mysql_container = fun () ->
+  match !mysql_container with
+  | None -> Ok ()
+  | Some container ->
+      mysql_container := None;
+      Testcontainers.Container.remove container
+      |> Result.map_err ~fn:Testcontainers.error_to_string
+
+let teardown_containers = fun () ->
+  match (teardown_postgres_container (), teardown_mysql_container ()) with
+  | (Ok (), Ok ()) -> Ok ()
+  | (Error left, Ok ())
+  | (Ok (), Error left) -> Error left
+  | (Error left, Error right) -> Error (left ^ "; " ^ right)
+
 let with_postgres postgres_url postgres_config fn =
   (
     let jobs_config = M.Config.make ~pool_size:4 ~driver:(module Postgres.Driver) postgres_config in
@@ -216,6 +348,31 @@ let with_postgres postgres_url postgres_config fn =
     | Error error ->
         Error ("suri-jobs postgres container at "
         ^ postgres_url
+        ^ " failed to connect: "
+        ^ M.Error.to_string error)
+    | Ok db ->
+        let result =
+          match M.Sqlx_backend.migrate db with
+          | Error error -> Error (M.Error.to_string error)
+          | Ok () -> fn db jobs_config
+        in
+        M.Sqlx_backend.shutdown db;
+        result
+  )
+
+let with_mysql mysql_url mysql_config fn =
+  (
+    let jobs_config =
+      M.Config.make ~pool_size:4 ~dialect:M.Schema.Mysql ~driver:(module Mysql.Driver) mysql_config
+    in
+    match M.Sqlx_backend.connect
+      ~dialect:M.Schema.Mysql
+      ~pool_size:4
+      ~driver:(module Mysql.Driver)
+      mysql_config with
+    | Error error ->
+        Error ("suri-jobs mysql container at "
+        ^ mysql_url
         ^ " failed to connect: "
         ^ M.Error.to_string error)
     | Ok db ->
@@ -238,6 +395,19 @@ let postgres_case name fn =
         | PostgresSkipped -> Ok ()
         | PostgresUnavailable error -> Error error
         | PostgresReady (postgres_url, config) -> fn ctx postgres_url config)
+  else
+    Test.skip ~size:Large name (fun _ctx -> Ok ())
+
+let mysql_case name fn =
+  if Testcontainers.docker_available () then
+    Test.case
+      ~size:Large
+      name
+      (fun ctx ->
+        match mysql_runtime () with
+        | MysqlSkipped -> Ok ()
+        | MysqlUnavailable error -> Error error
+        | MysqlReady (mysql_url, config) -> fn ctx mysql_url config)
   else
     Test.skip ~size:Large name (fun _ctx -> Ok ())
 
@@ -486,16 +656,17 @@ let test_memory_deterministic_job_id_is_idempotent_after_completion = fun _ctx -
   Test.assert_equal ~expected:M.State.Completed ~actual:again.M.Job.state;
   Ok ()
 
-let test_postgres_unique_key_returns_active_job = fun _ctx postgres_url postgres_config ->
-  with_postgres
-    postgres_url
-    postgres_config
+let test_sql_unique_key_returns_active_job = fun
+  label with_database _ctx database_url database_config ->
+  with_database
+    database_url
+    database_config
     (fun db _jobs_config ->
-      let unique_key = M.UniqueKey.from_string_unchecked (unique_text "postgres-active-unique") in
+      let unique_key = M.UniqueKey.from_string_unchecked (unique_text (label ^ "-active-unique")) in
       let first =
         expect_ok
           (M.Job.enqueue
-            ~id:(M.JobId.from_string_unchecked (unique_text "postgres-active-first"))
+            ~id:(M.JobId.from_string_unchecked (unique_text (label ^ "-active-first")))
             ~unique_key
             issue_sync_queue
             (payload "leostera/hypekit.dev"))
@@ -503,7 +674,7 @@ let test_postgres_unique_key_returns_active_job = fun _ctx postgres_url postgres
       let second =
         expect_ok
           (M.Job.enqueue
-            ~id:(M.JobId.from_string_unchecked (unique_text "postgres-active-second"))
+            ~id:(M.JobId.from_string_unchecked (unique_text (label ^ "-active-second")))
             ~unique_key
             issue_sync_queue
             (payload "leostera/hypekit.dev"))
@@ -515,19 +686,19 @@ let test_postgres_unique_key_returns_active_job = fun _ctx postgres_url postgres
         ~actual:(M.JobId.to_string second_stored.M.Job.id);
       Ok ())
 
-let test_postgres_unique_key_allows_fresh_job_after_completion = fun
-  _ctx postgres_url postgres_config ->
-  with_postgres
-    postgres_url
-    postgres_config
+let test_sql_unique_key_allows_fresh_job_after_completion = fun
+  label with_database _ctx database_url database_config ->
+  with_database
+    database_url
+    database_config
     (fun db _jobs_config ->
       let unique_key =
-        M.UniqueKey.from_string_unchecked (unique_text "postgres-completed-unique")
+        M.UniqueKey.from_string_unchecked (unique_text (label ^ "-completed-unique"))
       in
       let first =
         expect_ok
           (M.Job.enqueue
-            ~id:(M.JobId.from_string_unchecked (unique_text "postgres-completed-first"))
+            ~id:(M.JobId.from_string_unchecked (unique_text (label ^ "-completed-first")))
             ~unique_key
             issue_sync_queue
             (payload "leostera/hypekit.dev"))
@@ -537,7 +708,7 @@ let test_postgres_unique_key_allows_fresh_job_after_completion = fun
       let second =
         expect_ok
           (M.Job.enqueue
-            ~id:(M.JobId.from_string_unchecked (unique_text "postgres-completed-second"))
+            ~id:(M.JobId.from_string_unchecked (unique_text (label ^ "-completed-second")))
             ~unique_key
             issue_sync_queue
             (payload "leostera/hypekit.dev"))
@@ -551,16 +722,40 @@ let test_postgres_unique_key_allows_fresh_job_after_completion = fun
       Test.assert_equal ~expected:M.State.Available ~actual:second_stored.M.Job.state;
       Ok ())
 
+let test_postgres_unique_key_returns_active_job =
+  test_sql_unique_key_returns_active_job "postgres" with_postgres
+
+let test_mysql_unique_key_returns_active_job =
+  test_sql_unique_key_returns_active_job "mysql" with_mysql
+
+let test_postgres_unique_key_allows_fresh_job_after_completion =
+  test_sql_unique_key_allows_fresh_job_after_completion "postgres" with_postgres
+
+let test_mysql_unique_key_allows_fresh_job_after_completion =
+  test_sql_unique_key_allows_fresh_job_after_completion "mysql" with_mysql
+
 let test_schema_declares_suri_jobs_migration = fun _ctx ->
   Test.assert_true (String.contains M.Schema.create_jobs_sql "create table if not exists suri_jobs");
   Test.assert_true (String.contains M.Schema.create_jobs_sql "suri_jobs_unique_key_active_idx");
   Test.assert_true (String.contains M.Schema.create_fetch_index_sql "suri_jobs_fetch_idx");
   Test.assert_true (String.contains M.Schema.create_jobs_sql "job_id text not null unique");
   Test.assert_equal ~expected:2 ~actual:(Vector.length M.Schema.migrations);
-  match Sqlx.Migrate.Source.resolve (M.Schema.source ()) with
-  | Error error -> Error (Sqlx.Migrate.error_to_string error)
-  | Ok migrations ->
+  match (
+    Sqlx.Migrate.Source.resolve (M.Schema.source ()),
+    Sqlx.Migrate.Source.resolve (M.Schema.mysql_source ())
+  ) with
+  | (Error error, _) -> Error (Sqlx.Migrate.error_to_string error)
+  | (_, Error error) -> Error (Sqlx.Migrate.error_to_string error)
+  | (Ok migrations, Ok mysql_migrations) ->
       Test.assert_equal ~expected:2 ~actual:(Vector.length migrations);
+      Test.assert_equal ~expected:2 ~actual:(Vector.length mysql_migrations);
+      let mysql_migration = Vector.get_unchecked mysql_migrations ~at:0 in
+      Test.assert_true
+        (String.contains
+          Sqlx.Migrate.Migration.(mysql_migration.sql)
+          "active_unique_key varchar(500) generated always as");
+      Test.assert_true
+        (String.contains Sqlx.Migrate.Migration.(mysql_migration.sql) "engine=InnoDB");
       let migration = Vector.get_unchecked migrations ~at:0 in
       Test.assert_equal
         ~expected:"1"
@@ -654,14 +849,21 @@ let test_queue_config_clamps_runtime_flags = fun _ctx ->
     ~actual:(M.WorkerId.to_string config.M.Queue.Config.worker);
   Ok ()
 
-let test_supervised_queue_runs_jobs_concurrently = fun _ctx postgres_url postgres_config ->
-  with_postgres
-    postgres_url
-    postgres_config
+let test_supervised_queue_runs_jobs_concurrently_with = fun
+  label with_database _ctx database_url database_config ->
+  with_database
+    database_url
+    database_config
     (fun db jobs_config ->
-      let queue_id = M.QueueId.from_string_unchecked (unique_text "suri-jobs-concurrency") in
-      let worker_id = M.WorkerId.from_string_unchecked (unique_text "SuriJobsConcurrency") in
-      let fanout_id = M.FanoutId.from_string_unchecked (unique_text "fanout-concurrency") in
+      let queue_id =
+        M.QueueId.from_string_unchecked (unique_text (label ^ "-suri-jobs-concurrency"))
+      in
+      let worker_id =
+        M.WorkerId.from_string_unchecked (unique_text (label ^ "-SuriJobsConcurrency"))
+      in
+      let fanout_id =
+        M.FanoutId.from_string_unchecked (unique_text (label ^ "-fanout-concurrency"))
+      in
       let in_flight = Sync.Atomic.make 0 in
       let max_in_flight = Sync.Atomic.make 0 in
       let module Queue = struct
@@ -706,7 +908,7 @@ let test_supervised_queue_runs_jobs_concurrently = fun _ctx postgres_url postgre
             jobs_result
               (M.submit
                 ~id:(M.JobId.from_string_unchecked
-                  (unique_text ("concurrency-job-" ^ Int.to_string n)))
+                  (unique_text (label ^ "-concurrency-job-" ^ Int.to_string n)))
                 ~fanout_id
                 (module Queue)
                 (payload ("repo/" ^ Int.to_string n)))
@@ -723,14 +925,15 @@ let test_supervised_queue_runs_jobs_concurrently = fun _ctx postgres_url postgre
       Supervisor.stop supervisor;
       result)
 
-let test_supervised_queue_retries_failed_jobs = fun _ctx postgres_url postgres_config ->
-  with_postgres
-    postgres_url
-    postgres_config
+let test_supervised_queue_retries_failed_jobs_with = fun
+  label with_database _ctx database_url database_config ->
+  with_database
+    database_url
+    database_config
     (fun db jobs_config ->
-      let queue_id = M.QueueId.from_string_unchecked (unique_text "suri-jobs-retry") in
-      let worker_id = M.WorkerId.from_string_unchecked (unique_text "SuriJobsRetry") in
-      let fanout_id = M.FanoutId.from_string_unchecked (unique_text "fanout-retry") in
+      let queue_id = M.QueueId.from_string_unchecked (unique_text (label ^ "-suri-jobs-retry")) in
+      let worker_id = M.WorkerId.from_string_unchecked (unique_text (label ^ "-SuriJobsRetry")) in
+      let fanout_id = M.FanoutId.from_string_unchecked (unique_text (label ^ "-fanout-retry")) in
       let attempts = Sync.Atomic.make 0 in
       let module Queue = struct
         let config =
@@ -770,7 +973,7 @@ let test_supervised_queue_retries_failed_jobs = fun _ctx postgres_url postgres_c
         let* _job_id =
           jobs_result
             (M.submit
-              ~id:(M.JobId.from_string_unchecked (unique_text "retry-job"))
+              ~id:(M.JobId.from_string_unchecked (unique_text (label ^ "-retry-job")))
               ~fanout_id
               (module Queue)
               (payload "repo/retry"))
@@ -783,14 +986,21 @@ let test_supervised_queue_retries_failed_jobs = fun _ctx postgres_url postgres_c
       Supervisor.stop supervisor;
       result)
 
-let test_supervised_queue_retries_raised_exceptions = fun _ctx postgres_url postgres_config ->
-  with_postgres
-    postgres_url
-    postgres_config
+let test_supervised_queue_retries_raised_exceptions_with = fun
+  label with_database _ctx database_url database_config ->
+  with_database
+    database_url
+    database_config
     (fun db jobs_config ->
-      let queue_id = M.QueueId.from_string_unchecked (unique_text "suri-jobs-exception-retry") in
-      let worker_id = M.WorkerId.from_string_unchecked (unique_text "SuriJobsExceptionRetry") in
-      let fanout_id = M.FanoutId.from_string_unchecked (unique_text "fanout-exception-retry") in
+      let queue_id =
+        M.QueueId.from_string_unchecked (unique_text (label ^ "-suri-jobs-exception-retry"))
+      in
+      let worker_id =
+        M.WorkerId.from_string_unchecked (unique_text (label ^ "-SuriJobsExceptionRetry"))
+      in
+      let fanout_id =
+        M.FanoutId.from_string_unchecked (unique_text (label ^ "-fanout-exception-retry"))
+      in
       let attempts = Sync.Atomic.make 0 in
       let module Queue = struct
         let config =
@@ -830,7 +1040,7 @@ let test_supervised_queue_retries_raised_exceptions = fun _ctx postgres_url post
         let* _job_id =
           jobs_result
             (M.submit
-              ~id:(M.JobId.from_string_unchecked (unique_text "exception-retry-job"))
+              ~id:(M.JobId.from_string_unchecked (unique_text (label ^ "-exception-retry-job")))
               ~fanout_id
               (module Queue)
               (payload "repo/exception-retry"))
@@ -842,6 +1052,24 @@ let test_supervised_queue_retries_raised_exceptions = fun _ctx postgres_url post
       in
       Supervisor.stop supervisor;
       result)
+
+let test_postgres_supervised_queue_runs_jobs_concurrently =
+  test_supervised_queue_runs_jobs_concurrently_with "postgres" with_postgres
+
+let test_mysql_supervised_queue_runs_jobs_concurrently =
+  test_supervised_queue_runs_jobs_concurrently_with "mysql" with_mysql
+
+let test_postgres_supervised_queue_retries_failed_jobs =
+  test_supervised_queue_retries_failed_jobs_with "postgres" with_postgres
+
+let test_mysql_supervised_queue_retries_failed_jobs =
+  test_supervised_queue_retries_failed_jobs_with "mysql" with_mysql
+
+let test_postgres_supervised_queue_retries_raised_exceptions =
+  test_supervised_queue_retries_raised_exceptions_with "postgres" with_postgres
+
+let test_mysql_supervised_queue_retries_raised_exceptions =
+  test_supervised_queue_retries_raised_exceptions_with "mysql" with_mysql
 
 let tests =
   Test.[
@@ -865,9 +1093,13 @@ let tests =
     postgres_case
       "postgres unique key returns active job"
       test_postgres_unique_key_returns_active_job;
+    mysql_case "mysql unique key returns active job" test_mysql_unique_key_returns_active_job;
     postgres_case
       "postgres unique key allows fresh job after completion"
       test_postgres_unique_key_allows_fresh_job_after_completion;
+    mysql_case
+      "mysql unique key allows fresh job after completion"
+      test_mysql_unique_key_allows_fresh_job_after_completion;
     case "schema declares suri jobs migration" test_schema_declares_suri_jobs_migration;
     case "routes expose memory dashboard" test_routes_expose_memory_dashboard;
     case
@@ -875,18 +1107,29 @@ let tests =
       test_queue_intf_handle_job_is_directly_testable;
     case "queue config clamps runtime flags" test_queue_config_clamps_runtime_flags;
     postgres_case
-      "supervised queue runs jobs concurrently"
-      test_supervised_queue_runs_jobs_concurrently;
-    postgres_case "supervised queue retries failed jobs" test_supervised_queue_retries_failed_jobs;
+      "postgres supervised queue runs jobs concurrently"
+      test_postgres_supervised_queue_runs_jobs_concurrently;
+    mysql_case
+      "mysql supervised queue runs jobs concurrently"
+      test_mysql_supervised_queue_runs_jobs_concurrently;
     postgres_case
-      "supervised queue retries raised exceptions"
-      test_supervised_queue_retries_raised_exceptions;
+      "postgres supervised queue retries failed jobs"
+      test_postgres_supervised_queue_retries_failed_jobs;
+    mysql_case
+      "mysql supervised queue retries failed jobs"
+      test_mysql_supervised_queue_retries_failed_jobs;
+    postgres_case
+      "postgres supervised queue retries raised exceptions"
+      test_postgres_supervised_queue_retries_raised_exceptions;
+    mysql_case
+      "mysql supervised queue retries raised exceptions"
+      test_mysql_supervised_queue_retries_raised_exceptions;
   ]
 
 let main ~args =
   Test.Cli.main
     ~execution_mode:Test.Cli.Linear
-    ~teardown:teardown_postgres_container
+    ~teardown:teardown_containers
     ~name:"suri_jobs_tests"
     ~tests
     ~args
