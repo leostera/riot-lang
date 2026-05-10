@@ -1,6 +1,6 @@
 format_version = 1
 
-dependency_hash = "b71289aadff6df07"
+dependency_hash = "03e1796449f926bd"
 
 [[packages]]
 name = "blink"
@@ -296,7 +296,7 @@ root = "packages/suri-jobs"
 provenance = { kind = "workspace" }
 dependencies = [{ name = "postgres", package = { name = "postgres" } }, { name = "serde", package = { name = "serde" } }, { name = "serde-json", package = { name = "serde-json" } }, { name = "sqlx", package = { name = "sqlx" } }, { name = "std", package = { name = "std" } }, { name = "suri", package = { name = "suri" } }]
 build_dependencies = []
-dev_dependencies = [{ name = "dotenv", package = { name = "dotenv" } }, { name = "propane", package = { name = "propane" } }]
+dev_dependencies = [{ name = "propane", package = { name = "propane" } }, { name = "testcontainers", package = { name = "testcontainers" } }]
 
 [[packages]]
 name = "suri-mailer"

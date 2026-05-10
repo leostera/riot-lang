@@ -2,6 +2,12 @@
 
 All notable changes to `suri-jobs` are documented here.
 
+## Unreleased
+
+### Changed
+
+- Switched PostgreSQL integration tests to `testcontainers` so they start an isolated Postgres container instead of relying on an external database.
+
 ## 0.1.0 - 2026-05-10
 
 ### Added

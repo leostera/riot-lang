@@ -7,6 +7,7 @@ module De = Serde.De
 module Vector = Collections.Vector
 module Testing = Suri.Testing
 module Response = Suri.Response
+module Testcontainers = Testcontainers
 
 type issue_sync_payload = {
   repo_key: string;
@@ -101,72 +102,121 @@ let expect_status status response =
       Error (Testing.Expect.error_to_string error ^ "; body: " ^ Response.(response.body))
 
 let expect_contains body needle =
-  expect
-    (String.contains body needle)
-    ("expected body to contain: " ^ needle ^ "\n\n" ^ body)
+  expect (String.contains body needle) ("expected body to contain: " ^ needle ^ "\n\n" ^ body)
 
 let unique_text prefix = prefix ^ "-" ^ UUID.to_string (UUID.v7_monotonic ())
 
-let postgres_config () =
-  let* _bindings = Dotenv.load_if_exists ~env:"test" () |> Result.map_err ~fn:Dotenv.error_to_string in
-  match Env.get Env.String ~var:"SURI_JOBS_TEST_POSTGRES_URL" with
-  | None -> Ok None
-  | Some postgres_url ->
-      (
-        match Postgres.Config.from_string postgres_url with
-        | Error error ->
-            Error ("invalid SURI_JOBS_TEST_POSTGRES_URL from test environment: "
-            ^ Postgres.Config.parse_error_to_string error)
-        | Ok config -> Ok (Some (postgres_url, config))
-      )
-
 type postgres_runtime =
-  | PostgresConfigError of string
-  | PostgresNotConfigured
+  | PostgresSkipped
   | PostgresUnavailable of string
   | PostgresReady of string * Postgres.Config.t
 
 let postgres_runtime_status = ref None
 
+let postgres_container = ref None
+
+let postgres_image () =
+  Testcontainers.Generic_image.(make "postgres" "16-alpine"
+  |> with_env_var ~name:"POSTGRES_USER" ~value:"postgres"
+  |> with_env_var ~name:"POSTGRES_PASSWORD" ~value:"postgres"
+  |> with_env_var ~name:"POSTGRES_DB" ~value:"suri_jobs_test"
+  |> with_exposed_port ~port:5_432
+  |> with_readiness_policy
+    ~policy:(ReadinessPolicy.log
+      ~message:"database system is ready to accept connections"
+      ~duration:(Duration.of_secs 30)
+      ~retry:60))
+
+let url_host = fun host ->
+  if String.contains host ":" then
+    "[" ^ host ^ "]"
+  else
+    host
+
+let postgres_config_from_container container =
+  match Testcontainers.Container.host_port container ~port:5_432 with
+  | Error error -> Error (Testcontainers.error_to_string error)
+  | Ok address ->
+      let postgres_url =
+        "postgresql://postgres:postgres@"
+        ^ url_host (Net.Addr.ip address)
+        ^ ":"
+        ^ Int.to_string (Net.Addr.port address)
+        ^ "/suri_jobs_test"
+      in
+      (
+        match Postgres.Config.from_string postgres_url with
+        | Error error -> Error (Postgres.Config.parse_error_to_string error)
+        | Ok config -> Ok (postgres_url, config)
+      )
+
 let check_postgres_available postgres_url postgres_config =
   match M.Sqlx_backend.connect ~pool_size:1 ~driver:(module Postgres.Driver) postgres_config with
   | Error error ->
-      Error ("suri-jobs postgres runtime tests require a test database at "
+      Error ("suri-jobs postgres container at "
       ^ postgres_url
-      ^ " (or set SURI_JOBS_TEST_POSTGRES_URL): "
+      ^ " did not accept connections: "
       ^ M.Error.to_string error)
   | Ok db ->
       M.Sqlx_backend.shutdown db;
       Ok ()
 
+let wait_for_postgres_available postgres_url postgres_config =
+  let rec loop attempts last_error =
+    if attempts <= 0 then
+      Error last_error
+    else
+      match check_postgres_available postgres_url postgres_config with
+      | Ok () -> Ok ()
+      | Error error ->
+          sleep (Time.Duration.from_millis 250);
+          loop (attempts - 1) error
+  in
+  loop 80 ("suri-jobs postgres container at " ^ postgres_url ^ " did not become available")
+
+let start_postgres_runtime () =
+  if not (Testcontainers.docker_available ()) then
+    PostgresSkipped
+  else
+    match Testcontainers.start (postgres_image ()) with
+    | Error error ->
+        PostgresUnavailable ("failed to start postgres test container: "
+        ^ Testcontainers.error_to_string error)
+    | Ok container ->
+        postgres_container := Some container;
+        (
+          match postgres_config_from_container container with
+          | Error error -> PostgresUnavailable error
+          | Ok (postgres_url, config) ->
+              match wait_for_postgres_available postgres_url config with
+              | Ok () -> PostgresReady (postgres_url, config)
+              | Error error -> PostgresUnavailable error
+        )
+
 let postgres_runtime () =
   match !postgres_runtime_status with
   | Some status -> status
   | None ->
-      let status =
-        match postgres_config () with
-        | Error error -> PostgresConfigError error
-        | Ok None -> PostgresNotConfigured
-        | Ok (Some (postgres_url, config)) ->
-            (
-              match check_postgres_available postgres_url config with
-              | Ok () -> PostgresReady (postgres_url, config)
-              | Error error -> PostgresUnavailable error
-            )
-      in
+      let status = start_postgres_runtime () in
       postgres_runtime_status := Some status;
       status
 
+let teardown_postgres_container = fun () ->
+  match !postgres_container with
+  | None -> Ok ()
+  | Some container ->
+      postgres_container := None;
+      Testcontainers.Container.remove container
+      |> Result.map_err ~fn:Testcontainers.error_to_string
+
 let with_postgres postgres_url postgres_config fn =
   (
-    let jobs_config =
-      M.Config.make ~pool_size:4 ~driver:(module Postgres.Driver) postgres_config
-    in
+    let jobs_config = M.Config.make ~pool_size:4 ~driver:(module Postgres.Driver) postgres_config in
     match M.Sqlx_backend.connect ~pool_size:4 ~driver:(module Postgres.Driver) postgres_config with
     | Error error ->
-        Error ("suri-jobs postgres runtime tests require a test database at "
+        Error ("suri-jobs postgres container at "
         ^ postgres_url
-        ^ " (or set SURI_JOBS_TEST_POSTGRES_URL): "
+        ^ " failed to connect: "
         ^ M.Error.to_string error)
     | Ok db ->
         let result =
@@ -179,19 +229,17 @@ let with_postgres postgres_url postgres_config fn =
   )
 
 let postgres_case name fn =
-  match postgres_config () with
-  | Error error -> Test.case ~size:Large name (fun _ctx -> Error error)
-  | Ok None -> Test.skip ~size:Large name (fun _ctx -> Ok ())
-  | Ok (Some _) ->
-      Test.case
-        ~size:Large
-        name
-        (fun ctx ->
-          match postgres_runtime () with
-          | PostgresConfigError error -> Error error
-          | PostgresNotConfigured -> Ok ()
-          | PostgresUnavailable error -> Error error
-          | PostgresReady (postgres_url, config) -> fn ctx postgres_url config)
+  if Testcontainers.docker_available () then
+    Test.case
+      ~size:Large
+      name
+      (fun ctx ->
+        match postgres_runtime () with
+        | PostgresSkipped -> Ok ()
+        | PostgresUnavailable error -> Error error
+        | PostgresReady (postgres_url, config) -> fn ctx postgres_url config)
+  else
+    Test.skip ~size:Large name (fun _ctx -> Ok ())
 
 let wait_for_fanout db ~fanout_id ~completed ~discarded =
   let rec loop attempts =
@@ -212,7 +260,9 @@ let jobs_result result = Result.map_err result ~fn:M.Error.to_string
 
 let test_queue_config_defaults_to_available_parallelism = fun _ctx ->
   let config =
-    M.Queue.Config.make ~id:(M.QueueId.from_string_unchecked (unique_text "suri-jobs-default-concurrency")) ()
+    M.Queue.Config.make
+      ~id:(M.QueueId.from_string_unchecked (unique_text "suri-jobs-default-concurrency"))
+      ()
   in
   Test.assert_equal
     ~expected:(Int.max 1 Thread.available_parallelism)
@@ -265,7 +315,8 @@ let test_queue_roundtrips_payload = fun _ctx ->
   in
   Test.assert_true (String.contains encoded "repo_key");
   let decoded =
-    expect_ok (M.Queue.decode_args issue_sync_queue ~job_id:(M.JobId.from_string_unchecked "job-1") encoded)
+    expect_ok
+      (M.Queue.decode_args issue_sync_queue ~job_id:(M.JobId.from_string_unchecked "job-1") encoded)
   in
   Test.assert_equal ~expected:"leostera/hypekit.dev" ~actual:decoded.repo_key;
   Test.assert_equal ~expected:(Some "2026-05-01T00:00:00Z") ~actual:decoded.since;
@@ -464,12 +515,15 @@ let test_postgres_unique_key_returns_active_job = fun _ctx postgres_url postgres
         ~actual:(M.JobId.to_string second_stored.M.Job.id);
       Ok ())
 
-let test_postgres_unique_key_allows_fresh_job_after_completion = fun _ctx postgres_url postgres_config ->
+let test_postgres_unique_key_allows_fresh_job_after_completion = fun
+  _ctx postgres_url postgres_config ->
   with_postgres
     postgres_url
     postgres_config
     (fun db _jobs_config ->
-      let unique_key = M.UniqueKey.from_string_unchecked (unique_text "postgres-completed-unique") in
+      let unique_key =
+        M.UniqueKey.from_string_unchecked (unique_text "postgres-completed-unique")
+      in
       let first =
         expect_ok
           (M.Job.enqueue
@@ -532,9 +586,7 @@ let test_routes_expose_memory_dashboard = fun _ctx ->
   let app =
     Suri.Middleware.[
       router
-        Suri.Middleware.Router.[
-          forward "/__jobs" (M.Routes.routes (M.Routes.memory_store db));
-        ];
+        Suri.Middleware.Router.[ forward "/__jobs" (M.Routes.routes (M.Routes.memory_store db)); ];
     ]
   in
   let job_id = M.JobId.to_string stored.M.Job.id in
@@ -653,7 +705,8 @@ let test_supervised_queue_runs_jobs_concurrently = fun _ctx postgres_url postgre
           let* _job_id =
             jobs_result
               (M.submit
-                ~id:(M.JobId.from_string_unchecked (unique_text ("concurrency-job-" ^ Int.to_string n)))
+                ~id:(M.JobId.from_string_unchecked
+                  (unique_text ("concurrency-job-" ^ Int.to_string n)))
                 ~fanout_id
                 (module Queue)
                 (payload ("repo/" ^ Int.to_string n)))
@@ -797,7 +850,9 @@ let tests =
       test_queue_config_defaults_to_available_parallelism;
     case "ids from_string validate input" test_ids_from_string_validate_input;
     case "error to_json is structured" test_error_to_json_is_structured;
-    case "fanout add_count accumulates without looping" test_fanout_add_count_accumulates_without_looping;
+    case
+      "fanout add_count accumulates without looping"
+      test_fanout_add_count_accumulates_without_looping;
     case "queue roundtrips payload" test_queue_roundtrips_payload;
     case "memory fetch decodes through typed queue" test_memory_fetch_decodes_through_typed_queue;
     case "worker composition is typed" test_worker_composition_is_typed;
@@ -822,14 +877,19 @@ let tests =
     postgres_case
       "supervised queue runs jobs concurrently"
       test_supervised_queue_runs_jobs_concurrently;
-    postgres_case
-      "supervised queue retries failed jobs"
-      test_supervised_queue_retries_failed_jobs;
+    postgres_case "supervised queue retries failed jobs" test_supervised_queue_retries_failed_jobs;
     postgres_case
       "supervised queue retries raised exceptions"
       test_supervised_queue_retries_raised_exceptions;
   ]
 
-let main ~args = Test.Cli.main ~name:"suri_jobs_tests" ~tests ~args ()
+let main ~args =
+  Test.Cli.main
+    ~execution_mode:Test.Cli.Linear
+    ~teardown:teardown_postgres_container
+    ~name:"suri_jobs_tests"
+    ~tests
+    ~args
+    ()
 
 let () = Runtime.run ~main ~args:Env.args ()

@@ -17,8 +17,8 @@ postgres = { path = "../postgres", version = "*" }
 suri = { path = "../suri", version = "*" }
 
 [dev-dependencies]
-dotenv = { path = "../dotenv", version = "*" }
 propane = { path = "../propane", version = "*" }
+testcontainers = { path = "../testcontainers", version = "*" }
 
 [riot.fix]
 rules = [
