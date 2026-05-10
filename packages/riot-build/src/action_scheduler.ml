@@ -42,7 +42,10 @@ type t = {
 
 let remember_result = fun completed_results (completed_action: completed_action) ->
   let _ =
-    HashMap.insert completed_results ~key:(Action_node.id completed_action.node) ~value:completed_action.result
+    ConcurrentHashMap.insert
+      completed_results
+      ~key:(Action_node.id completed_action.node)
+      ~value:completed_action.result
   in
   ()
 
@@ -132,7 +135,7 @@ let summarize_completed = fun ~action_graph ~completed_results ->
     Action_graph.nodes action_graph
     |> List.filter_map
       ~fn:(fun (node: Action_node.t) ->
-        match HashMap.get completed_results ~key:(Action_node.id node) with
+        match ConcurrentHashMap.get completed_results ~key:(Action_node.id node) with
         | Some result -> Some { node; result }
         | None -> None)
   in
@@ -140,7 +143,7 @@ let summarize_completed = fun ~action_graph ~completed_results ->
     Action_graph.nodes action_graph
     |> List.filter_map
       ~fn:(fun (node: Action_node.t) ->
-        match HashMap.get completed_results ~key:(Action_node.id node) with
+        match ConcurrentHashMap.get completed_results ~key:(Action_node.id node) with
         | Some _ -> None
         | None -> Some (Action_node.id node))
   in
@@ -166,8 +169,8 @@ let summarize_completed = fun ~action_graph ~completed_results ->
   }
 
 let run = fun ~action_graph ~sandbox ~store ~session_id ~build_target toolchain ~concurrency ->
-  let completed_results: (Graph.SimpleGraph.Node_id.t, execution_result) HashMap.t =
-    HashMap.create ()
+  let completed_results: (Graph.SimpleGraph.Node_id.t, execution_result) ConcurrentHashMap.t =
+    ConcurrentHashMap.create ()
   in
   let sandbox_dir = Sandbox.get_dir sandbox in
   let graph = make_graph completed_results action_graph in

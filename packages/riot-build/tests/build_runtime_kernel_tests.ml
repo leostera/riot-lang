@@ -164,10 +164,10 @@ let test_build_runtime_builds_repo_kernel = fun _ctx ->
               ~profile:Riot_model.Profile.debug
               ()) with
           | Error err -> Error (summarize_build_failure err !events)
-          | Ok output -> (
+          | Ok output ->
               match Riot_build.Build_result.find_package output (package_name "kernel") with
               | None -> Error "expected kernel build output"
-              | Some result -> (
+              | Some result ->
                   match Riot_build.Build_result.package_status result with
                   | Riot_build.Build_result.Built _
                   | Riot_build.Build_result.Cached _ ->
@@ -177,9 +177,7 @@ let test_build_runtime_builds_repo_kernel = fun _ctx ->
                   | Riot_build.Build_result.Skipped reason ->
                       Error ("expected kernel build to run, got skipped: " ^ reason)
                   | Riot_build.Build_result.Failed message ->
-                      Error ("kernel build failed: " ^ message)
-                )
-            )) with
+                      Error ("kernel build failed: " ^ message)) with
   | Ok result -> result
   | Error err -> Error ("tempdir failed: " ^ IO.error_message err)
 

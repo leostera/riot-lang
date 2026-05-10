@@ -9,8 +9,7 @@ let source_slice = fun source ->
   IO.IoVec.IoSlice.from_string source
   |> Result.expect ~msg:"expected test source slice"
 
-let parse = fun ?(filename = Path.v "test.ml") source ->
-  Syn.parse ~filename (source_slice source)
+let parse = fun ?(filename = Path.v "test.ml") source -> Syn.parse ~filename (source_slice source)
 
 let analyze_source = fun ?implicit_opens ?module_path ~path source ->
   Dep_analyzer.analyze
@@ -33,12 +32,7 @@ let std_provider =
   Dep_analyzer.{
     path = [ "Std" ];
     free_names = [ "Std" ];
-    exports = [
-      [ "Config" ];
-      [ "Env" ];
-      [ "IO" ];
-      [ "Utils" ];
-    ];
+    exports = [ [ "Config" ]; [ "Env" ]; [ "IO" ]; [ "Utils" ]; ];
   }
 
 let env = Dep_analyzer.Env.make [ std_provider ]
@@ -61,67 +55,58 @@ let assert_modules = fun ~expected source ->
   if expected = actual then
     Ok ()
   else
-    Error (
-      "expected modules ["
-      ^ String.concat ", " expected
-      ^ "] but got ["
-      ^ String.concat ", " actual
-      ^ "]"
-    )
+    Error ("expected modules ["
+    ^ String.concat ", " expected
+    ^ "] but got ["
+    ^ String.concat ", " actual
+    ^ "]")
 
 let assert_modules_contain = fun ~required source ->
   let* actual = analyzer_modules source in
   let missing =
-    List.filter
-      required
-      ~fn:(fun expected -> not (List.any actual ~fn:(String.equal expected)))
+    List.filter required ~fn:(fun expected -> not (List.any actual ~fn:(String.equal expected)))
   in
   match missing with
   | [] -> Ok ()
   | _ ->
-      Error (
-        "expected modules to contain ["
-        ^ String.concat ", " missing
-        ^ "], got ["
-        ^ String.concat ", " actual
-        ^ "]"
-      )
+      Error ("expected modules to contain ["
+      ^ String.concat ", " missing
+      ^ "], got ["
+      ^ String.concat ", " actual
+      ^ "]")
 
-let parse_modules = fun ?(env = Dep_analyzer.Env.empty) ?implicit_opens ?module_path ~filename source ->
+let parse_modules = fun
+  ?(env = Dep_analyzer.Env.empty) ?implicit_opens ?module_path ~filename source ->
   let* summary = analyze_source ?implicit_opens ?module_path ~path:(Path.v filename) source in
   match Dep_analyzer.resolve env [ summary ] with
-  | Ok [ resolved ] -> Ok (Dep_analyzer.ResolvedSource.modules resolved |> sorted)
+  | Ok [ resolved ] ->
+      Ok (
+        Dep_analyzer.ResolvedSource.modules resolved
+        |> sorted
+      )
   | Ok _ -> Error "expected one resolved source"
   | Error _ -> Error "expected dependency analyzer resolution"
 
-let assert_modules_with_env =
-  fun ?env ?implicit_opens ?module_path ~filename ~expected source ->
+let assert_modules_with_env = fun ?env ?implicit_opens ?module_path ~filename ~expected source ->
   let* actual = parse_modules ?env ?implicit_opens ?module_path ~filename source in
   let expected = sorted expected in
   if expected = actual then
     Ok ()
   else
-    Error (
-      "expected deps ["
-      ^ String.concat ", " expected
-      ^ "], got ["
-      ^ String.concat ", " actual
-      ^ "]"
-    )
+    Error ("expected deps ["
+    ^ String.concat ", " expected
+    ^ "], got ["
+    ^ String.concat ", " actual
+    ^ "]")
 
-let provider = fun ~path ~free_names ~exports ->
-  Dep_analyzer.{ path; free_names; exports }
+let provider = fun ~path ~free_names ~exports -> Dep_analyzer.{ path; free_names; exports }
 
 let env_of_providers = Dep_analyzer.Env.make
 
 let alias_items = fun names ->
   List.map
     names
-    ~fn:(fun name ->
-      Item.ModuleAlias {
-        name;
-        target = Item.Use (Item.Ident.of_strings [ name ]);
-      })
+    ~fn:(fun name -> Item.ModuleAlias { name; target = Item.Use (Item.Ident.of_strings [ name ]) })
 
 let generated_alias_summary = fun ~module_path ~items ->
   Dep_analyzer.{
@@ -133,24 +118,20 @@ let generated_alias_summary = fun ~module_path ~items ->
   }
 
 let generated_alias_env = fun summaries ->
-  Dep_analyzer.Env.add_external_summaries Dep_analyzer.Env.empty summaries
+  Dep_analyzer.Env.add_external_summaries
+    Dep_analyzer.Env.empty
+    summaries
 
 let generated_alias = fun ~module_path names ->
-  generated_alias_summary ~module_path ~items:(alias_items names)
+  generated_alias_summary
+    ~module_path
+    ~items:(alias_items names)
 
 let generated_alias_with_super = fun ~module_path names ->
   generated_alias_summary
     ~module_path
-    ~items:(
-      alias_items names
-      @ [
-        Item.Module {
-          name = "Super";
-          signature = [];
-          body = alias_items names;
-        };
-      ]
-    )
+    ~items:(alias_items names
+    @ [ Item.Module { name = "Super"; signature = []; body = alias_items names }; ])
 
 let open_std_resolves_exported_module ctx =
   let _ = ctx in
@@ -162,7 +143,9 @@ let x = IO.read
 
 let unresolved_open_preserves_root_dependency ctx =
   let _ = ctx in
-  assert_modules ~expected:[ "Missing"; "Std" ] {ocaml|
+  assert_modules
+    ~expected:[ "Missing"; "Std" ]
+    {ocaml|
 open Std
 open Missing
 
@@ -171,7 +154,9 @@ let x = IO.read
 
 let local_module_binding_does_not_escape_as_dependency ctx =
   let _ = ctx in
-  assert_modules ~expected:[ "Std" ] {ocaml|
+  assert_modules
+    ~expected:[ "Std" ]
+    {ocaml|
 open Std
 
 module A = struct
@@ -183,7 +168,8 @@ let x = IO.read A.b
 
 let local_module_binding_covers_qualified_record_and_type_uses ctx =
   let _ = ctx in
-  let source = {ocaml|
+  let source =
+    {ocaml|
 open Prelude
 
 module Raw = struct
@@ -232,7 +218,8 @@ let join = fun term_sync ->
 
 let local_module_binding_survives_generated_alias_implicit_opens ctx =
   let _ = ctx in
-  let source = {ocaml|
+  let source =
+    {ocaml|
 open Prelude
 
 module Raw = struct
@@ -278,9 +265,7 @@ let join = fun term_sync ->
       [ "Exception"; "Prelude"; "Sync"; "Thread" ]
   in
   let thread_alias =
-    generated_alias
-      ~module_path:[ "Kernel"; "Thread"; "Aliases" ]
-      [ "Thread"; "Unix" ]
+    generated_alias ~module_path:[ "Kernel"; "Thread"; "Aliases" ] [ "Thread"; "Unix" ]
   in
   let* summary =
     analyze_source
@@ -297,7 +282,9 @@ let join = fun term_sync ->
         |> sorted
       in
       if List.any actual ~fn:(String.equal "Raw") then
-        Error ("expected generated alias implicit opens not to leak Raw, got [" ^ String.concat ", " actual ^ "]")
+        Error ("expected generated alias implicit opens not to leak Raw, got ["
+        ^ String.concat ", " actual
+        ^ "]")
       else
         Ok ()
   | Ok _ -> Error "expected three resolved summaries"
@@ -337,17 +324,14 @@ let x = IO.read
     ~source_hash:(Crypto.hash_string source)
     parsed with
   | Error _ -> Error "expected analyzer summary"
-  | Ok summary -> (
+  | Ok summary ->
       match summary.Dep_analyzer.items with
-      | [
-        Dep_analyzer.Item.Open use_std;
-        Dep_analyzer.Item.Open use_missing;
-        use_io;
-      ] when use_path use_std = [ "Std" ]
-        && use_path use_missing = [ "Missing" ]
-        && use_path use_io = [ "IO" ] -> Ok ()
+      | [ Dep_analyzer.Item.Open use_std; Dep_analyzer.Item.Open use_missing; use_io ] when use_path
+        use_std
+      = [ "Std" ]
+      && use_path use_missing = [ "Missing" ]
+      && use_path use_io = [ "IO" ] -> Ok ()
       | _ -> Error "expected dependency IR to preserve open/use order"
-    )
 
 let resolves_local_summaries_as_providers ctx =
   let _ = ctx in
@@ -380,11 +364,7 @@ let resolves_local_summaries_as_providers ctx =
       if actual = [ "Utils" ] then
         Ok ()
       else
-        Error (
-          "expected local summary provider Utils but got ["
-          ^ String.concat ", " actual
-          ^ "]"
-        )
+        Error ("expected local summary provider Utils but got [" ^ String.concat ", " actual ^ "]")
   | Ok _ -> Error "expected two resolved summaries"
   | Error _ -> Error "expected analyzer resolution"
 
@@ -400,7 +380,8 @@ let x = IO.read
 
 let nested_summary_provider_resolves_opened_child ctx =
   let _ = ctx in
-  let source_a = {ocaml|
+  let source_a =
+    {ocaml|
 module A = struct
   module IO = struct
     let read = ()
@@ -441,17 +422,15 @@ let x = IO.read
       if actual = [ "Utils" ] then
         Ok ()
       else
-        Error (
-          "expected nested summary provider Utils but got ["
-          ^ String.concat ", " actual
-          ^ "]"
-        )
+        Error ("expected nested summary provider Utils but got [" ^ String.concat ", " actual ^ "]")
   | Ok _ -> Error "expected two resolved summaries"
   | Error _ -> Error "expected analyzer resolution"
 
 let local_nested_module_open_uses_binding_tree ctx =
   let _ = ctx in
-  assert_modules ~expected:[] {ocaml|
+  assert_modules
+    ~expected:[]
+    {ocaml|
 module A = struct
   module B = struct
     module IO = struct
@@ -467,13 +446,18 @@ let x = IO.read
 
 let type_alias_records_module_dependency ctx =
   let _ = ctx in
-  assert_modules ~expected:[ "Module_planner" ] {ocaml|
+  assert_modules
+    ~expected:[ "Module_planner" ]
+    {ocaml|
 type module_plan_result = Module_planner.plan_result
 |ocaml}
 
 let polymorphic_variant_payload_records_module_dependency ctx =
   let _ = ctx in
-  assert_modules_with_env ~filename:"test.mli" ~expected:[ "Style" ] {ocaml|
+  assert_modules_with_env
+    ~filename:"test.mli"
+    ~expected:[ "Style" ]
+    {ocaml|
 val make:
   ?color:[ | `Plain of Style.color | `Gradient of Style.color * Style.color] ->
   unit ->
@@ -489,7 +473,9 @@ let polymorphic_variant_inherited_row_records_module_dependency ctx =
 
 let qualified_record_expr_records_module_dependency ctx =
   let _ = ctx in
-  assert_modules ~expected:[ "Acceptor" ] {ocaml|
+  assert_modules
+    ~expected:[ "Acceptor" ]
+    {ocaml|
 let state =
   Acceptor.{
     listener;
@@ -499,7 +485,9 @@ let state =
 
 let qualified_record_expr_inside_for_records_module_dependency ctx =
   let _ = ctx in
-  assert_modules ~expected:[ "Acceptor" ] {ocaml|
+  assert_modules
+    ~expected:[ "Acceptor" ]
+    {ocaml|
 let start = fun listener ->
   for i = 1 to 10 do
     let start () =
@@ -516,7 +504,9 @@ let start = fun listener ->
 
 let qualified_record_expr_after_sibling_aliases_records_module_dependency ctx =
   let _ = ctx in
-  assert_modules ~expected:[ "Acceptor"; "Connection"; "Handler"; "Std"; "Transport" ] {ocaml|
+  assert_modules
+    ~expected:[ "Acceptor"; "Connection"; "Handler"; "Std"; "Transport" ]
+    {ocaml|
 open Std
 open Std.Collections
 
@@ -540,7 +530,9 @@ let start = fun listener ->
 
 let qualified_record_expr_in_start_link_records_module_dependency ctx =
   let _ = ctx in
-  assert_modules_contain ~required:[ "Acceptor" ] {ocaml|
+  assert_modules_contain
+    ~required:[ "Acceptor" ]
+    {ocaml|
 open Std
 open Std.Collections
 
@@ -589,7 +581,9 @@ let start_link = fun
 
 let qualified_record_pattern_records_module_dependency ctx =
   let _ = ctx in
-  assert_modules ~expected:[ "Run" ] {ocaml|
+  assert_modules
+    ~expected:[ "Run" ]
+    {ocaml|
 let target =
   fun Run.{ package_name; binary_name } ->
     package_name ^ binary_name
@@ -597,7 +591,9 @@ let target =
 
 let qualified_record_pattern_in_labeled_callback_records_module_dependency ctx =
   let _ = ctx in
-  assert_modules ~expected:[ "Run"; "Result" ] {ocaml|
+  assert_modules
+    ~expected:[ "Run"; "Result" ]
+    {ocaml|
 let target =
   Result.map value ~fn:(fun Run.{ package_name; binary_name } ->
     package_name ^ binary_name)
@@ -606,10 +602,11 @@ let target =
 let nested_syntax_open_does_not_shadow_sibling_record_pattern ctx =
   let _ = ctx in
   let env =
-    env_of_providers [
-      provider ~path:[ "Std" ] ~free_names:[ "Std" ] ~exports:[ [ "Result"; "Syntax" ] ];
-      provider ~path:[ "Run" ] ~free_names:[ "Run" ] ~exports:[];
-    ]
+    env_of_providers
+      [
+        provider ~path:[ "Std" ] ~free_names:[ "Std" ] ~exports:[ [ "Result"; "Syntax" ] ];
+        provider ~path:[ "Run" ] ~free_names:[ "Run" ] ~exports:[];
+      ]
   in
   assert_modules_with_env
     ~env
@@ -625,13 +622,16 @@ let target =
 
 let first_class_module_pattern_binds_local_module ctx =
   let _ = ctx in
-  assert_modules ~expected:[] {ocaml|
+  assert_modules
+    ~expected:[]
+    {ocaml|
 let token = fun (E ((module Event), state)) -> Event.token state
 |ocaml}
 
 let generated_alias_open_resolves_to_child_module ctx =
   let _ = ctx in
-  let alias_source = {ocaml|
+  let alias_source =
+    {ocaml|
 module Module_planner = Riot_planner__Module_planner
 module Package_planner = Riot_planner__Package_planner
 
@@ -641,7 +641,8 @@ module Super = struct
 end
 |ocaml}
   in
-  let root_source = {ocaml|
+  let root_source =
+    {ocaml|
 type module_plan_result = Module_planner.plan_result
 type package_plan_result = Package_planner.plan_result
 |ocaml}
@@ -683,11 +684,9 @@ type package_plan_result = Package_planner.plan_result
       if actual = [ "Module_planner"; "Package_planner" ] then
         Ok ()
       else
-        Error (
-          "expected generated alias to resolve child modules but got ["
-          ^ String.concat ", " actual
-          ^ "]"
-        )
+        Error ("expected generated alias to resolve child modules but got ["
+        ^ String.concat ", " actual
+        ^ "]")
   | Ok _ -> Error "expected generated alias fixture summaries"
   | Error _ -> Error "expected generated alias resolution"
 
@@ -715,10 +714,7 @@ val into_iter: string -> char Iterator.t
       alias_source
   in
   let* iter_summary =
-    analyze_source
-      ~module_path:[ "Std"; "Iter" ]
-      ~path:(Path.v "iter.mli")
-      iter_source
+    analyze_source ~module_path:[ "Std"; "Iter" ] ~path:(Path.v "iter.mli") iter_source
   in
   let* string_summary =
     analyze_source
@@ -736,11 +732,9 @@ val into_iter: string -> char Iterator.t
       if actual = [ "Iter" ] then
         Ok ()
       else
-        Error (
-          "expected generated alias child open to resolve Iter but got ["
-          ^ String.concat ", " actual
-          ^ "]"
-        )
+        Error ("expected generated alias child open to resolve Iter but got ["
+        ^ String.concat ", " actual
+        ^ "]")
   | Ok _ -> Error "expected generated alias child open summaries"
   | Error _ -> Error "expected generated alias child open resolution"
 
@@ -781,15 +775,16 @@ let local_namespace_open_exposes_child_exports ctx =
     Dep_analyzer.Env.empty
     [ alias_summary; root_summary; iter_summary; iterator_summary; string_summary ] with
   | Ok [ _; _; _; _; resolved_string ] ->
-      let actual = Dep_analyzer.ResolvedSource.modules resolved_string |> sorted in
+      let actual =
+        Dep_analyzer.ResolvedSource.modules resolved_string
+        |> sorted
+      in
       if actual = [ "Iter" ] then
         Ok ()
       else
-        Error (
-          "expected local namespace open to resolve Iter but got ["
-          ^ String.concat ", " actual
-          ^ "]"
-        )
+        Error ("expected local namespace open to resolve Iter but got ["
+        ^ String.concat ", " actual
+        ^ "]")
   | Ok _ -> Error "expected local namespace summaries"
   | Error _ -> Error "expected local namespace resolution"
 
@@ -830,17 +825,20 @@ let local bytes =
   get bytes ~at:0
 |ocaml}
   in
-  match Dep_analyzer.resolve Dep_analyzer.Env.empty [ alias_summary; io_summary; bytes_summary; uuid_summary ] with
+  match Dep_analyzer.resolve
+    Dep_analyzer.Env.empty
+    [ alias_summary; io_summary; bytes_summary; uuid_summary ] with
   | Ok [ _; _; _; resolved_uuid ] ->
-      let actual = Dep_analyzer.ResolvedSource.modules resolved_uuid |> sorted in
+      let actual =
+        Dep_analyzer.ResolvedSource.modules resolved_uuid
+        |> sorted
+      in
       if actual = [ "IO" ] then
         Ok ()
       else
-        Error (
-          "expected Bytes references opened through IO to resolve to IO but got ["
-          ^ String.concat ", " actual
-          ^ "]"
-        )
+        Error ("expected Bytes references opened through IO to resolve to IO but got ["
+        ^ String.concat ", " actual
+        ^ "]")
   | Ok _ -> Error "expected generated alias, IO, Bytes, and uuid summaries"
   | Error _ -> Error "expected open fallback shadowing resolution"
 
@@ -849,42 +847,31 @@ let local_child_summary_does_not_pollute_public_root_exports ctx =
   let root_source = "module Token = Token\n" in
   let child_source = "type t\n" in
   let main_source = "let token_kind = fun (token: Syn.Token.t) -> token\n" in
-  let* root_summary =
-    analyze_source
-      ~module_path:[ "Syn" ]
-      ~path:(Path.v "syn.ml")
-      root_source
-  in
+  let* root_summary = analyze_source ~module_path:[ "Syn" ] ~path:(Path.v "syn.ml") root_source in
   let* child_summary =
-    analyze_source
-      ~module_path:[ "Syn"; "Token" ]
-      ~path:(Path.v "token.mli")
-      child_source
+    analyze_source ~module_path:[ "Syn"; "Token" ] ~path:(Path.v "token.mli") child_source
   in
-  let* main_summary =
-    analyze_source
-      ~module_path:[ "Main" ]
-      ~path:(Path.v "main.ml")
-      main_source
-  in
+  let* main_summary = analyze_source ~module_path:[ "Main" ] ~path:(Path.v "main.ml") main_source in
   match Dep_analyzer.resolve Dep_analyzer.Env.empty [ root_summary; child_summary; main_summary ] with
   | Ok [ _; _; resolved_main ] ->
-      let actual = Dep_analyzer.ResolvedSource.modules resolved_main |> sorted in
+      let actual =
+        Dep_analyzer.ResolvedSource.modules resolved_main
+        |> sorted
+      in
       if actual = [ "Syn" ] then
         Ok ()
       else
-        Error (
-          "expected Syn.Token through public root to resolve to Syn but got ["
-          ^ String.concat ", " actual
-          ^ "]"
-        )
+        Error ("expected Syn.Token through public root to resolve to Syn but got ["
+        ^ String.concat ", " actual
+        ^ "]")
   | Ok _ -> Error "expected public root summary resolution"
   | Error _ -> Error "expected public root summary resolution"
 
 let external_nested_open_exposes_children_as_dependency_root ctx =
   let _ = ctx in
   let io_source = "module Buffer: module type of Buffer\n" in
-  let user_source = {ocaml|open Std
+  let user_source =
+    {ocaml|open Std
 open Std.IO
 
 let render = fun () ->
@@ -892,42 +879,32 @@ let render = fun () ->
   create ~size:128
 |ocaml}
   in
-  let* io_summary =
-    analyze_source
-      ~module_path:[ "Std"; "IO" ]
-      ~path:(Path.v "IO.mli")
-      io_source
-  in
-  let* user_summary =
-    analyze_source
-      ~module_path:[ "User" ]
-      ~path:(Path.v "user.ml")
-      user_source
-  in
-  let env =
-    Dep_analyzer.Env.add_external_summaries Dep_analyzer.Env.empty [ io_summary ]
-  in
+  let* io_summary = analyze_source ~module_path:[ "Std"; "IO" ] ~path:(Path.v "IO.mli") io_source in
+  let* user_summary = analyze_source ~module_path:[ "User" ] ~path:(Path.v "user.ml") user_source in
+  let env = Dep_analyzer.Env.add_external_summaries Dep_analyzer.Env.empty [ io_summary ] in
   match Dep_analyzer.resolve env [ user_summary ] with
   | Ok [ resolved_user ] ->
-      let actual = Dep_analyzer.ResolvedSource.modules resolved_user |> sorted in
+      let actual =
+        Dep_analyzer.ResolvedSource.modules resolved_user
+        |> sorted
+      in
       if actual = [ "Std" ] then
         Ok ()
       else
-        Error (
-          "expected nested dependency open to resolve to Std but got ["
-          ^ String.concat ", " actual
-          ^ "]"
-        )
+        Error ("expected nested dependency open to resolve to Std but got ["
+        ^ String.concat ", " actual
+        ^ "]")
   | Ok _ -> Error "expected nested dependency open summary"
   | Error _ -> Error "expected nested dependency open resolution"
 
 let deps_collect_value_declaration_modules_from_implicit_alias_opens ctx =
   let _ = ctx in
   let env =
-    generated_alias_env [
-      generated_alias ~module_path:[ "Kernel"; "Aliases" ] [ "Result" ];
-      generated_alias ~module_path:[ "Kernel"; "Net"; "Aliases" ] [ "Socket_addr" ];
-    ]
+    generated_alias_env
+      [
+        generated_alias ~module_path:[ "Kernel"; "Aliases" ] [ "Result" ];
+        generated_alias ~module_path:[ "Kernel"; "Net"; "Aliases" ] [ "Socket_addr" ];
+      ]
   in
   assert_modules_with_env
     ~env
@@ -939,9 +916,7 @@ let deps_collect_value_declaration_modules_from_implicit_alias_opens ctx =
 let deps_collect_manifest_type_modules_from_implicit_alias_opens ctx =
   let _ = ctx in
   let env =
-    generated_alias_env [
-      generated_alias ~module_path:[ "Kernel"; "Fs"; "Aliases" ] [ "File" ];
-    ]
+    generated_alias_env [ generated_alias ~module_path:[ "Kernel"; "Fs"; "Aliases" ] [ "File" ]; ]
   in
   assert_modules_with_env
     ~env
@@ -956,15 +931,15 @@ let deps_collect_qualified_public_root_from_implicit_root_alias_open ctx =
     Dep_analyzer.Env.add_external_summaries
       Dep_analyzer.Env.empty
       [
-      generated_alias ~module_path:[ "Kernel"; "Aliases" ] [ "Fs" ];
-      Dep_analyzer.{
-        source = Path.v "Fs.ml";
-        source_hash = Crypto.hash_string "Fs";
-        module_path = Some [ "Fs" ];
-        kind = Implementation;
-        items = [ Item.Module { name = "File"; signature = []; body = [] } ];
-      };
-    ]
+        generated_alias ~module_path:[ "Kernel"; "Aliases" ] [ "Fs" ];
+        Dep_analyzer.{
+          source = Path.v "Fs.ml";
+          source_hash = Crypto.hash_string "Fs";
+          module_path = Some [ "Fs" ];
+          kind = Implementation;
+          items = [ Item.Module { name = "File"; signature = []; body = [] } ];
+        };
+      ]
   in
   assert_modules_with_env
     ~env
@@ -976,9 +951,7 @@ let deps_collect_qualified_public_root_from_implicit_root_alias_open ctx =
 let deps_collect_opened_public_root_module_instead_of_child_module ctx =
   let _ = ctx in
   let env =
-    env_of_providers [
-      provider ~path:[ "Syn" ] ~free_names:[ "Syn" ] ~exports:[ [ "Token" ] ];
-    ]
+    env_of_providers [ provider ~path:[ "Syn" ] ~free_names:[ "Syn" ] ~exports:[ [ "Token" ] ]; ]
   in
   assert_modules_with_env
     ~env
@@ -988,9 +961,7 @@ let deps_collect_opened_public_root_module_instead_of_child_module ctx =
 
 let deps_collect_opaque_opened_public_root_for_child_module ctx =
   let _ = ctx in
-  let env =
-    env_of_providers [ provider ~path:[ "Std" ] ~free_names:[ "Std" ] ~exports:[] ]
-  in
+  let env = env_of_providers [ provider ~path:[ "Std" ] ~free_names:[ "Std" ] ~exports:[] ] in
   assert_modules_with_env
     ~env
     ~filename:"environment.ml"
@@ -1004,9 +975,7 @@ let value = Env.get Env.String ~var:"RIOT_ENV"
 
 let deps_collect_opaque_opened_public_root_for_qualified_child_module ctx =
   let _ = ctx in
-  let env =
-    env_of_providers [ provider ~path:[ "Std" ] ~free_names:[ "Std" ] ~exports:[] ]
-  in
+  let env = env_of_providers [ provider ~path:[ "Std" ] ~free_names:[ "Std" ] ~exports:[] ] in
   assert_modules_with_env
     ~env
     ~filename:"pretext.ml"
@@ -1021,9 +990,7 @@ let render = fun () ->
 let deps_collect_qualified_public_root_module_instead_of_child_module ctx =
   let _ = ctx in
   let env =
-    env_of_providers [
-      provider ~path:[ "Syn" ] ~free_names:[ "Syn" ] ~exports:[ [ "Token" ] ];
-    ]
+    env_of_providers [ provider ~path:[ "Syn" ] ~free_names:[ "Syn" ] ~exports:[ [ "Token" ] ]; ]
   in
   assert_modules_with_env
     ~env
@@ -1034,9 +1001,10 @@ let deps_collect_qualified_public_root_module_instead_of_child_module ctx =
 let deps_do_not_collect_exported_children_from_module_alias ctx =
   let _ = ctx in
   let env =
-    env_of_providers [
-      provider ~path:[ "Kernel" ] ~free_names:[ "Kernel" ] ~exports:[ [ "Array" ]; [ "Result" ] ];
-    ]
+    env_of_providers
+      [
+        provider ~path:[ "Kernel" ] ~free_names:[ "Kernel" ] ~exports:[ [ "Array" ]; [ "Result" ] ];
+      ]
   in
   assert_modules_with_env
     ~env
@@ -1047,12 +1015,8 @@ let deps_do_not_collect_exported_children_from_module_alias ctx =
 let deps_do_not_collect_exported_children_from_facade_alias ctx =
   let _ = ctx in
   let env =
-    env_of_providers [
-      provider
-        ~path:[ "Syntax_tree" ]
-        ~free_names:[ "Syntax_tree" ]
-        ~exports:[ [ "Builder" ] ];
-    ]
+    env_of_providers
+      [ provider ~path:[ "Syntax_tree" ] ~free_names:[ "Syntax_tree" ] ~exports:[ [ "Builder" ] ]; ]
   in
   assert_modules_with_env
     ~env
@@ -1063,9 +1027,7 @@ let deps_do_not_collect_exported_children_from_facade_alias ctx =
 let deps_open_scoped_root_keeps_child_modules_on_opened_root ctx =
   let _ = ctx in
   let env =
-    env_of_providers [
-      provider ~path:[ "Std" ] ~free_names:[ "Std" ] ~exports:[ [ "Array" ] ];
-    ]
+    env_of_providers [ provider ~path:[ "Std" ] ~free_names:[ "Std" ] ~exports:[ [ "Array" ] ]; ]
   in
   assert_modules_with_env
     ~env
@@ -1079,9 +1041,7 @@ let length = fun values -> Array.length values
 let deps_opened_child_named_like_current_file_stays_on_opened_root ctx =
   let _ = ctx in
   let env =
-    env_of_providers [
-      provider ~path:[ "Std" ] ~free_names:[ "Std" ] ~exports:[ [ "Config" ] ];
-    ]
+    env_of_providers [ provider ~path:[ "Std" ] ~free_names:[ "Std" ] ~exports:[ [ "Config" ] ]; ]
   in
   assert_modules_with_env
     ~env
@@ -1107,12 +1067,13 @@ let compile = Regex_stubs.compile
 let deps_collect_opened_module_root_for_exported_child ctx =
   let _ = ctx in
   let env =
-    env_of_providers [
-      provider
-        ~path:[ "Iter" ]
-        ~free_names:[ "Iter" ]
-        ~exports:[ [ "Iterator" ]; [ "MutIterator" ] ];
-    ]
+    env_of_providers
+      [
+        provider
+          ~path:[ "Iter" ]
+          ~free_names:[ "Iter" ]
+          ~exports:[ [ "Iterator" ]; [ "MutIterator" ] ];
+      ]
   in
   assert_modules_with_env
     ~env
@@ -1123,11 +1084,8 @@ let deps_collect_opened_module_root_for_exported_child ctx =
 let deps_collect_super_alias_child_module ctx =
   let _ = ctx in
   let env =
-    generated_alias_env [
-      generated_alias_with_super
-        ~module_path:[ "Gooey"; "Aliases" ]
-        [ "Config"; "Viewport" ];
-    ]
+    generated_alias_env
+      [ generated_alias_with_super ~module_path:[ "Gooey"; "Aliases" ] [ "Config"; "Viewport" ]; ]
   in
   assert_modules_with_env
     ~env
@@ -1159,9 +1117,7 @@ end in
 let deps_collect_variant_payload_modules_from_implicit_alias_opens ctx =
   let _ = ctx in
   let env =
-    generated_alias_env [
-      generated_alias ~module_path:[ "Kernel"; "Aliases" ] [ "System_error" ];
-    ]
+    generated_alias_env [ generated_alias ~module_path:[ "Kernel"; "Aliases" ] [ "System_error" ]; ]
   in
   assert_modules_with_env
     ~env
@@ -1173,9 +1129,8 @@ let deps_collect_variant_payload_modules_from_implicit_alias_opens ctx =
 let deps_collect_field_access_modules_from_implicit_alias_opens ctx =
   let _ = ctx in
   let env =
-    generated_alias_env [
-      generated_alias ~module_path:[ "Kernel"; "Async"; "Aliases" ] [ "Libc" ];
-    ]
+    generated_alias_env
+      [ generated_alias ~module_path:[ "Kernel"; "Async"; "Aliases" ] [ "Libc" ]; ]
   in
   assert_modules_with_env
     ~env
@@ -1283,12 +1238,8 @@ let tests =
     case
       "dep analyzer module alias keeps provider dependency"
       module_alias_keeps_provider_dependency;
-    case
-      "dep analyzer dependency IR preserves open order"
-      dependency_ir_preserves_open_order;
-    case
-      "dep analyzer resolves local summaries as providers"
-      resolves_local_summaries_as_providers;
+    case "dep analyzer dependency IR preserves open order" dependency_ir_preserves_open_order;
+    case "dep analyzer resolves local summaries as providers" resolves_local_summaries_as_providers;
     case
       "dep analyzer local module alias resolves inside source"
       local_module_alias_resolves_inside_source;
@@ -1387,7 +1338,9 @@ let tests =
       "dep analyzer deps collect opened module root for exported child"
       deps_collect_opened_module_root_for_exported_child;
     case "dep analyzer deps collect Super alias child module" deps_collect_super_alias_child_module;
-    case "dep analyzer deps ignore lowercase field access roots" deps_ignore_lowercase_field_access_roots;
+    case
+      "dep analyzer deps ignore lowercase field access roots"
+      deps_ignore_lowercase_field_access_roots;
     case
       "dep analyzer deps collect variant payload modules from implicit alias opens"
       deps_collect_variant_payload_modules_from_implicit_alias_opens;

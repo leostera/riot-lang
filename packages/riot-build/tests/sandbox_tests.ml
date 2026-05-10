@@ -13,7 +13,11 @@ let package_name = fun value ->
   |> Result.expect ~msg:("expected valid package name: " ^ value)
 
 let make_workspace = fun root ->
-  Riot_model.Workspace.make ~root ~target_dir:(Path.v "target") ~packages:[] ()
+  Riot_model.Workspace.make
+    ~root
+    ~target_dir:(Path.v "target")
+    ~packages:[]
+    ()
 
 let make_package = fun ~root ~name ->
   let package_name = package_name name in
@@ -76,9 +80,9 @@ let test_sandbox_prepare_copies_package_inputs = fun _ctx ->
           Error ("expected one copied input, got " ^ Int.to_string stats.input_count)
         else
           match Fs.read_to_string copied with
-        | Ok content when String.equal content "let answer = 42" -> Ok ()
-        | Ok content -> Error ("unexpected copied content: " ^ content)
-        | Error err -> Error ("failed to read copied input: " ^ IO.error_message err)
+          | Ok content when String.equal content "let answer = 42" -> Ok ()
+          | Ok content -> Error ("unexpected copied content: " ^ content)
+          | Error err -> Error ("failed to read copied input: " ^ IO.error_message err)
       in
       let _ = Sandbox.cleanup sandbox in
       result) with
@@ -120,13 +124,19 @@ let test_sandbox_materializes_explicit_file_modes = fun _ctx ->
             let copied = Path.(Sandbox.get_dir sandbox / Path.v "src/copy.ml") in
             let linked = Path.(Sandbox.get_dir sandbox / Path.v "runtime.o") in
             let referenced = Path.(Sandbox.get_dir sandbox / Path.v "Dep.cmi") in
-            let copied_exists = Fs.exists copied |> Result.unwrap_or ~default:false in
+            let copied_exists =
+              Fs.exists copied
+              |> Result.unwrap_or ~default:false
+            in
             let linked_is_symlink =
               match Fs.symlink_metadata linked with
               | Ok metadata -> Fs.Metadata.is_symlink metadata
               | Error _ -> false
             in
-            let reference_exists = Fs.exists referenced |> Result.unwrap_or ~default:true in
+            let reference_exists =
+              Fs.exists referenced
+              |> Result.unwrap_or ~default:true
+            in
             if not (Int.equal stats.copy_count 1) then
               Error ("expected one copied file, got " ^ Int.to_string stats.copy_count)
             else if not (Int.equal stats.link_count 1) then
@@ -147,15 +157,16 @@ let test_sandbox_materializes_explicit_file_modes = fun _ctx ->
   | Ok result -> result
   | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
 
-let make_dependency = fun
-  ~package ~artifact_dir ?input_hash ?output_hash () ->
+let make_dependency = fun ~package ~artifact_dir ?input_hash ?output_hash () ->
   let input_hash =
     input_hash
-    |> Option.unwrap_or ~default:(Crypto.hash_string (Package_name.to_string package.Package.name ^ ":input"))
+    |> Option.unwrap_or
+      ~default:(Crypto.hash_string (Package_name.to_string package.Package.name ^ ":input"))
   in
   let output_hash =
     output_hash
-    |> Option.unwrap_or ~default:(Crypto.hash_string (Package_name.to_string package.Package.name ^ ":output"))
+    |> Option.unwrap_or
+      ~default:(Crypto.hash_string (Package_name.to_string package.Package.name ^ ":output"))
   in
   Riot_planner.Dependency.{
     package;
@@ -193,7 +204,10 @@ let test_sandbox_links_dependency_object_files = fun _ctx ->
           ~package:"dep"
           ~input_hash
           ~sandbox_dir:staging_dir
-          ~outs:[ Path.(staging_dir / Path.v "dep_runtime.o"); Path.(staging_dir / Path.v "Dep.cmi") ]
+          ~outs:[
+            Path.(staging_dir / Path.v "dep_runtime.o");
+            Path.(staging_dir / Path.v "Dep.cmi");
+          ]
         |> Result.expect ~msg:"save dependency package artifact failed"
       in
       let artifact_dir = Riot_store.Store.hash_dir_of store input_hash in
@@ -207,19 +221,19 @@ let test_sandbox_links_dependency_object_files = fun _ctx ->
           ()
       in
       let result =
-        match
-          Sandbox.materialize_dependency_objects
-            ~store
-            ~sandbox
-            ~package
-            ~depset:[ dependency ]
-        with
+        match Sandbox.materialize_dependency_objects ~store ~sandbox ~package ~depset:[ dependency ] with
         | Error err -> Error (Sandbox.dependency_prepare_error_to_string err)
         | Ok stats ->
             let copied_object = Path.(Sandbox.get_dir sandbox / Path.v "dep_runtime.o") in
             let copied_interface = Path.(Sandbox.get_dir sandbox / Path.v "Dep.cmi") in
-            let object_exists = Fs.exists copied_object |> Result.unwrap_or ~default:false in
-            let interface_exists = Fs.exists copied_interface |> Result.unwrap_or ~default:true in
+            let object_exists =
+              Fs.exists copied_object
+              |> Result.unwrap_or ~default:false
+            in
+            let interface_exists =
+              Fs.exists copied_interface
+              |> Result.unwrap_or ~default:true
+            in
             let object_is_symlink =
               match Fs.symlink_metadata copied_object with
               | Ok metadata -> Fs.Metadata.is_symlink metadata
@@ -228,7 +242,8 @@ let test_sandbox_links_dependency_object_files = fun _ctx ->
             if not (Int.equal stats.dependency_count 1) then
               Error ("expected one dependency, got " ^ Int.to_string stats.dependency_count)
             else if not (Int.equal stats.object_count 1) then
-              Error ("expected one materialized dependency object, got " ^ Int.to_string stats.object_count)
+              Error ("expected one materialized dependency object, got "
+              ^ Int.to_string stats.object_count)
             else if not object_exists then
               Error "expected dependency object to be materialized into sandbox"
             else if not object_is_symlink then
@@ -252,24 +267,28 @@ let test_sandbox_fails_when_dependency_artifact_dir_is_missing = fun _ctx ->
       let dependency_package = make_package ~root:tmpdir ~name:"dep" in
       let missing_artifact_dir = Path.(tmpdir / Path.v "missing-artifact") in
       let sandbox = Sandbox.create ~workspace () ~package_name:package.Package.name in
-      let dependency = make_dependency ~package:dependency_package ~artifact_dir:missing_artifact_dir () in
+      let dependency =
+        make_dependency ~package:dependency_package ~artifact_dir:missing_artifact_dir ()
+      in
       let result =
-        match
-          Sandbox.materialize_dependency_objects
-            ~store:(Riot_store.Store.create ~workspace)
-            ~sandbox
-            ~package
-            ~depset:[ dependency ]
-        with
+        match Sandbox.materialize_dependency_objects
+          ~store:(Riot_store.Store.create ~workspace)
+          ~sandbox
+          ~package
+          ~depset:[ dependency ] with
         | Ok _ -> Error "expected missing dependency artifact dir to fail sandbox preparation"
-        | Error (Sandbox.DependencyArtifactUnavailable { package = failed_package; artifact_dir; _ }) ->
+        | Error (
+          Sandbox.DependencyArtifactUnavailable { package = failed_package; artifact_dir; _ }
+        ) ->
             if not (Package_name.equal failed_package dependency_package.Package.name) then
               Error "expected failure to identify dependency package"
             else if not (Path.equal artifact_dir missing_artifact_dir) then
               Error "expected failure to identify missing artifact directory"
             else
               Ok ()
-        | Error err -> Error ("unexpected dependency preparation error: " ^ Sandbox.dependency_prepare_error_to_string err)
+        | Error err ->
+            Error ("unexpected dependency preparation error: "
+            ^ Sandbox.dependency_prepare_error_to_string err)
       in
       let _ = Sandbox.cleanup sandbox in
       result) with
@@ -336,15 +355,13 @@ let receive_sandbox_paths = fun ~actor_count ->
       Ok (List.concat (List.reverse acc))
     else
       (
-        match
-          receive
-            ~timeout:(Time.Duration.from_secs 5)
-            ~selector:(fun __tmp1 ->
-              match __tmp1 with
-              | Sandbox_paths_created result -> Select result
-              | _ -> Skip)
-            ()
-        with
+        match receive
+          ~timeout:(Time.Duration.from_secs 5)
+          ~selector:(fun __tmp1 ->
+            match __tmp1 with
+            | Sandbox_paths_created result -> Select result
+            | _ -> Skip)
+          () with
         | exception Receive_timeout -> Error "timed out waiting for sandbox workers"
         | Error message -> Error message
         | Ok paths -> collect (remaining - 1) (paths :: acc)
@@ -375,19 +392,10 @@ let test_sandbox_create_uses_unique_seeded_dirs_under_concurrency = fun _ctx ->
                       (
                         let id_seed =
                           Crypto.hash_string
-                            (
-                              Int.to_string actor_index
-                              ^ ":"
-                              ^ Int.to_string sandbox_index
-                            )
+                            (Int.to_string actor_index ^ ":" ^ Int.to_string sandbox_index)
                         in
                         let sandbox =
-                          Sandbox.create
-                            ~workspace
-                            ~id_seed
-                            ~session_id
-                            ()
-                            ~package_name
+                          Sandbox.create ~workspace ~id_seed ~session_id () ~package_name
                         in
                         create_paths (sandbox_index + 1) (Sandbox.get_dir sandbox :: acc)
                       )
@@ -402,7 +410,7 @@ let test_sandbox_create_uses_unique_seeded_dirs_under_concurrency = fun _ctx ->
       done;
       match receive_sandbox_paths ~actor_count with
       | Error _ as err -> err
-      | Ok paths -> (
+      | Ok paths ->
           match assert_unique_paths paths with
           | Error _ as err -> err
           | Ok count ->
@@ -410,14 +418,10 @@ let test_sandbox_create_uses_unique_seeded_dirs_under_concurrency = fun _ctx ->
               if count = expected then
                 Ok ()
               else
-                Error
-                  (
-                    "expected "
-                    ^ Int.to_string expected
-                    ^ " sandbox paths, got "
-                    ^ Int.to_string count
-                  )
-        )) with
+                Error ("expected "
+                ^ Int.to_string expected
+                ^ " sandbox paths, got "
+                ^ Int.to_string count)) with
   | Ok result -> result
   | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
 
@@ -425,9 +429,7 @@ let tests =
   Test.[
     case "sandbox create makes a directory" test_sandbox_create_and_get_dir;
     case "sandbox prepare copies package inputs" test_sandbox_prepare_copies_package_inputs;
-    case
-      "sandbox materializes explicit file modes"
-      test_sandbox_materializes_explicit_file_modes;
+    case "sandbox materializes explicit file modes" test_sandbox_materializes_explicit_file_modes;
     case "sandbox links dependency object files" test_sandbox_links_dependency_object_files;
     case
       "sandbox fails when dependency artifact dir is missing"

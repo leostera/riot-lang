@@ -124,7 +124,7 @@ let test_csrf_generates_raw_hex_tokens = fun _ctx ->
 let test_csrf_masking_roundtrips_and_uses_unique_masks = fun _ctx ->
   match Csrf.generate_token () with
   | Error error -> Error (Csrf.error_to_string error)
-  | Ok token -> (
+  | Ok token ->
       match (Csrf.mask_token token, Csrf.mask_token token) with
       | (Ok masked1, Ok masked2) ->
           Test.assert_false (String.equal masked1 masked2);
@@ -133,7 +133,6 @@ let test_csrf_masking_roundtrips_and_uses_unique_masks = fun _ctx ->
           Ok ()
       | (Error error, _)
       | (_, Error error) -> Error (Csrf.error_to_string error)
-    )
 
 let test_csrf_rejects_malformed_masked_tokens = fun _ctx ->
   (
@@ -223,7 +222,7 @@ let test_csrf_plain_apis_return_structured_errors = fun _ctx ->
   let session_check =
     match Session.create ~cookie_name:"_test" ~secret:"0123456789abcdef0123456789abcdef" () with
     | Error error -> Error (Session.setup_error_to_string error)
-    | Ok session -> (
+    | Ok session ->
         match Csrf.get_or_create_token session with
         | Ok token ->
             Test.assert_true (Csrf.is_raw_token token);
@@ -232,7 +231,6 @@ let test_csrf_plain_apis_return_structured_errors = fun _ctx ->
               ~actual:(Session.get_value "_csrf_token" session);
             Ok ()
         | Error error -> Error (Csrf.error_to_string error)
-      )
   in
   match session_check with
   | Error error -> Error error
@@ -253,7 +251,7 @@ let test_csrf_verify_token_reports_structured_errors = fun _ctx ->
   let other_token = "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff" in
   match Session.create ~cookie_name:"_test" ~secret:"0123456789abcdef0123456789abcdef" () with
   | Error error -> Error (Session.setup_error_to_string error)
-  | Ok session -> (
+  | Ok session ->
       Session.put "_csrf_token" token session;
       Test.assert_equal ~expected:(Ok ()) ~actual:(Csrf.verify_token_result session token);
       Test.assert_true (Csrf.verify_token session token);
@@ -266,11 +264,11 @@ let test_csrf_verify_token_reports_structured_errors = fun _ctx ->
         ~actual:(Csrf.verify_token_result session "not-base64");
       match Csrf.mask_token token with
       | Error error -> Error (Csrf.error_to_string error)
-      | Ok masked -> (
+      | Ok masked ->
           Test.assert_equal ~expected:(Ok ()) ~actual:(Csrf.verify_token_result session masked);
           match Session.create ~cookie_name:"_missing" ~secret:"0123456789abcdef0123456789abcdef" () with
           | Error error -> Error (Session.setup_error_to_string error)
-          | Ok missing_session -> (
+          | Ok missing_session ->
               Test.assert_equal
                 ~expected:(Error Csrf.MissingStoredToken)
                 ~actual:(Csrf.verify_token_result missing_session token);
@@ -285,9 +283,6 @@ let test_csrf_verify_token_reports_structured_errors = fun _ctx ->
                     ~expected:(Error Csrf.InvalidStoredToken)
                     ~actual:(Csrf.verify_token_result invalid_session token);
                   Ok ()
-            )
-        )
-    )
 
 let tests =
   Test.[

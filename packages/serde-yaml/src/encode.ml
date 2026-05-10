@@ -66,14 +66,13 @@ and encode_variant: 'value. state -> 'value Ser.variant_cases -> 'value -> unit 
             set state (Yaml_value.String tag)
           else
             loop (index + 1)
-      | Ser.Newtype (tag, encode, unwrap) -> (
+      | Ser.Newtype (tag, encode, unwrap) ->
           match unwrap value with
           | Some payload ->
               let child = child_state () in
               encode.run backend child payload;
               set state (Yaml_value.Tagged (tag, expect_value child "variant payload"))
           | None -> loop (index + 1)
-        )
   in
   loop 0
 

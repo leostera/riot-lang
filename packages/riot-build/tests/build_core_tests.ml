@@ -391,7 +391,7 @@ let test_output_exposes_artifacts_and_exports = fun _ctx ->
       in
       match Riot_build.Build_result.find_package output (package_name "demo") with
       | None -> Error "missing package output: demo"
-      | Some package_output -> (
+      | Some package_output ->
           match Riot_build.Build_result.package_artifact package_output with
           | None -> Error "expected built package artifact to be preserved"
           | Some found_artifact ->
@@ -406,8 +406,7 @@ let test_output_exposes_artifacts_and_exports = fun _ctx ->
                 match Riot_build.Build_result.find_export package_output "demo" with
                 | None -> Error "expected built package export to be preserved"
                 | Some export_entry when String.equal export_entry.path "demo.exe" -> Ok ()
-                | Some _ -> Error "expected built package export path to be preserved"
-        )) with
+                | Some _ -> Error "expected built package export path to be preserved") with
   | Ok result -> result
   | Error err -> Error ("tempdir failed: " ^ IO.error_message err)
 
@@ -467,9 +466,9 @@ let test_build_returns_successful_output = fun _ctx ->
       let prepared_workspace = make_valid_workspace tmpdir in
       match build_request (make_request ~workspace:prepared_workspace ()) with
       | Error err -> Error ("expected build to succeed, got: " ^ Riot_build.error_message err)
-      | Ok output -> (
+      | Ok output ->
           match Riot_build.Build_result.find_package output (package_name "demo") with
-          | Some package_output -> (
+          | Some package_output ->
               match Riot_build.Build_result.package_status package_output with
               | Riot_build.Build_result.Built _
               | Riot_build.Build_result.Cached _ -> Ok ()
@@ -477,9 +476,7 @@ let test_build_returns_successful_output = fun _ctx ->
                   Error ("expected successful package output, got skipped: " ^ reason)
               | Riot_build.Build_result.Failed message ->
                   Error ("expected successful package output, got failure: " ^ message)
-            )
-          | None -> Error "expected output for package demo"
-        )) with
+          | None -> Error "expected output for package demo") with
   | Ok result -> result
   | Error err -> Error ("tempdir failed: " ^ IO.error_message err)
 
@@ -630,9 +627,9 @@ let test_build_can_return_cached_outputs_on_repeat_builds = fun _ctx ->
       match build_request request with
       | Error err ->
           Error ("expected second build to succeed, got: " ^ Riot_build.error_message err)
-      | Ok output -> (
+      | Ok output ->
           match Riot_build.Build_result.find_package output (package_name "demo") with
-          | Some package_output -> (
+          | Some package_output ->
               match Riot_build.Build_result.package_status package_output with
               | Riot_build.Build_result.Cached _ -> Ok ()
               | Riot_build.Build_result.Built _ -> Error "expected repeated build to be cached"
@@ -640,9 +637,7 @@ let test_build_can_return_cached_outputs_on_repeat_builds = fun _ctx ->
                   Error ("expected cached package output, got skipped: " ^ reason)
               | Riot_build.Build_result.Failed message ->
                   Error ("expected cached package output, got failure: " ^ message)
-            )
-          | None -> Error "expected build output for package demo"
-        )) with
+          | None -> Error "expected build output for package demo") with
   | Ok result -> result
   | Error err -> Error ("tempdir failed: " ^ IO.error_message err)
 
@@ -723,13 +718,12 @@ let test_build_emits_detailed_build_telemetry = fun _ctx ->
       match build_request
         ~on_event:(fun __tmp1 ->
           match __tmp1 with
-          | Riot_build.Event.Telemetry event -> (
+          | Riot_build.Event.Telemetry event ->
               match event with
               | Telemetry_events.PackageStarted _ -> seen := !seen @ [ "package_started" ]
               | Telemetry_events.CompilationStarted _ -> seen := !seen @ [ "compilation_started" ]
               | Telemetry_events.BuildCompleted _ -> seen := !seen @ [ "build_completed" ]
               | _ -> ()
-            )
           | _ -> ())
         (make_request ~workspace:prepared_workspace ()) with
       | Error err -> Error ("expected build to succeed, got: " ^ Riot_build.error_message err)
@@ -899,7 +893,7 @@ let test_build_multi_target_outputs_and_events = fun _ctx ->
                   (
                     match Riot_build.Build_result.find_package output (package_name "demo") with
                     | None -> Error "expected output for package demo"
-                    | Some package_output -> (
+                    | Some package_output ->
                         match Riot_build.Build_result.package_status package_output with
                         | Riot_build.Build_result.Built _
                         | Riot_build.Build_result.Cached _ -> Ok ()
@@ -907,7 +901,6 @@ let test_build_multi_target_outputs_and_events = fun _ctx ->
                             Error ("expected demo package to be built, got skipped: " ^ reason)
                         | Riot_build.Build_result.Failed message ->
                             Error ("expected demo package to be built, got failed: " ^ message)
-                      )
                   )
               in
               match build_result_status with
@@ -989,7 +982,7 @@ let test_build_multi_target_partial_failures_fail_by_default = fun _ctx ->
           ~packages:[ package_name "good"; package_name "bad" ]
           ()) with
       | Ok _ -> Error "expected partial failure to make build fail by default"
-      | Error (Riot_build.BuildFailed _) -> (
+      | Error (Riot_build.BuildFailed _) ->
           match !seen_target_count with
           | None -> Error "expected targets_resolved event"
           | Some count ->
@@ -1034,7 +1027,6 @@ let test_build_multi_target_partial_failures_fail_by_default = fun _ctx ->
                   ~label:"finished targets"
                   ~expected:expected_targets
                   ~actual:(sort_target_names !finished_targets)
-        )
       | Error err ->
           Error ("expected build to fail with BuildFailed, got: " ^ Riot_build.error_message err)) with
   | Ok result -> result

@@ -17,8 +17,7 @@ end = struct
 
   let counter = Atomic.make 0
 
-  let next = fun () ->
-    Atomic.fetch_and_add counter 1 + 1
+  let next = fun () -> Atomic.fetch_and_add counter 1 + 1
 
   let eq = ( = )
 

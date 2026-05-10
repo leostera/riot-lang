@@ -77,7 +77,7 @@ let main ~args =
       ArgParser.print_error err;
       ArgParser.print_help cmd;
       Error (Failure "invalid CLI arguments")
-  | Ok matches -> (
+  | Ok matches ->
       match ArgParser.get_subcommand matches with
       | Some ("format", sub_matches) ->
           let file =
@@ -96,6 +96,5 @@ let main ~args =
       | _ ->
           ArgParser.print_help cmd;
           Error (Failure "missing subcommand")
-    )
 
 let () = Runtime.run ~main ~args:Env.args ()

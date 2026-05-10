@@ -18,16 +18,14 @@ let main ~args =
       println "This is a package-provided Riot command.";
       println "";
       println "The command system is working correctly!";
-      Ok ()
-    )
+      Ok ())
 
 let should_autorun =
   match Std.Env.args with
   | argv0 :: _ -> (
       match Path.from_string argv0 with
       | Ok path -> Path.basename path = name
-      | Error _ -> argv0 = name
-    )
+      | Error _ -> argv0 = name)
   | [] -> false
 
 let () =

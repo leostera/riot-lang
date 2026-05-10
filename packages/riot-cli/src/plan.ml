@@ -75,7 +75,10 @@ let plan_json = fun ~resolve_us ~create_us resolved plan ->
           ~fn:(fun package -> Data.Json.String (Riot_model.Package_name.to_string package))
       )
     );
-    ("scope", Data.Json.String (scope_to_string (Riot_build.Internal.Resolved_build.scope resolved)));
+    (
+      "scope",
+      Data.Json.String (scope_to_string (Riot_build.Internal.Resolved_build.scope resolved))
+    );
     ("resolve_us", Data.Json.Int resolve_us);
     ("create_us", Data.Json.Int create_us);
     ("units", Data.Json.Array (List.map units ~fn:(unit_json graph)));
@@ -108,8 +111,7 @@ let print_human_plan = fun ~resolve_us ~create_us resolved plan ->
         | [] -> ()
         | dependencies ->
             out
-              ("  deps: "
-              ^ String.concat ", " (List.map dependencies ~fn:Build_unit.key_to_string))
+              ("  deps: " ^ String.concat ", " (List.map dependencies ~fn:Build_unit.key_to_string))
       ))
 
 let write_error = fun ~mode message ->

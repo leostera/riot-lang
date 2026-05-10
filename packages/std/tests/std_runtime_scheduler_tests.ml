@@ -87,28 +87,20 @@ let test_pinned_worker_wakes_after_parking = fun _ctx ->
       (fun () ->
         send
           parent
-          (Scheduler_worker_ready {
-            run_ref;
-            pid = self ();
-            scheduler = scheduler_index ();
-          });
+          (Scheduler_worker_ready { run_ref; pid = self (); scheduler = scheduler_index () });
         try
           let () =
             receive
               ~timeout:(Time.Duration.from_secs 1)
               ~selector:(fun __tmp1 ->
                 match __tmp1 with
-                | Scheduler_worker_ping { run_ref = received_ref } when Ref.equal run_ref received_ref ->
-                    Select ()
+                | Scheduler_worker_ping { run_ref = received_ref } when Ref.equal
+                  run_ref
+                  received_ref -> Select ()
                 | _ -> Skip)
               ()
           in
-          send
-            parent
-            (Scheduler_worker_ack {
-              run_ref;
-              scheduler = scheduler_index ();
-            });
+          send parent (Scheduler_worker_ack { run_ref; scheduler = scheduler_index () });
           Ok ()
         with
         | Receive_timeout ->
@@ -262,9 +254,7 @@ let test_normal_actor_queue_pressure_completes_each_actor_once = fun _ctx ->
 
 let tests =
   Test.[
-    case
-      "runtime scheduler wakes a parked pinned worker"
-      test_pinned_worker_wakes_after_parking;
+    case "runtime scheduler wakes a parked pinned worker" test_pinned_worker_wakes_after_parking;
     case
       "runtime scheduler delivers a burst to a parked worker exactly once"
       test_parked_worker_receives_burst_once_per_message;
@@ -275,9 +265,8 @@ let tests =
 
 let main ~args = Test.Cli.main ~name:"Runtime.Scheduler" ~tests ~args ()
 
-let () =
-  Runtime.run
-    ~main
-    ~args:Env.args
-    ~config:(Runtime.Config.make ~scheduler_count:4 ())
-    ()
+let () = Runtime.run
+  ~main
+  ~args:Env.args
+  ~config:(Runtime.Config.make ~scheduler_count:4 ())
+  ()

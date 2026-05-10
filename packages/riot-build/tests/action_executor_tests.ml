@@ -17,7 +17,11 @@ let test_toolchain = fun () ->
 let test_build_target = Riot_model.Target.current
 
 let make_workspace = fun root ->
-  Riot_model.Workspace.make ~root ~target_dir:(Path.v "target") ~packages:[] ()
+  Riot_model.Workspace.make
+    ~root
+    ~target_dir:(Path.v "target")
+    ~packages:[]
+    ()
 
 let make_package = fun ~root ~name ->
   let package_name = package_name name in
@@ -31,7 +35,11 @@ let make_package = fun ~root ~name ->
 
 let make_node = fun ~package ?(dep_nodes = []) ~actions ~outs () ->
   let graph = Riot_planner.Action_graph.create () in
-  let deps = List.map dep_nodes ~fn:(fun (node: Riot_planner.Action_node.t) -> (Riot_planner.Action_node.id node)) in
+  let deps =
+    List.map
+      dep_nodes
+      ~fn:(fun (node: Riot_planner.Action_node.t) -> Riot_planner.Action_node.id node)
+  in
   let spec =
     Riot_planner.Action_node.make
       ~actions
@@ -51,7 +59,7 @@ let make_node = fun ~package ?(dep_nodes = []) ~actions ~outs () ->
   in
   node
 
-let node_id = fun (node: Riot_planner.Action_node.t) -> (Riot_planner.Action_node.id node)
+let node_id = fun (node: Riot_planner.Action_node.t) -> Riot_planner.Action_node.id node
 
 let failed_result = fun node_id ->
   let now = Time.Instant.now () in
@@ -96,13 +104,12 @@ let test_execute_node_writes_file = fun _ctx ->
           node
       in
       match result.status with
-      | Action_executor.Executed _ -> (
+      | Action_executor.Executed _ ->
           let output_path = Path.(sandbox / output) in
           match Fs.read_to_string output_path with
           | Ok content when String.equal content "hello" -> Ok ()
           | Ok content -> Error ("unexpected output content: " ^ content)
           | Error err -> Error ("failed to read output: " ^ IO.error_message err)
-        )
       | Action_executor.Cached _
       | Action_executor.Failed _
       | Action_executor.Skipped -> Error "expected write action to execute") with
@@ -146,13 +153,12 @@ let test_execute_node_copies_file = fun _ctx ->
           node
       in
       match result.status with
-      | Action_executor.Executed _ -> (
+      | Action_executor.Executed _ ->
           let destination_path = Path.(sandbox / destination) in
           match Fs.read_to_string destination_path with
           | Ok content when String.equal content "copy me" -> Ok ()
           | Ok content -> Error ("unexpected copied content: " ^ content)
           | Error err -> Error ("failed to read copied file: " ^ IO.error_message err)
-        )
       | Action_executor.Cached _
       | Action_executor.Failed _
       | Action_executor.Skipped -> Error "expected copy action to execute") with

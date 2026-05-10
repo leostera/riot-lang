@@ -48,15 +48,13 @@ let test_file_loading = fun _ctx ->
 let test_extract_app_section = fun _ctx ->
   match Config.Loader.load_file "./packages/std/tests/fixtures/config/dev.toml" with
   | Error err -> Error ("Failed to load file: " ^ err)
-  | Ok toml -> (
+  | Ok toml ->
       match Config.Loader.extract_app_section "testapp" toml with
       | Error err -> Error ("Failed to extract app section: " ^ err)
-      | Ok section -> (
+      | Ok section ->
           match section with
           | Data.Toml.Table _ -> Ok ()
           | _ -> Error "Expected table section"
-        )
-    )
 
 (* Test 5: Validator - simple validation *)
 
@@ -80,11 +78,10 @@ let test_defaults = fun _ctx ->
   let toml = Data.Toml.Table [] in
   match Config.Validator.validate spec toml with
   | Error err -> Error ("Validation failed: " ^ err)
-  | Ok (Config.Spec.Map validated) -> (
+  | Ok (Config.Spec.Map validated) ->
       match assoc_value validated "log_level" with
       | Some (Config.Spec.String "info") -> Ok ()
       | _ -> Error "Default value not applied"
-    )
   | Ok _ -> Error "Unexpected validation result"
 
 (* Test 7: Validator - nested maps *)
@@ -143,11 +140,10 @@ let test_enum_string_valid = fun _ctx ->
   let toml = Data.Toml.Table [ ("log_level", Data.Toml.String "debug"); ] in
   match Config.Validator.validate spec toml with
   | Error err -> Error ("Validation failed: " ^ err)
-  | Ok (Config.Spec.Map validated) -> (
+  | Ok (Config.Spec.Map validated) ->
       match assoc_value validated "log_level" with
       | Some (Config.Spec.String "debug") -> Ok ()
       | _ -> Error "Enum string value not validated correctly"
-    )
   | Ok _ -> Error "Unexpected validation result"
 
 (* Test 10: Enum string - invalid value *)
@@ -192,11 +188,10 @@ let test_enum_string_default = fun _ctx ->
   let toml = Data.Toml.Table [] in
   match Config.Validator.validate spec toml with
   | Error err -> Error ("Validation failed: " ^ err)
-  | Ok (Config.Spec.Map validated) -> (
+  | Ok (Config.Spec.Map validated) ->
       match assoc_value validated "log_level" with
       | Some (Config.Spec.String "info") -> Ok ()
       | _ -> Error "Enum string default not applied"
-    )
   | Ok _ -> Error "Unexpected validation result"
 
 (* Test 12: Enum int - valid value *)
@@ -220,11 +215,10 @@ let test_enum_int_valid = fun _ctx ->
   let toml = Data.Toml.Table [ ("status_code", Data.Toml.String "404"); ] in
   match Config.Validator.validate spec toml with
   | Error err -> Error ("Validation failed: " ^ err)
-  | Ok (Config.Spec.Map validated) -> (
+  | Ok (Config.Spec.Map validated) ->
       match assoc_value validated "status_code" with
       | Some (Config.Spec.Int 404) -> Ok ()
       | _ -> Error "Enum int value not validated correctly"
-    )
   | Ok _ -> Error "Unexpected validation result"
 
 (* Test 13: Enum int - invalid value *)
@@ -270,7 +264,7 @@ let test_list_of_strings = fun _ctx ->
   in
   match Config.Validator.validate spec toml with
   | Error err -> Error ("Validation failed: " ^ err)
-  | Ok (Config.Spec.Map validated) -> (
+  | Ok (Config.Spec.Map validated) ->
       match assoc_value validated "tags" with
       | Some (Config.Spec.List items) ->
           let strings = Collections.List.map items ~fn:Config.as_string in
@@ -279,7 +273,6 @@ let test_list_of_strings = fun _ctx ->
           else
             Error "List items not correct"
       | _ -> Error "List not validated correctly"
-    )
   | Ok _ -> Error "Unexpected validation result"
 
 (* Test 15: List with default *)
@@ -296,11 +289,10 @@ let test_list_default = fun _ctx ->
   let toml = Data.Toml.Table [] in
   match Config.Validator.validate spec toml with
   | Error err -> Error ("Validation failed: " ^ err)
-  | Ok (Config.Spec.Map validated) -> (
+  | Ok (Config.Spec.Map validated) ->
       match assoc_value validated "ports" with
       | Some (Config.Spec.List []) -> Ok ()
       | _ -> Error "Default empty list not applied"
-    )
   | Ok _ -> Error "Unexpected validation result"
 
 (* Test 16: List of maps *)
@@ -329,7 +321,7 @@ let test_list_of_maps = fun _ctx ->
   in
   match Config.Validator.validate spec toml with
   | Error err -> Error ("Validation failed: " ^ err)
-  | Ok (Config.Spec.Map validated) -> (
+  | Ok (Config.Spec.Map validated) ->
       match assoc_value validated "users" with
       | Some (Config.Spec.List items) ->
           if Collections.List.length items = 2 then
@@ -337,7 +329,6 @@ let test_list_of_maps = fun _ctx ->
           else
             Error ("Expected 2 users, got " ^ Int.to_string (Collections.List.length items))
       | _ -> Error "List of maps not validated correctly"
-    )
   | Ok _ -> Error "Unexpected validation result"
 
 (* Test 17: Discriminated union - console variant *)
@@ -466,7 +457,7 @@ let test_list_of_discriminated_unions = fun _ctx ->
   in
   match Config.Validator.validate spec toml with
   | Error err -> Error ("Validation failed: " ^ err)
-  | Ok (Config.Spec.Map validated) -> (
+  | Ok (Config.Spec.Map validated) ->
       match assoc_value validated "handlers" with
       | Some (Config.Spec.List items) ->
           if Collections.List.length items = 2 then (
@@ -481,7 +472,6 @@ let test_list_of_discriminated_unions = fun _ctx ->
           ) else
             Error ("Expected 2 handlers, got " ^ Int.to_string (Collections.List.length items))
       | _ -> Error "Handlers list not validated correctly"
-    )
   | Ok _ -> Error "Unexpected validation result"
 
 (* Test 20: Dotted path - two levels *)
@@ -489,45 +479,39 @@ let test_list_of_discriminated_unions = fun _ctx ->
 let test_dotted_path_two_levels = fun _ctx ->
   match Config.Loader.load_file "./packages/std/tests/fixtures/config/dotted.toml" with
   | Error err -> Error ("Failed to load file: " ^ err)
-  | Ok toml -> (
+  | Ok toml ->
       match Config.Loader.extract_app_section "log.handler" toml with
       | Error err -> Error ("Failed to extract log.handler: " ^ err)
-      | Ok section -> (
+      | Ok section ->
           match section with
           | Data.Toml.Table _ -> Ok ()
           | _ -> Error "Expected table section"
-        )
-    )
 
 (* Test 21: Dotted path - three levels *)
 
 let test_dotted_path_three_levels = fun _ctx ->
   match Config.Loader.load_file "./packages/std/tests/fixtures/config/dotted.toml" with
   | Error err -> Error ("Failed to load file: " ^ err)
-  | Ok toml -> (
+  | Ok toml ->
       match Config.Loader.extract_app_section "log.handler.stdout" toml with
       | Error err -> Error ("Failed to extract log.handler.stdout: " ^ err)
-      | Ok section -> (
+      | Ok section ->
           match section with
-          | Data.Toml.Table fields -> (
+          | Data.Toml.Table fields ->
               match assoc_value fields "format" with
               | Some (Data.Toml.String "full") -> Ok ()
               | _ -> Error "Expected format = full"
-            )
           | _ -> Error "Expected table section"
-        )
-    )
 
 (* Test 22: Dotted path - missing section *)
 
 let test_dotted_path_missing = fun _ctx ->
   match Config.Loader.load_file "./packages/std/tests/fixtures/config/dotted.toml" with
   | Error err -> Error ("Failed to load file: " ^ err)
-  | Ok toml -> (
+  | Ok toml ->
       match Config.Loader.extract_app_section "log.handler.missing" toml with
       | Error _ -> Ok ()
       | Ok _ -> Error "Should have failed on missing section"
-    )
 
 (* Test 23: Integer values - both TOML Int and String forms *)
 
@@ -545,9 +529,9 @@ let test_int_values_both_forms = fun _ctx ->
   in
   match Config.Validator.validate spec toml_native with
   | Error err -> Error ("Native int validation failed: " ^ err)
-  | Ok (Config.Spec.Map validated) -> (
+  | Ok (Config.Spec.Map validated) ->
       match assoc_value validated "port" with
-      | Some (Config.Spec.Int 2_112) -> (
+      | Some (Config.Spec.Int 2_112) ->
           (* Test with Data.Toml.String (backward compatibility) *)
           let toml_string = Data.Toml.Table [
             ("port", Data.Toml.String "3000");
@@ -556,15 +540,12 @@ let test_int_values_both_forms = fun _ctx ->
           in
           match Config.Validator.validate spec toml_string with
           | Error err -> Error ("String int validation failed: " ^ err)
-          | Ok (Config.Spec.Map validated2) -> (
+          | Ok (Config.Spec.Map validated2) ->
               match assoc_value validated2 "port" with
               | Some (Config.Spec.Int 3_000) -> Ok ()
               | _ -> Error "String form port not parsed correctly"
-            )
           | Ok _ -> Error "Unexpected validation result for string form"
-        )
       | _ -> Error "Native form port not parsed correctly"
-    )
   | Ok _ -> Error "Unexpected validation result for native form"
 
 let tests =

@@ -28,8 +28,7 @@ let payload = fun ~size ~seed ->
     ~len:size
     ~fn:(fun index -> Char.from_int_unchecked (Char.to_int 'a' + ((index + seed) mod 26)))
 
-let make_workspace = fun root ->
-  Workspace.make ~root ~target_dir:(Path.v "target") ~packages:[] ()
+let make_workspace = fun root -> Workspace.make ~root ~target_dir:(Path.v "target") ~packages:[] ()
 
 let package_name = fun value ->
   Package_name.from_string value

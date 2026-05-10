@@ -50,7 +50,7 @@ let make_diagnostic = fun ~suggestion expr ->
 
 let diagnostic_for_expression = fun expr ->
   match Syn.Ast.Expr.view (H.unwrap_expr expr) with
-  | Infix { left; operator; right } -> (
+  | Infix { left; operator; right } ->
       let operator = Syn.Ast.Token.text operator in
       match (operator, list_length_argument left, list_length_argument right) with
       | ("==", Some _list_expr, _) when H.is_zero_literal right ->
@@ -60,7 +60,6 @@ let diagnostic_for_expression = fun expr ->
             ~suggestion:"Use not (List.is_empty xs) when checking that a list has elements."
             expr)
       | _ -> None
-    )
   | _ -> None
 
 let check_tree = fun (ctx: Api.Rule.context) _red_root ->

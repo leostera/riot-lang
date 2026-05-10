@@ -18,24 +18,20 @@ let test_stdout_writer_handles_empty_operations = fun _ctx ->
     |> Result.unwrap
   in
   match IO.write writer ~from:(IO.Buffer.from_string "") with
-  | Ok 0 -> (
+  | Ok 0 ->
       match IO.write_all writer ~from:(IO.Buffer.from_string "") with
-      | Ok () -> (
+      | Ok () ->
           match IO.write_vectored writer ~from:empty_iov with
-          | Ok 0 -> (
+          | Ok 0 ->
               match IO.write_all_vectored writer ~from:empty_iov with
-              | Ok () -> (
+              | Ok () ->
                   match IO.flush writer with
                   | Ok () -> Ok ()
                   | Error _ -> Error "IO.stdout flush should succeed for empty operations"
-                )
               | Error _ -> Error "IO.stdout write_all_vectored should accept empty iovecs"
-            )
           | Ok _ -> Error "IO.stdout write_vectored should report zero for empty iovecs"
           | Error _ -> Error "IO.stdout write_vectored should accept empty iovecs"
-        )
       | Error _ -> Error "IO.stdout write_all should accept empty strings"
-    )
   | Ok _ -> Error "IO.stdout write should report zero for empty strings"
   | Error _ -> Error "IO.stdout write should accept empty strings"
 
@@ -46,24 +42,20 @@ let test_stderr_writer_handles_empty_operations = fun _ctx ->
     |> Result.unwrap
   in
   match IO.write writer ~from:(IO.Buffer.from_string "") with
-  | Ok 0 -> (
+  | Ok 0 ->
       match IO.write_all writer ~from:(IO.Buffer.from_string "") with
-      | Ok () -> (
+      | Ok () ->
           match IO.write_vectored writer ~from:empty_iov with
-          | Ok 0 -> (
+          | Ok 0 ->
               match IO.write_all_vectored writer ~from:empty_iov with
-              | Ok () -> (
+              | Ok () ->
                   match IO.flush writer with
                   | Ok () -> Ok ()
                   | Error _ -> Error "IO.stderr flush should succeed for empty operations"
-                )
               | Error _ -> Error "IO.stderr write_all_vectored should accept empty iovecs"
-            )
           | Ok _ -> Error "IO.stderr write_vectored should report zero for empty iovecs"
           | Error _ -> Error "IO.stderr write_vectored should accept empty iovecs"
-        )
       | Error _ -> Error "IO.stderr write_all should accept empty strings"
-    )
   | Ok _ -> Error "IO.stderr write should report zero for empty strings"
   | Error _ -> Error "IO.stderr write should accept empty strings"
 

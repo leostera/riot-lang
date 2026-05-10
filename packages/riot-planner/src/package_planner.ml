@@ -40,26 +40,29 @@ and planning_breakdown = {
   module_plan_duration: Time.Duration.t;
 }
 
-type input_hash_cache = {
-  package_hashes_lock: Sync.Mutex.t;
-  package_hashes: (string, package_hash_entry) HashMap.t;
-  toolchain_hashes_lock: Sync.Mutex.t;
-  toolchain_hashes: (string, Std.Crypto.hash) HashMap.t;
+type package_hash_state =
+  | PackageHashReady of Std.Crypto.hash
+  | PackageHashComputing
+  | PackageHashFailed of exn
+
+type package_hash_entry = {
+  lock: Sync.Mutex.t;
+  condition: Sync.Condition.t;
+  mutable state: package_hash_state;
 }
 
-and package_hash_entry =
-  | PackageHashReady of Std.Crypto.hash
-  | PackageHashComputing of Sync.Condition.t
+type input_hash_cache = {
+  package_hashes: (string, package_hash_entry) ConcurrentHashMap.t;
+  toolchain_hashes: (string, Std.Crypto.hash) ConcurrentHashMap.t;
+}
 
 type cached_artifact_lookup =
   | Full_cached_artifact
   | Metadata_cached_artifact
 
 let create_input_hash_cache = fun () -> {
-  package_hashes_lock = Sync.Mutex.create ();
-  package_hashes = HashMap.create ();
-  toolchain_hashes_lock = Sync.Mutex.create ();
-  toolchain_hashes = HashMap.create ();
+  package_hashes = ConcurrentHashMap.create ();
+  toolchain_hashes = ConcurrentHashMap.create ();
 }
 
 let empty_breakdown = {
@@ -563,26 +566,54 @@ let compute_or_load_package_hash = fun workspace package ->
       write_persistent_package_hash workspace fingerprint (Std.Crypto.Digest.hex hash);
       hash
 
-let rec cached_package_hash = fun cache ~workspace ~key package ->
-  Sync.Mutex.lock cache.package_hashes_lock;
-  match HashMap.get cache.package_hashes ~key with
-  | Some (PackageHashReady hash) ->
-      Sync.Mutex.unlock cache.package_hashes_lock;
+let new_package_hash_entry = fun () -> {
+  lock = Sync.Mutex.create ();
+  condition = Sync.Condition.create ();
+  state = PackageHashComputing;
+}
+
+let rec await_package_hash = fun entry ->
+  Sync.Mutex.lock entry.lock;
+  match entry.state with
+  | PackageHashReady hash ->
+      Sync.Mutex.unlock entry.lock;
       hash
-  | Some (PackageHashComputing condition) ->
-      Sync.Condition.wait condition cache.package_hashes_lock;
-      Sync.Mutex.unlock cache.package_hashes_lock;
-      cached_package_hash cache ~workspace ~key package
-  | None ->
-      let condition = Sync.Condition.create () in
-      ignore (HashMap.insert cache.package_hashes ~key ~value:(PackageHashComputing condition));
-      Sync.Mutex.unlock cache.package_hashes_lock;
-      let hash = compute_or_load_package_hash workspace package in
-      Sync.Mutex.lock cache.package_hashes_lock;
-      ignore (HashMap.insert cache.package_hashes ~key ~value:(PackageHashReady hash));
-      Sync.Condition.broadcast condition;
-      Sync.Mutex.unlock cache.package_hashes_lock;
-      hash
+  | PackageHashComputing ->
+      Sync.Condition.wait entry.condition entry.lock;
+      Sync.Mutex.unlock entry.lock;
+      await_package_hash entry
+  | PackageHashFailed exn ->
+      Sync.Mutex.unlock entry.lock;
+      raise exn
+
+let cached_package_hash = fun cache ~workspace ~key package ->
+  let fresh_entry = new_package_hash_entry () in
+  let (entry, should_compute) =
+    ConcurrentHashMap.compute
+      cache.package_hashes
+      ~key
+      ~fn:(fun current ->
+        match current with
+        | Some entry -> ConcurrentHashMap.Abort (entry, false)
+        | None -> ConcurrentHashMap.Insert (fresh_entry, (fresh_entry, true)))
+  in
+  if should_compute then (
+    match compute_or_load_package_hash workspace package with
+    | hash ->
+        Sync.Mutex.lock entry.lock;
+        entry.state <- PackageHashReady hash;
+        Sync.Condition.broadcast entry.condition;
+        Sync.Mutex.unlock entry.lock;
+        hash
+    | exception exn ->
+        Sync.Mutex.lock entry.lock;
+        entry.state <- PackageHashFailed exn;
+        Sync.Condition.broadcast entry.condition;
+        Sync.Mutex.unlock entry.lock;
+        ignore (ConcurrentHashMap.remove cache.package_hashes ~key);
+        raise exn
+  ) else
+    await_package_hash entry
 
 let package_hash = fun input_hash_cache ~workspace ~key package ->
   match (input_hash_cache, key) with
@@ -591,17 +622,12 @@ let package_hash = fun input_hash_cache ~workspace ~key package ->
 
 let cached_toolchain_hash = fun cache toolchain ->
   let key = Path.to_string (Riot_toolchain.path toolchain) in
-  Sync.Mutex.lock cache.toolchain_hashes_lock;
-  match HashMap.get cache.toolchain_hashes ~key with
+  match ConcurrentHashMap.get cache.toolchain_hashes ~key with
   | Some hash ->
-      Sync.Mutex.unlock cache.toolchain_hashes_lock;
       hash
   | None ->
-      Sync.Mutex.unlock cache.toolchain_hashes_lock;
       let hash = Riot_toolchain.hash toolchain in
-      Sync.Mutex.lock cache.toolchain_hashes_lock;
-      ignore (HashMap.insert cache.toolchain_hashes ~key ~value:hash);
-      Sync.Mutex.unlock cache.toolchain_hashes_lock;
+      ignore (ConcurrentHashMap.insert cache.toolchain_hashes ~key ~value:hash);
       hash
 
 let toolchain_hash = fun input_hash_cache toolchain ->

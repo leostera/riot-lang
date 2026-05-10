@@ -28,7 +28,7 @@ let lift_async = fun result ->
 let with_poll = fun fn ->
   match Kernel.Async.Poll.make () with
   | Kernel.Result.Error error -> Error (Kernel.Async.error_to_string error)
-  | Kernel.Result.Ok poll -> (
+  | Kernel.Result.Ok poll ->
       try
         let value = fn poll in
         let _ = Kernel.Async.Poll.close poll in
@@ -37,7 +37,6 @@ let with_poll = fun fn ->
       | error ->
           let _ = Kernel.Async.Poll.close poll in
           raise error
-    )
 
 let assert_invalid_slice = fun ~error_to_string ~is_invalid_slice ->
   fun result ->

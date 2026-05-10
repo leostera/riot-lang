@@ -77,11 +77,10 @@ module Actor = struct
         Proc.demonitor current ref;
         match monitored_pid with
         | None -> ()
-        | Some pid -> (
+        | Some pid ->
             match Scheduler.get_process t pid with
             | None -> ()
-            | Some target -> Proc.remove_monitored_by target (Proc.pid current) ref
-          ))
+            | Some target -> Proc.remove_monitored_by target (Proc.pid current) ref)
 
   let kill = fun pid ~reason -> Scheduler.kill (Scheduler.get_scheduler ()) pid reason
 end

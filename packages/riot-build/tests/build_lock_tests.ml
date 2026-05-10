@@ -89,7 +89,7 @@ let test_releases_lock_on_exception = fun _ctx ->
         in
         Error "Expected build lock callback to raise"
       with
-      | Synthetic_failure -> (
+      | Synthetic_failure ->
           match BuildLock.acquire
             ~on_waiting:(fun _ -> ())
             ~target_dir_root:(target_dir_root workspace)
@@ -97,8 +97,7 @@ let test_releases_lock_on_exception = fun _ctx ->
             ~target:host_target
             (fun () -> Ok ()) with
           | Ok () -> Ok ()
-          | Error _ -> Error "Build lock was not released after exception"
-        ))
+          | Error _ -> Error "Build lock was not released after exception")
 
 let test_different_targets_do_not_block_each_other = fun _ctx ->
   with_tempdir

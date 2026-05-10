@@ -107,7 +107,7 @@ let test_explicit_never_indexed_ignores_dynamic_exact_match = fun _ctx ->
   let header = { Hpack.name = "x-secret"; value = "token" } in
   match Hpack.encode_header encoder header ~encoding_type:Hpack.LiteralWithIndexing with
   | Error err -> Result.Error ("Initial encode failed: " ^ Hpack.encode_error_to_string err)
-  | Ok _ -> (
+  | Ok _ ->
       match Hpack.encode_header encoder header ~encoding_type:Hpack.LiteralNeverIndexed with
       | Error err ->
           Result.Error ("Never-indexed encode failed: " ^ Hpack.encode_error_to_string err)
@@ -120,7 +120,6 @@ let test_explicit_never_indexed_ignores_dynamic_exact_match = fun _ctx ->
             Result.Error "Explicit never-indexed header used the wrong literal representation"
           else
             Result.Ok ()
-    )
 
 let test_literal_with_indexing_updates_decoder_table = fun _ctx ->
   let encoder = Hpack.create_encoder () in
@@ -277,7 +276,7 @@ let test_reader_decodes_static_indexed_header = fun _ctx ->
 let test_reader_preserves_partial_literal = fun _ctx ->
   let decoder = HpackReader.create () in
   match HpackReader.decode decoder (IO.Reader.from_string "\x40\x01x") with
-  | HpackReader.Need_more -> (
+  | HpackReader.Need_more ->
       match HpackReader.decode decoder (IO.Reader.from_string "\x03one") with
       | HpackReader.Headers [ { Hpack.name = "x"; value = "one" } ] -> Result.Ok ()
       | HpackReader.Headers _ -> Result.Error "Reader decoded the wrong resumed literal"
@@ -285,7 +284,6 @@ let test_reader_preserves_partial_literal = fun _ctx ->
           Result.Error "Reader still needed more data after literal completion"
       | HpackReader.Error err ->
           Result.Error ("Reader failed after resume: " ^ HpackReader.decode_error_to_string err)
-    )
   | HpackReader.Headers _ -> Result.Error "Partial literal decoded before value bytes arrived"
   | HpackReader.Error err ->
       Result.Error ("Partial literal failed: " ^ HpackReader.decode_error_to_string err)
@@ -302,7 +300,7 @@ let test_reader_decodes_literal_without_indexing = fun _ctx ->
 let test_reader_reuses_dynamic_table = fun _ctx ->
   let decoder = HpackReader.create () in
   match HpackReader.decode decoder (IO.Reader.from_string "\x40\x01x\x01y") with
-  | HpackReader.Headers [ { Hpack.name = "x"; value = "y" } ] -> (
+  | HpackReader.Headers [ { Hpack.name = "x"; value = "y" } ] ->
       match HpackReader.decode decoder (IO.Reader.from_string "\xbe") with
       | HpackReader.Headers [ { Hpack.name = "x"; value = "y" } ] -> Result.Ok ()
       | HpackReader.Headers _ -> Result.Error "Reader decoded the wrong dynamic-table header"
@@ -310,7 +308,6 @@ let test_reader_reuses_dynamic_table = fun _ctx ->
       | HpackReader.Error err ->
           Result.Error ("Reader dynamic-table decode failed: "
           ^ HpackReader.decode_error_to_string err)
-    )
   | HpackReader.Headers _ -> Result.Error "Reader decoded the wrong indexed literal"
   | HpackReader.Need_more -> Result.Error "Reader unexpectedly needed more indexed literal data"
   | HpackReader.Error err ->

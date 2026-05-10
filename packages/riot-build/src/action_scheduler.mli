@@ -35,7 +35,7 @@ type t = {
 
 val summarize_completed:
   action_graph:Action_graph.t ->
-  completed_results:(Graph.SimpleGraph.Node_id.t, execution_result) HashMap.t ->
+  completed_results:(Graph.SimpleGraph.Node_id.t, execution_result) ConcurrentHashMap.t ->
   t
 
 val run:

@@ -23,11 +23,10 @@ let protect = fun ~finally f ->
 let write_file = fun path content ->
   match Fs.create_dir_all (Path.dirname path) with
   | Error err -> Error (IO.error_message err)
-  | Ok () -> (
+  | Ok () ->
       match Fs.write content path with
       | Ok () -> Ok ()
       | Error err -> Error (IO.error_message err)
-    )
 
 let make_metadata = fun ~release_id ~build_sha ?notes_url ?compare_url ?issues_url () ->
   Riot_cli.Version_info.{
@@ -206,7 +205,7 @@ let test_upgrade_installs_downloaded_archive = fun ctx ->
             (fun () ->
               match Riot_cli.Upgrade.run matches with
               | Error exn -> Error (Exception.to_string exn)
-              | Ok () -> (
+              | Ok () ->
                   match Fs.read installed with
                   | Error err -> Error (IO.error_message err)
                   | Ok actual ->
@@ -218,8 +217,7 @@ let test_upgrade_installs_downloaded_archive = fun ctx ->
                           ^ metadata_json_string metadata
                           ^ " but got "
                           ^ metadata_json_string actual_metadata)
-                      | None -> Error "expected installed metadata to be written"
-                ))))
+                      | None -> Error "expected installed metadata to be written")))
 
 let test_upgrade_skips_when_binary_is_unchanged = fun ctx ->
   with_tempdir_result

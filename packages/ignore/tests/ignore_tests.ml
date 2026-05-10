@@ -308,11 +308,7 @@ let tests = [
           let* () = write ignored_file "let ignored = true\n" in
           let* () = write kept_file "let keep = true\n" in
           let* walker =
-            Ignore.Walker.create
-              ~roots:[ root ]
-              ~hidden:false
-              ~ignore_patterns:[ "fixtures" ]
-              ()
+            Ignore.Walker.create ~roots:[ root ] ~hidden:false ~ignore_patterns:[ "fixtures" ] ()
             |> Result.map_err ~fn:(fun _ -> "walker create failed")
           in
           let* paths = collect_paths walker in

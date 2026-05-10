@@ -76,13 +76,12 @@ let no_event = fun (_: event) -> ()
 let resolved_output_mode = fun ?output_mode (request: Request.t) ->
   match output_mode with
   | Some output_mode -> output_mode
-  | None -> (
+  | None ->
       match Request.(request.action) with
       | Request.Run { output_mode; _ } -> output_mode
       | Request.ListRules { format }
       | Request.ListDiagnostics { format } -> Types.Report format
       | Request.ExplainRule _ -> Types.Report Reporter.Text
-    )
 
 let run_request_direct = fun ~on_event ~output_mode (request: Request.t) ->
   match request.action with
@@ -121,25 +120,23 @@ let run_matches = fun ~build_package ?(on_event = Types.no_event) ?output_mode m
           use_generated_runner;
           output_mode = _;
         } ->
-          (
-              match (request.scope, use_generated_runner) with
-              | (Some scope, true) ->
-                  let report_output =
-                    match output_mode with
-                    | Types.Silent -> false
-                    | Types.Report _ -> true
-                  in
-                  Execution.run_generated_runner
-                    ~cwd:request.cwd
-                    ~build_package
-                    ~report_output
-                    ~mode
-                    ~limit
-                    ~target
-                    ~output_mode
-                    scope
-              | _ -> run_request_direct ~on_event ~output_mode request
-            )
+          match (request.scope, use_generated_runner) with
+          | (Some scope, true) ->
+              let report_output =
+                match output_mode with
+                | Types.Silent -> false
+                | Types.Report _ -> true
+              in
+              Execution.run_generated_runner
+                ~cwd:request.cwd
+                ~build_package
+                ~report_output
+                ~mode
+                ~limit
+                ~target
+                ~output_mode
+                scope
+          | _ -> run_request_direct ~on_event ~output_mode request
 
 let run = fun ?(build_package = unavailable_build_package) matches ->
   run_matches

@@ -56,13 +56,12 @@ let test_failed_save_object_cleans_immutable_temp_files = fun _ctx ->
       in
       let result =
         match Contentstore.save_object store ~hash ~content:"payload" with
-        | Error (Contentstore.Store.Io _) -> (
+        | Error (Contentstore.Store.Io _) ->
             let entries = scope_entries store "immutable" in
             if List.is_empty entries then
               Ok ()
             else
               Error "expected failed save_object to clean immutable temp files"
-          )
         | Error err -> Error ("unexpected error: " ^ Contentstore.Store.error_message err)
         | Ok () -> Error "expected save_object to fail inside an unwritable destination shard"
       in
@@ -86,13 +85,12 @@ let test_failed_save_named_object_cleans_mutable_temp_files = fun _ctx ->
       in
       let result =
         match Contentstore.save_named_object store ~key ~content:"payload" with
-        | Error (Contentstore.Store.Io _) -> (
+        | Error (Contentstore.Store.Io _) ->
             let entries = scope_entries store "mutable" in
             if List.is_empty entries then
               Ok ()
             else
               Error "expected failed save_named_object to clean mutable temp files"
-          )
         | Error err -> Error ("unexpected error: " ^ Contentstore.Store.error_message err)
         | Ok () -> Error "expected save_named_object to fail inside an unwritable destination shard"
       in
@@ -121,13 +119,12 @@ let test_failed_save_file_cleans_immutable_temp_files = fun _ctx ->
       in
       let result =
         match Contentstore.save_file store ~hash ~source with
-        | Error (Contentstore.Store.Io _) -> (
+        | Error (Contentstore.Store.Io _) ->
             let entries = scope_entries store "immutable" in
             if List.is_empty entries then
               Ok ()
             else
               Error "expected failed save_file to clean immutable temp files"
-          )
         | Error err -> Error ("unexpected error: " ^ Contentstore.Store.error_message err)
         | Ok () -> Error "expected save_file to fail inside an unwritable destination shard"
       in

@@ -127,7 +127,7 @@ let hook_log_path = fun () ->
 let append_hook_log = fun line ->
   match hook_log_path () with
   | None -> Error ("missing " ^ hook_log_env)
-  | Some path -> (
+  | Some path ->
       match Fs.File.open_append path with
       | Error err -> Error (Fs.File.error_to_string err)
       | Ok file ->
@@ -137,7 +137,6 @@ let append_hook_log = fun line ->
           in
           let _ = Fs.File.close file in
           result
-    )
 
 let hooked_tests = [
   Test.case "hooked_probe" (fun _ctx -> append_hook_log "test");
@@ -360,12 +359,11 @@ let test_run_fuzz_case_executes_single_input = fun _ctx ->
       else
         let lines = parse_json_lines output.stdout in
         match lines with
-        | [ json ] -> (
+        | [ json ] ->
             match (Data.Json.get_field "type" json, Data.Json.get_field "status" json) with
             | (Some (Data.Json.String "FuzzCaseCompleted"), Some (Data.Json.String "failed")) ->
                 Ok ()
             | _ -> Error "expected run-fuzz-case to emit a failed fuzz case event"
-          )
         | _ -> Error "expected run-fuzz-case to emit one JSON line")
 
 let test_run_tests_replays_workspace_fuzz_corpus = fun _ctx ->

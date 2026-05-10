@@ -283,11 +283,10 @@ let run_git_steps = fun ~cwd commands ->
   let rec loop outputs = fun __tmp1 ->
     match __tmp1 with
     | [] -> Ok (List.reverse outputs)
-    | args :: rest -> (
+    | args :: rest ->
         match run_git ~cwd args with
         | Ok output -> loop (output :: outputs) rest
         | Error _ as err -> err
-      )
   in
   loop [] commands
 
@@ -429,7 +428,7 @@ public = true
         ~version:(Std.Version.make ~major:0 ~minor:1 ~patch:0 ()) with
       | Error err ->
           Error ("expected artifact creation to succeed: " ^ Riot_deps.Publisher.message err)
-      | Ok artifact -> (
+      | Ok artifact ->
           match list_tar_entries artifact with
           | Error _ as err -> err
           | Ok entries ->
@@ -440,8 +439,7 @@ public = true
               if entries = expected then
                 Ok ()
               else
-                Error ("unexpected publish artifact entries: " ^ String.concat "," entries)
-        ))
+                Error ("unexpected publish artifact entries: " ^ String.concat "," entries))
 
 let test_publisher_rejects_symlink_entries = fun _ctx ->
   with_tempdir
@@ -537,10 +535,10 @@ public = true
       | Error err ->
           Error ("expected publish artifact preparation to succeed: "
           ^ Riot_deps.Publisher.message err)
-      | Ok prepared -> (
+      | Ok prepared ->
           match Riot_deps.Publisher.publish_prepared ~registry ~api_token:"root-secret" prepared with
           | Error err -> Error ("expected publish to succeed: " ^ Riot_deps.Publisher.message err)
-          | Ok published -> (
+          | Ok published ->
               match List.reverse !requests with
               | [ request ] ->
                   let has_header name value =
@@ -560,9 +558,7 @@ public = true
                     Ok ()
                   else
                     Error "unexpected publish request or response"
-              | _ -> Error "expected exactly one publish request"
-            )
-        ))
+              | _ -> Error "expected exactly one publish request")
 
 let test_publisher_bubbles_registry_publish_errors = fun _ctx ->
   with_tempdir
@@ -605,7 +601,7 @@ public = true
       | Error err ->
           Error ("expected publish artifact preparation to succeed: "
           ^ Riot_deps.Publisher.message err)
-      | Ok prepared -> (
+      | Ok prepared ->
           match Riot_deps.Publisher.publish_prepared ~registry ~api_token:"root-secret" prepared with
           | Ok _ -> Error "expected publish to bubble registry error"
           | Error (Riot_deps.Publisher.RegistryPublishFailed { locator; error }) ->
@@ -616,8 +612,7 @@ public = true
                 Ok ()
               else
                 Error "unexpected registry publish error payload"
-          | Error err -> Error ("unexpected publish error: " ^ Riot_deps.Publisher.message err)
-        ))
+          | Error err -> Error ("unexpected publish error: " ^ Riot_deps.Publisher.message err))
 
 let test_publisher_reports_missing_prepared_artifact = fun _ctx ->
   with_tempdir
@@ -766,7 +761,7 @@ public = true
           [ "add"; "." ];
           [ "-c"; "commit.gpgsign=false"; "commit"; "-qm"; "init"; ];
         ] with
-      | Ok _ -> (
+      | Ok _ ->
           let canonical_root =
             Fs.canonicalize root
             |> Result.expect ~msg:"expected temp repo root to canonicalize"
@@ -786,7 +781,6 @@ public = true
                 Ok ()
               else
                 Error "unexpected nested git provenance"
-        )
       | Error err -> Error err)
 
 let test_git_provenance_discovers_repo_root_locator = fun _ctx ->
@@ -814,7 +808,7 @@ public = true
           [ "add"; "." ];
           [ "-c"; "commit.gpgsign=false"; "commit"; "-qm"; "init"; ];
         ] with
-      | Ok _ -> (
+      | Ok _ ->
           let canonical_root =
             Fs.canonicalize root
             |> Result.expect ~msg:"expected temp repo root to canonicalize"
@@ -834,7 +828,6 @@ public = true
                 Ok ()
               else
                 Error "unexpected root git provenance"
-        )
       | Error err -> Error err)
 
 let test_git_provenance_reports_non_git_repository = fun _ctx ->
@@ -881,10 +874,10 @@ public = true
           [ "add"; "." ];
           [ "-c"; "commit.gpgsign=false"; "commit"; "-qm"; "init"; ];
         ] with
-      | Ok _ -> (
+      | Ok _ ->
           match run_git ~cwd:package_root [ "rev-parse"; "HEAD" ] with
           | Error err -> Error err
-          | Ok selector -> (
+          | Ok selector ->
               let package = make_package ~name:"demo" ~path:package_root () in
               let (fetch, requests) =
                 make_fetch_recorder
@@ -928,7 +921,7 @@ public = true
                 ~api_token:"root-secret" with
               | Error err ->
                   Error ("expected publish to succeed: " ^ Riot_deps.Publisher.message err)
-              | Ok published -> (
+              | Ok published ->
                   if
                     String.equal published.package_name "demo"
                     && List.any
@@ -939,9 +932,6 @@ public = true
                     Ok ()
                   else
                     Error "unexpected publish request discovered from git provenance"
-                )
-            )
-        )
       | Error err -> Error err)
 
 let test_publisher_prepare_publish_discovers_git_provenance_without_registry = fun _ctx ->
@@ -970,10 +960,10 @@ public = true
           [ "add"; "." ];
           [ "-c"; "commit.gpgsign=false"; "commit"; "-qm"; "init"; ];
         ] with
-      | Ok _ -> (
+      | Ok _ ->
           match run_git ~cwd:package_root [ "rev-parse"; "HEAD" ] with
           | Error err -> Error err
-          | Ok selector -> (
+          | Ok selector ->
               let package = make_package ~name:"demo" ~path:package_root () in
               let registry = Pkgs_ml.Registry.filesystem (make_registry_cache ()) in
               match Riot_deps.Publisher.prepare_publish
@@ -993,8 +983,6 @@ public = true
                     Ok ()
                   else
                     Error "unexpected prepared publish payload"
-            )
-        )
       | Error err -> Error err)
 
 let test_lock_deps_projects_workspace_packages = fun _ctx ->
@@ -1057,7 +1045,7 @@ version = "1.2.3"
       in
       match run_lock_deps ~workspace_root ~mode:Refresh ~existing_lock:None [ app_pkg ] with
       | Error err -> Error ("expected path dependency locking to succeed: " ^ pm_error_message err)
-      | Ok lockfile -> (
+      | Ok lockfile ->
           let app_lock =
             List.find
               lockfile.packages
@@ -1083,8 +1071,7 @@ version = "1.2.3"
                 Ok ()
               else
                 Error "expected path dependency to resolve to an exact local lock package"
-          | _ -> Error "expected app and foo to appear in the lockfile"
-        ))
+          | _ -> Error "expected app and foo to appear in the lockfile")
 
 let test_lock_deps_resolves_transitive_path_dependencies = fun _ctx ->
   with_tempdir
@@ -1117,7 +1104,7 @@ version = "2.0.0"
       match run_lock_deps ~workspace_root ~mode:Refresh ~existing_lock:None [ app_pkg ] with
       | Error err ->
           Error ("expected transitive path dependencies to resolve: " ^ pm_error_message err)
-      | Ok lockfile -> (
+      | Ok lockfile ->
           let foo_lock =
             List.find
               lockfile.packages
@@ -1143,8 +1130,7 @@ version = "2.0.0"
                 Ok ()
               else
                 Error "expected nested path dependency roots to resolve from the declaring package"
-          | _ -> Error "expected both foo and bar lock packages"
-        ))
+          | _ -> Error "expected both foo and bar lock packages")
 
 let test_lock_deps_falls_back_to_registry_when_path_dependency_is_missing = fun _ctx ->
   with_tempdir
@@ -1188,7 +1174,7 @@ version = "0.2.0"
       | Error err ->
           Error ("expected missing path+version dependency to fall back to registry: "
           ^ pm_error_message err)
-      | Ok lockfile -> (
+      | Ok lockfile ->
           let app_lock =
             List.find
               lockfile.packages
@@ -1219,8 +1205,7 @@ version = "0.2.0"
                 Ok ()
               else
                 Error "expected app to lock against the registry release when the local path is absent"
-          | _ -> Error "expected only the registry std package to appear in the lockfile"
-        ))
+          | _ -> Error "expected only the registry std package to appear in the lockfile")
 
 let test_lock_deps_collapses_workspace_path_dependencies = fun _ctx ->
   let std_pkg = make_package ~name:"std" ~path:(Path.v "/workspace/packages/std") () in
@@ -1235,7 +1220,7 @@ let test_lock_deps_collapses_workspace_path_dependencies = fun _ctx ->
   | Error err ->
       Error ("expected workspace path dependency to collapse to workspace package: "
       ^ pm_error_message err)
-  | Ok lockfile -> (
+  | Ok lockfile ->
       let app_lock =
         List.find lockfile.packages ~fn:(fun (pkg: Lockfile.package) -> has_name "app" pkg.id.name)
       in
@@ -1260,7 +1245,6 @@ let test_lock_deps_collapses_workspace_path_dependencies = fun _ctx ->
           else
             Error "expected workspace path dependency to reuse the workspace lock package"
       | _ -> Error "expected app and std workspace packages to appear in the lockfile"
-    )
 
 let test_lock_deps_resolves_registry_dependencies_to_exact_versions = fun _ctx ->
   with_tempdir
@@ -1316,7 +1300,7 @@ version = "1.0.0"
       match run_lock_deps ~registry ~workspace_root ~mode:Refresh ~existing_lock:None [ app_pkg ] with
       | Error err ->
           Error ("expected registry dependency locking to succeed: " ^ pm_error_message err)
-      | Ok lockfile -> (
+      | Ok lockfile ->
           let app_lock =
             List.find
               lockfile.packages
@@ -1359,8 +1343,7 @@ version = "1.0.0"
                 Ok ()
               else
                 Error "expected registry dependency to resolve to exact external lock packages"
-          | _ -> Error "expected workspace and transitive registry lock packages"
-        ))
+          | _ -> Error "expected workspace and transitive registry lock packages")
 
 let test_lock_deps_reports_missing_registry_package_with_required_by = fun _ctx ->
   let app_root = Path.v "/workspace/packages/app" in
@@ -1464,7 +1447,7 @@ let test_lock_deps_supports_major_minor_prefix_requirements = fun _ctx ->
   in
   match run_lock_deps ~registry ~mode:Refresh ~existing_lock:None [ app_pkg ] with
   | Error err -> Error ("expected 0.2 requirement to resolve: " ^ pm_error_message err)
-  | Ok lockfile -> (
+  | Ok lockfile ->
       match List.find
         lockfile.packages
         ~fn:(fun (pkg: Riot_model.Lockfile.package) -> has_name "minttea" pkg.id.name) with
@@ -1473,7 +1456,6 @@ let test_lock_deps_supports_major_minor_prefix_requirements = fun _ctx ->
           Error ("expected 0.2 requirement to pick highest 0.2.x release, got "
           ^ Option.unwrap_or ~default:"<none>" pkg.id.version)
       | None -> Error "expected minttea to be locked"
-    )
 
 let test_lock_deps_supports_major_prefix_requirements = fun _ctx ->
   let requirement =
@@ -1504,7 +1486,7 @@ let test_lock_deps_supports_major_prefix_requirements = fun _ctx ->
   in
   match run_lock_deps ~registry ~mode:Refresh ~existing_lock:None [ app_pkg ] with
   | Error err -> Error ("expected 0 requirement to resolve: " ^ pm_error_message err)
-  | Ok lockfile -> (
+  | Ok lockfile ->
       match List.find
         lockfile.packages
         ~fn:(fun (pkg: Riot_model.Lockfile.package) -> has_name "minttea" pkg.id.name) with
@@ -1513,7 +1495,6 @@ let test_lock_deps_supports_major_prefix_requirements = fun _ctx ->
           Error ("expected 0 requirement to pick highest 0.x.y release, got "
           ^ Option.unwrap_or ~default:"<none>" pkg.id.version)
       | None -> Error "expected minttea to be locked"
-    )
 
 let test_lock_deps_prefers_workspace_packages_over_registry_for_matching_names = fun _ctx ->
   let std_pkg = make_package ~name:"std" ~path:(Path.v "/workspace/packages/std") () in
@@ -1532,7 +1513,7 @@ let test_lock_deps_prefers_workspace_packages_over_registry_for_matching_names =
   | Error err ->
       Error ("expected workspace package to satisfy matching registry requirement locally: "
       ^ pm_error_message err)
-  | Ok lockfile -> (
+  | Ok lockfile ->
       let app_lock =
         List.find lockfile.packages ~fn:(fun (pkg: Lockfile.package) -> has_name "app" pkg.id.name)
       in
@@ -1557,7 +1538,6 @@ let test_lock_deps_prefers_workspace_packages_over_registry_for_matching_names =
           else
             Error "expected matching workspace packages to win over registry resolution"
       | _ -> Error "expected app and std workspace packages to appear in the lockfile"
-    )
 
 let test_lock_deps_prefers_available_local_packages_over_registry_dependencies = fun _ctx ->
   with_tempdir
@@ -1614,7 +1594,7 @@ std = "*"
       match run_lock_deps ~registry ~workspace_root ~mode:Refresh ~existing_lock:None [ app_pkg ] with
       | Error err ->
           Error ("expected local path package to beat registry dependency: " ^ pm_error_message err)
-      | Ok lockfile -> (
+      | Ok lockfile ->
           let local_std =
             List.find
               lockfile.packages
@@ -1646,8 +1626,7 @@ std = "*"
               else
                 Error "expected version-only dependency to reuse the available local path package"
           | (Some _, Some _, _) -> Error "expected registry std to stay out of the lock graph"
-          | _ -> Error "expected local std and model lock packages"
-        ))
+          | _ -> Error "expected local std and model lock packages")
 
 let test_lock_deps_ignores_builtin_dependencies = fun _ctx ->
   let app_pkg =
@@ -1659,11 +1638,10 @@ let test_lock_deps_ignores_builtin_dependencies = fun _ctx ->
   in
   match run_lock_deps ~registry:(make_registry []) ~mode:Refresh ~existing_lock:None [ app_pkg ] with
   | Error err -> Error ("expected builtin dependency locking to succeed: " ^ pm_error_message err)
-  | Ok lockfile -> (
+  | Ok lockfile ->
       match lockfile.packages with
       | [ app_lock ] when has_name "app" app_lock.id.name && app_lock.dependencies = [] -> Ok ()
       | _ -> Error "expected builtin dependencies to stay out of the lock graph"
-    )
 
 let test_lock_deps_ignores_builtin_registry_release_dependencies = fun _ctx ->
   with_tempdir
@@ -1713,7 +1691,7 @@ unix = "*"
       match run_lock_deps ~registry ~workspace_root ~mode:Refresh ~existing_lock:None [ app_pkg ] with
       | Error err ->
           Error ("expected builtin registry dependencies to be ignored: " ^ pm_error_message err)
-      | Ok lockfile -> (
+      | Ok lockfile ->
           let std_lock =
             List.find
               lockfile.packages
@@ -1724,8 +1702,7 @@ unix = "*"
           | Some pkg when pkg.dependencies = [] && List.length lockfile.packages = 2 -> Ok ()
           | Some _ ->
               Error "expected builtin registry release dependencies to stay out of the lock graph"
-          | None -> Error "expected std registry package to be locked"
-        ))
+          | None -> Error "expected std registry package to be locked")
 
 let test_lock_deps_handles_cyclic_registry_dependencies = fun _ctx ->
   with_tempdir
@@ -1786,7 +1763,7 @@ foo = { path = "../foo", version = "*" }
       match run_lock_deps ~registry ~workspace_root ~mode:Refresh ~existing_lock:None [ app_pkg ] with
       | Error err ->
           Error ("expected cyclic registry dependencies to resolve: " ^ pm_error_message err)
-      | Ok lockfile -> (
+      | Ok lockfile ->
           let foo_lock =
             List.find
               lockfile.packages
@@ -1825,8 +1802,7 @@ foo = { path = "../foo", version = "*" }
                 Ok ()
               else
                 Error "expected cyclic registry dependencies to terminate with exact cross-links"
-          | _ -> Error "expected foo and bar to appear in the cyclic lockfile"
-        ))
+          | _ -> Error "expected foo and bar to appear in the cyclic lockfile")
 
 let test_lock_deps_handles_cyclic_local_path_dependencies = fun _ctx ->
   with_tempdir
@@ -1864,7 +1840,7 @@ std = { path = "../std" }
       match run_lock_deps ~workspace_root ~mode:Refresh ~existing_lock:None [ app_pkg ] with
       | Error err ->
           Error ("expected cyclic local path dependencies to resolve: " ^ pm_error_message err)
-      | Ok lockfile -> (
+      | Ok lockfile ->
           let std_lock =
             List.find
               lockfile.packages
@@ -1897,8 +1873,7 @@ std = { path = "../std" }
                 Ok ()
               else
                 Error "expected local path dependency cycle to reuse in-flight lock nodes"
-          | _ -> Error "expected std and fixme to appear in the local cyclic lockfile"
-        ))
+          | _ -> Error "expected std and fixme to appear in the local cyclic lockfile")
 
 let test_lock_refresh_preserves_existing_registry_version = fun _ctx ->
   with_tempdir
@@ -2485,7 +2460,7 @@ let test_lockfile_store_roundtrips = fun _ctx ->
       match Riot_deps.Lockfile_store.write ~workspace_root lockfile with
       | Error err ->
           Error ("expected lockfile write to succeed: " ^ Riot_deps.Lockfile_store.error_message err)
-      | Ok () -> (
+      | Ok () ->
           match Riot_deps.Lockfile_store.read ~workspace_root with
           | Error err ->
               Error ("expected lockfile read to succeed: "
@@ -2504,8 +2479,7 @@ let test_lockfile_store_roundtrips = fun _ctx ->
               ) then
                 Ok ()
               else
-                Error "expected lockfile store roundtrip to preserve package data"
-        ))
+                Error "expected lockfile store roundtrip to preserve package data")
 
 let test_lockfile_store_returns_none_when_missing = fun _ctx ->
   with_tempdir
@@ -3997,7 +3971,7 @@ path = "tests/std_tests.ml"
         ~workspace
         () with
       | Error err -> Error ("expected ensure_workspace to succeed: " ^ pm_error_message err)
-      | Ok resolved_workspace -> (
+      | Ok resolved_workspace ->
           match List.find
             resolved_workspace.packages
             ~fn:(fun (pkg: Riot_model.Package_manifest.t) -> has_name "std" pkg.name) with
@@ -4011,8 +3985,7 @@ path = "tests/std_tests.ml"
               if binary_names = [ "std-example"; "std-tests" ] then
                 Ok ()
               else
-                Error "expected ensure_workspace to preserve declared external binaries across projection"
-        ))
+                Error "expected ensure_workspace to preserve declared external binaries across projection")
 
 let test_projection_resolves_workspace_packages = fun _ctx ->
   let std_pkg = make_package ~name:"std" ~path:(Path.v "/workspace/packages/std") () in

@@ -51,7 +51,10 @@ let load_fixture_corpus = fun () ->
 
 let rec item_weight = fun (item: Item.t) ->
   let items_weight = fun items ->
-    List.fold_left items ~init:0 ~fn:(fun total item -> total + item_weight item)
+    List.fold_left
+      items
+      ~init:0
+      ~fn:(fun total item -> total + item_weight item)
   in
   match item with
   | Item.Use path -> Item.Ident.length path
@@ -62,8 +65,7 @@ let rec item_weight = fun (item: Item.t) ->
       String.length name + items_weight signature + items_weight body
   | Item.ModuleAlias { name; target } -> String.length name + item_weight target
   | Item.Functor { name; args; body } ->
-      String.length name
-      + List.fold_left
+      String.length name + List.fold_left
         args
         ~init:0
         ~fn:(fun total (arg: Item.functor_arg) ->
@@ -72,8 +74,7 @@ let rec item_weight = fun (item: Item.t) ->
             | Some name -> String.length name
             | None -> 0
           in
-          total + name_weight + items_weight arg.ascription)
-      + items_weight body
+          total + name_weight + items_weight arg.ascription) + items_weight body
   | Item.ModuleType { name; body } -> String.length name + items_weight body
   | Item.FunctorApply { callee; argument } -> item_weight callee + item_weight argument
   | Item.Constraint { expr; signature } -> item_weight expr + items_weight signature
@@ -89,82 +90,77 @@ let rec item_weight = fun (item: Item.t) ->
   | Item.Scope body -> items_weight body
 
 let touch_ir_summary = fun (summary: Ir.source_summary) ->
-  checksum :=
-    !checksum
-    lxor
-    List.fold_left summary.items ~init:0 ~fn:(fun total item -> total + item_weight item)
+  checksum := !checksum
+  lxor List.fold_left summary.items ~init:0 ~fn:(fun total item -> total + item_weight item)
 
 let touch_syn_deps = fun deps ->
-  checksum :=
-    !checksum
-    lxor
-    List.fold_left
-      (Syn.Deps.modules deps)
-      ~init:0
-      ~fn:(fun total name -> total + String.length name)
+  checksum := !checksum
+  lxor List.fold_left
+    (Syn.Deps.modules deps)
+    ~init:0
+    ~fn:(fun total name -> total + String.length name)
 
 let touch_resolved_source = fun resolved ->
   let modules = Dep_analyzer.ResolvedSource.modules resolved in
   let unresolved = Dep_analyzer.ResolvedSource.unresolved resolved in
-  checksum :=
-    !checksum
-    lxor
-    List.fold_left modules ~init:0 ~fn:(fun total name -> total + String.length name)
-    lxor
-    List.fold_left unresolved ~init:0 ~fn:(fun total name -> total + String.length name)
+  checksum := !checksum
+  lxor List.fold_left modules ~init:0 ~fn:(fun total name -> total + String.length name)
+  lxor List.fold_left unresolved ~init:0 ~fn:(fun total name -> total + String.length name)
 
 let touch_resolved_sources = fun resolved_sources ->
-  List.for_each resolved_sources ~fn:touch_resolved_source
+  List.for_each
+    resolved_sources
+    ~fn:touch_resolved_source
 
 let analyze_ir_fixture = fun fixture ->
-  match Ir.analyze
-    ~source:fixture.path
-    ~source_hash:fixture.source_hash
-    fixture.parse_result with
+  match Ir.analyze ~source:fixture.path ~source_hash:fixture.source_hash fixture.parse_result with
   | Ok summary -> touch_ir_summary summary
   | Error (Ir.Parse_diagnostics diagnostics) ->
-      panic ("dep analyzer IR benchmark parse diagnostics for "
-      ^ Path.to_string fixture.path
-      ^ ": "
-      ^ String.concat "; " (List.map diagnostics ~fn:Syn.Diagnostic.to_string))
+      panic
+        ("dep analyzer IR benchmark parse diagnostics for "
+        ^ Path.to_string fixture.path
+        ^ ": "
+        ^ String.concat "; " (List.map diagnostics ~fn:Syn.Diagnostic.to_string))
 
 let analyze_dep_analyzer_fixture = fun fixture ->
   match Dep_analyzer.analyze
     ~source:fixture.path
     ~source_hash:fixture.source_hash
     fixture.parse_result with
-  | Ok summary -> (
+  | Ok summary ->
       match Dep_analyzer.resolve Dep_analyzer.Env.empty [ summary ] with
       | Ok resolved_sources -> touch_resolved_sources resolved_sources
       | Error (Dep_analyzer.Invalid_provider message) ->
-          panic ("dep analyzer benchmark invalid provider for "
-          ^ Path.to_string fixture.path
-          ^ ": "
-          ^ message)
-    )
+          panic
+            ("dep analyzer benchmark invalid provider for "
+            ^ Path.to_string fixture.path
+            ^ ": "
+            ^ message)
   | Error (Dep_analyzer.Parse_diagnostics diagnostics) ->
-      panic ("dep analyzer benchmark parse diagnostics for "
-      ^ Path.to_string fixture.path
-      ^ ": "
-      ^ String.concat "; " (List.map diagnostics ~fn:Syn.Diagnostic.to_string))
+      panic
+        ("dep analyzer benchmark parse diagnostics for "
+        ^ Path.to_string fixture.path
+        ^ ": "
+        ^ String.concat "; " (List.map diagnostics ~fn:Syn.Diagnostic.to_string))
 
 let analyze_syn_deps_fixture = fun fixture ->
   match Syn.Deps.from_parse_result fixture.parse_result with
   | Ok deps -> touch_syn_deps deps
   | Error (Syn.Deps.Parse_diagnostics diagnostics) ->
-      panic ("Syn.Deps benchmark parse diagnostics for "
-      ^ Path.to_string fixture.path
-      ^ ": "
-      ^ String.concat "; " (List.map diagnostics ~fn:Syn.Diagnostic.to_string))
+      panic
+        ("Syn.Deps benchmark parse diagnostics for "
+        ^ Path.to_string fixture.path
+        ^ ": "
+        ^ String.concat "; " (List.map diagnostics ~fn:Syn.Diagnostic.to_string))
 
-let analyze_ir_corpus = fun fixtures ->
-  List.for_each fixtures ~fn:analyze_ir_fixture
+let analyze_ir_corpus = fun fixtures -> List.for_each fixtures ~fn:analyze_ir_fixture
 
 let analyze_dep_analyzer_corpus = fun fixtures ->
-  List.for_each fixtures ~fn:analyze_dep_analyzer_fixture
+  List.for_each
+    fixtures
+    ~fn:analyze_dep_analyzer_fixture
 
-let analyze_syn_deps_corpus = fun fixtures ->
-  List.for_each fixtures ~fn:analyze_syn_deps_fixture
+let analyze_syn_deps_corpus = fun fixtures -> List.for_each fixtures ~fn:analyze_syn_deps_fixture
 
 let large_config: Bench.bench_config = { iterations = 800; warmup = 80 }
 
@@ -172,10 +168,7 @@ let corpus_config: Bench.bench_config = { iterations = 120; warmup = 20 }
 
 let fixture_benchmark = fun ~prefix ~analyze ~name path ->
   let fixture = load_fixture path in
-  Bench.with_config
-    ~config:large_config
-    (prefix ^ " " ^ name)
-    (fun () -> analyze fixture)
+  Bench.with_config ~config:large_config (prefix ^ " " ^ name) (fun () -> analyze fixture)
 
 let ir_fixture_benchmark = fixture_benchmark ~prefix:"dep_analyzer.ir" ~analyze:analyze_ir_fixture
 

@@ -24,7 +24,7 @@ let parse_json_lines = fun ~cmd (output: command_output) ->
   let rec loop acc = fun __tmp1 ->
     match __tmp1 with
     | [] -> Ok (List.reverse acc)
-    | line :: rest -> (
+    | line :: rest ->
         match Data.Json.from_string line with
         | Ok json -> loop (json :: acc) rest
         | Error error ->
@@ -33,17 +33,15 @@ let parse_json_lines = fun ~cmd (output: command_output) ->
             ^ Data.Json.error_to_string error
             ^ "\nline: "
             ^ line)
-      )
   in
   loop [] (nonempty_lines output.stdout)
 
 let json_type_is = fun expected json ->
   match Data.Json.get_field "type" json with
-  | Some value -> (
+  | Some value ->
       match Data.Json.get_string value with
       | Some actual -> String.equal actual expected
       | None -> false
-    )
   | None -> false
 
 let json_int_field = fun name json ->
@@ -58,8 +56,7 @@ let json_positive_field = fun name json ->
 
 let clean_plan_removes_cache = fun json ->
   if json_type_is "CacheGcPlanComputed" json then
-    json_positive_field "deleted_entries" json
-    || json_positive_field "deleted_generations" json
+    json_positive_field "deleted_entries" json || json_positive_field "deleted_generations" json
   else
     false
 

@@ -36,24 +36,21 @@ let result_case_kind = fun case ->
   match Ast.MatchCase.view case with
   | Case { guard = Some _; _ } -> `Other
   | Unknown _ -> `Other
-  | Case { pattern; _ } -> (
+  | Case { pattern; _ } ->
       match Ast.Pattern.view (H.unwrap_pattern pattern) with
-      | Constructor { constructor; payload = Some argument_pattern } -> (
+      | Constructor { constructor; payload = Some argument_pattern } ->
           match (H.ident_last_name constructor, H.identifier_name_of_pattern argument_pattern) with
           | (Some "Ok", Some name) -> `OkCase name
           | (Some "Error", Some name) -> `ErrorCase name
           | _ -> `Other
-        )
       | _ -> `Other
-    )
 
 let is_constructor_with_path_name = fun expected name expr ->
   match H.constructor_payload ~name:expected expr with
-  | Some payload -> (
+  | Some payload ->
       match H.simple_expr_name payload with
       | Some path_name -> String.equal path_name name
       | None -> false
-    )
   | None -> false
 
 let is_ok_expression = fun expr ->
@@ -63,7 +60,7 @@ let is_ok_expression = fun expr ->
 
 let matches_result_map_shape = fun expr ->
   match H.match_cases expr with
-  | [ first_case; second_case ] -> (
+  | [ first_case; second_case ] ->
       match (
         Ast.MatchCase.view first_case,
         Ast.MatchCase.view second_case,
@@ -87,7 +84,6 @@ let matches_result_map_shape = fun expr ->
           is_constructor_with_path_name "Error" error_name first_body
           && is_ok_expression second_body
       | _ -> false
-    )
   | _ -> false
 
 let make_diagnostic = fun expr ->

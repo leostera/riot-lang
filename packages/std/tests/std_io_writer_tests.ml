@@ -122,11 +122,10 @@ let test_reader_writer_copy_loop_reconstructs_payload = fun _ctx ->
     IO.Buffer.clear buffer;
     match IO.read reader ~into:buffer with
     | Ok 0 -> Ok ()
-    | Ok _ -> (
+    | Ok _ ->
         match IO.write_all writer ~from:buffer with
         | Ok () -> loop ()
         | Error _ -> Error "writer unexpectedly failed"
-      )
     | Error _ -> Error "reader unexpectedly failed"
   in
   match loop () with

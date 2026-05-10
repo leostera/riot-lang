@@ -7,7 +7,11 @@ type Message.t +=
   | ConcurrentSaveComplete of (string * (unit, Riot_store.Store.error) result)
 
 let make_test_workspace = fun tmpdir ->
-  Riot_model.Workspace.make ~root:tmpdir ~target_dir:(Path.v "target") ~packages:[] ()
+  Riot_model.Workspace.make
+    ~root:tmpdir
+    ~target_dir:(Path.v "target")
+    ~packages:[]
+    ()
 
 let read_file = fun path ->
   Fs.read_to_string path
@@ -46,7 +50,12 @@ let make_hash = fun ch -> String.make ~len:64 ~char:ch
 let host_target = Riot_model.Riot_dirs.host_target ()
 
 let new_cache_entry = fun ~profile ~target ~hash ~size ->
-  Riot_store.Cache_gc.{ profile; target; hash; size_bytes = Int64.from_int size }
+  Riot_store.Cache_gc.{
+    profile;
+    target;
+    hash;
+    size_bytes = Int64.from_int size;
+  }
 
 let count_generation_receipts = fun ~(workspace:Riot_model.Workspace.t) ->
   let generations_dir = Path.(workspace.target_dir_root / Path.v "cache" / Path.v "generations") in
@@ -123,11 +132,12 @@ let overwrite_cache_state = fun
     Int64.parse tracked_size
     |> Option.expect ~msg:"tracked size should be an int64 string"
   in
-  let state = Riot_store.Cache_gc.{
-    tracked_size_bytes;
-    generation_hashes = Some generation_hashes;
-    receipt_count = None;
-  }
+  let state =
+    Riot_store.Cache_gc.{
+      tracked_size_bytes;
+      generation_hashes = Some generation_hashes;
+      receipt_count = None;
+    }
   in
   let content =
     Serde_bin.to_string Riot_store.Cache_gc.cache_state_serializer state
@@ -299,11 +309,7 @@ let test_save_rejects_absolute_export_paths = fun _ctx ->
       in
       let absolute_path = Path.v "/tmp/not-allowed" in
       let exports = [
-        Riot_store.Store.{
-          name = "tool";
-          path = absolute_path;
-          action_hash = "deadbeef";
-        };
+        Riot_store.Store.{ name = "tool"; path = absolute_path; action_hash = "deadbeef" };
       ]
       in
       match Riot_store.Store.save
@@ -699,9 +705,11 @@ let test_artifact_round_trip_preserves_ocamlc_warnings = fun _ctx ->
       match Riot_store.Store.get store hash with
       | None -> Error "expected saved artifact"
       | Some artifact ->
-          if artifact.ocamlc_warnings = warnings
-          && artifact.exports = exports
-          && Int64.equal artifact.size_bytes (Int64.from_int (String.length "compiled")) then
+          if
+            artifact.ocamlc_warnings = warnings
+            && artifact.exports = exports
+            && Int64.equal artifact.size_bytes (Int64.from_int (String.length "compiled"))
+          then
             Ok ()
           else
             Error "expected hash manifest payload to round-trip through the store") with
@@ -968,14 +976,7 @@ let test_package_metadata_lookup_uses_sidecar = fun _ctx ->
         Crypto.hash_string "metadata-index-action"
         |> Crypto.Digest.hex
       in
-      let exports = [
-        Riot_store.Store.{
-          name = "pkg";
-          path = Path.v "Pkg.cmxa";
-          action_hash;
-        };
-      ]
-      in
+      let exports = [ Riot_store.Store.{ name = "pkg"; path = Path.v "Pkg.cmxa"; action_hash }; ] in
       let hash = Crypto.hash_string "metadata-index-package" in
       let _ =
         Riot_store.Store.save
@@ -988,17 +989,17 @@ let test_package_metadata_lookup_uses_sidecar = fun _ctx ->
         |> Result.expect ~msg:"save package artifact should succeed"
       in
       let fresh_store = Riot_store.Store.create ~workspace in
-      let manifest_path = Path.(Riot_store.Store.hash_dir_of fresh_store hash / Path.v "manifest.bin") in
+      let manifest_path =
+        Path.(Riot_store.Store.hash_dir_of fresh_store hash / Path.v "manifest.bin")
+      in
       let _ =
         Fs.write "definitely not a bin manifest" manifest_path
         |> Result.expect ~msg:"corrupt manifest should be writable"
       in
-      match
-        (
-          Riot_store.Store.get_package_metadata fresh_store hash,
-          Riot_store.Store.get_package fresh_store hash
-        )
-      with
+      match (
+        Riot_store.Store.get_package_metadata fresh_store hash,
+        Riot_store.Store.get_package fresh_store hash
+      ) with
       | (Some artifact, None) ->
           if List.length artifact.Riot_store.Artifact.exports = 1 then
             Ok ()
@@ -1480,8 +1481,7 @@ let test_record_successful_build_reorders_existing_cached_generation_to_front = 
             Ok ()
           else
             Error "expected cached rollback generation to reorder state without writing a third payload"
-      | _ ->
-          Error "expected state.bin to keep exactly two generation hashes after rollback reorder") with
+      | _ -> Error "expected state.bin to keep exactly two generation hashes after rollback reorder") with
   | Ok x -> x
   | Error _ -> Error "tempdir creation failed"
 
@@ -1511,11 +1511,10 @@ let test_cache_gc_preserves_state_recency_when_rebuilding_size = fun _ctx ->
       let rec find_case case_index old_candidates =
         match old_candidates with
         | [] -> Error "could not find generation hashes where lexical order disagrees with recency"
-        | old_char :: rest -> (
+        | old_char :: rest ->
             match find_new case_index old_char candidate_hash_chars with
             | Ok selected -> Ok selected
             | Error _ -> find_case (case_index + 100) rest
-          )
       and find_new case_index old_char new_candidates =
         match new_candidates with
         | [] -> Error "no candidate pair"
@@ -1829,14 +1828,10 @@ let tests =
     case
       "save fails when declared output is outside sandbox"
       test_save_fails_when_declared_output_is_outside_sandbox;
-    case
-      "save rejects absolute export paths"
-      test_save_rejects_absolute_export_paths;
+    case "save rejects absolute export paths" test_save_rejects_absolute_export_paths;
     case "exists requires manifest" test_exists_requires_manifest_file;
     case "put-if-absent keeps first writer" test_put_if_absent_keeps_first_writer;
-    case
-      "save replaces stale manifest layout"
-      test_save_replaces_stale_manifest_layout;
+    case "save replaces stale manifest layout" test_save_replaces_stale_manifest_layout;
     case
       "concurrent same-hash saves share cache safely"
       test_concurrent_same_hash_saves_share_cache_safely;
@@ -1864,12 +1859,8 @@ let tests =
     case
       "materialize package exports fails when source missing"
       test_materialize_package_exports_fails_when_source_missing;
-    case
-      "package lookup rejects action artifacts"
-      test_package_lookup_rejects_action_artifacts;
-    case
-      "package metadata lookup uses persisted sidecar"
-      test_package_metadata_lookup_uses_sidecar;
+    case "package lookup rejects action artifacts" test_package_lookup_rejects_action_artifacts;
+    case "package metadata lookup uses persisted sidecar" test_package_metadata_lookup_uses_sidecar;
     case "promote overwrites existing target files" test_promote_overwrites_existing_target_files;
     case
       "save preserves executable permissions in cache"

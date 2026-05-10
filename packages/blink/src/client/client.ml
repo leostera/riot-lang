@@ -99,19 +99,17 @@ let take_connection = fun client key uri ->
   match client.config.connection_policy with
   | Config.CloseAfterRequest -> Transport.connect uri
   | Config.ReuseConnection
-  | Config.Pool _ -> (
+  | Config.Pool _ ->
       prune_pool client;
       match take_idle key client.idle with
       | (Some pooled, idle) ->
           client.idle <- idle;
           Ok pooled.conn
-      | (None, idle) -> (
+      | (None, idle) ->
           client.idle <- idle;
           match Transport.connect uri with
           | Ok conn -> Ok conn
           | Error error -> Error error
-        )
-    )
 
 let remove_keyed_connections = fun key (idle: pooled_connection list) ->
   let rec loop (kept: pooled_connection list) (values: pooled_connection list) =
@@ -167,17 +165,16 @@ let send_on_connection = fun conn uri (request: Request.t) ->
   match Connection.request conn net_request ?body:request.body () with
   | Error error ->
       { result = Error ("request failed: " ^ blink_error_to_string error); reusable = false }
-  | Ok () -> (
+  | Ok () ->
       match Connection.await conn with
       | Error error ->
           { result = Error ("response failed: " ^ blink_error_to_string error); reusable = false }
       | Ok (response, body) -> { result = Ok (response_of_net response body); reusable = true }
-    )
 
 let low_level_transport = fun client (request: Request.t) ->
   match Net.Uri.from_string request.url with
   | Error _ -> Error ("invalid request uri: " ^ request.url)
-  | Ok uri -> (
+  | Ok uri ->
       let key = endpoint_key request in
       match take_connection client key uri with
       | Error error -> Error ("connect failed: " ^ blink_error_to_string error)
@@ -185,7 +182,6 @@ let low_level_transport = fun client (request: Request.t) ->
           let sent = send_on_connection conn uri request in
           release_connection client key conn ~reusable:sent.reusable;
           sent.result
-    )
 
 let transport = fun client request ->
   match client.config.transport with
@@ -508,7 +504,7 @@ module SSE = struct
             state.buffer <- remaining;
             state.done_ <- true;
             None
-        | None -> (
+        | None ->
             match stream state.client state.connection with
             | Error _ ->
                 state.done_ <- true;
@@ -526,7 +522,6 @@ module SSE = struct
                   None
                 else
                   next state
-          )
 
     let size = fun _state -> 0
 

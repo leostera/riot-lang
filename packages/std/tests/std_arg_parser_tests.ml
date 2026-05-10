@@ -36,7 +36,7 @@ let test_command_allows_flags_without_subcommand = fun _ctx ->
 let test_command_still_parses_subcommand = fun _ctx ->
   match ArgParser.get_matches (command_with_optional_subcommand ()) [ "tool"; "clean"; "--force" ] with
   | Error err -> Error (ArgParser.error_message err)
-  | Ok matches -> (
+  | Ok matches ->
       match ArgParser.get_subcommand matches with
       | Some ("clean", sub_matches) ->
           if ArgParser.get_flag sub_matches "force" then
@@ -45,7 +45,6 @@ let test_command_still_parses_subcommand = fun _ctx ->
             Error "expected subcommand --force to be set"
       | Some (name, _) -> Error ("unexpected subcommand: " ^ name)
       | None -> Error "expected clean subcommand"
-    )
 
 let tests = [
   Test.case

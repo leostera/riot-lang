@@ -37,14 +37,14 @@ let handle_message = fun
       (* Parse error - can't send typed response, just log/ignore *)
       Log.trace ("[JSONRPC SERVER] JSON parse error: " ^ Json.error_to_string e);
       ()
-  | Ok json -> (
+  | Ok json ->
       Log.trace "[JSONRPC SERVER] JSON parsed successfully";
       match Common.request_of_json json with
       | Error e ->
           (* Invalid request - can't send typed response, just log/ignore *)
           Log.trace "[JSONRPC SERVER] Request parse error";
           ()
-      | Ok request -> (
+      | Ok request ->
           Log.trace ("[JSONRPC SERVER] Looking for handler for method: " ^ request.method_);
           Log.trace
             ("[JSONRPC SERVER] Available handlers: " ^ Int.to_string (List.length server.handlers));
@@ -57,7 +57,7 @@ let handle_message = fun
               (* Method not found - can't send typed response, just log/ignore *)
               Log.trace ("[JSONRPC SERVER] No handler found for method: " ^ request.method_);
               ()
-          | Some handler -> (
+          | Some handler ->
               (* Convert params to typed request using method name *)
               Log.trace ("[JSONRPC SERVER] Found handler for " ^ request.method_);
               match P.request_of_params request.method_ request.params with
@@ -108,6 +108,3 @@ let handle_message = fun
                           ^ cwd_after)
                     in
                     handler.fn typed_reply typed_request
-            )
-        )
-    )

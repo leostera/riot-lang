@@ -109,7 +109,7 @@ let library_key = fun ?(target = macos_target) package ->
     artifact = Build_unit.Library;
     target;
     profile = Profile.debug;
-  }:Build_unit.key)
+  }: Build_unit.key)
 
 let runtime_binary_key = fun ?(target = macos_target) package name ->
   ({
@@ -117,7 +117,7 @@ let runtime_binary_key = fun ?(target = macos_target) package name ->
     artifact = Build_unit.RuntimeBinary { name };
     target;
     profile = Profile.debug;
-  }:Build_unit.key)
+  }: Build_unit.key)
 
 let test_binary_key = fun ?(target = macos_target) package name ->
   ({
@@ -125,7 +125,7 @@ let test_binary_key = fun ?(target = macos_target) package name ->
     artifact = Build_unit.TestBinary { name };
     target;
     profile = Profile.debug;
-  }:Build_unit.key)
+  }: Build_unit.key)
 
 let example_binary_key = fun ?(target = macos_target) package name ->
   ({
@@ -133,7 +133,7 @@ let example_binary_key = fun ?(target = macos_target) package name ->
     artifact = Build_unit.ExampleBinary { name };
     target;
     profile = Profile.debug;
-  }:Build_unit.key)
+  }: Build_unit.key)
 
 let bench_binary_key = fun ?(target = macos_target) package name ->
   ({
@@ -141,7 +141,7 @@ let bench_binary_key = fun ?(target = macos_target) package name ->
     artifact = Build_unit.BenchBinary { name };
     target;
     profile = Profile.debug;
-  }:Build_unit.key)
+  }: Build_unit.key)
 
 let synthetic_key = fun ?(target = Target.host ()) package name ->
   ({
@@ -149,7 +149,7 @@ let synthetic_key = fun ?(target = Target.host ()) package name ->
     artifact = Build_unit.SyntheticTool { name };
     target;
     profile = Profile.debug;
-  }:Build_unit.key)
+  }: Build_unit.key)
 
 let sort_keys = fun keys -> List.sort keys ~compare:Build_unit.compare_key
 
@@ -572,13 +572,12 @@ let multiple_roots_share_dependency_nodes = fun _ctx ->
 let profile_participates_in_build_unit_identity = fun _ctx ->
   let workspace = make_workspace [ make_package "app" ] in
   let graph = graph workspace (request ~profile:Profile.release ~roots:[ package_name "app" ] ()) in
-  let release_key =
-    ({
-      package = package_name "app";
-      artifact = Build_unit.Library;
-      target = macos_target;
-      profile = Profile.release;
-    }:Build_unit.key)
+  let release_key = ({
+    package = package_name "app";
+    artifact = Build_unit.Library;
+    target = macos_target;
+    profile = Profile.release;
+  }: Build_unit.key)
   in
   assert_keys_equal ~expected:[ release_key ] ~actual:(Build_unit_graph.keys graph);
   Test.assert_equal

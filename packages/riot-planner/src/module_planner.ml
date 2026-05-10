@@ -51,8 +51,7 @@ let transitive_dependency_package_by_name = fun depset package_name ->
 let workspace_dependency_package_by_name = fun (input: plan_input) package_name ->
   input.workspace.packages
   |> List.find
-    ~fn:(fun (manifest: Package_manifest.t) ->
-      Package_name.equal manifest.name package_name)
+    ~fn:(fun (manifest: Package_manifest.t) -> Package_name.equal manifest.name package_name)
   |> Option.map ~fn:(Workspace.realize_package ~intent:Package.Runtime input.workspace)
 
 let input_dependency_package_by_name = fun (input: plan_input) package_name ->
@@ -61,13 +60,12 @@ let input_dependency_package_by_name = fun (input: plan_input) package_name ->
   | None ->
       match transitive_dependency_package_by_name input.depset package_name with
       | Some package -> Some package
-      | None -> (
+      | None ->
           match List.find
             input.dependency_packages
             ~fn:(fun (package: Package.t) -> Package_name.equal package.name package_name) with
           | Some package -> Some package
           | None -> workspace_dependency_package_by_name input package_name
-        )
 
 let direct_dependency_roots = fun (input: plan_input) ->
   let seen = HashSet.create () in
@@ -297,7 +295,7 @@ let plan_node = fun ?analyze_sources (input: plan_input) ->
             ~module_graph
             ~analyzed_modules with
           | Error _ as err -> err
-          | Ok () -> (
+          | Ok () ->
               match G.topo_sort module_graph with
               | Error cycle_ids ->
                   let cycle =
@@ -326,7 +324,7 @@ let plan_node = fun ?analyze_sources (input: plan_input) ->
                     |> List.reverse
                   in
                   Error (Planning_error.CyclicDependency { cycle })
-              | Ok sorted_modules -> (
+              | Ok sorted_modules ->
                   let (action_graph, _outputs) =
                     Action_graph.from_module_graph
                       ~analyzed_modules
@@ -353,7 +351,7 @@ let plan_node = fun ?analyze_sources (input: plan_input) ->
                                   path
                                 else
                                   Path.(input.package.path / path))
-                        | _ -> (
+                        | _ ->
                             match (G.value node).file with
                             | Concrete path when Path.to_string path != "" ->
                                 let abs_path =
@@ -363,8 +361,7 @@ let plan_node = fun ?analyze_sources (input: plan_input) ->
                                     Path.(input.package.path / path)
                                 in
                                 [ abs_path ]
-                            | _ -> []
-                          ))
+                            | _ -> [])
                     |> List.concat
                   in
                   Ok {
@@ -373,8 +370,6 @@ let plan_node = fun ?analyze_sources (input: plan_input) ->
                     analyzed_modules;
                     action_graph;
                   }
-                )
-            )
         )
   with
   | exn -> Error (Planning_error.Exception { exn })

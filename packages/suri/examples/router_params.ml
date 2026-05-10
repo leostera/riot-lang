@@ -18,7 +18,7 @@ let articles = [
 let article_handler = fun conn req ->
   let params = Conn.params conn in
   match Std.Collections.Proplist.get params ~key:"id" with
-  | Some id_str -> (
+  | Some id_str ->
       try
         let id = Int.from_string id_str in
         match List.find articles ~fn:(fun a -> a.id = id) with
@@ -51,7 +51,6 @@ let article_handler = fun conn req ->
           |> Conn.with_header "Content-Type" "application/json"
           |> Conn.with_body (Data.Json.to_string error)
           |> Conn.send
-    )
   | None ->
       let error = Data.Json.obj [ ("error", Data.Json.string "Missing article ID"); ] in
       conn

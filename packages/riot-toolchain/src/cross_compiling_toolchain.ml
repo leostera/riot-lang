@@ -60,11 +60,10 @@ let first_existing = fun paths ->
   let rec loop remaining =
     match remaining with
     | [] -> None
-    | path :: rest -> (
+    | path :: rest ->
         match Fs.exists path with
         | Ok true -> Some path
         | _ -> loop rest
-      )
   in
   loop paths
 
@@ -123,11 +122,10 @@ let detect = fun ?toolchain_root () ~target_triplet ->
       let sysroot =
         match explicit_sysroot with
         | Some path -> Some path
-        | None -> (
+        | None ->
             match bundled_sr with
             | Some path -> Some path
             | None -> detect_sysroot cc_path
-          )
       in
       let bin_dir = bin_dir_of_compiler cc_path in
       (

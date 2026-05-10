@@ -52,13 +52,12 @@ let test_pm_event_to_json_reuses_riot_model_event_shape = fun _ctx ->
       })
   in
   match Riot_build.Event.to_json (Riot_build.Event.Pm event) with
-  | Some (Data.Json.Object fields) -> (
+  | Some (Data.Json.Object fields) ->
       match List.find fields ~fn:(fun (name, _) -> String.equal name "event")
       |> Option.map ~fn:(fun (_, value) -> value) with
       | Some (Data.Json.String "riot.pm.package_download.started") -> Ok ()
       | Some json -> Error ("expected PM event name in JSON, got " ^ Data.Json.to_string json)
       | None -> Error "expected PM event name in JSON"
-    )
   | Some json -> Error ("expected JSON object, got " ^ Data.Json.to_string json)
   | None -> Error "expected JSON output for PM event"
 
@@ -158,9 +157,7 @@ let test_telemetry_event_to_json = fun _ctx ->
     | Some json -> Data.Json.get_field "type" json
     | None -> None
   in
-  Test.assert_equal
-    ~expected:(Some (Data.Json.String "PackageStarted"))
-    ~actual:actual_type;
+  Test.assert_equal ~expected:(Some (Data.Json.String "PackageStarted")) ~actual:actual_type;
   Ok ()
 
 let test_telemetry_timestamp_fields_describe_event_instants = fun _ctx ->
@@ -248,11 +245,10 @@ let test_telemetry_timestamp_fields_describe_event_instants = fun _ctx ->
   let rec check = fun __tmp1 ->
     match __tmp1 with
     | [] -> Ok ()
-    | (expected, event) :: rest -> (
+    | (expected, event) :: rest ->
         match expect_timestamp_field ~expected event with
         | Ok () -> check rest
         | Error err -> Error err
-      )
   in
   check events
 
@@ -276,35 +272,31 @@ let test_package_execution_prepared_event_round_trips = fun _ctx ->
   in
   match Telemetry_events.to_json event with
   | Some (Data.Json.Object fields as json) ->
-      (
-        Test.assert_equal
-          ~expected:(Some (Data.Json.String "PackageExecutionPrepared"))
-          ~actual:(Data.Json.get_field "type" (Data.Json.Object fields));
-        Test.assert_equal
-          ~expected:(Some (Data.Json.Int 12))
-          ~actual:(Data.Json.get_field "input_count" (Data.Json.Object fields));
-        Test.assert_equal
-          ~expected:(Some (Data.Json.Int 4))
-          ~actual:(Data.Json.get_field "dependency_count" (Data.Json.Object fields));
-        Test.assert_equal
-          ~expected:(Some (Data.Json.Int 3))
-          ~actual:(Data.Json.get_field "dependency_object_count" (Data.Json.Object fields));
-        Test.assert_equal
-          ~expected:(Some (Data.Json.Int 37))
-          ~actual:(Data.Json.get_field "duration_ms" (Data.Json.Object fields));
-        match Telemetry_events.from_json json with
-        | Ok (Telemetry_events.PackageExecutionPrepared parsed) ->
-            Test.assert_equal ~expected:12 ~actual:parsed.input_count;
-            Test.assert_equal ~expected:4 ~actual:parsed.dependency_count;
-            Test.assert_equal ~expected:3 ~actual:parsed.dependency_object_count;
-            Test.assert_equal
-              ~expected:37
-              ~actual:(Time.Duration.to_millis parsed.duration);
-            Ok ()
-        | Ok _ -> Error "expected PackageExecutionPrepared event"
-        | Error err ->
-            Error ("expected PackageExecutionPrepared event to decode: " ^ Data.Json.to_string err)
-      )
+      Test.assert_equal
+        ~expected:(Some (Data.Json.String "PackageExecutionPrepared"))
+        ~actual:(Data.Json.get_field "type" (Data.Json.Object fields));
+      Test.assert_equal
+        ~expected:(Some (Data.Json.Int 12))
+        ~actual:(Data.Json.get_field "input_count" (Data.Json.Object fields));
+      Test.assert_equal
+        ~expected:(Some (Data.Json.Int 4))
+        ~actual:(Data.Json.get_field "dependency_count" (Data.Json.Object fields));
+      Test.assert_equal
+        ~expected:(Some (Data.Json.Int 3))
+        ~actual:(Data.Json.get_field "dependency_object_count" (Data.Json.Object fields));
+      Test.assert_equal
+        ~expected:(Some (Data.Json.Int 37))
+        ~actual:(Data.Json.get_field "duration_ms" (Data.Json.Object fields));
+      match Telemetry_events.from_json json with
+      | Ok (Telemetry_events.PackageExecutionPrepared parsed) ->
+          Test.assert_equal ~expected:12 ~actual:parsed.input_count;
+          Test.assert_equal ~expected:4 ~actual:parsed.dependency_count;
+          Test.assert_equal ~expected:3 ~actual:parsed.dependency_object_count;
+          Test.assert_equal ~expected:37 ~actual:(Time.Duration.to_millis parsed.duration);
+          Ok ()
+      | Ok _ -> Error "expected PackageExecutionPrepared event"
+      | Error err ->
+          Error ("expected PackageExecutionPrepared event to decode: " ^ Data.Json.to_string err)
   | Some _ -> Error "expected package preparation event JSON object"
   | None -> Error "expected package preparation event to render JSON"
 
@@ -316,8 +308,12 @@ let tests = let open Test in
   case "event: package planning phase json" test_package_planning_phase_event_to_json;
   case "event: package action graph planned json" test_package_action_graph_planned_event_to_json;
   case "event: telemetry json" test_telemetry_event_to_json;
-  case "event: telemetry timestamps describe event instants" test_telemetry_timestamp_fields_describe_event_instants;
-  case "event: package execution prepared round trips" test_package_execution_prepared_event_round_trips;
+  case
+    "event: telemetry timestamps describe event instants"
+    test_telemetry_timestamp_fields_describe_event_instants;
+  case
+    "event: package execution prepared round trips"
+    test_package_execution_prepared_event_round_trips;
 ]
 
 let name = "Riot Build Event Tests"

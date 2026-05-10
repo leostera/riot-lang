@@ -138,17 +138,14 @@ let build_package_artifact = fun ~workspace package ->
   in
   match Riot_build.build request with
   | Error err -> Error (Riot_build.error_message err)
-  | Ok result -> (
+  | Ok result ->
       match Riot_build.Build_result.find_package result package.name with
       | None ->
-          Error ("expected package result for "
-          ^ Riot_model.Package_name.to_string package.name)
-      | Some package_result -> (
+          Error ("expected package result for " ^ Riot_model.Package_name.to_string package.name)
+      | Some package_result ->
           match Riot_build.Build_result.package_artifact package_result with
           | Some artifact -> Ok artifact
           | None -> Error "expected package result to carry an artifact"
-        )
-    )
 
 let test_execute_reuses_cache_for_equivalent_graph = fun _ctx ->
   match Fs.with_tempdir
@@ -254,7 +251,9 @@ let test_dependency_change_invalidates_cached_compile_actions = fun _ctx ->
           match build_package_artifact ~workspace app with
           | Error err -> Error ("second app build failed: " ^ err)
           | Ok second_app_artifact ->
-              if Crypto.Hash.equal first_app_artifact.input_hash second_app_artifact.input_hash then
+              if
+                Crypto.Hash.equal first_app_artifact.input_hash second_app_artifact.input_hash
+              then
                 Error "expected dependency change to invalidate dependent package cache"
               else
                 Ok ()) with

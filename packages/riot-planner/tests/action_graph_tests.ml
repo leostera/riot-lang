@@ -79,7 +79,7 @@ let dependency_output_names = fun graph (node: Riot_planner.Action_node.t) ->
     ~fn:(fun dep_id ->
       match G.get_node (Riot_planner.Action_graph.graph graph) dep_id with
       | Some dep_node ->
-          List.head ((G.value dep_node).outs)
+          List.head (G.value dep_node).outs
           |> Option.map ~fn:Path.to_string
       | None -> None)
 
@@ -134,14 +134,14 @@ let test_action_graph_json_round_trip_preserves_dependencies = fun _ctx ->
           Riot_planner.Action_node.get_hash node_a
         else
           Crypto.hash_string "missing")
-      ~deps:[ (G.id node_a) ]
+      ~deps:[ G.id node_a ]
   in
   let node_b = Riot_planner.Action_graph.add_node graph spec_b in
   Riot_planner.Action_graph.add_dependency graph node_b ~depends_on:node_a;
   let encoded = Riot_planner.Action_graph.to_json graph in
   match Riot_planner.Action_graph.from_json encoded with
   | Error err -> Error ("round-trip decode failed: " ^ err)
-  | Ok decoded -> (
+  | Ok decoded ->
       let encoded_decoded = Riot_planner.Action_graph.to_json decoded in
       match Data.Json.get_field "nodes" encoded_decoded with
       | Some (Data.Json.Array node_jsons) ->
@@ -163,7 +163,6 @@ let test_action_graph_json_round_trip_preserves_dependencies = fun _ctx ->
             ^ Int.to_string edge_count
             ^ " edges")
       | _ -> Error "decoded graph missing nodes array"
-    )
 
 let test_action_graph_json_round_trip_preserves_package_paths_and_hashes = fun _ctx ->
   let package =
@@ -193,7 +192,7 @@ let test_action_graph_json_round_trip_preserves_package_paths_and_hashes = fun _
   let encoded = Riot_planner.Action_graph.to_json graph in
   match Riot_planner.Action_graph.from_json encoded with
   | Error err -> Error ("round-trip decode failed: " ^ err)
-  | Ok decoded -> (
+  | Ok decoded ->
       match Riot_planner.Action_graph.nodes decoded with
       | [ decoded_node ] ->
           let decoded_path = (G.value decoded_node).package.Riot_model.Package.path in
@@ -208,7 +207,6 @@ let test_action_graph_json_round_trip_preserves_package_paths_and_hashes = fun _
           else
             Error "package path/relative_path/hash did not round-trip"
       | _ -> Error "expected one decoded node"
-    )
 
 let test_action_graph_json_round_trip_preserves_dependency_order = fun _ctx ->
   let package = make_package "pkg" in
@@ -245,7 +243,7 @@ let test_action_graph_json_round_trip_preserves_dependency_order = fun _ctx ->
       ~package
       ~path:(Path.v "d.txt")
       ~content:"d"
-      ~deps:[ (G.id node_a); (G.id node_b); (G.id node_c) ]
+      ~deps:[ G.id node_a; G.id node_b; G.id node_c ]
       ~dependency_hashes:(fun dep_id ->
         if Graph.SimpleGraph.Node_id.eq dep_id (G.id node_a) then
           Riot_planner.Action_node.get_hash node_a
@@ -263,7 +261,7 @@ let test_action_graph_json_round_trip_preserves_dependency_order = fun _ctx ->
   let expected = dependency_output_names graph node_d in
   match Riot_planner.Action_graph.from_json (Riot_planner.Action_graph.to_json graph) with
   | Error err -> Error ("round-trip decode failed: " ^ err)
-  | Ok decoded -> (
+  | Ok decoded ->
       match find_action_node_by_output decoded "d.txt" with
       | Some decoded_node ->
           let actual = dependency_output_names decoded decoded_node in
@@ -276,7 +274,6 @@ let test_action_graph_json_round_trip_preserves_dependency_order = fun _ctx ->
             ^ String.concat ", " actual
             ^ "]")
       | None -> Error "expected decoded node d.txt"
-    )
 
 let test_action_hash_tracks_package_relative_source_contents = fun _ctx ->
   match Fs.with_tempdir
@@ -1273,7 +1270,7 @@ let value = 1
         ]
         () with
       | Error _ as err -> err
-      | Ok (_package, action_graph) -> (
+      | Ok (_package, action_graph) ->
           match find_compile_action_node_by_source action_graph (Path.v "src/regex/regex.ml") with
           | None -> Error "expected compile action for src/regex/regex.ml"
           | Some regex_node ->
@@ -1288,12 +1285,12 @@ let value = 1
                 ^ String.concat ", " dep_outputs
                 ^ "]")
               else
-                Ok ()
-        )) with
+                Ok ()) with
   | Ok result -> result
   | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
 
-let test_nested_concrete_library_implementation_keeps_qualified_record_child_dependency = fun _ctx ->
+let test_nested_concrete_library_implementation_keeps_qualified_record_child_dependency = fun
+  _ctx ->
   match Fs.with_tempdir
     ~prefix:"planner_nested_concrete_record_child_dep"
     (fun tmpdir ->
@@ -1303,13 +1300,10 @@ let test_nested_concrete_library_implementation_keeps_qualified_record_child_dep
         ~library:{ path = Path.v "src/suri.ml" }
         ~files:[
           ("src/suri.ml", "module Socket_pool = Socket_pool\n");
-          (
-            "src/socket_pool/socket_pool.mli",
-            {ocaml|type state
+          ("src/socket_pool/socket_pool.mli", {ocaml|type state
 
 val start: int -> unit
-|ocaml}
-          );
+|ocaml});
           (
             "src/socket_pool/socket_pool.ml",
             {ocaml|module Connection = Connection
@@ -1333,8 +1327,10 @@ let start = fun listener ->
         ]
         () with
       | Error _ as err -> err
-      | Ok (_package, action_graph) -> (
-          match find_compile_action_node_by_source action_graph (Path.v "src/socket_pool/socket_pool.ml") with
+      | Ok (_package, action_graph) ->
+          match find_compile_action_node_by_source
+            action_graph
+            (Path.v "src/socket_pool/socket_pool.ml") with
           | None -> Error "expected compile action for src/socket_pool/socket_pool.ml"
           | Some socket_pool_node ->
               let dep_outputs = dependency_output_names_flat action_graph socket_pool_node in
@@ -1348,8 +1344,7 @@ let start = fun listener ->
                 ^ String.concat ", " dep_outputs
                 ^ "]")
               else
-                Ok ()
-        )) with
+                Ok ()) with
   | Ok result -> result
   | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
 
@@ -1374,10 +1369,10 @@ let test_create_library_orders_qualified_record_pattern_dependency_first = fun _
         ]
         () with
       | Error _ as err -> err
-      | Ok (_package, action_graph) -> (
+      | Ok (_package, action_graph) ->
           match find_action_node_by_output action_graph "Riot_cli.cmxa" with
           | None -> Error "expected CreateLibrary action for Riot_cli.cmxa"
-          | Some library_node -> (
+          | Some library_node ->
               match (G.value library_node).actions with
               | [ Riot_planner.Action.CreateLibrary { objects; _ } ] ->
                   let object_names = List.map objects ~fn:Path.to_string in
@@ -1390,12 +1385,8 @@ let test_create_library_orders_qualified_record_pattern_dependency_first = fun _
                     in
                     loop 0 values
                   in
-                  let run_index =
-                    find_index "Riot_cli__Run.cmx" object_names
-                  in
-                  let install_index =
-                    find_index "Riot_cli__Install.cmx" object_names
-                  in
+                  let run_index = find_index "Riot_cli__Run.cmx" object_names in
+                  let install_index = find_index "Riot_cli__Install.cmx" object_names in
                   (
                     match (run_index, install_index) with
                     | (Some run_index, Some install_index) when run_index < install_index -> Ok ()
@@ -1412,9 +1403,7 @@ let test_create_library_orders_qualified_record_pattern_dependency_first = fun _
                         ^ String.concat ", " object_names
                         ^ "]")
                   )
-              | _ -> Error "expected single CreateLibrary action"
-            )
-        )) with
+              | _ -> Error "expected single CreateLibrary action") with
   | Ok result -> result
   | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
 
@@ -1440,7 +1429,7 @@ end
         ]
         () with
       | Error _ as err -> err
-      | Ok (_package, action_graph) -> (
+      | Ok (_package, action_graph) ->
           match find_compile_action_node_by_source action_graph (Path.v "src/crypto/crypto.ml") with
           | None -> Error "expected compile action for src/crypto/crypto.ml"
           | Some crypto_node ->
@@ -1455,8 +1444,7 @@ end
                 ^ String.concat ", " dep_outputs
                 ^ "]")
               else
-                Ok ()
-        )) with
+                Ok ()) with
   | Ok result -> result
   | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
 
@@ -2286,7 +2274,7 @@ let test_binary_compile_depends_on_public_library_root_not_internal_modules = fu
         ]
         () with
       | Error _ as err -> err
-      | Ok (_package, action_graph) -> (
+      | Ok (_package, action_graph) ->
           match find_compile_action_node_by_source action_graph (Path.v "src/main.ml") with
           | None -> Error "expected compile action for main.ml"
           | Some main_node ->
@@ -2300,8 +2288,7 @@ let test_binary_compile_depends_on_public_library_root_not_internal_modules = fu
               else
                 Error ("expected main.ml to depend on the public Berrybot module; deps: ["
                 ^ String.concat ", " dep_outputs
-                ^ "]")
-        )) with
+                ^ "]")) with
   | Ok result -> result
   | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
 
@@ -2321,7 +2308,7 @@ let test_binary_compile_does_not_reach_internal_library_modules_directly = fun _
         ]
         () with
       | Error _ as err -> err
-      | Ok (_package, action_graph) -> (
+      | Ok (_package, action_graph) ->
           match find_compile_action_node_by_source action_graph (Path.v "src/main.ml") with
           | None -> Error "expected compile action for main.ml"
           | Some main_node ->
@@ -2331,8 +2318,7 @@ let test_binary_compile_does_not_reach_internal_library_modules_directly = fun _
                 ^ String.concat ", " dep_outputs
                 ^ "]")
               else
-                Ok ()
-        )) with
+                Ok ()) with
   | Ok result -> result
   | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
 

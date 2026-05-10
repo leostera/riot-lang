@@ -919,13 +919,12 @@ let test_many_process_sources_report_burst_exit_readiness = fun _ctx ->
           let rec trigger_exit_burst = fun __tmp1 ->
             match __tmp1 with
             | [] -> Ok ()
-            | process :: rest -> (
+            | process :: rest ->
                 match Kernel.Process.stdin process with
                 | None -> Error "expected burst-exit process to own a stdin pipe"
                 | Some stdin ->
                     let* () = lift_file (Kernel.Fs.File.close stdin) in
                     trigger_exit_burst rest
-              )
           in
           let rec register index = fun __tmp1 ->
             match __tmp1 with

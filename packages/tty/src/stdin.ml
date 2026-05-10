@@ -39,7 +39,7 @@ let read_utf8 = fun () ->
 let make_raw = fun () ->
   match Platform.open_tty () with
   | Error _ -> panic "failed to open /dev/tty"
-  | Ok fd -> (
+  | Ok fd ->
       match Platform.get_attributes fd with
       | Error _ ->
           let _ = Platform.close fd in
@@ -68,7 +68,6 @@ let make_raw = fun () ->
                 resume_mode = None;
                 input_buffer = Utf8_reader.create ();
               }
-    )
 
 let restore = fun terminal ->
   let _ =

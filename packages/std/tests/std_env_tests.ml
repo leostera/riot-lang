@@ -230,13 +230,12 @@ let test_current_dir_matches_successful_set_current_dir = fun _ctx ->
       | Ok () ->
           let result =
             match Env.current_dir () with
-            | Ok current -> (
+            | Ok current ->
                 match (Fs.canonicalize current, Fs.canonicalize dir) with
                 | (Ok current, Ok expected) when Path.equal current expected -> Ok ()
                 | (Ok _, Ok _) ->
                     Error "Env.current_dir should reflect the directory set by Env.set_current_dir"
                 | _ -> Error "failed to canonicalize current directory paths"
-              )
             | Error _ -> Error "Env.current_dir failed after successfully setting the current dir"
           in
           ignore

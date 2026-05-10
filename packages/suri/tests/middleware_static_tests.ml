@@ -189,7 +189,7 @@ let test_static_middleware_enforces_nested_dotfile_policy = fun _ctx ->
       let dot_file = Path.join dot_dir (Path.v "config") in
       match Fs.create_dir_all dot_dir with
       | Error _ -> Error "failed to create nested dotfile fixture directory"
-      | Ok () -> (
+      | Ok () ->
           match Fs.write "secret" dot_file with
           | Error _ -> Error "failed to write nested dotfile fixture"
           | Ok () ->
@@ -216,8 +216,7 @@ let test_static_middleware_enforces_nested_dotfile_policy = fun _ctx ->
               let allowed = run Static.{ default_config with dotfiles = AllowDotfiles } in
               Test.assert_equal ~expected:Net.Http.Status.Ok ~actual:allowed.status;
               Test.assert_equal ~expected:"secret" ~actual:allowed.body;
-              Ok ()
-        ))
+              Ok ())
   |> expect_tempdir
 
 let test_static_directory_listing_escapes_displayed_values = fun _ctx ->
@@ -289,7 +288,7 @@ let test_static_normalize_path_returns_structured_errors = fun _ctx ->
           let target_path = Path.join root (Path.v "target.txt") in
           match Fs.write "ok" target_path with
           | Error _ -> Error "failed to create static symlink target"
-          | Ok () -> (
+          | Ok () ->
               match Fs.symlink ~src:(Path.v "target.txt") ~dst:link_path with
               | Error _ -> Error "failed to create static symlink"
               | Ok () ->
@@ -340,8 +339,7 @@ let test_static_normalize_path_returns_structured_errors = fun _ctx ->
                     ~fn:(fun result check ->
                       match result with
                       | Error _ -> result
-                      | Ok () -> check ())
-            ))
+                      | Ok () -> check ()))
   |> expect_tempdir
 
 let tests =

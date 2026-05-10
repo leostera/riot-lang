@@ -36,26 +36,23 @@ let test_decompress_file = fun _ctx ->
       let dst = Path.join dir (Path.v "payload.txt") in
       match Fs.write gzip_hello src with
       | Error err -> Error ("failed to write gzip fixture: " ^ IO.error_message err)
-      | Ok () -> (
+      | Ok () ->
           match Gzip.decompress_file ~src ~dst with
           | Error _ -> Error "failed to decompress gzip file"
-          | Ok () -> (
+          | Ok () ->
               match Fs.read_to_string dst with
               | Ok "hello from gzip\n" -> Ok ()
               | Ok text -> Error ("unexpected decompressed file contents: " ^ text)
-              | Error err -> Error ("failed to read decompressed file: " ^ IO.error_message err)
-            )
-        ))
+              | Error err -> Error ("failed to read decompressed file: " ^ IO.error_message err))
 
 let test_compress_string_roundtrip = fun _ctx ->
   match Gzip.compress_string "hello from gzip\n" with
   | Error _ -> Error "failed to compress string into gzip payload"
-  | Ok payload -> (
+  | Ok payload ->
       match Gzip.decompress_string payload with
       | Ok "hello from gzip\n" -> Ok ()
       | Ok text -> Error ("unexpected roundtrip string: " ^ text)
       | Error _ -> Error "failed to decompress compressed string payload"
-    )
 
 let test_compress_file_roundtrip = fun _ctx ->
   with_temp_dir
@@ -66,20 +63,17 @@ let test_compress_file_roundtrip = fun _ctx ->
       let roundtrip = Path.join dir (Path.v "payload.roundtrip.txt") in
       match Fs.write "hello from gzip\n" src with
       | Error err -> Error ("failed to write source file: " ^ IO.error_message err)
-      | Ok () -> (
+      | Ok () ->
           match Gzip.compress_file ~src ~dst:gzip_path with
           | Error _ -> Error "failed to compress file into gzip payload"
-          | Ok () -> (
+          | Ok () ->
               match Gzip.decompress_file ~src:gzip_path ~dst:roundtrip with
               | Error _ -> Error "failed to decompress roundtrip gzip file"
-              | Ok () -> (
+              | Ok () ->
                   match Fs.read_to_string roundtrip with
                   | Ok "hello from gzip\n" -> Ok ()
                   | Ok text -> Error ("unexpected roundtrip file contents: " ^ text)
-                  | Error err -> Error ("failed to read roundtrip file: " ^ IO.error_message err)
-                )
-            )
-        ))
+                  | Error err -> Error ("failed to read roundtrip file: " ^ IO.error_message err))
 
 let make_pseudorandom_string = fun len ->
   let bytes = IO.Bytes.create ~size:len in
@@ -97,12 +91,11 @@ let test_large_roundtrip = fun _ctx ->
   let original = make_pseudorandom_string (5 * 1_024 * 1_024) in
   match Gzip.compress_string original with
   | Error _ -> Error "failed to compress large payload"
-  | Ok payload -> (
+  | Ok payload ->
       match Gzip.decompress_string payload with
       | Ok decoded when decoded = original -> Ok ()
       | Ok _ -> Error "large gzip roundtrip produced different contents"
       | Error err -> Error ("failed to decompress large payload: " ^ render_gzip_error err)
-    )
 
 let tests =
   Test.[

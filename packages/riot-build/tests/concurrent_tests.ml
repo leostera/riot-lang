@@ -19,7 +19,7 @@ let unit_key = fun package ->
     artifact = Riot_planner.Build_unit.Library;
     target = Riot_model.Target.host ();
     profile = Riot_model.Profile.debug;
-  }:Riot_planner.Build_unit.key)
+  }: Riot_planner.Build_unit.key)
 
 let build_package = fun ~workspace ~toolchain ~store package ->
   let build_ctx = make_test_build_ctx () in
@@ -44,8 +44,13 @@ let build_package = fun ~workspace ~toolchain ~store package ->
       ~build_ctx
       ~emit_visible_progress:false with
     | Package_builder.Final_result detailed_result -> detailed_result
-    | Execution_required execution_plan -> (
-        match Package_builder.prepare_execution ~workspace ~toolchain ~store ~execution_plan ~build_ctx with
+    | Execution_required execution_plan ->
+        match Package_builder.prepare_execution
+          ~workspace
+          ~toolchain
+          ~store
+          ~execution_plan
+          ~build_ctx with
         | Error detailed_result -> detailed_result
         | Ok prepared_execution ->
             let action_result =
@@ -75,7 +80,6 @@ let build_package = fun ~workspace ~toolchain ~store package ->
               ~prepared_execution
               ~completed
               ~build_ctx
-      )
   in
   match detailed_result.Package_builder.result.status with
   | Built _
@@ -146,14 +150,18 @@ let test_concurrent_builds_different_packages = fun _ctx ->
       let _worker1 =
         spawn
           (fun () ->
-            let status = Result.map (build_package ~workspace ~toolchain ~store pkg1) ~fn:(fun _ -> ()) in
+            let status =
+              Result.map (build_package ~workspace ~toolchain ~store pkg1) ~fn:(fun _ -> ())
+            in
             send parent (BuildComplete ("pkg-1", status));
             Ok ())
       in
       let _worker2 =
         spawn
           (fun () ->
-            let status = Result.map (build_package ~workspace ~toolchain ~store pkg2) ~fn:(fun _ -> ()) in
+            let status =
+              Result.map (build_package ~workspace ~toolchain ~store pkg2) ~fn:(fun _ -> ())
+            in
             send parent (BuildComplete ("pkg-2", status));
             Ok ())
       in
@@ -197,14 +205,18 @@ let test_concurrent_builds_same_package = fun _ctx ->
       let _worker1 =
         spawn
           (fun () ->
-            let status = Result.map (build_package ~workspace ~toolchain ~store package) ~fn:(fun _ -> ()) in
+            let status =
+              Result.map (build_package ~workspace ~toolchain ~store package) ~fn:(fun _ -> ())
+            in
             send parent (BuildComplete ("worker1", status));
             Ok ())
       in
       let _worker2 =
         spawn
           (fun () ->
-            let status = Result.map (build_package ~workspace ~toolchain ~store package) ~fn:(fun _ -> ()) in
+            let status =
+              Result.map (build_package ~workspace ~toolchain ~store package) ~fn:(fun _ -> ())
+            in
             send parent (BuildComplete ("worker2", status));
             Ok ())
       in
@@ -242,70 +254,66 @@ let test_concurrent_builds_with_shared_cache = fun _ctx ->
       let store = Riot_store.Store.create ~workspace in
       let first_build = build_package ~workspace ~toolchain ~store package in
       match first_build with
-      | Ok first_result -> (
+      | Ok first_result ->
           match first_result.Package_builder.status with
           | Cached _ -> Error "first build should not be cached"
           | Skipped { reason } -> Error ("first build was unexpectedly skipped: " ^ reason)
-          | Failed err -> Error ("first build failed: " ^ Package_builder.package_error_to_string err)
+          | Failed err ->
+              Error ("first build failed: " ^ Package_builder.package_error_to_string err)
           | Built _ ->
-          let parent = self () in
-          let _worker1 =
-            spawn
-              (fun () ->
-                let result = build_package ~workspace ~toolchain ~store package in
-                let cached =
-                  match Result.map result ~fn:(fun result -> result.Package_builder.status) with
-                  | Ok (Cached _) -> true
-                  | Ok (Built _)
-                  | Ok (Skipped _)
-                  | Ok (Failed _)
-                  | Error _ -> false
-                in
-                let status =
-                  Result.map result ~fn:(fun _ -> ())
-                in
-                send parent (BuildCompleteWithCache ("worker1", cached, status));
-                Ok ())
-          in
-          let _worker2 =
-            spawn
-              (fun () ->
-                let result = build_package ~workspace ~toolchain ~store package in
-                let cached =
-                  match Result.map result ~fn:(fun result -> result.Package_builder.status) with
-                  | Ok (Cached _) -> true
-                  | Ok (Built _)
-                  | Ok (Skipped _)
-                  | Ok (Failed _)
-                  | Error _ -> false
-                in
-                let status =
-                  Result.map result ~fn:(fun _ -> ())
-                in
-                send parent (BuildCompleteWithCache ("worker2", cached, status));
-                Ok ())
-          in
-          let selector msg =
-            match msg with
-            | BuildCompleteWithCache _ -> Select msg
-            | _ -> Skip
-          in
-          let result1 = receive ~selector () in
-          let result2 = receive ~selector () in
-          match (result1, result2) with
-          | (
-              BuildCompleteWithCache (_, cached1, Ok ()),
-              BuildCompleteWithCache (_, cached2, Ok ())
-            ) ->
-              let _ = cached1 in
-              let _ = cached2 in
-              Ok ()
-          | (BuildCompleteWithCache (name, _, Error err), _) ->
-              Error (name ^ " build failed: " ^ err)
-          | (_, BuildCompleteWithCache (name, _, Error err)) ->
-              Error (name ^ " build failed: " ^ err)
-          | _ -> Error "Unexpected message"
-        )
+              let parent = self () in
+              let _worker1 =
+                spawn
+                  (fun () ->
+                    let result = build_package ~workspace ~toolchain ~store package in
+                    let cached =
+                      match Result.map result ~fn:(fun result -> result.Package_builder.status) with
+                      | Ok (Cached _) -> true
+                      | Ok (Built _)
+                      | Ok (Skipped _)
+                      | Ok (Failed _)
+                      | Error _ -> false
+                    in
+                    let status = Result.map result ~fn:(fun _ -> ()) in
+                    send parent (BuildCompleteWithCache ("worker1", cached, status));
+                    Ok ())
+              in
+              let _worker2 =
+                spawn
+                  (fun () ->
+                    let result = build_package ~workspace ~toolchain ~store package in
+                    let cached =
+                      match Result.map result ~fn:(fun result -> result.Package_builder.status) with
+                      | Ok (Cached _) -> true
+                      | Ok (Built _)
+                      | Ok (Skipped _)
+                      | Ok (Failed _)
+                      | Error _ -> false
+                    in
+                    let status = Result.map result ~fn:(fun _ -> ()) in
+                    send parent (BuildCompleteWithCache ("worker2", cached, status));
+                    Ok ())
+              in
+              let selector msg =
+                match msg with
+                | BuildCompleteWithCache _ -> Select msg
+                | _ -> Skip
+              in
+              let result1 = receive ~selector () in
+              let result2 = receive ~selector () in
+              match (result1, result2) with
+              | (
+                  BuildCompleteWithCache (_, cached1, Ok ()),
+                  BuildCompleteWithCache (_, cached2, Ok ())
+                ) ->
+                  let _ = cached1 in
+                  let _ = cached2 in
+                  Ok ()
+              | (BuildCompleteWithCache (name, _, Error err), _) ->
+                  Error (name ^ " build failed: " ^ err)
+              | (_, BuildCompleteWithCache (name, _, Error err)) ->
+                  Error (name ^ " build failed: " ^ err)
+              | _ -> Error "Unexpected message"
       | Error err -> Error ("First build failed: " ^ err)) with
   | Ok r -> r
   | Error _ -> Error "Tempdir creation failed"
@@ -317,7 +325,10 @@ let tests = let open Test in
     "concurrent: different packages don't interfere"
     test_concurrent_builds_different_packages;
   case ~size:Large "concurrent: same package builds safely" test_concurrent_builds_same_package;
-  case ~size:Large "concurrent: shared cache works correctly" test_concurrent_builds_with_shared_cache;
+  case
+    ~size:Large
+    "concurrent: shared cache works correctly"
+    test_concurrent_builds_with_shared_cache;
 ]
 
 let name = "Concurrent Build Tests"

@@ -435,14 +435,19 @@ let test_clone_rejects_existing_destination = fun _ctx ->
       in
       match clone_result with
       | Kernel.Result.Ok () -> Error "expected clone to reject existing destinations"
-      | Kernel.Result.Error (Kernel.Fs.File.System Kernel.SystemError.AlreadyExists)
-      | Kernel.Result.Error (Kernel.Fs.File.System Kernel.SystemError.NotSupported) ->
+      | Kernel.Result.Error (
+        Kernel.Fs.File.System Kernel.SystemError.AlreadyExists
+      )
+      | Kernel.Result.Error (
+        Kernel.Fs.File.System Kernel.SystemError.NotSupported
+      ) ->
           if payload = "old-old" then
             Ok ()
           else
             Error "expected failed clone to leave existing destination unchanged"
       | Kernel.Result.Error err ->
-          Error ("expected clone to reject existing destination, got " ^ Kernel.Fs.File.error_to_string err))
+          Error ("expected clone to reject existing destination, got "
+          ^ Kernel.Fs.File.error_to_string err))
 
 let test_clone_copies_payload_to_new_destination = fun _ctx ->
   with_tempdir
@@ -463,9 +468,13 @@ let test_clone_copies_payload_to_new_destination = fun _ctx ->
               Error "expected source fixture write to write the whole payload")
       in
       match Kernel.Fs.File.clone ~src:source ~dst:destination with
-      | Kernel.Result.Error (Kernel.Fs.File.System Kernel.SystemError.NotSupported) -> Ok ()
+      | Kernel.Result.Error (
+        Kernel.Fs.File.System Kernel.SystemError.NotSupported
+      ) ->
+          Ok ()
       | Kernel.Result.Error err ->
-          Error ("expected fresh clone to succeed or report unsupported, got " ^ Kernel.Fs.File.error_to_string err)
+          Error ("expected fresh clone to succeed or report unsupported, got "
+          ^ Kernel.Fs.File.error_to_string err)
       | Kernel.Result.Ok () ->
           let* destination_file = lift (Kernel.Fs.File.open_read destination) in
           let buffer = Kernel.Bytes.create ~size:64 in
@@ -1704,9 +1713,13 @@ let test_clone_preserves_source_permissions = fun _ctx ->
       in
       let* () = lift (Kernel.Fs.File.set_permissions source ~perm:0o755) in
       match Kernel.Fs.File.clone ~src:source ~dst:destination with
-      | Kernel.Result.Error (Kernel.Fs.File.System Kernel.SystemError.NotSupported) -> Ok ()
+      | Kernel.Result.Error (
+        Kernel.Fs.File.System Kernel.SystemError.NotSupported
+      ) ->
+          Ok ()
       | Kernel.Result.Error err ->
-          Error ("expected clone to succeed or report unsupported, got " ^ Kernel.Fs.File.error_to_string err)
+          Error ("expected clone to succeed or report unsupported, got "
+          ^ Kernel.Fs.File.error_to_string err)
       | Kernel.Result.Ok () ->
           let* source_metadata = lift (Kernel.Fs.File.metadata source) in
           let* destination_metadata = lift (Kernel.Fs.File.metadata destination) in
@@ -1779,9 +1792,7 @@ let tests = [
     "Fs.File renaming broken symlinks preserves the link itself"
     test_renaming_broken_symlink_preserves_the_link_itself;
   Test.case "Fs.File copy and rename roundtrips" test_copy_and_rename_roundtrip;
-  Test.case
-    "Fs.File clone rejects existing destinations"
-    test_clone_rejects_existing_destination;
+  Test.case "Fs.File clone rejects existing destinations" test_clone_rejects_existing_destination;
   Test.case
     "Fs.File clone copies payloads to fresh destinations"
     test_clone_copies_payload_to_new_destination;

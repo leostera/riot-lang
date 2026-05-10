@@ -3,7 +3,11 @@ open Std
 module Test = Std.Test
 
 let make_test_workspace = fun tmpdir ->
-  Riot_model.Workspace.make ~root:tmpdir ~target_dir:(Path.v "target") ~packages:[] ()
+  Riot_model.Workspace.make
+    ~root:tmpdir
+    ~target_dir:(Path.v "target")
+    ~packages:[]
+    ()
 
 let test_cache_store_creation_is_lazy_until_first_save = fun _ctx ->
   match Fs.with_tempdir
@@ -129,7 +133,7 @@ let test_cache_promotion_workflow = fun _ctx ->
       in
       let target_dir = Path.(tmpdir / Path.v "target" / Path.v "debug" / Path.v "mylib") in
       match Riot_store.Store.promote store hash ~target_dir with
-      | Ok () -> (
+      | Ok () ->
           let promoted1 = Path.(target_dir / Path.v "lib.cma") in
           let promoted2 = Path.(target_dir / Path.v "lib.cmxa") in
           match (Fs.exists promoted1, Fs.exists promoted2) with
@@ -141,7 +145,6 @@ let test_cache_promotion_workflow = fun _ctx ->
               else
                 Error "Promoted content mismatch"
           | _ -> Error "Promoted files not found"
-        )
       | Error e -> Error ("Promotion failed: " ^ Riot_store.Store.error_message e)) with
   | Ok r -> r
   | Error _ -> Error "Tempdir creation failed"

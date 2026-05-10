@@ -201,7 +201,7 @@ let test_session_cookie_payload_is_signed_plaintext_json = fun _ctx ->
       Session.put "user_id" "123" session;
       let cookie = Session.to_cookie_value session in
       match String.split_on_char '.' cookie with
-      | [ payload; signature ] -> (
+      | [ payload; signature ] ->
           Test.assert_true (Session.verify ~secret payload signature);
           match Encoding.Base64.decode payload with
           | Ok json ->
@@ -216,7 +216,6 @@ let test_session_cookie_payload_is_signed_plaintext_json = fun _ctx ->
                 | Ok _ -> Error "expected tampered session payload to fail verification"
               )
           | Error _ -> Error "expected session cookie payload to be valid base64"
-        )
       | parts ->
           Error ("expected cookie payload and signature, got " ^ Int.to_string (List.length parts))
 

@@ -21,15 +21,14 @@ let test_once_cell_set_initializes_once =
       let cell = Sync.OnceCell.create () in
       match Sync.OnceCell.set cell "value" with
       | Error Sync.OnceCell.AlreadyInitialized -> Error "expected the first set to succeed"
-      | Ok () -> (
+      | Ok () ->
           match Sync.OnceCell.set cell "other" with
           | Ok () -> Error "expected the second set to fail"
           | Error Sync.OnceCell.AlreadyInitialized ->
               if Sync.OnceCell.is_initialized cell && Sync.OnceCell.get cell = Some "value" then
                 Ok ()
               else
-                Error "expected OnceCell to preserve the first value"
-        ))
+                Error "expected OnceCell to preserve the first value")
 
 let test_once_cell_take_clears_storage =
   Test.case
@@ -86,7 +85,7 @@ let test_once_cell_get_or_try_init_retries_after_error =
       | Ok _ -> Error "expected the failing initializer to propagate its error"
       | Error reason when not (String.equal reason "boom") ->
           Error ("unexpected initializer error: " ^ reason)
-      | Error _ -> (
+      | Error _ ->
           match Sync.OnceCell.get_or_try_init cell succeeding with
           | Error reason -> Error ("expected the retry to succeed, got: " ^ reason)
           | Ok value ->
@@ -97,8 +96,7 @@ let test_once_cell_get_or_try_init_retries_after_error =
               then
                 Ok ()
               else
-                Error "expected get_or_try_init to retry after a failed initialization"
-        ))
+                Error "expected get_or_try_init to retry after a failed initialization")
 
 let name = "Sync.OnceCell"
 

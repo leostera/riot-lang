@@ -151,13 +151,12 @@ let test_directory_source_resolves_sqlx_filenames = fun _ctx ->
     (fun dir ->
       match write Path.(dir / Path.v "2_add_orders.up.sql") "CREATE TABLE orders (id BIGINT);" with
       | Error _ as error -> error
-      | Ok () -> (
+      | Ok () ->
           match write
             Path.(dir / Path.v "1_create_users.sql")
             "-- no-transaction\nCREATE TABLE users (id BIGINT);" with
           | Error _ as error -> error
-          | Ok () -> resolve_dir dir
-        )) with
+          | Ok () -> resolve_dir dir) with
   | Error error -> Error (IO.Error.message error)
   | Ok (Error error) -> Error error
   | Ok (Ok migrations) ->
@@ -180,11 +179,10 @@ let test_ignored_checksum_chars = fun _ctx ->
     (fun dir ->
       match write Path.(dir / Path.v "1_one.sql") "CREATE\n TABLE things ( id BIGINT );" with
       | Error _ as error -> error
-      | Ok () -> (
+      | Ok () ->
           match M.Source.resolve ~config (M.Source.from_directory dir) with
           | Error error -> Error (M.error_to_string error)
-          | Ok migrations -> Ok migrations
-        )) with
+          | Ok migrations -> Ok migrations) with
   | Error error -> Error (IO.Error.message error)
   | Ok (Error error) -> Error error
   | Ok (Ok migrations) ->

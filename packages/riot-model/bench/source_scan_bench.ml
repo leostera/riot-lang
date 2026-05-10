@@ -76,7 +76,7 @@ let old_collect_relative_files = fun ~package_path ~root ?(excluded_relpaths = [
         else
           match Path.strip_prefix path ~prefix:package_path with
           | Error _ -> false
-          | Ok rel_path -> (
+          | Ok rel_path ->
               match Fs.Walker.FileItem.kind entry with
               | Directory ->
                   not
@@ -87,26 +87,23 @@ let old_collect_relative_files = fun ~package_path ~root ?(excluded_relpaths = [
                     || should_skip_old_test_support_path rel_path
                     || List.contains excluded_relpath_strings ~value:(Path.to_string rel_path))
               | Symlink
-              | Other -> false
-            ))
+              | Other -> false)
   in
   let iter = Fs.Walker.into_iter walker in
   let rec loop acc iter =
     match Iter.Iterator.next iter with
     | (None, _) -> List.reverse acc
     | (Some (Error _), iter') -> loop acc iter'
-    | (Some (Ok (entry: Fs.Walker.FileItem.t)), iter') -> (
+    | (Some (Ok (entry: Fs.Walker.FileItem.t)), iter') ->
         let path = Fs.Walker.FileItem.path entry in
         match Fs.Walker.FileItem.kind entry with
-        | File -> (
+        | File ->
             match Path.strip_prefix path ~prefix:package_path with
             | Ok rel_path -> loop (rel_path :: acc) iter'
             | Error _ -> loop acc iter'
-          )
         | Directory
         | Symlink
         | Other -> loop acc iter'
-      )
   in
   loop [] iter
 

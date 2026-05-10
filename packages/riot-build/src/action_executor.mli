@@ -43,7 +43,7 @@ type execution_result = {
    paths to stay compatible with serialized plans loaded from cache.
 *)
 val execute_node:
-  completed:(G.Node_id.t, execution_result) HashMap.t ->
+  completed:(G.Node_id.t, execution_result) ConcurrentHashMap.t ->
   store:Riot_store.Store.t ->
   session_id:Riot_model.Session_id.t ->
   build_target:Riot_model.Target.t ->

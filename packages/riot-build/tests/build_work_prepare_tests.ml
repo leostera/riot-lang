@@ -103,7 +103,7 @@ let library_unit_key = fun ~name ~target ->
     artifact = Build_unit.Library;
     target;
     profile = Riot_model.Profile.debug;
-  }:Build_unit.key)
+  }: Build_unit.key)
 
 let unit_key_string = fun key -> Build_unit.key_to_string key
 

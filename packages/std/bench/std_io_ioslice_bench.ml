@@ -84,35 +84,31 @@ let equal_tail = fun value ~at suffix ->
 
 let optimized_method_from_slice = fun value ->
   match Slice.length value with
-  | 3 -> (
+  | 3 ->
       match Slice.get_unchecked value ~at:0 with
       | 'G' when equal_tail value ~at:1 "ET" -> Method.Get
       | 'P' when equal_tail value ~at:1 "UT" -> Method.Put
       | _ -> Method.Extension (Slice.to_string value)
-    )
-  | 4 -> (
+  | 4 ->
       match Slice.get_unchecked value ~at:0 with
       | 'H' when equal_tail value ~at:1 "EAD" -> Method.Head
       | 'P' when equal_tail value ~at:1 "OST" -> Method.Post
       | _ -> Method.Extension (Slice.to_string value)
-    )
-  | 5 -> (
+  | 5 ->
       match Slice.get_unchecked value ~at:0 with
       | 'P' when equal_tail value ~at:1 "ATCH" -> Method.Patch
       | 'T' when equal_tail value ~at:1 "RACE" -> Method.Trace
       | _ -> Method.Extension (Slice.to_string value)
-    )
   | 6 ->
       if Slice.get_unchecked value ~at:0 = 'D' && equal_tail value ~at:1 "ELETE" then
         Method.Delete
       else
         Method.Extension (Slice.to_string value)
-  | 7 -> (
+  | 7 ->
       match Slice.get_unchecked value ~at:0 with
       | 'C' when equal_tail value ~at:1 "ONNECT" -> Method.Connect
       | 'O' when equal_tail value ~at:1 "PTIONS" -> Method.Options
       | _ -> Method.Extension (Slice.to_string value)
-    )
   | _ -> Method.Extension (Slice.to_string value)
 
 let current_version_from_slice = fun value ->

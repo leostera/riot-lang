@@ -46,20 +46,18 @@ let line_field = fun fields name ->
 
 let get_string_field = fun fields name ->
   match line_field fields name with
-  | Some value -> (
+  | Some value ->
       match Data.Json.get_string value with
       | Some text -> Some text
       | None -> None
-    )
   | None -> None
 
 let get_int_field = fun fields name ->
   match line_field fields name with
-  | Some value -> (
+  | Some value ->
       match Data.Json.get_int value with
       | Some value -> Some value
       | None -> None
-    )
   | None -> None
 
 let parse_fixture_entry = fun json ->
@@ -99,13 +97,12 @@ let parse_fixture_entry = fun json ->
 let parse_fixtures_json = fun source ->
   match Data.Json.from_string source with
   | Error _ -> []
-  | Ok json -> (
+  | Ok json ->
       match Data.Json.get_array json with
       | None -> []
       | Some rows ->
           rows
           |> List.filter_map ~fn:parse_fixture_entry
-    )
 
 let derive_workspace_root = fun path ->
   let segments =
@@ -136,13 +133,12 @@ let derive_workspace_root = fun path ->
   match find_build_index 0 segments with
   | None -> None
   | Some 0 -> None
-  | Some index -> (
+  | Some index ->
       let prefix = take_prefix index segments [] in
       match prefix with
       | []
       | [ "." ] -> None
       | _ -> Some (Path.v (join_path_segments prefix))
-    )
 
 let ancestry = fun start ->
   let rec loop count path acc =
@@ -151,13 +147,12 @@ let ancestry = fun start ->
     else
       match Path.parent path with
       | None -> path :: acc
-      | Some next -> (
+      | Some next ->
           let deduped = path :: acc in
           if List.contains deduped ~value:next then
             deduped
           else
             loop (count - 1) next deduped
-        )
   in
   loop 12 start []
 
@@ -231,12 +226,11 @@ let locate_fixture_path = fun () ->
     | head :: rest ->
         let exists = Fs.exists head in
         match exists with
-        | Ok value -> (
+        | Ok value ->
             if value then
               Some head
             else
               pick rest
-          )
         | Error _ -> pick rest
   in
   pick candidates
@@ -244,11 +238,10 @@ let locate_fixture_path = fun () ->
 let load_spec_fixtures = fun () ->
   match locate_fixture_path () with
   | None -> []
-  | Some path -> (
+  | Some path ->
       match Fs.read path with
       | Error _ -> []
       | Ok source -> parse_fixtures_json (normalize_newlines source)
-    )
 
 let spec_fixture_cache: fixture list = load_spec_fixtures ()
 

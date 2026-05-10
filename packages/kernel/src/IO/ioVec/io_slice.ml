@@ -145,13 +145,12 @@ let validate_bytes_range = fun buffer_len ~off ~len ->
 let blit = fun ~src ~src_off ~dst ~dst_off ~len ->
   match validate_range (length src) ~off:src_off ~len with
   | Error _ as error -> error
-  | Ok () -> (
+  | Ok () ->
       match validate_range (length dst) ~off:dst_off ~len with
       | Ok () ->
           unsafe_blit ~src ~src_offset:src_off ~dst ~dst_offset:dst_off ~len;
           Ok ()
       | Error _ as error -> error
-    )
 
 let blit_unchecked = fun ~src ~src_off ~dst ~dst_off ~len ->
   match blit ~src ~src_off ~dst ~dst_off ~len with
@@ -162,13 +161,12 @@ let blit_unchecked = fun ~src ~src_off ~dst ~dst_off ~len ->
 let blit_from_bytes = fun src ~src_off dst ~dst_off ~len ->
   match validate_bytes_range (Bytes.length src) ~off:src_off ~len with
   | Error _ as error -> error
-  | Ok () -> (
+  | Ok () ->
       match validate_range (length dst) ~off:dst_off ~len with
       | Ok () ->
           unsafe_blit_from_bytes src ~src_offset:src_off ~dst ~dst_offset:dst_off ~len;
           Ok ()
       | Error _ as error -> error
-    )
 
 let blit_from_bytes_unchecked = fun src ~src_off dst ~dst_off ~len ->
   match blit_from_bytes src ~src_off dst ~dst_off ~len with
@@ -180,13 +178,12 @@ let blit_from_bytes_unchecked = fun src ~src_off dst ~dst_off ~len ->
 let blit_from_string = fun src ~src_off dst ~dst_off ~len ->
   match validate_bytes_range (String.length src) ~off:src_off ~len with
   | Error _ as error -> error
-  | Ok () -> (
+  | Ok () ->
       match validate_range (length dst) ~off:dst_off ~len with
       | Ok () ->
           unsafe_blit_from_string src ~src_offset:src_off ~dst ~dst_offset:dst_off ~len;
           Ok ()
       | Error _ as error -> error
-    )
 
 let blit_from_string_unchecked = fun src ~src_off dst ~dst_off ~len ->
   match blit_from_string src ~src_off dst ~dst_off ~len with
@@ -198,13 +195,12 @@ let blit_from_string_unchecked = fun src ~src_off dst ~dst_off ~len ->
 let blit_to_bytes = fun src ~src_off dst ~dst_off ~len ->
   match validate_range (length src) ~off:src_off ~len with
   | Error _ as error -> error
-  | Ok () -> (
+  | Ok () ->
       match validate_bytes_range (Bytes.length dst) ~off:dst_off ~len with
       | Ok () ->
           unsafe_blit_to_bytes ~src ~src_offset:src_off ~dst ~dst_offset:dst_off ~len;
           Ok ()
       | Error _ as error -> error
-    )
 
 let blit_to_bytes_unchecked = fun src ~src_off dst ~dst_off ~len ->
   match blit_to_bytes src ~src_off dst ~dst_off ~len with
@@ -220,13 +216,12 @@ let from_string = fun ?(off = 0) ?len value ->
   in
   match validate_bytes_range (String.length value) ~off ~len with
   | Error _ as error -> error
-  | Ok () -> (
+  | Ok () ->
       match create ~size:len with
       | Error _ as error -> error
       | Ok slice ->
           blit_from_string_unchecked value ~src_off:off slice ~dst_off:0 ~len;
           Ok slice
-    )
 
 let from_bytes = fun ?(off = 0) ?len value ->
   let len =
@@ -236,13 +231,12 @@ let from_bytes = fun ?(off = 0) ?len value ->
   in
   match validate_bytes_range (Bytes.length value) ~off ~len with
   | Error _ as error -> error
-  | Ok () -> (
+  | Ok () ->
       match create ~size:len with
       | Error _ as error -> error
       | Ok slice ->
           blit_from_bytes_unchecked value ~src_off:off slice ~dst_off:0 ~len;
           Ok slice
-    )
 
 let starts_with = fun value ~prefix ->
   let prefix_len = String.length prefix in

@@ -18,11 +18,10 @@ let rec loop: type task. task state -> (unit, Actor.exit_reason) result = fun st
     | _ -> Skip
   in
   match receive ~selector () with
-  | WorkerReady worker -> (
+  | WorkerReady worker ->
       match Ref.type_equal state.task_ref worker.task_ref with
       | Some Type.Equal -> handle_worker_ready state worker
       | None -> panic "Received worker of the wrong type?!"
-    )
 
 and handle_worker_ready: type task. task state -> task worker -> (unit, Actor.exit_reason) result = fun
   state worker ->

@@ -6,15 +6,13 @@ let scratch_counter = Sync.Atomic.make 0
 let temp_root = fun () ->
   match Env.get Env.String ~var:"TMPDIR" with
   | Some dir when dir != "" -> Path.v dir
-  | _ -> (
+  | _ ->
       match Env.get Env.String ~var:"TEMP" with
       | Some dir when dir != "" -> Path.v dir
-      | _ -> (
+      | _ ->
           match Env.get Env.String ~var:"TMP" with
           | Some dir when dir != "" -> Path.v dir
           | _ -> Path.v "/tmp"
-        )
-    )
 
 let make_scratch_dir = fun prefix ->
   let pid =

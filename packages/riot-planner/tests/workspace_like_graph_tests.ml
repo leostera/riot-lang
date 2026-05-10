@@ -47,11 +47,7 @@ let make_package = fun
     ?sources
     ()
 
-let make_workspace = fun packages ->
-  Workspace.make_realized
-    ~root:test_root
-    ~packages
-    ()
+let make_workspace = fun packages -> Workspace.make_realized ~root:test_root ~packages ()
 
 let test_toolchain =
   Riot_toolchain.init ~config:Riot_model.Toolchain_config.default
@@ -80,7 +76,7 @@ let library_key = fun package ->
     artifact = Build_unit.Library;
     target = host_target;
     profile = Profile.debug;
-  }:Build_unit.key)
+  }: Build_unit.key)
 
 let synthetic_key = fun package ->
   ({
@@ -88,7 +84,7 @@ let synthetic_key = fun package ->
     artifact = Build_unit.SyntheticTool { name = "build" };
     target = host_target;
     profile = Profile.debug;
-  }:Build_unit.key)
+  }: Build_unit.key)
 
 let test_binary_key = fun package name ->
   ({
@@ -96,7 +92,7 @@ let test_binary_key = fun package name ->
     artifact = Build_unit.TestBinary { name };
     target = host_target;
     profile = Profile.debug;
-  }:Build_unit.key)
+  }: Build_unit.key)
 
 let dependency_keys_for_key = fun graph key -> Build_unit_graph.dependencies graph key
 
@@ -121,12 +117,7 @@ let assert_same_keys = fun ~expected ~actual ->
 
 let assert_int_equal = fun ~label ~expected ~actual ->
   if not (Int.equal expected actual) then
-    panic
-      (label
-      ^ ": expected "
-      ^ Int.to_string expected
-      ^ ", actual "
-      ^ Int.to_string actual)
+    panic (label ^ ": expected " ^ Int.to_string expected ^ ", actual " ^ Int.to_string actual)
 
 let package_names_in_graph = fun graph ->
   Build_unit_graph.keys graph
@@ -200,13 +191,15 @@ let dev_scope_does_not_inherit_build_only_dependencies = fun _ctx ->
       ~dev_dependencies:[ "propane" ]
       ~build_dependencies:[ "codegen" ]
       ~binaries:[ Package.{ name = "app_tests"; path = Path.v "tests/app_tests.ml" } ]
-      ~sources:(Some {
-        src = [ Path.v "src/lib.ml" ];
-        native = [];
-        tests = [ Path.v "tests/app_tests.ml" ];
-        examples = [];
-        bench = [];
-      })
+      ~sources:(
+        Some {
+          src = [ Path.v "src/lib.ml" ];
+          native = [];
+          tests = [ Path.v "tests/app_tests.ml" ];
+          examples = [];
+          bench = [];
+        }
+      )
       "app";
   ]
   in
@@ -214,10 +207,7 @@ let dev_scope_does_not_inherit_build_only_dependencies = fun _ctx ->
   let graph =
     graph
       workspace
-      (request
-        ~roots:[ package_name "app" ]
-        ~kind:(Build_unit_graph.Dev default_dev_artifacts)
-        ())
+      (request ~roots:[ package_name "app" ] ~kind:(Build_unit_graph.Dev default_dev_artifacts) ())
   in
   assert_same_keys
     ~expected:((library_key "app") :: library_keys [ "runtime-lib"; "propane" ])
@@ -327,9 +317,7 @@ let build_unit_requests_select_expected_artifacts = fun _ctx ->
   in
   let workspace = make_workspace packages in
   let runtime_graph = graph workspace (request ()) in
-  let dev_graph =
-    graph workspace (request ~kind:(Build_unit_graph.Dev default_dev_artifacts) ())
-  in
+  let dev_graph = graph workspace (request ~kind:(Build_unit_graph.Dev default_dev_artifacts) ()) in
   let build_graph =
     graph
       workspace
@@ -341,7 +329,10 @@ let build_unit_requests_select_expected_artifacts = fun _ctx ->
         ]
         ())
   in
-  assert_int_equal ~label:"runtime graph size" ~expected:3 ~actual:(Build_unit_graph.size runtime_graph);
+  assert_int_equal
+    ~label:"runtime graph size"
+    ~expected:3
+    ~actual:(Build_unit_graph.size runtime_graph);
   assert_int_equal ~label:"dev graph size" ~expected:3 ~actual:(Build_unit_graph.size dev_graph);
   assert_int_equal ~label:"build graph size" ~expected:6 ~actual:(Build_unit_graph.size build_graph);
   Ok ()
@@ -352,10 +343,7 @@ let dev_filter_keeps_self_runtime_dependency = fun _ctx ->
   let graph =
     graph
       workspace
-      (request
-        ~roots:[ package_name "app" ]
-        ~kind:(Build_unit_graph.Dev default_dev_artifacts)
-        ())
+      (request ~roots:[ package_name "app" ] ~kind:(Build_unit_graph.Dev default_dev_artifacts) ())
   in
   assert_same_keys ~expected:[ library_key "app" ] ~actual:(Build_unit_graph.keys graph);
   Ok ()
@@ -366,18 +354,12 @@ let clone_keeps_dev_self_runtime_dependency = fun _ctx ->
   let first =
     graph
       workspace
-      (request
-        ~roots:[ package_name "app" ]
-        ~kind:(Build_unit_graph.Dev default_dev_artifacts)
-        ())
+      (request ~roots:[ package_name "app" ] ~kind:(Build_unit_graph.Dev default_dev_artifacts) ())
   in
   let second =
     graph
       workspace
-      (request
-        ~roots:[ package_name "app" ]
-        ~kind:(Build_unit_graph.Dev default_dev_artifacts)
-        ())
+      (request ~roots:[ package_name "app" ] ~kind:(Build_unit_graph.Dev default_dev_artifacts) ())
   in
   assert_same_keys ~expected:(Build_unit_graph.keys first) ~actual:(Build_unit_graph.keys second);
   Ok ()
@@ -472,9 +454,7 @@ let clone_reconstructs_planned_nested_graphs = fun _ctx ->
   let original_root = module_node_for_path module_graph "src/std.ml" in
   Test.assert_equal ~expected:1 ~actual:(List.length (G.value original_root).open_modules);
   Test.assert_equal ~expected:0 ~actual:(List.length (G.value cloned_root).open_modules);
-  Test.assert_equal
-    ~expected:0
-    ~actual:(List.length (Riot_planner.Action_graph.nodes action_graph));
+  Test.assert_equal ~expected:0 ~actual:(List.length (Riot_planner.Action_graph.nodes action_graph));
   Test.assert_equal
     ~expected:1
     ~actual:(List.length (Riot_planner.Action_graph.nodes cloned_action_graph));
@@ -527,9 +507,7 @@ let tests =
     case
       "clone preserves edges with independent node status"
       clone_preserves_edges_with_independent_node_status;
-    case
-      "clone reconstructs planned nested graphs"
-      clone_reconstructs_planned_nested_graphs;
+    case "clone reconstructs planned nested graphs" clone_reconstructs_planned_nested_graphs;
     case
       "build scope wires declared build dependencies"
       build_scope_wires_declared_build_dependencies;

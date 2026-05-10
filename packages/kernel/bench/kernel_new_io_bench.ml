@@ -7,7 +7,7 @@ let panic_async = fun error -> Kernel.SystemError.panic (Kernel.Async.error_to_s
 let with_poll = fun fn ->
   match Kernel.Async.Poll.make () with
   | Kernel.Result.Error error -> panic_async error
-  | Kernel.Result.Ok poll -> (
+  | Kernel.Result.Ok poll ->
       try
         let result = fn poll in
         let _ = Kernel.Async.Poll.close poll in
@@ -16,7 +16,6 @@ let with_poll = fun fn ->
       | error ->
           let _ = Kernel.Async.Poll.close poll in
           raise error
-    )
 
 let bench_stdin_read_len_zero = fun () ->
   let buffer = Kernel.Bytes.create ~size:16 in

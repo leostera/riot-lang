@@ -169,7 +169,11 @@ module Tests = struct
 
   let test_workspace_target_dirs_use_custom_target_dir_root () =
     let workspace =
-      Workspace.make ~root:(Path.v "/tmp/workspace") ~target_dir:(Path.v "build-out") ~packages:[] ()
+      Workspace.make
+        ~root:(Path.v "/tmp/workspace")
+        ~target_dir:(Path.v "build-out")
+        ~packages:[]
+        ()
     in
     let target = host_target () in
     let expected_target_dir = "/tmp/workspace/build-out/release/" ^ Target.to_string target in

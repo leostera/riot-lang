@@ -152,7 +152,9 @@ let test_for_binary_keeps_only_selected_dev_source = fun _ctx ->
       ~path:(Path.v "packages/minttea")
       ~relative_path:(Path.v "packages/minttea")
       ~dependencies:[ { name = package_name "std"; source = source ~workspace:true () } ]
-      ~dev_dependencies:[ { name = package_name "propane"; source = source ~workspace:true () } ]
+      ~dev_dependencies:[
+        { name = package_name "propane"; source = source ~workspace:true () };
+      ]
       ~build_dependencies:[]
       ~binaries:[
         { name = "one_tests"; path = Path.v "tests/one_tests.ml" };
@@ -200,16 +202,15 @@ let test_for_binary_keeps_only_selected_dev_source = fun _ctx ->
             |> List.map ~fn:Path.to_string
             |> String.concat ", "
           in
-          Error
-            ("unexpected projected sources for "
-            ^ binary_name
-            ^ ": tests=["
-            ^ render_paths projected.sources.tests
-            ^ "] examples=["
-            ^ render_paths projected.sources.examples
-            ^ "] bench=["
-            ^ render_paths projected.sources.bench
-            ^ "]")
+          Error ("unexpected projected sources for "
+          ^ binary_name
+          ^ ": tests=["
+          ^ render_paths projected.sources.tests
+          ^ "] examples=["
+          ^ render_paths projected.sources.examples
+          ^ "] bench=["
+          ^ render_paths projected.sources.bench
+          ^ "]")
   in
   let* () =
     expect_sources
@@ -875,9 +876,7 @@ ignore = ["fixtures", "diagnostics"]
     Riot_model.Workspace_manifest.from_toml toml
     |> Result.expect ~msg:"expected workspace manifest to parse"
   in
-  Test.assert_equal
-    ~expected:[ "fixtures"; "diagnostics" ]
-    ~actual:manifest.source_ignore_patterns;
+  Test.assert_equal ~expected:[ "fixtures"; "diagnostics" ] ~actual:manifest.source_ignore_patterns;
   Ok ()
 
 let test_package_fmt_ignore_loads = fun _ctx ->
@@ -1281,7 +1280,7 @@ minttea = "not-a-version"
       let workspace_manager = Riot_model.Workspace_manager.create () in
       match Riot_model.Workspace_manager.scan workspace_manager root with
       | Error err -> Error (Riot_model.Workspace_manager.scan_error_message err)
-      | Ok (_workspace, errors) -> (
+      | Ok (_workspace, errors) ->
           match errors with
           | [
               Riot_model.Workspace_manager.PackageFromTomlFailed {
@@ -1302,8 +1301,7 @@ minttea = "not-a-version"
           | [ Riot_model.Workspace_manager.PackageFromTomlFailed { error; _ } ] ->
               Error ("unexpected member decode error: "
               ^ Riot_model.Package_manifest.error_message error)
-          | _ -> Error "expected invalid member manifest to surface as a workspace load error"
-        ))
+          | _ -> Error "expected invalid member manifest to surface as a workspace load error")
 
 let test_workspace_manager_load_riot_toml_returns_typed_parse_errors = fun _ctx ->
   with_tempdir
@@ -1516,11 +1514,10 @@ api_token = "root-secret"
   in
   match Riot_model.User_config.from_toml toml with
   | Error err -> Error (Riot_model.User_config.message err)
-  | Ok config -> (
+  | Ok config ->
       match Riot_model.User_config.api_token config ~registry_name:"pkgs.ml" with
       | Some token when String.equal token "root-secret" -> Ok ()
       | _ -> Error "expected pkgs.ml API token to be parsed from config"
-    )
 
 let test_user_config_load_reads_config_file = fun _ctx ->
   with_tempdir
@@ -1534,11 +1531,10 @@ api_token = "publish-token"
       |> Result.expect ~msg:"expected config to write";
       match Riot_model.User_config.load config_path with
       | Error err -> Error (Riot_model.User_config.message err)
-      | Ok config -> (
+      | Ok config ->
           match Riot_model.User_config.api_token config ~registry_name:"pkgs.ml" with
           | Some token when String.equal token "publish-token" -> Ok ()
-          | _ -> Error "expected config loader to expose registry token"
-        ))
+          | _ -> Error "expected config loader to expose registry token")
 
 let test_user_config_parses_empty_registry_entry = fun _ctx ->
   let toml =
@@ -1549,11 +1545,10 @@ let test_user_config_parses_empty_registry_entry = fun _ctx ->
   in
   match Riot_model.User_config.from_toml toml with
   | Error err -> Error (Riot_model.User_config.message err)
-  | Ok config -> (
+  | Ok config ->
       match Riot_model.User_config.api_token config ~registry_name:"pkgs.ml" with
       | None -> Ok ()
       | Some _ -> Error "expected empty registry config to keep missing api_token"
-    )
 
 let test_user_config_parses_registry_urls = fun _ctx ->
   let toml =
@@ -1568,7 +1563,7 @@ api_token = "publish-token"
   in
   match Riot_model.User_config.from_toml toml with
   | Error err -> Error (Riot_model.User_config.message err)
-  | Ok config -> (
+  | Ok config ->
       match List.find
         config.Riot_model.User_config.registries
         ~fn:(fun (name, _registry) -> String.equal name "pkgs.ml") with
@@ -1584,7 +1579,6 @@ api_token = "publish-token"
             Error "expected api_token to parse"
           else
             Ok ()
-    )
 
 let test_user_config_save_roundtrips_default_registry_config = fun _ctx ->
   with_tempdir
@@ -1595,11 +1589,10 @@ let test_user_config_save_roundtrips_default_registry_config = fun _ctx ->
       |> Result.expect ~msg:"expected default config to write";
       match Riot_model.User_config.load config_path with
       | Error err -> Error (Riot_model.User_config.message err)
-      | Ok config -> (
+      | Ok config ->
           match Riot_model.User_config.api_token config ~registry_name:"pkgs.ml" with
           | None -> Ok ()
-          | Some _ -> Error "expected saved default config to keep missing api_token"
-        ))
+          | Some _ -> Error "expected saved default config to keep missing api_token")
 
 let test_user_config_rejects_non_string_registry_api_url = fun _ctx ->
   let toml =
@@ -1727,7 +1720,7 @@ call_graph_stack_size = 8192
             && config.trace.xctrace.window = Some "750ms"
             && config.trace.perf.sample_rate_hz = Some 997
             && config.trace.perf.call_graph = Some "dwarf"
-            && config.trace.perf.call_graph_stack_size = Some 8192
+            && config.trace.perf.call_graph_stack_size = Some 8_192
           then
             Ok ()
           else
@@ -1815,9 +1808,7 @@ let tests =
       test_build_scope_drops_commands_and_runtime_outputs;
     case "for_scope: runtime keeps commands" test_runtime_scope_keeps_commands;
     case "for_scope: dev keeps only dev outputs" test_dev_scope_keeps_only_dev_outputs;
-    case
-      "for_binary: keeps only selected dev source"
-      test_for_binary_keeps_only_selected_dev_source;
+    case "for_binary: keeps only selected dev source" test_for_binary_keeps_only_selected_dev_source;
     case
       "for_scope: runtime keeps build dependencies for hashing"
       test_runtime_scope_keeps_build_dependencies_for_hashing;

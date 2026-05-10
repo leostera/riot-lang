@@ -18,7 +18,11 @@ let test_toolchain = fun () ->
 let test_build_target = Riot_model.Target.current
 
 let make_workspace = fun root ->
-  Riot_model.Workspace.make ~root ~target_dir:(Path.v "target") ~packages:[] ()
+  Riot_model.Workspace.make
+    ~root
+    ~target_dir:(Path.v "target")
+    ~packages:[]
+    ()
 
 let make_package = fun ~root ~name ->
   let package_name = package_name name in
@@ -43,7 +47,7 @@ let make_node_in = fun graph ~package ?(deps = []) ~actions ~outs () ->
   in
   Riot_planner.Action_graph.add_node graph spec
 
-let node_id = fun (node: Riot_planner.Action_node.t) -> (Riot_planner.Action_node.id node)
+let node_id = fun (node: Riot_planner.Action_node.t) -> Riot_planner.Action_node.id node
 
 let find_result = fun result (node: Riot_planner.Action_node.t) ->
   Action_scheduler.find_result

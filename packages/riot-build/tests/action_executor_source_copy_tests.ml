@@ -17,7 +17,11 @@ let test_toolchain = fun () ->
 let test_build_target = Riot_model.Target.current
 
 let make_workspace = fun root ->
-  Riot_model.Workspace.make ~root ~target_dir:(Path.v "target") ~packages:[] ()
+  Riot_model.Workspace.make
+    ~root
+    ~target_dir:(Path.v "target")
+    ~packages:[]
+    ()
 
 let read_file = fun path ->
   Fs.read_to_string path
@@ -66,16 +70,14 @@ let with_workspace_dirs = fun tmpdir f ->
   let package_src = Path.(tmpdir / Path.v "packages" / Path.v "kernel" / Path.v "src") in
   match Fs.create_dir_all package_src with
   | Error _ -> Error "create package src failed"
-  | Ok () -> (
+  | Ok () ->
       match Fs.write "let kernel = 1" Path.(package_src / Path.v "lib.ml") with
       | Error _ -> Error "write package source failed"
-      | Ok () -> (
+      | Ok () ->
           let sandbox = Path.(tmpdir / Path.v "sandbox") in
           match Fs.create_dir_all sandbox with
           | Error _ -> Error "create sandbox failed"
           | Ok () -> f sandbox
-        )
-    )
 
 let test_execute_node_copies_package_relative_sources = fun _ctx ->
   match Fs.with_tempdir
@@ -100,12 +102,11 @@ let test_execute_node_copies_package_relative_sources = fun _ctx ->
               node
           in
           match result.status with
-          | Action_executor.Executed _ -> (
+          | Action_executor.Executed _ ->
               let copied = Path.(sandbox / Path.v "src/lib.ml") in
               match Fs.exists copied with
               | Ok true -> Ok ()
               | _ -> Error "expected package-relative source to be copied"
-            )
           | _ -> Error "expected node execution to succeed")) with
   | Ok r -> r
   | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
@@ -133,12 +134,11 @@ let test_execute_node_copies_workspace_relative_sources = fun _ctx ->
               node
           in
           match result.status with
-          | Action_executor.Executed _ -> (
+          | Action_executor.Executed _ ->
               let copied = Path.(sandbox / Path.v "packages/kernel/src/lib.ml") in
               match Fs.exists copied with
               | Ok true -> Ok ()
               | _ -> Error "expected workspace-relative source to be copied"
-            )
           | _ -> Error "expected node execution to succeed")) with
   | Ok r -> r
   | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
@@ -188,7 +188,7 @@ let test_execute_node_cache_hit_materializes_outputs = fun _ctx ->
           in
           (
             match second.status with
-            | Action_executor.Cached _ -> (
+            | Action_executor.Cached _ ->
                 match Fs.exists output with
                 | Ok true ->
                     if String.equal (read_file output) "cached output" then
@@ -196,7 +196,6 @@ let test_execute_node_cache_hit_materializes_outputs = fun _ctx ->
                     else
                       Error "cached output content mismatch"
                 | _ -> Error "expected cached output to be materialized"
-              )
             | _ -> Error "expected second execution to hit cache"
           )
       | _ -> Error "expected first execution to populate cache") with

@@ -358,7 +358,7 @@ let test_filesystem_registry_fetches_config_on_cache_miss = fun _ctx ->
       match Pkgs_ml.Registry.read_config registry with
       | Error err -> Error err
       | Ok None -> Error "expected filesystem registry to fetch sparse index config"
-      | Ok (Some config) -> (
+      | Ok (Some config) ->
           match Pkgs_ml.Sparse_index.read_cached_config cache with
           | Error err -> Error err
           | Ok None -> Error "expected fetched config to be cached"
@@ -374,8 +374,7 @@ let test_filesystem_registry_fetches_config_on_cache_miss = fun _ctx ->
               then
                 Ok ()
               else
-                Error "unexpected fetched sparse index config state"
-        )) with
+                Error "unexpected fetched sparse index config state") with
   | Error err -> Error (IO.error_message err)
   | Ok result -> result
 
@@ -404,7 +403,7 @@ let test_filesystem_registry_fetches_package_document_on_cache_miss = fun _ctx -
       match Pkgs_ml.Registry.read_package_document registry ~package_name:"Kernel" with
       | Error err -> Error err
       | Ok None -> Error "expected filesystem registry to fetch package document"
-      | Ok (Some document) -> (
+      | Ok (Some document) ->
           match (
             Pkgs_ml.Sparse_index.read_cached_config cache,
             Pkgs_ml.Sparse_index.read_cached_package_document cache ~package_name:"Kernel"
@@ -429,8 +428,7 @@ let test_filesystem_registry_fetches_package_document_on_cache_miss = fun _ctx -
               then
                 Ok ()
               else
-                Error "unexpected fetched sparse index package document state"
-        )) with
+                Error "unexpected fetched sparse index package document state") with
   | Error err -> Error (IO.error_message err)
   | Ok result -> result
 
@@ -459,7 +457,7 @@ let test_filesystem_registry_returns_none_for_missing_package_document = fun _ct
       match Pkgs_ml.Registry.read_package_document registry ~package_name:"Missing" with
       | Error err -> Error err
       | Ok (Some _) -> Error "expected missing package document lookup to return none"
-      | Ok None -> (
+      | Ok None ->
           match Pkgs_ml.Sparse_index.read_cached_package_document cache ~package_name:"Missing" with
           | Error err -> Error err
           | Ok (Some _) -> Error "expected missing package document lookup to leave cache empty"
@@ -477,8 +475,7 @@ let test_filesystem_registry_returns_none_for_missing_package_document = fun _ct
               then
                 Ok ()
               else
-                Error "unexpected sparse index fetch sequence for missing package document"
-        )) with
+                Error "unexpected sparse index fetch sequence for missing package document") with
   | Error err -> Error (IO.error_message err)
   | Ok result -> result
 
@@ -717,13 +714,12 @@ let test_registry_materialize_skips_existing_release = fun _ctx ->
       in
       match Pkgs_ml.Registry.materialize_release registry ~package_name:"std" ~version:"0.1.0" with
       | Error err -> Error err
-      | Ok _ -> (
+      | Ok _ ->
           match Pkgs_ml.Registry.materialize_release registry ~package_name:"std" ~version:"0.1.0" with
           | Ok Pkgs_ml.Registry.Already_present -> Ok ()
           | Ok Pkgs_ml.Registry.Materialized ->
               Error "expected second materialization to detect existing package sources"
-          | Error err -> Error err
-        )) with
+          | Error err -> Error err) with
   | Error err -> Error (IO.error_message err)
   | Ok result -> result
 
@@ -803,7 +799,7 @@ let create_test_archive = fun ~source_root ~archive_path ->
   let source_file_path = Path.(source_root / Path.v "src/std.ml") in
   match Fs.create_dir_all archive_parent with
   | Error err -> Error ("failed to create archive parent directory: " ^ IO.error_message err)
-  | Ok () -> (
+  | Ok () ->
       match (Fs.read manifest_path, Fs.read source_file_path) with
       | (Error err, _)
       | (_, Error err) ->
@@ -823,7 +819,6 @@ let create_test_archive = fun ~source_root ~archive_path ->
           IO.Buffer.add_string buffer (String.make ~len:(tar_block_size * 2) ~char:'\000');
           Fs.write (IO.Buffer.contents buffer) archive_path
           |> Result.map_err ~fn:(fun err -> "failed to write test archive: " ^ IO.error_message err)
-    )
 
 let gzip_file = fun ~src ~dst ->
   let parent =
@@ -923,7 +918,7 @@ let test_filesystem_registry_materializes_gzip_cached_release = fun _ctx ->
       in
       match create_test_archive ~source_root ~archive_path:plain_archive with
       | Error err -> Error err
-      | Ok () -> (
+      | Ok () ->
           match gzip_file ~src:plain_archive ~dst:archive_path with
           | Error err -> Error err
           | Ok () ->
@@ -958,8 +953,7 @@ let test_filesystem_registry_materializes_gzip_cached_release = fun _ctx ->
                   | (Ok _, Ok _) ->
                       Error "expected filesystem registry to extract a gzipped cached archive into src/"
                   | (Error err, _)
-                  | (_, Error err) -> Error (IO.error_message err)
-        )) with
+                  | (_, Error err) -> Error (IO.error_message err)) with
   | Error err -> Error (IO.error_message err)
   | Ok result -> result
 
@@ -987,7 +981,7 @@ let test_filesystem_registry_downloads_release_archive_on_cache_miss = fun _ctx 
       |> Result.expect ~msg:"expected source file to be written";
       match create_test_archive ~source_root ~archive_path:downloaded_archive with
       | Error err -> Error err
-      | Ok () -> (
+      | Ok () ->
           match Fs.read downloaded_archive with
           | Error err -> Error ("failed to read test archive: " ^ IO.error_message err)
           | Ok archive_body ->
@@ -1054,8 +1048,7 @@ let test_filesystem_registry_downloads_release_archive_on_cache_miss = fun _ctx 
                       then
                         Ok ()
                       else
-                        Error "unexpected registry download/materialization state"
-        )) with
+                        Error "unexpected registry download/materialization state") with
   | Error err -> Error (IO.error_message err)
   | Ok result -> result
 
@@ -1083,7 +1076,7 @@ let test_filesystem_registry_refetches_corrupt_cached_archive = fun _ctx ->
       |> Result.expect ~msg:"expected source file to be written";
       match create_test_archive ~source_root ~archive_path:downloaded_archive with
       | Error err -> Error err
-      | Ok () -> (
+      | Ok () ->
           match Fs.read downloaded_archive with
           | Error err -> Error ("failed to read test archive: " ^ IO.error_message err)
           | Ok archive_body ->
@@ -1154,8 +1147,7 @@ let test_filesystem_registry_refetches_corrupt_cached_archive = fun _ctx ->
                         Error "expected corrupt cache retry to fetch replacement archive"
                   | (Ok _, Ok _) -> Error "expected retried materialization to restore package root"
                   | (Error err, _)
-                  | (_, Error err) -> Error (IO.error_message err)
-        )) with
+                  | (_, Error err) -> Error (IO.error_message err)) with
   | Error err -> Error (IO.error_message err)
   | Ok result -> result
 
@@ -1277,7 +1269,7 @@ let test_registry_yank_release_posts_to_yank_route = fun _ctx ->
         ~package_name:"std"
         ~version:"0.1.0" with
       | Error err -> Error err
-      | Ok yanked_release -> (
+      | Ok yanked_release ->
           match List.reverse !requests with
           | [ request ] ->
               let has_header name value =
@@ -1300,8 +1292,7 @@ let test_registry_yank_release_posts_to_yank_route = fun _ctx ->
                 Ok ()
               else
                 Error "unexpected yank request or response"
-          | _ -> Error "expected exactly one yank request"
-        ))
+          | _ -> Error "expected exactly one yank request")
 
 let test_registry_riot_agent_env_override_wins_over_default_agent = fun _ctx ->
   with_riot_agent
@@ -1355,7 +1346,7 @@ let test_registry_riot_agent_env_override_wins_over_default_agent = fun _ctx ->
           let registry = Pkgs_ml.Registry.filesystem ~fetch cache in
           match Pkgs_ml.Registry.publish_artifact registry ~api_token:"root-secret" ~artifact with
           | Error err -> Error err
-          | Ok _ -> (
+          | Ok _ ->
               match List.reverse !requests with
               | [ request ] ->
                   let header =
@@ -1367,8 +1358,7 @@ let test_registry_riot_agent_env_override_wins_over_default_agent = fun _ctx ->
                     Ok ()
                   else
                     Error "expected RIOT_AGENT_HEADER override to win over default agent"
-              | _ -> Error "expected exactly one publish request"
-            )))
+              | _ -> Error "expected exactly one publish request"))
 
 let tests =
   Test.[

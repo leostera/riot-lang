@@ -137,7 +137,7 @@ curl http://localhost:4000/api/ip \
       (fun conn req ->
         let params = Conn.params conn in
         match Std.Collections.Proplist.get params ~key:"id" with
-        | Some id -> (
+        | Some id ->
             match find_user id with
             | Some (_, name, email) ->
                 let json =
@@ -162,7 +162,6 @@ curl http://localhost:4000/api/ip \
                   ~body:{|{"error":"User not found"}|}
                 |> Conn.with_header "content-type" "application/json"
                 |> Conn.send
-          )
         | None ->
             conn
             |> Conn.respond ~status:Net.Http.Status.BadRequest ~body:{|{"error":"Missing user ID"}|}
@@ -240,7 +239,7 @@ let main ~args:_ =
   in
   match Suri.config ~port:4_000 () with
   | Error errors -> Error (Failure (Suri.Config.errors_to_string errors))
-  | Ok config -> (
+  | Ok config ->
       match Suri.start_link ~config app with
       | Ok _supervisor ->
           Log.info "===========================================";
@@ -266,6 +265,5 @@ let main ~args:_ =
       | Error error ->
           Log.error "Failed to bind to port 4000";
           Error (Failure (Suri.start_error_to_string error))
-    )
 
 let () = Runtime.run ~main ~args:Env.args ()

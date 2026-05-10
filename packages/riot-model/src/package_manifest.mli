@@ -38,8 +38,4 @@ val from_toml:
 
 val error_message: error -> string
 
-val realize:
-  ?source_ignore_patterns:string list ->
-  intent:realization_intent ->
-  t ->
-  Package.t
+val realize: ?source_ignore_patterns:string list -> intent:realization_intent -> t -> Package.t

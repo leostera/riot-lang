@@ -116,13 +116,12 @@ let test_extract_writes_regular_files = fun _ctx ->
     (fun dir ->
       match Tar.extract (IO.Reader.from_string archive) ~into:dir with
       | Error _ -> Error "failed to extract tar archive"
-      | Ok () -> (
+      | Ok () ->
           let readme = Path.join (Path.join dir (Path.v "pkg")) (Path.v "README.md") in
           match Fs.read_to_string readme with
           | Ok content when content = "Hello from tar\n" -> Ok ()
           | Ok content -> Error ("unexpected extracted content: " ^ content)
-          | Error err -> Error ("failed to read extracted file: " ^ IO.error_message err)
-        ))
+          | Error err -> Error ("failed to read extracted file: " ^ IO.error_message err))
 
 let test_extract_allows_dot_root_directory_entry = fun _ctx ->
   let archive =
@@ -138,13 +137,12 @@ let test_extract_allows_dot_root_directory_entry = fun _ctx ->
     (fun dir ->
       match Tar.extract (IO.Reader.from_string archive) ~into:dir with
       | Error _ -> Error "failed to extract tar archive with dot root entry"
-      | Ok () -> (
+      | Ok () ->
           let extracted = Path.join (Path.join dir (Path.v "src")) (Path.v "std.ml") in
           match Fs.read_to_string extracted with
           | Ok "let answer = 42\n" -> Ok ()
           | Ok text -> Error ("unexpected extracted dot-root content: " ^ text)
-          | Error err -> Error ("failed to read dot-root extracted file: " ^ IO.error_message err)
-        ))
+          | Error err -> Error ("failed to read dot-root extracted file: " ^ IO.error_message err))
 
 let test_extract_rejects_path_traversal = fun _ctx ->
   let archive = build_archive [ ("../escape.txt", '0', 0o644L, "bad"); ] in
@@ -170,13 +168,12 @@ let test_extract_skips_pax_extended_headers = fun _ctx ->
     (fun dir ->
       match Tar.extract (IO.Reader.from_string archive) ~into:dir with
       | Error _ -> Error "failed to extract tar archive with pax header"
-      | Ok () -> (
+      | Ok () ->
           let extracted = Path.join (Path.join dir (Path.v "src")) (Path.v "std.ml") in
           match Fs.read_to_string extracted with
           | Ok "let answer = 42\n" -> Ok ()
           | Ok text -> Error ("unexpected extracted pax-header content: " ^ text)
-          | Error err -> Error ("failed to read pax-header extracted file: " ^ IO.error_message err)
-        ))
+          | Error err -> Error ("failed to read pax-header extracted file: " ^ IO.error_message err))
 
 let test_extract_skips_appledouble_entries = fun _ctx ->
   let archive =
@@ -194,14 +191,13 @@ let test_extract_skips_appledouble_entries = fun _ctx ->
     (fun dir ->
       match Tar.extract (IO.Reader.from_string archive) ~into:dir with
       | Error _ -> Error "failed to extract tar archive with AppleDouble entries"
-      | Ok () -> (
+      | Ok () ->
           let extracted = Path.join (Path.join dir (Path.v "src")) (Path.v "std.ml") in
           let skipped = Path.join (Path.join dir (Path.v "src")) (Path.v "._std.ml") in
           match (Fs.read_to_string extracted, Fs.exists skipped) with
           | (Ok "let answer = 42\n", Ok false) -> Ok ()
           | (Ok text, _) -> Error ("unexpected extracted AppleDouble content: " ^ text)
-          | (Error err, _) -> Error ("failed to read extracted file: " ^ IO.error_message err)
-        ))
+          | (Error err, _) -> Error ("failed to read extracted file: " ^ IO.error_message err))
 
 let tests =
   Test.[

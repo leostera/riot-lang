@@ -135,7 +135,7 @@ let handle_deps = fun sub_matches ->
   | Error _err ->
       Log.error ("Error reading file " ^ file);
       System.exit 1
-  | Ok source -> (
+  | Ok source ->
       let result = Syn.Parser.parse ~filename:(Path.v file) (slice_of_file_contents source) in
       match Syn.Deps.from_parse_result result with
       | Ok deps ->
@@ -153,7 +153,6 @@ let handle_deps = fun sub_matches ->
                   Syn.DiagnosticReporter.print ~file ~source diagnostics
             );
           System.exit 1
-    )
 
 let handle_explain = fun sub_matches ->
   let error_code =
@@ -223,7 +222,7 @@ let main ~args =
       ArgParser.print_error err;
       ArgParser.print_help cmd;
       Error (Failure "invalid CLI arguments")
-  | Ok matches -> (
+  | Ok matches ->
       match ArgParser.get_subcommand matches with
       | Some ("tokenize", sub_matches) ->
           handle_token_stream sub_matches;
@@ -240,6 +239,5 @@ let main ~args =
       | _ ->
           ArgParser.print_help cmd;
           Error (Failure "missing subcommand")
-    )
 
 let () = Runtime.run ~main ~args:Env.args ()

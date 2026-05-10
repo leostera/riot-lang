@@ -26,7 +26,7 @@ let test_udp_socket_send_to_and_recv_from = fun _ctx ->
           Net.UdpSocket.close client;
           Net.UdpSocket.close server;
           Error ("client send_to failed: " ^ string_of_udp_error err)
-      | Ok _ -> (
+      | Ok _ ->
           match Net.UdpSocket.recv_from
             server
             server_buffer
@@ -60,7 +60,7 @@ let test_udp_socket_send_to_and_recv_from = fun _ctx ->
                     Net.UdpSocket.close client;
                     Net.UdpSocket.close server;
                     Error ("server send_to failed: " ^ string_of_udp_error err)
-                | Ok _ -> (
+                | Ok _ ->
                     match Net.UdpSocket.recv_from
                       client
                       client_buffer
@@ -90,8 +90,6 @@ let test_udp_socket_send_to_and_recv_from = fun _ctx ->
                           Error "client recv_from should report the server port"
                         else
                           Ok ()
-                  )
-        )
 
 let test_udp_socket_connect_supports_send_and_recv = fun _ctx ->
   match (bind_socket (local_udp_addr 0), bind_socket (local_udp_addr 0)) with
@@ -108,13 +106,13 @@ let test_udp_socket_connect_supports_send_and_recv = fun _ctx ->
           Net.UdpSocket.close client;
           Net.UdpSocket.close server;
           Error ("udp connect failed: " ^ string_of_udp_error err)
-      | (Ok (), Ok ()) -> (
+      | (Ok (), Ok ()) ->
           match Net.UdpSocket.send client (Bytes.from_string "hello") () with
           | Error err ->
               Net.UdpSocket.close client;
               Net.UdpSocket.close server;
               Error ("connected send failed: " ^ string_of_udp_error err)
-          | Ok _ -> (
+          | Ok _ ->
               match Net.UdpSocket.recv
                 server
                 server_buffer
@@ -144,7 +142,7 @@ let test_udp_socket_connect_supports_send_and_recv = fun _ctx ->
                         Net.UdpSocket.close client;
                         Net.UdpSocket.close server;
                         Error ("connected reply send failed: " ^ string_of_udp_error err)
-                    | Ok _ -> (
+                    | Ok _ ->
                         match Net.UdpSocket.recv
                           client
                           client_buffer
@@ -168,9 +166,6 @@ let test_udp_socket_connect_supports_send_and_recv = fun _ctx ->
                               Ok ()
                             else
                               Error "connected reply recv returned the wrong payload"
-                      )
-            )
-        )
 
 let tests =
   Test.[

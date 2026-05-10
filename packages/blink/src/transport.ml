@@ -64,7 +64,7 @@ let connect = fun uri ->
   | Error (Net.Addr.System_error io_err) -> Error (Error.NetError (Net.System_error io_err))
   | Error (Net.Addr.Invalid_port_number _ | Net.Addr.Invalid_format _) ->
       Error (Error.NetError (Net.System_error IO.Invalid_argument))
-  | Ok addr -> (
+  | Ok addr ->
       match Net.Uri.scheme uri with
       | Some "https"
       | Some "wss" -> Tls.connect addr uri
@@ -72,4 +72,3 @@ let connect = fun uri ->
       | Some "ws"
       | None -> Tcp.connect addr uri
       | Some _ -> Tcp.connect addr uri
-    )

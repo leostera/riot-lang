@@ -17,19 +17,16 @@ type overrides = {
   workspace_root: Path.t option;
 }
 
-let no_overrides = {
-  target_dir = None;
-  workspace_root = None;
-}
+let no_overrides = { target_dir = None; workspace_root = None }
 
 let with_target_dir = fun target_dir -> { no_overrides with target_dir = Some target_dir }
 
-let effective_root = fun ~(overrides: overrides) root ->
+let effective_root = fun ~(overrides:overrides) root ->
   match overrides.workspace_root with
   | Some root -> root
   | None -> root
 
-let effective_target_dir = fun ~(overrides: overrides) target_dir ->
+let effective_target_dir = fun ~(overrides:overrides) target_dir ->
   match overrides.target_dir with
   | Some target_dir -> Some target_dir
   | None -> target_dir

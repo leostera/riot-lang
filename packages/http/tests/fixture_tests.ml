@@ -317,18 +317,18 @@ let fixture_request_json = fun input ->
   match Http1.Request.parse input with
   | Http1.Common.Done { value; _ } -> Ok (request_json value)
   | Http1.Common.Error error -> Error (Http1.Common.error_to_string error)
-  | Http1.Common.Need_more -> (
+  | Http1.Common.Need_more ->
       match find_header_end input with
       | None -> Error "incomplete HTTP/1 request fixture"
-      | Some header_end -> (
+      | Some header_end ->
           let header_block = String.sub input ~offset:0 ~len:header_end in
           let body =
             String.sub input ~offset:(header_end + 4) ~len:(String.length input - header_end - 4)
           in
           match String.split ~by:"\r\n" header_block with
-          | request_line :: header_lines -> (
+          | request_line :: header_lines ->
               match String.split ~by:" " request_line with
-              | method_ :: target :: version_parts -> (
+              | method_ :: target :: version_parts ->
                   let version = String.concat " " version_parts in
                   let* headers = parse_header_lines header_lines in
                   Ok (Json.obj
@@ -339,12 +339,8 @@ let fixture_request_json = fun input ->
                       ("headers", headers_json headers);
                       ("body", Json.string body);
                     ])
-                )
               | _ -> Error ("invalid HTTP/1 request line fixture: " ^ request_line)
-            )
           | [] -> Error "empty HTTP/1 request fixture"
-        )
-    )
 
 let fixture_response_json = fun input ->
   match Http1.Response.parse input with

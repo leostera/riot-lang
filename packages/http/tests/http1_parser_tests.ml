@@ -64,7 +64,7 @@ let test_content_length_errors_are_typed = fun _ctx ->
       | EmptyContentLength -> true
       | _ -> false) with
   | Error _ as error -> error
-  | Ok () -> (
+  | Ok () ->
       match expect
         "-1"
         (fun __tmp1 ->
@@ -72,7 +72,7 @@ let test_content_length_errors_are_typed = fun _ctx ->
           | NegativeContentLength -> true
           | _ -> false) with
       | Error _ as error -> error
-      | Ok () -> (
+      | Ok () ->
           match expect
             "12x"
             (fun __tmp1 ->
@@ -87,15 +87,13 @@ let test_content_length_errors_are_typed = fun _ctx ->
                   match __tmp1 with
                   | ContentLengthOverflow -> true
                   | _ -> false)
-        )
-    )
 
 (* HTTP/1 Request Tests *)
 
 let test_request_simple_get = fun _ctx ->
   let req = "GET /path HTTP/1.1\r\nHost: example.com\r\n\r\n" in
   match Http1.Request.parse req with
-  | Done { value = parsed; _ } -> (
+  | Done { value = parsed; _ } ->
       let method_ =
         NetRequest.method_ parsed
         |> NetMethod.to_string
@@ -114,7 +112,6 @@ let test_request_simple_get = fun _ctx ->
         | Some host when host = "example.com" -> Result.Ok ()
         | Some host -> Result.Error ("Expected Host: example.com, got " ^ host)
         | None -> Result.Error "Expected Host header"
-    )
   | Need_more -> Result.Error "Unexpected Need_more"
   | Error e -> Result.Error ("Parse error: " ^ error_to_string e)
 
@@ -643,12 +640,11 @@ let test_request_accepts_exact_max_headers = fun _ctx ->
       ~body:""
   in
   match Http1.Request.parse ~max_headers:2 req with
-  | Done { value = parsed; remaining = "" } -> (
+  | Done { value = parsed; remaining = "" } ->
       match NetRequest.get_header parsed "x-test" with
       | Some "ok" -> Result.Ok ()
       | Some value -> Result.Error ("Expected X-Test: ok, got " ^ value)
       | None -> Result.Error "Expected X-Test header"
-    )
   | Done _ -> Result.Error "Expected empty remaining bytes"
   | Need_more -> Result.Error "Unexpected Need_more"
   | Error error -> Result.Error ("Parse error: " ^ error_to_string error)

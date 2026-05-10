@@ -203,11 +203,10 @@ let resolve_module_path = fun lookup ~current_path ~target_path ->
   let rec first_match = fun __tmp1 ->
     match __tmp1 with
     | [] -> None
-    | module_path :: rest -> (
+    | module_path :: rest ->
         match find_by_module_path lookup module_path with
         | Some source -> Some source
         | None -> first_match rest
-      )
   in
   let qualified_match =
     match target_path with
@@ -218,10 +217,10 @@ let resolve_module_path = fun lookup ~current_path ~target_path ->
   in
   match qualified_match with
   | Some source -> Some source
-  | None -> (
+  | None ->
       match first_match (candidate_module_paths ~current_path target_path) with
       | Some source -> Some source
-      | None -> (
+      | None ->
           match List.reverse target_path with
           | [] -> None
           | target_name :: _ ->
@@ -232,8 +231,6 @@ let resolve_module_path = fun lookup ~current_path ~target_path ->
               | Some source -> Some source
               | None ->
                   List.find lookup.sources ~fn:(fun source -> source.module_name = target_name)
-        )
-    )
 
 let source_signature = fun sources ->
   let state = Crypto.Sha256.create () in

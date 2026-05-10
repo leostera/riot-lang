@@ -100,7 +100,7 @@ val execute_action:
   store:Riot_store.Store.t ->
   prepared_execution:prepared_execution ->
   build_ctx:Build_ctx.t ->
-  completed:(Graph.SimpleGraph.Node_id.t, Action_executor.execution_result) HashMap.t ->
+  completed:(Graph.SimpleGraph.Node_id.t, Action_executor.execution_result) ConcurrentHashMap.t ->
   Action_node.t ->
   Action_executor.execution_result
 
@@ -108,6 +108,6 @@ val finalize_execution:
   workspace:Workspace.t ->
   store:Riot_store.Store.t ->
   prepared_execution:prepared_execution ->
-  completed:(Graph.SimpleGraph.Node_id.t, Action_executor.execution_result) HashMap.t ->
+  completed:(Graph.SimpleGraph.Node_id.t, Action_executor.execution_result) ConcurrentHashMap.t ->
   build_ctx:Build_ctx.t ->
   detailed_result

@@ -33,7 +33,7 @@ let test_udp_server_serves_one_datagram = fun _ctx ->
   in
   match Net.UdpServer.bind (local_udp_addr 0) ~handler with
   | Error err -> Error ("UdpServer.bind failed: " ^ string_of_udp_server_error err)
-  | Ok server -> (
+  | Ok server ->
       let _server_pid =
         Runtime.spawn
           (fun () ->
@@ -59,7 +59,7 @@ let test_udp_server_serves_one_datagram = fun _ctx ->
               Net.UdpSocket.close client;
               Net.UdpServer.close server;
               Error ("client send_to server failed: " ^ string_of_udp_error err)
-          | Ok _ -> (
+          | Ok _ ->
               match Runtime.receive
                 ~selector:(fun __tmp1 ->
                   match __tmp1 with
@@ -70,7 +70,7 @@ let test_udp_server_serves_one_datagram = fun _ctx ->
               | payload when not (String.equal payload "ping") ->
                   Net.UdpSocket.close client;
                   Error "UdpServer handler received the wrong payload"
-              | _ -> (
+              | _ ->
                   match Net.UdpSocket.recv_from
                     client
                     buffer
@@ -91,9 +91,6 @@ let test_udp_server_serves_one_datagram = fun _ctx ->
                         Ok ()
                       else
                         Error "UdpServer reply payload was incorrect"
-                )
-            )
-    )
 
 let tests =
   Test.[ case "UdpServer bind and serve handle a datagram" test_udp_server_serves_one_datagram ]

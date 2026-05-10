@@ -120,7 +120,7 @@ let update = fun event model ->
   | Event.KeyDown (Event.End, _) ->
       let current_page = List.length model.pages - 1 in
       ({ model with current_page }, Command.Noop)
-  | Event.KeyDown (Event.Key s, _) when String.length s = 1 -> (
+  | Event.KeyDown (Event.Key s, _) when String.length s = 1 ->
       match String.get_unchecked s ~at:0 with
       | '1' .. '5' as c ->
           let page = Char.code c - Char.code '0' - 1 in
@@ -128,7 +128,6 @@ let update = fun event model ->
           let current_page = min max_page (max 0 page) in
           ({ model with current_page }, Command.Noop)
       | _ -> (model, Command.Noop)
-    )
   | _ -> (model, Command.Noop)
 
 (* View *)

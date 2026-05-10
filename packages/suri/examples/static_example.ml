@@ -80,7 +80,7 @@ let main ~args:_ =
   let port = 8_080 in
   match Suri.config ~port () with
   | Error errors -> Error (Failure (Suri.Config.errors_to_string errors))
-  | Ok config -> (
+  | Ok config ->
       Log.info "===========================================";
       Log.info "🎉 Static Files Middleware Example";
       Log.info "===========================================";
@@ -118,6 +118,5 @@ let main ~args:_ =
       | Error error ->
           Log.error "Failed to bind to port 8080";
           Error (Failure (Suri.start_error_to_string error))
-    )
 
 let () = Runtime.run ~main ~args:Env.args ()

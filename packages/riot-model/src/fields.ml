@@ -9,10 +9,9 @@ let get_first = fun keys fields ->
   let rec loop = fun __tmp1 ->
     match __tmp1 with
     | [] -> None
-    | key :: rest -> (
+    | key :: rest ->
         match get key fields with
         | Some _ as value -> value
         | None -> loop rest
-      )
   in
   loop keys

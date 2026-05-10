@@ -209,7 +209,7 @@ let ansi_cyan = "\027[36m"
 let env_value_is_truthy = fun __tmp1 ->
   match __tmp1 with
   | None -> false
-  | Some value -> (
+  | Some value ->
       match String.lowercase_ascii value with
       | ""
       | "0"
@@ -217,7 +217,6 @@ let env_value_is_truthy = fun __tmp1 ->
       | "no"
       | "off" -> false
       | _ -> true
-    )
 
 let env_value_disables_color = fun __tmp1 ->
   match __tmp1 with
@@ -287,7 +286,7 @@ let resolve_paths = fun ~(ctx:Test_context.t) ->
         | None -> Path.add_extension (Path.remove_extension fixture.path) ~ext:"expected"
       in
       Ok { approved; pending = append_path_suffix approved ".new" }
-  | None -> (
+  | None ->
       match (ctx.workspace_root, ctx.package_name) with
       | (Some workspace_root, Some package_name) ->
           let suite_dir = sanitize_path_component ctx.suite_name in
@@ -306,7 +305,6 @@ let resolve_paths = fun ~(ctx:Test_context.t) ->
           Error "Snapshot assertions require ctx.workspace_root to resolve external snapshot storage."
       | (_, None) ->
           Error "Snapshot assertions require ctx.package_name to resolve external snapshot storage."
-    )
 
 let mismatch_message = fun ~kind ~approved ~pending ~expected ~actual ->
   String.concat

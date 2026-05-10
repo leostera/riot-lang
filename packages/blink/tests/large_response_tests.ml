@@ -67,7 +67,7 @@ let test_large_json_response = fun _ctx ->
                 | Ok json ->
                     (* Verify it has expected structure for OpenAI API *)
                     match json with
-                    | Data.Json.Object fields -> (
+                    | Data.Json.Object fields ->
                         match fields
                         |> List.find ~fn:(fun (key, _value) -> key = "choices") with
                         | Some (_key, Data.Json.Array _choices) ->
@@ -77,7 +77,6 @@ let test_large_json_response = fun _ctx ->
                         | None ->
                             (* Some error responses may not have choices, which is OK *)
                             Ok ()
-                      )
                     | _ -> Error "Response is not a JSON object"
 
 let test_streamed_response = fun _ctx ->

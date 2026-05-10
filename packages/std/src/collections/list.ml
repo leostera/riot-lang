@@ -95,11 +95,10 @@ let filter_map = fun values ~fn ->
   let rec loop acc = fun __tmp1 ->
     match __tmp1 with
     | [] -> reverse acc
-    | value :: rest -> (
+    | value :: rest ->
         match fn value with
         | Some mapped -> loop (mapped :: acc) rest
         | None -> loop acc rest
-      )
   in
   loop [] values
 

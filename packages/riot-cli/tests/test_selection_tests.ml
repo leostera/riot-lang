@@ -165,7 +165,7 @@ let test_extra_args_include_policy_flags = fun _ctx ->
 let test_test_command_parses_repeated_packages_and_filter = fun _ctx ->
   match parse_cli [ "riot"; "test"; "-p"; "std"; "-p"; "syn"; "-f"; "probe"; ] with
   | Error err -> Error ("expected test args to parse: " ^ err)
-  | Ok matches -> (
+  | Ok matches ->
       match ArgParser.get_subcommand matches with
       | Some ("test", test_matches) ->
           Test.assert_equal
@@ -177,7 +177,6 @@ let test_test_command_parses_repeated_packages_and_filter = fun _ctx ->
           Ok ()
       | Some (name, _) -> Error ("expected test command, got: " ^ name)
       | None -> Error "expected top-level subcommand"
-    )
 
 let test_bench_command_parses_repeated_packages_and_filter = fun _ctx ->
   match parse_cli
@@ -198,7 +197,7 @@ let test_bench_command_parses_repeated_packages_and_filter = fun _ctx ->
       "25";
     ] with
   | Error err -> Error ("expected bench args to parse: " ^ err)
-  | Ok matches -> (
+  | Ok matches ->
       match ArgParser.get_subcommand matches with
       | Some ("bench", bench_matches) ->
           Test.assert_equal
@@ -215,7 +214,6 @@ let test_bench_command_parses_repeated_packages_and_filter = fun _ctx ->
           Ok ()
       | Some (name, _) -> Error ("expected bench command, got: " ^ name)
       | None -> Error "expected top-level subcommand"
-    )
 
 let tests =
   Test.[

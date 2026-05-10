@@ -106,7 +106,7 @@ let test_snapshot_matching_approved_passes =
           let approved = snapshot_path workspace_root "matching_approved" in
           match Fs.create_dir_all (Path.dirname approved) with
           | Error err -> Error (IO.error_message err)
-          | Ok () -> (
+          | Ok () ->
               match Fs.write "matching text\n" approved with
               | Error err -> Error (IO.error_message err)
               | Ok () ->
@@ -122,8 +122,7 @@ let test_snapshot_matching_approved_passes =
                       if pending_exists then
                         Error "expected no pending snapshot for matching approved content"
                       else
-                        Ok ()
-            )))
+                        Ok ()))
 
 let test_snapshot_mismatch_writes_pending =
   Test.case
@@ -135,7 +134,7 @@ let test_snapshot_mismatch_writes_pending =
           let approved = snapshot_path workspace_root "mismatch_snapshot" in
           match Fs.create_dir_all (Path.dirname approved) with
           | Error err -> Error (IO.error_message err)
-          | Ok () -> (
+          | Ok () ->
               match Fs.write "old text\n" approved with
               | Error err -> Error (IO.error_message err)
               | Ok () ->
@@ -164,8 +163,7 @@ let test_snapshot_mismatch_writes_pending =
                         Error ("expected mismatch message to include a unified diff header, got "
                         ^ msg)
                       else
-                        Ok ()
-            )))
+                        Ok ()))
 
 let test_snapshot_existing_pending_is_refreshed_before_pending_failure =
   Test.case
@@ -178,10 +176,10 @@ let test_snapshot_existing_pending_is_refreshed_before_pending_failure =
           let pending = pending_snapshot_path approved in
           match Fs.create_dir_all (Path.dirname approved) with
           | Error err -> Error (IO.error_message err)
-          | Ok () -> (
+          | Ok () ->
               match Fs.write "current text\n" approved with
               | Error err -> Error (IO.error_message err)
-              | Ok () -> (
+              | Ok () ->
                   match Fs.write "stale pending text\n" pending with
                   | Error err -> Error (IO.error_message err)
                   | Ok () ->
@@ -201,9 +199,7 @@ let test_snapshot_existing_pending_is_refreshed_before_pending_failure =
                           then
                             Error ("expected pending-review failure, got " ^ msg)
                           else
-                            Ok ()
-                )
-            )))
+                            Ok ()))
 
 let test_snapshot_existing_pending_mismatch_is_rewritten_and_reports_diff =
   Test.case
@@ -216,10 +212,10 @@ let test_snapshot_existing_pending_mismatch_is_rewritten_and_reports_diff =
           let pending = pending_snapshot_path approved in
           match Fs.create_dir_all (Path.dirname approved) with
           | Error err -> Error (IO.error_message err)
-          | Ok () -> (
+          | Ok () ->
               match Fs.write "approved text\n" approved with
               | Error err -> Error (IO.error_message err)
-              | Ok () -> (
+              | Ok () ->
                   match Fs.write "old pending text\n" pending with
                   | Error err -> Error (IO.error_message err)
                   | Ok () ->
@@ -239,9 +235,7 @@ let test_snapshot_existing_pending_mismatch_is_rewritten_and_reports_diff =
                           else if not (String.contains msg "Diff:") then
                             Error ("expected mismatch failure to include diff, got " ^ msg)
                           else
-                            Ok ()
-                )
-            )))
+                            Ok ()))
 
 let test_inline_snapshot_mismatch_reports_error =
   Test.case
@@ -326,7 +320,7 @@ let test_json_snapshot_canonicalizes_object_keys =
           let approved = snapshot_path workspace_root "json_snapshot" in
           match Fs.create_dir_all (Path.dirname approved) with
           | Error err -> Error (IO.error_message err)
-          | Ok () -> (
+          | Ok () ->
               match Fs.write
                 (
                   Data.Json.obj [ ("a", Data.Json.int 1); ("b", Data.Json.int 2); ]
@@ -338,8 +332,7 @@ let test_json_snapshot_canonicalizes_object_keys =
                   let ctx = make_ctx ~test_name:"json_snapshot" workspace_root in
                   Test.Snapshot.assert_json
                     ~ctx
-                    ~actual:(Data.Json.obj [ ("b", Data.Json.int 2); ("a", Data.Json.int 1); ])
-            )))
+                    ~actual:(Data.Json.obj [ ("b", Data.Json.int 2); ("a", Data.Json.int 1); ])))
 
 let test_inline_json_snapshot_canonicalizes_object_keys =
   Test.case
@@ -360,7 +353,7 @@ let test_json_snapshot_emits_json_progress =
           let approved = snapshot_path workspace_root "json_progress" in
           match Fs.create_dir_all (Path.dirname approved) with
           | Error err -> Error (IO.error_message err)
-          | Ok () -> (
+          | Ok () ->
               match Fs.write
                 (
                   Data.Json.obj [ ("a", Data.Json.int 1); ("b", Data.Json.int 2); ]
@@ -387,8 +380,7 @@ let test_json_snapshot_emits_json_progress =
                           Test.Context.SnapshotAssertionMatched { format = Test.Context.Json; _ };
                         ] -> Ok ()
                       | _ ->
-                          Error "expected external JSON snapshot progress events to use json format"
-            )))
+                          Error "expected external JSON snapshot progress events to use json format"))
 
 let test_inline_json_snapshot_emits_json_progress =
   Test.case
@@ -430,7 +422,7 @@ let test_fixture_snapshot_uses_explicit_snapshot_path =
           in
           match Fs.create_dir_all (Path.dirname fixture_path) with
           | Error err -> Error (IO.error_message err)
-          | Ok () -> (
+          | Ok () ->
               match Fs.write "approved fixture snapshot\n" approved with
               | Error err -> Error (IO.error_message err)
               | Ok () ->
@@ -445,8 +437,7 @@ let test_fixture_snapshot_uses_explicit_snapshot_path =
                   let ctx =
                     make_ctx ~fixture ~test_name:"fixture_explicit_snapshot" workspace_root
                   in
-                  Test.Snapshot.assert_text ~ctx ~actual:"approved fixture snapshot\n"
-            )))
+                  Test.Snapshot.assert_text ~ctx ~actual:"approved fixture snapshot\n"))
 
 let tests = [
   test_snapshot_missing_approved_writes_pending;

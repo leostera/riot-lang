@@ -4,23 +4,21 @@ open Result.Syntax
 let postgres_url () =
   match Env.get Env.String ~var:"POSTGRES_TEST_URL" with
   | Some url -> Some url
-  | None -> (
+  | None ->
       match Env.get Env.String ~var:"MULE_TEST_POSTGRES_URL" with
       | Some url -> Some url
       | None -> Env.get Env.String ~var:"HYPEKIT_POSTGRES_URL"
-    )
 
 let with_connection url fn =
   match Postgres.Config.from_string url with
   | Error message -> Error ("invalid postgres test url: " ^ message)
-  | Ok config -> (
+  | Ok config ->
       match Postgres.Driver.connect config with
       | Error error -> Error (Postgres.Driver.error_to_string error)
       | Ok connection ->
           let result = fn connection in
           Postgres.Driver.close connection;
           result
-    )
 
 let query_one connection sql params =
   let* statement =

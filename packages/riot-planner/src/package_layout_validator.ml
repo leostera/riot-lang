@@ -60,7 +60,9 @@ let concrete_library_reachable_set = fun library_roots module_graph ->
               | None -> ())
       | None -> ()
   in
-  let () = List.for_each library_roots ~fn:(fun (node: Module_node.t G.node) -> visit (G.id node)) in
+  let () =
+    List.for_each library_roots ~fn:(fun (node: Module_node.t G.node) -> visit (G.id node))
+  in
   reachable
 
 let binary_source_nodes = fun ~source_path nodes ->

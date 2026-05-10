@@ -65,13 +65,12 @@ let plan_kernel_runtime_graphs = fun ~workspace ~store ~build_ctx ->
   match find_package_by_name workspace "kernel" with
   | None -> Error "kernel package not found in workspace"
   | Some package ->
-      let key =
-        ({
-          package = package.name;
-          artifact = Riot_planner.Build_unit.Library;
-          target = Riot_model.Target.host ();
-          profile = Riot_model.Profile.debug;
-        }:Riot_planner.Build_unit.key)
+      let key = ({
+        package = package.name;
+        artifact = Riot_planner.Build_unit.Library;
+        target = Riot_model.Target.host ();
+        profile = Riot_model.Profile.debug;
+      }: Riot_planner.Build_unit.key)
       in
       let unit =
         Riot_planner.Build_unit.from_artifact

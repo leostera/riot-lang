@@ -43,7 +43,8 @@ let make_workspace = fun ~root ~packages -> Workspace.make_realized ~root ~packa
 
 let all_dev_artifacts = Package.{ tests = true; examples = true; benches = true }
 
-let build_unit_request = fun ?(roots = None) ?(kind = Riot_planner.Build_unit_graph.Runtime) _workspace ->
+let build_unit_request = fun
+  ?(roots = None) ?(kind = Riot_planner.Build_unit_graph.Runtime) _workspace ->
   Riot_planner.Build_unit_graph.{
     roots;
     targets = [ Target.host () ];
@@ -235,13 +236,12 @@ let make_package_fixture = fun root label ->
       ()
   in
   let runtime_package = Package.for_scope Package.Normal package in
-  let unit_key =
-    ({
-      package = runtime_package.name;
-      artifact = Riot_planner.Build_unit.Library;
-      target = Target.host ();
-      profile = Profile.debug;
-    }:Riot_planner.Build_unit.key)
+  let unit_key = ({
+    package = runtime_package.name;
+    artifact = Riot_planner.Build_unit.Library;
+    target = Target.host ();
+    profile = Profile.debug;
+  }: Riot_planner.Build_unit.key)
   in
   {
     workspace;

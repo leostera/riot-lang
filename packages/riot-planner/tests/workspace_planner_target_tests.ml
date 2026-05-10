@@ -79,7 +79,7 @@ let plan_build_units = fun workspace request ->
   let graph = Build_unit_graph.create workspace request in
   match graph with
   | Error _ as err -> err
-  | Ok graph -> (
+  | Ok graph ->
       match Build_unit_graph.topological_sort graph with
       | Ok units -> Ok (graph, units)
       | Error cycle ->
@@ -91,7 +91,6 @@ let plan_build_units = fun workspace request ->
           Error (Build_unit_graph.MissingPackages {
             missing = [ Root (package_name ("cycle:" ^ cycle_message)) ];
           })
-    )
 
 let package_names = fun units ->
   units
@@ -185,9 +184,7 @@ let plan_multiple_packages_includes_union_of_dependencies = fun _ctx ->
         make_package ~dependencies:[ "std" ] "unrelated";
       ]
   in
-  match plan_build_units
-    workspace
-    (request ~roots:(List.map [ "app"; "tool" ] ~fn:package_name) ()) with
+  match plan_build_units workspace (request ~roots:(List.map [ "app"; "tool" ] ~fn:package_name) ()) with
   | Error _ -> Error "expected successful multi-package plan"
   | Ok (_graph, units) ->
       Test.assert_equal
@@ -202,7 +199,9 @@ let plan_unknown_package_reports_available_packages = fun _ctx ->
   match plan_build_units workspace (request ~roots:[ package_name "missing" ] ()) with
   | Ok _ -> Error "expected missing root package"
   | Error (Build_unit_graph.MissingPackages { missing }) ->
-      Test.assert_equal ~expected:[ "root:missing" ] ~actual:(List.map missing ~fn:missing_to_string);
+      Test.assert_equal
+        ~expected:[ "root:missing" ]
+        ~actual:(List.map missing ~fn:missing_to_string);
       Ok ()
 
 let plan_multiple_unknown_packages_reports_all_missing_names = fun _ctx ->
@@ -228,7 +227,9 @@ let plan_reports_missing_dependencies_before_sorting = fun _ctx ->
   match plan_build_units workspace (request ()) with
   | Ok _ -> Error "expected missing dependency"
   | Error (Build_unit_graph.MissingPackages { missing }) ->
-      Test.assert_equal ~expected:[ "app->missing-lib" ] ~actual:(List.map missing ~fn:missing_to_string);
+      Test.assert_equal
+        ~expected:[ "app->missing-lib" ]
+        ~actual:(List.map missing ~fn:missing_to_string);
       Ok ()
 
 let plan_runtime_target_does_not_pull_build_dependency_runtime_cycle = fun _ctx ->
@@ -244,9 +245,7 @@ let plan_runtime_target_does_not_pull_build_dependency_runtime_cycle = fun _ctx 
   match plan_build_units workspace (request ~roots:[ package_name "app" ] ()) with
   | Error _ -> Error "expected runtime roots to ignore build-dependency cycle"
   | Ok (_graph, units) ->
-      Test.assert_equal
-        ~expected:[ "core:runtime"; "app:runtime" ]
-        ~actual:(package_keys units);
+      Test.assert_equal ~expected:[ "core:runtime"; "app:runtime" ] ~actual:(package_keys units);
       Ok ()
 
 let plan_targeted_runtime_ignores_unrelated_missing_dependencies = fun _ctx ->
@@ -263,7 +262,9 @@ let plan_targeted_runtime_ignores_unrelated_missing_dependencies = fun _ctx ->
       Error ("expected targeted runtime plan to ignore unrelated missing dependencies, got "
       ^ String.concat ", " (List.map missing ~fn:missing_to_string))
   | Ok (_graph, units) ->
-      Test.assert_equal ~expected:(List.map [ "app"; "std" ] ~fn:package_name) ~actual:(package_names units);
+      Test.assert_equal
+        ~expected:(List.map [ "app"; "std" ] ~fn:package_name)
+        ~actual:(package_names units);
       Ok ()
 
 let plan_all_dev_keeps_dependency_packages_runtime_scoped = fun _ctx ->
@@ -271,15 +272,10 @@ let plan_all_dev_keeps_dependency_packages_runtime_scoped = fun _ctx ->
     make_workspace
       [
         make_package ~workspace_member:false ~dev_dependencies:[ "propane" ] "std";
-        make_package
-          ~dependencies:[ "std" ]
-          ~binaries:[ test_binary "app_tests" ]
-          "app";
+        make_package ~dependencies:[ "std" ] ~binaries:[ test_binary "app_tests" ] "app";
       ]
   in
-  match plan_build_units
-    workspace
-    (request ~kind:(Build_unit_graph.Dev default_dev_artifacts) ()) with
+  match plan_build_units workspace (request ~kind:(Build_unit_graph.Dev default_dev_artifacts) ()) with
   | Error (Build_unit_graph.MissingPackages { missing }) ->
       Error ("expected dependency dev dependencies to stay out of the build plan, got missing: "
       ^ String.concat ", " (List.map missing ~fn:missing_to_string))

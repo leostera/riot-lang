@@ -88,11 +88,10 @@ let front = fun t ->
     let head = Atomic.get t.head in
     match Atomic.get head.next with
     | None -> None
-    | Some next_node -> (
+    | Some next_node ->
         match next_node.value with
         | Some value -> Some value
         | None -> loop ()
-      )
   in
   loop ()
 

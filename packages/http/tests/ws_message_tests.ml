@@ -28,48 +28,42 @@ let continuation = fun ?(fin = true) payload -> Frame.continuation ~fin payload
 let test_unfragmented_text_emits_message = fun _ctx ->
   match make_state () with
   | Error error -> Error error
-  | Ok state -> (
+  | Ok state ->
       match handle state (Frame.text "hello") with
       | Ok (_, Some (Message.DataMessage { opcode = Message.Text; payload = "hello" })) -> Ok ()
       | Ok _ -> Error "Expected text data message"
       | Error error -> Error error
-    )
 
 let test_fragmented_text_emits_after_final_continuation = fun _ctx ->
   match make_state () with
   | Error error -> Error error
-  | Ok state -> (
+  | Ok state ->
       match handle state (text_fragment "hel") with
       | Error error -> Error error
       | Ok (state, Some _) -> Error "Fragment start emitted a message"
-      | Ok (state, None) -> (
+      | Ok (state, None) ->
           match handle state (continuation "lo") with
           | Ok (_, Some (Message.DataMessage { opcode = Message.Text; payload = "hello" })) -> Ok ()
           | Ok _ -> Error "Expected completed fragmented text message"
           | Error error -> Error error
-        )
-    )
 
 let test_control_frame_allowed_during_fragmented_message = fun _ctx ->
   match make_state () with
   | Error error -> Error error
-  | Ok state -> (
+  | Ok state ->
       match handle state (text_fragment "hel") with
       | Error error -> Error error
       | Ok (state, Some _) -> Error "Fragment start emitted a message"
-      | Ok (state, None) -> (
+      | Ok (state, None) ->
           match handle state (Frame.ping ()) with
           | Error error -> Error error
-          | Ok (state, Some (Message.ControlFrame { Frame.opcode = Frame.Ping; _ })) -> (
+          | Ok (state, Some (Message.ControlFrame { Frame.opcode = Frame.Ping; _ })) ->
               match handle state (continuation "lo") with
               | Ok (_, Some (Message.DataMessage { opcode = Message.Text; payload = "hello" })) ->
                   Ok ()
               | Ok _ -> Error "Expected text message after ping"
               | Error error -> Error error
-            )
           | Ok _ -> Error "Expected ping control event"
-        )
-    )
 
 let test_continuation_without_fragment_fails = fun _ctx ->
   match make_state () with
@@ -79,7 +73,7 @@ let test_continuation_without_fragment_fails = fun _ctx ->
 let test_data_frame_while_fragmented_fails = fun _ctx ->
   match make_state () with
   | Error error -> Error error
-  | Ok state -> (
+  | Ok state ->
       match handle state (text_fragment "hel") with
       | Error error -> Error error
       | Ok (state, Some _) -> Error "Fragment start emitted a message"
@@ -88,12 +82,11 @@ let test_data_frame_while_fragmented_fails = fun _ctx ->
             state
             (Frame.text "second")
             (Message.DataFrameWhileFragmented { opcode = Message.Text })
-    )
 
 let test_invalid_fragmented_text_utf8_fails_on_completion = fun _ctx ->
   match make_state () with
   | Error error -> Error error
-  | Ok state -> (
+  | Ok state ->
       match handle state (text_fragment "\xc0") with
       | Error error -> Error error
       | Ok (state, Some _) -> Error "Fragment start emitted a message"
@@ -102,12 +95,11 @@ let test_invalid_fragmented_text_utf8_fails_on_completion = fun _ctx ->
             state
             (continuation "\x80")
             (Message.InvalidTextMessageUtf8 { payload_length = 2 })
-    )
 
 let test_message_size_limit_spans_fragments = fun _ctx ->
   match make_state ~max_message_size:3 () with
   | Error error -> Error error
-  | Ok state -> (
+  | Ok state ->
       match handle state (text_fragment "ab") with
       | Error error -> Error error
       | Ok (state, Some _) -> Error "Fragment start emitted a message"
@@ -116,16 +108,15 @@ let test_message_size_limit_spans_fragments = fun _ctx ->
             state
             (continuation "cd")
             (Message.MessagePayloadTooLarge { payload_length = 4; max_message_size = 3 })
-    )
 
 let test_binary_fragmented_message_emits_binary = fun _ctx ->
   match make_state () with
   | Error error -> Error error
-  | Ok state -> (
+  | Ok state ->
       match handle state (binary_fragment "\x00\x01") with
       | Error error -> Error error
       | Ok (state, Some _) -> Error "Fragment start emitted a message"
-      | Ok (state, None) -> (
+      | Ok (state, None) ->
           match handle state (continuation "\x02") with
           | Ok (_, Some (
             Message.DataMessage { opcode = Message.Binary; payload = "\x00\x01\x02" }
@@ -133,8 +124,6 @@ let test_binary_fragmented_message_emits_binary = fun _ctx ->
               Ok ()
           | Ok _ -> Error "Expected completed fragmented binary message"
           | Error error -> Error error
-        )
-    )
 
 let test_fragmented_control_frame_fails = fun _ctx ->
   match make_state () with

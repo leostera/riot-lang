@@ -211,13 +211,12 @@ let test_accepts_middleware_renders_structured_accept_error = fun _ctx ->
   in
   match Testing.Expect.status Net.Http.Status.NotAcceptable response with
   | Error error -> Error (Testing.Expect.error_to_string error)
-  | Ok () -> (
+  | Ok () ->
       match Testing.Expect.body
         "Malformed Accept header: application/json;q=wat (invalid q value: wat)"
         response with
       | Ok () -> Ok ()
       | Error error -> Error (Testing.Expect.error_to_string error)
-    )
 
 let tests =
   Test.[

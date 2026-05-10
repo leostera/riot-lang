@@ -62,8 +62,7 @@ let module_segments = fun (node: Riot_planner.Module_node.t G.node) ->
           Module.module_name mod_
           |> Module_name.namespace
           |> Namespace.to_list
-        )
-        @ [
+        ) @ [
           Module.module_name mod_
           |> Module_name.to_string;
         ]
@@ -83,11 +82,10 @@ let provider_exports = fun graph path ->
   |> List.filter_map
     ~fn:(fun node ->
       match module_segments node with
-      | Some child_path -> (
+      | Some child_path ->
           match suffix_after_prefix child_path path with
           | Some [ child ] -> Some [ child ]
           | _ -> None
-        )
       | None -> None)
 
 let graph_providers = fun graph ->
@@ -96,22 +94,19 @@ let graph_providers = fun graph ->
     ~fn:(fun node ->
       match module_segments node with
       | None -> []
-      | Some path -> (
+      | Some path ->
           match List.reverse path with
           | [] -> []
           | simple :: _ ->
               let exports = provider_exports graph path in
-              let full =
-                Riot_planner.Dep_analyzer.{ path; free_names = [ simple ]; exports }
-              in
+              let full = Riot_planner.Dep_analyzer.{ path; free_names = [ simple ]; exports } in
               let short =
                 Riot_planner.Dep_analyzer.{ path = [ simple ]; free_names = [ simple ]; exports }
               in
               if path = [ simple ] then
                 [ full ]
               else
-                [ full; short ]
-        ))
+                [ full; short ])
 
 let analyzed_module = fun graph (node: Riot_planner.Module_node.t G.node) ~source ->
   let display_path = node_path node in
@@ -140,7 +135,7 @@ let analyzed_module = fun graph (node: Riot_planner.Module_node.t G.node) ~sourc
     | _ -> Riot_planner.Dep_analyzer.Resolution.make ~modules:[] ~unresolved:[]
   in
   (
-    (G.id node),
+    G.id node,
     Riot_planner.Module_graph.{
       display_path;
       source_hash;
@@ -148,7 +143,7 @@ let analyzed_module = fun graph (node: Riot_planner.Module_node.t G.node) ~sourc
       parse_result;
       deps = Ok resolution;
       resolved_deps = [];
-      resolved_dep_ids = (G.deps node);
+      resolved_dep_ids = G.deps node;
       unresolved_deps = [];
     }
   )
@@ -158,7 +153,10 @@ let validate_layout = fun ~package ~graph ~analyzed ->
     ~direct_dependency_modules:[]
     ~package
     ~module_graph:graph
-    ~analyzed_modules:(List.map analyzed ~fn:(fun (node, source) -> analyzed_module graph node ~source))
+    ~analyzed_modules:(List.map
+      analyzed
+      ~fn:(fun (node, source) ->
+        analyzed_module graph node ~source))
 
 let test_undeclared_package_module_suggests_available_module_name = fun _ctx ->
   let package = make_package ~library:{ path = Path.v "src/typ.ml" } "typ" in

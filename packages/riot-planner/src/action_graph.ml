@@ -47,8 +47,8 @@ let clone = fun t ->
             ~fn:(fun dep_id ->
               match HashMap.get node_by_id ~key:dep_id with
               | None -> ()
-              | Some cloned_dep_node -> add_dependency cloned cloned_node ~depends_on:cloned_dep_node)
-    );
+              | Some cloned_dep_node ->
+                  add_dependency cloned cloned_node ~depends_on:cloned_dep_node));
   cloned
 
 let to_action_list = fun t ->
@@ -664,7 +664,9 @@ let from_module_graph
         | Some node -> List.for_each (concrete_reachability_dependency_ids node) ~fn:visit
         | None -> ()
     in
-    let () = List.for_each start_nodes ~fn:(fun (node: Module_node.t G.node) -> visit (G.id node)) in
+    let () =
+      List.for_each start_nodes ~fn:(fun (node: Module_node.t G.node) -> visit (G.id node))
+    in
     visited
   in
   let concrete_implementation_counterpart_ids (node: Module_node.t G.node) =
@@ -967,7 +969,9 @@ let from_module_graph
   List.for_each
     sorted_modules
     ~fn:(fun (module_node: Module_node.t G.node) ->
-      let _ = HashMap.insert module_kinds ~key:(G.id module_node) ~value:(G.value module_node).kind in
+      let _ =
+        HashMap.insert module_kinds ~key:(G.id module_node) ~value:(G.value module_node).kind
+      in
       ());
   let get_dep_kind dep_id = HashMap.get module_kinds ~key:dep_id in
   List.for_each
@@ -994,7 +998,9 @@ let from_module_graph
           let placeholder_hash =
             Crypto.hash_string ("no-actions:" ^ G.Node_id.to_string (G.id module_node))
           in
-          let _ = HashMap.insert action_spec_hashes ~key:(G.id module_node) ~value:placeholder_hash in
+          let _ =
+            HashMap.insert action_spec_hashes ~key:(G.id module_node) ~value:placeholder_hash
+          in
           ()
         else
           let action_spec =

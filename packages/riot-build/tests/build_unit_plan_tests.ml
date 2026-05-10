@@ -96,7 +96,7 @@ let library_key = fun ?(target = macos_target) package ->
     artifact = Build_unit.Library;
     target;
     profile = Riot_model.Profile.debug;
-  }:Build_unit.key)
+  }: Build_unit.key)
 
 let runtime_binary_key = fun ?(target = macos_target) package name ->
   ({
@@ -104,7 +104,7 @@ let runtime_binary_key = fun ?(target = macos_target) package name ->
     artifact = Build_unit.RuntimeBinary { name };
     target;
     profile = Riot_model.Profile.debug;
-  }:Build_unit.key)
+  }: Build_unit.key)
 
 let test_binary_key = fun ?(target = macos_target) package name ->
   ({
@@ -112,7 +112,7 @@ let test_binary_key = fun ?(target = macos_target) package name ->
     artifact = Build_unit.TestBinary { name };
     target;
     profile = Riot_model.Profile.debug;
-  }:Build_unit.key)
+  }: Build_unit.key)
 
 let example_binary_key = fun ?(target = macos_target) package name ->
   ({
@@ -120,7 +120,7 @@ let example_binary_key = fun ?(target = macos_target) package name ->
     artifact = Build_unit.ExampleBinary { name };
     target;
     profile = Riot_model.Profile.debug;
-  }:Build_unit.key)
+  }: Build_unit.key)
 
 let bench_binary_key = fun ?(target = macos_target) package name ->
   ({
@@ -128,7 +128,7 @@ let bench_binary_key = fun ?(target = macos_target) package name ->
     artifact = Build_unit.BenchBinary { name };
     target;
     profile = Riot_model.Profile.debug;
-  }:Build_unit.key)
+  }: Build_unit.key)
 
 let synthetic_key = fun ?(target = Riot_model.Target.host ()) package name ->
   ({
@@ -136,7 +136,7 @@ let synthetic_key = fun ?(target = Riot_model.Target.host ()) package name ->
     artifact = Build_unit.SyntheticTool { name };
     target;
     profile = Riot_model.Profile.debug;
-  }:Build_unit.key)
+  }: Build_unit.key)
 
 let assert_keys_equal = fun ~expected ~actual ->
   let normalize keys =
@@ -438,9 +438,7 @@ let tests =
     case
       "build unit plan stores topologically sorted units"
       build_unit_plan_stores_topologically_sorted_units;
-    case
-      "build unit graph clone owns its nodes"
-      build_unit_graph_clone_owns_its_nodes;
+    case "build unit graph clone owns its nodes" build_unit_graph_clone_owns_its_nodes;
   ]
 
 let name = "Riot Build Unit Plan Tests"

@@ -14,11 +14,10 @@ module File_log = struct
   let default_path = fun () ->
     match Env.var Env.String ~name:"RIOT_LSP_LOG_PATH" with
     | Some path when not (String.equal path "") -> Path.v path
-    | _ -> (
+    | _ ->
         match Env.home_dir () with
         | Some home -> Path.(home / Path.v ".riot" / Path.v "logs" / Path.v "riot-lsp.log")
         | None -> Path.v "/tmp/riot-lsp.log"
-      )
 
   let open_sink = fun ?path () ->
     let path =
@@ -54,7 +53,7 @@ let log = fun logger ~level message ->
 let payload_summary = fun payload ->
   match Json.from_string payload with
   | Error error -> "invalid-json payload: " ^ Json.error_to_string error
-  | Ok json -> (
+  | Ok json ->
       match Jsonrpc.request_of_json json with
       | Error reason -> "invalid-request payload: " ^ reason
       | Ok request ->
@@ -69,7 +68,6 @@ let payload_summary = fun payload ->
             | None -> ""
           in
           kind ^ " " ^ request.Jsonrpc.method_ ^ id_suffix
-    )
 
 let write_outbound = fun output messages ->
   List.fold_left

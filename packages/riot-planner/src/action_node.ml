@@ -50,12 +50,11 @@ let resolve_source_for_hash = fun ~(package:Package.t) ~src_path ->
   let rec first_existing = fun __tmp1 ->
     match __tmp1 with
     | [] -> src_path
-    | path :: rest -> (
+    | path :: rest ->
         match Fs.exists path with
         | Ok true -> path
         | Ok false
         | Error _ -> first_existing rest
-      )
   in
   first_existing candidates
 

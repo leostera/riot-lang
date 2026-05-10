@@ -200,7 +200,7 @@ let test_save_suite_run_writes_self_contained_json = fun _ctx ->
       in
       let json = read_json path in
       match json with
-      | Data.Json.Object fields -> (
+      | Data.Json.Object fields ->
           match (
             field "schema_version" fields,
             field "run_id" fields,
@@ -241,7 +241,6 @@ let test_save_suite_run_writes_self_contained_json = fun _ctx ->
                 Error "expected saved bench history json to contain suite metadata and benchmark results"
           | _ ->
               Error "expected saved bench history json to expose the top-level schema, suite, selection, and suite_run fields"
-        )
       | _ -> Error "expected saved bench history file to be a json object")
 
 let test_save_suite_run_skips_empty_suite = fun _ctx ->
@@ -288,12 +287,11 @@ let test_save_suite_run_skips_empty_suite = fun _ctx ->
           Error ("expected empty suite history save to be skipped, got error: " ^ error)
       | Ok (Some path) ->
           Error ("expected empty suite history save to skip writing, got: " ^ Path.to_string path)
-      | Ok None -> (
+      | Ok None ->
           match Fs.exists expected_path with
           | Error err -> Error ("expected fs exists check to succeed: " ^ IO.error_message err)
           | Ok true -> Error "expected empty suite history save to leave no file behind"
-          | Ok false -> Ok ()
-        ))
+          | Ok false -> Ok ())
 
 let test_load_recent_suite_runs_filters_and_orders = fun _ctx ->
   with_tempdir

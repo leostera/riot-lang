@@ -60,16 +60,14 @@ let rule_is_temporarily_disabled = fun rule ->
 let keep_enabled_rule_fixture = fun path ->
   match keep_ml path with
   | Test.FixtureRunner.Skip -> Test.FixtureRunner.Skip
-  | Test.FixtureRunner.Keep -> (
+  | Test.FixtureRunner.Keep ->
       match rule_id_of_fixture path with
       | Error _ -> Test.FixtureRunner.Keep
-      | Ok rule_id -> (
+      | Ok rule_id ->
           match find_rule rule_id with
           | Ok rule when rule_is_temporarily_disabled rule -> Test.FixtureRunner.Skip
           | Ok _
           | Error _ -> Test.FixtureRunner.Keep
-        )
-    )
 
 let result_to_json = fun result ->
   Json.obj

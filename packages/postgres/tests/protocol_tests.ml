@@ -176,7 +176,7 @@ let test_reader_parses_row_description_and_data_row = fun _ctx ->
     (Buffer.length description + 4)
     (bytes_of_buffer description) with
   | Error error -> Error (Protocol.Reader.parse_error_to_string error)
-  | Ok (Protocol.RowDescription fields) -> (
+  | Ok (Protocol.RowDescription fields) ->
       Test.assert_equal ~expected:2 ~actual:(List.length fields);
       match Protocol.Reader.parse_backend_message_result
         (Char.code 'D')
@@ -185,13 +185,12 @@ let test_reader_parses_row_description_and_data_row = fun _ctx ->
       | Error error -> Error (Protocol.Reader.parse_error_to_string error)
       | Ok (Protocol.DataRow [ Protocol.Row.Value "42"; Protocol.Row.Null ]) -> Ok ()
       | Ok _ -> Error "expected data row with one value and one null"
-    )
   | Ok _ -> Error "expected RowDescription"
 
 let test_config_parses_uri_and_legacy_forms = fun _ctx ->
   match Postgres.Config.from_string "postgresql://alice:secret@localhost:5433/app" with
   | Error error -> Error error
-  | Ok uri_config -> (
+  | Ok uri_config ->
       Test.assert_equal ~expected:5_433 ~actual:uri_config.port;
       Test.assert_equal ~expected:"app" ~actual:uri_config.database;
       Test.assert_equal ~expected:"alice" ~actual:uri_config.user;
@@ -205,7 +204,6 @@ let test_config_parses_uri_and_legacy_forms = fun _ctx ->
           Test.assert_equal ~expected:"bob" ~actual:legacy_config.user;
           Test.assert_equal ~expected:"s3cr3t" ~actual:legacy_config.password;
           Ok ()
-    )
 
 let test_driver_rejects_required_tls_without_plaintext = fun _ctx ->
   let config = { (Postgres.Config.default ()) with ssl_mode = Postgres.Config.Require } in

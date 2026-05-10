@@ -56,12 +56,11 @@ let get = fun buffer ~at ->
   match Kernel.Int.compare at 0 with
   | Kernel.Order.LT -> None
   | Kernel.Order.EQ
-  | Kernel.Order.GT -> (
+  | Kernel.Order.GT ->
       match Kernel.Int.compare at buffer.length with
       | Kernel.Order.LT -> Some (Kernel.Bytes.get_unchecked buffer.bytes ~at)
       | Kernel.Order.EQ
       | Kernel.Order.GT -> None
-    )
 
 let get_unchecked = fun buffer ~at -> Kernel.Bytes.get_unchecked buffer.bytes ~at
 
@@ -76,12 +75,12 @@ let add_subbytes = fun buffer source offset slice_length ->
   | Kernel.Order.LT ->
       panic_invalid_range "add_subbytes" ~offset ~length:slice_length ~total:source_length
   | Kernel.Order.EQ
-  | Kernel.Order.GT -> (
+  | Kernel.Order.GT ->
       match Kernel.Int.compare slice_length 0 with
       | Kernel.Order.LT ->
           panic_invalid_range "add_subbytes" ~offset ~length:slice_length ~total:source_length
       | Kernel.Order.EQ
-      | Kernel.Order.GT -> (
+      | Kernel.Order.GT ->
           match Kernel.Int.compare offset (Kernel.Int.sub source_length slice_length) with
           | Kernel.Order.GT ->
               panic_invalid_range "add_subbytes" ~offset ~length:slice_length ~total:source_length
@@ -99,8 +98,6 @@ let add_subbytes = fun buffer source offset slice_length ->
                   ~len:slice_length;
                 buffer.length <- Kernel.Int.add buffer.length slice_length
               )
-        )
-    )
 
 let add_bytes = fun buffer source -> add_subbytes buffer source 0 (Kernel.Bytes.length source)
 
@@ -110,12 +107,12 @@ let add_substring = fun buffer source offset slice_length ->
   | Kernel.Order.LT ->
       panic_invalid_range "add_substring" ~offset ~length:slice_length ~total:source_length
   | Kernel.Order.EQ
-  | Kernel.Order.GT -> (
+  | Kernel.Order.GT ->
       match Kernel.Int.compare slice_length 0 with
       | Kernel.Order.LT ->
           panic_invalid_range "add_substring" ~offset ~length:slice_length ~total:source_length
       | Kernel.Order.EQ
-      | Kernel.Order.GT -> (
+      | Kernel.Order.GT ->
           match Kernel.Int.compare offset (Kernel.Int.sub source_length slice_length) with
           | Kernel.Order.GT ->
               panic_invalid_range "add_substring" ~offset ~length:slice_length ~total:source_length
@@ -135,8 +132,6 @@ let add_substring = fun buffer source offset slice_length ->
                     ~len:slice_length;
                   buffer.length <- Kernel.Int.add buffer.length slice_length
                 )
-        )
-    )
 
 let add_string = fun buffer source -> add_substring buffer source 0 (Kernel.String.length source)
 

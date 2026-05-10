@@ -106,12 +106,11 @@ let verify_object_entries = fun store expected ->
   let rec loop entries =
     match entries with
     | [] -> true
-    | (hash, content) :: rest -> (
+    | (hash, content) :: rest ->
         match Contentstore.open_object store ~hash
         |> Result.map ~fn:read_opened_file with
         | Ok loaded when String.equal loaded content -> loop rest
         | _ -> false
-      )
   in
   loop expected
 
@@ -119,12 +118,11 @@ let verify_named_entries = fun store expected ->
   let rec loop entries =
     match entries with
     | [] -> true
-    | (key, content) :: rest -> (
+    | (key, content) :: rest ->
         match Contentstore.open_named_object store ~key
         |> Result.map ~fn:read_opened_file with
         | Ok loaded when String.equal loaded content -> loop rest
         | _ -> false
-      )
   in
   loop expected
 
@@ -132,11 +130,10 @@ let verify_tree_entries = fun store expected ->
   let rec loop entries =
     match entries with
     | [] -> true
-    | (hash, content) :: rest -> (
+    | (hash, content) :: rest ->
         match Fs.read_to_string Path.(Contentstore.hash_dir_of store hash / Path.v "payload.txt") with
         | Ok loaded when String.equal loaded content -> loop rest
         | _ -> false
-      )
   in
   loop expected
 
@@ -149,15 +146,13 @@ let scope_is_empty = fun store scope ->
 let run_workload = fun ~tmpdir ~store ~object_contents ~named_contents ~tree_contents ->
   match save_object_entries store object_contents with
   | Error () -> Error ()
-  | Ok objects -> (
+  | Ok objects ->
       match save_named_entries store named_contents with
       | Error () -> Error ()
-      | Ok named -> (
+      | Ok named ->
           match save_tree_entries tmpdir store tree_contents with
           | Error () -> Error ()
           | Ok trees -> Ok (objects, named, trees)
-        )
-    )
 
 let test_commit_order_preserves_observable_objects = fun _ctx ->
   Fs.with_tempdir
@@ -199,19 +194,17 @@ let test_commit_order_preserves_observable_objects = fun _ctx ->
             in
             match verify_one left with
             | Error _ as err -> err
-            | Ok () -> (
+            | Ok () ->
                 match verify_one right with
                 | Error _ as err -> err
                 | Ok () -> verify_entries rest
-              )
       in
       match save_entries left entries with
       | Error _ as err -> err
-      | Ok () -> (
+      | Ok () ->
           match save_entries right (List.reverse entries) with
           | Error _ as err -> err
-          | Ok () -> verify_entries entries
-        ))
+          | Ok () -> verify_entries entries)
   |> Result.unwrap_or ~default:(Error "tempdir creation failed")
 
 let mixed_workload_leaves_no_temp_files =

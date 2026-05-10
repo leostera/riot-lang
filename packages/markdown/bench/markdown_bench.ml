@@ -19,12 +19,11 @@ let json_field = fun fields name ->
 let fixture_from_json = fun json ->
   match Data.Json.get_object json with
   | None -> None
-  | Some fields -> (
+  | Some fields ->
       match json_field fields "markdown" with
       | Some (Data.Json.String markdown) when not (String.is_empty markdown) -> Some { markdown }
       | Some _
       | None -> None
-    )
 
 let locate_commonmark_fixture_file = fun () ->
   let current_dir =
@@ -54,19 +53,16 @@ let locate_commonmark_fixture_file = fun () ->
 let load_commonmark_fixtures = fun () ->
   match locate_commonmark_fixture_file () with
   | None -> []
-  | Some path -> (
+  | Some path ->
       match Fs.read path with
       | Error _ -> []
-      | Ok source -> (
+      | Ok source ->
           match Data.Json.from_string source with
           | Error _ -> []
-          | Ok json -> (
+          | Ok json ->
               match Data.Json.get_array json with
               | None -> []
               | Some rows -> List.filter_map rows ~fn:fixture_from_json
-            )
-        )
-    )
 
 let commonmark_fixtures = load_commonmark_fixtures ()
 

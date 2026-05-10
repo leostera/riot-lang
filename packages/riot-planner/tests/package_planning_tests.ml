@@ -74,13 +74,14 @@ let find_package_by_name = fun (workspace: Riot_model.Workspace.t) name ->
           |> Result.expect ~msg:("expected valid package name: " ^ name)
         ))
 
-let build_unit_key = fun ?(target = Riot_model.Target.host ()) ?(profile = Riot_model.Profile.debug) package artifact ->
+let build_unit_key = fun
+  ?(target = Riot_model.Target.host ()) ?(profile = Riot_model.Profile.debug) package artifact ->
   ({
     package = package.Riot_model.Package.name;
     artifact;
     target;
     profile;
-  }:Riot_planner.Build_unit.key)
+  }: Riot_planner.Build_unit.key)
 
 let library_unit = fun ?target ?profile package ->
   let package = Riot_model.Package.for_scope Riot_model.Package.Normal package in
@@ -103,9 +104,11 @@ let binary_artifact_for_path = fun name path ->
     Riot_planner.Build_unit.RuntimeBinary { name }
 
 let binary_unit = fun ?target ?profile package binary_name ->
-  match List.find package.Riot_model.Package.binaries ~fn:(fun binary -> String.equal binary.name binary_name) with
+  match List.find
+    package.Riot_model.Package.binaries
+    ~fn:(fun binary -> String.equal binary.name binary_name) with
   | None -> Error ("binary not found in package: " ^ binary_name)
-  | Some binary -> (
+  | Some binary ->
       match Riot_model.Package.for_binary ~binary_name package with
       | None -> Error ("package could not be projected for binary: " ^ binary_name)
       | Some package ->
@@ -116,23 +119,17 @@ let binary_unit = fun ?target ?profile package binary_name ->
               package
               (binary_artifact_for_path binary.name binary.path)
           in
-          Ok (
-            Riot_planner.Build_unit.from_artifact
-              ~package
-              ~artifact:key.artifact
-              ~target:key.target
-              ~profile:key.profile
-          )
-    )
+          Ok (Riot_planner.Build_unit.from_artifact
+            ~package
+            ~artifact:key.artifact
+            ~target:key.target
+            ~profile:key.profile)
 
-let synthetic_tool_unit = fun ?(target = Riot_model.Target.host ()) ?(profile = Riot_model.Profile.debug) package name ->
+let synthetic_tool_unit = fun
+  ?(target = Riot_model.Target.host ()) ?(profile = Riot_model.Profile.debug) package name ->
   let package = Riot_model.Package.for_scope Riot_model.Package.Normal package in
   let key =
-    build_unit_key
-      ~target
-      ~profile
-      package
-      (Riot_planner.Build_unit.SyntheticTool { name })
+    build_unit_key ~target ~profile package (Riot_planner.Build_unit.SyntheticTool { name })
   in
   Riot_planner.Build_unit.from_artifact
     ~package
@@ -140,7 +137,13 @@ let synthetic_tool_unit = fun ?(target = Riot_model.Target.host ()) ?(profile = 
     ~target:key.target
     ~profile:key.profile
 
-let create_unit_graph = fun ?(roots = None) ?(targets = [ Riot_model.Target.host () ]) ?(profile = Riot_model.Profile.debug) ?(kind = Riot_planner.Build_unit_graph.Runtime) ?(synthetic_tools = []) workspace ->
+let create_unit_graph = fun
+  ?(roots = None)
+  ?(targets = [Riot_model.Target.host ()])
+  ?(profile = Riot_model.Profile.debug)
+  ?(kind = Riot_planner.Build_unit_graph.Runtime)
+  ?(synthetic_tools = [])
+  workspace ->
   Riot_planner.Build_unit_graph.create
     workspace
     Riot_planner.Build_unit_graph.{
@@ -157,22 +160,19 @@ let expect_unit_graph = fun result ->
   result
   |> Result.expect ~msg:"build unit graph should build"
 
-let runtime_unit_graph = fun workspace -> create_unit_graph workspace |> expect_unit_graph
+let runtime_unit_graph = fun workspace ->
+  create_unit_graph workspace
+  |> expect_unit_graph
 
 let dev_unit_graph = fun workspace ->
-  create_unit_graph
-    ~kind:(Riot_planner.Build_unit_graph.Dev all_dev_artifacts)
-    workspace
+  create_unit_graph ~kind:(Riot_planner.Build_unit_graph.Dev all_dev_artifacts) workspace
   |> expect_unit_graph
 
 let synthetic_tool_graph = fun workspace package name ->
   create_unit_graph
     ~roots:(Some [])
     ~synthetic_tools:[
-      Riot_planner.Build_unit_graph.{
-        package = package.Riot_model.Package.name;
-        name;
-      };
+      Riot_planner.Build_unit_graph.{ package = package.Riot_model.Package.name; name };
     ]
     workspace
   |> expect_unit_graph
@@ -205,7 +205,8 @@ let dependency_of_required_plan_result = fun store result ->
   | Some dependency -> dependency
   | None -> panic "planned package did not produce a dependency summary"
 
-let plan_build_unit_raw = fun ~workspace ~store ~(unit:Riot_planner.Build_unit.t) ~depset ~build_ctx ->
+let plan_build_unit_raw = fun
+  ~workspace ~store ~(unit:Riot_planner.Build_unit.t) ~depset ~build_ctx ->
   Riot_planner.Package_planner.plan_build_unit
     ~on_source_analyzed:(fun _ -> ())
     ~workspace
@@ -221,49 +222,50 @@ let plan_build_unit = fun ~workspace ~store ~unit ~depset ~build_ctx ->
 
 let plan_build_unit_from_graph_raw = fun ~workspace ~store ~unit_graph ~unit_key ~build_ctx ->
   match Riot_planner.Build_unit_graph.topological_sort unit_graph with
-      | Error cycle ->
-          Error (Riot_planner.Planning_error.GraphBuildFailed {
-            reason =
-              "build unit graph contains a cycle: "
-              ^ String.concat
-                  ", "
-                  (List.map cycle ~fn:Riot_planner.Build_unit.key_to_string);
-          })
-      | Ok units ->
-          let planned = Collections.HashMap.create () in
-          let dependency_for_key key =
-            Collections.HashMap.get planned ~key:(Riot_planner.Build_unit.package_key key)
-          in
-          let rec loop units =
-            match units with
-            | [] ->
-                Error (Riot_planner.Planning_error.GraphBuildFailed {
-                  reason = "build unit graph node not found: "
-                  ^ Riot_planner.Build_unit.key_to_string unit_key;
-                })
-            | unit :: rest ->
-                let depset =
-                  Riot_planner.Build_unit_graph.dependencies unit_graph (Riot_planner.Build_unit.key unit)
-                  |> List.filter_map ~fn:dependency_for_key
-                in
-                (
-                  match plan_build_unit_raw ~workspace ~store ~unit ~depset ~build_ctx with
-                  | Error _ as err -> err
-                  | Ok result ->
-                      let dependency = dependency_of_required_plan_result store result in
-                      let _ =
-                        Collections.HashMap.insert
-                          planned
-                          ~key:(Riot_planner.Build_unit.package_key (Riot_planner.Build_unit.key unit))
-                          ~value:dependency
-                      in
-                      if Riot_planner.Build_unit.equal_key (Riot_planner.Build_unit.key unit) unit_key then
-                        Ok result
-                      else
-                        loop rest
-                )
-          in
-          loop units
+  | Error cycle ->
+      Error (Riot_planner.Planning_error.GraphBuildFailed {
+        reason = "build unit graph contains a cycle: "
+        ^ String.concat ", " (List.map cycle ~fn:Riot_planner.Build_unit.key_to_string);
+      })
+  | Ok units ->
+      let planned = Collections.HashMap.create () in
+      let dependency_for_key key =
+        Collections.HashMap.get planned ~key:(Riot_planner.Build_unit.package_key key)
+      in
+      let rec loop units =
+        match units with
+        | [] ->
+            Error (Riot_planner.Planning_error.GraphBuildFailed {
+              reason = "build unit graph node not found: "
+              ^ Riot_planner.Build_unit.key_to_string unit_key;
+            })
+        | unit :: rest ->
+            let depset =
+              Riot_planner.Build_unit_graph.dependencies
+                unit_graph
+                (Riot_planner.Build_unit.key unit)
+              |> List.filter_map ~fn:dependency_for_key
+            in
+            (
+              match plan_build_unit_raw ~workspace ~store ~unit ~depset ~build_ctx with
+              | Error _ as err -> err
+              | Ok result ->
+                  let dependency = dependency_of_required_plan_result store result in
+                  let _ =
+                    Collections.HashMap.insert
+                      planned
+                      ~key:(Riot_planner.Build_unit.package_key (Riot_planner.Build_unit.key unit))
+                      ~value:dependency
+                  in
+                  if
+                    Riot_planner.Build_unit.equal_key (Riot_planner.Build_unit.key unit) unit_key
+                  then
+                    Ok result
+                  else
+                    loop rest
+            )
+      in
+      loop units
 
 let plan_build_unit_from_graph = fun ~workspace ~store ~unit_graph ~unit_key ~build_ctx ->
   plan_build_unit_from_graph_raw ~workspace ~store ~unit_graph ~unit_key ~build_ctx
@@ -472,7 +474,9 @@ let test_planned_sandbox_files_link_dependency_native_objects = fun _ctx ->
             List.any
               sandbox_files
               ~fn:(fun (file: Riot_planner.Sandbox_file.t) ->
-                Path.equal file.destination (Path.v "transitive_extra.o"))
+                Path.equal
+                  file.destination
+                  (Path.v "transitive_extra.o"))
           in
           if not copied_app_source then
             Error "expected package source to be marked Copy"
@@ -560,19 +564,17 @@ let find_compile_cmx = fun actions source ->
   let rec loop = fun __tmp1 ->
     match __tmp1 with
     | [] -> None
-    | action :: rest -> (
+    | action :: rest ->
         match action with
         | Riot_planner.Action.CompileImplementation { source = compile_source; outputs; _ } when Path.equal
           compile_source
-          source -> (
+          source ->
             match List.find
               outputs
               ~fn:(fun output -> String.ends_with ~suffix:".cmx" (Path.to_string output)) with
             | Some _ as output -> output
             | None -> loop rest
-          )
         | _ -> loop rest
-      )
   in
   loop actions
 
@@ -608,8 +610,7 @@ let plan_single_binary_source = fun ~tmpdir source_text ->
       ()
   in
   match binary_unit package "entry-demo" with
-  | Error err ->
-      Error (Riot_planner.Planning_error.GraphBuildFailed { reason = err })
+  | Error err -> Error (Riot_planner.Planning_error.GraphBuildFailed { reason = err })
   | Ok unit ->
       plan_build_unit_from_graph_raw
         ~workspace
@@ -635,7 +636,8 @@ let combine_action_graphs = fun graphs ->
       Riot_planner.Action_graph.nodes graph
       |> List.for_each
         ~fn:(fun (node: Riot_planner.Action_node.t) ->
-          ignore (Riot_planner.Action_graph.add_node combined (G.value node))));
+          ignore
+            (Riot_planner.Action_graph.add_node combined (G.value node))));
   combined
 
 let plan_dev_package_actions_with_library = fun ~library ~tmpdir ~package_name ~files ~binaries ->
@@ -649,10 +651,10 @@ let plan_dev_package_actions_with_library = fun ~library ~tmpdir ~package_name ~
   let rec plan_binaries acc binaries =
     match binaries with
     | [] -> Ok (package, combine_action_graphs (List.reverse acc))
-    | (binary_name, _) :: rest -> (
+    | (binary_name, _) :: rest ->
         match binary_unit package binary_name with
         | Error _ as err -> err
-        | Ok unit -> (
+        | Ok unit ->
             match plan_build_unit_from_graph
               ~workspace
               ~store
@@ -665,8 +667,6 @@ let plan_dev_package_actions_with_library = fun ~library ~tmpdir ~package_name ~
             | Ok result ->
                 Error ("expected dev binary plan to return Planned, got "
                 ^ describe_plan_result result)
-          )
-      )
   in
   plan_binaries [] binaries
 
@@ -690,19 +690,18 @@ let plan_runtime_package_actions = fun ~tmpdir ~package_name ~files ~binaries ->
     List.filter
       binaries
       ~fn:(fun (_, path) ->
-        not (
-          String.starts_with ~prefix:"tests/" path
+        not
+          (String.starts_with ~prefix:"tests/" path
           || String.starts_with ~prefix:"examples/" path
-          || String.starts_with ~prefix:"bench/" path
-        ))
+          || String.starts_with ~prefix:"bench/" path))
   in
   let rec plan_binaries acc binaries =
     match binaries with
     | [] -> Ok (package, combine_action_graphs (List.reverse acc))
-    | (binary_name, _) :: rest -> (
+    | (binary_name, _) :: rest ->
         match binary_unit package binary_name with
         | Error _ as err -> err
-        | Ok unit -> (
+        | Ok unit ->
             match plan_build_unit_from_graph
               ~workspace
               ~store
@@ -715,11 +714,9 @@ let plan_runtime_package_actions = fun ~tmpdir ~package_name ~files ~binaries ->
             | Ok result ->
                 Error ("expected runtime binary plan to return Planned, got "
                 ^ describe_plan_result result)
-          )
-      )
   in
   match package.library with
-  | Some _ -> (
+  | Some _ ->
       let unit = library_unit package in
       match plan_build_unit_from_graph
         ~workspace
@@ -728,15 +725,13 @@ let plan_runtime_package_actions = fun ~tmpdir ~package_name ~files ~binaries ->
         ~unit_key:(Riot_planner.Build_unit.key unit)
         ~build_ctx with
       | Error _ as err -> err
-      | Ok (Riot_planner.Package_planner.Planned { action_graph; _ }) -> (
+      | Ok (Riot_planner.Package_planner.Planned { action_graph; _ }) ->
           match plan_binaries [ action_graph ] runtime_binaries with
           | Ok _ as ok -> ok
           | Error _ as err -> err
-        )
       | Ok result ->
           Error ("expected runtime library plan to return Planned, got "
           ^ describe_plan_result result)
-    )
   | None -> plan_binaries [] runtime_binaries
 
 let module_node_label = fun (node: Riot_planner.Module_node.t G.node) ->
@@ -750,9 +745,9 @@ let module_node_label = fun (node: Riot_planner.Module_node.t G.node) ->
   | Riot_planner.Module_node.PackageDependency { root_module; _ } ->
       "PackageDependency(" ^ root_module ^ ")"
   | Riot_planner.Module_node.C ->
-      "C(" ^ Riot_planner.Module_node.file_to_string ((G.value node).file) ^ ")"
+      "C(" ^ Riot_planner.Module_node.file_to_string (G.value node).file ^ ")"
   | Riot_planner.Module_node.H ->
-      "H(" ^ Riot_planner.Module_node.file_to_string ((G.value node).file) ^ ")"
+      "H(" ^ Riot_planner.Module_node.file_to_string (G.value node).file ^ ")"
   | Riot_planner.Module_node.Root -> "Root"
   | Riot_planner.Module_node.Other value -> "Other(" ^ value ^ ")"
 
@@ -827,7 +822,7 @@ let dependency_output_names = fun action_graph (node: Riot_planner.Action_node.t
     ~fn:(fun dep_id ->
       match G.get_node (Riot_planner.Action_graph.graph action_graph) dep_id with
       | Some dep_node ->
-          List.head ((G.value dep_node).outs)
+          List.head (G.value dep_node).outs
           |> Option.map ~fn:Path.to_string
       | None -> None)
 
@@ -836,7 +831,7 @@ let dependency_output_names_flat = fun action_graph (node: Riot_planner.Action_n
     (G.deps node)
     ~fn:(fun dep_id ->
       match G.get_node (Riot_planner.Action_graph.graph action_graph) dep_id with
-      | Some dep_node -> List.map ((G.value dep_node).outs) ~fn:Path.to_string
+      | Some dep_node -> List.map (G.value dep_node).outs ~fn:Path.to_string
       | None -> [])
 
 let require_order = fun items ~before ~after ->
@@ -887,7 +882,7 @@ let validate_create_library_topological_order = fun graph objects ->
           ~fn:(fun (node: Riot_planner.Module_node.t G.node) ->
             match object_name_of_module_node node with
             | None -> None
-            | Some node_object -> (
+            | Some node_object ->
                 match object_position node_object with
                 | None -> None
                 | Some node_index ->
@@ -897,10 +892,10 @@ let validate_create_library_topological_order = fun graph objects ->
                         ~fn:(fun dep_id ->
                           match G.get_node graph dep_id with
                           | None -> None
-                          | Some dep_node -> (
+                          | Some dep_node ->
                               match object_name_of_module_node dep_node with
                               | None -> None
-                              | Some dep_object -> (
+                              | Some dep_object ->
                                   match object_position dep_object with
                                   | Some dep_index when dep_index < node_index -> None
                                   | Some dep_index ->
@@ -911,15 +906,12 @@ let validate_create_library_topological_order = fun graph objects ->
                                       ^ node_object
                                       ^ "@"
                                       ^ Int.to_string node_index)
-                                  | None -> Some (dep_object ^ " missing for " ^ node_object)
-                                )
-                            ))
+                                  | None -> Some (dep_object ^ " missing for " ^ node_object))
                     in
                     if List.is_empty bad_dependencies then
                       None
                     else
-                      Some (node_object, bad_dependencies)
-              ))
+                      Some (node_object, bad_dependencies))
       in
       match violations with
       | [] -> Ok ()
@@ -946,7 +938,7 @@ let rewrite_create_library_objects_json = fun json ~rewrite ->
   let open Std.Data.Json in
   let rewrite_action action_json =
     match action_json with
-    | Object _ -> (
+    | Object _ ->
         match (
           get_field "type" action_json,
           get_field "outputs" action_json,
@@ -969,12 +961,11 @@ let rewrite_create_library_objects_json = fun json ~rewrite ->
               ("includes", includes);
             ]
         | _ -> action_json
-      )
     | _ -> action_json
   in
   let rewrite_node node_json =
     match node_json with
-    | Object _ -> (
+    | Object _ ->
         match (
           get_field "id" node_json,
           get_field "actions" node_json,
@@ -1009,21 +1000,19 @@ let rewrite_create_library_objects_json = fun json ~rewrite ->
               ("dependencies", dependencies);
             ]
         | _ -> node_json
-      )
     | _ -> node_json
   in
   match json with
-  | Object _ -> (
+  | Object _ ->
       match get_field "nodes" json with
       | Some (Array nodes) -> Object [ ("nodes", Array (List.map nodes ~fn:rewrite_node)); ]
       | _ -> json
-    )
   | _ -> json
 
 let rewrite_plan_bundle_action_graph = fun bundle ~rewrite ->
   let open Std.Data.Json in
   match bundle with
-  | Object _ -> (
+  | Object _ ->
       match (
         get_field "version" bundle,
         get_field "package" bundle,
@@ -1038,7 +1027,6 @@ let rewrite_plan_bundle_action_graph = fun bundle ~rewrite ->
             ("action_graph", rewrite_create_library_objects_json action_graph ~rewrite);
           ]
       | _ -> bundle
-    )
   | _ -> bundle
 
 let render_module_graph_dependency_walk = fun graph ->
@@ -1083,7 +1071,7 @@ let load_repo_workspace = fun () ->
 let test_kernel_input_hash_is_not_empty_digest = fun _ctx ->
   match load_repo_workspace () with
   | Error _ as err -> err
-  | Ok workspace -> (
+  | Ok workspace ->
       match find_package_by_name workspace "kernel" with
       | None -> Error "kernel package not found in workspace"
       | Some package ->
@@ -1106,7 +1094,6 @@ let test_kernel_input_hash_is_not_empty_digest = fun _ctx ->
             ^ Std.Crypto.Digest.hex hash)
           else
             Ok ()
-    )
 
 let test_dev_scope_test_binaries_include_private_helpers = fun _ctx ->
   match Fs.with_tempdir
@@ -1209,7 +1196,7 @@ let test_dev_scope_tests_can_import_own_runtime_library_root = fun _ctx ->
           ("tests/self_lib_tests.ml", binary_main "ignore Self_lib.value");
         ] with
       | Error _ as err -> err
-      | Ok (_package, action_graph) -> (
+      | Ok (_package, action_graph) ->
           match find_create_executable_named action_graph "self_lib_tests" with
           | Some (Riot_planner.Action.CreateExecutable { libraries; _ }) ->
               if
@@ -1224,8 +1211,7 @@ let test_dev_scope_tests_can_import_own_runtime_library_root = fun _ctx ->
               else
                 Error ("expected dev test executable to link its runtime package library; libraries: "
                 ^ path_list_to_string libraries)
-          | _ -> Error "expected CreateExecutable action for tests/self_lib_tests.ml"
-        )) with
+          | _ -> Error "expected CreateExecutable action for tests/self_lib_tests.ml") with
   | Ok result -> result
   | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
 
@@ -1240,14 +1226,10 @@ let test_dev_scope_example_can_use_opened_own_runtime_library_exports = fun _ctx
         ~binaries:[ ("demo", "examples/demo.ml"); ]
         ~files:[
           ("src/stdish.ml", "module Env = struct\n  let args = []\nend\n");
-          (
-            "examples/demo.ml",
-            "open Stdish\nlet main ~args:_ =\n  ignore Env.args;\n  Ok ()\n"
-          );
+          ("examples/demo.ml", "open Stdish\nlet main ~args:_ =\n  ignore Env.args;\n  Ok ()\n");
         ] with
-      | Error err ->
-          Error ("expected opened own runtime library exports to resolve, got: " ^ err)
-      | Ok (_package, action_graph) -> (
+      | Error err -> Error ("expected opened own runtime library exports to resolve, got: " ^ err)
+      | Ok (_package, action_graph) ->
           match find_create_executable_named action_graph "demo" with
           | Some (Riot_planner.Action.CreateExecutable { libraries; _ }) ->
               if
@@ -1262,8 +1244,7 @@ let test_dev_scope_example_can_use_opened_own_runtime_library_exports = fun _ctx
               else
                 Error ("expected opened self-library example to link Stdish.cmxa; libraries: "
                 ^ path_list_to_string libraries)
-          | _ -> Error "expected CreateExecutable action for examples/demo.ml"
-        )) with
+          | _ -> Error "expected CreateExecutable action for examples/demo.ml") with
   | Ok result -> result
   | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
 
@@ -1275,10 +1256,7 @@ let test_dev_scope_multiple_binaries_keep_opened_own_runtime_library_exports = f
         ~tmpdir
         ~package_name:"stdish"
         ~library:(Some Riot_model.Package.{ path = Path.v "src/stdish.ml" })
-        ~binaries:[
-          ("aaa_tests", "tests/aaa_tests.ml");
-          ("zzz_tests", "tests/zzz_tests.ml");
-        ]
+        ~binaries:[ ("aaa_tests", "tests/aaa_tests.ml"); ("zzz_tests", "tests/zzz_tests.ml"); ]
         ~files:[
           ("src/stdish.ml", "module Agent = struct\n  let value = 1\nend\n");
           (
@@ -1334,8 +1312,7 @@ let main ~args:_ =
           );
         ] with
       | Error err ->
-          Error ("expected record local-open exports to resolve through Kernelish, got: "
-          ^ err)
+          Error ("expected record local-open exports to resolve through Kernelish, got: " ^ err)
       | Ok (_package, action_graph) ->
           if Option.is_some (find_create_executable_named action_graph "process_tests") then
             Ok ()
@@ -1353,9 +1330,7 @@ let test_direct_dependency_exports_prefer_direct_depset_package = fun _ctx ->
           ~library:(Some Riot_model.Package.{ path = Path.v "src/stdish.ml" })
           ~tmpdir
           ~package_name:"stdish"
-          ~files:[
-            ("src/stdish.ml", "module Env = struct\n  let args = []\nend\n");
-          ]
+          ~files:[ ("src/stdish.ml", "module Env = struct\n  let args = []\nend\n"); ]
           ~binaries:[]
       in
       let stale_stdish =
@@ -1392,10 +1367,7 @@ let test_direct_dependency_exports_prefer_direct_depset_package = fun _ctx ->
         write_package_files
           ~package_dir:app_dir
           [
-            (
-              "tests/app_tests.ml",
-              "open Stdish\nlet main ~args:_ =\n  ignore Env.args;\n  Ok ()\n"
-            );
+            ("tests/app_tests.ml", "open Stdish\nlet main ~args:_ =\n  ignore Env.args;\n  Ok ()\n");
           ]
       in
       let app =
@@ -1407,13 +1379,16 @@ let test_direct_dependency_exports_prefer_direct_depset_package = fun _ctx ->
           ~path:app_dir
           ~relative_path:(Path.v "app")
           ~dependencies:[ workspace_dependency "colors"; workspace_dependency "stdish"; ]
-          ~binaries:[ Riot_model.Package.{ name = "app_tests"; path = Path.v "tests/app_tests.ml" }; ]
-          ~sources:(source_buckets_of_files [
-            (
-              "tests/app_tests.ml",
-              "open Stdish\nlet main ~args:_ =\n  ignore Env.args;\n  Ok ()\n"
-            );
-          ])
+          ~binaries:[
+            Riot_model.Package.{ name = "app_tests"; path = Path.v "tests/app_tests.ml" };
+          ]
+          ~sources:(source_buckets_of_files
+            [
+              (
+                "tests/app_tests.ml",
+                "open Stdish\nlet main ~args:_ =\n  ignore Env.args;\n  Ok ()\n"
+              );
+            ])
           ()
       in
       let workspace = make_test_workspace tmpdir [ stdish; colors; app ] in
@@ -1440,7 +1415,7 @@ let test_direct_dependency_exports_prefer_direct_depset_package = fun _ctx ->
       let stdish_dependency = dependency stdish ~name:"stdish" () in
       match binary_unit app "app_tests" with
       | Error err -> Error err
-      | Ok unit -> (
+      | Ok unit ->
           match plan_build_unit
             ~workspace
             ~store
@@ -1453,8 +1428,7 @@ let test_direct_dependency_exports_prefer_direct_depset_package = fun _ctx ->
               ^ describe_plan_result result)
           | Error err ->
               Error ("expected direct dependency exports to prefer direct depset package, got: "
-              ^ err)
-        )) with
+              ^ err)) with
   | Ok result -> result
   | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
 
@@ -1741,8 +1715,7 @@ let test_build_scope_excludes_runtime_and_dev_roots = fun _ctx ->
           else
             Ok ()
       | Ok result ->
-          Error ("expected build package plan to return Planned, got "
-          ^ describe_plan_result result)) with
+          Error ("expected build package plan to return Planned, got " ^ describe_plan_result result)) with
   | Ok result -> result
   | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
 
@@ -1878,7 +1851,7 @@ let plan_kernel_package_with_fresh_store = fun () ->
     (fun tempdir ->
       match load_repo_workspace () with
       | Error _ as err -> err
-      | Ok repo_workspace -> (
+      | Ok repo_workspace ->
           match find_package_by_name repo_workspace "kernel" with
           | None -> Error "kernel package not found in workspace"
           | Some package ->
@@ -1894,19 +1867,14 @@ let plan_kernel_package_with_fresh_store = fun () ->
               let profile = Riot_model.Profile.debug in
               let build_ctx = Riot_model.Build_ctx.make ~session_id ~profile () in
               let runtime_result =
-                plan_build_unit_from_graph
-                  ~workspace
-                  ~store
-                  ~unit_graph
-                  ~unit_key
-                  ~build_ctx
+                plan_build_unit_from_graph ~workspace ~store ~unit_graph ~unit_key ~build_ctx
               in
               match runtime_result with
               | Error err -> Error ("kernel live plan failed: " ^ err)
-              | Ok (Riot_planner.Package_planner.Planned { module_graph; action_graph; _ }) -> (
+              | Ok (Riot_planner.Package_planner.Planned { module_graph; action_graph; _ }) ->
                   match find_create_library_objects action_graph with
                   | Error _ as err -> err
-                  | Ok live_objects -> (
+                  | Ok live_objects ->
                       match plan_build_unit_from_graph
                         ~workspace
                         ~store
@@ -1914,16 +1882,12 @@ let plan_kernel_package_with_fresh_store = fun () ->
                         ~unit_key
                         ~build_ctx with
                       | Error err -> Error ("kernel cached plan failed: " ^ err)
-                      | Ok (Riot_planner.Package_planner.Planned { action_graph; _ }) -> (
+                      | Ok (Riot_planner.Package_planner.Planned { action_graph; _ }) ->
                           match find_create_library_objects action_graph with
                           | Error _ as err -> err
                           | Ok cached_objects -> Ok (module_graph, live_objects, cached_objects)
-                        )
                       | Ok _ -> Error "expected cached kernel plan to return Planned"
-                    )
-                )
-              | Ok _ -> Error "expected live kernel plan to return Planned"
-        )) with
+              | Ok _ -> Error "expected live kernel plan to return Planned") with
   | Ok result -> result
   | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
 
@@ -1935,15 +1899,13 @@ let plan_kernel_runtime_graphs = fun ~workspace ~store ~build_ctx ->
       let unit_key = Riot_planner.Build_unit.key (library_unit package) in
       match plan_build_unit_from_graph ~workspace ~store ~unit_graph ~unit_key ~build_ctx with
       | Error err -> Error ("kernel runtime plan failed: " ^ err)
-      | Ok (
-        Riot_planner.Package_planner.Planned {
-          module_graph;
-          action_graph;
-          hash;
-          depset;
-          _;
-        }
-      ) ->
+      | Ok (Riot_planner.Package_planner.Planned {
+              module_graph;
+              action_graph;
+              hash;
+              depset;
+              _;
+            }) ->
           Ok (package, module_graph, action_graph, hash, depset)
       | Ok _ -> Error "expected kernel runtime plan to return Planned"
 
@@ -2022,9 +1984,7 @@ let test_plan_bundle_cache_hit_restores_module_and_action_graphs = fun _ctx ->
         |> Result.expect ~msg:"save_plan_bundle should succeed"
       in
       match plan_build_unit ~workspace ~store ~unit ~depset:[] ~build_ctx with
-      | Error err ->
-          Error ("expected cache-hit plan result, got planner error: "
-          ^ err)
+      | Error err -> Error ("expected cache-hit plan result, got planner error: " ^ err)
       | Ok (Riot_planner.Package_planner.Planned { module_graph; action_graph; _ }) ->
           let module_nodes =
             match G.topo_sort module_graph with
@@ -2107,9 +2067,7 @@ let test_cached_artifact_and_exports_short_circuit_without_plan_bundle = fun _ct
         Error "expected no plan bundle before cached planner lookup"
       else
         match plan_build_unit ~workspace ~store ~unit ~depset:[] ~build_ctx with
-        | Error err ->
-            Error ("expected cached plan result, got planner error: "
-            ^ err)
+        | Error err -> Error ("expected cached plan result, got planner error: " ^ err)
         | Ok (
           Riot_planner.Package_planner.Cached {
             hash;
@@ -2210,17 +2168,15 @@ let test_cached_artifact_missing_native_objects_rebuilds_plan_graphs = fun _ctx 
         |> Result.expect ~msg:"expected incomplete artifact save to succeed"
       in
       let input_hash_cache = Riot_planner.Package_planner.create_input_hash_cache () in
-      match
-        Riot_planner.Package_planner.plan_build_unit_with_cache
-          ~on_source_analyzed:(fun _ -> ())
-          ~input_hash_cache
-          ~workspace
-          ~toolchain:test_toolchain
-          ~store
-          ~unit
-          ~depset:[]
-          ~build_ctx
-      with
+      match Riot_planner.Package_planner.plan_build_unit_with_cache
+        ~on_source_analyzed:(fun _ -> ())
+        ~input_hash_cache
+        ~workspace
+        ~toolchain:test_toolchain
+        ~store
+        ~unit
+        ~depset:[]
+        ~build_ctx with
       | Error err ->
           Error ("expected incomplete cached artifact miss to replan package, got planner error: "
           ^ Riot_planner.Planning_error.to_string err)
@@ -2283,12 +2239,10 @@ let test_stale_cached_artifact_version_rebuilds_plan_graphs = fun _ctx ->
       in
       match plan_build_unit ~workspace ~store ~unit ~depset:[] ~build_ctx with
       | Error err ->
-          Error ("expected stale artifact miss to replan package, got planner error: "
-          ^ err)
+          Error ("expected stale artifact miss to replan package, got planner error: " ^ err)
       | Ok (Riot_planner.Package_planner.Planned _) -> Ok ()
       | Ok (Riot_planner.Package_planner.Cached _) ->
-          Error "expected stale cached artifact to be ignored after planner version bump"
-      ) with
+          Error "expected stale cached artifact to be ignored after planner version bump") with
   | Ok x -> x
   | Error _ -> Error "tempdir creation failed"
 
@@ -2396,8 +2350,7 @@ let test_stale_plan_bundle_version_rebuilds_plan_graphs = fun _ctx ->
       in
       match plan_build_unit ~workspace ~store ~unit ~depset:[] ~build_ctx with
       | Error err ->
-          Error ("expected stale bundle miss to replan package, got planner error: "
-          ^ err)
+          Error ("expected stale bundle miss to replan package, got planner error: " ^ err)
       | Ok (Riot_planner.Package_planner.Planned { action_graph; _ }) ->
           let actions = Riot_planner.Action_graph.to_action_list action_graph in
           if List.any
@@ -2447,7 +2400,7 @@ let test_runtime_plan_keeps_direct_src_files_as_library_objects = fun _ctx ->
       let unit_key = Riot_planner.Build_unit.key (library_unit package) in
       match plan_build_unit_from_graph ~workspace ~store ~unit_graph ~unit_key ~build_ctx with
       | Error err -> Error err
-      | Ok (Riot_planner.Package_planner.Planned { action_graph; _ }) -> (
+      | Ok (Riot_planner.Package_planner.Planned { action_graph; _ }) ->
           match find_create_library_objects action_graph with
           | Error err -> Error err
           | Ok objects ->
@@ -2457,7 +2410,6 @@ let test_runtime_plan_keeps_direct_src_files_as_library_objects = fun _ctx ->
                 Error ("expected runtime library to link Pkg.cmx, got ["
                 ^ String.concat ", " objects
                 ^ "]")
-        )
       | Ok other -> Error ("expected Planned result, got " ^ describe_plan_result other)) with
   | Ok x -> x
   | Error _ -> Error "tempdir creation failed"
@@ -2495,7 +2447,7 @@ let test_plan_bundle_with_empty_library_objects_rebuilds_plan_graphs = fun _ctx 
       in
       match plan_build_unit_from_graph ~workspace ~store ~unit_graph ~unit_key ~build_ctx with
       | Error err -> Error err
-      | Ok (Riot_planner.Package_planner.Planned { action_graph; _ }) -> (
+      | Ok (Riot_planner.Package_planner.Planned { action_graph; _ }) ->
           match find_create_library_objects action_graph with
           | Error err -> Error err
           | Ok live_objects ->
@@ -2521,7 +2473,7 @@ let test_plan_bundle_with_empty_library_objects_rebuilds_plan_graphs = fun _ctx 
                       ~unit_key
                       ~build_ctx with
                     | Error err -> Error err
-                    | Ok (Riot_planner.Package_planner.Planned { action_graph; _ }) -> (
+                    | Ok (Riot_planner.Package_planner.Planned { action_graph; _ }) ->
                         match find_create_library_objects action_graph with
                         | Error err -> Error err
                         | Ok replanned_objects ->
@@ -2531,11 +2483,9 @@ let test_plan_bundle_with_empty_library_objects_rebuilds_plan_graphs = fun _ctx 
                               Error ("expected bad plan bundle to be ignored, got ["
                               ^ String.concat ", " replanned_objects
                               ^ "]")
-                      )
                     | Ok other ->
                         Error ("expected bad plan bundle to replan, got "
                         ^ describe_plan_result other)
-        )
       | Ok other -> Error ("expected Planned result, got " ^ describe_plan_result other)) with
   | Ok x -> x
   | Error _ -> Error "tempdir creation failed"
@@ -2702,10 +2652,8 @@ let test_plan_bundle_cache_hit_preserves_module_dependency_order = fun _ctx ->
       in
       let unit = library_unit package in
       match plan_build_unit ~workspace ~store ~unit ~depset:[] ~build_ctx with
-      | Error err ->
-          Error ("expected cache-hit plan result, got planner error: "
-          ^ err)
-      | Ok (Riot_planner.Package_planner.Planned { module_graph; _ }) -> (
+      | Error err -> Error ("expected cache-hit plan result, got planner error: " ^ err)
+      | Ok (Riot_planner.Package_planner.Planned { module_graph; _ }) ->
           match find_library_node module_graph with
           | None -> Error "expected restored library node"
           | Some library_node ->
@@ -2719,7 +2667,6 @@ let test_plan_bundle_cache_hit_preserves_module_dependency_order = fun _ctx ->
                 ^ "] but got ["
                 ^ String.concat ", " actual
                 ^ "]")
-        )
       | Ok _ -> Error "expected Planned result") with
   | Ok x -> x
   | Error _ -> Error "tempdir creation failed"
@@ -2793,7 +2740,7 @@ let test_underscore_sibling_module_dependency_is_planned = fun _ctx ->
       let build_ctx = Riot_model.Build_ctx.make ~session_id ~profile () in
       match plan_build_unit_from_graph ~workspace ~store ~unit_graph ~unit_key ~build_ctx with
       | Error err -> Error ("expected package plan to succeed, got planner error: " ^ err)
-      | Ok (Riot_planner.Package_planner.Planned { module_graph; _ }) -> (
+      | Ok (Riot_planner.Package_planner.Planned { module_graph; _ }) ->
           match find_module_node_by_label module_graph "MLI(Pkg__Udp_server)" with
           | None -> Error "missing MLI(Pkg__Udp_server) in module graph"
           | Some node ->
@@ -2810,7 +2757,6 @@ let test_underscore_sibling_module_dependency_is_planned = fun _ctx ->
                 Error ("expected MLI(Pkg__Udp_server) to depend on Udp_socket, got ["
                 ^ String.concat ", " deps
                 ^ "]")
-        )
       | Ok _ -> Error "expected Planned result") with
   | Ok x -> x
   | Error _ -> Error "tempdir creation failed"
@@ -3083,7 +3029,7 @@ let test_nested_library_interfaces_depend_on_inherited_aliases = fun _ctx ->
       let build_ctx = Riot_model.Build_ctx.make ~session_id ~profile () in
       match plan_build_unit_from_graph ~workspace ~store ~unit_graph ~unit_key ~build_ctx with
       | Error err -> Error ("expected package plan to succeed, got planner error: " ^ err)
-      | Ok (Riot_planner.Package_planner.Planned { module_graph; _ }) -> (
+      | Ok (Riot_planner.Package_planner.Planned { module_graph; _ }) ->
           match find_module_node_by_label module_graph "MLI(Pkg__Archive)" with
           | None -> Error "missing MLI(Pkg__Archive) in module graph"
           | Some node ->
@@ -3097,7 +3043,6 @@ let test_nested_library_interfaces_depend_on_inherited_aliases = fun _ctx ->
                 Error ("expected MLI(Pkg__Archive) to depend on inherited aliases, got ["
                 ^ String.concat ", " deps
                 ^ "]")
-        )
       | Ok _ -> Error "expected Planned result") with
   | Ok x -> x
   | Error _ -> Error "tempdir creation failed"
@@ -3241,7 +3186,7 @@ let test_legacy_nested_sibling_plan_bundle_is_ignored_after_version_bump = fun _
       match plan_build_unit_from_graph ~workspace ~store ~unit_graph ~unit_key ~build_ctx with
       | Error err ->
           Error ("expected nested sibling plan bundle to be ignored, got planner error: " ^ err)
-      | Ok (Riot_planner.Package_planner.Planned { module_graph; _ }) -> (
+      | Ok (Riot_planner.Package_planner.Planned { module_graph; _ }) ->
           match find_module_node_by_label module_graph "MLI(Demo__Net__Udp_server)" with
           | None ->
               Error "expected stale nested plan bundle to be ignored and rebuilt, but udp_server node was missing"
@@ -3259,7 +3204,6 @@ let test_legacy_nested_sibling_plan_bundle_is_ignored_after_version_bump = fun _
                 Error ("expected rebuilt nested plan graph to restore Udp_socket dependency, got ["
                 ^ String.concat ", " deps
                 ^ "]")
-        )
       | Ok _ -> Error "expected Planned result") with
   | Ok x -> x
   | Error _ -> Error "tempdir creation failed"
@@ -3267,13 +3211,13 @@ let test_legacy_nested_sibling_plan_bundle_is_ignored_after_version_bump = fun _
 let test_kernel_live_create_library_orders_dependencies_before_error = fun _ctx ->
   match plan_kernel_package_with_fresh_store () with
   | Error _ as err -> err
-  | Ok (_module_graph, live_objects, _cached_objects) -> (
+  | Ok (_module_graph, live_objects, _cached_objects) ->
       match require_order
         live_objects
         ~before:"Kernel__Net__Tcp_listener.cmx"
         ~after:"Kernel__Error.cmx" with
       | Error _ as err -> err
-      | Ok () -> (
+      | Ok () ->
           match require_order
             live_objects
             ~before:"Kernel__Net__Udp_socket.cmx"
@@ -3281,13 +3225,11 @@ let test_kernel_live_create_library_orders_dependencies_before_error = fun _ctx 
           | Error _ as err -> err
           | Ok () ->
               require_order live_objects ~before:"Kernel__Process.cmx" ~after:"Kernel__Error.cmx"
-        )
-    )
 
 let test_kernel_unix_addr_interface_keeps_module_graph_dependencies = fun _ctx ->
   match plan_kernel_package_with_fresh_store () with
   | Error _ as err -> err
-  | Ok (module_graph, _live_objects, _cached_objects) -> (
+  | Ok (module_graph, _live_objects, _cached_objects) ->
       match find_module_node_by_label module_graph "MLI(Kernel__Net__Addr__Unix)" with
       | None -> Error "missing MLI(Kernel__Net__Addr__Unix) in module graph"
       | Some node ->
@@ -3309,12 +3251,11 @@ let test_kernel_unix_addr_interface_keeps_module_graph_dependencies = fun _ctx -
             ^ "]")
           else
             Ok ()
-    )
 
 let test_kernel_process_interface_keeps_public_child_root_dependency = fun _ctx ->
   match plan_kernel_package_with_fresh_store () with
   | Error _ as err -> err
-  | Ok (module_graph, _live_objects, _cached_objects) -> (
+  | Ok (module_graph, _live_objects, _cached_objects) ->
       match find_module_node_by_label module_graph "MLI(Kernel__Process)" with
       | None -> Error "missing MLI(Kernel__Process) in module graph"
       | Some node ->
@@ -3342,7 +3283,6 @@ let test_kernel_process_interface_keeps_public_child_root_dependency = fun _ctx 
             ^ "]")
           else
             Ok ()
-    )
 
 let test_kernel_plan_bundle_cache_hit_preserves_live_create_library_order = fun _ctx ->
   match plan_kernel_package_with_fresh_store () with
@@ -3484,7 +3424,7 @@ let test_kernel_unix_addr_interface_depends_on_sibling_modules = fun _ctx ->
         let build_ctx = Riot_model.Build_ctx.make ~session_id ~profile () in
         match plan_kernel_runtime_graphs ~workspace ~store ~build_ctx with
         | Error _ as err -> err
-        | Ok (_, _, action_graph, _, _) -> (
+        | Ok (_, _, action_graph, _, _) ->
             match find_action_node_by_source action_graph (Path.v "src/net/addr/unix.mli") with
             | None -> Error "expected compile action for src/net/addr/unix.mli"
             | Some unix_addr_node ->
@@ -3504,7 +3444,6 @@ let test_kernel_unix_addr_interface_depends_on_sibling_modules = fun _ctx ->
                   ^ "]")
                 else
                   Ok ()
-          )
   in
   match Fs.with_tempdir ~prefix:"planner_kernel_unix_addr_interface_deps" check with
   | Ok result -> result
@@ -3529,15 +3468,17 @@ let test_suri_socket_pool_implementation_depends_on_acceptor = fun _ctx ->
             let unit_key = Riot_planner.Build_unit.key (library_unit package) in
             match plan_build_unit_from_graph ~workspace ~store ~unit_graph ~unit_key ~build_ctx with
             | Error err -> Error ("suri runtime plan failed: " ^ err)
-            | Ok (Riot_planner.Package_planner.Planned { module_graph; action_graph; _ }) -> (
-                match find_action_node_by_source action_graph (Path.v "src/socket_pool/socket_pool.ml") with
+            | Ok (Riot_planner.Package_planner.Planned { module_graph; action_graph; _ }) ->
+                match find_action_node_by_source
+                  action_graph
+                  (Path.v "src/socket_pool/socket_pool.ml") with
                 | None -> Error "expected compile action for src/socket_pool/socket_pool.ml"
                 | Some socket_pool_node ->
                     let dep_outputs = dependency_output_names_flat action_graph socket_pool_node in
                     let module_deps =
                       match G.topo_sort module_graph with
                       | Error _ -> [ "module graph cycle" ]
-                      | Ok nodes -> (
+                      | Ok nodes ->
                           match List.find
                             nodes
                             ~fn:(fun (node: Riot_planner.Module_node.t G.node) ->
@@ -3549,7 +3490,6 @@ let test_suri_socket_pool_implementation_depends_on_acceptor = fun _ctx ->
                               | _ -> false) with
                           | None -> [ "missing Suri__Socket_pool module node" ]
                           | Some node -> module_dependency_labels module_graph node
-                        )
                     in
                     let has output = List.any dep_outputs ~fn:(String.equal output) in
                     if not (has "Suri__Socket_pool__Acceptor.cmi") then
@@ -3566,7 +3506,6 @@ let test_suri_socket_pool_implementation_depends_on_acceptor = fun _ctx ->
                       ^ "]")
                     else
                       Ok ()
-              )
             | Ok _ -> Error "expected suri runtime plan to return Planned"
   in
   match Fs.with_tempdir ~prefix:"planner_suri_socket_pool_acceptor_deps" check with
@@ -3592,12 +3531,11 @@ let test_riot_cli_create_library_orders_run_before_install = fun _ctx ->
             let unit_key = Riot_planner.Build_unit.key (library_unit package) in
             match plan_build_unit_from_graph ~workspace ~store ~unit_graph ~unit_key ~build_ctx with
             | Error err -> Error ("riot-cli runtime plan failed: " ^ err)
-            | Ok (Riot_planner.Package_planner.Planned { action_graph; _ }) -> (
+            | Ok (Riot_planner.Package_planner.Planned { action_graph; _ }) ->
                 match find_create_library_objects action_graph with
                 | Error _ as err -> err
                 | Ok objects ->
                     require_order objects ~before:"Riot_cli__Run.cmx" ~after:"Riot_cli__Install.cmx"
-              )
             | Ok _ -> Error "expected riot-cli runtime plan to return Planned"
   in
   match Fs.with_tempdir ~prefix:"planner_riot_cli_run_install_order" check with
@@ -3648,7 +3586,7 @@ let test_legacy_kernel_plan_bundle_is_ignored_after_version_bump = fun _ctx ->
             ~store:analysis_store
             ~build_ctx with
           | Error _ as err -> err
-          | Ok (package, _module_graph, action_graph, current_input_hash, depset) -> (
+          | Ok (package, _module_graph, action_graph, current_input_hash, depset) ->
               match Riot_store.Store.load_plan_bundle analysis_store ~hash:current_input_hash with
               | None -> Error "expected current kernel plan bundle to be persisted"
               | Some bundle ->
@@ -3680,16 +3618,16 @@ let test_legacy_kernel_plan_bundle_is_ignored_after_version_bump = fun _ctx ->
                     ~store:test_store
                     ~build_ctx with
                   | Error _ as err -> err
-                  | Ok (_, _, replanned_action_graph, _, _) -> (
+                  | Ok (_, _, replanned_action_graph, _, _) ->
                       match find_create_library_objects replanned_action_graph with
                       | Error _ as err -> err
-                      | Ok objects -> (
+                      | Ok objects ->
                           match require_order
                             objects
                             ~before:"Kernel__Net__Tcp_listener.cmx"
                             ~after:"Kernel__Error.cmx" with
                           | Error _ as err -> err
-                          | Ok () -> (
+                          | Ok () ->
                               match require_order
                                 objects
                                 ~before:"Kernel__Net__Udp_socket.cmx"
@@ -3699,11 +3637,7 @@ let test_legacy_kernel_plan_bundle_is_ignored_after_version_bump = fun _ctx ->
                                   require_order
                                     objects
                                     ~before:"Kernel__Process.cmx"
-                                    ~after:"Kernel__Error.cmx"
-                            )
-                        )
-                    )
-            )) with
+                                    ~after:"Kernel__Error.cmx") with
   | Ok x -> x
   | Error _ -> Error "tempdir creation failed"
 
@@ -3769,7 +3703,7 @@ let test_legacy_krasny_plan_bundle_with_bad_root_module_is_ignored_after_version
         ~unit_key
         ~build_ctx with
       | Error _ as err -> err
-      | Ok (Riot_planner.Package_planner.Planned { hash = current_input_hash; depset; _ }) -> (
+      | Ok (Riot_planner.Package_planner.Planned { hash = current_input_hash; depset; _ }) ->
           match Riot_store.Store.load_plan_bundle analysis_store ~hash:current_input_hash with
           | None -> Error "expected current krasny plan bundle to be persisted"
           | Some bundle ->
@@ -3802,7 +3736,7 @@ let test_legacy_krasny_plan_bundle_with_bad_root_module_is_ignored_after_version
                 ~unit_key
                 ~build_ctx with
               | Error _ as err -> err
-              | Ok (Riot_planner.Package_planner.Planned { action_graph; _ }) -> (
+              | Ok (Riot_planner.Package_planner.Planned { action_graph; _ }) ->
                   match find_create_library_objects action_graph with
                   | Error _ as err -> err
                   | Ok objects ->
@@ -3816,9 +3750,7 @@ let test_legacy_krasny_plan_bundle_with_bad_root_module_is_ignored_after_version
                         Error ("expected replanned krasny bundle to include Krasny.cmx, got ["
                         ^ String.concat ", " objects
                         ^ "]")
-                )
               | Ok _ -> Error "expected cached krasny plan to return Planned"
-        )
       | Ok _ -> Error "expected analysis krasny plan to return Planned") with
   | Ok x -> x
   | Error _ -> Error "tempdir creation failed"

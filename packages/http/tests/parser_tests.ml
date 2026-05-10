@@ -538,14 +538,14 @@ let test_send_data_splits_by_remote_max_frame_size = fun _ctx ->
   let conn = create_client_connection () in
   match Connection.create_stream conn with
   | Error error -> Result.Error ("Creating stream failed: " ^ Connection.error_to_string error)
-  | Ok stream_id -> (
+  | Ok stream_id ->
       match Connection.send_headers
         conn
         ~stream_id
         ~headers:[ { Hpack.name = ":method"; value = "GET" }; ]
         ~end_stream:false with
       | Error error -> Result.Error ("Sending HEADERS failed: " ^ Connection.error_to_string error)
-      | Ok _ -> (
+      | Ok _ ->
           let payload = Std.IO.Bytes.from_string (String.make ~len:20_000 ~char:'x') in
           match Connection.send_data conn ~stream_id ~data:payload ~end_stream:true with
           | Error error -> Result.Error ("Sending DATA failed: " ^ Connection.error_to_string error)
@@ -561,14 +561,12 @@ let test_send_data_splits_by_remote_max_frame_size = fun _ctx ->
                 Result.Error "DATA split produced unexpected trailing bytes"
               else
                 Result.Ok ()
-        )
-    )
 
 let test_send_headers_splits_continuations_by_remote_max_frame_size = fun _ctx ->
   let conn = create_client_connection () in
   match Connection.create_stream conn with
   | Error error -> Result.Error ("Creating stream failed: " ^ Connection.error_to_string error)
-  | Ok stream_id -> (
+  | Ok stream_id ->
       let large_value = String.make ~len:20_000 ~char:'a' in
       match Connection.send_headers
         conn
@@ -587,7 +585,6 @@ let test_send_headers_splits_continuations_by_remote_max_frame_size = fun _ctx -
             Result.Error "Second frame was not CONTINUATION"
           else
             Result.Ok ()
-    )
 
 let test_client_preface_settings_payload_length = fun _ctx ->
   let conn = Connection.create ~role:Connection.Client () in
@@ -611,7 +608,7 @@ let test_server_preface_disables_push_by_default = fun _ctx ->
   let conn = Connection.create ~role:Connection.Server () in
   let preface = send_preface conn in
   match Parser.parse_frame preface with
-  | Parser.Done { value = { Frame.payload = Frame.SettingsPayload settings; _ }; remaining = "" } -> (
+  | Parser.Done { value = { Frame.payload = Frame.SettingsPayload settings; _ }; remaining = "" } ->
       match settings with
       | [
           Frame.HeaderTableSize _;
@@ -621,7 +618,6 @@ let test_server_preface_disables_push_by_default = fun _ctx ->
           Frame.MaxFrameSize _;
         ] -> Result.Ok ()
       | _ -> Result.Error "server preface did not advertise EnablePush false"
-    )
   | Parser.Done _ -> Result.Error "server preface left trailing bytes or wrong payload"
   | Parser.Need_more -> Result.Error "server preface was incomplete"
   | Parser.Error error ->
@@ -636,13 +632,12 @@ let test_server_accepts_split_client_preface = fun _ctx ->
   match Connection.process_data conn (Std.IO.Bytes.from_string first) with
   | Error error -> Result.Error ("split preface failed early: " ^ Connection.error_to_string error)
   | Ok events when List.length events != 0 -> Result.Error "partial client preface emitted events"
-  | Ok _ -> (
+  | Ok _ ->
       match Connection.process_data conn (Std.IO.Bytes.from_string rest) with
       | Ok [ Connection.SettingsReceived [] ] -> Result.Ok ()
       | Ok _ -> Result.Error "split client preface did not emit initial SETTINGS"
       | Error error ->
           Result.Error ("split client preface failed: " ^ Connection.error_to_string error)
-    )
 
 let test_server_rejects_malformed_client_preface = fun _ctx ->
   let conn = Connection.create ~role:Connection.Server () in
@@ -683,14 +678,13 @@ let test_process_data_buffers_split_frame_header = fun _ctx ->
   | Error err -> Result.Error (Connection.error_to_string err)
   | Ok events when List.length events != 0 ->
       Result.Error "split frame header should not emit events before the frame is complete"
-  | Ok _ -> (
+  | Ok _ ->
       match Connection.process_data conn (Std.IO.Bytes.from_string rest) with
       | Ok [
           Connection.SettingsReceived [ Frame.HeaderTableSize size ];
         ] when Int.equal size 1_024 -> Result.Ok ()
       | Ok _ -> Result.Error "split frame header did not emit the expected settings event"
       | Error err -> Result.Error (Connection.error_to_string err)
-    )
 
 let test_process_data_buffers_split_frame_payload = fun _ctx ->
   let conn = create_server_connection () in
@@ -702,7 +696,7 @@ let test_process_data_buffers_split_frame_payload = fun _ctx ->
   | Error err -> Result.Error (Connection.error_to_string err)
   | Ok events when List.length events != 0 ->
       Result.Error "split frame payload should not emit events before the frame is complete"
-  | Ok _ -> (
+  | Ok _ ->
       match Connection.process_data conn (Std.IO.Bytes.from_string rest) with
       | Ok [
           Connection.SettingsReceived [
@@ -712,7 +706,6 @@ let test_process_data_buffers_split_frame_payload = fun _ctx ->
         ] when Int.equal table_size 1_024 && Int.equal frame_size 16_384 -> Result.Ok ()
       | Ok _ -> Result.Error "split frame payload did not emit the expected settings event"
       | Error err -> Result.Error (Connection.error_to_string err)
-    )
 
 let test_process_data_buffers_frame_one_byte_at_a_time = fun _ctx ->
   let conn = create_server_connection () in
@@ -752,12 +745,12 @@ let test_process_data_buffers_split_continuation_payload = fun _ctx ->
   | Error err -> Result.Error ("HEADERS failed: " ^ Connection.error_to_string err)
   | Ok events when List.length events != 0 ->
       Result.Error "incomplete header block should not emit events"
-  | Ok _ -> (
+  | Ok _ ->
       match Connection.process_data conn (Std.IO.Bytes.from_string first) with
       | Error err -> Result.Error ("partial CONTINUATION failed: " ^ Connection.error_to_string err)
       | Ok events when List.length events != 0 ->
           Result.Error "partial CONTINUATION should not emit events"
-      | Ok _ -> (
+      | Ok _ ->
           match Connection.process_data conn (Std.IO.Bytes.from_string rest) with
           | Ok [
               Connection.HeadersReceived {
@@ -769,8 +762,6 @@ let test_process_data_buffers_split_continuation_payload = fun _ctx ->
           | Ok _ -> Result.Error "split CONTINUATION did not emit expected headers"
           | Error err ->
               Result.Error ("split CONTINUATION failed: " ^ Connection.error_to_string err)
-        )
-    )
 
 let test_process_data_clears_pending_input_after_parse_error = fun _ctx ->
   let conn = create_server_connection () in
@@ -783,7 +774,7 @@ let test_process_data_clears_pending_input_after_parse_error = fun _ctx ->
       Result.Error ("partial invalid frame failed early: " ^ Connection.error_to_string err)
   | Ok events when List.length events != 0 ->
       Result.Error "partial invalid frame should not emit events"
-  | Ok _ -> (
+  | Ok _ ->
       match Connection.process_data conn (Std.IO.Bytes.from_string rest) with
       | Error (
         Connection.ParserError (
@@ -794,19 +785,16 @@ let test_process_data_clears_pending_input_after_parse_error = fun _ctx ->
           }
         )
       ) ->
-          (
-              match Connection.process_data conn (Std.IO.Bytes.from_string valid_settings) with
-              | Ok [
-                  Connection.SettingsReceived [ Frame.HeaderTableSize size ];
-                ] when Int.equal size 1_024 -> Result.Ok ()
-              | Ok _ -> Result.Error "valid frame after parse error emitted unexpected events"
-              | Error err ->
-                  Result.Error ("pending input was not cleared after parse error: "
-                  ^ Connection.error_to_string err)
-            )
+          match Connection.process_data conn (Std.IO.Bytes.from_string valid_settings) with
+          | Ok [
+              Connection.SettingsReceived [ Frame.HeaderTableSize size ];
+            ] when Int.equal size 1_024 -> Result.Ok ()
+          | Ok _ -> Result.Error "valid frame after parse error emitted unexpected events"
+          | Error err ->
+              Result.Error ("pending input was not cleared after parse error: "
+              ^ Connection.error_to_string err)
       | Error err -> Result.Error ("wrong parse error: " ^ Connection.error_to_string err)
       | Ok _ -> Result.Error "invalid frame was accepted"
-    )
 
 let test_reader_parser_parses_full_data_frame = fun _ctx ->
   let frame = Frame.data ~stream_id:1 "hello" in
@@ -1210,7 +1198,7 @@ let test_process_data_decrements_receive_windows = fun _ctx ->
     conn
     (Std.IO.Bytes.from_string (serialize_frame headers ^ serialize_frame data)) with
   | Error err -> Result.Error ("DATA failed: " ^ Connection.error_to_string err)
-  | Ok _ -> (
+  | Ok _ ->
       match Connection.receive_stream_window_size conn ~stream_id:1 with
       | None -> Result.Error "stream receive window was not created"
       | Some stream_window ->
@@ -1222,7 +1210,6 @@ let test_process_data_decrements_receive_windows = fun _ctx ->
             ^ Int.to_string connection_window)
           else
             Result.Ok ()
-    )
 
 let test_process_data_rejects_stream_flow_control_excess = fun _ctx ->
   let config = { Connection.default_config with initial_window_size = 3 } in
@@ -1261,13 +1248,12 @@ let test_process_data_rejects_lower_new_peer_stream = fun _ctx ->
   let lower = Frame.headers ~stream_id:1 ~end_headers:true header_block in
   match Connection.process_data conn (Std.IO.Bytes.from_string (serialize_frame higher)) with
   | Error err -> Result.Error ("Higher peer stream failed: " ^ Connection.error_to_string err)
-  | Ok _ -> (
+  | Ok _ ->
       match Connection.process_data conn (Std.IO.Bytes.from_string (serialize_frame lower)) with
       | Error (Connection.PeerStreamIdNotIncreasing { stream_id = 1; last_stream_id = 3 }) ->
           Result.Ok ()
       | Error err -> Result.Error ("Wrong connection error: " ^ Connection.error_to_string err)
       | Ok _ -> Result.Error "Lower new peer stream was accepted after a higher stream"
-    )
 
 let test_process_data_rejects_unknown_odd_stream_on_client = fun _ctx ->
   let conn = create_client_connection () in
@@ -1309,7 +1295,7 @@ let test_process_data_rejects_peer_stream_over_max_concurrent = fun _ctx ->
   let second_headers = Frame.headers ~stream_id:3 ~end_headers:true header_block in
   match Connection.process_data conn (Std.IO.Bytes.from_string (serialize_frame first_headers)) with
   | Error err -> Result.Error ("First peer stream failed: " ^ Connection.error_to_string err)
-  | Ok _ -> (
+  | Ok _ ->
       match Connection.process_data conn (Std.IO.Bytes.from_string (serialize_frame second_headers)) with
       | Error (
         Connection.MaxConcurrentStreamsExceeded {
@@ -1322,7 +1308,6 @@ let test_process_data_rejects_peer_stream_over_max_concurrent = fun _ctx ->
           Result.Ok ()
       | Error err -> Result.Error ("Wrong connection error: " ^ Connection.error_to_string err)
       | Ok _ -> Result.Error "Peer stream over max concurrent streams was accepted"
-    )
 
 let test_process_data_frees_peer_capacity_after_rst_stream = fun _ctx ->
   let config = { Connection.default_config with max_concurrent_streams = 1 } in
@@ -1349,10 +1334,10 @@ let test_create_stream_obeys_remote_max_concurrent = fun _ctx ->
   let remote_settings = Frame.settings [ Frame.MaxConcurrentStreams 1; ] in
   match Connection.process_data conn (Std.IO.Bytes.from_string (serialize_frame remote_settings)) with
   | Error err -> Result.Error ("Remote settings failed: " ^ Connection.error_to_string err)
-  | Ok _ -> (
+  | Ok _ ->
       match Connection.create_stream conn with
       | Error err -> Result.Error ("First local stream failed: " ^ Connection.error_to_string err)
-      | Ok 1 -> (
+      | Ok 1 ->
           match Connection.create_stream conn with
           | Error (
             Connection.MaxConcurrentStreamsExceeded {
@@ -1365,39 +1350,35 @@ let test_create_stream_obeys_remote_max_concurrent = fun _ctx ->
               Result.Ok ()
           | Error err -> Result.Error ("Wrong connection error: " ^ Connection.error_to_string err)
           | Ok _ -> Result.Error "Local stream over remote max concurrent streams was accepted"
-        )
       | Ok stream_id -> Result.Error ("Expected first stream 1, got " ^ Int.to_string stream_id)
-    )
 
 let test_create_stream_uses_remote_initial_window = fun _ctx ->
   let conn = create_client_connection () in
   let remote_settings = Frame.settings [ Frame.InitialWindowSize 10; ] in
   match Connection.process_data conn (Std.IO.Bytes.from_string (serialize_frame remote_settings)) with
   | Error err -> Result.Error ("Remote settings failed: " ^ Connection.error_to_string err)
-  | Ok _ -> (
+  | Ok _ ->
       match Connection.create_stream conn with
       | Error err -> Result.Error ("Creating stream failed: " ^ Connection.error_to_string err)
-      | Ok stream_id -> (
+      | Ok stream_id ->
           match Connection.stream_window_size conn ~stream_id with
           | Some 10 -> Result.Ok ()
           | Some window ->
               Result.Error ("Expected stream send window 10, got " ^ Int.to_string window)
           | None -> Result.Error "New stream was missing"
-        )
-    )
 
 let test_remote_initial_window_adjusts_existing_streams = fun _ctx ->
   let conn = create_client_connection () in
   match Connection.create_stream conn with
   | Error err -> Result.Error ("Creating stream failed: " ^ Connection.error_to_string err)
-  | Ok stream_id -> (
+  | Ok stream_id ->
       match Connection.send_headers
         conn
         ~stream_id
         ~headers:[ { Hpack.name = ":method"; value = "GET" }; ]
         ~end_stream:false with
       | Error err -> Result.Error ("Sending HEADERS failed: " ^ Connection.error_to_string err)
-      | Ok _ -> (
+      | Ok _ ->
           match Connection.send_data
             conn
             ~stream_id
@@ -1411,16 +1392,13 @@ let test_remote_initial_window_adjusts_existing_streams = fun _ctx ->
                 (Std.IO.Bytes.from_string (serialize_frame remote_settings)) with
               | Error err ->
                   Result.Error ("Remote settings failed: " ^ Connection.error_to_string err)
-              | Ok _ -> (
+              | Ok _ ->
                   match Connection.stream_window_size conn ~stream_id with
                   | Some 7 -> Result.Ok ()
                   | Some window ->
                       Result.Error ("Expected adjusted stream send window 7, got "
                       ^ Int.to_string window)
                   | None -> Result.Error "Existing stream was missing"
-                )
-        )
-    )
 
 let test_process_data_rejects_new_stream_after_goaway = fun _ctx ->
   let conn = create_server_connection () in
@@ -1462,7 +1440,7 @@ let test_process_window_update_increases_send_window_only = fun _ctx ->
   match frame with
   | Error error ->
       Result.Error ("WINDOW_UPDATE construction failed: " ^ Frame.constructor_error_to_string error)
-  | Ok frame -> (
+  | Ok frame ->
       match Connection.process_data conn (Std.IO.Bytes.from_string (serialize_frame frame)) with
       | Error err -> Result.Error ("WINDOW_UPDATE failed: " ^ Connection.error_to_string err)
       | Ok [ Connection.WindowUpdateReceived { stream_id = 0; increment = 10 } ] ->
@@ -1475,14 +1453,13 @@ let test_process_window_update_increases_send_window_only = fun _ctx ->
           else
             Result.Ok ()
       | Ok _ -> Result.Error "WINDOW_UPDATE produced unexpected events"
-    )
 
 let test_process_data_rejects_connection_window_overflow = fun _ctx ->
   let conn = create_server_connection () in
   match Frame.window_update ~stream_id:0 2_147_483_647 with
   | Error error ->
       Result.Error ("WINDOW_UPDATE construction failed: " ^ Frame.constructor_error_to_string error)
-  | Ok frame -> (
+  | Ok frame ->
       match Connection.process_data conn (Std.IO.Bytes.from_string (serialize_frame frame)) with
       | Error (
         Connection.FlowControlWindowOverflow {
@@ -1495,7 +1472,6 @@ let test_process_data_rejects_connection_window_overflow = fun _ctx ->
           Result.Ok ()
       | Error err -> Result.Error ("Wrong connection error: " ^ Connection.error_to_string err)
       | Ok _ -> Result.Error "WINDOW_UPDATE overflow was accepted"
-    )
 
 let test_process_data_rejects_stream_window_overflow = fun _ctx ->
   let conn = create_server_connection () in
@@ -1504,7 +1480,7 @@ let test_process_data_rejects_stream_window_overflow = fun _ctx ->
   match Frame.window_update ~stream_id:1 2_147_483_647 with
   | Error error ->
       Result.Error ("WINDOW_UPDATE construction failed: " ^ Frame.constructor_error_to_string error)
-  | Ok window_update -> (
+  | Ok window_update ->
       match Connection.process_data
         conn
         (Std.IO.Bytes.from_string (serialize_frame headers ^ serialize_frame window_update)) with
@@ -1519,20 +1495,18 @@ let test_process_data_rejects_stream_window_overflow = fun _ctx ->
           Result.Ok ()
       | Error err -> Result.Error ("Wrong connection error: " ^ Connection.error_to_string err)
       | Ok _ -> Result.Error "stream WINDOW_UPDATE overflow was accepted"
-    )
 
 let test_process_data_rejects_window_update_for_idle_stream = fun _ctx ->
   let conn = create_server_connection () in
   match Frame.window_update ~stream_id:1 10 with
   | Error error ->
       Result.Error ("WINDOW_UPDATE construction failed: " ^ Frame.constructor_error_to_string error)
-  | Ok frame -> (
+  | Ok frame ->
       match Connection.process_data conn (Std.IO.Bytes.from_string (serialize_frame frame)) with
       | Error (Connection.FrameForIdleStream { stream_id = 1; frame_type = Frame.WindowUpdate }) ->
           Result.Ok ()
       | Error err -> Result.Error ("Wrong connection error: " ^ Connection.error_to_string err)
       | Ok _ -> Result.Error "WINDOW_UPDATE for idle stream was accepted"
-    )
 
 let test_process_data_rejects_rst_stream_for_idle_stream = fun _ctx ->
   let conn = create_server_connection () in

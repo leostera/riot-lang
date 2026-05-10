@@ -489,14 +489,14 @@ let fuzz_graph_arb =
 let rec fuzz_oracle_search = fun (graph: fuzz_graph) assignment pending ->
   match pending with
   | [] -> Some assignment
-  | dep :: rest -> (
+  | dep :: rest ->
       match lookup_assigned_version assignment dep.package with
       | Some version ->
           if int_member version dep.allowed_versions then
             fuzz_oracle_search graph assignment rest
           else
             None
-      | None -> (
+      | None ->
           match lookup_fuzz_package graph.packages dep.package with
           | None -> None
           | Some package ->
@@ -515,8 +515,6 @@ let rec fuzz_oracle_search = fun (graph: fuzz_graph) assignment pending ->
                       try_versions version_rest
               in
               try_versions package.versions
-        )
-    )
 
 let fuzz_find_solution = fun (graph: fuzz_graph) ->
   fuzz_oracle_search
@@ -563,24 +561,22 @@ let validate_fuzz_solution = fun (graph: fuzz_graph) solution ->
           ensure_known_versions rest
         else
           Error "Root version changed in solver solution"
-    | (pkg, version) :: rest -> (
+    | (pkg, version) :: rest ->
         match (lookup_fuzz_package graph.packages pkg, fuzz_version_index_of_pubgrub version) with
-        | (Some package, Some index) -> (
+        | (Some package, Some index) ->
             match lookup_fuzz_version_spec package.versions index with
             | Some _ -> ensure_known_versions rest
             | None -> Error ("Solver chose unavailable version for " ^ pkg)
-          )
         | (Some _, None) -> Error ("Solver chose unexpected version outside fuzz domain for " ^ pkg)
         | (None, _) -> Error ("Solver returned unreachable unknown package " ^ pkg)
-      )
   in
   let rec walk reachable pending =
     match pending with
     | [] -> Ok reachable
-    | dep :: rest -> (
+    | dep :: rest ->
         match lookup_solution_version solution dep.package with
         | None -> Error ("Missing chosen dependency " ^ dep.package)
-        | Some version -> (
+        | Some version ->
             match fuzz_version_index_of_pubgrub version with
             | None ->
                 Error ("Solver chose unexpected version outside fuzz domain for " ^ dep.package)
@@ -592,20 +588,17 @@ let validate_fuzz_solution = fun (graph: fuzz_graph) solution ->
                 else
                   match lookup_fuzz_package graph.packages dep.package with
                   | None -> Error ("Dependency package missing from graph: " ^ dep.package)
-                  | Some package -> (
+                  | Some package ->
                       match lookup_fuzz_version_spec package.versions index with
                       | None -> Error ("Chosen version missing from graph for " ^ dep.package)
                       | Some version_spec ->
                           walk (dep.package :: reachable) (version_spec.deps @ rest)
-                    )
-          )
-      )
   in
   match ensure_known_versions solution with
   | Error _ as err -> err
-  | Ok () -> (
+  | Ok () ->
       match lookup_solution_version solution "root" with
-      | Some version when Pubgrub.version_compare version (v 1 0 0) = Order.EQ -> (
+      | Some version when Pubgrub.version_compare version (v 1 0 0) = Order.EQ ->
           match walk [ "root" ] graph.root_deps with
           | Error _ as err -> err
           | Ok reachable ->
@@ -621,9 +614,7 @@ let validate_fuzz_solution = fun (graph: fuzz_graph) solution ->
                 ^ "], expected ["
                 ^ String.concat ", " expected_packages
                 ^ "]")
-        )
       | _ -> Error "Solver solution is missing the root package"
-    )
 
 let check_property = fun ~ctx ~name ~config property ->
   match Property.check ~config ~on_progress:(Test.Context.emit_progress ctx) property with
@@ -773,11 +764,10 @@ let test_solver_randomized_small_graphs_match_bruteforce =
                   (v 1 0 0)
               in
               match (fuzz_find_solution graph, result) with
-              | (Some _, Ok (Pubgrub.Solver.Success solution)) -> (
+              | (Some _, Ok (Pubgrub.Solver.Success solution)) ->
                   match validate_fuzz_solution graph solution with
                   | Ok () -> true
                   | Error msg -> Property.fail msg
-                )
               | (None, Ok (Pubgrub.Solver.Failure _)) -> true
               | (Some witness, Ok (Pubgrub.Solver.Failure incompat)) ->
                   Property.fail
@@ -1851,7 +1841,7 @@ let test_incompatibility_from_dependency_nonempty =
         Error "Expected two terms for nonempty dependency incompatibility"
       else
         match Pubgrub.Incompatibility.as_dependency incompat with
-        | Some ("root", "dep") -> (
+        | Some ("root", "dep") ->
             match assert_term_incompat
               ~package:"root"
               ~positive:true
@@ -1860,7 +1850,6 @@ let test_incompatibility_from_dependency_nonempty =
             | Error _ as err -> err
             | Ok () ->
                 assert_term_incompat ~package:"dep" ~positive:false ~ranges:dep_ranges incompat
-          )
         | _ -> Error "Expected dependency incompatibility to round-trip through as_dependency")
 
 let test_incompatibility_from_dependency_empty =
@@ -1929,7 +1918,7 @@ let test_incompatibility_merge_dependents_matching =
         ("dep", dep_ranges)
       in
       match Pubgrub.Incompatibility.merge_dependents left right with
-      | Some merged -> (
+      | Some merged ->
           match assert_term_incompat
             ~package:"root"
             ~positive:false
@@ -1940,7 +1929,6 @@ let test_incompatibility_merge_dependents_matching =
             merged with
           | Error _ as err -> err
           | Ok () -> assert_term_incompat ~package:"dep" ~positive:true ~ranges:dep_ranges merged
-        )
       | None -> Error "Expected matching dependency causes to merge")
 
 let test_incompatibility_merge_dependents_different_ranges =
@@ -2000,21 +1988,21 @@ let test_incompatibility_prior_cause_merges_and_canonicalizes =
           ~ranges:(Pubgrub.between (v 1 0 0) (v 5 0 0))
           prior with
         | Error _ as err -> err
-        | Ok () -> (
+        | Ok () ->
             match assert_term_incompat
               ~package:"side"
               ~positive:true
               ~ranges:(Pubgrub.between (v 2 0 0) (v 3 0 0))
               prior with
             | Error _ as err -> err
-            | Ok () -> (
+            | Ok () ->
                 match assert_term_incompat
                   ~package:"left"
                   ~positive:true
                   ~ranges:(Pubgrub.singleton (v 1 0 0))
                   prior with
                 | Error _ as err -> err
-                | Ok () -> (
+                | Ok () ->
                     match assert_term_incompat
                       ~package:"right"
                       ~positive:true
@@ -2026,10 +2014,7 @@ let test_incompatibility_prior_cause_merges_and_canonicalizes =
                           ~package:"extra"
                           ~positive:false
                           ~ranges:(Pubgrub.singleton (v 9 0 0))
-                          prior
-                  )
-              )
-          ))
+                          prior)
 
 let test_incompatibility_not_root_is_terminal_for_root =
   Test.case
@@ -2337,55 +2322,55 @@ let test_solver_stats_expose_structured_counters =
         (v 1 0 0)
       in
       match outcome.result with
-      | Ok (Pubgrub.Solver.Success solution) -> (
+      | Ok (Pubgrub.Solver.Success solution) ->
           match assert_int_equal
             ~expected:2
             ~actual:(List.length solution)
             ~message:"Unexpected package count" with
           | Error _ as err -> err
-          | Ok () -> (
+          | Ok () ->
               match assert_int_equal
                 ~expected:2
                 ~actual:outcome.stats.iterations
                 ~message:"Unexpected iteration count" with
               | Error _ as err -> err
-              | Ok () -> (
+              | Ok () ->
                   match assert_int_equal
                     ~expected:2
                     ~actual:outcome.stats.decisions
                     ~message:"Unexpected decision count" with
                   | Error _ as err -> err
-                  | Ok () -> (
+                  | Ok () ->
                       match assert_int_equal
                         ~expected:1
                         ~actual:outcome.stats.derivations
                         ~message:"Unexpected derivation count" with
                       | Error _ as err -> err
-                      | Ok () -> (
+                      | Ok () ->
                           match assert_int_equal
                             ~expected:0
                             ~actual:outcome.stats.conflicts
                             ~message:"Unexpected conflict count" with
                           | Error _ as err -> err
-                          | Ok () -> (
+                          | Ok () ->
                               match assert_int_equal
                                 ~expected:1
                                 ~actual:outcome.stats.provider_choose_version_calls
                                 ~message:"Unexpected choose_version call count" with
                               | Error _ as err -> err
-                              | Ok () -> (
+                              | Ok () ->
                                   match assert_int_equal
                                     ~expected:1
                                     ~actual:outcome.stats.provider_count_versions_calls
                                     ~message:"Unexpected count_versions call count" with
                                   | Error _ as err -> err
-                                  | Ok () -> (
+                                  | Ok () ->
                                       match assert_int_equal
                                         ~expected:2
                                         ~actual:outcome.stats.provider_get_dependencies_calls
                                         ~message:"Unexpected get_dependencies call count" with
                                       | Error _ as err -> err
-                                      | Ok () -> (
+                                      | Ok () ->
                                           match assert_int_equal
                                             ~expected:4
                                             ~actual:outcome.stats.provider_calls
@@ -2396,15 +2381,6 @@ let test_solver_stats_expose_structured_counters =
                                                 ~expected:2
                                                 ~actual:outcome.stats.max_decision_depth
                                                 ~message:"Unexpected max decision depth"
-                                        )
-                                    )
-                                )
-                            )
-                        )
-                    )
-                )
-            )
-        )
       | Ok (Pubgrub.Solver.Failure incompat) ->
           Error ("Expected success but got failure: " ^ Pubgrub.Report.explain_conflict incompat)
       | Error err -> Error ("Unexpected error: " ^ err))

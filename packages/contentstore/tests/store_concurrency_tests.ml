@@ -89,13 +89,12 @@ let test_concurrent_same_hash_object_writers_converge = fun _ctx ->
       send right_pid Contentstore_test_go;
       match collect_results 2 with
       | Error err -> Error err
-      | Ok () -> (
+      | Ok () ->
           match Contentstore.open_object store ~hash
           |> Result.map ~fn:read_opened_file with
           | Ok loaded when String.equal loaded left || String.equal loaded right -> Ok ()
           | Ok _ -> Error "expected concurrent same-hash writers to converge to one complete object"
-          | Error err -> Error (Contentstore.Store.error_message err)
-        ))
+          | Error err -> Error (Contentstore.Store.error_message err))
 
 let test_concurrent_same_key_named_writers_converge = fun _ctx ->
   with_store
@@ -124,14 +123,13 @@ let test_concurrent_same_key_named_writers_converge = fun _ctx ->
       send right_pid Contentstore_test_go;
       match collect_results 2 with
       | Error err -> Error err
-      | Ok () -> (
+      | Ok () ->
           match Contentstore.open_named_object store ~key
           |> Result.map ~fn:read_opened_file with
           | Ok loaded when String.equal loaded left || String.equal loaded right -> Ok ()
           | Ok _ ->
               Error "expected concurrent same-key writers to converge to one complete named object"
-          | Error err -> Error (Contentstore.Store.error_message err)
-        ))
+          | Error err -> Error (Contentstore.Store.error_message err))
 
 let test_concurrent_same_hash_commit_dir_writers_converge = fun _ctx ->
   with_store
@@ -172,14 +170,13 @@ let test_concurrent_same_hash_commit_dir_writers_converge = fun _ctx ->
       send right_pid Contentstore_test_go;
       match collect_results 2 with
       | Error err -> Error err
-      | Ok () -> (
+      | Ok () ->
           match Fs.read_to_string Path.(Contentstore.hash_dir_of store hash / Path.v "payload.txt") with
           | Ok loaded when String.equal loaded "left-tree" || String.equal loaded "right-tree" ->
               Ok ()
           | Ok _ ->
               Error "expected concurrent same-hash commit_dir writers to converge to one complete tree"
-          | Error _ -> Error "expected committed tree to stay readable after concurrent commit_dir"
-        ))
+          | Error _ -> Error "expected committed tree to stay readable after concurrent commit_dir")
 
 let test_readers_see_old_or_new_named_values_during_overwrite = fun _ctx ->
   with_store
@@ -310,7 +307,7 @@ let test_mixed_workload_does_not_cross_corrupt = fun _ctx ->
       send tree_pid Contentstore_test_go;
       match collect_results 3 with
       | Error err -> Error err
-      | Ok () -> (
+      | Ok () ->
           match (
             Contentstore.open_object store ~hash:object_hash
             |> Result.map ~fn:read_opened_file,
@@ -319,8 +316,7 @@ let test_mixed_workload_does_not_cross_corrupt = fun _ctx ->
             Fs.read_to_string Path.(Contentstore.hash_dir_of store tree_hash / Path.v "payload.txt")
           ) with
           | (Ok "object", Ok "named", Ok "tree") -> Ok ()
-          | _ -> Error "expected mixed object/named/tree workload to stay isolated"
-        ))
+          | _ -> Error "expected mixed object/named/tree workload to stay isolated")
 
 let tests = [
   Test.case

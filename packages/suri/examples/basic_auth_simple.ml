@@ -73,7 +73,7 @@ let main ~args:_ =
   in
   match Suri.config ~port:3_000 () with
   | Error errors -> Error (Failure (Suri.Config.errors_to_string errors))
-  | Ok config -> (
+  | Ok config ->
       match Suri.start_link ~config app with
       | Ok _supervisor ->
           Log.info "===========================================";
@@ -100,6 +100,5 @@ let main ~args:_ =
       | Error error ->
           Log.error "Failed to bind to port 3000";
           Error (Failure (Suri.start_error_to_string error))
-    )
 
 let () = Runtime.run ~main ~args:Env.args ()

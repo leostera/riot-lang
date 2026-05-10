@@ -18,7 +18,11 @@ let test_toolchain = fun () ->
 let test_build_target = Riot_model.Target.current
 
 let make_workspace = fun root ->
-  Riot_model.Workspace.make ~root ~target_dir:(Path.v "target") ~packages:[] ()
+  Riot_model.Workspace.make
+    ~root
+    ~target_dir:(Path.v "target")
+    ~packages:[]
+    ()
 
 let make_package = fun ~root ~name ->
   let package_name = package_name name in
@@ -94,7 +98,7 @@ let test_action_scheduler_reports_first_failure_and_keeps_other_results = fun _c
         make_node_in
           graph
           ~package
-          ~deps:[ (Riot_planner.Action_node.id failing_node) ]
+          ~deps:[ Riot_planner.Action_node.id failing_node ]
           ~actions:[
             Riot_planner.Action.WriteFile {
               destination = Path.v "dependent.txt";
@@ -173,12 +177,12 @@ let test_action_scheduler_reports_incomplete_action_graph = fun _ctx ->
           ~outs:[ Path.v "output.txt" ]
           ()
       in
-      let completed_results = HashMap.create () in
+      let completed_results = ConcurrentHashMap.create () in
       let result = Action_scheduler.summarize_completed ~action_graph:graph ~completed_results in
       match result.Action_scheduler.first_failure with
-      | Some (Action_scheduler.ExecutionFailed { message })
-        when String.contains message "incomplete actions" ->
-          Ok ()
+      | Some (Action_scheduler.ExecutionFailed { message }) when String.contains
+        message
+        "incomplete actions" -> Ok ()
       | Some _ -> Error "expected incomplete action graph to surface as execution failure"
       | None -> Error "expected incomplete action graph to fail") with
   | Ok result -> result

@@ -71,14 +71,13 @@ and encode_variant: 'value. state -> 'value Serde.Ser.variant_cases -> 'value ->
             set state (Toml_value.String tag)
           else
             loop (index + 1)
-      | Ser.Newtype (tag, encode, unwrap) -> (
+      | Ser.Newtype (tag, encode, unwrap) ->
           match unwrap value with
           | Some payload ->
               let child = child_state () in
               encode.run backend child payload;
               set state (Toml_value.Table [ (tag, expect_value child "variant payload"); ])
           | None -> loop (index + 1)
-        )
   in
   loop 0
 

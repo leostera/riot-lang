@@ -23,7 +23,7 @@ let test_contains_span _ctx =
   let outside = span 19 21 in
   match assert_true ~msg:"expected outer span to contain inner span" (Syn.Span.contains outer inner) with
   | Error _ as error -> error
-  | Ok () -> (
+  | Ok () ->
       match assert_true
         ~msg:"expected outer span to contain end-boundary cursor"
         (Syn.Span.contains outer touching_cursor) with
@@ -32,15 +32,13 @@ let test_contains_span _ctx =
           assert_false
             ~msg:"expected outer span not to contain overlapping outside span"
             (Syn.Span.contains outer outside)
-    )
 
 let test_compare_uses_span_length _ctx =
   match Syn.Span.compare (span 10 12) (span 50 55) with
-  | Order.LT -> (
+  | Order.LT ->
       match Syn.Span.compare (span 10 15) (span 50 55) with
       | Order.EQ -> Ok ()
       | _ -> Error "expected same-width spans to compare equal"
-    )
   | _ -> Error "expected shorter span to compare before longer span"
 
 let test_relative_order_helpers _ctx =
@@ -48,18 +46,16 @@ let test_relative_order_helpers _ctx =
   let right = span 5 8 in
   match assert_true ~msg:"expected left to start before right" (Syn.Span.starts_before left right) with
   | Error _ as error -> error
-  | Ok () -> (
+  | Ok () ->
       match assert_true ~msg:"expected left to end before right" (Syn.Span.ends_before left right) with
       | Error _ as error -> error
-      | Ok () -> (
+      | Ok () ->
           match assert_true
             ~msg:"expected right to start after left"
             (Syn.Span.starts_after right left) with
           | Error _ as error -> error
           | Ok () ->
               assert_true ~msg:"expected right to end after left" (Syn.Span.ends_after right left)
-        )
-    )
 
 let tests =
   Test.[

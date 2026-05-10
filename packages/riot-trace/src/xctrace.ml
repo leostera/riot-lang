@@ -93,8 +93,7 @@ let child = fun trace name node ->
       else
         None)
 
-let frame_has_binary = fun trace frame ->
-  Option.is_some (child trace "binary" frame)
+let frame_has_binary = fun trace frame -> Option.is_some (child trace "binary" frame)
 
 let is_hex_digit = fun __tmp1 ->
   match __tmp1 with
@@ -107,8 +106,10 @@ let is_raw_address = fun value ->
   let len = String.length value in
   len > 2
   && String.starts_with ~prefix:"0x" value
-  && String.sub value ~offset:2 ~len:(len - 2)
-     |> String.for_all ~fn:is_hex_digit
+  && (
+    String.sub value ~offset:2 ~len:(len - 2)
+    |> String.for_all ~fn:is_hex_digit
+  )
 
 let frame_name = fun trace frame ->
   let frame = resolve trace frame in
@@ -177,13 +178,9 @@ let add_total_cost = fun (table: (string, cost_acc) Collections.HashMap.t) ~name
         total_samples = 1;
         self_weight_ns = 0;
         total_weight_ns = weight_ns;
-      } in
-      let _ =
-        Collections.HashMap.insert
-          table
-          ~key:name
-          ~value:cost
+      }
       in
+      let _ = Collections.HashMap.insert table ~key:name ~value:cost in
       ()
 
 let add_self_cost = fun (table: (string, cost_acc) Collections.HashMap.t) ~name ~weight_ns ->
@@ -197,25 +194,22 @@ let add_self_cost = fun (table: (string, cost_acc) Collections.HashMap.t) ~name 
         total_samples = 0;
         self_weight_ns = weight_ns;
         total_weight_ns = 0;
-      } in
-      let _ =
-        Collections.HashMap.insert
-          table
-          ~key:name
-          ~value:cost
+      }
       in
+      let _ = Collections.HashMap.insert table ~key:name ~value:cost in
       ()
 
 let cost_list = fun (table: (string, cost_acc) Collections.HashMap.t) ~sort_by ->
   Collections.HashMap.to_list table
   |> List.map
-    ~fn:(fun (name, (cost: cost_acc)) -> (Profile.{
-      name;
-      samples = cost.self_samples;
-      total_samples = cost.total_samples;
-      self_weight_ns = cost.self_weight_ns;
-      total_weight_ns = cost.total_weight_ns;
-    }: Profile.call_cost))
+    ~fn:(fun (name, (cost: cost_acc)) ->
+      (Profile.{
+        name;
+        samples = cost.self_samples;
+        total_samples = cost.total_samples;
+        self_weight_ns = cost.self_weight_ns;
+        total_weight_ns = cost.total_weight_ns;
+      }: Profile.call_cost))
   |> List.filter
     ~fn:(fun (cost: Profile.call_cost) ->
       match sort_by with
@@ -279,8 +273,7 @@ let rec profile_tree_node = fun ~max_depth ~max_children ~depth node ->
     total_samples = node.total_samples;
     self_weight_ns = node.self_weight_ns;
     total_weight_ns = node.total_weight_ns;
-    children =
-      List.map shown ~fn:(profile_tree_node ~max_depth ~max_children ~depth:(depth + 1));
+    children = List.map shown ~fn:(profile_tree_node ~max_depth ~max_children ~depth:(depth + 1));
     hidden_children;
   }
 
@@ -370,11 +363,10 @@ let export_time_profile = fun path ->
   match Command.output cmd with
   | Ok output when output.Command.status = 0 -> Ok output.Command.stdout
   | Ok output ->
-      Error
-        ("xctrace export failed with status "
-        ^ Int.to_string output.Command.status
-        ^ ": "
-        ^ String.trim output.Command.stderr)
+      Error ("xctrace export failed with status "
+      ^ Int.to_string output.Command.status
+      ^ ": "
+      ^ String.trim output.Command.stderr)
   | Error (Command.SystemError reason) -> Error ("failed to run xctrace export: " ^ reason)
 
 let summarize_file = fun path ->

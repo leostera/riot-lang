@@ -159,7 +159,7 @@ let main = fun ~name ~benchmarks ~args ->
   | Error err ->
       print_error err;
       Error (Failure (error_message err))
-  | Ok matches -> (
+  | Ok matches ->
       match get_subcommand matches with
       | Some ("list-benchmarks", sub_matches) ->
           let pattern = get_one sub_matches "pattern" in
@@ -213,4 +213,3 @@ let main = fun ~name ~benchmarks ~args ->
           if summary.failed > 0 then
             System.exit 1;
           Ok ()
-    )

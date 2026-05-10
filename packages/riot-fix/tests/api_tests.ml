@@ -45,10 +45,10 @@ let tests = [
             (fun () ->
               match parse_matches [ "--json"; "--check"; "sample.ml" ] with
               | Error _ as err -> err
-              | Ok matches -> (
+              | Ok matches ->
                   match Riot_fix.fix_request_of_matches matches with
                   | Error err -> Error (Exception.to_string err)
-                  | Ok request -> (
+                  | Ok request ->
                       match request.action with
                       | Riot_fix.Run { mode; target; output_mode; _ } ->
                           Test.assert_equal ~expected:Riot_fix.Runner.Check ~actual:mode;
@@ -57,9 +57,7 @@ let tests = [
                             ~expected:(Riot_fix.Report Riot_fix.Reporter.Json)
                             ~actual:output_mode;
                           Ok ()
-                      | _ -> Error "expected run request"
-                    )
-                ))));
+                      | _ -> Error "expected run request")));
   Test.case
     "fix list-rules returns structured output"
     (fun _ctx ->
@@ -71,10 +69,10 @@ let tests = [
             (fun () ->
               match parse_matches [ "--list-rules" ] with
               | Error _ as err -> err
-              | Ok matches -> (
+              | Ok matches ->
                   match Riot_fix.fix_request_of_matches matches with
                   | Error err -> Error (Exception.to_string err)
-                  | Ok request -> (
+                  | Ok request ->
                       match Riot_fix.fix request with
                       | Error err -> Error (Exception.to_string err)
                       | Ok response ->
@@ -82,9 +80,7 @@ let tests = [
                           | Some output ->
                               Test.assert_true (String.contains output "snake-case-type-names");
                               Ok ()
-                          | None -> Error "expected list-rules output"
-                    )
-                ))));
+                          | None -> Error "expected list-rules output")));
   Test.case
     "event to_json encodes progress events"
     (fun _ctx ->
@@ -175,17 +171,15 @@ rules = ["demo-rule"]
               |> Result.expect ~msg:"failed to write provider";
               match parse_matches [ "--check"; "sample.ml" ] with
               | Error _ as err -> err
-              | Ok matches -> (
+              | Ok matches ->
                   match Riot_fix.fix_request_of_matches matches with
                   | Error err -> Error (Exception.to_string err)
-                  | Ok request -> (
+                  | Ok request ->
                       match request.action with
                       | Riot_fix.Run { use_generated_runner; _ } ->
                           Test.assert_equal ~expected:true ~actual:use_generated_runner;
                           Ok ()
-                      | _ -> Error "expected run request"
-                    )
-                ))));
+                      | _ -> Error "expected run request")));
 ]
 
 let main ~args:_ =

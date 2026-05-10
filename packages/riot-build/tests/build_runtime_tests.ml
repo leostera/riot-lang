@@ -442,10 +442,10 @@ let test_manifest_path_dependency_change_invalidates_package_cache = fun _ctx ->
       match build_request request with
       | Error err ->
           Error ("expected second build to succeed, got: " ^ Riot_build.error_message err)
-      | Ok output -> (
+      | Ok output ->
           match Riot_build.Build_result.find_package output (package_name "app") with
           | None -> Error "expected second build output for package app"
-          | Some package_output -> (
+          | Some package_output ->
               match Riot_build.Build_result.package_status package_output with
               | Riot_build.Build_result.Built _ -> Ok ()
               | Riot_build.Build_result.Cached _ ->
@@ -453,9 +453,7 @@ let test_manifest_path_dependency_change_invalidates_package_cache = fun _ctx ->
               | Riot_build.Build_result.Skipped reason ->
                   Error ("expected app package to rebuild, got skipped: " ^ reason)
               | Riot_build.Build_result.Failed message ->
-                  Error ("expected app package to rebuild, got failure: " ^ message)
-            )
-        )) with
+                  Error ("expected app package to rebuild, got failure: " ^ message)) with
   | Ok result -> result
   | Error err -> Error ("tempdir failed: " ^ IO.error_message err)
 
@@ -497,10 +495,10 @@ let test_manifest_build_dependency_path_change_invalidates_package_cache = fun _
       match build_request request with
       | Error err ->
           Error ("expected second build to succeed, got: " ^ Riot_build.error_message err)
-      | Ok output -> (
+      | Ok output ->
           match Riot_build.Build_result.find_package output (package_name "app") with
           | None -> Error "expected second build output for package app"
-          | Some package_output -> (
+          | Some package_output ->
               match Riot_build.Build_result.package_status package_output with
               | Riot_build.Build_result.Built _ -> Ok ()
               | Riot_build.Build_result.Cached _ ->
@@ -508,9 +506,7 @@ let test_manifest_build_dependency_path_change_invalidates_package_cache = fun _
               | Riot_build.Build_result.Skipped reason ->
                   Error ("expected app package to rebuild, got skipped: " ^ reason)
               | Riot_build.Build_result.Failed message ->
-                  Error ("expected app package to rebuild, got failure: " ^ message)
-            )
-        )) with
+                  Error ("expected app package to rebuild, got failure: " ^ message)) with
   | Ok result -> result
   | Error err -> Error ("tempdir failed: " ^ IO.error_message err)
 
@@ -531,11 +527,10 @@ let test_execute_rejects_invalid_parallelism = fun _ctx ->
       in
       match Build_context.make request with
       | Error (Build_context.InvalidRequestedParallelism 0) -> Ok ()
-      | Error err -> (
+      | Error err ->
           match err with
           | Build_context.InvalidRequestedParallelism requested ->
               Error ("expected invalid parallelism 0, got " ^ Int.to_string requested)
-        )
       | Ok _ -> Error "expected invalid parallelism to reject context creation") with
   | Ok result -> result
   | Error err -> Error ("tempdir failed: " ^ IO.error_message err)
@@ -607,11 +602,10 @@ let test_execute_partial_failures_by_default = fun _ctx ->
           let bad_output = Riot_build.Build_result.find_package output bad in
           let has_bad_failure =
             match bad_output with
-            | Some bad_package -> (
+            | Some bad_package ->
                 match Riot_build.Build_result.package_status bad_package with
                 | Riot_build.Build_result.Failed _ -> true
                 | _ -> false
-              )
             | None -> false
           in
           if not has_bad_failure then
@@ -662,16 +656,14 @@ let test_execute_allows_partial_failures = fun _ctx ->
           | Some good_result ->
               match Riot_build.Build_result.package_status good_result with
               | Riot_build.Build_result.Built _
-              | Riot_build.Build_result.Cached _ -> (
+              | Riot_build.Build_result.Cached _ ->
                   match bad_result with
                   | None -> Error "expected bad package result"
-                  | Some bad_result -> (
+                  | Some bad_result ->
                       match Riot_build.Build_result.package_status bad_result with
                       | Riot_build.Build_result.Failed _ -> Ok ()
                       | _ ->
                           Error "expected bad package result to be failed with allow_partial_failures"
-                    )
-                )
               | Riot_build.Build_result.Skipped _
               | Riot_build.Build_result.Failed _ ->
                   Error "expected good package result to be successful") with
@@ -771,21 +763,19 @@ let test_execute_allows_multi_target_partial_failures = fun _ctx ->
               let bad_output = Riot_build.Build_result.find_package build_output bad in
               let good_ok =
                 match good_output with
-                | Some package_output -> (
+                | Some package_output ->
                     match Riot_build.Build_result.package_status package_output with
                     | Riot_build.Build_result.Built _
                     | Riot_build.Build_result.Cached _ -> true
                     | _ -> false
-                  )
                 | None -> false
               in
               let bad_ok =
                 match bad_output with
-                | Some package_output -> (
+                | Some package_output ->
                     match Riot_build.Build_result.package_status package_output with
                     | Riot_build.Build_result.Failed _ -> true
                     | _ -> false
-                  )
                 | None -> false
               in
               if not good_ok then

@@ -40,15 +40,12 @@ let assert_int = fun ~label ~expected ~actual ->
   if Int.equal expected actual then
     Ok ()
   else
-    Error
-      (label
-      ^ ": expected "
-      ^ Int.to_string expected
-      ^ ", got "
-      ^ Int.to_string actual)
+    Error (label ^ ": expected " ^ Int.to_string expected ^ ", got " ^ Int.to_string actual)
 
 let find_cost = fun name costs ->
-  List.find costs ~fn:(fun (cost: Riot_trace.call_cost) -> String.equal cost.name name)
+  List.find
+    costs
+    ~fn:(fun (cost: Riot_trace.call_cost) -> String.equal cost.name name)
 
 let require_cost = fun name costs ->
   match find_cost name costs with
@@ -58,17 +55,11 @@ let require_cost = fun name costs ->
 let test_summarizes_xctrace_rows_with_refs = fun _ctx ->
   let profile = Riot_trace.Internal.Xctrace.summarize_time_profile_xml time_profile_xml in
   let* () = assert_int ~label:"sample count" ~expected:2 ~actual:profile.sample_count in
-  let* () =
-    assert_int ~label:"total weight" ~expected:2_000_000 ~actual:profile.total_weight_ns
-  in
+  let* () = assert_int ~label:"total weight" ~expected:2_000_000 ~actual:profile.total_weight_ns in
   let* leaf_a = require_cost "leaf_a" profile.top_self in
-  let* () =
-    assert_int ~label:"leaf_a self weight" ~expected:1_000_000 ~actual:leaf_a.self_weight_ns
-  in
+  let* () = assert_int ~label:"leaf_a self weight" ~expected:1_000_000 ~actual:leaf_a.self_weight_ns in
   let* root = require_cost "root" profile.top_total in
-  let* () =
-    assert_int ~label:"root total weight" ~expected:2_000_000 ~actual:root.total_weight_ns
-  in
+  let* () = assert_int ~label:"root total weight" ~expected:2_000_000 ~actual:root.total_weight_ns in
   let* () =
     match find_cost "0xffffff23eb3063fe" profile.top_total with
     | None -> Ok ()
@@ -80,23 +71,20 @@ let test_summarizes_xctrace_rows_with_refs = fun _ctx ->
         name = "root";
         total_weight_ns = 2_000_000;
         children = [
-          {
-            name = "parent";
-            total_weight_ns = 2_000_000;
-            children = [ { name = "leaf_a"; _ }; { name = "leaf_b"; _ } ];
-            _;
-          };
+            {
+              name = "parent";
+              total_weight_ns = 2_000_000;
+              children = [ { name = "leaf_a"; _ }; { name = "leaf_b"; _ } ];
+              _;
+            };
         ];
         _;
       };
-    ] ->
-      Ok ()
+    ] -> Ok ()
   | _ -> Error "unexpected call tree shape"
 
 let tests =
-  Test.[
-    case "summarizes xctrace rows with id refs" test_summarizes_xctrace_rows_with_refs;
-  ]
+  Test.[ case "summarizes xctrace rows with id refs" test_summarizes_xctrace_rows_with_refs; ]
 
 let main ~args = Test.Cli.main ~name:"xctrace" ~tests ~args ()
 

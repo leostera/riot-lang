@@ -135,7 +135,7 @@ let test_failure_telemetry_callback = fun _ctx ->
   let client = H.make ~config () in
   match H.execute client (request ()) with
   | Ok _ -> Error "expected managed request failure"
-  | Error error -> (
+  | Error error ->
       Test.assert_equal ~expected:H.Response.ConnectFailed ~actual:error.class_;
       Test.assert_equal
         ~expected:(Some H.Response.ConnectFailed)
@@ -148,7 +148,6 @@ let test_failure_telemetry_callback = fun _ctx ->
             ~actual:telemetry.final_error_class;
           Ok ()
       | None -> Error "expected failure telemetry callback"
-    )
 
 let test_budget_remaining_tracks_execute = fun _ctx ->
   let client =

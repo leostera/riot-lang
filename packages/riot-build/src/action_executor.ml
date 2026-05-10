@@ -447,7 +447,7 @@ let dependency_output_hashes = fun completed (node: Action_node.t) ->
   List.filter_map
     sorted_deps
     ~fn:(fun dep_id ->
-      match HashMap.get completed ~key:dep_id with
+      match ConcurrentHashMap.get completed ~key:dep_id with
       | Some result ->
           Option.map
             (successful_artifact result)
@@ -458,7 +458,7 @@ let has_failed_dependencies = fun completed (node: Action_node.t) ->
   List.any
     (Action_node.deps node)
     ~fn:(fun dep_id ->
-      match HashMap.get completed ~key:dep_id with
+      match ConcurrentHashMap.get completed ~key:dep_id with
       | Some { status = Failed _
         | Skipped; _ } ->
           true

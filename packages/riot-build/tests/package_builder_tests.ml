@@ -30,12 +30,11 @@ let build_workspace_package = fun ~workspace package ->
   in
   match Riot_build.build request with
   | Error err -> Error (Riot_build.error_message err)
-  | Ok result -> (
+  | Ok result ->
       match Riot_build.Build_result.find_package result package.name with
       | Some package_result -> Ok package_result
       | None ->
           Error ("expected package result for " ^ Riot_model.Package_name.to_string package.name)
-    )
 
 let workspace_dependency = fun name ->
   Riot_model.Package.{
@@ -207,21 +206,19 @@ let test_build_writes_hash_manifest_with_exports = fun _ctx ->
       let store = Riot_store.Store.create ~workspace in
       match build_workspace_package ~workspace package with
       | Error err -> Error ("build failed: " ^ err)
-      | Ok package_result -> (
+      | Ok package_result ->
           match Riot_build.Build_result.package_status package_result with
           | Failed reason -> Error ("build failed: " ^ reason)
           | Skipped reason -> Error ("build skipped: " ^ reason)
           | Built artifact
-          | Cached artifact -> (
+          | Cached artifact ->
               match Riot_store.Store.load_manifest store ~hash:artifact.input_hash with
               | None -> Error "expected package hash manifest to be saved"
               | Some manifest ->
                   if List.length manifest.Riot_store.Manifest.exports > 0 then
                     Ok ()
                   else
-                    Error "expected hash manifest to include exported outputs"
-            )
-        )) with
+                    Error "expected hash manifest to include exported outputs") with
   | Ok r -> r
   | Error _ -> Error "Tempdir creation failed"
 
@@ -281,11 +278,10 @@ let test_dependency_source_change_rebuilds_dependent_package = fun _ctx ->
       let artifact = fun result ->
         match result with
         | Error _ as err -> err
-        | Ok package_result -> (
+        | Ok package_result ->
             match Riot_build.Build_result.package_artifact package_result with
             | Some artifact -> Ok artifact
             | None -> Error "expected app build result to carry an artifact"
-          )
       in
       match (artifact first_app, artifact second_app) with
       | (Ok first_app_artifact, Ok second_app_artifact) ->

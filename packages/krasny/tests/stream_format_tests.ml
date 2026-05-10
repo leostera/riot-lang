@@ -107,7 +107,7 @@ let assert_stream_fixture_matches_approved = fun path ->
       Error (Path.to_string path
       ^ " failed stream formatter formatting: "
       ^ Krasny.format_error_to_string err)
-  | Ok formatted -> (
+  | Ok formatted ->
       let expected_path = approved_snapshot_path path in
       let expected =
         Fs.read expected_path
@@ -134,7 +134,6 @@ let assert_stream_fixture_matches_approved = fun path ->
               ^ formatted
               ^ "\nsecond:\n"
               ^ reformatted)
-    )
 
 let assert_stream_existing_fixture_subset = fun () ->
   let fixtures = [
@@ -310,32 +309,28 @@ let assert_stream_existing_fixture_subset = fun () ->
   in
   let rec loop errors = fun __tmp1 ->
     match __tmp1 with
-    | [] -> (
+    | [] ->
         match List.reverse errors with
         | [] -> Ok ()
         | errors -> Error (String.concat "\n\n" errors)
-      )
-    | path :: rest -> (
+    | path :: rest ->
         match assert_stream_fixture_matches_approved path with
         | Ok () -> loop errors rest
         | Error error -> loop (error :: errors) rest
-      )
   in
   loop [] (List.filter fixtures ~fn:stream_formatter_fixture_supported)
 
 let assert_stream_manifest_fixtures = fun () ->
   let rec loop errors = fun __tmp1 ->
     match __tmp1 with
-    | [] -> (
+    | [] ->
         match List.reverse errors with
         | [] -> Ok ()
         | errors -> Error (String.concat "\n\n" errors)
-      )
-    | path :: rest -> (
+    | path :: rest ->
         match assert_stream_fixture_matches_approved path with
         | Ok () -> loop errors rest
         | Error error -> loop (error :: errors) rest
-      )
   in
   loop
     []

@@ -118,7 +118,7 @@ let summarize_package_names = fun names ->
       shown_str ^ ", and " ^ hidden_label
 
 let action_result_artifact = fun completed (node: Action_node.t) ->
-  match HashMap.get completed ~key:(Action_node.id node) with
+  match ConcurrentHashMap.get completed ~key:(Action_node.id node) with
   | Some {
       Action_executor.status = Action_executor.Cached artifact
       | Action_executor.Executed artifact;
@@ -130,7 +130,7 @@ let action_result_artifact = fun completed (node: Action_node.t) ->
 
 let compute_export_entries:
   Action_graph.t ->
-  completed:(Graph.SimpleGraph.Node_id.t, Action_executor.execution_result) HashMap.t ->
+  completed:(Graph.SimpleGraph.Node_id.t, Action_executor.execution_result) ConcurrentHashMap.t ->
   Riot_store.Store.export_entry list = fun action_graph ~completed ->
   let entries =
     Action_graph.nodes action_graph
@@ -672,14 +672,17 @@ let execute_detailed = fun ~workspace ~toolchain ~store ~execution_plan ~build_c
           prepared_execution.toolchain
           ~concurrency:build_ctx.Build_ctx.parallelism
       in
-      let completed: (Graph.SimpleGraph.Node_id.t, Action_executor.execution_result) HashMap.t =
-        HashMap.create ()
+      let completed: (Graph.SimpleGraph.Node_id.t, Action_executor.execution_result) ConcurrentHashMap.t =
+        ConcurrentHashMap.create ()
       in
       List.for_each
         action_result.completed_actions
         ~fn:(fun completed_action ->
           let _ =
-            HashMap.insert completed ~key:(Action_node.id completed_action.node) ~value:completed_action.result
+            ConcurrentHashMap.insert
+              completed
+              ~key:(Action_node.id completed_action.node)
+              ~value:completed_action.result
           in
           ());
       finalize_execution ~workspace ~store ~prepared_execution ~completed ~build_ctx

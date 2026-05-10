@@ -460,10 +460,7 @@ let test_workspace_planning_error_lines_describe_missing_dependencies = fun _ctx
             package = package_name "demo";
             dependency = package_name "std";
           };
-          Dependency {
-            package = package_name "demo";
-            dependency = package_name "tty";
-          };
+          Dependency { package = package_name "demo"; dependency = package_name "tty" };
         ];
       })
   in
@@ -501,13 +498,12 @@ let test_planning_error_lines_indent_multiline_reasons = fun _ctx ->
 let test_build_failure_detail_lines_render_planning_errors = fun _ctx ->
   let failure: Riot_build.Build_result.failure = {
     package_name = package_name "demo";
-    unit_key =
-      ({
-        package = package_name "demo";
-        artifact = Riot_planner.Build_unit.Library;
-        target = Riot_model.Target.host ();
-        profile = Riot_model.Profile.debug;
-      }:Riot_planner.Build_unit.key);
+    unit_key = ({
+      package = package_name "demo";
+      artifact = Riot_planner.Build_unit.Library;
+      target = Riot_model.Target.host ();
+      profile = Riot_model.Profile.debug;
+    }: Riot_planner.Build_unit.key);
     reason = Riot_build.Build_result.PackagePlanningFailed (Riot_planner.Planning_error.DependencyAnalysisFailed {
       reason = "failed to parse src/demo.ml\nhint: add end";
     });
@@ -1041,8 +1037,8 @@ let test_trace_accepts_output_policy_options = fun _ctx ->
               Error "expected trace --append flag to be parsed"
 
 let test_trace_accepts_sampling_options = fun _ctx ->
-  match
-    parse_trace [
+  match parse_trace
+    [
       "trace";
       "--sample-rate";
       "997";
@@ -1057,8 +1053,7 @@ let test_trace_accepts_sampling_options = fun _ctx ->
       "--perf-call-graph-stack-size";
       "8192";
       "riot";
-    ]
-  with
+    ] with
   | Error err -> Error ("expected trace args to parse sampling options: " ^ err)
   | Ok matches ->
       Test.assert_equal ~expected:(Some "997") ~actual:(ArgParser.get_one matches "sample-rate");
@@ -1078,7 +1073,7 @@ let test_trace_accepts_sampling_options = fun _ctx ->
 let test_trace_accepts_summary_json = fun _ctx ->
   match parse_trace [ "trace"; "summary"; "--json"; "out.trace" ] with
   | Error err -> Error ("expected trace summary args to parse with --json: " ^ err)
-  | Ok matches -> (
+  | Ok matches ->
       match ArgParser.get_subcommand matches with
       | Some ("summary", summary_matches) ->
           if ArgParser.get_flag summary_matches "json" then
@@ -1086,12 +1081,11 @@ let test_trace_accepts_summary_json = fun _ctx ->
           else
             Error "expected trace summary --json flag to be parsed"
       | _ -> Error "expected trace summary subcommand to be parsed"
-    )
 
 let test_trace_accepts_summary_filter = fun _ctx ->
   match parse_trace [ "trace"; "summary"; "-f"; "*Prelude*"; "out.trace" ] with
   | Error err -> Error ("expected trace summary args to parse with -f: " ^ err)
-  | Ok matches -> (
+  | Ok matches ->
       match ArgParser.get_subcommand matches with
       | Some ("summary", summary_matches) ->
           Test.assert_equal
@@ -1099,12 +1093,11 @@ let test_trace_accepts_summary_filter = fun _ctx ->
             ~actual:(ArgParser.get_one summary_matches "filter");
           Ok ()
       | _ -> Error "expected trace summary subcommand to be parsed"
-    )
 
 let test_trace_accepts_call_tree_filter = fun _ctx ->
   match parse_trace [ "trace"; "call-tree"; "--filter"; "*Prelude*"; "out.trace" ] with
   | Error err -> Error ("expected trace call-tree args to parse with --filter: " ^ err)
-  | Ok matches -> (
+  | Ok matches ->
       match ArgParser.get_subcommand matches with
       | Some ("call-tree", call_tree_matches) ->
           Test.assert_equal
@@ -1112,7 +1105,6 @@ let test_trace_accepts_call_tree_filter = fun _ctx ->
             ~actual:(ArgParser.get_one call_tree_matches "filter");
           Ok ()
       | _ -> Error "expected trace call-tree subcommand to be parsed"
-    )
 
 let test_install_accepts_update_flag = fun _ctx ->
   match parse_install [ "install"; "--update"; "leostera/hello-world" ] with

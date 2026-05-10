@@ -160,12 +160,11 @@ let sort = fun values ~compare ->
   let rec insert value = fun __tmp1 ->
     match __tmp1 with
     | [] -> [ value ]
-    | current :: rest as values -> (
+    | current :: rest as values ->
         match compare value current with
         | Order.LT
         | Order.EQ -> value :: values
         | Order.GT -> current :: insert value rest
-      )
   in
   fold_left values ~acc:[] ~fn:(fun acc value -> insert value acc)
 
@@ -175,11 +174,10 @@ let unique = fun values ~compare ->
     match __tmp1 with
     | [] -> reverse acc
     | [ value ] -> reverse (value :: acc)
-    | left :: ((right :: _) as rest) -> (
+    | left :: ((right :: _) as rest) ->
         match compare left right with
         | Order.EQ -> loop acc rest
         | Order.LT
         | Order.GT -> loop (left :: acc) rest
-      )
   in
   loop [] sorted

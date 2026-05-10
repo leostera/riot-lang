@@ -134,7 +134,7 @@ let clean_docstring = fun raw ->
   |> (fun lines ->
     match lines with
     | [] -> []
-    | first :: rest -> (
+    | first :: rest ->
         match List.reverse rest with
         | [] ->
             [
@@ -146,8 +146,7 @@ let clean_docstring = fun raw ->
         | last :: middle ->
             let first = strip_doc_opening first in
             let last = strip_doc_closing last in
-            first :: (List.reverse middle @ [ last ])
-      ))
+            first :: (List.reverse middle @ [ last ]))
   |> trim_outer_blank_lines
   |> (fun lines ->
     let indent = common_indent lines in
@@ -321,7 +320,7 @@ let constructor_signature = fun name rhs ->
         name
       else
         name ^ " of " ^ payload_signature
-  | Syn.Ast.VariantConstructor.Gadt { record_payload; arrow_token; result; _ } -> (
+  | Syn.Ast.VariantConstructor.Gadt { record_payload; arrow_token; result; _ } ->
       let result_signature = type_expr_signature result in
       match record_payload with
       | Some record ->
@@ -337,7 +336,6 @@ let constructor_signature = fun name rhs ->
             name
           else
             name ^ " : " ^ result_signature
-    )
 
 let make_constructor_detail = fun ?docstring ~name ~signature () ->
   ({ name = name; signature = signature; docstring = docstring }: Doctree.item_detail)
@@ -580,7 +578,7 @@ let rec module_of_signature_items = fun
           items = vector_to_list acc_items;
           modules = vector_to_list acc_modules;
         }
-    | item :: rest -> (
+    | item :: rest ->
         let declaration = Syn.Ast.SignatureItem.declaration item in
         let leading_docs =
           match declaration with
@@ -624,7 +622,7 @@ let rec module_of_signature_items = fun
                       ?docstring:attached_doc
                       ~snippet:child_snippet
                       ()
-                | target_path -> (
+                | target_path ->
                     match Source.resolve_module_path lookup ~current_path:path ~target_path with
                     | Some child_source ->
                         from_interface_source
@@ -639,7 +637,6 @@ let rec module_of_signature_items = fun
                           ?docstring:attached_doc
                           ~snippet:child_snippet
                           ()
-                  )
             in
             Vector.push acc_modules ~value:child;
             loop rest
@@ -674,7 +671,6 @@ let rec module_of_signature_items = fun
         | Syn.Ast.SignatureItem.Attribute _
         | Syn.Ast.SignatureItem.Error _
         | Syn.Ast.SignatureItem.Unknown _ -> loop rest
-      )
   in
   loop items
 

@@ -23,14 +23,7 @@ let sorted = fun values ->
 
 let modules_json = fun modules ->
   Json.Object [
-    (
-      "modules",
-      Json.Array (
-        List.map
-          (sorted modules)
-          ~fn:(fun name -> Json.String name)
-      )
-    );
+    ("modules", Json.Array (List.map (sorted modules) ~fn:(fun name -> Json.String name)));
   ]
 
 let diagnostics_to_string = fun diagnostics ->
@@ -49,19 +42,16 @@ let render_actual = fun ~fixture_path ->
     ~source_hash:(Crypto.hash_string source)
     parse_result with
   | Ok summary ->
-      (
-        match Dep_analyzer.resolve Dep_analyzer.Env.empty [ summary ] with
-        | Ok [ resolved ] ->
-            Dep_analyzer.ResolvedSource.modules resolved
-            @ Dep_analyzer.ResolvedSource.unresolved resolved
-            |> modules_json
-            |> Json.to_string_pretty
-            |> fun text -> text ^ "\n"
-        | Ok _ -> "expected one resolved source\n"
-        | Error _ -> "dependency resolution failed\n"
-      )
-  | Error (Dep_analyzer.Parse_diagnostics diagnostics) ->
-      diagnostics_to_string diagnostics
+      match Dep_analyzer.resolve Dep_analyzer.Env.empty [ summary ] with
+      | Ok [ resolved ] ->
+          Dep_analyzer.ResolvedSource.modules resolved
+          @ Dep_analyzer.ResolvedSource.unresolved resolved
+          |> modules_json
+          |> Json.to_string_pretty
+          |> fun text -> text ^ "\n"
+      | Ok _ -> "expected one resolved source\n"
+      | Error _ -> "dependency resolution failed\n"
+  | Error (Dep_analyzer.Parse_diagnostics diagnostics) -> diagnostics_to_string diagnostics
 
 let test_fixture = fun ~(ctx:Test.FixtureRunner.ctx) ->
   Test.Snapshot.assert_with

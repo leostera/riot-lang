@@ -10,11 +10,10 @@ let with_tempdir_result = fun prefix fn ->
 let write_file = fun path content ->
   match Fs.create_dir_all (Path.dirname path) with
   | Error err -> Error (IO.error_message err)
-  | Ok () -> (
+  | Ok () ->
       match Fs.write content path with
       | Ok () -> Ok ()
       | Error err -> Error (IO.error_message err)
-    )
 
 let pending_paths = fun workspace_root ->
   let fixture_pending =
@@ -59,19 +58,19 @@ let test_discover_pending_snapshots =
           let unsupported_pending = Path.(workspace_root / Path.v "docs/ignored.expected.new") in
           match write_file fixture_pending "fixture pending\n" with
           | Error msg -> Error msg
-          | Ok () -> (
+          | Ok () ->
               match write_file custom_pending "custom pending\n" with
               | Error msg -> Error msg
-              | Ok () -> (
+              | Ok () ->
                   match write_file workspace_pending "workspace pending\n" with
                   | Error msg -> Error msg
-                  | Ok () -> (
+                  | Ok () ->
                       match write_file build_pending "ignored\n" with
                       | Error msg -> Error msg
-                      | Ok () -> (
+                      | Ok () ->
                           match write_file unsupported_pending "unsupported\n" with
                           | Error msg -> Error msg
-                          | Ok () -> (
+                          | Ok () ->
                               match Riot_cli.Snapshots.discover_pending_snapshots ~workspace_root () with
                               | Error err -> Error (IO.error_message err)
                               | Ok snapshots ->
@@ -92,12 +91,7 @@ let test_discover_pending_snapshots =
                                   in
                                   let actual = List.sort actual ~compare:String.compare in
                                   Test.assert_equal ~expected ~actual;
-                                  Ok ()
-                            )
-                        )
-                    )
-                )
-            )))
+                                  Ok ()))
 
 let test_discover_pending_snapshots_filters_by_query =
   Test.case
@@ -111,13 +105,13 @@ let test_discover_pending_snapshots_filters_by_query =
           in
           match write_file fixture_pending "fixture pending\n" with
           | Error msg -> Error msg
-          | Ok () -> (
+          | Ok () ->
               match write_file custom_pending "custom pending\n" with
               | Error msg -> Error msg
-              | Ok () -> (
+              | Ok () ->
                   match write_file workspace_pending "workspace pending\n" with
                   | Error msg -> Error msg
-                  | Ok () -> (
+                  | Ok () ->
                       match Riot_cli.Snapshots.discover_pending_snapshots
                         ~workspace_root
                         ~query:"lossless"
@@ -130,10 +124,7 @@ let test_discover_pending_snapshots_filters_by_query =
                           Ok ()
                       | Ok snapshots ->
                           Error ("expected one filtered snapshot, got "
-                          ^ Int.to_string (List.length snapshots))
-                    )
-                )
-            )))
+                          ^ Int.to_string (List.length snapshots))))
 
 let test_fold_pending_snapshots_can_stop_early =
   Test.case
@@ -148,15 +139,14 @@ let test_fold_pending_snapshots_can_stop_early =
           let setup_result =
             match write_file fixture_pending "fixture pending\n" with
             | Error _ as err -> err
-            | Ok () -> (
+            | Ok () ->
                 match write_file custom_pending "custom pending\n" with
                 | Error _ as err -> err
                 | Ok () -> write_file workspace_pending "workspace pending\n"
-              )
           in
           match setup_result with
           | Error msg -> Error msg
-          | Ok () -> (
+          | Ok () ->
               match Riot_cli.Snapshots.fold_pending_snapshots
                 ~workspace_root
                 ~init:0
@@ -167,8 +157,7 @@ let test_fold_pending_snapshots_can_stop_early =
                   if Int.equal count 1 then
                     Ok ()
                   else
-                    Error ("expected fold to stop after one snapshot, got " ^ Int.to_string count)
-            )))
+                    Error ("expected fold to stop after one snapshot, got " ^ Int.to_string count)))
 
 let test_approve_pending_snapshots =
   Test.case
@@ -181,10 +170,10 @@ let test_approve_pending_snapshots =
           let pending = Path.add_extension fixture_approved ~ext:"new" in
           match write_file fixture_approved "old approved\n" with
           | Error msg -> Error msg
-          | Ok () -> (
+          | Ok () ->
               match write_file pending "new approved\n" with
               | Error msg -> Error msg
-              | Ok () -> (
+              | Ok () ->
                   let snapshot = Riot_cli.Snapshots.{ approved = fixture_approved; pending } in
                   match Riot_cli.Snapshots.approve_pending_snapshots [ snapshot ] with
                   | Error err -> Error (IO.error_message err)
@@ -202,9 +191,7 @@ let test_approve_pending_snapshots =
                       else if pending_exists then
                         Error "expected pending snapshot to be removed after approval"
                       else
-                        Ok ()
-                )
-            )))
+                        Ok ()))
 
 let test_reject_pending_snapshots =
   Test.case
@@ -217,10 +204,10 @@ let test_reject_pending_snapshots =
           let pending = Path.add_extension fixture_approved ~ext:"new" in
           match write_file fixture_approved "approved content\n" with
           | Error msg -> Error msg
-          | Ok () -> (
+          | Ok () ->
               match write_file pending "candidate content\n" with
               | Error msg -> Error msg
-              | Ok () -> (
+              | Ok () ->
                   let snapshot = Riot_cli.Snapshots.{ approved = fixture_approved; pending } in
                   match Riot_cli.Snapshots.reject_pending_snapshots [ snapshot ] with
                   | Error err -> Error (IO.error_message err)
@@ -238,9 +225,7 @@ let test_reject_pending_snapshots =
                       else if pending_exists then
                         Error "expected pending snapshot to be removed after rejection"
                       else
-                        Ok ()
-                )
-            )))
+                        Ok ()))
 
 let parse_snapshots = fun args ->
   match ArgParser.get_matches Riot_cli.Snapshots.command args with
@@ -253,15 +238,14 @@ let test_snapshots_command_parses_subcommands =
     (fun _ctx ->
       match parse_snapshots [ "snapshots"; "approve"; "fixture" ] with
       | Error err -> Error ("expected snapshots args to parse: " ^ err)
-      | Ok matches -> (
+      | Ok matches ->
           match ArgParser.get_subcommand matches with
           | Some ("approve", approve_matches) ->
               Test.assert_equal
                 ~expected:(Some "fixture")
                 ~actual:(ArgParser.get_one approve_matches "query");
               Ok ()
-          | _ -> Error "expected approve subcommand to be selected"
-        ))
+          | _ -> Error "expected approve subcommand to be selected")
 
 let test_parse_review_decision =
   Test.case
@@ -316,18 +300,17 @@ let test_review_pending_snapshots_with_decider =
           let setup_result =
             match write_file fixture_pending "fixture pending\n" with
             | Error _ as err -> err
-            | Ok () -> (
+            | Ok () ->
                 match write_file custom_pending "custom pending\n" with
                 | Error _ as err -> err
                 | Ok () -> write_file workspace_pending "workspace pending\n"
-              )
           in
           match setup_result with
           | Error msg -> Error msg
-          | Ok () -> (
+          | Ok () ->
               match Riot_cli.Snapshots.discover_pending_snapshots ~workspace_root () with
               | Error err -> Error (IO.error_message err)
-              | Ok snapshots -> (
+              | Ok snapshots ->
                   let decide snapshot =
                     match Path.basename snapshot.Riot_cli.Snapshots.pending with
                     | "sample.expected.new" -> Ok `Approve
@@ -385,9 +368,7 @@ let test_review_pending_snapshots_with_decider =
                       then
                         Error "unexpected review summary"
                       else
-                        Ok ()
-                )
-            )))
+                        Ok ()))
 
 let test_review_pending_snapshots_with_quit =
   Test.case
@@ -406,10 +387,10 @@ let test_review_pending_snapshots_with_quit =
           in
           match setup_result with
           | Error msg -> Error msg
-          | Ok () -> (
+          | Ok () ->
               match Riot_cli.Snapshots.discover_pending_snapshots ~workspace_root () with
               | Error err -> Error (IO.error_message err)
-              | Ok snapshots -> (
+              | Ok snapshots ->
                   let decide _snapshot = Ok `Quit in
                   match Riot_cli.Snapshots.review_pending_snapshots_with_decider
                     ~workspace_root
@@ -441,9 +422,7 @@ let test_review_pending_snapshots_with_quit =
                       then
                         Error "unexpected quit summary"
                       else
-                        Ok ()
-                )
-            )))
+                        Ok ()))
 
 let tests =
   Test.[
